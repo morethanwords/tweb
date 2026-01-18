@@ -1,13 +1,13 @@
 import {getOwner, runWithOwner} from 'solid-js';
 
-import BezierEasing from '../../vendor/bezierEasing';
-import {hexaToHsla} from '../../helpers/color';
-import {logger} from '../../lib/logger';
+import BezierEasing from '@vendor/bezierEasing';
+import {hexaToHsla} from '@helpers/color';
+import {logger} from '@lib/logger';
 
-import {FontInfo, FontKey, NumberPair, ResizableLayer} from './types';
-import {HistoryItem} from './context';
-import {IS_FIREFOX} from '../../environment/userAgent';
-import StickerType from '../../config/stickerType';
+import {FontInfo, FontKey, NumberPair, ResizableLayer} from '@components/mediaEditor/types';
+import {HistoryItem} from '@components/mediaEditor/context';
+import {IS_FIREFOX} from '@environment/userAgent';
+import StickerType from '@config/stickerType';
 
 export const log = logger('Media editor');
 

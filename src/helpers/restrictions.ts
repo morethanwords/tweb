@@ -1,4 +1,4 @@
-import {RestrictionReason} from '../layer';
+import {RestrictionReason} from '@layer';
 
 const platforms = new Set([
   'all',

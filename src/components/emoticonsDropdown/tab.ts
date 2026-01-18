@@ -5,31 +5,31 @@
  */
 
 import {EmoticonsTab, EmoticonsDropdown, EMOTICONSSTICKERGROUP, EMOJI_TEXT_COLOR} from '.';
-import createStickersContextMenu from '../../helpers/dom/createStickersContextMenu';
-import customProperties from '../../helpers/dom/customProperties';
-import positionElementByIndex from '../../helpers/dom/positionElementByIndex';
-import {IgnoreMouseOutType} from '../../helpers/dropdownHover';
-import ListenerSetter from '../../helpers/listenerSetter';
-import {MiddlewareHelper, getMiddleware, Middleware} from '../../helpers/middleware';
-import safeAssign from '../../helpers/object/safeAssign';
-import Animated from '../../helpers/solid/animations';
-import windowSize from '../../helpers/windowSize';
-import {EmojiGroup, StickerSet} from '../../layer';
-import {AppManagers} from '../../lib/managers';
-import {LangPackKey, i18n} from '../../lib/langPack';
-import {AnyFunction} from '../../types';
+import createStickersContextMenu from '@helpers/dom/createStickersContextMenu';
+import customProperties from '@helpers/dom/customProperties';
+import positionElementByIndex from '@helpers/dom/positionElementByIndex';
+import {IgnoreMouseOutType} from '@helpers/dropdownHover';
+import ListenerSetter from '@helpers/listenerSetter';
+import {MiddlewareHelper, getMiddleware, Middleware} from '@helpers/middleware';
+import safeAssign from '@helpers/object/safeAssign';
+import Animated from '@helpers/solid/animations';
+import windowSize from '@helpers/windowSize';
+import {EmojiGroup, StickerSet} from '@layer';
+import {AppManagers} from '@lib/managers';
+import {LangPackKey, i18n} from '@lib/langPack';
+import {AnyFunction} from '@types';
 import {createSignal, createMemo, createResource, createEffect, untrack} from 'solid-js';
 import {render, Portal} from 'solid-js/web';
-import Icon from '../icon';
-import Scrollable, {ScrollableX} from '../scrollable';
-import attachStickerViewerListeners from '../stickerViewer';
-import VisibilityIntersector from '../visibilityIntersector';
-import StickersTabCategory, {EmoticonsTabStyles, StickersTabStyles} from './category';
-import EmoticonsSearch from './search';
-import wrapStickerSetThumb from '../wrappers/stickerSetThumb';
-import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
-import type {MyDocument} from '../../lib/appManagers/appDocsManager';
-import SuperStickerRenderer from './tabs/SuperStickerRenderer';
+import Icon from '@components/icon';
+import Scrollable, {ScrollableX} from '@components/scrollable';
+import attachStickerViewerListeners from '@components/stickerViewer';
+import VisibilityIntersector from '@components/visibilityIntersector';
+import StickersTabCategory, {EmoticonsTabStyles, StickersTabStyles} from '@components/emoticonsDropdown/category';
+import EmoticonsSearch from '@components/emoticonsDropdown/search';
+import wrapStickerSetThumb from '@components/wrappers/stickerSetThumb';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import type {MyDocument} from '@appManagers/appDocsManager';
+import SuperStickerRenderer from '@components/emoticonsDropdown/tabs/SuperStickerRenderer';
 
 export default class EmoticonsTabC<Category extends StickersTabCategory<any, any>, T = any> implements EmoticonsTab {
   public content: HTMLElement;

@@ -1,4 +1,4 @@
-import constraintSupported, {MyMediaTrackSupportedConstraints} from '../../../environment/constraintSupport';
+import constraintSupported, {MyMediaTrackSupportedConstraints} from '@environment/constraintSupport';
 
 export default function getAudioConstraints(): MediaTrackConstraints {
   const constraints: MediaTrackConstraints = {

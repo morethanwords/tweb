@@ -1,4 +1,4 @@
-import deferredPromise from '../helpers/cancellablePromise';
+import deferredPromise from '@helpers/cancellablePromise';
 
 export default function makeAction<T>(promise: Promise<T>) {
   const deferred = deferredPromise<T>();

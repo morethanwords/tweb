@@ -1,4 +1,4 @@
-import cancelEvent from './cancelEvent';
+import cancelEvent from '@helpers/dom/cancelEvent';
 
 export default function anchorCallback(callback: (e: MouseEvent) => any, _cancelEvent = true) {
   const a = document.createElement('a');

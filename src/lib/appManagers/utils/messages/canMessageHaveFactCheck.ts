@@ -1,4 +1,4 @@
-import {Document, Message, MessageMedia} from '../../../../layer';
+import {Document, Message, MessageMedia} from '@layer';
 
 export default function canMessageHaveFactCheck(message: Message): boolean {
   if(message?._ !== 'message') {

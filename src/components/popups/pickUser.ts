@@ -4,32 +4,32 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
-import AppSelectPeers, {SelectSearchPeerType} from '../appSelectPeers';
+import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
+import AppSelectPeers, {SelectSearchPeerType} from '@components/appSelectPeers';
 import PopupElement from '.';
-import {LangPackKey, _i18n, i18n} from '../../lib/langPack';
-import {Modify} from '../../types';
-import {IsPeerType} from '../../lib/appManagers/appPeersManager';
-import ButtonCorner from '../buttonCorner';
-import {attachClickEvent, simulateClickEvent} from '../../helpers/dom/clickEvent';
-import TransitionSlider from '../transition';
-import appNavigationController, {NavigationItem} from '../appNavigationController';
-import {ForumTopic} from '../../layer';
-import Row from '../row';
-import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
-import {avatarNew} from '../avatarNew';
-import {makeMediaSize} from '../../helpers/mediaSize';
-import getDialogIndex from '../../lib/appManagers/utils/dialogs/getDialogIndex';
-import {Middleware} from '../../helpers/middleware';
-import deferredPromise from '../../helpers/cancellablePromise';
-import {MOUNT_CLASS_TO} from '../../config/debug';
-import appDialogsManager from '../../lib/appDialogsManager';
-import findUpAttribute from '../../helpers/dom/findUpAttribute';
-import cancelEvent from '../../helpers/dom/cancelEvent';
-import {AutonomousMonoforumThreadList} from '../autonomousDialogList/monoforumThreads';
-import Scrollable from '../scrollable';
-import SortedDialogList from '../sortedDialogList';
-import rootScope from '../../lib/rootScope';
+import {LangPackKey, _i18n, i18n} from '@lib/langPack';
+import {Modify} from '@types';
+import {IsPeerType} from '@appManagers/appPeersManager';
+import ButtonCorner from '@components/buttonCorner';
+import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
+import TransitionSlider from '@components/transition';
+import appNavigationController, {NavigationItem} from '@components/appNavigationController';
+import {ForumTopic} from '@layer';
+import Row from '@components/row';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import {avatarNew} from '@components/avatarNew';
+import {makeMediaSize} from '@helpers/mediaSize';
+import getDialogIndex from '@appManagers/utils/dialogs/getDialogIndex';
+import {Middleware} from '@helpers/middleware';
+import deferredPromise from '@helpers/cancellablePromise';
+import {MOUNT_CLASS_TO} from '@config/debug';
+import appDialogsManager from '@lib/appDialogsManager';
+import findUpAttribute from '@helpers/dom/findUpAttribute';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import {AutonomousMonoforumThreadList} from '@components/autonomousDialogList/monoforumThreads';
+import Scrollable from '@components/scrollable';
+import SortedDialogList from '@components/sortedDialogList';
+import rootScope from '@lib/rootScope';
 
 type PopupPickUserOptions = Modify<ConstructorParameters<typeof AppSelectPeers>[0], {
   multiSelect?: never,

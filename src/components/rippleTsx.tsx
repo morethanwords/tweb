@@ -1,6 +1,6 @@
 import {resolveFirst} from '@solid-primitives/refs';
 import {createEffect, JSX, onCleanup} from 'solid-js';
-import ripple from './ripple';
+import ripple from '@components/ripple';
 
 export interface RippleProps {
   children: JSX.Element

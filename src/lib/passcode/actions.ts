@@ -1,15 +1,15 @@
-import compareUint8Arrays from '../../helpers/bytes/compareUint8Arrays';
-import {joinDeepPath} from '../../helpers/object/setDeepProperty';
-import {useAppSettings} from '../../stores/appSettings';
+import compareUint8Arrays from '@helpers/bytes/compareUint8Arrays';
+import {joinDeepPath} from '@helpers/object/setDeepProperty';
+import {useAppSettings} from '@stores/appSettings';
 
-import AccountController from '../accounts/accountController';
-import commonStateStorage from '../commonStateStorage';
-import CacheStorageController from '../files/cacheStorage';
-import {useLockScreenHotReloadGuard} from '../solidjs/hotReloadGuard';
+import AccountController from '@lib/accounts/accountController';
+import commonStateStorage from '@lib/commonStateStorage';
+import CacheStorageController from '@lib/files/cacheStorage';
+import {useLockScreenHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 
-import DeferredIsUsingPasscode from './deferredIsUsingPasscode';
-import EncryptionKeyStore from './keyStore';
-import {createEncryptionArtifactsForPasscode, deriveEncryptionKey, hashPasscode} from './utils';
+import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
+import EncryptionKeyStore from '@lib/passcode/keyStore';
+import {createEncryptionArtifactsForPasscode, deriveEncryptionKey, hashPasscode} from '@lib/passcode/utils';
 
 export type PasscodeActions = ReturnType<typeof usePasscodeActions>;
 

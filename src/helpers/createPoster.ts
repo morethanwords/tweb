@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import pause from './schedulers/pause';
-import {makeMediaSize} from './mediaSize';
-import scaleMediaElement from './canvas/scaleMediaElement';
-import preloadVideo from './preloadVideo';
-import setCurrentTime from './dom/setCurrentTime';
+import pause from '@helpers/schedulers/pause';
+import {makeMediaSize} from '@helpers/mediaSize';
+import scaleMediaElement from '@helpers/canvas/scaleMediaElement';
+import preloadVideo from '@helpers/preloadVideo';
+import setCurrentTime from '@helpers/dom/setCurrentTime';
 
 export function createPosterFromMedia(media: HTMLVideoElement | HTMLImageElement) {
   let width: number, height: number;

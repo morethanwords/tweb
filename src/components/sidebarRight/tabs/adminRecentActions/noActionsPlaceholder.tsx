@@ -1,6 +1,6 @@
-import {I18nTsx} from '../../../../helpers/solid/i18n';
-import {IconTsx} from '../../../iconTsx';
-import styles from './noActionsPlaceholder.module.scss';
+import {I18nTsx} from '@helpers/solid/i18n';
+import {IconTsx} from '@components/iconTsx';
+import styles from '@components/sidebarRight/tabs/adminRecentActions/noActionsPlaceholder.module.scss';
 
 
 export const NoActionsPlaceholder = (props: {

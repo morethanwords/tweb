@@ -1,4 +1,4 @@
-import {Message, MessageMedia} from '../../../../layer';
+import {Message, MessageMedia} from '@layer';
 
 export default function canSaveMessageMedia(message: Message.message | Message.messageService) {
   return message &&

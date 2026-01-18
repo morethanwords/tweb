@@ -1,8 +1,8 @@
-import assumeType from '../../../helpers/assumeType';
-import {Message} from '../../../layer';
-import {i18n} from '../../../lib/langPack';
+import assumeType from '@helpers/assumeType';
+import {Message} from '@layer';
+import {i18n} from '@lib/langPack';
 
-import wrapPeerTitle from '../../wrappers/peerTitle';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
 
 
 type Args = {

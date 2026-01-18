@@ -1,5 +1,5 @@
-import {MessageEntity, TextWithEntities} from '../../../layer';
-import parseEntities from '../../../lib/richTextProcessor/parseEntities';
+import {MessageEntity, TextWithEntities} from '@layer';
+import parseEntities from '@lib/richTextProcessor/parseEntities';
 
 
 export type ExtractEmojiFromFilterTitleResult = {

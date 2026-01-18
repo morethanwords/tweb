@@ -1,11 +1,11 @@
 import PopupElement from '.';
-import deferredPromise from '../../helpers/cancellablePromise';
-import safeAssign from '../../helpers/object/safeAssign';
-import appImManager from '../../lib/appImManager';
-import {i18n, LangPackKey} from '../../lib/langPack';
-import useContentSettings from '../../stores/contentSettings';
-import Button from '../buttonTsx';
-import styles from './ageVerification.module.scss';
+import deferredPromise from '@helpers/cancellablePromise';
+import safeAssign from '@helpers/object/safeAssign';
+import appImManager from '@lib/appImManager';
+import {i18n, LangPackKey} from '@lib/langPack';
+import useContentSettings from '@stores/contentSettings';
+import Button from '@components/buttonTsx';
+import styles from '@components/popups/ageVerification.module.scss';
 
 export class AgeVerificationPopup extends PopupElement {
   private onVerify: (verified: boolean) => void;

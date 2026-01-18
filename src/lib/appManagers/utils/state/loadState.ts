@@ -4,27 +4,27 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import App from '../../../../config/app';
-import DEBUG from '../../../../config/debug';
-import {CommonState as StateCommon, State, COMMON_STATE_INIT, STATE_INIT} from '../../../../config/state';
-import compareVersion from '../../../../helpers/compareVersion';
-import copy from '../../../../helpers/object/copy';
-import validateInitObject from '../../../../helpers/object/validateInitObject';
-import {UserAuth} from '../../constants';
-import sessionStorage from '../../../sessionStorage';
-import {recordPromiseBound} from '../../../../helpers/recordPromise';
-import {StoragesResults} from '../storages/loadStorages';
-import {LogTypes, logger} from '../../../logger';
-import {AccountSessionData, ActiveAccountNumber} from '../../../accounts/types';
-import StateStorage from '../../../stateStorage';
-import AccountController from '../../../accounts/accountController';
-import commonStateStorage from '../../../commonStateStorage';
-import {TrueDcId} from '../../../../types';
-import {getOldDatabaseState} from '../../../../config/databases/state';
-import {IDB} from '../../../files/idb';
-import createStorages from '../storages/createStorages';
-import isObject from '../../../../helpers/object/isObject';
-import AppStorage from '../../../storage';
+import App from '@config/app';
+import DEBUG from '@config/debug';
+import {CommonState as StateCommon, State, COMMON_STATE_INIT, STATE_INIT} from '@config/state';
+import compareVersion from '@helpers/compareVersion';
+import copy from '@helpers/object/copy';
+import validateInitObject from '@helpers/object/validateInitObject';
+import {UserAuth} from '@appManagers/constants';
+import sessionStorage from '@lib/sessionStorage';
+import {recordPromiseBound} from '@helpers/recordPromise';
+import {StoragesResults} from '@appManagers/utils/storages/loadStorages';
+import {LogTypes, logger} from '@lib/logger';
+import {AccountSessionData, ActiveAccountNumber} from '@lib/accounts/types';
+import StateStorage from '@lib/stateStorage';
+import AccountController from '@lib/accounts/accountController';
+import commonStateStorage from '@lib/commonStateStorage';
+import {TrueDcId} from '@types';
+import {getOldDatabaseState} from '@config/databases/state';
+import {IDB} from '@lib/files/idb';
+import createStorages from '@appManagers/utils/storages/createStorages';
+import isObject from '@helpers/object/isObject';
+import AppStorage from '@lib/storage';
 
 export type LoadStateResult = {
   state: State,

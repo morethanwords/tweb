@@ -1,7 +1,7 @@
-import {UpdateGroupCallConnectionData} from '../../lib/calls/types';
-import audioCodec from './audioCodec';
-import transport from './transport';
-import videoCodec from './videoCodec';
+import {UpdateGroupCallConnectionData} from '@lib/calls/types';
+import audioCodec from '@/mock/webrtc/audioCodec';
+import transport from '@/mock/webrtc/transport';
+import videoCodec from '@/mock/webrtc/videoCodec';
 
 const data: UpdateGroupCallConnectionData = {
   audio: audioCodec,

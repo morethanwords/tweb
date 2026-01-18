@@ -1,4 +1,4 @@
-import {log} from '../utils';
+import {log} from '@components/mediaEditor/utils';
 
 export function initShaderProgram(gl: WebGLRenderingContext, vsSource: string, fsSource: string) {
   const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);

@@ -1,23 +1,23 @@
 import {createEffect, onCleanup, onMount} from 'solid-js';
 import {render} from 'solid-js/web';
 
-import {doubleRaf} from '../../helpers/schedulers';
-import {AppManagers} from '../../lib/managers';
-import {i18n} from '../../lib/langPack';
-import type SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
+import {doubleRaf} from '@helpers/schedulers';
+import {AppManagers} from '@lib/managers';
+import {i18n} from '@lib/langPack';
+import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 
-import appNavigationController, {NavigationItem} from '../appNavigationController';
-import confirmationPopup from '../confirmationPopup';
+import appNavigationController, {NavigationItem} from '@components/appNavigationController';
+import confirmationPopup from '@components/confirmationPopup';
 
-import MainCanvas from './canvas/mainCanvas';
-import MediaEditorContext, {createContextValue, EditingMediaState} from './context';
-import {createFinalResult, MediaEditorFinalResult} from './finalRender/createFinalResult';
-import FinishButton from './finishButton';
-import Toolbar from './toolbar';
-import {MediaType, NumberPair} from './types';
-import {delay, withCurrentOwner} from './utils';
+import MainCanvas from '@components/mediaEditor/canvas/mainCanvas';
+import MediaEditorContext, {createContextValue, EditingMediaState} from '@components/mediaEditor/context';
+import {createFinalResult, MediaEditorFinalResult} from '@components/mediaEditor/finalRender/createFinalResult';
+import FinishButton from '@components/mediaEditor/finishButton';
+import Toolbar from '@components/mediaEditor/toolbar';
+import {MediaType, NumberPair} from '@components/mediaEditor/types';
+import {delay, withCurrentOwner} from '@components/mediaEditor/utils';
 
-import './mediaEditor.scss';
+import '@components/mediaEditor/mediaEditor.scss';
 
 
 export type MediaEditorProps = {

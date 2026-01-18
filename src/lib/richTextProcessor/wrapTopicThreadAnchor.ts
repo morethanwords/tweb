@@ -1,5 +1,5 @@
-import getServerMessageId from '../appManagers/utils/messageId/getServerMessageId';
-import wrapTelegramUrlToAnchor from './wrapTelegramUrlToAnchor';
+import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
+import wrapTelegramUrlToAnchor from '@lib/richTextProcessor/wrapTelegramUrlToAnchor';
 
 type WrapTopicThreadAnchorArgs = {
   peerId: PeerId;

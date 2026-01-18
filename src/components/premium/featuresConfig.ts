@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {FormatterArguments, LangPackKey} from '../../lib/langPack';
-import {Document} from '../../layer';
-import {ApiLimitType} from '../../lib/appManagers/apiManagerMethods';
-import {AppManagers} from '../../lib/managers';
-import formatBytes from '../../helpers/formatBytes';
+import {FormatterArguments, LangPackKey} from '@lib/langPack';
+import {Document} from '@layer';
+import {ApiLimitType} from '@appManagers/apiManagerMethods';
+import {AppManagers} from '@lib/managers';
+import formatBytes from '@helpers/formatBytes';
 
 export interface PremiumPromoFeature {
   feature: PremiumPromoFeatureType;

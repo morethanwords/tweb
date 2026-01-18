@@ -4,32 +4,32 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {Dialog} from '../lib/appManagers/appMessagesManager';
-import type {ForumTopic} from '../layer';
-import type {AnyDialog} from '../lib/storages/dialogs';
-import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG} from '../lib/appDialogsManager';
-import rootScope from '../lib/rootScope';
-import {ButtonMenuItemOptionsVerifiable} from './buttonMenu';
-import PopupDeleteDialog from './popups/deleteDialog';
-import {i18n, LangPackKey, _i18n} from '../lib/langPack';
-import findUpTag from '../helpers/dom/findUpTag';
-import {toastNew} from './toast';
-import PopupMute from './popups/mute';
-import {AppManagers} from '../lib/managers';
-import {CAN_HIDE_TOPIC, FOLDER_ID_ARCHIVE, GENERAL_TOPIC_ID, REAL_FOLDERS} from '../lib/appManagers/constants';
-import showLimitPopup from './popups/limit';
-import createContextMenu from '../helpers/dom/createContextMenu';
-import PopupElement from './popups';
-import cancelEvent from '../helpers/dom/cancelEvent';
-import IS_SHARED_WORKER_SUPPORTED from '../environment/sharedWorkerSupport';
-import appImManager from '../lib/appImManager';
-import {isDialog, isForumTopic, isMonoforumDialog, isSavedDialog} from '../lib/appManagers/utils/dialogs/isDialog';
-import createSubmenuTrigger, {CreateSubmenuArgs} from './createSubmenuTrigger';
-import type AddToFolderDropdownMenu from './addToFolderDropdownMenu';
-import memoizeAsyncWithTTL from '../helpers/memoizeAsyncWithTTL';
-import {MonoforumDialog} from '../lib/storages/monoforumDialogs';
-import {openRemoveFeePopup} from './chat/removeFee';
-import apiManagerProxy from '../lib/apiManagerProxy';
+import type {Dialog} from '@appManagers/appMessagesManager';
+import type {ForumTopic} from '@layer';
+import type {AnyDialog} from '@lib/storages/dialogs';
+import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG} from '@lib/appDialogsManager';
+import rootScope from '@lib/rootScope';
+import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
+import PopupDeleteDialog from '@components/popups/deleteDialog';
+import {i18n, LangPackKey, _i18n} from '@lib/langPack';
+import findUpTag from '@helpers/dom/findUpTag';
+import {toastNew} from '@components/toast';
+import PopupMute from '@components/popups/mute';
+import {AppManagers} from '@lib/managers';
+import {CAN_HIDE_TOPIC, FOLDER_ID_ARCHIVE, GENERAL_TOPIC_ID, REAL_FOLDERS} from '@appManagers/constants';
+import showLimitPopup from '@components/popups/limit';
+import createContextMenu from '@helpers/dom/createContextMenu';
+import PopupElement from '@components/popups';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import IS_SHARED_WORKER_SUPPORTED from '@environment/sharedWorkerSupport';
+import appImManager from '@lib/appImManager';
+import {isDialog, isForumTopic, isMonoforumDialog, isSavedDialog} from '@appManagers/utils/dialogs/isDialog';
+import createSubmenuTrigger, {CreateSubmenuArgs} from '@components/createSubmenuTrigger';
+import type AddToFolderDropdownMenu from '@components/addToFolderDropdownMenu';
+import memoizeAsyncWithTTL from '@helpers/memoizeAsyncWithTTL';
+import {MonoforumDialog} from '@lib/storages/monoforumDialogs';
+import {openRemoveFeePopup} from '@components/chat/removeFee';
+import apiManagerProxy from '@lib/apiManagerProxy';
 
 
 export default class DialogsContextMenu {

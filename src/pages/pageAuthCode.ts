@@ -4,29 +4,29 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import mediaSizes from '../helpers/mediaSizes';
-import {AuthSentCode, AuthSentCodeType, AuthSignIn} from '../layer';
-import Page from './page';
-import pageSignIn from './pageSignIn';
-import TrackingMonkey from '../components/monkeys/tracking';
-import CodeInputFieldCompat from '../components/codeInputField';
-import {i18n, LangPackKey} from '../lib/langPack';
-import replaceContent from '../helpers/dom/replaceContent';
-import rootScope from '../lib/rootScope';
-import lottieLoader from '../lib/rlottie/lottieLoader';
-import RLottiePlayer from '../lib/rlottie/rlottiePlayer';
-import setBlankToAnchor from '../lib/richTextProcessor/setBlankToAnchor';
-import {attachClickEvent} from '../helpers/dom/clickEvent';
-import Icon from '../components/icon';
-import {fastRaf} from '../helpers/schedulers';
-import {wrapEmailPattern} from '../components/popups/emailSetup';
-import anchorCallback from '../helpers/dom/anchorCallback';
-import tsNow from '../helpers/tsNow';
-import {wrapFormattedDuration} from '../components/wrappers/wrapDuration';
-import formatDuration from '../helpers/formatDuration';
-import {SimpleConfirmationPopup} from './loginPage';
-import {toastNew} from '../components/toast';
-import ctx from '../environment/ctx';
+import mediaSizes from '@helpers/mediaSizes';
+import {AuthSentCode, AuthSentCodeType, AuthSignIn} from '@layer';
+import Page from '@/pages/page';
+import pageSignIn from '@/pages/pageSignIn';
+import TrackingMonkey from '@components/monkeys/tracking';
+import CodeInputFieldCompat from '@components/codeInputField';
+import {i18n, LangPackKey} from '@lib/langPack';
+import replaceContent from '@helpers/dom/replaceContent';
+import rootScope from '@lib/rootScope';
+import lottieLoader from '@lib/rlottie/lottieLoader';
+import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import setBlankToAnchor from '@lib/richTextProcessor/setBlankToAnchor';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import Icon from '@components/icon';
+import {fastRaf} from '@helpers/schedulers';
+import {wrapEmailPattern} from '@components/popups/emailSetup';
+import anchorCallback from '@helpers/dom/anchorCallback';
+import tsNow from '@helpers/tsNow';
+import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
+import formatDuration from '@helpers/formatDuration';
+import {SimpleConfirmationPopup} from '@/pages/loginPage';
+import {toastNew} from '@components/toast';
+import ctx from '@environment/ctx';
 
 let authSentCode: AuthSentCode.authSentCode = null;
 

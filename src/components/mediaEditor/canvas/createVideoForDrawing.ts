@@ -1,8 +1,8 @@
-import deferredPromise from '../../../helpers/cancellablePromise';
-import createVideo from '../../../helpers/dom/createVideo';
-import handleVideoLeak from '../../../helpers/dom/handleVideoLeak';
-import {Middleware} from '../../../helpers/middleware';
-import onMediaLoad from '../../../helpers/onMediaLoad';
+import deferredPromise from '@helpers/cancellablePromise';
+import createVideo from '@helpers/dom/createVideo';
+import handleVideoLeak from '@helpers/dom/handleVideoLeak';
+import {Middleware} from '@helpers/middleware';
+import onMediaLoad from '@helpers/onMediaLoad';
 
 
 type Options = {

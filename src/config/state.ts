@@ -4,17 +4,17 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {LiteModeKey} from '../helpers/liteMode';
-import type {AppMediaPlaybackController} from '../components/appMediaPlaybackController';
-import type {TopPeerType, MyTopPeer} from '../lib/appManagers/appUsersManager';
-import type {AccountContentSettings, AccountThemes, AutoDownloadSettings, BaseTheme, NotifyPeer, PeerNotifySettings, Theme, ThemeSettings, WallPaper} from '../layer';
-import type DialogsStorage from '../lib/storages/dialogs';
-import type FiltersStorage from '../lib/storages/filters';
-import type {AuthState, Modify} from '../types';
-import type {ShortcutKey as PasscodeLockShortcutKey} from '../components/sidebarLeft/tabs/passcodeLock/shortcutBuilder';
-import {IS_MOBILE} from '../environment/userAgent';
-import getTimeFormat from '../helpers/getTimeFormat';
-import App from './app';
+import type {LiteModeKey} from '@helpers/liteMode';
+import type {AppMediaPlaybackController} from '@components/appMediaPlaybackController';
+import type {TopPeerType, MyTopPeer} from '@appManagers/appUsersManager';
+import type {AccountContentSettings, AccountThemes, AutoDownloadSettings, BaseTheme, NotifyPeer, PeerNotifySettings, Theme, ThemeSettings, WallPaper} from '@layer';
+import type DialogsStorage from '@lib/storages/dialogs';
+import type FiltersStorage from '@lib/storages/filters';
+import type {AuthState, Modify} from '@types';
+import type {ShortcutKey as PasscodeLockShortcutKey} from '@components/sidebarLeft/tabs/passcodeLock/shortcutBuilder';
+import {IS_MOBILE} from '@environment/userAgent';
+import getTimeFormat from '@helpers/getTimeFormat';
+import App from '@config/app';
 
 const STATE_VERSION = App.version;
 const BUILD = App.build;

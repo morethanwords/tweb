@@ -1,29 +1,29 @@
-import PopupElement, {createPopup} from './indexTsx';
+import PopupElement, {createPopup} from '@components/popups/indexTsx';
 import {createEffect, createMemo, createSignal, on, onMount, Show} from 'solid-js';
-import {MyStarGift} from '../../lib/appManagers/appGiftsManager';
-import {i18n, LangPackKey} from '../../lib/langPack';
-import Row from '../rowTsx';
-import CheckboxFieldTsx from '../checkboxFieldTsx';
-import {InputFieldTsx} from '../inputFieldTsx';
-import {fastRaf} from '../../helpers/schedulers';
-import paymentsWrapCurrencyAmount, {formatNanoton, parseNanotonFromDecimal} from '../../helpers/paymentsWrapCurrencyAmount';
-import Section from '../section';
-import rootScope from '../../lib/rootScope';
+import {MyStarGift} from '@appManagers/appGiftsManager';
+import {i18n, LangPackKey} from '@lib/langPack';
+import Row from '@components/rowTsx';
+import CheckboxFieldTsx from '@components/checkboxFieldTsx';
+import {InputFieldTsx} from '@components/inputFieldTsx';
+import {fastRaf} from '@helpers/schedulers';
+import paymentsWrapCurrencyAmount, {formatNanoton, parseNanotonFromDecimal} from '@helpers/paymentsWrapCurrencyAmount';
+import Section from '@components/section';
+import rootScope from '@lib/rootScope';
 
-import {useAppConfig} from '../../stores/appState';
-import {I18nTsx} from '../../helpers/solid/i18n';
-import {STARS_CURRENCY, TON_CURRENCY} from '../../lib/appManagers/constants';
-import {ChipTab, ChipTabs} from '../chipTabs';
-import {StarGift} from '../../layer';
+import {useAppConfig} from '@stores/appState';
+import {I18nTsx} from '@helpers/solid/i18n';
+import {STARS_CURRENCY, TON_CURRENCY} from '@appManagers/constants';
+import {ChipTab, ChipTabs} from '@components/chipTabs';
+import {StarGift} from '@layer';
 import bigInt from 'big-integer';
 
-import styles from './createStarGiftOffer.module.scss';
-import {StarGiftPriceInputField} from '../stargifts/stargiftPriceInputField';
-import {getCollectibleName} from '../../lib/appManagers/utils/gifts/getCollectibleName';
-import InlineSelect from '../sidebarLeft/tabs/passcodeLock/inlineSelect';
-import {PeerTitleTsx} from '../peerTitleTsx';
-import wrapPeerTitle from '../wrappers/peerTitle';
-import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
+import styles from '@components/popups/createStarGiftOffer.module.scss';
+import {StarGiftPriceInputField} from '@components/stargifts/stargiftPriceInputField';
+import {getCollectibleName} from '@appManagers/utils/gifts/getCollectibleName';
+import InlineSelect from '@components/sidebarLeft/tabs/passcodeLock/inlineSelect';
+import {PeerTitleTsx} from '@components/peerTitleTsx';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
 
 export async function showCreateStarGiftOfferPopup(options: {
   gift: MyStarGift

@@ -1,5 +1,5 @@
 import {Accessor, createMemo} from 'solid-js';
-import useAppConfig from './useAppConfig';
+import useAppConfig from '@components/sidebarLeft/tabs/privacy/messages/useAppConfig';
 
 
 type Options = {

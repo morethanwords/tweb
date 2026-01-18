@@ -1,7 +1,7 @@
 import {resolveElements} from '@solid-primitives/refs';
-import {createListTransition} from './createListTransition';
+import {createListTransition} from '@helpers/solid/createListTransition';
 import {createEffect, createRoot, onCleanup, JSX, Accessor, FlowComponent} from 'solid-js';
-import liteMode from '../liteMode';
+import liteMode from '@helpers/liteMode';
 
 export const TransitionGroup: FlowComponent<{
   noWait?: Accessor<boolean>,

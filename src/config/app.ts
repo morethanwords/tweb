@@ -9,7 +9,7 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type {TrueDcId} from '../types';
+import type {TrueDcId} from '@types';
 
 export const MAIN_DOMAINS = ['web.telegram.org', 'webk.telegram.org'];
 export const DEFAULT_BACKGROUND_SLUG = 'pattern';

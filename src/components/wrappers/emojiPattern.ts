@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import customProperties from '../../helpers/dom/customProperties';
-import {Middleware} from '../../helpers/middleware';
-import noop from '../../helpers/noop';
-import pause from '../../helpers/schedulers/pause';
-import {MyDocument} from '../../lib/appManagers/appDocsManager';
-import {applyColorOnContext} from '../../lib/rlottie/rlottiePlayer';
-import rootScope from '../../lib/rootScope';
-import wrapSticker from './sticker';
+import customProperties from '@helpers/dom/customProperties';
+import {Middleware} from '@helpers/middleware';
+import noop from '@helpers/noop';
+import pause from '@helpers/schedulers/pause';
+import {MyDocument} from '@appManagers/appDocsManager';
+import {applyColorOnContext} from '@lib/rlottie/rlottiePlayer';
+import rootScope from '@lib/rootScope';
+import wrapSticker from '@components/wrappers/sticker';
 
 export default async function wrapEmojiPattern({
   docId,

@@ -4,16 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import {SliderSuperTabEventable} from '../../sliderTab';
-import {createSelectorForTab} from './chatMembers';
-import {getImportersLoader} from './chatInviteLink';
-import {formatFullSentTime} from '../../../helpers/date';
-import Button from '../../button';
-import {i18n} from '../../../lib/langPack';
-import findUpClassName from '../../../helpers/dom/findUpClassName';
-import appImManager from '../../../lib/appImManager';
-import {DialogElement} from '../../../lib/appDialogsManager';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import {SliderSuperTabEventable} from '@components/sliderTab';
+import {createSelectorForTab} from '@components/sidebarRight/tabs/chatMembers';
+import {getImportersLoader} from '@components/sidebarRight/tabs/chatInviteLink';
+import {formatFullSentTime} from '@helpers/date';
+import Button from '@components/button';
+import {i18n} from '@lib/langPack';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import appImManager from '@lib/appImManager';
+import {DialogElement} from '@lib/appDialogsManager';
 
 export default class AppChatRequestsTab extends SliderSuperTabEventable<{
   finish: (changedLength: number) => void

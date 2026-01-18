@@ -6,15 +6,15 @@
 
 import {Accessor, createEffect, createRoot, createSignal, onCleanup} from 'solid-js';
 
-import {SEND_PAID_WITH_STARS_DELAY} from '../../lib/appManagers/constants';
-import appImManager from '../../lib/appImManager';
-import I18n, {i18n, LangPackKey} from '../../lib/langPack';
-import classNames from '../../helpers/string/classNames';
-import eachSecond from '../../helpers/eachSecond';
-import {animate} from '../../helpers/animation';
+import {SEND_PAID_WITH_STARS_DELAY} from '@appManagers/constants';
+import appImManager from '@lib/appImManager';
+import I18n, {i18n, LangPackKey} from '@lib/langPack';
+import classNames from '@helpers/string/classNames';
+import eachSecond from '@helpers/eachSecond';
+import {animate} from '@helpers/animation';
 
-import {AnimatedCounter} from '../animatedCounter';
-import showTooltip from '../tooltip';
+import {AnimatedCounter} from '@components/animatedCounter';
+import showTooltip from '@components/tooltip';
 
 
 type LangKeys = {

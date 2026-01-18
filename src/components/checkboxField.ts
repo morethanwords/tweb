@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type ListenerSetter from '../helpers/listenerSetter';
-import ripple from './ripple';
-import {LangPackKey, _i18n} from '../lib/langPack';
-import getDeepProperty from '../helpers/object/getDeepProperty';
-import rootScope from '../lib/rootScope';
-import apiManagerProxy from '../lib/apiManagerProxy';
-import simulateEvent from '../helpers/dom/dispatchEvent';
+import type ListenerSetter from '@helpers/listenerSetter';
+import ripple from '@components/ripple';
+import {LangPackKey, _i18n} from '@lib/langPack';
+import getDeepProperty from '@helpers/object/getDeepProperty';
+import rootScope from '@lib/rootScope';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import simulateEvent from '@helpers/dom/dispatchEvent';
 
 export type CheckboxFieldOptions = {
   text?: LangPackKey,

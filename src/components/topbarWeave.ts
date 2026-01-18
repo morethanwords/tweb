@@ -9,10 +9,10 @@
  * https://github.com/evgeny-nadymov/telegram-react/blob/master/LICENSE
  */
 
-import CALL_STATE from '../lib/calls/callState';
-import GROUP_CALL_STATE from '../lib/calls/groupCallState';
-import RTMP_STATE from '../lib/calls/rtmpState';
-import LineBlobDrawable from './lineBlobDrawable';
+import CALL_STATE from '@lib/calls/callState';
+import GROUP_CALL_STATE from '@lib/calls/groupCallState';
+import RTMP_STATE from '@lib/calls/rtmpState';
+import LineBlobDrawable from '@components/lineBlobDrawable';
 
 type WeavingCallType = 'group' | 'call' | 'rtmp';
 type WeavingCallState = GROUP_CALL_STATE | CALL_STATE | RTMP_STATE;

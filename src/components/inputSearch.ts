@@ -4,15 +4,15 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {attachClickEvent} from '../helpers/dom/clickEvent';
-import ListenerSetter from '../helpers/listenerSetter';
-import {LangPackKey, i18n} from '../lib/langPack';
-import ButtonIcon from './buttonIcon';
-import ConnectionStatusComponent from './connectionStatus';
-import Icon from './icon';
-import InputField from './inputField';
-import ProgressivePreloader from './preloader';
-import SetTransition from './singleTransition';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import ListenerSetter from '@helpers/listenerSetter';
+import {LangPackKey, i18n} from '@lib/langPack';
+import ButtonIcon from '@components/buttonIcon';
+import ConnectionStatusComponent from '@components/connectionStatus';
+import Icon from '@components/icon';
+import InputField from '@components/inputField';
+import ProgressivePreloader from '@components/preloader';
+import SetTransition from '@components/singleTransition';
 
 export default class InputSearch {
   public container: HTMLElement;

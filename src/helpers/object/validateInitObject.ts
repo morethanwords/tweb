@@ -1,5 +1,5 @@
-import copy from './copy';
-import isObject from './isObject';
+import copy from '@helpers/object/copy';
+import isObject from '@helpers/object/isObject';
 
 export default function validateInitObject(
   initObject: any,

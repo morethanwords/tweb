@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {DataJSON} from '../../../layer';
-import {JoinGroupCallJsonPayload} from '../../appManagers/appGroupCallsManager';
-import SDP from '../sdp';
-import {Ssrc} from '../types';
-import parseMediaSectionInfo from './parseMediaSectionInfo';
+import {DataJSON} from '@layer';
+import {JoinGroupCallJsonPayload} from '@appManagers/appGroupCallsManager';
+import SDP from '@lib/calls/sdp';
+import {Ssrc} from '@lib/calls/types';
+import parseMediaSectionInfo from '@lib/calls/helpers/parseMediaSectionInfo';
 
 export default function processMediaSection(sdp: SDP, media: SDP['media'][0]) {
   const sectionInfo = parseMediaSectionInfo(sdp, media);

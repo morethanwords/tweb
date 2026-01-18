@@ -1,7 +1,7 @@
-import {Message} from '../../../../layer';
-import type SolidJSHotReloadGuardProvider from '../../../../lib/solidjs/hotReloadGuardProvider';
-import PopupElement from '../../../popups';
-import SuggestedPostAcceptWithTimePopupContent from './content';
+import {Message} from '@layer';
+import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import PopupElement from '@components/popups';
+import SuggestedPostAcceptWithTimePopupContent from '@components/chat/bubbleParts/suggestedPostAcceptWithTimePopup/content';
 
 
 type Args = {

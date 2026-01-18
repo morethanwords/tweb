@@ -2,15 +2,15 @@ import {Component, ComponentProps, createComputed, createEffect, createSignal, S
 import {render} from 'solid-js/web';
 import {Transition} from 'solid-transition-group';
 
-import type SolidJSHotReloadGuardProvider from '../../../../lib/solidjs/hotReloadGuardProvider';
-import {i18n} from '../../../../lib/langPack';
+import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import {i18n} from '@lib/langPack';
 
-import useStarsCommissionAndWithdrawalPrice from '../../../sidebarLeft/tabs/privacy/messages/useStarsCommissionAndWithdrawalPrice';
-import {PromiseCollector} from '../../../solidJsTabs/promiseCollector';
-import StarRangeInput from '../../../sidebarLeft/tabs/privacy/messages/starsRangeInput';
-import StaticSwitch from '../../../staticSwitch';
-import Section from '../../../section';
-import Row from '../../../rowTsx';
+import useStarsCommissionAndWithdrawalPrice from '@components/sidebarLeft/tabs/privacy/messages/useStarsCommissionAndWithdrawalPrice';
+import {PromiseCollector} from '@components/solidJsTabs/promiseCollector';
+import StarRangeInput from '@components/sidebarLeft/tabs/privacy/messages/starsRangeInput';
+import StaticSwitch from '@components/staticSwitch';
+import Section from '@components/section';
+import Row from '@components/rowTsx';
 
 
 const TRANSITION_PARAMS: KeyframeAnimationOptions = {duration: 200, easing: 'ease-out'};

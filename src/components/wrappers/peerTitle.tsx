@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import PeerTitle, {PeerTitleOptions} from '../peerTitle';
+import PeerTitle, {PeerTitleOptions} from '@components/peerTitle';
 
 export default async function wrapPeerTitle(options: PeerTitleOptions) {
   const peerTitle = new PeerTitle();

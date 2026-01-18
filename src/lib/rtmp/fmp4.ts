@@ -1,11 +1,11 @@
-import bufferConcats from '../../helpers/bytes/bufferConcats';
-import {findIsoBox, isoBoxToBuffer} from './utils';
-import ISOBoxer from './isoboxer';
-import {encodeFlacHeader} from './flac';
-import {parseMp4Samples} from './mp4';
-import {OpusDecoderDelegate, reencodeOpusToFlac} from './opus';
+import bufferConcats from '@helpers/bytes/bufferConcats';
+import {findIsoBox, isoBoxToBuffer} from '@lib/rtmp/utils';
+import ISOBoxer from '@lib/rtmp/isoboxer';
+import {encodeFlacHeader} from '@lib/rtmp/flac';
+import {parseMp4Samples} from '@lib/rtmp/mp4';
+import {OpusDecoderDelegate, reencodeOpusToFlac} from '@lib/rtmp/opus';
 import bigInt from 'big-integer';
-import type {OpusDecoderInit} from '../../vendor/opus';
+import type {OpusDecoderInit} from '@vendor/opus';
 
 export interface Fmp4InitChunkInfo {
   opusTrackId?: number;

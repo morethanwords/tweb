@@ -1,8 +1,8 @@
 import {createEffect, createSignal, JSX, on, Signal, untrack} from 'solid-js';
-import {subscribeOn} from '../helpers/solid/subscribeOn';
-import CheckboxField from './checkboxField';
-import {LangPackKey} from '../lib/langPack';
-import {attachClassName} from '../helpers/solid/classname';
+import {subscribeOn} from '@helpers/solid/subscribeOn';
+import CheckboxField from '@components/checkboxField';
+import {LangPackKey} from '@lib/langPack';
+import {attachClassName} from '@helpers/solid/classname';
 
 export default function CheckboxFieldTsx(props: {
   class?: string,

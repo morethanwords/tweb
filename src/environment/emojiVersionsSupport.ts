@@ -1,4 +1,4 @@
-import IS_EMOJI_SUPPORTED from './emojiSupport';
+import IS_EMOJI_SUPPORTED from '@environment/emojiSupport';
 
 export type EMOJI_VERSION = '' | '14';
 

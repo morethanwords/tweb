@@ -4,36 +4,36 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {Boost, PremiumBoostsStatus, PrepaidGiveaway} from '../../../layer';
-import {LangPackKey, i18n, joinElementsWith} from '../../../lib/langPack';
-import Section from '../../section';
-import {SliderSuperTabEventable} from '../../sliderTab';
+import {Boost, PremiumBoostsStatus, PrepaidGiveaway} from '@layer';
+import {LangPackKey, i18n, joinElementsWith} from '@lib/langPack';
+import Section from '@components/section';
+import {SliderSuperTabEventable} from '@components/sliderTab';
 import {Accessor, createMemo, createRoot, createSignal, For, JSX, onCleanup} from 'solid-js';
 import {render} from 'solid-js/web';
-import Row from '../../row';
-import {avatarNew, AvatarNew} from '../../avatarNew';
-import LimitLine from '../../limit';
-import {LoadableList, StatisticsOverviewItems, createLoadableList, createMoreButton, makeAbsStats} from './statistics';
-import PopupBoostsViaGifts, {BoostsBadge} from '../../popups/boostsViaGifts';
-import Button from '../../button';
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import PopupElement from '../../popups';
-import {InviteLink} from '../../sidebarLeft/tabs/sharedFolder';
-import {horizontalMenu} from '../../horizontalMenu';
-import classNames from '../../../helpers/string/classNames';
-import {formatFullSentTime} from '../../../helpers/date';
-import wrapPeerTitle from '../../wrappers/peerTitle';
-import Icon from '../../icon';
-import toggleDisability from '../../../helpers/dom/toggleDisability';
-import findUpClassName from '../../../helpers/dom/findUpClassName';
-import rootScope from '../../../lib/rootScope';
-import PopupGiftLink from '../../popups/giftLink';
-import {toastNew} from '../../toast';
-import ListenerSetter from '../../../helpers/listenerSetter';
-import indexOfAndSplice from '../../../helpers/array/indexOfAndSplice';
-import appImManager from '../../../lib/appImManager';
-import PopupPayment from '../../popups/payment';
-import formatStarsAmount from '../../../lib/appManagers/utils/payments/formatStarsAmount';
+import Row from '@components/row';
+import {avatarNew, AvatarNew} from '@components/avatarNew';
+import LimitLine from '@components/limit';
+import {LoadableList, StatisticsOverviewItems, createLoadableList, createMoreButton, makeAbsStats} from '@components/sidebarRight/tabs/statistics';
+import PopupBoostsViaGifts, {BoostsBadge} from '@components/popups/boostsViaGifts';
+import Button from '@components/button';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import PopupElement from '@components/popups';
+import {InviteLink} from '@components/sidebarLeft/tabs/sharedFolder';
+import {horizontalMenu} from '@components/horizontalMenu';
+import classNames from '@helpers/string/classNames';
+import {formatFullSentTime} from '@helpers/date';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
+import Icon from '@components/icon';
+import toggleDisability from '@helpers/dom/toggleDisability';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import rootScope from '@lib/rootScope';
+import PopupGiftLink from '@components/popups/giftLink';
+import {toastNew} from '@components/toast';
+import ListenerSetter from '@helpers/listenerSetter';
+import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
+import appImManager from '@lib/appImManager';
+import PopupPayment from '@components/popups/payment';
+import formatStarsAmount from '@appManagers/utils/payments/formatStarsAmount';
 
 const getColorByMonths = (months: number) => {
   return months === 12 ? 'red' : (months === 3 ? 'green' : 'blue');

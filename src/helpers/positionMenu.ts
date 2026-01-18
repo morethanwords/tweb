@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {ButtonMenuDirection} from '../components/buttonMenuToggle';
-import I18n from '../lib/langPack';
-import mediaSizes from './mediaSizes';
+import {ButtonMenuDirection} from '@components/buttonMenuToggle';
+import I18n from '@lib/langPack';
+import mediaSizes from '@helpers/mediaSizes';
 
 export type MenuPositionPadding = {
   top?: number,

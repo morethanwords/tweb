@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import blurActiveElement from '../helpers/dom/blurActiveElement';
-import loadFonts from '../helpers/dom/loadFonts';
-import rootScope from '../lib/rootScope';
-import Page from './page';
+import blurActiveElement from '@helpers/dom/blurActiveElement';
+import loadFonts from '@helpers/dom/loadFonts';
+import rootScope from '@lib/rootScope';
+import Page from '@/pages/page';
 
 const onFirstMount = () => {
   rootScope.managers.appStateManager.pushToState('authState', {_: 'authStateSignedIn'});

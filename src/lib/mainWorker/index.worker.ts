@@ -5,30 +5,30 @@
  */
 
 // just to include
-import '../polyfill';
-import '../../helpers/peerIdPolyfill';
+import '@lib/polyfill';
+import '@helpers/peerIdPolyfill';
 
-import cryptoWorker from '../crypto/cryptoMessagePort';
-import {setEnvironment} from '../../environment/utils';
-import transportController from '../mtproto/transports/controller';
-import MTProtoMessagePort from './mainMessagePort';
-import appManagersManager from '../appManagers/appManagersManager';
-import listenMessagePort from '../../helpers/listenMessagePort';
-import {logger} from '../logger';
-import toggleStorages from '../../helpers/toggleStorages';
-import appTabsManager from '../appManagers/appTabsManager';
-import callbackify from '../../helpers/callbackify';
-import Modes from '../../config/modes';
-import {ActiveAccountNumber} from '../accounts/types';
-import commonStateStorage from '../commonStateStorage';
-import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
-import AppStorage from '../storage';
-import EncryptionKeyStore from '../passcode/keyStore';
-import sessionStorage from '../sessionStorage';
-import CacheStorageController from '../files/cacheStorage';
-import {ApiManager} from '../appManagers/apiManager';
-import {useAutoLock} from './useAutoLock';
-import pushSingleManager from '../appManagers/pushSingleManager';
+import cryptoWorker from '@lib/crypto/cryptoMessagePort';
+import {setEnvironment} from '@environment/utils';
+import transportController from '@lib/mtproto/transports/controller';
+import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
+import appManagersManager from '@appManagers/appManagersManager';
+import listenMessagePort from '@helpers/listenMessagePort';
+import {logger} from '@lib/logger';
+import toggleStorages from '@helpers/toggleStorages';
+import appTabsManager from '@appManagers/appTabsManager';
+import callbackify from '@helpers/callbackify';
+import Modes from '@config/modes';
+import {ActiveAccountNumber} from '@lib/accounts/types';
+import commonStateStorage from '@lib/commonStateStorage';
+import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
+import AppStorage from '@lib/storage';
+import EncryptionKeyStore from '@lib/passcode/keyStore';
+import sessionStorage from '@lib/sessionStorage';
+import CacheStorageController from '@lib/files/cacheStorage';
+import {ApiManager} from '@appManagers/apiManager';
+import {useAutoLock} from '@lib/mainWorker/useAutoLock';
+import pushSingleManager from '@appManagers/pushSingleManager';
 
 
 const log = logger('MTPROTO');

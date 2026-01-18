@@ -1,6 +1,6 @@
 import {Component, createSignal, JSX, onCleanup} from 'solid-js';
 
-import styles from './loadingDialogSkeleton.module.scss';
+import styles from '@components/loadingDialogSkeleton.module.scss';
 
 
 function pseudoRandomRange(seed: number, min: number, max: number) {

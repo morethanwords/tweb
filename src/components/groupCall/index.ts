@@ -4,35 +4,35 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import PopupElement from '../popups';
-import {hexToRgb} from '../../helpers/color';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import customProperties from '../../helpers/dom/customProperties';
-import {GroupCall, GroupCallParticipant} from '../../layer';
-import GROUP_CALL_STATE from '../../lib/calls/groupCallState';
-import {RLottieColor} from '../../lib/rlottie/rlottiePlayer';
-import rootScope from '../../lib/rootScope';
-import ButtonIcon from '../buttonIcon';
-import GroupCallMicrophoneIcon from './microphoneIcon';
-import GroupCallParticipantsElement from './participants';
-import GroupCallParticipantsVideoElement from './participantVideos';
-import PopupPeer from '../popups/peer';
-import GroupCallDescriptionElement from './description';
-import GroupCallTitleElement from './title';
-import {addFullScreenListener, cancelFullScreen, isFullScreen, requestFullScreen} from '../../helpers/dom/fullScreen';
-import Scrollable from '../scrollable';
-import {MovableState} from '../movableElement';
-import animationIntersector from '../animationIntersector';
-import {IS_APPLE_MOBILE} from '../../environment/userAgent';
-import throttle from '../../helpers/schedulers/throttle';
-import IS_SCREEN_SHARING_SUPPORTED from '../../environment/screenSharingSupport';
-import GroupCallInstance from '../../lib/calls/groupCallInstance';
-import makeButton from '../call/button';
-import MovablePanel from '../../helpers/movablePanel';
-import findUpClassName from '../../helpers/dom/findUpClassName';
-import toggleClassName from '../../helpers/toggleClassName';
-import themeController from '../../helpers/themeController';
-import groupCallsController from '../../lib/calls/groupCallsController';
+import PopupElement from '@components/popups';
+import {hexToRgb} from '@helpers/color';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import customProperties from '@helpers/dom/customProperties';
+import {GroupCall, GroupCallParticipant} from '@layer';
+import GROUP_CALL_STATE from '@lib/calls/groupCallState';
+import {RLottieColor} from '@lib/rlottie/rlottiePlayer';
+import rootScope from '@lib/rootScope';
+import ButtonIcon from '@components/buttonIcon';
+import GroupCallMicrophoneIcon from '@components/groupCall/microphoneIcon';
+import GroupCallParticipantsElement from '@components/groupCall/participants';
+import GroupCallParticipantsVideoElement from '@components/groupCall/participantVideos';
+import PopupPeer from '@components/popups/peer';
+import GroupCallDescriptionElement from '@components/groupCall/description';
+import GroupCallTitleElement from '@components/groupCall/title';
+import {addFullScreenListener, cancelFullScreen, isFullScreen, requestFullScreen} from '@helpers/dom/fullScreen';
+import Scrollable from '@components/scrollable';
+import {MovableState} from '@components/movableElement';
+import animationIntersector from '@components/animationIntersector';
+import {IS_APPLE_MOBILE} from '@environment/userAgent';
+import throttle from '@helpers/schedulers/throttle';
+import IS_SCREEN_SHARING_SUPPORTED from '@environment/screenSharingSupport';
+import GroupCallInstance from '@lib/calls/groupCallInstance';
+import makeButton from '@components/call/button';
+import MovablePanel from '@helpers/movablePanel';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import toggleClassName from '@helpers/toggleClassName';
+import themeController from '@helpers/themeController';
+import groupCallsController from '@lib/calls/groupCallsController';
 
 export enum GROUP_CALL_PARTICIPANT_MUTED_STATE {
   UNMUTED,

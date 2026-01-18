@@ -1,4 +1,4 @@
-import SlicedArray, {Slice, SliceEnd} from '../helpers/slicedArray';
+import SlicedArray, {Slice, SliceEnd} from '@helpers/slicedArray';
 
 test('Slicing returns new Slice', () => {
   const sliced = new SlicedArray();

@@ -5,19 +5,19 @@
  */
 
 import PopupElement from '.';
-import filterUnique from '../../helpers/array/filterUnique';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import shake from '../../helpers/dom/shake';
-import toggleDisability from '../../helpers/dom/toggleDisability';
-import safeAssign from '../../helpers/object/safeAssign';
-import {ChatlistsChatlistInvite, ChatlistsChatlistUpdates, DialogFilter, Peer} from '../../layer';
-import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
-import I18n, {i18n, _i18n} from '../../lib/langPack';
-import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
-import AppSelectPeers from '../appSelectPeers';
-import Button from '../button';
-import wrapFolderTitle from '../wrappers/folderTitle';
-import showLimitPopup from './limit';
+import filterUnique from '@helpers/array/filterUnique';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import shake from '@helpers/dom/shake';
+import toggleDisability from '@helpers/dom/toggleDisability';
+import safeAssign from '@helpers/object/safeAssign';
+import {ChatlistsChatlistInvite, ChatlistsChatlistUpdates, DialogFilter, Peer} from '@layer';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
+import I18n, {i18n, _i18n} from '@lib/langPack';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import AppSelectPeers from '@components/appSelectPeers';
+import Button from '@components/button';
+import wrapFolderTitle from '@components/wrappers/folderTitle';
+import showLimitPopup from '@components/popups/limit';
 
 const CLASS_NAME = 'popup-chatlist-invite';
 export default class PopupSharedFolderInvite extends PopupElement {

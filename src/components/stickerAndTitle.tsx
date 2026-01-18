@@ -1,8 +1,8 @@
-import classNames from '../helpers/string/classNames';
-import lottieLoader, {LottieAssetName} from '../lib/rlottie/lottieLoader';
-import LottieAnimation from './lottieAnimation';
+import classNames from '@helpers/string/classNames';
+import lottieLoader, {LottieAssetName} from '@lib/rlottie/lottieLoader';
+import LottieAnimation from '@components/lottieAnimation';
 import {Show, JSX, children} from 'solid-js';
-import styles from './stickerAndTitle.module.scss';
+import styles from '@components/stickerAndTitle.module.scss';
 
 export type StickerAndTitleProps = {
   sticker: {

@@ -4,34 +4,34 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {hexToRgb, hslaToString, mixColors, rgbaToHsla} from '../../../helpers/color';
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import createContextMenu from '../../../helpers/dom/createContextMenu';
-import customProperties from '../../../helpers/dom/customProperties';
-import findUpClassName from '../../../helpers/dom/findUpClassName';
-import toggleDisability from '../../../helpers/dom/toggleDisability';
-import paymentsWrapCurrencyAmount from '../../../helpers/paymentsWrapCurrencyAmount';
-import tsNow from '../../../helpers/tsNow';
-import {ExportedChatInvite, MessagesExportedChatInvite, MessagesExportedChatInvites} from '../../../layer';
-import appDialogsManager from '../../../lib/appDialogsManager';
-import getPeerActiveUsernames from '../../../lib/appManagers/utils/peers/getPeerActiveUsernames';
-import {LangPackKey, i18n, joinElementsWith} from '../../../lib/langPack';
-import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
-import wrapPlainText from '../../../lib/richTextProcessor/wrapPlainText';
-import lottieLoader from '../../../lib/rlottie/lottieLoader';
-import rootScope from '../../../lib/rootScope';
-import Button from '../../button';
-import {ButtonMenuItemOptionsVerifiable} from '../../buttonMenu';
-import confirmationPopup from '../../confirmationPopup';
-import {StarsAmount, StarsChange} from '../../popups/stars';
-import SettingSection from '../../settingSection';
-import {InviteLink} from '../../sidebarLeft/tabs/sharedFolder';
-import {SliderSuperTabEventable} from '../../sliderTab';
-import {UsernameRow} from '../../usernamesSection';
-import wrapPeerTitle from '../../wrappers/peerTitle';
-import {wrapLeftDuration} from '../../wrappers/wrapDuration';
-import AppChatInviteLinkTab from './chatInviteLink';
-import AppEditChatInviteLink from './editChatInviteLink';
+import {hexToRgb, hslaToString, mixColors, rgbaToHsla} from '@helpers/color';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import createContextMenu from '@helpers/dom/createContextMenu';
+import customProperties from '@helpers/dom/customProperties';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import toggleDisability from '@helpers/dom/toggleDisability';
+import paymentsWrapCurrencyAmount from '@helpers/paymentsWrapCurrencyAmount';
+import tsNow from '@helpers/tsNow';
+import {ExportedChatInvite, MessagesExportedChatInvite, MessagesExportedChatInvites} from '@layer';
+import appDialogsManager from '@lib/appDialogsManager';
+import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
+import {LangPackKey, i18n, joinElementsWith} from '@lib/langPack';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import wrapPlainText from '@lib/richTextProcessor/wrapPlainText';
+import lottieLoader from '@lib/rlottie/lottieLoader';
+import rootScope from '@lib/rootScope';
+import Button from '@components/button';
+import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
+import confirmationPopup from '@components/confirmationPopup';
+import {StarsAmount, StarsChange} from '@components/popups/stars';
+import SettingSection from '@components/settingSection';
+import {InviteLink} from '@components/sidebarLeft/tabs/sharedFolder';
+import {SliderSuperTabEventable} from '@components/sliderTab';
+import {UsernameRow} from '@components/usernamesSection';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
+import {wrapLeftDuration} from '@components/wrappers/wrapDuration';
+import AppChatInviteLinkTab from '@components/sidebarRight/tabs/chatInviteLink';
+import AppEditChatInviteLink from '@components/sidebarRight/tabs/editChatInviteLink';
 
 type ChatInvite = ExportedChatInvite.chatInviteExported;
 

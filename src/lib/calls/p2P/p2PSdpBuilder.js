@@ -5,9 +5,9 @@
 * LICENSE file in the root directory of this source tree.
 */
 
-import ChromeP2PSdpBuilder from './chromeP2PSdpBuilder';
-import { FirefoxP2PSdpBuilder } from './firefoxP2PSdpBuilder';
-import { SafariP2PSdpBuilder } from './safariP2PSdpBuilder';
+import ChromeP2PSdpBuilder from '@lib/calls/p2P/chromeP2PSdpBuilder';
+import { FirefoxP2PSdpBuilder } from '@lib/calls/p2P/firefoxP2PSdpBuilder';
+import { SafariP2PSdpBuilder } from '@lib/calls/p2P/safariP2PSdpBuilder';
 // import { TG_CALLS_SDP_STRING } from '../../Stores/CallStore';
 
 export function p2pParseCandidate(candidate) {

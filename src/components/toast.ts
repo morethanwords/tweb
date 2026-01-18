@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import replaceContent from '../helpers/dom/replaceContent';
-import OverlayClickHandler from '../helpers/overlayClickHandler';
-import {FormatterArguments, i18n, LangPackKey} from '../lib/langPack';
+import replaceContent from '@helpers/dom/replaceContent';
+import OverlayClickHandler from '@helpers/overlayClickHandler';
+import {FormatterArguments, i18n, LangPackKey} from '@lib/langPack';
 
 const toastsContainer = document.createElement('div');
 toastsContainer.classList.add('toasts-container');

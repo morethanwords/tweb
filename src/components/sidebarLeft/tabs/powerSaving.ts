@@ -4,16 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {StateSettings} from '../../../config/state';
-import flatten from '../../../helpers/array/flatten';
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import {LiteModeKey} from '../../../helpers/liteMode';
-import pause from '../../../helpers/schedulers/pause';
-import CheckboxFields, {CheckboxFieldsField} from '../../checkboxFields';
-import SettingSection from '../../settingSection';
-import SliderSuperTab from '../../sliderTab';
-import {toastNew} from '../../toast';
-import {useAppSettings} from '../../../stores/appSettings';
+import type {StateSettings} from '@config/state';
+import flatten from '@helpers/array/flatten';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import {LiteModeKey} from '@helpers/liteMode';
+import pause from '@helpers/schedulers/pause';
+import CheckboxFields, {CheckboxFieldsField} from '@components/checkboxFields';
+import SettingSection from '@components/settingSection';
+import SliderSuperTab from '@components/sliderTab';
+import {toastNew} from '@components/toast';
+import {useAppSettings} from '@stores/appSettings';
 
 type PowerSavingCheckboxFieldsField = CheckboxFieldsField & {
   key: LiteModeKey

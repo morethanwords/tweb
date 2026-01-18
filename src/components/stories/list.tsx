@@ -5,30 +5,30 @@
  */
 
 import {JSX, createSignal, For, createEffect, createResource, Accessor, onMount, createMemo, splitProps, on, Show, onCleanup} from 'solid-js';
-import {ScrollableX} from '../scrollable';
-import {createStoriesViewer} from './viewer';
-import styles from './list.module.scss';
-import PeerTitle from '../peerTitle';
-import mediaSizes from '../../helpers/mediaSizes';
-import rootScope from '../../lib/rootScope';
-import {fastSmoothScrollToStart} from '../../helpers/fastSmoothScroll';
-import cancelEvent from '../../helpers/dom/cancelEvent';
-import {AvatarNew} from '../avatarNew';
-import I18n, {i18n} from '../../lib/langPack';
-import createContextMenu from '../../helpers/dom/createContextMenu';
-import findUpClassName from '../../helpers/dom/findUpClassName';
-import {StoriesProvider, useStories} from './store';
-import appImManager from '../../lib/appImManager';
-import appSidebarLeft from '../sidebarLeft';
-import AppMyStoriesTab from '../sidebarLeft/tabs/myStories';
-import {toastNew} from '../toast';
-import wrapPeerTitle from '../wrappers/peerTitle';
-import {ChatType} from '../chat/chat';
-import {subscribeOn} from '../../helpers/solid/subscribeOn';
-import {useCollapsable} from '../../hooks/useCollapsable';
-import createMiddleware from '../../helpers/solid/createMiddleware';
-import ListenerSetter from '../../helpers/listenerSetter';
-import {PeerTitleTsx} from '../peerTitleTsx';
+import {ScrollableX} from '@components/scrollable';
+import {createStoriesViewer} from '@components/stories/viewer';
+import styles from '@components/stories/list.module.scss';
+import PeerTitle from '@components/peerTitle';
+import mediaSizes from '@helpers/mediaSizes';
+import rootScope from '@lib/rootScope';
+import {fastSmoothScrollToStart} from '@helpers/fastSmoothScroll';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import {AvatarNew} from '@components/avatarNew';
+import I18n, {i18n} from '@lib/langPack';
+import createContextMenu from '@helpers/dom/createContextMenu';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import {StoriesProvider, useStories} from '@components/stories/store';
+import appImManager from '@lib/appImManager';
+import appSidebarLeft from '@components/sidebarLeft';
+import AppMyStoriesTab from '@components/sidebarLeft/tabs/myStories';
+import {toastNew} from '@components/toast';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
+import {ChatType} from '@components/chat/chat';
+import {subscribeOn} from '@helpers/solid/subscribeOn';
+import {useCollapsable} from '@hooks/useCollapsable';
+import createMiddleware from '@helpers/solid/createMiddleware';
+import ListenerSetter from '@helpers/listenerSetter';
+import {PeerTitleTsx} from '@components/peerTitleTsx';
 
 
 const TEST_COUNT = 0;

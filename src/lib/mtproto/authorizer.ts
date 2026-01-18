@@ -9,26 +9,26 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type MTTransport from './transports/transport';
+import type MTTransport from '@lib/mtproto/transports/transport';
 import type {TimeManager} from '@lib/mtproto/timeManager';
-import type {DcConfigurator, TransportType} from './dcConfigurator';
-import transportController from './transports/controller';
-import {TLSerialization, TLDeserialization} from './tl_utils';
-import rsaKeysManager from './rsaKeysManager';
-import CryptoWorker from '../crypto/cryptoMessagePort';
-import {logger} from '../logger';
-import DEBUG from '../../config/debug';
-import {DcId, Modify} from '../../types';
-import addPadding from '../../helpers/bytes/addPadding';
-import bytesCmp from '../../helpers/bytes/bytesCmp';
-import bytesFromHex from '../../helpers/bytes/bytesFromHex';
-import bytesToHex from '../../helpers/bytes/bytesToHex';
-import bytesXor from '../../helpers/bytes/bytesXor';
-import {bigIntFromBytes} from '../../helpers/bigInt/bigIntConversion';
+import type {DcConfigurator, TransportType} from '@lib/mtproto/dcConfigurator';
+import transportController from '@lib/mtproto/transports/controller';
+import {TLSerialization, TLDeserialization} from '@lib/mtproto/tl_utils';
+import rsaKeysManager from '@lib/mtproto/rsaKeysManager';
+import CryptoWorker from '@lib/crypto/cryptoMessagePort';
+import {logger} from '@lib/logger';
+import DEBUG from '@config/debug';
+import {DcId, Modify} from '@types';
+import addPadding from '@helpers/bytes/addPadding';
+import bytesCmp from '@helpers/bytes/bytesCmp';
+import bytesFromHex from '@helpers/bytes/bytesFromHex';
+import bytesToHex from '@helpers/bytes/bytesToHex';
+import bytesXor from '@helpers/bytes/bytesXor';
+import {bigIntFromBytes} from '@helpers/bigInt/bigIntConversion';
 import bigInt from 'big-integer';
-import Modes from '../../config/modes';
-import tsNow from '../../helpers/tsNow';
-import {randomBytes} from '../../helpers/random';
+import Modes from '@config/modes';
+import tsNow from '@helpers/tsNow';
+import {randomBytes} from '@helpers/random';
 import {MTAuthKey} from '@lib/mtproto/authKey';
 import safeAssign from '@helpers/object/safeAssign';
 

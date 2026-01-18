@@ -7,15 +7,15 @@
 import {JSX} from 'solid-js';
 import {render} from 'solid-js/web';
 import PopupElement from '.';
-import {LangPackKey, i18n} from '../../lib/langPack';
-import wrapPeerTitle from '../wrappers/peerTitle';
-import apiManagerProxy from '../../lib/apiManagerProxy';
-import {DelimiterWithText} from '../chat/giveaway';
-import PopupPremium from './premium';
-import wrapLocalSticker from '../wrappers/localSticker';
-import liteMode from '../../helpers/liteMode';
-import {toastNew} from '../toast';
-import toggleDisability from '../../helpers/dom/toggleDisability';
+import {LangPackKey, i18n} from '@lib/langPack';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import {DelimiterWithText} from '@components/chat/giveaway';
+import PopupPremium from '@components/popups/premium';
+import wrapLocalSticker from '@components/wrappers/localSticker';
+import liteMode from '@helpers/liteMode';
+import {toastNew} from '@components/toast';
+import toggleDisability from '@helpers/dom/toggleDisability';
 
 export default class PopupToggleReadDate extends PopupElement {
   private titles: HTMLElement[];

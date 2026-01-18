@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type fastBlur from '../vendor/fastBlur';
-import addHeavyTask from './heavyQueue';
-import IS_CANVAS_FILTER_SUPPORTED from '../environment/canvasFilterSupport';
+import type fastBlur from '@vendor/fastBlur';
+import addHeavyTask from '@helpers/heavyQueue';
+import IS_CANVAS_FILTER_SUPPORTED from '@environment/canvasFilterSupport';
 
 const RADIUS = 2;
 const ITERATIONS = 2;

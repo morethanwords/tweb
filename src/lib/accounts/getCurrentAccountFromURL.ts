@@ -1,5 +1,5 @@
-import {getValidatedAccount} from './getValidatedAccount';
-import {CURRENT_ACCOUNT_QUERY_PARAM} from './constants';
+import {getValidatedAccount} from '@lib/accounts/getValidatedAccount';
+import {CURRENT_ACCOUNT_QUERY_PARAM} from '@lib/accounts/constants';
 
 export function getCurrentAccountFromURL(urlString: string) {
   const params = new URL(urlString).searchParams;

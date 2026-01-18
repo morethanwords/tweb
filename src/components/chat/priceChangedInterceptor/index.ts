@@ -1,16 +1,16 @@
-import accumulate from '../../../helpers/array/accumulate';
-import type ListenerSetter from '../../../helpers/listenerSetter';
-import memoizeAsyncWithTTL from '../../../helpers/memoizeAsyncWithTTL';
-import safeAssign from '../../../helpers/object/safeAssign';
-import type {InputPeer} from '../../../layer';
-import type {AppManagers} from '../../../lib/managers';
-import rootScope from '../../../lib/rootScope';
-import {setReservedStars} from '../../../stores/stars';
+import accumulate from '@helpers/array/accumulate';
+import type ListenerSetter from '@helpers/listenerSetter';
+import memoizeAsyncWithTTL from '@helpers/memoizeAsyncWithTTL';
+import safeAssign from '@helpers/object/safeAssign';
+import type {InputPeer} from '@layer';
+import type {AppManagers} from '@lib/managers';
+import rootScope from '@lib/rootScope';
+import {setReservedStars} from '@stores/stars';
 
-import type Chat from '../chat';
-import {PAYMENT_REJECTED} from '../paidMessagesInterceptor';
+import type Chat from '@components/chat/chat';
+import {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
 
-import showPriceChangedTooltip from './priceChangedTooltip';
+import showPriceChangedTooltip from '@components/chat/priceChangedInterceptor/priceChangedTooltip';
 
 
 type PendingRequest = {

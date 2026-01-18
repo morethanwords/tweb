@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import InputField from '../inputField';
+import InputField from '@components/inputField';
 import PopupElement from '.';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import EditPeer from '../editPeer';
-import {_i18n} from '../../lib/langPack';
-import TelInputField from '../telInputField';
-import {formatPhoneNumber} from '../../helpers/formatPhoneNumber';
-import {toastNew} from '../toast';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import EditPeer from '@components/editPeer';
+import {_i18n} from '@lib/langPack';
+import TelInputField from '@components/telInputField';
+import {formatPhoneNumber} from '@helpers/formatPhoneNumber';
+import {toastNew} from '@components/toast';
 
 export default class PopupCreateContact extends PopupElement {
   constructor() {

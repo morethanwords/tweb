@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {Chat, ChatAdminRights, ChatBannedRights} from '../../../../layer';
-import {ChatRights} from '../../appChatsManager';
+import {Chat, ChatAdminRights, ChatBannedRights} from '@layer';
+import {ChatRights} from '@appManagers/appChatsManager';
 
 /**
  * Check the user's ability to do an action in chat

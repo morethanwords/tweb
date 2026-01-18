@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {MOUNT_CLASS_TO} from '../../config/debug';
+import {MOUNT_CLASS_TO} from '@config/debug';
 
 export function getElementByPoint(container: HTMLElement, verticalSide: 'top' | 'bottom', horizontalSide: 'center' | 'left'): HTMLElement {
   // return null;

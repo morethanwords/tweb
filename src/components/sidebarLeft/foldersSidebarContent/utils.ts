@@ -1,11 +1,11 @@
 
-import {FOLDER_ID_ALL} from '../../../lib/appManagers/constants';
-import type {AppManagers} from '../../../lib/managers';
-import {MyDialogFilter} from '../../../lib/storages/filters';
-import {DialogFilter} from '../../../layer';
-import assumeType from '../../../helpers/assumeType';
+import {FOLDER_ID_ALL} from '@appManagers/constants';
+import type {AppManagers} from '@lib/managers';
+import {MyDialogFilter} from '@lib/storages/filters';
+import {DialogFilter} from '@layer';
+import assumeType from '@helpers/assumeType';
 
-import {FolderItemPayload} from './types';
+import {FolderItemPayload} from '@components/sidebarLeft/foldersSidebarContent/types';
 
 export async function getNotificationCountForFilter(filterId: number, managers: AppManagers) {
   const {unreadUnmutedCount, unreadCount} = await managers.dialogsStorage.getFolderUnreadCount(filterId);

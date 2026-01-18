@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {Codec} from './codec';
+import {Codec} from '@lib/mtproto/transports/codec';
 
 export class IntermediatePacketCodec implements Codec {
   public tag = 0xee;

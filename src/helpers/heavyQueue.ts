@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import deferredPromise, {CancellablePromise} from './cancellablePromise';
-import {getHeavyAnimationPromise} from '../hooks/useHeavyAnimationCheck';
-import {fastRaf} from './schedulers';
-import {ArgumentTypes} from '../types';
+import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
+import {getHeavyAnimationPromise} from '@hooks/useHeavyAnimationCheck';
+import {fastRaf} from '@helpers/schedulers';
+import {ArgumentTypes} from '@types';
 
 type HeavyQueue<T extends HeavyQueue<any>> = {
   items: ArgumentTypes<T['process']>[],

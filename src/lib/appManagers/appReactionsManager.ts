@@ -4,30 +4,30 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {MessagesReactions, type AvailableReaction, type Message, type MessagePeerReaction, type MessagesAvailableReactions, type Reaction, type ReactionCount, type Update, type Updates, ChatReactions, Peer, Document, MessagesSavedReactionTags, SavedReactionTag, AvailableEffect, MessagesAvailableEffects, MessageReactions, PaidReactionPrivacy} from '../../layer';
-import findAndSplice from '../../helpers/array/findAndSplice';
-import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-import assumeType from '../../helpers/assumeType';
-import callbackify from '../../helpers/callbackify';
-import callbackifyAll from '../../helpers/callbackifyAll';
-import copy from '../../helpers/object/copy';
-import pause from '../../helpers/schedulers/pause';
-import tsNow from '../../helpers/tsNow';
-import {ReferenceContext} from '../storages/references';
-import {AppManager} from './manager';
-import getServerMessageId from './utils/messageId/getServerMessageId';
-import reactionsEqual from './utils/reactions/reactionsEqual';
-import MTProtoMessagePort from '../mainWorker/mainMessagePort';
-import availableReactionToReaction from './utils/reactions/availableReactionToReaction';
-import {NULL_PEER_ID, SEND_PAID_REACTION_ANONYMOUS_PEER_ID} from './constants';
-import insertInDescendSortedArray from '../../helpers/array/insertInDescendSortedArray';
-import {BroadcastEvents} from '../rootScope';
+import {MessagesReactions, type AvailableReaction, type Message, type MessagePeerReaction, type MessagesAvailableReactions, type Reaction, type ReactionCount, type Update, type Updates, ChatReactions, Peer, Document, MessagesSavedReactionTags, SavedReactionTag, AvailableEffect, MessagesAvailableEffects, MessageReactions, PaidReactionPrivacy} from '@layer';
+import findAndSplice from '@helpers/array/findAndSplice';
+import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
+import assumeType from '@helpers/assumeType';
+import callbackify from '@helpers/callbackify';
+import callbackifyAll from '@helpers/callbackifyAll';
+import copy from '@helpers/object/copy';
+import pause from '@helpers/schedulers/pause';
+import tsNow from '@helpers/tsNow';
+import {ReferenceContext} from '@lib/storages/references';
+import {AppManager} from '@appManagers/manager';
+import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
+import reactionsEqual from '@appManagers/utils/reactions/reactionsEqual';
+import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
+import availableReactionToReaction from '@appManagers/utils/reactions/availableReactionToReaction';
+import {NULL_PEER_ID, SEND_PAID_REACTION_ANONYMOUS_PEER_ID} from '@appManagers/constants';
+import insertInDescendSortedArray from '@helpers/array/insertInDescendSortedArray';
+import {BroadcastEvents} from '@lib/rootScope';
 import {md5} from 'js-md5';
-import bytesFromHex from '../../helpers/bytes/bytesFromHex';
-import {bigIntFromBytes} from '../../helpers/bigInt/bigIntConversion';
+import bytesFromHex from '@helpers/bytes/bytesFromHex';
+import {bigIntFromBytes} from '@helpers/bigInt/bigIntConversion';
 import bigInt from 'big-integer';
-import forEachReverse from '../../helpers/array/forEachReverse';
-import fixEmoji from '../richTextProcessor/fixEmoji';
+import forEachReverse from '@helpers/array/forEachReverse';
+import fixEmoji from '@lib/richTextProcessor/fixEmoji';
 
 const SAVE_DOC_KEYS = [
   'static_icon' as const,

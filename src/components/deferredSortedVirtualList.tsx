@@ -12,10 +12,10 @@ import {
   on
 } from 'solid-js';
 
-import LoadingDialogSkeleton, {LoadingDialogSkeletonSize} from './loadingDialogSkeleton';
-import VerticalVirtualList, {VerticalVirtualListItemProps} from './verticalVirtualList';
+import LoadingDialogSkeleton, {LoadingDialogSkeletonSize} from '@components/loadingDialogSkeleton';
+import VerticalVirtualList, {VerticalVirtualListItemProps} from '@components/verticalVirtualList';
 
-import styles from './deferredSortedVirtualList.module.scss';
+import styles from '@components/deferredSortedVirtualList.module.scss';
 
 
 type CreateDeferredSortedVirtualListArgs<T> = {

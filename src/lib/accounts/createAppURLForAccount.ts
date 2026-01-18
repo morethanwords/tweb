@@ -1,5 +1,5 @@
-import {CURRENT_ACCOUNT_QUERY_PARAM} from './constants';
-import {ActiveAccountNumber} from './types';
+import {CURRENT_ACCOUNT_QUERY_PARAM} from '@lib/accounts/constants';
+import {ActiveAccountNumber} from '@lib/accounts/types';
 
 export function createAppURLForAccount(
   accountNumber: ActiveAccountNumber,

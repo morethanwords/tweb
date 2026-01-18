@@ -4,26 +4,26 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import findUpClassName from '../../../helpers/dom/findUpClassName';
-import shake from '../../../helpers/dom/shake';
-import toggleDisability from '../../../helpers/dom/toggleDisability';
-import {Chat} from '../../../layer';
-import appDialogsManager from '../../../lib/appDialogsManager';
-import appImManager from '../../../lib/appImManager';
-import hasRights from '../../../lib/appManagers/utils/chats/hasRights';
-import getPeerActiveUsernames from '../../../lib/appManagers/utils/peers/getPeerActiveUsernames';
-import {i18n, i18n_} from '../../../lib/langPack';
-import lottieLoader from '../../../lib/rlottie/lottieLoader';
-import rootScope from '../../../lib/rootScope';
-import Button from '../../button';
-import confirmationPopup from '../../confirmationPopup';
-import SettingSection from '../../settingSection';
-import AppNewGroupTab from '../../sidebarLeft/tabs/newGroup';
-import {SliderSuperTabEventable} from '../../sliderTab';
-import {toastNew} from '../../toast';
-import getPeerTitle from '../../wrappers/getPeerTitle';
-import wrapPeerTitle from '../../wrappers/peerTitle';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import shake from '@helpers/dom/shake';
+import toggleDisability from '@helpers/dom/toggleDisability';
+import {Chat} from '@layer';
+import appDialogsManager from '@lib/appDialogsManager';
+import appImManager from '@lib/appImManager';
+import hasRights from '@appManagers/utils/chats/hasRights';
+import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
+import {i18n, i18n_} from '@lib/langPack';
+import lottieLoader from '@lib/rlottie/lottieLoader';
+import rootScope from '@lib/rootScope';
+import Button from '@components/button';
+import confirmationPopup from '@components/confirmationPopup';
+import SettingSection from '@components/settingSection';
+import AppNewGroupTab from '@components/sidebarLeft/tabs/newGroup';
+import {SliderSuperTabEventable} from '@components/sliderTab';
+import {toastNew} from '@components/toast';
+import getPeerTitle from '@components/wrappers/getPeerTitle';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
 
 export default class AppChatDiscussionTab extends SliderSuperTabEventable {
   public chatId: ChatId;

@@ -4,19 +4,19 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {rgbIntToHex} from '../../helpers/color';
-import {setDirection} from '../../helpers/dom/setInnerHTML';
-import themeController from '../../helpers/themeController';
-import {MessageEntity, MessageReplyHeader, Peer, PeerColor, User} from '../../layer';
-import {getPeerColorsByPeer} from '../../lib/appManagers/utils/peers/getPeerColorById';
-import apiManagerProxy from '../../lib/apiManagerProxy';
-import rootScope from '../../lib/rootScope';
-import {WrapPinnedContainerOptions} from '../chat/pinnedContainer';
-import ReplyContainer from '../chat/replyContainer';
-import {setPeerColorToElement} from '../peerColors';
-import ripple from '../ripple';
-import wrapEmojiPattern from './emojiPattern';
-import wrapSticker from './sticker';
+import {rgbIntToHex} from '@helpers/color';
+import {setDirection} from '@helpers/dom/setInnerHTML';
+import themeController from '@helpers/themeController';
+import {MessageEntity, MessageReplyHeader, Peer, PeerColor, User} from '@layer';
+import {getPeerColorsByPeer} from '@appManagers/utils/peers/getPeerColorById';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import rootScope from '@lib/rootScope';
+import {WrapPinnedContainerOptions} from '@components/chat/pinnedContainer';
+import ReplyContainer from '@components/chat/replyContainer';
+import {setPeerColorToElement} from '@components/peerColors';
+import ripple from '@components/ripple';
+import wrapEmojiPattern from '@components/wrappers/emojiPattern';
+import wrapSticker from '@components/wrappers/sticker';
 
 export type WrapReplyOptions = WrapPinnedContainerOptions & {
   setColorPeerId?: PeerId,

@@ -4,20 +4,20 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {attachClickEvent} from '../helpers/dom/clickEvent';
-import {MissingInvitee} from '../layer';
-import {FormatterArguments, LangPackKey, i18n, join} from '../lib/langPack';
-import rootScope from '../lib/rootScope';
-import Button from './button';
-import {DelimiterWithText} from './chat/giveaway';
-import PopupElement from './popups';
-import PopupPeer, {PopupPeerButtonCallbackCheckboxes, PopupPeerCheckboxOptions} from './popups/peer';
-import PopupPickUser from './popups/pickUser';
-import PopupPremium from './popups/premium';
-import AppAddMembersTab from './sidebarLeft/tabs/addMembers';
-import SidebarSlider from './slider';
-import {toastNew} from './toast';
-import wrapPeerTitle from './wrappers/peerTitle';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import {MissingInvitee} from '@layer';
+import {FormatterArguments, LangPackKey, i18n, join} from '@lib/langPack';
+import rootScope from '@lib/rootScope';
+import Button from '@components/button';
+import {DelimiterWithText} from '@components/chat/giveaway';
+import PopupElement from '@components/popups';
+import PopupPeer, {PopupPeerButtonCallbackCheckboxes, PopupPeerCheckboxOptions} from '@components/popups/peer';
+import PopupPickUser from '@components/popups/pickUser';
+import PopupPremium from '@components/popups/premium';
+import AppAddMembersTab from '@components/sidebarLeft/tabs/addMembers';
+import SidebarSlider from '@components/slider';
+import {toastNew} from '@components/toast';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
 
 export async function handleMissingInvitees(chatId: ChatId, missingInvitees: MissingInvitee[]) {
   if(!missingInvitees.length) {

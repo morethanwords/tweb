@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {WallPaper} from '../layer';
-import clamp from './number/clamp';
+import type {WallPaper} from '@layer';
+import clamp from '@helpers/number/clamp';
 
 export type ColorHsla = {
   h: number,

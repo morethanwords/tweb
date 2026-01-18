@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {Middleware} from '../../helpers/middleware';
-import {MyDocument} from '../../lib/appManagers/appDocsManager';
-import {AppManagers} from '../../lib/managers';
-import lottieLoader, {LottieAssetName} from '../../lib/rlottie/lottieLoader';
-import RLottiePlayer from '../../lib/rlottie/rlottiePlayer';
-import rootScope from '../../lib/rootScope';
-import wrapSticker from './sticker';
+import {Middleware} from '@helpers/middleware';
+import {MyDocument} from '@appManagers/appDocsManager';
+import {AppManagers} from '@lib/managers';
+import lottieLoader, {LottieAssetName} from '@lib/rlottie/lottieLoader';
+import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import rootScope from '@lib/rootScope';
+import wrapSticker from '@components/wrappers/sticker';
 
 export default async function wrapLocalSticker({
   container,

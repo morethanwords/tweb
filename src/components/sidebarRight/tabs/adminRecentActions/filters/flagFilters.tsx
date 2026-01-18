@@ -1,15 +1,15 @@
 import {For, Show} from 'solid-js';
-import {I18nTsx} from '../../../../../helpers/solid/i18n';
-import {useHotReloadGuard} from '../../../../../lib/solidjs/hotReloadGuard';
-import Button from '../../../../buttonTsx';
-import Scrollable from '../../../../scrollable2';
-import SimpleFormField from '../../../../simpleFormField';
-import Space from '../../../../space';
-import {limitPeerTitleSymbols} from '../constants';
-import {ExpandableFilterGroup} from './expandableFilterGroup';
-import styles from './flagFilters.module.scss';
-import {CommittedFilters} from './types';
-import {useFlagFilters} from './useFlagFilters';
+import {I18nTsx} from '@helpers/solid/i18n';
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import Button from '@components/buttonTsx';
+import Scrollable from '@components/scrollable2';
+import SimpleFormField from '@components/simpleFormField';
+import Space from '@components/space';
+import {limitPeerTitleSymbols} from '@components/sidebarRight/tabs/adminRecentActions/constants';
+import {ExpandableFilterGroup} from '@components/sidebarRight/tabs/adminRecentActions/filters/expandableFilterGroup';
+import styles from '@components/sidebarRight/tabs/adminRecentActions/filters/flagFilters.module.scss';
+import {CommittedFilters} from '@components/sidebarRight/tabs/adminRecentActions/filters/types';
+import {useFlagFilters} from '@components/sidebarRight/tabs/adminRecentActions/filters/useFlagFilters';
 
 
 export const FlagFilters = (props: {

@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {InputMedia} from '../../../../layer';
-import {MyPhoto} from '../../appPhotosManager';
-import getPhotoInput from './getPhotoInput';
+import {InputMedia} from '@layer';
+import {MyPhoto} from '@appManagers/appPhotosManager';
+import getPhotoInput from '@appManagers/utils/photos/getPhotoInput';
 
 export default function getPhotoMediaInput(photo: MyPhoto): InputMedia.inputMediaPhoto {
   return {

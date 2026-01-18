@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {UrlAuthResult} from '../../layer';
-import {AppManager} from './manager';
-import getServerMessageId from './utils/messageId/getServerMessageId';
+import {UrlAuthResult} from '@layer';
+import {AppManager} from '@appManagers/manager';
+import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
 
 export default class AppSeamlessLoginManager extends AppManager {
   public requestUrlAuth(url: string, peerId?: PeerId, mid?: number, buttonId?: number) {

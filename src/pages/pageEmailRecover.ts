@@ -4,21 +4,21 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {AccountSentEmailCode} from '../layer';
-import Page from './page';
-import CodeInputFieldCompat from '../components/codeInputField';
-import I18n, {i18n} from '../lib/langPack';
-import replaceContent from '../helpers/dom/replaceContent';
-import rootScope from '../lib/rootScope';
-import lottieLoader from '../lib/rlottie/lottieLoader';
-import RLottiePlayer from '../lib/rlottie/rlottiePlayer';
-import {attachClickEvent} from '../helpers/dom/clickEvent';
-import {fastRaf} from '../helpers/schedulers';
-import {wrapEmailPattern} from '../components/popups/emailSetup';
-import mediaSizes from '../helpers/mediaSizes';
-import LoginPage from './loginPage';
-import Button from '../components/button';
-import pagePassword from './pagePassword';
+import {AccountSentEmailCode} from '@layer';
+import Page from '@/pages/page';
+import CodeInputFieldCompat from '@components/codeInputField';
+import I18n, {i18n} from '@lib/langPack';
+import replaceContent from '@helpers/dom/replaceContent';
+import rootScope from '@lib/rootScope';
+import lottieLoader from '@lib/rlottie/lottieLoader';
+import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import {fastRaf} from '@helpers/schedulers';
+import {wrapEmailPattern} from '@components/popups/emailSetup';
+import mediaSizes from '@helpers/mediaSizes';
+import LoginPage from '@/pages/loginPage';
+import Button from '@components/button';
+import pagePassword from '@/pages/pagePassword';
 
 let subtitleElement: I18n.IntlElement;
 let codeInputField: CodeInputFieldCompat;

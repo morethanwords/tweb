@@ -1,4 +1,4 @@
-import {MessageEntity} from '../../layer';
+import {MessageEntity} from '@layer';
 
 
 export default function trimRichText(text: string, entities: MessageEntity[]) {

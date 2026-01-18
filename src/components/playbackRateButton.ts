@@ -1,9 +1,9 @@
 
-import appMediaPlaybackController from '../components/appMediaPlaybackController';
-import {ButtonMenuSync} from '../components/buttonMenu';
-import {ButtonMenuToggleHandler} from '../components/buttonMenuToggle';
-import ButtonIcon from '../components/buttonIcon';
-import Icon from '../components/icon';
+import appMediaPlaybackController from '@components/appMediaPlaybackController';
+import {ButtonMenuSync} from '@components/buttonMenu';
+import {ButtonMenuToggleHandler} from '@components/buttonMenuToggle';
+import ButtonIcon from '@components/buttonIcon';
+import Icon from '@components/icon';
 
 export const PlaybackRateButton = (options: {
   onPlaybackRateMenuToggle?: (open: boolean) => void,

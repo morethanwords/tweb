@@ -4,30 +4,30 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import rootScope from '../../lib/rootScope';
-// import { generatePathData } from "../../helpers/dom";
-import {MyMessage} from '../../lib/appManagers/appMessagesManager';
-import type Chat from './chat';
-import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-import insertInDescendSortedArray from '../../helpers/array/insertInDescendSortedArray';
-import positionElementByIndex from '../../helpers/dom/positionElementByIndex';
-import {Message, ReplyMarkup} from '../../layer';
-import {NULL_PEER_ID, REPLIES_PEER_ID, VERIFICATION_CODES_BOT_ID} from '../../lib/appManagers/constants';
-import ChatBubbles, {SERVICE_AS_REGULAR, STICKY_OFFSET} from './bubbles';
-import forEachReverse from '../../helpers/array/forEachReverse';
-import partition from '../../helpers/array/partition';
-import getMessageThreadId from '../../lib/appManagers/utils/messages/getMessageThreadId';
-import {avatarNew} from '../avatarNew';
-import {MiddlewareHelper} from '../../helpers/middleware';
-import {ChatType} from './chat';
-import getFwdFromName from '../../lib/appManagers/utils/messages/getFwdFromName';
-import {getMid, isMessage, isMessageForVerificationBot} from './utils';
-import {canHaveSuggestedPostReplyMarkup} from './bubbleParts/suggestedPostReplyMarkup';
-import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
-import {BubbleElementAddons} from './types';
-import ChatThreadSeparator from './bubbleParts/chatThreadSeparator';
-import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
-import {AdminLog} from '../../lib/appManagers/appChatsManager';
+import rootScope from '@lib/rootScope';
+// import { generatePathData } from '@helpers/dom';
+import {MyMessage} from '@appManagers/appMessagesManager';
+import type Chat from '@components/chat/chat';
+import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
+import insertInDescendSortedArray from '@helpers/array/insertInDescendSortedArray';
+import positionElementByIndex from '@helpers/dom/positionElementByIndex';
+import {Message, ReplyMarkup} from '@layer';
+import {NULL_PEER_ID, REPLIES_PEER_ID, VERIFICATION_CODES_BOT_ID} from '@appManagers/constants';
+import ChatBubbles, {SERVICE_AS_REGULAR, STICKY_OFFSET} from '@components/chat/bubbles';
+import forEachReverse from '@helpers/array/forEachReverse';
+import partition from '@helpers/array/partition';
+import getMessageThreadId from '@appManagers/utils/messages/getMessageThreadId';
+import {avatarNew} from '@components/avatarNew';
+import {MiddlewareHelper} from '@helpers/middleware';
+import {ChatType} from '@components/chat/chat';
+import getFwdFromName from '@appManagers/utils/messages/getFwdFromName';
+import {getMid, isMessage, isMessageForVerificationBot} from '@components/chat/utils';
+import {canHaveSuggestedPostReplyMarkup} from '@components/chat/bubbleParts/suggestedPostReplyMarkup';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
+import {BubbleElementAddons} from '@components/chat/types';
+import ChatThreadSeparator from '@components/chat/bubbleParts/chatThreadSeparator';
+import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import {AdminLog} from '@appManagers/appChatsManager';
 
 
 type GroupItem = {

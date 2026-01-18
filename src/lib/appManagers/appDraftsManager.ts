@@ -9,14 +9,14 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import {MessageEntity, DraftMessage, MessagesSaveDraft, MessageReplyHeader, InputReplyTo, MessageMedia, WebPage, InputMedia} from '../../layer';
-import tsNow from '../../helpers/tsNow';
-import assumeType from '../../helpers/assumeType';
-import {AppManager} from './manager';
-import getServerMessageId from './utils/messageId/getServerMessageId';
-import draftsAreEqual from './utils/drafts/draftsAreEqual';
-import isObject from '../../helpers/object/isObject';
-import getPeerId from './utils/peers/getPeerId';
+import {MessageEntity, DraftMessage, MessagesSaveDraft, MessageReplyHeader, InputReplyTo, MessageMedia, WebPage, InputMedia} from '@layer';
+import tsNow from '@helpers/tsNow';
+import assumeType from '@helpers/assumeType';
+import {AppManager} from '@appManagers/manager';
+import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
+import draftsAreEqual from '@appManagers/utils/drafts/draftsAreEqual';
+import isObject from '@helpers/object/isObject';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
 
 export type MyDraftMessage = DraftMessage.draftMessage;
 

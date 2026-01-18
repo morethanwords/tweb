@@ -76,14 +76,16 @@ const ADDITIONAL_ALIASES = {
   '@helpers': resolve(rootDir, 'src/helpers'),
   '@hooks': resolve(rootDir, 'src/hooks'),
   '@stores': resolve(rootDir, 'src/stores'),
-  '@types': resolve(rootDir, 'src/types'),
   '@lib': resolve(rootDir, 'src/lib'),
   '@appManagers': resolve(rootDir, 'src/lib/appManagers'),
   '@richTextProcessor': resolve(rootDir, 'src/lib/richTextProcessor'),
   '@environment': resolve(rootDir, 'src/environment'),
   '@customEmoji': resolve(rootDir, 'src/lib/customEmoji'),
   '@rlottie': resolve(rootDir, 'src/lib/rlottie'),
+  '@config': resolve(rootDir, 'src/config'),
+  '@vendor': resolve(rootDir, 'src/vendor'),
   '@layer': resolve(rootDir, 'src/layer'),
+  '@types': resolve(rootDir, 'src/types'),
   '@': resolve(rootDir, 'src')
 };
 

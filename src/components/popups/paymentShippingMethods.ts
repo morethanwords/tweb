@@ -5,13 +5,13 @@
  */
 
 import PopupElement from '.';
-import accumulate from '../../helpers/array/accumulate';
-import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
-import {PaymentsPaymentForm, PaymentsValidatedRequestedInfo, ShippingOption} from '../../layer';
-import RadioField from '../radioField';
-import Row, {RadioFormFromRows} from '../row';
-import SettingSection from '../settingSection';
-import {PaymentButton} from './payment';
+import accumulate from '@helpers/array/accumulate';
+import paymentsWrapCurrencyAmount from '@helpers/paymentsWrapCurrencyAmount';
+import {PaymentsPaymentForm, PaymentsValidatedRequestedInfo, ShippingOption} from '@layer';
+import RadioField from '@components/radioField';
+import Row, {RadioFormFromRows} from '@components/row';
+import SettingSection from '@components/settingSection';
+import {PaymentButton} from '@components/popups/payment';
 
 export default class PopupPaymentShippingMethods extends PopupElement<{
   finish: (shippingOption: ShippingOption) => void

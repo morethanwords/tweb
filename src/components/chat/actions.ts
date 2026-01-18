@@ -4,19 +4,19 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type ChatTopbar from './topbar';
-import DivAndCaption from '../divAndCaption';
-import PinnedContainer from './pinnedContainer';
-import Chat from './chat';
-import cancelEvent from '../../helpers/dom/cancelEvent';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import {LangPackKey, i18n} from '../../lib/langPack';
-import {PeerSettings} from '../../layer';
-import {AppManagers} from '../../lib/managers';
-import callbackify from '../../helpers/callbackify';
-import ripple from '../ripple';
-import findUpClassName from '../../helpers/dom/findUpClassName';
-import confirmationPopup from '../confirmationPopup';
+import type ChatTopbar from '@components/chat/topbar';
+import DivAndCaption from '@components/divAndCaption';
+import PinnedContainer from '@components/chat/pinnedContainer';
+import Chat from '@components/chat/chat';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import {LangPackKey, i18n} from '@lib/langPack';
+import {PeerSettings} from '@layer';
+import {AppManagers} from '@lib/managers';
+import callbackify from '@helpers/callbackify';
+import ripple from '@components/ripple';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import confirmationPopup from '@components/confirmationPopup';
 
 export default class ChatActions extends PinnedContainer {
   protected peerId: PeerId;

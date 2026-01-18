@@ -1,4 +1,4 @@
-import ctx from '../../environment/ctx';
+import ctx from '@environment/ctx';
 
 export default function bytesToHex(bytes: ArrayLike<number>, joiner = '', uppercase?: boolean) {
   const length = bytes.length;

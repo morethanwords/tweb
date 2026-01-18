@@ -5,31 +5,31 @@
  */
 
 import {EmoticonsDropdown} from '..';
-import findUpClassName from '../../../helpers/dom/findUpClassName';
-import mediaSizes from '../../../helpers/mediaSizes';
-import {Document, MessagesAllStickers, StickerSet} from '../../../layer';
-import {MyDocument} from '../../../lib/appManagers/appDocsManager';
-import {AppManagers} from '../../../lib/managers';
-import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
-import rootScope from '../../../lib/rootScope';
-import {putPreloader} from '../../putPreloader';
-import PopupStickers from '../../popups/stickers';
-import findAndSplice from '../../../helpers/array/findAndSplice';
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import noop from '../../../helpers/noop';
-import ButtonIcon from '../../buttonIcon';
-import confirmationPopup from '../../confirmationPopup';
-import VisibilityIntersector, {OnVisibilityChangeItem} from '../../visibilityIntersector';
-import findUpAsChild from '../../../helpers/dom/findUpAsChild';
-import forEachReverse from '../../../helpers/array/forEachReverse';
-import PopupElement from '../../popups';
-import apiManagerProxy from '../../../lib/apiManagerProxy';
-import getStickerEffectThumb from '../../../lib/appManagers/utils/stickers/getStickerEffectThumb';
-import StickersTabCategory, {EmoticonsTabStyles} from '../category';
-import EmoticonsTabC from '../tab';
-import {i18n} from '../../../lib/langPack';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import mediaSizes from '@helpers/mediaSizes';
+import {Document, MessagesAllStickers, StickerSet} from '@layer';
+import {MyDocument} from '@appManagers/appDocsManager';
+import {AppManagers} from '@lib/managers';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import rootScope from '@lib/rootScope';
+import {putPreloader} from '@components/putPreloader';
+import PopupStickers from '@components/popups/stickers';
+import findAndSplice from '@helpers/array/findAndSplice';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import noop from '@helpers/noop';
+import ButtonIcon from '@components/buttonIcon';
+import confirmationPopup from '@components/confirmationPopup';
+import VisibilityIntersector, {OnVisibilityChangeItem} from '@components/visibilityIntersector';
+import findUpAsChild from '@helpers/dom/findUpAsChild';
+import forEachReverse from '@helpers/array/forEachReverse';
+import PopupElement from '@components/popups';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import getStickerEffectThumb from '@appManagers/utils/stickers/getStickerEffectThumb';
+import StickersTabCategory, {EmoticonsTabStyles} from '@components/emoticonsDropdown/category';
+import EmoticonsTabC from '@components/emoticonsDropdown/tab';
+import {i18n} from '@lib/langPack';
 import {onCleanup} from 'solid-js';
-import SuperStickerRenderer from './SuperStickerRenderer';
+import SuperStickerRenderer from '@components/emoticonsDropdown/tabs/SuperStickerRenderer';
 
 type StickersTabItem = {element: HTMLElement, document: Document.document};
 export default class StickersTab extends EmoticonsTabC<StickersTabCategory<StickersTabItem>, Document.document[]> {

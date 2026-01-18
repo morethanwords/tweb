@@ -1,6 +1,6 @@
-import type {OpusDecodedAudio} from '../../vendor/opus';
-import {Mp4Sample} from './mp4';
-import {encodeFlacFrame} from './flac';
+import type {OpusDecodedAudio} from '@vendor/opus';
+import {Mp4Sample} from '@lib/rtmp/mp4';
+import {encodeFlacFrame} from '@lib/rtmp/flac';
 
 export type OpusDecoderDelegate = (data: Uint8Array) => MaybePromise<OpusDecodedAudio>;
 

@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import SDP from '../sdp';
-import {CallSignalingData, P2PVideoCodec} from '../types';
-import parseMediaSectionInfo from './parseMediaSectionInfo';
+import SDP from '@lib/calls/sdp';
+import {CallSignalingData, P2PVideoCodec} from '@lib/calls/types';
+import parseMediaSectionInfo from '@lib/calls/helpers/parseMediaSectionInfo';
 
 export default function parseSignalingData(sdp: SDP) {
   const info = parseMediaSectionInfo(sdp, sdp.media[0]);

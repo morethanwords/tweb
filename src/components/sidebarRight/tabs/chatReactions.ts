@@ -4,16 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import replaceContent from '../../../helpers/dom/replaceContent';
-import debounce from '../../../helpers/schedulers/debounce';
-import {ChatReactions, Reaction} from '../../../layer';
-import {i18n, LangPackKey} from '../../../lib/langPack';
-import rootScope from '../../../lib/rootScope';
-import CheckboxField from '../../checkboxField';
-import Row, {RadioFormFromValues} from '../../row';
-import SettingSection from '../../settingSection';
-import {SliderSuperTabEventable} from '../../sliderTab';
-import wrapStickerToRow from '../../wrappers/stickerToRow';
+import replaceContent from '@helpers/dom/replaceContent';
+import debounce from '@helpers/schedulers/debounce';
+import {ChatReactions, Reaction} from '@layer';
+import {i18n, LangPackKey} from '@lib/langPack';
+import rootScope from '@lib/rootScope';
+import CheckboxField from '@components/checkboxField';
+import Row, {RadioFormFromValues} from '@components/row';
+import SettingSection from '@components/settingSection';
+import {SliderSuperTabEventable} from '@components/sliderTab';
+import wrapStickerToRow from '@components/wrappers/stickerToRow';
 
 export default class AppChatReactionsTab extends SliderSuperTabEventable {
   public chatId: ChatId;

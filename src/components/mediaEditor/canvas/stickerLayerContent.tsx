@@ -1,12 +1,12 @@
 import {onCleanup, onMount} from 'solid-js';
 
-import createMiddleware from '../../../helpers/solid/createMiddleware';
-import wrapSticker from '../../wrappers/sticker';
+import createMiddleware from '@helpers/solid/createMiddleware';
+import wrapSticker from '@components/wrappers/sticker';
 
-import {useMediaEditorContext} from '../context';
-import {ResizableLayerProps} from '../types';
+import {useMediaEditorContext} from '@components/mediaEditor/context';
+import {ResizableLayerProps} from '@components/mediaEditor/types';
 
-import {ResizableContainer} from './resizableLayers';
+import {ResizableContainer} from '@components/mediaEditor/canvas/resizableLayers';
 
 export default function StickerLayerContent(props: ResizableLayerProps) {
   const {editorState} = useMediaEditorContext();

@@ -4,18 +4,18 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {SliderSuperTab} from '../../slider';
+import {SliderSuperTab} from '@components/slider';
 import appSidebarRight from '..';
-import {roundPercents} from '../../poll';
-import appDialogsManager from '../../../lib/appDialogsManager';
-import {i18n} from '../../../lib/langPack';
-import setInnerHTML from '../../../helpers/dom/setInnerHTML';
-import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
-import Button from '../../button';
-import {Message, MessageMedia} from '../../../layer';
-import getPeerId from '../../../lib/appManagers/utils/peers/getPeerId';
-import wrapRichText from '../../../lib/richTextProcessor/wrapRichText';
-import wrapTextWithEntities from '../../../lib/richTextProcessor/wrapTextWithEntities';
+import {roundPercents} from '@components/poll';
+import appDialogsManager from '@lib/appDialogsManager';
+import {i18n} from '@lib/langPack';
+import setInnerHTML from '@helpers/dom/setInnerHTML';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import Button from '@components/button';
+import {Message, MessageMedia} from '@layer';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
+import wrapRichText from '@lib/richTextProcessor/wrapRichText';
+import wrapTextWithEntities from '@lib/richTextProcessor/wrapTextWithEntities';
 
 export default class AppPollResultsTab extends SliderSuperTab {
   private resultsDiv: HTMLElement;

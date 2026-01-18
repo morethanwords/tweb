@@ -1,8 +1,8 @@
 import type {ListTransitionOptions} from '@solid-primitives/transition-group';
-import {Modify} from '../../types';
+import {Modify} from '@types';
 import {createSignal, useTransition, $TRACK, createMemo, Accessor, untrack} from 'solid-js';
 import {isServer} from 'solid-js/web';
-import noop from '../noop';
+import noop from '@helpers/noop';
 
 export function createListTransition<T extends object>(
   source: Accessor<readonly T[]>,

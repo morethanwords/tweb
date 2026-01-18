@@ -9,22 +9,22 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import deepEqual from '../../helpers/object/deepEqual';
-import isObject from '../../helpers/object/isObject';
-import safeReplaceObject from '../../helpers/object/safeReplaceObject';
-import {ChannelAdminLogEvent, ChannelParticipant, ChannelsCreateChannel, ChannelsGetAdminLog, ChannelsSendAsPeers, Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatInvite, ChatParticipant, ChatPhoto, ChatReactions, EmojiStatus, InputChannel, InputChatPhoto, InputFile, InputPeer, MessagesChats, MessagesSponsoredMessages, MissingInvitee, Peer, SponsoredMessage, SponsoredPeer, Update, Updates} from '../../layer';
-import {AppManager} from './manager';
-import hasRights from './utils/chats/hasRights';
-import getParticipantPeerId from './utils/chats/getParticipantPeerId';
-import {AppStoragesManager} from './appStoragesManager';
-import getServerMessageId from './utils/messageId/getServerMessageId';
-import {randomLong} from '../../helpers/random';
-import tsNow from '../../helpers/tsNow';
-import getPeerActiveUsernames from './utils/peers/getPeerActiveUsernames';
-import MTProtoMessagePort from '../mainWorker/mainMessagePort';
-import getPeerId from './utils/peers/getPeerId';
-import callbackify from '../../helpers/callbackify';
-import {SlicedCachedFetcher} from './utils/chats/slicedCachedFetcher';
+import deepEqual from '@helpers/object/deepEqual';
+import isObject from '@helpers/object/isObject';
+import safeReplaceObject from '@helpers/object/safeReplaceObject';
+import {ChannelAdminLogEvent, ChannelParticipant, ChannelsCreateChannel, ChannelsGetAdminLog, ChannelsSendAsPeers, Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatInvite, ChatParticipant, ChatPhoto, ChatReactions, EmojiStatus, InputChannel, InputChatPhoto, InputFile, InputPeer, MessagesChats, MessagesSponsoredMessages, MissingInvitee, Peer, SponsoredMessage, SponsoredPeer, Update, Updates} from '@layer';
+import {AppManager} from '@appManagers/manager';
+import hasRights from '@appManagers/utils/chats/hasRights';
+import getParticipantPeerId from '@appManagers/utils/chats/getParticipantPeerId';
+import {AppStoragesManager} from '@appManagers/appStoragesManager';
+import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
+import {randomLong} from '@helpers/random';
+import tsNow from '@helpers/tsNow';
+import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
+import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
+import callbackify from '@helpers/callbackify';
+import {SlicedCachedFetcher} from '@appManagers/utils/chats/slicedCachedFetcher';
 
 export type Channel = Chat.channel;
 export type ChatRights = keyof ChatBannedRights['pFlags'] | keyof ChatAdminRights['pFlags'] |

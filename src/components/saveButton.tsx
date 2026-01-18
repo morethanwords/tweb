@@ -1,8 +1,8 @@
 import {Component, Show} from 'solid-js';
-import {keepMe} from '../helpers/keepMe';
-import {IconTsx} from './iconTsx';
-import ripple from './ripple';
-import AppearZoomTransition from './sidebarLeft/tabs/privacy/messages/appearZoomTransition';
+import {keepMe} from '@helpers/keepMe';
+import {IconTsx} from '@components/iconTsx';
+import ripple from '@components/ripple';
+import AppearZoomTransition from '@components/sidebarLeft/tabs/privacy/messages/appearZoomTransition';
 
 keepMe(ripple);
 

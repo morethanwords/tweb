@@ -1,19 +1,19 @@
-import IS_GROUP_CALL_SUPPORTED from '../../environment/groupCallSupport';
-import {Chat} from '../../layer';
-import {AppDialogsManager, DialogDom} from '../../lib/appDialogsManager';
-import {Dialog} from '../../lib/appManagers/appMessagesManager';
-import getDialogIndex from '../../lib/appManagers/utils/dialogs/getDialogIndex';
-import getDialogIndexKey from '../../lib/appManagers/utils/dialogs/getDialogIndexKey';
-import {isDialog, isForumTopic} from '../../lib/appManagers/utils/dialogs/isDialog';
-import {FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '../../lib/appManagers/constants';
-import apiManagerProxy from '../../lib/apiManagerProxy';
-import rootScope from '../../lib/rootScope';
-import groupCallActiveIcon from '../groupCallActiveIcon';
-import Scrollable from '../scrollable';
-import SetTransition from '../singleTransition';
-import SortedDialogList from '../sortedDialogList';
-import {AutonomousDialogListBase, BaseConstructorArgs} from './base';
-import {BADGE_TRANSITION_TIME} from './constants';
+import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
+import {Chat} from '@layer';
+import {AppDialogsManager, DialogDom} from '@lib/appDialogsManager';
+import {Dialog} from '@appManagers/appMessagesManager';
+import getDialogIndex from '@appManagers/utils/dialogs/getDialogIndex';
+import getDialogIndexKey from '@appManagers/utils/dialogs/getDialogIndexKey';
+import {isDialog, isForumTopic} from '@appManagers/utils/dialogs/isDialog';
+import {FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '@appManagers/constants';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import rootScope from '@lib/rootScope';
+import groupCallActiveIcon from '@components/groupCallActiveIcon';
+import Scrollable from '@components/scrollable';
+import SetTransition from '@components/singleTransition';
+import SortedDialogList from '@components/sortedDialogList';
+import {AutonomousDialogListBase, BaseConstructorArgs} from '@components/autonomousDialogList/base';
+import {BADGE_TRANSITION_TIME} from '@components/autonomousDialogList/constants';
 
 
 type ConstructorArgs = BaseConstructorArgs & {

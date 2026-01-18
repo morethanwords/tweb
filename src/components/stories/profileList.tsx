@@ -5,16 +5,16 @@
  */
 
 import {splitProps, createEffect, createSignal, For, JSX, createMemo, onCleanup, untrack, createComputed, createReaction, Show, on} from 'solid-js';
-import {createStoriesViewer} from './viewer';
-import {Document, MessageMedia, Photo, StoryItem} from '../../layer';
-import {wrapStoryMedia} from './preview';
-import getMediaThumbIfNeeded from '../../helpers/getStrippedThumbIfNeeded';
-import {SearchSelection} from '../chat/selection';
-import {StoriesProvider, useStories} from './store';
-import Icon from '../icon';
-import {ChipTab, ChipTabs} from '../chipTabs';
-import {i18n} from '../../lib/langPack';
-import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
+import {createStoriesViewer} from '@components/stories/viewer';
+import {Document, MessageMedia, Photo, StoryItem} from '@layer';
+import {wrapStoryMedia} from '@components/stories/preview';
+import getMediaThumbIfNeeded from '@helpers/getStrippedThumbIfNeeded';
+import {SearchSelection} from '@components/chat/selection';
+import {StoriesProvider, useStories} from '@components/stories/store';
+import Icon from '@components/icon';
+import {ChipTab, ChipTabs} from '@components/chipTabs';
+import {i18n} from '@lib/langPack';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 
 const TEST_ONE = false;
 const TEST_TWO = false;

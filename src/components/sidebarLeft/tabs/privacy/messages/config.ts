@@ -1,4 +1,4 @@
-import {InputPrivacyKey, InputPrivacyRule} from '../../../../../layer';
+import {InputPrivacyKey, InputPrivacyRule} from '@layer';
 
 export enum MessagesPrivacyOption {
   Everybody = 1,

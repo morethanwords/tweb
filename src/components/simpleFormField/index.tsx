@@ -1,6 +1,6 @@
 import {Accessor, batch, createContext, createSignal, JSX, onMount, ParentProps, Ref, Setter, splitProps, useContext} from 'solid-js';
-import {requestRAF} from '../../helpers/solid/requestRAF';
-import styles from './styles.module.scss';
+import {requestRAF} from '@helpers/solid/requestRAF';
+import styles from '@components/simpleFormField/styles.module.scss';
 
 
 type SimpleFormFieldContextValue = {

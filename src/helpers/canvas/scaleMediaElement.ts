@@ -1,5 +1,5 @@
-import type {MediaSize} from '../mediaSize';
-import IS_IMAGE_BITMAP_SUPPORTED from '../../environment/imageBitmapSupport';
+import type {MediaSize} from '@helpers/mediaSize';
+import IS_IMAGE_BITMAP_SUPPORTED from '@environment/imageBitmapSupport';
 
 export default function scaleMediaElement<T extends {
   media: CanvasImageSource,

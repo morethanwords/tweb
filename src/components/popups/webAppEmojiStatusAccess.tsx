@@ -1,19 +1,19 @@
 import {createSignal, onCleanup} from 'solid-js';
 import PopupElement from '.';
-import formatDuration from '../../helpers/formatDuration';
-import safeAssign from '../../helpers/object/safeAssign';
-import {I18nTsx} from '../../helpers/solid/i18n';
-import {MyDocument} from '../../lib/appManagers/appDocsManager';
-import {AvatarNewTsx} from '../avatarNew';
-import {StickerTsx} from '../wrappers/sticker';
-import {wrapFormattedDuration} from '../wrappers/wrapDuration';
-import {randomItem, randomItemExcept} from '../../helpers/array/randomItem';
-import assumeType from '../../helpers/assumeType';
-import RLottiePlayer from '../../lib/rlottie/rlottiePlayer';
+import formatDuration from '@helpers/formatDuration';
+import safeAssign from '@helpers/object/safeAssign';
+import {I18nTsx} from '@helpers/solid/i18n';
+import {MyDocument} from '@appManagers/appDocsManager';
+import {AvatarNewTsx} from '@components/avatarNew';
+import {StickerTsx} from '@components/wrappers/sticker';
+import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
+import {randomItem, randomItemExcept} from '@helpers/array/randomItem';
+import assumeType from '@helpers/assumeType';
+import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
 
-import css from './webAppEmojiStatusAccess.module.scss';
-import rootScope from '../../lib/rootScope';
-import {PeerTitleTsx} from '../peerTitleTsx';
+import css from '@components/popups/webAppEmojiStatusAccess.module.scss';
+import rootScope from '@lib/rootScope';
+import {PeerTitleTsx} from '@components/peerTitleTsx';
 
 export default class PopupWebAppEmojiStatusAccess extends PopupElement<{
   finish: (result: boolean) => void

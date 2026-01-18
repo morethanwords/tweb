@@ -1,23 +1,23 @@
 import PopupElement from '.';
-import {StarGift} from '../../layer';
-import {MyDocument} from '../../lib/appManagers/appDocsManager';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import {MyStarGift} from '../../lib/appManagers/appGiftsManager';
-import rootScope from '../../lib/rootScope';
-import {toastNew} from '../toast';
-import {ButtonIconTsx} from '../buttonIconTsx';
-import {StarGiftBackdrop} from '../stargifts/stargiftBackdrop';
-import {I18nTsx} from '../../helpers/solid/i18n';
-import safeAssign from '../../helpers/object/safeAssign';
+import {StarGift} from '@layer';
+import {MyDocument} from '@appManagers/appDocsManager';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import {MyStarGift} from '@appManagers/appGiftsManager';
+import rootScope from '@lib/rootScope';
+import {toastNew} from '@components/toast';
+import {ButtonIconTsx} from '@components/buttonIconTsx';
+import {StarGiftBackdrop} from '@components/stargifts/stargiftBackdrop';
+import {I18nTsx} from '@helpers/solid/i18n';
+import safeAssign from '@helpers/object/safeAssign';
 
-import styles from './starGiftWear.module.scss';
-import {AvatarNewTsx} from '../avatarNew';
-import Row from '../rowTsx';
-import PopupPremium from './premium';
-import {getCollectibleName} from '../../lib/appManagers/utils/gifts/getCollectibleName';
-import {PeerTitleTsx} from '../peerTitleTsx';
-import classNames from '../../helpers/string/classNames';
-import {StickerTsx} from '../wrappers/sticker';
+import styles from '@components/popups/starGiftWear.module.scss';
+import {AvatarNewTsx} from '@components/avatarNew';
+import Row from '@components/rowTsx';
+import PopupPremium from '@components/popups/premium';
+import {getCollectibleName} from '@appManagers/utils/gifts/getCollectibleName';
+import {PeerTitleTsx} from '@components/peerTitleTsx';
+import classNames from '@helpers/string/classNames';
+import {StickerTsx} from '@components/wrappers/sticker';
 
 export default class PopupStarGiftWear extends PopupElement {
   private gift: MyStarGift;

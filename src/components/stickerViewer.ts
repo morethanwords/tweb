@@ -4,34 +4,34 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
-import cancelEvent from '../helpers/dom/cancelEvent';
-import {simulateClickEvent, attachClickEvent} from '../helpers/dom/clickEvent';
-import findUpAsChild from '../helpers/dom/findUpAsChild';
-import findUpClassName from '../helpers/dom/findUpClassName';
-import getVisibleRect from '../helpers/dom/getVisibleRect';
-import isInDOM from '../helpers/dom/isInDOM';
-import safePlay from '../helpers/dom/safePlay';
-import ListenerSetter from '../helpers/listenerSetter';
-import {makeMediaSize} from '../helpers/mediaSize';
-import {getMiddleware, Middleware} from '../helpers/middleware';
-import {doubleRaf} from '../helpers/schedulers';
-import pause from '../helpers/schedulers/pause';
-import windowSize from '../helpers/windowSize';
-import {DocumentAttribute} from '../layer';
-import {MyDocument} from '../lib/appManagers/appDocsManager';
-import getStickerEffectThumb from '../lib/appManagers/utils/stickers/getStickerEffectThumb';
-import CustomEmojiElement from '../lib/customEmoji/element';
-import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
-import lottieLoader from '../lib/rlottie/lottieLoader';
-import RLottiePlayer from '../lib/rlottie/rlottiePlayer';
-import rootScope from '../lib/rootScope';
-import animationIntersector, {AnimationItemGroup} from './animationIntersector';
-import {EMOJI_TEXT_COLOR} from './emoticonsDropdown';
-import SetTransition from './singleTransition';
-import wrapSticker from './wrappers/sticker';
-import {STICKER_EFFECT_MULTIPLIER} from './wrappers/sticker';
-import wrapVideo from './wrappers/video';
+import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import {simulateClickEvent, attachClickEvent} from '@helpers/dom/clickEvent';
+import findUpAsChild from '@helpers/dom/findUpAsChild';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import getVisibleRect from '@helpers/dom/getVisibleRect';
+import isInDOM from '@helpers/dom/isInDOM';
+import safePlay from '@helpers/dom/safePlay';
+import ListenerSetter from '@helpers/listenerSetter';
+import {makeMediaSize} from '@helpers/mediaSize';
+import {getMiddleware, Middleware} from '@helpers/middleware';
+import {doubleRaf} from '@helpers/schedulers';
+import pause from '@helpers/schedulers/pause';
+import windowSize from '@helpers/windowSize';
+import {DocumentAttribute} from '@layer';
+import {MyDocument} from '@appManagers/appDocsManager';
+import getStickerEffectThumb from '@appManagers/utils/stickers/getStickerEffectThumb';
+import CustomEmojiElement from '@lib/customEmoji/element';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import lottieLoader from '@lib/rlottie/lottieLoader';
+import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import rootScope from '@lib/rootScope';
+import animationIntersector, {AnimationItemGroup} from '@components/animationIntersector';
+import {EMOJI_TEXT_COLOR} from '@components/emoticonsDropdown';
+import SetTransition from '@components/singleTransition';
+import wrapSticker from '@components/wrappers/sticker';
+import {STICKER_EFFECT_MULTIPLIER} from '@components/wrappers/sticker';
+import wrapVideo from '@components/wrappers/video';
 
 let hasViewer = false;
 export default function attachStickerViewerListeners({listenTo, listenerSetter, selector, findTarget: originalFindTarget, getTextColor, additionalClass}: {

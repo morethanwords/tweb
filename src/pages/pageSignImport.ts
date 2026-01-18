@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {putPreloader} from '../components/putPreloader';
-import App from '../config/app';
-import {STATE_INIT} from '../config/state';
-import rootScope from '../lib/rootScope';
-import {AuthState} from '../types';
-import Page from './page';
+import {putPreloader} from '@components/putPreloader';
+import App from '@config/app';
+import {STATE_INIT} from '@config/state';
+import rootScope from '@lib/rootScope';
+import {AuthState} from '@types';
+import Page from '@/pages/page';
 
 let data: AuthState.signImport['data'];
 

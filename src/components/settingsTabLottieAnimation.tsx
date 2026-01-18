@@ -1,10 +1,10 @@
 import {Component} from 'solid-js';
-import classNames from '../helpers/string/classNames';
-import type {LottieAssetName} from '../lib/rlottie/lottieLoader';
-import {useHotReloadGuard} from '../lib/solidjs/hotReloadGuard';
-import LottieAnimationBase from './lottieAnimation';
-import styles from './settingsTabLottieAnimation.module.scss';
-import {usePromiseCollector} from './solidJsTabs/promiseCollector';
+import classNames from '@helpers/string/classNames';
+import type {LottieAssetName} from '@lib/rlottie/lottieLoader';
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import LottieAnimationBase from '@components/lottieAnimation';
+import styles from '@components/settingsTabLottieAnimation.module.scss';
+import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 
 
 const SettingsTabLottieAnimation: Component<{

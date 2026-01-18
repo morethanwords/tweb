@@ -1,10 +1,10 @@
-import {Middleware} from '../../../helpers/middleware';
-import {adjustmentsConfig, AdjustmentsConfig} from '../adjustments';
-import {MediaType} from '../types';
+import {Middleware} from '@helpers/middleware';
+import {adjustmentsConfig, AdjustmentsConfig} from '@components/mediaEditor/adjustments';
+import {MediaType} from '@components/mediaEditor/types';
 
-import {initPositionBuffer, initTextureBuffer} from './initBuffers';
-import {initShaderProgram} from './initShaderProgram';
-import {loadTexture} from './loadTexture';
+import {initPositionBuffer, initTextureBuffer} from '@components/mediaEditor/webgl/initBuffers';
+import {initShaderProgram} from '@components/mediaEditor/webgl/initShaderProgram';
+import {loadTexture} from '@components/mediaEditor/webgl/loadTexture';
 
 export type RenderingPayload = Awaited<ReturnType<typeof initWebGL>>;
 

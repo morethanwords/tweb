@@ -1,6 +1,6 @@
 import {JSX, ParentProps, Show} from 'solid-js';
-import {getDirection} from '../../../helpers/dom/setInnerHTML';
-import {generateTail, makeTime} from '../utils';
+import {getDirection} from '@helpers/dom/setInnerHTML';
+import {generateTail, makeTime} from '@components/chat/utils';
 
 
 export const MinimalBubbleMessageContent = (props: ParentProps<{

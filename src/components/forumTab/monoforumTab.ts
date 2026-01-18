@@ -1,14 +1,14 @@
-import middlewarePromise from '../../helpers/middlewarePromise';
-import namedPromises from '../../helpers/namedPromises';
-import {Dialog} from '../../layer';
-import appDialogsManager from '../../lib/appDialogsManager';
-import {isDialog} from '../../lib/appManagers/utils/dialogs/isDialog';
-import {i18n} from '../../lib/langPack';
-import rootScope from '../../lib/rootScope';
-import {AutonomousMonoforumThreadList} from '../autonomousDialogList/monoforumThreads';
-import SortedDialogList from '../sortedDialogList';
-import wrapPeerTitle from '../wrappers/peerTitle';
-import {ForumTab} from './forumTab';
+import middlewarePromise from '@helpers/middlewarePromise';
+import namedPromises from '@helpers/namedPromises';
+import {Dialog} from '@layer';
+import appDialogsManager from '@lib/appDialogsManager';
+import {isDialog} from '@appManagers/utils/dialogs/isDialog';
+import {i18n} from '@lib/langPack';
+import rootScope from '@lib/rootScope';
+import {AutonomousMonoforumThreadList} from '@components/autonomousDialogList/monoforumThreads';
+import SortedDialogList from '@components/sortedDialogList';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
+import {ForumTab} from '@components/forumTab/forumTab';
 
 
 export class MonoforumTab extends ForumTab {

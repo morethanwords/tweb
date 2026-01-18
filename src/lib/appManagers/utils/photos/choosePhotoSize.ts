@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {MyDocument} from '../../appDocsManager';
-import type {MyPhoto} from '../../appPhotosManager';
-import type {PhotoSize, VideoSize, WebDocument} from '../../../../layer';
-import calcImageInBox from '../../../../helpers/calcImageInBox';
-import {THUMB_TYPE_FULL} from '../../constants';
+import type {MyDocument} from '@appManagers/appDocsManager';
+import type {MyPhoto} from '@appManagers/appPhotosManager';
+import type {PhotoSize, VideoSize, WebDocument} from '@layer';
+import calcImageInBox from '@helpers/calcImageInBox';
+import {THUMB_TYPE_FULL} from '@appManagers/constants';
 
 export default function choosePhotoSize(
   photo: MyPhoto | MyDocument | WebDocument,

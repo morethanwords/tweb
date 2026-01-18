@@ -9,10 +9,10 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import MTPNetworker from '../mtproto/networker';
-import App from '../../config/app';
-import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-import {AppManager} from './manager';
+import MTPNetworker from '@lib/mtproto/networker';
+import App from '@config/app';
+import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
+import {AppManager} from '@appManagers/manager';
 import AccountController from '@lib/accounts/accountController';
 import bytesToHex from '@helpers/bytes/bytesToHex';
 import {getEnvironment} from '@environment/utils';

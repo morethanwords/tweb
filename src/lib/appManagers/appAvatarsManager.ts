@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {joinDeepPath} from '../../helpers/object/setDeepProperty';
-import {UserProfilePhoto, ChatPhoto, InputFileLocation} from '../../layer';
-import {DownloadOptions} from './apiFileManager';
-import MTProtoMessagePort from '../mainWorker/mainMessagePort';
-import {AppManager} from './manager';
+import {joinDeepPath} from '@helpers/object/setDeepProperty';
+import {UserProfilePhoto, ChatPhoto, InputFileLocation} from '@layer';
+import {DownloadOptions} from '@appManagers/apiFileManager';
+import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
+import {AppManager} from '@appManagers/manager';
 
 export type PeerPhotoSize = 'photo_small' | 'photo_big';
 

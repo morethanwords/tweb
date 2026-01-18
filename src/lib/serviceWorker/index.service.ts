@@ -4,30 +4,30 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {logger, LogTypes} from '../logger';
-import {CACHE_ASSETS_NAME, requestCache} from './cache';
-import onStreamFetch, {toggleStreamInUse} from './stream';
-import {closeAllNotifications, fillPushObject, onPing, onShownNotification, resetPushAccounts} from './push';
-import CacheStorageController from '../files/cacheStorage';
-import {IS_SAFARI} from '../../environment/userAgent';
-import ServiceMessagePort from './serviceMessagePort';
-import listenMessagePort from '../../helpers/listenMessagePort';
-import {getWindowClients} from '../../helpers/context';
-import {MessageSendPort} from '../superMessagePort';
-import handleDownload from './download';
-import onShareFetch, {checkWindowClientForDeferredShare} from './share';
-import {onRtmpFetch, onRtmpLeftCall} from './rtmp';
-import {onHlsQualityFileFetch} from '../hls/onHlsQualityFileFetch';
-import {get500ErrorResponse} from './errors';
-import {onHlsStreamFetch} from '../hls/onHlsStreamFetch';
-import {onHlsPlaylistFetch} from '../hls/onHlsPlaylistFetch';
-import {watchHlsStreamChunksLifetime} from '../hls/fetchAndConcatFileParts';
-import {setEnvironment} from '../../environment/utils';
-import cryptoMessagePort from '../crypto/cryptoMessagePort';
-import EncryptionKeyStore from '../passcode/keyStore';
-import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
-import {onBackgroundsFetch} from './backgrounds';
-import {watchMtprotoOnDev} from './watchMtprotoOnDev';
+import {logger, LogTypes} from '@lib/logger';
+import {CACHE_ASSETS_NAME, requestCache} from '@lib/serviceWorker/cache';
+import onStreamFetch, {toggleStreamInUse} from '@lib/serviceWorker/stream';
+import {closeAllNotifications, fillPushObject, onPing, onShownNotification, resetPushAccounts} from '@lib/serviceWorker/push';
+import CacheStorageController from '@lib/files/cacheStorage';
+import {IS_SAFARI} from '@environment/userAgent';
+import ServiceMessagePort from '@lib/serviceWorker/serviceMessagePort';
+import listenMessagePort from '@helpers/listenMessagePort';
+import {getWindowClients} from '@helpers/context';
+import {MessageSendPort} from '@lib/superMessagePort';
+import handleDownload from '@lib/serviceWorker/download';
+import onShareFetch, {checkWindowClientForDeferredShare} from '@lib/serviceWorker/share';
+import {onRtmpFetch, onRtmpLeftCall} from '@lib/serviceWorker/rtmp';
+import {onHlsQualityFileFetch} from '@lib/hls/onHlsQualityFileFetch';
+import {get500ErrorResponse} from '@lib/serviceWorker/errors';
+import {onHlsStreamFetch} from '@lib/hls/onHlsStreamFetch';
+import {onHlsPlaylistFetch} from '@lib/hls/onHlsPlaylistFetch';
+import {watchHlsStreamChunksLifetime} from '@lib/hls/fetchAndConcatFileParts';
+import {setEnvironment} from '@environment/utils';
+import cryptoMessagePort from '@lib/crypto/cryptoMessagePort';
+import EncryptionKeyStore from '@lib/passcode/keyStore';
+import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
+import {onBackgroundsFetch} from '@lib/serviceWorker/backgrounds';
+import {watchMtprotoOnDev} from '@lib/serviceWorker/watchMtprotoOnDev';
 
 // #if MTPROTO_SW
 // import '../mtproto/mtproto.worker';

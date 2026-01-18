@@ -5,29 +5,29 @@
  */
 
 import {createEffect, createSignal, JSX, For, untrack, Accessor, onCleanup, Ref, createMemo} from 'solid-js';
-import {i18n} from '../../lib/langPack';
-import rootScope from '../../lib/rootScope';
-import {AvatarNew} from '../avatarNew';
-import PeerTitle from '../peerTitle';
-import {ScrollableXTsx} from '../stories/list';
-import formatNumber from '../../helpers/number/formatNumber';
-import {Chat, MessagesChats, User} from '../../layer';
-import computeLockColor from '../../helpers/computeLockColor';
-import classNames from '../../helpers/string/classNames';
-import cancelEvent from '../../helpers/dom/cancelEvent';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import findUpClassName from '../../helpers/dom/findUpClassName';
-import PopupPremium from '../popups/premium';
-import appImManager from '../../lib/appImManager';
-import anchorCallback from '../../helpers/dom/anchorCallback';
-import PopupElement from '../popups';
-import PopupPickUser from '../popups/pickUser';
-import apiManagerProxy from '../../lib/apiManagerProxy';
-import {ButtonIconTsx} from '../buttonIconTsx';
-import {IconTsx} from '../iconTsx';
-import createMiddleware from '../../helpers/solid/createMiddleware';
-import showTooltip from '../tooltip';
-import {usePeer} from '../../stores/peers';
+import {i18n} from '@lib/langPack';
+import rootScope from '@lib/rootScope';
+import {AvatarNew} from '@components/avatarNew';
+import PeerTitle from '@components/peerTitle';
+import {ScrollableXTsx} from '@components/stories/list';
+import formatNumber from '@helpers/number/formatNumber';
+import {Chat, MessagesChats, User} from '@layer';
+import computeLockColor from '@helpers/computeLockColor';
+import classNames from '@helpers/string/classNames';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import PopupPremium from '@components/popups/premium';
+import appImManager from '@lib/appImManager';
+import anchorCallback from '@helpers/dom/anchorCallback';
+import PopupElement from '@components/popups';
+import PopupPickUser from '@components/popups/pickUser';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import {ButtonIconTsx} from '@components/buttonIconTsx';
+import {IconTsx} from '@components/iconTsx';
+import createMiddleware from '@helpers/solid/createMiddleware';
+import showTooltip from '@components/tooltip';
+import {usePeer} from '@stores/peers';
 
 let canvas: HTMLCanvasElement, context: CanvasRenderingContext2D;
 export function SimilarPeer(props: {

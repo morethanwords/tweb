@@ -1,4 +1,4 @@
-import {IS_FIREFOX} from './userAgent';
+import {IS_FIREFOX} from '@environment/userAgent';
 
 const IS_WEBRTC_SUPPORTED = !!(typeof(RTCPeerConnection) !== 'undefined' && !IS_FIREFOX);
 

@@ -4,19 +4,19 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {MyDocument} from '../../lib/appManagers/appDocsManager';
-import PopupStickers from '../../components/popups/stickers';
-import rootScope from '../../lib/rootScope';
-import createContextMenu from './createContextMenu';
-import findUpClassName from './findUpClassName';
-import PopupElement from '../../components/popups';
-import {ButtonMenuItemOptionsVerifiable} from '../../components/buttonMenu';
-import ChatInput from '../../components/chat/input';
-import {copyTextToClipboard} from '../clipboard';
-import {getEmojiFromElement} from '../../components/emoticonsDropdown/tabs/emoji';
-import tsNow from '../tsNow';
-import {toastNew} from '../../components/toast';
-import {DocumentAttribute, EmojiStatus, InputStickerSet} from '../../layer';
+import type {MyDocument} from '@appManagers/appDocsManager';
+import PopupStickers from '@components/popups/stickers';
+import rootScope from '@lib/rootScope';
+import createContextMenu from '@helpers/dom/createContextMenu';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import PopupElement from '@components/popups';
+import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
+import ChatInput from '@components/chat/input';
+import {copyTextToClipboard} from '@helpers/clipboard';
+import {getEmojiFromElement} from '@components/emoticonsDropdown/tabs/emoji';
+import tsNow from '@helpers/tsNow';
+import {toastNew} from '@components/toast';
+import {DocumentAttribute, EmojiStatus, InputStickerSet} from '@layer';
 
 export default function createStickersContextMenu({
   listenTo,

@@ -1,11 +1,11 @@
 import {createSignal} from 'solid-js';
-import {I18nTsx} from '../../../../helpers/solid/i18n';
-import rootScope from '../../../../lib/rootScope';
-import defineSolidElement, {PassedProps} from '../../../../lib/solidjs/defineSolidElement';
-import {InputFieldTsx} from '../../../inputFieldTsx';
-import ripple from '../../../ripple';
-import Space from '../../../space';
-import styles from './style.module.scss';
+import {I18nTsx} from '@helpers/solid/i18n';
+import rootScope from '@lib/rootScope';
+import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
+import {InputFieldTsx} from '@components/inputFieldTsx';
+import ripple from '@components/ripple';
+import Space from '@components/space';
+import styles from '@components/chat/bubbleParts/suggestedPostRejectPopup/style.module.scss';
 ripple; // keep
 
 if(import.meta.hot) import.meta.hot.accept();

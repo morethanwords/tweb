@@ -1,4 +1,4 @@
-import type {AccountPassword} from '../layer';
+import type {AccountPassword} from '@layer';
 
 export const salt1 = new Uint8Array([114, 47, 217, 190, 196, 217, 91, 15, 205, 209, 189, 57, 98, 19, 110, 40, 47, 211, 245, 29, 58, 194, 205, 57, 205, 200, 225, 139, 244, 230, 206, 138, 1, 216, 18, 99, 130, 133, 226, 167]);
 

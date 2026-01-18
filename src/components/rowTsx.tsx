@@ -1,10 +1,10 @@
 import {children, createMemo, JSX, onCleanup, Ref, Show, useContext} from 'solid-js';
-import classNames from '../helpers/string/classNames';
-import {IconTsx} from './iconTsx';
-import RippleElement from './rippleElement';
-import createComponentContext, {ComponentContextValue} from '../helpers/solid/createComponentContext';
-import createContextMenu from '../helpers/dom/createContextMenu';
-import ListenerSetter from '../helpers/listenerSetter';
+import classNames from '@helpers/string/classNames';
+import {IconTsx} from '@components/iconTsx';
+import RippleElement from '@components/rippleElement';
+import createComponentContext, {ComponentContextValue} from '@helpers/solid/createComponentContext';
+import createContextMenu from '@helpers/dom/createContextMenu';
+import ListenerSetter from '@helpers/listenerSetter';
 
 export type RowMediaSizeType = 'small' | 'medium' | 'big' | 'abitbigger' | 'bigger' | '40';
 

@@ -1,14 +1,14 @@
-import {animateValue} from '../../helpers/animateValue';
-import deferredPromise from '../../helpers/cancellablePromise';
-import {lerp} from '../../helpers/lerp';
-import {doubleRaf} from '../../helpers/schedulers';
-import type {AppManagers} from '../../lib/managers';
-import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
-import {EditingMediaState} from './context';
-import {MediaEditorFinalResult} from './finalRender/createFinalResult';
-import {openMediaEditor} from './mediaEditor';
-import {MediaType, NumberPair} from './types';
-import {delay, snapToViewport} from './utils';
+import {animateValue} from '@helpers/animateValue';
+import deferredPromise from '@helpers/cancellablePromise';
+import {lerp} from '@helpers/lerp';
+import {doubleRaf} from '@helpers/schedulers';
+import type {AppManagers} from '@lib/managers';
+import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import {EditingMediaState} from '@components/mediaEditor/context';
+import {MediaEditorFinalResult} from '@components/mediaEditor/finalRender/createFinalResult';
+import {openMediaEditor} from '@components/mediaEditor/mediaEditor';
+import {MediaType, NumberPair} from '@components/mediaEditor/types';
+import {delay, snapToViewport} from '@components/mediaEditor/utils';
 
 
 type Args = {

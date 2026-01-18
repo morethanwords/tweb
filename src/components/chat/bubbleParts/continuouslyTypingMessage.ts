@@ -1,5 +1,5 @@
-import {animate} from '../../../helpers/animation';
-import styles from './continuouslyTypingMessage.module.scss';
+import {animate} from '@helpers/animation';
+import styles from '@components/chat/bubbleParts/continuouslyTypingMessage.module.scss';
 
 
 type WrapContinuouslyTypingMessageArgs = {

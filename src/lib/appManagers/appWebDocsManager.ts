@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {DocumentAttribute, WebDocument} from '../../layer';
+import {DocumentAttribute, WebDocument} from '@layer';
 
 export default class AppWebDocsManager {
   public saveWebDocument(webDocument: WebDocument) {

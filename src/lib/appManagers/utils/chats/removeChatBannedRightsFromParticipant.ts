@@ -1,4 +1,4 @@
-import {ChatBannedRights, Chat} from '../../../../layer';
+import {ChatBannedRights, Chat} from '@layer';
 
 export default function removeChatBannedRightsFromParticipant(chat: Chat.channel, rights: ChatBannedRights) {
   if(chat.default_banned_rights && rights?.pFlags) {

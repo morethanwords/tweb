@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import SDPLine from './line';
+import SDPLine from '@lib/calls/sdp/line';
 
 export default class SDPSessionSection {
   #lines: SDPLine[];

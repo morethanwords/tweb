@@ -1,4 +1,4 @@
-import {Document} from '../../../layer';
+import {Document} from '@layer';
 
 export interface StickerFrameByFrameRenderer {
   init: (doc: Document.document, size: number) => Promise<void>;

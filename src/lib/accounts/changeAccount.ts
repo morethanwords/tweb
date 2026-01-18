@@ -1,7 +1,7 @@
-import appNavigationController from '../../components/appNavigationController';
+import appNavigationController from '@components/appNavigationController';
 
-import {CURRENT_ACCOUNT_QUERY_PARAM} from './constants';
-import {ActiveAccountNumber} from './types';
+import {CURRENT_ACCOUNT_QUERY_PARAM} from '@lib/accounts/constants';
+import {ActiveAccountNumber} from '@lib/accounts/types';
 
 export function changeAccount(
   accountNumber: ActiveAccountNumber,

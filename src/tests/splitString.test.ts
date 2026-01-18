@@ -1,6 +1,6 @@
-import pause from '../helpers/schedulers/pause';
-import splitStringByLength from '../helpers/string/splitStringByLength';
-import {MessageEntity} from '../layer';
+import pause from '@helpers/schedulers/pause';
+import splitStringByLength from '@helpers/string/splitStringByLength';
+import {MessageEntity} from '@layer';
 
 const text = 'abc def ghi jkl mno pqr stu vwx yz';
 // const text = 'abcdefghijklmnopqrstuvwxyz';

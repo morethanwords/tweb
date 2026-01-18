@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import AvatarListLoader from '../helpers/avatarListLoader';
-import {Photo} from '../layer';
-import appDownloadManager from '../lib/appDownloadManager';
-import appImManager from '../lib/appImManager';
-import rootScope from '../lib/rootScope';
-import AppMediaViewerBase from './appMediaViewerBase';
+import AvatarListLoader from '@helpers/avatarListLoader';
+import {Photo} from '@layer';
+import appDownloadManager from '@lib/appDownloadManager';
+import appImManager from '@lib/appImManager';
+import rootScope from '@lib/rootScope';
+import AppMediaViewerBase from '@components/appMediaViewerBase';
 
 type AppMediaViewerAvatarTargetType = {element: HTMLElement, photoId: Photo.photo['id'], photo?: Photo.photo};
 export default class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete', AppMediaViewerAvatarTargetType> {

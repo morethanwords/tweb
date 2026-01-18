@@ -1,10 +1,10 @@
 import {Accessor, createMemo, createSignal, For, JSX, Show} from 'solid-js';
-import {keepMe} from '../../../../../helpers/keepMe';
-import CheckboxFieldTsx from '../../../../checkboxFieldTsx';
-import {IconTsx} from '../../../../iconTsx';
-import ripple from '../../../../ripple';
-import {HeightTransition} from '../heightTransition';
-import styles from './expandableFilterGroup.module.scss';
+import {keepMe} from '@helpers/keepMe';
+import CheckboxFieldTsx from '@components/checkboxFieldTsx';
+import {IconTsx} from '@components/iconTsx';
+import ripple from '@components/ripple';
+import {HeightTransition} from '@components/sidebarRight/tabs/adminRecentActions/heightTransition';
+import styles from '@components/sidebarRight/tabs/adminRecentActions/filters/expandableFilterGroup.module.scss';
 
 keepMe(ripple);
 

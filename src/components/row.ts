@@ -4,21 +4,21 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {SliderSuperTab} from './slider';
-import type {SliderSuperTabEventable, SliderSuperTabEventableConstructable} from './sliderTab';
-import CheckboxField, {CheckboxFieldOptions} from './checkboxField';
-import RadioField from './radioField';
-import ripple from './ripple';
-import RadioForm from './radioForm';
-import {i18n, LangPackKey} from '../lib/langPack';
-import replaceContent from '../helpers/dom/replaceContent';
-import setInnerHTML, {setDirection} from '../helpers/dom/setInnerHTML';
-import {attachClickEvent} from '../helpers/dom/clickEvent';
-import ListenerSetter from '../helpers/listenerSetter';
-import Button from './button';
-import createContextMenu from '../helpers/dom/createContextMenu';
-import SidebarSlider from './slider';
-import Icon from './icon';
+import type {SliderSuperTab} from '@components/slider';
+import type {SliderSuperTabEventable, SliderSuperTabEventableConstructable} from '@components/sliderTab';
+import CheckboxField, {CheckboxFieldOptions} from '@components/checkboxField';
+import RadioField from '@components/radioField';
+import ripple from '@components/ripple';
+import RadioForm from '@components/radioForm';
+import {i18n, LangPackKey} from '@lib/langPack';
+import replaceContent from '@helpers/dom/replaceContent';
+import setInnerHTML, {setDirection} from '@helpers/dom/setInnerHTML';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import ListenerSetter from '@helpers/listenerSetter';
+import Button from '@components/button';
+import createContextMenu from '@helpers/dom/createContextMenu';
+import SidebarSlider from '@components/slider';
+import Icon from '@components/icon';
 
 type K = string | HTMLElement | DocumentFragment | true;
 

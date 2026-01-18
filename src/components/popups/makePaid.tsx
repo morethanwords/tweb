@@ -5,17 +5,17 @@
  */
 
 import PopupElement from '.';
-import anchorCallback from '../../helpers/dom/anchorCallback';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import placeCaretAtEnd from '../../helpers/dom/placeCaretAtEnd';
-import shake from '../../helpers/dom/shake';
-import {Middleware} from '../../helpers/middleware';
-import {LangPackKey} from '../../lib/langPack';
-import Button from '../button';
-import currencyStarIcon from '../currencyStarIcon';
-import InputField from '../inputField';
-import Section from '../section';
-import PopupStars from './stars';
+import anchorCallback from '@helpers/dom/anchorCallback';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
+import shake from '@helpers/dom/shake';
+import {Middleware} from '@helpers/middleware';
+import {LangPackKey} from '@lib/langPack';
+import Button from '@components/button';
+import currencyStarIcon from '@components/currencyStarIcon';
+import InputField from '@components/inputField';
+import Section from '@components/section';
+import PopupStars from '@components/popups/stars';
 
 export function InputStarsField(options: {
   middleware: Middleware,

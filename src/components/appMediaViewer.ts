@@ -4,40 +4,40 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {MyDocument} from '../lib/appManagers/appDocsManager';
-import MEDIA_MIME_TYPES_SUPPORTED from '../environment/mediaMimeTypesSupport';
-import cancelEvent from '../helpers/dom/cancelEvent';
-import {attachClickEvent} from '../helpers/dom/clickEvent';
-import findUpClassName from '../helpers/dom/findUpClassName';
-import findUpTag from '../helpers/dom/findUpTag';
-import setInnerHTML from '../helpers/dom/setInnerHTML';
-import mediaSizes from '../helpers/mediaSizes';
-import SearchListLoader from '../helpers/searchListLoader';
-import {Message, MessageMedia, WebPage} from '../layer';
-import appDownloadManager from '../lib/appDownloadManager';
-import appImManager from '../lib/appImManager';
-import {MyMessage} from '../lib/appManagers/appMessagesManager';
-import {MyPhoto} from '../lib/appManagers/appPhotosManager';
-import canSaveMessageMedia from '../lib/appManagers/utils/messages/canSaveMessageMedia';
-import getMediaFromMessage from '../lib/appManagers/utils/messages/getMediaFromMessage';
-import wrapRichText from '../lib/richTextProcessor/wrapRichText';
-import {MediaSearchContext} from './appMediaPlaybackController';
-import AppMediaViewerBase, {MEDIA_VIEWER_CLASSNAME} from './appMediaViewerBase';
-import {ButtonMenuItemOptionsVerifiable} from './buttonMenu';
-import PopupDeleteMessages from './popups/deleteMessages';
-import PopupForward from './popups/forward';
-import Scrollable from './scrollable';
-import appSidebarRight from './sidebarRight';
-import AppSharedMediaTab from './sidebarRight/tabs/sharedMedia';
-import PopupElement from './popups';
-import {ChatType} from './chat/chat';
-import getFwdFromName from '../lib/appManagers/utils/messages/getFwdFromName';
-import TranslatableMessage from './translatableMessage';
-import {MAX_FILE_SAVE_SIZE} from '../lib/appManagers/constants';
-import {i18n} from '../lib/langPack';
-import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
-import wrapWebPageDescription from './wrappers/webPageDescription';
-import Button from './button';
+import type {MyDocument} from '@appManagers/appDocsManager';
+import MEDIA_MIME_TYPES_SUPPORTED from '@environment/mediaMimeTypesSupport';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import findUpTag from '@helpers/dom/findUpTag';
+import setInnerHTML from '@helpers/dom/setInnerHTML';
+import mediaSizes from '@helpers/mediaSizes';
+import SearchListLoader from '@helpers/searchListLoader';
+import {Message, MessageMedia, WebPage} from '@layer';
+import appDownloadManager from '@lib/appDownloadManager';
+import appImManager from '@lib/appImManager';
+import {MyMessage} from '@appManagers/appMessagesManager';
+import {MyPhoto} from '@appManagers/appPhotosManager';
+import canSaveMessageMedia from '@appManagers/utils/messages/canSaveMessageMedia';
+import getMediaFromMessage from '@appManagers/utils/messages/getMediaFromMessage';
+import wrapRichText from '@richTextProcessor/wrapRichText';
+import {MediaSearchContext} from '@components/appMediaPlaybackController';
+import AppMediaViewerBase, {MEDIA_VIEWER_CLASSNAME} from '@components/appMediaViewerBase';
+import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
+import PopupDeleteMessages from '@components/popups/deleteMessages';
+import PopupForward from '@components/popups/forward';
+import Scrollable from '@components/scrollable';
+import appSidebarRight from '@components/sidebarRight';
+import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMedia';
+import PopupElement from '@components/popups';
+import {ChatType} from '@components/chat/chat';
+import getFwdFromName from '@appManagers/utils/messages/getFwdFromName';
+import TranslatableMessage from '@components/translatableMessage';
+import {MAX_FILE_SAVE_SIZE} from '@appManagers/constants';
+import {i18n} from '@lib/langPack';
+import wrapEmojiText from '@richTextProcessor/wrapEmojiText';
+import wrapWebPageDescription from '@components/wrappers/webPageDescription';
+import Button from '@components/button';
 
 type AppMediaViewerTargetType = {
   element: HTMLElement,

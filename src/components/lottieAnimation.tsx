@@ -1,7 +1,7 @@
 import {Component, createRenderEffect, mergeProps, onCleanup, onMount} from 'solid-js';
 
-import type {LottieAssetName, LottieLoader} from '../lib/rlottie/lottieLoader';
-import RLottiePlayer, {RLottieOptions} from '../lib/rlottie/rlottiePlayer';
+import type {LottieAssetName, LottieLoader} from '@lib/rlottie/lottieLoader';
+import RLottiePlayer, {RLottieOptions} from '@lib/rlottie/rlottiePlayer';
 
 const LottieAnimation: Component<{
   lottieLoader: LottieLoader;

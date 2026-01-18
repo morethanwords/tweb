@@ -1,6 +1,6 @@
-import {Message} from '../../../layer';
-import SolidJSHotReloadGuardProvider from '../../../lib/solidjs/hotReloadGuardProvider';
-import type Chat from '../chat';
+import {Message} from '@layer';
+import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import type Chat from '@components/chat/chat';
 
 
 export function canHaveSuggestedPostReplyMarkup(message: Message.message): boolean {

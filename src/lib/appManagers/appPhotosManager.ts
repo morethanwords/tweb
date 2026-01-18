@@ -9,11 +9,11 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import isObject from '../../helpers/object/isObject';
-import safeReplaceArrayInObject from '../../helpers/object/safeReplaceArrayInObject';
-import {Photo, PhotoSize, PhotosPhotos} from '../../layer';
-import {ReferenceContext} from '../storages/references';
-import {AppManager} from './manager';
+import isObject from '@helpers/object/isObject';
+import safeReplaceArrayInObject from '@helpers/object/safeReplaceArrayInObject';
+import {Photo, PhotoSize, PhotosPhotos} from '@layer';
+import {ReferenceContext} from '@lib/storages/references';
+import {AppManager} from '@appManagers/manager';
 
 export type MyPhoto = Photo.photo;
 

@@ -1,13 +1,13 @@
-import {numberThousandSplitterForWatching} from '../../../helpers/number/numberThousandSplitter';
-import {cnTopbarLive} from './topbarLive.cn';
-import {TopbarLiveButton} from './button';
+import {numberThousandSplitterForWatching} from '@helpers/number/numberThousandSplitter';
+import {cnTopbarLive} from '@components/chat/topbarLive/topbarLive.cn';
+import {TopbarLiveButton} from '@components/chat/topbarLive/button';
 
-import {Skeleton} from '../../skeleton';
+import {Skeleton} from '@components/skeleton';
 
-import './topbarLive.scss';
-import {i18n} from '../../../lib/langPack';
-import wrapReply from '../../wrappers/reply';
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
+import '@components/chat/topbarLive/topbarLive.scss';
+import {i18n} from '@lib/langPack';
+import wrapReply from '@components/wrappers/reply';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
 import {onCleanup, Accessor} from 'solid-js';
 
 export interface TopbarLiveProps {

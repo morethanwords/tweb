@@ -4,23 +4,23 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {ReactionsContext} from '../../lib/appManagers/appReactionsManager';
-import forEachReverse from '../../helpers/array/forEachReverse';
-import callbackifyAll from '../../helpers/callbackifyAll';
-import positionElementByIndex from '../../helpers/dom/positionElementByIndex';
-import {makeMediaSize} from '../../helpers/mediaSize';
-import {Middleware, MiddlewareHelper} from '../../helpers/middleware';
-import {ReactionCount, SavedReactionTag} from '../../layer';
-import appImManager from '../../lib/appImManager';
-import {AppManagers} from '../../lib/managers';
-import reactionsEqual from '../../lib/appManagers/utils/reactions/reactionsEqual';
-import {CustomEmojiRendererElement} from '../../lib/customEmoji/renderer';
-import rootScope from '../../lib/rootScope';
-import {AnimationItemGroup} from '../animationIntersector';
-import LazyLoadQueue from '../lazyLoadQueue';
-import ReactionElement, {ReactionLayoutType, REACTIONS_DISPLAY_COUNTER_AT, REACTIONS_SIZE} from './reaction';
-import {getHeavyAnimationPromise} from '../../hooks/useHeavyAnimationCheck';
-import pause from '../../helpers/schedulers/pause';
+import type {ReactionsContext} from '@appManagers/appReactionsManager';
+import forEachReverse from '@helpers/array/forEachReverse';
+import callbackifyAll from '@helpers/callbackifyAll';
+import positionElementByIndex from '@helpers/dom/positionElementByIndex';
+import {makeMediaSize} from '@helpers/mediaSize';
+import {Middleware, MiddlewareHelper} from '@helpers/middleware';
+import {ReactionCount, SavedReactionTag} from '@layer';
+import appImManager from '@lib/appImManager';
+import {AppManagers} from '@lib/managers';
+import reactionsEqual from '@appManagers/utils/reactions/reactionsEqual';
+import {CustomEmojiRendererElement} from '@lib/customEmoji/renderer';
+import rootScope from '@lib/rootScope';
+import {AnimationItemGroup} from '@components/animationIntersector';
+import LazyLoadQueue from '@components/lazyLoadQueue';
+import ReactionElement, {ReactionLayoutType, REACTIONS_DISPLAY_COUNTER_AT, REACTIONS_SIZE} from '@components/chat/reaction';
+import {getHeavyAnimationPromise} from '@hooks/useHeavyAnimationCheck';
+import pause from '@helpers/schedulers/pause';
 import {Accessor, Setter} from 'solid-js';
 
 

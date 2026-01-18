@@ -1,7 +1,7 @@
-import {Message} from '../../../layer';
-import apiManagerProxy from '../../../lib/apiManagerProxy';
-import rootScope from '../../../lib/rootScope';
-import PeerTitle from '../../peerTitle';
+import {Message} from '@layer';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import rootScope from '@lib/rootScope';
+import PeerTitle from '@components/peerTitle';
 
 
 type Args = {

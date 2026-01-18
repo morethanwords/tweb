@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type EventListenerBase from '../../../helpers/eventListenerBase';
-import type MTPNetworker from '../networker';
+import type EventListenerBase from '@helpers/eventListenerBase';
+import type MTPNetworker from '@lib/mtproto/networker';
 
 export default interface MTTransport {
   networker: MTPNetworker;

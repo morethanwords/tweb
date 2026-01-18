@@ -1,5 +1,5 @@
-import {getCurrentAccountFromURL} from './getCurrentAccountFromURL';
-import {ActiveAccountNumber} from './types';
+import {getCurrentAccountFromURL} from '@lib/accounts/getCurrentAccountFromURL';
+import {ActiveAccountNumber} from '@lib/accounts/types';
 
 export const getCurrentAccount = (() => {
   let result: ActiveAccountNumber;

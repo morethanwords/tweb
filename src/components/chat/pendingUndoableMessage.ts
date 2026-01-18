@@ -1,6 +1,6 @@
 import {createRoot, createSignal} from 'solid-js';
 
-import {setReservedStars} from '../../stores/stars';
+import {setReservedStars} from '@stores/stars';
 
 
 const createPendingUndoableMessage = () => createRoot(dispose => {

@@ -4,19 +4,19 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type AppGifsManager from '../../../lib/appManagers/appGifsManager';
+import type AppGifsManager from '@appManagers/appGifsManager';
 import {EMOTICONSSTICKERGROUP} from '..';
-import GifsMasonry from '../../gifsMasonry';
-import {putPreloader} from '../../putPreloader';
-import {AppManagers} from '../../../lib/managers';
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import EmoticonsTabC from '../tab';
-import safeAssign from '../../../helpers/object/safeAssign';
-import {i18n} from '../../../lib/langPack';
+import GifsMasonry from '@components/gifsMasonry';
+import {putPreloader} from '@components/putPreloader';
+import {AppManagers} from '@lib/managers';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import EmoticonsTabC from '@components/emoticonsDropdown/tab';
+import safeAssign from '@helpers/object/safeAssign';
+import {i18n} from '@lib/langPack';
 import {onCleanup} from 'solid-js';
-import {Middleware} from '../../../helpers/middleware';
-import createMiddleware from '../../../helpers/solid/createMiddleware';
-import rootScope from '../../../lib/rootScope';
+import {Middleware} from '@helpers/middleware';
+import createMiddleware from '@helpers/solid/createMiddleware';
+import rootScope from '@lib/rootScope';
 
 export default class GifsTab extends EmoticonsTabC<any, Awaited<ReturnType<AppGifsManager['searchGifs']>>> {
   private query: string;

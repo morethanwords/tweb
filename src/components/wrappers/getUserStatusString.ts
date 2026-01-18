@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {formatFullSentTimeRaw} from '../../helpers/date';
-import numberThousandSplitter from '../../helpers/number/numberThousandSplitter';
-import {User} from '../../layer';
-import {LangPackKey, i18n} from '../../lib/langPack';
-import {REPLIES_PEER_ID, SERVICE_PEER_ID} from '../../lib/appManagers/constants';
+import {formatFullSentTimeRaw} from '@helpers/date';
+import numberThousandSplitter from '@helpers/number/numberThousandSplitter';
+import {User} from '@layer';
+import {LangPackKey, i18n} from '@lib/langPack';
+import {REPLIES_PEER_ID, SERVICE_PEER_ID} from '@appManagers/constants';
 
 export default function getUserStatusString(user: User.user): HTMLElement {
   if(!user) {

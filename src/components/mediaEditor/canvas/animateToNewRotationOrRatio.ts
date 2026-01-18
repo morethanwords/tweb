@@ -1,10 +1,10 @@
 import {modifyMutable, produce} from 'solid-js/store';
-import {animateValue} from '../../../helpers/animateValue';
-import {lerp, lerpArray} from '../../../helpers/lerp';
-import {useMediaEditorContext} from '../context';
-import {NumberPair} from '../types';
-import {snapToViewport} from '../utils';
-import {useCropOffset} from './useCropOffset';
+import {animateValue} from '@helpers/animateValue';
+import {lerp, lerpArray} from '@helpers/lerp';
+import {useMediaEditorContext} from '@components/mediaEditor/context';
+import {NumberPair} from '@components/mediaEditor/types';
+import {snapToViewport} from '@components/mediaEditor/utils';
+import {useCropOffset} from '@components/mediaEditor/canvas/useCropOffset';
 
 
 export function animateToNewRotationOrRatio(newRotation: number) {

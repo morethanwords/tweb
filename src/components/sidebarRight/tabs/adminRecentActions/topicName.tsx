@@ -1,8 +1,8 @@
 import {createResource, Show} from 'solid-js';
-import createMiddleware from '../../../../helpers/solid/createMiddleware';
-import {ForumTopic} from '../../../../layer';
-import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
-import styles from './topicName.module.scss';
+import createMiddleware from '@helpers/solid/createMiddleware';
+import {ForumTopic} from '@layer';
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import styles from '@components/sidebarRight/tabs/adminRecentActions/topicName.module.scss';
 
 
 export const TopicName = (props: {

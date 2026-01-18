@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {Dialog, ForumTopic, SavedDialog} from '../../../../layer';
-import type {REAL_FOLDER_ID} from '../../constants';
-import type {MonoforumDialog} from '../../../storages/monoforumDialogs';
-import getDialogIndexKey from './getDialogIndexKey';
+import type {Dialog, ForumTopic, SavedDialog} from '@layer';
+import type {REAL_FOLDER_ID} from '@appManagers/constants';
+import type {MonoforumDialog} from '@lib/storages/monoforumDialogs';
+import getDialogIndexKey from '@appManagers/utils/dialogs/getDialogIndexKey';
 
 export default function getDialogIndex(
   dialog: Dialog.dialog | ForumTopic.forumTopic | SavedDialog.savedDialog | MonoforumDialog,

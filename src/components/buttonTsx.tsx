@@ -1,8 +1,8 @@
 import {Accessor, createMemo, createSignal, JSX, Ref, Setter} from 'solid-js';
-import {FormatterArguments, i18n, LangPackKey} from '../lib/langPack';
-import {IconTsx} from './iconTsx';
-import classNames from '../helpers/string/classNames';
-import RippleElement from './rippleElement';
+import {FormatterArguments, i18n, LangPackKey} from '@lib/langPack';
+import {IconTsx} from '@components/iconTsx';
+import classNames from '@helpers/string/classNames';
+import RippleElement from '@components/rippleElement';
 
 const Button = (props: Partial<{
   ref: Ref<HTMLElement>,

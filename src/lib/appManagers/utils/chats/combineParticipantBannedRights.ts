@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import copy from '../../../../helpers/object/copy';
-import {ChatBannedRights, Chat} from '../../../../layer';
+import copy from '@helpers/object/copy';
+import {ChatBannedRights, Chat} from '@layer';
 
 export default function combineParticipantBannedRights(chat: Chat.channel, rights: ChatBannedRights) {
   if(chat.default_banned_rights) {

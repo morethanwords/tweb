@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {ChatSetPeerOptions} from './appImManager';
+import type {ChatSetPeerOptions} from '@lib/appImManager';
 
 // * https://core.telegram.org/api/links
 

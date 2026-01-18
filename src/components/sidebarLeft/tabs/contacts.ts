@@ -4,20 +4,20 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {SliderSuperTab} from '../../slider';
-import appDialogsManager from '../../../lib/appDialogsManager';
-import InputSearch from '../../inputSearch';
-import {IS_MOBILE} from '../../../environment/userAgent';
-import {canFocus} from '../../../helpers/dom/canFocus';
-import windowSize from '../../../helpers/windowSize';
-import ButtonCorner from '../../buttonCorner';
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import PopupCreateContact from '../../popups/createContact';
-import SortedUserList from '../../sortedUserList';
-import {getMiddleware} from '../../../helpers/middleware';
-import replaceContent from '../../../helpers/dom/replaceContent';
-import rootScope from '../../../lib/rootScope';
-import PopupElement from '../../popups';
+import {SliderSuperTab} from '@components/slider';
+import appDialogsManager from '@lib/appDialogsManager';
+import InputSearch from '@components/inputSearch';
+import {IS_MOBILE} from '@environment/userAgent';
+import {canFocus} from '@helpers/dom/canFocus';
+import windowSize from '@helpers/windowSize';
+import ButtonCorner from '@components/buttonCorner';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import PopupCreateContact from '@components/popups/createContact';
+import SortedUserList from '@components/sortedUserList';
+import {getMiddleware} from '@helpers/middleware';
+import replaceContent from '@helpers/dom/replaceContent';
+import rootScope from '@lib/rootScope';
+import PopupElement from '@components/popups';
 
 // TODO: поиск по людям глобальный, если не нашло в контактах никого
 

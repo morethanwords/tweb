@@ -1,4 +1,4 @@
-import {MOUNT_CLASS_TO} from '../../config/debug';
+import {MOUNT_CLASS_TO} from '@config/debug';
 
 export default function bytesFromHex(hexString: string) {
   const len = hexString.length;

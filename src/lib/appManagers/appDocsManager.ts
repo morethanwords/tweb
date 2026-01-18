@@ -9,26 +9,26 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type {ThumbCache} from '../storages/thumbs';
-import {Document, DocumentAttribute, PhotoSize, WallPaper} from '../../layer';
-import {ReferenceContext} from '../storages/references';
-import {getFullDate} from '../../helpers/date/getFullDate';
-import isObject from '../../helpers/object/isObject';
-import safeReplaceArrayInObject from '../../helpers/object/safeReplaceArrayInObject';
-import {AppManager} from './manager';
-import wrapPlainText from '../richTextProcessor/wrapPlainText';
-import assumeType from '../../helpers/assumeType';
-import {getEnvironment} from '../../environment/utils';
-import MTProtoMessagePort from '../mainWorker/mainMessagePort';
-import getDocumentInputFileLocation from './utils/docs/getDocumentInputFileLocation';
-import getDocumentURL from './utils/docs/getDocumentURL';
-import makeError from '../../helpers/makeError';
-import {EXTENSION_MIME_TYPE_MAP} from '../../environment/mimeTypeMap';
-import {THUMB_TYPE_FULL} from './constants';
-import tsNow from '../../helpers/tsNow';
-import appManagersManager from './appManagersManager';
-import tryPatchMp4 from '../../helpers/fixChromiumMp4';
-import StickerType from '../../config/stickerType';
+import type {ThumbCache} from '@lib/storages/thumbs';
+import {Document, DocumentAttribute, PhotoSize, WallPaper} from '@layer';
+import {ReferenceContext} from '@lib/storages/references';
+import {getFullDate} from '@helpers/date/getFullDate';
+import isObject from '@helpers/object/isObject';
+import safeReplaceArrayInObject from '@helpers/object/safeReplaceArrayInObject';
+import {AppManager} from '@appManagers/manager';
+import wrapPlainText from '@lib/richTextProcessor/wrapPlainText';
+import assumeType from '@helpers/assumeType';
+import {getEnvironment} from '@environment/utils';
+import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
+import getDocumentInputFileLocation from '@appManagers/utils/docs/getDocumentInputFileLocation';
+import getDocumentURL from '@appManagers/utils/docs/getDocumentURL';
+import makeError from '@helpers/makeError';
+import {EXTENSION_MIME_TYPE_MAP} from '@environment/mimeTypeMap';
+import {THUMB_TYPE_FULL} from '@appManagers/constants';
+import tsNow from '@helpers/tsNow';
+import appManagersManager from '@appManagers/appManagersManager';
+import tryPatchMp4 from '@helpers/fixChromiumMp4';
+import StickerType from '@config/stickerType';
 
 export type MyDocument = Document.document;
 

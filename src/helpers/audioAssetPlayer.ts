@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import safePlay from './dom/safePlay';
-import deepEqual from './object/deepEqual';
-import tsNow from './tsNow';
+import safePlay from '@helpers/dom/safePlay';
+import deepEqual from '@helpers/object/deepEqual';
+import tsNow from '@helpers/tsNow';
 
 const ASSETS_PATH = 'assets/audio/';
 

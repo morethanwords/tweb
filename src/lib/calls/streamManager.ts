@@ -9,13 +9,13 @@
  * https://github.com/evgeny-nadymov/telegram-react/blob/master/LICENSE
  */
 
-import EventListenerBase from '../../helpers/eventListenerBase';
-import {logger} from '../logger';
-import {GROUP_CALL_AMPLITUDE_ANALYSE_COUNT_MAX} from './constants';
-import stopTrack from './helpers/stopTrack';
-import LocalConferenceDescription from './localConferenceDescription';
-import {fixMediaLineType, WebRTCLineType} from './sdpBuilder';
-import {getAmplitude, toTelegramSource} from './utils';
+import EventListenerBase from '@helpers/eventListenerBase';
+import {logger} from '@lib/logger';
+import {GROUP_CALL_AMPLITUDE_ANALYSE_COUNT_MAX} from '@lib/calls/constants';
+import stopTrack from '@lib/calls/helpers/stopTrack';
+import LocalConferenceDescription from '@lib/calls/localConferenceDescription';
+import {fixMediaLineType, WebRTCLineType} from '@lib/calls/sdpBuilder';
+import {getAmplitude, toTelegramSource} from '@lib/calls/utils';
 
 export type StreamItemBase = {
   type: 'input' | 'output',

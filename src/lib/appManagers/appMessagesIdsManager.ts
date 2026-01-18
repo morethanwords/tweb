@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {MESSAGE_ID_OFFSET} from './constants';
-import getServerMessageId from './utils/messageId/getServerMessageId';
-import isLegacyMessageId from './utils/messageId/isLegacyMessageId';
+import {MESSAGE_ID_OFFSET} from '@appManagers/constants';
+import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
+import isLegacyMessageId from '@appManagers/utils/messageId/isLegacyMessageId';
 
 export class AppMessagesIdsManager {
   // private channelLocals: {[channelId: ChatId]: number} = {};

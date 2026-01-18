@@ -1,13 +1,13 @@
 import {createEffect, createResource, createRoot, createSignal, onCleanup} from 'solid-js';
 
-import PasscodeLockScreenController from '../../../components/passcodeLock/passcodeLockScreenController';
-import {addShortcutListener} from '../../../helpers/shortcutListener';
-import {joinDeepPath} from '../../../helpers/object/setDeepProperty';
-import ListenerSetter from '../../../helpers/listenerSetter';
+import PasscodeLockScreenController from '@components/passcodeLock/passcodeLockScreenController';
+import {addShortcutListener} from '@helpers/shortcutListener';
+import {joinDeepPath} from '@helpers/object/setDeepProperty';
+import ListenerSetter from '@helpers/listenerSetter';
 
-import rootScope from '../../rootScope';
+import rootScope from '@lib/rootScope';
 
-import appImManager from '../../appImManager';
+import appImManager from '@lib/appImManager';
 
 const _useLockScreenShortcut = () => {
   const [locked, setLocked] = createSignal(PasscodeLockScreenController.getIsLocked());

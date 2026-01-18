@@ -1,5 +1,5 @@
-import formatDuration, {DurationType} from '../../../../helpers/formatDuration';
-import {wrapFormattedDuration} from '../../../wrappers/wrapDuration';
+import formatDuration, {DurationType} from '@helpers/formatDuration';
+import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
 
 export const oneDayInSeconds = 24 * 60 * 60;
 export const oneWeekInSeconds = oneDayInSeconds * 7;

@@ -9,7 +9,7 @@
  * https://github.com/evgeny-nadymov/telegram-react/blob/master/LICENSE
  */
 
-import {PhoneCallProtocol} from '../../../layer';
+import {PhoneCallProtocol} from '@layer';
 
 export default function getCallProtocol(): PhoneCallProtocol {
   return {

@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {MyDialogFilter} from './storages/filters';
+import type {MyDialogFilter} from '@lib/storages/filters';
 import type {Dialog, ForumTopic, MyMessage, RequestHistoryOptions, SavedDialog} from '@appManagers/appMessagesManager';
 import type {MyDocument} from '@appManagers/appDocsManager';
-import type {State} from './../config/state';
-import type {AnyDialog} from './storages/dialogs';
+import type {State} from '@config/state';
+import type {AnyDialog} from '@lib/storages/dialogs';
 import type {CustomEmojiRendererElement} from '@customEmoji/renderer';
 import PopupElement from '@components/popups';
 import DialogsContextMenu from '@components/dialogsContextMenu';
@@ -23,7 +23,7 @@ import appImManager, {AppImManager, APP_TABS} from '@lib/appImManager';
 import Button from '@components/button';
 import SetTransition from '@components/singleTransition';
 import {MyDraftMessage} from '@appManagers/appDraftsManager';
-import {MOUNT_CLASS_TO} from './../config/debug';
+import {MOUNT_CLASS_TO} from '@config/debug';
 import PeerTitle, {changeTitleEmojiColor} from '@components/peerTitle';
 import I18n, {FormatterArguments, i18n, LangPackKey, _i18n} from '@lib/langPack';
 import findUpTag from '@helpers/dom/findUpTag';
@@ -44,7 +44,7 @@ import windowSize from '@helpers/windowSize';
 import isInDOM from '@helpers/dom/isInDOM';
 import {setSendingStatus} from '@components/sendingStatus';
 import {SortedElementBase} from '@helpers/sortedList';
-import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, NULL_PEER_ID, REAL_FOLDERS} from './appManagers/constants';
+import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, NULL_PEER_ID, REAL_FOLDERS} from '@appManagers/constants';
 import groupCallActiveIcon from '@components/groupCallActiveIcon';
 import {Chat, ChatlistsChatlistUpdates, DialogFilter, Message, MessageMedia, MessageReplyHeader} from '@layer';
 import mediaSizes from '@helpers/mediaSizes';
@@ -102,7 +102,7 @@ import {useAppSettings} from '@stores/appSettings';
 import wrapFolderTitle from '@components/wrappers/folderTitle';
 import {unwrap} from 'solid-js/store';
 import wrapMediaSpoiler from '@components/wrappers/mediaSpoiler';
-import type {MonoforumDialog} from './storages/monoforumDialogs';
+import type {MonoforumDialog} from '@lib/storages/monoforumDialogs';
 import {renderPendingSuggestion} from '@components/sidebarLeft/pendingSuggestion';
 import {useHasFolders} from '@stores/foldersSidebar';
 import {useAppState} from '@stores/appState';

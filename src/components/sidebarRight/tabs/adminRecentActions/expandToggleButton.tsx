@@ -1,7 +1,7 @@
-import {keepMe} from '../../../../helpers/keepMe';
-import {IconTsx} from '../../../iconTsx';
-import ripple from '../../../ripple';
-import styles from './expandToggleButton.module.scss';
+import {keepMe} from '@helpers/keepMe';
+import {IconTsx} from '@components/iconTsx';
+import ripple from '@components/ripple';
+import styles from '@components/sidebarRight/tabs/adminRecentActions/expandToggleButton.module.scss';
 
 keepMe(ripple);
 

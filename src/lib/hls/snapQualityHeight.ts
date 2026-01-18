@@ -1,4 +1,4 @@
-import {HlsStandardResolutionHeight} from './types';
+import {HlsStandardResolutionHeight} from '@lib/hls/types';
 
 export function snapQualityHeight(height: number) {
   const standardHeights: HlsStandardResolutionHeight[] = [480, 720, 1080];

@@ -1,17 +1,17 @@
-import {numberThousandSplitterForStars} from '../../../helpers/number/numberThousandSplitter';
-import {Message} from '../../../layer';
-import {i18n} from '../../../lib/langPack';
-import {SUGGESTED_POST_WAIT_FOR_REWARD_HOURS} from '../../../lib/appManagers/constants';
-import defineSolidElement, {PassedProps} from '../../../lib/solidjs/defineSolidElement';
-import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
-import confirmationPopup from '../../confirmationPopup';
-import Icon from '../../icon';
-import ripple from '../../ripple';
-import wrapPeerTitle from '../../wrappers/peerTitle';
-import type Chat from '../chat';
-import SuggestedPostAcceptWithTimePopup from './suggestedPostAcceptWithTimePopup';
-import {useFormattedCommission} from './suggestedPostAcceptWithTimePopup/useFormattedCommission';
-import SuggestedPostRejectPopup from './suggestedPostRejectPopup';
+import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
+import {Message} from '@layer';
+import {i18n} from '@lib/langPack';
+import {SUGGESTED_POST_WAIT_FOR_REWARD_HOURS} from '@appManagers/constants';
+import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import confirmationPopup from '@components/confirmationPopup';
+import Icon from '@components/icon';
+import ripple from '@components/ripple';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
+import type Chat from '@components/chat/chat';
+import SuggestedPostAcceptWithTimePopup from '@components/chat/bubbleParts/suggestedPostAcceptWithTimePopup';
+import {useFormattedCommission} from '@components/chat/bubbleParts/suggestedPostAcceptWithTimePopup/useFormattedCommission';
+import SuggestedPostRejectPopup from '@components/chat/bubbleParts/suggestedPostRejectPopup';
 ripple; // keep
 
 if(import.meta.hot) import.meta.hot.accept();

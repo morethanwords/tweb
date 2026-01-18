@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appDialogsManager from '../../../lib/appDialogsManager';
-import {SliderSuperTab} from '../../slider';
-import {FOLDER_ID_ARCHIVE, REAL_FOLDER_ID} from '../../../lib/appManagers/constants';
-import StoriesList from '../../stories/list';
+import appDialogsManager from '@lib/appDialogsManager';
+import {SliderSuperTab} from '@components/slider';
+import {FOLDER_ID_ARCHIVE, REAL_FOLDER_ID} from '@appManagers/constants';
+import StoriesList from '@components/stories/list';
 import {render} from 'solid-js/web';
-import {AutonomousDialogList} from '../../autonomousDialogList/dialogs';
+import {AutonomousDialogList} from '@components/autonomousDialogList/dialogs';
 
 export default class AppArchivedTab extends SliderSuperTab {
   private static filterId: REAL_FOLDER_ID = FOLDER_ID_ARCHIVE;

@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {SliderSuperTabEventable} from '../../../sliderTab';
-import PrivacySection from '../../../privacySection';
-import {LangPackKey, i18n} from '../../../../lib/langPack';
-import anchorCallback from '../../../../helpers/dom/anchorCallback';
-import PopupPremium from '../../../popups/premium';
+import {SliderSuperTabEventable} from '@components/sliderTab';
+import PrivacySection from '@components/privacySection';
+import {LangPackKey, i18n} from '@lib/langPack';
+import anchorCallback from '@helpers/dom/anchorCallback';
+import PopupPremium from '@components/popups/premium';
 
 export default class AppPrivacyVoicesTab extends SliderSuperTabEventable {
   public init() {

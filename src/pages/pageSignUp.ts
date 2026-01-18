@@ -4,22 +4,22 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {CancellablePromise} from '../helpers/cancellablePromise';
-import type {InputFile} from '../layer';
-import type {AuthState} from '../types';
-import LoginPage from './loginPage';
-import Page from './page';
-import blurActiveElement from '../helpers/dom/blurActiveElement';
-import rootScope from '../lib/rootScope';
-import InputField from '../components/inputField';
-import PopupElement from '../components/popups';
-import PopupAvatar from '../components/popups/avatar';
-import replaceContent from '../helpers/dom/replaceContent';
-import I18n, {i18n} from '../lib/langPack';
-import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
-import Button from '../components/button';
-import {putPreloader} from '../components/putPreloader';
-import Icon from '../components/icon';
+import type {CancellablePromise} from '@helpers/cancellablePromise';
+import type {InputFile} from '@layer';
+import type {AuthState} from '@types';
+import LoginPage from '@/pages/loginPage';
+import Page from '@/pages/page';
+import blurActiveElement from '@helpers/dom/blurActiveElement';
+import rootScope from '@lib/rootScope';
+import InputField from '@components/inputField';
+import PopupElement from '@components/popups';
+import PopupAvatar from '@components/popups/avatar';
+import replaceContent from '@helpers/dom/replaceContent';
+import I18n, {i18n} from '@lib/langPack';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import Button from '@components/button';
+import {putPreloader} from '@components/putPreloader';
+import Icon from '@components/icon';
 
 let authCode: AuthState.signUp['authCode'] = null;
 

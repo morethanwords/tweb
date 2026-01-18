@@ -7,21 +7,21 @@
 import {createContext, useContext, createSignal, onCleanup, JSX, Show, children, createRoot, Accessor, createEffect, untrack, on} from 'solid-js';
 import {createStore} from 'solid-js/store';
 import {Portal} from 'solid-js/web';
-import classNames from '../../helpers/string/classNames';
-import {IconTsx} from '../iconTsx';
-import RippleElement from '../rippleElement';
-import {FormatterArguments, i18n, LangPackKey} from '../../lib/langPack';
-import {AppManagers} from '../../lib/managers';
-import overlayCounter from '../../helpers/overlayCounter';
-import {getMiddleware, MiddlewareHelper} from '../../helpers/middleware';
-import findUpClassName from '../../helpers/dom/findUpClassName';
-import blurActiveElement from '../../helpers/dom/blurActiveElement';
-import animationIntersector from '../animationIntersector';
-import appNavigationController, {NavigationItem} from '../appNavigationController';
-import {addFullScreenListener, getFullScreenElement} from '../../helpers/dom/fullScreen';
-import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-import MarkupTooltip from '../chat/markupTooltip';
-import Button from '../buttonTsx';
+import classNames from '@helpers/string/classNames';
+import {IconTsx} from '@components/iconTsx';
+import RippleElement from '@components/rippleElement';
+import {FormatterArguments, i18n, LangPackKey} from '@lib/langPack';
+import {AppManagers} from '@lib/managers';
+import overlayCounter from '@helpers/overlayCounter';
+import {getMiddleware, MiddlewareHelper} from '@helpers/middleware';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import blurActiveElement from '@helpers/dom/blurActiveElement';
+import animationIntersector from '@components/animationIntersector';
+import appNavigationController, {NavigationItem} from '@components/appNavigationController';
+import {addFullScreenListener, getFullScreenElement} from '@helpers/dom/fullScreen';
+import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
+import MarkupTooltip from '@components/chat/markupTooltip';
+import Button from '@components/buttonTsx';
 
 export type PopupButton = {
   text?: HTMLElement | DocumentFragment | Text,
@@ -546,7 +546,7 @@ export default PopupElement;
 /*
 Пример использования PopupElementTsx:
 
-import PopupElementTsx from './indexTsx';
+import PopupElementTsx from '@components/popups/indexTsx';
 
 // Простой попап с заголовком и кнопками (чистый JSX)
 <PopupElementTsx

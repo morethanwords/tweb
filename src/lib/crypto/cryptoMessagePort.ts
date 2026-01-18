@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {CryptoMethods} from './crypto_methods';
-import SuperMessagePort from '../superMessagePort';
-import {MOUNT_CLASS_TO} from '../../config/debug';
-import {IS_WORKER} from '../../helpers/context';
+import {CryptoMethods} from '@lib/crypto/crypto_methods';
+import SuperMessagePort from '@lib/superMessagePort';
+import {MOUNT_CLASS_TO} from '@config/debug';
+import {IS_WORKER} from '@helpers/context';
 
 
 type CryptoEvent = {

@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {MyDocument} from '../lib/appManagers/appDocsManager';
-import type {MyPhoto} from '../lib/appManagers/appPhotosManager';
-import {PhotoSize} from '../layer';
-// import appDownloadManager from "../lib/appManagers/appDownloadManager";
-import getPreviewURLFromBytes from './bytes/getPreviewURLFromBytes';
+import type {MyDocument} from '@appManagers/appDocsManager';
+import type {MyPhoto} from '@appManagers/appPhotosManager';
+import {PhotoSize} from '@layer';
+// import appDownloadManager from "@lib/appManagers/appDownloadManager";
+import getPreviewURLFromBytes from '@helpers/bytes/getPreviewURLFromBytes';
 
 export default function getPreviewURLFromThumb(photo: MyPhoto | MyDocument, thumb: PhotoSize.photoCachedSize | PhotoSize.photoStrippedSize, isSticker = false) {
   // const cacheContext = appDownloadManager.getCacheContext(photo, thumb.type);

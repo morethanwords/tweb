@@ -5,26 +5,26 @@
  */
 
 import PopupElement from '.';
-import cardFormattingPatterns from '../../helpers/cards/cardFormattingPatterns';
-import {detectUnifiedCardBrand} from '../../helpers/cards/cardBrands';
-import formatInputValueByPattern from '../../helpers/cards/formatInputValueByPattern';
-import {validateAnyIncomplete, validateCardExpiry, validateCardNumber} from '../../helpers/cards/validateCard';
-import placeCaretAtEnd from '../../helpers/dom/placeCaretAtEnd';
-import {renderImageFromUrlPromise} from '../../helpers/dom/renderImageFromUrl';
-import noop from '../../helpers/noop';
-import {PaymentFormMethod, PaymentsPaymentForm, User} from '../../layer';
-import {LangPackKey, _i18n} from '../../lib/langPack';
-import CheckboxField from '../checkboxField';
-import confirmationPopup from '../confirmationPopup';
-import CountryInputField from '../countryInputField';
-import InputField, {InputFieldOptions, InputState} from '../inputField';
-import Row from '../row';
-import {getPaymentBrandIconPath, PaymentButton, PaymentsCredentialsToken} from './payment';
-import {createVerificationIframe} from './paymentVerification';
-import {PasswordInputHelpers} from '../passwordInputField';
-import SettingSection from '../settingSection';
-import TelegramWebView from '../telegramWebView';
-import {formatPhoneNumber} from '../../helpers/formatPhoneNumber';
+import cardFormattingPatterns from '@helpers/cards/cardFormattingPatterns';
+import {detectUnifiedCardBrand} from '@helpers/cards/cardBrands';
+import formatInputValueByPattern from '@helpers/cards/formatInputValueByPattern';
+import {validateAnyIncomplete, validateCardExpiry, validateCardNumber} from '@helpers/cards/validateCard';
+import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
+import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
+import noop from '@helpers/noop';
+import {PaymentFormMethod, PaymentsPaymentForm, User} from '@layer';
+import {LangPackKey, _i18n} from '@lib/langPack';
+import CheckboxField from '@components/checkboxField';
+import confirmationPopup from '@components/confirmationPopup';
+import CountryInputField from '@components/countryInputField';
+import InputField, {InputFieldOptions, InputState} from '@components/inputField';
+import Row from '@components/row';
+import {getPaymentBrandIconPath, PaymentButton, PaymentsCredentialsToken} from '@components/popups/payment';
+import {createVerificationIframe} from '@components/popups/paymentVerification';
+import {PasswordInputHelpers} from '@components/passwordInputField';
+import SettingSection from '@components/settingSection';
+import TelegramWebView from '@components/telegramWebView';
+import {formatPhoneNumber} from '@helpers/formatPhoneNumber';
 
 export type PaymentCardDetails = {
   cardNumber: string;

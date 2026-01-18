@@ -1,4 +1,4 @@
-import {AnyFunction} from '../../types';
+import {AnyFunction} from '@types';
 import {untrack} from 'solid-js';
 
 export default function untrackActions<T extends Record<string, AnyFunction>>(actions: T) {

@@ -1,6 +1,6 @@
 // * Jolly Cobra's schedulers
 
-import {AnyToVoidFunction} from '../../types';
+import {AnyToVoidFunction} from '@types';
 
 export default function throttle<F extends AnyToVoidFunction>(
   fn: F,

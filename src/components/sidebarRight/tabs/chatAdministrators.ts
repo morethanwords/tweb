@@ -4,23 +4,23 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import deferredPromise from '../../../helpers/cancellablePromise';
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import createParticipantContextMenu from '../../../helpers/dom/createParticipantContextMenu';
-import {ChannelParticipant, Chat, ChatFull, ChatParticipant} from '../../../layer';
-import hasRights from '../../../lib/appManagers/utils/chats/hasRights';
-import {i18n} from '../../../lib/langPack';
-import rootScope from '../../../lib/rootScope';
-import AppSelectPeers from '../../appSelectPeers';
-import ButtonCorner from '../../buttonCorner';
-import CheckboxField from '../../checkboxField';
-import PopupElement from '../../popups';
-import PopupPickUser from '../../popups/pickUser';
-import Row from '../../row';
-import SettingSection from '../../settingSection';
-import {SliderSuperTabEventable} from '../../sliderTab';
-import wrapPeerTitle from '../../wrappers/peerTitle';
-import AppUserPermissionsTab from './userPermissions';
+import deferredPromise from '@helpers/cancellablePromise';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import createParticipantContextMenu from '@helpers/dom/createParticipantContextMenu';
+import {ChannelParticipant, Chat, ChatFull, ChatParticipant} from '@layer';
+import hasRights from '@appManagers/utils/chats/hasRights';
+import {i18n} from '@lib/langPack';
+import rootScope from '@lib/rootScope';
+import AppSelectPeers from '@components/appSelectPeers';
+import ButtonCorner from '@components/buttonCorner';
+import CheckboxField from '@components/checkboxField';
+import PopupElement from '@components/popups';
+import PopupPickUser from '@components/popups/pickUser';
+import Row from '@components/row';
+import SettingSection from '@components/settingSection';
+import {SliderSuperTabEventable} from '@components/sliderTab';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
+import AppUserPermissionsTab from '@components/sidebarRight/tabs/userPermissions';
 
 export function createSelectorForParticipants(options: ConstructorParameters<typeof AppSelectPeers>[0]) {
   const deferred = deferredPromise<void>();

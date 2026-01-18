@@ -1,5 +1,5 @@
 import {onCleanup} from 'solid-js';
-import {requestRAF} from '../helpers/solid/requestRAF';
+import {requestRAF} from '@helpers/solid/requestRAF';
 
 
 type ResizeCallbackArgs = {

@@ -4,34 +4,34 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-import {formatTime, ONE_DAY} from '../../helpers/date';
-import htmlToSpan from '../../helpers/dom/htmlToSpan';
-import setInnerHTML, {setDirection} from '../../helpers/dom/setInnerHTML';
-import {wrapCallDuration} from './wrapDuration';
-import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
-import {ForumTopic, Message, MessageAction, MessageEntity, MessageMedia, MessageReplyHeader, StarGift, TextWithEntities} from '../../layer';
-import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
-import I18n, {FormatterArgument, FormatterArguments, i18n, join, langPack, LangPackKey, _i18n} from '../../lib/langPack';
-import {GENERAL_TOPIC_ID} from '../../lib/appManagers/constants';
-import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
-import wrapPlainText from '../../lib/richTextProcessor/wrapPlainText';
-import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
-import rootScope from '../../lib/rootScope';
-import topicAvatar from '../topicAvatar';
-import {wrapCustomEmojiAwaited} from './customEmoji';
-import getPeerTitle from './getPeerTitle';
-import wrapJoinVoiceChatAnchor from './joinVoiceChatAnchor';
-import {WrapMessageActionTextOptions} from './messageActionTextNew';
-import wrapMessageForReply, {WrapMessageForReplyOptions} from './messageForReply';
-import wrapPeerTitle from './peerTitle';
-import shouldDisplayGiftCodeAsGift from '../../helpers/shouldDisplayGiftCodeAsGift';
-import apiManagerProxy from '../../lib/apiManagerProxy';
-import Icon from '../icon';
-import formatStarsAmount from '../../lib/appManagers/utils/payments/formatStarsAmount';
-import {getPriceChangedActionMessageLangParams} from '../../lib/lang';
-import {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
-import {getCollectibleName} from '../../lib/appManagers/utils/gifts/getCollectibleName';
+import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
+import {formatTime, ONE_DAY} from '@helpers/date';
+import htmlToSpan from '@helpers/dom/htmlToSpan';
+import setInnerHTML, {setDirection} from '@helpers/dom/setInnerHTML';
+import {wrapCallDuration} from '@components/wrappers/wrapDuration';
+import paymentsWrapCurrencyAmount from '@helpers/paymentsWrapCurrencyAmount';
+import {ForumTopic, Message, MessageAction, MessageEntity, MessageMedia, MessageReplyHeader, StarGift, TextWithEntities} from '@layer';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
+import I18n, {FormatterArgument, FormatterArguments, i18n, join, langPack, LangPackKey, _i18n} from '@lib/langPack';
+import {GENERAL_TOPIC_ID} from '@appManagers/constants';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import wrapPlainText from '@lib/richTextProcessor/wrapPlainText';
+import wrapRichText from '@lib/richTextProcessor/wrapRichText';
+import rootScope from '@lib/rootScope';
+import topicAvatar from '@components/topicAvatar';
+import {wrapCustomEmojiAwaited} from '@components/wrappers/customEmoji';
+import getPeerTitle from '@components/wrappers/getPeerTitle';
+import wrapJoinVoiceChatAnchor from '@components/wrappers/joinVoiceChatAnchor';
+import {WrapMessageActionTextOptions} from '@components/wrappers/messageActionTextNew';
+import wrapMessageForReply, {WrapMessageForReplyOptions} from '@components/wrappers/messageForReply';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
+import shouldDisplayGiftCodeAsGift from '@helpers/shouldDisplayGiftCodeAsGift';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import Icon from '@components/icon';
+import formatStarsAmount from '@appManagers/utils/payments/formatStarsAmount';
+import {getPriceChangedActionMessageLangParams} from '@lib/lang';
+import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
+import {getCollectibleName} from '@appManagers/utils/gifts/getCollectibleName';
 
 async function wrapLinkToMessage(options: WrapMessageForReplyOptions) {
   const wrapped = await wrapMessageForReply(options);

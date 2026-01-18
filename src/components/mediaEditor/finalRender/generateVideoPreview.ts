@@ -1,10 +1,10 @@
 import {unwrap} from 'solid-js/store';
-import {useCropOffset} from '../canvas/useCropOffset';
-import useProcessPoint from '../canvas/useProcessPoint';
-import {useMediaEditorContext} from '../context';
-import {snapToViewport} from '../utils';
-import drawStickerLayer from './drawStickerLayer';
-import drawTextLayer from './drawTextLayer';
+import {useCropOffset} from '@components/mediaEditor/canvas/useCropOffset';
+import useProcessPoint from '@components/mediaEditor/canvas/useProcessPoint';
+import {useMediaEditorContext} from '@components/mediaEditor/context';
+import {snapToViewport} from '@components/mediaEditor/utils';
+import drawStickerLayer from '@components/mediaEditor/finalRender/drawStickerLayer';
+import drawTextLayer from '@components/mediaEditor/finalRender/drawTextLayer';
 
 
 type Args = {

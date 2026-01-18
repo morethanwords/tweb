@@ -1,5 +1,5 @@
-import {getXIndex} from './utils';
-import {TChartUnitOptions} from './types';
+import {getXIndex} from '@lib/tchart/utils';
+import {TChartUnitOptions} from '@lib/tchart/types';
 
 type C = {[key in `ox_${string}`]: number};
 export type TChartAxisXItem = {

@@ -1,6 +1,6 @@
 import {createMemo} from 'solid-js';
-import rootScope from '../lib/rootScope';
-import {MyPromoData} from '../lib/appManagers/appPromoManager';
+import rootScope from '@lib/rootScope';
+import {MyPromoData} from '@appManagers/appPromoManager';
 import {createStore, reconcile} from 'solid-js/store';
 
 const [promoData, setPromoData] = createStore<MyPromoData>({pendingSuggestions: []});

@@ -4,20 +4,20 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import readBlobAsUint8Array from '../../helpers/blob/readBlobAsUint8Array';
-import bufferConcats from '../../helpers/bytes/bufferConcats';
-import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
-import tryPatchMp4 from '../../helpers/fixChromiumMp4';
-import debounce, {DebounceReturnType} from '../../helpers/schedulers/debounce';
-import pause from '../../helpers/schedulers/pause';
-import {InputFileLocation} from '../../layer';
-import {getCurrentAccountFromURL} from '../accounts/getCurrentAccountFromURL';
-import {ActiveAccountNumber} from '../accounts/types';
-import CacheStorageController from '../files/cacheStorage';
-import {DownloadOptions, MyUploadFile} from '../appManagers/apiFileManager';
-import {getMtprotoMessagePort, log, serviceMessagePort} from './index.service';
-import {ServiceRequestFilePartTaskPayload} from './serviceMessagePort';
-import timeout from './timeout';
+import readBlobAsUint8Array from '@helpers/blob/readBlobAsUint8Array';
+import bufferConcats from '@helpers/bytes/bufferConcats';
+import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
+import tryPatchMp4 from '@helpers/fixChromiumMp4';
+import debounce, {DebounceReturnType} from '@helpers/schedulers/debounce';
+import pause from '@helpers/schedulers/pause';
+import {InputFileLocation} from '@layer';
+import {getCurrentAccountFromURL} from '@lib/accounts/getCurrentAccountFromURL';
+import {ActiveAccountNumber} from '@lib/accounts/types';
+import CacheStorageController from '@lib/files/cacheStorage';
+import {DownloadOptions, MyUploadFile} from '@appManagers/apiFileManager';
+import {getMtprotoMessagePort, log, serviceMessagePort} from '@lib/serviceWorker/index.service';
+import {ServiceRequestFilePartTaskPayload} from '@lib/serviceWorker/serviceMessagePort';
+import timeout from '@lib/serviceWorker/timeout';
 
 const ctx = self as any as ServiceWorkerGlobalScope;
 

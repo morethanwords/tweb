@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {Photo, StoryItem, WallPaper} from '../../layer';
-import bytesToHex from '../../helpers/bytes/bytesToHex';
-import deepEqual from '../../helpers/object/deepEqual';
-import {AppManager} from '../appManagers/manager';
-import makeError from '../../helpers/makeError';
+import type {Photo, StoryItem, WallPaper} from '@layer';
+import bytesToHex from '@helpers/bytes/bytesToHex';
+import deepEqual from '@helpers/object/deepEqual';
+import {AppManager} from '@appManagers/manager';
+import makeError from '@helpers/makeError';
 
 export type ReferenceContext =
   ReferenceContext.referenceContextProfilePhoto |

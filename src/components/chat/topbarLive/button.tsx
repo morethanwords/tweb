@@ -1,7 +1,7 @@
 import {Accessor, Ref, Show, createEffect, createSignal, on} from 'solid-js';
-import {cnTopbarLive} from './topbarLive.cn';
-import liteMode from '../../../helpers/liteMode';
-import {i18n} from '../../../lib/langPack';
+import {cnTopbarLive} from '@components/chat/topbarLive/topbarLive.cn';
+import liteMode from '@helpers/liteMode';
+import {i18n} from '@lib/langPack';
 
 interface TopbarLiveButtonProps {
   animationTrigger: Accessor<PeerId>,

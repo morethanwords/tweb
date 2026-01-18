@@ -9,8 +9,8 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import {nextRandomUint} from '../../helpers/random';
-import ulongFromInts from '../../helpers/long/ulongFromInts';
+import {nextRandomUint} from '@helpers/random';
+import ulongFromInts from '@helpers/long/ulongFromInts';
 
 /*
 let lol: any = {};

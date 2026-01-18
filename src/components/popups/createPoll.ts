@@ -4,25 +4,25 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type Chat from '../chat/chat';
+import type Chat from '@components/chat/chat';
 import PopupElement from '.';
-import CheckboxField from '../checkboxField';
-import InputField from '../inputField';
-import RadioField from '../radioField';
-import Scrollable from '../scrollable';
-import SendContextMenu from '../chat/sendContextMenu';
-import I18n, {_i18n} from '../../lib/langPack';
-import findUpTag from '../../helpers/dom/findUpTag';
-import cancelEvent from '../../helpers/dom/cancelEvent';
-import isInputEmpty from '../../helpers/dom/isInputEmpty';
-import whichChild from '../../helpers/dom/whichChild';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import {Poll, PollAnswer} from '../../layer';
-import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
-import confirmationPopup from '../confirmationPopup';
-import ButtonIcon from '../buttonIcon';
-import {ChatType} from '../chat/chat';
-import {PAYMENT_REJECTED} from '../chat/paidMessagesInterceptor';
+import CheckboxField from '@components/checkboxField';
+import InputField from '@components/inputField';
+import RadioField from '@components/radioField';
+import Scrollable from '@components/scrollable';
+import SendContextMenu from '@components/chat/sendContextMenu';
+import I18n, {_i18n} from '@lib/langPack';
+import findUpTag from '@helpers/dom/findUpTag';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import isInputEmpty from '@helpers/dom/isInputEmpty';
+import whichChild from '@helpers/dom/whichChild';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import {Poll, PollAnswer} from '@layer';
+import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
+import confirmationPopup from '@components/confirmationPopup';
+import ButtonIcon from '@components/buttonIcon';
+import {ChatType} from '@components/chat/chat';
+import {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
 
 const MAX_LENGTH_QUESTION = 255;
 const MAX_LENGTH_OPTION = 100;

@@ -1,5 +1,5 @@
-import {providedTabs} from './providedTabs';
-import {SuperTabProvider} from './superTabProvider';
+import {providedTabs} from '@components/solidJsTabs/providedTabs';
+import {SuperTabProvider} from '@components/solidJsTabs/superTabProvider';
 import {
   AppDirectMessagesTab,
   AppNotificationsTab,
@@ -7,7 +7,7 @@ import {
   AppPasscodeLockTab,
   AppPrivacyMessagesTab,
   AppPasskeysTab
-} from './tabs';
+} from '@components/solidJsTabs/tabs';
 
 
 SuperTabProvider.allTabs = providedTabs;

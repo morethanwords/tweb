@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {doubleRaf} from '../schedulers';
+import {doubleRaf} from '@helpers/schedulers';
 
 export default function disableTransition(elements: HTMLElement[]) {
   elements.forEach((el) => el.classList.add('no-transition'));

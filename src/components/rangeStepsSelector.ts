@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {Middleware} from '../helpers/middleware';
-import safeAssign from '../helpers/object/safeAssign';
-import RangeSelector from './rangeSelector';
+import {Middleware} from '@helpers/middleware';
+import safeAssign from '@helpers/object/safeAssign';
+import RangeSelector from '@components/rangeSelector';
 
 type RangeStep<T extends any = any> = [HTMLElement | string, T];
 export default class RangeStepsSelector<T extends any = any> {

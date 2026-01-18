@@ -1,13 +1,13 @@
-import {useFullPeer} from '../stores/fullPeers';
+import {useFullPeer} from '@stores/fullPeers';
 import {createEffect, createMemo} from 'solid-js';
-import usePeerLanguage from '../stores/peerLanguage';
-import useDynamicCachedValue from '../helpers/solid/useDynamicCachedValue';
-import I18n from '../lib/langPack';
-import usePremium from '../stores/premium';
-import {useAppSettings} from '../stores/appSettings';
-import {usePeer} from '../stores/peers';
-import {Chat} from '../layer';
-import {useAppState} from '../stores/appState';
+import usePeerLanguage from '@stores/peerLanguage';
+import useDynamicCachedValue from '@helpers/solid/useDynamicCachedValue';
+import I18n from '@lib/langPack';
+import usePremium from '@stores/premium';
+import {useAppSettings} from '@stores/appSettings';
+import {usePeer} from '@stores/peers';
+import {Chat} from '@layer';
+import {useAppState} from '@stores/appState';
 
 function _usePeerTranslation(peerId: PeerId) {
   const [appSettings, setAppSettings] = useAppSettings();

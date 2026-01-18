@@ -4,42 +4,42 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {SliderSuperTab} from '../../slider';
-import ButtonMenuToggle from '../../buttonMenuToggle';
-import AppPrivacyAndSecurityTab from './privacyAndSecurity';
-import AppGeneralSettingsTab from './generalSettings';
-import AppEditProfileTab from './editProfile';
-import AppChatFoldersTab from './chatFolders';
-import {AppNotificationsTab} from '../../solidJsTabs';
-import AppLanguageTab from './language';
-import lottieLoader from '../../../lib/rlottie/lottieLoader';
-import PopupPeer from '../../popups/peer';
-import AppDataAndStorageTab from './dataAndStorage';
-import ButtonIcon from '../../buttonIcon';
-import rootScope from '../../../lib/rootScope';
-import Row from '../../row';
-import AppActiveSessionsTab from './activeSessions';
-import {i18n, LangPackKey} from '../../../lib/langPack';
-import {SliderSuperTabConstructable, SliderSuperTabEventable} from '../../sliderTab';
-import PopupAvatar from '../../popups/avatar';
-import {AccountAuthorizations, Authorization} from '../../../layer';
-import PopupElement from '../../popups';
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import SettingSection from '../../settingSection';
-import AppStickersAndEmojiTab from './stickersAndEmoji';
-import ButtonCorner from '../../buttonCorner';
-import PopupPremium from '../../popups/premium';
-import appImManager from '../../../lib/appImManager';
-import apiManagerProxy from '../../../lib/apiManagerProxy';
+import {SliderSuperTab} from '@components/slider';
+import ButtonMenuToggle from '@components/buttonMenuToggle';
+import AppPrivacyAndSecurityTab from '@components/sidebarLeft/tabs/privacyAndSecurity';
+import AppGeneralSettingsTab from '@components/sidebarLeft/tabs/generalSettings';
+import AppEditProfileTab from '@components/sidebarLeft/tabs/editProfile';
+import AppChatFoldersTab from '@components/sidebarLeft/tabs/chatFolders';
+import {AppNotificationsTab} from '@components/solidJsTabs';
+import AppLanguageTab from '@components/sidebarLeft/tabs/language';
+import lottieLoader from '@lib/rlottie/lottieLoader';
+import PopupPeer from '@components/popups/peer';
+import AppDataAndStorageTab from '@components/sidebarLeft/tabs/dataAndStorage';
+import ButtonIcon from '@components/buttonIcon';
+import rootScope from '@lib/rootScope';
+import Row from '@components/row';
+import AppActiveSessionsTab from '@components/sidebarLeft/tabs/activeSessions';
+import {i18n, LangPackKey} from '@lib/langPack';
+import {SliderSuperTabConstructable, SliderSuperTabEventable} from '@components/sliderTab';
+import PopupAvatar from '@components/popups/avatar';
+import {AccountAuthorizations, Authorization} from '@layer';
+import PopupElement from '@components/popups';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import SettingSection from '@components/settingSection';
+import AppStickersAndEmojiTab from '@components/sidebarLeft/tabs/stickersAndEmoji';
+import ButtonCorner from '@components/buttonCorner';
+import PopupPremium from '@components/popups/premium';
+import appImManager from '@lib/appImManager';
+import apiManagerProxy from '@lib/apiManagerProxy';
 import {createEffect, createRoot} from 'solid-js';
-import useStars from '../../../stores/stars';
-import PopupStars from '../../popups/stars';
-import {renderPeerProfile} from '../../peerProfile';
-import SolidJSHotReloadGuardProvider from '../../../lib/solidjs/hotReloadGuardProvider';
-import PopupPickUser from '../../popups/pickUser';
-import PopupSendGift from '../../popups/sendGift';
-import {formatNanoton} from '../../../helpers/paymentsWrapCurrencyAmount';
-import showLogOutPopup from '../../popups/logOut';
+import useStars from '@stores/stars';
+import PopupStars from '@components/popups/stars';
+import {renderPeerProfile} from '@components/peerProfile';
+import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import PopupPickUser from '@components/popups/pickUser';
+import PopupSendGift from '@components/popups/sendGift';
+import {formatNanoton} from '@helpers/paymentsWrapCurrencyAmount';
+import showLogOutPopup from '@components/popups/logOut';
 
 export default class AppSettingsTab extends SliderSuperTab {
   private buttons: {

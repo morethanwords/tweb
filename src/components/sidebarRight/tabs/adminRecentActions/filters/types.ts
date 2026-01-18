@@ -1,4 +1,4 @@
-import {AdminLogFilterFlags} from '../../../../../lib/appManagers/appChatsManager';
+import {AdminLogFilterFlags} from '@appManagers/appChatsManager';
 
 export type CommittedFilters = {
   search?: string;

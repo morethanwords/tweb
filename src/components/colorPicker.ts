@@ -1,8 +1,8 @@
-import {ColorHsla, ColorRgba, hexaToHsla, hslaToRgba, rgbaToHexa as rgbaToHexa, rgbaToHsla} from '../helpers/color';
-import createElementFromMarkup from '../helpers/createElementFromMarkup';
-import attachGrabListeners from '../helpers/dom/attachGrabListeners';
-import clamp from '../helpers/number/clamp';
-import InputField, {InputState} from './inputField';
+import {ColorHsla, ColorRgba, hexaToHsla, hslaToRgba, rgbaToHexa as rgbaToHexa, rgbaToHsla} from '@helpers/color';
+import createElementFromMarkup from '@helpers/createElementFromMarkup';
+import attachGrabListeners from '@helpers/dom/attachGrabListeners';
+import clamp from '@helpers/number/clamp';
+import InputField, {InputState} from '@components/inputField';
 
 export type ColorPickerColor = {
   hsl: string;

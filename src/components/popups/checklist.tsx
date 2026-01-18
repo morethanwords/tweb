@@ -1,25 +1,25 @@
 import PopupElement from '.';
 
-import Chat from '../chat/chat';
-import {I18nTsx} from '../../helpers/solid/i18n';
+import Chat from '@components/chat/chat';
+import {I18nTsx} from '@helpers/solid/i18n';
 
-import css from './checklist.module.scss';
+import css from '@components/popups/checklist.module.scss';
 import {createEffect, createSignal, For, on} from 'solid-js';
-import InputField from '../inputField';
-import Row from '../rowTsx';
-import CheckboxFieldTsx from '../checkboxFieldTsx';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
-import {PAYMENT_REJECTED} from '../chat/paidMessagesInterceptor';
-import {InputMedia, Message, MessageMedia, TodoItem} from '../../layer';
-import safeAssign from '../../helpers/object/safeAssign';
-import {wrapEmojiTextWithEntities} from '../../lib/richTextProcessor/wrapEmojiText';
-import {ButtonIconTsx} from '../buttonIconTsx';
-import Scrollable from '../scrollable2';
-import Button from '../buttonTsx';
-import classNames from '../../helpers/string/classNames';
-import {fastRaf} from '../../helpers/schedulers';
-import {toastNew} from '../toast';
+import InputField from '@components/inputField';
+import Row from '@components/rowTsx';
+import CheckboxFieldTsx from '@components/checkboxFieldTsx';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
+import {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
+import {InputMedia, Message, MessageMedia, TodoItem} from '@layer';
+import safeAssign from '@helpers/object/safeAssign';
+import {wrapEmojiTextWithEntities} from '@lib/richTextProcessor/wrapEmojiText';
+import {ButtonIconTsx} from '@components/buttonIconTsx';
+import Scrollable from '@components/scrollable2';
+import Button from '@components/buttonTsx';
+import classNames from '@helpers/string/classNames';
+import {fastRaf} from '@helpers/schedulers';
+import {toastNew} from '@components/toast';
 
 export class PopupChecklist extends PopupElement {
   private chat: Chat;

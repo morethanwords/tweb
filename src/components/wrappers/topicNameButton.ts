@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import wrapTopicThreadAnchor from '../../lib/richTextProcessor/wrapTopicThreadAnchor';
-import {avatarNew} from '../avatarNew';
-import Icon from '../icon';
-import wrapPeerTitle from './peerTitle';
+import wrapTopicThreadAnchor from '@lib/richTextProcessor/wrapTopicThreadAnchor';
+import {avatarNew} from '@components/avatarNew';
+import Icon from '@components/icon';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
 
 export default async function wrapTopicNameButton(
   options: {

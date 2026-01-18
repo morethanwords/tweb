@@ -4,33 +4,33 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import IS_SCREEN_SHARING_SUPPORTED from '../../environment/screenSharingSupport';
-import {IS_MOBILE} from '../../environment/userAgent';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import ControlsHover from '../../helpers/dom/controlsHover';
-import findUpClassName from '../../helpers/dom/findUpClassName';
-import {addFullScreenListener, cancelFullScreen, isFullScreen, requestFullScreen} from '../../helpers/dom/fullScreen';
-import replaceContent from '../../helpers/dom/replaceContent';
-import safePlay from '../../helpers/dom/safePlay';
-import MovablePanel from '../../helpers/movablePanel';
-import onMediaLoad from '../../helpers/onMediaLoad';
-import themeController from '../../helpers/themeController';
-import toggleClassName from '../../helpers/toggleClassName';
-import CallInstance from '../../lib/calls/callInstance';
-import CALL_STATE from '../../lib/calls/callState';
-import I18n, {i18n} from '../../lib/langPack';
-import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
-import animationIntersector from '../animationIntersector';
-import {avatarNew} from '../avatarNew';
-import ButtonIcon from '../buttonIcon';
-import GroupCallMicrophoneIconMini from '../groupCall/microphoneIconMini';
-import {MovableState} from '../movableElement';
-import PeerTitle from '../peerTitle';
-import PopupElement from '../popups';
-import SetTransition from '../singleTransition';
-import makeButton from './button';
-import CallDescriptionElement from './description';
-import callVideoCanvasBlur from './videoCanvasBlur';
+import IS_SCREEN_SHARING_SUPPORTED from '@environment/screenSharingSupport';
+import {IS_MOBILE} from '@environment/userAgent';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import ControlsHover from '@helpers/dom/controlsHover';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import {addFullScreenListener, cancelFullScreen, isFullScreen, requestFullScreen} from '@helpers/dom/fullScreen';
+import replaceContent from '@helpers/dom/replaceContent';
+import safePlay from '@helpers/dom/safePlay';
+import MovablePanel from '@helpers/movablePanel';
+import onMediaLoad from '@helpers/onMediaLoad';
+import themeController from '@helpers/themeController';
+import toggleClassName from '@helpers/toggleClassName';
+import CallInstance from '@lib/calls/callInstance';
+import CALL_STATE from '@lib/calls/callState';
+import I18n, {i18n} from '@lib/langPack';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import animationIntersector from '@components/animationIntersector';
+import {avatarNew} from '@components/avatarNew';
+import ButtonIcon from '@components/buttonIcon';
+import GroupCallMicrophoneIconMini from '@components/groupCall/microphoneIconMini';
+import {MovableState} from '@components/movableElement';
+import PeerTitle from '@components/peerTitle';
+import PopupElement from '@components/popups';
+import SetTransition from '@components/singleTransition';
+import makeButton from '@components/call/button';
+import CallDescriptionElement from '@components/call/description';
+import callVideoCanvasBlur from '@components/call/videoCanvasBlur';
 
 const className = 'call';
 

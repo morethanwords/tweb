@@ -5,23 +5,23 @@
  */
 
 import PopupElement from '.';
-import {Message, Reaction, ReactionCount} from '../../layer';
-import ReactionsElement from '../chat/reactions';
-import {horizontalMenu} from '../horizontalMenu';
-import Scrollable from '../scrollable';
-import ScrollableLoader from '../../helpers/scrollableLoader';
-import appDialogsManager, {DialogDom, DialogElement} from '../../lib/appDialogsManager';
-import replaceContent from '../../helpers/dom/replaceContent';
-import wrapSticker from '../wrappers/sticker';
-import ReactionElement, {ReactionLayoutType} from '../chat/reaction';
-import getUserStatusString from '../wrappers/getUserStatusString';
-import {MediaSize, makeMediaSize} from '../../helpers/mediaSize';
-import wrapCustomEmoji from '../wrappers/customEmoji';
-import SettingSection from '../settingSection';
-import {formatFullSentTime} from '../../helpers/date';
-import {Middleware} from '../../helpers/middleware';
-import rootScope from '../../lib/rootScope';
-import Icon from '../icon';
+import {Message, Reaction, ReactionCount} from '@layer';
+import ReactionsElement from '@components/chat/reactions';
+import {horizontalMenu} from '@components/horizontalMenu';
+import Scrollable from '@components/scrollable';
+import ScrollableLoader from '@helpers/scrollableLoader';
+import appDialogsManager, {DialogDom, DialogElement} from '@lib/appDialogsManager';
+import replaceContent from '@helpers/dom/replaceContent';
+import wrapSticker from '@components/wrappers/sticker';
+import ReactionElement, {ReactionLayoutType} from '@components/chat/reaction';
+import getUserStatusString from '@components/wrappers/getUserStatusString';
+import {MediaSize, makeMediaSize} from '@helpers/mediaSize';
+import wrapCustomEmoji from '@components/wrappers/customEmoji';
+import SettingSection from '@components/settingSection';
+import {formatFullSentTime} from '@helpers/date';
+import {Middleware} from '@helpers/middleware';
+import rootScope from '@lib/rootScope';
+import Icon from '@components/icon';
 
 const size = 24;
 const _mediaSize = makeMediaSize(size, size);

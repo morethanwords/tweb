@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {RLottieIconItemPartOptions} from '../../lib/rlottie/rlottieIcon';
+import {RLottieIconItemPartOptions} from '@lib/rlottie/rlottieIcon';
 import {GROUP_CALL_MICROPHONE_BUTTON_STATE} from '.';
-import {SuperRLottieIcon} from '../superIcon';
+import {SuperRLottieIcon} from '@components/superIcon';
 
 export default class GroupCallMicrophoneIcon extends SuperRLottieIcon<{
   PartState: GROUP_CALL_MICROPHONE_BUTTON_STATE

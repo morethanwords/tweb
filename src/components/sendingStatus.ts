@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {_tgico} from '../helpers/tgico';
-import {Message} from '../layer';
-import Icon from './icon';
-/* import findUpClassName from "../helpers/dom/findUpClassName";
-import rootScope from "../lib/rootScope";
-import Transition from "./transition"; */
+import {_tgico} from '@helpers/tgico';
+import {Message} from '@layer';
+import Icon from '@components/icon';
+/* import findUpClassName from "@helpers/dom/findUpClassName";
+import rootScope from "@lib/rootScope";
+import Transition from "@components/transition"; */
 
 export enum SENDING_STATUS {
   Error = -1,

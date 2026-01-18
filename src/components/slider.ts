@@ -4,15 +4,15 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {horizontalMenu} from './horizontalMenu';
-import TransitionSlider from './transition';
-import appNavigationController, {NavigationItem} from './appNavigationController';
-import SliderSuperTab, {SliderSuperTabConstructable} from './sliderTab';
-import indexOfAndSplice from '../helpers/array/indexOfAndSplice';
-import safeAssign from '../helpers/object/safeAssign';
-import {AppManagers} from '../lib/managers';
-import {getMiddleware, MiddlewareHelper} from '../helpers/middleware';
-import {MaybePromise} from '../types';
+import {horizontalMenu} from '@components/horizontalMenu';
+import TransitionSlider from '@components/transition';
+import appNavigationController, {NavigationItem} from '@components/appNavigationController';
+import SliderSuperTab, {SliderSuperTabConstructable} from '@components/sliderTab';
+import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
+import safeAssign from '@helpers/object/safeAssign';
+import {AppManagers} from '@lib/managers';
+import {getMiddleware, MiddlewareHelper} from '@helpers/middleware';
+import {MaybePromise} from '@types';
 
 const TRANSITION_TIME = 250;
 

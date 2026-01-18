@@ -1,4 +1,4 @@
-import {MessageExtendedMedia, Photo, PhotoSize} from '../../../../layer';
+import {MessageExtendedMedia, Photo, PhotoSize} from '@layer';
 
 export default function generatePhotoForExtendedMediaPreview(media: MessageExtendedMedia.messageExtendedMediaPreview): Photo.photo {
   let thumb = media.thumb as PhotoSize.photoStrippedSize;

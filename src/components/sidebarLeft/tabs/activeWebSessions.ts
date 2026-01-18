@@ -4,18 +4,18 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {formatDateAccordingToTodayNew} from '../../../helpers/date';
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import findUpClassName from '../../../helpers/dom/findUpClassName';
-import toggleDisability from '../../../helpers/dom/toggleDisability';
-import {WebAuthorization} from '../../../layer';
-import {avatarNew} from '../../avatarNew';
-import Button from '../../button';
-import confirmationPopup from '../../confirmationPopup';
-import Row from '../../row';
-import SettingSection from '../../settingSection';
-import {SliderSuperTabEventable} from '../../sliderTab';
-import wrapPeerTitle from '../../wrappers/peerTitle';
+import {formatDateAccordingToTodayNew} from '@helpers/date';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import toggleDisability from '@helpers/dom/toggleDisability';
+import {WebAuthorization} from '@layer';
+import {avatarNew} from '@components/avatarNew';
+import Button from '@components/button';
+import confirmationPopup from '@components/confirmationPopup';
+import Row from '@components/row';
+import SettingSection from '@components/settingSection';
+import {SliderSuperTabEventable} from '@components/sliderTab';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
 
 export default class AppActiveWebSessionsTab extends SliderSuperTabEventable {
   public async init(sessions: WebAuthorization[]) {

@@ -1,9 +1,9 @@
-import {FontFamily} from '../config/font';
-import type {AppManagers} from '../lib/managers';
-import {getPeerAvatarColorByPeer} from '../lib/appManagers/utils/peers/getPeerColorById';
-import getAbbreviation from '../lib/richTextProcessor/getAbbreviation';
-import drawCircle from './canvas/drawCircle';
-import customProperties from './dom/customProperties';
+import {FontFamily} from '@config/font';
+import type {AppManagers} from '@lib/managers';
+import {getPeerAvatarColorByPeer} from '@appManagers/utils/peers/getPeerColorById';
+import getAbbreviation from '@lib/richTextProcessor/getAbbreviation';
+import drawCircle from '@helpers/canvas/drawCircle';
+import customProperties from '@helpers/dom/customProperties';
 
 let avatarCanvas: HTMLCanvasElement;
 let avatarContext: CanvasRenderingContext2D;

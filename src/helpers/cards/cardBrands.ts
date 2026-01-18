@@ -1,5 +1,5 @@
-import cacheCallback from '../cacheCallback';
-import replaceNonNumber from '../string/replaceNonNumber';
+import cacheCallback from '@helpers/cacheCallback';
+import replaceNonNumber from '@helpers/string/replaceNonNumber';
 
 const CARD_BRAND_REGEXP: {[brand: string]: RegExp} = {
   visa: /^4/,

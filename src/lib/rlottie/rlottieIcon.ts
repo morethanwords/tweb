@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import liteMode from '../../helpers/liteMode';
-import noop from '../../helpers/noop';
-import safeAssign from '../../helpers/object/safeAssign';
-import lottieLoader, {LottieAssetName} from './lottieLoader';
-import type RLottiePlayer from './rlottiePlayer';
-import {RLottieColor} from './rlottiePlayer';
+import liteMode from '@helpers/liteMode';
+import noop from '@helpers/noop';
+import safeAssign from '@helpers/object/safeAssign';
+import lottieLoader, {LottieAssetName} from '@lib/rlottie/lottieLoader';
+import type RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import {RLottieColor} from '@lib/rlottie/rlottiePlayer';
 
 export type RLottieIconOptions = {
   width: number,

@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import I18n, {LangPackKey, FormatterArguments, i18n} from '../../lib/langPack';
-import {SEND_WHEN_ONLINE_TIMESTAMP} from '../../lib/appManagers/constants';
-import Button from '../button';
-import PopupDatePicker from './datePicker';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import I18n, {LangPackKey, FormatterArguments, i18n} from '@lib/langPack';
+import {SEND_WHEN_ONLINE_TIMESTAMP} from '@appManagers/constants';
+import Button from '@components/button';
+import PopupDatePicker from '@components/popups/datePicker';
 
 const getMinDate = () => {
   const date = new Date();

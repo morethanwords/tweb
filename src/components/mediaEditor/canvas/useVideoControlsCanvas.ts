@@ -1,10 +1,10 @@
 import {createEffect, onCleanup} from 'solid-js';
-import deferredPromise from '../../../helpers/cancellablePromise';
-import createMiddleware from '../../../helpers/solid/createMiddleware';
-import {useMediaEditorContext} from '../context';
-import {snapToViewport} from '../utils';
-import createVideoForDrawing from './createVideoForDrawing';
-import styles from './videoControls.module.scss';
+import deferredPromise from '@helpers/cancellablePromise';
+import createMiddleware from '@helpers/solid/createMiddleware';
+import {useMediaEditorContext} from '@components/mediaEditor/context';
+import {snapToViewport} from '@components/mediaEditor/utils';
+import createVideoForDrawing from '@components/mediaEditor/canvas/createVideoForDrawing';
+import styles from '@components/mediaEditor/canvas/videoControls.module.scss';
 
 type Args = {
   getCanvas: () => HTMLCanvasElement;

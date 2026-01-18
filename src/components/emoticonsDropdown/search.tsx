@@ -5,18 +5,18 @@
  */
 
 import {Accessor, createEffect, createSignal, onCleanup, For, on} from 'solid-js';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import placeCaretAtEnd from '../../helpers/dom/placeCaretAtEnd';
-import fastSmoothScroll, {fastSmoothScrollToStart} from '../../helpers/fastSmoothScroll';
-import createMiddleware from '../../helpers/solid/createMiddleware';
-import {EmojiGroup} from '../../layer';
-import {AppEmojiManager} from '../../lib/appManagers/appEmojiManager';
-import {LangPackKey} from '../../lib/langPack';
-import rootScope from '../../lib/rootScope';
-import InputSearch from '../inputSearch';
-import {ScrollableXTsx} from '../stories/list';
-import wrapSticker from '../wrappers/sticker';
-import {AnimationItemGroup} from '../animationIntersector';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
+import fastSmoothScroll, {fastSmoothScrollToStart} from '@helpers/fastSmoothScroll';
+import createMiddleware from '@helpers/solid/createMiddleware';
+import {EmojiGroup} from '@layer';
+import {AppEmojiManager} from '@appManagers/appEmojiManager';
+import {LangPackKey} from '@lib/langPack';
+import rootScope from '@lib/rootScope';
+import InputSearch from '@components/inputSearch';
+import {ScrollableXTsx} from '@components/stories/list';
+import wrapSticker from '@components/wrappers/sticker';
+import {AnimationItemGroup} from '@components/animationIntersector';
 
 /* @refresh reload */
 

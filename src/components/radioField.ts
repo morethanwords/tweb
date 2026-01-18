@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import simulateEvent from '../helpers/dom/dispatchEvent';
-import getDeepProperty from '../helpers/object/getDeepProperty';
-import {LangPackKey, _i18n} from '../lib/langPack';
-import apiManagerProxy from '../lib/apiManagerProxy';
-import rootScope from '../lib/rootScope';
-import Icon from './icon';
+import simulateEvent from '@helpers/dom/dispatchEvent';
+import getDeepProperty from '@helpers/object/getDeepProperty';
+import {LangPackKey, _i18n} from '@lib/langPack';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import rootScope from '@lib/rootScope';
+import Icon from '@components/icon';
 
 export default class RadioField {
   public input: HTMLInputElement;

@@ -9,36 +9,36 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import {TLDeserialization, TLSerialization} from './tl_utils';
-import CryptoWorker from '../crypto/cryptoMessagePort';
-import Schema from './schema';
-import {logger, LogTypes} from '../logger';
-import {DcId, InvokeApiOptions, TrueDcId} from '../../types';
-import longToBytes from '../../helpers/long/longToBytes';
-import MTTransport from './transports/transport';
-import {nextRandomUint, randomBytes, randomLong} from '../../helpers/random';
-import Modes from '../../config/modes';
-import noop from '../../helpers/noop';
-import HTTP from './transports/http';
-import type TcpObfuscated from './transports/tcpObfuscated';
+import {TLDeserialization, TLSerialization} from '@lib/mtproto/tl_utils';
+import CryptoWorker from '@lib/crypto/cryptoMessagePort';
+import Schema from '@lib/mtproto/schema';
+import {logger, LogTypes} from '@lib/logger';
+import {DcId, InvokeApiOptions, TrueDcId} from '@types';
+import longToBytes from '@helpers/long/longToBytes';
+import MTTransport from '@lib/mtproto/transports/transport';
+import {nextRandomUint, randomBytes, randomLong} from '@helpers/random';
+import Modes from '@config/modes';
+import noop from '@helpers/noop';
+import HTTP from '@lib/mtproto/transports/http';
+import type TcpObfuscated from '@lib/mtproto/transports/tcpObfuscated';
 import bigInt from 'big-integer';
-import {ConnectionStatus, ConnectionStatusChange} from './connectionStatus';
-import ctx from '../../environment/ctx';
-import bufferConcats from '../../helpers/bytes/bufferConcats';
-import bytesCmp from '../../helpers/bytes/bytesCmp';
-import bytesToHex from '../../helpers/bytes/bytesToHex';
-import isObject from '../../helpers/object/isObject';
-import forEachReverse from '../../helpers/array/forEachReverse';
-import sortLongsArray from '../../helpers/long/sortLongsArray';
-import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
-import pause from '../../helpers/schedulers/pause';
-import {TimeManager} from './timeManager';
-import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-import makeError from '../../helpers/makeError';
-import {bigIntFromBytes} from '../../helpers/bigInt/bigIntConversion';
-import safeAssign from '../../helpers/object/safeAssign';
-import {MTAuthKey} from './authKey';
-import {MessageKeyUtils} from './messageKeyUtils';
+import {ConnectionStatus, ConnectionStatusChange} from '@lib/mtproto/connectionStatus';
+import ctx from '@environment/ctx';
+import bufferConcats from '@helpers/bytes/bufferConcats';
+import bytesCmp from '@helpers/bytes/bytesCmp';
+import bytesToHex from '@helpers/bytes/bytesToHex';
+import isObject from '@helpers/object/isObject';
+import forEachReverse from '@helpers/array/forEachReverse';
+import sortLongsArray from '@helpers/long/sortLongsArray';
+import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
+import pause from '@helpers/schedulers/pause';
+import {TimeManager} from '@lib/mtproto/timeManager';
+import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
+import makeError from '@helpers/makeError';
+import {bigIntFromBytes} from '@helpers/bigInt/bigIntConversion';
+import safeAssign from '@helpers/object/safeAssign';
+import {MTAuthKey} from '@lib/mtproto/authKey';
+import {MessageKeyUtils} from '@lib/mtproto/messageKeyUtils';
 
 // console.error('networker included!', new Error().stack);
 

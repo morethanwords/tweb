@@ -1,5 +1,5 @@
 import {createMemo, createSelector, For, JSX} from 'solid-js';
-import clamp from '../../helpers/number/clamp';
+import clamp from '@helpers/number/clamp';
 
 
 export type StepInputStep<T = any> = {

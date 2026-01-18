@@ -1,10 +1,10 @@
 import bigInt, {BigInteger} from 'big-integer';
-import Icon from '../components/icon';
-import Currencies from '../config/currencies';
-import I18n from '../lib/langPack';
-import {STARS_CURRENCY, TON_CURRENCY} from '../lib/appManagers/constants';
-import {numberThousandSplitterForStars} from './number/numberThousandSplitter';
-import {MOUNT_CLASS_TO} from '../config/debug';
+import Icon from '@components/icon';
+import Currencies from '@config/currencies';
+import I18n from '@lib/langPack';
+import {STARS_CURRENCY, TON_CURRENCY} from '@appManagers/constants';
+import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
+import {MOUNT_CLASS_TO} from '@config/debug';
 
 // https://stackoverflow.com/a/34141813
 function number_format(number: any, decimals: any, dec_point: any, thousands_sep: any): string {

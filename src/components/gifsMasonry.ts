@@ -4,18 +4,18 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {MyDocument} from '../lib/appManagers/appDocsManager';
-import animationIntersector, {AnimationItemGroup} from './animationIntersector';
-import Scrollable from './scrollable';
-import deferredPromise, {CancellablePromise} from '../helpers/cancellablePromise';
-import {doubleRaf} from '../helpers/schedulers';
-import {AppManagers} from '../lib/managers';
-import rootScope from '../lib/rootScope';
-import LazyLoadQueueRepeat2 from './lazyLoadQueueRepeat2';
-import wrapVideo from './wrappers/video';
-import noop from '../helpers/noop';
-import {MiddlewareHelper, getMiddleware} from '../helpers/middleware';
-import positionElementByIndex from '../helpers/dom/positionElementByIndex';
+import type {MyDocument} from '@appManagers/appDocsManager';
+import animationIntersector, {AnimationItemGroup} from '@components/animationIntersector';
+import Scrollable from '@components/scrollable';
+import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
+import {doubleRaf} from '@helpers/schedulers';
+import {AppManagers} from '@lib/managers';
+import rootScope from '@lib/rootScope';
+import LazyLoadQueueRepeat2 from '@components/lazyLoadQueueRepeat2';
+import wrapVideo from '@components/wrappers/video';
+import noop from '@helpers/noop';
+import {MiddlewareHelper, getMiddleware} from '@helpers/middleware';
+import positionElementByIndex from '@helpers/dom/positionElementByIndex';
 
 export default class GifsMasonry {
   public lazyLoadQueue: LazyLoadQueueRepeat2;

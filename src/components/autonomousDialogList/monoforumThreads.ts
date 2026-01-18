@@ -1,6 +1,6 @@
-import rootScope from '../../lib/rootScope';
-import {MonoforumDialog} from '../../lib/storages/monoforumDialogs';
-import {AutonomousDialogListBase, BaseConstructorArgs} from './base';
+import rootScope from '@lib/rootScope';
+import {MonoforumDialog} from '@lib/storages/monoforumDialogs';
+import {AutonomousDialogListBase, BaseConstructorArgs} from '@components/autonomousDialogList/base';
 
 
 type ConstructorArgs = BaseConstructorArgs & {

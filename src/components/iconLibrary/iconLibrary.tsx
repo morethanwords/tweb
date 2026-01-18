@@ -1,11 +1,11 @@
 import {Component, createSignal, JSX} from 'solid-js';
 
-import Icons from '../../icons';
+import Icons from '@/icons';
 
-import Scrollable from '../scrollable2';
-import {IconTsx} from '../iconTsx';
+import Scrollable from '@components/scrollable2';
+import {IconTsx} from '@components/iconTsx';
 
-import styles from './iconLibrary.module.scss';
+import styles from '@components/iconLibrary/iconLibrary.module.scss';
 
 
 const icons = Object.keys(Icons) as Icon[];

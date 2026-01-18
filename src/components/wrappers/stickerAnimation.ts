@@ -4,19 +4,19 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {MyDocument} from '../../lib/appManagers/appDocsManager';
-import IS_VIBRATE_SUPPORTED from '../../environment/vibrateSupport';
-import assumeType from '../../helpers/assumeType';
-import isInDOM from '../../helpers/dom/isInDOM';
-import makeError from '../../helpers/makeError';
-import {getMiddleware, Middleware} from '../../helpers/middleware';
-import throttleWithRaf from '../../helpers/schedulers/throttleWithRaf';
-import windowSize from '../../helpers/windowSize';
-import {PhotoSize, VideoSize} from '../../layer';
-import {AppManagers} from '../../lib/managers';
-import RLottiePlayer from '../../lib/rlottie/rlottiePlayer';
-import Scrollable from '../scrollable';
-import wrapSticker from './sticker';
+import type {MyDocument} from '@appManagers/appDocsManager';
+import IS_VIBRATE_SUPPORTED from '@environment/vibrateSupport';
+import assumeType from '@helpers/assumeType';
+import isInDOM from '@helpers/dom/isInDOM';
+import makeError from '@helpers/makeError';
+import {getMiddleware, Middleware} from '@helpers/middleware';
+import throttleWithRaf from '@helpers/schedulers/throttleWithRaf';
+import windowSize from '@helpers/windowSize';
+import {PhotoSize, VideoSize} from '@layer';
+import {AppManagers} from '@lib/managers';
+import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import Scrollable from '@components/scrollable';
+import wrapSticker from '@components/wrappers/sticker';
 
 export const emojiAnimationContainer = document.createElement('div');
 emojiAnimationContainer.classList.add('emoji-animation-container');

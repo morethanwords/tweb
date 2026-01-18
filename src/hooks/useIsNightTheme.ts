@@ -1,6 +1,6 @@
-import {subscribeOn} from '../helpers/solid/subscribeOn';
-import themeController from '../helpers/themeController';
-import rootScope from '../lib/rootScope';
+import {subscribeOn} from '@helpers/solid/subscribeOn';
+import themeController from '@helpers/themeController';
+import rootScope from '@lib/rootScope';
 import {createSignal} from 'solid-js';
 
 export default function useIsNightTheme() {

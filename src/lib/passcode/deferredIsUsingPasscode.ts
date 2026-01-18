@@ -1,6 +1,6 @@
-import deferredPromise from '../../helpers/cancellablePromise';
+import deferredPromise from '@helpers/cancellablePromise';
 
-import StaticUtilityClass from '../staticUtilityClass';
+import StaticUtilityClass from '@lib/staticUtilityClass';
 
 
 export default class DeferredIsUsingPasscode extends StaticUtilityClass {

@@ -4,30 +4,30 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type CustomEmojiElement from '../lib/customEmoji/element';
-import type {AnimationItemGroup} from './animationIntersector';
-import {CustomEmojiRendererElement} from '../lib/customEmoji/renderer';
-import cancelEvent from '../helpers/dom/cancelEvent';
-import simulateEvent from '../helpers/dom/dispatchEvent';
-import documentFragmentToHTML from '../helpers/dom/documentFragmentToHTML';
-import findUpAttribute from '../helpers/dom/findUpAttribute';
-import findUpTag from '../helpers/dom/findUpTag';
-import getCaretPosNew from '../helpers/dom/getCaretPosNew';
-import getRichValueWithCaret from '../helpers/dom/getRichValueWithCaret';
-import isInputEmpty from '../helpers/dom/isInputEmpty';
-import replaceContent from '../helpers/dom/replaceContent';
-import RichInputHandler, {USING_BOMS} from '../helpers/dom/richInputHandler';
-import selectElementContents from '../helpers/dom/selectElementContents';
-import setInnerHTML, {setDirection} from '../helpers/dom/setInnerHTML';
-import {MessageEntity} from '../layer';
-import {i18n, LangPackKey, _i18n} from '../lib/langPack';
-import {NULL_PEER_ID} from '../lib/appManagers/constants';
-import mergeEntities from '../lib/richTextProcessor/mergeEntities';
-import parseEntities from '../lib/richTextProcessor/parseEntities';
-import wrapDraftText from '../lib/richTextProcessor/wrapDraftText';
-import {createCustomFiller, insertCustomFillers} from '../lib/richTextProcessor/wrapRichText';
-import type {MarkupTooltipTypes} from './chat/markupTooltip';
-import forEachReverse from '../helpers/array/forEachReverse';
+import type CustomEmojiElement from '@lib/customEmoji/element';
+import type {AnimationItemGroup} from '@components/animationIntersector';
+import {CustomEmojiRendererElement} from '@lib/customEmoji/renderer';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import simulateEvent from '@helpers/dom/dispatchEvent';
+import documentFragmentToHTML from '@helpers/dom/documentFragmentToHTML';
+import findUpAttribute from '@helpers/dom/findUpAttribute';
+import findUpTag from '@helpers/dom/findUpTag';
+import getCaretPosNew from '@helpers/dom/getCaretPosNew';
+import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
+import isInputEmpty from '@helpers/dom/isInputEmpty';
+import replaceContent from '@helpers/dom/replaceContent';
+import RichInputHandler, {USING_BOMS} from '@helpers/dom/richInputHandler';
+import selectElementContents from '@helpers/dom/selectElementContents';
+import setInnerHTML, {setDirection} from '@helpers/dom/setInnerHTML';
+import {MessageEntity} from '@layer';
+import {i18n, LangPackKey, _i18n} from '@lib/langPack';
+import {NULL_PEER_ID} from '@appManagers/constants';
+import mergeEntities from '@lib/richTextProcessor/mergeEntities';
+import parseEntities from '@lib/richTextProcessor/parseEntities';
+import wrapDraftText from '@lib/richTextProcessor/wrapDraftText';
+import {createCustomFiller, insertCustomFillers} from '@lib/richTextProcessor/wrapRichText';
+import type {MarkupTooltipTypes} from '@components/chat/markupTooltip';
+import forEachReverse from '@helpers/array/forEachReverse';
 
 export async function insertRichTextAsHTML(input: HTMLElement, text: string, entities: MessageEntity[], wrappingForPeerId?: PeerId) {
   const loadPromises: Promise<any>[] = [];

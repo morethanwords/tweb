@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {FontFamilyName} from '../../config/font';
-import noop from '../noop';
-import pause from '../schedulers/pause';
-import {TGICO_CLASS} from '../tgico';
+import {FontFamilyName} from '@config/font';
+import noop from '@helpers/noop';
+import pause from '@helpers/schedulers/pause';
+import {TGICO_CLASS} from '@helpers/tgico';
 
 const texts = ['b', 'б'];
 type FontType = 'text' | 'icons' | 'monospace';

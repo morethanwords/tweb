@@ -1,6 +1,6 @@
-import BezierEasing from '../vendor/bezierEasing';
-import {lerp} from './lerp';
-import {requestRAF} from './solid/requestRAF';
+import BezierEasing from '@vendor/bezierEasing';
+import {lerp} from '@helpers/lerp';
+import {requestRAF} from '@helpers/solid/requestRAF';
 
 
 type AnimateValueOptions = {

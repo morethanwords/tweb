@@ -1,6 +1,6 @@
 import {createSignal, onCleanup, onMount} from 'solid-js';
-import Chat from '../components/chat/chat';
-import appImManager from '../lib/appImManager';
+import Chat from '@components/chat/chat';
+import appImManager from '@lib/appImManager';
 
 export function useCurrentPeerId() {
   const [peerId, setPeerId] = createSignal<number>(appImManager.chat.peerId);

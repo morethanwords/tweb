@@ -1,4 +1,4 @@
-import {Document, Message, MessageMedia} from '../../../../layer';
+import {Document, Message, MessageMedia} from '@layer';
 
 export default function getMediaDurationFromMessage(message: Message.message) {
   if(!message) return undefined;

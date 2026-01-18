@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-// import I18n from '../../lib/langPack';
+// import I18n from '@lib/langPack';
 
 export default function setInnerHTML(elem: Element, html: string | DocumentFragment | Element) {
   setDirection(elem);

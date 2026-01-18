@@ -4,20 +4,20 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import rootScope from '../lib/rootScope';
-import {i18n} from '../lib/langPack';
-import replaceContent from '../helpers/dom/replaceContent';
-import {HIDDEN_PEER_ID, NULL_PEER_ID} from '../lib/appManagers/constants';
-import limitSymbols from '../helpers/string/limitSymbols';
-import setInnerHTML, {setDirection} from '../helpers/dom/setInnerHTML';
-import safeAssign from '../helpers/object/safeAssign';
-import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
-import getPeerTitle from './wrappers/getPeerTitle';
-import generateTitleIcons from './generateTitleIcons';
-import {wrapTopicIcon} from './wrappers/messageActionTextNewUnsafe';
-import lottieLoader from '../lib/rlottie/lottieLoader';
-import {AsAllChatsType} from '../lib/appDialogsManager';
-import IS_EMOJI_SUPPORTED from '../environment/emojiSupport';
+import rootScope from '@lib/rootScope';
+import {i18n} from '@lib/langPack';
+import replaceContent from '@helpers/dom/replaceContent';
+import {HIDDEN_PEER_ID, NULL_PEER_ID} from '@appManagers/constants';
+import limitSymbols from '@helpers/string/limitSymbols';
+import setInnerHTML, {setDirection} from '@helpers/dom/setInnerHTML';
+import safeAssign from '@helpers/object/safeAssign';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import getPeerTitle from '@components/wrappers/getPeerTitle';
+import generateTitleIcons from '@components/generateTitleIcons';
+import {wrapTopicIcon} from '@components/wrappers/messageActionTextNewUnsafe';
+import lottieLoader from '@lib/rlottie/lottieLoader';
+import {AsAllChatsType} from '@lib/appDialogsManager';
+import IS_EMOJI_SUPPORTED from '@environment/emojiSupport';
 
 export type PeerTitleOptions = {
   peerId?: PeerId,

@@ -5,9 +5,9 @@
  */
 
 import {createSignal, onMount, onCleanup, createEffect} from 'solid-js';
-import attachGrabListeners, {GrabEvent} from '../helpers/dom/attachGrabListeners';
-import clamp from '../helpers/number/clamp';
-import I18n from '../lib/langPack';
+import attachGrabListeners, {GrabEvent} from '@helpers/dom/attachGrabListeners';
+import clamp from '@helpers/number/clamp';
+import I18n from '@lib/langPack';
 
 export interface RangeSelectorProps {
   step: number;

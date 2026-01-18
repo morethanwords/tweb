@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import Modes from '../../config/modes';
-import {ChatInvite, InputUser, StarsSubscriptionPricing, Updates} from '../../layer';
-import {AppManager} from './manager';
-import getPeerId from './utils/peers/getPeerId';
+import Modes from '@config/modes';
+import {ChatInvite, InputUser, StarsSubscriptionPricing, Updates} from '@layer';
+import {AppManager} from '@appManagers/manager';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
 
 function starsSubscriptionPricing(amount: number): StarsSubscriptionPricing {
   return {

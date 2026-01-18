@@ -4,25 +4,25 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import deferredPromise from '../../../helpers/cancellablePromise';
-import {formatFullSentTime} from '../../../helpers/date';
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import createContextMenu from '../../../helpers/dom/createContextMenu';
-import findUpClassName from '../../../helpers/dom/findUpClassName';
-import tsNow from '../../../helpers/tsNow';
-import {ChatInviteImporter, ExportedChatInvite, MessagesExportedChatInvite, MessagesExportedChatInvites} from '../../../layer';
-import appDialogsManager, {DialogElement} from '../../../lib/appDialogsManager';
-import appImManager from '../../../lib/appImManager';
-import {AppManagers} from '../../../lib/managers';
-import {i18n} from '../../../lib/langPack';
-import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
-import AppSelectPeers from '../../appSelectPeers';
-import {StarsAmount} from '../../popups/stars';
-import Row from '../../row';
-import SettingSection from '../../settingSection';
-import {SliderSuperTabEventable} from '../../sliderTab';
-import {UsernameRow} from '../../usernamesSection';
-import AppChatInviteLinksTab, {ChatInviteLink} from './chatInviteLinks';
+import deferredPromise from '@helpers/cancellablePromise';
+import {formatFullSentTime} from '@helpers/date';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import createContextMenu from '@helpers/dom/createContextMenu';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import tsNow from '@helpers/tsNow';
+import {ChatInviteImporter, ExportedChatInvite, MessagesExportedChatInvite, MessagesExportedChatInvites} from '@layer';
+import appDialogsManager, {DialogElement} from '@lib/appDialogsManager';
+import appImManager from '@lib/appImManager';
+import {AppManagers} from '@lib/managers';
+import {i18n} from '@lib/langPack';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import AppSelectPeers from '@components/appSelectPeers';
+import {StarsAmount} from '@components/popups/stars';
+import Row from '@components/row';
+import SettingSection from '@components/settingSection';
+import {SliderSuperTabEventable} from '@components/sliderTab';
+import {UsernameRow} from '@components/usernamesSection';
+import AppChatInviteLinksTab, {ChatInviteLink} from '@components/sidebarRight/tabs/chatInviteLinks';
 
 type ChatInvite = ExportedChatInvite.chatInviteExported;
 

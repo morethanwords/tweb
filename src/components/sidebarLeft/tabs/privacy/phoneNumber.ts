@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {SliderSuperTabEventable} from '../../../sliderTab';
-import PrivacySection from '../../../privacySection';
-import {i18n, LangPackKey} from '../../../../lib/langPack';
-import anchorCopy from '../../../../helpers/dom/anchorCopy';
-import PrivacyType from '../../../../lib/appManagers/utils/privacy/privacyType';
+import {SliderSuperTabEventable} from '@components/sliderTab';
+import PrivacySection from '@components/privacySection';
+import {i18n, LangPackKey} from '@lib/langPack';
+import anchorCopy from '@helpers/dom/anchorCopy';
+import PrivacyType from '@appManagers/utils/privacy/privacyType';
 
 export default class AppPrivacyPhoneNumberTab extends SliderSuperTabEventable {
   public async init() {

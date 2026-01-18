@@ -1,10 +1,10 @@
 import {createEffect, createSignal} from 'solid-js';
 import {render} from 'solid-js/web';
 
-import {ButtonMenuItemOptionsVerifiable} from '../../components/buttonMenu';
-import ButtonMenuToggle from '../../components/buttonMenuToggle';
-import appMediaPlaybackController from '../../components/appMediaPlaybackController';
-import Icon from '../../components/icon';
+import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
+import ButtonMenuToggle from '@components/buttonMenuToggle';
+import appMediaPlaybackController from '@components/appMediaPlaybackController';
+import Icon from '@components/icon';
 
 type PlaybackRateButtonProps = {
   skin: string;

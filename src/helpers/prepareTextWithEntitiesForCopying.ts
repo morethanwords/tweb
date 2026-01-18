@@ -1,6 +1,6 @@
-import {TextWithEntities} from '../layer';
-import wrapRichText from '../lib/richTextProcessor/wrapRichText';
-import documentFragmentToHTML from './dom/documentFragmentToHTML';
+import {TextWithEntities} from '@layer';
+import wrapRichText from '@lib/richTextProcessor/wrapRichText';
+import documentFragmentToHTML from '@helpers/dom/documentFragmentToHTML';
 
 type TextWithEntitiesForCopying = Omit<TextWithEntities, '_'>;
 export default function prepareTextWithEntitiesForCopying(

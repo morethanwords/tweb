@@ -4,36 +4,36 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {averageColor, averageColorFromCanvas} from '../../../helpers/averageColor';
-import deferredPromise, {CancellablePromise} from '../../../helpers/cancellablePromise';
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import findUpClassName from '../../../helpers/dom/findUpClassName';
-import highlightingColor from '../../../helpers/highlightingColor';
-import copy from '../../../helpers/object/copy';
-import sequentialDom from '../../../helpers/sequentialDom';
-import ChatBackgroundGradientRenderer from '../../chat/gradientRenderer';
-import {Document, WallPaper, WebDocument} from '../../../layer';
-import {MyDocument} from '../../../lib/appManagers/appDocsManager';
-import appDownloadManager, {AppDownloadManager} from '../../../lib/appDownloadManager';
-import appImManager from '../../../lib/appImManager';
-import rootScope from '../../../lib/rootScope';
-import Button from '../../button';
-import CheckboxField from '../../checkboxField';
-import ProgressivePreloader from '../../preloader';
-import {SliderSuperTab} from '../../slider';
-import AppBackgroundColorTab from './backgroundColor';
-import choosePhotoSize from '../../../lib/appManagers/utils/photos/choosePhotoSize';
-import {AppTheme, SETTINGS_INIT} from '../../../config/state';
-import themeController from '../../../helpers/themeController';
-import requestFile from '../../../helpers/files/requestFile';
-import {renderImageFromUrlPromise} from '../../../helpers/dom/renderImageFromUrl';
-import scaleMediaElement from '../../../helpers/canvas/scaleMediaElement';
-import {MediaSize} from '../../../helpers/mediaSize';
-import wrapPhoto from '../../wrappers/photo';
-import {CreateRowFromCheckboxField} from '../../row';
-import {generateSection} from '../../settingSection';
-import {getColorsFromWallPaper} from '../../../helpers/color';
-import ChatBackgroundStore from '../../../lib/chatBackgroundStore';
+import {averageColor, averageColorFromCanvas} from '@helpers/averageColor';
+import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import highlightingColor from '@helpers/highlightingColor';
+import copy from '@helpers/object/copy';
+import sequentialDom from '@helpers/sequentialDom';
+import ChatBackgroundGradientRenderer from '@components/chat/gradientRenderer';
+import {Document, WallPaper, WebDocument} from '@layer';
+import {MyDocument} from '@appManagers/appDocsManager';
+import appDownloadManager, {AppDownloadManager} from '@lib/appDownloadManager';
+import appImManager from '@lib/appImManager';
+import rootScope from '@lib/rootScope';
+import Button from '@components/button';
+import CheckboxField from '@components/checkboxField';
+import ProgressivePreloader from '@components/preloader';
+import {SliderSuperTab} from '@components/slider';
+import AppBackgroundColorTab from '@components/sidebarLeft/tabs/backgroundColor';
+import choosePhotoSize from '@appManagers/utils/photos/choosePhotoSize';
+import {AppTheme, SETTINGS_INIT} from '@config/state';
+import themeController from '@helpers/themeController';
+import requestFile from '@helpers/files/requestFile';
+import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
+import scaleMediaElement from '@helpers/canvas/scaleMediaElement';
+import {MediaSize} from '@helpers/mediaSize';
+import wrapPhoto from '@components/wrappers/photo';
+import {CreateRowFromCheckboxField} from '@components/row';
+import {generateSection} from '@components/settingSection';
+import {getColorsFromWallPaper} from '@helpers/color';
+import ChatBackgroundStore from '@lib/chatBackgroundStore';
 
 const needBlur = (wallPaper: WallPaper, respectPattern = true) => {
   const blur = (wallPaper as WallPaper.wallPaper)?.settings?.pFlags?.blur;

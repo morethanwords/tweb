@@ -1,7 +1,7 @@
 import {createEffect, createSignal, ParentProps} from 'solid-js';
 import {Transition} from 'solid-transition-group';
-import {animate} from '../../../../helpers/animation';
-import liteMode from '../../../../helpers/liteMode';
+import {animate} from '@helpers/animation';
+import liteMode from '@helpers/liteMode';
 
 
 type HeightTransitionProps = {

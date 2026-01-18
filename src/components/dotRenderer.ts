@@ -6,19 +6,19 @@
 
 // * thanks https://github.com/dkaraush/particles for webgl version
 
-import {MOUNT_CLASS_TO} from '../config/debug';
-import {IS_MOBILE} from '../environment/userAgent';
-import {animate} from '../helpers/animation';
-import callbackify from '../helpers/callbackify';
-import callbackifyAll from '../helpers/callbackifyAll';
-import deferredPromise from '../helpers/cancellablePromise';
-import {Middleware} from '../helpers/middleware';
-import clamp from '../helpers/number/clamp';
-import getUnsafeRandomInt from '../helpers/number/getUnsafeRandomInt';
-import {applyColorOnContext} from '../lib/rlottie/rlottiePlayer';
-import animationIntersector, {AnimationItemGroup, AnimationItemWrapper} from './animationIntersector';
-import BluffSpoilerController from './bluffSpoilerController';
-import {animateValue, simpleEasing} from '../helpers/animateValue';
+import {MOUNT_CLASS_TO} from '@config/debug';
+import {IS_MOBILE} from '@environment/userAgent';
+import {animate} from '@helpers/animation';
+import callbackify from '@helpers/callbackify';
+import callbackifyAll from '@helpers/callbackifyAll';
+import deferredPromise from '@helpers/cancellablePromise';
+import {Middleware} from '@helpers/middleware';
+import clamp from '@helpers/number/clamp';
+import getUnsafeRandomInt from '@helpers/number/getUnsafeRandomInt';
+import {applyColorOnContext} from '@lib/rlottie/rlottiePlayer';
+import animationIntersector, {AnimationItemGroup, AnimationItemWrapper} from '@components/animationIntersector';
+import BluffSpoilerController from '@components/bluffSpoilerController';
+import {animateValue, simpleEasing} from '@helpers/animateValue';
 
 export class AnimationItemNested implements AnimationItemWrapper {
   public autoplay = true;

@@ -1,6 +1,6 @@
-import PopupElement from '../popups';
-import PopupPremium from '../popups/premium';
-import AccountsLimitPopupContent from './accountsLimitPopupContent';
+import PopupElement from '@components/popups';
+import PopupPremium from '@components/popups/premium';
+import AccountsLimitPopupContent from '@components/sidebarLeft/accountsLimitPopupContent';
 
 export default class AccountsLimitPopup extends PopupElement {
   constructor() {

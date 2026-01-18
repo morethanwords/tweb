@@ -9,9 +9,9 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type {AccountPassword, AccountUpdatePasswordSettings, InputCheckPasswordSRP, PasswordKdfAlgo} from '../../layer';
-import randomize from '../../helpers/array/randomize';
-import {AppManager} from './manager';
+import type {AccountPassword, AccountUpdatePasswordSettings, InputCheckPasswordSRP, PasswordKdfAlgo} from '@layer';
+import randomize from '@helpers/array/randomize';
+import {AppManager} from '@appManagers/manager';
 
 export class PasswordManager extends AppManager {
   public getState(): Promise<AccountPassword> {

@@ -1,8 +1,8 @@
-import {getHeavyAnimationPromise} from '../../hooks/useHeavyAnimationCheck';
-import {getCurrentAccount} from '../../lib/accounts/getCurrentAccount';
-import {initVideoHls} from '../../lib/hls/initVideoHls';
-import apiManagerProxy from '../../lib/apiManagerProxy';
-import {Middleware} from '../middleware';
+import {getHeavyAnimationPromise} from '@hooks/useHeavyAnimationCheck';
+import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
+import {initVideoHls} from '@lib/hls/initVideoHls';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import {Middleware} from '@helpers/middleware';
 
 function updateStreamInUse(url: string, inUse: boolean) {
   if(url.includes('stream/')) {

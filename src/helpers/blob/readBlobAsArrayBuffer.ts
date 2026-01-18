@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import readBlobAs from './readBlobAs';
+import readBlobAs from '@helpers/blob/readBlobAs';
 
 export default function readBlobAsArrayBuffer(blob: Blob) {
   return readBlobAs(blob, 'readAsArrayBuffer');

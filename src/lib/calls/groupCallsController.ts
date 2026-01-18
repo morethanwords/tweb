@@ -4,21 +4,21 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import getGroupCallAudioAsset from '../../components/groupCall/getAudioAsset';
-import {MOUNT_CLASS_TO} from '../../config/debug';
-import EventListenerBase from '../../helpers/eventListenerBase';
-import {GroupCallParticipant, GroupCallParticipantVideo, GroupCallParticipantVideoSourceGroup} from '../../layer';
-import {GroupCallId, GroupCallConnectionType} from '../appManagers/appGroupCallsManager';
-import {AppManagers} from '../managers';
-import {logger} from '../logger';
-import rootScope from '../rootScope';
-import GroupCallInstance from './groupCallInstance';
-import GROUP_CALL_STATE from './groupCallState';
-import createMainStreamManager from './helpers/createMainStreamManager';
-import {generateSsrc} from './localConferenceDescription';
-import {WebRTCLineType} from './sdpBuilder';
-import StreamManager from './streamManager';
-import {Ssrc} from './types';
+import getGroupCallAudioAsset from '@components/groupCall/getAudioAsset';
+import {MOUNT_CLASS_TO} from '@config/debug';
+import EventListenerBase from '@helpers/eventListenerBase';
+import {GroupCallParticipant, GroupCallParticipantVideo, GroupCallParticipantVideoSourceGroup} from '@layer';
+import {GroupCallId, GroupCallConnectionType} from '@appManagers/appGroupCallsManager';
+import {AppManagers} from '@lib/managers';
+import {logger} from '@lib/logger';
+import rootScope from '@lib/rootScope';
+import GroupCallInstance from '@lib/calls/groupCallInstance';
+import GROUP_CALL_STATE from '@lib/calls/groupCallState';
+import createMainStreamManager from '@lib/calls/helpers/createMainStreamManager';
+import {generateSsrc} from '@lib/calls/localConferenceDescription';
+import {WebRTCLineType} from '@lib/calls/sdpBuilder';
+import StreamManager from '@lib/calls/streamManager';
+import {Ssrc} from '@lib/calls/types';
 
 const IS_MUTED = true;
 

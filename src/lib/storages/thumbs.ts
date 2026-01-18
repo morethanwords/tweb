@@ -4,16 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {InputWebFileLocation, WebDocument} from '../../layer';
-import type {MyDocument} from '../appManagers/appDocsManager';
-import type {MyPhoto} from '../appManagers/appPhotosManager';
-import {joinDeepPath} from '../../helpers/object/setDeepProperty';
-import MTProtoMessagePort from '../mainWorker/mainMessagePort';
-import {THUMB_TYPE_FULL} from '../appManagers/constants';
-import generateEmptyThumb from './utils/thumbs/generateEmptyThumb';
-import getStickerThumbKey from './utils/thumbs/getStickerThumbKey';
-import getThumbKey from './utils/thumbs/getThumbKey';
-import {AppManager} from '../appManagers/manager';
+import type {InputWebFileLocation, WebDocument} from '@layer';
+import type {MyDocument} from '@appManagers/appDocsManager';
+import type {MyPhoto} from '@appManagers/appPhotosManager';
+import {joinDeepPath} from '@helpers/object/setDeepProperty';
+import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
+import {THUMB_TYPE_FULL} from '@appManagers/constants';
+import generateEmptyThumb from '@lib/storages/utils/thumbs/generateEmptyThumb';
+import getStickerThumbKey from '@lib/storages/utils/thumbs/getStickerThumbKey';
+import getThumbKey from '@lib/storages/utils/thumbs/getThumbKey';
+import {AppManager} from '@appManagers/manager';
 
 export type ThumbCache = {
   downloaded: number,

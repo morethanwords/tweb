@@ -1,11 +1,11 @@
 import {JSX, Show} from 'solid-js';
-import {I18nTsx} from '../../../../helpers/solid/i18n';
-import {ExportedChatInvite} from '../../../../layer';
-import {i18n} from '../../../../lib/langPack';
-import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
-import {limitPeerTitleSymbols} from './constants';
-import styles from './keyValuePair.module.scss';
-import {useParticipantClickHandler} from './utils';
+import {I18nTsx} from '@helpers/solid/i18n';
+import {ExportedChatInvite} from '@layer';
+import {i18n} from '@lib/langPack';
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import {limitPeerTitleSymbols} from '@components/sidebarRight/tabs/adminRecentActions/constants';
+import styles from '@components/sidebarRight/tabs/adminRecentActions/keyValuePair.module.scss';
+import {useParticipantClickHandler} from '@components/sidebarRight/tabs/adminRecentActions/utils';
 
 
 export const KeyValuePair = (props: {

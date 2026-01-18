@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import findAndSplice from '../../helpers/array/findAndSplice';
-import assumeType from '../../helpers/assumeType';
-import {BotInlineResult, MessagesSavedGifs, Document} from '../../layer';
-import {NULL_PEER_ID} from './constants';
-import {ReferenceContext} from '../storages/references';
-import {AppManager} from './manager';
-import getDocumentInput from './utils/docs/getDocumentInput';
+import findAndSplice from '@helpers/array/findAndSplice';
+import assumeType from '@helpers/assumeType';
+import {BotInlineResult, MessagesSavedGifs, Document} from '@layer';
+import {NULL_PEER_ID} from '@appManagers/constants';
+import {ReferenceContext} from '@lib/storages/references';
+import {AppManager} from '@appManagers/manager';
+import getDocumentInput from '@appManagers/utils/docs/getDocumentInput';
 
 export default class AppGifsManager extends AppManager {
   private gifs: MaybePromise<Document.document[]>;

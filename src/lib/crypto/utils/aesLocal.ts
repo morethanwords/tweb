@@ -1,4 +1,4 @@
-import SuperMessagePort from '../../superMessagePort';
+import SuperMessagePort from '@lib/superMessagePort';
 
 
 const IV_LENGTH = 12;

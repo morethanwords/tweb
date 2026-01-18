@@ -1,6 +1,6 @@
-import {GroupCallParticipant, GroupCallParticipantVideoSourceGroup} from '../../layer';
-import type {logger} from '../logger';
-import {WebRTCLineType} from './sdpBuilder';
+import {GroupCallParticipant, GroupCallParticipantVideoSourceGroup} from '@layer';
+import type {logger} from '@lib/logger';
+import {WebRTCLineType} from '@lib/calls/sdpBuilder';
 
 export type GroupCallConnectionTransport = {
   candidates?: {

@@ -2,7 +2,7 @@
 
 // @ts-ignore
 import pako from 'pako/dist/pako_inflate.min.js';
-// import dT from './dT';
+// import dT from '@helpers/dT';
 
 // export function gzipUncompress(bytes: ArrayBuffer, toString?: false): Uint8Array;
 export default function gzipUncompress(bytes: ArrayBuffer, toString?: boolean): string | Uint8Array {

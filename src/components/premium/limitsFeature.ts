@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import LimitLine from '../limit';
-import {_i18n} from '../../lib/langPack';
-import {PremiumPromoFeature} from './featuresConfig';
-import {AppManagers} from '../../lib/managers';
+import LimitLine from '@components/limit';
+import {_i18n} from '@lib/langPack';
+import {PremiumPromoFeature} from '@components/premium/featuresConfig';
+import {AppManagers} from '@lib/managers';
 
 export default class LimitsFeature {
   public limits: HTMLElement;

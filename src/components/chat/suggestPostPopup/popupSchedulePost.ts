@@ -1,7 +1,7 @@
-import {formatTime} from '../../../helpers/date';
-import {i18n} from '../../../lib/langPack';
-import PopupSchedule from '../../popups/schedule';
-import styles from './styles.module.scss';
+import {formatTime} from '@helpers/date';
+import {i18n} from '@lib/langPack';
+import PopupSchedule from '@components/popups/schedule';
+import styles from '@components/chat/suggestPostPopup/styles.module.scss';
 
 
 const MILLIS_IN_MINUTE = 60 * 1000;

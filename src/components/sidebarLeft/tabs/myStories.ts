@@ -4,16 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import {i18n_} from '../../../lib/langPack';
-import lottieLoader, {LottieLoader} from '../../../lib/rlottie/lottieLoader';
-import RLottiePlayer from '../../../lib/rlottie/rlottiePlayer';
-import rootScope from '../../../lib/rootScope';
-import AppSearchSuper from '../../appSearchSuper';
-import Button from '../../button';
-import ButtonMenuToggle from '../../buttonMenuToggle';
-import SettingSection from '../../settingSection';
-import {SliderSuperTab} from '../../slider'
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import {i18n_} from '@lib/langPack';
+import lottieLoader, {LottieLoader} from '@lib/rlottie/lottieLoader';
+import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import rootScope from '@lib/rootScope';
+import AppSearchSuper from '@components/appSearchSuper';
+import Button from '@components/button';
+import ButtonMenuToggle from '@components/buttonMenuToggle';
+import SettingSection from '@components/settingSection';
+import {SliderSuperTab} from '@components/slider'
 
 export default class AppMyStoriesTab extends SliderSuperTab {
   private stickerContainer: HTMLDivElement;

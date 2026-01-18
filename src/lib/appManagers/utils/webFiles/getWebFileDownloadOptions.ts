@@ -1,5 +1,5 @@
-import {InputWebFileLocation} from '../../../../layer';
-import {DownloadOptions} from '../../apiFileManager';
+import {InputWebFileLocation} from '@layer';
+import {DownloadOptions} from '@appManagers/apiFileManager';
 
 export default function getWebFileDownloadOptions(location: InputWebFileLocation): DownloadOptions {
   const downloadOptions: DownloadOptions = {

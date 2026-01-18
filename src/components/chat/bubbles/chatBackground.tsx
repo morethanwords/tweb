@@ -1,20 +1,20 @@
 import {batch, createSignal, onCleanup, onMount} from 'solid-js';
-import ChatBackgroundPatternRenderer from '../patternRenderer';
-import {DEFAULT_BACKGROUND_SLUG} from '../../../config/app';
-import ChatBackgroundStore from '../../../lib/chatBackgroundStore';
-import {ThemeController} from '../../../helpers/themeController';
-import {Theme, WallPaper} from '../../../layer';
-import {AppTheme, SETTINGS_INIT} from '../../../config/state';
+import ChatBackgroundPatternRenderer from '@components/chat/patternRenderer';
+import {DEFAULT_BACKGROUND_SLUG} from '@config/app';
+import ChatBackgroundStore from '@lib/chatBackgroundStore';
+import {ThemeController} from '@helpers/themeController';
+import {Theme, WallPaper} from '@layer';
+import {AppTheme, SETTINGS_INIT} from '@config/state';
 
-import styles from './chatBackground.module.scss';
-import renderImageFromUrl from '../../../helpers/dom/renderImageFromUrl';
-import {getColorsFromWallPaper} from '../../../helpers/color';
-import ChatBackgroundGradientRenderer from '../gradientRenderer';
-import classNames from '../../../helpers/string/classNames';
-import {AppManagers} from '../../../lib/managers';
-import {appState} from '../../../stores/appState';
-import {averageColorFromCanvas, averageColorFromImage} from '../../../helpers/averageColor';
-import highlightingColor from '../../../helpers/highlightingColor';
+import styles from '@components/chat/bubbles/chatBackground.module.scss';
+import renderImageFromUrl from '@helpers/dom/renderImageFromUrl';
+import {getColorsFromWallPaper} from '@helpers/color';
+import ChatBackgroundGradientRenderer from '@components/chat/gradientRenderer';
+import classNames from '@helpers/string/classNames';
+import {AppManagers} from '@lib/managers';
+import {appState} from '@stores/appState';
+import {averageColorFromCanvas, averageColorFromImage} from '@helpers/averageColor';
+import highlightingColor from '@helpers/highlightingColor';
 
 async function getBackgroundParameters(options: {
   themeController: ThemeController

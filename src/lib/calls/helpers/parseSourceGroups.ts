@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {GroupCallParticipantVideoSourceGroup} from '../../../layer';
-import {toTelegramSource} from '../utils';
+import {GroupCallParticipantVideoSourceGroup} from '@layer';
+import {toTelegramSource} from '@lib/calls/utils';
 
 export function parseSourceGroups(sdpLines: string[]) {
   const telegramSourceGroups = sdpLines.map((str) => {

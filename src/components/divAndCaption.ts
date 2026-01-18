@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {setDirection} from '../helpers/dom/setInnerHTML';
+import {setDirection} from '@helpers/dom/setInnerHTML';
 
 export default class DivAndCaption<T> {
   public container: HTMLElement;

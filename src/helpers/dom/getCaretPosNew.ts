@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import findUpAsChild from './findUpAsChild';
+import findUpAsChild from '@helpers/dom/findUpAsChild';
 
 export default function getCaretPosNew(input: HTMLElement, anchor?: boolean): ReturnType<typeof getCaretPosF> & {selection: Selection} {
   const selection = document.getSelection();

@@ -1,6 +1,6 @@
-import wrapDocument from './document';
-import {MediaComponentProps, MediaTsx} from './mediaTsx';
-import {Middleware} from '../../helpers/middleware';
+import wrapDocument from '@components/wrappers/document';
+import {MediaComponentProps, MediaTsx} from '@components/wrappers/mediaTsx';
+import {Middleware} from '@helpers/middleware';
 
 type DocumentProps = Omit<Parameters<typeof wrapDocument>[0], 'middleware'>;
 

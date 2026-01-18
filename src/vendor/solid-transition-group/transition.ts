@@ -1,7 +1,7 @@
 // https://github.com/solidjs-community/solid-transition-group
 
 import {type FlowComponent, type JSX} from 'solid-js';
-import {createClassnames, enterTransition, exitTransition} from './common';
+import {createClassnames, enterTransition, exitTransition} from '@vendor/solid-transition-group/common';
 import {createSwitchTransition} from '@solid-primitives/transition-group';
 import {resolveFirst} from '@solid-primitives/refs';
 

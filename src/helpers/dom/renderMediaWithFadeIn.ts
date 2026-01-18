@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import sequentialDom from '../sequentialDom';
-import {renderImageFromUrlPromise} from './renderImageFromUrl';
+import sequentialDom from '@helpers/sequentialDom';
+import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
 
 const UNMOUNT_THUMBS = true;
 

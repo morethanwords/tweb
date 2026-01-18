@@ -7,20 +7,20 @@
 // * zoom part from WebZ
 // * https://github.com/Ajaxy/telegram-tt/blob/069f4f5b2f2c7c22529ccced876842e7f9cb81f4/src/util/captureEvents.ts
 
-import cancelEvent from '../helpers/dom/cancelEvent';
-import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
-import safeAssign from '../helpers/object/safeAssign';
-import contextMenuController from '../helpers/contextMenuController';
-import {Middleware} from '../helpers/middleware';
-import ListenerSetter, {Listener, ListenerOptions} from '../helpers/listenerSetter';
-import {attachContextMenuListener} from '../helpers/dom/attachContextMenuListener';
-import pause from '../helpers/schedulers/pause';
-import deferredPromise from '../helpers/cancellablePromise';
-import clamp from '../helpers/number/clamp';
-import debounce from '../helpers/schedulers/debounce';
-import {logger} from '../lib/logger';
-import isSwipingBackSafari from '../helpers/dom/isSwipingBackSafari';
-import windowSize from '../helpers/windowSize';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
+import safeAssign from '@helpers/object/safeAssign';
+import contextMenuController from '@helpers/contextMenuController';
+import {Middleware} from '@helpers/middleware';
+import ListenerSetter, {Listener, ListenerOptions} from '@helpers/listenerSetter';
+import {attachContextMenuListener} from '@helpers/dom/attachContextMenuListener';
+import pause from '@helpers/schedulers/pause';
+import deferredPromise from '@helpers/cancellablePromise';
+import clamp from '@helpers/number/clamp';
+import debounce from '@helpers/schedulers/debounce';
+import {logger} from '@lib/logger';
+import isSwipingBackSafari from '@helpers/dom/isSwipingBackSafari';
+import windowSize from '@helpers/windowSize';
 
 type E = {
   clientX: number,

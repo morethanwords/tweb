@@ -1,10 +1,10 @@
-import type {AppManagers} from '../../lib/managers';
-import type AppChatFoldersTab from '../../components/sidebarLeft/tabs/chatFolders';
-import type AppEditFolderTab from '../../components/sidebarLeft/tabs/editFolder';
-import type {AppSidebarLeft} from '../../components/sidebarLeft';
-import {FOLDER_ID_ALL, REAL_FOLDERS} from '../../lib/appManagers/constants';
-import createContextMenu from './createContextMenu';
-import findUpClassName from './findUpClassName';
+import type {AppManagers} from '@lib/managers';
+import type AppChatFoldersTab from '@components/sidebarLeft/tabs/chatFolders';
+import type AppEditFolderTab from '@components/sidebarLeft/tabs/editFolder';
+import type {AppSidebarLeft} from '@components/sidebarLeft';
+import {FOLDER_ID_ALL, REAL_FOLDERS} from '@appManagers/constants';
+import createContextMenu from '@helpers/dom/createContextMenu';
+import findUpClassName from '@helpers/dom/findUpClassName';
 
 export default function createFolderContextMenu({
   appSidebarLeft,

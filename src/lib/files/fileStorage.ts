@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {CancellablePromise} from '../../helpers/cancellablePromise';
-import StreamWriter from './streamWriter';
+import {CancellablePromise} from '@helpers/cancellablePromise';
+import StreamWriter from '@lib/files/streamWriter';
 
 export default abstract class FileStorage {
   public abstract getFile(fileName: string): Promise<any>;

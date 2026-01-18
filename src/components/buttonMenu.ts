@@ -4,24 +4,24 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import flatten from '../helpers/array/flatten';
-import contextMenuController from '../helpers/contextMenuController';
-import cancelEvent from '../helpers/dom/cancelEvent';
-import {AttachClickOptions, attachClickEvent} from '../helpers/dom/clickEvent';
-import findUpClassName from '../helpers/dom/findUpClassName';
-import setInnerHTML from '../helpers/dom/setInnerHTML';
-import ListenerSetter from '../helpers/listenerSetter';
-import {_i18n, FormatterArguments, i18n, LangPackKey} from '../lib/langPack';
-import CheckboxField from './checkboxField';
-import {Chat, Document, User} from '../layer';
-import {IS_MOBILE} from '../environment/userAgent';
-import ripple from './ripple';
-import Icon from './icon';
-import RadioForm from './radioForm';
-import wrapAttachBotIcon from './wrappers/attachBotIcon';
+import flatten from '@helpers/array/flatten';
+import contextMenuController from '@helpers/contextMenuController';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import {AttachClickOptions, attachClickEvent} from '@helpers/dom/clickEvent';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import setInnerHTML from '@helpers/dom/setInnerHTML';
+import ListenerSetter from '@helpers/listenerSetter';
+import {_i18n, FormatterArguments, i18n, LangPackKey} from '@lib/langPack';
+import CheckboxField from '@components/checkboxField';
+import {Chat, Document, User} from '@layer';
+import {IS_MOBILE} from '@environment/userAgent';
+import ripple from '@components/ripple';
+import Icon from '@components/icon';
+import RadioForm from '@components/radioForm';
+import wrapAttachBotIcon from '@components/wrappers/attachBotIcon';
 import {createRoot} from 'solid-js';
-import {AvatarNew} from './avatarNew';
-import {ActiveAccountNumber} from '../lib/accounts/types';
+import {AvatarNew} from '@components/avatarNew';
+import {ActiveAccountNumber} from '@lib/accounts/types';
 
 type ButtonMenuItemInner = Omit<Parameters<typeof ButtonMenuSync>[0], 'listenerSetter'>;
 type AvatarInfo = {

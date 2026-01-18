@@ -1,5 +1,5 @@
-import IMAGE_MIME_TYPES_SUPPORTED from './imageMimeTypesSupport';
-import VIDEO_MIME_TYPES_SUPPORTED from './videoMimeTypesSupport';
+import IMAGE_MIME_TYPES_SUPPORTED from '@environment/imageMimeTypesSupport';
+import VIDEO_MIME_TYPES_SUPPORTED from '@environment/videoMimeTypesSupport';
 
 const arr = [...IMAGE_MIME_TYPES_SUPPORTED].concat([...VIDEO_MIME_TYPES_SUPPORTED]);
 

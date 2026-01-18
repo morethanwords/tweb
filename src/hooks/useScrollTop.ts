@@ -1,5 +1,5 @@
 import {type Accessor, createEffect, createSignal, onCleanup} from 'solid-js';
-import {requestRAF} from '../helpers/solid/requestRAF';
+import {requestRAF} from '@helpers/solid/requestRAF';
 
 
 export function useScrollTop(element: Accessor<HTMLElement | null | undefined>) {

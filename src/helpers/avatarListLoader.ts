@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {Photo} from '../layer';
-import {AppManagers} from '../lib/managers';
-import ListLoader, {ListLoaderOptions} from './listLoader';
+import {Photo} from '@layer';
+import {AppManagers} from '@lib/managers';
+import ListLoader, {ListLoaderOptions} from '@helpers/listLoader';
 
 export default class AvatarListLoader<Item extends {photoId: Photo.photo['id']}> extends ListLoader<Item, any> {
   private peerId: PeerId;

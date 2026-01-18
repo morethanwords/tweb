@@ -4,19 +4,19 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import animationIntersector from '../../components/animationIntersector';
-import {MOUNT_CLASS_TO} from '../../config/debug';
-import pause from '../../helpers/schedulers/pause';
-import {logger, LogTypes} from '../logger';
-import RLottiePlayer, {RLottieOptions} from './rlottiePlayer';
-import QueryableWorker from './queryableWorker';
-import blobConstruct from '../../helpers/blob/blobConstruct';
-import apiManagerProxy from '../apiManagerProxy';
-import IS_WEB_ASSEMBLY_SUPPORTED from '../../environment/webAssemblySupport';
-import makeError from '../../helpers/makeError';
-import App from '../../config/app';
-import rootScope from '../rootScope';
-import toArray from '../../helpers/array/toArray';
+import animationIntersector from '@components/animationIntersector';
+import {MOUNT_CLASS_TO} from '@config/debug';
+import pause from '@helpers/schedulers/pause';
+import {logger, LogTypes} from '@lib/logger';
+import RLottiePlayer, {RLottieOptions} from '@lib/rlottie/rlottiePlayer';
+import QueryableWorker from '@lib/rlottie/queryableWorker';
+import blobConstruct from '@helpers/blob/blobConstruct';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import IS_WEB_ASSEMBLY_SUPPORTED from '@environment/webAssemblySupport';
+import makeError from '@helpers/makeError';
+import App from '@config/app';
+import rootScope from '@lib/rootScope';
+import toArray from '@helpers/array/toArray';
 
 export type LottieAssetName =
   | 'EmptyFolder'

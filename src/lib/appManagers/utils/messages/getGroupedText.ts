@@ -1,5 +1,5 @@
-import assumeType from '../../../../helpers/assumeType';
-import {Message} from '../../../../layer';
+import assumeType from '@helpers/assumeType';
+import {Message} from '@layer';
 
 export default function getGroupedText(messages: Message.message[]) {
   let foundMessages = 0, message: Message.message;

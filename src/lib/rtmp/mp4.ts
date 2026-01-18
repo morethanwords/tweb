@@ -1,4 +1,4 @@
-import {findIsoBox} from './utils';
+import {findIsoBox} from '@lib/rtmp/utils';
 
 export interface Mp4Sample {
   idx: number;

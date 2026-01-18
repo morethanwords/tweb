@@ -1,9 +1,9 @@
 import {Accessor, createMemo, createResource, createSelector, createSignal} from 'solid-js';
 import {createStore, reconcile} from 'solid-js/store';
-import {createSetSignal} from '../../../../../helpers/solid/createSetSignal';
-import {useHotReloadGuard} from '../../../../../lib/solidjs/hotReloadGuard';
-import {FilterGroupConfigItem, getFilterGroupsConfig} from './config';
-import {CommittedFilters} from './types';
+import {createSetSignal} from '@helpers/solid/createSetSignal';
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import {FilterGroupConfigItem, getFilterGroupsConfig} from '@components/sidebarRight/tabs/adminRecentActions/filters/config';
+import {CommittedFilters} from '@components/sidebarRight/tabs/adminRecentActions/filters/types';
 
 
 type UseFlagFiltersArgs = {

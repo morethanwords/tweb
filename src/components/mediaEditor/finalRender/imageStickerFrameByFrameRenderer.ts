@@ -1,8 +1,8 @@
-import deferredPromise, {CancellablePromise} from '../../../helpers/cancellablePromise';
-import appDownloadManager from '../../../lib/appDownloadManager';
-import {Document} from '../../../layer';
+import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
+import appDownloadManager from '@lib/appDownloadManager';
+import {Document} from '@layer';
 
-import {StickerFrameByFrameRenderer} from './types';
+import {StickerFrameByFrameRenderer} from '@components/mediaEditor/finalRender/types';
 
 export default class ImageStickerFrameByFrameRenderer implements StickerFrameByFrameRenderer {
   private image: HTMLImageElement;

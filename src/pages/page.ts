@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {AuthBackButton} from '../components/authBackButton';
-import {getCurrentAccount} from '../lib/accounts/getCurrentAccount';
-import pagesManager from './pagesManager';
+import {AuthBackButton} from '@components/authBackButton';
+import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
+import pagesManager from '@/pages/pagesManager';
 
 export default class Page {
   public pageEl: HTMLDivElement;

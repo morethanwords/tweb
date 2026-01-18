@@ -4,18 +4,18 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {InputFile, MissingInvitee} from '../../../layer';
-import appDialogsManager from '../../../lib/appDialogsManager';
-import InputField from '../../inputField';
-import {SliderSuperTab} from '../../slider';
-import AvatarEdit from '../../avatarEdit';
-import I18n from '../../../lib/langPack';
-import ButtonCorner from '../../buttonCorner';
-import getUserStatusString from '../../wrappers/getUserStatusString';
-import appImManager from '../../../lib/appImManager';
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import SettingSection from '../../settingSection';
-import {handleMissingInvitees} from '../../addChatUsers';
+import {InputFile, MissingInvitee} from '@layer';
+import appDialogsManager from '@lib/appDialogsManager';
+import InputField from '@components/inputField';
+import {SliderSuperTab} from '@components/slider';
+import AvatarEdit from '@components/avatarEdit';
+import I18n from '@lib/langPack';
+import ButtonCorner from '@components/buttonCorner';
+import getUserStatusString from '@components/wrappers/getUserStatusString';
+import appImManager from '@lib/appImManager';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import SettingSection from '@components/settingSection';
+import {handleMissingInvitees} from '@components/addChatUsers';
 
 interface OpenStreetMapInterface {
   place_id?: number;

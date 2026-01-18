@@ -1,7 +1,7 @@
-import {TGICO_CLASS} from '../helpers/tgico';
-import Icons from '../icons';
-import IconsReverse from '../iconsReverse';
-import I18n from '../lib/langPack';
+import {TGICO_CLASS} from '@helpers/tgico';
+import Icons from '@/icons';
+import IconsReverse from '@/iconsReverse';
+import I18n from '@lib/langPack';
 
 export function getIconContent(icon: Icon) {
   return String.fromCharCode(parseInt(Icons[icon], 16));

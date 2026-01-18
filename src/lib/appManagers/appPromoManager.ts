@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import ctx from '../../environment/ctx';
-import tsNow from '../../helpers/tsNow';
-import {HelpPromoData} from '../../layer';
-import {AppManager} from './manager';
+import ctx from '@environment/ctx';
+import tsNow from '@helpers/tsNow';
+import {HelpPromoData} from '@layer';
+import {AppManager} from '@appManagers/manager';
 
 export interface MyPromoData {
   pendingSuggestions: string[];

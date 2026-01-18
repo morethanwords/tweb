@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import Page from './page';
-// import lottieLoader from '../lib/rlottie/lottieLoader';
-import {horizontalMenu} from '../components/horizontalMenu';
-import {MOUNT_CLASS_TO} from '../config/debug';
-import fastSmoothScroll from '../helpers/fastSmoothScroll';
-import whichChild from '../helpers/dom/whichChild';
+import Page from '@/pages/page';
+// import lottieLoader from '@lib/rlottie/lottieLoader';
+import {horizontalMenu} from '@components/horizontalMenu';
+import {MOUNT_CLASS_TO} from '@config/debug';
+import fastSmoothScroll from '@helpers/fastSmoothScroll';
+import whichChild from '@helpers/dom/whichChild';
 
 class PagesManager {
   private pageId = -1;

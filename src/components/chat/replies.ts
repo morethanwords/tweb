@@ -4,19 +4,19 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {Message} from '../../layer';
-import rootScope from '../../lib/rootScope';
-import ripple from '../ripple';
-import I18n from '../../lib/langPack';
-import replaceContent from '../../helpers/dom/replaceContent';
-import StackedAvatars from '../stackedAvatars';
-import formatNumber from '../../helpers/number/formatNumber';
-import {AppManagers} from '../../lib/managers';
-import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
-import type LazyLoadQueue from '../lazyLoadQueue';
-import {MiddlewareHelper} from '../../helpers/middleware';
-import {_tgico} from '../../helpers/tgico';
-import Icon from '../icon';
+import {Message} from '@layer';
+import rootScope from '@lib/rootScope';
+import ripple from '@components/ripple';
+import I18n from '@lib/langPack';
+import replaceContent from '@helpers/dom/replaceContent';
+import StackedAvatars from '@components/stackedAvatars';
+import formatNumber from '@helpers/number/formatNumber';
+import {AppManagers} from '@lib/managers';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
+import type LazyLoadQueue from '@components/lazyLoadQueue';
+import {MiddlewareHelper} from '@helpers/middleware';
+import {_tgico} from '@helpers/tgico';
+import Icon from '@components/icon';
 
 const TAG_NAME = 'replies-element';
 

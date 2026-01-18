@@ -1,8 +1,8 @@
 import {Accessor, batch, createMemo, createReaction, createRoot, createSignal, onCleanup} from 'solid-js';
-import {Middleware} from '../helpers/middleware';
-import useDynamicCachedValue from '../helpers/solid/useDynamicCachedValue';
-import rootScope, {BroadcastEventsListeners} from '../lib/rootScope';
-import formatStarsAmount from '../lib/appManagers/utils/payments/formatStarsAmount';
+import {Middleware} from '@helpers/middleware';
+import useDynamicCachedValue from '@helpers/solid/useDynamicCachedValue';
+import rootScope, {BroadcastEventsListeners} from '@lib/rootScope';
+import formatStarsAmount from '@appManagers/utils/payments/formatStarsAmount';
 import bigInt from 'big-integer';
 
 const [stars, setStars] = createSignal<Long>();

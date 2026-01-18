@@ -1,11 +1,11 @@
 import {batch, createEffect, createMemo, createSignal, on, onCleanup} from 'solid-js';
 import {modifyMutable, produce} from 'solid-js/store';
-import {animateValue} from '../../../helpers/animateValue';
-import {lerp, lerpArray} from '../../../helpers/lerp';
-import {useMediaEditorContext} from '../context';
-import {NumberPair} from '../types';
-import {getSnappedViewportsScale} from '../utils';
-import {useCropOffset} from './useCropOffset';
+import {animateValue} from '@helpers/animateValue';
+import {lerp, lerpArray} from '@helpers/lerp';
+import {useMediaEditorContext} from '@components/mediaEditor/context';
+import {NumberPair} from '@components/mediaEditor/types';
+import {getSnappedViewportsScale} from '@components/mediaEditor/utils';
+import {useCropOffset} from '@components/mediaEditor/canvas/useCropOffset';
 
 
 export type FinalTransform = {

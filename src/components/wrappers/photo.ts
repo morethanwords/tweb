@@ -4,29 +4,29 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import renderMediaWithFadeIn from '../../helpers/dom/renderMediaWithFadeIn';
-import mediaSizes from '../../helpers/mediaSizes';
-import {InputWebFileLocation, Message, PhotoSize, VideoSize, WebDocument} from '../../layer';
-import {MyDocument} from '../../lib/appManagers/appDocsManager';
-import {MyPhoto} from '../../lib/appManagers/appPhotosManager';
-import rootScope from '../../lib/rootScope';
-import LazyLoadQueue from '../lazyLoadQueue';
-import ProgressivePreloader from '../preloader';
-import blur from '../../helpers/blur';
-import {AppManagers} from '../../lib/managers';
-import getMediaThumbIfNeeded from '../../helpers/getStrippedThumbIfNeeded';
-import setAttachmentSize from '../../helpers/setAttachmentSize';
-import choosePhotoSize from '../../lib/appManagers/utils/photos/choosePhotoSize';
-import type {ThumbCache} from '../../lib/storages/thumbs';
-import appDownloadManager from '../../lib/appDownloadManager';
-import isWebDocument from '../../lib/appManagers/utils/webDocs/isWebDocument';
-import createVideo from '../../helpers/dom/createVideo';
-import noop from '../../helpers/noop';
-import {THUMB_TYPE_FULL} from '../../lib/appManagers/constants';
-import {Middleware} from '../../helpers/middleware';
-import liteMode from '../../helpers/liteMode';
-import isWebFileLocation from '../../lib/appManagers/utils/webFiles/isWebFileLocation';
-import apiManagerProxy from '../../lib/apiManagerProxy';
+import renderMediaWithFadeIn from '@helpers/dom/renderMediaWithFadeIn';
+import mediaSizes from '@helpers/mediaSizes';
+import {InputWebFileLocation, Message, PhotoSize, VideoSize, WebDocument} from '@layer';
+import {MyDocument} from '@appManagers/appDocsManager';
+import {MyPhoto} from '@appManagers/appPhotosManager';
+import rootScope from '@lib/rootScope';
+import LazyLoadQueue from '@components/lazyLoadQueue';
+import ProgressivePreloader from '@components/preloader';
+import blur from '@helpers/blur';
+import {AppManagers} from '@lib/managers';
+import getMediaThumbIfNeeded from '@helpers/getStrippedThumbIfNeeded';
+import setAttachmentSize from '@helpers/setAttachmentSize';
+import choosePhotoSize from '@appManagers/utils/photos/choosePhotoSize';
+import type {ThumbCache} from '@lib/storages/thumbs';
+import appDownloadManager from '@lib/appDownloadManager';
+import isWebDocument from '@appManagers/utils/webDocs/isWebDocument';
+import createVideo from '@helpers/dom/createVideo';
+import noop from '@helpers/noop';
+import {THUMB_TYPE_FULL} from '@appManagers/constants';
+import {Middleware} from '@helpers/middleware';
+import liteMode from '@helpers/liteMode';
+import isWebFileLocation from '@appManagers/utils/webFiles/isWebFileLocation';
+import apiManagerProxy from '@lib/apiManagerProxy';
 
 export default async function wrapPhoto({photo, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware, size, withoutPreloader, loadPromises, autoDownloadSize, noBlur, noThumb, noFadeIn, blurAfter, managers = rootScope.managers, processUrl, fadeInElement, onRender, onRenderFinish, useBlur, useRenderCache, canHaveVideoPlayer, uploadingFileName}: {
   photo: MyPhoto | MyDocument | WebDocument | InputWebFileLocation,

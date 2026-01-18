@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {MyDocument} from '../lib/appManagers/appDocsManager';
-import {applyColorOnContext} from '../lib/rlottie/rlottiePlayer';
-import rootScope from '../lib/rootScope';
-import getStickerThumbKey from '../lib/storages/utils/thumbs/getStickerThumbKey';
-import customProperties from './dom/customProperties';
+import type {MyDocument} from '@appManagers/appDocsManager';
+import {applyColorOnContext} from '@lib/rlottie/rlottiePlayer';
+import rootScope from '@lib/rootScope';
+import getStickerThumbKey from '@lib/storages/utils/thumbs/getStickerThumbKey';
+import customProperties from '@helpers/dom/customProperties';
 
 const savingLottiePreview: {[docId: DocId]: {width: number, height: number}} = {};
 

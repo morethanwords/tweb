@@ -1,7 +1,7 @@
-import {IS_APPLE_MOBILE} from '../environment/userAgent';
-import rootScope from '../lib/rootScope';
-import callbackify from './callbackify';
-import isCrbug1250841Error from './fixChromiumMp4.constants';
+import {IS_APPLE_MOBILE} from '@environment/userAgent';
+import rootScope from '@lib/rootScope';
+import callbackify from '@helpers/callbackify';
+import isCrbug1250841Error from '@helpers/fixChromiumMp4.constants';
 
 export function shouldIgnoreVideoError(e: ErrorEvent) {
   try {

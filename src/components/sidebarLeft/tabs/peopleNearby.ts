@@ -4,22 +4,22 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {SliderSuperTab} from '../../slider';
-import ButtonCorner from '../../buttonCorner';
-import AppNewGroupTab from './newGroup';
-import {toast} from '../../toast';
-import {ButtonMenuItemOptions} from '../../buttonMenu';
-import {i18n, join, _i18n} from '../../../lib/langPack';
-import rootScope from '../../../lib/rootScope';
-import wrapSticker from '../../wrappers/sticker';
-import SortedUserList from '../../sortedUserList';
-import {PeerLocated, Update, Updates} from '../../../layer';
+import {SliderSuperTab} from '@components/slider';
+import ButtonCorner from '@components/buttonCorner';
+import AppNewGroupTab from '@components/sidebarLeft/tabs/newGroup';
+import {toast} from '@components/toast';
+import {ButtonMenuItemOptions} from '@components/buttonMenu';
+import {i18n, join, _i18n} from '@lib/langPack';
+import rootScope from '@lib/rootScope';
+import wrapSticker from '@components/wrappers/sticker';
+import SortedUserList from '@components/sortedUserList';
+import {PeerLocated, Update, Updates} from '@layer';
 import {SettingChatListSection} from '..';
-import appDialogsManager from '../../../lib/appDialogsManager';
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import confirmationPopup from '../../confirmationPopup';
-import getPeerId from '../../../lib/appManagers/utils/peers/getPeerId';
-import type LazyLoadQueue from '../../lazyLoadQueue';
+import appDialogsManager from '@lib/appDialogsManager';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import confirmationPopup from '@components/confirmationPopup';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
+import type LazyLoadQueue from '@components/lazyLoadQueue';
 
 export default class AppPeopleNearbyTab extends SliderSuperTab {
   private latestLocationSaved: {latitude: number, longitude: number, accuracy: number};

@@ -4,34 +4,34 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import partition from '../../helpers/array/partition';
-import assumeType from '../../helpers/assumeType';
-import {formatDate} from '../../helpers/date';
-import htmlToDocumentFragment from '../../helpers/dom/htmlToDocumentFragment';
-import {getRestrictionReason} from '../../helpers/restrictions';
-import escapeRegExp from '../../helpers/string/escapeRegExp';
-import limitSymbols from '../../helpers/string/limitSymbols';
-import {Message, DocumentAttribute, DraftMessage} from '../../layer';
-import {MyDocument} from '../../lib/appManagers/appDocsManager';
-import {MyDraftMessage} from '../../lib/appManagers/appDraftsManager';
-import {MyMessage} from '../../lib/appManagers/appMessagesManager';
-import isMessageRestricted from '../../lib/appManagers/utils/messages/isMessageRestricted';
-import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
-import I18n, {LangPackKey, i18n, UNSUPPORTED_LANG_PACK_KEY, FormatterArguments} from '../../lib/langPack';
-import {SERVICE_PEER_ID, VERIFICATION_CODES_BOT_ID} from '../../lib/appManagers/constants';
-import parseEntities from '../../lib/richTextProcessor/parseEntities';
-import sortEntities from '../../lib/richTextProcessor/sortEntities';
-import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
-import wrapPlainText from '../../lib/richTextProcessor/wrapPlainText';
-import wrapRichText, {WrapRichTextOptions} from '../../lib/richTextProcessor/wrapRichText';
-import wrapTextWithEntities from '../../lib/richTextProcessor/wrapTextWithEntities';
-import rootScope from '../../lib/rootScope';
-import {Modify} from '../../types';
-import Icon from '../icon';
-import TranslatableMessage from '../translatableMessage';
-import wrapMessageActionTextNew, {WrapMessageActionTextOptions} from './messageActionTextNew';
-import {wrapMessageGiveawayResults} from './messageActionTextNewUnsafe';
-import wrapPeerTitle from './peerTitle';
+import partition from '@helpers/array/partition';
+import assumeType from '@helpers/assumeType';
+import {formatDate} from '@helpers/date';
+import htmlToDocumentFragment from '@helpers/dom/htmlToDocumentFragment';
+import {getRestrictionReason} from '@helpers/restrictions';
+import escapeRegExp from '@helpers/string/escapeRegExp';
+import limitSymbols from '@helpers/string/limitSymbols';
+import {Message, DocumentAttribute, DraftMessage} from '@layer';
+import {MyDocument} from '@appManagers/appDocsManager';
+import {MyDraftMessage} from '@appManagers/appDraftsManager';
+import {MyMessage} from '@appManagers/appMessagesManager';
+import isMessageRestricted from '@appManagers/utils/messages/isMessageRestricted';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
+import I18n, {LangPackKey, i18n, UNSUPPORTED_LANG_PACK_KEY, FormatterArguments} from '@lib/langPack';
+import {SERVICE_PEER_ID, VERIFICATION_CODES_BOT_ID} from '@appManagers/constants';
+import parseEntities from '@lib/richTextProcessor/parseEntities';
+import sortEntities from '@lib/richTextProcessor/sortEntities';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import wrapPlainText from '@lib/richTextProcessor/wrapPlainText';
+import wrapRichText, {WrapRichTextOptions} from '@lib/richTextProcessor/wrapRichText';
+import wrapTextWithEntities from '@lib/richTextProcessor/wrapTextWithEntities';
+import rootScope from '@lib/rootScope';
+import {Modify} from '@types';
+import Icon from '@components/icon';
+import TranslatableMessage from '@components/translatableMessage';
+import wrapMessageActionTextNew, {WrapMessageActionTextOptions} from '@components/wrappers/messageActionTextNew';
+import {wrapMessageGiveawayResults} from '@components/wrappers/messageActionTextNewUnsafe';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
 
 export type WrapMessageForReplyOptions = Modify<WrapMessageActionTextOptions, {
   message: MyMessage | MyDraftMessage

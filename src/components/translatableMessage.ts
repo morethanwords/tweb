@@ -4,18 +4,18 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import deferredPromise from '../helpers/cancellablePromise';
-import {Middleware} from '../helpers/middleware';
-import {modifyAckedPromise} from '../helpers/modifyAckedResult';
-import usePeerTranslation from '../hooks/usePeerTranslation';
-import {Message, TextWithEntities} from '../layer';
-import wrapRichText from '../lib/richTextProcessor/wrapRichText';
+import deferredPromise from '@helpers/cancellablePromise';
+import {Middleware} from '@helpers/middleware';
+import {modifyAckedPromise} from '@helpers/modifyAckedResult';
+import usePeerTranslation from '@hooks/usePeerTranslation';
+import {Message, TextWithEntities} from '@layer';
+import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import {createRoot, createSignal, createMemo, onCleanup, createEffect, Accessor, untrack} from 'solid-js';
-import rootScope from '../lib/rootScope';
-import SuperIntersectionObserver from '../helpers/dom/superIntersectionObserver';
-import {processMessageForTranslation} from '../stores/peerLanguage';
-import createMiddleware from '../helpers/solid/createMiddleware';
-import wrapTextWithEntities from '../lib/richTextProcessor/wrapTextWithEntities';
+import rootScope from '@lib/rootScope';
+import SuperIntersectionObserver from '@helpers/dom/superIntersectionObserver';
+import {processMessageForTranslation} from '@stores/peerLanguage';
+import createMiddleware from '@helpers/solid/createMiddleware';
+import wrapTextWithEntities from '@lib/richTextProcessor/wrapTextWithEntities';
 
 const USE_OBSERVER = false;
 

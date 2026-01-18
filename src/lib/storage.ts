@@ -9,17 +9,17 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import {Database} from '../config/databases';
-import DEBUG, {MOUNT_CLASS_TO} from '../config/debug';
-// import DATABASE_SESSION from "../config/databases/session";
-import deferredPromise, {CancellablePromise} from '../helpers/cancellablePromise';
-import {IS_WORKER} from '../helpers/context';
-import throttleWith from '../helpers/schedulers/throttleWith';
-// import { WorkerTaskTemplate } from "../types";
-import IDBStorage from './files/idb';
-import {logger} from './logger';
-import DeferredIsUsingPasscode from './passcode/deferredIsUsingPasscode';
-import EncryptedStorageLayer, {StorageLayer} from './encryptedStorageLayer';
+import {Database} from '@config/databases';
+import DEBUG, {MOUNT_CLASS_TO} from '@config/debug';
+// import DATABASE_SESSION from "@config/databases/session";
+import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
+import {IS_WORKER} from '@helpers/context';
+import throttleWith from '@helpers/schedulers/throttleWith';
+// import { WorkerTaskTemplate } from "@types";
+import IDBStorage from '@lib/files/idb';
+import {logger} from '@lib/logger';
+import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
+import EncryptedStorageLayer, {StorageLayer} from '@lib/encryptedStorageLayer';
 
 function noop() {}
 

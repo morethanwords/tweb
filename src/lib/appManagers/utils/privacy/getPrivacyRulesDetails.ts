@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {PrivacyRule} from '../../../../layer';
-import PrivacyType from './privacyType';
+import {PrivacyRule} from '@layer';
+import PrivacyType from '@appManagers/utils/privacy/privacyType';
 
 export default function getPrivacyRulesDetails(rules: PrivacyRule[]) {
   const types: PrivacyType[] = [];

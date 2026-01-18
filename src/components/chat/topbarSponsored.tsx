@@ -6,29 +6,29 @@
 
 import {createEffect, createSignal, on, Show} from 'solid-js';
 import {render} from 'solid-js/web';
-import {AppManagers} from '../../lib/managers';
-import {NULL_PEER_ID} from '../../lib/appManagers/constants';
-import Chat from './chat';
-import PinnedContainer from './pinnedContainer';
-import ChatTopbar from './topbar';
-import {SponsoredMessage} from '../../layer';
-import classNames from '../../helpers/string/classNames';
+import {AppManagers} from '@lib/managers';
+import {NULL_PEER_ID} from '@appManagers/constants';
+import Chat from '@components/chat/chat';
+import PinnedContainer from '@components/chat/pinnedContainer';
+import ChatTopbar from '@components/chat/topbar';
+import {SponsoredMessage} from '@layer';
+import classNames from '@helpers/string/classNames';
 
-import styles from './topbarSponsored.module.scss';
-import {Ripple} from '../rippleTsx';
-import {I18nTsx} from '../../helpers/solid/i18n';
-import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
-import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
-import appImManager from '../../lib/appImManager';
-import {getMiddleware} from '../../helpers/middleware';
-import PhotoTsx from '../wrappers/photoTsx';
-import {MyPhoto} from '../../lib/appManagers/appPhotosManager';
-import {ButtonIconTsx} from '../buttonIconTsx';
-import PopupPremium from '../popups/premium';
-import createContextMenu from '../../helpers/dom/createContextMenu';
-import {copyTextToClipboard} from '../../helpers/clipboard';
-import {getSponsoredMessageButtons} from './contextMenu';
-import PopupReportAd from '../popups/reportAd';
+import styles from '@components/chat/topbarSponsored.module.scss';
+import {Ripple} from '@components/rippleTsx';
+import {I18nTsx} from '@helpers/solid/i18n';
+import wrapRichText from '@lib/richTextProcessor/wrapRichText';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import appImManager from '@lib/appImManager';
+import {getMiddleware} from '@helpers/middleware';
+import PhotoTsx from '@components/wrappers/photoTsx';
+import {MyPhoto} from '@appManagers/appPhotosManager';
+import {ButtonIconTsx} from '@components/buttonIconTsx';
+import PopupPremium from '@components/popups/premium';
+import createContextMenu from '@helpers/dom/createContextMenu';
+import {copyTextToClipboard} from '@helpers/clipboard';
+import {getSponsoredMessageButtons} from '@components/chat/contextMenu';
+import PopupReportAd from '@components/popups/reportAd';
 
 export default class ChatTopbarSponsored extends PinnedContainer {
   private dispose: () => void;

@@ -1,4 +1,4 @@
-import callbackify from './helpers/callbackify';
+import callbackify from '@helpers/callbackify';
 
 export const CodeLanguageMap: {[key: string]: string[]} = {
   'Markup': [

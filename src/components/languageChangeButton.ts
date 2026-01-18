@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import cancelEvent from '../helpers/dom/cancelEvent';
-import {attachClickEvent} from '../helpers/dom/clickEvent';
-import loadFonts from '../helpers/dom/loadFonts';
-import {Config, LangPackDifference, LangPackString} from '../layer';
-import I18n, {LangPackKey} from '../lib/langPack';
-import rootScope from '../lib/rootScope';
-import Button from './button';
-import {putPreloader} from './putPreloader';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import loadFonts from '@helpers/dom/loadFonts';
+import {Config, LangPackDifference, LangPackString} from '@layer';
+import I18n, {LangPackKey} from '@lib/langPack';
+import rootScope from '@lib/rootScope';
+import Button from '@components/button';
+import {putPreloader} from '@components/putPreloader';
 
 let set = false;
 

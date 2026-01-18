@@ -4,16 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import Scrollable from '../components/scrollable';
-import rootScope from '../lib/rootScope';
-import {animate} from './animation';
-import {drawCircleFromStart} from './canvas/drawCircle';
-import roundRect from './canvas/roundRect';
-import Shimmer from './canvas/shimmer';
-import customProperties from './dom/customProperties';
-import easeInOutSine from './easing/easeInOutSine';
-import liteMode from './liteMode';
-import mediaSizes from './mediaSizes';
+import Scrollable from '@components/scrollable';
+import rootScope from '@lib/rootScope';
+import {animate} from '@helpers/animation';
+import {drawCircleFromStart} from '@helpers/canvas/drawCircle';
+import roundRect from '@helpers/canvas/roundRect';
+import Shimmer from '@helpers/canvas/shimmer';
+import customProperties from '@helpers/dom/customProperties';
+import easeInOutSine from '@helpers/easing/easeInOutSine';
+import liteMode from '@helpers/liteMode';
+import mediaSizes from '@helpers/mediaSizes';
 
 export default class DialogsPlaceholder {
   private canvas: HTMLCanvasElement;

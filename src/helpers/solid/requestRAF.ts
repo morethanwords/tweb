@@ -1,5 +1,5 @@
 import {batch} from 'solid-js';
-import {fastRaf} from '../schedulers';
+import {fastRaf} from '@helpers/schedulers';
 
 let rafCallbacks: Array<() => void> = [];
 let isRAFing = false;

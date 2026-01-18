@@ -5,24 +5,24 @@
  */
 
 import PopupElement, {addCancelButton} from '.';
-import createBadge from '../../helpers/createBadge';
-import cancelEvent from '../../helpers/dom/cancelEvent';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import formatDuration from '../../helpers/formatDuration';
-import {PremiumBoostsStatus} from '../../layer';
-import appImManager from '../../lib/appImManager';
-import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
-import {i18n} from '../../lib/langPack';
-import apiManagerProxy from '../../lib/apiManagerProxy';
-import rootScope from '../../lib/rootScope';
-import AppSelectPeers from '../appSelectPeers';
-import confirmationPopup from '../confirmationPopup';
-import LimitLine from '../limit';
-import wrapPeerTitle from '../wrappers/peerTitle';
-import {wrapFormattedDuration} from '../wrappers/wrapDuration';
-import PopupPeer from './peer';
-import PopupPremium from './premium';
-import PopupReassignBoost from './reassignBoost';
+import createBadge from '@helpers/createBadge';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import formatDuration from '@helpers/formatDuration';
+import {PremiumBoostsStatus} from '@layer';
+import appImManager from '@lib/appImManager';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
+import {i18n} from '@lib/langPack';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import rootScope from '@lib/rootScope';
+import AppSelectPeers from '@components/appSelectPeers';
+import confirmationPopup from '@components/confirmationPopup';
+import LimitLine from '@components/limit';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
+import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
+import PopupPeer from '@components/popups/peer';
+import PopupPremium from '@components/popups/premium';
+import PopupReassignBoost from '@components/popups/reassignBoost';
 
 const className = 'popup-boost';
 

@@ -4,37 +4,37 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import filterUnique from '../../../helpers/array/filterUnique';
-import {copyTextToClipboard} from '../../../helpers/clipboard';
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import shake from '../../../helpers/dom/shake';
-import toggleDisability from '../../../helpers/dom/toggleDisability';
-import ListenerSetter from '../../../helpers/listenerSetter';
-import {Chat, DialogFilter, ExportedChatlistInvite, User} from '../../../layer';
-import appDialogsManager, {DialogElement} from '../../../lib/appDialogsManager';
-import appImManager from '../../../lib/appImManager';
-import hasRights from '../../../lib/appManagers/utils/chats/hasRights';
-import getPeerActiveUsernames from '../../../lib/appManagers/utils/peers/getPeerActiveUsernames';
-import getPeerId from '../../../lib/appManagers/utils/peers/getPeerId';
-import I18n, {LangPackKey, i18n} from '../../../lib/langPack';
-import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
-import wrapPlainText from '../../../lib/richTextProcessor/wrapPlainText';
-import lottieLoader, {LottieLoader} from '../../../lib/rlottie/lottieLoader';
-import RLottiePlayer from '../../../lib/rlottie/rlottiePlayer';
-import rootScope from '../../../lib/rootScope';
-import AppSelectPeers from '../../appSelectPeers';
-import Button from '../../button';
-import ButtonIcon from '../../buttonIcon';
-import ButtonMenuToggle from '../../buttonMenuToggle';
-import type {ConfirmedPaymentResult} from '../../chat/paidMessagesInterceptor';
-import confirmationPopup from '../../confirmationPopup';
-import PopupPickUser from '../../popups/pickUser';
-import ripple from '../../ripple';
-import SettingSection from '../../settingSection';
-import {SliderSuperTabEventable} from '../../sliderTab';
-import {toastNew} from '../../toast';
-import wrapFolderTitle from '../../wrappers/folderTitle';
-import getChatMembersString from '../../wrappers/getChatMembersString';
+import filterUnique from '@helpers/array/filterUnique';
+import {copyTextToClipboard} from '@helpers/clipboard';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import shake from '@helpers/dom/shake';
+import toggleDisability from '@helpers/dom/toggleDisability';
+import ListenerSetter from '@helpers/listenerSetter';
+import {Chat, DialogFilter, ExportedChatlistInvite, User} from '@layer';
+import appDialogsManager, {DialogElement} from '@lib/appDialogsManager';
+import appImManager from '@lib/appImManager';
+import hasRights from '@appManagers/utils/chats/hasRights';
+import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
+import I18n, {LangPackKey, i18n} from '@lib/langPack';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import wrapPlainText from '@lib/richTextProcessor/wrapPlainText';
+import lottieLoader, {LottieLoader} from '@lib/rlottie/lottieLoader';
+import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import rootScope from '@lib/rootScope';
+import AppSelectPeers from '@components/appSelectPeers';
+import Button from '@components/button';
+import ButtonIcon from '@components/buttonIcon';
+import ButtonMenuToggle from '@components/buttonMenuToggle';
+import type {ConfirmedPaymentResult} from '@components/chat/paidMessagesInterceptor';
+import confirmationPopup from '@components/confirmationPopup';
+import PopupPickUser from '@components/popups/pickUser';
+import ripple from '@components/ripple';
+import SettingSection from '@components/settingSection';
+import {SliderSuperTabEventable} from '@components/sliderTab';
+import {toastNew} from '@components/toast';
+import wrapFolderTitle from '@components/wrappers/folderTitle';
+import getChatMembersString from '@components/wrappers/getChatMembersString';
 
 export class InviteLink {
   public container: HTMLDivElement;

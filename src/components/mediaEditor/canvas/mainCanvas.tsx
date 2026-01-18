@@ -1,16 +1,16 @@
 import {onCleanup, onMount, Show, JSX} from 'solid-js';
 import {Transition} from 'solid-transition-group';
 
-import {useMediaEditorContext} from '../context';
+import {useMediaEditorContext} from '@components/mediaEditor/context';
 
-import BrushCanvas from './brushCanvas';
-import CropHandles from './cropHandles';
-import ImageCanvas from './imageCanvas';
-import PreviewBrushSize from './previewBrushSize';
-import ResizableLayers from './resizableLayers';
-import RotationWheel from './rotationWheel';
-import useFinalTransform from './useFinalTransform';
-import VideoControls from './videoControls';
+import BrushCanvas from '@components/mediaEditor/canvas/brushCanvas';
+import CropHandles from '@components/mediaEditor/canvas/cropHandles';
+import ImageCanvas from '@components/mediaEditor/canvas/imageCanvas';
+import PreviewBrushSize from '@components/mediaEditor/canvas/previewBrushSize';
+import ResizableLayers from '@components/mediaEditor/canvas/resizableLayers';
+import RotationWheel from '@components/mediaEditor/canvas/rotationWheel';
+import useFinalTransform from '@components/mediaEditor/canvas/useFinalTransform';
+import VideoControls from '@components/mediaEditor/canvas/videoControls';
 
 
 export default function MainCanvas() {

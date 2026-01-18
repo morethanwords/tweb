@@ -9,11 +9,11 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import {TLSerialization} from './tl_utils';
-import cryptoWorker from '../crypto/cryptoMessagePort';
-import Modes from '../../config/modes';
-import bytesFromHex from '../../helpers/bytes/bytesFromHex';
-import bytesToHex from '../../helpers/bytes/bytesToHex';
+import {TLSerialization} from '@lib/mtproto/tl_utils';
+import cryptoWorker from '@lib/crypto/cryptoMessagePort';
+import Modes from '@config/modes';
+import bytesFromHex from '@helpers/bytes/bytesFromHex';
+import bytesToHex from '@helpers/bytes/bytesToHex';
 import bigInt from 'big-integer';
 
 export type RSAPublicKeyHex = {

@@ -9,20 +9,20 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type {Chat, DialogPeer, InputDialogPeer, InputNotifyPeer, InputPeer, Peer, RestrictionReason, User} from '../../layer';
-import type {LangPackKey} from '../langPack';
-import isObject from '../../helpers/object/isObject';
-import {AppManager} from './manager';
-import getPeerId from './utils/peers/getPeerId';
-import isUser from './utils/peers/isUser';
-import isAnyChat from './utils/peers/isAnyChat';
-import {NULL_PEER_ID} from './constants';
-import getPeerActiveUsernames from './utils/peers/getPeerActiveUsernames';
-import isPeerRestricted from './utils/peers/isPeerRestricted';
-import getPeerPhoto from './utils/peers/getPeerPhoto';
-import getServerMessageId from './utils/messageId/getServerMessageId';
-import MTProtoMessagePort from '../mainWorker/mainMessagePort';
-import callbackify from '../../helpers/callbackify';
+import type {Chat, DialogPeer, InputDialogPeer, InputNotifyPeer, InputPeer, Peer, RestrictionReason, User} from '@layer';
+import type {LangPackKey} from '@lib/langPack';
+import isObject from '@helpers/object/isObject';
+import {AppManager} from '@appManagers/manager';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
+import isUser from '@appManagers/utils/peers/isUser';
+import isAnyChat from '@appManagers/utils/peers/isAnyChat';
+import {NULL_PEER_ID} from '@appManagers/constants';
+import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
+import isPeerRestricted from '@appManagers/utils/peers/isPeerRestricted';
+import getPeerPhoto from '@appManagers/utils/peers/getPeerPhoto';
+import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
+import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
+import callbackify from '@helpers/callbackify';
 
 export type PeerType = 'channel' | 'chat' | 'megagroup' | 'group' | 'saved' | 'savedDialog' | 'monoforum' | 'monoforum_thread' | 'botforum_thread';
 export class AppPeersManager extends AppManager {

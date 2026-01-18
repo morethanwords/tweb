@@ -4,18 +4,18 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import createVideo from '../../helpers/dom/createVideo';
-import renderImageFromUrl from '../../helpers/dom/renderImageFromUrl';
-import {Document, DocumentAttribute, StickerSet} from '../../layer';
-import appDownloadManager from '../../lib/appDownloadManager';
-import {AppManagers} from '../../lib/managers';
-import lottieLoader from '../../lib/rlottie/lottieLoader';
-import rootScope from '../../lib/rootScope';
-import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
-import LazyLoadQueue from '../lazyLoadQueue';
-import wrapSticker from './sticker';
-import {Middleware} from '../../helpers/middleware';
-import {EMOJI_TEXT_COLOR} from '../emoticonsDropdown';
+import createVideo from '@helpers/dom/createVideo';
+import renderImageFromUrl from '@helpers/dom/renderImageFromUrl';
+import {Document, DocumentAttribute, StickerSet} from '@layer';
+import appDownloadManager from '@lib/appDownloadManager';
+import {AppManagers} from '@lib/managers';
+import lottieLoader from '@lib/rlottie/lottieLoader';
+import rootScope from '@lib/rootScope';
+import animationIntersector, {AnimationItemGroup} from '@components/animationIntersector';
+import LazyLoadQueue from '@components/lazyLoadQueue';
+import wrapSticker from '@components/wrappers/sticker';
+import {Middleware} from '@helpers/middleware';
+import {EMOJI_TEXT_COLOR} from '@components/emoticonsDropdown';
 
 export default async function wrapStickerSetThumb({set, lazyLoadQueue, container, group, autoplay, width, height, managers = rootScope.managers, middleware, textColor}: {
   set: StickerSet.stickerSet,

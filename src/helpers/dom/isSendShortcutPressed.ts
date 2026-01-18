@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import rootScope from '../../lib/rootScope';
-import {IS_MOBILE, IS_APPLE} from '../../environment/userAgent';
+import rootScope from '@lib/rootScope';
+import {IS_MOBILE, IS_APPLE} from '@environment/userAgent';
 
 export default function isSendShortcutPressed(e: KeyboardEvent) {
   if(e.key === 'Enter' && !IS_MOBILE && !e.isComposing) {

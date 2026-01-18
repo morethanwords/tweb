@@ -1,4 +1,4 @@
-import formatValueByPattern from './formatValueByPattern';
+import formatValueByPattern from '@helpers/cards/formatValueByPattern';
 
 export default function formatInputValueByPattern(options: {
   value: string,

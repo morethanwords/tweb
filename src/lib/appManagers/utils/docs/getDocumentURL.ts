@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {FileURLType, getFileURL} from '../../../../helpers/fileName';
-import {Document, PhotoSize} from '../../../../layer';
+import {FileURLType, getFileURL} from '@helpers/fileName';
+import {Document, PhotoSize} from '@layer';
 
-import getDocumentDownloadOptions from './getDocumentDownloadOptions';
+import getDocumentDownloadOptions from '@appManagers/utils/docs/getDocumentDownloadOptions';
 
 type GetDocumentURLOptions = {
   download?: boolean;

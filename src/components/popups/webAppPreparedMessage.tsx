@@ -1,28 +1,28 @@
 import {createResource, createSignal, onMount} from 'solid-js';
 import PopupElement from '.';
-import safeAssign from '../../helpers/object/safeAssign';
-import {I18nTsx} from '../../helpers/solid/i18n';
+import safeAssign from '@helpers/object/safeAssign';
+import {I18nTsx} from '@helpers/solid/i18n';
 
-import {BotInlineResult, Message, MessageEntity, MessagesPreparedInlineMessage, Photo, ReplyMarkup, TextWithEntities} from '../../layer';
-import {BubbleLayout} from '../chat/bubbles/bubbleLayout';
-import {FakeBubbles} from '../chat/bubbles/fakeBubbles';
-import {PeerTitleTsx} from '../peerTitleTsx';
+import {BotInlineResult, Message, MessageEntity, MessagesPreparedInlineMessage, Photo, ReplyMarkup, TextWithEntities} from '@layer';
+import {BubbleLayout} from '@components/chat/bubbles/bubbleLayout';
+import {FakeBubbles} from '@components/chat/bubbles/fakeBubbles';
+import {PeerTitleTsx} from '@components/peerTitleTsx';
 
-import css from './webAppPreparedMessage.module.scss';
-import wrapPhoto from '../wrappers/photo';
-import classNames from '../../helpers/string/classNames';
-import setAttachmentSize from '../../helpers/setAttachmentSize';
-import {MyDocument} from '../../lib/appManagers/appDocsManager';
-import mediaSizes from '../../helpers/mediaSizes';
-import {MyPhoto} from '../../lib/appManagers/appPhotosManager';
-import wrapSticker from '../wrappers/sticker';
-import wrapVideo from '../wrappers/video';
-import wrapDocument from '../wrappers/document';
-import rootScope from '../../lib/rootScope';
-import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
-import PopupPickUser from './pickUser';
-import appImManager from '../../lib/appImManager';
-import generateQId from '../../lib/appManagers/utils/inlineBots/generateQId';
+import css from '@components/popups/webAppPreparedMessage.module.scss';
+import wrapPhoto from '@components/wrappers/photo';
+import classNames from '@helpers/string/classNames';
+import setAttachmentSize from '@helpers/setAttachmentSize';
+import {MyDocument} from '@appManagers/appDocsManager';
+import mediaSizes from '@helpers/mediaSizes';
+import {MyPhoto} from '@appManagers/appPhotosManager';
+import wrapSticker from '@components/wrappers/sticker';
+import wrapVideo from '@components/wrappers/video';
+import wrapDocument from '@components/wrappers/document';
+import rootScope from '@lib/rootScope';
+import wrapRichText from '@lib/richTextProcessor/wrapRichText';
+import PopupPickUser from '@components/popups/pickUser';
+import appImManager from '@lib/appImManager';
+import generateQId from '@appManagers/utils/inlineBots/generateQId';
 
 export default class PopupWebAppPreparedMessage extends PopupElement<{
   finish: (error?: string) => void

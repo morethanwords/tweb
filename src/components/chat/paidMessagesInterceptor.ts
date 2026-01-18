@@ -1,20 +1,20 @@
-import {SEND_PAID_WITH_STARS_DELAY} from '../../lib/appManagers/constants';
-import type {AppManagers} from '../../lib/managers';
-import useStars, {setReservedStars} from '../../stores/stars';
-import {MOUNT_CLASS_TO} from '../../config/debug';
-import rootScope from '../../lib/rootScope';
-import {i18n} from '../../lib/langPack';
-import noop from '../../helpers/noop';
+import {SEND_PAID_WITH_STARS_DELAY} from '@appManagers/constants';
+import type {AppManagers} from '@lib/managers';
+import useStars, {setReservedStars} from '@stores/stars';
+import {MOUNT_CLASS_TO} from '@config/debug';
+import rootScope from '@lib/rootScope';
+import {i18n} from '@lib/langPack';
+import noop from '@helpers/noop';
 
-import confirmationPopup from '../confirmationPopup';
-import wrapPeerTitle from '../wrappers/peerTitle';
-import PopupStars from '../popups/stars';
-import PopupElement from '../popups';
+import confirmationPopup from '@components/confirmationPopup';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
+import PopupStars from '@components/popups/stars';
+import PopupElement from '@components/popups';
 
-import showUndoablePaidTooltip, {paidMessagesLangKeys} from './undoablePaidTooltip';
-import createPendingUndoableMessage from './pendingUndoableMessage';
-import type Chat from './chat';
-import {useAppState} from '../../stores/appState';
+import showUndoablePaidTooltip, {paidMessagesLangKeys} from '@components/chat/undoablePaidTooltip';
+import createPendingUndoableMessage from '@components/chat/pendingUndoableMessage';
+import type Chat from '@components/chat/chat';
+import {useAppState} from '@stores/appState';
 
 
 type PassedDownArgs = {

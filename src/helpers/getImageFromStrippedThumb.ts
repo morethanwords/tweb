@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {PhotoSize} from '../layer';
-import {MyDocument} from '../lib/appManagers/appDocsManager';
-import {MyPhoto} from '../lib/appManagers/appPhotosManager';
-import {renderImageFromUrlPromise} from './dom/renderImageFromUrl';
-import getPreviewURLFromThumb from './getPreviewURLFromThumb';
-import blur from './blur';
+import {PhotoSize} from '@layer';
+import {MyDocument} from '@appManagers/appDocsManager';
+import {MyPhoto} from '@appManagers/appPhotosManager';
+import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
+import getPreviewURLFromThumb from '@helpers/getPreviewURLFromThumb';
+import blur from '@helpers/blur';
 
 export default function getImageFromStrippedThumb(
   photo: MyPhoto | MyDocument,

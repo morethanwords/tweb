@@ -4,18 +4,18 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {MyDocument} from '../../../lib/appManagers/appDocsManager';
-import {SliderSuperTab} from '../../slider';
-import InputSearch from '../../inputSearch';
-import animationIntersector, {AnimationItemGroup} from '../../animationIntersector';
+import type {MyDocument} from '@appManagers/appDocsManager';
+import {SliderSuperTab} from '@components/slider';
+import InputSearch from '@components/inputSearch';
+import animationIntersector, {AnimationItemGroup} from '@components/animationIntersector';
 import appSidebarRight from '..';
-import {AppInlineBotsManager} from '../../../lib/appManagers/appInlineBotsManager';
-import GifsMasonry from '../../gifsMasonry';
-import appImManager from '../../../lib/appImManager';
-import mediaSizes from '../../../helpers/mediaSizes';
-import findUpClassName from '../../../helpers/dom/findUpClassName';
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import {NULL_PEER_ID} from '../../../lib/appManagers/constants';
+import {AppInlineBotsManager} from '@appManagers/appInlineBotsManager';
+import GifsMasonry from '@components/gifsMasonry';
+import appImManager from '@lib/appImManager';
+import mediaSizes from '@helpers/mediaSizes';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import {NULL_PEER_ID} from '@appManagers/constants';
 
 const ANIMATIONGROUP: AnimationItemGroup = 'GIFS-SEARCH';
 

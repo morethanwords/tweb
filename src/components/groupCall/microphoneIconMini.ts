@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {SuperRLottieIcon} from '../superIcon';
+import {SuperRLottieIcon} from '@components/superIcon';
 
 export default class GroupCallMicrophoneIconMini extends SuperRLottieIcon<{
   PartState: boolean,

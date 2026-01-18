@@ -1,15 +1,15 @@
 import {batch, createEffect, createSignal, on, onCleanup, onMount} from 'solid-js';
 import {modifyMutable, produce} from 'solid-js/store';
-import {animateValue} from '../../../helpers/animateValue';
-import {lerp} from '../../../helpers/lerp';
-import clamp from '../../../helpers/number/clamp';
-import {ButtonIconTsx} from '../../buttonIconTsx';
-import SwipeHandler from '../../swipeHandler';
-import {useMediaEditorContext} from '../context';
-import {NumberPair} from '../types';
-import {withCurrentOwner} from '../utils';
-import {animateToNewRotationOrRatio} from './animateToNewRotationOrRatio';
-import getConvenientPositioning from './getConvenientPositioning';
+import {animateValue} from '@helpers/animateValue';
+import {lerp} from '@helpers/lerp';
+import clamp from '@helpers/number/clamp';
+import {ButtonIconTsx} from '@components/buttonIconTsx';
+import SwipeHandler from '@components/swipeHandler';
+import {useMediaEditorContext} from '@components/mediaEditor/context';
+import {NumberPair} from '@components/mediaEditor/types';
+import {withCurrentOwner} from '@components/mediaEditor/utils';
+import {animateToNewRotationOrRatio} from '@components/mediaEditor/canvas/animateToNewRotationOrRatio';
+import getConvenientPositioning from '@components/mediaEditor/canvas/getConvenientPositioning';
 
 
 const DEGREE_DIST_PX = 42;

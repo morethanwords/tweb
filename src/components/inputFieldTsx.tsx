@@ -1,9 +1,9 @@
 import {createEffect, mergeProps, on, splitProps} from 'solid-js';
 
-import {i18n, LangPackKey} from '../lib/langPack';
-import {InstanceOf} from '../types';
+import {i18n, LangPackKey} from '@lib/langPack';
+import {InstanceOf} from '@types';
 
-import InputField, {InputFieldOptions, InputState} from './inputField';
+import InputField, {InputFieldOptions, InputState} from '@components/inputField';
 
 export interface InputFieldTsxProps<T extends typeof InputField> extends InputFieldOptions {
   InputFieldClass?: T

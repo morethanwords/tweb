@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appDownloadManager from '../lib/appDownloadManager';
-import lottieLoader from '../lib/rlottie/lottieLoader';
-import rootScope from '../lib/rootScope';
-import {getEmojiToneIndex} from '../vendor/emoji';
-import mediaSizes from './mediaSizes';
-import {getMiddleware} from './middleware';
-import {saveLottiePreview} from './saveLottiePreview';
+import appDownloadManager from '@lib/appDownloadManager';
+import lottieLoader from '@lib/rlottie/lottieLoader';
+import rootScope from '@lib/rootScope';
+import {getEmojiToneIndex} from '@vendor/emoji';
+import mediaSizes from '@helpers/mediaSizes';
+import {getMiddleware} from '@helpers/middleware';
+import {saveLottiePreview} from '@helpers/saveLottiePreview';
 
 export default function preloadAnimatedEmojiSticker(emoji: string, width?: number, height?: number) {
   return rootScope.managers.appStickersManager.preloadAnimatedEmojiSticker(emoji).then(({doc}) => {

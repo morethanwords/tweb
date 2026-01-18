@@ -4,15 +4,15 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {ChatRights} from '../../lib/appManagers/appChatsManager';
-import flatten from '../../helpers/array/flatten';
-import appImManager from '../../lib/appImManager';
-import rootScope from '../../lib/rootScope';
-import {toastNew} from '../toast';
-import PopupPickUser from './pickUser';
-import getMediaFromMessage from '../../lib/appManagers/utils/messages/getMediaFromMessage';
+import type {ChatRights} from '@appManagers/appChatsManager';
+import flatten from '@helpers/array/flatten';
+import appImManager from '@lib/appImManager';
+import rootScope from '@lib/rootScope';
+import {toastNew} from '@components/toast';
+import PopupPickUser from '@components/popups/pickUser';
+import getMediaFromMessage from '@appManagers/utils/messages/getMediaFromMessage';
 import PopupElement from '.';
-import {useAppConfig, useIsFrozen} from '../../stores/appState';
+import {useAppConfig, useIsFrozen} from '@stores/appState';
 
 export default class PopupForward extends PopupPickUser {
   constructor(

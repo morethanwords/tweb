@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import randomize from './array/randomize';
+import randomize from '@helpers/array/randomize';
 
 const arrays = {
   8: new Uint8Array(1),

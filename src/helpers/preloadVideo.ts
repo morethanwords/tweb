@@ -1,5 +1,5 @@
-import createVideo from './dom/createVideo';
-import {getMiddleware} from './middleware';
+import createVideo from '@helpers/dom/createVideo';
+import {getMiddleware} from '@helpers/middleware';
 
 export default function preloadVideo(url: string) {
   const middlewareHelper = getMiddleware();

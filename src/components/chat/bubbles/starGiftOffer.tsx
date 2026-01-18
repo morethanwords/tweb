@@ -1,27 +1,27 @@
 import {Match, Switch} from 'solid-js';
-import {I18nTsx} from '../../../helpers/solid/i18n';
-import {Message, MessageAction, StarGift} from '../../../layer';
+import {I18nTsx} from '@helpers/solid/i18n';
+import {Message, MessageAction, StarGift} from '@layer';
 
 
-import {MyStarGift} from '../../../lib/appManagers/appGiftsManager';
-import {i18n} from '../../../lib/langPack';
-import tsNow from '../../../helpers/tsNow';
-import {wrapFormattedDuration} from '../../wrappers/wrapDuration';
-import formatDuration, {DurationType} from '../../../helpers/formatDuration';
-import {createCurrentTime} from '../../../helpers/solid/createCurrentTime';
-import ripple from '../../ripple';
+import {MyStarGift} from '@appManagers/appGiftsManager';
+import {i18n} from '@lib/langPack';
+import tsNow from '@helpers/tsNow';
+import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
+import formatDuration, {DurationType} from '@helpers/formatDuration';
+import {createCurrentTime} from '@helpers/solid/createCurrentTime';
+import ripple from '@components/ripple';
 
-import styles from './starGiftOffer.module.scss';
-import {MyDocument} from '../../../lib/appManagers/appDocsManager';
-import {StarGiftBackdrop} from '../../stargifts/stargiftBackdrop';
-import {StickerTsx} from '../../wrappers/sticker';
-import Icon from '../../icon';
-import Chat from '../chat';
-import confirmationPopup from '../../confirmationPopup';
-import wrapPeerTitle from '../../wrappers/peerTitle';
-import rootScope from '../../../lib/rootScope';
-import {transferStarGiftConfirmationPopup} from '../../popups/transferStarGift';
-import getPeerId from '../../../lib/appManagers/utils/peers/getPeerId';
+import styles from '@components/chat/bubbles/starGiftOffer.module.scss';
+import {MyDocument} from '@appManagers/appDocsManager';
+import {StarGiftBackdrop} from '@components/stargifts/stargiftBackdrop';
+import {StickerTsx} from '@components/wrappers/sticker';
+import Icon from '@components/icon';
+import Chat from '@components/chat/chat';
+import confirmationPopup from '@components/confirmationPopup';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
+import rootScope from '@lib/rootScope';
+import {transferStarGiftConfirmationPopup} from '@components/popups/transferStarGift';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
 ripple; // keep
 
 function wrapExpiresIn(duration: number) {

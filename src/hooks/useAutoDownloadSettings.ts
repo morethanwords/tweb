@@ -1,7 +1,7 @@
-import type {StateSettings} from '../config/state';
-import type {Chat} from '../layer';
-import type {useAppSettings} from '../stores/appSettings';
-import type {usePeer} from '../stores/peers';
+import type {StateSettings} from '@config/state';
+import type {Chat} from '@layer';
+import type {useAppSettings} from '@stores/appSettings';
+import type {usePeer} from '@stores/peers';
 
 export type ChatAutoDownloadSettings = {
   photo: number,

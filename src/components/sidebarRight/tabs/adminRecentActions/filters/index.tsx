@@ -1,11 +1,11 @@
 import {batch, createComputed, Show} from 'solid-js';
 import {Transition} from 'solid-transition-group';
-import {IS_MOBILE} from '../../../../../environment/userAgent';
-import track from '../../../../../helpers/solid/track';
-import {FlagFilters} from './flagFilters';
-import styles from './styles.module.scss';
-import {CommittedFilters} from './types';
-import {useFlagFilters} from './useFlagFilters';
+import {IS_MOBILE} from '@environment/userAgent';
+import track from '@helpers/solid/track';
+import {FlagFilters} from '@components/sidebarRight/tabs/adminRecentActions/filters/flagFilters';
+import styles from '@components/sidebarRight/tabs/adminRecentActions/filters/styles.module.scss';
+import {CommittedFilters} from '@components/sidebarRight/tabs/adminRecentActions/filters/types';
+import {useFlagFilters} from '@components/sidebarRight/tabs/adminRecentActions/filters/useFlagFilters';
 
 
 type FiltersProps = {

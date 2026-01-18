@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {hexaToHsla} from '../helpers/color';
-import {TOPIC_COLORS} from '../lib/appManagers/constants';
-import wrapAbbreviation from '../lib/richTextProcessor/wrapAbbreviation';
+import {hexaToHsla} from '@helpers/color';
+import {TOPIC_COLORS} from '@appManagers/constants';
+import wrapAbbreviation from '@lib/richTextProcessor/wrapAbbreviation';
 
 let svg: SVGSVGElement, span: HTMLElement, defs: HTMLElement;
 const hadColors: Map<number, string> = new Map();

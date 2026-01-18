@@ -1,7 +1,7 @@
 import {JSX, splitProps} from 'solid-js';
-import classNames from '../helpers/string/classNames';
-import Icon from './icon';
-import ripple from './ripple';
+import classNames from '@helpers/string/classNames';
+import Icon from '@components/icon';
+import ripple from '@components/ripple';
 
 export const ButtonIconTsx = (props: {icon?: Icon, noRipple?: boolean} & JSX.ButtonHTMLAttributes<HTMLButtonElement>) => {
   const [, rest] = splitProps(props, ['icon', 'noRipple']);

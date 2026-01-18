@@ -1,6 +1,6 @@
-import {MediaEditorContextValue} from '../context';
-import {fontInfoMap, getContrastColor} from '../utils';
-import {ResizableLayer} from '../types';
+import {MediaEditorContextValue} from '@components/mediaEditor/context';
+import {fontInfoMap, getContrastColor} from '@components/mediaEditor/utils';
+import {ResizableLayer} from '@components/mediaEditor/types';
 
 export default function drawTextLayer(
   context: MediaEditorContextValue,

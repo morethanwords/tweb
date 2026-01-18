@@ -1,7 +1,7 @@
-import {AdjustmentKey} from '../adjustments';
-import {NumberPair} from '../types';
+import {AdjustmentKey} from '@components/mediaEditor/adjustments';
+import {NumberPair} from '@components/mediaEditor/types';
 
-import {RenderingPayload} from './initWebGL';
+import {RenderingPayload} from '@components/mediaEditor/webgl/initWebGL';
 
 
 type DrawingParameters = {
