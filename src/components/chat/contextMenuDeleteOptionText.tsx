@@ -2,6 +2,7 @@ import {Accessor, createEffect, createMemo, createSignal, onCleanup, Show} from 
 import formatDuration from '../../helpers/formatDuration';
 import {attachHotClassName} from '../../helpers/solid/classname';
 import {I18nTsx} from '../../helpers/solid/i18n';
+import toHHMMSS from '../../helpers/string/toHHMMSS';
 import defineSolidElement, {PassedProps} from '../../lib/solidjs/defineSolidElement';
 import {IconTsx} from '../iconTsx';
 import {wrapFormattedDuration} from '../wrappers/wrapDuration';
@@ -22,7 +23,7 @@ export const ContextMenuDeleteOptionText = defineSolidElement({
 
     // Uncomment these lines to manually test different scenarios
     // props.dateTimestamp = Date.now() / 1000
-    // props.ttlPeriod = 62
+    // props.ttlPeriod = 60 * 60 + 4
 
     return (
       <Show when={props.ttlPeriod} fallback={<I18nTsx key='Delete' />}>
@@ -38,7 +39,9 @@ export const ContextMenuDeleteOptionText = defineSolidElement({
   }
 });
 
+const hourInSeconds = 60 * 60;
 const minuteInSeconds = 60;
+const updateTimerFrom = hourInSeconds + minuteInSeconds;
 
 const AutoDeletesIn = (props: Props) => {
   const [shouldUpdateTimer, setShouldUpdateTimer] = createSignal(false);
@@ -50,15 +53,20 @@ const AutoDeletesIn = (props: Props) => {
   const remainingSeconds = createMemo(() => Math.max(0, deletesAtSeconds() - nowSeconds()) || 0);
 
   createEffect(() => {
-    setShouldUpdateTimer(0 < remainingSeconds() && remainingSeconds() < 2 * minuteInSeconds);
+    setShouldUpdateTimer(0 < remainingSeconds() && remainingSeconds() < updateTimerFrom);
+  });
+
+  const formattedTime = createMemo(() => {
+    if(remainingSeconds() < hourInSeconds) {
+      return toHHMMSS(remainingSeconds());
+    }
+    return wrapFormattedDuration(formatDuration(remainingSeconds(), 1))
   });
 
   return (
     <I18nTsx
       key='AutoDeletesIn'
-      args={[
-        wrapFormattedDuration(formatDuration(remainingSeconds(), 1))
-      ]}
+      args={[formattedTime()]}
     />
   );
 };
