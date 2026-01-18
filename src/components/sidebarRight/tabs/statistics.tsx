@@ -31,13 +31,13 @@ import numberThousandSplitter from '../../../helpers/number/numberThousandSplitt
 import {wrapStoryMedia} from '../../stories/preview';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import findUpClassName from '../../../helpers/dom/findUpClassName';
-import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
+import appDialogsManager from '../../../lib/appDialogsManager';
 import Button from '../../button';
 import themeController from '../../../helpers/themeController';
 import assumeType from '../../../helpers/assumeType';
 import getChatMembersString from '../../wrappers/getChatMembersString';
 import createContextMenu from '../../../helpers/dom/createContextMenu';
-import appImManager from '../../../lib/appManagers/appImManager';
+import appImManager from '../../../lib/appImManager';
 import {createStoriesViewerWithPeer} from '../../stories/viewer';
 import getPeerId from '../../../lib/appManagers/utils/peers/getPeerId';
 import {avatarNew} from '../../avatarNew';

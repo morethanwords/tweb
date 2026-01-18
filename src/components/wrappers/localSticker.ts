@@ -6,7 +6,7 @@
 
 import {Middleware} from '../../helpers/middleware';
 import {MyDocument} from '../../lib/appManagers/appDocsManager';
-import {AppManagers} from '../../lib/appManagers/managers';
+import {AppManagers} from '../../lib/managers';
 import lottieLoader, {LottieAssetName} from '../../lib/rlottie/lottieLoader';
 import RLottiePlayer from '../../lib/rlottie/rlottiePlayer';
 import rootScope from '../../lib/rootScope';

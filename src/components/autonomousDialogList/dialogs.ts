@@ -1,12 +1,12 @@
 import IS_GROUP_CALL_SUPPORTED from '../../environment/groupCallSupport';
 import {Chat} from '../../layer';
-import {AppDialogsManager, DialogDom} from '../../lib/appManagers/appDialogsManager';
+import {AppDialogsManager, DialogDom} from '../../lib/appDialogsManager';
 import {Dialog} from '../../lib/appManagers/appMessagesManager';
 import getDialogIndex from '../../lib/appManagers/utils/dialogs/getDialogIndex';
 import getDialogIndexKey from '../../lib/appManagers/utils/dialogs/getDialogIndexKey';
 import {isDialog, isForumTopic} from '../../lib/appManagers/utils/dialogs/isDialog';
-import {FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '../../lib/mtproto/mtproto_config';
-import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
+import {FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '../../lib/appManagers/constants';
+import apiManagerProxy from '../../lib/apiManagerProxy';
 import rootScope from '../../lib/rootScope';
 import groupCallActiveIcon from '../groupCallActiveIcon';
 import Scrollable from '../scrollable';

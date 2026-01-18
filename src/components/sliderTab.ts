@@ -8,7 +8,7 @@ import EventListenerBase, {EventListenerListeners} from '../helpers/eventListene
 import ListenerSetter from '../helpers/listenerSetter';
 import {getMiddleware, MiddlewareHelper} from '../helpers/middleware';
 import noop from '../helpers/noop';
-import {AppManagers} from '../lib/appManagers/managers';
+import {AppManagers} from '../lib/managers';
 import {i18n, LangPackKey} from '../lib/langPack';
 import ButtonIcon from './buttonIcon';
 import Scrollable from './scrollable';

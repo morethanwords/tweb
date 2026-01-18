@@ -33,9 +33,9 @@ import {attachClickEvent, AttachClickOptions} from '../../helpers/dom/clickEvent
 import findUpAsChild from '../../helpers/dom/findUpAsChild';
 import EventListenerBase from '../../helpers/eventListenerBase';
 import safeAssign from '../../helpers/object/safeAssign';
-import {AppManagers} from '../../lib/appManagers/managers';
+import {AppManagers} from '../../lib/managers';
 import {attachContextMenuListener} from '../../helpers/dom/attachContextMenuListener';
-import appImManager from '../../lib/appManagers/appImManager';
+import appImManager from '../../lib/appImManager';
 import {Message} from '../../layer';
 import PopupElement from '../popups';
 import flatten from '../../helpers/array/flatten';

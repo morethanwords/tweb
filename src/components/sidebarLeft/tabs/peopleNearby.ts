@@ -15,7 +15,7 @@ import wrapSticker from '../../wrappers/sticker';
 import SortedUserList from '../../sortedUserList';
 import {PeerLocated, Update, Updates} from '../../../layer';
 import {SettingChatListSection} from '..';
-import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
+import appDialogsManager from '../../../lib/appDialogsManager';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import confirmationPopup from '../../confirmationPopup';
 import getPeerId from '../../../lib/appManagers/utils/peers/getPeerId';

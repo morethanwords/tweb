@@ -1,4 +1,4 @@
-import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
+import apiManagerProxy from '../../../lib/apiManagerProxy';
 import deferredPromise from '../../../helpers/cancellablePromise';
 
 import {MediaEditorContextValue} from '../context';

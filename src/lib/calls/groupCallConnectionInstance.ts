@@ -7,7 +7,7 @@
 import forEachReverse from '../../helpers/array/forEachReverse';
 import throttle from '../../helpers/schedulers/throttle';
 import {GroupCallConnectionType, JoinGroupCallJsonPayload} from '../appManagers/appGroupCallsManager';
-import {AppManagers} from '../appManagers/managers';
+import {AppManagers} from '../managers';
 import rootScope from '../rootScope';
 import CallConnectionInstanceBase, {CallConnectionInstanceOptions} from './callConnectionInstanceBase';
 import GroupCallInstance from './groupCallInstance';

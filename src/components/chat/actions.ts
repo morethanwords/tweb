@@ -12,7 +12,7 @@ import cancelEvent from '../../helpers/dom/cancelEvent';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import {LangPackKey, i18n} from '../../lib/langPack';
 import {PeerSettings} from '../../layer';
-import {AppManagers} from '../../lib/appManagers/managers';
+import {AppManagers} from '../../lib/managers';
 import callbackify from '../../helpers/callbackify';
 import ripple from '../ripple';
 import findUpClassName from '../../helpers/dom/findUpClassName';

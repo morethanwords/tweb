@@ -5,12 +5,12 @@ import {subscribeOn} from '../../../helpers/solid/subscribeOn';
 import rootScope from '../../../lib/rootScope';
 import {useCurrentRtmpCall} from '../../rtmp/hooks';
 import PinnedContainer from '../pinnedContainer';
-import {AppManagers} from '../../../lib/appManagers/managers';
+import {AppManagers} from '../../../lib/managers';
 import Chat from '../chat';
 import ChatTopbar from '../topbar';
-import {NULL_PEER_ID} from '../../../lib/mtproto/mtproto_config';
+import {NULL_PEER_ID} from '../../../lib/appManagers/constants';
 import {ChatFull, GroupCall, InputGroupCall, Chat as MTChat} from '../../../layer';
-import appImManager from '../../../lib/appManagers/appImManager';
+import appImManager from '../../../lib/appImManager';
 import {useChat} from '../../../stores/peers';
 import {useFullPeer} from '../../../stores/fullPeers';
 

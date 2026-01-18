@@ -2,7 +2,7 @@ import bigInt from 'big-integer';
 import PopupElement from '.';
 import {Chat, InputInvoice, Message, StarGift, StarGiftAttribute, StarGiftAttributeId, TextWithEntities, User} from '../../layer';
 import {MyPremiumGiftOption, MyStarGift} from '../../lib/appManagers/appGiftsManager';
-import {STARS_CURRENCY} from '../../lib/mtproto/mtproto_config';
+import {STARS_CURRENCY} from '../../lib/appManagers/constants';
 import {AvatarNewTsx} from '../avatarNew';
 import {i18n, LangPackKey} from '../../lib/langPack';
 import {Accessor, createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Setter, Show} from 'solid-js';

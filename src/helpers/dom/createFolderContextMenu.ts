@@ -1,8 +1,8 @@
-import type {AppManagers} from '../../lib/appManagers/managers';
+import type {AppManagers} from '../../lib/managers';
 import type AppChatFoldersTab from '../../components/sidebarLeft/tabs/chatFolders';
 import type AppEditFolderTab from '../../components/sidebarLeft/tabs/editFolder';
 import type {AppSidebarLeft} from '../../components/sidebarLeft';
-import {FOLDER_ID_ALL, REAL_FOLDERS} from '../../lib/mtproto/mtproto_config';
+import {FOLDER_ID_ALL, REAL_FOLDERS} from '../../lib/appManagers/constants';
 import createContextMenu from './createContextMenu';
 import findUpClassName from './findUpClassName';
 

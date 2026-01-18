@@ -13,7 +13,7 @@ import {IS_SAFARI} from '../../environment/userAgent';
 import ServiceMessagePort from './serviceMessagePort';
 import listenMessagePort from '../../helpers/listenMessagePort';
 import {getWindowClients} from '../../helpers/context';
-import {MessageSendPort} from '../mtproto/superMessagePort';
+import {MessageSendPort} from '../superMessagePort';
 import handleDownload from './download';
 import onShareFetch, {checkWindowClientForDeferredShare} from './share';
 import {onRtmpFetch, onRtmpLeftCall} from './rtmp';

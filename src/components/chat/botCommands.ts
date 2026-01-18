@@ -8,7 +8,7 @@ import type ChatInput from './input';
 import callbackify from '../../helpers/callbackify';
 import AutocompletePeerHelper from './autocompletePeerHelper';
 import {processPeerFullForCommands} from './commandsHelper';
-import {AppManagers} from '../../lib/appManagers/managers';
+import {AppManagers} from '../../lib/managers';
 import {Middleware} from '../../helpers/middleware';
 
 const CLASS_NAME = 'bot-commands';

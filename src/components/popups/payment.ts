@@ -29,7 +29,7 @@ import {_tgico} from '../../helpers/tgico';
 import tsNow from '../../helpers/tsNow';
 import {AccountTmpPassword, Boost, ChatInvite, DocumentAttribute, InputInvoice, InputPaymentCredentials, LabeledPrice, Message, MessageAction, MessageMedia, PaymentRequestedInfo, PaymentSavedCredentials, PaymentsPaymentForm, PaymentsPaymentReceipt, PaymentsValidatedRequestedInfo, PostAddress, ShippingOption, StarsSubscription, StarsTransaction, User} from '../../layer';
 import I18n, {i18n, LangPackKey, _i18n} from '../../lib/langPack';
-import {NULL_PEER_ID} from '../../lib/mtproto/mtproto_config';
+import {NULL_PEER_ID} from '../../lib/appManagers/constants';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
 import rootScope from '../../lib/rootScope';

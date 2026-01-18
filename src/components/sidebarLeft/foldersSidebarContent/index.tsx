@@ -9,7 +9,7 @@ import {Middleware} from '../../../helpers/middleware';
 import pause from '../../../helpers/schedulers/pause';
 import Animated from '../../../helpers/solid/animations';
 import {logger, LogTypes} from '../../../lib/logger';
-import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '../../../lib/mtproto/mtproto_config';
+import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '../../../lib/appManagers/constants';
 import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
 import type SolidJSHotReloadGuardProvider from '../../../lib/solidjs/hotReloadGuardProvider';
 import {MyDialogFilter} from '../../../lib/storages/filters';

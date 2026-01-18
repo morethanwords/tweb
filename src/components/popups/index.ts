@@ -17,7 +17,7 @@ import cancelEvent from '../../helpers/dom/cancelEvent';
 import EventListenerBase, {EventListenerListeners} from '../../helpers/eventListenerBase';
 import {addFullScreenListener, getFullScreenElement} from '../../helpers/dom/fullScreen';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-import {AppManagers} from '../../lib/appManagers/managers';
+import {AppManagers} from '../../lib/managers';
 import overlayCounter from '../../helpers/overlayCounter';
 import Scrollable from '../scrollable';
 import {getMiddleware, MiddlewareHelper} from '../../helpers/middleware';

@@ -3,7 +3,7 @@ import {createMutable, modifyMutable, produce, Store} from 'solid-js/store';
 
 import exceptKeys from '../../helpers/object/exceptKeys';
 import throttle from '../../helpers/schedulers/throttle';
-import type {AppManagers} from '../../lib/appManagers/managers';
+import type {AppManagers} from '../../lib/managers';
 import type {ObjectPath} from '../../types';
 
 import {AdjustmentKey, adjustmentsConfig} from './adjustments';

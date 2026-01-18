@@ -14,7 +14,7 @@ import GroupCallParticipantStatusElement from './participantStatus';
 import GroupCallInstance from '../../lib/calls/groupCallInstance';
 import callVideoCanvasBlur from '../call/videoCanvasBlur';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
-import {AppManagers} from '../../lib/appManagers/managers';
+import {AppManagers} from '../../lib/managers';
 import safePlay from '../../helpers/dom/safePlay';
 import Icon from '../icon';
 

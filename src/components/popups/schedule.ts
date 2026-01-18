@@ -6,7 +6,7 @@
 
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import I18n, {LangPackKey, FormatterArguments, i18n} from '../../lib/langPack';
-import {SEND_WHEN_ONLINE_TIMESTAMP} from '../../lib/mtproto/mtproto_config';
+import {SEND_WHEN_ONLINE_TIMESTAMP} from '../../lib/appManagers/constants';
 import Button from '../button';
 import PopupDatePicker from './datePicker';
 

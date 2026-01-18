@@ -11,7 +11,7 @@ import assumeType from '../../helpers/assumeType';
 import makeError from '../../helpers/makeError';
 import getAttachMenuBotIcon from './utils/attachMenuBots/getAttachMenuBotIcon';
 import {randomLong} from '../../helpers/random';
-import {ReferenceContext} from '../mtproto/referenceDatabase';
+import {ReferenceContext} from '../storages/references';
 
 const BOTS_SUPPORTED = true;
 

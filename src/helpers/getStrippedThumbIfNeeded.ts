@@ -7,9 +7,9 @@
 import type {MyDocument} from '../lib/appManagers/appDocsManager';
 import type {MyPhoto} from '../lib/appManagers/appPhotosManager';
 import type {ThumbCache} from '../lib/storages/thumbs';
-import {THUMB_TYPE_FULL} from '../lib/mtproto/mtproto_config';
+import {THUMB_TYPE_FULL} from '../lib/appManagers/constants';
 import getImageFromStrippedThumb from './getImageFromStrippedThumb';
-import apiManagerProxy from '../lib/mtproto/mtprotoworker';
+import apiManagerProxy from '../lib/apiManagerProxy';
 import {PhotoSize} from '../layer';
 
 export default function getMediaThumbIfNeeded({

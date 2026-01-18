@@ -8,7 +8,7 @@ import {getEnvironment} from '../../environment/utils';
 import safeReplaceObject from '../../helpers/object/safeReplaceObject';
 import {nextRandomUint} from '../../helpers/random';
 import {InputPhoneCall, MessagesDhConfig, PhoneCall, PhoneCallDiscardReason, PhoneCallProtocol, PhonePhoneCall} from '../../layer';
-import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
+import MTProtoMessagePort from '../mainWorker/mainMessagePort';
 import appTabsManager from './appTabsManager';
 import {AppManager} from './manager';
 

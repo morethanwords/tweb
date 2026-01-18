@@ -12,10 +12,10 @@ import ListenerSetter from '../helpers/listenerSetter';
 import safeAssign from '../helpers/object/safeAssign';
 import themeController from '../helpers/themeController';
 import {AttachMenuBot, DataJSON, WebViewResult, Document, MessagesPreparedInlineMessage} from '../layer';
-import appImManager from '../lib/appManagers/appImManager';
-import {InternalLink, INTERNAL_LINK_TYPE} from '../lib/appManagers/internalLink';
-import internalLinkProcessor from '../lib/appManagers/internalLinkProcessor';
-import {AppManagers} from '../lib/appManagers/managers';
+import appImManager from '../lib/appImManager';
+import {InternalLink, INTERNAL_LINK_TYPE} from '../lib/internalLink';
+import internalLinkProcessor from '../lib/internalLinkProcessor';
+import {AppManagers} from '../lib/managers';
 import getAttachMenuBotIcon from '../lib/appManagers/utils/attachMenuBots/getAttachMenuBotIcon';
 import {LangPackKey} from '../lib/langPack';
 import wrapEmojiText, {EmojiTextTsx} from '../lib/richTextProcessor/wrapEmojiText';
@@ -49,7 +49,7 @@ import ButtonMenuToggle from './buttonMenuToggle';
 import type {RequestWebViewOptions} from '../lib/appManagers/appAttachMenuBotsManager';
 import {createSvgFromBytes} from '../helpers/bytes/getPathFromBytes';
 import PopupWebAppPreparedMessage from './popups/webAppPreparedMessage';
-import appDownloadManager from '../lib/appManagers/appDownloadManager';
+import appDownloadManager from '../lib/appDownloadManager';
 import IS_WEB_APP_BROWSER_SUPPORTED from '../environment/webAppBrowserSupport';
 
 const SANDBOX_ATTRIBUTES = [

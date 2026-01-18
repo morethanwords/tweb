@@ -9,11 +9,10 @@ import callbackify from '../../helpers/callbackify';
 import {ignoreRestrictionReasons} from '../../helpers/restrictions';
 import {Config, DataJSON, HelpAppConfig, HelpPeerColors, MethodDeclMap, User} from '../../layer';
 import {InvokeApiOptions} from '../../types';
-import {AppManager} from '../appManagers/manager';
+import {AppManager} from './manager';
 import rootScope from '../rootScope';
-import {MTAppConfig} from './appConfig';
-import {UserAuth} from './mtproto_config';
-import {MTMessage} from './networker';
+import {UserAuth} from './constants';
+import {MTMessage} from '../mtproto/networker';
 
 type HashResult = {
   hash: number,

@@ -17,7 +17,7 @@ import makeError from '../helpers/makeError';
 import {StringKey, WorkerTaskTemplate} from '../types';
 import EncryptedStorageLayer from './encryptedStorageLayer';
 import {logger} from './logger';
-import MTProtoMessagePort from './mtproto/mtprotoMessagePort';
+import MTProtoMessagePort from './mainWorker/mainMessagePort';
 import DeferredIsUsingPasscode from './passcode/deferredIsUsingPasscode';
 
 

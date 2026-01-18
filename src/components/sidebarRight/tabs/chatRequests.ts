@@ -12,8 +12,8 @@ import {formatFullSentTime} from '../../../helpers/date';
 import Button from '../../button';
 import {i18n} from '../../../lib/langPack';
 import findUpClassName from '../../../helpers/dom/findUpClassName';
-import appImManager from '../../../lib/appManagers/appImManager';
-import {DialogElement} from '../../../lib/appManagers/appDialogsManager';
+import appImManager from '../../../lib/appImManager';
+import {DialogElement} from '../../../lib/appDialogsManager';
 
 export default class AppChatRequestsTab extends SliderSuperTabEventable<{
   finish: (changedLength: number) => void

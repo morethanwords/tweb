@@ -7,7 +7,7 @@ import getParticipantPeerId from '../../../../lib/appManagers/utils/chats/getPar
 import {isBannedParticipant} from '../../../../lib/appManagers/utils/chats/isBannedParticipant';
 import removeChatBannedRightsFromParticipant from '../../../../lib/appManagers/utils/chats/removeChatBannedRightsFromParticipant';
 import I18n from '../../../../lib/langPack';
-import type apiManagerProxy from '../../../../lib/mtproto/mtprotoworker';
+import type apiManagerProxy from '../../../../lib/apiManagerProxy';
 import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
 import {resolveAdminRightFlagI18n} from '../../../sidebarRight/tabs/adminRecentActions/adminRightsI18nResolver';
 import {participantRightsMap} from '../../../sidebarRight/tabs/adminRecentActions/participantRightsMap';

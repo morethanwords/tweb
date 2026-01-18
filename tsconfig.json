@@ -53,6 +53,19 @@
       "solid-js/jsx-runtime": ["./src/vendor/solid"],
       "solid-js/jsx-dev-runtime": ["./src/vendor/solid"],
       "solid-transition-group": ["./src/vendor/solid-transition-group"],
+      "@components/*": ["./src/components/*"],
+      "@helpers/*": ["./src/helpers/*"],
+      "@hooks/*": ["./src/hooks/*"],
+      "@stores/*": ["./src/stores/*"],
+      "@types/*": ["./src/types/*"],
+      "@lib/*": ["./src/lib/*"],
+      "@appManagers/*": ["./src/lib/appManagers/*"],
+      "@richTextProcessor/*": ["./src/lib/richTextProcessor/*"],
+      "@environment/*": ["./src/environment/*"],
+      "@customEmoji/*": ["./src/lib/customEmoji/*"],
+      "@rlottie/*": ["./src/lib/rlottie/*"],
+      "@layer": ["./src/layer.d.ts"],
+      "@/*": ["./src/*"]
     },
     // "rootDirs": [],                        /* List of root folders whose combined content represents the structure of the project at runtime. */
     // "typeRoots": [],                       /* List of folders to include type definitions from. */

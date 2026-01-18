@@ -10,7 +10,7 @@ import {CommonState as StateCommon, State, COMMON_STATE_INIT, STATE_INIT} from '
 import compareVersion from '../../../../helpers/compareVersion';
 import copy from '../../../../helpers/object/copy';
 import validateInitObject from '../../../../helpers/object/validateInitObject';
-import {UserAuth} from '../../../mtproto/mtproto_config';
+import {UserAuth} from '../../constants';
 import sessionStorage from '../../../sessionStorage';
 import {recordPromiseBound} from '../../../../helpers/recordPromise';
 import {StoragesResults} from '../storages/loadStorages';

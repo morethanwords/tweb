@@ -10,7 +10,7 @@ import ReactionsElement from '../chat/reactions';
 import {horizontalMenu} from '../horizontalMenu';
 import Scrollable from '../scrollable';
 import ScrollableLoader from '../../helpers/scrollableLoader';
-import appDialogsManager, {DialogDom, DialogElement} from '../../lib/appManagers/appDialogsManager';
+import appDialogsManager, {DialogDom, DialogElement} from '../../lib/appDialogsManager';
 import replaceContent from '../../helpers/dom/replaceContent';
 import wrapSticker from '../wrappers/sticker';
 import ReactionElement, {ReactionLayoutType} from '../chat/reaction';

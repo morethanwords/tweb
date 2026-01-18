@@ -8,7 +8,7 @@ import positionElementByIndex from '../../helpers/dom/positionElementByIndex';
 import replaceContent from '../../helpers/dom/replaceContent';
 import {fastRaf} from '../../helpers/schedulers';
 import SortedList, {SortedElementBase} from '../../helpers/sortedList';
-import appDialogsManager, {DialogDom, AppDialogsManager, DialogElementSize} from '../../lib/appManagers/appDialogsManager';
+import appDialogsManager, {DialogDom, AppDialogsManager, DialogElementSize} from '../../lib/appDialogsManager';
 import {getGroupCallParticipantMutedState} from '.';
 import GroupCallParticipantMutedIcon from './participantMutedIcon';
 import GroupCallParticipantStatusElement from './participantStatus';

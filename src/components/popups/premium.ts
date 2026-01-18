@@ -4,7 +4,6 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {MTAppConfig} from '../../lib/mtproto/appConfig';
 import PopupElement from './index';
 import PromoSlideTab, {getGiftDetails} from '../premium/promoSlideTab';
 import TransitionSlider from '../transition';
@@ -16,8 +15,8 @@ import {HelpPremiumPromo, MessageAction, PaymentsCheckedGiftCode, PremiumSubscri
 import {PREMIUM_FEATURES, PremiumPromoFeature} from '../premium/featuresConfig';
 import Icon from '../icon';
 import {Middleware} from '../../helpers/middleware';
-import {AppManagers} from '../../lib/appManagers/managers';
-import appImManager, {ChatSetPeerOptions} from '../../lib/appManagers/appImManager';
+import {AppManagers} from '../../lib/managers';
+import appImManager, {ChatSetPeerOptions} from '../../lib/appImManager';
 import rootScope from '../../lib/rootScope';
 import safeAssign from '../../helpers/object/safeAssign';
 import ListenerSetter from '../../helpers/listenerSetter';

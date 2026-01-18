@@ -36,7 +36,7 @@ import SettingSection from '../../settingSection';
 import AppActiveWebSessionsTab from './activeWebSessions';
 import PopupElement from '../../popups';
 import AppPrivacyAboutTab from './privacy/about';
-import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
+import apiManagerProxy from '../../../lib/apiManagerProxy';
 import Icon from '../../icon';
 import {AppPrivacyMessagesTab} from '../../solidJsTabs';
 import {AppPasscodeEnterPasswordTab, AppPasscodeLockTab, AppPasskeysTab, providedTabs} from '../../solidJsTabs';

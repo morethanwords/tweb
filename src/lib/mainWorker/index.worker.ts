@@ -10,8 +10,8 @@ import '../../helpers/peerIdPolyfill';
 
 import cryptoWorker from '../crypto/cryptoMessagePort';
 import {setEnvironment} from '../../environment/utils';
-import transportController from './transports/controller';
-import MTProtoMessagePort from './mtprotoMessagePort';
+import transportController from '../mtproto/transports/controller';
+import MTProtoMessagePort from './mainMessagePort';
 import appManagersManager from '../appManagers/appManagersManager';
 import listenMessagePort from '../../helpers/listenMessagePort';
 import {logger} from '../logger';
@@ -26,9 +26,9 @@ import AppStorage from '../storage';
 import EncryptionKeyStore from '../passcode/keyStore';
 import sessionStorage from '../sessionStorage';
 import CacheStorageController from '../files/cacheStorage';
-import {ApiManager} from './apiManager';
+import {ApiManager} from '../appManagers/apiManager';
 import {useAutoLock} from './useAutoLock';
-import pushSingleManager from './pushSingleManager';
+import pushSingleManager from '../appManagers/pushSingleManager';
 
 
 const log = logger('MTPROTO');

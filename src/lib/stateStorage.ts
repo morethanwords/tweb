@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {ChatSavedPosition} from './appManagers/appImManager';
+import type {ChatSavedPosition} from './appImManager';
 import type {AppDraftsManager} from './appManagers/appDraftsManager';
 import type {State} from '../config/state';
 import AppStorage from './storage';

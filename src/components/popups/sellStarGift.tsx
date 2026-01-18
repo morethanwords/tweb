@@ -4,7 +4,6 @@ import safeAssign from '../../helpers/object/safeAssign';
 import {MyStarGift} from '../../lib/appManagers/appGiftsManager';
 
 import styles from './sellStarGift.module.scss';
-import {MTAppConfig} from '../../lib/mtproto/appConfig';
 import I18n, {i18n, LangPackKey} from '../../lib/langPack';
 import Row from '../rowTsx';
 import CheckboxFieldTsx from '../checkboxFieldTsx';

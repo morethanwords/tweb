@@ -6,8 +6,8 @@
 
 import AvatarListLoader from '../helpers/avatarListLoader';
 import {Photo} from '../layer';
-import appDownloadManager from '../lib/appManagers/appDownloadManager';
-import appImManager from '../lib/appManagers/appImManager';
+import appDownloadManager from '../lib/appDownloadManager';
+import appImManager from '../lib/appImManager';
 import rootScope from '../lib/rootScope';
 import AppMediaViewerBase from './appMediaViewerBase';
 

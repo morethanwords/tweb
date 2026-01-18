@@ -7,8 +7,8 @@
 import findAndSplice from '../../helpers/array/findAndSplice';
 import assumeType from '../../helpers/assumeType';
 import {BotInlineResult, MessagesSavedGifs, Document} from '../../layer';
-import {NULL_PEER_ID} from '../mtproto/mtproto_config';
-import {ReferenceContext} from '../mtproto/referenceDatabase';
+import {NULL_PEER_ID} from './constants';
+import {ReferenceContext} from '../storages/references';
 import {AppManager} from './manager';
 import getDocumentInput from './utils/docs/getDocumentInput';
 

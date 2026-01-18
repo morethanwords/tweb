@@ -5,7 +5,7 @@
  */
 
 import type {MyDialogFilter} from '../../../lib/storages/filters';
-import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
+import appDialogsManager from '../../../lib/appDialogsManager';
 import lottieLoader, {LottieLoader} from '../../../lib/rlottie/lottieLoader';
 import {SliderSuperTab} from '../../slider';
 import {toast, toastNew} from '../../toast';

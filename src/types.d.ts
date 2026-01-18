@@ -1,5 +1,5 @@
 import {AuthSentCode} from './layer';
-import type {ApiError} from './lib/mtproto/apiManager';
+import type {ApiError} from './lib/appManagers/apiManager';
 import {ActiveAccountNumber} from './lib/sessionStorage';
 
 export type DcId = number;

@@ -9,7 +9,7 @@ import findUpClassName from './findUpClassName';
 import {ChannelParticipant, Chat, ChatParticipant} from '../../layer';
 import SidebarSlider from '../../components/slider';
 import rootScope from '../../lib/rootScope';
-import appImManager from '../../lib/appManagers/appImManager';
+import appImManager from '../../lib/appImManager';
 import canEditAdmin from '../../lib/appManagers/utils/chats/canEditAdmin';
 import AppUserPermissionsTab from '../../components/sidebarRight/tabs/userPermissions';
 import {Middleware} from '../middleware';

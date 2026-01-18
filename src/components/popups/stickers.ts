@@ -11,7 +11,7 @@ import wrapSticker from '../wrappers/sticker';
 import LazyLoadQueue from '../lazyLoadQueue';
 import {putPreloader} from '../putPreloader';
 import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
-import appImManager from '../../lib/appManagers/appImManager';
+import appImManager from '../../lib/appImManager';
 import mediaSizes from '../../helpers/mediaSizes';
 import {i18n} from '../../lib/langPack';
 import Button from '../button';
@@ -34,7 +34,7 @@ import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
 import {onMediaCaptionClick} from '../appMediaViewer';
 import DEBUG from '../../config/debug';
 import {ButtonMenuItemOptionsVerifiable} from '../buttonMenu';
-import appDownloadManager from '../../lib/appManagers/appDownloadManager';
+import appDownloadManager from '../../lib/appDownloadManager';
 import pause from '../../helpers/schedulers/pause';
 import toArray from '../../helpers/array/toArray';
 

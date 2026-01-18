@@ -71,7 +71,20 @@ const BASIC_SSL_CONFIG: Parameters<typeof basicSsl>[0] = USE_SELF_SIGNED_CERTS ?
 } : undefined;
 
 const ADDITIONAL_ALIASES = {
-  'solid-transition-group': resolve(rootDir, 'src/vendor/solid-transition-group')
+  'solid-transition-group': resolve(rootDir, 'src/vendor/solid-transition-group'),
+  '@components': resolve(rootDir, 'src/components'),
+  '@helpers': resolve(rootDir, 'src/helpers'),
+  '@hooks': resolve(rootDir, 'src/hooks'),
+  '@stores': resolve(rootDir, 'src/stores'),
+  '@types': resolve(rootDir, 'src/types'),
+  '@lib': resolve(rootDir, 'src/lib'),
+  '@appManagers': resolve(rootDir, 'src/lib/appManagers'),
+  '@richTextProcessor': resolve(rootDir, 'src/lib/richTextProcessor'),
+  '@environment': resolve(rootDir, 'src/environment'),
+  '@customEmoji': resolve(rootDir, 'src/lib/customEmoji'),
+  '@rlottie': resolve(rootDir, 'src/lib/rlottie'),
+  '@layer': resolve(rootDir, 'src/layer'),
+  '@': resolve(rootDir, 'src')
 };
 
 if(USE_OWN_SOLID) {

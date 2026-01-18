@@ -9,7 +9,7 @@ import rootScope from '../../../lib/rootScope';
 import defineSolidElement, {PassedProps} from '../../../lib/solidjs/defineSolidElement';
 import {PeerTitleTsx} from '../../peerTitleTsx';
 import styles from './suggestedPostActionContent.module.scss';
-import {SUGGESTED_POST_WAIT_FOR_REWARD_HOURS} from '../../../lib/mtproto/mtproto_config';
+import {SUGGESTED_POST_WAIT_FOR_REWARD_HOURS} from '../../../lib/appManagers/constants';
 
 if(import.meta.hot) import.meta.hot.accept();
 

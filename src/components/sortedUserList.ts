@@ -5,7 +5,7 @@
  */
 
 import type LazyLoadQueue from './lazyLoadQueue';
-import appDialogsManager, {AppDialogsManager, DialogDom, DialogElement, DialogElementSize} from '../lib/appManagers/appDialogsManager';
+import appDialogsManager, {AppDialogsManager, DialogDom, DialogElement, DialogElementSize} from '../lib/appDialogsManager';
 import {getHeavyAnimationPromise} from '../hooks/useHeavyAnimationCheck';
 import isInDOM from '../helpers/dom/isInDOM';
 import positionElementByIndex from '../helpers/dom/positionElementByIndex';
@@ -13,7 +13,7 @@ import replaceContent from '../helpers/dom/replaceContent';
 import {fastRaf} from '../helpers/schedulers';
 import SortedList, {SortedElementBase} from '../helpers/sortedList';
 import safeAssign from '../helpers/object/safeAssign';
-import {AppManagers} from '../lib/appManagers/managers';
+import {AppManagers} from '../lib/managers';
 import getUserStatusString from './wrappers/getUserStatusString';
 import getChatMembersString from './wrappers/getChatMembersString';
 import wrapParticipantRank from './wrappers/participantRank';

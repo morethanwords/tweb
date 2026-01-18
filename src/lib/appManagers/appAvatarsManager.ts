@@ -6,8 +6,8 @@
 
 import {joinDeepPath} from '../../helpers/object/setDeepProperty';
 import {UserProfilePhoto, ChatPhoto, InputFileLocation} from '../../layer';
-import {DownloadOptions} from '../mtproto/apiFileManager';
-import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
+import {DownloadOptions} from './apiFileManager';
+import MTProtoMessagePort from '../mainWorker/mainMessagePort';
 import {AppManager} from './manager';
 
 export type PeerPhotoSize = 'photo_small' | 'photo_big';

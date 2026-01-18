@@ -5,13 +5,13 @@
  */
 
 import type {CryptoMessagePort} from '../crypto/cryptoMessagePort';
-import type {ApiFileManager} from '../mtproto/apiFileManager';
-import type {ApiManager} from '../mtproto/apiManager';
+import type {ApiFileManager} from './apiFileManager';
+import type {ApiManager} from './apiManager';
 import type {Authorizer} from '../mtproto/authorizer';
 import type {DcConfigurator} from '../mtproto/dcConfigurator';
-import type {NetworkerFactory} from '../mtproto/networkerFactory';
-import type {PasswordManager} from '../mtproto/passwordManager';
-import type {ReferenceDatabase} from '../mtproto/referenceDatabase';
+import type {NetworkerFactory} from './networkerFactory';
+import type {PasswordManager} from './passwordManager';
+import type {ReferencesStorage} from '../storages/references';
 import type {TimeManager} from '../mtproto/timeManager';
 import type {RootScope} from '../rootScope';
 import type DialogsStorage from '../storages/dialogs';
@@ -55,7 +55,7 @@ import type AppBoostsManager from './appBoostsManager';
 import type AppStatisticsManager from './appStatisticsManager';
 import type AppBusinessManager from './appBusinessManager';
 import type AppTranslationsManager from './appTranslationsManager';
-import type {AppManagers} from './managers';
+import type {AppManagers} from '../managers';
 import type AppGifsManager from './appGifsManager';
 import type AppGiftsManager from './appGiftsManager';
 import type {AppLangPackManager} from './appLangPackManager';
@@ -88,7 +88,7 @@ export class AppManager {
   protected appInlineBotsManager: AppInlineBotsManager;
   protected appStickersManager: AppStickersManager;
   protected appLangPackManager: AppLangPackManager;
-  protected referenceDatabase: ReferenceDatabase;
+  protected referencesStorage: ReferencesStorage;
   protected appEmojiManager: AppEmojiManager;
   protected dialogsStorage: DialogsStorage;
   protected filtersStorage: FiltersStorage;

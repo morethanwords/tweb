@@ -10,7 +10,7 @@ import InputField from './inputField';
 import ListenerSetter from '../helpers/listenerSetter';
 import ButtonCorner from './buttonCorner';
 import safeAssign from '../helpers/object/safeAssign';
-import {NULL_PEER_ID} from '../lib/mtproto/mtproto_config';
+import {NULL_PEER_ID} from '../lib/appManagers/constants';
 import {Middleware} from '../helpers/middleware';
 import {avatarNew} from './avatarNew';
 

@@ -6,7 +6,7 @@
 
 import tsNow from '../../helpers/tsNow';
 import {LangPackKey} from '../../lib/langPack';
-import {MUTE_UNTIL} from '../../lib/mtproto/mtproto_config';
+import {MUTE_UNTIL} from '../../lib/appManagers/constants';
 import {RadioFormFromValues} from '../row';
 import PopupPeer from './peer';
 

@@ -1,7 +1,7 @@
 import {Chat} from '../../layer';
-import appDialogsManager from '../../lib/appManagers/appDialogsManager';
-import appImManager, {AppImManager} from '../../lib/appManagers/appImManager';
-import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
+import appDialogsManager from '../../lib/appDialogsManager';
+import appImManager, {AppImManager} from '../../lib/appImManager';
+import apiManagerProxy from '../../lib/apiManagerProxy';
 import rootScope from '../../lib/rootScope';
 import {AutonomousForumTopicList} from '../autonomousDialogList/forumTopics';
 import ButtonMenuToggle from '../buttonMenuToggle';

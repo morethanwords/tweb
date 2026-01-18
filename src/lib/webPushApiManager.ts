@@ -9,23 +9,23 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type {PushNotificationObject} from '../serviceWorker/push';
-import type {ServicePushPingTaskPayload} from '../serviceWorker/serviceMessagePort';
-import type {NotificationSettings} from '../appManagers/uiNotificationsManager';
-import type {ActiveAccountNumber} from '../accounts/types';
-import type ServiceMessagePort from '../serviceWorker/serviceMessagePort';
-import {MOUNT_CLASS_TO} from '../../config/debug';
-import {logger} from '../logger';
-import I18n, {LangPackKey} from '../langPack';
-import {IS_MOBILE} from '../../environment/userAgent';
-import copy from '../../helpers/object/copy';
+import type {PushNotificationObject} from './serviceWorker/push';
+import type {ServicePushPingTaskPayload} from './serviceWorker/serviceMessagePort';
+import type {NotificationSettings} from './uiNotificationsManager';
+import type {ActiveAccountNumber} from './accounts/types';
+import type ServiceMessagePort from './serviceWorker/serviceMessagePort';
+import {MOUNT_CLASS_TO} from './../config/debug';
+import {logger} from './logger';
+import I18n, {LangPackKey} from './langPack';
+import {IS_MOBILE} from './../environment/userAgent';
+import copy from './../helpers/object/copy';
 import singleInstance from './singleInstance';
-import EventListenerBase from '../../helpers/eventListenerBase';
-import getServerMessageId from '../appManagers/utils/messageId/getServerMessageId';
-import AccountController from '../accounts/accountController';
-import App from '../../config/app';
-import apiManagerProxy from './mtprotoworker';
-import appNavigationController from '../../components/appNavigationController';
+import EventListenerBase from './../helpers/eventListenerBase';
+import getServerMessageId from './appManagers/utils/messageId/getServerMessageId';
+import AccountController from './accounts/accountController';
+import App from './../config/app';
+import apiManagerProxy from './apiManagerProxy';
+import appNavigationController from './../components/appNavigationController';
 
 export type PushSubscriptionNotifyType = 'init' | 'subscribe' | 'unsubscribe';
 export type PushSubscriptionNotifyEvent = `push_${PushSubscriptionNotifyType}`;

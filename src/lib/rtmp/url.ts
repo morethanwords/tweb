@@ -1,6 +1,6 @@
 import {IS_SAFARI} from '../../environment/userAgent';
 import {InputGroupCall} from '../../layer';
-import apiManagerProxy from '../mtproto/mtprotoworker';
+import apiManagerProxy from '../apiManagerProxy';
 
 export function getRtmpStreamUrl(call: InputGroupCall): string {
   const base = `/rtmp/${encodeURIComponent(JSON.stringify(call))}`;

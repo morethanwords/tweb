@@ -1,5 +1,5 @@
 import {InputWebFileLocation} from '../../../../layer';
-import {DownloadOptions} from '../../../mtproto/apiFileManager';
+import {DownloadOptions} from '../../apiFileManager';
 
 export default function getWebFileDownloadOptions(location: InputWebFileLocation): DownloadOptions {
   const downloadOptions: DownloadOptions = {

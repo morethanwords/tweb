@@ -5,7 +5,7 @@
  */
 
 import {Photo} from '../layer';
-import {AppManagers} from '../lib/appManagers/managers';
+import {AppManagers} from '../lib/managers';
 import ListLoader, {ListLoaderOptions} from './listLoader';
 
 export default class AvatarListLoader<Item extends {photoId: Photo.photo['id']}> extends ListLoader<Item, any> {

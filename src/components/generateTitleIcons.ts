@@ -7,7 +7,7 @@
 import {attachClickEvent} from '../helpers/dom/clickEvent';
 import {Chat, User} from '../layer';
 import {i18n} from '../lib/langPack';
-import apiManagerProxy from '../lib/mtproto/mtprotoworker';
+import apiManagerProxy from '../lib/apiManagerProxy';
 import rootScope from '../lib/rootScope';
 import generateFakeIcon from './generateFakeIcon';
 import generatePremiumIcon from './generatePremiumIcon';

@@ -12,7 +12,7 @@ import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import insertInDescendSortedArray from '../../helpers/array/insertInDescendSortedArray';
 import positionElementByIndex from '../../helpers/dom/positionElementByIndex';
 import {Message, ReplyMarkup} from '../../layer';
-import {NULL_PEER_ID, REPLIES_PEER_ID, VERIFICATION_CODES_BOT_ID} from '../../lib/mtproto/mtproto_config';
+import {NULL_PEER_ID, REPLIES_PEER_ID, VERIFICATION_CODES_BOT_ID} from '../../lib/appManagers/constants';
 import ChatBubbles, {SERVICE_AS_REGULAR, STICKY_OFFSET} from './bubbles';
 import forEachReverse from '../../helpers/array/forEachReverse';
 import partition from '../../helpers/array/partition';

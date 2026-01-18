@@ -12,12 +12,12 @@ import cancelEvent from '../../helpers/dom/cancelEvent';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import I18n from '../../lib/langPack';
 import {ChatFull} from '../../layer';
-import {AppManagers} from '../../lib/appManagers/managers';
+import {AppManagers} from '../../lib/managers';
 import StackedAvatars from '../stackedAvatars';
 import appSidebarRight from '../sidebarRight';
 import AppChatRequestsTab from '../sidebarRight/tabs/chatRequests';
 import callbackify from '../../helpers/callbackify';
-import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
+import apiManagerProxy from '../../lib/apiManagerProxy';
 import {ONE_DAY} from '../../helpers/date';
 import {MiddlewareHelper, getMiddleware} from '../../helpers/middleware';
 

@@ -7,7 +7,7 @@
 import type {Dialog} from '../lib/appManagers/appMessagesManager';
 import type {ForumTopic} from '../layer';
 import type {AnyDialog} from '../lib/storages/dialogs';
-import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG} from '../lib/appManagers/appDialogsManager';
+import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG} from '../lib/appDialogsManager';
 import rootScope from '../lib/rootScope';
 import {ButtonMenuItemOptionsVerifiable} from './buttonMenu';
 import PopupDeleteDialog from './popups/deleteDialog';
@@ -15,21 +15,21 @@ import {i18n, LangPackKey, _i18n} from '../lib/langPack';
 import findUpTag from '../helpers/dom/findUpTag';
 import {toastNew} from './toast';
 import PopupMute from './popups/mute';
-import {AppManagers} from '../lib/appManagers/managers';
-import {CAN_HIDE_TOPIC, FOLDER_ID_ARCHIVE, GENERAL_TOPIC_ID, REAL_FOLDERS} from '../lib/mtproto/mtproto_config';
+import {AppManagers} from '../lib/managers';
+import {CAN_HIDE_TOPIC, FOLDER_ID_ARCHIVE, GENERAL_TOPIC_ID, REAL_FOLDERS} from '../lib/appManagers/constants';
 import showLimitPopup from './popups/limit';
 import createContextMenu from '../helpers/dom/createContextMenu';
 import PopupElement from './popups';
 import cancelEvent from '../helpers/dom/cancelEvent';
 import IS_SHARED_WORKER_SUPPORTED from '../environment/sharedWorkerSupport';
-import appImManager from '../lib/appManagers/appImManager';
+import appImManager from '../lib/appImManager';
 import {isDialog, isForumTopic, isMonoforumDialog, isSavedDialog} from '../lib/appManagers/utils/dialogs/isDialog';
 import createSubmenuTrigger, {CreateSubmenuArgs} from './createSubmenuTrigger';
 import type AddToFolderDropdownMenu from './addToFolderDropdownMenu';
 import memoizeAsyncWithTTL from '../helpers/memoizeAsyncWithTTL';
 import {MonoforumDialog} from '../lib/storages/monoforumDialogs';
 import {openRemoveFeePopup} from './chat/removeFee';
-import apiManagerProxy from '../lib/mtproto/mtprotoworker';
+import apiManagerProxy from '../lib/apiManagerProxy';
 
 
 export default class DialogsContextMenu {

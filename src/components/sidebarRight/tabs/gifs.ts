@@ -11,11 +11,11 @@ import animationIntersector, {AnimationItemGroup} from '../../animationIntersect
 import appSidebarRight from '..';
 import {AppInlineBotsManager} from '../../../lib/appManagers/appInlineBotsManager';
 import GifsMasonry from '../../gifsMasonry';
-import appImManager from '../../../lib/appManagers/appImManager';
+import appImManager from '../../../lib/appImManager';
 import mediaSizes from '../../../helpers/mediaSizes';
 import findUpClassName from '../../../helpers/dom/findUpClassName';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import {NULL_PEER_ID} from '../../../lib/mtproto/mtproto_config';
+import {NULL_PEER_ID} from '../../../lib/appManagers/constants';
 
 const ANIMATIONGROUP: AnimationItemGroup = 'GIFS-SEARCH';
 

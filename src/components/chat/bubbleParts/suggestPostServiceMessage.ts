@@ -1,5 +1,5 @@
 import {Message} from '../../../layer';
-import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
+import apiManagerProxy from '../../../lib/apiManagerProxy';
 import rootScope from '../../../lib/rootScope';
 import PeerTitle from '../../peerTitle';
 

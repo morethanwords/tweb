@@ -5,7 +5,7 @@
  */
 
 import type {AppMessagesManager, MyInputMessagesFilter, MyMessage, RequestHistoryOptions} from '../lib/appManagers/appMessagesManager';
-import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG, DialogDom} from '../lib/appManagers/appDialogsManager';
+import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG, DialogDom} from '../lib/appDialogsManager';
 import {logger} from '../lib/logger';
 import rootScope from '../lib/rootScope';
 import {SearchGroup, SearchGroupType} from './appSearch';
@@ -23,7 +23,7 @@ import SortedUserList from './sortedUserList';
 import findUpTag from '../helpers/dom/findUpTag';
 import appSidebarRight from './sidebarRight';
 import mediaSizes from '../helpers/mediaSizes';
-import appImManager from '../lib/appManagers/appImManager';
+import appImManager from '../lib/appImManager';
 import positionElementByIndex from '../helpers/dom/positionElementByIndex';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import handleTabSwipe from '../helpers/dom/handleTabSwipe';
@@ -45,7 +45,7 @@ import safeAssign from '../helpers/object/safeAssign';
 import findAndSplice from '../helpers/array/findAndSplice';
 import {ScrollStartCallbackDimensions} from '../helpers/fastSmoothScroll';
 import setInnerHTML from '../helpers/dom/setInnerHTML';
-import {AppManagers} from '../lib/appManagers/managers';
+import {AppManagers} from '../lib/managers';
 import choosePhotoSize from '../lib/appManagers/utils/photos/choosePhotoSize';
 import wrapWebPageDescription from './wrappers/webPageDescription';
 import wrapWebPageTitle from './wrappers/webPageTitle';
@@ -63,7 +63,7 @@ import getParticipantPeerId from '../lib/appManagers/utils/chats/getParticipantP
 import {attachContextMenuListener} from '../helpers/dom/attachContextMenuListener';
 import contextMenuController from '../helpers/contextMenuController';
 import positionMenu from '../helpers/positionMenu';
-import apiManagerProxy from '../lib/mtproto/mtprotoworker';
+import apiManagerProxy from '../lib/apiManagerProxy';
 import ListenerSetter from '../helpers/listenerSetter';
 import SwipeHandler from './swipeHandler';
 import wrapDocument from './wrappers/document';
@@ -74,7 +74,7 @@ import filterAsync from '../helpers/array/filterAsync';
 import ChatContextMenu, {getSponsoredMessageButtons} from './chat/contextMenu';
 import PopupElement from './popups';
 import getParticipantRank from '../lib/appManagers/utils/chats/getParticipantRank';
-import {NULL_PEER_ID} from '../lib/mtproto/mtproto_config';
+import {NULL_PEER_ID} from '../lib/appManagers/constants';
 import createParticipantContextMenu from '../helpers/dom/createParticipantContextMenu';
 import findAndSpliceAll from '../helpers/array/findAndSpliceAll';
 import deferredPromise from '../helpers/cancellablePromise';

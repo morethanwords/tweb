@@ -6,7 +6,7 @@
 
 import type {ChatRights} from '../../lib/appManagers/appChatsManager';
 import flatten from '../../helpers/array/flatten';
-import appImManager from '../../lib/appManagers/appImManager';
+import appImManager from '../../lib/appImManager';
 import rootScope from '../../lib/rootScope';
 import {toastNew} from '../toast';
 import PopupPickUser from './pickUser';

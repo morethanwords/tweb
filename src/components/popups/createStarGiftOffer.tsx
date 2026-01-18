@@ -1,7 +1,6 @@
 import PopupElement, {createPopup} from './indexTsx';
 import {createEffect, createMemo, createSignal, on, onMount, Show} from 'solid-js';
 import {MyStarGift} from '../../lib/appManagers/appGiftsManager';
-import {MTAppConfig} from '../../lib/mtproto/appConfig';
 import {i18n, LangPackKey} from '../../lib/langPack';
 import Row from '../rowTsx';
 import CheckboxFieldTsx from '../checkboxFieldTsx';
@@ -13,7 +12,7 @@ import rootScope from '../../lib/rootScope';
 
 import {useAppConfig} from '../../stores/appState';
 import {I18nTsx} from '../../helpers/solid/i18n';
-import {STARS_CURRENCY, TON_CURRENCY} from '../../lib/mtproto/mtproto_config';
+import {STARS_CURRENCY, TON_CURRENCY} from '../../lib/appManagers/constants';
 import {ChipTab, ChipTabs} from '../chipTabs';
 import {StarGift} from '../../layer';
 import bigInt from 'big-integer';

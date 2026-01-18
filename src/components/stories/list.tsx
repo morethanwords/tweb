@@ -18,7 +18,7 @@ import I18n, {i18n} from '../../lib/langPack';
 import createContextMenu from '../../helpers/dom/createContextMenu';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import {StoriesProvider, useStories} from './store';
-import appImManager from '../../lib/appManagers/appImManager';
+import appImManager from '../../lib/appImManager';
 import appSidebarLeft from '../sidebarLeft';
 import AppMyStoriesTab from '../sidebarLeft/tabs/myStories';
 import {toastNew} from '../toast';

@@ -13,20 +13,20 @@ import rootScope from '../../lib/rootScope';
 import LazyLoadQueue from '../lazyLoadQueue';
 import ProgressivePreloader from '../preloader';
 import blur from '../../helpers/blur';
-import {AppManagers} from '../../lib/appManagers/managers';
+import {AppManagers} from '../../lib/managers';
 import getMediaThumbIfNeeded from '../../helpers/getStrippedThumbIfNeeded';
 import setAttachmentSize from '../../helpers/setAttachmentSize';
 import choosePhotoSize from '../../lib/appManagers/utils/photos/choosePhotoSize';
 import type {ThumbCache} from '../../lib/storages/thumbs';
-import appDownloadManager from '../../lib/appManagers/appDownloadManager';
+import appDownloadManager from '../../lib/appDownloadManager';
 import isWebDocument from '../../lib/appManagers/utils/webDocs/isWebDocument';
 import createVideo from '../../helpers/dom/createVideo';
 import noop from '../../helpers/noop';
-import {THUMB_TYPE_FULL} from '../../lib/mtproto/mtproto_config';
+import {THUMB_TYPE_FULL} from '../../lib/appManagers/constants';
 import {Middleware} from '../../helpers/middleware';
 import liteMode from '../../helpers/liteMode';
 import isWebFileLocation from '../../lib/appManagers/utils/webFiles/isWebFileLocation';
-import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
+import apiManagerProxy from '../../lib/apiManagerProxy';
 
 export default async function wrapPhoto({photo, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware, size, withoutPreloader, loadPromises, autoDownloadSize, noBlur, noThumb, noFadeIn, blurAfter, managers = rootScope.managers, processUrl, fadeInElement, onRender, onRenderFinish, useBlur, useRenderCache, canHaveVideoPlayer, uploadingFileName}: {
   photo: MyPhoto | MyDocument | WebDocument | InputWebFileLocation,

@@ -5,7 +5,7 @@
  */
 
 import {MyDocument} from '../../lib/appManagers/appDocsManager';
-import {AppManagers} from '../../lib/appManagers/managers';
+import {AppManagers} from '../../lib/managers';
 import Row from '../row';
 import wrapSticker from './sticker';
 

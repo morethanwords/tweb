@@ -1,6 +1,6 @@
 import deferredPromise, {CancellablePromise} from '../../../helpers/cancellablePromise';
 import RLottiePlayer from '../../../lib/rlottie/rlottiePlayer';
-import appDownloadManager from '../../../lib/appManagers/appDownloadManager';
+import appDownloadManager from '../../../lib/appDownloadManager';
 import lottieLoader from '../../../lib/rlottie/lottieLoader';
 import {Document} from '../../../layer';
 

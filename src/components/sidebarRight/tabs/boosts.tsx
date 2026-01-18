@@ -19,7 +19,6 @@ import Button from '../../button';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import PopupElement from '../../popups';
 import {InviteLink} from '../../sidebarLeft/tabs/sharedFolder';
-import {MTAppConfig} from '../../../lib/mtproto/appConfig';
 import {horizontalMenu} from '../../horizontalMenu';
 import classNames from '../../../helpers/string/classNames';
 import {formatFullSentTime} from '../../../helpers/date';
@@ -32,7 +31,7 @@ import PopupGiftLink from '../../popups/giftLink';
 import {toastNew} from '../../toast';
 import ListenerSetter from '../../../helpers/listenerSetter';
 import indexOfAndSplice from '../../../helpers/array/indexOfAndSplice';
-import appImManager from '../../../lib/appManagers/appImManager';
+import appImManager from '../../../lib/appImManager';
 import PopupPayment from '../../popups/payment';
 import formatStarsAmount from '../../../lib/appManagers/utils/payments/formatStarsAmount';
 

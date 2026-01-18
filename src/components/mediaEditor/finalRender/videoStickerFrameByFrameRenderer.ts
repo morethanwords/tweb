@@ -1,10 +1,10 @@
 import deferredPromise, {CancellablePromise} from '../../../helpers/cancellablePromise';
-import appDownloadManager from '../../../lib/appManagers/appDownloadManager';
+import appDownloadManager from '../../../lib/appDownloadManager';
 import {getMiddleware} from '../../../helpers/middleware';
 import {Document} from '../../../layer';
 import createVideo from '../../../helpers/dom/createVideo';
 import onMediaLoad from '../../../helpers/onMediaLoad';
-import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
+import apiManagerProxy from '../../../lib/apiManagerProxy';
 import handleVideoLeak from '../../../helpers/dom/handleVideoLeak';
 import {IS_FIREFOX} from '../../../environment/userAgent';
 

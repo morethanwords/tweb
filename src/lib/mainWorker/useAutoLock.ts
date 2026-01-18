@@ -6,7 +6,7 @@ import DEBUG from '../../config/debug';
 
 import commonStateStorage from '../commonStateStorage';
 
-import type MTProtoMessagePort from './mtprotoMessagePort';
+import type MTProtoMessagePort from './mainMessagePort';
 
 
 type UseAutoLockArgs = {

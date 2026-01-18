@@ -5,7 +5,7 @@
  */
 
 import type {Dialog, ForumTopic, SavedDialog} from '../../../../layer';
-import type {REAL_FOLDER_ID} from '../../../mtproto/mtproto_config';
+import type {REAL_FOLDER_ID} from '../../constants';
 import type {MonoforumDialog} from '../../../storages/monoforumDialogs';
 import getDialogIndexKey from './getDialogIndexKey';
 

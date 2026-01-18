@@ -9,7 +9,7 @@ import {render} from 'solid-js/web';
 import PopupElement from '.';
 import {LangPackKey, i18n} from '../../lib/langPack';
 import wrapPeerTitle from '../wrappers/peerTitle';
-import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
+import apiManagerProxy from '../../lib/apiManagerProxy';
 import {DelimiterWithText} from '../chat/giveaway';
 import PopupPremium from './premium';
 import wrapLocalSticker from '../wrappers/localSticker';

@@ -8,9 +8,9 @@ import type {MediaSearchContext} from '../components/appMediaPlaybackController'
 import type {SearchSuperContext} from '../components/appSearchSuper';
 import type {Message} from '../layer';
 import type {MessagesStorageKey, MyMessage} from '../lib/appManagers/appMessagesManager';
-import {AppManagers} from '../lib/appManagers/managers';
+import {AppManagers} from '../lib/managers';
 import {isMessageSensitive} from '../lib/appManagers/utils/messages/isMessageRestricted';
-import apiManagerProxy from '../lib/mtproto/mtprotoworker';
+import apiManagerProxy from '../lib/apiManagerProxy';
 import rootScope, {BroadcastEvents} from '../lib/rootScope';
 import forEachReverse from './array/forEachReverse';
 import filterChatPhotosMessages from './filterChatPhotosMessages';

@@ -3,7 +3,7 @@ import noop from '../../../helpers/noop';
 import createMiddleware from '../../../helpers/solid/createMiddleware';
 import track from '../../../helpers/solid/track';
 import {DocumentAttribute} from '../../../layer';
-import type {AppManagers} from '../../../lib/appManagers/managers';
+import type {AppManagers} from '../../../lib/managers';
 import wrapSingleEmoji from '../../../lib/richTextProcessor/wrapSingleEmoji';
 import RLottiePlayer from '../../../lib/rlottie/rlottiePlayer';
 import wrapSticker from '../../wrappers/sticker';

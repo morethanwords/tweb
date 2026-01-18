@@ -1,7 +1,7 @@
 import {numberThousandSplitterForStars} from '../../../helpers/number/numberThousandSplitter';
 import {Message} from '../../../layer';
 import {i18n} from '../../../lib/langPack';
-import {SUGGESTED_POST_WAIT_FOR_REWARD_HOURS} from '../../../lib/mtproto/mtproto_config';
+import {SUGGESTED_POST_WAIT_FOR_REWARD_HOURS} from '../../../lib/appManagers/constants';
 import defineSolidElement, {PassedProps} from '../../../lib/solidjs/defineSolidElement';
 import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
 import confirmationPopup from '../../confirmationPopup';

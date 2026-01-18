@@ -5,7 +5,7 @@
  */
 
 import type {PhotoSize, InputFileLocation} from '../../../../layer';
-import type {DownloadOptions} from '../../../mtproto/apiFileManager';
+import type {DownloadOptions} from '../../apiFileManager';
 import type {MyDocument} from '../../appDocsManager';
 import type {MyPhoto} from '../../appPhotosManager';
 

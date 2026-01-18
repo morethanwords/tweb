@@ -2,7 +2,7 @@ import {createMemo, batch, untrack, createRoot, createEffect, on, Accessor} from
 import {createStore, SetStoreFunction} from 'solid-js/store';
 import {Message} from '../layer';
 import I18n from '../lib/langPack';
-import apiManagerProxy from '../lib/mtproto/mtprotoworker';
+import apiManagerProxy from '../lib/apiManagerProxy';
 import detectLanguage from '../lib/tinyld/detect';
 import {useAppSettings} from './appSettings';
 

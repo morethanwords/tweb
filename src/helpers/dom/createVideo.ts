@@ -1,7 +1,7 @@
 import {getHeavyAnimationPromise} from '../../hooks/useHeavyAnimationCheck';
 import {getCurrentAccount} from '../../lib/accounts/getCurrentAccount';
 import {initVideoHls} from '../../lib/hls/initVideoHls';
-import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
+import apiManagerProxy from '../../lib/apiManagerProxy';
 import {Middleware} from '../middleware';
 
 function updateStreamInUse(url: string, inUse: boolean) {

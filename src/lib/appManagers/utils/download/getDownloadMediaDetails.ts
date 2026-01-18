@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {DownloadMediaOptions, DownloadOptions} from '../../../mtproto/apiFileManager';
+import type {DownloadMediaOptions, DownloadOptions} from '../../apiFileManager';
 import getDocumentDownloadOptions from '../docs/getDocumentDownloadOptions';
 import getPhotoDownloadOptions from '../photos/getPhotoDownloadOptions';
 import getWebDocumentDownloadOptions from '../webDocs/getWebDocumentDownloadOptions';

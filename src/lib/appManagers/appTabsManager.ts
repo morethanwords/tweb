@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {TabState} from '../mtproto/mtprotoworker';
+import type {TabState} from '../apiManagerProxy';
 import {MOUNT_CLASS_TO} from '../../config/debug';
-import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
+import MTProtoMessagePort from '../mainWorker/mainMessagePort';
 
 type Tab = {
   source: MessageEventSource,

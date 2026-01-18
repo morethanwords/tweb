@@ -2,7 +2,7 @@ import {createSignal, Match, Switch} from 'solid-js';
 import {numberThousandSplitterForStars} from '../../../../helpers/number/numberThousandSplitter';
 import {I18nTsx} from '../../../../helpers/solid/i18n';
 import {Message} from '../../../../layer';
-import {SUGGESTED_POST_WAIT_FOR_REWARD_HOURS} from '../../../../lib/mtproto/mtproto_config';
+import {SUGGESTED_POST_WAIT_FOR_REWARD_HOURS} from '../../../../lib/appManagers/constants';
 import rootScope from '../../../../lib/rootScope';
 import defineSolidElement, {PassedProps} from '../../../../lib/solidjs/defineSolidElement';
 import {PeerTitleTsx} from '../../../peerTitleTsx';

@@ -2,7 +2,7 @@ import {getRgbColorFromTelegramColor, rgbIntToHex} from '../helpers/color';
 import themeController from '../helpers/themeController';
 import {PeerColor} from '../layer';
 import {getPeerColorsByPeer, makeColorsGradient, getPeerColorIndexByPeer} from '../lib/appManagers/utils/peers/getPeerColorById';
-import apiManagerProxy from '../lib/mtproto/mtprotoworker';
+import apiManagerProxy from '../lib/apiManagerProxy';
 
 export function setPeerColorToElement({
   peerId,

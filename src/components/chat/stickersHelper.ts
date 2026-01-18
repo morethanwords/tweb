@@ -9,7 +9,7 @@ import ListenerSetter from '../../helpers/listenerSetter';
 import mediaSizes from '../../helpers/mediaSizes';
 import preloadAnimatedEmojiSticker from '../../helpers/preloadAnimatedEmojiSticker';
 import {MyDocument} from '../../lib/appManagers/appDocsManager';
-import {AppManagers} from '../../lib/appManagers/managers';
+import {AppManagers} from '../../lib/managers';
 import rootScope from '../../lib/rootScope';
 import SuperStickerRenderer from '../emoticonsDropdown/tabs/SuperStickerRenderer';
 import LazyLoadQueue from '../lazyLoadQueue';

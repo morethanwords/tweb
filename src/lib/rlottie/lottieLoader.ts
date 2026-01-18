@@ -11,7 +11,7 @@ import {logger, LogTypes} from '../logger';
 import RLottiePlayer, {RLottieOptions} from './rlottiePlayer';
 import QueryableWorker from './queryableWorker';
 import blobConstruct from '../../helpers/blob/blobConstruct';
-import apiManagerProxy from '../mtproto/mtprotoworker';
+import apiManagerProxy from '../apiManagerProxy';
 import IS_WEB_ASSEMBLY_SUPPORTED from '../../environment/webAssemblySupport';
 import makeError from '../../helpers/makeError';
 import App from '../../config/app';

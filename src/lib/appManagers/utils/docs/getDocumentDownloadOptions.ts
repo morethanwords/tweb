@@ -5,7 +5,7 @@
  */
 
 import type {Document, PhotoSize, VideoSize} from '../../../../layer';
-import type {DownloadOptions} from '../../../mtproto/apiFileManager';
+import type {DownloadOptions} from '../../apiFileManager';
 import getDocumentInputFileLocation from './getDocumentInputFileLocation';
 
 type GetDocumentDownloadOptions = {

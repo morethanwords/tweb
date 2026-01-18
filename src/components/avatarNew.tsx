@@ -22,7 +22,7 @@ import {
   createComputed
 } from 'solid-js';
 import rootScope from '../lib/rootScope';
-import {NULL_PEER_ID, REPLIES_PEER_ID, HIDDEN_PEER_ID} from '../lib/mtproto/mtproto_config';
+import {NULL_PEER_ID, REPLIES_PEER_ID, HIDDEN_PEER_ID} from '../lib/appManagers/constants';
 import {Chat, ChatPhoto, PhotoSize, User, UserProfilePhoto} from '../layer';
 import {getPeerAvatarColorByPeer} from '../lib/appManagers/utils/peers/getPeerColorById';
 import getPeerPhoto from '../lib/appManagers/utils/peers/getPeerPhoto';
@@ -37,8 +37,8 @@ import {Modify} from '../types';
 import documentFragmentToNodes from '../helpers/dom/documentFragmentToNodes';
 import DashedCircle, {DashedCircleSection} from '../helpers/canvas/dashedCircle';
 import findUpClassName from '../helpers/dom/findUpClassName';
-import {AckedResult} from '../lib/mtproto/superMessagePort';
-import apiManagerProxy from '../lib/mtproto/mtprotoworker';
+import {AckedResult} from '../lib/superMessagePort';
+import apiManagerProxy from '../lib/apiManagerProxy';
 import callbackify from '../helpers/callbackify';
 import Icon from './icon';
 import wrapPhoto from './wrappers/photo';

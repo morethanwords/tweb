@@ -50,12 +50,12 @@ import type wrapTopicNameButton from '../../components/wrappers/topicNameButton'
 import type VideoTsx from '../../components/wrappers/videoTsx';
 import type {ThemeController} from '../../helpers/themeController';
 import type {useAppSettings} from '../../stores/appSettings';
-import type {AppDialogsManager} from '../appManagers/appDialogsManager';
-import type {AppImManager} from '../appManagers/appImManager';
-import type uiNotificationsManager from '../appManagers/uiNotificationsManager';
+import type {AppDialogsManager} from '../appDialogsManager';
+import type {AppImManager} from '../appImManager';
+import type uiNotificationsManager from '../uiNotificationsManager';
 import type I18n from '../langPack';
 import type {i18n, join} from '../langPack';
-import type apiManagerProxy from '../mtproto/mtprotoworker';
+import type apiManagerProxy from '../apiManagerProxy';
 import type wrapEmojiText from '../richTextProcessor/wrapEmojiText';
 import type wrapRichText from '../richTextProcessor/wrapRichText';
 import type lottieLoader from '../rlottie/lottieLoader';

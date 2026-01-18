@@ -11,7 +11,7 @@ import classNames from '../../helpers/string/classNames';
 import {IconTsx} from '../iconTsx';
 import RippleElement from '../rippleElement';
 import {FormatterArguments, i18n, LangPackKey} from '../../lib/langPack';
-import {AppManagers} from '../../lib/appManagers/managers';
+import {AppManagers} from '../../lib/managers';
 import overlayCounter from '../../helpers/overlayCounter';
 import {getMiddleware, MiddlewareHelper} from '../../helpers/middleware';
 import findUpClassName from '../../helpers/dom/findUpClassName';

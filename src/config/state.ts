@@ -11,7 +11,6 @@ import type {AccountContentSettings, AccountThemes, AutoDownloadSettings, BaseTh
 import type DialogsStorage from '../lib/storages/dialogs';
 import type FiltersStorage from '../lib/storages/filters';
 import type {AuthState, Modify} from '../types';
-import type {MTAppConfig} from '../lib/mtproto/appConfig';
 import type {ShortcutKey as PasscodeLockShortcutKey} from '../components/sidebarLeft/tabs/passcodeLock/shortcutBuilder';
 import {IS_MOBILE} from '../environment/userAgent';
 import getTimeFormat from '../helpers/getTimeFormat';

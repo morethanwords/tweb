@@ -39,10 +39,10 @@ import getParticipantsCount from '../../../lib/appManagers/utils/chats/getPartic
 import anchorCallback from '../../../helpers/dom/anchorCallback';
 import PopupBoost from '../../popups/boost';
 import namedPromises from '../../../helpers/namedPromises';
-import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
+import apiManagerProxy from '../../../lib/apiManagerProxy';
 import {AppDirectMessagesTab} from '../../solidJsTabs';
 import {AppAdminRecentActionsTab} from '../../solidJsTabs/tabs';
-import appImManager from '../../../lib/appManagers/appImManager';
+import appImManager from '../../../lib/appImManager';
 import {ChatType} from '../../chat/chat';
 import {appSettings} from '../../../stores/appSettings';
 

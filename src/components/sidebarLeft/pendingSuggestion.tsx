@@ -14,7 +14,7 @@ import {useAppSettings} from '../../stores/appSettings';
 import Button from '../buttonTsx';
 import {toastNew} from '../toast';
 import Animated from '../../helpers/solid/animations';
-import uiNotificationsManager from '../../lib/appManagers/uiNotificationsManager';
+import uiNotificationsManager from '../../lib/uiNotificationsManager';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import {usePendingSuggestions} from '../../stores/promo';
 import showBirthdayPopup, {saveMyBirthday} from '../popups/birthday';

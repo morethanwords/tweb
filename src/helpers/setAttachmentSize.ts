@@ -5,7 +5,7 @@
  */
 
 import {Message, MessageMedia, PhotoSize, WebDocument} from '../layer';
-import {REPLIES_HIDDEN_CHANNEL_ID} from '../lib/mtproto/mtproto_config';
+import {REPLIES_HIDDEN_CHANNEL_ID} from '../lib/appManagers/constants';
 import {MyDocument} from '../lib/appManagers/appDocsManager';
 import {MyPhoto} from '../lib/appManagers/appPhotosManager';
 import choosePhotoSize from '../lib/appManagers/utils/photos/choosePhotoSize';

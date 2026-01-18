@@ -11,7 +11,7 @@ import renderImageFromUrl from '../../../helpers/dom/renderImageFromUrl';
 import {getColorsFromWallPaper} from '../../../helpers/color';
 import ChatBackgroundGradientRenderer from '../gradientRenderer';
 import classNames from '../../../helpers/string/classNames';
-import {AppManagers} from '../../../lib/appManagers/managers';
+import {AppManagers} from '../../../lib/managers';
 import {appState} from '../../../stores/appState';
 import {averageColorFromCanvas, averageColorFromImage} from '../../../helpers/averageColor';
 import highlightingColor from '../../../helpers/highlightingColor';

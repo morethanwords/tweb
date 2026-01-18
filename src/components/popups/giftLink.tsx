@@ -14,7 +14,7 @@ import {For, JSX} from 'solid-js';
 import {formatDaysDuration, formatFullSentTime, formatMonthsDuration} from '../../helpers/date';
 import {AvatarNew} from '../avatarNew';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
-import appImManager, {ChatSetPeerOptions} from '../../lib/appManagers/appImManager';
+import appImManager, {ChatSetPeerOptions} from '../../lib/appImManager';
 import rootScope from '../../lib/rootScope';
 import PeerTitle from '../peerTitle';
 import cancelEvent from '../../helpers/dom/cancelEvent';

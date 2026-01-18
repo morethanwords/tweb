@@ -18,7 +18,7 @@ import getServerMessageId from './utils/messageId/getServerMessageId';
 import getPhotoInput from './utils/photos/getPhotoInput';
 import getParticipantPeerId from './utils/chats/getParticipantPeerId';
 import ctx from '../../environment/ctx';
-import {ReferenceContext} from '../mtproto/referenceDatabase';
+import {ReferenceContext} from '../storages/references';
 import assumeType from '../../helpers/assumeType';
 import makeError from '../../helpers/makeError';
 import callbackify from '../../helpers/callbackify';
@@ -26,7 +26,7 @@ import getPeerActiveUsernames from './utils/peers/getPeerActiveUsernames';
 import getParticipantsCount from './utils/chats/getParticipantsCount';
 import callbackifyAll from '../../helpers/callbackifyAll';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-import {PEER_FULL_TTL} from '../mtproto/mtproto_config';
+import {PEER_FULL_TTL} from './constants';
 
 export type UserTyping = Partial<{userId: UserId, action: SendMessageAction, timeout: number}>;
 

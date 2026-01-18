@@ -11,7 +11,7 @@ import ListenerSetter from '../../helpers/listenerSetter';
 import safeAssign from '../../helpers/object/safeAssign';
 import {GroupCallParticipant} from '../../layer';
 import {GroupCallOutputSource} from '../../lib/appManagers/appGroupCallsManager';
-import {AppManagers} from '../../lib/appManagers/managers';
+import {AppManagers} from '../../lib/managers';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import GroupCallInstance from '../../lib/calls/groupCallInstance';
 import rootScope from '../../lib/rootScope';

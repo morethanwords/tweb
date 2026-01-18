@@ -114,7 +114,7 @@ export type ReferenceContexts = Set<ReferenceContext>;
 
 // type ReferenceBytes = Uint8Array;
 
-export class ReferenceDatabase extends AppManager {
+export class ReferencesStorage extends AppManager {
   private contexts: Map<ReferenceBytes, ReferenceContexts> = new Map();
   // private references: Map<ReferenceBytes, number[]> = new Map();
   private links: {[hex: string]: ReferenceBytes} = {};
@@ -122,7 +122,7 @@ export class ReferenceDatabase extends AppManager {
 
   constructor() {
     super();
-    this.name = 'RD';
+    this.name = 'REFS';
     this.logIgnoreDebugReset = true;
   }
 

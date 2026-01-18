@@ -6,7 +6,7 @@
 
 import isObject from '../helpers/object/isObject';
 import {Photo, MessageAction, Message} from '../layer';
-import apiManagerProxy from '../lib/mtproto/mtprotoworker';
+import apiManagerProxy from '../lib/apiManagerProxy';
 import rootScope from '../lib/rootScope';
 import AppMediaViewer from './appMediaViewer';
 import AppMediaViewerAvatar from './appMediaViewerAvatar';

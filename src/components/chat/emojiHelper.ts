@@ -9,7 +9,7 @@ import {appendEmoji as wrapAppEmoji, getEmojiFromElement} from '../emoticonsDrop
 import {ScrollableX} from '../scrollable';
 import AutocompleteHelper from './autocompleteHelper';
 import AutocompleteHelperController from './autocompleteHelperController';
-import {AppManagers} from '../../lib/appManagers/managers';
+import {AppManagers} from '../../lib/managers';
 import {CustomEmojiRendererElement} from '../../lib/customEmoji/renderer';
 import mediaSizes from '../../helpers/mediaSizes';
 import {getMiddleware, Middleware} from '../../helpers/middleware';

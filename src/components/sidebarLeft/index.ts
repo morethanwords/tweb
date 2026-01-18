@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appImManager from '../../lib/appManagers/appImManager';
+import appImManager from '../../lib/appImManager';
 import rootScope from '../../lib/rootScope';
 import {SearchGroup} from '../appSearch';
 import Scrollable, {ScrollableX} from '../scrollable';
@@ -38,13 +38,13 @@ import noop from '../../helpers/noop';
 import ripple from '../ripple';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import formatNumber from '../../helpers/number/formatNumber';
-import {AppManagers} from '../../lib/appManagers/managers';
+import {AppManagers} from '../../lib/managers';
 import themeController from '../../helpers/themeController';
 import contextMenuController from '../../helpers/contextMenuController';
-import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG} from '../../lib/appManagers/appDialogsManager';
-import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
+import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG} from '../../lib/appDialogsManager';
+import apiManagerProxy from '../../lib/apiManagerProxy';
 import SettingSection, {SettingSectionOptions} from '../settingSection';
-import {FOLDER_ID_ARCHIVE, TEST_NO_STORIES} from '../../lib/mtproto/mtproto_config';
+import {FOLDER_ID_ARCHIVE, TEST_NO_STORIES} from '../../lib/appManagers/constants';
 import mediaSizes from '../../helpers/mediaSizes';
 import {doubleRaf, fastRaf} from '../../helpers/schedulers';
 import {getInstallPrompt} from '../../helpers/dom/installPrompt';
@@ -69,13 +69,13 @@ import AccountController from '../../lib/accounts/accountController';
 import {ActiveAccountNumber} from '../../lib/accounts/types';
 import {MAX_ACCOUNTS, MAX_ACCOUNTS_FREE} from '../../lib/accounts/constants';
 import {getCurrentAccount} from '../../lib/accounts/getCurrentAccount';
-import {createProxiedManagersForAccount} from '../../lib/appManagers/getProxiedManagers';
+import {createProxiedManagersForAccount} from '../../lib/getProxiedManagers';
 import limitSymbols from '../../helpers/string/limitSymbols';
 import filterAsync from '../../helpers/array/filterAsync';
 import pause from '../../helpers/schedulers/pause';
 import AccountsLimitPopup from './accountsLimitPopup';
 import {changeAccount} from '../../lib/accounts/changeAccount';
-import uiNotificationsManager from '../../lib/appManagers/uiNotificationsManager';
+import uiNotificationsManager from '../../lib/uiNotificationsManager';
 import {FoldersSidebarControls, renderFoldersSidebarContent} from './foldersSidebarContent';
 import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
 import SwipeHandler, {getEvent} from '../swipeHandler';

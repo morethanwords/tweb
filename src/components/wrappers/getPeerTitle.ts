@@ -6,10 +6,10 @@
 
 import _limitSymbols from '../../helpers/string/limitSymbols';
 import {Chat} from '../../layer';
-import {AppManagers} from '../../lib/appManagers/managers';
+import {AppManagers} from '../../lib/managers';
 import getPeerActiveUsernames from '../../lib/appManagers/utils/peers/getPeerActiveUsernames';
 import I18n from '../../lib/langPack';
-import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
+import apiManagerProxy from '../../lib/apiManagerProxy';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import rootScope from '../../lib/rootScope';
 

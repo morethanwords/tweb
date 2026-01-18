@@ -1,5 +1,4 @@
 import {Accessor, createMemo} from 'solid-js';
-import {MTAppConfig} from '../../../../../lib/mtproto/appConfig';
 import useAppConfig from './useAppConfig';
 
 

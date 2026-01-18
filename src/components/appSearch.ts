@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appDialogsManager from '../lib/appManagers/appDialogsManager';
+import appDialogsManager from '../lib/appDialogsManager';
 import Scrollable from './scrollable';
 import InputSearch from './inputSearch';
 import replaceContent from '../helpers/dom/replaceContent';
@@ -13,7 +13,7 @@ import rootScope from '../lib/rootScope';
 import {getMiddleware, Middleware, MiddlewareHelper} from '../helpers/middleware';
 import getPeerId from '../lib/appManagers/utils/peers/getPeerId';
 import {Message} from '../layer';
-import apiManagerProxy from '../lib/mtproto/mtprotoworker';
+import apiManagerProxy from '../lib/apiManagerProxy';
 
 export class SearchGroup {
   container: HTMLDivElement;

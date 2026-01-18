@@ -8,7 +8,7 @@ import type AppGifsManager from '../../../lib/appManagers/appGifsManager';
 import {EMOTICONSSTICKERGROUP} from '..';
 import GifsMasonry from '../../gifsMasonry';
 import {putPreloader} from '../../putPreloader';
-import {AppManagers} from '../../../lib/appManagers/managers';
+import {AppManagers} from '../../../lib/managers';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import EmoticonsTabC from '../tab';
 import safeAssign from '../../../helpers/object/safeAssign';

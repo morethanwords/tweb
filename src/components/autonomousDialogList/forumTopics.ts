@@ -1,6 +1,6 @@
 import {ForumTopic} from '../../lib/appManagers/appMessagesManager';
 import {isDialog, isForumTopic} from '../../lib/appManagers/utils/dialogs/isDialog';
-import {CAN_HIDE_TOPIC} from '../../lib/mtproto/mtproto_config';
+import {CAN_HIDE_TOPIC} from '../../lib/appManagers/constants';
 import rootScope from '../../lib/rootScope';
 import {AutonomousDialogListBase, BaseConstructorArgs} from './base';
 

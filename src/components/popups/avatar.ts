@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {AppDownloadManager} from '../../lib/appManagers/appDownloadManager';
+import type {AppDownloadManager} from '../../lib/appDownloadManager';
 import resizeableImage from '../../lib/cropper';
 import PopupElement from '.';
 import {_i18n} from '../../lib/langPack';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import readBlobAsDataURL from '../../helpers/blob/readBlobAsDataURL';
-import appDownloadManager from '../../lib/appManagers/appDownloadManager';
+import appDownloadManager from '../../lib/appDownloadManager';
 import Button from '../button';
 
 export default class PopupAvatar extends PopupElement {

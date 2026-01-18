@@ -7,12 +7,12 @@
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import type {getEnvironment} from '../../environment/utils';
 import type {LocalStorageEncryptedProxyTaskPayload, LocalStorageProxyTask} from '../localStorage';
-import type {MirrorTaskPayload, NotificationBuildTaskPayload, TabState} from './mtprotoworker';
+import type {MirrorTaskPayload, NotificationBuildTaskPayload, TabState} from '../apiManagerProxy';
 import type toggleStorages from '../../helpers/toggleStorages';
 import type {ActiveAccountNumber} from '../accounts/types';
 import type {LoadStateResult} from '../appManagers/utils/state/loadState';
 import type {PasscodeStorageValue} from '../commonStateStorage';
-import SuperMessagePort from './superMessagePort';
+import SuperMessagePort from '../superMessagePort';
 
 export type MTProtoManagerTaskPayload = {name: string, method: string, args: any[], accountNumber: ActiveAccountNumber};
 export type MTProtoSingleManagerTaskPayload = {name: string, method: string, args: any[]};

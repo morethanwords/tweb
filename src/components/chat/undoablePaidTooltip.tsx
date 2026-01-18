@@ -6,8 +6,8 @@
 
 import {Accessor, createEffect, createRoot, createSignal, onCleanup} from 'solid-js';
 
-import {SEND_PAID_WITH_STARS_DELAY} from '../../lib/mtproto/mtproto_config';
-import appImManager from '../../lib/appManagers/appImManager';
+import {SEND_PAID_WITH_STARS_DELAY} from '../../lib/appManagers/constants';
+import appImManager from '../../lib/appImManager';
 import I18n, {i18n, LangPackKey} from '../../lib/langPack';
 import classNames from '../../helpers/string/classNames';
 import eachSecond from '../../helpers/eachSecond';

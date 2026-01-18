@@ -11,7 +11,7 @@ import I18n from '../../lib/langPack';
 import replaceContent from '../../helpers/dom/replaceContent';
 import StackedAvatars from '../stackedAvatars';
 import formatNumber from '../../helpers/number/formatNumber';
-import {AppManagers} from '../../lib/appManagers/managers';
+import {AppManagers} from '../../lib/managers';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import type LazyLoadQueue from '../lazyLoadQueue';
 import {MiddlewareHelper} from '../../helpers/middleware';

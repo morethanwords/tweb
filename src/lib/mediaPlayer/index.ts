@@ -34,7 +34,7 @@ import {createQualityLevelsSwitchButton} from './qualityLevelsSwitchButton';
 import {createPlaybackRateButton} from './playbackRateButton';
 import {createSpeedDragHandler} from './speedDragHandler';
 import {VideoTimestamp} from '../../components/appMediaViewerBase';
-import apiManagerProxy from '../mtproto/mtprotoworker';
+import apiManagerProxy from '../apiManagerProxy';
 
 
 export default class VideoPlayer extends ControlsHover {

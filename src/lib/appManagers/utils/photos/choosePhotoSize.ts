@@ -8,7 +8,7 @@ import type {MyDocument} from '../../appDocsManager';
 import type {MyPhoto} from '../../appPhotosManager';
 import type {PhotoSize, VideoSize, WebDocument} from '../../../../layer';
 import calcImageInBox from '../../../../helpers/calcImageInBox';
-import {THUMB_TYPE_FULL} from '../../../mtproto/mtproto_config';
+import {THUMB_TYPE_FULL} from '../../constants';
 
 export default function choosePhotoSize(
   photo: MyPhoto | MyDocument | WebDocument,

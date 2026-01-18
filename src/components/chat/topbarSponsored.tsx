@@ -6,8 +6,8 @@
 
 import {createEffect, createSignal, on, Show} from 'solid-js';
 import {render} from 'solid-js/web';
-import {AppManagers} from '../../lib/appManagers/managers';
-import {NULL_PEER_ID} from '../../lib/mtproto/mtproto_config';
+import {AppManagers} from '../../lib/managers';
+import {NULL_PEER_ID} from '../../lib/appManagers/constants';
 import Chat from './chat';
 import PinnedContainer from './pinnedContainer';
 import ChatTopbar from './topbar';
@@ -19,7 +19,7 @@ import {Ripple} from '../rippleTsx';
 import {I18nTsx} from '../../helpers/solid/i18n';
 import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
-import appImManager from '../../lib/appManagers/appImManager';
+import appImManager from '../../lib/appImManager';
 import {getMiddleware} from '../../helpers/middleware';
 import PhotoTsx from '../wrappers/photoTsx';
 import {MyPhoto} from '../../lib/appManagers/appPhotosManager';

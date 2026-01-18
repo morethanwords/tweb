@@ -11,7 +11,7 @@ import {attachClickEvent} from '../helpers/dom/clickEvent';
 import replaceContent from '../helpers/dom/replaceContent';
 import {randomLong} from '../helpers/random';
 import {GlobalPrivacySettings, InputPrivacyKey, InputPrivacyRule} from '../layer';
-import {AppManagers} from '../lib/appManagers/managers';
+import {AppManagers} from '../lib/managers';
 import getPrivacyRulesDetails from '../lib/appManagers/utils/privacy/getPrivacyRulesDetails';
 import PrivacyType from '../lib/appManagers/utils/privacy/privacyType';
 import {i18n, join, LangPackKey, _i18n} from '../lib/langPack';

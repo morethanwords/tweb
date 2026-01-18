@@ -15,7 +15,7 @@ import findUpAsChild from '../../helpers/dom/findUpAsChild';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import {getHeavyAnimationPromise} from '../../hooks/useHeavyAnimationCheck';
 import safeAssign from '../../helpers/object/safeAssign';
-import {AppManagers} from '../../lib/appManagers/managers';
+import {AppManagers} from '../../lib/managers';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import Scrollable from '../scrollable';
 import wrapKeyboardButton from '../wrappers/keyboardButton';

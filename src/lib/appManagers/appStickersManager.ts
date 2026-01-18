@@ -5,7 +5,7 @@
  */
 
 import type {MyDocument} from './appDocsManager';
-import type {DownloadOptions} from '../mtproto/apiFileManager';
+import type {DownloadOptions} from './apiFileManager';
 import {Document, InputFileLocation, InputStickerSet, MessageEntity, MessagesAllStickers, MessagesFavedStickers, MessagesFeaturedStickers, MessagesFoundStickerSets, MessagesRecentStickers, MessagesStickers, MessagesStickerSet, PhotoSize, StickerPack, StickerSet, StickerSetCovered, Update, VideoSize} from '../../layer';
 import {Modify} from '../../types';
 import AppStorage from '../storage';

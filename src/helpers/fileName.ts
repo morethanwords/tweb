@@ -5,7 +5,7 @@
  */
 
 import type {InputFileLocation, InputGeoPoint, InputStickerSet, InputWebFileLocation} from '../layer';
-import type {DownloadOptions} from '../lib/mtproto/apiFileManager';
+import type {DownloadOptions} from '../lib/appManagers/apiFileManager';
 
 const FILENAME_JOINER = '_';
 

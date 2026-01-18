@@ -11,7 +11,7 @@ import safeAssign from '../../helpers/object/safeAssign';
 import throttle from '../../helpers/schedulers/throttle';
 import {GroupCall, GroupCallParticipant} from '../../layer';
 import {logger} from '../logger';
-import {NULL_PEER_ID} from '../mtproto/mtproto_config';
+import {NULL_PEER_ID} from '../appManagers/constants';
 import rootScope from '../rootScope';
 import CallInstanceBase, {TryAddTrackOptions} from './callInstanceBase';
 import GroupCallConnectionInstance from './groupCallConnectionInstance';
@@ -26,7 +26,7 @@ import {WebRTCLineType} from './sdpBuilder';
 import StreamManager from './streamManager';
 import {Ssrc} from './types';
 import getPeerId from '../appManagers/utils/peers/getPeerId';
-import {AppManagers} from '../appManagers/managers';
+import {AppManagers} from '../managers';
 import {generateSelfVideo, makeSsrcFromParticipant, makeSsrcsFromParticipant} from './groupCallsController';
 
 export default class GroupCallInstance extends CallInstanceBase<{

@@ -18,14 +18,14 @@ import SearchListLoader from '../helpers/searchListLoader';
 import copy from '../helpers/object/copy';
 import deepEqual from '../helpers/object/deepEqual';
 import ListenerSetter from '../helpers/listenerSetter';
-import {AppManagers} from '../lib/appManagers/managers';
+import {AppManagers} from '../lib/managers';
 import getMediaFromMessage from '../lib/appManagers/utils/messages/getMediaFromMessage';
 import getPeerTitle from './wrappers/getPeerTitle';
-import appDownloadManager from '../lib/appManagers/appDownloadManager';
+import appDownloadManager from '../lib/appDownloadManager';
 import onMediaLoad from '../helpers/onMediaLoad';
 import EventListenerBase from '../helpers/eventListenerBase';
 import animationIntersector from './animationIntersector';
-import apiManagerProxy from '../lib/mtproto/mtprotoworker';
+import apiManagerProxy from '../lib/apiManagerProxy';
 import setCurrentTime from '../helpers/dom/setCurrentTime';
 
 // TODO: Safari: проверить стрим, включить его и сразу попробовать включить видео или другую песню

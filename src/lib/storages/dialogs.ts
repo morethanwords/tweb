@@ -16,7 +16,7 @@ import tsNow from '../../helpers/tsNow';
 import SearchIndex from '../searchIndex';
 import {SliceEnd} from '../../helpers/slicedArray';
 import {MyDialogFilter} from './filters';
-import {CAN_HIDE_TOPIC, FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, NULL_PEER_ID, REAL_FOLDERS, REAL_FOLDER_ID, TEST_NO_SAVED} from '../mtproto/mtproto_config';
+import {CAN_HIDE_TOPIC, FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, NULL_PEER_ID, REAL_FOLDERS, REAL_FOLDER_ID, TEST_NO_SAVED} from '../appManagers/constants';
 import {MaybePromise, Modify, NoneToVoidFunction} from '../../types';
 import ctx from '../../environment/ctx';
 import AppStorage from '../storage';

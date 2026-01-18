@@ -20,7 +20,7 @@ import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import appNavigationController, {NavigationItem} from '../appNavigationController';
 import {IS_MOBILE_SAFARI} from '../../environment/userAgent';
 import PopupElement from '../popups';
-import {DIALOG_LIST_ELEMENT_TAG} from '../../lib/appManagers/appDialogsManager';
+import {DIALOG_LIST_ELEMENT_TAG} from '../../lib/appDialogsManager';
 import {MiddlewareHelper, getMiddleware} from '../../helpers/middleware';
 import ButtonIcon from '../buttonIcon';
 import pause from '../../helpers/schedulers/pause';

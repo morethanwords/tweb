@@ -1,4 +1,4 @@
-import {SEND_PAID_WITH_STARS_DELAY} from '../../../mtproto/mtproto_config';
+import {SEND_PAID_WITH_STARS_DELAY} from '../../constants';
 
 
 type PaidMessagesQueueItem = {

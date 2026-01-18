@@ -1,5 +1,5 @@
 import pause from '../../helpers/schedulers/pause';
-import {AppManagers} from '../../lib/appManagers/managers';
+import {AppManagers} from '../../lib/managers';
 import PopupElement from '../popups';
 import SidebarSlider, {SidebarSliderOptions} from '../slider';
 

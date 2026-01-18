@@ -28,8 +28,8 @@ import {AppStoragesManager} from './appStoragesManager';
 import deepEqual from '../../helpers/object/deepEqual';
 import getPeerActiveUsernames from './utils/peers/getPeerActiveUsernames';
 import callbackify from '../../helpers/callbackify';
-import {NULL_PEER_ID, TEST_NO_STORIES} from '../mtproto/mtproto_config';
-import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
+import {NULL_PEER_ID, TEST_NO_STORIES} from './constants';
+import MTProtoMessagePort from '../mainWorker/mainMessagePort';
 import pause from '../../helpers/schedulers/pause';
 
 export type User = MTUser.user;

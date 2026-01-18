@@ -9,7 +9,7 @@ import asyncThrottle from '../helpers/schedulers/asyncThrottle';
 import cryptoMessagePort from './crypto/cryptoMessagePort';
 import IDBStorage from './files/idb';
 import {logger, Logger} from './logger';
-import MTProtoMessagePort from './mtproto/mtprotoMessagePort';
+import MTProtoMessagePort from './mainWorker/mainMessagePort';
 import EncryptionKeyStore from './passcode/keyStore';
 
 

@@ -6,7 +6,7 @@
 
 import mediaSizes from '../../../helpers/mediaSizes';
 import {MyDocument} from '../../../lib/appManagers/appDocsManager';
-import {AppManagers} from '../../../lib/appManagers/managers';
+import {AppManagers} from '../../../lib/managers';
 import animationIntersector, {AnimationItemGroup} from '../../animationIntersector';
 import LazyLoadQueue from '../../lazyLoadQueue';
 import LazyLoadQueueRepeat from '../../lazyLoadQueueRepeat';

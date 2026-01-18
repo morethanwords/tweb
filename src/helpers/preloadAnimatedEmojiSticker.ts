@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appDownloadManager from '../lib/appManagers/appDownloadManager';
+import appDownloadManager from '../lib/appDownloadManager';
 import lottieLoader from '../lib/rlottie/lottieLoader';
 import rootScope from '../lib/rootScope';
 import {getEmojiToneIndex} from '../vendor/emoji';

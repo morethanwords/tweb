@@ -27,7 +27,7 @@ import {GeoPoint} from '../layer';
 import GeoPin from './geoPin';
 import ScrollSaver from '../helpers/scrollSaver';
 import {Message} from '../layer';
-import {NULL_PEER_ID} from '../lib/mtproto/mtproto_config';
+import {NULL_PEER_ID} from '../lib/appManagers/constants';
 import prepareAlbum from './prepareAlbum';
 import type AppMediaViewer from './appMediaViewer';
 import indexOfAndSplice from '../helpers/array/indexOfAndSplice';

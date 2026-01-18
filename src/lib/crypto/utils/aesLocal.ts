@@ -1,4 +1,4 @@
-import SuperMessagePort from '../../mtproto/superMessagePort';
+import SuperMessagePort from '../../superMessagePort';
 
 
 const IV_LENGTH = 12;

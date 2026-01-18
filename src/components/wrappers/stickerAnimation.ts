@@ -13,7 +13,7 @@ import {getMiddleware, Middleware} from '../../helpers/middleware';
 import throttleWithRaf from '../../helpers/schedulers/throttleWithRaf';
 import windowSize from '../../helpers/windowSize';
 import {PhotoSize, VideoSize} from '../../layer';
-import {AppManagers} from '../../lib/appManagers/managers';
+import {AppManagers} from '../../lib/managers';
 import RLottiePlayer from '../../lib/rlottie/rlottiePlayer';
 import Scrollable from '../scrollable';
 import wrapSticker from './sticker';

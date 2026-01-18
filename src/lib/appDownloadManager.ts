@@ -4,27 +4,27 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {DownloadMediaOptions, DownloadOptions} from '../mtproto/apiFileManager';
-import type {AppMessagesManager} from './appMessagesManager';
-import type {MyDocument} from './appDocsManager';
-import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
-import {InputFile, Photo, PhotoSize} from '../../layer';
-import getFileNameForUpload from '../../helpers/getFileNameForUpload';
+import type {DownloadMediaOptions, DownloadOptions} from './appManagers/apiFileManager';
+import type {AppMessagesManager} from './appManagers/appMessagesManager';
+import type {MyDocument} from './appManagers/appDocsManager';
+import deferredPromise, {CancellablePromise} from '../helpers/cancellablePromise';
+import {InputFile, Photo, PhotoSize} from '../layer';
+import getFileNameForUpload from '../helpers/getFileNameForUpload';
 import {AppManagers} from './managers';
-import rootScope from '../rootScope';
-import {MOUNT_CLASS_TO} from '../../config/debug';
-import noop from '../../helpers/noop';
-import getDownloadMediaDetails from './utils/download/getDownloadMediaDetails';
-import getDownloadFileNameFromOptions from './utils/download/getDownloadFileNameFromOptions';
-import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-import makeError from '../../helpers/makeError';
-import createDownloadAnchor from '../../helpers/dom/createDownloadAnchor';
-import {getFileNameByLocation} from '../../helpers/fileName';
-import getDocumentDownloadOptions from './utils/docs/getDocumentDownloadOptions';
-import getPhotoDownloadOptions from './utils/photos/getPhotoDownloadOptions';
-import apiManagerProxy from '../mtproto/mtprotoworker';
-import {IS_MOBILE_SAFARI} from '../../environment/userAgent';
-import isWebFileLocation from './utils/webFiles/isWebFileLocation';
+import rootScope from './rootScope';
+import {MOUNT_CLASS_TO} from '../config/debug';
+import noop from '../helpers/noop';
+import getDownloadMediaDetails from './appManagers/utils/download/getDownloadMediaDetails';
+import getDownloadFileNameFromOptions from './appManagers/utils/download/getDownloadFileNameFromOptions';
+import indexOfAndSplice from '../helpers/array/indexOfAndSplice';
+import makeError from '../helpers/makeError';
+import createDownloadAnchor from '../helpers/dom/createDownloadAnchor';
+import {getFileNameByLocation} from '../helpers/fileName';
+import getDocumentDownloadOptions from './appManagers/utils/docs/getDocumentDownloadOptions';
+import getPhotoDownloadOptions from './appManagers/utils/photos/getPhotoDownloadOptions';
+import apiManagerProxy from './apiManagerProxy';
+import {IS_MOBILE_SAFARI} from '../environment/userAgent';
+import isWebFileLocation from './appManagers/utils/webFiles/isWebFileLocation';
 
 export type ResponseMethodBlob = 'blob';
 export type ResponseMethodJson = 'json';

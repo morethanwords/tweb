@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {PasswordManager} from '../mtproto/passwordManager';
-import {ReferenceDatabase} from '../mtproto/referenceDatabase';
+import {PasswordManager} from './passwordManager';
+import {ReferencesStorage} from '../storages/references';
 import DialogsStorage from '../storages/dialogs';
 import FiltersStorage from '../storages/filters';
 import {ApiUpdatesManager} from './apiUpdatesManager';
@@ -30,12 +30,12 @@ import {AppStickersManager} from './appStickersManager';
 import {AppUsersManager} from './appUsersManager';
 import {AppWebPagesManager} from './appWebPagesManager';
 import {AppLangPackManager} from './appLangPackManager';
-import {ApiFileManager} from '../mtproto/apiFileManager';
-import {ApiManager} from '../mtproto/apiManager';
+import {ApiFileManager} from './apiFileManager';
+import {ApiManager} from './apiManager';
 import ctx from '../../environment/ctx';
 import PeersStorage from '../storages/peers';
 import ThumbsStorage from '../storages/thumbs';
-import {NetworkerFactory} from '../mtproto/networkerFactory';
+import {NetworkerFactory} from './networkerFactory';
 import rootScope, {RootScope} from '../rootScope';
 import {Authorizer} from '../mtproto/authorizer';
 import {DcConfigurator} from '../mtproto/dcConfigurator';
@@ -93,7 +93,7 @@ export default function createManagers(
     appInlineBotsManager: new AppInlineBotsManager,
     appStickersManager: new AppStickersManager,
     appLangPackManager: new AppLangPackManager,
-    referenceDatabase: new ReferenceDatabase,
+    referencesStorage: new ReferencesStorage,
     appEmojiManager: new AppEmojiManager,
     filtersStorage: new FiltersStorage,
     dialogsStorage: new DialogsStorage,
@@ -105,7 +105,7 @@ export default function createManagers(
     thumbsStorage: new ThumbsStorage,
     networkerFactory: new NetworkerFactory,
     rootScope: new RootScope,
-    authorizer: new Authorizer,
+    authorizer: undefined as Authorizer,
     dcConfigurator: new DcConfigurator,
     timeManager: new TimeManager,
     appStoragesManager: appStoragesManager,
@@ -129,6 +129,11 @@ export default function createManagers(
     appPromoManager: new AppPromoManager,
     appAccountManager: new AppAccountManager
   };
+
+  managers.authorizer = new Authorizer({
+    timeManager: managers.timeManager,
+    dcConfigurator: managers.dcConfigurator
+  });
 
   type T = typeof managers;
 

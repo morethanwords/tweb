@@ -5,14 +5,14 @@
  */
 
 import {InputFile, MissingInvitee} from '../../../layer';
-import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
+import appDialogsManager from '../../../lib/appDialogsManager';
 import InputField from '../../inputField';
 import {SliderSuperTab} from '../../slider';
 import AvatarEdit from '../../avatarEdit';
 import I18n from '../../../lib/langPack';
 import ButtonCorner from '../../buttonCorner';
 import getUserStatusString from '../../wrappers/getUserStatusString';
-import appImManager from '../../../lib/appManagers/appImManager';
+import appImManager from '../../../lib/appImManager';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import SettingSection from '../../settingSection';
 import {handleMissingInvitees} from '../../addChatUsers';

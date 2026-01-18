@@ -7,7 +7,7 @@ import ListenerSetter from '../../../helpers/listenerSetter';
 
 import rootScope from '../../rootScope';
 
-import appImManager from '../appImManager';
+import appImManager from '../../appImManager';
 
 const _useLockScreenShortcut = () => {
   const [locked, setLocked] = createSignal(PasscodeLockScreenController.getIsLocked());

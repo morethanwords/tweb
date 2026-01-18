@@ -18,7 +18,7 @@ import {MyMessage} from '../../lib/appManagers/appMessagesManager';
 import isMessageRestricted from '../../lib/appManagers/utils/messages/isMessageRestricted';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import I18n, {LangPackKey, i18n, UNSUPPORTED_LANG_PACK_KEY, FormatterArguments} from '../../lib/langPack';
-import {SERVICE_PEER_ID, VERIFICATION_CODES_BOT_ID} from '../../lib/mtproto/mtproto_config';
+import {SERVICE_PEER_ID, VERIFICATION_CODES_BOT_ID} from '../../lib/appManagers/constants';
 import parseEntities from '../../lib/richTextProcessor/parseEntities';
 import sortEntities from '../../lib/richTextProcessor/sortEntities';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';

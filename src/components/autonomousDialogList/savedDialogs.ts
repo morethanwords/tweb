@@ -1,4 +1,4 @@
-import appDialogsManager from '../../lib/appManagers/appDialogsManager';
+import appDialogsManager from '../../lib/appDialogsManager';
 import {SavedDialog} from '../../lib/appManagers/appMessagesManager';
 import {isSavedDialog} from '../../lib/appManagers/utils/dialogs/isDialog';
 import rootScope from '../../lib/rootScope';

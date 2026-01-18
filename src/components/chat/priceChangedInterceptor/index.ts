@@ -3,7 +3,7 @@ import type ListenerSetter from '../../../helpers/listenerSetter';
 import memoizeAsyncWithTTL from '../../../helpers/memoizeAsyncWithTTL';
 import safeAssign from '../../../helpers/object/safeAssign';
 import type {InputPeer} from '../../../layer';
-import type {AppManagers} from '../../../lib/appManagers/managers';
+import type {AppManagers} from '../../../lib/managers';
 import rootScope from '../../../lib/rootScope';
 import {setReservedStars} from '../../../stores/stars';
 

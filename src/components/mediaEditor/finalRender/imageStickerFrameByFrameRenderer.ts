@@ -1,5 +1,5 @@
 import deferredPromise, {CancellablePromise} from '../../../helpers/cancellablePromise';
-import appDownloadManager from '../../../lib/appManagers/appDownloadManager';
+import appDownloadManager from '../../../lib/appDownloadManager';
 import {Document} from '../../../layer';
 
 import {StickerFrameByFrameRenderer} from './types';

@@ -1,7 +1,7 @@
 import {createSignal} from 'solid-js';
 import rtmpCallsController, {RtmpCallInstance} from '../../lib/calls/rtmpCallsController';
 import {subscribeOn} from '../../helpers/solid/subscribeOn';
-import {NULL_PEER_ID} from '../../lib/mtproto/mtproto_config';
+import {NULL_PEER_ID} from '../../lib/appManagers/constants';
 
 export function useCurrentRtmpCall() {
   const [call, setCall] = createSignal<RtmpCallInstance>(rtmpCallsController.currentCall, {equals: false});

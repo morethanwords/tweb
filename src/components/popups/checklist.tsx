@@ -12,7 +12,6 @@ import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
 import {PAYMENT_REJECTED} from '../chat/paidMessagesInterceptor';
 import {InputMedia, Message, MessageMedia, TodoItem} from '../../layer';
-import {MTAppConfig} from '../../lib/mtproto/appConfig';
 import safeAssign from '../../helpers/object/safeAssign';
 import {wrapEmojiTextWithEntities} from '../../lib/richTextProcessor/wrapEmojiText';
 import {ButtonIconTsx} from '../buttonIconTsx';

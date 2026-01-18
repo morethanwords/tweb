@@ -8,7 +8,7 @@ import {formatFullSentTime, formatMonthsDuration} from '../../helpers/date';
 import liteMode from '../../helpers/liteMode';
 import clamp from '../../helpers/number/clamp';
 import {Message, MessageMedia} from '../../layer';
-import appImManager from '../../lib/appManagers/appImManager';
+import appImManager from '../../lib/appImManager';
 import I18n, {FormatterArguments, LangPackKey, i18n, join} from '../../lib/langPack';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import {LottieAssetName} from '../../lib/rlottie/lottieLoader';

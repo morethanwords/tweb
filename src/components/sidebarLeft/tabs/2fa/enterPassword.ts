@@ -26,7 +26,7 @@ import formatDuration from '../../../../helpers/formatDuration';
 import {wrapFormattedDuration} from '../../../wrappers/wrapDuration';
 import AppSettingsTab from '../settings';
 import anchorCallback from '../../../../helpers/dom/anchorCallback';
-import {AppManagers} from '../../../../lib/appManagers/managers';
+import {AppManagers} from '../../../../lib/managers';
 import safeAssign from '../../../../helpers/object/safeAssign';
 import noop from '../../../../helpers/noop';
 import ctx from '../../../../environment/ctx';

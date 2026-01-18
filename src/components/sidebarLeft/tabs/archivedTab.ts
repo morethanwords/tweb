@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
+import appDialogsManager from '../../../lib/appDialogsManager';
 import {SliderSuperTab} from '../../slider';
-import {FOLDER_ID_ARCHIVE, REAL_FOLDER_ID} from '../../../lib/mtproto/mtproto_config';
+import {FOLDER_ID_ARCHIVE, REAL_FOLDER_ID} from '../../../lib/appManagers/constants';
 import StoriesList from '../../stories/list';
 import {render} from 'solid-js/web';
 import {AutonomousDialogList} from '../../autonomousDialogList/dialogs';

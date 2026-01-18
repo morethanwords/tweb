@@ -5,7 +5,7 @@ import {PeerTitleTsx} from './peerTitleTsx';
 import classNames from '../helpers/string/classNames';
 
 import styles from './table.module.scss';
-import {NULL_PEER_ID} from '../lib/mtproto/mtproto_config';
+import {NULL_PEER_ID} from '../lib/appManagers/constants';
 import Button from './buttonTsx';
 import showTooltip from './tooltip';
 

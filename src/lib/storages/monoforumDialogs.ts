@@ -8,7 +8,7 @@ import {AppManager} from '../appManagers/manager';
 import getServerMessageId from '../appManagers/utils/messageId/getServerMessageId';
 import isMentionUnread from '../appManagers/utils/messages/isMentionUnread';
 import getPeerId from '../appManagers/utils/peers/getPeerId';
-import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
+import MTProtoMessagePort from '../mainWorker/mainMessagePort';
 
 
 export type MonoforumDialog = SavedDialog.monoForumDialog;

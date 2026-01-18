@@ -15,7 +15,7 @@ import safeAssign from '../../helpers/object/safeAssign';
 import Animated from '../../helpers/solid/animations';
 import windowSize from '../../helpers/windowSize';
 import {EmojiGroup, StickerSet} from '../../layer';
-import {AppManagers} from '../../lib/appManagers/managers';
+import {AppManagers} from '../../lib/managers';
 import {LangPackKey, i18n} from '../../lib/langPack';
 import {AnyFunction} from '../../types';
 import {createSignal, createMemo, createResource, createEffect, untrack} from 'solid-js';

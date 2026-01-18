@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type createManagers from './createManagers';
-import type {AckedResult} from '../mtproto/superMessagePort';
-import {ModifyFunctionsToAsync} from '../../types';
-import apiManagerProxy from '../mtproto/mtprotoworker';
-import DEBUG, {MOUNT_CLASS_TO} from '../../config/debug';
-import {getCurrentAccount} from '../accounts/getCurrentAccount';
-import {ActiveAccountNumber} from '../accounts/types';
+import type createManagers from './appManagers/createManagers';
+import type {AckedResult} from './superMessagePort';
+import {ModifyFunctionsToAsync} from '../types';
+import apiManagerProxy from './apiManagerProxy';
+import DEBUG, {MOUNT_CLASS_TO} from '../config/debug';
+import {getCurrentAccount} from './accounts/getCurrentAccount';
+import {ActiveAccountNumber} from './accounts/types';
 
 // let stats: {
 //   [manager: string]: {

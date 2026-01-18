@@ -7,7 +7,7 @@
 import simulateEvent from '../helpers/dom/dispatchEvent';
 import getDeepProperty from '../helpers/object/getDeepProperty';
 import {LangPackKey, _i18n} from '../lib/langPack';
-import apiManagerProxy from '../lib/mtproto/mtprotoworker';
+import apiManagerProxy from '../lib/apiManagerProxy';
 import rootScope from '../lib/rootScope';
 import Icon from './icon';
 

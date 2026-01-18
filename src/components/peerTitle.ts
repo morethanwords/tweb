@@ -7,7 +7,7 @@
 import rootScope from '../lib/rootScope';
 import {i18n} from '../lib/langPack';
 import replaceContent from '../helpers/dom/replaceContent';
-import {HIDDEN_PEER_ID, NULL_PEER_ID} from '../lib/mtproto/mtproto_config';
+import {HIDDEN_PEER_ID, NULL_PEER_ID} from '../lib/appManagers/constants';
 import limitSymbols from '../helpers/string/limitSymbols';
 import setInnerHTML, {setDirection} from '../helpers/dom/setInnerHTML';
 import safeAssign from '../helpers/object/safeAssign';
@@ -16,7 +16,7 @@ import getPeerTitle from './wrappers/getPeerTitle';
 import generateTitleIcons from './generateTitleIcons';
 import {wrapTopicIcon} from './wrappers/messageActionTextNewUnsafe';
 import lottieLoader from '../lib/rlottie/lottieLoader';
-import {AsAllChatsType} from '../lib/appManagers/appDialogsManager';
+import {AsAllChatsType} from '../lib/appDialogsManager';
 import IS_EMOJI_SUPPORTED from '../environment/emojiSupport';
 
 export type PeerTitleOptions = {

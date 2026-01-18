@@ -4,71 +4,70 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {ModifyFunctionsToAsync} from '../../types';
-import {type State} from '../../config/state';
-import type {Chat, ChatPhoto, Message, MessagePeerReaction, PeerNotifySettings, User, UserProfilePhoto} from '../../layer';
-import type {CryptoMethods} from '../crypto/crypto_methods';
-import type {ThumbStorageMedia} from '../storages/thumbs';
-import type ThumbsStorage from '../storages/thumbs';
-import type {AppReactionsManager} from '../appManagers/appReactionsManager';
-import type {MessagesStorageKey} from '../appManagers/appMessagesManager';
-import type {AppAvatarsManager, PeerPhotoSize} from '../appManagers/appAvatarsManager';
-import rootScope, {BroadcastEvents} from '../rootScope';
-import webpWorkerController from '../webp/webpWorkerController';
-import {MOUNT_CLASS_TO} from '../../config/debug';
-import sessionStorage from '../sessionStorage';
+import type {ModifyFunctionsToAsync} from '../types';
+import {type State} from '../config/state';
+import type {Chat, ChatPhoto, Message, MessagePeerReaction, PeerNotifySettings, User, UserProfilePhoto} from '../layer';
+import type {CryptoMethods} from './crypto/crypto_methods';
+import type {ThumbStorageMedia} from './storages/thumbs';
+import type ThumbsStorage from './storages/thumbs';
+import type {AppReactionsManager} from './appManagers/appReactionsManager';
+import type {MessagesStorageKey} from './appManagers/appMessagesManager';
+import type {AppAvatarsManager, PeerPhotoSize} from './appManagers/appAvatarsManager';
+import rootScope, {BroadcastEvents} from './rootScope';
+import webpWorkerController from './webp/webpWorkerController';
+import {MOUNT_CLASS_TO} from './../config/debug';
+import sessionStorage from './sessionStorage';
 import webPushApiManager from './webPushApiManager';
 import telegramMeWebManager from './telegramMeWebManager';
-import pause from '../../helpers/schedulers/pause';
-import ENVIRONMENT from '../../environment';
-import loadStateForAllAccountsOnce from '../appManagers/utils/state/loadState';
-import opusDecodeController from '../opusDecodeController';
-import MTProtoMessagePort from './mtprotoMessagePort';
-import cryptoMessagePort from '../crypto/cryptoMessagePort';
+import pause from './../helpers/schedulers/pause';
+import ENVIRONMENT from './../environment';
+import loadStateForAllAccountsOnce from './appManagers/utils/state/loadState';
+import opusDecodeController from './opusDecodeController';
+import MTProtoMessagePort from './mainWorker/mainMessagePort';
+import cryptoMessagePort from './crypto/cryptoMessagePort';
 import SuperMessagePort from './superMessagePort';
-import IS_SHARED_WORKER_SUPPORTED from '../../environment/sharedWorkerSupport';
-import toggleStorages from '../../helpers/toggleStorages';
-import idleController from '../../helpers/idleController';
-import ServiceMessagePort from '../serviceWorker/serviceMessagePort';
-import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
-import {makeWorkerURL} from '../../helpers/setWorkerProxy';
-import ServiceWorkerURL from '../../../sw?worker&url';
-import setDeepProperty, {joinDeepPath, splitDeepPath} from '../../helpers/object/setDeepProperty';
-import getThumbKey from '../storages/utils/thumbs/getThumbKey';
-import {NULL_PEER_ID, TEST_NO_STREAMING, THUMB_TYPE_FULL} from './mtproto_config';
-import generateEmptyThumb from '../storages/utils/thumbs/generateEmptyThumb';
-import getStickerThumbKey from '../storages/utils/thumbs/getStickerThumbKey';
-import callbackify from '../../helpers/callbackify';
-import isLegacyMessageId from '../appManagers/utils/messageId/isLegacyMessageId';
-import {MTAppConfig} from './appConfig';
-import {setAppStateSilent} from '../../stores/appState';
-import getObjectKeysAndSort from '../../helpers/object/getObjectKeysAndSort';
-import {reconcilePeer, reconcilePeers} from '../../stores/peers';
-import {getCurrentAccount} from '../accounts/getCurrentAccount';
-import {ActiveAccountNumber} from '../accounts/types';
-import {createProxiedManagersForAccount} from '../appManagers/getProxiedManagers';
-import noop from '../../helpers/noop';
-import AccountController from '../accounts/accountController';
-import getPeerTitle from '../../components/wrappers/getPeerTitle';
-import I18n from '../langPack';
-import {NOTIFICATION_BADGE_PATH} from '../../config/notifications';
-import {createAppURLForAccount} from '../accounts/createAppURLForAccount';
-import {appSettings, setAppSettingsSilent} from '../../stores/appSettings';
+import IS_SHARED_WORKER_SUPPORTED from './../environment/sharedWorkerSupport';
+import toggleStorages from './../helpers/toggleStorages';
+import idleController from './../helpers/idleController';
+import ServiceMessagePort from './serviceWorker/serviceMessagePort';
+import deferredPromise, {CancellablePromise} from './../helpers/cancellablePromise';
+import {makeWorkerURL} from './../helpers/setWorkerProxy';
+import ServiceWorkerURL from '../../sw?worker&url';
+import setDeepProperty, {joinDeepPath, splitDeepPath} from './../helpers/object/setDeepProperty';
+import getThumbKey from './storages/utils/thumbs/getThumbKey';
+import {NULL_PEER_ID, TEST_NO_STREAMING, THUMB_TYPE_FULL} from './appManagers/constants';
+import generateEmptyThumb from './storages/utils/thumbs/generateEmptyThumb';
+import getStickerThumbKey from './storages/utils/thumbs/getStickerThumbKey';
+import callbackify from './../helpers/callbackify';
+import isLegacyMessageId from './appManagers/utils/messageId/isLegacyMessageId';
+import {setAppStateSilent} from './../stores/appState';
+import getObjectKeysAndSort from './../helpers/object/getObjectKeysAndSort';
+import {reconcilePeer, reconcilePeers} from './../stores/peers';
+import {getCurrentAccount} from './accounts/getCurrentAccount';
+import {ActiveAccountNumber} from './accounts/types';
+import {createProxiedManagersForAccount} from './getProxiedManagers';
+import noop from './../helpers/noop';
+import AccountController from './accounts/accountController';
+import getPeerTitle from './../components/wrappers/getPeerTitle';
+import I18n from './langPack';
+import {NOTIFICATION_BADGE_PATH} from './../config/notifications';
+import {createAppURLForAccount} from './accounts/createAppURLForAccount';
+import {appSettings, setAppSettingsSilent} from './../stores/appSettings';
 import {produce, unwrap} from 'solid-js/store';
 import {batch} from 'solid-js';
-import createNotificationImage from '../../helpers/createNotificationImage';
-import PasscodeLockScreenController from '../../components/passcodeLock/passcodeLockScreenController';
-import EncryptionKeyStore from '../passcode/keyStore';
-import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
-import CacheStorageController from '../files/cacheStorage';
-import type {PushSingleManager} from './pushSingleManager';
-import getDeepProperty from '../../helpers/object/getDeepProperty';
-import {_changeHistoryStorageKey, _deleteHistoryStorage, _useHistoryStorage} from '../../stores/historyStorages';
-import SlicedArray, {SliceEnd} from '../../helpers/slicedArray';
-import {createHistoryStorageSearchSlicedArray} from '../appManagers/utils/messages/createHistoryStorage';
-import tabId from '../../config/tabId';
-import Modes from '../../config/modes';
-import appNavigationController from '../../components/appNavigationController';
+import createNotificationImage from './../helpers/createNotificationImage';
+import PasscodeLockScreenController from './../components/passcodeLock/passcodeLockScreenController';
+import EncryptionKeyStore from './passcode/keyStore';
+import DeferredIsUsingPasscode from './passcode/deferredIsUsingPasscode';
+import CacheStorageController from './files/cacheStorage';
+import type {PushSingleManager} from './appManagers/pushSingleManager';
+import getDeepProperty from './../helpers/object/getDeepProperty';
+import {_changeHistoryStorageKey, _deleteHistoryStorage, _useHistoryStorage} from './../stores/historyStorages';
+import SlicedArray, {SliceEnd} from './../helpers/slicedArray';
+import {createHistoryStorageSearchSlicedArray} from './appManagers/utils/messages/createHistoryStorage';
+import tabId from './../config/tabId';
+import Modes from './../config/modes';
+import appNavigationController from './../components/appNavigationController';
 
 
 export type Mirrors = {
@@ -761,7 +760,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
     originals.forEach((w) => window[w.name as any] = new Proxy(w, workerHandler));
 
     const worker: SharedWorker | Worker = new Worker(
-      new URL('../crypto/crypto.worker.ts', import.meta.url),
+      new URL('./crypto/crypto.worker.ts', import.meta.url),
       {type: 'module'}
     );
 
@@ -810,13 +809,13 @@ class ApiManagerProxy extends MTProtoMessagePort {
     let worker: SharedWorker | Worker;
     if(IS_SHARED_WORKER_SUPPORTED) {
       worker = new SharedWorker(
-        new URL('./mtproto.worker.ts', import.meta.url),
+        new URL('./mainWorker/index.worker.ts', import.meta.url),
         {type: 'module'}
       );
       this.closeMTProtoWorker = () => (worker as SharedWorker).port.close();
     } else {
       worker = new Worker(
-        new URL('./mtproto.worker.ts', import.meta.url),
+        new URL('./mainWorker/index.worker.ts', import.meta.url),
         {type: 'module'}
       );
       this.closeMTProtoWorker = () => (worker as Worker).terminate();

@@ -18,7 +18,7 @@ import formatNumber from '../../helpers/number/formatNumber';
 import {changeBrightness, getRgbColorFromTelegramColor, rgbaToHexa, rgbIntToHex} from '../../helpers/color';
 import createContextMenu from '../../helpers/dom/createContextMenu';
 import PopupPickUser from '../popups/pickUser';
-import appImManager from '../../lib/appManagers/appImManager';
+import appImManager from '../../lib/appImManager';
 import {StarGift} from '../../layer';
 import {copyTextToClipboard} from '../../helpers/clipboard';
 import {toastNew} from '../toast';

@@ -12,7 +12,7 @@ import copy from '../../helpers/object/copy';
 import {AppManager} from '../appManagers/manager';
 import findAndSplice from '../../helpers/array/findAndSplice';
 import assumeType from '../../helpers/assumeType';
-import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS, REAL_FOLDER_ID, START_LOCAL_ID} from '../mtproto/mtproto_config';
+import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS, REAL_FOLDER_ID, START_LOCAL_ID} from '../appManagers/constants';
 import makeError from '../../helpers/makeError';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import {isDialog} from '../appManagers/utils/dialogs/isDialog';

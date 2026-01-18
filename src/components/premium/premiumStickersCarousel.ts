@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {AppManagers} from '../../lib/appManagers/managers';
+import {AppManagers} from '../../lib/managers';
 import LazyLoadQueue from '../lazyLoadQueue';
 import SuperStickerRenderer from '../emoticonsDropdown/tabs/SuperStickerRenderer';
 import {AnimationItemGroup} from '../animationIntersector';

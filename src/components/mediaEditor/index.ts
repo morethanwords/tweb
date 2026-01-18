@@ -2,7 +2,7 @@ import {animateValue} from '../../helpers/animateValue';
 import deferredPromise from '../../helpers/cancellablePromise';
 import {lerp} from '../../helpers/lerp';
 import {doubleRaf} from '../../helpers/schedulers';
-import type {AppManagers} from '../../lib/appManagers/managers';
+import type {AppManagers} from '../../lib/managers';
 import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
 import {EditingMediaState} from './context';
 import {MediaEditorFinalResult} from './finalRender/createFinalResult';

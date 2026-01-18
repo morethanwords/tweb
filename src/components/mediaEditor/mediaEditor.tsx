@@ -2,7 +2,7 @@ import {createEffect, onCleanup, onMount} from 'solid-js';
 import {render} from 'solid-js/web';
 
 import {doubleRaf} from '../../helpers/schedulers';
-import {AppManagers} from '../../lib/appManagers/managers';
+import {AppManagers} from '../../lib/managers';
 import {i18n} from '../../lib/langPack';
 import type SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
 

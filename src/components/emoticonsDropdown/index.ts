@@ -6,7 +6,7 @@
 
 import type LazyLoadQueueIntersector from '../lazyLoadQueueIntersector';
 import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
-import appImManager from '../../lib/appManagers/appImManager';
+import appImManager from '../../lib/appImManager';
 import rootScope from '../../lib/rootScope';
 import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
 import {horizontalMenu} from '../horizontalMenu';
@@ -28,7 +28,7 @@ import cancelEvent from '../../helpers/dom/cancelEvent';
 import DropdownHover from '../../helpers/dropdownHover';
 import pause from '../../helpers/schedulers/pause';
 import {IS_APPLE_MOBILE} from '../../environment/userAgent';
-import {AppManagers} from '../../lib/appManagers/managers';
+import {AppManagers} from '../../lib/managers';
 import {attachClickEvent, simulateClickEvent} from '../../helpers/dom/clickEvent';
 import overlayCounter from '../../helpers/overlayCounter';
 import noop from '../../helpers/noop';

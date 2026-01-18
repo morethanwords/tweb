@@ -6,7 +6,7 @@
 
 import mediaSizes from '../helpers/mediaSizes';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
-import appImManager from '../lib/appManagers/appImManager';
+import appImManager from '../lib/appImManager';
 import rootScope from '../lib/rootScope';
 import ripple from './ripple';
 import appSidebarRight from './sidebarRight';
@@ -23,7 +23,7 @@ import {Message, MessageEntity, MessageMedia, Poll, PollResults, TextWithEntitie
 import toHHMMSS from '../helpers/string/toHHMMSS';
 import StackedAvatars from './stackedAvatars';
 import setInnerHTML from '../helpers/dom/setInnerHTML';
-import {AppManagers} from '../lib/appManagers/managers';
+import {AppManagers} from '../lib/managers';
 import wrapRichText from '../lib/richTextProcessor/wrapRichText';
 import liteMode from '../helpers/liteMode';
 import getPeerId from '../lib/appManagers/utils/peers/getPeerId';

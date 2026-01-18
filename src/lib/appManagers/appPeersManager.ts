@@ -16,12 +16,12 @@ import {AppManager} from './manager';
 import getPeerId from './utils/peers/getPeerId';
 import isUser from './utils/peers/isUser';
 import isAnyChat from './utils/peers/isAnyChat';
-import {NULL_PEER_ID} from '../mtproto/mtproto_config';
+import {NULL_PEER_ID} from './constants';
 import getPeerActiveUsernames from './utils/peers/getPeerActiveUsernames';
 import isPeerRestricted from './utils/peers/isPeerRestricted';
 import getPeerPhoto from './utils/peers/getPeerPhoto';
 import getServerMessageId from './utils/messageId/getServerMessageId';
-import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
+import MTProtoMessagePort from '../mainWorker/mainMessagePort';
 import callbackify from '../../helpers/callbackify';
 
 export type PeerType = 'channel' | 'chat' | 'megagroup' | 'group' | 'saved' | 'savedDialog' | 'monoforum' | 'monoforum_thread' | 'botforum_thread';

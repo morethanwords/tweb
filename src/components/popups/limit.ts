@@ -5,7 +5,7 @@
  */
 
 import {LangPackKey} from '../../lib/langPack';
-import {ApiLimitType} from '../../lib/mtproto/api_methods';
+import {ApiLimitType} from '../../lib/appManagers/apiManagerMethods';
 import rootScope from '../../lib/rootScope';
 import PopupPeer from './peer';
 import LimitLine from '../limit';

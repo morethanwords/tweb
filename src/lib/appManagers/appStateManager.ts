@@ -8,7 +8,7 @@ import type {State, StateSettings} from '../../config/state';
 import rootScope from '../rootScope';
 import StateStorage from '../stateStorage';
 import setDeepProperty, {splitDeepPath} from '../../helpers/object/setDeepProperty';
-import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
+import MTProtoMessagePort from '../mainWorker/mainMessagePort';
 import {ActiveAccountNumber} from '../accounts/types';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import {StoragesResults} from './utils/storages/loadStorages';

@@ -2,7 +2,7 @@ import deferredPromise from '../../helpers/cancellablePromise';
 import {InputFileLocation} from '../../layer';
 
 import {getCurrentAccountFromURL} from '../accounts/getCurrentAccountFromURL';
-import type {DownloadOptions} from '../mtproto/apiFileManager';
+import type {DownloadOptions} from '../appManagers/apiFileManager';
 import {get500ErrorResponse} from '../serviceWorker/errors';
 import {serviceMessagePort} from '../serviceWorker/index.service';
 

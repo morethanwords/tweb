@@ -9,7 +9,7 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import {ReferenceContext} from '../mtproto/referenceDatabase';
+import {ReferenceContext} from '../storages/references';
 import {WebPage} from '../../layer';
 import safeReplaceObject from '../../helpers/object/safeReplaceObject';
 import {AppManager} from './manager';

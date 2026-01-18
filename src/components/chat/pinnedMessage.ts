@@ -20,7 +20,7 @@ import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import handleScrollSideEvent from '../../helpers/dom/handleScrollSideEvent';
 import debounce from '../../helpers/schedulers/debounce';
 import throttle from '../../helpers/schedulers/throttle';
-import {AppManagers} from '../../lib/appManagers/managers';
+import {AppManagers} from '../../lib/managers';
 import {Message} from '../../layer';
 import {logger} from '../../lib/logger';
 import PopupElement from '../popups';

@@ -6,7 +6,7 @@
 
 import bigInt from 'big-integer';
 import {InputSavedStarGift, Message, MessageAction, PremiumGiftCodeOption, SavedStarGift, StarGift, StarGiftAttribute, StarGiftAttributeId, StarGiftCollection, StarGiftUpgradePrice, StarsAmount, WebPageAttribute} from '../../layer';
-import {STARS_CURRENCY} from '../mtproto/mtproto_config';
+import {STARS_CURRENCY} from './constants';
 import {MyDocument} from './appDocsManager';
 import {AppManager} from './manager';
 import getPeerId from './utils/peers/getPeerId';

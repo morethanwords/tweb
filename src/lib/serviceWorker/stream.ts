@@ -14,7 +14,7 @@ import {InputFileLocation} from '../../layer';
 import {getCurrentAccountFromURL} from '../accounts/getCurrentAccountFromURL';
 import {ActiveAccountNumber} from '../accounts/types';
 import CacheStorageController from '../files/cacheStorage';
-import {DownloadOptions, MyUploadFile} from '../mtproto/apiFileManager';
+import {DownloadOptions, MyUploadFile} from '../appManagers/apiFileManager';
 import {getMtprotoMessagePort, log, serviceMessagePort} from './index.service';
 import {ServiceRequestFilePartTaskPayload} from './serviceMessagePort';
 import timeout from './timeout';

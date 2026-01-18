@@ -9,7 +9,7 @@ import type {BotInfo, ChatFull, UserFull} from '../../layer';
 import AutocompleteHelperController from './autocompleteHelperController';
 import AutocompletePeerHelper from './autocompletePeerHelper';
 import SearchIndex from '../../lib/searchIndex';
-import {AppManagers} from '../../lib/appManagers/managers';
+import {AppManagers} from '../../lib/managers';
 
 export function processPeerFullForCommands(peerId: PeerId, full: ChatFull.chatFull | ChatFull.channelFull | UserFull.userFull, query?: string) {
   const botInfos: BotInfo.botInfo[] = [].concat(full.bot_info);

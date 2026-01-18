@@ -8,7 +8,7 @@ import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import toggleDisability from '../../../helpers/dom/toggleDisability';
 import deepEqual from '../../../helpers/object/deepEqual';
 import {ChannelParticipant, Chat, ChatParticipant} from '../../../layer';
-import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
+import appDialogsManager from '../../../lib/appDialogsManager';
 import canEditAdmin from '../../../lib/appManagers/utils/chats/canEditAdmin';
 import getParticipantPeerId from '../../../lib/appManagers/utils/chats/getParticipantPeerId';
 import {LangPackKey, i18n} from '../../../lib/langPack';

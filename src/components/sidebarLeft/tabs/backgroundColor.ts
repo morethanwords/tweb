@@ -11,7 +11,7 @@ import findUpClassName from '../../../helpers/dom/findUpClassName';
 import highlightingColor from '../../../helpers/highlightingColor';
 import throttle from '../../../helpers/schedulers/throttle';
 import themeController from '../../../helpers/themeController';
-import appImManager from '../../../lib/appManagers/appImManager';
+import appImManager from '../../../lib/appImManager';
 import rootScope from '../../../lib/rootScope';
 import ColorPicker, {ColorPickerColor} from '../../colorPicker';
 import SettingSection from '../../settingSection';

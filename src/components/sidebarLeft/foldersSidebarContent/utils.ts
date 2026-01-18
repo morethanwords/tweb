@@ -1,6 +1,6 @@
 
-import {FOLDER_ID_ALL} from '../../../lib/mtproto/mtproto_config';
-import type {AppManagers} from '../../../lib/appManagers/managers';
+import {FOLDER_ID_ALL} from '../../../lib/appManagers/constants';
+import type {AppManagers} from '../../../lib/managers';
 import {MyDialogFilter} from '../../../lib/storages/filters';
 import {DialogFilter} from '../../../layer';
 import assumeType from '../../../helpers/assumeType';

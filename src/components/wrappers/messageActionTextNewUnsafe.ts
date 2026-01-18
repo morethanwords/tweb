@@ -13,7 +13,7 @@ import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount
 import {ForumTopic, Message, MessageAction, MessageEntity, MessageMedia, MessageReplyHeader, StarGift, TextWithEntities} from '../../layer';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import I18n, {FormatterArgument, FormatterArguments, i18n, join, langPack, LangPackKey, _i18n} from '../../lib/langPack';
-import {GENERAL_TOPIC_ID} from '../../lib/mtproto/mtproto_config';
+import {GENERAL_TOPIC_ID} from '../../lib/appManagers/constants';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import wrapPlainText from '../../lib/richTextProcessor/wrapPlainText';
 import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
@@ -26,7 +26,7 @@ import {WrapMessageActionTextOptions} from './messageActionTextNew';
 import wrapMessageForReply, {WrapMessageForReplyOptions} from './messageForReply';
 import wrapPeerTitle from './peerTitle';
 import shouldDisplayGiftCodeAsGift from '../../helpers/shouldDisplayGiftCodeAsGift';
-import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
+import apiManagerProxy from '../../lib/apiManagerProxy';
 import Icon from '../icon';
 import formatStarsAmount from '../../lib/appManagers/utils/payments/formatStarsAmount';
 import {getPriceChangedActionMessageLangParams} from '../../lib/lang';

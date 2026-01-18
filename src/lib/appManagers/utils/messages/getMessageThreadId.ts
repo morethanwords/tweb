@@ -1,5 +1,5 @@
 import {Message} from '../../../../layer';
-import {GENERAL_TOPIC_ID} from '../../../mtproto/mtproto_config';
+import {GENERAL_TOPIC_ID} from '../../constants';
 import getPeerId from '../peers/getPeerId';
 
 

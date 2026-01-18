@@ -28,7 +28,7 @@ import getPeerActiveUsernames from '../../../lib/appManagers/utils/peers/getPeer
 import {purchaseUsernameCaption} from '../../sidebarLeft/tabs/editProfile';
 import confirmationPopup from '../../confirmationPopup';
 import PopupElement from '../../popups';
-import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
+import apiManagerProxy from '../../../lib/apiManagerProxy';
 
 export default class AppChatTypeTab extends SliderSuperTabEventable {
   public chatId: ChatId;

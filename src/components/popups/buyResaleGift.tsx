@@ -8,7 +8,7 @@ import {PeerTitleTsx} from '../peerTitleTsx';
 
 import styles from './buyResaleGift.module.scss';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
-import {STARS_CURRENCY, TON_CURRENCY} from '../../lib/mtproto/mtproto_config';
+import {STARS_CURRENCY, TON_CURRENCY} from '../../lib/appManagers/constants';
 import {StarGift} from '../../layer';
 import numberThousandSplitter from '../../helpers/number/numberThousandSplitter';
 import {FloatingStarsBalance} from './floatingStarsBalance';

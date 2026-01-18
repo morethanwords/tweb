@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {AckedResult} from '../lib/mtproto/superMessagePort';
+import {AckedResult} from '../lib/superMessagePort';
 import {Modify} from '../types';
 
 export default async function modifyAckedResult<T>(acked: AckedResult<T>): Promise<Modify<AckedResult<T>, {result: T | Promise<T>}>> {

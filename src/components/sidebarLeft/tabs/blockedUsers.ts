@@ -6,7 +6,7 @@
 
 import {SliderSuperTab} from '../../slider';
 import {ButtonMenuSync} from '../../buttonMenu';
-import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG} from '../../../lib/appManagers/appDialogsManager';
+import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG} from '../../../lib/appDialogsManager';
 import PopupPickUser from '../../popups/pickUser';
 import rootScope from '../../../lib/rootScope';
 import findUpTag from '../../../helpers/dom/findUpTag';

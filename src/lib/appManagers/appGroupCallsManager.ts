@@ -13,7 +13,7 @@ import type GroupCallConnectionInstance from '../calls/groupCallConnectionInstan
 import safeReplaceObject from '../../helpers/object/safeReplaceObject';
 import {nextRandomUint} from '../../helpers/random';
 import {DataJSON, GroupCall, GroupCallParticipant, GroupCallParticipantVideoSourceGroup, GroupCallStreamChannel, InputFileLocation, InputGroupCall, PhoneJoinGroupCall, PhoneJoinGroupCallPresentation, Update, Updates} from '../../layer';
-import {NULL_PEER_ID} from '../mtproto/mtproto_config';
+import {NULL_PEER_ID} from './constants';
 import {AppManager} from './manager';
 import getPeerId from './utils/peers/getPeerId';
 import {DcId} from '../../types';

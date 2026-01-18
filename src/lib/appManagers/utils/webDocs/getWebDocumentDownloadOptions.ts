@@ -1,5 +1,5 @@
 import {WebDocument} from '../../../../layer';
-import {DownloadOptions} from '../../../mtproto/apiFileManager';
+import {DownloadOptions} from '../../apiFileManager';
 import getWebFileDownloadOptions from '../webFiles/getWebFileDownloadOptions';
 
 export default function getWebDocumentDownloadOptions(webDocument: WebDocument): DownloadOptions {

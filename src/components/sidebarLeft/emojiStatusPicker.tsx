@@ -2,7 +2,7 @@ import filterUnique from '../../helpers/array/filterUnique';
 import flatten from '../../helpers/array/flatten';
 import cloneDOMRect from '../../helpers/dom/cloneDOMRect';
 import {AccountEmojiStatuses, EmojiStatus} from '../../layer';
-import {AppManagers} from '../../lib/appManagers/managers';
+import {AppManagers} from '../../lib/managers';
 import {EmoticonsDropdown} from '../emoticonsDropdown';
 import EmojiTab from '../emoticonsDropdown/tabs/emoji';
 import Icon, {getIconContent} from '../icon';

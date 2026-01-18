@@ -1,4 +1,4 @@
-import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
+import apiManagerProxy from '../../lib/apiManagerProxy';
 import {BotforumTab} from './botforumTab';
 import {ForumTab} from './forumTab';
 import {GroupForumTab} from './groupForumTab';

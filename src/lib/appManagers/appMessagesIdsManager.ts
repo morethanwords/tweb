@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {MESSAGE_ID_OFFSET} from '../mtproto/mtproto_config';
+import {MESSAGE_ID_OFFSET} from './constants';
 import getServerMessageId from './utils/messageId/getServerMessageId';
 import isLegacyMessageId from './utils/messageId/isLegacyMessageId';
 

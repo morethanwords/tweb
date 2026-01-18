@@ -1,9 +1,8 @@
 import PopupElement from '.';
 import deferredPromise from '../../helpers/cancellablePromise';
 import safeAssign from '../../helpers/object/safeAssign';
-import appImManager from '../../lib/appManagers/appImManager';
+import appImManager from '../../lib/appImManager';
 import {i18n, LangPackKey} from '../../lib/langPack';
-import {MTAppConfig} from '../../lib/mtproto/appConfig';
 import useContentSettings from '../../stores/contentSettings';
 import Button from '../buttonTsx';
 import styles from './ageVerification.module.scss';

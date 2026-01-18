@@ -8,7 +8,7 @@ import type wrapRichText from '../../lib/richTextProcessor/wrapRichText';
 import type TranslatableMessage from '../translatableMessage';
 import {Middleware} from '../../helpers/middleware';
 import {Message, MessageMedia} from '../../layer';
-import {AppManagers} from '../../lib/appManagers/managers';
+import {AppManagers} from '../../lib/managers';
 import rootScope from '../../lib/rootScope';
 import PollElement from '../poll';
 

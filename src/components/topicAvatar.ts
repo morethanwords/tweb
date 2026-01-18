@@ -5,7 +5,7 @@
  */
 
 import {hexaToHsla} from '../helpers/color';
-import {TOPIC_COLORS} from '../lib/mtproto/mtproto_config';
+import {TOPIC_COLORS} from '../lib/appManagers/constants';
 import wrapAbbreviation from '../lib/richTextProcessor/wrapAbbreviation';
 
 let svg: SVGSVGElement, span: HTMLElement, defs: HTMLElement;

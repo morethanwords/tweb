@@ -4,7 +4,7 @@ import {subscribeOn} from '../../../helpers/solid/subscribeOn';
 import convertKeyToInputKey from '../../../helpers/string/convertKeyToInputKey';
 import {InputNotifyPeer, InputPeerNotifySettings, PeerNotifySettings, Update} from '../../../layer';
 import {i18n, LangPackKey} from '../../../lib/langPack';
-import {MUTE_UNTIL} from '../../../lib/mtproto/mtproto_config';
+import {MUTE_UNTIL} from '../../../lib/appManagers/constants';
 import rootScope from '../../../lib/rootScope';
 import {useAppSettings} from '../../../stores/appSettings';
 import CheckboxFieldTsx from '../../checkboxFieldTsx';

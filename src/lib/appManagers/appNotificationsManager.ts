@@ -11,7 +11,7 @@
 
 import tsNow from '../../helpers/tsNow';
 import {InputNotifyPeer, InputPeer, InputPeerNotifySettings, NotifyPeer, Peer, PeerNotifySettings, Update} from '../../layer';
-import {MUTE_UNTIL} from '../mtproto/mtproto_config';
+import {MUTE_UNTIL} from './constants';
 import throttle from '../../helpers/schedulers/throttle';
 import convertInputKeyToKey from '../../helpers/string/convertInputKeyToKey';
 import {AppManager} from './manager';

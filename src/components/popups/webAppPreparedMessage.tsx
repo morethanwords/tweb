@@ -21,7 +21,7 @@ import wrapDocument from '../wrappers/document';
 import rootScope from '../../lib/rootScope';
 import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
 import PopupPickUser from './pickUser';
-import appImManager from '../../lib/appManagers/appImManager';
+import appImManager from '../../lib/appImManager';
 import generateQId from '../../lib/appManagers/utils/inlineBots/generateQId';
 
 export default class PopupWebAppPreparedMessage extends PopupElement<{

@@ -9,7 +9,7 @@ import findUpClassName from '../../../helpers/dom/findUpClassName';
 import mediaSizes from '../../../helpers/mediaSizes';
 import {Document, MessagesAllStickers, StickerSet} from '../../../layer';
 import {MyDocument} from '../../../lib/appManagers/appDocsManager';
-import {AppManagers} from '../../../lib/appManagers/managers';
+import {AppManagers} from '../../../lib/managers';
 import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
 import rootScope from '../../../lib/rootScope';
 import {putPreloader} from '../../putPreloader';
@@ -23,7 +23,7 @@ import VisibilityIntersector, {OnVisibilityChangeItem} from '../../visibilityInt
 import findUpAsChild from '../../../helpers/dom/findUpAsChild';
 import forEachReverse from '../../../helpers/array/forEachReverse';
 import PopupElement from '../../popups';
-import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
+import apiManagerProxy from '../../../lib/apiManagerProxy';
 import getStickerEffectThumb from '../../../lib/appManagers/utils/stickers/getStickerEffectThumb';
 import StickersTabCategory, {EmoticonsTabStyles} from '../category';
 import EmoticonsTabC from '../tab';

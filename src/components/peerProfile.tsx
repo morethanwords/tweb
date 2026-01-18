@@ -29,7 +29,7 @@ import type SolidJSHotReloadGuardProvider from '../lib/solidjs/hotReloadGuardPro
 import type Scrollable from './scrollable';
 import {wrapStarsRatingLevel} from './wrappers/starsRating';
 import cancelEvent from '../helpers/dom/cancelEvent';
-import {HIDDEN_PEER_ID} from '../lib/mtproto/mtproto_config';
+import {HIDDEN_PEER_ID} from '../lib/appManagers/constants';
 import {rgbIntToHex} from '../helpers/color';
 import {makeMediaSize} from '../helpers/mediaSize';
 import type {MyStarGift} from '../lib/appManagers/appGiftsManager';

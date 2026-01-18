@@ -5,7 +5,7 @@
  */
 
 import {SliderSuperTab} from '../../slider';
-import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
+import appDialogsManager from '../../../lib/appDialogsManager';
 import InputSearch from '../../inputSearch';
 import {IS_MOBILE} from '../../../environment/userAgent';
 import {canFocus} from '../../../helpers/dom/canFocus';

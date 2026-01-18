@@ -8,7 +8,7 @@ import type addAnchorListener from '../../helpers/addAnchorListener';
 import {PHONE_NUMBER_REG_EXP} from '.';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import matchUrlProtocol from './matchUrlProtocol';
-import {T_ME_PREFIXES} from '../mtproto/mtproto_config';
+import {T_ME_PREFIXES} from '../appManagers/constants';
 
 export default function wrapUrl(url: string, unsafe?: number | boolean) {
   if(!matchUrlProtocol(url)) {

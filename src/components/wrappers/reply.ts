@@ -9,7 +9,7 @@ import {setDirection} from '../../helpers/dom/setInnerHTML';
 import themeController from '../../helpers/themeController';
 import {MessageEntity, MessageReplyHeader, Peer, PeerColor, User} from '../../layer';
 import {getPeerColorsByPeer} from '../../lib/appManagers/utils/peers/getPeerColorById';
-import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
+import apiManagerProxy from '../../lib/apiManagerProxy';
 import rootScope from '../../lib/rootScope';
 import {WrapPinnedContainerOptions} from '../chat/pinnedContainer';
 import ReplyContainer from '../chat/replyContainer';

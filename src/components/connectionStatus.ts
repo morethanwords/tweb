@@ -12,8 +12,8 @@ import rootScope from '../lib/rootScope';
 import {ConnectionStatus} from '../lib/mtproto/connectionStatus';
 import cancelEvent from '../helpers/dom/cancelEvent';
 import {attachClickEvent} from '../helpers/dom/clickEvent';
-import {AppManagers} from '../lib/appManagers/managers';
-import singleInstance from '../lib/mtproto/singleInstance';
+import {AppManagers} from '../lib/managers';
+import singleInstance from '../lib/singleInstance';
 import InputSearch from './inputSearch';
 
 const NO_STATUS = false;

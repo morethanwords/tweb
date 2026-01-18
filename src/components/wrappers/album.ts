@@ -8,7 +8,7 @@ import mediaSizes from '../../helpers/mediaSizes';
 import {Middleware} from '../../helpers/middleware';
 import {ChatAutoDownloadSettings} from '../../hooks/useAutoDownloadSettings';
 import {Document, Message, MessageMedia, Photo, PhotoSize} from '../../layer';
-import {AppManagers} from '../../lib/appManagers/managers';
+import {AppManagers} from '../../lib/managers';
 import getMediaFromMessage from '../../lib/appManagers/utils/messages/getMediaFromMessage';
 import choosePhotoSize from '../../lib/appManagers/utils/photos/choosePhotoSize';
 import rootScope from '../../lib/rootScope';

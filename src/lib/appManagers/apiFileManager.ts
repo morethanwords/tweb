@@ -9,7 +9,7 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type {ReferenceBytes} from './referenceDatabase';
+import type {ReferenceBytes} from '../storages/references';
 import Modes from '../../config/modes';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import {randomLong} from '../../helpers/random';
@@ -22,25 +22,25 @@ import readBlobAsArrayBuffer from '../../helpers/blob/readBlobAsArrayBuffer';
 import bytesToHex from '../../helpers/bytes/bytesToHex';
 import findAndSplice from '../../helpers/array/findAndSplice';
 import fixFirefoxSvg from '../../helpers/fixFirefoxSvg';
-import {AppManager} from '../appManagers/manager';
+import {AppManager} from './manager';
 import {getEnvironment} from '../../environment/utils';
-import MTProtoMessagePort from './mtprotoMessagePort';
+import MTProtoMessagePort from '../mainWorker/mainMessagePort';
 import getFileNameForUpload from '../../helpers/getFileNameForUpload';
-import type {Progress} from '../appManagers/appDownloadManager';
-import getDownloadMediaDetails from '../appManagers/utils/download/getDownloadMediaDetails';
+import type {Progress} from '../appDownloadManager';
+import getDownloadMediaDetails from './utils/download/getDownloadMediaDetails';
 // import networkStats from './networkStats';
-import getDownloadFileNameFromOptions from '../appManagers/utils/download/getDownloadFileNameFromOptions';
+import getDownloadFileNameFromOptions from './utils/download/getDownloadFileNameFromOptions';
 import StreamWriter from '../files/streamWriter';
 import FileStorage from '../files/fileStorage';
-import {MAX_FILE_SAVE_SIZE} from './mtproto_config';
+import {MAX_FILE_SAVE_SIZE} from './constants';
 import throttle from '../../helpers/schedulers/throttle';
 import makeError from '../../helpers/makeError';
 import readBlobAsUint8Array from '../../helpers/blob/readBlobAsUint8Array';
 import DownloadStorage from '../files/downloadStorage';
 import copy from '../../helpers/object/copy';
 import {EXTENSION_MIME_TYPE_MAP, MIME_TYPE_EXTENSION_MAP} from '../../environment/mimeTypeMap';
-import isWebFileLocation from '../appManagers/utils/webFiles/isWebFileLocation';
-import appManagersManager from '../appManagers/appManagersManager';
+import isWebFileLocation from './utils/webFiles/isWebFileLocation';
+import appManagersManager from './appManagersManager';
 import clamp from '../../helpers/number/clamp';
 import insertInDescendSortedArray from '../../helpers/array/insertInDescendSortedArray';
 import {ActiveAccountNumber} from '../accounts/types';
@@ -612,7 +612,7 @@ export class ApiFileManager extends AppManager {
       //   clearTimeout(r.timeout);
       // });
 
-      this.referenceDatabase.refreshReference(reference).then((reference) => {
+      this.referencesStorage.refreshReference(reference).then((reference) => {
         if(hex === bytesToHex(reference)) {
           deferred.reject(makeError('REFERENCE_IS_NOT_REFRESHED'));
         }

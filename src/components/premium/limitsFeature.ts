@@ -7,7 +7,7 @@
 import LimitLine from '../limit';
 import {_i18n} from '../../lib/langPack';
 import {PremiumPromoFeature} from './featuresConfig';
-import {AppManagers} from '../../lib/appManagers/managers';
+import {AppManagers} from '../../lib/managers';
 
 export default class LimitsFeature {
   public limits: HTMLElement;

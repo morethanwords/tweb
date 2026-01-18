@@ -9,7 +9,7 @@ import debounce from '../helpers/schedulers/debounce';
 import {LangPackKey} from '../lib/langPack';
 import InputField, {InputFieldOptions, InputState} from './inputField';
 import {isUsernameValid} from '../lib/richTextProcessor/validators';
-import {AppManagers} from '../lib/appManagers/managers';
+import {AppManagers} from '../lib/managers';
 
 export class UsernameInputField extends InputField {
   private checkUsernamePromise: Promise<any>;

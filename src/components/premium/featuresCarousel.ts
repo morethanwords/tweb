@@ -13,7 +13,7 @@ import Icon from '../icon';
 import LimitsFeature from './limitsFeature';
 import UpgradedStoriesFeature from './upgradedStoriesFeature';
 import PremiumStickersCarousel from './premiumStickersCarousel';
-import {AppManagers} from '../../lib/appManagers/managers';
+import {AppManagers} from '../../lib/managers';
 import TransitionSlider from '../transition';
 import {Middleware} from '../../helpers/middleware';
 import {PopupPremiumProps} from '../popups/premium';

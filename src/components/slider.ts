@@ -10,7 +10,7 @@ import appNavigationController, {NavigationItem} from './appNavigationController
 import SliderSuperTab, {SliderSuperTabConstructable} from './sliderTab';
 import indexOfAndSplice from '../helpers/array/indexOfAndSplice';
 import safeAssign from '../helpers/object/safeAssign';
-import {AppManagers} from '../lib/appManagers/managers';
+import {AppManagers} from '../lib/managers';
 import {getMiddleware, MiddlewareHelper} from '../helpers/middleware';
 import {MaybePromise} from '../types';
 

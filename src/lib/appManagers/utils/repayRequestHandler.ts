@@ -1,12 +1,12 @@
-import {ConfirmedPaymentResult} from '../../components/chat/paidMessagesInterceptor';
-import assumeType from '../../helpers/assumeType';
-import safeAssign from '../../helpers/object/safeAssign';
+import {ConfirmedPaymentResult} from '../../../components/chat/paidMessagesInterceptor';
+import assumeType from '../../../helpers/assumeType';
+import safeAssign from '../../../helpers/object/safeAssign';
 
-import {MessageSendingParams} from '../appManagers/appMessagesManager';
-import type {RootScope} from '../rootScope';
+import {MessageSendingParams} from '../appMessagesManager';
+import type {RootScope} from '../../rootScope';
 
-import type {ApiManager} from './apiManager';
-import MTProtoMessagePort from './mtprotoMessagePort';
+import type {ApiManager} from '../apiManager';
+import MTProtoMessagePort from '../../mainWorker/mainMessagePort';
 
 
 const INSUFFICIENT_STARS_FOR_MESSAGE_PREFIX = 'ALLOW_PAYMENT_REQUIRED_';

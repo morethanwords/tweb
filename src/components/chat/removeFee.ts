@@ -2,7 +2,7 @@ import callbackify from '../../helpers/callbackify';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import namedPromises from '../../helpers/namedPromises';
 import {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
-import {AppManagers} from '../../lib/appManagers/managers';
+import {AppManagers} from '../../lib/managers';
 import {i18n} from '../../lib/langPack';
 import Button from '../button';
 import confirmationPopup from '../confirmationPopup';

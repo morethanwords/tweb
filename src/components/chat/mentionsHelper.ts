@@ -7,7 +7,7 @@
 import type ChatInput from './input';
 import AutocompleteHelperController from './autocompleteHelperController';
 import AutocompletePeerHelper from './autocompletePeerHelper';
-import {AppManagers} from '../../lib/appManagers/managers';
+import {AppManagers} from '../../lib/managers';
 import getPeerActiveUsernames from '../../lib/appManagers/utils/peers/getPeerActiveUsernames';
 import rootScope from '../../lib/rootScope';
 

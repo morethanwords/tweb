@@ -21,7 +21,7 @@ import getServerMessageId from './utils/messageId/getServerMessageId';
 import {randomLong} from '../../helpers/random';
 import tsNow from '../../helpers/tsNow';
 import getPeerActiveUsernames from './utils/peers/getPeerActiveUsernames';
-import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
+import MTProtoMessagePort from '../mainWorker/mainMessagePort';
 import getPeerId from './utils/peers/getPeerId';
 import callbackify from '../../helpers/callbackify';
 import {SlicedCachedFetcher} from './utils/chats/slicedCachedFetcher';

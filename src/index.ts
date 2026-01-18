@@ -22,11 +22,11 @@ import IS_TOUCH_SUPPORTED from './environment/touchSupport';
 import I18n, {checkLangPackForUpdates, i18n, LangPackKey} from './lib/langPack';
 import './helpers/peerIdPolyfill';
 import './lib/polyfill';
-import apiManagerProxy from './lib/mtproto/mtprotoworker';
-import getProxiedManagers from './lib/appManagers/getProxiedManagers';
+import apiManagerProxy from './lib/apiManagerProxy';
+import getProxiedManagers from './lib/getProxiedManagers';
 import themeController from './helpers/themeController';
 import overlayCounter from './helpers/overlayCounter';
-import singleInstance, {InstanceDeactivateReason} from './lib/mtproto/singleInstance';
+import singleInstance, {InstanceDeactivateReason} from './lib/singleInstance';
 import {parseUriParamsLine} from './helpers/string/parseUriParams';
 import Modes from './config/modes';
 import {AuthState} from './types';
@@ -590,8 +590,8 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
 
     try {
       await Promise.all([
-        import('./lib/mtproto/telegramMeWebManager'),
-        import('./lib/mtproto/webPushApiManager')
+        import('./lib/telegramMeWebManager'),
+        import('./lib/webPushApiManager')
       ]).then(([meModule, pushModule]) => {
         meModule.default.setAuthorized(false);
         pushModule.default.unsubscribe();

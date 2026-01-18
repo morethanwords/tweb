@@ -11,7 +11,7 @@ import {SliderSuperTab} from '../../slider';
 import AvatarEdit from '../../avatarEdit';
 import {_i18n} from '../../../lib/langPack';
 import ButtonCorner from '../../buttonCorner';
-import appImManager from '../../../lib/appManagers/appImManager';
+import appImManager from '../../../lib/appImManager';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import SettingSection from '../../settingSection';
 import addChatUsers from '../../addChatUsers';

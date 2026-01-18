@@ -5,7 +5,7 @@ import PasswordMonkey from '../../components/monkeys/password';
 import {InputFieldTsx} from '../../components/inputFieldTsx';
 import themeController from '../../helpers/themeController';
 
-import apiManagerProxy from '../mtproto/mtprotoworker';
+import apiManagerProxy from '../apiManagerProxy';
 import rootScope from '../rootScope';
 
 import {LockScreenHotReloadGuardContext} from './hotReloadGuard';

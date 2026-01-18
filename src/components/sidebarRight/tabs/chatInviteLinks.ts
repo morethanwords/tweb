@@ -13,7 +13,7 @@ import toggleDisability from '../../../helpers/dom/toggleDisability';
 import paymentsWrapCurrencyAmount from '../../../helpers/paymentsWrapCurrencyAmount';
 import tsNow from '../../../helpers/tsNow';
 import {ExportedChatInvite, MessagesExportedChatInvite, MessagesExportedChatInvites} from '../../../layer';
-import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
+import appDialogsManager from '../../../lib/appDialogsManager';
 import getPeerActiveUsernames from '../../../lib/appManagers/utils/peers/getPeerActiveUsernames';
 import {LangPackKey, i18n, joinElementsWith} from '../../../lib/langPack';
 import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';

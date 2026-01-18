@@ -10,14 +10,14 @@ import {MOUNT_CLASS_TO} from '../../config/debug';
 import callbackify from '../../helpers/callbackify';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import cryptoMessagePort from '../crypto/cryptoMessagePort';
-import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
+import MTProtoMessagePort from '../mainWorker/mainMessagePort';
 import {AppStoragesManager} from './appStoragesManager';
 import createManagers from './createManagers';
 import {ActiveAccountNumber} from '../accounts/types';
 import AppStateManager from './appStateManager';
 import rootScope from '../rootScope';
 import AccountController from '../accounts/accountController';
-import pushSingleManager from '../mtproto/pushSingleManager';
+import pushSingleManager from './pushSingleManager';
 
 type Managers = Awaited<ReturnType<typeof createManagers>>;
 

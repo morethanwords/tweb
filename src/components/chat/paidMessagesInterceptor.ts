@@ -1,5 +1,5 @@
-import {SEND_PAID_WITH_STARS_DELAY} from '../../lib/mtproto/mtproto_config';
-import type {AppManagers} from '../../lib/appManagers/managers';
+import {SEND_PAID_WITH_STARS_DELAY} from '../../lib/appManagers/constants';
+import type {AppManagers} from '../../lib/managers';
 import useStars, {setReservedStars} from '../../stores/stars';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import rootScope from '../../lib/rootScope';

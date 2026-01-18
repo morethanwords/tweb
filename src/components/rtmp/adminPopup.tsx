@@ -8,7 +8,7 @@ import ButtonMenuToggle from '../buttonMenuToggle';
 import {Ripple} from '../rippleTsx';
 import {RtmpData} from './rtmpData';
 import {i18n} from '../../lib/langPack';
-import appImManager from '../../lib/appManagers/appImManager';
+import appImManager from '../../lib/appImManager';
 
 const cnPopup = (className = '') => `rtmp-popup${className}`;
 

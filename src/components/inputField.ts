@@ -21,7 +21,7 @@ import selectElementContents from '../helpers/dom/selectElementContents';
 import setInnerHTML, {setDirection} from '../helpers/dom/setInnerHTML';
 import {MessageEntity} from '../layer';
 import {i18n, LangPackKey, _i18n} from '../lib/langPack';
-import {NULL_PEER_ID} from '../lib/mtproto/mtproto_config';
+import {NULL_PEER_ID} from '../lib/appManagers/constants';
 import mergeEntities from '../lib/richTextProcessor/mergeEntities';
 import parseEntities from '../lib/richTextProcessor/parseEntities';
 import wrapDraftText from '../lib/richTextProcessor/wrapDraftText';

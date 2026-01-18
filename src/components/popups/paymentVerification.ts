@@ -5,7 +5,7 @@
  */
 
 import PopupElement from '.';
-import appImManager from '../../lib/appManagers/appImManager';
+import appImManager from '../../lib/appImManager';
 import TelegramWebView from '../telegramWebView';
 
 export function createVerificationIframe(options: ConstructorParameters<typeof TelegramWebView>[0]) {

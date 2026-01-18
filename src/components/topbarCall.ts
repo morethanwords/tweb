@@ -25,7 +25,7 @@ import CallDescriptionElement from './call/description';
 import PopupCall from './call';
 import GroupCallMicrophoneIconMini from './groupCall/microphoneIconMini';
 import CallInstance from '../lib/calls/callInstance';
-import {AppManagers} from '../lib/appManagers/managers';
+import {AppManagers} from '../lib/managers';
 import groupCallsController from '../lib/calls/groupCallsController';
 import StreamManager from '../lib/calls/streamManager';
 import callsController from '../lib/calls/callsController';
@@ -34,7 +34,7 @@ import {AppMediaViewerRtmp} from './appMediaViewerRtmp';
 import {AnyClass} from '../types';
 import RtmpDescriptionElement from './rtmp/description';
 import RTMP_STATE from '../lib/calls/rtmpState';
-import apiManagerProxy from '../lib/mtproto/mtprotoworker';
+import apiManagerProxy from '../lib/apiManagerProxy';
 
 function convertCallStateToGroupState(state: CALL_STATE, isMuted: boolean) {
   switch(state) {

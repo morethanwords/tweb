@@ -23,7 +23,7 @@ import getDialogIndex from '../../lib/appManagers/utils/dialogs/getDialogIndex';
 import {Middleware} from '../../helpers/middleware';
 import deferredPromise from '../../helpers/cancellablePromise';
 import {MOUNT_CLASS_TO} from '../../config/debug';
-import appDialogsManager from '../../lib/appManagers/appDialogsManager';
+import appDialogsManager from '../../lib/appDialogsManager';
 import findUpAttribute from '../../helpers/dom/findUpAttribute';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import {AutonomousMonoforumThreadList} from '../autonomousDialogList/monoforumThreads';

@@ -33,7 +33,7 @@ import {doubleRaf} from '../../helpers/schedulers';
 import {useAppConfig} from '../../stores/appState';
 import bigInt from 'big-integer';
 import formatStarsAmount from '../../lib/appManagers/utils/payments/formatStarsAmount';
-import {STARS_CURRENCY, TON_CURRENCY} from '../../lib/mtproto/mtproto_config';
+import {STARS_CURRENCY, TON_CURRENCY} from '../../lib/appManagers/constants';
 
 export function transferStarGiftConfirmationPopup(options: {
   gift: MyStarGift,

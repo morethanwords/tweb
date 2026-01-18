@@ -12,19 +12,17 @@
 import {TLDeserialization, TLSerialization} from './tl_utils';
 import CryptoWorker from '../crypto/cryptoMessagePort';
 import Schema from './schema';
-import {NetworkerFactory} from './networkerFactory';
 import {logger, LogTypes} from '../logger';
-import {DcId, InvokeApiOptions} from '../../types';
+import {DcId, InvokeApiOptions, TrueDcId} from '../../types';
 import longToBytes from '../../helpers/long/longToBytes';
 import MTTransport from './transports/transport';
 import {nextRandomUint, randomBytes, randomLong} from '../../helpers/random';
-import App from '../../config/app';
 import Modes from '../../config/modes';
 import noop from '../../helpers/noop';
 import HTTP from './transports/http';
 import type TcpObfuscated from './transports/tcpObfuscated';
 import bigInt from 'big-integer';
-import {ConnectionStatus} from './connectionStatus';
+import {ConnectionStatus, ConnectionStatusChange} from './connectionStatus';
 import ctx from '../../environment/ctx';
 import bufferConcats from '../../helpers/bytes/bufferConcats';
 import bytesCmp from '../../helpers/bytes/bytesCmp';
@@ -34,15 +32,12 @@ import forEachReverse from '../../helpers/array/forEachReverse';
 import sortLongsArray from '../../helpers/long/sortLongsArray';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import pause from '../../helpers/schedulers/pause';
-import {getEnvironment} from '../../environment/utils';
 import {TimeManager} from './timeManager';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-import {ActiveAccountNumber} from '../accounts/types';
-import AccountController from '../accounts/accountController';
 import makeError from '../../helpers/makeError';
 import {bigIntFromBytes} from '../../helpers/bigInt/bigIntConversion';
 import safeAssign from '../../helpers/object/safeAssign';
-import {MTAuthKey} from './authorizer';
+import {MTAuthKey} from './authKey';
 import {MessageKeyUtils} from './messageKeyUtils';
 
 // console.error('networker included!', new Error().stack);
@@ -87,6 +82,16 @@ export type MTMessage = InvokeApiOptions & MTMessageOptions & {
 
   longPoll?: boolean,
   noResponse?: boolean, // only with http (http_wait for longPoll)
+};
+
+type InitConnectionParams = {
+  id: number,
+  deviceModel?: string,
+  systemVersion?: string,
+  version?: string,
+  systemLangCode?: string,
+  langPack?: string,
+  langCode?: string
 };
 
 // const TEST_RESEND_RPC: string = 'upload.file';
@@ -200,20 +205,22 @@ export default class MTPNetworker {
   private lastPingStartTime: number;
   private lastPingDelayDisconnectId: string;
 
-  // public onConnectionStatusChange: (online: boolean) => void;
-
   private delays: typeof delays[keyof typeof delays];
   // private getNewTimeOffset: boolean;
 
   private usingPfs: boolean;
 
-  private networkerFactory: NetworkerFactory;
   private timeManager: TimeManager;
 
-  private accountNumber: ActiveAccountNumber;
+  private getInitConnectionParams: () => InitConnectionParams;
+  private getBaseDcId: () => Promise<TrueDcId>;
+  private createLogger?: typeof logger;
+  private isForcedStopped?: () => boolean;
+  private updatesProcessor?: (obj: any) => void;
+  private onConnectionStatus?: (status: ConnectionStatusChange) => void;
+  private onServerSalt?: (serverSalt: Uint8Array) => void;
 
   constructor(options: {
-    networkerFactory: NetworkerFactory,
     timeManager: TimeManager,
     dcId: DcId,
     permAuthKey: MTAuthKey,
@@ -221,7 +228,13 @@ export default class MTPNetworker {
     serverSalt: Uint8Array,
     isFileUpload: boolean,
     isFileDownload: boolean,
-    accountNumber: ActiveAccountNumber
+    getInitConnectionParams: MTPNetworker['getInitConnectionParams'],
+    getBaseDcId: MTPNetworker['getBaseDcId'],
+    createLogger?: MTPNetworker['createLogger'],
+    isForcedStopped?: MTPNetworker['isForcedStopped'],
+    updatesProcessor?: MTPNetworker['updatesProcessor'],
+    onConnectionStatus?: MTPNetworker['onConnectionStatus'],
+    onServerSalt?: MTPNetworker['onServerSalt']
   }) {
     safeAssign(this, options);
     this.usingPfs = this.permAuthKey !== this.authKey;
@@ -232,7 +245,7 @@ export default class MTPNetworker {
     const suffix = this.isFileUpload ? '-U' : this.isFileDownload ? '-D' : '';
     this.name = 'NET-' + this.dcId + suffix;
     // this.log = logger(this.name, this.upload && this.dcId === 2 ? LogLevels.debug | LogLevels.warn | LogLevels.log | LogLevels.error : LogLevels.error);
-    this.log = this.networkerFactory.createLogger(
+    this.log = (this.createLogger ?? logger)(
       this.name + (suffix ? '' : '-C') + '-' + networkerTempId++,
       LogTypes.Log | LogTypes.Error | LogTypes.Warn | (this.debug ? LogTypes.Debug : 0)
     );
@@ -382,14 +395,15 @@ export default class MTPNetworker {
       serializer.storeMethod('invokeWithLayer', {
         layer: Schema.layer,
         query: (serializer: TLSerialization) => {
+          const initConnectionParams = this.getInitConnectionParams();
           serializer.storeMethod('initConnection', {
-            api_id: App.id,
-            device_model: getEnvironment().USER_AGENT || 'Unknown UserAgent',
-            system_version: navigator.platform || 'Unknown Platform',
-            app_version: App.version + (App.isMainDomain ? ' ' + App.suffix : ''),
-            system_lang_code: navigator.language || 'en',
-            lang_pack: App.langPack,
-            lang_code: this.networkerFactory.language,
+            api_id: initConnectionParams.id,
+            device_model: initConnectionParams.deviceModel,
+            system_version: initConnectionParams.systemVersion,
+            app_version: initConnectionParams.version,
+            system_lang_code: initConnectionParams.systemLangCode,
+            lang_pack: initConnectionParams.langPack,
+            lang_code: initConnectionParams.langCode,
             query: (serializer: TLSerialization) => {
               this.storeApiCall(serializer, method, params, options, log);
             }
@@ -902,11 +916,6 @@ export default class MTPNetworker {
     return promise;
   }
 
-  private async getBaseDcId() {
-    const accountData = await AccountController.get(this.accountNumber);
-    return accountData.dcId;
-  }
-
   public attachPromise(promise: Promise<any>, message: MTMessage) {
     const canIncrement = true;
     const timeout = setTimeout(() => {
@@ -960,18 +969,16 @@ export default class MTPNetworker {
     this.status = status;
 
     if(willChange) {
-      if(this.networkerFactory.onConnectionStatusChange) {
-        this.networkerFactory.onConnectionStatusChange({
-          _: 'networkerStatus',
-          status,
-          dcId: this.dcId,
-          name: this.name,
-          isFileNetworker: this.isFileNetworker,
-          isFileDownload: this.isFileDownload,
-          isFileUpload: this.isFileUpload,
-          retryAt
-        });
-      }
+      this.onConnectionStatus?.({
+        _: 'networkerStatus',
+        status,
+        dcId: this.dcId,
+        name: this.name,
+        isFileNetworker: this.isFileNetworker,
+        isFileDownload: this.isFileDownload,
+        isFileUpload: this.isFileUpload,
+        retryAt
+      });
 
       if(this.isOnline && scheduleRequestIfOnline) {
         this.scheduleRequest();
@@ -984,9 +991,6 @@ export default class MTPNetworker {
 
       // this.getNewTimeOffset = true;
     }
-    /* if(this.onConnectionStatusChange) {
-      this.onConnectionStatusChange(this.isOnline);
-    } */
   }
 
   public onTransportOpen() {
@@ -1033,7 +1037,7 @@ export default class MTPNetworker {
   }
 
   public isStopped() {
-    return this.networkerFactory.akStopped && !this.isFileNetworker;
+    return (this.isForcedStopped?.() ?? false) && !this.isFileNetworker;
   }
 
   private performScheduledRequest() {
@@ -1505,14 +1509,8 @@ export default class MTPNetworker {
 
   private applyServerSalt(newServerSalt: string) {
     const serverSalt = longToBytes(newServerSalt);
-
-    // if(this.usingPfs) {
-    AccountController.update(this.accountNumber, {
-      [`dc${this.dcId}_server_salt`]: bytesToHex(serverSalt)
-    });
-    // }
-
     this.serverSalt = new Uint8Array(serverSalt);
+    this.onServerSalt?.(this.serverSalt);
   }
 
   private clearNextReq() {
@@ -1856,11 +1854,13 @@ export default class MTPNetworker {
         this.processMessageAck(message.first_msg_id);
         this.applyServerSalt(message.server_salt);
 
-        this.getBaseDcId().then((baseDcId) => {
-          if(baseDcId === this.dcId && !this.isFileNetworker) {
-            this.networkerFactory.updatesProcessor?.(message);
-          }
-        });
+        if(!this.isFileNetworker) {
+          this.getBaseDcId().then((baseDcId) => {
+            if(baseDcId === this.dcId) {
+              this.updatesProcessor?.(message);
+            }
+          });
+        }
         break;
       }
 
@@ -1988,9 +1988,7 @@ export default class MTPNetworker {
           this.log.debug('Update', message);
         } */
 
-        if(this.networkerFactory.updatesProcessor !== null) {
-          this.networkerFactory.updatesProcessor(message);
-        }
+        this.updatesProcessor?.(message);
         break;
     }
   }

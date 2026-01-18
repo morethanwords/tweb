@@ -23,7 +23,6 @@ import {HelpCountry, InputInvoice, InputStorePaymentPurpose, PremiumGiftCodeOpti
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import PopupPremium from './premium';
 import {premiumOptionsForm} from '../premium/promoSlideTab';
-import {MTAppConfig} from '../../lib/mtproto/appConfig';
 import PopupPickUser from './pickUser';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import toggleDisability from '../../helpers/dom/toggleDisability';
@@ -33,7 +32,7 @@ import {filterCountries} from '../countryInputField';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import {getCountryEmoji} from '../../vendor/emoji';
 import {toastNew} from '../toast';
-import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
+import apiManagerProxy from '../../lib/apiManagerProxy';
 import getPeerActiveUsernames from '../../lib/appManagers/utils/peers/getPeerActiveUsernames';
 import confirmationPopup from '../confirmationPopup';
 import {randomLong} from '../../helpers/random';

@@ -7,8 +7,8 @@
 import createVideo from '../../helpers/dom/createVideo';
 import renderImageFromUrl from '../../helpers/dom/renderImageFromUrl';
 import {Document, DocumentAttribute, StickerSet} from '../../layer';
-import appDownloadManager from '../../lib/appManagers/appDownloadManager';
-import {AppManagers} from '../../lib/appManagers/managers';
+import appDownloadManager from '../../lib/appDownloadManager';
+import {AppManagers} from '../../lib/managers';
 import lottieLoader from '../../lib/rlottie/lottieLoader';
 import rootScope from '../../lib/rootScope';
 import animationIntersector, {AnimationItemGroup} from '../animationIntersector';

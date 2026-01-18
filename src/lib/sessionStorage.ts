@@ -7,8 +7,8 @@
 import type {DcId} from '../types';
 import {MOUNT_CLASS_TO} from '../config/debug';
 
-import type {AppInstance} from './mtproto/singleInstance';
-import type {UserAuth} from './mtproto/mtproto_config';
+import type {AppInstance} from './singleInstance';
+import type {UserAuth} from './appManagers/constants';
 import LocalStorageController from './localStorage';
 import {AccountSessionData} from './accounts/types';
 

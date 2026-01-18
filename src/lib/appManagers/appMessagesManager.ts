@@ -9,11 +9,11 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type {ApiFileManager} from '../mtproto/apiFileManager';
+import type {ApiFileManager} from './apiFileManager';
 import type {MediaSize} from '../../helpers/mediaSize';
-import type {Progress} from './appDownloadManager';
+import type {Progress} from '../appDownloadManager';
 import type {VIDEO_MIME_TYPE} from '../../environment/videoMimeTypesSupport';
-import type {Mirrors} from '../mtproto/mtprotoworker';
+import type {Mirrors} from '../apiManagerProxy';
 import LazyLoadQueueBase from '../../components/lazyLoadQueueBase';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import tsNow from '../../helpers/tsNow';
@@ -21,14 +21,14 @@ import {randomLong} from '../../helpers/random';
 import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, UrlAuthResult, MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, InputUser, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities, ChannelsSearchPosts, FactCheck, MessageExtendedMedia, SponsoredMessage, MessagesSponsoredMessages, InputGroupCall, TodoItem, TodoCompletion} from '../../layer';
 import {ArgumentTypes, InvokeApiOptions, Modify} from '../../types';
 import {logger, LogTypes} from '../logger';
-import {ReferenceContext} from '../mtproto/referenceDatabase';
+import {ReferenceContext} from '../storages/references';
 import {AnyDialog, FilterType, GLOBAL_FOLDER_ID} from '../storages/dialogs';
 import {ChatRights} from './appChatsManager';
 import {MyDocument} from './appDocsManager';
 import {MyPhoto} from './appPhotosManager';
 import DEBUG from '../../config/debug';
 import SlicedArray, {Slice, SliceEnd} from '../../helpers/slicedArray';
-import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, GENERAL_TOPIC_ID, HIDDEN_PEER_ID, MESSAGES_ALBUM_MAX_SIZE, MUTE_UNTIL, NULL_PEER_ID, REAL_FOLDERS, REAL_FOLDER_ID, REPLIES_HIDDEN_CHANNEL_ID, REPLIES_PEER_ID, SERVICE_PEER_ID, TEST_NO_SAVED, THUMB_TYPE_FULL, TOPIC_COLORS} from '../mtproto/mtproto_config';
+import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, GENERAL_TOPIC_ID, HIDDEN_PEER_ID, MESSAGES_ALBUM_MAX_SIZE, MUTE_UNTIL, NULL_PEER_ID, REAL_FOLDERS, REAL_FOLDER_ID, REPLIES_HIDDEN_CHANNEL_ID, REPLIES_PEER_ID, SERVICE_PEER_ID, TEST_NO_SAVED, THUMB_TYPE_FULL, TOPIC_COLORS} from './constants';
 import {getMiddleware} from '../../helpers/middleware';
 import assumeType from '../../helpers/assumeType';
 import copy from '../../helpers/object/copy';
@@ -50,7 +50,7 @@ import getDocumentMediaInput from './utils/docs/getDocumentMediaInput';
 import getFileNameForUpload from '../../helpers/getFileNameForUpload';
 import noop from '../../helpers/noop';
 import appTabsManager from './appTabsManager';
-import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
+import MTProtoMessagePort from '../mainWorker/mainMessagePort';
 import getGroupedText from './utils/messages/getGroupedText';
 import pause from '../../helpers/schedulers/pause';
 import makeError from '../../helpers/makeError';
@@ -70,7 +70,7 @@ import {LOCAL_ENTITIES} from '../richTextProcessor';
 import {isDialog, isSavedDialog, isForumTopic, isMonoforumDialog} from './utils/dialogs/isDialog';
 import getDialogKey from './utils/dialogs/getDialogKey';
 import getHistoryStorageKey, {getSearchStorageFilterKey} from './utils/messages/getHistoryStorageKey';
-import {ApiLimitType} from '../mtproto/api_methods';
+import {ApiLimitType} from './apiManagerMethods';
 import getFwdFromName from './utils/messages/getFwdFromName';
 import filterUnique from '../../helpers/array/filterUnique';
 import getSearchType from './utils/messages/getSearchType';
@@ -81,7 +81,7 @@ import canMessageHaveFactCheck from './utils/messages/canMessageHaveFactCheck';
 import commonStateStorage from '../commonStateStorage';
 import PaidMessagesQueue from './utils/messages/paidMessagesQueue';
 import type {ConfirmedPaymentResult} from '../../components/chat/paidMessagesInterceptor';
-import RepayRequestHandler, {RepayRequest} from '../mtproto/repayRequestHandler';
+import RepayRequestHandler, {RepayRequest} from './utils/repayRequestHandler';
 import canVideoBeAnimated from './utils/docs/canVideoBeAnimated';
 import getPhotoInput from './utils/photos/getPhotoInput';
 import {BatchProcessor} from '../../helpers/sortedList';
@@ -9732,7 +9732,7 @@ export class AppMessagesManager extends AppManager {
       const smth: Photo.photo | MyDocument = (c as MessageMedia.messageMediaPhoto).photo as any || (c as MessageMedia.messageMediaDocument).document as any;
 
       if(smth?.file_reference) {
-        this.referenceDatabase.deleteContext(smth.file_reference, {type: 'message', peerId: message.peerId, messageId: message.mid});
+        this.referencesStorage.deleteContext(smth.file_reference, {type: 'message', peerId: message.peerId, messageId: message.mid});
       }
 
       if('webpage' in media && media.webpage) {

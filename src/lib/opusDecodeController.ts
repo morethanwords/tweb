@@ -9,7 +9,7 @@ import IS_OPUS_SUPPORTED from '../environment/opusSupport';
 import {IS_SAFARI} from '../environment/userAgent';
 import {Modify} from '../types';
 import {logger, LogTypes} from './logger';
-import apiManagerProxy from './mtproto/mtprotoworker';
+import apiManagerProxy from './apiManagerProxy';
 import type {ConvertWebPTask} from './webp/webpWorkerController';
 
 type Result = {
