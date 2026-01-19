@@ -170,7 +170,7 @@
     const snapshotComment = document.getElementById('snapshotComment');
     const saveAuthorization = document.getElementById('saveAuthorization');
 
-    const IS_PRODUCTION = new URL(location.href).hostname !== 'web.telegram.org';
+    const IS_PRODUCTION = new URL(location.href).hostname === 'web.telegram.org';
 
     snapshotBtn.addEventListener('click', async() => {
       const snapshot = await takeSnapshot();

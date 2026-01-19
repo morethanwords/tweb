@@ -243,7 +243,7 @@ export class EmoticonsDropdown extends DropdownHover {
   public set chatInput(chatInput: ChatInput) {
     const changed = this._chatInput !== chatInput;
     this._chatInput = chatInput;
-    if(!this.init && changed && this.chatInput !== undefined) {
+    if(changed && this.chatInput !== undefined) {
       this.checkRights();
     }
   }
@@ -456,6 +456,7 @@ export class EmoticonsDropdown extends DropdownHover {
   };
 
   private checkRights = async() => {
+    this.managers ??= rootScope.managers;
     const {peerId, threadId} = this.chatInput.chat;
 
     const actions = Object.keys(this.rights) as ChatRights[];
@@ -467,6 +468,10 @@ export class EmoticonsDropdown extends DropdownHover {
     actions.forEach((action, idx) => {
       this.rights[action] = rights[idx];
     });
+
+    if(this.init) {
+      return;
+    }
 
     const emojiTab = this.getTab(EmojiTab);
     const active = this.tabsEl.querySelector('.active');
