@@ -2137,8 +2137,20 @@ export class AppImManager extends EventListenerBase<{
       const chatInput = this.chat.input;
       if(!chatInput.canPaste()) return;
 
-      const canUploadAsMedia = !chatInput.editMessage || canUploadAsWhenEditing({message: chatInput.editMessage, asWhat: 'media'});
-      chatInput.willAttachType = attachType || (MEDIA_MIME_TYPES_SUPPORTED.has(files[0].type) && canUploadAsMedia ? 'media' : 'document');
+      if(chatInput.editMessage) {
+        const file = files[0];
+        const canUploadAsMedia = MEDIA_MIME_TYPES_SUPPORTED.has(file.type) && canUploadAsWhenEditing({message: chatInput.editMessage, asWhat: 'media'});
+        const canUploadAsDocument = canUploadAsWhenEditing({message: chatInput.editMessage, asWhat: 'document'});
+        chatInput.willAttachType = (canUploadAsMedia ? 'media' : canUploadAsDocument ? 'document' : undefined);
+
+        if(chatInput.willAttachType) {
+          PopupElement.createPopup(PopupNewMedia, this.chat, [file], chatInput.willAttachType);
+        }
+
+        return;
+      }
+
+      chatInput.willAttachType = attachType || (MEDIA_MIME_TYPES_SUPPORTED.has(files[0].type) ? 'media' : 'document');
       PopupElement.createPopup(PopupNewMedia, this.chat, files, chatInput.willAttachType);
     }
   };

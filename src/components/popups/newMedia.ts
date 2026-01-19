@@ -35,7 +35,7 @@ import wrapMediaSpoiler, {toggleMediaSpoiler} from '@components/wrappers/mediaSp
 import {MiddlewareHelper} from '@helpers/middleware';
 import animationIntersector, {AnimationItemGroup} from '@components/animationIntersector';
 import scaleMediaElement from '@helpers/canvas/scaleMediaElement';
-import {doubleRaf} from '@helpers/schedulers';
+import {doubleRaf, fastRafPromise} from '@helpers/schedulers';
 import defineNotNumerableProperties from '@helpers/object/defineNotNumerableProperties';
 import {DocumentAttribute, DraftMessage, Photo, PhotoSize} from '@layer';
 import {getPreviewBytesFromURL} from '@helpers/bytes/getPreviewURLFromBytes';
@@ -72,6 +72,11 @@ import MarkupTooltip from '@components/chat/markupTooltip';
 import {MAX_EDITABLE_VIDEO_SIZE, supportsVideoEncoding} from '@components/mediaEditor/support';
 import {animateValue} from '@helpers/animateValue';
 import {lerp} from '@helpers/lerp';
+import {attachContextMenuListener} from '@helpers/dom/attachContextMenuListener';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import ButtonMenu from '@components/buttonMenu';
+import contextMenuController from '@helpers/contextMenuController';
+import {makeDateFromTimestamp} from '@helpers/date/makeDateFromTimestamp';
 
 
 type SendFileParams = SendFileDetails & {
@@ -356,7 +361,42 @@ export default class PopupNewMedia extends PopupElement {
       }
     });
 
-    if(this.chat.type !== ChatType.Scheduled) {
+    if(this.chat.type === ChatType.Scheduled && this.isEditing()) {
+      attachContextMenuListener({
+        element: this.btnConfirm,
+        callback: async(e) => {
+          cancelEvent(e);
+
+          const element = await ButtonMenu({
+            buttons: [
+              {
+                text: 'MessageScheduleEditTime',
+                icon: 'schedule',
+                onClick: () => {
+                  this.chat.input.scheduleSending(() => {
+                    this.send(true);
+                  });
+                }
+              }
+            ],
+            listenerSetter: this.listenerSetter
+          });
+          element.classList.add('menu-send', 'top-left');
+
+          this.container.append(element);
+
+          await fastRafPromise();
+          contextMenuController.openBtnMenu(element, () => {
+            setTimeout(() => {
+              element.remove();
+            }, 400);
+          });
+        },
+        listenerSetter: this.listenerSetter
+      });
+    }
+
+    if(this.chat.type !== ChatType.Scheduled && !this.isEditing()) {
       createRoot((dispose) => {
         this.chat.destroyMiddlewareHelper.onDestroy(dispose);
         const [effect, setEffect] = createSignal<DocId>(this.wasDraft?.effect);
@@ -399,6 +439,7 @@ export default class PopupNewMedia extends PopupElement {
   }
 
   private async canSendPaidMedia() {
+    if(this.isEditing()) return false;
     return await this.managers.appPeersManager.isBroadcast(this.chat.peerId) &&
       !!(await this.managers.appProfileManager.getChannelFull(this.chat.peerId.toChatId())).pFlags.paid_media_allowed;
   }
@@ -779,10 +820,10 @@ export default class PopupNewMedia extends PopupElement {
       return;
     }
 
-    if(this.chat.type === ChatType.Scheduled && !force) {
+    if(this.chat.type === ChatType.Scheduled && !this.isEditing() && !force) {
       this.chat.input.scheduleSending(() => {
         this.send(true);
-      });
+      }, this.chat.input.editMessage?.date ? makeDateFromTimestamp(this.chat.input.editMessage.date) : undefined);
 
       return;
     }
@@ -798,7 +839,7 @@ export default class PopupNewMedia extends PopupElement {
 
     sendingParams.confirmedPaymentResult = preparedPaymentResult;
 
-    let effect = this.effect();
+    let effect = this.effect?.();
     this.iterate((sendFileParams) => {
       if(caption && sendFileParams.length !== length) {
         this.managers.appMessagesManager.sendText({
