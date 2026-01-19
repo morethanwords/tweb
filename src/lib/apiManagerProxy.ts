@@ -68,6 +68,8 @@ import {createHistoryStorageSearchSlicedArray} from '@appManagers/utils/messages
 import tabId from '@config/tabId';
 import Modes from '@config/modes';
 import appNavigationController from '@components/appNavigationController';
+import {BroadcastChannelWrapper, createBroadcastChannelWrapper} from './broadcastChannelWrapper';
+import {MainBroadcastChannelEvents, unversionedMainBroadcastChannelName} from '@config/broadcastChannel';
 
 
 export type Mirrors = {
@@ -149,6 +151,8 @@ class ApiManagerProxy extends MTProtoMessagePort {
   private serviceWorkerRegistration: ServiceWorkerRegistration;
 
   public pushSingleManager: ModifyFunctionsToAsync<PushSingleManager>;
+
+  private mainBroadcastChannel: BroadcastChannelWrapper<MainBroadcastChannelEvents>;
 
   constructor() {
     super();
@@ -329,8 +333,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
       'notification_count_update',
       'account_logged_in',
       'notification_cancel',
-      'toggle_using_passcode',
-      'toggle_locked'
+      'toggle_using_passcode'
     ]);
 
     // const perf = performance.now();
@@ -426,6 +429,12 @@ class ApiManagerProxy extends MTProtoMessagePort {
       // hello: () => {
       //   this.log.error('time hello', performance.now() - perf);
       // }
+    });
+
+    this.mainBroadcastChannel = createBroadcastChannelWrapper<MainBroadcastChannelEvents>(unversionedMainBroadcastChannelName);
+
+    this.mainBroadcastChannel.on('reload', () => {
+      appNavigationController.reload();
     });
 
     // this.addTaskListener('socketProxy', (task) => {
@@ -1166,6 +1175,12 @@ class ApiManagerProxy extends MTProtoMessagePort {
     });
 
     return proxy as any;
+  }
+
+  public lock() {
+    this.invokeVoid('terminate', undefined);
+    this.mainBroadcastChannel.emitVoid('reload');
+    appNavigationController.reload();
   }
 }
 

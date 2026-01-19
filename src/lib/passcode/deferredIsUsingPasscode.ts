@@ -21,6 +21,10 @@ export default class DeferredIsUsingPasscode extends StaticUtilityClass {
     return this.value;
   }
 
+  public static isUsingPasscodeUndeferred() {
+    return this.value;
+  }
+
   /**
    * Mainly for Service worker
    */

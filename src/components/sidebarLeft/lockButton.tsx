@@ -1,10 +1,9 @@
-import {createRoot, createSignal, createEffect, onCleanup} from 'solid-js';
-
-import {i18n} from '@lib/langPack';
-import rootScope from '@lib/rootScope';
-
 import PasscodeLockScreenController from '@components/passcodeLock/passcodeLockScreenController';
 import showTooltip from '@components/tooltip';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import {i18n} from '@lib/langPack';
+import {createEffect, createRoot, createSignal, onCleanup} from 'solid-js';
+
 
 const LockIcon = () => {
   return (
@@ -51,7 +50,7 @@ const LockButton = () => {
     class="btn-icon sidebar-lock-button"
     onClick={() => {
       PasscodeLockScreenController.lock(iconWrapper, () => {
-        rootScope.dispatchEvent('toggle_locked', true);
+        apiManagerProxy.lock();
         clearTooltipVisible();
       });
       // PasscodeLockScreenController.lockOtherTabs();

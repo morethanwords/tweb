@@ -1,13 +1,12 @@
+import PasscodeLockScreenController from '@components/passcodeLock/passcodeLockScreenController';
+import ListenerSetter from '@helpers/listenerSetter';
+import {joinDeepPath} from '@helpers/object/setDeepProperty';
+import {addShortcutListener} from '@helpers/shortcutListener';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import appImManager from '@lib/appImManager';
+import rootScope from '@lib/rootScope';
 import {createEffect, createResource, createRoot, createSignal, onCleanup} from 'solid-js';
 
-import PasscodeLockScreenController from '@components/passcodeLock/passcodeLockScreenController';
-import {addShortcutListener} from '@helpers/shortcutListener';
-import {joinDeepPath} from '@helpers/object/setDeepProperty';
-import ListenerSetter from '@helpers/listenerSetter';
-
-import rootScope from '@lib/rootScope';
-
-import appImManager from '@lib/appImManager';
 
 const _useLockScreenShortcut = () => {
   const [locked, setLocked] = createSignal(PasscodeLockScreenController.getIsLocked());
@@ -42,10 +41,6 @@ const _useLockScreenShortcut = () => {
     }
   });
 
-  listenerSetter.add(rootScope)('toggle_locked', (value) => {
-    setLocked(value);
-  });
-
   onCleanup(() => {
     listenerSetter.removeAll();
   });
@@ -72,7 +67,7 @@ const _useLockScreenShortcut = () => {
       event.preventDefault();
 
       PasscodeLockScreenController.lock(true, () => {
-        rootScope.dispatchEvent('toggle_locked', true);
+        apiManagerProxy.lock();
       });
       // PasscodeLockScreenController.lockOtherTabs();
     }, false);

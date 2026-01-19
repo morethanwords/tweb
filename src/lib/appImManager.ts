@@ -461,32 +461,6 @@ export class AppImManager extends EventListenerBase<{
       });
     });
 
-    rootScope.addEventListener('toggle_locked', (isLocked) => {
-      if(isLocked) appNavigationController.reload();
-    //   (() => {
-    //     if(isLocked) {
-    //       [
-    //         () => this.setPeer({}, false),
-    //         () => appNavigationController.overrideHash(),
-    //         () => appNavigationController.replaceState(),
-    //         () => PopupElement.destroyAll(),
-    //         () => appNavigationController.spliceItems(0, Infinity),
-    //         () => appSidebarLeft.closeEverythingInside(),
-    //         () => this.topbarCall?.hangUp(),
-    //         () => AppMediaViewerBase.closeAll()
-    //       ].forEach(callback => {
-    //         try {
-    //           callback();
-    //         } catch(e) {
-    //           console.error(e);
-    //         }
-    //       });
-    //     } else {
-    //       appSidebarLeft.initNavigation();
-    //     }
-    //   })()
-    });
-
     useLockScreenShortcut();
 
     (window as any).onSpoilerClick = (e: MouseEvent) => {
