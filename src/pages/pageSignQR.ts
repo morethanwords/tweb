@@ -204,6 +204,9 @@ const onFirstMount = async() => {
           stop = true;
           cachedPromise = null;
           break;
+        case 'AUTH_TOKEN_EXPIRED':
+          console.warn('pageSignQR: AUTH_TOKEN_EXPIRED');
+          return false;
         default:
           console.error('pageSignQR: default error:', err);
           stop = true;

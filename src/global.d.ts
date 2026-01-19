@@ -129,7 +129,7 @@ declare global {
     'video/mp4' | 'image/webp' | 'audio/mpeg' | 'audio/ogg' | 'application/octet-stream' |
     'application/x-tgsticker' | 'video/webm' | 'image/svg+xml' | 'image/png' | 'application/json' |
     'application/x-tgwallpattern' | 'audio/wav' | 'image/avif' | 'image/jxl' | 'image/bmp' |
-    'application/x-mpegurl';
+    'application/x-mpegurl' | 'application/x-tgstoryboard' | 'application/x-tgstoryboardmap';
 
   type MTFileExtension = 'mov' | 'gif' | 'pdf' | 'jpg' | 'jpeg' | 'wav' |
     'tgv' | 'tgs' | 'svg' | 'mp4' | 'webm' | 'webp' | 'mp3' | 'ogg' | 'json' |
@@ -172,7 +172,7 @@ declare global {
     'FILE_REFERENCE_INVALID' | 'USER_NOT_MUTUAL_CONTACT' | 'FROZEN_METHOD_INVALID' |
     'EMAIL_INVALID' | 'EMAIL_NOT_ALLOWED' | 'EMAIL_VERIFY_EXPIRED' | 'CODE_INVALID' |
     'PASSWORD_RECOVERY_NA' | '2FA_RECENT_CONFIRM' | `2FA_CONFIRM_WAIT_${number}` |
-    'PASSKEY_CREDENTIAL_NOT_FOUND' | 'SUMMARY_FLOOD_PREMIUM';
+    'PASSKEY_CREDENTIAL_NOT_FOUND' | 'SUMMARY_FLOOD_PREMIUM' | 'AUTH_TOKEN_EXPIRED';
 
   type ErrorType = LocalErrorType | ServerErrorType;
 
