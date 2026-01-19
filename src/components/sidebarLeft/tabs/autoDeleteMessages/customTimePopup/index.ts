@@ -1,7 +1,7 @@
-import {LangPackKey} from '../../../../../lib/langPack';
-import SolidJSHotReloadGuardProvider from '../../../../../lib/solidjs/hotReloadGuardProvider';
-import PopupElement from '../../../../popups';
-import {AutoDeleteMessagesCustomTimePopupContent} from './content';
+import {LangPackKey} from '@lib/langPack';
+import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import PopupElement from '@components/popups';
+import {AutoDeleteMessagesCustomTimePopupContent} from '@components/sidebarLeft/tabs/autoDeleteMessages/customTimePopup/content';
 
 if(import.meta.hot) import.meta.hot.accept('./content', () => {});
 

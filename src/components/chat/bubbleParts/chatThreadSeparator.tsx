@@ -1,15 +1,15 @@
 import {Accessor, batch, createEffect, createMemo, createRoot, createSignal, onCleanup, Ref} from 'solid-js';
 import {createStore, SetStoreFunction} from 'solid-js/store';
 import {Portal} from 'solid-js/web';
-import clamp from '../../../helpers/number/clamp';
-import {attachHotClassName} from '../../../helpers/solid/classname';
-import type CustomEmojiElement from '../../../lib/customEmoji/element';
-import defineSolidElement, {PassedProps} from '../../../lib/solidjs/defineSolidElement';
-import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
-import {IconTsx} from '../../iconTsx';
-import type ChatBubbles from '../bubbles';
-import Chat from '../chat';
-import styles from './chatThreadSeparator.module.scss';
+import clamp from '@helpers/number/clamp';
+import {attachHotClassName} from '@helpers/solid/classname';
+import type CustomEmojiElement from '@lib/customEmoji/element';
+import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import {IconTsx} from '@components/iconTsx';
+import type ChatBubbles from '@components/chat/bubbles';
+import Chat from '@components/chat/chat';
+import styles from '@components/chat/bubbleParts/chatThreadSeparator.module.scss';
 
 if(import.meta.hot) import.meta.hot.accept();
 

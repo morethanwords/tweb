@@ -1,16 +1,16 @@
 import {createEffect, createSignal, Match, on, Switch} from 'solid-js';
 import PopupElement from '.';
-import safeAssign from '../../helpers/object/safeAssign';
-import {MyStarGift} from '../../lib/appManagers/appGiftsManager';
-import rootScope from '../../lib/rootScope';
+import safeAssign from '@helpers/object/safeAssign';
+import {MyStarGift} from '@appManagers/appGiftsManager';
+import rootScope from '@lib/rootScope';
 
-import styles from './chooseGiftPopup.module.scss';
-import {createProfileGiftsStore} from '../stargifts/profileStore';
-import {StarGiftsGrid} from '../stargifts/stargiftsGrid';
-import Scrollable from '../scrollable2';
+import styles from '@components/popups/chooseGiftPopup.module.scss';
+import {createProfileGiftsStore} from '@components/stargifts/profileStore';
+import {StarGiftsGrid} from '@components/stargifts/stargiftsGrid';
+import Scrollable from '@components/scrollable2';
 import {unwrap} from 'solid-js/store';
-import {I18nTsx} from '../../helpers/solid/i18n';
-import {PreloaderTsx} from '../putPreloader';
+import {I18nTsx} from '@helpers/solid/i18n';
+import {PreloaderTsx} from '@components/putPreloader';
 import {Transition} from 'solid-transition-group';
 
 export default class PopupChooseGift extends PopupElement<{

@@ -1,15 +1,15 @@
 import {Accessor} from 'solid-js';
 
-import {GlobalPrivacySettings, InputPrivacyRule} from '../../../../../layer';
-import {useHotReloadGuard} from '../../../../../lib/solidjs/hotReloadGuard';
-import setBooleanFlag from '../../../../../helpers/object/setBooleanFlag';
-import {logger} from '../../../../../lib/logger';
+import {GlobalPrivacySettings, InputPrivacyRule} from '@layer';
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import setBooleanFlag from '@helpers/object/setBooleanFlag';
+import {logger} from '@lib/logger';
 
-import {useSuperTab} from '../../../../solidJsTabs/superTabProvider';
-import type {AppPrivacyMessagesTab} from '../../../../solidJsTabs';
+import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
+import type {AppPrivacyMessagesTab} from '@components/solidJsTabs';
 
-import {MessagesTabStateStore, MessagesPrivacyOption, defaultPrivacyRules, privacyRulesInputKey} from './config';
-import {ChosenPeersByType} from './useStateStore';
+import {MessagesTabStateStore, MessagesPrivacyOption, defaultPrivacyRules, privacyRulesInputKey} from '@components/sidebarLeft/tabs/privacy/messages/config';
+import {ChosenPeersByType} from '@components/sidebarLeft/tabs/privacy/messages/useStateStore';
 
 
 const log = logger('useSaveSettings');

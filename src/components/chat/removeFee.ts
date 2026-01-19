@@ -1,18 +1,18 @@
-import callbackify from '../../helpers/callbackify';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import namedPromises from '../../helpers/namedPromises';
-import {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
-import {AppManagers} from '../../lib/appManagers/managers';
-import {i18n} from '../../lib/langPack';
-import Button from '../button';
-import confirmationPopup from '../confirmationPopup';
-import Icon from '../icon';
-import PeerTitle from '../peerTitle';
-import wrapPeerTitle from '../wrappers/peerTitle';
-import Chat from './chat';
-import PinnedContainer from './pinnedContainer';
-import styles from './removeFee.module.scss';
-import type ChatTopbar from './topbar';
+import callbackify from '@helpers/callbackify';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import namedPromises from '@helpers/namedPromises';
+import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
+import {AppManagers} from '@lib/managers';
+import {i18n} from '@lib/langPack';
+import Button from '@components/button';
+import confirmationPopup from '@components/confirmationPopup';
+import Icon from '@components/icon';
+import PeerTitle from '@components/peerTitle';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
+import Chat from '@components/chat/chat';
+import PinnedContainer from '@components/chat/pinnedContainer';
+import styles from '@components/chat/removeFee.module.scss';
+import type ChatTopbar from '@components/chat/topbar';
 
 
 type SetArgs = {

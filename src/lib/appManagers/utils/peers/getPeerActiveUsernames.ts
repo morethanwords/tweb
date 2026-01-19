@@ -1,4 +1,4 @@
-import {Chat, User} from '../../../../layer';
+import {Chat, User} from '@layer';
 
 export default function getPeerActiveUsernames(peer: User | Chat) {
   if(!peer) {

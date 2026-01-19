@@ -4,25 +4,25 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import toggleDisability from '../../../helpers/dom/toggleDisability';
-import deepEqual from '../../../helpers/object/deepEqual';
-import {ChannelParticipant, Chat, ChatParticipant} from '../../../layer';
-import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
-import canEditAdmin from '../../../lib/appManagers/utils/chats/canEditAdmin';
-import getParticipantPeerId from '../../../lib/appManagers/utils/chats/getParticipantPeerId';
-import {LangPackKey, i18n} from '../../../lib/langPack';
-import rootScope from '../../../lib/rootScope';
-import Button from '../../button';
-import confirmationPopup from '../../confirmationPopup';
-import InputField from '../../inputField';
-import SettingSection from '../../settingSection';
-import SidebarSlider from '../../slider';
-import {SliderSuperTabEventable} from '../../sliderTab';
-import {providedTabs} from '../../solidJsTabs';
-import getUserStatusString from '../../wrappers/getUserStatusString';
-import wrapPeerTitle from '../../wrappers/peerTitle';
-import {ChatAdministratorRights, ChatPermissions} from './groupPermissions';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import toggleDisability from '@helpers/dom/toggleDisability';
+import deepEqual from '@helpers/object/deepEqual';
+import {ChannelParticipant, Chat, ChatParticipant} from '@layer';
+import appDialogsManager from '@lib/appDialogsManager';
+import canEditAdmin from '@appManagers/utils/chats/canEditAdmin';
+import getParticipantPeerId from '@appManagers/utils/chats/getParticipantPeerId';
+import {LangPackKey, i18n} from '@lib/langPack';
+import rootScope from '@lib/rootScope';
+import Button from '@components/button';
+import confirmationPopup from '@components/confirmationPopup';
+import InputField from '@components/inputField';
+import SettingSection from '@components/settingSection';
+import SidebarSlider from '@components/slider';
+import {SliderSuperTabEventable} from '@components/sliderTab';
+import {providedTabs} from '@components/solidJsTabs';
+import getUserStatusString from '@components/wrappers/getUserStatusString';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
+import {ChatAdministratorRights, ChatPermissions} from '@components/sidebarRight/tabs/groupPermissions';
 
 export default class AppUserPermissionsTab extends SliderSuperTabEventable {
   public participant: ChannelParticipant | ChatParticipant;

@@ -1,6 +1,6 @@
 import {splitProps} from 'solid-js'
-import ButtonMenuToggle from './buttonMenuToggle'
-import {attachClassName} from '../helpers/solid/classname'
+import ButtonMenuToggle from '@components/buttonMenuToggle'
+import {attachClassName} from '@helpers/solid/classname'
 
 export type ButtonMenuToggleProps = Parameters<typeof ButtonMenuToggle>[0] & {
   class?: string

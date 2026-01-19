@@ -1,18 +1,18 @@
-import {createSignal, onCleanup} from 'solid-js'
-import tsNow from '../tsNow'
+import {createSignal, onCleanup} from 'solid-js';
+import tsNow from '@helpers/tsNow';
 
 export function createCurrentTime(options: {
   fn?: () => number
   updateInterval?: number
 } = {}) {
-  const {fn = tsNow, updateInterval = 30000} = options
+  const {fn = tsNow, updateInterval = 30000} = options;
 
-  const [time, setTime] = createSignal(fn())
+  const [time, setTime] = createSignal(fn());
   const interval = setInterval(() => {
-    setTime(fn())
-  }, updateInterval)
+    setTime(fn());
+  }, updateInterval);
 
-  onCleanup(() => clearInterval(interval))
+  onCleanup(() => clearInterval(interval));
 
-  return time
+  return time;
 }

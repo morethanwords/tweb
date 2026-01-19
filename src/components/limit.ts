@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {animateSingle} from '../helpers/animation';
-import {easeInOutSineApply} from '../helpers/easing/easeInOutSine';
-import liteMode from '../helpers/liteMode';
-import clamp from '../helpers/number/clamp';
-import {doubleRaf} from '../helpers/schedulers';
-import {_i18n, i18n} from '../lib/langPack';
-import Icon from './icon';
-import RangeSelector from './rangeSelector';
+import {animateSingle} from '@helpers/animation';
+import {easeInOutSineApply} from '@helpers/easing/easeInOutSine';
+import liteMode from '@helpers/liteMode';
+import clamp from '@helpers/number/clamp';
+import {doubleRaf} from '@helpers/schedulers';
+import {_i18n, i18n} from '@lib/langPack';
+import Icon from '@components/icon';
+import RangeSelector from '@components/rangeSelector';
 
 type LimitLineProgressElements = {
   from1: HTMLElement,

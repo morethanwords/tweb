@@ -9,8 +9,8 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import {MOUNT_CLASS_TO} from '../config/debug';
-import {makeMediaSize} from './mediaSize';
+import {MOUNT_CLASS_TO} from '@config/debug';
+import {makeMediaSize} from '@helpers/mediaSize';
 
 export default function calcImageInBox(imageW: number, imageH: number, boxW: number, boxH: number, noZoom = true) {
   if(imageW < boxW && imageH < boxH && noZoom) {

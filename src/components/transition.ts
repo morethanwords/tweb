@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import deferredPromise, {CancellablePromise} from '../helpers/cancellablePromise';
-import {dispatchHeavyAnimationEvent} from '../hooks/useHeavyAnimationCheck';
-import whichChild from '../helpers/dom/whichChild';
-import cancelEvent from '../helpers/dom/cancelEvent';
-import ListenerSetter from '../helpers/listenerSetter';
-import liteMode from '../helpers/liteMode';
-import I18n from '../lib/langPack';
+import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
+import {dispatchHeavyAnimationEvent} from '@hooks/useHeavyAnimationCheck';
+import whichChild from '@helpers/dom/whichChild';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import ListenerSetter from '@helpers/listenerSetter';
+import liteMode from '@helpers/liteMode';
+import I18n from '@lib/langPack';
 
 const USE_3D = true;
 

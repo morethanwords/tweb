@@ -5,30 +5,30 @@
  */
 
 import PopupGroupCall from '.';
-import filterAsync from '../../helpers/array/filterAsync';
-import contextMenuController from '../../helpers/contextMenuController';
-import {attachContextMenuListener} from '../../helpers/dom/attachContextMenuListener';
-import cancelEvent from '../../helpers/dom/cancelEvent';
-import findUpClassName from '../../helpers/dom/findUpClassName';
-import {addFullScreenListener, isFullScreen} from '../../helpers/dom/fullScreen';
-import ListenerSetter from '../../helpers/listenerSetter';
-import noop from '../../helpers/noop';
-import safeAssign from '../../helpers/object/safeAssign';
-import positionMenu from '../../helpers/positionMenu';
-import ScrollableLoader from '../../helpers/scrollableLoader';
-import {GroupCallParticipant} from '../../layer';
-import appImManager from '../../lib/appManagers/appImManager';
-import {AppManagers} from '../../lib/appManagers/managers';
-import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
-import GroupCallInstance from '../../lib/calls/groupCallInstance';
-import rootScope from '../../lib/rootScope';
-import {ButtonMenuItemOptions, ButtonMenuSync} from '../buttonMenu';
-import confirmationPopup from '../confirmationPopup';
-import PeerTitle from '../peerTitle';
-import PopupElement from '../popups';
-import Scrollable from '../scrollable';
-import GroupCallParticipantsList from './participantsList';
-import GroupCallParticipantsVideoElement from './participantVideos';
+import filterAsync from '@helpers/array/filterAsync';
+import contextMenuController from '@helpers/contextMenuController';
+import {attachContextMenuListener} from '@helpers/dom/attachContextMenuListener';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import {addFullScreenListener, isFullScreen} from '@helpers/dom/fullScreen';
+import ListenerSetter from '@helpers/listenerSetter';
+import noop from '@helpers/noop';
+import safeAssign from '@helpers/object/safeAssign';
+import positionMenu from '@helpers/positionMenu';
+import ScrollableLoader from '@helpers/scrollableLoader';
+import {GroupCallParticipant} from '@layer';
+import appImManager from '@lib/appImManager';
+import {AppManagers} from '@lib/managers';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
+import GroupCallInstance from '@lib/calls/groupCallInstance';
+import rootScope from '@lib/rootScope';
+import {ButtonMenuItemOptions, ButtonMenuSync} from '@components/buttonMenu';
+import confirmationPopup from '@components/confirmationPopup';
+import PeerTitle from '@components/peerTitle';
+import PopupElement from '@components/popups';
+import Scrollable from '@components/scrollable';
+import GroupCallParticipantsList from '@components/groupCall/participantsList';
+import GroupCallParticipantsVideoElement from '@components/groupCall/participantVideos';
 
 export class GroupCallParticipantContextMenu {
   private buttons: (ButtonMenuItemOptions & {verify: (peerId: PeerId) => boolean | Promise<boolean>})[];

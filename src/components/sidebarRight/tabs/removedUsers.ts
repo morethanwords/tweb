@@ -4,19 +4,19 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import createParticipantContextMenu from '../../../helpers/dom/createParticipantContextMenu';
-import {ChannelParticipant, Chat} from '../../../layer';
-import hasRights from '../../../lib/appManagers/utils/chats/hasRights';
-import {i18n} from '../../../lib/langPack';
-import AppSelectPeers from '../../appSelectPeers';
-import ButtonCorner from '../../buttonCorner';
-import PopupElement from '../../popups';
-import PopupPickUser from '../../popups/pickUser';
-import SettingSection from '../../settingSection';
-import {SliderSuperTabEventable} from '../../sliderTab';
-import wrapPeerTitle from '../../wrappers/peerTitle';
-import {createSelectorForParticipants} from './chatMembers';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import createParticipantContextMenu from '@helpers/dom/createParticipantContextMenu';
+import {ChannelParticipant, Chat} from '@layer';
+import hasRights from '@appManagers/utils/chats/hasRights';
+import {i18n} from '@lib/langPack';
+import AppSelectPeers from '@components/appSelectPeers';
+import ButtonCorner from '@components/buttonCorner';
+import PopupElement from '@components/popups';
+import PopupPickUser from '@components/popups/pickUser';
+import SettingSection from '@components/settingSection';
+import {SliderSuperTabEventable} from '@components/sliderTab';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
+import {createSelectorForParticipants} from '@components/sidebarRight/tabs/chatMembers';
 
 export default class AppRemovedUsersTab extends SliderSuperTabEventable {
   private addBtn: HTMLButtonElement;

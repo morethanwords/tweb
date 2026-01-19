@@ -4,23 +4,23 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import ButtonIcon from '../buttonIcon';
-import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
-import {IS_APPLE, IS_MOBILE} from '../../environment/userAgent';
-import appNavigationController from '../appNavigationController';
-import {_i18n} from '../../lib/langPack';
-import cancelEvent from '../../helpers/dom/cancelEvent';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import isSelectionEmpty from '../../helpers/dom/isSelectionEmpty';
-import {MarkdownType} from '../../helpers/dom/getRichElementValue';
-import getVisibleRect from '../../helpers/dom/getVisibleRect';
-import clamp from '../../helpers/number/clamp';
-import matchUrl from '../../lib/richTextProcessor/matchUrl';
-import matchUrlProtocol from '../../lib/richTextProcessor/matchUrlProtocol';
-import getMarkupInSelection from '../../helpers/dom/getMarkupInSelection';
-import {applyMarkdown} from '../../helpers/dom/markdown';
-import findUpClassName from '../../helpers/dom/findUpClassName';
-import overlayCounter from '../../helpers/overlayCounter';
+import ButtonIcon from '@components/buttonIcon';
+import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
+import {IS_APPLE, IS_MOBILE} from '@environment/userAgent';
+import appNavigationController from '@components/appNavigationController';
+import {_i18n} from '@lib/langPack';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import isSelectionEmpty from '@helpers/dom/isSelectionEmpty';
+import {MarkdownType} from '@helpers/dom/getRichElementValue';
+import getVisibleRect from '@helpers/dom/getVisibleRect';
+import clamp from '@helpers/number/clamp';
+import matchUrl from '@lib/richTextProcessor/matchUrl';
+import matchUrlProtocol from '@lib/richTextProcessor/matchUrlProtocol';
+import getMarkupInSelection from '@helpers/dom/getMarkupInSelection';
+import {applyMarkdown} from '@helpers/dom/markdown';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import overlayCounter from '@helpers/overlayCounter';
 
 export type MarkupTooltipTypes = Extract<MarkdownType, 'bold' | 'italic' | 'underline' | 'strikethrough' | 'monospace' | 'spoiler' | 'quote' | 'link'>;
 

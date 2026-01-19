@@ -1,4 +1,4 @@
-import placeCaretAtEnd from './placeCaretAtEnd';
+import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
 
 export default function focusInput(input: HTMLElement, e?: KeyboardEvent) {
   input.focus();

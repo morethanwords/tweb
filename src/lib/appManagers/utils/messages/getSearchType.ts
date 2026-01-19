@@ -1,4 +1,4 @@
-import type {RequestHistoryOptions} from '../../appMessagesManager';
+import type {RequestHistoryOptions} from '@appManagers/appMessagesManager';
 
 export default function getSearchType(options: RequestHistoryOptions): RequestHistoryOptions['searchType'] {
   // return 'uncached';

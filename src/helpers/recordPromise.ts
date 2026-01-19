@@ -1,5 +1,5 @@
-import {logger} from '../lib/logger';
-import dT from './dT';
+import {logger} from '@lib/logger';
+import dT from '@helpers/dT';
 
 export function recordPromise<T extends Promise<any>>(
   promise: T,

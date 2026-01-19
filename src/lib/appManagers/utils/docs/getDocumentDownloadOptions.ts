@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {Document, PhotoSize, VideoSize} from '../../../../layer';
-import type {DownloadOptions} from '../../../mtproto/apiFileManager';
-import getDocumentInputFileLocation from './getDocumentInputFileLocation';
+import type {Document, PhotoSize, VideoSize} from '@layer';
+import type {DownloadOptions} from '@appManagers/apiFileManager';
+import getDocumentInputFileLocation from '@appManagers/utils/docs/getDocumentInputFileLocation';
 
 type GetDocumentDownloadOptions = {
   thumb?: PhotoSize.photoSize | Extract<VideoSize, VideoSize.videoSize>;

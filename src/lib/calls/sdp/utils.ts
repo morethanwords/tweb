@@ -5,11 +5,11 @@
  */
 
 import SDP from '.';
-import splitStringByLimitWithRest from '../../../helpers/string/splitStringByLimitWithRest';
-import UniqueNumberGenerator from '../../../helpers/uniqueNumberGenerator';
-import SDPLine from './line';
-import SDPMediaSection from './mediaSection';
-import SDPSessionSection from './sessionSection';
+import splitStringByLimitWithRest from '@helpers/string/splitStringByLimitWithRest';
+import UniqueNumberGenerator from '@helpers/uniqueNumberGenerator';
+import SDPLine from '@lib/calls/sdp/line';
+import SDPMediaSection from '@lib/calls/sdp/mediaSection';
+import SDPSessionSection from '@lib/calls/sdp/sessionSection';
 
 export function parseSdp(str: string) {
   function createSection() {

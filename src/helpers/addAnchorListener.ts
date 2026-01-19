@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {T_ME_PREFIXES} from '../lib/mtproto/mtproto_config';
-import wrapUrl from '../lib/richTextProcessor/wrapUrl';
-import cancelEvent from './dom/cancelEvent';
-import parseUriParams from './string/parseUriParams';
+import {T_ME_PREFIXES} from '@appManagers/constants';
+import wrapUrl from '@lib/richTextProcessor/wrapUrl';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import parseUriParams from '@helpers/string/parseUriParams';
 
 // * https://core.telegram.org/api/links
 

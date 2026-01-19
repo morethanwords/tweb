@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {log, serviceMessagePort} from './index.service';
+import {log, serviceMessagePort} from '@lib/serviceWorker/index.service';
 
 const deferred: {[id: string]: ShareData[]} = {};
 

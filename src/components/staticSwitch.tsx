@@ -1,6 +1,6 @@
 import {Component} from 'solid-js';
 
-import styles from './staticSwitch.module.scss';
+import styles from '@components/staticSwitch.module.scss';
 
 const StaticSwitch: Component<{
   checked?: boolean;

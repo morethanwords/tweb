@@ -1,5 +1,5 @@
-import rootScope from '../../lib/rootScope';
-import confirmationPopup from '../confirmationPopup';
+import rootScope from '@lib/rootScope';
+import confirmationPopup from '@components/confirmationPopup';
 
 export default function showLogOutPopup() {
   confirmationPopup({

@@ -4,16 +4,15 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import ctx from '../../environment/ctx';
-import callbackify from '../../helpers/callbackify';
-import {ignoreRestrictionReasons} from '../../helpers/restrictions';
-import {Config, DataJSON, HelpAppConfig, HelpPeerColors, MethodDeclMap, User} from '../../layer';
-import {InvokeApiOptions} from '../../types';
-import {AppManager} from '../appManagers/manager';
-import rootScope from '../rootScope';
-import {MTAppConfig} from './appConfig';
-import {UserAuth} from './mtproto_config';
-import {MTMessage} from './networker';
+import ctx from '@environment/ctx';
+import callbackify from '@helpers/callbackify';
+import {ignoreRestrictionReasons} from '@helpers/restrictions';
+import {Config, DataJSON, HelpAppConfig, HelpPeerColors, MethodDeclMap, User} from '@layer';
+import {InvokeApiOptions} from '@types';
+import {AppManager} from '@appManagers/manager';
+import rootScope from '@lib/rootScope';
+import {UserAuth} from '@appManagers/constants';
+import {MTMessage} from '@lib/mtproto/networker';
 
 type HashResult = {
   hash: number,

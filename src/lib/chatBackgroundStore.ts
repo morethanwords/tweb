@@ -1,11 +1,11 @@
-import {DEFAULT_BACKGROUND_SLUG} from '../config/app';
-import blur from '../helpers/blur';
-import type {Document, WallPaper} from '../layer';
+import {DEFAULT_BACKGROUND_SLUG} from '@config/app';
+import blur from '@helpers/blur';
+import type {Document, WallPaper} from '@layer';
 
-import type AppDownloadManagerInstance from './appManagers/appDownloadManager';
-import type {AppManagers} from './appManagers/managers';
-import CacheStorageController from './files/cacheStorage';
-import StaticUtilityClass from './staticUtilityClass';
+import type AppDownloadManagerInstance from '@lib/appDownloadManager';
+import type {AppManagers} from '@lib/managers';
+import CacheStorageController from '@lib/files/cacheStorage';
+import StaticUtilityClass from '@lib/staticUtilityClass';
 
 
 namespace ChatBackgroundStore {

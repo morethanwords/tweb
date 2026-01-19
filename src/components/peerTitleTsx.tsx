@@ -1,8 +1,8 @@
 import {createResource, onCleanup, Ref} from 'solid-js';
-import PeerTitle from './peerTitle';
-import {attachClickEvent} from '../helpers/dom/clickEvent';
-import {attachClassName} from '../helpers/solid/classname';
-import {createListenerSetter} from './stories/viewer';
+import PeerTitle from '@components/peerTitle';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import {attachClassName} from '@helpers/solid/classname';
+import {createListenerSetter} from '@components/stories/viewer';
 
 export const PeerTitleTsx = (props: {
   ref?: Ref<HTMLElement>;

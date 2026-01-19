@@ -1,8 +1,8 @@
-import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
-import {BotforumTab} from './botforumTab';
-import {ForumTab} from './forumTab';
-import {GroupForumTab} from './groupForumTab';
-import {MonoforumTab} from './monoforumTab';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import {BotforumTab} from '@components/forumTab/botforumTab';
+import {ForumTab} from '@components/forumTab/forumTab';
+import {GroupForumTab} from '@components/forumTab/groupForumTab';
+import {MonoforumTab} from '@components/forumTab/monoforumTab';
 
 
 export function fillForumTabRegister() {

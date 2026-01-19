@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {Chat} from '../../../../layer';
-import type {Dialog} from '../../appMessagesManager';
-import type {User} from '../../appUsersManager';
-import {AccountDatabase, getDatabaseState, getOldDatabaseState} from '../../../../config/databases/state';
-import AppStorage from '../../../storage';
-import {ActiveAccountNumber} from '../../../accounts/types';
+import type {Chat} from '@layer';
+import type {Dialog} from '@appManagers/appMessagesManager';
+import type {User} from '@appManagers/appUsersManager';
+import {AccountDatabase, getDatabaseState, getOldDatabaseState} from '@config/databases/state';
+import AppStorage from '@lib/storage';
+import {ActiveAccountNumber} from '@lib/accounts/types';
 
 export type StoragesStorages = {
   users: AppStorage<Record<UserId, User>, AccountDatabase>,

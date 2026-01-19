@@ -4,16 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {attachClickEvent} from './dom/clickEvent';
-import findUpAsChild from './dom/findUpAsChild';
-import EventListenerBase from './eventListenerBase';
-import ListenerSetter from './listenerSetter';
-import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
-import safeAssign from './object/safeAssign';
-import appNavigationController, {NavigationItem} from '../components/appNavigationController';
-import findUpClassName from './dom/findUpClassName';
-import rootScope from '../lib/rootScope';
-import liteMode from './liteMode';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import findUpAsChild from '@helpers/dom/findUpAsChild';
+import EventListenerBase from '@helpers/eventListenerBase';
+import ListenerSetter from '@helpers/listenerSetter';
+import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
+import safeAssign from '@helpers/object/safeAssign';
+import appNavigationController, {NavigationItem} from '@components/appNavigationController';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import rootScope from '@lib/rootScope';
+import liteMode from '@helpers/liteMode';
 
 const KEEP_OPEN = false;
 const TOGGLE_TIMEOUT = 200;

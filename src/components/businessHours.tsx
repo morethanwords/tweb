@@ -6,18 +6,18 @@
 
 import {createEffect, createSignal, For, on, untrack, JSX, onCleanup, getOwner, runWithOwner} from 'solid-js';
 import {Portal} from 'solid-js/web';
-import OpeningHours from '../helpers/openingHours';
-import {BusinessWorkHours, Timezone} from '../layer';
-import Row from './row';
-import I18n, {i18n} from '../lib/langPack';
-import {getWeekDays, ONE_DAY_MINUTES, ONE_WEEK_MINUTES} from '../helpers/date';
-import rotateArray from '../helpers/array/rotate';
-import classNames from '../helpers/string/classNames';
-import findUpAsChild from '../helpers/dom/findUpAsChild';
-import ListenerSetter from '../helpers/listenerSetter';
-import {copyTextToClipboard} from '../helpers/clipboard';
-import {toastNew} from './toast';
-import Animated from '../helpers/solid/animations';
+import OpeningHours from '@helpers/openingHours';
+import {BusinessWorkHours, Timezone} from '@layer';
+import Row from '@components/row';
+import I18n, {i18n} from '@lib/langPack';
+import {getWeekDays, ONE_DAY_MINUTES, ONE_WEEK_MINUTES} from '@helpers/date';
+import rotateArray from '@helpers/array/rotate';
+import classNames from '@helpers/string/classNames';
+import findUpAsChild from '@helpers/dom/findUpAsChild';
+import ListenerSetter from '@helpers/listenerSetter';
+import {copyTextToClipboard} from '@helpers/clipboard';
+import {toastNew} from '@components/toast';
+import Animated from '@helpers/solid/animations';
 
 export default function BusinessHours(props: {
   hours: () => BusinessWorkHours,

@@ -1,15 +1,15 @@
 import {JSX} from 'solid-js';
-import liteMode from '../../../helpers/liteMode';
-import lottieLoader, {LottieAssetName} from '../../../lib/rlottie/lottieLoader';
-import Button from '../../buttonTsx';
-import LottieAnimation from '../../lottieAnimation';
-import {RLottieOptions} from '../../../lib/rlottie/rlottiePlayer';
+import liteMode from '@helpers/liteMode';
+import lottieLoader, {LottieAssetName} from '@lib/rlottie/lottieLoader';
+import Button from '@components/buttonTsx';
+import LottieAnimation from '@components/lottieAnimation';
+import {RLottieOptions} from '@lib/rlottie/rlottiePlayer';
 
-import styles from './premiumGift.module.scss';
-import stylesCommon from './service.module.scss';
-import classNames from '../../../helpers/string/classNames';
-import {MyDocument} from '../../../lib/appManagers/appDocsManager';
-import {StickerTsx} from '../../wrappers/sticker';
+import styles from '@components/chat/bubbles/premiumGift.module.scss';
+import stylesCommon from '@components/chat/bubbles/service.module.scss';
+import classNames from '@helpers/string/classNames';
+import {MyDocument} from '@appManagers/appDocsManager';
+import {StickerTsx} from '@components/wrappers/sticker';
 
 export function PremiumGiftBubble(props: {
   assetName?: LottieAssetName

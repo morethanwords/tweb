@@ -1,8 +1,8 @@
-import {animateValue} from '../../../helpers/animateValue';
-import deferredPromise from '../../../helpers/cancellablePromise';
-import {hexaToRgba} from '../../../helpers/color';
-import {NumberPair} from '../types';
-import {distance} from '../utils';
+import {animateValue} from '@helpers/animateValue';
+import deferredPromise from '@helpers/cancellablePromise';
+import {hexaToRgba} from '@helpers/color';
+import {NumberPair} from '@components/mediaEditor/types';
+import {distance} from '@components/mediaEditor/utils';
 
 
 export type BrushDrawnLine = {

@@ -1,8 +1,8 @@
 import {StandardLonghandPropertiesHyphen} from 'csstype';
 import {Accessor} from 'solid-js';
-import useGlobalDocumentEvent from './useGlobalDocumentEvent';
-import {requestRAF} from './solid/requestRAF';
-import {useIsCleaned} from '../hooks/useIsCleaned';
+import useGlobalDocumentEvent from '@helpers/useGlobalDocumentEvent';
+import {requestRAF} from '@helpers/solid/requestRAF';
+import {useIsCleaned} from '@hooks/useIsCleaned';
 
 
 export type SwipeDirectiveArgs = {

@@ -1,6 +1,6 @@
-import {InputMedia, Message, MessageMedia} from '../../../../layer';
-import getDocumentInput from '../docs/getDocumentInput';
-import getPhotoInput from '../photos/getPhotoInput';
+import {InputMedia, Message, MessageMedia} from '@layer';
+import getDocumentInput from '@appManagers/utils/docs/getDocumentInput';
+import getPhotoInput from '@appManagers/utils/photos/getPhotoInput';
 
 export function makeMessageMediaInput(media: MessageMedia): InputMedia | undefined {
   if(!media) return;

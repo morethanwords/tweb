@@ -4,23 +4,23 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {attachClickEvent} from '../helpers/dom/clickEvent';
-import findUpAsChild from '../helpers/dom/findUpAsChild';
-import placeCaretAtEnd from '../helpers/dom/placeCaretAtEnd';
-import positionElementByIndex from '../helpers/dom/positionElementByIndex';
-import Sortable from '../helpers/dom/sortable';
-import ListenerSetter from '../helpers/listenerSetter';
-import {Middleware} from '../helpers/middleware';
-import noop from '../helpers/noop';
-import SortedList, {SortedElementBase} from '../helpers/sortedList';
-import {Chat, User, Username} from '../layer';
-import {i18n, LangPackKey} from '../lib/langPack';
-import rootScope from '../lib/rootScope';
-import confirmationPopup from './confirmationPopup';
-import Icon from './icon';
-import Row from './row';
-import SettingSection from './settingSection';
-import {UsernameInputField} from './usernameInputField';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import findUpAsChild from '@helpers/dom/findUpAsChild';
+import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
+import positionElementByIndex from '@helpers/dom/positionElementByIndex';
+import Sortable from '@helpers/dom/sortable';
+import ListenerSetter from '@helpers/listenerSetter';
+import {Middleware} from '@helpers/middleware';
+import noop from '@helpers/noop';
+import SortedList, {SortedElementBase} from '@helpers/sortedList';
+import {Chat, User, Username} from '@layer';
+import {i18n, LangPackKey} from '@lib/langPack';
+import rootScope from '@lib/rootScope';
+import confirmationPopup from '@components/confirmationPopup';
+import Icon from '@components/icon';
+import Row from '@components/row';
+import SettingSection from '@components/settingSection';
+import {UsernameInputField} from '@components/usernameInputField';
 
 const CLASS_NAME = 'usernames';
 

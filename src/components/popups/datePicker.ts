@@ -5,11 +5,11 @@
  */
 
 import PopupElement, {PopupOptions} from '.';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import mediaSizes from '../../helpers/mediaSizes';
-import I18n from '../../lib/langPack';
-import ButtonIcon from '../buttonIcon';
-import InputField from '../inputField';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import mediaSizes from '@helpers/mediaSizes';
+import I18n from '@lib/langPack';
+import ButtonIcon from '@components/buttonIcon';
+import InputField from '@components/inputField';
 
 export default class PopupDatePicker extends PopupElement {
   protected controlsDiv: HTMLElement;

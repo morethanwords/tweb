@@ -1,4 +1,4 @@
-import compareLong from './long/compareLong';
+import compareLong from '@helpers/long/compareLong';
 
 export default function compareValue(val1: string | number, val2: typeof val1) {
   if((val1 as number).toExponential) {

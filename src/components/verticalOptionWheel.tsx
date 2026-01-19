@@ -1,14 +1,14 @@
 import {createEffect, createMemo, createSignal, For, type JSX, on, onCleanup, untrack} from 'solid-js';
-import {animateValue} from '../helpers/animateValue';
-import {animate} from '../helpers/animation';
-import lastItem from '../helpers/array/lastItem';
-import {keepMe} from '../helpers/keepMe';
-import {subscribeOn} from '../helpers/solid/subscribeOn';
-import swipe, {SwipeDirectiveArgs} from '../helpers/useSwipe';
-import useElementSize from '../hooks/useElementSize';
-import {useIsCleaned} from '../hooks/useIsCleaned';
-import {useScrollTop} from '../hooks/useScrollTop';
-import styles from './verticalOptionWheel.module.scss';
+import {animateValue} from '@helpers/animateValue';
+import {animate} from '@helpers/animation';
+import lastItem from '@helpers/array/lastItem';
+import {keepMe} from '@helpers/keepMe';
+import {subscribeOn} from '@helpers/solid/subscribeOn';
+import swipe, {SwipeDirectiveArgs} from '@helpers/useSwipe';
+import useElementSize from '@hooks/useElementSize';
+import {useIsCleaned} from '@hooks/useIsCleaned';
+import {useScrollTop} from '@hooks/useScrollTop';
+import styles from '@components/verticalOptionWheel.module.scss';
 
 keepMe(swipe);
 

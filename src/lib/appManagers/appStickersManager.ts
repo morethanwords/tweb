@@ -4,28 +4,28 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {MyDocument} from './appDocsManager';
-import type {DownloadOptions} from '../mtproto/apiFileManager';
-import {Document, InputFileLocation, InputStickerSet, MessageEntity, MessagesAllStickers, MessagesFavedStickers, MessagesFeaturedStickers, MessagesFoundStickerSets, MessagesRecentStickers, MessagesStickers, MessagesStickerSet, PhotoSize, StickerPack, StickerSet, StickerSetCovered, Update, VideoSize} from '../../layer';
-import {Modify} from '../../types';
-import AppStorage from '../storage';
-import {AccountDatabase, getDatabaseState} from '../../config/databases/state';
-import assumeType from '../../helpers/assumeType';
-import fixBase64String from '../../helpers/fixBase64String';
-import forEachReverse from '../../helpers/array/forEachReverse';
-import findAndSplice from '../../helpers/array/findAndSplice';
-import {AppManager} from './manager';
-import fixEmoji, {cleanEmoji} from '../richTextProcessor/fixEmoji';
-import ctx from '../../environment/ctx';
-import {getEnvironment} from '../../environment/utils';
-import getDocumentInput from './utils/docs/getDocumentInput';
-import getStickerEffectThumb from './utils/stickers/getStickerEffectThumb';
-import tsNow from '../../helpers/tsNow';
-import SearchIndex from '../searchIndex';
-import parseEntities from '../richTextProcessor/parseEntities';
-import toArray from '../../helpers/array/toArray';
-import base64ToBytes from '../../helpers/string/base64ToBytes';
-import StickerType from '../../config/stickerType';
+import type {MyDocument} from '@appManagers/appDocsManager';
+import type {DownloadOptions} from '@appManagers/apiFileManager';
+import {Document, InputFileLocation, InputStickerSet, MessageEntity, MessagesAllStickers, MessagesFavedStickers, MessagesFeaturedStickers, MessagesFoundStickerSets, MessagesRecentStickers, MessagesStickers, MessagesStickerSet, PhotoSize, StickerPack, StickerSet, StickerSetCovered, Update, VideoSize} from '@layer';
+import {Modify} from '@types';
+import AppStorage from '@lib/storage';
+import {AccountDatabase, getDatabaseState} from '@config/databases/state';
+import assumeType from '@helpers/assumeType';
+import fixBase64String from '@helpers/fixBase64String';
+import forEachReverse from '@helpers/array/forEachReverse';
+import findAndSplice from '@helpers/array/findAndSplice';
+import {AppManager} from '@appManagers/manager';
+import fixEmoji, {cleanEmoji} from '@lib/richTextProcessor/fixEmoji';
+import ctx from '@environment/ctx';
+import {getEnvironment} from '@environment/utils';
+import getDocumentInput from '@appManagers/utils/docs/getDocumentInput';
+import getStickerEffectThumb from '@appManagers/utils/stickers/getStickerEffectThumb';
+import tsNow from '@helpers/tsNow';
+import SearchIndex from '@lib/searchIndex';
+import parseEntities from '@lib/richTextProcessor/parseEntities';
+import toArray from '@helpers/array/toArray';
+import base64ToBytes from '@helpers/string/base64ToBytes';
+import StickerType from '@config/stickerType';
 
 const CACHE_TIME = 3600e3;
 

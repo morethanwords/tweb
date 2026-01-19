@@ -1,6 +1,6 @@
-import TDrag from './drag';
-import {isTouchDevice, getElemPagePos, drawRoundedRect} from './utils';
-import {TChartUnitOptions} from './types';
+import TDrag from '@lib/tchart/drag';
+import {isTouchDevice, getElemPagePos, drawRoundedRect} from '@lib/tchart/utils';
+import {TChartUnitOptions} from '@lib/tchart/types';
 
 export default class THandle {
   private opts: TChartUnitOptions;

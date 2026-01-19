@@ -1,10 +1,10 @@
 import PopupElement, {addCancelButton, PopupButton} from '.';
-import deferredPromise from '../../helpers/cancellablePromise';
-import {InputCheckPasswordSRP} from '../../layer';
-import rootScope from '../../lib/rootScope';
-import {InputState} from '../inputField';
-import PasswordInputField from '../passwordInputField';
-import PopupPeer, {PopupPeerOptions} from './peer';
+import deferredPromise from '@helpers/cancellablePromise';
+import {InputCheckPasswordSRP} from '@layer';
+import rootScope from '@lib/rootScope';
+import {InputState} from '@components/inputField';
+import PasswordInputField from '@components/passwordInputField';
+import PopupPeer, {PopupPeerOptions} from '@components/popups/peer';
 
 export async function passwordPopup<Result>(options: Omit<PopupPeerOptions, 'inputField'> & {
   button?: Omit<PopupPeerOptions['buttons'][0], 'callback'>;

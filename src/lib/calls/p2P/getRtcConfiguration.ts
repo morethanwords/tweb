@@ -9,7 +9,7 @@
  * https://github.com/evgeny-nadymov/telegram-react/blob/master/LICENSE
  */
 
-import {PhoneCall} from '../../../layer';
+import {PhoneCall} from '@layer';
 
 export default function getRtcConfiguration(call: PhoneCall.phoneCall): RTCConfiguration {
   const iceServers: RTCIceServer[] = [];

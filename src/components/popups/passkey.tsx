@@ -1,10 +1,10 @@
-import IS_WEB_AUTHN_SUPPORTED from '../../environment/webAuthn';
-import {Passkey} from '../../layer';
-import {getInputPasskeyCredential} from '../../lib/appManagers/utils/account/getInputPasskeyResponse';
-import {i18n} from '../../lib/langPack';
-import rootScope from '../../lib/rootScope';
-import {toastNew} from '../toast';
-import showFeatureDetailsPopup from './featureDetails';
+import IS_WEB_AUTHN_SUPPORTED from '@environment/webAuthn';
+import {Passkey} from '@layer';
+import {getInputPasskeyCredential} from '@appManagers/utils/account/getInputPasskeyResponse';
+import {i18n} from '@lib/langPack';
+import rootScope from '@lib/rootScope';
+import {toastNew} from '@components/toast';
+import showFeatureDetailsPopup from '@components/popups/featureDetails';
 
 export async function createPasskey() {
   const registrationOptions = await rootScope.managers.appAccountManager.initPasskeyRegistration();

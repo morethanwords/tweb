@@ -1,4 +1,4 @@
-import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
+import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 
 let worker: Worker;
 let promises: CancellablePromise<TranslatableLanguageISO>[];

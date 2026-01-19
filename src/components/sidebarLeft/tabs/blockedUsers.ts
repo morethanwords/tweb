@@ -4,22 +4,22 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {SliderSuperTab} from '../../slider';
-import {ButtonMenuSync} from '../../buttonMenu';
-import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG} from '../../../lib/appManagers/appDialogsManager';
-import PopupPickUser from '../../popups/pickUser';
-import rootScope from '../../../lib/rootScope';
-import findUpTag from '../../../helpers/dom/findUpTag';
-import ButtonCorner from '../../buttonCorner';
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import formatUserPhone from '../../wrappers/formatUserPhone';
-import getUserStatusString from '../../wrappers/getUserStatusString';
-import {attachContextMenuListener} from '../../../helpers/dom/attachContextMenuListener';
-import positionMenu from '../../../helpers/positionMenu';
-import contextMenuController from '../../../helpers/contextMenuController';
-import getPeerActiveUsernames from '../../../lib/appManagers/utils/peers/getPeerActiveUsernames';
-import SettingSection from '../../settingSection';
-import PopupElement from '../../popups';
+import {SliderSuperTab} from '@components/slider';
+import {ButtonMenuSync} from '@components/buttonMenu';
+import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG} from '@lib/appDialogsManager';
+import PopupPickUser from '@components/popups/pickUser';
+import rootScope from '@lib/rootScope';
+import findUpTag from '@helpers/dom/findUpTag';
+import ButtonCorner from '@components/buttonCorner';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import formatUserPhone from '@components/wrappers/formatUserPhone';
+import getUserStatusString from '@components/wrappers/getUserStatusString';
+import {attachContextMenuListener} from '@helpers/dom/attachContextMenuListener';
+import positionMenu from '@helpers/positionMenu';
+import contextMenuController from '@helpers/contextMenuController';
+import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
+import SettingSection from '@components/settingSection';
+import PopupElement from '@components/popups';
 
 export default class AppBlockedUsersTab extends SliderSuperTab {
   public peerIds: PeerId[];

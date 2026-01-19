@@ -1,25 +1,25 @@
-import PopupElement, {createPopup} from './indexTsx'
+import PopupElement, {createPopup} from '@components/popups/indexTsx'
 
-import {CodeInputField} from '../codeInputField';
-import {TransitionSliderTsx} from '../transitionTsx';
+import {CodeInputField} from '@components/codeInputField';
+import {TransitionSliderTsx} from '@components/transitionTsx';
 import {createEffect, createSignal, onCleanup, onMount, Ref, Show} from 'solid-js';
 
-import styles from './emailSetup.module.scss';
-import LottieAnimation from '../lottieAnimation';
-import lottieLoader from '../../lib/rlottie/lottieLoader';
-import {I18nTsx} from '../../helpers/solid/i18n';
-import {InputFieldTsx} from '../inputFieldTsx';
-import {LangPackKey} from '../../lib/langPack';
-import ButtonTsx from '../buttonTsx';
-import classNames from '../../helpers/string/classNames';
-import {AccountSentEmailCode, EmailVerifyPurpose, MessageEntity} from '../../layer';
-import appNavigationController, {NavigationItem} from '../appNavigationController';
-import InputField, {InputState} from '../inputField';
-import {doubleRaf, fastRaf} from '../../helpers/schedulers';
-import Animated from '../../helpers/solid/animations';
-import rootScope from '../../lib/rootScope';
-import {subscribeOn} from '../../helpers/solid/subscribeOn';
-import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
+import styles from '@components/popups/emailSetup.module.scss';
+import LottieAnimation from '@components/lottieAnimation';
+import lottieLoader from '@lib/rlottie/lottieLoader';
+import {I18nTsx} from '@helpers/solid/i18n';
+import {InputFieldTsx} from '@components/inputFieldTsx';
+import {LangPackKey} from '@lib/langPack';
+import ButtonTsx from '@components/buttonTsx';
+import classNames from '@helpers/string/classNames';
+import {AccountSentEmailCode, EmailVerifyPurpose, MessageEntity} from '@layer';
+import appNavigationController, {NavigationItem} from '@components/appNavigationController';
+import InputField, {InputState} from '@components/inputField';
+import {doubleRaf, fastRaf} from '@helpers/schedulers';
+import Animated from '@helpers/solid/animations';
+import rootScope from '@lib/rootScope';
+import {subscribeOn} from '@helpers/solid/subscribeOn';
+import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 
 export function wrapEmailPattern(pattern: string) {
   if(pattern.includes(' ') || !pattern.includes('*')) return pattern;

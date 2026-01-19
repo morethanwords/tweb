@@ -4,24 +4,24 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import getCallAudioAsset from '../../components/call/getAudioAsset';
-import {MOUNT_CLASS_TO} from '../../config/debug';
-import IS_CALL_SUPPORTED from '../../environment/callSupport';
-import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-import insertInDescendSortedArray from '../../helpers/array/insertInDescendSortedArray';
-import AudioAssetPlayer from '../../helpers/audioAssetPlayer';
-import bytesCmp from '../../helpers/bytes/bytesCmp';
-import EventListenerBase from '../../helpers/eventListenerBase';
-import tsNow from '../../helpers/tsNow';
-import {PhoneCallProtocol} from '../../layer';
-import {CallId} from '../appManagers/appCallsManager';
-import {AppManagers} from '../appManagers/managers';
-import {logger} from '../logger';
-import apiManagerProxy from '../mtproto/mtprotoworker';
-import {NULL_PEER_ID} from '../mtproto/mtproto_config';
-import rootScope from '../rootScope';
-import CallInstance from './callInstance';
-import CALL_STATE from './callState';
+import getCallAudioAsset from '@components/call/getAudioAsset';
+import {MOUNT_CLASS_TO} from '@config/debug';
+import IS_CALL_SUPPORTED from '@environment/callSupport';
+import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
+import insertInDescendSortedArray from '@helpers/array/insertInDescendSortedArray';
+import AudioAssetPlayer from '@helpers/audioAssetPlayer';
+import bytesCmp from '@helpers/bytes/bytesCmp';
+import EventListenerBase from '@helpers/eventListenerBase';
+import tsNow from '@helpers/tsNow';
+import {PhoneCallProtocol} from '@layer';
+import {CallId} from '@appManagers/appCallsManager';
+import {AppManagers} from '@lib/managers';
+import {logger} from '@lib/logger';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import {NULL_PEER_ID} from '@appManagers/constants';
+import rootScope from '@lib/rootScope';
+import CallInstance from '@lib/calls/callInstance';
+import CALL_STATE from '@lib/calls/callState';
 
 const CALL_REQUEST_TIMEOUT = 45e3;
 

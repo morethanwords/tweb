@@ -9,11 +9,13 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type {ConnectionStatusChange} from './connectionStatus';
-import MTPNetworker from './networker';
-import App from '../../config/app';
-import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-import {AppManager} from '../appManagers/manager';
+import MTPNetworker from '@lib/mtproto/networker';
+import App from '@config/app';
+import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
+import {AppManager} from '@appManagers/manager';
+import AccountController from '@lib/accounts/accountController';
+import bytesToHex from '@helpers/bytes/bytesToHex';
+import {getEnvironment} from '@environment/utils';
 
 export class NetworkerFactory extends AppManager {
   private networkers: MTPNetworker[] = [];
@@ -27,11 +29,6 @@ export class NetworkerFactory extends AppManager {
     this.name = 'NET-FACTORY';
   }
 
-  public onConnectionStatusChange(status: ConnectionStatusChange) {
-    this.rootScope.dispatchEvent('connection_status_change', status);
-    //  ({type: 'connectionStatusChange', payload: status});
-  }
-
   public removeNetworker(networker: MTPNetworker) {
     indexOfAndSplice(this.networkers, networker);
   }
@@ -40,11 +37,34 @@ export class NetworkerFactory extends AppManager {
     this.updatesProcessor = callback;
   }
 
-  public getNetworker(options: Omit<ConstructorParameters<typeof MTPNetworker>[0], 'networkerFactory' | 'timeManager'>) {
+  public getNetworker(options: Omit<
+    ConstructorParameters<typeof MTPNetworker>[0],
+    'networkerFactory' | 'timeManager' | 'getBaseDcId' | 'updatesProcessor' | 'getInitConnectionParams'
+  >) {
     const networker = new MTPNetworker({
       ...options,
-      networkerFactory: this,
-      timeManager: this.timeManager
+      timeManager: this.timeManager,
+      getInitConnectionParams: () => ({
+        id: App.id,
+        deviceModel: getEnvironment().USER_AGENT || 'Unknown UserAgent',
+        systemVersion: navigator.platform || 'Unknown Platform',
+        version: App.version + (App.isMainDomain ? ' ' + App.suffix : ''),
+        systemLangCode: navigator.language || 'en',
+        langPack: App.langPack,
+        langCode: this.language
+      }),
+      getBaseDcId: () => this.apiManager.getBaseDcId(),
+      createLogger: this.createLogger.bind(this),
+      isForcedStopped: () => this.akStopped,
+      updatesProcessor: (obj) => this.updatesProcessor?.(obj),
+      onConnectionStatus: (status) => {
+        this.rootScope.dispatchEvent('connection_status_change', status);
+      },
+      onServerSalt: (serverSalt) => {
+        AccountController.update(this.getAccountNumber(), {
+          [`dc${options.dcId}_server_salt`]: bytesToHex(serverSalt)
+        });
+      }
     });
     this.networkers.push(networker);
     return networker;

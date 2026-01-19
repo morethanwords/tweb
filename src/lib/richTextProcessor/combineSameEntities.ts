@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {MessageEntity} from '../../layer';
+import {MessageEntity} from '@layer';
 
 const CAN_COMBINE_ENTITIES: Set<MessageEntity['_']> = new Set([
   'messageEntityBold',

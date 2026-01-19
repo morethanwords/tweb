@@ -1,4 +1,4 @@
-import {AvailableReaction, Reaction} from '../../../../layer';
+import {AvailableReaction, Reaction} from '@layer';
 
 export default function availableReactionToReaction(availableReaction: AvailableReaction): Reaction.reactionEmoji {
   return {

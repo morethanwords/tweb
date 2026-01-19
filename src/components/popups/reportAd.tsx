@@ -5,23 +5,23 @@
  */
 
 import PopupElement from '.';
-import {ChannelsSponsoredMessageReportResult, MessageReportOption, ReportResult, SponsoredMessage, SponsoredMessageReportOption} from '../../layer';
+import {ChannelsSponsoredMessageReportResult, MessageReportOption, ReportResult, SponsoredMessage, SponsoredMessageReportOption} from '@layer';
 import {Accessor, createSignal, For, Setter, createResource, createEffect, onCleanup, createMemo, untrack} from 'solid-js';
-import Section from '../section';
-import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
-import {TransitionGroup} from '../../helpers/solid/transitionGroup';
-import TransitionSlider from '../transition';
-import {i18n, LangPackKey} from '../../lib/langPack';
-import {toastNew} from '../toast';
-import Icon from '../icon';
-import rootScope from '../../lib/rootScope';
-import preloadAnimatedEmojiSticker from '../../helpers/preloadAnimatedEmojiSticker';
-import wrapStickerEmoji from '../wrappers/stickerEmoji';
-import InputField from '../inputField';
-import createMiddleware from '../../helpers/solid/createMiddleware';
-import Button from '../buttonTsx';
-import classNames from '../../helpers/string/classNames';
-import Row from '../rowTsx';
+import Section from '@components/section';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import {TransitionGroup} from '@helpers/solid/transitionGroup';
+import TransitionSlider from '@components/transition';
+import {i18n, LangPackKey} from '@lib/langPack';
+import {toastNew} from '@components/toast';
+import Icon from '@components/icon';
+import rootScope from '@lib/rootScope';
+import preloadAnimatedEmojiSticker from '@helpers/preloadAnimatedEmojiSticker';
+import wrapStickerEmoji from '@components/wrappers/stickerEmoji';
+import InputField from '@components/inputField';
+import createMiddleware from '@helpers/solid/createMiddleware';
+import Button from '@components/buttonTsx';
+import classNames from '@helpers/string/classNames';
+import Row from '@components/rowTsx';
 
 export default class PopupReportAd extends PopupElement {
   private static STICKER_EMOJI = '👮‍♀️';

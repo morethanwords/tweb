@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {InputGroupCall, Message, MessageAction} from '../../layer';
-import wrapUrl from '../../lib/richTextProcessor/wrapUrl';
+import {InputGroupCall, Message, MessageAction} from '@layer';
+import wrapUrl from '@lib/richTextProcessor/wrapUrl';
 
 export default function wrapJoinVoiceChatAnchor(message: Message.messageService) {
   const action = message.action as MessageAction.messageActionInviteToGroupCall;

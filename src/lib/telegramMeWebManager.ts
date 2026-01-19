@@ -9,12 +9,12 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import App from '../../config/app';
-import {MOUNT_CLASS_TO} from '../../config/debug';
-import Modes from '../../config/modes';
-import loadScript from '../../helpers/dom/loadScript';
-import tsNow from '../../helpers/tsNow';
-import sessionStorage from '../sessionStorage';
+import App from '@config/app';
+import {MOUNT_CLASS_TO} from '@config/debug';
+import Modes from '@config/modes';
+import loadScript from '@helpers/dom/loadScript';
+import tsNow from '@helpers/tsNow';
+import sessionStorage from '@lib/sessionStorage';
 
 export class TelegramMeWebManager {
   private disabled = /* false &&  */(Modes.test || !App.domains.includes(location.hostname));

@@ -1,8 +1,8 @@
 import {Accessor, createMemo, createRenderEffect, createRoot, onCleanup} from 'solid-js';
 import {createStore, Store} from 'solid-js/store';
 
-import pickKeys from '../helpers/object/pickKeys';
-import {requestRAF} from '../helpers/solid/requestRAF';
+import pickKeys from '@helpers/object/pickKeys';
+import {requestRAF} from '@helpers/solid/requestRAF';
 
 
 type SizeRoot = {

@@ -4,27 +4,27 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {putPreloader} from '../components/putPreloader';
-import mediaSizes from '../helpers/mediaSizes';
-import {AccountPassword} from '../layer';
-import Page from './page';
-import Button from '../components/button';
-import PasswordInputField from '../components/passwordInputField';
-import PasswordMonkey from '../components/monkeys/password';
-import I18n, {i18n} from '../lib/langPack';
-import LoginPage, {SimpleConfirmationPopup} from './loginPage';
-import cancelEvent from '../helpers/dom/cancelEvent';
-import {attachClickEvent} from '../helpers/dom/clickEvent';
-import htmlToSpan from '../helpers/dom/htmlToSpan';
-import replaceContent from '../helpers/dom/replaceContent';
-import toggleDisability from '../helpers/dom/toggleDisability';
-import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
-import rootScope from '../lib/rootScope';
-import anchorCallback from '../helpers/dom/anchorCallback';
-import {toastNew} from '../components/toast';
-import pageSignIn from './pageSignIn';
-import formatDuration from '../helpers/formatDuration';
-import {wrapFormattedDuration} from '../components/wrappers/wrapDuration';
+import {putPreloader} from '@components/putPreloader';
+import mediaSizes from '@helpers/mediaSizes';
+import {AccountPassword} from '@layer';
+import Page from '@/pages/page';
+import Button from '@components/button';
+import PasswordInputField from '@components/passwordInputField';
+import PasswordMonkey from '@components/monkeys/password';
+import I18n, {i18n} from '@lib/langPack';
+import LoginPage, {SimpleConfirmationPopup} from '@/pages/loginPage';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import htmlToSpan from '@helpers/dom/htmlToSpan';
+import replaceContent from '@helpers/dom/replaceContent';
+import toggleDisability from '@helpers/dom/toggleDisability';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import rootScope from '@lib/rootScope';
+import anchorCallback from '@helpers/dom/anchorCallback';
+import {toastNew} from '@components/toast';
+import pageSignIn from '@/pages/pageSignIn';
+import formatDuration from '@helpers/formatDuration';
+import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
 
 const TEST = false;
 let passwordInput: HTMLInputElement;

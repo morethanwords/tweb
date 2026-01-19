@@ -1,4 +1,4 @@
-import {i18n} from '../../lib/langPack';
+import {i18n} from '@lib/langPack';
 
 export type AdjustmentsConfig = typeof adjustmentsConfig;
 

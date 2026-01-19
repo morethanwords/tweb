@@ -4,16 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import TransitionSlider from './transition';
-import {ScrollableX} from './scrollable';
-import rootScope from '../lib/rootScope';
-import {fastRaf} from '../helpers/schedulers';
-import {FocusDirection} from '../helpers/fastSmoothScroll';
-import findUpAsChild from '../helpers/dom/findUpAsChild';
-import whichChild from '../helpers/dom/whichChild';
-import ListenerSetter from '../helpers/listenerSetter';
-import {attachClickEvent} from '../helpers/dom/clickEvent';
-import liteMode from '../helpers/liteMode';
+import TransitionSlider from '@components/transition';
+import {ScrollableX} from '@components/scrollable';
+import rootScope from '@lib/rootScope';
+import {fastRaf} from '@helpers/schedulers';
+import {FocusDirection} from '@helpers/fastSmoothScroll';
+import findUpAsChild from '@helpers/dom/findUpAsChild';
+import whichChild from '@helpers/dom/whichChild';
+import ListenerSetter from '@helpers/listenerSetter';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import liteMode from '@helpers/liteMode';
 
 type OnChangeArgs = {
   element: HTMLElement;

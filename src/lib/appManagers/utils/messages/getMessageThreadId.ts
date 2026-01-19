@@ -1,6 +1,6 @@
-import {Message} from '../../../../layer';
-import {GENERAL_TOPIC_ID} from '../../../mtproto/mtproto_config';
-import getPeerId from '../peers/getPeerId';
+import {Message} from '@layer';
+import {GENERAL_TOPIC_ID} from '@appManagers/constants';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
 
 
 type Options = {

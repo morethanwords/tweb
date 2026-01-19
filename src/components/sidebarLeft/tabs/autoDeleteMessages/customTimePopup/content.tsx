@@ -1,11 +1,11 @@
 import {createSignal} from 'solid-js';
-import {I18nTsx} from '../../../../../helpers/solid/i18n';
-import {LangPackKey} from '../../../../../lib/langPack';
-import defineSolidElement, {PassedProps} from '../../../../../lib/solidjs/defineSolidElement';
-import {useHotReloadGuard} from '../../../../../lib/solidjs/hotReloadGuard';
-import {VerticalOptionWheel} from '../../../../verticalOptionWheel';
-import {customTimeOptions} from '../options';
-import styles from './styles.module.scss';
+import {I18nTsx} from '@helpers/solid/i18n';
+import {LangPackKey} from '@lib/langPack';
+import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import {VerticalOptionWheel} from '@components/verticalOptionWheel';
+import {customTimeOptions} from '@components/sidebarLeft/tabs/autoDeleteMessages/options';
+import styles from '@components/sidebarLeft/tabs/autoDeleteMessages/customTimePopup/styles.module.scss';
 
 if(import.meta.hot) import.meta.hot.accept();
 

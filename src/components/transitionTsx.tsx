@@ -1,6 +1,6 @@
 import {createEffect, For, JSX, on, onMount, splitProps} from 'solid-js';
-import TransitionSlider, {TransitionSliderOptions} from './transition';
-import classNames from '../helpers/string/classNames';
+import TransitionSlider, {TransitionSliderOptions} from '@components/transition';
+import classNames from '@helpers/string/classNames';
 
 export function TransitionSliderTsx(props: Omit<TransitionSliderOptions, 'content'> & {
   children: JSX.Element[]

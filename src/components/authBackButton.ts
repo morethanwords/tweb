@@ -1,11 +1,11 @@
-import {doubleRaf} from '../helpers/schedulers';
-import pause from '../helpers/schedulers/pause';
+import {doubleRaf} from '@helpers/schedulers';
+import pause from '@helpers/schedulers/pause';
 
-import {getValidatedAccount} from '../lib/accounts/getValidatedAccount';
-import {changeAccount} from '../lib/accounts/changeAccount';
+import {getValidatedAccount} from '@lib/accounts/getValidatedAccount';
+import {changeAccount} from '@lib/accounts/changeAccount';
 
-import ButtonIcon from './buttonIcon';
-import sessionStorage from '../lib/sessionStorage';
+import ButtonIcon from '@components/buttonIcon';
+import sessionStorage from '@lib/sessionStorage';
 
 export function AuthBackButton() {
   const button = ButtonIcon('back');

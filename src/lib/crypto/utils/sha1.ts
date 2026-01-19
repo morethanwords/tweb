@@ -1,5 +1,5 @@
-import convertToUint8Array from '../../../helpers/bytes/convertToUint8Array';
-import subtle from '../subtle';
+import convertToUint8Array from '@helpers/bytes/convertToUint8Array';
+import subtle from '@lib/crypto/subtle';
 // import sha1 from '@cryptography/sha1';
 
 export default function sha1(bytes: Parameters<typeof convertToUint8Array>[0]) {

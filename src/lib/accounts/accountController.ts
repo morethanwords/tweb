@@ -1,16 +1,16 @@
-import {MOUNT_CLASS_TO} from '../../config/debug';
-import App from '../../config/app';
-import tsNow from '../../helpers/tsNow';
-import type {TrueDcId} from '../../types';
+import {MOUNT_CLASS_TO} from '@config/debug';
+import App from '@config/app';
+import tsNow from '@helpers/tsNow';
+import type {TrueDcId} from '@types';
 
-import sessionStorage from '../sessionStorage';
-import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
-import StaticUtilityClass from '../staticUtilityClass';
+import sessionStorage from '@lib/sessionStorage';
+import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
+import StaticUtilityClass from '@lib/staticUtilityClass';
 
-import {AccountSessionData, ActiveAccountNumber} from './types';
-import {MAX_ACCOUNTS} from './constants';
-import bytesToHex from '../../helpers/bytes/bytesToHex';
-import randomize from '../../helpers/array/randomize';
+import {AccountSessionData, ActiveAccountNumber} from '@lib/accounts/types';
+import {MAX_ACCOUNTS} from '@lib/accounts/constants';
+import bytesToHex from '@helpers/bytes/bytesToHex';
+import randomize from '@helpers/array/randomize';
 
 export class AccountController extends StaticUtilityClass {
   static async getTotalAccounts() {

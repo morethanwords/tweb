@@ -4,24 +4,24 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {AutoDownloadPeerTypeSettings, STATE_INIT, SETTINGS_INIT} from '../../../config/state';
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import replaceContent from '../../../helpers/dom/replaceContent';
-import toggleDisability from '../../../helpers/dom/toggleDisability';
-import formatBytes from '../../../helpers/formatBytes';
-import copy from '../../../helpers/object/copy';
-import deepEqual from '../../../helpers/object/deepEqual';
-import {FormatterArguments, i18n, join, LangPackKey} from '../../../lib/langPack';
-import Button from '../../button';
-import CheckboxField from '../../checkboxField';
-import confirmationPopup from '../../confirmationPopup';
-import Row from '../../row';
-import {SliderSuperTabEventable, SliderSuperTabEventableConstructable} from '../../sliderTab';
-import AppAutoDownloadFileTab from './autoDownload/file';
-import AppAutoDownloadPhotoTab from './autoDownload/photo';
-import AppAutoDownloadVideoTab from './autoDownload/video';
-import SettingSection from '../../settingSection';
-import {useAppSettings} from '../../../stores/appSettings';
+import {AutoDownloadPeerTypeSettings, STATE_INIT, SETTINGS_INIT} from '@config/state';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import replaceContent from '@helpers/dom/replaceContent';
+import toggleDisability from '@helpers/dom/toggleDisability';
+import formatBytes from '@helpers/formatBytes';
+import copy from '@helpers/object/copy';
+import deepEqual from '@helpers/object/deepEqual';
+import {FormatterArguments, i18n, join, LangPackKey} from '@lib/langPack';
+import Button from '@components/button';
+import CheckboxField from '@components/checkboxField';
+import confirmationPopup from '@components/confirmationPopup';
+import Row from '@components/row';
+import {SliderSuperTabEventable, SliderSuperTabEventableConstructable} from '@components/sliderTab';
+import AppAutoDownloadFileTab from '@components/sidebarLeft/tabs/autoDownload/file';
+import AppAutoDownloadPhotoTab from '@components/sidebarLeft/tabs/autoDownload/photo';
+import AppAutoDownloadVideoTab from '@components/sidebarLeft/tabs/autoDownload/video';
+import SettingSection from '@components/settingSection';
+import {useAppSettings} from '@stores/appSettings';
 import {unwrap} from 'solid-js/store';
 
 const AUTO_DOWNLOAD_FOR_KEYS: {[k in keyof AutoDownloadPeerTypeSettings]: LangPackKey} = {

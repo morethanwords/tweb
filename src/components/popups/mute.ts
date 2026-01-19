@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import tsNow from '../../helpers/tsNow';
-import {LangPackKey} from '../../lib/langPack';
-import {MUTE_UNTIL} from '../../lib/mtproto/mtproto_config';
-import {RadioFormFromValues} from '../row';
-import PopupPeer from './peer';
+import tsNow from '@helpers/tsNow';
+import {LangPackKey} from '@lib/langPack';
+import {MUTE_UNTIL} from '@appManagers/constants';
+import {RadioFormFromValues} from '@components/row';
+import PopupPeer from '@components/popups/peer';
 
 const ONE_HOUR = 3600;
 const times: {value: number | string, langPackKey: LangPackKey, checked?: boolean}[] = [{

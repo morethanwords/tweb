@@ -1,14 +1,14 @@
-import classNames from '../../helpers/string/classNames';
-import useStars from '../../stores/stars';
-import PopupStars, {StarsStar} from './stars';
-import styles from './floatingStarsBalance.module.scss';
-import {I18nTsx} from '../../helpers/solid/i18n';
+import classNames from '@helpers/string/classNames';
+import useStars from '@stores/stars';
+import PopupStars, {StarsStar} from '@components/popups/stars';
+import styles from '@components/popups/floatingStarsBalance.module.scss';
+import {I18nTsx} from '@helpers/solid/i18n';
 import PopupElement from '.';
-import {i18n} from '../../lib/langPack';
-import {IconTsx} from '../iconTsx';
+import {i18n} from '@lib/langPack';
+import {IconTsx} from '@components/iconTsx';
 import {createResource} from 'solid-js';
-import rootScope from '../../lib/rootScope';
-import paymentsWrapCurrencyAmount, {formatNanoton, nanotonToJsNumber} from '../../helpers/paymentsWrapCurrencyAmount';
+import rootScope from '@lib/rootScope';
+import paymentsWrapCurrencyAmount, {formatNanoton, nanotonToJsNumber} from '@helpers/paymentsWrapCurrencyAmount';
 
 export function FloatingStarsBalance(props: {
   class?: string;

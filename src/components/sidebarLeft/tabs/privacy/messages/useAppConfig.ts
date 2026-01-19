@@ -1,8 +1,8 @@
 import {createResource} from 'solid-js';
 
-import {useHotReloadGuard} from '../../../../../lib/solidjs/hotReloadGuard';
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 
-import {usePromiseCollector} from '../../../../solidJsTabs/promiseCollector';
+import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 
 
 const useAppConfig = () => {

@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import RLottieIcon from '../../lib/rlottie/rlottieIcon';
+import RLottieIcon from '@lib/rlottie/rlottieIcon';
 import {GROUP_CALL_PARTICIPANT_CLEARED_MUTED_STATE, GROUP_CALL_PARTICIPANT_MUTED_STATE, getColorByMutedState, clearMutedStateModifier} from '.';
-import {SuperRLottieIcon} from '../superIcon';
+import {SuperRLottieIcon} from '@components/superIcon';
 
 export default class GroupCallParticipantMutedIcon extends SuperRLottieIcon<{
   PartState: GROUP_CALL_PARTICIPANT_CLEARED_MUTED_STATE,

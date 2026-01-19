@@ -1,8 +1,8 @@
 // https://github.com/solidjs-community/solid-transition-group
 
 import {createMemo} from 'solid-js';
-import type {TransitionEvents, TransitionProps} from './transition';
-// import type {TransitionGroupProps} from './transitionGroup';
+import type {TransitionEvents, TransitionProps} from '@vendor/solid-transition-group/transition';
+// import type {TransitionGroupProps} from '@vendor/solid-transition-group/transitionGroup';
 
 export function createClassnames(props: TransitionProps/*  & TransitionGroupProps */) {
   return createMemo(() => {

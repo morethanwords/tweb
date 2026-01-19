@@ -1,14 +1,14 @@
-import IS_WEB_AUTHN_SUPPORTED from '../environment/webAuthn';
-import toggleDisability from '../helpers/dom/toggleDisability';
-import {InputPasskeyResponse} from '../layer';
-import AccountController from '../lib/accounts/accountController';
-import {changeAccount} from '../lib/accounts/changeAccount';
-import {ActiveAccountNumber} from '../lib/accounts/types';
-import {getInputPasskeyCredential} from '../lib/appManagers/utils/account/getInputPasskeyResponse';
-import rootScope from '../lib/rootScope';
-import {TrueDcId} from '../types';
-import Button from './button';
-import {toastNew} from './toast';
+import IS_WEB_AUTHN_SUPPORTED from '@environment/webAuthn';
+import toggleDisability from '@helpers/dom/toggleDisability';
+import {InputPasskeyResponse} from '@layer';
+import AccountController from '@lib/accounts/accountController';
+import {changeAccount} from '@lib/accounts/changeAccount';
+import {ActiveAccountNumber} from '@lib/accounts/types';
+import {getInputPasskeyCredential} from '@appManagers/utils/account/getInputPasskeyResponse';
+import rootScope from '@lib/rootScope';
+import {TrueDcId} from '@types';
+import Button from '@components/button';
+import {toastNew} from '@components/toast';
 
 const PasskeyLoginButton = () => {
   if(!IS_WEB_AUTHN_SUPPORTED) return;

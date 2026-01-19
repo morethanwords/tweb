@@ -1,4 +1,4 @@
-import {DcAuthKey, DcServerSalt, TrueDcId} from '../../types';
+import {DcAuthKey, DcServerSalt, TrueDcId} from '@types';
 
 export type ActiveAccountNumber = 1 | 2 | 3 | 4;
 

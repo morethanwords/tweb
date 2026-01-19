@@ -4,47 +4,47 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {SliderSuperTab} from '../../slider'
-import InputField from '../../inputField';
-import EditPeer from '../../editPeer';
-import Row, {CreateRowFromCheckboxField} from '../../row';
-import Button from '../../button';
-import {ChatRights} from '../../../lib/appManagers/appChatsManager';
-import {Chat, ChatFull} from '../../../layer';
-import AppChatTypeTab from './chatType';
-import rootScope from '../../../lib/rootScope';
-import AppGroupPermissionsTab from './groupPermissions';
-import I18n, {i18n, join, LangPackKey} from '../../../lib/langPack';
-import PopupDeleteDialog from '../../popups/deleteDialog';
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import toggleDisability from '../../../helpers/dom/toggleDisability';
-import CheckboxField from '../../checkboxField';
-import AppChatReactionsTab from './chatReactions';
-import hasRights from '../../../lib/appManagers/utils/chats/hasRights';
-import replaceContent from '../../../helpers/dom/replaceContent';
-import SettingSection from '../../settingSection';
-import getPeerActiveUsernames from '../../../lib/appManagers/utils/peers/getPeerActiveUsernames';
-import PopupElement from '../../popups';
-import AppChatAdministratorsTab from './chatAdministrators';
-import numberThousandSplitter, {numberThousandSplitterForStars} from '../../../helpers/number/numberThousandSplitter';
-import AppChatMembersTab from './chatMembers';
-import AppRemovedUsersTab from './removedUsers';
-import AppChatDiscussionTab from './chatDiscussion';
-import wrapPeerTitle from '../../wrappers/peerTitle';
-import cancelEvent from '../../../helpers/dom/cancelEvent';
-import {hideToast, toastNew} from '../../toast';
-import AppChatInviteLinksTab from './chatInviteLinks';
-import AppChatRequestsTab from './chatRequests';
-import getParticipantsCount from '../../../lib/appManagers/utils/chats/getParticipantsCount';
-import anchorCallback from '../../../helpers/dom/anchorCallback';
-import PopupBoost from '../../popups/boost';
-import namedPromises from '../../../helpers/namedPromises';
-import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
-import {AppDirectMessagesTab} from '../../solidJsTabs';
-import {AppAdminRecentActionsTab} from '../../solidJsTabs/tabs';
-import appImManager from '../../../lib/appManagers/appImManager';
-import {ChatType} from '../../chat/chat';
-import {appSettings} from '../../../stores/appSettings';
+import {SliderSuperTab} from '@components/slider'
+import InputField from '@components/inputField';
+import EditPeer from '@components/editPeer';
+import Row, {CreateRowFromCheckboxField} from '@components/row';
+import Button from '@components/button';
+import {ChatRights} from '@appManagers/appChatsManager';
+import {Chat, ChatFull} from '@layer';
+import AppChatTypeTab from '@components/sidebarRight/tabs/chatType';
+import rootScope from '@lib/rootScope';
+import AppGroupPermissionsTab from '@components/sidebarRight/tabs/groupPermissions';
+import I18n, {i18n, join, LangPackKey} from '@lib/langPack';
+import PopupDeleteDialog from '@components/popups/deleteDialog';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import toggleDisability from '@helpers/dom/toggleDisability';
+import CheckboxField from '@components/checkboxField';
+import AppChatReactionsTab from '@components/sidebarRight/tabs/chatReactions';
+import hasRights from '@appManagers/utils/chats/hasRights';
+import replaceContent from '@helpers/dom/replaceContent';
+import SettingSection from '@components/settingSection';
+import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
+import PopupElement from '@components/popups';
+import AppChatAdministratorsTab from '@components/sidebarRight/tabs/chatAdministrators';
+import numberThousandSplitter, {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
+import AppChatMembersTab from '@components/sidebarRight/tabs/chatMembers';
+import AppRemovedUsersTab from '@components/sidebarRight/tabs/removedUsers';
+import AppChatDiscussionTab from '@components/sidebarRight/tabs/chatDiscussion';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import {hideToast, toastNew} from '@components/toast';
+import AppChatInviteLinksTab from '@components/sidebarRight/tabs/chatInviteLinks';
+import AppChatRequestsTab from '@components/sidebarRight/tabs/chatRequests';
+import getParticipantsCount from '@appManagers/utils/chats/getParticipantsCount';
+import anchorCallback from '@helpers/dom/anchorCallback';
+import PopupBoost from '@components/popups/boost';
+import namedPromises from '@helpers/namedPromises';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import {AppDirectMessagesTab} from '@components/solidJsTabs';
+import {AppAdminRecentActionsTab} from '@components/solidJsTabs/tabs';
+import appImManager from '@lib/appImManager';
+import {ChatType} from '@components/chat/chat';
+import {appSettings} from '@stores/appSettings';
 
 export default class AppEditChatTab extends SliderSuperTab {
   private chatNameInputField: InputField;

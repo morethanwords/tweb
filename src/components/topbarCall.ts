@@ -4,37 +4,37 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import cancelEvent from '../helpers/dom/cancelEvent';
-import {attachClickEvent} from '../helpers/dom/clickEvent';
-import ListenerSetter from '../helpers/listenerSetter';
-import GROUP_CALL_STATE from '../lib/calls/groupCallState';
-import rootScope from '../lib/rootScope';
-import ButtonIcon from './buttonIcon';
-import TopbarWeave from './topbarWeave';
-import SetTransition from './singleTransition';
-import PopupGroupCall from './groupCall';
-import GroupCallDescriptionElement from './groupCall/description';
-import GroupCallTitleElement from './groupCall/title';
-import PopupElement from './popups';
-import throttle from '../helpers/schedulers/throttle';
-import GroupCallInstance from '../lib/calls/groupCallInstance';
-import CALL_STATE from '../lib/calls/callState';
-import replaceContent from '../helpers/dom/replaceContent';
-import PeerTitle from './peerTitle';
-import CallDescriptionElement from './call/description';
-import PopupCall from './call';
-import GroupCallMicrophoneIconMini from './groupCall/microphoneIconMini';
-import CallInstance from '../lib/calls/callInstance';
-import {AppManagers} from '../lib/appManagers/managers';
-import groupCallsController from '../lib/calls/groupCallsController';
-import StreamManager from '../lib/calls/streamManager';
-import callsController from '../lib/calls/callsController';
-import rtmpCallsController, {RtmpCallInstance} from '../lib/calls/rtmpCallsController';
-import {AppMediaViewerRtmp} from './appMediaViewerRtmp';
-import {AnyClass} from '../types';
-import RtmpDescriptionElement from './rtmp/description';
-import RTMP_STATE from '../lib/calls/rtmpState';
-import apiManagerProxy from '../lib/mtproto/mtprotoworker';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import ListenerSetter from '@helpers/listenerSetter';
+import GROUP_CALL_STATE from '@lib/calls/groupCallState';
+import rootScope from '@lib/rootScope';
+import ButtonIcon from '@components/buttonIcon';
+import TopbarWeave from '@components/topbarWeave';
+import SetTransition from '@components/singleTransition';
+import PopupGroupCall from '@components/groupCall';
+import GroupCallDescriptionElement from '@components/groupCall/description';
+import GroupCallTitleElement from '@components/groupCall/title';
+import PopupElement from '@components/popups';
+import throttle from '@helpers/schedulers/throttle';
+import GroupCallInstance from '@lib/calls/groupCallInstance';
+import CALL_STATE from '@lib/calls/callState';
+import replaceContent from '@helpers/dom/replaceContent';
+import PeerTitle from '@components/peerTitle';
+import CallDescriptionElement from '@components/call/description';
+import PopupCall from '@components/call';
+import GroupCallMicrophoneIconMini from '@components/groupCall/microphoneIconMini';
+import CallInstance from '@lib/calls/callInstance';
+import {AppManagers} from '@lib/managers';
+import groupCallsController from '@lib/calls/groupCallsController';
+import StreamManager from '@lib/calls/streamManager';
+import callsController from '@lib/calls/callsController';
+import rtmpCallsController, {RtmpCallInstance} from '@lib/calls/rtmpCallsController';
+import {AppMediaViewerRtmp} from '@components/appMediaViewerRtmp';
+import {AnyClass} from '@types';
+import RtmpDescriptionElement from '@components/rtmp/description';
+import RTMP_STATE from '@lib/calls/rtmpState';
+import apiManagerProxy from '@lib/apiManagerProxy';
 
 function convertCallStateToGroupState(state: CALL_STATE, isMuted: boolean) {
   switch(state) {

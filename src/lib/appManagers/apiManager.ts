@@ -9,63 +9,54 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type {UserAuth} from './mtproto_config';
-import type {DcAuthKey, DcId, DcServerSalt, InvokeApiOptions, TrueDcId} from '../../types';
-import type {MethodDeclMap} from '../../layer';
-import type TcpObfuscated from './transports/tcpObfuscated';
-import sessionStorage from '../sessionStorage';
-import MTPNetworker, {MTMessage} from './networker';
-import {ConnectionType, constructTelegramWebSocketUrl, DcConfigurator, TransportType} from './dcConfigurator';
-import {logger} from '../logger';
-import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
-import App from '../../config/app';
-import {MOUNT_CLASS_TO} from '../../config/debug';
-import {IDB} from '../files/idb';
-import CryptoWorker from '../crypto/cryptoMessagePort';
-import ctx from '../../environment/ctx';
-import noop from '../../helpers/noop';
-import Modes from '../../config/modes';
-import bytesFromHex from '../../helpers/bytes/bytesFromHex';
-import bytesToHex from '../../helpers/bytes/bytesToHex';
-import isObject from '../../helpers/object/isObject';
-import pause from '../../helpers/schedulers/pause';
-import ApiManagerMethods from './api_methods';
-import {getEnvironment} from '../../environment/utils';
-import tsNow from '../../helpers/tsNow';
-import transportController from './transports/controller';
-import MTTransport from './transports/transport';
-import AccountController from '../accounts/accountController';
-import {AppStoragesManager} from '../appManagers/appStoragesManager';
-import commonStateStorage from '../commonStateStorage';
-import CacheStorageController from '../files/cacheStorage';
-import {ActiveAccountNumber} from '../accounts/types';
-import makeError from '../../helpers/makeError';
-import EncryptedStorageLayer from '../encryptedStorageLayer';
-import {getCommonDatabaseState} from '../../config/databases/state';
-import EncryptionKeyStore from '../passcode/keyStore';
-import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
-import {MTAuthKey} from './authorizer';
+import type {UserAuth} from '@appManagers/constants';
+import type {DcAuthKey, DcId, DcServerSalt, InvokeApiOptions, TrueDcId} from '@types';
+import type {MethodDeclMap} from '@layer';
+import type TcpObfuscated from '@lib/mtproto/transports/tcpObfuscated';
+import sessionStorage from '@lib/sessionStorage';
+import MTPNetworker, {MTMessage} from '@lib/mtproto/networker';
+import {ConnectionType, constructTelegramWebSocketUrl, DcConfigurator, TransportType} from '@lib/mtproto/dcConfigurator';
+import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
+import App from '@config/app';
+import {MOUNT_CLASS_TO} from '@config/debug';
+import {IDB} from '@lib/files/idb';
+import CryptoWorker from '@lib/crypto/cryptoMessagePort';
+import ctx from '@environment/ctx';
+import noop from '@helpers/noop';
+import Modes from '@config/modes';
+import bytesFromHex from '@helpers/bytes/bytesFromHex';
+import bytesToHex from '@helpers/bytes/bytesToHex';
+import isObject from '@helpers/object/isObject';
+import pause from '@helpers/schedulers/pause';
+import ApiManagerMethods from '@appManagers/apiManagerMethods';
+import {getEnvironment} from '@environment/utils';
+import tsNow from '@helpers/tsNow';
+import transportController from '@lib/mtproto/transports/controller';
+import MTTransport from '@lib/mtproto/transports/transport';
+import AccountController from '@lib/accounts/accountController';
+import {AppStoragesManager} from '@appManagers/appStoragesManager';
+import commonStateStorage from '@lib/commonStateStorage';
+import CacheStorageController from '@lib/files/cacheStorage';
+import {ActiveAccountNumber} from '@lib/accounts/types';
+import makeError from '@helpers/makeError';
+import EncryptedStorageLayer from '@lib/encryptedStorageLayer';
+import {getCommonDatabaseState} from '@config/databases/state';
+import EncryptionKeyStore from '@lib/passcode/keyStore';
+import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
+import {MTAuthKey} from '@lib/mtproto/authKey';
 /**
  * To not be used in an ApiManager instance as there is no account number attached to it
  */
-import globalRootScope from '../rootScope';
-import RepayRequestHandler from './repayRequestHandler';
-
-/* class RotatableArray<T> {
-  public array: Array<T> = [];
-  private lastIndex = -1;
-
-  public get() {
-    this.lastIndex = clamp(this.lastIndex + 1, 0, this.array.length - 1);
-    return this.array[this.lastIndex];
-  }
-} */
+import globalRootScope from '@lib/rootScope';
+import RepayRequestHandler from '@appManagers/utils/repayRequestHandler';
 
 const PREMIUM_FILE_NETWORKERS_COUNT = 6;
 const REGULAR_FILE_NETWORKERS_COUNT = 3;
 const DESTROY_NETWORKERS = true;
 
 export class ApiManager extends ApiManagerMethods {
+  private static fillTimeManagerOffsetPromise: Promise<void>;
+
   private cachedNetworkers: {
     [transportType in TransportType]: {
       [connectionType in ConnectionType]: {
@@ -77,8 +68,6 @@ export class ApiManager extends ApiManagerMethods {
   private cachedExportPromise: {[x: number]: Promise<unknown>};
   private gettingNetworkers: {[dcIdAndType: string]: Promise<MTPNetworker>};
   private baseDcId: DcId;
-
-  // public telegramMeNotified = false;
 
   private afterMessageTempIds: {
     [tempId: string]: {
@@ -155,25 +144,6 @@ export class ApiManager extends ApiManagerMethods {
     return result;
   }
 
-  // private lol = false;
-
-  // constructor() {
-  // MtpSingleInstanceService.start();
-
-  /* AppStorage.get<number>('dc').then((dcId) => {
-      if(dcId) {
-        this.baseDcId = dcId;
-      }
-    }); */
-  // }
-
-  /* public telegramMeNotify(newValue: boolean) {
-    if(this.telegramMeNotified !== newValue) {
-      this.telegramMeNotified = newValue;
-      //telegramMeWebService.setAuthorized(this.telegramMeNotified);
-    }
-  } */
-
   private getTransportType(connectionType: ConnectionType) {
     let transportType: TransportType;
     if(import.meta.env.VITE_MTPROTO_HTTP_UPLOAD) {
@@ -246,7 +216,7 @@ export class ApiManager extends ApiManagerMethods {
 
   public async getBaseDcId() {
     if(this.baseDcId) {
-      return this.baseDcId;
+      return this.baseDcId as TrueDcId;
     }
 
     const accountData = await AccountController.get(this.getAccountNumber());
@@ -259,7 +229,7 @@ export class ApiManager extends ApiManagerMethods {
       }
     }
 
-    return this.baseDcId;
+    return this.baseDcId as TrueDcId;
   }
 
   public async setUserAuth(userAuth: UserAuth | UserId) {
@@ -279,8 +249,6 @@ export class ApiManager extends ApiManagerMethods {
       userId: (userAuth as UserAuth).id,
       dcId: (userAuth as UserAuth).dcID as TrueDcId
     });
-
-    // this.telegramMeNotify(true);
   }
 
   public setBaseDcId(dcId: DcId) {
@@ -328,7 +296,6 @@ export class ApiManager extends ApiManagerMethods {
       wasCleared = true;
 
       this.baseDcId = undefined;
-      // this.telegramMeNotify(false);
       // * totalAccounts can be 0 somehow
       if(totalAccounts <= 1 && accountNumber === 1 && !migrateAccountTo) {
         await Promise.all([
@@ -470,11 +437,27 @@ export class ApiManager extends ApiManagerMethods {
     const ak: DcAuthKey = `dc${dcId}_auth_key` as any;
     const ss: DcServerSalt = `dc${dcId}_server_salt` as any;
 
+    if(!ApiManager.fillTimeManagerOffsetPromise) {
+      ApiManager.fillTimeManagerOffsetPromise = sessionStorage.get('server_time_offset').then((timeOffset) => {
+        if(timeOffset) {
+          this.timeManager.timeOffset = timeOffset;
+        }
+      }, () => {});
+
+      this.timeManager.onTimeOffsetChange = (timeOffset) => {
+        sessionStorage.set({
+          server_time_offset: timeOffset
+        });
+      };
+    }
+
     let transport = this.chooseServer(dcId, connectionType, transportType);
     return this.gettingNetworkers[getKey] = AccountController
     .get(this.getAccountNumber())
     .then((accountData) => [accountData[ak], accountData[ss]] as const)
     .then(async([authKeyHex, serverSaltHex]) => {
+      await ApiManager.fillTimeManagerOffsetPromise;
+
       let networker: MTPNetworker, error: any, onTransport: () => Promise<any>;
       let permanent: {authKey?: MTAuthKey, serverSalt?: Uint8Array}, temporary: typeof permanent;
       if(authKeyHex?.length === 512) {
@@ -512,8 +495,7 @@ export class ApiManager extends ApiManagerMethods {
           authKey: auth.authKey,
           serverSalt: auth.serverSalt,
           isFileDownload: connectionType === 'download',
-          isFileUpload: connectionType === 'upload',
-          accountNumber: this.getAccountNumber()
+          isFileUpload: connectionType === 'upload'
         });
 
         if(temporary) onTransport = async() => {

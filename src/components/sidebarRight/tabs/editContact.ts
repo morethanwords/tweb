@@ -4,28 +4,28 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {SliderSuperTab} from '../../slider'
-import InputField from '../../inputField';
-import EditPeer from '../../editPeer';
-import Row, {CreateRowFromCheckboxField} from '../../row';
-import CheckboxField from '../../checkboxField';
-import Button from '../../button';
-import PeerTitle from '../../peerTitle';
-import rootScope from '../../../lib/rootScope';
-import PopupPeer from '../../popups/peer';
-import PopupElement, {addCancelButton} from '../../popups';
-import {i18n} from '../../../lib/langPack';
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import toggleDisability from '../../../helpers/dom/toggleDisability';
-import getPeerId from '../../../lib/appManagers/utils/peers/getPeerId';
-import formatUserPhone from '../../wrappers/formatUserPhone';
-import SettingSection from '../../settingSection';
-import wrapPeerTitle from '../../wrappers/peerTitle';
-import {wrapEmojiTextWithEntities} from '../../../lib/richTextProcessor/wrapEmojiText';
-import EditFolderInput from '../../sidebarLeft/tabs/editFolderInput';
-import {InputFieldEmoji} from '../../inputFieldEmoji';
-import {toastNew} from '../../toast';
-import showBirthdayPopup, {suggestUserBirthday} from '../../popups/birthday';
+import {SliderSuperTab} from '@components/slider'
+import InputField from '@components/inputField';
+import EditPeer from '@components/editPeer';
+import Row, {CreateRowFromCheckboxField} from '@components/row';
+import CheckboxField from '@components/checkboxField';
+import Button from '@components/button';
+import PeerTitle from '@components/peerTitle';
+import rootScope from '@lib/rootScope';
+import PopupPeer from '@components/popups/peer';
+import PopupElement, {addCancelButton} from '@components/popups';
+import {i18n} from '@lib/langPack';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import toggleDisability from '@helpers/dom/toggleDisability';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
+import formatUserPhone from '@components/wrappers/formatUserPhone';
+import SettingSection from '@components/settingSection';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
+import {wrapEmojiTextWithEntities} from '@lib/richTextProcessor/wrapEmojiText';
+import EditFolderInput from '@components/sidebarLeft/tabs/editFolderInput';
+import {InputFieldEmoji} from '@components/inputFieldEmoji';
+import {toastNew} from '@components/toast';
+import showBirthdayPopup, {suggestUserBirthday} from '@components/popups/birthday';
 
 export default class AppEditContactTab extends SliderSuperTab {
   private nameInputField: InputField;

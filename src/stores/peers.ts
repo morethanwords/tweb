@@ -1,6 +1,6 @@
 import {createStore, reconcile} from 'solid-js/store';
-import {Chat, User} from '../layer';
-import createMemoOrReturn, {ValueOrGetter} from '../helpers/solid/createMemoOrReturn';
+import {Chat, User} from '@layer';
+import createMemoOrReturn, {ValueOrGetter} from '@helpers/solid/createMemoOrReturn';
 
 type NotEmptyPeer = Exclude<Chat, Chat.chatEmpty> | User.user;
 

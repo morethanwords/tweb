@@ -4,17 +4,17 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type Chat from './chat';
-import type ChatTopbar from './topbar';
-import mediaSizes from '../../helpers/mediaSizes';
-import DivAndCaption from '../divAndCaption';
-import ripple from '../ripple';
-import ListenerSetter from '../../helpers/listenerSetter';
-import cancelEvent from '../../helpers/dom/cancelEvent';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import {Message, StoryItem} from '../../layer';
-import safeAssign from '../../helpers/object/safeAssign';
-import ButtonIcon from '../buttonIcon';
+import type Chat from '@components/chat/chat';
+import type ChatTopbar from '@components/chat/topbar';
+import mediaSizes from '@helpers/mediaSizes';
+import DivAndCaption from '@components/divAndCaption';
+import ripple from '@components/ripple';
+import ListenerSetter from '@helpers/listenerSetter';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import {Message, StoryItem} from '@layer';
+import safeAssign from '@helpers/object/safeAssign';
+import ButtonIcon from '@components/buttonIcon';
 
 const classNames: string[] = ['is-pinned-message-shown', 'is-pinned-audio-shown'];
 const CLASSNAME_BASE = 'pinned-container';

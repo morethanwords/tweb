@@ -1,4 +1,4 @@
-import nMap from '../../helpers/number/nMap';
+import nMap from '@helpers/number/nMap';
 
 export function drawImageFromSource(
   ctx: CanvasRenderingContext2D,

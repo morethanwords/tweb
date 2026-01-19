@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import App from '../../../config/app';
-import deferredPromise from '../../../helpers/cancellablePromise';
-import EventListenerBase from '../../../helpers/eventListenerBase';
-import pause from '../../../helpers/schedulers/pause';
-import {TransportType, DcConfigurator} from '../dcConfigurator';
-import type HTTP from './http';
-import type TcpObfuscated from './tcpObfuscated';
-import MTTransport from './transport';
+import App from '@config/app';
+import deferredPromise from '@helpers/cancellablePromise';
+import EventListenerBase from '@helpers/eventListenerBase';
+import pause from '@helpers/schedulers/pause';
+import {TransportType, DcConfigurator} from '@lib/mtproto/dcConfigurator';
+import type HTTP from '@lib/mtproto/transports/http';
+import type TcpObfuscated from '@lib/mtproto/transports/tcpObfuscated';
+import MTTransport from '@lib/mtproto/transports/transport';
 
 export class MTTransportController extends EventListenerBase<{
   change: (opened: MTTransportController['opened']) => void,

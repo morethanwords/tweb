@@ -1,4 +1,4 @@
-import {IS_FIREFOX} from './userAgent';
+import {IS_FIREFOX} from '@environment/userAgent';
 
 const IS_PARALLAX_SUPPORTED = !IS_FIREFOX && false;
 

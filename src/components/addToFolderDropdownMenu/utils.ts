@@ -1,14 +1,14 @@
 import {onCleanup} from 'solid-js';
-import {Middleware} from '../../helpers/middleware';
-import {TextWithEntities} from '../../layer';
-import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
-import {CustomEmojiRendererElement} from '../../lib/customEmoji/renderer';
-import {logger, LogTypes} from '../../lib/logger';
-import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE} from '../../lib/mtproto/mtproto_config';
-import rootScope from '../../lib/rootScope';
-import {MyDialogFilter} from '../../lib/storages/filters';
-import wrapFolderTitle from '../wrappers/folderTitle';
-import styles from './styles.module.scss';
+import {Middleware} from '@helpers/middleware';
+import {TextWithEntities} from '@layer';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
+import {CustomEmojiRendererElement} from '@lib/customEmoji/renderer';
+import {logger, LogTypes} from '@lib/logger';
+import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE} from '@appManagers/constants';
+import rootScope from '@lib/rootScope';
+import {MyDialogFilter} from '@lib/storages/filters';
+import wrapFolderTitle from '@components/wrappers/folderTitle';
+import styles from '@components/addToFolderDropdownMenu/styles.module.scss';
 
 
 export const log = logger('AddToFolderDropdownMenu', LogTypes.Debug);

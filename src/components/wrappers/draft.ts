@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {DraftMessage} from '../../layer';
-import mergeEntities from '../../lib/richTextProcessor/mergeEntities';
-import parseEntities from '../../lib/richTextProcessor/parseEntities';
-import wrapDraftText from '../../lib/richTextProcessor/wrapDraftText';
+import {DraftMessage} from '@layer';
+import mergeEntities from '@lib/richTextProcessor/mergeEntities';
+import parseEntities from '@lib/richTextProcessor/parseEntities';
+import wrapDraftText from '@lib/richTextProcessor/wrapDraftText';
 
 export default function wrapDraft(
   draft: DraftMessage.draftMessage,

@@ -1,4 +1,4 @@
-import {StoryItem, MediaArea} from '../../../../layer';
+import {StoryItem, MediaArea} from '@layer';
 
 export default function getStoryRepostInfo(story: StoryItem.storyItem) {
   const fwdFrom = story.fwd_from;

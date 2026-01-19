@@ -1,7 +1,7 @@
-import type {HistoryStorage, HistoryStorageKey} from '../lib/appManagers/appMessagesManager';
+import type {HistoryStorage, HistoryStorageKey} from '@appManagers/appMessagesManager';
 import {createStore} from 'solid-js/store';
-import createHistoryStorage from '../lib/appManagers/utils/messages/createHistoryStorage';
-import {MOUNT_CLASS_TO} from '../config/debug';
+import createHistoryStorage from '@appManagers/utils/messages/createHistoryStorage';
+import {MOUNT_CLASS_TO} from '@config/debug';
 
 const cache: {
   [key in HistoryStorageKey]: ReturnType<typeof createStore<HistoryStorage>>

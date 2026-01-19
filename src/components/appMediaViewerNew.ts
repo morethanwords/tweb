@@ -4,38 +4,38 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-// import deferredPromise from "../helpers/cancellablePromise";
-// import mediaSizes from "../helpers/mediaSizes";
-// import { isTouchSupported } from "../helpers/touchSupport";
-// import { isSafari } from "../helpers/userAgent";
-// import appDocsManager, { MyDocument } from "../lib/appManagers/appDocsManager";
-// import appImManager from "../lib/appManagers/appImManager";
-// import appMessagesManager from "../lib/appManagers/appMessagesManager";
-// import appPeersManager from "../lib/appManagers/appPeersManager";
-// import appPhotosManager from "../lib/appManagers/appPhotosManager";
-// import { logger } from "../lib/logger";
-// import VideoPlayer from "../lib/mediaPlayer";
-// // import rootScope from "../lib/rootScope";
-// import { cancelEvent, fillPropertyValue, generatePathData } from "../helpers/dom";
-// import animationIntersector from "./animationIntersector";
-// import appMediaPlaybackController from "./appMediaPlaybackController";
-// import AvatarElement from "./avatar";
-// import ButtonIcon from "./buttonIcon";
-// import { ButtonMenuItemOptions } from "./buttonMenu";
-// import ButtonMenuToggle from "./buttonMenuToggle";
-// import { LazyLoadQueueBase } from "./lazyLoadQueue";
-// import PopupForward from "./popups/forward";
-// import ProgressivePreloader from "./preloader";
-// import Scrollable from "./scrollable";
-// import appSidebarRight, { AppSidebarRight } from "./sidebarRight";
-// import SwipeHandler from "./swipeHandler";
-// import { months, ONE_DAY } from "../helpers/date";
-// import { SearchSuperContext } from "./appSearchSuper.";
-// import { Message, PhotoSize } from "../layer";
-// import { forEachReverse } from "../helpers/array";
-// import AppSharedMediaTab from "./sidebarRight/tabs/sharedMedia";
-// import findUpClassName from "../helpers/dom/findUpClassName";
-// import renderImageFromUrl from "../helpers/dom/renderImageFromUrl";
+// import deferredPromise from "@helpers/cancellablePromise";
+// import mediaSizes from "@helpers/mediaSizes";
+// import { isTouchSupported } from "@helpers/touchSupport";
+// import { isSafari } from "@helpers/userAgent";
+// import appDocsManager, { MyDocument } from "@lib/appManagers/appDocsManager";
+// import appImManager from "@lib/appManagers/appImManager";
+// import appMessagesManager from "@lib/appManagers/appMessagesManager";
+// import appPeersManager from "@lib/appManagers/appPeersManager";
+// import appPhotosManager from "@lib/appManagers/appPhotosManager";
+// import { logger } from "@lib/logger";
+// import VideoPlayer from "@lib/mediaPlayer";
+// // import rootScope from "@lib/rootScope";
+// import { cancelEvent, fillPropertyValue, generatePathData } from "@helpers/dom";
+// import animationIntersector from "@components/animationIntersector";
+// import appMediaPlaybackController from "@components/appMediaPlaybackController";
+// import AvatarElement from "@components/avatar";
+// import ButtonIcon from "@components/buttonIcon";
+// import { ButtonMenuItemOptions } from "@components/buttonMenu";
+// import ButtonMenuToggle from "@components/buttonMenuToggle";
+// import { LazyLoadQueueBase } from "@components/lazyLoadQueue";
+// import PopupForward from "@components/popups/forward";
+// import ProgressivePreloader from "@components/preloader";
+// import Scrollable from "@components/scrollable";
+// import appSidebarRight, { AppSidebarRight } from "@components/sidebarRight";
+// import SwipeHandler from "@components/swipeHandler";
+// import { months, ONE_DAY } from "@helpers/date";
+// import { SearchSuperContext } from "@components/appSearchSuper.";
+// import { Message, PhotoSize } from "@layer";
+// import { forEachReverse } from "@helpers/array";
+// import AppSharedMediaTab from "@components/sidebarRight/tabs/sharedMedia";
+// import findUpClassName from "@helpers/dom/findUpClassName";
+// import renderImageFromUrl from "@helpers/dom/renderImageFromUrl";
 
 // // TODO: масштабирование картинок (не SVG) при ресайзе, и правильный возврат на исходную позицию
 // // TODO: картинки "обрезаются" если возвращаются или появляются с места, где есть их перекрытие (топбар, поле ввода)

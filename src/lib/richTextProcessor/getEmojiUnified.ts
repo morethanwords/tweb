@@ -1,5 +1,5 @@
-import Emoji from '../../config/emoji';
-import {encodeEmoji} from '../../vendor/emoji';
+import Emoji from '@config/emoji';
+import {encodeEmoji} from '@vendor/emoji';
 
 export default function getEmojiUnified(emojiCode: string) {
   const unified = encodeEmoji(emojiCode).replace(/-?fe0f/g, '');

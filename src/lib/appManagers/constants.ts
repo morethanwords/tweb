@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {MyDialogFilter} from '../storages/filters';
+import type {MyDialogFilter} from '@lib/storages/filters';
 
 /**
  * Legacy Webogram's format, don't change dcID to camelCase. date is timestamp

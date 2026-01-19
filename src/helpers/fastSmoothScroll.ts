@@ -6,11 +6,11 @@
 
 // * Jolly Cobra's fastSmoothScroll slightly patched
 
-import {dispatchHeavyAnimationEvent} from '../hooks/useHeavyAnimationCheck';
-import {fastRafPromise} from './schedulers';
-import {animateSingle, cancelAnimationByKey} from './animation';
-import isInDOM from './dom/isInDOM';
-import liteMode from './liteMode';
+import {dispatchHeavyAnimationEvent} from '@hooks/useHeavyAnimationCheck';
+import {fastRafPromise} from '@helpers/schedulers';
+import {animateSingle, cancelAnimationByKey} from '@helpers/animation';
+import isInDOM from '@helpers/dom/isInDOM';
+import liteMode from '@helpers/liteMode';
 
 const MIN_JS_DURATION = 250;
 const MAX_JS_DURATION = 600;

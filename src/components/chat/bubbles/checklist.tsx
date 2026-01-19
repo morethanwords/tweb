@@ -1,24 +1,24 @@
 import {createEffect, createMemo, createSignal, For, on, Show} from 'solid-js';
 import {createStore, reconcile} from 'solid-js/store';
-import {I18nTsx} from '../../../helpers/solid/i18n';
-import {Message, MessageMedia, TodoCompletion} from '../../../layer'
-import wrapRichText from '../../../lib/richTextProcessor/wrapRichText';
+import {I18nTsx} from '@helpers/solid/i18n';
+import {Message, MessageMedia, TodoCompletion} from '@layer'
+import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 
-import styles from './checklist.module.scss';
-import CheckboxFieldTsx from '../../checkboxFieldTsx';
-import cancelEvent from '../../../helpers/dom/cancelEvent';
-import rootScope from '../../../lib/rootScope';
-import Chat from '../chat';
-import {AvatarNewTsx} from '../../avatarNew';
-import classNames from '../../../helpers/string/classNames';
-import {PeerTitleTsx} from '../../peerTitleTsx';
-import {IconTsx} from '../../iconTsx';
-import {wrapEmojiTextWithEntities} from '../../../lib/richTextProcessor/wrapEmojiText';
-import PopupPremium from '../../popups/premium';
-import {toastNew} from '../../toast';
-import wrapPeerTitle from '../../wrappers/peerTitle';
-import {ConfettiContainer, ConfettiRef} from '../../confetti';
-import getPeerId from '../../../lib/appManagers/utils/peers/getPeerId';
+import styles from '@components/chat/bubbles/checklist.module.scss';
+import CheckboxFieldTsx from '@components/checkboxFieldTsx';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import rootScope from '@lib/rootScope';
+import Chat from '@components/chat/chat';
+import {AvatarNewTsx} from '@components/avatarNew';
+import classNames from '@helpers/string/classNames';
+import {PeerTitleTsx} from '@components/peerTitleTsx';
+import {IconTsx} from '@components/iconTsx';
+import {wrapEmojiTextWithEntities} from '@lib/richTextProcessor/wrapEmojiText';
+import PopupPremium from '@components/popups/premium';
+import {toastNew} from '@components/toast';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
+import {ConfettiContainer, ConfettiRef} from '@components/confetti';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
 
 export function ChecklistBubble(props: {
   out: boolean

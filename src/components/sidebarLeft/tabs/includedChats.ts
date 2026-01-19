@@ -4,28 +4,27 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {MyDialogFilter} from '../../../lib/storages/filters';
-import {SliderSuperTab} from '../../slider';
-import AppSelectPeers from '../../appSelectPeers';
-import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
-import ButtonIcon from '../../buttonIcon';
-import Button from '../../button';
-import AppEditFolderTab from './editFolder';
-import I18n, {i18n, LangPackKey, _i18n, join} from '../../../lib/langPack';
-import {toast} from '../../toast';
-import copy from '../../../helpers/object/copy';
-import forEachReverse from '../../../helpers/array/forEachReverse';
-import setInnerHTML from '../../../helpers/dom/setInnerHTML';
-import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
-import {REAL_FOLDERS} from '../../../lib/mtproto/mtproto_config';
-import rootScope from '../../../lib/rootScope';
-import {MTAppConfig} from '../../../lib/mtproto/appConfig';
-import {attachClickEvent, simulateClickEvent} from '../../../helpers/dom/clickEvent';
-import SettingSection from '../../settingSection';
-import {DialogFilter} from '../../../layer';
-import Icon from '../../icon';
-import showLimitPopup from '../../popups/limit';
-import wrapFolderTitle from '../../wrappers/folderTitle';
+import type {MyDialogFilter} from '@lib/storages/filters';
+import {SliderSuperTab} from '@components/slider';
+import AppSelectPeers from '@components/appSelectPeers';
+import appDialogsManager from '@lib/appDialogsManager';
+import ButtonIcon from '@components/buttonIcon';
+import Button from '@components/button';
+import AppEditFolderTab from '@components/sidebarLeft/tabs/editFolder';
+import I18n, {i18n, LangPackKey, _i18n, join} from '@lib/langPack';
+import {toast} from '@components/toast';
+import copy from '@helpers/object/copy';
+import forEachReverse from '@helpers/array/forEachReverse';
+import setInnerHTML from '@helpers/dom/setInnerHTML';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import {REAL_FOLDERS} from '@appManagers/constants';
+import rootScope from '@lib/rootScope';
+import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
+import SettingSection from '@components/settingSection';
+import {DialogFilter} from '@layer';
+import Icon from '@components/icon';
+import showLimitPopup from '@components/popups/limit';
+import wrapFolderTitle from '@components/wrappers/folderTitle';
 
 export default class AppIncludedChatsTab extends SliderSuperTab {
   private editFolderTab: AppEditFolderTab;

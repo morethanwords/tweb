@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import deferredPromise from '../../helpers/cancellablePromise';
-import makeError from '../../helpers/makeError';
-import fileNameRFC from '../../helpers/string/fileNameRFC';
-import appManagersManager from '../appManagers/appManagersManager';
-import DownloadWriter from './downloadWriter';
-import FileStorage from './fileStorage';
+import deferredPromise from '@helpers/cancellablePromise';
+import makeError from '@helpers/makeError';
+import fileNameRFC from '@helpers/string/fileNameRFC';
+import appManagersManager from '@appManagers/appManagersManager';
+import DownloadWriter from '@lib/files/downloadWriter';
+import FileStorage from '@lib/files/fileStorage';
 
 export default class DownloadStorage implements FileStorage {
   public getFile(fileName: string): Promise<any> {

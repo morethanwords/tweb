@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {DialogFilter} from '../../../../layer';
+import type {DialogFilter} from '@layer';
 
 export default function getDialogIndexKey(localId: DialogFilter.dialogFilter['localId'] = 0) {
   return `index_${localId}` as const;

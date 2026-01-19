@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import ctx from './ctx';
+import ctx from '@environment/ctx';
 
 export const USER_AGENT = navigator ? navigator.userAgent : null;
 export const IS_APPLE = navigator.userAgent.search(/OS X|iPhone|iPad|iOS/i) !== -1;

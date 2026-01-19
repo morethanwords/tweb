@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import CAN_USE_TRANSFERABLES from '../../environment/canUseTransferables';
-import EventListenerBase from '../../helpers/eventListenerBase';
+import CAN_USE_TRANSFERABLES from '@environment/canUseTransferables';
+import EventListenerBase from '@helpers/eventListenerBase';
 
 export default class QueryableWorker extends EventListenerBase<{
   ready: () => void,

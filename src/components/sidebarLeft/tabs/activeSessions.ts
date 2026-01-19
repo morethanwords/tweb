@@ -4,24 +4,24 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import Button from '../../button';
-import Row from '../../row';
-import {Authorization} from '../../../layer';
-import {formatDateAccordingToTodayNew} from '../../../helpers/date';
-import {ButtonMenuSync} from '../../buttonMenu';
-import {toast} from '../../toast';
-import I18n from '../../../lib/langPack';
-import PopupPeer from '../../popups/peer';
-import findUpClassName from '../../../helpers/dom/findUpClassName';
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import toggleDisability from '../../../helpers/dom/toggleDisability';
-import {SliderSuperTabEventable} from '../../sliderTab';
-import findAndSplice from '../../../helpers/array/findAndSplice';
-import {attachContextMenuListener} from '../../../helpers/dom/attachContextMenuListener';
-import positionMenu from '../../../helpers/positionMenu';
-import contextMenuController from '../../../helpers/contextMenuController';
-import SettingSection from '../../settingSection';
-import PopupElement from '../../popups';
+import Button from '@components/button';
+import Row from '@components/row';
+import {Authorization} from '@layer';
+import {formatDateAccordingToTodayNew} from '@helpers/date';
+import {ButtonMenuSync} from '@components/buttonMenu';
+import {toast} from '@components/toast';
+import I18n from '@lib/langPack';
+import PopupPeer from '@components/popups/peer';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import toggleDisability from '@helpers/dom/toggleDisability';
+import {SliderSuperTabEventable} from '@components/sliderTab';
+import findAndSplice from '@helpers/array/findAndSplice';
+import {attachContextMenuListener} from '@helpers/dom/attachContextMenuListener';
+import positionMenu from '@helpers/positionMenu';
+import contextMenuController from '@helpers/contextMenuController';
+import SettingSection from '@components/settingSection';
+import PopupElement from '@components/popups';
 
 export default class AppActiveSessionsTab extends SliderSuperTabEventable {
   public authorizations: Authorization.authorization[];

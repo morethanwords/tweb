@@ -4,29 +4,29 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {MyDocument} from '../lib/appManagers/appDocsManager';
-import type {SearchSuperContext} from './appSearchSuper';
-import rootScope from '../lib/rootScope';
-import deferredPromise, {CancellablePromise} from '../helpers/cancellablePromise';
-import {IS_APPLE, IS_SAFARI} from '../environment/userAgent';
-import {MOUNT_CLASS_TO} from '../config/debug';
-import simulateEvent from '../helpers/dom/dispatchEvent';
-import {Document, DocumentAttribute, Message, PhotoSize} from '../layer';
-import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
-import I18n from '../lib/langPack';
-import SearchListLoader from '../helpers/searchListLoader';
-import copy from '../helpers/object/copy';
-import deepEqual from '../helpers/object/deepEqual';
-import ListenerSetter from '../helpers/listenerSetter';
-import {AppManagers} from '../lib/appManagers/managers';
-import getMediaFromMessage from '../lib/appManagers/utils/messages/getMediaFromMessage';
-import getPeerTitle from './wrappers/getPeerTitle';
-import appDownloadManager from '../lib/appManagers/appDownloadManager';
-import onMediaLoad from '../helpers/onMediaLoad';
-import EventListenerBase from '../helpers/eventListenerBase';
-import animationIntersector from './animationIntersector';
-import apiManagerProxy from '../lib/mtproto/mtprotoworker';
-import setCurrentTime from '../helpers/dom/setCurrentTime';
+import type {MyDocument} from '@appManagers/appDocsManager';
+import type {SearchSuperContext} from '@components/appSearchSuper';
+import rootScope from '@lib/rootScope';
+import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
+import {IS_APPLE, IS_SAFARI} from '@environment/userAgent';
+import {MOUNT_CLASS_TO} from '@config/debug';
+import simulateEvent from '@helpers/dom/dispatchEvent';
+import {Document, DocumentAttribute, Message, PhotoSize} from '@layer';
+import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
+import I18n from '@lib/langPack';
+import SearchListLoader from '@helpers/searchListLoader';
+import copy from '@helpers/object/copy';
+import deepEqual from '@helpers/object/deepEqual';
+import ListenerSetter from '@helpers/listenerSetter';
+import {AppManagers} from '@lib/managers';
+import getMediaFromMessage from '@appManagers/utils/messages/getMediaFromMessage';
+import getPeerTitle from '@components/wrappers/getPeerTitle';
+import appDownloadManager from '@lib/appDownloadManager';
+import onMediaLoad from '@helpers/onMediaLoad';
+import EventListenerBase from '@helpers/eventListenerBase';
+import animationIntersector from '@components/animationIntersector';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import setCurrentTime from '@helpers/dom/setCurrentTime';
 
 // TODO: Safari: проверить стрим, включить его и сразу попробовать включить видео или другую песню
 // TODO: Safari: попробовать замаскировать подгрузку последнего чанка

@@ -4,20 +4,20 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import InputField from '../../inputField';
-import {SliderSuperTab} from '../../slider';
-import EditPeer from '../../editPeer';
-import {UsernameInputField} from '../../usernameInputField';
-import {i18n, i18n_, LangPackKey} from '../../../lib/langPack';
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import rootScope from '../../../lib/rootScope';
-import setBlankToAnchor from '../../../lib/richTextProcessor/setBlankToAnchor';
-import getPeerEditableUsername from '../../../lib/appManagers/utils/peers/getPeerEditableUsername';
-import SettingSection, {generateSection} from '../../settingSection';
-import UsernamesSection from '../../usernamesSection';
-import {purchaseUsernameCaption} from '../../sidebarLeft/tabs/editProfile';
-import Button from '../../button';
-import wrapUrl from '../../../lib/richTextProcessor/wrapUrl';
+import InputField from '@components/inputField';
+import {SliderSuperTab} from '@components/slider';
+import EditPeer from '@components/editPeer';
+import {UsernameInputField} from '@components/usernameInputField';
+import {i18n, i18n_, LangPackKey} from '@lib/langPack';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import rootScope from '@lib/rootScope';
+import setBlankToAnchor from '@lib/richTextProcessor/setBlankToAnchor';
+import getPeerEditableUsername from '@appManagers/utils/peers/getPeerEditableUsername';
+import SettingSection, {generateSection} from '@components/settingSection';
+import UsernamesSection from '@components/usernamesSection';
+import {purchaseUsernameCaption} from '@components/sidebarLeft/tabs/editProfile';
+import Button from '@components/button';
+import wrapUrl from '@lib/richTextProcessor/wrapUrl';
 
 export default class AppEditBotTab extends SliderSuperTab {
   private firstNameInputField: InputField;

@@ -4,30 +4,30 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {AppGroupCallsManager, GroupCallConnectionType, GroupCallId, GroupCallOutputSource} from '../appManagers/appGroupCallsManager';
-import {IS_SAFARI} from '../../environment/userAgent';
-import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-import safeAssign from '../../helpers/object/safeAssign';
-import throttle from '../../helpers/schedulers/throttle';
-import {GroupCall, GroupCallParticipant} from '../../layer';
-import {logger} from '../logger';
-import {NULL_PEER_ID} from '../mtproto/mtproto_config';
-import rootScope from '../rootScope';
-import CallInstanceBase, {TryAddTrackOptions} from './callInstanceBase';
-import GroupCallConnectionInstance from './groupCallConnectionInstance';
-import GROUP_CALL_STATE from './groupCallState';
-import getScreenConstraints from './helpers/getScreenConstraints';
-import getScreenStream from './helpers/getScreenStream';
-import getStream from './helpers/getStream';
-import getVideoConstraints from './helpers/getVideoConstraints';
-import stopTrack from './helpers/stopTrack';
-import localConferenceDescription from './localConferenceDescription';
-import {WebRTCLineType} from './sdpBuilder';
-import StreamManager from './streamManager';
-import {Ssrc} from './types';
-import getPeerId from '../appManagers/utils/peers/getPeerId';
-import {AppManagers} from '../appManagers/managers';
-import {generateSelfVideo, makeSsrcFromParticipant, makeSsrcsFromParticipant} from './groupCallsController';
+import type {AppGroupCallsManager, GroupCallConnectionType, GroupCallId, GroupCallOutputSource} from '@appManagers/appGroupCallsManager';
+import {IS_SAFARI} from '@environment/userAgent';
+import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
+import safeAssign from '@helpers/object/safeAssign';
+import throttle from '@helpers/schedulers/throttle';
+import {GroupCall, GroupCallParticipant} from '@layer';
+import {logger} from '@lib/logger';
+import {NULL_PEER_ID} from '@appManagers/constants';
+import rootScope from '@lib/rootScope';
+import CallInstanceBase, {TryAddTrackOptions} from '@lib/calls/callInstanceBase';
+import GroupCallConnectionInstance from '@lib/calls/groupCallConnectionInstance';
+import GROUP_CALL_STATE from '@lib/calls/groupCallState';
+import getScreenConstraints from '@lib/calls/helpers/getScreenConstraints';
+import getScreenStream from '@lib/calls/helpers/getScreenStream';
+import getStream from '@lib/calls/helpers/getStream';
+import getVideoConstraints from '@lib/calls/helpers/getVideoConstraints';
+import stopTrack from '@lib/calls/helpers/stopTrack';
+import localConferenceDescription from '@lib/calls/localConferenceDescription';
+import {WebRTCLineType} from '@lib/calls/sdpBuilder';
+import StreamManager from '@lib/calls/streamManager';
+import {Ssrc} from '@lib/calls/types';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
+import {AppManagers} from '@lib/managers';
+import {generateSelfVideo, makeSsrcFromParticipant, makeSsrcsFromParticipant} from '@lib/calls/groupCallsController';
 
 export default class GroupCallInstance extends CallInstanceBase<{
   state: (state: GROUP_CALL_STATE) => void,

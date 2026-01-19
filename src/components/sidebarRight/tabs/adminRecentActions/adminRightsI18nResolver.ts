@@ -1,5 +1,5 @@
-import {ChatAdminRights} from '../../../../layer';
-import {LangPackKey} from '../../../../lib/langPack';
+import {ChatAdminRights} from '@layer';
+import {LangPackKey} from '@lib/langPack';
 
 
 type Args = { isBroadcast: boolean };

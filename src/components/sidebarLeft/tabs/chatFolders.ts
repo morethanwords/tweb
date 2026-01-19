@@ -4,34 +4,34 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {MyDialogFilter} from '../../../lib/storages/filters';
-import type {DialogFilter, DialogFilterSuggested} from '../../../layer';
-import type _rootScope from '../../../lib/rootScope';
-import {SliderSuperTab} from '../../slider';
-import lottieLoader, {LottieLoader} from '../../../lib/rlottie/lottieLoader';
-import Button from '../../button';
-import rootScope from '../../../lib/rootScope';
-import AppEditFolderTab from './editFolder';
-import Row from '../../row';
-import {i18n, i18n_, LangPackKey, join} from '../../../lib/langPack';
-import cancelEvent from '../../../helpers/dom/cancelEvent';
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import positionElementByIndex from '../../../helpers/dom/positionElementByIndex';
-import RLottiePlayer from '../../../lib/rlottie/rlottiePlayer';
-import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
-import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '../../../lib/mtproto/mtproto_config';
-import replaceContent from '../../../helpers/dom/replaceContent';
-import SettingSection from '../../settingSection';
-import Sortable from '../../../helpers/dom/sortable';
-import whichChild from '../../../helpers/dom/whichChild';
-import indexOfAndSplice from '../../../helpers/array/indexOfAndSplice';
-import showLimitPopup from '../../popups/limit';
-import {joinDeepPath} from '../../../helpers/object/setDeepProperty';
-import RadioField from '../../radioField';
-import appImManager from '../../../lib/appManagers/appImManager';
+import type {MyDialogFilter} from '@lib/storages/filters';
+import type {DialogFilter, DialogFilterSuggested} from '@layer';
+import type _rootScope from '@lib/rootScope';
+import {SliderSuperTab} from '@components/slider';
+import lottieLoader, {LottieLoader} from '@lib/rlottie/lottieLoader';
+import Button from '@components/button';
+import rootScope from '@lib/rootScope';
+import AppEditFolderTab from '@components/sidebarLeft/tabs/editFolder';
+import Row from '@components/row';
+import {i18n, i18n_, LangPackKey, join} from '@lib/langPack';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import positionElementByIndex from '@helpers/dom/positionElementByIndex';
+import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '@appManagers/constants';
+import replaceContent from '@helpers/dom/replaceContent';
+import SettingSection from '@components/settingSection';
+import Sortable from '@helpers/dom/sortable';
+import whichChild from '@helpers/dom/whichChild';
+import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
+import showLimitPopup from '@components/popups/limit';
+import {joinDeepPath} from '@helpers/object/setDeepProperty';
+import RadioField from '@components/radioField';
+import appImManager from '@lib/appImManager';
 import appSidebarLeft from '..';
-import wrapFolderTitle from '../../wrappers/folderTitle';
-import useHasFoldersSidebar from '../../../stores/foldersSidebar';
+import wrapFolderTitle from '@components/wrappers/folderTitle';
+import useHasFoldersSidebar from '@stores/foldersSidebar';
 
 export default class AppChatFoldersTab extends SliderSuperTab {
   private createFolderBtn: HTMLElement;

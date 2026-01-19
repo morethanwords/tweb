@@ -1,9 +1,9 @@
 import {createEffect, createResource, JSX, on} from 'solid-js';
-import classNames from '../../../helpers/string/classNames';
-import {Message} from '../../../layer';
+import classNames from '@helpers/string/classNames';
+import {Message} from '@layer';
 
-import styles from './service.module.scss';
-import wrapMessageActionTextNew from '../../wrappers/messageActionTextNew';
+import styles from '@components/chat/bubbles/service.module.scss';
+import wrapMessageActionTextNew from '@components/wrappers/messageActionTextNew';
 
 export function ServiceBubble(props: {
   class?: string

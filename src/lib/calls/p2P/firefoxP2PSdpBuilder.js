@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { addDataChannel, addExtmap, addPayloadTypes, addSsrc } from './p2PSdpBuilder';
+import { addDataChannel, addExtmap, addPayloadTypes, addSsrc } from '@lib/calls/p2P/p2PSdpBuilder';
 
 export class FirefoxP2PSdpBuilder {
     static generateOffer(info) {

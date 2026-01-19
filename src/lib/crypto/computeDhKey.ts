@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {bigIntFromBytes, bigIntToSigned} from '../../helpers/bigInt/bigIntConversion';
-import cryptoWorker from './cryptoMessagePort';
+import {bigIntFromBytes, bigIntToSigned} from '@helpers/bigInt/bigIntConversion';
+import cryptoWorker from '@lib/crypto/cryptoMessagePort';
 
 export default async function computeDhKey(g_b: Uint8Array, a: Uint8Array, p: Uint8Array) {
   const key = await cryptoWorker.invokeCrypto('mod-pow', g_b, a, p);

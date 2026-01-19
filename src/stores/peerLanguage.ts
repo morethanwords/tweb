@@ -1,10 +1,10 @@
 import {createMemo, batch, untrack, createRoot, createEffect, on, Accessor} from 'solid-js';
 import {createStore, SetStoreFunction} from 'solid-js/store';
-import {Message} from '../layer';
-import I18n from '../lib/langPack';
-import apiManagerProxy from '../lib/mtproto/mtprotoworker';
-import detectLanguage from '../lib/tinyld/detect';
-import {useAppSettings} from './appSettings';
+import {Message} from '@layer';
+import I18n from '@lib/langPack';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import detectLanguage from '@lib/tinyld/detect';
+import {useAppSettings} from '@stores/appSettings';
 
 // https://core.telegram.org/api/translation
 export const MIN_TOTAL_PROCESSED_MESSAGES = 8;

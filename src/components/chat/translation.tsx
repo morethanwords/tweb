@@ -6,28 +6,28 @@
 
 import {createEffect, createMemo, createSignal, onCleanup} from 'solid-js';
 import {render} from 'solid-js/web';
-import deferredPromise from '../../helpers/cancellablePromise';
-import ListenerSetter from '../../helpers/listenerSetter';
-import usePeerTranslation from '../../hooks/usePeerTranslation';
-import {AppManagers} from '../../lib/appManagers/managers';
-import I18n, {i18n} from '../../lib/langPack';
-import {NULL_PEER_ID} from '../../lib/mtproto/mtproto_config';
-import SearchIndex from '../../lib/searchIndex';
-import Languages from '../../lib/tinyld/languages';
-import usePremium from '../../stores/premium';
-import ButtonMenuToggle from '../buttonMenuToggle';
-import Icon from '../icon';
-import PopupElement from '../popups';
-import PopupPickUser from '../popups/pickUser';
-import PopupPremium from '../popups/premium';
-import Row from '../row';
-import Chat from './chat';
-import PinnedContainer from './pinnedContainer';
-import ChatTopbar from './topbar';
-import {useAppSettings} from '../../stores/appSettings';
-import {toastNew} from '../toast';
-import {usePeer} from '../../stores/peers';
-import {Chat as MTChat} from '../../layer';
+import deferredPromise from '@helpers/cancellablePromise';
+import ListenerSetter from '@helpers/listenerSetter';
+import usePeerTranslation from '@hooks/usePeerTranslation';
+import {AppManagers} from '@lib/managers';
+import I18n, {i18n} from '@lib/langPack';
+import {NULL_PEER_ID} from '@appManagers/constants';
+import SearchIndex from '@lib/searchIndex';
+import Languages from '@lib/tinyld/languages';
+import usePremium from '@stores/premium';
+import ButtonMenuToggle from '@components/buttonMenuToggle';
+import Icon from '@components/icon';
+import PopupElement from '@components/popups';
+import PopupPickUser from '@components/popups/pickUser';
+import PopupPremium from '@components/popups/premium';
+import Row from '@components/row';
+import Chat from '@components/chat/chat';
+import PinnedContainer from '@components/chat/pinnedContainer';
+import ChatTopbar from '@components/chat/topbar';
+import {useAppSettings} from '@stores/appSettings';
+import {toastNew} from '@components/toast';
+import {usePeer} from '@stores/peers';
+import {Chat as MTChat} from '@layer';
 
 export function pickLanguage<T extends boolean>(
   multi?: T,

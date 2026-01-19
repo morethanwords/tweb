@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import generatePathData from '../../helpers/generatePathData';
-import {FormatterArguments, i18n, LangPackKey} from '../../lib/langPack';
-import Icon from '../icon';
+import generatePathData from '@helpers/generatePathData';
+import {FormatterArguments, i18n, LangPackKey} from '@lib/langPack';
+import Icon from '@components/icon';
 
 export default class ChatDragAndDrop {
   container: HTMLDivElement;

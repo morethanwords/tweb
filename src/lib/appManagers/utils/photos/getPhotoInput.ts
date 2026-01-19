@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {InputPhoto} from '../../../../layer';
-import {MyPhoto} from '../../appPhotosManager';
+import {InputPhoto} from '@layer';
+import {MyPhoto} from '@appManagers/appPhotosManager';
 
 export default function getPhotoInput(photo: MyPhoto): InputPhoto.inputPhoto {
   return {

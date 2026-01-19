@@ -1,22 +1,21 @@
 import {createEffect, createMemo, createSignal, JSX, on, onMount} from 'solid-js';
 import PopupElement from '.';
-import safeAssign from '../../helpers/object/safeAssign';
-import {MyStarGift} from '../../lib/appManagers/appGiftsManager';
+import safeAssign from '@helpers/object/safeAssign';
+import {MyStarGift} from '@appManagers/appGiftsManager';
 
-import styles from './sellStarGift.module.scss';
-import {MTAppConfig} from '../../lib/mtproto/appConfig';
-import I18n, {i18n, LangPackKey} from '../../lib/langPack';
-import Row from '../rowTsx';
-import CheckboxFieldTsx from '../checkboxFieldTsx';
-import {InputFieldTsx} from '../inputFieldTsx';
-import {fastRaf} from '../../helpers/schedulers';
-import {I18nTsx} from '../../helpers/solid/i18n';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import {toastNew} from '../toast';
-import {StarsAmount} from '../../layer';
-import paymentsWrapCurrencyAmount, {formatNanoton, nanotonToJsNumber, parseNanotonFromDecimal} from '../../helpers/paymentsWrapCurrencyAmount';
-import Section from '../section';
-import {StarGiftPriceInputField} from '../stargifts/stargiftPriceInputField';
+import styles from '@components/popups/sellStarGift.module.scss';
+import I18n, {i18n, LangPackKey} from '@lib/langPack';
+import Row from '@components/rowTsx';
+import CheckboxFieldTsx from '@components/checkboxFieldTsx';
+import {InputFieldTsx} from '@components/inputFieldTsx';
+import {fastRaf} from '@helpers/schedulers';
+import {I18nTsx} from '@helpers/solid/i18n';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import {toastNew} from '@components/toast';
+import {StarsAmount} from '@layer';
+import paymentsWrapCurrencyAmount, {formatNanoton, nanotonToJsNumber, parseNanotonFromDecimal} from '@helpers/paymentsWrapCurrencyAmount';
+import Section from '@components/section';
+import {StarGiftPriceInputField} from '@components/stargifts/stargiftPriceInputField';
 import bigInt from 'big-integer';
 
 export default class PopupSellStarGift extends PopupElement<{

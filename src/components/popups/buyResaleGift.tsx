@@ -1,20 +1,20 @@
 import {createEffect, createSignal, on} from 'solid-js';
 import PopupElement from '.';
-import safeAssign from '../../helpers/object/safeAssign';
-import {I18nTsx} from '../../helpers/solid/i18n';
-import {MyStarGift} from '../../lib/appManagers/appGiftsManager';
-import rootScope from '../../lib/rootScope';
-import {PeerTitleTsx} from '../peerTitleTsx';
+import safeAssign from '@helpers/object/safeAssign';
+import {I18nTsx} from '@helpers/solid/i18n';
+import {MyStarGift} from '@appManagers/appGiftsManager';
+import rootScope from '@lib/rootScope';
+import {PeerTitleTsx} from '@components/peerTitleTsx';
 
-import styles from './buyResaleGift.module.scss';
-import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
-import {STARS_CURRENCY, TON_CURRENCY} from '../../lib/mtproto/mtproto_config';
-import {StarGift} from '../../layer';
-import numberThousandSplitter from '../../helpers/number/numberThousandSplitter';
-import {FloatingStarsBalance} from './floatingStarsBalance';
-import PopupPayment from './payment';
-import {StarGiftTransferPreview} from '../stargifts/transferPreview';
-import {ChipTab, ChipTabs} from '../chipTabs';
+import styles from '@components/popups/buyResaleGift.module.scss';
+import paymentsWrapCurrencyAmount from '@helpers/paymentsWrapCurrencyAmount';
+import {STARS_CURRENCY, TON_CURRENCY} from '@appManagers/constants';
+import {StarGift} from '@layer';
+import numberThousandSplitter from '@helpers/number/numberThousandSplitter';
+import {FloatingStarsBalance} from '@components/popups/floatingStarsBalance';
+import PopupPayment from '@components/popups/payment';
+import {StarGiftTransferPreview} from '@components/stargifts/transferPreview';
+import {ChipTab, ChipTabs} from '@components/chipTabs';
 
 export default class PopupBuyResaleGift extends PopupElement<{
   finish: (result: boolean) => void

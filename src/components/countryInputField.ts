@@ -4,20 +4,20 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import IS_EMOJI_SUPPORTED from '../environment/emojiSupport';
-import cancelEvent from '../helpers/dom/cancelEvent';
-import findUpClassName from '../helpers/dom/findUpClassName';
-import findUpTag from '../helpers/dom/findUpTag';
-import setInnerHTML from '../helpers/dom/setInnerHTML';
-import fastSmoothScroll from '../helpers/fastSmoothScroll';
-import {randomLong} from '../helpers/random';
-import {HelpCountry, HelpCountryCode} from '../layer';
-import I18n, {i18n} from '../lib/langPack';
-import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
-import rootScope from '../lib/rootScope';
-import {getCountryEmoji} from '../vendor/emoji';
-import InputField, {InputFieldOptions} from './inputField';
-import Scrollable from './scrollable';
+import IS_EMOJI_SUPPORTED from '@environment/emojiSupport';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import findUpTag from '@helpers/dom/findUpTag';
+import setInnerHTML from '@helpers/dom/setInnerHTML';
+import fastSmoothScroll from '@helpers/fastSmoothScroll';
+import {randomLong} from '@helpers/random';
+import {HelpCountry, HelpCountryCode} from '@layer';
+import I18n, {i18n} from '@lib/langPack';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import rootScope from '@lib/rootScope';
+import {getCountryEmoji} from '@vendor/emoji';
+import InputField, {InputFieldOptions} from '@components/inputField';
+import Scrollable from '@components/scrollable';
 
 let countries: HelpCountry.helpCountry[];
 const setCountries = () => {

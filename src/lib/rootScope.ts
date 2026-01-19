@@ -4,33 +4,32 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, ReactionCount, MessagePeerReaction, PhoneCall, Config, Reaction, AttachMenuBot, PeerSettings, StoryItem, PeerStories, SavedDialog, SavedReactionTag, InputSavedStarGift, LangPackDifference, StarsAmount, MessageEntity, HelpPromoData} from '../layer';
-import type {Dialog, ForumTopic, MessagesStorageKey, MyMessage} from './appManagers/appMessagesManager';
-import type {MyDialogFilter} from './storages/filters';
-import type {AnyDialog, Folder} from './storages/dialogs';
-import type {UserTyping} from './appManagers/appProfileManager';
-import type {MyDraftMessage} from './appManagers/appDraftsManager';
-import type {ConnectionStatusChange} from './mtproto/connectionStatus';
-import type {GroupCallId} from './appManagers/appGroupCallsManager';
-import type {AppManagers} from './appManagers/managers';
-import type {StateSettings} from '../config/state';
-import type {Progress} from './appManagers/appDownloadManager';
-import type {CallId} from './appManagers/appCallsManager';
-import type {MyDocument} from './appManagers/appDocsManager';
-import type {MTAppConfig} from './mtproto/appConfig';
-import type StoriesCacheType from './appManagers/utils/stories/cacheType';
-import type {StoriesListPosition} from './appManagers/appStoriesManager';
-import type {ArgumentTypes} from '../types';
-import type {RtmpCallInstance} from './calls/rtmpCallsController';
-import type {ApiManager} from './mtproto/apiManager';
-import type {MonoforumDialog} from './storages/monoforumDialogs';
-import {NULL_PEER_ID, UserAuth} from './mtproto/mtproto_config';
-import EventListenerBase, {EventListenerListeners} from '../helpers/eventListenerBase';
-import {MOUNT_CLASS_TO} from '../config/debug';
-import MTProtoMessagePort from './mtproto/mtprotoMessagePort';
-import {ActiveAccountNumber} from './accounts/types';
-import type {MyStarGift} from './appManagers/appGiftsManager';
-import type {MyPromoData} from './appManagers/appPromoManager';
+import type {Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, ReactionCount, MessagePeerReaction, PhoneCall, Config, Reaction, AttachMenuBot, PeerSettings, StoryItem, PeerStories, SavedDialog, SavedReactionTag, InputSavedStarGift, LangPackDifference, StarsAmount, MessageEntity, HelpPromoData} from '@layer';
+import type {Dialog, ForumTopic, MessagesStorageKey, MyMessage} from '@appManagers/appMessagesManager';
+import type {MyDialogFilter} from '@lib/storages/filters';
+import type {AnyDialog, Folder} from '@lib/storages/dialogs';
+import type {UserTyping} from '@appManagers/appProfileManager';
+import type {MyDraftMessage} from '@appManagers/appDraftsManager';
+import type {ConnectionStatusChange} from '@lib/mtproto/connectionStatus';
+import type {GroupCallId} from '@appManagers/appGroupCallsManager';
+import type {AppManagers} from '@lib/managers';
+import type {StateSettings} from '@config/state';
+import type {Progress} from '@lib/appDownloadManager';
+import type {CallId} from '@appManagers/appCallsManager';
+import type {MyDocument} from '@appManagers/appDocsManager';
+import type StoriesCacheType from '@appManagers/utils/stories/cacheType';
+import type {StoriesListPosition} from '@appManagers/appStoriesManager';
+import type {ArgumentTypes} from '@types';
+import type {RtmpCallInstance} from '@lib/calls/rtmpCallsController';
+import type {ApiManager} from '@appManagers/apiManager';
+import type {MonoforumDialog} from '@lib/storages/monoforumDialogs';
+import {NULL_PEER_ID, UserAuth} from '@appManagers/constants';
+import EventListenerBase, {EventListenerListeners} from '@helpers/eventListenerBase';
+import {MOUNT_CLASS_TO} from '@config/debug';
+import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
+import {ActiveAccountNumber} from '@lib/accounts/types';
+import type {MyStarGift} from '@appManagers/appGiftsManager';
+import type {MyPromoData} from '@appManagers/appPromoManager';
 
 export type BroadcastEvents = {
   'chat_full_update': ChatId,

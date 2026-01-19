@@ -4,34 +4,34 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appMediaPlaybackController, {AppMediaPlaybackController} from '../appMediaPlaybackController';
-import DivAndCaption from '../divAndCaption';
-import PinnedContainer from './pinnedContainer';
-import cancelEvent from '../../helpers/dom/cancelEvent';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import replaceContent from '../../helpers/dom/replaceContent';
-import PeerTitle from '../peerTitle';
-import {i18n} from '../../lib/langPack';
-import {formatFullSentTime} from '../../helpers/date';
-import ButtonIcon from '../buttonIcon';
-import {DocumentAttribute} from '../../layer';
-import MediaProgressLine from '../mediaProgressLine';
-import VolumeSelector from '../volumeSelector';
-import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
-import {AppManagers} from '../../lib/appManagers/managers';
-import Icon from '../icon';
-import {replaceButtonIcon} from '../button';
-import getFwdFromName from '../../lib/appManagers/utils/messages/getFwdFromName';
-import toHHMMSS from '../../helpers/string/toHHMMSS';
-import {PlaybackRateButton} from '../../components/playbackRateButton';
-import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
-import {doubleRaf} from '../../helpers/schedulers';
-import ListenerSetter from '../../helpers/listenerSetter';
-import SetTransition from '../singleTransition';
-import {ChatType} from './chat';
-import type {AppImManager} from '../../lib/appManagers/appImManager';
-import findUpClassName from '../../helpers/dom/findUpClassName';
-import toggleDisability from '../../helpers/dom/toggleDisability';
+import appMediaPlaybackController, {AppMediaPlaybackController} from '@components/appMediaPlaybackController';
+import DivAndCaption from '@components/divAndCaption';
+import PinnedContainer from '@components/chat/pinnedContainer';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import replaceContent from '@helpers/dom/replaceContent';
+import PeerTitle from '@components/peerTitle';
+import {i18n} from '@lib/langPack';
+import {formatFullSentTime} from '@helpers/date';
+import ButtonIcon from '@components/buttonIcon';
+import {DocumentAttribute} from '@layer';
+import MediaProgressLine from '@components/mediaProgressLine';
+import VolumeSelector from '@components/volumeSelector';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import {AppManagers} from '@lib/managers';
+import Icon from '@components/icon';
+import {replaceButtonIcon} from '@components/button';
+import getFwdFromName from '@appManagers/utils/messages/getFwdFromName';
+import toHHMMSS from '@helpers/string/toHHMMSS';
+import {PlaybackRateButton} from '@components/playbackRateButton';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import {doubleRaf} from '@helpers/schedulers';
+import ListenerSetter from '@helpers/listenerSetter';
+import SetTransition from '@components/singleTransition';
+import {ChatType} from '@components/chat/chat';
+import type {AppImManager} from '@lib/appImManager';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import toggleDisability from '@helpers/dom/toggleDisability';
 
 export default class ChatAudio extends PinnedContainer {
   private toggleEl: HTMLElement;

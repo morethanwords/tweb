@@ -1,7 +1,7 @@
 import {createMemo} from 'solid-js';
 
-import {useMediaEditorContext} from '../context';
-import {NumberPair} from '../types';
+import {useMediaEditorContext} from '@components/mediaEditor/context';
+import {NumberPair} from '@components/mediaEditor/types';
 
 export default function useProcessPoint(densityAware = true) {
   const {editorState} = useMediaEditorContext();

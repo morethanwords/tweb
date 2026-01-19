@@ -2,15 +2,15 @@ import {createEffect, createMemo, createSignal, Show, JSX} from 'solid-js';
 import {render} from 'solid-js/web';
 import type {Level} from 'hls.js';
 
-import {ButtonMenuItemOptionsVerifiable} from '../../components/buttonMenu';
-import ButtonMenuToggle from '../../components/buttonMenuToggle';
-import Icon from '../../components/icon';
-import deferredPromise from '../../helpers/cancellablePromise';
+import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
+import ButtonMenuToggle from '@components/buttonMenuToggle';
+import Icon from '@components/icon';
+import deferredPromise from '@helpers/cancellablePromise';
 
-import {hlsInstancesByVideo} from '../hls/hlsInstancesByVideo';
-import {HlsStandardResolutionHeight} from '../hls/types';
-import {snapQualityHeight} from '../hls/snapQualityHeight';
-import {i18n, LangPackKey} from '../langPack';
+import {hlsInstancesByVideo} from '@lib/hls/hlsInstancesByVideo';
+import {HlsStandardResolutionHeight} from '@lib/hls/types';
+import {snapQualityHeight} from '@lib/hls/snapQualityHeight';
+import {i18n, LangPackKey} from '@lib/langPack';
 
 type QualityLevelsSwitchButtonProps = {
   video: HTMLVideoElement;

@@ -1,7 +1,7 @@
 import {createEffect, createRoot, JSX, ParentProps} from 'solid-js';
 import {createMutable, unwrap} from 'solid-js/store';
 import {render} from 'solid-js/web';
-import type SolidJSHotReloadGuardProvider from './hotReloadGuardProvider';
+import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 
 
 type Args<ObservedAttribute extends string, Props, Controls extends Object = {}> = {
@@ -50,7 +50,7 @@ export type DefinedSolidElement<ObservedAttribute extends string = string, Props
  * // used-in-file.ts
  *
  * // Some imports might break the HMR, so you can provide this hot reload guard to prevent page reload
- * import SolidJSHotReloadGuardProvider from './hotReloadGuardProvider';
+ * import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
  *
  * const el = new MyElement;
  * el.feedProps({fancyProp: new Date});

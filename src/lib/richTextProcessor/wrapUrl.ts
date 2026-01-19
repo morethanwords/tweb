@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type addAnchorListener from '../../helpers/addAnchorListener';
+import type addAnchorListener from '@helpers/addAnchorListener';
 import {PHONE_NUMBER_REG_EXP} from '.';
-import {MOUNT_CLASS_TO} from '../../config/debug';
-import matchUrlProtocol from './matchUrlProtocol';
-import {T_ME_PREFIXES} from '../mtproto/mtproto_config';
+import {MOUNT_CLASS_TO} from '@config/debug';
+import matchUrlProtocol from '@lib/richTextProcessor/matchUrlProtocol';
+import {T_ME_PREFIXES} from '@appManagers/constants';
 
 export default function wrapUrl(url: string, unsafe?: number | boolean) {
   if(!matchUrlProtocol(url)) {

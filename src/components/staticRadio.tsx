@@ -1,6 +1,6 @@
 import {Component, splitProps, JSX} from 'solid-js';
 
-import styles from './staticRadio.module.scss';
+import styles from '@components/staticRadio.module.scss';
 
 const StaticRadio: Component<{
   checked: boolean;

@@ -1,7 +1,7 @@
-import {MOUNT_CLASS_TO} from '../config/debug';
-import {logger} from '../lib/logger';
+import {MOUNT_CLASS_TO} from '@config/debug';
+import {logger} from '@lib/logger';
 
-import animationIntersector from './animationIntersector';
+import animationIntersector from '@components/animationIntersector';
 
 export default class BluffSpoilerController {
   private static log = logger('bluff-spoiler');

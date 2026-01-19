@@ -1,4 +1,4 @@
-import {SALT_LENGTH} from './constants';
+import {SALT_LENGTH} from '@lib/passcode/constants';
 
 const ITERATIONS = 100000;
 

@@ -1,4 +1,4 @@
-import {TLDeserialization} from '../mtproto/tl_utils';
+import {TLDeserialization} from '@lib/mtproto/tl_utils';
 
 export interface VideoStreamEvent {
   offsetValue: number;

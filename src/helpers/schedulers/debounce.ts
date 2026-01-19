@@ -1,8 +1,8 @@
 // * Jolly Cobra's schedulers
 
-import ctx from '../../environment/ctx';
-import {AnyFunction} from '../../types';
-import noop from '../noop';
+import ctx from '@environment/ctx';
+import {AnyFunction} from '@types';
+import noop from '@helpers/noop';
 
 export type DebounceReturnType<F extends AnyFunction> = {
   (...args: Parameters<F>): Promise<Awaited<ReturnType<F>>>;

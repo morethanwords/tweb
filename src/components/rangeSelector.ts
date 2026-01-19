@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import attachGrabListeners, {GrabEvent} from '../helpers/dom/attachGrabListeners';
-import clamp from '../helpers/number/clamp';
-import safeAssign from '../helpers/object/safeAssign';
-import I18n from '../lib/langPack';
+import attachGrabListeners, {GrabEvent} from '@helpers/dom/attachGrabListeners';
+import clamp from '@helpers/number/clamp';
+import safeAssign from '@helpers/object/safeAssign';
+import I18n from '@lib/langPack';
 
 export default class RangeSelector {
   public container: HTMLDivElement;

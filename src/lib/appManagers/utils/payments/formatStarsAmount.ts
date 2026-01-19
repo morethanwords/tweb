@@ -1,5 +1,5 @@
-import isObject from '../../../../helpers/object/isObject';
-import {StarsAmount} from '../../../../layer';
+import isObject from '@helpers/object/isObject';
+import {StarsAmount} from '@layer';
 
 export default function formatStarsAmount<T extends StarsAmount | Long, K extends boolean = false>(
   amount: T,

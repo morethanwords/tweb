@@ -4,33 +4,33 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import ctx from '../../environment/ctx';
-import {IS_SAFARI} from '../../environment/userAgent';
-import assumeType from '../../helpers/assumeType';
-import safeAssign from '../../helpers/object/safeAssign';
-import debounce from '../../helpers/schedulers/debounce';
-import {GroupCallParticipantVideoSourceGroup, PhoneCall, PhoneCallDiscardReason, PhoneCallProtocol, Update} from '../../layer';
-import {emojiFromCodePoints} from '../../vendor/emoji';
-import type {AppCallsManager, CallId} from '../appManagers/appCallsManager';
-import type {AppManagers} from '../appManagers/managers';
-import {logger} from '../logger';
-import apiManagerProxy from '../mtproto/mtprotoworker';
-import CallConnectionInstance from './callConnectionInstance';
-import CallInstanceBase from './callInstanceBase';
-import callsController from './callsController';
-import CALL_STATE from './callState';
-import {GROUP_CALL_AMPLITUDE_ANALYSE_INTERVAL_MS} from './constants';
-import parseSignalingData from './helpers/parseSignalingData';
-import stopTrack from './helpers/stopTrack';
-import localConferenceDescription, {ConferenceEntry, generateSsrc} from './localConferenceDescription';
-import getCallProtocol from './p2P/getCallProtocol';
-import getRtcConfiguration from './p2P/getRtcConfiguration';
-import P2PEncryptor from './p2P/p2PEncryptor';
-import {p2pParseCandidate, P2PSdpBuilder} from './p2P/p2PSdpBuilder';
-import {parseSdp} from './sdp/utils';
-import {WebRTCLineType} from './sdpBuilder';
-import StreamManager from './streamManager';
-import {AudioCodec, CallMediaState, CallSignalingData, DiffieHellmanInfo, P2PAudioCodec, P2PVideoCodec, VideoCodec} from './types';
+import ctx from '@environment/ctx';
+import {IS_SAFARI} from '@environment/userAgent';
+import assumeType from '@helpers/assumeType';
+import safeAssign from '@helpers/object/safeAssign';
+import debounce from '@helpers/schedulers/debounce';
+import {GroupCallParticipantVideoSourceGroup, PhoneCall, PhoneCallDiscardReason, PhoneCallProtocol, Update} from '@layer';
+import {emojiFromCodePoints} from '@vendor/emoji';
+import type {AppCallsManager, CallId} from '@appManagers/appCallsManager';
+import type {AppManagers} from '@lib/managers';
+import {logger} from '@lib/logger';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import CallConnectionInstance from '@lib/calls/callConnectionInstance';
+import CallInstanceBase from '@lib/calls/callInstanceBase';
+import callsController from '@lib/calls/callsController';
+import CALL_STATE from '@lib/calls/callState';
+import {GROUP_CALL_AMPLITUDE_ANALYSE_INTERVAL_MS} from '@lib/calls/constants';
+import parseSignalingData from '@lib/calls/helpers/parseSignalingData';
+import stopTrack from '@lib/calls/helpers/stopTrack';
+import localConferenceDescription, {ConferenceEntry, generateSsrc} from '@lib/calls/localConferenceDescription';
+import getCallProtocol from '@lib/calls/p2P/getCallProtocol';
+import getRtcConfiguration from '@lib/calls/p2P/getRtcConfiguration';
+import P2PEncryptor from '@lib/calls/p2P/p2PEncryptor';
+import {p2pParseCandidate, P2PSdpBuilder} from '@lib/calls/p2P/p2PSdpBuilder';
+import {parseSdp} from '@lib/calls/sdp/utils';
+import {WebRTCLineType} from '@lib/calls/sdpBuilder';
+import StreamManager from '@lib/calls/streamManager';
+import {AudioCodec, CallMediaState, CallSignalingData, DiffieHellmanInfo, P2PAudioCodec, P2PVideoCodec, VideoCodec} from '@lib/calls/types';
 
 export default class CallInstance extends CallInstanceBase<{
   state: (state: CALL_STATE) => void,

@@ -4,22 +4,22 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import InputField from '../../inputField';
-import {SliderSuperTab} from '../../slider';
-import EditPeer from '../../editPeer';
-import {UsernameInputField} from '../../usernameInputField';
-import {i18n, i18n_, LangPackKey} from '../../../lib/langPack';
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import rootScope from '../../../lib/rootScope';
-import setBlankToAnchor from '../../../lib/richTextProcessor/setBlankToAnchor';
-import getPeerEditableUsername from '../../../lib/appManagers/utils/peers/getPeerEditableUsername';
-import SettingSection, {generateSection} from '../../settingSection';
-import UsernamesSection from '../../usernamesSection';
-import Row from '../../row';
-import showBirthdayPopup, {saveMyBirthday} from '../../popups/birthday';
-import {getHeavyAnimationPromise} from '../../../hooks/useHeavyAnimationCheck';
-import placeCaretAtEnd from '../../../helpers/dom/placeCaretAtEnd';
-import shake from '../../../helpers/dom/shake';
+import InputField from '@components/inputField';
+import {SliderSuperTab} from '@components/slider';
+import EditPeer from '@components/editPeer';
+import {UsernameInputField} from '@components/usernameInputField';
+import {i18n, i18n_, LangPackKey} from '@lib/langPack';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import rootScope from '@lib/rootScope';
+import setBlankToAnchor from '@lib/richTextProcessor/setBlankToAnchor';
+import getPeerEditableUsername from '@appManagers/utils/peers/getPeerEditableUsername';
+import SettingSection, {generateSection} from '@components/settingSection';
+import UsernamesSection from '@components/usernamesSection';
+import Row from '@components/row';
+import showBirthdayPopup, {saveMyBirthday} from '@components/popups/birthday';
+import {getHeavyAnimationPromise} from '@hooks/useHeavyAnimationCheck';
+import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
+import shake from '@helpers/dom/shake';
 
 // TODO: аватарка не поменяется в этой вкладке после изменения почему-то (если поставить в другом клиенте, и потом тут проверить, для этого ещё вышел в чатлист)
 

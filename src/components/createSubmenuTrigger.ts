@@ -1,11 +1,11 @@
-import {CLICK_EVENT_NAME} from '../helpers/dom/clickEvent';
-import {getMiddleware, Middleware, MiddlewareHelper} from '../helpers/middleware';
-import noop from '../helpers/noop';
-import pause from '../helpers/schedulers/pause';
-import {i18n} from '../lib/langPack';
-import {ButtonMenuItemOptionsVerifiable} from './buttonMenu';
-import attachFloatingButtonMenu, {FloatingButtonMenuDirection} from './floatingButtonMenu';
-import Icon from './icon';
+import {CLICK_EVENT_NAME} from '@helpers/dom/clickEvent';
+import {getMiddleware, Middleware, MiddlewareHelper} from '@helpers/middleware';
+import noop from '@helpers/noop';
+import pause from '@helpers/schedulers/pause';
+import {i18n} from '@lib/langPack';
+import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
+import attachFloatingButtonMenu, {FloatingButtonMenuDirection} from '@components/floatingButtonMenu';
+import Icon from '@components/icon';
 
 
 let submenuHelperIdSeed = 0;

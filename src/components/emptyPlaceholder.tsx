@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {Middleware} from '../helpers/middleware';
-import {LottieAssetName} from '../lib/rlottie/lottieLoader';
-import wrapLocalSticker from './wrappers/localSticker';
+import {Middleware} from '@helpers/middleware';
+import {LottieAssetName} from '@lib/rlottie/lottieLoader';
+import wrapLocalSticker from '@components/wrappers/localSticker';
 import {Accessor, createRoot, JSX} from 'solid-js';
 
 export default async function emptyPlaceholder({

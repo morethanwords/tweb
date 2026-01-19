@@ -4,21 +4,21 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {AppTheme} from '../config/state';
-import type {Theme} from '../layer';
-import type AppBackgroundTab from '../components/sidebarLeft/tabs/background';
-import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
-import rootScope from '../lib/rootScope';
-import {changeColorAccent, ColorRgb, getAccentColor, getAverageColor, getRgbColorFromTelegramColor, hexToRgb, hslaStringToHex, hslaStringToRgba, hslaToRgba, hsvToRgb, mixColors, rgbaToHexa, rgbaToHsla, rgbToHsv} from './color';
-import {MOUNT_CLASS_TO} from '../config/debug';
-import customProperties from './dom/customProperties';
-import {TelegramWebViewTheme} from '../types';
-import windowSize from './windowSize';
-import liteMode from './liteMode';
-import {useAppSettings} from '../stores/appSettings';
-import {logger} from '../lib/logger';
-import pause from './schedulers/pause';
-import Transitions, {getTransition} from '../config/transitions';
+import type {AppTheme} from '@config/state';
+import type {Theme} from '@layer';
+import type AppBackgroundTab from '@components/sidebarLeft/tabs/background';
+import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
+import rootScope from '@lib/rootScope';
+import {changeColorAccent, ColorRgb, getAccentColor, getAverageColor, getRgbColorFromTelegramColor, hexToRgb, hslaStringToHex, hslaStringToRgba, hslaToRgba, hsvToRgb, mixColors, rgbaToHexa, rgbaToHsla, rgbToHsv} from '@helpers/color';
+import {MOUNT_CLASS_TO} from '@config/debug';
+import customProperties from '@helpers/dom/customProperties';
+import {TelegramWebViewTheme} from '@types';
+import windowSize from '@helpers/windowSize';
+import liteMode from '@helpers/liteMode';
+import {useAppSettings} from '@stores/appSettings';
+import {logger} from '@lib/logger';
+import pause from '@helpers/schedulers/pause';
+import Transitions, {getTransition} from '@config/transitions';
 
 export type AppColorName = 'primary-color' | 'message-out-primary-color' |
   'surface-color' | 'danger-color' | 'primary-text-color' |

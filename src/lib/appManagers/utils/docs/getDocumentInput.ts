@@ -1,5 +1,5 @@
-import {InputDocument} from '../../../../layer';
-import type {MyDocument} from '../../appDocsManager';
+import {InputDocument} from '@layer';
+import type {MyDocument} from '@appManagers/appDocsManager';
 
 export default function getDocumentInput(doc: MyDocument): InputDocument {
   return {

@@ -1,7 +1,7 @@
 import {Component} from 'solid-js';
 import {render} from 'solid-js/web';
-import type SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
-import {Middleware} from '../middleware';
+import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import {Middleware} from '@helpers/middleware';
 
 
 type RenderComponentArgs<T extends object> = {

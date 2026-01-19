@@ -1,12 +1,12 @@
 import {createEffect, createMemo, createSignal, on, onCleanup, onMount} from 'solid-js';
 
-import {doubleRaf} from '../../helpers/schedulers';
-import {hexToRgb} from '../../helpers/color';
-import _ColorPicker from '../colorPicker';
-import ripple from '../ripple';
+import {doubleRaf} from '@helpers/schedulers';
+import {hexToRgb} from '@helpers/color';
+import _ColorPicker from '@components/colorPicker';
+import ripple from '@components/ripple';
 
-import {useMediaEditorContext} from './context';
-import {delay} from './utils';
+import {useMediaEditorContext} from '@components/mediaEditor/context';
+import {delay} from '@components/mediaEditor/utils';
 
 
 export const colorPickerSwatches = [

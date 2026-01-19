@@ -1,9 +1,9 @@
-import App from '../../config/app';
-import {bigIntFromBytes} from '../../helpers/bigInt/bigIntConversion';
-import {EmailVerification, EmailVerifyPurpose, InputCheckPasswordSRP, InputPasskeyCredential} from '../../layer';
-import {DcId, TrueDcId} from '../../types';
-import AccountController from '../accounts/accountController';
-import {AppManager} from './manager';
+import App from '@config/app';
+import {bigIntFromBytes} from '@helpers/bigInt/bigIntConversion';
+import {EmailVerification, EmailVerifyPurpose, InputCheckPasswordSRP, InputPasskeyCredential} from '@layer';
+import {DcId, TrueDcId} from '@types';
+import AccountController from '@lib/accounts/accountController';
+import {AppManager} from '@appManagers/manager';
 
 export default class AppAccountManager extends AppManager {
   public initPasskeyRegistration() {

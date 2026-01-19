@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appImManager, {APP_TABS} from '../../lib/appManagers/appImManager';
-import SidebarSlider from '../slider';
-import mediaSizes, {ScreenSize} from '../../helpers/mediaSizes';
-import AppSharedMediaTab from './tabs/sharedMedia';
-import {MOUNT_CLASS_TO} from '../../config/debug';
-import {AppManagers} from '../../lib/appManagers/managers';
-import appNavigationController from '../appNavigationController';
-import rootScope from '../../lib/rootScope';
+import appImManager, {APP_TABS} from '@lib/appImManager';
+import SidebarSlider from '@components/slider';
+import mediaSizes, {ScreenSize} from '@helpers/mediaSizes';
+import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMedia';
+import {MOUNT_CLASS_TO} from '@config/debug';
+import {AppManagers} from '@lib/managers';
+import appNavigationController from '@components/appNavigationController';
+import rootScope from '@lib/rootScope';
 
 
 export const RIGHT_COLUMN_ACTIVE_CLASSNAME = 'is-right-column-shown';

@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {fastRaf} from './schedulers';
-import deferredPromise, {CancellablePromise} from './cancellablePromise';
-import {MOUNT_CLASS_TO} from '../config/debug';
-import isInDOM from './dom/isInDOM';
+import {fastRaf} from '@helpers/schedulers';
+import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
+import {MOUNT_CLASS_TO} from '@config/debug';
+import isInDOM from '@helpers/dom/isInDOM';
 
 class SequentialDom {
   private promises: Partial<{

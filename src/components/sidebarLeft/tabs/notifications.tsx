@@ -1,21 +1,21 @@
-import {SETTINGS_INIT} from '../../../config/state';
-import copy from '../../../helpers/object/copy';
-import {subscribeOn} from '../../../helpers/solid/subscribeOn';
-import convertKeyToInputKey from '../../../helpers/string/convertKeyToInputKey';
-import {InputNotifyPeer, InputPeerNotifySettings, PeerNotifySettings, Update} from '../../../layer';
-import {i18n, LangPackKey} from '../../../lib/langPack';
-import {MUTE_UNTIL} from '../../../lib/mtproto/mtproto_config';
-import rootScope from '../../../lib/rootScope';
-import {useAppSettings} from '../../../stores/appSettings';
-import CheckboxFieldTsx from '../../checkboxFieldTsx';
-import RangeSettingSelector from '../../rangeSettingSelector';
-import Row from '../../rowTsx';
-import Section from '../../section';
+import {SETTINGS_INIT} from '@config/state';
+import copy from '@helpers/object/copy';
+import {subscribeOn} from '@helpers/solid/subscribeOn';
+import convertKeyToInputKey from '@helpers/string/convertKeyToInputKey';
+import {InputNotifyPeer, InputPeerNotifySettings, PeerNotifySettings, Update} from '@layer';
+import {i18n, LangPackKey} from '@lib/langPack';
+import {MUTE_UNTIL} from '@appManagers/constants';
+import rootScope from '@lib/rootScope';
+import {useAppSettings} from '@stores/appSettings';
+import CheckboxFieldTsx from '@components/checkboxFieldTsx';
+import RangeSettingSelector from '@components/rangeSettingSelector';
+import Row from '@components/rowTsx';
+import Section from '@components/section';
 import {createEffect, createMemo, createSignal, getOwner, onCleanup, runWithOwner} from 'solid-js';
-import {toastNew} from '../../toast';
-import Button from '../../buttonTsx';
-import cancelEvent from '../../../helpers/dom/cancelEvent';
-import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
+import {toastNew} from '@components/toast';
+import Button from '@components/buttonTsx';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 
 type InputNotifyKey = Exclude<InputNotifyPeer['_'], 'inputNotifyPeer' | 'inputNotifyForumTopic'>;
 

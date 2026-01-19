@@ -4,31 +4,31 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {copyTextToClipboard} from '../../../helpers/clipboard';
-import {randomLong} from '../../../helpers/random';
-import {Chat, ChatFull, ExportedChatInvite} from '../../../layer';
-import Button from '../../button';
-import {setButtonLoader} from '../../putPreloader';
-import RadioField from '../../radioField';
-import Row, {RadioFormFromRows} from '../../row';
-import {toast} from '../../toast';
-import {UsernameInputField} from '../../usernameInputField';
-import {SliderSuperTabEventable} from '../../sliderTab';
-import I18n, {i18n} from '../../../lib/langPack';
-import PopupPeer from '../../popups/peer';
-import ButtonCorner from '../../buttonCorner';
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import toggleDisability from '../../../helpers/dom/toggleDisability';
-import CheckboxField from '../../checkboxField';
-import rootScope from '../../../lib/rootScope';
-import SettingSection from '../../settingSection';
-import UsernamesSection from '../../usernamesSection';
-import getPeerEditableUsername from '../../../lib/appManagers/utils/peers/getPeerEditableUsername';
-import getPeerActiveUsernames from '../../../lib/appManagers/utils/peers/getPeerActiveUsernames';
-import {purchaseUsernameCaption} from '../../sidebarLeft/tabs/editProfile';
-import confirmationPopup from '../../confirmationPopup';
-import PopupElement from '../../popups';
-import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
+import {copyTextToClipboard} from '@helpers/clipboard';
+import {randomLong} from '@helpers/random';
+import {Chat, ChatFull, ExportedChatInvite} from '@layer';
+import Button from '@components/button';
+import {setButtonLoader} from '@components/putPreloader';
+import RadioField from '@components/radioField';
+import Row, {RadioFormFromRows} from '@components/row';
+import {toast} from '@components/toast';
+import {UsernameInputField} from '@components/usernameInputField';
+import {SliderSuperTabEventable} from '@components/sliderTab';
+import I18n, {i18n} from '@lib/langPack';
+import PopupPeer from '@components/popups/peer';
+import ButtonCorner from '@components/buttonCorner';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import toggleDisability from '@helpers/dom/toggleDisability';
+import CheckboxField from '@components/checkboxField';
+import rootScope from '@lib/rootScope';
+import SettingSection from '@components/settingSection';
+import UsernamesSection from '@components/usernamesSection';
+import getPeerEditableUsername from '@appManagers/utils/peers/getPeerEditableUsername';
+import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
+import {purchaseUsernameCaption} from '@components/sidebarLeft/tabs/editProfile';
+import confirmationPopup from '@components/confirmationPopup';
+import PopupElement from '@components/popups';
+import apiManagerProxy from '@lib/apiManagerProxy';
 
 export default class AppChatTypeTab extends SliderSuperTabEventable {
   public chatId: ChatId;

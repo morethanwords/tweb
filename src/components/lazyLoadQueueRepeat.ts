@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import indexOfAndSplice from '../helpers/array/indexOfAndSplice';
-import LazyLoadQueueIntersector, {LazyLoadElement} from './lazyLoadQueueIntersector';
-import VisibilityIntersector, {OnVisibilityChange} from './visibilityIntersector';
+import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
+import LazyLoadQueueIntersector, {LazyLoadElement} from '@components/lazyLoadQueueIntersector';
+import VisibilityIntersector, {OnVisibilityChange} from '@components/visibilityIntersector';
 
 export default class LazyLoadQueueRepeat extends LazyLoadQueueIntersector {
   private elementsMap: Map<HTMLElement, LazyLoadElement> = new Map();

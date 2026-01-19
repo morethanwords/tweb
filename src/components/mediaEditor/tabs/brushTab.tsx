@@ -1,15 +1,15 @@
 import {createEffect, JSX} from 'solid-js';
 
-import {i18n} from '../../../lib/langPack';
+import {i18n} from '@lib/langPack';
 
-import Space from '../../space';
+import Space from '@components/space';
 
-import {ArrowBrush, BlurBrush, EraserBrush, MarkerBrush, NeonBrush, PenBrush} from '../brushesSvg';
-import {createStoredColor} from '../createStoredColor';
-import {useMediaEditorContext} from '../context';
-import ColorPicker from '../colorPicker';
-import LargeButton from '../largeButton';
-import RangeInput from '../rangeInput';
+import {ArrowBrush, BlurBrush, EraserBrush, MarkerBrush, NeonBrush, PenBrush} from '@components/mediaEditor/brushesSvg';
+import {createStoredColor} from '@components/mediaEditor/createStoredColor';
+import {useMediaEditorContext} from '@components/mediaEditor/context';
+import ColorPicker from '@components/mediaEditor/colorPicker';
+import LargeButton from '@components/mediaEditor/largeButton';
+import RangeInput from '@components/mediaEditor/rangeInput';
 
 export default function BrushTab() {
   const {editorState, mediaType} = useMediaEditorContext();

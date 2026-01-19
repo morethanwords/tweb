@@ -1,8 +1,8 @@
 import {JSX} from 'solid-js';
-import classNames from '../../helpers/string/classNames';
-import styles from './stargiftBadge.module.scss';
-import {StarGiftAttribute} from '../../layer';
-import {rgbIntToHex} from '../../helpers/color';
+import classNames from '@helpers/string/classNames';
+import styles from '@components/stargifts/stargiftBadge.module.scss';
+import {StarGiftAttribute} from '@layer';
+import {rgbIntToHex} from '@helpers/color';
 
 export function StarGiftBadge(props: {
   class?: string

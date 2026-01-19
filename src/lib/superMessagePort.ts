@@ -4,15 +4,15 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import DEBUG from '../../config/debug';
-import tabId from '../../config/tabId';
-import ctx from '../../environment/ctx';
-import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-import {IS_WORKER} from '../../helpers/context';
-import EventListenerBase from '../../helpers/eventListenerBase';
-import makeError from '../../helpers/makeError';
-import {WorkerTaskTemplate, WorkerTaskVoidTemplate} from '../../types';
-import {logger} from '../logger';
+import DEBUG from '@config/debug';
+import tabId from '@config/tabId';
+import ctx from '@environment/ctx';
+import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
+import {IS_WORKER} from '@helpers/context';
+import EventListenerBase from '@helpers/eventListenerBase';
+import makeError from '@helpers/makeError';
+import {WorkerTaskTemplate, WorkerTaskVoidTemplate} from '@types';
+import {logger} from '@lib/logger';
 
 type SuperMessagePortTask = WorkerTaskTemplate & {
   transfer?: Transferable[]

@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
-import EventListenerBase from '../eventListenerBase';
-import ListenerSetter from '../listenerSetter';
-import safeAssign from '../object/safeAssign';
-import findUpClassName from './findUpClassName';
+import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
+import EventListenerBase from '@helpers/eventListenerBase';
+import ListenerSetter from '@helpers/listenerSetter';
+import safeAssign from '@helpers/object/safeAssign';
+import findUpClassName from '@helpers/dom/findUpClassName';
 
 export default class ControlsHover extends EventListenerBase<{
   toggleControls: (show: boolean) => void

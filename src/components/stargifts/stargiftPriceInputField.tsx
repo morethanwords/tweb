@@ -1,14 +1,14 @@
-import InputField, {InputFieldOptions} from '../inputField';
-import currencyStarIcon from '../currencyStarIcon';
-import Icon from '../icon';
-import {FormatterArguments, LangPackKey} from '../../lib/langPack';
-import {useAppConfig} from '../../stores/appState';
+import InputField, {InputFieldOptions} from '@components/inputField';
+import currencyStarIcon from '@components/currencyStarIcon';
+import Icon from '@components/icon';
+import {FormatterArguments, LangPackKey} from '@lib/langPack';
+import {useAppConfig} from '@stores/appState';
 import {createEffect, on} from 'solid-js';
-import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
-import {InputFieldTsx} from '../inputFieldTsx';
-import {fastRaf} from '../../helpers/schedulers';
+import paymentsWrapCurrencyAmount from '@helpers/paymentsWrapCurrencyAmount';
+import {InputFieldTsx} from '@components/inputFieldTsx';
+import {fastRaf} from '@helpers/schedulers';
 
-import styles from './stargiftPriceInputField.module.scss';
+import styles from '@components/stargifts/stargiftPriceInputField.module.scss';
 
 export class StarGiftPriceInputFieldClass extends InputField {
   private icon: HTMLElement;

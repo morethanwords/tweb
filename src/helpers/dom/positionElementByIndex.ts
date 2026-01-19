@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import whichChild from './whichChild';
+import whichChild from '@helpers/dom/whichChild';
 
 export default function positionElementByIndex(element: HTMLElement, container: HTMLElement, pos: number, prevPos?: number) {
   if(prevPos === undefined) {

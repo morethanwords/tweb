@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {LangPackKey} from '../../lib/langPack';
-import {ApiLimitType} from '../../lib/mtproto/api_methods';
-import rootScope from '../../lib/rootScope';
-import PopupPeer from './peer';
-import LimitLine from '../limit';
-import PopupPremium from './premium';
+import {LangPackKey} from '@lib/langPack';
+import {ApiLimitType} from '@appManagers/apiManagerMethods';
+import rootScope from '@lib/rootScope';
+import PopupPeer from '@components/popups/peer';
+import LimitLine from '@components/limit';
+import PopupPremium from '@components/popups/premium';
 
 const a: {[type in ApiLimitType]?: {
   title: LangPackKey,

@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {getDatabaseState} from '../../config/databases/state';
-import {MAX_ACCOUNTS} from '../accounts/constants';
-import AppStorage from '../storage';
-import {ResetStoragesPromise} from './appStateManager';
-import {AppManager} from './manager';
-import {ActiveAccountNumber} from '../accounts/types';
-import createStorages from './utils/storages/createStorages';
-import loadStorages from './utils/storages/loadStorages';
+import {getDatabaseState} from '@config/databases/state';
+import {MAX_ACCOUNTS} from '@lib/accounts/constants';
+import AppStorage from '@lib/storage';
+import {ResetStoragesPromise} from '@appManagers/appStateManager';
+import {AppManager} from '@appManagers/manager';
+import {ActiveAccountNumber} from '@lib/accounts/types';
+import createStorages from '@appManagers/utils/storages/createStorages';
+import loadStorages from '@appManagers/utils/storages/loadStorages';
 
 export class AppStoragesManager extends AppManager {
   private storages: ReturnType<typeof createStorages>;

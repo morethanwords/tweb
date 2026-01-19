@@ -4,36 +4,36 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {EMOJI_VERSION} from '../../environment/emojiVersionsSupport';
+import type {EMOJI_VERSION} from '@environment/emojiVersionsSupport';
 import {SITE_HASHTAGS} from '.';
-import {EmojiVersions} from '../../config/emoji';
-import IS_EMOJI_SUPPORTED from '../../environment/emojiSupport';
-import buildURLHash from '../../helpers/buildURLHash';
-import copy from '../../helpers/object/copy';
-import encodeEntities from '../../helpers/string/encodeEntities';
-import {MessageEntity} from '../../layer';
-import encodeSpoiler from './encodeSpoiler';
-import parseEntities from './parseEntities';
-import setBlankToAnchor from './setBlankToAnchor';
-import wrapUrl from './wrapUrl';
-import EMOJI_VERSIONS_SUPPORTED from '../../environment/emojiVersionsSupport';
-import {CLICK_EVENT_NAME} from '../../helpers/dom/clickEvent';
-import IS_CUSTOM_EMOJI_SUPPORTED from '../../environment/customEmojiSupport';
-import BOM from '../../helpers/string/bom';
-import wrapTelegramUrlToAnchor from './wrapTelegramUrlToAnchor';
-import {IS_FIREFOX} from '../../environment/userAgent';
-import CustomEmojiElement, {CustomEmojiElements} from '../customEmoji/element';
-import {CustomEmojiRendererElementOptions, CustomEmojiRendererElement} from '../customEmoji/renderer';
-import {setDirection} from '../../helpers/dom/setInnerHTML';
-import {i18n} from '../langPack';
-import Icon from '../../components/icon';
-import {CodeLanguageAliases, highlightCode} from '../../codeLanguages';
-import callbackify from '../../helpers/callbackify';
-import findIndexFrom from '../../helpers/array/findIndexFrom';
-import {observeResize} from '../../components/resizeObserver';
-import createElementFromMarkup from '../../helpers/createElementFromMarkup';
-import DotRenderer from '../../components/dotRenderer';
-import isMixedScriptUrl from '../../helpers/string/isMixedScriptUrl';
+import {EmojiVersions} from '@config/emoji';
+import IS_EMOJI_SUPPORTED from '@environment/emojiSupport';
+import buildURLHash from '@helpers/buildURLHash';
+import copy from '@helpers/object/copy';
+import encodeEntities from '@helpers/string/encodeEntities';
+import {MessageEntity} from '@layer';
+import encodeSpoiler from '@lib/richTextProcessor/encodeSpoiler';
+import parseEntities from '@lib/richTextProcessor/parseEntities';
+import setBlankToAnchor from '@lib/richTextProcessor/setBlankToAnchor';
+import wrapUrl from '@lib/richTextProcessor/wrapUrl';
+import EMOJI_VERSIONS_SUPPORTED from '@environment/emojiVersionsSupport';
+import {CLICK_EVENT_NAME} from '@helpers/dom/clickEvent';
+import IS_CUSTOM_EMOJI_SUPPORTED from '@environment/customEmojiSupport';
+import BOM from '@helpers/string/bom';
+import wrapTelegramUrlToAnchor from '@lib/richTextProcessor/wrapTelegramUrlToAnchor';
+import {IS_FIREFOX} from '@environment/userAgent';
+import CustomEmojiElement, {CustomEmojiElements} from '@lib/customEmoji/element';
+import {CustomEmojiRendererElementOptions, CustomEmojiRendererElement} from '@lib/customEmoji/renderer';
+import {setDirection} from '@helpers/dom/setInnerHTML';
+import {i18n} from '@lib/langPack';
+import Icon from '@components/icon';
+import {CodeLanguageAliases, highlightCode} from '@/codeLanguages';
+import callbackify from '@helpers/callbackify';
+import findIndexFrom from '@helpers/array/findIndexFrom';
+import {observeResize} from '@components/resizeObserver';
+import createElementFromMarkup from '@helpers/createElementFromMarkup';
+import DotRenderer from '@components/dotRenderer';
+import isMixedScriptUrl from '@helpers/string/isMixedScriptUrl';
 
 export type WrapRichTextOptions = Partial<{
   entities: MessageEntity[],

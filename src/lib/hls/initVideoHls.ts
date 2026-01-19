@@ -1,8 +1,8 @@
-import DEBUG from '../../config/debug';
-import {Middleware} from '../../helpers/middleware';
+import DEBUG from '@config/debug';
+import {Middleware} from '@helpers/middleware';
 
-import {log} from './common';
-import {hlsInstancesByVideo} from './hlsInstancesByVideo';
+import {log} from '@lib/hls/common';
+import {hlsInstancesByVideo} from '@lib/hls/hlsInstancesByVideo';
 
 type InitVideoHlsParameters = {
   video: HTMLVideoElement;

@@ -1,4 +1,4 @@
-import {ChannelParticipant, ChatParticipant} from '../../../../layer';
+import {ChannelParticipant, ChatParticipant} from '@layer';
 
 export default function getParticipantRank(participant: ChannelParticipant | ChatParticipant) {
   return (participant as ChannelParticipant.channelParticipantAdmin).rank ||

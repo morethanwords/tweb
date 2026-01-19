@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import liteMode from '../helpers/liteMode';
+import liteMode from '@helpers/liteMode';
 
 const $TRANSITION_RAF = Symbol('RAF'),
   $TRANSITION_TIMEOUT = Symbol('TIMEOUT');

@@ -1,19 +1,19 @@
 import {resolveFirst} from '@solid-primitives/refs';
 import {createMemo, createSignal, For} from 'solid-js';
 import {Portal} from 'solid-js/web';
-import {I18nTsx} from '../../../../helpers/solid/i18n';
-import {wrapAsyncClickHandler} from '../../../../helpers/wrapAsyncClickHandler';
-import useIsConfirmationNeededOnClose from '../../../../hooks/useIsConfirmationNeededOnClose';
-import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
-import SaveButton from '../../../saveButton';
-import Section from '../../../section';
-import SettingsTabLottieAnimation from '../../../settingsTabLottieAnimation';
-import {useSuperTab} from '../../../solidJsTabs/superTabProvider';
-import {AppMessagesAutoDeleteTab} from '../../../solidJsTabs/tabs';
-import Space from '../../../space';
-import StaticRadio from '../../../staticRadio';
-import {findExistingOrCreateCustomOption, findMatchingCustomOption, getDefaultOptions, Option} from './options';
-import AutoDeleteMessagesCustomTimePopup from './customTimePopup';
+import {I18nTsx} from '@helpers/solid/i18n';
+import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
+import useIsConfirmationNeededOnClose from '@hooks/useIsConfirmationNeededOnClose';
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import SaveButton from '@components/saveButton';
+import Section from '@components/section';
+import SettingsTabLottieAnimation from '@components/settingsTabLottieAnimation';
+import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
+import {AppMessagesAutoDeleteTab} from '@components/solidJsTabs/tabs';
+import Space from '@components/space';
+import StaticRadio from '@components/staticRadio';
+import {findExistingOrCreateCustomOption, findMatchingCustomOption, getDefaultOptions, Option} from '@components/sidebarLeft/tabs/autoDeleteMessages/options';
+import AutoDeleteMessagesCustomTimePopup from '@components/sidebarLeft/tabs/autoDeleteMessages/customTimePopup';
 
 
 const AutoDeleteMessages = () => {

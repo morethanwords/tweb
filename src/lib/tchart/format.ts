@@ -1,4 +1,4 @@
-import {TChartData} from './types';
+import {TChartData} from '@lib/tchart/types';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const MONTHS_SHORT = MONTHS.map((month) => month.slice(0, 3));

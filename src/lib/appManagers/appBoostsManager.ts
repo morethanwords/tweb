@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {Boost} from '../../layer';
-import {AppManager} from './manager';
+import {Boost} from '@layer';
+import {AppManager} from '@appManagers/manager';
 
 export default class AppBoostsManager extends AppManager {
   public saveBoost(peerId: PeerId, boost: Boost) {

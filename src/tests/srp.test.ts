@@ -1,9 +1,9 @@
 import '../lib/crypto/crypto.worker';
 import '../lib/polyfill';
 import {salt1, salt2, srp_id, password, A, M1, passwordHashed, accountPassword} from '../mock/srp';
-import computeSRP, {makePasswordHash} from '../lib/crypto/srp';
-import assumeType from '../helpers/assumeType';
-import {InputCheckPasswordSRP} from '../layer';
+import computeSRP, {makePasswordHash} from '@lib/crypto/srp';
+import assumeType from '@helpers/assumeType';
+import {InputCheckPasswordSRP} from '@layer';
 
 test('2FA hash', async() => {
   const bytes = await makePasswordHash(password, salt1, salt2);

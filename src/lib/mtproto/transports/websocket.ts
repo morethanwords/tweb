@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {logger, LogTypes} from '../../logger';
-import Modes from '../../../config/modes';
-import EventListenerBase from '../../../helpers/eventListenerBase';
-import {MTConnection} from './transport';
+import {logger, LogTypes} from '@lib/logger';
+import Modes from '@config/modes';
+import EventListenerBase from '@helpers/eventListenerBase';
+import {MTConnection} from '@lib/mtproto/transports/transport';
 
 const TEST_NO_WEBSOCKET = false;
 

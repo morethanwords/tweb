@@ -1,4 +1,4 @@
-import noop from '../noop';
+import noop from '@helpers/noop';
 
 export default function safePlay(media: {play: () => any}) {
   try {

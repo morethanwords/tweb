@@ -4,37 +4,37 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appMediaPlaybackController from '../../components/appMediaPlaybackController';
-import {IS_APPLE_MOBILE, IS_MOBILE} from '../../environment/userAgent';
-import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
-import cancelEvent from '../../helpers/dom/cancelEvent';
-import ListenerSetter, {Listener} from '../../helpers/listenerSetter';
-import {ButtonMenuItemOptionsVerifiable} from '../../components/buttonMenu';
-import ButtonMenuToggle from '../../components/buttonMenuToggle';
-import ControlsHover from '../../helpers/dom/controlsHover';
-import {addFullScreenListener, cancelFullScreen, getFullScreenElement, isFullScreen, requestFullScreen} from '../../helpers/dom/fullScreen';
-import toHHMMSS from '../../helpers/string/toHHMMSS';
-import MediaProgressLine from '../../components/mediaProgressLine';
-import VolumeSelector from '../../components/volumeSelector';
-import debounce from '../../helpers/schedulers/debounce';
-import overlayCounter from '../../helpers/overlayCounter';
-import onMediaLoad from '../../helpers/onMediaLoad';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import safePlay from '../../helpers/dom/safePlay';
-import ButtonIcon from '../../components/buttonIcon';
-import Button from '../../components/button';
-import Icon from '../../components/icon';
-import setCurrentTime from '../../helpers/dom/setCurrentTime';
-import {i18n} from '../langPack';
-import {numberThousandSplitterForWatching} from '../../helpers/number/numberThousandSplitter';
-import createCanvasStream from '../../helpers/canvas/createCanvasStream';
-import simulateEvent from '../../helpers/dom/dispatchEvent';
-import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-import {createQualityLevelsSwitchButton} from './qualityLevelsSwitchButton';
-import {createPlaybackRateButton} from './playbackRateButton';
-import {createSpeedDragHandler} from './speedDragHandler';
-import {VideoTimestamp} from '../../components/appMediaViewerBase';
-import apiManagerProxy from '../mtproto/mtprotoworker';
+import appMediaPlaybackController from '@components/appMediaPlaybackController';
+import {IS_APPLE_MOBILE, IS_MOBILE} from '@environment/userAgent';
+import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import ListenerSetter, {Listener} from '@helpers/listenerSetter';
+import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
+import ButtonMenuToggle from '@components/buttonMenuToggle';
+import ControlsHover from '@helpers/dom/controlsHover';
+import {addFullScreenListener, cancelFullScreen, getFullScreenElement, isFullScreen, requestFullScreen} from '@helpers/dom/fullScreen';
+import toHHMMSS from '@helpers/string/toHHMMSS';
+import MediaProgressLine from '@components/mediaProgressLine';
+import VolumeSelector from '@components/volumeSelector';
+import debounce from '@helpers/schedulers/debounce';
+import overlayCounter from '@helpers/overlayCounter';
+import onMediaLoad from '@helpers/onMediaLoad';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import safePlay from '@helpers/dom/safePlay';
+import ButtonIcon from '@components/buttonIcon';
+import Button from '@components/button';
+import Icon from '@components/icon';
+import setCurrentTime from '@helpers/dom/setCurrentTime';
+import {i18n} from '@lib/langPack';
+import {numberThousandSplitterForWatching} from '@helpers/number/numberThousandSplitter';
+import createCanvasStream from '@helpers/canvas/createCanvasStream';
+import simulateEvent from '@helpers/dom/dispatchEvent';
+import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
+import {createQualityLevelsSwitchButton} from '@lib/mediaPlayer/qualityLevelsSwitchButton';
+import {createPlaybackRateButton} from '@lib/mediaPlayer/playbackRateButton';
+import {createSpeedDragHandler} from '@lib/mediaPlayer/speedDragHandler';
+import {VideoTimestamp} from '@components/appMediaViewerBase';
+import apiManagerProxy from '@lib/apiManagerProxy';
 
 
 export default class VideoPlayer extends ControlsHover {

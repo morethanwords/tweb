@@ -1,6 +1,6 @@
-import {getHexColorFromTelegramColor, hexToRgb, hexaToHsla} from '../../../../helpers/color';
-import themeController from '../../../../helpers/themeController';
-import {Chat, HelpPeerColorOption, HelpPeerColorSet, PeerColor, User} from '../../../../layer';
+import {getHexColorFromTelegramColor, hexToRgb, hexaToHsla} from '@helpers/color';
+import themeController from '@helpers/themeController';
+import {Chat, HelpPeerColorOption, HelpPeerColorSet, PeerColor, User} from '@layer';
 
 const DialogColorsFg: Array<string[]> = [['#CC5049'], ['#D67722'], ['#955CDB'], ['#40A920'], ['#309EBA'], ['#368AD1'], ['#C7508B']],
   DialogColors = ['red', 'orange', 'violet', 'green', 'cyan', 'blue', 'pink'] as const;

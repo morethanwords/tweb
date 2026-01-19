@@ -1,23 +1,23 @@
 import {createMemo} from 'solid-js';
-import {StarGift, TextWithEntities} from '../../../layer';
-import wrapRichText from '../../../lib/richTextProcessor/wrapRichText';
-import {AvatarNewTsx} from '../../avatarNew';
-import Button from '../../buttonTsx';
-import {StickerTsx, StickerTsxExtraOptions} from '../../wrappers/sticker';
-import {PeerTitleTsx} from '../../peerTitleTsx';
+import {StarGift, TextWithEntities} from '@layer';
+import wrapRichText from '@lib/richTextProcessor/wrapRichText';
+import {AvatarNewTsx} from '@components/avatarNew';
+import Button from '@components/buttonTsx';
+import {StickerTsx, StickerTsxExtraOptions} from '@components/wrappers/sticker';
+import {PeerTitleTsx} from '@components/peerTitleTsx';
 
-import styles from './starGift.module.scss';
-import stylesCommon from './service.module.scss';
-import {Sparkles} from '../../sparkles';
-import classNames from '../../../helpers/string/classNames';
-import {I18nTsx} from '../../../helpers/solid/i18n';
-import {MyStarGift} from '../../../lib/appManagers/appGiftsManager';
-import {StarGiftBadge} from '../../stargifts/stargiftBadge';
-import {StarGiftBackdrop} from '../../stargifts/stargiftBackdrop';
-import {MyDocument} from '../../../lib/appManagers/appDocsManager';
-import {simulateClickEvent} from '../../../helpers/dom/clickEvent';
-import formatNumber from '../../../helpers/number/formatNumber';
-import {getCollectibleName} from '../../../lib/appManagers/utils/gifts/getCollectibleName';
+import styles from '@components/chat/bubbles/starGift.module.scss';
+import stylesCommon from '@components/chat/bubbles/service.module.scss';
+import {Sparkles} from '@components/sparkles';
+import classNames from '@helpers/string/classNames';
+import {I18nTsx} from '@helpers/solid/i18n';
+import {MyStarGift} from '@appManagers/appGiftsManager';
+import {StarGiftBadge} from '@components/stargifts/stargiftBadge';
+import {StarGiftBackdrop} from '@components/stargifts/stargiftBackdrop';
+import {MyDocument} from '@appManagers/appDocsManager';
+import {simulateClickEvent} from '@helpers/dom/clickEvent';
+import formatNumber from '@helpers/number/formatNumber';
+import {getCollectibleName} from '@appManagers/utils/gifts/getCollectibleName';
 
 export function StarGiftBubble(props: {
   gift: MyStarGift

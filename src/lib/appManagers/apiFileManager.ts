@@ -9,41 +9,41 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type {ReferenceBytes} from './referenceDatabase';
-import Modes from '../../config/modes';
-import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
-import {randomLong} from '../../helpers/random';
-import {Document, InputFile, InputFileLocation, InputWebFileLocation, Photo, PhotoSize, UploadFile, UploadWebFile, VideoSize, WebDocument} from '../../layer';
-import {DcId} from '../../types';
-import CacheStorageController from '../files/cacheStorage';
-import {LogTypes} from '../logger';
-import noop from '../../helpers/noop';
-import readBlobAsArrayBuffer from '../../helpers/blob/readBlobAsArrayBuffer';
-import bytesToHex from '../../helpers/bytes/bytesToHex';
-import findAndSplice from '../../helpers/array/findAndSplice';
-import fixFirefoxSvg from '../../helpers/fixFirefoxSvg';
-import {AppManager} from '../appManagers/manager';
-import {getEnvironment} from '../../environment/utils';
-import MTProtoMessagePort from './mtprotoMessagePort';
-import getFileNameForUpload from '../../helpers/getFileNameForUpload';
-import type {Progress} from '../appManagers/appDownloadManager';
-import getDownloadMediaDetails from '../appManagers/utils/download/getDownloadMediaDetails';
-// import networkStats from './networkStats';
-import getDownloadFileNameFromOptions from '../appManagers/utils/download/getDownloadFileNameFromOptions';
-import StreamWriter from '../files/streamWriter';
-import FileStorage from '../files/fileStorage';
-import {MAX_FILE_SAVE_SIZE} from './mtproto_config';
-import throttle from '../../helpers/schedulers/throttle';
-import makeError from '../../helpers/makeError';
-import readBlobAsUint8Array from '../../helpers/blob/readBlobAsUint8Array';
-import DownloadStorage from '../files/downloadStorage';
-import copy from '../../helpers/object/copy';
-import {EXTENSION_MIME_TYPE_MAP, MIME_TYPE_EXTENSION_MAP} from '../../environment/mimeTypeMap';
-import isWebFileLocation from '../appManagers/utils/webFiles/isWebFileLocation';
-import appManagersManager from '../appManagers/appManagersManager';
-import clamp from '../../helpers/number/clamp';
-import insertInDescendSortedArray from '../../helpers/array/insertInDescendSortedArray';
-import {ActiveAccountNumber} from '../accounts/types';
+import type {ReferenceBytes} from '@lib/storages/references';
+import Modes from '@config/modes';
+import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
+import {randomLong} from '@helpers/random';
+import {Document, InputFile, InputFileLocation, InputWebFileLocation, Photo, PhotoSize, UploadFile, UploadWebFile, VideoSize, WebDocument} from '@layer';
+import {DcId} from '@types';
+import CacheStorageController from '@lib/files/cacheStorage';
+import {LogTypes} from '@lib/logger';
+import noop from '@helpers/noop';
+import readBlobAsArrayBuffer from '@helpers/blob/readBlobAsArrayBuffer';
+import bytesToHex from '@helpers/bytes/bytesToHex';
+import findAndSplice from '@helpers/array/findAndSplice';
+import fixFirefoxSvg from '@helpers/fixFirefoxSvg';
+import {AppManager} from '@appManagers/manager';
+import {getEnvironment} from '@environment/utils';
+import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
+import getFileNameForUpload from '@helpers/getFileNameForUpload';
+import type {Progress} from '@lib/appDownloadManager';
+import getDownloadMediaDetails from '@appManagers/utils/download/getDownloadMediaDetails';
+// import networkStats from '@appManagers/networkStats';
+import getDownloadFileNameFromOptions from '@appManagers/utils/download/getDownloadFileNameFromOptions';
+import StreamWriter from '@lib/files/streamWriter';
+import FileStorage from '@lib/files/fileStorage';
+import {MAX_FILE_SAVE_SIZE} from '@appManagers/constants';
+import throttle from '@helpers/schedulers/throttle';
+import makeError from '@helpers/makeError';
+import readBlobAsUint8Array from '@helpers/blob/readBlobAsUint8Array';
+import DownloadStorage from '@lib/files/downloadStorage';
+import copy from '@helpers/object/copy';
+import {EXTENSION_MIME_TYPE_MAP, MIME_TYPE_EXTENSION_MAP} from '@environment/mimeTypeMap';
+import isWebFileLocation from '@appManagers/utils/webFiles/isWebFileLocation';
+import appManagersManager from '@appManagers/appManagersManager';
+import clamp from '@helpers/number/clamp';
+import insertInDescendSortedArray from '@helpers/array/insertInDescendSortedArray';
+import {ActiveAccountNumber} from '@lib/accounts/types';
 
 export type DownloadOptions = {
   dcId: DcId,
@@ -612,7 +612,7 @@ export class ApiFileManager extends AppManager {
       //   clearTimeout(r.timeout);
       // });
 
-      this.referenceDatabase.refreshReference(reference).then((reference) => {
+      this.referencesStorage.refreshReference(reference).then((reference) => {
         if(hex === bytesToHex(reference)) {
           deferred.reject(makeError('REFERENCE_IS_NOT_REFRESHED'));
         }

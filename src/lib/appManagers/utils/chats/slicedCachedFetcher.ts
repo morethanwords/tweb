@@ -1,6 +1,6 @@
-import {insertInSortedSlicedArray} from '../../../../helpers/array/insertInSortedSlicedArray';
-import lastItem from '../../../../helpers/array/lastItem';
-import compareLong from '../../../../helpers/long/compareLong';
+import {insertInSortedSlicedArray} from '@helpers/array/insertInSortedSlicedArray';
+import lastItem from '@helpers/array/lastItem';
+import compareLong from '@helpers/long/compareLong';
 
 
 type Id = string | number;

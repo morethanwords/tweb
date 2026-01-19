@@ -1,4 +1,4 @@
-import {AudioCodec} from '../../lib/calls/types';
+import {AudioCodec} from '@lib/calls/types';
 
 const audioCodec: AudioCodec = {
   'payload-types': [

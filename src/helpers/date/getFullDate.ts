@@ -1,4 +1,4 @@
-import {months} from './common';
+import {months} from '@helpers/date/common';
 
 export const getFullDate = (date: Date, options: Partial<{
   noTime: boolean,

@@ -1,4 +1,4 @@
-import classNames from '../helpers/string/classNames';
+import classNames from '@helpers/string/classNames';
 
 function Path1(props: {stroke?: boolean}) {
   return (

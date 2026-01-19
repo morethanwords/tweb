@@ -1,32 +1,32 @@
 import {createEffect, createMemo, createSignal, onCleanup} from 'solid-js';
-import PopupElement from './indexTsx';
-import PopupElementOld from './index'
-import {MyStarGift} from '../../lib/appManagers/appGiftsManager';
-import {StarGiftAttribute} from '../../layer';
-import {randomItemExcept} from '../../helpers/array/randomItem';
-import {i18n} from '../../lib/langPack';
-import {IconTsx} from '../iconTsx';
-import {I18nTsx} from '../../helpers/solid/i18n';
-import {StarGiftBackdrop} from '../stargifts/stargiftBackdrop';
-import {MyDocument} from '../../lib/appManagers/appDocsManager';
-import wrapSticker from '../wrappers/sticker';
-import RLottiePlayer from '../../lib/rlottie/rlottiePlayer';
-import Row from '../rowTsx';
-import CheckboxFieldTsx from '../checkboxFieldTsx';
-import {ButtonIconTsx} from '../buttonIconTsx';
-import PopupPayment from './payment';
-import wrapPeerTitle from '../wrappers/peerTitle';
-import rootScope from '../../lib/rootScope';
-import {createPopup} from './indexTsx';
-import createMiddleware from '../../helpers/solid/createMiddleware';
-import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
-import tsNow from '../../helpers/tsNow';
-import {wrapLeftDuration} from '../wrappers/wrapDuration';
-import {AnimatedCounter} from '../animatedCounter';
-import {createStarGiftUpgradePricePopup} from './starGiftUpgradePrice';
-import PopupStarGiftInfo from './starGiftInfo';
-import {subscribeOn} from '../../helpers/solid/subscribeOn';
-import {createCurrentTime} from '../../helpers/solid/createCurrentTime';
+import PopupElement from '@components/popups/indexTsx';
+import PopupElementOld from '@components/popups/index'
+import {MyStarGift} from '@appManagers/appGiftsManager';
+import {StarGiftAttribute} from '@layer';
+import {randomItemExcept} from '@helpers/array/randomItem';
+import {i18n} from '@lib/langPack';
+import {IconTsx} from '@components/iconTsx';
+import {I18nTsx} from '@helpers/solid/i18n';
+import {StarGiftBackdrop} from '@components/stargifts/stargiftBackdrop';
+import {MyDocument} from '@appManagers/appDocsManager';
+import wrapSticker from '@components/wrappers/sticker';
+import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import Row from '@components/rowTsx';
+import CheckboxFieldTsx from '@components/checkboxFieldTsx';
+import {ButtonIconTsx} from '@components/buttonIconTsx';
+import PopupPayment from '@components/popups/payment';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
+import rootScope from '@lib/rootScope';
+import {createPopup} from '@components/popups/indexTsx';
+import createMiddleware from '@helpers/solid/createMiddleware';
+import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
+import tsNow from '@helpers/tsNow';
+import {wrapLeftDuration} from '@components/wrappers/wrapDuration';
+import {AnimatedCounter} from '@components/animatedCounter';
+import {createStarGiftUpgradePricePopup} from '@components/popups/starGiftUpgradePrice';
+import PopupStarGiftInfo from '@components/popups/starGiftInfo';
+import {subscribeOn} from '@helpers/solid/subscribeOn';
+import {createCurrentTime} from '@helpers/solid/createCurrentTime';
 
 export default async function createStarGiftUpgradePopup(props: {
   gift: MyStarGift,

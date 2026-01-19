@@ -1,5 +1,5 @@
 import {createRoot, createSignal} from 'solid-js';
-import rootScope from '../lib/rootScope';
+import rootScope from '@lib/rootScope';
 
 const [premium, setPremium] = createRoot(() => createSignal(rootScope.premium));
 

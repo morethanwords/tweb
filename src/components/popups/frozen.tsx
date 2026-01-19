@@ -1,9 +1,9 @@
-import {i18n} from '../../lib/langPack';
-import {useAppConfig} from '../../stores/appState';
-import anchorCallback from '../../helpers/dom/anchorCallback';
-import {formatDate} from '../../helpers/date';
-import appImManager from '../../lib/appManagers/appImManager';
-import showFeatureDetailsPopup from './featureDetails';
+import {i18n} from '@lib/langPack';
+import {useAppConfig} from '@stores/appState';
+import anchorCallback from '@helpers/dom/anchorCallback';
+import {formatDate} from '@helpers/date';
+import appImManager from '@lib/appImManager';
+import showFeatureDetailsPopup from '@components/popups/featureDetails';
 
 const TEST = false;
 

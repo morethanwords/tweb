@@ -4,17 +4,17 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {State, StateSettings} from '../../config/state';
-import rootScope from '../rootScope';
-import StateStorage from '../stateStorage';
-import setDeepProperty, {splitDeepPath} from '../../helpers/object/setDeepProperty';
-import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
-import {ActiveAccountNumber} from '../accounts/types';
-import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
-import {StoragesResults} from './utils/storages/loadStorages';
-import commonStateStorage from '../commonStateStorage';
-import callbackify from '../../helpers/callbackify';
-import isObject from '../../helpers/object/isObject';
+import type {State, StateSettings} from '@config/state';
+import rootScope from '@lib/rootScope';
+import StateStorage from '@lib/stateStorage';
+import setDeepProperty, {splitDeepPath} from '@helpers/object/setDeepProperty';
+import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
+import {ActiveAccountNumber} from '@lib/accounts/types';
+import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
+import {StoragesResults} from '@appManagers/utils/storages/loadStorages';
+import commonStateStorage from '@lib/commonStateStorage';
+import callbackify from '@helpers/callbackify';
+import isObject from '@helpers/object/isObject';
 
 export type ResetStoragesPromise = CancellablePromise<{
   storages: Map<keyof StoragesResults, (PeerId | UserId | ChatId)[]>,

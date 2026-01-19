@@ -1,4 +1,4 @@
-import convertPunycode from '../../vendor/convertPunycode';
+import convertPunycode from '@vendor/convertPunycode';
 
 // * https://github.com/Ajaxy/telegram-tt/blob/6b52024107b7b534fc25dfaddd91868f653d0092/src/util/browser/url.ts#L43
 export default function isMixedScriptUrl(url: string): boolean {

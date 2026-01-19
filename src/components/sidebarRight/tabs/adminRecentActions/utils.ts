@@ -1,11 +1,11 @@
-import pause from '../../../../helpers/schedulers/pause';
-import {wrapAsyncClickHandler} from '../../../../helpers/wrapAsyncClickHandler';
-import {Message} from '../../../../layer';
-import {isParticipantAdmin} from '../../../../lib/appManagers/utils/chats/isParticipantAdmin';
-import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
-import {useSuperTab} from '../../../solidJsTabs/superTabProvider';
-import {AppAdminRecentActionsTab} from '../../../solidJsTabs/tabs';
-import {toastNew} from '../../../toast';
+import pause from '@helpers/schedulers/pause';
+import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
+import {Message} from '@layer';
+import {isParticipantAdmin} from '@appManagers/utils/chats/isParticipantAdmin';
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
+import {AppAdminRecentActionsTab} from '@components/solidJsTabs/tabs';
+import {toastNew} from '@components/toast';
 
 
 export const getPhoto = (message: Message) => {

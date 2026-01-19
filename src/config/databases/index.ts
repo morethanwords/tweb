@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {IDBStore} from '../../lib/files/idb';
+import {IDBStore} from '@lib/files/idb';
 
 export type DatabaseStore<StoreName extends string> = IDBStore & {
   name: StoreName,

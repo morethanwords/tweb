@@ -1,11 +1,11 @@
-import {i18n} from '../../../lib/langPack';
+import {i18n} from '@lib/langPack';
 
-import showTooltip from '../../tooltip';
-import Button from '../../buttonTsx';
+import showTooltip from '@components/tooltip';
+import Button from '@components/buttonTsx';
 
-import type Chat from '../chat';
+import type Chat from '@components/chat/chat';
 
-import styles from './priceChangedTooltip.module.scss';
+import styles from '@components/chat/priceChangedInterceptor/priceChangedTooltip.module.scss';
 
 
 type ShowPriceChangedTooltipArgs = {

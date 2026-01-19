@@ -1,13 +1,13 @@
 import {createStore, unwrap} from 'solid-js/store';
-import {StarGiftCollection} from '../../layer';
+import {StarGiftCollection} from '@layer';
 import {batch, onMount} from 'solid-js';
-import {MyStarGift} from '../../lib/appManagers/appGiftsManager';
-import rootScope from '../../lib/rootScope';
-import {createListenerSetter} from '../stories/viewer';
-import {updateStarGift} from '../../lib/appManagers/utils/gifts/updateStarGift';
-import {inputStarGiftEquals} from '../../lib/appManagers/utils/gifts/inputStarGiftEquals';
-import untrackActions from '../../helpers/solid/untrackActions';
-import setBooleanFlag from '../../helpers/object/setBooleanFlag';
+import {MyStarGift} from '@appManagers/appGiftsManager';
+import rootScope from '@lib/rootScope';
+import {createListenerSetter} from '@components/stories/viewer';
+import {updateStarGift} from '@appManagers/utils/gifts/updateStarGift';
+import {inputStarGiftEquals} from '@appManagers/utils/gifts/inputStarGiftEquals';
+import untrackActions from '@helpers/solid/untrackActions';
+import setBooleanFlag from '@helpers/object/setBooleanFlag';
 
 export const ALL_COLLECTIONS_ID = -1
 

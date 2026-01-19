@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {MyDocument} from '../../lib/appManagers/appDocsManager';
-import customProperties from '../../helpers/dom/customProperties';
-import textToSvgURL from '../../helpers/textToSvgURL';
-import rootScope from '../../lib/rootScope';
-import wrapPhoto from './photo';
+import type {MyDocument} from '@appManagers/appDocsManager';
+import customProperties from '@helpers/dom/customProperties';
+import textToSvgURL from '@helpers/textToSvgURL';
+import rootScope from '@lib/rootScope';
+import wrapPhoto from '@components/wrappers/photo';
 
 let addedThemeListener = false;
 export default function wrapAttachBotIcon({

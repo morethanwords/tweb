@@ -4,29 +4,29 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-import callbackify from '../../helpers/callbackify';
-import ListenerSetter from '../../helpers/listenerSetter';
-import liteMode from '../../helpers/liteMode';
-import {getMiddleware} from '../../helpers/middleware';
-import {modifyAckedPromise} from '../../helpers/modifyAckedResult';
-import namedPromises from '../../helpers/namedPromises';
-import safeAssign from '../../helpers/object/safeAssign';
-import {Chat} from '../../layer';
-import {AppManagers} from '../../lib/appManagers/managers';
-import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
-import {i18n} from '../../lib/langPack';
-import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
-import {AckedResult} from '../../lib/mtproto/superMessagePort';
-import rootScope from '../../lib/rootScope';
-import {avatarNew} from '../avatarNew';
-import {ButtonMenuItemOptions, ButtonMenuSync} from '../buttonMenu';
-import ButtonMenuToggle from '../buttonMenuToggle';
-import Icon from '../icon';
-import PeerTitle from '../peerTitle';
-import PopupPremium from '../popups/premium';
-import SetTransition from '../singleTransition';
-import getChatMembersString from '../wrappers/getChatMembersString';
+import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
+import callbackify from '@helpers/callbackify';
+import ListenerSetter from '@helpers/listenerSetter';
+import liteMode from '@helpers/liteMode';
+import {getMiddleware} from '@helpers/middleware';
+import {modifyAckedPromise} from '@helpers/modifyAckedResult';
+import namedPromises from '@helpers/namedPromises';
+import safeAssign from '@helpers/object/safeAssign';
+import {Chat} from '@layer';
+import {AppManagers} from '@lib/managers';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
+import {i18n} from '@lib/langPack';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import {AckedResult} from '@lib/superMessagePort';
+import rootScope from '@lib/rootScope';
+import {avatarNew} from '@components/avatarNew';
+import {ButtonMenuItemOptions, ButtonMenuSync} from '@components/buttonMenu';
+import ButtonMenuToggle from '@components/buttonMenuToggle';
+import Icon from '@components/icon';
+import PeerTitle from '@components/peerTitle';
+import PopupPremium from '@components/popups/premium';
+import SetTransition from '@components/singleTransition';
+import getChatMembersString from '@components/wrappers/getChatMembersString';
 
 const SEND_AS_ANIMATION_DURATION = 300;
 

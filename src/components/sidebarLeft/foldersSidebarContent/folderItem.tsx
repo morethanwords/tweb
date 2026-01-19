@@ -1,13 +1,13 @@
 import {createComputed, createEffect, createMemo, createSignal, Show} from 'solid-js';
-import {keepMe} from '../../../helpers/keepMe';
-import createMiddleware from '../../../helpers/solid/createMiddleware';
-import {CustomEmojiRendererElement} from '../../../lib/customEmoji/renderer';
-import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
-import Badge from '../../badge';
-import {IconTsx} from '../../iconTsx';
-import ripple from '../../ripple';
-import FolderAnimatedIcon from './folderAnimatedIcon';
-import {FolderItemPayload} from './types';
+import {keepMe} from '@helpers/keepMe';
+import createMiddleware from '@helpers/solid/createMiddleware';
+import {CustomEmojiRendererElement} from '@lib/customEmoji/renderer';
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import Badge from '@components/badge';
+import {IconTsx} from '@components/iconTsx';
+import ripple from '@components/ripple';
+import FolderAnimatedIcon from '@components/sidebarLeft/foldersSidebarContent/folderAnimatedIcon';
+import {FolderItemPayload} from '@components/sidebarLeft/foldersSidebarContent/types';
 
 keepMe(ripple);
 

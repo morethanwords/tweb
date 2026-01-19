@@ -18,13 +18,13 @@ import {
   untrack
 } from 'solid-js';
 import {Dynamic} from 'solid-js/web';
-import {requestRAF} from '../../helpers/solid/requestRAF';
-import useElementSize from '../../hooks/useElementSize';
-import {useIsCleaned} from '../../hooks/useIsCleaned';
-import {useResizeObserver} from '../../hooks/useResizeObserver';
-import {useScrollTop} from '../../hooks/useScrollTop';
-import {lowerBound} from './lowerBound';
-import styles from './styles.module.scss';
+import {requestRAF} from '@helpers/solid/requestRAF';
+import useElementSize from '@hooks/useElementSize';
+import {useIsCleaned} from '@hooks/useIsCleaned';
+import {useResizeObserver} from '@hooks/useResizeObserver';
+import {useScrollTop} from '@hooks/useScrollTop';
+import {lowerBound} from '@components/dynamicVirtualList/lowerBound';
+import styles from '@components/dynamicVirtualList/styles.module.scss';
 
 
 export type DynamicVirtualListItemProps<T, El extends HTMLElement> = {

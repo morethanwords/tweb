@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-// import { MOUNT_CLASS_TO } from "../config/debug";
-import type {ArgumentTypes, SuperReturnType} from '../types';
+// import { MOUNT_CLASS_TO } from "@config/debug";
+import type {ArgumentTypes, SuperReturnType} from '@types';
 
 // class EventSystem {
 //   wm: WeakMap<any, Record<any, Set<any>>> = new WeakMap();

@@ -5,19 +5,19 @@
  */
 
 import PopupElement, {addCancelButton} from '.';
-import setInnerHTML from '../../helpers/dom/setInnerHTML';
-import {Middleware} from '../../helpers/middleware';
-import numberThousandSplitter from '../../helpers/number/numberThousandSplitter';
-import {Chat, ChatInvite} from '../../layer';
-import appImManager from '../../lib/appManagers/appImManager';
-import {i18n, _i18n, LangPackKey} from '../../lib/langPack';
-import {NULL_PEER_ID} from '../../lib/mtproto/mtproto_config';
-import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
-import rootScope from '../../lib/rootScope';
-import {avatarNew, wrapPhotoToAvatar} from '../avatarNew';
-import generateTitleIcons from '../generateTitleIcons';
-import {toastNew} from '../toast';
-import PopupPeer from './peer';
+import setInnerHTML from '@helpers/dom/setInnerHTML';
+import {Middleware} from '@helpers/middleware';
+import numberThousandSplitter from '@helpers/number/numberThousandSplitter';
+import {Chat, ChatInvite} from '@layer';
+import appImManager from '@lib/appImManager';
+import {i18n, _i18n, LangPackKey} from '@lib/langPack';
+import {NULL_PEER_ID} from '@appManagers/constants';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import rootScope from '@lib/rootScope';
+import {avatarNew, wrapPhotoToAvatar} from '@components/avatarNew';
+import generateTitleIcons from '@components/generateTitleIcons';
+import {toastNew} from '@components/toast';
+import PopupPeer from '@components/popups/peer';
 
 // const FAKE_CHAT_ID = Number.MAX_SAFE_INTEGER - 0x1000;
 

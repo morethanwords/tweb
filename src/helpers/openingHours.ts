@@ -1,7 +1,7 @@
-import {BusinessWeeklyOpen, BusinessWorkHours} from '../layer';
-import I18n from '../lib/langPack';
-import {ONE_DAY_MINUTES, ONE_WEEK_MINUTES, formatTime} from './date';
-import copy from './object/copy';
+import {BusinessWeeklyOpen, BusinessWorkHours} from '@layer';
+import I18n from '@lib/langPack';
+import {ONE_DAY_MINUTES, ONE_WEEK_MINUTES, formatTime} from '@helpers/date';
+import copy from '@helpers/object/copy';
 
 class Period {
   // from 0 to 2 * 24 * 60

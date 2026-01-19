@@ -1,4 +1,4 @@
-import getUnsafeRandomInt from '../number/getUnsafeRandomInt';
+import getUnsafeRandomInt from '@helpers/number/getUnsafeRandomInt';
 
 export function randomItem<T>(arr: T[]) {
   return arr[getUnsafeRandomInt(0, arr.length - 1)];

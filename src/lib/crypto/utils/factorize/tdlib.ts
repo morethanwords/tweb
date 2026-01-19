@@ -1,9 +1,9 @@
 // Thanks to https://github.com/tdlib/td/blob/3f54c301ead1bbe6529df4ecfb63c7f645dd181c/tdutils/td/utils/crypto.cpp#L234
 
 import bigInt from 'big-integer';
-import {bigIntFromBytes, bigIntToBytes} from '../../../../helpers/bigInt/bigIntConversion';
-import bigIntRandom from '../../../../helpers/bigInt/bigIntRandom';
-import {nextRandomUint} from '../../../../helpers/random';
+import {bigIntFromBytes, bigIntToBytes} from '@helpers/bigInt/bigIntConversion';
+import bigIntRandom from '@helpers/bigInt/bigIntRandom';
+import {nextRandomUint} from '@helpers/random';
 
 export function factorizeSmallPQ(pq: bigInt.BigInteger) {
   if(pq.lesser(2) || pq.greater(bigInt.one.shiftLeft(63))) {

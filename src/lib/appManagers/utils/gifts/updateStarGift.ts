@@ -1,6 +1,6 @@
-import {StarGift} from '../../../../layer';
-import {BroadcastEvents} from '../../../rootScope';
-import {MyStarGift} from '../../appGiftsManager';
+import {StarGift} from '@layer';
+import {BroadcastEvents} from '@lib/rootScope';
+import {MyStarGift} from '@appManagers/appGiftsManager';
 
 export function updateStarGift(gift: MyStarGift, update: BroadcastEvents['star_gift_update']) {
   const {unsaved, converted, resalePrice, wearing} = update;

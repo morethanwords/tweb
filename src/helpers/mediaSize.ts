@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import calcImageInBox from './calcImageInBox';
+import calcImageInBox from '@helpers/calcImageInBox';
 
 export class MediaSize {
   constructor(public width = 0, public height = width) {

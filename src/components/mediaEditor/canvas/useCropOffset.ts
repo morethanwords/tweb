@@ -1,4 +1,4 @@
-import {useMediaEditorContext} from '../context';
+import {useMediaEditorContext} from '@components/mediaEditor/context';
 
 export function useCropOffset() {
   const {editorState} = useMediaEditorContext();

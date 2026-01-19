@@ -1,5 +1,5 @@
-import {getXIndex} from './utils';
-import {TChartUnitOptions} from './types';
+import {getXIndex} from '@lib/tchart/utils';
+import {TChartUnitOptions} from '@lib/tchart/types';
 
 export default class TLines {
   private opts: TChartUnitOptions;

@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import CTR from './utils/aesCTR';
-import subtle from './subtle';
+import CTR from '@lib/crypto/utils/aesCTR';
+import subtle from '@lib/crypto/subtle';
 
 const aesCTRs: Map<number, K> = new Map();
 let lastCTRId = -1;

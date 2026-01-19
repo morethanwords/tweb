@@ -9,11 +9,11 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import {ReferenceContext} from '../mtproto/referenceDatabase';
-import {WebPage} from '../../layer';
-import safeReplaceObject from '../../helpers/object/safeReplaceObject';
-import {AppManager} from './manager';
-import findAndSplice from '../../helpers/array/findAndSplice';
+import {ReferenceContext} from '@lib/storages/references';
+import {WebPage} from '@layer';
+import safeReplaceObject from '@helpers/object/safeReplaceObject';
+import {AppManager} from '@appManagers/manager';
+import findAndSplice from '@helpers/array/findAndSplice';
 
 const photoTypeSet = new Set(['photo', 'video', 'gif', 'document']);
 

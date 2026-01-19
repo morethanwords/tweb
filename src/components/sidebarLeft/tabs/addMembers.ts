@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type SidebarSlider from '../../slider';
-import {SliderSuperTab} from '../../slider';
-import AppSelectPeers from '../../appSelectPeers';
-import {setButtonLoader} from '../../putPreloader';
-import {LangPackKey, _i18n} from '../../../lib/langPack';
-import ButtonCorner from '../../buttonCorner';
-import AppNewGroupTab from './newGroup';
+import type SidebarSlider from '@components/slider';
+import {SliderSuperTab} from '@components/slider';
+import AppSelectPeers from '@components/appSelectPeers';
+import {setButtonLoader} from '@components/putPreloader';
+import {LangPackKey, _i18n} from '@lib/langPack';
+import ButtonCorner from '@components/buttonCorner';
+import AppNewGroupTab from '@components/sidebarLeft/tabs/newGroup';
 
 export default class AppAddMembersTab extends SliderSuperTab {
   public static noSame = true;

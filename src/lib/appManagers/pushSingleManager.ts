@@ -1,21 +1,21 @@
-import {MOUNT_CLASS_TO} from '../../config/debug';
-import deepEqual from '../../helpers/object/deepEqual';
-import base64ToBytes from '../../helpers/string/base64ToBytes';
-import {AccountRegisterDevice, AccountUnregisterDevice} from '../../layer';
-import appManagersManager from '../appManagers/appManagersManager';
-import {logger} from '../logger';
-import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
-import CryptoWorker from '../crypto/cryptoMessagePort';
-import type {PushSubscriptionNotify} from './webPushApiManager';
-import bytesCmp from '../../helpers/bytes/bytesCmp';
-import {MessageKeyUtils} from './messageKeyUtils';
-import {TLDeserialization} from './tl_utils';
-import type {PushNotificationObject} from '../serviceWorker/push';
-import {ActiveAccountNumber} from '../accounts/types';
-import bytesToBase64 from '../../helpers/bytes/bytesToBase64';
-import AccountController from '../accounts/accountController';
-import bytesFromHex from '../../helpers/bytes/bytesFromHex';
-import rootScope from '../rootScope';
+import {MOUNT_CLASS_TO} from '@config/debug';
+import deepEqual from '@helpers/object/deepEqual';
+import base64ToBytes from '@helpers/string/base64ToBytes';
+import {AccountRegisterDevice, AccountUnregisterDevice} from '@layer';
+import appManagersManager from '@appManagers/appManagersManager';
+import {logger} from '@lib/logger';
+import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
+import CryptoWorker from '@lib/crypto/cryptoMessagePort';
+import type {PushSubscriptionNotify} from '@lib/webPushApiManager';
+import bytesCmp from '@helpers/bytes/bytesCmp';
+import {MessageKeyUtils} from '@lib/mtproto/messageKeyUtils';
+import {TLDeserialization} from '@lib/mtproto/tl_utils';
+import type {PushNotificationObject} from '@lib/serviceWorker/push';
+import {ActiveAccountNumber} from '@lib/accounts/types';
+import bytesToBase64 from '@helpers/bytes/bytesToBase64';
+import AccountController from '@lib/accounts/accountController';
+import bytesFromHex from '@helpers/bytes/bytesFromHex';
+import rootScope from '@lib/rootScope';
 
 export type PushKey = {
   key: Uint8Array,

@@ -4,16 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {AccountPassword} from '../../../../layer';
-import Button from '../../../button';
-import PasswordInputField from '../../../passwordInputField';
-import {SliderSuperTab} from '../../../slider';
-import TrackingMonkey from '../../../monkeys/tracking';
-import AppTwoStepVerificationHintTab from './hint';
-import {InputState} from '../../../inputField';
-import cancelEvent from '../../../../helpers/dom/cancelEvent';
-import {attachClickEvent} from '../../../../helpers/dom/clickEvent';
-import SettingSection from '../../../settingSection';
+import {AccountPassword} from '@layer';
+import Button from '@components/button';
+import PasswordInputField from '@components/passwordInputField';
+import {SliderSuperTab} from '@components/slider';
+import TrackingMonkey from '@components/monkeys/tracking';
+import AppTwoStepVerificationHintTab from '@components/sidebarLeft/tabs/2fa/hint';
+import {InputState} from '@components/inputField';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import SettingSection from '@components/settingSection';
 
 export default class AppTwoStepVerificationReEnterPasswordTab extends SliderSuperTab {
   public state: AccountPassword;

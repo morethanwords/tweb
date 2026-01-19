@@ -9,7 +9,7 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type {TransportType} from '../lib/mtproto/dcConfigurator';
+import type {TransportType} from '@lib/mtproto/dcConfigurator';
 
 const Modes = {
   test: location.search.indexOf('test=1') > 0/*  || true */,

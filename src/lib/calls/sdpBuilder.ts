@@ -9,11 +9,11 @@
  * https://github.com/evgeny-nadymov/telegram-react/blob/master/LICENSE
  */
 
-import {IS_FIREFOX} from '../../environment/userAgent';
-import LocalConferenceDescription, {ConferenceEntry} from './localConferenceDescription';
-import StringFromLineBuilder from './stringFromLineBuilder';
-import {GroupCallConnectionTransport, PayloadType, UpdateGroupCallConnectionData} from './types';
-import {fromTelegramSource} from './utils';
+import {IS_FIREFOX} from '@environment/userAgent';
+import LocalConferenceDescription, {ConferenceEntry} from '@lib/calls/localConferenceDescription';
+import StringFromLineBuilder from '@lib/calls/stringFromLineBuilder';
+import {GroupCallConnectionTransport, PayloadType, UpdateGroupCallConnectionData} from '@lib/calls/types';
+import {fromTelegramSource} from '@lib/calls/utils';
 
 // screencast is for Peer-to-Peer only
 export type WebRTCLineTypeTrue = 'video' | 'audio' | 'application';

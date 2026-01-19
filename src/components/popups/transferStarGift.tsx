@@ -1,39 +1,39 @@
-import type {MyStarGift} from '../../lib/appManagers/appGiftsManager';
-import deferredPromise from '../../helpers/cancellablePromise';
-import rootScope from '../../lib/rootScope';
-import PopupPayment from './payment';
-import PopupPickUser from './pickUser';
-import confirmationPopup from '../confirmationPopup';
-import wrapPeerTitle from '../wrappers/peerTitle';
-import numberThousandSplitter, {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
-import {MessageAction, StarGift} from '../../layer';
-import {toastNew} from '../toast';
-import {wrapFormattedDuration} from '../wrappers/wrapDuration';
-import formatDuration from '../../helpers/formatDuration';
-import tsNow from '../../helpers/tsNow';
-import PopupElementOld from './index';
-import Row from '../row';
-import {getCollectibleName} from '../../lib/appManagers/utils/gifts/getCollectibleName';
-import {passwordPopup} from './password';
-import safeWindowOpen from '../../helpers/dom/safeWindowOpen';
+import type {MyStarGift} from '@appManagers/appGiftsManager';
+import deferredPromise from '@helpers/cancellablePromise';
+import rootScope from '@lib/rootScope';
+import PopupPayment from '@components/popups/payment';
+import PopupPickUser from '@components/popups/pickUser';
+import confirmationPopup from '@components/confirmationPopup';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
+import numberThousandSplitter, {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
+import {MessageAction, StarGift} from '@layer';
+import {toastNew} from '@components/toast';
+import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
+import formatDuration from '@helpers/formatDuration';
+import tsNow from '@helpers/tsNow';
+import PopupElementOld from '@components/popups/index';
+import Row from '@components/row';
+import {getCollectibleName} from '@appManagers/utils/gifts/getCollectibleName';
+import {passwordPopup} from '@components/popups/password';
+import safeWindowOpen from '@helpers/dom/safeWindowOpen';
 import {createMemo, createSignal} from 'solid-js';
-import PopupElement, {createPopup} from './indexTsx';
+import PopupElement, {createPopup} from '@components/popups/indexTsx';
 
-import styles from './transferStarGift.module.scss'
-import {i18n} from '../../lib/langPack';
-import {StarGiftTransferPreview} from '../stargifts/transferPreview';
-import {I18nTsx} from '../../helpers/solid/i18n';
-import {PeerTitleTsx} from '../peerTitleTsx';
-import Table, {TableRow} from '../table';
-import {AttributeValue} from './starGiftInfo';
-import paymentsWrapCurrencyAmount, {formatNanoton, nanotonToJsNumber} from '../../helpers/paymentsWrapCurrencyAmount';
-import {FloatingStarsBalance} from './floatingStarsBalance';
-import {IconTsx} from '../iconTsx';
-import {doubleRaf} from '../../helpers/schedulers';
-import {useAppConfig} from '../../stores/appState';
+import styles from '@components/popups/transferStarGift.module.scss'
+import {i18n} from '@lib/langPack';
+import {StarGiftTransferPreview} from '@components/stargifts/transferPreview';
+import {I18nTsx} from '@helpers/solid/i18n';
+import {PeerTitleTsx} from '@components/peerTitleTsx';
+import Table, {TableRow} from '@components/table';
+import {AttributeValue} from '@components/popups/starGiftInfo';
+import paymentsWrapCurrencyAmount, {formatNanoton, nanotonToJsNumber} from '@helpers/paymentsWrapCurrencyAmount';
+import {FloatingStarsBalance} from '@components/popups/floatingStarsBalance';
+import {IconTsx} from '@components/iconTsx';
+import {doubleRaf} from '@helpers/schedulers';
+import {useAppConfig} from '@stores/appState';
 import bigInt from 'big-integer';
-import formatStarsAmount from '../../lib/appManagers/utils/payments/formatStarsAmount';
-import {STARS_CURRENCY, TON_CURRENCY} from '../../lib/mtproto/mtproto_config';
+import formatStarsAmount from '@appManagers/utils/payments/formatStarsAmount';
+import {STARS_CURRENCY, TON_CURRENCY} from '@appManagers/constants';
 
 export function transferStarGiftConfirmationPopup(options: {
   gift: MyStarGift,

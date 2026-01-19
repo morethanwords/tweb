@@ -10,10 +10,10 @@
  */
 
 import {EMAIL_REG_EXP, FULL_REG_EXP} from '.';
-import TLD from '../../config/tld';
-import {MessageEntity} from '../../layer';
-import checkBrackets from './checkBrackets';
-import getEmojiUnified from './getEmojiUnified';
+import TLD from '@config/tld';
+import {MessageEntity} from '@layer';
+import checkBrackets from '@lib/richTextProcessor/checkBrackets';
+import getEmojiUnified from '@lib/richTextProcessor/getEmojiUnified';
 
 export default function parseEntities(text: string) {
   let match: RegExpMatchArray;

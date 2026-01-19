@@ -1,6 +1,6 @@
-import type SolidJSHotReloadGuardProvider from '../../../lib/solidjs/hotReloadGuardProvider';
-import PopupElement from '../../popups';
-import LogFiltersPopupContent, {LogFiltersPopupContentProps} from './content';
+import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import PopupElement from '@components/popups';
+import LogFiltersPopupContent, {LogFiltersPopupContentProps} from '@components/chat/logFiltersPopup/content';
 
 
 type Args = LogFiltersPopupContentProps & {

@@ -4,26 +4,26 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import '../polyfill'; // just to include
+import '@lib/polyfill'; // just to include
 
-import bytesModPow from '../../helpers/bytes/bytesModPow';
-import gzipUncompress from '../../helpers/gzipUncompress';
-import listenMessagePort from '../../helpers/listenMessagePort';
-import getEmojisFingerprint from '../calls/helpers/getEmojisFingerprint';
-import computeDhKey from './computeDhKey';
-import cryptoMessagePort from './cryptoMessagePort';
-import {CryptoMethods} from './crypto_methods';
-import generateDh from './generateDh';
-import computeSRP from './srp';
-import {aesEncryptSync, aesDecryptSync} from './utils/aesIGE';
-import factorizeBrentPollardPQ from './utils/factorize/BrentPollard';
-import pbkdf2 from './utils/pbkdf2';
-import rsaEncrypt from './utils/rsa';
-import sha1 from './utils/sha1';
-import sha256 from './utils/sha256';
-import {aesCtrDestroy, aesCtrPrepare, aesCtrProcess} from './aesCtrUtils';
-import ctx from '../../environment/ctx';
-import {decryptLocalData, encryptLocalData} from './utils/aesLocal';
+import bytesModPow from '@helpers/bytes/bytesModPow';
+import gzipUncompress from '@helpers/gzipUncompress';
+import listenMessagePort from '@helpers/listenMessagePort';
+import getEmojisFingerprint from '@lib/calls/helpers/getEmojisFingerprint';
+import computeDhKey from '@lib/crypto/computeDhKey';
+import cryptoMessagePort from '@lib/crypto/cryptoMessagePort';
+import {CryptoMethods} from '@lib/crypto/crypto_methods';
+import generateDh from '@lib/crypto/generateDh';
+import computeSRP from '@lib/crypto/srp';
+import {aesEncryptSync, aesDecryptSync} from '@lib/crypto/utils/aesIGE';
+import factorizeBrentPollardPQ from '@lib/crypto/utils/factorize/BrentPollard';
+import pbkdf2 from '@lib/crypto/utils/pbkdf2';
+import rsaEncrypt from '@lib/crypto/utils/rsa';
+import sha1 from '@lib/crypto/utils/sha1';
+import sha256 from '@lib/crypto/utils/sha256';
+import {aesCtrDestroy, aesCtrPrepare, aesCtrProcess} from '@lib/crypto/aesCtrUtils';
+import ctx from '@environment/ctx';
+import {decryptLocalData, encryptLocalData} from '@lib/crypto/utils/aesLocal';
 
 console.log('CryptoWorker start');
 

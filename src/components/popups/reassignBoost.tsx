@@ -5,30 +5,29 @@
  */
 
 import {Accessor, For, JSX, createEffect, createMemo, createRoot, createSignal, onCleanup, untrack} from 'solid-js';
-import {formatFullSentTime} from '../../helpers/date';
-import anchorCallback from '../../helpers/dom/anchorCallback';
-import cancelEvent from '../../helpers/dom/cancelEvent';
-import {MyBoost, PremiumMyBoosts} from '../../layer';
-import appImManager from '../../lib/appManagers/appImManager';
-import {i18n} from '../../lib/langPack';
-import {MTAppConfig} from '../../lib/mtproto/appConfig';
-import AppSelectPeers from '../appSelectPeers';
-import wrapPeerTitle from '../wrappers/peerTitle';
-import {BoostsConfirmButton} from './boostsViaGifts';
-import PopupPeer from './peer';
-import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
-import toggleDisability from '../../helpers/dom/toggleDisability';
-import {AvatarNew} from '../avatarNew';
-import classNames from '../../helpers/string/classNames';
-import filterUnique from '../../helpers/array/filterUnique';
+import {formatFullSentTime} from '@helpers/date';
+import anchorCallback from '@helpers/dom/anchorCallback';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import {MyBoost, PremiumMyBoosts} from '@layer';
+import appImManager from '@lib/appImManager';
+import {i18n} from '@lib/langPack';
+import AppSelectPeers from '@components/appSelectPeers';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
+import {BoostsConfirmButton} from '@components/popups/boostsViaGifts';
+import PopupPeer from '@components/popups/peer';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
+import toggleDisability from '@helpers/dom/toggleDisability';
+import {AvatarNew} from '@components/avatarNew';
+import classNames from '@helpers/string/classNames';
+import filterUnique from '@helpers/array/filterUnique';
 import {resolveElements} from '@solid-primitives/refs';
-import liteMode from '../../helpers/liteMode';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import {hideToast, toastNew} from '../toast';
-import tsNow from '../../helpers/tsNow';
-import {wrapLeftDuration} from '../wrappers/wrapDuration';
-import {IconTsx} from '../iconTsx';
-import {createListTransition} from '../../helpers/solid/createListTransition';
+import liteMode from '@helpers/liteMode';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import {hideToast, toastNew} from '@components/toast';
+import tsNow from '@helpers/tsNow';
+import {wrapLeftDuration} from '@components/wrappers/wrapDuration';
+import {IconTsx} from '@components/iconTsx';
+import {createListTransition} from '@helpers/solid/createListTransition';
 
 const className = 'popup-boost';
 

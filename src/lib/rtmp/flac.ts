@@ -1,4 +1,4 @@
-import {crc16, crc8} from './flac-crc';
+import {crc16, crc8} from '@lib/rtmp/flac-crc';
 
 function writeUtf8Integer(dv: DataView, pos: number, value: number) {
   while(true) {

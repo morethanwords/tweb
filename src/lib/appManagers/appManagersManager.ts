@@ -4,20 +4,20 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import ServiceMessagePort from '../serviceWorker/serviceMessagePort';
-import App from '../../config/app';
-import {MOUNT_CLASS_TO} from '../../config/debug';
-import callbackify from '../../helpers/callbackify';
-import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
-import cryptoMessagePort from '../crypto/cryptoMessagePort';
-import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
-import {AppStoragesManager} from './appStoragesManager';
-import createManagers from './createManagers';
-import {ActiveAccountNumber} from '../accounts/types';
-import AppStateManager from './appStateManager';
-import rootScope from '../rootScope';
-import AccountController from '../accounts/accountController';
-import pushSingleManager from '../mtproto/pushSingleManager';
+import ServiceMessagePort from '@lib/serviceWorker/serviceMessagePort';
+import App from '@config/app';
+import {MOUNT_CLASS_TO} from '@config/debug';
+import callbackify from '@helpers/callbackify';
+import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
+import cryptoMessagePort from '@lib/crypto/cryptoMessagePort';
+import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
+import {AppStoragesManager} from '@appManagers/appStoragesManager';
+import createManagers from '@appManagers/createManagers';
+import {ActiveAccountNumber} from '@lib/accounts/types';
+import AppStateManager from '@appManagers/appStateManager';
+import rootScope from '@lib/rootScope';
+import AccountController from '@lib/accounts/accountController';
+import pushSingleManager from '@appManagers/pushSingleManager';
 
 type Managers = Awaited<ReturnType<typeof createManagers>>;
 

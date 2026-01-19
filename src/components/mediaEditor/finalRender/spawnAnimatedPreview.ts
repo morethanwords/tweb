@@ -1,9 +1,9 @@
-import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
-import deferredPromise from '../../../helpers/cancellablePromise';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import deferredPromise from '@helpers/cancellablePromise';
 
-import {MediaEditorContextValue} from '../context';
-import {useCropOffset} from '../canvas/useCropOffset';
-import {delay, snapToViewport} from '../utils';
+import {MediaEditorContextValue} from '@components/mediaEditor/context';
+import {useCropOffset} from '@components/mediaEditor/canvas/useCropOffset';
+import {delay, snapToViewport} from '@components/mediaEditor/utils';
 
 
 type SpawnAnimatedPreviewOptions = {

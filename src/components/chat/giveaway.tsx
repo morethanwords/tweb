@@ -4,27 +4,27 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {formatFullSentTime, formatMonthsDuration} from '../../helpers/date';
-import liteMode from '../../helpers/liteMode';
-import clamp from '../../helpers/number/clamp';
-import {Message, MessageMedia} from '../../layer';
-import appImManager from '../../lib/appManagers/appImManager';
-import I18n, {FormatterArguments, LangPackKey, i18n, join} from '../../lib/langPack';
-import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
-import {LottieAssetName} from '../../lib/rlottie/lottieLoader';
-import rootScope from '../../lib/rootScope';
-import {getCountryEmoji} from '../../vendor/emoji';
-import AppSelectPeers from '../appSelectPeers';
-import confirmationPopup from '../confirmationPopup';
-import wrapLocalSticker from '../wrappers/localSticker';
+import {formatFullSentTime, formatMonthsDuration} from '@helpers/date';
+import liteMode from '@helpers/liteMode';
+import clamp from '@helpers/number/clamp';
+import {Message, MessageMedia} from '@layer';
+import appImManager from '@lib/appImManager';
+import I18n, {FormatterArguments, LangPackKey, i18n, join} from '@lib/langPack';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import {LottieAssetName} from '@lib/rlottie/lottieLoader';
+import rootScope from '@lib/rootScope';
+import {getCountryEmoji} from '@vendor/emoji';
+import AppSelectPeers from '@components/appSelectPeers';
+import confirmationPopup from '@components/confirmationPopup';
+import wrapLocalSticker from '@components/wrappers/localSticker';
 import {For, JSX} from 'solid-js';
-import wrapPeerTitle from '../wrappers/peerTitle';
-import PopupElement from '../popups';
-import PopupGiftLink from '../popups/giftLink';
-import classNames from '../../helpers/string/classNames';
-import createMiddleware from '../../helpers/solid/createMiddleware';
-import {IconTsx} from '../iconTsx';
-import {setPeerColorToElement} from '../peerColors';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
+import PopupElement from '@components/popups';
+import PopupGiftLink from '@components/popups/giftLink';
+import classNames from '@helpers/string/classNames';
+import createMiddleware from '@helpers/solid/createMiddleware';
+import {IconTsx} from '@components/iconTsx';
+import {setPeerColorToElement} from '@components/peerColors';
 
 export function getGiftAssetName(days?: number) {
   const months = days === undefined ? days : Math.round(days / 30);

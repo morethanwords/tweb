@@ -1,4 +1,4 @@
-import replaceContent from './dom/replaceContent';
+import replaceContent from '@helpers/dom/replaceContent';
 
 export default function setBadgeContent(badge: HTMLElement, content: Parameters<typeof replaceContent>[1]) {
   replaceContent(badge, content);

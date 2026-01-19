@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
-import makeError from '../../helpers/makeError';
-import pause from '../../helpers/schedulers/pause';
-import {TextWithEntities, MessagesTranslatedText, MessagesTranslateText} from '../../layer';
-import {AppManager} from './manager';
-import getServerMessageId from './utils/messageId/getServerMessageId';
+import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
+import makeError from '@helpers/makeError';
+import pause from '@helpers/schedulers/pause';
+import {TextWithEntities, MessagesTranslatedText, MessagesTranslateText} from '@layer';
+import {AppManager} from '@appManagers/manager';
+import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
 
 // ! possible race-condition if message was edited while translation is in progress
 

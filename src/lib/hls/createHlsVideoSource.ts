@@ -1,8 +1,8 @@
-import {getEnvironment} from '../../environment/utils';
-import assumeType from '../../helpers/assumeType';
-import {Document, DocumentAttribute} from '../../layer';
+import {getEnvironment} from '@environment/utils';
+import assumeType from '@helpers/assumeType';
+import {Document, DocumentAttribute} from '@layer';
 
-import {isDocumentHlsQualityFile} from './common';
+import {isDocumentHlsQualityFile} from '@lib/hls/common';
 
 const QUALITY_FILE_NAME_PREFIX = 'mtproto:';
 

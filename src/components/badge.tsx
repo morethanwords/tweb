@@ -1,6 +1,6 @@
 import {Dynamic} from 'solid-js/web';
 import {JSX} from 'solid-js';
-import classNames from '../helpers/string/classNames';
+import classNames from '@helpers/string/classNames';
 
 export default function Badge(props: {
   tag: 'span' | 'div',

@@ -1,13 +1,13 @@
-import readBlobAsUint8Array from '../../helpers/blob/readBlobAsUint8Array';
-import pause from '../../helpers/schedulers/pause';
+import readBlobAsUint8Array from '@helpers/blob/readBlobAsUint8Array';
+import pause from '@helpers/schedulers/pause';
 
-import {ActiveAccountNumber} from '../accounts/types';
-import CacheStorageController from '../files/cacheStorage';
-import {serviceMessagePort} from '../serviceWorker/index.service';
+import {ActiveAccountNumber} from '@lib/accounts/types';
+import CacheStorageController from '@lib/files/cacheStorage';
+import {serviceMessagePort} from '@lib/serviceWorker/index.service';
 
-import {swLog} from './common';
-import {RequestSynchronizer} from './requestSynchronizer';
-import {StreamFetchingRange} from './splitRangeForGettingFileParts';
+import {swLog} from '@lib/hls/common';
+import {RequestSynchronizer} from '@lib/hls/requestSynchronizer';
+import {StreamFetchingRange} from '@lib/hls/splitRangeForGettingFileParts';
 
 const CHUNK_CACHED_TIME_HEADER = 'Time-Cached';
 const CHUNK_LIFETIME_SECONDS = 24 * 60 * 60; // 24 hours

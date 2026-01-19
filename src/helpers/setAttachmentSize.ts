@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {Message, MessageMedia, PhotoSize, WebDocument} from '../layer';
-import {REPLIES_HIDDEN_CHANNEL_ID} from '../lib/mtproto/mtproto_config';
-import {MyDocument} from '../lib/appManagers/appDocsManager';
-import {MyPhoto} from '../lib/appManagers/appPhotosManager';
-import choosePhotoSize from '../lib/appManagers/utils/photos/choosePhotoSize';
-import {MediaSize, makeMediaSize} from './mediaSize';
-import isWebDocument from '../lib/appManagers/utils/webDocs/isWebDocument';
+import {Message, MessageMedia, PhotoSize, WebDocument} from '@layer';
+import {REPLIES_HIDDEN_CHANNEL_ID} from '@appManagers/constants';
+import {MyDocument} from '@appManagers/appDocsManager';
+import {MyPhoto} from '@appManagers/appPhotosManager';
+import choosePhotoSize from '@appManagers/utils/photos/choosePhotoSize';
+import {MediaSize, makeMediaSize} from '@helpers/mediaSize';
+import isWebDocument from '@appManagers/utils/webDocs/isWebDocument';
 
 export const EXPAND_TEXT_WIDTH = 320;
 export const MIN_IMAGE_WIDTH = 120;

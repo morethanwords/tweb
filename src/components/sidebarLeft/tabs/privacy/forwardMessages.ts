@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {SliderSuperTabEventable} from '../../../sliderTab';
-import PrivacySection from '../../../privacySection';
-import {LangPackKey} from '../../../../lib/langPack';
+import {SliderSuperTabEventable} from '@components/sliderTab';
+import PrivacySection from '@components/privacySection';
+import {LangPackKey} from '@lib/langPack';
 
 export default class AppPrivacyForwardMessagesTab extends SliderSuperTabEventable {
   public init() {

@@ -1,12 +1,12 @@
 import {Component, createMemo} from 'solid-js';
 
-import {numberThousandSplitterForStars} from '../../../../../helpers/number/numberThousandSplitter';
-import accumulate from '../../../../../helpers/array/accumulate';
-import clamp from '../../../../../helpers/number/clamp';
-import nMap from '../../../../../helpers/number/nMap';
-import {i18n} from '../../../../../lib/langPack';
+import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
+import accumulate from '@helpers/array/accumulate';
+import clamp from '@helpers/number/clamp';
+import nMap from '@helpers/number/nMap';
+import {i18n} from '@lib/langPack';
 
-import styles from './starsRangeInput.module.scss';
+import styles from '@components/sidebarLeft/tabs/privacy/messages/starsRangeInput.module.scss';
 
 
 const starsPerUnits: [units: number, stars: number][] = [

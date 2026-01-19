@@ -1,5 +1,5 @@
-import filterUnique from '../../../../helpers/array/filterUnique';
-import {Message, MessageEntity, Reaction, MessageMedia} from '../../../../layer';
+import filterUnique from '@helpers/array/filterUnique';
+import {Message, MessageEntity, Reaction, MessageMedia} from '@layer';
 
 export default function getUniqueCustomEmojisFromMessage(message: Message) {
   const docIds: DocId[] = [];

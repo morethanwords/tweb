@@ -1,11 +1,11 @@
 import {JSX, onMount} from 'solid-js';
-import {ChatBackground} from './chatBackground';
-import rootScope from '../../../lib/rootScope';
-import themeController from '../../../helpers/themeController';
+import {ChatBackground} from '@components/chat/bubbles/chatBackground';
+import rootScope from '@lib/rootScope';
+import themeController from '@helpers/themeController';
 
-import classNames from '../../../helpers/string/classNames';
-import styles from './fakeBubbles.module.scss';
-import {subscribeOn} from '../../../helpers/solid/subscribeOn';
+import classNames from '@helpers/string/classNames';
+import styles from '@components/chat/bubbles/fakeBubbles.module.scss';
+import {subscribeOn} from '@helpers/solid/subscribeOn';
 
 export function FakeBubbles(props: {
   children: JSX.Element

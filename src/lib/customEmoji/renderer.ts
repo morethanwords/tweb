@@ -4,32 +4,32 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {MyDocument} from '../appManagers/appDocsManager';
-import animationIntersector, {AnimationItemGroup} from '../../components/animationIntersector';
-import LazyLoadQueue from '../../components/lazyLoadQueue';
-import wrapSticker, {videosCache} from '../../components/wrappers/sticker';
-import customProperties, {CustomProperty} from '../../helpers/dom/customProperties';
-import findUpClassName from '../../helpers/dom/findUpClassName';
-import getViewportSlice from '../../helpers/dom/getViewportSlice';
-import replaceContent from '../../helpers/dom/replaceContent';
-import framesCache from '../../helpers/framesCache';
-import {MediaSize} from '../../helpers/mediaSize';
-import mediaSizes from '../../helpers/mediaSizes';
-import {Middleware, MiddlewareHelper, getMiddleware} from '../../helpers/middleware';
-import noop from '../../helpers/noop';
-import {DocumentAttribute} from '../../layer';
-import wrapRichText from '../richTextProcessor/wrapRichText';
-import RLottiePlayer, {applyColorOnContext, getLottiePixelRatio} from '../rlottie/rlottiePlayer';
-import rootScope from '../rootScope';
-import CustomEmojiElement, {CustomEmojiElements} from './element';
-import assumeType from '../../helpers/assumeType';
-import {IS_WEBM_SUPPORTED} from '../../environment/videoSupport';
-import {observeResize, unobserveResize} from '../../components/resizeObserver';
-import {PAID_REACTION_EMOJI_DOCID} from './constants';
-import lottieLoader from '../rlottie/lottieLoader';
-import StickerType from '../../config/stickerType';
+import type {MyDocument} from '@appManagers/appDocsManager';
+import animationIntersector, {AnimationItemGroup} from '@components/animationIntersector';
+import LazyLoadQueue from '@components/lazyLoadQueue';
+import wrapSticker, {videosCache} from '@components/wrappers/sticker';
+import customProperties, {CustomProperty} from '@helpers/dom/customProperties';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import getViewportSlice from '@helpers/dom/getViewportSlice';
+import replaceContent from '@helpers/dom/replaceContent';
+import framesCache from '@helpers/framesCache';
+import {MediaSize} from '@helpers/mediaSize';
+import mediaSizes from '@helpers/mediaSizes';
+import {Middleware, MiddlewareHelper, getMiddleware} from '@helpers/middleware';
+import noop from '@helpers/noop';
+import {DocumentAttribute} from '@layer';
+import wrapRichText from '@lib/richTextProcessor/wrapRichText';
+import RLottiePlayer, {applyColorOnContext, getLottiePixelRatio} from '@lib/rlottie/rlottiePlayer';
+import rootScope from '@lib/rootScope';
+import CustomEmojiElement, {CustomEmojiElements} from '@lib/customEmoji/element';
+import assumeType from '@helpers/assumeType';
+import {IS_WEBM_SUPPORTED} from '@environment/videoSupport';
+import {observeResize, unobserveResize} from '@components/resizeObserver';
+import {PAID_REACTION_EMOJI_DOCID} from '@lib/customEmoji/constants';
+import lottieLoader from '@lib/rlottie/lottieLoader';
+import StickerType from '@config/stickerType';
 import {Accessor, createMemo, createRoot, createSignal, Setter} from 'solid-js';
-import readValue from '../../helpers/solid/readValue';
+import readValue from '@helpers/solid/readValue';
 
 const globalLazyLoadQueue = new LazyLoadQueue();
 

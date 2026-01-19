@@ -5,12 +5,12 @@
  */
 
 import {children, createContext, createEffect, createMemo, createSignal, JSX, on, onCleanup, Ref} from 'solid-js';
-import {IS_OVERLAY_SCROLL_SUPPORTED} from '../environment/overlayScrollSupport';
-import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
-import {IS_MOBILE_SAFARI, IS_SAFARI} from '../environment/userAgent';
-import cancelEvent from '../helpers/dom/cancelEvent';
-import classNames from '../helpers/string/classNames';
-import useHeavyAnimationCheck from '../hooks/useHeavyAnimationCheck';
+import {IS_OVERLAY_SCROLL_SUPPORTED} from '@environment/overlayScrollSupport';
+import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
+import {IS_MOBILE_SAFARI, IS_SAFARI} from '@environment/userAgent';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import classNames from '@helpers/string/classNames';
+import useHeavyAnimationCheck from '@hooks/useHeavyAnimationCheck';
 
 const SCROLL_THROTTLE = /* IS_ANDROID ? 200 :  */24;
 const USE_OWN_SCROLL = !IS_OVERLAY_SCROLL_SUPPORTED;

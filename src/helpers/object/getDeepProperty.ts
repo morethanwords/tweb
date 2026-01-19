@@ -1,4 +1,4 @@
-import {splitDeepPath} from './setDeepProperty';
+import {splitDeepPath} from '@helpers/object/setDeepProperty';
 
 export default function getDeepProperty(object: any, key: string | Array<string>) {
   const splitted = Array.isArray(key) ? key : splitDeepPath(key);

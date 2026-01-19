@@ -1,6 +1,6 @@
-import TDrag from './drag';
-import {isTouchDevice, getElemPagePos, triggerEvent, getFormatter, getXIndex} from './utils';
-import {TChartAngle, TChartAnimationProperty, TChartData, TChartUnitOptions} from './types';
+import TDrag from '@lib/tchart/drag';
+import {isTouchDevice, getElemPagePos, triggerEvent, getFormatter, getXIndex} from '@lib/tchart/utils';
+import {TChartAngle, TChartAnimationProperty, TChartData, TChartUnitOptions} from '@lib/tchart/types';
 
 type TipLabel = ReturnType<TTip['addLabel']>;
 

@@ -5,9 +5,9 @@
  */
 
 import {AttributeMap} from '.';
-import {NoExtraProperties} from '../../../types';
-import SDPAttributes from './attributes';
-import SDPLine from './line';
+import {NoExtraProperties} from '@types';
+import SDPAttributes from '@lib/calls/sdp/attributes';
+import SDPLine from '@lib/calls/sdp/line';
 
 export type SDPMediaDirection = 'sendonly' | 'recvonly' | 'inactive' | 'sendrecv';
 export default class SDPMediaSection {

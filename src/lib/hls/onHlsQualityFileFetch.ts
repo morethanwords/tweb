@@ -1,13 +1,13 @@
-import deferredPromise from '../../helpers/cancellablePromise';
+import deferredPromise from '@helpers/cancellablePromise';
 
-import {getCurrentAccountFromURL} from '../accounts/getCurrentAccountFromURL';
-import {ActiveAccountNumber} from '../accounts/types';
-import CacheStorageController from '../files/cacheStorage';
-import {get500ErrorResponse} from '../serviceWorker/errors';
-import {serviceMessagePort} from '../serviceWorker/index.service';
+import {getCurrentAccountFromURL} from '@lib/accounts/getCurrentAccountFromURL';
+import {ActiveAccountNumber} from '@lib/accounts/types';
+import CacheStorageController from '@lib/files/cacheStorage';
+import {get500ErrorResponse} from '@lib/serviceWorker/errors';
+import {serviceMessagePort} from '@lib/serviceWorker/index.service';
 
-import {ctx, swLog} from './common';
-import {RequestSynchronizer} from './requestSynchronizer';
+import {ctx, swLog} from '@lib/hls/common';
+import {RequestSynchronizer} from '@lib/hls/requestSynchronizer';
 
 const cacheStorage = new CacheStorageController('cachedHlsQualityFiles');
 const requestSynchronizer = new RequestSynchronizer<string, string>();

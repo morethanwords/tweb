@@ -4,21 +4,21 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type ChatInput from './input';
-import DropdownHover from '../../helpers/dropdownHover';
-import {ReplyMarkup} from '../../layer';
-import rootScope from '../../lib/rootScope';
-import ListenerSetter, {Listener} from '../../helpers/listenerSetter';
-import findUpClassName from '../../helpers/dom/findUpClassName';
-import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
-import findUpAsChild from '../../helpers/dom/findUpAsChild';
-import cancelEvent from '../../helpers/dom/cancelEvent';
-import {getHeavyAnimationPromise} from '../../hooks/useHeavyAnimationCheck';
-import safeAssign from '../../helpers/object/safeAssign';
-import {AppManagers} from '../../lib/appManagers/managers';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import Scrollable from '../scrollable';
-import wrapKeyboardButton from '../wrappers/keyboardButton';
+import type ChatInput from '@components/chat/input';
+import DropdownHover from '@helpers/dropdownHover';
+import {ReplyMarkup} from '@layer';
+import rootScope from '@lib/rootScope';
+import ListenerSetter, {Listener} from '@helpers/listenerSetter';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
+import findUpAsChild from '@helpers/dom/findUpAsChild';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import {getHeavyAnimationPromise} from '@hooks/useHeavyAnimationCheck';
+import safeAssign from '@helpers/object/safeAssign';
+import {AppManagers} from '@lib/managers';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import Scrollable from '@components/scrollable';
+import wrapKeyboardButton from '@components/wrappers/keyboardButton';
 
 export default class ReplyKeyboard extends DropdownHover {
   private static BASE_CLASS = 'reply-keyboard';

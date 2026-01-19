@@ -1,11 +1,11 @@
-import classNames from '../../helpers/string/classNames';
-import {MyDocument} from '../../lib/appManagers/appDocsManager';
-import {MyStarGift} from '../../lib/appManagers/appGiftsManager';
-import {AvatarNewTsx} from '../avatarNew';
-import {IconTsx} from '../iconTsx';
-import {StickerTsx} from '../wrappers/sticker';
-import {StarGiftBackdrop} from './stargiftBackdrop';
-import styles from './transferPreview.module.scss'
+import classNames from '@helpers/string/classNames';
+import {MyDocument} from '@appManagers/appDocsManager';
+import {MyStarGift} from '@appManagers/appGiftsManager';
+import {AvatarNewTsx} from '@components/avatarNew';
+import {IconTsx} from '@components/iconTsx';
+import {StickerTsx} from '@components/wrappers/sticker';
+import {StarGiftBackdrop} from '@components/stargifts/stargiftBackdrop';
+import styles from '@components/stargifts/transferPreview.module.scss'
 
 export function StarGiftTransferPreview(props: {
   class?: string;

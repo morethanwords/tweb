@@ -5,14 +5,14 @@
  */
 
 import PopupElement from '.';
-import {i18n} from '../../lib/langPack';
-import {PaymentsPaymentForm, User} from '../../layer';
-import PopupPayment from './payment';
-import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
-import CheckboxField from '../checkboxField';
-import PopupPaymentCard, {PaymentCardDetails, PaymentCardDetailsResult} from './paymentCard';
-import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
-import Row from '../row';
+import {i18n} from '@lib/langPack';
+import {PaymentsPaymentForm, User} from '@layer';
+import PopupPayment from '@components/popups/payment';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import CheckboxField from '@components/checkboxField';
+import PopupPaymentCard, {PaymentCardDetails, PaymentCardDetailsResult} from '@components/popups/paymentCard';
+import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
+import Row from '@components/row';
 
 export default class PopupPaymentMethods extends PopupElement {
   private promise: CancellablePromise<PopupPaymentCard>;

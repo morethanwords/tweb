@@ -1,13 +1,13 @@
-import SwipeHandler from '../components/swipeHandler';
-import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
-import {animateSingle, cancelAnimationByKey} from '../helpers/animation';
-import {CancellablePromise} from '../helpers/cancellablePromise';
-import cancelEvent from '../helpers/dom/cancelEvent';
-import findUpClassName from '../helpers/dom/findUpClassName';
-import liteMode from '../helpers/liteMode';
-import clamp from '../helpers/number/clamp';
-import debounce from '../helpers/schedulers/debounce';
-import {subscribeOn} from '../helpers/solid/subscribeOn';
+import SwipeHandler from '@components/swipeHandler';
+import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
+import {animateSingle, cancelAnimationByKey} from '@helpers/animation';
+import {CancellablePromise} from '@helpers/cancellablePromise';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import liteMode from '@helpers/liteMode';
+import clamp from '@helpers/number/clamp';
+import debounce from '@helpers/schedulers/debounce';
+import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {createSignal, createMemo, onCleanup, createEffect} from 'solid-js';
 
 const STATE_FOLDED = 1;

@@ -1,19 +1,19 @@
-import Section from '../../section';
-import {useSuperTab} from '../../solidJsTabs/superTabProvider';
-import type {AppPasskeysTab} from '../../solidJsTabs';
-import anchorCallback from '../../../helpers/dom/anchorCallback';
-import StickerAndTitle from '../../stickerAndTitle';
+import Section from '@components/section';
+import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
+import type {AppPasskeysTab} from '@components/solidJsTabs';
+import anchorCallback from '@helpers/dom/anchorCallback';
+import StickerAndTitle from '@components/stickerAndTitle';
 import {createEffect, createSignal, For, Show} from 'solid-js';
-import {formatFullSentTime} from '../../../helpers/date';
-import createMiddleware from '../../../helpers/solid/createMiddleware';
-import styles from './passkeys.module.scss';
-import {Passkey} from '../../../layer';
-import showPasskeyPopup, {createPasskey} from '../../popups/passkey';
-import IS_WEB_AUTHN_SUPPORTED from '../../../environment/webAuthn';
-import Button from '../../buttonTsx';
-import {useHotReloadGuard} from '../../../lib/solidjs/hotReloadGuard';
-import findAndSplice from '../../../helpers/array/findAndSplice';
-import {useAppConfig} from '../../../stores/appState';
+import {formatFullSentTime} from '@helpers/date';
+import createMiddleware from '@helpers/solid/createMiddleware';
+import styles from '@components/sidebarLeft/tabs/passkeys.module.scss';
+import {Passkey} from '@layer';
+import showPasskeyPopup, {createPasskey} from '@components/popups/passkey';
+import IS_WEB_AUTHN_SUPPORTED from '@environment/webAuthn';
+import Button from '@components/buttonTsx';
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import findAndSplice from '@helpers/array/findAndSplice';
+import {useAppConfig} from '@stores/appState';
 
 type AppPasskeysTabClass = typeof AppPasskeysTab;
 

@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {animateSingle} from '../../helpers/animation';
-import {hexToRgb} from '../../helpers/color';
-import {easeOutQuadApply} from '../../helpers/easing/easeOutQuad';
+import {animateSingle} from '@helpers/animation';
+import {hexToRgb} from '@helpers/color';
+import {easeOutQuadApply} from '@helpers/easing/easeOutQuad';
 
 const WIDTH = 50;
 const HEIGHT = WIDTH;

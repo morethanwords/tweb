@@ -1,8 +1,8 @@
 import type {Accessor} from 'solid-js';
-import type {ConfirmationPopupRejectReason} from '../components/confirmationPopup';
-import type {PopupPeerOptions} from '../components/popups/peer';
-import type {LangPackKey} from '../lib/langPack';
-import {useHotReloadGuard} from '../lib/solidjs/hotReloadGuard';
+import type {ConfirmationPopupRejectReason} from '@components/confirmationPopup';
+import type {PopupPeerOptions} from '@components/popups/peer';
+import type {LangPackKey} from '@lib/langPack';
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 
 
 type UseIsConfirmationNeededOnCloseArgs = {

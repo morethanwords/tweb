@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import Modes from './modes';
+import Modes from '@config/modes';
 
 export const IS_BETA = import.meta.env.DEV;
 export const DEBUG = (IS_BETA || Modes.debug)/*  && false */;
