@@ -2067,7 +2067,9 @@ export default class AppSearchSuper {
     this.loaded[mediaTab.type] = true;
   }
 
-  private async loadGifts({mediaTab}: SearchSuperLoadTypeOptions) {
+  private loadGifts() {
+    const mediaTab = this.mediaTabsMap.get('gifts');
+
     if(!this.stargiftsStore) {
       const middleware = this.middleware.get();
       createRoot((dispose) => {
@@ -2080,6 +2082,14 @@ export default class AppSearchSuper {
           scrollParent: scrollTarget,
           onCountChange: (count) => {
             this.setCounter('gifts', count);
+
+            mediaTab.menuTab.classList.toggle('hide', count === 0);
+            let needChangeActive = false
+            if(count === 0) {
+              needChangeActive = mediaTab.menuTab.classList.contains('active');
+              mediaTab.menuTab.classList.remove('active');
+            }
+            this.updateContainerHidden(needChangeActive);
           }
         });
         createEffect(on(() => store.items, (items) => {
@@ -2126,8 +2136,6 @@ export default class AppSearchSuper {
       promise = this.loadChannels(options);
     } else if(type === 'apps') {
       promise = this.loadApps(options);
-    } else if(type === 'gifts') {
-      promise = this.loadGifts(options);
     }
 
     if(promise) {
@@ -2403,14 +2411,27 @@ export default class AppSearchSuper {
       this.setPinnedGifts(maybePinnedGifts);
     }
 
-    this.container.classList.toggle('hide', !firstMediaTab);
-    this.container.parentElement.classList.toggle('search-empty', !firstMediaTab);
+    this.toggleContainerHidden(!firstMediaTab);
     if(firstMediaTab) {
       this.skipScroll = true;
       this.selectTab(this.mediaTabs.indexOf(firstMediaTab), false);
       // firstMediaTab.menuTab.classList.add('active');
 
       this.navScrollableContainer.classList.toggle('is-single', count <= 1);
+    }
+  }
+
+  private toggleContainerHidden(hidden: boolean) {
+    this.container.classList.toggle('hide', hidden);
+    this.container.parentElement.classList.toggle('search-empty', hidden);
+  }
+
+  private updateContainerHidden(changeActive = false) {
+    const visibleTabs = this.mediaTabs.filter((tab) => !tab.menuTab.classList.contains('hide'));
+    this.toggleContainerHidden(visibleTabs.length === 0);
+    this.navScrollableContainer.classList.toggle('is-single', visibleTabs.length <= 1);
+    if(changeActive && visibleTabs.length) {
+      this.selectTab(this.mediaTabs.indexOf(visibleTabs[0]), false);
     }
   }
 
@@ -2424,6 +2445,7 @@ export default class AppSearchSuper {
       if(!middleware()) {
         return;
       }
+      this.loadGifts()
 
       this.loadFirstTimePromise = undefined;
       this.firstLoad = false;

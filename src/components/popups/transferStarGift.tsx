@@ -45,6 +45,7 @@ export function transferStarGiftConfirmationPopup(options: {
   const appConfig = useAppConfig()
   const [show, setShow] = createSignal(false);
   const isFreeTransfer = !options.fromOffer && Number(options.gift.saved?.transfer_stars ?? '0') === 0
+  let submitted = false
 
   const tableContent = createMemo(() => {
     const {gift: {raw: gift, collectibleAttributes}} = options
@@ -157,7 +158,11 @@ export function transferStarGiftConfirmationPopup(options: {
         class={styles.popup}
         containerClass={styles.popupContainer}
         show={show()}
-        onClose={options.handleCancel}
+        onClose={() => {
+          if(!submitted) {
+            options.handleCancel?.()
+          }
+        }}
       >
         <FloatingStarsBalance class={styles.starsBalance} />
         <PopupElement.Body>
@@ -174,10 +179,16 @@ export function transferStarGiftConfirmationPopup(options: {
           </div>
         </PopupElement.Body>
         <PopupElement.Buttons class={styles.buttons}>
-          <PopupElement.Button callback={options.handleSubmit}>
+          <PopupElement.Button callback={() => {
+            submitted = true
+            return options.handleSubmit()
+          }}>
             {submitButtonText()}
           </PopupElement.Button>
-          <PopupElement.Button cancel callback={options.handleCancel}>
+          <PopupElement.Button cancel callback={() => {
+            submitted = true
+            options.handleCancel?.()
+          }}>
             <I18nTsx key="Cancel" />
           </PopupElement.Button>
         </PopupElement.Buttons>
