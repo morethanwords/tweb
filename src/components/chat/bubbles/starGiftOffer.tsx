@@ -21,7 +21,8 @@ import confirmationPopup from '@components/confirmationPopup';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import rootScope from '@lib/rootScope';
 import {transferStarGiftConfirmationPopup} from '@components/popups/transferStarGift';
-import getPeerId from '@appManagers/utils/peers/getPeerId';
+import PopupElement from '../../popups';
+import PopupStarGiftInfo from '../../popups/starGiftInfo';
 ripple; // keep
 
 function wrapExpiresIn(duration: number) {
@@ -37,14 +38,21 @@ export function StarGiftOfferBubble(props: {
   title: HTMLElement
   outgoing: boolean
   action: MessageAction.messageActionStarGiftPurchaseOffer
+  modifyBubble?: (callback: VoidFunction) => void
 }) {
   const now = createCurrentTime({
-    fn: () => tsNow(true)
+    fn: () => tsNow(true),
+    updateWrapper: props.modifyBubble
   })
   const expired = () => props.action.expires_at < now()
 
   return (
-    <div class={/* @once */ styles.wrap}>
+    <div
+      class={/* @once */ styles.wrap}
+      onClick={() => {
+        PopupElement.createPopup(PopupStarGiftInfo, {gift: props.gift})
+      }}
+    >
       <div class={/* @once */ styles.giftWrap}>
         <StarGiftBackdrop
           backdrop={props.gift.collectibleAttributes.backdrop}

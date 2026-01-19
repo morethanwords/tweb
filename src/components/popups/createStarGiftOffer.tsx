@@ -14,9 +14,9 @@ import {useAppConfig} from '@stores/appState';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {STARS_CURRENCY, TON_CURRENCY} from '@appManagers/constants';
 import {ChipTab, ChipTabs} from '@components/chipTabs';
-import {StarGift} from '@layer';
+import {StarGift, StarsAmount} from '@layer';
 import bigInt from 'big-integer';
-
+import PopupElementOld from './index'
 import styles from '@components/popups/createStarGiftOffer.module.scss';
 import {StarGiftPriceInputField} from '@components/stargifts/stargiftPriceInputField';
 import {getCollectibleName} from '@appManagers/utils/gifts/getCollectibleName';
@@ -24,6 +24,9 @@ import InlineSelect from '@components/sidebarLeft/tabs/passcodeLock/inlineSelect
 import {PeerTitleTsx} from '@components/peerTitleTsx';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
+import {FloatingStarsBalance} from './floatingStarsBalance';
+import PopupStars from './stars';
+import formatStarsAmount from '../../lib/appManagers/utils/payments/formatStarsAmount';
 
 export async function showCreateStarGiftOfferPopup(options: {
   gift: MyStarGift
@@ -61,22 +64,37 @@ export async function showCreateStarGiftOfferPopup(options: {
     });
 
     const handleSubmit = async() => {
-      await rootScope.managers.appGiftsManager.createGiftOffer({
-        peerId: getPeerId(gift.owner_id),
-        slug: gift.slug,
-        amount: ton() ? {
-          _: 'starsTonAmount',
-          amount: parseNanotonFromDecimal(offerAmount()).toString()
-        } : {
-          _: 'starsAmount',
-          amount: +offerAmount(),
-          nanos: 0
-        },
-        duration: offerDuration()
-      });
+      const starsAmount: StarsAmount = ton() ? {
+        _: 'starsTonAmount',
+        amount: parseNanotonFromDecimal(offerAmount()).toString()
+      } : {
+        _: 'starsAmount',
+        amount: +offerAmount(),
+        nanos: 0
+      }
 
-      isCreated = true;
-      options.onFinish?.('created')
+      try {
+        await rootScope.managers.appGiftsManager.createGiftOffer({
+          peerId: getPeerId(gift.owner_id),
+          slug: gift.slug,
+          amount: starsAmount,
+          duration: offerDuration()
+        });
+
+        isCreated = true;
+        options.onFinish?.('created')
+      } catch(err) {
+        if((err as ApiError).type === 'BALANCE_TOO_LOW') {
+          PopupElementOld.createPopup(PopupStars, {
+            itemPrice: starsAmount.amount,
+            ton: ton(),
+            onTopup: async() => {
+              await handleSubmit()
+            },
+            purpose: 'stargift'
+          });
+        }
+      }
     }
 
     const limits = createMemo(() => {
@@ -136,6 +154,7 @@ export async function showCreateStarGiftOfferPopup(options: {
           }
         }}
       >
+        <FloatingStarsBalance class={styles.balance} ton={ton()} />
         <PopupElement.Header class={styles.popupHeader}>
           <PopupElement.CloseButton />
           <PopupElement.Title>

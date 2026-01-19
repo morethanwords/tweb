@@ -3,7 +3,8 @@
   padding-block: 0.75rem;
   display: flex;
   flex-direction: column;
-  align-items: center;;
+  align-items: center;
+  cursor: pointer;
 
   :global(.bubble-service-button) {
     overflow: hidden;

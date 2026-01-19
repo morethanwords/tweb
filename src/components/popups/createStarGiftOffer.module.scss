@@ -8,6 +8,7 @@
     border-radius: 14px;
     padding: 0;
     background: var(--background-color);
+    overflow: visible;
   }
 
   &Header {
@@ -26,6 +27,14 @@
     padding: 1rem;
     padding-top: 0.75rem;
   }
+}
+
+.balance {
+  left: 50%;
+  top: -1rem;
+  transform: translate(-50%, -100%);
+  opacity: 1;
+  z-index: -1;
 }
 
 .input {
