@@ -62,7 +62,7 @@ import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
 import CacheStorageController from '@lib/files/cacheStorage';
 import type {PushSingleManager} from '@appManagers/pushSingleManager';
 import getDeepProperty from '@helpers/object/getDeepProperty';
-import {_changeHistoryStorageKey, _deleteHistoryStorage, _useHistoryStorage} from '@stores/historyStorages';
+import {_changeHistoryStorageKey, _deleteHistoryStorage, _iterateHistoryStorages, _useHistoryStorage} from '@stores/historyStorages';
 import SlicedArray, {SliceEnd} from '@helpers/slicedArray';
 import {createHistoryStorageSearchSlicedArray} from '@appManagers/utils/messages/createHistoryStorage';
 import tabId from '@config/tabId';
@@ -263,21 +263,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
         const [historyStorage, setHistoryStorage] = _useHistoryStorage(historyStorageKey as any);
 
         if(property === 'delete') {
-          const slicedArray: SlicedArray<any> = historyStorage.searchHistory || historyStorage.history;
-          slicedArray.slices.splice(0, Infinity);
-          const slice = slicedArray.constructSlice();
-          // slice.setEnd(SliceEnd.Bottom);
-          slicedArray.slices.unshift(slice);
-          _deleteHistoryStorage(historyStorageKey as any);
-          setHistoryStorage({
-            count: null,
-            _maxId: undefined,
-            maxOutId: undefined,
-            replyMarkup: undefined,
-            readMaxId: undefined,
-            readOutboxMaxId: undefined,
-            triedToReadMaxId: undefined
-          });
+          this.clearHistoryStorage(historyStorageKey, [historyStorage, setHistoryStorage], true);
         } else if(property === 'key') {
           _changeHistoryStorageKey(historyStorageKey as any, payload.value);
           setHistoryStorage('key', payload.value);
@@ -486,6 +472,12 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
     rootScope.addEventListener('language_change', this.onLanguageChange);
 
+    rootScope.addEventListener('state_cleared', () => {
+      _iterateHistoryStorages((key, value) => {
+        this.clearHistoryStorage(key, value, false);
+      });
+    });
+
     window.addEventListener('online', () => {
       rootScope.managers.networkerFactory.forceReconnectTimeout();
     });
@@ -522,6 +514,29 @@ class ApiManagerProxy extends MTProtoMessagePort {
     this.updateTabStateIdle(idleController.isIdle);
 
     // this.sendState();
+  }
+
+  private clearHistoryStorage(
+    historyStorageKey: string,
+    value: ReturnType<typeof _useHistoryStorage>,
+    shouldDelete: boolean
+  ) {
+    const [historyStorage, setHistoryStorage] = value;
+    const slicedArray: SlicedArray<any> = historyStorage.searchHistory || historyStorage.history;
+    slicedArray.slices.splice(0, Infinity);
+    const slice = slicedArray.constructSlice();
+    // slice.setEnd(SliceEnd.Bottom);
+    slicedArray.slices.unshift(slice);
+    shouldDelete && _deleteHistoryStorage(historyStorageKey as any);
+    setHistoryStorage({
+      count: null,
+      _maxId: undefined,
+      maxOutId: undefined,
+      replyMarkup: undefined,
+      readMaxId: undefined,
+      readOutboxMaxId: undefined,
+      triedToReadMaxId: undefined
+    });
   }
 
   private onLoggedOut(

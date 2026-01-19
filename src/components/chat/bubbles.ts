@@ -1687,51 +1687,11 @@ export default class ChatBubbles {
         return;
       }
 
-      const wasLikeGroup = this.chat.isLikeGroup;
-      this.chat.isLikeGroup = await this.chat._isLikeGroup(peerId);
-      const finishPeerChange = wasLikeGroup !== this.chat.isLikeGroup &&  await this.finishPeerChange();
+      this.onHistoryReload();
+    });
 
-      // * filter local and outgoing
-      const fullMids = this.getRenderedHistory('desc', true);
-      const mids = fullMids.map((fullMid) => splitFullMid(fullMid).mid);
-      const middleware = this.getMiddleware();
-      this.managers.appMessagesManager.reloadMessages(peerId, mids).then((messages) => {
-        if(!middleware()) return;
-
-        const toDelete: FullMid[] = [];
-        messages.forEach((message, idx) => {
-          const fullMid = fullMids[idx];
-          if(message) {
-            const bubble = this.getBubble(peerId, message.mid);
-            if(!bubble) return;
-
-            this.safeRenderMessage({
-              message,
-              reverse: true,
-              bubble
-            });
-          } else {
-            toDelete.push(fullMid);
-          }
-        });
-
-        finishPeerChange?.();
-        if(finishPeerChange) {
-          this.bubbleGroups.groups.forEach((group) => {
-            if(!this.chat.isLikeGroup) {
-              group.destroyAvatar();
-            } else if(this.isAvatarNeeded(group.firstItem.message)) {
-              group.createAvatar(group.firstItem.message);
-            }
-          });
-        }
-
-        this.deleteMessagesByIds(toDelete);
-
-        this.setLoaded('top', false);
-        this.setLoaded('bottom', false);
-        this.scrollable.checkForTriggers();
-      });
+    this.listenerSetter.add(rootScope)('state_cleared', () => {
+      this.onHistoryReload();
     });
 
     this.listenerSetter.add(rootScope)('settings_updated', ({key}) => {
@@ -1861,6 +1821,55 @@ export default class ChatBubbles {
 
   public get messagesQueuePromise() {
     return this.batchProcessor.queuePromise;
+  }
+
+  private async onHistoryReload() {
+    const {peerId} = this;
+    const wasLikeGroup = this.chat.isLikeGroup;
+    this.chat.isLikeGroup = await this.chat._isLikeGroup(peerId);
+    const finishPeerChange = wasLikeGroup !== this.chat.isLikeGroup &&  await this.finishPeerChange();
+
+    // * filter local and outgoing
+    const fullMids = this.getRenderedHistory('desc', true);
+    const mids = fullMids.map((fullMid) => splitFullMid(fullMid).mid);
+    const middleware = this.getMiddleware();
+    this.managers.appMessagesManager.reloadMessages(peerId, mids).then((messages) => {
+      if(!middleware()) return;
+
+      const toDelete: FullMid[] = [];
+      messages.forEach((message, idx) => {
+        const fullMid = fullMids[idx];
+        if(message) {
+          const bubble = this.getBubble(peerId, message.mid);
+          if(!bubble) return;
+
+          this.safeRenderMessage({
+            message,
+            reverse: true,
+            bubble
+          });
+        } else {
+          toDelete.push(fullMid);
+        }
+      });
+
+      finishPeerChange?.();
+      if(finishPeerChange) {
+        this.bubbleGroups.groups.forEach((group) => {
+          if(!this.chat.isLikeGroup) {
+            group.destroyAvatar();
+          } else if(this.isAvatarNeeded(group.firstItem.message)) {
+            group.createAvatar(group.firstItem.message);
+          }
+        });
+      }
+
+      this.deleteMessagesByIds(toDelete);
+
+      this.setLoaded('top', false);
+      this.setLoaded('bottom', false);
+      this.scrollable.checkForTriggers();
+    });
   }
 
   public createScrollSaver(reverse = true) {
