@@ -92,6 +92,7 @@ declare global {
     traverseTo(key: string): void;
     updateCurrentEntry(options: NavigationEntryOptions): void;
     addEventListener(type: 'navigate', listener: (event: NavigationEvent) => void): void;
+    removeEventListener(type: 'navigate', listener: (event: NavigationEvent) => void): void;
     back(): void;
   }
 

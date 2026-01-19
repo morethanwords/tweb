@@ -60,114 +60,119 @@ export class AppNavigationController {
     this.modificationQueue = [];
     this.modificationBusy = false;
 
-    // * push init state
-    // if(USE_NAVIGATION_API) {
-    //   this.debug && this.log('push');
-    //   history.pushState(this.id, '', new URL(location.href));
-    // }
+    history.scrollRestoration = 'manual';
 
-    if(USE_NAVIGATION_API) navigation.addEventListener('navigate', (event) => {
-      this.modificationResolve?.();
-      const log = this.log.bindPrefix('navigate');
-      // debugger;
-      log(event, navigation.currentEntry);
+    if(USE_NAVIGATION_API) {
+      // * push init state
+      // if(USE_NAVIGATION_API) {
+      //   this.debug && this.log('push');
+      //   history.pushState(this.id, '', new URL(location.href));
+      // }
 
-      const fixHashIfNeeded = () => {
-        const destinationHash = new URL(event.destination.url).hash;
-        if(
-          event.navigationType === 'traverse' &&
-          destinationHash !== this.currentHash
-        ) {
-          this.modifyHistoryFromEvent(() => { // * fix hash
-            log('will fix hash', destinationHash, this.currentHash);
-            this.replaceState();
-          });
-        }
-      };
+      navigation.addEventListener('navigate', this.onNavigate);
+    } else {
+      window.addEventListener('popstate', this.onPopState);
 
-      if(event.destination.index > navigation.currentEntry.index) {
-        log('ignoring forward navigation');
-        cancelEvent(event);
-        event.intercept();
-        fixHashIfNeeded();
-        return;
+      // * push init state
+      if(!USE_NAVIGATION_API/*  || true */) {
+        this.pushState();
       }
+    }
 
-      if(event.navigationType === this.ignoreNextNavigations[0]) {
-        log('ignoring event', event.navigationType);
-        this.ignoreNextNavigations.shift();
-        fixHashIfNeeded();
-        return;
-      }
-
-      if(
-        (
-          event.navigationType === 'push' ||
-          (event.navigationType === 'replace' && !event.destination.sameDocument)
-        ) &&
-        event.destination.getState() === this.id
-      ) {
-        event.intercept({
-          handler: () => {
-            log('push-like intercepted');
-          },
-          focusReset: 'manual', // * prevent losing focus
-          scroll: 'manual'
-        });
-        return;
-      }
-
-      if(
-        event.navigationType === 'reload' ||
-        event.navigationType === 'replace' ||
-        !event.destination.sameDocument
-      ) {
-        return;
-      }
-
-      const url = new URL(event.destination.url);
-
-      if(event.navigationType === 'push') {
-        this.overrideHash(url.hash);
-        this.onHashChange?.();
-        return;
-      }
-
-      let hash = url.hash;
-      // * don't set old hash if we're going back
-      if(event.destination.index < navigation.currentEntry.index) {
-        hash = this.currentHash;
-        fixHashIfNeeded();
-      }
-      this._onPopState(hash, 0);
-
-      // ! commented because it will still require a click after every back
-      // this.modifyHistoryFromEvent(() => {
-      //   const entries = navigation.entries().filter((entry) => entry.getState() === this.id);
-      //   const currentEntryIndex = entries.findIndex((entry) => entry.key === navigation.currentEntry.key);
-      //   log('entries', entries, currentEntryIndex);
-      //   if(currentEntryIndex < 1) {
-      //     log('push state because no entry left with this id');
-      //     this.pushState();
-      //   }
-      // });
-    });
-
-    if(!USE_NAVIGATION_API) window.addEventListener('popstate', this.onPopState);
     window.addEventListener('keydown', this.onKeyDown, {capture: true, passive: false});
 
     if(IS_MOBILE_SAFARI) {
       const options = {passive: true};
       window.addEventListener('touchstart', this.onTouchStart, options);
     }
-
-    history.scrollRestoration = 'manual';
-
-    // * push init state
-    if(!USE_NAVIGATION_API/*  || true */) {
-      this.pushState();
-    }
   }
+
+  private onNavigate = (event: NavigationEvent) => {
+    this.modificationResolve?.();
+    const log = this.log.bindPrefix('navigate');
+    // debugger;
+    log(event, navigation.currentEntry);
+
+    const fixHashIfNeeded = () => {
+      const destinationHash = new URL(event.destination.url).hash;
+      if(
+        event.navigationType === 'traverse' &&
+        destinationHash !== this.currentHash
+      ) {
+        this.modifyHistoryFromEvent(() => { // * fix hash
+          log('will fix hash', destinationHash, this.currentHash);
+          this.replaceState();
+        });
+      }
+    };
+
+    if(event.destination.index > navigation.currentEntry.index) {
+      log('ignoring forward navigation');
+      cancelEvent(event);
+      event.intercept();
+      fixHashIfNeeded();
+      return;
+    }
+
+    if(event.navigationType === this.ignoreNextNavigations[0]) {
+      log('ignoring event', event.navigationType);
+      this.ignoreNextNavigations.shift();
+      fixHashIfNeeded();
+      return;
+    }
+
+    if(
+      (
+        event.navigationType === 'push' ||
+        (event.navigationType === 'replace' && !event.destination.sameDocument)
+      ) &&
+      event.destination.getState() === this.id
+    ) {
+      event.intercept({
+        handler: () => {
+          log('push-like intercepted');
+        },
+        focusReset: 'manual', // * prevent losing focus
+        scroll: 'manual'
+      });
+      return;
+    }
+
+    if(
+      event.navigationType === 'reload' ||
+      event.navigationType === 'replace' ||
+      !event.destination.sameDocument
+    ) {
+      return;
+    }
+
+    const url = new URL(event.destination.url);
+
+    if(event.navigationType === 'push') {
+      this.overrideHash(url.hash);
+      this.onHashChange?.();
+      return;
+    }
+
+    let hash = url.hash;
+    // * don't set old hash if we're going back
+    if(event.destination.index < navigation.currentEntry.index) {
+      hash = this.currentHash;
+      fixHashIfNeeded();
+    }
+    this._onPopState(hash, 0);
+
+    // ! commented because it will still require a click after every back
+    // this.modifyHistoryFromEvent(() => {
+    //   const entries = navigation.entries().filter((entry) => entry.getState() === this.id);
+    //   const currentEntryIndex = entries.findIndex((entry) => entry.key === navigation.currentEntry.key);
+    //   log('entries', entries, currentEntryIndex);
+    //   if(currentEntryIndex < 1) {
+    //     log('push state because no entry left with this id');
+    //     this.pushState();
+    //   }
+    // });
+  };
 
   private onPopState = (e: PopStateEvent) => {
     this._onPopState(window.location.hash, e.state);
@@ -519,6 +524,18 @@ export class AppNavigationController {
    */
   public focus() {
     window.focus();
+  }
+
+  public navigateToUrl(url: string) {
+    if(USE_NAVIGATION_API) {
+      navigation.removeEventListener('navigate', this.onNavigate);
+    } else {
+      window.removeEventListener('popstate', this.onPopState);
+    }
+
+    setTimeout(() => {
+      location.href = url;
+    }, 100);
   }
 }
 

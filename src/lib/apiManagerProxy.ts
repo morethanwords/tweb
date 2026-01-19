@@ -646,7 +646,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
         // ! doubtful fix for hard refresh
         return registration.unregister().then(() => {
           url.searchParams.set(FIX_KEY, '' + (swfix + 1));
-          window.location.href = url.toString();
+          appNavigationController.navigateToUrl(url.toString());
         });
       }
 

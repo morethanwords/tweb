@@ -6935,7 +6935,7 @@ export default class ChatBubbles {
 
           let wrapped = wrapUrl(webPage.url);
           // * find entity with anchor
-          const urlEntities = totalEntities.map((entity) => {
+          const urlEntities = totalEntities ? totalEntities.map((entity) => {
             try {
               let entityUrl = (entity as MessageEntity.messageEntityTextUrl).url;
               if(!entityUrl && entity._ === 'messageEntityUrl') {
@@ -6951,7 +6951,7 @@ export default class ChatBubbles {
               u.hash = '';
               return u.toString() === wrapped.url ? w : undefined;
             } catch(err) {}
-          }).filter(Boolean);
+          }).filter(Boolean) : [];
           if(urlEntities.length === 1) {
             wrapped = urlEntities[0];
           }
@@ -7273,7 +7273,7 @@ export default class ChatBubbles {
               play: true,
               loop: false,
               group: this.chat.animationGroup
-            })
+            });
             preview.style.width = '48px';
             preview.style.height = '48px';
             props.media.photoSize = 'square';

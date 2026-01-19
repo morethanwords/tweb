@@ -369,6 +369,10 @@ export default class ChatTopbar {
     }
 
     const chat = this.chat.peer as MTChat.channel | MTChat.chat;
+    if(!chat) {
+      return false;
+    }
+
     const isCallActive = !!(chat as MTChat.chat).pFlags?.call_active;
     if(isCallActive) {
       return false;

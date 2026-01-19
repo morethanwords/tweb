@@ -88,7 +88,7 @@ function randomlyChooseVersionFromSearch() {
       const version = localStorage.getItem('kz_version');
       if(version === 'Z' || nextRandomUint(8) > 127) {
         localStorage.setItem('kz_version', 'Z');
-        location.href = 'https://web.telegram.org/a/';
+        appNavigationController.navigateToUrl('https://web.telegram.org/a/');
       } else {
         localStorage.setItem('kz_version', 'K');
       }
