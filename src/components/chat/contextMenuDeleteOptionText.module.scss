@@ -1,0 +1,18 @@
+.Container {
+  display: block;
+  padding-top: 2px;
+}
+
+.Icon {
+  font-size: 12px;
+  margin-inline-start: -2px;
+}
+
+.Subtitle {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  font-size: 10px;
+  padding-top: 2px;
+  line-height: 12px;
+}

@@ -88,6 +88,7 @@ import {useIsFrozen} from '@stores/appState';
 import prepareTextWithEntitiesForCopying from '@helpers/prepareTextWithEntitiesForCopying';
 import {runWithHotReloadGuard} from '@lib/solidjs/runWithHotReloadGuard';
 import {PartialByKeys} from '@types';
+import {ContextMenuDeleteOptionText} from '@components/chat/contextMenuDeleteOptionText';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -1028,8 +1029,18 @@ export default class ChatContextMenu {
       verify: () => 'repayRequest' in this.message && !!this.message.repayRequest
     }, {
       icon: 'delete',
-      className: 'danger',
-      text: 'Delete',
+      get className() {
+        if(self.message?.ttl_period) return 'danger with-subtitle';
+        return 'danger';
+      },
+      get regularText() {
+        const content = new ContextMenuDeleteOptionText;
+        content.feedProps({
+          dateTimestamp: self.message.date,
+          ttlPeriod: self.message.ttl_period || 0
+        });
+        return content;
+      },
       onClick: this.onDeleteClick,
       verify: async() => this.managers.appMessagesManager.canDeleteMessage(this.message)
     }, {

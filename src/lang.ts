@@ -4189,7 +4189,9 @@ const lang = {
   'StarGiftOffer.OfferDuration': 'Offer Duration',
   'StarGiftOffer.OfferDurationDescriptionStars': 'Choose how long **%s** has to accept your offer. When it expires, your Stars will be refunded',
   'StarGiftOffer.OfferDurationDescriptionTON': 'Choose how long **%s** has to accept your offer. When it expires, your Stars will be refunded',
-  'StarGiftOffer.CreateOfferSubmit': 'Offer %s'
+  'StarGiftOffer.CreateOfferSubmit': 'Offer %s',
+
+  'AutoDeletesIn': 'auto-deletes in %s'
 };
 
 export default lang;
