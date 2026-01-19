@@ -1,10 +1,10 @@
-import {IS_CHROMIUM} from '../../environment/userAgent';
-import deferredPromise from '../cancellablePromise';
-import noop from '../noop';
-import deepEqual from '../object/deepEqual';
-import onMediaLoad from '../onMediaLoad';
-import safePlay from './safePlay';
-import setCurrentTime from './setCurrentTime';
+import {IS_CHROMIUM} from '@environment/userAgent';
+import deferredPromise from '@helpers/cancellablePromise';
+import noop from '@helpers/noop';
+import deepEqual from '@helpers/object/deepEqual';
+import onMediaLoad from '@helpers/onMediaLoad';
+import safePlay from '@helpers/dom/safePlay';
+import setCurrentTime from '@helpers/dom/setCurrentTime';
 
 const USE_FIX = IS_CHROMIUM;
 

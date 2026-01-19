@@ -1,11 +1,11 @@
 import {Component, createEffect, createMemo, createSelector, createSignal, For, JSX, onCleanup, onMount} from 'solid-js';
 import {Portal} from 'solid-js/web';
 import {Transition} from 'solid-transition-group';
-import {animateValue, simpleEasing} from '../../../../helpers/animateValue';
-import {keepMe} from '../../../../helpers/keepMe';
-import ListenerSetter from '../../../../helpers/listenerSetter';
-import ripple from '../../../ripple';
-import styles from './inlineSelect.module.scss';
+import {animateValue, simpleEasing} from '@helpers/animateValue';
+import {keepMe} from '@helpers/keepMe';
+import ListenerSetter from '@helpers/listenerSetter';
+import ripple from '@components/ripple';
+import styles from '@components/sidebarLeft/tabs/passcodeLock/inlineSelect.module.scss';
 
 keepMe(ripple);
 

@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {renderImageFromUrlPromise} from './dom/renderImageFromUrl';
+import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
 
 export function averageColorFromCanvas(canvas: HTMLCanvasElement) {
   const context = canvas.getContext('2d');

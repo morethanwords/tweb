@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import MovableElement, {MovableElementOptions, MovableState} from '../components/movableElement';
-import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
-import ListenerSetter from './listenerSetter';
-import mediaSizes, {ScreenSize} from './mediaSizes';
-import safeAssign from './object/safeAssign';
+import MovableElement, {MovableElementOptions, MovableState} from '@components/movableElement';
+import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
+import ListenerSetter from '@helpers/listenerSetter';
+import mediaSizes, {ScreenSize} from '@helpers/mediaSizes';
+import safeAssign from '@helpers/object/safeAssign';
 
 export default class MovablePanel {
   #movable: MovableElement;

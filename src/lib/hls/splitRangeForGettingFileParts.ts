@@ -71,7 +71,7 @@ function snapLimit(limit: number) {
 
 /*
 // If you make changes in this function, use this snippet to analyze the output
-import {logger} from '../logger';
+import {logger} from '@lib/logger';
 (() => {
   const log = logger('test-splitRangeForGettingFileParts');
   const cases = [

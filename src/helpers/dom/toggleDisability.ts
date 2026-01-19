@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import toArray from '../array/toArray';
+import toArray from '@helpers/array/toArray';
 
 export default function toggleDisability(elements: HTMLElement | HTMLElement[], disable: boolean): () => void {
   elements = toArray(elements);

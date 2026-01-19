@@ -4,18 +4,18 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import Modes from '../../config/modes';
-import blobConstruct from '../../helpers/blob/blobConstruct';
-import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
-import makeError from '../../helpers/makeError';
-import readBlobAsUint8Array from '../../helpers/blob/readBlobAsUint8Array';
+import Modes from '@config/modes';
+import blobConstruct from '@helpers/blob/blobConstruct';
+import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
+import makeError from '@helpers/makeError';
+import readBlobAsUint8Array from '@helpers/blob/readBlobAsUint8Array';
 
-import EncryptionKeyStore from '../passcode/keyStore';
-import cryptoMessagePort from '../crypto/cryptoMessagePort';
-import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
+import EncryptionKeyStore from '@lib/passcode/keyStore';
+import cryptoMessagePort from '@lib/crypto/cryptoMessagePort';
+import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
 
-import MemoryWriter from './memoryWriter';
-import FileStorage from './fileStorage';
+import MemoryWriter from '@lib/files/memoryWriter';
+import FileStorage from '@lib/files/fileStorage';
 
 
 type CacheStorageDbConfigEntry = {

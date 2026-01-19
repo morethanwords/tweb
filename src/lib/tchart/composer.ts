@@ -1,5 +1,5 @@
-import {drawRoundedRect, drawRoundedRect2} from './utils';
-import {TChartAnimationProperty, TChartUnitOptions} from './types';
+import {drawRoundedRect, drawRoundedRect2} from '@lib/tchart/utils';
+import {TChartAnimationProperty, TChartUnitOptions} from '@lib/tchart/types';
 
 export default class TComposer {
   private opts: TChartUnitOptions;

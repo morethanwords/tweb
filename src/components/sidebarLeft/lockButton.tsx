@@ -1,10 +1,10 @@
 import {createRoot, createSignal, createEffect, onCleanup} from 'solid-js';
 
-import {i18n} from '../../lib/langPack';
-import rootScope from '../../lib/rootScope';
+import {i18n} from '@lib/langPack';
+import rootScope from '@lib/rootScope';
 
-import PasscodeLockScreenController from '../passcodeLock/passcodeLockScreenController';
-import showTooltip from '../tooltip';
+import PasscodeLockScreenController from '@components/passcodeLock/passcodeLockScreenController';
+import showTooltip from '@components/tooltip';
 
 const LockIcon = () => {
   return (

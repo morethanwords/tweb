@@ -1,5 +1,5 @@
 import {createRoot} from 'solid-js';
-import SolidJSHotReloadGuardProvider from './hotReloadGuardProvider';
+import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 
 export function runWithHotReloadGuard<T>(fn: () => T): T {
   let result: T;

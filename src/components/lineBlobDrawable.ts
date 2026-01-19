@@ -12,7 +12,7 @@
 export const MAX_SPEED = 8.2;
 export const MIN_SPEED = 0.8;
 
-// import { MIN_SPEED, MAX_SPEED } from './BlobDrawable';
+// import { MIN_SPEED, MAX_SPEED } from '@components/BlobDrawable';
 
 type Radius = number[];
 

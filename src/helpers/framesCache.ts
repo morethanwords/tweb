@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {RLottieColor} from '../lib/rlottie/rlottiePlayer';
+import type {RLottieColor} from '@lib/rlottie/rlottiePlayer';
 
 export type FramesCacheMap = Map<number, Uint8ClampedArray>;
 export type FramesCacheMapNew = Map<number, HTMLCanvasElement | ImageBitmap>;

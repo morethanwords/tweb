@@ -1,7 +1,7 @@
 import {JSX} from 'solid-js';
-import {createListTransition} from './createListTransition';
+import {createListTransition} from '@helpers/solid/createListTransition';
 import {resolveElements} from '@solid-primitives/refs';
-import liteMode from '../liteMode';
+import liteMode from '@helpers/liteMode';
 
 function wrapKeyframes(keyframes: Keyframe[] | ((element: Element, removed: boolean) => Keyframe[])) {
   return typeof(keyframes) !== 'function' ? () => keyframes : keyframes;

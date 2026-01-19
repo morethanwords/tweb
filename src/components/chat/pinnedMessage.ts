@@ -4,29 +4,29 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type ChatTopbar from './topbar';
-import PopupPinMessage from '../popups/unpinMessage';
-import PinnedContainer from './pinnedContainer';
-import PinnedMessageBorder from './pinnedMessageBorder';
-import ReplyContainer, {wrapReplyDivAndCaption} from './replyContainer';
-import rootScope from '../../lib/rootScope';
-import Chat from './chat';
-import ListenerSetter from '../../helpers/listenerSetter';
-import ButtonIcon from '../buttonIcon';
-import {getHeavyAnimationPromise} from '../../hooks/useHeavyAnimationCheck';
-import {i18n} from '../../lib/langPack';
-import cancelEvent from '../../helpers/dom/cancelEvent';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import handleScrollSideEvent from '../../helpers/dom/handleScrollSideEvent';
-import debounce from '../../helpers/schedulers/debounce';
-import throttle from '../../helpers/schedulers/throttle';
-import {AppManagers} from '../../lib/appManagers/managers';
-import {Message} from '../../layer';
-import {logger} from '../../lib/logger';
-import PopupElement from '../popups';
-import {AnimatedSuper} from '../animatedSuper';
-import {AnimatedCounter} from '../animatedCounter';
-import {isMessageSensitive} from '../../lib/appManagers/utils/messages/isMessageRestricted';
+import type ChatTopbar from '@components/chat/topbar';
+import PopupPinMessage from '@components/popups/unpinMessage';
+import PinnedContainer from '@components/chat/pinnedContainer';
+import PinnedMessageBorder from '@components/chat/pinnedMessageBorder';
+import ReplyContainer, {wrapReplyDivAndCaption} from '@components/chat/replyContainer';
+import rootScope from '@lib/rootScope';
+import Chat from '@components/chat/chat';
+import ListenerSetter from '@helpers/listenerSetter';
+import ButtonIcon from '@components/buttonIcon';
+import {getHeavyAnimationPromise} from '@hooks/useHeavyAnimationCheck';
+import {i18n} from '@lib/langPack';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import handleScrollSideEvent from '@helpers/dom/handleScrollSideEvent';
+import debounce from '@helpers/schedulers/debounce';
+import throttle from '@helpers/schedulers/throttle';
+import {AppManagers} from '@lib/managers';
+import {Message} from '@layer';
+import {logger} from '@lib/logger';
+import PopupElement from '@components/popups';
+import {AnimatedSuper} from '@components/animatedSuper';
+import {AnimatedCounter} from '@components/animatedCounter';
+import {isMessageSensitive} from '@appManagers/utils/messages/isMessageRestricted';
 
 const ALWAYS_FLOATING = false;
 

@@ -4,17 +4,17 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {MediaSearchContext} from '../components/appMediaPlaybackController';
-import type {SearchSuperContext} from '../components/appSearchSuper';
-import type {Message} from '../layer';
-import type {MessagesStorageKey, MyMessage} from '../lib/appManagers/appMessagesManager';
-import {AppManagers} from '../lib/appManagers/managers';
-import {isMessageSensitive} from '../lib/appManagers/utils/messages/isMessageRestricted';
-import apiManagerProxy from '../lib/mtproto/mtprotoworker';
-import rootScope, {BroadcastEvents} from '../lib/rootScope';
-import forEachReverse from './array/forEachReverse';
-import filterChatPhotosMessages from './filterChatPhotosMessages';
-import ListLoader, {ListLoaderOptions} from './listLoader';
+import type {MediaSearchContext} from '@components/appMediaPlaybackController';
+import type {SearchSuperContext} from '@components/appSearchSuper';
+import type {Message} from '@layer';
+import type {MessagesStorageKey, MyMessage} from '@appManagers/appMessagesManager';
+import {AppManagers} from '@lib/managers';
+import {isMessageSensitive} from '@appManagers/utils/messages/isMessageRestricted';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import rootScope, {BroadcastEvents} from '@lib/rootScope';
+import forEachReverse from '@helpers/array/forEachReverse';
+import filterChatPhotosMessages from '@helpers/filterChatPhotosMessages';
+import ListLoader, {ListLoaderOptions} from '@helpers/listLoader';
 
 export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}> extends ListLoader<Item, Message.message> {
   public searchContext: MediaSearchContext;

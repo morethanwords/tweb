@@ -1,6 +1,6 @@
-import {Photo} from '../../../../layer';
-import PhotoTsx from '../../../wrappers/photoTsx';
-import styles from './chatPhoto.module.scss';
+import {Photo} from '@layer';
+import PhotoTsx from '@components/wrappers/photoTsx';
+import styles from '@components/sidebarRight/tabs/adminRecentActions/chatPhoto.module.scss';
 
 
 type ChatPhotoProps = {

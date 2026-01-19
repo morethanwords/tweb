@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {SliderSuperTabEventable} from '../../../sliderTab';
-import {autoDownloadPeerTypeSection} from './photo';
+import {SliderSuperTabEventable} from '@components/sliderTab';
+import {autoDownloadPeerTypeSection} from '@components/sidebarLeft/tabs/autoDownload/photo';
 
 export default class AppAutoDownloadVideoTab extends SliderSuperTabEventable {
   public init() {

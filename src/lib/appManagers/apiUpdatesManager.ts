@@ -9,19 +9,19 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import {ConstructorDeclMap, Message, MessageFwdHeader, Peer, StarsAmount, Update, Updates} from '../../layer';
-import {LogTypes} from '../logger';
-import assumeType from '../../helpers/assumeType';
-import App from '../../config/app';
-import filterUnique from '../../helpers/array/filterUnique';
-import {AppManager} from './manager';
-import parseMarkdown from '../richTextProcessor/parseMarkdown';
-import ctx from '../../environment/ctx';
-import EventListenerBase from '../../helpers/eventListenerBase';
-import applyMixins from '../../helpers/applyMixins';
-import tsNow from '../../helpers/tsNow';
-import formatStarsAmount from './utils/payments/formatStarsAmount';
-import debounce from '../../helpers/schedulers/debounce';
+import {ConstructorDeclMap, Message, MessageFwdHeader, Peer, StarsAmount, Update, Updates} from '@layer';
+import {LogTypes} from '@lib/logger';
+import assumeType from '@helpers/assumeType';
+import App from '@config/app';
+import filterUnique from '@helpers/array/filterUnique';
+import {AppManager} from '@appManagers/manager';
+import parseMarkdown from '@lib/richTextProcessor/parseMarkdown';
+import ctx from '@environment/ctx';
+import EventListenerBase from '@helpers/eventListenerBase';
+import applyMixins from '@helpers/applyMixins';
+import tsNow from '@helpers/tsNow';
+import formatStarsAmount from '@appManagers/utils/payments/formatStarsAmount';
+import debounce from '@helpers/schedulers/debounce';
 
 type UpdatesState = {
   pendingPtsUpdates: (Update & {pts: number, pts_count: number})[],

@@ -4,25 +4,25 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {Middleware} from '../../helpers/middleware';
-import {Document, Message, MessageMedia, Photo, WebPage, VideoSize, StoryItem, MessageReplyHeader, MessageEntity} from '../../layer';
-import choosePhotoSize from '../../lib/appManagers/utils/photos/choosePhotoSize';
-import DivAndCaption from '../divAndCaption';
-import wrapMessageForReply from '../wrappers/messageForReply';
-import wrapPhoto from '../wrappers/photo';
-import wrapSticker from '../wrappers/sticker';
-import wrapVideo from '../wrappers/video';
-import wrapRichText, {WrapRichTextOptions} from '../../lib/richTextProcessor/wrapRichText';
-import {WrapReplyOptions} from '../wrappers/reply';
-import {Modify} from '../../types';
-import {i18n} from '../../lib/langPack';
-import Icon from '../icon';
-import LazyLoadQueue from '../lazyLoadQueue';
-import replaceContent from '../../helpers/dom/replaceContent';
-import limitSymbols from '../../helpers/string/limitSymbols';
-import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
-import wrapMediaSpoiler from '../wrappers/mediaSpoiler';
-import {isMessageSensitive} from '../../lib/appManagers/utils/messages/isMessageRestricted';
+import {Middleware} from '@helpers/middleware';
+import {Document, Message, MessageMedia, Photo, WebPage, VideoSize, StoryItem, MessageReplyHeader, MessageEntity} from '@layer';
+import choosePhotoSize from '@appManagers/utils/photos/choosePhotoSize';
+import DivAndCaption from '@components/divAndCaption';
+import wrapMessageForReply from '@components/wrappers/messageForReply';
+import wrapPhoto from '@components/wrappers/photo';
+import wrapSticker from '@components/wrappers/sticker';
+import wrapVideo from '@components/wrappers/video';
+import wrapRichText, {WrapRichTextOptions} from '@lib/richTextProcessor/wrapRichText';
+import {WrapReplyOptions} from '@components/wrappers/reply';
+import {Modify} from '@types';
+import {i18n} from '@lib/langPack';
+import Icon from '@components/icon';
+import LazyLoadQueue from '@components/lazyLoadQueue';
+import replaceContent from '@helpers/dom/replaceContent';
+import limitSymbols from '@helpers/string/limitSymbols';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import wrapMediaSpoiler from '@components/wrappers/mediaSpoiler';
+import {isMessageSensitive} from '@appManagers/utils/messages/isMessageRestricted';
 
 const MEDIA_SIZE = 32;
 

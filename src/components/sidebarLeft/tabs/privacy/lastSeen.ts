@@ -4,18 +4,18 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {SliderSuperTabEventable} from '../../../sliderTab';
-import PrivacySection from '../../../privacySection';
-import {LangPackKey, i18n} from '../../../../lib/langPack';
-import Row from '../../../row';
-import CheckboxField from '../../../checkboxField';
-import SettingSection from '../../../settingSection';
-import Button from '../../../button';
-import rootScope from '../../../../lib/rootScope';
-import {attachClickEvent} from '../../../../helpers/dom/clickEvent';
-import PopupPremium from '../../../popups/premium';
-import {GlobalPrivacySettings} from '../../../../layer';
-import PrivacyType from '../../../../lib/appManagers/utils/privacy/privacyType';
+import {SliderSuperTabEventable} from '@components/sliderTab';
+import PrivacySection from '@components/privacySection';
+import {LangPackKey, i18n} from '@lib/langPack';
+import Row from '@components/row';
+import CheckboxField from '@components/checkboxField';
+import SettingSection from '@components/settingSection';
+import Button from '@components/button';
+import rootScope from '@lib/rootScope';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import PopupPremium from '@components/popups/premium';
+import {GlobalPrivacySettings} from '@layer';
+import PrivacyType from '@appManagers/utils/privacy/privacyType';
 
 export default class AppPrivacyLastSeenTab extends SliderSuperTabEventable<{
   privacy: (globalPrivacy: Promise<GlobalPrivacySettings>) => void

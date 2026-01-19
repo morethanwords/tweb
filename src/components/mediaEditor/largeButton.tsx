@@ -1,6 +1,6 @@
 import {JSX, onMount} from 'solid-js';
 
-import ripple from '../ripple';
+import ripple from '@components/ripple';
 
 export type MediaEditorLargeButtonProps = JSX.HTMLAttributes<HTMLDivElement> & {
   active?: boolean;

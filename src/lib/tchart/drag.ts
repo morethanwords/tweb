@@ -1,5 +1,5 @@
-import {isTouchDevice} from './utils';
-import {TChartUnitOptions} from './types';
+import {isTouchDevice} from '@lib/tchart/utils';
+import {TChartUnitOptions} from '@lib/tchart/types';
 
 export default class TDrag {
   private opts: TChartUnitOptions & {

@@ -5,22 +5,22 @@
  */
 
 import PopupElement, {addCancelButton} from '.';
-import filterUnique from '../../helpers/array/filterUnique';
-import {Message} from '../../layer';
-import I18n, {FormatterArguments, i18n, LangPackKey} from '../../lib/langPack';
-import Section from '../section';
-import StackedAvatars from '../stackedAvatars';
+import filterUnique from '@helpers/array/filterUnique';
+import {Message} from '@layer';
+import I18n, {FormatterArguments, i18n, LangPackKey} from '@lib/langPack';
+import Section from '@components/section';
+import StackedAvatars from '@components/stackedAvatars';
 import {createEffect, createSignal} from 'solid-js';
-import CheckboxFields, {CheckboxFieldsField} from '../checkboxFields';
-import wrapPeerTitle from '../wrappers/peerTitle';
-import flatten from '../../helpers/array/flatten';
-import {avatarNew} from '../avatarNew';
-import PeerTitle from '../peerTitle';
-import Row from '../rowTsx';
-import {IconTsx} from '../iconTsx';
-import classNames from '../../helpers/string/classNames';
-import {ChatPermissions} from '../sidebarRight/tabs/groupPermissions';
-import {animate} from '../../helpers/animation';
+import CheckboxFields, {CheckboxFieldsField} from '@components/checkboxFields';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
+import flatten from '@helpers/array/flatten';
+import {avatarNew} from '@components/avatarNew';
+import PeerTitle from '@components/peerTitle';
+import Row from '@components/rowTsx';
+import {IconTsx} from '@components/iconTsx';
+import classNames from '@helpers/string/classNames';
+import {ChatPermissions} from '@components/sidebarRight/tabs/groupPermissions';
+import {animate} from '@helpers/animation';
 
 const className = 'popup-delete-megagroup-messages';
 

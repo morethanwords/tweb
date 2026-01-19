@@ -1,4 +1,4 @@
-import subtle from '../subtle';
+import subtle from '@lib/crypto/subtle';
 
 export default async function pbkdf2(buffer: Parameters<SubtleCrypto['importKey']>[1], salt: HkdfParams['salt'], iterations: number) {
   const importKey = await subtle.importKey(

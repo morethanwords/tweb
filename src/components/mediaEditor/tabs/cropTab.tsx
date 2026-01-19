@@ -1,12 +1,12 @@
 import {JSX, splitProps} from 'solid-js';
 
-import {i18n} from '../../../lib/langPack';
-import {IconTsx} from '../../iconTsx';
+import {i18n} from '@lib/langPack';
+import {IconTsx} from '@components/iconTsx';
 
-import {animateToNewRotationOrRatio} from '../canvas/animateToNewRotationOrRatio';
-import LargeButton, {MediaEditorLargeButtonProps} from '../largeButton';
-import {useMediaEditorContext} from '../context';
-import {withCurrentOwner} from '../utils';
+import {animateToNewRotationOrRatio} from '@components/mediaEditor/canvas/animateToNewRotationOrRatio';
+import LargeButton, {MediaEditorLargeButtonProps} from '@components/mediaEditor/largeButton';
+import {useMediaEditorContext} from '@components/mediaEditor/context';
+import {withCurrentOwner} from '@components/mediaEditor/utils';
 
 const ratioRects = {
   '1x1': () => <rect x="4" y="4" width="16" height="16" rx="2" stroke="white" stroke-width="1.66" />,

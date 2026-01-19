@@ -4,18 +4,18 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {DialogFilter, InputChatlist, Update, Updates} from '../../layer';
-import type {Dialog} from '../appManagers/appMessagesManager';
-import type {AnyDialog} from './dialogs';
-import forEachReverse from '../../helpers/array/forEachReverse';
-import copy from '../../helpers/object/copy';
-import {AppManager} from '../appManagers/manager';
-import findAndSplice from '../../helpers/array/findAndSplice';
-import assumeType from '../../helpers/assumeType';
-import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS, REAL_FOLDER_ID, START_LOCAL_ID} from '../mtproto/mtproto_config';
-import makeError from '../../helpers/makeError';
-import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-import {isDialog} from '../appManagers/utils/dialogs/isDialog';
+import type {DialogFilter, InputChatlist, Update, Updates} from '@layer';
+import type {Dialog} from '@appManagers/appMessagesManager';
+import type {AnyDialog} from '@lib/storages/dialogs';
+import forEachReverse from '@helpers/array/forEachReverse';
+import copy from '@helpers/object/copy';
+import {AppManager} from '@appManagers/manager';
+import findAndSplice from '@helpers/array/findAndSplice';
+import assumeType from '@helpers/assumeType';
+import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS, REAL_FOLDER_ID, START_LOCAL_ID} from '@appManagers/constants';
+import makeError from '@helpers/makeError';
+import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
+import {isDialog} from '@appManagers/utils/dialogs/isDialog';
 
 export type MyDialogFilter = Exclude<DialogFilter, DialogFilter.dialogFilterDefault>;
 

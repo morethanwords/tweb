@@ -4,17 +4,17 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import MarkupTooltip from '../../components/chat/markupTooltip';
-import {FontFamilyName} from '../../config/font';
-import indexOfAndSplice from '../array/indexOfAndSplice';
-import cancelEvent from './cancelEvent';
-import simulateEvent from './dispatchEvent';
-import getCharAfterRange from './getCharAfterRange';
-import {MarkdownType} from './getRichElementValue';
-import getMarkupInSelection from './getMarkupInSelection';
-import isSelectionEmpty from './isSelectionEmpty';
-import RichInputHandler from './richInputHandler';
-import {setDirection} from './setInnerHTML';
+import MarkupTooltip from '@components/chat/markupTooltip';
+import {FontFamilyName} from '@config/font';
+import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import simulateEvent from '@helpers/dom/dispatchEvent';
+import getCharAfterRange from '@helpers/dom/getCharAfterRange';
+import {MarkdownType} from '@helpers/dom/getRichElementValue';
+import getMarkupInSelection from '@helpers/dom/getMarkupInSelection';
+import isSelectionEmpty from '@helpers/dom/isSelectionEmpty';
+import RichInputHandler from '@helpers/dom/richInputHandler';
+import {setDirection} from '@helpers/dom/setInnerHTML';
 
 const cacheMap = new WeakMap<HTMLElement, MarkdownCache>();
 

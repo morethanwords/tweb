@@ -1,11 +1,11 @@
 import {createMemo, Show} from 'solid-js';
-import {I18nTsx} from '../../../../helpers/solid/i18n';
-import {Message} from '../../../../layer';
-import {MyMessage} from '../../../../lib/appManagers/appMessagesManager';
-import {LangPackKey} from '../../../../lib/langPack';
-import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
-import Button from '../../../buttonTsx';
-import styles from './previewMessageButtons.module.scss';
+import {I18nTsx} from '@helpers/solid/i18n';
+import {Message} from '@layer';
+import {MyMessage} from '@appManagers/appMessagesManager';
+import {LangPackKey} from '@lib/langPack';
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import Button from '@components/buttonTsx';
+import styles from '@components/sidebarRight/tabs/adminRecentActions/previewMessageButtons.module.scss';
 
 
 export const PreviewMessageButtons = (props: {

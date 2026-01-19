@@ -1,13 +1,13 @@
-import deferredPromise from '../../helpers/cancellablePromise';
-import {InputFileLocation} from '../../layer';
+import deferredPromise from '@helpers/cancellablePromise';
+import {InputFileLocation} from '@layer';
 
-import {getCurrentAccountFromURL} from '../accounts/getCurrentAccountFromURL';
-import type {DownloadOptions} from '../mtproto/apiFileManager';
-import {get500ErrorResponse} from '../serviceWorker/errors';
-import {serviceMessagePort} from '../serviceWorker/index.service';
+import {getCurrentAccountFromURL} from '@lib/accounts/getCurrentAccountFromURL';
+import type {DownloadOptions} from '@appManagers/apiFileManager';
+import {get500ErrorResponse} from '@lib/serviceWorker/errors';
+import {serviceMessagePort} from '@lib/serviceWorker/index.service';
 
-import {ctx, swLog} from './common';
-import {createHlsVideoSource} from './createHlsVideoSource';
+import {ctx, swLog} from '@lib/hls/common';
+import {createHlsVideoSource} from '@lib/hls/createHlsVideoSource';
 
 export async function onHlsPlaylistFetch(event: FetchEvent, params: string, search: string) {
   const deferred = deferredPromise<Response>();

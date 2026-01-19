@@ -1,8 +1,8 @@
-import appDialogsManager from '../../lib/appManagers/appDialogsManager';
-import {SavedDialog} from '../../lib/appManagers/appMessagesManager';
-import {isSavedDialog} from '../../lib/appManagers/utils/dialogs/isDialog';
-import rootScope from '../../lib/rootScope';
-import {AutonomousDialogListBase, BaseConstructorArgs} from './base';
+import appDialogsManager from '@lib/appDialogsManager';
+import {SavedDialog} from '@appManagers/appMessagesManager';
+import {isSavedDialog} from '@appManagers/utils/dialogs/isDialog';
+import rootScope from '@lib/rootScope';
+import {AutonomousDialogListBase, BaseConstructorArgs} from '@components/autonomousDialogList/base';
 
 
 export class AutonomousSavedDialogList extends AutonomousDialogListBase<SavedDialog> {

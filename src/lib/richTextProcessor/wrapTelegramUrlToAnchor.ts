@@ -1,4 +1,4 @@
-import wrapUrl from './wrapUrl';
+import wrapUrl from '@lib/richTextProcessor/wrapUrl';
 
 export default function wrapTelegramUrlToAnchor(url1: string) {
   const {url, onclick} = wrapUrl(url1);

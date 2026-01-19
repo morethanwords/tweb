@@ -1,6 +1,6 @@
-import detectLanguage from '../lib/tinyld/detect';
-import {useAppSettings} from '../stores/appSettings';
-import {useAppState} from '../stores/appState';
+import detectLanguage from '@lib/tinyld/detect';
+import {useAppSettings} from '@stores/appSettings';
+import {useAppState} from '@stores/appState';
 
 export default async function detectLanguageForTranslation(text: string): Promise<TranslatableLanguageISO> {
   const [appSettings] = useAppSettings();

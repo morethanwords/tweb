@@ -4,22 +4,22 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type ChatTopbar from './topbar';
-import DivAndCaption from '../divAndCaption';
-import PinnedContainer from './pinnedContainer';
-import Chat from './chat';
-import cancelEvent from '../../helpers/dom/cancelEvent';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import I18n from '../../lib/langPack';
-import {ChatFull} from '../../layer';
-import {AppManagers} from '../../lib/appManagers/managers';
-import StackedAvatars from '../stackedAvatars';
-import appSidebarRight from '../sidebarRight';
-import AppChatRequestsTab from '../sidebarRight/tabs/chatRequests';
-import callbackify from '../../helpers/callbackify';
-import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
-import {ONE_DAY} from '../../helpers/date';
-import {MiddlewareHelper, getMiddleware} from '../../helpers/middleware';
+import type ChatTopbar from '@components/chat/topbar';
+import DivAndCaption from '@components/divAndCaption';
+import PinnedContainer from '@components/chat/pinnedContainer';
+import Chat from '@components/chat/chat';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import I18n from '@lib/langPack';
+import {ChatFull} from '@layer';
+import {AppManagers} from '@lib/managers';
+import StackedAvatars from '@components/stackedAvatars';
+import appSidebarRight from '@components/sidebarRight';
+import AppChatRequestsTab from '@components/sidebarRight/tabs/chatRequests';
+import callbackify from '@helpers/callbackify';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import {ONE_DAY} from '@helpers/date';
+import {MiddlewareHelper, getMiddleware} from '@helpers/middleware';
 
 export default class ChatRequests extends PinnedContainer {
   protected titleElement: I18n.IntlElement;

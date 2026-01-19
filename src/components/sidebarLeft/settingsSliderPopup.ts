@@ -1,7 +1,7 @@
-import pause from '../../helpers/schedulers/pause';
-import {AppManagers} from '../../lib/appManagers/managers';
-import PopupElement from '../popups';
-import SidebarSlider, {SidebarSliderOptions} from '../slider';
+import pause from '@helpers/schedulers/pause';
+import {AppManagers} from '@lib/managers';
+import PopupElement from '@components/popups';
+import SidebarSlider, {SidebarSliderOptions} from '@components/slider';
 
 class SettingsSlider extends SidebarSlider {
   constructor(options: SidebarSliderOptions & {managers: AppManagers}) {

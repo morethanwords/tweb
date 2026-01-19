@@ -1,5 +1,5 @@
-import bufferConcats from '../../helpers/bytes/bufferConcats';
-import CryptoWorker from '../crypto/cryptoMessagePort';
+import bufferConcats from '@helpers/bytes/bufferConcats';
+import CryptoWorker from '@lib/crypto/cryptoMessagePort';
 
 export class MessageKeyUtils {
   public static async getAesKeyIv(authKey: Uint8Array, msgKey: Uint8Array, incoming: boolean, v1?: boolean) {

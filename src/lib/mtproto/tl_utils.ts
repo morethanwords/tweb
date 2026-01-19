@@ -9,16 +9,16 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import Schema, {MTProtoConstructor, MTProtoMethod} from './schema';
-import {JSONValue} from '../../layer';
-import {MOUNT_CLASS_TO} from '../../config/debug';
-import bytesToHex from '../../helpers/bytes/bytesToHex';
-import isObject from '../../helpers/object/isObject';
-import gzipUncompress from '../../helpers/gzipUncompress';
+import Schema, {MTProtoConstructor, MTProtoMethod} from '@lib/mtproto/schema';
+import {JSONValue} from '@layer';
+import {MOUNT_CLASS_TO} from '@config/debug';
+import bytesToHex from '@helpers/bytes/bytesToHex';
+import isObject from '@helpers/object/isObject';
+import gzipUncompress from '@helpers/gzipUncompress';
 import bigInt from 'big-integer';
-import ulongFromInts from '../../helpers/long/ulongFromInts';
-import {safeBigInt} from '../../helpers/bigInt/bigIntConstants';
-import {bigIntToSigned, bigIntToUnsigned} from '../../helpers/bigInt/bigIntConversion';
+import ulongFromInts from '@helpers/long/ulongFromInts';
+import {safeBigInt} from '@helpers/bigInt/bigIntConstants';
+import {bigIntToSigned, bigIntToUnsigned} from '@helpers/bigInt/bigIntConversion';
 
 const boolFalse = +Schema.API.constructors.find((c) => c.predicate === 'boolFalse').id;
 const boolTrue = +Schema.API.constructors.find((c) => c.predicate === 'boolTrue').id;

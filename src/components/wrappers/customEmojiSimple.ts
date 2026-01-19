@@ -1,5 +1,5 @@
-import rootScope from '../../lib/rootScope';
-import wrapSticker from './sticker';
+import rootScope from '@lib/rootScope';
+import wrapSticker from '@components/wrappers/sticker';
 
 export function wrapAdaptiveCustomEmoji(options: {
   as?: string

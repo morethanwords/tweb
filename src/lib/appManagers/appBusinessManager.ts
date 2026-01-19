@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {BusinessIntro, MessageEntity} from '../../layer';
-import {AppManager} from './manager';
-import getPeerId from './utils/peers/getPeerId';
+import {BusinessIntro, MessageEntity} from '@layer';
+import {AppManager} from '@appManagers/manager';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
 
 export default class AppBusinessManager extends AppManager {
   public saveBusinessIntro(userId: UserId, intro: BusinessIntro) {

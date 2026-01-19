@@ -1,4 +1,4 @@
-import {UpdateGroupCallConnectionData} from '../../lib/calls/types';
+import {UpdateGroupCallConnectionData} from '@lib/calls/types';
 
 const transport: UpdateGroupCallConnectionData['transport'] = {
   'candidates': [

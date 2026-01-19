@@ -1,13 +1,13 @@
 import {createEffect, onCleanup, Show} from 'solid-js';
-import {Message} from '../../../../layer';
-import getMessageThreadId from '../../../../lib/appManagers/utils/messages/getMessageThreadId';
-import {i18n} from '../../../../lib/langPack';
-import defineSolidElement, {PassedProps} from '../../../../lib/solidjs/defineSolidElement';
-import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
-import {IconTsx} from '../../../iconTsx';
-import ripple from '../../../ripple';
-import type Chat from '../../chat';
-import styles from './styles.module.scss';
+import {Message} from '@layer';
+import getMessageThreadId from '@appManagers/utils/messages/getMessageThreadId';
+import {i18n} from '@lib/langPack';
+import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import {IconTsx} from '@components/iconTsx';
+import ripple from '@components/ripple';
+import type Chat from '@components/chat/chat';
+import styles from '@components/chat/bubbleParts/continueLastTopicReplyMarkup/styles.module.scss';
 ripple; // keep
 
 if(import.meta.hot) import.meta.hot.accept();

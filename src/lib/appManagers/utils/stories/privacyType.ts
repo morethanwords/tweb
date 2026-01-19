@@ -1,4 +1,4 @@
-import {StoryItem} from '../../../../layer';
+import {StoryItem} from '@layer';
 
 export type StoryPrivacyType = 'public' | 'close' | 'contacts' | 'selected';
 

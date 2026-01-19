@@ -1,4 +1,4 @@
-import IS_WEBP_SUPPORTED from './webpSupport';
+import IS_WEBP_SUPPORTED from '@environment/webpSupport';
 
 const IMAGE_MIME_TYPES_SUPPORTED = new Set([
   'image/jpeg',

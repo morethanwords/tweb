@@ -4,21 +4,21 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {AccountPassword} from '../../../../layer';
-import Button from '../../../button';
-import {SliderSuperTab} from '../../../slider';
-import InputField from '../../../inputField';
-import {putPreloader} from '../../../putPreloader';
-import AppTwoStepVerificationSetTab from './passwordSet';
-import AppTwoStepVerificationEmailConfirmationTab from './emailConfirmation';
-import PopupPeer from '../../../popups/peer';
-import cancelEvent from '../../../../helpers/dom/cancelEvent';
-import {canFocus} from '../../../../helpers/dom/canFocus';
-import {attachClickEvent} from '../../../../helpers/dom/clickEvent';
-import matchEmail from '../../../../lib/richTextProcessor/matchEmail';
-import SettingSection from '../../../settingSection';
-import PopupElement from '../../../popups';
-import lottieLoader from '../../../../lib/rlottie/lottieLoader';
+import {AccountPassword} from '@layer';
+import Button from '@components/button';
+import {SliderSuperTab} from '@components/slider';
+import InputField from '@components/inputField';
+import {putPreloader} from '@components/putPreloader';
+import AppTwoStepVerificationSetTab from '@components/sidebarLeft/tabs/2fa/passwordSet';
+import AppTwoStepVerificationEmailConfirmationTab from '@components/sidebarLeft/tabs/2fa/emailConfirmation';
+import PopupPeer from '@components/popups/peer';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import {canFocus} from '@helpers/dom/canFocus';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import matchEmail from '@lib/richTextProcessor/matchEmail';
+import SettingSection from '@components/settingSection';
+import PopupElement from '@components/popups';
+import lottieLoader from '@lib/rlottie/lottieLoader';
 
 
 type ConstructorArgs = {

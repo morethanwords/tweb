@@ -1,6 +1,6 @@
 import {JSX} from 'solid-js';
-import type {MiddlewareHelper} from '../../../helpers/middleware';
-import {TextWithEntities} from '../../../layer';
+import type {MiddlewareHelper} from '@helpers/middleware';
+import {TextWithEntities} from '@layer';
 
 
 export type FolderItemPayload = {

@@ -1,11 +1,11 @@
-import {CancellablePromise} from '../../helpers/cancellablePromise';
-import {AccountPasskeys, Chat, GlobalPrivacySettings, Passkey} from '../../layer';
-import {LangPackKey} from '../../lib/langPack';
-import type {PasscodeActions} from '../../lib/passcode/actions';
-import {InstanceOf} from '../../types';
+import {CancellablePromise} from '@helpers/cancellablePromise';
+import {AccountPasskeys, Chat, GlobalPrivacySettings, Passkey} from '@layer';
+import {LangPackKey} from '@lib/langPack';
+import type {PasscodeActions} from '@lib/passcode/actions';
+import {InstanceOf} from '@types';
 import {SetStoreFunction} from 'solid-js/store';
-import {scaffoldSolidJSTab} from './scaffoldSolidJSTab';
-import {SuperTabProvider} from './superTabProvider';
+import {scaffoldSolidJSTab} from '@components/solidJsTabs/scaffoldSolidJSTab';
+import {SuperTabProvider} from '@components/solidJsTabs/superTabProvider';
 
 
 export const AppPasscodeLockTab =

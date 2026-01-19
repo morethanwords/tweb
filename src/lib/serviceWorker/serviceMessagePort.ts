@@ -4,18 +4,18 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {WebPushApiManager} from '../mtproto/webPushApiManager';
-import type {PushNotificationObject} from './push';
-import type {MyUploadFile} from '../mtproto/apiFileManager';
-import type {Document, InputFileLocation, InputGroupCall} from '../../layer';
-import type {GroupCallRtmpState} from '../appManagers/appGroupCallsManager';
-import type {ActiveAccountNumber} from '../accounts/types';
-import type {getEnvironment} from '../../environment/utils';
-import type {ToggleUsingPasscodePayload} from '../mtproto/mtprotoMessagePort';
-import type {VideoStreamInfo} from '../calls/videoStreamInfo';
-import type {PushKey, PushSingleManager} from '../mtproto/pushSingleManager';
-import SuperMessagePort from '../mtproto/superMessagePort';
-import {MOUNT_CLASS_TO} from '../../config/debug';
+import type {WebPushApiManager} from '@lib/webPushApiManager';
+import type {PushNotificationObject} from '@lib/serviceWorker/push';
+import type {MyUploadFile} from '@appManagers/apiFileManager';
+import type {Document, InputFileLocation, InputGroupCall} from '@layer';
+import type {GroupCallRtmpState} from '@appManagers/appGroupCallsManager';
+import type {ActiveAccountNumber} from '@lib/accounts/types';
+import type {getEnvironment} from '@environment/utils';
+import type {ToggleUsingPasscodePayload} from '@lib/mainWorker/mainMessagePort';
+import type {VideoStreamInfo} from '@lib/calls/videoStreamInfo';
+import type {PushKey, PushSingleManager} from '@appManagers/pushSingleManager';
+import SuperMessagePort from '@lib/superMessagePort';
+import {MOUNT_CLASS_TO} from '@config/debug';
 
 export type ServicePushPingTaskPayload = {
   localNotifications: boolean,

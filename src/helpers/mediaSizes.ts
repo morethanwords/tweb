@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {MOUNT_CLASS_TO} from '../config/debug';
-import EventListenerBase from './eventListenerBase';
-import {makeMediaSize, MediaSize} from './mediaSize';
+import {MOUNT_CLASS_TO} from '@config/debug';
+import EventListenerBase from '@helpers/eventListenerBase';
+import {makeMediaSize, MediaSize} from '@helpers/mediaSize';
 import {createStore} from 'solid-js/store';
 
 type MediaTypeSizes = {

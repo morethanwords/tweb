@@ -9,9 +9,9 @@
  * https://github.com/evgeny-nadymov/telegram-react/blob/master/LICENSE
  */
 
-import bufferConcats from '../../../helpers/bytes/bufferConcats';
-import subtle from '../../crypto/subtle';
-import sha256 from '../../crypto/utils/sha256';
+import bufferConcats from '@helpers/bytes/bufferConcats';
+import subtle from '@lib/crypto/subtle';
+import sha256 from '@lib/crypto/utils/sha256';
 
 const kMaxIncomingPacketSize = 128 * 1024 * 1024;
 

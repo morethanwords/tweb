@@ -5,16 +5,16 @@
  */
 
 import appSidebarLeft from '..';
-import {InputFile} from '../../../layer';
-import InputField from '../../inputField';
-import {SliderSuperTab} from '../../slider';
-import AvatarEdit from '../../avatarEdit';
-import {_i18n} from '../../../lib/langPack';
-import ButtonCorner from '../../buttonCorner';
-import appImManager from '../../../lib/appManagers/appImManager';
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import SettingSection from '../../settingSection';
-import addChatUsers from '../../addChatUsers';
+import {InputFile} from '@layer';
+import InputField from '@components/inputField';
+import {SliderSuperTab} from '@components/slider';
+import AvatarEdit from '@components/avatarEdit';
+import {_i18n} from '@lib/langPack';
+import ButtonCorner from '@components/buttonCorner';
+import appImManager from '@lib/appImManager';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import SettingSection from '@components/settingSection';
+import addChatUsers from '@components/addChatUsers';
 
 export default class AppNewChannelTab extends SliderSuperTab {
   public static noSame = true;

@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import makeError from './makeError';
+import makeError from '@helpers/makeError';
 
 const error = makeError('MIDDLEWARE');
 export default function middlewarePromise(middleware: () => boolean, throwWhat: any = error) {

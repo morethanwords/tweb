@@ -5,7 +5,7 @@
  */
 
 import AES from '@cryptography/aes';
-import bytesFromWordss from '../../../helpers/bytes/bytesFromWordss';
+import bytesFromWordss from '@helpers/bytes/bytesFromWordss';
 
 export class Counter {
   public counter: Uint8Array;

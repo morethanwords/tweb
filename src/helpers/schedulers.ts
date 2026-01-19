@@ -5,7 +5,7 @@
  */
 
 // * Jolly Cobra's schedulers
-import {NoneToVoidFunction} from '../types';
+import {NoneToVoidFunction} from '@types';
 
 /*
 export function throttleWithTickEnd<F extends AnyToVoidFunction>(fn: F) {

@@ -1,17 +1,17 @@
 import {onMount, Show} from 'solid-js';
-import {monthsLocalized} from '../../../helpers/date';
-import liteMode from '../../../helpers/liteMode';
-import {I18nTsx} from '../../../helpers/solid/i18n';
-import {Birthday} from '../../../layer';
-import lottieLoader from '../../../lib/rlottie/lottieLoader';
-import LottieAnimation from '../../lottieAnimation';
+import {monthsLocalized} from '@helpers/date';
+import liteMode from '@helpers/liteMode';
+import {I18nTsx} from '@helpers/solid/i18n';
+import {Birthday} from '@layer';
+import lottieLoader from '@lib/rlottie/lottieLoader';
+import LottieAnimation from '@components/lottieAnimation';
 
 
-import styles from './suggestBirthday.module.scss';
-import Button from '../../buttonTsx';
-import showBirthdayPopup, {saveMyBirthday} from '../../popups/birthday';
-import rootScope from '../../../lib/rootScope';
-import {toastNew} from '../../toast';
+import styles from '@components/chat/bubbles/suggestBirthday.module.scss';
+import Button from '@components/buttonTsx';
+import showBirthdayPopup, {saveMyBirthday} from '@components/popups/birthday';
+import rootScope from '@lib/rootScope';
+import {toastNew} from '@components/toast';
 
 export function SuggestBirthdayBubble(props: {
   birthday: Birthday

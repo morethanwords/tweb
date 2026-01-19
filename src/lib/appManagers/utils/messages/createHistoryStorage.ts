@@ -1,6 +1,6 @@
-import type {HistoryStorage, HistoryStorageKey} from '../../appMessagesManager';
-import SlicedArray, {SliceEnd} from '../../../../helpers/slicedArray';
-import getHistoryStorageKey from './getHistoryStorageKey';
+import type {HistoryStorage, HistoryStorageKey} from '@appManagers/appMessagesManager';
+import SlicedArray, {SliceEnd} from '@helpers/slicedArray';
+import getHistoryStorageKey from '@appManagers/utils/messages/getHistoryStorageKey';
 
 export default function createHistoryStorage(options: Parameters<typeof getHistoryStorageKey>[0] | HistoryStorageKey) {
   const type = typeof(options) === 'string' ? options.split('_')[0] as HistoryStorage['type'] : options.type;

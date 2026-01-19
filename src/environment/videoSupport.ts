@@ -1,4 +1,4 @@
-import {IS_SAFARI, IS_APPLE_MOBILE} from './userAgent';
+import {IS_SAFARI, IS_APPLE_MOBILE} from '@environment/userAgent';
 
 const video = document.createElement('video');
 const IS_WEBM_SUPPORTED = !!video.canPlayType('video/webm') && !IS_SAFARI && !IS_APPLE_MOBILE;

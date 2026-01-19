@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appNavigationController, {NavigationItem} from '../components/appNavigationController';
-import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
-import {IS_MOBILE_SAFARI} from '../environment/userAgent';
-import cancelEvent from './dom/cancelEvent';
-import {CLICK_EVENT_NAME, hasMouseMovedSinceDown} from './dom/clickEvent';
-import findUpAsChild from './dom/findUpAsChild';
-import EventListenerBase from './eventListenerBase';
+import appNavigationController, {NavigationItem} from '@components/appNavigationController';
+import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
+import {IS_MOBILE_SAFARI} from '@environment/userAgent';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import {CLICK_EVENT_NAME, hasMouseMovedSinceDown} from '@helpers/dom/clickEvent';
+import findUpAsChild from '@helpers/dom/findUpAsChild';
+import EventListenerBase from '@helpers/eventListenerBase';
 
 export default class OverlayClickHandler extends EventListenerBase<{
   toggle: (open: boolean) => void

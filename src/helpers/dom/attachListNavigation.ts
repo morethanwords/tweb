@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import fastSmoothScroll from '../fastSmoothScroll';
-import cancelEvent from './cancelEvent';
-import {attachClickEvent} from './clickEvent';
-import findUpAsChild from './findUpAsChild';
-import findUpClassName from './findUpClassName';
+import fastSmoothScroll from '@helpers/fastSmoothScroll';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import findUpAsChild from '@helpers/dom/findUpAsChild';
+import findUpClassName from '@helpers/dom/findUpClassName';
 
 type ArrowKey = 'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'ArrowRight';
 const HANDLE_EVENT = 'keydown';

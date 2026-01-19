@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
-import findUpClassName from './dom/findUpClassName';
-import mediaSizes from './mediaSizes';
-import OverlayClickHandler from './overlayClickHandler';
-import overlayCounter from './overlayCounter';
-import pause from './schedulers/pause';
+import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import mediaSizes from '@helpers/mediaSizes';
+import OverlayClickHandler from '@helpers/overlayClickHandler';
+import overlayCounter from '@helpers/overlayCounter';
+import pause from '@helpers/schedulers/pause';
 
 type AdditionalMenuItem = {
   level: number,

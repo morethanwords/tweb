@@ -1,4 +1,4 @@
-import {MessageAction, PaymentsCheckedGiftCode} from '../layer';
+import {MessageAction, PaymentsCheckedGiftCode} from '@layer';
 
 export default function shouldDisplayGiftCodeAsGift(action: MessageAction.messageActionGiftCode | PaymentsCheckedGiftCode) {
   if(action._ === 'payments.checkedGiftCode') {

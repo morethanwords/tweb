@@ -1,6 +1,6 @@
 import {children, createMemo, For, JSX, Show} from 'solid-js';
-import {IconTsx} from '../../../iconTsx';
-import styles from './logDiff.module.scss';
+import {IconTsx} from '@components/iconTsx';
+import styles from '@components/sidebarRight/tabs/adminRecentActions/logDiff.module.scss';
 
 
 type LogDiffProps = {

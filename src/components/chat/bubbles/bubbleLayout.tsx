@@ -1,12 +1,12 @@
 import {createEffect, createResource, For, JSX, on} from 'solid-js';
-import classNames from '../../../helpers/string/classNames';
-import {MessageEntity, ReplyMarkup} from '../../../layer';
-import {generateTail} from '../utils';
-import {I18nTsx} from '../../../helpers/solid/i18n';
-import wrapRichText from '../../../lib/richTextProcessor/wrapRichText';
-import rootScope from '../../../lib/rootScope';
-import wrapKeyboardButton from '../../wrappers/keyboardButton';
-import ripple from '../../ripple';
+import classNames from '@helpers/string/classNames';
+import {MessageEntity, ReplyMarkup} from '@layer';
+import {generateTail} from '@components/chat/utils';
+import {I18nTsx} from '@helpers/solid/i18n';
+import wrapRichText from '@lib/richTextProcessor/wrapRichText';
+import rootScope from '@lib/rootScope';
+import wrapKeyboardButton from '@components/wrappers/keyboardButton';
+import ripple from '@components/ripple';
 
 function ViaUsername(props: { botId: BotId }) {
   const [resource, ctx] = createResource(async() => {

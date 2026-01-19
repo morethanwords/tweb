@@ -1,7 +1,7 @@
-import {MessageEntity} from '../../layer';
-import fixEmoji from './fixEmoji';
-import mergeEntities from './mergeEntities';
-import parseEntities from './parseEntities';
+import {MessageEntity} from '@layer';
+import fixEmoji from '@lib/richTextProcessor/fixEmoji';
+import mergeEntities from '@lib/richTextProcessor/mergeEntities';
+import parseEntities from '@lib/richTextProcessor/parseEntities';
 
 export default function wrapMessageEntities(message: string, entities: MessageEntity[] = []) {
   message = fixEmoji(message, entities);

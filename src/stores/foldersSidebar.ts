@@ -1,5 +1,5 @@
 import {createEffect, createRoot, createSignal} from 'solid-js';
-import {ScreenSize, useMediaSizes} from '../helpers/mediaSizes';
+import {ScreenSize, useMediaSizes} from '@helpers/mediaSizes';
 
 const hasFoldersSidebarSignal = createRoot(() => {
   const [hasFoldersSidebar, setHasFoldersSidebar] = createSignal(false);

@@ -1,4 +1,4 @@
-import fixLocalOffer from '../lib/calls/helpers/fixLocalOffer';
+import fixLocalOffer from '@lib/calls/helpers/fixLocalOffer';
 import data from '../mock/webrtc/data';
 import sdp from '../mock/webrtc/sdp';
 

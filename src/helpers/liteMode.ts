@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {MOUNT_CLASS_TO} from '../config/debug';
-import rootScope from '../lib/rootScope';
+import {MOUNT_CLASS_TO} from '@config/debug';
+import rootScope from '@lib/rootScope';
 
 export type LiteModeKey = 'all' | 'gif' | 'video' |
   'emoji' | 'emoji_panel' | 'emoji_messages' |

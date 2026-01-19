@@ -1,5 +1,5 @@
-import {AttachMenuBot} from '../../../../layer';
-import {ATTACH_MENU_BOT_ICON_NAME} from '../../../mtproto/mtproto_config';
+import {AttachMenuBot} from '@layer';
+import {ATTACH_MENU_BOT_ICON_NAME} from '@appManagers/constants';
 
 export default function getAttachMenuBotIcon(attachMenuBot: AttachMenuBot) {
   if(!attachMenuBot) {

@@ -1,25 +1,25 @@
 import {createEffect, createMemo, createSignal, JSX, on, onMount} from 'solid-js';
 import PopupElement from '.';
-import safeAssign from '../../helpers/object/safeAssign';
-import {MyStarGift} from '../../lib/appManagers/appGiftsManager';
+import safeAssign from '@helpers/object/safeAssign';
+import {MyStarGift} from '@appManagers/appGiftsManager';
 
-import styles from './starGiftValue.module.scss';
-import {PaymentsUniqueStarGiftValueInfo, StarGift} from '../../layer';
-import {ButtonIconTsx} from '../buttonIconTsx';
-import {StickerTsx} from '../wrappers/sticker';
-import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
-import {I18nTsx} from '../../helpers/solid/i18n';
-import Table, {TableButton, TableButtonWithTooltip, TableRow} from '../table';
-import {formatFullSentTime} from '../../helpers/date';
-import {StarsStar} from './stars';
-import {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
+import styles from '@components/popups/starGiftValue.module.scss';
+import {PaymentsUniqueStarGiftValueInfo, StarGift} from '@layer';
+import {ButtonIconTsx} from '@components/buttonIconTsx';
+import {StickerTsx} from '@components/wrappers/sticker';
+import paymentsWrapCurrencyAmount from '@helpers/paymentsWrapCurrencyAmount';
+import {I18nTsx} from '@helpers/solid/i18n';
+import Table, {TableButton, TableButtonWithTooltip, TableRow} from '@components/table';
+import {formatFullSentTime} from '@helpers/date';
+import {StarsStar} from '@components/popups/stars';
+import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
 import bigInt from 'big-integer';
-import {i18n} from '../../lib/langPack';
-import Button from '../buttonTsx';
-import {IconTsx} from '../iconTsx';
-import safeWindowOpen from '../../helpers/dom/safeWindowOpen';
-import PopupSendGift from './sendGift';
-import rootScope from '../../lib/rootScope';
+import {i18n} from '@lib/langPack';
+import Button from '@components/buttonTsx';
+import {IconTsx} from '@components/iconTsx';
+import safeWindowOpen from '@helpers/dom/safeWindowOpen';
+import PopupSendGift from '@components/popups/sendGift';
+import rootScope from '@lib/rootScope';
 
 export default class PopupStarGiftValue extends PopupElement {
   private gift: MyStarGift;

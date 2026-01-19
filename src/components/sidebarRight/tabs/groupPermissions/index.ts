@@ -4,43 +4,43 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {ChatRights} from '../../../../lib/appManagers/appChatsManager';
-import {attachClickEvent} from '../../../../helpers/dom/clickEvent';
-import findUpTag from '../../../../helpers/dom/findUpTag';
-import replaceContent from '../../../../helpers/dom/replaceContent';
-import ListenerSetter from '../../../../helpers/listenerSetter';
-import ScrollableLoader from '../../../../helpers/scrollableLoader';
-import {ChannelParticipant, Chat, ChatAdminRights, ChatBannedRights} from '../../../../layer';
-import appDialogsManager, {DialogDom, DIALOG_LIST_ELEMENT_TAG} from '../../../../lib/appManagers/appDialogsManager';
-import {AppManagers} from '../../../../lib/appManagers/managers';
-import combineParticipantBannedRights from '../../../../lib/appManagers/utils/chats/combineParticipantBannedRights';
-import hasRights from '../../../../lib/appManagers/utils/chats/hasRights';
-import getPeerActiveUsernames from '../../../../lib/appManagers/utils/peers/getPeerActiveUsernames';
-import getPeerId from '../../../../lib/appManagers/utils/peers/getPeerId';
-import {i18n, join, LangPackKey} from '../../../../lib/langPack';
-import rootScope from '../../../../lib/rootScope';
-import PopupPickUser from '../../../popups/pickUser';
-import Row from '../../../row';
-import SettingSection from '../../../settingSection';
-import {SliderSuperTabEventable} from '../../../sliderTab';
-import {toast} from '../../../toast';
-import AppUserPermissionsTab from '../userPermissions';
-import CheckboxFields, {CheckboxFieldsField} from '../../../checkboxFields';
-import PopupElement from '../../../popups';
-import wrapPeerTitle from '../../../wrappers/peerTitle';
-import apiManagerProxy from '../../../../lib/mtproto/mtprotoworker';
-import RangeStepsSelector from '../../../rangeStepsSelector';
-import formatDuration from '../../../../helpers/formatDuration';
-import {wrapFormattedDuration} from '../../../wrappers/wrapDuration';
-import SolidJSHotReloadGuardProvider from '../../../../lib/solidjs/hotReloadGuardProvider';
+import type {ChatRights} from '@appManagers/appChatsManager';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import findUpTag from '@helpers/dom/findUpTag';
+import replaceContent from '@helpers/dom/replaceContent';
+import ListenerSetter from '@helpers/listenerSetter';
+import ScrollableLoader from '@helpers/scrollableLoader';
+import {ChannelParticipant, Chat, ChatAdminRights, ChatBannedRights} from '@layer';
+import appDialogsManager, {DialogDom, DIALOG_LIST_ELEMENT_TAG} from '@lib/appDialogsManager';
+import {AppManagers} from '@lib/managers';
+import combineParticipantBannedRights from '@appManagers/utils/chats/combineParticipantBannedRights';
+import hasRights from '@appManagers/utils/chats/hasRights';
+import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
+import {i18n, join, LangPackKey} from '@lib/langPack';
+import rootScope from '@lib/rootScope';
+import PopupPickUser from '@components/popups/pickUser';
+import Row from '@components/row';
+import SettingSection from '@components/settingSection';
+import {SliderSuperTabEventable} from '@components/sliderTab';
+import {toast} from '@components/toast';
+import AppUserPermissionsTab from '@components/sidebarRight/tabs/userPermissions';
+import CheckboxFields, {CheckboxFieldsField} from '@components/checkboxFields';
+import PopupElement from '@components/popups';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import RangeStepsSelector from '@components/rangeStepsSelector';
+import formatDuration from '@helpers/formatDuration';
+import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
+import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import {createEffect, createRoot, createSignal} from 'solid-js';
 import {createStore, unwrap} from 'solid-js/store';
-import deepEqual from '../../../../helpers/object/deepEqual';
-import ButtonIcon from '../../../buttonIcon';
-import throttle from '../../../../helpers/schedulers/throttle';
-import {NoneToVoidFunction} from '../../../../types';
-import {PopupPeerOptions} from '../../../popups/peer';
-import confirmationPopup, {ConfirmationPopupRejectReason} from '../../../confirmationPopup';
+import deepEqual from '@helpers/object/deepEqual';
+import ButtonIcon from '@components/buttonIcon';
+import throttle from '@helpers/schedulers/throttle';
+import {NoneToVoidFunction} from '@types';
+import {PopupPeerOptions} from '@components/popups/peer';
+import confirmationPopup, {ConfirmationPopupRejectReason} from '@components/confirmationPopup';
 
 type PermissionsCheckboxFieldsField = CheckboxFieldsField & {
   flags: ChatRights[],

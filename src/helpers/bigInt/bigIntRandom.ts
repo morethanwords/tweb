@@ -1,5 +1,5 @@
 import bigInt from 'big-integer';
-import {nextRandomUint} from '../random';
+import {nextRandomUint} from '@helpers/random';
 
 export default function bigIntRandom(min: bigInt.BigNumber, max: bigInt.BigNumber) {
   return bigInt.randBetween(min, max, () => {

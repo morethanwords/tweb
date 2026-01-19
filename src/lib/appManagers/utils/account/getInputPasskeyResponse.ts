@@ -1,5 +1,5 @@
-import base64ToBytes from '../../../../helpers/string/base64ToBytes';
-import {InputPasskeyCredential, InputPasskeyResponse} from '../../../../layer';
+import base64ToBytes from '@helpers/string/base64ToBytes';
+import {InputPasskeyCredential, InputPasskeyResponse} from '@layer';
 
 export default function getInputPasskey(credential: PublicKeyCredential): InputPasskeyResponse {
   const json: PublicKeyCredentialJSON = credential.toJSON();

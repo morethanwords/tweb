@@ -4,16 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import createElementFromMarkup from '../helpers/createElementFromMarkup';
-import {GrabEvent} from '../helpers/dom/attachGrabListeners';
-import safePlay from '../helpers/dom/safePlay';
-import setCurrentTime from '../helpers/dom/setCurrentTime';
-import limitSymbols from '../helpers/string/limitSymbols';
-import toHHMMSS from '../helpers/string/toHHMMSS';
-import appMediaPlaybackController from './appMediaPlaybackController';
-import {VideoTimestamp} from './appMediaViewerBase';
-import RangeSelector from './rangeSelector';
-import {observeResize} from './resizeObserver';
+import createElementFromMarkup from '@helpers/createElementFromMarkup';
+import {GrabEvent} from '@helpers/dom/attachGrabListeners';
+import safePlay from '@helpers/dom/safePlay';
+import setCurrentTime from '@helpers/dom/setCurrentTime';
+import limitSymbols from '@helpers/string/limitSymbols';
+import toHHMMSS from '@helpers/string/toHHMMSS';
+import appMediaPlaybackController from '@components/appMediaPlaybackController';
+import {VideoTimestamp} from '@components/appMediaViewerBase';
+import RangeSelector from '@components/rangeSelector';
+import {observeResize} from '@components/resizeObserver';
 
 const MIN_VIDEO_TIMESTAMP_SEGMENT_WIDTH = 7; // -2px padding will be 5px
 

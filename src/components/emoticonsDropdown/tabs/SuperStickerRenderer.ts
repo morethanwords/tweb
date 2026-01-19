@@ -4,16 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import mediaSizes from '../../../helpers/mediaSizes';
-import {MyDocument} from '../../../lib/appManagers/appDocsManager';
-import {AppManagers} from '../../../lib/appManagers/managers';
-import animationIntersector, {AnimationItemGroup} from '../../animationIntersector';
-import LazyLoadQueue from '../../lazyLoadQueue';
-import LazyLoadQueueRepeat from '../../lazyLoadQueueRepeat';
-import wrapSticker from '../../wrappers/sticker';
-import safeAssign from '../../../helpers/object/safeAssign';
-import {getMiddleware, Middleware} from '../../../helpers/middleware';
-import noop from '../../../helpers/noop';
+import mediaSizes from '@helpers/mediaSizes';
+import {MyDocument} from '@appManagers/appDocsManager';
+import {AppManagers} from '@lib/managers';
+import animationIntersector, {AnimationItemGroup} from '@components/animationIntersector';
+import LazyLoadQueue from '@components/lazyLoadQueue';
+import LazyLoadQueueRepeat from '@components/lazyLoadQueueRepeat';
+import wrapSticker from '@components/wrappers/sticker';
+import safeAssign from '@helpers/object/safeAssign';
+import {getMiddleware, Middleware} from '@helpers/middleware';
+import noop from '@helpers/noop';
 
 export default class SuperStickerRenderer {
   public lazyLoadQueue: LazyLoadQueueRepeat;

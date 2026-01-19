@@ -1,5 +1,5 @@
-import {AnyDialog} from '../../../storages/dialogs';
-import {isDialog, isForumTopic, isSavedDialog} from './isDialog';
+import {AnyDialog} from '@lib/storages/dialogs';
+import {isDialog, isForumTopic, isSavedDialog} from '@appManagers/utils/dialogs/isDialog';
 
 export default function getDialogKey(dialog: AnyDialog) {
   let key: number;

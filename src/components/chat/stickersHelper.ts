@@ -4,19 +4,19 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type Chat from './chat';
-import ListenerSetter from '../../helpers/listenerSetter';
-import mediaSizes from '../../helpers/mediaSizes';
-import preloadAnimatedEmojiSticker from '../../helpers/preloadAnimatedEmojiSticker';
-import {MyDocument} from '../../lib/appManagers/appDocsManager';
-import {AppManagers} from '../../lib/appManagers/managers';
-import rootScope from '../../lib/rootScope';
-import SuperStickerRenderer from '../emoticonsDropdown/tabs/SuperStickerRenderer';
-import LazyLoadQueue from '../lazyLoadQueue';
-import Scrollable from '../scrollable';
-import attachStickerViewerListeners from '../stickerViewer';
-import AutocompleteHelper from './autocompleteHelper';
-import AutocompleteHelperController from './autocompleteHelperController';
+import type Chat from '@components/chat/chat';
+import ListenerSetter from '@helpers/listenerSetter';
+import mediaSizes from '@helpers/mediaSizes';
+import preloadAnimatedEmojiSticker from '@helpers/preloadAnimatedEmojiSticker';
+import {MyDocument} from '@appManagers/appDocsManager';
+import {AppManagers} from '@lib/managers';
+import rootScope from '@lib/rootScope';
+import SuperStickerRenderer from '@components/emoticonsDropdown/tabs/SuperStickerRenderer';
+import LazyLoadQueue from '@components/lazyLoadQueue';
+import Scrollable from '@components/scrollable';
+import attachStickerViewerListeners from '@components/stickerViewer';
+import AutocompleteHelper from '@components/chat/autocompleteHelper';
+import AutocompleteHelperController from '@components/chat/autocompleteHelperController';
 
 export default class StickersHelper extends AutocompleteHelper {
   private scrollable: Scrollable;

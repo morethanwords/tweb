@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {webp2png} from './webp';
-import type {ConvertWebPTask} from './webpWorkerController';
+import {webp2png} from '@lib/webp/webp';
+import type {ConvertWebPTask} from '@lib/webp/webpWorkerController';
 
 const ctx = self as any as DedicatedWorkerGlobalScope;
 const tasks: ConvertWebPTask[] = [];

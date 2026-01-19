@@ -1,11 +1,11 @@
 import {Component} from 'solid-js';
 import {render} from 'solid-js/web';
-import {LangPackKey} from '../../lib/langPack';
-import SolidJSHotReloadGuardProvider from '../../lib/solidjs/hotReloadGuardProvider';
-import {InstanceOf} from '../../types';
-import {SliderSuperTab} from '../slider';
-import {PromiseCollector} from './promiseCollector';
-import {SuperTabProvider} from './superTabProvider';
+import {LangPackKey} from '@lib/langPack';
+import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import {InstanceOf} from '@types';
+import {SliderSuperTab} from '@components/slider';
+import {PromiseCollector} from '@components/solidJsTabs/promiseCollector';
+import {SuperTabProvider} from '@components/solidJsTabs/superTabProvider';
 
 
 type ScaffoldSolidJSTabArgs<Payload> = {

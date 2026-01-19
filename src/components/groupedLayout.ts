@@ -5,8 +5,8 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 
-import accumulate from '../helpers/array/accumulate';
-import clamp from '../helpers/number/clamp';
+import accumulate from '@helpers/array/accumulate';
+import clamp from '@helpers/number/clamp';
 
 type Size = {w: number, h: number};
 export type GroupMediaLayout = {

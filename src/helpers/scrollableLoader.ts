@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import Scrollable from '../components/scrollable';
-import safeAssign from './object/safeAssign';
+import Scrollable from '@components/scrollable';
+import safeAssign from '@helpers/object/safeAssign';
 
 export default class ScrollableLoader {
   public loading = false;

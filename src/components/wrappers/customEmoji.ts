@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {MessageEntity} from '../../layer';
-import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
+import {MessageEntity} from '@layer';
+import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 
 export default function wrapCustomEmoji({
   docIds,

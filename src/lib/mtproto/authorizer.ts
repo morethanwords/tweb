@@ -9,26 +9,28 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type MTTransport from './transports/transport';
-import transportController from './transports/controller';
-import {TLSerialization, TLDeserialization} from './tl_utils';
-import {TransportType} from './dcConfigurator';
-import rsaKeysManager from './rsaKeysManager';
-import CryptoWorker from '../crypto/cryptoMessagePort';
-import {LogTypes} from '../logger';
-import DEBUG from '../../config/debug';
-import {DcId, Modify} from '../../types';
-import addPadding from '../../helpers/bytes/addPadding';
-import bytesCmp from '../../helpers/bytes/bytesCmp';
-import bytesFromHex from '../../helpers/bytes/bytesFromHex';
-import bytesToHex from '../../helpers/bytes/bytesToHex';
-import bytesXor from '../../helpers/bytes/bytesXor';
-import {bigIntFromBytes} from '../../helpers/bigInt/bigIntConversion';
+import type MTTransport from '@lib/mtproto/transports/transport';
+import type {TimeManager} from '@lib/mtproto/timeManager';
+import type {DcConfigurator, TransportType} from '@lib/mtproto/dcConfigurator';
+import transportController from '@lib/mtproto/transports/controller';
+import {TLSerialization, TLDeserialization} from '@lib/mtproto/tl_utils';
+import rsaKeysManager from '@lib/mtproto/rsaKeysManager';
+import CryptoWorker from '@lib/crypto/cryptoMessagePort';
+import {logger} from '@lib/logger';
+import DEBUG from '@config/debug';
+import {DcId, Modify} from '@types';
+import addPadding from '@helpers/bytes/addPadding';
+import bytesCmp from '@helpers/bytes/bytesCmp';
+import bytesFromHex from '@helpers/bytes/bytesFromHex';
+import bytesToHex from '@helpers/bytes/bytesToHex';
+import bytesXor from '@helpers/bytes/bytesXor';
+import {bigIntFromBytes} from '@helpers/bigInt/bigIntConversion';
 import bigInt from 'big-integer';
-import {AppManager} from '../appManagers/manager';
-import Modes from '../../config/modes';
-import tsNow from '../../helpers/tsNow';
-import {randomBytes} from '../../helpers/random';
+import Modes from '@config/modes';
+import tsNow from '@helpers/tsNow';
+import {randomBytes} from '@helpers/random';
+import {MTAuthKey} from '@lib/mtproto/authKey';
+import safeAssign from '@helpers/object/safeAssign';
 
 type AuthOptions = {
   dcId: number,
@@ -108,25 +110,7 @@ type req_DH_params = {
 // const TEMP_EXPIRATION_TIME = 30;
 const TEMP_EXPIRATION_TIME = 86400;
 
-export class MTAuthKey {
-  public wrappedBinding: boolean;
-  public wrapBindPromise: Promise<any>;
-
-  /**
-   * @param key uint8[256]
-   * @param id little-endian
-   * @param expiresAt timestamp
-   */
-  constructor(
-    public key: Uint8Array,
-    public id: Uint8Array,
-    public expiresAt?: number
-  ) {
-
-  }
-}
-
-export class Authorizer extends AppManager {
+export class Authorizer {
   private cached: {
     [dcId: `${DcId}_${boolean}`]: Promise<AuthOptions>
   };
@@ -135,13 +119,16 @@ export class Authorizer extends AppManager {
 
   private getTransportTypePromise: Promise<void>;
 
-  constructor() {
-    super();
-    this.name = 'AUTHORIZER';
-    this.logTypes = LogTypes.Error | LogTypes.Log;
-  }
+  private log: ReturnType<typeof logger>;
+  private timeManager: TimeManager;
+  private dcConfigurator: DcConfigurator;
 
-  protected after() {
+  constructor(options: {
+    timeManager: TimeManager,
+    dcConfigurator: DcConfigurator
+  }) {
+    safeAssign(this, options);
+    this.log = logger('AUTHORIZER');
     this.cached = {};
   }
 

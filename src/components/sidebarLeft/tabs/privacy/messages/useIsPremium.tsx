@@ -1,7 +1,7 @@
 import {createSignal, onCleanup} from 'solid-js';
 
-import {useHotReloadGuard} from '../../../../../lib/solidjs/hotReloadGuard';
-import ListenerSetter from '../../../../../helpers/listenerSetter';
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import ListenerSetter from '@helpers/listenerSetter';
 
 
 const useIsPremium = () => {

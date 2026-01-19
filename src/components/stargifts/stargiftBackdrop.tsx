@@ -1,9 +1,9 @@
 import {createEffect, createMemo, createSignal, JSX, on, onCleanup, onMount} from 'solid-js';
-import {StarGiftAttribute} from '../../layer';
-import {MyDocument} from '../../lib/appManagers/appDocsManager';
-import wrapEmojiPattern from '../wrappers/emojiPattern';
-import {getMiddleware} from '../../helpers/middleware';
-import {rgbIntToHex} from '../../helpers/color';
+import {StarGiftAttribute} from '@layer';
+import {MyDocument} from '@appManagers/appDocsManager';
+import wrapEmojiPattern from '@components/wrappers/emojiPattern';
+import {getMiddleware} from '@helpers/middleware';
+import {rgbIntToHex} from '@helpers/color';
 
 const MIN_OPACITY = .1;
 const MID_OPACITY = .2;
@@ -14,9 +14,9 @@ const CANVAS_HEIGHT = 184;
 const SMALL_CANVAS_WIDTH = 120;
 const SMALL_CANVAS_HEIGHT = 120;
 
-import styles from './stargiftBackdrop.module.scss';
-import classNames from '../../helpers/string/classNames';
-import {Transition} from '../../vendor/solid-transition-group';
+import styles from '@components/stargifts/stargiftBackdrop.module.scss';
+import classNames from '@helpers/string/classNames';
+import {Transition} from '@vendor/solid-transition-group';
 
 const POSITIONS: [number, number, number, number][] = [
   [55, 47, 18, MAX_OPACITY],

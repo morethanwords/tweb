@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import PopupPeer from './peer';
+import PopupPeer from '@components/popups/peer';
 
 export default class PopupSendNow extends PopupPeer {
   constructor(peerId: PeerId, mids: number[], onConfirm?: () => void) {

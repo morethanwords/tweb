@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type ListenerSetter from '../../../../helpers/listenerSetter';
-import {LangPackKey} from '../../../../lib/langPack';
-import CheckboxField from '../../../checkboxField';
-import {SliderSuperTabEventable} from '../../../sliderTab';
-import Row, {CreateRowFromCheckboxField} from '../../../row';
-import SettingSection from '../../../settingSection';
-import {joinDeepPath} from '../../../../helpers/object/setDeepProperty';
+import type ListenerSetter from '@helpers/listenerSetter';
+import {LangPackKey} from '@lib/langPack';
+import CheckboxField from '@components/checkboxField';
+import {SliderSuperTabEventable} from '@components/sliderTab';
+import Row, {CreateRowFromCheckboxField} from '@components/row';
+import SettingSection from '@components/settingSection';
+import {joinDeepPath} from '@helpers/object/setDeepProperty';
 
 export function autoDownloadPeerTypeSection(type: 'photo' | 'video' | 'file', title: LangPackKey, listenerSetter: ListenerSetter) {
   const section = new SettingSection({name: title});

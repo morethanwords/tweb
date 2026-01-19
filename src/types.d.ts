@@ -1,6 +1,6 @@
-import {AuthSentCode} from './layer';
-import type {ApiError} from './lib/mtproto/apiManager';
-import {ActiveAccountNumber} from './lib/sessionStorage';
+import {AuthSentCode} from '@layer';
+import type {ApiError} from '@appManagers/apiManager';
+import {ActiveAccountNumber} from '@lib/sessionStorage';
 
 export type DcId = number;
 export type TrueDcId = 1 | 2 | 3 | 4 | 5;

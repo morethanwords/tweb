@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type ChatInput from './input';
-import AutocompleteHelperController from './autocompleteHelperController';
-import AutocompletePeerHelper from './autocompletePeerHelper';
-import {AppManagers} from '../../lib/appManagers/managers';
-import getPeerActiveUsernames from '../../lib/appManagers/utils/peers/getPeerActiveUsernames';
-import rootScope from '../../lib/rootScope';
+import type ChatInput from '@components/chat/input';
+import AutocompleteHelperController from '@components/chat/autocompleteHelperController';
+import AutocompletePeerHelper from '@components/chat/autocompletePeerHelper';
+import {AppManagers} from '@lib/managers';
+import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
+import rootScope from '@lib/rootScope';
 
 export default class MentionsHelper extends AutocompletePeerHelper {
   constructor(

@@ -1,21 +1,21 @@
 import {createMemo, createSignal, onCleanup, onMount} from 'solid-js';
-import tsNow from '../../helpers/tsNow';
-import {LimitLineTsx} from '../limitLineTsx';
-import PopupElement, {createPopup} from './indexTsx';
+import tsNow from '@helpers/tsNow';
+import {LimitLineTsx} from '@components/limitLineTsx';
+import PopupElement, {createPopup} from '@components/popups/indexTsx';
 
-import styles from './starGiftUpgradePrice.module.scss';
-import {I18nTsx} from '../../helpers/solid/i18n';
-import {StarGiftUpgradePreview} from '../../lib/appManagers/appGiftsManager';
-import {easeOutCircApply} from '../../helpers/easing/easeOutCirc';
-import Table from '../table';
-import {formatDate, formatDateAccordingToTodayNew, formatFullSentTime, formatTime} from '../../helpers/date';
-import {StarsStar} from './stars';
-import {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
-import I18n from '../../lib/langPack';
-import toHHMMSS from '../../helpers/string/toHHMMSS';
-import Scrollable from '../scrollable2';
-import {fastRaf} from '../../helpers/schedulers';
-import {createCurrentTime} from '../../helpers/solid/createCurrentTime';
+import styles from '@components/popups/starGiftUpgradePrice.module.scss';
+import {I18nTsx} from '@helpers/solid/i18n';
+import {StarGiftUpgradePreview} from '@appManagers/appGiftsManager';
+import {easeOutCircApply} from '@helpers/easing/easeOutCirc';
+import Table from '@components/table';
+import {formatDate, formatDateAccordingToTodayNew, formatFullSentTime, formatTime} from '@helpers/date';
+import {StarsStar} from '@components/popups/stars';
+import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
+import I18n from '@lib/langPack';
+import toHHMMSS from '@helpers/string/toHHMMSS';
+import Scrollable from '@components/scrollable2';
+import {fastRaf} from '@helpers/schedulers';
+import {createCurrentTime} from '@helpers/solid/createCurrentTime';
 
 export function createStarGiftUpgradePricePopup(props: {
   preview: StarGiftUpgradePreview,

@@ -4,16 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import contextMenuController from '../helpers/contextMenuController';
-import cancelEvent from '../helpers/dom/cancelEvent';
-import {AttachClickOptions, CLICK_EVENT_NAME, hasMouseMovedSinceDown} from '../helpers/dom/clickEvent';
-import ListenerSetter from '../helpers/listenerSetter';
-import ButtonIcon from './buttonIcon';
-import ButtonMenu, {ButtonMenuItemOptionsVerifiable} from './buttonMenu';
-import filterAsync from '../helpers/array/filterAsync';
-import {doubleRaf} from '../helpers/schedulers';
-import callbackify from '../helpers/callbackify';
-import findUpClassName from '../helpers/dom/findUpClassName';
+import contextMenuController from '@helpers/contextMenuController';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import {AttachClickOptions, CLICK_EVENT_NAME, hasMouseMovedSinceDown} from '@helpers/dom/clickEvent';
+import ListenerSetter from '@helpers/listenerSetter';
+import ButtonIcon from '@components/buttonIcon';
+import ButtonMenu, {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
+import filterAsync from '@helpers/array/filterAsync';
+import {doubleRaf} from '@helpers/schedulers';
+import callbackify from '@helpers/callbackify';
+import findUpClassName from '@helpers/dom/findUpClassName';
 
 // TODO: refactor for attachClickEvent, because if move finger after touchstart, it will start anyway
 export function ButtonMenuToggleHandler({

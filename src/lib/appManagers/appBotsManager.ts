@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {AccountDatabase, getDatabaseState} from '../../config/databases/state';
-import {TelegramWebViewSendEventMap} from '../../types';
-import AppStorage from '../storage';
-import {AppManager} from './manager';
+import {AccountDatabase, getDatabaseState} from '@config/databases/state';
+import {TelegramWebViewSendEventMap} from '@types';
+import AppStorage from '@lib/storage';
+import {AppManager} from '@appManagers/manager';
 
 type InternalWebAppStorageKey = 'locationPermission' | 'deviceStorageUsed' | 'deviceStorageUsedKeys';
 const DEVICE_STORAGE_QUOTA_SIZE = 5 * 1024 * 1024; // 5 MB

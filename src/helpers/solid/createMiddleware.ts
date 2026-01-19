@@ -1,4 +1,4 @@
-import {getMiddleware} from '../middleware';
+import {getMiddleware} from '@helpers/middleware';
 import {onCleanup} from 'solid-js';
 
 export default function createMiddleware() {

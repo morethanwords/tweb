@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {MyDocument} from '../../lib/appManagers/appDocsManager';
-import {AppManagers} from '../../lib/appManagers/managers';
-import Row from '../row';
-import wrapSticker from './sticker';
+import {MyDocument} from '@appManagers/appDocsManager';
+import {AppManagers} from '@lib/managers';
+import Row from '@components/row';
+import wrapSticker from '@components/wrappers/sticker';
 
 export default function wrapStickerToRow({doc, row, size, managers}: {
   doc: MyDocument,

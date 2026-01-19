@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {MOUNT_CLASS_TO} from '../config/debug';
-import {IS_WORKER} from './context';
-import createUnifiedSignal from './solid/createUnifiedSignal';
+import {MOUNT_CLASS_TO} from '@config/debug';
+import {IS_WORKER} from '@helpers/context';
+import createUnifiedSignal from '@helpers/solid/createUnifiedSignal';
 
 export class WindowSize {
   private _width: ReturnType<typeof createUnifiedSignal<number>>;

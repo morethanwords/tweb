@@ -1,4 +1,4 @@
-import {GeoPoint, InputWebFileLocation} from '../layer';
+import {GeoPoint, InputWebFileLocation} from '@layer';
 
 export default function getWebFileLocation(
   geo: GeoPoint.geoPoint,

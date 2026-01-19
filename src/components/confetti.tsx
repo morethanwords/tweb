@@ -1,7 +1,7 @@
 import {Ref, onCleanup} from 'solid-js';
-import classNames from '../helpers/string/classNames';
+import classNames from '@helpers/string/classNames';
 
-import styles from './confetti.module.scss';
+import styles from '@components/confetti.module.scss';
 
 const COLORS = [
   '#FF8724', // orange

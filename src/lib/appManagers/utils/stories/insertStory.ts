@@ -1,6 +1,6 @@
-import insertInDescendSortedArray from '../../../../helpers/array/insertInDescendSortedArray';
-import {StoryItem} from '../../../../layer';
-import StoriesCacheType from './cacheType';
+import insertInDescendSortedArray from '@helpers/array/insertInDescendSortedArray';
+import {StoryItem} from '@layer';
+import StoriesCacheType from '@appManagers/utils/stories/cacheType';
 
 export default function insertStory(array: any[], storyItem: StoryItem, onlyId: boolean, cacheType: StoriesCacheType, pinnedToTop?: Map<number, number>) {
   const valueToInsert = onlyId ? storyItem.id : storyItem;

@@ -1,4 +1,4 @@
-import {StandaloneSignal} from './types';
+import {StandaloneSignal} from '@components/mediaEditor/types';
 
 export default function RenderProgressCircle(props: {creationProgress: StandaloneSignal<number>}) {
   const [progress] = props.creationProgress.signal;

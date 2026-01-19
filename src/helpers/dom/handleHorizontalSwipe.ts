@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import SwipeHandler, {SwipeHandlerOptions} from '../../components/swipeHandler';
-import cancelEvent from './cancelEvent';
-import findUpClassName from './findUpClassName';
-import isSwipingBackSafari from './isSwipingBackSafari';
+import SwipeHandler, {SwipeHandlerOptions} from '@components/swipeHandler';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import isSwipingBackSafari from '@helpers/dom/isSwipingBackSafari';
 
 export type SwipeHandlerHorizontalOptions = SwipeHandlerOptions & {
   // xThreshold?: number

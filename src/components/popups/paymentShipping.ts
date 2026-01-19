@@ -5,17 +5,17 @@
  */
 
 import PopupElement from '.';
-import placeCaretAtEnd from '../../helpers/dom/placeCaretAtEnd';
-import {InputInvoice, PaymentRequestedInfo, PaymentsPaymentForm, PaymentsValidatedRequestedInfo} from '../../layer';
-import matchEmail from '../../lib/richTextProcessor/matchEmail';
-import CheckboxField from '../checkboxField';
-import CountryInputField from '../countryInputField';
-import InputField from '../inputField';
-import Row from '../row';
-import SettingSection from '../settingSection';
-import TelInputField from '../telInputField';
-import {PaymentButton} from './payment';
-import {createCountryZipFields, handleInputFieldsOnChange, InputFieldCorrected} from './paymentCard';
+import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
+import {InputInvoice, PaymentRequestedInfo, PaymentsPaymentForm, PaymentsValidatedRequestedInfo} from '@layer';
+import matchEmail from '@lib/richTextProcessor/matchEmail';
+import CheckboxField from '@components/checkboxField';
+import CountryInputField from '@components/countryInputField';
+import InputField from '@components/inputField';
+import Row from '@components/row';
+import SettingSection from '@components/settingSection';
+import TelInputField from '@components/telInputField';
+import {PaymentButton} from '@components/popups/payment';
+import {createCountryZipFields, handleInputFieldsOnChange, InputFieldCorrected} from '@components/popups/paymentCard';
 
 export type PaymentShippingAddress = PaymentRequestedInfo;
 

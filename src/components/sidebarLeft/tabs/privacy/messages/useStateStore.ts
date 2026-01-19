@@ -1,11 +1,11 @@
 import {Accessor, createComputed, createSignal, createEffect, createMemo} from 'solid-js';
 import {createStore, reconcile} from 'solid-js/store';
 
-import throttle from '../../../../../helpers/schedulers/throttle';
-import deepEqual from '../../../../../helpers/object/deepEqual';
-import {GlobalPrivacySettings} from '../../../../../layer';
+import throttle from '@helpers/schedulers/throttle';
+import deepEqual from '@helpers/object/deepEqual';
+import {GlobalPrivacySettings} from '@layer';
 
-import {MessagesPrivacyOption, MessagesTabStateStore} from './config';
+import {MessagesPrivacyOption, MessagesTabStateStore} from '@components/sidebarLeft/tabs/privacy/messages/config';
 
 
 type UseStateStoreArgs = {

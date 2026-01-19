@@ -1,7 +1,7 @@
 import {createContext, ParentComponent, useContext} from 'solid-js';
-import {InstanceOf} from '../../types';
-import type SliderSuperTab from '../sliderTab';
-import {ProvidedTabs} from './providedTabs';
+import {InstanceOf} from '@types';
+import type SliderSuperTab from '@components/sliderTab';
+import {ProvidedTabs} from '@components/solidJsTabs/providedTabs';
 
 
 const SuperTabContext = createContext<[SliderSuperTab, ProvidedTabs]>();

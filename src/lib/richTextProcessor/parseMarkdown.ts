@@ -10,11 +10,11 @@
  */
 
 import {MARKDOWN_ENTITIES, MARKDOWN_REG_EXP} from '.';
-import {MOUNT_CLASS_TO} from '../../config/debug';
-import {MessageEntity} from '../../layer';
-import combineSameEntities from './combineSameEntities';
-import findConflictingEntity from './findConflictingEntity';
-import mergeEntities from './mergeEntities';
+import {MOUNT_CLASS_TO} from '@config/debug';
+import {MessageEntity} from '@layer';
+import combineSameEntities from '@lib/richTextProcessor/combineSameEntities';
+import findConflictingEntity from '@lib/richTextProcessor/findConflictingEntity';
+import mergeEntities from '@lib/richTextProcessor/mergeEntities';
 
 export default function parseMarkdown(raw: string, currentEntities: MessageEntity[] = [], noTrim?: boolean) {
   /* if(!markdownTestRegExp.test(text)) {

@@ -1,10 +1,10 @@
 import {createSignal, For, JSX} from 'solid-js';
-import PopupElement from './indexTsx';
-import Row from '../rowTsx';
-import {createPopup} from './indexTsx';
-import styles from './featureDetails.module.scss';
-import classNames from '../../helpers/string/classNames';
-import StickerAndTitle, {StickerAndTitleProps} from '../stickerAndTitle';
+import PopupElement from '@components/popups/indexTsx';
+import Row from '@components/rowTsx';
+import {createPopup} from '@components/popups/indexTsx';
+import styles from '@components/popups/featureDetails.module.scss';
+import classNames from '@helpers/string/classNames';
+import StickerAndTitle, {StickerAndTitleProps} from '@components/stickerAndTitle';
 
 interface FeatureDetailsRow {
   icon: Icon;

@@ -1,10 +1,10 @@
 import {Show} from 'solid-js';
-import {i18n} from '../../lib/langPack';
-import lottieLoader from '../../lib/rlottie/lottieLoader';
-import defineSolidElement, {PassedProps} from '../../lib/solidjs/defineSolidElement';
-import LottieAnimation from '../lottieAnimation';
-import ripple from '../ripple';
-import styles from './styles.module.scss';
+import {i18n} from '@lib/langPack';
+import lottieLoader from '@lib/rlottie/lottieLoader';
+import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
+import LottieAnimation from '@components/lottieAnimation';
+import ripple from '@components/ripple';
+import styles from '@components/emptySearchPlaceholder/styles.module.scss';
 ripple;
 
 if(import.meta.hot) import.meta.hot.accept();

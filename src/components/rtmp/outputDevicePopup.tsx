@@ -1,11 +1,11 @@
 import {Show, render} from 'solid-js/web';
-import PopupElement from '../popups';
-import {RadioFormFromValues} from '../row';
+import PopupElement from '@components/popups';
+import {RadioFormFromValues} from '@components/row';
 
-import './outputDevicePopup.css';
+import '@components/rtmp/outputDevicePopup.css';
 import {Transition} from 'solid-transition-group';
-import {i18n} from '../../lib/langPack';
-import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
+import {i18n} from '@lib/langPack';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 
 export class OutputDevicePopup extends PopupElement {
   protected _dispose: () => void;

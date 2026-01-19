@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {markdownTags, MarkdownType} from './getRichElementValue';
+import {markdownTags, MarkdownType} from '@helpers/dom/getRichElementValue';
 
 export default function getMarkupInSelection<T extends MarkdownType>(types: T[]) {
   type ResultByType = {elements: HTMLElement[], fully: boolean, partly: boolean, textLength: number};

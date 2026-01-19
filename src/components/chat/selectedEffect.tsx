@@ -5,12 +5,12 @@
  */
 
 import {Accessor, createEffect, createMemo, createResource, createSignal, JSX} from 'solid-js';
-import Animated from '../../helpers/solid/animations';
-import createMiddleware from '../../helpers/solid/createMiddleware';
-import classNames from '../../helpers/string/classNames';
-import rootScope from '../../lib/rootScope';
-import wrapSticker from '../wrappers/sticker';
-import {fireMessageEffect} from './messageRender';
+import Animated from '@helpers/solid/animations';
+import createMiddleware from '@helpers/solid/createMiddleware';
+import classNames from '@helpers/string/classNames';
+import rootScope from '@lib/rootScope';
+import wrapSticker from '@components/wrappers/sticker';
+import {fireMessageEffect} from '@components/chat/messageRender';
 
 export default function SelectedEffect(props: {
   effect: Accessor<DocId>

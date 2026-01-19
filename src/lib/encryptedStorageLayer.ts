@@ -1,16 +1,16 @@
-import {Database} from '../config/databases';
-import DEBUG from '../config/debug';
-import toArray from '../helpers/array/toArray';
-import convertToUint8Array from '../helpers/bytes/convertToUint8Array';
-import {IS_WORKER} from '../helpers/context';
-import formatBytesPure from '../helpers/formatBytesPure';
-import asyncThrottle from '../helpers/schedulers/asyncThrottle';
+import {Database} from '@config/databases';
+import DEBUG from '@config/debug';
+import toArray from '@helpers/array/toArray';
+import convertToUint8Array from '@helpers/bytes/convertToUint8Array';
+import {IS_WORKER} from '@helpers/context';
+import formatBytesPure from '@helpers/formatBytesPure';
+import asyncThrottle from '@helpers/schedulers/asyncThrottle';
 
-import cryptoMessagePort from './crypto/cryptoMessagePort';
-import IDBStorage from './files/idb';
-import {logger, Logger} from './logger';
-import MTProtoMessagePort from './mtproto/mtprotoMessagePort';
-import EncryptionKeyStore from './passcode/keyStore';
+import cryptoMessagePort from '@lib/crypto/cryptoMessagePort';
+import IDBStorage from '@lib/files/idb';
+import {logger, Logger} from '@lib/logger';
+import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
+import EncryptionKeyStore from '@lib/passcode/keyStore';
 
 
 export interface StorageLayer {

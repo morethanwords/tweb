@@ -1,8 +1,8 @@
 import {Show} from 'solid-js';
 
-import {hexToRgb} from '../../../helpers/color';
+import {hexToRgb} from '@helpers/color';
 
-import {useMediaEditorContext} from '../context';
+import {useMediaEditorContext} from '@components/mediaEditor/context';
 
 
 const PreviewBrushSize = () => {

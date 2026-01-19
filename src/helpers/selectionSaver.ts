@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import cancelSelection from './dom/cancelSelection';
+import cancelSelection from '@helpers/dom/cancelSelection';
 
 export default class SelectionSaver {
   private input: HTMLElement;

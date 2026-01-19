@@ -1,4 +1,4 @@
-import encodeEntities from '../string/encodeEntities';
+import encodeEntities from '@helpers/string/encodeEntities';
 
 export default function documentFragmentToHTML(fragment: DocumentFragment) {
   return Array.from(fragment.childNodes).map((node) => {

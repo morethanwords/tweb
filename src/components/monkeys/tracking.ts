@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import InputField from '../inputField';
-import lottieLoader from '../../lib/rlottie/lottieLoader';
-import RLottiePlayer from '../../lib/rlottie/rlottiePlayer';
-import CodeInputFieldCompat from '../codeInputField';
-import {fastRaf} from '../../helpers/schedulers';
+import InputField from '@components/inputField';
+import lottieLoader from '@lib/rlottie/lottieLoader';
+import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import CodeInputFieldCompat from '@components/codeInputField';
+import {fastRaf} from '@helpers/schedulers';
 
 export default class TrackingMonkey {
   public container: HTMLElement;

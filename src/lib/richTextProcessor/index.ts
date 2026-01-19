@@ -9,8 +9,8 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import emojiRegExp from '../../vendor/emoji/regex';
-import {MessageEntity} from '../../layer';
+import emojiRegExp from '@vendor/emoji/regex';
+import {MessageEntity} from '@layer';
 
 const EmojiHelper = {
   emojiMap: (code: string) => { return code; },

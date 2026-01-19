@@ -4,34 +4,34 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import rootScope, {BroadcastEvents} from '../../../lib/rootScope';
-import AppSearchSuper, {SearchSuperMediaTab, SearchSuperMediaType, SearchSuperType} from '../../appSearchSuper';
-import SidebarSlider, {SliderSuperTab} from '../../slider';
-import TransitionSlider from '../../transition';
-import AppEditChatTab from './editChat';
-import AppEditContactTab from './editContact';
-import Button from '../../button';
-import ButtonIcon from '../../buttonIcon';
-import I18n, {LangPackKey, i18n} from '../../../lib/langPack';
-import ButtonCorner from '../../buttonCorner';
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import {renderPeerProfile} from '../../peerProfile';
-import {Chat, Message} from '../../../layer';
-import getMessageThreadId from '../../../lib/appManagers/utils/messages/getMessageThreadId';
-import AppEditTopicTab from './editTopic';
-import liteMode from '../../../helpers/liteMode';
-import AppEditBotTab from './editBot';
-import addChatUsers from '../../addChatUsers';
-import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
-import getPeerId from '../../../lib/appManagers/utils/peers/getPeerId';
-import wrapPeerTitle from '../../wrappers/peerTitle';
-import ButtonMenuToggle from '../../buttonMenuToggle';
-import appImManager from '../../../lib/appManagers/appImManager';
-import {useIsFrozen} from '../../../stores/appState';
-import {profileStarGiftsButtonMenu} from '../../stargifts/profileList';
+import rootScope, {BroadcastEvents} from '@lib/rootScope';
+import AppSearchSuper, {SearchSuperMediaTab, SearchSuperMediaType, SearchSuperType} from '@components/appSearchSuper';
+import SidebarSlider, {SliderSuperTab} from '@components/slider';
+import TransitionSlider from '@components/transition';
+import AppEditChatTab from '@components/sidebarRight/tabs/editChat';
+import AppEditContactTab from '@components/sidebarRight/tabs/editContact';
+import Button from '@components/button';
+import ButtonIcon from '@components/buttonIcon';
+import I18n, {LangPackKey, i18n} from '@lib/langPack';
+import ButtonCorner from '@components/buttonCorner';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import {renderPeerProfile} from '@components/peerProfile';
+import {Chat, Message} from '@layer';
+import getMessageThreadId from '@appManagers/utils/messages/getMessageThreadId';
+import AppEditTopicTab from '@components/sidebarRight/tabs/editTopic';
+import liteMode from '@helpers/liteMode';
+import AppEditBotTab from '@components/sidebarRight/tabs/editBot';
+import addChatUsers from '@components/addChatUsers';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
+import ButtonMenuToggle from '@components/buttonMenuToggle';
+import appImManager from '@lib/appImManager';
+import {useIsFrozen} from '@stores/appState';
+import {profileStarGiftsButtonMenu} from '@components/stargifts/profileList';
 import {createRoot} from 'solid-js';
-import SolidJSHotReloadGuardProvider from '../../../lib/solidjs/hotReloadGuardProvider';
-import namedPromises from '../../../helpers/namedPromises';
+import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import namedPromises from '@helpers/namedPromises';
 
 type SharedMediaHistoryStorage = Partial<{
   [type in SearchSuperType]: {mid: number, peerId: PeerId}[]

@@ -1,7 +1,7 @@
 import {Signal, createEffect, createSignal} from 'solid-js';
-import {HelpPeerColorOption, HelpPeerColorSet, User} from '../layer';
-import {usePeer} from '../stores/peers';
-import useIsNightTheme from './useIsNightTheme';
+import {HelpPeerColorOption, HelpPeerColorSet, User} from '@layer';
+import {usePeer} from '@stores/peers';
+import useIsNightTheme from '@hooks/useIsNightTheme';
 
 let signal: Signal<HelpPeerColorOption[]>;
 export default function useProfileColors() {

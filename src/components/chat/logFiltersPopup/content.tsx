@@ -1,10 +1,10 @@
 import {createComputed} from 'solid-js';
-import {attachHotClassName} from '../../../helpers/solid/classname';
-import defineSolidElement, {PassedProps} from '../../../lib/solidjs/defineSolidElement';
-import {CommittedFilters} from '../../sidebarRight/tabs/adminRecentActions/filters';
-import {FlagFilters} from '../../sidebarRight/tabs/adminRecentActions/filters/flagFilters';
-import {useFlagFilters} from '../../sidebarRight/tabs/adminRecentActions/filters/useFlagFilters';
-import styles from './styles.module.scss';
+import {attachHotClassName} from '@helpers/solid/classname';
+import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
+import {CommittedFilters} from '@components/sidebarRight/tabs/adminRecentActions/filters';
+import {FlagFilters} from '@components/sidebarRight/tabs/adminRecentActions/filters/flagFilters';
+import {useFlagFilters} from '@components/sidebarRight/tabs/adminRecentActions/filters/useFlagFilters';
+import styles from '@components/chat/logFiltersPopup/styles.module.scss';
 
 if(import.meta.hot) import.meta.hot.accept();
 

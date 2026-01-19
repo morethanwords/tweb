@@ -1,19 +1,19 @@
-import {Chat} from '../../layer';
-import appDialogsManager from '../../lib/appManagers/appDialogsManager';
-import appImManager, {AppImManager} from '../../lib/appManagers/appImManager';
-import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
-import rootScope from '../../lib/rootScope';
-import {AutonomousForumTopicList} from '../autonomousDialogList/forumTopics';
-import ButtonMenuToggle from '../buttonMenuToggle';
-import {ChatType} from '../chat/chat';
-import PopupElement from '../popups';
-import PopupDeleteDialog from '../popups/deleteDialog';
-import appSidebarLeft from '../sidebarLeft';
-import AppEditTopicTab from '../sidebarRight/tabs/editTopic';
-import AppSharedMediaTab from '../sidebarRight/tabs/sharedMedia';
-import SortedDialogList from '../sortedDialogList';
-import wrapPeerTitle from '../wrappers/peerTitle';
-import {ForumTab} from './forumTab';
+import {Chat} from '@layer';
+import appDialogsManager from '@lib/appDialogsManager';
+import appImManager, {AppImManager} from '@lib/appImManager';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import rootScope from '@lib/rootScope';
+import {AutonomousForumTopicList} from '@components/autonomousDialogList/forumTopics';
+import ButtonMenuToggle from '@components/buttonMenuToggle';
+import {ChatType} from '@components/chat/chat';
+import PopupElement from '@components/popups';
+import PopupDeleteDialog from '@components/popups/deleteDialog';
+import appSidebarLeft from '@components/sidebarLeft';
+import AppEditTopicTab from '@components/sidebarRight/tabs/editTopic';
+import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMedia';
+import SortedDialogList from '@components/sortedDialogList';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
+import {ForumTab} from '@components/forumTab/forumTab';
 
 
 export class GroupForumTab extends ForumTab {

@@ -4,21 +4,21 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import forEachReverse from '../../helpers/array/forEachReverse';
-import throttle from '../../helpers/schedulers/throttle';
-import {GroupCallConnectionType, JoinGroupCallJsonPayload} from '../appManagers/appGroupCallsManager';
-import {AppManagers} from '../appManagers/managers';
-import rootScope from '../rootScope';
-import CallConnectionInstanceBase, {CallConnectionInstanceOptions} from './callConnectionInstanceBase';
-import GroupCallInstance from './groupCallInstance';
-import filterServerCodecs from './helpers/filterServerCodecs';
-import fixLocalOffer from './helpers/fixLocalOffer';
-import processMediaSection from './helpers/processMediaSection';
-import {ConferenceEntry} from './localConferenceDescription';
-import SDP from './sdp';
-import SDPMediaSection from './sdp/mediaSection';
-import {WebRTCLineType} from './sdpBuilder';
-import {UpdateGroupCallConnectionData} from './types';
+import forEachReverse from '@helpers/array/forEachReverse';
+import throttle from '@helpers/schedulers/throttle';
+import {GroupCallConnectionType, JoinGroupCallJsonPayload} from '@appManagers/appGroupCallsManager';
+import {AppManagers} from '@lib/managers';
+import rootScope from '@lib/rootScope';
+import CallConnectionInstanceBase, {CallConnectionInstanceOptions} from '@lib/calls/callConnectionInstanceBase';
+import GroupCallInstance from '@lib/calls/groupCallInstance';
+import filterServerCodecs from '@lib/calls/helpers/filterServerCodecs';
+import fixLocalOffer from '@lib/calls/helpers/fixLocalOffer';
+import processMediaSection from '@lib/calls/helpers/processMediaSection';
+import {ConferenceEntry} from '@lib/calls/localConferenceDescription';
+import SDP from '@lib/calls/sdp';
+import SDPMediaSection from '@lib/calls/sdp/mediaSection';
+import {WebRTCLineType} from '@lib/calls/sdpBuilder';
+import {UpdateGroupCallConnectionData} from '@lib/calls/types';
 
 export default class GroupCallConnectionInstance extends CallConnectionInstanceBase {
   private groupCall: GroupCallInstance;

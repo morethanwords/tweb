@@ -1,6 +1,6 @@
-import type SolidJSHotReloadGuardProvider from '../../../lib/solidjs/hotReloadGuardProvider';
-import PopupElement from '../../popups';
-import SuggestPostPopupContent, {SuggestPostPopupContentProps} from './content';
+import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import PopupElement from '@components/popups';
+import SuggestPostPopupContent, {SuggestPostPopupContentProps} from '@components/chat/suggestPostPopup/content';
 
 type Args = SuggestPostPopupContentProps & {
   HotReloadGuard: typeof SolidJSHotReloadGuardProvider;

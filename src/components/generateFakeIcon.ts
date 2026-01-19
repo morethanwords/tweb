@@ -1,4 +1,4 @@
-import {_i18n} from '../lib/langPack';
+import {_i18n} from '@lib/langPack';
 
 export default function generateFakeIcon(isScam?: boolean) {
   const span = document.createElement('span');

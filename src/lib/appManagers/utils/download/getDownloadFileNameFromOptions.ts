@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {getFileNameByLocation} from '../../../../helpers/fileName';
-import {DownloadOptions} from '../../../mtproto/apiFileManager';
+import {getFileNameByLocation} from '@helpers/fileName';
+import {DownloadOptions} from '@appManagers/apiFileManager';
 
 export default function getDownloadFileNameFromOptions(options: DownloadOptions) {
   return getFileNameByLocation(options.location, options);

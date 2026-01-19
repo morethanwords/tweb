@@ -1,24 +1,24 @@
 import {Show, createSignal} from 'solid-js';
 import {render} from 'solid-js/web';
-import {InputFieldTsx} from '../inputFieldTsx';
-import PopupElement from '../popups';
+import {InputFieldTsx} from '@components/inputFieldTsx';
+import PopupElement from '@components/popups';
 
-import Row from '../rowTsx';
-import CheckboxField from '../checkboxField';
+import Row from '@components/rowTsx';
+import CheckboxField from '@components/checkboxField';
 
-import imgRecordAudio from './assets/recordAudio.svg';
-import imgVideoVertical from './assets/videoVertical.svg';
-import imgVideoHorizontal from './assets/videoHorizontal.svg';
+import imgRecordAudio from '@components/rtmp/assets/recordAudio.svg';
+import imgVideoVertical from '@components/rtmp/assets/videoVertical.svg';
+import imgVideoHorizontal from '@components/rtmp/assets/videoHorizontal.svg';
 
 import {Transition} from 'solid-transition-group';
-import {Ripple} from '../rippleTsx';
-import classNames from '../../helpers/string/classNames';
-import {CallRecordParams} from '../../lib/appManagers/appGroupCallsManager';
-import {toastNew} from '../toast';
-import rtmpCallsController from '../../lib/calls/rtmpCallsController';
+import {Ripple} from '@components/rippleTsx';
+import classNames from '@helpers/string/classNames';
+import {CallRecordParams} from '@appManagers/appGroupCallsManager';
+import {toastNew} from '@components/toast';
+import rtmpCallsController from '@lib/calls/rtmpCallsController';
 
-import './recordPopup.css';
-import {i18n} from '../../lib/langPack';
+import '@components/rtmp/recordPopup.css';
+import {i18n} from '@lib/langPack';
 
 const cnPopup = (className = '') => `rtmp-record-popup${className}`;
 

@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type SuperMessagePort from '../lib/mtproto/superMessagePort';
-import ctx from '../environment/ctx';
+import type SuperMessagePort from '@lib/superMessagePort';
+import ctx from '@environment/ctx';
 
 export default function listenMessagePort(
   messagePort: SuperMessagePort<any, any, any>,

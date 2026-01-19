@@ -1,11 +1,11 @@
-import './adminStreamPopup.scss';
+import '@components/rtmp/adminStreamPopup.scss';
 
 import {createSignal, onMount} from 'solid-js';
-import {RtmpData} from './rtmpData';
-import rootScope from '../../lib/rootScope';
-import {toastNew} from '../toast';
-import {i18n} from '../../lib/langPack';
-import pause from '../../helpers/schedulers/pause';
+import {RtmpData} from '@components/rtmp/rtmpData';
+import rootScope from '@lib/rootScope';
+import {toastNew} from '@components/toast';
+import {i18n} from '@lib/langPack';
+import pause from '@helpers/schedulers/pause';
 
 const cnPlayer = (className = '') => `rtmp-player${className}`;
 

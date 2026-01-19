@@ -4,19 +4,19 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import cancelEvent from '../../helpers/dom/cancelEvent';
-import safePlay from '../../helpers/dom/safePlay';
-import getImageFromStrippedThumb from '../../helpers/getImageFromStrippedThumb';
-import {Document, Photo, PhotoSize} from '../../layer';
-import {i18n} from '../../lib/langPack';
-import rootScope from '../../lib/rootScope';
-import useContentSettings from '../../stores/contentSettings';
-import confirmationPopup from '../confirmationPopup';
-import DotRenderer from '../dotRenderer';
-import Icon from '../icon';
-import {AgeVerificationPopup} from '../popups/ageVerification';
-import SetTransition from '../singleTransition';
-import {toastNew} from '../toast';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import safePlay from '@helpers/dom/safePlay';
+import getImageFromStrippedThumb from '@helpers/getImageFromStrippedThumb';
+import {Document, Photo, PhotoSize} from '@layer';
+import {i18n} from '@lib/langPack';
+import rootScope from '@lib/rootScope';
+import useContentSettings from '@stores/contentSettings';
+import confirmationPopup from '@components/confirmationPopup';
+import DotRenderer from '@components/dotRenderer';
+import Icon from '@components/icon';
+import {AgeVerificationPopup} from '@components/popups/ageVerification';
+import SetTransition from '@components/singleTransition';
+import {toastNew} from '@components/toast';
 
 const sensitiveSpoilers = new Set<HTMLElement>();
 

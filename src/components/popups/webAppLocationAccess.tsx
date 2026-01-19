@@ -1,12 +1,12 @@
 import PopupElement from '.';
-import safeAssign from '../../helpers/object/safeAssign';
-import {I18nTsx} from '../../helpers/solid/i18n';
-import rootScope from '../../lib/rootScope';
-import {AvatarNewTsx} from '../avatarNew';
-import {IconTsx} from '../iconTsx';
-import {PeerTitleTsx} from '../peerTitleTsx';
+import safeAssign from '@helpers/object/safeAssign';
+import {I18nTsx} from '@helpers/solid/i18n';
+import rootScope from '@lib/rootScope';
+import {AvatarNewTsx} from '@components/avatarNew';
+import {IconTsx} from '@components/iconTsx';
+import {PeerTitleTsx} from '@components/peerTitleTsx';
 
-import css from './webAppLocationAccess.module.scss';
+import css from '@components/popups/webAppLocationAccess.module.scss';
 
 export default class PopupWebAppLocationAccess extends PopupElement<{
   finish: (result: boolean) => void

@@ -9,8 +9,8 @@
  * https://github.com/evgeny-nadymov/telegram-react/blob/master/LICENSE
  */
 
-import StringFromLineBuilder from '../stringFromLineBuilder';
-import {addDataChannel, addExtmap, addPayloadTypes, addSsrc} from './p2PSdpBuilder';
+import StringFromLineBuilder from '@lib/calls/stringFromLineBuilder';
+import {addDataChannel, addExtmap, addPayloadTypes, addSsrc} from '@lib/calls/p2P/p2PSdpBuilder';
 
 export default class ChromeP2PSdpBuilder {
   static generateOffer(info: any) {

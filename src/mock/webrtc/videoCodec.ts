@@ -1,4 +1,4 @@
-import {VideoCodec} from '../../lib/calls/types';
+import {VideoCodec} from '@lib/calls/types';
 
 const videoCodec: VideoCodec = {
   'endpoint': 'e0e7414dcff430d1',

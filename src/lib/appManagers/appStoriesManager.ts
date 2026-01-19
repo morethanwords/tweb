@@ -4,26 +4,25 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import forEachReverse from '../../helpers/array/forEachReverse';
-import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-import insertInDescendSortedArray from '../../helpers/array/insertInDescendSortedArray';
-import toArray from '../../helpers/array/toArray';
-import assumeType from '../../helpers/assumeType';
-import callbackify from '../../helpers/callbackify';
-import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
-import makeError from '../../helpers/makeError';
-import deepEqual from '../../helpers/object/deepEqual';
-import safeReplaceObject from '../../helpers/object/safeReplaceObject';
-import pause from '../../helpers/schedulers/pause';
-import tsNow from '../../helpers/tsNow';
-import {Reaction, ReportReason, StoriesAllStories, StoriesStories, StoryItem, Update, PeerStories, User, Chat, StoryView, MediaArea, StoryAlbum} from '../../layer';
-import {MTAppConfig} from '../mtproto/appConfig';
-import {SERVICE_PEER_ID, TEST_NO_STORIES} from '../mtproto/mtproto_config';
-import {ReferenceContext} from '../mtproto/referenceDatabase';
-import {AppManager} from './manager';
-import reactionsEqual from './utils/reactions/reactionsEqual';
-import StoriesCacheType from './utils/stories/cacheType';
-import insertStory from './utils/stories/insertStory';
+import forEachReverse from '@helpers/array/forEachReverse';
+import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
+import insertInDescendSortedArray from '@helpers/array/insertInDescendSortedArray';
+import toArray from '@helpers/array/toArray';
+import assumeType from '@helpers/assumeType';
+import callbackify from '@helpers/callbackify';
+import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
+import makeError from '@helpers/makeError';
+import deepEqual from '@helpers/object/deepEqual';
+import safeReplaceObject from '@helpers/object/safeReplaceObject';
+import pause from '@helpers/schedulers/pause';
+import tsNow from '@helpers/tsNow';
+import {Reaction, ReportReason, StoriesAllStories, StoriesStories, StoryItem, Update, PeerStories, User, Chat, StoryView, MediaArea, StoryAlbum} from '@layer';
+import {SERVICE_PEER_ID, TEST_NO_STORIES} from '@appManagers/constants';
+import {ReferenceContext} from '@lib/storages/references';
+import {AppManager} from '@appManagers/manager';
+import reactionsEqual from '@appManagers/utils/reactions/reactionsEqual';
+import StoriesCacheType from '@appManagers/utils/stories/cacheType';
+import insertStory from '@appManagers/utils/stories/insertStory';
 
 type MyStoryItem = Exclude<StoryItem, StoryItem.storyItemDeleted>;
 

@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import blobConstruct from '../../helpers/blob/blobConstruct';
-import StreamWriter from './streamWriter';
+import blobConstruct from '@helpers/blob/blobConstruct';
+import StreamWriter from '@lib/files/streamWriter';
 
 export default class MemoryWriter implements StreamWriter {
   private bytes: Uint8Array;

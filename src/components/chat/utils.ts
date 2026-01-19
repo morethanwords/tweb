@@ -1,12 +1,12 @@
-import {formatFullSentTimeRaw, formatTime} from '../../helpers/date';
-import {DurationType} from '../../helpers/formatDuration';
-import {Document, Message} from '../../layer';
-import {AdminLog} from '../../lib/appManagers/appChatsManager';
-import {MyMessage} from '../../lib/appManagers/appMessagesManager';
-import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
-import {VERIFICATION_CODES_BOT_ID} from '../../lib/mtproto/mtproto_config';
-import Icon, {OverlayedIcon} from '../icon';
-import {findMatchingCustomOption} from '../sidebarLeft/tabs/autoDeleteMessages/options';
+import {formatFullSentTimeRaw, formatTime} from '@helpers/date';
+import {DurationType} from '@helpers/formatDuration';
+import {Document, Message} from '@layer';
+import {AdminLog} from '@appManagers/appChatsManager';
+import {MyMessage} from '@appManagers/appMessagesManager';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
+import {VERIFICATION_CODES_BOT_ID} from '@appManagers/constants';
+import Icon, {OverlayedIcon} from '@components/icon';
+import {findMatchingCustomOption} from '@components/sidebarLeft/tabs/autoDeleteMessages/options';
 
 
 export function isMessageForVerificationBot(message: MyMessage) {

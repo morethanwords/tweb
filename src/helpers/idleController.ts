@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
-import EventListenerBase from './eventListenerBase';
+import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
+import EventListenerBase from '@helpers/eventListenerBase';
 
 const FOCUS_EVENT_NAME = IS_TOUCH_SUPPORTED ? 'touchstart' : 'mousemove';
 const DO_NOT_IDLE = false;

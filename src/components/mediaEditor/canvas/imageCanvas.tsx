@@ -1,12 +1,12 @@
 import {createEffect, createReaction, onCleanup, onMount} from 'solid-js';
 import {modifyMutable, produce} from 'solid-js/store';
-import createMiddleware from '../../../helpers/solid/createMiddleware';
-import {adjustmentsConfig, AdjustmentsConfig} from '../adjustments';
-import {useMediaEditorContext} from '../context';
-import {cleanupWebGl, withCurrentOwner} from '../utils';
-import {draw} from '../webgl/draw';
-import {initWebGL} from '../webgl/initWebGL';
-import initVideoPlayback from './initVideoPlayback';
+import createMiddleware from '@helpers/solid/createMiddleware';
+import {adjustmentsConfig, AdjustmentsConfig} from '@components/mediaEditor/adjustments';
+import {useMediaEditorContext} from '@components/mediaEditor/context';
+import {cleanupWebGl, withCurrentOwner} from '@components/mediaEditor/utils';
+import {draw} from '@components/mediaEditor/webgl/draw';
+import {initWebGL} from '@components/mediaEditor/webgl/initWebGL';
+import initVideoPlayback from '@components/mediaEditor/canvas/initVideoPlayback';
 
 
 function drawAdjustedImage(gl: WebGLRenderingContext) {

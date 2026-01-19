@@ -1,5 +1,5 @@
-import wrapVideo from './video';
-import {MediaComponentProps, MediaTsx} from './mediaTsx';
+import wrapVideo from '@components/wrappers/video';
+import {MediaComponentProps, MediaTsx} from '@components/wrappers/mediaTsx';
 
 type VideoProps = Omit<Parameters<typeof wrapVideo>[0], 'middleware'>;
 

@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import _limitSymbols from '../../helpers/string/limitSymbols';
-import {Chat} from '../../layer';
-import {AppManagers} from '../../lib/appManagers/managers';
-import getPeerActiveUsernames from '../../lib/appManagers/utils/peers/getPeerActiveUsernames';
-import I18n from '../../lib/langPack';
-import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
-import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
-import rootScope from '../../lib/rootScope';
+import _limitSymbols from '@helpers/string/limitSymbols';
+import {Chat} from '@layer';
+import {AppManagers} from '@lib/managers';
+import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
+import I18n from '@lib/langPack';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import rootScope from '@lib/rootScope';
 
 type GetPeerTitleOptions = {
   peerId: PeerId,

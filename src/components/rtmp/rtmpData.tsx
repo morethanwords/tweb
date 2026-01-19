@@ -1,12 +1,12 @@
 import {Show, createSignal} from 'solid-js';
-import './rtmpData.css';
-import {IconTsx} from '../iconTsx';
-import {Skeleton} from '../skeleton';
-import {ButtonIconTsx} from '../buttonIconTsx';
-import {copyTextToClipboard} from '../../helpers/clipboard';
-import {toastNew} from '../toast';
-import classNames from '../../helpers/string/classNames';
-import {LangPackKey, i18n} from '../../lib/langPack';
+import '@components/rtmp/rtmpData.css';
+import {IconTsx} from '@components/iconTsx';
+import {Skeleton} from '@components/skeleton';
+import {ButtonIconTsx} from '@components/buttonIconTsx';
+import {copyTextToClipboard} from '@helpers/clipboard';
+import {toastNew} from '@components/toast';
+import classNames from '@helpers/string/classNames';
+import {LangPackKey, i18n} from '@lib/langPack';
 
 export interface RtmpDataProps {
   key: string;

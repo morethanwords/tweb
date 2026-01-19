@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import AudioAssetPlayer from '../../helpers/audioAssetPlayer';
+import AudioAssetPlayer from '@helpers/audioAssetPlayer';
 
 let assetPlayer: AudioAssetPlayer<Record<'busy' | 'connect' | 'end' | 'incoming' | 'outgoing' | 'failed', string>>;
 export default function getCallAudioAsset() {

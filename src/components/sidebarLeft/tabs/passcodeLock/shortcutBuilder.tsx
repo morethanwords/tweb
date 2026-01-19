@@ -1,11 +1,11 @@
 import {Component, createSelector, JSX} from 'solid-js';
 
-import {IS_APPLE} from '../../../../environment/userAgent';
+import {IS_APPLE} from '@environment/userAgent';
 
-import {IconTsx} from '../../../iconTsx';
-import ripple from '../../../ripple'; ripple; // keep
+import {IconTsx} from '@components/iconTsx';
+import ripple from '@components/ripple'; ripple; // keep
 
-import styles from './shortcutBuilder.module.scss';
+import styles from '@components/sidebarLeft/tabs/passcodeLock/shortcutBuilder.module.scss';
 
 
 export type ShortcutKey = 'Ctrl' | 'Alt' | 'Shift' | 'Meta';

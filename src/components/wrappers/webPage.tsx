@@ -5,10 +5,10 @@
  */
 
 import {JSX, Ref} from 'solid-js';
-import {getDirection} from '../../helpers/dom/setInnerHTML';
-import classNames from '../../helpers/string/classNames';
-import {IconTsx} from '../iconTsx';
-import {Ripple} from '../rippleTsx';
+import {getDirection} from '@helpers/dom/setInnerHTML';
+import classNames from '@helpers/string/classNames';
+import {IconTsx} from '@components/iconTsx';
+import {Ripple} from '@components/rippleTsx';
 import {Dynamic} from 'solid-js/web';
 
 const className = 'webpage';

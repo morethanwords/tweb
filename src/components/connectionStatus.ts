@@ -4,17 +4,17 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import App from '../config/app';
-import DEBUG from '../config/debug';
-import {LangPackKey, i18n} from '../lib/langPack';
-import {logger} from '../lib/logger';
-import rootScope from '../lib/rootScope';
-import {ConnectionStatus} from '../lib/mtproto/connectionStatus';
-import cancelEvent from '../helpers/dom/cancelEvent';
-import {attachClickEvent} from '../helpers/dom/clickEvent';
-import {AppManagers} from '../lib/appManagers/managers';
-import singleInstance from '../lib/mtproto/singleInstance';
-import InputSearch from './inputSearch';
+import App from '@config/app';
+import DEBUG from '@config/debug';
+import {LangPackKey, i18n} from '@lib/langPack';
+import {logger} from '@lib/logger';
+import rootScope from '@lib/rootScope';
+import {ConnectionStatus} from '@lib/mtproto/connectionStatus';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import {AppManagers} from '@lib/managers';
+import singleInstance from '@lib/singleInstance';
+import InputSearch from '@components/inputSearch';
 
 const NO_STATUS = false;
 const TEST_DBLCLICK = false;

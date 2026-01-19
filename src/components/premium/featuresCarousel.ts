@@ -4,21 +4,21 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {PremiumPromoFeature} from './featuresConfig';
-import {i18n} from '../../lib/langPack';
-import {HelpPremiumPromo} from '../../layer';
-import renderImageFromUrl from '../../helpers/dom/renderImageFromUrl';
-import wrapVideo from '../wrappers/video';
-import Icon from '../icon';
-import LimitsFeature from './limitsFeature';
-import UpgradedStoriesFeature from './upgradedStoriesFeature';
-import PremiumStickersCarousel from './premiumStickersCarousel';
-import {AppManagers} from '../../lib/appManagers/managers';
-import TransitionSlider from '../transition';
-import {Middleware} from '../../helpers/middleware';
-import {PopupPremiumProps} from '../popups/premium';
-import cancelEvent from '../../helpers/dom/cancelEvent';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
+import {PremiumPromoFeature} from '@components/premium/featuresConfig';
+import {i18n} from '@lib/langPack';
+import {HelpPremiumPromo} from '@layer';
+import renderImageFromUrl from '@helpers/dom/renderImageFromUrl';
+import wrapVideo from '@components/wrappers/video';
+import Icon from '@components/icon';
+import LimitsFeature from '@components/premium/limitsFeature';
+import UpgradedStoriesFeature from '@components/premium/upgradedStoriesFeature';
+import PremiumStickersCarousel from '@components/premium/premiumStickersCarousel';
+import {AppManagers} from '@lib/managers';
+import TransitionSlider from '@components/transition';
+import {Middleware} from '@helpers/middleware';
+import {PopupPremiumProps} from '@components/popups/premium';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
 
 export default class FeaturesCarousel {
   private features: PremiumPromoFeature[];

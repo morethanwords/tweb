@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import setInnerHTML from '../../helpers/dom/setInnerHTML';
-import {Middleware} from '../../helpers/middleware';
-import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
-import {avatarNew} from '../avatarNew';
-import PeerTitle from '../peerTitle';
-import Scrollable from '../scrollable';
-import AutocompleteHelper from './autocompleteHelper';
-import AutocompleteHelperController from './autocompleteHelperController';
+import setInnerHTML from '@helpers/dom/setInnerHTML';
+import {Middleware} from '@helpers/middleware';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import {avatarNew} from '@components/avatarNew';
+import PeerTitle from '@components/peerTitle';
+import Scrollable from '@components/scrollable';
+import AutocompleteHelper from '@components/chat/autocompleteHelper';
+import AutocompleteHelperController from '@components/chat/autocompleteHelperController';
 
 export default class AutocompletePeerHelper extends AutocompleteHelper {
   protected static BASE_CLASS = 'autocomplete-peer-helper';

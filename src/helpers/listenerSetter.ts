@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type EventListenerBase from './eventListenerBase';
+import type EventListenerBase from '@helpers/eventListenerBase';
 
 export type Listener = {
   element: ListenerElement,

@@ -1,23 +1,23 @@
 import {getOwner, runWithOwner} from 'solid-js';
 import {unwrap} from 'solid-js/store';
-import {MediaSize} from '../../../helpers/mediaSize';
-import noop from '../../../helpers/noop';
-import {logger} from '../../../lib/logger';
-import {adjustmentsConfig, AdjustmentsConfig} from '../adjustments';
-import BrushPainter from '../canvas/brushPainter';
-import {useCropOffset} from '../canvas/useCropOffset';
-import {EditingMediaState, useMediaEditorContext} from '../context';
-import {NumberPair, StandaloneSignal} from '../types';
-import {checkIfHasAnimatedStickers, cleanupWebGl, snapToAvailableQuality} from '../utils';
-import {draw} from '../webgl/draw';
-import {initWebGL} from '../webgl/initWebGL';
-import getResultSize from './getResultSize';
-import getResultTransform from './getResultTransform';
-import getScaledLayersAndLines from './getScaledLayersAndLines';
-import renderToActualVideo from './renderToActualVideo';
-import renderToImage from './renderToImage';
-import renderToVideoGIF from './renderToVideoGIF';
-import spawnAnimatedPreview from './spawnAnimatedPreview';
+import {MediaSize} from '@helpers/mediaSize';
+import noop from '@helpers/noop';
+import {logger} from '@lib/logger';
+import {adjustmentsConfig, AdjustmentsConfig} from '@components/mediaEditor/adjustments';
+import BrushPainter from '@components/mediaEditor/canvas/brushPainter';
+import {useCropOffset} from '@components/mediaEditor/canvas/useCropOffset';
+import {EditingMediaState, useMediaEditorContext} from '@components/mediaEditor/context';
+import {NumberPair, StandaloneSignal} from '@components/mediaEditor/types';
+import {checkIfHasAnimatedStickers, cleanupWebGl, snapToAvailableQuality} from '@components/mediaEditor/utils';
+import {draw} from '@components/mediaEditor/webgl/draw';
+import {initWebGL} from '@components/mediaEditor/webgl/initWebGL';
+import getResultSize from '@components/mediaEditor/finalRender/getResultSize';
+import getResultTransform from '@components/mediaEditor/finalRender/getResultTransform';
+import getScaledLayersAndLines from '@components/mediaEditor/finalRender/getScaledLayersAndLines';
+import renderToActualVideo from '@components/mediaEditor/finalRender/renderToActualVideo';
+import renderToImage from '@components/mediaEditor/finalRender/renderToImage';
+import renderToVideoGIF from '@components/mediaEditor/finalRender/renderToVideoGIF';
+import spawnAnimatedPreview from '@components/mediaEditor/finalRender/spawnAnimatedPreview';
 
 
 export type MediaEditorFinalResultPayload = {

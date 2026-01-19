@@ -4,26 +4,26 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type ChatTopbar from './topbar';
-import AppSearch, {SearchGroup} from '../appSearch';
-import PopupDatePicker from '../popups/datePicker';
-import ripple from '../ripple';
-import InputSearch from '../inputSearch';
-import type Chat from './chat';
-import findUpTag from '../../helpers/dom/findUpTag';
-import cancelEvent from '../../helpers/dom/cancelEvent';
-import whichChild from '../../helpers/dom/whichChild';
-import replaceContent from '../../helpers/dom/replaceContent';
-import {i18n} from '../../lib/langPack';
-import ListenerSetter from '../../helpers/listenerSetter';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import appNavigationController, {NavigationItem} from '../appNavigationController';
-import {IS_MOBILE_SAFARI} from '../../environment/userAgent';
-import PopupElement from '../popups';
-import {DIALOG_LIST_ELEMENT_TAG} from '../../lib/appManagers/appDialogsManager';
-import {MiddlewareHelper, getMiddleware} from '../../helpers/middleware';
-import ButtonIcon from '../buttonIcon';
-import pause from '../../helpers/schedulers/pause';
+import type ChatTopbar from '@components/chat/topbar';
+import AppSearch, {SearchGroup} from '@components/appSearch';
+import PopupDatePicker from '@components/popups/datePicker';
+import ripple from '@components/ripple';
+import InputSearch from '@components/inputSearch';
+import type Chat from '@components/chat/chat';
+import findUpTag from '@helpers/dom/findUpTag';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import whichChild from '@helpers/dom/whichChild';
+import replaceContent from '@helpers/dom/replaceContent';
+import {i18n} from '@lib/langPack';
+import ListenerSetter from '@helpers/listenerSetter';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import appNavigationController, {NavigationItem} from '@components/appNavigationController';
+import {IS_MOBILE_SAFARI} from '@environment/userAgent';
+import PopupElement from '@components/popups';
+import {DIALOG_LIST_ELEMENT_TAG} from '@lib/appDialogsManager';
+import {MiddlewareHelper, getMiddleware} from '@helpers/middleware';
+import ButtonIcon from '@components/buttonIcon';
+import pause from '@helpers/schedulers/pause';
 
 export default class ChatSearch {
   private element: HTMLElement;

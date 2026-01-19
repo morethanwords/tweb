@@ -1,8 +1,8 @@
-import {MAX_ACCOUNTS_FREE, MAX_ACCOUNTS_PREMIUM} from '../../lib/accounts/constants';
-import {i18n, i18n_} from '../../lib/langPack';
+import {MAX_ACCOUNTS_FREE, MAX_ACCOUNTS_PREMIUM} from '@lib/accounts/constants';
+import {i18n, i18n_} from '@lib/langPack';
 
-import Button from '../button';
-import {IconTsx} from '../iconTsx';
+import Button from '@components/button';
+import {IconTsx} from '@components/iconTsx';
 
 export default function AccountsLimitPopupContent(props: {onCancel: () => void; onSubmit: () => void}) {
   return (

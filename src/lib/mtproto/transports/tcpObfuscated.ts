@@ -4,19 +4,19 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import Modes from '../../../config/modes';
-import {logger, LogTypes} from '../../logger';
-import MTPNetworker from '../networker';
-import Obfuscation from './obfuscation';
-import MTTransport, {MTConnection, MTConnectionConstructable} from './transport';
-// import intermediatePacketCodec from './intermediate';
-import abridgedPacketCodec from './abridged';
-// import paddedIntermediatePacketCodec from './padded';
-import {ConnectionStatus} from '../connectionStatus';
-import transportController from './controller';
-import bytesToHex from '../../../helpers/bytes/bytesToHex';
-// import networkStats from '../networkStats';
-import ctx from '../../../environment/ctx';
+import Modes from '@config/modes';
+import {logger, LogTypes} from '@lib/logger';
+import MTPNetworker from '@lib/mtproto/networker';
+import Obfuscation from '@lib/mtproto/transports/obfuscation';
+import MTTransport, {MTConnection, MTConnectionConstructable} from '@lib/mtproto/transports/transport';
+// import intermediatePacketCodec from '@lib/mtproto/transports/intermediate';
+import abridgedPacketCodec from '@lib/mtproto/transports/abridged';
+// import paddedIntermediatePacketCodec from '@lib/mtproto/transports/padded';
+import {ConnectionStatus} from '@lib/mtproto/connectionStatus';
+import transportController from '@lib/mtproto/transports/controller';
+import bytesToHex from '@helpers/bytes/bytesToHex';
+// import networkStats from '@lib/mtproto/networkStats';
+import ctx from '@environment/ctx';
 
 export default class TcpObfuscated implements MTTransport {
   private codec = abridgedPacketCodec;

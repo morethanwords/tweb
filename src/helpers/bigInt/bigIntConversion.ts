@@ -1,5 +1,5 @@
 import bigInt from 'big-integer';
-import {longBigInt, ulongBigInt} from './bigIntConstants';
+import {longBigInt, ulongBigInt} from '@helpers/bigInt/bigIntConstants';
 
 export function bigIntFromBytes(bytes: Uint8Array | number[], base = 256) {
   return bigInt.fromArray(bytes instanceof Uint8Array ? [...bytes] : bytes, base);

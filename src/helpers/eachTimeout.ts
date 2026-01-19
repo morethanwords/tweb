@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import ctx from '../environment/ctx';
-import noop from './noop';
+import ctx from '@environment/ctx';
+import noop from '@helpers/noop';
 
 // It's better to use timeout instead of interval, because interval can be corrupted
 export default function eachTimeout(callback: () => any, getNextTimeout: () => number, runFirst = true) {

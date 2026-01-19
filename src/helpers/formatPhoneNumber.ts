@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {HelpCountry, HelpCountryCode} from '../layer';
-import I18n from '../lib/langPack';
+import {HelpCountry, HelpCountryCode} from '@layer';
+import I18n from '@lib/langPack';
 
 let sortedCountries: HelpCountry[];
 type PrefixCountry = {country: HelpCountry, code: HelpCountryCode};

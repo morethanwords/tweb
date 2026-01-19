@@ -1,4 +1,4 @@
-import copy from '../object/copy';
+import copy from '@helpers/object/copy';
 
 export default function listMergeSorted(list1: any[] = [], list2: any[] = []) {
   const result = copy(list1);

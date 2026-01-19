@@ -4,17 +4,17 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import setInnerHTML from '../../helpers/dom/setInnerHTML';
-import {MediaSizeType} from '../../helpers/mediaSizes';
-import {Message} from '../../layer';
-import {AppManagers} from '../../lib/appManagers/managers';
-import getMediaDurationFromMessage from '../../lib/appManagers/utils/messages/getMediaDurationFromMessage';
-import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
-import {MediaSearchContext} from '../appMediaPlaybackController';
-import Chat from '../chat/chat';
-import LazyLoadQueue from '../lazyLoadQueue';
-import TranslatableMessage from '../translatableMessage';
-import wrapDocument from './document';
+import setInnerHTML from '@helpers/dom/setInnerHTML';
+import {MediaSizeType} from '@helpers/mediaSizes';
+import {Message} from '@layer';
+import {AppManagers} from '@lib/managers';
+import getMediaDurationFromMessage from '@appManagers/utils/messages/getMediaDurationFromMessage';
+import wrapRichText from '@lib/richTextProcessor/wrapRichText';
+import {MediaSearchContext} from '@components/appMediaPlaybackController';
+import Chat from '@components/chat/chat';
+import LazyLoadQueue from '@components/lazyLoadQueue';
+import TranslatableMessage from '@components/translatableMessage';
+import wrapDocument from '@components/wrappers/document';
 
 export default async function wrapGroupedDocuments({
   albumMustBeRenderedFull,

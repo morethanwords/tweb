@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {AppManager} from './manager';
-import {HelpCountriesList} from '../../layer';
-import App from '../../config/app';
+import {AppManager} from '@appManagers/manager';
+import {HelpCountriesList} from '@layer';
+import App from '@config/app';
 
 export class AppLangPackManager extends AppManager {
   protected after() {

@@ -1,15 +1,15 @@
 import {createEffect, createMemo, createSignal, on, onCleanup, onMount} from 'solid-js';
-import createMiddleware from '../../../helpers/solid/createMiddleware';
-import SwipeHandler from '../../swipeHandler';
-import {adjustmentsConfig, AdjustmentsConfig} from '../adjustments';
-import {HistoryItem, useMediaEditorContext} from '../context';
-import {NumberPair} from '../types';
-import {cleanupWebGl, distance} from '../utils';
-import {draw} from '../webgl/draw';
-import {initWebGL, RenderingPayload} from '../webgl/initWebGL';
-import BrushPainter, {BrushDrawnLine} from './brushPainter';
-import useNormalizePoint from './useNormalizePoint';
-import useProcessPoint from './useProcessPoint';
+import createMiddleware from '@helpers/solid/createMiddleware';
+import SwipeHandler from '@components/swipeHandler';
+import {adjustmentsConfig, AdjustmentsConfig} from '@components/mediaEditor/adjustments';
+import {HistoryItem, useMediaEditorContext} from '@components/mediaEditor/context';
+import {NumberPair} from '@components/mediaEditor/types';
+import {cleanupWebGl, distance} from '@components/mediaEditor/utils';
+import {draw} from '@components/mediaEditor/webgl/draw';
+import {initWebGL, RenderingPayload} from '@components/mediaEditor/webgl/initWebGL';
+import BrushPainter, {BrushDrawnLine} from '@components/mediaEditor/canvas/brushPainter';
+import useNormalizePoint from '@components/mediaEditor/canvas/useNormalizePoint';
+import useProcessPoint from '@components/mediaEditor/canvas/useProcessPoint';
 
 
 function drawAdjustedImage(gl: WebGLRenderingContext, payload: RenderingPayload) {

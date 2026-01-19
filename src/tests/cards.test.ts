@@ -1,6 +1,6 @@
-import cardFormattingPatterns from '../helpers/cards/cardFormattingPatterns';
-import formatValueByPattern from '../helpers/cards/formatValueByPattern';
-import {validateCardExpiry, validateCardNumber} from '../helpers/cards/validateCard';
+import cardFormattingPatterns from '@helpers/cards/cardFormattingPatterns';
+import formatValueByPattern from '@helpers/cards/formatValueByPattern';
+import {validateCardExpiry, validateCardNumber} from '@helpers/cards/validateCard';
 
 describe('Card number', () => {
   test('Format', () => {

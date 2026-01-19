@@ -1,7 +1,7 @@
-import {I18nTsx} from '../../../helpers/solid/i18n';
-import defineSolidElement from '../../../lib/solidjs/defineSolidElement';
-import {IconTsx} from '../../iconTsx';
-import styles from './botforumNewTopic.module.scss';
+import {I18nTsx} from '@helpers/solid/i18n';
+import defineSolidElement from '@lib/solidjs/defineSolidElement';
+import {IconTsx} from '@components/iconTsx';
+import styles from '@components/chat/bubbleParts/botforumNewTopic.module.scss';
 
 if(import.meta.hot) import.meta.hot.accept();
 

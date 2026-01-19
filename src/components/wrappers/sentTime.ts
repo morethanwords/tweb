@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {formatDateAccordingToTodayNew} from '../../helpers/date';
-import {MyMessage} from '../../lib/appManagers/appMessagesManager';
+import {formatDateAccordingToTodayNew} from '@helpers/date';
+import {MyMessage} from '@appManagers/appMessagesManager';
 
 export default function wrapSentTime(message: MyMessage) {
   const el: HTMLElement = document.createElement('span');

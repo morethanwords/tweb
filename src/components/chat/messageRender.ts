@@ -4,35 +4,35 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type LazyLoadQueue from '../lazyLoadQueue';
-import {formatFullSentTimeRaw, formatTime} from '../../helpers/date';
-import {getFullDate} from '../../helpers/date/getFullDate';
-import setInnerHTML from '../../helpers/dom/setInnerHTML';
-import {Middleware} from '../../helpers/middleware';
-import formatNumber from '../../helpers/number/formatNumber';
-import {AvailableEffect, Message, MessageReplyHeader} from '../../layer';
-import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
-import {i18n, _i18n} from '../../lib/langPack';
-import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
-import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
-import rootScope from '../../lib/rootScope';
-import Icon from '../icon';
-import PeerTitle from '../peerTitle';
-import wrapReply from '../wrappers/reply';
-import Chat, {ChatType} from './chat';
-import RepliesElement from './replies';
-import ChatBubbles from './bubbles';
-import getFwdFromName from '../../lib/appManagers/utils/messages/getFwdFromName';
-import deferredPromise from '../../helpers/cancellablePromise';
-import wrapSticker from '../wrappers/sticker';
-import cancelEvent from '../../helpers/dom/cancelEvent';
-import getStickerEffectThumb from '../../lib/appManagers/utils/stickers/getStickerEffectThumb';
-import wrapStickerAnimation from '../wrappers/stickerAnimation';
-import Scrollable from '../scrollable';
-import appDownloadManager from '../../lib/appManagers/appDownloadManager';
-import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-import {numberThousandSplitterForStars} from '../../helpers/number/numberThousandSplitter';
-import {makeTime} from './utils';
+import type LazyLoadQueue from '@components/lazyLoadQueue';
+import {formatFullSentTimeRaw, formatTime} from '@helpers/date';
+import {getFullDate} from '@helpers/date/getFullDate';
+import setInnerHTML from '@helpers/dom/setInnerHTML';
+import {Middleware} from '@helpers/middleware';
+import formatNumber from '@helpers/number/formatNumber';
+import {AvailableEffect, Message, MessageReplyHeader} from '@layer';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
+import {i18n, _i18n} from '@lib/langPack';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import rootScope from '@lib/rootScope';
+import Icon from '@components/icon';
+import PeerTitle from '@components/peerTitle';
+import wrapReply from '@components/wrappers/reply';
+import Chat, {ChatType} from '@components/chat/chat';
+import RepliesElement from '@components/chat/replies';
+import ChatBubbles from '@components/chat/bubbles';
+import getFwdFromName from '@appManagers/utils/messages/getFwdFromName';
+import deferredPromise from '@helpers/cancellablePromise';
+import wrapSticker from '@components/wrappers/sticker';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import getStickerEffectThumb from '@appManagers/utils/stickers/getStickerEffectThumb';
+import wrapStickerAnimation from '@components/wrappers/stickerAnimation';
+import Scrollable from '@components/scrollable';
+import appDownloadManager from '@lib/appDownloadManager';
+import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
+import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
+import {makeTime} from '@components/chat/utils';
 
 const NBSP = '&nbsp;';
 

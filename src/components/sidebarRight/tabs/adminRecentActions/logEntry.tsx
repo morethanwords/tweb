@@ -1,8 +1,8 @@
 import {createSignal, JSX, Show} from 'solid-js';
-import {formatDate} from '../../../../helpers/date';
-import {IconTsx} from '../../../iconTsx';
-import {HeightTransition} from './heightTransition';
-import styles from './logEntry.module.scss';
+import {formatDate} from '@helpers/date';
+import {IconTsx} from '@components/iconTsx';
+import {HeightTransition} from '@components/sidebarRight/tabs/adminRecentActions/heightTransition';
+import styles from '@components/sidebarRight/tabs/adminRecentActions/logEntry.module.scss';
 
 
 type LogEntryProps = {

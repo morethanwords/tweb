@@ -5,14 +5,14 @@
  */
 
 import appSidebarRight from '..';
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import rootScope from '../../../lib/rootScope';
-import AppSearch, {SearchGroup} from '../../appSearch';
-import ButtonIcon from '../../buttonIcon';
-import InputSearch from '../../inputSearch';
-import PopupElement from '../../popups';
-import PopupDatePicker from '../../popups/datePicker';
-import {SliderSuperTab} from '../../slider';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import rootScope from '@lib/rootScope';
+import AppSearch, {SearchGroup} from '@components/appSearch';
+import ButtonIcon from '@components/buttonIcon';
+import InputSearch from '@components/inputSearch';
+import PopupElement from '@components/popups';
+import PopupDatePicker from '@components/popups/datePicker';
+import {SliderSuperTab} from '@components/slider';
 
 export default class AppPrivateSearchTab extends SliderSuperTab {
   private inputSearch: InputSearch;

@@ -1,5 +1,5 @@
-import {getFormatter, yTickFormatter} from './utils';
-import {TChartAnimationProperty, TChartState, TChartUnitOptions} from './types';
+import {getFormatter, yTickFormatter} from '@lib/tchart/utils';
+import {TChartAnimationProperty, TChartState, TChartUnitOptions} from '@lib/tchart/types';
 
 export type TChartAxisYItem = {
   animated?: boolean,

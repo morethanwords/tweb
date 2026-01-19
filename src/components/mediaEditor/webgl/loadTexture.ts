@@ -1,7 +1,7 @@
-import deferredPromise from '../../../helpers/cancellablePromise';
-import {Middleware} from '../../../helpers/middleware';
-import createVideoForDrawing from '../canvas/createVideoForDrawing';
-import {MediaType} from '../types';
+import deferredPromise from '@helpers/cancellablePromise';
+import {Middleware} from '@helpers/middleware';
+import createVideoForDrawing from '@components/mediaEditor/canvas/createVideoForDrawing';
+import {MediaType} from '@components/mediaEditor/types';
 
 
 type LoadTextureArgs = {

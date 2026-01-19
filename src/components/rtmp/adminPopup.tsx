@@ -1,14 +1,14 @@
 import {render} from 'solid-js/web';
-import PopupElement from '../popups';
+import PopupElement from '@components/popups';
 
-import './adminPopup.css';
+import '@components/rtmp/adminPopup.css';
 import {Show, createRoot, createSignal} from 'solid-js';
-import {toastNew} from '../toast';
-import ButtonMenuToggle from '../buttonMenuToggle';
-import {Ripple} from '../rippleTsx';
-import {RtmpData} from './rtmpData';
-import {i18n} from '../../lib/langPack';
-import appImManager from '../../lib/appManagers/appImManager';
+import {toastNew} from '@components/toast';
+import ButtonMenuToggle from '@components/buttonMenuToggle';
+import {Ripple} from '@components/rippleTsx';
+import {RtmpData} from '@components/rtmp/rtmpData';
+import {i18n} from '@lib/langPack';
+import appImManager from '@lib/appImManager';
 
 const cnPopup = (className = '') => `rtmp-popup${className}`;
 

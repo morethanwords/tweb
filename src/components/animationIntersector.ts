@@ -4,17 +4,17 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {LiteModeKey} from '../helpers/liteMode';
-import type RLottiePlayer from '../lib/rlottie/rlottiePlayer';
-import rootScope from '../lib/rootScope';
-import {MOUNT_CLASS_TO} from '../config/debug';
-import isInDOM from '../helpers/dom/isInDOM';
-import indexOfAndSplice from '../helpers/array/indexOfAndSplice';
-import forEachReverse from '../helpers/array/forEachReverse';
-import idleController from '../helpers/idleController';
-import {fastRaf} from '../helpers/schedulers';
-import {Middleware} from '../helpers/middleware';
-import safePlay from '../helpers/dom/safePlay';
+import type {LiteModeKey} from '@helpers/liteMode';
+import type RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import rootScope from '@lib/rootScope';
+import {MOUNT_CLASS_TO} from '@config/debug';
+import isInDOM from '@helpers/dom/isInDOM';
+import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
+import forEachReverse from '@helpers/array/forEachReverse';
+import idleController from '@helpers/idleController';
+import {fastRaf} from '@helpers/schedulers';
+import {Middleware} from '@helpers/middleware';
+import safePlay from '@helpers/dom/safePlay';
 
 export type AnimationItemGroup = '' | 'none' | 'chat' | 'lock' |
   'STICKERS-POPUP' | 'emoticons-dropdown' | 'STICKERS-SEARCH' | 'GIFS-SEARCH' |

@@ -4,25 +4,25 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type lang from '../lang';
-import type langSign from '../langSign';
-import type {State} from '../config/state';
-import {MOUNT_CLASS_TO} from '../config/debug';
-import {HelpCountry, LangPackDifference, LangPackString} from '../layer';
-import App from '../config/app';
-import rootScope from './rootScope';
-import {IS_MOBILE} from '../environment/userAgent';
-import deepEqual from '../helpers/object/deepEqual';
-import safeAssign from '../helpers/object/safeAssign';
-import capitalizeFirstLetter from '../helpers/string/capitalizeFirstLetter';
-import matchUrlProtocol from './richTextProcessor/matchUrlProtocol';
-import wrapUrl from './richTextProcessor/wrapUrl';
-import {setDirection} from '../helpers/dom/setInnerHTML';
-import setBlankToAnchor from './richTextProcessor/setBlankToAnchor';
+import type lang from '@/lang';
+import type langSign from '@/langSign';
+import type {State} from '@config/state';
+import {MOUNT_CLASS_TO} from '@config/debug';
+import {HelpCountry, LangPackDifference, LangPackString} from '@layer';
+import App from '@config/app';
+import rootScope from '@lib/rootScope';
+import {IS_MOBILE} from '@environment/userAgent';
+import deepEqual from '@helpers/object/deepEqual';
+import safeAssign from '@helpers/object/safeAssign';
+import capitalizeFirstLetter from '@helpers/string/capitalizeFirstLetter';
+import matchUrlProtocol from '@lib/richTextProcessor/matchUrlProtocol';
+import wrapUrl from '@lib/richTextProcessor/wrapUrl';
+import {setDirection} from '@helpers/dom/setInnerHTML';
+import setBlankToAnchor from '@lib/richTextProcessor/setBlankToAnchor';
 import {createSignal} from 'solid-js';
-import commonStateStorage from './commonStateStorage';
-import Icon from '../components/icon';
-import currencyStarIcon from '../components/currencyStarIcon';
+import commonStateStorage from '@lib/commonStateStorage';
+import Icon from '@components/icon';
+import currencyStarIcon from '@components/currencyStarIcon';
 
 export const langPack: {[actionType: string]: LangPackKey} = {
   'messageActionChatCreate': 'ActionCreateGroup',

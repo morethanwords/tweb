@@ -4,18 +4,18 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {attachClickEvent} from '../../../../helpers/dom/clickEvent';
-import {AccountPassword} from '../../../../layer';
-import {_i18n} from '../../../../lib/langPack';
-import Button from '../../../button';
-import PopupElement from '../../../popups';
-import PopupPeer from '../../../popups/peer';
-import SettingSection from '../../../settingSection';
-import {SliderSuperTab} from '../../../slider';
-import wrapStickerEmoji from '../../../wrappers/stickerEmoji';
-import AppSettingsTab from '../settings';
-import AppTwoStepVerificationEmailTab from './email';
-import AppTwoStepVerificationEnterPasswordTab from './enterPassword';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import {AccountPassword} from '@layer';
+import {_i18n} from '@lib/langPack';
+import Button from '@components/button';
+import PopupElement from '@components/popups';
+import PopupPeer from '@components/popups/peer';
+import SettingSection from '@components/settingSection';
+import {SliderSuperTab} from '@components/slider';
+import wrapStickerEmoji from '@components/wrappers/stickerEmoji';
+import AppSettingsTab from '@components/sidebarLeft/tabs/settings';
+import AppTwoStepVerificationEmailTab from '@components/sidebarLeft/tabs/2fa/email';
+import AppTwoStepVerificationEnterPasswordTab from '@components/sidebarLeft/tabs/2fa/enterPassword';
 
 export default class AppTwoStepVerificationTab extends SliderSuperTab {
   public state: AccountPassword;

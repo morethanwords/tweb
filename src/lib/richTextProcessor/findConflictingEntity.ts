@@ -5,8 +5,8 @@
  */
 
 import {PASS_CONFLICTING_ENTITIES, PASS_SINGLE_CONFLICTING_ENTITIES} from '.';
-import {MessageEntity} from '../../layer';
-import isEntityIntersecting from './isEntityIntersecting';
+import {MessageEntity} from '@layer';
+import isEntityIntersecting from '@lib/richTextProcessor/isEntityIntersecting';
 
 export const SINGLE_ENTITIES: Set<MessageEntity['_']> = new Set(['messageEntityPre', 'messageEntityCode']);
 

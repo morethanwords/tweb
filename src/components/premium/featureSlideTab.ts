@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import ButtonIcon from '../buttonIcon';
-import FeaturesCarousel from './featuresCarousel';
-import {PopupPremiumProps} from '../popups/premium';
-import TransitionSlider from '../transition';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
+import ButtonIcon from '@components/buttonIcon';
+import FeaturesCarousel from '@components/premium/featuresCarousel';
+import {PopupPremiumProps} from '@components/popups/premium';
+import TransitionSlider from '@components/transition';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
 
 type FeatureSlideTabOptions = PopupPremiumProps & {
   header: HTMLElement,

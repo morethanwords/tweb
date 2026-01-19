@@ -9,11 +9,11 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import isObject from '../../helpers/object/isObject';
-import safeReplaceArrayInObject from '../../helpers/object/safeReplaceArrayInObject';
-import {Photo, PhotoSize, PhotosPhotos} from '../../layer';
-import {ReferenceContext} from '../mtproto/referenceDatabase';
-import {AppManager} from './manager';
+import isObject from '@helpers/object/isObject';
+import safeReplaceArrayInObject from '@helpers/object/safeReplaceArrayInObject';
+import {Photo, PhotoSize, PhotosPhotos} from '@layer';
+import {ReferenceContext} from '@lib/storages/references';
+import {AppManager} from '@appManagers/manager';
 
 export type MyPhoto = Photo.photo;
 
@@ -41,7 +41,7 @@ export class AppPhotosManager extends AppManager {
     const oldPhoto = this.photos[photo.id];
     if(photo.file_reference) { // * because we can have a new object w/o the file_reference while sending
       safeReplaceArrayInObject('file_reference', oldPhoto, photo);
-      this.referenceDatabase.saveContext(photo.file_reference, context);
+      this.referencesStorage.saveContext(photo.file_reference, context);
     }
 
     if(photo.sizes?.length) {

@@ -6,12 +6,12 @@
 
 // * Jolly Cobra's useHeavyAnimationCheck.ts, patched
 
-import {AnyToVoidFunction} from '../types';
-import ListenerSetter from '../helpers/listenerSetter';
-import deferredPromise, {CancellablePromise} from '../helpers/cancellablePromise';
-import DEBUG from '../config/debug';
-import pause from '../helpers/schedulers/pause';
-import EventListenerBase from '../helpers/eventListenerBase';
+import {AnyToVoidFunction} from '@types';
+import ListenerSetter from '@helpers/listenerSetter';
+import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
+import DEBUG from '@config/debug';
+import pause from '@helpers/schedulers/pause';
+import EventListenerBase from '@helpers/eventListenerBase';
 
 const eventListener = new EventListenerBase<{
   start: () => void,

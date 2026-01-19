@@ -375,8 +375,14 @@ $btn-menu-z-index: 4;
         width: inherit;
         height: inherit;
       }
+    }
 
-      
+    &.with-subtitle {
+      height: 44px;
+    }
+
+    &.with-subtitle &-icon {
+      margin-top: .5rem;
     }
 
     &-input {

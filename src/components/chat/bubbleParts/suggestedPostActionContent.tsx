@@ -1,15 +1,15 @@
 import {Match, onCleanup, Show, Switch} from 'solid-js';
-import {formatFullSentTime} from '../../../helpers/date';
-import {numberThousandSplitterForStars} from '../../../helpers/number/numberThousandSplitter';
-import {I18nTsx} from '../../../helpers/solid/i18n';
-import {Message, MessageAction} from '../../../layer';
-import getPeerId from '../../../lib/appManagers/utils/peers/getPeerId';
-import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
-import rootScope from '../../../lib/rootScope';
-import defineSolidElement, {PassedProps} from '../../../lib/solidjs/defineSolidElement';
-import {PeerTitleTsx} from '../../peerTitleTsx';
-import styles from './suggestedPostActionContent.module.scss';
-import {SUGGESTED_POST_WAIT_FOR_REWARD_HOURS} from '../../../lib/mtproto/mtproto_config';
+import {formatFullSentTime} from '@helpers/date';
+import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
+import {I18nTsx} from '@helpers/solid/i18n';
+import {Message, MessageAction} from '@layer';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import rootScope from '@lib/rootScope';
+import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
+import {PeerTitleTsx} from '@components/peerTitleTsx';
+import styles from '@components/chat/bubbleParts/suggestedPostActionContent.module.scss';
+import {SUGGESTED_POST_WAIT_FOR_REWARD_HOURS} from '@appManagers/constants';
 
 if(import.meta.hot) import.meta.hot.accept();
 

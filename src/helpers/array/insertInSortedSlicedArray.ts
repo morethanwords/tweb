@@ -1,5 +1,5 @@
-import lastItem from './lastItem';
-import {mergeSortedArrays} from './mergeSortedArrays';
+import lastItem from '@helpers/array/lastItem';
+import {mergeSortedArrays} from '@helpers/array/mergeSortedArrays';
 
 
 export function insertInSortedSlicedArray<T>(slice: T[], slices: T[][], compare: (a: T, b: T) => number) {

@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {CancellablePromise} from '../helpers/cancellablePromise';
-import type {InputFile} from '../layer';
-import {attachClickEvent} from '../helpers/dom/clickEvent';
-import PopupElement from './popups';
-import PopupAvatar from './popups/avatar';
-import Icon from './icon';
+import type {CancellablePromise} from '@helpers/cancellablePromise';
+import type {InputFile} from '@layer';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import PopupElement from '@components/popups';
+import PopupAvatar from '@components/popups/avatar';
+import Icon from '@components/icon';
 
 export default class AvatarEdit {
   public container: HTMLElement;

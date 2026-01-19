@@ -5,9 +5,9 @@
  */
 
 import {JSX, ParentComponent, Ref, splitProps} from 'solid-js';
-import {LangPackKey, FormatterArguments, i18n} from '../lib/langPack';
-import {generateDelimiter} from './generateDelimiter';
-import classNames from '../helpers/string/classNames';
+import {LangPackKey, FormatterArguments, i18n} from '@lib/langPack';
+import {generateDelimiter} from '@components/generateDelimiter';
+import classNames from '@helpers/string/classNames';
 
 export type SectionOptions = {
   name?: LangPackKey | HTMLElement | DocumentFragment | JSX.Element,

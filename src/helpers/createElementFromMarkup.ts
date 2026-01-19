@@ -1,4 +1,4 @@
-import {MOUNT_CLASS_TO} from '../config/debug';
+import {MOUNT_CLASS_TO} from '@config/debug';
 
 export default function createElementFromMarkup<T = Element>(markup: string) {
   const div = document.createElement('div');

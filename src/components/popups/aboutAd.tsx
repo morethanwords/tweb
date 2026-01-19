@@ -6,10 +6,10 @@
 
 import PopupElement from '.';
 import {render} from 'solid-js/web';
-import Row from '../rowTsx';
-import {i18n} from '../../lib/langPack';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import {IconTsx} from '../iconTsx';
+import Row from '@components/rowTsx';
+import {i18n} from '@lib/langPack';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import {IconTsx} from '@components/iconTsx';
 
 export default class PopupAboutAd extends PopupElement {
   constructor() {

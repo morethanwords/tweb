@@ -1,8 +1,8 @@
-import bytesFromHex from '../helpers/bytes/bytesFromHex';
-import bytesToHex from '../helpers/bytes/bytesToHex';
-import type {RSAPublicKeyHex} from '../lib/mtproto/rsaKeysManager';
+import bytesFromHex from '@helpers/bytes/bytesFromHex';
+import bytesToHex from '@helpers/bytes/bytesToHex';
+import type {RSAPublicKeyHex} from '@lib/mtproto/rsaKeysManager';
 import '../lib/crypto/crypto.worker';
-import cryptoWorker from '../lib/crypto/cryptoMessagePort';
+import cryptoWorker from '@lib/crypto/cryptoMessagePort';
 
 test('factorize', async() => {
   const data: {good?: [Uint8Array, Uint8Array], pq: Uint8Array}[] = [{

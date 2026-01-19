@@ -1,21 +1,21 @@
 
-import PopupElement, {createPopup} from './indexTsx';
-import {StarsRating, User, UserFull} from '../../layer';
-import {i18n} from '../../lib/langPack';
+import PopupElement, {createPopup} from '@components/popups/indexTsx';
+import {StarsRating, User, UserFull} from '@layer';
+import {i18n} from '@lib/langPack';
 import bigInt from 'big-integer';
-import {LimitLineTsx} from '../limitLineTsx';
-import {I18nTsx} from '../../helpers/solid/i18n';
-import Row from '../rowTsx';
-import classNames from '../../helpers/string/classNames';
-import styles from './starsRating.module.scss';
+import {LimitLineTsx} from '@components/limitLineTsx';
+import {I18nTsx} from '@helpers/solid/i18n';
+import Row from '@components/rowTsx';
+import classNames from '@helpers/string/classNames';
+import styles from '@components/popups/starsRating.module.scss';
 import {createMemo, createSignal, Show, Switch} from 'solid-js';
-import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
-import rootScope from '../../lib/rootScope';
-import formatDuration from '../../helpers/formatDuration';
-import {wrapFormattedDuration} from '../wrappers/wrapDuration';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import rootScope from '@lib/rootScope';
+import formatDuration from '@helpers/formatDuration';
+import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
 import {Transition} from 'solid-transition-group';
-import {IconTsx} from '../iconTsx';
-import formatNumber from '../../helpers/number/formatNumber';
+import {IconTsx} from '@components/iconTsx';
+import formatNumber from '@helpers/number/formatNumber';
 
 function Badge(props: {
   active: boolean

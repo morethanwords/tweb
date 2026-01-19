@@ -1,6 +1,6 @@
 import {createEffect, createMemo, createRoot} from 'solid-js';
-import {useAppConfig, useAppState} from './appState';
-import {ignoreRestrictionReasons} from '../helpers/restrictions';
+import {useAppConfig, useAppState} from '@stores/appState';
+import {ignoreRestrictionReasons} from '@helpers/restrictions';
 
 export default function useContentSettings() {
   const appConfig = useAppConfig();

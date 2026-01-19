@@ -4,15 +4,15 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {IS_FIREFOX} from '../../environment/userAgent';
-import {logger} from '../../lib/logger';
-import {isCustomFillerNeededBySiblingNode} from '../../lib/richTextProcessor/wrapRichText';
-import ListenerSetter from '../listenerSetter';
-import BOM from '../string/bom';
-import compareNodes from './compareNodes';
-import getCaretPosNew from './getCaretPosNew';
-import placeCaretAtEnd from './placeCaretAtEnd';
-import whichChild from './whichChild';
+import {IS_FIREFOX} from '@environment/userAgent';
+import {logger} from '@lib/logger';
+import {isCustomFillerNeededBySiblingNode} from '@lib/richTextProcessor/wrapRichText';
+import ListenerSetter from '@helpers/listenerSetter';
+import BOM from '@helpers/string/bom';
+import compareNodes from '@helpers/dom/compareNodes';
+import getCaretPosNew from '@helpers/dom/getCaretPosNew';
+import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
+import whichChild from '@helpers/dom/whichChild';
 
 const NOT_ONLY_BOMS_REG_EXP = new RegExp(`[^${BOM}]`);
 

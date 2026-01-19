@@ -5,16 +5,16 @@
  */
 
 import PopupElement from '.';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
-import {PremiumGiftCodeOption} from '../../layer';
-import I18n, {i18n, _i18n} from '../../lib/langPack';
-import {avatarNew} from '../avatarNew';
-import Button from '../button';
-import CheckboxField from '../checkboxField';
-import Row from '../row';
-import wrapPeerTitle from '../wrappers/peerTitle';
-import PopupPayment from './payment';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import paymentsWrapCurrencyAmount from '@helpers/paymentsWrapCurrencyAmount';
+import {PremiumGiftCodeOption} from '@layer';
+import I18n, {i18n, _i18n} from '@lib/langPack';
+import {avatarNew} from '@components/avatarNew';
+import Button from '@components/button';
+import CheckboxField from '@components/checkboxField';
+import Row from '@components/row';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
+import PopupPayment from '@components/popups/payment';
 
 const className = 'popup-gift-premium';
 

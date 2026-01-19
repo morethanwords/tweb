@@ -4,24 +4,24 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {AccountPassword} from '../../../../layer';
-import Button from '../../../button';
-import {SliderSuperTab} from '../../../slider';
-import AppTwoStepVerificationSetTab from './passwordSet';
-import CodeInputFieldCompat from '../../../codeInputField';
-import AppTwoStepVerificationEmailTab from './email';
-import {putPreloader} from '../../../putPreloader';
-import {i18n, _i18n, FormatterArgument} from '../../../../lib/langPack';
-import {canFocus} from '../../../../helpers/dom/canFocus';
-import {attachClickEvent} from '../../../../helpers/dom/clickEvent';
-import replaceContent from '../../../../helpers/dom/replaceContent';
-import toggleDisability from '../../../../helpers/dom/toggleDisability';
-import wrapStickerEmoji from '../../../wrappers/stickerEmoji';
-import SettingSection from '../../../settingSection';
-import lottieLoader from '../../../../lib/rlottie/lottieLoader';
-import AppSettingsTab from '../settings';
-import {toastNew} from '../../../toast';
-import {ForgotPasswordLink} from './enterPassword';
+import {AccountPassword} from '@layer';
+import Button from '@components/button';
+import {SliderSuperTab} from '@components/slider';
+import AppTwoStepVerificationSetTab from '@components/sidebarLeft/tabs/2fa/passwordSet';
+import CodeInputFieldCompat from '@components/codeInputField';
+import AppTwoStepVerificationEmailTab from '@components/sidebarLeft/tabs/2fa/email';
+import {putPreloader} from '@components/putPreloader';
+import {i18n, _i18n, FormatterArgument} from '@lib/langPack';
+import {canFocus} from '@helpers/dom/canFocus';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import replaceContent from '@helpers/dom/replaceContent';
+import toggleDisability from '@helpers/dom/toggleDisability';
+import wrapStickerEmoji from '@components/wrappers/stickerEmoji';
+import SettingSection from '@components/settingSection';
+import lottieLoader from '@lib/rlottie/lottieLoader';
+import AppSettingsTab from '@components/sidebarLeft/tabs/settings';
+import {toastNew} from '@components/toast';
+import {ForgotPasswordLink} from '@components/sidebarLeft/tabs/2fa/enterPassword';
 
 
 type ConstructorArgs = {

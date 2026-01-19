@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {MyMessage} from '../../lib/appManagers/appMessagesManager';
-import getMessageSenderPeerIdOrName from '../../lib/appManagers/utils/messages/getMessageSenderPeerIdOrName';
-import {i18n} from '../../lib/langPack';
-import rootScope from '../../lib/rootScope';
-import wrapPeerTitle from './peerTitle';
+import {MyMessage} from '@appManagers/appMessagesManager';
+import getMessageSenderPeerIdOrName from '@appManagers/utils/messages/getMessageSenderPeerIdOrName';
+import {i18n} from '@lib/langPack';
+import rootScope from '@lib/rootScope';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
 
 export default async function wrapSenderToPeer(message: MyMessage) {
   const senderTitle: HTMLElement = document.createElement('span');

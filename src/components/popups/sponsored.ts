@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import safeWindowOpen from '../../helpers/dom/safeWindowOpen';
-import I18n, {i18n} from '../../lib/langPack';
-import PopupPeer from './peer';
+import safeWindowOpen from '@helpers/dom/safeWindowOpen';
+import I18n, {i18n} from '@lib/langPack';
+import PopupPeer from '@components/popups/peer';
 
 export default class PopupSponsored extends PopupPeer {
   constructor() {

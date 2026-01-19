@@ -1,16 +1,16 @@
 import {createSignal, Match, Switch} from 'solid-js';
-import {numberThousandSplitterForStars} from '../../../../helpers/number/numberThousandSplitter';
-import {I18nTsx} from '../../../../helpers/solid/i18n';
-import {Message} from '../../../../layer';
-import {SUGGESTED_POST_WAIT_FOR_REWARD_HOURS} from '../../../../lib/mtproto/mtproto_config';
-import rootScope from '../../../../lib/rootScope';
-import defineSolidElement, {PassedProps} from '../../../../lib/solidjs/defineSolidElement';
-import {PeerTitleTsx} from '../../../peerTitleTsx';
-import ripple from '../../../ripple';
-import Space from '../../../space';
-import PublishTimeField from '../../suggestPostPopup/publishTimeField';
-import styles from './styles.module.scss';
-import {useFormattedCommission} from './useFormattedCommission';
+import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
+import {I18nTsx} from '@helpers/solid/i18n';
+import {Message} from '@layer';
+import {SUGGESTED_POST_WAIT_FOR_REWARD_HOURS} from '@appManagers/constants';
+import rootScope from '@lib/rootScope';
+import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
+import {PeerTitleTsx} from '@components/peerTitleTsx';
+import ripple from '@components/ripple';
+import Space from '@components/space';
+import PublishTimeField from '@components/chat/suggestPostPopup/publishTimeField';
+import styles from '@components/chat/bubbleParts/suggestedPostAcceptWithTimePopup/styles.module.scss';
+import {useFormattedCommission} from '@components/chat/bubbleParts/suggestedPostAcceptWithTimePopup/useFormattedCommission';
 ripple; // keep
 
 if(import.meta.hot) import.meta.hot.accept();

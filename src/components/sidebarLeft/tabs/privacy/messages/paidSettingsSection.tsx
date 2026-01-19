@@ -1,13 +1,13 @@
 import {Component, Show} from 'solid-js';
 import {SetStoreFunction} from 'solid-js/store';
 import {Transition} from 'solid-transition-group';
-import {useHotReloadGuard} from '../../../../../lib/solidjs/hotReloadGuard';
-import Section from '../../../../section';
-import {useSuperTab} from '../../../../solidJsTabs/superTabProvider';
-import {MessagesTabStateStore, TRANSITION_TIME} from './config';
-import StarRangeInput from './starsRangeInput';
-import useStarsCommissionAndWithdrawalPrice from './useStarsCommissionAndWithdrawalPrice';
-import {ChosenPeersByType} from './useStateStore';
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import Section from '@components/section';
+import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
+import {MessagesTabStateStore, TRANSITION_TIME} from '@components/sidebarLeft/tabs/privacy/messages/config';
+import StarRangeInput from '@components/sidebarLeft/tabs/privacy/messages/starsRangeInput';
+import useStarsCommissionAndWithdrawalPrice from '@components/sidebarLeft/tabs/privacy/messages/useStarsCommissionAndWithdrawalPrice';
+import {ChosenPeersByType} from '@components/sidebarLeft/tabs/privacy/messages/useStateStore';
 
 
 const PaidSettingsSection: Component<{

@@ -4,30 +4,30 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {formatFullSentTime} from '../../../helpers/date';
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import findUpAsChild from '../../../helpers/dom/findUpAsChild';
-import placeCaretAtEnd from '../../../helpers/dom/placeCaretAtEnd';
-import formatDuration from '../../../helpers/formatDuration';
-import {Middleware} from '../../../helpers/middleware';
-import clamp from '../../../helpers/number/clamp';
-import safeAssign from '../../../helpers/object/safeAssign';
-import tsNow from '../../../helpers/tsNow';
-import {ExportedChatInvite} from '../../../layer';
-import {i18n} from '../../../lib/langPack';
-import ButtonCorner from '../../buttonCorner';
-import CheckboxField from '../../checkboxField';
-import InputField from '../../inputField';
-import {InputStarsField} from '../../popups/makePaid';
-import {InputRightNumber} from '../../popups/payment';
-import PopupSchedule from '../../popups/schedule';
-import {setButtonLoader} from '../../putPreloader';
-import RangeSelector from '../../rangeSelector';
-import RangeStepsSelector from '../../rangeStepsSelector';
-import Row from '../../row';
-import SettingSection from '../../settingSection';
-import SliderSuperTab, {SliderSuperTabEventable} from '../../sliderTab';
-import {wrapFormattedDuration} from '../../wrappers/wrapDuration';
+import {formatFullSentTime} from '@helpers/date';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import findUpAsChild from '@helpers/dom/findUpAsChild';
+import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
+import formatDuration from '@helpers/formatDuration';
+import {Middleware} from '@helpers/middleware';
+import clamp from '@helpers/number/clamp';
+import safeAssign from '@helpers/object/safeAssign';
+import tsNow from '@helpers/tsNow';
+import {ExportedChatInvite} from '@layer';
+import {i18n} from '@lib/langPack';
+import ButtonCorner from '@components/buttonCorner';
+import CheckboxField from '@components/checkboxField';
+import InputField from '@components/inputField';
+import {InputStarsField} from '@components/popups/makePaid';
+import {InputRightNumber} from '@components/popups/payment';
+import PopupSchedule from '@components/popups/schedule';
+import {setButtonLoader} from '@components/putPreloader';
+import RangeSelector from '@components/rangeSelector';
+import RangeStepsSelector from '@components/rangeStepsSelector';
+import Row from '@components/row';
+import SettingSection from '@components/settingSection';
+import SliderSuperTab, {SliderSuperTabEventable} from '@components/sliderTab';
+import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
 
 type ChatInvite = ExportedChatInvite.chatInviteExported;
 

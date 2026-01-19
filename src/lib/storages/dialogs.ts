@@ -9,41 +9,41 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type {Chat, ForumTopic as MTForumTopic, DialogPeer, Message, MessagesForumTopics, MessagesPeerDialogs, Update, Peer, MessagesMessages, MessagesSavedDialogs} from '../../layer';
-import type {AppMessagesManager, Dialog, ForumTopic, MyMessage, SavedDialog} from '../appManagers/appMessagesManager';
-import type {AccountDatabase} from '../../config/databases/state';
-import tsNow from '../../helpers/tsNow';
-import SearchIndex from '../searchIndex';
-import {SliceEnd} from '../../helpers/slicedArray';
-import {MyDialogFilter} from './filters';
-import {CAN_HIDE_TOPIC, FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, NULL_PEER_ID, REAL_FOLDERS, REAL_FOLDER_ID, TEST_NO_SAVED} from '../mtproto/mtproto_config';
-import {MaybePromise, Modify, NoneToVoidFunction} from '../../types';
-import ctx from '../../environment/ctx';
-import AppStorage from '../storage';
-import forEachReverse from '../../helpers/array/forEachReverse';
-import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-import insertInDescendSortedArray from '../../helpers/array/insertInDescendSortedArray';
-import safeReplaceObject from '../../helpers/object/safeReplaceObject';
-import getServerMessageId from '../appManagers/utils/messageId/getServerMessageId';
-import {AppManager} from '../appManagers/manager';
-import getDialogIndexKey from '../appManagers/utils/dialogs/getDialogIndexKey';
-import isObject from '../../helpers/object/isObject';
-import getDialogIndex from '../appManagers/utils/dialogs/getDialogIndex';
-import getPeerIdsFromMessage from '../appManagers/utils/messages/getPeerIdsFromMessage';
-import {AppStoragesManager} from '../appManagers/appStoragesManager';
-import defineNotNumerableProperties from '../../helpers/object/defineNotNumerableProperties';
-import setDialogIndex from '../appManagers/utils/dialogs/setDialogIndex';
-import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
-import pause from '../../helpers/schedulers/pause';
-import {BroadcastEvents} from '../rootScope';
-import assumeType from '../../helpers/assumeType';
-import makeError from '../../helpers/makeError';
-import callbackify from '../../helpers/callbackify';
-import getPeerId from '../appManagers/utils/peers/getPeerId';
-import {isDialog, isSavedDialog, isForumTopic} from '../appManagers/utils/dialogs/isDialog';
-import getDialogKey from '../appManagers/utils/dialogs/getDialogKey';
-import getDialogThreadId from '../appManagers/utils/dialogs/getDialogThreadId';
-import {isTempId} from '../appManagers/utils/messages/isTempId';
+import type {Chat, ForumTopic as MTForumTopic, DialogPeer, Message, MessagesForumTopics, MessagesPeerDialogs, Update, Peer, MessagesMessages, MessagesSavedDialogs} from '@layer';
+import type {AppMessagesManager, Dialog, ForumTopic, MyMessage, SavedDialog} from '@appManagers/appMessagesManager';
+import type {AccountDatabase} from '@config/databases/state';
+import tsNow from '@helpers/tsNow';
+import SearchIndex from '@lib/searchIndex';
+import {SliceEnd} from '@helpers/slicedArray';
+import {MyDialogFilter} from '@lib/storages/filters';
+import {CAN_HIDE_TOPIC, FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, NULL_PEER_ID, REAL_FOLDERS, REAL_FOLDER_ID, TEST_NO_SAVED} from '@appManagers/constants';
+import {MaybePromise, Modify, NoneToVoidFunction} from '@types';
+import ctx from '@environment/ctx';
+import AppStorage from '@lib/storage';
+import forEachReverse from '@helpers/array/forEachReverse';
+import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
+import insertInDescendSortedArray from '@helpers/array/insertInDescendSortedArray';
+import safeReplaceObject from '@helpers/object/safeReplaceObject';
+import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
+import {AppManager} from '@appManagers/manager';
+import getDialogIndexKey from '@appManagers/utils/dialogs/getDialogIndexKey';
+import isObject from '@helpers/object/isObject';
+import getDialogIndex from '@appManagers/utils/dialogs/getDialogIndex';
+import getPeerIdsFromMessage from '@appManagers/utils/messages/getPeerIdsFromMessage';
+import {AppStoragesManager} from '@appManagers/appStoragesManager';
+import defineNotNumerableProperties from '@helpers/object/defineNotNumerableProperties';
+import setDialogIndex from '@appManagers/utils/dialogs/setDialogIndex';
+import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
+import pause from '@helpers/schedulers/pause';
+import {BroadcastEvents} from '@lib/rootScope';
+import assumeType from '@helpers/assumeType';
+import makeError from '@helpers/makeError';
+import callbackify from '@helpers/callbackify';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
+import {isDialog, isSavedDialog, isForumTopic} from '@appManagers/utils/dialogs/isDialog';
+import getDialogKey from '@appManagers/utils/dialogs/getDialogKey';
+import getDialogThreadId from '@appManagers/utils/dialogs/getDialogThreadId';
+import {isTempId} from '@appManagers/utils/messages/isTempId';
 
 export enum FilterType {
   Folder,

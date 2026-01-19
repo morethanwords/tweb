@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import placeCaretAtEnd from '../helpers/dom/placeCaretAtEnd';
-import {formatPhoneNumber} from '../helpers/formatPhoneNumber';
-import {IS_APPLE, IS_ANDROID, IS_APPLE_MOBILE} from '../environment/userAgent';
-import {HelpCountry, HelpCountryCode} from '../layer';
-import InputField, {InputFieldOptions} from './inputField';
+import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
+import {formatPhoneNumber} from '@helpers/formatPhoneNumber';
+import {IS_APPLE, IS_ANDROID, IS_APPLE_MOBILE} from '@environment/userAgent';
+import {HelpCountry, HelpCountryCode} from '@layer';
+import InputField, {InputFieldOptions} from '@components/inputField';
 
 export default class TelInputField extends InputField {
   private pasted = false;

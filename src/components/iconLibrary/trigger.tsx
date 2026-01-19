@@ -1,6 +1,6 @@
 import {render} from 'solid-js/web';
 
-import IconLibrary from './iconLibrary';
+import IconLibrary from '@components/iconLibrary/iconLibrary';
 
 export function showIconLibrary() {
   const div = document.createElement('div');

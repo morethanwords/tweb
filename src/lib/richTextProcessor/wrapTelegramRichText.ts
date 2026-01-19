@@ -1,5 +1,5 @@
-import {RichText, TextWithEntities, MessageEntity} from '../../layer';
-import wrapTextWithEntities from './wrapTextWithEntities';
+import {RichText, TextWithEntities, MessageEntity} from '@layer';
+import wrapTextWithEntities from '@lib/richTextProcessor/wrapTextWithEntities';
 
 type Options = {
   webPageId: Long,

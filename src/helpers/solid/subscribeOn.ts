@@ -1,5 +1,5 @@
 import {onCleanup} from 'solid-js';
-import {ListenerElement} from '../listenerSetter';
+import {ListenerElement} from '@helpers/listenerSetter';
 
 export function subscribeOn<T extends ListenerElement>(obj: T): T['addEventListener'] {
   return ((event: string, callback: Function, options: any) => {

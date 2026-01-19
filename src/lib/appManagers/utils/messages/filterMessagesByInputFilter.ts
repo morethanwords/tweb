@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {MyDocument} from '../../appDocsManager';
-import type {MyInputMessagesFilter, MyMessage} from '../../appMessagesManager';
-import {Message, MessageMedia, MessageEntity, MessageAction, Reaction} from '../../../../layer';
-import matchUrl from '../../../richTextProcessor/matchUrl';
-import reactionsEqual from '../reactions/reactionsEqual';
+import type {MyDocument} from '@appManagers/appDocsManager';
+import type {MyInputMessagesFilter, MyMessage} from '@appManagers/appMessagesManager';
+import {Message, MessageMedia, MessageEntity, MessageAction, Reaction} from '@layer';
+import matchUrl from '@lib/richTextProcessor/matchUrl';
+import reactionsEqual from '@appManagers/utils/reactions/reactionsEqual';
 
 export default function filterMessagesByInputFilter({
   inputFilter,

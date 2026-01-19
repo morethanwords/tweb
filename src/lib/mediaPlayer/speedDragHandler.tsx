@@ -1,14 +1,14 @@
 import {batch, createEffect, createSignal, onCleanup, onMount, Show} from 'solid-js';
 import {render} from 'solid-js/web';
 
-import ListenerSetter from '../../helpers/listenerSetter';
-import appMediaPlaybackController from '../../components/appMediaPlaybackController';
-import {IconTsx} from '../../components/iconTsx';
-import clamp from '../../helpers/number/clamp';
-import {IS_MOBILE} from '../../environment/userAgent';
+import ListenerSetter from '@helpers/listenerSetter';
+import appMediaPlaybackController from '@components/appMediaPlaybackController';
+import {IconTsx} from '@components/iconTsx';
+import clamp from '@helpers/number/clamp';
+import {IS_MOBILE} from '@environment/userAgent';
 
-import {i18n} from '../langPack';
-import classNames from '../../helpers/string/classNames';
+import {i18n} from '@lib/langPack';
+import classNames from '@helpers/string/classNames';
 
 type SpeedDragHandlerProps = {
   video: HTMLVideoElement;

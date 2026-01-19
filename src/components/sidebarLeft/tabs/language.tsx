@@ -5,22 +5,22 @@
  */
 
 import {createMemo, createRoot} from 'solid-js';
-import anchorCallback from '../../../helpers/dom/anchorCallback';
-import {randomLong} from '../../../helpers/random';
-import {LangPackLanguage} from '../../../layer';
-import I18n, {i18n, join} from '../../../lib/langPack';
-import rootScope from '../../../lib/rootScope';
-import usePremium from '../../../stores/premium';
-import {pickLanguage} from '../../chat/translation';
-import CheckboxFieldTsx from '../../checkboxFieldTsx';
-import PopupPremium from '../../popups/premium';
-import RadioField from '../../radioField';
-import Row, {RadioFormFromRows} from '../../row';
-import RowTsx from '../../rowTsx';
-import Section from '../../section';
-import SettingSection from '../../settingSection';
-import {SliderSuperTab} from '../../slider'
-import {useAppSettings} from '../../../stores/appSettings';
+import anchorCallback from '@helpers/dom/anchorCallback';
+import {randomLong} from '@helpers/random';
+import {LangPackLanguage} from '@layer';
+import I18n, {i18n, join} from '@lib/langPack';
+import rootScope from '@lib/rootScope';
+import usePremium from '@stores/premium';
+import {pickLanguage} from '@components/chat/translation';
+import CheckboxFieldTsx from '@components/checkboxFieldTsx';
+import PopupPremium from '@components/popups/premium';
+import RadioField from '@components/radioField';
+import Row, {RadioFormFromRows} from '@components/row';
+import RowTsx from '@components/rowTsx';
+import Section from '@components/section';
+import SettingSection from '@components/settingSection';
+import {SliderSuperTab} from '@components/slider'
+import {useAppSettings} from '@stores/appSettings';
 
 export default class AppLanguageTab extends SliderSuperTab {
   public static getInitArgs() {

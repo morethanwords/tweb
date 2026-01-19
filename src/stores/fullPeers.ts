@@ -1,9 +1,9 @@
 import {createStore, reconcile} from 'solid-js/store';
-import {ChatFull, UserFull} from '../layer';
-import rootScope from '../lib/rootScope';
-import useDynamicCachedValue from '../helpers/solid/useDynamicCachedValue';
+import {ChatFull, UserFull} from '@layer';
+import rootScope from '@lib/rootScope';
+import useDynamicCachedValue from '@helpers/solid/useDynamicCachedValue';
 import {onCleanup} from 'solid-js';
-import {PEER_FULL_TTL} from '../lib/mtproto/mtproto_config';
+import {PEER_FULL_TTL} from '@appManagers/constants';
 
 type PeerFull = ChatFull | UserFull;
 

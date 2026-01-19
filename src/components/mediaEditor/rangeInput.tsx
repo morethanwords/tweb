@@ -1,8 +1,8 @@
 import {createMemo, JSX} from 'solid-js';
 
-import clamp from '../../helpers/number/clamp';
-import {hexaToHsla} from '../../helpers/color';
-import nMap from '../../helpers/number/nMap';
+import clamp from '@helpers/number/clamp';
+import {hexaToHsla} from '@helpers/color';
+import nMap from '@helpers/number/nMap';
 
 export default function RangeInput(props: {
   ref?: (el: HTMLDivElement) => void;

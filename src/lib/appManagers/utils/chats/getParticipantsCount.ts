@@ -1,4 +1,4 @@
-import {ChatFull, ChatParticipants} from '../../../../layer';
+import {ChatFull, ChatParticipants} from '@layer';
 
 export default function getParticipantsCount(chatFull: ChatFull) {
   return (chatFull as ChatFull.channelFull).participants_count ||

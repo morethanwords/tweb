@@ -1,6 +1,6 @@
-import {TextWithEntities} from '../../layer';
-import mergeEntities from './mergeEntities';
-import wrapMessageEntities from './wrapMessageEntities';
+import {TextWithEntities} from '@layer';
+import mergeEntities from '@lib/richTextProcessor/mergeEntities';
+import wrapMessageEntities from '@lib/richTextProcessor/wrapMessageEntities';
 
 export default function wrapTextWithEntities(textWithEntities: TextWithEntities): TextWithEntities {
   const {message, entities, myEntities} = wrapMessageEntities(textWithEntities.text, textWithEntities.entities);

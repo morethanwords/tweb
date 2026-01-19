@@ -1,4 +1,4 @@
-import {ChannelParticipant, Chat} from '../../../../layer';
+import {ChannelParticipant, Chat} from '@layer';
 
 export default function canEditAdmin(chat: Chat, participant: ChannelParticipant, myId: PeerId) {
   const isCreator = participant?._ === 'channelParticipantCreator';

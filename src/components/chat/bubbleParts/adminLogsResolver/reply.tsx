@@ -1,7 +1,7 @@
-import createMiddleware from '../../../../helpers/solid/createMiddleware';
-import {MessageEntity} from '../../../../layer';
-import {useHotReloadGuard} from '../../../../lib/solidjs/hotReloadGuard';
-import type wrapReply from '../../../wrappers/reply';
+import createMiddleware from '@helpers/solid/createMiddleware';
+import {MessageEntity} from '@layer';
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import type wrapReply from '@components/wrappers/reply';
 
 
 export const Reply = (props: {

@@ -4,31 +4,31 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {LangPackKey, i18n} from '../../lib/langPack';
-import Row from '../row';
-import {PREMIUM_FEATURES_COLORS, PremiumPromoFeature} from './featuresConfig';
-import TransitionSlider from '../transition';
-import Icon from '../icon';
-import {PopupPremiumProps} from '../popups/premium';
-import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
-import CheckboxField from '../checkboxField';
-import {PremiumGiftCodeOption, PremiumSubscriptionOption} from '../../layer';
-import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
-import setInnerHTML from '../../helpers/dom/setInnerHTML';
-import {onMediaCaptionClick} from '../appMediaViewer';
-import {formatMonthsDuration} from '../../helpers/date';
-import wrapPeerTitle from '../wrappers/peerTitle';
-import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
-import rootScope from '../../lib/rootScope';
-import {PeerTitleOptions} from '../peerTitle';
-import {InviteLink} from '../sidebarLeft/tabs/sharedFolder';
-import anchorCallback from '../../helpers/dom/anchorCallback';
-import PopupGiftLink from '../popups/giftLink';
-import lastItem from '../../helpers/array/lastItem';
-import maybe2x from '../../helpers/maybe2x';
-import wrapSticker from '../wrappers/sticker';
-import PopupStickers from '../popups/stickers';
-import PopupElement from '../popups';
+import {LangPackKey, i18n} from '@lib/langPack';
+import Row from '@components/row';
+import {PREMIUM_FEATURES_COLORS, PremiumPromoFeature} from '@components/premium/featuresConfig';
+import TransitionSlider from '@components/transition';
+import Icon from '@components/icon';
+import {PopupPremiumProps} from '@components/popups/premium';
+import paymentsWrapCurrencyAmount from '@helpers/paymentsWrapCurrencyAmount';
+import CheckboxField from '@components/checkboxField';
+import {PremiumGiftCodeOption, PremiumSubscriptionOption} from '@layer';
+import wrapRichText from '@lib/richTextProcessor/wrapRichText';
+import setInnerHTML from '@helpers/dom/setInnerHTML';
+import {onMediaCaptionClick} from '@components/appMediaViewer';
+import {formatMonthsDuration} from '@helpers/date';
+import wrapPeerTitle from '@components/wrappers/peerTitle';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
+import rootScope from '@lib/rootScope';
+import {PeerTitleOptions} from '@components/peerTitle';
+import {InviteLink} from '@components/sidebarLeft/tabs/sharedFolder';
+import anchorCallback from '@helpers/dom/anchorCallback';
+import PopupGiftLink from '@components/popups/giftLink';
+import lastItem from '@helpers/array/lastItem';
+import maybe2x from '@helpers/maybe2x';
+import wrapSticker from '@components/wrappers/sticker';
+import PopupStickers from '@components/popups/stickers';
+import PopupElement from '@components/popups';
 
 type PromoSlideTabOptions = PopupPremiumProps & {
   container: HTMLElement,

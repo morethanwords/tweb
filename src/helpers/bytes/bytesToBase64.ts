@@ -1,4 +1,4 @@
-import {MOUNT_CLASS_TO} from '../../config/debug';
+import {MOUNT_CLASS_TO} from '@config/debug';
 
 export default function bytesToBase64(bytes: number[] | Uint8Array) {
   let mod3: number;

@@ -1,4 +1,4 @@
-import {ActiveAccountNumber} from './types';
+import {ActiveAccountNumber} from '@lib/accounts/types';
 
 export function getValidatedAccount(input: string | number) {
   input = parseInt((input || '1') + '');

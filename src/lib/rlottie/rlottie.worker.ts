@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import CAN_USE_TRANSFERABLES from '../../environment/canUseTransferables';
-import IS_IMAGE_BITMAP_SUPPORTED from '../../environment/imageBitmapSupport';
-import readBlobAsText from '../../helpers/blob/readBlobAsText';
-import applyReplacements from './applyReplacements';
+import CAN_USE_TRANSFERABLES from '@environment/canUseTransferables';
+import IS_IMAGE_BITMAP_SUPPORTED from '@environment/imageBitmapSupport';
+import readBlobAsText from '@helpers/blob/readBlobAsText';
+import applyReplacements from '@lib/rlottie/applyReplacements';
 
 // * commented "module["exports"]=Module" because Firefox doesn't support modules in workers
 // @ts-ignore

@@ -1736,7 +1736,7 @@ const lang = {
   'IncreaseLimit': 'Increase Limit',
   'LimitFree': 'Free',
   'LimitPremium': 'Premium',
-  'ActionTTLChanged': 'un1 set messages to auto-delete in %1$s',
+  'ActionTTLChanged': '%s set messages to auto-delete in %s',
   'ActionTTLYouChanged': 'You set messages to auto-delete in %1$s',
   'ActionTTLChannelChanged': 'Messages in this channel will be automatically deleted after %1$s',
   'ActionTTLChannelDisabled': 'Messages in this channel will no longer be automatically deleted',
@@ -2588,7 +2588,7 @@ const lang = {
     'other_value': 'Do you want to transfer a gift for **%1$d stars**?'
   },
   'StarGiftConfirmFreeTransferTitle': 'Confirm Transfer',
-  'StarGiftConfirmFreeTransferText': 'Do you want to transfer ownership of %s to **%s**?',
+  'StarGiftConfirmFreeTransferText': 'Do you want to transfer %s to **%s**?',
   'StarGiftConfirmTransferPopupText': 'Do you want to transfer ownership of %s to **%s** for **%s**?',
   'StarGiftFragmentTransferTitle': 'Manage with Fragment',
   'StarGiftFragmentTransferText': 'You can use Fragment, a third-party service, to transfer **%s** to the TON blockchain. After that, you can manage it as an NFT with any TON wallet application.\n\nYou can also move such NFTs back to your Telegram account via Fragment.',
@@ -4189,7 +4189,9 @@ const lang = {
   'StarGiftOffer.OfferDuration': 'Offer Duration',
   'StarGiftOffer.OfferDurationDescriptionStars': 'Choose how long **%s** has to accept your offer. When it expires, your Stars will be refunded',
   'StarGiftOffer.OfferDurationDescriptionTON': 'Choose how long **%s** has to accept your offer. When it expires, your Stars will be refunded',
-  'StarGiftOffer.CreateOfferSubmit': 'Offer %s'
+  'StarGiftOffer.CreateOfferSubmit': 'Offer %s',
+
+  'AutoDeletesIn': 'auto-deletes in %s'
 };
 
 export default lang;

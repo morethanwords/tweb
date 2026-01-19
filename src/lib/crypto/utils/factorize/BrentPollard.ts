@@ -7,8 +7,8 @@
 // Thanks to https://xn--2-umb.com/09/12/brent-pollard-rho-factorisation/
 
 import bigInt from 'big-integer';
-import {bigIntFromBytes, bigIntToBytes} from '../../../../helpers/bigInt/bigIntConversion';
-import bigIntRandom from '../../../../helpers/bigInt/bigIntRandom';
+import {bigIntFromBytes, bigIntToBytes} from '@helpers/bigInt/bigIntConversion';
+import bigIntRandom from '@helpers/bigInt/bigIntRandom';
 
 // let test = 0;
 function BrentPollardFactor(n: bigInt.BigInteger) {

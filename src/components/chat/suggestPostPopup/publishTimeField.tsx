@@ -1,11 +1,11 @@
-import {formatFullSentTime} from '../../../helpers/date';
-import {I18nTsx} from '../../../helpers/solid/i18n';
-import {LangPackKey} from '../../../lib/langPack';
-import {ButtonIconTsx} from '../../buttonIconTsx';
-import {IconTsx} from '../../iconTsx';
-import SimpleFormField from '../../simpleFormField';
-import styles from './commonStyles.module.scss';
-import PopupSchedulePost from './popupSchedulePost';
+import {formatFullSentTime} from '@helpers/date';
+import {I18nTsx} from '@helpers/solid/i18n';
+import {LangPackKey} from '@lib/langPack';
+import {ButtonIconTsx} from '@components/buttonIconTsx';
+import {IconTsx} from '@components/iconTsx';
+import SimpleFormField from '@components/simpleFormField';
+import styles from '@components/chat/suggestPostPopup/commonStyles.module.scss';
+import PopupSchedulePost from '@components/chat/suggestPostPopup/popupSchedulePost';
 
 
 type Props = {

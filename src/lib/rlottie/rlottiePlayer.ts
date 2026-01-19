@@ -4,20 +4,20 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {AnimationItemGroup, AnimationItemWrapper} from '../../components/animationIntersector';
-import type {Middleware} from '../../helpers/middleware';
-import type {LiteModeKey} from '../../helpers/liteMode';
-import CAN_USE_TRANSFERABLES from '../../environment/canUseTransferables';
-import IS_APPLE_MX from '../../environment/appleMx';
-import {IS_ANDROID, IS_APPLE_MOBILE, IS_APPLE, IS_SAFARI} from '../../environment/userAgent';
-import EventListenerBase from '../../helpers/eventListenerBase';
-import mediaSizes from '../../helpers/mediaSizes';
-import clamp from '../../helpers/number/clamp';
-import QueryableWorker from './queryableWorker';
-import IS_IMAGE_BITMAP_SUPPORTED from '../../environment/imageBitmapSupport';
-import framesCache, {FramesCache, FramesCacheItem} from '../../helpers/framesCache';
-import customProperties from '../../helpers/dom/customProperties';
-import readValue from '../../helpers/solid/readValue';
+import type {AnimationItemGroup, AnimationItemWrapper} from '@components/animationIntersector';
+import type {Middleware} from '@helpers/middleware';
+import type {LiteModeKey} from '@helpers/liteMode';
+import CAN_USE_TRANSFERABLES from '@environment/canUseTransferables';
+import IS_APPLE_MX from '@environment/appleMx';
+import {IS_ANDROID, IS_APPLE_MOBILE, IS_APPLE, IS_SAFARI} from '@environment/userAgent';
+import EventListenerBase from '@helpers/eventListenerBase';
+import mediaSizes from '@helpers/mediaSizes';
+import clamp from '@helpers/number/clamp';
+import QueryableWorker from '@lib/rlottie/queryableWorker';
+import IS_IMAGE_BITMAP_SUPPORTED from '@environment/imageBitmapSupport';
+import framesCache, {FramesCache, FramesCacheItem} from '@helpers/framesCache';
+import customProperties from '@helpers/dom/customProperties';
+import readValue from '@helpers/solid/readValue';
 
 export type RLottieOptions = {
   container: HTMLElement | HTMLElement[],

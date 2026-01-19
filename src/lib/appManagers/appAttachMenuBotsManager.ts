@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {MessageSendingParams} from './appMessagesManager';
-import {AppManager} from './manager';
-import {AttachMenuBots, AttachMenuBot, Update, DataJSON, BotApp} from '../../layer';
-import assumeType from '../../helpers/assumeType';
-import makeError from '../../helpers/makeError';
-import getAttachMenuBotIcon from './utils/attachMenuBots/getAttachMenuBotIcon';
-import {randomLong} from '../../helpers/random';
-import {ReferenceContext} from '../mtproto/referenceDatabase';
+import type {MessageSendingParams} from '@appManagers/appMessagesManager';
+import {AppManager} from '@appManagers/manager';
+import {AttachMenuBots, AttachMenuBot, Update, DataJSON, BotApp} from '@layer';
+import assumeType from '@helpers/assumeType';
+import makeError from '@helpers/makeError';
+import getAttachMenuBotIcon from '@appManagers/utils/attachMenuBots/getAttachMenuBotIcon';
+import {randomLong} from '@helpers/random';
+import {ReferenceContext} from '@lib/storages/references';
 
 const BOTS_SUPPORTED = true;
 

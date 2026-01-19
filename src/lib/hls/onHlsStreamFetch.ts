@@ -1,13 +1,13 @@
-import deferredPromise from '../../helpers/cancellablePromise';
+import deferredPromise from '@helpers/cancellablePromise';
 
-import {getCurrentAccountFromURL} from '../accounts/getCurrentAccountFromURL';
-import {get500ErrorResponse} from '../serviceWorker/errors';
-import {parseRange} from '../serviceWorker/stream';
+import {getCurrentAccountFromURL} from '@lib/accounts/getCurrentAccountFromURL';
+import {get500ErrorResponse} from '@lib/serviceWorker/errors';
+import {parseRange} from '@lib/serviceWorker/stream';
 
-import {fetchAndConcatFileParts} from './fetchAndConcatFileParts';
-import {HlsStreamUrlParams} from './onHlsQualityFileFetch';
-import {swLog} from './common';
-import {splitRangeForGettingFileParts} from './splitRangeForGettingFileParts';
+import {fetchAndConcatFileParts} from '@lib/hls/fetchAndConcatFileParts';
+import {HlsStreamUrlParams} from '@lib/hls/onHlsQualityFileFetch';
+import {swLog} from '@lib/hls/common';
+import {splitRangeForGettingFileParts} from '@lib/hls/splitRangeForGettingFileParts';
 
 const ctx = self as any as ServiceWorkerGlobalScope;
 

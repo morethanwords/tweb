@@ -9,7 +9,7 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import LatinizeMap from '../config/latinizeMap';
+import LatinizeMap from '@config/latinizeMap';
 
 export const badCharsRe = /[`~!@#$%^&*()\-_=+\[\]\\|{}'";:\/?.>,<]+/g;
 const trimRe = /^\s+|\s$/g;

@@ -4,17 +4,17 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import safePlay from '../../helpers/dom/safePlay';
-import EventListenerBase, {EventListenerListeners} from '../../helpers/eventListenerBase';
-import noop from '../../helpers/noop';
-import {logger} from '../logger';
-import getAudioConstraints from './helpers/getAudioConstraints';
-import getScreenConstraints from './helpers/getScreenConstraints';
-import getStreamCached from './helpers/getStreamCached';
-import getVideoConstraints from './helpers/getVideoConstraints';
-import stopTrack from './helpers/stopTrack';
-import LocalConferenceDescription from './localConferenceDescription';
-import StreamManager, {StreamItem} from './streamManager';
+import safePlay from '@helpers/dom/safePlay';
+import EventListenerBase, {EventListenerListeners} from '@helpers/eventListenerBase';
+import noop from '@helpers/noop';
+import {logger} from '@lib/logger';
+import getAudioConstraints from '@lib/calls/helpers/getAudioConstraints';
+import getScreenConstraints from '@lib/calls/helpers/getScreenConstraints';
+import getStreamCached from '@lib/calls/helpers/getStreamCached';
+import getVideoConstraints from '@lib/calls/helpers/getVideoConstraints';
+import stopTrack from '@lib/calls/helpers/stopTrack';
+import LocalConferenceDescription from '@lib/calls/localConferenceDescription';
+import StreamManager, {StreamItem} from '@lib/calls/streamManager';
 
 export type TryAddTrackOptions = {
   stream: MediaStream,

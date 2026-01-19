@@ -4,18 +4,18 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import deferredPromise from '../../../helpers/cancellablePromise';
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import createParticipantContextMenu from '../../../helpers/dom/createParticipantContextMenu';
-import {Chat, ChatFull} from '../../../layer';
-import hasRights from '../../../lib/appManagers/utils/chats/hasRights';
-import addChatUsers from '../../addChatUsers';
-import AppSelectPeers from '../../appSelectPeers';
-import ButtonCorner from '../../buttonCorner';
-import CheckboxField from '../../checkboxField';
-import Row from '../../row';
-import SettingSection from '../../settingSection';
-import {SliderSuperTabEventable} from '../../sliderTab';
+import deferredPromise from '@helpers/cancellablePromise';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import createParticipantContextMenu from '@helpers/dom/createParticipantContextMenu';
+import {Chat, ChatFull} from '@layer';
+import hasRights from '@appManagers/utils/chats/hasRights';
+import addChatUsers from '@components/addChatUsers';
+import AppSelectPeers from '@components/appSelectPeers';
+import ButtonCorner from '@components/buttonCorner';
+import CheckboxField from '@components/checkboxField';
+import Row from '@components/row';
+import SettingSection from '@components/settingSection';
+import {SliderSuperTabEventable} from '@components/sliderTab';
 
 export function createSelectorForTab(options: ConstructorParameters<typeof AppSelectPeers>[0]) {
   const deferred = deferredPromise<void>();

@@ -1,8 +1,8 @@
 import {createSignal, onCleanup, onMount, Component, createSelector, createMemo, For, Show, Ref, createComputed, on, Accessor, untrack} from 'solid-js';
 
-import createAnimatedValue from '../helpers/solid/createAnimatedValue';
-import ListenerSetter from '../helpers/listenerSetter';
-import useElementSize from '../hooks/useElementSize';
+import createAnimatedValue from '@helpers/solid/createAnimatedValue';
+import ListenerSetter from '@helpers/listenerSetter';
+import useElementSize from '@hooks/useElementSize';
 
 
 export type VerticalVirtualListItemProps<T = any> = {

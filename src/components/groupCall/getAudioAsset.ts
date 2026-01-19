@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import AudioAssetPlayer from '../../helpers/audioAssetPlayer';
+import AudioAssetPlayer from '@helpers/audioAssetPlayer';
 
 let audioAsset: AudioAssetPlayer<Record<'connect' | 'end' | 'start' | 'allowtalk', string>>;
 export default function getGroupCallAudioAsset() {

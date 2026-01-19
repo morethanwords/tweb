@@ -1,6 +1,6 @@
 import {Ref, Show, createResource, splitProps} from 'solid-js';
-import createMiddleware from '../../helpers/solid/createMiddleware';
-import {Middleware} from '../../helpers/middleware';
+import createMiddleware from '@helpers/solid/createMiddleware';
+import {Middleware} from '@helpers/middleware';
 
 export type MediaComponentProps = {
   class?: string,

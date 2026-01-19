@@ -6,17 +6,17 @@
 
 import {createSignal, createEffect, on, JSX, onCleanup, catchError} from 'solid-js';
 import {unwrap} from 'solid-js/store';
-import rootScope from '../../lib/rootScope';
-import {Photo, StoryItem, Document, MessageMedia, Message} from '../../layer';
-import choosePhotoSize from '../../lib/appManagers/utils/photos/choosePhotoSize';
-import wrapPhoto from '../wrappers/photo';
-import wrapVideo from '../wrappers/video';
-import LazyLoadQueue from '../lazyLoadQueue';
-import {AnimationItemGroup} from '../animationIntersector';
-import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
-import {IS_SAFARI} from '../../environment/userAgent';
-import createMiddleware from '../../helpers/solid/createMiddleware';
-import {ChatAutoDownloadSettings} from '../../hooks/useAutoDownloadSettings';
+import rootScope from '@lib/rootScope';
+import {Photo, StoryItem, Document, MessageMedia, Message} from '@layer';
+import choosePhotoSize from '@appManagers/utils/photos/choosePhotoSize';
+import wrapPhoto from '@components/wrappers/photo';
+import wrapVideo from '@components/wrappers/video';
+import LazyLoadQueue from '@components/lazyLoadQueue';
+import {AnimationItemGroup} from '@components/animationIntersector';
+import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
+import {IS_SAFARI} from '@environment/userAgent';
+import createMiddleware from '@helpers/solid/createMiddleware';
+import {ChatAutoDownloadSettings} from '@hooks/useAutoDownloadSettings';
 
 let processing = false;
 const pollStories = () => {

@@ -1,6 +1,6 @@
-import {ButtonIconTsx} from '../../buttonIconTsx';
+import {ButtonIconTsx} from '@components/buttonIconTsx';
 
-import {useMediaEditorContext} from '../context';
+import {useMediaEditorContext} from '@components/mediaEditor/context';
 
 type ConfigItem = {
   icon: Icon;

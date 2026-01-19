@@ -9,20 +9,20 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type {ActiveAccountNumber} from '../accounts/types';
-import {Database} from '../../config/databases';
-import {CommonDatabase, getCommonDatabaseState} from '../../config/databases/state';
-import {NOTIFICATION_BADGE_PATH, NOTIFICATION_ICON_PATH} from '../../config/notifications';
-import {IS_FIREFOX} from '../../environment/userAgent';
-import deepEqual from '../../helpers/object/deepEqual';
-import IDBStorage from '../files/idb';
-import {log, serviceMessagePort} from './index.service';
-import {ServicePushPingTaskPayload} from './serviceMessagePort';
-import {CURRENT_ACCOUNT_QUERY_PARAM} from '../accounts/constants';
-import DeferredIsUsingPasscode from '../passcode/deferredIsUsingPasscode';
-import EncryptionKeyStore from '../passcode/keyStore';
-import pause from '../../helpers/schedulers/pause';
-import {getWindowClients} from '../../helpers/context';
+import type {ActiveAccountNumber} from '@lib/accounts/types';
+import {Database} from '@config/databases';
+import {CommonDatabase, getCommonDatabaseState} from '@config/databases/state';
+import {NOTIFICATION_BADGE_PATH, NOTIFICATION_ICON_PATH} from '@config/notifications';
+import {IS_FIREFOX} from '@environment/userAgent';
+import deepEqual from '@helpers/object/deepEqual';
+import IDBStorage from '@lib/files/idb';
+import {log, serviceMessagePort} from '@lib/serviceWorker/index.service';
+import {ServicePushPingTaskPayload} from '@lib/serviceWorker/serviceMessagePort';
+import {CURRENT_ACCOUNT_QUERY_PARAM} from '@lib/accounts/constants';
+import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
+import EncryptionKeyStore from '@lib/passcode/keyStore';
+import pause from '@helpers/schedulers/pause';
+import {getWindowClients} from '@helpers/context';
 
 const ctx = self as any as ServiceWorkerGlobalScope;
 const defaultBaseUrl = location.protocol + '//' + location.hostname + location.pathname.split('/').slice(0, -1).join('/') + '/';

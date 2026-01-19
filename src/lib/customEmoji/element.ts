@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {CancellablePromise} from '../../helpers/cancellablePromise';
-import animationIntersector from '../../components/animationIntersector';
-import safePlay from '../../helpers/dom/safePlay';
-import {MiddlewareHelper} from '../../helpers/middleware';
-import {createCustomFiller} from '../richTextProcessor/wrapRichText';
-import RLottiePlayer from '../rlottie/rlottiePlayer';
-import {CustomEmojiRendererElement, SyncedPlayer} from './renderer';
+import type {CancellablePromise} from '@helpers/cancellablePromise';
+import animationIntersector from '@components/animationIntersector';
+import safePlay from '@helpers/dom/safePlay';
+import {MiddlewareHelper} from '@helpers/middleware';
+import {createCustomFiller} from '@lib/richTextProcessor/wrapRichText';
+import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import {CustomEmojiRendererElement, SyncedPlayer} from '@lib/customEmoji/renderer';
 
 export type CustomEmojiElements = Set<CustomEmojiElement>;
 

@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import forEachReverse from '../../../helpers/array/forEachReverse';
-import SDPMediaSection from '../sdp/mediaSection';
-import {UpdateGroupCallConnectionData, Codec} from '../types';
+import forEachReverse from '@helpers/array/forEachReverse';
+import SDPMediaSection from '@lib/calls/sdp/mediaSection';
+import {UpdateGroupCallConnectionData, Codec} from '@lib/calls/types';
 
 export default function filterServerCodecs(mainChannels: SDPMediaSection[], data: UpdateGroupCallConnectionData) {
   // ! Need to filter server's extmap for Firefox

@@ -1,6 +1,6 @@
-import addPadding from '../bytes/addPadding';
+import addPadding from '@helpers/bytes/addPadding';
 import bigInt from 'big-integer';
-import {bigIntToBytes} from '../bigInt/bigIntConversion';
+import {bigIntToBytes} from '@helpers/bigInt/bigIntConversion';
 
 export default function longToBytes(sLong: string) {
   const bigIntBytes = bigIntToBytes(bigInt(sLong)).reverse();

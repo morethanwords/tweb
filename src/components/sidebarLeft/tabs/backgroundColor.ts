@@ -4,19 +4,19 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {AppTheme} from '../../../config/state';
-import {hexaToRgba} from '../../../helpers/color';
-import {attachClickEvent} from '../../../helpers/dom/clickEvent';
-import findUpClassName from '../../../helpers/dom/findUpClassName';
-import highlightingColor from '../../../helpers/highlightingColor';
-import throttle from '../../../helpers/schedulers/throttle';
-import themeController from '../../../helpers/themeController';
-import appImManager from '../../../lib/appManagers/appImManager';
-import rootScope from '../../../lib/rootScope';
-import ColorPicker, {ColorPickerColor} from '../../colorPicker';
-import SettingSection from '../../settingSection';
-import {SliderSuperTab} from '../../slider';
-import {WallPaper} from '../../../layer';
+import {AppTheme} from '@config/state';
+import {hexaToRgba} from '@helpers/color';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import highlightingColor from '@helpers/highlightingColor';
+import throttle from '@helpers/schedulers/throttle';
+import themeController from '@helpers/themeController';
+import appImManager from '@lib/appImManager';
+import rootScope from '@lib/rootScope';
+import ColorPicker, {ColorPickerColor} from '@components/colorPicker';
+import SettingSection from '@components/settingSection';
+import {SliderSuperTab} from '@components/slider';
+import {WallPaper} from '@layer';
 
 export default class AppBackgroundColorTab extends SliderSuperTab {
   private colorPicker: ColorPicker;

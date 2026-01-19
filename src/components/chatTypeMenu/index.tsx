@@ -1,10 +1,10 @@
 import {createEffect, createMemo, createRenderEffect, onCleanup} from 'solid-js';
-import type {RequestHistoryOptions} from '../../lib/appManagers/appMessagesManager';
-import {i18n, LangPackKey} from '../../lib/langPack';
-import defineSolidElement, {PassedProps} from '../../lib/solidjs/defineSolidElement';
-import {ButtonMenuItemOptions} from '../buttonMenu';
-import ButtonMenuToggle from '../buttonMenuToggle';
-import styles from './styles.module.scss';
+import type {RequestHistoryOptions} from '@appManagers/appMessagesManager';
+import {i18n, LangPackKey} from '@lib/langPack';
+import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
+import {ButtonMenuItemOptions} from '@components/buttonMenu';
+import ButtonMenuToggle from '@components/buttonMenuToggle';
+import styles from '@components/chatTypeMenu/styles.module.scss';
 
 if(import.meta.hot) import.meta.hot.accept();
 

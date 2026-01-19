@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import cancelEvent from '../helpers/dom/cancelEvent';
-import Icon from './icon';
-import InputField, {InputFieldOptions} from './inputField';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import Icon from '@components/icon';
+import InputField, {InputFieldOptions} from '@components/inputField';
 
 export class PasswordInputHelpers {
   public passwordVisible = false;

@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import findUpClassName from '../helpers/dom/findUpClassName';
-import EventListenerBase from '../helpers/eventListenerBase';
-import mediaSizes from '../helpers/mediaSizes';
-import clamp from '../helpers/number/clamp';
-import safeAssign from '../helpers/object/safeAssign';
-import windowSize from '../helpers/windowSize';
-import SwipeHandler from './swipeHandler';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import EventListenerBase from '@helpers/eventListenerBase';
+import mediaSizes from '@helpers/mediaSizes';
+import clamp from '@helpers/number/clamp';
+import safeAssign from '@helpers/object/safeAssign';
+import windowSize from '@helpers/windowSize';
+import SwipeHandler from '@components/swipeHandler';
 
 type ResizeSide = 'n' | 'e' | 's' | 'w' | 'ne' | 'se' | 'sw' | 'nw';
 export type MovableState = {

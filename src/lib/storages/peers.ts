@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import applyMixins from '../../helpers/applyMixins';
-import EventListenerBase from '../../helpers/eventListenerBase';
-import {AppManager} from '../appManagers/manager';
+import applyMixins from '@helpers/applyMixins';
+import EventListenerBase from '@helpers/eventListenerBase';
+import {AppManager} from '@appManagers/manager';
 
 export type StatePeerType = 'recentSearch' | 'topPeer' | 'dialog' | 'contact' | 'topMessage' | 'self';
 

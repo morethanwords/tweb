@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import assumeType from '../../helpers/assumeType';
-import callbackify from '../../helpers/callbackify';
-import {ChatFull, Message, MessagesMessages, PublicForward, StatsBroadcastStats, StatsGraph, StatsPublicForwards} from '../../layer';
-import {DcId, InvokeApiOptions} from '../../types';
-import {AppManager} from './manager';
-import getServerMessageId from './utils/messageId/getServerMessageId';
+import assumeType from '@helpers/assumeType';
+import callbackify from '@helpers/callbackify';
+import {ChatFull, Message, MessagesMessages, PublicForward, StatsBroadcastStats, StatsGraph, StatsPublicForwards} from '@layer';
+import {DcId, InvokeApiOptions} from '@types';
+import {AppManager} from '@appManagers/manager';
+import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
 
 type GetStatsParams = {
   peerId: PeerId,

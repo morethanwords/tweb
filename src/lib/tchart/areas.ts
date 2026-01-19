@@ -1,5 +1,5 @@
-import {getXIndex, simplifyData} from './utils';
-import {TChartAngle, TChartUnitOptions} from './types';
+import {getXIndex, simplifyData} from '@lib/tchart/utils';
+import {TChartAngle, TChartUnitOptions} from '@lib/tchart/types';
 
 export default class TAreas {
   private opts: TChartUnitOptions;

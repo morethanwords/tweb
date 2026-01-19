@@ -9,9 +9,9 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import {MessageEntity} from '../../layer';
-import matchUrlProtocol from '../../lib/richTextProcessor/matchUrlProtocol';
-import BOM from '../string/bom';
+import {MessageEntity} from '@layer';
+import matchUrlProtocol from '@lib/richTextProcessor/matchUrlProtocol';
+import BOM from '@helpers/string/bom';
 
 export type MarkdownType = 'bold' | 'italic' | 'underline' | 'strikethrough' |
   'monospace' | 'link' | 'mentionName' | 'spoiler' | 'quote'/*  | 'customEmoji' */;

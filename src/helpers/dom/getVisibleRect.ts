@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import windowSize from '../windowSize';
+import windowSize from '@helpers/windowSize';
 
 export default function getVisibleRect(
   element: HTMLElement,

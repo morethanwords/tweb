@@ -1,4 +1,4 @@
-import convertToUint8Array from './convertToUint8Array';
+import convertToUint8Array from '@helpers/bytes/convertToUint8Array';
 
 export default function bytesToWordss(input: Parameters<typeof convertToUint8Array>[0]) {
   const bytes = convertToUint8Array(input);

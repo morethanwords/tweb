@@ -1,5 +1,5 @@
-import {SUGGESTED_POST_DEFAULT_STARS_COMMISSION} from '../../../../lib/mtproto/mtproto_config';
-import useAppConfig from '../../../sidebarLeft/tabs/privacy/messages/useAppConfig';
+import {SUGGESTED_POST_DEFAULT_STARS_COMMISSION} from '@appManagers/constants';
+import useAppConfig from '@components/sidebarLeft/tabs/privacy/messages/useAppConfig';
 
 export function useFormattedCommission() {
   const [appConfig] = useAppConfig();

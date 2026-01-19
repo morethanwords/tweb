@@ -9,16 +9,16 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import {CommonDatabase, getCommonDatabaseState} from '../config/databases/state';
-import Modes from '../config/modes';
-import deferredPromise, {CancellablePromise} from '../helpers/cancellablePromise';
-import {IS_WORKER} from '../helpers/context';
-import makeError from '../helpers/makeError';
-import {StringKey, WorkerTaskTemplate} from '../types';
-import EncryptedStorageLayer from './encryptedStorageLayer';
-import {logger} from './logger';
-import MTProtoMessagePort from './mtproto/mtprotoMessagePort';
-import DeferredIsUsingPasscode from './passcode/deferredIsUsingPasscode';
+import {CommonDatabase, getCommonDatabaseState} from '@config/databases/state';
+import Modes from '@config/modes';
+import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
+import {IS_WORKER} from '@helpers/context';
+import makeError from '@helpers/makeError';
+import {StringKey, WorkerTaskTemplate} from '@types';
+import EncryptedStorageLayer from '@lib/encryptedStorageLayer';
+import {logger} from '@lib/logger';
+import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
+import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
 
 
 class LocalStorage<Storage extends Record<string, any>> {

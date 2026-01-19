@@ -1,7 +1,7 @@
-import {Middleware} from '../../helpers/middleware';
-import {TextWithEntities} from '../../layer';
-import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
-import wrapTextWithEntities from '../../lib/richTextProcessor/wrapTextWithEntities';
+import {Middleware} from '@helpers/middleware';
+import {TextWithEntities} from '@layer';
+import wrapRichText from '@lib/richTextProcessor/wrapRichText';
+import wrapTextWithEntities from '@lib/richTextProcessor/wrapTextWithEntities';
 
 type Options = {
   textColor?: string;

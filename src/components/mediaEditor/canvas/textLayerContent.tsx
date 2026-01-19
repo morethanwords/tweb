@@ -1,13 +1,13 @@
 import {batch, createEffect, createMemo, on, onCleanup, onMount} from 'solid-js';
 
-import createElementFromMarkup from '../../../helpers/createElementFromMarkup';
-import {i18n} from '../../../lib/langPack';
+import createElementFromMarkup from '@helpers/createElementFromMarkup';
+import {i18n} from '@lib/langPack';
 
-import {ResizableLayerProps, TextLayerInfo, TextRenderingInfoLine} from '../types';
-import {fontInfoMap, getContrastColor, log} from '../utils';
-import {HistoryItem, useMediaEditorContext} from '../context';
+import {ResizableLayerProps, TextLayerInfo, TextRenderingInfoLine} from '@components/mediaEditor/types';
+import {fontInfoMap, getContrastColor, log} from '@components/mediaEditor/utils';
+import {HistoryItem, useMediaEditorContext} from '@components/mediaEditor/context';
 
-import {ResizableContainer} from './resizableLayers';
+import {ResizableContainer} from '@components/mediaEditor/canvas/resizableLayers';
 
 export default function TextLayerContent(props: ResizableLayerProps) {
   const {editorState, mediaState, actions} = useMediaEditorContext();

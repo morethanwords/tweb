@@ -4,15 +4,15 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import attachListNavigation, {ListNavigationOptions} from '../../helpers/dom/attachListNavigation';
-import EventListenerBase from '../../helpers/eventListenerBase';
-import {IS_MOBILE} from '../../environment/userAgent';
-import rootScope from '../../lib/rootScope';
-import appNavigationController, {NavigationItem} from '../appNavigationController';
-import SetTransition from '../singleTransition';
-import AutocompleteHelperController from './autocompleteHelperController';
-import safeAssign from '../../helpers/object/safeAssign';
-import liteMode from '../../helpers/liteMode';
+import attachListNavigation, {ListNavigationOptions} from '@helpers/dom/attachListNavigation';
+import EventListenerBase from '@helpers/eventListenerBase';
+import {IS_MOBILE} from '@environment/userAgent';
+import rootScope from '@lib/rootScope';
+import appNavigationController, {NavigationItem} from '@components/appNavigationController';
+import SetTransition from '@components/singleTransition';
+import AutocompleteHelperController from '@components/chat/autocompleteHelperController';
+import safeAssign from '@helpers/object/safeAssign';
+import liteMode from '@helpers/liteMode';
 
 export default class AutocompleteHelper extends EventListenerBase<{
   hidden: () => void,

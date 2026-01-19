@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {MOUNT_CLASS_TO} from '../config/debug';
-import {IS_MOBILE_SAFARI} from '../environment/userAgent';
-import {logger} from '../lib/logger';
-import blurActiveElement from '../helpers/dom/blurActiveElement';
-import cancelEvent from '../helpers/dom/cancelEvent';
-import isSwipingBackSafari from '../helpers/dom/isSwipingBackSafari';
-import tabId from '../config/tabId';
+import {MOUNT_CLASS_TO} from '@config/debug';
+import {IS_MOBILE_SAFARI} from '@environment/userAgent';
+import {logger} from '@lib/logger';
+import blurActiveElement from '@helpers/dom/blurActiveElement';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import isSwipingBackSafari from '@helpers/dom/isSwipingBackSafari';
+import tabId from '@config/tabId';
 
 export type NavigationItem = {
   type: 'left' | 'right' | 'im' | 'chat' | 'popup' | 'media' | 'menu' |

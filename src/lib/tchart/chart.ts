@@ -1,18 +1,18 @@
-import TAnimator from './animator';
-import TAreas from './areas';
-import TAxisX from './axisX';
-import TAxisY from './axisY';
-import TBars from './bars';
-import TComposer from './composer';
-import TFade from './fade';
-import THandle from './handle';
-import TLines from './lines';
-import TSwitchers from './switchers';
-import TTip from './tip';
-import {getFormatter, getXIndex, roundRange, triggerEvent} from './utils';
-import {TChartAnimationProperty, TChartConstructorOptions, TChartData, TChartDataDetails, TChartRange, TChartRangePaired, TChartRangeSingle, TChartSettings, TChartState, TChartStateZoom, TChartType, TChartTypeRenderer, TChartUnitOptions} from './types';
-import {getLabelDate, getLabelTime} from './format';
-import './chart.scss';
+import TAnimator from '@lib/tchart/animator';
+import TAreas from '@lib/tchart/areas';
+import TAxisX from '@lib/tchart/axisX';
+import TAxisY from '@lib/tchart/axisY';
+import TBars from '@lib/tchart/bars';
+import TComposer from '@lib/tchart/composer';
+import TFade from '@lib/tchart/fade';
+import THandle from '@lib/tchart/handle';
+import TLines from '@lib/tchart/lines';
+import TSwitchers from '@lib/tchart/switchers';
+import TTip from '@lib/tchart/tip';
+import {getFormatter, getXIndex, roundRange, triggerEvent} from '@lib/tchart/utils';
+import {TChartAnimationProperty, TChartConstructorOptions, TChartData, TChartDataDetails, TChartRange, TChartRangePaired, TChartRangeSingle, TChartSettings, TChartState, TChartStateZoom, TChartType, TChartTypeRenderer, TChartUnitOptions} from '@lib/tchart/types';
+import {getLabelDate, getLabelTime} from '@lib/tchart/format';
+import '@lib/tchart/chart.scss';
 
 export default class TChart {
   private opts: TChartConstructorOptions;

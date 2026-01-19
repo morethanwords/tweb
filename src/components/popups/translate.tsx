@@ -7,17 +7,17 @@
 import {createEffect, createSignal, JSX, onMount, Show} from 'solid-js';
 import {render} from 'solid-js/web';
 import PopupElement from '.';
-import documentFragmentToNodes from '../../helpers/dom/documentFragmentToNodes';
-import classNames from '../../helpers/string/classNames';
-import usePeerTranslation from '../../hooks/usePeerTranslation';
-import {Message, TextWithEntities} from '../../layer';
-import {i18n} from '../../lib/langPack';
-import wrapRichText, {WrapRichTextOptions} from '../../lib/richTextProcessor/wrapRichText';
-import {onMediaCaptionClick} from '../appMediaViewer';
-import {pickLanguage} from '../chat/translation';
-import {putPreloader} from '../putPreloader';
-import Section from '../section';
-import {TranslatableMessageTsx} from '../translatableMessage';
+import documentFragmentToNodes from '@helpers/dom/documentFragmentToNodes';
+import classNames from '@helpers/string/classNames';
+import usePeerTranslation from '@hooks/usePeerTranslation';
+import {Message, TextWithEntities} from '@layer';
+import {i18n} from '@lib/langPack';
+import wrapRichText, {WrapRichTextOptions} from '@lib/richTextProcessor/wrapRichText';
+import {onMediaCaptionClick} from '@components/appMediaViewer';
+import {pickLanguage} from '@components/chat/translation';
+import {putPreloader} from '@components/putPreloader';
+import Section from '@components/section';
+import {TranslatableMessageTsx} from '@components/translatableMessage';
 
 export default class PopupTranslate extends PopupElement {
   private peerTranslation: ReturnType<typeof usePeerTranslation>;

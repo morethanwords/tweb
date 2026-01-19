@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
-import {logger, LogTypes} from '../lib/logger';
-import fastSmoothScroll, {ScrollOptions} from '../helpers/fastSmoothScroll';
-import useHeavyAnimationCheck from '../hooks/useHeavyAnimationCheck';
-import cancelEvent from '../helpers/dom/cancelEvent';
-import {IS_OVERLAY_SCROLL_SUPPORTED} from '../environment/overlayScrollSupport';
-import {IS_MOBILE_SAFARI, IS_SAFARI} from '../environment/userAgent';
+import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
+import {logger, LogTypes} from '@lib/logger';
+import fastSmoothScroll, {ScrollOptions} from '@helpers/fastSmoothScroll';
+import useHeavyAnimationCheck from '@hooks/useHeavyAnimationCheck';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import {IS_OVERLAY_SCROLL_SUPPORTED} from '@environment/overlayScrollSupport';
+import {IS_MOBILE_SAFARI, IS_SAFARI} from '@environment/userAgent';
 /*
 var el = $0;
 var height = 0;

@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {AppManager} from './manager';
+import {AppManager} from '@appManagers/manager';
 
 export default class AppUsernamesManager extends AppManager {
   public toggleUsername({

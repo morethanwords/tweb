@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import splitStringByLimitWithRest from '../../../helpers/string/splitStringByLimitWithRest';
-import SDPAttributeSplitted from './attributeSplitted';
-import SDPMediaLineParts from './mediaLineParts';
+import splitStringByLimitWithRest from '@helpers/string/splitStringByLimitWithRest';
+import SDPAttributeSplitted from '@lib/calls/sdp/attributeSplitted';
+import SDPMediaLineParts from '@lib/calls/sdp/mediaLineParts';
 
 export default class SDPLine {
   #key: 'm' | 'a' | 'o' | 'v' | 's' | 't' | 'c';

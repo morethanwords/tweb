@@ -1,5 +1,5 @@
-import {ChannelAdminLogEventsFilter} from '../../../../../layer';
-import {LangPackKey} from '../../../../../lib/langPack';
+import {ChannelAdminLogEventsFilter} from '@layer';
+import {LangPackKey} from '@lib/langPack';
 
 
 export type FilterGroupConfigItem = {

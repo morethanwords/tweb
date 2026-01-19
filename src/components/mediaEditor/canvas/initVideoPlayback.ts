@@ -1,7 +1,7 @@
 import {createEffect, onCleanup} from 'solid-js';
-import {animate} from '../../../helpers/animation';
-import clamp from '../../../helpers/number/clamp';
-import {SetVideoTimeFlags, useMediaEditorContext} from '../context';
+import {animate} from '@helpers/animation';
+import clamp from '@helpers/number/clamp';
+import {SetVideoTimeFlags, useMediaEditorContext} from '@components/mediaEditor/context';
 
 
 type Args = {

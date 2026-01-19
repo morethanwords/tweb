@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {ChatInputReplyTo} from '../../components/chat/input';
-import {MessageEntity} from '../../layer';
-import cancelSelection from './cancelSelection';
-import findUpClassName from './findUpClassName';
-import getRichValueWithCaret from './getRichValueWithCaret';
+import type {ChatInputReplyTo} from '@components/chat/input';
+import {MessageEntity} from '@layer';
+import cancelSelection from '@helpers/dom/cancelSelection';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 
 export default function getRichSelection(target: HTMLElement) {
   const selection = document.getSelection();

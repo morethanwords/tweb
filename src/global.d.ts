@@ -1,15 +1,16 @@
-import type ListenerSetter from './helpers/listenerSetter';
-import type {Middleware, MiddlewareHelper} from './helpers/middleware';
-import type {Chat, Document, Message, User} from './layer';
-import type {MediaSize} from './helpers/mediaSize';
-import type {AnimationItemGroup} from './components/animationIntersector';
-import type LazyLoadQueue from './components/lazyLoadQueue';
-import type {AppManagers} from './lib/appManagers/managers';
-import type {CustomProperty} from './helpers/dom/customProperties';
-import type Icons from './icons';
-import type {CancellablePromise} from './helpers/cancellablePromise';
-import type Languages from './lib/tinyld/languages';
-import type {ValueOrGetter} from './helpers/solid/readValue';
+import type ListenerSetter from '@helpers/listenerSetter';
+import type {Middleware, MiddlewareHelper} from '@helpers/middleware';
+import type {Chat, Document, Message, User} from '@layer';
+import type {MediaSize} from '@helpers/mediaSize';
+import type {AnimationItemGroup} from '@components/animationIntersector';
+import type LazyLoadQueue from '@components/lazyLoadQueue';
+import type {AppManagers} from '@lib/managers';
+import type {CustomProperty} from '@helpers/dom/customProperties';
+import type Icons from '@/icons';
+import type {CancellablePromise} from '@helpers/cancellablePromise';
+import type Languages from '@lib/tinyld/languages';
+import type {ValueOrGetter} from '@helpers/solid/readValue';
+import type {MTAppConfig as AppConfig} from '@/appConfig';
 
 declare global {
   interface AddEventListenerOptions extends EventListenerOptions {
@@ -113,6 +114,7 @@ declare global {
   type DocId = Document.document['id'];
   type Long = string | number;
   type MTLong = string;
+  type MTAppConfig = AppConfig;
 
   type AppEmoji = {emoji: string, docId?: DocId};
   type Icon = keyof typeof Icons;

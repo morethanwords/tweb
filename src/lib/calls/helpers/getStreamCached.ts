@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import getScreenStream from './getScreenStream';
-import getStream from './getStream';
+import getScreenStream from '@lib/calls/helpers/getScreenStream';
+import getStream from '@lib/calls/helpers/getStream';
 
 /**
  * ! Use multiple constraints together only with first invoke

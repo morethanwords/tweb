@@ -1,4 +1,4 @@
-import cancelEvent from './cancelEvent';
+import cancelEvent from '@helpers/dom/cancelEvent';
 
 export default function cancelClickOrNextIfNotClick(e: Event) {
   if(e.type === 'click') {

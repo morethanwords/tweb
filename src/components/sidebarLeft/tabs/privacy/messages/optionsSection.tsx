@@ -1,12 +1,12 @@
 import {Component} from 'solid-js';
 import {SetStoreFunction} from 'solid-js/store';
 import {Transition} from 'solid-transition-group';
-import anchorCallback from '../../../../../helpers/dom/anchorCallback';
-import {useHotReloadGuard} from '../../../../../lib/solidjs/hotReloadGuard';
-import Section from '../../../../section';
-import StaticRadio from '../../../../staticRadio';
-import {MessagesPrivacyOption, MessagesTabStateStore, TRANSITION_TIME} from './config';
-import useIsPremium from './useIsPremium';
+import anchorCallback from '@helpers/dom/anchorCallback';
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import Section from '@components/section';
+import StaticRadio from '@components/staticRadio';
+import {MessagesPrivacyOption, MessagesTabStateStore, TRANSITION_TIME} from '@components/sidebarLeft/tabs/privacy/messages/config';
+import useIsPremium from '@components/sidebarLeft/tabs/privacy/messages/useIsPremium';
 
 
 const DEFAULT_STARS_AMOUNT = 10;

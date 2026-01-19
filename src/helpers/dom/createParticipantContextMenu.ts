@@ -4,17 +4,17 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import createContextMenu from './createContextMenu';
-import findUpClassName from './findUpClassName';
-import {ChannelParticipant, Chat, ChatParticipant} from '../../layer';
-import SidebarSlider from '../../components/slider';
-import rootScope from '../../lib/rootScope';
-import appImManager from '../../lib/appManagers/appImManager';
-import canEditAdmin from '../../lib/appManagers/utils/chats/canEditAdmin';
-import AppUserPermissionsTab from '../../components/sidebarRight/tabs/userPermissions';
-import {Middleware} from '../middleware';
-import {ButtonMenuItemOptionsVerifiable} from '../../components/buttonMenu';
-import {handleMissingInvitees} from '../../components/addChatUsers';
+import createContextMenu from '@helpers/dom/createContextMenu';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import {ChannelParticipant, Chat, ChatParticipant} from '@layer';
+import SidebarSlider from '@components/slider';
+import rootScope from '@lib/rootScope';
+import appImManager from '@lib/appImManager';
+import canEditAdmin from '@appManagers/utils/chats/canEditAdmin';
+import AppUserPermissionsTab from '@components/sidebarRight/tabs/userPermissions';
+import {Middleware} from '@helpers/middleware';
+import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
+import {handleMissingInvitees} from '@components/addChatUsers';
 
 type Participant = ChannelParticipant | ChatParticipant;
 

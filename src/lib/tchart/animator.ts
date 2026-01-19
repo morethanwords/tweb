@@ -1,5 +1,5 @@
-import TComposer from './composer';
-import {TChartAnimationItem, TChartAnimationProperty, TChartState} from './types';
+import TComposer from '@lib/tchart/composer';
+import {TChartAnimationItem, TChartAnimationProperty, TChartState} from '@lib/tchart/types';
 
 const easing = (st: number, ed: number, per: number, tween: string) => {
   const functions: Record<string, (t: number, b: number, c: number, d: number) => number> = {

@@ -1,4 +1,4 @@
-import {defaultCodec, highResCodec} from './finalRender/calcCodecAndBitrate';
+import {defaultCodec, highResCodec} from '@components/mediaEditor/finalRender/calcCodecAndBitrate';
 
 let
   supportsVideo: boolean,

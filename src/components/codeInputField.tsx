@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import styles from './codeInputField.module.scss';
-import classNames from '../helpers/string/classNames';
+import styles from '@components/codeInputField.module.scss';
+import classNames from '@helpers/string/classNames';
 import {children, createRoot, createSignal, Index, Ref, Show, Signal} from 'solid-js';
-import {subscribeOn} from '../helpers/solid/subscribeOn';
-import {Transition} from '../vendor/solid-transition-group';
+import {subscribeOn} from '@helpers/solid/subscribeOn';
+import {Transition} from '@vendor/solid-transition-group';
 
 export default class CodeInputFieldCompat {
   public container: HTMLDivElement;

@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {Layouter, RectPart} from './groupedLayout';
+import {Layouter, RectPart} from '@components/groupedLayout';
 
 export default function prepareAlbum(options: {
   container: HTMLElement,

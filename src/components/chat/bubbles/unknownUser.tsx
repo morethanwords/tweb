@@ -1,25 +1,25 @@
 import {createResource, Show, JSX} from 'solid-js';
-import {PeerSettings, User, UserFull} from '../../../layer';
+import {PeerSettings, User, UserFull} from '@layer';
 
-import classNames from '../../../helpers/string/classNames';
-import {PeerTitleTsx} from '../../peerTitleTsx';
+import classNames from '@helpers/string/classNames';
+import {PeerTitleTsx} from '@components/peerTitleTsx';
 
-import stylesCommon from './service.module.scss';
-import styles from './unknownUser.module.scss';
+import stylesCommon from '@components/chat/bubbles/service.module.scss';
+import styles from '@components/chat/bubbles/unknownUser.module.scss';
 
-import {I18nTsx} from '../../../helpers/solid/i18n';
-import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
-import {getCountryEmoji} from '../../../vendor/emoji';
-import I18n from '../../../lib/langPack';
-import {monthsLocalized} from '../../../helpers/date';
-import {IconTsx} from '../../iconTsx';
-import formatDuration from '../../../helpers/formatDuration';
-import {wrapFormattedDuration} from '../../wrappers/wrapDuration';
-import rootScope from '../../../lib/rootScope';
-import appSidebarRight from '../../sidebarRight';
-import {StackedAvatarsTsx} from '../../stackedAvatars';
-import {wrapAdaptiveCustomEmoji} from '../../wrappers/customEmojiSimple';
-import wrapRichText from '../../../lib/richTextProcessor/wrapRichText';
+import {I18nTsx} from '@helpers/solid/i18n';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import {getCountryEmoji} from '@vendor/emoji';
+import I18n from '@lib/langPack';
+import {monthsLocalized} from '@helpers/date';
+import {IconTsx} from '@components/iconTsx';
+import formatDuration from '@helpers/formatDuration';
+import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
+import rootScope from '@lib/rootScope';
+import appSidebarRight from '@components/sidebarRight';
+import {StackedAvatarsTsx} from '@components/stackedAvatars';
+import {wrapAdaptiveCustomEmoji} from '@components/wrappers/customEmojiSimple';
+import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 
 export function UnknownUserBubble(props: {
   peerId: PeerId,

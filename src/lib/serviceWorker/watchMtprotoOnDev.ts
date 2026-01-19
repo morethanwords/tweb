@@ -1,7 +1,7 @@
-import {getWindowClients} from '../../helpers/context';
-import {IS_BETA} from '../../config/debug';
+import {getWindowClients} from '@helpers/context';
+import {IS_BETA} from '@config/debug';
 
-import {logger, LogTypes} from '../logger';
+import {logger, LogTypes} from '@lib/logger';
 
 
 const logMtprotoBug = logger('SW-mtproto-bug', LogTypes.None);

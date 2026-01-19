@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {CancellablePromise} from '../helpers/cancellablePromise';
-import ProgressivePreloader from './preloader';
+import {CancellablePromise} from '@helpers/cancellablePromise';
+import ProgressivePreloader from '@components/preloader';
 
 export default class Loader {
   public preloader: ProgressivePreloader;

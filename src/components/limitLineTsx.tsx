@@ -1,15 +1,15 @@
 import {createEffect, createSignal, JSX, on, onMount, Show} from 'solid-js'
-import {IconTsx} from './iconTsx'
-import {doubleRaf} from '../helpers/schedulers'
-import liteMode from '../helpers/liteMode'
-import {animateSingle} from '../helpers/animation'
-import {easeInOutSineApply} from '../helpers/easing/easeInOutSine'
-import classNames from '../helpers/string/classNames'
-import clamp from '../helpers/number/clamp'
-import styles from './limitLineTsx.module.scss';
-import RangeSelector from './rangeSelector'
-import I18n from '../lib/langPack'
-import {lerp} from '../helpers/lerp'
+import {IconTsx} from '@components/iconTsx'
+import {doubleRaf} from '@helpers/schedulers'
+import liteMode from '@helpers/liteMode'
+import {animateSingle} from '@helpers/animation'
+import {easeInOutSineApply} from '@helpers/easing/easeInOutSine'
+import classNames from '@helpers/string/classNames'
+import clamp from '@helpers/number/clamp'
+import styles from '@components/limitLineTsx.module.scss';
+import RangeSelector from '@components/rangeSelector'
+import I18n from '@lib/langPack'
+import {lerp} from '@helpers/lerp'
 
 
 export function LimitLineTsx(props: {

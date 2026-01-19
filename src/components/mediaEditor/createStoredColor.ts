@@ -1,6 +1,6 @@
 import {createSignal} from 'solid-js';
 
-import {colorPickerSwatches} from './colorPicker';
+import {colorPickerSwatches} from '@components/mediaEditor/colorPicker';
 
 export function createStoredColor(key: string, defaultColor: string) {
   // (1 - use swatch, 2 - use picker color), (color from swatch), (color from picker)

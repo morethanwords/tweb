@@ -4,32 +4,32 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {putPreloader} from '../components/putPreloader';
-import Page from './page';
-import Button from '../components/button';
-import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
-import App from '../config/app';
-import I18n, {_i18n, i18n} from '../lib/langPack';
-import lottieLoader from '../lib/rlottie/lottieLoader';
-import ripple from '../components/ripple';
-import pageSignQR from './pageSignQR';
-import getLanguageChangeButton from '../components/languageChangeButton';
-import cancelEvent from '../helpers/dom/cancelEvent';
-import {attachClickEvent} from '../helpers/dom/clickEvent';
-import replaceContent from '../helpers/dom/replaceContent';
-import toggleDisability from '../helpers/dom/toggleDisability';
-import {TrueDcId} from '../types';
-import placeCaretAtEnd from '../helpers/dom/placeCaretAtEnd';
-import {HelpCountry, HelpCountryCode} from '../layer';
-import rootScope from '../lib/rootScope';
-import TelInputField from '../components/telInputField';
-import CountryInputField from '../components/countryInputField';
-import {getCurrentAccount} from '../lib/accounts/getCurrentAccount';
-import AccountController from '../lib/accounts/accountController';
-import commonStateStorage from '../lib/commonStateStorage';
-import PasskeyLoginButton from '../components/passkeyLoginButton';
+import {putPreloader} from '@components/putPreloader';
+import Page from '@/pages/page';
+import Button from '@components/button';
+import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
+import App from '@config/app';
+import I18n, {_i18n, i18n} from '@lib/langPack';
+import lottieLoader from '@lib/rlottie/lottieLoader';
+import ripple from '@components/ripple';
+import pageSignQR from '@/pages/pageSignQR';
+import getLanguageChangeButton from '@components/languageChangeButton';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import replaceContent from '@helpers/dom/replaceContent';
+import toggleDisability from '@helpers/dom/toggleDisability';
+import {TrueDcId} from '@types';
+import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
+import {HelpCountry, HelpCountryCode} from '@layer';
+import rootScope from '@lib/rootScope';
+import TelInputField from '@components/telInputField';
+import CountryInputField from '@components/countryInputField';
+import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
+import AccountController from '@lib/accounts/accountController';
+import commonStateStorage from '@lib/commonStateStorage';
+import PasskeyLoginButton from '@components/passkeyLoginButton';
 
-// import _countries from '../countries_pretty.json';
+// import _countries from '@/countries_pretty.json';
 let btnNext: HTMLButtonElement = null, btnQr: HTMLButtonElement;
 
 const onFirstMount = () => {

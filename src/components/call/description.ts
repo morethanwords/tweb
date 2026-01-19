@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import replaceContent from '../../helpers/dom/replaceContent';
-import toHHMMSS from '../../helpers/string/toHHMMSS';
-import CallInstance from '../../lib/calls/callInstance';
-import CALL_STATE from '../../lib/calls/callState';
-import {i18n, LangPackKey} from '../../lib/langPack';
+import replaceContent from '@helpers/dom/replaceContent';
+import toHHMMSS from '@helpers/string/toHHMMSS';
+import CallInstance from '@lib/calls/callInstance';
+import CALL_STATE from '@lib/calls/callState';
+import {i18n, LangPackKey} from '@lib/langPack';
 
 export default class CallDescriptionElement {
   private container: HTMLElement;

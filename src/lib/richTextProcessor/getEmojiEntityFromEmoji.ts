@@ -1,5 +1,5 @@
-import {MessageEntity} from '../../layer';
-import {toCodePoints} from '../../vendor/emoji';
+import {MessageEntity} from '@layer';
+import {toCodePoints} from '@vendor/emoji';
 
 export default function getEmojiEntityFromEmoji(emoji: string): MessageEntity.messageEntityEmoji {
   return {

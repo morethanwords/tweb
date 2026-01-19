@@ -5,11 +5,11 @@
  */
 
 import PopupElement from '.';
-import safeAssign from '../../helpers/object/safeAssign';
-import {fastRaf} from '../../helpers/schedulers';
-import {AttachMenuBot} from '../../layer';
-import ButtonMenuToggle from '../buttonMenuToggle';
-import WebApp from '../webApp';
+import safeAssign from '@helpers/object/safeAssign';
+import {fastRaf} from '@helpers/schedulers';
+import {AttachMenuBot} from '@layer';
+import ButtonMenuToggle from '@components/buttonMenuToggle';
+import WebApp from '@components/webApp';
 
 export default class PopupWebApp extends PopupElement {
   private webApp: WebApp;

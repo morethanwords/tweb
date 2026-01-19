@@ -1,4 +1,4 @@
-import {Chat, User} from '../../../../layer';
+import {Chat, User} from '@layer';
 
 export default function getPeerEditableUsername(peer: User.user | Chat.channel) {
   if(peer.username) {

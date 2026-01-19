@@ -1,6 +1,6 @@
 import {Accessor, createEffect, createMemo, JSX, on} from 'solid-js';
-import I18n, {FormatterArgument, FormatterArguments, LangPackKey} from '../../lib/langPack';
-import {attachClassName} from './classname';
+import I18n, {FormatterArgument, FormatterArguments, LangPackKey} from '@lib/langPack';
+import {attachClassName} from '@helpers/solid/classname';
 import {resolveElements} from '@solid-primitives/refs';
 
 export function I18nTsx(props: {

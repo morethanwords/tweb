@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import onMediaLoad from '../onMediaLoad';
+import onMediaLoad from '@helpers/onMediaLoad';
 
-// import { getHeavyAnimationPromise } from "../../hooks/useHeavyAnimationCheck";
+// import { getHeavyAnimationPromise } from '@hooks/useHeavyAnimationCheck';
 
 export const loadedURLs: {[url: string]: boolean} = {};
 const set = (elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLVideoElement, url: string) => {

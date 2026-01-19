@@ -1,6 +1,6 @@
-import type {Reaction} from '../../../../layer';
-import type {HistoryStorage, RequestHistoryOptions, SearchStorageFilterKey} from '../../appMessagesManager';
-import getSearchType from './getSearchType';
+import type {Reaction} from '@layer';
+import type {HistoryStorage, RequestHistoryOptions, SearchStorageFilterKey} from '@appManagers/appMessagesManager';
+import getSearchType from '@appManagers/utils/messages/getSearchType';
 
 export default function getHistoryStorageKey(options: RequestHistoryOptions & {type: HistoryStorage['type']}) {
   const {type, peerId, threadId, monoforumThreadId} = options;
