@@ -38,7 +38,7 @@ import {nextRandomUint} from '@helpers/random';
 import {IS_OVERLAY_SCROLL_SUPPORTED, USE_CUSTOM_SCROLL, USE_NATIVE_SCROLL} from '@environment/overlayScrollSupport';
 import IMAGE_MIME_TYPES_SUPPORTED, {IMAGE_MIME_TYPES_SUPPORTED_PROMISE} from '@environment/imageMimeTypesSupport';
 import MEDIA_MIME_TYPES_SUPPORTED from '@environment/mediaMimeTypesSupport';
-import {doubleRaf} from '@helpers/schedulers';
+import {doubleRaf, fastRafPromise} from '@helpers/schedulers';
 import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
 import AccountController from '@lib/accounts/accountController';
 import {changeAccount} from '@lib/accounts/changeAccount';
@@ -533,6 +533,8 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
     // appNavigationController.overrideHash('?tgaddr=' + encodeURIComponent(params.tgaddr));
   }
 
+  await preventCrossTabDynamicImportDeadlock();
+
   if(authState._ !== 'authStateSignedIn'/*  || 1 === 1 */) {
     console.log('Will mount auth page:', authState._, Date.now() / 1000);
 
@@ -587,6 +589,7 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
       scrollable.prepend(placeholder);
       scrollable.append(placeholder.cloneNode());
     }
+
 
     try {
       await Promise.all([
@@ -681,6 +684,7 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
       import('./pages/pageIm').then((module) => module.default),
       sessionStorage.get('should_animate_main')
     ]);
+
     if(shouldAnimate) {
       await sessionStorage.delete('should_animate_main');
       page.pageEl.classList.add('main-screen-enter');
@@ -702,3 +706,21 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
     }
   }
 });
+
+/**
+  * There is a edge-case bug that occurs when:
+  * 1. A new tab is silently opened (e.g., via Ctrl+Click on an account) but not focused immediately.
+  * 2. The current tab is then reloaded.
+  *
+  * In this scenario, both tabs can freeze permanently because the non-focused tab
+  * starts the dynamic import of the main page module before it was focused,
+  * causing a cross-tab module import deadlock.
+  * // import('./pages/pageIm').then((module) => module.default)
+  *
+  * Using fastRafPromise() (which internally waits for requestAnimationFrame) ensures that
+  * the dynamic import is deferred until the next animation frame — effectively
+  * delaying it until the user focuses the tab — and prevents this freeze.
+  */
+async function preventCrossTabDynamicImportDeadlock() {
+  await fastRafPromise();
+}
