@@ -1,2 +1,0 @@
-import{bS as o,bl as l,a4 as n,t as r}from"./index-BKArEJfv.js";const i="_Radio_8rde5_36",d="_floating_8rde5_62",f="_checked_8rde5_66",t={Radio:i,floating:d,checked:f},p=r("<span>"),g=a=>{const[s,c]=o(a,["checked","floating","class","classList"]);return(()=>{const e=p();return l(e,n({get class(){return t.Radio},get classList(){return{[s.class]:!!s.class,[t.checked]:s.checked,[t.floating]:s.floating,"offset-left":s.floating,...s.classList}}},c),!1,!1),e})()};export{g as S};
-//# sourceMappingURL=staticRadio-BiiWxBIt.js.map
