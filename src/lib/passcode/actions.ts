@@ -155,7 +155,6 @@ export function usePasscodeActions() {
     await apiManagerProxy.serviceMessagePort.invoke('toggleUsingPasscode', {isUsingPasscode: true, encryptionKey});
 
     apiManagerProxy.invokeVoid('toggleLockOthers', false);
-    rootScope.dispatchEvent('toggle_locked', false);
   }
 
   return {

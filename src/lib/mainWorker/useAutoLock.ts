@@ -12,10 +12,10 @@ import type MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
 type UseAutoLockArgs = {
   getPort: () => MTProtoMessagePort<false>;
   getIsLocked: () => boolean;
-  setIsLocked: (value: boolean) => void;
+  onLock: () => void;
 };
 
-export const useAutoLock = ({getPort, getIsLocked, setIsLocked}: UseAutoLockArgs) => createRoot((dispose) => {
+export const useAutoLock = ({getPort, getIsLocked, onLock}: UseAutoLockArgs) => createRoot((dispose) => {
   const [areAllIdle, setAreAllIdle] = createSignal(false);
   const [uninteruptableActivities, setUninteruptableActivities] = createSignal(0);
 
@@ -47,14 +47,7 @@ export const useAutoLock = ({getPort, getIsLocked, setIsLocked}: UseAutoLockArgs
       autoLockTimeout = self.setTimeout(() => {
         if(!areAllIdle() || getIsLocked()) return;
 
-        getPort().invokeVoid('toggleLock', true);
-        getPort().invokeVoid('event', {
-          name: 'toggle_locked',
-          args: [true],
-          accountNumber: undefined
-        });
-
-        setIsLocked(true);
+        onLock();
       }, timeoutMins * 1000 * 60);
       // }, timeoutMins * 1000 * 10); // Please don't forget to comment this back))
     })();

@@ -29,12 +29,16 @@ import CacheStorageController from '@lib/files/cacheStorage';
 import {ApiManager} from '@appManagers/apiManager';
 import {useAutoLock} from '@lib/mainWorker/useAutoLock';
 import pushSingleManager from '@appManagers/pushSingleManager';
+import {createBroadcastChannelWrapper} from '@lib/broadcastChannelWrapper';
+import {MainBroadcastChannelEvents, unversionedMainBroadcastChannelName} from '@config/broadcastChannel';
 
 
 const log = logger('MTPROTO');
 // let haveState = false;
 
 const port = new MTProtoMessagePort<false>();
+
+const mainBroadcastChannel = createBroadcastChannelWrapper<MainBroadcastChannelEvents>(unversionedMainBroadcastChannelName);
 
 let isLocked = true;
 
@@ -137,9 +141,7 @@ port.addMultipleEventsListeners({
   },
 
   terminate: () => {
-    if(typeof(SharedWorkerGlobalScope) !== 'undefined') {
-      self.close();
-    }
+    selfTerminate();
   },
 
   toggleUsingPasscode: async(payload, source) => {
@@ -258,15 +260,21 @@ function resetNotificationsCount() {
 
 const autoLockControls = useAutoLock({
   getIsLocked: () => isLocked,
-  setIsLocked: (value) => void (isLocked = value),
+  onLock: () => {
+    mainBroadcastChannel.emitVoid('reload');
+    selfTerminate();
+  },
   getPort: () => port
 });
 
-appTabsManager.onTabStateChange = async() => {
+appTabsManager.onTabStateChange = () => {
   const tabs = appTabsManager.getTabs();
   const areAllIdle = tabs.every((tab) => !!tab.state.idleStartTime);
 
   autoLockControls.setAreAllIdle(areAllIdle);
+  if(!tabs.length && DeferredIsUsingPasscode.isUsingPasscodeUndeferred()) {
+    selfTerminate();
+  }
 };
 
 listenMessagePort(port, (source) => {
@@ -295,3 +303,10 @@ listenMessagePort(port, (source) => {
   appTabsManager.deleteTab(source);
   autoLockControls.removeTab(source);
 });
+
+
+function selfTerminate() {
+  if(typeof(SharedWorkerGlobalScope) !== 'undefined') {
+    self.close();
+  }
+}

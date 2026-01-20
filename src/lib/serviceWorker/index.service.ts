@@ -183,17 +183,12 @@ listenMessagePort(serviceMessagePort, undefined, (source) => {
   if(!connectedWindows.size) {
     log.warn('no windows left');
 
-    DeferredIsUsingPasscode.isUsingPasscode()
-    .then((isUsingPasscode) => {
-      if(isUsingPasscode) {
-        resetPushAccounts();
-      }
-    }).finally(() => {
-      if(!connectedWindows.size) { // * make sure that the promise is resolved not because new window connected
-        EncryptionKeyStore.resetDeferred();
-        DeferredIsUsingPasscode.resetDeferred();
-      }
-    });
+    if(DeferredIsUsingPasscode.isUsingPasscodeUndeferred()) {
+      resetPushAccounts();
+    }
+
+    EncryptionKeyStore.resetDeferred();
+    DeferredIsUsingPasscode.resetDeferred();
 
     if(_mtprotoMessagePort) {
       serviceMessagePort.detachPort(_mtprotoMessagePort);
