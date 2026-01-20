@@ -1,0 +1,7 @@
+.Preview {
+  border-radius: .625rem;
+  border: .125rem solid rgba(255, 255, 255, .15);
+  overflow: hidden;
+  margin-bottom: .25rem;
+  display: flex; // * fix extra height
+}

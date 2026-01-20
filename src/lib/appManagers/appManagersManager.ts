@@ -18,11 +18,12 @@ import AppStateManager from '@appManagers/appStateManager';
 import rootScope from '@lib/rootScope';
 import AccountController from '@lib/accounts/accountController';
 import pushSingleManager from '@appManagers/pushSingleManager';
+import Modes from '@config/modes';
 
 type Managers = Awaited<ReturnType<typeof createManagers>>;
 
 // for testing cases without video streaming
-const CAN_USE_SERVICE_WORKER = true;
+const CAN_USE_SERVICE_WORKER = !Modes.noServiceWorker;
 
 type ManagersByAccount = Record<ActiveAccountNumber, Managers>;
 type StateManagersByAccount = Record<ActiveAccountNumber, AppStateManager>;

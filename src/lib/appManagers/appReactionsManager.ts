@@ -43,6 +43,10 @@ const REFERENCE_CONTEXT: ReferenceContext = {
   type: 'reactions'
 };
 
+const AVAILABLE_EFFECTS_REFERENCE_CONTEXT: ReferenceContext = {
+  type: 'availableEffects'
+};
+
 const REFRESH_TAGS_INTERVAL = 10 * 60e3;
 // const REFRESH_TAGS_INTERVAL = 15e3;
 
@@ -860,7 +864,7 @@ export class AppReactionsManager extends AppManager {
       processResult: (availableEffects) => {
         assumeType<MessagesAvailableEffects.messagesAvailableEffects>(availableEffects);
         availableEffects.documents.forEach((doc, idx, arr) => {
-          arr[idx] = this.appDocsManager.saveDoc(doc);
+          arr[idx] = this.appDocsManager.saveDoc(doc, AVAILABLE_EFFECTS_REFERENCE_CONTEXT);
         });
 
         availableEffects.effects.forEach((availableEffect) => {

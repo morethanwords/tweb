@@ -26,6 +26,7 @@ import parseEntities from '@lib/richTextProcessor/parseEntities';
 import toArray from '@helpers/array/toArray';
 import base64ToBytes from '@helpers/string/base64ToBytes';
 import StickerType from '@config/stickerType';
+import {ReferenceContext} from '@lib/storages/references';
 
 const CACHE_TIME = 3600e3;
 
@@ -195,15 +196,17 @@ export class AppStickersManager extends AppManager {
     });
   }
 
-  private saveStickers(docs: Document[]) {
-    if(!docs || (docs as any).saved) return;
+  private saveStickers(docs: Document[], context?: ReferenceContext) {
+    if(!docs || (docs as any).saved) return docs as MyDocument[];
     (docs as any).saved = true;
     forEachReverse(docs, (doc, idx) => {
-      doc = this.appDocsManager.saveDoc(doc);
+      doc = this.appDocsManager.saveDoc(doc, context);
 
       if(!doc) docs.splice(idx, 1);
       else docs[idx] = doc;
     });
+
+    return docs as MyDocument[];
   }
 
   private canUseStickerSetCache(set: MyMessagesStickerSet, useCache?: boolean) {
@@ -345,7 +348,7 @@ export class AppStickersManager extends AppManager {
         assumeType<MessagesRecentStickers.messagesRecentStickers>(res);
 
         this.recentStickers = res.stickers as MyDocument[];
-        this.saveStickers(res.stickers);
+        this.saveStickers(res.stickers, {type: 'recentStickers'});
         return res;
       },
       overwrite
@@ -489,11 +492,15 @@ export class AppStickersManager extends AppManager {
   }
 
   private saveStickerSetLocal(stickerSet: MessagesStickerSet.messagesStickerSet) {
+    const inputStickerSet = this.getStickerSetInput(stickerSet.set);
     if(stickerSet.set.short_name) {
-      this.names[stickerSet.set.short_name] = this.getStickerSetInput(stickerSet.set) as any;
+      this.names[stickerSet.set.short_name] = inputStickerSet as any;
     }
 
-    this.saveStickers(stickerSet.documents);
+    this.saveStickers(stickerSet.documents, {
+      type: 'stickerSet',
+      input: inputStickerSet
+    });
     this.indexStickerSet(stickerSet);
   }
 
@@ -627,7 +634,7 @@ export class AppStickersManager extends AppManager {
       method: 'messages.getFavedStickers',
       processResult: (favedStickers) => {
         assumeType<MessagesFavedStickers.messagesFavedStickers>(favedStickers);
-        this.saveStickers(favedStickers.stickers);
+        this.saveStickers(favedStickers.stickers, {type: 'favedStickers'});
         this.favedStickers = favedStickers.stickers as MyDocument[];
         return favedStickers;
       },
@@ -798,17 +805,21 @@ export class AppStickersManager extends AppManager {
     emoticon,
     includeOurStickers,
     includeServerStickers,
-    excludePremiumEffectStickers
+    excludePremiumEffectStickers,
+    overwrite
   }: {
     emoticon: string | string[],
     includeOurStickers?: boolean,
     includeServerStickers?: boolean,
-    excludePremiumEffectStickers?: boolean
+    excludePremiumEffectStickers?: boolean,
+    overwrite?: boolean
   }) {
     const emoticonArray = toArray(emoticon).map((emoji) => fixEmoji(emoji));
     emoticon = emoticonArray.join('');
     const cacheKey = emoticon + (includeOurStickers ? '1' : '0') + (includeServerStickers ? '1' : '0');
-    if(this.getStickersByEmoticonsPromises[cacheKey]) return this.getStickersByEmoticonsPromises[cacheKey];
+    if(this.getStickersByEmoticonsPromises[cacheKey] && !overwrite) {
+      return this.getStickersByEmoticonsPromises[cacheKey];
+    }
 
     return this.getStickersByEmoticonsPromises[cacheKey] = Promise.all([
       includeServerStickers ? this.apiManager.invokeApiHashable({
@@ -821,7 +832,12 @@ export class AppStickersManager extends AppManager {
       includeOurStickers ? this.preloadStickerSets() : [],
       includeOurStickers ? this.getRecentStickers() : undefined
     ]).then(([messagesStickers, installedSets, recentStickers]) => {
-      const foundStickers = messagesStickers ? (messagesStickers as MessagesStickers.messagesStickers).stickers.map((sticker) => this.appDocsManager.saveDoc(sticker)) : [];
+      const foundStickers = messagesStickers ?
+        this.saveStickers(
+          (messagesStickers as MessagesStickers.messagesStickers).stickers,
+          {type: 'stickerSearch', emoticon}
+        ) :
+        [];
       const cachedStickersAnimated: Document.document[] = [], cachedStickersStatic: Document.document[] = [];
 
       // console.log('getStickersByEmoticon', messagesStickers, installedSets, recentStickers);

@@ -26,6 +26,7 @@ import AccountController from '@lib/accounts/accountController';
 import App from '@config/app';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import appNavigationController from '@components/appNavigationController';
+import Modes from '@config/modes';
 
 export type PushSubscriptionNotifyType = 'init' | 'subscribe' | 'unsubscribe';
 export type PushSubscriptionNotifyEvent = `push_${PushSubscriptionNotifyType}`;
@@ -53,9 +54,12 @@ export class WebPushApiManager extends EventListenerBase<{
   constructor() {
     super(false);
 
-    if(!('PushManager' in window) ||
+    if(
+      !('PushManager' in window) ||
       !('Notification' in window) ||
-      !('serviceWorker' in navigator)) {
+      !('serviceWorker' in navigator) ||
+      Modes.noServiceWorker
+    ) {
       this.log.warn('push messaging is not supported.');
       this.isAvailable = false;
       this.localNotificationsAvailable = false;

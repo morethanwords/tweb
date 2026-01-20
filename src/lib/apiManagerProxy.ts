@@ -631,6 +631,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
     });
   }
 
+  public isServiceWorkerOnline() {
+    return !!this.serviceWorkerRegistration;
+  }
+
   private _registerServiceWorker() {
     // if(import.meta.env.DEV && IS_SAFARI) {
     //   return;
@@ -690,6 +694,19 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
   private registerServiceWorker() {
     if(!('serviceWorker' in navigator)) return;
+
+    if(Modes.noServiceWorker) {
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        for(const reg of regs) {
+          reg.unregister().then((success) => {
+            success &&
+              window.location.reload();
+          });
+        }
+      });
+
+      return;
+    }
 
     this.serviceMessagePort = webPushApiManager.serviceMessagePort = new ServiceMessagePort<true>();
 

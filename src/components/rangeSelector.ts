@@ -150,7 +150,11 @@ export default class RangeSelector {
     }
   }
 
-  protected scrub(event: GrabEvent, snapValue?: (value: number) => number) {
+  /**
+   * Make sure rect is set
+   * @returns value [0..1]
+   */
+  protected getValueByEvent(event: GrabEvent) {
     let rectMax = this.vertical ? this.rect.height : this.rect.width;
 
     if(this.offsetAxisValue) {
@@ -169,7 +173,11 @@ export default class RangeSelector {
       offsetAxisValue = rectMax - offsetAxisValue;
     }
 
-    let value = this.min + (offsetAxisValue / rectMax * (this.max - this.min));
+    return offsetAxisValue / rectMax;
+  }
+
+  protected scrub(event: GrabEvent, snapValue?: (value: number) => number) {
+    let value = this.min + (this.getValueByEvent(event) * (this.max - this.min));
 
     if((value - this.min) < ((this.max - this.min) / 2)) {
       value -= this.step / 10;

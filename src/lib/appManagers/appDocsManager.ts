@@ -38,6 +38,8 @@ type WallPaperId = WallPaper.wallPaper['id'];
 
 let uploadWallPaperTempId = 0;
 
+// let TEST_FILE_REFERENCE = '5436366378309293244', TEST_FILE_REFERENCE_TIMES = 3;
+
 export class AppDocsManager extends AppManager {
   private docs: {
     [docId: DocId]: MyDocument
@@ -88,6 +90,16 @@ export class AppDocsManager extends AppManager {
 
     // * force it to be string everywhere, at least for HLS streaming
     doc.id = doc.id.toString();
+
+    // if(doc.id === TEST_FILE_REFERENCE) {
+    //   console.warn('Testing FILE_REFERENCE_EXPIRED', new Error().stack);
+    //   // const bytes = [1, 0, 0, 94, 36, 105, 111, 78, 62, 44, 236, 195, 129, 108, 129, 3, 9, 0, 208, 161, 139, 179, 15, 94, 167];
+    //   const bytes = [1, 0, 0, 94, 36, 105, 111, 78, 62, 44, 236, 195, 129, 108, 129, 3, 9, 0, 208, 161, 139, 179, 15, 94, 166];
+    //   doc.file_reference = bytes;
+    //   if(!--TEST_FILE_REFERENCE_TIMES) {
+    //     TEST_FILE_REFERENCE = '';
+    //   }
+    // }
 
     if(altDocuments) {
       const saved = altDocuments.map((altDoc) => this.saveDoc(altDoc, context)).filter(Boolean);

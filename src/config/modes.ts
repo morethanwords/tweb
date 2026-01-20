@@ -19,6 +19,7 @@ const Modes = {
   asServiceWorker: !!import.meta.env.VITE_MTPROTO_SW,
   transport: 'websocket' as TransportType,
   noSharedWorker: location.search.indexOf('noSharedWorker=1') > 0,
+  noServiceWorker: location.search.indexOf('noServiceWorker=1') > 0,
   multipleTransports: !!(import.meta.env.VITE_MTPROTO_AUTO && import.meta.env.VITE_MTPROTO_HAS_HTTP && import.meta.env.VITE_MTPROTO_HAS_WS) && location.search.indexOf('noMultipleTransports=1') === -1,
   noPfs: true || location.search.indexOf('noPfs=1') > 0
 };

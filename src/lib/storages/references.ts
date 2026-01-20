@@ -4,11 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {Photo, StoryItem, WallPaper} from '@layer';
+import type {InputStickerSet, Photo, StoryItem, WallPaper} from '@layer';
 import bytesToHex from '@helpers/bytes/bytesToHex';
 import deepEqual from '@helpers/object/deepEqual';
 import {AppManager} from '@appManagers/manager';
 import makeError from '@helpers/makeError';
+import copy from '@helpers/object/copy';
 
 export type ReferenceContext =
   ReferenceContext.referenceContextProfilePhoto |
@@ -26,7 +27,12 @@ export type ReferenceContext =
   ReferenceContext.referenceContextChatInvite |
   ReferenceContext.referenceContextEffects |
   ReferenceContext.referenceContextStarsTransaction |
-  ReferenceContext.referenceContextSavedGifs;
+  ReferenceContext.referenceContextSavedGifs |
+  ReferenceContext.referenceContextRecentStickers |
+  ReferenceContext.referenceContextFavedStickers |
+  ReferenceContext.referenceContextStickerSet |
+  ReferenceContext.referenceContextAvailableEffects |
+  ReferenceContext.referenceContextStickerSearch;
 
 export namespace ReferenceContext {
   export type referenceContextProfilePhoto = {
@@ -107,6 +113,28 @@ export namespace ReferenceContext {
   export type referenceContextSavedGifs = {
     type: 'savedGifs'
   };
+
+  export type referenceContextRecentStickers = {
+    type: 'recentStickers'
+  };
+
+  export type referenceContextFavedStickers = {
+    type: 'favedStickers'
+  };
+
+  export type referenceContextStickerSet = {
+    type: 'stickerSet',
+    input: InputStickerSet
+  };
+
+  export type referenceContextAvailableEffects = {
+    type: 'availableEffects'
+  };
+
+  export type referenceContextStickerSearch = {
+    type: 'stickerSearch',
+    emoticon: string
+  };
 }
 
 export type ReferenceBytes = Photo.photo['file_reference'];
@@ -144,6 +172,10 @@ export class ReferencesStorage extends AppManager {
   // }
 
   public saveContext(reference: ReferenceBytes, context: ReferenceContext, contexts?: ReferenceContexts) {
+    // if(!context) {
+    //   debugger;
+    // }
+
     [contexts, reference] = this.getContexts(reference);
     if(!contexts) {
       contexts = new Set();
@@ -165,7 +197,10 @@ export class ReferencesStorage extends AppManager {
   }
 
   public getContexts(reference: ReferenceBytes): [ReferenceContexts, ReferenceBytes] {
-    const contexts = this.contexts.get(reference) || (reference = this.getReferenceByLink(reference) || reference, this.contexts.get(reference));
+    const contexts = this.contexts.get(reference) || (
+      reference = this.getReferenceByLink(reference) || reference,
+      this.contexts.get(reference)
+    );
     return [contexts, reference];
   }
 
@@ -193,13 +228,88 @@ export class ReferencesStorage extends AppManager {
     return false;
   }
 
+  private getRefreshPromise(context: ReferenceContext): any {
+    switch(context?.type) {
+      case 'message': {
+        const message = copy(this.appMessagesManager.getMessageByPeer(context.peerId, context.messageId));
+        return this.appMessagesManager.reloadMessages(context.peerId, context.messageId, true)
+        .then((_message) => {
+          this.log('FILE_REFERENCE_EXPIRED: got message', context, message, _message);
+        });
+      }
+
+      case 'emojiesSounds':
+        return this.refreshEmojiesSoundsPromise || this.appStickersManager.getAnimatedEmojiSounds(true).then(() => {
+          this.refreshEmojiesSoundsPromise = undefined;
+        });
+
+      case 'userFull':
+        return this.appProfileManager.getProfile(context.userId, true);
+
+      case 'customEmoji':
+        return this.appEmojiManager.getCustomEmojiDocuments([context.docId]);
+
+      case 'attachMenuBotIcon':
+        return this.appAttachMenuBotsManager.getAttachMenuBot(context.botId, true);
+
+      case 'wallPaper':
+        return this.appThemesManager.getWallPaperById(context.wallPaperId);
+
+      case 'storyItem':
+        return this.appStoriesManager.getStoryById(context.peerId, context.storyId, true);
+
+      case 'premiumPromo':
+        return this.appPaymentsManager.getPremiumPromo(true);
+
+      case 'webPage':
+        return this.appWebPagesManager.getWebPage(context.url);
+
+      case 'botApp':
+        return this.appAttachMenuBotsManager.getBotApp(context.botId, context.appName);
+
+      case 'chatInvite':
+        return this.appChatInvitesManager.checkChatInvite(context.hash);
+
+      case 'effects':
+        return this.appReactionsManager.getAvailableEffects(true);
+
+      case 'savedGifs':
+        return this.appGifsManager.getGifs(true);
+
+      case 'recentStickers':
+        return this.appStickersManager.getRecentStickers(true);
+
+      case 'favedStickers':
+        return this.appStickersManager.getFavedStickers(true);
+
+      case 'stickerSet':
+        return this.appStickersManager.getStickerSet(context.input as any, {overwrite: true});
+
+      case 'availableEffects':
+        return this.appReactionsManager.getAvailableEffects(true);
+
+      case 'stickerSearch':
+        return this.appStickersManager.getStickersByEmoticon({
+          emoticon: context.emoticon,
+          includeServerStickers: true,
+          includeOurStickers: false
+        });
+
+      default: {
+        this.log.warn('not implemented context', context);
+        throw makeError('NO_CONTEXT');
+      }
+    }
+  }
+
   public refreshReference(reference: ReferenceBytes, context?: ReferenceContext): Promise<Uint8Array | number[]> {
-    this.log('refreshReference: start', reference.slice(), context);
+    const log = this.log.bindPrefix('refreshReference');
+    log('start', reference.slice(), context);
     if(!context) {
       const c = this.getContext(reference);
       if(!c) {
-        this.log('refreshReference: got no context for reference:', reference.slice());
-        return Promise.reject('NO_CONTEXT');
+        log('got no context for reference', reference.slice());
+        return Promise.reject(makeError('NO_CONTEXT'));
       }
 
       [context, reference] = c;
@@ -207,88 +317,20 @@ export class ReferencesStorage extends AppManager {
 
     const hex = bytesToHex(reference);
     let promise: Promise<any>;
-    switch(context?.type) {
-      case 'message': {
-        promise = this.appMessagesManager.reloadMessages(context.peerId, context.messageId, true);
-        break;
-        // .then(() => {
-        //   console.log('FILE_REFERENCE_EXPIRED: got message', context, appMessagesManager.getMessage((context as ReferenceContext.referenceContextMessage).messageId).media, reference);
-        // });
+    try {
+      promise = this.getRefreshPromise(context);
+      if(!(promise instanceof Promise)) {
+        promise = Promise.resolve(promise);
       }
-
-      case 'emojiesSounds': {
-        promise = this.refreshEmojiesSoundsPromise || this.appStickersManager.getAnimatedEmojiSounds(true).then(() => {
-          this.refreshEmojiesSoundsPromise = undefined;
-        });
-        break;
-      }
-
-      case 'userFull': {
-        promise = Promise.resolve(this.appProfileManager.getProfile(context.userId, true));
-        break;
-      }
-
-      case 'customEmoji': {
-        promise = this.appEmojiManager.getCustomEmojiDocuments([context.docId]);
-        break;
-      }
-
-      case 'attachMenuBotIcon': {
-        promise = this.appAttachMenuBotsManager.getAttachMenuBot(context.botId, true) as any;
-        break;
-      }
-
-      case 'wallPaper': {
-        promise = this.appThemesManager.getWallPaperById(context.wallPaperId);
-        break;
-      }
-
-      case 'storyItem': {
-        promise = Promise.resolve(this.appStoriesManager.getStoryById(context.peerId, context.storyId, true));
-        break;
-      }
-
-      case 'premiumPromo': {
-        promise = Promise.resolve(this.appPaymentsManager.getPremiumPromo(true));
-        break;
-      }
-
-      case 'webPage': {
-        promise = Promise.resolve(this.appWebPagesManager.getWebPage(context.url));
-        break;
-      }
-
-      case 'botApp': {
-        promise = Promise.resolve(this.appAttachMenuBotsManager.getBotApp(context.botId, context.appName));
-        break;
-      }
-
-      case 'chatInvite': {
-        promise = Promise.resolve(this.appChatInvitesManager.checkChatInvite(context.hash));
-        break;
-      }
-
-      case 'effects': {
-        promise = Promise.resolve(this.appReactionsManager.getAvailableEffects(true));
-        break;
-      }
-
-      case 'savedGifs': {
-        promise = Promise.resolve(this.appGifsManager.getGifs(true));
-        break;
-      }
-
-      default: {
-        this.log.warn('refreshReference: not implemented context', context);
-        return Promise.reject();
-      }
+    } catch(err) {
+      promise = Promise.reject(err);
     }
 
-    this.log('refreshReference: refreshing reference:', hex);
+    log('refreshing reference', hex);
 
     const onFinish = () => {
       const newHex = bytesToHex(reference);
-      this.log('refreshReference: refreshed, reference before:', hex, 'after:', newHex);
+      log('refreshed, reference before', hex, 'after', newHex);
       if(hex !== newHex) {
         return reference;
       }
@@ -300,12 +342,15 @@ export class ReferencesStorage extends AppManager {
         return this.refreshReference(reference, newContext[0]);
       }
 
-      this.log.error('refreshReference: no new context, reference before:', hex, 'after:', newHex, context);
+      log.error('no new context, reference before', hex, 'after', newHex, context);
 
       throw makeError('NO_NEW_CONTEXT');
     };
 
-    return promise.then(onFinish, onFinish);
+    return promise.then(onFinish, (err) => {
+      log.error('error', err);
+      return onFinish();
+    });
   }
 
   /* public replaceReference(oldReference: ReferenceBytes, newReference: ReferenceBytes) {
