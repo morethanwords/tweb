@@ -44,6 +44,8 @@ import appManagersManager from '@appManagers/appManagersManager';
 import clamp from '@helpers/number/clamp';
 import insertInDescendSortedArray from '@helpers/array/insertInDescendSortedArray';
 import {ActiveAccountNumber} from '@lib/accounts/types';
+import assumeType from '@helpers/assumeType';
+import pause from '@helpers/schedulers/pause';
 
 export type DownloadOptions = {
   dcId: DcId,
@@ -102,6 +104,11 @@ const IGNORE_ERRORS: Set<ErrorType> = new Set([
   'NO_NEW_CONTEXT'
 ]);
 
+type InvokeApiWithReferenceContext = {file_reference: ReferenceBytes};
+
+// * use together with appDocsManager `TEST_FILE_REFERENCE`
+// let TEST_FILE_REFERENCE_DOC_ID: DocId = '5436366378309293244';
+
 export class ApiFileManager extends AppManager {
   private cacheStorage = new CacheStorageController('cachedFiles');
   private downloadStorage = new DownloadStorage();
@@ -136,10 +143,7 @@ export class ApiFileManager extends AppManager {
   private downloadActives: {[dcId: string]: number} = {};
 
   public refreshReferencePromises: {
-    [referenceHex: string]: {
-      deferred: CancellablePromise<ReferenceBytes>,
-      timeout?: number
-    }
+    [referenceHex: string]: CancellablePromise<ReferenceBytes>
   } = {};
 
   private tempId = 0;
@@ -159,7 +163,7 @@ export class ApiFileManager extends AppManager {
   protected after() {
     setInterval(() => { // clear old promises
       for(const hex in this.refreshReferencePromises) {
-        const {deferred} = this.refreshReferencePromises[hex];
+        const deferred = this.refreshReferencePromises[hex];
         if(deferred.isFulfilled || deferred.isRejected) {
           delete this.refreshReferencePromises[hex];
         }
@@ -513,12 +517,7 @@ export class ApiFileManager extends AppManager {
   };
 
   // * will handle file deletion from the other side
-  private useReference<T>(context: {file_reference: ReferenceBytes}, promise: Promise<T>) {
-    const reference = context?.file_reference;
-    if(!reference) {
-      return;
-    }
-
+  private useReference<T>(reference: ReferenceBytes, promise: Promise<T>) {
     const deferred = deferredPromise<T>();
     promise.then(deferred.resolve.bind(deferred), deferred.reject.bind(deferred));
 
@@ -536,11 +535,7 @@ export class ApiFileManager extends AppManager {
       }
     });
 
-    const refreshReference = () => {
-      return this.refreshReference(context, reference);
-    };
-
-    return {deferred, refreshReference};
+    return deferred;
   }
 
   // do not remove async, because checkCancel will throw an error
@@ -549,68 +544,69 @@ export class ApiFileManager extends AppManager {
     callback,
     checkCancel
   }: {
-    context: {file_reference: ReferenceBytes, checkedReference?: boolean},
+    context: InvokeApiWithReferenceContext,
     callback: () => Promise<T>,
     checkCancel?: () => void
   }) {
     checkCancel?.();
 
+    const reference = (context as InvokeApiWithReferenceContext).file_reference;
     const invoke = async(): Promise<T> => {
       checkCancel?.(); // do not remove async, because checkCancel will throw an error
 
+      const referenceUsedHex = reference ? bytesToHex(reference) : undefined;
       let promise = callback();
-      let refreshReference: () => Promise<void>;
       if(reference) {
-        const {deferred, refreshReference: r} = this.useReference(context, promise);
-        promise = deferred;
-        refreshReference = r;
+        promise = this.useReference(reference, promise);
       }
 
-      return promise.catch((err: ApiError) => {
+      return promise.catch(async(err: ApiError) => {
         checkCancel?.();
 
         if(err.type === 'FILE_REFERENCE_EXPIRED' || err.type === 'FILE_REFERENCE_INVALID') {
-          return refreshReference().then(invoke);
+          /**
+           * this is to test the case when reference is already refreshed by another request
+           * but this one with old reference is not finished yet,
+           * so it will try to refresh the reference again,
+           * and it can cause an error 'NO_NEW_CONTEXT',
+           * since it will try to refresh already refreshed reference
+           */
+          // if(
+          //   TEST_FILE_REFERENCE_DOC_ID &&
+          //   (context as InputFileLocation.inputDocumentFileLocation).id === TEST_FILE_REFERENCE_DOC_ID
+          // ) {
+          //   assumeType<InputFileLocation.inputDocumentFileLocation>(context);
+          //   TEST_FILE_REFERENCE_DOC_ID = undefined;
+          //   await pause(1000);
+          // }
+
+          return this.refreshReference(
+            context as InvokeApiWithReferenceContext,
+            reference,
+            referenceUsedHex
+          ).then(invoke);
         }
 
         throw err;
       });
     };
 
-    const reference = context?.file_reference;
-    if(reference && !context.checkedReference) { // check stream's context because it's new every call
-      context.checkedReference = true;
-      const hex = bytesToHex(reference);
-      if(this.refreshReferencePromises[hex]) {
-        return this.refreshReference(context, reference).then(invoke);
-      }
-    }
-
     return invoke();
   }
 
   private refreshReference(
-    inputFileLocation: {file_reference: ReferenceBytes},
+    inputFileLocation: InvokeApiWithReferenceContext,
     reference: typeof inputFileLocation['file_reference'],
-    hex = bytesToHex(reference)
+    usedHex: string
   ) {
-    let r = this.refreshReferencePromises[hex];
-    if(!r) {
-      const deferred = deferredPromise<ReferenceBytes>();
+    const hex = bytesToHex(reference);
+    if(hex !== usedHex) { // * probably another request was already finished
+      return Promise.resolve(reference);
+    }
 
-      r = this.refreshReferencePromises[hex] = {
-        deferred
-
-        // ! I don't remember what it was for...
-        // timeout: ctx.setTimeout(() => {
-        //   this.log.error('Didn\'t refresh the reference:', inputFileLocation);
-        //   deferred.reject(makeError('REFERENCE_IS_NOT_REFRESHED'));
-        // }, 60000)
-      };
-
-      // deferred.catch(noop).finally(() => {
-      //   clearTimeout(r.timeout);
-      // });
+    let deferred = this.refreshReferencePromises[hex];
+    if(!deferred) {
+      deferred = this.refreshReferencePromises[hex] = deferredPromise();
 
       this.referencesStorage.refreshReference(reference).then((reference) => {
         if(hex === bytesToHex(reference)) {
@@ -621,10 +617,7 @@ export class ApiFileManager extends AppManager {
       }, deferred.reject.bind(deferred));
     }
 
-    // have to replace file_reference in any way, because location can be different everytime if it's stream
-    return r.deferred.then((reference) => {
-      inputFileLocation.file_reference = reference;
-    });
+    return deferred;
   }
 
   public isDownloading(fileName: string) {

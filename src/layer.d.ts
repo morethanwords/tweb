@@ -407,8 +407,7 @@ export namespace InputFileLocation {
     id: string | number,
     access_hash: string | number,
     file_reference: Uint8Array | number[],
-    thumb_size: string,
-    checkedReference?: boolean
+    thumb_size: string
   };
 
   export type inputSecureFileLocation = {

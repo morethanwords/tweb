@@ -161,6 +161,12 @@
     }
   }
 
+  &:not(.show-time) {
+    .media-progress-line__current-time-info {
+      display: none !important;
+    }
+  }
+
   &.is-playing {
     &:not(.show-controls):not(:has(.speed-drag-handler__speed-tip--visible)) {
       cursor: none;
@@ -339,6 +345,7 @@ video::-webkit-media-controls-enclosure {
   }
 
   &__filled {
+    pointer-events: none;
     // padding-right: 1px; // * need because there is border-radius
     max-width: 100%;
 

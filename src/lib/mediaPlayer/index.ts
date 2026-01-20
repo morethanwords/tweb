@@ -212,6 +212,12 @@ export default class VideoPlayer extends ControlsHover {
         this.preview = createPreview(this.previewParams);
       }
 
+      const debouncedToggleControls = debounce((show: boolean) => {
+        this.wrapper.classList.toggle('show-time', show);
+      }, 200, false, true);
+
+      this.addEventListener('toggleControls', debouncedToggleControls);
+
       this.progress = new MediaProgressLine({
         videoTimestamps,
         withTime: true,

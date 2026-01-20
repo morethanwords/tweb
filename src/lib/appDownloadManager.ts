@@ -8,7 +8,7 @@ import type {DownloadMediaOptions, DownloadOptions} from '@appManagers/apiFileMa
 import type {AppMessagesManager} from '@appManagers/appMessagesManager';
 import type {MyDocument} from '@appManagers/appDocsManager';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
-import {InputFile, Photo, PhotoSize} from '@layer';
+import {InputFile, InputFileLocation, Photo, PhotoSize} from '@layer';
 import getFileNameForUpload from '@helpers/getFileNameForUpload';
 import {AppManagers} from '@lib/managers';
 import rootScope from '@lib/rootScope';
@@ -144,7 +144,8 @@ export class AppDownloadManager {
     }
 
     deferred = this.getNewDeferred(fileName);
-    this.managers.appMessagesManager.getUploadPromise(fileName).then(deferred.resolve.bind(deferred), deferred.reject.bind(deferred));
+    this.managers.appMessagesManager.getUploadPromise(fileName)
+    .then(deferred.resolve.bind(deferred), deferred.reject.bind(deferred));
     return deferred;
   }
 
@@ -171,6 +172,10 @@ export class AppDownloadManager {
   }
 
   public download(options: DownloadOptions): DownloadBlob {
+    if((options.location as InputFileLocation.inputDocumentFileLocation).file_reference) {
+      throw new Error('download document with file_reference is not supported, use downloadMedia instead');
+    }
+
     const fileName = getDownloadFileNameFromOptions(options);
     return this.d(fileName, () => this.managers.apiFileManager.download(options), 'blob') as any;
   }

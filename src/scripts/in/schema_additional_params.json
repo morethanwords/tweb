@@ -339,11 +339,6 @@
     {"name": "used", "type": "true"}
   ]
 }, {
-  "predicate": "inputDocumentFileLocation",
-  "params": [
-    {"name": "checkedReference", "type": "boolean"}
-  ]
-}, {
   "predicate": "inputMediaContact",
   "params": [
     {"name": "user_id", "type": "UserId"}

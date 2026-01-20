@@ -407,7 +407,9 @@ export class AppDocsManager extends AppManager {
 
   public requestDocPart(docId: DocId, dcId: number, offset: number, limit: number) {
     const doc = this.getDoc(docId);
-    if(!doc) return Promise.reject(makeError('NO_DOC'));
+    if(!doc) {
+      return Promise.reject(makeError('NO_DOC'));
+    }
 
     const set = this.requestingDocParts[docId] ??= new Set();
 
@@ -448,7 +450,9 @@ export class AppDocsManager extends AppManager {
 
   public cancelDocPartsRequests(docId: DocId) {
     const set = this.requestingDocParts[docId];
-    if(!set) return;
+    if(!set) {
+      return;
+    }
 
     for(const cancel of set) {
       cancel();

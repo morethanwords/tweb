@@ -231,11 +231,11 @@ export class ReferencesStorage extends AppManager {
   private getRefreshPromise(context: ReferenceContext): any {
     switch(context?.type) {
       case 'message': {
-        const message = copy(this.appMessagesManager.getMessageByPeer(context.peerId, context.messageId));
-        return this.appMessagesManager.reloadMessages(context.peerId, context.messageId, true)
-        .then((_message) => {
-          this.log('FILE_REFERENCE_EXPIRED: got message', context, message, _message);
-        });
+        // const message = copy(this.appMessagesManager.getMessageByPeer(context.peerId, context.messageId));
+        return this.appMessagesManager.reloadMessages(context.peerId, context.messageId, true);
+        // .then((_message) => {
+        //   this.log('FILE_REFERENCE_EXPIRED: got message', context, message, _message);
+        // });
       }
 
       case 'emojiesSounds':
