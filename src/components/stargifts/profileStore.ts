@@ -221,10 +221,14 @@ export function createProfileGiftsStore(props: {
       setStore('items', items);
     })
 
-    listenerSetter.add(rootScope)('star_gift_list_update', () => {
-      // refetch list
-      currentOffset = ''
-      loadNext(true)
+    listenerSetter.add(rootScope)('star_gift_list_update', ({peerId}) => {
+      if(peerId !== props.peerId) return
+
+      // refetch list. wait a bit so that the server can process it.
+      setTimeout(() => {
+        currentOffset = ''
+        loadNext(true)
+      }, 500)
     })
   })
 

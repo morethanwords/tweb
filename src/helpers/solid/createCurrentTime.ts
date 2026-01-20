@@ -4,13 +4,17 @@ import tsNow from '@helpers/tsNow';
 export function createCurrentTime(options: {
   fn?: () => number
   updateInterval?: number
+  updateWrapper?: (fn: VoidFunction) => void
 } = {}) {
-  const {fn = tsNow, updateInterval = 30000} = options;
+  const {fn = tsNow, updateInterval = 30000, updateWrapper} = options;
 
   const [time, setTime] = createSignal(fn());
-  const interval = setInterval(() => {
+  const tick = updateWrapper ? () => {
+    updateWrapper(() => setTime(fn()));
+  } : () => {
     setTime(fn());
-  }, updateInterval);
+  }
+  const interval = setInterval(tick, updateInterval);
 
   onCleanup(() => clearInterval(interval));
 

@@ -5902,7 +5902,8 @@ export default class ChatBubbles {
             gift: gift,
             title,
             outgoing: message.pFlags.out,
-            action
+            action,
+            modifyBubble: this.modifyBubble
           }), middleware);
           s.append(container);
 
