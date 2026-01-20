@@ -75,9 +75,15 @@ export function createPreview(props: PreviewProps) {
   element.classList.add(styles.Preview);
 
   const dispose = render(
-    () => (
-      <Preview {...props} />
-    ),
+    () => {
+      createEffect(() => {
+        element.classList.toggle('hide', !props.storyboard());
+      });
+
+      return (
+        <Preview {...props} />
+      );
+    },
     element
   );
 
