@@ -54,6 +54,7 @@ import commonStateStorage from '@lib/commonStateStorage';
 import {MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, SIDEBAR_COLLAPSE_FACTOR} from '@components/sidebarLeft/constants';
 import useHasFoldersSidebar, {useIsSidebarCollapsed} from '@stores/foldersSidebar';
 import appNavigationController from '@components/appNavigationController';
+import {preventCrossTabDynamicImportDeadlock} from '@helpers/preventDeadlock';
 
 // import commonStateStorage from '@lib/commonStateStorage';
 // import { STATE_INIT } from '@config/state';
@@ -390,6 +391,10 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
     cacheInstallPrompt();
   }
 
+  // Make sure this is before checking if the app is locked.
+  // If this value is cached, and a different tab locks/unlocks, we'll see the wrong state of the app.
+  await preventCrossTabDynamicImportDeadlock();
+
   await PasscodeLockScreenController.waitForUnlock(async() => {
     rootScope.settings = await commonStateStorage.get('settings');
     themeController.setThemeListener();
@@ -532,8 +537,6 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
 
     // appNavigationController.overrideHash('?tgaddr=' + encodeURIComponent(params.tgaddr));
   }
-
-  await preventCrossTabDynamicImportDeadlock();
 
   if(authState._ !== 'authStateSignedIn'/*  || 1 === 1 */) {
     console.log('Will mount auth page:', authState._, Date.now() / 1000);
@@ -706,21 +709,3 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
     }
   }
 });
-
-/**
-  * There is a edge-case bug that occurs when:
-  * 1. A new tab is silently opened (e.g., via Ctrl+Click on an account) but not focused immediately.
-  * 2. The current tab is then reloaded.
-  *
-  * In this scenario, both tabs can freeze permanently because the non-focused tab
-  * starts the dynamic import of the main page module before it was focused,
-  * causing a cross-tab module import deadlock.
-  * // import('./pages/pageIm').then((module) => module.default)
-  *
-  * Using fastRafPromise() (which internally waits for requestAnimationFrame) ensures that
-  * the dynamic import is deferred until the next animation frame — effectively
-  * delaying it until the user focuses the tab — and prevents this freeze.
-  */
-async function preventCrossTabDynamicImportDeadlock() {
-  await fastRafPromise();
-}

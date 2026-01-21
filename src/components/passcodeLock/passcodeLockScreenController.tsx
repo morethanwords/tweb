@@ -1,15 +1,15 @@
 import {render} from 'solid-js/web';
 
+import appNavigationController from '@components/appNavigationController';
 import {MOUNT_CLASS_TO} from '@config/debug';
-import pause from '@helpers/schedulers/pause';
 import deferredPromise from '@helpers/cancellablePromise';
 import {doubleRaf} from '@helpers/schedulers';
-import LockScreenHotReloadGuardProvider from '@lib/solidjs/lockScreenHotReloadGuardProvider';
+import pause from '@helpers/schedulers/pause';
 import apiManagerProxy from '@lib/apiManagerProxy';
-import StaticUtilityClass from '@lib/staticUtilityClass';
-import sessionStorage from '@lib/sessionStorage';
 import EncryptionKeyStore from '@lib/passcode/keyStore';
-import appNavigationController from '@components/appNavigationController';
+import sessionStorage from '@lib/sessionStorage';
+import LockScreenHotReloadGuardProvider from '@lib/solidjs/lockScreenHotReloadGuardProvider';
+import StaticUtilityClass from '@lib/staticUtilityClass';
 
 
 export default class PasscodeLockScreenController extends StaticUtilityClass {
