@@ -183,7 +183,8 @@ ul.chatlist {
     @include hover(filled-gray, --background, false);
 
     &.menu-open,
-    &.is-forum-open {
+    &.is-forum-open,
+    &.is-dragover {
       // --background: var(--light-secondary-text-color);
       --background: var(--light-filled-secondary-text-color);
     }

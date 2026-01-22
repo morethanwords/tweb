@@ -123,4 +123,8 @@ body.is-dragging {
   .page-chats {
     pointer-events: none;
   }
+
+  #folders-container .chatlist-chat {
+    pointer-events: all;
+  }
 }
