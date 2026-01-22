@@ -4207,7 +4207,8 @@ const lang = {
   'StorageQuota.ClearCachedFiles': 'Clear cached files',
   'StorageQuota.ClearCachedStreamChunks': 'Clear cached video stream chunks',
   'StorageQuota.FailedToClear': 'Failed to clear',
-  'StorageQuota.ClearCacheOlderThan': 'Clear cache older than'
+  'StorageQuota.ClearCacheOlderThan': 'Clear cache older than',
+  'StorageQuota.FailedToCalculate': 'Failed to calculate'
 };
 
 export default lang;

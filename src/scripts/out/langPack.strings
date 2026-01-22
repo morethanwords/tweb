@@ -3666,6 +3666,7 @@
 "StorageQuota.ClearCachedStreamChunks" = "Clear cached video stream chunks";
 "StorageQuota.FailedToClear" = "Failed to clear";
 "StorageQuota.ClearCacheOlderThan" = "Clear cache older than";
+"StorageQuota.FailedToCalculate" = "Failed to calculate";
 "Login.Title" = "Sign in to Telegram";
 "Login.PhoneLabel" = "Phone Number";
 "Login.PhoneLabelInvalid" = "Phone Number Invalid";

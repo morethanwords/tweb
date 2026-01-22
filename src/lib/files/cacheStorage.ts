@@ -16,6 +16,7 @@ import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
 
 import MemoryWriter from '@lib/files/memoryWriter';
 import FileStorage from '@lib/files/fileStorage';
+import pause from '@helpers/schedulers/pause';
 
 
 type CacheStorageDbConfigEntry = {
@@ -43,6 +44,11 @@ const cacheStorageDbConfig = {
   }
 } satisfies Record<string, CacheStorageDbConfigEntry>;
 
+const defaultOperationTimeout = 15e3;
+const nonBlockingIterationTotalTimeout = defaultOperationTimeout; // make sure this is at least a few seconds if the default one gets modified
+
+const nonBlockingAllowedTimePerBulk = 4;
+
 export type CacheStorageDbName = keyof typeof cacheStorageDbConfig;
 
 export default class CacheStorageController implements FileStorage {
@@ -53,6 +59,8 @@ export default class CacheStorageController implements FileStorage {
   private useStorage = true;
 
   private static disabledPromise: CancellablePromise<void>;
+
+  private static disabledPromisesByKey: Map<string, CancellablePromise<void>> = new Map();
 
   // private log: ReturnType<typeof logger> = logger('CS');
 
@@ -69,6 +77,10 @@ export default class CacheStorageController implements FileStorage {
 
     this.openDatabase();
     CacheStorageController.STORAGES.push(this);
+  }
+
+  public forget() {
+    CacheStorageController.STORAGES = CacheStorageController.STORAGES.filter(storage => storage !== this);
   }
 
   get isEncryptable() {
@@ -113,6 +125,7 @@ export default class CacheStorageController implements FileStorage {
 
   private async waitToEnable() {
     if(CacheStorageController.disabledPromise) await CacheStorageController.disabledPromise;
+    if(CacheStorageController.disabledPromisesByKey.has(this.dbName)) await CacheStorageController.disabledPromisesByKey.get(this.dbName);
   }
 
   private openDatabase(): Promise<Cache> {
@@ -133,6 +146,24 @@ export default class CacheStorageController implements FileStorage {
 
   public reset() {
     this.openDbPromise = undefined;
+  }
+
+  public minimalBlockingIterateResponses(callback: (response: Response) => void) {
+    return this.timeoutOperation(async(cache) => {
+      const keys = await cache.keys();
+
+      let prevTime = performance.now();
+      for(const key of keys) {
+        const response = await cache.match(key);
+        callback(response);
+
+        const now = performance.now();
+        if(now - prevTime > nonBlockingAllowedTimePerBulk) {
+          await pause(0); // give back control to the event loop
+          prevTime = now;
+        }
+      }
+    }, nonBlockingIterationTotalTimeout);
   }
 
   public async has(entryName: string) {
@@ -215,7 +246,7 @@ export default class CacheStorageController implements FileStorage {
     return this.save(fileName, response).then(() => blob as Blob);
   }
 
-  public timeoutOperation<T>(callback: (cache: Cache) => Promise<T>) {
+  public timeoutOperation<T>(callback: (cache: Cache) => Promise<T>, operationTimeout = defaultOperationTimeout) {
     if(!this.useStorage) {
       return Promise.reject(makeError('STORAGE_OFFLINE'));
     }
@@ -226,7 +257,7 @@ export default class CacheStorageController implements FileStorage {
         reject();
         // console.warn('CACHESTORAGE TIMEOUT');
         rejected = true;
-      }, 15e3);
+      }, operationTimeout);
 
       try {
         const cache = await this.openDatabase();
@@ -282,9 +313,24 @@ export default class CacheStorageController implements FileStorage {
     if(enabled) {
       this.disabledPromise?.resolve();
       this.disabledPromise = undefined;
-    } else {
+    } else if(!this.disabledPromise) {
       this.disabledPromise = deferredPromise();
     }
+  }
+
+  public static temporarilyToggleByName(name: CacheStorageDbName, enabled: boolean) {
+    const hadPromise = this.disabledPromisesByKey.has(name);
+
+    if(enabled) {
+      this.disabledPromisesByKey.get(name)?.resolve();
+      this.disabledPromisesByKey.delete(name);
+    } else if(!hadPromise) {
+      this.disabledPromisesByKey.set(name, deferredPromise());
+    }
+  }
+
+  public static temporarilyToggleByNames(names: CacheStorageDbName[], enabled: boolean) {
+    names.forEach(name => this.temporarilyToggleByName(name, enabled));
   }
 
   public static async clearEncryptableStorages() {
@@ -292,12 +338,17 @@ export default class CacheStorageController implements FileStorage {
     .filter(([, {encryptable}]) => encryptable)
     .map(([name]) => name) as CacheStorageDbName[];
 
+    await this.clearEncryptableStoragesByNames(encryptableStorageNames);
+  }
+
+  public static async clearEncryptableStoragesByNames(names: CacheStorageDbName[]) {
     try {
-      await Promise.all(encryptableStorageNames.map(async(storageName) => {
+      await Promise.all(names.map(async(storageName) => {
         // Make sure we have all encryptable storages in current thread, can't get from .STORAGES
         const storage = new CacheStorageController(storageName);
 
         await storage.deleteAll();
+        storage.forget();
 
         // Don't redo to this, as if the cache is too large, it will throw
         // await storage.timeoutOperation(async(cache) => {
@@ -314,9 +365,17 @@ export default class CacheStorageController implements FileStorage {
     return this.STORAGES.filter(storage => storage.isEncryptable);
   }
 
-  public static async resetOpenEncryptableCacheStorages() {
-    this.getOpenEncryptableStorages().forEach(async(storage) => {
-      storage.reset();
-    });
+  public static resetOpenEncryptableCacheStorages() {
+    const storages = this.getOpenEncryptableStorages();
+    storages.forEach(storage => storage.reset());
+  }
+
+  public static getOpenStoragesByNames(names: CacheStorageDbName[]) {
+    return this.STORAGES.filter(storage => names.includes(storage.dbName));
+  }
+
+  public static async resetOpenStoragesByNames(names: CacheStorageDbName[]) {
+    const storages = this.getOpenStoragesByNames(names);
+    storages.forEach(storage => storage.reset());
   }
 }
