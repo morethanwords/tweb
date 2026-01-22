@@ -4191,7 +4191,23 @@ const lang = {
   'StarGiftOffer.OfferDurationDescriptionTON': 'Choose how long **%s** has to accept your offer. When it expires, your Stars will be refunded',
   'StarGiftOffer.CreateOfferSubmit': 'Offer %s',
 
-  'AutoDeletesIn': 'auto-deletes in %s'
+  'AutoDeletesIn': 'auto-deletes in %s',
+
+  'StorageQuota.Title': 'Estimated storage quota',
+  'StorageQuota.CachedFiles': 'Cached files',
+  'StorageQuota.Images': 'Images',
+  'StorageQuota.VideoFiles': 'Video files',
+  'StorageQuota.StickersEmoji': 'Stickers and emojis',
+  'StorageQuota.Other': 'Other',
+  'StorageQuota.CachedStreamChunks': 'Cached video stream chunks',
+  'StorageQuota.Clear': 'Clear',
+  'StorageQuota.ClearConfirmation': 'Are you sure you want to clear %s of cached data?',
+  'StorageQuota.ClearAll': 'Clear All',
+  'StorageQuota.ClearAllConfirmation': 'Are you sure you want to clear all cached data?',
+  'StorageQuota.ClearCachedFiles': 'Clear cached files',
+  'StorageQuota.ClearCachedStreamChunks': 'Clear cached video stream chunks',
+  'StorageQuota.FailedToClear': 'Failed to clear',
+  'StorageQuota.ClearCacheOlderThan': 'Clear cache older than'
 };
 
 export default lang;
