@@ -648,13 +648,7 @@ export class UiNotificationsManager {
     this.notificationsShown[key] = true;
 
     const now = tsNow();
-    if(this.settings.volume > 0 && this.settings.sound/* &&
-      (
-        !data.tag ||
-        !this.soundsPlayed[data.tag] ||
-        now > this.soundsPlayed[data.tag] + 60000
-      ) */
-    ) {
+    if(this.settings.volume > 0 && this.settings.sound && !data.noIncrement) {
       this.testSound(this.settings.volume);
       this.soundsPlayed[data.tag] = now;
     }
