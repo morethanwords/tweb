@@ -307,7 +307,7 @@ export const StorageQuota = () => {
   });
 
   return (
-    <Section name='StorageQuota.Title'>
+    <Section name='StorageQuota.Title' caption='StorageQuota.Caption'>
       <Row>
         <Row.Title><I18nTsx key='StorageQuota.CachedFiles' /></Row.Title>
         <Row.Subtitle><SizeWithFallback resource={cachedFilesSizes} value={cachedFilesSizes()?.totalSize} /></Row.Subtitle>

@@ -3652,6 +3652,7 @@
 "StarGiftOffer.CreateOfferSubmit" = "Offer %s";
 "AutoDeletesIn" = "auto-deletes in %s";
 "StorageQuota.Title" = "Estimated storage quota";
+"StorageQuota.Caption" = "Note that cache required for the app to function properly will not be cleared.";
 "StorageQuota.CachedFiles" = "Cached files";
 "StorageQuota.Images" = "Images";
 "StorageQuota.VideoFiles" = "Video files";
