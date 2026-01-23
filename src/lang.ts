@@ -4202,6 +4202,7 @@ const lang = {
   'StorageQuota.CachedStreamChunks': 'Cached video stream chunks',
   'StorageQuota.Clear': 'Clear',
   'StorageQuota.ClearConfirmation': 'Are you sure you want to clear %s of cached data?',
+  'StorageQuota.ClearConfirmationUnknown': 'Are you sure you want to clear the cached data?',
   'StorageQuota.ClearAll': 'Clear All',
   'StorageQuota.ClearAllConfirmation': 'Are you sure you want to clear all cached data?',
   'StorageQuota.ClearCachedFiles': 'Clear cached files',

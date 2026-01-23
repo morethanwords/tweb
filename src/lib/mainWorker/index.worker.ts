@@ -222,11 +222,19 @@ port.addMultipleEventsListeners({
     const manager = singleManagers[payload.name];
     // @ts-ignore
     return manager[payload.method](...payload.args);
-  }
+  },
 
-  // localStorageEncryptionMethodsProxy: (payload) => {
-  //   return sessionStorage.encryptionMethodsProxy(payload.type, ...payload.args);
-  // }
+  disableCacheStoragesByNames: (names) => {
+    CacheStorageController.temporarilyToggleByNames(names, false);
+  },
+
+  enableCacheStoragesByNames: (names) => {
+    CacheStorageController.temporarilyToggleByNames(names, true);
+  },
+
+  resetOpenCacheStoragesByNames: (names) => {
+    CacheStorageController.resetOpenStoragesByNames(names);
+  }
 
   // socketProxy: (task) => {
   //   const socketTask = task.payload;

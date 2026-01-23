@@ -151,7 +151,19 @@ serviceMessagePort.addMultipleEventsListeners({
     EncryptionKeyStore.save(payload);
   },
 
-  fillPushObject
+  fillPushObject,
+
+  disableCacheStoragesByNames: (names) => {
+    CacheStorageController.temporarilyToggleByNames(names, false);
+  },
+
+  enableCacheStoragesByNames: (names) => {
+    CacheStorageController.temporarilyToggleByNames(names, true);
+  },
+
+  resetOpenCacheStoragesByNames: (names) => {
+    CacheStorageController.resetOpenStoragesByNames(names);
+  }
 });
 
 const {

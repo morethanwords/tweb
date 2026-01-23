@@ -16,6 +16,7 @@ import type {VideoStreamInfo} from '@lib/calls/videoStreamInfo';
 import type {PushKey, PushSingleManager} from '@appManagers/pushSingleManager';
 import SuperMessagePort from '@lib/superMessagePort';
 import {MOUNT_CLASS_TO} from '@config/debug';
+import {CacheStorageDbName} from '@lib/files/cacheStorage';
 
 export type ServicePushPingTaskPayload = {
   localNotifications: boolean,
@@ -68,6 +69,9 @@ export default class ServiceMessagePort<Master extends boolean = false> extends 
   toggleUsingPasscode: (payload: ToggleUsingPasscodePayload, source: MessageEventSource) => void,
   saveEncryptionKey: (payload: CryptoKey) => void,
   fillPushObject: (payload: PushNotificationObject) => PushNotificationObject,
+  disableCacheStoragesByNames: (names: CacheStorageDbName[]) => void,
+  enableCacheStoragesByNames: (names: CacheStorageDbName[]) => void,
+  resetOpenCacheStoragesByNames: (names: CacheStorageDbName[]) => void
 
   // from mtproto worker
   download: (payload: ServiceDownloadTaskPayload) => void,
