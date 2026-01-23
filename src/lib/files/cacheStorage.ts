@@ -17,6 +17,7 @@ import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
 import MemoryWriter from '@lib/files/memoryWriter';
 import FileStorage from '@lib/files/fileStorage';
 import pause from '@helpers/schedulers/pause';
+import {cachedTimeHeader} from '@lib/constants';
 
 
 type CacheStorageDbConfigEntry = {
@@ -48,6 +49,12 @@ const defaultOperationTimeout = 15e3;
 const nonBlockingIterationTotalTimeout = defaultOperationTimeout; // make sure this is at least a few seconds if the default one gets modified
 
 const nonBlockingAllowedTimePerBulk = 4;
+
+type MinimalBlockingIterateResponsesCallbackArgs = {
+  request: Request;
+  response: Response;
+  cache: Cache;
+};
 
 export type CacheStorageDbName = keyof typeof cacheStorageDbConfig;
 
@@ -148,7 +155,7 @@ export default class CacheStorageController implements FileStorage {
     this.openDbPromise = undefined;
   }
 
-  public minimalBlockingIterateResponses(callback: (response: Response) => void) {
+  public minimalBlockingIterateResponses(callback: (args: MinimalBlockingIterateResponsesCallbackArgs) => void | Promise<void>) {
     const batchSize = 10;
 
     return this.timeoutOperation(async(cache) => {
@@ -161,7 +168,9 @@ export default class CacheStorageController implements FileStorage {
 
         await Promise.all(slice.map(async(key) => {
           const response = await cache.match(key);
-          callback(response);
+
+          const callbackResult = callback({request: key, response, cache});
+          if(callbackResult instanceof Promise) await callbackResult;
         }));
 
         const now = performance.now();
@@ -200,6 +209,10 @@ export default class CacheStorageController implements FileStorage {
 
   public async save(entryName: string, response: Response) {
     await this.waitToEnable();
+
+    if(!response.headers.has(cachedTimeHeader)) {
+      response.headers.set(cachedTimeHeader, Math.floor(Date.now() / 1000 | 0).toString());
+    }
 
     let result = response;
 

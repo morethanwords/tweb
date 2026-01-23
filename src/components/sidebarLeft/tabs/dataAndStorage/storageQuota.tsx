@@ -14,6 +14,7 @@ import namedPromises from '@helpers/namedPromises';
 import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
 import {DurationType} from '@helpers/formatDuration';
 import asyncThrottle from '@helpers/schedulers/asyncThrottle';
+import {cachedFilesStorageName, cachedVideoChunksStorageNames, watchedCachedStorageNames} from '@lib/constants';
 
 
 const decimalsForFormatBytes = 1;
@@ -49,8 +50,6 @@ const tryFormatBytes = (size: number | null | undefined) => {
 
 type CollectedCategory = 'images' | 'videos' | 'stickers' | 'other';
 
-const cachedFilesStorageName = 'cachedFiles' satisfies CacheStorageDbName;
-
 async function collectCachedFilesSizes() {
   const collectedSizeByTypes: Record<CollectedCategory, number> = {
     images: 0,
@@ -62,7 +61,7 @@ async function collectCachedFilesSizes() {
 
   const storage = new CacheStorageController(cachedFilesStorageName);
 
-  await storage.minimalBlockingIterateResponses((response) => {
+  await storage.minimalBlockingIterateResponses(({response}) => {
     const headers = response.headers;
 
     const contentSize = getContentSizeFromHeaders(headers);
@@ -80,7 +79,6 @@ async function collectCachedFilesSizes() {
   }).finally(() => {
     storage.forget();
   });
-
 
   return {
     totalSize,
@@ -100,19 +98,13 @@ function getZeroedCollectedCachedFilesSizes(): Awaited<ReturnType<typeof collect
   };
 }
 
-const cachedVideoChunksStorageNames: CacheStorageDbName[] = [
-  'cachedStreamChunks',
-  'cachedHlsStreamChunks',
-  'cachedHlsQualityFiles'
-];
-
 async function collectCachedVideoStreamChunksSize() {
   let totalSize = 0;
 
   for(const storageName of cachedVideoChunksStorageNames) {
     const storage = new CacheStorageController(storageName);
 
-    await storage.minimalBlockingIterateResponses((response) => {
+    await storage.minimalBlockingIterateResponses(({response}) => {
       const contentSize = getContentSizeFromHeaders(response.headers);
       totalSize += contentSize;
     }).finally(() => {
@@ -303,7 +295,7 @@ export const StorageQuota = () => {
     cachedFilesSizesActions.mutate(getZeroedCollectedCachedFilesSizes());
     cachedVideoStreamChunksSizeActions.mutate(0);
 
-    await clearStoragesByNames([cachedFilesStorageName, ...cachedVideoChunksStorageNames]);
+    await clearStoragesByNames(watchedCachedStorageNames);
 
     const {newCachedFilesSizes, newCachedVideoStreamChunksSize} = await namedPromises({
       newCachedFilesSizes: collectCachedFilesSizes(),

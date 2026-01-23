@@ -18,47 +18,16 @@ import {DownloadOptions, MyUploadFile} from '@appManagers/apiFileManager';
 import {getMtprotoMessagePort, log, serviceMessagePort} from '@lib/serviceWorker/index.service';
 import {ServiceRequestFilePartTaskPayload} from '@lib/serviceWorker/serviceMessagePort';
 import timeout from '@lib/serviceWorker/timeout';
+import {cachedTimeHeader} from '@lib/constants';
 
 const ctx = self as any as ServiceWorkerGlobalScope;
 
 const deferredPromises: Map<MessagePort, {[taskId: string]: CancellablePromise<MyUploadFile>}> = new Map();
 const cacheStorage = new CacheStorageController('cachedStreamChunks');
-const CHUNK_TTL = 86400;
-const CHUNK_CACHED_TIME_HEADER = 'Time-Cached';
 const USE_CACHE = true;
 const TEST_SLOW = false;
 const PRELOAD_SIZE = 20 * 1024 * 1024;
 
-const clearOldChunks = () => {
-  return cacheStorage.timeoutOperation((cache) => {
-    return cache.keys().then((requests) => {
-      const filtered: Map<DocId, Request> = new Map();
-      const timestamp = Date.now() / 1000 | 0;
-      for(const request of requests) {
-        const match = request.url.match(/\/(\d+?)\?/);
-        if(match && !filtered.has(match[1])) {
-          filtered.set(match[1], request);
-        }
-      }
-
-      const promises: Promise<any>[] = [];
-      for(const [id, request] of filtered) {
-        const promise = cache.match(request).then((response) => {
-          if((+response.headers.get(CHUNK_CACHED_TIME_HEADER) + CHUNK_TTL) <= timestamp) {
-            log('will delete stream chunk:', id);
-            return cache.delete(request, {ignoreSearch: true, ignoreVary: true});
-          }
-        });
-
-        promises.push(promise);
-      }
-
-      return Promise.all(promises);
-    });
-  });
-};
-
-setInterval(clearOldChunks, 1800e3);
 setInterval(() => {
   const mtprotoMessagePort = getMtprotoMessagePort();
   for(const [messagePort, promises] of deferredPromises) {
@@ -201,7 +170,7 @@ class Stream {
         headers: {
           'Content-Length': '' + bytes.length,
           'Content-Type': 'application/octet-stream',
-          [CHUNK_CACHED_TIME_HEADER]: '' + (Date.now() / 1000 | 0)
+          [cachedTimeHeader]: '' + (Date.now() / 1000 | 0)
         }
       });
 

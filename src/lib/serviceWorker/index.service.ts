@@ -21,13 +21,13 @@ import {onHlsQualityFileFetch} from '@lib/hls/onHlsQualityFileFetch';
 import {get500ErrorResponse} from '@lib/serviceWorker/errors';
 import {onHlsStreamFetch} from '@lib/hls/onHlsStreamFetch';
 import {onHlsPlaylistFetch} from '@lib/hls/onHlsPlaylistFetch';
-import {watchHlsStreamChunksLifetime} from '@lib/hls/fetchAndConcatFileParts';
 import {setEnvironment} from '@environment/utils';
 import cryptoMessagePort from '@lib/crypto/cryptoMessagePort';
 import EncryptionKeyStore from '@lib/passcode/keyStore';
 import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
 import {onBackgroundsFetch} from '@lib/serviceWorker/backgrounds';
 import {watchMtprotoOnDev} from '@lib/serviceWorker/watchMtprotoOnDev';
+import {watchCacheStoragesLifetime} from './clearOldCache';
 
 // #if MTPROTO_SW
 // import '../mtproto/mtproto.worker';
@@ -216,7 +216,7 @@ listenMessagePort(serviceMessagePort, undefined, (source) => {
 });
 // #endif
 
-watchHlsStreamChunksLifetime();
+watchCacheStoragesLifetime();
 
 watchMtprotoOnDev({connectedWindows, onWindowConnected});
 
