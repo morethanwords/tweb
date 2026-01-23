@@ -14,7 +14,13 @@ import InputField, {InputFieldOptions, insertRichTextAsHTML} from '@components/i
 
 import styles from '@components/inputFieldEmoji.module.scss';
 
-const createEmojiDropdownButton = ({inputField}: {inputField: InputFieldEmoji}) => {
+const createEmojiDropdownButton = ({
+  inputField,
+  onEmoticonsDropdown
+}: {
+  inputField: InputFieldEmoji,
+  onEmoticonsDropdown: (emoticonsDropdown: EmoticonsDropdown) => void
+}) => {
   const button = ButtonIcon('smile ' + styles.EmojiButton);
   if(inputField.options.withLinebreaks) {
     button.classList.add(styles.multiline);
@@ -78,9 +84,11 @@ const createEmojiDropdownButton = ({inputField}: {inputField: InputFieldEmoji}) 
     });
 
     emoticonsDropdown.onButtonClick();
+
+    onEmoticonsDropdown(emoticonsDropdown);
   });
 
-  return {button, emoticonsDropdown};
+  return {button};
 };
 
 export class InputFieldEmoji extends InputField {
@@ -93,13 +101,17 @@ export class InputFieldEmoji extends InputField {
       ...options
     })
 
-    const {button, emoticonsDropdown} = createEmojiDropdownButton({inputField: this});
-    this.emoticonsDropdown = emoticonsDropdown;
+    const {button} = createEmojiDropdownButton({
+      inputField: this,
+      onEmoticonsDropdown: (emoticonsDropdown) => {
+        this.emoticonsDropdown = emoticonsDropdown;
+      }
+    });
     this.input.after(button);
   }
 
   public cleanup() {
-    this.emoticonsDropdown.hideAndDestroy();
+    this.emoticonsDropdown?.hideAndDestroy();
   }
 
   get richValue(): TextWithEntities {

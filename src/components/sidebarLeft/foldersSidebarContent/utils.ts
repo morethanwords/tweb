@@ -8,11 +8,15 @@ import assumeType from '@helpers/assumeType';
 import {FolderItemPayload} from '@components/sidebarLeft/foldersSidebarContent/types';
 
 export async function getNotificationCountForFilter(filterId: number, managers: AppManagers) {
-  const {unreadUnmutedCount, unreadCount} = await managers.dialogsStorage.getFolderUnreadCount(filterId);
+  const {
+    unreadUnmutedCount,
+    unreadCount,
+    unreadMentionsCount
+  } = await managers.dialogsStorage.getFolderUnreadCount(filterId);
 
   return {
     count: filterId === FOLDER_ID_ALL ? unreadUnmutedCount : unreadCount,
-    muted: !unreadUnmutedCount && !!unreadCount
+    muted: !unreadUnmutedCount && !!unreadCount && !unreadMentionsCount
   };
 }
 

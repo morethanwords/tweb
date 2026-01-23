@@ -9904,12 +9904,22 @@ export class AppMessagesManager extends AppManager {
   private dispatchGroupedEdit(groupedId: string, storage: MessagesStorage, deletedMids?: number[]) {
     const mids = this.getMidsByGroupedId(groupedId);
     const messages = mids.map((mid) => this.getMessageFromStorage(storage, mid)) as Message.message[];
-    this.rootScope.dispatchEvent('grouped_edit', {peerId: messages[0].peerId, groupedId, deletedMids: deletedMids || [], messages});
+    this.rootScope.dispatchEvent('grouped_edit', {
+      peerId: messages[0].peerId,
+      groupedId,
+      deletedMids: deletedMids || [],
+      messages
+    });
   }
 
   public getDialogUnreadCount(dialog: Dialog | ForumTopic | MonoforumDialog) {
     let unreadCount = dialog.unread_count;
-    if(!isForumTopic(dialog) && !isMonoforumDialog(dialog) && this.appPeersManager.isForum(dialog.peerId) && !dialog.pFlags.view_forum_as_messages) {
+    if(
+      !isForumTopic(dialog) &&
+      !isMonoforumDialog(dialog) &&
+      this.appPeersManager.isForum(dialog.peerId) &&
+      !dialog.pFlags.view_forum_as_messages
+    ) {
       const forumUnreadCount = this.dialogsStorage.getForumUnreadCount(dialog.peerId);
       if(forumUnreadCount instanceof Promise) {
         unreadCount = 0;
