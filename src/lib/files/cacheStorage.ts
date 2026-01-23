@@ -149,13 +149,20 @@ export default class CacheStorageController implements FileStorage {
   }
 
   public minimalBlockingIterateResponses(callback: (response: Response) => void) {
+    const batchSize = 10;
+
     return this.timeoutOperation(async(cache) => {
-      const keys = await cache.keys();
+      const allKeys = await cache.keys();
 
       let prevTime = performance.now();
-      for(const key of keys) {
-        const response = await cache.match(key);
-        callback(response);
+
+      for(let i = 0; i < allKeys.length; i += batchSize) {
+        const slice = allKeys.slice(i, i + batchSize);
+
+        await Promise.all(slice.map(async(key) => {
+          const response = await cache.match(key);
+          callback(response);
+        }));
 
         const now = performance.now();
         if(now - prevTime > nonBlockingAllowedTimePerBulk) {

@@ -7,13 +7,17 @@ import type {FormatterArgument, FormatterArguments, LangPackKey} from '@lib/lang
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import styles from './storageQuota.module.scss';
 import CacheStorageController, {CacheStorageDbName} from '@lib/files/cacheStorage';
-import {createResource, Match, Resource, Switch} from 'solid-js';
+import {createComputed, createEffect, createResource, createSignal, Match, Resource, Switch} from 'solid-js';
 import formatBytes from '@helpers/formatBytes';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
 import namedPromises from '@helpers/namedPromises';
+import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
+import {DurationType} from '@helpers/formatDuration';
+import asyncThrottle from '@helpers/schedulers/asyncThrottle';
 
 
 const decimalsForFormatBytes = 1;
+const saveSettingsThrottleTimeout = 1000;
 
 type ConfirmationArgs = {
   titleLangKey: LangPackKey;
@@ -38,7 +42,7 @@ const getClearAllArgs = (): ConfirmationArgs => ({
   descriptionLangKey: 'StorageQuota.ClearAllConfirmation'
 });
 
-const tryFormatBytes = (size: number | undefined) => {
+const tryFormatBytes = (size: number | null | undefined) => {
   if(typeof size !== 'number') return null;
   return formatBytes(size, decimalsForFormatBytes);
 }
@@ -189,13 +193,68 @@ const SizeWithFallback = (props: {
   </Switch>
 );
 
+const oneDayInSeconds = 24 * 60 * 60;
+const oneWeekInSeconds = oneDayInSeconds * 7;
+const oneMonthInSeconds = oneDayInSeconds * 31;
+const oneYearInSeconds = oneDayInSeconds * 365;
+
+const makeOption = (value: number, duration: number, type: DurationType) => ({
+  value,
+  label: () => wrapFormattedDuration([{duration, type}])
+});
+
+const timeOptions = [
+  makeOption(oneDayInSeconds, 1, DurationType.Days),
+  makeOption(oneDayInSeconds * 2, 2, DurationType.Days),
+  makeOption(oneDayInSeconds * 3, 3, DurationType.Days),
+  makeOption(oneDayInSeconds * 4, 4, DurationType.Days),
+  makeOption(oneDayInSeconds * 5, 5, DurationType.Days),
+  makeOption(oneDayInSeconds * 6, 6, DurationType.Days),
+  makeOption(oneWeekInSeconds, 1, DurationType.Weeks),
+  makeOption(oneWeekInSeconds * 2, 2, DurationType.Weeks),
+  makeOption(oneWeekInSeconds * 3, 3, DurationType.Weeks),
+  makeOption(oneMonthInSeconds, 1, DurationType.Months),
+  makeOption(oneMonthInSeconds * 2, 2, DurationType.Months),
+  makeOption(oneMonthInSeconds * 3, 3, DurationType.Months),
+  makeOption(oneMonthInSeconds * 4, 4, DurationType.Months),
+  makeOption(oneMonthInSeconds * 5, 5, DurationType.Months),
+  makeOption(oneMonthInSeconds * 6, 6, DurationType.Months),
+  makeOption(oneYearInSeconds, 1, DurationType.Years)
+];
+
+
 export const StorageQuota = () => {
-  const {Row, confirmationPopup, i18n} = useHotReloadGuard();
+  const {Row, confirmationPopup, i18n, useAppSettings} = useHotReloadGuard();
+
+  const [appSettings, setAppSettings] = useAppSettings();
 
   const clearStoragesByNames = useClearStoragesByNames();
 
   const [cachedFilesSizes, cachedFilesSizesActions] = createResource(() => collectCachedFilesSizes());
   const [cachedVideoStreamChunksSize, cachedVideoStreamChunksSizeActions] = createResource(() => collectCachedVideoStreamChunksSize());
+
+  const [selectedIdx, setSelectedIdx] = createSignal<number>();
+
+  createComputed(() => {
+    const value = appSettings.clearCacheOlderThanSeconds || 0
+    let foundIdx = 0;
+    for(let i = 1; i < timeOptions.length; i++) {
+      if(timeOptions[i].value <= value) foundIdx = i;
+    }
+
+    setSelectedIdx(foundIdx);
+  });
+
+  const throttledSaveClearCacheOlderThan = asyncThrottle(async(value: number) => {
+    await setAppSettings({clearCacheOlderThanSeconds: value});
+  }, saveSettingsThrottleTimeout);
+
+  createEffect(() => {
+    const option = timeOptions[selectedIdx()] || timeOptions[0];
+    if(option.value === appSettings.clearCacheOlderThanSeconds) return;
+
+    throttledSaveClearCacheOlderThan(option.value);
+  });
 
   const btnClass = `${styles.Button} primary btn`;
 
@@ -214,7 +273,7 @@ export const StorageQuota = () => {
   };
 
   const onClearCachedFiles = wrapAsyncClickHandler(async() => {
-    const formattedSize = tryFormatBytes(cachedFilesSizes()?.totalSize);
+    const formattedSize = tryFormatBytes(cachedFilesSizes.state === 'ready' ? cachedFilesSizes()?.totalSize : null);
     if(!(await getConfirmation(getClearCachedFilesArgs(formattedSize)))) return;
 
     cachedFilesSizesActions.mutate(getZeroedCollectedCachedFilesSizes());
@@ -227,7 +286,7 @@ export const StorageQuota = () => {
   });
 
   const onClearCachedVideoStreamChunks = wrapAsyncClickHandler(async() => {
-    const formattedSize = tryFormatBytes(cachedVideoStreamChunksSize());
+    const formattedSize = tryFormatBytes(cachedVideoStreamChunksSize.state === 'ready' ? cachedVideoStreamChunksSize() : null);
     if(!(await getConfirmation(getClearStreamChunksArgs(formattedSize)))) return;
 
     cachedVideoStreamChunksSizeActions.mutate(0);
@@ -308,13 +367,13 @@ export const StorageQuota = () => {
       <Space amount='1rem' />
 
       <RangeSettingSelector
-        minValue={1}
-        maxValue={12}
+        minValue={0}
+        maxValue={timeOptions.length - 1}
         step={1}
         textLeft={<I18nTsx key='StorageQuota.ClearCacheOlderThan' />}
-        textRight={(value) => '1 week'}
-        value={4}
-        onChange={() => {}}
+        textRight={(idx) => timeOptions[idx]?.label()}
+        value={selectedIdx()}
+        onChange={setSelectedIdx}
       />
 
       <Space amount='1rem' />
