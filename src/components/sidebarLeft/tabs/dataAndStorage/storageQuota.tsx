@@ -173,8 +173,6 @@ const timeOptions = [
 export const StorageQuota = () => {
   const {Row, confirmationPopup, i18n, useAppSettings, apiManagerProxy} = useHotReloadGuard();
 
-  const {clearCacheStoragesByNames} = createCacheStorageThreadedControls({apiManagerProxy});
-
   const [appSettings, setAppSettings] = useAppSettings();
 
   const [cachedFilesSizes, cachedFilesSizesActions] = createResource(() => collectCachedFilesSizes());
@@ -225,7 +223,7 @@ export const StorageQuota = () => {
 
     cachedFilesSizesActions.mutate(getZeroedCollectedCachedFilesSizes());
 
-    await clearCacheStoragesByNames([cachedFilesStorageName]);
+    await apiManagerProxy.clearCacheStoragesByNames([cachedFilesStorageName]);
 
     // Note: refetch triggers 'Loading...' to reappear, we don't want that
     const newValue = await collectCachedFilesSizes();
@@ -238,7 +236,7 @@ export const StorageQuota = () => {
 
     cachedVideoStreamChunksSizeActions.mutate(0);
 
-    await clearCacheStoragesByNames(cachedVideoChunksStorageNames);
+    await apiManagerProxy.clearCacheStoragesByNames(cachedVideoChunksStorageNames);
 
     const newValue = await collectCachedVideoStreamChunksSize();
     cachedVideoStreamChunksSizeActions.mutate(newValue);
@@ -250,7 +248,7 @@ export const StorageQuota = () => {
     cachedFilesSizesActions.mutate(getZeroedCollectedCachedFilesSizes());
     cachedVideoStreamChunksSizeActions.mutate(0);
 
-    await clearCacheStoragesByNames(watchedCachedStorageNames);
+    await apiManagerProxy.clearCacheStoragesByNames(watchedCachedStorageNames);
 
     const {newCachedFilesSizes, newCachedVideoStreamChunksSize} = await namedPromises({
       newCachedFilesSizes: collectCachedFilesSizes(),
