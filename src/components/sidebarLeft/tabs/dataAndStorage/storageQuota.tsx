@@ -6,7 +6,7 @@ import {I18nTsx} from '@helpers/solid/i18n';
 import type {FormatterArgument, FormatterArguments, LangPackKey} from '@lib/langPack';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import styles from './storageQuota.module.scss';
-import CacheStorageController, {CacheStorageDbName} from '@lib/files/cacheStorage';
+import CacheStorageController from '@lib/files/cacheStorage';
 import {createComputed, createEffect, createResource, createSignal, Match, Resource, Switch} from 'solid-js';
 import formatBytes from '@helpers/formatBytes';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
@@ -15,6 +15,7 @@ import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
 import {DurationType} from '@helpers/formatDuration';
 import asyncThrottle from '@helpers/schedulers/asyncThrottle';
 import {cachedFilesStorageName, cachedVideoChunksStorageNames, watchedCachedStorageNames} from '@lib/constants';
+import {createCacheStorageThreadedControls} from '@lib/apiManagerProxyUtils';
 
 
 const decimalsForFormatBytes = 1;
@@ -122,52 +123,6 @@ function getContentSizeFromHeaders(headers: Headers): number {
   return contentSize;
 }
 
-function useCacheStorageThreadedControls() {
-  const {apiManagerProxy} = useHotReloadGuard();
-
-  return {
-    disableCacheStoragesOnAllThreads: async(names: CacheStorageDbName[]) => {
-      CacheStorageController.temporarilyToggleByNames(names, false);
-      await Promise.all([
-        apiManagerProxy.invoke('disableCacheStoragesByNames', names),
-        apiManagerProxy.serviceMessagePort.invoke('disableCacheStoragesByNames', names)
-      ]);
-    },
-    enableCacheStoragesOnAllThreads: async(names: CacheStorageDbName[]) => {
-      CacheStorageController.temporarilyToggleByNames(names, true);
-      await Promise.all([
-        apiManagerProxy.invoke('enableCacheStoragesByNames', names),
-        apiManagerProxy.serviceMessagePort.invoke('enableCacheStoragesByNames', names)
-      ]);
-    },
-    resetCacheStoragesOnAllThreads: async(names: CacheStorageDbName[]) => {
-      CacheStorageController.resetOpenStoragesByNames(names);
-      await Promise.all([
-        apiManagerProxy.invoke('resetOpenCacheStoragesByNames', names),
-        apiManagerProxy.serviceMessagePort.invoke('resetOpenCacheStoragesByNames', names)
-      ]);
-    }
-  };
-}
-
-function useClearStoragesByNames() {
-  const {
-    enableCacheStoragesOnAllThreads,
-    disableCacheStoragesOnAllThreads,
-    resetCacheStoragesOnAllThreads
-  } = useCacheStorageThreadedControls();
-
-
-  return async(names: CacheStorageDbName[]) => {
-    await disableCacheStoragesOnAllThreads(names);
-
-    await CacheStorageController.clearEncryptableStoragesByNames(names);
-
-    await resetCacheStoragesOnAllThreads(names);
-    await enableCacheStoragesOnAllThreads(names);
-  };
-}
-
 const SizeWithFallback = (props: {
   resource: Resource<any>;
   value: number;
@@ -216,11 +171,11 @@ const timeOptions = [
 
 
 export const StorageQuota = () => {
-  const {Row, confirmationPopup, i18n, useAppSettings} = useHotReloadGuard();
+  const {Row, confirmationPopup, i18n, useAppSettings, apiManagerProxy} = useHotReloadGuard();
+
+  const {clearCacheStoragesByNames} = createCacheStorageThreadedControls({apiManagerProxy});
 
   const [appSettings, setAppSettings] = useAppSettings();
-
-  const clearStoragesByNames = useClearStoragesByNames();
 
   const [cachedFilesSizes, cachedFilesSizesActions] = createResource(() => collectCachedFilesSizes());
   const [cachedVideoStreamChunksSize, cachedVideoStreamChunksSizeActions] = createResource(() => collectCachedVideoStreamChunksSize());
@@ -270,7 +225,7 @@ export const StorageQuota = () => {
 
     cachedFilesSizesActions.mutate(getZeroedCollectedCachedFilesSizes());
 
-    await clearStoragesByNames([cachedFilesStorageName]);
+    await clearCacheStoragesByNames([cachedFilesStorageName]);
 
     // Note: refetch triggers 'Loading...' to reappear, we don't want that
     const newValue = await collectCachedFilesSizes();
@@ -283,7 +238,7 @@ export const StorageQuota = () => {
 
     cachedVideoStreamChunksSizeActions.mutate(0);
 
-    await clearStoragesByNames(cachedVideoChunksStorageNames);
+    await clearCacheStoragesByNames(cachedVideoChunksStorageNames);
 
     const newValue = await collectCachedVideoStreamChunksSize();
     cachedVideoStreamChunksSizeActions.mutate(newValue);
@@ -295,7 +250,7 @@ export const StorageQuota = () => {
     cachedFilesSizesActions.mutate(getZeroedCollectedCachedFilesSizes());
     cachedVideoStreamChunksSizeActions.mutate(0);
 
-    await clearStoragesByNames(watchedCachedStorageNames);
+    await clearCacheStoragesByNames(watchedCachedStorageNames);
 
     const {newCachedFilesSizes, newCachedVideoStreamChunksSize} = await namedPromises({
       newCachedFilesSizes: collectCachedFilesSizes(),

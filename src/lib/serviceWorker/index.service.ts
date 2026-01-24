@@ -216,7 +216,17 @@ listenMessagePort(serviceMessagePort, undefined, (source) => {
 });
 // #endif
 
-watchCacheStoragesLifetime();
+watchCacheStoragesLifetime({
+  onStorageError: async({storageName, error}) => {
+    log(`Error clearing old cache in ${storageName}:`, error);
+    log(`Clearing cache storage ${storageName}`);
+
+    const windowClients = await getWindowClients();
+    if(!windowClients.length) return;
+
+    await serviceMessagePort.invoke('clearCacheStoragesByNames', [storageName], undefined, windowClients[0]);
+  }
+});
 
 watchMtprotoOnDev({connectedWindows, onWindowConnected});
 

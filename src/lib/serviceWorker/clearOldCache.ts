@@ -1,12 +1,21 @@
 import pause from '@helpers/schedulers/pause';
 import commonStateStorage from '@lib/commonStateStorage';
 import {cachedTimeHeader, watchedCachedStorageNames} from '@lib/constants';
-import CacheStorageController from '@lib/files/cacheStorage';
+import CacheStorageController, {CacheStorageDbName} from '@lib/files/cacheStorage';
 import {logger} from '@lib/logger';
 
 export const log = logger('SW-clear-old-cache');
 
-async function clearOldCacheInWatchedStorages() {
+type OnStorageErrorArgs = {
+  error: unknown;
+  storageName: CacheStorageDbName;
+};
+
+type ClearOldCacheInWatchedStoragesArgs = {
+  onStorageError: (args: OnStorageErrorArgs) => Promise<void>;
+};
+
+async function clearOldCacheInWatchedStorages({onStorageError}: ClearOldCacheInWatchedStoragesArgs) {
   const settings = await commonStateStorage.get('settings');
   const cacheTTLSeconds = settings?.clearCacheOlderThanSeconds;
   if(typeof cacheTTLSeconds !== 'number' || !cacheTTLSeconds) return;
@@ -20,28 +29,41 @@ async function clearOldCacheInWatchedStorages() {
 
     log(`iterating ${storageName}`);
 
-    await cacheStorage.minimalBlockingIterateResponses(async({request, cache, response}) => {
-      const cachedTimeHeaderValue = response.headers.get(cachedTimeHeader);
-      const cachedTimeSeconds = parseInt(cachedTimeHeaderValue) || 0;
+    let caughtError: any;
 
-      if(cachedTimeSeconds < referenceTimeSeconds) { // drops existing entries with no time header
-        log(`deleteing cache from ${storageName}:`, request.url, {cachedTimeSeconds, referenceTimeSeconds});
-        await cache.delete(request);
-      }
-    }).finally(() => {
+    try {
+      await cacheStorage.minimalBlockingIterateResponses(async({request, cache, response}) => {
+        const cachedTimeHeaderValue = response.headers.get(cachedTimeHeader);
+        const cachedTimeSeconds = parseInt(cachedTimeHeaderValue) || 0;
+
+        if(cachedTimeSeconds < referenceTimeSeconds) { // drops existing entries with no time header
+          log(`deleteing cache from ${storageName}:`, request.url, {cachedTimeSeconds, referenceTimeSeconds});
+          await cache.delete(request);
+        }
+      });
+    } catch(error) {
+      caughtError = error;
+    } finally {
       cacheStorage.forget();
-    });
+    }
+
+    if(caughtError) {
+      await onStorageError({
+        storageName,
+        error: caughtError
+      });
+    }
   }
 }
 
 const warmUpWaitTime = 20e3;
 const intervalTime = 1800e3;
 
-export async function watchCacheStoragesLifetime() {
+export async function watchCacheStoragesLifetime(args: ClearOldCacheInWatchedStoragesArgs) {
   await pause(warmUpWaitTime); // wait some time for the app to fully initialize
 
   const tick = async() => {
-    await clearOldCacheInWatchedStorages();
+    await clearOldCacheInWatchedStorages(args);
     setTimeout(tick, intervalTime);
   };
 

@@ -87,6 +87,7 @@ export default class ServiceMessagePort<Master extends boolean = false> extends 
   rtmpStreamDestroyed: (payload: Long) => void,
   downloadRequestReceived: (payload: string) => void,
   serviceCryptoPort: (payload: undefined, source: MessageEventSource, event: MessageEvent) => void,
+  clearCacheStoragesByNames: (payload: CacheStorageDbName[]) => void,
 
   // to mtproto worker
   requestFilePart: (payload: ServiceRequestFilePartTaskPayload) => MaybePromise<MyUploadFile>,

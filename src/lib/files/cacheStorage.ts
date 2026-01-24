@@ -358,13 +358,13 @@ export default class CacheStorageController implements FileStorage {
     .filter(([, {encryptable}]) => encryptable)
     .map(([name]) => name) as CacheStorageDbName[];
 
-    await this.clearEncryptableStoragesByNames(encryptableStorageNames);
+    await this.clearStoragesByNames(encryptableStorageNames);
   }
 
-  public static async clearEncryptableStoragesByNames(names: CacheStorageDbName[]) {
+  public static async clearStoragesByNames(names: CacheStorageDbName[]) {
     try {
       await Promise.all(names.map(async(storageName) => {
-        // Make sure we have all encryptable storages in current thread, can't get from .STORAGES
+        // Make sure we have all storages in current thread, can't get from .STORAGES
         const storage = new CacheStorageController(storageName);
 
         await storage.deleteAll();
