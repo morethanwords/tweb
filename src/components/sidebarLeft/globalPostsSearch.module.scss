@@ -1,0 +1,66 @@
+.placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: 20rem;
+  padding-inline: 1rem;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.title {
+  font-size: var(--font-size-18);
+  line-height: var(--line-height-18);
+  font-weight: 500;
+}
+
+.description {
+  color: var(--secondary-text-color);
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.button {
+  height: 42px;
+  width: auto;
+  padding-inline: 1rem;
+  width: 240px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+}
+
+.buttonPaidSearch {
+  height: 46px;
+  flex-direction: column;
+  gap: 0;
+}
+
+.remainingUntilReset {
+  font-size: var(--font-size-13);
+  line-height: var(--line-height-13);
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.searchQuery {
+  opacity: 0.8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.footer {
+  color: var(--secondary-text-color);
+  font-size: var(--font-size-14);
+  line-height: var(--line-height-14);
+  margin-top: 0.5rem;
+}
+
+.results {
+  padding: 0.5rem;
+}
