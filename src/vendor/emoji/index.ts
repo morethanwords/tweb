@@ -1,5 +1,3 @@
-// https://github.com/twitter/twemoji-parser/blob/master/src/lib/regex.js
-
 export function encodeEmoji(emojiText: string) {
   const codepoints = toCodePoints(removeVS16s(emojiText)).join('-');
   return codepoints;
