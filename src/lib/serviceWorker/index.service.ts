@@ -21,13 +21,13 @@ import {onHlsQualityFileFetch} from '@lib/hls/onHlsQualityFileFetch';
 import {get500ErrorResponse} from '@lib/serviceWorker/errors';
 import {onHlsStreamFetch} from '@lib/hls/onHlsStreamFetch';
 import {onHlsPlaylistFetch} from '@lib/hls/onHlsPlaylistFetch';
-import {watchHlsStreamChunksLifetime} from '@lib/hls/fetchAndConcatFileParts';
 import {setEnvironment} from '@environment/utils';
 import cryptoMessagePort from '@lib/crypto/cryptoMessagePort';
 import EncryptionKeyStore from '@lib/passcode/keyStore';
 import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
 import {onBackgroundsFetch} from '@lib/serviceWorker/backgrounds';
 import {watchMtprotoOnDev} from '@lib/serviceWorker/watchMtprotoOnDev';
+import {watchCacheStoragesLifetime} from './clearOldCache';
 
 // #if MTPROTO_SW
 // import '../mtproto/mtproto.worker';
@@ -151,7 +151,19 @@ serviceMessagePort.addMultipleEventsListeners({
     EncryptionKeyStore.save(payload);
   },
 
-  fillPushObject
+  fillPushObject,
+
+  disableCacheStoragesByNames: (names) => {
+    CacheStorageController.temporarilyToggleByNames(names, false);
+  },
+
+  enableCacheStoragesByNames: (names) => {
+    CacheStorageController.temporarilyToggleByNames(names, true);
+  },
+
+  resetOpenCacheStoragesByNames: (names) => {
+    CacheStorageController.resetOpenStoragesByNames(names);
+  }
 });
 
 const {
@@ -204,7 +216,17 @@ listenMessagePort(serviceMessagePort, undefined, (source) => {
 });
 // #endif
 
-watchHlsStreamChunksLifetime();
+watchCacheStoragesLifetime({
+  onStorageError: async({storageName, error}) => {
+    log(`Error clearing old cache in ${storageName}:`, error);
+    log(`Clearing cache storage ${storageName}`);
+
+    const windowClients = await getWindowClients();
+    if(!windowClients.length) return;
+
+    await serviceMessagePort.invoke('clearCacheStoragesByNames', [storageName], undefined, windowClients[0]);
+  }
+});
 
 watchMtprotoOnDev({connectedWindows, onWindowConnected});
 

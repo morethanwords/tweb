@@ -59,7 +59,7 @@ import createNotificationImage from '@helpers/createNotificationImage';
 import PasscodeLockScreenController from '@components/passcodeLock/passcodeLockScreenController';
 import EncryptionKeyStore from '@lib/passcode/keyStore';
 import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
-import CacheStorageController from '@lib/files/cacheStorage';
+import CacheStorageController, {CacheStorageDbName} from '@lib/files/cacheStorage';
 import type {PushSingleManager} from '@appManagers/pushSingleManager';
 import getDeepProperty from '@helpers/object/getDeepProperty';
 import {_changeHistoryStorageKey, _deleteHistoryStorage, _iterateHistoryStorages, _useHistoryStorage} from '@stores/historyStorages';
@@ -70,6 +70,7 @@ import Modes from '@config/modes';
 import appNavigationController from '@components/appNavigationController';
 import {BroadcastChannelWrapper, createBroadcastChannelWrapper} from './broadcastChannelWrapper';
 import {MainBroadcastChannelEvents, unversionedMainBroadcastChannelName} from '@config/broadcastChannel';
+import {CacheStorageThreadedControls, createCacheStorageThreadedControls} from './apiManagerProxyUtils';
 
 
 export type Mirrors = {
@@ -153,6 +154,8 @@ class ApiManagerProxy extends MTProtoMessagePort {
   public pushSingleManager: ModifyFunctionsToAsync<PushSingleManager>;
 
   private mainBroadcastChannel: BroadcastChannelWrapper<MainBroadcastChannelEvents>;
+
+  private cacheStorageThreadedControls: CacheStorageThreadedControls;
 
   constructor() {
     super();
@@ -422,6 +425,8 @@ class ApiManagerProxy extends MTProtoMessagePort {
     this.mainBroadcastChannel.on('reload', () => {
       appNavigationController.reload();
     });
+
+    this.cacheStorageThreadedControls = createCacheStorageThreadedControls({apiManagerProxy: this});
 
     // this.addTaskListener('socketProxy', (task) => {
     //   const socketTask = task.payload;
@@ -765,6 +770,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
         share: (payload) => {
           this.log('will try to share something');
           this.share = payload;
+        },
+
+        clearCacheStoragesByNames: async(payload) => {
+          await this.clearCacheStoragesByNames(payload);
         }
       });
     }
@@ -1213,6 +1222,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
     this.invokeVoid('terminate', undefined);
     this.mainBroadcastChannel.emitVoid('reload');
     appNavigationController.reload();
+  }
+
+  public async clearCacheStoragesByNames(names: CacheStorageDbName[]) {
+    await this.cacheStorageThreadedControls.clearCacheStoragesByNames(names);
   }
 }
 

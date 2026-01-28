@@ -1,0 +1,331 @@
+import Button from '@components/buttonTsx';
+import RangeSettingSelector from '@components/rangeSettingSelector';
+import Section from '@components/section';
+import Space from '@components/space';
+import {I18nTsx} from '@helpers/solid/i18n';
+import type {FormatterArgument, FormatterArguments, LangPackKey} from '@lib/langPack';
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import styles from './storageQuota.module.scss';
+import CacheStorageController from '@lib/files/cacheStorage';
+import {createComputed, createEffect, createResource, createSignal, Match, Resource, Switch} from 'solid-js';
+import formatBytes from '@helpers/formatBytes';
+import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
+import namedPromises from '@helpers/namedPromises';
+import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
+import {DurationType} from '@helpers/formatDuration';
+import asyncThrottle from '@helpers/schedulers/asyncThrottle';
+import {cachedFilesStorageName, cachedVideoChunksStorageNames, watchedCachedStorageNames} from '@lib/constants';
+import {createCacheStorageThreadedControls} from '@lib/apiManagerProxyUtils';
+
+
+const decimalsForFormatBytes = 1;
+const saveSettingsThrottleTimeout = 1000;
+
+type ConfirmationArgs = {
+  titleLangKey: LangPackKey;
+  descriptionLangKey: LangPackKey;
+  descriptionLangArgs?: FormatterArguments;
+};
+
+const getClearCachedFilesArgs = (size: FormatterArgument | null): ConfirmationArgs => ({
+  titleLangKey: 'StorageQuota.ClearCachedFiles',
+  descriptionLangKey: size ? 'StorageQuota.ClearConfirmation' : 'StorageQuota.ClearConfirmationUnknown',
+  descriptionLangArgs: size ? [size] : undefined
+});
+
+const getClearStreamChunksArgs = (size: FormatterArgument | null): ConfirmationArgs => ({
+  titleLangKey: 'StorageQuota.ClearCachedStreamChunks',
+  descriptionLangKey: size ? 'StorageQuota.ClearConfirmation' : 'StorageQuota.ClearConfirmationUnknown',
+  descriptionLangArgs: size ? [size] : undefined
+});
+
+const getClearAllArgs = (): ConfirmationArgs => ({
+  titleLangKey: 'StorageQuota.ClearAll',
+  descriptionLangKey: 'StorageQuota.ClearAllConfirmation'
+});
+
+const tryFormatBytes = (size: number | null | undefined) => {
+  if(typeof size !== 'number') return null;
+  return formatBytes(size, decimalsForFormatBytes);
+}
+
+type CollectedCategory = 'images' | 'videos' | 'stickers' | 'other';
+
+async function collectCachedFilesSizes() {
+  const collectedSizeByTypes: Record<CollectedCategory, number> = {
+    images: 0,
+    videos: 0,
+    stickers: 0,
+    other: 0
+  };
+  let totalSize = 0;
+
+  const storage = new CacheStorageController(cachedFilesStorageName);
+
+  await storage.minimalBlockingIterateResponses(({response}) => {
+    const headers = response.headers;
+
+    const contentSize = getContentSizeFromHeaders(headers);
+    if(!contentSize) return;
+
+    const contentType = headers.get('content-type');
+
+    const category: CollectedCategory =
+      contentType?.startsWith('image/') ? 'images' :
+        contentType?.startsWith('video/') ? 'videos' :
+          contentType?.startsWith('application/json') ? 'stickers' : 'other';
+
+    collectedSizeByTypes[category] += contentSize;
+    totalSize += contentSize;
+  }).finally(() => {
+    storage.forget();
+  });
+
+  return {
+    totalSize,
+    collectedSizeByTypes
+  };
+};
+
+function getZeroedCollectedCachedFilesSizes(): Awaited<ReturnType<typeof collectCachedFilesSizes>> {
+  return {
+    totalSize: 0,
+    collectedSizeByTypes: {
+      images: 0,
+      videos: 0,
+      stickers: 0,
+      other: 0
+    }
+  };
+}
+
+async function collectCachedVideoStreamChunksSize() {
+  let totalSize = 0;
+
+  for(const storageName of cachedVideoChunksStorageNames) {
+    const storage = new CacheStorageController(storageName);
+
+    await storage.minimalBlockingIterateResponses(({response}) => {
+      const contentSize = getContentSizeFromHeaders(response.headers);
+      totalSize += contentSize;
+    }).finally(() => {
+      storage.forget();
+    });
+  }
+
+  return totalSize;
+}
+
+function getContentSizeFromHeaders(headers: Headers): number {
+  const contentSize = parseInt(headers.get('content-length') || '0');
+  if(!contentSize) return 0;
+
+  return contentSize;
+}
+
+const SizeWithFallback = (props: {
+  resource: Resource<any>;
+  value: number;
+}) => (
+  <Switch>
+    <Match when={props.resource.loading}>
+      <I18nTsx key='Loading' />
+    </Match>
+    <Match when={props.resource.state === 'ready'}>
+      {formatBytes(props.value, decimalsForFormatBytes)}
+    </Match>
+    <Match when>
+      <I18nTsx key='StorageQuota.FailedToCalculate' />
+    </Match>
+  </Switch>
+);
+
+const oneDayInSeconds = 24 * 60 * 60;
+const oneWeekInSeconds = oneDayInSeconds * 7;
+const oneMonthInSeconds = oneDayInSeconds * 31;
+const oneYearInSeconds = oneDayInSeconds * 365;
+
+const makeOption = (value: number, duration: number, type: DurationType) => ({
+  value,
+  label: () => wrapFormattedDuration([{duration, type}])
+});
+
+const timeOptions = [
+  makeOption(oneDayInSeconds, 1, DurationType.Days),
+  makeOption(oneDayInSeconds * 2, 2, DurationType.Days),
+  makeOption(oneDayInSeconds * 3, 3, DurationType.Days),
+  makeOption(oneDayInSeconds * 4, 4, DurationType.Days),
+  makeOption(oneDayInSeconds * 5, 5, DurationType.Days),
+  makeOption(oneDayInSeconds * 6, 6, DurationType.Days),
+  makeOption(oneWeekInSeconds, 1, DurationType.Weeks),
+  makeOption(oneWeekInSeconds * 2, 2, DurationType.Weeks),
+  makeOption(oneWeekInSeconds * 3, 3, DurationType.Weeks),
+  makeOption(oneMonthInSeconds, 1, DurationType.Months),
+  makeOption(oneMonthInSeconds * 2, 2, DurationType.Months),
+  makeOption(oneMonthInSeconds * 3, 3, DurationType.Months),
+  makeOption(oneMonthInSeconds * 4, 4, DurationType.Months),
+  makeOption(oneMonthInSeconds * 5, 5, DurationType.Months),
+  makeOption(oneMonthInSeconds * 6, 6, DurationType.Months),
+  makeOption(oneYearInSeconds, 1, DurationType.Years)
+];
+
+
+export const StorageQuota = () => {
+  const {Row, confirmationPopup, i18n, useAppSettings, apiManagerProxy} = useHotReloadGuard();
+
+  const [appSettings, setAppSettings] = useAppSettings();
+
+  const [cachedFilesSizes, cachedFilesSizesActions] = createResource(() => collectCachedFilesSizes());
+  const [cachedVideoStreamChunksSize, cachedVideoStreamChunksSizeActions] = createResource(() => collectCachedVideoStreamChunksSize());
+
+  const [selectedIdx, setSelectedIdx] = createSignal<number>();
+
+  createComputed(() => {
+    const value = appSettings.clearCacheOlderThanSeconds || 0
+    let foundIdx = 0;
+    for(let i = 1; i < timeOptions.length; i++) {
+      if(timeOptions[i].value <= value) foundIdx = i;
+    }
+
+    setSelectedIdx(foundIdx);
+  });
+
+  const throttledSaveClearCacheOlderThan = asyncThrottle(async(value: number) => {
+    await setAppSettings({clearCacheOlderThanSeconds: value});
+  }, saveSettingsThrottleTimeout);
+
+  createEffect(() => {
+    const option = timeOptions[selectedIdx()] || timeOptions[0];
+    if(option.value === appSettings.clearCacheOlderThanSeconds) return;
+
+    throttledSaveClearCacheOlderThan(option.value);
+  });
+
+  const btnClass = `${styles.Button} primary btn`;
+
+  const getConfirmation = async(args: ConfirmationArgs) => {
+    try {
+      await confirmationPopup({
+        ...args,
+        button: {
+          text: i18n('StorageQuota.Clear')
+        }
+      });
+      return true;
+    } catch{
+      return false;
+    }
+  };
+
+  const onClearCachedFiles = wrapAsyncClickHandler(async() => {
+    const formattedSize = tryFormatBytes(cachedFilesSizes.state === 'ready' ? cachedFilesSizes()?.totalSize : null);
+    if(!(await getConfirmation(getClearCachedFilesArgs(formattedSize)))) return;
+
+    cachedFilesSizesActions.mutate(getZeroedCollectedCachedFilesSizes());
+
+    await apiManagerProxy.clearCacheStoragesByNames([cachedFilesStorageName]);
+
+    // Note: refetch triggers 'Loading...' to reappear, we don't want that
+    const newValue = await collectCachedFilesSizes();
+    cachedFilesSizesActions.mutate(newValue);
+  });
+
+  const onClearCachedVideoStreamChunks = wrapAsyncClickHandler(async() => {
+    const formattedSize = tryFormatBytes(cachedVideoStreamChunksSize.state === 'ready' ? cachedVideoStreamChunksSize() : null);
+    if(!(await getConfirmation(getClearStreamChunksArgs(formattedSize)))) return;
+
+    cachedVideoStreamChunksSizeActions.mutate(0);
+
+    await apiManagerProxy.clearCacheStoragesByNames(cachedVideoChunksStorageNames);
+
+    const newValue = await collectCachedVideoStreamChunksSize();
+    cachedVideoStreamChunksSizeActions.mutate(newValue);
+  });
+
+  const onClearAllCachedData = wrapAsyncClickHandler(async() => {
+    if(!(await getConfirmation(getClearAllArgs()))) return;
+
+    cachedFilesSizesActions.mutate(getZeroedCollectedCachedFilesSizes());
+    cachedVideoStreamChunksSizeActions.mutate(0);
+
+    await apiManagerProxy.clearCacheStoragesByNames(watchedCachedStorageNames);
+
+    const {newCachedFilesSizes, newCachedVideoStreamChunksSize} = await namedPromises({
+      newCachedFilesSizes: collectCachedFilesSizes(),
+      newCachedVideoStreamChunksSize: collectCachedVideoStreamChunksSize()
+    });
+
+    cachedFilesSizesActions.mutate(newCachedFilesSizes);
+    cachedVideoStreamChunksSizeActions.mutate(newCachedVideoStreamChunksSize);
+  });
+
+  return (
+    <Section name='StorageQuota.Title' caption='StorageQuota.Caption'>
+      <Row>
+        <Row.Title><I18nTsx key='StorageQuota.CachedFiles' /></Row.Title>
+        <Row.Subtitle><SizeWithFallback resource={cachedFilesSizes} value={cachedFilesSizes()?.totalSize} /></Row.Subtitle>
+        <Row.RightContent>
+          <div>
+            <Button class={btnClass} onClick={onClearCachedFiles}>
+              <I18nTsx key='StorageQuota.Clear' />
+            </Button>
+          </div>
+        </Row.RightContent>
+      </Row>
+
+      <Row>
+        <Row.Icon icon='image' />
+        <Row.Title><I18nTsx key='StorageQuota.Images' /></Row.Title>
+        <Row.Subtitle><SizeWithFallback resource={cachedFilesSizes} value={cachedFilesSizes()?.collectedSizeByTypes['images']} /></Row.Subtitle>
+      </Row>
+
+      <Row>
+        <Row.Icon icon='play' />
+        <Row.Title><I18nTsx key='StorageQuota.VideoFiles' /></Row.Title>
+        <Row.Subtitle><SizeWithFallback resource={cachedFilesSizes} value={cachedFilesSizes()?.collectedSizeByTypes['videos']} /></Row.Subtitle>
+      </Row>
+
+      <Row>
+        <Row.Icon icon='stickers_face' />
+        <Row.Title><I18nTsx key='StorageQuota.StickersEmoji' /></Row.Title>
+        <Row.Subtitle><SizeWithFallback resource={cachedFilesSizes} value={cachedFilesSizes()?.collectedSizeByTypes['stickers']} /></Row.Subtitle>
+      </Row>
+
+      <Row>
+        <Row.Icon icon='limit_file' />
+        <Row.Title><I18nTsx key='StorageQuota.Other' /></Row.Title>
+        <Row.Subtitle><SizeWithFallback resource={cachedFilesSizes} value={cachedFilesSizes()?.collectedSizeByTypes['other']} /></Row.Subtitle>
+      </Row>
+
+      <Space amount='1rem' />
+
+      <Row>
+        <Row.Title><I18nTsx key='StorageQuota.CachedStreamChunks' /></Row.Title>
+        <Row.Subtitle><SizeWithFallback resource={cachedVideoStreamChunksSize} value={cachedVideoStreamChunksSize()} /></Row.Subtitle>
+        <Row.RightContent>
+          <Button class={btnClass} onClick={onClearCachedVideoStreamChunks}>
+            <I18nTsx key='StorageQuota.Clear' />
+          </Button>
+        </Row.RightContent>
+      </Row>
+
+      <Space amount='1rem' />
+
+      <RangeSettingSelector
+        minValue={0}
+        maxValue={timeOptions.length - 1}
+        step={1}
+        textLeft={<I18nTsx key='StorageQuota.ClearCacheOlderThan' />}
+        textRight={(idx) => timeOptions[idx]?.label()}
+        value={selectedIdx()}
+        onChange={setSelectedIdx}
+      />
+
+      <Space amount='1rem' />
+
+      <Button primaryTransparent onClick={onClearAllCachedData} icon='delete'>
+        <I18nTsx key='StorageQuota.ClearAll' />
+      </Button>
+    </Section>
+  );
+};
