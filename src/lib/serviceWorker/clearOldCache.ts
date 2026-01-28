@@ -17,7 +17,7 @@ type ClearOldCacheInWatchedStoragesArgs = {
 
 async function clearOldCacheInWatchedStorages({onStorageError}: ClearOldCacheInWatchedStoragesArgs) {
   const settings = await commonStateStorage.get('settings');
-  const cacheTTLSeconds = settings?.clearCacheOlderThanSeconds;
+  const cacheTTLSeconds = settings?.cacheTTL;
   if(typeof cacheTTLSeconds !== 'number' || !cacheTTLSeconds) return;
 
   const referenceTimeSeconds = Math.floor(Date.now() / 1000 - cacheTTLSeconds);

@@ -7,19 +7,17 @@ import type {FormatterArgument, FormatterArguments, LangPackKey} from '@lib/lang
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import styles from './storageQuota.module.scss';
 import CacheStorageController from '@lib/files/cacheStorage';
-import {createComputed, createEffect, createResource, createSignal, Match, Resource, Switch} from 'solid-js';
+import {createResource, createSignal, JSX, Match, Resource, Switch} from 'solid-js';
 import formatBytes from '@helpers/formatBytes';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
 import namedPromises from '@helpers/namedPromises';
 import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
 import {DurationType} from '@helpers/formatDuration';
-import asyncThrottle from '@helpers/schedulers/asyncThrottle';
 import {cachedFilesStorageName, cachedVideoChunksStorageNames, watchedCachedStorageNames} from '@lib/constants';
-import {createCacheStorageThreadedControls} from '@lib/apiManagerProxyUtils';
+import lastItem from '@helpers/array/lastItem';
 
 
 const decimalsForFormatBytes = 1;
-const saveSettingsThrottleTimeout = 1000;
 
 type ConfirmationArgs = {
   titleLangKey: LangPackKey;
@@ -124,7 +122,7 @@ function getContentSizeFromHeaders(headers: Headers): number {
 }
 
 const SizeWithFallback = (props: {
-  resource: Resource<any>;
+  resource: Resource<unknown>;
   value: number;
 }) => (
   <Switch>
@@ -145,60 +143,125 @@ const oneWeekInSeconds = oneDayInSeconds * 7;
 const oneMonthInSeconds = oneDayInSeconds * 31;
 const oneYearInSeconds = oneDayInSeconds * 365;
 
-const makeOption = (value: number, duration: number, type: DurationType) => ({
+const makeTimeOption = (value: number, duration: number, type: DurationType) => ({
   value,
   label: () => wrapFormattedDuration([{duration, type}])
 });
 
-const timeOptions = [
-  makeOption(oneDayInSeconds, 1, DurationType.Days),
-  makeOption(oneDayInSeconds * 2, 2, DurationType.Days),
-  makeOption(oneDayInSeconds * 3, 3, DurationType.Days),
-  makeOption(oneDayInSeconds * 4, 4, DurationType.Days),
-  makeOption(oneDayInSeconds * 5, 5, DurationType.Days),
-  makeOption(oneDayInSeconds * 6, 6, DurationType.Days),
-  makeOption(oneWeekInSeconds, 1, DurationType.Weeks),
-  makeOption(oneWeekInSeconds * 2, 2, DurationType.Weeks),
-  makeOption(oneWeekInSeconds * 3, 3, DurationType.Weeks),
-  makeOption(oneMonthInSeconds, 1, DurationType.Months),
-  makeOption(oneMonthInSeconds * 2, 2, DurationType.Months),
-  makeOption(oneMonthInSeconds * 3, 3, DurationType.Months),
-  makeOption(oneMonthInSeconds * 4, 4, DurationType.Months),
-  makeOption(oneMonthInSeconds * 5, 5, DurationType.Months),
-  makeOption(oneMonthInSeconds * 6, 6, DurationType.Months),
-  makeOption(oneYearInSeconds, 1, DurationType.Years)
+const cacheTimeOptions = [
+  makeTimeOption(oneDayInSeconds, 1, DurationType.Days),
+  makeTimeOption(oneDayInSeconds * 2, 2, DurationType.Days),
+  makeTimeOption(oneDayInSeconds * 3, 3, DurationType.Days),
+  makeTimeOption(oneDayInSeconds * 4, 4, DurationType.Days),
+  makeTimeOption(oneDayInSeconds * 5, 5, DurationType.Days),
+  makeTimeOption(oneDayInSeconds * 6, 6, DurationType.Days),
+  makeTimeOption(oneWeekInSeconds, 1, DurationType.Weeks),
+  makeTimeOption(oneWeekInSeconds * 2, 2, DurationType.Weeks),
+  makeTimeOption(oneWeekInSeconds * 3, 3, DurationType.Weeks),
+  makeTimeOption(oneMonthInSeconds, 1, DurationType.Months),
+  makeTimeOption(oneMonthInSeconds * 2, 2, DurationType.Months),
+  makeTimeOption(oneMonthInSeconds * 3, 3, DurationType.Months),
+  makeTimeOption(oneMonthInSeconds * 4, 4, DurationType.Months),
+  makeTimeOption(oneMonthInSeconds * 5, 5, DurationType.Months),
+  makeTimeOption(oneMonthInSeconds * 6, 6, DurationType.Months),
+  makeTimeOption(oneYearInSeconds, 1, DurationType.Years)
 ];
 
+const makeSizeOption = (value: number) => ({
+  value,
+  label: () => formatBytes(value, decimalsForFormatBytes)
+});
 
-export const StorageQuota = () => {
+const mb = 1024 * 1024;
+const gb = mb * 1024;
+
+type Option = {
+  value: number;
+  label: () => JSX.Element;
+};
+
+const getCacheSizeOptions = (autoLabel: () => JSX.Element) => [
+  makeSizeOption(100 * mb),
+  makeSizeOption(200 * mb),
+  makeSizeOption(300 * mb),
+  makeSizeOption(400 * mb),
+  makeSizeOption(500 * mb),
+  makeSizeOption(600 * mb),
+  makeSizeOption(700 * mb),
+  makeSizeOption(800 * mb),
+  makeSizeOption(900 * mb),
+  makeSizeOption(1 * gb),
+  {
+    value: 0,
+    label: autoLabel
+  }
+];
+
+const getInitialCacheTimeIdx = (cacheTTL: number) => {
+  const value = cacheTTL || 0;
+  let foundIdx = 0;
+  for(let i = 1; i < cacheTimeOptions.length; i++) {
+    if(cacheTimeOptions[i].value <= value) foundIdx = i;
+  }
+  return foundIdx;
+};
+
+const getInitialCacheSizeIdx = (cacheSize: number, options: Option[]) => {
+  const value = cacheSize || 0;
+  if(value === 0) return options.length - 1;
+
+  let foundIdx = 0;
+  for(let i = 1; i < options.length - 1; i++) {
+    if(options[i].value <= value) foundIdx = i;
+  }
+  return foundIdx;
+};
+
+export type StorageQuotaControls = {
+  save: () => Promise<void>;
+};
+
+type Props = {
+  controlsRef: (controls: StorageQuotaControls) => void;
+};
+
+export const StorageQuota = (props: Props) => {
   const {Row, confirmationPopup, i18n, useAppSettings, apiManagerProxy} = useHotReloadGuard();
+
+  const cacheSizeOptions = getCacheSizeOptions(() => i18n('StorageQuota.CacheSizeLimitAuto'));
 
   const [appSettings, setAppSettings] = useAppSettings();
 
-  const [cachedFilesSizes, cachedFilesSizesActions] = createResource(() => collectCachedFilesSizes());
-  const [cachedVideoStreamChunksSize, cachedVideoStreamChunksSizeActions] = createResource(() => collectCachedVideoStreamChunksSize());
+  const [cachedFilesSizes, cachedFilesSizesActions] = createResource(collectCachedFilesSizes);
+  const [cachedVideoStreamChunksSize, cachedVideoStreamChunksSizeActions] = createResource(collectCachedVideoStreamChunksSize);
 
-  const [selectedIdx, setSelectedIdx] = createSignal<number>();
+  const [cacheTimeIdx, setCacheTimeIdx] = createSignal<number>(getInitialCacheTimeIdx(appSettings.cacheTTL));
+  const [cacheSizeIdx, setCacheSizeIdx] = createSignal<number>(getInitialCacheSizeIdx(appSettings.cacheSize, cacheSizeOptions));
 
-  createComputed(() => {
-    const value = appSettings.clearCacheOlderThanSeconds || 0
-    let foundIdx = 0;
-    for(let i = 1; i < timeOptions.length; i++) {
-      if(timeOptions[i].value <= value) foundIdx = i;
+  const getFinalCacheTTL = () => {
+    const option = cacheTimeOptions[cacheTimeIdx()] || cacheTimeOptions[0];
+    if(option.value === appSettings.cacheTTL) return;
+
+    return option.value;
+  };
+
+  const getFinalCacheSize = () => {
+    const option = cacheSizeOptions[cacheSizeIdx()] || lastItem(cacheSizeOptions);
+    if(option.value === appSettings.cacheSize) return;
+
+    return option.value;
+  };
+
+  props.controlsRef({
+    save: async() => {
+      const cacheTTL = getFinalCacheTTL();
+      const cacheSize = getFinalCacheSize();
+
+      await setAppSettings({
+        ...(cacheTTL !== undefined ? {cacheTTL} : {}),
+        ...(cacheSize !== undefined ? {cacheSize} : {})
+      });
     }
-
-    setSelectedIdx(foundIdx);
-  });
-
-  const throttledSaveClearCacheOlderThan = asyncThrottle(async(value: number) => {
-    await setAppSettings({clearCacheOlderThanSeconds: value});
-  }, saveSettingsThrottleTimeout);
-
-  createEffect(() => {
-    const option = timeOptions[selectedIdx()] || timeOptions[0];
-    if(option.value === appSettings.clearCacheOlderThanSeconds) return;
-
-    throttledSaveClearCacheOlderThan(option.value);
   });
 
   const btnClass = `${styles.Button} primary btn`;
@@ -313,12 +376,24 @@ export const StorageQuota = () => {
 
       <RangeSettingSelector
         minValue={0}
-        maxValue={timeOptions.length - 1}
+        maxValue={cacheTimeOptions.length - 1}
         step={1}
         textLeft={<I18nTsx key='StorageQuota.ClearCacheOlderThan' />}
-        textRight={(idx) => timeOptions[idx]?.label()}
-        value={selectedIdx()}
-        onChange={setSelectedIdx}
+        textRight={(idx) => cacheTimeOptions[idx]?.label()}
+        value={cacheTimeIdx()}
+        onChange={setCacheTimeIdx}
+      />
+
+      <Space amount='0.5rem' />
+
+      <RangeSettingSelector
+        minValue={0}
+        maxValue={cacheSizeOptions.length - 1}
+        step={1}
+        textLeft={<I18nTsx key='StorageQuota.CacheSizeLimit' />}
+        textRight={(idx) => cacheSizeOptions[idx]?.label()}
+        value={cacheSizeIdx()}
+        onChange={setCacheSizeIdx}
       />
 
       <Space amount='1rem' />

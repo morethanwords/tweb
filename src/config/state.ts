@@ -114,7 +114,8 @@ export type StateSettings = {
   instantView: {
     scale: number
   },
-  clearCacheOlderThanSeconds: number
+  cacheTTL: number,
+  cacheSize: number,
 };
 
 type CacheSomething<T> = {
@@ -389,7 +390,8 @@ export const SETTINGS_INIT: StateSettings = {
   instantView: {
     scale: 1
   },
-  clearCacheOlderThanSeconds: 86400 // 1 day
+  cacheTTL: 86400, // 1 day
+  cacheSize: 0 // Auto
 };
 
 export const STATE_INIT: State = {
