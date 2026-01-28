@@ -4207,7 +4207,8 @@ const lang = {
   'PostsSearch.NeedPremium': 'Global search is a Premium feature.',
   'PostsSearch.SubscribeToPremium': 'Subscribe to Premium',
   'PostsSearch.SearchFor': 'Search for %s',
-  'PostsSearch.FreeUnlocksIn': 'free search unlocks in %s'
+  'PostsSearch.FreeUnlocksIn': 'free search unlocks in %s',
+  'PostsSearch.StarsSpent': '**%s** spent on extra search'
 };
 
 export default lang;

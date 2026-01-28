@@ -1,4 +1,4 @@
-import {createEffect, createMemo, createSignal, Match, on, onMount, Show, Switch} from 'solid-js';
+import {batch, createEffect, createMemo, createSignal, Match, on, onMount, Show, Switch} from 'solid-js';
 import {wrapSolidComponent} from '../../helpers/solid/wrapSolidComponent';
 import {Middleware} from '../../helpers/middleware';
 
@@ -23,6 +23,7 @@ import {createCurrentTime} from '../../helpers/solid/createCurrentTime';
 import tsNow from '../../helpers/tsNow';
 import {wrapLeftDuration} from '../wrappers/wrapDuration';
 import usePremium from '../../stores/premium';
+import {toastNew} from '../toast';
 
 const renderHistoryResult = (options: {
   messages: (Message.message | Message.messageService)[]
@@ -34,7 +35,7 @@ const renderHistoryResult = (options: {
     const {dom} = appDialogsManager.addDialogAndSetLastMessage({
       peerId: message.peerId,
       container: false,
-      avatarSize: 'abitbigger',
+      avatarSize: 'bigger',
       message,
       query: options.query,
       wrapOptions: {
@@ -57,6 +58,7 @@ export function GlobalPostsSearch(props: {
 }) {
   const [flood, setFlood] = createSignal<SearchPostsFlood | null>(null)
   const [results, setResults] = createSignal<HTMLElement[]>([])
+  const [placeholder, setPlaceholder] = createSignal(true)
   const [loading, setLoading] = createSignal(false)
   const [canShowButtonAfterEmpty, setCanShowButtonAfterEmpty] = createSignal(false)
   const middleware = createMiddleware()
@@ -83,6 +85,15 @@ export function GlobalPostsSearch(props: {
       query: props.query,
       allowStars: allowPaid ? flood()?.stars_amount : 0
     }).then((res) => {
+      if(allowPaid && !res.flood.pFlags.query_is_free) {
+        toastNew({
+          langPackKey: 'PostsSearch.StarsSpent',
+          langPackArguments: [
+            paymentsWrapCurrencyAmount(res.flood.stars_amount, STARS_CURRENCY, false, false, true)
+          ]
+        })
+      }
+
       if(!res.messages) {
         setLoading(false);
         return;
@@ -95,8 +106,11 @@ export function GlobalPostsSearch(props: {
         query: props.query,
         middleware: middleware.get()
       }).then((doms) => {
-        setResults([...results(), ...doms]);
-        setLoading(false);
+        batch(() => {
+          setPlaceholder(false)
+          setResults([...results(), ...doms]);
+          setLoading(false);
+        })
       }).catch((err) => {
         console.error(err);
         setLoading(false);
@@ -127,8 +141,12 @@ export function GlobalPostsSearch(props: {
       if(myQuery !== props.query) return
       setFlood(res)
       setCanShowButtonAfterEmpty(true)
-      if(myQuery && res.pFlags.query_is_free) {
-        loadMore(true)
+      if(myQuery) {
+        setResults([])
+        setPlaceholder(true)
+        if(res.pFlags.query_is_free) {
+          loadMore(true)
+        }
       }
     })
   }
@@ -136,9 +154,11 @@ export function GlobalPostsSearch(props: {
   createEffect(on(() => props.query, (value, prev) => {
     // only show the button after we load flood, to avoid blinking for free queries
     if(prev === '') setCanShowButtonAfterEmpty(false)
-    setResults([])
+    if(value === '') {
+      setResults([])
+      setPlaceholder(true)
+    }
     lastMessage = null
-    prevActive = null
     nextRate = 0
     loadFlood()
   }))
@@ -192,11 +212,9 @@ export function GlobalPostsSearch(props: {
       )
     }
 
-    if(!props.query) return null
+    if(!props.query || !canShowButtonAfterEmpty()) return null
 
     if(remainingUntilReset()) {
-      if(!canShowButtonAfterEmpty()) return null
-
       return (
         <Button
           class={classNames('btn-primary btn-color-primary', styles.button, styles.buttonPaidSearch)}
@@ -240,41 +258,36 @@ export function GlobalPostsSearch(props: {
     )
   }
 
-  let prevActive: HTMLElement | null = null
-  const handleListClick = (e: MouseEvent) => {
-    const li = findUpTag(e.target, DIALOG_LIST_ELEMENT_TAG);
-    if(!li) return;
-    const peerId = li.dataset.peerId.toPeerId();
-    const mid = li.dataset.mid;
-    if(!peerId || !mid) return;
-
-    if(prevActive) prevActive.classList.remove('active')
-    prevActive = li
-    li.classList.add('active')
-
-    appImManager.setPeer({
-      peerId,
-      lastMsgId: Number(mid)
-    });
-  }
-
   return (
     <div>
       <Switch>
         <Match when={results().length}>
-          <div class={styles.results} onClick={handleListClick}>
+          <div
+            class={styles.results}
+            ref={(el) => {
+              appDialogsManager.setListClickListener({
+                list: el,
+                autonomous: true
+              })
+            }}
+          >
             {results()}
           </div>
         </Match>
         <Match when={loading() || !flood()}>
           <PreloaderTsx />
         </Match>
-        <Match when={true}>
+        <Match when={placeholder()}>
           <div class={styles.placeholder}>
             <I18nTsx key={title()} class={styles.title} />
             {description()}
             {button()}
             {footer()}
+          </div>
+        </Match>
+        <Match when={true}>
+          <div class={styles.placeholder}>
+            {i18n('Chat.Search.NothingFound')}
           </div>
         </Match>
       </Switch>
