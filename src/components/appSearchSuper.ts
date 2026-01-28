@@ -108,6 +108,7 @@ import {useAppState} from '@stores/appState';
 import {AutonomousSavedDialogList} from '@components/autonomousDialogList/savedDialogs';
 import SetTransition from '@components/singleTransition';
 import liteMode from '@helpers/liteMode';
+import {wrapGlobalPostsSearch} from './sidebarLeft/globalPostsSearch';
 
 // const testScroll = false;
 
@@ -128,7 +129,7 @@ export type SearchSuperContext = {
 
 export type SearchSuperMediaType = 'stories' | 'members' | 'media' |
   'files' | 'links' | 'music' | 'chats' | 'voice' | 'groups' | 'similar' |
-  'savedDialogs' | 'saved' | 'channels' | 'apps' | 'gifts';
+  'savedDialogs' | 'saved' | 'channels' | 'apps' | 'gifts' | 'posts';
 export type SearchSuperMediaTab = {
   inputFilter?: SearchSuperType,
   name: LangPackKey,
@@ -2067,8 +2068,22 @@ export default class AppSearchSuper {
     this.loaded[mediaTab.type] = true;
   }
 
+  globalPostsSearch: ReturnType<typeof wrapGlobalPostsSearch>;
+  private async loadPosts({mediaTab, middleware}: SearchSuperLoadTypeOptions) {
+    if(!this.globalPostsSearch) {
+      this.globalPostsSearch = wrapGlobalPostsSearch({
+        middleware,
+        query: this.searchContext.query
+      });
+      mediaTab.contentTab.append(this.globalPostsSearch.dom);
+    }
+
+    this.globalPostsSearch.loadMore();
+  }
+
   private loadGifts() {
     const mediaTab = this.mediaTabsMap.get('gifts');
+    if(!mediaTab) return;
 
     if(!this.stargiftsStore) {
       const middleware = this.middleware.get();
@@ -2136,6 +2151,8 @@ export default class AppSearchSuper {
       promise = this.loadChannels(options);
     } else if(type === 'apps') {
       promise = this.loadApps(options);
+    } else if(type === 'posts') {
+      promise = this.loadPosts(options);
     }
 
     if(promise) {
@@ -2699,6 +2716,7 @@ export default class AppSearchSuper {
     this.membersParticipantMap = undefined;
     this.membersMiddlewareHelper?.destroy();
     this.membersMiddlewareHelper = undefined;
+    this.globalPostsSearch = undefined;
   }
 
   public cleanScrollPositions() {

@@ -18,7 +18,7 @@ import LazyLoadQueueBase from '@components/lazyLoadQueueBase';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import tsNow from '@helpers/tsNow';
 import {randomLong} from '@helpers/random';
-import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, UrlAuthResult, MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, InputUser, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities, ChannelsSearchPosts, FactCheck, MessageExtendedMedia, SponsoredMessage, MessagesSponsoredMessages, InputGroupCall, TodoItem, TodoCompletion} from '@layer';
+import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, UrlAuthResult, MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, InputUser, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities, ChannelsSearchPosts, FactCheck, MessageExtendedMedia, SponsoredMessage, MessagesSponsoredMessages, InputGroupCall, TodoItem, TodoCompletion, SearchPostsFlood} from '@layer';
 import {ArgumentTypes, InvokeApiOptions, Modify} from '@types';
 import {logger, LogTypes} from '@lib/logger';
 import {ReferenceContext} from '@lib/storages/references';
@@ -171,7 +171,8 @@ export type HistoryResult = {
   isEnd: ReturnType<Slice<number>['getEnds']>,
   offsetIdOffset?: number,
   nextRate?: number,
-  messages?: MyMessage[]
+  messages?: MyMessage[],
+  flood?: SearchPostsFlood
 };
 
 export type Dialog = MTDialog.dialog;
@@ -299,6 +300,8 @@ export type RequestHistoryOptions = {
   needRealOffsetIdOffset?: boolean,
   fromPeerId?: PeerId,
   isPublicHashtag?: boolean,
+  isPublicPosts?: boolean,
+  allowStars?: Long,
   isCacheableSearch?: boolean,
   hashtagType?: 'this' | 'my' | 'public',
   chatType?: 'all' | 'users' | 'groups' | 'channels',
@@ -8843,7 +8846,8 @@ export class AppMessagesManager extends AppManager {
           isEnd: historyStorage.history.slice.getEnds(),
           offsetIdOffset: (historyResult as MessagesMessages.messagesMessagesSlice)?.offset_id_offset || 0,
           nextRate: (historyResult as MessagesMessages.messagesMessagesSlice)?.next_rate,
-          messages: historyResult.messages as MyMessage[]
+          messages: historyResult.messages as MyMessage[],
+          flood: (historyResult as MessagesMessages.messagesMessagesSlice)?.search_flood
         };
       }
 
@@ -9322,7 +9326,9 @@ export class AppMessagesManager extends AppManager {
     chatType,
     fromPeerId,
     savedReaction,
-    isPublicHashtag
+    isPublicHashtag,
+    isPublicPosts,
+    allowStars
   }: RequestHistoryOptions) {
     const offsetMessage = offsetId && this.getMessageByPeer(offsetPeerId || peerId, offsetId);
     offsetPeerId ??= offsetMessage?.peerId;
@@ -9350,13 +9356,18 @@ export class AppMessagesManager extends AppManager {
       inputFilter ??= {_: 'inputMessagesFilterEmpty'};
     }
 
-    if(isPublicHashtag) {
+    if(isPublicHashtag || isPublicPosts) {
       const searchOptions: ChannelsSearchPosts = {
         ...commonOptions,
-        hashtag: query.slice(1),
         offset_rate: nextRate,
         offset_peer: this.appPeersManager.getInputPeerById(offsetPeerId)
       };
+      if(isPublicHashtag) {
+        searchOptions.hashtag = query.slice(1)
+      } else {
+        searchOptions.query = query
+        searchOptions.allow_paid_stars = allowStars
+      }
 
       method = 'channels.searchPosts';
       options = searchOptions;
