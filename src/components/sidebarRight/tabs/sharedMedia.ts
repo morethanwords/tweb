@@ -440,7 +440,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         this.threadId === threadId
       ) {
         this.searchSuper.usedFromHistory[inputFilter] += filtered.length;
-        this.searchSuper.performSearchResult(filtered, mediaTab, false);
+        this.searchSuper.performSearchResult({messages: filtered, mediaTab, append: false});
         this.searchSuper.setCounter(mediaTab.type, this.searchSuper.counters[mediaTab.type] + filtered.length);
       }
     }

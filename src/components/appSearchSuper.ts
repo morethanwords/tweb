@@ -147,6 +147,13 @@ type SearchSuperLoadTypeOptions = {
   side: 'top' | 'bottom'
 };
 
+type PerformSearchResultArgs = {
+  messages: (Message.message | Message.messageService)[];
+  mediaTab: SearchSuperMediaTab;
+  canAnimateIn?: boolean;
+  append?: boolean;
+};
+
 class SearchContextMenu {
   private buttons: (ButtonMenuItemOptions & {verify?: () => boolean | Promise<boolean>, withSelection?: true})[];
   private element: HTMLElement;
@@ -1092,7 +1099,7 @@ export default class AppSearchSuper {
     }
   }
 
-  public async performSearchResult(messages: (Message.message | Message.messageService)[], mediaTab: SearchSuperMediaTab, append = true) {
+  public async performSearchResult({messages, mediaTab, canAnimateIn = false, append = true}: PerformSearchResultArgs) {
     const elemsToAppend: {element: HTMLElement, message: any}[] = [];
     const sharedMediaDiv: HTMLElement = mediaTab.contentTab;
     const promises: Promise<any>[] = [];
@@ -1111,7 +1118,7 @@ export default class AppSearchSuper {
       searchGroup = this.searchGroups.messages;
     }
 
-    if(liteMode.isAvailable('animations') && searchGroup?.container) {
+    if(canAnimateIn && liteMode.isAvailable('animations') && searchGroup?.container) {
       searchGroup.container.classList.add('is-hidden');
 
       setTimeout(() => SetTransition({
@@ -2189,7 +2196,7 @@ export default class AppSearchSuper {
 
         this.usedFromHistory[inputFilter] = used;
         // if(messages.length) {
-        return this.performSearchResult(messages, mediaTab).finally(() => {
+        return this.performSearchResult({messages, mediaTab}).finally(() => {
           setTimeout(() => {
             this.scrollable.checkForTriggers();
           }, 0);
@@ -2270,7 +2277,7 @@ export default class AppSearchSuper {
       }
 
       // if(value.history.length) {
-      return this.performSearchResult(this.filterMessagesByType(messages, inputFilter), mediaTab);
+      return this.performSearchResult({messages: this.filterMessagesByType(messages, inputFilter), mediaTab, canAnimateIn: !offsetId});
       // }
     }).catch((err) => {
       this.log.error('load error:', err);
