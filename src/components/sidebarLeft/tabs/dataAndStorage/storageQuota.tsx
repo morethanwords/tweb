@@ -2,19 +2,20 @@ import Button from '@components/buttonTsx';
 import RangeSettingSelector from '@components/rangeSettingSelector';
 import Section from '@components/section';
 import Space from '@components/space';
+import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
+import DEBUG from '@config/debug';
+import lastItem from '@helpers/array/lastItem';
+import formatBytes from '@helpers/formatBytes';
+import {DurationType} from '@helpers/formatDuration';
+import namedPromises from '@helpers/namedPromises';
 import {I18nTsx} from '@helpers/solid/i18n';
+import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
+import {cachedFilesStorageName, cachedVideoChunksStorageNames, HTTPHeaderNames, watchedCachedStorageNames} from '@lib/constants';
+import CacheStorageController from '@lib/files/cacheStorage';
 import type {FormatterArgument, FormatterArguments, LangPackKey} from '@lib/langPack';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import styles from './storageQuota.module.scss';
-import CacheStorageController from '@lib/files/cacheStorage';
 import {createResource, createSignal, JSX, Match, Resource, Switch} from 'solid-js';
-import formatBytes from '@helpers/formatBytes';
-import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
-import namedPromises from '@helpers/namedPromises';
-import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
-import {DurationType} from '@helpers/formatDuration';
-import {cachedFilesStorageName, cachedVideoChunksStorageNames, watchedCachedStorageNames} from '@lib/constants';
-import lastItem from '@helpers/array/lastItem';
+import styles from './storageQuota.module.scss';
 
 
 const decimalsForFormatBytes = 1;
@@ -115,7 +116,7 @@ async function collectCachedVideoStreamChunksSize() {
 }
 
 function getContentSizeFromHeaders(headers: Headers): number {
-  const contentSize = parseInt(headers.get('content-length') || '0');
+  const contentSize = parseInt(headers.get(HTTPHeaderNames.contentLength) || '0');
   if(!contentSize) return 0;
 
   return contentSize;
@@ -180,7 +181,10 @@ type Option = {
   label: () => JSX.Element;
 };
 
+const haveSmallSize = false && DEBUG;
+
 const getCacheSizeOptions = (autoLabel: () => JSX.Element) => [
+  ...(haveSmallSize ? [makeSizeOption(10 * mb)] : []),
   makeSizeOption(100 * mb),
   makeSizeOption(200 * mb),
   makeSizeOption(300 * mb),

@@ -17,11 +17,18 @@ import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
 import MemoryWriter from '@lib/files/memoryWriter';
 import FileStorage from '@lib/files/fileStorage';
 import pause from '@helpers/schedulers/pause';
-import {cachedTimeHeader} from '@lib/constants';
+import {HTTPHeaderNames} from '@lib/constants';
 
 
 type CacheStorageDbConfigEntry = {
   encryptable: boolean;
+};
+
+type SaveArgs = {
+  entryName: string;
+  response: Response;
+  size: number;
+  contentType?: string;
 };
 
 const cacheStorageDbConfig = {
@@ -46,9 +53,9 @@ const cacheStorageDbConfig = {
 } satisfies Record<string, CacheStorageDbConfigEntry>;
 
 const defaultOperationTimeout = 15e3;
-const nonBlockingIterationTotalTimeout = defaultOperationTimeout; // make sure this is at least a few seconds if the default one gets modified
+const minimalBlockingIterationTotalTimeout = defaultOperationTimeout; // make sure this is at least a few seconds if the default one gets modified
 
-const nonBlockingAllowedTimePerBulk = 4;
+const minimalBlockingAllowedTimePerBulk = 4;
 
 type MinimalBlockingIterateResponsesCallbackArgs = {
   request: Request;
@@ -130,9 +137,15 @@ export default class CacheStorageController implements FileStorage {
     return new Blob([result], {type});
   }
 
+  private getDisabledPromises() {
+    return [CacheStorageController.disabledPromise, CacheStorageController.disabledPromisesByKey.get(this.dbName)].filter(Boolean);
+  }
+
   private async waitToEnable() {
-    if(CacheStorageController.disabledPromise) await CacheStorageController.disabledPromise;
-    if(CacheStorageController.disabledPromisesByKey.has(this.dbName)) await CacheStorageController.disabledPromisesByKey.get(this.dbName);
+    // Note: even if initially there was one disabled promise, another one could be added while we are waiting
+    while(this.getDisabledPromises().length) {
+      await Promise.all(this.getDisabledPromises());
+    }
   }
 
   private openDatabase(): Promise<Cache> {
@@ -155,10 +168,12 @@ export default class CacheStorageController implements FileStorage {
     this.openDbPromise = undefined;
   }
 
-  public minimalBlockingIterateResponses(callback: (args: MinimalBlockingIterateResponsesCallbackArgs) => void | Promise<void>) {
+  public async minimalBlockingIterateResponses(callback: (args: MinimalBlockingIterateResponsesCallbackArgs) => void | Promise<void>) {
+    await this.waitToEnable();
+
     const batchSize = 10;
 
-    return this.timeoutOperation(async(cache) => {
+    await this.timeoutOperation(async(cache) => {
       const allKeys = await cache.keys();
 
       let prevTime = performance.now();
@@ -174,12 +189,12 @@ export default class CacheStorageController implements FileStorage {
         }));
 
         const now = performance.now();
-        if(now - prevTime > nonBlockingAllowedTimePerBulk) {
+        if(now - prevTime > minimalBlockingAllowedTimePerBulk) {
           await pause(0); // give back control to the event loop
           prevTime = now;
         }
       }
-    }, nonBlockingIterationTotalTimeout);
+    }, minimalBlockingIterationTotalTimeout);
   }
 
   public async has(entryName: string) {
@@ -207,11 +222,14 @@ export default class CacheStorageController implements FileStorage {
     return response;
   }
 
-  public async save(entryName: string, response: Response) {
+  public async save({entryName, response, size, contentType}: SaveArgs) {
     await this.waitToEnable();
 
-    if(!response.headers.has(cachedTimeHeader)) {
-      response.headers.set(cachedTimeHeader, Math.floor(Date.now() / 1000 | 0).toString());
+    response.headers.set(HTTPHeaderNames.cachedTime, Math.floor(Date.now() / 1000 | 0).toString());
+    response.headers.set(HTTPHeaderNames.contentLength, size.toString());
+
+    if(contentType) {
+      response.headers.set(HTTPHeaderNames.contentType, contentType);
     }
 
     let result = response;
@@ -257,13 +275,9 @@ export default class CacheStorageController implements FileStorage {
       blob = blobConstruct(blob);
     }
 
-    const response = new Response(blob, {
-      headers: {
-        'Content-Length': '' + blob.size
-      }
-    });
+    const response = new Response(blob);
 
-    return this.save(fileName, response).then(() => blob as Blob);
+    return this.save({entryName: fileName, response, size: blob.size}).then(() => blob as Blob);
   }
 
   public timeoutOperation<T>(callback: (cache: Cache) => Promise<T>, operationTimeout = defaultOperationTimeout) {

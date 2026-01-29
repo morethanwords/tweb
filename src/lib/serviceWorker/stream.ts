@@ -18,7 +18,6 @@ import {DownloadOptions, MyUploadFile} from '@appManagers/apiFileManager';
 import {getMtprotoMessagePort, log, serviceMessagePort} from '@lib/serviceWorker/index.service';
 import {ServiceRequestFilePartTaskPayload} from '@lib/serviceWorker/serviceMessagePort';
 import timeout from '@lib/serviceWorker/timeout';
-import {cachedTimeHeader} from '@lib/constants';
 
 const ctx = self as any as ServiceWorkerGlobalScope;
 
@@ -166,15 +165,9 @@ class Stream {
   private saveChunkToCache(deferred: Promise<Uint8Array>, alignedOffset: number, limit: number) {
     return deferred.then((bytes) => {
       const key = this.getChunkKey(alignedOffset, limit);
-      const response = new Response(bytes, {
-        headers: {
-          'Content-Length': '' + bytes.length,
-          'Content-Type': 'application/octet-stream',
-          [cachedTimeHeader]: '' + (Date.now() / 1000 | 0)
-        }
-      });
+      const response = new Response(bytes);
 
-      return cacheStorage.save(key, response);
+      return cacheStorage.save({entryName: key, response, size: bytes.length, contentType: 'application/octet-stream'});
     });
   }
 

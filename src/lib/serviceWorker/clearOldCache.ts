@@ -1,6 +1,8 @@
+import DEBUG from '@config/debug';
+import formatBytesPure from '@helpers/formatBytesPure';
 import pause from '@helpers/schedulers/pause';
 import commonStateStorage from '@lib/commonStateStorage';
-import {cachedTimeHeader, watchedCachedStorageNames} from '@lib/constants';
+import {HTTPHeaderNames, WatchedCachedStorageName, watchedCachedStorageNames} from '@lib/constants';
 import CacheStorageController, {CacheStorageDbName} from '@lib/files/cacheStorage';
 import {logger} from '@lib/logger';
 
@@ -15,14 +17,26 @@ type ClearOldCacheInWatchedStoragesArgs = {
   onStorageError: (args: OnStorageErrorArgs) => Promise<void>;
 };
 
+type CollectedResponse = {
+  request: Request;
+  response: Response;
+  timeSeconds: number;
+  size: number;
+  storageName: WatchedCachedStorageName;
+};
+
 async function clearOldCacheInWatchedStorages({onStorageError}: ClearOldCacheInWatchedStoragesArgs) {
   const settings = await commonStateStorage.get('settings');
   const cacheTTLSeconds = settings?.cacheTTL;
+
   if(typeof cacheTTLSeconds !== 'number' || !cacheTTLSeconds) return;
 
   const referenceTimeSeconds = Math.floor(Date.now() / 1000 - cacheTTLSeconds);
 
   log({referenceTimeSeconds, cacheTTLSeconds});
+
+  const collectedResponses: CollectedResponse[] = [];
+  let totalSize = 0;
 
   for(const storageName of watchedCachedStorageNames) {
     const cacheStorage = new CacheStorageController(storageName);
@@ -33,12 +47,16 @@ async function clearOldCacheInWatchedStorages({onStorageError}: ClearOldCacheInW
 
     try {
       await cacheStorage.minimalBlockingIterateResponses(async({request, cache, response}) => {
-        const cachedTimeHeaderValue = response.headers.get(cachedTimeHeader);
-        const cachedTimeSeconds = parseInt(cachedTimeHeaderValue) || 0;
+        const cachedTimeSeconds = parseInt(response.headers.get(HTTPHeaderNames.cachedTime)) || 0;
 
         if(cachedTimeSeconds < referenceTimeSeconds) { // drops existing entries with no time header
           log(`deleteing cache from ${storageName}:`, request.url, {cachedTimeSeconds, referenceTimeSeconds});
           await cache.delete(request);
+        } else {
+          const contentLength = parseInt(response.headers.get(HTTPHeaderNames.contentLength)) || 0;
+          totalSize += contentLength;
+
+          collectedResponses.push({request, response, timeSeconds: cachedTimeSeconds, size: contentLength, storageName});
         }
       });
     } catch(error) {
@@ -52,12 +70,67 @@ async function clearOldCacheInWatchedStorages({onStorageError}: ClearOldCacheInW
         storageName,
         error: caughtError
       });
+
+      return;
     }
   }
+
+  const cacheMaxSize = settings?.cacheSize;
+  if(!cacheMaxSize) return; // 0 => no limit
+
+  log(`Total size before deletion: ${formatBytesPure(totalSize)}, Max size: ${formatBytesPure(cacheMaxSize)}`);
+
+  collectedResponses.sort((a, b) => a.timeSeconds - b.timeSeconds);
+
+  const toBeDeleted: Map<WatchedCachedStorageName, CollectedResponse[]> = new Map([
+    ['cachedFiles', []],
+    ['cachedStreamChunks', []],
+    ['cachedHlsStreamChunks', []],
+    ['cachedHlsQualityFiles', []]
+  ]);
+
+  for(const collectedResponse of collectedResponses) {
+    const {size, storageName} = collectedResponse;
+
+    if(totalSize <= cacheMaxSize) break;
+
+    totalSize -= size;
+    toBeDeleted.get(storageName)?.push(collectedResponse);
+  }
+
+  const entries = Array.from(toBeDeleted.entries());
+
+  const prettyLog = (collectedResponses: CollectedResponse[]) => collectedResponses.map(({request, size, timeSeconds}) => ({url: request.url, size: formatBytesPure(size), time: new Date(timeSeconds * 1000)}));
+
+  // log(`Collected ${collectedResponses.length}: `, prettyLog(collectedResponses));
+
+  // Note: we're worried about catching the error only frist time when iterating, as cache.keys() can throw when there are too many entries
+
+  await Promise.all(entries.map(async([storageName, collectedResponses]) => {
+    if(!collectedResponses.length) return;
+
+    log(`Deleting ${collectedResponses.length} entries from ${storageName}`, prettyLog(collectedResponses));
+
+    const cacheStorage = new CacheStorageController(storageName);
+    try {
+      await cacheStorage.timeoutOperation(async(cache) => {
+        await Promise.all(collectedResponses.map(({request}) =>
+          cache.delete(request)
+        ));
+      });
+    } finally {
+      cacheStorage.forget();
+    }
+  }))
 }
 
-const warmUpWaitTime = 20e3;
-const intervalTime = 1800e3;
+const seconds = 1_000;
+const minutes = 60 * seconds;
+
+const haveSmallerWarmup = false && DEBUG;
+
+const warmUpWaitTime = haveSmallerWarmup ? (3 * seconds) : (20 * seconds);
+const intervalTime = 10 * minutes;
 
 export async function watchCacheStoragesLifetime(args: ClearOldCacheInWatchedStoragesArgs) {
   await pause(warmUpWaitTime); // wait some time for the app to fully initialize

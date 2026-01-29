@@ -1,12 +1,9 @@
 import readBlobAsUint8Array from '@helpers/blob/readBlobAsUint8Array';
-
 import {ActiveAccountNumber} from '@lib/accounts/types';
 import CacheStorageController from '@lib/files/cacheStorage';
-import {serviceMessagePort} from '@lib/serviceWorker/index.service';
-
 import {RequestSynchronizer} from '@lib/hls/requestSynchronizer';
 import {StreamFetchingRange} from '@lib/hls/splitRangeForGettingFileParts';
-import {cachedTimeHeader} from '@lib/constants';
+import {serviceMessagePort} from '@lib/serviceWorker/index.service';
 
 
 type RequestFilePartIdentificationParams = {
@@ -74,13 +71,7 @@ function getChunkFilename(params: RequestFilePartIdentificationParams, range: St
 async function saveChunkToCache(bytes: Uint8Array, params: RequestFilePartIdentificationParams, range: StreamFetchingRange) {
   const filename = getChunkFilename(params, range);
 
-  const response = new Response(bytes, {
-    headers: {
-      'Content-Length': '' + bytes.length,
-      'Content-Type': 'application/octet-stream',
-      [cachedTimeHeader]: '' + (Date.now() / 1000 | 0)
-    }
-  });
+  const response = new Response(bytes);
 
-  await cacheStorage.save(filename, response);
+  await cacheStorage.save({entryName: filename, response, size: bytes.length, contentType: 'application/octet-stream'});
 }
