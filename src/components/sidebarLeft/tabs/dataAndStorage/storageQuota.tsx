@@ -261,10 +261,10 @@ export const StorageQuota = (props: Props) => {
       const cacheTTL = getFinalCacheTTL();
       const cacheSize = getFinalCacheSize();
 
-      await setAppSettings({
-        ...(cacheTTL !== undefined ? {cacheTTL} : {}),
-        ...(cacheSize !== undefined ? {cacheSize} : {})
-      });
+      await Promise.all([
+        cacheTTL !== undefined ? setAppSettings('cacheTTL', cacheTTL) : Promise.resolve(),
+        cacheSize !== undefined ? setAppSettings('cacheSize', cacheSize) : Promise.resolve()
+      ]);
     }
   });
 
