@@ -104,7 +104,7 @@ async function clearOldCacheInWatchedStorages({onStorageError}: ClearOldCacheInW
 
   // log(`Collected ${collectedResponses.length}: `, prettyLog(collectedResponses));
 
-  // Note: we're worried about catching the error only frist time when iterating, as cache.keys() can throw when there are too many entries
+  // Note: we're worried about catching the error only first time when iterating, as cache.keys() can throw when there are too many entries
 
   await Promise.all(entries.map(async([storageName, collectedResponses]) => {
     if(!collectedResponses.length) return;
