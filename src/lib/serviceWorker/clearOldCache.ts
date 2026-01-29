@@ -45,6 +45,8 @@ async function clearOldCacheInWatchedStorages({onStorageError}: ClearOldCacheInW
 
     let caughtError: any;
 
+    const collectedForThisStorage: CollectedResponse[] = [];
+
     try {
       await cacheStorage.minimalBlockingIterateResponses(async({request, cache, response}) => {
         const cachedTimeSeconds = parseInt(response.headers.get(HTTPHeaderNames.cachedTime)) || 0;
@@ -56,9 +58,12 @@ async function clearOldCacheInWatchedStorages({onStorageError}: ClearOldCacheInW
           const contentLength = parseInt(response.headers.get(HTTPHeaderNames.contentLength)) || 0;
           totalSize += contentLength;
 
-          collectedResponses.push({request, response, timeSeconds: cachedTimeSeconds, size: contentLength, storageName});
+          collectedForThisStorage.push({request, response, timeSeconds: cachedTimeSeconds, size: contentLength, storageName});
         }
       });
+
+      // Pushes when all operations we're successful, otherwise nukes the whole storage (onStorageError)
+      collectedResponses.push(...collectedForThisStorage);
     } catch(error) {
       caughtError = error;
     } finally {
@@ -70,8 +75,6 @@ async function clearOldCacheInWatchedStorages({onStorageError}: ClearOldCacheInW
         storageName,
         error: caughtError
       });
-
-      return;
     }
   }
 

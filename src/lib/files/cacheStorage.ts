@@ -143,8 +143,10 @@ export default class CacheStorageController implements FileStorage {
 
   private async waitToEnable() {
     // Note: even if initially there was one disabled promise, another one could be added while we are waiting
-    while(this.getDisabledPromises().length) {
-      await Promise.all(this.getDisabledPromises());
+
+    let disabledPromises: CancellablePromise<void>[];
+    while((disabledPromises = this.getDisabledPromises()).length) {
+      await Promise.all(disabledPromises);
     }
   }
 
@@ -376,23 +378,24 @@ export default class CacheStorageController implements FileStorage {
   }
 
   public static async clearStoragesByNames(names: CacheStorageDbName[]) {
-    try {
-      await Promise.all(names.map(async(storageName) => {
-        // Make sure we have all storages in current thread, can't get from .STORAGES
-        const storage = new CacheStorageController(storageName);
+    await Promise.all(names.map(async(storageName) => {
+      // Make sure we have all storages in current thread, can't get from .STORAGES
+      const storage = new CacheStorageController(storageName);
 
+      try {
         await storage.deleteAll();
+      } catch(e) {
+        console.error(e);
+      } finally {
         storage.forget();
+      }
 
-        // Don't redo to this, as if the cache is too large, it will throw
-        // await storage.timeoutOperation(async(cache) => {
-        //   const keys = await cache.keys();
-        //   await Promise.all(keys.map(request => cache.delete(request)));
-        // });
-      }));
-    } catch(e) {
-      console.error(e);
-    }
+      // Don't redo to this, as if the cache is too large, it will throw on `cache.keys()`
+      // await storage.timeoutOperation(async(cache) => {
+      //   const keys = await cache.keys();
+      //   await Promise.all(keys.map(request => cache.delete(request)));
+      // });
+    }));
   }
 
   public static getOpenEncryptableStorages() {
