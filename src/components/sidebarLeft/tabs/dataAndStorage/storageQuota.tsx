@@ -10,7 +10,7 @@ import {DurationType} from '@helpers/formatDuration';
 import namedPromises from '@helpers/namedPromises';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
-import {cachedFilesStorageName, cachedVideoChunksStorageNames, HTTPHeaderNames, watchedCachedStorageNames} from '@lib/constants';
+import {cachedFilesStorageName, cachedVideoChunksStorageNames, HTTPHeaderNames, oneDayInSeconds, oneMonthInSeconds, oneWeekInSeconds, oneYearInSeconds, watchedCachedStorageNames} from '@lib/constants';
 import CacheStorageController from '@lib/files/cacheStorage';
 import type {FormatterArgument, FormatterArguments, LangPackKey} from '@lib/langPack';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
@@ -139,10 +139,6 @@ const SizeWithFallback = (props: {
   </Switch>
 );
 
-const oneDayInSeconds = 24 * 60 * 60;
-const oneWeekInSeconds = oneDayInSeconds * 7;
-const oneMonthInSeconds = oneDayInSeconds * 31;
-const oneYearInSeconds = oneDayInSeconds * 365;
 
 const makeTimeOption = (value: number, duration: number, type: DurationType) => ({
   value,

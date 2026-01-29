@@ -1,10 +1,7 @@
 import formatDuration, {DurationType} from '@helpers/formatDuration';
 import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
+import {oneDayInSeconds, oneMonthInSeconds, oneWeekInSeconds, oneYearInSeconds} from '@lib/constants';
 
-export const oneDayInSeconds = 24 * 60 * 60;
-export const oneWeekInSeconds = oneDayInSeconds * 7;
-export const oneMonthInSeconds = oneDayInSeconds * 31;
-export const oneYearInSeconds = oneDayInSeconds * 365;
 
 export type Option = {
   value: number;
