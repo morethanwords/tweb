@@ -23,6 +23,9 @@ import AppAutoDownloadVideoTab from '@components/sidebarLeft/tabs/autoDownload/v
 import SettingSection from '@components/settingSection';
 import {useAppSettings} from '@stores/appSettings';
 import {unwrap} from 'solid-js/store';
+import {renderComponent} from '@helpers/solid/renderComponent';
+import {StorageQuota, StorageQuotaControls} from './storageQuota';
+import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 
 const AUTO_DOWNLOAD_FOR_KEYS: {[k in keyof AutoDownloadPeerTypeSettings]: LangPackKey} = {
   contacts: 'AutoDownloadContacts',
@@ -149,7 +152,26 @@ export default class AppDataAndStorageTab extends SliderSuperTabEventable {
         resetButton
       );
 
-      this.scrollable.append(section.container);
+      const storageQuotaElement = document.createElement('div');
+      let controls: StorageQuotaControls;
+
+      renderComponent({
+        element: storageQuotaElement,
+        Component: StorageQuota,
+        middleware: this.middlewareHelper.get(),
+        HotReloadGuard: SolidJSHotReloadGuardProvider,
+        props: {
+          controlsRef: (localControls) => {
+            controls = localControls;
+          }
+        }
+      });
+
+      this.eventListener.addEventListener('destroy', () => {
+        controls?.save();
+      });
+
+      this.scrollable.append(section.container, storageQuotaElement);
     }
   }
 

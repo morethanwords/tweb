@@ -81,13 +81,18 @@ class ChatBackgroundStore extends StaticUtilityClass {
     });
   }
 
-  public static saveWallPaperToCache(slug: string, url: string, blur?: boolean) {
+  public static async saveWallPaperToCache(slug: string, url: string, blur?: boolean) {
     if(!slug || slug === DEFAULT_BACKGROUND_SLUG) {
       return;
     }
 
-    return fetch(url).then((response) => {
-      return this.cacheStorage.save(this.getWallPaperStorageUrl(slug, blur), response);
+    const response = await fetch(url);
+    const blob = await response.blob();
+
+    return this.cacheStorage.save({
+      entryName: this.getWallPaperStorageUrl(slug, blur),
+      response,
+      size: blob.size
     });
   }
 

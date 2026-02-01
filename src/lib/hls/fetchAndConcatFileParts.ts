@@ -1,16 +1,10 @@
 import readBlobAsUint8Array from '@helpers/blob/readBlobAsUint8Array';
-import pause from '@helpers/schedulers/pause';
-
 import {ActiveAccountNumber} from '@lib/accounts/types';
 import CacheStorageController from '@lib/files/cacheStorage';
-import {serviceMessagePort} from '@lib/serviceWorker/index.service';
-
-import {swLog} from '@lib/hls/common';
 import {RequestSynchronizer} from '@lib/hls/requestSynchronizer';
 import {StreamFetchingRange} from '@lib/hls/splitRangeForGettingFileParts';
+import {serviceMessagePort} from '@lib/serviceWorker/index.service';
 
-const CHUNK_CACHED_TIME_HEADER = 'Time-Cached';
-const CHUNK_LIFETIME_SECONDS = 24 * 60 * 60; // 24 hours
 
 type RequestFilePartIdentificationParams = {
   docId: string;
@@ -77,42 +71,7 @@ function getChunkFilename(params: RequestFilePartIdentificationParams, range: St
 async function saveChunkToCache(bytes: Uint8Array, params: RequestFilePartIdentificationParams, range: StreamFetchingRange) {
   const filename = getChunkFilename(params, range);
 
-  const response = new Response(bytes, {
-    headers: {
-      'Content-Length': '' + bytes.length,
-      'Content-Type': 'application/octet-stream',
-      [CHUNK_CACHED_TIME_HEADER]: '' + (Date.now() / 1000 | 0)
-    }
-  });
+  const response = new Response(bytes);
 
-  await cacheStorage.save(filename, response);
+  await cacheStorage.save({entryName: filename, response, size: bytes.length, contentType: 'application/octet-stream'});
 }
-
-
-export async function watchHlsStreamChunksLifetime() {
-  await pause(20e3); // wait some time for the app to fully initialize
-
-  clearOldChunks();
-  setInterval(clearOldChunks, 1800e3);
-}
-
-function clearOldChunks() {
-  return cacheStorage.timeoutOperation(async(cache) => {
-    const requests = await cache.keys();
-
-    const currentTimeSeconds = Date.now() / 1000 | 0;
-
-    await Promise.all(requests.map(async(request) => {
-      const response = await cache.match(request);
-      if(!response) return;
-
-      const savedTimeSeconds = +response.headers.get(CHUNK_CACHED_TIME_HEADER);
-      if(!savedTimeSeconds) return;
-      if(savedTimeSeconds + CHUNK_LIFETIME_SECONDS > currentTimeSeconds) return;
-
-      swLog('deleting cached stream chunk', request.url);
-      await cache.delete(request);
-    }));
-  });
-};
-

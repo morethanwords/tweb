@@ -13,6 +13,7 @@ import type {ActiveAccountNumber} from '@lib/accounts/types';
 import type {LoadStateResult} from '@appManagers/utils/state/loadState';
 import type {PasscodeStorageValue} from '@lib/commonStateStorage';
 import SuperMessagePort from '@lib/superMessagePort';
+import {CacheStorageDbName} from '@lib/files/cacheStorage';
 
 export type MTProtoManagerTaskPayload = {name: string, method: string, args: any[], accountNumber: ActiveAccountNumber};
 export type MTProtoSingleManagerTaskPayload = {name: string, method: string, args: any[]};
@@ -57,7 +58,10 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   toggleCacheStorage: (value: boolean, source: MessageEventSource) => void,
   resetEncryptableCacheStorages: () => void,
   forceLogout: () => void,
-  toggleUninteruptableActivity: (payload: {activity: string, active: boolean}, source: MessageEventSource) => void
+  toggleUninteruptableActivity: (payload: { activity: string, active: boolean }, source: MessageEventSource) => void,
+  disableCacheStoragesByNames: (names: CacheStorageDbName[]) => void,
+  enableCacheStoragesByNames: (names: CacheStorageDbName[]) => void,
+  resetOpenCacheStoragesByNames: (names: CacheStorageDbName[]) => void
 } & MTProtoBroadcastEvent, {
   convertWebp: (payload: {fileName: string, bytes: Uint8Array}) => Promise<Uint8Array>,
   convertOpus: (payload: {fileName: string, bytes: Uint8Array}) => Promise<Uint8Array>,

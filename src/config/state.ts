@@ -113,7 +113,9 @@ export type StateSettings = {
   logsDiffView?: boolean,
   instantView: {
     scale: number
-  }
+  },
+  cacheTTL: number,
+  cacheSize: number,
 };
 
 type CacheSomething<T> = {
@@ -163,6 +165,7 @@ export type State = {
     clientVersion: string,
   },
   accountContentSettings: CacheSomething<AccountContentSettings>,
+
 
   // playbackParams?: StateSettings['playbackParams'], // ! MIGRATED TO SETTINGS
   // chatContextMenuHintWasShown?: StateSettings['chatContextMenuHintWasShown'], // ! MIGRATED TO SETTINGS
@@ -386,7 +389,9 @@ export const SETTINGS_INIT: StateSettings = {
   },
   instantView: {
     scale: 1
-  }
+  },
+  cacheTTL: 86400, // 1 day
+  cacheSize: 0 // Auto
 };
 
 export const STATE_INIT: State = {
