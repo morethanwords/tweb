@@ -125,9 +125,11 @@ export class AppPrivacyManager extends AppManager {
   }
 
   public async setAutoDeletePeriodFor(peerId: PeerId, period: number) {
-    return this.apiManager.invokeApi('messages.setHistoryTTL', {
+    const updates = await this.apiManager.invokeApi('messages.setHistoryTTL', {
       peer: this.appPeersManager.getInputPeerById(peerId),
       period
     });
+
+    this.apiUpdatesManager.processUpdateMessage(updates);
   }
 }
