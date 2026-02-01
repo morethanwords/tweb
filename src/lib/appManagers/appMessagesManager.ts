@@ -18,7 +18,7 @@ import LazyLoadQueueBase from '@components/lazyLoadQueueBase';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import tsNow from '@helpers/tsNow';
 import {randomLong} from '@helpers/random';
-import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, UrlAuthResult, MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, InputUser, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities, ChannelsSearchPosts, FactCheck, MessageExtendedMedia, SponsoredMessage, MessagesSponsoredMessages, InputGroupCall, TodoItem, TodoCompletion} from '@layer';
+import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, UrlAuthResult, MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, InputUser, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities, ChannelsSearchPosts, FactCheck, MessageExtendedMedia, SponsoredMessage, MessagesSponsoredMessages, InputGroupCall, TodoItem, TodoCompletion, SearchPostsFlood} from '@layer';
 import {ArgumentTypes, InvokeApiOptions, Modify} from '@types';
 import {logger, LogTypes} from '@lib/logger';
 import {ReferenceContext} from '@lib/storages/references';
@@ -171,7 +171,8 @@ export type HistoryResult = {
   isEnd: ReturnType<Slice<number>['getEnds']>,
   offsetIdOffset?: number,
   nextRate?: number,
-  messages?: MyMessage[]
+  messages?: MyMessage[],
+  flood?: SearchPostsFlood
 };
 
 export type Dialog = MTDialog.dialog;
@@ -299,6 +300,8 @@ export type RequestHistoryOptions = {
   needRealOffsetIdOffset?: boolean,
   fromPeerId?: PeerId,
   isPublicHashtag?: boolean,
+  isPublicPosts?: boolean,
+  allowStars?: Long,
   isCacheableSearch?: boolean,
   hashtagType?: 'this' | 'my' | 'public',
   chatType?: 'all' | 'users' | 'groups' | 'channels',
@@ -1276,7 +1279,21 @@ export class AppMessagesManager extends AppManager {
 
     this.checkSendOptions(options);
 
-    const config = await this.apiManager.getConfig();
+    const [config, appConfig] = await Promise.all([
+      this.apiManager.getConfig(),
+      this.apiManager.getAppConfig()
+    ]);
+
+    if(appConfig.emojies_send_dice?.includes(text.trim())) {
+      return this.sendOther({
+        ...options,
+        inputMedia: {
+          _: 'inputMediaDice',
+          emoticon: text.trim()
+        }
+      });
+    }
+
     const MAX_LENGTH = config.message_length_max;
     const splitted = splitStringByLength(text, MAX_LENGTH);
     text = splitted[0];
@@ -2479,8 +2496,17 @@ export class AppMessagesManager extends AppManager {
         break;
       }
 
+      case 'inputMediaDice': {
+        media = {
+          _: 'messageMediaDice',
+          emoticon: inputMedia.emoticon,
+          value: 0
+        };
+        break;
+      }
+
       case 'messageMediaPending': {
-        media = (inputMedia as any).messageMedia;
+        media = inputMedia.messageMedia;
         break;
       }
     }
@@ -8843,7 +8869,8 @@ export class AppMessagesManager extends AppManager {
           isEnd: historyStorage.history.slice.getEnds(),
           offsetIdOffset: (historyResult as MessagesMessages.messagesMessagesSlice)?.offset_id_offset || 0,
           nextRate: (historyResult as MessagesMessages.messagesMessagesSlice)?.next_rate,
-          messages: historyResult.messages as MyMessage[]
+          messages: historyResult.messages as MyMessage[],
+          flood: (historyResult as MessagesMessages.messagesMessagesSlice)?.search_flood
         };
       }
 
@@ -9322,7 +9349,9 @@ export class AppMessagesManager extends AppManager {
     chatType,
     fromPeerId,
     savedReaction,
-    isPublicHashtag
+    isPublicHashtag,
+    isPublicPosts,
+    allowStars
   }: RequestHistoryOptions) {
     const offsetMessage = offsetId && this.getMessageByPeer(offsetPeerId || peerId, offsetId);
     offsetPeerId ??= offsetMessage?.peerId;
@@ -9350,13 +9379,18 @@ export class AppMessagesManager extends AppManager {
       inputFilter ??= {_: 'inputMessagesFilterEmpty'};
     }
 
-    if(isPublicHashtag) {
+    if(isPublicHashtag || isPublicPosts) {
       const searchOptions: ChannelsSearchPosts = {
         ...commonOptions,
-        hashtag: query.slice(1),
         offset_rate: nextRate,
         offset_peer: this.appPeersManager.getInputPeerById(offsetPeerId)
       };
+      if(isPublicHashtag) {
+        searchOptions.hashtag = query.slice(1)
+      } else {
+        searchOptions.query = query
+        searchOptions.allow_paid_stars = allowStars
+      }
 
       method = 'channels.searchPosts';
       options = searchOptions;
@@ -9904,12 +9938,22 @@ export class AppMessagesManager extends AppManager {
   private dispatchGroupedEdit(groupedId: string, storage: MessagesStorage, deletedMids?: number[]) {
     const mids = this.getMidsByGroupedId(groupedId);
     const messages = mids.map((mid) => this.getMessageFromStorage(storage, mid)) as Message.message[];
-    this.rootScope.dispatchEvent('grouped_edit', {peerId: messages[0].peerId, groupedId, deletedMids: deletedMids || [], messages});
+    this.rootScope.dispatchEvent('grouped_edit', {
+      peerId: messages[0].peerId,
+      groupedId,
+      deletedMids: deletedMids || [],
+      messages
+    });
   }
 
   public getDialogUnreadCount(dialog: Dialog | ForumTopic | MonoforumDialog) {
     let unreadCount = dialog.unread_count;
-    if(!isForumTopic(dialog) && !isMonoforumDialog(dialog) && this.appPeersManager.isForum(dialog.peerId) && !dialog.pFlags.view_forum_as_messages) {
+    if(
+      !isForumTopic(dialog) &&
+      !isMonoforumDialog(dialog) &&
+      this.appPeersManager.isForum(dialog.peerId) &&
+      !dialog.pFlags.view_forum_as_messages
+    ) {
       const forumUnreadCount = this.dialogsStorage.getForumUnreadCount(dialog.peerId);
       if(forumUnreadCount instanceof Promise) {
         unreadCount = 0;

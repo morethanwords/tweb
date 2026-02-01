@@ -78,11 +78,11 @@ export default class LazyLoadQueueIntersector extends LazyLoadQueueBase {
   }
 
   public push(el: LazyLoadElement) {
-    super.push(el);
+    return super.push(el);
   }
 
   public unshift(el: LazyLoadElement) {
-    super.unshift(el);
+    return super.unshift(el);
   }
 
   public delete(el: Omit<LazyLoadElement, 'load'>) {

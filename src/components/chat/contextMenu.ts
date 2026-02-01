@@ -1564,7 +1564,7 @@ export default class ChatContextMenu {
         text: message.message,
         entities: (message as Message.message).totalEntities || message.entities
       };
-    }));
+    }), meta);
   }
 
   private onSendScheduledClick = async() => {

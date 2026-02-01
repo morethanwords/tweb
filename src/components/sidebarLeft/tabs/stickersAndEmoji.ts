@@ -24,6 +24,7 @@ import wrapStickerSetThumb from '@components/wrappers/stickerSetThumb';
 import wrapStickerToRow from '@components/wrappers/stickerToRow';
 import AppQuickReactionTab from '@components/sidebarLeft/tabs/quickReaction';
 import {useAppSettings} from '@stores/appSettings';
+import {getStickerSetInputById} from '@lib/appManagers/utils/stickers/getStickerSetInput';
 export default class AppStickersAndEmojiTab extends SliderSuperTab {
   public static getInitArgs() {
     return {
@@ -211,7 +212,7 @@ export default class AppStickersAndEmojiTab extends SliderSuperTab {
           subtitleLangArgs: [stickerSet.count],
           havePadding: true,
           clickable: () => {
-            PopupElement.createPopup(PopupStickers, {id: stickerSet.id, access_hash: stickerSet.access_hash}).show();
+            PopupElement.createPopup(PopupStickers, getStickerSetInputById(stickerSet)).show();
           },
           listenerSetter: this.listenerSetter
         });

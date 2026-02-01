@@ -27,7 +27,8 @@ export default function setAttachmentSize({
   pushDocumentSize,
   photoSize,
   size,
-  canHaveVideoPlayer
+  canHaveVideoPlayer,
+  noMinSize
 }: {
   photo?: MyPhoto | MyDocument | WebDocument,
   element: HTMLElement | SVGForeignObjectElement,
@@ -38,7 +39,8 @@ export default function setAttachmentSize({
   pushDocumentSize?: boolean,
   photoSize?: ReturnType<typeof choosePhotoSize>,
   size?: MediaSize,
-  canHaveVideoPlayer?: boolean
+  canHaveVideoPlayer?: boolean,
+  noMinSize?: boolean
 }) {
   const _isWebDocument = isWebDocument(photo);
   // if(_isWebDocument && pushDocumentSize === undefined) {
@@ -54,9 +56,15 @@ export default function setAttachmentSize({
   if(size) {
 
   } else if(isDocument || _isWebDocument) {
-    size = makeMediaSize(photo.w || (photoSize as PhotoSize.photoSize).w || 512, photo.h || (photoSize as PhotoSize.photoSize).h || 512);
+    size = makeMediaSize(
+      photo.w || (photoSize as PhotoSize.photoSize).w || 512,
+      photo.h || (photoSize as PhotoSize.photoSize).h || 512
+    );
   } else {
-    size = makeMediaSize((photoSize as PhotoSize.photoSize).w || 100, (photoSize as PhotoSize.photoSize).h || 100);
+    size = makeMediaSize(
+      (photoSize as PhotoSize.photoSize).w || 100,
+      (photoSize as PhotoSize.photoSize).h || 100
+    );
   }
 
   let boxSize = makeMediaSize(boxWidth, boxHeight);
@@ -64,8 +72,7 @@ export default function setAttachmentSize({
   boxSize = size = size.aspect(boxSize, noZoom);
 
   let isFit = true;
-
-  if(!isDocument || ['video', 'gif'].includes(photo.type) || _isWebDocument) {
+  if(!noMinSize && (!isDocument || ['video', 'gif'].includes(photo.type) || _isWebDocument)) {
     const minSideSize = MIN_SIDE_SIZE;
     if(boxSize.width < minSideSize && boxSize.height < minSideSize) { // make at least one side this big
       boxSize = size = size.aspectCovered(makeMediaSize(minSideSize, minSideSize));

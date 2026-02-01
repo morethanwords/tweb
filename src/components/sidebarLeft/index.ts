@@ -12,7 +12,7 @@ import InputSearch from '@components/inputSearch';
 import SidebarSlider, {SliderSuperTab} from '@components/slider';
 import TransitionSlider from '@components/transition';
 import AppNewGroupTab from '@components/sidebarLeft/tabs/newGroup';
-import AppSearchSuper from '@components/appSearchSuper';
+import AppSearchSuper, {SearchSuperMediaType} from '@components/appSearchSuper';
 import {DateData, fillTipDates} from '@helpers/date';
 import {MOUNT_CLASS_TO} from '@config/debug';
 import AppSettingsTab from '@components/sidebarLeft/tabs/settings';
@@ -1096,6 +1096,9 @@ export class AppSidebarLeft extends SidebarSlider {
         name: 'MiniApps.AppsSearch',
         type: 'apps'
       }, {
+        name: 'PostsSearch.TabName',
+        type: 'posts'
+      }, {
         inputFilter: 'inputMessagesFilterPhotoVideo',
         name: 'SharedMediaTab2',
         type: 'media'
@@ -1124,8 +1127,17 @@ export class AppSidebarLeft extends SidebarSlider {
       managers: this.managers
     });
 
-    searchSuper.onChangeTab = () => {
+    let prevTab: SearchSuperMediaType
+    searchSuper.onChangeTab = (tab) => {
+      if(prevTab === 'posts') {
+        simulateClickEvent(this.inputSearch.clearBtn);
+      }
+
+      prevTab = tab.type;
       searchSuper.searchContext.chatType = 'all';
+      if(tab.type === 'posts') {
+        searchSuper.globalPostsSearch?.setQuery(this.inputSearch.value);
+      }
     };
 
     this.watchChannelsTabVisibility();
@@ -1260,6 +1272,11 @@ export class AppSidebarLeft extends SidebarSlider {
     };
 
     const updateSearchQuery = ({search: value, chatType}: UpdateSearchQueryArgs) => {
+      if(searchSuper.mediaTab.type === 'posts') {
+        searchSuper.globalPostsSearch?.setQuery(value);
+        return
+      }
+
       // spot input
       searchSuper.cleanupHTML();
       searchSuper.setQuery({

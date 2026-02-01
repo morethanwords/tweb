@@ -21,6 +21,7 @@ import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import attachStickerViewerListeners from '@components/stickerViewer';
 import wrapSticker from '@components/wrappers/sticker';
 import PopupElement from '@components/popups';
+import {getStickerSetInputById as getStickerSetInputById, getStickerSetInputByStickerSet} from '@lib/appManagers/utils/stickers/getStickerSetInput';
 
 export default class AppStickersTab extends SliderSuperTab {
   private inputSearch: InputSearch;
@@ -63,13 +64,14 @@ export default class AppStickersTab extends SliderSuperTab {
       const access_hash = target.dataset.access_hash as string;
 
       const button = findUpClassName(e.target, 'sticker-set-button') as HTMLElement;
+      const input = getStickerSetInputById({id, access_hash});
       if(button) {
         e.preventDefault();
         e.cancelBubble = true;
 
         button.setAttribute('disabled', 'true');
 
-        this.managers.appStickersManager.getStickerSet({id, access_hash}).then((full) => {
+        this.managers.appStickersManager.getStickerSet(input).then((full) => {
           this.managers.appStickersManager.toggleStickerSet(full.set).then((changed) => {
             if(changed) {
               button.textContent = '';
@@ -82,8 +84,8 @@ export default class AppStickersTab extends SliderSuperTab {
           });
         });
       } else {
-        this.managers.appStickersManager.getStickerSet({id, access_hash}).then((full) => {
-          PopupElement.createPopup(PopupStickers, full.set).show();
+        this.managers.appStickersManager.getStickerSet(input).then((full) => {
+          PopupElement.createPopup(PopupStickers, getStickerSetInputByStickerSet(full.set)).show();
         });
       }
     }, {listenerSetter: this.listenerSetter});
@@ -142,7 +144,7 @@ export default class AppStickersTab extends SliderSuperTab {
       stickersDiv.append(stickerDiv);
     }
 
-    this.managers.appStickersManager.getStickerSet(set).then((set) => {
+    this.managers.appStickersManager.getStickerSet(getStickerSetInputById(set)).then((set) => {
       // console.log('renderSet got set:', set);
 
       for(let i = 0; i < count; ++i) {

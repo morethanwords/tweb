@@ -84,7 +84,7 @@ const getThumbFromContainer = (container: HTMLElement) => {
   return element;
 };
 
-export default async function wrapSticker({doc, div, middleware, loadStickerMiddleware, lazyLoadQueue, exportLoad, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises, needFadeIn, needUpscale, skipRatio, static: asStatic, managers = rootScope.managers, fullThumb, isOut, noPremium, withLock, relativeEffect, loopEffect, isCustomEmoji, syncedVideo, liteModeKey, isEffect, textColor, scrollable, showPremiumInfo, useCache}: {
+export default async function wrapSticker({doc, div, middleware, loadStickerMiddleware, lazyLoadQueue, exportLoad, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises, needFadeIn, needUpscale, skipRatio, static: asStatic, managers = rootScope.managers, fullThumb, isOut, noPremium, withLock, relativeEffect, loopEffect, isCustomEmoji, syncedVideo, liteModeKey, isEffect, textColor, scrollable, showPremiumInfo, useCache, initFrame}: {
   doc: MyDocument,
   div: HTMLElement | HTMLElement[],
   middleware?: Middleware,
@@ -118,7 +118,8 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
   textColor?: WrapSomethingOptions['textColor'],
   scrollable?: Scrollable
   showPremiumInfo?: () => void,
-  useCache?: boolean
+  useCache?: boolean,
+  initFrame?: number
 }) {
   const options = arguments[0];
   div = toArray(div);
@@ -248,15 +249,18 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
   };
   let loadThumbPromise = deferredPromise<void>();
   let haveThumbCached = false;
-  if((
-    doc.thumbs?.length ||
+  if(
+    (
+      doc.thumbs?.length ||
       lottieCachedThumb
-  ) &&
-    isEmptyContainer(div[0]) && (
-    !downloaded ||
+    ) &&
+    (
+      !downloaded ||
       isThumbNeededForType ||
       onlyThumb
-  ) && withThumb !== false/*  && doc.thumbs[0]._ !== 'photoSizeEmpty' */
+    ) &&
+    withThumb !== false &&
+    isEmptyContainer(div[0])/*  && doc.thumbs[0]._ !== 'photoSizeEmpty' */
   ) {
     let thumb = lottieCachedThumb || doc.thumbs[0];
 
@@ -444,7 +448,8 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
         middleware: loadStickerMiddleware ?? middleware,
         group,
         liteModeKey: liteModeKey || undefined,
-        textColor: !isCustomEmoji ? readValue(textColor) : undefined
+        textColor: !isCustomEmoji ? readValue(textColor) : undefined,
+        initFrame
       });
 
       if(typeof(textColor) === 'function') {

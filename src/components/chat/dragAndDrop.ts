@@ -25,7 +25,7 @@ export default class ChatDragAndDrop {
     this.container.classList.add('drop', 'z-depth-1');
 
     this.outlineWrapper = document.createElement('div');
-    this.outlineWrapper.classList.add('drop-outline-wrapper');
+    this.outlineWrapper.classList.add('drop-outline-wrapper', 'disable-hover');
 
     this.svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     this.svg.classList.add('drop-outline');
@@ -36,19 +36,19 @@ export default class ChatDragAndDrop {
     let dropIcon: HTMLElement;
     if(options.icon) {
       dropIcon = document.createElement('div');
-      dropIcon.classList.add('drop-icon');
+      dropIcon.classList.add('drop-icon', 'disable-hover');
       dropIcon.append(Icon(options.icon));
       this.container.classList.add('has-icon');
     }
 
     const dropHeader = document.createElement('div');
-    dropHeader.classList.add('drop-header');
+    dropHeader.classList.add('drop-header', 'disable-hover');
     dropHeader.append(i18n(options.header, options.headerArgs));
 
     let dropSubtitle: HTMLElement;
     if(options.subtitle) {
       dropSubtitle = document.createElement('div');
-      dropSubtitle.classList.add('drop-subtitle');
+      dropSubtitle.classList.add('drop-subtitle', 'disable-hover');
       dropSubtitle.append(i18n(options.subtitle));
     }
 

@@ -5,7 +5,7 @@
  */
 
 import {MOUNT_CLASS_TO} from '@config/debug';
-import {IS_MOBILE_SAFARI} from '@environment/userAgent';
+import {IS_FIREFOX, IS_MOBILE_SAFARI} from '@environment/userAgent';
 import {logger} from '@lib/logger';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
 import cancelEvent from '@helpers/dom/cancelEvent';
@@ -26,7 +26,7 @@ export type NavigationItem = {
   context?: any
 };
 
-export const USE_NAVIGATION_API = 'navigation' in window && true;
+export const USE_NAVIGATION_API = 'navigation' in window && !IS_FIREFOX;
 const TRY_TO_TRAVERSE = USE_NAVIGATION_API && true; // * not tested for legacy api
 
 export class AppNavigationController {

@@ -1901,24 +1901,30 @@ export class AppImManager extends EventListenerBase<{
 
   private init() {
     document.addEventListener('paste', this.onDocumentPaste, true);
-
-    if(!IS_TOUCH_SUPPORTED) {
-      this.attachDragAndDropListeners();
-    }
-
-    // if(!isTouchSupported) {
+    this.attachDragAndDropListeners();
     MarkupTooltip.getInstance().handleSelection();
-    // }
-
-    // PopupElement.createPopup(PopupStars);
   }
 
   private attachDragAndDropListeners() {
+    const log = this.log.bindPrefix('dragAndDrop');
+    const debug = false;
     const drops: ChatDragAndDrop[] = [];
     const mediaDrops: ChatDragAndDrop[] = [];
-    let mounted = false;
+    let mounted = false, lastDialogElement: HTMLElement;
+
+    function clearLastDialogElement() {
+      if(!lastDialogElement) {
+        return;
+      }
+
+      lastDialogElement.classList.remove('is-dragover');
+      lastDialogElement = undefined;
+    }
+
     const toggle = async(e: DragEvent, mount: boolean) => {
-      if(mount === mounted/*  || !mount */) return;
+      if(mount === mounted/*  || !mount */) {
+        return;
+      }
 
       const _types = e.dataTransfer.types;
       // @ts-ignore
@@ -1926,9 +1932,14 @@ export class AppImManager extends EventListenerBase<{
 
       const newMediaPopup = getCurrentNewMediaPopup();
       const types: string[] = await getFilesFromEvent(e, true);
-      if(!isFiles || (!(await this.canDrag()) && !newMediaPopup)) { // * skip dragging text case
-        counter = 0;
-        return;
+      if(mount) {
+        if(!isFiles || (!(await this.canDrag()) && !newMediaPopup)) { // * skip dragging text case
+          mount = false;
+        }
+
+        if(mount === mounted) {
+          return;
+        }
       }
 
       const rights = await PopupNewMedia.canSend({...this.chat.getMessageSendingParams(), onlyVisible: true});
@@ -1958,7 +1969,7 @@ export class AppImManager extends EventListenerBase<{
           foundVideos.length = 0;
         }
 
-        this.log('drag files', types, foundMedia, foundDocuments, foundPhotos, foundVideos);
+        log('drag files', types, foundMedia, foundDocuments, foundPhotos, foundVideos);
 
         if(newMediaPopup) {
           newMediaPopup.appendDrops(_dropsContainer);
@@ -1970,7 +1981,7 @@ export class AppImManager extends EventListenerBase<{
               headerArgs: [length],
               onDrop: (e: DragEvent) => {
                 toggle(e, false);
-                this.log('drop', e);
+                log('drop', e);
                 this.onDocumentPaste(e, 'document');
               }
             }));
@@ -1986,12 +1997,11 @@ export class AppImManager extends EventListenerBase<{
               subtitle: 'Chat.DropAsFilesDesc',
               onDrop: (e: DragEvent) => {
                 toggle(e, false);
-                this.log('drop', e);
+                log('drop', e);
                 this.onDocumentPaste(e, 'document');
               }
             }));
           }
-
 
           if(canDragMediaWhenEditing && (foundMedia.length || force)) {
             _drops.push(new ChatDragAndDrop(_dropsContainer, {
@@ -2000,7 +2010,7 @@ export class AppImManager extends EventListenerBase<{
               subtitle: 'Chat.DropQuickDesc',
               onDrop: (e: DragEvent) => {
                 toggle(e, false);
-                this.log('drop', e);
+                log('drop', e);
                 this.onDocumentPaste(e, 'media');
               }
             }));
@@ -2034,6 +2044,7 @@ export class AppImManager extends EventListenerBase<{
         });
       } else {
         counter = 0;
+        clearLastDialogElement();
       }
 
       document.body.classList.toggle('is-dragging', mount);
@@ -2046,22 +2057,51 @@ export class AppImManager extends EventListenerBase<{
 
     let counter = 0;
     document.body.addEventListener('dragenter', (e) => {
+      debug && log('dragenter', e, counter);
       ++counter;
     });
 
     document.body.addEventListener('dragover', (e) => {
-      // this.log('dragover', e/* , e.dataTransfer.types[0] */);
+      debug && log('dragover', e/* , e.dataTransfer.types[0] */);
       toggle(e, true);
       cancelEvent(e);
+
+      const target = e.target as HTMLElement;
+      const dialogElement = findUpClassName(target, 'chatlist-chat');
+      if(dialogElement) {
+        if(lastDialogElement !== dialogElement) {
+          dialogElement.classList.add('is-dragover');
+          lastDialogElement = dialogElement;
+        }
+      } else {
+        clearLastDialogElement();
+      }
     });
 
     document.body.addEventListener('dragleave', (e) => {
-      // this.log('dragleave', e, counter);
-      // if((e.pageX <= 0 || e.pageX >= this.managers.appPhotosManager.windowW) || (e.pageY <= 0 || e.pageY >= this.managers.appPhotosManager.windowH)) {
+      debug && log('dragleave', e, counter);
       if(--counter === 0) {
-      // if(!findUpClassName(e.target, 'drops-container')) {
         toggle(e, false);
       }
+
+      clearLastDialogElement();
+    });
+
+    document.body.addEventListener('drop', async(e) => {
+      debug && log('body drop', e, counter);
+
+      if(lastDialogElement) {
+        cancelEvent(e);
+        const files = await getFilesFromEvent(e);
+        this.setPeer({
+          peerId: lastDialogElement.dataset.peerId.toPeerId()
+        }).then(() => {
+          this.onDocumentPaste(e, undefined, files);
+          clearLastDialogElement();
+        });
+      }
+
+      toggle(e, false);
     });
 
     const dropsContainer = document.createElement('div');
@@ -2085,7 +2125,11 @@ export class AppImManager extends EventListenerBase<{
     return good;
   }
 
-  private onDocumentPaste = async(e: ClipboardEvent | DragEvent, attachType?: 'media' | 'document') => {
+  private onDocumentPaste = async(
+    e: ClipboardEvent | DragEvent,
+    attachType?: 'media' | 'document',
+    files?: Awaited<ReturnType<typeof getFilesFromEvent>>
+  ) => {
     const newMediaPopup = getCurrentNewMediaPopup();
 
     // console.log('document paste');
@@ -2100,33 +2144,40 @@ export class AppImManager extends EventListenerBase<{
       }
     }
 
-    const files = await getFilesFromEvent(e);
-    if(!(await this.canDrag()) && !newMediaPopup) return;
-    if(files.length) {
-      if(newMediaPopup) {
-        newMediaPopup.addFiles(files);
-        return;
-      }
-
-      const chatInput = this.chat.input;
-      if(!chatInput.canPaste()) return;
-
-      if(chatInput.editMessage) {
-        const file = files[0];
-        const canUploadAsMedia = MEDIA_MIME_TYPES_SUPPORTED.has(file.type) && canUploadAsWhenEditing({message: chatInput.editMessage, asWhat: 'media'});
-        const canUploadAsDocument = canUploadAsWhenEditing({message: chatInput.editMessage, asWhat: 'document'});
-        chatInput.willAttachType = (canUploadAsMedia ? 'media' : canUploadAsDocument ? 'document' : undefined);
-
-        if(chatInput.willAttachType) {
-          PopupElement.createPopup(PopupNewMedia, this.chat, [file], chatInput.willAttachType);
-        }
-
-        return;
-      }
-
-      chatInput.willAttachType = attachType || (MEDIA_MIME_TYPES_SUPPORTED.has(files[0].type) ? 'media' : 'document');
-      PopupElement.createPopup(PopupNewMedia, this.chat, files, chatInput.willAttachType);
+    files ??= await getFilesFromEvent(e);
+    if(!(await this.canDrag()) && !newMediaPopup) {
+      return;
     }
+
+    if(!files.length) {
+      return;
+    }
+
+    if(newMediaPopup) {
+      newMediaPopup.addFiles(files);
+      return;
+    }
+
+    const chatInput = this.chat.input;
+    if(!chatInput.canPaste()) {
+      return;
+    }
+
+    if(chatInput.editMessage) {
+      const file = files[0];
+      const canUploadAsMedia = MEDIA_MIME_TYPES_SUPPORTED.has(file.type) && canUploadAsWhenEditing({message: chatInput.editMessage, asWhat: 'media'});
+      const canUploadAsDocument = canUploadAsWhenEditing({message: chatInput.editMessage, asWhat: 'document'});
+      chatInput.willAttachType = (canUploadAsMedia ? 'media' : canUploadAsDocument ? 'document' : undefined);
+
+      if(chatInput.willAttachType) {
+        PopupElement.createPopup(PopupNewMedia, this.chat, [file], chatInput.willAttachType);
+      }
+
+      return;
+    }
+
+    chatInput.willAttachType = attachType || (MEDIA_MIME_TYPES_SUPPORTED.has(files[0].type) ? 'media' : 'document');
+    PopupElement.createPopup(PopupNewMedia, this.chat, files, chatInput.willAttachType);
   };
 
   private overrideHash(peerId?: PeerId) {

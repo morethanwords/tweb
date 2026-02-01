@@ -6,7 +6,7 @@
 
 import SliderSuperTab, {SliderSuperTabEventable} from '@components/sliderTab';
 import Row from '@components/row';
-import {AccountPasskeys, AccountPassword, Authorization, GlobalPrivacySettings, InputPrivacyKey, Passkey, Updates, WebAuthorization} from '@layer';
+import {AccountPassword, GlobalPrivacySettings, InputPrivacyKey, Passkey, WebAuthorization} from '@layer';
 import AppPrivacyPhoneNumberTab from '@components/sidebarLeft/tabs/privacy/phoneNumber';
 import AppTwoStepVerificationTab from '@components/sidebarLeft/tabs/2fa';
 import AppTwoStepVerificationEnterPasswordTab from '@components/sidebarLeft/tabs/2fa/enterPassword';
@@ -16,7 +16,6 @@ import AppPrivacyProfilePhotoTab from '@components/sidebarLeft/tabs/privacy/prof
 import AppPrivacyForwardMessagesTab from '@components/sidebarLeft/tabs/privacy/forwardMessages';
 import AppPrivacyAddToGroupsTab from '@components/sidebarLeft/tabs/privacy/addToGroups';
 import AppPrivacyCallsTab from '@components/sidebarLeft/tabs/privacy/calls';
-import AppActiveSessionsTab from '@components/sidebarLeft/tabs/activeSessions';
 import AppBlockedUsersTab from '@components/sidebarLeft/tabs/blockedUsers';
 import rootScope from '@lib/rootScope';
 import {i18n, LangPackKey, _i18n} from '@lib/langPack';
@@ -55,9 +54,6 @@ import {AppMessagesAutoDeleteTab} from '@components/solidJsTabs/tabs';
 import {findExistingOrCreateCustomOption} from '@components/sidebarLeft/tabs/autoDeleteMessages/options';
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
-  private activeSessionsRow: Row;
-  private authorizations: Authorization.authorization[];
-
   private websitesRow: Row;
   private websites: WebAuthorization[];
 
@@ -193,22 +189,6 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
       const passcodeLockRow = new Row(passcodeLockRowOptions);
       passcodeLockRow.freezed = true;
 
-      const activeSessionsRow = this.activeSessionsRow = new Row({
-        icon: 'activesessions',
-        titleLangKey: 'SessionsTitle',
-        subtitleLangKey: SUBTITLE,
-        clickable: () => {
-          const tab = this.slider.createTab(AppActiveSessionsTab);
-          tab.authorizations = this.authorizations;
-          tab.eventListener.addEventListener('destroy', () => {
-            this.updateActiveSessions();
-          }, {once: true});
-          tab.open();
-        },
-        listenerSetter: this.listenerSetter
-      });
-      activeSessionsRow.freezed = true;
-
       const websitesRow = this.websitesRow = new Row({
         icon: 'mention',
         titleLangKey: 'OtherWebSessions',
@@ -249,7 +229,6 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
       section.content.append(
         blockedUsersRow.container,
         websitesRow.container,
-        activeSessionsRow.container,
         autoDeleteMessagesRow.container,
         passcodeLockRow.container,
         twoFactorRow.container,
@@ -312,7 +291,6 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
           setPasscodeEnabledState(value);
       });
 
-      this.updateActiveSessions();
       promises.push(this.updateActiveWebsites(p.webAuthorizations));
 
 
@@ -726,14 +704,6 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
     // }
 
     return Promise.all(promises);
-  }
-
-  public updateActiveSessions() {
-    return this.managers.appAccountManager.getAuthorizations().then((auths) => {
-      this.activeSessionsRow.freezed = false;
-      this.authorizations = auths.authorizations;
-      _i18n(this.activeSessionsRow.subtitle, 'Privacy.Devices', [this.authorizations.length]);
-    });
   }
 
   public updateActiveWebsites(promise = this.managers.appSeamlessLoginManager.getWebAuthorizations()) {

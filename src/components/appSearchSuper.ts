@@ -108,6 +108,7 @@ import {useAppState} from '@stores/appState';
 import {AutonomousSavedDialogList} from '@components/autonomousDialogList/savedDialogs';
 import SetTransition from '@components/singleTransition';
 import liteMode from '@helpers/liteMode';
+import {wrapGlobalPostsSearch} from './sidebarLeft/globalPostsSearch';
 
 // const testScroll = false;
 
@@ -128,7 +129,7 @@ export type SearchSuperContext = {
 
 export type SearchSuperMediaType = 'stories' | 'members' | 'media' |
   'files' | 'links' | 'music' | 'chats' | 'voice' | 'groups' | 'similar' |
-  'savedDialogs' | 'saved' | 'channels' | 'apps' | 'gifts';
+  'savedDialogs' | 'saved' | 'channels' | 'apps' | 'gifts' | 'posts';
 export type SearchSuperMediaTab = {
   inputFilter?: SearchSuperType,
   name: LangPackKey,
@@ -145,6 +146,13 @@ type SearchSuperLoadTypeOptions = {
   loadCount: number,
   middleware: Middleware,
   side: 'top' | 'bottom'
+};
+
+type PerformSearchResultArgs = {
+  messages: (Message.message | Message.messageService)[];
+  mediaTab: SearchSuperMediaTab;
+  canAnimateIn?: boolean;
+  append?: boolean;
 };
 
 class SearchContextMenu {
@@ -1092,7 +1100,7 @@ export default class AppSearchSuper {
     }
   }
 
-  public async performSearchResult(messages: (Message.message | Message.messageService)[], mediaTab: SearchSuperMediaTab, append = true) {
+  public async performSearchResult({messages, mediaTab, canAnimateIn = false, append = true}: PerformSearchResultArgs) {
     const elemsToAppend: {element: HTMLElement, message: any}[] = [];
     const sharedMediaDiv: HTMLElement = mediaTab.contentTab;
     const promises: Promise<any>[] = [];
@@ -1111,7 +1119,7 @@ export default class AppSearchSuper {
       searchGroup = this.searchGroups.messages;
     }
 
-    if(liteMode.isAvailable('animations') && searchGroup?.container) {
+    if(canAnimateIn && liteMode.isAvailable('animations') && searchGroup?.container) {
       searchGroup.container.classList.add('is-hidden');
 
       setTimeout(() => SetTransition({
@@ -2067,8 +2075,22 @@ export default class AppSearchSuper {
     this.loaded[mediaTab.type] = true;
   }
 
+  globalPostsSearch: ReturnType<typeof wrapGlobalPostsSearch>;
+  private async loadPosts({mediaTab, middleware}: SearchSuperLoadTypeOptions) {
+    if(!this.globalPostsSearch) {
+      this.globalPostsSearch = wrapGlobalPostsSearch({
+        middleware,
+        query: this.searchContext.query
+      });
+      mediaTab.contentTab.append(this.globalPostsSearch.dom);
+    }
+
+    this.globalPostsSearch.loadMore();
+  }
+
   private loadGifts() {
     const mediaTab = this.mediaTabsMap.get('gifts');
+    if(!mediaTab) return;
 
     if(!this.stargiftsStore) {
       const middleware = this.middleware.get();
@@ -2136,6 +2158,8 @@ export default class AppSearchSuper {
       promise = this.loadChannels(options);
     } else if(type === 'apps') {
       promise = this.loadApps(options);
+    } else if(type === 'posts') {
+      promise = this.loadPosts(options);
     }
 
     if(promise) {
@@ -2189,7 +2213,7 @@ export default class AppSearchSuper {
 
         this.usedFromHistory[inputFilter] = used;
         // if(messages.length) {
-        return this.performSearchResult(messages, mediaTab).finally(() => {
+        return this.performSearchResult({messages, mediaTab}).finally(() => {
           setTimeout(() => {
             this.scrollable.checkForTriggers();
           }, 0);
@@ -2270,7 +2294,7 @@ export default class AppSearchSuper {
       }
 
       // if(value.history.length) {
-      return this.performSearchResult(this.filterMessagesByType(messages, inputFilter), mediaTab);
+      return this.performSearchResult({messages: this.filterMessagesByType(messages, inputFilter), mediaTab, canAnimateIn: !offsetId});
       // }
     }).catch((err) => {
       this.log.error('load error:', err);
@@ -2699,6 +2723,7 @@ export default class AppSearchSuper {
     this.membersParticipantMap = undefined;
     this.membersMiddlewareHelper?.destroy();
     this.membersMiddlewareHelper = undefined;
+    this.globalPostsSearch = undefined;
   }
 
   public cleanScrollPositions() {

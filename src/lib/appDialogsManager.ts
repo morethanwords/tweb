@@ -1149,9 +1149,13 @@ export class AppDialogsManager {
       return;
     }
 
-    const {unreadUnmutedCount, unreadCount} = await this.managers.dialogsStorage.getFolderUnreadCount(filterId);
+    const {
+      unreadUnmutedCount,
+      unreadCount,
+      unreadMentionsCount
+    } = await this.managers.dialogsStorage.getFolderUnreadCount(filterId);
 
-    unreadSpan.classList.toggle('badge-gray', !unreadUnmutedCount);
+    unreadSpan.classList.toggle('badge-gray', !unreadUnmutedCount && !unreadMentionsCount);
     const count = filterId === FOLDER_ID_ALL ? unreadUnmutedCount : unreadCount;
     setBadgeContent(unreadSpan, count ? '' + count : '');
   }

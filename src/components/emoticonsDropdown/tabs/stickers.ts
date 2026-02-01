@@ -30,6 +30,7 @@ import EmoticonsTabC from '@components/emoticonsDropdown/tab';
 import {i18n} from '@lib/langPack';
 import {onCleanup} from 'solid-js';
 import SuperStickerRenderer from '@components/emoticonsDropdown/tabs/SuperStickerRenderer';
+import {getStickerSetInputById} from '@lib/appManagers/utils/stickers/getStickerSetInput';
 
 type StickersTabItem = {element: HTMLElement, document: Document.document};
 export default class StickersTab extends EmoticonsTabC<StickersTabCategory<StickersTabItem>, Document.document[]> {
@@ -147,7 +148,7 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
           return;
         }
 
-        PopupElement.createPopup(PopupStickers, {id: category.set.id, access_hash: category.set.access_hash}, false, this.emoticonsDropdown.chatInput).show();
+        PopupElement.createPopup(PopupStickers, getStickerSetInputById(category.set), false, this.emoticonsDropdown.chatInput).show();
         return;
       }
 
@@ -445,7 +446,7 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
     });
     const {menuTabPadding} = category.elements;
 
-    const promise = tab.managers.appStickersManager.getStickerSet(set);
+    const promise = tab.managers.appStickersManager.getStickerSet(getStickerSetInputById(set));
     this.categoryAppendStickers(
       tab,
       stickerRenderer,

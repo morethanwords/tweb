@@ -10,6 +10,7 @@ import {logger} from '@lib/logger';
 import {createDeferredSortedVirtualList, DeferredSortedVirtualListItem} from '@components/deferredSortedVirtualList';
 import {LoadingDialogSkeletonSize} from '@components/loadingDialogSkeleton';
 import Scrollable from '@components/scrollable';
+import rootScope from '@lib/rootScope';
 
 
 export default class SortedDialogList {
@@ -132,16 +133,21 @@ export default class SortedDialogList {
       peerId: this.virtualFilterId ?? key,
       loadPromises,
       isBatch: true,
-      threadId: this.virtualFilterId && key !== this.virtualFilterId ? key : undefined,
+      threadId: (this.virtualFilterId && key !== this.virtualFilterId) || rootScope.myId === this.virtualFilterId ? key : undefined,
       isMainList: this.indexKey === 'index_0',
       controlled: true,
       monoforumParentPeerId: key !== this.monoforumParentPeerId ? this.monoforumParentPeerId : undefined,
-      asAllChats: key === this.monoforumParentPeerId ? 'monoforum' : key === this.virtualFilterId ? 'topics' : undefined,
+      asAllChats: this.getAsAllChats(key),
       meAsSaved: !this.monoforumParentPeerId,
       wrapOptions: undefined
     };
 
     return {options, loadPromises};
+  }
+
+  private getAsAllChats(key: any) {
+    if(this.virtualFilterId === rootScope.myId) return;
+    return key === this.monoforumParentPeerId ? 'monoforum' : key === this.virtualFilterId ? 'topics' : undefined;
   }
 
   public async createElementForKey(key: any) {

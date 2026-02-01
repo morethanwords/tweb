@@ -1,6 +1,6 @@
 import IS_EMOJI_SUPPORTED from '@environment/emojiSupport';
 
-export type EMOJI_VERSION = '' | '14';
+export type EMOJI_VERSION = '' | '14' | '15' | '15.1' | '16';
 
 const EMOJI_VERSIONS_SUPPORTED: {
   [v in EMOJI_VERSION]: boolean
@@ -26,12 +26,15 @@ function isEmojiSupported(emoji: string) {
 if(IS_EMOJI_SUPPORTED) {
   EMOJI_VERSIONS_SUPPORTED[''] = true;
 
-  const a: [keyof typeof EMOJI_VERSIONS_SUPPORTED, string][] = [
-    ['14', '🫱🏻']
-  ];
+  const a: {[version in Exclude<EMOJI_VERSION, ''>]: string} = {
+    '14': '🫱🏻',
+    '15': '🫨',
+    '15.1': '🙂‍↔️',
+    '16': '🫩'
+  };
 
-  a.forEach(([version, emoji]) => {
-    EMOJI_VERSIONS_SUPPORTED[version] = isEmojiSupported(emoji);
+  Object.entries(a).forEach(([version, emoji]) => {
+    EMOJI_VERSIONS_SUPPORTED[version as EMOJI_VERSION] = isEmojiSupported(emoji);
   });
 }
 

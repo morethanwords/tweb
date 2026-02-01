@@ -53,6 +53,7 @@ import AppSettingsTab from '@components/sidebarLeft/tabs/settings';
 import AppEditProfileTab from '@components/sidebarLeft/tabs/editProfile';
 import showBirthdayPopup, {saveMyBirthday} from '@components/popups/birthday';
 import showLogOutPopup from '@components/popups/logOut';
+import {getStickerSetInputByShortName} from '@lib/appManagers/utils/stickers/getStickerSetInput';
 
 export class InternalLinkProcessor {
   protected managers: AppManagers;
@@ -800,7 +801,7 @@ export class InternalLinkProcessor {
   };
 
   public processStickerSetLink = (link: InternalLink.InternalLinkStickerSet | InternalLink.InternalLinkEmojiSet) => {
-    const popup = PopupElement.createPopup(PopupStickers, {id: link.set}, link._ === INTERNAL_LINK_TYPE.EMOJI_SET);
+    const popup = PopupElement.createPopup(PopupStickers, getStickerSetInputByShortName(link.set), link._ === INTERNAL_LINK_TYPE.EMOJI_SET);
     popup.show();
     return popup;
   };
