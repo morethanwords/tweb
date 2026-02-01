@@ -427,6 +427,13 @@
     }
   }
 
+  &-slot {
+    &-part {
+      position: absolute;
+      inset: 0;
+    }
+  }
+
   /* &.with-beside-button &-content {
     @include respond-to(handhelds) {
       max-width: calc(100% - var(--message-handhelds-margin)) !important;

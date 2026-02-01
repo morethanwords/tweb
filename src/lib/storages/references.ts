@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {InputStickerSet, Photo, StoryItem, WallPaper} from '@layer';
+import type {Photo, StoryItem, WallPaper} from '@layer';
 import bytesToHex from '@helpers/bytes/bytesToHex';
 import deepEqual from '@helpers/object/deepEqual';
 import {AppManager} from '@appManagers/manager';
 import makeError from '@helpers/makeError';
-import copy from '@helpers/object/copy';
+import type {MyStickerSetInput} from '@lib/appManagers/utils/stickers/constants';
 
 export type ReferenceContext =
   ReferenceContext.referenceContextProfilePhoto |
@@ -124,7 +124,7 @@ export namespace ReferenceContext {
 
   export type referenceContextStickerSet = {
     type: 'stickerSet',
-    input: InputStickerSet
+    input: MyStickerSetInput
   };
 
   export type referenceContextAvailableEffects = {
@@ -283,7 +283,7 @@ export class ReferencesStorage extends AppManager {
         return this.appStickersManager.getFavedStickers(true);
 
       case 'stickerSet':
-        return this.appStickersManager.getStickerSet(context.input as any, {overwrite: true});
+        return this.appStickersManager.getStickerSet(context.input, {overwrite: true});
 
       case 'availableEffects':
         return this.appReactionsManager.getAvailableEffects(true);

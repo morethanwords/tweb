@@ -142,6 +142,7 @@ export default class RLottiePlayer extends EventListenerBase<{
   private renderedFirstFrame: boolean;
 
   private raw: boolean;
+  private clearCacheOnRafId: number;
 
   constructor({el, worker, options}: {
     el: RLottiePlayer['el'],
@@ -187,7 +188,12 @@ export default class RLottiePlayer extends EventListenerBase<{
     // * Skip ratio (30fps)
     let skipRatio: number;
     if(options.skipRatio !== undefined) skipRatio = options.skipRatio;
-    else if((IS_ANDROID || IS_APPLE_MOBILE || (IS_APPLE && !IS_SAFARI && !IS_APPLE_MX)) && this.width < 100 && this.height < 100 && !options.needUpscale) {
+    else if(
+      (IS_ANDROID || IS_APPLE_MOBILE || (IS_APPLE && !IS_SAFARI && !IS_APPLE_MX)) &&
+      this.width < 100 &&
+      this.height < 100 &&
+      !options.needUpscale
+    ) {
       skipRatio = 0.5;
     }
 
@@ -392,10 +398,11 @@ export default class RLottiePlayer extends EventListenerBase<{
     });
   }
 
-  public renderFrame2(frame: Uint8ClampedArray | HTMLCanvasElement | ImageBitmap, frameNo: number) {
+  private renderFrame2(frame: Uint8ClampedArray | HTMLCanvasElement | ImageBitmap, frameNo: number) {
     /* this.setListenerResult('enterFrame', frameNo);
     return; */
 
+    let cachedSource: HTMLCanvasElement | ImageBitmap;
     try {
       if(frame instanceof Uint8ClampedArray) {
         this.imageData.data.set(frame);
@@ -403,7 +410,7 @@ export default class RLottiePlayer extends EventListenerBase<{
 
       // this.context.putImageData(new ImageData(frame, this.width, this.height), 0, 0);
       this.contexts.forEach((context, idx) => {
-        let cachedSource: HTMLCanvasElement | ImageBitmap = this.cache.framesNew.get(frameNo);
+        cachedSource = this.cache.framesNew.get(frameNo);
         if(!(frame instanceof Uint8ClampedArray)) {
           cachedSource = frame;
         } else if(idx > 0) {
@@ -439,7 +446,7 @@ export default class RLottiePlayer extends EventListenerBase<{
 
       this.dispatchEvent('enterFrame', frameNo);
     } catch(err) {
-      console.error('RLottiePlayer renderFrame error:', err/* , frame */, this.width, this.height);
+      console.error('RLottiePlayer renderFrame error:', err/* , frame */, this, cachedSource);
       this.autoplay = false;
       this.pause();
     }
@@ -470,8 +477,13 @@ export default class RLottiePlayer extends EventListenerBase<{
       if(delta < 0) {
         const timeout = this.frInterval > -delta ? -delta % this.frInterval : this.frInterval;
         if(this.rafId) clearTimeout(this.rafId);
-        this.rafId = window.setTimeout(() => {
+        const rafId = this.rafId = window.setTimeout(() => {
           this.renderFrame2(frame, frameNo);
+
+          if(this.clearCacheOnRafId === rafId) {
+            this.clearCacheOnRafId = undefined;
+            this.clearCache();
+          }
         }, timeout);
         // await new Promise((resolve) => setTimeout(resolve, -delta % this.frInterval));
         return;
@@ -508,8 +520,12 @@ export default class RLottiePlayer extends EventListenerBase<{
     }
 
     if(!this.loop) {
-      this.clearCache();
       this.pause(false);
+      if(this.rafId) { // * fix early cache clearing
+        this.clearCacheOnRafId = this.rafId;
+      } else {
+        this.clearCache();
+      }
       return false;
     }
 
@@ -517,12 +533,14 @@ export default class RLottiePlayer extends EventListenerBase<{
   }
 
   private mainLoopForwards() {
-    const {skipDelta, maxFrame} = this;
-    const frame = (this.curFrame + skipDelta) > maxFrame ? this.curFrame = (this.loop ? this.minFrame : this.maxFrame) : this.curFrame += skipDelta;
+    const {curFrame, skipDelta, loop, minFrame, maxFrame} = this;
+    const frame = (this.curFrame + skipDelta) > maxFrame ?
+      this.curFrame = (loop ? minFrame : maxFrame) :
+      this.curFrame += skipDelta;
     // console.log('mainLoopForwards', this.curFrame, skipDelta, frame);
 
     this.requestFrame(frame);
-    if((frame + skipDelta) > maxFrame) {
+    if(curFrame === frame && (frame + skipDelta) > maxFrame) {
       return this.onLap();
     }
 
@@ -530,12 +548,14 @@ export default class RLottiePlayer extends EventListenerBase<{
   }
 
   private mainLoopBackwards() {
-    const {skipDelta, minFrame} = this;
-    const frame = (this.curFrame - skipDelta) < minFrame ? this.curFrame = (this.loop ? this.maxFrame : this.minFrame) : this.curFrame -= skipDelta;
+    const {curFrame, skipDelta, loop, minFrame, maxFrame} = this;
+    const frame = (this.curFrame - skipDelta) < minFrame ?
+      this.curFrame = (loop ? maxFrame : minFrame) :
+      this.curFrame -= skipDelta;
     // console.log('mainLoopBackwards', this.curFrame, skipDelta, frame);
 
     this.requestFrame(frame);
-    if((frame - skipDelta) < minFrame) {
+    if(curFrame === frame && (frame - skipDelta) < minFrame) {
       return this.onLap();
     }
 

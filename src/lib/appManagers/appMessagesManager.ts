@@ -1276,7 +1276,21 @@ export class AppMessagesManager extends AppManager {
 
     this.checkSendOptions(options);
 
-    const config = await this.apiManager.getConfig();
+    const [config, appConfig] = await Promise.all([
+      this.apiManager.getConfig(),
+      this.apiManager.getAppConfig()
+    ]);
+
+    if(appConfig.emojies_send_dice?.includes(text.trim())) {
+      return this.sendOther({
+        ...options,
+        inputMedia: {
+          _: 'inputMediaDice',
+          emoticon: text.trim()
+        }
+      });
+    }
+
     const MAX_LENGTH = config.message_length_max;
     const splitted = splitStringByLength(text, MAX_LENGTH);
     text = splitted[0];
@@ -2479,8 +2493,17 @@ export class AppMessagesManager extends AppManager {
         break;
       }
 
+      case 'inputMediaDice': {
+        media = {
+          _: 'messageMediaDice',
+          emoticon: inputMedia.emoticon,
+          value: 0
+        };
+        break;
+      }
+
       case 'messageMediaPending': {
-        media = (inputMedia as any).messageMedia;
+        media = inputMedia.messageMedia;
         break;
       }
     }

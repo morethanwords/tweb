@@ -50,6 +50,7 @@ import flatten from '@helpers/array/flatten';
 import SuperStickerRenderer from '@components/emoticonsDropdown/tabs/SuperStickerRenderer';
 import StickersTab from '@components/emoticonsDropdown/tabs/stickers';
 import {PAID_REACTION_EMOJI_DOCID} from '@lib/customEmoji/constants';
+import {getStickerSetInputById} from '@lib/appManagers/utils/stickers/getStickerSetInput';
 
 
 const loadedURLs: Set<string> = new Set();
@@ -806,7 +807,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
     category.setCategoryItemsHeight(set.count);
     container.classList.remove('hide');
 
-    const promise = this.managers.appStickersManager.getStickerSet(set);
+    const promise = this.managers.appStickersManager.getStickerSet(getStickerSetInputById(set));
     promise.then(({documents}) => {
       documents.forEach((document) => {
         this.addEmojiToCategory({
@@ -953,10 +954,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
 
       PopupElement.createPopup(
         PopupStickers,
-        {
-          id: category.set.id,
-          access_hash: category.set.access_hash
-        },
+        getStickerSetInputById(category.set),
         true,
         this.emoticonsDropdown.chatInput
       ).show();

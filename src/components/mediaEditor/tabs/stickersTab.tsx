@@ -18,6 +18,7 @@ import {ResizableLayer} from '@components/mediaEditor/types';
 import {delay} from '@components/mediaEditor/utils';
 
 import {TabContentContext} from '@components/mediaEditor/tabs/tabContent';
+import {getStickerSetInputById} from '@lib/appManagers/utils/stickers/getStickerSetInput';
 
 export default function StickersTab() {
   const {wrapStickerSetThumb, EmoticonsSearch} = useHotReloadGuard();
@@ -158,7 +159,7 @@ export default function StickersTab() {
   }
 
   function StickerSetSection(props: {set: StickerSet.stickerSet}) {
-    const [stickers] = createResource(() => managers.appStickersManager.getStickerSet(props.set));
+    const [stickers] = createResource(() => managers.appStickersManager.getStickerSet(getStickerSetInputById(props.set)));
 
     return (
       <Show when={stickers()}>

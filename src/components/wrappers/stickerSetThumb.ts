@@ -16,6 +16,7 @@ import LazyLoadQueue from '@components/lazyLoadQueue';
 import wrapSticker from '@components/wrappers/sticker';
 import {Middleware} from '@helpers/middleware';
 import {EMOJI_TEXT_COLOR} from '@components/emoticonsDropdown';
+import {getStickerSetInputById} from '@lib/appManagers/utils/stickers/getStickerSetInput';
 
 export default async function wrapStickerSetThumb({set, lazyLoadQueue, container, group, autoplay, width, height, managers = rootScope.managers, middleware, textColor}: {
   set: StickerSet.stickerSet,
@@ -93,7 +94,7 @@ export default async function wrapStickerSetThumb({set, lazyLoadQueue, container
   if(set.thumb_document_id) {
     getDocPromise = managers.appEmojiManager.getCustomEmojiDocument(set.thumb_document_id);
   } else {
-    getDocPromise = managers.appStickersManager.getStickerSet(set).then((stickerSet) => stickerSet.documents[0] as Document.document);
+    getDocPromise = managers.appStickersManager.getStickerSet(getStickerSetInputById(set)).then((stickerSet) => stickerSet.documents[0] as Document.document);
   }
 
   const doc = await getDocPromise;
