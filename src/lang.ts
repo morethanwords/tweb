@@ -4196,7 +4196,24 @@ const lang = {
   'StarGiftOffer.OfferDurationDescriptionTON': 'Choose how long **%s** has to accept your offer. When it expires, your Stars will be refunded',
   'StarGiftOffer.CreateOfferSubmit': 'Offer %s',
 
-  'AutoDeletesIn': 'auto-deletes in %s'
+  'AutoDeletesIn': 'auto-deletes in %s',
+  'PostsSearch.TabName': 'Posts',
+  'PostsSearch.Title': 'Global Search',
+  'PostsSearch.Description': 'Type a keyword to search for posts from public channels.',
+  'PostsSearch.TitleLimited': 'Limit Reached',
+  'PostsSearch.DescriptionLimited': {
+    'one_value': 'You can make up to %d search query per day.',
+    'other_value': 'You can make up to %d search queries per day.'
+  },
+  'PostsSearch.FreeSearches': {
+    'one_value': '%d free search remaining today',
+    'other_value': '%d free searches remaining today.'
+  },
+  'PostsSearch.NeedPremium': 'Global search is a Premium feature.',
+  'PostsSearch.SubscribeToPremium': 'Subscribe to Premium',
+  'PostsSearch.SearchFor': 'Search for %s',
+  'PostsSearch.FreeUnlocksIn': 'free search unlocks in %s',
+  'PostsSearch.StarsSpent': '**%s** spent on extra search'
 };
 
 export default lang;
