@@ -135,7 +135,7 @@ export default function wrapDice(context: BubbleContext) {
       .map((index) => getPartReady(wrapPart(index, getDocument(index))));
       const readyPromise = Promise.all([...partsReadyPromises, ...newPartsReadyPromises]);
       readyPromise.then((parts) => {
-        console.log('parts', parts);
+        // console.log('parts', parts);
         const slotsParts = parts.filter(({index}) => isSlotOption(index));
         const spinningParts = parts.filter(({index}) => spinningIndexes.includes(index));
         const replaceBackground = () => {

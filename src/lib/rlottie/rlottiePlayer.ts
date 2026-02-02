@@ -264,7 +264,7 @@ export default class RLottiePlayer extends EventListenerBase<{
     });
   }
 
-  public clearCache() {
+  private clearCache() {
     if(this.cachingDelta === Infinity) {
       return;
     }
@@ -274,6 +274,14 @@ export default class RLottiePlayer extends EventListenerBase<{
     }
 
     this.cache.clearCache();
+  }
+
+  public clearCacheWhenSafe() {
+    if(this.rafId) { // * fix early cache clearing
+      this.clearCacheOnRafId = this.rafId;
+    } else {
+      this.clearCache();
+    }
   }
 
   public sendQuery(args: any[], transfer?: Transferable[]) {
@@ -521,11 +529,7 @@ export default class RLottiePlayer extends EventListenerBase<{
 
     if(!this.loop) {
       this.pause(false);
-      if(this.rafId) { // * fix early cache clearing
-        this.clearCacheOnRafId = this.rafId;
-      } else {
-        this.clearCache();
-      }
+      this.clearCacheWhenSafe();
       return false;
     }
 
