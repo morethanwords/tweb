@@ -1150,7 +1150,7 @@ export default class PopupNewMedia extends PopupElement {
 
             openMediaEditorFromMedia({
               source,
-              element: itemDiv,
+              rect: itemDiv.getBoundingClientRect(),
               size: [params.width, params.height],
               mediaType: isVideo ? 'video' : 'image',
               mediaSrc: params.editResult?.originalSrc || params.objectURL,
