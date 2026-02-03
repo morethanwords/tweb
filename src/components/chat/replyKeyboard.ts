@@ -133,7 +133,14 @@ export default class ReplyKeyboard extends DropdownHover {
       div.classList.add(ReplyKeyboard.BASE_CLASS + '-row');
 
       for(const button of row.buttons) {
-        const {buttonEl, onClick} = wrapKeyboardButton({button, chat: this.chatInput.chat, replyMarkup});
+        const {buttonEl, onClick} = wrapKeyboardButton({
+          button,
+          chat: this.chatInput.chat,
+          replyMarkup,
+          wrapOptions: {
+            textColor: 'primary-color'
+          }
+        });
         this.onClickMap.set(buttonEl, onClick);
         buttonEl.classList.add(ReplyKeyboard.BASE_CLASS + '-button', 'btn');
         div.append(buttonEl);

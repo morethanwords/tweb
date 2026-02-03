@@ -6850,7 +6850,8 @@ export default class ChatBubbles {
             button,
             chat: this.chat,
             message: message as Message.message,
-            noTextInject: true
+            noTextInject: true,
+            wrapOptions
           });
 
           if(!buttonEl) {
