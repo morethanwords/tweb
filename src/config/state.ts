@@ -390,7 +390,7 @@ export const SETTINGS_INIT: StateSettings = {
   instantView: {
     scale: 1
   },
-  cacheTTL: 86400, // 1 day
+  cacheTTL: 86400 * 7, // 1 week
   cacheSize: 0 // Auto
 };
 

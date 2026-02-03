@@ -191,6 +191,15 @@ const getCacheSizeOptions = (autoLabel: () => JSX.Element) => [
   makeSizeOption(800 * mb),
   makeSizeOption(900 * mb),
   makeSizeOption(1 * gb),
+  makeSizeOption(2 * gb),
+  makeSizeOption(3 * gb),
+  makeSizeOption(4 * gb),
+  makeSizeOption(5 * gb),
+  makeSizeOption(6 * gb),
+  makeSizeOption(7 * gb),
+  makeSizeOption(8 * gb),
+  makeSizeOption(9 * gb),
+  makeSizeOption(10 * gb),
   {
     value: 0,
     label: autoLabel
