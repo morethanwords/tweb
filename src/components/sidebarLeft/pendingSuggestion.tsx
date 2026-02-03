@@ -224,7 +224,14 @@ export function renderPendingSuggestion(toElement: HTMLElement) {
     createEffect(() => {
       const pendingSuggestions$ = pendingSuggestions();
       if(pendingSuggestions$.has(EMAIL_SETUP_KEY) || pendingSuggestions$.has(EMAIL_SETUP_KEY_NOSKIP)) {
-        rootScope.managers.appPromoManager.getPromoData(true).then((data) => {
+        Promise.all([
+          rootScope.managers.appPromoManager.getPromoData(true),
+          rootScope.managers.passwordManager.getState()
+        ]).then(([data, passwordState]) => {
+          if(passwordState.login_email_pattern && !passwordState.email_unconfirmed_pattern) {
+            return;
+          }
+
           const noskip = data.pendingSuggestions.includes(EMAIL_SETUP_KEY_NOSKIP);
           if(data.pendingSuggestions.includes(EMAIL_SETUP_KEY) || noskip) {
             showEmailSetupPopup({

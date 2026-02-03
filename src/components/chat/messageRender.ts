@@ -33,6 +33,7 @@ import appDownloadManager from '@lib/appDownloadManager';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
 import {makeTime} from '@components/chat/utils';
+import {formatNanoton} from '@helpers/paymentsWrapCurrencyAmount';
 
 const NBSP = '&nbsp;';
 
@@ -206,6 +207,17 @@ export namespace MessageRender {
     const fwdFrom = isMessage && message.fwd_from;
     const time: HTMLElement = /* isSponsored ? undefined :  */makeTime(date, includeDate);
     if(isMessage) {
+      const messageMedia = message.media;
+      if(messageMedia?._ === 'messageMediaDice' && messageMedia.game_outcome) {
+        const span = document.createElement('span');
+        span.classList.add('time-dice');
+        span.textContent = formatNanoton(messageMedia.game_outcome.stake_ton_amount);
+
+        const icon = Icon('ton', 'time-icon', 'time-part');
+
+        args.push(span, icon);
+      }
+
       if(message.views) {
         const postViewsSpan = document.createElement('span');
         postViewsSpan.classList.add('post-views');

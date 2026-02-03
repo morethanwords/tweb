@@ -5874,7 +5874,7 @@ export default class ChatBubbles {
 
     context.isInUnread = !our &&
       !message.pFlags.out &&
-      message.pFlags.unread;
+      !!message.pFlags.unread;
 
     const unreadMention = isMentionUnread(message);
     const unreadReactions = getUnreadReactions(message);
@@ -8077,6 +8077,53 @@ export default class ChatBubbles {
 
         case 'messageMediaDice': {
           wrapDice(context);
+          const outcome = context.messageMedia.game_outcome;
+          if(outcome) {
+            bubble.classList.add('has-fake-service', 'is-forced-rounded');
+
+            const fakeServiceMessage = document.createElement('div');
+            fakeServiceMessage.classList.add('service-msg');
+
+            const won = +outcome.ton_amount > 0;
+            const s = document.createElement('span');
+            s.append(
+              Icon('ton', 'inline-icon', 'text-text-bottom'),
+              formatNanoton(won ? outcome.ton_amount : outcome.stake_ton_amount)
+            );
+
+            let content: HTMLElement;
+            let fromPeerId: PeerId, fromName: string;
+            const fwdFrom = (message as Message.message).fwd_from;
+            if(fwdFrom) {
+              if(fwdFrom.post_author) fromName = fwdFrom.post_author;
+              else if(fwdFrom.from_id) fromPeerId = getPeerId(fwdFrom.from_id);
+              else if(fwdFrom.from_name) fromName = fwdFrom.from_name;
+            } else if((message as Message.message).post_author) {
+              fromName = (message as Message.message).post_author;
+              fromPeerId = message.fromId;
+            } else {
+              fromPeerId = message.fromId;
+            }
+
+            if(fromPeerId === rootScope.myId) {
+              content = i18n(won ? 'Dice.WonYou' : 'Dice.LostYou', [s]);
+            } else {
+              content = i18n(
+                won ? 'Dice.Won' : 'Dice.Lost',
+                [
+                  await wrapPeerTitle({
+                    peerId: fromPeerId,
+                    fromName
+                  }),
+                  s
+                ]
+              );
+            }
+
+            fakeServiceMessage.append(content);
+
+            bubble.append(fakeServiceMessage);
+          }
           break;
         }
 
