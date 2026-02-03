@@ -1006,6 +1006,7 @@ const lang = {
   'Summary.Limited': 'Reached summary limits',
   'Summary.Limited.Text': 'Subscribe to [Telegram Premium]() to increase summary limits.',
   'Dice.Tooltip': 'Send a %s emoji to try your luck. [Send]()',
+  'Dice.Tooltip.CantSend': 'Send a %s emoji to any chat to try your luck.',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',

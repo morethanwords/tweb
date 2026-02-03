@@ -865,6 +865,7 @@
 "Summary.Limited" = "Reached summary limits";
 "Summary.Limited.Text" = "Subscribe to [Telegram Premium]() to increase summary limits.";
 "Dice.Tooltip" = "Send a %s emoji to try your luck. [Send]()";
+"Dice.Tooltip.CantSend" = "Send a %s emoji to any chat to try your luck.";
 "GroupsAndChannelsLimitTitle" = "Groups and Channels";
 "GroupsAndChannelsLimitSubtitle" = "Join up to %d channels and large groups";
 "PinChatsLimitTitle" = "Pinned Chats";

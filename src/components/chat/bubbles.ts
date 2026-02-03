@@ -2528,6 +2528,7 @@ export default class ChatBubbles {
       bubble.dataset.dice &&
       attachmentDiv
     ) {
+      const canSend = await this.chat.canSend('send_stickers');
       const emoticon = bubble.dataset.dice;
       setTimeout(() => {
         const {close} = showTooltip({
@@ -2535,16 +2536,16 @@ export default class ChatBubbles {
           container: this.container,
           vertical: 'top',
           textElement: i18n(
-            'Dice.Tooltip',
+            canSend ? 'Dice.Tooltip' : 'Dice.Tooltip.CantSend',
             [
               wrapEmojiText(emoticon),
-              anchorCallback(() => {
+              canSend ? anchorCallback(() => {
                 close();
                 this.managers.appMessagesManager.sendText({
                   ...this.chat.getMessageSendingParams(),
                   text: emoticon
                 });
-              })
+              }) : undefined
             ]
           ),
           auto: true
