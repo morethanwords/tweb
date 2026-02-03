@@ -1011,6 +1011,8 @@ const lang = {
   'Dice.Lost': '%s lost %s',
   'Dice.WonYou': 'You won %s',
   'Dice.LostYou': 'You lost %s',
+  'Chat.Service.NewCreatorPending': '%s will become the new main admin in 7 days if %s does not return.',
+  'Chat.Service.ChangeCreator': '%s made %s the new main admin of the group.',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',

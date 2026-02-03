@@ -870,7 +870,23 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
           i18n('Stars', [numberThousandSplitterForStars(action.price.amount)]),
           getCollectibleName(action.gift as StarGift.starGiftUnique)
         ];
-        break
+        break;
+      case 'messageActionNewCreatorPending': {
+        langPackKey = 'Chat.Service.NewCreatorPending';
+        args = [
+          getNameDivHTML(action.new_creator_id.toPeerId(), plain),
+          getNameDivHTML(message.fromId, plain)
+        ];
+        break;
+      }
+      case 'messageActionChangeCreator': {
+        langPackKey = 'Chat.Service.ChangeCreator';
+        args = [
+          getNameDivHTML(message.fromId, plain),
+          getNameDivHTML(action.new_creator_id.toPeerId(), plain)
+        ];
+        break;
+      }
       default:
         langPackKey = (langPack[_] || `[${action._}]`) as any;
         break;
