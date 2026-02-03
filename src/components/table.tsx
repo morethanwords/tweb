@@ -90,26 +90,25 @@ export function TableButton(props: ComponentProps<typeof Button>) {
     />
   )
 }
-export const TableButtonClassname = styles.button;
 
 export function TableButtonWithTooltip(props: ComponentProps<typeof Button> & {
   tooltipClass?: string
-  tooltipTextElement: HTMLElement
+  tooltipTextElement?: HTMLElement
 }) {
   const [, rest] = splitProps(props, ['tooltipClass', 'tooltipTextElement']);
   return (
     <Button
       {...rest}
-      class={/* @once */ styles.button}
+      class={classNames(rest.class, styles.button)}
       onClick={(evt) => {
         props.onClick?.(evt);
-        showTooltip({
+        if(props.tooltipTextElement) showTooltip({
           element: evt.target as HTMLElement,
           vertical: 'top',
           container: document.body,
           class: props.tooltipClass,
           textElement: props.tooltipTextElement
-        })
+        });
       }}
     />
   )

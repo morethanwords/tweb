@@ -2866,6 +2866,10 @@ const lang = {
   'StarGiftSellTitlePopup': 'Sell Gift',
   'StarGiftSellTitleStars': 'Price in Stars',
   'StarGiftSellTitleTon': 'Price in TON',
+  'StarGiftRarityUncommon': 'uncommon',
+  'StarGiftRarityRare': 'rare',
+  'StarGiftRarityEpic': 'epic',
+  'StarGiftRarityLegendary': 'legendary',
   'StarGiftYouWillReceiveStars': {
     'one_value': 'You will receive **%s** Star.',
     'other_value': 'You will receive **%s** Stars.'

@@ -218,6 +218,26 @@
   display: flex;
   align-items: center;
   gap: 0.375rem;
+
+  .rarity {
+    color: rgb(var(--primary-color-rgb));
+
+    &-green {
+      --primary-color-rgb: 34, 180, 71;
+    }
+
+    &-blue {
+      --primary-color-rgb: 37, 163, 185;
+    }
+
+    &-violet {
+      --primary-color-rgb: 175, 82, 222;
+    }
+
+    &-gold {
+      --primary-color-rgb: 213, 126, 50;
+    }
+  }
 }
 
 .popup-star-gift-info-hint {

@@ -2471,6 +2471,10 @@
 "StarGiftSellTitlePopup" = "Sell Gift";
 "StarGiftSellTitleStars" = "Price in Stars";
 "StarGiftSellTitleTon" = "Price in TON";
+"StarGiftRarityUncommon" = "uncommon";
+"StarGiftRarityRare" = "rare";
+"StarGiftRarityEpic" = "epic";
+"StarGiftRarityLegendary" = "legendary";
 "StarGiftYouWillReceiveStars_one" = "You will receive **%s** Star.";
 "StarGiftYouWillReceiveStars_other" = "You will receive **%s** Stars.";
 "StarGiftYouWillReceiveTon" = "You will receive **%s** TON.";
@@ -3688,7 +3692,7 @@
 "PostsSearch.SubscribeToPremium" = "Subscribe to Premium";
 "PostsSearch.SearchFor" = "Search for %s";
 "PostsSearch.FreeUnlocksIn" = "free search unlocks in %s";
-"PostsSearch.StarsSpent" = "**%s** ";
+"PostsSearch.StarsSpent" = "**%s** spent on extra search";
 "Login.Title" = "Sign in to Telegram";
 "Login.PhoneLabel" = "Phone Number";
 "Login.PhoneLabelInvalid" = "Phone Number Invalid";
