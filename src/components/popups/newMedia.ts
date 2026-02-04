@@ -89,6 +89,11 @@ type SendFileParams = SendFileDetails & {
   editResult?: MediaEditorFinalResult
 };
 
+type ConstructorInputFile = {
+  file: File;
+  editResult: MediaEditorFinalResult;
+};
+
 let currentPopup: PopupNewMedia;
 
 const MAX_WIDTH = 400 - 16;
@@ -126,9 +131,12 @@ export default class PopupNewMedia extends PopupElement {
 
   private isMediaEditorOpen = false;
 
+  private files: File[] = [];
+  private pendingEditResults = new WeakMap<File, MediaEditorFinalResult>;
+
   constructor(
     private chat: Chat,
-    private files: File[],
+    inputFiles: (ConstructorInputFile | File)[],
     willAttachType: PopupNewMedia['willAttach']['type'],
     private ignoreInputValue?: boolean
   ) {
@@ -139,6 +147,14 @@ export default class PopupNewMedia extends PopupElement {
       body: true,
       title: true,
       scrollable: true
+    });
+
+    this.files = inputFiles.map((inputFile) => {
+      if(inputFile instanceof File) {
+        return inputFile;
+      }
+      this.pendingEditResults.set(inputFile.file, inputFile.editResult);
+      return inputFile.file;
     });
 
     this.animationGroup = 'NEW-MEDIA';
@@ -1154,7 +1170,7 @@ export default class PopupNewMedia extends PopupElement {
               size: [params.width, params.height],
               mediaType: isVideo ? 'video' : 'image',
               mediaSrc: params.editResult?.originalSrc || params.objectURL,
-              mediaBlob: file,
+              getMediaBlob: async() => file,
               mediaSize: params.editResult?.originalSize || sourceSize,
               managers: this.managers,
               onEditFinish: (result) => {
@@ -1534,12 +1550,20 @@ export default class PopupNewMedia extends PopupElement {
       params.middlewareHelper.destroy();
     });
 
+    const getPendingEditResult = (file: File) => {
+      const pendingEditResult = this.pendingEditResults.get(file);
+      this.pendingEditResults.delete(file);
+      return pendingEditResult;
+    };
+
     const promises = files.map((file) => {
       const oldParams = oldSendFileDetails.find((o) => o.file === file);
+      const editResult = oldParams?.editResult || getPendingEditResult(file);
+
       return this.attachFile(
         file,
-        oldParams?.editResult ? {
-          editResult: oldParams.editResult
+        editResult ? {
+          editResult
         } : undefined
       );
     });

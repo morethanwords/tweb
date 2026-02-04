@@ -122,6 +122,7 @@ type CanUploadAsWhenEditingArgs = {
 };
 
 const allowedDocumentTypesAsGroup: Array<Document.document['type']> = ['audio', 'photo', 'pdf'];
+const documentAsMediaTypes: Array<Document.document['type']> = ['gif', 'video'];
 
 export const canUploadAsWhenEditing = ({asWhat, message}: CanUploadAsWhenEditingArgs) => {
   if(!message || !message.media) return true;
@@ -129,21 +130,23 @@ export const canUploadAsWhenEditing = ({asWhat, message}: CanUploadAsWhenEditing
   const isGrouped = !!message.grouped_id;
   if(!isGrouped) return true;
 
-  const currentMediaType: AttachedMediaType = (() => {
-    if(message.media._ === 'messageMediaDocument') {
-      if(message.media.document?._ !== 'document') return null;
-      if(message.media.document.type === 'video') return 'media';
-      if(message.media.document.type && !allowedDocumentTypesAsGroup.includes(message.media.document.type)) return null;
-
-      return 'document';
-    }
-
-    if(message.media._ === 'messageMediaPhoto') {
-      return 'media';
-    }
-
-    return null;
-  })();
+  const currentMediaType = getMediaTypeForMessage(message);
 
   return currentMediaType === asWhat;
+};
+
+export const getMediaTypeForMessage = (message: Message.message | null | undefined): AttachedMediaType | null => {
+  if(message.media._ === 'messageMediaDocument') {
+    if(message.media.document?._ !== 'document') return null;
+    if(documentAsMediaTypes.includes(message.media.document.type)) return 'media';
+    if(message.media.document.type && !allowedDocumentTypesAsGroup.includes(message.media.document.type)) return null;
+
+    return 'document';
+  }
+
+  if(message.media._ === 'messageMediaPhoto') {
+    return 'media';
+  }
+
+  return null;
 };

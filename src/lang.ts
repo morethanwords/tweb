@@ -4235,7 +4235,10 @@ const lang = {
   'PostsSearch.SubscribeToPremium': 'Subscribe to Premium',
   'PostsSearch.SearchFor': 'Search for %s',
   'PostsSearch.FreeUnlocksIn': 'free search unlocks in %s',
-  'PostsSearch.StarsSpent': '**%s** spent on extra search'
+  'PostsSearch.StarsSpent': '**%s** spent on extra search',
+
+  'EditThisPhoto': 'Edit this photo',
+  'EditThisVideo': 'Edit this video'
 };
 
 export default lang;

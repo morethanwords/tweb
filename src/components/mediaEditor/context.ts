@@ -177,7 +177,7 @@ export type MediaEditorContextValue = {
 
   mediaSrc: string;
   mediaType: MediaType;
-  mediaBlob: Blob;
+  getMediaBlob: () => Promise<Blob | null>;
   mediaSize: NumberPair;
 
   mediaState: Store<EditingMediaState>;
@@ -245,7 +245,7 @@ export function createContextValue(props: MediaEditorProps): MediaEditorContextV
 
     mediaSrc: props.mediaSrc,
     mediaType: props.mediaType,
-    mediaBlob: props.mediaBlob,
+    getMediaBlob: props.getMediaBlob,
     mediaSize: props.mediaSize,
 
     mediaState,

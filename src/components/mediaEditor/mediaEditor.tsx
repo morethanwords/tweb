@@ -28,7 +28,7 @@ export type MediaEditorProps = {
   onImageRendered: () => void;
   mediaSrc: string;
   mediaType: MediaType;
-  mediaBlob: Blob;
+  getMediaBlob: () => Promise<Blob | null>;
   mediaSize: NumberPair;
   editingMediaState?: EditingMediaState
 };
