@@ -12,7 +12,7 @@ import overlayCounter from '@helpers/overlayCounter';
 import throttle from '@helpers/schedulers/throttle';
 import classNames from '@helpers/string/classNames';
 import windowSize from '@helpers/windowSize';
-import {Document, DocumentAttribute, GeoPoint, MediaArea, MessageMedia, Reaction, StoryItem, StoryView, User, Chat as MTChat, AvailableReaction, MessageEntity} from '@layer';
+import {Document, DocumentAttribute, GeoPoint, MediaArea, MessageMedia, Reaction, StoryItem, StoryView, User, Chat as MTChat, AvailableReaction, MessageEntity, StoriesStealthMode} from '@layer';
 import animationIntersector from '@components/animationIntersector';
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
 import PeerTitle from '@components/peerTitle';
@@ -104,6 +104,9 @@ import wrapUrl from '@lib/richTextProcessor/wrapUrl';
 import PopupReportAd from '@components/popups/reportAd';
 import {useAppSettings} from '@stores/appSettings';
 import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
+import showStoriesStealthModePopup from '@components/popups/storiesStealthMode';
+import {useAppConfig} from '@stores/appState';
+import {wrapFormattedDuration, wrapStoriesStealthModeDuration} from '@components/wrappers/wrapDuration';
 
 export const STORY_DURATION = 5e3;
 const STORY_HEADER_AVATAR_SIZE = 32;
@@ -505,6 +508,11 @@ const StoryInput = (props: {
         input.setReplyTo({
           replyToStoryId: props.currentStory().id
         });
+      });
+
+      createEffect(async() => {
+        chat.stealthMode = stories.stealthMode;
+        input.updateMessageInputPlaceholder(await input.getPlaceholderParams());
       });
     });
   });
@@ -2198,6 +2206,30 @@ const Stories = (props: {
         return !!(story?._ === 'storyItem' && !story.pFlags.noforwards && rootScope.premium);
       }
     }, {
+      icon: 'eyecross_outline',
+      text: 'Stories.StealthMode.View',
+      onClick: () => {
+        ignoreOnClose = true;
+        const appConfig = useAppConfig();
+        const onAnyPopupClose = bindOnAnyPopupClose(wasPlaying);
+        showStoriesStealthModePopup({
+          onActivate: () => {
+            setQuizHint({
+              title: i18n('Stories.StealthMode.Activated.Title'),
+              textElement: i18n('Stories.StealthMode.Activated.Subtitle', [
+                wrapStoriesStealthModeDuration(appConfig.stories_stealth_future_period),
+                wrapStoriesStealthModeDuration(appConfig.stories_stealth_past_period)
+              ]),
+              appendTo: storyDiv,
+              from: 'bottom',
+              duration: 8000,
+              icon: 'checkround_filled'
+            });
+          },
+          onClose: onAnyPopupClose
+        });
+      }
+    }, {
       icon: 'archive',
       text: 'ArchivePeerStories',
       onClick: () => togglePeerHidden(true),
@@ -2539,7 +2571,12 @@ const Stories = (props: {
   //   }
   // });
 
-  const onProfileClick = () => {
+  const onProfileClick = (e: MouseEvent) => {
+    // * I'm handling it elsewhere
+    if(findUpClassName(e.target, styles.ViewerStoryHeaderRepost)) {
+      return;
+    }
+
     const peerId = props.state.peerId;
     props.close(() => {
       appImManager.setInnerPeer({peerId});
@@ -2634,8 +2671,9 @@ const Stories = (props: {
             return;
           }
 
-          const {fwdFrom, mediaAreaChannelPost} = repostInfo
+          const {fwdFrom, mediaAreaChannelPost} = repostInfo;
           if(fwdFrom?.from || mediaAreaChannelPost) {
+            e.stopPropagation();
             props.close(() => {
               const peerId = fwdFrom ? getPeerId(fwdFrom.from) : mediaAreaChannelPost.channel_id.toPeerId(true);
               if(fwdFrom?.story_id && !findUpClassName(e.target, styles.ViewerStoryHeaderRepost)) {

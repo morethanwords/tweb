@@ -34,7 +34,7 @@ import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMedia';
 import noop from '@helpers/noop';
 import middlewarePromise from '@helpers/middlewarePromise';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
-import {Message, WallPaper, Chat as MTChat, Reaction, AvailableReaction, ChatFull, MessageEntity, PaymentsPaymentForm, InputPeer, ChatTheme, UserFull, User} from '@layer';
+import {Message, WallPaper, Chat as MTChat, Reaction, AvailableReaction, ChatFull, MessageEntity, PaymentsPaymentForm, InputPeer, ChatTheme, UserFull, User, StoriesStealthMode} from '@layer';
 import animationIntersector, {AnimationItemGroup} from '@components/animationIntersector';
 import {getColorsFromWallPaper} from '@helpers/color';
 import apiManagerProxy from '@lib/apiManagerProxy';
@@ -172,6 +172,7 @@ export default class Chat extends EventListenerBase<{
   public noInput: boolean;
 
   public starsAmount: number | undefined;
+  public stealthMode: StoriesStealthMode | undefined;
 
   public animationGroup: AnimationItemGroup;
 

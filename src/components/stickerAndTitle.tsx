@@ -6,7 +6,8 @@ import styles from '@components/stickerAndTitle.module.scss';
 
 export type StickerAndTitleProps = {
   sticker: {
-    name: LottieAssetName,
+    name?: LottieAssetName,
+    element?: JSX.Element,
     size?: number
   },
   title?: JSX.Element,
@@ -18,19 +19,26 @@ export type StickerAndTitleProps = {
 export default function StickerAndTitle(props: StickerAndTitleProps) {
   const titleChildren = children(() => props.title);
   const subtitleChildren = children(() => props.subtitle);
+
+  if(props.sticker.element) {
+    props.onReady?.();
+  }
+
   return (
     <div class={styles.container}>
       <div class={styles.lottieWrapper}>
-        <LottieAnimation
-          class={styles.lottieAnimation}
-          size={props.sticker.size || 130}
-          lottieLoader={lottieLoader}
-          restartOnClick
-          name={props.sticker.name}
-          onPromise={(promise) => {
-            promise.then(props.onReady);
-          }}
-        />
+        <Show when={props.sticker.name} fallback={props.sticker.element}>
+          <LottieAnimation
+            class={styles.lottieAnimation}
+            size={props.sticker.size || 130}
+            lottieLoader={lottieLoader}
+            restartOnClick
+            name={props.sticker.name}
+            onPromise={(promise) => {
+              promise.then(props.onReady);
+            }}
+          />
+        </Show>
       </div>
       <Show when={titleChildren()}>
         <div class={classNames(styles.title, 'text-center text-overflow-wrap')}>

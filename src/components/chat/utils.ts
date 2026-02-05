@@ -7,6 +7,8 @@ import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {VERIFICATION_CODES_BOT_ID} from '@appManagers/constants';
 import Icon, {OverlayedIcon} from '@components/icon';
 import {findMatchingCustomOption} from '@components/sidebarLeft/tabs/autoDeleteMessages/options';
+import {wrapSlowModeLeftDuration} from '@components/wrappers/wrapDuration';
+import eachSecond from '@helpers/eachSecond';
 
 
 export function isMessageForVerificationBot(message: MyMessage) {
@@ -147,3 +149,16 @@ export const canUploadAsWhenEditing = ({asWhat, message}: CanUploadAsWhenEditing
 
   return currentMediaType === asWhat;
 };
+
+export function slowModeTimer(getLeftDuration: () => number) {
+  const s = document.createElement('span');
+  const dispose = eachSecond(() => {
+    const leftDuration = getLeftDuration();
+    s.replaceChildren(wrapSlowModeLeftDuration(leftDuration));
+
+    if(!leftDuration) {
+      close();
+    }
+  }, true);
+  return {element: s, dispose};
+}

@@ -135,6 +135,7 @@ import {canUploadAsWhenEditing} from '@components/chat/utils';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import {usePeer} from '@stores/peers';
 import {untrack} from 'solid-js';
+import showStoriesStealthModePopup from '@components/popups/storiesStealthMode';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -702,6 +703,10 @@ export class AppImManager extends EventListenerBase<{
     // PopupElement.createPopup(PopupAboutAd);
 
     // PopupElement.createPopup(PopupBoostsViaGifts, -5000866300);
+
+    // Promise.resolve(apiManagerProxy.getAppConfig()).then(() => {
+    //   showStoriesStealthModePopup();
+    // });
   }
 
   public adjustChatPatternBackground() {

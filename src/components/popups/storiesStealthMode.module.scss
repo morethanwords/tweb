@@ -1,0 +1,13 @@
+.sticker {
+  border-radius: 50%;
+  width: 100px;
+  height: 100px;
+  color: #fff;
+  font-size: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  --color-top: var(--avatar-color-top);
+  --color-bottom: var(--avatar-color-bottom);
+  background: linear-gradient(var(--color-top), var(--color-bottom));
+}

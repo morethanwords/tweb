@@ -12,7 +12,7 @@ interface FeatureDetailsRow {
   subtitle: JSX.Element;
 }
 
-interface FeatureDetailsButton {
+export interface FeatureDetailsButton {
   text: JSX.Element;
   onClick?: (close: () => void) => MaybePromise<boolean | void>;
   isCancel?: boolean;
@@ -21,7 +21,8 @@ interface FeatureDetailsButton {
 
 type FeatureDetailsPopupProps = {
   rows: FeatureDetailsRow[],
-  buttons: FeatureDetailsButton[]
+  buttons: FeatureDetailsButton[],
+  onClose?: () => void
 } & StickerAndTitleProps;
 
 export default function showFeatureDetailsPopup(props: FeatureDetailsPopupProps) {
@@ -29,7 +30,12 @@ export default function showFeatureDetailsPopup(props: FeatureDetailsPopupProps)
   const close = () => setShow(false);
 
   createPopup(() => (
-    <PopupElement class={styles.popup} containerClass={styles.popupContainer} show={show()}>
+    <PopupElement
+      class={styles.popup}
+      containerClass={styles.popupContainer}
+      show={show()}
+      onClose={props.onClose}
+    >
       <PopupElement.Header class={styles.popupHeader}>
         <PopupElement.CloseButton class={styles.popupCloseButton} />
       </PopupElement.Header>

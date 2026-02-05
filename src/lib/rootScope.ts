@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, ReactionCount, MessagePeerReaction, PhoneCall, Config, Reaction, AttachMenuBot, PeerSettings, StoryItem, PeerStories, SavedDialog, SavedReactionTag, InputSavedStarGift, LangPackDifference, StarsAmount, MessageEntity, HelpPromoData} from '@layer';
+import type {Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, ReactionCount, MessagePeerReaction, PhoneCall, Config, Reaction, AttachMenuBot, PeerSettings, StoryItem, PeerStories, SavedDialog, SavedReactionTag, InputSavedStarGift, LangPackDifference, StarsAmount, MessageEntity, HelpPromoData, StoriesStealthMode} from '@layer';
 import type {Dialog, ForumTopic, MessagesStorageKey, MyMessage} from '@appManagers/appMessagesManager';
 import type {MyDialogFilter} from '@lib/storages/filters';
 import type {AnyDialog, Folder} from '@lib/storages/dialogs';
@@ -112,6 +112,7 @@ export type BroadcastEvents = {
   'stories_read': {peerId: PeerId, maxReadId: number},
   'stories_downloaded': {peerId: PeerId, ids: number[]},
   'stories_position': {peerId: PeerId, position: StoriesListPosition},
+  'stories_stealth_mode': StoriesStealthMode,
 
   'replies_updated': Message.message,
   'replies_short_update': Message.message,
