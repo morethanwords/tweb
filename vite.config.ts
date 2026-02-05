@@ -15,8 +15,13 @@ import path from 'path';
 const rootDir = resolve(__dirname);
 const certsDir = path.join(rootDir, 'certs');
 const ENV_LOCAL_FILE_PATH = path.join(rootDir, '.env.local');
+const LANG_PACK_LOCAL_FILE_PATH = path.join(rootDir, 'src', 'langPackLocalVersion.ts');
 
 const isDEV = process.env.NODE_ENV === 'development';
+if(!existsSync(LANG_PACK_LOCAL_FILE_PATH)) {
+  copyFileSync(path.join(rootDir, 'src', 'langPackLocalVersion.example.ts'), LANG_PACK_LOCAL_FILE_PATH);
+}
+
 if(isDEV) {
   if(!existsSync(ENV_LOCAL_FILE_PATH)) {
     copyFileSync(path.join(rootDir, '.env.local.example'), ENV_LOCAL_FILE_PATH);

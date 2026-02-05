@@ -4,14 +4,14 @@ const {spawn, execSync} = require('child_process');
 
 const LANG_FILE_PATH = path.join(__dirname, 'src', 'lang.ts');
 const LANG_SIGN_FILE_PATH = path.join(__dirname, 'src', 'langSign.ts');
-const ENV_LOCAL_FILE_PATH = path.join(__dirname, '.env.local');
+const EDIT_FILE_PATH = path.join(__dirname, 'src', 'langPackLocalVersion.ts');
 const npmCmd = /^win/.test(process.platform) ? 'npm.cmd' : 'npm';
 
 // Function to read current version from App.ts
 const getCurrentVersion = () => {
   try {
-    const appContent = fs.readFileSync(ENV_LOCAL_FILE_PATH, 'utf8');
-    const match = appContent.match(/VITE_LANG_PACK_LOCAL_VERSION=(\d+)/);
+    const appContent = fs.readFileSync(EDIT_FILE_PATH, 'utf8');
+    const match = appContent.match(/const langPackLocalVersion = (\d+);/);
     return match ? parseInt(match[1]) : 0;
   } catch(error) {
     console.error('❌ Error reading App.ts:', error.message);
@@ -22,12 +22,10 @@ const getCurrentVersion = () => {
 // Function to update version in App.ts
 const updateVersion = (newVersion) => {
   try {
-    let appContent = fs.readFileSync(ENV_LOCAL_FILE_PATH, 'utf8');
-    appContent = appContent.replace(
-      /(VITE_LANG_PACK_LOCAL_VERSION=)\d+/,
-      `$1${newVersion}`
-    );
-    fs.writeFileSync(ENV_LOCAL_FILE_PATH, appContent, 'utf8');
+    let appContent = fs.readFileSync(EDIT_FILE_PATH, 'utf8');
+    appContent = `const langPackLocalVersion = ${newVersion};export default langPackLocalVersion;
+`;
+    fs.writeFileSync(EDIT_FILE_PATH, appContent, 'utf8');
     console.log(`✅ Version updated to ${newVersion}`);
 
     execSync(`${npmCmd} run format-lang`);
@@ -95,7 +93,7 @@ const watchLangFile = () => {
 
   // Check if files exist
   if(
-    !checkFilesExist(files.concat([{path: ENV_LOCAL_FILE_PATH, name: '.env.local'}]))
+    !checkFilesExist(files.concat([{path: EDIT_FILE_PATH, name: '.env.local'}]))
   ) {
     console.error('❌ Files not found!');
     return;
@@ -150,7 +148,7 @@ const watchLangFileWithInterval = () => {
 
   // Check if files exist
   if(
-    !checkFilesExist(files.concat([{path: ENV_LOCAL_FILE_PATH, name: '.env.local'}]))
+    !checkFilesExist(files.concat([{path: EDIT_FILE_PATH, name: '.env.local'}]))
   ) {
     return;
   }

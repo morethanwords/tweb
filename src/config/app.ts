@@ -10,6 +10,7 @@
  */
 
 import type {TrueDcId} from '@types';
+import langPackLocalVersion from '@/langPackLocalVersion';
 
 export const MAIN_DOMAINS = ['web.telegram.org', 'webk.telegram.org'];
 export const DEFAULT_BACKGROUND_SLUG = 'pattern';
@@ -24,7 +25,7 @@ const App = {
   versionFull: import.meta.env.VITE_VERSION_FULL,
   build: +import.meta.env.VITE_BUILD,
   langPackVersion: +import.meta.env.VITE_LANG_PACK_VERSION,
-  langPackLocalVersion: +(import.meta.env.VITE_LANG_PACK_LOCAL_VERSION || 1),
+  langPackLocalVersion: langPackLocalVersion,
   langPack: 'webk',
   langPackCode: 'en',
   domains: MAIN_DOMAINS,
