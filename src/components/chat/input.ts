@@ -145,9 +145,10 @@ import showFrozenPopup from '@components/popups/frozen';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
 import {setPeerColorToElement} from '@components/peerColors';
 import getMainGroupedMessage from '@lib/appManagers/utils/messages/getMainGroupedMessage';
-import appDownloadManager from '@lib/appDownloadManager';
+import appDownloadManager, {DownloadUrl} from '@lib/appDownloadManager';
 import {MediaEditorProps} from '@components/mediaEditor/mediaEditor';
 import {NumberPair} from '@components/mediaEditor/types';
+import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
 
 // console.log('Recorder', Recorder);
 
@@ -1041,8 +1042,8 @@ export default class ChatInput {
           'EditThisPhoto' :
           'EditThisVideo';
       },
-      onClick: () => this.editThisMedia(),
-      verify: () => this.editMessage && getMediaTypeForMessage(this.editMessage) === 'media'
+      onClick: () => this.editMediaWithEditor(),
+      verify: () => this.editMessage && getMediaTypeForMessage(this.editMessage) === 'media' && canEditMediaWithEditor(this.editMessage?.media)
     }, {
       icon: 'gift',
       text: 'GiftPremium',
@@ -4553,7 +4554,7 @@ export default class ChatInput {
     return element;
   }
 
-  private async getEditMediaElement() {
+  private async tryGetEditMediaElementFromChat() {
     const groupedId = this.editMessage?.grouped_id;
     const groupedMessages = groupedId ? await this.managers.appMessagesManager.getMessagesByGroupedId(groupedId) : undefined;
 
@@ -4576,35 +4577,60 @@ export default class ChatInput {
 
     if(!(mediaElement instanceof HTMLImageElement || mediaElement instanceof HTMLVideoElement)) return void console.log('my-debug no media element');
 
+    const bcr = mediaElement.getBoundingClientRect();
+    if(!bcr.width || !bcr.height) return void console.log('my-debug no dimensions');
+
+    const bubblesBcr = this.chat.bubbles.container.getBoundingClientRect();
+
+    if(bcr.top < bubblesBcr.top || bcr.bottom > bubblesBcr.bottom) return void console.log('my-debug out of bounds');
+
     return mediaElement;
   }
 
-  private async editThisMedia(): Promise<void> {
+  private async createMediaElementSourceForMedia(media: MessageMedia, url: string) {
+    if(media?._ !== 'messageMediaPhoto' || media?.photo?._ !== 'photo') return;
+
+    const result = await createImageSource(url);
+
+    return result;
+  }
+
+  private async editMediaWithEditor(): Promise<void> {
     if(!this.editMessage) return;
 
+    const media = this.editMessage.media;
 
-    const mediaElement = await this.getEditMediaElement();
+    const mediaElement = await this.tryGetEditMediaElementFromChat();
 
     console.log('my-debug media', mediaElement);
 
-    const media = this.editMessage.media;
     const payload = getOpenMediaPayload(media);
     if(!payload) return void console.log('my-debug no open media params');
 
     const mediaUrl = await payload.downloadMediaURL();
 
+    const createdMediaElement = !mediaElement ? await this.createMediaElementSourceForMedia(media, mediaUrl) : undefined;
+
+    if(!mediaElement && !createdMediaElement) {
+      return void console.log('my-debug no media element');
+    }
+
     const mediaBlobPromise = fetch(mediaUrl).then(response => response.blob()).catch((): null => null);
 
-    const {openMediaEditorFromMedia} = await import('@components/mediaEditor');
-    openMediaEditorFromMedia({
+    const {openMediaEditorFromMedia, openMediaEditorFromMediaNoAnimation} = await import('@components/mediaEditor');
+
+    const openEditor = mediaElement ? openMediaEditorFromMedia : openMediaEditorFromMediaNoAnimation;
+    const usedMediaElement = mediaElement || createdMediaElement;
+
+    openEditor({
       managers: this.managers,
       mediaSize: structuredClone(payload.size),
       mediaSrc: mediaUrl,
       mediaType: 'image',
       getMediaBlob: () => mediaBlobPromise,
-      rect: mediaElement.getBoundingClientRect(),
+      rect: usedMediaElement.getBoundingClientRect(),
       size: structuredClone(payload.size),
-      source: mediaElement,
+      source: usedMediaElement,
       onClose: () => { },
       onEditFinish: async(result) => {
         const mediaBlob = await mediaBlobPromise;
@@ -4626,15 +4652,20 @@ function getAttachIcon(isEditing?: boolean): Icon {
   return isEditing ? 'attach_edit' : 'attach';
 };
 
-function getOpenMediaPayload(media: MessageMedia) {
+function getOpenMediaPayload(media: MessageMedia | null | undefined) {
+  if(!media) return;
   if(media._ === 'messageMediaPhoto' && media.photo?._ === 'photo') return getOpenMediaPhotoPayload(media.photo);
   if(media._ === 'messageMediaDocument' && media.document?._ === 'document') return getOpenMediaVideoPayload(media.document);
+}
+
+function canEditMediaWithEditor(media: MessageMedia) {
+  return !!getOpenMediaPayload(media);
 }
 
 type OpenMediaPayload = {
   size: NumberPair;
   mediaType: MediaEditorProps['mediaType']
-  downloadMediaURL: () => Promise<string>;
+  downloadMediaURL: () => DownloadUrl;
 };
 
 function getOpenMediaPhotoPayload(photo: Photo.photo): OpenMediaPayload {
@@ -4656,5 +4687,10 @@ function getOpenMediaPhotoPayload(photo: Photo.photo): OpenMediaPayload {
 }
 
 function getOpenMediaVideoPayload(document: Document.document) {
+}
 
+async function createImageSource(url: string) {
+  const img = new Image();
+  await renderImageFromUrlPromise(img, url);
+  return img;
 }
