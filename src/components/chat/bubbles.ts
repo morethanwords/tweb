@@ -233,6 +233,7 @@ export type BubbleContext = {
   isOut: boolean,
   canHaveTail: boolean,
   isStandaloneMedia: boolean,
+  mediaRequiresMessageDiv: boolean,
 
   // * something extra
   releaseDice?: (value: number) => void
@@ -6624,7 +6625,7 @@ export default class ChatBubbles {
       ) : undefined;
 
     let isMessageEmpty = !messageMessage && !isSponsored && !factCheck/*  && (!topicNameButtonContainer || isStandaloneMedia) */;
-    let mediaRequiresMessageDiv = false;
+    context.mediaRequiresMessageDiv = false;
 
     context.canHaveTail = true;
     let canHavePlainMediaTail = false;
@@ -7619,7 +7620,7 @@ export default class ChatBubbles {
               );
             }
 
-            mediaRequiresMessageDiv = true;
+            context.mediaRequiresMessageDiv = true;
             const addClassName = (!(['photo', 'pdf'] as MyDocument['type'][]).includes(doc.type) ? doc.type || 'document' : 'document') + '-message';
             bubble.classList.add(addClassName);
 
@@ -7685,7 +7686,7 @@ export default class ChatBubbles {
 
           noAttachmentDivNeeded = true;
 
-          mediaRequiresMessageDiv = true;
+          context.mediaRequiresMessageDiv = true;
           bubble.classList.add('call-message');
           messageDiv.append(div);
 
@@ -7729,7 +7730,7 @@ export default class ChatBubbles {
 
           contactDiv.prepend(avatarElem.node);
 
-          mediaRequiresMessageDiv = true;
+          context.mediaRequiresMessageDiv = true;
           bubble.classList.add('contact-message');
           messageDiv.append(contactDiv);
 
@@ -7737,7 +7738,7 @@ export default class ChatBubbles {
         }
 
         case 'messageMediaPoll': {
-          mediaRequiresMessageDiv = true;
+          context.mediaRequiresMessageDiv = true;
 
           const pollElement = wrapPoll({
             message: message as Message.message,
@@ -7752,7 +7753,7 @@ export default class ChatBubbles {
           break;
         }
         case 'messageMediaToDo': {
-          mediaRequiresMessageDiv = true;
+          context.mediaRequiresMessageDiv = true;
 
           const content = document.createElement('div');
           content.classList.add('checklist-content');
@@ -7973,7 +7974,7 @@ export default class ChatBubbles {
 
           if(!isInvoice) {}
           else if(!richText) context.canHaveTail = false;
-          else mediaRequiresMessageDiv = true;
+          else context.mediaRequiresMessageDiv = true;
           bubble.classList.add('is-invoice');
 
           break;
@@ -7982,7 +7983,7 @@ export default class ChatBubbles {
         case 'messageMediaGeoLive':
         case 'messageMediaVenue':
         case 'messageMediaGeo': {
-          const _canHaveTail = wrapGeo({
+          const result = wrapGeo({
             attachmentDiv: context.attachmentDiv,
             bubble,
             loadPromises,
@@ -7995,10 +7996,8 @@ export default class ChatBubbles {
             wrapOptions
           });
 
-          if(_canHaveTail !== undefined) {
-            context.canHaveTail = _canHaveTail;
-          }
-
+          context.canHaveTail = result.canHaveTail ?? context.canHaveTail;
+          context.mediaRequiresMessageDiv = result.mediaRequiresMessageDiv ?? context.mediaRequiresMessageDiv;
           break;
         }
 
@@ -8010,7 +8009,7 @@ export default class ChatBubbles {
           if(replyContainer) {
             bubble.classList.add('is-expired-story');
             // attachmentDiv = replyContainer;
-            mediaRequiresMessageDiv = true;
+            context.mediaRequiresMessageDiv = true;
             messageDiv.append(replyContainer);
             messageDiv.classList.add('expired-story-message', 'is-empty');
             break;
@@ -8055,7 +8054,7 @@ export default class ChatBubbles {
             replyTo = undefined;
           }
 
-          mediaRequiresMessageDiv = true;
+          context.mediaRequiresMessageDiv = true;
           bubble.classList.add('is-giveaway');
           noAttachmentDivNeeded = true;
           const button = this.makeViewButton({text: 'BoostingHowItWork'});
@@ -8129,7 +8128,7 @@ export default class ChatBubbles {
 
         default:
           context.attachmentDiv = undefined;
-          mediaRequiresMessageDiv = true;
+          context.mediaRequiresMessageDiv = true;
           noAttachmentDivNeeded = true;
           messageDiv.replaceChildren(i18n(UNSUPPORTED_LANG_PACK_KEY));
           bubble.timeAppenders[0].callback();
@@ -8154,8 +8153,8 @@ export default class ChatBubbles {
       }
     }
 
-    const isFloatingTime = timeSpan && ((isMessageEmpty && !mediaRequiresMessageDiv) || (invertMedia && !processedWebPage));
-    if(isMessageEmpty && !mediaRequiresMessageDiv) {
+    const isFloatingTime = timeSpan && ((isMessageEmpty && !context.mediaRequiresMessageDiv) || (invertMedia && !processedWebPage));
+    if(isMessageEmpty && !context.mediaRequiresMessageDiv) {
       messageDiv.remove();
       bubble.classList.add('is-message-empty');
     } else {
