@@ -505,6 +505,7 @@ export default class MTPNetworker {
     }
 
     transport.networker = this;
+    transport.noScheduler = true;
 
     if(import.meta.env.VITE_MTPROTO_HAS_HTTP) {
       if(!import.meta.env.VITE_MTPROTO_HAS_WS || transport instanceof HTTP) {

@@ -4,7 +4,6 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type MTPNetworker from '@lib/mtproto/networker';
 import type {DcId, TrueDcId} from '@types';
 import pause from '@helpers/schedulers/pause';
 import {logger, LogTypes} from '@lib/logger';
@@ -16,7 +15,7 @@ import transportController from '@lib/mtproto/transports/controller';
 const TEST_DROPPING_REQUESTS: TrueDcId = undefined;
 
 export default class HTTP implements MTTransport {
-  public networker: MTPNetworker;
+  public noScheduler: boolean;
   private log: ReturnType<typeof logger>;
 
   private pending: Array<{
@@ -30,7 +29,11 @@ export default class HTTP implements MTTransport {
   private destroyed: boolean;
   private debug: boolean;
 
-  constructor(protected dcId: DcId, protected url: string, logSuffix: string) {
+  constructor(
+    protected dcId: DcId,
+    protected url: string,
+    logSuffix: string
+  ) {
     this.debug = Modes.debug && false;
 
     let logTypes = LogTypes.Error | LogTypes.Log;
@@ -42,14 +45,19 @@ export default class HTTP implements MTTransport {
     this.connected = false;
   }
 
-  public _send(body: Uint8Array, mode?: RequestMode) {
+  public _send(
+    body: Uint8Array,
+    mode?: RequestMode,
+    timeoutMs = 30000
+  ) {
     this.debug && this.log.debug('-> body length to send:', body.length);
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30e3);
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     // networkStats.addSent(this.dcId, length);
-    return fetch(this.url, {method: 'POST', body, mode, signal: controller.signal}).then(async(response) => {
+    return fetch(this.url, {method: 'POST', body, mode, signal: controller.signal})
+    .then(async(response) => {
       if(response.status !== 200 && !mode) {
         response.arrayBuffer().then((buffer) => {
           this.log.error('not 200',
@@ -98,7 +106,7 @@ export default class HTTP implements MTTransport {
   }
 
   public send(body: Uint8Array) {
-    if(this.networker) {
+    if(this.noScheduler) {
       return this._send(body);
     } else {
       const promise = new Promise<typeof body>((resolve, reject) => {
@@ -111,6 +119,9 @@ export default class HTTP implements MTTransport {
     }
   }
 
+  /**
+   * ! will resend the request on error
+   */
   private async releasePending() {
     if(this.releasing) return;
 
