@@ -607,7 +607,10 @@ export class AppImManager extends EventListenerBase<{
         tab.accountNumber === currentTab.accountNumber &&
         tab.id !== currentTab.id
       );
-      if(!currentTab.idleStartTime || accountOtherTabs.every((tab) => tab.idleStartTime < currentTab.idleStartTime)) {
+      if(
+        !currentTab.idleStartTime ||
+        accountOtherTabs.every((tab) => (tab.idleStartTime || Infinity) < currentTab.idleStartTime)
+      ) {
         this.audioAssetPlayer.playWithThrottle({name: 'message_sent', volume: 0.2}, 300);
       }
     });
