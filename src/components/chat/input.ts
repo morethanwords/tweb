@@ -152,6 +152,8 @@ import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
 import AttachMenuButton from './attachMenuButton';
 import pause from '@helpers/schedulers/pause';
 import {Middleware} from '@helpers/middleware';
+import onMediaLoad from '@helpers/onMediaLoad';
+import createVideo from '@helpers/dom/createVideo';
 
 // console.log('Recorder', Recorder);
 
@@ -176,8 +178,9 @@ export type ChatInputReplyTo = Pick<MessageSendingParams, 'replyToMsgId' | 'repl
 const CLASS_NAME = 'chat-input';
 const PEER_EXCEPTIONS = new Set<ChatType>([ChatType.Scheduled, ChatType.Stories, ChatType.Saved]);
 
-type WatchDownloadProgressArgs = {
+type WatchDownloadProgressArgs<T> = {
   getDownloadPromise: () => DownloadUrl;
+  getResult: () => Promise<T>;
   middleware: Middleware;
   cancel: () => void;
 };
@@ -4601,14 +4604,6 @@ export default class ChatInput {
     return mediaElement;
   }
 
-  private async createMediaElementSourceForMedia(media: MessageMedia, url: string) {
-    if(media?._ !== 'messageMediaPhoto' || media?.photo?._ !== 'photo') return;
-
-    const result = await createImageSource(url);
-
-    return result;
-  }
-
   private async editMediaWithEditor(): Promise<void> {
     if(!this.editMessage) return;
 
@@ -4624,19 +4619,29 @@ export default class ChatInput {
     const middlewareHelper = this.getMiddleware().create();
     const middleware = middlewareHelper.get();
 
-    const {mediaUrl, waitBeforeCleanup} = await this.watchDownloadProgress({
-      getDownloadPromise: payload.downloadMediaURL,
+    let downloadPromise: DownloadUrl;
+    const {result, waitBeforeCleanup} = await this.watchDownloadProgress({
+      getDownloadPromise: () => (downloadPromise = payload.downloadMediaURL()),
+      getResult: async() => {
+        const mediaUrl = await downloadPromise;
+        let createdMediaElement: HTMLVideoElement | HTMLImageElement;
+        try {
+          createdMediaElement = !mediaElement ? await payload.createCanvasSource(mediaUrl, middleware) : undefined;
+        } catch{}
+
+        return {mediaUrl, createdMediaElement};
+      },
       middleware,
-      cancel: middlewareHelper.destroy
+      cancel: () => middlewareHelper.destroy()
     });
 
-    if(!mediaUrl) {
-      return void console.log('my-debug no media url');
+    if(!result) {
+      return void console.log('my-debug no download result');
     }
 
-    const createdMediaElement = !mediaElement ? await this.createMediaElementSourceForMedia(media, mediaUrl) : undefined;
-
     if(!middleware()) return;
+
+    const {mediaUrl, createdMediaElement} = result;
 
     if(!mediaElement && !createdMediaElement) {
       return void console.log('my-debug no media element');
@@ -4659,7 +4664,7 @@ export default class ChatInput {
       managers: this.managers,
       mediaSize: structuredClone(payload.size),
       mediaSrc: mediaUrl,
-      mediaType: 'image',
+      mediaType: payload.mediaType,
       getMediaBlob: () => mediaBlobPromise,
       rect: usedMediaElement.getBoundingClientRect(),
       size: structuredClone(payload.size),
@@ -4680,10 +4685,10 @@ export default class ChatInput {
     });
   }
 
-  private async watchDownloadProgress({getDownloadPromise, middleware, cancel}: WatchDownloadProgressArgs) {
+  private async watchDownloadProgress<T>({getDownloadPromise, getResult, middleware, cancel}: WatchDownloadProgressArgs<T>) {
     const minProgress = 0.1;
 
-    let mediaUrl: string, wasLoading = false, timeout: number, waitBeforeCleanup: () => Promise<void> = async() => {};
+    let result: T, wasLoading = false, timeout: number, waitBeforeCleanup: () => Promise<void> = async() => {};
 
     let currentProgress = minProgress;
 
@@ -4709,8 +4714,6 @@ export default class ChatInput {
         });
       });
 
-      mediaUrl = await downloadPromise;
-
       // Late start in case the media is cached
       timeout = self.setTimeout(() => {
         wasLoading = true;
@@ -4721,7 +4724,9 @@ export default class ChatInput {
             cancel();
           }
         });
-      }, 250);
+      }, 120);
+
+      result = await getResult();
     } finally {
       self.clearTimeout(timeout);
 
@@ -4736,7 +4741,7 @@ export default class ChatInput {
       }
     }
 
-    return {mediaUrl, waitBeforeCleanup};
+    return {result, waitBeforeCleanup};
   }
 }
 
@@ -4753,6 +4758,7 @@ function canEditMediaWithEditor(media: MessageMedia) {
 type OpenMediaPayload = {
   size: NumberPair;
   mediaType: MediaEditorProps['mediaType']
+  createCanvasSource: (url: string, middleware: Middleware) => Promise<HTMLImageElement | HTMLVideoElement>;
   downloadMediaURL: () => DownloadUrl;
 };
 
@@ -4766,6 +4772,7 @@ function getOpenMediaPhotoPayload(photo: Photo.photo): OpenMediaPayload {
   return {
     size: [fullPhotoSize.w, fullPhotoSize.h],
     mediaType: 'image',
+    createCanvasSource: createImageSource,
     downloadMediaURL: () =>
       appDownloadManager.downloadMediaURL({
         media: photo,
@@ -4774,11 +4781,49 @@ function getOpenMediaPhotoPayload(photo: Photo.photo): OpenMediaPayload {
   };
 }
 
-function getOpenMediaVideoPayload(document: Document.document) {
+function getOpenMediaVideoPayload(document: Document.document): OpenMediaPayload {
+  const videoSizes = (document.video_thumbs || document.thumbs || []).slice().filter((size) => (size as PhotoSize.photoSize).w) as PhotoSize.photoSize[];
+  videoSizes.sort((a, b) => b.size - a.size);
+
+  const fullSize = videoSizes?.[0];
+
+  if(!fullSize?.w || !fullSize?.h) return;
+
+  return {
+    size: [fullSize.w, fullSize.h],
+    mediaType: 'video',
+    createCanvasSource: createVideoSource,
+    downloadMediaURL: () =>
+      appDownloadManager.downloadMediaURL({
+        media: document,
+        thumb: undefined
+      })
+  };
 }
 
 async function createImageSource(url: string) {
   const img = new Image();
   await renderImageFromUrlPromise(img, url);
   return img;
+}
+
+async function createVideoSource(url: string, middleware: Middleware) {
+  const video = createVideo({middleware});
+
+  video.playsInline = true;
+  video.src = url;
+  video.controls = false;
+  video.muted = true;
+  video.preload = 'auto';
+
+  const deferred = deferredPromise<void>();
+  video.requestVideoFrameCallback(() => {
+    deferred.resolve();
+  });
+
+  await onMediaLoad(video);
+
+  await deferred;
+
+  return video;
 }

@@ -10,11 +10,8 @@
 .Icon {
   transition: opacity 0.2s;
 
-  &.floating {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+  &.close {
+    transform: scale(0.8);
   }
 
   &.hidden {

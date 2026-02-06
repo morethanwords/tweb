@@ -60,10 +60,16 @@ const AttachMenuButton = defineSolidElement({
           <Show when={props.isLoading}>
             <span ref={setLoadingContainer} class={styles.LoadingContainer}>
               <IconTsx
-                class={`${styles.Icon} button-icon`}
+                class={`${styles.Icon} ${styles.close} button-icon`}
                 icon='close'
               />
-              <ProgressCircleSVG class={styles.Loader} progress={props.loadingProgress} strokeThickness={1 / 10} stroke='currentColor' />
+              <ProgressCircleSVG
+                class={styles.Loader}
+                progress={props.loadingProgress}
+                strokeThickness={1 / 10}
+                stroke='currentColor'
+                animate
+              />
             </span>
           </Show>
         </Transition>

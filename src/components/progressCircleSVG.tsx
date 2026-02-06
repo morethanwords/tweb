@@ -12,6 +12,7 @@ type Props = {
    */
   strokeThickness: number;
   withText?: boolean;
+  animate?: boolean;
 };
 
 const diameter = 120;
@@ -24,6 +25,7 @@ export const ProgressCircleSVG = (props: Props) => {
   const circumference = createMemo(() => 2 * Math.PI * radius());
 
   const strokeDashoffset = () => circumference() - props.progress * circumference();
+  const transition = () => props.animate ? 'stroke-dashoffset linear 0.2s' : undefined;
 
   return (
     <svg class={props.class} width="100%" height="100%" viewBox={`0 0 ${diameter} ${diameter}`}>
@@ -38,7 +40,7 @@ export const ProgressCircleSVG = (props: Props) => {
         stroke-dashoffset={strokeDashoffset()}
         stroke-linecap="round"
         style={{
-          'transition': 'stroke-dashoffset linear 0.2s',
+          'transition': transition(),
           'transform': 'rotate(-90deg)',
           'transform-origin': '50% 50%'
         }}

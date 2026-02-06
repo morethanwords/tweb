@@ -155,9 +155,9 @@ async function removeWithFade(imageCanvas: HTMLCanvasElement) {
   await imageCanvas.animate({
     opacity: [1, 0]
   }, {
-    duration: 120,
+    duration: 400,
     fill: 'forwards',
-    easing: 'ease-in-out'
+    easing: 'ease-in'
   }).finished;
   imageCanvas.remove();
 }
