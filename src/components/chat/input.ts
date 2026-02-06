@@ -149,6 +149,9 @@ import appDownloadManager, {DownloadUrl} from '@lib/appDownloadManager';
 import {MediaEditorProps} from '@components/mediaEditor/mediaEditor';
 import {NumberPair} from '@components/mediaEditor/types';
 import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
+import AttachMenuButton from './attachMenuButton';
+import pause from '@helpers/schedulers/pause';
+import {Middleware} from '@helpers/middleware';
 
 // console.log('Recorder', Recorder);
 
@@ -172,6 +175,12 @@ export type ChatInputReplyTo = Pick<MessageSendingParams, 'replyToMsgId' | 'repl
 
 const CLASS_NAME = 'chat-input';
 const PEER_EXCEPTIONS = new Set<ChatType>([ChatType.Scheduled, ChatType.Stories, ChatType.Saved]);
+
+type WatchDownloadProgressArgs = {
+  getDownloadPromise: () => DownloadUrl;
+  middleware: Middleware;
+  cancel: () => void;
+};
 
 export default class ChatInput {
   // private static AUTO_COMPLETE_REG_EXP = /(\s|^)((?::|.)(?!.*[:@]).*|(?:[@\/]\S*))$/;
@@ -197,7 +206,7 @@ export default class ChatInput {
 
   private replyKeyboard: ReplyKeyboard;
 
-  public attachMenu: HTMLElement;
+  public attachMenu: InstanceType<typeof AttachMenuButton>;
   private attachMenuButtons: ButtonMenuItemOptionsVerifiable[];
 
   public btnSuggestPost: HTMLElement;
@@ -1094,7 +1103,10 @@ export default class ChatInput {
     }];
 
     const attachMenuButtons = this.attachMenuButtons.slice();
-    this.attachMenu = ButtonMenuToggle({
+    this.attachMenu = new AttachMenuButton;
+
+    ButtonMenuToggle({
+      container: this.attachMenu,
       buttonOptions: {noRipple: true},
       listenerSetter: this.listenerSetter,
       direction: 'top-left',
@@ -1152,7 +1164,6 @@ export default class ChatInput {
       }
     });
     this.attachMenu.classList.add('attach-file');
-    this.attachMenu.firstElementChild.replaceWith(Icon(getAttachIcon()));
 
     this.btnSuggestPost = ButtonIcon('suggested hide');
     attachClickEvent(this.btnSuggestPost, wrapAsyncClickHandler(async() => {
@@ -3708,7 +3719,9 @@ export default class ChatInput {
     });
 
     createEffect(on(() => store.isEditing, (isEditing) => {
-      this.attachMenu.firstElementChild.replaceChildren(Icon(getAttachIcon(isEditing)));
+      this.attachMenu.feedProps({
+        isEditing: isEditing
+      });
     }, {
       defer: true
     }));
@@ -4566,12 +4579,13 @@ export default class ChatInput {
     if(!bubble) return void console.log('my-debug no bubble');
 
     let mediaElement: Element;
-    const mediaSelectors = ['.media-video', '.media-photo']; // Prioritize video over photo, as there might be both (probably the photo is the thumbnail)
+    const mediaSelectors = ['.media-video', '.media-container-aspecter .media-photo', '.media-photo']; // Prioritize video over photo, as there might be both (probably the photo is the thumbnail)
     const getMedia = (element: Element) => mediaSelectors.map(selector => element.querySelector(selector)).filter(Boolean)[0];
     if(groupedId) {
       const groupedItem = bubble.querySelector(`.grouped-item[data-mid="${this.editMessage.mid}"]`);
       mediaElement = getMedia(groupedItem);
     } else {
+      console.log('my-debug getting from bubble', bubble)
       mediaElement = getMedia(bubble);
     }
 
@@ -4607,9 +4621,22 @@ export default class ChatInput {
     const payload = getOpenMediaPayload(media);
     if(!payload) return void console.log('my-debug no open media params');
 
-    const mediaUrl = await payload.downloadMediaURL();
+    const middlewareHelper = this.getMiddleware().create();
+    const middleware = middlewareHelper.get();
+
+    const {mediaUrl, waitBeforeCleanup} = await this.watchDownloadProgress({
+      getDownloadPromise: payload.downloadMediaURL,
+      middleware,
+      cancel: middlewareHelper.destroy
+    });
+
+    if(!mediaUrl) {
+      return void console.log('my-debug no media url');
+    }
 
     const createdMediaElement = !mediaElement ? await this.createMediaElementSourceForMedia(media, mediaUrl) : undefined;
+
+    if(!middleware()) return;
 
     if(!mediaElement && !createdMediaElement) {
       return void console.log('my-debug no media element');
@@ -4619,8 +4646,14 @@ export default class ChatInput {
 
     const {openMediaEditorFromMedia, openMediaEditorFromMediaNoAnimation} = await import('@components/mediaEditor');
 
+    if(!middleware()) return;
+
     const openEditor = mediaElement ? openMediaEditorFromMedia : openMediaEditorFromMediaNoAnimation;
     const usedMediaElement = mediaElement || createdMediaElement;
+
+    waitBeforeCleanup().then(() => {
+      middlewareHelper.destroy();
+    });
 
     openEditor({
       managers: this.managers,
@@ -4644,13 +4677,68 @@ export default class ChatInput {
 
         popup.show(false);
       }
-    })
+    });
+  }
+
+  private async watchDownloadProgress({getDownloadPromise, middleware, cancel}: WatchDownloadProgressArgs) {
+    const minProgress = 0.1;
+
+    let mediaUrl: string, wasLoading = false, timeout: number, waitBeforeCleanup: () => Promise<void> = async() => {};
+
+    let currentProgress = minProgress;
+
+    try {
+      const downloadPromise = getDownloadPromise();
+
+      middleware.onDestroy(() => {
+        downloadPromise.cancel?.();
+
+        if(!wasLoading) return;
+        this.attachMenu.feedProps({
+          isLoading: false,
+          loadingProgress: undefined,
+          onCancel: undefined
+        });
+      });
+
+      downloadPromise.addNotifyListener((details: {done: number, total: number}) => {
+        if(!middleware()) return;
+
+        this.attachMenu.feedProps({
+          loadingProgress: currentProgress = Math.max(minProgress, details.done / details.total) || minProgress
+        });
+      });
+
+      mediaUrl = await downloadPromise;
+
+      // Late start in case the media is cached
+      timeout = self.setTimeout(() => {
+        wasLoading = true;
+        this.attachMenu.feedProps({
+          isLoading: true,
+          loadingProgress: currentProgress,
+          onCancel: () => {
+            cancel();
+          }
+        });
+      }, 250);
+    } finally {
+      self.clearTimeout(timeout);
+
+      if(wasLoading) {
+        this.attachMenu.feedProps({
+          loadingProgress: 1
+        });
+
+        await pause(150); // wait for the loading animation to animate to full
+
+        waitBeforeCleanup = () => pause(400);
+      }
+    }
+
+    return {mediaUrl, waitBeforeCleanup};
   }
 }
-
-function getAttachIcon(isEditing?: boolean): Icon {
-  return isEditing ? 'attach_edit' : 'attach';
-};
 
 function getOpenMediaPayload(media: MessageMedia | null | undefined) {
   if(!media) return;
