@@ -577,6 +577,7 @@
     &:not(.header-filled) {
       .sidebar-header {
         background-color: transparent;
+        pointer-events: none;
 
         &__title {
           opacity: 0;
@@ -585,6 +586,10 @@
 
         &:after {
           opacity: 0;
+        }
+
+        .btn-icon {
+          pointer-events: all;
         }
       }
 

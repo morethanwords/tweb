@@ -45,6 +45,8 @@ import {IconTsx} from './iconTsx';
 import {MyDocument} from '../lib/appManagers/appDocsManager';
 import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
 import {wrapSolidComponent} from '../helpers/solid/wrapSolidComponent';
+import PopupStarGiftInfo from './popups/starGiftInfo';
+import PopupElement from './popups';
 
 type PeerProfileContextValue = {
   peerId: PeerId,
@@ -470,6 +472,10 @@ PeerProfile.PinnedGifts = () => {
         height: 30,
         div
       }).then((r) => r.render);
+      attachClickEvent(div, (e) => {
+        cancelEvent(e)
+        PopupElement.createPopup(PopupStarGiftInfo, {gift})
+      })
       return div;
     });
 

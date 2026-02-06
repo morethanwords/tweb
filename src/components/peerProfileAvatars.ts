@@ -737,7 +737,7 @@ export default class PeerProfileAvatars {
       'header-filled',
       (!this.hasBackgroundColor && this.isCollapsed() && this.scrollable.scrollPosition >= 5) ||
         !this.isCollapsed() ||
-        this.scrollable.scrollPosition >= 240
+        this.scrollable.scrollPosition >= 200
     );
   }
 
