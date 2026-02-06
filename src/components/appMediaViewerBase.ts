@@ -79,6 +79,7 @@ import {createRoot, createResource, createEffect, createMemo} from 'solid-js';
 import readBlobAsText from '@helpers/blob/readBlobAsText';
 import {Storyboard, StoryboardFrame} from '@lib/mediaPlayer/preview';
 import apiManagerProxy from '@lib/apiManagerProxy';
+import cloneDOMRect from '../helpers/dom/cloneDOMRect';
 
 const ZOOM_STEP = 0.5;
 const ZOOM_INITIAL_VALUE = 1;
@@ -1040,7 +1041,7 @@ export default class AppMediaViewerBase<
 
     let realParent: HTMLElement;
 
-    let rect: DOMRect;
+    let rect: DOMRectEditable;
     if(target) {
       if(findUpAvatar(target) || target.classList.contains('grid-item')/*  || target.classList.contains('document-ico') */) {
         realParent = target;
@@ -1050,7 +1051,10 @@ export default class AppMediaViewerBase<
         rect = realParent.getBoundingClientRect();
       } else if(target.classList.contains('profile-avatars-avatar')) {
         realParent = findUpClassName(target, 'profile-avatars-container');
-        rect = realParent.getBoundingClientRect();
+        rect = cloneDOMRect(realParent.getBoundingClientRect())
+        // offset for header
+        rect.top += 56
+        rect.height -= 56
 
         // * if not active avatar
         if(closing && target.getBoundingClientRect().left !== rect.left) {
@@ -1459,7 +1463,7 @@ export default class AppMediaViewerBase<
     }
   }
 
-  protected setFullAspect(aspecter: HTMLDivElement, containerRect: DOMRect, rect: DOMRect) {
+  protected setFullAspect(aspecter: HTMLDivElement, containerRect: DOMRect, rect: DOMRectEditable) {
     /* let media = aspecter.firstElementChild;
     let proportion: number;
     if(media instanceof HTMLImageElement) {

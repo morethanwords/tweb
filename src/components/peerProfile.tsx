@@ -41,6 +41,10 @@ import {resolveFirst} from '@solid-primitives/refs';
 import differenceInYears from '@helpers/date/differenceInYears';
 import prepareTextWithEntitiesForCopying from '@helpers/prepareTextWithEntitiesForCopying';
 import generateVerifiedIcon from '@components/generateVerifiedIcon';
+import {IconTsx} from './iconTsx';
+import {MyDocument} from '../lib/appManagers/appDocsManager';
+import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
+import {wrapSolidComponent} from '../helpers/solid/wrapSolidComponent';
 
 type PeerProfileContextValue = {
   peerId: PeerId,
@@ -57,6 +61,7 @@ type PeerProfileContextValue = {
   isTopic: boolean,
   isBotforum: boolean,
   needSimpleAvatar: boolean,
+  hasSavedMusic: boolean,
   getDetailsForUse: () => {peerId: PeerId, threadId?: number},
   verifyContext: (peerId: PeerId, threadId?: number) => boolean,
 };
@@ -126,6 +131,9 @@ const PeerProfile = (props: {
     get needSimpleAvatar() {
       return value.isTopic;
     },
+    get hasSavedMusic() {
+      return !!(value.fullPeer as UserFull)?.saved_music
+    },
     canBeDetailed: () => value.peerId !== rootScope.myId || !value.isDialog,
     getDetailsForUse: () => {
       const {peerId, threadId} = value;
@@ -176,6 +184,7 @@ const PeerProfile = (props: {
       <div
         class={classNames(
           'profile-content',
+          value.hasSavedMusic && 'has-music',
           value.peerId === rootScope.myId && 'is-me'
         )}
       >
@@ -207,6 +216,7 @@ PeerProfile.Avatar = () => {
   const subtitle = (<PeerProfile.Subtitle />) as HTMLElement;
 
   if(!context.needSimpleAvatar) {
+    const middleware = createMiddleware()
     const avatars = new PeerProfileAvatars(
       context.scrollable,
       rootScope.managers,
@@ -216,7 +226,8 @@ PeerProfile.Avatar = () => {
     avatars.setPeer(context.peerId);
     avatars.info.append(name, subtitle);
     avatars.container.append(
-      (<PeerProfile.PinnedGifts />) as HTMLElement
+      wrapSolidComponent(PeerProfile.PinnedGifts, middleware.get()),
+      wrapSolidComponent(PeerProfile.PinnedMusic, middleware.get()),
     );
 
     onCleanup(() => {
@@ -590,6 +601,37 @@ PeerProfile.PersonalChannel = () => {
     </Show>
   );
 };
+
+PeerProfile.PinnedMusic = () => {
+  const context = useContext(PeerProfileContext);
+
+  return (
+    <div class="profile-music-container">
+      <Show when={context.hasSavedMusic}>
+        {(() => {
+          const music = () => (context.fullPeer as UserFull).saved_music as MyDocument
+          const audioAttr = createMemo(() => music().attributes.find(it => it._ === 'documentAttributeAudio'))
+          const filenameAttr = createMemo(() => music().attributes.find(it => it._ === 'documentAttributeFilename'))
+          return (
+            <div class="profile-music">
+              <IconTsx icon="music" class="profile-music-icon" />
+              <Show when={audioAttr()?.performer}>
+                {performer => <span class="profile-music-performer">{wrapEmojiText(performer())}</span>}
+              </Show>
+              <span class={`profile-music-title ${audioAttr()?.performer ? '' : 'only-title'}`}>
+                <Show when={audioAttr()?.performer}>
+                  &nbsp;-&nbsp;
+                </Show>
+                {wrapEmojiText(audioAttr()?.title || filenameAttr().file_name)}
+              </span>
+              <IconTsx icon="next" />
+            </div>
+          )
+        })()}
+      </Show>
+    </div>
+  )
+}
 
 PeerProfile.Phone = () => {
   const context = useContext(PeerProfileContext);

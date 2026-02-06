@@ -204,8 +204,7 @@
   }
 
   @include respond-to(not-handhelds) {
-    --right-column-width: calc(#{$large-screen} / 4);
-    // --right-column-width: calc(400px);
+    --right-column-width: 400px;
 
     --chat-input-size: #{$chat-input-size};
     --chat-input-padding: #{$chat-padding};

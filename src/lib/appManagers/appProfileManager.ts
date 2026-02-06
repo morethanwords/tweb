@@ -147,8 +147,8 @@ export class AppProfileManager extends AppManager {
         userFull.wallpaper = this.appThemesManager.saveWallPaper(userFull.wallpaper);
 
         const botInfo = userFull.bot_info;
+        const referenceContext: ReferenceContext = {type: 'userFull', userId: id};
         if(botInfo) {
-          const referenceContext: ReferenceContext = {type: 'userFull', userId: id};
           botInfo.description_document = this.appDocsManager.saveDoc(botInfo.description_document, referenceContext);
           botInfo.description_photo = this.appPhotosManager.savePhoto(botInfo.description_photo, referenceContext);
         }
@@ -160,6 +160,9 @@ export class AppProfileManager extends AppManager {
             userFull.personal_channel_message,
             userFull.personal_channel_id
           );
+        }
+        if(userFull.saved_music) {
+          userFull.saved_music = this.appDocsManager.saveDoc(userFull.saved_music, referenceContext);
         }
 
         this.appNotificationsManager.savePeerSettings({
