@@ -7,7 +7,7 @@ import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 type SpawnImageCanvasArgs = {
   source: CanvasImageSource;
   rect: LocalDOMRect;
-  size: NumberPair;
+  animatedCanvasSize: NumberPair;
 };
 
 type LocalDOMRect = {
@@ -23,11 +23,11 @@ type OpenMediaEditorFromMediaNoAnimationArgs = Omit<MediaEditorProps, 'onCanvasR
 export function openMediaEditorFromMedia({
   source,
   rect,
-  size,
+  animatedCanvasSize: size,
   ...rest
 }: OpenMediaEditorFromMediaArgs) {
   const spawnedAnimatedImage = spawnAnimatedImage({
-    size,
+    animatedCanvasSize: size,
     rect,
     source
   });
@@ -47,7 +47,7 @@ export function openMediaEditorFromMedia({
 
 export function openMediaEditorFromMediaNoAnimation({
   source,
-  size,
+  animatedCanvasSize: size,
   ...rest
 }: OpenMediaEditorFromMediaNoAnimationArgs) {
   let spawnedImageCanvas: SpanImageCanvasResult;
@@ -60,7 +60,7 @@ export function openMediaEditorFromMediaNoAnimation({
       spawnedImageCanvas = spawnImageCanvas({
         rect: snapToRect(size, canvasBcr),
         source,
-        size
+        animatedCanvasSize: size
       });
 
       await fadeIn(spawnedImageCanvas.imageCanvas);
@@ -73,11 +73,11 @@ export function openMediaEditorFromMediaNoAnimation({
   }, SolidJSHotReloadGuardProvider);
 }
 
-function spawnAnimatedImage({rect, source, size}: SpawnImageCanvasArgs) {
+function spawnAnimatedImage({rect, source, animatedCanvasSize: size}: SpawnImageCanvasArgs) {
   const {imageCanvas, centerLeft, centerTop} = spawnImageCanvas({
     rect,
     source,
-    size
+    animatedCanvasSize: size
   });
 
   const [sourceWidth, sourceHeight] = size;
@@ -112,7 +112,7 @@ type SpanImageCanvasResult = ReturnType<typeof spawnImageCanvas>;
 function spawnImageCanvas({
   source,
   rect,
-  size
+  animatedCanvasSize: size
 }: SpawnImageCanvasArgs) {
   const imageCanvas = document.createElement('canvas');
   [imageCanvas.width, imageCanvas.height] = size;

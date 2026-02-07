@@ -4666,7 +4666,7 @@ export default class ChatInput {
       mediaType: payload.mediaType,
       getMediaBlob: () => mediaBlobPromise,
       rect: usedMediaElement.getBoundingClientRect(),
-      size: structuredClone(payload.size),
+      animatedCanvasSize: getSourceSize(usedMediaElement),
       source: usedMediaElement,
       onClose: () => { },
       onEditFinish: async(result) => {
@@ -4825,4 +4825,8 @@ async function createVideoSource(url: string, middleware: Middleware) {
   await deferred;
 
   return video;
+}
+
+function getSourceSize(source: HTMLVideoElement | HTMLImageElement): NumberPair {
+  return source instanceof HTMLVideoElement ? [source.videoWidth, source.videoHeight] : [source.naturalWidth, source.naturalHeight];
 }

@@ -47,7 +47,7 @@ const AttachMenuButton = defineSolidElement({
 
     return (
       <>
-        <Transition name='fade-2' mode="outin">
+        <Transition name='fade' mode="outin">
           <Show when={!props.isLoading}>
             <IconTsx
               class={`${styles.Icon} button-icon`}

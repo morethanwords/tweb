@@ -1161,13 +1161,12 @@ export default class PopupNewMedia extends PopupElement {
 
             const {openMediaEditorFromMedia} = await import('../mediaEditor');
 
-            const sourceSize: NumberPair = source instanceof HTMLVideoElement ? [source.videoWidth, source.videoHeight] : [source.naturalWidth, source.naturalHeight];
             this.isMediaEditorOpen = true;
 
             openMediaEditorFromMedia({
               source,
               rect: itemDiv.getBoundingClientRect(),
-              size: [params.width, params.height],
+              animatedCanvasSize: [params.width, params.height],
               mediaType: isVideo ? 'video' : 'image',
               mediaSrc: params.editResult?.originalSrc || params.objectURL,
               getMediaBlob: async() => file,
