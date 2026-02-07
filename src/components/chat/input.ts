@@ -145,7 +145,7 @@ import showFrozenPopup from '@components/popups/frozen';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
 import {setPeerColorToElement} from '@components/peerColors';
 import getMainGroupedMessage from '@lib/appManagers/utils/messages/getMainGroupedMessage';
-import appDownloadManager, {DownloadUrl} from '@lib/appDownloadManager';
+import appDownloadManager, {DownloadBlob} from '@lib/appDownloadManager';
 import {MediaEditorProps} from '@components/mediaEditor/mediaEditor';
 import {NumberPair} from '@components/mediaEditor/types';
 import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
@@ -180,7 +180,7 @@ const CLASS_NAME = 'chat-input';
 const PEER_EXCEPTIONS = new Set<ChatType>([ChatType.Scheduled, ChatType.Stories, ChatType.Saved]);
 
 type WatchDownloadProgressArgs<T> = {
-  getDownloadPromise: () => DownloadUrl;
+  getDownloadPromise: () => DownloadBlob;
   getResult: () => Promise<T>;
   middleware: Middleware;
   cancel: () => void;
@@ -4620,17 +4620,18 @@ export default class ChatInput {
     const middlewareHelper = this.getMiddleware().create();
     const middleware = middlewareHelper.get();
 
-    let downloadPromise: DownloadUrl;
+    let downloadPromise: DownloadBlob;
     const {result, waitBeforeCleanup} = await this.watchDownloadProgress({
-      getDownloadPromise: () => (downloadPromise = payload.downloadMediaURL()),
+      getDownloadPromise: () => (downloadPromise = payload.downloadMediaBlob()),
       getResult: async() => {
-        const mediaUrl = await downloadPromise;
+        const mediaBlob = await downloadPromise;
+        const mediaUrl = await apiManagerProxy.invoke('createObjectURL', mediaBlob);
         let createdMediaElement: HTMLVideoElement | HTMLImageElement;
         try {
           createdMediaElement = !mediaElement ? await payload.createCanvasSource(mediaUrl, middleware) : undefined;
         } catch{}
 
-        return {mediaUrl, createdMediaElement};
+        return {mediaBlob, mediaUrl, createdMediaElement};
       },
       middleware,
       cancel: () => middlewareHelper.destroy()
@@ -4642,13 +4643,11 @@ export default class ChatInput {
 
     if(!middleware()) return;
 
-    const {mediaUrl, createdMediaElement} = result;
+    const {mediaBlob, mediaUrl, createdMediaElement} = result;
 
     if(!mediaElement && !createdMediaElement) {
       return void console.log('my-debug no media element');
     }
-
-    const mediaBlobPromise = fetch(mediaUrl).then(response => response.blob()).catch((): null => null);
 
     const {openMediaEditorFromMedia, openMediaEditorFromMediaNoAnimation} = await import('@components/mediaEditor');
 
@@ -4665,14 +4664,12 @@ export default class ChatInput {
       managers: this.managers,
       mediaSrc: mediaUrl,
       mediaType: payload.mediaType,
-      getMediaBlob: () => mediaBlobPromise,
+      getMediaBlob: () => Promise.resolve(mediaBlob),
       rect: usedMediaElement.getBoundingClientRect(),
       animatedCanvasSize: getSourceSize(usedMediaElement),
       source: usedMediaElement,
       onClose: () => { },
       onEditFinish: async(result) => {
-        const mediaBlob = await mediaBlobPromise;
-
         const popup = new PopupNewMedia(this.chat, [
           {
             file: new File([mediaBlob], 'edited-media', {type: mediaBlob.type}),
@@ -4761,7 +4758,7 @@ function canEditMediaWithEditor(media: MessageMedia) {
 type OpenMediaPayload = {
   mediaType: MediaEditorProps['mediaType']
   createCanvasSource: (url: string, middleware: Middleware) => Promise<HTMLImageElement | HTMLVideoElement>;
-  downloadMediaURL: () => DownloadUrl;
+  downloadMediaBlob: () => DownloadBlob;
 };
 
 function getOpenMediaPhotoPayload(photo: Photo.photo): OpenMediaPayload {
@@ -4774,8 +4771,8 @@ function getOpenMediaPhotoPayload(photo: Photo.photo): OpenMediaPayload {
   return {
     mediaType: 'image',
     createCanvasSource: createImageSource,
-    downloadMediaURL: () =>
-      appDownloadManager.downloadMediaURL({
+    downloadMediaBlob: () =>
+      appDownloadManager.downloadMedia({
         media: photo,
         thumb: fullPhotoSize
       })
@@ -4788,8 +4785,8 @@ function getOpenMediaVideoPayload(document: Document.document): OpenMediaPayload
   return {
     mediaType: 'video',
     createCanvasSource: createVideoSource,
-    downloadMediaURL: () =>
-      appDownloadManager.downloadMediaURL({
+    downloadMediaBlob: () =>
+      appDownloadManager.downloadMedia({
         media: document,
         thumb: undefined
       })
