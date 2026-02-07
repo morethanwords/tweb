@@ -4690,8 +4690,6 @@ export default class ChatInput {
 
     let result: T, wasLoading = false, timeout: number, waitBeforeCleanup: () => Promise<void> = async() => {};
 
-    let currentProgress = minProgress;
-
     try {
       const downloadPromise = getDownloadPromise();
 
@@ -4710,7 +4708,7 @@ export default class ChatInput {
         if(!middleware()) return;
 
         this.attachMenu.feedProps({
-          loadingProgress: currentProgress = Math.max(minProgress, details.done / details.total) || minProgress
+          loadingProgress: Math.max(minProgress, details.done / details.total) || minProgress
         });
       });
 
@@ -4719,7 +4717,7 @@ export default class ChatInput {
         wasLoading = true;
         this.attachMenu.feedProps({
           isLoading: true,
-          loadingProgress: currentProgress,
+          loadingProgress: minProgress,
           onCancel: () => {
             cancel();
           }
@@ -4760,7 +4758,6 @@ function canEditMediaWithEditor(media: MessageMedia) {
 }
 
 type OpenMediaPayload = {
-  size: NumberPair;
   mediaType: MediaEditorProps['mediaType']
   createCanvasSource: (url: string, middleware: Middleware) => Promise<HTMLImageElement | HTMLVideoElement>;
   downloadMediaURL: () => DownloadUrl;
@@ -4774,7 +4771,6 @@ function getOpenMediaPhotoPayload(photo: Photo.photo): OpenMediaPayload {
   if(!fullPhotoSize?.w || !fullPhotoSize?.h) return;
 
   return {
-    size: [fullPhotoSize.w, fullPhotoSize.h],
     mediaType: 'image',
     createCanvasSource: createImageSource,
     downloadMediaURL: () =>
@@ -4794,7 +4790,6 @@ function getOpenMediaVideoPayload(document: Document.document): OpenMediaPayload
   if(!fullSize?.w || !fullSize?.h) return;
 
   return {
-    size: [fullSize.w, fullSize.h],
     mediaType: 'video',
     createCanvasSource: createVideoSource,
     downloadMediaURL: () =>

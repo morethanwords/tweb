@@ -47,32 +47,32 @@ const AttachMenuButton = defineSolidElement({
 
     return (
       <>
-        <Transition name='fade' mode="outin">
-          <Show when={!props.isLoading}>
+        {/* <Transition name='fade' mode="outin">*/}
+        <Show when={!props.isLoading}>
+          <IconTsx
+            class={`${styles.Icon} button-icon`}
+            classList={{
+              [styles.hidden]: props.isLoading
+            }}
+            icon={props.isEditing ? 'attach_edit' : 'attach'}
+          />
+        </Show>
+        <Show when={props.isLoading}>
+          <span ref={setLoadingContainer} class={styles.LoadingContainer}>
             <IconTsx
-              class={`${styles.Icon} button-icon`}
-              classList={{
-                [styles.hidden]: props.isLoading
-              }}
-              icon={props.isEditing ? 'attach_edit' : 'attach'}
+              class={`${styles.Icon} ${styles.close} button-icon`}
+              icon='close'
             />
-          </Show>
-          <Show when={props.isLoading}>
-            <span ref={setLoadingContainer} class={styles.LoadingContainer}>
-              <IconTsx
-                class={`${styles.Icon} ${styles.close} button-icon`}
-                icon='close'
-              />
-              <ProgressCircleSVG
-                class={styles.Loader}
-                progress={props.loadingProgress}
-                strokeThickness={1 / 10}
-                stroke='currentColor'
-                animate
-              />
-            </span>
-          </Show>
-        </Transition>
+            <ProgressCircleSVG
+              class={styles.Loader}
+              progress={props.loadingProgress}
+              strokeThickness={1 / 10}
+              stroke='currentColor'
+              animate
+            />
+          </span>
+        </Show>
+        {/* </Transition>*/}
       </>
     );
   }
