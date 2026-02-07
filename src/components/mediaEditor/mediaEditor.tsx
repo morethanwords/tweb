@@ -41,6 +41,15 @@ export function MediaEditor(props: MediaEditorProps) {
 
   let overlay: HTMLDivElement;
 
+  let isOverlayCounterCleaned = false;
+
+  function cleanupOverlayCounter() {
+    if(isOverlayCounterCleaned) return;
+
+    overlayCounter.isDarkOverlayActive = false;
+    isOverlayCounterCleaned = true;
+  }
+
   onMount(() => {
     (async() => {
       overlay.classList.add('media-editor__overlay--hidden');
@@ -57,7 +66,7 @@ export function MediaEditor(props: MediaEditorProps) {
     overlayCounter.isDarkOverlayActive = true;
 
     onCleanup(() => {
-      overlayCounter.isDarkOverlayActive = false;
+      cleanupOverlayCounter();
       appNavigationController.removeItem(navigationItem);
     });
   });
@@ -114,6 +123,7 @@ export function MediaEditor(props: MediaEditorProps) {
               const result = await createFinalResult()
               .finally(() => { isFinishing = false; });
 
+              cleanupOverlayCounter();
               props.onEditFinish(result);
               handleClose(true, result.isVideo);
             });
