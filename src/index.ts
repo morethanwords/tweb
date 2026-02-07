@@ -522,20 +522,22 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
     };
 
     if(data.isTest !== Modes.test) {
-      const urlSearchParams = new URLSearchParams(location.search);
+      const url = new URL(location.href);
       if(+params.tgWebAuthTest) {
-        urlSearchParams.set('test', '1');
+        url.searchParams.set('test', '1');
       } else {
-        urlSearchParams.delete('test');
+        url.searchParams.delete('test');
       }
 
-      location.search = urlSearchParams.toString();
+      appNavigationController.navigateToUrl(url.toString());
       return;
     }
 
     rootScope.managers.appStateManager.pushToState('authState', authState = {_: 'authStateSignImport', data});
+  }
 
-    // appNavigationController.overrideHash('?tgaddr=' + encodeURIComponent(params.tgaddr));
+  if(params.tgWebAuthToken) {
+    appNavigationController.overrideHash(params.tgaddr ? '#?tgaddr=' + encodeURIComponent(params.tgaddr) : '');
   }
 
   if(authState._ !== 'authStateSignedIn'/*  || 1 === 1 */) {
