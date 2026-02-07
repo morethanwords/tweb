@@ -3713,6 +3713,8 @@
 "PostsSearch.SearchFor" = "Search for %s";
 "PostsSearch.FreeUnlocksIn" = "free search unlocks in %s";
 "PostsSearch.StarsSpent" = "**%s** spent on extra search";
+"EditThisPhoto" = "Edit this photo";
+"EditThisVideo" = "Edit this video";
 "Login.Title" = "Sign in to Telegram";
 "Login.PhoneLabel" = "Phone Number";
 "Login.PhoneLabelInvalid" = "Phone Number Invalid";
