@@ -18,6 +18,7 @@ import {MediaType, NumberPair} from '@components/mediaEditor/types';
 import {delay, withCurrentOwner} from '@components/mediaEditor/utils';
 
 import '@components/mediaEditor/mediaEditor.scss';
+import overlayCounter from '@helpers/overlayCounter';
 
 
 export type MediaEditorProps = {
@@ -43,6 +44,7 @@ export function MediaEditor(props: MediaEditorProps) {
     (async() => {
       overlay.classList.add('media-editor__overlay--hidden');
       await doubleRaf();
+      overlay.focus();
       overlay.classList.remove('media-editor__overlay--hidden');
     })();
 
@@ -51,10 +53,10 @@ export function MediaEditor(props: MediaEditorProps) {
       onPop: () => handleClose()
     };
     appNavigationController.pushItem(navigationItem);
-
-    overlay.focus();
+    overlayCounter.isDarkOverlayActive = true;
 
     onCleanup(() => {
+      overlayCounter.isDarkOverlayActive = false;
       appNavigationController.removeItem(navigationItem);
     });
   });
