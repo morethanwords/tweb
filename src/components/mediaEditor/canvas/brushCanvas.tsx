@@ -72,17 +72,17 @@ export default function BrushCanvas() {
 
   const fullImageMultiplier = () =>
     Math.min(
-      editorState.canvasSize?.[0] / editorState.imageSize?.[0],
-      editorState.canvasSize?.[1] / editorState.imageSize?.[1]
+      editorState.canvasSize?.[0] / editorState.mediaSize?.[0],
+      editorState.canvasSize?.[1] / editorState.mediaSize?.[1]
     ) * 2 * editorState.pixelRatio;
 
-  const fullImageCanvas = (<canvas width={editorState.imageSize?.[0]} height={editorState.imageSize?.[1]} />) as HTMLCanvasElement;
+  const fullImageCanvas = (<canvas width={editorState.mediaSize?.[0]} height={editorState.mediaSize?.[1]} />) as HTMLCanvasElement;
   const gl = fullImageCanvas.getContext('webgl', {
     preserveDrawingBuffer: true
   });
 
   const fullBrushesCanvas = (
-    <canvas width={editorState.imageSize?.[0] * fullImageMultiplier()} height={editorState.imageSize?.[1] * fullImageMultiplier()} />
+    <canvas width={editorState.mediaSize?.[0] * fullImageMultiplier()} height={editorState.mediaSize?.[1] * fullImageMultiplier()} />
   ) as HTMLCanvasElement;
 
   let brushPainter = new BrushPainter({
@@ -145,7 +145,7 @@ export default function BrushCanvas() {
       ctx.rotate(transform.rotation);
       ctx.scale(transform.scale, transform.scale);
 
-      const [w, h] = editorState.imageSize;
+      const [w, h] = editorState.mediaSize;
       ctx.drawImage(fullBrushesCanvas, -(w / 2), -(h / 2), w, h);
 
       ctx.restore();
@@ -168,8 +168,8 @@ export default function BrushCanvas() {
       points: line.points.map(
         (point) =>
           [
-            (point[0] + editorState.imageSize?.[0] / 2) * fullImageMultiplier(),
-            (point[1] + editorState.imageSize?.[1] / 2) * fullImageMultiplier()
+            (point[0] + editorState.mediaSize?.[0] / 2) * fullImageMultiplier(),
+            (point[1] + editorState.mediaSize?.[1] / 2) * fullImageMultiplier()
           ] as NumberPair
       )
     };
@@ -185,8 +185,8 @@ export default function BrushCanvas() {
   }
 
   createEffect(
-    on(() => editorState.imageSize, () => {
-      if(!editorState.imageSize?.[0]) return;
+    on(() => editorState.mediaSize, () => {
+      if(!editorState.mediaSize?.[0]) return;
       fullBrushPainter = new BrushPainter({
         imageCanvas: fullImageCanvas,
         targetCanvas: fullBrushesCanvas,

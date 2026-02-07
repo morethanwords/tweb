@@ -1,12 +1,11 @@
-import {createEffect, createReaction, onCleanup, onMount} from 'solid-js';
-import {modifyMutable, produce} from 'solid-js/store';
-import createMiddleware from '@helpers/solid/createMiddleware';
 import {adjustmentsConfig, AdjustmentsConfig} from '@components/mediaEditor/adjustments';
+import initVideoPlayback from '@components/mediaEditor/canvas/initVideoPlayback';
 import {useMediaEditorContext} from '@components/mediaEditor/context';
-import {cleanupWebGl, withCurrentOwner} from '@components/mediaEditor/utils';
+import {cleanupWebGl, snapToAvailableQuality, withCurrentOwner} from '@components/mediaEditor/utils';
 import {draw} from '@components/mediaEditor/webgl/draw';
 import {initWebGL} from '@components/mediaEditor/webgl/initWebGL';
-import initVideoPlayback from '@components/mediaEditor/canvas/initVideoPlayback';
+import createMiddleware from '@helpers/solid/createMiddleware';
+import {batch, createEffect, createReaction, onCleanup, onMount} from 'solid-js';
 
 
 function drawAdjustedImage(gl: WebGLRenderingContext) {
@@ -51,10 +50,12 @@ export default function ImageCanvas() {
   async function init() {
     const payload = await initWebGL({gl, mediaSrc, mediaType, videoTime: mediaState.currentVideoTime, middleware});
 
-    modifyMutable(editorState, produce(state => {
-      state.renderingPayload = payload;
-      state.imageSize = [payload.media.width, payload.media.height];
-    }));
+    batch(() => {
+      editorState.renderingPayload = payload;
+      editorState.mediaSize = [payload.media.width, payload.media.height];
+      editorState.mediaRatio = payload.media.width / payload.media.height;
+      mediaState.videoQuality = snapToAvailableQuality(payload.media.height);
+    });
 
     if(!mediaState.currentImageRatio) {
       const ratio = payload.media.width / payload.media.height;

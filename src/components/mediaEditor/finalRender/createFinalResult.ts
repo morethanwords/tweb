@@ -47,7 +47,7 @@ const log = logger('MediaEditor.createFinalResult');
 
 export async function createFinalResult(): Promise<MediaEditorFinalResult> {
   const context = useMediaEditorContext();
-  const {editorState, mediaState, mediaSrc, mediaType, imageRatio} = context;
+  const {editorState, mediaState, mediaSrc, mediaType} = context;
   const {resizableLayers, adjustments} = mediaState;
 
   const owner = getOwner();
@@ -65,7 +65,7 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
     newRatio: mediaState.currentImageRatio,
     scale: mediaState.scale,
     videoType,
-    imageRatio: imageRatio,
+    imageRatio: editorState.mediaRatio,
     cropOffset: cropOffset()
   });
 
@@ -76,7 +76,7 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
     newRatio: mediaState.currentImageRatio,
     scale: mediaState.scale,
     videoType,
-    imageRatio,
+    imageRatio: editorState.mediaRatio,
     cropOffset: cropOffset(),
     quality: willResultInVideo ? Math.min(maxQuality, mediaState.videoQuality) : undefined
   });

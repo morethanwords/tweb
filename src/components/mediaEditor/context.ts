@@ -65,7 +65,8 @@ export type MediaEditorState = {
 
   currentTab: string;
 
-  imageSize?: NumberPair;
+  mediaSize?: NumberPair;
+  mediaRatio?: number;
   canvasSize?: NumberPair;
   fixedImageRatioKey?: string;
   finalTransform: FinalTransform;
@@ -119,7 +120,7 @@ const getDefaultEditingMediaState = (props: MediaEditorProps): EditingMediaState
   videoCropLength: 1,
   videoThumbnailPosition: 0,
   videoMuted: false,
-  videoQuality: snapToAvailableQuality(props.mediaSize[1]),
+  videoQuality: 0,
 
   adjustments: Object.fromEntries(adjustmentsConfig.map(entry => [entry.key, 0])) as Record<AdjustmentKey, number>,
 
@@ -138,7 +139,7 @@ const getDefaultMediaEditorState = (): MediaEditorState => ({
 
   currentTab: 'adjustments',
 
-  imageSize: undefined,
+  mediaSize: undefined,
   canvasSize: undefined,
   fixedImageRatioKey: undefined,
   finalTransform: {
@@ -178,14 +179,12 @@ export type MediaEditorContextValue = {
   mediaSrc: string;
   mediaType: MediaType;
   getMediaBlob: () => Promise<Blob | null>;
-  mediaSize: NumberPair;
 
   mediaState: Store<EditingMediaState>;
   editorState: Store<MediaEditorState>;
   actions: EditorOverridableGlobalActions;
 
   hasModifications: Accessor<boolean>;
-  imageRatio: number;
 
   resizableLayersSeed: number;
 };
@@ -246,14 +245,12 @@ export function createContextValue(props: MediaEditorProps): MediaEditorContextV
     mediaSrc: props.mediaSrc,
     mediaType: props.mediaType,
     getMediaBlob: props.getMediaBlob,
-    mediaSize: props.mediaSize,
 
     mediaState,
     editorState,
     actions,
 
     hasModifications,
-    imageRatio: props.mediaSize[0] / props.mediaSize[1],
 
     // [0-1] make sure it's different even after reopening the editor, note that there might be some items in history!
     resizableLayersSeed: Math.random()

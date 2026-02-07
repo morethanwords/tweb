@@ -29,8 +29,7 @@ export type MediaEditorProps = {
   mediaSrc: string;
   mediaType: MediaType;
   getMediaBlob: () => Promise<Blob | null>;
-  mediaSize: NumberPair;
-  editingMediaState?: EditingMediaState
+  editingMediaState?: EditingMediaState;
 };
 
 export function MediaEditor(props: MediaEditorProps) {

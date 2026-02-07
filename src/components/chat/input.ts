@@ -4662,7 +4662,6 @@ export default class ChatInput {
 
     openEditor({
       managers: this.managers,
-      mediaSize: structuredClone(payload.size),
       mediaSrc: mediaUrl,
       mediaType: payload.mediaType,
       getMediaBlob: () => mediaBlobPromise,
