@@ -1,112 +1,178 @@
-import {animateValue} from '@helpers/animateValue';
-import deferredPromise from '@helpers/cancellablePromise';
-import {lerp} from '@helpers/lerp';
-import {doubleRaf} from '@helpers/schedulers';
-import type {AppManagers} from '@lib/managers';
+import {MediaEditorProps, openMediaEditor} from '@components/mediaEditor/mediaEditor';
+import {NumberPair} from '@components/mediaEditor/types';
+import {snapToViewport} from '@components/mediaEditor/utils';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
-import {EditingMediaState} from '@components/mediaEditor/context';
-import {MediaEditorFinalResult} from '@components/mediaEditor/finalRender/createFinalResult';
-import {openMediaEditor} from '@components/mediaEditor/mediaEditor';
-import {MediaType, NumberPair} from '@components/mediaEditor/types';
-import {delay, snapToViewport} from '@components/mediaEditor/utils';
 
 
-type Args = {
+type SpawnImageCanvasArgs = {
   source: CanvasImageSource;
-  element: HTMLElement;
-  managers: AppManagers;
-
-  mediaType: MediaType;
-  mediaSrc: string;
-  mediaBlob: Blob;
-  mediaSize: NumberPair;
-
-  size: NumberPair;
-
-  editingMediaState: EditingMediaState;
-  onEditFinish: (result: MediaEditorFinalResult) => void;
-  onClose: (hasGif: boolean) => void;
+  rect: LocalDOMRect;
+  animatedCanvasSize: NumberPair;
 };
+
+type LocalDOMRect = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
+
+type OpenMediaEditorFromMediaArgs = Omit<MediaEditorProps, 'onCanvasReady' | 'onImageRendered'> & SpawnImageCanvasArgs;
+type OpenMediaEditorFromMediaNoAnimationArgs = Omit<MediaEditorProps, 'onCanvasReady' | 'onImageRendered'> & Omit<SpawnImageCanvasArgs, 'rect'>;
 
 export function openMediaEditorFromMedia({
   source,
-  element,
-  managers,
-  mediaType,
-  mediaSrc,
-  mediaBlob,
-  mediaSize,
-  size,
-  editingMediaState,
-  onEditFinish,
-  onClose
-}: Args) {
-  const animatedCanvas = document.createElement('canvas');
-  const [sourceWidth, sourceHeight] = [animatedCanvas.width, animatedCanvas.height] = size;
-
-  const ctx = animatedCanvas.getContext('2d');
-  ctx.drawImage(source, 0, 0, animatedCanvas.width, animatedCanvas.height);
-
-  const bcr = element.getBoundingClientRect();
-  animatedCanvas.style.position = 'fixed';
-
-  const left = bcr.left + bcr.width / 2, top = bcr.top + bcr.height / 2, width = bcr.width, height = bcr.height;
-
-  animatedCanvas.style.left = left + 'px';
-  animatedCanvas.style.top = top + 'px';
-  animatedCanvas.style.width = width + 'px';
-  animatedCanvas.style.height = height + 'px';
-  animatedCanvas.style.transform = 'translate(-50%, -50%)';
-  animatedCanvas.style.objectFit = 'cover';
-  animatedCanvas.style.zIndex = '1000';
-
-  document.body.append(animatedCanvas);
+  rect,
+  animatedCanvasSize: size,
+  ...rest
+}: OpenMediaEditorFromMediaArgs) {
+  const spawnedAnimatedImage = spawnAnimatedImage({
+    animatedCanvasSize: size,
+    rect,
+    source
+  });
 
   openMediaEditor({
-    mediaType,
-    mediaSrc,
-    mediaBlob,
-    managers,
-    mediaSize,
-    onEditFinish,
-
-    onCanvasReady: (canvas) => {
+    ...rest,
+    onCanvasReady: async(canvas) => {
       const canvasBcr = canvas.getBoundingClientRect();
-      const leftDiff = (canvasBcr.left + canvasBcr.width / 2) - left;
-      const topDiff = (canvasBcr.top + canvasBcr.height / 2) - top;
-      const [scaledWidth, scaledHeight] = snapToViewport(sourceWidth / sourceHeight, canvasBcr.width, canvasBcr.height);
 
-      const deferred = deferredPromise<void>();
-
-      animateValue(
-        0, 1, 200,
-        (progress) => {
-          animatedCanvas.style.transform = `translate(calc(${
-            progress * leftDiff
-          }px - 50%), calc(${
-            progress * topDiff
-          }px - 50%))`;
-          animatedCanvas.style.width = lerp(width, scaledWidth, progress) + 'px';
-          animatedCanvas.style.height = lerp(height, scaledHeight, progress) + 'px';
-        },
-        {
-          onEnd: () => deferred.resolve()
-        }
-      );
-
-      return deferred;
+      await spawnedAnimatedImage.animateToNewCenter(canvasBcr);
     },
-
     onImageRendered: async() => {
-      animatedCanvas.style.opacity = '1';
-      animatedCanvas.style.transition = '.12s';
-      await doubleRaf();
-      animatedCanvas.style.opacity = '0';
-      await delay(120);
-      animatedCanvas.remove();
-    },
-
-    editingMediaState: editingMediaState,
-    onClose
+      await removeWithFade(spawnedAnimatedImage.imageCanvas);
+    }
   }, SolidJSHotReloadGuardProvider);
+}
+
+export function openMediaEditorFromMediaNoAnimation({
+  source,
+  animatedCanvasSize: size,
+  ...rest
+}: OpenMediaEditorFromMediaNoAnimationArgs) {
+  let spawnedImageCanvas: SpanImageCanvasResult;
+
+  openMediaEditor({
+    ...rest,
+    onCanvasReady: async(canvas) => {
+      const canvasBcr = canvas.getBoundingClientRect();
+
+      spawnedImageCanvas = spawnImageCanvas({
+        rect: snapToRect(size, canvasBcr),
+        source,
+        animatedCanvasSize: size
+      });
+
+      await fadeIn(spawnedImageCanvas.imageCanvas);
+    },
+    onImageRendered: async() => {
+      if(spawnedImageCanvas) {
+        await removeWithFade(spawnedImageCanvas.imageCanvas);
+      }
+    }
+  }, SolidJSHotReloadGuardProvider);
+}
+
+function spawnAnimatedImage({rect, source, animatedCanvasSize: size}: SpawnImageCanvasArgs) {
+  const {imageCanvas, centerLeft, centerTop} = spawnImageCanvas({
+    rect,
+    source,
+    animatedCanvasSize: size
+  });
+
+  const [sourceWidth, sourceHeight] = size;
+
+  async function animateToNewCenter(rect: DOMRect) {
+    const canvasCenterLeft = rect.left + rect.width / 2;
+    const canvasCenterTop = rect.top + rect.height / 2;
+
+    const leftDiff = canvasCenterLeft - centerLeft;
+    const topDiff = canvasCenterTop - centerTop;
+    const [newWidth, newHeight] = snapToViewport(sourceWidth / sourceHeight, rect.width, rect.height);
+
+    await imageCanvas.animate({
+      transform: `translate(calc(-50% + ${leftDiff}px), calc(-50% + ${topDiff}px))`,
+      width: `${newWidth}px`,
+      height: `${newHeight}px`
+    }, {
+      duration: 200,
+      fill: 'forwards',
+      easing: 'ease-in-out'
+    }).finished;
+  }
+
+  return {
+    imageCanvas,
+    animateToNewCenter
+  };
+}
+
+type SpanImageCanvasResult = ReturnType<typeof spawnImageCanvas>;
+
+function spawnImageCanvas({
+  source,
+  rect,
+  animatedCanvasSize: size
+}: SpawnImageCanvasArgs) {
+  const imageCanvas = document.createElement('canvas');
+  [imageCanvas.width, imageCanvas.height] = size;
+
+  const ctx = imageCanvas.getContext('2d');
+  ctx.drawImage(source, 0, 0, imageCanvas.width, imageCanvas.height);
+
+  imageCanvas.style.position = 'fixed';
+
+  const centerLeft = rect.left + rect.width / 2, centerTop = rect.top + rect.height / 2, width = rect.width, height = rect.height;
+
+  imageCanvas.style.left = centerLeft + 'px';
+  imageCanvas.style.top = centerTop + 'px';
+  imageCanvas.style.width = width + 'px';
+  imageCanvas.style.height = height + 'px';
+  imageCanvas.style.transform = 'translate(-50%, -50%)';
+  imageCanvas.style.objectFit = 'cover';
+  imageCanvas.style.zIndex = '1000';
+
+  document.body.append(imageCanvas);
+
+  return {
+    centerLeft,
+    centerTop,
+    imageCanvas
+  };
+}
+
+async function fadeIn(imageCanvas: HTMLCanvasElement) {
+  await imageCanvas.animate({
+    opacity: [0, 1]
+  }, {
+    duration: 200,
+    fill: 'forwards',
+    easing: 'ease-in-out'
+  }).finished;
+}
+
+async function removeWithFade(imageCanvas: HTMLCanvasElement) {
+  await imageCanvas.animate({
+    opacity: [1, 0]
+  }, {
+    duration: 400,
+    fill: 'forwards',
+    easing: 'ease-in'
+  }).finished;
+  imageCanvas.remove();
+}
+
+function snapToRect(size: NumberPair, rect: LocalDOMRect): LocalDOMRect {
+  const [sourceWidth, sourceHeight] = size;
+  const [snappedWidth, snappedHeight] = snapToViewport(sourceWidth / sourceHeight, rect.width, rect.height);
+
+  const left = rect.left + rect.width / 2 - snappedWidth / 2;
+  const top = rect.top + rect.height / 2 - snappedHeight / 2;
+
+  return {
+    left,
+    top,
+    width: snappedWidth,
+    height: snappedHeight
+  };
 }

@@ -18,7 +18,7 @@ import PopupCreatePoll from '@components/popups/createPoll';
 import PopupForward from '@components/popups/forward';
 import PopupNewMedia, {getCurrentNewMediaPopup} from '@components/popups/newMedia';
 import {toast, toastNew} from '@components/toast';
-import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageMedia, InputReplyTo, Chat as MTChat, User, ChatFull, Dialog} from '@layer';
+import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageMedia, InputReplyTo, Chat as MTChat, User, ChatFull, Dialog, PhotoSize, Photo, Document} from '@layer';
 import StickersHelper from '@components/chat/stickersHelper';
 import ButtonIcon from '@components/buttonIcon';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
@@ -32,7 +32,7 @@ import tsNow from '@helpers/tsNow';
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
 import {IS_MOBILE, IS_MOBILE_SAFARI} from '@environment/userAgent';
 import I18n, {FormatterArguments, i18n, join, LangPackKey} from '@lib/langPack';
-import {AttachedMediaType, canUploadAsWhenEditing, createAutoDeleteIcon, generateTail, slowModeTimer} from '@components/chat/utils';
+import {AttachedMediaType, canUploadAsWhenEditing, createAutoDeleteIcon, generateTail, getMediaTypeForMessage, slowModeTimer} from '@components/chat/utils';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import ButtonCorner from '@components/buttonCorner';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
@@ -144,7 +144,20 @@ import {makeMessageMediaInputForSuggestedPost} from '@appManagers/utils/messages
 import showFrozenPopup from '@components/popups/frozen';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
 import {setPeerColorToElement} from '@components/peerColors';
-import {getMiddleware, MiddlewareHelper} from '@helpers/middleware';
+import getMainGroupedMessage from '@lib/appManagers/utils/messages/getMainGroupedMessage';
+import appDownloadManager, {DownloadBlob} from '@lib/appDownloadManager';
+import {MediaEditorProps} from '@components/mediaEditor/mediaEditor';
+import {NumberPair} from '@components/mediaEditor/types';
+import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
+import AttachMenuButton from './attachMenuButton';
+import pause from '@helpers/schedulers/pause';
+import onMediaLoad from '@helpers/onMediaLoad';
+import createVideo from '@helpers/dom/createVideo';
+import {MAX_EDITABLE_VIDEO_SIZE} from '@components/mediaEditor/support';
+import getDocumentDownloadOptions from '@lib/appManagers/utils/docs/getDocumentDownloadOptions';
+import getPhotoDownloadOptions from '@lib/appManagers/utils/photos/getPhotoDownloadOptions';
+import {getFileNameByLocation} from '@helpers/fileName';
+import {Middleware, getMiddleware, MiddlewareHelper} from '@helpers/middleware';
 
 // console.log('Recorder', Recorder);
 
@@ -168,6 +181,13 @@ export type ChatInputReplyTo = Pick<MessageSendingParams, 'replyToMsgId' | 'repl
 
 const CLASS_NAME = 'chat-input';
 const PEER_EXCEPTIONS = new Set<ChatType>([ChatType.Scheduled, ChatType.Stories, ChatType.Saved]);
+
+type WatchDownloadProgressArgs<T> = {
+  getDownloadPromise: () => DownloadBlob;
+  getResult: () => Promise<T>;
+  middleware: Middleware;
+  cancel: () => void;
+};
 
 export default class ChatInput {
   // private static AUTO_COMPLETE_REG_EXP = /(\s|^)((?::|.)(?!.*[:@]).*|(?:[@\/]\S*))$/;
@@ -193,7 +213,7 @@ export default class ChatInput {
 
   private replyKeyboard: ReplyKeyboard;
 
-  public attachMenu: HTMLElement;
+  public attachMenu: InstanceType<typeof AttachMenuButton>;
   private attachMenuButtons: ButtonMenuItemOptionsVerifiable[];
 
   public btnSuggestPost: HTMLElement;
@@ -1010,6 +1030,8 @@ export default class ChatInput {
 
     // const getSendMediaRights = () => Promise.all([this.chat.canSend('send_photos'), this.chat.canSend('send_videos')]).then(([photos, videos]) => ({photos, videos}));
 
+    const inputThis = this;
+
     this.attachMenuButtons = [{
       icon: 'image',
       text: 'Chat.Input.Attach.PhotoOrVideo',
@@ -1032,6 +1054,15 @@ export default class ChatInput {
       onClick: () => this.onAttachClick(true),
       verify: () => canUploadAsWhenEditing({asWhat: 'document', message: this.editMessage})
       // verify: () => this.chat.canSend('send_docs')
+    }, {
+      icon: 'brush',
+      get text() {
+        return inputThis.editMessage?.media?._ === 'messageMediaPhoto' ?
+          'EditThisPhoto' :
+          'EditThisVideo';
+      },
+      onClick: () => this.editMediaWithEditor(),
+      verify: () => this.editMessage && getMediaTypeForMessage(this.editMessage) === 'media' && canEditMediaWithEditor(this.editMessage?.media)
     }, {
       icon: 'gift',
       text: 'GiftPremium',
@@ -1082,7 +1113,10 @@ export default class ChatInput {
     }];
 
     const attachMenuButtons = this.attachMenuButtons.slice();
-    this.attachMenu = ButtonMenuToggle({
+    this.attachMenu = new AttachMenuButton;
+
+    ButtonMenuToggle({
+      container: this.attachMenu,
       buttonOptions: {noRipple: true},
       listenerSetter: this.listenerSetter,
       direction: 'top-left',
@@ -1140,7 +1174,6 @@ export default class ChatInput {
       }
     });
     this.attachMenu.classList.add('attach-file');
-    this.attachMenu.firstElementChild.replaceWith(Icon(getAttachIcon()));
 
     this.btnSuggestPost = ButtonIcon('suggested hide');
     attachClickEvent(this.btnSuggestPost, wrapAsyncClickHandler(async() => {
@@ -3706,7 +3739,9 @@ export default class ChatInput {
     });
 
     createEffect(on(() => store.isEditing, (isEditing) => {
-      this.attachMenu.firstElementChild.replaceChildren(Icon(getAttachIcon(isEditing)));
+      this.attachMenu.feedProps({
+        isEditing: isEditing
+      });
     }, {
       defer: true
     }));
@@ -4551,8 +4586,261 @@ export default class ChatInput {
 
     return element;
   }
+
+  private async tryGetEditMediaElementFromChat() {
+    const groupedId = this.editMessage?.grouped_id;
+    const groupedMessages = groupedId ? await this.managers.appMessagesManager.getMessagesByGroupedId(groupedId) : undefined;
+
+    const mainMessage = groupedId ? getMainGroupedMessage(groupedMessages) : this.editMessage;
+    const mainMessageMid = mainMessage?.mid;
+
+    if(!mainMessage) return;
+    const bubble = this.chat.bubbles.getBubble(mainMessage.peerId, mainMessageMid);
+    if(!bubble) return;
+
+    let mediaElement: Element;
+    const mediaSelectors = ['.media-video', '.media-container-aspecter .media-photo', '.media-photo']; // Prioritize video over photo, as there might be both (probably the photo is the thumbnail)
+    const getMedia = (element: Element) => mediaSelectors.map(selector => element.querySelector(selector)).filter(Boolean)[0];
+    if(groupedId) {
+      const groupedItem = bubble.querySelector(`.grouped-item[data-mid="${this.editMessage.mid}"]`);
+      mediaElement = getMedia(groupedItem);
+    } else {
+      mediaElement = getMedia(bubble);
+    }
+
+    if(!(mediaElement instanceof HTMLImageElement || mediaElement instanceof HTMLVideoElement)) return;
+
+    const bcr = mediaElement.getBoundingClientRect();
+    if(!bcr.width || !bcr.height) return;
+
+    const bubblesBcr = this.chat.bubbles.container.getBoundingClientRect();
+
+    if(bcr.top < bubblesBcr.top || bcr.bottom > bubblesBcr.bottom) return;
+
+    return mediaElement;
+  }
+
+  private async editMediaWithEditor(): Promise<void> {
+    if(!this.editMessage) return;
+
+    const media = this.editMessage.media;
+
+    const mediaElement = await this.tryGetEditMediaElementFromChat();
+
+    const payload = getOpenMediaPayload(media);
+    if(!payload) return;
+
+    const middlewareHelper = this.getMiddleware().create();
+    const middleware = middlewareHelper.get();
+
+    let downloadPromise: DownloadBlob;
+    const {result, waitBeforeCleanup} = await this.watchDownloadProgress({
+      getDownloadPromise: () => (downloadPromise = payload.downloadMediaBlob()),
+      getResult: async() => {
+        const mediaBlob = await downloadPromise;
+        const mediaUrl = await apiManagerProxy.invoke('createObjectURL', mediaBlob);
+        let createdMediaElement: HTMLVideoElement | HTMLImageElement;
+        try {
+          createdMediaElement = !mediaElement ? await payload.createCanvasSource(mediaUrl, middleware) : undefined;
+        } catch{}
+
+        return {mediaBlob, mediaUrl, createdMediaElement};
+      },
+      middleware,
+      cancel: () => middlewareHelper.destroy()
+    });
+
+    if(!result) return;
+
+    if(!middleware()) return;
+
+    const {mediaBlob, mediaUrl, createdMediaElement} = result;
+
+    if(!mediaElement && !createdMediaElement) return;
+
+    const {openMediaEditorFromMedia, openMediaEditorFromMediaNoAnimation} = await import('@components/mediaEditor');
+
+    if(!middleware()) return;
+
+    const openEditor = mediaElement ? openMediaEditorFromMedia : openMediaEditorFromMediaNoAnimation;
+    const usedMediaElement = mediaElement || createdMediaElement;
+
+    waitBeforeCleanup().then(() => {
+      middlewareHelper.destroy();
+    });
+
+    openEditor({
+      managers: this.managers,
+      mediaSrc: mediaUrl,
+      mediaType: payload.mediaType,
+      getMediaBlob: () => Promise.resolve(mediaBlob),
+      rect: usedMediaElement.getBoundingClientRect(),
+      animatedCanvasSize: getSourceSize(usedMediaElement),
+      source: usedMediaElement,
+      onClose: () => { },
+      onEditFinish: async(result) => {
+        const popup = new PopupNewMedia(this.chat, [
+          {
+            file: new File([mediaBlob], payload.fileName, {type: mediaBlob.type}),
+            editResult: result
+          }
+        ], 'media');
+
+        popup.show(false);
+      },
+      canImageResultInGIF: !this.isEditingMediaFromAlbum()
+    });
+  }
+
+  private async watchDownloadProgress<T>({getDownloadPromise, getResult, middleware, cancel}: WatchDownloadProgressArgs<T>) {
+    const minProgress = 0.1;
+
+    let result: T, wasLoading = false, timeout: number, waitBeforeCleanup: () => Promise<void> = async() => {};
+
+    try {
+      const downloadPromise = getDownloadPromise();
+
+      middleware.onDestroy(() => {
+        downloadPromise.cancel?.();
+
+        if(!wasLoading) return;
+        this.attachMenu.feedProps({
+          isLoading: false,
+          loadingProgress: undefined,
+          onCancel: undefined
+        });
+      });
+
+      downloadPromise.addNotifyListener((details: {done: number, total: number}) => {
+        if(!middleware()) return;
+
+        this.attachMenu.feedProps({
+          loadingProgress: Math.max(minProgress, details.done / details.total) || minProgress
+        });
+      });
+
+      // Late start in case the media is cached
+      timeout = self.setTimeout(() => {
+        wasLoading = true;
+        this.attachMenu.feedProps({
+          isLoading: true,
+          loadingProgress: minProgress,
+          onCancel: () => {
+            cancel();
+          }
+        });
+      }, 120);
+
+      result = await getResult();
+    } finally {
+      self.clearTimeout(timeout);
+
+      if(wasLoading) {
+        this.attachMenu.feedProps({
+          loadingProgress: 1
+        });
+
+        await pause(150); // wait for the loading animation to animate to full
+
+        waitBeforeCleanup = () => pause(400);
+      }
+    }
+
+    return {result, waitBeforeCleanup};
+  }
+
+  private isEditingMediaFromAlbum() {
+    return !!this.editMessage?.grouped_id;
+  }
 }
 
-const getAttachIcon = (isEditing?: boolean): Icon => {
-  return isEditing ? 'attach_edit' : 'attach';
+function getOpenMediaPayload(media: MessageMedia | null | undefined) {
+  if(!media) return;
+  if(media._ === 'messageMediaPhoto' && media.photo?._ === 'photo') return getOpenMediaPhotoPayload(media.photo);
+  if(media._ === 'messageMediaDocument' && media.document?._ === 'document') return getOpenMediaVideoPayload(media.document);
+}
+
+function canEditMediaWithEditor(media: MessageMedia) {
+  return !!getOpenMediaPayload(media);
+}
+
+type OpenMediaPayload = {
+  fileName: string;
+  mediaType: MediaEditorProps['mediaType']
+  createCanvasSource: (url: string, middleware: Middleware) => Promise<HTMLImageElement | HTMLVideoElement>;
+  downloadMediaBlob: () => DownloadBlob;
 };
+
+function getOpenMediaPhotoPayload(photo: Photo.photo): OpenMediaPayload {
+  const photoSizes = photo.sizes.slice().filter((size) => (size as PhotoSize.photoSize).w) as PhotoSize.photoSize[];
+  photoSizes.sort((a, b) => b.size - a.size);
+  const fullPhotoSize = photoSizes?.[0];
+
+  if(!fullPhotoSize?.w || !fullPhotoSize?.h) return;
+
+  return {
+    fileName: tryGetFileName(() => getFileNameByLocation(getPhotoDownloadOptions(photo, fullPhotoSize).location)),
+    mediaType: 'image',
+    createCanvasSource: createImageSource,
+    downloadMediaBlob: () =>
+      appDownloadManager.downloadMedia({
+        media: photo,
+        thumb: fullPhotoSize
+      })
+  };
+}
+
+function getOpenMediaVideoPayload(document: Document.document): OpenMediaPayload {
+  if(!document.size || document.size > MAX_EDITABLE_VIDEO_SIZE) return;
+
+  return {
+    fileName: tryGetFileName(() => document.file_name || getFileNameByLocation(getDocumentDownloadOptions(document).location)),
+    mediaType: 'video',
+    createCanvasSource: createVideoSource,
+    downloadMediaBlob: () =>
+      appDownloadManager.downloadMedia({
+        media: document,
+        thumb: undefined
+      })
+  };
+}
+
+async function createImageSource(url: string) {
+  const img = new Image();
+  await renderImageFromUrlPromise(img, url);
+  return img;
+}
+
+async function createVideoSource(url: string, middleware: Middleware) {
+  const video = createVideo({middleware});
+
+  video.playsInline = true;
+  video.src = url;
+  video.controls = false;
+  video.muted = true;
+  video.preload = 'auto';
+
+  const deferred = deferredPromise<void>();
+  video.requestVideoFrameCallback(() => {
+    deferred.resolve();
+  });
+
+  await onMediaLoad(video);
+
+  await deferred;
+
+  return video;
+}
+
+function getSourceSize(source: HTMLVideoElement | HTMLImageElement): NumberPair {
+  return source instanceof HTMLVideoElement ? [source.videoWidth, source.videoHeight] : [source.naturalWidth, source.naturalHeight];
+}
+
+function tryGetFileName(fn: () => string) {
+  const defaultFileName = 'edited-media';
+  try {
+    return fn() || defaultFileName;
+  } catch{
+    return 'edited-media';
+  }
+}

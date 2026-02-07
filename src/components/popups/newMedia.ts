@@ -67,7 +67,6 @@ import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSpli
 import {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
 import ListenerSetter from '@helpers/listenerSetter';
 import canVideoBeAnimated from '@appManagers/utils/docs/canVideoBeAnimated';
-import {NumberPair} from '@components/mediaEditor/types';
 import MarkupTooltip from '@components/chat/markupTooltip';
 import {MAX_EDITABLE_VIDEO_SIZE, supportsVideoEncoding} from '@components/mediaEditor/support';
 import {animateValue} from '@helpers/animateValue';
@@ -82,11 +81,15 @@ import {makeDateFromTimestamp} from '@helpers/date/makeDateFromTimestamp';
 type SendFileParams = SendFileDetails & {
   file?: File,
   scaledBlob?: Blob,
-  noSound?: boolean,
   itemDiv: HTMLElement,
   mediaSpoiler?: HTMLElement,
   middlewareHelper: MiddlewareHelper,
   editResult?: MediaEditorFinalResult
+};
+
+type ConstructorInputFile = {
+  file: File;
+  editResult: MediaEditorFinalResult;
 };
 
 let currentPopup: PopupNewMedia;
@@ -126,9 +129,12 @@ export default class PopupNewMedia extends PopupElement {
 
   private isMediaEditorOpen = false;
 
+  private files: File[] = [];
+  private pendingEditResults = new WeakMap<File, MediaEditorFinalResult>;
+
   constructor(
     private chat: Chat,
-    private files: File[],
+    inputFiles: (ConstructorInputFile | File)[],
     willAttachType: PopupNewMedia['willAttach']['type'],
     private ignoreInputValue?: boolean
   ) {
@@ -139,6 +145,14 @@ export default class PopupNewMedia extends PopupElement {
       body: true,
       title: true,
       scrollable: true
+    });
+
+    this.files = inputFiles.map((inputFile) => {
+      if(inputFile instanceof File) {
+        return inputFile;
+      }
+      this.pendingEditResults.set(inputFile.file, inputFile.editResult);
+      return inputFile.file;
     });
 
     this.animationGroup = 'NEW-MEDIA';
@@ -204,7 +218,7 @@ export default class PopupNewMedia extends PopupElement {
         text: 'Popup.Attach.AsMedia',
         onClick: () => this.changeType('media'),
         verify: () => {
-          if(!this.hasAnyMedia() || this.willAttach.type !== 'document') {
+          if(!this.hasAnyMedia() || this.willAttach.type !== 'document' || this.isEditingMediaFromAlbum()) {
             return false;
           }
 
@@ -226,12 +240,12 @@ export default class PopupNewMedia extends PopupElement {
         icon: 'document',
         text: 'SendAsFile',
         onClick: () => this.changeType('document'),
-        verify: () => this.files.length === 1 && this.willAttach.type !== 'document' && canSendDocs
+        verify: () => this.files.length === 1 && this.willAttach.type !== 'document' && canSendDocs && !this.isEditingMediaFromAlbum()
       }, {
         icon: 'document',
         text: 'SendAsFiles',
         onClick: () => this.changeType('document'),
-        verify: () => this.files.length > 1 && this.willAttach.type !== 'document' && canSendDocs
+        verify: () => this.files.length > 1 && this.willAttach.type !== 'document' && canSendDocs && !this.isEditingMediaFromAlbum()
       }, {
         icon: 'groupmedia',
         text: 'Popup.Attach.GroupMedia',
@@ -786,7 +800,7 @@ export default class PopupNewMedia extends PopupElement {
         if(isMedia) {
           a.unshift(
             [IMAGE_MIME_TYPES_SUPPORTED, 'GlobalAttachPhotoRestricted', 'send_photos'],
-            [() => VIDEO_MIME_TYPES_SUPPORTED.has(params.file.type as any) && params.noSound, 'GlobalAttachGifRestricted', 'send_gifs'],
+            [() => VIDEO_MIME_TYPES_SUPPORTED.has(params.file.type as any) && params.isAnimated, 'GlobalAttachGifRestricted', 'send_gifs'],
             [VIDEO_MIME_TYPES_SUPPORTED, 'GlobalAttachVideoRestricted', 'send_videos']
           );
         }
@@ -952,11 +966,13 @@ export default class PopupNewMedia extends PopupElement {
 
     let promise: Promise<void>;
 
+    const myself = this;
+
     if(editResult) {
       const result = editResult.getResult();
 
-      function addGifLabel(result: MediaEditorFinalResultPayload) {
-        if(!canVideoBeAnimated(!result.hasSound, result.blob.size)) return;
+      function addGifLabel() {
+        if(!params.isAnimated) return;
         const gifLabel = i18n('AttachGif');
         gifLabel.classList.add('gif-label');
         itemDiv.append(gifLabel);
@@ -966,7 +982,7 @@ export default class PopupNewMedia extends PopupElement {
         if(editResult.isVideo) {
           await putEditedImage(editResult.preview);
           await putEditedVideo(result);
-          addGifLabel(result);
+          addGifLabel();
         } else {
           await putEditedImage(result.blob, true);
         }
@@ -1029,14 +1045,17 @@ export default class PopupNewMedia extends PopupElement {
         params.width = editResult.width;
         params.height = editResult.height;
         params.duration = video.duration;
-        params.noSound = !result.hasSound;
+        params.isAnimated = canVideoBeAnimated({
+          noSound: !result.hasSound,
+          size: result.blob.size,
+          isEditingMediaFromAlbum: myself.isEditingMediaFromAlbum()
+        });
 
         const thumb = result.thumb || await createPosterFromVideo(video);
-        const canBeAnimated = canVideoBeAnimated(!result.hasSound, result.blob.size);
 
         params.thumb = {
           url: await apiManagerProxy.invoke('createObjectURL', thumb.blob),
-          isCover: !canBeAnimated && !!result.thumb,
+          isCover: !params.isAnimated && !!result.thumb,
           ...thumb
         };
       }
@@ -1071,7 +1090,12 @@ export default class PopupNewMedia extends PopupElement {
 
       const audioDecodedByteCount = (video as any).webkitAudioDecodedByteCount;
       if(audioDecodedByteCount !== undefined) {
-        params.noSound = !audioDecodedByteCount;
+        const noSound = !audioDecodedByteCount;
+        params.isAnimated = canVideoBeAnimated({
+          noSound,
+          size: file.size,
+          isEditingMediaFromAlbum: this.isEditingMediaFromAlbum()
+        });
       }
 
       const thumb = await createPosterFromVideo(video);
@@ -1097,7 +1121,7 @@ export default class PopupNewMedia extends PopupElement {
       params.height = img.naturalHeight;
 
       if(file.type === 'image/gif') {
-        params.noSound = true;
+        params.isAnimated = true;
 
         promise = Promise.all([
           getGifDuration(img).then((duration) => {
@@ -1145,17 +1169,15 @@ export default class PopupNewMedia extends PopupElement {
 
             const {openMediaEditorFromMedia} = await import('../mediaEditor');
 
-            const sourceSize: NumberPair = source instanceof HTMLVideoElement ? [source.videoWidth, source.videoHeight] : [source.naturalWidth, source.naturalHeight];
             this.isMediaEditorOpen = true;
 
             openMediaEditorFromMedia({
               source,
-              element: itemDiv,
-              size: [params.width, params.height],
+              rect: itemDiv.getBoundingClientRect(),
+              animatedCanvasSize: [params.width, params.height],
               mediaType: isVideo ? 'video' : 'image',
               mediaSrc: params.editResult?.originalSrc || params.objectURL,
-              mediaBlob: file,
-              mediaSize: params.editResult?.originalSize || sourceSize,
+              getMediaBlob: async() => file,
               managers: this.managers,
               onEditFinish: (result) => {
                 params.editResult = result;
@@ -1166,7 +1188,8 @@ export default class PopupNewMedia extends PopupElement {
                 this.isMediaEditorOpen = false;
                 if(!hasGif)
                   (this.btnConfirmOnEnter as HTMLButtonElement).disabled = false;
-              }
+              },
+              canImageResultInGIF: !this.isEditingMediaFromAlbum()
             });
           });
         }
@@ -1253,7 +1276,20 @@ export default class PopupNewMedia extends PopupElement {
     if(this.cachedMediaEditorFiles.has(editedBlob)) return this.cachedMediaEditorFiles.get(editedBlob);
 
     let name = originalFile.name;
+
+    const imageTypeToExtMap: Record<string, string> = {
+      'image/jpeg': 'jpg',
+      'image/jpg': 'jpg',
+      'image/png': 'png',
+      'image/webp': 'webp'
+    };
+
     if(isVideo) name = name.replace(/\.[^.]+$/, '.mp4');
+    else if(editedBlob.type in imageTypeToExtMap) {
+      const ext = '.' + imageTypeToExtMap[editedBlob.type];
+      name = name.replace(/\.[^.]+$/, ext);
+      if(!name.endsWith(ext)) name = name.replace(/\.+$/, '') + ext;
+    }
 
     const result = new File([editedBlob], name, {type: editedBlob.type});
     this.cachedMediaEditorFiles.set(editedBlob, result);
@@ -1487,12 +1523,7 @@ export default class PopupNewMedia extends PopupElement {
   private hasGif() {
     const {sendFileDetails} = this.willAttach;
 
-    return sendFileDetails.some((params) => {
-      const result = params.editResult?.getResult();
-      if(!result || result instanceof Promise) return false;
-
-      return canVideoBeAnimated(!result.hasSound, result.blob.size);
-    });
+    return sendFileDetails.some((params) => params.isAnimated);
   }
 
   private canCheckIfHasGif() {
@@ -1534,12 +1565,20 @@ export default class PopupNewMedia extends PopupElement {
       params.middlewareHelper.destroy();
     });
 
+    const getPendingEditResult = (file: File) => {
+      const pendingEditResult = this.pendingEditResults.get(file);
+      this.pendingEditResults.delete(file);
+      return pendingEditResult;
+    };
+
     const promises = files.map((file) => {
       const oldParams = oldSendFileDetails.find((o) => o.file === file);
+      const editResult = oldParams?.editResult || getPendingEditResult(file);
+
       return this.attachFile(
         file,
-        oldParams?.editResult ? {
-          editResult: oldParams.editResult
+        editResult ? {
+          editResult
         } : undefined
       );
     });
@@ -1604,6 +1643,10 @@ export default class PopupNewMedia extends PopupElement {
 
   private isEditing() {
     return !!this.chat?.input?.editMessage;
+  }
+
+  private isEditingMediaFromAlbum() {
+    return !!this.chat?.input?.editMessage?.grouped_id;
   }
 
   private canHaveMultipleFiles() {

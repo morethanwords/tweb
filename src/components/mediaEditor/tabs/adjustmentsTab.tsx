@@ -1,9 +1,3 @@
-import {createEffect, createMemo, createSignal, on, onCleanup, Show} from 'solid-js';
-
-import {i18n} from '@lib/langPack';
-
-import Space from '@components/space';
-
 import {adjustmentsConfig} from '@components/mediaEditor/adjustments';
 import {useCropOffset} from '@components/mediaEditor/canvas/useCropOffset';
 import {useMediaEditorContext} from '@components/mediaEditor/context';
@@ -12,12 +6,16 @@ import RangeInput from '@components/mediaEditor/rangeInput';
 import StepInput, {StepInputStep} from '@components/mediaEditor/stepInput';
 import useIsMobile from '@components/mediaEditor/useIsMobile';
 import {availableQualityHeights, checkIfHasAnimatedStickers, snapToAvailableQuality} from '@components/mediaEditor/utils';
+import {HeightTransition} from '@components/sidebarRight/tabs/adminRecentActions/heightTransition';
+import Space from '@components/space';
+import {i18n} from '@lib/langPack';
+import {createEffect, createMemo, createSignal, on, onCleanup, Show} from 'solid-js';
 
 
 const ADJUST_TIMEOUT = 800;
 
 export default function AdjustmentsTab() {
-  const {editorState, mediaState, actions, mediaSize, mediaType, imageRatio} = useMediaEditorContext();
+  const {editorState, mediaState, actions, mediaType} = useMediaEditorContext();
 
   const isMobile = useIsMobile();
   const cropOffset = useCropOffset();
@@ -30,15 +28,15 @@ export default function AdjustmentsTab() {
     }, ADJUST_TIMEOUT);
   }
 
-  const resultingSize = createMemo(() =>
+  const resultingSize = createMemo(() => editorState.mediaSize ?
     getResultSize({
-      imageWidth: mediaSize[0],
+      imageWidth: editorState.mediaSize[0],
       scale: mediaState.scale,
-      newRatio: mediaState.currentImageRatio || imageRatio,
+      newRatio: mediaState.currentImageRatio || editorState.mediaRatio,
       videoType: mediaType === 'video' ? 'video' : 'gif',
-      imageRatio,
+      imageRatio: editorState.mediaRatio,
       cropOffset: !cropOffset().width ? {width: 1, height: 1} : cropOffset()
-    })
+    }) : [0, 0]
   );
 
   createEffect(() => {
@@ -60,15 +58,21 @@ export default function AdjustmentsTab() {
     <>
       <Space amount="16px" />
 
-      <Show when={canShowQualityInput()}>
-        <StepInput
-          label={i18n('Quality')}
-          steps={steps()}
-          value={Math.min(maxVideoQuality(), mediaState.videoQuality)}
-          onChange={(value) => void(mediaState.videoQuality = value)}
-        />
-        <Space amount="32px" />
-      </Show>
+      <HeightTransition>
+        <Show when={canShowQualityInput()}>
+          <div>
+            <StepInput
+              label={i18n('Quality')}
+              steps={steps()}
+              value={Math.min(maxVideoQuality(), mediaState.videoQuality)}
+              onChange={(value) => void(mediaState.videoQuality = value)}
+            />
+
+            <Space amount="32px" />
+          </div>
+        </Show>
+      </HeightTransition>
+
 
       {adjustmentsConfig.map((item) => {
         const [container, setContainer] = createSignal<HTMLDivElement>();

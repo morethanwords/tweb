@@ -18,6 +18,7 @@ import {MediaType, NumberPair} from '@components/mediaEditor/types';
 import {delay, withCurrentOwner} from '@components/mediaEditor/utils';
 
 import '@components/mediaEditor/mediaEditor.scss';
+import overlayCounter from '@helpers/overlayCounter';
 
 
 export type MediaEditorProps = {
@@ -28,9 +29,9 @@ export type MediaEditorProps = {
   onImageRendered: () => void;
   mediaSrc: string;
   mediaType: MediaType;
-  mediaBlob: Blob;
-  mediaSize: NumberPair;
-  editingMediaState?: EditingMediaState
+  getMediaBlob: () => Promise<Blob | null>;
+  editingMediaState?: EditingMediaState;
+  canImageResultInGIF?: boolean;
 };
 
 export function MediaEditor(props: MediaEditorProps) {
@@ -40,10 +41,20 @@ export function MediaEditor(props: MediaEditorProps) {
 
   let overlay: HTMLDivElement;
 
+  let isOverlayCounterCleaned = false;
+
+  function cleanupOverlayCounter() {
+    if(isOverlayCounterCleaned) return;
+
+    overlayCounter.isDarkOverlayActive = false;
+    isOverlayCounterCleaned = true;
+  }
+
   onMount(() => {
     (async() => {
       overlay.classList.add('media-editor__overlay--hidden');
       await doubleRaf();
+      overlay.focus();
       overlay.classList.remove('media-editor__overlay--hidden');
     })();
 
@@ -52,10 +63,10 @@ export function MediaEditor(props: MediaEditorProps) {
       onPop: () => handleClose()
     };
     appNavigationController.pushItem(navigationItem);
-
-    overlay.focus();
+    overlayCounter.isDarkOverlayActive = true;
 
     onCleanup(() => {
+      cleanupOverlayCounter();
       appNavigationController.removeItem(navigationItem);
     });
   });
@@ -112,6 +123,7 @@ export function MediaEditor(props: MediaEditorProps) {
               const result = await createFinalResult()
               .finally(() => { isFinishing = false; });
 
+              cleanupOverlayCounter();
               props.onEditFinish(result);
               handleClose(true, result.isVideo);
             });

@@ -326,7 +326,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     this.scrollable?.onAdditionalScroll?.();
   }
 
-  public show() {
+  public show(animate = true) {
     if(this.shown || this.destroyed) {
       return;
     }
@@ -354,7 +354,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
 
     blurActiveElement(); // * hide mobile keyboard
     appendPopupTo.append(this.element);
-    void this.element.offsetWidth; // reflow
+    if(animate) void this.element.offsetWidth; // reflow
     this.element.classList.add('active');
 
     this.onContentUpdate();

@@ -63,7 +63,7 @@ export default async function renderToActualVideo({
   const {
     editorState: {pixelRatio},
     mediaState: {videoCropStart, videoCropLength, videoMuted, videoThumbnailPosition},
-    mediaBlob
+    getMediaBlob
   } = context;
 
   const {media: {video}} = renderingPayload;
@@ -116,9 +116,9 @@ export default async function renderToActualVideo({
   async function initMuxerAndEncoder() {
     const {Muxer, ArrayBufferTarget} = await import('mp4-muxer');
 
-    let audioBuffer: AudioBuffer;
+    let audioBuffer: AudioBuffer, mediaBlob: Blob;
 
-    if(!videoMuted && await supportsAudioEncoding()) try {
+    if(!videoMuted && await supportsAudioEncoding() && (mediaBlob = await getMediaBlob())) try {
       audioBuffer = await extractAudioFragment(mediaBlob, startTime, endTime);
     } catch{}
 
