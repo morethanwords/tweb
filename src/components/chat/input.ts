@@ -154,6 +154,7 @@ import pause from '@helpers/schedulers/pause';
 import {Middleware} from '@helpers/middleware';
 import onMediaLoad from '@helpers/onMediaLoad';
 import createVideo from '@helpers/dom/createVideo';
+import {MAX_EDITABLE_VIDEO_SIZE} from '@components/mediaEditor/support';
 
 // console.log('Recorder', Recorder);
 
@@ -4782,12 +4783,7 @@ function getOpenMediaPhotoPayload(photo: Photo.photo): OpenMediaPayload {
 }
 
 function getOpenMediaVideoPayload(document: Document.document): OpenMediaPayload {
-  const videoSizes = (document.video_thumbs || document.thumbs || []).slice().filter((size) => (size as PhotoSize.photoSize).w) as PhotoSize.photoSize[];
-  videoSizes.sort((a, b) => b.size - a.size);
-
-  const fullSize = videoSizes?.[0];
-
-  if(!fullSize?.w || !fullSize?.h) return;
+  if(!document.size || document.size > MAX_EDITABLE_VIDEO_SIZE) return;
 
   return {
     mediaType: 'video',
