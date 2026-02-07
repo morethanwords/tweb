@@ -1276,7 +1276,6 @@ export default class PopupNewMedia extends PopupElement {
     if(this.cachedMediaEditorFiles.has(editedBlob)) return this.cachedMediaEditorFiles.get(editedBlob);
 
     let name = originalFile.name;
-    console.log('my-debug blob type', editedBlob.type)
 
     const imageTypeToExtMap: Record<string, string> = {
       'image/jpeg': 'jpg',

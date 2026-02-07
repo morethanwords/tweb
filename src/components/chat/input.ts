@@ -4581,9 +4581,9 @@ export default class ChatInput {
     const mainMessage = groupedId ? getMainGroupedMessage(groupedMessages) : this.editMessage;
     const mainMessageMid = mainMessage?.mid;
 
-    if(!mainMessage) return void console.log('my-debug no main message'); // TODO: spawn without animation
+    if(!mainMessage) return;
     const bubble = this.chat.bubbles.getBubble(mainMessage.peerId, mainMessageMid);
-    if(!bubble) return void console.log('my-debug no bubble');
+    if(!bubble) return;
 
     let mediaElement: Element;
     const mediaSelectors = ['.media-video', '.media-container-aspecter .media-photo', '.media-photo']; // Prioritize video over photo, as there might be both (probably the photo is the thumbnail)
@@ -4592,18 +4592,17 @@ export default class ChatInput {
       const groupedItem = bubble.querySelector(`.grouped-item[data-mid="${this.editMessage.mid}"]`);
       mediaElement = getMedia(groupedItem);
     } else {
-      console.log('my-debug getting from bubble', bubble)
       mediaElement = getMedia(bubble);
     }
 
-    if(!(mediaElement instanceof HTMLImageElement || mediaElement instanceof HTMLVideoElement)) return void console.log('my-debug no media element');
+    if(!(mediaElement instanceof HTMLImageElement || mediaElement instanceof HTMLVideoElement)) return;
 
     const bcr = mediaElement.getBoundingClientRect();
-    if(!bcr.width || !bcr.height) return void console.log('my-debug no dimensions');
+    if(!bcr.width || !bcr.height) return;
 
     const bubblesBcr = this.chat.bubbles.container.getBoundingClientRect();
 
-    if(bcr.top < bubblesBcr.top || bcr.bottom > bubblesBcr.bottom) return void console.log('my-debug out of bounds');
+    if(bcr.top < bubblesBcr.top || bcr.bottom > bubblesBcr.bottom) return;
 
     return mediaElement;
   }
@@ -4615,10 +4614,8 @@ export default class ChatInput {
 
     const mediaElement = await this.tryGetEditMediaElementFromChat();
 
-    console.log('my-debug media', mediaElement);
-
     const payload = getOpenMediaPayload(media);
-    if(!payload) return void console.log('my-debug no open media params');
+    if(!payload) return;
 
     const middlewareHelper = this.getMiddleware().create();
     const middleware = middlewareHelper.get();
@@ -4640,17 +4637,13 @@ export default class ChatInput {
       cancel: () => middlewareHelper.destroy()
     });
 
-    if(!result) {
-      return void console.log('my-debug no download result');
-    }
+    if(!result) return;
 
     if(!middleware()) return;
 
     const {mediaBlob, mediaUrl, createdMediaElement} = result;
 
-    if(!mediaElement && !createdMediaElement) {
-      return void console.log('my-debug no media element');
-    }
+    if(!mediaElement && !createdMediaElement) return;
 
     const {openMediaEditorFromMedia, openMediaEditorFromMediaNoAnimation} = await import('@components/mediaEditor');
 
