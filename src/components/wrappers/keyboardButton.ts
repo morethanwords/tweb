@@ -22,19 +22,23 @@ import Icon from '@components/icon';
 import PopupPickUser from '@components/popups/pickUser';
 import {toast, toastNew} from '@components/toast';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
+import wrapCustomEmoji from '@components/wrappers/customEmoji';
+import {makeMediaSize} from '@helpers/mediaSize';
 
 export default function wrapKeyboardButton({
   button,
   chat,
   message,
   noTextInject,
-  replyMarkup
+  replyMarkup,
+  wrapOptions
 }: {
   button: KeyboardButton,
   chat: Chat,
   message?: Message.message,
   replyMarkup?: ReplyMarkup,
-  noTextInject?: boolean
+  noTextInject?: boolean,
+  wrapOptions?: WrapSomethingOptions
 }) {
   let text: DocumentFragment | HTMLElement = wrapRichText(button.text, {noLinks: true, noLinebreaks: true});
   let buttonEl: HTMLButtonElement | HTMLAnchorElement;
@@ -368,6 +372,40 @@ export default function wrapKeyboardButton({
 
   if(buttonIcon) {
     buttonIcon.classList.add('reply-markup-button-icon');
+  }
+
+  let bg: 'success' | 'danger' | 'primary';
+  if(button.style && buttonEl) {
+    if(button.style.pFlags.bg_success) bg = 'success';
+    else if(button.style.pFlags.bg_danger) bg = 'danger';
+    else if(button.style.pFlags.bg_primary) bg = 'primary';
+
+    if(bg) {
+      buttonEl.classList.add(
+        'reply-markup-button-bg',
+        `reply-markup-button-bg-${bg}`
+      );
+    }
+  }
+
+  if(button.style?.icon) {
+    let customEmojiSize = wrapOptions?.customEmojiSize;
+    if(customEmojiSize) {
+      customEmojiSize = makeMediaSize(
+        customEmojiSize.width - 2,
+        customEmojiSize.height - 2
+      );
+    }
+
+    text.prepend(
+      wrapCustomEmoji({
+        docIds: [button.style.icon],
+        ...wrapOptions,
+        textColor: bg ? 'white' : wrapOptions.textColor,
+        customEmojiSize
+      }),
+      ' '
+    );
   }
 
   if(!noTextInject) {

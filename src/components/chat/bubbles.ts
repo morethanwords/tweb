@@ -233,6 +233,7 @@ export type BubbleContext = {
   isOut: boolean,
   canHaveTail: boolean,
   isStandaloneMedia: boolean,
+  mediaRequiresMessageDiv: boolean,
 
   // * something extra
   releaseDice?: (value: number) => void
@@ -2528,6 +2529,7 @@ export default class ChatBubbles {
       bubble.dataset.dice &&
       attachmentDiv
     ) {
+      const canSend = await this.chat.canSend('send_stickers');
       const emoticon = bubble.dataset.dice;
       setTimeout(() => {
         const {close} = showTooltip({
@@ -2535,16 +2537,16 @@ export default class ChatBubbles {
           container: this.container,
           vertical: 'top',
           textElement: i18n(
-            'Dice.Tooltip',
+            canSend ? 'Dice.Tooltip' : 'Dice.Tooltip.CantSend',
             [
               wrapEmojiText(emoticon),
-              anchorCallback(() => {
+              canSend ? anchorCallback(() => {
                 close();
                 this.managers.appMessagesManager.sendText({
                   ...this.chat.getMessageSendingParams(),
                   text: emoticon
                 });
-              })
+              }) : undefined
             ]
           ),
           auto: true
@@ -5873,7 +5875,7 @@ export default class ChatBubbles {
 
     context.isInUnread = !our &&
       !message.pFlags.out &&
-      message.pFlags.unread;
+      !!message.pFlags.unread;
 
     const unreadMention = isMentionUnread(message);
     const unreadReactions = getUnreadReactions(message);
@@ -6623,7 +6625,7 @@ export default class ChatBubbles {
       ) : undefined;
 
     let isMessageEmpty = !messageMessage && !isSponsored && !factCheck/*  && (!topicNameButtonContainer || isStandaloneMedia) */;
-    let mediaRequiresMessageDiv = false;
+    context.mediaRequiresMessageDiv = false;
 
     context.canHaveTail = true;
     let canHavePlainMediaTail = false;
@@ -6850,7 +6852,8 @@ export default class ChatBubbles {
             button,
             chat: this.chat,
             message: message as Message.message,
-            noTextInject: true
+            noTextInject: true,
+            wrapOptions
           });
 
           if(!buttonEl) {
@@ -7617,7 +7620,7 @@ export default class ChatBubbles {
               );
             }
 
-            mediaRequiresMessageDiv = true;
+            context.mediaRequiresMessageDiv = true;
             const addClassName = (!(['photo', 'pdf'] as MyDocument['type'][]).includes(doc.type) ? doc.type || 'document' : 'document') + '-message';
             bubble.classList.add(addClassName);
 
@@ -7683,7 +7686,7 @@ export default class ChatBubbles {
 
           noAttachmentDivNeeded = true;
 
-          mediaRequiresMessageDiv = true;
+          context.mediaRequiresMessageDiv = true;
           bubble.classList.add('call-message');
           messageDiv.append(div);
 
@@ -7727,7 +7730,7 @@ export default class ChatBubbles {
 
           contactDiv.prepend(avatarElem.node);
 
-          mediaRequiresMessageDiv = true;
+          context.mediaRequiresMessageDiv = true;
           bubble.classList.add('contact-message');
           messageDiv.append(contactDiv);
 
@@ -7735,7 +7738,7 @@ export default class ChatBubbles {
         }
 
         case 'messageMediaPoll': {
-          mediaRequiresMessageDiv = true;
+          context.mediaRequiresMessageDiv = true;
 
           const pollElement = wrapPoll({
             message: message as Message.message,
@@ -7750,7 +7753,7 @@ export default class ChatBubbles {
           break;
         }
         case 'messageMediaToDo': {
-          mediaRequiresMessageDiv = true;
+          context.mediaRequiresMessageDiv = true;
 
           const content = document.createElement('div');
           content.classList.add('checklist-content');
@@ -7971,7 +7974,7 @@ export default class ChatBubbles {
 
           if(!isInvoice) {}
           else if(!richText) context.canHaveTail = false;
-          else mediaRequiresMessageDiv = true;
+          else context.mediaRequiresMessageDiv = true;
           bubble.classList.add('is-invoice');
 
           break;
@@ -7980,7 +7983,7 @@ export default class ChatBubbles {
         case 'messageMediaGeoLive':
         case 'messageMediaVenue':
         case 'messageMediaGeo': {
-          const _canHaveTail = wrapGeo({
+          const result = wrapGeo({
             attachmentDiv: context.attachmentDiv,
             bubble,
             loadPromises,
@@ -7993,10 +7996,8 @@ export default class ChatBubbles {
             wrapOptions
           });
 
-          if(_canHaveTail !== undefined) {
-            context.canHaveTail = _canHaveTail;
-          }
-
+          context.canHaveTail = result.canHaveTail ?? context.canHaveTail;
+          context.mediaRequiresMessageDiv = result.mediaRequiresMessageDiv ?? context.mediaRequiresMessageDiv;
           break;
         }
 
@@ -8008,7 +8009,7 @@ export default class ChatBubbles {
           if(replyContainer) {
             bubble.classList.add('is-expired-story');
             // attachmentDiv = replyContainer;
-            mediaRequiresMessageDiv = true;
+            context.mediaRequiresMessageDiv = true;
             messageDiv.append(replyContainer);
             messageDiv.classList.add('expired-story-message', 'is-empty');
             break;
@@ -8053,7 +8054,7 @@ export default class ChatBubbles {
             replyTo = undefined;
           }
 
-          mediaRequiresMessageDiv = true;
+          context.mediaRequiresMessageDiv = true;
           bubble.classList.add('is-giveaway');
           noAttachmentDivNeeded = true;
           const button = this.makeViewButton({text: 'BoostingHowItWork'});
@@ -8075,12 +8076,59 @@ export default class ChatBubbles {
 
         case 'messageMediaDice': {
           wrapDice(context);
+          const outcome = context.messageMedia.game_outcome;
+          if(outcome) {
+            bubble.classList.add('has-fake-service', 'is-forced-rounded');
+
+            const fakeServiceMessage = document.createElement('div');
+            fakeServiceMessage.classList.add('service-msg');
+
+            const won = +outcome.ton_amount > 0;
+            const s = document.createElement('span');
+            s.append(
+              Icon('ton', 'inline-icon', 'text-text-bottom'),
+              formatNanoton(won ? outcome.ton_amount : outcome.stake_ton_amount)
+            );
+
+            let content: HTMLElement;
+            let fromPeerId: PeerId, fromName: string;
+            const fwdFrom = (message as Message.message).fwd_from;
+            if(fwdFrom) {
+              if(fwdFrom.post_author) fromName = fwdFrom.post_author;
+              else if(fwdFrom.from_id) fromPeerId = getPeerId(fwdFrom.from_id);
+              else if(fwdFrom.from_name) fromName = fwdFrom.from_name;
+            } else if((message as Message.message).post_author) {
+              fromName = (message as Message.message).post_author;
+              fromPeerId = message.fromId;
+            } else {
+              fromPeerId = message.fromId;
+            }
+
+            if(fromPeerId === rootScope.myId) {
+              content = i18n(won ? 'Dice.WonYou' : 'Dice.LostYou', [s]);
+            } else {
+              content = i18n(
+                won ? 'Dice.Won' : 'Dice.Lost',
+                [
+                  await wrapPeerTitle({
+                    peerId: fromPeerId,
+                    fromName
+                  }),
+                  s
+                ]
+              );
+            }
+
+            fakeServiceMessage.append(content);
+
+            bubble.append(fakeServiceMessage);
+          }
           break;
         }
 
         default:
           context.attachmentDiv = undefined;
-          mediaRequiresMessageDiv = true;
+          context.mediaRequiresMessageDiv = true;
           noAttachmentDivNeeded = true;
           messageDiv.replaceChildren(i18n(UNSUPPORTED_LANG_PACK_KEY));
           bubble.timeAppenders[0].callback();
@@ -8105,8 +8153,8 @@ export default class ChatBubbles {
       }
     }
 
-    const isFloatingTime = timeSpan && ((isMessageEmpty && !mediaRequiresMessageDiv) || (invertMedia && !processedWebPage));
-    if(isMessageEmpty && !mediaRequiresMessageDiv) {
+    const isFloatingTime = timeSpan && ((isMessageEmpty && !context.mediaRequiresMessageDiv) || (invertMedia && !processedWebPage));
+    if(isMessageEmpty && !context.mediaRequiresMessageDiv) {
       messageDiv.remove();
       bubble.classList.add('is-message-empty');
     } else {

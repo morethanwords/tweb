@@ -55,7 +55,8 @@ export default function getPeerIdsFromMessage(message: Message.message | Message
     const userIds: UserId[] = [
       ...((action as MessageAction.messageActionChatAddUser).users || []),
       (action as MessageAction.messageActionChatDeleteUser).user_id,
-      (action as MessageAction.messageActionChatJoinedByLink).inviter_id
+      (action as MessageAction.messageActionChatJoinedByLink).inviter_id,
+      (action as (MessageAction.messageActionNewCreatorPending | MessageAction.messageActionChangeCreator)).new_creator_id
     ];
     peerIds.push(...userIds.filter(Boolean).map((userId) => userId.toPeerId()));
 

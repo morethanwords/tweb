@@ -16,6 +16,7 @@ ssh.json
 archive.zip
 .idea
 .env.local
+src/langPackLocalVersion.ts
 
 # Throw files you don't need in this folder
 ignore

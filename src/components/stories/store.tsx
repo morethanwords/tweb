@@ -10,7 +10,7 @@ import {createStore, reconcile} from 'solid-js/store';
 import mediaSizes from '@helpers/mediaSizes';
 import clamp from '@helpers/number/clamp';
 import windowSize from '@helpers/windowSize';
-import {StoryItem, PeerStories, StoryAlbum} from '@layer';
+import {StoryItem, PeerStories, StoryAlbum, StoriesStealthMode} from '@layer';
 import StoriesCacheType from '@appManagers/utils/stories/cacheType';
 import insertStory from '@appManagers/utils/stories/insertStory';
 import rootScope, {BroadcastEvents} from '@lib/rootScope';
@@ -60,6 +60,7 @@ export type StoriesContextState = {
   height: number,
   pinned: boolean,
   archive: boolean,
+  stealthMode: StoriesStealthMode,
   peers: StoriesContextPeerState[],
   peer: StoriesContextPeerState,
   freezedSorting: Set<StoriesSortingFreezeType>,
@@ -174,6 +175,7 @@ const createStoriesStore = (props: {
     height: 0,
     pinned: props.pinned,
     archive: props.archive,
+    stealthMode: {_: 'storiesStealthMode'},
     peers: props.peers || [],
     get peer() {
       return state.peers[state.index];
@@ -793,6 +795,10 @@ const createStoriesStore = (props: {
     addPeers([peer]);
   };
 
+  const onStealthMode = (data: BroadcastEvents['stories_stealth_mode']) => {
+    setState('stealthMode', reconcile(data));
+  };
+
   listenerSetter.add(rootScope)('story_update', onStoryUpdate);
   listenerSetter.add(rootScope)('story_deleted', onStoryDeleted);
   if(!props.archive && !props.pinned) {
@@ -807,6 +813,7 @@ const createStoriesStore = (props: {
     // listenerSetter.add(rootScope)('user_stories_hidden', onUserStoriesHidden);
     listenerSetter.add(rootScope)('stories_position', onStoriesPosition);
   }
+  listenerSetter.add(rootScope)('stories_stealth_mode', onStealthMode);
   // * updates section end
 
   if(props.onLoadCallback) {
@@ -816,6 +823,8 @@ const createStoriesStore = (props: {
   } else if(state.peer.index === undefined) {
     actions.resetIndexes();
   }
+
+  rootScope.managers.appStoriesManager.getStealthMode().then(onStealthMode);
 
   return [state, actions];
 };

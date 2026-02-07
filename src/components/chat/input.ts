@@ -32,7 +32,7 @@ import tsNow from '@helpers/tsNow';
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
 import {IS_MOBILE, IS_MOBILE_SAFARI} from '@environment/userAgent';
 import I18n, {FormatterArguments, i18n, join, LangPackKey} from '@lib/langPack';
-import {AttachedMediaType, canUploadAsWhenEditing, createAutoDeleteIcon, generateTail, getMediaTypeForMessage} from '@components/chat/utils';
+import {AttachedMediaType, canUploadAsWhenEditing, createAutoDeleteIcon, generateTail, getMediaTypeForMessage, slowModeTimer} from '@components/chat/utils';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import ButtonCorner from '@components/buttonCorner';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
@@ -151,13 +151,13 @@ import {NumberPair} from '@components/mediaEditor/types';
 import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
 import AttachMenuButton from './attachMenuButton';
 import pause from '@helpers/schedulers/pause';
-import {Middleware} from '@helpers/middleware';
 import onMediaLoad from '@helpers/onMediaLoad';
 import createVideo from '@helpers/dom/createVideo';
 import {MAX_EDITABLE_VIDEO_SIZE} from '@components/mediaEditor/support';
 import getDocumentDownloadOptions from '@lib/appManagers/utils/docs/getDocumentDownloadOptions';
 import getPhotoDownloadOptions from '@lib/appManagers/utils/photos/getPhotoDownloadOptions';
 import {getFileNameByLocation} from '@helpers/fileName';
+import {Middleware, getMiddleware, MiddlewareHelper} from '@helpers/middleware';
 
 // console.log('Recorder', Recorder);
 
@@ -395,6 +395,7 @@ export default class ChatInput {
 
   public suggestedPost: SuggestedPostPayload;
   private inputHelperNavigationItem: NavigationItem;
+  private placeholderParamsMiddlewareHelper: MiddlewareHelper;
 
   constructor(
     public chat: Chat,
@@ -446,6 +447,8 @@ export default class ChatInput {
     if(!this.excludeParts.downButton) {
       this.constructGoDownButton();
     }
+
+    this.placeholderParamsMiddlewareHelper = getMiddleware();
 
     // * constructor end
 
@@ -1956,6 +1959,7 @@ export default class ChatInput {
     // this.chat.log.error('Input destroying');
 
     this.autocompleteHelperController.destroy();
+    this.placeholderParamsMiddlewareHelper.destroy();
     appNavigationController.removeItem(this.inputHelperNavigationItem);
     this.listenerSetter.removeAll();
     this.setCurrentHover();
@@ -2389,7 +2393,8 @@ export default class ChatInput {
     this.updateOffset('commands', forwards, skipAnimation, useRafs, true);
   }
 
-  private async getPlaceholderParams(canSend?: boolean): Promise<Parameters<ChatInput['updateMessageInputPlaceholder']>[0]> {
+  public async getPlaceholderParams(canSend?: boolean): Promise<Parameters<ChatInput['updateMessageInputPlaceholder']>[0]> {
+    this.placeholderParamsMiddlewareHelper.clean();
     canSend ??= await this.chat.canSend('send_plain');
     const {peerId, threadId, isForum, type} = this.chat;
     let key: LangPackKey, args: FormatterArguments, inputStarsCountEl: HTMLElement;
@@ -2411,7 +2416,15 @@ export default class ChatInput {
     ) {
       key = 'SendAnonymously';
     } else if(type === ChatType.Stories) {
-      key = 'Story.ReplyPlaceholder';
+      const stealthModeActiveUntilDate = this.chat.stealthMode?.active_until_date || 0;
+      if(stealthModeActiveUntilDate > tsNow(true)) {
+        const {element, dispose} = slowModeTimer(() => stealthModeActiveUntilDate - tsNow(true));
+        key = 'Stories.StealthMode.Placeholder';
+        args = [element];
+        this.placeholderParamsMiddlewareHelper.get().onClean(dispose);
+      } else {
+        key = 'Story.ReplyPlaceholder';
+      }
     } else if(isForum && type === ChatType.Chat && !threadId) {
       const topic = await this.managers.dialogsStorage.getForumTopic(peerId, GENERAL_TOPIC_ID);
       if(topic) {
@@ -2434,7 +2447,15 @@ export default class ChatInput {
     return {key, args, inputStarsCountEl};
   }
 
-  private updateMessageInputPlaceholder({key, args = [], inputStarsCountEl}: {key: LangPackKey, args?: FormatterArguments, inputStarsCountEl?: HTMLElement}) {
+  public updateMessageInputPlaceholder({
+    key,
+    args = [],
+    inputStarsCountEl
+  }: {
+    key: LangPackKey,
+    args?: FormatterArguments,
+    inputStarsCountEl?: HTMLElement
+  }) {
     // console.warn('[input] update placeholder');
     // const i = I18n.weakMap.get(this.messageInput) as I18n.IntlElement;
     const i = I18n.weakMap.get(this.messageInputField.placeholder) as I18n.IntlElement;
@@ -3203,17 +3224,9 @@ export default class ChatInput {
         return false;
       }
 
-      const s = document.createElement('span');
-      onClose = eachSecond(() => {
-        const leftDuration = getLeftDuration();
-        s.replaceChildren(wrapSlowModeLeftDuration(leftDuration));
-
-        if(!leftDuration) {
-          close();
-        }
-      }, true);
-
-      textElement = i18n('SlowModeHint', [s]);
+      const {element, dispose} = slowModeTimer(getLeftDuration);
+      onClose = dispose;
+      textElement = i18n('SlowModeHint', [element]);
     }
 
     const {close} = showTooltip({
@@ -3748,11 +3761,11 @@ export default class ChatInput {
     createEffect(() => {
       if(!store.isMonoforumAllChats) return;
 
-      this.getPlaceholderParams().then(params => this.updateMessageInputPlaceholder(params));
+      this.getPlaceholderParams().then((params) => this.updateMessageInputPlaceholder(params));
 
       if(store.isReplying) return;
 
-      this.messageInputField?.input?.classList.add('hide')
+      this.messageInputField?.input?.classList.add('hide');
       this.attachMenu?.classList.add('hide');
       this.messageInputField?.setHidden(true);
       this.btnToggleEmoticons?.setAttribute('disabled', '');
@@ -3771,11 +3784,11 @@ export default class ChatInput {
     });
 
     createEffect(() => {
-      this.getPlaceholderParams().then(params => this.updateMessageInputPlaceholder(params));
+      this.getPlaceholderParams().then((params) => this.updateMessageInputPlaceholder(params));
 
       if(!store.isSuggestingUneditablePostChange) return;
 
-      this.messageInputField?.input?.classList.add('hide')
+      this.messageInputField?.input?.classList.add('hide');
       this.messageInputField?.setHidden(true);
       this.btnToggleEmoticons?.setAttribute('disabled', '');
       this.autocompleteHelperController.hideOtherHelpers();

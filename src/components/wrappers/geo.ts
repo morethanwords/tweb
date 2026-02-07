@@ -171,7 +171,12 @@ export default function wrapGeo({
   let liveExpiration = isLive ? (message.date + (messageMedia as MessageMedia.messageMediaGeoLive).period) * 1000 : undefined;
   const isLiveExpired = isLive && Date.now() >= liveExpiration;
 
-  let footer: HTMLElement, title: HTMLElement, address: HTMLElement, canHaveTail: boolean;
+  const ret = {
+    canHaveTail: undefined as boolean,
+    mediaRequiresMessageDiv: undefined as boolean
+  };
+
+  let footer: HTMLElement, title: HTMLElement, address: HTMLElement;
   if(isVenue || (isLive && !isLiveExpired)) {
     bubble.classList.remove('is-message-empty');
 
@@ -186,8 +191,9 @@ export default function wrapGeo({
 
     footer.append(title, address);
     messageDiv.append(footer);
+    ret.mediaRequiresMessageDiv = true;
   } else {
-    canHaveTail = false;
+    ret.canHaveTail = false;
   }
 
   if(isLive) {
@@ -305,5 +311,5 @@ export default function wrapGeo({
     address.append(timeSpan);
   }
 
-  return canHaveTail;
+  return ret;
 }

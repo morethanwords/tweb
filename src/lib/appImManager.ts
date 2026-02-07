@@ -135,6 +135,7 @@ import {canUploadAsWhenEditing} from '@components/chat/utils';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import {usePeer} from '@stores/peers';
 import {untrack} from 'solid-js';
+import showStoriesStealthModePopup from '@components/popups/storiesStealthMode';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -606,7 +607,10 @@ export class AppImManager extends EventListenerBase<{
         tab.accountNumber === currentTab.accountNumber &&
         tab.id !== currentTab.id
       );
-      if(!currentTab.idleStartTime || accountOtherTabs.every((tab) => tab.idleStartTime < currentTab.idleStartTime)) {
+      if(
+        !currentTab.idleStartTime ||
+        accountOtherTabs.every((tab) => (tab.idleStartTime || Infinity) < currentTab.idleStartTime)
+      ) {
         this.audioAssetPlayer.playWithThrottle({name: 'message_sent', volume: 0.2}, 300);
       }
     });
@@ -702,6 +706,10 @@ export class AppImManager extends EventListenerBase<{
     // PopupElement.createPopup(PopupAboutAd);
 
     // PopupElement.createPopup(PopupBoostsViaGifts, -5000866300);
+
+    // Promise.resolve(apiManagerProxy.getAppConfig()).then(() => {
+    //   showStoriesStealthModePopup();
+    // });
   }
 
   public adjustChatPatternBackground() {

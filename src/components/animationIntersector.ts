@@ -87,9 +87,13 @@ export class AnimationIntersector {
             this.checkAnimation(animation, true);
 
             const _animation = animation.animation;
-            if(animation.type === 'lottie'/*  && animation.cachingDelta === 2 */) {
+            if(
+              animation.type === 'lottie' &&
+              (_animation as RLottiePlayer).paused
+              /*  && animation.cachingDelta === 2 */
+            ) {
               // console.warn('will clear cache', player);
-              (_animation as RLottiePlayer).clearCache();
+              (_animation as RLottiePlayer).clearCacheWhenSafe();
             }/*  else if(animation instanceof HTMLVideoElement && animation.src) {
               animation.dataset.src = animation.src;
               animation.src = '';

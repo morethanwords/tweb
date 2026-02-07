@@ -87,6 +87,9 @@ export interface MTAppConfig {
   stories_changelog_user_id?:                UserId;
   stories_export_nopublic_link?:             boolean;
   stories_posting?:                          'enabled' | 'premium' | 'disabled';
+  stories_stealth_cooldown_period?:          number;
+  stories_stealth_future_period?:            number;
+  stories_stealth_past_period?:              number;
   giveaway_add_peers_max?:                   number;
   giveaway_boosts_per_premium?:              number;
   giveaway_countries_max?:                   number;

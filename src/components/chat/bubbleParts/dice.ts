@@ -3,7 +3,6 @@ import type {MessageMedia, Document} from '@layer';
 import type {MyDocument} from '@lib/appManagers/appDocsManager';
 import type ChatBubbles from '@components/chat/bubbles';
 import {makeMediaSize} from '@helpers/mediaSize';
-import rootScope from '@lib/rootScope';
 import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
 import wrapSticker from '@components/wrappers/sticker';
 import lottieLoader from '@lib/rlottie/lottieLoader';
@@ -17,7 +16,7 @@ export default function wrapDice(context: BubbleContext) {
   const getDocument = (index: number) => stickerSet.then(({documents}) => documents[index] as MyDocument);
 
   const size = makeMediaSize(512, 512);
-  const boxSize = makeMediaSize(128, 128);
+  const boxSize = makeMediaSize(180, 180);
   const unknown = !value;
   const play = unknown || context.isInUnread;
   const commonOptions: Omit<Parameters<ChatBubbles['wrapSticker']>[1], 'doc' | 'container'> = {
@@ -33,8 +32,8 @@ export default function wrapDice(context: BubbleContext) {
       play: play,
       manual: unknown
     }),
-    width: 128,
-    height: 128
+    width: boxSize.width,
+    height: boxSize.height
   };
 
   if(isSlot) {
@@ -135,7 +134,7 @@ export default function wrapDice(context: BubbleContext) {
       .map((index) => getPartReady(wrapPart(index, getDocument(index))));
       const readyPromise = Promise.all([...partsReadyPromises, ...newPartsReadyPromises]);
       readyPromise.then((parts) => {
-        console.log('parts', parts);
+        // console.log('parts', parts);
         const slotsParts = parts.filter(({index}) => isSlotOption(index));
         const spinningParts = parts.filter(({index}) => spinningIndexes.includes(index));
         const replaceBackground = () => {

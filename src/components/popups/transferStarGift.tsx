@@ -4,8 +4,7 @@ import rootScope from '@lib/rootScope';
 import PopupPayment from '@components/popups/payment';
 import PopupPickUser from '@components/popups/pickUser';
 import confirmationPopup from '@components/confirmationPopup';
-import wrapPeerTitle from '@components/wrappers/peerTitle';
-import numberThousandSplitter, {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
+import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
 import {MessageAction, StarGift} from '@layer';
 import {toastNew} from '@components/toast';
 import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
@@ -26,13 +25,11 @@ import {I18nTsx} from '@helpers/solid/i18n';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
 import Table, {TableRow} from '@components/table';
 import {AttributeValue} from '@components/popups/starGiftInfo';
-import paymentsWrapCurrencyAmount, {formatNanoton, nanotonToJsNumber} from '@helpers/paymentsWrapCurrencyAmount';
+import paymentsWrapCurrencyAmount, {formatNanoton} from '@helpers/paymentsWrapCurrencyAmount';
 import {FloatingStarsBalance} from '@components/popups/floatingStarsBalance';
-import {IconTsx} from '@components/iconTsx';
 import {doubleRaf} from '@helpers/schedulers';
 import {useAppConfig} from '@stores/appState';
 import bigInt from 'big-integer';
-import formatStarsAmount from '@appManagers/utils/payments/formatStarsAmount';
 import {STARS_CURRENCY, TON_CURRENCY} from '@appManagers/constants';
 
 export function transferStarGiftConfirmationPopup(options: {
@@ -55,19 +52,19 @@ export function transferStarGiftConfirmationPopup(options: {
       ['StarGiftModel', (
         <AttributeValue
           name={collectibleAttributes.model.name}
-          permille={collectibleAttributes.model.rarity_permille}
+          rarity={collectibleAttributes.model.rarity}
         />
       )],
       ['StarGiftBackdrop', (
         <AttributeValue
           name={collectibleAttributes.backdrop.name}
-          permille={collectibleAttributes.backdrop.rarity_permille}
+          rarity={collectibleAttributes.backdrop.rarity}
         />
       )],
       ['StarGiftPattern', (
         <AttributeValue
           name={collectibleAttributes.pattern.name}
-          permille={collectibleAttributes.pattern.rarity_permille}
+          rarity={collectibleAttributes.pattern.rarity}
         />
       )]
     ];

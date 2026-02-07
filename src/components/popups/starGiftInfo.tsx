@@ -1,8 +1,7 @@
-import {createMemo, createSignal, For, Index, JSX, Match, onMount, Show, Switch} from 'solid-js';
+import {createMemo, createSignal, Index, JSX, Match, onMount, Show, Switch} from 'solid-js';
 import PopupElement from '.';
-import {Peer, PaymentsUniqueStarGiftValueInfo, StarGift, StarGiftAttribute} from '@layer';
+import {Peer, PaymentsUniqueStarGiftValueInfo, StarGift, StarGiftAttribute, StarGiftAttributeRarity} from '@layer';
 import {MyDocument} from '@appManagers/appDocsManager';
-import {StickerTsx} from '@components/wrappers/sticker';
 import {i18n, LangPackKey} from '@lib/langPack';
 import {StarsStar} from '@components/popups/stars';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
@@ -41,7 +40,6 @@ import {getCollectibleName} from '@appManagers/utils/gifts/getCollectibleName';
 import {updateStarGift} from '@appManagers/utils/gifts/updateStarGift';
 import wrapMessageEntities from '@lib/richTextProcessor/wrapMessageEntities';
 import PopupStarGiftValue from '@components/popups/starGiftValue';
-import appSidebarRight from '@components/sidebarRight';
 import Icon from '@components/icon';
 import PopupStarGiftWear from '@components/popups/starGiftWear';
 import {setQuizHint} from '@components/poll';
@@ -53,25 +51,42 @@ import {rgbIntToHex} from '@helpers/color';
 import wrapSticker from '@components/wrappers/sticker';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
-import Animated, {SimpleAnimation} from '@helpers/solid/animations';
+import {SimpleAnimation} from '@helpers/solid/animations';
 import BezierEasing from '@vendor/bezierEasing';
 import {AnimatedSuper} from '@components/animatedSuper';
 import {ConfettiContainer, ConfettiRef} from '@components/confetti';
 import {PreloaderTsx} from '@components/putPreloader';
 import {showCreateStarGiftOfferPopup} from '@components/popups/createStarGiftOffer';
 
-function AttributeTableButton(props: { permille: number }) {
+function AttributeTableButton(props: {rarity: StarGiftAttributeRarity}) {
+  if(props.rarity._ !== 'starGiftAttributeRarity') {
+    const map: Record<Exclude<StarGiftAttributeRarity['_'], 'starGiftAttributeRarity'>, {langKey: LangPackKey, color: string}> = {
+      'starGiftAttributeRarityUncommon': {langKey: 'StarGiftRarityUncommon', color: 'green'},
+      'starGiftAttributeRarityRare': {langKey: 'StarGiftRarityRare', color: 'blue'},
+      'starGiftAttributeRarityEpic': {langKey: 'StarGiftRarityEpic', color: 'violet'},
+      'starGiftAttributeRarityLegendary': {langKey: 'StarGiftRarityLegendary', color: 'gold'}
+    };
+
+    return (
+      <TableButtonWithTooltip
+        class={`rarity rarity-${map[props.rarity._].color} disable-hover`}
+      >
+        {i18n(map[props.rarity._].langKey)}
+      </TableButtonWithTooltip>
+    );
+  }
+
   return (
     <TableButtonWithTooltip
-      tooltipTextElement={i18n('StarGiftAttributeTooltip', [`${props.permille / 10}%`])}
+      tooltipTextElement={i18n('StarGiftAttributeTooltip', [`${props.rarity.permille / 10}%`])}
       tooltipClass="popup-star-gift-info-tooltip"
     >
-      {props.permille / 10}%
+      {props.rarity.permille / 10}%
     </TableButtonWithTooltip>
   );
 }
 
-export function AttributeValue(props: { name: string, permille: number, onClick?: () => void }) {
+export function AttributeValue(props: {name: string, rarity: StarGiftAttributeRarity, onClick?: () => void}) {
   return (
     <div class="popup-star-gift-info-attribute-value">
       {props.onClick ? (
@@ -79,7 +94,7 @@ export function AttributeValue(props: { name: string, permille: number, onClick?
           {props.name}
         </span>
       ) : props.name}
-      <AttributeTableButton permille={props.permille} />
+      <AttributeTableButton rarity={props.rarity} />
     </div>
   )
 }
@@ -102,9 +117,10 @@ function calculateEasedIntervals(count: number, duration: number): number[] {
   return intervals;
 }
 
+type AnimatedAttributeValueItem = {name: string, rarity: StarGiftAttributeRarity};
 function AnimatedAttributeValue(props: {
-  items: {name: string, rarity_permille: number}[],
-  actual: {name: string, rarity_permille: number},
+  items: AnimatedAttributeValueItem[],
+  actual: AnimatedAttributeValueItem,
   duration: number,
   count: number,
   onComplete?: () => void,
@@ -113,7 +129,7 @@ function AnimatedAttributeValue(props: {
 }) {
   const [position, setPosition] = createSignal(0);
 
-  const items: {name: string, rarity_permille: number}[] = [];
+  const items: AnimatedAttributeValueItem[] = [];
   while(items.length < props.count - 1) {
     const left = props.count - 1 - items.length;
     items.push(...props.items.slice(0, left));
@@ -170,7 +186,7 @@ function AnimatedAttributeValue(props: {
             <Match when={index === position()}>
               <AttributeValue
                 name={item().name}
-                permille={item().rarity_permille}
+                rarity={item().rarity}
                 onClick={props.onClick}
               />
             </Match>
@@ -655,7 +671,7 @@ export default class PopupStarGiftInfo extends PopupElement {
           ) : (
             <AttributeValue
               name={collectibleAttributes.model.name}
-              permille={collectibleAttributes.model.rarity_permille}
+              rarity={collectibleAttributes.model.rarity}
               onClick={() => handleAttributeClick(collectibleAttributes.model)}
             />
           )
@@ -675,7 +691,7 @@ export default class PopupStarGiftInfo extends PopupElement {
           ) : (
             <AttributeValue
               name={collectibleAttributes.backdrop.name}
-              permille={collectibleAttributes.backdrop.rarity_permille}
+              rarity={collectibleAttributes.backdrop.rarity}
               onClick={() => handleAttributeClick(collectibleAttributes.backdrop)}
             />
           )
@@ -695,7 +711,7 @@ export default class PopupStarGiftInfo extends PopupElement {
           ) : (
             <AttributeValue
               name={collectibleAttributes.pattern.name}
-              permille={collectibleAttributes.pattern.rarity_permille}
+              rarity={collectibleAttributes.pattern.rarity}
               onClick={() => handleAttributeClick(collectibleAttributes.pattern)}
             />
           )
