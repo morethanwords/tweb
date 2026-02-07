@@ -155,6 +155,9 @@ import {Middleware} from '@helpers/middleware';
 import onMediaLoad from '@helpers/onMediaLoad';
 import createVideo from '@helpers/dom/createVideo';
 import {MAX_EDITABLE_VIDEO_SIZE} from '@components/mediaEditor/support';
+import getDocumentDownloadOptions from '@lib/appManagers/utils/docs/getDocumentDownloadOptions';
+import getPhotoDownloadOptions from '@lib/appManagers/utils/photos/getPhotoDownloadOptions';
+import {getFileNameByLocation} from '@helpers/fileName';
 
 // console.log('Recorder', Recorder);
 
@@ -4672,7 +4675,7 @@ export default class ChatInput {
       onEditFinish: async(result) => {
         const popup = new PopupNewMedia(this.chat, [
           {
-            file: new File([mediaBlob], 'edited-media', {type: mediaBlob.type}),
+            file: new File([mediaBlob], payload.fileName, {type: mediaBlob.type}),
             editResult: result
           }
         ], 'media');
@@ -4756,6 +4759,7 @@ function canEditMediaWithEditor(media: MessageMedia) {
 }
 
 type OpenMediaPayload = {
+  fileName: string;
   mediaType: MediaEditorProps['mediaType']
   createCanvasSource: (url: string, middleware: Middleware) => Promise<HTMLImageElement | HTMLVideoElement>;
   downloadMediaBlob: () => DownloadBlob;
@@ -4769,6 +4773,7 @@ function getOpenMediaPhotoPayload(photo: Photo.photo): OpenMediaPayload {
   if(!fullPhotoSize?.w || !fullPhotoSize?.h) return;
 
   return {
+    fileName: tryGetFileName(() => getFileNameByLocation(getPhotoDownloadOptions(photo, fullPhotoSize).location)),
     mediaType: 'image',
     createCanvasSource: createImageSource,
     downloadMediaBlob: () =>
@@ -4783,6 +4788,7 @@ function getOpenMediaVideoPayload(document: Document.document): OpenMediaPayload
   if(!document.size || document.size > MAX_EDITABLE_VIDEO_SIZE) return;
 
   return {
+    fileName: tryGetFileName(() => document.file_name || getFileNameByLocation(getDocumentDownloadOptions(document).location)),
     mediaType: 'video',
     createCanvasSource: createVideoSource,
     downloadMediaBlob: () =>
@@ -4822,4 +4828,13 @@ async function createVideoSource(url: string, middleware: Middleware) {
 
 function getSourceSize(source: HTMLVideoElement | HTMLImageElement): NumberPair {
   return source instanceof HTMLVideoElement ? [source.videoWidth, source.videoHeight] : [source.naturalWidth, source.naturalHeight];
+}
+
+function tryGetFileName(fn: () => string) {
+  const defaultFileName = 'edited-media';
+  try {
+    return fn() || defaultFileName;
+  } catch{
+    return 'edited-media';
+  }
 }
