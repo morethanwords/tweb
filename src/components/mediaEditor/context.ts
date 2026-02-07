@@ -100,7 +100,7 @@ export enum SetVideoTimeFlags {
 
 export type EditorOverridableGlobalActions = {
   pushToHistory: (item: HistoryItem) => void;
-  setInitialImageRatio: (ratio: number) => void;
+  updateMediaStateClone: (callback: (state: EditingMediaState) => void) => void;
   redrawBrushes: () => void;
   abortDrawerSlide: () => void;
   resetRotationWheel: () => void;
@@ -211,8 +211,8 @@ export function createContextValue(props: MediaEditorProps): MediaEditorContextV
         redoHistory.length && redoHistory.splice(0, Infinity);
       }));
     },
-    setInitialImageRatio: (ratio: number) => {
-      mediaStateInitClone.currentImageRatio = ratio;
+    updateMediaStateClone: (callback) => {
+      callback(mediaStateInitClone);
     },
     redrawBrushes: () => {},
     abortDrawerSlide: () => {},

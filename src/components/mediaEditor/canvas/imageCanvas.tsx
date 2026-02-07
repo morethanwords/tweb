@@ -54,14 +54,24 @@ export default function ImageCanvas() {
       editorState.renderingPayload = payload;
       editorState.mediaSize = [payload.media.width, payload.media.height];
       editorState.mediaRatio = payload.media.width / payload.media.height;
-      mediaState.videoQuality = snapToAvailableQuality(payload.media.height);
+
+      if(!mediaState.videoQuality) {
+        const videoQuality = snapToAvailableQuality(payload.media.height);
+        actions.updateMediaStateClone(state => {
+          state.videoQuality = videoQuality;
+        });
+        mediaState.videoQuality = videoQuality;
+      }
+
+      if(!mediaState.currentImageRatio) {
+        const ratio = payload.media.width / payload.media.height;
+        actions.updateMediaStateClone(state => {
+          state.currentImageRatio = ratio;
+        });
+        mediaState.currentImageRatio = ratio;
+      }
     });
 
-    if(!mediaState.currentImageRatio) {
-      const ratio = payload.media.width / payload.media.height;
-      actions.setInitialImageRatio(ratio)
-      mediaState.currentImageRatio = ratio;
-    }
 
     ownedInitVideoPlayback();
   }
