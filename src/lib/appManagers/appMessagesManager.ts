@@ -102,6 +102,7 @@ const DO_NOT_READ_HISTORY = false;
 const DO_NOT_SEND_MESSAGES = false;
 const SEND_MESSAGES_TO_PAID_QUEUE = false;
 const DO_NOT_DELETE_MESSAGES = false;
+const FETCH_TARGETED_MESSAGE = false;
 
 const GLOBAL_HISTORY_PEER_ID = NULL_PEER_ID;
 const TOPIC_TITLE_MAX_LENGTH = 16;
@@ -8536,7 +8537,8 @@ export class AppMessagesManager extends AppManager {
       message.pFlags.unread ||
       message.peerId === this.appPeersManager.peerId ||
       this.appPeersManager.isBroadcast(message.peerId) ||
-      this.appPeersManager.isMonoforum(message.peerId)
+      this.appPeersManager.isMonoforum(message.peerId) ||
+      message.pFlags.is_scheduled
     ) {
       return false;
     }
@@ -9010,12 +9012,14 @@ export class AppMessagesManager extends AppManager {
     // * offset_id will be inclusive only if there is 'add_offset' <= -1 (-1 - will only include the 'offset_id')
     // * check that offset_id is not 0
     if(
+      !FETCH_TARGETED_MESSAGE &&
       offsetId &&
       getServerMessageId(offsetId) &&
       !mids.includes(offsetId) &&
       offsetIdOffset <= count &&
       (addOffset || 0) >= 0 && // ! warning
-      !searchSlicedArray
+      !searchSlicedArray &&
+      !!historyStorage.history.findSlice(offsetId)
     ) {
       let i = 0;
       for(const length = mids.length; i < length; ++i) {
@@ -9353,6 +9357,12 @@ export class AppMessagesManager extends AppManager {
     isPublicPosts,
     allowStars
   }: RequestHistoryOptions) {
+    const fetchTargetedMessage = FETCH_TARGETED_MESSAGE && !addOffset;
+    if(fetchTargetedMessage) {
+      addOffset = -1;
+      limit += 1;
+    }
+
     const offsetMessage = offsetId && this.getMessageByPeer(offsetPeerId || peerId, offsetId);
     offsetPeerId ??= offsetMessage?.peerId;
 
@@ -9477,12 +9487,19 @@ export class AppMessagesManager extends AppManager {
 
     return promise.then((historyResult) => {
       if(DEBUG) {
-        this.log('requestHistory result:', peerId, historyResult, offsetId, limit, addOffset);
+        this.log('requestHistory result:', peerId, copy(historyResult), offsetId, limit, addOffset);
       }
 
       const {messages} = historyResult;
 
       this.saveApiResult(historyResult);
+
+      if(fetchTargetedMessage) {
+        const index = messages.findIndex((message) => message.id === offsetId);
+        // if(index !== -1) {
+        //   messages.splice(index, 1);
+        // }
+      }
 
       if('pts' in historyResult) {
         this.apiUpdatesManager.addChannelState(peerId.toChatId(), historyResult.pts);

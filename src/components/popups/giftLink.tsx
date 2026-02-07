@@ -147,7 +147,7 @@ export default class PopupGiftLink extends PopupElement {
           </div>
         </div>
         {inviteLink.container}
-        <Table boldKey content={content} />
+        <Table class="popup-gift-link-table" boldKey content={content} />
         {(!this.isInChat || !isUsed) && (
           <div class="popup-gift-link-share">
             {isUsed ?

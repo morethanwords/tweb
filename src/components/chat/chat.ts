@@ -46,7 +46,7 @@ import isForwardOfForward from '@appManagers/utils/messages/isForwardOfForward';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {SendReactionOptions} from '@appManagers/appReactionsManager';
 import {MiddlewareHelper, getMiddleware} from '@helpers/middleware';
-import {Accessor, batch, createEffect, createRoot, createSignal, on, onCleanup, untrack} from 'solid-js';
+import {Accessor, createEffect, createRoot, createSignal, on, onCleanup, untrack} from 'solid-js';
 import TopbarSearch from '@components/chat/topbarSearch';
 import createUnifiedSignal from '@helpers/solid/createUnifiedSignal';
 import liteMode from '@helpers/liteMode';
@@ -134,8 +134,7 @@ export default class Chat extends EventListenerBase<{
 
   public type: ChatType;
   public messagesStorageKey: MessagesStorageKey;
-  public historyStorageKeySignal: ReturnType<typeof createUnifiedSignal<HistoryStorageKey>>;
-  public historyStorageKeyNoThreadIdSignal: ReturnType<typeof createUnifiedSignal<HistoryStorageKey>>;
+  public disposeHistoryStorage: () => void;
   public isStandalone: boolean;
 
   public noForwards: boolean;
@@ -247,22 +246,6 @@ export default class Chat extends EventListenerBase<{
       [this.appState, this.setAppState] = useAppState();
       [this.appSettings, this.setAppSettings] = useAppSettings();
       this.appConfig = useAppConfig();
-      this.historyStorageKeySignal = createUnifiedSignal();
-      this.historyStorageKeyNoThreadIdSignal = createUnifiedSignal();
-
-      createEffect(on(
-        () => [this.historyStorageKeySignal(), this.historyStorageKeyNoThreadIdSignal()],
-        ([key, keyNoThreadId]) => {
-          this.historyStorage = useHistoryStorage(key);
-          this.historyStorageNoThreadId = useHistoryStorage(keyNoThreadId);
-
-          this.managers.appMessagesManager.toggleHistoryKeySubscription(key, true);
-          onCleanup(() => {
-            this.managers.appMessagesManager.toggleHistoryKeySubscription(key, false);
-          });
-        },
-        {defer: true}
-      ));
     });
   }
 
@@ -1156,9 +1139,22 @@ export default class Chat extends EventListenerBase<{
   }
 
   private changeHistoryStorageKey(key: HistoryStorageKey, keyNoThreadId: HistoryStorageKey) {
-    batch(() => {
-      this.historyStorageKeySignal(key);
-      this.historyStorageKeyNoThreadIdSignal(keyNoThreadId);
+    this.disposeHistoryStorage?.();
+    this.disposeHistoryStorage = undefined;
+    if(!key) {
+      return;
+    }
+
+    this.disposeHistoryStorage = createRoot((dispose) => {
+      this.historyStorage = useHistoryStorage(key);
+      this.historyStorageNoThreadId = useHistoryStorage(keyNoThreadId);
+
+      this.managers.appMessagesManager.toggleHistoryKeySubscription(key, true);
+      onCleanup(() => {
+        this.managers.appMessagesManager.toggleHistoryKeySubscription(key, false);
+      });
+
+      return dispose;
     });
   }
 
