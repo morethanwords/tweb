@@ -218,7 +218,7 @@ export default class PopupNewMedia extends PopupElement {
         text: 'Popup.Attach.AsMedia',
         onClick: () => this.changeType('media'),
         verify: () => {
-          if(!this.hasAnyMedia() || this.willAttach.type !== 'document') {
+          if(!this.hasAnyMedia() || this.willAttach.type !== 'document' || this.isEditingMediaFromAlbum()) {
             return false;
           }
 
@@ -240,12 +240,12 @@ export default class PopupNewMedia extends PopupElement {
         icon: 'document',
         text: 'SendAsFile',
         onClick: () => this.changeType('document'),
-        verify: () => this.files.length === 1 && this.willAttach.type !== 'document' && canSendDocs
+        verify: () => this.files.length === 1 && this.willAttach.type !== 'document' && canSendDocs && !this.isEditingMediaFromAlbum()
       }, {
         icon: 'document',
         text: 'SendAsFiles',
         onClick: () => this.changeType('document'),
-        verify: () => this.files.length > 1 && this.willAttach.type !== 'document' && canSendDocs
+        verify: () => this.files.length > 1 && this.willAttach.type !== 'document' && canSendDocs && !this.isEditingMediaFromAlbum()
       }, {
         icon: 'groupmedia',
         text: 'Popup.Attach.GroupMedia',
