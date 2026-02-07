@@ -23,18 +23,28 @@ export default async function renderToImage({
   brushCanvas,
   resultCanvas
 }: RenderToImageArgs) {
-  const {editorState: {stickersLayersInfo}} = context;
+  const {editorState: {stickersLayersInfo}, canImageResultInGIF} = context;
 
   ctx.drawImage(imageCanvas, 0, 0);
   ctx.drawImage(brushCanvas, 0, 0);
 
   scaledLayers.forEach((layer) => {
     if(layer.type === 'text') drawTextLayer(context, ctx, layer);
-    if(layer.type === 'sticker' && layer.sticker?.sticker === StickerType.Static) {
+    if(layer.type === 'sticker' && (!canImageResultInGIF || layer.sticker?.sticker === StickerType.Static)) {
       const {container} = stickersLayersInfo[layer.id];
       const stickerChild = container?.lastElementChild;
-      if(!(stickerChild instanceof HTMLImageElement)) return;
-      const ratio = stickerChild.naturalWidth / stickerChild.naturalHeight;
+
+      let ratio: number;
+      if(stickerChild instanceof HTMLImageElement) {
+        ratio = stickerChild.naturalWidth / stickerChild.naturalHeight;
+      } else if(stickerChild instanceof HTMLVideoElement) {
+        ratio = stickerChild.videoWidth / stickerChild.videoHeight;
+      } else if(stickerChild instanceof HTMLCanvasElement) {
+        ratio = stickerChild.width / stickerChild.height;
+      } else {
+        return;
+      }
+
       drawStickerLayer(context, ctx, layer, stickerChild, ratio);
     }
   });

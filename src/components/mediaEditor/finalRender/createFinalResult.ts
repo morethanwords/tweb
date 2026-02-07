@@ -47,14 +47,14 @@ const log = logger('MediaEditor.createFinalResult');
 
 export async function createFinalResult(): Promise<MediaEditorFinalResult> {
   const context = useMediaEditorContext();
-  const {editorState, mediaState, mediaSrc, mediaType} = context;
+  const {editorState, mediaState, mediaSrc, mediaType, canImageResultInGIF} = context;
   const {resizableLayers, adjustments} = mediaState;
 
   const owner = getOwner();
 
   const cropOffset = useCropOffset();
 
-  const hasAnimatedStickers = checkIfHasAnimatedStickers(resizableLayers);
+  const hasAnimatedStickers = checkIfHasAnimatedStickers(resizableLayers) && canImageResultInGIF;
 
   const willResultInVideo = hasAnimatedStickers || mediaType === 'video';
 

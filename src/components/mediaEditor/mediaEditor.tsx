@@ -31,6 +31,7 @@ export type MediaEditorProps = {
   mediaType: MediaType;
   getMediaBlob: () => Promise<Blob | null>;
   editingMediaState?: EditingMediaState;
+  canImageResultInGIF?: boolean;
 };
 
 export function MediaEditor(props: MediaEditorProps) {

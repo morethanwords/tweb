@@ -82,7 +82,6 @@ import commonStateStorage from '@lib/commonStateStorage';
 import PaidMessagesQueue from '@appManagers/utils/messages/paidMessagesQueue';
 import type {ConfirmedPaymentResult} from '@components/chat/paidMessagesInterceptor';
 import RepayRequestHandler, {RepayRequest} from '@appManagers/utils/repayRequestHandler';
-import canVideoBeAnimated from '@appManagers/utils/docs/canVideoBeAnimated';
 import getPhotoInput from '@appManagers/utils/photos/getPhotoInput';
 import {BatchProcessor} from '@helpers/sortedList';
 import {increment, MonoforumDialog} from '@lib/storages/monoforumDialogs';
@@ -132,7 +131,11 @@ export type SendFileDetails = {
     size: MediaSize
   },
   strippedBytes: PhotoSize.photoStrippedSize['bytes'],
-  spoiler: boolean
+  spoiler: boolean,
+  /**
+   * If it's a GIF (looped)
+   */
+  isAnimated: boolean,
 }>;
 
 export type HistoryStorageKey = `${HistoryStorage['type']}_${PeerId}` | `replies_${PeerId}_${number}` | `search_${PeerId}_${SearchStorageFilterKey}_${number}`;
@@ -435,6 +438,7 @@ type MakeDocumentAndMetaForSendingFileArgs = Pick<SendFileArgs,
   | 'isRoundMessage'
   | 'noSound'
   | 'thumb'
+  | 'isAnimated'
 > & {
   mediaTempId: number;
   isDocument: boolean;
@@ -937,16 +941,12 @@ export class AppMessagesManager extends AppManager {
       isMedia: options.isMedia,
       ...pickKeys(sendFileDetails, [
         'strippedBytes',
-        // 'useTempMediaId',
-        // 'isVoiceMessage',
         'width',
         'height',
         'objectURL',
-        // 'waveform',
         'duration',
-        // 'isRoundMessage',
-        // 'noSound',
-        'thumb'
+        'thumb',
+        'isAnimated'
       ])
     });
 
@@ -1525,7 +1525,8 @@ export class AppMessagesManager extends AppManager {
         'isMedia',
         'isRoundMessage',
         'noSound',
-        'thumb'
+        'thumb',
+        'isAnimated'
       ])
     });
 
@@ -1962,7 +1963,7 @@ export class AppMessagesManager extends AppManager {
       attributes.push(videoAttribute);
 
       // * must follow after video attribute
-      if(canVideoBeAnimated(args.noSound, file.size)) {
+      if(args.isAnimated) {
         attributes.push({
           _: 'documentAttributeAnimated'
         });

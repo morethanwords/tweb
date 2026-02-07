@@ -67,7 +67,6 @@ import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSpli
 import {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
 import ListenerSetter from '@helpers/listenerSetter';
 import canVideoBeAnimated from '@appManagers/utils/docs/canVideoBeAnimated';
-import {NumberPair} from '@components/mediaEditor/types';
 import MarkupTooltip from '@components/chat/markupTooltip';
 import {MAX_EDITABLE_VIDEO_SIZE, supportsVideoEncoding} from '@components/mediaEditor/support';
 import {animateValue} from '@helpers/animateValue';
@@ -82,7 +81,6 @@ import {makeDateFromTimestamp} from '@helpers/date/makeDateFromTimestamp';
 type SendFileParams = SendFileDetails & {
   file?: File,
   scaledBlob?: Blob,
-  noSound?: boolean,
   itemDiv: HTMLElement,
   mediaSpoiler?: HTMLElement,
   middlewareHelper: MiddlewareHelper,
@@ -802,7 +800,7 @@ export default class PopupNewMedia extends PopupElement {
         if(isMedia) {
           a.unshift(
             [IMAGE_MIME_TYPES_SUPPORTED, 'GlobalAttachPhotoRestricted', 'send_photos'],
-            [() => VIDEO_MIME_TYPES_SUPPORTED.has(params.file.type as any) && params.noSound, 'GlobalAttachGifRestricted', 'send_gifs'],
+            [() => VIDEO_MIME_TYPES_SUPPORTED.has(params.file.type as any) && params.isAnimated, 'GlobalAttachGifRestricted', 'send_gifs'],
             [VIDEO_MIME_TYPES_SUPPORTED, 'GlobalAttachVideoRestricted', 'send_videos']
           );
         }
@@ -968,11 +966,13 @@ export default class PopupNewMedia extends PopupElement {
 
     let promise: Promise<void>;
 
+    const myself = this;
+
     if(editResult) {
       const result = editResult.getResult();
 
-      function addGifLabel(result: MediaEditorFinalResultPayload) {
-        if(!canVideoBeAnimated(!result.hasSound, result.blob.size)) return;
+      function addGifLabel() {
+        if(!params.isAnimated) return;
         const gifLabel = i18n('AttachGif');
         gifLabel.classList.add('gif-label');
         itemDiv.append(gifLabel);
@@ -982,7 +982,7 @@ export default class PopupNewMedia extends PopupElement {
         if(editResult.isVideo) {
           await putEditedImage(editResult.preview);
           await putEditedVideo(result);
-          addGifLabel(result);
+          addGifLabel();
         } else {
           await putEditedImage(result.blob, true);
         }
@@ -1045,14 +1045,17 @@ export default class PopupNewMedia extends PopupElement {
         params.width = editResult.width;
         params.height = editResult.height;
         params.duration = video.duration;
-        params.noSound = !result.hasSound;
+        params.isAnimated = canVideoBeAnimated({
+          noSound: !result.hasSound,
+          size: result.blob.size,
+          isEditingMediaFromAlbum: myself.isEditingMediaFromAlbum()
+        });
 
         const thumb = result.thumb || await createPosterFromVideo(video);
-        const canBeAnimated = canVideoBeAnimated(!result.hasSound, result.blob.size);
 
         params.thumb = {
           url: await apiManagerProxy.invoke('createObjectURL', thumb.blob),
-          isCover: !canBeAnimated && !!result.thumb,
+          isCover: !params.isAnimated && !!result.thumb,
           ...thumb
         };
       }
@@ -1087,7 +1090,12 @@ export default class PopupNewMedia extends PopupElement {
 
       const audioDecodedByteCount = (video as any).webkitAudioDecodedByteCount;
       if(audioDecodedByteCount !== undefined) {
-        params.noSound = !audioDecodedByteCount;
+        const noSound = !audioDecodedByteCount;
+        params.isAnimated = canVideoBeAnimated({
+          noSound,
+          size: file.size,
+          isEditingMediaFromAlbum: this.isEditingMediaFromAlbum()
+        });
       }
 
       const thumb = await createPosterFromVideo(video);
@@ -1113,7 +1121,7 @@ export default class PopupNewMedia extends PopupElement {
       params.height = img.naturalHeight;
 
       if(file.type === 'image/gif') {
-        params.noSound = true;
+        params.isAnimated = true;
 
         promise = Promise.all([
           getGifDuration(img).then((duration) => {
@@ -1180,7 +1188,8 @@ export default class PopupNewMedia extends PopupElement {
                 this.isMediaEditorOpen = false;
                 if(!hasGif)
                   (this.btnConfirmOnEnter as HTMLButtonElement).disabled = false;
-              }
+              },
+              canImageResultInGIF: !this.isEditingMediaFromAlbum()
             });
           });
         }
@@ -1501,12 +1510,7 @@ export default class PopupNewMedia extends PopupElement {
   private hasGif() {
     const {sendFileDetails} = this.willAttach;
 
-    return sendFileDetails.some((params) => {
-      const result = params.editResult?.getResult();
-      if(!result || result instanceof Promise) return false;
-
-      return canVideoBeAnimated(!result.hasSound, result.blob.size);
-    });
+    return sendFileDetails.some((params) => params.isAnimated);
   }
 
   private canCheckIfHasGif() {
@@ -1626,6 +1630,10 @@ export default class PopupNewMedia extends PopupElement {
 
   private isEditing() {
     return !!this.chat?.input?.editMessage;
+  }
+
+  private isEditingMediaFromAlbum() {
+    return !!this.chat?.input?.editMessage?.grouped_id;
   }
 
   private canHaveMultipleFiles() {

@@ -4680,7 +4680,8 @@ export default class ChatInput {
         ], 'media');
 
         popup.show(false);
-      }
+      },
+      canImageResultInGIF: !this.isEditingMediaFromAlbum()
     });
   }
 
@@ -4741,6 +4742,10 @@ export default class ChatInput {
     }
 
     return {result, waitBeforeCleanup};
+  }
+
+  private isEditingMediaFromAlbum() {
+    return !!this.editMessage?.grouped_id;
   }
 }
 
