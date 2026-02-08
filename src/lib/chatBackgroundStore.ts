@@ -87,11 +87,12 @@ class ChatBackgroundStore extends StaticUtilityClass {
     }
 
     const response = await fetch(url);
+    const clonedResponse = response.clone();
     const blob = await response.blob();
 
     return this.cacheStorage.save({
       entryName: this.getWallPaperStorageUrl(slug, blur),
-      response,
+      response: clonedResponse,
       size: blob.size
     });
   }

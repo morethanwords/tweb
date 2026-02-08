@@ -227,14 +227,17 @@ export default class CacheStorageController implements FileStorage {
   public async save({entryName, response, size, contentType}: SaveArgs) {
     await this.waitToEnable();
 
-    response.headers.set(HTTPHeaderNames.cachedTime, Math.floor(Date.now() / 1000 | 0).toString());
-    response.headers.set(HTTPHeaderNames.contentLength, size.toString());
-
-    if(contentType) {
-      response.headers.set(HTTPHeaderNames.contentType, contentType);
-    }
-
-    let result = response;
+    // Avoids modifying read-only headers (e.g. the response returned from `fetch`)
+    let result = new Response(response.body, {
+      headers: {
+        ...Object.fromEntries(response.headers),
+        [HTTPHeaderNames.cachedTime]: Math.floor(Date.now() / 1000 | 0).toString(),
+        [HTTPHeaderNames.contentLength]: size.toString(),
+        ...(contentType ? {[HTTPHeaderNames.contentType]: contentType} : {})
+      },
+      status: response.status,
+      statusText: response.statusText
+    });
 
     if(this.config?.encryptable && await DeferredIsUsingPasscode.isUsingPasscode()) {
       result = new Response(
