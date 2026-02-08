@@ -103,7 +103,7 @@ export default class SortedDialogList {
 
   public async getIndexForKey(key: any) {
     if(key === this.monoforumParentPeerId) return 0;
-    if(key === this.virtualFilterId) return 0;
+    if(key === this.virtualFilterId && key !== rootScope.myId) return 0;
 
     if(this.monoforumParentPeerId) {
       const dialog = await this.managers.monoforumDialogsStorage.getDialogByParent(this.monoforumParentPeerId, key);
