@@ -1090,6 +1090,7 @@
 "SharedMediaTab2" = "Media";
 "SharedLinksTab2" = "Links";
 "SharedMusicTab2" = "Music";
+"SavedMusicTab" = "Playlist";
 "SharedVoiceTab2" = "Voice";
 "NewPoll" = "New Poll";
 "PollOptions" = "Poll options";

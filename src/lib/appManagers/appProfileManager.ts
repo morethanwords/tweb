@@ -189,6 +189,25 @@ export class AppProfileManager extends AppManager {
     return intro && (intro.title || intro.description || intro.sticker);
   }
 
+  public async getSavedMusic(userId: UserId, offset: number = 0, limit: number = 50) {
+    const result = await this.apiManager.invokeApi('users.getSavedMusic', {
+      id: this.appUsersManager.getUserInput(userId),
+      offset,
+      limit,
+      hash: 0
+    });
+
+    if(result._ === 'users.savedMusicNotModified') {
+      return {count: result.count, documents: []};
+    }
+
+    const documents = result.documents
+    .map((doc) => this.appDocsManager.saveDoc(doc))
+    .filter(Boolean);
+
+    return {count: result.count, documents};
+  }
+
   public getProfileByPeerId(peerId: PeerId, override?: boolean) {
     if(this.appPeersManager.isAnyChat(peerId)) return this.getChatFull(peerId.toChatId(), override);
     else return this.getProfile(peerId.toUserId(), override);

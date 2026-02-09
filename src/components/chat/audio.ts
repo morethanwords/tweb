@@ -32,6 +32,8 @@ import {ChatType} from '@components/chat/chat';
 import type {AppImManager} from '@lib/appImManager';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import toggleDisability from '@helpers/dom/toggleDisability';
+import appSidebarRight from '../sidebarRight';
+import AppSavedMusicTab from '../sidebarRight/tabs/savedMusic';
 
 export default class ChatAudio extends PinnedContainer {
   private toggleEl: HTMLElement;
@@ -102,6 +104,22 @@ export default class ChatAudio extends PinnedContainer {
 
       const mid = +this.container.dataset.mid;
       const peerId = this.container.dataset.peerId.toPeerId();
+      const savedMusicDocId = this.container.dataset.savedMusicDocId; // todo
+      if(savedMusicDocId) {
+        const prevTab = appSidebarRight.getTab(AppSavedMusicTab)
+        if(prevTab?.peerId === peerId) {
+          appSidebarRight.toggleSidebar(true);
+          return;
+        }
+
+        const tab = appSidebarRight.createTab(AppSavedMusicTab);
+        tab.peerId = peerId;
+        tab.open();
+        appSidebarRight.toggleSidebar(true);
+        if(prevTab) setTimeout(() => prevTab.close(), 300)
+        return
+      }
+
       const searchContext = appMediaPlaybackController.getSearchContext();
       this.appImManager.setInnerPeer({
         peerId,
@@ -234,7 +252,7 @@ export default class ChatAudio extends PinnedContainer {
     this.toggle(true);
   };
 
-  private onMediaPlay = ({doc, message, media, playbackParams}: ReturnType<AppMediaPlaybackController['getPlayingDetails']>) => {
+  private onMediaPlay = ({doc, message, media, playbackParams, isSavedMusic}: ReturnType<AppMediaPlaybackController['getPlayingDetails']>) => {
     let title: string | HTMLElement | DocumentFragment, subtitle: string | HTMLElement | DocumentFragment;
     const isMusic = doc.type !== 'voice' && doc.type !== 'round';
     if(!isMusic) {
@@ -264,7 +282,8 @@ export default class ChatAudio extends PinnedContainer {
     this.fill({
       title,
       subtitle,
-      message
+      message,
+      savedMusicDocId: isSavedMusic ? doc.id : undefined
     });
     this.setPlayIcon(media.paused);
     this.toggle(false);

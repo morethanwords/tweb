@@ -47,6 +47,8 @@ import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
 import {wrapSolidComponent} from '../helpers/solid/wrapSolidComponent';
 import PopupStarGiftInfo from './popups/starGiftInfo';
 import PopupElement from './popups';
+import appSidebarRight from '@components/sidebarRight';
+import AppSavedMusicTab from '@components/sidebarRight/tabs/savedMusic';
 
 type PeerProfileContextValue = {
   peerId: PeerId,
@@ -134,7 +136,7 @@ const PeerProfile = (props: {
       return value.isTopic;
     },
     get hasSavedMusic() {
-      return !!(value.fullPeer as UserFull)?.saved_music
+      return value.peerId !== rootScope.myId && !!(value.fullPeer as UserFull)?.saved_music
     },
     canBeDetailed: () => value.peerId !== rootScope.myId || !value.isDialog,
     getDetailsForUse: () => {
@@ -611,6 +613,13 @@ PeerProfile.PersonalChannel = () => {
 PeerProfile.PinnedMusic = () => {
   const context = useContext(PeerProfileContext);
 
+  const openSavedMusic = (e: Event) => {
+    cancelEvent(e)
+    const tab = appSidebarRight.createTab(AppSavedMusicTab);
+    tab.peerId = context.peerId;
+    tab.open();
+  };
+
   return (
     <div class="profile-music-container">
       <Show when={context.hasSavedMusic}>
@@ -619,7 +628,7 @@ PeerProfile.PinnedMusic = () => {
           const audioAttr = createMemo(() => music().attributes.find(it => it._ === 'documentAttributeAudio'))
           const filenameAttr = createMemo(() => music().attributes.find(it => it._ === 'documentAttributeFilename'))
           return (
-            <div class="profile-music">
+            <div class="profile-music" on:click={{capture: true, handleEvent: openSavedMusic}}>
               <IconTsx icon="music" class="profile-music-icon" />
               <Show when={audioAttr()?.performer}>
                 {performer => <span class="profile-music-performer">{wrapEmojiText(performer())}</span>}

@@ -572,6 +572,10 @@
           }
         }
       }
+
+      .profile-music {
+        color: #fff;
+      }
     }
 
     &:not(.header-filled) {
@@ -825,10 +829,10 @@
     justify-content: center;
     height: 1.5rem;
     background: rgba(0, 0, 0, .2);
-    color: white;
     font-size: 12px;
     line-height: 1;
     letter-spacing: -0.24px;
+    transition: background-color 0.1s ease-in;
 
     &-icon {
       margin-right: 0.5rem;
@@ -839,7 +843,11 @@
     }
 
     &-title:not(.only-title) {
-      color: rgba(255, 255, 255, 0.7)
+      opacity: 0.7;
+    }
+
+    @include hover() {
+      background: rgba(0, 0, 0, .3)
     }
   }
 }
@@ -848,6 +856,25 @@
 .search-super-container-stories.tabs-tab {
   position: static;
   overflow: initial!important;
+}
+
+.profile-music {
+  cursor: pointer;
+}
+
+.saved-music-container {
+  .saved-music-content {
+    .audio {
+      padding: 0.3125rem 1rem;
+
+      &:not(.audio-show-progress) {
+        .audio-time,
+        .audio-description:before {
+          display: none;
+        }
+      }
+    }
+  }
 }
 
 .search-super-content-gifts {

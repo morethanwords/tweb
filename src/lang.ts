@@ -1261,6 +1261,7 @@ const lang = {
   // "SharedGroupsTab2": "Groups",
   'SharedLinksTab2': 'Links',
   'SharedMusicTab2': 'Music',
+  'SavedMusicTab': 'Playlist',
   'SharedVoiceTab2': 'Voice',
   // "SharedGIFsTab2": "GIFs",
   'NewPoll': 'New Poll',

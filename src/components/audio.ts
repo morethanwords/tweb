@@ -6,7 +6,7 @@
 
 import type {MyDocument} from '@appManagers/appDocsManager';
 import ProgressivePreloader from '@components/preloader';
-import appMediaPlaybackController, {MediaItem, MediaSearchContext} from '@components/appMediaPlaybackController';
+import appMediaPlaybackController, {MediaItem, MediaListLoaderFactory, MediaSearchContext} from '@components/appMediaPlaybackController';
 import {DocumentAttribute, Message} from '@layer';
 import mediaSizes from '@helpers/mediaSizes';
 import {IS_SAFARI} from '@environment/userAgent';
@@ -517,6 +517,7 @@ export default class AudioElement extends HTMLElement {
   public uploadingFileName: string;
   public shouldWrapAsVoice?: boolean;
   public customAudioToTextButton?: HTMLElement;
+  public listLoaderFactory?: MediaListLoaderFactory;
 
   private listenerSetter = new ListenerSetter();
   private onTypeDisconnect: () => void;
@@ -801,7 +802,7 @@ export default class AudioElement extends HTMLElement {
     })) {
       const thisTarget = this.dataset.toBeSkipped ? this.audio.parentElement : this;
       const [prev, next] = !hadSearchContext ? [] : findMediaTargets(thisTarget, this.message.mid/* , this.searchContext.useSearch */);
-      appMediaPlaybackController.setTargets({peerId: this.message.peerId, mid: this.message.mid}, prev, next);
+      appMediaPlaybackController.setTargets({peerId: this.message.peerId, mid: this.message.mid}, prev, next, this.listLoaderFactory);
     }
   }
 

@@ -1,0 +1,28 @@
+.container {
+  :global(.sidebar-content) {
+    background: var(--surface-color);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  :global(.scrollable) {
+    flex: 1;
+  }
+}
+
+.list {
+  padding-inline: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--secondary-text-color);
+  user-select: none;
+}
