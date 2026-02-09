@@ -3530,7 +3530,7 @@ const lang = {
   'Premium.Boarding.Status.Title': 'Emoji Statuses',
   'Premium.Boarding.Status.Info': 'Choose from thousands of emoji to display current activity next to your name.',
   'Premium.Boarding.Stickers.Title': 'Premium Stickers',
-  'Premium.Boarding.Stickers.Info': 'Exclusive enlarged stickers featuring additional effects, updated monthly.',
+  'Premium.Boarding.Stickers.Info': 'Exclusive enlarged stickers featuring additional effects, updated regularly.',
   'Premium.Boarding.Badge.Title': 'Profile Badge',
   'Premium.Boarding.Badge.Info': 'An exclusive badge next to your name showing that you subscribe to Telegram Premium.',
   'Premium.Boarding.Emoji.Title': 'Animated Emoji',
@@ -4217,7 +4217,7 @@ const lang = {
   'StarGiftOffer.CreateOfferSubtitleStars': 'Enter the amount of Stars you\'d like to offer for **%s**',
   'StarGiftOffer.OfferDuration': 'Offer Duration',
   'StarGiftOffer.OfferDurationDescriptionStars': 'Choose how long **%s** has to accept your offer. When it expires, your Stars will be refunded',
-  'StarGiftOffer.OfferDurationDescriptionTON': 'Choose how long **%s** has to accept your offer. When it expires, your Stars will be refunded',
+  'StarGiftOffer.OfferDurationDescriptionTON': 'Choose how long **%s** has to accept your offer. When it expires, your TON will be refunded',
   'StarGiftOffer.CreateOfferSubmit': 'Offer %s',
 
   'AutoDeletesIn': 'auto-deletes in %s',
