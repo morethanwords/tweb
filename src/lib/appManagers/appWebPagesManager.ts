@@ -40,19 +40,28 @@ export class AppWebPagesManager extends AppManager {
   }
 
   public saveWebPage(apiWebPage: WebPage, messageKey?: WebPageMessageKey, mediaContext?: ReferenceContext) {
-    if(apiWebPage._ === 'webPageNotModified' || apiWebPage._ === 'webPageEmpty') return;
+    if(apiWebPage._ === 'webPageNotModified' || apiWebPage._ === 'webPageEmpty') {
+      return;
+    }
+
     const {id} = apiWebPage;
+    const oldWebPage = this.webpages[id];
+    if(oldWebPage?._ === 'webPage' && apiWebPage._ !== oldWebPage._) {
+      this.log.warn('ignore webpage update, type changed', oldWebPage, apiWebPage);
+      return oldWebPage;
+    }
+
+    const isUpdated = oldWebPage &&
+      (
+        oldWebPage._ !== apiWebPage._ ||
+        (oldWebPage as WebPage.webPage).hash !== (apiWebPage as WebPage.webPage).hash
+      );
+    let isMediaUpdated = false;
 
     mediaContext ??= {
       type: 'webPage',
       url: apiWebPage.url
     };
-
-    const oldWebPage = this.webpages[id];
-    const isUpdated = oldWebPage &&
-      oldWebPage._ === apiWebPage._ &&
-      (oldWebPage as WebPage.webPage).hash !== (apiWebPage as WebPage.webPage).hash;
-    let isMediaUpdated = false;
 
     if(apiWebPage._ === 'webPage') {
       if(apiWebPage.photo?._ === 'photo') {
@@ -164,7 +173,9 @@ export class AppWebPagesManager extends AppManager {
 
   public deleteWebPageFromPending(webPage: WebPage, messageKey: WebPageMessageKey) {
     const id = (webPage as WebPage.webPage).id;
-    if(!id) return;
+    if(!id) {
+      return;
+    }
 
     const set = this.pendingWebPages[id];
     if(set && set.has(messageKey)) {
