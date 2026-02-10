@@ -9,12 +9,12 @@ import {Message, MessageMedia} from '@layer';
 import {MediaItem, MediaListLoader, MediaListLoaderFactory, MediaListLoaderOptions} from '@components/appMediaPlaybackController';
 import appMediaPlaybackController from '@components/appMediaPlaybackController';
 import ListLoader, {ListLoaderResult} from '@helpers/listLoader';
-
-import styles from '@components/sidebarRight/tabs/savedMusic.module.scss';
 import rootScope from '@lib/rootScope';
 import type AudioElement from '@components/audio';
 import Scrollable from '@components/scrollable';
-import {PreloaderTsx} from '../../putPreloader';
+import {PreloaderTsx} from '@components/putPreloader';
+
+import styles from '@components/sidebarRight/tabs/savedMusic.module.scss';
 
 function createFakeMessage(doc: MyDocument, peerId: PeerId): Message.message {
   return {

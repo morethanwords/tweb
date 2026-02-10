@@ -91,6 +91,7 @@
       display: flex;
       // background-color: #000;
       position: relative;
+      transform: translateY(28px);
 
       .avatar-star {
         --size: 420px;
@@ -186,7 +187,7 @@
       }
 
       @include animation-level(2) {
-        transition: transform var(--transition-standard-in), color var(--transition-standard-in);
+        transition: transform var(--transition-standard-in), color var(--transition-standard-in), bottom var(--transition-standard-in);
       }
 
       .profile-name,
@@ -200,7 +201,7 @@
         white-space: nowrap;
 
         @include animation-level(2) {
-          transition: inset-inline-start var(--transition-standard-in), transform var(--transition-standard-in), color var(--transition-standard-in);
+          transition: inset-inline-start var(--transition-standard-in), transform var(--transition-standard-in), color var(--transition-standard-in), opacity var(--transition-standard-in);
         }
       }
 
@@ -819,7 +820,7 @@
   }
 
   &-music {
-    position: absolute;
+    position: absolute!important;
     bottom: 0;
     left: 0;
     right: 0;
@@ -833,6 +834,10 @@
     line-height: 1;
     letter-spacing: -0.24px;
     transition: background-color 0.1s ease-in;
+    padding-inline: .5rem;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 
     &-icon {
       margin-right: 0.5rem;
@@ -842,12 +847,14 @@
       font-weight: 600;
     }
 
-    &-title:not(.only-title) {
-      opacity: 0.7;
+    &-title {
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
     }
 
-    @include hover() {
-      background: rgba(0, 0, 0, .3)
+    &-title:not(.only-title) {
+      opacity: 0.7;
     }
   }
 }

@@ -63,6 +63,7 @@ export default class PeerProfileAvatars {
   private unfold: (e?: MouseEvent) => void;
   private fakeAvatar: ReturnType<typeof avatarNew>;
   private hasNoPhoto: boolean;
+  public onNeedWhiteChanged: (needWhite: boolean) => void;
 
   constructor(
     private scrollable: Scrollable,
@@ -280,7 +281,7 @@ export default class PeerProfileAvatars {
     const o = scrollable.onAdditionalScroll;
     scrollable.onAdditionalScroll = () => {
       o?.();
-      this.updateHeaderFilled();
+      fastRaf(this.updateHeaderFilled);
     };
 
     this.middlewareHelper.onDestroy(() => {
@@ -723,6 +724,7 @@ export default class PeerProfileAvatars {
     const needWhite = this.hasBackgroundColor || !collapsed;
     if(this.setCollapsedOn.classList.contains('need-white') !== needWhite) {
       this.setCollapsedOn.classList.toggle('need-white', needWhite);
+      this.onNeedWhiteChanged?.(needWhite);
       changeTitleEmojiColor(this.info, needWhite ? 'white' : 'primary-color');
     }
     this.updateHeaderFilled();
@@ -732,7 +734,7 @@ export default class PeerProfileAvatars {
     return this.setCollapsedOn.classList.contains('is-collapsed');
   }
 
-  public updateHeaderFilled() {
+  updateHeaderFilled = () => {
     this.setCollapsedOn.classList.toggle(
       'header-filled',
       (!this.hasBackgroundColor && this.isCollapsed() && this.scrollable.scrollPosition >= 5) ||

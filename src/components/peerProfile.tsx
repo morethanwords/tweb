@@ -1,4 +1,4 @@
-import {batch, createContext, createEffect, createMemo, createResource, createSignal, JSX, onCleanup, Show, untrack, useContext} from 'solid-js';
+import {batch, createContext, createEffect, createMemo, createResource, createSignal, JSX, on, onCleanup, Show, untrack, useContext} from 'solid-js';
 import {render} from 'solid-js/web';
 import Section from '@components/section';
 import numberThousandSplitter from '@helpers/number/numberThousandSplitter';
@@ -49,6 +49,9 @@ import PopupStarGiftInfo from './popups/starGiftInfo';
 import PopupElement from './popups';
 import appSidebarRight from '@components/sidebarRight';
 import AppSavedMusicTab from '@components/sidebarRight/tabs/savedMusic';
+import ripple from '@components/ripple';
+import {keepMe} from '@helpers/keepMe';
+keepMe(ripple);
 
 type PeerProfileContextValue = {
   peerId: PeerId,
@@ -57,6 +60,8 @@ type PeerProfileContextValue = {
   setCollapsedOn: HTMLElement,
   isDialog: boolean,
   onPinnedGiftsChange: (gifts: MyStarGift[]) => void,
+  needWhite: boolean,
+  setNeedWhite: (needWhite: boolean) => void,
 
   peer: ReturnType<typeof usePeer>,
   fullPeer: ReturnType<ReturnType<typeof useFullPeer>>,
@@ -113,6 +118,7 @@ const PeerProfile = (props: {
 }) => {
   const {rootScope} = useHotReloadGuard();
   const fullPeer = useFullPeer(props.peerId);
+  const [needWhite, setNeedWhite] = createSignal(false);
   const value: PeerProfileContextValue = {
     peerId: props.peerId,
     threadId: props.threadId,
@@ -120,6 +126,8 @@ const PeerProfile = (props: {
     setCollapsedOn: props.setCollapsedOn,
     isDialog: props.isDialog,
     onPinnedGiftsChange: props.onPinnedGiftsChange,
+    get needWhite() { return needWhite() },
+    setNeedWhite,
 
     peer: usePeer(props.peerId),
     get fullPeer() {
@@ -226,6 +234,7 @@ PeerProfile.Avatar = () => {
       rootScope.managers,
       context.setCollapsedOn
     );
+    avatars.onNeedWhiteChanged = context.setNeedWhite
 
     avatars.setPeer(context.peerId);
     avatars.info.append(name, subtitle);
@@ -291,7 +300,7 @@ PeerProfile.Name = () => {
   const context = useContext(PeerProfileContext);
   const {rootScope, wrapPeerTitle} = useHotReloadGuard();
   const {peerId} = context.getDetailsForUse();
-  const [element] = createResource(() => {
+  const [element] = createResource(() => [context.needWhite] as const, async([needWhite]) => {
     return wrapPeerTitle({
       peerId,
       dialog: context.isDialog,
@@ -299,7 +308,7 @@ PeerProfile.Name = () => {
       threadId: context.threadId,
       wrapOptions: {
         middleware: createMiddleware().get(),
-        textColor: context.setCollapsedOn.classList.contains('need-white') ? 'white' : undefined
+        textColor: needWhite ? 'white' : 'primary-color'
       },
       meAsNotes: !!(peerId === rootScope.myId && context.threadId),
       clickableEmojiStatus: true
@@ -628,7 +637,7 @@ PeerProfile.PinnedMusic = () => {
           const audioAttr = createMemo(() => music().attributes.find(it => it._ === 'documentAttributeAudio'))
           const filenameAttr = createMemo(() => music().attributes.find(it => it._ === 'documentAttributeFilename'))
           return (
-            <div class="profile-music" on:click={{capture: true, handleEvent: openSavedMusic}}>
+            <div class="profile-music" on:click={{capture: true, handleEvent: openSavedMusic}} use:ripple>
               <IconTsx icon="music" class="profile-music-icon" />
               <Show when={audioAttr()?.performer}>
                 {performer => <span class="profile-music-performer">{wrapEmojiText(performer())}</span>}
