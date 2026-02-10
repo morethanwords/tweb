@@ -1,9 +1,9 @@
-import {batch, createContext, createEffect, createMemo, createResource, createSignal, JSX, on, onCleanup, Show, untrack, useContext} from 'solid-js';
+import {batch, createContext, createEffect, createMemo, createResource, createSignal, For, JSX, on, onCleanup, Show, untrack, useContext} from 'solid-js';
 import {render} from 'solid-js/web';
 import Section from '@components/section';
 import numberThousandSplitter from '@helpers/number/numberThousandSplitter';
 import {useChat, usePeer} from '@stores/peers';
-import {BusinessWorkHours, Chat, ChatFull, GeoPoint, HelpTimezonesList, Timezone, User, UserFull, UserStatus} from '@layer';
+import {BusinessWorkHours, Chat, ChatFull, GeoPoint, HelpTimezonesList, Photo, StoryItem, Document, MessageMedia, Timezone, User, UserFull, UserStatus} from '@layer';
 import {useFullPeer} from '@stores/fullPeers';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import createMiddleware from '@helpers/solid/createMiddleware';
@@ -25,6 +25,7 @@ import makeGoogleMapsUrl from '@helpers/makeGoogleMapsUrl';
 import getWebFileLocation from '@helpers/getWebFileLocation';
 import CheckboxFieldTsx from '@components/checkboxFieldTsx';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
+import {StoriesProvider, useStories} from '@components/stories/store';
 import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import type Scrollable from '@components/scrollable';
 import {wrapStarsRatingLevel} from '@components/wrappers/starsRating';
@@ -42,6 +43,7 @@ import differenceInYears from '@helpers/date/differenceInYears';
 import prepareTextWithEntitiesForCopying from '@helpers/prepareTextWithEntitiesForCopying';
 import generateVerifiedIcon from '@components/generateVerifiedIcon';
 import {IconTsx} from './iconTsx';
+import {StoriesSegments} from '@components/avatarNew';
 import {MyDocument} from '../lib/appManagers/appDocsManager';
 import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
 import {wrapSolidComponent} from '../helpers/solid/wrapSolidComponent';
@@ -51,6 +53,10 @@ import appSidebarRight from '@components/sidebarRight';
 import AppSavedMusicTab from '@components/sidebarRight/tabs/savedMusic';
 import ripple from '@components/ripple';
 import {keepMe} from '@helpers/keepMe';
+import choosePhotoSize from '@appManagers/utils/photos/choosePhotoSize';
+import wrapPhoto from './wrappers/photo';
+import {unwrap} from 'solid-js/store';
+
 keepMe(ripple);
 
 type PeerProfileContextValue = {
@@ -241,6 +247,9 @@ PeerProfile.Avatar = () => {
     avatars.container.append(
       wrapSolidComponent(PeerProfile.PinnedGifts, middleware.get()),
       wrapSolidComponent(PeerProfile.PinnedMusic, middleware.get()),
+      wrapSolidComponent(() => PeerProfile.StoryPreviews({
+        info: avatars.info
+      }), middleware.get()),
     );
 
     onCleanup(() => {
@@ -629,30 +638,25 @@ PeerProfile.PinnedMusic = () => {
     tab.open();
   };
 
+  const music = createMemo(() => context.hasSavedMusic ? (context.fullPeer as UserFull).saved_music as MyDocument : undefined)
+  const audioAttr = createMemo(() => music()?.attributes.find(it => it._ === 'documentAttributeAudio'))
+  const filenameAttr = createMemo(() => music()?.attributes.find(it => it._ === 'documentAttributeFilename'))
+
   return (
     <div class="profile-music-container">
-      <Show when={context.hasSavedMusic}>
-        {(() => {
-          const music = () => (context.fullPeer as UserFull).saved_music as MyDocument
-          const audioAttr = createMemo(() => music().attributes.find(it => it._ === 'documentAttributeAudio'))
-          const filenameAttr = createMemo(() => music().attributes.find(it => it._ === 'documentAttributeFilename'))
-          return (
-            <div class="profile-music" on:click={{capture: true, handleEvent: openSavedMusic}} use:ripple>
-              <IconTsx icon="music" class="profile-music-icon" />
-              <Show when={audioAttr()?.performer}>
-                {performer => <span class="profile-music-performer">{wrapEmojiText(performer())}</span>}
-              </Show>
-              <span class={`profile-music-title ${audioAttr()?.performer ? '' : 'only-title'}`}>
-                <Show when={audioAttr()?.performer}>
-                  &nbsp;-&nbsp;
-                </Show>
-                {wrapEmojiText(audioAttr()?.title || filenameAttr().file_name)}
-              </span>
-              <IconTsx icon="next" />
-            </div>
-          )
-        })()}
-      </Show>
+      <div class="profile-music" on:click={{capture: true, handleEvent: openSavedMusic}} use:ripple>
+        <IconTsx icon="music" class="profile-music-icon" />
+        <Show when={audioAttr()?.performer}>
+          {performer => <span class="profile-music-performer">{wrapEmojiText(performer())}</span>}
+        </Show>
+        <span class={`profile-music-title ${audioAttr()?.performer ? '' : 'only-title'}`}>
+          <Show when={audioAttr()?.performer}>
+            &nbsp;-&nbsp;
+          </Show>
+          {wrapEmojiText(audioAttr()?.title || filenameAttr()?.file_name || '')}
+        </span>
+        <IconTsx icon="next" />
+      </div>
     </div>
   )
 }
@@ -1292,6 +1296,127 @@ PeerProfile.BotPermissions = () => {
         </Show>
       </Section>
     </Show>
+  );
+};
+
+PeerProfile.StoryPreviews = (props: {
+  info: HTMLElement
+}) => {
+  const {rootScope} = useHotReloadGuard();
+  const context = useContext(PeerProfileContext);
+  const MAX_PREVIEWS = 3;
+  const CIRCLE_SIZE = 36;
+
+  const StoryPreviewsInner = () => {
+    const [stories] = useStories();
+
+    const peer = createMemo(() => stories.peers[0]);
+    const storyItems = createMemo(() => {
+      const p = peer();
+      if(!p) return [];
+      return (p.stories as StoryItem.storyItem[]).slice(-MAX_PREVIEWS).reverse();
+    });
+
+    createEffect(() => {
+      props.info.dataset.storiesCount = storyItems().length.toString();
+    })
+
+    const getStorySegment = (story: StoryItem.storyItem) => {
+      const p = peer();
+      if(!p) return undefined;
+      const maxReadId = p.maxReadId || 0;
+      const isUnread = story.id > maxReadId;
+      return [{length: 1, type: isUnread ? 'unread' as const : 'read' as const}];
+    };
+
+    const onCircleClick = (e: MouseEvent) => {
+      cancelEvent(e);
+      import('@components/stories/viewer').then(({createStoriesViewerWithPeer}) => {
+        createStoriesViewerWithPeer({peerId: context.peerId});
+      });
+    };
+
+    const middlewareHelper = createMiddleware();
+
+    const StoryCircle = (props: {story: StoryItem.storyItem, index: number}) => {
+      let mediaDiv: HTMLDivElement;
+
+      const {setStoriesSegments, storyDimensions: dims, storiesCircle} = StoriesSegments({
+        size: CIRCLE_SIZE,
+        colors: {read: 'rgba(0, 0, 0, .2)'},
+        simple: true
+      });
+
+      setStoriesSegments(getStorySegment(props.story));
+      createEffect(() => {
+        setStoriesSegments(getStorySegment(props.story));
+      });
+
+      createEffect(() => {
+        const messageMedia = props.story.media;
+        const media = (messageMedia as MessageMedia.messageMediaPhoto).photo as Photo.photo ||
+          (messageMedia as MessageMedia.messageMediaDocument).document as Document.document;
+        if(!media) return;
+
+        const size = choosePhotoSize(media, CIRCLE_SIZE, CIRCLE_SIZE);
+        const middleware = middlewareHelper.get();
+
+        wrapPhoto({
+          container: mediaDiv,
+          photo: media,
+          size,
+          middleware,
+          noThumb: true,
+          withoutPreloader: true
+        }).then((result) => {
+          if(!middleware()) return;
+          result.images.full.classList.add('profile-story-preview-img');
+        });
+      });
+
+      return (
+        <div
+          class="profile-story-preview"
+          style={{
+            'z-index': MAX_PREVIEWS - props.index,
+            'width': `${dims().totalSvgSize}px`,
+            'height': `${dims().totalSvgSize}px`
+          }}
+          on:mousedown={cancelEvent}
+          on:click={onCircleClick}
+        >
+          {storiesCircle()}
+          <div
+            ref={mediaDiv}
+            class="profile-story-preview-media"
+            style={{
+              'width': `${dims().willBeSize}px`,
+              'height': `${dims().willBeSize}px`
+            }}
+          />
+        </div>
+      );
+    };
+
+    return (
+      <Show when={storyItems().length}>
+        <div class="profile-story-previews">
+          <For each={storyItems()}>
+            {(story, idx) => <StoryCircle story={unwrap(story)} index={idx()} />}
+          </For>
+        </div>
+      </Show>
+    );
+  };
+
+  return (
+    <div class="profile-story-previews-container">
+      <Show when={context.peerId != rootScope.myId}>
+        <StoriesProvider needUpdates peerId={context.peerId}>
+          <StoryPreviewsInner />
+        </StoriesProvider>
+      </Show>
+    </div>
   );
 };
 

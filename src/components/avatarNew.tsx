@@ -204,6 +204,7 @@ export function StoriesSegments(props: {
   colors: Partial<{
     read: string
   }>,
+  simple?: boolean,
   isStoryFolded?: Accessor<boolean>,
 }) {
   const [storiesSegments, setStoriesSegments] = createSignal<StoriesSegments>();
@@ -229,7 +230,7 @@ export function StoriesSegments(props: {
     }
 
     let simple: JSX.Element;
-    if(props.isStoryFolded !== undefined) {
+    if(props.isStoryFolded !== undefined || props.simple) {
       const status = createMemo(() => {
         const segments = storiesSegments();
         const firstCloseSegment = segments.find((segment) => segment.type === 'close');
@@ -245,6 +246,7 @@ export function StoriesSegments(props: {
 
         </div>
       );
+      if(props.simple) return simple;
     }
 
     const segmentToSection = (segment: StoriesSegment, unreadAsClose?: boolean): DashedCircleSection => {

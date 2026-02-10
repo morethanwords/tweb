@@ -3445,7 +3445,8 @@ export const createStoriesViewerWithStory = (
 export const createStoriesViewerWithPeer = async(
   props: Omit<Parameters<typeof createStoriesViewer>[0], 'peers' | 'index'> & {
     peerId: PeerId,
-    id?: number
+    id?: number,
+    index?: number
   }
 ): Promise<void> => {
   const [, rest] = splitProps(props, ['peerId', 'id']);
@@ -3479,7 +3480,7 @@ export const createStoriesViewerWithPeer = async(
       index: storyIndex,
       count: peerStories.stories.length
     }],
-    index: 0
+    index: props.index ?? 0
   });
 };
 
