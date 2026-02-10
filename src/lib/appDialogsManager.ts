@@ -113,6 +113,7 @@ import {ForumTab} from '@components/forumTab/forumTab';
 import {fillForumTabRegister} from '@components/forumTab/fillRegister';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import {fastSmoothScrollToStart} from '@helpers/fastSmoothScroll';
+import {archiveDialogTagName} from '@components/archiveDialog';
 
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
@@ -845,7 +846,7 @@ export class AppDialogsManager {
 
 
       const dialogElements = [
-        this.xd?.sortedList?.get?.(peerId), this.forumTab?.xd?.sortedList?.get(threadId || monoforumThreadId || peerId)
+        this.xd?.sortedList?.getDialogElement?.(peerId), this.forumTab?.xd?.sortedList?.getDialogElement(threadId || monoforumThreadId || peerId)
       ].filter(Boolean);
 
       dialogElements.forEach(dialogElement => {
@@ -1811,6 +1812,13 @@ export class AppDialogsManager {
 
       this.log('dialogs click list');
       const target = e.target as HTMLElement;
+
+      const archiveElem = findUpTag(target, archiveDialogTagName);
+      if(archiveElem) {
+        appSidebarLeft.openArchiveTab();
+        return;
+      }
+
       const elem = findUpTag(target, DIALOG_LIST_ELEMENT_TAG);
 
       if(!elem) {

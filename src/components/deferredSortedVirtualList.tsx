@@ -58,6 +58,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
   const [totalCount, setTotalCount] = createSignal(0);
   const [wasAtLeastOnceFetched, setWasAtLeastOnceFetched] = createSignal(false);
   const [revealIdx, setRevealIdx] = createSignal(Infinity);
+  const [blockedAnimationCount, setBlockedAnimationCount] = createSignal(0);
 
   const [visibleItems, setVisibleItems] = createSignal(new Set<number>(), {equals: false});
 
@@ -107,6 +108,25 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
       ...prev.filter(item => !ids.has(item.id)),
       ...newItems
     ]);
+  };
+
+  /**
+   * Doesn't replace if already pinned
+   */
+  const ensurePinnedItems = (newItems: DeferredSortedVirtualListItem<T>[]) => {
+    if(!newItems.length) return;
+
+    setPinnedItems(prev => {
+      const ids = new Set(prev.map(item => item.id));
+      return [
+        ...prev,
+        ...newItems.filter(item => !ids.has(item.id))
+      ];
+    });
+  };
+
+  const removePinnedItem = (id: any) => {
+    setPinnedItems(prev => prev.filter(item => id !== item.id));
   };
 
   const removeItem = (id: any) => {
@@ -213,6 +233,11 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
     }
   }
 
+  function blockAnimation() {
+    setBlockedAnimationCount(prev => prev + 1);
+    return () => setBlockedAnimationCount(prev => Math.max(0, prev - 1));
+  }
+
   let shrinkTimeout: number;
 
   createEffect(on(visibleItems, () => {
@@ -228,6 +253,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
     itemHeight={itemSize}
     list={fullItems()}
     forceHostHeight={!wasAtLeastOnceFetched()}
+    animate={blockedAnimationCount() === 0}
     ListItem={(props: VerticalVirtualListItemProps<DeferredSortedVirtualListItem<T> | null>) => {
       const isRevealed = createMemo(() => props.idx < revealIdx());
       const canShow = createMemo(() => props.item && isRevealed());
@@ -300,9 +326,13 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
     itemsLength,
     addItems,
     addPinnedItems,
+    ensurePinnedItems,
+    removePinnedItem,
     updateItem,
     removeItem,
     setWasAtLeastOnceFetched,
+
+    blockAnimation,
 
     clear,
     has,

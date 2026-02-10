@@ -1,19 +1,23 @@
-import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
-import {Chat} from '@layer';
-import {AppDialogsManager, DialogDom} from '@lib/appDialogsManager';
 import {Dialog} from '@appManagers/appMessagesManager';
+import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '@appManagers/constants';
 import getDialogIndex from '@appManagers/utils/dialogs/getDialogIndex';
 import getDialogIndexKey from '@appManagers/utils/dialogs/getDialogIndexKey';
 import {isDialog, isForumTopic} from '@appManagers/utils/dialogs/isDialog';
-import {FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '@appManagers/constants';
-import apiManagerProxy from '@lib/apiManagerProxy';
-import rootScope from '@lib/rootScope';
+import ArchiveDialog, {createArchiveDialogState, DisposableArchiveDialogState} from '@components/archiveDialog';
+import {AutonomousDialogListBase, BaseConstructorArgs} from '@components/autonomousDialogList/base';
+import {BADGE_TRANSITION_TIME} from '@components/autonomousDialogList/constants';
 import groupCallActiveIcon from '@components/groupCallActiveIcon';
 import Scrollable from '@components/scrollable';
 import SetTransition from '@components/singleTransition';
-import SortedDialogList from '@components/sortedDialogList';
-import {AutonomousDialogListBase, BaseConstructorArgs} from '@components/autonomousDialogList/base';
-import {BADGE_TRANSITION_TIME} from '@components/autonomousDialogList/constants';
+import SortedDialogList, {CustomPinnedDialog} from '@components/sortedDialogList';
+import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
+import namedPromises from '@helpers/namedPromises';
+import {Chat} from '@layer';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import {AppDialogsManager, DialogDom} from '@lib/appDialogsManager';
+import rootScope from '@lib/rootScope';
+import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import {runWithHotReloadGuard} from '@lib/solidjs/runWithHotReloadGuard';
 
 
 type ConstructorArgs = BaseConstructorArgs & {
@@ -22,11 +26,34 @@ type ConstructorArgs = BaseConstructorArgs & {
 
 export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
   protected filterId: number;
+  private archiveDialogState?: DisposableArchiveDialogState;
+  private customPinnedDialog?: CustomPinnedDialog;
 
   constructor({filterId, ...args}: ConstructorArgs) {
     super(args);
 
     this.filterId = filterId;
+
+    if(filterId === FOLDER_ID_ALL) {
+      this.customPinnedDialog = new CustomPinnedDialog({
+        render: () => {
+          const element = new ArchiveDialog;
+          element.HotReloadGuard = SolidJSHotReloadGuardProvider;
+
+          element.feedProps({
+            state: this.archiveDialogState.state
+          });
+
+          return element;
+        }
+      });
+
+      this.archiveDialogState = runWithHotReloadGuard(() => createArchiveDialogState({
+        onHasDialogsChanged: (hasDialogs) => {
+          this.onHasDialogsChanged(hasDialogs);
+        }
+      }));
+    }
 
     this.needPlaceholderAtFirstTime = true;
 
@@ -197,6 +224,7 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
       }
     });
 
+
     this.scrollable = scrollable;
     this.sortedList = sortedDialogList;
     this.setIndexKey(indexKey);
@@ -216,11 +244,41 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
     return true;
   }
 
+  protected async loadDialogsInner(offsetIndex?: number) {
+    const unblock = this.sortedList.blockAnimation();
+
+    const {result} = await namedPromises({
+      result: super.loadDialogsInner(offsetIndex, false),
+      _ignore: this.ensureArchiveDialogHydrated()
+    });
+
+    this.placeholder?.detach(this.sortedList.itemsLength());
+
+    unblock();
+
+    return result;
+  }
+
+  private async ensureArchiveDialogHydrated() {
+    if(!this.archiveDialogState) return;
+
+    const promise = this.archiveDialogState.state.ensureHydrated();
+    if(!promise) {
+      await this.onHasDialogsChanged(this.archiveDialogState.hasDialogs());
+      return;
+    }
+
+    const ackedResult = await promise;
+    if(!ackedResult.cached) return;
+
+    return ackedResult.result;
+  }
+
   /**
    * Удалит неподходящие чаты из списка, но не добавит их(!)
    */
   public async validateListForFilter() {
-    this.sortedList.getAll().forEach(async(_, key) => {
+    this.sortedList.getAllDialogElementsMap().forEach(async(_, key) => {
       const dialog = await rootScope.managers.appMessagesManager.getDialogOnly(key);
       if(!this.testDialogForFilter(dialog)) {
         this.deleteDialog(dialog);
@@ -288,7 +346,7 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
 
   public toggleAvatarUnreadBadges(value: boolean, useRafs: number) {
     if(!value) {
-      this.sortedList.getAll().forEach((dialogElement) => {
+      this.sortedList.getAllDialogElementsMap().forEach((dialogElement) => {
         const {dom} = dialogElement;
         if(!dom.unreadAvatarBadge) {
           return;
@@ -301,7 +359,7 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
     }
 
     const reuseClassNames = ['unread', 'mention'];
-    this.sortedList.getAll().forEach((dialogElement) => {
+    this.sortedList.getAllDialogElementsMap().forEach((dialogElement) => {
       const {dom} = dialogElement;
       const unreadContent = dom.unreadBadge?.textContent;
       if(
@@ -339,5 +397,20 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
   protected canUpdateDialog(dialog: Dialog): boolean {
     if(dialog.migratedTo !== undefined || !this.testDialogForFilter(dialog)) return false;
     return super.canUpdateDialog(dialog);
+  }
+
+  private async onHasDialogsChanged(hasDialogs: boolean) {
+    if(!this.customPinnedDialog || !this.archiveDialogState) return;
+
+    if(hasDialogs) {
+      await this.sortedList.ensurePinned(this.customPinnedDialog);
+    } else {
+      this.sortedList.removePinned(this.customPinnedDialog);
+    }
+  }
+
+  public destroy(): void {
+    super.destroy();
+    this.archiveDialogState?.dispose();
   }
 }

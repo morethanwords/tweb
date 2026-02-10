@@ -67,7 +67,7 @@ export class AutonomousForumTopicList extends AutonomousDialogListBase<ForumTopi
       }
 
       if(isDialog(dialog)) {
-        const all = this.sortedList.getAll();
+        const all = this.sortedList.getAllDialogElementsMap();
         const entries = [...all.entries()];
         const promises = entries.map(([id]) => this.managers.dialogsStorage.getForumTopic(this.peerId, id));
         const topics = await Promise.all(promises);

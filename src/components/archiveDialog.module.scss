@@ -1,0 +1,38 @@
+.Container {
+
+}
+
+.Media {
+  border-radius: 50%;
+  background: linear-gradient(#acb3b9, #b1b8b9);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: white;
+
+  :global(.night) & {
+    background: linear-gradient(#4a5259, #6a7475);
+  }
+}
+
+.MediaIcon {
+  font-size: 28px;
+  transform: translateY(1px); // The icon itself is a little offset
+}
+
+.Title {
+  font-weight: var(--font-weight-bold);
+}
+
+.Subtitle {
+  color: var(--secondary-text-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unreadPeerTitle {
+  font-weight: var(--font-weight-bold);
+}

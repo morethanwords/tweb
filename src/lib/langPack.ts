@@ -660,7 +660,7 @@ export {i18n_};
 const _i18n = I18n._i18n;
 export {_i18n};
 
-export function joinElementsWith<T extends Node | string | Array<Node | string>>(
+export function joinElementsWith<T>(
   elements: T[],
   joiner: T | string | ((isLast: boolean) => T)
 ): T[] {

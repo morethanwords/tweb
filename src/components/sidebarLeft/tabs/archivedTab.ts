@@ -18,7 +18,7 @@ export default class AppArchivedTab extends SliderSuperTab {
   private storiesListContainer: HTMLDivElement;
   private disposeStories: () => void;
 
-  private chatListManager: AutonomousDialogList;
+  private autonomousDialogList: AutonomousDialogList;
 
   public init() {
     this.wasFilterId = appDialogsManager.filterId;
@@ -38,14 +38,14 @@ export default class AppArchivedTab extends SliderSuperTab {
       scrollable.append(ul);
     }
 
-    this.chatListManager = appDialogsManager.xds[AppArchivedTab.filterId];
+    this.autonomousDialogList = appDialogsManager.xds[AppArchivedTab.filterId];
 
     const storiesListContainer = this.storiesListContainer = document.createElement('div');
     storiesListContainer.classList.add('stories-list');
 
     this.header.after(storiesListContainer);
 
-    const scrollable = this.chatListManager.scrollable;
+    const scrollable = this.autonomousDialogList.scrollable;
     this.scrollable.container.replaceWith(scrollable.container);
     scrollable.attachBorderListeners(this.container);
     // ! DO NOT UNCOMMENT NEXT LINE - chats will stop loading on scroll after closing the tab
@@ -63,7 +63,7 @@ export default class AppArchivedTab extends SliderSuperTab {
       return StoriesList({
         foldInto: this.header,
         setScrolledOn: this.container,
-        getScrollable: () => this.chatListManager.scrollable.container,
+        getScrollable: () => this.autonomousDialogList.scrollable.container,
         listenWheelOn: this.content,
         archive: true,
         offsetX: -84
@@ -86,8 +86,8 @@ export default class AppArchivedTab extends SliderSuperTab {
   onCloseAfterTimeout() {
     this.disposeStories?.();
     this.disposeStories = undefined;
-    this.chatListManager.destroy();
-    this.chatListManager = undefined;
+    this.autonomousDialogList.destroy();
+    this.autonomousDialogList = undefined;
     return super.onCloseAfterTimeout();
   }
 }
