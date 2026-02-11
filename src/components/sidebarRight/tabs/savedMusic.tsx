@@ -5,7 +5,7 @@ import {i18n} from '@lib/langPack';
 import wrapDocument from '@components/wrappers/document';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import {MyDocument} from '@appManagers/appDocsManager';
-import {Message, MessageMedia} from '@layer';
+import {Message} from '@layer';
 import {MediaItem, MediaListLoader, MediaListLoaderFactory, MediaListLoaderOptions} from '@components/appMediaPlaybackController';
 import appMediaPlaybackController from '@components/appMediaPlaybackController';
 import ListLoader, {ListLoaderResult} from '@helpers/listLoader';
@@ -16,11 +16,13 @@ import {PreloaderTsx} from '@components/putPreloader';
 
 import styles from '@components/sidebarRight/tabs/savedMusic.module.scss';
 
-function createFakeMessage(doc: MyDocument, peerId: PeerId): Message.message {
+async function createFakeMessage(doc: MyDocument, peerId: PeerId, getFakeMid: (docId: DocId) => number): Promise<Message.message> {
+  const fakeMid = getFakeMid(doc.id);
   return {
     _: 'message',
-    id: doc.id,
-    mid: doc.id,
+    id: fakeMid,
+    mid: fakeMid,
+    peer_id: await rootScope.managers.appPeersManager.getOutputPeer(peerId),
     peerId: peerId,
     fromId: peerId,
     date: doc.date,
@@ -30,8 +32,8 @@ function createFakeMessage(doc: MyDocument, peerId: PeerId): Message.message {
       _: 'messageMediaDocument',
       document: doc,
       pFlags: {}
-    } as MessageMedia.messageMediaDocument
-  } as any;
+    }
+  };
 }
 
 function SavedMusicContent(props: {
@@ -58,7 +60,7 @@ function SavedMusicContent(props: {
     docCount += docs.length;
     renderPromise = renderPromise.then(async() => {
       const elements = await Promise.all(docs.map(async(doc) => {
-        const message = createFakeMessage(doc, props.peerId);
+        const message = await createFakeMessage(doc, props.peerId, savedMusicLoader.getFakeMid);
         const div = await wrapDocument({
           message,
           fontWeight: 400,
@@ -126,6 +128,8 @@ class SavedMusicListLoader extends ListLoader<MediaItem, Message.message> implem
   public onNewDocs?: (docs: MyDocument[]) => void;
   private offset = 0;
   private peerId: PeerId;
+  private fakeMidCounter = 0;
+  private docIdToFakeMid = new Map<DocId, number>();
   private loadingFromEnd = false;
   private loadingMainForward = false;
   private loadingTailPrev = false;
@@ -152,7 +156,9 @@ class SavedMusicListLoader extends ListLoader<MediaItem, Message.message> implem
         this.offset += docs.length;
 
         this.onNewDocs?.(docs);
-        const messages: Message.message[] = docs.map((doc) => createFakeMessage(doc, peerId));
+        const messages: Message.message[] = await Promise.all(
+          docs.map((doc) => createFakeMessage(doc, peerId, this.getFakeMid))
+        );
 
         return {count: result.count, items: messages} as ListLoaderResult<Message.message>;
       }
@@ -162,6 +168,15 @@ class SavedMusicListLoader extends ListLoader<MediaItem, Message.message> implem
 
     this.setLoaded(false, true);
   }
+
+  public getFakeMid = (docId: DocId): number => {
+    let mid = this.docIdToFakeMid.get(docId);
+    if(mid === undefined) {
+      mid = -(++this.fakeMidCounter);
+      this.docIdToFakeMid.set(docId, mid);
+    }
+    return mid;
+  };
 
   private itemMatches(item: MediaItem, mid: number, peerId: PeerId): boolean {
     return item.mid === mid && item.peerId === peerId;
@@ -177,7 +192,7 @@ class SavedMusicListLoader extends ListLoader<MediaItem, Message.message> implem
     const entries: TailEntry[] = [];
 
     for(const doc of docs) {
-      const message = createFakeMessage(doc, this.peerId);
+      const message = await createFakeMessage(doc, this.peerId, this.getFakeMid);
       const item = this.processItem ? await this.processItem(message) : {peerId: message.peerId, mid: message.mid};
       if(item) {
         entries.push({item: item as MediaItem, doc});

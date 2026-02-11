@@ -1411,7 +1411,7 @@ PeerProfile.StoryPreviews = (props: {
 
   return (
     <div class="profile-story-previews-container">
-      <Show when={context.peerId != rootScope.myId}>
+      <Show when={context.peerId !== rootScope.myId}>
         <StoriesProvider needUpdates peerId={context.peerId}>
           <StoryPreviewsInner />
         </StoriesProvider>
