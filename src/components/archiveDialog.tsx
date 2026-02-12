@@ -35,6 +35,7 @@ const ArchiveDialog = defineSolidElement({
   component: (props: PassedProps<ArchiveDialogProps>) => {
     props.element.classList.add('row', 'no-wrap', 'row-with-padding', 'row-clickable', 'hover-effect', 'rp', 'chatlist-chat', 'chatlist-chat-bigger', 'row-big');
 
+    const {StoriesProvider} = useHotReloadGuard();
 
     const sortedDialogs = createMemo(() => props.state.sortedDialogs().slice(0, limit)); // Note: more dialogs can appear if they've been updated
     const totalUnreadCount = () => props.state.totalUnreadCount();
@@ -48,9 +49,9 @@ const ArchiveDialog = defineSolidElement({
 
     return (
       <>
-        <div class={`${styles.Media} row-media row-media-bigger dialog-avatar`}>
-          <IconTsx class={styles.MediaIcon} icon='archive' />
-        </div>
+        <StoriesProvider archive>
+          <ArchiveAvatar />
+        </StoriesProvider>
         <div class='row-row row-title-row'>
           <I18nTsx class={styles.Title} key='Archive' />
         </div>
@@ -280,11 +281,11 @@ function useTotalUnreadCount() {
   return totalUnreadCount;
 }
 
-const PeerTitleItem = (props: {
+function PeerTitleItem(props: {
   dialog: Dialog.dialog;
   cachedIsUnread: boolean;
   onIsUnreadChange: (isUnread: boolean) => void;
-}) => {
+}) {
   const {PeerTitleTsx, rootScope} = useHotReloadGuard();
 
   const [isUnread] = createResource(() => props.dialog, (dialog) => rootScope.managers.appMessagesManager.isDialogUnread(dialog));
@@ -298,6 +299,41 @@ const PeerTitleItem = (props: {
   });
 
   return <PeerTitleTsx class={props.cachedIsUnread ? styles.unreadPeerTitle : undefined} peerId={props.dialog.peerId} limitSymbols={limitSymbols} />
+};
+
+function ArchiveAvatar() {
+  const {useStories, rootScope, StoriesSegments} = useHotReloadGuard();
+
+  const [stories] = useStories();
+
+  const storiesPeerIds = createMemo(() => stories.peers.map(p => p.peerId));
+
+  const {setStoriesSegments, storyDimensions, storiesCircle} = StoriesSegments({
+    size: 54,
+    colors: {}
+  });
+
+  const [storiesSegments] = createResource(
+    storiesPeerIds,
+    (peerIds) => rootScope.managers.appStoriesManager.getPeersStoriesSegments(peerIds)
+  );
+
+  createEffect(() => {
+    if(storiesSegments.state !== 'ready') return;
+
+    setStoriesSegments(storiesSegments().length ? storiesSegments().flat() : undefined);
+  });
+
+  return (
+    <div class="row-media row-media-bigger dialog-avatar" style={{
+      'padding': storyDimensions() ? (storyDimensions().size - storyDimensions().willBeSize) / 2 + 'px' : undefined
+    }}>
+      {storiesCircle()}
+      <div class={styles.MediaContent}>
+        <IconTsx class={styles.MediaIcon} icon='archive' />
+      </div>
+    </div>
+  );
 };
 
 export default ArchiveDialog;

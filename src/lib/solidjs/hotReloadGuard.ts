@@ -6,7 +6,7 @@ import {createContext, useContext} from 'solid-js';
 
 import type AppMediaViewer from '@components/appMediaViewer';
 import type {AutonomousMonoforumThreadList} from '@components/autonomousDialogList/monoforumThreads';
-import type {avatarNew} from '@components/avatarNew';
+import type {avatarNew, StoriesSegments} from '@components/avatarNew';
 import type BusinessHours from '@components/businessHours';
 import type ButtonMenu from '@components/buttonMenu';
 import type {ChatType} from '@components/chat/chat';
@@ -34,6 +34,7 @@ import type {AppSidebarLeft} from '@components/sidebarLeft';
 import type AppChatFoldersTab from '@components/sidebarLeft/tabs/chatFolders';
 import type AppEditFolderTab from '@components/sidebarLeft/tabs/editFolder';
 import type Slideshow from '@components/slideshow';
+import {StoriesProvider, useStories} from '@components/stories/store';
 import type {hideToast, toast, toastNew} from '@components/toast';
 import type {wrapAdaptiveCustomEmoji} from '@components/wrappers/customEmojiSimple';
 import type DocumentTsx from '@components/wrappers/documentTsx';
@@ -48,20 +49,20 @@ import type wrapSticker from '@components/wrappers/sticker';
 import type wrapStickerSetThumb from '@components/wrappers/stickerSetThumb';
 import type wrapTopicNameButton from '@components/wrappers/topicNameButton';
 import type VideoTsx from '@components/wrappers/videoTsx';
+import type {formatDate} from '@helpers/date';
 import type {ThemeController} from '@helpers/themeController';
-import type {useAppSettings} from '@stores/appSettings';
+import type apiManagerProxy from '@lib/apiManagerProxy';
 import type {AppDialogsManager} from '@lib/appDialogsManager';
 import type {AppImManager} from '@lib/appImManager';
-import type uiNotificationsManager from '@lib/uiNotificationsManager';
 import type I18n from '@lib/langPack';
 import type {i18n, join} from '@lib/langPack';
-import type apiManagerProxy from '@lib/apiManagerProxy';
 import type wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import type wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import type lottieLoader from '@lib/rlottie/lottieLoader';
 import type {RootScope} from '@lib/rootScope';
 import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
-import type {formatDate} from '@helpers/date';
+import type uiNotificationsManager from '@lib/uiNotificationsManager';
+import type {useAppSettings} from '@stores/appSettings';
 
 
 export type SolidJSHotReloadGuardContextValue = {
@@ -126,6 +127,9 @@ export type SolidJSHotReloadGuardContextValue = {
   formatDate: typeof formatDate;
   wrapFolderTitle: typeof wrapFolderTitle;
   ButtonMenu: typeof ButtonMenu;
+  StoriesProvider: typeof StoriesProvider;
+  useStories: typeof useStories;
+  StoriesSegments: typeof StoriesSegments;
 };
 
 export type LockScreenHotReloadGuardContextValue = Pick<

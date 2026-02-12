@@ -2,7 +2,7 @@ import {ParentProps} from 'solid-js';
 
 import AppMediaViewer from '@components/appMediaViewer';
 import {AutonomousMonoforumThreadList} from '@components/autonomousDialogList/monoforumThreads';
-import {avatarNew} from '@components/avatarNew';
+import {avatarNew, StoriesSegments} from '@components/avatarNew';
 import BusinessHours from '@components/businessHours';
 import ButtonMenu from '@components/buttonMenu';
 import {ChatType} from '@components/chat/chat';
@@ -29,6 +29,7 @@ import appSidebarLeft from '@components/sidebarLeft';
 import AppChatFoldersTab from '@components/sidebarLeft/tabs/chatFolders';
 import AppEditFolderTab from '@components/sidebarLeft/tabs/editFolder';
 import Slideshow from '@components/slideshow'; // Added import
+import {StoriesProvider, useStories} from '@components/stories/store';
 import {hideToast, toast, toastNew} from '@components/toast';
 import {wrapAdaptiveCustomEmoji} from '@components/wrappers/customEmojiSimple';
 import DocumentTsx from '@components/wrappers/documentTsx';
@@ -43,19 +44,19 @@ import wrapSticker from '@components/wrappers/sticker';
 import wrapStickerSetThumb from '@components/wrappers/stickerSetThumb';
 import wrapTopicNameButton from '@components/wrappers/topicNameButton';
 import VideoTsx from '@components/wrappers/videoTsx';
+import {formatDate} from '@helpers/date';
 import themeController from '@helpers/themeController';
-import {useAppSettings} from '@stores/appSettings';
+import apiManagerProxy from '@lib/apiManagerProxy';
 import appDialogsManager from '@lib/appDialogsManager';
 import appImManager from '@lib/appImManager';
-import uiNotificationsManager from '@lib/uiNotificationsManager';
 import I18n, {i18n, join} from '@lib/langPack';
-import apiManagerProxy from '@lib/apiManagerProxy';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import lottieLoader from '@lib/rlottie/lottieLoader';
 import rootScope from '@lib/rootScope';
 import {SolidJSHotReloadGuardContext} from '@lib/solidjs/hotReloadGuard';
-import {formatDate} from '@helpers/date';
+import uiNotificationsManager from '@lib/uiNotificationsManager';
+import {useAppSettings} from '@stores/appSettings';
 
 
 export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
@@ -121,7 +122,10 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       formatDate,
       hideToast,
       wrapFolderTitle,
-      ButtonMenu
+      ButtonMenu,
+      StoriesProvider,
+      useStories,
+      StoriesSegments
     }}>
       {props.children}
     </SolidJSHotReloadGuardContext.Provider>
