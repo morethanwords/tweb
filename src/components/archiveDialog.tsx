@@ -1,5 +1,6 @@
 import lastItem from '@helpers/array/lastItem';
 import ListenerSetter from '@helpers/listenerSetter';
+import formatNumber from '@helpers/number/formatNumber';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {useIsCleaned} from '@hooks/useIsCleaned';
 import {Dialog} from '@layer';
@@ -10,9 +11,10 @@ import {isDialog} from '@lib/appManagers/utils/dialogs/isDialog';
 import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {AckedResult} from '@lib/superMessagePort';
-import {Accessor, createComputed, createEffect, createMemo, createResource, createRoot, createSignal, For, onCleanup, Setter} from 'solid-js';
+import {Accessor, createComputed, createEffect, createMemo, createResource, createRoot, createSignal, For, onCleanup, Setter, Show} from 'solid-js';
 import {createStore} from 'solid-js/store';
 import styles from './archiveDialog.module.scss';
+import Badge from './badge';
 import {IconTsx} from './iconTsx';
 import ripple from './ripple';
 
@@ -34,7 +36,9 @@ const ArchiveDialog = defineSolidElement({
     props.element.classList.add('row', 'no-wrap', 'row-with-padding', 'row-clickable', 'hover-effect', 'rp', 'chatlist-chat', 'chatlist-chat-bigger', 'row-big');
 
 
-    const sortedDialogs = () => props.state.sortedDialogs();
+    const sortedDialogs = createMemo(() => props.state.sortedDialogs().slice(0, limit)); // Note: more dialogs can appear if they've been updated
+    const totalUnreadCount = () => props.state.totalUnreadCount();
+    // const totalUnreadCount = () => 403430;
 
     // Note: we cannot use createStore on dialogs, because it requires reacting to the whole object change and then sending it into
     // the shared worker thread to compute whether it is unread or not
@@ -65,6 +69,11 @@ const ArchiveDialog = defineSolidElement({
               )}
             </For>
           </div>
+          <Show when={totalUnreadCount() > 0}>
+            <Badge class={styles.UnreadBadge} tag='span' size={22} color='gray'>
+              {formatNumber(totalUnreadCount(), 1)}
+            </Badge>
+          </Show>
         </div>
       </>
     );
@@ -161,6 +170,7 @@ function useArchivedDialogsState() {
   }
 
   return {
+    totalUnreadCount: useTotalUnreadCount(),
     ensureHydrated,
     isReady,
     sortedDialogs
@@ -244,6 +254,32 @@ function useDialogEvents({sortedDialogs, setDialogs, isEnd}: UseDialogEventsArgs
   });
 }
 
+function useTotalUnreadCount() {
+  const {rootScope} = useHotReloadGuard();
+
+  const [totalUnreadCount, {mutate}] = createResource(
+    () => rootScope.managers.dialogsStorage.getFolderUnreadCount(FOLDER_ID_ARCHIVE).then(result => result.unreadCount),
+    {
+      initialValue: 0
+    }
+  );
+
+  const listenerSetter = new ListenerSetter;
+
+  listenerSetter.add(rootScope)('folder_unread', (folder) => {
+    if(folder.id === FOLDER_ID_ARCHIVE) {
+      const count = folder.unreadPeerIds.size;
+      mutate(count);
+    }
+  });
+
+  onCleanup(() => {
+    listenerSetter.removeAll();
+  });
+
+  return totalUnreadCount;
+}
+
 const PeerTitleItem = (props: {
   dialog: Dialog.dialog;
   cachedIsUnread: boolean;
@@ -261,7 +297,7 @@ const PeerTitleItem = (props: {
     }
   });
 
-  return <PeerTitleTsx class={props.cachedIsUnread ? styles.unreadPeerTitle : undefined} peerId={props.dialog.peerId} onlyFirstName limitSymbols={limitSymbols} />
+  return <PeerTitleTsx class={props.cachedIsUnread ? styles.unreadPeerTitle : undefined} peerId={props.dialog.peerId} limitSymbols={limitSymbols} />
 };
 
 export default ArchiveDialog;

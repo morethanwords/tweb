@@ -42,3 +42,8 @@
     color: var(--primary-text-color);
   }
 }
+
+.UnreadBadge {
+  flex-shrink: 0;
+  margin-inline-start: 0.5rem;
+}
