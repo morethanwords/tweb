@@ -18,6 +18,7 @@ import styles from './archiveDialog.module.scss';
 import Badge from './badge';
 import {IconTsx} from './iconTsx';
 import ripple from './ripple';
+import {createStoriesViewer} from './stories/viewer';
 
 if(import.meta.hot) import.meta.hot.accept();
 
@@ -29,11 +30,15 @@ type ArchiveDialogProps = {
   state: DisposableArchiveDialogState['state'];
 };
 
+type Controls = {
+  openStory: () => void;
+};
+
 export const archiveDialogTagName = 'archive-dialog';
 
 const ArchiveDialog = defineSolidElement({
   name: archiveDialogTagName,
-  component: (props: PassedProps<ArchiveDialogProps>) => {
+  component: (props: PassedProps<ArchiveDialogProps>, _, controls: Controls) => {
     props.element.classList.add('row', 'no-wrap', 'row-with-padding', 'row-clickable', 'hover-effect', 'rp', 'chatlist-chat', 'chatlist-chat-bigger', 'row-big');
 
     const {StoriesProvider} = useHotReloadGuard();
@@ -54,6 +59,9 @@ const ArchiveDialog = defineSolidElement({
           <ArchiveAvatar
             storiesSegments={props.state.segments.storiesSegments()}
             onStoriesPeerIds={(peerIds) => void props.state.segments.setStoriesPeerIds(peerIds)}
+            openStoriesRef={callback => {
+              controls.openStory = callback;
+            }}
           />
         </StoriesProvider>
         <div class='row-row row-title-row'>
@@ -356,10 +364,15 @@ function PeerTitleItem(props: {
 function ArchiveAvatar(props: {
   storiesSegments: StoriesSegments;
   onStoriesPeerIds: (peerIds: PeerId[]) => void;
+  openStoriesRef: (callback: () => void) => void;
 }) {
   const {useStories, StoriesSegments} = useHotReloadGuard();
 
   const [stories] = useStories();
+
+  const [target, setTarget] = createSignal<HTMLElement>();
+
+  const canOpenStory = createMemo(() => stories.ready && stories.peers.length > 0);
 
   const {setStoriesSegments, storyDimensions, storiesCircle} = StoriesSegments({
     size: 54,
@@ -375,10 +388,25 @@ function ArchiveAvatar(props: {
     setStoriesSegments(props.storiesSegments);
   });
 
+  props.openStoriesRef(() => {
+    if(canOpenStory()) {
+      createStoriesViewer({archive: true, peers: stories.peers, target});
+    }
+  });
+
   return (
-    <div class="row-media row-media-bigger dialog-avatar" style={{
-      'padding': storyDimensions() ? (storyDimensions().size - storyDimensions().willBeSize) / 2 + 'px' : undefined
-    }}>
+    <div
+      class={`${styles.Media} row-media row-media-bigger dialog-avatar`}
+      classList={{
+        'archive-dialog-with-stories': canOpenStory(),
+        [styles.hasStories]: canOpenStory()
+      }}
+      data-story-peer-id={canOpenStory() ? stories.peers[0]?.peerId : undefined}
+      style={{
+        'padding': storyDimensions() ? (storyDimensions().size - storyDimensions().willBeSize) / 2 + 'px' : undefined
+      }}
+      ref={setTarget}
+    >
       {storiesCircle()}
       <div class={styles.MediaContent}>
         <IconTsx class={styles.MediaIcon} icon='archive' />

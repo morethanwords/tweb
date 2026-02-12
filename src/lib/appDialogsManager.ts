@@ -113,7 +113,7 @@ import {ForumTab} from '@components/forumTab/forumTab';
 import {fillForumTabRegister} from '@components/forumTab/fillRegister';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import {fastSmoothScrollToStart} from '@helpers/fastSmoothScroll';
-import {archiveDialogTagName} from '@components/archiveDialog';
+import ArchiveDialog, {archiveDialogTagName} from '@components/archiveDialog';
 
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
@@ -1799,13 +1799,29 @@ export class AppDialogsManager {
     const findAvatarWithStories = (target: EventTarget) => {
       return (target as HTMLElement).closest('.avatar.has-stories') as HTMLElement;
     };
+
+    const getOpenStoryCallback = (target: EventTarget) => {
+      const avatar = findAvatarWithStories(target);
+
+      if(avatar) return () => {
+        appImManager.openStoriesFromAvatar(avatar);
+      };
+
+      const archiveAvatar = (target as HTMLElement).closest('.archive-dialog-with-stories') as HTMLElement;
+      const archiveDialog = (target as HTMLElement).closest(archiveDialogTagName);
+
+      if(archiveAvatar && archiveDialog instanceof ArchiveDialog) return () => {
+        archiveDialog.controls?.openStory?.();
+      };
+    }
+
     const isOpeningStoriesDisabled = () => appSidebarLeft.isCollapsed() && !appSidebarLeft.hasSomethingOpenInside();
 
     list.dataset.autonomous = '' + +autonomous;
     list.addEventListener('mousedown', (e) => {
       if(
         e.button !== 0 ||
-        (!isOpeningStoriesDisabled() && findAvatarWithStories(e.target))
+        (!isOpeningStoriesDisabled() && getOpenStoryCallback(e.target))
       ) {
         return;
       }
@@ -1926,8 +1942,9 @@ export class AppDialogsManager {
       }
 
       if(isOpeningStoriesDisabled()) return;
-      const avatar = findAvatarWithStories(e.target);
-      avatar && appImManager.openStoriesFromAvatar(avatar);
+
+      const callback = getOpenStoryCallback(e.target);
+      callback?.();
     }, {capture: true});
 
     if(withContext) {

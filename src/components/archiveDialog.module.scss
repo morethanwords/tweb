@@ -2,6 +2,12 @@
 
 }
 
+.Media {
+  &.hasStories {
+    pointer-events: all;
+  }
+}
+
 .MediaContent {
   width: 100%;
   height: 100%;
