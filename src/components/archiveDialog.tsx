@@ -4,6 +4,7 @@ import formatNumber from '@helpers/number/formatNumber';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {useIsCleaned} from '@hooks/useIsCleaned';
 import {Dialog} from '@layer';
+import {StoriesSegments} from '@lib/appManagers/appStoriesManager';
 import {FOLDER_ID_ARCHIVE} from '@lib/appManagers/constants';
 import getDialogIndex from '@lib/appManagers/utils/dialogs/getDialogIndex';
 import getDialogIndexKey from '@lib/appManagers/utils/dialogs/getDialogIndexKey';
@@ -50,7 +51,10 @@ const ArchiveDialog = defineSolidElement({
     return (
       <>
         <StoriesProvider archive>
-          <ArchiveAvatar />
+          <ArchiveAvatar
+            storiesSegments={props.state.segments.storiesSegments()}
+            onStoriesPeerIds={(peerIds) => void props.state.segments.setStoriesPeerIds(peerIds)}
+          />
         </StoriesProvider>
         <div class='row-row row-title-row'>
           <I18nTsx class={styles.Title} key='Archive' />
@@ -172,6 +176,7 @@ function useArchivedDialogsState() {
 
   return {
     totalUnreadCount: useTotalUnreadCount(),
+    segments: useStoriesSegments(),
     ensureHydrated,
     isReady,
     sortedDialogs
@@ -281,6 +286,52 @@ function useTotalUnreadCount() {
   return totalUnreadCount;
 }
 
+function useStoriesSegments() {
+  const {rootScope} = useHotReloadGuard();
+
+  const [storiesPeerIds, setStoriesPeerIds] = createSignal<PeerId[]>(undefined, {
+    equals: (a, b) => a && b && a.length === b.length && a.every((id, index) => id === b[index])
+  });
+
+  const fetchStoriesSegments = (peerIds: PeerId[]) => rootScope.managers.appStoriesManager.getPeersStoriesSegments(peerIds);
+
+  const [storiesSegments, setStoriesSegments] = createSignal<StoriesSegments>();
+
+  const [storiesSegmentsResource, {mutate}] = createResource(
+    storiesPeerIds,
+    (peerIds) => fetchStoriesSegments(peerIds)
+  );
+
+  const listenerSetter = new ListenerSetter;
+
+  listenerSetter.add(rootScope)('peer_stories', refetchStoriesSegments);
+  listenerSetter.add(rootScope)('stories_read', refetchStoriesSegments);
+  listenerSetter.add(rootScope)('story_deleted', refetchStoriesSegments);
+  listenerSetter.add(rootScope)('story_new', refetchStoriesSegments);
+
+  async function refetchStoriesSegments({peerId}: { peerId: PeerId }) {
+    if(storiesSegmentsResource.state !== 'ready' || !storiesPeerIds()?.includes(peerId)) return;
+
+    const segments = await fetchStoriesSegments(storiesPeerIds());
+    mutate(segments);
+  }
+
+  createComputed(() => {
+    if(storiesSegmentsResource.state !== 'ready') return;
+
+    setStoriesSegments(storiesSegmentsResource().length ? storiesSegmentsResource().flat() : undefined);
+  });
+
+  onCleanup(() => {
+    listenerSetter.removeAll();
+  });
+
+  return {
+    storiesSegments,
+    setStoriesPeerIds
+  };
+}
+
 function PeerTitleItem(props: {
   dialog: Dialog.dialog;
   cachedIsUnread: boolean;
@@ -301,27 +352,27 @@ function PeerTitleItem(props: {
   return <PeerTitleTsx class={props.cachedIsUnread ? styles.unreadPeerTitle : undefined} peerId={props.dialog.peerId} limitSymbols={limitSymbols} />
 };
 
-function ArchiveAvatar() {
-  const {useStories, rootScope, StoriesSegments} = useHotReloadGuard();
+
+function ArchiveAvatar(props: {
+  storiesSegments: StoriesSegments;
+  onStoriesPeerIds: (peerIds: PeerId[]) => void;
+}) {
+  const {useStories, StoriesSegments} = useHotReloadGuard();
 
   const [stories] = useStories();
-
-  const storiesPeerIds = createMemo(() => stories.peers.map(p => p.peerId));
 
   const {setStoriesSegments, storyDimensions, storiesCircle} = StoriesSegments({
     size: 54,
     colors: {}
   });
 
-  const [storiesSegments] = createResource(
-    storiesPeerIds,
-    (peerIds) => rootScope.managers.appStoriesManager.getPeersStoriesSegments(peerIds)
-  );
-
   createEffect(() => {
-    if(storiesSegments.state !== 'ready') return;
+    if(!stories.ready) return;
+    props.onStoriesPeerIds(stories.peers.map(p => p.peerId));
+  });
 
-    setStoriesSegments(storiesSegments().length ? storiesSegments().flat() : undefined);
+  createComputed(() => {
+    setStoriesSegments(props.storiesSegments);
   });
 
   return (
