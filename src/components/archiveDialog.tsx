@@ -10,7 +10,8 @@ import {isDialog} from '@lib/appManagers/utils/dialogs/isDialog';
 import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {AckedResult} from '@lib/superMessagePort';
-import {Accessor, createComputed, createEffect, createMemo, createResource, createRoot, createSignal, For, onCleanup, Setter, Show} from 'solid-js';
+import {Accessor, createComputed, createEffect, createMemo, createResource, createRoot, createSignal, For, onCleanup, Setter} from 'solid-js';
+import {createStore} from 'solid-js/store';
 import styles from './archiveDialog.module.scss';
 import {IconTsx} from './iconTsx';
 import ripple from './ripple';
@@ -32,9 +33,12 @@ const ArchiveDialog = defineSolidElement({
   component: (props: PassedProps<ArchiveDialogProps>) => {
     props.element.classList.add('row', 'no-wrap', 'row-with-padding', 'row-clickable', 'hover-effect', 'rp', 'chatlist-chat', 'chatlist-chat-bigger', 'row-big');
 
-    const {PeerTitleTsx} = useHotReloadGuard();
 
     const sortedDialogs = () => props.state.sortedDialogs();
+
+    // Note: we cannot use createStore on dialogs, because it requires reacting to the whole object change and then sending it into
+    // the shared worker thread to compute whether it is unread or not
+    const [cachedDialogUnread, setCachedDialogUnread] = createStore<Record<PeerId, boolean>>({});
 
     ripple(props.element, () => true);
 
@@ -51,7 +55,11 @@ const ArchiveDialog = defineSolidElement({
             <For each={sortedDialogs()}>
               {(dialog, index) => (
                 <>
-                  <PeerTitleTsx peerId={dialog.peerId} onlyFirstName limitSymbols={limitSymbols} />
+                  <PeerTitleItem
+                    dialog={dialog}
+                    cachedIsUnread={cachedDialogUnread[dialog.peerId]}
+                    onIsUnreadChange={isUnread => setCachedDialogUnread(dialog.peerId, isUnread)}
+                  />
                   {index() !== sortedDialogs().length - 1 && ', '}
                 </>
               )}
@@ -112,7 +120,7 @@ function useArchivedDialogsState() {
   const fetchedDialogsLength = createMemo(() => isReady() ? fetchedDialogs().dialogs.length : 0);
   const isEnd = createMemo(() => isReady() && fetchedDialogs().isEnd);
 
-  const sortedDialogs = createMemo(() => dialogs().sort((a, b) => getArchivedDialogIndex(b) - getArchivedDialogIndex(a)));
+  const sortedDialogs = createMemo(() => [...dialogs()].sort((a, b) => getArchivedDialogIndex(b) - getArchivedDialogIndex(a)));
 
   createComputed(() => {
     if(fetchedDialogs.state === 'ready') {
@@ -235,5 +243,25 @@ function useDialogEvents({sortedDialogs, setDialogs, isEnd}: UseDialogEventsArgs
     listenerSetter.removeAll();
   });
 }
+
+const PeerTitleItem = (props: {
+  dialog: Dialog.dialog;
+  cachedIsUnread: boolean;
+  onIsUnreadChange: (isUnread: boolean) => void;
+}) => {
+  const {PeerTitleTsx, rootScope} = useHotReloadGuard();
+
+  const [isUnread] = createResource(() => props.dialog, (dialog) => rootScope.managers.appMessagesManager.isDialogUnread(dialog));
+
+  createEffect(() => {
+    if(isUnread.state !== 'ready') return;
+
+    if(isUnread() !== props.cachedIsUnread) {
+      props.onIsUnreadChange(isUnread());
+    }
+  });
+
+  return <PeerTitleTsx class={props.cachedIsUnread ? styles.unreadPeerTitle : undefined} peerId={props.dialog.peerId} onlyFirstName limitSymbols={limitSymbols} />
+};
 
 export default ArchiveDialog;

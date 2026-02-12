@@ -34,5 +34,11 @@
 }
 
 .unreadPeerTitle {
+  color: hsl(from var(--secondary-text-color) h s calc(l - 5));
+
   font-weight: var(--font-weight-bold);
+
+  :global(.night) & {
+    color: var(--primary-text-color);
+  }
 }
