@@ -854,6 +854,10 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     this.willBePlayedMedia = media;
   }
 
+  public getListLoaderFactory() {
+    return this.listLoaderFactory;
+  }
+
   public setSearchContext(context: MediaSearchContext) {
     if(deepEqual(this.searchContext, context)) {
       return false;

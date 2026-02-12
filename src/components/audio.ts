@@ -795,11 +795,13 @@ export default class AudioElement extends HTMLElement {
 
   public setTargetsIfNeeded() {
     const hadSearchContext = !!this.searchContext;
-    if(appMediaPlaybackController.setSearchContext(this.searchContext || {
+    const searchContextChanged = appMediaPlaybackController.setSearchContext(this.searchContext || {
       peerId: NULL_PEER_ID,
       inputFilter: {_: 'inputMessagesFilterEmpty'},
       useSearch: false
-    })) {
+    });
+    const loaderFactoryChanged = this.listLoaderFactory && appMediaPlaybackController.getListLoaderFactory() !== this.listLoaderFactory;
+    if(searchContextChanged || loaderFactoryChanged) {
       const thisTarget = this.dataset.toBeSkipped ? this.audio.parentElement : this;
       const [prev, next] = !hadSearchContext ? [] : findMediaTargets(thisTarget, this.message.mid/* , this.searchContext.useSearch */);
       appMediaPlaybackController.setTargets({peerId: this.message.peerId, mid: this.message.mid}, prev, next, this.listLoaderFactory);
