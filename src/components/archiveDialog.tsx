@@ -12,6 +12,7 @@ import {isDialog} from '@lib/appManagers/utils/dialogs/isDialog';
 import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {AckedResult} from '@lib/superMessagePort';
+import {useAppSettings} from '@stores/appSettings';
 import {Accessor, createComputed, createEffect, createMemo, createResource, createRoot, createSignal, For, onCleanup, Setter, Show} from 'solid-js';
 import {createStore} from 'solid-js/store';
 import styles from './archiveDialog.module.scss';
@@ -94,24 +95,27 @@ const ArchiveDialog = defineSolidElement({
 });
 
 type CreateArchiveDialogStateArgs = {
-  onHasDialogsChanged: (hasDialogs: boolean) => void;
+  onHasArchiveDialogChanged: (hasDialogs: boolean) => void;
 };
 
 export type DisposableArchiveDialogState = ReturnType<typeof createArchiveDialogState>;
 
-export const createArchiveDialogState = ({onHasDialogsChanged}: CreateArchiveDialogStateArgs) => createRoot((dispose) => {
+export const createArchiveDialogState = ({onHasArchiveDialogChanged}: CreateArchiveDialogStateArgs) => createRoot((dispose) => {
   const state = useArchivedDialogsState();
 
+  const [appSettings] = useAppSettings();
+
   const hasDialogs = createMemo(() => state.sortedDialogs().length > 0);
+  const hasArchiveDialog = createMemo(() => appSettings.showArchiveInChatList && hasDialogs());
 
   createEffect(() => {
     if(!state.isReady()) return;
-    onHasDialogsChanged(hasDialogs());
+    onHasArchiveDialogChanged(hasArchiveDialog());
   });
 
   return {
     state,
-    hasDialogs,
+    hasArchiveDialog,
     dispose
   };
 });

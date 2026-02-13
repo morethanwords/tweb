@@ -49,8 +49,8 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
       });
 
       this.archiveDialogState = runWithHotReloadGuard(() => createArchiveDialogState({
-        onHasDialogsChanged: (hasDialogs) => {
-          this.onHasDialogsChanged(hasDialogs);
+        onHasArchiveDialogChanged: (hasDialogs) => {
+          this.onHasArchiveDialogChanged(hasDialogs);
         }
       }));
     }
@@ -264,7 +264,7 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
 
     const promise = this.archiveDialogState.state.ensureHydrated();
     if(!promise) {
-      await this.onHasDialogsChanged(this.archiveDialogState.hasDialogs());
+      await this.onHasArchiveDialogChanged(this.archiveDialogState.hasArchiveDialog());
       return;
     }
 
@@ -399,10 +399,10 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
     return super.canUpdateDialog(dialog);
   }
 
-  private async onHasDialogsChanged(hasDialogs: boolean) {
+  private async onHasArchiveDialogChanged(hasArchiveDialog: boolean) {
     if(!this.customPinnedDialog || !this.archiveDialogState) return;
 
-    if(hasDialogs) {
+    if(hasArchiveDialog) {
       await this.sortedList.ensurePinned(this.customPinnedDialog);
     } else {
       this.sortedList.removePinned(this.customPinnedDialog);

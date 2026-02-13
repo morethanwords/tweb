@@ -114,6 +114,7 @@ import {fillForumTabRegister} from '@components/forumTab/fillRegister';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import {fastSmoothScrollToStart} from '@helpers/fastSmoothScroll';
 import ArchiveDialog, {archiveDialogTagName} from '@components/archiveDialog';
+import {createArchiveDialogContextMenu} from '@components/archiveDialogContextMenu';
 
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
@@ -1170,7 +1171,7 @@ export class AppDialogsManager {
   public l(filter: Parameters<AppDialogsManager['addFilter']>[0]) {
     const xd = this.xds[filter.id] = new AutonomousDialogList({filterId: filter.id, appDialogsManager: this});
     const {scrollable, list} = xd.generateScrollable(filter);
-    this.setListClickListener({list, onFound: null, withContext: true});
+    this.setListClickListener({list, onFound: null, withContext: true, withArchiveContext: filter.id === FOLDER_ID_ALL});
 
     return {ul: list, xd, scrollable};
   }
@@ -1783,12 +1784,14 @@ export class AppDialogsManager {
     list,
     onFound,
     withContext = false,
+    withArchiveContext = false,
     autonomous = false,
     openInner = false
   }: {
     list: HTMLElement,
     onFound?: (target: HTMLElement) => void | boolean,
     withContext?: boolean,
+    withArchiveContext?: boolean,
     autonomous?: boolean,
     openInner?: boolean
   }) {
@@ -1949,6 +1952,12 @@ export class AppDialogsManager {
 
     if(withContext) {
       this.contextMenu.attach(list);
+    }
+
+    if(withArchiveContext) {
+      createArchiveDialogContextMenu({
+        element: list
+      });
     }
   }
 

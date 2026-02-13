@@ -323,7 +323,7 @@ function _StoriesList(props: {
       onResize();
       window.clearTimeout(timeoutId);
       setHasTransition(false);
-      setTimeout(() => {
+      timeoutId = self.setTimeout(() => {
         setHasTransition(true);
       }, 100);
     });

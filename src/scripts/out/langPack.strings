@@ -3715,6 +3715,8 @@
 "PostsSearch.StarsSpent" = "**%s** spent on extra search";
 "EditThisPhoto" = "Edit this photo";
 "EditThisVideo" = "Edit this video";
+"Archive.HideFromChatList" = "Hide from Chat List";
+"Archive.ShowInChatList" = "Show in Chat List";
 "Login.Title" = "Sign in to Telegram";
 "Login.PhoneLabel" = "Phone Number";
 "Login.PhoneLabelInvalid" = "Phone Number Invalid";

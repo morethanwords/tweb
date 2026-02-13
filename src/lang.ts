@@ -4262,7 +4262,10 @@ const lang = {
   'PostsSearch.StarsSpent': '**%s** spent on extra search',
 
   'EditThisPhoto': 'Edit this photo',
-  'EditThisVideo': 'Edit this video'
+  'EditThisVideo': 'Edit this video',
+
+  'Archive.HideFromChatList': 'Hide from Chat List',
+  'Archive.ShowInChatList': 'Show in Chat List'
 };
 
 export default lang;
