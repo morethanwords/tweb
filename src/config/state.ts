@@ -393,7 +393,7 @@ export const SETTINGS_INIT: StateSettings = {
   },
   cacheTTL: 86400 * 7, // 1 week
   cacheSize: 0, // Auto
-  showArchiveInChatList: false
+  showArchiveInChatList: true
 };
 
 export const STATE_INIT: State = {
