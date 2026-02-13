@@ -1820,11 +1820,15 @@ export class AppDialogsManager {
 
     const isOpeningStoriesDisabled = () => appSidebarLeft.isCollapsed() && !appSidebarLeft.hasSomethingOpenInside();
 
+    let willOpenStory = false;
+
+    const setWillOpenStory = (e: Event) => willOpenStory = !isOpeningStoriesDisabled() && !!getOpenStoryCallback(e.target);
+
     list.dataset.autonomous = '' + +autonomous;
     list.addEventListener('mousedown', (e) => {
       if(
         e.button !== 0 ||
-        (!isOpeningStoriesDisabled() && getOpenStoryCallback(e.target))
+        setWillOpenStory(e)
       ) {
         return;
       }
@@ -1944,7 +1948,7 @@ export class AppDialogsManager {
         cancelEvent(e);
       }
 
-      if(isOpeningStoriesDisabled()) return;
+      if(!willOpenStory || isOpeningStoriesDisabled()) return;
 
       const callback = getOpenStoryCallback(e.target);
       callback?.();
