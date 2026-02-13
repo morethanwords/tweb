@@ -1026,6 +1026,16 @@ const lang = {
   'Stories.StealthMode.Cooldown': 'Available in %s',
   'Stories.StealthMode.Activated.Title': 'Stealth Mode On',
   'Stories.StealthMode.Activated.Subtitle': 'The creators of stories you viewed in the past **%s** or will view in the next **%s** won\'t see you in the list of viewers.',
+  'LeastActiveCommunities': 'Least active communities',
+  'InactiveChannel': '%s, inactive %s',
+  'InactiveChannel.Group': 'group',
+  'InactiveChannel.Broadcast': 'channel',
+  'LeaveCommunities': {
+    'one_value': 'Leave %d community',
+    'other_value': 'Leave %d communities'
+  },
+  'Rank.Label': 'Title',
+  'NoMicrophoneAccess': 'Please allow access to your microphone',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -1757,6 +1767,9 @@ const lang = {
   'LimitReachedPinDialogs': 'You can\'t pin more than %1$d chats to the top. Unpin some that are currently pinned – or subscribe to **Telegram Premium** to double the limit to **%2$d** chats.',
   'LimitReachedPinDialogsPremium': 'Sorry, you can\'t pin more than %1$d chats to the top. Unpin some that are currently pinned.',
   'LimitReachedPinDialogsLocked': 'Sorry, you can\'t pin more than %1$d chats to the top. Unpin some that are currently pinned. We are working to let you increase this limit in the future.',
+  'LimitReachedCommunities': 'You are a member of **%1$d** groups and channels. Please leave some before joining a new one — or subscribe to **Telegram Premium** to double the limit to **%2$d** groups and channels.',
+  'LimitReachedCommunitiesPremium': 'You are a member of **%1$d** groups and channels. Please leave some before joining a new one.',
+  'LimitReachedCommunitiesLocked': 'You are a member of **%1$d** groups and channels. Please leave some before joining a new one. We are working to let you increase this limit in the future.',
   'IncreaseLimit': 'Increase Limit',
   'LimitFree': 'Free',
   'LimitPremium': 'Premium',
@@ -3726,6 +3739,7 @@ const lang = {
 
   'BuyStars': 'Buy Stars',
   'UnsavedChanges': 'Unsaved Changes',
+  'UnsavedChangesDescription': 'Are you sure you want to discard all changes?',
   'UnsavedChangesDescription.Privacy': 'You have changed some privacy settings. Save changes?',
   'UnsavedChangesDescription.Group': 'You have changed some settings in this group. Save changes?',
   'UnsavedChangesDescription.Channel': 'You have changed some settings in this channel. Save changes?',

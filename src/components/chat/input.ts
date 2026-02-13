@@ -3379,7 +3379,7 @@ export default class ChatInput {
       }).catch((e: Error) => {
         switch(e.name as string) {
           case 'NotAllowedError': {
-            toast('Please allow access to your microphone');
+            toastNew({langPackKey: 'NoMicrophoneAccess'});
             break;
           }
 

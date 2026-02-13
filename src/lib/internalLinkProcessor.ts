@@ -12,7 +12,7 @@ import PopupPayment from '@components/popups/payment';
 import PopupPeer from '@components/popups/peer';
 import PopupPickUser from '@components/popups/pickUser';
 import PopupStickers from '@components/popups/stickers';
-import {toastNew, toast, hideToast} from '@components/toast';
+import {toastNew, hideToast} from '@components/toast';
 import {MOUNT_CLASS_TO} from '@config/debug';
 import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
 import addAnchorListener from '@helpers/addAnchorListener';
@@ -840,7 +840,7 @@ export class InternalLinkProcessor {
       return PopupElement.createPopup(PopupJoinChatInvite, link.invite, chatInvite);
     }, (err: ApiError) => {
       if(err.type === 'INVITE_HASH_EXPIRED') {
-        toast(i18n('InviteExpired'));
+        toastNew({langPackKey: 'InviteExpired'});
       }
     });
   };

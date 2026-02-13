@@ -16,6 +16,7 @@ import CheckboxField from '@components/checkboxField';
 import Row from '@components/row';
 import SettingSection from '@components/settingSection';
 import {SliderSuperTabEventable} from '@components/sliderTab';
+import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
 
 export function createSelectorForTab(options: ConstructorParameters<typeof AppSelectPeers>[0]) {
   const deferred = deferredPromise<void>();
@@ -64,7 +65,7 @@ export default class AppChatMembersTab extends SliderSuperTabEventable {
     // const participantsCount = Infinity;
     const canHideMembers = !isBroadcast &&
       participantsCount >= ((await this.managers.apiManager.getAppConfig()).hidden_members_group_size_min || 0) &&
-      !!chat.admin_rights;
+      hasRights(chat, 'just_admin');
 
     const {selector, loadPromise} = createSelectorForParticipants({
       appendTo: this.content,
@@ -95,14 +96,19 @@ export default class AppChatMembersTab extends SliderSuperTabEventable {
         listenerSetter: this.listenerSetter
       });
 
-      this.eventListener.addEventListener('destroy', () => {
+      this.listenerSetter.add(row.checkboxField.input)('change', () => {
         const _checked = row.checkboxField.checked;
         if(_checked === checked) {
           return;
         }
 
-        this.managers.appChatsManager.toggleParticipantsHidden(chatId, _checked);
-      }, {once: true});
+        const promise = handleChannelsTooMuch(() => this.managers.appChatsManager.toggleParticipantsHidden(chatId, _checked))
+        .catch((err) => {
+          console.error('toggleParticipantsHidden error', err);
+          row.checkboxField.setValueSilently(!_checked);
+        });
+        row.disableWithPromise(promise);
+      });
 
       section.content.append(row.container);
 

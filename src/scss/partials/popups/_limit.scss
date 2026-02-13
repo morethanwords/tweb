@@ -8,4 +8,12 @@
   .popup-container {
     min-width: unquote('min(100%, 22.5rem)');
   }
+
+  .popup-body {
+    margin: 0 -0.5rem .5rem;
+  }
+
+  .scrollable-y {
+    height: 15rem;
+  }
 }

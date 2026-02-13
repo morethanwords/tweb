@@ -13,7 +13,7 @@ import PopupForward from '@components/popups/forward';
 import PopupPinMessage from '@components/popups/unpinMessage';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import PopupSendNow from '@components/popups/sendNow';
-import {toast, toastNew} from '@components/toast';
+import {toastNew} from '@components/toast';
 import I18n, {i18n, LangPackKey} from '@lib/langPack';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import cancelEvent from '@helpers/dom/cancelEvent';
@@ -1690,7 +1690,7 @@ export default class ChatContextMenu {
   private onCopyLinkClick = () => {
     const {url, isPrivate} = this.linkToMessage;
     const key: LangPackKey = isPrivate ? 'LinkCopiedPrivateInfo' : 'LinkCopied';
-    toast(I18n.format(key, true));
+    toastNew({langPackKey: key});
     copyTextToClipboard(url);
   };
 

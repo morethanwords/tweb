@@ -10,7 +10,7 @@ import EditPeer from '@components/editPeer';
 import Row, {CreateRowFromCheckboxField} from '@components/row';
 import Button from '@components/button';
 import {ChatRights} from '@appManagers/appChatsManager';
-import {Chat, ChatFull} from '@layer';
+import {Chat, ChatFull, ChatParticipants} from '@layer';
 import AppChatTypeTab from '@components/sidebarRight/tabs/chatType';
 import rootScope from '@lib/rootScope';
 import AppGroupPermissionsTab from '@components/sidebarRight/tabs/groupPermissions';
@@ -45,6 +45,8 @@ import {AppAdminRecentActionsTab} from '@components/solidJsTabs/tabs';
 import appImManager from '@lib/appImManager';
 import {ChatType} from '@components/chat/chat';
 import {appSettings} from '@stores/appSettings';
+import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
+import {isParticipantAdmin} from '@lib/appManagers/utils/chats/isParticipantAdmin';
 
 export default class AppEditChatTab extends SliderSuperTab {
   private chatNameInputField: InputField;
@@ -66,7 +68,7 @@ export default class AppEditChatTab extends SliderSuperTab {
       isChannel,
       canChangeType,
       canChangePermissions,
-      canManageTopics,
+      canToggleForum,
       canManageAdmins,
       canChangeInfo,
       canDeleteChat,
@@ -82,7 +84,7 @@ export default class AppEditChatTab extends SliderSuperTab {
       isChannel: this.managers.appChatsManager.isChannel(this.chatId),
       canChangeType: this.managers.appChatsManager.hasRights(this.chatId, 'change_type'),
       canChangePermissions: this.managers.appChatsManager.hasRights(this.chatId, 'change_permissions'),
-      canManageTopics: this.managers.appChatsManager.hasRights(this.chatId, 'manage_topics'),
+      canToggleForum: this.managers.appChatsManager.hasRights(this.chatId, 'toggle_forum'),
       canManageAdmins: this.managers.appChatsManager.hasRights(this.chatId, 'change_permissions'),
       canChangeInfo: this.managers.appChatsManager.hasRights(this.chatId, 'change_info'),
       canDeleteChat: this.managers.appChatsManager.hasRights(this.chatId, 'delete_chat'),
@@ -109,15 +111,13 @@ export default class AppEditChatTab extends SliderSuperTab {
 
     this.listenerSetter.add(rootScope)('chat_full_update', async(chatId) => {
       if(this.chatId === chatId) {
-        chatFull = await this.managers.appProfileManager.getCachedFullChat(chatId) ||
-          chatFull ||
-          await this.managers.appProfileManager.getChatFull(chatId);
+        chatFull = await this.managers.appProfileManager.getChatFull(chatId);
         chatUpdateListeners['full'].forEach((callback) => callback());
       }
     });
 
     const peerId = this.chatId.toPeerId(true);
-    const isAdmin = !!chat.admin_rights;
+    const isAdmin = hasRights(chat, 'just_admin');
 
     {
       const section = new SettingSection({noDelimiter: true, caption: 'PeerInfo.SetAboutDescription'});
@@ -403,7 +403,7 @@ export default class AppEditChatTab extends SliderSuperTab {
         section.content.append(discussionRow.container);
       }
 
-      if(isAdmin) {
+      if(isAdmin && isChannel) {
         const recentActionsRow = new Row({
           icon: 'clipboard',
           titleLangKey: 'RecentActions',
@@ -423,7 +423,11 @@ export default class AppEditChatTab extends SliderSuperTab {
         section.content.append(recentActionsRow.container);
       }
 
-      if(canManageTopics && isAdmin && (chat.participants_count >= appConfig.forum_upgrade_participants_min || (chat as Chat.channel).pFlags.forum) && !isBroadcast) {
+      if(
+        canToggleForum &&
+        (chat.participants_count >= appConfig.forum_upgrade_participants_min || (chat as Chat.channel).pFlags.forum) &&
+        !isBroadcast
+      ) {
         const topicsRow = new Row({
           checkboxField: new CheckboxField({toggle: true}),
           titleLangKey: 'Topics',
@@ -452,7 +456,8 @@ export default class AppEditChatTab extends SliderSuperTab {
             return;
           }
 
-          const promise = this.managers.appChatsManager.toggleForum(this.chatId, topicsRow.checkboxField.checked);
+          const value = topicsRow.checkboxField.checked;
+          const promise = handleChannelsTooMuch(() => this.managers.appChatsManager.toggleForum(this.chatId, value));
           topicsRow.disableWithPromise(promise);
         });
 
@@ -515,7 +520,16 @@ export default class AppEditChatTab extends SliderSuperTab {
         });
 
         const setAdministratorsLength = () => {
-          administratorsRow.subtitle.textContent = '' + ((chatFull as ChatFull.channelFull).admins_count || 1);
+          let count: number;
+          const participants = (chatFull as ChatFull.chatFull).participants as ChatParticipants.chatParticipants;
+          if(participants?._ === 'chatParticipants') {
+            count = participants.participants.filter(isParticipantAdmin).length;
+          } else {
+            count = (chatFull as ChatFull.channelFull).admins_count;
+          }
+
+          count ||= 1;
+          administratorsRow.subtitle.textContent = '' + count;
         };
 
         setAdministratorsLength();
@@ -566,6 +580,7 @@ export default class AppEditChatTab extends SliderSuperTab {
         });
 
         const setRemovedUsersLength = () => {
+          removedUsersRow.container.classList.toggle('hide', !isChannel);
           const kickedCount = (chatFull as ChatFull.channelFull).kicked_count || 0;
           if(kickedCount) {
             removedUsersRow.subtitle.textContent = numberThousandSplitter(kickedCount);
@@ -681,18 +696,20 @@ export default class AppEditChatTab extends SliderSuperTab {
 
         this.listenerSetter.add(showChatHistoryCheckboxField.input)('change', () => {
           const toggle = showChatHistoryCheckboxField.toggleDisability(true);
-          this.managers.appChatsManager.togglePreHistoryHidden(this.chatId, !showChatHistoryCheckboxField.checked).then(() => {
-            toggle();
-          });
+          const value = !showChatHistoryCheckboxField.checked;
+          handleChannelsTooMuch(() => this.managers.appChatsManager.togglePreHistoryHidden(this.chatId, value))
+          .catch((err) => {
+            console.error('togglePreHistoryHidden error:', err);
+            showChatHistoryCheckboxField.setValueSilently(value);
+          }).finally(toggle);
         });
 
-        // ! it won't be updated because chatFull will be old
         const onChatUpdate = () => {
           showChatHistoryCheckboxField.setValueSilently(isChannel && !(chatFull as ChatFull.channelFull).pFlags.hidden_prehistory);
         };
 
         onChatUpdate();
-        addChatUpdateListener(onChatUpdate);
+        addChatUpdateListener(onChatUpdate, 'full');
 
         section.content.append(CreateRowFromCheckboxField(showChatHistoryCheckboxField).container);
       }

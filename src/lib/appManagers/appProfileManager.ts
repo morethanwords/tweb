@@ -27,6 +27,7 @@ import getParticipantsCount from '@appManagers/utils/chats/getParticipantsCount'
 import callbackifyAll from '@helpers/callbackifyAll';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import {PEER_FULL_TTL} from '@appManagers/constants';
+import {isParticipantAdmin} from '@lib/appManagers/utils/chats/isParticipantAdmin';
 
 export type UserTyping = Partial<{userId: UserId, action: SendMessageAction, timeout: number}>;
 
@@ -59,6 +60,8 @@ export class AppProfileManager extends AppManager {
       updateChatParticipantAdd: this.onUpdateChatParticipantAdd,
 
       updateChatParticipantDelete: this.onUpdateChatParticipantDelete,
+
+      updateChatParticipantAdmin: this.onUpdateChatParticipantAdmin,
 
       updateUserTyping: this.onUpdateUserTyping,
       updateChatUserTyping: this.onUpdateUserTyping,
@@ -370,14 +373,22 @@ export class AppProfileManager extends AppManager {
         throw makeError('CHAT_PRIVATE');
       }
 
-      if(filter._ === 'channelParticipantsSearch' && filter.q.trim()) {
-        return {
-          ...chatParticipants,
-          participants: this.filterParticipantsByQuery(chatParticipants.participants, filter.q)
-        };
+      let {participants} = chatParticipants;
+      if(filter._ === 'channelParticipantsAdmins') {
+        participants = participants.filter((participant) => {
+          return isParticipantAdmin(participant);
+        });
       }
 
-      return chatParticipants;
+      const query = (filter as ChannelParticipantsFilter.channelParticipantsAdmins).q;
+      if(query?.trim()) {
+        participants = this.filterParticipantsByQuery(participants, query);
+      }
+
+      return {
+        ...chatParticipants,
+        participants
+      };
     });
   }
 
@@ -931,31 +942,21 @@ export class AppProfileManager extends AppManager {
     });
   }
 
-  private onUpdateChatParticipants = (update: Update.updateChatParticipants) => {
+  private onUpdateChatParticipants = (update: Update.updateChatParticipants) => this.modifyCachedFullChat(update.participants.chat_id, (chatFull) => {
     const participants = update.participants;
-    if(participants._ !== 'chatParticipants') {
-      return;
+    (chatFull as ChatFull.chatFull).participants = participants;
+  });
+
+  private onUpdateChatParticipantAdd = (update: Update.updateChatParticipantAdd) => this.modifyCachedFullChat(update.chat_id, (chatFull) => {
+    const _participants = (chatFull as ChatFull.chatFull).participants as ChatParticipants.chatParticipants;
+    if(_participants?._ !== 'chatParticipants') {
+      return false;
     }
 
-    const chatId = participants.chat_id;
-    const chatFull = this.chatsFull[chatId] as ChatFull.chatFull;
-    if(chatFull !== undefined) {
-      chatFull.participants = participants;
-      this.rootScope.dispatchEvent('chat_full_update', chatId);
-    }
-  };
-
-  private onUpdateChatParticipantAdd = (update: Update.updateChatParticipantAdd) => {
-    const chatFull = this.chatsFull[update.chat_id] as ChatFull.chatFull;
-    if(chatFull === undefined) {
-      return;
-    }
-
-    const _participants = chatFull.participants as ChatParticipants.chatParticipants;
-    const participants = _participants.participants || [];
-    for(let i = 0, length = participants.length; i < length; i++) {
+    const participants = _participants.participants;
+    for(let i = 0, length = participants.length; i < length; ++i) {
       if(participants[i].user_id === update.user_id) {
-        return;
+        return false;
       }
     }
 
@@ -967,26 +968,47 @@ export class AppProfileManager extends AppManager {
     });
 
     _participants.version = update.version;
-    this.rootScope.dispatchEvent('chat_full_update', update.chat_id);
-  };
+  });
 
-  private onUpdateChatParticipantDelete = (update: Update.updateChatParticipantDelete) => {
-    const chatFull = this.chatsFull[update.chat_id] as ChatFull.chatFull;
-    if(chatFull === undefined) {
-      return;
+  private onUpdateChatParticipantDelete = (update: Update.updateChatParticipantDelete) => this.modifyCachedFullChat(update.chat_id, (chatFull) => {
+    const _participants = (chatFull as ChatFull.chatFull).participants as ChatParticipants.chatParticipants;
+    if(_participants?._ !== 'chatParticipants') {
+      return false;
     }
 
-    const _participants = chatFull.participants as ChatParticipants.chatParticipants;
-    const participants = _participants.participants || [];
+    const participants = _participants.participants;
     for(let i = 0, length = participants.length; i < length; i++) {
       if(participants[i].user_id === update.user_id) {
         participants.splice(i, 1);
         _participants.version = update.version;
-        this.rootScope.dispatchEvent('chat_full_update', update.chat_id);
         return;
       }
     }
-  };
+
+    return false;
+  });
+
+  private onUpdateChatParticipantAdmin = (update: Update.updateChatParticipantAdmin) => this.modifyCachedFullChat(update.chat_id, (chatFull) => {
+    const _participants = (chatFull as ChatFull.chatFull).participants as ChatParticipants.chatParticipants;
+    if(_participants?._ !== 'chatParticipants') {
+      return false;
+    }
+
+    const participants = _participants.participants;
+    for(let i = 0, length = participants.length; i < length; i++) {
+      if(participants[i].user_id === update.user_id) {
+        participants[i] = {
+          _: update.is_admin ? 'chatParticipantAdmin' : 'chatParticipant',
+          user_id: update.user_id,
+          inviter_id: this.appUsersManager.getSelf().id,
+          date: tsNow(true)
+        };
+        return;
+      }
+    }
+
+    return false;
+  });
 
   private onUpdateUserTyping = (update: Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChannelUserTyping) => {
     const fromId = (update as Update.updateUserTyping).user_id ?

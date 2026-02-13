@@ -23,13 +23,13 @@ import type {ArgumentTypes} from '@types';
 import type {RtmpCallInstance} from '@lib/calls/rtmpCallsController';
 import type {ApiManager} from '@appManagers/apiManager';
 import type {MonoforumDialog} from '@lib/storages/monoforumDialogs';
+import type {MyStarGift} from '@appManagers/appGiftsManager';
+import type {MyPromoData} from '@appManagers/appPromoManager';
+import type {ActiveAccountNumber} from '@lib/accounts/types';
 import {NULL_PEER_ID, UserAuth} from '@appManagers/constants';
 import EventListenerBase, {EventListenerListeners} from '@helpers/eventListenerBase';
 import {MOUNT_CLASS_TO} from '@config/debug';
 import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
-import {ActiveAccountNumber} from '@lib/accounts/types';
-import type {MyStarGift} from '@appManagers/appGiftsManager';
-import type {MyPromoData} from '@appManagers/appPromoManager';
 
 export type BroadcastEvents = {
   'chat_full_update': ChatId,

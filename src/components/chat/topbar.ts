@@ -25,7 +25,7 @@ import findUpClassName from '@helpers/dom/findUpClassName';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
-import {toast, toastNew} from '@components/toast';
+import {toastNew} from '@components/toast';
 import replaceContent from '@helpers/dom/replaceContent';
 import {ChatFull, Chat as MTChat, GroupCall, Dialog, InputGroupCall} from '@layer';
 import PopupPickUser from '@components/popups/pickUser';
@@ -567,7 +567,7 @@ export default class ChatTopbar {
         const original = selection.toggleByElement.bind(selection);
         selection.toggleByElement = async(bubble) => {
           this.chat.setAppSettings('chatContextMenuHintWasShown', true);
-          toast(i18n('Chat.Menu.Hint'));
+          toastNew({langPackKey: 'Chat.Menu.Hint'});
 
           selection.toggleByElement = original;
           selection.toggleByElement(bubble);

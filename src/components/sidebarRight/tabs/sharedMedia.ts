@@ -32,6 +32,7 @@ import {profileStarGiftsButtonMenu} from '@components/stargifts/profileList';
 import {createRoot} from 'solid-js';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import namedPromises from '@helpers/namedPromises';
+import hasRights from '@lib/appManagers/utils/chats/hasRights';
 
 type SharedMediaHistoryStorage = Partial<{
   [type in SearchSuperType]: {mid: number, peerId: PeerId}[]
@@ -184,7 +185,8 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     const HEADER_HEIGHT = 56;
     this.scrollable.onAdditionalScroll = () => {
-      const rect = this.searchSuper.nav.getBoundingClientRect();
+      const isSingle = this.searchSuper.navScrollableContainer.classList.contains('is-single');
+      const rect = (isSingle ? this.searchSuper.container : this.searchSuper.nav).getBoundingClientRect();
       if(!rect.width) return;
 
       const top = rect.top - 1;
@@ -645,7 +647,6 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
   private async toggleEditBtn(manual: true): Promise<() => void>;
   private async toggleEditBtn(manual?: false): Promise<void>;
-
   private async toggleEditBtn(manual?: boolean): Promise<(() => void) | void> {
     const {peerId} = this;
     let show: boolean;
@@ -660,7 +661,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         show = await this.managers.dialogsStorage.canManageTopic(await this.managers.dialogsStorage.getForumTopic(peerId, this.threadId));
       } else {
         const chat = apiManagerProxy.getChat(chatId);
-        show = !!(chat as Chat.channel).admin_rights || await this.managers.appChatsManager.hasRights(chatId, 'change_info');
+        show = hasRights(chat, 'change_info');
       }
     }
 

@@ -25,7 +25,9 @@ export default function formatDuration(duration: number, showLast = 2) {
     {m: 60, t: DurationType.Minutes},
     {m: 60, t: DurationType.Hours},
     {m: 24, t: DurationType.Days},
-    {m: 7, t: DurationType.Weeks}
+    {m: 7, t: DurationType.Weeks},
+    {m: 365 / 12 / 7, t: DurationType.Months},
+    {m: 12, t: DurationType.Years}
   ] as Array<{m?: number, t: DurationType}>
   const s = 1;
   let t = s;

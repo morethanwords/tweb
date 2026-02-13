@@ -40,7 +40,7 @@ import {SliceEnd} from '@helpers/slicedArray';
 import PeerTitle from '@components/peerTitle';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import findUpTag from '@helpers/dom/findUpTag';
-import {hideToast, toast, toastNew} from '@components/toast';
+import {hideToast, toastNew} from '@components/toast';
 import {getMiddleware, Middleware} from '@helpers/middleware';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
@@ -2483,7 +2483,7 @@ export default class ChatBubbles {
       if(peerId !== NULL_PEER_ID) {
         this.chat.appImManager.setInnerPeer({...additionalSetPeerProps, peerId});
       } else {
-        toast(I18n.format('HidAccount', true));
+        toastNew({langPackKey: 'HidAccount'});
       }
       return;
     }
@@ -2844,7 +2844,7 @@ export default class ChatBubbles {
             });
             this.chat.appImManager.clickIfSponsoredMessage((bubble as any).message);
           } else {
-            toast(I18n.format('HidAccount', true));
+            toastNew({langPackKey: 'HidAccount'});
           }
         }
       }

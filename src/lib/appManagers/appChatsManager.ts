@@ -25,11 +25,12 @@ import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import callbackify from '@helpers/callbackify';
 import {SlicedCachedFetcher} from '@appManagers/utils/chats/slicedCachedFetcher';
+import {CHAT_LEGACY_ADMIN_RIGHTS} from '@lib/appManagers/utils/chats/constants';
 
 export type Channel = Chat.channel;
 export type ChatRights = keyof ChatBannedRights['pFlags'] | keyof ChatAdminRights['pFlags'] |
   'change_type' | 'change_permissions' | 'delete_chat' | 'view_participants' |
-  'invite_links' | 'create_giveaway'/*  | 'view_statistics' */;
+  'invite_links' | 'create_giveaway' | 'just_admin' | 'toggle_forum'/*  | 'view_statistics' */;
 
 const TEST_SPONSORED = false;
 
@@ -572,9 +573,16 @@ export class AppChatsManager extends AppManager {
     // });
   }
 
-  public migrateChat(id: ChatId): Promise<ChatId> {
+  public async migrateChat(id: ChatId): Promise<ChatId> {
     const chat: Chat = this.getChat(id);
-    if(chat._ === 'channel') return Promise.resolve(chat.id);
+    if(chat._ === 'channel') return chat.id;
+    else {
+      const migratedTo = (chat as Chat.chat).migrated_to;
+      if(migratedTo) {
+        return (migratedTo as InputChannel.inputChannel).channel_id;
+      }
+    }
+
     return this.apiManager.invokeApi('messages.migrateChat', {
       chat_id: id
     }).then((updates) => {
@@ -593,7 +601,7 @@ export class AppChatsManager extends AppManager {
     return this.refreshChatAfterRequest(id, promise, doNotRefresh);
   }
 
-  public editAdmin(
+  public async editAdmin(
     id: ChatId,
     participant: PeerId | ChannelParticipant | ChatParticipant,
     rights: ChatAdminRights,
@@ -602,37 +610,57 @@ export class AppChatsManager extends AppManager {
     const wasChannel = this.isChannel(id);
     const peerId = getParticipantPeerId(participant);
     const userId = peerId.toUserId();
-    return this.migrateChat(id).then((id) => {
-      return this.apiManager.invokeApi('channels.editAdmin', {
-        channel: this.getChannelInput(id),
-        user_id: this.appUsersManager.getUserInput(userId),
-        admin_rights: rights,
-        rank
-      }).then((updates) => {
-        const timestamp = tsNow(true);
-        const update = this.generateUpdateChannelParticipant({
-          chatId: id,
-          newParticipant: Object.keys(rights.pFlags).length ? {
-            _: 'channelParticipantAdmin',
-            date: timestamp,
-            admin_rights: rights,
-            promoted_by: this.appUsersManager.getSelf().id,
-            user_id: userId,
-            rank,
-            pFlags: {}
-          } : {
-            _: 'channelParticipant',
-            date: timestamp,
-            user_id: userId
-          },
-          prevParticipant: participant,
-          wasChannel
-        });
-        this.apiUpdatesManager.processLocalUpdate(update);
+    const makingAdmin = Object.keys(rights.pFlags).length > 0;
+    const canStickToLegacy = !rank && (!makingAdmin || deepEqual(rights, CHAT_LEGACY_ADMIN_RIGHTS));
 
-        this.onChatUpdatedForce(id, updates);
+    if(!wasChannel && canStickToLegacy) {
+      await this.apiManager.invokeApi('messages.editChatAdmin', {
+        chat_id: id,
+        user_id: this.appUsersManager.getUserInput(userId),
+        is_admin: makingAdmin
       });
+
+      this.apiUpdatesManager.processLocalUpdate({
+        _: 'updateChatParticipantAdmin',
+        chat_id: id,
+        user_id: userId,
+        is_admin: makingAdmin,
+        version: 0
+      });
+
+      return;
+    }
+
+    id = await this.migrateChat(id);
+    const updates = await this.apiManager.invokeApi('channels.editAdmin', {
+      channel: this.getChannelInput(id),
+      user_id: this.appUsersManager.getUserInput(userId),
+      admin_rights: rights,
+      rank
     });
+
+    const timestamp = tsNow(true);
+    const update = this.generateUpdateChannelParticipant({
+      chatId: id,
+      newParticipant: makingAdmin ? {
+        _: 'channelParticipantAdmin',
+        date: timestamp,
+        admin_rights: rights,
+        promoted_by: this.appUsersManager.getSelf().id,
+        user_id: userId,
+        rank,
+        pFlags: {}
+      } : {
+        _: 'channelParticipant',
+        date: timestamp,
+        user_id: userId
+      },
+      prevParticipant: participant,
+      wasChannel
+    });
+    this.apiUpdatesManager.processLocalUpdate(update);
+
+    this.onChatUpdatedForce(id, updates);
   }
 
   public editPhoto(id: ChatId, inputFile: InputFile) {
@@ -720,35 +748,32 @@ export class AppChatsManager extends AppManager {
   ) {
     const peerId = getParticipantPeerId(participant);
     const wasChannel = this.isChannel(id);
-    if(!wasChannel) {
-      const channelId = await this.migrateChat(id);
-      id = channelId;
-    }
 
-    return this.apiManager.invokeApi('channels.editBanned', {
+    id = await this.migrateChat(id);
+    const updates = await this.apiManager.invokeApi('channels.editBanned', {
       channel: this.getChannelInput(id),
       participant: this.appPeersManager.getInputPeerById(peerId),
       banned_rights: bannedRights
-    }).then((updates) => {
-      const timestamp = tsNow(true);
-      const update = this.generateUpdateChannelParticipant({
-        chatId: id,
-        wasChannel,
-        prevParticipant: participant,
-        newParticipant: Object.keys(bannedRights.pFlags).length ? {
-          _: 'channelParticipantBanned',
-          date: timestamp,
-          banned_rights: bannedRights,
-          kicked_by: this.appUsersManager.getSelf().id,
-          peer: this.appPeersManager.getOutputPeer(peerId),
-          pFlags: bannedRights.pFlags.view_messages ? {left: true} : {}
-        } : undefined
-      });
-
-      this.apiUpdatesManager.processLocalUpdate(update);
-
-      this.onChatUpdated(id, updates);
     });
+
+    const timestamp = tsNow(true);
+    const update = this.generateUpdateChannelParticipant({
+      chatId: id,
+      wasChannel,
+      prevParticipant: participant,
+      newParticipant: Object.keys(bannedRights.pFlags).length ? {
+        _: 'channelParticipantBanned',
+        date: timestamp,
+        banned_rights: bannedRights,
+        kicked_by: this.appUsersManager.getSelf().id,
+        peer: this.appPeersManager.getOutputPeer(peerId),
+        pFlags: bannedRights.pFlags.view_messages ? {left: true} : {}
+      } : undefined
+    });
+
+    this.apiUpdatesManager.processLocalUpdate(update);
+
+    this.onChatUpdated(id, updates);
   }
 
   public clearChannelParticipantBannedRights(id: ChatId, participant: PeerId | ChannelParticipant) {
@@ -771,7 +796,10 @@ export class AppChatsManager extends AppManager {
 
   public kickFromChat(id: ChatId, participant: PeerId | ChannelParticipant | ChatParticipant) {
     if(this.isChannel(id)) return this.kickFromChannel(id, participant as ChannelParticipant);
-    else return this.deleteChatUser(id, isObject(participant) ? getParticipantPeerId(participant) : (participant as PeerId).toUserId());
+    else return this.deleteChatUser(
+      id,
+      isObject(participant) ? getParticipantPeerId(participant) : (participant as PeerId).toUserId()
+    );
   }
 
   public resolveChannel(id: ChatId | InputChannel) {
@@ -877,7 +905,7 @@ export class AppChatsManager extends AppManager {
   }
 
   public togglePreHistoryHidden(id: ChatId, enabled: boolean) {
-    return this.toggleSomething(id, 'togglePreHistoryHidden', enabled);
+    return this.toggleSomething(id, 'togglePreHistoryHidden', enabled, true);
   }
 
   public toggleSignatures(id: ChatId, enabled: boolean, profiles: boolean) {
@@ -1005,6 +1033,22 @@ export class AppChatsManager extends AppManager {
     });
 
     return promise;
+  }
+
+  public getInactiveChannels() {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'channels.getInactiveChannels',
+      processResult: (inactiveChats) => {
+        this.appPeersManager.saveApiPeers(inactiveChats);
+
+        return inactiveChats.chats.map(({id}, idx) => {
+          return {
+            id,
+            date: inactiveChats.dates[idx]
+          };
+        });
+      }
+    });
   }
 
   public getSponsoredPeers(q: string) {

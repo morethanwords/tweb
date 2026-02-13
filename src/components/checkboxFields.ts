@@ -13,7 +13,7 @@ import I18n, {FormatterArguments, LangPackKey} from '@lib/langPack';
 import CheckboxField from '@components/checkboxField';
 import Icon from '@components/icon';
 import Row from '@components/row';
-import {toast} from '@components/toast';
+import {toastNew} from '@components/toast';
 
 export type CheckboxFieldsField = {
   text?: LangPackKey,
@@ -122,7 +122,7 @@ export default class CheckboxFields<K extends CheckboxFieldsField = CheckboxFiel
       info.checkboxField.input.disabled = true;
 
       if(!info.nested) attachClickEvent(info.row.container, (e) => {
-        toast(I18n.format(info.restrictionText, true));
+        toastNew({langPackKey: info.restrictionText});
       }, {listenerSetter: this.listenerSetter});
     }
 
