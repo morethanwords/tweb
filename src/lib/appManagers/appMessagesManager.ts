@@ -93,6 +93,7 @@ import {isTempId} from '@appManagers/utils/messages/isTempId';
 import fitSymbols from '@helpers/string/fitSymbols';
 import isObject from '@helpers/object/isObject';
 import pickKeys from '@helpers/object/pickKeys';
+import namedPromises from '@helpers/namedPromises';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -1251,6 +1252,13 @@ export class AppMessagesManager extends AppManager {
     return promise || ret;
   }
 
+  private getCommonThingsForSending() {
+    return namedPromises({
+      config: this.apiManager.getConfig(),
+      appConfig: this.apiManager.getAppConfig()
+    });
+  }
+
   public async sendText(
     options: MessageSendingParams & Partial<{
       text: string,
@@ -1278,12 +1286,7 @@ export class AppMessagesManager extends AppManager {
     options.entities ??= [];
     options.webPageOptions ??= {};
 
-    this.checkSendOptions(options);
-
-    const [config, appConfig] = await Promise.all([
-      this.apiManager.getConfig(),
-      this.apiManager.getAppConfig()
-    ]);
+    const {config, appConfig} = await this.checkSendOptions(options);
 
     if(appConfig.emojies_send_dice?.includes(text.trim())) {
       return this.sendOther({
@@ -1485,12 +1488,12 @@ export class AppMessagesManager extends AppManager {
     return Promise.all(promises).then(noop);
   }
 
-  public sendFile(options: SendFileArgs) {
+  public async sendFile(options: SendFileArgs) {
     let file = options.file;
     let {peerId} = options;
     peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
 
-    this.checkSendOptions(options);
+    await this.checkSendOptions(options);
 
     const isDocument = !(file instanceof File) && !(file instanceof Blob);
     if(isDocument) {
@@ -2106,7 +2109,7 @@ export class AppMessagesManager extends AppManager {
     clearDraft?: boolean,
     stars?: number
   }) {
-    this.checkSendOptions(options);
+    await this.checkSendOptions(options);
 
     if(options.sendFileDetails.length === 1) {
       return this.sendFile({...options, ...options.sendFileDetails[0]});
@@ -2136,7 +2139,7 @@ export class AppMessagesManager extends AppManager {
     let firstMessage: Message.message;
     const isSingleMessageForAlbum = !!options.stars;
     const preserveMediaTempId = this.mediaTempId;
-    const results = options.sendFileDetails.map((details, idx) => {
+    const _results = options.sendFileDetails.map(async(details, idx) => {
       const o: Parameters<AppMessagesManager['sendFile']>[0] = {
         peerId,
         isGroupedItem: true,
@@ -2161,7 +2164,7 @@ export class AppMessagesManager extends AppManager {
         o.effect = options.effect;
       }
 
-      const result = this.sendFile(o);
+      const result = await this.sendFile(o);
 
       if(idx === 0) {
         firstMessage = result.message;
@@ -2170,6 +2173,7 @@ export class AppMessagesManager extends AppManager {
 
       return result;
     });
+    const results = await Promise.all(_results);
 
     if(options.stars) {
       const message = results[0].message;
@@ -2359,7 +2363,7 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  public sendOther(
+  public async sendOther(
     options: MessageSendingParams & Partial<{
       inputMedia: InputMedia | {_: 'messageMediaPending', messageMedia: MessageMedia},
       viaBotId: BotId,
@@ -2375,7 +2379,7 @@ export class AppMessagesManager extends AppManager {
     peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
 
     const noOutgoingMessage = /* inputMedia?._ === 'inputMediaPhotoExternal' ||  */inputMedia?._ === 'inputMediaDocumentExternal';
-    this.checkSendOptions(options);
+    await this.checkSendOptions(options);
     const message = this.generateOutgoingMessage(peerId, options);
 
     let media: MessageMedia;
@@ -2674,6 +2678,9 @@ export class AppMessagesManager extends AppManager {
     //     delete options.scheduleDate;
     //   }
     // }
+
+    // * make sure every sending method is awaiting the same promises
+    return this.getCommonThingsForSending();
   }
 
   private beforeMessageSending(message: Message.message, options: Pick<MessageSendingParams, 'threadId' | 'savedReaction' | 'confirmedPaymentResult'> & Partial<{
@@ -3880,8 +3887,8 @@ export class AppMessagesManager extends AppManager {
     return Promise.all(promises).then(noop);
   }
 
-  public forwardMessages(options: MessageForwardParams) {
-    this.checkSendOptions(options);
+  public async forwardMessages(options: MessageForwardParams) {
+    await this.checkSendOptions(options);
 
     const {peerId, fromPeerId, mids} = options;
     const channelId = this.appPeersManager.isChannel(fromPeerId) ? fromPeerId.toChatId() : undefined;

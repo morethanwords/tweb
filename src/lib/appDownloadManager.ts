@@ -137,7 +137,7 @@ export class AppDownloadManager {
     }
   }
 
-  public getUpload(fileName: string): ReturnType<AppMessagesManager['sendFile']>['promise'] {
+  public getUpload(fileName: string): Awaited<ReturnType<AppMessagesManager['sendFile']>>['promise'] {
     let deferred: CancellablePromise<any> = this.getDownload(fileName);
     if(deferred) {
       return deferred;
