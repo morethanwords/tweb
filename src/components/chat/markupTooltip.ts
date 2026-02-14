@@ -39,6 +39,7 @@ export default class MarkupTooltip {
   private savedRange: Range;
   private mouseUpCounter: number = 0;
   private input: HTMLElement;
+  private linkInputFocusTimeout: number;
   // private log: ReturnType<typeof logger>;
 
   constructor() {
@@ -185,7 +186,8 @@ export default class MarkupTooltip {
 
     this.setTooltipPosition(true);
 
-    setTimeout(() => {
+    this.linkInputFocusTimeout = window.setTimeout(() => {
+      this.linkInputFocusTimeout = undefined;
       this.linkInput.focus(); // !!! instant focus will break animation
     }, 200);
     this.linkInput.classList.toggle('is-valid', this.isLinkValid());
@@ -431,6 +433,9 @@ export default class MarkupTooltip {
     if(this.addedListener) return;
     this.addedListener = true;
     document.addEventListener('selectionchange', (e) => {
+      if(this.linkInputFocusTimeout) { // * if it soon will be focused, ignore the event because of click event
+        return;
+      }
       // this.log('selectionchange');
 
       if(document.activeElement === this.linkInput) {
