@@ -6714,7 +6714,7 @@ export default class ChatBubbles {
       });
     }
 
-    const isOut = this.chat.isOutMessage(message);
+    const isOut = context.isOut = this.chat.isOutMessage(message);
     const haveRTLChar = isRTL(messageMessage, true);
 
     let timeSpan: HTMLElement, _clearfix: HTMLElement;
