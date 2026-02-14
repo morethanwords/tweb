@@ -1767,7 +1767,11 @@ export class AppImManager extends EventListenerBase<{
       const top = chatBubbles.scrollable.scrollPosition;
 
       const position = {
-        mids: chatBubbles.getRenderedHistory('desc', true).map((fullMid) => splitFullMid(fullMid).mid),
+        mids: chatBubbles.getRenderedHistory(
+          'desc',
+          true,
+          false
+        ).map((fullMid) => splitFullMid(fullMid).mid),
         top
       };
 

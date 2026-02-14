@@ -3373,7 +3373,11 @@ export default class ChatBubbles {
     return this.getBubble(foundMid);
   }
 
-  public getRenderedHistory(sort: 'asc' | 'desc' = 'desc', onlyReal?: boolean) {
+  public getRenderedHistory(
+    sort: 'asc' | 'desc' = 'desc',
+    clearLocal?: boolean,
+    clearOutgoing = clearLocal
+  ) {
     let history = flatten(
       this.bubbleGroups.groups.map((group) => group.items.map((item) => this.makeFullMid(item.message)))
     );
@@ -3382,10 +3386,10 @@ export default class ChatBubbles {
       history.reverse();
     }
 
-    if(onlyReal) {
+    if(clearLocal || clearOutgoing) {
       history = history.filter((fullMid) => {
         const {mid} = splitFullMid(fullMid);
-        return mid > 0 && clearMessageId(mid, false) === mid;
+        return (!clearLocal || mid > 0) && (!clearOutgoing || clearMessageId(mid, false) === mid);
       });
     }
 
