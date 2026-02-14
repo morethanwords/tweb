@@ -94,6 +94,7 @@ import fitSymbols from '@helpers/string/fitSymbols';
 import isObject from '@helpers/object/isObject';
 import pickKeys from '@helpers/object/pickKeys';
 import namedPromises from '@helpers/namedPromises';
+import callbackifyAll from '@helpers/callbackifyAll';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -7984,7 +7985,7 @@ export class AppMessagesManager extends AppManager {
     const pinned = update.pFlags?.pinned;
     const storage = this.getHistoryMessagesStorage(peerId);
     const missingMessages = mids.filter((mid) => !storage.has(mid));
-    const getMissingPromise = missingMessages.length && Promise.all(missingMessages.map((mid) => this.reloadMessages(peerId, mid))).catch(noop);
+    const getMissingPromise = missingMessages.length && Promise.resolve(this.reloadMessages(peerId, missingMessages)).catch(noop);
     callbackify(getMissingPromise, () => {
       let processMessage: (message: Message.message) => void;
       if(pinned) {
@@ -8177,7 +8178,7 @@ export class AppMessagesManager extends AppManager {
   }
 
   public updateMessage(peerId: PeerId, mid: number, broadcastEventName?: 'replies_updated'): Promise<Message.message> {
-    const promise: Promise<Message.message> = this.reloadMessages(peerId, mid, true).then(() => {
+    const promise: Promise<Message.message> = Promise.resolve(this.reloadMessage(peerId, mid, true)).then(() => {
       const message = this.getMessageByPeer(peerId, mid) as Message.message;
       if(!message) {
         return;
@@ -9616,15 +9617,7 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  public reloadMessages(peerId: PeerId, mid: number, overwrite?: boolean): Promise<MyMessage>;
-  public reloadMessages(peerId: PeerId, mid: number[], overwrite?: boolean): Promise<MyMessage[]>;
-  public reloadMessages(peerId: PeerId, mid: number | number[], overwrite?: boolean): Promise<MyMessage | MyMessage[]> {
-    if(Array.isArray(mid)) {
-      return Promise.all(mid.map((mid) => {
-        return this.reloadMessages(peerId, mid, overwrite);
-      }));
-    }
-
+  public reloadMessage(peerId: PeerId, mid: number, overwrite?: boolean): MaybePromise<MyMessage> {
     if(peerId.isAnyChat() && isLegacyMessageId(mid)) {
       peerId = GLOBAL_HISTORY_PEER_ID;
     }
@@ -9632,7 +9625,7 @@ export class AppMessagesManager extends AppManager {
     const message = this.getMessageByPeer(peerId, mid);
     if(this.deletedMessages.has(`${peerId}_${mid}`) || (message && !overwrite)) {
       this.rootScope.dispatchEvent('messages_downloaded', {peerId, mids: [mid]});
-      return Promise.resolve(message);
+      return message;
     } else {
       let map = this.needSingleMessages.get(peerId);
       if(!map) {
@@ -9649,6 +9642,12 @@ export class AppMessagesManager extends AppManager {
       this.fetchSingleMessages();
       return promise;
     }
+  }
+
+  public reloadMessages(peerId: PeerId, mid: number[], overwrite?: boolean): MaybePromise<MyMessage[]> {
+    return callbackifyAll(mid.map((mid) => {
+      return this.reloadMessage(peerId, mid, overwrite);
+    }), (messages) => messages);
   }
 
   public getExtendedMedia(peerId: PeerId, mids: number[]) {
@@ -9692,18 +9691,21 @@ export class AppMessagesManager extends AppManager {
   }
 
   private clearMessageReplyTo(message: MyMessage) {
-    if(!message) return;
+    let cleared = false;
+    if(!message) return cleared;
     message = this.getMessageByPeerOrFromLogs(message.peerId, message.mid); // message can come from other thread
-    if(!message) return;
+    if(!message || (message.reply_to as MessageReplyHeader.messageReplyHeader).reply_to_msg_deleted) return cleared;
     this.modifyMessage(message, (message) => {
       (message.reply_to as MessageReplyHeader.messageReplyHeader).reply_to_msg_deleted = true;
     }, this.getHistoryMessagesStorage(message.peerId), true); // * mirror it
+    cleared = true;
+    return cleared;
   }
 
   public fetchMessageReplyTo(message: MyMessage) {
-    if(!message) return Promise.resolve(this.generateEmptyMessage(0));
+    if(!message) return this.generateEmptyMessage(0);
     message = this.getMessageByPeerOrFromLogs(message.peerId, message.mid); // message can come from other thread
-    if(!message?.reply_to) return Promise.resolve(this.generateEmptyMessage(0));
+    if(!message?.reply_to) return this.generateEmptyMessage(0);
     const replyTo = message.reply_to;
     if(replyTo._ === 'messageReplyStoryHeader') {
       const result = this.appStoriesManager.getStoryById(this.appPeersManager.getPeerId(replyTo.peer), replyTo.story_id);
@@ -9717,12 +9719,13 @@ export class AppMessagesManager extends AppManager {
     }
 
     const replyToPeerId = replyTo.reply_to_peer_id ? this.appPeersManager.getPeerId(replyTo.reply_to_peer_id) : message.peerId;
-    return this.reloadMessages(replyToPeerId, message.reply_to_mid).then((originalMessage) => {
+    const result = this.reloadMessage(replyToPeerId, message.reply_to_mid);
+    return callbackify(result, (originalMessage) => {
       if(!originalMessage) { // ! break the infinite loop
         this.clearMessageReplyTo(message);
       }
 
-      if(message._ === 'messageService') {
+      if(message._ === 'messageService' && result instanceof Promise) {
         const peerId = message.peerId;
         this.rootScope.dispatchEvent('message_edit', {
           storageKey: `${peerId}_history`,

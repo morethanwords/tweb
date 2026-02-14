@@ -522,7 +522,7 @@ PeerProfile.PersonalChannel = () => {
 
     const TEST = false;
     const isCached = !!apiManagerProxy.getMessageByPeer(peerId, mid) && !TEST;
-    const messagePromise = rootScope.managers.appMessagesManager.reloadMessages(peerId, mid);
+    const messagePromise = rootScope.managers.appMessagesManager.reloadMessage(peerId, mid);
     const readyPromise = messagePromise.then(async(message) => {
       TEST && await pause(1000);
       await appDialogsManager.setLastMessageN({

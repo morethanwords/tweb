@@ -3016,7 +3016,7 @@ export default class ChatBubbles {
           replyToMid = await this.managers.appMessagesIdsManager.generateMessageId(replyToMid, this.chat.isChannel ? this.peerId.toChatId() : undefined);
 
           try {
-            existingMessage = await this.managers.appMessagesManager.reloadMessages(replyToPeerId, replyToMid);
+            existingMessage = await this.managers.appMessagesManager.reloadMessage(replyToPeerId, replyToMid);
           } catch{}
 
           if(!existingMessage) {

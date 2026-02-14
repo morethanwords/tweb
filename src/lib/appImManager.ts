@@ -1458,7 +1458,7 @@ export class AppImManager extends EventListenerBase<{
 
     // handle t.me/username/thread or t.me/username/messageId
     if(isForum && lastMsgId && !threadId) {
-      const message = await this.managers.appMessagesManager.reloadMessages(peerId, lastMsgId);
+      const message = await this.managers.appMessagesManager.reloadMessage(peerId, lastMsgId);
       if(message) {
         threadId = options.threadId = getMessageThreadId(message, {isForum});
       } else {
@@ -1529,7 +1529,7 @@ export class AppImManager extends EventListenerBase<{
       return this.setInnerPeer(options);
     }
 
-    return this.managers.appMessagesManager.reloadMessages(options.peerId, options.threadId).then(async(message) => {
+    return this.managers.appMessagesManager.reloadMessage(options.peerId, options.threadId).then(async(message) => {
       if(!message) {
         options.lastMsgId = undefined;
       }
