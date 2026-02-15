@@ -4265,7 +4265,9 @@ const lang = {
   'EditThisVideo': 'Edit this video',
 
   'Archive.HideFromChatList': 'Hide from Chat List',
-  'Archive.ShowInChatList': 'Show in Chat List'
+  'Archive.ShowInChatList': 'Show in Chat List',
+  'Archive.MarkAllAsRead.ConfirmationTitle': 'Mark all as read',
+  'Archive.MarkAllAsRead.ConfirmationDescription': 'Are you sure you want to mark all archived chats as read?'
 };
 
 export default lang;
