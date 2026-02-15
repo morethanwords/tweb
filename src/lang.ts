@@ -3726,6 +3726,7 @@ const lang = {
 
   'BuyStars': 'Buy Stars',
   'UnsavedChanges': 'Unsaved Changes',
+  'UnsavedChangesDescription.Archive': 'You have changed some archive settings. Save changes?',
   'UnsavedChangesDescription.Privacy': 'You have changed some privacy settings. Save changes?',
   'UnsavedChangesDescription.Group': 'You have changed some settings in this group. Save changes?',
   'UnsavedChangesDescription.Channel': 'You have changed some settings in this channel. Save changes?',
@@ -4263,6 +4264,17 @@ const lang = {
 
   'EditThisPhoto': 'Edit this photo',
   'EditThisVideo': 'Edit this video',
+
+  'ArchiveSettings': 'Archive Settings',
+  'ArchiveSettings.UnmutedChats.Title': 'Unmuted Chats',
+  'ArchiveSettings.UnmutedChats.Action': 'Always keep archived',
+  'ArchiveSettings.UnmutedChats.Description': 'Always keep the chats in the archive, even if they are unmuted and get a new message.',
+  'ArchiveSettings.FolderChats.Title': 'Chats from folders',
+  'ArchiveSettings.FolderChats.Action': 'Always keep archived',
+  'ArchiveSettings.FolderChats.Description': 'Always keep the chats from folders in the archive, even if they are unmuted and get a new message.',
+  'ArchiveSettings.NewChats.Title': 'New chats from Unknown users',
+  'ArchiveSettings.NewChats.Action': 'Archive and Mute',
+  'ArchiveSettings.NewChats.Description': 'Automatically archive and mute new chats, groups and channels from non-contacts.',
 
   'Archive.HideFromChatList': 'Hide from Chat List',
   'Archive.ShowInChatList': 'Show in Chat List',

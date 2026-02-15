@@ -62,4 +62,6 @@ export default function showFeatureDetailsPopup(props: FeatureDetailsPopupProps)
       </PopupElement.Footer>
     </PopupElement>
   ));
+
+  return close;
 }

@@ -98,3 +98,9 @@ export const AppMessagesAutoDeleteTab =
     title: 'AutoDeleteMessages',
     getComponentModule: () => import('../sidebarLeft/tabs/autoDeleteMessages')
   });
+
+export const AppArchiveSettingsTab =
+  scaffoldSolidJSTab({
+    title: 'ArchiveSettings',
+    getComponentModule: () => import('../sidebarLeft/tabs/archiveSettingsTab')
+  });

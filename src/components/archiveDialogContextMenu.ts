@@ -6,10 +6,13 @@ import {FOLDER_ID_ARCHIVE} from '@lib/appManagers/constants';
 import {i18n} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
 import {useAppSettings} from '@stores/appSettings';
+import {createRoot, onCleanup} from 'solid-js';
 import {archiveDialogTagName} from './archiveDialog';
 import confirmationPopup from './confirmationPopup';
 import createFeatureDetailsIconSticker from './featureDetailsIconSticker';
 import showFeatureDetailsPopup from './popups/featureDetails';
+import appSidebarLeft from './sidebarLeft';
+import {AppArchiveSettingsTab} from './solidJsTabs/tabs';
 
 
 type CreateArchiveDialogContextMenuArgs = {
@@ -59,6 +62,13 @@ export const createArchiveDialogContextMenu = ({
         verify: async() => !markAllAsRead.isLoading() && (await getUnreadCount() > 0)
       },
       {
+        icon: 'tools',
+        text: 'ArchiveSettings',
+        onClick: () => {
+          appSidebarLeft.createTab(AppArchiveSettingsTab).open();
+        }
+      },
+      {
         icon: 'info2',
         text: 'ArchiveFeatureDetails.MenuOption',
         onClick: () => {
@@ -102,10 +112,11 @@ async function getUnreadCount() {
 };
 
 function openFeatureDetails() {
-  showFeatureDetailsPopup({
+  const close = showFeatureDetailsPopup({
     title: i18n('ArchiveFeatureDetails.Title'),
     subtitle: i18n('ArchiveFeatureDetails.Subtitle', [anchorCallback(() => {
-      // TODO: implement
+      close();
+      appSidebarLeft.createTab(AppArchiveSettingsTab).open();
     })]),
     rows: [
       {
