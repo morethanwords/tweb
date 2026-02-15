@@ -4267,7 +4267,17 @@ const lang = {
   'Archive.HideFromChatList': 'Hide from Chat List',
   'Archive.ShowInChatList': 'Show in Chat List',
   'Archive.MarkAllAsRead.ConfirmationTitle': 'Mark all as read',
-  'Archive.MarkAllAsRead.ConfirmationDescription': 'Are you sure you want to mark all archived chats as read?'
+  'Archive.MarkAllAsRead.ConfirmationDescription': 'Are you sure you want to mark all archived chats as read?',
+  'ArchiveFeatureDetails.MenuOption': 'How does it work?',
+  'ArchiveFeatureDetails.Title': 'This is your Archive',
+  'ArchiveFeatureDetails.Subtitle': 'Archived chats will remain in the Archive when you receive a new message. [Click to change.]()',
+  'ArchiveFeatureDetails.HowTo.Title': 'Archiving Chats',
+  'ArchiveFeatureDetails.HowTo.Subtitle': 'Right-click on a chat and choose **%s** or **%s**.',
+  'ArchiveFeatureDetails.Hide.Title': 'Hiding the Archive',
+  'ArchiveFeatureDetails.Hide.Subtitle': 'Right-click on the Archive and choose **%s**. You can always access it from the main menu.',
+  'ArchiveFeatureDetails.Stories.Title': 'Stories',
+  'ArchiveFeatureDetails.Stories.Subtitle': 'Archive Stories from your contacts separately from chats with them.',
+  'ArchiveFeatureDetails.Button': 'Got it'
 };
 
 export default lang;
