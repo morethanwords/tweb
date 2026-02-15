@@ -98,12 +98,18 @@ html.custom-scroll {
     overflow-x: auto;
     scrollbar-width: none; // Firefox only
     -ms-overflow-style: none;
+    overscroll-behavior-x: contain;
   }
 
   &.scrollable-y {
     overflow-y: auto;
     overflow-y: overlay;
     scrollbar-width: none;
+    overscroll-behavior-y: contain;
+
+    html.overlay-scroll & {
+      scrollbar-width: thin;
+    }
 
     .is-firefox & {
       scrollbar-width: thin;

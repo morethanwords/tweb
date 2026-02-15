@@ -129,6 +129,7 @@ export default class MarkupTooltip {
       // this.log('linkBackButton click');
       cancelEvent(e);
       this.container.classList.remove('is-link');
+      this.clearLinkInputFocusTimeout();
       // input.value = '';
       this.resetSelection();
       this.setTooltipPosition();
@@ -162,6 +163,13 @@ export default class MarkupTooltip {
     window.addEventListener('resize', () => {
       this.hide();
     });
+  }
+
+  private clearLinkInputFocusTimeout() {
+    if(this.linkInputFocusTimeout) {
+      clearTimeout(this.linkInputFocusTimeout);
+      this.linkInputFocusTimeout = undefined;
+    }
   }
 
   public showLinkEditor() {
@@ -231,6 +239,7 @@ export default class MarkupTooltip {
     appNavigationController.removeByType('markup');
 
     if(this.hideTimeout) clearTimeout(this.hideTimeout);
+    this.clearLinkInputFocusTimeout();
     this.hideTimeout = window.setTimeout(() => {
       this.hideTimeout = undefined;
       this.container.classList.add('hide');
@@ -283,7 +292,9 @@ export default class MarkupTooltip {
     const rowsWrapper = findUpClassName(this.input, 'rows-wrapper') ||
       findUpClassName(this.input, 'input-message-container') ||
       findUpClassName(this.input, 'input-field');
-    const currentTools = this.container.classList.contains('is-link') ? this.wrapper.lastElementChild : this.wrapper.firstElementChild;
+    const currentTools = this.container.classList.contains('is-link') ?
+      this.wrapper.lastElementChild :
+      this.wrapper.firstElementChild;
     const bodyRect = document.body.getBoundingClientRect();
     const selectionRect = range.getBoundingClientRect();
     const inputRect = rowsWrapper.getBoundingClientRect();
