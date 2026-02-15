@@ -13,15 +13,16 @@ import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {AckedResult} from '@lib/superMessagePort';
 import {useAppSettings} from '@stores/appSettings';
-import {Accessor, createComputed, createEffect, createMemo, createResource, createRoot, createSignal, For, onCleanup, Setter, Show} from 'solid-js';
+import {Accessor, createComputed, createEffect, createMemo, createResource, createRoot, createSignal, For, onCleanup, Ref, Setter, Show} from 'solid-js';
 import {createStore} from 'solid-js/store';
 import styles from './archiveDialog.module.scss';
 import Badge from './badge';
 import {IconTsx} from './iconTsx';
 import ripple from './ripple';
+import {createStoriesStore, StoriesContext, StoriesContextValue} from './stories/store';
 import {createStoriesViewer} from './stories/viewer';
 
-if(import.meta.hot) import.meta.hot.accept();
+// if(import.meta.hot) import.meta.hot.accept(); // screw it
 
 
 const limit = 10;
@@ -44,6 +45,8 @@ const ArchiveDialog = defineSolidElement({
 
     const {StoriesProvider} = useHotReloadGuard();
 
+    const [openStoriesTarget, setOpenStoriesTarget] = createSignal<HTMLElement>();
+
     const sortedDialogs = createMemo(() => props.state.sortedDialogs().slice(0, limit)); // Note: more dialogs can appear if they've been updated
     const totalUnreadCount = () => props.state.totalUnreadCount();
     // const totalUnreadCount = () => 403430;
@@ -54,15 +57,16 @@ const ArchiveDialog = defineSolidElement({
 
     ripple(props.element, () => true);
 
+    controls.openStory = () => {
+      props.state.openArchiveStories(openStoriesTarget());
+    };
+
     return (
       <>
         <StoriesProvider archive>
           <ArchiveAvatar
-            storiesSegments={props.state.segments.storiesSegments()}
-            onStoriesPeerIds={(peerIds) => void props.state.segments.setStoriesPeerIds(peerIds)}
-            openStoriesRef={callback => {
-              controls.openStory = callback;
-            }}
+            storiesSegments={props.state.segments()}
+            ref={setOpenStoriesTarget}
           />
         </StoriesProvider>
         <div class='row-row row-title-row'>
@@ -186,9 +190,12 @@ function useArchivedDialogsState() {
     return initialPromise;
   }
 
+  const storiesContext = createStoriesStore({archive: true});
+
   return {
     totalUnreadCount: useTotalUnreadCount(),
-    segments: useStoriesSegments(),
+    segments: useStoriesSegments(storiesContext),
+    openArchiveStories: useOpenArchiveStories(storiesContext),
     ensureHydrated,
     isReady,
     sortedDialogs
@@ -298,20 +305,19 @@ function useTotalUnreadCount() {
   return totalUnreadCount;
 }
 
-function useStoriesSegments() {
+function useStoriesSegments(storiesContextValue: StoriesContextValue) {
   const {rootScope} = useHotReloadGuard();
 
-  const [storiesPeerIds, setStoriesPeerIds] = createSignal<PeerId[]>(undefined, {
-    equals: (a, b) => a && b && a.length === b.length && a.every((id, index) => id === b[index])
-  });
-
-  const fetchStoriesSegments = (peerIds: PeerId[]) => rootScope.managers.appStoriesManager.getPeersStoriesSegments(peerIds);
+  const [stories] = storiesContextValue;
+  const storiesPeerIds = createMemo(() => stories.peers?.length ? stories.peers.map(peer => peer.peerId) : undefined);
 
   const [storiesSegments, setStoriesSegments] = createSignal<StoriesSegments>();
 
-  const [storiesSegmentsResource, {mutate}] = createResource(
+  const fetchStoriesSegmentsByPeerIds = (peerIds: PeerId[]) => rootScope.managers.appStoriesManager.getPeersStoriesSegments(peerIds);
+
+  const [storiesSegmentsByPeerIds, {refetch}] = createResource(
     storiesPeerIds,
-    (peerIds) => fetchStoriesSegments(peerIds)
+    fetchStoriesSegmentsByPeerIds
   );
 
   const listenerSetter = new ListenerSetter;
@@ -320,27 +326,73 @@ function useStoriesSegments() {
   listenerSetter.add(rootScope)('stories_read', refetchStoriesSegments);
   listenerSetter.add(rootScope)('story_deleted', refetchStoriesSegments);
   listenerSetter.add(rootScope)('story_new', refetchStoriesSegments);
+  listenerSetter.add(rootScope)('story_update', refetchStoriesSegments);
 
-  async function refetchStoriesSegments({peerId}: { peerId: PeerId }) {
-    if(storiesSegmentsResource.state !== 'ready' || !storiesPeerIds()?.includes(peerId)) return;
-
-    const segments = await fetchStoriesSegments(storiesPeerIds());
-    mutate(segments);
+  function refetchStoriesSegments({peerId}: { peerId: PeerId }) {
+    if(!storiesPeerIds()?.includes(peerId)) return;
+    refetch();
   }
-
-  createComputed(() => {
-    if(storiesSegmentsResource.state !== 'ready') return;
-
-    setStoriesSegments(storiesSegmentsResource().length ? storiesSegmentsResource().flat() : undefined);
-  });
 
   onCleanup(() => {
     listenerSetter.removeAll();
   });
 
-  return {
-    storiesSegments,
-    setStoriesPeerIds
+  createComputed(() => {
+    if(storiesSegmentsByPeerIds.state !== 'ready') return;
+
+    if(!storiesSegmentsByPeerIds()?.length) {
+      setStoriesSegments(undefined);
+      return;
+    }
+
+    // Show only one segment per peer
+    const newStoriesSegments = storiesSegmentsByPeerIds().map(({segments}) => {
+      const segment =
+        segments.find(segment => segment.type === 'close') ||
+        segments.find(segment => segment.type === 'unread') ||
+        segments[0];
+
+      return {
+        ...segment,
+        length: 1
+      };
+    }).filter(Boolean);
+
+    setStoriesSegments(newStoriesSegments);
+  });
+
+  return storiesSegments;
+}
+
+function useOpenArchiveStories(storiesContextValue: StoriesContextValue) {
+  const [stories, actions] = storiesContextValue;
+  const [viewerTarget, setViewerTarget] = createSignal<HTMLElement>();
+
+  const canOpenStories = createMemo(() => stories.ready && stories.peers.length > 0);
+
+  createEffect(() => {
+    if(!viewerTarget()) return;
+
+    const onExit = () => {
+      setViewerTarget(undefined);
+    };
+
+    const cleanup = createRoot((dispose) => {
+      <StoriesContext.Provider value={storiesContextValue}>
+        {createStoriesViewer({onExit, target: viewerTarget})}
+      </StoriesContext.Provider>
+
+      return dispose;
+    });
+
+    onCleanup(() => cleanup());
+  });
+
+  return (target: HTMLElement) => {
+    if(!canOpenStories()) return;
+    actions.resetIndexes();
+    actions.set({peer: stories.peers[0]});
+    setViewerTarget(target);
   };
 }
 
@@ -367,49 +419,32 @@ function PeerTitleItem(props: {
 
 function ArchiveAvatar(props: {
   storiesSegments: StoriesSegments;
-  onStoriesPeerIds: (peerIds: PeerId[]) => void;
-  openStoriesRef: (callback: () => void) => void;
+  ref: Ref<HTMLDivElement>;
 }) {
-  const {useStories, StoriesSegments} = useHotReloadGuard();
+  const {StoriesSegments} = useHotReloadGuard();
 
-  const [stories] = useStories();
-
-  const [target, setTarget] = createSignal<HTMLElement>();
-
-  const canOpenStory = createMemo(() => stories.ready && stories.peers.length > 0);
+  const hasStories = createMemo(() => props.storiesSegments?.length > 0);
 
   const {setStoriesSegments, storyDimensions, storiesCircle} = StoriesSegments({
     size: 54,
     colors: {}
   });
 
-  createEffect(() => {
-    if(!stories.ready) return;
-    props.onStoriesPeerIds(stories.peers.map(p => p.peerId));
-  });
-
   createComputed(() => {
     setStoriesSegments(props.storiesSegments);
-  });
-
-  props.openStoriesRef(() => {
-    if(canOpenStory()) {
-      createStoriesViewer({archive: true, peers: stories.peers, target});
-    }
   });
 
   return (
     <div
       class={`${styles.Media} row-media row-media-bigger dialog-avatar`}
       classList={{
-        'archive-dialog-with-stories': canOpenStory(),
-        [styles.hasStories]: canOpenStory()
+        'archive-dialog-with-stories': hasStories(),
+        [styles.hasStories]: hasStories()
       }}
-      data-story-peer-id={canOpenStory() ? stories.peers[0]?.peerId : undefined}
       style={{
         'padding': storyDimensions() ? (storyDimensions().size - storyDimensions().willBeSize) / 2 + 'px' : undefined
       }}
-      ref={setTarget}
+      ref={props.ref}
     >
       {storiesCircle()}
       <div class={styles.MediaContent}>
