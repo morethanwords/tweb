@@ -43,6 +43,7 @@
       line-height: var(--line-height);
       padding: .625rem 1rem .5rem;
       white-space: pre-wrap;
+      flex: 0 0 auto;
 
       @include text-overflow(false);
     }

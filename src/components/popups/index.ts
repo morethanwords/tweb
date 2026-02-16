@@ -30,7 +30,7 @@ import MarkupTooltip from '@components/chat/markupTooltip';
 
 export type PopupButton = {
   text?: HTMLElement | DocumentFragment | Text,
-  callback?: (e: MouseEvent) => void | MaybePromise<boolean>,
+  callback?: (e: MouseEvent) => void | MaybePromise<void | boolean>,
   langKey?: LangPackKey,
   langArgs?: any[],
   isDanger?: boolean,

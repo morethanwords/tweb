@@ -11,7 +11,7 @@ import Button from '@components/button';
 import {setButtonLoader} from '@components/putPreloader';
 import RadioField from '@components/radioField';
 import Row, {RadioFormFromRows} from '@components/row';
-import {toast} from '@components/toast';
+import {toastNew} from '@components/toast';
 import {UsernameInputField} from '@components/usernameInputField';
 import {SliderSuperTabEventable} from '@components/sliderTab';
 import I18n, {i18n} from '@lib/langPack';
@@ -29,6 +29,7 @@ import {purchaseUsernameCaption} from '@components/sidebarLeft/tabs/editProfile'
 import confirmationPopup from '@components/confirmationPopup';
 import PopupElement from '@components/popups';
 import apiManagerProxy from '@lib/apiManagerProxy';
+import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
 
 export default class AppChatTypeTab extends SliderSuperTabEventable {
   public chatId: ChatId;
@@ -101,7 +102,7 @@ export default class AppChatTypeTab extends SliderSuperTabEventable {
       subtitleLangKey: isBroadcast ? 'ChannelPrivateLinkHelp' : 'MegaPrivateLinkHelp',
       clickable: () => {
         copyTextToClipboard((this.chatFull.exported_invite as ExportedChatInvite.chatInviteExported).link);
-        toast(I18n.format('LinkCopied', true));
+        toastNew({langPackKey: 'LinkCopied'});
       },
       listenerSetter: this.listenerSetter
     });
@@ -233,20 +234,27 @@ export default class AppChatTypeTab extends SliderSuperTabEventable {
         }
 
         if(changedJoinToSend || changedJoinRequest) {
-          await Promise.all([
-            changedJoinToSend && this.managers.appChatsManager.toggleJoinToSend(
+          const joinToSendValue = joinToSendRow.checkboxField.checked;
+          const joinRequestValue = joinRequestRow.checkboxField.checked;
+          const callbacks = [
+            changedJoinToSend && (() => this.managers.appChatsManager.toggleJoinToSend(
               this.chatId,
-              joinToSendRow.checkboxField.checked
-            ),
-            changedJoinRequest && this.managers.appChatsManager.toggleJoinRequest(
+              joinToSendValue
+            )),
+            changedJoinRequest && (() => this.managers.appChatsManager.toggleJoinRequest(
               this.chatId,
-              joinRequestRow.checkboxField.checked
-            )
-          ]);
+              joinRequestValue
+            ))
+          ].filter(Boolean);
+
+          for(const callback of callbacks) {
+            await handleChannelsTooMuch(callback);
+          }
         }
 
         this.close();
       } catch(err) {
+        console.error('changePrivacy error', err);
         unsetLoader();
       }
     }, {listenerSetter: this.listenerSetter});

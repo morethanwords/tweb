@@ -93,6 +93,8 @@ import {isTempId} from '@appManagers/utils/messages/isTempId';
 import fitSymbols from '@helpers/string/fitSymbols';
 import isObject from '@helpers/object/isObject';
 import pickKeys from '@helpers/object/pickKeys';
+import namedPromises from '@helpers/namedPromises';
+import callbackifyAll from '@helpers/callbackifyAll';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -1251,6 +1253,13 @@ export class AppMessagesManager extends AppManager {
     return promise || ret;
   }
 
+  private getCommonThingsForSending() {
+    return namedPromises({
+      config: this.apiManager.getConfig(),
+      appConfig: this.apiManager.getAppConfig()
+    });
+  }
+
   public async sendText(
     options: MessageSendingParams & Partial<{
       text: string,
@@ -1278,12 +1287,7 @@ export class AppMessagesManager extends AppManager {
     options.entities ??= [];
     options.webPageOptions ??= {};
 
-    this.checkSendOptions(options);
-
-    const [config, appConfig] = await Promise.all([
-      this.apiManager.getConfig(),
-      this.apiManager.getAppConfig()
-    ]);
+    const {config, appConfig} = await this.checkSendOptions(options);
 
     if(appConfig.emojies_send_dice?.includes(text.trim())) {
       return this.sendOther({
@@ -1485,12 +1489,12 @@ export class AppMessagesManager extends AppManager {
     return Promise.all(promises).then(noop);
   }
 
-  public sendFile(options: SendFileArgs) {
+  public async sendFile(options: SendFileArgs) {
     let file = options.file;
     let {peerId} = options;
     peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
 
-    this.checkSendOptions(options);
+    await this.checkSendOptions(options);
 
     const isDocument = !(file instanceof File) && !(file instanceof Blob);
     if(isDocument) {
@@ -2106,7 +2110,7 @@ export class AppMessagesManager extends AppManager {
     clearDraft?: boolean,
     stars?: number
   }) {
-    this.checkSendOptions(options);
+    await this.checkSendOptions(options);
 
     if(options.sendFileDetails.length === 1) {
       return this.sendFile({...options, ...options.sendFileDetails[0]});
@@ -2136,7 +2140,7 @@ export class AppMessagesManager extends AppManager {
     let firstMessage: Message.message;
     const isSingleMessageForAlbum = !!options.stars;
     const preserveMediaTempId = this.mediaTempId;
-    const results = options.sendFileDetails.map((details, idx) => {
+    const _results = options.sendFileDetails.map(async(details, idx) => {
       const o: Parameters<AppMessagesManager['sendFile']>[0] = {
         peerId,
         isGroupedItem: true,
@@ -2161,7 +2165,7 @@ export class AppMessagesManager extends AppManager {
         o.effect = options.effect;
       }
 
-      const result = this.sendFile(o);
+      const result = await this.sendFile(o);
 
       if(idx === 0) {
         firstMessage = result.message;
@@ -2170,6 +2174,7 @@ export class AppMessagesManager extends AppManager {
 
       return result;
     });
+    const results = await Promise.all(_results);
 
     if(options.stars) {
       const message = results[0].message;
@@ -2359,7 +2364,7 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  public sendOther(
+  public async sendOther(
     options: MessageSendingParams & Partial<{
       inputMedia: InputMedia | {_: 'messageMediaPending', messageMedia: MessageMedia},
       viaBotId: BotId,
@@ -2375,7 +2380,7 @@ export class AppMessagesManager extends AppManager {
     peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
 
     const noOutgoingMessage = /* inputMedia?._ === 'inputMediaPhotoExternal' ||  */inputMedia?._ === 'inputMediaDocumentExternal';
-    this.checkSendOptions(options);
+    await this.checkSendOptions(options);
     const message = this.generateOutgoingMessage(peerId, options);
 
     let media: MessageMedia;
@@ -2674,6 +2679,9 @@ export class AppMessagesManager extends AppManager {
     //     delete options.scheduleDate;
     //   }
     // }
+
+    // * make sure every sending method is awaiting the same promises
+    return this.getCommonThingsForSending();
   }
 
   private beforeMessageSending(message: Message.message, options: Pick<MessageSendingParams, 'threadId' | 'savedReaction' | 'confirmedPaymentResult'> & Partial<{
@@ -3880,8 +3888,8 @@ export class AppMessagesManager extends AppManager {
     return Promise.all(promises).then(noop);
   }
 
-  public forwardMessages(options: MessageForwardParams) {
-    this.checkSendOptions(options);
+  public async forwardMessages(options: MessageForwardParams) {
+    await this.checkSendOptions(options);
 
     const {peerId, fromPeerId, mids} = options;
     const channelId = this.appPeersManager.isChannel(fromPeerId) ? fromPeerId.toChatId() : undefined;
@@ -7977,7 +7985,7 @@ export class AppMessagesManager extends AppManager {
     const pinned = update.pFlags?.pinned;
     const storage = this.getHistoryMessagesStorage(peerId);
     const missingMessages = mids.filter((mid) => !storage.has(mid));
-    const getMissingPromise = missingMessages.length && Promise.all(missingMessages.map((mid) => this.reloadMessages(peerId, mid))).catch(noop);
+    const getMissingPromise = missingMessages.length && Promise.resolve(this.reloadMessages(peerId, missingMessages)).catch(noop);
     callbackify(getMissingPromise, () => {
       let processMessage: (message: Message.message) => void;
       if(pinned) {
@@ -8170,7 +8178,7 @@ export class AppMessagesManager extends AppManager {
   }
 
   public updateMessage(peerId: PeerId, mid: number, broadcastEventName?: 'replies_updated'): Promise<Message.message> {
-    const promise: Promise<Message.message> = this.reloadMessages(peerId, mid, true).then(() => {
+    const promise: Promise<Message.message> = Promise.resolve(this.reloadMessage(peerId, mid, true)).then(() => {
       const message = this.getMessageByPeer(peerId, mid) as Message.message;
       if(!message) {
         return;
@@ -9609,15 +9617,7 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  public reloadMessages(peerId: PeerId, mid: number, overwrite?: boolean): Promise<MyMessage>;
-  public reloadMessages(peerId: PeerId, mid: number[], overwrite?: boolean): Promise<MyMessage[]>;
-  public reloadMessages(peerId: PeerId, mid: number | number[], overwrite?: boolean): Promise<MyMessage | MyMessage[]> {
-    if(Array.isArray(mid)) {
-      return Promise.all(mid.map((mid) => {
-        return this.reloadMessages(peerId, mid, overwrite);
-      }));
-    }
-
+  public reloadMessage(peerId: PeerId, mid: number, overwrite?: boolean): MaybePromise<MyMessage> {
     if(peerId.isAnyChat() && isLegacyMessageId(mid)) {
       peerId = GLOBAL_HISTORY_PEER_ID;
     }
@@ -9625,7 +9625,7 @@ export class AppMessagesManager extends AppManager {
     const message = this.getMessageByPeer(peerId, mid);
     if(this.deletedMessages.has(`${peerId}_${mid}`) || (message && !overwrite)) {
       this.rootScope.dispatchEvent('messages_downloaded', {peerId, mids: [mid]});
-      return Promise.resolve(message);
+      return message;
     } else {
       let map = this.needSingleMessages.get(peerId);
       if(!map) {
@@ -9642,6 +9642,12 @@ export class AppMessagesManager extends AppManager {
       this.fetchSingleMessages();
       return promise;
     }
+  }
+
+  public reloadMessages(peerId: PeerId, mid: number[], overwrite?: boolean): MaybePromise<MyMessage[]> {
+    return callbackifyAll(mid.map((mid) => {
+      return this.reloadMessage(peerId, mid, overwrite);
+    }), (messages) => messages);
   }
 
   public getExtendedMedia(peerId: PeerId, mids: number[]) {
@@ -9685,18 +9691,21 @@ export class AppMessagesManager extends AppManager {
   }
 
   private clearMessageReplyTo(message: MyMessage) {
-    if(!message) return;
+    let cleared = false;
+    if(!message) return cleared;
     message = this.getMessageByPeerOrFromLogs(message.peerId, message.mid); // message can come from other thread
-    if(!message) return;
+    if(!message || (message.reply_to as MessageReplyHeader.messageReplyHeader).reply_to_msg_deleted) return cleared;
     this.modifyMessage(message, (message) => {
       (message.reply_to as MessageReplyHeader.messageReplyHeader).reply_to_msg_deleted = true;
     }, this.getHistoryMessagesStorage(message.peerId), true); // * mirror it
+    cleared = true;
+    return cleared;
   }
 
   public fetchMessageReplyTo(message: MyMessage) {
-    if(!message) return Promise.resolve(this.generateEmptyMessage(0));
+    if(!message) return this.generateEmptyMessage(0);
     message = this.getMessageByPeerOrFromLogs(message.peerId, message.mid); // message can come from other thread
-    if(!message?.reply_to) return Promise.resolve(this.generateEmptyMessage(0));
+    if(!message?.reply_to) return this.generateEmptyMessage(0);
     const replyTo = message.reply_to;
     if(replyTo._ === 'messageReplyStoryHeader') {
       const result = this.appStoriesManager.getStoryById(this.appPeersManager.getPeerId(replyTo.peer), replyTo.story_id);
@@ -9710,12 +9719,13 @@ export class AppMessagesManager extends AppManager {
     }
 
     const replyToPeerId = replyTo.reply_to_peer_id ? this.appPeersManager.getPeerId(replyTo.reply_to_peer_id) : message.peerId;
-    return this.reloadMessages(replyToPeerId, message.reply_to_mid).then((originalMessage) => {
+    const result = this.reloadMessage(replyToPeerId, message.reply_to_mid);
+    return callbackify(result, (originalMessage) => {
       if(!originalMessage) { // ! break the infinite loop
         this.clearMessageReplyTo(message);
       }
 
-      if(message._ === 'messageService') {
+      if(message._ === 'messageService' && result instanceof Promise) {
         const peerId = message.peerId;
         this.rootScope.dispatchEvent('message_edit', {
           storageKey: `${peerId}_history`,

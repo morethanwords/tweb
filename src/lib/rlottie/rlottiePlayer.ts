@@ -101,6 +101,7 @@ export default class RLottiePlayer extends EventListenerBase<{
   public canvas: HTMLCanvasElement[];
   public contexts: CanvasRenderingContext2D[];
 
+  public destroyed = false;
   public paused = true;
   // public paused = false;
   public direction = 1;
@@ -378,6 +379,11 @@ export default class RLottiePlayer extends EventListenerBase<{
   }
 
   public remove() {
+    if(this.destroyed) {
+      return;
+    }
+
+    this.destroyed = true;
     this.pause();
     this.sendQuery(['destroy']);
     if(this.cacheName) RLottiePlayer.CACHE.releaseCache(this.cacheName);

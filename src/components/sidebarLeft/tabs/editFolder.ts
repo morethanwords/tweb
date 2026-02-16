@@ -8,7 +8,7 @@ import type {MyDialogFilter} from '@lib/storages/filters';
 import appDialogsManager from '@lib/appDialogsManager';
 import lottieLoader, {LottieLoader} from '@lib/rlottie/lottieLoader';
 import {SliderSuperTab} from '@components/slider';
-import {toast, toastNew} from '@components/toast';
+import {toastNew} from '@components/toast';
 import InputField from '@components/inputField';
 import ButtonIcon from '@components/buttonIcon';
 import ButtonMenuToggle from '@components/buttonMenuToggle';

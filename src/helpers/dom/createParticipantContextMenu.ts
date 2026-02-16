@@ -15,6 +15,7 @@ import AppUserPermissionsTab from '@components/sidebarRight/tabs/userPermissions
 import {Middleware} from '@helpers/middleware';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import {handleMissingInvitees} from '@components/addChatUsers';
+import {isParticipantAdmin, isParticipantCreator} from '@lib/appManagers/utils/chats/isParticipantAdmin';
 
 type Participant = ChannelParticipant | ChatParticipant;
 
@@ -71,17 +72,21 @@ export default function createParticipantContextMenu(options: {
       icon: 'promote',
       text: 'SetAsAdmin',
       onClick: () => openPermissions(true),
-      verify: () => canManageAdmins && participant._ === 'channelParticipant'
+      verify: () => canManageAdmins && !isParticipantAdmin(participant)
     }, {
       icon: 'admin',
       text: 'EditAdminRights',
       onClick: () => openPermissions(true),
-      verify: () => participant._ === 'channelParticipantAdmin' && canEditAdmin(chat, participant as ChannelParticipant, rootScope.myId)
+      verify: () => isParticipantAdmin(participant) && canEditAdmin(chat, participant as ChannelParticipant, rootScope.myId)
     }, {
       icon: 'restrict',
       text: 'KickFromSupergroup',
       onClick: () => openPermissions(false),
-      verify: () => canChangePermissions && (participant._ === 'channelParticipant' || (participant._ === 'channelParticipantBanned' && !participant.pFlags.left))
+      verify: () => canChangePermissions && (
+        participant._ === 'channelParticipant' ||
+        participant._ === 'chatParticipant' ||
+        (participant._ === 'channelParticipantBanned' && !participant.pFlags.left)
+      )
     }, {
       icon: 'delete',
       text: 'Delete',
@@ -113,8 +118,8 @@ export default function createParticipantContextMenu(options: {
       },
       verify: () => canChangePermissions &&
         participantPeerId !== rootScope.myId &&
-        participant._ !== 'channelParticipantCreator' &&
-        (participant._ !== 'channelParticipantAdmin' || canEditAdmin(chat, participant, rootScope.myId)) &&
+        !isParticipantCreator(participant) &&
+        (!isParticipantAdmin(participant) || canEditAdmin(chat, participant, rootScope.myId)) &&
         (participant._ === 'channelParticipant' || !isBanned)
     }];
   }

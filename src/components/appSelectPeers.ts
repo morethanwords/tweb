@@ -30,7 +30,7 @@ import filterAsync from '@helpers/array/filterAsync';
 import getParticipantPeerId from '@appManagers/utils/chats/getParticipantPeerId';
 import getChatMembersString from '@components/wrappers/getChatMembersString';
 import getUserStatusString from '@components/wrappers/getUserStatusString';
-import {ChannelParticipant, ChannelParticipantsFilter, ChannelsChannelParticipants, Chat, ChatParticipant, User} from '@layer';
+import {ChannelParticipant, ChannelParticipantsFilter, ChannelsChannelParticipants, Chat, ChatFull, ChatParticipant, ChatParticipants, User} from '@layer';
 import canSendToUser from '@appManagers/utils/users/canSendToUser';
 import hasRights from '@appManagers/utils/chats/hasRights';
 import getDialogIndex from '@appManagers/utils/dialogs/getDialogIndex';
@@ -101,7 +101,7 @@ export default class AppSelectPeers {
   private exceptSelf: boolean;
   private filterPeerTypeBy: IsPeerType[] | FilterPeerTypeByFunc;
   private channelParticipantsFilter: ChannelParticipantsFilter | ((q: string) => ChannelParticipantsFilter);
-  private channelParticipantsUpdateFilter: (participant: ChannelParticipant) => boolean;
+  private channelParticipantsUpdateFilter: (participant: ChannelParticipant | ChatParticipant) => boolean;
   private meAsSaved: boolean;
   private noShadow: boolean;
   private noDelimiter: boolean;
@@ -460,13 +460,13 @@ export default class AppSelectPeers {
     this.container.append(this.chatsContainer);
     this.appendTo.append(this.container);
 
-    if(this.channelParticipantsUpdateFilter) this.listenerSetter.add(rootScope)('chat_participant', (update) => {
-      const newParticipant = update.new_participant;
-      const peerId = update.user_id.toPeerId(false);
-      const needAdd = this.channelParticipantsUpdateFilter(newParticipant);
-
+    const onChatParticipant = (
+      participant: ChannelParticipant | ChatParticipant,
+      peerId: PeerId,
+      needAdd = this.channelParticipantsUpdateFilter(participant)
+    ) => {
       if(needAdd) {
-        this.participants.set(peerId, newParticipant);
+        this.participants.set(peerId, participant);
       } else {
         this.participants.delete(peerId);
       }
@@ -476,7 +476,50 @@ export default class AppSelectPeers {
       } else {
         this.deletePeerId(peerId);
       }
+    };
+
+    if(this.channelParticipantsUpdateFilter) this.listenerSetter.add(rootScope)('chat_participant', (update) => {
+      if(update.channel_id.toPeerId(true) !== this.peerId) {
+        return;
+      }
+
+      onChatParticipant(update.new_participant, update.user_id.toPeerId(false));
     });
+
+    if(
+      this.channelParticipantsUpdateFilter &&
+      apiManagerProxy.getPeer(this.peerId)._ === 'chat'
+    ) {
+      this.listenerSetter.add(rootScope)('chat_full_update', async(chatId) => {
+        if(chatId.toPeerId(true) !== this.peerId) {
+          return;
+        }
+
+        const middleware = this.middlewareHelperLoader.get();
+        const chatFull = await this.managers.appProfileManager.getChatFull(this.peerId.toChatId()) as ChatFull.chatFull;
+        if(!middleware()) {
+          return;
+        }
+
+        const participants = chatFull.participants as ChatParticipants.chatParticipants;
+        const processedPeerIds = new Set<PeerId>();
+        for(const participant of participants.participants) {
+          const peerId = participant.user_id.toPeerId(false);
+          processedPeerIds.add(peerId);
+          onChatParticipant(
+            participant,
+            peerId,
+            undefined
+          );
+        }
+
+        this.participants.forEach((participant, peerId) => {
+          if(!processedPeerIds.has(peerId)) {
+            onChatParticipant(participant, peerId, false);
+          }
+        });
+      });
+    }
 
     options.middleware.onDestroy(() => {
       this.destroy();

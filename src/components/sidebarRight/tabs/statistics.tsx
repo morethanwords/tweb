@@ -825,7 +825,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
     const manager = this.managers.appStatisticsManager;
     const loadLimit = 100;
     const func = this.isBroadcast ? manager.getBroadcastStats : (this.isMegagroup ? manager.getMegagroupStats : (this.isStory ? manager.getStoryStats : manager.getMessageStats));
-    const postPromise = this.isMessage ? this.managers.appMessagesManager.reloadMessages(peerId, this.mid) : undefined;
+    const postPromise = this.isMessage ? this.managers.appMessagesManager.reloadMessage(peerId, this.mid) : undefined;
     const postPublicForwardsPromise = this.isMessage ? manager.getMessagePublicForwards({peerId, mid: this.mid, limit: loadLimit}) : undefined;
     const storyPromise = this.isStory ? this.managers.appStoriesManager.getStoryById(peerId, this.storyId) : undefined;
     const storyPublicForwardsPromise = this.isStory ? manager.getStoryPublicForwards({peerId, id: this.storyId, limit: loadLimit}) : undefined;
@@ -864,7 +864,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
     recentPosts.forEach((postInteractionCounters) => {
       let promise: PromiseLike<any>;
       if(postInteractionCounters._ === 'postInteractionCountersMessage') {
-        promise = this.managers.appMessagesManager.reloadMessages(peerId, postInteractionCounters.msg_id)
+        promise = this.managers.appMessagesManager.reloadMessage(peerId, postInteractionCounters.msg_id)
         .then((message) => {
           if(!message) {
             indexOfAndSplice(recentPosts, postInteractionCounters);

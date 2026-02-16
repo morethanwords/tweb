@@ -22,8 +22,7 @@ import rootScope from '@lib/rootScope';
 import PopupPickUser from '@components/popups/pickUser';
 import Row from '@components/row';
 import SettingSection from '@components/settingSection';
-import {SliderSuperTabEventable} from '@components/sliderTab';
-import {toast} from '@components/toast';
+import SliderSuperTab, {SliderSuperTabEventable} from '@components/sliderTab';
 import AppUserPermissionsTab from '@components/sidebarRight/tabs/userPermissions';
 import CheckboxFields, {CheckboxFieldsField} from '@components/checkboxFields';
 import PopupElement from '@components/popups';
@@ -33,14 +32,17 @@ import RangeStepsSelector from '@components/rangeStepsSelector';
 import formatDuration from '@helpers/formatDuration';
 import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
-import {createEffect, createRoot, createSignal} from 'solid-js';
-import {createStore, unwrap} from 'solid-js/store';
+import {createEffect, createRoot, createSignal, onCleanup} from 'solid-js';
+import {createStore} from 'solid-js/store';
 import deepEqual from '@helpers/object/deepEqual';
 import ButtonIcon from '@components/buttonIcon';
 import throttle from '@helpers/schedulers/throttle';
-import {NoneToVoidFunction} from '@types';
 import {PopupPeerOptions} from '@components/popups/peer';
 import confirmationPopup, {ConfirmationPopupRejectReason} from '@components/confirmationPopup';
+import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
+import toggleDisability from '@helpers/dom/toggleDisability';
+import {isParticipantCreator} from '@lib/appManagers/utils/chats/isParticipantAdmin';
+import {CHAT_LEGACY_ADMIN_RIGHTS} from '@lib/appManagers/utils/chats/constants';
 
 type PermissionsCheckboxFieldsField = CheckboxFieldsField & {
   flags: ChatRights[],
@@ -136,7 +138,7 @@ export class ChatPermissions extends CheckboxFields<PermissionsCheckboxFieldsFie
       options.appendTo.append(...nodes);
     }
 
-    this.fields.forEach(field => {
+    this.fields.forEach((field) => {
       field.checkboxField.listenerSetter.add(field.checkboxField.input)('change', () => {
         this.options?.onSomethingChanged?.();
       });
@@ -178,13 +180,26 @@ export class ChatAdministratorRights extends CheckboxFields<AdministratorRightsC
   protected defaultBannedRights: ChatAdminRights;
   protected restrictionText: LangPackKey;
 
+  protected static CHAT_LEGACY_ADMIN_RIGHTS: ChatAdminRights = {
+    _: 'chatAdminRights',
+    pFlags: {
+      change_info: true,
+      delete_messages: true,
+      ban_users: true,
+      invite_users: true,
+      pin_messages: true,
+      manage_call: true
+    }
+  };
+
   constructor(private options: {
     chatId: ChatId,
     listenerSetter: ListenerSetter,
     appendTo: HTMLElement,
     participant?: ChannelParticipant.channelParticipantAdmin | ChannelParticipant.channelParticipantCreator,
     chat: Chat,
-    canEdit?: boolean
+    canEdit?: boolean,
+    onSomethingChanged?: () => void
   }) {
     super({
       listenerSetter: options.listenerSetter,
@@ -214,6 +229,7 @@ export class ChatAdministratorRights extends CheckboxFields<AdministratorRightsC
       {flags: ['delete_stories'], text: 'AdminRights.DeleteStories'}
     ];
 
+    const isCreator = isParticipantCreator(options.participant);
     const manageMessagesNestedKey: ChatRights = 'post_messages_nested' as any;
     const manageStoriesNestedKey: ChatRights = 'post_stories_nested' as any;
     let v: AdministratorRightsCheckboxFieldsField[] = [
@@ -229,7 +245,7 @@ export class ChatAdministratorRights extends CheckboxFields<AdministratorRightsC
       isBroadcast && {flags: ['invite_users'], text: 'Channel.EditAdmin.PermissionInviteSubscribers'},
       isBroadcast && {flags: ['manage_direct_messages'], text: 'Channel.EditAdmin.ManageDirectMessages'},
       !isBroadcast && {flags: ['anonymous'], text: 'EditAdminSendAnonymously', checked: rights ? undefined : false},
-      {flags: ['add_admins'], text: 'EditAdminAddAdmins', checked: rights ? undefined : false}
+      {flags: ['add_admins'], text: 'EditAdminAddAdmins', checked: rights ? undefined : isCreator}
     ];
 
     const map: {[action in ChatRights]?: AdministratorRightsCheckboxFieldsField} = {};
@@ -258,7 +274,6 @@ export class ChatAdministratorRights extends CheckboxFields<AdministratorRightsC
       'anonymous'
     ]);
 
-    const isCreator = options.participant?._ === 'channelParticipantCreator';
     for(const info of this.fields) {
       const mainFlag = info.flags[0];
       if(!options.canEdit) {
@@ -276,10 +291,16 @@ export class ChatAdministratorRights extends CheckboxFields<AdministratorRightsC
       const {nodes} = this.createField(info);
       options.appendTo.append(...nodes);
     }
+
+    this.fields.forEach((field) => {
+      field.checkboxField.listenerSetter.add(field.checkboxField.input)('change', () => {
+        this.options?.onSomethingChanged?.();
+      });
+    });
   }
 
   public takeOut() {
-    const rights: ChatAdminRights = {
+    let rights: ChatAdminRights = {
       _: 'chatAdminRights',
       pFlags: {}
     };
@@ -295,73 +316,155 @@ export class ChatAdministratorRights extends CheckboxFields<AdministratorRightsC
       });
     }
 
+    // * fix missing flags
+    if(
+      this.options.chat._ === 'chat' &&
+      deepEqual(rights, ChatAdministratorRights.CHAT_LEGACY_ADMIN_RIGHTS)
+    ) {
+      rights = CHAT_LEGACY_ADMIN_RIGHTS;
+    }
+
     return rights;
   }
 }
+
+type CreateSolidTabStateProps = {
+  tab: SliderSuperTab,
+  save: () => Promise<any>,
+  unsavedConfirmationProps?: Partial<Pick<Parameters<typeof confirmationPopup>[0], 'titleLangKey' | 'descriptionLangKey' | 'button'>>
+};
+
+export const createSolidTabState = <StateStore extends object>({tab, save, unsavedConfirmationProps = {}}: CreateSolidTabStateProps) => createRoot((dispose) => {
+  tab.middlewareHelper.get().onDestroy(dispose);
+
+  const initialState: StateStore = {} as any;
+
+  const [store, set] = createStore<StateStore>({} as StateStore);
+  const [saveIcon, setSaveIcon] = createSignal<HTMLElement>(ButtonIcon('check primary appear-zoom'));
+  const [saving, setSaving] = createSignal(false);
+  const [valid, setValid] = createSignal(true);
+
+  const [hasChanges, setHasChanges] = createSignal(false);
+  const throttledSetHasChanges = throttle(setHasChanges, 200, true);
+
+  createEffect(() => {
+    throttledSetHasChanges(!deepEqual(store, initialState));
+  });
+
+  createEffect(() => {
+    if(!saveIcon()) return;
+
+    saveIcon().classList.toggle('appear-zoom--active', hasChanges());
+  });
+
+  createEffect(() => {
+    toggleDisability(saveIcon(), !valid() || saving());
+  });
+
+  // createEffect(() => {
+  //   ({...store});
+  //   console.log('{...store} :>> ', {...unwrap(store)});
+  // });
+
+  const initiateSaving = async() => {
+    setSaving(true);
+    try {
+      await save();
+      dispose();
+      tab.close();
+    } catch(err) {
+      setSaving(false);
+      throw err;
+    }
+  };
+
+  const detach = attachClickEvent(saveIcon(), initiateSaving);
+  onCleanup(detach);
+
+  tab.isConfirmationNeededOnClose = async() => {
+    if(!hasChanges() || saving()) return;
+
+    const saveButton: PopupPeerOptions['buttons'][number] = unsavedConfirmationProps.button || {
+      langKey: 'Save'
+    };
+
+    try {
+      await confirmationPopup({
+        button: saveButton,
+        buttons: [
+          saveButton,
+          {isCancel: true, langKey: 'Discard'}
+        ],
+        titleLangKey: 'UnsavedChanges',
+        descriptionLangKey: 'UnsavedChangesDescription',
+        ...unsavedConfirmationProps,
+        rejectWithReason: true
+      });
+
+      await initiateSaving();
+    } catch(_reason: any) {
+      const reason: ConfirmationPopupRejectReason = _reason;
+
+      if(reason !== 'canceled') {
+        throw new Error();
+      }
+    }
+  };
+
+  onCleanup(() => {
+    tab.isConfirmationNeededOnClose = undefined;
+  });
+
+  return {
+    setInitial: (state: Partial<StateStore>) => {
+      Object.assign(initialState, state);
+      set(state as any);
+    },
+
+    store,
+    set,
+    saveIcon,
+    // setSaveIcon,
+
+    saving,
+
+    valid,
+    setValid,
+
+    hasChanges,
+
+    dispose,
+
+    save: initiateSaving
+  };
+});
 
 export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
   public chatId: ChatId;
   private participants: Map<PeerId, ChannelParticipant.channelParticipantBanned>;
 
-  private saveCallbacks: Array<NoneToVoidFunction> = [];
-
-  private solidState = createRoot(dispose => {
-    this.middlewareHelper.get().onDestroy(() => void dispose());
-
-    type StateStore = {
-      rights?: ChatBannedRights.chatBannedRights;
-      stars?: number;
-      slowModeSeconds?: number;
-    };
-
-    const initialState: StateStore = {};
-
-    const [store, set] = createStore<StateStore>({});
-    const [saveIcon, setSaveIcon] = createSignal<HTMLElement>();
-
-    const [hasChanges, setHasChanges] = createSignal(false);
-    const throttledSetHasChanges = throttle(setHasChanges, 200, true);
-
-    createEffect(() => {
-      throttledSetHasChanges(!deepEqual(store, initialState));
-    });
-
-    createEffect(() => {
-      if(!saveIcon()) return;
-
-      saveIcon().classList.toggle('appear-zoom--active', hasChanges());
-    });
-
-    // createEffect(() => {
-    //   ({...store});
-    //   console.log('{...store} :>> ', {...unwrap(store)});
-    // });
-
-    return {
-      setInitial: (state: Partial<StateStore>) => {
-        Object.assign(initialState, state);
-        set(state);
-      },
-
-      store,
-      set,
-      saveIcon,
-      setSaveIcon,
-
-      hasChanges
-    };
+  private saveCallbacks: Array<() => any> = [];
+  private solidState = createSolidTabState<{
+    rights?: ChatBannedRights.chatBannedRights;
+    stars?: number;
+    slowModeSeconds?: number;
+  }>({
+    tab: this,
+    save: async() => {
+      for(const callback of this.saveCallbacks) {
+        await callback();
+      }
+    },
+    unsavedConfirmationProps: {
+      descriptionLangKey: 'UnsavedChangesDescription.Group'
+    }
   });
 
   public async init() {
     this.container.classList.add('edit-peer-container', 'group-permissions-container');
     this.setTitle('ChannelPermissions');
 
-    this.header.append(this.solidState.setSaveIcon(ButtonIcon('check primary appear-zoom')));
-
-    this.solidState.saveIcon().addEventListener('click', () => {
-      this.saveChanges();
-      this.close();
-    });
+    this.header.append(this.solidState.saveIcon());
 
     this.participants = new Map();
 
@@ -377,14 +480,14 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
         appendTo: section.content,
         forChat: true,
         onSomethingChanged: () => {
-          this.solidState.set({rights: chatPermissions.takeOut()})
+          this.solidState.set({rights: chatPermissions.takeOut()});
         }
       }, this.managers);
 
-      this.solidState.setInitial({rights: chatPermissions.takeOut()})
+      this.solidState.setInitial({rights: chatPermissions.takeOut()});
 
       this.saveCallbacks.push(() => {
-        this.managers.appChatsManager.editChatDefaultBannedRights(this.chatId, chatPermissions.takeOut());
+        return this.managers.appChatsManager.editChatDefaultBannedRights(this.chatId, chatPermissions.takeOut());
       });
 
       this.scrollable.append(section.container);
@@ -415,7 +518,7 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
         const {stars} = this.solidState.store;
 
         if(initialStars === stars) return;
-        this.managers.appChatsManager.updateChannelPaidMessagesPrice(chat.id.toChatId(), stars);
+        return this.managers.appChatsManager.updateChannelPaidMessagesPrice(chat.id.toChatId(), stars);
       });
     }
 
@@ -478,7 +581,9 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
       this.saveCallbacks.push(() => {
         const {value} = range;
         if(value !== initialValue) {
-          this.managers.appChatsManager.toggleSlowMode(this.chatId, range.value);
+          return handleChannelsTooMuch(() => {
+            return this.managers.appChatsManager.toggleSlowMode(this.chatId, value);
+          });
         }
       });
 
@@ -516,7 +621,6 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
           try {
             participant = await this.managers.appProfileManager.getParticipant(this.chatId, peerId) as typeof participant;
           } catch(err) {
-            toast('User is no longer participant');
             return;
           }
         }
@@ -678,36 +782,6 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
           }
         });
       }
-    }
-  }
-
-  private saveChanges() {
-    this.saveCallbacks.forEach(clb => void clb());
-  }
-
-  isConfirmationNeededOnClose = async() => {
-    if(!this.solidState.hasChanges()) return;
-
-    const saveButton: PopupPeerOptions['buttons'][number] = {
-      langKey: 'Save'
-    };
-
-    try {
-      await confirmationPopup({
-        titleLangKey: 'UnsavedChanges',
-        descriptionLangKey: 'UnsavedChangesDescription.Group',
-        button: saveButton,
-        buttons: [
-          saveButton,
-          {isCancel: true, langKey: 'Discard'}
-        ],
-        rejectWithReason: true
-      });
-      this.saveChanges();
-    } catch(_reason: any) {
-      const reason: ConfirmationPopupRejectReason = _reason;
-
-      if(reason === 'closed') throw new Error();
     }
   }
 

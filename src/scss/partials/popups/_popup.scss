@@ -271,6 +271,7 @@ $popup-footer-abitlarger-padding: 1rem;
     align-items: center;
     height: 3rem;
     padding: 0 .5rem;
+    flex: 0 0 auto;
 
     &.is-vertical-layout {
       flex-direction: column;

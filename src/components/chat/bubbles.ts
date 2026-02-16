@@ -40,7 +40,7 @@ import {SliceEnd} from '@helpers/slicedArray';
 import PeerTitle from '@components/peerTitle';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import findUpTag from '@helpers/dom/findUpTag';
-import {hideToast, toast, toastNew} from '@components/toast';
+import {hideToast, toastNew} from '@components/toast';
 import {getMiddleware, Middleware} from '@helpers/middleware';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
@@ -2483,7 +2483,7 @@ export default class ChatBubbles {
       if(peerId !== NULL_PEER_ID) {
         this.chat.appImManager.setInnerPeer({...additionalSetPeerProps, peerId});
       } else {
-        toast(I18n.format('HidAccount', true));
+        toastNew({langPackKey: 'HidAccount'});
       }
       return;
     }
@@ -2844,7 +2844,7 @@ export default class ChatBubbles {
             });
             this.chat.appImManager.clickIfSponsoredMessage((bubble as any).message);
           } else {
-            toast(I18n.format('HidAccount', true));
+            toastNew({langPackKey: 'HidAccount'});
           }
         }
       }
@@ -3016,7 +3016,7 @@ export default class ChatBubbles {
           replyToMid = await this.managers.appMessagesIdsManager.generateMessageId(replyToMid, this.chat.isChannel ? this.peerId.toChatId() : undefined);
 
           try {
-            existingMessage = await this.managers.appMessagesManager.reloadMessages(replyToPeerId, replyToMid);
+            existingMessage = await this.managers.appMessagesManager.reloadMessage(replyToPeerId, replyToMid);
           } catch{}
 
           if(!existingMessage) {
@@ -3373,7 +3373,11 @@ export default class ChatBubbles {
     return this.getBubble(foundMid);
   }
 
-  public getRenderedHistory(sort: 'asc' | 'desc' = 'desc', onlyReal?: boolean) {
+  public getRenderedHistory(
+    sort: 'asc' | 'desc' = 'desc',
+    clearLocal?: boolean,
+    clearOutgoing = clearLocal
+  ) {
     let history = flatten(
       this.bubbleGroups.groups.map((group) => group.items.map((item) => this.makeFullMid(item.message)))
     );
@@ -3382,10 +3386,10 @@ export default class ChatBubbles {
       history.reverse();
     }
 
-    if(onlyReal) {
+    if(clearLocal || clearOutgoing) {
       history = history.filter((fullMid) => {
         const {mid} = splitFullMid(fullMid);
-        return mid > 0 && clearMessageId(mid, false) === mid;
+        return (!clearLocal || mid > 0) && (!clearOutgoing || clearMessageId(mid, false) === mid);
       });
     }
 
@@ -6714,7 +6718,7 @@ export default class ChatBubbles {
       });
     }
 
-    const isOut = this.chat.isOutMessage(message);
+    const isOut = context.isOut = this.chat.isOutMessage(message);
     const haveRTLChar = isRTL(messageMessage, true);
 
     let timeSpan: HTMLElement, _clearfix: HTMLElement;

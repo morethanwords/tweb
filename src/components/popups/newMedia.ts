@@ -12,7 +12,7 @@ import type {SendFileDetails} from '@appManagers/appMessagesManager';
 import type {ChatRights} from '@appManagers/appChatsManager';
 import PopupElement from '.';
 import Scrollable from '@components/scrollable';
-import {toast, toastNew} from '@components/toast';
+import {toastNew} from '@components/toast';
 import SendContextMenu from '@components/chat/sendContextMenu';
 import {createPosterFromMedia, createPosterFromVideo} from '@helpers/createPoster';
 import {MyDocument} from '@appManagers/appDocsManager';
@@ -764,7 +764,7 @@ export default class PopupNewMedia extends PopupElement {
   private async send(force = false) {
     let {value: caption, entities} = getRichValueWithCaret(this.messageInputField.input, true, false);
     if(caption.length > this.captionLengthMax) {
-      toast(I18n.format('Error.PreviewSender.CaptionTooLong', true));
+      toastNew({langPackKey: 'Error.PreviewSender.CaptionTooLong'});
       return;
     }
 

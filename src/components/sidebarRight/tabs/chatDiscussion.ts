@@ -24,6 +24,7 @@ import {SliderSuperTabEventable} from '@components/sliderTab';
 import {toastNew} from '@components/toast';
 import getPeerTitle from '@components/wrappers/getPeerTitle';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
+import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
 
 export default class AppChatDiscussionTab extends SliderSuperTabEventable {
   public chatId: ChatId;
@@ -83,6 +84,13 @@ export default class AppChatDiscussionTab extends SliderSuperTabEventable {
     const chatlist = appDialogsManager.createChatList();
     chatlist.classList.add('chatlist');
 
+    const setDiscussionGroup = async(id: ChatId, groupId: ChatId) => {
+      return handleChannelsTooMuch(() => {
+        return this.managers.appChatsManager.setDiscussionGroup(id, groupId);
+      });
+    };
+
+    let busy = false;
     attachClickEvent(chatlist, async(e) => {
       const el = findUpClassName(e.target, 'chatlist-chat');
       if(!el) {
@@ -93,6 +101,10 @@ export default class AppChatDiscussionTab extends SliderSuperTabEventable {
 
       if(this.linkedChatId) {
         appImManager.setInnerPeer({peerId});
+        return;
+      }
+
+      if(busy) {
         return;
       }
 
@@ -137,7 +149,13 @@ export default class AppChatDiscussionTab extends SliderSuperTabEventable {
         }
       });
 
-      this.managers.appChatsManager.setDiscussionGroup(this.chatId, peerId.toChatId());
+      busy = true;
+      try {
+        await setDiscussionGroup(this.chatId, peerId.toChatId());
+      } catch(err) {
+        console.error('setDiscussionGroup error', err);
+      }
+      busy = false;
     }, {listenerSetter: this.listenerSetter});
 
     let createGroupBtn: HTMLElement;
@@ -152,7 +170,7 @@ export default class AppChatDiscussionTab extends SliderSuperTabEventable {
           peerIds: [],
           onCreate: (chatId) => {
             this.slider.removeTabFromHistory(this);
-            this.managers.appChatsManager.setDiscussionGroup(this.chatId, chatId);
+            setDiscussionGroup(this.chatId, chatId);
           },
           openAfter: false,
           title,
@@ -181,7 +199,7 @@ export default class AppChatDiscussionTab extends SliderSuperTabEventable {
 
       const toggle = toggleDisability([btnUnlink], true);
       try {
-        await this.managers.appChatsManager.setDiscussionGroup(isBroadcast ? this.chatId : linkedChatId, undefined);
+        await setDiscussionGroup(isBroadcast ? this.chatId : linkedChatId, undefined);
       } catch(err) {
 
       }

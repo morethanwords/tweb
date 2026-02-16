@@ -9,12 +9,12 @@ import Button from '@components/button';
 import {SliderSuperTab} from '@components/slider';
 import InputField from '@components/inputField';
 import AppTwoStepVerificationEmailTab from '@components/sidebarLeft/tabs/2fa/email';
-import {toast} from '@components/toast';
 import I18n from '@lib/langPack';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import wrapStickerEmoji from '@components/wrappers/stickerEmoji';
 import SettingSection from '@components/settingSection';
+import {toastNew} from '@components/toast';
 
 export default class AppTwoStepVerificationHintTab extends SliderSuperTab {
   public inputField: InputField;
@@ -63,7 +63,7 @@ export default class AppTwoStepVerificationHintTab extends SliderSuperTab {
 
       const hint = saveHint ? inputField.value : undefined;
       if(hint && this.newPassword === hint) {
-        toast(I18n.format('PasswordAsHintError', true));
+        toastNew({langPackKey: 'PasswordAsHintError'});
         return;
       }
 

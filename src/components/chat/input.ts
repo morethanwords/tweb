@@ -3379,7 +3379,7 @@ export default class ChatInput {
       }).catch((e: Error) => {
         switch(e.name as string) {
           case 'NotAllowedError': {
-            toast('Please allow access to your microphone');
+            toastNew({langPackKey: 'NoMicrophoneAccess'});
             break;
           }
 
@@ -4301,7 +4301,7 @@ export default class ChatInput {
       if(!message) { // load missing replying message
         title = i18n('Loading');
 
-        this.managers.appMessagesManager.reloadMessages(replyToPeerId, replyToMsgId).then((_message) => {
+        this.managers.appMessagesManager.reloadMessage(replyToPeerId, replyToMsgId).then((_message) => {
           if(!deepEqual(this.getReplyTo(), replyTo)) {
             return;
           }

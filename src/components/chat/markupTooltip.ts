@@ -39,6 +39,7 @@ export default class MarkupTooltip {
   private savedRange: Range;
   private mouseUpCounter: number = 0;
   private input: HTMLElement;
+  private linkInputFocusTimeout: number;
   // private log: ReturnType<typeof logger>;
 
   constructor() {
@@ -128,6 +129,7 @@ export default class MarkupTooltip {
       // this.log('linkBackButton click');
       cancelEvent(e);
       this.container.classList.remove('is-link');
+      this.clearLinkInputFocusTimeout();
       // input.value = '';
       this.resetSelection();
       this.setTooltipPosition();
@@ -163,6 +165,13 @@ export default class MarkupTooltip {
     });
   }
 
+  private clearLinkInputFocusTimeout() {
+    if(this.linkInputFocusTimeout) {
+      clearTimeout(this.linkInputFocusTimeout);
+      this.linkInputFocusTimeout = undefined;
+    }
+  }
+
   public showLinkEditor() {
     if(!this.container || !this.container.classList.contains('is-visible')) { // * if not inited yet (Ctrl+A + Ctrl+K)
       this.show();
@@ -185,7 +194,8 @@ export default class MarkupTooltip {
 
     this.setTooltipPosition(true);
 
-    setTimeout(() => {
+    this.linkInputFocusTimeout = window.setTimeout(() => {
+      this.linkInputFocusTimeout = undefined;
       this.linkInput.focus(); // !!! instant focus will break animation
     }, 200);
     this.linkInput.classList.toggle('is-valid', this.isLinkValid());
@@ -229,6 +239,7 @@ export default class MarkupTooltip {
     appNavigationController.removeByType('markup');
 
     if(this.hideTimeout) clearTimeout(this.hideTimeout);
+    this.clearLinkInputFocusTimeout();
     this.hideTimeout = window.setTimeout(() => {
       this.hideTimeout = undefined;
       this.container.classList.add('hide');
@@ -281,7 +292,9 @@ export default class MarkupTooltip {
     const rowsWrapper = findUpClassName(this.input, 'rows-wrapper') ||
       findUpClassName(this.input, 'input-message-container') ||
       findUpClassName(this.input, 'input-field');
-    const currentTools = this.container.classList.contains('is-link') ? this.wrapper.lastElementChild : this.wrapper.firstElementChild;
+    const currentTools = this.container.classList.contains('is-link') ?
+      this.wrapper.lastElementChild :
+      this.wrapper.firstElementChild;
     const bodyRect = document.body.getBoundingClientRect();
     const selectionRect = range.getBoundingClientRect();
     const inputRect = rowsWrapper.getBoundingClientRect();
@@ -431,6 +444,9 @@ export default class MarkupTooltip {
     if(this.addedListener) return;
     this.addedListener = true;
     document.addEventListener('selectionchange', (e) => {
+      if(this.linkInputFocusTimeout) { // * if it soon will be focused, ignore the event because of click event
+        return;
+      }
       // this.log('selectionchange');
 
       if(document.activeElement === this.linkInput) {

@@ -18,7 +18,7 @@ import useHeavyAnimationCheck, {getHeavyAnimationPromise} from '@hooks/useHeavyA
 import I18n, {LangPackKey, i18n, join} from '@lib/langPack';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import {getMiddleware, Middleware, MiddlewareHelper} from '@helpers/middleware';
-import {ChannelParticipant, Chat, ChatFull, ChatParticipant, Document, Message, MessageMedia, MessagesChats, Peer, Photo, StoryItem, Update, User, UserFull, WebPage} from '@layer';
+import {ChannelParticipant, Chat, ChatFull, ChatParticipant, ChatParticipants, Document, Message, MessageMedia, MessagesChats, Peer, Photo, StoryItem, Update, User, UserFull, WebPage} from '@layer';
 import SortedUserList from '@components/sortedUserList';
 import findUpTag from '@helpers/dom/findUpTag';
 import appSidebarRight from '@components/sidebarRight';
@@ -1591,26 +1591,71 @@ export default class AppSearchSuper {
             middleware
           });
 
-          const onParticipantUpdate = (update: Update.updateChannelParticipant) => {
-            const peerId = getParticipantPeerId(update.prev_participant || update.new_participant);
-            const wasRendered = membersList.has(peerId);
-            if(wasRendered || (update.new_participant as ChannelParticipant.channelParticipantBanned).pFlags?.left) {
-              membersList.ranks.delete(peerId);
-              membersList.delete(peerId);
-              membersParticipantMap.delete(peerId);
-              this.setCounter(mediaTab.type, this.counters[mediaTab.type] - 1);
-            }
-
-            if((!update.prev_participant || wasRendered) && update.new_participant) {
-              renderParticipants([update.new_participant]);
-              this.setCounter(mediaTab.type, this.counters[mediaTab.type] + 1);
-            }
+          const deleteByPeerId = (peerId: PeerId) => {
+            membersList.ranks.delete(peerId);
+            membersList.delete(peerId);
+            membersParticipantMap.delete(peerId);
+            this.setCounter(mediaTab.type, this.counters[mediaTab.type] - 1);
           };
 
-          rootScope.addEventListener('chat_participant', onParticipantUpdate);
-          middleware.onClean(() => {
-            rootScope.removeEventListener('chat_participant', onParticipantUpdate);
-          });
+          const renderParticipant = (participant: ChannelParticipant | ChatParticipant) => {
+            renderParticipants([participant]);
+            this.setCounter(mediaTab.type, this.counters[mediaTab.type] + 1);
+          };
+
+          if(apiManagerProxy.getChat(chatId)._ === 'chat') {
+            const onChatFullUpdate = async(_chatId: ChatId) => {
+              if(chatId !== _chatId) {
+                return;
+              }
+
+              const chatFull = await this.managers.appProfileManager.getChatFull(chatId) as ChatFull.chatFull;
+              if(!middleware()) {
+                return;
+              }
+
+              const participants = chatFull.participants as ChatParticipants.chatParticipants;
+              const processedPeerIds = new Set<PeerId>();
+              for(const participant of participants.participants) {
+                const peerId = participant.user_id.toPeerId(false);
+                processedPeerIds.add(peerId);
+                const wasRendered = membersList.has(peerId);
+                if(!wasRendered) {
+                  renderParticipant(participant);
+                }
+              }
+
+              membersParticipantMap.forEach((participant, peerId) => {
+                if(!processedPeerIds.has(peerId)) {
+                  deleteByPeerId(peerId);
+                }
+              });
+            };
+            rootScope.addEventListener('chat_full_update', onChatFullUpdate);
+            middleware.onClean(() => {
+              rootScope.removeEventListener('chat_full_update', onChatFullUpdate);
+            });
+          } else {
+            const onParticipantUpdate = (update: Update.updateChannelParticipant) => {
+              if(chatId !== update.channel_id) {
+                return;
+              }
+
+              const peerId = getParticipantPeerId(update.prev_participant || update.new_participant);
+              const wasRendered = membersList.has(peerId);
+              if(wasRendered || (update.new_participant as ChannelParticipant.channelParticipantBanned).pFlags?.left) {
+                deleteByPeerId(peerId);
+              }
+
+              if((!update.prev_participant || wasRendered) && update.new_participant) {
+                renderParticipant(update.new_participant);
+              }
+            };
+            rootScope.addEventListener('chat_participant', onParticipantUpdate);
+            middleware.onClean(() => {
+              rootScope.removeEventListener('chat_participant', onParticipantUpdate);
+            });
+          }
         }
       }
 

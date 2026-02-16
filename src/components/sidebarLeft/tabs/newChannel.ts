@@ -15,6 +15,9 @@ import appImManager from '@lib/appImManager';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import SettingSection from '@components/settingSection';
 import addChatUsers from '@components/addChatUsers';
+import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
+import type {AppChatsManager} from '@lib/appManagers/appChatsManager';
+import toggleDisability from '@helpers/dom/toggleDisability';
 
 export default class AppNewChannelTab extends SliderSuperTab {
   public static noSame = true;
@@ -71,12 +74,14 @@ export default class AppNewChannelTab extends SliderSuperTab {
       const title = this.channelNameInputField.value;
       const about = this.channelDescriptionInputField.value;
 
-      this.nextBtn.disabled = true;
-      this.managers.appChatsManager.createChannel({
+      const toggle = toggleDisability(this.nextBtn, true);
+      const options: Parameters<AppChatsManager['createChannel']>[0] = {
         title,
         about,
         broadcast: true
-      }).then((channelId) => {
+      };
+      handleChannelsTooMuch(() => this.managers.appChatsManager.createChannel(options))
+      .then((channelId) => {
         if(this.uploadAvatar) {
           this.uploadAvatar().then((inputFile) => {
             this.managers.appChatsManager.editPhoto(channelId, inputFile);
@@ -91,6 +96,9 @@ export default class AppNewChannelTab extends SliderSuperTab {
           slider: this.slider,
           skippable: true
         });
+      }, (err) => {
+        console.error('createChannel error', err);
+        toggle();
       });
     }, {listenerSetter: this.listenerSetter});
 

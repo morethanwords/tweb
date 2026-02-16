@@ -92,18 +92,25 @@ const sendMessagePortIfNeeded = (source: MessageSendPort) => {
   }
 };
 
-const onWindowConnected = (source: WindowClient) => {
-  log('window connected', source.id, 'windows before', connectedWindows.size);
+const onWindowConnected = (source: WindowClient, from: string) => {
+  const _log = log.bindPrefix('windowConnected');
+  _log('new', source.id, 'from', from, 'before', connectedWindows.size);
 
   if(source.frameType === 'none') {
     log.warn('maybe a bugged Safari starting window', source.id);
     return;
   }
 
-  log('windows', Array.from(connectedWindows));
+  if(connectedWindows.has(source.id)) {
+    _log('already connected', source.id);
+    return;
+  }
+
+  _log('before', Array.from(connectedWindows));
   serviceMessagePort.invokeVoid('hello', undefined, source);
   sendMessagePortIfNeeded(source);
   connectedWindows.set(source.id, source);
+  _log('after', Array.from(connectedWindows));
 
   checkWindowClientForDeferredShare(source);
 };
@@ -126,7 +133,7 @@ serviceMessagePort.addMultipleEventsListeners({
   },
 
   hello: (payload, source) => {
-    onWindowConnected(source as any as WindowClient);
+    onWindowConnected(source as any as WindowClient, 'hello');
   },
 
   shownNotification: onShownNotification,
@@ -172,13 +179,39 @@ const {
 } = handleDownload(serviceMessagePort);
 
 // * service worker can be killed, so won't get 'hello' event
-getWindowClients().then((windowClients) => {
+async function startupCheck() {
+  const windowClients = await getWindowClients();
   const length = windowClients.length;
   log(`got ${length} windows from the start`);
   windowClients.forEach((windowClient) => {
-    onWindowConnected(windowClient);
+    if(windowClient.frameType === 'none') {
+      log.warn('skipping bugged Safari starting window', windowClient.id);
+      return;
+    }
+
+    log('checking window', windowClient.id);
+    try {
+      const promise = serviceMessagePort.invoke(
+        'hello',
+        undefined,
+        undefined,
+        windowClient
+      );
+
+      let timedOut = false;
+      const timeout = setTimeout(() => timedOut = true, 5000);
+      promise.finally(() => {
+        if(!timedOut) {
+          clearTimeout(timeout);
+          onWindowConnected(windowClient, 'startup check');
+        }
+      });
+    } catch(err) {
+      log.error('failed to send hello to window', windowClient.id, err);
+    }
   });
-});
+}
+startupCheck();
 
 const connectedWindows: Map<string, WindowClient> = new Map();
 (self as any).connectedWindows = connectedWindows;
