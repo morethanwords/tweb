@@ -26,6 +26,18 @@ import {ChatAdministratorRights, ChatPermissions, createSolidTabState} from '@co
 import {isParticipantAdmin, isParticipantCreator, participantAdminPredicates} from '@lib/appManagers/utils/chats/isParticipantAdmin';
 import copy from '@helpers/object/copy';
 import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
+import Row from '@components/row';
+import formatDuration from '@helpers/formatDuration';
+import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
+import {ButtonMenuItemOptions} from '@components/buttonMenu';
+import {BANNED_RIGHTS_UNTIL_FOREVER} from '@lib/appManagers/constants';
+import tsNow from '@helpers/tsNow';
+import PopupSchedule from '@components/popups/schedule';
+import PopupElement from '@components/popups';
+import {formatDate, formatFullSentTime} from '@helpers/date';
+import {createEffect, createRoot} from 'solid-js';
+import anchorCallback from '@helpers/dom/anchorCallback';
+import appImManager from '@lib/appImManager';
 
 export default class AppUserPermissionsTab extends SliderSuperTabEventable {
   public participant: ChannelParticipant | ChatParticipant;
@@ -82,6 +94,7 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
       ];
     }
 
+    let chatPermissions: ChatPermissions;
     {
       const section = new SettingSection({
         name: this.editingAdmin ? 'EditAdminWhatCanDo' : 'UserRestrictionsCanDo',
@@ -163,7 +176,7 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
         };
       } else {
         options.onSomethingChanged = () => this.solidState.set({rights: p.takeOut()});
-        const p = new ChatPermissions(options as any, this.managers);
+        const p = chatPermissions = new ChatPermissions(options as any, this.managers);
         this.solidState.setInitial({rights: p.takeOut()});
 
         options.onSomethingChanged();
@@ -262,7 +275,82 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
         this.scrollable.append(section.container);
       }
     } else {
-      const section = new SettingSection({});
+      const sectionDuration = new SettingSection({});
+
+      const wrapDuration = (duration: number) => {
+        return wrapFormattedDuration(formatDuration(duration, 1));
+      };
+
+      const getDurationOnClick = (duration: number, isTimestamp: boolean) => {
+        const timestamp = isTimestamp ? duration : tsNow(true) + duration;
+        return () => chatPermissions.setUntilDate(timestamp);
+      };
+
+      const rowDuration = new Row({
+        titleLangKey: 'UserPermissions.Duration',
+        subtitle: true,
+        clickable: (e) => {
+          rowDuration.openContextMenu(e);
+        },
+        contextMenu: {
+          buttons: [{
+            text: 'UserPermissions.Duration.Forever',
+            onClick: getDurationOnClick(BANNED_RIGHTS_UNTIL_FOREVER, true)
+          }, ...[86400, 86400 * 7, 86400 * 365 / 12].map((duration) => {
+            const options: ButtonMenuItemOptions = {
+              regularText: wrapDuration(duration),
+              onClick: getDurationOnClick(duration, false)
+            };
+
+            return options;
+          }), {
+            text: 'UserPermissions.Duration.Custom',
+            onClick: () => {
+              PopupElement.createPopup(PopupSchedule, {
+                initDate: new Date(),
+                onPick: (timestamp) => {
+                  getDurationOnClick(timestamp, true)();
+                },
+                btnConfirmLangKey: 'Set'
+              }).show();
+            }
+          }]
+        },
+        listenerSetter: this.listenerSetter
+      });
+
+      sectionDuration.content.append(rowDuration.container);
+
+      const updateDurationSubtitle = (timestamp: number) => {
+        rowDuration.subtitle.replaceChildren(
+          timestamp === BANNED_RIGHTS_UNTIL_FOREVER ?
+           i18n('UserPermissions.Duration.Forever') :
+           formatDate(new Date(timestamp * 1000), {withTime: true})
+        );
+      };
+
+      createRoot((dispose) => {
+        this.middlewareHelper.get().onDestroy(dispose);
+
+        createEffect(() => {
+          updateDurationSubtitle((this.solidState.store.rights as ChatBannedRights).until_date);
+        });
+      });
+
+      const restrictedByPeerId = (this.participant as ChannelParticipant.channelParticipantBanned)?.kicked_by?.toPeerId(false);
+      const anchor = restrictedByPeerId ? anchorCallback(() => {
+        appImManager.setInnerPeer({peerId: restrictedByPeerId});
+      }) : undefined;
+      if(restrictedByPeerId) anchor.append(await wrapPeerTitle({peerId: restrictedByPeerId}));
+      const section = new SettingSection({
+        ...(anchor ? {
+          caption: 'UserPermissions.RestrictedBy',
+          captionArgs: [
+            anchor,
+            formatFullSentTime((this.participant as ChannelParticipant.channelParticipantBanned).date)
+          ]
+        } : {})
+      });
 
       if(this.participant._ === 'channelParticipantBanned') {
         const btnDeleteException = Button('btn-primary btn-transparent danger', {icon: 'delete', text: 'GroupPermission.Delete'});
@@ -305,7 +393,7 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
 
       section.content.append(btnDelete);
 
-      this.scrollable.append(section.container);
+      this.scrollable.append(sectionDuration.container, section.container);
     }
   }
 }

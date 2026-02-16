@@ -1036,6 +1036,11 @@ const lang = {
   },
   'Rank.Label': 'Title',
   'NoMicrophoneAccess': 'Please allow access to your microphone',
+  'UserPermissions.Duration': 'Duration',
+  'UserPermissions.Duration.Forever': 'Forever',
+  'UserPermissions.Duration.Custom': 'Custom',
+  'Set': 'Set',
+  'UserPermissions.RestrictedBy': 'Restricted by %s on %s',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',

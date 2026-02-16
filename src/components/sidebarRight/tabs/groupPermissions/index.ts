@@ -43,6 +43,7 @@ import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
 import toggleDisability from '@helpers/dom/toggleDisability';
 import {isParticipantCreator} from '@lib/appManagers/utils/chats/isParticipantAdmin';
 import {CHAT_LEGACY_ADMIN_RIGHTS} from '@lib/appManagers/utils/chats/constants';
+import {BANNED_RIGHTS_UNTIL_FOREVER} from '@lib/appManagers/constants';
 
 type PermissionsCheckboxFieldsField = CheckboxFieldsField & {
   flags: ChatRights[],
@@ -57,6 +58,7 @@ export class ChatPermissions extends CheckboxFields<PermissionsCheckboxFieldsFie
   protected chat: Chat.chat | Chat.channel;
   protected rights: ChatBannedRights.chatBannedRights;
   protected defaultBannedRights: ChatBannedRights.chatBannedRights;
+  protected untilDate: number;
 
   constructor(private options: {
     chatId: ChatId,
@@ -82,6 +84,7 @@ export class ChatPermissions extends CheckboxFields<PermissionsCheckboxFieldsFie
     const isForum = apiManagerProxy.isForum(peerId);
     const defaultBannedRights = this.defaultBannedRights = chat.default_banned_rights;
     const rights = this.rights = options.participant ? combineParticipantBannedRights(chat as Chat.channel, options.participant.banned_rights) : defaultBannedRights;
+    this.untilDate = rights.until_date || BANNED_RIGHTS_UNTIL_FOREVER;
 
     const mediaNested: PermissionsCheckboxFieldsField[] = [
       {flags: ['send_photos'], text: 'UserRestrictionsSendPhotos', exceptionText: 'UserRestrictionsNoSendPhotos'},
@@ -145,10 +148,15 @@ export class ChatPermissions extends CheckboxFields<PermissionsCheckboxFieldsFie
     });
   }
 
+  public setUntilDate(untilDate: number) {
+    this.untilDate = untilDate;
+    this.options.onSomethingChanged?.();
+  }
+
   public takeOut() {
     const rights: ChatBannedRights = {
       _: 'chatBannedRights',
-      until_date: 0x7FFFFFFF,
+      until_date: this.untilDate,
       pFlags: {}
     };
 

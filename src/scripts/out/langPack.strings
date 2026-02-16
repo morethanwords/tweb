@@ -893,6 +893,11 @@
 "LeaveCommunities_other" = "Leave %d communities";
 "Rank.Label" = "Title";
 "NoMicrophoneAccess" = "Please allow access to your microphone";
+"UserPermissions.Duration" = "Duration";
+"UserPermissions.Duration.Forever" = "Forever";
+"UserPermissions.Duration.Custom" = "Custom";
+"Set" = "Set";
+"UserPermissions.RestrictedBy" = "Restricted by %s on %s";
 "GroupsAndChannelsLimitTitle" = "Groups and Channels";
 "GroupsAndChannelsLimitSubtitle" = "Join up to %d channels and large groups";
 "PinChatsLimitTitle" = "Pinned Chats";
