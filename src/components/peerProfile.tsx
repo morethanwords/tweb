@@ -1120,7 +1120,7 @@ PeerProfile.Notifications = () => {
 
 PeerProfile.BotVerification = () => {
   const context = useContext(PeerProfileContext);
-  const {wrapAdaptiveCustomEmoji, wrapEmojiText, i18n} = useHotReloadGuard();
+  const {wrapAdaptiveCustomEmoji, wrapRichText, i18n} = useHotReloadGuard();
   const verification = createMemo(() => (context.fullPeer as UserFull)?.bot_verification);
   const officialVerified = createMemo(() => (context.peer as User.user).pFlags.verified);
 
@@ -1135,7 +1135,7 @@ PeerProfile.BotVerification = () => {
             textColor: 'secondary-text-color'
           }
         }).container,
-        text: wrapEmojiText(verification().description)
+        text: wrapRichText(verification().description)
       };
     } else if(officialVerified()) {
       const isBroadcast = (context.peer as Chat.channel).pFlags.broadcast;
