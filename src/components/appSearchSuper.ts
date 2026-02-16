@@ -1619,10 +1619,7 @@ export default class AppSearchSuper {
               for(const participant of participants.participants) {
                 const peerId = participant.user_id.toPeerId(false);
                 processedPeerIds.add(peerId);
-                const wasRendered = membersList.has(peerId);
-                if(!wasRendered) {
-                  renderParticipant(participant);
-                }
+                renderParticipant(participant);
               }
 
               membersParticipantMap.forEach((participant, peerId) => {
@@ -1692,10 +1689,16 @@ export default class AppSearchSuper {
       for(const {peerId, rank, participant} of filtered) {
         if(rank) {
           membersList.ranks.set(peerId, rank);
+        } else {
+          membersList.ranks.delete(peerId);
         }
 
         membersParticipantMap.set(peerId, participant as ChannelParticipant);
-        membersList.add(peerId);
+        if(membersList.has(peerId)) {
+          membersList.update(peerId);
+        } else {
+          membersList.add(peerId);
+        }
       }
     };
 

@@ -64,6 +64,9 @@ export default class SortedUserList extends SortedList<SortedUser> {
         } else {
           const status = getUserStatusString(await this.managers.appUsersManager.getUser(element.id));
           replaceContent(element.dom.lastMessageSpan, status);
+
+          const rank = this.ranks.get(element.id);
+          element.dialogElement.titleRight.replaceChildren(...(rank ? [wrapParticipantRank(rank)] : []));
         }
       }),
       onSort: (element, idx) => {
@@ -90,9 +93,7 @@ export default class SortedUserList extends SortedList<SortedUser> {
         });
 
         const rank = this.ranks.get(base.id);
-        if(rank) {
-          dialogElement.titleRight.replaceChildren(wrapParticipantRank(rank));
-        }
+        dialogElement.titleRight.replaceChildren(rank ? wrapParticipantRank(rank) : undefined);
 
         (base as SortedUser).dom = dialogElement.dom;
         (base as SortedUser).dialogElement = dialogElement;
