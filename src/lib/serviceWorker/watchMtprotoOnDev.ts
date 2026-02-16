@@ -8,7 +8,7 @@ const logMtprotoBug = logger('SW-mtproto-bug', LogTypes.None);
 
 type Args = {
   connectedWindows: Map<string, WindowClient>;
-  onWindowConnected: (source: WindowClient) => void;
+  onWindowConnected: (source: WindowClient, from: string) => void;
 };
 
 export function watchMtprotoOnDev({connectedWindows, onWindowConnected}: Args) {
@@ -20,7 +20,7 @@ export function watchMtprotoOnDev({connectedWindows, onWindowConnected}: Args) {
         logMtprotoBug.debug(`got ${windowClients.length} windows`);
 
         windowClients.forEach((windowClient) => {
-          onWindowConnected(windowClient);
+          onWindowConnected(windowClient, 'watchMtprotoOnDev');
         });
       });
     } else {
