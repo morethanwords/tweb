@@ -63,12 +63,10 @@ const ArchiveDialog = defineSolidElement({
 
     return (
       <>
-        <StoriesProvider archive>
-          <ArchiveAvatar
-            storiesSegments={props.state.segments()}
-            ref={setOpenStoriesTarget}
-          />
-        </StoriesProvider>
+        <ArchiveAvatar
+          storiesSegments={props.state.segments()}
+          ref={setOpenStoriesTarget}
+        />
         <div class='row-row row-title-row'>
           <I18nTsx class={styles.Title} key='Archive' />
         </div>
@@ -143,7 +141,7 @@ function useArchivedDialogsState() {
 
   const [canFetch, setCanFetch] = createSignal(false);
 
-  const [fetchedDialogs, {mutate}] = createResource(canFetch, () => fetchDialogs()); // used for initial loading state
+  const [fetchedDialogs, {refetch}] = createResource(canFetch, () => fetchDialogs()); // used for initial loading state
   const [dialogs, setDialogs] = createSignal<Dialog.dialog[]>([]);
 
   const isReady = createMemo(() => fetchedDialogs.state === 'ready');
@@ -164,21 +162,14 @@ function useArchivedDialogsState() {
     isEnd
   });
 
-  // Refetch when too little dialogs without triggering loading
   createEffect(() => {
-    const isCleaned = useIsCleaned();
-
     if(
       isReady() &&
       !isEnd() &&
-      dialogs().length < fetchedDialogsLength() &&
+      dialogs().length < fetchedDialogsLength() && // when some dialogs have been removed
       dialogs().length < limit
     ) {
-      (async() => {
-        const fetched = await fetchDialogs();
-        if(isCleaned()) return;
-        mutate(fetched);
-      })();
+      refetch();
     }
   });
 
@@ -377,15 +368,9 @@ function useOpenArchiveStories(storiesContextValue: StoriesContextValue) {
       setViewerTarget(undefined);
     };
 
-    const cleanup = createRoot((dispose) => {
-      <StoriesContext.Provider value={storiesContextValue}>
-        {createStoriesViewer({onExit, target: viewerTarget})}
-      </StoriesContext.Provider>
-
-      return dispose;
-    });
-
-    onCleanup(() => cleanup());
+    <StoriesContext.Provider value={storiesContextValue}>
+      {createStoriesViewer({onExit, target: viewerTarget})}
+    </StoriesContext.Provider>
   });
 
   return (target: HTMLElement) => {
