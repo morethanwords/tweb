@@ -23,6 +23,7 @@ import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
 import PopupPeer from '@components/popups/peer';
 import PopupPremium from '@components/popups/premium';
 import PopupReassignBoost from '@components/popups/reassignBoost';
+import {toastNew} from '@components/toast';
 
 const className = 'popup-boost';
 
@@ -44,11 +45,17 @@ export default class PopupBoost extends PopupPeer {
 
   private async construct() {
     let [boostsStatus, myBoosts, appConfig, isPremiumPurchaseBlocked] = await Promise.all([
-      this.managers.appBoostsManager.getBoostsStatus(this.peerId),
+      this.managers.appBoostsManager.getBoostsStatus(this.peerId).catch(() => undefined),
       this.managers.appBoostsManager.getMyBoosts(),
       this.managers.apiManager.getAppConfig(),
       apiManagerProxy.isPremiumPurchaseBlocked()
     ]);
+
+    if(!boostsStatus) {
+      toastNew({langPackKey: 'CantBoostChat'});
+      this.hide();
+      return;
+    }
 
     const entity = AppSelectPeers.renderEntity({
       key: this.peerId,

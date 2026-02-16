@@ -1044,6 +1044,7 @@ const lang = {
   'DoNotRestrictBoosters': 'Do Not Restrict Boosters',
   'DoNotRestrictBoostersCaption': 'Turn this on to always allow users who boosted your group to send messages and media.',
   'DoNotRestrictBoostersCaptionOn': 'Choose how many boosts a user must give to the group to bypass restrictions on sending messages.',
+  'CantBoostChat': 'Sorry, you can\'t boost this group or channel.',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
