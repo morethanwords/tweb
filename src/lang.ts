@@ -1041,6 +1041,9 @@ const lang = {
   'UserPermissions.Duration.Custom': 'Custom',
   'Set': 'Set',
   'UserPermissions.RestrictedBy': 'Restricted by %s on %s',
+  'DoNotRestrictBoosters': 'Do Not Restrict Boosters',
+  'DoNotRestrictBoostersCaption': 'Turn this on to always allow users who boosted your group to send messages and media.',
+  'DoNotRestrictBoostersCaptionOn': 'Choose how many boosts a user must give to the group to bypass restrictions on sending messages.',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',

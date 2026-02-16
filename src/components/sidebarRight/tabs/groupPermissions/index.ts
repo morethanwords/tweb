@@ -10,7 +10,7 @@ import findUpTag from '@helpers/dom/findUpTag';
 import replaceContent from '@helpers/dom/replaceContent';
 import ListenerSetter from '@helpers/listenerSetter';
 import ScrollableLoader from '@helpers/scrollableLoader';
-import {ChannelParticipant, Chat, ChatAdminRights, ChatBannedRights} from '@layer';
+import {ChannelParticipant, Chat, ChatAdminRights, ChatBannedRights, ChatFull} from '@layer';
 import appDialogsManager, {DialogDom, DIALOG_LIST_ELEMENT_TAG} from '@lib/appDialogsManager';
 import {AppManagers} from '@lib/managers';
 import combineParticipantBannedRights from '@appManagers/utils/chats/combineParticipantBannedRights';
@@ -44,6 +44,7 @@ import toggleDisability from '@helpers/dom/toggleDisability';
 import {isParticipantCreator} from '@lib/appManagers/utils/chats/isParticipantAdmin';
 import {CHAT_LEGACY_ADMIN_RIGHTS} from '@lib/appManagers/utils/chats/constants';
 import {BANNED_RIGHTS_UNTIL_FOREVER} from '@lib/appManagers/constants';
+import createDoNotRestrictBoostersSection from '@components/sidebarRight/tabs/groupPermissions/doNotRestrictBoostersSection';
 
 type PermissionsCheckboxFieldsField = CheckboxFieldsField & {
   flags: ChatRights[],
@@ -453,9 +454,10 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
 
   private saveCallbacks: Array<() => any> = [];
   private solidState = createSolidTabState<{
-    rights?: ChatBannedRights.chatBannedRights;
-    stars?: number;
-    slowModeSeconds?: number;
+    rights?: ChatBannedRights.chatBannedRights,
+    stars?: number,
+    slowModeSeconds?: number,
+    boostsUnrestrict?: number
   }>({
     tab: this,
     save: async() => {
@@ -473,6 +475,9 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
     this.setTitle('ChannelPermissions');
 
     this.header.append(this.solidState.saveIcon());
+
+    const chat = apiManagerProxy.getChat(this.chatId);
+    const isChannel = chat._ === 'channel';
 
     this.participants = new Map();
 
@@ -501,14 +506,13 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
       this.scrollable.append(section.container);
     }
 
-    const chat = apiManagerProxy.getChat(this.chatId);
-    if(chat._ === 'channel') {
-      const {default: createChargeForMessasgesSection} = await import('./chargeForMessasgesSection');
+    if(isChannel) {
+      const {default: createChargeForMessagesSection} = await import('./chargeForMessasgesSection');
 
-      const initialStars = +chat?.send_paid_messages_stars || 0;
+      const initialStars = +chat.send_paid_messages_stars || 0;
       this.solidState.setInitial({stars: initialStars});
 
-      const {element, dispose, promise} = createChargeForMessasgesSection(
+      const {element, dispose, promise} = createChargeForMessagesSection(
         {
           initialStars,
           onStarsChange: (stars) => void this.solidState.set({stars})
@@ -526,17 +530,17 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
         const {stars} = this.solidState.store;
 
         if(initialStars === stars) return;
-        return this.managers.appChatsManager.updateChannelPaidMessagesPrice(chat.id.toChatId(), stars);
+        return this.managers.appChatsManager.updateChannelPaidMessagesPrice(chat.id, stars);
       });
     }
+
+    const chatFull = await this.managers.appProfileManager.getChatFull(this.chatId);
 
     {
       const section = new SettingSection({
         name: 'Slowmode',
         caption: true
       });
-
-      const chatFull = await this.managers.appProfileManager.getChannelFull(this.chatId);
 
       let lastValue: number;
       const range: RangeStepsSelector<number> = new RangeStepsSelector({
@@ -578,7 +582,7 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
 
       const values = [0, 5, 10, 30, 60, 300, 900, 3600];
       const steps = range.generateSteps(values);
-      const initialValue = chatFull.slowmode_seconds || 0;
+      const initialValue = (chatFull as ChatFull.channelFull).slowmode_seconds || 0;
 
       this.solidState.setInitial({slowModeSeconds: initialValue});
       range.setSteps(steps, values.indexOf(initialValue));
@@ -596,6 +600,32 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
       });
 
       this.scrollable.append(section.container);
+    }
+
+    if(isChannel) {
+      const initialBoosts = (chatFull as ChatFull.channelFull).boosts_unrestrict;
+      const {element, dispose} = createDoNotRestrictBoostersSection({
+        initialBoosts,
+        onChange: (value) => {
+          this.solidState.set({boostsUnrestrict: value});
+        },
+        show: () => !!this.solidState.store.slowModeSeconds
+      });
+      this.solidState.setInitial({boostsUnrestrict: initialBoosts});
+      this.middlewareHelper.get().onDestroy(dispose);
+      this.scrollable.append(element);
+
+      this.saveCallbacks.push(() => {
+        const {boostsUnrestrict} = this.solidState.store;
+        if(initialBoosts === boostsUnrestrict) {
+          return;
+        }
+
+        return this.managers.appChatsManager.setBoostsToUnblockRestrictions(
+          this.chatId,
+          boostsUnrestrict
+        );
+      });
     }
 
     {

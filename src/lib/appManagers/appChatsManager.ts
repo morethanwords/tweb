@@ -1132,6 +1132,13 @@ export class AppChatsManager extends AppManager {
     return result;
   }
 
+  public setBoostsToUnblockRestrictions(id: ChatId, boosts?: number) {
+    return this.apiManager.invokeApi('channels.setBoostsToUnblockRestrictions', {
+      channel: this.getChannelInput(id),
+      boosts: boosts ?? 0
+    }).then(this.onChatUpdatedForce.bind(this, id));
+  }
+
   private onUpdateChannelParticipant = (update: Update.updateChannelParticipant) => {
     this.appProfileManager.invalidateChannelParticipants(update.channel_id);
     this.rootScope.dispatchEvent('chat_participant', update);

@@ -4,10 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {createSignal, onMount, onCleanup, createEffect} from 'solid-js';
+import {createSignal, onMount, onCleanup, createEffect, JSX} from 'solid-js';
 import attachGrabListeners, {GrabEvent} from '@helpers/dom/attachGrabListeners';
 import clamp from '@helpers/number/clamp';
 import I18n from '@lib/langPack';
+import classNames from '@helpers/string/classNames';
 
 export interface RangeSelectorProps {
   step: number;
@@ -22,6 +23,7 @@ export interface RangeSelectorProps {
   onMouseDown?: (event: GrabEvent) => void;
   onMouseUp?: (event: GrabEvent) => void;
   onScrub?: (value: number) => void;
+  children?: JSX.Element;
 }
 
 export default function RangeSelector(props: RangeSelectorProps) {
@@ -31,7 +33,7 @@ export default function RangeSelector(props: RangeSelectorProps) {
   let containerRef: HTMLDivElement;
   let filledRef: HTMLDivElement;
   let seekRef: HTMLInputElement;
-  let removeListeners: (() => void) | null = null;
+  let removeListeners: () => void;
 
   const min = props.min ?? 0;
   const max = props.max ?? 0;
@@ -152,7 +154,11 @@ export default function RangeSelector(props: RangeSelectorProps) {
   return (
     <div
       ref={containerRef!}
-      class={`progress-line ${useTransform ? 'use-transform' : ''} ${withTransition ? 'with-transition' : ''}`}
+      class={classNames(
+        'progress-line',
+        useTransform && 'use-transform',
+        withTransition && 'with-transition'
+      )}
     >
       <div ref={filledRef!} class="progress-line__filled" />
       <input
@@ -165,6 +171,7 @@ export default function RangeSelector(props: RangeSelectorProps) {
         value={value()}
         onInput={onInput}
       />
+      {props.children}
     </div>
   );
 }
