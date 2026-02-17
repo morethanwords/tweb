@@ -5,6 +5,7 @@
  */
 
 import type {MyDocument} from '@appManagers/appDocsManager';
+import getDocumentInput from '@appManagers/utils/docs/getDocumentInput';
 import type {MyDraftMessage} from '@appManagers/appDraftsManager';
 import type {AppMessagesManager, MessageSendingParams, MyMessage, SuggestedPostPayload} from '@appManagers/appMessagesManager';
 import type Chat from '@components/chat/chat';
@@ -3911,10 +3912,23 @@ export default class ChatInput {
       const forwarding = copy(this.forwarding);
       // setTimeout(() => {
       for(const fromPeerId in forwarding) {
+        const mids = forwarding[fromPeerId];
+        if(mids.length === 1) {
+          const msg = await this.managers.appMessagesManager.getMessageByPeer(fromPeerId.toPeerId(), mids[0]) as Message.message;
+          if(msg?.pFlags?.fakeForSavedMusic) {
+            const doc = (msg.media as MessageMedia.messageMediaDocument).document as MyDocument;
+            this.managers.appMessagesManager.sendOther({
+              ...sendingParams,
+              inputMedia: {_: 'inputMediaDocument', id: getDocumentInput(doc), pFlags: {}}
+            });
+            this.managers.appMessagesManager.deleteMessageFromHistoryStorage(fromPeerId.toPeerId(), mids[0]);
+            continue;
+          }
+        }
         this.managers.appMessagesManager.forwardMessages({
           ...sendingParams,
           fromPeerId: fromPeerId.toPeerId(),
-          mids: forwarding[fromPeerId],
+          mids,
           dropAuthor: this.forwardElements && this.forwardElements.hideSender.checkboxField.checked,
           dropCaptions: this.isDroppingCaptions()
         }).catch(async(err: ApiError) => {

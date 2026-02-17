@@ -16,6 +16,7 @@ import {PreloaderTsx} from '@components/putPreloader';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import appDownloadManager from '@lib/appDownloadManager';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
+import PopupForward from '@components/popups/forward';
 
 import styles from '@components/sidebarRight/tabs/savedMusic.module.scss';
 
@@ -112,6 +113,15 @@ function SavedMusicContent(props: {
     createContextMenu({
       listenTo: listEl,
       buttons: [{
+        icon: 'forward',
+        text: 'Forward',
+        onClick: async() => {
+          const msg = contextMenuTarget?.message;
+          if(!msg) return;
+          await rootScope.managers.appMessagesManager.saveMessages([msg]);
+          PopupForward.create({[msg.peerId]: [msg.mid]});
+        }
+      }, {
         icon: 'download',
         text: 'MediaViewer.Context.Download',
         onClick: () => {
@@ -119,7 +129,7 @@ function SavedMusicContent(props: {
           const doc = (contextMenuTarget.message?.media as any)?.document;
           if(doc) appDownloadManager.downloadToDisc({media: doc});
         }
-      }] as ButtonMenuItemOptionsVerifiable[],
+      }],
       findElement: (e) => {
         const el = (e.target as HTMLElement).closest('.audio') as AudioElement;
         if(el) contextMenuTarget = el;
