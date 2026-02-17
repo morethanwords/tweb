@@ -623,9 +623,7 @@ export class AppSidebarLeft extends SidebarSlider {
       icon: 'archive',
       text: 'ArchivedChats',
       onClick: () => {
-        closeTabsBefore(() => {
-          this.createTab(AppArchivedTab).open();
-        });
+        this.openArchiveTab();
       },
       verify: async() => {
         const folder = await this.managers.dialogsStorage.getFolderDialogs(FOLDER_ID_ARCHIVE, false);
@@ -1512,6 +1510,12 @@ export class AppSidebarLeft extends SidebarSlider {
   public async closeTabsBefore(clb: () => void) {
     this.closeEverythingInside() && await pause(200);
     clb();
+  }
+
+  public openArchiveTab() {
+    this.closeTabsBefore(() => {
+      this.createTab(AppArchivedTab).open();
+    });
   }
 
   public addAccount = async(e: MouseEvent | TouchEvent) => {

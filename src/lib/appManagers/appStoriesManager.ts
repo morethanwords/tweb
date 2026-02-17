@@ -587,6 +587,13 @@ export default class AppStoriesManager extends AppManager {
     return segments;
   }
 
+  public getPeersStoriesSegments(peerIds: PeerId[]) {
+    return Promise.all(peerIds.map(async(peerId) => ({
+      peerId,
+      segments: await this.getPeerStoriesSegments(peerId)
+    })));
+  }
+
   public deleteStories(peerId: PeerId, ids: StoryItem['id'][]) {
     return this.apiManager.invokeApiSingleProcess({
       method: 'stories.deleteStories',

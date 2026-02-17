@@ -10,6 +10,9 @@ import {FOLDER_ID_ARCHIVE, REAL_FOLDER_ID} from '@appManagers/constants';
 import StoriesList from '@components/stories/list';
 import {render} from 'solid-js/web';
 import {AutonomousDialogList} from '@components/autonomousDialogList/dialogs';
+import ButtonMenuToggle from '@components/buttonMenuToggle';
+import {useAppSettings} from '@stores/appSettings';
+
 
 export default class AppArchivedTab extends SliderSuperTab {
   private static filterId: REAL_FOLDER_ID = FOLDER_ID_ARCHIVE;
@@ -17,8 +20,9 @@ export default class AppArchivedTab extends SliderSuperTab {
 
   private storiesListContainer: HTMLDivElement;
   private disposeStories: () => void;
+  private resizeStoriesContainer?: () => void;
 
-  private chatListManager: AutonomousDialogList;
+  private autonomousDialogList: AutonomousDialogList;
 
   public init() {
     this.wasFilterId = appDialogsManager.filterId;
@@ -29,6 +33,8 @@ export default class AppArchivedTab extends SliderSuperTab {
     this.header.classList.add('can-have-forum');
     this.content.classList.add('can-have-forum');
 
+    this.appendMenu();
+
     if(!appDialogsManager.xds[AppArchivedTab.filterId]) {
       const {ul, scrollable} = appDialogsManager.l({
         title: undefined,
@@ -38,14 +44,14 @@ export default class AppArchivedTab extends SliderSuperTab {
       scrollable.append(ul);
     }
 
-    this.chatListManager = appDialogsManager.xds[AppArchivedTab.filterId];
+    this.autonomousDialogList = appDialogsManager.xds[AppArchivedTab.filterId];
 
     const storiesListContainer = this.storiesListContainer = document.createElement('div');
     storiesListContainer.classList.add('stories-list');
 
     this.header.after(storiesListContainer);
 
-    const scrollable = this.chatListManager.scrollable;
+    const scrollable = this.autonomousDialogList.scrollable;
     this.scrollable.container.replaceWith(scrollable.container);
     scrollable.attachBorderListeners(this.container);
     // ! DO NOT UNCOMMENT NEXT LINE - chats will stop loading on scroll after closing the tab
@@ -61,14 +67,41 @@ export default class AppArchivedTab extends SliderSuperTab {
   private renderStories() {
     this.disposeStories = render(() => {
       return StoriesList({
-        foldInto: this.header,
+        foldInto: this.title,
         setScrolledOn: this.container,
-        getScrollable: () => this.chatListManager.scrollable.container,
+        getScrollable: () => this.autonomousDialogList.scrollable.container,
         listenWheelOn: this.content,
         archive: true,
-        offsetX: -84
+        offsetX: -64,
+        resizeCallback: (callback) => {
+          this.resizeStoriesContainer = callback;
+        }
       });
     }, this.storiesListContainer);
+  }
+
+  private appendMenu() {
+    const [appSettings, setAppSettings] = useAppSettings();
+
+    if(appSettings.showArchiveInChatList) return;
+
+    const buttonMenu = ButtonMenuToggle({
+      icon: 'more',
+      buttons: [
+        {
+          icon: 'eye1',
+          text: 'Archive.ShowInChatList',
+          onClick: () => {
+            buttonMenu.remove();
+            setAppSettings('showArchiveInChatList', true);
+            this.resizeStoriesContainer?.();
+          }
+        }
+      ],
+      direction: 'bottom-left'
+    });
+
+    this.header.append(buttonMenu);
   }
 
   // вообще, так делать нельзя, но нет времени чтобы переделать главный чатлист на слайд...
@@ -86,8 +119,9 @@ export default class AppArchivedTab extends SliderSuperTab {
   onCloseAfterTimeout() {
     this.disposeStories?.();
     this.disposeStories = undefined;
-    this.chatListManager.destroy();
-    this.chatListManager = undefined;
+    this.resizeStoriesContainer = undefined;
+    this.autonomousDialogList.destroy();
+    this.autonomousDialogList = undefined;
     return super.onCloseAfterTimeout();
   }
 }

@@ -232,9 +232,7 @@ export class AutonomousDialogListBase<T extends PossibleDialog = PossibleDialog>
     return result;
   }
 
-  public async loadDialogsInner(offsetIndex?: number): Promise<SequentialCursorFetcherResult<number>> {
-    const filterId = this.getFilterId();
-
+  protected async loadDialogsInner(offsetIndex?: number, removePlaceholder = true): Promise<SequentialCursorFetcherResult<number>> {
     this.checkForDialogsPlaceholder();
 
     /**
@@ -275,7 +273,7 @@ export class AutonomousDialogListBase<T extends PossibleDialog = PossibleDialog>
 
     this.sortedList.addDeferredItems(items, result.count || 0);
 
-    this.placeholder?.detach(this.sortedList.itemsLength());
+    if(removePlaceholder) this.placeholder?.detach(this.sortedList.itemsLength());
 
     return {
       cursor: newOffsetIndex === Infinity ? undefined : newOffsetIndex,
@@ -321,12 +319,12 @@ export class AutonomousDialogListBase<T extends PossibleDialog = PossibleDialog>
 
   public getDialogDom(key: DialogKey) {
     // return this.doms[peerId];
-    const element = this.sortedList.get(key);
+    const element = this.sortedList.getDialogElement(key);
     return element?.dom;
   }
 
   public getDialogElement(key: DialogKey) {
-    const element = this.sortedList.get(key);
+    const element = this.sortedList.getDialogElement(key);
     return element;
   }
 

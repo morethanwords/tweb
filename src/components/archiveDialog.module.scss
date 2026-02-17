@@ -1,0 +1,58 @@
+.Container {
+
+}
+
+.Media {
+  &.hasStories {
+    pointer-events: all;
+  }
+}
+
+.MediaContent {
+  width: 100%;
+  height: 100%;
+
+  border-radius: 50%;
+  /* background: linear-gradient(#8996a0, #979797); */
+  background: linear-gradient(#acb3b9, #b1b8b9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: white;
+
+  :global(.night) & {
+    background: linear-gradient(#4a5259, #6a7475);
+  }
+}
+
+.MediaIcon {
+  font-size: 28px;
+  transform: translateY(1px); // The icon itself is a little offset
+}
+
+.Title {
+  font-weight: var(--font-weight-bold);
+}
+
+.Subtitle {
+  color: var(--secondary-text-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unreadPeerTitle {
+  color: hsl(from var(--secondary-text-color) h s calc(l - 5));
+
+  font-weight: var(--font-weight-bold);
+
+  :global(.night) & {
+    color: var(--primary-text-color);
+  }
+}
+
+.UnreadBadge {
+  flex-shrink: 0;
+  margin-inline-start: 0.5rem;
+}

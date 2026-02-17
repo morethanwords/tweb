@@ -83,7 +83,14 @@ export default class DialogsContextMenu {
       onClose: () => {
         this.buttons?.forEach(button => button?.onClose?.());
         this.li.classList.remove('menu-open');
-        this.li = this.peerId = this.dialog = this.filterId = this.threadId = this.canManageTopics = undefined;
+
+        this.li =
+        this.peerId =
+        this.dialog =
+        this.filterId =
+        this.threadId =
+        this.monoforumParentPeerId =
+        this.canManageTopics = undefined;
       },
       findElement: (e) => {
         return findUpTag(e.target, DIALOG_LIST_ELEMENT_TAG);

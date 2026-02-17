@@ -116,6 +116,7 @@ export type StateSettings = {
   },
   cacheTTL: number,
   cacheSize: number,
+  showArchiveInChatList: boolean,
 };
 
 type CacheSomething<T> = {
@@ -391,7 +392,8 @@ export const SETTINGS_INIT: StateSettings = {
     scale: 1
   },
   cacheTTL: 86400 * 7, // 1 week
-  cacheSize: 0 // Auto
+  cacheSize: 0, // Auto
+  showArchiveInChatList: true
 };
 
 export const STATE_INIT: State = {

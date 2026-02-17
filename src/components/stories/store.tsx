@@ -112,7 +112,7 @@ const createPositions = (positions: Map<PeerId, StoriesListPosition> = new Map()
 const {positions: globalPositions, onPosition} = createPositions();
 rootScope.addEventListener('stories_position', onPosition);
 
-const createStoriesStore = (props: {
+export const createStoriesStore = (props: {
   peers?: StoriesContextPeerState[],
   index?: number,
   peerId?: PeerId,
@@ -830,7 +830,7 @@ const createStoriesStore = (props: {
 };
 
 // const storiesStore = createStoriesStore();
-const StoriesContext = createContext<StoriesContextValue>(/* storiesStore */);
+export const StoriesContext = createContext<StoriesContextValue>(/* storiesStore */);
 export const StoriesProvider: ParentComponent<Parameters<typeof createStoriesStore>[0]> = (props) => {
   const [, rest] = splitProps(props, ['peers', 'index', 'peerId', 'pinned', 'archive']);
   return (

@@ -1,0 +1,20 @@
+.Container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  --size: 80px;
+  --icon-size: calc(var(--size) * 0.6);
+
+  width: var(--size);
+  height: var(--size);
+
+  border-radius: 50%;
+  background-color: var(--primary-color);
+
+  color: white;
+}
+
+.Icon {
+  font-size: var(--icon-size);
+}

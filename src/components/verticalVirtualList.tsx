@@ -23,6 +23,8 @@ const VerticalVirtualList: Component<{
   itemHeight: number;
   thresholdPadding: number;
 
+  animate: boolean;
+
   forceHostHeight?: boolean;
   extraPaddingBottom?: number;
 }> = (props) => {
@@ -58,6 +60,8 @@ const VerticalVirtualList: Component<{
     onScrollShift
   });
 
+  const canAnimate = createMemo(() => shouldAnimate() && props.animate);
+
   const isVisible = createSelector(
     () => [scrollAmount(), hostSize.height, props.itemHeight, props.thresholdPadding] as const,
     (
@@ -71,7 +75,7 @@ const VerticalVirtualList: Component<{
 
 
   const Item: Component<{idx: number, item: any}> = (itemProps) => {
-    const animatedTop = createAnimatedValue(() => itemProps.idx * props.itemHeight, 120, undefined, shouldAnimate);
+    const animatedTop = createAnimatedValue(() => itemProps.idx * props.itemHeight, 120, undefined, canAnimate);
 
     return (
       <props.ListItem
