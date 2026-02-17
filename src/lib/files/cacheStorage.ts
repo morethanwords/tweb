@@ -243,9 +243,9 @@ export default class CacheStorageController implements FileStorage {
       result = new Response(
         await CacheStorageController.encrypt(await response.blob()),
         {
-          headers: response.headers,
-          status: response.status,
-          statusText: response.statusText
+          headers: result.headers,
+          status: result.status,
+          statusText: result.statusText
         }
       );
     }
