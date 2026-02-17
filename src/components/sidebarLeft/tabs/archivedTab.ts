@@ -11,7 +11,7 @@ import StoriesList from '@components/stories/list';
 import {render} from 'solid-js/web';
 import {AutonomousDialogList} from '@components/autonomousDialogList/dialogs';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
-import {useAppSettings} from '@stores/appSettings';
+import {getArchiveContextMenuButtons} from '@components/archiveDialogContextMenu';
 
 
 export default class AppArchivedTab extends SliderSuperTab {
@@ -81,23 +81,9 @@ export default class AppArchivedTab extends SliderSuperTab {
   }
 
   private appendMenu() {
-    const [appSettings, setAppSettings] = useAppSettings();
-
-    if(appSettings.showArchiveInChatList) return;
-
     const buttonMenu = ButtonMenuToggle({
       icon: 'more',
-      buttons: [
-        {
-          icon: 'eye1',
-          text: 'Archive.ShowInChatList',
-          onClick: () => {
-            buttonMenu.remove();
-            setAppSettings('showArchiveInChatList', true);
-            this.resizeStoriesContainer?.();
-          }
-        }
-      ],
+      buttons: getArchiveContextMenuButtons(),
       direction: 'bottom-left'
     });
 

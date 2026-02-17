@@ -6,13 +6,13 @@ import {FOLDER_ID_ARCHIVE} from '@lib/appManagers/constants';
 import {i18n} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
 import {useAppSettings} from '@stores/appSettings';
-import {createRoot, onCleanup} from 'solid-js';
 import {archiveDialogTagName} from './archiveDialog';
 import confirmationPopup from './confirmationPopup';
 import createFeatureDetailsIconSticker from './featureDetailsIconSticker';
 import showFeatureDetailsPopup from './popups/featureDetails';
 import appSidebarLeft from './sidebarLeft';
 import {AppArchiveSettingsTab} from './solidJsTabs/tabs';
+import {ButtonMenuItemOptionsVerifiable} from './buttonMenu';
 
 
 type CreateArchiveDialogContextMenuArgs = {
@@ -26,56 +26,9 @@ export const createArchiveDialogContextMenu = ({
 }: CreateArchiveDialogContextMenuArgs) => {
   let dialogElement: HTMLElement;
 
-  const [, setAppSettings] = useAppSettings();
-
-  const markAllAsRead = createMarkAllAsReadHandler();
-
   createContextMenu({
     listenTo: element,
-    buttons: [
-      {
-        icon: 'eye2',
-        text: 'Archive.HideFromChatList',
-        onClick: () => {
-          setAppSettings('showArchiveInChatList', false);
-        }
-      },
-      {
-        icon: 'readchats',
-        text: 'MarkAllAsRead',
-        onClick: async() => {
-          const unreadCount = await getUnreadCount();
-          if(unreadCount > showConfirmationWhenAbove) {
-            confirmationPopup({
-              titleLangKey: 'Archive.MarkAllAsRead.ConfirmationTitle',
-              descriptionLangKey: 'Archive.MarkAllAsRead.ConfirmationDescription',
-              button: {
-                langKey: 'Confirm'
-              }
-            }).then(() => {
-              markAllAsRead();
-            }, noop);
-          } else {
-            markAllAsRead();
-          }
-        },
-        verify: async() => !markAllAsRead.isLoading() && (await getUnreadCount() > 0)
-      },
-      {
-        icon: 'tools',
-        text: 'ArchiveSettings',
-        onClick: () => {
-          appSidebarLeft.createTab(AppArchiveSettingsTab).open();
-        }
-      },
-      {
-        icon: 'info2',
-        text: 'ArchiveFeatureDetails.MenuOption',
-        onClick: () => {
-          openFeatureDetails();
-        }
-      }
-    ],
+    buttons: getArchiveContextMenuButtons(),
     onOpen: async(_, li) => {
       dialogElement = li;
       li.classList.add('menu-open');
@@ -87,6 +40,65 @@ export const createArchiveDialogContextMenu = ({
       return findUpTag(e.target, archiveDialogTagName);
     }
   });
+};
+
+export const getArchiveContextMenuButtons = (): ButtonMenuItemOptionsVerifiable[] => {
+  const [appSettings, setAppSettings] = useAppSettings();
+
+  const markAllAsRead = createMarkAllAsReadHandler();
+
+  return [
+    {
+      icon: 'eyecross_outline',
+      text: 'Archive.HideFromChatList',
+      onClick: () => {
+        setAppSettings('showArchiveInChatList', false);
+      },
+      verify: () => appSettings.showArchiveInChatList
+    }, {
+      icon: 'eye1',
+      text: 'Archive.ShowInChatList',
+      onClick: () => {
+        setAppSettings('showArchiveInChatList', true);
+      },
+      verify: () => !appSettings.showArchiveInChatList
+    },
+    {
+      icon: 'readchats',
+      text: 'MarkAllAsRead',
+      onClick: async() => {
+        const unreadCount = await getUnreadCount();
+        if(unreadCount > showConfirmationWhenAbove) {
+          confirmationPopup({
+            titleLangKey: 'Archive.MarkAllAsRead.ConfirmationTitle',
+            descriptionLangKey: 'Archive.MarkAllAsRead.ConfirmationDescription',
+            button: {
+              langKey: 'Confirm'
+            }
+          }).then(() => {
+            markAllAsRead();
+          }, noop);
+        } else {
+          markAllAsRead();
+        }
+      },
+      verify: async() => !markAllAsRead.isLoading() && (await getUnreadCount() > 0)
+    },
+    {
+      icon: 'tools',
+      text: 'ArchiveSettings',
+      onClick: () => {
+        appSidebarLeft.createTab(AppArchiveSettingsTab).open();
+      }
+    },
+    {
+      icon: 'help',
+      text: 'ArchiveFeatureDetails.MenuOption',
+      onClick: () => {
+        openFeatureDetails();
+      }
+    }
+  ]
 };
 
 function createMarkAllAsReadHandler() {
