@@ -17,8 +17,7 @@
       user-select: none;
       background-color: var(--surface-color);
       z-index: 1;
-      min-height: 308px;
-      padding-top: 56px;
+      min-height: 276px;
 
       @include animation-level(2) {
         transition: padding-bottom var(--transition-standard-in);
@@ -61,7 +60,6 @@
       width: 100%;
       height: 100%;
       display: flex;
-      margin-top: -56px;
       align-items: center;
       flex-wrap: nowrap;
       transform: translateZ(-1px) scale(2);
@@ -92,7 +90,6 @@
       display: flex;
       // background-color: #000;
       position: relative;
-      transform: translateY(28px);
 
       .avatar-star {
         --size: 420px;
@@ -104,8 +101,8 @@
       }
 
       &.active {
-        transform: scale(1) translateY(28px);
         @include animation-level(2) {
+          transform: scale(1);
           border-radius: 0;
           transition: transform var(--transition-standard-in), border-radius var(--transition-standard-in);
         }
@@ -166,7 +163,7 @@
       }
 
       &-top {
-        top: 56px;
+        top: 0;
         bottom: auto;
         transform: scaleY(-1);
       }
@@ -202,7 +199,7 @@
         white-space: nowrap;
 
         @include animation-level(2) {
-          transition: inset-inline-start var(--transition-standard-in), transform var(--transition-standard-in), color var(--transition-standard-in), opacity var(--transition-standard-in), max-width var(--transition-standard-in);
+          transition: inset-inline-start var(--transition-standard-in), transform var(--transition-standard-in), color var(--transition-standard-in), max-width var(--transition-standard-in);
         }
       }
 
@@ -246,7 +243,7 @@
     &-tabs {
       display: flex;
       position: absolute;
-      top: 4rem;
+      top: .5rem;
       left: .375rem;
       right: .375rem;
       height: .125rem;
@@ -447,11 +444,11 @@
   &-container {
     &.is-collapsed {
       .profile-avatars-container {
-        padding-bottom: 63%;
+        padding-bottom: 66%;
       }
 
       .profile-avatars-avatar.active {
-        transform: translateY(-3%) scale(calc(120 / 400));
+        transform: translateY(-5%) scale(calc(120 / 400));
         border-radius: 50%;
       }
 
@@ -471,7 +468,7 @@
       }
 
       .profile-avatars-info {
-        transform: translateY(-25%);
+        transform: translateY(-42%);
 
         .profile-name,
         .profile-subtitle {
@@ -486,7 +483,7 @@
 
       .has-music {
         .profile-avatars-info {
-          transform: translateY(-18%);
+          transform: translateY(-10%);
         }
       }
 
@@ -496,7 +493,7 @@
         transition-delay: calc(var(--transition-standard-in-time) - .05s), 0s;
       }
 
-      .profile-subtitle,
+      .profile-subtitle-text,
       .verified-icon,
       .premium-icon,
       .emoji-status-text-color {
@@ -520,24 +517,6 @@
         .stars-rating-icon-warning {
           color: var(--danger-color);
         }
-      }
-    }
-
-    @include animation-level(2) {
-      .sidebar-content {
-        transition: transform var(--transition-standard-in);
-      }
-    }
-
-    .sidebar-content {
-      margin-top: -56px;
-      max-height: calc(100% + 56px);
-      height: calc(100% + 56px);
-    }
-
-    &:not(.is-collapsed) {
-      .sidebar-content {
-        transform: translateY(56px);
       }
     }
 
@@ -589,11 +568,6 @@
         background-color: transparent;
         pointer-events: none;
 
-        &__title {
-          opacity: 0;
-          transform: translateY(-12px)!important;
-        }
-
         &:after {
           opacity: 0;
         }
@@ -639,16 +613,10 @@
         }
       }
 
+      .sidebar-header__title,
       .btn-icon {
         @include animation-level(2) {
           transition: color var(--transition);
-        }
-      }
-
-      .sidebar-header__title {
-        @include animation-level(2) {
-          transition: color var(--transition), transform var(--transition), opacity var(--transition);
-          transform: translateY(0px);
         }
       }
     }
@@ -762,7 +730,7 @@
     position: absolute;
     width: 120px;
     height: 120px;
-    top: 5.1rem;
+    top: 4.5rem;
     left: 50%;
     transform: translateX(-50%) scale(1);
     opacity: 1;
@@ -771,7 +739,7 @@
 
     @include respond-to(handhelds) {
       // костыль из-за того что аватар в мобилке имеет странные размеры
-      top: calc(5.5rem + 5vw);
+      top: calc(2.5rem + 5vw);
       width: 28.5%;
       height: auto;
       aspect-ratio: 1/1;

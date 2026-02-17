@@ -150,7 +150,7 @@ const PeerProfile = (props: {
       return value.isTopic;
     },
     get hasSavedMusic() {
-      return value.peerId !== rootScope.myId && !!(value.fullPeer as UserFull)?.saved_music
+      return !!(value.fullPeer as UserFull)?.saved_music
     },
     canBeDetailed: () => value.peerId !== rootScope.myId || !value.isDialog,
     getDetailsForUse: () => {
@@ -636,6 +636,7 @@ PeerProfile.PinnedMusic = () => {
     const tab = appSidebarRight.createTab(AppSavedMusicTab);
     tab.peerId = context.peerId;
     tab.open();
+    appSidebarRight.toggleSidebar(true)
   };
 
   const music = createMemo(() => context.hasSavedMusic ? (context.fullPeer as UserFull).saved_music as MyDocument : undefined)

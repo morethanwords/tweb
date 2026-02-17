@@ -738,7 +738,6 @@ export default class PeerProfileAvatars {
     this.setCollapsedOn.classList.toggle(
       'header-filled',
       (!this.hasBackgroundColor && this.isCollapsed() && this.scrollable.scrollPosition >= 5) ||
-        !this.isCollapsed() ||
         this.scrollable.scrollPosition >= 200
     );
   }
