@@ -1000,6 +1000,7 @@ export namespace Message {
       sponsored?: true,
       local?: true,
       currentlyTyping?: true,
+      fakeForSavedMusic?: true,
     }>,
     flags2?: number,
     id: number,

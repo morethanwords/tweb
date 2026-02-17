@@ -322,7 +322,10 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
           offsetX = e.targetTouches[0].pageX - rect.left;
         }
 
-        const scrubTime = offsetX / availW /* width */ * audio.duration;
+        let scrubTime = offsetX / availW /* width */ * audio.duration;
+        if(audio.duration && scrubTime >= audio.duration) {
+          scrubTime = audio.duration - 0.01;
+        }
         setCurrentTime(audio, scrubTime);
       }
     }, noop);

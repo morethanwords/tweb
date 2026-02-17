@@ -149,6 +149,8 @@ export default class PinnedContainer {
     this.container.dataset.mid = '' + message.mid;
     if(savedMusicDocId) {
       this.container.dataset.savedMusicDocId = '' + savedMusicDocId;
+    } else {
+      delete this.container.dataset.savedMusicDocId;
     }
     this.divAndCaption.fill(options);
     this.topbar?.setUtilsWidth();

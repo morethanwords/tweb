@@ -60,7 +60,6 @@ type MediaDetails = {
   clean?: boolean,
   isScheduled?: boolean,
   isSingle?: boolean
-  isSavedMusic?: boolean
 };
 
 export type MediaListLoader = ListLoader<MediaItem, Message.message> & {
@@ -68,6 +67,7 @@ export type MediaListLoader = ListLoader<MediaItem, Message.message> & {
   getPrevious: (withOtherSide?: boolean) => MediaItem[]
   getNext: (withOtherSide?: boolean) => MediaItem[]
   cleanup: () => void
+  setCurrent: (item: MediaItem) => void
   repositionTo?: (mid: number, peerId: PeerId) => boolean
 };
 export type MediaListLoaderOptions = Omit<ListLoaderOptions<MediaItem, Message.message>, 'loadMore'> & {
@@ -259,7 +259,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     }
   };
 
-  public addMedia(message: Message.message, autoload: boolean, clean?: boolean, isSavedMusic = false): HTMLMediaElement {
+  public addMedia(message: Message.message, autoload: boolean, clean?: boolean): HTMLMediaElement {
     const {peerId, mid} = message;
 
     const isScheduled = !!message.pFlags.is_scheduled;
@@ -291,8 +291,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
       doc,
       message,
       clean,
-      isScheduled: message.pFlags.is_scheduled,
-      isSavedMusic
+      isScheduled: message.pFlags.is_scheduled
     };
 
     this.mediaDetails.set(media, details);
@@ -592,7 +591,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
       doc: getMediaFromMessage(message, true) as MyDocument,
       message,
       media: playingMedia,
-      isSavedMusic: this.mediaDetails.get(playingMedia)?.isSavedMusic,
+      isSavedMusic: Boolean(message.pFlags.fakeForSavedMusic),
       playbackParams: this.getPlaybackParams()
     };
   }
@@ -687,7 +686,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     const listLoader = this.listLoader;
     if(
       this.lockedSwitchers ||
-      (!this.round && listLoader.current && !listLoader.next.length) ||
+      (!this.round && listLoader.current && !listLoader.getNext(false).length) ||
       !listLoader.getNext(true).length ||
       !this.next()
     ) {
@@ -914,7 +913,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
       }
     }
 
-    listLoader.current = current;
+    listLoader.setCurrent(current);
 
     listLoader.load(true);
     listLoader.load(false);

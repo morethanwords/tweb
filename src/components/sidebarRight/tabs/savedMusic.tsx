@@ -13,21 +13,26 @@ import rootScope from '@lib/rootScope';
 import type AudioElement from '@components/audio';
 import Scrollable from '@components/scrollable';
 import {PreloaderTsx} from '@components/putPreloader';
+import createContextMenu from '@helpers/dom/createContextMenu';
+import appDownloadManager from '@lib/appDownloadManager';
+import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 
 import styles from '@components/sidebarRight/tabs/savedMusic.module.scss';
 
-async function createFakeMessage(doc: MyDocument, peerId: PeerId, getFakeMid: (docId: DocId) => number): Promise<Message.message> {
-  const fakeMid = getFakeMid(doc.id);
+async function createFakeMessage(doc: MyDocument, peerId: PeerId, mid: number): Promise<Message.message> {
   return {
     _: 'message',
-    id: fakeMid,
-    mid: fakeMid,
+    id: mid,
+    mid: mid,
     peer_id: await rootScope.managers.appPeersManager.getOutputPeer(peerId),
     peerId: peerId,
     fromId: peerId,
     date: doc.date,
     message: '',
-    pFlags: {},
+    pFlags: {
+      local: true,
+      fakeForSavedMusic: true
+    },
     media: {
       _: 'messageMediaDocument',
       document: doc,
@@ -59,15 +64,18 @@ function SavedMusicContent(props: {
   savedMusicLoader.onNewDocs = (docs) => {
     docCount += docs.length;
     renderPromise = renderPromise.then(async() => {
+      const playingDetails = appMediaPlaybackController.getPlayingDetails();
+      const playingDocId = playingDetails?.doc?.id;
       const elements = await Promise.all(docs.map(async(doc) => {
-        const message = await createFakeMessage(doc, props.peerId, savedMusicLoader.getFakeMid);
+        const message = await createFakeMessage(doc, props.peerId, savedMusicLoader.getFakeMid(doc.id));
         const div = await wrapDocument({
           message,
           fontWeight: 400,
           voiceAsMusic: true,
           lazyLoadQueue,
           autoDownloadSize: 0,
-          getSize: () => 320
+          getSize: () => 320,
+          ...(playingDocId === doc.id && playingDetails.media && playingDetails.isSavedMusic ? {globalMedia: playingDetails.media} : {})
         }) as AudioElement;
         div.classList.add('audio-48', 'search-super-item');
         div.listLoaderFactory = loaderFactory;
@@ -76,7 +84,8 @@ function SavedMusicContent(props: {
       for(const el of elements) {
         listEl.append(el);
       }
-      setLoadedFirst(true)
+      setLoadedFirst(true);
+      props.scrollable.checkForTriggers?.();
     });
   };
 
@@ -90,12 +99,34 @@ function SavedMusicContent(props: {
     loadCount: 50,
     loadWhenLeft: 5,
     processItem: (message: Message.message) => {
-      appMediaPlaybackController.addMedia(message, false, false, true);
+      appMediaPlaybackController.addMedia(message, false, false);
       return {peerId: message.peerId, mid: message.mid};
     }
   });
 
-  onMount(() => savedMusicLoader.load(true));
+
+  onMount(() => {
+    savedMusicLoader.load(true);
+
+    let contextMenuTarget: AudioElement | undefined;
+    createContextMenu({
+      listenTo: listEl,
+      buttons: [{
+        icon: 'download',
+        text: 'MediaViewer.Context.Download',
+        onClick: () => {
+          if(!contextMenuTarget) return;
+          const doc = (contextMenuTarget.message?.media as any)?.document;
+          if(doc) appDownloadManager.downloadToDisc({media: doc});
+        }
+      }] as ButtonMenuItemOptionsVerifiable[],
+      findElement: (e) => {
+        const el = (e.target as HTMLElement).closest('.audio') as AudioElement;
+        if(el) contextMenuTarget = el;
+        return el;
+      }
+    });
+  });
 
   props.scrollable.onScrolledBottom = () => {
     if(loaded()) return;
@@ -157,7 +188,7 @@ class SavedMusicListLoader extends ListLoader<MediaItem, Message.message> implem
 
         this.onNewDocs?.(docs);
         const messages: Message.message[] = await Promise.all(
-          docs.map((doc) => createFakeMessage(doc, peerId, this.getFakeMid))
+          docs.map((doc) => createFakeMessage(doc, peerId, this.getFakeMid(doc.id)))
         );
 
         return {count: result.count, items: messages} as ListLoaderResult<Message.message>;
@@ -169,7 +200,19 @@ class SavedMusicListLoader extends ListLoader<MediaItem, Message.message> implem
     this.setLoaded(false, true);
   }
 
-  public getFakeMid = (docId: DocId): number => {
+  setCurrent(item: MediaItem) {
+    if(item) {
+      this.current = undefined; // clear so getMainItems doesn't duplicate
+
+      if(!this.repositionTo(item.mid, item.peerId)) {
+        this.current = item; // fallback if item not yet loaded
+      }
+    } else {
+      this.current = item;
+    }
+  }
+
+  public getFakeMid(docId: DocId): number {
     let mid = this.docIdToFakeMid.get(docId);
     if(mid === undefined) {
       mid = -(++this.fakeMidCounter);
@@ -192,7 +235,7 @@ class SavedMusicListLoader extends ListLoader<MediaItem, Message.message> implem
     const entries: TailEntry[] = [];
 
     for(const doc of docs) {
-      const message = await createFakeMessage(doc, this.peerId, this.getFakeMid);
+      const message = await createFakeMessage(doc, this.peerId, this.getFakeMid(doc.id));
       const item = this.processItem ? await this.processItem(message) : {peerId: message.peerId, mid: message.mid};
       if(item) {
         entries.push({item: item as MediaItem, doc});
@@ -422,6 +465,9 @@ class SavedMusicListLoader extends ListLoader<MediaItem, Message.message> implem
   }
 
   public override reset(loadedAll = false) {
+    if(this.current || this.previous.length || this.next.length) {
+      return;
+    }
     super.reset(loadedAll);
     this.offset = 0;
     this.tailCurrentIdx = -1;
@@ -603,12 +649,16 @@ class SavedMusicListLoader extends ListLoader<MediaItem, Message.message> implem
     return this.current;
   }
 
-  public getPrevious() {
-    return this.inTailRegion ? this.tailEntries.slice(0, this.tailCurrentIdx).map((e) => e.item) : this.previous;
+  public getPrevious(withOtherSide?: boolean): MediaItem[] {
+    const prev = this.inTailRegion ? this.tailEntries.slice(0, this.tailCurrentIdx).map((e) => e.item) : this.previous;
+    if(withOtherSide) return [...prev, ...this.getNext()];
+    return prev;
   }
 
-  public getNext() {
-    return this.inTailRegion ? this.tailEntries.slice(this.tailCurrentIdx + 1).map((e) => e.item) : this.next;
+  public getNext(withOtherSide?: boolean): MediaItem[] {
+    const next = this.inTailRegion ? this.tailEntries.slice(this.tailCurrentIdx + 1).map((e) => e.item) : this.next;
+    if(withOtherSide) return [...next, ...this.getPrevious()];
+    return next;
   }
 
   // move current position to a known item without resetting the loader state
