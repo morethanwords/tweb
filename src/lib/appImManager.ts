@@ -1208,10 +1208,14 @@ export class AppImManager extends EventListenerBase<{
 
   private attachKeydownListener() {
     const IGNORE_KEYS = new Set(['PageUp', 'PageDown', 'Meta', 'Control']);
-    const onKeyDown = (e: KeyboardEvent) => {
+    const onKeyDown = async(e: KeyboardEvent) => {
       const key = e.key;
       const isSelectionCollapsed = document.getSelection().isCollapsed;
-      if(overlayCounter.isOverlayActive || IGNORE_KEYS.has(key)) return;
+      if(
+        overlayCounter.isOverlayActive ||
+        IGNORE_KEYS.has(key) ||
+        !e.isTrusted // * ignore synthetic events
+      ) return;
 
       const target = e.target as HTMLElement;
 
@@ -1231,22 +1235,78 @@ export class AppImManager extends EventListenerBase<{
         return;
       } else if(e.altKey && (key === 'ArrowUp' || key === 'ArrowDown')) {
         cancelEvent(e);
-        this.managers.dialogsStorage.getNextDialog(this.chat.peerId, key === 'ArrowDown', appDialogsManager.filterId).then((dialog) => {
+        this.managers.dialogsStorage.getNextDialog(
+          this.chat.peerId,
+          key === 'ArrowDown',
+          appDialogsManager.filterId
+        ).then((dialog) => {
           if(dialog) {
             this.setPeer({peerId: dialog.peerId});
           }
         });
-      } else if(key === 'ArrowUp' && this.chat?.type !== ChatType.Scheduled) {
-        if(!appDialogsManager.contextMenu?.hasAddToFolderOpen() && !chat?.input?.editMsgId && chat?.input?.isInputEmpty()) {
-          this.managers.appMessagesManager.getFirstMessageToEdit(chat.peerId, chat.threadId).then((message) => {
-            if(message) {
+        return;
+      } else if((key === 'ArrowUp' || key === 'ArrowDown') && this.chat?.type !== ChatType.Scheduled) {
+        if(
+          !appDialogsManager.contextMenu?.hasAddToFolderOpen() &&
+          !chat?.input?.editMsgId
+        ) {
+          cancelEvent(e);
+
+          const forReply = e.metaKey || e.ctrlKey;
+          if(!forReply && !chat?.input?.isInputEmpty()) {
+            return;
+          }
+
+          if(forReply && !(await chat.canSend())) {
+            return;
+          }
+
+          const up = key === 'ArrowUp';
+          const {replyToMsgId} = this.chat.input;
+          const {peerId, threadId} = this.chat;
+          const middleware = this.chat.bubbles.getMiddleware();
+          if((!forReply && !up) || (forReply && !up && !replyToMsgId)) {
+            return;
+          }
+
+          this.managers.appMessagesManager.getFirstMessageToEdit({
+            peerId,
+            threadId,
+            forReply,
+            mid: forReply ? replyToMsgId : undefined,
+            up
+          }).then(async(message) => {
+            if(chat !== this.chat || !middleware()) {
+              return;
+            }
+
+            if(!message) {
+              if(forReply && chat.input.replyToMsgId === replyToMsgId) {
+                chat.input.onHelperCancel();
+              }
+
+              return;
+            }
+
+            if(forReply) {
+              const bubble = chat.bubbles.getBubble(message.peerId, message.mid);
+              await chat.input.initMessageReply(chat.input.getChatInputReplyToFromMessage(message));
+              if(bubble) {
+                chat.bubbles.scrollToBubble(bubble, 'center');
+                chat.bubbles.highlightBubble(bubble);
+              } else {
+                chat.setMessageId({
+                  lastMsgId: message.mid,
+                  lastMsgPeerId: message.peerId
+                });
+              }
+            } else {
               chat.input.initMessageEditing(message.mid);
-              cancelEvent(e); // * prevent from scrolling
             }
           });
-        } else {
-          return;
         }
+
+        return;
       } else if(key === 'ArrowDown') {
         return;
       }

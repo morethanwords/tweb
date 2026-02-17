@@ -45,7 +45,7 @@ export default class PopupBoost extends PopupPeer {
 
   private async construct() {
     let [boostsStatus, myBoosts, appConfig, isPremiumPurchaseBlocked] = await Promise.all([
-      this.managers.appBoostsManager.getBoostsStatus(this.peerId).catch(() => undefined),
+      this.managers.appBoostsManager.getBoostsStatus(this.peerId).catch(() => undefined as PremiumBoostsStatus),
       this.managers.appBoostsManager.getMyBoosts(),
       this.managers.apiManager.getAppConfig(),
       apiManagerProxy.isPremiumPurchaseBlocked()

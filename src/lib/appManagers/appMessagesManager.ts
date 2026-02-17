@@ -5275,29 +5275,70 @@ export class AppMessagesManager extends AppManager {
     this.saveMessages(result.messages);
   }
 
-  public async getFirstMessageToEdit(peerId: PeerId, threadId?: number) {
+  public async getFirstMessageToEdit({
+    peerId,
+    threadId,
+    forReply,
+    mid,
+    up
+  }: {
+    peerId: PeerId,
+    threadId?: number,
+    forReply?: boolean,
+    mid?: number,
+    up?: boolean
+  }) {
     const historyStorage = this.getHistoryStorage(peerId, threadId);
     const slice = historyStorage.history.slice;
-    if(slice.isEnd(SliceEnd.Bottom) && slice.length) {
-      let goodMessage: Message.message | Message.messageService;
-      const myPeerId = this.appPeersManager.peerId;
-      for(const mid of slice) {
-        const message = this.getMessageByPeer(peerId, mid);
-        const good = myPeerId === peerId ? message.fromId === myPeerId : message.pFlags.out;
+    if(!slice.isEnd(SliceEnd.Bottom)) {
+      return;
+    }
 
-        if(good) {
-          if(await this.canEditMessage(message, 'text')) {
-            goodMessage = this.getGroupsFirstMessage(message as Message.message);
-            break;
-          }
-
-          // * this check will allow editing only last message
-          // break;
-        }
+    let mids = [...slice.slice()];
+    if(mid) {
+      const index = mids.indexOf(mid);
+      if(index === -1) {
+        return;
       }
 
-      return goodMessage;
+      if(up) {
+        mids = mids.slice(index + 1);
+      } else {
+        mids = mids.slice(0, index).reverse();
+      }
+
+      forEachReverse(mids, (mid, idx) => {
+        const message = this.getMessageByPeer(peerId, mid);
+        if(this.getGroupsFirstMessage(message as Message.message) !== message) {
+          mids.splice(idx, 1)
+        }
+      });
     }
+
+    if(!mids.length) {
+      return;
+    }
+
+    let goodMessage: Message.message | Message.messageService;
+    const myPeerId = this.appPeersManager.peerId;
+    for(const mid of mids) {
+      const message = this.getMessageByPeer(peerId, mid);
+      const good = forReply ?
+        !message.pFlags.is_outgoing :
+        (myPeerId === peerId ? message.fromId === myPeerId : message.pFlags.out);
+
+      if(good) {
+        if(forReply || await this.canEditMessage(message, 'text')) {
+          goodMessage = this.getGroupsFirstMessage(message as Message.message);
+          break;
+        }
+
+        // * this check will allow editing only last message
+        // break;
+      }
+    }
+
+    return goodMessage;
   }
 
   public wrapMessageEntities(_message: {message: string, entities?: MessageEntity[], totalEntities?: MessageEntity[]} | TextWithEntities) {

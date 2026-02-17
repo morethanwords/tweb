@@ -4043,7 +4043,12 @@ export default class ChatBubbles {
       margin = 20;
     } */
 
-    const isChangingHeight = (this.chat.input.messageInput && this.chat.input.messageInput.classList.contains('is-changing-height')) || this.chat.container.classList.contains('is-toggling-helper');
+    const isTogglingHelper = this.chat.container.classList.contains('is-toggling-helper');
+    const isChangingHeight = isTogglingHelper || (
+      this.chat.input.messageInput &&
+      this.chat.input.messageInput.classList.contains('is-changing-height')
+    );
+    const isAddingHelper = this.chat.container.classList.contains('is-helper-active');
     const promise = this.scrollable.scrollIntoViewNew({
       element,
       position,
@@ -4058,6 +4063,9 @@ export default class ChatBubbles {
         // height -= this.chat.topbar.container.getBoundingClientRect().height;
         height -= this.container.offsetTop;
         height -= mediaSizes.isMobile || windowSize.height < 570 ? 58 : 78;
+        if(isTogglingHelper && isAddingHelper) {
+          height -= mediaSizes.isMobile || windowSize.height < 570 ? 40 : 36;
+        }
         return height;
 
         /* const rowsWrapperHeight = this.chat.input.rowsWrapper.getBoundingClientRect().height;

@@ -4363,7 +4363,7 @@ export default class ChatInput {
     this.center(true);
   }
 
-  public clearHelper(type?: ChatInputHelperType) {
+  public clearHelper(type?: ChatInputHelperType, willHaveHelper?: boolean) {
     if(this.helperType === 'edit' && type !== 'edit') {
       this.clearInput();
     }
@@ -4400,7 +4400,11 @@ export default class ChatInput {
       this.restoreInputLock = undefined;
     }
 
-    if(this.chat.container && this.chat.container.classList.contains('is-helper-active')) {
+    if(
+      this.chat.container &&
+      this.chat.container.classList.contains('is-helper-active') &&
+      !willHaveHelper
+    ) {
       appNavigationController.removeByType('input-helper');
       this.chat.container.classList.remove('is-helper-active');
       this.t();
@@ -4463,7 +4467,7 @@ export default class ChatInput {
     }
 
     if(type !== 'webpage') {
-      this.clearHelper(type);
+      this.clearHelper(type, true);
       this.helperType = type;
       this.helperFunc = callerFunc;
     }
