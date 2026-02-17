@@ -201,8 +201,9 @@ export class AppProfileManager extends AppManager {
       return {count: result.count, documents: []};
     }
 
+    const referenceContext: ReferenceContext = {type: 'savedMusic', userId};
     const documents = result.documents
-    .map((doc) => this.appDocsManager.saveDoc(doc))
+    .map((doc) => this.appDocsManager.saveDoc(doc, referenceContext))
     .filter(Boolean);
 
     return {count: result.count, documents};

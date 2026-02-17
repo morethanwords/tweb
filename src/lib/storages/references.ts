@@ -32,7 +32,8 @@ export type ReferenceContext =
   ReferenceContext.referenceContextFavedStickers |
   ReferenceContext.referenceContextStickerSet |
   ReferenceContext.referenceContextAvailableEffects |
-  ReferenceContext.referenceContextStickerSearch;
+  ReferenceContext.referenceContextStickerSearch |
+  ReferenceContext.referenceContextSavedMusic;
 
 export namespace ReferenceContext {
   export type referenceContextProfilePhoto = {
@@ -134,6 +135,11 @@ export namespace ReferenceContext {
   export type referenceContextStickerSearch = {
     type: 'stickerSearch',
     emoticon: string
+  };
+
+  export type referenceContextSavedMusic = {
+    type: 'savedMusic',
+    userId: UserId
   };
 }
 
@@ -294,6 +300,9 @@ export class ReferencesStorage extends AppManager {
           includeServerStickers: true,
           includeOurStickers: false
         });
+
+      case 'savedMusic':
+        return this.appProfileManager.getSavedMusic(context.userId, 0, 100);
 
       default: {
         this.log.warn('not implemented context', context);
