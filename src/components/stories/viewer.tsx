@@ -3440,6 +3440,24 @@ export default function StoriesViewer(props: {
   );
 }
 
+export const createStoriesViewerWithProvider = (
+  viewerProps: Parameters<typeof StoriesViewer>[0],
+  providerProps: Parameters<typeof StoriesProvider>[0]
+): JSX.Element => {
+  return createRoot((dispose) => {
+    const savedOnExit = viewerProps.onExit;
+    viewerProps.onExit = () => {
+      dispose();
+      savedOnExit?.();
+    };
+    return (
+      <StoriesProvider {...providerProps}>
+        {createStoriesViewer(viewerProps)}
+      </StoriesProvider>
+    );
+  });
+};
+
 export const createStoriesViewer = (
   props: Parameters<typeof StoriesViewer>[0] & Parameters<typeof StoriesProvider>[0]
 ): JSX.Element => {

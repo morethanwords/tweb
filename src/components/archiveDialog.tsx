@@ -2,7 +2,6 @@ import lastItem from '@helpers/array/lastItem';
 import ListenerSetter from '@helpers/listenerSetter';
 import formatNumber from '@helpers/number/formatNumber';
 import {I18nTsx} from '@helpers/solid/i18n';
-import {useIsCleaned} from '@hooks/useIsCleaned';
 import {Dialog} from '@layer';
 import {StoriesSegments} from '@lib/appManagers/appStoriesManager';
 import {FOLDER_ID_ARCHIVE} from '@lib/appManagers/constants';
@@ -14,13 +13,13 @@ import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {AckedResult} from '@lib/superMessagePort';
 import {useAppSettings} from '@stores/appSettings';
 import {Accessor, createComputed, createEffect, createMemo, createResource, createRoot, createSignal, For, onCleanup, Ref, Setter, Show} from 'solid-js';
-import {createStore} from 'solid-js/store';
+import {createStore, unwrap} from 'solid-js/store';
 import styles from './archiveDialog.module.scss';
 import Badge from './badge';
 import {IconTsx} from './iconTsx';
 import ripple from './ripple';
-import {createStoriesStore, StoriesContext, StoriesContextValue} from './stories/store';
-import {createStoriesViewer} from './stories/viewer';
+import {createStoriesStore, StoriesContextValue} from './stories/store';
+import {createStoriesViewerWithProvider} from './stories/viewer';
 
 // if(import.meta.hot) import.meta.hot.accept(); // screw it
 
@@ -354,10 +353,12 @@ function useStoriesSegments(storiesContextValue: StoriesContextValue) {
 }
 
 function useOpenArchiveStories(storiesContextValue: StoriesContextValue) {
-  const [stories, actions] = storiesContextValue;
+  const [stories] = storiesContextValue;
   const [viewerTarget, setViewerTarget] = createSignal<HTMLElement>();
 
   const canOpenStories = createMemo(() => stories.ready && stories.peers.length > 0);
+
+  const cloneCurrentPeers = () => structuredClone(unwrap(stories.peers));
 
   createEffect(() => {
     if(!viewerTarget()) return;
@@ -366,15 +367,17 @@ function useOpenArchiveStories(storiesContextValue: StoriesContextValue) {
       setViewerTarget(undefined);
     };
 
-    <StoriesContext.Provider value={storiesContextValue}>
-      {createStoriesViewer({onExit, target: viewerTarget})}
-    </StoriesContext.Provider>
+    createStoriesViewerWithProvider({
+      onExit,
+      target: viewerTarget
+    }, {
+      peers: cloneCurrentPeers(),
+      archive: true
+    });
   });
 
   return (target: HTMLElement) => {
     if(!canOpenStories()) return;
-    actions.resetIndexes();
-    actions.set({peer: stories.peers[0]});
     setViewerTarget(target);
   };
 }
