@@ -43,8 +43,6 @@ const ArchiveDialog = defineSolidElement({
   component: (props: PassedProps<ArchiveDialogProps>, _, controls: Controls) => {
     props.element.classList.add('row', 'no-wrap', 'row-with-padding', 'row-clickable', 'hover-effect', 'rp', 'chatlist-chat', 'chatlist-chat-bigger', 'row-big');
 
-    const {StoriesProvider} = useHotReloadGuard();
-
     const [openStoriesTarget, setOpenStoriesTarget] = createSignal<HTMLElement>();
 
     const sortedDialogs = createMemo(() => props.state.sortedDialogs().slice(0, limit)); // Note: more dialogs can appear if they've been updated
@@ -300,7 +298,7 @@ function useStoriesSegments(storiesContextValue: StoriesContextValue) {
   const {rootScope} = useHotReloadGuard();
 
   const [stories] = storiesContextValue;
-  const storiesPeerIds = createMemo(() => stories.peers?.length ? stories.peers.map(peer => peer.peerId) : undefined);
+  const storiesPeerIds = createMemo(() => stories.peers?.map(peer => peer.peerId));
 
   const [storiesSegments, setStoriesSegments] = createSignal<StoriesSegments>();
 
