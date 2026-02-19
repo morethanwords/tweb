@@ -11,6 +11,7 @@ import {setButtonLoader} from '@components/putPreloader';
 import {LangPackKey, _i18n} from '@lib/langPack';
 import ButtonCorner from '@components/buttonCorner';
 import AppNewGroupTab from '@components/sidebarLeft/tabs/newGroup';
+import {providedTabs} from '@components/solidJsTabs';
 
 export default class AppAddMembersTab extends SliderSuperTab {
   public static noSame = true;
@@ -96,4 +97,4 @@ export default class AppAddMembersTab extends SliderSuperTab {
   }
 }
 
-// providedTabs.AppAddMembersTab = AppAddMembersTab;
+providedTabs.AppAddMembersTab = AppAddMembersTab;

@@ -375,6 +375,13 @@
       display: flex;
       align-items: center;
       pointer-events: all;
+      // $thickness: 1.5px;
+      // filter: 
+      //   drop-shadow(#{-$thickness} 0 0 rgba(0, 0, 0, 0.1))
+      //   drop-shadow(#{$thickness} 0 0 rgba(0, 0, 0, 0.1))
+      //   drop-shadow(0 #{-$thickness} 0 rgba(0, 0, 0, 0.1))
+      //   drop-shadow(0 #{$thickness} 0 rgba(0, 0, 0, 0.1))
+      //   drop-shadow(0 0 #{$thickness} rgba(0, 0, 0, 0.1));
 
       &-warning {
         margin-right: 0.25rem;
@@ -448,7 +455,7 @@
       }
 
       .profile-avatars-avatar.active {
-        transform: translateY(-5%) scale(calc(120 / 400));
+        transform: translateY(-3%) scale(calc(120 / 400));
         border-radius: 50%;
       }
 
@@ -897,57 +904,52 @@
     }
   }
 
-  &-music-container {
-    position: absolute !important;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    overflow: hidden;
-    height: 1.5rem;
-    pointer-events: none;
-  }
-
   &-music {
     position: relative;
     pointer-events: all;
     transform: translateY(100%);
     transition: transform var(--transition-standard-in);
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
     height: 1.5rem;
     background: rgba(0, 0, 0, .2);
-    font-size: 12px;
+    font-size: var(--font-size-12);
     line-height: 1;
     letter-spacing: -0.24px;
     padding-inline: .5rem;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
 
     .has-music & {
       transform: translateY(0);
     }
 
     &-icon {
-      margin-right: 0.5rem;
+      margin-inline-end: 0.5rem;
     }
 
     &-performer {
-      font-weight: 600;
-    }
-
-    &-title {
-      overflow: hidden;
-      white-space: nowrap;
-      text-overflow: ellipsis;
+      font-weight: var(--font-weight-bold);
     }
 
     &-title:not(.only-title) {
       opacity: 0.7;
     }
 
+    &-container {
+      position: absolute !important;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      overflow: hidden;
+      height: 1.5rem;
+      pointer-events: none;
+    }
+
+    &-inner {
+      pointer-events: none;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+    }
   }
 }
 

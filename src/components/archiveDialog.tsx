@@ -64,10 +64,10 @@ const ArchiveDialog = defineSolidElement({
           storiesSegments={props.state.segments()}
           ref={setOpenStoriesTarget}
         />
-        <div class='row-row row-title-row'>
-          <I18nTsx class={styles.Title} key='Archive' />
+        <div class="row-row row-title-row">
+          <I18nTsx class={styles.Title} key="ArchivedChats" />
         </div>
-        <div class='row-row row-subtitle-row'>
+        <div class="row-row row-subtitle-row">
           <div class={styles.Subtitle}>
             <For each={sortedDialogs()}>
               {(dialog, index) => (
@@ -83,7 +83,7 @@ const ArchiveDialog = defineSolidElement({
             </For>
           </div>
           <Show when={totalUnreadCount() > 0}>
-            <Badge class={styles.UnreadBadge} tag='span' size={22} color='gray'>
+            <Badge class={styles.UnreadBadge} tag="span" size={22} color="gray">
               {formatNumber(totalUnreadCount(), 1)}
             </Badge>
           </Show>
@@ -434,7 +434,7 @@ function ArchiveAvatar(props: {
     >
       {storiesCircle()}
       <div class={styles.MediaContent}>
-        <IconTsx class={styles.MediaIcon} icon='archive' />
+        <IconTsx class={styles.MediaIcon} icon="archive" />
       </div>
     </div>
   );

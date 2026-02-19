@@ -2753,7 +2753,7 @@
   }
   
   .reply-markup-button-bg {
-    background-color: rgba(var(--background-color-rgb), .7) !important;
+    background-color: rgba(var(--background-color-rgb), .8) !important;
 
     @include hover() {
       background-color: rgb(var(--background-color-rgb)) !important;
@@ -3747,7 +3747,6 @@
     border-radius: .375rem;
     z-index: 2;
     font-size: var(--messages-secondary-text-size);
-    line-height: var(--messages-secondary-line-height);
     user-select: none;
     text-align: center;
     color: #fff !important;
@@ -3760,6 +3759,9 @@
     //line-height: var(--line-height);
     background: var(--message-highlighting-color);
     font-weight: var(--font-weight-bold);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
     &.is-first {
       border-end-start-radius: $border-radius-big;

@@ -63,6 +63,7 @@ import type {RootScope} from '@lib/rootScope';
 import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import type uiNotificationsManager from '@lib/uiNotificationsManager';
 import type {useAppSettings} from '@stores/appSettings';
+import type {AppSidebarRight} from '@components/sidebarRight';
 
 
 export type SolidJSHotReloadGuardContextValue = {
@@ -130,6 +131,7 @@ export type SolidJSHotReloadGuardContextValue = {
   StoriesProvider: typeof StoriesProvider;
   useStories: typeof useStories;
   StoriesSegments: typeof StoriesSegments;
+  appSidebarRight: AppSidebarRight;
 };
 
 export type LockScreenHotReloadGuardContextValue = Pick<

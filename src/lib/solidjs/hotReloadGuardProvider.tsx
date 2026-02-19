@@ -57,7 +57,7 @@ import rootScope from '@lib/rootScope';
 import {SolidJSHotReloadGuardContext} from '@lib/solidjs/hotReloadGuard';
 import uiNotificationsManager from '@lib/uiNotificationsManager';
 import {useAppSettings} from '@stores/appSettings';
-
+import appSidebarRight from '@components/sidebarRight';
 
 export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
   return (
@@ -125,7 +125,8 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       ButtonMenu,
       StoriesProvider,
       useStories,
-      StoriesSegments
+      StoriesSegments,
+      appSidebarRight
     }}>
       {props.children}
     </SolidJSHotReloadGuardContext.Provider>

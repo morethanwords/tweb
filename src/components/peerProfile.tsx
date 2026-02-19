@@ -49,7 +49,6 @@ import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
 import {wrapSolidComponent} from '../helpers/solid/wrapSolidComponent';
 import PopupStarGiftInfo from './popups/starGiftInfo';
 import PopupElement from './popups';
-import appSidebarRight from '@components/sidebarRight';
 import AppSavedMusicTab from '@components/sidebarRight/tabs/savedMusic';
 import ripple from '@components/ripple';
 import {keepMe} from '@helpers/keepMe';
@@ -150,7 +149,7 @@ const PeerProfile = (props: {
       return value.isTopic;
     },
     get hasSavedMusic() {
-      return !!(value.fullPeer as UserFull)?.saved_music
+      return !!(value.fullPeer as UserFull)?.saved_music;
     },
     canBeDetailed: () => value.peerId !== rootScope.myId || !value.isDialog,
     getDetailsForUse: () => {
@@ -240,7 +239,7 @@ PeerProfile.Avatar = () => {
       rootScope.managers,
       context.setCollapsedOn
     );
-    avatars.onNeedWhiteChanged = context.setNeedWhite
+    avatars.onNeedWhiteChanged = context.setNeedWhite;
 
     avatars.setPeer(context.peerId);
     avatars.info.append(name, subtitle);
@@ -630,37 +629,40 @@ PeerProfile.PersonalChannel = () => {
 
 PeerProfile.PinnedMusic = () => {
   const context = useContext(PeerProfileContext);
+  const {appSidebarRight} = useHotReloadGuard();
 
   const openSavedMusic = (e: Event) => {
-    cancelEvent(e)
+    cancelEvent(e);
     const tab = appSidebarRight.createTab(AppSavedMusicTab);
     tab.peerId = context.peerId;
     tab.open();
-    appSidebarRight.toggleSidebar(true)
+    appSidebarRight.toggleSidebar(true);
   };
 
-  const music = createMemo(() => context.hasSavedMusic ? (context.fullPeer as UserFull).saved_music as MyDocument : undefined)
-  const audioAttr = createMemo(() => music()?.attributes.find(it => it._ === 'documentAttributeAudio'))
-  const filenameAttr = createMemo(() => music()?.attributes.find(it => it._ === 'documentAttributeFilename'))
+  const music = createMemo(() => context.hasSavedMusic ? (context.fullPeer as UserFull).saved_music as MyDocument : undefined);
+  const audioAttr = createMemo(() => music()?.attributes.find((it) => it._ === 'documentAttributeAudio'));
+  const filenameAttr = createMemo(() => music()?.attributes.find((it) => it._ === 'documentAttributeFilename'));
 
   return (
     <div class="profile-music-container">
       <div class="profile-music" on:click={{capture: true, handleEvent: openSavedMusic}} use:ripple>
-        <IconTsx icon="music" class="profile-music-icon" />
-        <Show when={audioAttr()?.performer}>
-          {performer => <span class="profile-music-performer">{wrapEmojiText(performer())}</span>}
-        </Show>
-        <span class={`profile-music-title ${audioAttr()?.performer ? '' : 'only-title'}`}>
+        <div class="profile-music-inner">
+          <IconTsx icon="music" class="profile-music-icon" />
           <Show when={audioAttr()?.performer}>
-            &nbsp;-&nbsp;
+            {(performer) => <span class="profile-music-performer text-overflow-no-wrap">{wrapEmojiText(performer())}</span>}
           </Show>
-          {wrapEmojiText(audioAttr()?.title || filenameAttr()?.file_name || '')}
-        </span>
-        <IconTsx icon="next" />
+          <span class={`profile-music-title text-overflow-no-wrap ${audioAttr()?.performer ? '' : 'only-title'}`}>
+            <Show when={audioAttr()?.performer}>
+              &nbsp;-&nbsp;
+            </Show>
+            {wrapEmojiText(audioAttr()?.title || filenameAttr()?.file_name || '')}
+          </span>
+          <IconTsx icon="next" />
+        </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
 PeerProfile.Phone = () => {
   const context = useContext(PeerProfileContext);
