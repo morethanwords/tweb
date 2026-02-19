@@ -2722,7 +2722,7 @@ export default class ChatBubbles {
           (quoteDiv as any).ignoreQuoteResize = Infinity;
         }
 
-        const scrollSaver = this.createScrollSaver(false);
+        const scrollSaver = this.createScrollSaver(true);
         scrollSaver.save();
 
         let onTransitionEnd: (e: TransitionEvent) => void;
