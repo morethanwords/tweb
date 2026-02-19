@@ -273,6 +273,10 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
   //   super.setTargets(previous, next, reverse);
   // }
 
+  public setCurrent(item: Item) {
+    this.current = item;
+  }
+
   protected setLoaded(down: boolean, value: boolean) {
     const changed = super.setLoaded(down, value);
 

@@ -116,6 +116,7 @@ export const createStoriesStore = (props: {
   peers?: StoriesContextPeerState[],
   index?: number,
   peerId?: PeerId,
+  needUpdates?: boolean,
   pinned?: boolean,
   archive?: boolean,
   onLoadCallback?: (callback: () => Promise<boolean>) => void,
@@ -807,7 +808,7 @@ export const createStoriesStore = (props: {
   if(!props.singleStory) {
     listenerSetter.add(rootScope)('story_new', onStoryNew);
   }
-  if(!singlePeerId) {
+  if(!singlePeerId || props.needUpdates) {
     listenerSetter.add(rootScope)('stories_stories', onStoriesStories);
     listenerSetter.add(rootScope)('stories_read', onStoriesRead);
     // listenerSetter.add(rootScope)('user_stories_hidden', onUserStoriesHidden);

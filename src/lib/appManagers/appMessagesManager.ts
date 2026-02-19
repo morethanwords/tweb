@@ -4191,6 +4191,11 @@ export class AppMessagesManager extends AppManager {
     return storage?.delete(mid);
   }
 
+  public deleteMessageFromHistoryStorage(peerId: PeerId, mid: number) {
+    const storage = this.getHistoryMessagesStorage(peerId);
+    return this.deleteMessageFromStorage(storage, mid);
+  }
+
   private createMessageStorage(peerId: PeerId, type: MessagesStorageType) {
     const storage: MessagesStorage = new Map() as any;
     storage.peerId = peerId;

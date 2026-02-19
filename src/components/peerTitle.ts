@@ -215,9 +215,11 @@ export default class PeerTitle {
 }
 
 export function changeTitleEmojiColor(element: HTMLElement, color: string) {
-  const emojiStatus = element.querySelector<HTMLElement>('.emoji-status-text-color');
-  const player = emojiStatus && lottieLoader.getAnimation(emojiStatus);
-  if(player) {
-    player.setColor(color, true);
-  }
+  const elements = element.querySelectorAll<HTMLElement>('.emoji-status-text-color');
+  elements.forEach((emojiStatus) => {
+    const player = emojiStatus && lottieLoader.getAnimation(emojiStatus);
+    if(player) {
+      player.setColor(color, true);
+    }
+  })
 }

@@ -6,7 +6,7 @@
 
 import type {MyDocument} from '@appManagers/appDocsManager';
 import ProgressivePreloader from '@components/preloader';
-import appMediaPlaybackController, {MediaItem, MediaSearchContext} from '@components/appMediaPlaybackController';
+import appMediaPlaybackController, {MediaItem, MediaListLoaderFactory, MediaSearchContext} from '@components/appMediaPlaybackController';
 import {DocumentAttribute, Message} from '@layer';
 import mediaSizes from '@helpers/mediaSizes';
 import {IS_SAFARI} from '@environment/userAgent';
@@ -322,7 +322,10 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
           offsetX = e.targetTouches[0].pageX - rect.left;
         }
 
-        const scrubTime = offsetX / availW /* width */ * audio.duration;
+        let scrubTime = offsetX / availW /* width */ * audio.duration;
+        if(audio.duration && scrubTime >= audio.duration) {
+          scrubTime = audio.duration - 0.01;
+        }
         setCurrentTime(audio, scrubTime);
       }
     }, noop);
@@ -517,6 +520,7 @@ export default class AudioElement extends HTMLElement {
   public uploadingFileName: string;
   public shouldWrapAsVoice?: boolean;
   public customAudioToTextButton?: HTMLElement;
+  public listLoaderFactory?: MediaListLoaderFactory;
 
   private listenerSetter = new ListenerSetter();
   private onTypeDisconnect: () => void;
@@ -794,14 +798,16 @@ export default class AudioElement extends HTMLElement {
 
   public setTargetsIfNeeded() {
     const hadSearchContext = !!this.searchContext;
-    if(appMediaPlaybackController.setSearchContext(this.searchContext || {
+    const searchContextChanged = appMediaPlaybackController.setSearchContext(this.searchContext || {
       peerId: NULL_PEER_ID,
       inputFilter: {_: 'inputMessagesFilterEmpty'},
       useSearch: false
-    })) {
+    });
+    const loaderFactoryChanged = this.listLoaderFactory && appMediaPlaybackController.getListLoaderFactory() !== this.listLoaderFactory;
+    if(searchContextChanged || loaderFactoryChanged) {
       const thisTarget = this.dataset.toBeSkipped ? this.audio.parentElement : this;
       const [prev, next] = !hadSearchContext ? [] : findMediaTargets(thisTarget, this.message.mid/* , this.searchContext.useSearch */);
-      appMediaPlaybackController.setTargets({peerId: this.message.peerId, mid: this.message.mid}, prev, next);
+      appMediaPlaybackController.setTargets({peerId: this.message.peerId, mid: this.message.mid}, prev, next, this.listLoaderFactory);
     }
   }
 

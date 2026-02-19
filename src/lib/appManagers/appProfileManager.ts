@@ -150,8 +150,8 @@ export class AppProfileManager extends AppManager {
         userFull.wallpaper = this.appThemesManager.saveWallPaper(userFull.wallpaper);
 
         const botInfo = userFull.bot_info;
+        const referenceContext: ReferenceContext = {type: 'userFull', userId: id};
         if(botInfo) {
-          const referenceContext: ReferenceContext = {type: 'userFull', userId: id};
           botInfo.description_document = this.appDocsManager.saveDoc(botInfo.description_document, referenceContext);
           botInfo.description_photo = this.appPhotosManager.savePhoto(botInfo.description_photo, referenceContext);
         }
@@ -163,6 +163,9 @@ export class AppProfileManager extends AppManager {
             userFull.personal_channel_message,
             userFull.personal_channel_id
           );
+        }
+        if(userFull.saved_music) {
+          userFull.saved_music = this.appDocsManager.saveDoc(userFull.saved_music, referenceContext);
         }
 
         this.appNotificationsManager.savePeerSettings({
@@ -187,6 +190,26 @@ export class AppProfileManager extends AppManager {
     const intro = profile?.business_intro;
 
     return intro && (intro.title || intro.description || intro.sticker);
+  }
+
+  public async getSavedMusic(userId: UserId, offset: number = 0, limit: number = 50) {
+    const result = await this.apiManager.invokeApi('users.getSavedMusic', {
+      id: this.appUsersManager.getUserInput(userId),
+      offset,
+      limit,
+      hash: 0
+    });
+
+    if(result._ === 'users.savedMusicNotModified') {
+      return {count: result.count, documents: []};
+    }
+
+    const referenceContext: ReferenceContext = {type: 'savedMusic', userId};
+    const documents = result.documents
+    .map((doc) => this.appDocsManager.saveDoc(doc, referenceContext))
+    .filter(Boolean);
+
+    return {count: result.count, documents};
   }
 
   public getProfileByPeerId(peerId: PeerId, override?: boolean) {
