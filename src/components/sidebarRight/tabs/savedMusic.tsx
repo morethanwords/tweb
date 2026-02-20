@@ -19,6 +19,7 @@ import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import PopupForward from '@components/popups/forward';
 
 import styles from '@components/sidebarRight/tabs/savedMusic.module.scss';
+import createMiddleware from '@helpers/solid/createMiddleware';
 
 async function createFakeMessage(doc: MyDocument, peerId: PeerId, mid: number): Promise<Message.message> {
   return {
@@ -61,6 +62,8 @@ function SavedMusicContent(props: {
     return savedMusicLoader;
   };
 
+  const middleware = createMiddleware().get();
+
   let renderPromise = Promise.resolve();
   savedMusicLoader.onNewDocs = (docs) => {
     docCount += docs.length;
@@ -71,6 +74,7 @@ function SavedMusicContent(props: {
         const message = await createFakeMessage(doc, props.peerId, savedMusicLoader.getFakeMid(doc.id));
         const div = await wrapDocument({
           message,
+          middleware,
           fontWeight: 400,
           voiceAsMusic: true,
           lazyLoadQueue,

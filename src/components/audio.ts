@@ -45,6 +45,7 @@ import makeError from '@helpers/makeError';
 import {hideToast, toastNew} from '@components/toast';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import PopupPremium from '@components/popups/premium';
+import {Middleware} from '@helpers/middleware';
 
 
 const UNMOUNT_PRELOADER = true;
@@ -521,6 +522,7 @@ export default class AudioElement extends HTMLElement {
   public shouldWrapAsVoice?: boolean;
   public customAudioToTextButton?: HTMLElement;
   public listLoaderFactory?: MediaListLoaderFactory;
+  public middleware: Middleware;
 
   private listenerSetter = new ListenerSetter();
   private onTypeDisconnect: () => void;
@@ -573,6 +575,8 @@ export default class AudioElement extends HTMLElement {
 
     const audioTimeDiv = this.querySelector('.audio-time') as HTMLDivElement;
     audioTimeDiv.textContent = getDurationStr();
+
+    this.middleware.onDestroy(() => this.destroy());
 
     const onLoad = this.onLoad = (autoload: boolean) => {
       this.onLoad = undefined;
@@ -832,30 +836,24 @@ export default class AudioElement extends HTMLElement {
     return this.listenerSetter.add(this.audio);
   }
 
-  disconnectedCallback() {
-    setTimeout(() => {
-      if(this.isConnected) {
-        return;
-      }
+  private destroy() {
+    if(this.onTypeDisconnect) {
+      this.onTypeDisconnect();
+      this.onTypeDisconnect = null;
+    }
 
-      if(this.onTypeDisconnect) {
-        this.onTypeDisconnect();
-        this.onTypeDisconnect = null;
-      }
+    if(this.readyPromise) {
+      this.readyPromise.reject();
+    }
 
-      if(this.readyPromise) {
-        this.readyPromise.reject();
-      }
+    if(this.listenerSetter) {
+      this.listenerSetter.removeAll();
+      this.listenerSetter = null;
+    }
 
-      if(this.listenerSetter) {
-        this.listenerSetter.removeAll();
-        this.listenerSetter = null;
-      }
-
-      if(this.preloader) {
-        this.preloader = null;
-      }
-    }, 100);
+    if(this.preloader) {
+      this.preloader = null;
+    }
   }
 }
 

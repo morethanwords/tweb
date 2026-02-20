@@ -37,6 +37,7 @@ import ProgressivePreloader from '@components/preloader';
 import wrapPhoto from '@components/wrappers/photo';
 import wrapSenderToPeer from '@components/wrappers/senderToPeer';
 import wrapSentTime from '@components/wrappers/sentTime';
+import {Middleware} from '@helpers/middleware';
 
 rootScope.addEventListener('document_downloading', (docId) => {
   const elements = Array.from(document.querySelectorAll(`.document[data-doc-id="${docId}"]`)) as HTMLElement[];
@@ -47,7 +48,9 @@ rootScope.addEventListener('document_downloading', (docId) => {
   });
 });
 
-export default async function wrapDocument({message,
+export default async function wrapDocument({
+  message,
+  middleware,
   withTime,
   fontWeight,
   voiceAsMusic,
@@ -69,6 +72,7 @@ export default async function wrapDocument({message,
   globalMedia
 }: {
   message: Message.message,
+  middleware: Middleware,
   withTime?: boolean,
   fontWeight?: number,
   voiceAsMusic?: boolean,
@@ -106,6 +110,7 @@ export default async function wrapDocument({message,
     audioElement.uploadingFileName = uploadingFileName;
     audioElement.shouldWrapAsVoice = shouldWrapAsVoice;
     audioElement.customAudioToTextButton = customAudioToTextButton;
+    audioElement.middleware = middleware;
 
     audioElement.audio = globalMedia as any;
     if(globalMedia) audioElement.dataset.toBeSkipped = '1';

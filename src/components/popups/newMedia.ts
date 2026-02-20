@@ -1382,6 +1382,7 @@ export default class PopupNewMedia extends PopupElement {
           document: doc
         }
       } as any,
+      middleware: params.middlewareHelper.get(),
       cacheContext
     });
 

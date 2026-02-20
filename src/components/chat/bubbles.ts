@@ -890,7 +890,11 @@ export default class ChatBubbles {
           if(div && !tempMessage.media?.document?.thumbs?.length && doc.thumbs?.length) {
             getHeavyAnimationPromise().then(async() => {
               const timeSpan = div.querySelector('.time');
-              const newDiv = await wrapDocument({message, fontSize: this.chat.appSettings.messagesTextSize});
+              const newDiv = await wrapDocument({
+                message,
+                middleware: bubble.middlewareHelper.get(),
+                fontSize: this.chat.appSettings.messagesTextSize
+              });
               div.replaceWith(newDiv);
 
               if(timeSpan) {
@@ -7294,6 +7298,7 @@ export default class ChatBubbles {
             } else {
               const docDiv = await wrapDocument({
                 message: message as Message.message,
+                middleware: bubble.middlewareHelper.get(),
                 autoDownloadSize: this.chat.autoDownload.file,
                 lazyLoadQueue,
                 loadPromises,
@@ -7591,6 +7596,7 @@ export default class ChatBubbles {
           } else {
             const newNameContainer = await wrapGroupedDocuments({
               albumMustBeRenderedFull: groupedMustBeRenderedFull,
+              middleware,
               message,
               bubble,
               messageDiv,

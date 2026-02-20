@@ -945,12 +945,13 @@ export default class AppSearchSuper {
     return {element: div, message};
   }
 
-  private async processDocumentFilter({message, inputFilter}: ProcessSearchSuperResult) {
+  private async processDocumentFilter({message, inputFilter, middleware}: ProcessSearchSuperResult) {
     const document = getMediaFromMessage(message, true) as Document.document;
     const showSender = this.showSender || (['voice', 'round'] as MyDocument['type'][]).includes(document.type);
 
     const div = await wrapDocument({
       message,
+      middleware,
       withTime: !showSender,
       fontWeight: 400,
       voiceAsMusic: true,

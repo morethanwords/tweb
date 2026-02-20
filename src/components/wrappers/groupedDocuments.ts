@@ -15,9 +15,11 @@ import Chat from '@components/chat/chat';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import TranslatableMessage from '@components/translatableMessage';
 import wrapDocument from '@components/wrappers/document';
+import {Middleware} from '@helpers/middleware';
 
 export default async function wrapGroupedDocuments({
   albumMustBeRenderedFull,
+  middleware,
   message,
   bubble,
   messageDiv,
@@ -39,6 +41,7 @@ export default async function wrapGroupedDocuments({
   isOut
 }: {
   albumMustBeRenderedFull: boolean,
+  middleware: Middleware,
   message: any,
   messageDiv: HTMLElement,
   bubble: HTMLElement,
@@ -71,6 +74,7 @@ export default async function wrapGroupedDocuments({
     const message = chat.getMessageByPeer(peerId, mid) as Message.message;
     const div = await wrapDocument({
       message,
+      middleware,
       loadPromises,
       autoDownloadSize,
       lazyLoadQueue,

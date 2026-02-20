@@ -397,6 +397,7 @@ export function wrapRoundVideoBubble({
 
     const audioElement = await wrapDocument({
       message: message as any,
+      middleware: bubble.middlewareHelper.get(),
       customAudioToTextButton: closeButton,
       shouldWrapAsVoice: true,
       globalMedia,
