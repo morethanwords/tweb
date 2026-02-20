@@ -38,6 +38,7 @@ import {i18n} from '@lib/langPack';
 import wrapEmojiText from '@richTextProcessor/wrapEmojiText';
 import wrapWebPageDescription from '@components/wrappers/webPageDescription';
 import Button from '@components/button';
+import onQuoteClick from '@helpers/dom/onQuoteClick';
 
 type AppMediaViewerTargetType = {
   element: HTMLElement,
@@ -49,12 +50,20 @@ type AppMediaViewerTargetType = {
 
 export const onMediaCaptionClick = (caption: HTMLElement, e: MouseEvent) => {
   const a = findUpTag(e.target, 'A');
+  const spoiler = findUpClassName(e.target, 'spoiler');
+  const quoteDiv = findUpClassName(e.target, 'quote-like-collapsable');
+  const isSpoilerVisible = caption.classList.contains('is-spoiler-visible');
+  if(quoteDiv && !a && (!spoiler || isSpoilerVisible)) {
+    if(onQuoteClick(e, quoteDiv)) {
+      return;
+    }
+  }
+
   if(!a || a.classList.contains('timestamp')) {
     return;
   }
 
-  const spoiler = findUpClassName(e.target, 'spoiler');
-  if(a instanceof HTMLAnchorElement && (!spoiler || caption.classList.contains('is-spoiler-visible'))) { // close viewer if it's t.me/ redirect
+  if(a instanceof HTMLAnchorElement && (!spoiler || isSpoilerVisible)) { // close viewer if it's t.me/ redirect
     const onclick = a.getAttribute('onclick');
     if(!onclick || onclick.includes('showMaskedAlert')) {
       return;

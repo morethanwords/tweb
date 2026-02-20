@@ -218,6 +218,8 @@ import {setPeerColorToElement} from '@components/peerColors';
 import {showStarGiftOfferButtons, StarGiftOfferBubble, StarGiftOfferReplyMarkup} from '@components/chat/bubbles/starGiftOffer';
 import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 import wrapDice from '@components/chat/bubbleParts/dice';
+import animateSomethingWithScroll from '@helpers/animateSomethingWithScroll';
+import onQuoteClick from '@helpers/dom/onQuoteClick';
 
 export type BubbleContext = {
   bubble: HTMLElement,
@@ -2715,41 +2717,8 @@ export default class ChatBubbles {
 
     const quoteDiv: HTMLElement = findUpClassName(target, 'quote-like-collapsable');
     if(quoteDiv) {
-      const isTruncated = quoteDiv.classList.contains('is-truncated');
-      const isExpanded = quoteDiv.classList.contains('is-expanded');
-      const isGood = isTruncated || isExpanded;
-      if(isGood && window.getSelection().isCollapsed) {
-        cancelEvent(e);
-
-        const hasAnimations = liteMode.isAvailable('animations');
-        if(hasAnimations) {
-          (quoteDiv as any).ignoreQuoteResize = Infinity;
-        }
-
-        const scrollSaver = this.createScrollSaver(true);
-        scrollSaver.save();
-
-        let onTransitionEnd: (e: TransitionEvent) => void;
-
-        const animationPromise = hasAnimations ? Promise.race([
-          pause(1000).then(() => {
-            quoteDiv.removeEventListener('transitionend', onTransitionEnd);
-          }),
-          new Promise<void>((resolve) => {
-            onTransitionEnd = (e: TransitionEvent) => {
-              if(e.target === quoteDiv) {
-                resolve();
-                delete (quoteDiv as any).ignoreQuoteResize;
-              }
-            };
-
-            quoteDiv.addEventListener('transitionend', onTransitionEnd, {once: true});
-          })
-        ]) : Promise.resolve();
-
-        this.animateSomethingWithScroll(animationPromise, scrollSaver);
-        quoteDiv.classList.toggle('is-expanded');
-        quoteDiv.classList.toggle('is-truncated', isExpanded);
+      const isGood = onQuoteClick(e, quoteDiv, this.scrollable, () => this.createScrollSaver(true));
+      if(isGood) {
         return;
       }
     }
@@ -3800,21 +3769,7 @@ export default class ChatBubbles {
       scrollSaver.save();
     }
 
-    let finished = false;
-    promise.then(() => {
-      finished = true;
-    });
-
-    dispatchHeavyAnimationEvent(promise);
-
-    scrollSaver && animateSingle(() => {
-      if(finished) {
-        return false;
-      }
-
-      scrollSaver.restore();
-      return true;
-    }, this.scrollable.container);
+    animateSomethingWithScroll(promise, this.scrollable, scrollSaver);
   }
 
   public deleteMessagesByIds(fullMids: FullMid[], permanent = true, ignoreOnScroll?: boolean) {
