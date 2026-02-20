@@ -82,7 +82,9 @@ export default class AppStoriesManager extends AppManager {
     this.apiUpdatesManager.addMultipleEventsListeners({
       updateStory: this.onUpdateStory,
 
-      updateReadStories: this.onUpdateReadStories
+      updateReadStories: this.onUpdateReadStories,
+
+      updateStoriesStealthMode: this.onUpdateStoriesStealthMode
     });
 
     this.rootScope.addEventListener('app_config', this.setChangelogPeerIdFromAppConfig);
@@ -1274,6 +1276,15 @@ export default class AppStoriesManager extends AppManager {
   }
 
   public activateStealthMode() {
+    // this.apiUpdatesManager.processLocalUpdate({
+    //   _: 'updateStoriesStealthMode',
+    //   stealth_mode: {
+    //     _: 'storiesStealthMode',
+    //     active_until_date: tsNow(true) + 1000 * 60 * 60 * 24 * 30,
+    //     cooldown_until_date: tsNow(true) + 1000 * 60 * 60 * 24 * 30
+    //   }
+    // });
+    // return;
     return this.apiManager.invokeApiSingleProcess({
       method: 'stories.activateStealthMode',
       params: {

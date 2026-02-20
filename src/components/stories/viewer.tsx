@@ -511,6 +511,7 @@ const StoryInput = (props: {
       });
 
       createEffect(async() => {
+        JSON.stringify(stories.stealthMode); // * track every key change
         chat.stealthMode = stories.stealthMode;
         input.updateMessageInputPlaceholder(await input.getPlaceholderParams());
       });

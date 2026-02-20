@@ -68,7 +68,7 @@ export default async function showStoriesStealthModePopup(props: {
       }
     ],
     sticker: {
-      element: (
+      element: () => (
         <div class={styles.sticker}>
           <IconTsx icon="eye2" />
         </div>

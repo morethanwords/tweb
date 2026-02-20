@@ -7,7 +7,7 @@ import styles from '@components/stickerAndTitle.module.scss';
 export type StickerAndTitleProps = {
   sticker: {
     name?: LottieAssetName,
-    element?: JSX.Element,
+    element?: JSX.Element | (() => JSX.Element),
     size?: number
   },
   title?: JSX.Element,
@@ -27,7 +27,10 @@ export default function StickerAndTitle(props: StickerAndTitleProps) {
   return (
     <div class={styles.container}>
       <div class={styles.lottieWrapper}>
-        <Show when={props.sticker.name} fallback={props.sticker.element}>
+        <Show
+          when={props.sticker.name}
+          fallback={typeof(props.sticker.element) === 'function' ? props.sticker.element() : props.sticker.element}
+        >
           <LottieAnimation
             class={styles.lottieAnimation}
             size={props.sticker.size || 130}
