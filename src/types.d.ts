@@ -257,7 +257,9 @@ export type TelegramWebViewEventMap = {
     text: string,
     color: string,
     text_color: string,
-    is_progress_visible: boolean
+    is_progress_visible: boolean,
+    has_shine_effect?: boolean,
+    icon_custom_emoji_id?: DocId
   },
   web_app_setup_secondary_button: {
     is_visible: boolean,
@@ -266,7 +268,9 @@ export type TelegramWebViewEventMap = {
     color: string,
     text_color: string,
     is_progress_visible: boolean
-    position: 'left' | 'right' | 'top' | 'bottom'
+    position: 'left' | 'right' | 'top' | 'bottom',
+    has_shine_effect?: boolean,
+    icon_custom_emoji_id?: DocId
   },
   web_app_setup_back_button: {
     is_visible: boolean
@@ -417,33 +421,33 @@ export type TelegramWebViewSendEventMap = {
     token_saved: boolean
     device_id: string
   },
-  accelerometer_failed: { error: string },
+  accelerometer_failed: {error: string},
   accelerometer_started: void,
   accelerometer_stopped: void,
-  accelerometer_changed: { x: number, y: number, z: number },
-  gyroscope_failed: { error: string },
+  accelerometer_changed: {x: number, y: number, z: number},
+  gyroscope_failed: {error: string},
   gyroscope_started: void,
   gyroscope_stopped: void,
-  gyroscope_changed: { x: number, y: number, z: number },
-  device_orientation_failed: { error: string },
+  gyroscope_changed: {x: number, y: number, z: number},
+  device_orientation_failed: {error: string},
   device_orientation_started: void,
   device_orientation_stopped: void,
-  device_orientation_changed: { absolute: boolean, alpha: number, beta: number, gamma: number },
-  home_screen_failed: { error: string },
+  device_orientation_changed: {absolute: boolean, alpha: number, beta: number, gamma: number},
+  home_screen_failed: {error: string},
   home_screen_checked: {
     status: 'unsupported' | 'unknown' | 'added' | 'missed'
-  }
-  emoji_status_failed: { error: string },
+  },
+  emoji_status_failed: {error: string},
   emoji_status_set: void,
   emoji_status_access_requested: {
     status: 'allowed' | 'cancelled'
-  }
+  },
   location_checked: {
     available: boolean
     access_requested?: boolean
     access_granted?: boolean
-  }
-  location_requested: { available: false } | {
+  },
+  location_requested: {available: false} | {
     available: true,
     latitude: number,
     longitude: number,
@@ -454,41 +458,41 @@ export type TelegramWebViewSendEventMap = {
     vertical_accuracy: number,
     course_accuracy: number,
     speed_accuracy: number
-  }
+  },
   file_download_requested: {
     status: 'downloading' | 'cancelled'
-  }
+  },
   device_storage_key_saved: {
     req_id: string,
-  }
+  },
   device_storage_key_received: {
     req_id: string,
     value: string | null
-  }
+  },
   device_storage_cleared: {
     req_id: string,
-  }
+  },
   device_storage_failed: {
     req_id: string,
     error: 'KEY_INVALID' | 'VALUE_INVALID' | 'QUOTA_EXCEEDED' | 'UNKNOWN_ERROR'
-  }
+  },
   secure_storage_failed: {
     req_id: string,
     error: 'UNSUPPORTED'
-  }
-  fullscreen_changed: { is_fullscreen: boolean }
-  fullscreen_failed: { error: string }
-  visibility_changed: { is_visible: boolean }
+  },
+  fullscreen_changed: {is_fullscreen: boolean},
+  fullscreen_failed: {error: string},
+  visibility_changed: {is_visible: boolean},
   content_safe_area_changed: {
     top: number,
     left: number,
     right: number,
     bottom: number,
-  }
-  prepared_message_failed: { error: string }
-  gyroscope_failed: { error: string }
-  device_orientation_failed: { error: string }
-  accelerometer_failed: { error: string }
+  },
+  prepared_message_failed: {error: string},
+  gyroscope_failed: {error: string},
+  device_orientation_failed: {error: string},
+  accelerometer_failed: {error: string},
   prepared_message_sent: void
 };
 

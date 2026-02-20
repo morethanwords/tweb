@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {createSignal} from 'solid-js';
+import {Accessor, createSignal, Show} from 'solid-js';
 import {hexToRgb, calculateLuminance, getTextColor, calculateOpacity, rgbaToRgb, rgbIntToHex} from '@helpers/color';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import safeWindowOpen from '@helpers/dom/safeWindowOpen';
@@ -51,6 +51,8 @@ import {createSvgFromBytes} from '@helpers/bytes/getPathFromBytes';
 import PopupWebAppPreparedMessage from '@components/popups/webAppPreparedMessage';
 import appDownloadManager from '@lib/appDownloadManager';
 import IS_WEB_APP_BROWSER_SUPPORTED from '@environment/webAppBrowserSupport';
+import {wrapAdaptiveCustomEmoji} from '@components/wrappers/customEmojiSimple';
+import createMiddleware from '@helpers/solid/createMiddleware';
 
 const SANDBOX_ATTRIBUTES = [
   'allow-scripts',
@@ -168,7 +170,9 @@ export default class WebApp {
       is_progress_visible: false,
       color: 'primary',
       text: '',
-      text_color: '#ffffff'
+      text_color: '#ffffff',
+      has_shine_effect: false,
+      icon_custom_emoji_id: undefined
     });
     let mainButtonRef: HTMLElement;
     const [secondaryButtonState, setSecondaryButtonState] = createSignal<TelegramWebViewEventMap['web_app_setup_secondary_button']>({
@@ -178,7 +182,9 @@ export default class WebApp {
       color: 'primary',
       text: '',
       text_color: '#ffffff',
-      position: 'left'
+      position: 'left',
+      has_shine_effect: false,
+      icon_custom_emoji_id: undefined
     });
     let secondaryButtonRef: HTMLElement;
 
@@ -209,6 +215,33 @@ export default class WebApp {
       (mainButtonState().is_visible && secondaryButtonState().is_visible) && `has-two-buttons position-${secondaryButtonState().position}`,
     ));
 
+    const ButtonContent = (props: {
+      state: Accessor<TelegramWebViewEventMap['web_app_setup_main_button'] | TelegramWebViewEventMap['web_app_setup_secondary_button']>
+    }) => {
+      return (
+        <Transition name="fade" mode="outin">
+          <span class="web-app-button-content text-overflow-no-wrap">
+            <Show
+              when={!props.state().is_progress_visible}
+              fallback={<PreloaderTsx />}
+            >
+              <Show when={props.state().icon_custom_emoji_id}>
+                {(docId) => wrapAdaptiveCustomEmoji({
+                  docId: docId(),
+                  size: 20,
+                  wrapOptions: {
+                    middleware: createMiddleware().get(),
+                    textColor: props.state().text_color
+                  }
+                }).container}
+              </Show>
+              <EmojiTextTsx text={props.state().text} />
+            </Show>
+          </span>
+        </Transition>
+      );
+    };
+
     return (
       <>
         <ButtonTsx
@@ -220,16 +253,12 @@ export default class WebApp {
             'web-app-button-secondary',
             secondaryButtonState().is_visible && 'is-visible',
             secondaryButtonState().is_active && 'is-active',
+            secondaryButtonState().has_shine_effect && 'shimmer'
           )}
           disabled={!secondaryButtonState().is_active}
           onClick={() => this.telegramWebView.dispatchWebViewEvent('secondary_button_pressed', undefined)}
         >
-          <Transition name="fade" mode="outin">
-            {secondaryButtonState().is_progress_visible ?
-              <PreloaderTsx /> :
-              <EmojiTextTsx text={secondaryButtonState().text} />
-            }
-          </Transition>
+          <ButtonContent state={secondaryButtonState} />
         </ButtonTsx>
         <ButtonTsx
           ref={mainButtonRef}
@@ -238,16 +267,12 @@ export default class WebApp {
             'web-app-button',
             'btn-color-primary',
             mainButtonState().is_visible && 'is-visible',
+            mainButtonState().has_shine_effect && 'shimmer'
           )}
           disabled={!mainButtonState().is_active}
           onClick={() => this.telegramWebView.dispatchWebViewEvent('main_button_pressed', undefined)}
         >
-          <Transition name="fade" mode="outin">
-            {mainButtonState().is_progress_visible ?
-              <PreloaderTsx /> :
-              <EmojiTextTsx text={mainButtonState().text} />
-            }
-          </Transition>
+          <ButtonContent state={mainButtonState} />
         </ButtonTsx>
       </>
     );
@@ -995,8 +1020,8 @@ export default class WebApp {
       web_app_set_background_color: ({color}) => this.setBodyColor(color),
       web_app_set_header_color: this.setHeaderColor,
       web_app_switch_inline_query: this.switchInlineQuery,
-      web_app_setup_main_button: opts => this.setMainButtonState(opts),
-      web_app_setup_secondary_button: opts => this.setSecondaryButtonState(opts),
+      web_app_setup_main_button: (opts) => this.setMainButtonState(opts),
+      web_app_setup_secondary_button: (opts) => this.setSecondaryButtonState(opts),
       web_app_setup_back_button: this.setupBackButton,
       web_app_setup_settings_button: this.setupSettingsButton,
       web_app_setup_closing_behavior: ({need_confirmation}) => this.isCloseConfirmationNeeded = !!need_confirmation,
@@ -1159,7 +1184,7 @@ export default class WebApp {
       web_app_secure_storage_restore_key: ({req_id}) => telegramWebView.dispatchWebViewEvent('secure_storage_failed', {req_id, error: 'UNSUPPORTED'}),
       web_app_secure_storage_clear: ({req_id}) => telegramWebView.dispatchWebViewEvent('secure_storage_failed', {req_id, error: 'UNSUPPORTED'}),
       web_app_share_to_story: () => {
-        toastNew({langPackKey:'BotStorySharingNotSupported'});
+        toastNew({langPackKey: 'BotStorySharingNotSupported'});
       },
       web_app_send_prepared_message: this.debouncePopupMethod(async({id}) => {
         let message: MessagesPreparedInlineMessage.messagesPreparedInlineMessage;
@@ -1167,7 +1192,7 @@ export default class WebApp {
           message = await this.managers.appBotsManager.getPreparedMessage(this.webViewOptions.botId, id);
         } catch(err) {
           this.telegramWebView.dispatchWebViewEvent('prepared_message_failed', {error: (err as any).code});
-          return
+          return;
         }
 
         const popup = PopupElement.createPopup(PopupWebAppPreparedMessage, {

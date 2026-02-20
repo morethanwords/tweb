@@ -120,6 +120,11 @@
     width: calc(var(--browser-width) - 1rem);
     color: var(--text-color);
 
+    &-content {
+      width: 100%;
+      display: block;
+    }
+
     .has-two-buttons & {
       width: calc(var(--browser-width) / 2 - 0.75rem);
       left: calc(var(--browser-width) / 2 + 0.25rem);
@@ -179,6 +184,10 @@
         transform: scale(1);
         pointer-events: auto;
       }
+    }
+
+    .custom-emoji {
+      margin-inline-end: .25rem;
     }
   }
 }
