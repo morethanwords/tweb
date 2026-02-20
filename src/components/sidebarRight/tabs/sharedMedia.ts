@@ -442,8 +442,9 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         this.threadId === threadId
       ) {
         this.searchSuper.usedFromHistory[inputFilter] += filtered.length;
-        this.searchSuper.performSearchResult({messages: filtered, mediaTab, append: false});
-        this.searchSuper.setCounter(mediaTab.type, this.searchSuper.counters[mediaTab.type] + filtered.length);
+        this.searchSuper.performSearchResult({messages: filtered, mediaTab, append: false}).then((length) => {
+          this.searchSuper.setCounter(mediaTab.type, this.searchSuper.counters[mediaTab.type] + length);
+        });
       }
     }
   }
@@ -461,7 +462,13 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     }
   }
 
-  public _deleteDeletedMessages(historyStorage: SharedMediaHistoryStorage, peerId: PeerId, mids: number[], threadId?: number) {
+  public _deleteDeletedMessages(
+    historyStorage: SharedMediaHistoryStorage,
+    peerId: PeerId,
+    mids: number[],
+    threadId?: number
+  ) {
+    const notFound: Set<SearchSuperMediaTab> = new Set();
     for(const mid of mids) {
       for(const mediaTab of this.searchSuper.mediaTabs) {
         const inputFilter = mediaTab.inputFilter;
@@ -472,9 +479,6 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         const isGood = mediaTab.type === 'saved' ?
           this.peerId === threadId :
           this.peerId === peerId && this.threadId === threadId;
-        if(isGood) {
-          this.searchSuper.setCounter(mediaTab.type, this.searchSuper.counters[mediaTab.type] - mids.length);
-        }
 
         const idx = history.findIndex((m) => m.mid === mid);
         if(idx === -1) {
@@ -496,6 +500,13 @@ export default class AppSharedMediaTab extends SliderSuperTab {
             if(idx !== -1 && this.searchSuper.usedFromHistory[inputFilter] >= (idx + 1)) {
               --this.searchSuper.usedFromHistory[inputFilter];
             }
+
+            this.searchSuper.setCounter(
+              mediaTab.type,
+              this.searchSuper.counters[mediaTab.type] - 1
+            );
+          } else {
+            notFound.add(mediaTab);
           }
         }
 
@@ -503,6 +514,25 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         // break;
       }
     }
+
+    const filters = Array.from(notFound).map((mediaTab) => ({_: mediaTab.inputFilter}));
+    if(!filters.length) {
+      return;
+    }
+
+    const middleware = this.searchSuper.middleware.get();
+    this.searchSuper.getSearchCounters(filters).then((counters) => {
+      if(!middleware()) {
+        return;
+      }
+
+      notFound.forEach((mediaTab) => {
+        const counter = counters.find((c) => c.filter._ === mediaTab.inputFilter);
+        if(counter) {
+          this.searchSuper.setCounter(mediaTab.type, counter.count);
+        }
+      });
+    });
   }
 
   public deleteDeletedMessages(peerId: PeerId, msgs: BroadcastEvents['history_delete']['msgs']) {

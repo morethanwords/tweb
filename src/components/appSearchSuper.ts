@@ -18,7 +18,7 @@ import useHeavyAnimationCheck, {getHeavyAnimationPromise} from '@hooks/useHeavyA
 import I18n, {LangPackKey, i18n, join} from '@lib/langPack';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import {getMiddleware, Middleware, MiddlewareHelper} from '@helpers/middleware';
-import {ChannelParticipant, Chat, ChatFull, ChatParticipant, ChatParticipants, Document, Message, MessageMedia, MessagesChats, Peer, Photo, StoryItem, Update, User, UserFull, WebPage} from '@layer';
+import {ChannelParticipant, Chat, ChatFull, ChatParticipant, ChatParticipants, Document, Message, MessageMedia, MessagesChats, MessagesFilter, Peer, Photo, StoryItem, Update, User, UserFull, WebPage} from '@layer';
 import SortedUserList from '@components/sortedUserList';
 import findUpTag from '@helpers/dom/findUpTag';
 import appSidebarRight from '@components/sidebarRight';
@@ -416,7 +416,7 @@ export default class AppSearchSuper {
   public loadMutex: Promise<any>;
 
   private nextRates: Partial<{[type in SearchSuperMediaType]: number}> = {};
-  private loadPromises: Partial<{[type in SearchSuperMediaType]: Promise<void>}> = {};
+  private loadPromises: Partial<{[type in SearchSuperMediaType]: Promise<any>}> = {};
   private loaded: Partial<{[type in SearchSuperMediaType]: boolean}> = {};
   private loadedChats = false;
   private firstLoad = true;
@@ -1208,7 +1208,7 @@ export default class AppSearchSuper {
       await Promise.all(promises);
       if(!middleware()) {
         // this.log.warn('peer changed');
-        return;
+        return 0;
       }
     }
 
@@ -1262,6 +1262,8 @@ export default class AppSearchSuper {
     // if(type !== 'inputMessagesFilterEmpty') {
     this.afterPerforming(inputFilter === 'inputMessagesFilterEmpty' ? 1 : length, sharedMediaDiv);
     // }
+
+    return length;
   }
 
   private afterPerforming(length: number, contentTab: HTMLElement) {
@@ -2362,6 +2364,11 @@ export default class AppSearchSuper {
     return isSensitive((usePeer(message.peerId) as User.user).restriction_reason || []) || isMessageSensitive(message);
   }
 
+  public getSearchCounters(filters: MessagesFilter[]) {
+    const {peerId, threadId} = this.searchContext;
+    return this.managers.appMessagesManager.getSearchCounters(peerId, filters, undefined, threadId);
+  }
+
   private async loadFirstTime() {
     const middleware = this.middleware.get();
     const {peerId, threadId} = this.searchContext;
@@ -2383,7 +2390,7 @@ export default class AppSearchSuper {
       giftsCount,
       maybePinnedGifts
     ] = await Promise.all([
-      this.managers.appMessagesManager.getSearchCounters(peerId, filters, undefined, threadId),
+      this.getSearchCounters(filters),
       this.canViewSavedDialogs(),
       this.canViewSaved(),
       this.canViewMembers(),
