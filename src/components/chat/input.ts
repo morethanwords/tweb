@@ -2271,7 +2271,7 @@ export default class ChatInput {
         });
       }
 
-      haveSomethingInControl ||= this.chat.isBotforum;
+      haveSomethingInControl ||= this.chat.isBotforum && this.chat.canManageBotforumTopics;
 
       this.botStartBtn.classList.toggle('hide', haveSomethingInControl);
 
