@@ -760,6 +760,10 @@ export class AppUsersManager extends AppManager {
     return this.users[id] && !!this.users[id].pFlags.bot_forum_view;
   }
 
+  public canManageBotforumTopics(id: UserId) {
+    return this.users[id] && !!this.users[id].pFlags.bot_forum_can_manage_topics;
+  }
+
   public isAttachMenuBot(id: UserId) {
     return this.isBot(id) && !!this.users[id].pFlags.bot_attach_menu;
   }

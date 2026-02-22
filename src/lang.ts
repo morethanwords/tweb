@@ -1286,6 +1286,7 @@ const lang = {
   'JumpToDate': 'Jump to Date',
   'Caption': 'Caption',
   'Message': 'Message',
+  'OffThreadMessage': 'Off-Thread Message',
   'Poll': 'Poll',
   'SharedFilesTab2': 'Files',
   'SharedMediaTab2': 'Media',

@@ -10120,6 +10120,7 @@ export default class ChatBubbles {
       this.scrollable.loadedAll.bottom &&
       this.emptyPlaceholderBubble === undefined &&
       !shouldShowUnknownUserPlaceholder(this.peerSettings) &&
+      (!this.chat.isBotforum || this.chat.canManageBotforumTopics) &&
       (
         this.chat.isRestricted ||
         this.chat.type === ChatType.Logs ||
@@ -10472,7 +10473,7 @@ export default class ChatBubbles {
   }
 
   private shouldShowBotforumNewTopic() {
-    return this.chat.isBotforum && !this.chat.threadId;
+    return this.chat.isBotforum && !this.chat.threadId && this.chat.canManageBotforumTopics;
   }
 
   private finalizeTypingMessage(message: MyMessage, tempId: number) {

@@ -186,6 +186,10 @@ export class AppPeersManager extends AppManager {
     return peerId?.isUser() && this.appUsersManager.isBotforum(peerId.toChatId());
   }
 
+  public canManageBotforumTopics(peerId?: PeerId): boolean {
+    return peerId?.isUser() && this.appUsersManager.canManageBotforumTopics(peerId.toChatId());
+  }
+
   public canManageDirectMessages(peerId?: PeerId) {
     return peerId && !peerId.isUser() && this.appChatsManager.canManageDirectMessages(peerId.toChatId());
   }

@@ -2271,6 +2271,8 @@ export default class ChatInput {
         });
       }
 
+      haveSomethingInControl ||= this.chat.isBotforum;
+
       this.botStartBtn.classList.toggle('hide', haveSomethingInControl);
 
       if(this.messageInput) {
@@ -2411,6 +2413,8 @@ export default class ChatInput {
         this.chat.monoforumThreadId || this.directMessagesHandler.store.isReplying ?
           'Message' :
           'ChannelDirectMessages.ChooseMessage';
+    } else if(this.chat.isBotforum && !this.chat.canManageBotforumTopics && !this.chat.threadId) {
+      key = 'OffThreadMessage'
     } else if(
       (this.sendAsPeerId !== undefined && this.sendAsPeerId !== rootScope.myId) ||
       await this.managers.appMessagesManager.isAnonymousSending(peerId)

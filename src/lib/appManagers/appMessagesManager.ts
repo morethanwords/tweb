@@ -2653,6 +2653,7 @@ export class AppMessagesManager extends AppManager {
     const {peerId} = options;
     if(
       this.appPeersManager.isBotforum(peerId) &&
+      this.appPeersManager.canManageBotforumTopics(peerId) &&
       !options.replyToMsgId &&
       (!options.threadId || isTempId(options.threadId))
     ) {
