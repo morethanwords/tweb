@@ -7147,6 +7147,13 @@ export class AppMessagesManager extends AppManager {
         });
       }
 
+      if(this.appPeersManager.isBotforum(peerId) && action._ === 'messageActionTopicCreate') {
+        const topic = this.dialogsStorage.getForumTopic(peerId, threadId);
+        if(!topic) {
+          this.dialogsStorage.getForumTopicById(peerId, threadId);
+        }
+      }
+
       if(action._ === 'messageActionTopicEdit' && !isLocalThreadUpdate) {
         const topic = this.dialogsStorage.getForumTopic(peerId, threadId);
         if(!topic) {
