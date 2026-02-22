@@ -8251,7 +8251,7 @@ export class AppMessagesManager extends AppManager {
   private checkPendingMessage(message: MyMessage) {
     const randomId =
       this.pendingByMessageId[message.mid] ||
-      this.guessBotforumTypingMessage(message);
+      this.getBotforumTypingMessage(message);
 
     let pendingMessage: ReturnType<AppMessagesManager['finalizePendingMessage']>;
     if(randomId) {
@@ -8272,6 +8272,17 @@ export class AppMessagesManager extends AppManager {
     return pendingMessage;
   }
 
+
+  private getBotforumTypingMessage(message: MyMessage) {
+    if(message._ !== 'message' || message.pFlags.out) return;
+    const randomIds = this.typingBotforumMessages.get(message.peerId);
+    if(!randomIds) return;
+    return randomIds.values().next().value; // first value
+  }
+
+  /**
+   * @deprecated now only one typing message per peer is allowed
+   */
   private guessBotforumTypingMessage(message: MyMessage) {
     if(message._ !== 'message' || message.pFlags.out) return;
 
@@ -10589,6 +10600,13 @@ export class AppMessagesManager extends AppManager {
       const storage = this.getHistoryMessagesStorage(peerId);
 
       this.rootScope.dispatchEvent('message_edit', {message, storageKey: storage.key, peerId, mid: tempId});
+    }
+
+    // Allow only one typing message per peer in case of misuse by bot
+    for(const otherRandomId of existingRandomIds) {
+      if(otherRandomId === randomId) continue;
+      this.cancelPendingMessage(otherRandomId);
+      this.deleteBotforumTypingMessageByRandomId(peerId, otherRandomId);
     }
   }
 
