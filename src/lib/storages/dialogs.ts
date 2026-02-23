@@ -553,7 +553,7 @@ export default class DialogsStorage extends AppManager {
 
     let verify: (d: Folder['dialogs'][0]) => boolean;
     if(topicOrSavedId) {
-      if(this.isFilterIdForForum(folderId)) {
+      if(this.isFilterIdForForum(folderId) || this.appPeersManager.isBotforum(peerId)) {
         verify = (dialog) => (dialog as ForumTopic).id === topicOrSavedId;
       } else {
         verify = (dialog) => (dialog as SavedDialog).savedPeerId === topicOrSavedId;

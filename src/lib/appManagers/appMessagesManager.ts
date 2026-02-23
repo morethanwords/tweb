@@ -4444,6 +4444,8 @@ export class AppMessagesManager extends AppManager {
               return message.fromId === this.appPeersManager.peerId;
             }
           };
+        } else if(this.appPeersManager.isBotforum(peerId) && threadOrSavedId) {
+          filterMessage = (message) => getMessageThreadId(message, {isBotforum: true}) === threadOrSavedId;
         }
 
         if(filterMessage) {
