@@ -34,6 +34,7 @@ import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import appImManager from '@lib/appImManager';
 import PopupPayment from '@components/popups/payment';
 import formatStarsAmount from '@appManagers/utils/payments/formatStarsAmount';
+import PopupBoost from '@components/popups/boost';
 
 const getColorByMonths = (months: number) => {
   return months === 12 ? 'red' : (months === 3 ? 'green' : 'blue');
@@ -153,6 +154,7 @@ export function Tabs(props: {
 
 export default class AppBoostsTab extends SliderSuperTabEventable {
   private peerId: PeerId;
+  private isBroadcast: boolean;
   private targets: Map<HTMLElement, Boost>;
   private canCreateGiveaway: boolean;
 
@@ -198,6 +200,11 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
     const boostsViaGiftsButton = Button('btn-primary btn-transparent primary', {icon: 'gift_premium', text: 'BoostingGetBoostsViaGifts'});
     attachClickEvent(boostsViaGiftsButton, () => {
       PopupElement.createPopup(PopupBoostsViaGifts, this.peerId);
+    }, {listenerSetter: this.listenerSetter});
+
+    const boostButton = Button('btn-primary btn-transparent primary', {icon: 'boost', text: this.isBroadcast ? 'BoostChannel' : 'BoostGroup'});
+    attachClickEvent(boostButton, () => {
+      PopupElement.createPopup(PopupBoost, this.peerId);
     }, {listenerSetter: this.listenerSetter});
 
     const noBoostersHint = i18n('NoBoostersHint');
@@ -371,11 +378,10 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
         <Section name="LinkForBoosting" caption="BoostingShareThisLink">
           {inviteLink.container}
         </Section>
-        {this.canCreateGiveaway && (
-          <Section caption="BoostingGetMoreBoosts">
-            {boostsViaGiftsButton}
-          </Section>
-        )}
+        <Section caption={this.canCreateGiveaway ? 'BoostingGetMoreBoosts' : undefined}>
+          {boostButton}
+          {this.canCreateGiveaway && boostsViaGiftsButton}
+        </Section>
       </>
     );
 
@@ -481,6 +487,7 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
     this.container.classList.add('boosts-container');
 
     this.peerId = peerId;
+    this.isBroadcast = await this.managers.appPeersManager.isBroadcast(peerId);
     this.targets = new Map();
 
     this.setTitle('Boosts');

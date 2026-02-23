@@ -44,11 +44,12 @@ export default class PopupBoost extends PopupPeer {
   }
 
   private async construct() {
-    let [boostsStatus, myBoosts, appConfig, isPremiumPurchaseBlocked] = await Promise.all([
+    let [boostsStatus, myBoosts, appConfig, isPremiumPurchaseBlocked, isBroadcast] = await Promise.all([
       this.managers.appBoostsManager.getBoostsStatus(this.peerId).catch(() => undefined as PremiumBoostsStatus),
       this.managers.appBoostsManager.getMyBoosts(),
       this.managers.apiManager.getAppConfig(),
-      apiManagerProxy.isPremiumPurchaseBlocked()
+      apiManagerProxy.isPremiumPurchaseBlocked(),
+      this.managers.appPeersManager.isBroadcast(this.peerId)
     ]);
 
     if(!boostsStatus) {
@@ -97,11 +98,11 @@ export default class PopupBoost extends PopupPeer {
 
     const setTitle = () => {
       if(hasMyBoost) {
-        title.replaceChildren(i18n('YouBoostedChannel'));
+        title.replaceChildren(i18n(isBroadcast ? 'YouBoostedChannel' : 'YouBoostedGroup'));
       } else if(isMaxLevel) {
         title.replaceChildren(i18n('BoostsMaxLevelReached'));
       } else if(hasStories) {
-        title.replaceChildren(i18n('HelpUpgradeChannel'));
+        title.replaceChildren(i18n(isBroadcast ? 'HelpUpgradeChannel' : 'HelpUpgradeGroup'));
       } else {
         title.replaceChildren(i18n('Boost.EnableStoriesFor'));
       }
@@ -111,13 +112,13 @@ export default class PopupBoost extends PopupPeer {
       if(updated && boostsStatus.level === 0 && hasStories) {
         this.description.replaceChildren(
           i18n(
-            'Boost.DescriptionJustReachedLevel1'
+            isBroadcast ? 'Boost.DescriptionJustReachedLevel1' : 'Boost.DescriptionJustReachedLevel1.Group'
           )
         );
       } else if(isMaxLevel || (updated && boostsStatus.level > 0)) {
         this.description.replaceChildren(
           i18n(
-            'Boost.DescriptionJustReachedLevel',
+            isBroadcast ? 'Boost.DescriptionJustReachedLevel' : 'Boost.DescriptionJustReachedLevel.Group',
             [
               boostsStatus.level,
               i18n('Boost.StoriesCount', [boostsStatus.level + 1])
@@ -137,7 +138,7 @@ export default class PopupBoost extends PopupPeer {
       } else {
         this.description.replaceChildren(
           i18n(
-            'ChannelNeedBoostsDescriptionLevel1',
+            isBroadcast ? 'ChannelNeedBoostsDescriptionLevel1' : 'GroupNeedBoostsDescriptionLevel1',
             [
               i18n('MoreBoosts', [needBoostsForNextLevel])
             ]
@@ -186,7 +187,7 @@ export default class PopupBoost extends PopupPeer {
         langKey: 'OK',
         isCancel: true
       } : {
-        langKey: 'BoostChannel',
+        langKey: isBroadcast ? 'BoostChannel' : 'BoostGroup',
         iconLeft: 'boost',
         callback: onClick
       }]));

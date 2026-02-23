@@ -1,4 +1,5 @@
 import CheckboxFieldTsx from '@components/checkboxFieldTsx';
+import {IconTsx} from '@components/iconTsx';
 import RangeStepsSelector from '@components/rangeStepsSelectorTsx';
 import Row from '@components/rowTsx';
 import Section from '@components/section';
@@ -67,7 +68,15 @@ export default function createDoNotRestrictBoostersSection(props: {
                     indexByValue={boosts()}
                     steps={
                       [1, 2, 3, 4, 5]
-                      .map((value) => [value.toString(), value])
+                      .map((value) => [
+                        (
+                          <>
+                            <IconTsx icon={value === 1 ? 'boost' : 'boosts_20'} class="inline-icon" />
+                            {value.toString()}
+                          </>
+                        ),
+                        value
+                      ])
                     }
                     onValue={(value) => {
                       setBoosts(value);

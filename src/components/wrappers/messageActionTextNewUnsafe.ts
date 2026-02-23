@@ -887,6 +887,14 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         ];
         break;
       }
+      case 'messageActionBoostApply': {
+        langPackKey = 'UserBoostedGroup';
+        args = [
+          getNameDivHTML(message.fromId, plain),
+          action.boosts
+        ];
+        break;
+      }
       default:
         langPackKey = (langPack[_] || `[${action._}]`) as any;
         break;

@@ -2167,14 +2167,31 @@
     overflow: inherit;
   }
 
-  &-name-rank {
-    color: var(--message-time-color);
-    font-weight: var(--font-weight-normal);
-    font-size: var(--messages-time-text-size);
-    padding-inline-start: .25rem;
-    margin-left: auto;
-    order: 999;
-    @include text-overflow();
+  &-name {
+    &-first {
+      margin-right: auto;
+    }
+
+    &-rank {
+      color: var(--message-time-color);
+      order: 999;
+      @include text-overflow();
+    }
+
+    &-boosts {
+      order: 1000;
+
+      &-icon {
+        margin-inline-end: .125rem;
+      }
+    }
+
+    &-rank,
+    &-boosts {
+      font-weight: var(--font-weight-normal);
+      font-size: var(--messages-time-text-size);
+      padding-inline-start: .25rem;
+    }
   }
 
   &:not(.has-webpage) {

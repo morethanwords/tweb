@@ -366,6 +366,8 @@ const lang = {
   'Boost.EnableStoriesFor': 'Enable Stories For',
   'Boost.DescriptionJustReachedLevel1': 'This channel reached **Level 1** and can now post stories.',
   'Boost.DescriptionJustReachedLevel': 'This channel reached **Level %1$d** and can now post %2$s per day.',
+  'Boost.DescriptionJustReachedLevel1.Group': 'This channel reached **Level 1** and can now post stories.',
+  'Boost.DescriptionJustReachedLevel.Group': 'This channel reached **Level %1$d** and can now post %2$s per day.',
   'Boost.StoriesCount': {
     'one_value': '**%d** story',
     'other_value': '**%d** stories'
@@ -1045,6 +1047,10 @@ const lang = {
   'DoNotRestrictBoostersCaption': 'Turn this on to always allow users who boosted your group to send messages and media.',
   'DoNotRestrictBoostersCaptionOn': 'Choose how many boosts a user must give to the group to bypass restrictions on sending messages.',
   'CantBoostChat': 'Sorry, you can\'t boost this group or channel.',
+  'UserBoostedGroup': {
+    'one_value': '**%s** boosted the group %s times',
+    'other_value': '**%s** boosted the group %s times'
+  },
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -2099,8 +2105,11 @@ const lang = {
   'ProfileStories': 'Posts',
   'BoostsLevel': 'Level %d',
   'BoostChannel': 'Boost Channel',
+  'BoostGroup': 'Boost Group',
   'ChannelNeedBoostsDescriptionLevel1': 'This channel needs %s to enable stories. Help make it possible!',
+  'GroupNeedBoostsDescriptionLevel1': 'This group needs %s to enable stories. Help make it possible!',
   'HelpUpgradeChannel': 'Help upgrade this channel',
+  'HelpUpgradeGroup': 'Help upgrade this group',
   'PremiumNeeded': 'Premium needed',
   'PremiumNeededForBoosting': 'Only **Telegram Premium** subscribers can boost channels. Do you want to subscribe to **Telegram Premium**?',
   // 'ReplaceBoostChannelDescription': 'You currently boost **%1$s**. Do you want to boost **%2$s** instead?',
@@ -2114,6 +2123,7 @@ const lang = {
   },
   'BoostsMaxLevelReached': 'Maximum Level Reached',
   'YouBoostedChannel': 'You boosted the channel',
+  'YouBoostedGroup': 'You boosted the group',
   'BoostingGiveawayJustStarted': '%s just started a giveaway of Telegram Premium subscriptions to its followers.',
   'BoostingWinnersDate': '**Winners Selection Date**',
   'BoostingGiveawayPrizes': '**Giveaway Prizes**',

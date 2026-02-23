@@ -82,6 +82,7 @@ import ButtonMenu, {ButtonMenuItemOptionsVerifiable} from '@components/buttonMen
 import Icon from '@components/icon';
 import {getDefaultOptions} from '@components/sidebarLeft/tabs/autoDeleteMessages/options';
 import {createAutoDeleteIcon} from '@components/chat/utils';
+import PopupBoost from '@components/popups/boost';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -464,6 +465,16 @@ export default class ChatTopbar {
       direction: 'left-start'
     });
 
+    const onBoostClick = async() => {
+      const {peerId} = this;
+      if(await this.managers.appProfileManager.canViewStatistics(peerId)) {
+        this.appSidebarRight.createTab(AppBoostsTab).open(this.peerId);
+        this.appSidebarRight.toggleSidebar(true);
+      } else {
+        PopupElement.createPopup(PopupBoost, this.peerId);
+      }
+    };
+
     this.menuButtons = [this.autoDeleteBtnMenuOptions, {
       icon: 'search',
       text: 'Search',
@@ -653,12 +664,14 @@ export default class ChatTopbar {
       verify: () => !this.chat.monoforumThreadId && this.managers.appProfileManager.canViewStatistics(this.peerId)
     }, {
       icon: 'addboost',
-      text: 'Boosts',
-      onClick: () => {
-        this.appSidebarRight.createTab(AppBoostsTab).open(this.peerId);
-        this.appSidebarRight.toggleSidebar(true);
-      },
-      verify: () => this.chat.isBroadcast && this.managers.appProfileManager.canViewStatistics(this.peerId)
+      text: 'BoostChannel',
+      onClick: onBoostClick,
+      verify: async() => this.chat.isBroadcast
+    }, {
+      icon: 'addboost',
+      text: 'BoostGroup',
+      onClick: onBoostClick,
+      verify: async() => !this.chat.isBroadcast
     }, {
       icon: 'bots',
       text: 'Settings',

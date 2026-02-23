@@ -220,6 +220,7 @@ import {wrapSolidComponent} from '@helpers/solid/wrapSolidComponent';
 import wrapDice from '@components/chat/bubbleParts/dice';
 import animateSomethingWithScroll from '@helpers/animateSomethingWithScroll';
 import onQuoteClick from '@helpers/dom/onQuoteClick';
+import PopupBoost from '@components/popups/boost';
 
 export type BubbleContext = {
   bubble: HTMLElement,
@@ -3010,6 +3011,15 @@ export default class ChatBubbles {
           monoforumThreadId: this.chat.monoforumThreadId
         });
 
+        return;
+      }
+    }
+
+    if(bubbleFullMid) {
+      const message = this.chat.getMessage(bubbleFullMid);
+      const {action} = message as Message.messageService;
+      if(action?._ === 'messageActionBoostApply') {
+        PopupElement.createPopup(PopupBoost, this.peerId);
         return;
       }
     }
@@ -8451,16 +8461,16 @@ export default class ChatBubbles {
       ) {
         const processRank = () => {
           const rank = this.ranks.get(message.fromId);
-          if(!rank) {
+          if(!rank && !(message as Message.message).from_boosts_applied) {
             return;
           }
 
-          this.wrapTitleAndRank(firstElement, rank);
+          this.wrapTitleAndRank(firstElement, message as Message.message, rank);
         };
 
         const postAuthor = hasPostAuthor && (message as Message.message).post_author/*  || fwdFrom?.post_author */;
         if(postAuthor) {
-          this.wrapTitleAndRank(firstElement, postAuthor);
+          this.wrapTitleAndRank(firstElement, message, postAuthor);
         } else if(this.ranks) {
           processRank();
         } else {
@@ -8472,8 +8482,10 @@ export default class ChatBubbles {
           });
         }
       } else if(this.chat.isMegagroup && !message.fromId.isUser() && (message as Message.message).views) {
-        this.wrapTitleAndRank(firstElement, 0);
-      }
+        this.wrapTitleAndRank(firstElement, message as Message.message, 0);
+      }/*  else if((message as Message.message).from_boosts_applied) {
+        this.wrapTitleAndRank(firstElement, message as Message.message);
+      } */
 
       if(topicNameButtonContainer && context.isStandaloneMedia) {
         if(!context.attachmentDiv) {
@@ -8781,16 +8793,28 @@ export default class ChatBubbles {
     }, container, middleware);
   }
 
-  private wrapTitleAndRank(title: HTMLElement, rank: ReturnType<typeof getParticipantRank> | 0) {
-    const wrappedRank = this.createBubbleNameRank(rank);
+  private wrapTitleAndRank(
+    title: HTMLElement,
+    message: Message.message,
+    rank?: Parameters<ChatBubbles['createBubbleNameRank']>[0]
+  ) {
+    const wrappedRank = rank !== undefined && this.createBubbleNameRank(rank);
     // title.after(wrappedRank);
     const container = document.createElement('div');
     container.classList.add('title-flex');
     title.replaceWith(container);
-    container.append(title, wrappedRank);
+    let boostsElement: HTMLElement;
+    const boosts = message.from_boosts_applied;
+    if(boosts) {
+      boostsElement = document.createElement('span');
+      boostsElement.classList.add('bubble-name-boosts');
+      boostsElement.append(Icon('boosts_20', 'inline-icon', 'bubble-name-boosts-icon'), '' + boosts);
+    }
+    title.classList.add('bubble-name-first');
+    container.append(...[title, wrappedRank, boostsElement].filter(Boolean));
   }
 
-  private createBubbleNameRank(rank: ReturnType<typeof getParticipantRank> | 0) {
+  private createBubbleNameRank(rank: Parameters<typeof wrapParticipantRank>[0]) {
     const span = document.createElement('span');
     span.classList.add('bubble-name-rank');
     span.append(wrapParticipantRank(rank));
