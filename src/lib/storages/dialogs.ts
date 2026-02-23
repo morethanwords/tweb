@@ -1936,7 +1936,14 @@ export default class DialogsStorage extends AppManager {
       return true;
     }
 
-    const chatId = forumTopic.peerId.toChatId();
+    const peerId = forumTopic.peerId;
+
+    // Note: currently, it doesn't matter if the user can't create the topics inside the botforum. We allow the user to manage the topics anyway.
+    if(this.appPeersManager.isBotforum(peerId)) return true;
+
+    if(!peerId.isAnyChat()) return false;
+
+    const chatId = peerId.toChatId();
     return ((this.appChatsManager.getChat(chatId) as Chat.channel).admin_rights ? this.appChatsManager.hasRights(forumTopic.peerId.toChatId(), 'manage_topics') : false);
   }
 
