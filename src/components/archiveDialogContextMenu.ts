@@ -49,14 +49,14 @@ export const getArchiveContextMenuButtons = (): ButtonMenuItemOptionsVerifiable[
 
   return [
     {
-      icon: 'eyecross_outline',
+      icon: 'movetomenu',
       text: 'Archive.HideFromChatList',
       onClick: () => {
         setAppSettings('showArchiveInChatList', false);
       },
       verify: () => appSettings.showArchiveInChatList
     }, {
-      icon: 'eye1',
+      icon: 'movetochats',
       text: 'Archive.ShowInChatList',
       onClick: () => {
         setAppSettings('showArchiveInChatList', true);
@@ -137,12 +137,12 @@ function openFeatureDetails() {
         subtitle: i18n('ArchiveFeatureDetails.HowTo.Subtitle', [i18n('Archive'), i18n('Unarchive')])
       },
       {
-        icon: 'eye2',
+        icon: 'eyecross_outline',
         title: i18n('ArchiveFeatureDetails.Hide.Title'),
         subtitle: i18n('ArchiveFeatureDetails.Hide.Subtitle', [i18n('Archive.HideFromChatList')])
       },
       {
-        icon: 'stories',
+        icon: 'story',
         title: i18n('ArchiveFeatureDetails.Stories.Title'),
         subtitle: i18n('ArchiveFeatureDetails.Stories.Subtitle')
       }
@@ -153,7 +153,7 @@ function openFeatureDetails() {
       }
     ],
     sticker: {
-      element: createFeatureDetailsIconSticker('archive')
+      element: createFeatureDetailsIconSticker('archive_filled', 'background-gradient-archive')
     }
   });
 }

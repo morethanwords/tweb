@@ -13,22 +13,21 @@
   height: 100%;
 
   border-radius: 50%;
-  /* background: linear-gradient(#8996a0, #979797); */
-  background: linear-gradient(#acb3b9, #b1b8b9);
+  background: linear-gradient(#5CAFFA, #408ACF);
   display: flex;
   align-items: center;
   justify-content: center;
 
   color: white;
 
-  :global(.night) & {
-    background: linear-gradient(#4a5259, #6a7475);
-  }
+  // :global(.night) & {
+  //   background: linear-gradient(#4a5259, #6a7475);
+  // }
 }
 
 .MediaIcon {
   font-size: 28px;
-  transform: translateY(1px); // The icon itself is a little offset
+  // transform: translateY(1px); // The icon itself is a little offset
 }
 
 .Title {

@@ -921,7 +921,8 @@
     }
 
     &-icon {
-      margin-inline-end: 0.5rem;
+      margin-inline-end: 0.25rem;
+      font-size: 14px;
     }
 
     &-performer {
@@ -949,6 +950,7 @@
       align-items: center;
       justify-content: center;
       height: 100%;
+      line-height: 1.5rem;
     }
   }
 }

@@ -647,7 +647,7 @@ PeerProfile.PinnedMusic = () => {
     <div class="profile-music-container">
       <div class="profile-music" on:click={{capture: true, handleEvent: openSavedMusic}} use:ripple>
         <div class="profile-music-inner">
-          <IconTsx icon="music" class="profile-music-icon" />
+          <IconTsx icon="notes" class="profile-music-icon" />
           <Show when={audioAttr()?.performer}>
             {(performer) => <span class="profile-music-performer text-overflow-no-wrap">{wrapEmojiText(performer())}</span>}
           </Show>

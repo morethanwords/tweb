@@ -3,7 +3,7 @@
   align-items: center;
   justify-content: center;
 
-  --size: 80px;
+  --size: 100px;
   --icon-size: calc(var(--size) * 0.6);
 
   width: var(--size);
@@ -13,6 +13,16 @@
   background-color: var(--primary-color);
 
   color: white;
+
+  &:global(.background-gradient-avatar) {
+    --color-top: var(--avatar-color-top);
+    --color-bottom: var(--avatar-color-bottom);
+    background: linear-gradient(var(--color-top), var(--color-bottom));
+  }
+
+  &:global(.background-gradient-archive) {
+    background: linear-gradient(#5CAFFA, #408ACF);
+  }
 }
 
 .Icon {

@@ -434,7 +434,7 @@ function ArchiveAvatar(props: {
     >
       {storiesCircle()}
       <div class={styles.MediaContent}>
-        <IconTsx class={styles.MediaIcon} icon="archive" />
+        <IconTsx class={styles.MediaIcon} icon="archive_filled" />
       </div>
     </div>
   );

@@ -1,8 +1,6 @@
 import showFeatureDetailsPopup, {FeatureDetailsButton} from '@components/popups/featureDetails';
 import {i18n} from '@lib/langPack';
 import {useAppConfig} from '@stores/appState';
-import styles from './storiesStealthMode.module.scss';
-import {IconTsx} from '@components/iconTsx';
 import {wrapStoriesStealthModeDuration} from '@components/wrappers/wrapDuration';
 import usePremium from '@stores/premium';
 import PopupPremium from '@components/popups/premium';
@@ -10,6 +8,7 @@ import rootScope from '@lib/rootScope';
 import tsNow from '@helpers/tsNow';
 import {slowModeTimer} from '@components/chat/utils';
 import {onCleanup} from 'solid-js';
+import createFeatureDetailsIconSticker from '@components/featureDetailsIconSticker';
 
 export default async function showStoriesStealthModePopup(props: {
   onActivate?: () => void,
@@ -53,27 +52,22 @@ export default async function showStoriesStealthModePopup(props: {
   showFeatureDetailsPopup({
     rows: [
       {
-        icon: 'hand',
+        icon: 'backward_5',
         title: i18n('Stories.StealthMode.Row1.Title'),
         subtitle: i18n('Stories.StealthMode.Row1.Subtitle', [
-          wrapStoriesStealthModeDuration(appConfig.stories_stealth_future_period)
+          wrapStoriesStealthModeDuration(appConfig.stories_stealth_past_period)
         ])
       },
       {
-        icon: 'lock',
+        icon: 'forward_25',
         title: i18n('Stories.StealthMode.Row2.Title'),
         subtitle: i18n('Stories.StealthMode.Row2.Subtitle', [
-          wrapStoriesStealthModeDuration(appConfig.stories_stealth_past_period)
+          wrapStoriesStealthModeDuration(appConfig.stories_stealth_future_period)
         ])
       }
     ],
     sticker: {
-      element: () => (
-        <div class={styles.sticker}>
-          <IconTsx icon="eye2" />
-        </div>
-      ),
-      size: 130
+      element: createFeatureDetailsIconSticker('eye2', 'background-gradient-avatar')
     },
     title: i18n('Stories.StealthMode.Title'),
     subtitle: i18n('Stories.StealthMode.Subtitle'),
