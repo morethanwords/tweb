@@ -23,6 +23,10 @@
   &:global(.background-gradient-archive) {
     background: linear-gradient(#5CAFFA, #408ACF);
   }
+
+  &:global(.background-gradient-stories) {
+    background: linear-gradient(225deg, #34C76F, #3DA1FD);
+  }
 }
 
 .Icon {

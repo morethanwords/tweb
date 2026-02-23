@@ -67,7 +67,7 @@ export default async function showStoriesStealthModePopup(props: {
       }
     ],
     sticker: {
-      element: createFeatureDetailsIconSticker('eye2', 'background-gradient-avatar')
+      element: createFeatureDetailsIconSticker('eye2', 'background-gradient-stories')
     },
     title: i18n('Stories.StealthMode.Title'),
     subtitle: i18n('Stories.StealthMode.Subtitle'),

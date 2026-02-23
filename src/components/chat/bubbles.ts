@@ -222,6 +222,8 @@ import animateSomethingWithScroll from '@helpers/animateSomethingWithScroll';
 import onQuoteClick from '@helpers/dom/onQuoteClick';
 import PopupBoost from '@components/popups/boost';
 
+// TODO: fix new message won't be rendered if an old one is rendering in the moment
+
 export type BubbleContext = {
   bubble: HTMLElement,
   bubbleContainer: HTMLElement,
@@ -929,14 +931,13 @@ export default class ChatBubbles {
             pollElement.setAttribute('poll-id', '' + poll.id);
             pollElement.setAttribute('message-id', '' + mid);
           }
-        } else if(webPage && !bubble.querySelector('.web')) {
-          getHeavyAnimationPromise().then(() => {
-            this.safeRenderMessage({
-              message,
-              reverse: true,
-              bubble
-            });
-            this.scrollToBubbleIfLast(bubble);
+        } else if(webPage?._ === 'webPage' && !bubble.querySelector('.web')) {
+          const isLast = this.getLastBubble() === bubble;
+          onMessageEdit(message, true).then(async(result) => {
+            if(isLast && result) {
+              await this.messagesQueuePromise;
+              this.scrollToBubbleEnd(result.bubble);
+            }
           });
         }
 
@@ -951,15 +952,13 @@ export default class ChatBubbles {
       });
     });
 
-    this.listenerSetter.add(rootScope)('message_edit', async({storageKey, message}) => {
-      if(storageKey !== this.chat.messagesStorageKey) return;
-
+    const onMessageEdit = async(
+      message: Message.message | Message.messageService,
+      reverse = false
+    ) => {
       const fullMid = makeFullMid(message);
       const bubble = this.getBubble(fullMid);
       if(!bubble) return;
-
-      await getHeavyAnimationPromise();
-      if(this.getBubble(fullMid) !== bubble) return;
 
       const updateLocalOnEdit = this.updateLocalOnEdit.get(bubble);
       if(updateLocalOnEdit) {
@@ -978,11 +977,16 @@ export default class ChatBubbles {
         group?.querySelector(`.${cls}`)?.classList.remove(cls);
       }
 
-      this.safeRenderMessage({
+      return this.safeRenderMessage({
         message,
-        reverse: true,
+        reverse,
         bubble
       });
+    };
+
+    this.listenerSetter.add(rootScope)('message_edit', ({storageKey, message}) => {
+      if(storageKey !== this.chat.messagesStorageKey) return;
+      onMessageEdit(message);
     });
 
     this.listenerSetter.add(rootScope)('message_error', async({storageKey, tempId, peerId}) => {
