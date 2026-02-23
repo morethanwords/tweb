@@ -9900,7 +9900,7 @@ export default class ChatBubbles {
         return this.renderBotforumPlaceholder();
       }
 
-      if(side === 'top' && value && this.chat.isBot) {
+      if(side === 'top' && value && this.chat.isBot && !this.chat.threadId) {
         return this.renderBotPlaceholder();
       }
 
