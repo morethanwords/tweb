@@ -30,23 +30,11 @@ Run `node build` to build the minimized production version of the app. Copy `pub
 * Run `docker-compose up tweb.production -d` nginx image and container to serve the build
 * Open http://localhost:80/ in your browser.
 
-
-I also created an image https://hub.docker.com/r/elgammalx/tweb/tags  based on Nginx ready to be deployed.
-
 You can use `docker build -f ./.docker/Dockerfile_production -t {dockerhub-username}/{imageName}:{latest} .` to build your production ready image.
-
-My build use in `docker-compose.yaml` file
-```yaml
-services:
-  tweb.production:
-    image: elgammalx/tweb
-    ports:
-      - 80:80
-```
 
 ### Dependencies
 * [BigInteger.js](https://github.com/peterolson/BigInteger.js) ([Unlicense](https://github.com/peterolson/BigInteger.js/blob/master/LICENSE))
-* [pako](https://github.com/nodeca/pako) ([MIT License](https://github.com/nodeca/pako/blob/master/LICENSE))
+* [fflate](https://github.com/101arrowz/fflate) ([MIT License](https://github.com/101arrowz/fflate/blob/master/LICENSE))
 * [cryptography](https://github.com/spalt08/cryptography) ([Apache License 2.0](https://github.com/spalt08/cryptography/blob/master/LICENSE))
 * [emoji-data](https://github.com/iamcal/emoji-data) ([MIT License](https://github.com/iamcal/emoji-data/blob/master/LICENSE))
 * [emoji-test-regex-pattern](https://github.com/mathiasbynens/emoji-test-regex-pattern) ([MIT License](https://github.com/mathiasbynens/emoji-test-regex-pattern/blob/main/LICENSE))

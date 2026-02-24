@@ -9,7 +9,7 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import {TLDeserialization, TLSerialization} from '@lib/mtproto/tl_utils';
+import {gzipPacked, TLDeserialization, TLSerialization} from '@lib/mtproto/tl_utils';
 import CryptoWorker from '@lib/crypto/cryptoMessagePort';
 import Schema from '@lib/mtproto/schema';
 import {logger, LogTypes} from '@lib/logger';
@@ -39,6 +39,7 @@ import {bigIntFromBytes} from '@helpers/bigInt/bigIntConversion';
 import safeAssign from '@helpers/object/safeAssign';
 import {MTAuthKey} from '@lib/mtproto/authKey';
 import {MessageKeyUtils} from '@lib/mtproto/messageKeyUtils';
+import gzipCompress from '@helpers/gzipCompress';
 
 // console.error('networker included!', new Error().stack);
 
@@ -416,10 +417,18 @@ export default class MTPNetworker {
 
     const messageId = options.msg_id ?? this.timeManager.generateId();
     const seqNo = this.generateSeqNo();
+    let body = serializer.getBytes(true);
+    if(options.gzipCompress) {
+      const packed = gzipCompress(body);
+      const wrapper = new TLSerialization({startMaxLength: (packed.length + 67) & ~3});
+      wrapper.storeInt(gzipPacked, 'gzip_packed[id]');
+      wrapper.storeBytes(packed, 'gzip_packed[packed_data]');
+      body = wrapper.getBytes(true);
+    }
     const message: MTMessage = {
       msg_id: messageId,
       seq_no: seqNo,
-      body: serializer.getBytes(true),
+      body,
       isAPI: true,
       humanReadable: method
     };

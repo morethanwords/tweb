@@ -23,7 +23,7 @@ import {bigIntToSigned, bigIntToUnsigned} from '@helpers/bigInt/bigIntConversion
 const boolFalse = +Schema.API.constructors.find((c) => c.predicate === 'boolFalse').id;
 const boolTrue = +Schema.API.constructors.find((c) => c.predicate === 'boolTrue').id;
 const vector = +Schema.API.constructors.find((c) => c.predicate === 'vector').id;
-const gzipPacked = +Schema.MTProto.constructors.find((c) => c.predicate === 'gzip_packed').id;
+export const gzipPacked = +Schema.MTProto.constructors.find((c) => c.predicate === 'gzip_packed').id;
 
 // * using slice to have a new buffer, otherwise the buffer will be copied to main thread
 const sliceMethod: 'slice' | 'subarray' = 'slice'; // subarray

@@ -13,6 +13,7 @@ export type InvokeApiOptions = Partial<{
   floodMaxTimeout: number,
   noErrorBox: true,
   fileUpload: true,
+  gzipCompress: true,
   ignoreErrors: true,
   fileDownload: true,
   createNetworker: true,
