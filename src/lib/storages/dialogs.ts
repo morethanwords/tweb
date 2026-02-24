@@ -1619,11 +1619,11 @@ export default class DialogsStorage extends AppManager {
         this.cachedResults.query = query;
         this.cachedResults.folderId = filterId;
 
-        const index = isForum ? this.getForumTopicsCache(filterId).index : this.dialogsIndex;
+        const index = (isForum || isBotforum) ? this.getForumTopicsCache(filterId).index : this.dialogsIndex;
         const results = index.search(query);
 
         const dialogs: DialogsStorage['cachedResults']['dialogs'] = [];
-        if(isForum) for(const topicId of results) {
+        if(isForum || isBotforum) for(const topicId of results) {
           const topic = this.getForumTopic(filterId, topicId);
           if(topic) {
             dialogs.push(topic);
