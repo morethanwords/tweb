@@ -30,6 +30,7 @@ import {AutonomousMonoforumThreadList} from '@components/autonomousDialogList/mo
 import Scrollable from '@components/scrollable';
 import SortedDialogList from '@components/sortedDialogList';
 import rootScope from '@lib/rootScope';
+import apiManagerProxy from '@lib/apiManagerProxy';
 
 type PopupPickUserOptions = Modify<ConstructorParameters<typeof AppSelectPeers>[0], {
   multiSelect?: never,
@@ -77,6 +78,29 @@ async function wrapTopicRow({
   return row.container;
 }
 
+function wrapAllMessagesRow({
+  onClick
+}: {
+  onClick: () => void
+}) {
+  const row = new Row({
+    title: i18n('AllMessages'),
+    clickable: onClick
+  });
+  row.container.classList.add('selector-forum-topic');
+  const media = row.createMedia('abitbigger');
+  media.append(wrapEmojiText('💬'));
+  return row.container;
+}
+
+type OnSelectOptions = {
+  threadId?: number;
+  monoforumThreadId?: PeerId;
+  done?: boolean;
+};
+
+type LocalOnSelectCallback = (peerId: PeerId, options?: OnSelectOptions) => void;
+
 export default class PopupPickUser extends PopupElement {
   public selector: AppSelectPeers;
   public forumSelector: AppSelectPeers;
@@ -110,13 +134,15 @@ export default class PopupPickUser extends PopupElement {
     const headerSearch = options.headerSearch ?? isMultiSelect;
 
     let ignoreOnSelect: boolean;
-    const onSelect = async(peerId: PeerId | PeerId[], threadId?: number, monoforumThreadId?: PeerId) => {
+
+    const onSelect = async(peerId: PeerId | PeerId[], {threadId, monoforumThreadId, done}: OnSelectOptions = {}) => {
       if(ignoreOnSelect) {
         return;
       }
 
       if(
         options.useTopics &&
+        !done &&
         !Array.isArray(peerId) &&
         !threadId && !monoforumThreadId &&
         (await this.managers.appPeersManager.isForum(peerId) || await this.managers.appPeersManager.isBotforum(peerId))
@@ -134,6 +160,7 @@ export default class PopupPickUser extends PopupElement {
 
       if(
         !Array.isArray(peerId) &&
+        !done &&
         !threadId && !monoforumThreadId &&
         await this.managers.appPeersManager.canManageDirectMessages(peerId) &&
         await this.managers.appPeersManager.isMonoforum(peerId)
@@ -263,7 +290,7 @@ export default class PopupPickUser extends PopupElement {
     tabsContainer: HTMLElement,
     peerId: PeerId,
     placeholder: LangPackKey,
-    onSelect: (peerId: PeerId, threadId: number) => any
+    onSelect: LocalOnSelectCallback
   }) {
     const middlewareHelper = this.middlewareHelper.get().create();
     const middleware = middlewareHelper.get();
@@ -313,7 +340,7 @@ export default class PopupPickUser extends PopupElement {
         forumSelector.list[!append ? 'append' : 'prepend'](...elements);
       },
       onSelect: (topicId) => {
-        onSelect(peerId, topicId);
+        onSelect(peerId, {threadId: topicId});
       },
       placeholderSizes: {
         avatarSize: 32,
@@ -329,7 +356,14 @@ export default class PopupPickUser extends PopupElement {
       },
       onFirstRender: () => {
         deferred.resolve();
-      }
+      },
+      topSectionContentElements: apiManagerProxy.isBotforum(peerId) && !apiManagerProxy.canManageBotforumTopics(peerId) ? [
+        wrapAllMessagesRow({
+          onClick: () => {
+            onSelect(peerId, {done: true});
+          }
+        })
+      ] : undefined
     });
 
     forumSelector.container.classList.add('tabs-tab');
@@ -363,7 +397,7 @@ export default class PopupPickUser extends PopupElement {
     peerId: PeerId,
     tabsContainer: HTMLElement,
     placeholder: LangPackKey,
-    onSelect: PopupPickUserOptions['onSelect']
+    onSelect: LocalOnSelectCallback
   }) {
     const middlewareHelper = this.middlewareHelper.get().create();
     const middleware = middlewareHelper.get();
@@ -404,7 +438,7 @@ export default class PopupPickUser extends PopupElement {
       const peerId = target.dataset.peerId?.toPeerId?.();
       if(!peerId) return;
 
-      onSelect?.(parentPeerId, undefined, peerId);
+      onSelect?.(parentPeerId, {monoforumThreadId: peerId});
     });
 
     const container = document.createElement('div');

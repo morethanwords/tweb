@@ -61,7 +61,7 @@ export default class DialogsContextMenu {
         this.monoforumParentPeerId = +li.dataset.monoforumParentPeerId || undefined;
 
         if(li.dataset.isAllChats) {
-          throw {};
+          throw 'All chats dialog';
         }
 
         this.dialog = this.monoforumParentPeerId ?

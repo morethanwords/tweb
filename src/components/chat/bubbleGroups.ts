@@ -510,6 +510,7 @@ export default class BubbleGroups {
 
       if(item.message._ !== 'message') return;
       if(!bubbleAddons.continueLastTopicReplyMarkup) return;
+      if(!getMessageThreadId(item.message, {isBotforum: this.chat.isBotforum})) return;
 
       bubbleAddons.continueLastTopicReplyMarkup.feedProps<false>({
         visible: visible && !(item.message.reply_markup as ReplyMarkup.replyInlineMarkup)?.rows

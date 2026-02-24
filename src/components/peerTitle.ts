@@ -195,16 +195,32 @@ export default class PeerTitle {
         getTopicIconPromise
       ]);
 
-      if(icons?.elements?.length || icons?.botVerification || topicIcon) {
+      const createInnerTitleSpan = () => {
         const inner = document.createElement('span');
         inner.classList.add('peer-title-inner');
         hasInner = true;
         setInnerHTML(inner, title);
 
+        return inner;
+      };
+
+      const setElementContent = (nodes: (Node | string)[]) => {
         const fragment = document.createDocumentFragment();
-        fragment.append(...[icons.botVerification, topicIcon, inner, ...(icons.elements ?? [])].filter(Boolean));
+        fragment.append(...nodes);
 
         setInnerHTML(this.element, fragment);
+      }
+
+      if(topicIcon) {
+        setElementContent(
+          [topicIcon, createInnerTitleSpan()].filter(Boolean)
+        );
+      } else if(icons?.elements?.length || icons?.botVerification) {
+        setElementContent(
+          [
+            icons.botVerification, topicIcon, createInnerTitleSpan(), ...(icons.elements ?? [])
+          ].filter(Boolean)
+        );
       } else {
         setInnerHTML(this.element, title);
       }
