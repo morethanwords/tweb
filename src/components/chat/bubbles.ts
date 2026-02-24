@@ -8812,7 +8812,7 @@ export default class ChatBubbles {
     if(boosts) {
       boostsElement = document.createElement('span');
       boostsElement.classList.add('bubble-name-boosts');
-      boostsElement.append(Icon('boosts_20', 'inline-icon', 'bubble-name-boosts-icon'), '' + boosts);
+      boostsElement.append(Icon('boosts', 'inline-icon', 'bubble-name-boosts-icon'), '' + boosts);
     }
     title.classList.add('bubble-name-first');
     container.append(...[title, wrappedRank, boostsElement].filter(Boolean));
