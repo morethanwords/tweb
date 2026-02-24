@@ -1,0 +1,2 @@
+import{bW as o,bp as l,a4 as n,t as r}from"./index-BV2I1Jtp.js";const i="_Radio_8rde5_36",d="_floating_8rde5_62",p="_checked_8rde5_66",t={Radio:i,floating:d,checked:p},f=r("<span>"),g=a=>{const[s,c]=o(a,["checked","floating","class","classList"]);return(()=>{const e=f();return l(e,n({get class(){return t.Radio},get classList(){return{[s.class]:!!s.class,[t.checked]:s.checked,[t.floating]:s.floating,"offset-left":s.floating,...s.classList}}},c),!1,!1),e})()};export{g as S};
+//# sourceMappingURL=staticRadio-g0LH5kyh.js.map
