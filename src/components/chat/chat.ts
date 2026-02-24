@@ -167,6 +167,7 @@ export default class Chat extends EventListenerBase<{
   public isMonoforum: boolean;
   public isBotforum: boolean;
   public canManageDirectMessages: boolean;
+  public canManageBotforumTopics: boolean;
   public isTemporaryThread: boolean;
   public noInput: boolean;
 
@@ -912,6 +913,7 @@ export default class Chat extends EventListenerBase<{
 
     const isForum = apiManagerProxy.isForum(peerId);
     const isBotforum = apiManagerProxy.isBotforum(peerId);
+    const canManageBotforumTopics = apiManagerProxy.canManageBotforumTopics(peerId);
 
     if(threadId && !isForum && !isBotforum) {
       options.type = options.peerId === rootScope.myId ? ChatType.Saved : ChatType.Discussion;
@@ -976,6 +978,7 @@ export default class Chat extends EventListenerBase<{
     this.isMonoforum = !!(chat?._ === 'channel' && chat?.pFlags?.monoforum);
     this.isBotforum = isBotforum;
     this.canManageDirectMessages = canManageDirectMessages;
+    this.canManageBotforumTopics = canManageBotforumTopics;
 
     if(starsAmount.cached) {
       this.starsAmount = await starsAmount.result;
@@ -1334,9 +1337,10 @@ export default class Chat extends EventListenerBase<{
       this.managers.appPeersManager.isBot(this.peerId),
       this.managers.appMessagesManager.getDialogOnly(this.peerId),
       this.getHistoryStorage(true),
-      this.peerId.isUser() ? this.managers.appProfileManager.isCachedUserBlocked(this.peerId.toUserId()) : undefined
-    ]).then(([isBot, dialog, historyStorage, isUserBlocked]) => {
-      if(!isBot || isVerificationBot(this.peerId)) {
+      this.peerId.isUser() ? this.managers.appProfileManager.isCachedUserBlocked(this.peerId.toUserId()) : undefined,
+      this.managers.appPeersManager.isBotforum(this.peerId)
+    ]).then(([isBot, dialog, historyStorage, isUserBlocked, isBotforum]) => {
+      if(!isBot || isVerificationBot(this.peerId) || isBotforum) {
         return false;
       }
 

@@ -1292,6 +1292,7 @@ const lang = {
   'JumpToDate': 'Jump to Date',
   'Caption': 'Caption',
   'Message': 'Message',
+  'OffThreadMessage': 'Off-Thread Message',
   'Poll': 'Poll',
   'SharedFilesTab2': 'Files',
   'SharedMediaTab2': 'Media',
@@ -1525,6 +1526,7 @@ const lang = {
   'ChatYourSelfTitle': 'Your cloud storage',
   'ActionYouCreateGroup': 'You created the group',
   'NoMessages': 'No messages here yet...',
+  'NoMessagesYet': 'No messages yet',
   'NoScheduledMessages': 'No scheduled messages here yet...',
   'NoMessagesGreetingsDescription': 'Send a message or tap the greeting below.',
   'InviteToGroupError': 'Sorry, you can\'t add this user to groups because of user\'s privacy settings.',
@@ -3920,6 +3922,7 @@ const lang = {
   'SuggestedPosts.TONAmount': '%d TON',
 
   'CreateNewTopicDescription': 'Type any message to\ncreate a new topic.',
+  'NoTopics': 'No topics',
   'TopicsCount': {
     'one_value': '%d topic',
     'other_value': '%d topics'

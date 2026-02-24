@@ -553,7 +553,7 @@ export default class DialogsStorage extends AppManager {
 
     let verify: (d: Folder['dialogs'][0]) => boolean;
     if(topicOrSavedId) {
-      if(this.isFilterIdForForum(folderId)) {
+      if(this.isFilterIdForForum(folderId) || this.appPeersManager.isBotforum(peerId)) {
         verify = (dialog) => (dialog as ForumTopic).id === topicOrSavedId;
       } else {
         verify = (dialog) => (dialog as SavedDialog).savedPeerId === topicOrSavedId;
@@ -1619,11 +1619,11 @@ export default class DialogsStorage extends AppManager {
         this.cachedResults.query = query;
         this.cachedResults.folderId = filterId;
 
-        const index = isForum ? this.getForumTopicsCache(filterId).index : this.dialogsIndex;
+        const index = (isForum || isBotforum) ? this.getForumTopicsCache(filterId).index : this.dialogsIndex;
         const results = index.search(query);
 
         const dialogs: DialogsStorage['cachedResults']['dialogs'] = [];
-        if(isForum) for(const topicId of results) {
+        if(isForum || isBotforum) for(const topicId of results) {
           const topic = this.getForumTopic(filterId, topicId);
           if(topic) {
             dialogs.push(topic);
@@ -1936,7 +1936,14 @@ export default class DialogsStorage extends AppManager {
       return true;
     }
 
-    const chatId = forumTopic.peerId.toChatId();
+    const peerId = forumTopic.peerId;
+
+    // Note: currently, it doesn't matter if the user can't create the topics inside the botforum. We allow the user to manage the topics anyway.
+    if(this.appPeersManager.isBotforum(peerId)) return true;
+
+    if(!peerId.isAnyChat()) return false;
+
+    const chatId = peerId.toChatId();
     return ((this.appChatsManager.getChat(chatId) as Chat.channel).admin_rights ? this.appChatsManager.hasRights(forumTopic.peerId.toChatId(), 'manage_topics') : false);
   }
 

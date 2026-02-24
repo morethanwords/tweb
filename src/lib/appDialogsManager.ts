@@ -2074,7 +2074,9 @@ export class AppDialogsManager {
     }
 
     if(!lastMessage && !draftMessage/*  || (lastMessage._ === 'messageService' && !lastMessage.rReply) */) {
-      dom.lastMessageSpan.replaceChildren();
+      const withNoMessagesText = apiManagerProxy.isBotforum(peerId);
+
+      dom.lastMessageSpan.replaceChildren(...(withNoMessagesText ? [i18n('NoMessagesYet')] : []));
       dom.lastTimeSpan.replaceChildren();
       delete dom.listEl.dataset.mid;
 
