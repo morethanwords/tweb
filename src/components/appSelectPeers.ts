@@ -196,7 +196,8 @@ export default class AppSelectPeers {
     excludeMonoforums?: boolean,
     excludeBotforums?: boolean,
     placeholderSizes?: ConstructorParameters<typeof DialogsPlaceholder>[0],
-    getPeerIdFromKey?: AppSelectPeers['getPeerIdFromKey']
+    getPeerIdFromKey?: AppSelectPeers['getPeerIdFromKey'],
+    topSectionContentElements?: HTMLElement[]
   }) {
     safeAssign(this, options);
 
@@ -386,6 +387,10 @@ export default class AppSelectPeers {
 
     if(this.sectionNameLangPackKey) {
       section.content = section.generateContentElement();
+    }
+
+    if(options.topSectionContentElements) {
+      section.content.append(...options.topSectionContentElements);
     }
 
     // it can't have full height then
