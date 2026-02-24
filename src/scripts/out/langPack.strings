@@ -1323,6 +1323,7 @@
 "ChatYourSelfTitle" = "Your cloud storage";
 "ActionYouCreateGroup" = "You created the group";
 "NoMessages" = "No messages here yet...";
+"NoMessagesYet" = "No messages yet";
 "NoScheduledMessages" = "No scheduled messages here yet...";
 "NoMessagesGreetingsDescription" = "Send a message or tap the greeting below.";
 "InviteToGroupError" = "Sorry, you can't add this user to groups because of user's privacy settings.";
@@ -3395,6 +3396,7 @@
 "SuggestedPosts.Time" = "Time";
 "SuggestedPosts.TONAmount" = "%d TON";
 "CreateNewTopicDescription" = "Type any message to\ncreate a new topic.";
+"NoTopics" = "No topics";
 "TopicsCount_one" = "%d topic";
 "TopicsCount_other" = "%d topics";
 "WaitForTopicCreation" = "Wait for the topic to be created";
