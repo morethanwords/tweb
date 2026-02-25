@@ -304,6 +304,8 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
       const {canvas, startAnimation} = dom.callIcon = callIcon = groupCallActiveIcon(listEl.classList.contains('active'));
       canvas.classList.add('dialog-group-call-icon');
       listEl.append(canvas);
+
+      listEl.classList.add('has-group-call-icon');
       startAnimation();
     }
 
@@ -319,6 +321,7 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
       onTransitionEnd: visible ? undefined : () => {
         dom.callIcon.canvas.remove();
         dom.callIcon = undefined;
+        listEl.classList.remove('has-group-call-icon');
       },
       useRafs: visible ? 2 : 0
     });

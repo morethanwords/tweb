@@ -280,12 +280,17 @@ ul.chatlist {
       }
     }
 
-    &:has(.avatar-badge) {
+    &:has(.avatar-badge), &.has-group-call-icon {
       .avatar-auto-delete-timer {
         transform: scale(0);
       }
     }
 
+    &.has-group-call-icon {
+      .avatar-badge {
+        opacity: 0;
+      }
+    }
 
     @include respond-to(not-handhelds) {
       &.active {
@@ -605,6 +610,10 @@ ul.chatlist {
         border: 2px solid var(--background, var(--surface-color));
         pointer-events: none;
         line-height: 23px !important;
+
+        @include animation-level(2) {
+           transition: opacity 0.2s;
+         }
       }
 
       &-reaction {
