@@ -78,7 +78,7 @@ import {NULL_PEER_ID} from '@appManagers/constants';
 import createParticipantContextMenu from '@helpers/dom/createParticipantContextMenu';
 import findAndSpliceAll from '@helpers/array/findAndSpliceAll';
 import deferredPromise from '@helpers/cancellablePromise';
-import {createEffect, createRoot, on} from 'solid-js';
+import {children, createEffect, createRoot, For, on} from 'solid-js';
 import StoriesProfileList from '@components/stories/profileList';
 import Button from '@components/button';
 import anchorCallback from '@helpers/dom/anchorCallback';
@@ -109,6 +109,7 @@ import {AutonomousSavedDialogList} from '@components/autonomousDialogList/savedD
 import SetTransition from '@components/singleTransition';
 import liteMode from '@helpers/liteMode';
 import {wrapGlobalPostsSearch} from './sidebarLeft/globalPostsSearch';
+import createMiddleware from '@helpers/solid/createMiddleware';
 
 // const testScroll = false;
 
@@ -1473,29 +1474,48 @@ export default class AppSearchSuper {
 
         this.searchGroups.recent.list.replaceChildren();
 
-        appState.recentSearch.slice(0, 20).forEach(async(peerId) => {
-          const {dom} = appDialogsManager.addDialogNew({
-            peerId: peerId,
-            container: this.searchGroups.recent.list,
-            meAsSaved: true,
-            avatarSize: 'abitbigger',
-            autonomous: true,
-            wrapOptions: {
-              middleware
-            },
-            withStories: true
+        createRoot((dispose) => {
+          middleware.onClean(dispose);
+
+          const arr = For({
+            each: appState.recentSearch,
+            children: (peerId) => {
+              const middlewareHelper = createMiddleware();
+              const {dom} = appDialogsManager.addDialogNew({
+                peerId: peerId,
+                container: false,
+                meAsSaved: true,
+                avatarSize: 'abitbigger',
+                autonomous: true,
+                wrapOptions: {
+                  middleware: middlewareHelper.get()
+                },
+                withStories: true
+              });
+
+              (async() => {
+                dom.lastMessageSpan.append(await (peerId.isUser() ?
+                  Promise.resolve(getUserStatusString(await this.managers.appUsersManager.getUser(peerId.toUserId()))) :
+                  getChatMembersString(peerId.toChatId())));
+              })();
+
+              return dom.containerEl;
+            }
           });
 
-          dom.lastMessageSpan.append(await (peerId.isUser() ?
-            Promise.resolve(getUserStatusString(await this.managers.appUsersManager.getUser(peerId.toUserId()))) :
-            getChatMembersString(peerId.toChatId())));
-        });
+          const elements = children(() => arr);
+          createEffect(() => {
+            this.searchGroups.recent.list.replaceChildren(...(elements.toArray() as HTMLElement[]));
+          });
 
-        if(!appState.recentSearch.length) {
-          this.searchGroups.recent.clear();
-        } else if(setActive) {
-          this.searchGroups.recent.setActive();
-        }
+          createEffect(() => {
+            if(!appState.recentSearch.length) {
+              this.searchGroups.recent.clear();
+            } else if(setActive) {
+              this.searchGroups.recent.setActive();
+            }
+          });
+        });
       };
 
       return Promise.all([
