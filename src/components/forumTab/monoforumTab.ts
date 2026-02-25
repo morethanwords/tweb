@@ -43,12 +43,6 @@ export class MonoforumTab extends ForumTab {
     autonomousList.bindScrollable();
 
 
-    this.listenerSetter.add(rootScope)('dialog_drop', (dialog) => {
-      if(dialog.peerId === this.peerId) {
-        this._close();
-      }
-    });
-
     this.listenerSetter.add(rootScope)('monoforum_dialogs_update', ({dialogs}) => {
       if(!dialogs.find(dialog => dialog.parentPeerId === this.peerId)) return;
       this.updateDialogsCount();

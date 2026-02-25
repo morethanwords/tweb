@@ -15,6 +15,8 @@ import {MAX_SIDEBAR_WIDTH} from '@components/sidebarLeft/constants';
 import SetTransition from '@components/singleTransition';
 import {SliderSuperTabEventable} from '@components/sliderTab';
 import {Register} from '@components/forumTab/register';
+import rootScope from '@lib/rootScope';
+import {isDialog} from '@lib/appManagers/utils/dialogs/isDialog';
 
 
 export class ForumTab extends SliderSuperTabEventable {
@@ -57,6 +59,11 @@ export class ForumTab extends SliderSuperTabEventable {
   };
 
   protected syncInit(): void {
+    this.listenerSetter.add(rootScope)('dialog_drop', (dialog) => {
+      if(isDialog(dialog) && this.peerId === dialog.peerId) {
+        this._close();
+      }
+    });
   }
 
   protected async asyncInit(): Promise<void> {
