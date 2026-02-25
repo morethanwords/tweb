@@ -1250,22 +1250,25 @@ export class AppImManager extends EventListenerBase<{
           !appDialogsManager.contextMenu?.hasAddToFolderOpen() &&
           !chat?.input?.editMsgId
         ) {
-          cancelEvent(e);
-
           const forReply = e.metaKey || e.ctrlKey;
           if(!forReply && !chat?.input?.isInputEmpty()) {
-            return;
-          }
-
-          if(forReply && !(await chat.canSend())) {
             return;
           }
 
           const up = key === 'ArrowUp';
           const {replyToMsgId} = this.chat.input;
           const {peerId, threadId} = this.chat;
-          const middleware = this.chat.bubbles.getMiddleware();
           if((!forReply && !up) || (forReply && !up && !replyToMsgId)) {
+            return;
+          }
+
+          cancelEvent(e);
+          const middleware = this.chat.bubbles.getMiddleware();
+          if(forReply && !(await chat.canSend())) {
+            return;
+          }
+
+          if(!middleware()) {
             return;
           }
 
