@@ -872,8 +872,8 @@
 "Dice.Lost" = "%s lost %s";
 "Dice.WonYou" = "You won %s";
 "Dice.LostYou" = "You lost %s";
-"Chat.Service.NewCreatorPending" = "%s will become the new main admin in 7 days if %s does not return.";
-"Chat.Service.ChangeCreator" = "%s made %s the new main admin of the group.";
+"Chat.Service.NewCreatorPending" = "%s will become the new owner in 7 days if %s does not return.";
+"Chat.Service.ChangeCreator" = "%s made %s the new owner of the group.";
 "Stories.StealthMode.Title" = "Stealth Mode";
 "Stories.StealthMode.Subtitle" = "Turn Stealth Mode on to watch without appearing in the list of viewers.";
 "Stories.StealthMode.Row1.Title" = "Hide Recent Views";
