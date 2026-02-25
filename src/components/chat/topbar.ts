@@ -671,7 +671,7 @@ export default class ChatTopbar {
       icon: 'addboost',
       text: 'BoostGroup',
       onClick: onBoostClick,
-      verify: async() => !this.chat.isBroadcast
+      verify: async() => this.chat.isMegagroup
     }, {
       icon: 'bots',
       text: 'Settings',
