@@ -6428,16 +6428,16 @@ export default class ChatBubbles {
 
     context.messageMedia = isMessage && message.media;
     let needToSetHTML = true;
-    let messageMessage: string, totalEntities: MessageEntity[], messageWithMessage: Message.message, groupedTextMessage: Message.message;
+    let totalEntities: MessageEntity[], messageWithMessage: Message.message, groupedTextMessage: Message.message;
     if(isMessage) {
       if(groupedId && groupedMustBeRenderedFull) {
         const t = groupedTextMessage = getGroupedText(groupedMessages);
-        messageMessage = t?.message || '';
+        context.messageMessage = t?.message || '';
         // totalEntities = t.entities;
         totalEntities = t?.totalEntities || [];
         messageWithMessage = groupedTextMessage;
       } else {
-        messageMessage = message.message;
+        context.messageMessage = message.message;
         // totalEntities = message.entities;
         totalEntities = message.totalEntities;
         messageWithMessage = message;
@@ -6446,7 +6446,7 @@ export default class ChatBubbles {
       const document = (context.messageMedia as MessageMedia.messageMediaDocument)?.document as MyDocument;
       if(document) {
         if(document?.type === 'sticker') {
-          messageMessage = totalEntities = undefined;
+          context.messageMessage = totalEntities = undefined;
         } else if(!['video', 'gif'].includes(document.type)) {
           needToSetHTML = false;
         }
@@ -6473,7 +6473,7 @@ export default class ChatBubbles {
         }
       }
 
-      const strLength = messageMessage.replace(/\s/g, '').length;
+      const strLength = context.messageMessage.replace(/\s/g, '').length;
       const emojiStrLength = emojiEntities.reduce((acc, curr) => acc + curr.length, 0);
 
       if(emojiStrLength === strLength /* && emojiEntities.length <= 3 *//*  && totalEntities.length === emojiEntities.length */) {
@@ -6600,16 +6600,16 @@ export default class ChatBubbles {
       }
     } : undefined;
 
-    const richText = messageMessage ? (
+    const richText = context.messageMessage ? (
       !canTranslate ?
-        wrapRichText(messageMessage, getRichTextOptions(totalEntities)) :
+        wrapRichText(context.messageMessage, getRichTextOptions(totalEntities)) :
         TranslatableMessage({
           message: messageWithMessage,
           ...translatableParams
         })
       ) : undefined;
 
-    let isMessageEmpty = !messageMessage && !isSponsored && !factCheck/*  && (!topicNameButtonContainer || isStandaloneMedia) */;
+    let isMessageEmpty = !context.messageMessage && !isSponsored && !factCheck/*  && (!topicNameButtonContainer || isStandaloneMedia) */;
     context.mediaRequiresMessageDiv = false;
 
     context.canHaveTail = true;
@@ -6619,7 +6619,7 @@ export default class ChatBubbles {
       if(this.chat.appSettings.emoji.big) {
         const sticker = bigEmojis === 1 &&
           !totalEntities.find((entity) => entity._ === 'messageEntityCustomEmoji') &&
-          await this.managers.appStickersManager.getAnimatedEmojiSticker(messageMessage);
+          await this.managers.appStickersManager.getAnimatedEmojiSticker(context.messageMessage);
         if(bigEmojis === 1 && !context.messageMedia && sticker) {
           context.messageMedia = {
             _: 'messageMediaDocument',
@@ -6700,7 +6700,7 @@ export default class ChatBubbles {
     }
 
     const isOut = context.isOut = this.chat.isOutMessage(message);
-    const haveRTLChar = isRTL(messageMessage, true);
+    const haveRTLChar = isRTL(context.messageMessage, true);
 
     let timeSpan: HTMLElement, _clearfix: HTMLElement;
     if(!isSponsored) {
@@ -6720,7 +6720,7 @@ export default class ChatBubbles {
         messageDiv.append(timeSpan, _clearfix ??= clearfix());
       });
 
-      if(I18n.isRTL ? !endsWithRTL(messageMessage) : haveRTLChar) {
+      if(I18n.isRTL ? !endsWithRTL(context.messageMessage) : haveRTLChar) {
         timeSpan.classList.add('is-block');
       }
 
@@ -7111,7 +7111,7 @@ export default class ChatBubbles {
             try {
               let entityUrl = (entity as MessageEntity.messageEntityTextUrl).url;
               if(!entityUrl && entity._ === 'messageEntityUrl') {
-                entityUrl = messageMessage.slice(entity.offset, entity.offset + entity.length);
+                entityUrl = context.messageMessage.slice(entity.offset, entity.offset + entity.length);
               }
 
               if(!entityUrl) {
