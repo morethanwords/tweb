@@ -1911,7 +1911,7 @@ export default class ChatBubbles {
   }
 
   public createScrollSaver(reverse = true) {
-    const scrollSaver = new ScrollSaver(this.scrollable, '.bubble:not(.is-date)', reverse);
+    const scrollSaver = new ScrollSaver(this.scrollable, '.bubble:not(.is-date):not(.is-sponsored)', reverse);
     return scrollSaver;
   }
 
