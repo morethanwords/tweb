@@ -48,12 +48,14 @@
 
   &-footer {
     --row-count: 1;
-    background-color: var(--surface-color);
+    --bg-color: var(--surface-color);
+    background-color: var(--bg-color);
     height: 0;
     flex: 0 0 auto;
     position: relative;
 
-    &.position-top, &.position-bottom {
+    &.position-top,
+    &.position-bottom {
       --row-count: 2;
     }
 
@@ -123,6 +125,8 @@
     &-content {
       width: 100%;
       display: block;
+      pointer-events: none;
+      position: relative;
     }
 
     .has-two-buttons & {

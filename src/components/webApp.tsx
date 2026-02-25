@@ -5,7 +5,7 @@
  */
 
 import {Accessor, createSignal, Show} from 'solid-js';
-import {hexToRgb, calculateLuminance, getTextColor, calculateOpacity, rgbaToRgb, rgbIntToHex} from '@helpers/color';
+import {hexToRgb, calculateLuminance, getTextColor, calculateOpacity, rgbaToRgb, rgbIntToHex, mixColors, rgbaToHexa} from '@helpers/color';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import safeWindowOpen from '@helpers/dom/safeWindowOpen';
 import ListenerSetter from '@helpers/listenerSetter';
@@ -1090,7 +1090,10 @@ export default class WebApp {
       }),
       web_app_trigger_haptic_feedback: this.handleHapticFeedback,
       web_app_set_bottom_bar_color: ({color}) => {
-        this.footer.style.background = color;
+        this.footer.style.setProperty('--bg-color', color);
+        const luminance = calculateLuminance(hexToRgb(color));
+        const borderColor = mixColors(luminance > 0.5 ? [0, 0, 0] : [255, 255, 255], hexToRgb(color), 0.2);
+        this.footer.style.setProperty('--border-color', rgbaToHexa(borderColor));
       },
       // we can't use w3c sensors reliably with iframes unfortunately: https://w3c.github.io/sensors/#focused-area :c
       web_app_start_accelerometer: (data) => {
