@@ -12221,7 +12221,7 @@ export namespace EmojiList {
 /**
  * @link https://core.telegram.org/type/EmojiGroup
  */
-export type EmojiGroup = EmojiGroup.emojiGroup | EmojiGroup.emojiGroupGreeting | EmojiGroup.emojiGroupPremium | EmojiGroup.emojiGroupPremium;
+export type EmojiGroup = EmojiGroup.emojiGroup | EmojiGroup.emojiGroupGreeting | EmojiGroup.emojiGroupPremium;
 
 export namespace EmojiGroup {
   export type emojiGroup = {
@@ -12240,14 +12240,8 @@ export namespace EmojiGroup {
 
   export type emojiGroupPremium = {
     _: 'emojiGroupPremium',
-    title?: string,
-    icon_emoji_id?: Long
-  };
-
-  export type emojiGroupPremium = {
-    _: 'emojiGroupPremium',
-    title?: string,
-    icon_emoji_id?: Long
+    title: string,
+    icon_emoji_id: string | number
   };
 }
 

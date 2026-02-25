@@ -44,7 +44,6 @@ function addSearchCategories(props: {
   };
 
   const EmojiGroup = ({group, document}: ReturnType<typeof emojiGroups>[0]) => {
-    // * until layer 179
     if(props.type !== 'stickers' && group._ === 'emojiGroupPremium') {
       return;
     }

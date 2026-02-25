@@ -1197,20 +1197,6 @@
     "type": "Update"
   },
   {
-    "predicate": "emojiGroupPremium",
-    "params": [
-      {
-        "name": "title",
-        "type": "string"
-      },
-      {
-        "name": "icon_emoji_id",
-        "type": "Long"
-      }
-    ],
-    "type": "EmojiGroup"
-  },
-  {
     "predicate": "storyItem",
     "params": [
       {

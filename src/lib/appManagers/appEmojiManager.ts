@@ -403,7 +403,6 @@ export class AppEmojiManager extends AppManager {
       processResult: async(messagesEmojiGroups) => {
         assumeType<MessagesEmojiGroups.messagesEmojiGroups>(messagesEmojiGroups);
 
-        // * until layer 179
         if(type === 'esg' || type === 'stickers') {
           pushPremiumGroup(messagesEmojiGroups.groups);
         }
