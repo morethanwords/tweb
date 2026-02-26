@@ -610,6 +610,8 @@ export default class ChatBubbles {
 
   private contexts: Map<HTMLElement, BubbleContext> = new Map();
 
+  private webPageClickCallbacks: WeakMap<HTMLElement, (e: MouseEvent) => any> = new WeakMap();
+
   constructor(
     public chat: Chat,
     public managers: AppManagers
@@ -2894,9 +2896,8 @@ export default class ChatBubbles {
         (window as any)[callback](findUpTag(target, 'A'), e);
       }
 
-      const sponsoredCallback = (webPageContainer as any).callback as (e: Event) => void;
-      sponsoredCallback?.(event);
-
+      const webPageCallback = this.webPageClickCallbacks.get(webPageContainer);
+      webPageCallback?.(event as MouseEvent);
       return;
     }
 
@@ -7146,19 +7147,19 @@ export default class ChatBubbles {
             };
 
             boxRefs.push((box) => {
-              (box as any).callback = (e: MouseEvent) => {
+              this.webPageClickCallbacks.set(box, (e) => {
                 if(e.metaKey || e.ctrlKey) {
                   return;
                 }
 
-                cancelEvent(e);
+                cancelClickOrNextIfNotClick(e);
                 openInstantViewInAppBrowser({
                   webPageId: webPage.id,
                   cachedPage: webPage.cached_page,
                   anchor: new URL(wrapped.url).hash,
                   HotReloadGuardProvider: SolidJSHotReloadGuardProvider
                 });
-              };
+              });
             });
           } else if(hasSafeUrl) {
             boxRefs.push((box) => {
@@ -7181,9 +7182,9 @@ export default class ChatBubbles {
                 //   setBlankToAnchor(box);
                 // }
 
-                (box as any).callback = () => {
+                this.webPageClickCallbacks.set(box, () => {
                   this.chat.appImManager.onSponsoredBoxClick(message as Message.message);
-                };
+                });
               });
             } else {
               const langPackKey = webPageTypes[webPage.type] || 'OpenMessage';
