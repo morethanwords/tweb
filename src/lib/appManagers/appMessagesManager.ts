@@ -3299,6 +3299,7 @@ export class AppMessagesManager extends AppManager {
 
       delete this.pendingByRandomId[randomId];
       this.deleteMessageFromStorage(storage, tempId);
+      this.deletePendingTopMsg(peerId, tempId);
 
       return true;
     }
@@ -3342,6 +3343,12 @@ export class AppMessagesManager extends AppManager {
 
     return outDialogs;
   } */
+
+  private deletePendingTopMsg(peerId: PeerId, id: number) {
+    if(this.pendingTopMsgs[peerId] === id) {
+      delete this.pendingTopMsgs[peerId];
+    }
+  }
 
   public async fillConversations(folderId = GLOBAL_FOLDER_ID): Promise<void> {
     const middleware = this.middleware.get();
@@ -4564,11 +4571,11 @@ export class AppMessagesManager extends AppManager {
         return;
       }
 
-      if(!threadOrSavedId) {
-        this.flushStoragesByPeerId(peerId);
-      }
 
       if(justClear) {
+        if(!threadOrSavedId) {
+          this.flushStoragesByPeerId(peerId);
+        }
         this.rootScope.dispatchEvent('dialog_flush', {peerId, dialog: this.getDialogOnly(peerId)});
       } else {
         const key = this.getTypingKey(peerId, threadOrSavedId);
@@ -4588,7 +4595,7 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  private flushStoragesByPeerId(peerId: PeerId) {
+  public flushStoragesByPeerId(peerId: PeerId) {
     [
       this.historiesStorage[peerId],
       this.searchesStorage[peerId],
@@ -7900,7 +7907,11 @@ export class AppMessagesManager extends AppManager {
       if(historyUpdated.msgs.has(dialog.top_message)) {
         const historyStorage = this.getHistoryStorage(dialog.peerId, _isDialog ? undefined : getDialogKey(dialog));
         const slice = historyStorage.history.first;
-        if(slice.isEnd(SliceEnd.Bottom) && slice.length) {
+
+        // If there are some temporary messages in the history, we still want to reload the dialog in case it was fully deleted (e.g. from other client)
+        const hasMessages = !!slice.filter(id => !isTempId(id)).length;
+
+        if(slice.isEnd(SliceEnd.Bottom) && hasMessages) {
           const mid = slice[0];
           const message = this.getMessageByPeer(peerId, mid);
           this.setDialogTopMessage(message, dialog);
@@ -8317,6 +8328,13 @@ export class AppMessagesManager extends AppManager {
     if(randomIds.size === 0) {
       this.typingBotforumMessages.delete(peerId);
     }
+
+    const pendingMessage = this.pendingByRandomId[randomId];
+    if(pendingMessage) {
+      const storages: HistoryStorage[] = [this.getHistoryStorage(peerId), this.getHistoryStorage(peerId, pendingMessage.threadId)]
+      .filter(Boolean);
+      storages.forEach(storage => storage.history?.delete(pendingMessage.tempId))
+    }
   }
 
   public mutePeer(options: {peerId: PeerId, muteUntil: number, threadId?: number}) {
@@ -8422,6 +8440,7 @@ export class AppMessagesManager extends AppManager {
     this.rootScope.dispatchEvent('messages_pending');
 
     delete this.pendingByRandomId[randomId];
+    this.deletePendingTopMsg(peerId, tempId);
 
     this.finalizePendingMessageCallbacks(storage, tempId, finalMessage);
 
