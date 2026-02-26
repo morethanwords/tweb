@@ -1134,6 +1134,10 @@ export default class DialogsStorage extends AppManager {
       this.clearDialogFromState(dialog, keepLocal);
     }
 
+    if(!topicOrSavedId) {
+      this.appMessagesManager.flushStoragesByPeerId(peerId);
+    }
+
     return foundDialog;
   }
 
