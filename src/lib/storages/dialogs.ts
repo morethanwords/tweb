@@ -1289,6 +1289,19 @@ export default class DialogsStorage extends AppManager {
     }
   }
 
+  public applyLocalForumTopics(topics: ForumTopic[]) {
+    this.dialogsStorage.applyDialogs({
+      _: 'messages.forumTopics',
+      topics: topics,
+      count: 0,
+      chats: [],
+      messages: [],
+      pFlags: {},
+      pts: 0,
+      users: []
+    });
+  }
+
   // ! do not use draft here, empty dialogs with drafts are excluded from .getDialogs response
   private getDialogOffsetDate(dialog: AnyDialog) {
     const message = this.getDialogMessageForState(dialog);

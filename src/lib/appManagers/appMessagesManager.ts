@@ -95,6 +95,7 @@ import isObject from '@helpers/object/isObject';
 import pickKeys from '@helpers/object/pickKeys';
 import namedPromises from '@helpers/namedPromises';
 import callbackifyAll from '@helpers/callbackifyAll';
+import {createBotforumTopicFromAction} from './utils/dialogs/createBotforumTopicFromAction';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -7151,8 +7152,13 @@ export class AppMessagesManager extends AppManager {
 
       if(this.appPeersManager.isBotforum(peerId) && action._ === 'messageActionTopicCreate') {
         const topic = this.dialogsStorage.getForumTopic(peerId, threadId);
+
         if(!topic) {
-          this.dialogsStorage.getForumTopicById(peerId, threadId);
+          // Warning! sometimes refetching immediately might not return the topic from the server, and it will be marked as a deleted topic
+          // this.dialogsStorage.getForumTopicById(peerId, threadId);
+
+          const newTopicFromMessage = createBotforumTopicFromAction({message, action});
+          this.dialogsStorage.applyLocalForumTopics([newTopicFromMessage]);
         }
       }
 
