@@ -267,7 +267,7 @@ export class BubbleGroup {
 
   mount(updateClassNames?: boolean) {
     if(!this.groups.groups.includes(this) || !this.items.length) { // group can be already removed
-      debugger;
+      // debugger;
 
       if(this.mounted) {
         this.onItemUnmount();
