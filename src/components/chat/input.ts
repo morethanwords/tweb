@@ -268,6 +268,7 @@ export default class ChatInput {
   public editMessage: Message.message;
   private noWebPage: true;
   public scheduleDate: number;
+  public scheduleRepeatPeriod: number;
   public sendSilent: true;
   public startParam: string;
   public invertMedia: boolean;
@@ -1776,7 +1777,7 @@ export default class ChatInput {
     return user.status?._ !== 'userStatusOnline';
   };
 
-  public setScheduleTimestamp(timestamp: number, callback: () => void) {
+  public setScheduleTimestamp(timestamp: number, callback: () => void, repeatPeriod?: number) {
     const middleware = this.getMiddleware();
     const minTimestamp = (Date.now() / 1000 | 0) + 10;
     if(timestamp <= minTimestamp) {
@@ -1784,6 +1785,7 @@ export default class ChatInput {
     }
 
     this.scheduleDate = timestamp;
+    this.scheduleRepeatPeriod = repeatPeriod;
     callback();
 
     if(this.chat.type !== ChatType.Scheduled && this.chat.type !== ChatType.Stories && timestamp) {
@@ -1806,7 +1808,8 @@ export default class ChatInput {
 
   public scheduleSending = async(
     callback: () => void = this.sendMessage.bind(this, true),
-    initDate = new Date()
+    initDate = new Date(),
+    initRepeatPeriod?: number
   ) => {
     const middleware = this.getMiddleware();
     const canSendWhenOnline = await this.canSendWhenOnline();
@@ -1816,14 +1819,16 @@ export default class ChatInput {
 
     PopupElement.createPopup(PopupSchedule, {
       initDate,
-      onPick: (timestamp) => {
+      onPick: (timestamp, repeatPeriod) => {
         if(!middleware()) {
           return;
         }
 
-        this.setScheduleTimestamp(timestamp, callback);
+        this.setScheduleTimestamp(timestamp, callback, repeatPeriod);
       },
-      canSendWhenOnline
+      canSendWhenOnline,
+      canRepeat: true,
+      initRepeatPeriod
     }).show();
   };
 
@@ -3844,6 +3849,7 @@ export default class ChatInput {
     }
 
     this.scheduleDate = undefined;
+    this.scheduleRepeatPeriod = undefined;
     this.sendSilent = undefined;
 
     const {totalEntities} = this.getValueAndEntities(this.messageInput);
