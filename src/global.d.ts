@@ -140,9 +140,10 @@ declare global {
   type ReferenceError = 'NO_NEW_CONTEXT' | 'NO_CONTEXT';
   type NetworkerError = 'NETWORK_BAD_RESPONSE' | 'NETWORK_BAD_REQUEST';
   type FiltersError = 'PINNED_DIALOGS_TOO_MUCH';
+  type RLottieError = 'FRAME_OUT_OF_RANGE' | 'ITEM_DESTROYED' | 'FILE_INVALID';
 
   type LocalFileError = ApiFileManagerError | ReferenceError | StorageError;
-  type LocalErrorType = LocalFileError | NetworkerError | FiltersError |
+  type LocalErrorType = LocalFileError | NetworkerError | FiltersError | RLottieError |
     'UNKNOWN' | 'NO_DOC' | 'MIDDLEWARE' | 'PORT_DISCONNECTED' | 'NO_AUTO_DOWNLOAD' | 'CHAT_PRIVATE' | 'NO_WASM' |
     'CANCELED' | 'TIMEOUT' | 'TAB_ALREADY_OPEN';
 

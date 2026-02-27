@@ -13,7 +13,7 @@ import {IS_ANDROID, IS_APPLE_MOBILE, IS_APPLE, IS_SAFARI} from '@environment/use
 import EventListenerBase from '@helpers/eventListenerBase';
 import mediaSizes from '@helpers/mediaSizes';
 import clamp from '@helpers/number/clamp';
-import QueryableWorker from '@lib/rlottie/queryableWorker';
+import rlottieMessagePort, {RLottieWorkerMethods} from '@lib/rlottie/rlottieMessagePort';
 import IS_IMAGE_BITMAP_SUPPORTED from '@environment/imageBitmapSupport';
 import framesCache, {FramesCache, FramesCacheItem} from '@helpers/framesCache';
 import customProperties from '@helpers/dom/customProperties';
@@ -81,9 +81,9 @@ export default class RLottiePlayer extends EventListenerBase<{
   destroy: () => void
 }> implements AnimationItemWrapper {
   public static CACHE = framesCache;
-  private static reqId = 0;
 
-  public reqId = 0;
+  public reqId: number;
+  public workerId: number;
   public curFrame: number;
   private frameCount: number;
   private fps: number;
@@ -91,8 +91,6 @@ export default class RLottiePlayer extends EventListenerBase<{
   public name: string;
   public cacheName: string;
   private toneIndex: number;
-
-  private worker: QueryableWorker;
 
   private width = 0;
   private height = 0;
@@ -145,16 +143,15 @@ export default class RLottiePlayer extends EventListenerBase<{
   private raw: boolean;
   private clearCacheOnRafId: number;
 
-  constructor({el, worker, options}: {
+  constructor({el, options}: {
     el: RLottiePlayer['el'],
-    worker: QueryableWorker,
     options: RLottieOptions
   }) {
     super(true);
 
-    this.reqId = ++RLottiePlayer['reqId'];
+    this.reqId = rlottieMessagePort.getNextTaskId();
+    this.workerId = rlottieMessagePort.getNextWorkerIndex();
     this.el = el;
-    this.worker = worker;
 
     for(const i in options) {
       if(this.hasOwnProperty(i)) {
@@ -285,20 +282,37 @@ export default class RLottiePlayer extends EventListenerBase<{
     }
   }
 
-  public sendQuery(args: any[], transfer?: Transferable[]) {
-    this.worker.sendQuery([args.shift(), this.reqId, ...args], transfer);
+  public sendQuery<T extends keyof RLottieWorkerMethods>(
+    method: T,
+    payload?: Omit<Parameters<RLottieWorkerMethods[T]>[0], 'reqId'>,
+    transfer?: Transferable[]
+  ): Promise<Awaited<ReturnType<RLottieWorkerMethods[T]>>> {
+    return rlottieMessagePort.invokeRLottie(
+      this.workerId,
+      method,
+      {...payload, reqId: this.reqId},
+      transfer
+    ) as any;
   }
 
   public loadFromData(data: RLottieOptions['animationData']) {
-    this.sendQuery([
-      'loadFromData',
-      data,
-      this.width,
-      this.height,
-      this.toneIndex,
-      this.raw
+    this.sendQuery('loadFromData', {
+      blob: data,
+      width: this.width,
+      height: this.height,
+      toneIndex: this.toneIndex,
+      raw: this.raw
       /* , this.canvas.transferControlToOffscreen() */
-    ]);
+    }).then(({frameCount, fps}) => {
+      if(this.destroyed) {
+        return;
+      }
+
+      this.onLoad(frameCount, fps);
+    }).catch((err) => {
+      console.error(err, data, this);
+      throw err;
+    });
   }
 
   public play() {
@@ -385,7 +399,7 @@ export default class RLottiePlayer extends EventListenerBase<{
 
     this.destroyed = true;
     this.pause();
-    this.sendQuery(['destroy']);
+    this.sendQuery('destroy');
     if(this.cacheName) RLottiePlayer.CACHE.releaseCache(this.cacheName);
     this.dispatchEvent('destroy');
     this.cleanup();
@@ -519,7 +533,18 @@ export default class RLottiePlayer extends EventListenerBase<{
         this.clamped = new Uint8ClampedArray(this.width * this.height * 4);
       }
 
-      this.sendQuery(['renderFrame', frameNo], this.clamped ? [this.clamped.buffer] : undefined);
+      this.sendQuery('renderFrame', {frameNo}, this.clamped ? [this.clamped.buffer] : undefined)
+      .then(({frame, frameNo}) => {
+        if(this.destroyed) {
+          return;
+        }
+
+        if(this.clamped !== undefined && frame instanceof Uint8ClampedArray) {
+          this.clamped = frame;
+        }
+
+        this.renderFrame(frame, frameNo);
+      });
     }
   }
 

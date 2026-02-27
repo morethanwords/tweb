@@ -33,6 +33,7 @@ const App = {
   isMainDomain: MAIN_DOMAINS.includes(location.hostname),
   suffix: 'K',
   threads,
+  lottieWorkers: threads,
   cryptoWorkers: threads,
   interclientBroadcastChannel: 'tgweb'
 };

@@ -15,7 +15,7 @@ import type {MessagesStorageKey} from '@appManagers/appMessagesManager';
 import type {AppAvatarsManager, PeerPhotoSize} from '@appManagers/appAvatarsManager';
 import rootScope, {BroadcastEvents} from '@lib/rootScope';
 import webpWorkerController from '@lib/webp/webpWorkerController';
-import {MOUNT_CLASS_TO} from '@config/debug';
+import DEBUG, {MOUNT_CLASS_TO} from '@config/debug';
 import sessionStorage from '@lib/sessionStorage';
 import webPushApiManager from '@lib/webPushApiManager';
 import telegramMeWebManager from '@lib/telegramMeWebManager';
@@ -23,7 +23,7 @@ import pause from '@helpers/schedulers/pause';
 import ENVIRONMENT from '@environment/index';
 import loadStateForAllAccountsOnce from '@appManagers/utils/state/loadState';
 import opusDecodeController from '@lib/opusDecodeController';
-import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
+import MTProtoMessagePort, {ThreadedWorkerEvents} from '@lib/mainWorker/mainMessagePort';
 import cryptoMessagePort from '@lib/crypto/cryptoMessagePort';
 import SuperMessagePort from '@lib/superMessagePort';
 import IS_SHARED_WORKER_SUPPORTED from '@environment/sharedWorkerSupport';
@@ -71,6 +71,7 @@ import appNavigationController from '@components/appNavigationController';
 import {BroadcastChannelWrapper, createBroadcastChannelWrapper} from './broadcastChannelWrapper';
 import {MainBroadcastChannelEvents, unversionedMainBroadcastChannelName} from '@config/broadcastChannel';
 import {CacheStorageThreadedControls, createCacheStorageThreadedControls} from './apiManagerProxyUtils';
+import type {ThreadedWorkerType} from '@lib/appManagers/appManagersManager';
 
 
 export type Mirrors = {
@@ -783,13 +784,27 @@ class ApiManagerProxy extends MTProtoMessagePort {
     });
   }
 
-  private async registerCryptoWorker() {
+  public async registerThreadedWorker({
+    type,
+    createWorker: _createWorker,
+    superMessagePort
+  }: {
+    type: ThreadedWorkerType,
+    createWorker: () => SharedWorker | Worker,
+    superMessagePort: SuperMessagePort<ThreadedWorkerEvents, ThreadedWorkerEvents, any>
+  }) {
     const get = (url: string) => {
       return fetch(url).then((response) => response.text()).then((text) => {
         const pathnameSplitted = location.pathname.split('/');
         pathnameSplitted[pathnameSplitted.length - 1] = '';
         const pre = location.origin + pathnameSplitted.join('/');
         text = text.replace(/(import (?:.+? from )?['"])\//g, '$1' + pre);
+
+        // * fix wasm url
+        if(type === 'rlottie') {
+          text = text.replace(/(rlottie-wasm\.wasm)/, pre + '$1');
+        }
+
         const blob = new Blob([text], {type: 'application/javascript'});
         return blob;
       });
@@ -809,46 +824,48 @@ class ApiManagerProxy extends MTProtoMessagePort {
     ].filter(Boolean);
     originals.forEach((w) => window[w.name as any] = new Proxy(w, workerHandler));
 
-    const worker: SharedWorker | Worker = new Worker(
-      new URL('./crypto/crypto.worker.ts', import.meta.url),
-      {type: 'module'}
-    );
+    const worker = _createWorker();
 
     originals.forEach((w) => window[w.name as any] = w as any);
 
     const originalUrl = (worker as any).url;
 
     const createWorker = (url: string) => new constructor(url, {type: 'module'});
-    const attachWorkerToPort = (worker: SharedWorker | Worker) => this.attachWorkerToPort(worker, cryptoMessagePort, 'crypto');
+    const attachWorkerToPort = (worker: SharedWorker | Worker) => this.attachWorkerToPort(
+      worker,
+      superMessagePort,
+      type
+    );
     const constructor = IS_SHARED_WORKER_SUPPORTED ? SharedWorker : Worker;
 
-    // let cryptoWorkers = workers.length;
-    // cryptoMessagePort.addEventListener('servicePort', (payload, source, event) => {
-    //   this.serviceMessagePort.invokeVoid('cryptoPort', undefined, undefined, [event.ports[0]]);
-    // });
-    cryptoMessagePort.addEventListener('port', (payload, source, event) => {
-      this.invokeVoid('cryptoPort', undefined, undefined, [event.ports[0]]);
-
-      // .then((attached) => {
-      //   if(!attached && cryptoWorkers-- > 1) {
-      //     this.log.error('terminating unneeded crypto worker');
-
-      //     cryptoMessagePort.invokeVoid('terminate', undefined, source);
-      //     const worker = workers.find((worker) => (worker as SharedWorker).port === source || (worker as any) === source);
-      //     if((worker as SharedWorker).port) (worker as SharedWorker).port.close();
-      //     else (worker as Worker).terminate();
-      //     cryptoMessagePort.detachPort(source);
-      //   }
-      // });
+    superMessagePort.addEventListener('port', (payload, source, event) => {
+      this.invokeVoid('threadedPort', type, undefined, [event.ports[0]]);
     });
 
     const firstWorker = createWorker(originalUrl);
     attachWorkerToPort(firstWorker);
 
     const blob = await get(originalUrl);
-    const urlsPromise = await this.invoke('createProxyWorkerURLs', {originalUrl, blob});
+    const urlsPromise = await this.invoke('createProxyWorkerURLs', {originalUrl, blob, type});
     const workers = urlsPromise.slice(1).map(createWorker);
     workers.forEach(attachWorkerToPort);
+
+    if(DEBUG) {
+      console.log('Workers URLs', type, urlsPromise);
+    }
+  }
+
+  private async registerCryptoWorker() {
+    await this.registerThreadedWorker({
+      type: 'crypto',
+      createWorker: () => {
+        return new Worker(
+          new URL('./crypto/crypto.worker.ts', import.meta.url),
+          {type: 'module'}
+        );
+      },
+      superMessagePort: cryptoMessagePort
+    });
   }
 
   private registerWorker() {
@@ -874,7 +891,11 @@ class ApiManagerProxy extends MTProtoMessagePort {
     this.onWorkerFirstMessage(worker);
   }
 
-  private attachWorkerToPort(worker: SharedWorker | Worker, messagePort: SuperMessagePort<any, any, any>, type: string) {
+  private attachWorkerToPort(
+    worker: SharedWorker | Worker,
+    messagePort: SuperMessagePort<any, any, any>,
+    type: string
+  ) {
     const port: MessagePort = (worker as SharedWorker).port || worker as any;
     messagePort.attachPort(port);
 

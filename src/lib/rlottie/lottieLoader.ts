@@ -9,14 +9,13 @@ import {MOUNT_CLASS_TO} from '@config/debug';
 import pause from '@helpers/schedulers/pause';
 import {logger, LogTypes} from '@lib/logger';
 import RLottiePlayer, {RLottieOptions} from '@lib/rlottie/rlottiePlayer';
-import QueryableWorker from '@lib/rlottie/queryableWorker';
 import blobConstruct from '@helpers/blob/blobConstruct';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import IS_WEB_ASSEMBLY_SUPPORTED from '@environment/webAssemblySupport';
 import makeError from '@helpers/makeError';
-import App from '@config/app';
 import rootScope from '@lib/rootScope';
 import toArray from '@helpers/array/toArray';
+import rlottieMessagePort from '@lib/rlottie/rlottieMessagePort';
 
 export type LottieAssetName =
   | 'EmptyFolder'
@@ -66,12 +65,8 @@ export class LottieLoader {
   private loadPromise: Promise<void> = !IS_WEB_ASSEMBLY_SUPPORTED ? Promise.reject(makeError('NO_WASM')) : undefined;
   private loaded = false;
 
-  private workersLimit = App.threads;
   private players: {[reqId: number]: RLottiePlayer} = {};
   private playersByCacheName: {[cacheName: string]: Set<RLottiePlayer>} = {};
-
-  private workers: QueryableWorker[] = [];
-  private curWorkerNum = 0;
 
   private log = logger('LOTTIE', LogTypes.Error);
 
@@ -98,32 +93,19 @@ export class LottieLoader {
       return this.loadPromise;
     }
 
-    return this.loadPromise = new Promise((resolve, reject) => {
-      let remain = this.workersLimit;
-      for(let i = 0; i < this.workersLimit; ++i) {
-        const worker = new Worker(new URL('./rlottie.worker.ts', import.meta.url), {type: 'module'});
-        const queryableWorker = this.workers[i] = new QueryableWorker(worker);
+    return this.loadPromise = this.registerLottieWorkers();
+  }
 
-        queryableWorker.addEventListener('ready', () => {
-          this.log('worker #' + i + ' ready');
-
-          queryableWorker.addEventListener('frame', this.onFrame);
-          queryableWorker.addEventListener('loaded', this.onPlayerLoaded);
-          queryableWorker.addEventListener('error', this.onPlayerError);
-
-          --remain;
-          if(!remain) {
-            this.log('workers ready');
-            resolve();
-            this.loaded = true;
-          }
-        }, {once: true});
-
-        queryableWorker.addEventListener('workerError', (error) => {
-          reject('rlottie load error: ' + error.message);
-          this.loaded = false;
-        }, {once: true});
-      }
+  private async registerLottieWorkers() {
+    await apiManagerProxy.registerThreadedWorker({
+      type: 'rlottie',
+      createWorker: () => {
+        return new Worker(
+          new URL('./rlottie.worker.ts', import.meta.url),
+          {type: 'module'}
+        );
+      },
+      superMessagePort: rlottieMessagePort
     });
   }
 
@@ -208,7 +190,13 @@ export class LottieLoader {
     }
 
     if(params.sync) {
-      const cacheName = RLottiePlayer.CACHE.generateName(params.name, params.width, params.height, params.color, params.toneIndex);
+      const cacheName = RLottiePlayer.CACHE.generateName(
+        params.name,
+        params.width,
+        params.height,
+        params.color,
+        params.toneIndex
+      );
       const players = this.playersByCacheName[cacheName];
       if(players?.size) {
         return Promise.resolve(players.entries().next().value[0]);
@@ -248,43 +236,18 @@ export class LottieLoader {
     return player;
   }
 
-  private onPlayerLoaded = (reqId: number, frameCount: number, fps: number) => {
-    const player = this.players[reqId];
-    if(!player) {
-      this.log.warn('onPlayerLoaded on destroyed player:', reqId, frameCount);
-      return;
-    }
+  // private onPlayerError = (reqId: number, error: Error) => {
+  //   const player = this.players[reqId];
+  //   if(!player) {
+  //     return;
+  //   }
 
-    this.log.debug('onPlayerLoaded');
-    player.onLoad(frameCount, fps);
-  };
-
-  private onFrame = (reqId: number, frameNo: number, frame: Uint8ClampedArray | ImageBitmap) => {
-    const player = this.players[reqId];
-    if(!player) {
-      this.log.warn('onFrame on destroyed player:', reqId, frameNo);
-      return;
-    }
-
-    if(player.clamped !== undefined && frame instanceof Uint8ClampedArray) {
-      player.clamped = frame;
-    }
-
-    player.renderFrame(frame, frameNo);
-  };
-
-  private onPlayerError = (reqId: number, error: Error) => {
-    const player = this.players[reqId];
-    if(!player) {
-      return;
-    }
-
-    // ! will need refactoring later, this is not the best way to remove the animation
-    const animations = animationIntersector.getAnimations(player.el[0]);
-    animations.forEach((animation) => {
-      animationIntersector.removeAnimation(animation);
-    });
-  };
+  //   // ! will need refactoring later, this is not the best way to remove the animation
+  //   const animations = animationIntersector.getAnimations(player.el[0]);
+  //   animations.forEach((animation) => {
+  //     animationIntersector.removeAnimation(animation);
+  //   });
+  // };
 
   public onDestroy(reqId: number) {
     delete this.players[reqId];
@@ -295,14 +258,9 @@ export class LottieLoader {
       return;
     }
 
-    this.workers.forEach((worker, idx) => {
-      worker.terminate();
-      this.log('worker #' + idx + ' terminated');
-    });
+    rlottieMessagePort.terminateAll();
 
     this.log('workers destroyed');
-    this.workers.length = 0;
-    this.curWorkerNum = 0;
     this.loaded = false;
     this.loadPromise = undefined;
   }
@@ -310,7 +268,6 @@ export class LottieLoader {
   private initPlayer(el: RLottiePlayer['el'], options: RLottieOptions) {
     const player = new RLottiePlayer({
       el,
-      worker: this.workers[this.curWorkerNum++],
       options
     });
 
@@ -320,10 +277,6 @@ export class LottieLoader {
     const playersByCacheName = cacheName ? this.playersByCacheName[cacheName] ??= new Set() : undefined;
     if(cacheName) {
       playersByCacheName.add(player);
-    }
-
-    if(this.curWorkerNum >= this.workers.length) {
-      this.curWorkerNum = 0;
     }
 
     player.addEventListener('destroy', () => {
