@@ -138,6 +138,8 @@ export const canUploadAsWhenEditing = ({asWhat, message}: CanUploadAsWhenEditing
 };
 
 export const getMediaTypeForMessage = (message: Message.message | null | undefined): AttachedMediaType | null => {
+  if(!message || !message.media) return null;
+
   if(message.media._ === 'messageMediaDocument') {
     if(message.media.document?._ !== 'document') return null;
     if(documentAsMediaTypes.includes(message.media.document.type)) return 'media';
