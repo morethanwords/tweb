@@ -266,6 +266,7 @@ export type MessageSendingParams = Partial<{
   replyTo: InputReplyTo,
   replyToMonoforumPeerId: PeerId,
   scheduleDate: number,
+  scheduleRepeatPeriod: number,
   silent: boolean,
   sendAsPeerId: number,
   updateStickersetOrder: boolean,
@@ -869,6 +870,7 @@ export class AppMessagesManager extends AppManager {
     options: Partial<{
       newMedia: InputMedia,
       scheduleDate: number,
+      scheduleRepeatPeriod: number,
       entities: MessageEntity[]
     }> & Partial<Pick<Parameters<AppMessagesManager['sendText']>[0], 'webPage' | 'webPageOptions' | 'noWebPage' | 'invertMedia'>> = {}
   ): Promise<void> {
@@ -903,6 +905,7 @@ export class AppMessagesManager extends AppManager {
       entities: sendEntities,
       no_webpage: options.noWebPage,
       schedule_date,
+      schedule_repeat_period: options.scheduleRepeatPeriod || undefined,
       invert_media: options.invertMedia,
       ...(inputMediaWebPage ? {media: inputMediaWebPage} : {})
     }).then((updates) => {
@@ -1377,6 +1380,7 @@ export class AppMessagesManager extends AppManager {
           entities: sendEntities,
           clear_draft: options.clearDraft,
           schedule_date: options.scheduleDate || undefined,
+          schedule_repeat_period: options.scheduleRepeatPeriod || undefined,
           silent: options.silent,
           send_as: sendAs,
           update_stickersets_order: options.updateStickersetOrder,
@@ -1757,6 +1761,7 @@ export class AppMessagesManager extends AppManager {
           random_id: message.random_id,
           reply_to: options.replyTo,
           schedule_date: options.scheduleDate,
+          schedule_repeat_period: options.scheduleRepeatPeriod || undefined,
           silent: options.silent,
           entities: sendEntities,
           clear_draft: options.clearDraft,
@@ -2210,6 +2215,7 @@ export class AppMessagesManager extends AppManager {
             peer: inputPeer,
             reply_to: options.replyTo,
             schedule_date: options.scheduleDate,
+            schedule_repeat_period: options.scheduleRepeatPeriod || undefined,
             silent: options.silent,
             clear_draft: options.clearDraft,
             send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined,
@@ -2545,6 +2551,7 @@ export class AppMessagesManager extends AppManager {
           entities: undefined,
           clear_draft: options.clearDraft,
           schedule_date: options.scheduleDate,
+          schedule_repeat_period: options.scheduleRepeatPeriod || undefined,
           silent: options.silent,
           send_as: sendAs,
           update_stickersets_order: options.updateStickersetOrder,
@@ -3810,6 +3817,7 @@ export class AppMessagesManager extends AppManager {
       with_my_score: options.withMyScore,
       silent: options.silent,
       schedule_date: options.scheduleDate,
+      schedule_repeat_period: options.scheduleRepeatPeriod || undefined,
       drop_author: options.dropAuthor,
       drop_media_captions: options.dropCaptions,
       send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined,

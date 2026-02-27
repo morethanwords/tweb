@@ -399,9 +399,10 @@ export default class PopupNewMedia extends PopupElement {
                 text: 'MessageScheduleEditTime',
                 icon: 'schedule',
                 onClick: () => {
+                  const editMessage = this.chat.input.editMessage;
                   this.chat.input.scheduleSending(() => {
                     this.send(true);
-                  });
+                  }, editMessage?.date ? makeDateFromTimestamp(editMessage.date) : undefined, editMessage?.schedule_repeat_period);
                 }
               }
             ],

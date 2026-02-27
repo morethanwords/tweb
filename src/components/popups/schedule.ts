@@ -9,6 +9,15 @@ import I18n, {LangPackKey, FormatterArguments, i18n} from '@lib/langPack';
 import {SEND_WHEN_ONLINE_TIMESTAMP} from '@appManagers/constants';
 import Button from '@components/button';
 import PopupDatePicker from '@components/popups/datePicker';
+import Row from '@components/row';
+import InlineSelect from '@components/sidebarLeft/tabs/passcodeLock/inlineSelect';
+import {createSignal} from 'solid-js';
+import {render} from 'solid-js/web';
+import rootScope from '@lib/rootScope';
+import Icon from '@components/icon';
+import {hideToast, toastNew} from '@components/toast';
+import anchorCallback from '../../helpers/dom/anchorCallback';
+import PopupPremium from './premium';
 
 const getMinDate = () => {
   const date = new Date();
@@ -32,22 +41,37 @@ const checkDate = (date: Date, addMinutes?: number) => {
   return ret;
 };
 
+const DAY = 86400;
+const REPEAT_OPTIONS: {value: number, label: () => HTMLElement}[] = [
+  {value: 0, label: () => i18n('Never')},
+  {value: DAY, label: () => i18n('Schedule.Repeat.Daily')},
+  {value: 7 * DAY, label: () => i18n('Schedule.Repeat.Weekly')},
+  {value: 14 * DAY, label: () => i18n('Schedule.Repeat.Biweekly')},
+  {value: 30 * DAY, label: () => i18n('Schedule.Repeat.Monthly')},
+  {value: 91 * DAY, label: () => i18n('Schedule.Repeat.Every3Months')},
+  {value: 182 * DAY, label: () => i18n('Schedule.Repeat.Every6Months')},
+  {value: 365 * DAY, label: () => i18n('Schedule.Repeat.Yearly')}
+];
+
 export default class PopupSchedule extends PopupDatePicker {
   private canSendWhenOnline: boolean;
   private isCustomButtonText: boolean;
+  protected repeatPeriod: number;
 
   constructor(options: {
     initDate: Date,
     minDate?: Date,
     maxDate?: Date,
-    onPick: (timestamp: number) => void,
+    onPick: (timestamp: number, repeatPeriod?: number) => void,
     canSendWhenOnline?: boolean,
-    btnConfirmLangKey?: LangPackKey,
+    canRepeat?: boolean,
+    initRepeatPeriod?: number,
+    btnConfirmLangKey?: LangPackKey
     btnDangerLangKey?: LangPackKey
   }) {
     super(
       checkDate(options.initDate, options.canSendWhenOnline !== undefined ? 10 : undefined),
-      options.onPick,
+      (timestamp) => options.onPick(timestamp, this.repeatPeriod || undefined),
       {
         noButtons: true,
         noTitle: true,
@@ -62,12 +86,17 @@ export default class PopupSchedule extends PopupDatePicker {
       }
     );
 
+    this.repeatPeriod = options.initRepeatPeriod || 0;
     this.canSendWhenOnline = options.canSendWhenOnline;
     this.isCustomButtonText = !!options.btnConfirmLangKey;
 
     this.element.classList.add('popup-schedule');
     this.header.append(this.controlsDiv);
     this.title.replaceWith(this.monthTitle);
+    if(options.canRepeat) {
+      this.constructRepeatRow(options.initRepeatPeriod || 0);
+    }
+
     this.body.append(this.btnConfirm);
 
     if(options.canSendWhenOnline) {
@@ -94,6 +123,53 @@ export default class PopupSchedule extends PopupDatePicker {
       this.btnConfirm.replaceChildren(i18n(options.btnConfirmLangKey));
       this.btnConfirm.classList.add('text-uppercase');
     }
+  }
+
+  private constructRepeatRow(initRepeatPeriod: number) {
+    const [repeatPeriod, setRepeatPeriod] = createSignal(initRepeatPeriod);
+    const [selectOpen, setSelectOpen] = createSignal(false);
+
+    const rightContent = document.createElement('div');
+    const dispose = render(() => InlineSelect({
+      get value() { return repeatPeriod(); },
+      onChange: (value: number) => {
+        setRepeatPeriod(value);
+        this.repeatPeriod = value;
+        setSelectOpen(false);
+      },
+      options: REPEAT_OPTIONS,
+      get parent() { return row.container; },
+      get isOpen() { return selectOpen(); },
+      onClose: () => setSelectOpen(false)
+    }), rightContent);
+    this.middlewareHelper.get().onDestroy(dispose);
+
+    if(!rootScope.premium) {
+      rightContent.append(Icon('premium_lock', 'primary'));
+    }
+
+    const row = new Row({
+      titleLangKey: 'Schedule.Repeat',
+      clickable: () => {
+        if(!rootScope.premium) {
+          toastNew({
+            langPackKey: 'Schedule.Repeat.PremiumRequired',
+            langPackArguments: [
+              anchorCallback(() => {
+                hideToast()
+                PopupPremium.show();
+              })
+            ]
+          });
+          return;
+        }
+        setSelectOpen((v) => !v);
+      },
+      rightContent
+    });
+    row.container.classList.add('popup-schedule-repeat');
+
+    this.body.append(row.container);
   }
 
   public setTimeTitle() {

@@ -8,7 +8,7 @@
   bottom: 0;
   top: 0;
 
-  z-index: 4;
+  z-index: 5;
 }
 
 .Value {
@@ -54,6 +54,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  padding-inline: 0.75rem;
 
   color: var(--primary-text-color);
 
