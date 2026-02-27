@@ -291,6 +291,12 @@ $transition: .2s var(--transition-standard-easing);
     }
   }
 
+  &.noMovable {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
   &.collapsed {
     width: 328px !important;
     height: 3rem !important;
