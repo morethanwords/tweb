@@ -17,6 +17,7 @@ archive.zip
 .idea
 .env.local
 src/langPackLocalVersion.ts
+/.ai
 
 # Throw files you don't need in this folder
 ignore
