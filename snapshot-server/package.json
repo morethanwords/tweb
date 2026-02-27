@@ -11,7 +11,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "express": "^5.1.0",
+    "express": "^5.2.0",
     "stream-json": "^1.9.1"
   },
   "devDependencies": {
