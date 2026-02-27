@@ -1134,10 +1134,6 @@ export default class DialogsStorage extends AppManager {
       this.clearDialogFromState(dialog, keepLocal);
     }
 
-    if(!topicOrSavedId) {
-      this.appMessagesManager.flushStoragesByPeerId(peerId);
-    }
-
     return foundDialog;
   }
 
@@ -2085,7 +2081,7 @@ export default class DialogsStorage extends AppManager {
       const {folder_id, peer} = folderPeer;
 
       const peerId = this.appPeersManager.getPeerId(peer);
-      const dialog = this.dropDialog(peerId)[0] as Dialog;
+      const dialog = this.dropDialog(peerId, undefined, true)[0] as Dialog;
       if(dialog) {
         if(dialog.pFlags?.pinned) {
           this.handleDialogUnpinning(dialog, folder_id);

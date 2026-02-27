@@ -772,6 +772,12 @@ export class AppMessagesManager extends AppManager {
       }
     });
 
+    this.rootScope.addEventListener('dialog_drop', (dialog) => {
+      if(isDialog(dialog)) {
+        this.flushStoragesByPeerId(dialog.peerId);
+      }
+    });
+
     this.batchUpdatesDebounced = debounce(() => {
       for(const event in this.batchUpdates) {
         const details = this.batchUpdates[event as keyof BatchUpdates];
@@ -4572,11 +4578,11 @@ export class AppMessagesManager extends AppManager {
         return;
       }
 
+      if(!threadOrSavedId) {
+        this.flushStoragesByPeerId(peerId);
+      }
 
       if(justClear) {
-        if(!threadOrSavedId) {
-          this.flushStoragesByPeerId(peerId);
-        }
         this.rootScope.dispatchEvent('dialog_flush', {peerId, dialog: this.getDialogOnly(peerId)});
       } else {
         const key = this.getTypingKey(peerId, threadOrSavedId);

@@ -608,7 +608,7 @@ class ApiUpdatesManager {
 
         curState.lastPtsUpdateTime = Date.now();
       } else if(pts_count) {
-        log.warn('duplicate update');
+        log.warn('duplicate update', update);
         return false;
       }
 

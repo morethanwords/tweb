@@ -5891,7 +5891,11 @@ export default class ChatBubbles {
     const regularAsService = !!isStoryMention;
     let returnService: boolean;
 
-    if(this.chat.isBotforum && (message as Message.messageService).action?._ === 'messageActionTopicCreate') {
+    if(
+      this.chat.isBotforum &&
+      (message as Message.messageService).action?._ === 'messageActionTopicCreate' &&
+      this.chat.threadId
+    ) {
       return;
     }
 

@@ -1494,7 +1494,7 @@ export class AppImManager extends EventListenerBase<{
 
     const channelId = isChannel ? (options.peer as MTChat.channel).id : undefined;
     const isForum = !!(options.peer as MTChat.channel).pFlags.forum;
-    const isBotforum = !!(options.peer?._ === 'user' && options.peer?.pFlags?.bot_forum_view);
+    const isBotforum = !!(isUser && (options.peer as User.user).pFlags.bot_forum_view);
 
     await Promise.all(keys.map(async(key) => {
       options[key] &&= await this.managers.appMessagesIdsManager.generateMessageId(options[key], channelId);
@@ -1515,18 +1515,26 @@ export class AppImManager extends EventListenerBase<{
       return;
     }
 
-    if(!commentId && !threadId && !lastMsgId && isBotforum) {
+    if(isBotforum && this.chat.peerId !== peerId) {
       appDialogsManager.toggleForumTabByPeerId(peerId, true);
     }
 
     // handle t.me/username/thread or t.me/username/messageId
-    if(isForum && lastMsgId && !threadId) {
-      const message = await this.managers.appMessagesManager.reloadMessage(peerId, lastMsgId);
-      if(message) {
-        threadId = options.threadId = getMessageThreadId(message, {isForum});
-      } else {
-        threadId = options.threadId = lastMsgId;
-        lastMsgId = options.lastMsgId = undefined;
+    if(lastMsgId && !threadId) {
+      if(isForum) {
+        const message = await this.managers.appMessagesManager.reloadMessage(peerId, lastMsgId);
+        if(message) {
+          threadId = options.threadId = getMessageThreadId(message, {isForum});
+        } else {
+          threadId = options.threadId = lastMsgId;
+          lastMsgId = options.lastMsgId = undefined;
+        }
+      } else if(isBotforum) {
+        const topic = await this.managers.dialogsStorage.getForumTopicById(peerId, lastMsgId);
+        if(topic) {
+          threadId = options.threadId = lastMsgId;
+          lastMsgId = options.lastMsgId = undefined;
+        }
       }
     }
 
