@@ -1860,6 +1860,8 @@ export default class AppSearchSuper {
         return Promise.all(loadPromises);
       });
 
+      appDialogsManager.setListClickListener({list: chatlist, autonomous: true});
+
       await Promise.all(promises);
       return chatlist;
     };
@@ -2231,6 +2233,8 @@ export default class AppSearchSuper {
       promise = this.loadApps(options);
     } else if(type === 'posts') {
       promise = this.loadPosts(options);
+    } else if(type === 'gifts') {
+      promise = this.loadGifts();
     }
 
     if(promise) {
@@ -2408,6 +2412,7 @@ export default class AppSearchSuper {
       canViewGroups,
       canViewStories,
       canViewSimilar,
+      canViewGifts,
       giftsCount,
       maybePinnedGifts
     ] = await Promise.all([
@@ -2418,6 +2423,7 @@ export default class AppSearchSuper {
       this.canViewGroups(),
       this.canViewStories(),
       this.canViewSimilar(),
+      this.canViewGifts(),
       this.getGiftsCount(),
       peerId === rootScope.myId && this.managers.appGiftsManager.getPinnedGifts(peerId)
     ]);
@@ -2462,7 +2468,7 @@ export default class AppSearchSuper {
     const similarTab = this.mediaTabsMap.get('similar');
     const giftsTab = this.mediaTabsMap.get('gifts');
 
-    const showGiftsTab = giftsCount !== 0 && threadId == null;
+    const showGiftsTab = canViewGifts && giftsCount !== 0;
 
     const a: [SearchSuperMediaTab, boolean][] = [
       [savedDialogsTab, canViewSavedDialogs],
@@ -2545,7 +2551,6 @@ export default class AppSearchSuper {
       if(!middleware()) {
         return;
       }
-      this.loadGifts()
 
       this.loadFirstTimePromise = undefined;
       this.firstLoad = false;
@@ -2754,8 +2759,16 @@ export default class AppSearchSuper {
     }
   }
 
+  public canViewGifts() {
+    return !this.searchContext.threadId && this.mediaTabsMap.has('gifts');
+  }
+
   public async getGiftsCount() {
-    const {peerId} = this.searchContext
+    const {peerId, threadId} = this.searchContext;
+    if(threadId) {
+      return;
+    }
+
     const full = await this.managers.appProfileManager.getProfileByPeerId(peerId);
     return (full as UserFull | ChatFull.channelFull).stargifts_count ?? 0;
   }
