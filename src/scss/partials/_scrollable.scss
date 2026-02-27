@@ -5,6 +5,10 @@
  */
 
 html.overlay-scroll {
+  .scrollable {
+    scrollbar-color: var(--scrollbar-color) rgba(0, 0, 0, 0);
+  }
+
   .scrollable::-webkit-scrollbar {
     width: 0;
     height: 0;
@@ -30,10 +34,6 @@ html.overlay-scroll {
 
   .scrollable::-webkit-scrollbar-corner {
     background-color: transparent;
-  }
-
-  .scrollable:hover {
-    scrollbar-color: var(--scrollbar-color) rgba(0, 0, 0, 0);
   }
 
   .scrollable:hover::-webkit-scrollbar {
