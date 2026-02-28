@@ -1625,6 +1625,10 @@
     width: 100px;
     height: 100px;
   }
+
+  .search-super-content-container {
+    min-height: calc(100vh - 57px);
+  }
 }
 
 .animations-icon-off {

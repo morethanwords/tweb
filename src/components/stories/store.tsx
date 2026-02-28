@@ -88,7 +88,7 @@ export type StoriesContextActions = {
   setBuffering: (buffering: boolean) => void,
   setLoop: (loop: boolean) => void,
   setAlbumId: (albumId: number | undefined) => void,
-  handleSwipe: (xDiff: number) => boolean
+  handleSwipe: (xDiff: number, setAlbumOverride?: (albumId: number | undefined) => void) => boolean
 };
 
 export type StoriesContextValue = [
@@ -189,6 +189,7 @@ export const createStoriesStore = (props: {
   };
 
   let loadState: string, loaded: boolean;
+  const albumCache = new Map<number | undefined, {stories: StoryItem[], loaded: boolean, count: number}>();
   const [state, setState] = createStore(initialState);
   const singlePeerId = props.peerId || (props.peers && props.peers[0].peerId);
   const currentListType: StoriesListType = props.archive ? 'archive' : 'stories';
@@ -428,12 +429,28 @@ export const createStoriesStore = (props: {
     },
 
     setAlbumId: (albumId) => {
+      if(state.albumId === albumId) return;
+      // save current album's data to cache
+      const peer = state.peers[0];
+      if(peer?.stories?.length) {
+        albumCache.set(state.albumId, {stories: peer.stories.slice(), loaded, count: peer.count});
+      }
       setState('albumId', albumId);
-      setState('peers', 0, 'stories', []);
-      load(true);
+      // restore from cache if available
+      const cached = albumCache.get(albumId);
+      if(cached) {
+        batch(() => {
+          setState('peers', 0, 'stories', cached.stories);
+          setState('peers', 0, 'count', cached.count);
+        });
+        loaded = cached.loaded;
+      } else {
+        setState('peers', 0, 'stories', []);
+        load(true);
+      }
     },
 
-    handleSwipe: (xDiff: number) => {
+    handleSwipe: (xDiff: number, setAlbumOverride?: (albumId: number | undefined) => void) => {
       const albums = state.peers[0]?.albums;
       if(!albums?.length) return false;
 
@@ -444,7 +461,8 @@ export const createStoriesStore = (props: {
       const newIndex = currentIndex + direction;
       if(newIndex < -1 || newIndex >= albums.length) return false;
 
-      actions.setAlbumId(newIndex === -1 ? undefined : albums[newIndex].album_id);
+      const newAlbumId = newIndex === -1 ? undefined : albums[newIndex].album_id;
+      (setAlbumOverride ?? actions.setAlbumId)(newAlbumId);
       return true;
     }
   };

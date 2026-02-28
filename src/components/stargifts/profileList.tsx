@@ -250,6 +250,7 @@ export function StarGiftsProfileTab(props: {
         <ChipTabs
           class={/* @once */ styles.collections}
           value={store.chosenCollection.toString()}
+          needIntersectionObserver
           onChange={(id) => {
             if(id === ADD_COLLECTION_ID.toString()) {
               openCreateCollectionPopup({actions, peerId: props.peerId})

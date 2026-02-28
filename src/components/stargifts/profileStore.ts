@@ -101,7 +101,9 @@ export function createProfileGiftsStore(props: {
         setStore('collections', res.collections)
       }
     })
-    props.onCountChange?.(res.count);
+    if(collectionId === undefined) {
+      props.onCountChange?.(res.count);
+    }
   }
 
   function reload(background = false) {

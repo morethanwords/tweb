@@ -444,6 +444,7 @@ export default class AppSearchSuper {
   private membersMiddlewareHelper: MiddlewareHelper;
 
   private _storiesActions: StoriesContextActions;
+  private _storiesSetAlbumAnimated: (albumId: number | undefined) => void;
   private _loadSavedDialogs: (side: 'top' | 'bottom') => Promise<any>;
 
   private _loadMoreApps: () => Promise<void>;
@@ -562,7 +563,7 @@ export default class AppSearchSuper {
             return
           }
 
-          if(prevChild.type === 'stories' && this._storiesActions?.handleSwipe(xDiff)) {
+          if(prevChild.type === 'stories' && this._storiesActions?.handleSwipe(xDiff, this._storiesSetAlbumAnimated)) {
             return
           }
 
@@ -1808,14 +1809,16 @@ export default class AppSearchSuper {
     createRoot((dispose) => {
       middleware.onClean(() => {
         this._storiesActions = undefined;
+        this._storiesSetAlbumAnimated = undefined;
         dispose();
         promise.reject();
       });
 
-      const {dom: storiesList, actions} = StoriesProfileList({
+      const {dom: storiesList, actions, setAlbumAnimated} = StoriesProfileList({
         peerId: this.searchContext.peerId,
         pinned: !this.storiesArchive,
         archive: this.storiesArchive,
+        scrollable: this.scrollable,
         onReady: () => {
           promise.resolve();
 
@@ -1833,7 +1836,8 @@ export default class AppSearchSuper {
         },
         selection: this.selection
       });
-      this._storiesActions = actions
+      this._storiesActions = actions;
+      this._storiesSetAlbumAnimated = setAlbumAnimated;
       this._storiesActions.load();
     });
     return promise;
