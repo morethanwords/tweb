@@ -13,16 +13,20 @@ import classNames from '@helpers/string/classNames';
 import useHeavyAnimationCheck from '@hooks/useHeavyAnimationCheck';
 
 const SCROLL_THROTTLE = /* IS_ANDROID ? 200 :  */24;
-const USE_OWN_SCROLL = !IS_OVERLAY_SCROLL_SUPPORTED;
 
-let throttleMeasurement: (callback: () => void) => number,
-  cancelMeasurement: (id: number) => void;
-if(USE_OWN_SCROLL) {
-  throttleMeasurement = (callback) => requestAnimationFrame(callback);
-  cancelMeasurement = (id) => cancelAnimationFrame(id);
-} else {
-  throttleMeasurement = (callback) => window.setTimeout(callback, SCROLL_THROTTLE);
-  cancelMeasurement = (id) => window.clearTimeout(id);
+function throttleMeasurement(callback: () => void): number {
+  if(!IS_OVERLAY_SCROLL_SUPPORTED()) {
+    return requestAnimationFrame(callback);
+  }
+  return window.setTimeout(callback, SCROLL_THROTTLE);
+}
+
+function cancelMeasurement(id: number): void {
+  if(!IS_OVERLAY_SCROLL_SUPPORTED()) {
+    cancelAnimationFrame(id);
+  } else {
+    window.clearTimeout(id);
+  }
 }
 
 export type ScrollableContextValue = {
@@ -115,7 +119,7 @@ export default function Scrollable(props: {
     }
 
     // if(this.onScrollMeasure || ((this.scrollLocked || (!this.onScrolledTop && !this.onScrolledBottom)) && !this.splitUp && !this.onAdditionalScroll)) return;
-    if((!props.onScrolledTop && !props.onScrolledBottom)/*  && !this.splitUp */ && !onScrollCallbacks().length && !USE_OWN_SCROLL) return;
+    if((!props.onScrolledTop && !props.onScrolledBottom)/*  && !this.splitUp */ && !onScrollCallbacks().length && IS_OVERLAY_SCROLL_SUPPORTED()) return;
     if(onScrollMeasure) return;
     onScrollMeasure = throttleMeasurement(() => {
       onScrollMeasure = 0;
@@ -177,7 +181,7 @@ export default function Scrollable(props: {
   };
 
   const updateThumb = (_scrollPosition = scrollPosition()) => {
-    if(!USE_OWN_SCROLL || !thumbRef) {
+    if(IS_OVERLAY_SCROLL_SUPPORTED() || !thumbRef) {
       return;
     }
 
@@ -257,7 +261,7 @@ export default function Scrollable(props: {
   };
 
   const onSizeChange = () => {
-    if(USE_OWN_SCROLL && thumbRef) {
+    if(!IS_OVERLAY_SCROLL_SUPPORTED() && thumbRef) {
       onScroll();
     }
   };
@@ -317,7 +321,7 @@ export default function Scrollable(props: {
       onScroll={!ignoreScrollEvent() && onScroll}
       onWheel={(axis === 'x' && !IS_TOUCH_SUPPORTED && onWheel) || undefined}
     >
-      {USE_OWN_SCROLL && axis === 'y' && (
+      {!IS_OVERLAY_SCROLL_SUPPORTED() && axis === 'y' && (
         <div class="scrollable-thumb-container">
           <div
             class="scrollable-thumb"
