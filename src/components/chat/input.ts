@@ -1808,7 +1808,7 @@ export default class ChatInput {
 
   public scheduleSending = async(
     callback: () => void = this.sendMessage.bind(this, true),
-    initDate = new Date(),
+    initDate?: Date,
     initRepeatPeriod?: number
   ) => {
     const middleware = this.getMiddleware();
@@ -1818,7 +1818,8 @@ export default class ChatInput {
     }
 
     PopupElement.createPopup(PopupSchedule, {
-      initDate,
+      initDate: initDate ?? new Date(),
+      addMinutes: initDate === undefined,
       onPick: (timestamp, repeatPeriod) => {
         if(!middleware()) {
           return;

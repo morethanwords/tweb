@@ -64,13 +64,14 @@ export default class PopupSchedule extends PopupDatePicker {
     maxDate?: Date,
     onPick: (timestamp: number, repeatPeriod?: number) => void,
     canSendWhenOnline?: boolean,
+    addMinutes?: boolean,
     canRepeat?: boolean,
     initRepeatPeriod?: number,
     btnConfirmLangKey?: LangPackKey
     btnDangerLangKey?: LangPackKey
   }) {
     super(
-      checkDate(options.initDate, options.canSendWhenOnline !== undefined ? 10 : undefined),
+      checkDate(options.initDate, options.addMinutes ? 10 : undefined),
       (timestamp) => options.onPick(timestamp, this.repeatPeriod || undefined),
       {
         noButtons: true,
