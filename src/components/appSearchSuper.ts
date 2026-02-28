@@ -80,6 +80,7 @@ import findAndSpliceAll from '@helpers/array/findAndSpliceAll';
 import deferredPromise from '@helpers/cancellablePromise';
 import {children, createEffect, createRoot, For, on} from 'solid-js';
 import StoriesProfileList from '@components/stories/profileList';
+import type {StoriesContextActions} from '@components/stories/store';
 import Button from '@components/button';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import PopupPremium from '@components/popups/premium';
@@ -442,7 +443,7 @@ export default class AppSearchSuper {
   private membersParticipantMap: Map<PeerId, ChatParticipant | ChannelParticipant>;
   private membersMiddlewareHelper: MiddlewareHelper;
 
-  private _loadStories: () => Promise<void>;
+  private _storiesActions: StoriesContextActions;
   private _loadSavedDialogs: (side: 'top' | 'bottom') => Promise<any>;
 
   private _loadMoreApps: () => Promise<void>;
@@ -557,7 +558,11 @@ export default class AppSearchSuper {
           const children = Array.from(this.tabsMenu.children) as HTMLElement[];
 
           const prevChild = this.mediaTabs[prevId];
-          if(prevChild.type === 'gifts' && this.stargiftsActions.handleSwipe(xDiff)) {
+          if(prevChild.type === 'gifts' && this.stargiftsActions?.handleSwipe(xDiff)) {
+            return
+          }
+
+          if(prevChild.type === 'stories' && this._storiesActions?.handleSwipe(xDiff)) {
             return
           }
 
@@ -1794,20 +1799,20 @@ export default class AppSearchSuper {
   }
 
   private async loadStories({mediaTab}: SearchSuperLoadTypeOptions) {
-    if(this._loadStories) {
-      return this._loadStories();
+    if(this._storiesActions) {
+      return this._storiesActions.load();
     }
 
     const middleware = this.middleware.get();
     const promise = deferredPromise<void>();
     createRoot((dispose) => {
       middleware.onClean(() => {
-        this._loadStories = undefined;
+        this._storiesActions = undefined;
         dispose();
         promise.reject();
       });
 
-      const storiesList = StoriesProfileList({
+      const {dom: storiesList, actions} = StoriesProfileList({
         peerId: this.searchContext.peerId,
         pinned: !this.storiesArchive,
         archive: this.storiesArchive,
@@ -1818,11 +1823,7 @@ export default class AppSearchSuper {
           mediaTab.contentTab.append(typeof(res) === 'function' ? res() : res);
           this.afterPerforming(1, mediaTab.contentTab);
         },
-        onLoadCallback: (callback) => {
-          this._loadStories = async() => {
-            await callback()
-          };
-        },
+        manualLoad: true,
         onLoad: (loaded) => {
           this.loaded[mediaTab.type] = loaded;
         },
@@ -1832,8 +1833,8 @@ export default class AppSearchSuper {
         },
         selection: this.selection
       });
-
-      this._loadStories();
+      this._storiesActions = actions
+      this._storiesActions.load();
     });
     return promise;
   }

@@ -64,7 +64,8 @@ export type StoriesContextState = {
   peers: StoriesContextPeerState[],
   peer: StoriesContextPeerState,
   freezedSorting: Set<StoriesSortingFreezeType>,
-  getNearestStory: (next: boolean, loop?: boolean, offsetIndex?: number, offsetPeer?: StoriesContextPeerState) => ChangeStoryParams
+  getNearestStory: (next: boolean, loop?: boolean, offsetIndex?: number, offsetPeer?: StoriesContextPeerState) => ChangeStoryParams,
+  albumId: number | undefined
 };
 
 export type StoriesContextActions = {
@@ -86,7 +87,8 @@ export type StoriesContextActions = {
   load: () => Promise<boolean>,
   setBuffering: (buffering: boolean) => void,
   setLoop: (loop: boolean) => void,
-  setAlbumId: (albumId: number | undefined) => void
+  setAlbumId: (albumId: number | undefined) => void,
+  handleSwipe: (xDiff: number) => boolean
 };
 
 export type StoriesContextValue = [
@@ -119,7 +121,7 @@ export const createStoriesStore = (props: {
   needUpdates?: boolean,
   pinned?: boolean,
   archive?: boolean,
-  onLoadCallback?: (callback: () => Promise<boolean>) => void,
+  manualLoad?: boolean,
   onLoad?: (fullLoad: boolean) => void,
   initialAlbumId?: number,
   singleStory?: boolean
@@ -182,11 +184,11 @@ export const createStoriesStore = (props: {
       return state.peers[state.index];
     },
     freezedSorting: new Set(),
-    getNearestStory
+    getNearestStory,
+    albumId: props.initialAlbumId as number | undefined
   };
 
   let loadState: string, loaded: boolean;
-  let albumId: number | undefined = props.initialAlbumId;
   const [state, setState] = createStore(initialState);
   const singlePeerId = props.peerId || (props.peers && props.peers[0].peerId);
   const currentListType: StoriesListType = props.archive ? 'archive' : 'stories';
@@ -240,8 +242,8 @@ export const createStoriesStore = (props: {
         const loadCount = 30;
         let promise: ReturnType<AppStoriesManager['getPinnedStories']> | ReturnType<AppStoriesManager['getStoriesArchive']> | ReturnType<AppStoriesManager['getAlbumStories']>;
         let albumsPromise: ReturnType<AppStoriesManager['getAlbums']>;
-        if(albumId) {
-          promise = rootScope.managers.appStoriesManager.getAlbumStories(peerId, albumId, loadCount, offsetId);
+        if(state.albumId) {
+          promise = rootScope.managers.appStoriesManager.getAlbumStories(peerId, state.albumId, loadCount, offsetId);
         } else if(pinned) {
           promise = rootScope.managers.appStoriesManager.getPinnedStories(peerId, loadCount, offsetId);
           albumsPromise = !offsetId ? rootScope.managers.appStoriesManager.getAlbums(peerId) : undefined;
@@ -425,11 +427,25 @@ export const createStoriesStore = (props: {
       setState({loop});
     },
 
-    setAlbumId: (albumId_) => {
-      albumId = albumId_;
-      setState('peers', 0, 'count', state.peers[0].count);
+    setAlbumId: (albumId) => {
+      setState('albumId', albumId);
       setState('peers', 0, 'stories', []);
       load(true);
+    },
+
+    handleSwipe: (xDiff: number) => {
+      const albums = state.peers[0]?.albums;
+      if(!albums?.length) return false;
+
+      const direction = xDiff > 0 ? 1 : -1;
+      const currentAlbumId = state.albumId;
+      const currentIndex = currentAlbumId === undefined ? -1 :
+        albums.findIndex((a) => a.album_id === currentAlbumId);
+      const newIndex = currentIndex + direction;
+      if(newIndex < -1 || newIndex >= albums.length) return false;
+
+      actions.setAlbumId(newIndex === -1 ? undefined : albums[newIndex].album_id);
+      return true;
     }
   };
 
@@ -817,12 +833,12 @@ export const createStoriesStore = (props: {
   listenerSetter.add(rootScope)('stories_stealth_mode', onStealthMode);
   // * updates section end
 
-  if(props.onLoadCallback) {
-    props.onLoadCallback(actions.load);
-  } else if(!state.ready) {
-    actions.load();
-  } else if(state.peer.index === undefined) {
-    actions.resetIndexes();
+  if(!props.manualLoad) {
+    if(!state.ready) {
+      actions.load();
+    } else if(state.peer.index === undefined) {
+      actions.resetIndexes();
+    }
   }
 
   rootScope.managers.appStoriesManager.getStealthMode().then(onStealthMode);

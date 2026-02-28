@@ -10,7 +10,7 @@ import {Document, MessageMedia, Photo, StoryItem} from '@layer';
 import {wrapStoryMedia} from '@components/stories/preview';
 import getMediaThumbIfNeeded from '@helpers/getStrippedThumbIfNeeded';
 import {SearchSelection} from '@components/chat/selection';
-import {StoriesProvider, useStories} from '@components/stories/store';
+import {StoriesProvider, useStories, type StoriesContextActions} from '@components/stories/store';
 import Icon from '@components/icon';
 import {ChipTab, ChipTabs} from '@components/chipTabs';
 import {i18n} from '@lib/langPack';
@@ -163,11 +163,10 @@ function StoriesAlbums() {
   const [stories, actions] = useStories();
   const hasAlbums = () => stories.ready && stories.peer.albums && stories.peer.albums.length > 0;
 
-  const [chosenAlbumId, setChosenAlbumId] = createSignal<number>(ALL_ALBUMS_ID);
+  const chosenAlbumId = () => stories.albumId === undefined ? ALL_ALBUMS_ID : stories.albumId;
 
   const handleChange = (value: string) => {
     const albumId = Number(value);
-    setChosenAlbumId(albumId);
     actions.setAlbumId(albumId === ALL_ALBUMS_ID ? undefined : albumId);
   }
 
@@ -199,9 +198,15 @@ function StoriesAlbums() {
 export default function StoriesProfileList(props: Parameters<typeof StoriesProvider>[0] & Parameters<typeof _StoriesProfileList>[0]) {
   const [, rest] = splitProps(props, ['onReady', 'onLengthChange', 'selection']);
 
-  return (
+  let actionsRef!: StoriesContextActions;
+  const dom = (
     <StoriesProvider {...rest}>
       <div>
+        {((): null => {
+          const [, actions] = useStories();
+          actionsRef = actions;
+          return null
+        })()}
         {rest.pinned && (
           <StoriesAlbums />
         )}
@@ -209,4 +214,6 @@ export default function StoriesProfileList(props: Parameters<typeof StoriesProvi
       </div>
     </StoriesProvider>
   );
+
+  return {dom, actions: actionsRef};
 }

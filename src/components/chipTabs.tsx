@@ -50,10 +50,20 @@ export function ChipTabs(props: {
   let scrollable!: HTMLDivElement;
   let chosenRef!: HTMLDivElement;
 
-  function updateChosen(categoryRect: DOMRect) {
+  function updateChosen(categoryEl: HTMLElement, categoryRect: DOMRect) {
     const scrollableRect = scrollable.getBoundingClientRect();
     chosenRef.style.width = `${categoryRect.width}px`;
     chosenRef.style.left = `${categoryRect.left - scrollableRect.left + scrollable.scrollLeft}px`;
+
+    const visibleRect = getVisibleRect(categoryEl, scrollable, false, categoryRect, undefined, true);
+    if(!visibleRect || visibleRect.overflow.horizontal) {
+      fastSmoothScroll({
+        element: categoryEl,
+        container: scrollable,
+        position: 'center',
+        axis: 'x'
+      });
+    }
   }
 
   function handleClick(event: MouseEvent, value: string) {
@@ -63,17 +73,7 @@ export function ChipTabs(props: {
 
     fastRaf(() => {
       const categoryRect = categoryEl.getBoundingClientRect();
-      updateChosen(categoryRect);
-
-      const visibleRect = getVisibleRect(categoryEl, scrollable, false, categoryRect, undefined, true);
-      if(!visibleRect || visibleRect.overflow.horizontal) {
-        fastSmoothScroll({
-          element: categoryEl,
-          container: scrollable,
-          position: 'center',
-          axis: 'x'
-        });
-      }
+      updateChosen(categoryEl, categoryRect);
     });
   }
 
@@ -83,7 +83,7 @@ export function ChipTabs(props: {
     if(categoryEl) {
       const rect = categoryEl.getBoundingClientRect();
       if(rect.width === 0 && rect.height === 0) return;
-      updateChosen(rect);
+      updateChosen(categoryEl as HTMLElement, rect);
     }
     if(!updatedOnce) {
       chosenRef.classList.add(styles.animate);
