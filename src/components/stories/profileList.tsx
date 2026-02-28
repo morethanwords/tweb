@@ -15,21 +15,30 @@ import Icon from '@components/icon';
 import {ChipTab, ChipTabs} from '@components/chipTabs';
 import {i18n} from '@lib/langPack';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import {putPreloader} from '@components/putPreloader';
+import fastSmoothScroll from '../../helpers/fastSmoothScroll';
+import Scrollable from '../scrollable';
+import {doubleRaf, fastRaf} from '../../helpers/schedulers';
 
 const TEST_ONE = false;
 const TEST_TWO = false;
 
 function _StoriesProfileList(props: {
+  scrollable: Scrollable,
   onReady?: () => void,
   onLengthChange?: (length: number) => void,
   selection?: SearchSelection,
-  pinned: boolean
+  pinned: boolean,
+  onSetAlbumAnimated?: (fn: (albumId: number | undefined) => void) => void
 }) {
   const [stories, actions] = useStories();
   const [list, setList] = createSignal<JSX.Element>();
   const [length, setLength] = createSignal(0);
   const [viewerId, setViewerId] = createSignal<number>();
   const items = new Map<number, HTMLElement>();
+
+  let restoreScrollTop: number | null = null;
+  let pendingClone: HTMLElement | null = null;
 
   const onReady = () => {
     const list = <For each={stories.peer.stories}>{Item}</For>;
@@ -41,6 +50,16 @@ function _StoriesProfileList(props: {
       const length = elements.length;
       setLength(length);
       setList(elements);
+      if(restoreScrollTop !== null) {
+        doubleRaf().then(() => {
+          if(restoreScrollTop !== null && pendingClone) {
+            const diff = restoreScrollTop - props.scrollable.container.scrollTop;
+            props.scrollable.container.scrollTop = restoreScrollTop;
+            pendingClone.style.setProperty('--offset', `${diff}px`);
+            restoreScrollTop = null;
+          }
+        })
+      }
       props.onLengthChange?.(length);
     });
 
@@ -147,27 +166,110 @@ function _StoriesProfileList(props: {
     return container;
   };
 
+  const isLoading = () => stories.peer?.stories?.length === 0;
+
+  let contentRef!: HTMLDivElement;
+  const SLIDE_DURATION = 250;
+  const SLIDE_EASING = 'cubic-bezier(.4, 0, .2, 1)';
+  const scrollPositions = new Map<number, number>();
+
+  const setAlbumIdAnimated = (albumId: number | undefined) => {
+    const albums = stories.peer?.albums;
+    const oldIndex = stories.albumId === undefined ? -1 :
+      (albums?.findIndex((a) => a.album_id === stories.albumId) ?? -1);
+    const newIndex = albumId === undefined ? -1 :
+      (albums?.findIndex((a) => a.album_id === albumId) ?? -1);
+    const direction = newIndex > oldIndex ? 1 : newIndex < oldIndex ? -1 : 0;
+
+    const wrapper = contentRef.parentElement;
+    const scrollable = props.scrollable.container;
+    const searchSuper = wrapper.closest('.search-super') as HTMLElement;
+    if(!direction || !contentRef || !scrollable || !searchSuper) {
+      actions.setAlbumId(albumId);
+      return;
+    }
+
+    const scrollBase = searchSuper.offsetTop - 56
+    const oldScroll = scrollable.scrollTop - scrollBase;
+    const newScroll = scrollPositions.get(albumId) ?? 0;
+    if(oldScroll >= 0) {
+      scrollPositions.set(stories.albumId, Math.max(0, oldScroll));
+      restoreScrollTop = scrollBase + newScroll;
+    } else {
+      fastSmoothScroll({
+        element: searchSuper,
+        container: scrollable,
+        position: 'center',
+        axis: 'y'
+      })
+    }
+
+    // lock wrapper height so it doesn't collapse when content changes
+    const wrapperHeight = wrapper.offsetHeight;
+    wrapper.style.minHeight = wrapperHeight + 'px';
+
+    // clone before state change
+    const clone = contentRef.cloneNode(true) as HTMLDivElement;
+    clone.classList.add('stories-album-clone');
+    clone.style.setProperty('--offset', '0px');
+    wrapper.append(clone);
+    pendingClone = clone;
+
+    const cloneAnim = clone.animate([
+      {transform: `translateX(0) translateY(var(--offset))`},
+      {transform: `translateX(${-direction * 100}%) translateY(var(--offset))`}
+    ], {duration: SLIDE_DURATION, easing: SLIDE_EASING, fill: 'forwards'});
+    cloneAnim.onfinish = () => {
+      clone.remove()
+      pendingClone = null;
+    };
+
+    // now mutate state
+    actions.setAlbumId(albumId);
+
+    const anim = contentRef.animate([
+      {transform: `translateX(${direction * 100}%)`},
+      {transform: 'translateX(0)'}
+    ], {duration: SLIDE_DURATION, easing: SLIDE_EASING});
+
+    anim.onfinish = () => {
+      wrapper.style.minHeight = '';
+    };
+  };
+
+  props.onSetAlbumAnimated?.(setAlbumIdAnimated);
+
   return (
-    <div
-      class="grid"
-      classList={{two: length() === 2, one: length() === 1}}
-    >
-      {list()}
+    <div class="stories-album-wrapper">
+      <div ref={contentRef} class="stories-album-content">
+        <Show when={!isLoading()} fallback={
+          <div class="grid-album-preloader">{putPreloader(undefined as HTMLElement, true)}</div>
+        }>
+          <div
+            class="grid"
+            classList={{two: length() === 2, one: length() === 1}}
+          >
+            {list()}
+          </div>
+        </Show>
+      </div>
     </div>
   );
 }
 
 const ALL_ALBUMS_ID = -1;
 
-function StoriesAlbums() {
-  const [stories, actions] = useStories();
+function StoriesAlbums(props: {
+  onAlbumChange: (albumId: number | undefined) => void
+}) {
+  const [stories] = useStories();
   const hasAlbums = () => stories.ready && stories.peer.albums && stories.peer.albums.length > 0;
 
   const chosenAlbumId = () => stories.albumId === undefined ? ALL_ALBUMS_ID : stories.albumId;
 
   const handleChange = (value: string) => {
     const albumId = Number(value);
-    actions.setAlbumId(albumId === ALL_ALBUMS_ID ? undefined : albumId);
+    props.onAlbumChange(albumId === ALL_ALBUMS_ID ? undefined : albumId);
   }
 
   return (
@@ -199,6 +301,7 @@ export default function StoriesProfileList(props: Parameters<typeof StoriesProvi
   const [, rest] = splitProps(props, ['onReady', 'onLengthChange', 'selection']);
 
   let actionsRef!: StoriesContextActions;
+  let setAlbumAnimated!: (albumId: number | undefined) => void;
   const dom = (
     <StoriesProvider {...rest}>
       <div>
@@ -208,12 +311,16 @@ export default function StoriesProfileList(props: Parameters<typeof StoriesProvi
           return null
         })()}
         {rest.pinned && (
-          <StoriesAlbums />
+          <StoriesAlbums onAlbumChange={(id) => setAlbumAnimated(id)} />
         )}
-        <_StoriesProfileList {...props} pinned={rest.pinned} />
+        <_StoriesProfileList
+          {...props}
+          pinned={rest.pinned}
+          onSetAlbumAnimated={(fn) => setAlbumAnimated = fn}
+        />
       </div>
     </StoriesProvider>
   );
 
-  return {dom, actions: actionsRef};
+  return {dom, actions: actionsRef, setAlbumAnimated};
 }

@@ -91,7 +91,7 @@ export function ChipTabs(props: {
     }
   }
 
-  createEffect(on(() => props.value, (value) => fastRaf(updateCurrent)))
+  createEffect(on(() => props.value, () => fastRaf(updateCurrent)))
 
   if(props.needIntersectionObserver) {
     onMount(() => {

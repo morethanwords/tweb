@@ -997,4 +997,21 @@
       top: 0;
     }
   }
+
+  .stories-album-wrapper {
+    position: relative;
+    overflow: clip;
+  }
+
+  .stories-album-clone {
+    position: absolute;
+    inset: 0;
+  }
+
+  .grid-album-preloader {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 0;
+  }
 }
