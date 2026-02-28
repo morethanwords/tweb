@@ -35,6 +35,7 @@ import IS_INSTALL_PROMPT_SUPPORTED from '@environment/installPrompt';
 import cacheInstallPrompt from '@helpers/dom/installPrompt';
 import {fillLocalizedDates} from '@helpers/date';
 import {nextRandomUint} from '@helpers/random';
+import {createEffect} from 'solid-js';
 import {IS_OVERLAY_SCROLL_SUPPORTED, USE_CUSTOM_SCROLL, USE_NATIVE_SCROLL} from '@environment/overlayScrollSupport';
 import IMAGE_MIME_TYPES_SUPPORTED, {IMAGE_MIME_TYPES_SUPPORTED_PROMISE} from '@environment/imageMimeTypesSupport';
 import MEDIA_MIME_TYPES_SUPPORTED from '@environment/mediaMimeTypesSupport';
@@ -216,10 +217,17 @@ function setRootClasses() {
 
   if(USE_NATIVE_SCROLL) {
     add.push('native-scroll');
-  } else if(IS_OVERLAY_SCROLL_SUPPORTED) {
-    add.push('overlay-scroll');
-  } else if(USE_CUSTOM_SCROLL) {
-    add.push('custom-scroll');
+  } else {
+    createEffect(() => {
+      const root = document.documentElement;
+      if(IS_OVERLAY_SCROLL_SUPPORTED()) {
+        root.classList.add('overlay-scroll');
+        root.classList.remove('custom-scroll');
+      } else if(USE_CUSTOM_SCROLL()) {
+        root.classList.remove('overlay-scroll');
+        root.classList.add('custom-scroll');
+      }
+    });
   }
 
   // root.style.setProperty('--quote-icon', `"${getIconContent('quote')}"`);
