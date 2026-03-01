@@ -606,6 +606,10 @@ const logEntriesMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key
     ExpandableContent: () => (
       <BooleanKeyValue value={action.new_value} />
     )
+  }),
+  'channelAdminLogEventActionParticipantEditRank': ({action}) => ({
+    group: 'permissions',
+    Message: () => i18n('AdminRecentActionMessage.ChangeRank')
   })
 };
 

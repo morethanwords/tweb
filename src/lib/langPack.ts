@@ -455,9 +455,11 @@ namespace I18n {
     return out;
   }
 
-  export function format(key: LangPackKey, plain: true, args?: FormatterArguments): string;
-  export function format(key: LangPackKey, plain?: false, args?: FormatterArguments): ReturnType<typeof superFormatter>;
-  export function format(key: LangPackKey, plain = false, args?: FormatterArguments): ReturnType<typeof superFormatter> | string {
+  export function format<T extends boolean>(
+    key: LangPackKey,
+    plain?: T,
+    args?: FormatterArguments
+  ): T extends true ? string : ReturnType<typeof superFormatter> {
     const str = strings.get(key);
     let input: string;
     if(str) {
@@ -480,9 +482,9 @@ namespace I18n {
 
     const result = superFormatter(input, args);
     if(plain) { // * let's try a hack now... (don't want to replace []() entity)
-      return result.map((item) => item instanceof HTMLBRElement ? '\n' : (item instanceof Node ? item.textContent : item)).join('');
+      return result.map((item) => item instanceof HTMLBRElement ? '\n' : (item instanceof Node ? item.textContent : item)).join('') as any;
     } else {
-      return result;
+      return result as any;
     }
 
     /* if(plain) {

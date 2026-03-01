@@ -906,6 +906,12 @@
 "CantBoostChat" = "Sorry, you can't boost this group or channel.";
 "UserBoostedGroup_one" = "**%s** boosted the group %s times";
 "UserBoostedGroup_other" = "**%s** boosted the group %s times";
+"EventLogRankRemove" = "%1$s removed %2$s’s «%3$s» tag";
+"EventLogRankEdit" = "%1$s changed %2$s’s tag from «%3$s» to «%4$s»";
+"EventLogRankAdd" = "%1$s set %2$s’s tag to «%3$s»";
+"EventLogRankSelfRemove" = "%1$s removed their «%3$s» tag";
+"EventLogRankSelfEdit" = "%1$s changed their tag from «%3$s» to «%4$s»";
+"EventLogRankSelfAdd" = "%1$s set their tag to «%4$s»";
 "GroupsAndChannelsLimitTitle" = "Groups and Channels";
 "GroupsAndChannelsLimitSubtitle" = "Join up to %d channels and large groups";
 "PinChatsLimitTitle" = "Pinned Chats";
@@ -3516,6 +3522,7 @@
 "AdminRecentActionMessage.ToggleSignatureProfiles" = "Toggled signature profiles";
 "AdminRecentActionMessage.ParticipantSubscriptionExtended" = "Extended participant subscription";
 "AdminRecentActionMessage.ToggleAutoTranslation" = "Toggled auto‑translation";
+"AdminRecentActionMessage.ChangeRank" = "Changed rank";
 "AdminRecentActionsFilters.NewAdminRights" = "New Admin Rights";
 "AdminRecentActionsFilters.RemovedAdminRights" = "Removed Admin Rights";
 "AdminRecentActionsFilters.NewExceptions" = "New exceptions";

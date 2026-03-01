@@ -1,4 +1,4 @@
-import {Component, For, Show} from 'solid-js';
+import {Component, For, JSX, Show} from 'solid-js';
 import {makeDateFromTimestamp} from '@helpers/date/makeDateFromTimestamp';
 import formatDuration from '@helpers/formatDuration';
 import {I18nTsx} from '@helpers/solid/i18n';
@@ -38,7 +38,7 @@ type RenderArgs = {
 
 type ServiceResult = {
   type: 'service';
-  Content: Component;
+  Content: (plain?: boolean) => JSX.Element;
   getCopyText: () => Promise<CopyTextResult>;
 };
 
@@ -862,6 +862,38 @@ const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>
         falseText: I18n.format('AdminLog.ToggleAutoTranslationDisabled', true, [peerTitle])
       })
     )
+  }),
+  'channelAdminLogEventActionParticipantEditRank': ({action, makePeerTitle, event}) => ({
+    type: 'service',
+    Content: (plain) => {
+      let key: LangPackKey;
+      if(action.user_id === event.user_id) {
+        if(action.new_rank) {
+          key = action.prev_rank ? 'EventLogRankSelfEdit' : 'EventLogRankSelfAdd';
+        } else {
+          key = 'EventLogRankSelfRemove';
+        }
+      } else {
+        if(action.new_rank) {
+          key = action.prev_rank ? 'EventLogRankEdit' : 'EventLogRankAdd';
+        } else {
+          key = 'EventLogRankRemove';
+        }
+      }
+
+      return I18n.format(key, plain, [
+        makePeerTitle(event.user_id.toPeerId(false)),
+        makePeerTitle(action.user_id.toPeerId(false)),
+        action.prev_rank || '',
+        action.new_rank || ''
+      ]);
+    },
+    getCopyText: async function() {
+      return {
+        text: this.Content(true) as string,
+        html: ''
+      };
+    }
   })
 };
 

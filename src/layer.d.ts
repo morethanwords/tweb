@@ -898,21 +898,27 @@ export type ChatParticipant = ChatParticipant.chatParticipant | ChatParticipant.
 export namespace ChatParticipant {
   export type chatParticipant = {
     _: 'chatParticipant',
+    flags?: number,
     user_id: string | number,
     inviter_id: string | number,
-    date: number
+    date: number,
+    rank?: string
   };
 
   export type chatParticipantCreator = {
     _: 'chatParticipantCreator',
-    user_id: string | number
+    flags?: number,
+    user_id: string | number,
+    rank?: string
   };
 
   export type chatParticipantAdmin = {
     _: 'chatParticipantAdmin',
+    flags?: number,
     user_id: string | number,
     inviter_id: string | number,
-    date: number
+    date: number,
+    rank?: string
   };
 }
 
@@ -1006,6 +1012,7 @@ export namespace Message {
     id: number,
     from_id?: Peer,
     from_boosts_applied?: number,
+    from_rank?: string,
     peer_id: Peer,
     saved_peer_id?: Peer,
     fwd_from?: MessageFwdHeader,
@@ -1303,7 +1310,7 @@ export namespace MessageMedia {
 /**
  * @link https://core.telegram.org/type/MessageAction
  */
-export type MessageAction = MessageAction.messageActionEmpty | MessageAction.messageActionChatCreate | MessageAction.messageActionChatEditTitle | MessageAction.messageActionChatEditPhoto | MessageAction.messageActionChatDeletePhoto | MessageAction.messageActionChatAddUser | MessageAction.messageActionChatDeleteUser | MessageAction.messageActionChatJoinedByLink | MessageAction.messageActionChannelCreate | MessageAction.messageActionChatMigrateTo | MessageAction.messageActionChannelMigrateFrom | MessageAction.messageActionPinMessage | MessageAction.messageActionHistoryClear | MessageAction.messageActionGameScore | MessageAction.messageActionPaymentSentMe | MessageAction.messageActionPaymentSent | MessageAction.messageActionPhoneCall | MessageAction.messageActionScreenshotTaken | MessageAction.messageActionCustomAction | MessageAction.messageActionBotAllowed | MessageAction.messageActionSecureValuesSentMe | MessageAction.messageActionSecureValuesSent | MessageAction.messageActionContactSignUp | MessageAction.messageActionGeoProximityReached | MessageAction.messageActionGroupCall | MessageAction.messageActionInviteToGroupCall | MessageAction.messageActionSetMessagesTTL | MessageAction.messageActionGroupCallScheduled | MessageAction.messageActionSetChatTheme | MessageAction.messageActionChatJoinedByRequest | MessageAction.messageActionWebViewDataSentMe | MessageAction.messageActionWebViewDataSent | MessageAction.messageActionGiftPremium | MessageAction.messageActionTopicCreate | MessageAction.messageActionTopicEdit | MessageAction.messageActionSuggestProfilePhoto | MessageAction.messageActionRequestedPeer | MessageAction.messageActionSetChatWallPaper | MessageAction.messageActionGiftCode | MessageAction.messageActionGiveawayLaunch | MessageAction.messageActionGiveawayResults | MessageAction.messageActionBoostApply | MessageAction.messageActionRequestedPeerSentMe | MessageAction.messageActionPaymentRefunded | MessageAction.messageActionGiftStars | MessageAction.messageActionPrizeStars | MessageAction.messageActionStarGift | MessageAction.messageActionStarGiftUnique | MessageAction.messageActionPaidMessagesRefunded | MessageAction.messageActionPaidMessagesPrice | MessageAction.messageActionConferenceCall | MessageAction.messageActionTodoCompletions | MessageAction.messageActionTodoAppendTasks | MessageAction.messageActionSuggestedPostApproval | MessageAction.messageActionSuggestedPostSuccess | MessageAction.messageActionSuggestedPostRefund | MessageAction.messageActionGiftTon | MessageAction.messageActionSuggestBirthday | MessageAction.messageActionStarGiftPurchaseOffer | MessageAction.messageActionStarGiftPurchaseOfferDeclined | MessageAction.messageActionNewCreatorPending | MessageAction.messageActionChangeCreator | MessageAction.messageActionDiscussionStarted | MessageAction.messageActionChannelJoined | MessageAction.messageActionChatLeave | MessageAction.messageActionChannelDeletePhoto | MessageAction.messageActionChannelEditTitle | MessageAction.messageActionChannelEditPhoto | MessageAction.messageActionChannelEditVideo | MessageAction.messageActionChatEditVideo | MessageAction.messageActionChatAddUsers | MessageAction.messageActionChatJoined | MessageAction.messageActionChatReturn | MessageAction.messageActionChatJoinedYou | MessageAction.messageActionChatReturnYou;
+export type MessageAction = MessageAction.messageActionEmpty | MessageAction.messageActionChatCreate | MessageAction.messageActionChatEditTitle | MessageAction.messageActionChatEditPhoto | MessageAction.messageActionChatDeletePhoto | MessageAction.messageActionChatAddUser | MessageAction.messageActionChatDeleteUser | MessageAction.messageActionChatJoinedByLink | MessageAction.messageActionChannelCreate | MessageAction.messageActionChatMigrateTo | MessageAction.messageActionChannelMigrateFrom | MessageAction.messageActionPinMessage | MessageAction.messageActionHistoryClear | MessageAction.messageActionGameScore | MessageAction.messageActionPaymentSentMe | MessageAction.messageActionPaymentSent | MessageAction.messageActionPhoneCall | MessageAction.messageActionScreenshotTaken | MessageAction.messageActionCustomAction | MessageAction.messageActionBotAllowed | MessageAction.messageActionSecureValuesSentMe | MessageAction.messageActionSecureValuesSent | MessageAction.messageActionContactSignUp | MessageAction.messageActionGeoProximityReached | MessageAction.messageActionGroupCall | MessageAction.messageActionInviteToGroupCall | MessageAction.messageActionSetMessagesTTL | MessageAction.messageActionGroupCallScheduled | MessageAction.messageActionSetChatTheme | MessageAction.messageActionChatJoinedByRequest | MessageAction.messageActionWebViewDataSentMe | MessageAction.messageActionWebViewDataSent | MessageAction.messageActionGiftPremium | MessageAction.messageActionTopicCreate | MessageAction.messageActionTopicEdit | MessageAction.messageActionSuggestProfilePhoto | MessageAction.messageActionRequestedPeer | MessageAction.messageActionSetChatWallPaper | MessageAction.messageActionGiftCode | MessageAction.messageActionGiveawayLaunch | MessageAction.messageActionGiveawayResults | MessageAction.messageActionBoostApply | MessageAction.messageActionRequestedPeerSentMe | MessageAction.messageActionPaymentRefunded | MessageAction.messageActionGiftStars | MessageAction.messageActionPrizeStars | MessageAction.messageActionStarGift | MessageAction.messageActionStarGiftUnique | MessageAction.messageActionPaidMessagesRefunded | MessageAction.messageActionPaidMessagesPrice | MessageAction.messageActionConferenceCall | MessageAction.messageActionTodoCompletions | MessageAction.messageActionTodoAppendTasks | MessageAction.messageActionSuggestedPostApproval | MessageAction.messageActionSuggestedPostSuccess | MessageAction.messageActionSuggestedPostRefund | MessageAction.messageActionGiftTon | MessageAction.messageActionSuggestBirthday | MessageAction.messageActionStarGiftPurchaseOffer | MessageAction.messageActionStarGiftPurchaseOfferDeclined | MessageAction.messageActionNewCreatorPending | MessageAction.messageActionChangeCreator | MessageAction.messageActionNoForwardsToggle | MessageAction.messageActionNoForwardsRequest | MessageAction.messageActionDiscussionStarted | MessageAction.messageActionChannelJoined | MessageAction.messageActionChatLeave | MessageAction.messageActionChannelDeletePhoto | MessageAction.messageActionChannelEditTitle | MessageAction.messageActionChannelEditPhoto | MessageAction.messageActionChannelEditVideo | MessageAction.messageActionChatEditVideo | MessageAction.messageActionChatAddUsers | MessageAction.messageActionChatJoined | MessageAction.messageActionChatReturn | MessageAction.messageActionChatJoinedYou | MessageAction.messageActionChatReturnYou;
 
 export namespace MessageAction {
   export type messageActionEmpty = {
@@ -1795,6 +1802,22 @@ export namespace MessageAction {
   export type messageActionChangeCreator = {
     _: 'messageActionChangeCreator',
     new_creator_id: string | number
+  };
+
+  export type messageActionNoForwardsToggle = {
+    _: 'messageActionNoForwardsToggle',
+    prev_value: boolean,
+    new_value: boolean
+  };
+
+  export type messageActionNoForwardsRequest = {
+    _: 'messageActionNoForwardsRequest',
+    flags?: number,
+    pFlags: Partial<{
+      expired?: true,
+    }>,
+    prev_value: boolean,
+    new_value: boolean
   };
 
   export type messageActionDiscussionStarted = {
@@ -2325,6 +2348,8 @@ export namespace UserFull {
       can_view_revenue?: true,
       bot_can_manage_emoji_status?: true,
       display_gifts_button?: true,
+      noforwards_my_enabled?: true,
+      noforwards_peer_enabled?: true,
     }>,
     flags2?: number,
     id: string | number,
@@ -2669,7 +2694,7 @@ export namespace MessagesFilter {
 /**
  * @link https://core.telegram.org/type/Update
  */
-export type Update = Update.updateNewMessage | Update.updateMessageID | Update.updateDeleteMessages | Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChatParticipants | Update.updateUserStatus | Update.updateUserName | Update.updateNewAuthorization | Update.updateNewEncryptedMessage | Update.updateEncryptedChatTyping | Update.updateEncryption | Update.updateEncryptedMessagesRead | Update.updateChatParticipantAdd | Update.updateChatParticipantDelete | Update.updateDcOptions | Update.updateNotifySettings | Update.updateServiceNotification | Update.updatePrivacy | Update.updateUserPhone | Update.updateReadHistoryInbox | Update.updateReadHistoryOutbox | Update.updateWebPage | Update.updateReadMessagesContents | Update.updateChannelTooLong | Update.updateChannel | Update.updateNewChannelMessage | Update.updateReadChannelInbox | Update.updateDeleteChannelMessages | Update.updateChannelMessageViews | Update.updateChatParticipantAdmin | Update.updateNewStickerSet | Update.updateStickerSetsOrder | Update.updateStickerSets | Update.updateSavedGifs | Update.updateBotInlineQuery | Update.updateBotInlineSend | Update.updateEditChannelMessage | Update.updateBotCallbackQuery | Update.updateEditMessage | Update.updateInlineBotCallbackQuery | Update.updateReadChannelOutbox | Update.updateDraftMessage | Update.updateReadFeaturedStickers | Update.updateRecentStickers | Update.updateConfig | Update.updatePtsChanged | Update.updateChannelWebPage | Update.updateDialogPinned | Update.updatePinnedDialogs | Update.updateBotWebhookJSON | Update.updateBotWebhookJSONQuery | Update.updateBotShippingQuery | Update.updateBotPrecheckoutQuery | Update.updatePhoneCall | Update.updateLangPackTooLong | Update.updateLangPack | Update.updateFavedStickers | Update.updateChannelReadMessagesContents | Update.updateContactsReset | Update.updateChannelAvailableMessages | Update.updateDialogUnreadMark | Update.updateMessagePoll | Update.updateChatDefaultBannedRights | Update.updateFolderPeers | Update.updatePeerSettings | Update.updatePeerLocated | Update.updateNewScheduledMessage | Update.updateDeleteScheduledMessages | Update.updateTheme | Update.updateGeoLiveViewed | Update.updateLoginToken | Update.updateMessagePollVote | Update.updateDialogFilter | Update.updateDialogFilterOrder | Update.updateDialogFilters | Update.updatePhoneCallSignalingData | Update.updateChannelMessageForwards | Update.updateReadChannelDiscussionInbox | Update.updateReadChannelDiscussionOutbox | Update.updatePeerBlocked | Update.updateChannelUserTyping | Update.updatePinnedMessages | Update.updatePinnedChannelMessages | Update.updateChat | Update.updateGroupCallParticipants | Update.updateGroupCall | Update.updatePeerHistoryTTL | Update.updateChatParticipant | Update.updateChannelParticipant | Update.updateBotStopped | Update.updateGroupCallConnection | Update.updateBotCommands | Update.updatePendingJoinRequests | Update.updateBotChatInviteRequester | Update.updateMessageReactions | Update.updateAttachMenuBots | Update.updateWebViewResultSent | Update.updateBotMenuButton | Update.updateSavedRingtones | Update.updateTranscribedAudio | Update.updateReadFeaturedEmojiStickers | Update.updateUserEmojiStatus | Update.updateRecentEmojiStatuses | Update.updateRecentReactions | Update.updateMoveStickerSetToTop | Update.updateMessageExtendedMedia | Update.updateUser | Update.updateAutoSaveSettings | Update.updateStory | Update.updateReadStories | Update.updateStoryID | Update.updateStoriesStealthMode | Update.updateSentStoryReaction | Update.updateBotChatBoost | Update.updateChannelViewForumAsMessages | Update.updatePeerWallpaper | Update.updateBotMessageReaction | Update.updateBotMessageReactions | Update.updateSavedDialogPinned | Update.updatePinnedSavedDialogs | Update.updateSavedReactionTags | Update.updateSmsJob | Update.updateQuickReplies | Update.updateNewQuickReply | Update.updateDeleteQuickReply | Update.updateQuickReplyMessage | Update.updateDeleteQuickReplyMessages | Update.updateBotBusinessConnect | Update.updateBotNewBusinessMessage | Update.updateBotEditBusinessMessage | Update.updateBotDeleteBusinessMessage | Update.updateNewStoryReaction | Update.updateStarsBalance | Update.updateBusinessBotCallbackQuery | Update.updateStarsRevenueStatus | Update.updateBotPurchasedPaidMedia | Update.updatePaidReactionPrivacy | Update.updateSentPhoneCode | Update.updateGroupCallChainBlocks | Update.updateReadMonoForumInbox | Update.updateReadMonoForumOutbox | Update.updateMonoForumNoPaidException | Update.updateGroupCallMessage | Update.updateGroupCallEncryptedMessage | Update.updatePinnedForumTopic | Update.updatePinnedForumTopics | Update.updateDeleteGroupCallMessages | Update.updateStarGiftAuctionState | Update.updateStarGiftAuctionUserState | Update.updateEmojiGameInfo | Update.updateStarGiftCraftFail | Update.updateNewDiscussionMessage | Update.updateDeleteDiscussionMessages | Update.updateChannelReload | Update.updatePts;
+export type Update = Update.updateNewMessage | Update.updateMessageID | Update.updateDeleteMessages | Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChatParticipants | Update.updateUserStatus | Update.updateUserName | Update.updateNewAuthorization | Update.updateNewEncryptedMessage | Update.updateEncryptedChatTyping | Update.updateEncryption | Update.updateEncryptedMessagesRead | Update.updateChatParticipantAdd | Update.updateChatParticipantDelete | Update.updateDcOptions | Update.updateNotifySettings | Update.updateServiceNotification | Update.updatePrivacy | Update.updateUserPhone | Update.updateReadHistoryInbox | Update.updateReadHistoryOutbox | Update.updateWebPage | Update.updateReadMessagesContents | Update.updateChannelTooLong | Update.updateChannel | Update.updateNewChannelMessage | Update.updateReadChannelInbox | Update.updateDeleteChannelMessages | Update.updateChannelMessageViews | Update.updateChatParticipantAdmin | Update.updateNewStickerSet | Update.updateStickerSetsOrder | Update.updateStickerSets | Update.updateSavedGifs | Update.updateBotInlineQuery | Update.updateBotInlineSend | Update.updateEditChannelMessage | Update.updateBotCallbackQuery | Update.updateEditMessage | Update.updateInlineBotCallbackQuery | Update.updateReadChannelOutbox | Update.updateDraftMessage | Update.updateReadFeaturedStickers | Update.updateRecentStickers | Update.updateConfig | Update.updatePtsChanged | Update.updateChannelWebPage | Update.updateDialogPinned | Update.updatePinnedDialogs | Update.updateBotWebhookJSON | Update.updateBotWebhookJSONQuery | Update.updateBotShippingQuery | Update.updateBotPrecheckoutQuery | Update.updatePhoneCall | Update.updateLangPackTooLong | Update.updateLangPack | Update.updateFavedStickers | Update.updateChannelReadMessagesContents | Update.updateContactsReset | Update.updateChannelAvailableMessages | Update.updateDialogUnreadMark | Update.updateMessagePoll | Update.updateChatDefaultBannedRights | Update.updateFolderPeers | Update.updatePeerSettings | Update.updatePeerLocated | Update.updateNewScheduledMessage | Update.updateDeleteScheduledMessages | Update.updateTheme | Update.updateGeoLiveViewed | Update.updateLoginToken | Update.updateMessagePollVote | Update.updateDialogFilter | Update.updateDialogFilterOrder | Update.updateDialogFilters | Update.updatePhoneCallSignalingData | Update.updateChannelMessageForwards | Update.updateReadChannelDiscussionInbox | Update.updateReadChannelDiscussionOutbox | Update.updatePeerBlocked | Update.updateChannelUserTyping | Update.updatePinnedMessages | Update.updatePinnedChannelMessages | Update.updateChat | Update.updateGroupCallParticipants | Update.updateGroupCall | Update.updatePeerHistoryTTL | Update.updateChatParticipant | Update.updateChannelParticipant | Update.updateBotStopped | Update.updateGroupCallConnection | Update.updateBotCommands | Update.updatePendingJoinRequests | Update.updateBotChatInviteRequester | Update.updateMessageReactions | Update.updateAttachMenuBots | Update.updateWebViewResultSent | Update.updateBotMenuButton | Update.updateSavedRingtones | Update.updateTranscribedAudio | Update.updateReadFeaturedEmojiStickers | Update.updateUserEmojiStatus | Update.updateRecentEmojiStatuses | Update.updateRecentReactions | Update.updateMoveStickerSetToTop | Update.updateMessageExtendedMedia | Update.updateUser | Update.updateAutoSaveSettings | Update.updateStory | Update.updateReadStories | Update.updateStoryID | Update.updateStoriesStealthMode | Update.updateSentStoryReaction | Update.updateBotChatBoost | Update.updateChannelViewForumAsMessages | Update.updatePeerWallpaper | Update.updateBotMessageReaction | Update.updateBotMessageReactions | Update.updateSavedDialogPinned | Update.updatePinnedSavedDialogs | Update.updateSavedReactionTags | Update.updateSmsJob | Update.updateQuickReplies | Update.updateNewQuickReply | Update.updateDeleteQuickReply | Update.updateQuickReplyMessage | Update.updateDeleteQuickReplyMessages | Update.updateBotBusinessConnect | Update.updateBotNewBusinessMessage | Update.updateBotEditBusinessMessage | Update.updateBotDeleteBusinessMessage | Update.updateNewStoryReaction | Update.updateStarsBalance | Update.updateBusinessBotCallbackQuery | Update.updateStarsRevenueStatus | Update.updateBotPurchasedPaidMedia | Update.updatePaidReactionPrivacy | Update.updateSentPhoneCode | Update.updateGroupCallChainBlocks | Update.updateReadMonoForumInbox | Update.updateReadMonoForumOutbox | Update.updateMonoForumNoPaidException | Update.updateGroupCallMessage | Update.updateGroupCallEncryptedMessage | Update.updatePinnedForumTopic | Update.updatePinnedForumTopics | Update.updateDeleteGroupCallMessages | Update.updateStarGiftAuctionState | Update.updateStarGiftAuctionUserState | Update.updateEmojiGameInfo | Update.updateStarGiftCraftFail | Update.updateChatParticipantRank | Update.updateNewDiscussionMessage | Update.updateDeleteDiscussionMessages | Update.updateChannelReload | Update.updatePts;
 
 export namespace Update {
   export type updateNewMessage = {
@@ -3763,6 +3788,14 @@ export namespace Update {
 
   export type updateStarGiftCraftFail = {
     _: 'updateStarGiftCraftFail'
+  };
+
+  export type updateChatParticipantRank = {
+    _: 'updateChatParticipantRank',
+    chat_id: string | number,
+    user_id: string | number,
+    rank: string,
+    version: number
   };
 
   export type updateNewDiscussionMessage = {
@@ -5571,7 +5604,7 @@ export namespace ReplyMarkup {
 /**
  * @link https://core.telegram.org/type/MessageEntity
  */
-export type MessageEntity = MessageEntity.messageEntityUnknown | MessageEntity.messageEntityMention | MessageEntity.messageEntityHashtag | MessageEntity.messageEntityBotCommand | MessageEntity.messageEntityUrl | MessageEntity.messageEntityEmail | MessageEntity.messageEntityBold | MessageEntity.messageEntityItalic | MessageEntity.messageEntityCode | MessageEntity.messageEntityPre | MessageEntity.messageEntityTextUrl | MessageEntity.messageEntityMentionName | MessageEntity.inputMessageEntityMentionName | MessageEntity.messageEntityPhone | MessageEntity.messageEntityCashtag | MessageEntity.messageEntityUnderline | MessageEntity.messageEntityStrike | MessageEntity.messageEntityBankCard | MessageEntity.messageEntitySpoiler | MessageEntity.messageEntityCustomEmoji | MessageEntity.messageEntityBlockquote | MessageEntity.messageEntityEmoji | MessageEntity.messageEntityHighlight | MessageEntity.messageEntityLinebreak | MessageEntity.messageEntityCaret | MessageEntity.messageEntityTimestamp | MessageEntity.messageEntityImage | MessageEntity.messageEntitySubscript | MessageEntity.messageEntitySuperscript | MessageEntity.messageEntityAnchor;
+export type MessageEntity = MessageEntity.messageEntityUnknown | MessageEntity.messageEntityMention | MessageEntity.messageEntityHashtag | MessageEntity.messageEntityBotCommand | MessageEntity.messageEntityUrl | MessageEntity.messageEntityEmail | MessageEntity.messageEntityBold | MessageEntity.messageEntityItalic | MessageEntity.messageEntityCode | MessageEntity.messageEntityPre | MessageEntity.messageEntityTextUrl | MessageEntity.messageEntityMentionName | MessageEntity.inputMessageEntityMentionName | MessageEntity.messageEntityPhone | MessageEntity.messageEntityCashtag | MessageEntity.messageEntityUnderline | MessageEntity.messageEntityStrike | MessageEntity.messageEntityBankCard | MessageEntity.messageEntitySpoiler | MessageEntity.messageEntityCustomEmoji | MessageEntity.messageEntityBlockquote | MessageEntity.messageEntityFormattedDate | MessageEntity.messageEntityEmoji | MessageEntity.messageEntityHighlight | MessageEntity.messageEntityLinebreak | MessageEntity.messageEntityCaret | MessageEntity.messageEntityTimestamp | MessageEntity.messageEntityImage | MessageEntity.messageEntitySubscript | MessageEntity.messageEntitySuperscript | MessageEntity.messageEntityAnchor;
 
 export namespace MessageEntity {
   export type messageEntityUnknown = {
@@ -5710,6 +5743,22 @@ export namespace MessageEntity {
     }>,
     offset: number,
     length: number
+  };
+
+  export type messageEntityFormattedDate = {
+    _: 'messageEntityFormattedDate',
+    flags?: number,
+    pFlags: Partial<{
+      relative?: true,
+      short_time?: true,
+      long_time?: true,
+      short_date?: true,
+      long_date?: true,
+      day_of_week?: true,
+    }>,
+    offset: number,
+    length: number,
+    date: number
   };
 
   export type messageEntityEmoji = {
@@ -5899,6 +5948,7 @@ export namespace ChannelParticipant {
     user_id: string | number,
     date: number,
     subscription_until_date?: number,
+    rank?: string,
     peer?: Peer
   };
 
@@ -5911,7 +5961,8 @@ export namespace ChannelParticipant {
     user_id: string | number,
     inviter_id: string | number,
     date: number,
-    subscription_until_date?: number
+    subscription_until_date?: number,
+    rank?: string
   };
 
   export type channelParticipantCreator = {
@@ -5946,7 +5997,8 @@ export namespace ChannelParticipant {
     peer: Peer,
     kicked_by: string | number,
     date: number,
-    banned_rights: ChatBannedRights
+    banned_rights: ChatBannedRights,
+    rank?: string
   };
 
   export type channelParticipantLeft = {
@@ -7944,7 +7996,7 @@ export namespace LangPackLanguage {
 /**
  * @link https://core.telegram.org/type/ChannelAdminLogEventAction
  */
-export type ChannelAdminLogEventAction = ChannelAdminLogEventAction.channelAdminLogEventActionChangeTitle | ChannelAdminLogEventAction.channelAdminLogEventActionChangeAbout | ChannelAdminLogEventAction.channelAdminLogEventActionChangeUsername | ChannelAdminLogEventAction.channelAdminLogEventActionChangePhoto | ChannelAdminLogEventAction.channelAdminLogEventActionToggleInvites | ChannelAdminLogEventAction.channelAdminLogEventActionToggleSignatures | ChannelAdminLogEventAction.channelAdminLogEventActionUpdatePinned | ChannelAdminLogEventAction.channelAdminLogEventActionEditMessage | ChannelAdminLogEventAction.channelAdminLogEventActionDeleteMessage | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantJoin | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantLeave | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantInvite | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantToggleBan | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantToggleAdmin | ChannelAdminLogEventAction.channelAdminLogEventActionChangeStickerSet | ChannelAdminLogEventAction.channelAdminLogEventActionTogglePreHistoryHidden | ChannelAdminLogEventAction.channelAdminLogEventActionDefaultBannedRights | ChannelAdminLogEventAction.channelAdminLogEventActionStopPoll | ChannelAdminLogEventAction.channelAdminLogEventActionChangeLinkedChat | ChannelAdminLogEventAction.channelAdminLogEventActionChangeLocation | ChannelAdminLogEventAction.channelAdminLogEventActionToggleSlowMode | ChannelAdminLogEventAction.channelAdminLogEventActionStartGroupCall | ChannelAdminLogEventAction.channelAdminLogEventActionDiscardGroupCall | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantMute | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantUnmute | ChannelAdminLogEventAction.channelAdminLogEventActionToggleGroupCallSetting | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantJoinByInvite | ChannelAdminLogEventAction.channelAdminLogEventActionExportedInviteDelete | ChannelAdminLogEventAction.channelAdminLogEventActionExportedInviteRevoke | ChannelAdminLogEventAction.channelAdminLogEventActionExportedInviteEdit | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantVolume | ChannelAdminLogEventAction.channelAdminLogEventActionChangeHistoryTTL | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantJoinByRequest | ChannelAdminLogEventAction.channelAdminLogEventActionToggleNoForwards | ChannelAdminLogEventAction.channelAdminLogEventActionSendMessage | ChannelAdminLogEventAction.channelAdminLogEventActionChangeAvailableReactions | ChannelAdminLogEventAction.channelAdminLogEventActionChangeUsernames | ChannelAdminLogEventAction.channelAdminLogEventActionToggleForum | ChannelAdminLogEventAction.channelAdminLogEventActionCreateTopic | ChannelAdminLogEventAction.channelAdminLogEventActionEditTopic | ChannelAdminLogEventAction.channelAdminLogEventActionDeleteTopic | ChannelAdminLogEventAction.channelAdminLogEventActionPinTopic | ChannelAdminLogEventAction.channelAdminLogEventActionToggleAntiSpam | ChannelAdminLogEventAction.channelAdminLogEventActionChangePeerColor | ChannelAdminLogEventAction.channelAdminLogEventActionChangeProfilePeerColor | ChannelAdminLogEventAction.channelAdminLogEventActionChangeWallpaper | ChannelAdminLogEventAction.channelAdminLogEventActionChangeEmojiStatus | ChannelAdminLogEventAction.channelAdminLogEventActionChangeEmojiStickerSet | ChannelAdminLogEventAction.channelAdminLogEventActionToggleSignatureProfiles | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantSubExtend | ChannelAdminLogEventAction.channelAdminLogEventActionToggleAutotranslation;
+export type ChannelAdminLogEventAction = ChannelAdminLogEventAction.channelAdminLogEventActionChangeTitle | ChannelAdminLogEventAction.channelAdminLogEventActionChangeAbout | ChannelAdminLogEventAction.channelAdminLogEventActionChangeUsername | ChannelAdminLogEventAction.channelAdminLogEventActionChangePhoto | ChannelAdminLogEventAction.channelAdminLogEventActionToggleInvites | ChannelAdminLogEventAction.channelAdminLogEventActionToggleSignatures | ChannelAdminLogEventAction.channelAdminLogEventActionUpdatePinned | ChannelAdminLogEventAction.channelAdminLogEventActionEditMessage | ChannelAdminLogEventAction.channelAdminLogEventActionDeleteMessage | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantJoin | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantLeave | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantInvite | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantToggleBan | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantToggleAdmin | ChannelAdminLogEventAction.channelAdminLogEventActionChangeStickerSet | ChannelAdminLogEventAction.channelAdminLogEventActionTogglePreHistoryHidden | ChannelAdminLogEventAction.channelAdminLogEventActionDefaultBannedRights | ChannelAdminLogEventAction.channelAdminLogEventActionStopPoll | ChannelAdminLogEventAction.channelAdminLogEventActionChangeLinkedChat | ChannelAdminLogEventAction.channelAdminLogEventActionChangeLocation | ChannelAdminLogEventAction.channelAdminLogEventActionToggleSlowMode | ChannelAdminLogEventAction.channelAdminLogEventActionStartGroupCall | ChannelAdminLogEventAction.channelAdminLogEventActionDiscardGroupCall | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantMute | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantUnmute | ChannelAdminLogEventAction.channelAdminLogEventActionToggleGroupCallSetting | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantJoinByInvite | ChannelAdminLogEventAction.channelAdminLogEventActionExportedInviteDelete | ChannelAdminLogEventAction.channelAdminLogEventActionExportedInviteRevoke | ChannelAdminLogEventAction.channelAdminLogEventActionExportedInviteEdit | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantVolume | ChannelAdminLogEventAction.channelAdminLogEventActionChangeHistoryTTL | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantJoinByRequest | ChannelAdminLogEventAction.channelAdminLogEventActionToggleNoForwards | ChannelAdminLogEventAction.channelAdminLogEventActionSendMessage | ChannelAdminLogEventAction.channelAdminLogEventActionChangeAvailableReactions | ChannelAdminLogEventAction.channelAdminLogEventActionChangeUsernames | ChannelAdminLogEventAction.channelAdminLogEventActionToggleForum | ChannelAdminLogEventAction.channelAdminLogEventActionCreateTopic | ChannelAdminLogEventAction.channelAdminLogEventActionEditTopic | ChannelAdminLogEventAction.channelAdminLogEventActionDeleteTopic | ChannelAdminLogEventAction.channelAdminLogEventActionPinTopic | ChannelAdminLogEventAction.channelAdminLogEventActionToggleAntiSpam | ChannelAdminLogEventAction.channelAdminLogEventActionChangePeerColor | ChannelAdminLogEventAction.channelAdminLogEventActionChangeProfilePeerColor | ChannelAdminLogEventAction.channelAdminLogEventActionChangeWallpaper | ChannelAdminLogEventAction.channelAdminLogEventActionChangeEmojiStatus | ChannelAdminLogEventAction.channelAdminLogEventActionChangeEmojiStickerSet | ChannelAdminLogEventAction.channelAdminLogEventActionToggleSignatureProfiles | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantSubExtend | ChannelAdminLogEventAction.channelAdminLogEventActionToggleAutotranslation | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantEditRank;
 
 export namespace ChannelAdminLogEventAction {
   export type channelAdminLogEventActionChangeTitle = {
@@ -8229,6 +8281,13 @@ export namespace ChannelAdminLogEventAction {
     _: 'channelAdminLogEventActionToggleAutotranslation',
     new_value: boolean
   };
+
+  export type channelAdminLogEventActionParticipantEditRank = {
+    _: 'channelAdminLogEventActionParticipantEditRank',
+    user_id: string | number,
+    prev_rank: string,
+    new_rank: string
+  };
 }
 
 /**
@@ -8289,6 +8348,7 @@ export namespace ChannelAdminLogEventsFilter {
       send?: true,
       forums?: true,
       sub_extend?: true,
+      edit_rank?: true,
     }>
   };
 }
@@ -9353,6 +9413,7 @@ export namespace ChatAdminRights {
       edit_stories?: true,
       delete_stories?: true,
       manage_direct_messages?: true,
+      manage_ranks?: true,
     }>
   };
 }
@@ -9387,6 +9448,7 @@ export namespace ChatBannedRights {
       send_voices?: true,
       send_docs?: true,
       send_plain?: true,
+      edit_rank?: true,
     }>,
     until_date: number
   };
@@ -9650,13 +9712,16 @@ export namespace UrlAuthResult {
     pFlags: Partial<{
       request_write_access?: true,
       request_phone_number?: true,
+      match_codes_first?: true,
     }>,
     bot: User,
     domain: string,
     browser?: string,
     platform?: string,
     ip?: string,
-    region?: string
+    region?: string,
+    match_codes?: Array<string>,
+    user_id_hint?: string | number
   };
 
   export type urlAuthResultAccepted = {
@@ -17722,6 +17787,11 @@ export interface ConstructorDeclMap {
   'keyboardButtonStyle': KeyboardButtonStyle.keyboardButtonStyle,
   'messageActionNewCreatorPending': MessageAction.messageActionNewCreatorPending,
   'messageActionChangeCreator': MessageAction.messageActionChangeCreator,
+  'messageEntityFormattedDate': MessageEntity.messageEntityFormattedDate,
+  'updateChatParticipantRank': Update.updateChatParticipantRank,
+  'messageActionNoForwardsToggle': MessageAction.messageActionNoForwardsToggle,
+  'messageActionNoForwardsRequest': MessageAction.messageActionNoForwardsRequest,
+  'channelAdminLogEventActionParticipantEditRank': ChannelAdminLogEventAction.channelAdminLogEventActionParticipantEditRank,
   'messageEntityEmoji': MessageEntity.messageEntityEmoji,
   'messageEntityHighlight': MessageEntity.messageEntityHighlight,
   'messageEntityLinebreak': MessageEntity.messageEntityLinebreak,
@@ -18508,10 +18578,11 @@ export type ChannelsCreateChannel = {
 };
 
 export type ChannelsEditAdmin = {
+  flags?: number,
   channel: InputChannel,
   user_id: InputUser,
   admin_rights: ChatAdminRights,
-  rank: string
+  rank?: string
 };
 
 export type ChannelsEditTitle = {
@@ -19523,7 +19594,8 @@ export type MessagesRequestUrlAuth = {
   peer?: InputPeer,
   msg_id?: number,
   button_id?: number,
-  url?: string
+  url?: string,
+  in_app_origin?: string
 };
 
 export type MessagesAcceptUrlAuth = {
@@ -19533,7 +19605,8 @@ export type MessagesAcceptUrlAuth = {
   peer?: InputPeer,
   msg_id?: number,
   button_id?: number,
-  url?: string
+  url?: string,
+  match_code?: string
 };
 
 export type MessagesHidePeerSettingsBar = {
@@ -19552,12 +19625,6 @@ export type ContactsAddContact = {
 
 export type ContactsAcceptContact = {
   id: InputUser
-};
-
-export type ChannelsEditCreator = {
-  channel: InputChannel,
-  user_id: InputUser,
-  password: InputCheckPasswordSRP
 };
 
 export type ContactsGetLocated = {
@@ -20138,8 +20205,10 @@ export type MessagesHideAllChatJoinRequests = {
 };
 
 export type MessagesToggleNoForwards = {
+  flags?: number,
   peer: InputPeer,
-  enabled: boolean
+  enabled: boolean,
+  request_msg_id?: number
 };
 
 export type MessagesSaveDefaultSendAs = {
@@ -22204,8 +22273,29 @@ export type PaymentsCraftStarGift = {
   stargift: Array<InputSavedStarGift>
 };
 
-export type ChannelsGetFutureCreatorAfterLeave = {
-  channel: InputChannel
+export type MessagesEditChatCreator = {
+  peer: InputPeer,
+  user_id: InputUser,
+  password: InputCheckPasswordSRP
+};
+
+export type MessagesGetFutureChatCreatorAfterLeave = {
+  peer: InputPeer
+};
+
+export type MessagesEditChatParticipantRank = {
+  peer: InputPeer,
+  participant: InputPeer,
+  rank: string
+};
+
+export type MessagesDeclineUrlAuth = {
+  url: string
+};
+
+export type MessagesCheckUrlAuthMatchCode = {
+  url: string,
+  match_code: string
 };
 
 export interface MethodDeclMap {
@@ -22505,7 +22595,6 @@ export interface MethodDeclMap {
   'messages.hidePeerSettingsBar': {req: MessagesHidePeerSettingsBar, res: boolean},
   'contacts.addContact': {req: ContactsAddContact, res: Updates},
   'contacts.acceptContact': {req: ContactsAcceptContact, res: Updates},
-  'channels.editCreator': {req: ChannelsEditCreator, res: Updates},
   'contacts.getLocated': {req: ContactsGetLocated, res: Updates},
   'channels.editLocation': {req: ChannelsEditLocation, res: boolean},
   'channels.toggleSlowMode': {req: ChannelsToggleSlowMode, res: Updates},
@@ -22962,6 +23051,10 @@ export interface MethodDeclMap {
   'messages.summarizeText': {req: MessagesSummarizeText, res: TextWithEntities},
   'payments.getCraftStarGifts': {req: PaymentsGetCraftStarGifts, res: PaymentsSavedStarGifts},
   'payments.craftStarGift': {req: PaymentsCraftStarGift, res: Updates},
-  'channels.getFutureCreatorAfterLeave': {req: ChannelsGetFutureCreatorAfterLeave, res: User},
+  'messages.editChatCreator': {req: MessagesEditChatCreator, res: Updates},
+  'messages.getFutureChatCreatorAfterLeave': {req: MessagesGetFutureChatCreatorAfterLeave, res: User},
+  'messages.editChatParticipantRank': {req: MessagesEditChatParticipantRank, res: Updates},
+  'messages.declineUrlAuth': {req: MessagesDeclineUrlAuth, res: boolean},
+  'messages.checkUrlAuthMatchCode': {req: MessagesCheckUrlAuthMatchCode, res: boolean},
 }
 

@@ -1051,6 +1051,12 @@ const lang = {
     'one_value': '**%s** boosted the group %s times',
     'other_value': '**%s** boosted the group %s times'
   },
+  'EventLogRankRemove': '%1$s removed %2$s’s «%3$s» tag',
+  'EventLogRankEdit': '%1$s changed %2$s’s tag from «%3$s» to «%4$s»',
+  'EventLogRankAdd': '%1$s set %2$s’s tag to «%3$s»',
+  'EventLogRankSelfRemove': '%1$s removed their «%3$s» tag',
+  'EventLogRankSelfEdit': '%1$s changed their tag from «%3$s» to «%4$s»',
+  'EventLogRankSelfAdd': '%1$s set their tag to «%4$s»',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -4045,6 +4051,7 @@ const lang = {
   'AdminRecentActionMessage.ToggleSignatureProfiles': 'Toggled signature profiles',
   'AdminRecentActionMessage.ParticipantSubscriptionExtended': 'Extended participant subscription',
   'AdminRecentActionMessage.ToggleAutoTranslation': 'Toggled auto‑translation',
+  'AdminRecentActionMessage.ChangeRank': 'Changed rank',
 
   'AdminRecentActionsFilters.NewAdminRights': 'New Admin Rights',
   'AdminRecentActionsFilters.RemovedAdminRights': 'Removed Admin Rights',

@@ -5699,7 +5699,7 @@ export default class ChatBubbles {
       contentWrapper.append(bubbleContainer);
       bubble.append(contentWrapper);
 
-      renderComponent({element: s, Component: entry.Content, middleware, HotReloadGuard: SolidJSHotReloadGuardProvider});
+      renderComponent({element: s, Component: () => entry.Content(), middleware, HotReloadGuard: SolidJSHotReloadGuardProvider});
     } else if(entry.type === 'default') {
       const serviceContent = document.createElement('div');
 
