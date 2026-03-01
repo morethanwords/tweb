@@ -200,17 +200,3 @@ export async function createTwoPeerCopyText(
   const text = formatText(peerTitle, secondPeerTitle);
   return {text: `${text} [${dateText}]`};
 }
-
-export async function createConditionalCopyText(
-  timestamp: number,
-  peerId: PeerId,
-  condition: boolean,
-  formatTexts: (peerTitle: string) => {trueText: string; falseText: string}
-): Promise<CopyTextResult> {
-  const {getPeerTitle} = useHotReloadGuard();
-  const dateText = getDateTextForCopy(timestamp);
-  const peerTitle = await getPeerTitle({peerId, plainText: true});
-  const {trueText, falseText} = formatTexts(peerTitle);
-  const text = condition ? trueText : falseText;
-  return {text: `${text} [${dateText}]`};
-}
