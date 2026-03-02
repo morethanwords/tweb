@@ -1008,10 +1008,20 @@
     inset: 0;
   }
 
-  .grid-album-preloader {
+  .grid-album-placeholder {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     padding: 2rem 0;
+    height: calc(100vh - 96px);
+    position: relative;
+
+    .title {
+      font-size: var(--font-size-20);
+      line-height: var(--line-height-20);
+      font-weight: 500;
+      margin-bottom: 0.25rem;
+    }
   }
 }

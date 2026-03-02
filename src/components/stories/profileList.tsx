@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {splitProps, createEffect, createSignal, For, JSX, createMemo, onCleanup, untrack, createComputed, createReaction, Show, on} from 'solid-js';
+import {splitProps, createEffect, createSignal, For, JSX, createMemo, onCleanup, untrack, createComputed, createReaction, Show, on, Switch, Match} from 'solid-js';
 import {createStoriesViewer} from '@components/stories/viewer';
 import {Document, MessageMedia, Photo, StoryItem} from '@layer';
 import {wrapStoryMedia} from '@components/stories/preview';
@@ -15,10 +15,12 @@ import Icon from '@components/icon';
 import {ChipTab, ChipTabs} from '@components/chipTabs';
 import {i18n} from '@lib/langPack';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
-import {putPreloader} from '@components/putPreloader';
+import {PreloaderTsx} from '@components/putPreloader';
 import fastSmoothScroll from '../../helpers/fastSmoothScroll';
 import Scrollable from '../scrollable';
-import {doubleRaf, fastRaf} from '../../helpers/schedulers';
+import {doubleRaf} from '../../helpers/schedulers';
+import {I18nTsx} from '../../helpers/solid/i18n';
+import ButtonTsx from '../buttonTsx';
 
 const TEST_ONE = false;
 const TEST_TWO = false;
@@ -27,6 +29,7 @@ function _StoriesProfileList(props: {
   scrollable: Scrollable,
   onReady?: () => void,
   onLengthChange?: (length: number) => void,
+  onAddToAlbum?: (albumId: number) => void,
   selection?: SearchSelection,
   pinned: boolean,
   onSetAlbumAnimated?: (fn: (albumId: number | undefined) => void) => void
@@ -60,12 +63,11 @@ function _StoriesProfileList(props: {
           }
         })
       }
-      props.onLengthChange?.(length);
     });
 
-    props.onLengthChange && createEffect(() => {
-      props.onLengthChange(stories.peer?.count);
-    });
+    props.onLengthChange && createEffect(on(() => stories.peer?.count, (count) => {
+      if(stories.albumId === undefined) props.onLengthChange(count);
+    }));
 
     props.onReady?.();
   };
@@ -166,7 +168,8 @@ function _StoriesProfileList(props: {
     return container;
   };
 
-  const isLoading = () => stories.peer?.stories?.length === 0;
+  const isEmpty = () => stories.peer?.stories?.length === 0;
+  const isLoading = () => !stories.loaded && isEmpty()
 
   let contentRef!: HTMLDivElement;
   const SLIDE_DURATION = 250;
@@ -189,7 +192,8 @@ function _StoriesProfileList(props: {
       return;
     }
 
-    const scrollBase = searchSuper.offsetTop - 56
+    // ! 0 for "my stories" tab
+    const scrollBase = searchSuper.offsetTop === 0 ? 0 : searchSuper.offsetTop - 56
     const oldScroll = scrollable.scrollTop - scrollBase;
     const newScroll = scrollPositions.get(albumId) ?? 0;
     if(oldScroll >= 0) {
@@ -214,6 +218,8 @@ function _StoriesProfileList(props: {
     clone.style.setProperty('--offset', '0px');
     wrapper.append(clone);
     pendingClone = clone;
+    // lock clone height
+    clone.style.height = clone.offsetHeight + 'px';
 
     const cloneAnim = clone.animate([
       {transform: `translateX(0) translateY(var(--offset))`},
@@ -242,16 +248,34 @@ function _StoriesProfileList(props: {
   return (
     <div class="stories-album-wrapper">
       <div ref={contentRef} class="stories-album-content">
-        <Show when={!isLoading()} fallback={
-          <div class="grid-album-preloader">{putPreloader(undefined as HTMLElement, true)}</div>
-        }>
-          <div
-            class="grid"
-            classList={{two: length() === 2, one: length() === 1}}
-          >
-            {list()}
-          </div>
-        </Show>
+        <Switch>
+          <Match when={isLoading()}>
+            <div class="grid-album-placeholder">
+              <PreloaderTsx />
+            </div>
+          </Match>
+          <Match when={isEmpty() && stories.albumId !== undefined}>
+            <div class="grid-album-placeholder">
+              <I18nTsx key="Stories.Albums.EmptyTitle" class="title" />
+              <I18nTsx key="Stories.Albums.EmptySubtitle" class="subtitle" />
+              <Show when={props.onAddToAlbum}>
+                <ButtonTsx
+                  class="btn-primary btn-color-primary btn-control"
+                  text="Stories.Albums.AddToAlbum"
+                  onClick={() => props.onAddToAlbum(stories.albumId)}
+                />
+              </Show>
+            </div>
+          </Match>
+          <Match when={true}>
+            <div
+              class="grid"
+              classList={{two: length() === 2, one: length() === 1}}
+            >
+              {list()}
+            </div>
+          </Match>
+        </Switch>
       </div>
     </div>
   );

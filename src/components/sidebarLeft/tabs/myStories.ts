@@ -115,6 +115,9 @@ export default class AppMyStoriesTab extends SliderSuperTab {
         placeholder.classList.toggle('hide', length > 0);
       }
     };
+    searchSuper.onStoriesAddToAlbum = (albumId) => {
+      console.log('add to album', albumId);
+    };
     searchSuper.setQuery({peerId: rootScope.myId});
     searchSuper.selectTab(0);
 

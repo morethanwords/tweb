@@ -319,7 +319,7 @@
 
     // * fix saving scroll on tab switching, when FROM tab has height < 100vh, and another is scrolled less than the FROM tab's height
     // * adding 1 extra pixel for scroll
-    min-height: calc(100vh - 111px);
+    min-height: calc(100vh - 103px);
   }
 
   &-tabs-container {
