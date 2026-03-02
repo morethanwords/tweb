@@ -474,6 +474,7 @@ export default class AppSearchSuper {
   private swipeHandler: SwipeHandler;
 
   public onStoriesLengthChange: (length: number) => void;
+  public onStoriesAddToAlbum: (albumId: number) => void;
   public storiesArchive: boolean;
 
   public counters: Partial<{[type in SearchSuperMediaType]: number}> = {};
@@ -1816,6 +1817,7 @@ export default class AppSearchSuper {
 
       const {dom: storiesList, actions, setAlbumAnimated} = StoriesProfileList({
         peerId: this.searchContext.peerId,
+        onAddToAlbum: this.onStoriesAddToAlbum,
         pinned: !this.storiesArchive,
         archive: this.storiesArchive,
         scrollable: this.scrollable,
