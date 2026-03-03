@@ -7140,7 +7140,7 @@ export class AppMessagesManager extends AppManager {
         message
       } as Update.updateNewDiscussionMessage;
 
-      if(this.appChatsManager.isForum(peerId.toChatId()) && !this.dialogsStorage.getForumTopic(peerId, threadId)) {
+      if((this.appChatsManager.isForum(peerId.toChatId()) || this.appPeersManager.isBotforum(peerId)) && !this.dialogsStorage.getForumTopic(peerId, threadId)) {
         // this.dialogsStorage.getForumTopicById(peerId, threadId);
         this.handleNewUpdateAfterReload(peerId, update, threadId);
       } else if(peerId === this.appPeersManager.peerId && !this.dialogsStorage.getAnyDialog(peerId, threadId)) {
@@ -7161,18 +7161,6 @@ export class AppMessagesManager extends AppManager {
           mid: message.reply_to_mid,
           receiptMessage: message
         });
-      }
-
-      if(this.appPeersManager.isBotforum(peerId) && action._ === 'messageActionTopicCreate') {
-        const topic = this.dialogsStorage.getForumTopic(peerId, threadId);
-
-        if(!topic) {
-          // Warning! sometimes refetching immediately might not return the topic from the server, and it will be marked as a deleted topic
-          // this.dialogsStorage.getForumTopicById(peerId, threadId);
-
-          const newTopicFromMessage = createBotforumTopicFromAction({message, action});
-          this.dialogsStorage.applyLocalForumTopics([newTopicFromMessage]);
-        }
       }
 
       if(action._ === 'messageActionTopicEdit' && !isLocalThreadUpdate) {
