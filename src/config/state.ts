@@ -92,7 +92,8 @@ export type StateSettings = {
   notifyAllAccounts: boolean,
   tabsInSidebar: boolean,
   seenTooltips: {
-    storySound: boolean
+    storySound: boolean,
+    noForwards: boolean
   },
   playbackParams: ReturnType<AppMediaPlaybackController['getPlaybackParams']>,
   translations: {
@@ -372,7 +373,8 @@ export const SETTINGS_INIT: StateSettings = {
   },
   chatContextMenuHintWasShown: false,
   seenTooltips: {
-    storySound: false
+    storySound: false,
+    noForwards: false
   },
   translations: {
     peers: {},

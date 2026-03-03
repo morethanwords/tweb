@@ -1158,7 +1158,7 @@ export default class ChatContextMenu {
       return message.some((message) => ChatContextMenu.canDownload(message, withTarget, noForwards, container));
     }
 
-    if(!canSaveMessageMedia(message) || noForwards) {
+    if(!canSaveMessageMedia(message, noForwards)) {
       return false;
     }
 

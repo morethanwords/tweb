@@ -1220,4 +1220,18 @@ export class AppProfileManager extends AppManager {
       }
     });
   }
+
+  public toggleNoForwards(peerId: PeerId, enabled: boolean, requestMsgId?: number) {
+    return this.apiManager.invokeApi('messages.toggleNoForwards', {
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      enabled,
+      request_msg_id: requestMsgId ? getServerMessageId(requestMsgId) : undefined
+    }).then((updates) => {
+      if(peerId.isAnyChat()) {
+        this.appChatsManager.onChatUpdated(peerId.toChatId(), updates);
+      } else {
+        this.apiUpdatesManager.processUpdateMessage(updates);
+      }
+    });
+  }
 }

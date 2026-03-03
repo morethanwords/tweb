@@ -9,16 +9,17 @@ import DropdownHover from '@helpers/dropdownHover';
 import {ReplyMarkup} from '@layer';
 import rootScope from '@lib/rootScope';
 import ListenerSetter, {Listener} from '@helpers/listenerSetter';
-import findUpClassName from '@helpers/dom/findUpClassName';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import findUpAsChild from '@helpers/dom/findUpAsChild';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {getHeavyAnimationPromise} from '@hooks/useHeavyAnimationCheck';
 import safeAssign from '@helpers/object/safeAssign';
 import {AppManagers} from '@lib/managers';
-import {attachClickEvent} from '@helpers/dom/clickEvent';
 import Scrollable from '@components/scrollable';
 import wrapKeyboardButton from '@components/wrappers/keyboardButton';
+import classNames from '@helpers/string/classNames';
+import {Middleware, MiddlewareHelper} from '@helpers/middleware';
+import {createRoot} from 'solid-js';
 
 export default class ReplyKeyboard extends DropdownHover {
   private static BASE_CLASS = 'reply-keyboard';
@@ -30,14 +31,15 @@ export default class ReplyKeyboard extends DropdownHover {
   private touchListener: Listener;
   private chatInput: ChatInput;
   private scrollable: Scrollable;
-  private onClickMap: Map<HTMLElement, (e: Event) => void>;
+  private middlewareHelper: MiddlewareHelper;
 
   constructor(options: {
     listenerSetter: ListenerSetter,
     managers: AppManagers,
     appendTo: HTMLElement,
     btnHover: HTMLElement,
-    chatInput: ChatInput
+    chatInput: ChatInput,
+    middleware: Middleware
   }) {
     super({
       element: document.createElement('div')
@@ -48,8 +50,8 @@ export default class ReplyKeyboard extends DropdownHover {
     this.element.classList.add(ReplyKeyboard.BASE_CLASS);
     this.element.style.display = 'none';
 
-    this.onClickMap = new Map();
     this.scrollable = new Scrollable();
+    this.middlewareHelper = options.middleware.create();
     this.element.append(this.scrollable.container);
 
     this.attachButtonListener(this.btnHover, this.listenerSetter);
@@ -79,18 +81,6 @@ export default class ReplyKeyboard extends DropdownHover {
         }, {once: true});
       }
     });
-
-    attachClickEvent(this.element, (e) => {
-      const target = findUpClassName(e.target, 'btn');
-      if(!target) {
-        return;
-      }
-
-      const onClick = this.onClickMap.get(target);
-      onClick?.(e);
-
-      this.toggle(false);
-    }, {listenerSetter: this.listenerSetter});
 
     return super.init();
   }
@@ -125,29 +115,35 @@ export default class ReplyKeyboard extends DropdownHover {
       replyMarkup = await this.getReplyMarkup() as any;
     }
 
-    this.onClickMap.clear();
     this.scrollable.replaceChildren();
+    this.middlewareHelper.clean();
 
-    for(const row of replyMarkup.rows) {
-      const div = document.createElement('div');
-      div.classList.add(ReplyKeyboard.BASE_CLASS + '-row');
+    createRoot((dispose) => {
+      this.middlewareHelper.get().onDestroy(dispose);
 
-      for(const button of row.buttons) {
-        const {buttonEl, onClick} = wrapKeyboardButton({
-          button,
-          chat: this.chatInput.chat,
-          replyMarkup,
-          wrapOptions: {
-            textColor: 'primary-color'
-          }
-        });
-        this.onClickMap.set(buttonEl, onClick);
-        buttonEl.classList.add(ReplyKeyboard.BASE_CLASS + '-button', 'btn');
-        div.append(buttonEl);
+      for(const row of replyMarkup.rows) {
+        const div = document.createElement('div');
+        div.classList.add(ReplyKeyboard.BASE_CLASS + '-row');
+
+        for(const button of row.buttons) {
+          const element = wrapKeyboardButton({
+            button,
+            chat: this.chatInput.chat,
+            replyMarkup,
+            wrapOptions: {
+              textColor: 'primary-color'
+            },
+            onClick: () => {
+              this.toggle(false);
+            },
+            className: classNames(ReplyKeyboard.BASE_CLASS + '-button', 'btn')
+          });
+          div.append(element as HTMLElement);
+        }
+
+        this.scrollable.append(div);
       }
-
-      this.scrollable.append(div);
-    }
+    });
   }
 
   public async checkAvailability(replyMarkup?: ReplyMarkup) {

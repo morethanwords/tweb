@@ -1,4 +1,5 @@
 import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
+import classNames from '@helpers/string/classNames';
 import {Message} from '@layer';
 import {i18n} from '@lib/langPack';
 import {SUGGESTED_POST_WAIT_FOR_REWARD_HOURS} from '@appManagers/constants';
@@ -6,6 +7,7 @@ import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import confirmationPopup from '@components/confirmationPopup';
 import Icon from '@components/icon';
+import ReplyMarkupLayout from '@components/chat/bubbleParts/replyMarkupLayout';
 import ripple from '@components/ripple';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import type Chat from '@components/chat/chat';
@@ -82,27 +84,21 @@ const SuggestedPostReplyMarkupContent = defineSolidElement({
     };
 
     return (
-      <div class="reply-markup">
-        <div class="reply-markup-row">
-          <button class="reply-markup-button" use:ripple onClick={onRejectClick}>
-            <span class="reply-markup-button-text reply-markup-suggested-action">
-              {Icon('crossround_filled')}{/* @once */i18n('SuggestedPosts.Reject')}
-            </span>
-          </button>
-          <button class="reply-markup-button" use:ripple onClick={onAcceptClick}>
-            <span class="reply-markup-button-text reply-markup-suggested-action">
-              {Icon('checkround_filled')}{/* @once */i18n('SuggestedPosts.Accept')}
-            </span>
-          </button>
-        </div>
-        <div class="reply-markup-row">
-          <button class="reply-markup-button is-first is-last" use:ripple onClick={onSuggestChangesClick}>
-            <span class="reply-markup-button-text reply-markup-suggested-action">
-              {Icon('newchat_filled')}{/* @once */i18n('SuggestedPosts.SuggestChanges')}
-            </span>
-          </button>
-        </div>
-      </div>
+      <ReplyMarkupLayout>
+        <ReplyMarkupLayout.Row>
+          <ReplyMarkupLayout.Button textClass="reply-markup-suggested-action" onClick={onRejectClick}>
+            {Icon('crossround_filled')}{/* @once */i18n('SuggestedPosts.Reject')}
+          </ReplyMarkupLayout.Button>
+          <ReplyMarkupLayout.Button textClass="reply-markup-suggested-action" onClick={onAcceptClick}>
+            {Icon('checkround_filled')}{/* @once */i18n('SuggestedPosts.Accept')}
+          </ReplyMarkupLayout.Button>
+        </ReplyMarkupLayout.Row>
+        <ReplyMarkupLayout.Row>
+          <ReplyMarkupLayout.Button textClass="reply-markup-suggested-action" onClick={onSuggestChangesClick}>
+            {Icon('newchat_filled')}{/* @once */i18n('SuggestedPosts.SuggestChanges')}
+          </ReplyMarkupLayout.Button>
+        </ReplyMarkupLayout.Row>
+      </ReplyMarkupLayout>
     );
   }
 });

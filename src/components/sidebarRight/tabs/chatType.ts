@@ -338,7 +338,7 @@ export default class AppChatTypeTab extends SliderSuperTabEventable {
 
       this.listenerSetter.add(checkboxField.input)('change', () => {
         const toggle = row.toggleDisability(true);
-        this.managers.appChatsManager.toggleNoForwards(this.chatId, checkboxField.checked).then(() => {
+        this.managers.appProfileManager.toggleNoForwards(this.chatId.toPeerId(true), checkboxField.checked).then(() => {
           toggle();
         });
       });

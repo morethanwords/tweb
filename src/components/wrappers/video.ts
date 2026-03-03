@@ -657,8 +657,8 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
           renderDeferred.resolve();
         }
 
-        attachSoundObserver?.();
         onLoad?.();
+        attachSoundObserver?.();
       }, onError);
 
       if(altDoc && altCacheContext) {

@@ -6895,6 +6895,22 @@ export class AppMessagesManager extends AppManager {
     }
   }
 
+  private updateNoForwardsOnNewMessage(message: MyMessage) {
+    const action = (message as Message.messageService).action;
+    if(action?._ !== 'messageActionNoForwardsToggle') {
+      return;
+    }
+
+    this.appProfileManager.modifyCachedFullUser(message.peerId.toUserId(), (userFull) => {
+      const key = message.pFlags.out ? 'noforwards_my_enabled' : 'noforwards_peer_enabled';
+      if(action.new_value) {
+        userFull.pFlags[key] = true;
+      } else {
+        delete userFull.pFlags[key];
+      }
+    });
+  }
+
   public hasOutgoingMessage(peerId: PeerId) {
     for(const randomId in this.pendingByRandomId) {
       if(this.pendingByRandomId[randomId].peerId === peerId) {
@@ -7315,6 +7331,7 @@ export class AppMessagesManager extends AppManager {
 
     if(!isLocalThreadUpdate) {
       this.updateSlowModeOnNewMessage(message);
+      this.updateNoForwardsOnNewMessage(message);
     }
 
     // commented to render the message if it's been sent faster than history_append came to main thread
@@ -8636,16 +8653,16 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  public async canViewMessageReadParticipants(message: Message) {
+  public async canViewMessageReadParticipants(message: MyMessage) {
     if(
-      message?._ !== 'message' ||
+      !message ||
       message.pFlags.is_outgoing ||
       !message.pFlags.out ||
       message.pFlags.unread ||
       message.peerId === this.appPeersManager.peerId ||
       this.appPeersManager.isBroadcast(message.peerId) ||
       this.appPeersManager.isMonoforum(message.peerId) ||
-      message.pFlags.is_scheduled
+      (message as Message.message).pFlags.is_scheduled
     ) {
       return false;
     }

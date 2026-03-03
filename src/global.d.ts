@@ -123,7 +123,7 @@ declare global {
     'translations' | 'animated_emoji' | 'more_upload' | 'emoji_status' | 'profile_badge' |
     'advanced_chat_management' | 'no_ads' | 'app_icons' | 'infinite_reactions' |
     'animated_userpics' | 'premium_stickers' | 'peer_colors' | 'wallpapers' |
-    'saved_tags' | 'last_seen' | 'message_privacy';
+    'saved_tags' | 'last_seen' | 'message_privacy' | 'pm_noforwards';
 
   type MTMimeType = 'video/quicktime' | 'image/gif' | 'image/jpeg' | 'application/pdf' |
     'video/mp4' | 'image/webp' | 'audio/mpeg' | 'audio/ogg' | 'application/octet-stream' |

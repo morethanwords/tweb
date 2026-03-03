@@ -302,6 +302,7 @@ export default class ChatInput {
   private mentionsHelper: MentionsHelper;
   private inlineHelper: InlineHelper;
   private listenerSetter: ListenerSetter;
+  private middlewareHelper: MiddlewareHelper;
   private hoverListenerSetter: ListenerSetter;
 
   private pinnedControlBtn: HTMLButtonElement;
@@ -406,6 +407,7 @@ export default class ChatInput {
   ) {
     this.listenerSetter = new ListenerSetter();
     this.hoverListenerSetter = new ListenerSetter();
+    this.middlewareHelper = getMiddleware();
     this.excludeParts = {};
     this.isFocused = false;
     this.emoticonsDropdown = emoticonsDropdown;
@@ -831,7 +833,8 @@ export default class ChatInput {
       listenerSetter: this.listenerSetter,
       managers: this.managers,
       btnHover: this.btnToggleReplyMarkup,
-      chatInput: this
+      chatInput: this,
+      middleware: this.middlewareHelper.get()
     });
     this.listenerSetter.add(this.replyKeyboard)('open', () => this.btnToggleReplyMarkup.classList.add('active'));
     this.listenerSetter.add(this.replyKeyboard)('close', () => this.btnToggleReplyMarkup.classList.remove('active'));
@@ -1963,6 +1966,7 @@ export default class ChatInput {
     this.placeholderParamsMiddlewareHelper.destroy();
     appNavigationController.removeItem(this.inputHelperNavigationItem);
     this.listenerSetter.removeAll();
+    this.middlewareHelper.destroy();
     this.setCurrentHover();
   }
 

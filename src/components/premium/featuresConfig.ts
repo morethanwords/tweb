@@ -316,5 +316,12 @@ export const PREMIUM_FEATURES: {[type in PremiumPromoFeatureType]?: PremiumPromo
     icon: 'premium_tags',
     titleLangKey: 'PremiumPreviewTags',
     subtitleLangKey: 'PremiumPreviewTagsDescription2'
+  },
+  pm_noforwards: {
+    feature: 'pm_noforwards',
+    icon: 'premium_speed',
+    titleLangKey: 'Premium.Boarding.NoForwards.Title',
+    subtitleLangKey: 'Premium.Boarding.NoForwards.Info',
+    videoPosition: 'top'
   }
 };

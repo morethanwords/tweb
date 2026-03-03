@@ -346,8 +346,10 @@ export class AppPeersManager extends AppManager {
   }
 
   public noForwards(peerId: PeerId) {
-    if(peerId.isUser()) return false;
-    else {
+    if(peerId.isUser()) {
+      const userFull = this.appProfileManager.getCachedFullUser(peerId.toUserId());
+      return !!(userFull?.pFlags?.noforwards_my_enabled || userFull?.pFlags?.noforwards_peer_enabled);
+    } else {
       const chat = this.appChatsManager.getChat(peerId.toChatId());
       return !!(chat as Chat.chat).pFlags?.noforwards;
     }

@@ -481,7 +481,7 @@ export class AppChatsManager extends AppManager {
     });
   }
 
-  private onChatUpdated = (chatId: ChatId, updates?: Updates, forceInvalidation?: boolean) => {
+  public onChatUpdated = (chatId: ChatId, updates?: Updates, forceInvalidation?: boolean) => {
     // console.log('onChatUpdated', chatId, updates);
 
     this.apiUpdatesManager.processUpdateMessage(updates);
@@ -913,13 +913,6 @@ export class AppChatsManager extends AppManager {
       channel: this.getChannelInput(id),
       signatures_enabled: enabled,
       profiles_enabled: profiles
-    }).then(this.onChatUpdated.bind(this, id));
-  }
-
-  public toggleNoForwards(id: ChatId, enabled: boolean) {
-    return this.apiManager.invokeApi('messages.toggleNoForwards', {
-      peer: this.getInputPeer(id),
-      enabled
     }).then(this.onChatUpdated.bind(this, id));
   }
 

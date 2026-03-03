@@ -22,13 +22,12 @@ import animationIntersector from '@components/animationIntersector';
 import mediaSizes from '@helpers/mediaSizes';
 import {IS_ANDROID, IS_APPLE, IS_FIREFOX, IS_MOBILE, IS_SAFARI} from '@environment/userAgent';
 import I18n, {FormatterArguments, i18n, langPack, LangPackKey, UNSUPPORTED_LANG_PACK_KEY, _i18n} from '@lib/langPack';
-import ripple from '@components/ripple';
 import {fireMessageEffectByBubble, MessageRender} from '@components/chat/messageRender';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import ListenerSetter from '@helpers/listenerSetter';
 import PollElement, {setQuizHint} from '@components/poll';
 import AudioElement from '@components/audio';
-import {ChannelParticipant, Chat as MTChat, ChatParticipant, Document, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, SponsoredMessage, User, WebPage, WebPageAttribute, Reaction, DocumentAttribute, InputStickerSet, TextWithEntities, FactCheck, WebDocument, MessageExtendedMedia, PeerSettings, LangPackString, ForumTopic} from '@layer';
+import {ChannelParticipant, Chat as MTChat, ChatParticipant, Document, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, SponsoredMessage, User, UserFull, WebPage, WebPageAttribute, Reaction, DocumentAttribute, InputStickerSet, TextWithEntities, FactCheck, WebDocument, MessageExtendedMedia, PeerSettings, LangPackString, ForumTopic} from '@layer';
 import {BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID, SEND_WHEN_ONLINE_TIMESTAMP, STARS_CURRENCY} from '@appManagers/constants';
 import {FocusDirection, ScrollStartCallbackDimensions} from '@helpers/fastSmoothScroll';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation} from '@hooks/useHeavyAnimationCheck';
@@ -168,7 +167,6 @@ import ButtonIcon from '@components/buttonIcon';
 import PopupAboutAd from '@components/popups/aboutAd';
 import numberThousandSplitter, {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
 import wrapGeo from '@components/wrappers/geo';
-import wrapKeyboardButton from '@components/wrappers/keyboardButton';
 import safePlay from '@helpers/dom/safePlay';
 import flatten from '@helpers/array/flatten';
 import WebPageBox from '@components/wrappers/webPage';
@@ -205,6 +203,7 @@ import type {SeparatorIntersectorRoot} from '@components/chat/bubbleParts/chatTh
 import BotforumNewTopic from '@components/chat/bubbleParts/botforumNewTopic';
 import type {wrapContinuouslyTypingMessage} from '@components/chat/bubbleParts/continuouslyTypingMessage';
 import addContinueLastTopicReplyMarkup from '@components/chat/bubbleParts/continueLastTopicReplyMarkup';
+import {createInlineReplyMarkup} from '@components/chat/bubbleParts/replyMarkupLayout';
 import {wrapTopicIcon} from '@components/wrappers/messageActionTextNewUnsafe';
 import {getTransition} from '@config/transitions';
 import {SuggestBirthdayBubble} from '@components/chat/bubbles/suggestBirthday';
@@ -221,6 +220,8 @@ import wrapDice from '@components/chat/bubbleParts/dice';
 import animateSomethingWithScroll from '@helpers/animateSomethingWithScroll';
 import onQuoteClick from '@helpers/dom/onQuoteClick';
 import PopupBoost from '@components/popups/boost';
+import {NoForwardsRequestContent, NoForwardsRequestReplyMarkup} from '@components/chat/bubbles/noForwardsRequest';
+import tsNow from '@helpers/tsNow';
 
 // TODO: fix new message won't be rendered if an old one is rendering in the moment
 
@@ -6080,8 +6081,25 @@ export default class ChatBubbles {
               gift,
               message: message as Message.messageService,
               chat: this.chat
-            }), middleware)
-            contentWrapper.append(buttons)
+            }), middleware);
+            contentWrapper.append(buttons);
+          }
+        } else if(action._ === 'messageActionNoForwardsRequest' && !action.pFlags.expired) {
+          const peerTitle = message.pFlags.out ? undefined : await wrapPeerTitle({peerId: message.fromId});
+          this.wrapSomeSolid(() => NoForwardsRequestContent({
+            peerTitle
+          }), s, middleware);
+          s.style.maxWidth = '20rem';
+          bubble.classList.add('has-service-description');
+
+          const isExpired = tsNow(true) >= message.date + this.chat.appConfig.no_forwards_request_expire_period;
+          if(!message.pFlags.out && !isExpired) {
+            bubble.classList.add('with-reply-markup');
+            const buttons = wrapSolidComponent(() => NoForwardsRequestReplyMarkup({
+              message: message as Message.messageService,
+              chat: this.chat
+            }), middleware);
+            contentWrapper.append(buttons);
           }
         } else {
           promise = wrapMessageActionTextNew({
@@ -6133,12 +6151,12 @@ export default class ChatBubbles {
           const content = bubbleContainer.cloneNode(false) as HTMLElement;
           content.classList.add('has-service-before');
 
-          const stickers = await this.managers.appStickersManager.getLocalStickerSet('inputStickerSetTonGifts')
-          let idx: number
-          const amountNum = nanotonToJsNumber(action.amount)
-          if(amountNum > 50) idx = 2
-          else if(amountNum > 10) idx = 1
-          else idx = 0
+          const stickers = await this.managers.appStickersManager.getLocalStickerSet('inputStickerSetTonGifts');
+          let idx: number;
+          const amountNum = nanotonToJsNumber(action.amount);
+          if(amountNum > 50) idx = 2;
+          else if(amountNum > 10) idx = 1;
+          else idx = 0;
 
           this.wrapSomeSolid(() => PremiumGiftBubble({
             rlottieOptions: {middleware},
@@ -6147,7 +6165,7 @@ export default class ChatBubbles {
             subtitle: i18n('TonGiftSubtitle'),
             buttonText: i18n('ActionGiftPremiumView'),
             buttonCallback: () => {
-              PopupElement.createPopup(PopupStars, {ton: true})
+              PopupElement.createPopup(PopupStars, {ton: true});
             }
           }), content, middleware);
 
@@ -6819,86 +6837,15 @@ export default class ChatBubbles {
     }
 
     const replyMarkup = isMessage && message.reply_markup;
-    let replyMarkupRows = replyMarkup?._ === 'replyInlineMarkup' && replyMarkup.rows;
-    if(replyMarkupRows) {
-      replyMarkupRows = replyMarkupRows.filter((row) => row.buttons.length);
-    }
-
-    if(replyMarkupRows) {
-      const containerDiv = document.createElement('div');
-      containerDiv.classList.add('reply-markup');
-      const onClickMap: Map<HTMLElement, (e: Event) => void> = new Map();
-      replyMarkupRows.forEach((row, idx, arr) => {
-        const buttons = row.buttons;
-        const isLastRow = idx === arr.length - 1;
-
-        const rowDiv = document.createElement('div');
-        rowDiv.classList.add('reply-markup-row');
-
-        buttons.forEach((button, idx, arr) => {
-          const isFirst = idx === 0;
-          const isLast = idx === arr.length - 1;
-          const {text, buttonEl, buttonIcon, onClick} = wrapKeyboardButton({
-            button,
-            chat: this.chat,
-            message: message as Message.message,
-            noTextInject: true,
-            wrapOptions
-          });
-
-          if(!buttonEl) {
-            return;
-          }
-
-          if(onClick) {
-            onClickMap.set(buttonEl, onClick);
-          }
-
-          if(isLastRow) {
-            if(isFirst) {
-              buttonEl.classList.add('is-first');
-            }
-
-            if(isLast) {
-              buttonEl.classList.add('is-last');
-            }
-          }
-
-          buttonEl.classList.add('reply-markup-button', 'rp');
-          const t = document.createElement('span');
-          t.classList.add('reply-markup-button-text');
-          t.append(text);
-
-          // const after = document.createElement('div');
-          // after.classList.add('reply-markup-button-after');
-
-          ripple(buttonEl);
-          buttonEl.append(...[buttonIcon, t/* , after */].filter(Boolean));
-
-          rowDiv.append(buttonEl);
-        });
-
-        if(!rowDiv.childElementCount) {
-          return;
-        }
-
-        containerDiv.append(rowDiv);
+    if(replyMarkup?._ === 'replyInlineMarkup') {
+      const containerDiv = createInlineReplyMarkup({
+        rows: replyMarkup.rows,
+        chat: this.chat,
+        message: message as Message.message,
+        wrapOptions
       });
 
-      const haveButtons = !!containerDiv.childElementCount;
-
-      haveButtons && attachClickEvent(containerDiv, (e) => {
-        let target = e.target as HTMLElement;
-        target = findUpClassName(target, 'reply-markup-button');
-        const onClick = onClickMap.get(target);
-        if(onClick) {
-          onClick(e);
-          cancelEvent(e);
-        }
-      });
-
-      if(haveButtons) {
-        // canHaveTail = false;
+      if(containerDiv.childElementCount) {
         bubble.classList.add('with-reply-markup');
         contentWrapper.append(containerDiv);
       }
@@ -8658,6 +8605,10 @@ export default class ChatBubbles {
     }
 
     if(message.peerId.isUser()) {
+      const userFull = this.chat.fullPeer() as UserFull;
+      if(userFull?.pFlags?.noforwards_my_enabled || userFull?.pFlags?.noforwards_peer_enabled) {
+        return false;
+      }
       return true;
     }
 
@@ -9585,7 +9536,7 @@ export default class ChatBubbles {
     }
 
     if(elements.length > 1) {
-      bubble.classList.add('has-description');
+      bubble.classList.add('has-service-description');
     }
 
     elements.forEach((element: any) => element.classList.add(BASE_CLASS + '-line'));

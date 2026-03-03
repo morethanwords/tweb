@@ -27,7 +27,7 @@ import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import {toastNew} from '@components/toast';
 import replaceContent from '@helpers/dom/replaceContent';
-import {ChatFull, Chat as MTChat, GroupCall, Dialog, InputGroupCall} from '@layer';
+import {ChatFull, Chat as MTChat, GroupCall, Dialog, InputGroupCall, UserFull} from '@layer';
 import PopupPickUser from '@components/popups/pickUser';
 import PopupPeer, {PopupPeerCheckboxOptions} from '@components/popups/peer';
 import AppEditContactTab from '@components/sidebarRight/tabs/editContact';
@@ -83,6 +83,8 @@ import Icon from '@components/icon';
 import {getDefaultOptions} from '@components/sidebarLeft/tabs/autoDeleteMessages/options';
 import {createAutoDeleteIcon} from '@components/chat/utils';
 import PopupBoost from '@components/popups/boost';
+import PopupPremium from '@components/popups/premium';
+import showNoForwardsPopup from '@components/popups/noForwards';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -730,6 +732,57 @@ export default class ChatTopbar {
       verify: async() => {
         const userFull = await this.managers.appProfileManager.getCachedFullUser(this.peerId.toUserId());
         return !!userFull?.pFlags?.blocked;
+      }
+    }, {
+      icon: 'restrict',
+      text: 'DisableSharing',
+      onClick: () => {
+        if(!rootScope.premium) {
+          PopupPremium.show({feature: 'pm_noforwards'});
+          return;
+        }
+
+        const cb = () => this.managers.appProfileManager.toggleNoForwards(this.peerId, true);
+        if(this.chat.appSettings.seenTooltips.noForwards) {
+          cb();
+        } else {
+          showNoForwardsPopup(() => {
+            setAppSettings('seenTooltips', 'noForwards', true);
+            cb();
+          });
+        }
+      },
+      verify: async() => {
+        if(!this.peerId.isUser() || this.peerId === rootScope.myId) return false;
+        const userFull = this.chat.fullPeer() as UserFull.userFull;
+        if(!userFull) return false;
+        return !userFull.pFlags.noforwards_my_enabled && !userFull.pFlags.noforwards_peer_enabled;
+      }
+    }, {
+      icon: 'restrict',
+      text: 'EnableSharing',
+      onClick: async() => {
+        const userFull = this.chat.fullPeer() as UserFull.userFull;
+        const {peerId} = this;
+
+        if(userFull.pFlags.noforwards_peer_enabled) {
+          await confirmationPopup({
+            titleLangKey: 'EnableSharing',
+            descriptionLangKey: 'EnableSharingCaption',
+            descriptionLangArgs: [new PeerTitle({peerId}).element],
+            button: {
+              langKey: 'SendRequest'
+            }
+          });
+        }
+
+        this.managers.appProfileManager.toggleNoForwards(peerId, false);
+      },
+      verify: async() => {
+        if(!this.peerId.isUser() || this.peerId === rootScope.myId) return false;
+        const userFull = this.chat.fullPeer() as UserFull.userFull;
+        if(!userFull) return false;
+        return !!(userFull?.pFlags?.noforwards_my_enabled || userFull?.pFlags?.noforwards_peer_enabled);
       }
     }, {
       icon: 'dollar_circle',

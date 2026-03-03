@@ -1,12 +1,11 @@
-import {createEffect, createResource, For, JSX, on} from 'solid-js';
+import {createEffect, createResource, JSX, on} from 'solid-js';
 import classNames from '@helpers/string/classNames';
 import {MessageEntity, ReplyMarkup} from '@layer';
 import {generateTail} from '@components/chat/utils';
 import {I18nTsx} from '@helpers/solid/i18n';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import rootScope from '@lib/rootScope';
-import wrapKeyboardButton from '@components/wrappers/keyboardButton';
-import ripple from '@components/ripple';
+import ReplyMarkupLayout from '@components/chat/bubbleParts/replyMarkupLayout';
 
 function ViaUsername(props: { botId: BotId }) {
   const [resource, ctx] = createResource(async() => {
@@ -85,46 +84,7 @@ export function BubbleLayout(props: {
           {props.tail && generateTail()}
         </div>
 
-        {props.replyMarkup && (
-          <div class="reply-markup">
-            <For each={props.replyMarkup.rows}>
-              {(row, rowIdx) => {
-                return (
-                  <div class="reply-markup-row">
-                    <For each={row.buttons}>
-                      {(button, btnIdx) => {
-                        const element = () => {
-                          const {buttonEl, text, buttonIcon} = wrapKeyboardButton({
-                            button,
-                            chat: {} as any
-                          });
-
-                          if(rowIdx() === props.replyMarkup.rows.length - 1) {
-                            if(btnIdx() === 0) buttonEl.classList.add('is-first');
-                            if(btnIdx() === row.buttons.length - 1) buttonEl.classList.add('is-last');
-                          }
-
-                          buttonEl.classList.add('reply-markup-button', 'rp');
-
-                          const t = document.createElement('span');
-                          t.classList.add('reply-markup-button-text');
-                          t.append(text);
-
-                          ripple(buttonEl);
-                          buttonEl.append(...[buttonIcon, t]);
-
-                          return buttonEl
-                        }
-
-                        return <>{element()}</>;
-                      }}
-                    </For>
-                  </div>
-                );
-              }}
-            </For>
-          </div>
-        )}
+        {props.replyMarkup && <ReplyMarkupLayout.Inline rows={props.replyMarkup.rows} />}
       </div>
     </div>
   )

@@ -46,7 +46,7 @@ import isForwardOfForward from '@appManagers/utils/messages/isForwardOfForward';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {SendReactionOptions} from '@appManagers/appReactionsManager';
 import {MiddlewareHelper, getMiddleware} from '@helpers/middleware';
-import {Accessor, createEffect, createRoot, createSignal, on, onCleanup, untrack} from 'solid-js';
+import {Accessor, createEffect, createMemo, createRoot, createSignal, on, onCleanup, Signal, untrack} from 'solid-js';
 import TopbarSearch from '@components/chat/topbarSearch';
 import createUnifiedSignal from '@helpers/solid/createUnifiedSignal';
 import liteMode from '@helpers/liteMode';
@@ -126,6 +126,7 @@ export default class Chat extends EventListenerBase<{
   public query: string;
   public inputFilter: RequestHistoryOptions['inputFilter'];
   public hashtagType: 'this' | 'my' | 'public';
+  public peerIdSignal: Signal<PeerId>;
 
   public setPeerPromise: Promise<void>;
   public peerChanged: boolean;
@@ -199,6 +200,7 @@ export default class Chat extends EventListenerBase<{
   public historyStorage: ReturnType<typeof useHistoryStorage>;
   public historyStorageNoThreadId: ReturnType<typeof useHistoryStorage>;
   public peerTranslation: ReturnType<typeof usePeerTranslation>;
+  public fullPeer: Accessor<ChatFull | UserFull>;
 
   public staticMessages: MyMessage[] = [];
 
@@ -236,7 +238,7 @@ export default class Chat extends EventListenerBase<{
       this.container.append(this.backgroundEl);
     }
 
-    this.peerId = NULL_PEER_ID;
+    this.peerIdSignal = createSignal(this.peerId = NULL_PEER_ID);
 
     this.backgroundTempId = 0;
     this.sharedMediaTabs = [];
@@ -247,6 +249,7 @@ export default class Chat extends EventListenerBase<{
       [this.appState, this.setAppState] = useAppState();
       [this.appSettings, this.setAppSettings] = useAppSettings();
       this.appConfig = useAppConfig();
+      this.fullPeer = createMemo(() => useFullPeer(this.peerIdSignal[0]())());
     });
   }
 
@@ -1050,7 +1053,7 @@ export default class Chat extends EventListenerBase<{
     const samePeer = this.appImManager.isSamePeer(this, options);
     if(!samePeer) {
       this.appImManager.dispatchEvent('peer_changing', this);
-      this.peerId = peerId || NULL_PEER_ID;
+      this.peerIdSignal[1](this.peerId = peerId || NULL_PEER_ID);
       this.threadId = threadId;
       this.monoforumThreadId = monoforumThreadId;
       this.isTemporaryThread = isTempId(threadId);
@@ -1073,7 +1076,7 @@ export default class Chat extends EventListenerBase<{
     this.staticMessages = messages || [];
 
     if(!peerId) {
-      this.peerId = 0;
+      this.peerIdSignal[1](this.peerId = 0);
       let promise: Promise<any>;
 
       if(this.hasBackgroundSet() && this === this.appImManager.chats[0]) {

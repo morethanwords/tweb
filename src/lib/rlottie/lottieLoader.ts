@@ -59,6 +59,7 @@ export type LottieAssetName =
   | 'LoveLetter'
   | 'key'
   | 'UtyanDisappear'
+  | 'hand_stop'
 ;
 
 export class LottieLoader {

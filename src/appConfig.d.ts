@@ -151,6 +151,7 @@ export interface MTAppConfig {
   freeze_appeal_url?:                         string;
   settings_display_passkeys?:                 boolean;
   passkeys_account_passkeys_max?:             number;
+  no_forwards_request_expire_period?:         number;
 }
 
 export interface EmojiesSendDiceSuccess {

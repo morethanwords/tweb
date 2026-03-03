@@ -1352,10 +1352,18 @@ export class AppImManager extends EventListenerBase<{
 
         e.preventDefault();
         const peerId = bubble.dataset.peerId.toPeerId();
-        const chat = apiManagerProxy.getChat(peerId.toChatId());
-        toastNew({
-          langPackKey: (chat as MTChat.channel).pFlags.broadcast ? 'CopyRestricted.Channel' : 'CopyRestricted.Group'
-        });
+
+        let langPackKey: LangPackKey;
+        if(peerId.isUser()) {
+          langPackKey = 'CopyRestricted.User';
+        } else {
+          const chat = apiManagerProxy.getChat(peerId.toChatId());
+          langPackKey = (chat as MTChat.channel).pFlags.broadcast ?
+            'CopyRestricted.Channel' :
+            'CopyRestricted.Group';
+        }
+
+        toastNew({langPackKey});
 
         return true;
       });
