@@ -1413,7 +1413,7 @@ export default class PopupNewMedia extends PopupElement {
     params.itemDiv = itemDiv;
 
     const promise = shouldCompress ? this.attachMedia(params) : this.attachDocument(params);
-    console.log("deboog", params, params.objectURL);
+    
     willAttach.sendFileDetails.push(params);
     return promise.catch((err) => {
       itemDiv.style.backgroundColor = '#000';
