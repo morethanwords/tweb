@@ -936,7 +936,7 @@ export default class PopupNewMedia extends PopupElement {
     const PHOTO_SIDE_LIMIT = 2560;
     let url = image.src, scaledBlob: Blob;
     if(
-      mimeType !== 'image/gif' &&
+      mimeType !== 'image/gif' && mimeType !== 'image/avif' &&
       (Math.max(image.naturalWidth, image.naturalHeight) > PHOTO_SIDE_LIMIT || (convertIncompatible && !SERVER_IMAGE_MIME_TYPES.has(mimeType)))
     ) {
       const {blob} = await scaleMediaElement({
@@ -1413,6 +1413,7 @@ export default class PopupNewMedia extends PopupElement {
     params.itemDiv = itemDiv;
 
     const promise = shouldCompress ? this.attachMedia(params) : this.attachDocument(params);
+    console.log("deboog", params, params.objectURL);
     willAttach.sendFileDetails.push(params);
     return promise.catch((err) => {
       itemDiv.style.backgroundColor = '#000';
