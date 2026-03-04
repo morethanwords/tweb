@@ -5,23 +5,29 @@
  */
 
 import {attachClickEvent} from '@helpers/dom/clickEvent';
-import {i18n_} from '@lib/langPack';
+import {i18n, i18n_} from '@lib/langPack';
 import lottieLoader, {LottieLoader} from '@lib/rlottie/lottieLoader';
 import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
 import rootScope from '@lib/rootScope';
-import AppSearchSuper from '@components/appSearchSuper';
 import Button from '@components/button';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import SettingSection from '@components/settingSection';
-import {SliderSuperTab} from '@components/slider'
+import {SliderSuperTab} from '@components/slider';
+import {StoriesProfileList, profileStoriesButtonMenu} from '@components/stories/profileList';
+import {StoriesSelection} from '@components/stories/selection';
+import {StoriesContextActions} from '@components/stories/store';
+import {createRoot} from 'solid-js';
+import {getFirstChild} from '@solid-primitives/refs';
 
 export default class AppMyStoriesTab extends SliderSuperTab {
   private stickerContainer: HTMLDivElement;
   private showArchiveBtn: HTMLButtonElement;
   private animation: RLottiePlayer;
   private loadAnimationPromise: ReturnType<LottieLoader['waitForFirstFrame']>;
-  private searchSuper: AppSearchSuper;
+  private storiesActions: StoriesContextActions;
+  private selection: StoriesSelection;
   public isArchive: boolean;
+  public chatId: ChatId;
 
   public static getInitArgs() {
     return {
@@ -37,11 +43,12 @@ export default class AppMyStoriesTab extends SliderSuperTab {
     const openArchive = () => {
       const tab = this.slider.createTab(AppMyStoriesTab);
       tab.isArchive = true;
+      tab.chatId = this.chatId;
       tab.open();
     };
 
     let placeholder: HTMLElement, section: SettingSection;
-    if(this.isArchive) {
+    if(this.isArchive && !this.chatId) {
       section = new SettingSection({
         caption: 'ProfileStoriesArchiveHint'
       });
@@ -70,68 +77,80 @@ export default class AppMyStoriesTab extends SliderSuperTab {
       );
     }
 
+    const storiesContainer = document.createElement('div');
+    storiesContainer.classList.add('search-super');
+
+    const middleware = this.middlewareHelper.get();
+    let loadPromise: Promise<any>;
+
+    createRoot((dispose) => {
+      middleware.onClean(() => {
+        this.storiesActions = undefined;
+        this.selection = undefined;
+        dispose();
+      });
+
+      const {render: storiesList, actions, selection} = StoriesProfileList({
+        peerId: this.chatId?.toPeerId(true) ?? rootScope.myId,
+        pinned: !this.isArchive,
+        archive: this.isArchive,
+        scrollable: this.scrollable,
+        listenerSetter: this.listenerSetter,
+        withSelection: true,
+        onCountChange: (length) => {
+          if(placeholder) {
+            placeholder.classList.toggle('hide', length > 0);
+          }
+        },
+        onAddToAlbum: (albumId) => {
+          console.log('add to album', albumId);
+        },
+        onReady: () => {
+          storiesContainer.append(getFirstChild(storiesList, v => v instanceof Element) as Element);
+        }
+      });
+
+      this.storiesActions = actions;
+      this.selection = selection;
+      loadPromise = this.storiesActions.load();
+    });
+
     const menuBtn = ButtonMenuToggle({
       listenerSetter: this.listenerSetter,
       direction: 'bottom-left',
-      buttons: [{
-        icon: 'archive',
-        text: 'MyStories.ShowArchive',
-        onClick: openArchive,
-        verify: () => !this.isArchive
-      }, {
-        icon: 'select',
-        text: 'Message.Context.Select',
-        onClick: () => {
-          searchSuper.selection.toggleSelection(true, true);
-        },
-        verify: () => !!(lastLength && !searchSuper.selection.isSelecting)
-      }, {
-        icon: 'select',
-        text: 'Message.Context.Selection.Clear',
-        onClick: () => {
-          searchSuper.selection.cancelSelection();
-        },
-        verify: () => searchSuper.selection.isSelecting
-      }]
+      buttons: [
+        ...profileStoriesButtonMenu({
+          peerId: rootScope.myId,
+          isArchive: this.isArchive,
+          slider: this.slider,
+          verify: () => true
+        }),
+        {
+          icon: 'select',
+          text: 'Message.Context.Select',
+          onClick: () => {
+            this.selection.toggleSelection(true, true);
+          },
+          verify: () => !!(this.selection && !this.selection.isSelecting)
+        }, {
+          icon: 'select',
+          text: 'Message.Context.Selection.Clear',
+          onClick: () => {
+            this.selection.cancelSelection();
+          },
+          verify: () => !!this.selection?.isSelecting
+        }
+      ]
     });
 
     this.header.append(menuBtn);
 
-    let lastLength: number;
-    const searchSuper = this.searchSuper = new AppSearchSuper({
-      mediaTabs: [{
-        inputFilter: 'inputMessagesFilterEmpty',
-        name: 'Stories',
-        type: 'stories'
-      }],
-      scrollable: this.scrollable,
-      hideEmptyTabs: true,
-      managers: this.managers,
-      storiesArchive: this.isArchive
-    });
-    searchSuper.onStoriesLengthChange = (length) => {
-      lastLength = length;
-      if(placeholder) {
-        placeholder.classList.toggle('hide', length > 0);
-      }
-    };
-    searchSuper.onStoriesAddToAlbum = (albumId) => {
-      console.log('add to album', albumId);
-    };
-    searchSuper.setQuery({peerId: rootScope.myId});
-    searchSuper.selectTab(0);
-
-    this.middlewareHelper.onDestroy(() => {
-      searchSuper.destroy();
-    });
-
     this.scrollable.append(...[
       section?.container,
-      searchSuper.container,
+      storiesContainer,
       placeholder
     ].filter(Boolean));
 
-    const middleware = this.middlewareHelper.get();
     return Promise.all([
       this.loadAnimationPromise = !this.isArchive && p.animationData.then(async(cb) => {
         const player = await cb({
@@ -147,8 +166,15 @@ export default class AppMyStoriesTab extends SliderSuperTab {
 
         return lottieLoader.waitForFirstFrame(player);
       }),
+      this.chatId && this.managers.appChatsManager.isBroadcast(this.chatId).then((isBroadcast) => {
+        section = new SettingSection({
+          caption: isBroadcast ? 'ProfileStoriesArchiveChannelHint' : 'ProfileStoriesArchiveGroupHint'
+        });
+        section.innerContainer.remove();
+        this.scrollable.prepend(section.container);
+      }),
 
-      searchSuper.load(true)
+      loadPromise
     ]);
   }
 }

@@ -986,6 +986,8 @@
 
 .search-super-content-stories {
   background-color: var(--background-color)!important;
+  display: flex;
+  flex-direction: column;
 
   &-albums {
     position: sticky!important;
@@ -1001,6 +1003,7 @@
   .stories-album-wrapper {
     position: relative;
     overflow: clip;
+    flex: 1;
   }
 
   .stories-album-clone {

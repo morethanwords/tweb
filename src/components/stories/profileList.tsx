@@ -4,34 +4,200 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {splitProps, createEffect, createSignal, For, JSX, createMemo, onCleanup, untrack, createComputed, createReaction, Show, on, Switch, Match} from 'solid-js';
+import {createEffect, createSignal, For, JSX, createMemo, onCleanup, untrack, createReaction, Show, Switch, Match} from 'solid-js';
 import {createStoriesViewer} from '@components/stories/viewer';
 import {Document, MessageMedia, Photo, StoryItem} from '@layer';
 import {wrapStoryMedia} from '@components/stories/preview';
 import getMediaThumbIfNeeded from '@helpers/getStrippedThumbIfNeeded';
-import {SearchSelection} from '@components/chat/selection';
-import {StoriesProvider, useStories, type StoriesContextActions} from '@components/stories/store';
+import {StoriesContext, useStories, createStoriesStore} from '@components/stories/store';
 import Icon from '@components/icon';
 import {ChipTab, ChipTabs} from '@components/chipTabs';
 import {i18n} from '@lib/langPack';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import {PreloaderTsx} from '@components/putPreloader';
-import fastSmoothScroll from '../../helpers/fastSmoothScroll';
-import Scrollable from '../scrollable';
-import {doubleRaf} from '../../helpers/schedulers';
-import {I18nTsx} from '../../helpers/solid/i18n';
-import ButtonTsx from '../buttonTsx';
+import fastSmoothScroll from '@helpers/fastSmoothScroll';
+import Scrollable from '@components/scrollable';
+import {doubleRaf} from '@helpers/schedulers';
+import {I18nTsx} from '@helpers/solid/i18n';
+import ButtonTsx from '@components/buttonTsx';
+import {StoriesSelection, toastStoryPinnedToProfile} from './selection';
+import {ButtonMenuItemOptions, ButtonMenuSync} from '@components/buttonMenu';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import {attachContextMenuListener} from '@helpers/dom/attachContextMenuListener';
+import contextMenuController from '@helpers/contextMenuController';
+import positionMenu from '@helpers/positionMenu';
+import rootScope from '@lib/rootScope';
+import ListenerSetter from '@helpers/listenerSetter';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import cancelClickOrNextIfNotClick from '@helpers/dom/cancelClickOrNextIfNotClick';
+import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
+import AppMyStoriesTab from '../sidebarLeft/tabs/myStories';
+import SidebarSlider from '../slider';
 
+const ALL_ALBUMS_ID = -1;
 const TEST_ONE = false;
 const TEST_TWO = false;
 
-function _StoriesProfileList(props: {
+class StoriesContextMenu {
+  private buttons: (ButtonMenuItemOptions & {verify?: () => boolean | Promise<boolean>})[];
+  private element: HTMLElement;
+  private target: HTMLElement;
+  private peerId: PeerId;
+  private mid: number;
+  private isSelected: boolean;
+  private storyItem: StoryItem.storyItem;
+
+  constructor(
+    private attachTo: HTMLElement,
+    private selection: StoriesSelection | undefined,
+    private listenerSetter: ListenerSetter,
+    private pinned: boolean
+  ) {
+    const onContextMenu: Parameters<typeof attachContextMenuListener>[0]['callback'] = (e) => {
+      if(this.init) {
+        this.init();
+        this.init = null;
+      }
+
+      let item: HTMLElement;
+      try {
+        item = findUpClassName(e.target, 'search-super-item');
+      } catch(e) {}
+
+      if(!item) return;
+
+      if(e instanceof MouseEvent) e.preventDefault();
+      if(this.element.classList.contains('active')) {
+        return false;
+      }
+      if(e instanceof MouseEvent) e.cancelBubble = true;
+
+      const r = async() => {
+        this.target = item;
+        this.peerId = item.dataset.peerId.toPeerId();
+        this.mid = +item.dataset.mid;
+        this.isSelected = selection?.isMidSelected(this.peerId, this.mid);
+        this.storyItem = await rootScope.managers.appStoriesManager.getStoryById(this.peerId, this.mid);
+
+        const f = await Promise.all(this.buttons.map(async(button) => {
+          const good = button.verify ? !!(await button.verify()) : true;
+          button.element.classList.toggle('hide', !good);
+          return good;
+        }));
+
+        if(!f.some((v) => v)) {
+          return;
+        }
+
+        item.classList.add('menu-open');
+
+        positionMenu(e, this.element);
+        contextMenuController.openBtnMenu(this.element, () => {
+          item.classList.remove('menu-open');
+        });
+      };
+
+      r();
+    };
+
+    attachContextMenuListener({
+      element: attachTo,
+      callback: onContextMenu as any,
+      listenerSetter
+    });
+  }
+
+  private init() {
+    const managers = rootScope.managers;
+    this.buttons = [{
+      icon: 'archive',
+      text: 'Archive',
+      onClick: () => managers.appStoriesManager.togglePinned(this.peerId, [this.storyItem.id], false).then(() => toastStoryPinnedToProfile(managers, this.peerId, false)),
+      verify: () => this.storyItem?.pFlags.pinned && managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'pin')
+    }, {
+      icon: 'unarchive',
+      text: 'Unarchive',
+      onClick: () => managers.appStoriesManager.togglePinned(this.peerId, [this.storyItem.id], true).then(() => toastStoryPinnedToProfile(managers, this.peerId, true)),
+      verify: () => this.storyItem && !this.storyItem.pFlags.pinned && managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'pin')
+    }, {
+      icon: 'pin',
+      text: 'ChatList.Context.Pin',
+      onClick: () => managers.appStoriesManager.togglePinnedToTop(this.peerId, [this.storyItem.id], true),
+      verify: () => this.pinned && this.storyItem?.pinnedIndex === undefined && managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'pin')
+    }, {
+      icon: 'unpin',
+      text: 'ChatList.Context.Unpin',
+      onClick: () => managers.appStoriesManager.togglePinnedToTop(this.peerId, [this.storyItem.id], false),
+      verify: () => this.pinned && this.storyItem?.pinnedIndex !== undefined && managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'pin')
+    }, {
+      icon: 'select',
+      text: 'Message.Context.Select',
+      onClick: () => this.selection.toggleByElement(this.target),
+      verify: () => !!this.selection && !this.isSelected
+    }, {
+      icon: 'select',
+      text: 'Message.Context.Selection.Clear',
+      onClick: () => this.selection.cancelSelection(),
+      verify: () => !!this.selection && this.isSelected
+    }, {
+      icon: 'delete',
+      className: 'danger',
+      text: 'Delete',
+      onClick: () => this.selection?.onDeleteStoriesClick([this.storyItem.id], this.peerId) ??
+        managers.appStoriesManager.deleteStories(this.peerId, [this.storyItem.id]),
+      verify: () => managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'delete')
+    }];
+
+    this.element = ButtonMenuSync({buttons: this.buttons, listenerSetter: this.listenerSetter});
+    this.element.classList.add('search-contextmenu', 'contextmenu');
+    document.body.append(this.element);
+  }
+}
+
+function StoriesAlbums(props: {
+  onAlbumChange: (albumId: number | undefined) => void
+}) {
+  const [stories] = useStories();
+  const hasAlbums = () => stories.ready && stories.peer.albums && stories.peer.albums.length > 0;
+  const chosenAlbumId = () => stories.albumId === undefined ? ALL_ALBUMS_ID : stories.albumId;
+
+  const handleChange = (value: string) => {
+    const albumId = Number(value);
+    props.onAlbumChange(albumId === ALL_ALBUMS_ID ? undefined : albumId);
+  }
+
+  return (
+    <Show when={hasAlbums()}>
+      <ChipTabs
+        class="search-super-content-stories-albums"
+        value={chosenAlbumId().toString()}
+        onChange={handleChange}
+        view="surface"
+        center
+        needIntersectionObserver
+      >
+        <ChipTab value={ALL_ALBUMS_ID.toString()}>
+          {i18n('StoryAlbumAll')}
+        </ChipTab>
+        <For each={stories.peer.albums}>
+          {(album) => (
+            <ChipTab value={album.album_id.toString()}>
+              {wrapEmojiText(album.title)}
+            </ChipTab>
+          )}
+        </For>
+      </ChipTabs>
+    </Show>
+  );
+}
+
+function StoriesGrid(props: {
   scrollable: Scrollable,
   onReady?: () => void,
-  onLengthChange?: (length: number) => void,
   onAddToAlbum?: (albumId: number) => void,
-  selection?: SearchSelection,
+  selection?: StoriesSelection,
   pinned: boolean,
+  archive?: boolean,
   onSetAlbumAnimated?: (fn: (albumId: number | undefined) => void) => void
 }) {
   const [stories, actions] = useStories();
@@ -64,10 +230,6 @@ function _StoriesProfileList(props: {
         })
       }
     });
-
-    props.onLengthChange && createEffect(on(() => stories.peer?.count, (count) => {
-      if(stories.albumId === undefined) props.onLengthChange(count);
-    }));
 
     props.onReady?.();
   };
@@ -113,7 +275,7 @@ function _StoriesProfileList(props: {
         'data-mid': storyItem.id,
         'data-peer-id': stories.peer.peerId,
         'class': 'grid-item search-super-item',
-        'onClick': (e) => {
+        'onClick': () => {
           setViewerId(storyItem.id);
         }
       },
@@ -122,6 +284,7 @@ function _StoriesProfileList(props: {
     });
 
     let icon: HTMLElement;
+    let archiveIcon: HTMLElement;
     createEffect(() => {
       const t = thumb();
       const m = media();
@@ -145,8 +308,16 @@ function _StoriesProfileList(props: {
           ignoreCache: true,
           onlyStripped: true
         });
-        const thumb = gotThumb.image;
+        const thumb = gotThumb.image as HTMLCanvasElement;
         element.parentElement.prepend(thumb);
+
+        // need img for clone animation to work
+        gotThumb.loadPromise.then(() => {
+          const img = document.createElement('img');
+          img.className = thumb.className;
+          img.src = thumb.toDataURL();
+          thumb.replaceWith(img);
+        });
 
         onCleanup(() => {
           thumb.remove();
@@ -158,6 +329,13 @@ function _StoriesProfileList(props: {
         element.parentElement.append(icon);
       } else if(icon) {
         icon.remove();
+      }
+
+      if(element.parentElement && props.archive && !(storyItem as StoryItem.storyItem).pFlags.pinned) {
+        archiveIcon ??= Icon('hide', 'grid-item-archived');
+        element.parentElement.append(archiveIcon);
+      } else if(archiveIcon) {
+        archiveIcon.remove();
       }
     });
 
@@ -281,70 +459,147 @@ function _StoriesProfileList(props: {
   );
 }
 
-const ALL_ALBUMS_ID = -1;
-
-function StoriesAlbums(props: {
-  onAlbumChange: (albumId: number | undefined) => void
+function StoriesSelectionToolbar(props: {
+  selection: StoriesSelection
 }) {
-  const [stories] = useStories();
-  const hasAlbums = () => stories.ready && stories.peer.albums && stories.peer.albums.length > 0;
-
-  const chosenAlbumId = () => stories.albumId === undefined ? ALL_ALBUMS_ID : stories.albumId;
-
-  const handleChange = (value: string) => {
-    const albumId = Number(value);
-    props.onAlbumChange(albumId === ALL_ALBUMS_ID ? undefined : albumId);
-  }
-
   return (
-    <Show when={hasAlbums()}>
-      <ChipTabs
-        class="search-super-content-stories-albums"
-        value={chosenAlbumId().toString()}
-        onChange={handleChange}
-        view="surface"
-        center
-        needIntersectionObserver
-      >
-        <ChipTab value={ALL_ALBUMS_ID.toString()}>
-          {i18n('StoryAlbumAll')}
-        </ChipTab>
-        <For each={stories.peer.albums}>
-          {(album) => (
-            <ChipTab value={album.album_id.toString()}>
-              {wrapEmojiText(album.title)}
-            </ChipTab>
-          )}
-        </For>
-      </ChipTabs>
-    </Show>
+    <div
+      class="search-super-tabs-scrollable menu-horizontal-scrollable sticky is-single"
+      classList={{'is-selecting': props.selection.selecting(), 'backwards': !props.selection.selecting()}}
+    >
+      <div class="search-super-selection-container">
+        <ButtonTsx
+          icon="close"
+          class="search-super-selection-cancel btn-icon"
+          onClick={() => props.selection.cancelSelection()}
+        />
+        <div class="search-super-selection-count">
+          <I18nTsx key="StoriesCount" args={[String(props.selection.count())]} />
+        </div>
+        <Show when={!props.selection.cantPin()}>
+          <ButtonTsx
+            icon={props.selection.isStoriesArchive ? 'unarchive' : 'archive'}
+            class="search-super-selection-pin btn-icon"
+            onClick={() => props.selection.onPinStoriesClick(undefined, props.selection.isStoriesArchive)}
+          />
+        </Show>
+        <Show when={!props.selection.cantDelete()}>
+          <ButtonTsx
+            icon="delete"
+            class="search-super-selection-delete btn-icon danger"
+            onClick={() => props.selection.onDeleteStoriesClick()}
+          />
+        </Show>
+      </div>
+    </div>
   );
 }
 
-export default function StoriesProfileList(props: Parameters<typeof StoriesProvider>[0] & Parameters<typeof _StoriesProfileList>[0]) {
-  const [, rest] = splitProps(props, ['onReady', 'onLengthChange', 'selection']);
+export function profileStoriesButtonMenu(props: {
+  peerId: PeerId,
+  slider: SidebarSlider,
+  verify: () => boolean,
+  isArchive?: boolean,
+}): ButtonMenuItemOptionsVerifiable[] {
+  return [{
+    icon: 'archive',
+    text: 'MyStories.ShowArchive',
+    onClick: () => {
+      const tab = props.slider.createTab(AppMyStoriesTab);
+      tab.isArchive = true;
+      if(props.peerId.isAnyChat()) {
+        tab.chatId = props.peerId.toChatId();
+      }
+      tab.open();
+    },
+    verify: () => (
+      props.verify() &&
+      !props.isArchive &&
+      (props.peerId === rootScope.myId || rootScope.managers.appChatsManager.hasRights(props.peerId.toChatId(), 'edit_stories'))
+    )
+  }];
+}
 
-  let actionsRef!: StoriesContextActions;
+export function StoriesProfileList(props: {
+  class?: string,
+  peerId: PeerId
+  pinned?: boolean
+  archive?: boolean
+  scrollable: Scrollable
+  listenerSetter: ListenerSetter
+  withSelection?: boolean
+  onCountChange?: (count: number) => void
+  onAddToAlbum?: (albumId: number) => void
+  onReady?: () => void
+  onLoad?: (loaded: boolean) => void
+}) {
+  const contextValue = createStoriesStore({
+    peerId: props.peerId,
+    pinned: props.pinned,
+    archive: props.archive,
+    manualLoad: true,
+    onLoad: props.onLoad
+  });
+  const [state, actions] = contextValue;
+
+  createEffect(() => {
+    const count = state.peer?.count ?? 0;
+    if(state.albumId === undefined) {
+      props.onCountChange?.(count);
+    }
+  });
+
+  const selection = props.withSelection ? new StoriesSelection({
+    container: props.scrollable.container,
+    managers: rootScope.managers,
+    listenerSetter: props.listenerSetter,
+    isArchive: props.archive,
+    chatId: props.peerId.isAnyChat() ? props.peerId.toChatId() : undefined
+  }) : undefined;
+
   let setAlbumAnimated!: (albumId: number | undefined) => void;
-  const dom = (
-    <StoriesProvider {...rest}>
-      <div>
-        {((): null => {
-          const [, actions] = useStories();
-          actionsRef = actions;
-          return null
-        })()}
-        {rest.pinned && (
-          <StoriesAlbums onAlbumChange={(id) => setAlbumAnimated(id)} />
+  let containerRef!: HTMLDivElement;
+
+  const render = (
+    <StoriesContext.Provider value={contextValue}>
+      <div ref={containerRef} class="search-super-content-container search-super-content-stories">
+        {props.pinned && (
+          <StoriesAlbums onAlbumChange={(id) => setAlbumAnimated?.(id)} />
         )}
-        <_StoriesProfileList
-          {...props}
-          pinned={rest.pinned}
+        <StoriesGrid
+          scrollable={props.scrollable}
+          onReady={() => {
+            new StoriesContextMenu(
+              containerRef,
+              selection,
+              props.listenerSetter,
+              props.pinned
+            );
+
+            if(selection) {
+              attachClickEvent(containerRef, (e) => {
+                if(selection.isSelecting) {
+                  const item = findUpClassName(e.target, 'search-super-item');
+                  if(!item) return;
+                  cancelClickOrNextIfNotClick(e);
+                  selection.toggleByElement(item);
+                }
+              }, {capture: true, passive: false, listenerSetter: props.listenerSetter});
+            }
+            props.onReady?.();
+          }}
+          onAddToAlbum={props.onAddToAlbum}
+          selection={selection}
+          pinned={props.pinned}
+          archive={props.archive}
           onSetAlbumAnimated={(fn) => setAlbumAnimated = fn}
         />
+        {selection && (
+          <StoriesSelectionToolbar selection={selection} />
+        )}
       </div>
-    </StoriesProvider>
+    </StoriesContext.Provider>
   );
 
-  return {dom, actions: actionsRef, setAlbumAnimated};
+  return {render, actions, selection, setAlbumAnimated};
 }

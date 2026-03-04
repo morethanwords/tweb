@@ -51,7 +51,7 @@ const accumulateMapSet = (map: Map<any, Set<number>>) => {
 
 // const MIN_CLICK_MOVE = 32; // minimum bubble height
 
-class AppSelection extends EventListenerBase<{
+export class AppSelection extends EventListenerBase<{
   toggle: (isSelecting: boolean) => void
 }> {
   public selectedMids: Map<PeerId, Set<number>> = new Map();
