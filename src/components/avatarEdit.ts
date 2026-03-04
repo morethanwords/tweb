@@ -4,13 +4,20 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {CancellablePromise} from '@helpers/cancellablePromise';
-import type {InputFile} from '@layer';
-import {attachClickEvent} from '@helpers/dom/clickEvent';
-import PopupAvatar from '@components/popups/avatar';
 import Icon from '@components/icon';
+import PopupAvatar from '@components/popups/avatar';
+import {animateValue} from '@helpers/animateValue';
+import type {CancellablePromise} from '@helpers/cancellablePromise';
+import deferredPromise from '@helpers/cancellablePromise';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import {lerp} from '@helpers/lerp';
+import type {InputFile} from '@layer';
 import apiManagerProxy from '@lib/apiManagerProxy';
+import appDownloadManager from '@lib/appDownloadManager';
 import rootScope from '@lib/rootScope';
+import {MediaEditorFinalResult} from './mediaEditor/finalRender/createFinalResult';
+import {snapToViewport} from './mediaEditor/utils';
+
 
 export default class AvatarEdit {
   public container: HTMLElement;
@@ -29,7 +36,44 @@ export default class AvatarEdit {
     this.container.append(this.canvas, this.icon);
 
     attachClickEvent(this.container, () => {
-      getFileAndOpenEditor();
+      getFileAndOpenEditor(async(editorResult) => {
+        const earlyDispose = () => {
+          editorResult.animatedPreview?.remove();
+        };
+
+        const resultPayload = await editorResult.getResult();
+
+        if(editorResult.isVideo || !editorResult.animatedPreview) return void earlyDispose();
+
+        const imgResult = await createImageAndURLFromBlob(resultPayload.blob);
+        if(!imgResult.ok) return earlyDispose();
+
+        const img = imgResult.img;
+
+        const animatedImg = editorResult.animatedPreview;
+        await animateImageToTarget(animatedImg, this.canvas);
+
+        const [width, height] = snapToViewport(1, editorResult.width, editorResult.height);
+
+        [this.canvas.width, this.canvas.height] = [width, height];
+
+        const ctx = this.canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.fillRect(0, 0, width, height);
+
+        // Doing this now prevents the avatar blinking to the old one
+        onChange(() => appDownloadManager.upload(resultPayload.blob));
+
+        await animatedImg.animate({
+          opacity: [1, 0]
+        }, {
+          duration: 200,
+          fill: 'forwards'
+        }).finished;
+
+        animatedImg.remove();
+      });
     });
   }
 
@@ -39,7 +83,7 @@ export default class AvatarEdit {
   }
 }
 
-async function getFileAndOpenEditor() {
+async function getFileAndOpenEditor(clb: (result: MediaEditorFinalResult) => void) {
   const input = createHiddenFileInput();
   // this.container.append(input); // Do not append to the container, it will cause an infinite loop as click will propagate to the container
   document.body.append(input);
@@ -63,9 +107,7 @@ async function getFileAndOpenEditor() {
     managers: rootScope.managers,
     mediaSrc: result.url,
     mediaType: 'image',
-    onEditFinish: () => {
-
-    },
+    onEditFinish: clb,
     onClose: () => { }
   });
 }
@@ -111,4 +153,34 @@ function getFileFromInput(input: HTMLInputElement): Promise<File | undefined> {
   input.click();
 
   return promise;
+}
+
+async function animateImageToTarget(animatedImg: HTMLImageElement, target: HTMLElement): Promise<void> {
+  const deferred = deferredPromise<void>();
+
+  const bcr = animatedImg.getBoundingClientRect();
+  const left = bcr.left + bcr.width / 2, top = bcr.top + bcr.height / 2, width = bcr.width, height = bcr.height;
+  const targetBcr = target.getBoundingClientRect();
+  const leftDiff = (targetBcr.left + targetBcr.width / 2) - left;
+  const topDiff = (targetBcr.top + targetBcr.height / 2) - top;
+
+  animateValue(
+    0, 1, 200,
+    (progress) => {
+      animatedImg.style.transform = `translate(calc(${progress * leftDiff
+      }px - 50%), calc(${progress * topDiff
+      }px - 50%))`;
+      animatedImg.style.width = lerp(width, targetBcr.width, progress) + 'px';
+      animatedImg.style.height = lerp(height, targetBcr.height, progress) + 'px';
+      // TODO: Forum shape is different
+      animatedImg.style.borderRadius = lerp(0, 50, progress) + '%';
+    },
+    {
+      onEnd: () => {
+        deferred.resolve();
+      }
+    }
+  );
+
+  await deferred;
 }
