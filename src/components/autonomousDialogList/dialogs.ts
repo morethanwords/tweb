@@ -12,6 +12,7 @@ import SetTransition from '@components/singleTransition';
 import SortedDialogList, {CustomPinnedDialog} from '@components/sortedDialogList';
 import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
 import namedPromises from '@helpers/namedPromises';
+import noop from '@helpers/noop';
 import {Chat} from '@layer';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {AppDialogsManager, DialogDom} from '@lib/appDialogsManager';
@@ -245,16 +246,16 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
   }
 
   protected async loadDialogsInner(offsetIndex?: number) {
-    const unblock = this.sortedList.blockAnimation();
+    const isFirstLoad = !offsetIndex;
+
+    const unblock = isFirstLoad ? this.sortedList.blockAnimation() : noop;
 
     const {result} = await namedPromises({
       result: super.loadDialogsInner(offsetIndex, false),
       _ignore: this.ensureArchiveDialogHydrated()
-    });
+    }).finally(unblock);
 
     this.placeholder?.detach(this.sortedList.itemsLength());
-
-    unblock();
 
     return result;
   }
