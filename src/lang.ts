@@ -2158,7 +2158,11 @@ const lang = {
   'DeleteThisChat': 'Delete this chat',
   'ShareFile': 'Share',
   'StoryPinnedToProfile': 'Story posted to your profile.',
+  'StoryPinnedToGroup': 'Story posted to the group profile.',
+  'StoryPinnedToChannel': 'Story posted to the channel profile.',
   'StoryArchivedFromProfile': 'This story is hidden from your profile.',
+  'StoryArchivedFromGroup': 'This story is hidden from the group profile.',
+  'StoryArchivedFromChannel': 'This story is hidden from the channel profile.',
   'StorySavedTitle': {
     'one_value': '%d story posted to your profile',
     'other_value': '%d stories posted to your profile'
@@ -2166,6 +2170,22 @@ const lang = {
   'StoryArchived': {
     'one_value': '%d story removed from your profile',
     'other_value': '%d stories removed from your profile'
+  },
+  'StorySavedGroupTitle': {
+    'one_value': '%d story posted to the group profile',
+    'other_value': '%d stories posted to the group profile'
+  },
+  'StoryGroupArchived': {
+    'one_value': '%d story removed from the group profile',
+    'other_value': '%d stories removed from the group profile'
+  },
+  'StorySavedChannelTitle': {
+    'one_value': '%d story posted to the channel profile',
+    'other_value': '%d stories posted to the group profile'
+  },
+  'StoryChannelArchived': {
+    'one_value': '%d story removed from the channel profile',
+    'other_value': '%d stories removed from the channel profile'
   },
   'DeleteStoryTitle': 'Delete Story',
   'DeleteStoriesTitle': 'Delete Stories',
@@ -2175,6 +2195,8 @@ const lang = {
     'other_value': 'Are you sure you want to delete %d stories?'
   },
   'ProfileStoriesArchiveHint': 'Only you can see archived stories unless you choose to post them to your profile.',
+  'ProfileStoriesArchiveGroupHint': 'Only admins of the group can see archived stories unless they are posted to the group page.',
+  'ProfileStoriesArchiveChannelHint': 'Only admins can see archived stories unless you choose to post them to channel profile.',
   'StoryCloseFriendsHint': 'You are seeing this story because **%s** added you to their list of Close Friends.',
   'StorySelectedContactsHint': 'Only some users **%s** selected can view this story.',
   'StoryContactsHint': 'Only **%s’s** contacts can view this story.',

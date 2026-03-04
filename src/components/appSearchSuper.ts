@@ -79,8 +79,8 @@ import createParticipantContextMenu from '@helpers/dom/createParticipantContextM
 import findAndSpliceAll from '@helpers/array/findAndSpliceAll';
 import deferredPromise from '@helpers/cancellablePromise';
 import {children, createEffect, createRoot, For, on} from 'solid-js';
-import StoriesProfileList from '@components/stories/profileList';
-import type {StoriesContextActions} from '@components/stories/store';
+import {StoriesProfileList} from '@components/stories/profileList';
+import {StoriesContextActions} from '@components/stories/store';
 import Button from '@components/button';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import PopupPremium from '@components/popups/premium';
@@ -168,14 +168,11 @@ class SearchContextMenu {
   private noForwards: boolean;
   private message: MyMessage;
   private selectedMessages: MyMessage[];
-  private storyItem: StoryItem.storyItem;
-  // private isSavedDialog: boolean;
 
   constructor(
     private attachTo: HTMLElement,
     private searchSuper: AppSearchSuper,
-    private listenerSetter: ListenerSetter,
-    private storiesPinned: boolean
+    private listenerSetter: ListenerSetter
   ) {
     this.managers = searchSuper.managers;
 
@@ -190,7 +187,9 @@ class SearchContextMenu {
         item = findUpClassName(e.target, 'search-super-item');
       } catch(e) {}
 
+      // stories have their own context menu in StoriesProfileTab
       const isStory = !!findUpClassName(e.target, 'search-super-content-stories');
+      if(isStory) return;
 
       if(!item) return;
 
@@ -205,12 +204,11 @@ class SearchContextMenu {
         this.peerId = item.dataset.peerId.toPeerId();
         this.mid = +item.dataset.mid;
         this.isSelected = searchSuper.selection.isMidSelected(this.peerId, this.mid);
-        this.message = isStory ? undefined : await this.managers.appMessagesManager.getMessageByPeer(this.peerId, this.mid);
-        this.storyItem = isStory ? await this.managers.appStoriesManager.getStoryById(this.peerId, this.mid) : undefined;
-        this.noForwards = isStory || (searchSuper.selection.isSelecting ?
+        this.message = await this.managers.appMessagesManager.getMessageByPeer(this.peerId, this.mid);
+        this.noForwards = searchSuper.selection.isSelecting ?
           this.searchSuper.selection.selectionForwardBtn.classList.contains('hide') :
-          !(await this.managers.appMessagesManager.canForward(this.message)));
-        this.selectedMessages = !isStory && searchSuper.selection.isSelecting ? await searchSuper.selection.getSelectedMessages() : undefined;
+          !(await this.managers.appMessagesManager.canForward(this.message));
+        this.selectedMessages = searchSuper.selection.isSelecting ? await searchSuper.selection.getSelectedMessages() : undefined;
         // this.isSavedDialog = !!(searchSuper.searchContext.peerId === rootScope.myId && searchSuper.searchContext.threadId);
 
         const f = await Promise.all(this.buttons.map(async(button) => {
@@ -275,33 +273,12 @@ class SearchContextMenu {
       icon: 'message',
       text: 'Message.Context.Goto',
       onClick: this.onGotoClick,
-      verify: () => !this.storyItem,
       withSelection: true
-    }, {
-      icon: 'archive',
-      text: 'Archive',
-      onClick: () => this.onStoryTogglePinClick(false),
-      verify: () => this.storyItem && this.storyItem.pFlags.pinned && this.managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'pin')
-    }, {
-      icon: 'unarchive',
-      text: 'Unarchive',
-      onClick: () => this.onStoryTogglePinClick(true),
-      verify: () => this.storyItem && !this.storyItem.pFlags.pinned && this.managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'pin')
-    }, {
-      icon: 'pin',
-      text: 'ChatList.Context.Pin',
-      onClick: () => this.onStoryToggleToTopClick(true),
-      verify: () => this.storiesPinned && this.storyItem && this.storyItem.pinnedIndex === undefined && this.managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'pin')
-    }, {
-      icon: 'unpin',
-      text: 'ChatList.Context.Unpin',
-      onClick: () => this.onStoryToggleToTopClick(false),
-      verify: () => this.storiesPinned && this.storyItem && this.storyItem.pinnedIndex !== undefined && this.managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'pin')
     }, {
       icon: 'select',
       text: 'Message.Context.Select',
       onClick: this.onSelectClick,
-      verify: () => !this.isSelected && (!this.storyItem || this.storyItem.pFlags.out),
+      verify: () => !this.isSelected,
       withSelection: true
     }, {
       icon: 'select',
@@ -314,13 +291,7 @@ class SearchContextMenu {
       className: 'danger',
       text: 'Delete',
       onClick: this.onDeleteClick,
-      verify: () => {
-        if(this.storyItem) {
-          return this.managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'delete');
-        }
-
-        return !this.searchSuper.selection.isSelecting && this.managers.appMessagesManager.canDeleteMessage(this.message);
-      }
+      verify: () => !this.searchSuper.selection.isSelecting && this.managers.appMessagesManager.canDeleteMessage(this.message)
     }, {
       icon: 'delete',
       className: 'danger',
@@ -362,9 +333,7 @@ class SearchContextMenu {
   };
 
   private onDeleteClick = () => {
-    if(this.storyItem) {
-      this.searchSuper.selection.onDeleteStoriesClick([this.storyItem.id]);
-    } else if(this.searchSuper.selection.isSelecting) {
+    if(this.searchSuper.selection.isSelecting) {
       simulateClickEvent(this.searchSuper.selection.selectionDeleteBtn);
     } else {
       PopupElement.createPopup(
@@ -374,14 +343,6 @@ class SearchContextMenu {
         ChatType.Chat
       );
     }
-  };
-
-  private onStoryTogglePinClick = (pin: boolean) => {
-    this.searchSuper.selection.onPinStoriesClick([this.storyItem.id], pin);
-  };
-
-  private onStoryToggleToTopClick = (pin: boolean) => {
-    this.searchSuper.selection.onPinStoriesToTopClick([this.storyItem.id], pin);
   };
 }
 
@@ -443,7 +404,7 @@ export default class AppSearchSuper {
   private membersParticipantMap: Map<PeerId, ChatParticipant | ChannelParticipant>;
   private membersMiddlewareHelper: MiddlewareHelper;
 
-  private _storiesActions: StoriesContextActions;
+  public storiesActions: StoriesContextActions;
   private _storiesSetAlbumAnimated: (albumId: number | undefined) => void;
   private _loadSavedDialogs: (side: 'top' | 'bottom') => Promise<any>;
 
@@ -473,8 +434,6 @@ export default class AppSearchSuper {
   private listenerSetter: ListenerSetter;
   private swipeHandler: SwipeHandler;
 
-  public onStoriesLengthChange: (length: number) => void;
-  public onStoriesAddToAlbum: (albumId: number) => void;
   public storiesArchive: boolean;
 
   public counters: Partial<{[type in SearchSuperMediaType]: number}> = {};
@@ -507,7 +466,7 @@ export default class AppSearchSuper {
     this.container.classList.add('search-super');
 
     this.listenerSetter = new ListenerSetter();
-    this.searchContextMenu = new SearchContextMenu(this.container, this, this.listenerSetter, !this.storiesArchive);
+    this.searchContextMenu = new SearchContextMenu(this.container, this, this.listenerSetter);
     this.selection = new SearchSelection(this, this.managers, this.listenerSetter);
     if(this.storiesArchive) {
       this.selection.isStoriesArchive = true;
@@ -564,7 +523,7 @@ export default class AppSearchSuper {
             return
           }
 
-          if(prevChild.type === 'stories' && this._storiesActions?.handleSwipe(xDiff, this._storiesSetAlbumAnimated)) {
+          if(prevChild.type === 'stories' && this.storiesActions?.handleSwipe(xDiff, this._storiesSetAlbumAnimated)) {
             return
           }
 
@@ -1800,47 +1759,42 @@ export default class AppSearchSuper {
     return promise;
   }
 
-  private async loadStories({mediaTab}: SearchSuperLoadTypeOptions) {
-    if(this._storiesActions) {
-      return this._storiesActions.load();
+  private loadStories({mediaTab}: SearchSuperLoadTypeOptions) {
+    if(this.storiesActions) {
+      return this.storiesActions.load();
     }
 
     const middleware = this.middleware.get();
     const promise = deferredPromise<void>();
     createRoot((dispose) => {
       middleware.onClean(() => {
-        this._storiesActions = undefined;
+        this.storiesActions = undefined;
         this._storiesSetAlbumAnimated = undefined;
         dispose();
         promise.reject();
       });
 
-      const {dom: storiesList, actions, setAlbumAnimated} = StoriesProfileList({
+      const {render: storiesList, actions, setAlbumAnimated} = StoriesProfileList({
         peerId: this.searchContext.peerId,
-        onAddToAlbum: this.onStoriesAddToAlbum,
         pinned: !this.storiesArchive,
         archive: this.storiesArchive,
         scrollable: this.scrollable,
+        listenerSetter: this.listenerSetter,
         onReady: () => {
           promise.resolve();
-
-          const res = (storiesList as any)();
-          mediaTab.contentTab.append(typeof(res) === 'function' ? res() : res);
+          mediaTab.contentTab.append(getFirstChild(storiesList, v => v instanceof Element) as Element);
           this.afterPerforming(1, mediaTab.contentTab);
         },
-        manualLoad: true,
-        onLoad: (loaded) => {
+        onLoad: (loaded: boolean) => {
           this.loaded[mediaTab.type] = loaded;
         },
-        onLengthChange: (length) => {
-          this.onStoriesLengthChange?.(length);
+        onCountChange: (length: number) => {
           this.setCounter(mediaTab.type, length);
-        },
-        selection: this.selection
+        }
       });
-      this._storiesActions = actions;
+      this.storiesActions = actions;
       this._storiesSetAlbumAnimated = setAlbumAnimated;
-      this._storiesActions.load();
+      this.storiesActions.load();
     });
     return promise;
   }
@@ -2764,7 +2718,7 @@ export default class AppSearchSuper {
       return false;
     }
 
-    if(peerId === rootScope.myId && !this.onStoriesLengthChange) {
+    if(peerId === rootScope.myId) {
       return false;
     }
 

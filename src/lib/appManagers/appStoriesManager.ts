@@ -632,7 +632,7 @@ export default class AppStoriesManager extends AppManager {
           return;
         }
 
-        const cache = this.getPeerStoriesCache(this.rootScope.myId);
+        const cache = this.getPeerStoriesCache(peerId);
         const newStories: StoryItem.storyItem[] = result.map((storyId) => {
           const story = cache.storiesMap.get(storyId);
           if(story?._ !== 'storyItem') {

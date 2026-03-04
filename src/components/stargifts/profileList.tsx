@@ -128,6 +128,7 @@ async function openAddGiftsPopup({actions, collectionId, peerId}: {
 export function profileStarGiftsButtonMenu(props: {
   store?: StarGiftsProfileStore
   actions?: StarGiftsProfileActions
+  verify: () => boolean
   peerId: PeerId
 }): ButtonMenuItemOptionsVerifiable[] {
   const FILTER_GROUPS = [['unlimited', 'limited', 'upgradable', 'unique'], ['displayed', 'hidden']] as const
@@ -174,57 +175,57 @@ export function profileStarGiftsButtonMenu(props: {
       icon: 'sort_date',
       text: 'StarGiftSortByDate',
       onClick: () => props.actions.setFilters({sort: 'date'}),
-      verify: () => props.store?.sort === 'value'
+      verify: () => props.verify() && props.store?.sort === 'value'
     },
     {
       icon: 'sort_price',
       text: 'StarGiftSortByValue',
       onClick: () => props.actions.setFilters({sort: 'value'}),
-      verify: () => props.store?.sort === 'date'
+      verify: () => props.verify() && props.store?.sort === 'date'
     },
     {
       icon: 'folder',
       text: 'StarGiftCollectionsAdd',
       onClick: () => openCreateCollectionPopup({actions: props.actions, peerId: props.peerId}),
-      verify: () => props.store != null && self
+      verify: () => props.verify() && props.store != null && self
     },
     {
       checkboxField: checkboxsByFilter.unlimited,
       text: 'StarGiftShowUnlimited',
       separator: true,
       onClick: () => toggleFilter('unlimited'),
-      verify: () => props.store != null
+      verify: () => props.verify() && props.store != null
     },
     {
       checkboxField: checkboxsByFilter.limited,
       text: 'StarGiftShowLimited',
       onClick: () => toggleFilter('limited'),
-      verify: () => props.store != null
+      verify: () => props.verify() && props.store != null
     },
     {
       checkboxField: checkboxsByFilter.upgradable,
       text: 'StarGiftShowUpgradable',
       onClick: () => toggleFilter('upgradable'),
-      verify: () => props.store != null
+      verify: () => props.verify() && props.store != null
     },
     {
       checkboxField: checkboxsByFilter.unique,
       text: 'StarGiftShowUnique',
       onClick: () => toggleFilter('unique'),
-      verify: () => props.store != null
+      verify: () => props.verify() && props.store != null
     },
     {
       checkboxField: checkboxsByFilter.displayed,
       text: 'StarGiftShowDisplayed',
       separator: true,
       onClick: () => toggleFilter('displayed'),
-      verify: () => props.store != null && self
+      verify: () => props.verify() && props.store != null && self
     },
     {
       checkboxField: checkboxsByFilter.hidden,
       text: 'StarGiftShowHidden',
       onClick: () => toggleFilter('hidden'),
-      verify: () => props.store != null && self
+      verify: () => props.verify() && props.store != null && self
     }
   ]
 }
