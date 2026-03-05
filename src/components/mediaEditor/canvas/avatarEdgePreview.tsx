@@ -81,7 +81,7 @@ const Rect = (props: { size: number } & JSX.PresentationSVGAttributes) =>
     x={strokeWidth}
     y={strokeWidth}
     width={props.size - strokeWidth * 2}
-    height={props.size - strokeWidth}
+    height={props.size - strokeWidth * 2}
     rx={0.33 * (props.size - strokeWidth * 2)}
     ry={0.33 * (props.size - strokeWidth * 2)}
     {...props}
