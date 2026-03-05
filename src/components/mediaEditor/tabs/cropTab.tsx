@@ -47,7 +47,7 @@ function Item(
 }
 
 export default function CropTab() {
-  const {editorState, mediaState, actions} = useMediaEditorContext();
+  const {editorState, mediaState, actions, isEditingForAvatar} = useMediaEditorContext();
 
   const isActive = (what?: string) => editorState.fixedImageRatioKey === what;
 
@@ -66,12 +66,14 @@ export default function CropTab() {
         text={i18n('MediaEditor.Free')}
         active={isActive()}
         onClick={() => onRatioClick()}
+        disabled={isEditingForAvatar}
       />
       <Item
         icon={<IconTsx icon="image_original" />}
         text={i18n('MediaEditor.Original')}
         active={isActive('original')}
         onClick={() => onRatioClick('original')}
+        disabled={isEditingForAvatar}
       />
       <Item
         icon={ratioIcon('1x1')}
@@ -81,23 +83,78 @@ export default function CropTab() {
       />
 
       <div class="media-editor__crop-grid">
-        <Item icon={ratioIcon('3x2')} text="3:2" active={isActive('3x2')} onClick={() => onRatioClick('3x2')} />
-        <Item icon={ratioIcon('3x2', true)} text="2:3" active={isActive('2x3')} onClick={() => onRatioClick('2x3')} />
+        <Item
+          icon={ratioIcon('3x2')}
+          text="3:2"
+          active={isActive('3x2')}
+          disabled={isEditingForAvatar}
+          onClick={() => onRatioClick('3x2')}
+        />
+        <Item
+          icon={ratioIcon('3x2', true)}
+          text="2:3"
+          active={isActive('2x3')}
+          disabled={isEditingForAvatar}
+          onClick={() => onRatioClick('2x3')}
+        />
 
-        <Item icon={ratioIcon('4x3')} text="4:3" active={isActive('4x3')} onClick={() => onRatioClick('4x3')} />
-        <Item icon={ratioIcon('4x3', true)} text="3:4" active={isActive('3x4')} onClick={() => onRatioClick('3x4')} />
+        <Item
+          icon={ratioIcon('4x3')}
+          text="4:3"
+          active={isActive('4x3')}
+          disabled={isEditingForAvatar}
+          onClick={() => onRatioClick('4x3')}
+        />
+        <Item
+          icon={ratioIcon('4x3', true)}
+          text="3:4"
+          active={isActive('3x4')}
+          disabled={isEditingForAvatar}
+          onClick={() => onRatioClick('3x4')}
+        />
 
-        <Item icon={ratioIcon('5x4')} text="5:4" active={isActive('5x4')} onClick={() => onRatioClick('5x4')} />
-        <Item icon={ratioIcon('5x4', true)} text="4:5" active={isActive('4x5')} onClick={() => onRatioClick('4x5')} />
+        <Item
+          icon={ratioIcon('5x4')}
+          text="5:4"
+          active={isActive('5x4')}
+          disabled={isEditingForAvatar}
+          onClick={() => onRatioClick('5x4')}
+        />
+        <Item
+          icon={ratioIcon('5x4', true)}
+          text="4:5"
+          active={isActive('4x5')}
+          disabled={isEditingForAvatar}
+          onClick={() => onRatioClick('4x5')}
+        />
 
-        <Item icon={ratioIcon('7x5')} text="7:5" active={isActive('7x5')} onClick={() => onRatioClick('7x5')} />
-        <Item icon={ratioIcon('7x5', true)} text="5:7" active={isActive('5x7')} onClick={() => onRatioClick('5x7')} />
+        <Item
+          icon={ratioIcon('7x5')}
+          text="7:5"
+          active={isActive('7x5')}
+          disabled={isEditingForAvatar}
+          onClick={() => onRatioClick('7x5')}
+        />
+        <Item
+          icon={ratioIcon('7x5', true)}
+          text="5:7"
+          active={isActive('5x7')}
+          disabled={isEditingForAvatar}
+          onClick={() => onRatioClick('5x7')}
+        />
 
-        <Item icon={ratioIcon('16x9')} text="16:9" active={isActive('16x9')} onClick={() => onRatioClick('16x9')} />
+        <Item
+          icon={ratioIcon('16x9')}
+          text="16:9"
+          active={isActive('16x9')}
+          disabled={isEditingForAvatar}
+          onClick={() => onRatioClick('16x9')}
+        />
         <Item
           icon={ratioIcon('16x9', true)}
           text="9:16"
           active={isActive('9x16')}
+          disabled={isEditingForAvatar}
           onClick={() => onRatioClick('9x16')}
         />
       </div>

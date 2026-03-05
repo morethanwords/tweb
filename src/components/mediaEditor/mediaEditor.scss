@@ -454,6 +454,12 @@
     &--active {
       --bg-color: #2b2b2b;
     }
+
+    &--disabled {
+      pointer-events: none;
+      opacity: 0.5;
+    }
+
   }
 
   &__crop-item {
