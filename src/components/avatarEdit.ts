@@ -17,6 +17,7 @@ import appDownloadManager from '@lib/appDownloadManager';
 import rootScope from '@lib/rootScope';
 import {MediaEditorFinalResult} from './mediaEditor/finalRender/createFinalResult';
 import {snapToViewport} from './mediaEditor/utils';
+import namedPromises from '@helpers/namedPromises';
 
 
 export default class AvatarEdit {
@@ -94,18 +95,17 @@ async function getFileAndOpenEditor(clb: (result: MediaEditorFinalResult) => voi
 
   if(!file) return;
 
-  const result = await createImageAndURLFromBlob(file);
-  if(!result.ok) return;
+  const {url, mediaEditor: {openMediaEditorFromMediaRaw}} = await namedPromises({
+    url: apiManagerProxy.invoke('createObjectURL', file),
+    mediaEditor: import('./mediaEditor')
+  });
 
-  const {openMediaEditorFromMediaNoAnimation} = await import('./mediaEditor');
-
-  openMediaEditorFromMediaNoAnimation({
-    source: result.img,
+  openMediaEditorFromMediaRaw({
+    isEditingForAvatar: true,
     canImageResultInGIF: false,
-    animatedCanvasSize: [result.img.naturalWidth, result.img.naturalHeight],
     getMediaBlob: async() => file,
     managers: rootScope.managers,
-    mediaSrc: result.url,
+    mediaSrc: url,
     mediaType: 'image',
     onEditFinish: clb,
     onClose: () => { }

@@ -1,24 +1,20 @@
-import {createEffect, onCleanup, onMount} from 'solid-js';
-import {render} from 'solid-js/web';
-
-import {doubleRaf} from '@helpers/schedulers';
-import {AppManagers} from '@lib/managers';
-import {i18n} from '@lib/langPack';
-import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
-
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
 import confirmationPopup from '@components/confirmationPopup';
-
 import MainCanvas from '@components/mediaEditor/canvas/mainCanvas';
 import MediaEditorContext, {createContextValue, EditingMediaState} from '@components/mediaEditor/context';
 import {createFinalResult, MediaEditorFinalResult} from '@components/mediaEditor/finalRender/createFinalResult';
 import FinishButton from '@components/mediaEditor/finishButton';
-import Toolbar from '@components/mediaEditor/toolbar';
-import {MediaType, NumberPair} from '@components/mediaEditor/types';
-import {delay, withCurrentOwner} from '@components/mediaEditor/utils';
-
 import '@components/mediaEditor/mediaEditor.scss';
+import Toolbar from '@components/mediaEditor/toolbar';
+import {MediaType} from '@components/mediaEditor/types';
+import {delay, withCurrentOwner} from '@components/mediaEditor/utils';
 import overlayCounter from '@helpers/overlayCounter';
+import {doubleRaf} from '@helpers/schedulers';
+import {i18n} from '@lib/langPack';
+import {AppManagers} from '@lib/managers';
+import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import {createEffect, onCleanup, onMount} from 'solid-js';
+import {render} from 'solid-js/web';
 
 
 export type MediaEditorProps = {
@@ -31,6 +27,7 @@ export type MediaEditorProps = {
   mediaType: MediaType;
   getMediaBlob: () => Promise<Blob | null>;
   editingMediaState?: EditingMediaState;
+  isEditingForAvatar?: boolean;
   canImageResultInGIF?: boolean;
 };
 

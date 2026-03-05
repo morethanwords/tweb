@@ -180,6 +180,7 @@ export type MediaEditorContextValue = {
   mediaType: MediaType;
   getMediaBlob: () => Promise<Blob | null>;
   canImageResultInGIF: boolean;
+  isEditingForAvatar: boolean;
 
   mediaState: Store<EditingMediaState>;
   editorState: Store<MediaEditorState>;
@@ -247,6 +248,7 @@ export function createContextValue(props: MediaEditorProps): MediaEditorContextV
     mediaType: props.mediaType,
     getMediaBlob: props.getMediaBlob,
     canImageResultInGIF: props.canImageResultInGIF || false,
+    isEditingForAvatar: props.isEditingForAvatar || false,
 
     mediaState,
     editorState,
