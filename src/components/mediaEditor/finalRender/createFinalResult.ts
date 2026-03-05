@@ -169,13 +169,13 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
 
   const renderResult = await renderPromise;
 
-  const animatedPreview = await spawnAnimatedPreview({
+  const animatedPreview = renderResult.preview ? await spawnAnimatedPreview({
     context,
     cropOffset,
     scaledWidth,
     scaledHeight,
     previewBlob: renderResult.preview
-  });
+  }) : undefined;
 
   Promise.resolve(renderResult.getResult())?.catch(noop)?.finally(() => {
     cleanupWebGl(gl);

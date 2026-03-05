@@ -30,6 +30,7 @@ export type MediaEditorProps = {
   isEditingForAvatar?: boolean;
   isEditingForumAvatar?: boolean;
   canImageResultInGIF?: boolean;
+  dontCreatePreview?: boolean;
 };
 
 export function MediaEditor(props: MediaEditorProps) {

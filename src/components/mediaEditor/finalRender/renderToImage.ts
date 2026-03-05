@@ -23,7 +23,7 @@ export default async function renderToImage({
   brushCanvas,
   resultCanvas
 }: RenderToImageArgs) {
-  const {editorState: {stickersLayersInfo}, canImageResultInGIF} = context;
+  const {editorState: {stickersLayersInfo}, canImageResultInGIF, dontCreatePreview} = context;
 
   ctx.drawImage(imageCanvas, 0, 0);
   ctx.drawImage(brushCanvas, 0, 0);
@@ -57,7 +57,7 @@ export default async function renderToImage({
   );
 
   return {
-    preview: result.blob,
+    preview: dontCreatePreview ? undefined : result.blob,
     isVideo: false,
     getResult: () => result
   };

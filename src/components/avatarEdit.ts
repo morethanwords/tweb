@@ -61,10 +61,11 @@ export default class AvatarEdit {
 
 type GetFileAndOpenEditorArgs = {
   isForum?: boolean;
+  dontCreatePreview?: boolean;
   onFinish: (result: MediaEditorFinalResult) => void;
 };
 
-async function getFileAndOpenEditor({isForum, onFinish}: GetFileAndOpenEditorArgs) {
+export async function getFileAndOpenEditor({isForum, onFinish, dontCreatePreview}: GetFileAndOpenEditorArgs) {
   const input = createHiddenFileInput();
   // this.container.append(input); // Do not append to the container, it will cause an infinite loop as click will propagate to the container
   document.body.append(input);
@@ -90,6 +91,7 @@ async function getFileAndOpenEditor({isForum, onFinish}: GetFileAndOpenEditorArg
     mediaSrc: imgResult.url,
     mediaType: 'image',
     onEditFinish: onFinish,
+    dontCreatePreview,
     onClose: () => { }
   });
 }

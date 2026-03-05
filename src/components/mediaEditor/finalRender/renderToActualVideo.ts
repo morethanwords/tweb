@@ -63,7 +63,8 @@ export default async function renderToActualVideo({
   const {
     editorState: {pixelRatio},
     mediaState: {videoCropStart, videoCropLength, videoMuted, videoThumbnailPosition},
-    getMediaBlob
+    getMediaBlob,
+    dontCreatePreview
   } = context;
 
   const {media: {video}} = renderingPayload;
@@ -312,7 +313,7 @@ export default async function renderToActualVideo({
 
   setProgress(0);
 
-  const preview = await runWithOwner(owner, () => generateVideoPreview({scaledWidth, scaledHeight}));
+  const preview = dontCreatePreview ? undefined : await runWithOwner(owner, () => generateVideoPreview({scaledWidth, scaledHeight}));
 
   const resultPromise = new Promise<MediaEditorFinalResultPayload>(async(resolve, reject) => {
     const firstFrameSeekDeferred = deferredPromise<void>();
