@@ -95,17 +95,18 @@ async function getFileAndOpenEditor(clb: (result: MediaEditorFinalResult) => voi
 
   if(!file) return;
 
-  const {url, mediaEditor: {openMediaEditorFromMediaRaw}} = await namedPromises({
-    url: apiManagerProxy.invoke('createObjectURL', file),
-    mediaEditor: import('./mediaEditor')
-  });
+
+  const imgResult = await createImageAndURLFromBlob(file); // make sure to render the image to know if it's valid
+  if(!imgResult.ok) return;
+
+  const {openMediaEditorFromMediaRaw} = await import('./mediaEditor');
 
   openMediaEditorFromMediaRaw({
     isEditingForAvatar: true,
     canImageResultInGIF: false,
     getMediaBlob: async() => file,
     managers: rootScope.managers,
-    mediaSrc: url,
+    mediaSrc: imgResult.url,
     mediaType: 'image',
     onEditFinish: clb,
     onClose: () => { }
