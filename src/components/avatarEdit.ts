@@ -16,6 +16,7 @@ import appDownloadManager from '@lib/appDownloadManager';
 import rootScope from '@lib/rootScope';
 import {MediaEditorFinalResult} from './mediaEditor/finalRender/createFinalResult';
 import {snapToViewport} from './mediaEditor/utils';
+import IMAGE_MIME_TYPES_SUPPORTED from '@environment/imageMimeTypesSupport';
 
 
 type Options = {
@@ -164,6 +165,7 @@ function createHiddenFileInput(): HTMLInputElement {
   const input = document.createElement('input');
   input.type = 'file';
   input.style.display = 'none';
+  input.accept = [...IMAGE_MIME_TYPES_SUPPORTED].join(',');
 
   return input;
 }
