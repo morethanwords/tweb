@@ -34,7 +34,7 @@ export type MediaEditorProps = {
 export function MediaEditor(props: MediaEditorProps) {
   const contextValue = createContextValue(props);
 
-  const {editorState, hasModifications} = contextValue;
+  const {editorState, canFinish} = contextValue;
 
   let overlay: HTMLDivElement;
 
@@ -89,7 +89,7 @@ export function MediaEditor(props: MediaEditorProps) {
   }
 
   function handleClose(finished = false, hasGif = false) {
-    if(finished || !hasModifications()) {
+    if(finished || !canFinish()) {
       performClose(hasGif);
       return;
     }
