@@ -1,4 +1,5 @@
-import {createMemo} from 'solid-js';
+import {createMemo, JSX} from 'solid-js';
+import {Dynamic} from 'solid-js/web';
 import {useMediaEditorContext} from '../context';
 import {getSnappedViewportsScale} from '../utils';
 import {useCropOffset} from './useCropOffset';
@@ -9,7 +10,7 @@ const strokeLength = 6;
 const strokeGap = 10;
 
 export default function AvatarEdgePreview() {
-  const {editorState} = useMediaEditorContext();
+  const {editorState, isEditingForumAvatar} = useMediaEditorContext();
 
   const isCropping = () => editorState.currentTab === 'crop';
 
@@ -43,46 +44,45 @@ export default function AvatarEdgePreview() {
         }}
         viewBox={`0 0 ${size()} ${size()}`}
       >
-        <circle
-          cx={size() / 2}
-          cy={size() / 2}
-          r={size() / 2 - strokeWidth}
+        <Dynamic
+          component={isEditingForumAvatar ? Rect : Circle}
+          size={size()}
           fill="none"
           stroke="black"
           stroke-width={strokeWidth}
-          stroke-dasharray={`${strokeLength + strokeWidth} ${strokeGap - strokeWidth}`}
-          stroke-dashoffset={strokeWidth / 2}
+          stroke-dasharray={`${strokeLength + strokeWidth / 2} ${strokeGap - strokeWidth / 2}`}
+          stroke-dashoffset={strokeWidth / 4}
           stroke-linecap='round'
         />
-
-        <circle
-          cx={size() / 2}
-          cy={size() / 2}
-          r={size() / 2 - strokeWidth}
+        <Dynamic
+          component={isEditingForumAvatar ? Rect : Circle}
+          size={size()}
           fill="none"
           stroke="white"
           stroke-width={strokeWidth / 2}
           stroke-dasharray={`${strokeLength} ${strokeGap}`}
           stroke-linecap='round'
         />
-        {/* <circle
-          cx={size() / 2}
-          cy={size() / 2}
-          r={size() / 2 - strokeWidth}
-          fill="none"
-          stroke="black"
-          stroke-width={strokeWidth}
-        />
-
-        <circle
-          cx={size() / 2}
-          cy={size() / 2}
-          r={size() / 2 - strokeWidth * 2}
-          fill="none"
-          stroke="white"
-
-        />*/}
       </svg>
     </div>
   )
 }
+
+const Circle = (props: { size: number } & JSX.PresentationSVGAttributes) =>
+  <circle
+    cx={props.size / 2}
+    cy={props.size / 2}
+    r={props.size / 2 - strokeWidth}
+    {...props}
+  />
+
+const Rect = (props: { size: number } & JSX.PresentationSVGAttributes) =>
+  <rect
+    x={strokeWidth}
+    y={strokeWidth}
+    width={props.size - strokeWidth * 2}
+    height={props.size - strokeWidth}
+    rx={0.33 * (props.size - strokeWidth * 2)}
+    ry={0.33 * (props.size - strokeWidth * 2)}
+    {...props}
+  />

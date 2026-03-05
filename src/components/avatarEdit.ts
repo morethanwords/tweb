@@ -5,7 +5,6 @@
  */
 
 import Icon from '@components/icon';
-import PopupAvatar from '@components/popups/avatar';
 import {animateValue} from '@helpers/animateValue';
 import type {CancellablePromise} from '@helpers/cancellablePromise';
 import deferredPromise from '@helpers/cancellablePromise';
@@ -17,15 +16,18 @@ import appDownloadManager from '@lib/appDownloadManager';
 import rootScope from '@lib/rootScope';
 import {MediaEditorFinalResult} from './mediaEditor/finalRender/createFinalResult';
 import {snapToViewport} from './mediaEditor/utils';
-import namedPromises from '@helpers/namedPromises';
 
+
+type Options = {
+  isForum?: boolean;
+};
 
 export default class AvatarEdit {
   public container: HTMLElement;
   private canvas: HTMLCanvasElement;
   private icon: HTMLSpanElement;
 
-  constructor(onChange: (uploadAvatar: () => CancellablePromise<InputFile>) => void, options?: ConstructorParameters<typeof PopupAvatar>[0]) {
+  constructor(onChange: (uploadAvatar: () => CancellablePromise<InputFile>) => void, options?: Options) {
     this.container = document.createElement('div');
     this.container.classList.add('avatar-edit');
 
@@ -37,43 +39,15 @@ export default class AvatarEdit {
     this.container.append(this.canvas, this.icon);
 
     attachClickEvent(this.container, () => {
-      getFileAndOpenEditor(async(editorResult) => {
-        const earlyDispose = () => {
-          editorResult.animatedPreview?.remove();
-        };
-
-        const resultPayload = await editorResult.getResult();
-
-        if(editorResult.isVideo || !editorResult.animatedPreview) return void earlyDispose();
-
-        const imgResult = await createImageAndURLFromBlob(resultPayload.blob);
-        if(!imgResult.ok) return earlyDispose();
-
-        const img = imgResult.img;
-
-        const animatedImg = editorResult.animatedPreview;
-        await animateImageToTarget(animatedImg, this.canvas);
-
-        const [width, height] = snapToViewport(1, editorResult.width, editorResult.height);
-
-        [this.canvas.width, this.canvas.height] = [width, height];
-
-        const ctx = this.canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-        ctx.fillRect(0, 0, width, height);
-
-        // Doing this now prevents the avatar blinking to the old one
-        onChange(() => appDownloadManager.upload(resultPayload.blob));
-
-        await animatedImg.animate({
-          opacity: [1, 0]
-        }, {
-          duration: 200,
-          fill: 'forwards'
-        }).finished;
-
-        animatedImg.remove();
+      getFileAndOpenEditor({
+        isForum: options?.isForum,
+        onFinish: (result) => {
+          finishFromResult({
+            result,
+            onChange,
+            canvas: this.canvas
+          })
+        }
       });
     });
   }
@@ -84,7 +58,12 @@ export default class AvatarEdit {
   }
 }
 
-async function getFileAndOpenEditor(clb: (result: MediaEditorFinalResult) => void) {
+type GetFileAndOpenEditorArgs = {
+  isForum?: boolean;
+  onFinish: (result: MediaEditorFinalResult) => void;
+};
+
+async function getFileAndOpenEditor({isForum, onFinish}: GetFileAndOpenEditorArgs) {
   const input = createHiddenFileInput();
   // this.container.append(input); // Do not append to the container, it will cause an infinite loop as click will propagate to the container
   document.body.append(input);
@@ -103,14 +82,60 @@ async function getFileAndOpenEditor(clb: (result: MediaEditorFinalResult) => voi
 
   openMediaEditorFromMediaRaw({
     isEditingForAvatar: true,
+    isEditingForumAvatar: isForum,
     canImageResultInGIF: false,
     getMediaBlob: async() => file,
     managers: rootScope.managers,
     mediaSrc: imgResult.url,
     mediaType: 'image',
-    onEditFinish: clb,
+    onEditFinish: onFinish,
     onClose: () => { }
   });
+}
+
+type FinishFromResultArgs = {
+  result: MediaEditorFinalResult;
+  canvas: HTMLCanvasElement;
+  onChange: (value: () => CancellablePromise<InputFile>) => void;
+};
+
+async function finishFromResult({result: editorResult, canvas, onChange}: FinishFromResultArgs) {
+  const earlyDispose = () => {
+    editorResult.animatedPreview?.remove();
+  };
+
+  const resultPayload = await editorResult.getResult();
+
+  if(editorResult.isVideo || !editorResult.animatedPreview) return void earlyDispose();
+
+  const imgResult = await createImageAndURLFromBlob(resultPayload.blob);
+  if(!imgResult.ok) return earlyDispose();
+
+  const img = imgResult.img;
+
+  const animatedImg = editorResult.animatedPreview;
+  await animateImageToTarget(animatedImg, canvas);
+
+  const [width, height] = snapToViewport(1, editorResult.width, editorResult.height);
+
+  [canvas.width, canvas.height] = [width, height];
+
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, width, height);
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+  ctx.fillRect(0, 0, width, height);
+
+  // Doing this now prevents the avatar blinking to the old one
+  onChange(() => appDownloadManager.upload(resultPayload.blob));
+
+  await animatedImg.animate({
+    opacity: [1, 0]
+  }, {
+    duration: 200,
+    fill: 'forwards'
+  }).finished;
+
+  animatedImg.remove();
 }
 
 type RenderImageAndURLFromBlobResult = {
