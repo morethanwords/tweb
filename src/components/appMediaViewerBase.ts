@@ -1748,7 +1748,7 @@ export default class AppMediaViewerBase<
 
     const isLiveStream = media._ === 'inputGroupCall';
     const isDocument = media._ === 'document';
-    const isVideo = isDocument && media.mime_type && ((['video', 'gif'] as MyDocument['type'][]).includes(media.type) || media.mime_type.indexOf('video/') === 0);
+    const isVideo = isDocument && media.mime_type && media.mime_type !== 'image/avif' && ((['video', 'gif'] as MyDocument['type'][]).includes(media.type) || media.mime_type.indexOf('video/') === 0);
     let isHlsStream: boolean;
 
     this.log('openMedia', media, fromId, prevTargets, nextTargets, isLiveStream, isDocument, isVideo);

@@ -1507,6 +1507,9 @@ export class AppMessagesManager extends AppManager {
     if(isDocument) {
       file = this.appDocsManager.getDoc((file as MyDocument).id) || file;
     }
+    if(file.type === 'image/avif') {
+      options.isMedia = null; // telegram server rejects the request if isMedia is true
+    }
 
     const hadMessageBefore = !!options.groupedMessage;
     const message = options.groupedMessage || this.generateOutgoingMessage(peerId, options);
