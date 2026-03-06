@@ -93,7 +93,7 @@ export default class SortedUserList extends SortedList<SortedUser> {
         });
 
         const rank = this.ranks.get(base.id);
-        dialogElement.titleRight.replaceChildren(rank ? wrapParticipantRank(rank) : undefined);
+        dialogElement.titleRight.replaceChildren(...[rank ? wrapParticipantRank(rank) : undefined].filter(Boolean));
 
         (base as SortedUser).dom = dialogElement.dom;
         (base as SortedUser).dialogElement = dialogElement;

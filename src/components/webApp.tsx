@@ -316,7 +316,7 @@ export default class WebApp {
         this.forceHide();
         appImManager.setInnerPeer({peerId: botPeerId});
       },
-      verify: () => this.webViewOptions.peerId !== botPeerId
+      verify: () => this.webViewOptions.peerId !== botPeerId || appImManager.chat?.peerId !== botPeerId
     }, {
       icon: 'rotate_left',
       text: 'BotWebViewReloadPage',

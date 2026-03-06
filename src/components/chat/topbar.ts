@@ -734,7 +734,7 @@ export default class ChatTopbar {
         return !!userFull?.pFlags?.blocked;
       }
     }, {
-      icon: 'restrict',
+      icon: 'sharingoff',
       text: 'DisableSharing',
       onClick: () => {
         if(!rootScope.premium) {
@@ -759,7 +759,7 @@ export default class ChatTopbar {
         return !userFull.pFlags.noforwards_my_enabled && !userFull.pFlags.noforwards_peer_enabled;
       }
     }, {
-      icon: 'restrict',
+      icon: 'sharingon',
       text: 'EnableSharing',
       onClick: async() => {
         const userFull = this.chat.fullPeer() as UserFull.userFull;

@@ -18,7 +18,7 @@ import useHeavyAnimationCheck, {getHeavyAnimationPromise} from '@hooks/useHeavyA
 import I18n, {LangPackKey, i18n, join} from '@lib/langPack';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import {getMiddleware, Middleware, MiddlewareHelper} from '@helpers/middleware';
-import {ChannelParticipant, Chat, ChatFull, ChatParticipant, ChatParticipants, Document, Message, MessageMedia, MessagesChats, MessagesFilter, Peer, Photo, StoryItem, Update, User, UserFull, WebPage} from '@layer';
+import {BotMenuButton, ChannelParticipant, Chat, ChatFull, ChatParticipant, ChatParticipants, Document, Message, MessageMedia, MessagesChats, MessagesFilter, Peer, Photo, StoryItem, Update, User, UserFull, WebPage} from '@layer';
 import SortedUserList from '@components/sortedUserList';
 import findUpTag from '@helpers/dom/findUpTag';
 import appSidebarRight from '@components/sidebarRight';
@@ -444,6 +444,8 @@ export default class AppSearchSuper {
 
   private _loadStories: () => Promise<void>;
   private _loadSavedDialogs: (side: 'top' | 'bottom') => Promise<any>;
+
+  private _loadMoreApps: () => Promise<void>;
 
   private skipScroll: boolean;
 
@@ -2077,8 +2079,27 @@ export default class AppSearchSuper {
   }
 
   private async loadApps({mediaTab, middleware}: SearchSuperLoadTypeOptions) {
+    if(this._loadMoreApps) {
+      return this._loadMoreApps();
+    }
+
+    const onClick = (el: HTMLElement): boolean => {
+      (async() => {
+        const peerId = el.dataset.peerId.toPeerId();
+        const userFull = await this.managers.appProfileManager.getProfile(peerId);
+        appImManager.openWebApp({
+          botId: peerId.toUserId(),
+          url: (userFull.bot_info.menu_button as BotMenuButton.botMenuButton).url,
+          buttonText: (userFull.bot_info.menu_button as BotMenuButton.botMenuButton).text,
+          fromBotMenu: true,
+          peerId
+        });
+      })();
+      return false;
+    };
+
     if(this.searchContext.query) {
-      const group = new SearchGroup('ChatList.Filter.Bots', 'apps');
+      const group = new SearchGroup('ChatList.Filter.Bots', 'apps', undefined, undefined, undefined, undefined, onClick);
       group.setActive();
 
       const SEARCH_LIMIT = 200; // will get filtered anyway
@@ -2102,7 +2123,7 @@ export default class AppSearchSuper {
     const myTopApps = await rootScope.managers.appUsersManager.getTopPeers('bots_app');
 
     if(myTopApps.length) {
-      const group = new SearchGroup('MiniApps.Apps', 'apps');
+      const group = new SearchGroup('MiniApps.Apps', 'apps', undefined, undefined, undefined, undefined, onClick);
       group.setActive();
       mediaTab.contentTab.append(group.container);
 
@@ -2112,40 +2133,42 @@ export default class AppSearchSuper {
       this.renderPeerDialogs(myTopApps.map((app) => app.id.toPeerId(false)), group, middleware, 'bots');
     }
 
-    const group = new SearchGroup('MiniApps.Popular', 'apps');
+    const group = new SearchGroup('MiniApps.Popular', 'apps', undefined, undefined, undefined, undefined, onClick);
     group.setActive();
     mediaTab.contentTab.append(group.container);
 
     type GetPopularAppsResult = ReturnType<typeof rootScope.managers.appAttachMenuBotsManager.getPopularAppBots>;
-    let currentOffset: string | null = '', loadPromise: GetPopularAppsResult;
+    let currentOffset: string = '', loadPromise: GetPopularAppsResult;
     const APPS_LIMIT_PER_LOAD = 20;
 
     const loadMoreApps = async() => {
-      if(loadPromise || !middleware() || currentOffset === null) return;
+      if(
+        loadPromise ||
+        !middleware() ||
+        currentOffset === undefined
+      ) return;
 
       loadPromise = rootScope.managers.appAttachMenuBotsManager.getPopularAppBots(currentOffset, APPS_LIMIT_PER_LOAD);
       const {nextOffset, userIds} = await loadPromise;
 
       await this.renderPeerDialogs(userIds.map((id) => id.toPeerId(false)), group, middleware, 'bots');
 
-      currentOffset = nextOffset || null;
+      currentOffset = nextOffset || undefined;
       loadPromise = undefined;
+
+      if(!currentOffset) {
+        this.loaded[mediaTab.type] = true;
+      }
     }
 
-    const scrollTarget = this.scrollable.container;
-
-    scrollTarget.addEventListener('scroll', () => {
-      const offset = 120;
-      if(this.mediaTab !== mediaTab) return; // There is one scrollable for all tabs
-      if(scrollTarget.scrollTop + scrollTarget.clientHeight >= scrollTarget.scrollHeight - offset) {
-        loadMoreApps();
-      }
-    });
-
+    this._loadMoreApps = loadMoreApps;
     await loadMoreApps();
 
+    middleware.onClean(() => {
+      this._loadMoreApps = undefined;
+    });
+
     this.afterPerforming(1, mediaTab.contentTab);
-    this.loaded[mediaTab.type] = true;
   }
 
   globalPostsSearch: ReturnType<typeof wrapGlobalPostsSearch>;
@@ -2244,6 +2267,10 @@ export default class AppSearchSuper {
         }
 
         this.loadPromises[type] = null;
+
+        setTimeout(() => {
+          this.scrollable.checkForTriggers();
+        }, 0);
       });
     }
 

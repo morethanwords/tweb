@@ -5,11 +5,11 @@ export default function showNoForwardsPopup(onConfirm: () => void) {
   showFeatureDetailsPopup({
     title: i18n('DisableSharing'),
     rows: [{
-      icon: 'archive',
+      icon: 'sharingoff',
       title: i18n('DisableSharing.Row1.Title'),
       subtitle: i18n('DisableSharing.Row1.Subtitle')
     }, {
-      icon: 'eyecross_outline',
+      icon: 'down_crossed',
       title: i18n('DisableSharing.Row2.Title'),
       subtitle: i18n('DisableSharing.Row2.Subtitle')
     }],

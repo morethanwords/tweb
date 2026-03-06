@@ -3865,6 +3865,12 @@
   }
 
   &-list {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    align-self: center;
+    text-align: initial;
+
     &-check {
       margin-inline-end: .25rem;
       font-size: 1.25rem;

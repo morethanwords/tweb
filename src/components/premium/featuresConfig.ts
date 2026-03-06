@@ -319,7 +319,7 @@ export const PREMIUM_FEATURES: {[type in PremiumPromoFeatureType]?: PremiumPromo
   },
   pm_noforwards: {
     feature: 'pm_noforwards',
-    icon: 'premium_speed',
+    icon: 'sharingoff_filled',
     titleLangKey: 'Premium.Boarding.NoForwards.Title',
     subtitleLangKey: 'Premium.Boarding.NoForwards.Info',
     videoPosition: 'top'

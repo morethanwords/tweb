@@ -1334,8 +1334,9 @@ export class AppImManager extends EventListenerBase<{
   // * restrict copying no forwards content
   private attachCopyListener() {
     document.addEventListener('copy', (e) => {
+      let peerId: PeerId;
       const nodes = getSelectedNodes();
-      nodes.some((node) => {
+      const foundRestrictedNode = nodes.some((node) => {
         let element: HTMLElement = node as HTMLElement;
         if(node.nodeType !== node.ELEMENT_NODE) {
           element = node.parentElement;
@@ -1350,8 +1351,12 @@ export class AppImManager extends EventListenerBase<{
           return false;
         }
 
+        peerId = bubble.dataset.peerId.toPeerId();
+        return true;
+      });
+
+      if(foundRestrictedNode) {
         e.preventDefault();
-        const peerId = bubble.dataset.peerId.toPeerId();
 
         let langPackKey: LangPackKey;
         if(peerId.isUser()) {
@@ -1364,9 +1369,7 @@ export class AppImManager extends EventListenerBase<{
         }
 
         toastNew({langPackKey});
-
-        return true;
-      });
+      }
     });
   }
 
