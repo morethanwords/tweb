@@ -366,8 +366,8 @@ const lang = {
   'Boost.EnableStoriesFor': 'Enable Stories For',
   'Boost.DescriptionJustReachedLevel1': 'This channel reached **Level 1** and can now post stories.',
   'Boost.DescriptionJustReachedLevel': 'This channel reached **Level %1$d** and can now post %2$s per day.',
-  'Boost.DescriptionJustReachedLevel1.Group': 'This channel reached **Level 1** and can now post stories.',
-  'Boost.DescriptionJustReachedLevel.Group': 'This channel reached **Level %1$d** and can now post %2$s per day.',
+  'Boost.DescriptionJustReachedLevel1.Group': 'This group reached **Level 1** and can now post stories.',
+  'Boost.DescriptionJustReachedLevel.Group': 'This group reached **Level %1$d** and can now post %2$s per day.',
   'Boost.StoriesCount': {
     'one_value': '**%d** story',
     'other_value': '**%d** stories'
@@ -1029,7 +1029,7 @@ const lang = {
   'Stories.StealthMode.Activated.Title': 'Stealth Mode On',
   'Stories.StealthMode.Activated.Subtitle': 'The creators of stories you viewed in the past **%s** or will view in the next **%s** won\'t see you in the list of viewers.',
   'LeastActiveCommunities': 'Least active communities',
-  'InactiveChannel': '%s, inactive %s',
+  'InactiveChannel': '%s, inactive for %s',
   'InactiveChannel.Group': 'group',
   'InactiveChannel.Broadcast': 'channel',
   'LeaveCommunities': {
@@ -4354,7 +4354,7 @@ const lang = {
   'Archive.MarkAllAsRead.ConfirmationDescription': 'Are you sure you want to mark all archived chats as read?',
   'ArchiveFeatureDetails.MenuOption': 'How does it work?',
   'ArchiveFeatureDetails.Title': 'This is your Archive',
-  'ArchiveFeatureDetails.Subtitle': 'Archived chats will remain in the Archive when you receive a new message. [Click to change.]()',
+  'ArchiveFeatureDetails.Subtitle': 'Archived chats will remain in the Archive when you receive a new message. [Click to change]()',
   'ArchiveFeatureDetails.HowTo.Title': 'Archiving Chats',
   'ArchiveFeatureDetails.HowTo.Subtitle': 'Right-click on a chat and choose **%s** or **%s**.',
   'ArchiveFeatureDetails.Hide.Title': 'Hiding the Archive',
