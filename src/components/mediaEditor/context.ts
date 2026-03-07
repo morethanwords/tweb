@@ -209,6 +209,13 @@ export function createContextValue(props: MediaEditorProps): MediaEditorContextV
   const mediaState = createMutable(mediaStateInit);
   const editorState = createMutable(getDefaultMediaEditorState());
 
+  if(props.initialTab) {
+    editorState.currentTab = props.initialTab;
+    if(props.initialTab === 'crop') {
+      editorState.cropTabAnimationProgress = 1;
+    }
+  }
+
   const actions: EditorOverridableGlobalActions = {
     pushToHistory: (item: HistoryItem) => {
       modifyMutable(mediaState, produce(({history, redoHistory}) => {

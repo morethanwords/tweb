@@ -156,6 +156,10 @@
 
     background-color: var(--primary-color);
     transition: .2s;
+
+    &--no-transition {
+      transition: none;
+    }
   }
 
   &__topbar {

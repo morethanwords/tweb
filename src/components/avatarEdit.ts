@@ -90,6 +90,7 @@ export async function getFileAndOpenEditor({isForum, onFinish, dontCreatePreview
     managers: rootScope.managers,
     mediaSrc: imgResult.url,
     mediaType: 'image',
+    initialTab: 'crop',
     onEditFinish: onFinish,
     dontCreatePreview,
     onClose: () => { }

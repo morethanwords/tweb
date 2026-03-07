@@ -70,9 +70,20 @@ export default function CropHandles() {
     });
   }
 
+  function resetSize() {
+    const {leftTop: targetLeftTop, size: targetSize} = getNewLeftTopAndSize();
+    batch(() => {
+      setLeftTop(targetLeftTop);
+      setSize(targetSize);
+    });
+  }
+
   createEffect(
-    on(() => mediaState.currentImageRatio, () => {
-      resetSizeWithAnimation();
+    on(() => mediaState.currentImageRatio, (_, prev) => {
+      if(!prev) resetSize();
+      else resetSizeWithAnimation();
+    }, {
+      defer: true
     })
   );
 
