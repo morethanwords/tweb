@@ -1989,7 +1989,7 @@ const lang = {
   'EditAdminPinMessages': 'Pin Messages',
   'EditAdminCantEdit': 'You can\'t edit the rights of this admin.',
   'EditCantEditPermissions': 'You cannot change this permission.',
-  'EditAdminRank': 'Custom title',
+  'EditAdminRank': 'Member tag',
   'EditAdminRankInfo': 'A title that members will see instead of \'%1$s\'.',
   'DeleteBanUser': 'Ban user',
   'DeleteReportSpam': 'Report spam',
