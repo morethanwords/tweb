@@ -22,10 +22,9 @@ import {getFirstChild} from '@solid-primitives/refs';
 export default class AppMyStoriesTab extends SliderSuperTab {
   private stickerContainer: HTMLDivElement;
   private showArchiveBtn: HTMLButtonElement;
-  private animation: RLottiePlayer;
-  private loadAnimationPromise: ReturnType<LottieLoader['waitForFirstFrame']>;
   private storiesActions: StoriesContextActions;
   private selection: StoriesSelection;
+  private setAlbumAnimated: (albumId: number | undefined) => void;
   public isArchive: boolean;
   public chatId: ChatId;
 
@@ -90,7 +89,7 @@ export default class AppMyStoriesTab extends SliderSuperTab {
         dispose();
       });
 
-      const {render: storiesList, actions, selection} = StoriesProfileList({
+      const {render: storiesList, actions, selection, setAlbumAnimated} = StoriesProfileList({
         peerId: this.chatId?.toPeerId(true) ?? rootScope.myId,
         pinned: !this.isArchive,
         archive: this.isArchive,
@@ -102,9 +101,6 @@ export default class AppMyStoriesTab extends SliderSuperTab {
             placeholder.classList.toggle('hide', length > 0);
           }
         },
-        onAddToAlbum: (albumId) => {
-          console.log('add to album', albumId);
-        },
         onReady: () => {
           storiesContainer.append(getFirstChild(storiesList, v => v instanceof Element) as Element);
         }
@@ -112,6 +108,7 @@ export default class AppMyStoriesTab extends SliderSuperTab {
 
       this.storiesActions = actions;
       this.selection = selection;
+      this.setAlbumAnimated = setAlbumAnimated;
       loadPromise = this.storiesActions.load();
     });
 
@@ -123,7 +120,8 @@ export default class AppMyStoriesTab extends SliderSuperTab {
           peerId: rootScope.myId,
           isArchive: this.isArchive,
           slider: this.slider,
-          verify: () => true
+          verify: () => true,
+          onAlbumCreated: (albumId) => this.setAlbumAnimated?.(albumId)
         }),
         {
           icon: 'select',
@@ -152,7 +150,7 @@ export default class AppMyStoriesTab extends SliderSuperTab {
     ].filter(Boolean));
 
     return Promise.all([
-      this.loadAnimationPromise = !this.isArchive && p.animationData.then(async(cb) => {
+      !this.isArchive && p.animationData.then(async(cb) => {
         const player = await cb({
           container: this.stickerContainer,
           loop: false,
@@ -161,8 +159,6 @@ export default class AppMyStoriesTab extends SliderSuperTab {
           height: 100,
           middleware
         });
-
-        this.animation = player;
 
         return lottieLoader.waitForFirstFrame(player);
       }),
