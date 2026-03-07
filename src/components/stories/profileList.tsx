@@ -13,7 +13,7 @@ import getMediaThumbIfNeeded from '@helpers/getStrippedThumbIfNeeded';
 import {StoriesContext, useStories, createStoriesStore} from '@components/stories/store';
 import Icon from '@components/icon';
 import {ChipTab, ChipTabs} from '@components/chipTabs';
-import {i18n} from '@lib/langPack';
+import {i18n, langPack} from '@lib/langPack';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import {PreloaderTsx} from '@components/putPreloader';
 import fastSmoothScroll from '@helpers/fastSmoothScroll';
@@ -43,11 +43,13 @@ import createSubmenuTrigger from '@components/createSubmenuTrigger';
 import {toastNew} from '@components/toast';
 import {IconTsx} from '@components/iconTsx';
 import {copyTextToClipboard} from '@helpers/clipboard';
+import {handleShareStory} from './share';
+import wrapPeerTitle from '../wrappers/peerTitle';
 
 const ALL_ALBUMS_ID = -1;
 const ADD_ALBUM_ID = -2;
 
-async function canEditStories(peerId: PeerId) {
+function canEditStories(peerId: PeerId) {
   return peerId === rootScope.myId || rootScope.managers.appChatsManager.hasRights(peerId.toChatId(), 'edit_stories');
 }
 
@@ -194,10 +196,44 @@ class StoriesContextMenu {
       },
       verify: () => this.getAlbumId() !== undefined && this.storyItem?.pFlags.out
     }, {
+      icon: 'link',
+      text: 'CopyLink',
+      onClick: async() => {
+        const username = await rootScope.managers.appPeersManager.getPeerUsername(this.peerId);
+        copyTextToClipboard(`https://t.me/${username}/s/${this.storyItem.id}`);
+        toastNew({langPackKey: 'LinkCopied'});
+      },
+      verify: async() => {
+        const username = await rootScope.managers.appPeersManager.getPeerUsername(this.peerId);
+        return !!username;
+      }
+    }, {
+      icon: 'forward',
+      text: 'ShareFile',
+      onClick: async() => {
+        handleShareStory({
+          story: this.storyItem,
+          peerId: this.peerId,
+          onSend: async(toPeerId: PeerId) => {
+            toastNew({
+              langPackKey: toPeerId === rootScope.myId ? 'StorySharedToSavedMessages' : 'StorySharedTo',
+              langPackArguments: [await wrapPeerTitle({peerId: toPeerId})]
+            })
+          }
+        });
+      },
+      verify: async() => {
+        const username = await rootScope.managers.appPeersManager.getPeerUsername(this.peerId);
+        if(!username) return false;
+
+        const story = this.storyItem;
+        return !!story.pFlags.public && (!story.pFlags.noforwards || !!username)
+      }
+    }, {
       icon: 'select',
       text: 'Message.Context.Select',
       onClick: () => this.selection.toggleByElement(this.target),
-      verify: () => !!this.selection && !this.isSelected
+      verify: () => !!this.selection && !this.isSelected && canEditStories(this.peerId)
     }, {
       icon: 'select',
       text: 'Message.Context.Selection.Clear',
@@ -207,8 +243,7 @@ class StoriesContextMenu {
       icon: 'delete',
       className: 'danger',
       text: 'Delete',
-      onClick: () => this.selection?.onDeleteStoriesClick([this.storyItem.id], this.peerId) ??
-        managers.appStoriesManager.deleteStories(this.peerId, [this.storyItem.id]),
+      onClick: () => this.selection.onDeleteStoriesClick([this.storyItem.id], this.peerId),
       verify: () => managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'delete')
     }];
 
@@ -338,7 +373,9 @@ function StoriesAlbums(props: {
                   return;
                 }
 
-                rootScope.managers.appStoriesManager.deleteAlbum(props.peerId, id);
+                rootScope.managers.appStoriesManager.deleteAlbum(props.peerId, id).catch(() => {
+                  toastNew({langPackKey: 'Error.AnError'});
+                });
               }
             }
           ] as ButtonMenuItemOptionsVerifiable[];

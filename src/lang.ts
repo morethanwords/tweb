@@ -2203,7 +2203,7 @@ const lang = {
   },
   'StorySavedChannelTitle': {
     'one_value': '%d story posted to the channel profile',
-    'other_value': '%d stories posted to the group profile'
+    'other_value': '%d stories posted to the channel profile'
   },
   'StoryChannelArchived': {
     'one_value': '%d story removed from the channel profile',

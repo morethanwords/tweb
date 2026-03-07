@@ -655,6 +655,10 @@
         transition: opacity .2s ease-in-out;
       }
     }
+    
+    .search-super-selection-container {
+      pointer-events: none;
+    }
 
     &.is-selecting {
       &:not(.backwards) {
@@ -665,6 +669,7 @@
   
         .search-super-selection-container {
           opacity: 1;
+          pointer-events: all;
         }
       }
     }
