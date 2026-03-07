@@ -49,7 +49,7 @@ export default function wrapKeyboardButton({
   let onClick: (e: Event) => void;
   let as: 'button' | 'a' = 'button';
   const refCallbacks: ((ref: HTMLElement) => void)[] = [];
-  const classNamesArr: string[] = [...classNames(className)];
+  const classNamesArr: string[] = [className].filter(Boolean);
 
   const {peerId} = chat;
   const messageMedia = message?.media;

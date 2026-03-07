@@ -42,10 +42,10 @@
 
   &-button {
     width: 100%;
-    border-radius: .375rem;
+    border-radius: .375rem !important;
     border: 2px solid var(--primary-color);
     text-align: center;
-    color: var(--primary-color);
+    color: var(--primary-color) !important;
     background-color: transparent;
     height: 3rem;
     font-weight: var(--font-weight-bold);
@@ -65,7 +65,7 @@
 
       @include hover() {
         background-color: var(--primary-color);
-        color: #fff;
+        color: #fff !important;
 
         .custom-emoji-canvas {
           filter: brightness(0) invert(1);

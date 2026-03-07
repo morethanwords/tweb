@@ -42,7 +42,8 @@ type RowContextValue = {
 const RowContext = createContext<RowContextValue>();
 
 ReplyMarkupLayout.Row = (props: {
-  children: JSX.Element
+  children: JSX.Element,
+  class?: string
 }) => {
   const context = useContext(Context);
   const [elements, setElements] = createSignal<JSX.Element[]>([]);
@@ -63,7 +64,7 @@ ReplyMarkupLayout.Row = (props: {
   createEffect<void>(() => void setElements(resolvedChildren.toArray()));
 
   return (
-    <div ref={ref} class="reply-markup-row">
+    <div ref={ref} class={classNames('reply-markup-row', props.class)}>
       {resolvedChildren()}
     </div>
   );

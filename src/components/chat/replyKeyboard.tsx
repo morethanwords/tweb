@@ -19,7 +19,9 @@ import Scrollable from '@components/scrollable';
 import wrapKeyboardButton from '@components/wrappers/keyboardButton';
 import classNames from '@helpers/string/classNames';
 import {Middleware, MiddlewareHelper} from '@helpers/middleware';
-import {createRoot} from 'solid-js';
+import {createRoot, For, onCleanup} from 'solid-js';
+import {render} from 'solid-js/web';
+import ReplyMarkupLayout from '@components/chat/bubbleParts/replyMarkupLayout';
 
 export default class ReplyKeyboard extends DropdownHover {
   private static BASE_CLASS = 'reply-keyboard';
@@ -118,32 +120,33 @@ export default class ReplyKeyboard extends DropdownHover {
     this.scrollable.replaceChildren();
     this.middlewareHelper.clean();
 
-    createRoot((dispose) => {
-      this.middlewareHelper.get().onDestroy(dispose);
-
-      for(const row of replyMarkup.rows) {
-        const div = document.createElement('div');
-        div.classList.add(ReplyKeyboard.BASE_CLASS + '-row');
-
-        for(const button of row.buttons) {
-          const element = wrapKeyboardButton({
-            button,
-            chat: this.chatInput.chat,
-            replyMarkup,
-            wrapOptions: {
-              textColor: 'primary-color'
-            },
-            onClick: () => {
-              this.toggle(false);
-            },
-            className: classNames(ReplyKeyboard.BASE_CLASS + '-button', 'btn')
-          });
-          div.append(element as HTMLElement);
-        }
-
-        this.scrollable.append(div);
-      }
-    });
+    const dispose = render(() => (
+      <ReplyMarkupLayout>
+        <For each={replyMarkup.rows}>
+          {(row) => (
+            <ReplyMarkupLayout.Row class={ReplyKeyboard.BASE_CLASS + '-row'}>
+              <For each={row.buttons}>
+                {(button) => (
+                  wrapKeyboardButton({
+                    button,
+                    chat: this.chatInput.chat,
+                    replyMarkup,
+                    wrapOptions: {
+                      textColor: 'primary-color'
+                    },
+                    onClick: () => {
+                      this.toggle(false);
+                    },
+                    className: classNames(ReplyKeyboard.BASE_CLASS + '-button', 'btn')
+                  })
+                )}
+              </For>
+            </ReplyMarkupLayout.Row>
+          )}
+        </For>
+      </ReplyMarkupLayout>
+    ), this.scrollable.container);
+    this.middlewareHelper.get().onDestroy(dispose);
   }
 
   public async checkAvailability(replyMarkup?: ReplyMarkup) {
