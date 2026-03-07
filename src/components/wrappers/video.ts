@@ -166,7 +166,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
         }
       }
     } else {
-      spanTime.innerText = 'GIF';
+      spanTime.innerText = (doc.mime_type == "image/avif" && 'AVIF') || 'GIF';
 
       if(!canAutoplay && !noPlayButton) {
         needPlayButton = true;
@@ -186,7 +186,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
     loadPromise: Promise<any>
   } = {} as any;
 
-  if(doc.mime_type === 'image/gif') {
+  if(doc.mime_type === 'image/gif' || doc.mime_type === 'image/avif') {
     const photoRes = await wrapPhoto({
       photo: doc,
       message,
