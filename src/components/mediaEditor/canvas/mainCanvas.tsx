@@ -8,12 +8,11 @@ import useFinalTransform from '@components/mediaEditor/canvas/useFinalTransform'
 import VideoControls from '@components/mediaEditor/canvas/videoControls';
 import {useMediaEditorContext} from '@components/mediaEditor/context';
 import {onCleanup, onMount, Show} from 'solid-js';
-import AvatarEdgePreview from './avatarEdgePreview';
 
 
 export default function MainCanvas() {
   let container: HTMLDivElement;
-  const {editorState, mediaType, isEditingForAvatar} = useMediaEditorContext();
+  const {editorState, mediaType} = useMediaEditorContext();
 
   useFinalTransform();
 
@@ -41,9 +40,6 @@ export default function MainCanvas() {
           <div ref={(el) => void (editorState.resizeHandlesContainer = el)} class="media-editor__resize-handles-overlay" />
           <CropHandles />
           <RotationWheel />
-          <Show when={isEditingForAvatar}>
-            <AvatarEdgePreview />
-          </Show>
           <Show when={mediaType === 'video' && !!editorState.renderingPayload}>
             <VideoControls />
           </Show>

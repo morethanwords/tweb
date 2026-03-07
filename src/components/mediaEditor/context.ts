@@ -64,6 +64,7 @@ export type MediaEditorState = {
   renderingPayload?: RenderingPayload;
 
   currentTab: string;
+  cropTabAnimationProgress: number;
 
   mediaSize?: NumberPair;
   mediaRatio?: number;
@@ -138,6 +139,7 @@ const getDefaultMediaEditorState = (): MediaEditorState => ({
   renderingPayload: undefined,
 
   currentTab: 'adjustments',
+  cropTabAnimationProgress: 0,
 
   mediaSize: undefined,
   canvasSize: undefined,
