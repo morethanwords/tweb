@@ -125,7 +125,8 @@ export const createStoriesStore = (props: {
   manualLoad?: boolean,
   onLoad?: (fullLoad: boolean) => void,
   initialAlbumId?: number,
-  singleStory?: boolean
+  singleStory?: boolean,
+  skipAlbumId?: number
 }): StoriesContextValue => {
   const getNearestStory = (
     next: boolean,
@@ -253,7 +254,9 @@ export const createStoriesStore = (props: {
         } else {
           promise = rootScope.managers.appStoriesManager.getStoriesArchive(peerId, loadCount, offsetId);
         }
-        return Promise.all([promise, albumsPromise]).then(([{count, stories: storyItems}, albums]) => {
+        return Promise.all([promise, albumsPromise]).then(([{count, stories: rawStoryItems}, albums]) => {
+          const storyItems = props.skipAlbumId !== undefined ? rawStoryItems.filter((s) => s._ !== 'storyItem' || !s.albums?.includes(props.skipAlbumId)) : rawStoryItems;
+          if(props.skipAlbumId !== undefined) count = Math.max(0, count - (rawStoryItems.length - storyItems.length));
           if(!offsetId && !reload) {
             const peer: StoriesContextPeerState = {
               index: 0,
@@ -859,6 +862,54 @@ export const createStoriesStore = (props: {
     listenerSetter.add(rootScope)('stories_position', onStoriesPosition);
   }
   listenerSetter.add(rootScope)('stories_stealth_mode', onStealthMode);
+
+  if(singlePeerId && props.pinned) {
+    listenerSetter.add(rootScope)('story_album_created', ({peerId, albums}) => {
+      if(peerId !== singlePeerId) return;
+      setState('peers', 0, 'albums', albums);
+    });
+
+    listenerSetter.add(rootScope)('story_album_deleted', ({peerId, albumId, albums}) => {
+      if(peerId !== singlePeerId) return;
+      albumCache.delete(albumId);
+      if(state.albumId === albumId) {
+        actions.setAlbumId(undefined);
+      }
+      setState('peers', 0, 'albums', albums);
+    });
+
+    listenerSetter.add(rootScope)('story_album_updated', ({peerId, albumId, addStories, deleteStories, albums}) => {
+      if(peerId !== singlePeerId) return;
+      setState('peers', 0, 'albums', albums);
+
+      if(state.albumId === albumId) {
+        if(deleteStories?.length) {
+          const deleteSet = new Set(deleteStories);
+          const filtered = state.peers[0].stories.filter((s) => !deleteSet.has(s.id));
+          albumCache.delete(albumId);
+          batch(() => {
+            setState('peers', 0, 'stories', filtered);
+            setState('peers', 0, 'count', filtered.length);
+          });
+        }
+        if(addStories?.length) {
+          albumCache.delete(albumId);
+          const existingIds = new Set(state.peers[0].stories.map((s) => s.id));
+          const newStories = addStories.filter((s) => !existingIds.has(s.id));
+          if(newStories.length) {
+            const merged = [...state.peers[0].stories, ...newStories];
+            batch(() => {
+              setState('peers', 0, 'stories', merged);
+              setState('peers', 0, 'count', merged.length);
+            });
+          }
+        }
+      } else {
+        albumCache.delete(albumId);
+      }
+    });
+  }
+
   // * updates section end
 
   if(!props.manualLoad) {

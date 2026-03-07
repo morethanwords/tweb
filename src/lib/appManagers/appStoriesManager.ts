@@ -774,6 +774,11 @@ export default class AppStoriesManager extends AppManager {
     return {count: storiesStories.count, stories: storyItems, pinnedToTop: pinned ? cache.pinnedToTop : undefined};
   }
 
+  private getCachedAlbumsList(peerId: PeerId): StoryAlbum[] {
+    const cache = this.getPeerStoriesCache(peerId);
+    return cache.albumsOrder?.map((albumId) => cache.albums.get(albumId).info) ?? [];
+  }
+
   public getAlbums(peerId: PeerId, revalidate = false): MaybePromise<StoryAlbum[]> {
     const cache = this.getPeerStoriesCache(peerId);
     if(!revalidate && cache.albumsOrder) {
@@ -879,6 +884,144 @@ export default class AppStoriesManager extends AppManager {
         return this.getAlbumStories(peerId, albumId, limit, offsetId);
       }
     });
+  }
+
+  public async createAlbum(peerId: PeerId, title: string, storyIds?: number[]) {
+    const album = await this.apiManager.invokeApi('stories.createAlbum', {
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      title,
+      stories: storyIds ?? []
+    });
+
+    const cache = this.getPeerStoriesCache(peerId);
+    cache.albums.set(album.album_id, {
+      info: album,
+      ids: storyIds?.slice() ?? [],
+      count: storyIds?.length ?? 0,
+      loadedAll: true
+    });
+    if(!cache.albumsOrder) cache.albumsOrder = [];
+    cache.albumsOrder.push(album.album_id);
+    cache.albumsHash = undefined;
+
+    this.rootScope.dispatchEvent('story_album_created', {
+      peerId,
+      albumId: album.album_id,
+      albums: this.getCachedAlbumsList(peerId)
+    });
+    return album;
+  }
+
+  public async updateAlbum(
+    peerId: PeerId,
+    albumId: number,
+    opts: {
+      title?: string,
+      addStories?: number[],
+      deleteStories?: number[]
+    }) {
+    const cache = this.getPeerStoriesCache(peerId);
+    const cachedAlbum = cache.albums.get(albumId);
+    // snapshot
+    const oldCachedIds = cachedAlbum?.ids.slice();
+    const oldCachedCount = cachedAlbum?.count;
+    const oldStoryAlbums = new Map<number, number[] | undefined>();
+
+    // optimistically update cache and dispatch
+    if(opts.addStories) {
+      for(const id of opts.addStories) {
+        const s = this.getStoryByIdCached(peerId, id);
+        if(s?._ === 'storyItem') {
+          oldStoryAlbums.set(id, s.albums?.slice());
+          s.albums ??= [];
+          if(!s.albums.includes(albumId)) s.albums.push(albumId);
+        }
+      }
+    }
+
+    if(opts.deleteStories) {
+      for(const id of opts.deleteStories) {
+        const s = this.getStoryByIdCached(peerId, id);
+        if(s?._ === 'storyItem') {
+          oldStoryAlbums.set(id, s.albums?.slice());
+          if(s.albums) s.albums = s.albums.filter((a) => a !== albumId);
+        }
+      }
+    }
+
+    if(cachedAlbum) {
+      if(opts.addStories) {
+        for(const id of opts.addStories) {
+          if(!cachedAlbum.ids.includes(id)) cachedAlbum.ids.push(id);
+        }
+        cachedAlbum.count = cachedAlbum.ids.length;
+      }
+      if(opts.deleteStories) {
+        cachedAlbum.ids = cachedAlbum.ids.filter((id) => !opts.deleteStories.includes(id));
+        cachedAlbum.count = cachedAlbum.ids.length;
+      }
+      if(opts.title) {
+        cachedAlbum.info.title = opts.title;
+      }
+    }
+    cache.albumsHash = undefined;
+
+    const addedItems = opts.addStories?.map((id) => this.getStoryByIdCached(peerId, id)).filter((s): s is StoryItem.storyItem => !!s && s._ === 'storyItem');
+    this.rootScope.dispatchEvent('story_album_updated', {
+      peerId,
+      albumId,
+      addStories: addedItems?.length ? addedItems : undefined,
+      deleteStories: opts.deleteStories,
+      albums: this.getCachedAlbumsList(peerId)
+    });
+
+    try {
+      const album = await this.apiManager.invokeApi('stories.updateAlbum', {
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        album_id: albumId,
+        title: opts.title,
+        add_stories: opts.addStories,
+        delete_stories: opts.deleteStories
+      });
+
+      if(cachedAlbum) cachedAlbum.info = album;
+      return album;
+    } catch(err) {
+      // revert caches and dispatch
+      for(const [id, oldAlbums] of oldStoryAlbums) {
+        const s = this.getStoryByIdCached(peerId, id);
+        if(s?._ === 'storyItem') s.albums = oldAlbums;
+      }
+
+      if(cachedAlbum) {
+        cachedAlbum.ids = oldCachedIds;
+        cachedAlbum.count = oldCachedCount;
+      }
+      cache.albumsHash = undefined;
+
+      this.rootScope.dispatchEvent('story_album_updated', {
+        peerId,
+        albumId,
+        albums: this.getCachedAlbumsList(peerId)
+      });
+
+      throw err;
+    }
+  }
+
+  public async deleteAlbum(peerId: PeerId, albumId: number) {
+    await this.apiManager.invokeApi('stories.deleteAlbum', {
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      album_id: albumId
+    });
+
+    const cache = this.getPeerStoriesCache(peerId);
+    cache.albums.delete(albumId);
+    if(cache.albumsOrder) {
+      cache.albumsOrder = cache.albumsOrder.filter((id) => id !== albumId);
+    }
+    cache.albumsHash = undefined;
+    this.rootScope.dispatchEvent('story_album_deleted', {peerId, albumId, albums: this.getCachedAlbumsList(peerId)});
   }
 
   public getStoriesArchive(peerId: PeerId, limit: number, offsetId: number = 0): ReturnType<AppStoriesManager['getPinnedStories']> {

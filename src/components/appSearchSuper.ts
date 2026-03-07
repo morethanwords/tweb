@@ -468,9 +468,6 @@ export default class AppSearchSuper {
     this.listenerSetter = new ListenerSetter();
     this.searchContextMenu = new SearchContextMenu(this.container, this, this.listenerSetter);
     this.selection = new SearchSelection(this, this.managers, this.listenerSetter);
-    if(this.storiesArchive) {
-      this.selection.isStoriesArchive = true;
-    }
 
     const navScrollableContainer = this.navScrollableContainer = document.createElement('div');
     navScrollableContainer.classList.add('search-super-tabs-scrollable', 'menu-horizontal-scrollable', 'sticky');
@@ -604,9 +601,6 @@ export default class AppSearchSuper {
       const newMediaTab = this.mediaTabs[id];
       this.onChangeTab?.(newMediaTab);
 
-      if(this.selection) {
-        this.selection.isStories = newMediaTab.type === 'stories';
-      }
 
       const fromMediaTab = this.mediaTab;
       this.mediaTab = newMediaTab;
@@ -1780,6 +1774,8 @@ export default class AppSearchSuper {
         archive: this.storiesArchive,
         scrollable: this.scrollable,
         listenerSetter: this.listenerSetter,
+        withSelection: true,
+        selectionMount: this.navScrollableContainer,
         onReady: () => {
           promise.resolve();
           mediaTab.contentTab.append(getFirstChild(storiesList, v => v instanceof Element) as Element);

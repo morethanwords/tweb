@@ -41,7 +41,7 @@ export function ChipTabs(props: {
   value: string,
   view: 'surface' | 'secondary' | 'primary',
   onChange: (value: string) => boolean | void,
-  contextMenuButtons?: (itemId: string) => ButtonMenuItemOptionsVerifiable[],
+  contextMenuButtons?: (itemId: string) => MaybePromise<ButtonMenuItemOptionsVerifiable[]>,
   children: JSX.Element
   ref?: Ref<HTMLDivElement>
   center?: boolean

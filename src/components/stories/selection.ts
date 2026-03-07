@@ -39,12 +39,15 @@ export class StoriesSelection extends AppSelection {
   public readonly cantPin: () => boolean;
   public readonly cantDelete: () => boolean;
 
+  public forPicker: boolean;
+
   constructor(options: {
     container: HTMLElement,
     managers: AppManagers,
     chatId?: ChatId,
     listenerSetter: ListenerSetter,
-    isArchive?: boolean
+    isArchive?: boolean,
+    forPicker?: boolean
   }) {
     super({
       managers: options.managers,
@@ -61,8 +64,8 @@ export class StoriesSelection extends AppSelection {
       lookupBetweenElementsQuery: '.search-super-item'
     });
 
-    this.isStories = true;
     this.isStoriesArchive = options.isArchive;
+    this.forPicker = options.forPicker;
     this.mainContainer = options.container;
 
     const [selecting, setSelecting] = createSignal(false);
@@ -86,8 +89,19 @@ export class StoriesSelection extends AppSelection {
     return [...this.selectedMids.keys()][0];
   }
 
+  protected async updateContainer(forceSelection = false) {
+    const size = this.selectedMids.size;
+    if(!size && !forceSelection) return;
+
+    const peerId = this.selectedMids.keys().next().value;
+    const r = await this.managers.appStoriesManager.cantPinDeleteStories(peerId, Array.from(this.selectedMids.get(peerId)));
+    this._setCount(this.length());
+    this._setCantPin(r.cantPin);
+    this._setCantDelete(r.cantDelete);
+  }
+
   public toggleSelection(toggleCheckboxes = true, forceSelection = false) {
-    const ret = super.toggleSelection(toggleCheckboxes, forceSelection);
+    const ret = super.toggleSelection(toggleCheckboxes, forceSelection || this.forPicker);
 
     if(ret && toggleCheckboxes) {
       const elements = Array.from(this.mainContainer.querySelectorAll('.search-super-item')) as HTMLElement[];
@@ -127,7 +141,6 @@ export class StoriesSelection extends AppSelection {
   };
 
   public onPinStoriesClick = (ids: number[], pin: boolean, peerId?: PeerId) => {
-    debugger
     peerId ??= this.getSelectedStoriesPeerId();
     ids ||= [...this.selectedMids.get(peerId)];
     const promise = this.managers.appStoriesManager.togglePinned(peerId, ids, pin);
@@ -153,8 +166,9 @@ export class StoriesSelection extends AppSelection {
     });
   };
 
-  public onPinStoriesToTopClick = (ids: number[], pin: boolean, peerId?: PeerId) => {
+  public onPinStoriesToTopClick = (ids?: number[], pin: boolean = true, peerId?: PeerId) => {
     peerId ??= this.getSelectedStoriesPeerId();
+    ids ||= [...this.selectedMids.get(peerId)];
     const promise = this.managers.appStoriesManager.togglePinnedToTop(peerId, ids, pin);
     this.cancelSelection();
     promise.catch((err: ApiError) => {
@@ -162,12 +176,6 @@ export class StoriesSelection extends AppSelection {
         toastNew({langPackKey: 'StoriesPinLimit', langPackArguments: [+err.message]});
       }
     });
-  };
-
-  protected onUpdateContainer = (cantForward: boolean, cantDelete: boolean, cantSend: boolean, cantPin: boolean) => {
-    this._setCount(this.length());
-    this._setCantPin(cantPin);
-    this._setCantDelete(cantDelete);
   };
 
   protected onToggleSelection = (forwards: boolean, animate: boolean) => {

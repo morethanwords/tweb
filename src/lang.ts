@@ -1035,6 +1035,28 @@ const lang = {
   'Stories.Albums.EmptyTitle': 'Organize Your Stories',
   'Stories.Albums.EmptySubtitle': 'Add some of your stories to this album.',
   'Stories.Albums.AddToAlbum': 'Add to Album',
+  'Stories.Albums.RemoveFromAlbum': 'Remove from Album',
+  'Stories.Albums.AddAlbum': 'Add Album',
+  'Stories.Albums.CreateAlbum': 'Create Album',
+  'Stories.Albums.AddStories': 'Add Stories',
+  'Stories.Albums.Rename': 'Rename Album',
+  'Stories.Albums.Delete': 'Delete Album',
+  'Stories.Albums.DeleteConfirm': 'Are you sure you want to delete this album?',
+  'Stories.Albums.CreateTitle': 'New Album',
+  'Stories.Albums.CreatePlaceholder': 'Album Name',
+  'Stories.Albums.RenameTitle': 'Rename Album',
+  'Stories.Albums.AddCount': {
+    'one_value': 'Add %1$d Story',
+    'other_value': 'Add %1$d Stories'
+  },
+  'Stories.Albums.Added': {
+    'one_value': 'This story was added to the album.',
+    'other_value': '%1$d stories were added to the album.'
+  },
+  'Stories.Albums.Removed': {
+    'one_value': 'This story was removed from the album.',
+    'other_value': '%1$d stories were removed from the album.'
+  },
   'LeastActiveCommunities': 'Least active communities',
   'InactiveChannel': '%s, inactive for %s',
   'InactiveChannel.Group': 'group',
