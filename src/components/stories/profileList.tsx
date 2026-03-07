@@ -42,6 +42,7 @@ import PopupChooseStory from '@components/popups/chooseStoryPopup';
 import createSubmenuTrigger from '@components/createSubmenuTrigger';
 import {toastNew} from '@components/toast';
 import {IconTsx} from '@components/iconTsx';
+import {copyTextToClipboard} from '@helpers/clipboard';
 
 const ALL_ALBUMS_ID = -1;
 const ADD_ALBUM_ID = -2;
@@ -277,6 +278,19 @@ function StoriesAlbums(props: {
           if(!album) return [];
 
           return [
+            {
+              icon: 'link',
+              text: 'CopyLink',
+              onClick: async() => {
+                const username = await rootScope.managers.appPeersManager.getPeerUsername(props.peerId);
+                copyTextToClipboard(`https://t.me/${username}/a/${id}`);
+                toastNew({langPackKey: 'LinkCopied'});
+              },
+              verify: async() => {
+                const username = await rootScope.managers.appPeersManager.getPeerUsername(props.peerId);
+                return !!username;
+              }
+            },
             {
               icon: 'add',
               text: 'Stories.Albums.AddStories',
@@ -843,5 +857,16 @@ export function StoriesProfileList(props: {
     </StoriesContext.Provider>
   );
 
-  return {render, actions, selection, setAlbumAnimated};
+  return {
+    render,
+    actions,
+    selection,
+    setAlbum: (albumId: number | undefined, skipAnimation = false) => {
+      if(!skipAnimation) {
+        setAlbumAnimated(albumId);
+        return;
+      }
+      actions.setAlbumId(albumId);
+    }
+  }
 }

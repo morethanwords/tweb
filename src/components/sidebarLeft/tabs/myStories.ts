@@ -24,7 +24,7 @@ export default class AppMyStoriesTab extends SliderSuperTab {
   private showArchiveBtn: HTMLButtonElement;
   private storiesActions: StoriesContextActions;
   private selection: StoriesSelection;
-  private setAlbumAnimated: (albumId: number | undefined) => void;
+  public setAlbum: (albumId: number | undefined, skipAnimation?: boolean) => void;
   public isArchive: boolean;
   public chatId: ChatId;
 
@@ -89,7 +89,7 @@ export default class AppMyStoriesTab extends SliderSuperTab {
         dispose();
       });
 
-      const {render: storiesList, actions, selection, setAlbumAnimated} = StoriesProfileList({
+      const {render: storiesList, actions, selection, setAlbum} = StoriesProfileList({
         peerId: this.chatId?.toPeerId(true) ?? rootScope.myId,
         pinned: !this.isArchive,
         archive: this.isArchive,
@@ -108,7 +108,7 @@ export default class AppMyStoriesTab extends SliderSuperTab {
 
       this.storiesActions = actions;
       this.selection = selection;
-      this.setAlbumAnimated = setAlbumAnimated;
+      this.setAlbum = setAlbum;
       loadPromise = this.storiesActions.load();
     });
 
@@ -121,7 +121,7 @@ export default class AppMyStoriesTab extends SliderSuperTab {
           isArchive: this.isArchive,
           slider: this.slider,
           verify: () => true,
-          onAlbumCreated: (albumId) => this.setAlbumAnimated?.(albumId)
+          onAlbumCreated: (albumId) => this.setAlbum(albumId)
         }),
         {
           icon: 'select',
