@@ -64,6 +64,7 @@ export type MediaEditorState = {
   renderingPayload?: RenderingPayload;
 
   currentTab: string;
+  cropTabAnimationProgress: number;
 
   mediaSize?: NumberPair;
   mediaRatio?: number;
@@ -138,6 +139,7 @@ const getDefaultMediaEditorState = (): MediaEditorState => ({
   renderingPayload: undefined,
 
   currentTab: 'adjustments',
+  cropTabAnimationProgress: 0,
 
   mediaSize: undefined,
   canvasSize: undefined,
@@ -180,12 +182,15 @@ export type MediaEditorContextValue = {
   mediaType: MediaType;
   getMediaBlob: () => Promise<Blob | null>;
   canImageResultInGIF: boolean;
+  isEditingForAvatar: boolean;
+  isEditingForumAvatar: boolean;
+  dontCreatePreview: boolean;
 
   mediaState: Store<EditingMediaState>;
   editorState: Store<MediaEditorState>;
   actions: EditorOverridableGlobalActions;
 
-  hasModifications: Accessor<boolean>;
+  canFinish: Accessor<boolean>;
 
   resizableLayersSeed: number;
 };
@@ -203,6 +208,13 @@ export function createContextValue(props: MediaEditorProps): MediaEditorContextV
 
   const mediaState = createMutable(mediaStateInit);
   const editorState = createMutable(getDefaultMediaEditorState());
+
+  if(props.initialTab) {
+    editorState.currentTab = props.initialTab;
+    if(props.initialTab === 'crop') {
+      editorState.cropTabAnimationProgress = 1;
+    }
+  }
 
   const actions: EditorOverridableGlobalActions = {
     pushToHistory: (item: HistoryItem) => {
@@ -247,12 +259,15 @@ export function createContextValue(props: MediaEditorProps): MediaEditorContextV
     mediaType: props.mediaType,
     getMediaBlob: props.getMediaBlob,
     canImageResultInGIF: props.canImageResultInGIF || false,
+    isEditingForAvatar: props.isEditingForAvatar || false,
+    isEditingForumAvatar: props.isEditingForumAvatar || false,
+    dontCreatePreview: props.dontCreatePreview || false,
 
     mediaState,
     editorState,
     actions,
 
-    hasModifications,
+    canFinish: createMemo(() => props.isEditingForAvatar || hasModifications()),
 
     // [0-1] make sure it's different even after reopening the editor, note that there might be some items in history!
     resizableLayersSeed: Math.random()

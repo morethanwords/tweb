@@ -40,7 +40,7 @@ export default async function renderToVideoGIF({
   const owner = getOwner();
   const context = useMediaEditorContext();
 
-  const {editorState: {pixelRatio}} = context;
+  const {editorState: {pixelRatio}, dontCreatePreview} = context;
 
   const creationProgress = createRoot(dispose => {
     const signal = createSignal(0);
@@ -156,7 +156,7 @@ export default async function renderToVideoGIF({
   resultPromise.then((value) => (result = value)).catch(noop);
 
   return {
-    preview: await runWithOwner(owner, () => generateVideoPreview({scaledWidth, scaledHeight})),
+    preview: dontCreatePreview ? undefined : await runWithOwner(owner, () => generateVideoPreview({scaledWidth, scaledHeight})),
     isVideo: true,
     getResult: () => {
       return result ?? resultPromise;

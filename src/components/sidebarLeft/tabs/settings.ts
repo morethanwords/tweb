@@ -21,7 +21,6 @@ import Row from '@components/row';
 import AppActiveSessionsTab from '@components/sidebarLeft/tabs/activeSessions';
 import {i18n, LangPackKey} from '@lib/langPack';
 import {SliderSuperTabConstructable, SliderSuperTabEventable} from '@components/sliderTab';
-import PopupAvatar from '@components/popups/avatar';
 import {AccountAuthorizations, Authorization} from '@layer';
 import PopupElement from '@components/popups';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
@@ -40,6 +39,8 @@ import PopupPickUser from '@components/popups/pickUser';
 import PopupSendGift from '@components/popups/sendGift';
 import {formatNanoton} from '@helpers/paymentsWrapCurrencyAmount';
 import showLogOutPopup from '@components/popups/logOut';
+import {getFileAndOpenEditor} from '@components/avatarEdit';
+import appDownloadManager from '@lib/appDownloadManager';
 
 export default class AppSettingsTab extends SliderSuperTab {
   private buttons: {
@@ -78,11 +79,14 @@ export default class AppSettingsTab extends SliderSuperTab {
 
     const changeAvatarBtn = ButtonCorner({icon: 'cameraadd', className: 'profile-change-avatar'});
     attachClickEvent(changeAvatarBtn, () => {
-      const canvas = document.createElement('canvas');
-      PopupElement.createPopup(PopupAvatar).open(canvas, (upload) => {
-        upload().then((inputFile) => {
-          return this.managers.appProfileManager.uploadProfilePhoto(inputFile);
-        });
+      getFileAndOpenEditor({
+        dontCreatePreview: true,
+        onFinish: async(editorResult) => {
+          if(editorResult.isVideo) return;
+          const resultPayload = await editorResult.getResult();
+          const inputFile = await appDownloadManager.upload(resultPayload.blob)
+          this.managers.appProfileManager.uploadProfilePhoto(inputFile);
+        }
       });
     }, {listenerSetter: this.listenerSetter});
 
