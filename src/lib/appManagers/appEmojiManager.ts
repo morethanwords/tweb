@@ -407,7 +407,7 @@ export class AppEmojiManager extends AppManager {
           pushPremiumGroup(messagesEmojiGroups.groups);
         }
 
-        const documents = await Promise.all(messagesEmojiGroups.groups.map((emojiGroup) => this.getCustomEmojiDocument(emojiGroup.icon_emoji_id)));
+        const documents = await Promise.all(messagesEmojiGroups.groups.map((emojiGroup) => this.getCustomEmojiDocument(emojiGroup.icon_emoji_id)) as Promise<MyDocument>[]);
         return this.emojiGroups[type] = messagesEmojiGroups.groups.map((group, idx) => {
           return {group, document: documents[idx]};
         });

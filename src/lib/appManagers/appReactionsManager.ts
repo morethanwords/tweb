@@ -883,10 +883,8 @@ export class AppReactionsManager extends AppManager {
   }
 
   public async searchAvailableEffects({q, emoticon}: {q?: string, emoticon?: string[]}) {
-    const [emojis, availableEffects] = await Promise.all([
-      q?.trim() ? (await this.appEmojiManager.prepareAndSearchEmojis({q, limit: Infinity})).map((emoji) => emoji.emoji) : emoticon,
-      this.getAvailableEffects()
-    ]);
+    const emojis = q?.trim() ? (await this.appEmojiManager.prepareAndSearchEmojis({q, limit: Infinity})).map((emoji) => emoji.emoji) : emoticon;
+    const availableEffects = await this.getAvailableEffects();
 
     const set = new Set(emojis);
     return availableEffects.filter((availableEffect) => set.has(availableEffect.emoticon));

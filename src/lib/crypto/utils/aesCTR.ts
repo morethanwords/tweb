@@ -47,14 +47,14 @@ export default class CTR {
     this.releasing = false;
   }
 
-  private async perform(data: Uint8Array) {
+  private async perform(data: Uint8Array<ArrayBufferLike>) {
     const arrayBuffer: ArrayBuffer = await subtle[this.mode]({
       name: 'AES-CTR',
       counter: addPadding(bigIntToBytes(this.counter), COUNTER_LENGTH, true, true, true),
       length: 128
     },
     this.cryptoKey,
-    data
+    data as Uint8Array<ArrayBuffer>
     );
 
     return arrayBuffer;

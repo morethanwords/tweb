@@ -2224,7 +2224,7 @@ export class AppDialogsManager {
       }
 
       if(willPrepend.length) {
-        willPrepend = await middleware(Promise.all(willPrepend));
+        willPrepend = await middleware(Promise.all(willPrepend as Promise<any>[]));
         // fragment.prepend(...(willPrepend as HTMLElement[]));
       }
 
@@ -2305,7 +2305,7 @@ export class AppDialogsManager {
           return {count: 0, hasUnmuted: false};
         }
       }).catch(() => undefined as {count: number, hasUnmuted: boolean}) : undefined
-    ]);
+    ] as Promise<any>[]);
 
     let [isMuted, m, isPinned, isDialogUnread, forumUnreadCount] = await middleware(promises);
     const wasMuted = dom.listEl.classList.contains('is-muted') && !dom.listEl.classList.contains('backwards');
@@ -2607,7 +2607,7 @@ export class AppDialogsManager {
         setUnread: true
       }));
 
-      return Promise.all(promises);
+      return Promise.all(promises as Promise<any>[]);
     });
 
     return promise;

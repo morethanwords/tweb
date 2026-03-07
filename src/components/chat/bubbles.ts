@@ -2129,7 +2129,7 @@ export default class ChatBubbles {
         const [message, originalMessage] = await Promise.all([
           this.chat.getMessage(fullMid) as Message.message,
           replyMid && this.managers.appMessagesManager.getMessageByPeer(replyToPeerId, replyMid) as Promise<Message.message>
-        ]);
+        ] as Promise<any>[]);
 
         callbacks.push(async() => {
           const promise = MessageRender.setReply({
@@ -3251,7 +3251,7 @@ export default class ChatBubbles {
 
     const middleware = this.getMiddleware();
     const slice = this.followStack.slice();
-    const messages = await Promise.all(slice.map((fullMid) => this.chat.getMessage(fullMid)));
+    const messages = await Promise.all(slice.map((fullMid) => this.chat.getMessage(fullMid)) as unknown as Promise<any>[]);
     if(!middleware()) return;
 
     slice.forEach((fullMid, idx) => {
@@ -8905,7 +8905,7 @@ export default class ChatBubbles {
       const [readMaxId, chatMaxId] = await Promise.all([
         this.managers.appMessagesManager.getReadMaxIdIfUnread(this.chat.peerId, this.chat.threadId),
         this.chat.getHistoryMaxId()
-      ])
+      ] as Promise<any>[])
       let prevGroupedId: Long | undefined
 
       for(const mid_ of history) {

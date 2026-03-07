@@ -141,7 +141,7 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
 
     const filtered = await this.filterMids([message.mid]);
     if(this.searchContext !== searchContext) return;
-    const targets = (await Promise.all(filtered.map((message) => this.processItem(message)))).filter(Boolean);
+    const targets = (await Promise.all(filtered.map((message) => this.processItem(message)) as Promise<any>[])).filter(Boolean);
     if(this.searchContext !== searchContext) return;
     if(!targets.length) {
       return;

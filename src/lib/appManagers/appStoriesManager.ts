@@ -971,7 +971,7 @@ export default class AppStoriesManager extends AppManager {
     });
 
     const hasPromise = arr.some((item) => item instanceof Promise);
-    return hasPromise ? Promise.all(arr) : arr as StoryItem.storyItem[];
+    return hasPromise ? Promise.all(arr as Promise<StoryItem.storyItem>[]) : arr as StoryItem.storyItem[];
   }
 
   public readStories(peerId: PeerId, maxId: StoryItem['id']) {

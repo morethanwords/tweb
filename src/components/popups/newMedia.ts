@@ -174,7 +174,7 @@ export default class PopupNewMedia extends PopupElement {
 
     const out: {[action in ChatRights]?: boolean} = {};
 
-    const results = await Promise.all(actionsPromises);
+    const results = await Promise.all(actionsPromises as Promise<boolean>[]);
     actions.forEach((action, idx) => {
       out[action] = results[idx];
     })

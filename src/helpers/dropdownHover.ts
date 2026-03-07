@@ -179,7 +179,7 @@ export default class DropdownHover extends EventListenerBase<{
     const delay = IS_TOUCH_SUPPORTED || !liteMode.isAvailable('animations') ? 0 : ANIMATION_DURATION;
     if((this.element.style.display && enable === undefined) || enable) {
       const res = this.dispatchResultableEvent('open');
-      await Promise.all(res);
+      await Promise.all(res as Promise<any>[]);
 
       this.element.style.display = '';
       void this.element.offsetLeft; // reflow

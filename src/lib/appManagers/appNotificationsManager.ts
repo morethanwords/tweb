@@ -96,7 +96,7 @@ export class AppNotificationsManager extends AppManager {
       return this.getNotifySettings({_: inputKey});
     });
 
-    return this.getNotifyPeerTypePromise = Promise.all(promises);
+    return this.getNotifyPeerTypePromise = Promise.all(promises as Promise<PeerNotifySettings>[]);
   }
 
   public generateLocalNotifySettingsUpdate(peer: InputNotifyPeer, settings: InputPeerNotifySettings) {

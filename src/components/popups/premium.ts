@@ -94,7 +94,7 @@ export default class PopupPremium extends PopupElement {
     const [titleLangArgs, subtitleLangArgs] = await Promise.all([
       obj._titleLangArgs,
       obj._subtitleLangArgs
-    ].map((c) => c && c(this.managers)));
+    ].map((c) => c && c(this.managers)) as Promise<any>[]);
 
     return {titleLangArgs, subtitleLangArgs};
   };

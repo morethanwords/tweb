@@ -1283,7 +1283,7 @@ export default class ChatTopbar {
       setActionsCallback,
       setChatRemoveFeeCallback,
       autoDeletePeriod
-    ] = await Promise.all(promises);
+    ] = await Promise.all(promises as unknown as Promise<any>[]);
 
     if(!middleware() && newAvatarMiddlewareHelper) {
       newAvatarMiddlewareHelper.destroy();

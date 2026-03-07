@@ -245,7 +245,7 @@ export default class AppStickersAndEmojiTab extends SliderSuperTab {
       const promise = p.allStickers.then((allStickers) => {
         assumeType<MessagesAllStickers.messagesAllStickers>(allStickers);
         const promises = allStickers.sets.map((stickerSet) => renderStickerSet(stickerSet));
-        return Promise.all(promises);
+        return Promise.all(promises as unknown as Promise<any>[]);
       });
 
       promises.push(promise);

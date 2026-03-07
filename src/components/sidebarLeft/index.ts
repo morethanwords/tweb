@@ -1317,10 +1317,10 @@ export class AppSidebarLeft extends SidebarSlider {
         promises.push(promise);
       }
 
-      Promise.all(promises).then((arrays) => {
+      Promise.all(promises as Promise<any>[]).then((arrays) => {
         helper.replaceChildren();
         const flattened = flatten(arrays);
-        appendToHelper(flattened);
+        appendToHelper(flattened as HTMLElement[]);
       });
     };
 
