@@ -1028,6 +1028,31 @@ const lang = {
   'Stories.StealthMode.Cooldown': 'Available in %s',
   'Stories.StealthMode.Activated.Title': 'Stealth Mode On',
   'Stories.StealthMode.Activated.Subtitle': 'The creators of stories you viewed in the past **%s** or will view in the next **%s** won\'t see you in the list of viewers.',
+  'Stories.Albums.EmptyTitle': 'Organize Your Stories',
+  'Stories.Albums.EmptySubtitle': 'Add some of your stories to this album.',
+  'Stories.Albums.AddToAlbum': 'Add to Album',
+  'Stories.Albums.RemoveFromAlbum': 'Remove from Album',
+  'Stories.Albums.AddAlbum': 'Add Album',
+  'Stories.Albums.CreateAlbum': 'Create Album',
+  'Stories.Albums.AddStories': 'Add Stories',
+  'Stories.Albums.Rename': 'Rename Album',
+  'Stories.Albums.Delete': 'Delete Album',
+  'Stories.Albums.DeleteConfirm': 'Are you sure you want to delete this album?',
+  'Stories.Albums.CreateTitle': 'New Album',
+  'Stories.Albums.CreatePlaceholder': 'Album Name',
+  'Stories.Albums.RenameTitle': 'Rename Album',
+  'Stories.Albums.AddCount': {
+    'one_value': 'Add %1$d Story',
+    'other_value': 'Add %1$d Stories'
+  },
+  'Stories.Albums.Added': {
+    'one_value': 'This story was added to the album.',
+    'other_value': '%1$d stories were added to the album.'
+  },
+  'Stories.Albums.Removed': {
+    'one_value': 'This story was removed from the album.',
+    'other_value': '%1$d stories were removed from the album.'
+  },
   'LeastActiveCommunities': 'Least active communities',
   'InactiveChannel': '%s, inactive for %s',
   'InactiveChannel.Group': 'group',
@@ -2075,7 +2100,11 @@ const lang = {
   'DeleteThisChat': 'Delete this chat',
   'ShareFile': 'Share',
   'StoryPinnedToProfile': 'Story posted to your profile.',
+  'StoryPinnedToGroup': 'Story posted to the group profile.',
+  'StoryPinnedToChannel': 'Story posted to the channel profile.',
   'StoryArchivedFromProfile': 'This story is hidden from your profile.',
+  'StoryArchivedFromGroup': 'This story is hidden from the group profile.',
+  'StoryArchivedFromChannel': 'This story is hidden from the channel profile.',
   'StorySavedTitle': {
     'one_value': '%d story posted to your profile',
     'other_value': '%d stories posted to your profile'
@@ -2083,6 +2112,22 @@ const lang = {
   'StoryArchived': {
     'one_value': '%d story removed from your profile',
     'other_value': '%d stories removed from your profile'
+  },
+  'StorySavedGroupTitle': {
+    'one_value': '%d story posted to the group profile',
+    'other_value': '%d stories posted to the group profile'
+  },
+  'StoryGroupArchived': {
+    'one_value': '%d story removed from the group profile',
+    'other_value': '%d stories removed from the group profile'
+  },
+  'StorySavedChannelTitle': {
+    'one_value': '%d story posted to the channel profile',
+    'other_value': '%d stories posted to the channel profile'
+  },
+  'StoryChannelArchived': {
+    'one_value': '%d story removed from the channel profile',
+    'other_value': '%d stories removed from the channel profile'
   },
   'DeleteStoryTitle': 'Delete Story',
   'DeleteStoriesTitle': 'Delete Stories',
@@ -2092,6 +2137,8 @@ const lang = {
     'other_value': 'Are you sure you want to delete %d stories?'
   },
   'ProfileStoriesArchiveHint': 'Only you can see archived stories unless you choose to post them to your profile.',
+  'ProfileStoriesArchiveGroupHint': 'Only admins of the group can see archived stories unless they are posted to the group page.',
+  'ProfileStoriesArchiveChannelHint': 'Only admins can see archived stories unless you choose to post them to channel profile.',
   'StoryCloseFriendsHint': 'You are seeing this story because **%s** added you to their list of Close Friends.',
   'StorySelectedContactsHint': 'Only some users **%s** selected can view this story.',
   'StoryContactsHint': 'Only **%s’s** contacts can view this story.',
@@ -3527,6 +3574,21 @@ const lang = {
   'Schedule.SendToday': 'Send today at %@',
   'Schedule.SendDate': 'Send on %@ at %@',
   'Schedule.SendWhenOnline': 'Send When Online',
+  'Schedule.Repeat': 'Repeat',
+  'Schedule.Repeat.Daily': 'Daily',
+  'Schedule.Repeat.Weekly': 'Weekly',
+  'Schedule.Repeat.Biweekly': 'Biweekly',
+  'Schedule.Repeat.Monthly': 'Monthly',
+  'Schedule.Repeat.Every3Months': 'Every 3 Months',
+  'Schedule.Repeat.Every6Months': 'Every 6 Months',
+  'Schedule.Repeat.Yearly': 'Yearly',
+  'Schedule.Repeat.PremiumRequired': 'Subscribe to **[Telegram Premium]()** to schedule repeating messages.',
+  'Schedule.Repeated.Daily': 'daily',
+  'Schedule.Repeated.Weekly': 'weekly',
+  'Schedule.Repeated.Biweekly': 'biweekly',
+  'Schedule.Repeated.Monthly': 'monthly',
+  'Schedule.Repeated.EveryMonth': '%1$s-monthly',
+  'Schedule.Repeated.Yearly': 'yearly',
   'Story.Tooltip.MessageSent': 'Message Sent.',
   'Sticker.Premium.Click.Info': 'This set contains premium stickers like this one. [View Set]()',
   'Stickers.Recent': 'Recent',

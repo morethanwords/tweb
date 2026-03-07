@@ -54,6 +54,7 @@ import AppEditProfileTab from '@components/sidebarLeft/tabs/editProfile';
 import showBirthdayPopup, {saveMyBirthday} from '@components/popups/birthday';
 import showLogOutPopup from '@components/popups/logOut';
 import {getStickerSetInputByShortName} from '@lib/appManagers/utils/stickers/getStickerSetInput';
+import AppMyStoriesTab from '@components/sidebarLeft/tabs/myStories';
 
 export class InternalLinkProcessor {
   protected managers: AppManagers;
@@ -1186,12 +1187,28 @@ export class InternalLinkProcessor {
   public processStoryAlbumLink = async(link: InternalLink.InternalLinkStoryAlbum) => {
     const peer = await this.managers.appUsersManager.resolveUsername(link.domain);
     const peerId = peer.id.toPeerId(peer._ !== 'user');
-    if(appImManager.chat.peerId !== peerId) {
-      await appImManager.setInnerPeer({peerId});
-      await pause(500);
+    const albumId = +link.id;
+
+    if(peerId === rootScope.myId) {
+      const existing = appSidebarLeft.getTab(AppMyStoriesTab);
+      if(existing) {
+        existing.setAlbum(albumId);
+        return;
+      }
+
+      const tab = appSidebarLeft.createTab(AppMyStoriesTab);
+      await tab.open();
+      tab.setAlbum(albumId, true);
+      appImManager.chat?.pop();
+    } else {
+      if(appImManager.chat.peerId !== peerId) {
+        await appImManager.setInnerPeer({peerId});
+        await pause(500);
+      }
+      appSidebarRight.toggleSidebar(true, true);
+      appSidebarRight.sharedMediaTab.setSearchTab('stories');
+      appSidebarRight.sharedMediaTab.searchSuper.storiesSetAlbum(albumId);
     }
-    appSidebarRight.toggleSidebar(true, true);
-    appSidebarRight.sharedMediaTab.setSearchTab('stories');
   };
 
   public processInstantViewLink = (link: InternalLink.InternalLinkInstantView) => {

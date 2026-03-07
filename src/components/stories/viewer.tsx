@@ -107,6 +107,7 @@ import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '@components/chat/paidMe
 import showStoriesStealthModePopup from '@components/popups/storiesStealthMode';
 import {useAppConfig} from '@stores/appState';
 import {wrapFormattedDuration, wrapStoriesStealthModeDuration} from '@components/wrappers/wrapDuration';
+import {handleShareStory} from './share';
 
 export const STORY_DURATION = 5e3;
 const STORY_HEADER_AVATAR_SIZE = 32;
@@ -946,36 +947,19 @@ const Stories = (props: {
 
   const onShareClick = (wasPlaying = !stories.paused) => {
     actions.pause();
-    const popup = PopupPickUser.createSharingPicker({
-      onSelect: async(peerId, _, monoforumThreadId) => {
-        const storyPeerId = props.state.peerId;
-
-        const preparedPaymentResult = await PaidMessagesInterceptor.prepareStarsForPayment({messageCount: 1, peerId});
-        if(preparedPaymentResult === PAYMENT_REJECTED) throw new Error();
-
-        const inputPeer = await rootScope.managers.appPeersManager.getInputPeerById(storyPeerId);
-        rootScope.managers.appMessagesManager.sendOther({
-          peerId,
-          inputMedia: {
-            _: 'inputMediaStory',
-            id: currentStory().id,
-            peer: inputPeer
-          },
-          confirmedPaymentResult: preparedPaymentResult,
-          replyToMonoforumPeerId: monoforumThreadId
-        });
-
+    handleShareStory({
+      story: currentStory(),
+      peerId: props.state.peerId,
+      onSend: async(toPeerId: PeerId) => {
         showMessageSentTooltip(
           i18n(
-            peerId === rootScope.myId ? 'StorySharedToSavedMessages' : 'StorySharedTo',
-            [await wrapPeerTitle({peerId})]
+            toPeerId === rootScope.myId ? 'StorySharedToSavedMessages' : 'StorySharedTo',
+            [await wrapPeerTitle({peerId: toPeerId})]
           )
-        );
+        )
       },
-      chatRightsActions: ['send_media']
-    });
-
-    popup.addEventListener('closeAfterTimeout', bindOnAnyPopupClose(wasPlaying));
+      onClose: bindOnAnyPopupClose(wasPlaying)
+    })
   };
 
   const onShareButtonClick = (e: MouseEvent, listenTo: HTMLElement) => {

@@ -25,14 +25,16 @@ import addChatUsers from '@components/addChatUsers';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
-import ButtonMenuToggle from '@components/buttonMenuToggle';
+import ButtonMenuToggle, {filterButtonMenuItems} from '@components/buttonMenuToggle';
 import appImManager from '@lib/appImManager';
 import {useIsFrozen} from '@stores/appState';
 import {profileStarGiftsButtonMenu} from '@components/stargifts/profileList';
+import {profileStoriesButtonMenu} from '@components/stories/profileList';
 import {createRoot} from 'solid-js';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import namedPromises from '@helpers/namedPromises';
 import hasRights from '@lib/appManagers/utils/chats/hasRights';
+import {ButtonMenuItemOptionsVerifiable} from '../../buttonMenu';
 
 type SharedMediaHistoryStorage = Partial<{
   [type in SearchSuperType]: {mid: number, peerId: PeerId}[]
@@ -118,24 +120,32 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     this.editBtn = ButtonIcon('edit');
 
     const self = this;
+    let lastMediaTabType: SearchSuperMediaTab['type'];
+    const btnMenuButtons: ButtonMenuItemOptionsVerifiable[] = [
+      {
+        icon: 'message',
+        text: 'SavedViewAsMessages',
+        onClick: () => {
+          appImManager.toggleViewAsMessages(rootScope.myId, true);
+        },
+        verify: () => this.peerId === rootScope.myId && this.isFirst
+      },
+      ...profileStoriesButtonMenu({
+        peerId: this.peerId,
+        slider: this.slider,
+        verify: () => lastMediaTabType === 'stories'
+      }),
+      ...profileStarGiftsButtonMenu({
+        get store() { return self.searchSuper.stargiftsStore },
+        get actions() { return self.searchSuper.stargiftsActions },
+        verify: () => lastMediaTabType === 'gifts',
+        peerId: this.peerId
+      })
+    ];
     const btnMenu = this.btnMenu = ButtonMenuToggle({
       listenerSetter: this.listenerSetter,
       direction: 'bottom-left',
-      buttons: [
-        {
-          icon: 'message',
-          text: 'SavedViewAsMessages',
-          onClick: () => {
-            appImManager.toggleViewAsMessages(rootScope.myId, true);
-          },
-          verify: () => this.peerId === rootScope.myId && this.isFirst
-        },
-        ...profileStarGiftsButtonMenu({
-          get store() { return self.searchSuper.stargiftsStore },
-          get actions() { return self.searchSuper.stargiftsActions },
-          peerId: this.peerId
-        })
-      ]
+      buttons: btnMenuButtons
     });
 
     transitionFirstItem.element.append(this.editBtn);
@@ -307,7 +317,6 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     // this.container.prepend(this.closeBtn.parentElement);
 
-    // let lastMediaTabType: SearchSuperMediaTab['type'];
     this.searchSuper = new AppSearchSuper({
       mediaTabs: [{
         name: 'SharedMedia.SavedDialogs',
@@ -354,7 +363,6 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       }],
       scrollable: this.scrollable,
       onChangeTab: (mediaTab) => {
-        // lastMediaTabType = mediaTab.type;
         transitionSubtitle(c.findIndex((item) => item[0] === mediaTab.type));
 
         const timeout = mediaTab.type === 'members' && liteMode.isAvailable('animations') ? 250 : 0;
@@ -363,7 +371,14 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         }, timeout);
 
         if(!this.isFirst) {
-          this.btnMenu.classList.toggle('hide', mediaTab.type !== 'gifts');
+          lastMediaTabType = mediaTab.type;
+          if(mediaTab.type === 'gifts' || mediaTab.type === 'stories') {
+            filterButtonMenuItems(btnMenuButtons).then((items) => {
+              this.btnMenu.classList.toggle('hide', items.length === 0);
+            })
+          } else {
+            this.btnMenu.classList.add('hide');
+          }
         }
       },
       managers: this.managers,

@@ -243,4 +243,14 @@
   &-secondary {
     margin-top: .5rem !important;
   }
+
+  &-repeat {
+    margin-bottom: .5rem;
+
+    .row-right {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+  }
 }

@@ -1371,6 +1371,7 @@ export default class Chat extends EventListenerBase<{
           replyToMsgId: this.input.suggestedPost.changeMid
         } : {}),
         scheduleDate: this.input.scheduleDate,
+        scheduleRepeatPeriod: this.input.scheduleRepeatPeriod,
         silent: this.input.sendSilent,
         sendAsPeerId: this.input.sendAsPeerId,
         effect: this.input.effect(),
