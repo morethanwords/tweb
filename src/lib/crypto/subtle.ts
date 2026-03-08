@@ -1,6 +1,8 @@
 // Evaluated lazily so that test setup files can install self.crypto before first use.
 const getSubtle = (): SubtleCrypto =>
-  typeof(window) !== 'undefined' && window.crypto?.subtle ? window.crypto.subtle : self.crypto.subtle;
+  typeof(window) !== 'undefined' && window.crypto?.subtle ?
+    window.crypto.subtle :
+    self.crypto.subtle;
 
 const subtle: SubtleCrypto = new Proxy({} as SubtleCrypto, {
   get(_target, prop: keyof SubtleCrypto) {

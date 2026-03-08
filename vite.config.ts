@@ -174,6 +174,16 @@ export default defineConfig({
   },
   css: {
     devSourcemap: true,
+    preprocessorOptions: {
+      scss: {
+        api: 'modern',
+        // Global stylesheets (style.scss, materialize.scss) and their ~50 partials
+        // all rely on the implicit global scope that @import provides. Migrating
+        // those to @use would require touching every partial — deferred to a
+        // dedicated refactor. Component .module.scss files have been migrated.
+        silenceDeprecations: ['import', 'legacy-js-api', 'global-builtin']
+      }
+    },
     postcss: {
       plugins: [
         autoprefixer({}) // add options if needed
