@@ -27,7 +27,7 @@ services:
       dockerfile: .docker/Dockerfile_develop
     volumes:
       - "./:/app"
-    command: pnpm test && exit 0
+    command: pnpm test
 
   tweb.production:
     container_name: tweb.production
