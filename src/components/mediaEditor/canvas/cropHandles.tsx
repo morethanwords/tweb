@@ -1,19 +1,19 @@
-import {batch, createEffect, createSignal, on, onCleanup, onMount} from 'solid-js';
-import {modifyMutable, produce} from 'solid-js/store';
-import {animateValue} from '@helpers/animateValue';
-import {lerp, lerpArray} from '@helpers/lerp';
-import SwipeHandler from '@components/swipeHandler';
+import _getConvenientPositioning from '@components/mediaEditor/canvas/getConvenientPositioning';
+import {useCropOffset} from '@components/mediaEditor/canvas/useCropOffset';
 import {useMediaEditorContext} from '@components/mediaEditor/context';
 import {NumberPair} from '@components/mediaEditor/types';
 import {snapToViewport, withCurrentOwner} from '@components/mediaEditor/utils';
-import _getConvenientPositioning from '@components/mediaEditor/canvas/getConvenientPositioning';
-import {useCropOffset} from '@components/mediaEditor/canvas/useCropOffset';
+import SwipeHandler from '@components/swipeHandler';
+import {animateValue} from '@helpers/animateValue';
+import {lerp, lerpArray} from '@helpers/lerp';
+import {batch, createEffect, createMemo, createSignal, on, onCleanup, onMount} from 'solid-js';
+import {modifyMutable, produce} from 'solid-js/store';
 
 
 const MAX_SCALE = 20;
 
 export default function CropHandles() {
-  const {editorState, mediaState} = useMediaEditorContext();
+  const {editorState, mediaState, isEditingForAvatar, isEditingForumAvatar} = useMediaEditorContext();
 
   const isCropping = () => editorState.currentTab === 'crop';
 
@@ -70,9 +70,20 @@ export default function CropHandles() {
     });
   }
 
+  function resetSize() {
+    const {leftTop: targetLeftTop, size: targetSize} = getNewLeftTopAndSize();
+    batch(() => {
+      setLeftTop(targetLeftTop);
+      setSize(targetSize);
+    });
+  }
+
   createEffect(
-    on(() => mediaState.currentImageRatio, () => {
-      resetSizeWithAnimation();
+    on(() => mediaState.currentImageRatio, (_, prev) => {
+      if(!prev) resetSize();
+      else resetSizeWithAnimation();
+    }, {
+      defer: true
     })
   );
 
@@ -293,23 +304,38 @@ export default function CropHandles() {
     });
   });
 
-  const left = () => leftTop()[0] + leftTopDiff()[0];
-  const top = () => leftTop()[1] + leftTopDiff()[1];
-  const width = () => size()[0] + diff()[0];
-  const height = () => size()[1] + diff()[1];
-  const right = () => left() + width();
-  const bottom = () => top() + height();
+  const normalSpotlightPosition = createMemo(() => {
+    const [w, h] = editorState.canvasSize ?? [0, 0];
+    const [sw, sh] = snapToViewport(mediaState.currentImageRatio, w, h);
 
-  const croppedSizeFull = () => {
-    const [cw, ch] = editorState.canvasSize;
-    let [w, h] = [cw, ch];
-    const ratio = mediaState.currentImageRatio;
+    return {
+      left: (w - sw) / 2,
+      top: (h - sh) / 2,
+      width: sw,
+      height: sh
+    };
+  });
 
-    if(w / ratio > h) w = h * ratio;
-    else h = w / ratio;
+  const cropSpotlightPosition = createMemo(() => ({
+    left: leftTop()[0] + leftTopDiff()[0],
+    top: leftTop()[1] + leftTopDiff()[1],
+    width: size()[0] + diff()[0],
+    height: size()[1] + diff()[1]
+  }));
 
-    return [(cw - w) / 2, (ch - h) / 2];
-  };
+  const left = () => lerp(normalSpotlightPosition().left, cropSpotlightPosition().left, editorState.cropTabAnimationProgress);
+  const top = () => lerp(normalSpotlightPosition().top, cropSpotlightPosition().top, editorState.cropTabAnimationProgress);
+  const width = () => lerp(normalSpotlightPosition().width, cropSpotlightPosition().width, editorState.cropTabAnimationProgress);
+  const height = () => lerp(normalSpotlightPosition().height, cropSpotlightPosition().height, editorState.cropTabAnimationProgress);
+
+  const spotlightId = `spotlight-${Math.random().toString(36).substring(2)}`;
+
+  const cropSpotlightRoundness = createMemo(() => {
+    if(isEditingForAvatar) {
+      return Math.min(width(), height()) / (isEditingForumAvatar ? 3 : 2);
+    }
+    return 0;
+  });
 
   let cropArea: HTMLDivElement;
 
@@ -323,120 +349,83 @@ export default function CropHandles() {
   let rightHandle: HTMLDivElement;
   let bottomHandle: HTMLDivElement;
 
-  const coverAnimatedStyle = () =>
-    ({
-      'transition': 'opacity 0.2s',
-      'transition-timing-function': isCropping() ? 'ease-in' : 'ease-out',
-      'pointer-events': isCropping() ? 'none' : undefined,
-      'opacity': isCropping() ? 0 : 1
-    }) as const;
-
-  const controlsAnimatedStyle = () =>
-    ({
-      'transition': 'transform 0.2s, opacity 0.2s',
-      'transition-timing-function': isCropping() ? 'ease-out' : 'ease-in',
-      'pointer-events': isCropping() ? undefined : 'none',
-      'opacity': isCropping() ? 1 : 0,
-      'transform': isCropping() ? undefined : 'scale(1.05)'
-    }) as const;
-
   return (
     <>
+      <SpotlightMask
+        id={spotlightId}
+        left={left()}
+        top={top()}
+        width={width()}
+        height={height()}
+        roundness={cropSpotlightRoundness()}
+      />
+
       <div
-        style={{
-          background: 'black',
-          position: 'absolute',
-          left: '0px',
-          top: '0px',
-          width: '100%',
-          height: croppedSizeFull()[1] + 'px',
-          ...coverAnimatedStyle()
+        ref={cropArea}
+        class="media-editor__crop-handles"
+        classList={{
+          'media-editor__crop-handles--hidden': !isCropping()
         }}
-      ></div>
-      <div
         style={{
-          background: 'black',
-          position: 'absolute',
-          left: '0px',
-          bottom: '0px',
-          width: '100%',
-          height: croppedSizeFull()[1] + 'px',
-          ...coverAnimatedStyle()
-        }}
-      ></div>
-      <div
-        style={{
-          background: 'black',
-          position: 'absolute',
-          left: '0px',
-          top: '0px',
-          height: '100%',
-          width: croppedSizeFull()[0] + 'px',
-          ...coverAnimatedStyle()
-        }}
-      ></div>
-      <div
-        style={{
-          background: 'black',
-          position: 'absolute',
-          right: '0px',
-          top: '0px',
-          height: '100%',
-          width: croppedSizeFull()[0] + 'px',
-          ...coverAnimatedStyle()
-        }}
-      ></div>
-      <div
-        style={{
-          position: 'absolute',
-          right: '0px',
-          top: '0px',
-          height: '100%',
-          width: '100%',
-          overflow: 'hidden',
-          ...controlsAnimatedStyle()
+          left: left() + 'px',
+          top: top() + 'px',
+          width: width() + 'px',
+          height: height() + 'px'
         }}
       >
+        <div class="media-editor__crop-handles-line-h" style={{top: '33%'}} />
+        <div class="media-editor__crop-handles-line-h" style={{top: '66%'}} />
+        <div class="media-editor__crop-handles-line-v" style={{left: '33%'}} />
+        <div class="media-editor__crop-handles-line-v" style={{left: '66%'}} />
+
+        <div ref={leftHandle} class="media-editor__crop-handles-side media-editor__crop-handles-side--w" />
+        <div ref={topHandle} class="media-editor__crop-handles-side media-editor__crop-handles-side--n" />
+        <div ref={rightHandle} class="media-editor__crop-handles-side media-editor__crop-handles-side--e" />
+        <div ref={bottomHandle} class="media-editor__crop-handles-side media-editor__crop-handles-side--s" />
+
+        <div ref={leftTopHandle} class="media-editor__crop-handles-circle media-editor__crop-handles-circle--nw" />
+        <div ref={rightTopHandle} class="media-editor__crop-handles-circle media-editor__crop-handles-circle--ne" />
+        <div ref={leftBottomHandle} class="media-editor__crop-handles-circle media-editor__crop-handles-circle--sw" />
         <div
-          class="media-editor__crop-handles-backdrop"
-          style={{
-            ['clip-path']: `polygon(
-              0 0, 0 100%,
-              ${left()}px 100%, ${left()}px ${top()}px, ${right()}px ${top()}px,
-              ${right()}px ${bottom()}px, ${left()}px ${bottom()}px, ${left()}px 100%,
-              100% 100%, 100% 0%
-            )`
-          }}
+          ref={rightBottomHandle}
+          class="media-editor__crop-handles-circle media-editor__crop-handles-circle--se"
         />
-        <div
-          ref={cropArea}
-          class="media-editor__crop-handles"
-          style={{
-            left: left() + 'px',
-            top: top() + 'px',
-            width: width() + 'px',
-            height: height() + 'px'
-          }}
-        >
-          <div class="media-editor__crop-handles-line-h" style={{top: '33%'}} />
-          <div class="media-editor__crop-handles-line-h" style={{top: '66%'}} />
-          <div class="media-editor__crop-handles-line-v" style={{left: '33%'}} />
-          <div class="media-editor__crop-handles-line-v" style={{left: '66%'}} />
-
-          <div ref={leftHandle} class="media-editor__crop-handles-side media-editor__crop-handles-side--w" />
-          <div ref={topHandle} class="media-editor__crop-handles-side media-editor__crop-handles-side--n" />
-          <div ref={rightHandle} class="media-editor__crop-handles-side media-editor__crop-handles-side--e" />
-          <div ref={bottomHandle} class="media-editor__crop-handles-side media-editor__crop-handles-side--s" />
-
-          <div ref={leftTopHandle} class="media-editor__crop-handles-circle media-editor__crop-handles-circle--nw" />
-          <div ref={rightTopHandle} class="media-editor__crop-handles-circle media-editor__crop-handles-circle--ne" />
-          <div ref={leftBottomHandle} class="media-editor__crop-handles-circle media-editor__crop-handles-circle--sw" />
-          <div
-            ref={rightBottomHandle}
-            class="media-editor__crop-handles-circle media-editor__crop-handles-circle--se"
-          />
-        </div>
       </div>
     </>
   );
 }
+
+const SpotlightMask = (props: {
+  id: string;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  roundness?: number;
+}) => {
+  const {editorState} = useMediaEditorContext();
+
+  return (
+    <>
+      <div
+        class="media-editor__spotlight-background"
+        style={{
+          mask: `url(#${props.id})`
+        }}
+      />
+      <svg class="media-editor__spotlight-mask-svg" width="0" height="0">
+        <mask id={props.id}>
+          <rect x="0" y="0" width={editorState.canvasSize?.[0]} height={editorState.canvasSize?.[1]} fill="white"/>
+          <rect
+            x={props.left}
+            y={props.top}
+            width={props.width}
+            height={props.height}
+            rx={props.roundness}
+            fill="black"
+          />
+        </mask>
+      </svg>
+    </>
+  );
+};

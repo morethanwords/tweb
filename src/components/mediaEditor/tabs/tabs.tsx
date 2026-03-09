@@ -1,6 +1,8 @@
 import {ButtonIconTsx} from '@components/buttonIconTsx';
-
 import {useMediaEditorContext} from '@components/mediaEditor/context';
+import {requestRAF} from '@helpers/solid/requestRAF';
+import {createEffect, createSignal, untrack} from 'solid-js';
+
 
 type ConfigItem = {
   icon: Icon;
@@ -20,6 +22,8 @@ export const mediaEditorTabsOrder = config.map((item) => item.key);
 export default function Tabs() {
   const {editorState} = useMediaEditorContext();
 
+  const [noTransition, setNoTransition] = createSignal(true);
+
   let container: HTMLDivElement;
   let underline: HTMLDivElement;
 
@@ -33,19 +37,32 @@ export default function Tabs() {
   }));
 
   function onTabClick(key: string) {
-    const target = tabs.find((tab) => tab.key === key).element;
-    const containerBR = container.getBoundingClientRect();
-    const targetBR = target.getBoundingClientRect();
-
-    underline.style.setProperty('--left', targetBR.left + targetBR.width / 2 - containerBR.left + 'px');
-
     editorState.currentTab = key;
   }
+
+  createEffect(() => {
+    const activeTab = tabs.find((tab) => tab.key === editorState.currentTab);
+    if(activeTab) {
+      const targetBR = activeTab.element.getBoundingClientRect();
+      const containerBR = container.getBoundingClientRect();
+      underline.style.setProperty('--left', targetBR.left + targetBR.width / 2 - containerBR.left + 'px');
+
+      if(untrack(noTransition)) {
+        requestRAF(() => {
+          setNoTransition(false);
+        });
+      }
+    }
+  });
 
   return (
     <div ref={container} class="media-editor__tabs">
       {tabs.map((tab) => tab.element)}
-      <div ref={underline} class="media-editor__tabs-underline" />
+      <div
+        ref={underline}
+        class="media-editor__tabs-underline"
+        classList={{'media-editor__tabs-underline--no-transition': noTransition()}}
+      />
     </div>
   );
 }
