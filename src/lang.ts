@@ -3227,6 +3227,7 @@ const lang = {
   'Chat.Send.WithoutSound': 'Send Without Sound',
   'Chat.Send.SetReminder': 'Set a Reminder',
   'Chat.Send.ScheduledMessage': 'Schedule Message',
+  'Chat.Send.WithCaption': 'Send GIF with caption',
   'Chat.SendAs.PersonalAccount': 'personal account',
   'Chat.UnpinAllMessagesConfirmation': {
     'one_value': 'Do you want to unpin %d message in this chat?',
@@ -3469,6 +3470,10 @@ const lang = {
   'PreviewSender.SendVideo': {
     'one_value': 'Send Video',
     'other_value': 'Send %d Videos'
+  },
+  'PreviewSender.SendGif': {
+    'one_value': 'Send GIF',
+    'other_value': 'Send %d GIFs'
   },
   'PrivacyAndSecurity.Item.On': 'On',
   'PrivacyAndSecurity.Item.Off': 'Off',

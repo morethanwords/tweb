@@ -41,7 +41,7 @@ import rootScope from '@lib/rootScope';
 import appImManager from '@lib/appImManager';
 import {toastNew} from '@components/toast';
 import toggleDisability from '@helpers/dom/toggleDisability';
-import {createMoreButton} from '@components/sidebarRight/tabs/statistics';
+import {MoreButton} from '@components/sidebarRight/tabs/statistics';
 import formatStarsAmount from '@appManagers/utils/payments/formatStarsAmount';
 import wrapLocalSticker from '@components/wrappers/localSticker';
 import bigInt from 'big-integer';
@@ -753,15 +753,12 @@ export default class PopupStars extends PopupElement {
     const subscriptionsSection = (
       <Section class="popup-stars-subscriptions-section" name="Stars.Subscriptions">
         <div>{subscriptionsLoader().rendered}</div>
-        {subscriptionsLoader().loadMore && createMoreButton(
-          subscriptionsLoader().count - subscriptionsLoader().rendered.length,
-          (button) => {
-            const toggle = toggleDisability(button, true);
-            const promise = subscriptionsLoader().loadMore();
-            promise.finally(() => toggle());
-          },
-          this.listenerSetter
-        )}
+        <Show when={!!subscriptionsLoader().loadMore}>
+          <MoreButton
+            count={subscriptionsLoader().count - subscriptionsLoader().rendered.length}
+            callback={() => subscriptionsLoader().loadMore()}
+          />
+        </Show>
       </Section>
     );
 

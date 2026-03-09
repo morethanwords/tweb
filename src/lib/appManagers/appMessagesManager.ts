@@ -1556,37 +1556,27 @@ export class AppMessagesManager extends AppManager {
       attachType
     } = documentAndMeta;
 
-    if(message && mediaUnread) message.pFlags.media_unread = true;
+    if(message && mediaUnread) {
+      message.pFlags.media_unread = true;
+    }
 
     this.log('sendFile', file, fileType);
     this.log('sendFile', attachType, apiFileName, file.type, options);
 
     const sentDeferred = deferredPromise<InputMedia>();
-    // sentDeferred.cancel = () => {
-    //   const error = new Error('Download canceled');
-    //   error.name = 'AbortError';
-    //   sentDeferred.reject(error);
 
-    //   if(uploadPromise?.cancel) {
-    //     uploadPromise.cancel();
-    //   }
-    // };
-
-    const media: MessageMedia = isDocument ? undefined : {
-      _: photo ? 'messageMediaPhoto' : 'messageMediaDocument',
-      pFlags: {},
-      // preloader,
+    const media: MessageMedia = {
+      _: photo && !isDocument ? 'messageMediaPhoto' : 'messageMediaDocument',
+      pFlags: {
+        ...(options.spoiler ? {spoiler: true} : {})
+      },
       photo,
-      document
+      document: isDocument ? file as Document.document : document
     };
 
-    if(media) {
+    if(!isDocument) {
       defineNotNumerableProperties(media as any, ['promise']);
       (media as any).promise = sentDeferred;
-
-      if(options.spoiler) {
-        (media as MessageMedia.messageMediaPhoto).pFlags.spoiler = true;
-      }
     }
 
     const sendEntities = this.getInputEntities(entities);
@@ -1603,12 +1593,8 @@ export class AppMessagesManager extends AppManager {
 
       message.entities = entities;
       message.message = caption;
-      message.media = isDocument ? {
-        _: 'messageMediaDocument',
-        pFlags: {},
-        document: file
-      } as MessageMedia.messageMediaDocument : media;
-      message.uploadingFileName = [uploadingFileName];
+      message.media = media;
+      message.uploadingFileName = uploadingFileName ? [uploadingFileName] : undefined;
 
       if(options.stars) {
         message.media = this.generateOutgoingPaidMedia([message], options.stars);
@@ -1620,17 +1606,15 @@ export class AppMessagesManager extends AppManager {
       this.rootScope.dispatchEvent('messages_pending');
     };
 
-    let
-      uploaded = false,
-      uploadPromise: ReturnType<ApiFileManager['upload']> = null
-    ;
+    let uploaded = false,
+      uploadPromise: ReturnType<ApiFileManager['upload']>;
 
     const upload = () => {
       if(isDocument) {
         const inputMedia: InputMedia = {
           _: 'inputMediaDocument',
           id: getDocumentInput(file as MyDocument),
-          pFlags: {}
+          pFlags: pickKeys((media as MessageMedia.messageMediaDocument).pFlags, ['spoiler'])
         };
 
         sentDeferred.resolve(inputMedia);

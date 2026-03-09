@@ -837,31 +837,6 @@
     flex-direction: column;
     position: relative;
     width: 100%;
-  
-    &-answer {
-      color: var(--secondary-text-color);
-      padding: 0 16px 8px 16px;
-      margin: 0;
-      font-weight: var(--font-weight-bold);
-      justify-content: space-between;
-      display: flex;
-      font-size: 15px;
-      user-select: none;
-
-      @include respond-to(not-handhelds) {
-        padding: 0 24px 8px 24px;
-      }
-    }
-
-    &-more {
-      margin: 0 .5rem;
-      width: auto;
-
-      @include respond-to(handhelds) {
-        margin: 0;
-        border-radius: 0;
-      }
-    }
 
     h3 {
       padding: 0 16px;
@@ -873,12 +848,22 @@
         padding: 0 24px;
       }
     }
-  
-    hr {
-      margin-bottom: 15px;
-      margin-top: 7px;
-      display: block !important;
+  }
+
+  .vote-time {
+    &-container {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      inset-inline-end: 1rem;
+      font-size: var(--font-size-14);
+      text-align: end;
     }
+  }
+
+  // * make space for absolute vote time
+  .dialog-title-details {
+    padding-inline-start: 5rem;
   }
 }
 

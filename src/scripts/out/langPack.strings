@@ -2787,6 +2787,7 @@
 "Chat.Send.WithoutSound" = "Send Without Sound";
 "Chat.Send.SetReminder" = "Set a Reminder";
 "Chat.Send.ScheduledMessage" = "Schedule Message";
+"Chat.Send.WithCaption" = "Send GIF with caption";
 "Chat.SendAs.PersonalAccount" = "personal account";
 "Chat.UnpinAllMessagesConfirmation_one" = "Do you want to unpin %d message in this chat?";
 "Chat.UnpinAllMessagesConfirmation_other" = "Do you want to unpin all %d messages in this chat?";
@@ -2995,6 +2996,8 @@
 "PreviewSender.SendPhoto_other" = "Send %d Photos";
 "PreviewSender.SendVideo_one" = "Send Video";
 "PreviewSender.SendVideo_other" = "Send %d Videos";
+"PreviewSender.SendGif_one" = "Send GIF";
+"PreviewSender.SendGif_other" = "Send %d GIFs";
 "PrivacyAndSecurity.Item.On" = "On";
 "PrivacyAndSecurity.Item.Off" = "Off";
 "PrivacyAndSecurity.SensitiveText" = "Disable filtering";
