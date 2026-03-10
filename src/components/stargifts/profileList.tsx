@@ -169,7 +169,6 @@ export function profileStarGiftsButtonMenu(props: {
 
     props.actions.setFilters(payload)
   }
-  const self = props.peerId === rootScope.myId;
   return [
     {
       icon: 'sort_date',
@@ -187,7 +186,7 @@ export function profileStarGiftsButtonMenu(props: {
       icon: 'folder',
       text: 'StarGiftCollectionsAdd',
       onClick: () => openCreateCollectionPopup({actions: props.actions, peerId: props.peerId}),
-      verify: () => props.verify() && props.store != null && self
+      verify: () => props.verify() && props.store != null && props.store.canManageGifts
     },
     {
       checkboxField: checkboxsByFilter.unlimited,
@@ -219,13 +218,13 @@ export function profileStarGiftsButtonMenu(props: {
       text: 'StarGiftShowDisplayed',
       separator: true,
       onClick: () => toggleFilter('displayed'),
-      verify: () => props.verify() && props.store != null && self
+      verify: () => props.verify() && props.store != null && props.store.canManageGifts
     },
     {
       checkboxField: checkboxsByFilter.hidden,
       text: 'StarGiftShowHidden',
       onClick: () => toggleFilter('hidden'),
-      verify: () => props.verify() && props.store != null && self
+      verify: () => props.verify() && props.store != null && props.store.canManageGifts
     }
   ]
 }
@@ -241,7 +240,6 @@ export function StarGiftsProfileTab(props: {
     peerId: props.peerId,
     onCountChange: props.onCountChange
   });
-  const self = props.peerId === rootScope.myId;
 
   onMount(() => actions.loadNext())
 
@@ -282,7 +280,7 @@ export function StarGiftsProfileTab(props: {
               }
             ]
 
-            if(props.peerId === rootScope.myId) {
+            if(store.canManageGifts) {
               buttons.push(
                 {
                   icon: 'add',
@@ -347,7 +345,7 @@ export function StarGiftsProfileTab(props: {
               </ChipTab>
             )}
           </For>
-          <Show when={self}>
+          <Show when={store.canManageGifts}>
             <ChipTab value={ADD_COLLECTION_ID.toString()} class={/* @once */ styles.addCollection}>
               <IconTsx icon="add" />
               <I18nTsx key="StarGiftCollectionsAdd" />
@@ -375,7 +373,7 @@ export function StarGiftsProfileTab(props: {
           <Match when={store.loading && store.items.length === 0}>
             <PreloaderTsx />
           </Match>
-          <Match when={store.items.length === 0 && store.chosenCollection !== ALL_COLLECTIONS_ID && self}>
+          <Match when={store.items.length === 0 && store.chosenCollection !== ALL_COLLECTIONS_ID && store.canManageGifts}>
             <div class={/* @once */ styles.empty}>
               <I18nTsx class={/* @once */ styles.emptyTitle} key="StarGiftCollectionsEmptyTitle" />
               <I18nTsx class={/* @once */ styles.emptySubtitle} key="StarGiftCollectionsEmptySubtitle" />
@@ -400,6 +398,9 @@ export function StarGiftsProfileTab(props: {
               class={/* @once */ styles.grid}
               items={unwrap(store.items)}
               view='profile'
+              profilePeerId={props.peerId}
+              canManageGifts={store.canManageGifts}
+              profileCollections={store.collections ? unwrap(store.collections) : undefined}
               scrollParent={props.scrollParent}
               autoplay={false}
               onClick={(item) => {
@@ -414,4 +415,3 @@ export function StarGiftsProfileTab(props: {
 
   return {render, store, actions};
 }
-

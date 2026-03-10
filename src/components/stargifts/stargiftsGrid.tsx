@@ -19,7 +19,7 @@ import {changeBrightness, getRgbColorFromTelegramColor, rgbaToHexa, rgbIntToHex}
 import createContextMenu from '@helpers/dom/createContextMenu';
 import PopupPickUser from '@components/popups/pickUser';
 import appImManager from '@lib/appImManager';
-import {StarGift} from '@layer';
+import {StarGift, StarGiftCollection} from '@layer';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import {toastNew} from '@components/toast';
 import transferStarGift from '@components/popups/transferStarGift';
@@ -27,10 +27,16 @@ import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSpli
 import CheckboxFieldTsx from '@components/checkboxFieldTsx';
 import tsNow from '@helpers/tsNow';
 import PopupStarGiftWear from '@components/popups/starGiftWear';
+import createSubmenuTrigger from '@components/createSubmenuTrigger';
+import {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable, ButtonMenuSync} from '@components/buttonMenu';
+import CheckboxField from '@components/checkboxField';
 
 function StarGiftGridItem(props: {
   item: MyStarGift,
   view: 'profile' | 'list' | 'resale' | 'transfer'
+  profilePeerId?: PeerId
+  canManageGifts?: boolean
+  profileCollections?: StarGiftCollection[]
   hasSelection?: boolean
   selected?: boolean
   onClick?: () => void
@@ -45,68 +51,127 @@ function StarGiftGridItem(props: {
 
     if(props.view === 'profile' && !props.hasSelection) {
       const {raw, saved, input, isIncoming, isWearing} = props.item;
-      const isOwnedUniqueGift = raw._ === 'starGiftUnique' && getPeerId(raw.owner_id) === rootScope.myId && saved !== undefined;
+      const profilePeerId = props.profilePeerId ?? rootScope.myId;
+      const isEditableUniqueGift = Boolean(raw._ === 'starGiftUnique' && props.canManageGifts && saved);
+
+      const buttons: ButtonMenuItemOptionsVerifiable[] = [
+        {
+          icon: 'forward',
+          text: 'ShareFile',
+          verify: () => raw._ === 'starGiftUnique',
+          onClick: () => {
+            PopupPickUser.createSharingPicker2().then(({peerId, threadId, monoforumThreadId}) => {
+              rootScope.managers.appMessagesManager.sendText({peerId, threadId, replyToMonoforumPeerId: monoforumThreadId, text: 'https://t.me/nft/' + (raw as StarGift.starGiftUnique).slug});
+              appImManager.setInnerPeer({peerId, threadId, monoforumThreadId});
+            });
+          }
+        },
+        {
+          icon: saved?.pFlags.pinned_to_top ? 'unpin' : 'pin',
+          text: saved?.pFlags.pinned_to_top ? 'StarGiftUnpin' : 'StarGiftPin',
+          verify: () => isEditableUniqueGift,
+          onClick: () => {
+            rootScope.managers.appGiftsManager.togglePinnedGift(input, profilePeerId);
+          }
+        },
+        {
+          icon: 'link',
+          text: 'CopyLink',
+          verify: () => raw._ === 'starGiftUnique',
+          onClick: () => {
+            copyTextToClipboard('https://t.me/nft/' + (raw as StarGift.starGiftUnique).slug);
+            toastNew({langPackKey: 'LinkCopied'});
+          }
+        },
+        {
+          icon: 'gem_transfer_outline',
+          text: 'StarGiftTransferFull',
+          verify: () => isEditableUniqueGift,
+          onClick: () => {
+            transferStarGift(props.item);
+          }
+        },
+        createSubmenuTrigger({
+          options: {
+            icon: 'folder',
+            text: 'StarGiftCollectionsAddToCollection',
+            verify: () => isEditableUniqueGift && props.profileCollections?.length > 0
+          },
+          createSubmenu: () => {
+            if(!saved || !input || !props.profilePeerId || !props.profileCollections?.length) {
+              return ButtonMenuSync({buttons: []});
+            }
+
+            const buttons: ButtonMenuItemOptions[] = props.profileCollections.map((collection) => {
+              const checkboxField = new CheckboxField({
+                checked: !!saved.collection_id?.includes(collection.collection_id)
+              });
+
+              return {
+                regularText: collection.title,
+                onClick: () => {
+                  const wasChecked = checkboxField.checked;
+                  checkboxField.checked = !wasChecked;
+                  rootScope.managers.appGiftsManager.updateCollection({
+                    peerId: props.profilePeerId,
+                    collectionId: collection.collection_id,
+                    [wasChecked ? 'delete' : 'add']: [input]
+                  }).catch(() => {
+                    checkboxField.checked = wasChecked;
+                    toastNew({langPackKey: 'Error.AnError'});
+                  });
+                },
+                checkboxField,
+                noCheckboxClickListener: true,
+                keepOpen: true
+              };
+            });
+
+            return ButtonMenuSync({buttons});
+          }
+        }),
+        {
+          icon: isWearing ? 'crownoff_outline' : 'crown_outline',
+          text: isWearing ? 'StarGiftWearStopFull' : 'StarGiftWearFull',
+          verify: () => isEditableUniqueGift,
+          onClick: async() => {
+            if(isWearing) {
+              if(profilePeerId === rootScope.myId) {
+                rootScope.managers.appUsersManager.updateEmojiStatus({_: 'emojiStatusEmpty'});
+              } else {
+                rootScope.managers.apiManager.invokeApiSingleProcess({
+                  method: 'channels.updateEmojiStatus',
+                  params: {
+                    channel: await rootScope.managers.appChatsManager.getChannelInput(profilePeerId.toChatId()),
+                    emoji_status: {_: 'emojiStatusEmpty'}
+                  }
+                }).then((updates) => {
+                  rootScope.managers.apiUpdatesManager.processUpdateMessage(updates);
+                }).catch(() => {
+                  toastNew({langPackKey: 'Error.AnError'});
+                });
+              }
+            } else {
+              PopupStarGiftWear.open(props.item, profilePeerId);
+            }
+          }
+        },
+        {
+          icon: saved.pFlags.unsaved ? 'eye' : 'eyecross_outline',
+          text: saved.pFlags.unsaved ? 'Show' : 'Hide',
+          verify: () => isIncoming || isEditableUniqueGift,
+          onClick: () => {
+            rootScope.managers.appGiftsManager.toggleGiftHidden(input, !saved.pFlags.unsaved);
+          }
+        }
+      ];
 
       createContextMenu({
         listenTo: containerRef,
-        buttons: [
-          {
-            icon: 'forward',
-            text: 'ShareFile',
-            verify: () => raw._ === 'starGiftUnique',
-            onClick: () => {
-              PopupPickUser.createSharingPicker2().then(({peerId, threadId, monoforumThreadId}) => {
-                rootScope.managers.appMessagesManager.sendText({peerId, threadId, replyToMonoforumPeerId: monoforumThreadId, text: 'https://t.me/nft/' + (raw as StarGift.starGiftUnique).slug});
-                appImManager.setInnerPeer({peerId, threadId, monoforumThreadId});
-              });
-            }
-          },
-          {
-            icon: saved?.pFlags.pinned_to_top ? 'unpin' : 'pin',
-            text: saved?.pFlags.pinned_to_top ? 'StarGiftUnpin' : 'StarGiftPin',
-            verify: () => isOwnedUniqueGift,
-            onClick: () => {
-              rootScope.managers.appGiftsManager.togglePinnedGift(input);
-            }
-          },
-          {
-            icon: 'link',
-            text: 'CopyLink',
-            verify: () => raw._ === 'starGiftUnique',
-            onClick: () => {
-              copyTextToClipboard('https://t.me/nft/' + (raw as StarGift.starGiftUnique).slug);
-              toastNew({langPackKey: 'LinkCopied'});
-            }
-          },
-          {
-            icon: 'gem_transfer_outline',
-            text: 'StarGiftTransferFull',
-            verify: () => isOwnedUniqueGift,
-            onClick: () => {
-              transferStarGift(props.item);
-            }
-          },
-          {
-            icon: isWearing ? 'crownoff_outline' : 'crown_outline',
-            text: isWearing ? 'StarGiftWearStopFull' : 'StarGiftWearFull',
-            verify: () => isOwnedUniqueGift,
-            onClick: () => {
-              if(isWearing) {
-                rootScope.managers.appUsersManager.updateEmojiStatus({_: 'emojiStatusEmpty'});
-              } else {
-                PopupStarGiftWear.open(props.item);
-              }
-            }
-          },
-          {
-            icon: saved.pFlags.unsaved ? 'eye' : 'eyecross_outline',
-            text: saved.pFlags.unsaved ? 'Show' : 'Hide',
-            verify: () => isOwnedUniqueGift || isIncoming,
-            onClick: () => {
-              rootScope.managers.appGiftsManager.toggleGiftHidden(input, !saved.pFlags.unsaved);
-            }
-          }
-        ]
+        buttons,
+        onElementReady: () => {
+          buttons.forEach((button) => button.onOpen?.());
+        }
       })
     }
   })
@@ -283,6 +348,9 @@ export function StarGiftsGrid(props: {
   autoplay?: boolean
   onClick?: (item: MyStarGift) => void
   selected?: (item: MyStarGift) => boolean
+  profilePeerId?: PeerId
+  canManageGifts?: boolean
+  profileCollections?: StarGiftCollection[]
   scrollParent: HTMLElement
 }) {
   const lazyLoadQueue = new LazyLoadQueue();
@@ -313,6 +381,9 @@ export function StarGiftsGrid(props: {
           <StarGiftGridItem
             item={item}
             view={props.view}
+            profilePeerId={props.profilePeerId}
+            canManageGifts={props.canManageGifts}
+            profileCollections={props.profileCollections}
             hasSelection={/* @once */ props.selected !== undefined}
             selected={props.selected?.(item)}
             onClick={() => props.onClick?.(item)}

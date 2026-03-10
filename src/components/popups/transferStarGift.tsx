@@ -253,7 +253,7 @@ export default function transferStarGift(gift: MyStarGift, toPeerId?: PeerId): P
         const inputPeer = await rootScope.managers.appPeersManager.getInputPeerById(peerId);
 
         if(Number(saved?.transfer_stars ?? '0') === 0) {
-          await rootScope.managers.appGiftsManager.transferStarGift(gift.input, peerId);
+          await rootScope.managers.appGiftsManager.transferStarGift(gift.input, peerId, gift.ownerId);
           deferred.resolve(true)
         } else {
           const popup = await PopupPayment.create({
@@ -267,6 +267,10 @@ export default function transferStarGift(gift: MyStarGift, toPeerId?: PeerId): P
 
           popup.addEventListener('finish', (result) => {
             if(result === 'paid') {
+              if(gift.ownerId !== undefined) {
+                rootScope.dispatchEvent('star_gift_list_update', {peerId: gift.ownerId});
+              }
+              rootScope.dispatchEvent('star_gift_list_update', {peerId});
               deferred.resolve(true);
             } else {
               deferred.resolve(false);
@@ -283,10 +287,13 @@ export default function transferStarGift(gift: MyStarGift, toPeerId?: PeerId): P
     return deferred;
   }
 
+  const isOwnedByChannel = gift.ownerId && gift.ownerId.isAnyChat();
+
   const popup = PopupElementOld.createPopup(PopupPickUser, {
     placeholder: 'StarGiftTransferTo',
     onSelect: handleSelection,
-    exceptSelf: true,
+    exceptSelf: !isOwnedByChannel,
+    selfPresence: 'StarGiftTransferToMyself',
     filterPeerTypeBy: ['isRegularUser', 'isBroadcast']
   });
 

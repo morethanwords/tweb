@@ -364,6 +364,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       scrollable: this.scrollable,
       onChangeTab: (mediaTab) => {
         transitionSubtitle(c.findIndex((item) => item[0] === mediaTab.type));
+        lastMediaTabType = mediaTab.type;
 
         const timeout = mediaTab.type === 'members' && liteMode.isAvailable('animations') ? 250 : 0;
         setTimeout(() => {
@@ -371,7 +372,6 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         }, timeout);
 
         if(!this.isFirst) {
-          lastMediaTabType = mediaTab.type;
           if(mediaTab.type === 'gifts' || mediaTab.type === 'stories') {
             filterButtonMenuItems(btnMenuButtons).then((items) => {
               this.btnMenu.classList.toggle('hide', items.length === 0);

@@ -229,7 +229,7 @@ export type BroadcastEvents = {
     converted?: boolean,
     wearing?: boolean
   },
-  'my_pinned_stargifts': {gifts: InputSavedStarGift[]},
+  'pinned_stargifts': {peerId: PeerId, gifts: InputSavedStarGift[]},
   'star_gift_list_update': {peerId: PeerId},
   'star_gift_upgrade': {gift: MyStarGift, savedId?: Long, fromMsgId?: number},
 

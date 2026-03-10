@@ -2141,9 +2141,9 @@ export default class AppSearchSuper {
     this.globalPostsSearch.loadMore();
   }
 
-  private loadGifts() {
+  private loadGifts(): Promise<void> {
     const mediaTab = this.mediaTabsMap.get('gifts');
-    if(!mediaTab) return;
+    if(!mediaTab) return Promise.resolve();
 
     if(!this.stargiftsStore) {
       const middleware = this.middleware.get();
@@ -2176,8 +2176,16 @@ export default class AppSearchSuper {
         this.stargiftsActions = actions;
 
         mediaTab.contentTab.append(getFirstChild(giftsList, v => v instanceof Element) as Element);
+
+        if(this.mediaTab?.type === 'gifts') {
+          this.onChangeTab?.(this.mediaTab);
+        }
       });
-      return
+      return Promise.resolve();
+    }
+
+    if(this.stargiftsStore.loading || this.stargiftsStore.loaded) {
+      return Promise.resolve();
     }
 
     return this.stargiftsActions.loadNext();
@@ -2365,6 +2373,10 @@ export default class AppSearchSuper {
   }
 
   private canLoadMediaTab(mediaTab: SearchSuperMediaTab) {
+    if(mediaTab.type === 'gifts') {
+      return !this.stargiftsStore || (!this.stargiftsStore.loading && !this.stargiftsStore.loaded);
+    }
+
     const inputFilter = mediaTab.inputFilter;
     return !this.loaded[mediaTab.type] || (this.historyStorage[inputFilter] && this.usedFromHistory[inputFilter] < this.historyStorage[inputFilter].length);
   }

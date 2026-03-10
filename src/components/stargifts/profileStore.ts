@@ -8,6 +8,7 @@ import {updateStarGift} from '@appManagers/utils/gifts/updateStarGift';
 import {inputStarGiftEquals} from '@appManagers/utils/gifts/inputStarGiftEquals';
 import untrackActions from '@helpers/solid/untrackActions';
 import setBooleanFlag from '@helpers/object/setBooleanFlag';
+import {getCanManagePeerGifts} from '@components/stargifts/canManageGifts';
 
 export const ALL_COLLECTIONS_ID = -1
 
@@ -27,6 +28,7 @@ export interface StarGiftsProfileStore extends Required<StarGiftsFilters> {
   collections: StarGiftCollection[] | undefined
   loading: boolean
   loaded: boolean
+  canManageGifts: boolean
   hasCollections: boolean
 }
 
@@ -52,6 +54,7 @@ export function createProfileGiftsStore(props: {
     items: [],
     loading: false,
     loaded: false,
+    canManageGifts: props.peerId === rootScope.myId,
 
     chosenCollection: ALL_COLLECTIONS_ID,
     sort: 'date',
@@ -70,6 +73,9 @@ export function createProfileGiftsStore(props: {
 
   let currentOffset = '';
   let nextReqId = 0
+  let fetchedCanManageGifts = false;
+
+  const fetchCanManageGifts = () => getCanManagePeerGifts(props.peerId);
 
   async function loadNext(reload = false) {
     if(!reload && (store.loading || store.loaded)) return
@@ -77,23 +83,32 @@ export function createProfileGiftsStore(props: {
 
     const id = ++nextReqId
     const collectionId = store.chosenCollection === ALL_COLLECTIONS_ID ? undefined : store.chosenCollection
-    const res = await rootScope.managers.appGiftsManager.getProfileGifts({
-      peerId: props.peerId,
-      offset: currentOffset,
-      sort: store.sort,
-      unlimited: store.unlimited,
-      limited: store.limited,
-      upgradable: store.upgradable,
-      unique: store.unique,
-      displayed: store.displayed,
-      hidden: store.hidden,
-      withCollections: store.collections === undefined,
-      collectionId,
-      limit: 99 // divisible by 3 to avoid grid jumping
-    });
+    const [res, canManageGifts] = await Promise.all([
+      rootScope.managers.appGiftsManager.getProfileGifts({
+        peerId: props.peerId,
+        offset: currentOffset,
+        sort: store.sort,
+        unlimited: store.unlimited,
+        limited: store.limited,
+        upgradable: store.upgradable,
+        unique: store.unique,
+        displayed: store.displayed,
+        hidden: store.hidden,
+        withCollections: store.collections === undefined,
+        collectionId,
+        limit: 99 // divisible by 3 to avoid grid jumping
+      }),
+      fetchedCanManageGifts ? Promise.resolve(store.canManageGifts) : fetchCanManageGifts()
+    ]);
+
     if(id !== nextReqId) return;
     currentOffset = res.next;
     batch(() => {
+      if(!fetchedCanManageGifts) {
+        fetchedCanManageGifts = true;
+        setStore('canManageGifts', canManageGifts);
+      }
+
       setStore('items', reload ? res.gifts : store.items.concat(res.gifts))
       setStore('loaded', !res.next)
       setStore('loading', false)
@@ -101,13 +116,22 @@ export function createProfileGiftsStore(props: {
         setStore('collections', res.collections)
       }
     })
-    if(collectionId === undefined) {
+    if(
+      collectionId === undefined &&
+      store.unlimited &&
+      store.limited &&
+      store.upgradable &&
+      store.unique &&
+      store.displayed &&
+      store.hidden
+    ) {
       props.onCountChange?.(res.count);
     }
   }
 
   function reload(background = false) {
     currentOffset = ''
+    fetchedCanManageGifts = false
     batch(() => {
       setStore('loading', true)
       setStore('loaded', false)
@@ -197,7 +221,9 @@ export function createProfileGiftsStore(props: {
       }
     });
 
-    listenerSetter.add(rootScope)('my_pinned_stargifts', (event) => {
+    listenerSetter.add(rootScope)('pinned_stargifts', (event) => {
+      if(event.peerId !== props.peerId) return;
+
       const items = unwrap(store.items).slice();
       for(let i = 0; i < items.length; i++) {
         const item = items[i];
