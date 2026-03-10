@@ -1074,6 +1074,8 @@ const lang = {
   'EnableSharing.Reject': 'Reject',
   'EnableSharing.Accept': 'Accept',
   'SharingStillDisabled': 'Sharing in this chat is still disabled',
+  'SharingStillEnabled': 'Sharing in this chat is still enabled',
+  'ReminderScheduled': 'Reminder scheduled in [Saved Messages]().',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -1722,6 +1724,8 @@ const lang = {
   'ScamMessage': 'SCAM',
   'FakeMessage': 'FAKE',
   'TextCopied': 'Text copied to clipboard',
+  'FormattedDate.CopyDate': 'Copy Date',
+  'FormattedDate.DateCopied': 'Date copied to clipboard',
   'PaymentInvoice': 'INVOICE',
   'PaymentTestInvoice': 'TEST INVOICE',
   'PaymentReceipt': 'Receipt',

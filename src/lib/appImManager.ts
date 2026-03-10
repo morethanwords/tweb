@@ -42,7 +42,7 @@ import MEDIA_MIME_TYPES_SUPPORTED from '@environment/mediaMimeTypesSupport';
 import IMAGE_MIME_TYPES_SUPPORTED from '@environment/imageMimeTypesSupport';
 import {NULL_PEER_ID, STARS_CURRENCY} from '@appManagers/constants';
 import telegramMeWebManager from '@lib/telegramMeWebManager';
-import {ONE_DAY} from '@helpers/date';
+import {formatDate, ONE_DAY} from '@helpers/date';
 import TopbarCall from '@components/topbarCall';
 import confirmationPopup from '@components/confirmationPopup';
 import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
@@ -62,7 +62,7 @@ import {AppManagers} from '@lib/managers';
 import uiNotificationsManager from '@lib/uiNotificationsManager';
 import appMediaPlaybackController from '@components/appMediaPlaybackController';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
-import wrapRichText from '@lib/richTextProcessor/wrapRichText';
+import wrapRichText, {ENTITY_ELEMENT_MAP} from '@lib/richTextProcessor/wrapRichText';
 import wrapUrl from '@lib/richTextProcessor/wrapUrl';
 import getUserStatusString from '@components/wrappers/getUserStatusString';
 import getChatMembersString from '@components/wrappers/getChatMembersString';
@@ -136,6 +136,12 @@ import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUserna
 import {usePeer} from '@stores/peers';
 import {untrack} from 'solid-js';
 import showStoriesStealthModePopup from '@components/popups/storiesStealthMode';
+import {ButtonMenuItemOptions, ButtonMenuSync} from '@components/buttonMenu';
+import contextMenuController from '@helpers/contextMenuController';
+import positionMenu from '@helpers/positionMenu';
+import {copyTextToClipboard} from '@helpers/clipboard';
+import PopupSchedule from '@components/popups/schedule';
+import {getFullDate} from '@helpers/date/getFullDate';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -513,6 +519,77 @@ export class AppImManager extends EventListenerBase<{
           }, showDuration);
         },
         useRafs
+      });
+    };
+
+    (window as any).onFormattedDateClick = async(element: HTMLAnchorElement, e: MouseEvent) => {
+      cancelEvent(e);
+
+      const bubble = findUpClassName(element, 'bubble') as HTMLDivElement;
+      if(!bubble) {
+        return;
+      }
+
+      const {mid, peerId} = bubble.dataset;
+      const message = apiManagerProxy.getMessageByPeer(peerId.toPeerId(), +mid);
+      const canForward = await this.managers.appMessagesManager.canForward(message);
+      const entity = ENTITY_ELEMENT_MAP.get(element);
+      const timestamp = (entity as MessageEntity.messageEntityFormattedDate).date;
+      const date = new Date(timestamp * 1000);
+      const dateElement = formatDate(date, {withTime: true});
+      const text = dateElement.textContent;
+
+      const buttons: ButtonMenuItemOptions[] = [{
+        icon: 'calendar',
+        regularText: dateElement,
+        onClick: () => {}
+      }, {
+        icon: 'copy',
+        text: 'FormattedDate.CopyDate',
+        onClick: () => {
+          copyTextToClipboard(text);
+          toastNew({langPackKey: 'FormattedDate.DateCopied'});
+        }
+      }, canForward && {
+        icon: 'scheduled',
+        text: 'Chat.Send.SetReminder',
+        onClick: () => {
+          new PopupSchedule({
+            initDate: date,
+            onPick: (_timestamp: number) => {
+              this.managers.appMessagesManager.forwardMessages({
+                peerId: rootScope.myId,
+                scheduleDate: _timestamp,
+                mids: [message.mid],
+                fromPeerId: message.peerId
+              });
+
+              const {hide} = setQuizHint({
+                icon: 'saved',
+                textElement: i18n('ReminderScheduled', [
+                  anchorCallback(() => {
+                    hide();
+                    this.openScheduled(rootScope.myId);
+                  })
+                ]),
+                appendTo: this.chat.bubbles.container,
+                from: 'top',
+                duration: 5000
+              });
+            }
+          }).show();
+        }
+      }];
+
+      const menu = ButtonMenuSync({buttons: buttons.filter(Boolean)});
+      menu.classList.add('contextmenu');
+
+      document.body.append(menu);
+      positionMenu(e, menu);
+      contextMenuController.openBtnMenu(menu, () => {
+        setTimeout(() => {
+          menu.remove();
+        }, 300);
       });
     };
 

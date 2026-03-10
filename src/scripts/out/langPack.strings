@@ -929,6 +929,8 @@
 "EnableSharing.Reject" = "Reject";
 "EnableSharing.Accept" = "Accept";
 "SharingStillDisabled" = "Sharing in this chat is still disabled";
+"SharingStillEnabled" = "Sharing in this chat is still enabled";
+"ReminderScheduled" = "Reminder scheduled in [Saved Messages]().";
 "GroupsAndChannelsLimitTitle" = "Groups and Channels";
 "GroupsAndChannelsLimitSubtitle" = "Join up to %d channels and large groups";
 "PinChatsLimitTitle" = "Pinned Chats";
@@ -1517,6 +1519,8 @@
 "ScamMessage" = "SCAM";
 "FakeMessage" = "FAKE";
 "TextCopied" = "Text copied to clipboard";
+"FormattedDate.CopyDate" = "Copy Date";
+"FormattedDate.DateCopied" = "Date copied to clipboard";
 "PaymentInvoice" = "INVOICE";
 "PaymentTestInvoice" = "TEST INVOICE";
 "PaymentReceipt" = "Receipt";

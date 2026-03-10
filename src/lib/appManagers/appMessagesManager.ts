@@ -18,7 +18,7 @@ import LazyLoadQueueBase from '@components/lazyLoadQueueBase';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import tsNow from '@helpers/tsNow';
 import {randomLong} from '@helpers/random';
-import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, UrlAuthResult, MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, InputUser, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities, ChannelsSearchPosts, FactCheck, MessageExtendedMedia, SponsoredMessage, MessagesSponsoredMessages, InputGroupCall, TodoItem, TodoCompletion, SearchPostsFlood} from '@layer';
+import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, UrlAuthResult, MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, InputUser, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities, ChannelsSearchPosts, FactCheck, MessageExtendedMedia, SponsoredMessage, MessagesSponsoredMessages, InputGroupCall, TodoItem, TodoCompletion, SearchPostsFlood, UserFull} from '@layer';
 import {ArgumentTypes, InvokeApiOptions, Modify} from '@types';
 import {logger, LogTypes} from '@lib/logger';
 import {ReferenceContext} from '@lib/storages/references';
@@ -2401,20 +2401,17 @@ export class AppMessagesManager extends AppManager {
         media = {
           _: 'messageMediaPhoto',
           photo: this.appPhotosManager.getPhoto((inputMedia.id as InputPhoto.inputPhoto).id),
-          pFlags: {}
+          pFlags: pickKeys(inputMedia.pFlags, ['spoiler'])
         };
         break;
       }
 
       case 'inputMediaDocument': {
         const doc = this.appDocsManager.getDoc((inputMedia.id as InputDocument.inputDocument).id);
-        /* if(doc.sticker && doc.stickerSetInput) {
-          appStickersManager.pushPopularSticker(doc.id);
-        } */
         media = {
           _: 'messageMediaDocument',
           document: doc,
-          pFlags: {}
+          pFlags: pickKeys(inputMedia.pFlags, ['spoiler'])
         };
         break;
       }
@@ -2523,7 +2520,6 @@ export class AppMessagesManager extends AppManager {
       }
 
       const paidStars = options.confirmedPaymentResult?.starsAmount || undefined;
-
       const sendAs = options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined;
       let apiPromise: Promise<any>;
       if(options.viaBotId) {
@@ -2545,7 +2541,8 @@ export class AppMessagesManager extends AppManager {
           media: inputMedia as InputMedia,
           random_id: message.random_id,
           reply_to: options.replyTo,
-          message: '',
+          message: message.message,
+          entities: undefined,
           clear_draft: options.clearDraft,
           schedule_date: options.scheduleDate,
           silent: options.silent,
@@ -6886,11 +6883,16 @@ export class AppMessagesManager extends AppManager {
     }
 
     this.appProfileManager.modifyCachedFullUser(message.peerId.toUserId(), (userFull) => {
-      const key = message.pFlags.out ? 'noforwards_my_enabled' : 'noforwards_peer_enabled';
+      const {pFlags} = userFull;
       if(action.new_value) {
-        userFull.pFlags[key] = true;
+        if(message.pFlags.out) {
+          pFlags.noforwards_my_enabled = true;
+        } else {
+          pFlags.noforwards_peer_enabled = true;
+        }
       } else {
-        delete userFull.pFlags[key];
+        delete pFlags.noforwards_my_enabled;
+        delete pFlags.noforwards_peer_enabled;
       }
     });
   }

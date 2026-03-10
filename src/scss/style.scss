@@ -2644,3 +2644,9 @@ hr {
     transform: var(--original-transform) translateX(1px);
   }
 }
+
+.formatted-date {
+  color: var(--link-color);
+  text-decoration: underline;
+  cursor: pointer;
+}

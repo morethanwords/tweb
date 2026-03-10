@@ -72,6 +72,8 @@ export type WrapRichTextOptions = Partial<{
   textColor?: WrapSomethingOptions['textColor']
 }> & CustomEmojiRendererElementOptions;
 
+export const ENTITY_ELEMENT_MAP: WeakMap<HTMLElement, MessageEntity> = new WeakMap();
+
 function createMarkupFormatting(formatting: string) {
   const element = document.createElement('span');
   element.style.fontFamily = 'markup-' + formatting;
@@ -727,6 +729,18 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
           element.classList.add('is-disabled');
         }
 
+        break;
+      }
+
+      case 'messageEntityFormattedDate': {
+        if(options.noTextFormat) {
+          break;
+        }
+
+        element = document.createElement('span');
+        element.classList.add('formatted-date');
+        element.setAttribute('onclick', 'onFormattedDateClick(this, event)');
+        ENTITY_ELEMENT_MAP.set(element, entity);
         break;
       }
 
