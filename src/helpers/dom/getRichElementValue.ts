@@ -12,16 +12,17 @@
 import {MessageEntity} from '@layer';
 import matchUrlProtocol from '@lib/richTextProcessor/matchUrlProtocol';
 import BOM from '@helpers/string/bom';
+import {ENTITY_ELEMENT_MAP} from '@lib/richTextProcessor/wrapRichText';
 
 export type MarkdownType = 'bold' | 'italic' | 'underline' | 'strikethrough' |
-  'monospace' | 'link' | 'mentionName' | 'spoiler' | 'quote'/*  | 'customEmoji' */;
+  'monospace' | 'link' | 'mentionName' | 'spoiler' | 'quote' | 'date'/*  | 'customEmoji' */;
 export type MarkdownTag = {
   match: string,
   entityName: Extract<
     MessageEntity['_'], 'messageEntityBold' | 'messageEntityUnderline' |
     'messageEntityItalic' | 'messageEntityCode' | 'messageEntityStrike' |
     'messageEntityTextUrl' | 'messageEntityMentionName' | 'messageEntitySpoiler' |
-    'messageEntityBlockquote'/*  | 'messageEntityCustomEmoji' */
+    'messageEntityBlockquote' | 'messageEntityFormattedDate'/*  | 'messageEntityCustomEmoji' */
   >;
 };
 
@@ -86,6 +87,10 @@ export const markdownTags: {[type in MarkdownType]: MarkdownTag} = {
   quote: {
     match: join('[style*="quote"]', '.quote'),
     entityName: 'messageEntityBlockquote'
+  },
+  date: {
+    match: join('[style*="date"]', '.formatted-date'),
+    entityName: 'messageEntityFormattedDate'
   }
   // customEmoji: {
   //   match: '.custom-emoji',
@@ -135,7 +140,25 @@ const BLOCK_TAGS = new Set([
 const BOM_REG_EXP = new RegExp(BOM, 'g');
 export const SELECTION_SEPARATOR = '\x01';
 
-function checkNodeForEntity(node: Node, value: string, entities: MessageEntity[], offset: {offset: number}) {
+export function getFormattedDateEntityByElement(
+  element: HTMLElement,
+  offset: number,
+  length: number
+): MessageEntity.messageEntityFormattedDate {
+  const markup = element.dataset.markup;
+  const date = markup ? +markup.split('-')[1].slice(4) : undefined;
+  return {
+    _: 'messageEntityFormattedDate',
+    pFlags: {},
+    date: 0,
+    ...((ENTITY_ELEMENT_MAP.get(element) as MessageEntity.messageEntityFormattedDate) || {}),
+    ...(date ? {date} : {}),
+    offset,
+    length
+  };
+}
+
+function checkNodeForEntity(node: Node, value: string, entities: MessageEntity[], offset: {offset: number}, line: string[]) {
   const parentElement = node.parentElement;
 
   // let closestTag: MarkdownTag, closestElementByTag: Element, closestDepth = Infinity;
@@ -193,6 +216,15 @@ function checkNodeForEntity(node: Node, value: string, entities: MessageEntity[]
         offset: offset.offset,
         length: value.length
       });
+    } else if(tag.entityName === 'messageEntityFormattedDate') {
+      const entity = getFormattedDateEntityByElement(closest, offset.offset, value.length);
+      const {originalText, fakeText} = closest.dataset;
+      if(originalText) { // * fix the text
+        entity.length = originalText.length + value.length - fakeText.length; // * can have \x02 (quoting), calculating the difference
+        offset.offset += originalText.length - fakeText.length;
+        line[line.length - 1] = line[line.length - 1].replace(fakeText, originalText);
+      }
+      entities.push(entity);
     } /*  else if(tag.entityName === 'messageEntityCustomEmoji') {
       entities.push({
         _: tag.entityName,
@@ -263,7 +295,7 @@ export default function getRichElementValue(
     }
 
     if(entities && nodeValue.length && node.parentNode) {
-      checkNodeForEntity(node, nodeValue, entities, offset);
+      checkNodeForEntity(node, nodeValue, entities, offset, line);
     }
 
     offset.offset += nodeValue.length;
@@ -290,7 +322,7 @@ export default function getRichElementValue(
     const stickerEmoji = node.dataset.stickerEmoji;
 
     if(alt && entities) {
-      checkNodeForEntity(node, alt, entities, offset);
+      checkNodeForEntity(node, alt, entities, offset, line);
     }
 
     if(stickerEmoji && entities) {

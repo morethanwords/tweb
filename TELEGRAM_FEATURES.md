@@ -24,7 +24,7 @@ Legend:
 | Hashtags & cashtags | ✅ | |
 | URLs & hyperlinks | ✅ | |
 | Bot commands | ✅ | |
-| Timestamps in messages | ❌ | `messageEntityTimestamp` |
+| Formatted dates | ✅ | `messageEntityFormattedDate` |
 
 ### 1.2 Message Media Types
 

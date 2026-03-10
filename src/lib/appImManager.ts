@@ -2074,6 +2074,7 @@ export class AppImManager extends EventListenerBase<{
     document.addEventListener('paste', this.onDocumentPaste, true);
     this.attachDragAndDropListeners();
     MarkupTooltip.getInstance().handleSelection();
+    MarkupTooltip.PopupSchedule = PopupSchedule;
   }
 
   private attachDragAndDropListeners() {

@@ -1076,6 +1076,9 @@ const lang = {
   'SharingStillDisabled': 'Sharing in this chat is still disabled',
   'SharingStillEnabled': 'Sharing in this chat is still enabled',
   'ReminderScheduled': 'Reminder scheduled in [Saved Messages]().',
+  'AddDate': 'Add Date',
+  'EditDate': 'Edit Date',
+  'RemoveDate': 'Remove Date',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -1726,6 +1729,63 @@ const lang = {
   'TextCopied': 'Text copied to clipboard',
   'FormattedDate.CopyDate': 'Copy Date',
   'FormattedDate.DateCopied': 'Date copied to clipboard',
+  'FormattedDate.JustNow': 'just now',
+  'FormattedDate.SecondsAgo': {
+    'one_value': '%1$d second ago',
+    'other_value': '%1$d seconds ago'
+  },
+  'FormattedDate.MinutesAgo': {
+    'one_value': '%1$d minute ago',
+    'other_value': '%1$d minutes ago'
+  },
+  'FormattedDate.HoursAgo': {
+    'one_value': '%1$d hour ago',
+    'other_value': '%1$d hours ago'
+  },
+  'FormattedDate.DaysAgo': {
+    'one_value': '%1$d day ago',
+    'other_value': '%1$d days ago'
+  },
+  'FormattedDate.WeeksAgo': {
+    'one_value': '%1$d week ago',
+    'other_value': '%1$d weeks ago'
+  },
+  'FormattedDate.MonthsAgo': {
+    'one_value': '%1$d month ago',
+    'other_value': '%1$d months ago'
+  },
+  'FormattedDate.YearsAgo': {
+    'one_value': '%1$d year ago',
+    'other_value': '%1$d years ago'
+  },
+  'FormattedDate.InSeconds': {
+    'one_value': 'in %1$d second',
+    'other_value': 'in %1$d seconds'
+  },
+  'FormattedDate.InMinutes': {
+    'one_value': 'in %1$d minute',
+    'other_value': 'in %1$d minutes'
+  },
+  'FormattedDate.InHours': {
+    'one_value': 'in %1$d hour',
+    'other_value': 'in %1$d hours'
+  },
+  'FormattedDate.InDays': {
+    'one_value': 'in %1$d day',
+    'other_value': 'in %1$d days'
+  },
+  'FormattedDate.InWeeks': {
+    'one_value': 'in %1$d week',
+    'other_value': 'in %1$d weeks'
+  },
+  'FormattedDate.InMonths': {
+    'one_value': 'in %1$d month',
+    'other_value': 'in %1$d months'
+  },
+  'FormattedDate.InYears': {
+    'one_value': 'in %1$d year',
+    'other_value': 'in %1$d years'
+  },
   'PaymentInvoice': 'INVOICE',
   'PaymentTestInvoice': 'TEST INVOICE',
   'PaymentReceipt': 'Receipt',

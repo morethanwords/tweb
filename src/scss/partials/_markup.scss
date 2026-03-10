@@ -73,3 +73,7 @@
 [data-markup*="spoiler"] {
   background-color: var(--spoiler-draft-background-color);
 }
+
+[data-markup*="date"] {
+  color: var(--link-color);
+}

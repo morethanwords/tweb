@@ -25,7 +25,7 @@ import {IS_FIREFOX} from '@environment/userAgent';
 import CustomEmojiElement, {CustomEmojiElements} from '@lib/customEmoji/element';
 import {CustomEmojiRendererElementOptions, CustomEmojiRendererElement} from '@lib/customEmoji/renderer';
 import {setDirection} from '@helpers/dom/setInnerHTML';
-import {i18n} from '@lib/langPack';
+import I18n, {i18n} from '@lib/langPack';
 import Icon from '@components/icon';
 import {CodeLanguageAliases, highlightCode} from '@/codeLanguages';
 import callbackify from '@helpers/callbackify';
@@ -34,6 +34,10 @@ import {observeResize} from '@components/resizeObserver';
 import createElementFromMarkup from '@helpers/createElementFromMarkup';
 import DotRenderer from '@components/dotRenderer';
 import isMixedScriptUrl from '@helpers/string/isMixedScriptUrl';
+import {createRoot, createSignal, createEffect, onCleanup} from 'solid-js';
+import formatFormattedDate from '@helpers/date/formatFormattedDate';
+import formatRelativeTime from '@helpers/date/formatRelativeTime';
+import tsNow from '@helpers/tsNow';
 
 export type WrapRichTextOptions = Partial<{
   entities: MessageEntity[],
@@ -74,11 +78,11 @@ export type WrapRichTextOptions = Partial<{
 
 export const ENTITY_ELEMENT_MAP: WeakMap<HTMLElement, MessageEntity> = new WeakMap();
 
-function createMarkupFormatting(formatting: string) {
-  const element = document.createElement('span');
-  element.style.fontFamily = 'markup-' + formatting;
+function createMarkupFormatting(formatting: string, element = document.createElement('span')) {
+  const str = 'markup-' + formatting;
+  element.style.fontFamily = str;
   element.classList.add('is-markup');
-  element.dataset.markup = formatting;
+  element.dataset.markup = str;
   return element;
 }
 
@@ -738,9 +742,56 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
         }
 
         element = document.createElement('span');
-        element.classList.add('formatted-date');
-        element.setAttribute('onclick', 'onFormattedDateClick(this, event)');
+        if(options.wrappingDraft) {
+          createMarkupFormatting('date' + entity.date, element);
+        } else {
+          element.classList.add('formatted-date');
+          element.setAttribute('onclick', 'onFormattedDateClick(this, event)');
+        }
+
         ENTITY_ELEMENT_MAP.set(element, entity);
+
+        if(Object.keys(entity.pFlags).length && !options.wrappingDraft) {
+          usedText = true;
+          element.dataset.originalText = fullEntityText;
+          const updateText = (text: string) => {
+            element.dataset.fakeText = text;
+            element.textContent = text;
+          };
+          if(entity.pFlags.relative) {
+            if(options.middleware) {
+              const dispose = createRoot((dispose) => {
+                const [now, setNow] = createSignal(tsNow(true));
+                let timerId: ReturnType<typeof setTimeout>;
+
+                const scheduleUpdate = (ms: number) => {
+                  clearTimeout(timerId);
+                  timerId = setTimeout(() => {
+                    setNow(tsNow(true));
+                  }, ms);
+                };
+
+                createEffect(() => {
+                  const result = formatRelativeTime(entity.date, now());
+                  updateText(I18n.format(result.key, true, result.args));
+                  scheduleUpdate(result.updateInterval);
+                });
+
+                onCleanup(() => clearTimeout(timerId));
+                return dispose;
+              });
+
+              options.middleware.onClean(dispose!);
+            } else {
+              const result = formatRelativeTime(entity.date, tsNow(true));
+              updateText(I18n.format(result.key, true, result.args));
+            }
+          } else {
+            // Static formatted date/time
+            updateText(formatFormattedDate(entity.date, entity.pFlags));
+          }
+        }
+
         break;
       }
 
