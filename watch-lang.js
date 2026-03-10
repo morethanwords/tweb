@@ -89,7 +89,7 @@ const watchLangFile = () => {
   const currentVersion = {value: getCurrentVersion()};
   const isUpdating = {value: false};
 
-  updateVersion(currentVersion.value++);
+  updateVersion(++currentVersion.value);
 
   console.log(`📊 Current version: ${currentVersion.value}`);
 

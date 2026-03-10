@@ -2117,7 +2117,7 @@ export class AppDialogsManager {
       if(lastMessage && !draftMessage && !isRestricted) {
         const media = getMediaFromMessage(lastMessage, true);
         const videoTypes: Set<MyDocument['type']> = new Set(['video', 'gif', 'round']);
-        if(media && (media._ === 'photo' || videoTypes.has(media.type))) {
+        if(media && (media._ === 'photo' || videoTypes.has(media.type)) && !(((lastMessage as Message.message).media) as MessageMedia.messageMediaPhoto).ttl_seconds) {
           const spoiler = ((lastMessage as Message.message).media as MessageMedia.messageMediaPhoto | MessageMedia.messageMediaDocument)?.pFlags?.spoiler;
           const size = choosePhotoSize(media, 20, 20);
 

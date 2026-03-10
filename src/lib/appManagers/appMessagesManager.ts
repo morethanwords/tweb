@@ -5181,16 +5181,7 @@ export class AppMessagesManager extends AppManager {
       }
 
       case 'messageMediaPhoto': {
-        if(media.ttl_seconds) {
-          unsupported = true;
-        } else {
-          media.photo = this.appPhotosManager.savePhoto(media.photo, mediaContext);
-        }
-
-        if(!(media as MessageMedia.messageMediaPhoto).photo) { // * found this bug on test DC
-          delete message[key];
-        }
-
+        media.photo = this.appPhotosManager.savePhoto(media.photo, mediaContext);
         break;
       }
 
@@ -5202,18 +5193,8 @@ export class AppMessagesManager extends AppManager {
       }
 
       case 'messageMediaDocument': {
-        if(media.ttl_seconds) {
-          unsupported = true;
-        } else {
-          const originalDoc = media.document;
-
-          media.document = this.appDocsManager.saveDoc(originalDoc, mediaContext, media.alt_documents);
-
-          if(!media.document && originalDoc._ !== 'documentEmpty') {
-            unsupported = true;
-          }
-        }
-
+        const originalDoc = media.document;
+        media.document = this.appDocsManager.saveDoc(originalDoc, mediaContext, media.alt_documents);
         break;
       }
 
@@ -7761,16 +7742,30 @@ export class AppMessagesManager extends AppManager {
     const peerId = channelId ? channelId.toPeerId(true) : this.findPeerIdByMids(mids);
     for(let i = 0, length = mids.length; i < length; ++i) {
       const mid = mids[i];
-      const message: MyMessage = this.getMessageByPeer(peerId, mid);
+      let message: MyMessage = this.getMessageByPeer(peerId, mid);
       if(message) {
         if(message.pFlags.media_unread) {
-          this.modifyMessage(message, (message) => {
+          message = this.modifyMessage(message, (message) => {
             delete message.pFlags.media_unread;
           });
 
           if(!message.pFlags.out && isMentionUnread(message)) {
             this.modifyCachedMentionsAndSave({peerId, mid, addMention: false});
           }
+        }
+
+        if(((message as Message.message).media as MessageMedia.messageMediaPhoto)?.ttl_seconds) {
+          message = this.modifyMessage(message, (message) => {
+            delete ((message as Message.message).media as MessageMedia.messageMediaPhoto).photo;
+            delete ((message as Message.message).media as MessageMedia.messageMediaDocument).document;
+          });
+
+          this.rootScope.dispatchEvent('message_edit', {
+            message,
+            storageKey: this.getHistoryMessagesStorage(message.peerId).key,
+            peerId,
+            mid: message.mid
+          });
         }
 
         if(getUnreadReactions(message)) {
