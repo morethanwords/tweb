@@ -2873,6 +2873,7 @@ export class AppMessagesManager extends AppManager {
       pending: true,
       effect: options.effect,
       paid_message_stars: options.confirmedPaymentResult?.starsAmount || undefined,
+      schedule_repeat_period: options.scheduleRepeatPeriod || undefined,
       saved_peer_id: options.replyToMonoforumPeerId ? this.appPeersManager.getOutputPeer(options.replyToMonoforumPeerId) : (peerId === this.appPeersManager.peerId ? this.appPeersManager.getOutputPeer(this.appPeersManager.peerId) : undefined),
       media,
       suggested_post: options.suggestedPost ? {
