@@ -15,7 +15,7 @@ import SettingSection from '@components/settingSection';
 import {SliderSuperTab} from '@components/slider';
 import {StoriesProfileList, profileStoriesButtonMenu} from '@components/stories/profileList';
 import {StoriesSelection} from '@components/stories/selection';
-import {StoriesContextActions} from '@components/stories/store';
+import {StoriesContextActions, StoriesContextState} from '@components/stories/store';
 import {createRoot} from 'solid-js';
 import {getFirstChild} from '@solid-primitives/refs';
 
@@ -81,6 +81,7 @@ export default class AppMyStoriesTab extends SliderSuperTab {
 
     const middleware = this.middlewareHelper.get();
     let loadPromise: Promise<any>;
+    let state: StoriesContextState;
 
     createRoot((dispose) => {
       middleware.onClean(() => {
@@ -89,7 +90,7 @@ export default class AppMyStoriesTab extends SliderSuperTab {
         dispose();
       });
 
-      const {render: storiesList, actions, selection, setAlbum} = StoriesProfileList({
+      const {render: storiesList, actions, selection, setAlbum, state: state_} = StoriesProfileList({
         peerId: this.chatId?.toPeerId(true) ?? rootScope.myId,
         pinned: !this.isArchive,
         archive: this.isArchive,
@@ -109,8 +110,13 @@ export default class AppMyStoriesTab extends SliderSuperTab {
       this.storiesActions = actions;
       this.selection = selection;
       this.setAlbum = setAlbum;
+      state = state_;
       loadPromise = this.storiesActions.load();
     });
+
+    this.scrollable.onScrolledBottom = () => {
+      this.storiesActions.load();
+    };
 
     const menuBtn = ButtonMenuToggle({
       listenerSetter: this.listenerSetter,
@@ -121,7 +127,8 @@ export default class AppMyStoriesTab extends SliderSuperTab {
           isArchive: this.isArchive,
           slider: this.slider,
           verify: () => true,
-          onAlbumCreated: (albumId) => this.setAlbum(albumId)
+          onAlbumCreated: (albumId) => this.setAlbum(albumId),
+          canEdit: () => state.canEdit
         }),
         {
           icon: 'select',

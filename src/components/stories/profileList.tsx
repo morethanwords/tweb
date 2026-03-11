@@ -7,10 +7,10 @@
 import {createEffect, createSignal, For, JSX, createMemo, onCleanup, untrack, createReaction, Show, Switch, Match} from 'solid-js';
 import {Portal} from 'solid-js/web';
 import {createStoriesViewer} from '@components/stories/viewer';
-import {Document, MessageMedia, Photo, StoryAlbum, StoryItem} from '@layer';
+import {Document, MessageMedia, Photo, StoryItem} from '@layer';
 import {wrapStoryMedia} from '@components/stories/preview';
 import getMediaThumbIfNeeded from '@helpers/getStrippedThumbIfNeeded';
-import {StoriesContext, useStories, createStoriesStore} from '@components/stories/store';
+import {StoriesContext, useStories, createStoriesStore, StoriesContextState} from '@components/stories/store';
 import Icon from '@components/icon';
 import {ChipTab, ChipTabs} from '@components/chipTabs';
 import {i18n, langPack} from '@lib/langPack';
@@ -49,15 +49,11 @@ import wrapPeerTitle from '../wrappers/peerTitle';
 const ALL_ALBUMS_ID = -1;
 const ADD_ALBUM_ID = -2;
 
-async function canEditStories(peerId: PeerId): Promise<boolean> {
-  return peerId === rootScope.myId || rootScope.managers.appChatsManager.hasRights(peerId.toChatId(), 'edit_stories');
-}
-
 const TEST_ONE = false;
 const TEST_TWO = false;
 
 class StoriesContextMenu {
-  private buttons: (ButtonMenuItemOptions & {verify?: () => boolean | Promise<boolean>})[];
+  private buttons: ButtonMenuItemOptionsVerifiable[];
   private element: HTMLElement;
   private target: HTMLElement;
   private peerId: PeerId;
@@ -69,9 +65,7 @@ class StoriesContextMenu {
     private attachTo: HTMLElement,
     private selection: StoriesSelection | undefined,
     private listenerSetter: ListenerSetter,
-    private pinned: boolean,
-    private getAlbumId: () => number | undefined,
-    private getAlbums: () => StoryAlbum[] | undefined
+    private state: StoriesContextState
   ) {
     attachContextMenuListener({
       element: attachTo,
@@ -142,12 +136,12 @@ class StoriesContextMenu {
       icon: 'archive',
       text: 'Archive',
       onClick: () => managers.appStoriesManager.togglePinned(this.peerId, [this.storyItem.id], false).then(() => toastStoryPinnedToProfile(managers, this.peerId, false)),
-      verify: () => !this.getAlbumId() && this.storyItem?.pFlags.pinned && managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'pin')
+      verify: () => !this.state.albumId && this.storyItem?.pFlags.pinned && managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'pin')
     }, {
       icon: 'unarchive',
       text: 'Unarchive',
       onClick: () => managers.appStoriesManager.togglePinned(this.peerId, [this.storyItem.id], true).then(() => toastStoryPinnedToProfile(managers, this.peerId, true)),
-      verify: () => !this.getAlbumId() && this.storyItem && !this.storyItem.pFlags.pinned && managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'pin')
+      verify: () => !this.state.albumId && this.storyItem && !this.storyItem.pFlags.pinned && managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'pin')
     }, {
       icon: 'pin',
       text: 'ChatList.Context.Pin',
@@ -156,23 +150,23 @@ class StoriesContextMenu {
           toastNew({langPackKey: 'StoriesPinLimit', langPackArguments: [+err.message]});
         }
       }),
-      verify: () => !this.getAlbumId() && this.pinned && this.storyItem?.pinnedIndex === undefined && managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'pin')
+      verify: () => !this.state.albumId && this.state.pinned && this.storyItem?.pinnedIndex === undefined && managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'pin')
     }, {
       icon: 'unpin',
       text: 'ChatList.Context.Unpin',
       onClick: () => managers.appStoriesManager.togglePinnedToTop(this.peerId, [this.storyItem.id], false),
-      verify: () => !this.getAlbumId() && this.pinned && this.storyItem?.pinnedIndex !== undefined && managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'pin')
+      verify: () => !this.state.albumId && this.state.pinned && this.storyItem?.pinnedIndex !== undefined && managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'pin')
     }, createSubmenuTrigger({
       options: {
         icon: 'folder',
         text: 'Stories.Albums.AddToAlbum',
-        verify: () => !this.getAlbumId() && !!(this.getAlbums()?.length) && hasRightsOnSelected('edit')
+        verify: () => !this.state.albumId && !!(this.state.peer?.albums?.length) && hasRightsOnSelected('edit')
       },
       createSubmenu: async() => {
         const selectedIds = getSelectedIds();
         const selectedStories = await managers.appStoriesManager.getStoriesById(this.peerId, selectedIds);
 
-        const buttons: ButtonMenuItemOptions[] = this.getAlbums().map((album) => {
+        const buttons: ButtonMenuItemOptions[] = this.state.peer?.albums.map((album) => {
           const checkboxField = new CheckboxField({
             checked: selectedStories.every((story) => {
               return story?._ === 'storyItem' && !!story.albums?.includes(album.album_id);
@@ -207,15 +201,16 @@ class StoriesContextMenu {
       icon: 'crossround',
       text: 'Stories.Albums.RemoveFromAlbum',
       onClick: () => {
-        const albumId = this.getAlbumId();
+        const albumId = this.state.albumId;
         const storyIds = getSelectedIds()
+        if(this.selection.isSelecting) this.selection.cancelSelection();
         rootScope.managers.appStoriesManager.updateAlbum(this.peerId, albumId, {deleteStories: storyIds}).then(() => {
           toastNew({langPackKey: 'Stories.Albums.Removed', langPackArguments: [storyIds.length]});
         }).catch(() => {
           toastNew({langPackKey: 'Error.AnError'});
         });
       },
-      verify: () => this.getAlbumId() !== undefined && this.storyItem?.pFlags.out
+      verify: () => this.state.albumId !== undefined && hasRightsOnSelected('edit')
     }, {
       icon: 'link',
       text: 'CopyLink',
@@ -254,7 +249,7 @@ class StoriesContextMenu {
       icon: 'select',
       text: 'Message.Context.Select',
       onClick: () => this.selection.toggleByElement(this.target),
-      verify: () => !!this.selection && !this.isSelected && canEditStories(this.peerId)
+      verify: () => !!this.selection && !this.isSelected && this.state.canEdit
     }, {
       icon: 'select',
       text: 'Message.Context.Selection.Clear',
@@ -298,6 +293,7 @@ async function openCreateAlbumPopup(peerId: PeerId): Promise<number | undefined>
 }
 
 function StoriesAlbums(props: {
+  selection?: StoriesSelection,
   onAlbumChange: (albumId: number | undefined) => void,
   peerId: PeerId
 }) {
@@ -313,6 +309,7 @@ function StoriesAlbums(props: {
       });
       return false;
     }
+    if(props.selection?.isSelecting) props.selection.cancelSelection()
     props.onAlbumChange(albumId === ALL_ALBUMS_ID ? undefined : albumId);
   }
 
@@ -328,7 +325,6 @@ function StoriesAlbums(props: {
         contextMenuButtons={async(id_) => {
           const id = Number(id_);
           if(id === ALL_ALBUMS_ID || id === ADD_ALBUM_ID) return [];
-          if(!await canEditStories(props.peerId)) return [];
 
           const album = stories.peer.albums?.find((a) => a.album_id === id);
           if(!album) return [];
@@ -350,11 +346,13 @@ function StoriesAlbums(props: {
             {
               icon: 'add',
               text: 'Stories.Albums.AddStories',
+              verify: () => stories.canEdit,
               onClick: () => openAddToAlbumPopup(props.peerId, id)
             },
             {
               icon: 'edit',
               text: 'Stories.Albums.Rename',
+              verify: () => stories.canEdit,
               onClick: async() => {
                 const inputField = new InputField({
                   maxLength: 64,
@@ -382,6 +380,7 @@ function StoriesAlbums(props: {
             {
               icon: 'delete',
               text: 'Stories.Albums.Delete',
+              verify: () => stories.canEdit,
               danger: true,
               onClick: async() => {
                 try {
@@ -399,7 +398,7 @@ function StoriesAlbums(props: {
                 });
               }
             }
-          ] as ButtonMenuItemOptionsVerifiable[];
+          ];
         }}
       >
         <ChipTab value={ALL_ALBUMS_ID.toString()}>
@@ -407,12 +406,14 @@ function StoriesAlbums(props: {
         </ChipTab>
         <For each={stories.peer.albums}>
           {(album) => (
-            <ChipTab value={album.album_id.toString()}>
-              {wrapEmojiText(album.title)}
+            <ChipTab class="stories-album-chip" value={album.album_id.toString()}>
+              <span class="stories-album-chip-title">
+                {wrapEmojiText(album.title)}
+              </span>
             </ChipTab>
           )}
         </For>
-        <Show when={canEditStories(props.peerId)}>
+        <Show when={stories.canEdit}>
           <ChipTab value={ADD_ALBUM_ID.toString()}>
             <IconTsx icon="add" />
             <I18nTsx key="Stories.Albums.AddAlbum" />
@@ -573,7 +574,7 @@ function StoriesGrid(props: {
         });
       }
 
-      if(element.parentElement && props.pinned && (storyItem as StoryItem.storyItem).pinnedIndex !== undefined) {
+      if(element.parentElement && props.pinned && !stories.albumId && (storyItem as StoryItem.storyItem).pinnedIndex !== undefined) {
         icon ??= Icon('pin2', 'grid-item-pin');
         element.parentElement.append(icon);
       } else if(icon) {
@@ -596,7 +597,7 @@ function StoriesGrid(props: {
   };
 
   const isEmpty = () => stories.peer?.stories?.length === 0;
-  const isLoading = () => !stories.loaded && isEmpty()
+  const isLoading = () => !stories.ready || (!stories.loaded && isEmpty())
 
   let contentRef!: HTMLDivElement;
   const SLIDE_DURATION = 250;
@@ -790,6 +791,7 @@ export function profileStoriesButtonMenu(props: {
   verify: () => boolean,
   isArchive?: boolean,
   onAlbumCreated?: (albumId: number) => void,
+  canEdit?: () => boolean,
 }): ButtonMenuItemOptionsVerifiable[] {
   return [{
     icon: 'archive',
@@ -805,7 +807,7 @@ export function profileStoriesButtonMenu(props: {
     verify: () => (
       props.verify() &&
       !props.isArchive &&
-      canEditStories(props.peerId)
+      (props.canEdit?.() ?? true)
     )
   }, {
     icon: 'folder',
@@ -817,7 +819,7 @@ export function profileStoriesButtonMenu(props: {
     verify: () => (
       props.verify() &&
       !props.isArchive &&
-      canEditStories(props.peerId)
+      (props.canEdit?.() ?? true)
     )
   }];
 }
@@ -870,7 +872,11 @@ export function StoriesProfileList(props: {
     <StoriesContext.Provider value={contextValue}>
       <div ref={containerRef} class="search-super-content-container search-super-content-stories">
         {props.pinned && !props.forPicker && (
-          <StoriesAlbums onAlbumChange={(id) => setAlbumAnimated?.(id)} peerId={props.peerId} />
+          <StoriesAlbums
+            selection={selection}
+            onAlbumChange={(id) => setAlbumAnimated?.(id)}
+            peerId={props.peerId}
+          />
         )}
         <StoriesGrid
           scrollable={props.scrollable}
@@ -879,9 +885,7 @@ export function StoriesProfileList(props: {
               containerRef,
               selection,
               props.listenerSetter,
-              props.pinned,
-              () => state.albumId,
-              () => state.peer?.albums
+              state
             );
 
             if(selection) {
@@ -917,6 +921,7 @@ export function StoriesProfileList(props: {
 
   return {
     render,
+    state,
     actions,
     selection,
     setAlbum: (albumId: number | undefined, skipAnimation = false) => {

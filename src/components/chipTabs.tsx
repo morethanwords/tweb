@@ -9,6 +9,7 @@ import Scrollable from '@components/scrollable2';
 import fastSmoothScroll from '@helpers/fastSmoothScroll';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
+import filterAsync from '../helpers/array/filterAsync';
 
 interface ChipTabsContextValue {
   value: string,
@@ -122,7 +123,12 @@ export function ChipTabs(props: {
           chosenElement = target;
         },
         buttons: [],
-        filterButtons: async() => props.contextMenuButtons(chosenElement.dataset.value)
+        filterButtons: async() => {
+          const buttons = await props.contextMenuButtons(chosenElement.dataset.value)
+          return filterAsync(buttons, async(button) => {
+            return button?.verify ? (await button.verify()) ?? false : true;
+          })
+        }
       })
     })
   }

@@ -995,8 +995,24 @@
     z-index: 3;
     background-color: var(--background-color);
 
+    .stories-album-chip {
+      max-width: 8rem;
+    }
+
     .my-stories-container & {
       top: 0;
+    }
+  }
+
+  .stories-album-chip-title,
+  .stories-album-title {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+    @include text-overflow(true);
+
+    .emoji {
+      max-width: none;
     }
   }
 

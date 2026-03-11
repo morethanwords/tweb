@@ -1190,16 +1190,16 @@ export class InternalLinkProcessor {
     const albumId = +link.id;
 
     if(peerId === rootScope.myId) {
-      const existing = appSidebarLeft.getTab(AppMyStoriesTab);
+      const existing = appSidebarRight.getTab(AppMyStoriesTab);
       if(existing) {
         existing.setAlbum(albumId);
         return;
       }
 
-      const tab = appSidebarLeft.createTab(AppMyStoriesTab);
+      const tab = appSidebarRight.createTab(AppMyStoriesTab);
       await tab.open();
       tab.setAlbum(albumId, true);
-      appImManager.chat?.pop();
+      appSidebarRight.toggleSidebar(true, true);
     } else {
       if(appImManager.chat.peerId !== peerId) {
         await appImManager.setInnerPeer({peerId});
