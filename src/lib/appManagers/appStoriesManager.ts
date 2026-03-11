@@ -862,7 +862,7 @@ export default class AppStoriesManager extends AppManager {
     }
 
     if(slice) {
-      return {count: cache.count, stories: slice};
+      return {count: cachedAlbum.count, stories: slice};
     }
 
     return this.apiManager.invokeApiSingleProcess({
@@ -1376,6 +1376,10 @@ export default class AppStoriesManager extends AppManager {
         return false;
       }
     }
+  }
+
+  public hasRightsMany(peerId: PeerId, storyIds: number[], right: 'send' | 'edit' | 'delete' | 'archive' | 'pin') {
+    return storyIds.every((storyId) => this.hasRights(peerId, storyId, right));
   }
 
   public cantPinDeleteStories(peerId: PeerId, storyIds: number[]) {

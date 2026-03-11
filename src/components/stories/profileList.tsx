@@ -49,7 +49,7 @@ import wrapPeerTitle from '../wrappers/peerTitle';
 const ALL_ALBUMS_ID = -1;
 const ADD_ALBUM_ID = -2;
 
-function canEditStories(peerId: PeerId) {
+async function canEditStories(peerId: PeerId): Promise<boolean> {
   return peerId === rootScope.myId || rootScope.managers.appChatsManager.hasRights(peerId.toChatId(), 'edit_stories');
 }
 
@@ -127,6 +127,17 @@ class StoriesContextMenu {
 
   private init() {
     const managers = rootScope.managers;
+    const getSelectedIds = () => {
+      if(this.selection && this.selection.isSelecting) {
+        return this.selection.getSelectedStoryIds(this.peerId);
+      }
+      return [this.storyItem.id];
+    }
+    const hasRightsOnSelected = (right: 'send' | 'edit' | 'delete' | 'archive' | 'pin') => {
+      const ids = getSelectedIds();
+      return managers.appStoriesManager.hasRightsMany(this.peerId, ids, right);
+    }
+
     this.buttons = [{
       icon: 'archive',
       text: 'Archive',
@@ -155,21 +166,30 @@ class StoriesContextMenu {
       options: {
         icon: 'folder',
         text: 'Stories.Albums.AddToAlbum',
-        verify: () => !this.getAlbumId() && managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'edit') && !!(this.getAlbums()?.length)
+        verify: () => !this.getAlbumId() && !!(this.getAlbums()?.length) && hasRightsOnSelected('edit')
       },
-      createSubmenu: () => {
+      createSubmenu: async() => {
+        const selectedIds = getSelectedIds();
+        const selectedStories = await managers.appStoriesManager.getStoriesById(this.peerId, selectedIds);
+
         const buttons: ButtonMenuItemOptions[] = this.getAlbums().map((album) => {
           const checkboxField = new CheckboxField({
-            checked: !!this.storyItem.albums?.includes(album.album_id)
+            checked: selectedStories.every((story) => {
+              return story?._ === 'storyItem' && !!story.albums?.includes(album.album_id);
+            })
           });
 
+          const span = document.createElement('span');
+          span.classList.add('stories-album-title');
+          span.append(wrapEmojiText(album.title));
+
           return {
-            regularText: album.title,
+            textElement: span,
             onClick: () => {
               const wasChecked = checkboxField.checked;
               checkboxField.checked = !wasChecked;
               rootScope.managers.appStoriesManager.updateAlbum(this.peerId, album.album_id, {
-                [wasChecked ? 'deleteStories' : 'addStories']: [this.storyItem.id]
+                [wasChecked ? 'deleteStories' : 'addStories']: selectedIds
               }).catch(() => {
                 checkboxField.checked = wasChecked;
                 toastNew({langPackKey: 'Error.AnError'});
@@ -188,8 +208,9 @@ class StoriesContextMenu {
       text: 'Stories.Albums.RemoveFromAlbum',
       onClick: () => {
         const albumId = this.getAlbumId();
-        rootScope.managers.appStoriesManager.updateAlbum(this.peerId, albumId, {deleteStories: [this.storyItem.id]}).then(() => {
-          toastNew({langPackKey: 'Stories.Albums.Removed', langPackArguments: [1]});
+        const storyIds = getSelectedIds()
+        rootScope.managers.appStoriesManager.updateAlbum(this.peerId, albumId, {deleteStories: storyIds}).then(() => {
+          toastNew({langPackKey: 'Stories.Albums.Removed', langPackArguments: [storyIds.length]});
         }).catch(() => {
           toastNew({langPackKey: 'Error.AnError'});
         });
@@ -304,10 +325,10 @@ function StoriesAlbums(props: {
         view="surface"
         center
         needIntersectionObserver
-        contextMenuButtons={(id_) => {
+        contextMenuButtons={async(id_) => {
           const id = Number(id_);
           if(id === ALL_ALBUMS_ID || id === ADD_ALBUM_ID) return [];
-          if(!canEditStories(props.peerId)) return [];
+          if(!await canEditStories(props.peerId)) return [];
 
           const album = stories.peer.albums?.find((a) => a.album_id === id);
           if(!album) return [];

@@ -124,6 +124,15 @@ export class StoriesSelection extends AppSelection {
     this.updateElementSelection(element, this.isMidSelected(peerId, mid));
   };
 
+  public getSelectedStoryIds(peerId: PeerId) {
+    const mids = this.selectedMids.get(peerId);
+    if(mids?.size) {
+      return [...mids];
+    }
+
+    return [];
+  }
+
   public onDeleteStoriesClick = async(ids?: number[], peerId?: PeerId) => {
     peerId ??= this.getSelectedStoriesPeerId();
     ids ||= [...this.selectedMids.get(peerId)];

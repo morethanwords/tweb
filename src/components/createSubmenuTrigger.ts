@@ -47,7 +47,7 @@ export default function createSubmenuTrigger({
       level: 2,
       triggerEvent: 'mouseenter',
       canOpen: () => !isDisabled,
-      onClose: options.onClose
+      onClose: onClose
     });
   };
 
