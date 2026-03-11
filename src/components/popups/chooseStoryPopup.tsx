@@ -3,7 +3,8 @@ import safeAssign from '@helpers/object/safeAssign';
 import Scrollable from '@components/scrollable';
 import ListenerSetter from '@helpers/listenerSetter';
 import {StoriesProfileList} from '@components/stories/profileList';
-import {createEffect, createRoot} from 'solid-js';
+import {StoryItem} from '@layer';
+import {createEffect, createRoot, on} from 'solid-js';
 import {getFirstChild} from '@solid-primitives/refs';
 import {i18n} from '@lib/langPack';
 import replaceContent from '@helpers/dom/replaceContent';
@@ -11,24 +12,23 @@ import replaceContent from '@helpers/dom/replaceContent';
 import styles from '@components/popups/chooseStoryPopup.module.scss';
 
 export default class PopupChooseStory extends PopupElement<{
-  finish: (result: {selected: number[]} | null) => void
+  finish: (result: {added: number[], removed: number[]} | null) => void
 }> {
   private peerId: PeerId;
-  private skipAlbumId: number;
+  private albumId: number;
 
   private finished = false;
-  private getSelectedIds: () => number[];
+  private getResult: () => {added: number[], removed: number[]};
 
   constructor(options: {
     peerId: PeerId,
-    skipAlbumId?: number
+    albumId: number
   }) {
     const confirmButton: PopupButton = {
-      langKey: 'Stories.Albums.AddCount',
-      langArgs: [0],
+      langKey: 'Confirm',
       callback: () => {
         this.finished = true;
-        this.dispatchEvent('finish', {selected: this.getSelectedIds()});
+        this.dispatchEvent('finish', this.getResult());
       }
     };
 
@@ -68,14 +68,13 @@ export default class PopupChooseStory extends PopupElement<{
     createRoot((dispose) => {
       this.addEventListener('closeAfterTimeout', dispose as any);
 
-      const {render, selection, actions} = StoriesProfileList({
+      const {render, state, selection, actions} = StoriesProfileList({
         peerId: this.peerId,
-        pinned: true,
+        archive: true,
         scrollable,
         listenerSetter,
         withSelection: true,
-        forPicker: true,
-        skipAlbumId: this.skipAlbumId
+        forPicker: true
       });
 
       const el = getFirstChild(render, (v) => v instanceof Element) as Element;
@@ -85,18 +84,46 @@ export default class PopupChooseStory extends PopupElement<{
 
       selection.toggleSelection(true, true);
 
-      this.getSelectedIds = () => {
-        const mids = selection.selectedMids.get(this.peerId);
-        return mids ? [...mids] : [];
+      // auto-select stories already in the album as they load
+      const originalIds = new Set<number>();
+      createEffect(on(() => state.peer?.stories, (stories) => {
+        if(!stories) return;
+        for(const story of stories) {
+          if(story._ === 'storyItem' && story.albums?.includes(this.albumId) && !originalIds.has(story.id)) {
+            originalIds.add(story.id);
+            if(!selection.isMidSelected(this.peerId, story.id)) {
+              selection.toggleMid(this.peerId, story.id);
+            }
+          }
+        }
+      }));
+
+      scrollable.onScrolledBottom = () => {
+        actions.load();
       };
 
-      createEffect(() => {
-        const count = selection.count();
-        if(confirmButton.element) {
-          replaceContent(confirmButton.element, i18n('Stories.Albums.AddCount', [count]));
-          confirmButton.element.toggleAttribute('disabled', count === 0);
+      this.getResult = () => {
+        const currentMids = selection.selectedMids.get(this.peerId);
+        const current = currentMids ? new Set(currentMids) : new Set<number>();
+        const added: number[] = [];
+        const removed: number[] = [];
+        for(const id of current) {
+          if(!originalIds.has(id)) added.push(id);
         }
-      });
+        for(const id of originalIds) {
+          if(!current.has(id)) removed.push(id);
+        }
+        return {added, removed};
+      };
+
+      createEffect(on(selection.count, () => {
+        const {added, removed} = this.getResult();
+        const changed = added.length || removed.length;
+        if(confirmButton.element) {
+          replaceContent(confirmButton.element, i18n('Confirm'));
+          confirmButton.element.toggleAttribute('disabled', changed === 0 && !originalIds.size);
+        }
+      }));
     });
   }
 }

@@ -13,7 +13,7 @@ import getMediaThumbIfNeeded from '@helpers/getStrippedThumbIfNeeded';
 import {StoriesContext, useStories, createStoriesStore, StoriesContextState} from '@components/stories/store';
 import Icon from '@components/icon';
 import {ChipTab, ChipTabs} from '@components/chipTabs';
-import {i18n, langPack} from '@lib/langPack';
+import {i18n} from '@lib/langPack';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import {PreloaderTsx} from '@components/putPreloader';
 import fastSmoothScroll from '@helpers/fastSmoothScroll';
@@ -425,17 +425,19 @@ function StoriesAlbums(props: {
 }
 
 async function openAddToAlbumPopup(peerId: PeerId, albumId: number) {
-  const popup = PopupElement.createPopup(PopupChooseStory, {peerId, skipAlbumId: albumId});
+  const popup = PopupElement.createPopup(PopupChooseStory, {peerId, albumId});
   popup.show();
 
-  const result = await new Promise<{selected: number[]} | null>((resolve) => {
+  const result = await new Promise<{added: number[], removed: number[]} | null>((resolve) => {
     popup.addEventListener('finish', resolve);
   });
 
-  if(!result?.selected?.length) return;
-  const count = result.selected.length;
-  rootScope.managers.appStoriesManager.updateAlbum(peerId, albumId, {addStories: result.selected}).then(() => {
-    toastNew({langPackKey: 'Stories.Albums.Added', langPackArguments: [count]});
+  if(!result) return;
+  const {added, removed} = result;
+  if(!added.length && !removed.length) return;
+  rootScope.managers.appStoriesManager.updateAlbum(peerId, albumId, {
+    addStories: added.length ? added : undefined,
+    deleteStories: removed.length ? removed : undefined
   }).catch(() => {
     toastNew({langPackKey: 'Error.AnError'});
   });
@@ -833,7 +835,6 @@ export function StoriesProfileList(props: {
   listenerSetter: ListenerSetter
   withSelection?: boolean
   forPicker?: boolean
-  skipAlbumId?: number
   selectionMount?: HTMLElement
   onCountChange?: (count: number) => void
   onReady?: () => void
@@ -844,8 +845,7 @@ export function StoriesProfileList(props: {
     pinned: props.pinned,
     archive: props.archive,
     manualLoad: true,
-    onLoad: props.onLoad,
-    skipAlbumId: props.skipAlbumId
+    onLoad: props.onLoad
   });
   const [state, actions] = contextValue;
 

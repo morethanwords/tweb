@@ -515,7 +515,7 @@ export class AppSelection extends EventListenerBase<{
     return accumulateMapSet(this.selectedMids);
   }
 
-  protected toggleMid(peerId: PeerId, mid: number, unselect?: boolean) {
+  public toggleMid(peerId: PeerId, mid: number, unselect?: boolean) {
     let set = this.selectedMids.get(peerId);
     if(unselect || (unselect === undefined && set?.has(mid))) {
       if(set) {

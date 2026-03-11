@@ -132,8 +132,7 @@ export const createStoriesStore = (props: {
   manualLoad?: boolean,
   onLoad?: (fullLoad: boolean) => void,
   initialAlbumId?: number,
-  singleStory?: boolean,
-  skipAlbumId?: number
+  singleStory?: boolean
 }): StoriesContextValue => {
   const getNearestStory = (
     next: boolean,
@@ -262,9 +261,7 @@ export const createStoriesStore = (props: {
         } else {
           promise = rootScope.managers.appStoriesManager.getStoriesArchive(peerId, loadCount, offsetId);
         }
-        return Promise.all([promise, albumsPromise]).then(([{count, stories: rawStoryItems}, albums]) => {
-          const storyItems = props.skipAlbumId !== undefined ? rawStoryItems.filter((s) => s._ !== 'storyItem' || !s.albums?.includes(props.skipAlbumId)) : rawStoryItems;
-          if(props.skipAlbumId !== undefined) count = Math.max(0, count - (rawStoryItems.length - storyItems.length));
+        return Promise.all([promise, albumsPromise]).then(([{count, stories: storyItems}, albums]) => {
           if(!offsetId && !reload) {
             const peer: StoriesContextPeerState = {
               index: 0,
