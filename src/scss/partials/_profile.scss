@@ -1020,11 +1020,11 @@
     position: relative;
     overflow: clip;
     flex: 1;
-  }
+    display: grid;
 
-  .stories-album-clone {
-    position: absolute;
-    inset: 0;
+    > .stories-album-content {
+      grid-area: 1 / 1;
+    }
   }
 
   .grid-album-placeholder {

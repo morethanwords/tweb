@@ -18,6 +18,7 @@ import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import {PreloaderTsx} from '@components/putPreloader';
 import fastSmoothScroll from '@helpers/fastSmoothScroll';
 import Scrollable from '@components/scrollable';
+import {AnimationList} from '@helpers/solid/animationList';
 import {doubleRaf} from '@helpers/schedulers';
 import {I18nTsx} from '@helpers/solid/i18n';
 import ButtonTsx from '@components/buttonTsx';
@@ -453,40 +454,12 @@ function StoriesGrid(props: {
   onSetAlbumAnimated?: (fn: (albumId: number | undefined) => void) => void
 }) {
   const [stories, actions] = useStories();
-  const [list, setList] = createSignal<JSX.Element>();
-  const [length, setLength] = createSignal(0);
   const [viewerId, setViewerId] = createSignal<number>();
   const items = new Map<number, HTMLElement>();
 
-  let restoreScrollTop: number | null = null;
-  let pendingClone: HTMLElement | null = null;
-
-  const onReady = () => {
-    const list = <For each={stories.peer.stories}>{Item}</For>;
-
-    createEffect(() => {
-      const elements: JSX.Element[] = (list as any)();
-      if(TEST_ONE) elements.length = 1;
-      else if(TEST_TWO) elements.length = 2;
-      const length = elements.length;
-      setLength(length);
-      setList(elements);
-      if(restoreScrollTop !== null) {
-        doubleRaf().then(() => {
-          if(restoreScrollTop !== null && pendingClone) {
-            const diff = restoreScrollTop - props.scrollable.container.scrollTop;
-            props.scrollable.container.scrollTop = restoreScrollTop;
-            pendingClone.style.setProperty('--offset', `${diff}px`);
-            restoreScrollTop = null;
-          }
-        })
-      }
-    });
-
+  createReaction(() => {
     props.onReady?.();
-  };
-
-  createReaction(onReady)(() => stories.ready);
+  })(() => stories.ready);
 
   createEffect(() => {
     const id = viewerId();
@@ -550,7 +523,7 @@ function StoriesGrid(props: {
         items.delete(storyItem.id);
       });
 
-      if(length() === 1) {
+      if(stories.peer.stories.length === 1) {
         const messageMedia = (storyItem as StoryItem.storyItem).media;
         const media = (messageMedia as MessageMedia.messageMediaPhoto).photo as Photo.photo || (messageMedia as MessageMedia.messageMediaDocument).document as Document.document;
         const gotThumb = getMediaThumbIfNeeded({
@@ -601,10 +574,34 @@ function StoriesGrid(props: {
   const isEmpty = () => stories.peer?.stories?.length === 0;
   const isLoading = () => !stories.ready || (!stories.loaded && isEmpty())
 
-  let contentRef!: HTMLDivElement;
   const SLIDE_DURATION = 250;
   const SLIDE_EASING = 'cubic-bezier(.4, 0, .2, 1)';
-  const scrollPositions = new Map<number, number>();
+
+  const [direction, setDirection] = createSignal(0);
+  let scrollDiff = 0;
+
+  const slideKeyframes = (_element: Element, removed: boolean): Keyframe[] => {
+    const dir = direction();
+    const yOffset = scrollDiff ? ` translateY(${scrollDiff}px)` : '';
+    if(removed) {
+      // AnimationList reverses these for exit; Y offset compensates scroll change
+      return [
+        {transform: `translateX(${-dir * 100}%)${yOffset}`},
+        {transform: `translateX(0)${yOffset}`}
+      ];
+    }
+    return [{transform: `translateX(${dir * 100}%)`}, {transform: 'translateX(0)'}];
+  };
+
+  const scrollPositions = new Map<number | undefined, number>();
+  let wrapperRef!: HTMLDivElement;
+
+  const getScrollBase = () => {
+    const searchSuper = wrapperRef?.closest('.search-super') as HTMLElement;
+    if(!searchSuper) return 0;
+    // 0 for "my stories" tab
+    return searchSuper.offsetTop === 0 ? 0 : searchSuper.offsetTop - 56;
+  };
 
   const setAlbumIdAnimated = (albumId: number | undefined) => {
     const albums = stories.peer?.albums;
@@ -612,72 +609,46 @@ function StoriesGrid(props: {
       (albums?.findIndex((a) => a.album_id === stories.albumId) ?? -1);
     const newIndex = albumId === undefined ? -1 :
       (albums?.findIndex((a) => a.album_id === albumId) ?? -1);
-    const direction = newIndex > oldIndex ? 1 : newIndex < oldIndex ? -1 : 0;
+    const dir = newIndex > oldIndex ? 1 : newIndex < oldIndex ? -1 : 0;
 
-    const wrapper = contentRef.parentElement;
     const scrollable = props.scrollable.container;
-    const searchSuper = wrapper.closest('.search-super') as HTMLElement;
-    if(!direction || !contentRef || !scrollable || !searchSuper) {
-      actions.setAlbumId(albumId);
-      return;
-    }
-
-    // ! 0 for "my stories" tab
-    const scrollBase = searchSuper.offsetTop === 0 ? 0 : searchSuper.offsetTop - 56
-    const oldScroll = scrollable.scrollTop - scrollBase;
-    const newScroll = scrollPositions.get(albumId) ?? 0;
+    const scrollBase = getScrollBase();
+    const oldScrollTop = scrollable.scrollTop;
+    const oldScroll = oldScrollTop - scrollBase;
     if(oldScroll >= 0) {
       scrollPositions.set(stories.albumId, Math.max(0, oldScroll));
-      restoreScrollTop = scrollBase + newScroll;
-    } else {
-      fastSmoothScroll({
-        element: searchSuper,
-        container: scrollable,
-        position: 'center',
-        axis: 'y'
-      })
     }
 
-    // lock wrapper height so it doesn't collapse when content changes
-    const wrapperHeight = wrapper.offsetHeight;
-    wrapper.style.minHeight = wrapperHeight + 'px';
-
-    // clone before state change
-    const clone = contentRef.cloneNode(true) as HTMLDivElement;
-    clone.classList.add('stories-album-clone');
-    clone.style.setProperty('--offset', '0px');
-    wrapper.append(clone);
-    pendingClone = clone;
-    // lock clone height
-    clone.style.height = clone.offsetHeight + 'px';
-
-    const cloneAnim = clone.animate([
-      {transform: `translateX(0) translateY(var(--offset))`},
-      {transform: `translateX(${-direction * 100}%) translateY(var(--offset))`}
-    ], {duration: SLIDE_DURATION, easing: SLIDE_EASING, fill: 'forwards'});
-    cloneAnim.onfinish = () => {
-      clone.remove()
-      pendingClone = null;
-    };
-
-    // now mutate state
+    if(dir) setDirection(dir);
     actions.setAlbumId(albumId);
 
-    const anim = contentRef.animate([
-      {transform: `translateX(${direction * 100}%)`},
-      {transform: 'translateX(0)'}
-    ], {duration: SLIDE_DURATION, easing: SLIDE_EASING});
-
-    anim.onfinish = () => {
-      wrapper.style.minHeight = '';
-    };
+    // restore scroll immediately (before paint) and compensate via keyframes Y offset
+    const newScroll = scrollPositions.get(albumId) ?? 0;
+    const targetScrollTop = scrollBase + newScroll;
+    if(oldScroll >= 0) {
+      scrollDiff = targetScrollTop - oldScrollTop;
+      scrollable.scrollTop = targetScrollTop;
+    } else {
+      scrollDiff = 0;
+      const searchSuper = wrapperRef?.closest('.search-super') as HTMLElement;
+      if(searchSuper) {
+        fastSmoothScroll({
+          element: searchSuper,
+          container: scrollable,
+          position: 'center',
+          axis: 'y'
+        });
+      }
+    }
   };
 
   props.onSetAlbumAnimated?.(setAlbumIdAnimated);
 
-  return (
-    <div class="stories-album-wrapper">
-      <div ref={contentRef} class="stories-album-content">
+  // memo keyed on albumId: creates a new element per album so AnimationList can animate the swap
+  const albumContent = createMemo(() => {
+    stories.albumId;
+    return untrack(() => (
+      <div class="stories-album-content">
         <Switch>
           <Match when={isLoading()}>
             <div class="grid-album-placeholder">
@@ -698,13 +669,25 @@ function StoriesGrid(props: {
           <Match when={true}>
             <div
               class="grid"
-              classList={{two: length() === 2, one: length() === 1}}
+              classList={{two: stories.peer.stories.length === 2, one: stories.peer.stories.length === 1}}
             >
-              {list()}
+              <For each={stories.peer.stories}>{Item}</For>
             </div>
           </Match>
         </Switch>
       </div>
+    ));
+  });
+
+  return (
+    <div ref={wrapperRef} class="stories-album-wrapper">
+      <AnimationList
+        animationOptions={{duration: SLIDE_DURATION, easing: SLIDE_EASING}}
+        keyframes={slideKeyframes}
+        mode="replacement"
+      >
+        {albumContent()}
+      </AnimationList>
     </div>
   );
 }
