@@ -43,6 +43,8 @@ import PopupChooseStory from '@components/popups/chooseStoryPopup';
 import createSubmenuTrigger from '@components/createSubmenuTrigger';
 import {toastNew} from '@components/toast';
 import {IconTsx} from '@components/iconTsx';
+import LottieAnimation from '@components/lottieAnimation';
+import lottieLoader from '@lib/rlottie/lottieLoader';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import {handleShareStory} from './share';
 import wrapPeerTitle from '../wrappers/peerTitle';
@@ -657,6 +659,11 @@ function StoriesGrid(props: {
           </Match>
           <Match when={isEmpty() && stories.albumId !== undefined}>
             <div class="grid-album-placeholder">
+              <LottieAnimation
+                lottieLoader={lottieLoader}
+                name="UtyanStories"
+                class="sticker-container"
+              />
               <I18nTsx key="Stories.Albums.EmptyTitle" class="title" />
               <I18nTsx key="Stories.Albums.EmptySubtitle" class="subtitle" />
               <ButtonTsx
