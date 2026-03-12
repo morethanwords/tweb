@@ -36,7 +36,7 @@ export interface StarGiftsProfileActions {
   loadNext: (reload?: boolean) => Promise<void>
   setFilters: (filters: StarGiftsFilters) => void
   deleteCollection: (collectionId: number) => void
-  handleSwipe: (xDiff: number) => boolean
+  handleSwipe: (xDiff: number, setCollectionOverride?: (collectionId: number) => void) => boolean
   updateCollection: (collection: StarGiftCollection, options?: {
     switch: boolean
     reload: boolean
@@ -76,6 +76,8 @@ export function createProfileGiftsStore(props: {
   let fetchedCanManageGifts = false;
 
   const fetchCanManageGifts = () => getCanManagePeerGifts(props.peerId);
+
+  const collectionCache = new Map<number, {items: MyStarGift[], offset: string, loaded: boolean}>();
 
   async function loadNext(reload = false) {
     if(!reload && (store.loading || store.loaded)) return
@@ -145,10 +147,41 @@ export function createProfileGiftsStore(props: {
   const actions: StarGiftsProfileActions = {
     loadNext,
     setFilters: (filters) => {
+      const onlyCollectionChange = Object.keys(filters).length === 1 && filters.chosenCollection !== undefined
+      const switchingCollection = onlyCollectionChange && filters.chosenCollection !== store.chosenCollection
+
+      if(!onlyCollectionChange) {
+        collectionCache.clear()
+      }
+
+      if(switchingCollection) {
+        // save current collection state
+        collectionCache.set(store.chosenCollection, {
+          items: unwrap(store.items),
+          offset: currentOffset,
+          loaded: store.loaded
+        })
+      }
+
       setStore(filters)
+
+      if(switchingCollection) {
+        const cached = collectionCache.get(store.chosenCollection)
+        if(cached) {
+          currentOffset = cached.offset
+          batch(() => {
+            setStore('items', cached.items)
+            setStore('loaded', cached.loaded)
+            setStore('loading', false)
+          })
+          return
+        }
+      }
+
       reload()
     },
     deleteCollection: (collectionId) => {
+      collectionCache.delete(collectionId)
       const deletingChosenCollection = store.chosenCollection === collectionId
 
       batch(() => {
@@ -163,6 +196,7 @@ export function createProfileGiftsStore(props: {
       }
     },
     updateCollection: (collection, options) => {
+      collectionCache.delete(collection.collection_id)
       const needSwitch= options?.switch ?? true
       let needReload = options?.reload ?? needSwitch
 
@@ -184,7 +218,7 @@ export function createProfileGiftsStore(props: {
         reload()
       }
     },
-    handleSwipe: (xDiff: number) => {
+    handleSwipe: (xDiff: number, setCollectionOverride?: (collectionId: number) => void) => {
       if(!store.hasCollections) return false
       const direction = xDiff > 0 ? 1 : -1
 
@@ -196,8 +230,12 @@ export function createProfileGiftsStore(props: {
       const newIndex = currentIndex + direction;
       if(newIndex < -1 || newIndex >= collections$.length) return false
 
-      setStore('chosenCollection', newIndex === -1 ? ALL_COLLECTIONS_ID : collections$[newIndex].collection_id)
-      reload()
+      const newCollectionId = newIndex === -1 ? ALL_COLLECTIONS_ID : collections$[newIndex].collection_id
+      if(setCollectionOverride) {
+        setCollectionOverride(newCollectionId)
+      } else {
+        actions.setFilters({chosenCollection: newCollectionId})
+      }
 
       return true
     }
@@ -207,6 +245,7 @@ export function createProfileGiftsStore(props: {
   const listenerSetter = createListenerSetter()
   onMount(() => {
     listenerSetter.add(rootScope)('star_gift_update', (event) => {
+      collectionCache.clear()
       const items = unwrap(store.items);
       const idx = items.findIndex((it) => inputStarGiftEquals(it, event.input));
       if(idx !== -1) {
@@ -223,6 +262,7 @@ export function createProfileGiftsStore(props: {
 
     listenerSetter.add(rootScope)('pinned_stargifts', (event) => {
       if(event.peerId !== props.peerId) return;
+      collectionCache.clear()
 
       const items = unwrap(store.items).slice();
       for(let i = 0; i < items.length; i++) {
@@ -251,6 +291,7 @@ export function createProfileGiftsStore(props: {
 
     listenerSetter.add(rootScope)('star_gift_list_update', ({peerId}) => {
       if(peerId !== props.peerId) return
+      collectionCache.clear()
 
       // refetch list. wait a bit so that the server can process it.
       setTimeout(() => {

@@ -445,6 +445,7 @@ export default class AppSearchSuper {
 
   public stargiftsStore: StarGiftsProfileStore;
   public stargiftsActions: StarGiftsProfileActions;
+  public stargiftsSetCollection: (collectionId: number) => void;
 
   constructor(options: Pick<
     AppSearchSuper,
@@ -516,7 +517,7 @@ export default class AppSearchSuper {
           const children = Array.from(this.tabsMenu.children) as HTMLElement[];
 
           const prevChild = this.mediaTabs[prevId];
-          if(prevChild.type === 'gifts' && this.stargiftsActions?.handleSwipe(xDiff)) {
+          if(prevChild.type === 'gifts' && this.stargiftsActions?.handleSwipe(xDiff, this.stargiftsSetCollection)) {
             return
           }
 
@@ -2152,7 +2153,7 @@ export default class AppSearchSuper {
 
         const scrollTarget = this.scrollable.container;
 
-        const {render: giftsList, store, actions} = StarGiftsProfileTab({
+        const {render: giftsList, store, actions, setCollection} = StarGiftsProfileTab({
           peerId: this.searchContext.peerId,
           scrollParent: scrollTarget,
           onCountChange: (count) => {
@@ -2174,6 +2175,7 @@ export default class AppSearchSuper {
         }))
         this.stargiftsStore = store;
         this.stargiftsActions = actions;
+        this.stargiftsSetCollection = setCollection;
 
         mediaTab.contentTab.append(getFirstChild(giftsList, v => v instanceof Element) as Element);
 
