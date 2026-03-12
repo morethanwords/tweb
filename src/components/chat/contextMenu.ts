@@ -89,6 +89,8 @@ import prepareTextWithEntitiesForCopying from '@helpers/prepareTextWithEntitiesF
 import {runWithHotReloadGuard} from '@lib/solidjs/runWithHotReloadGuard';
 import {PartialByKeys} from '@types';
 import {ContextMenuDeleteOptionText} from '@components/chat/contextMenuDeleteOptionText';
+import getMarkupInSelection from '@helpers/dom/getMarkupInSelection';
+import isNodeFullyInsideRange from '@helpers/dom/isNodeFullyInsideRange';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -736,7 +738,11 @@ export default class ChatContextMenu {
         this.isTextSelected &&
         !this.isTextFromMultipleMessagesSelected &&
         (!this.chat.peerTranslation.enabled() || this.message.pFlags.out) &&
-        (this.chat.bubbles.canForward(this.message) || this.chat.canSend())
+        (this.chat.bubbles.canForward(this.message) || this.chat.canSend()) &&
+        (() => {
+          const {date} = getMarkupInSelection(['date'], true);
+          return !date.elements[0] || isNodeFullyInsideRange(document.getSelection().getRangeAt(0), date.elements[0].firstChild);
+        })()
     }, {
       icon: 'reply',
       text: 'Reply',

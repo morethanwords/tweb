@@ -67,7 +67,8 @@ export default function getRichSelection(target: HTMLElement) {
     'messageEntityStrike',
     'messageEntitySpoiler',
     'messageEntityCustomEmoji',
-    'messageEntityEmoji'
+    'messageEntityEmoji',
+    'messageEntityFormattedDate'
   ]);
   const {value: valueAfter, entities} = getRichValueWithCaret(container, true);
   const value = valueAfter.slice(startIndex, endIndex);

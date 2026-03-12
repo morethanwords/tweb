@@ -44,6 +44,7 @@ import {AgeVerificationPopup} from '@components/popups/ageVerification';
 import {clearSensitiveSpoilers} from '@components/wrappers/mediaSpoiler';
 import useContentSettings from '@stores/contentSettings';
 import AppPrivacyBirthdayTab from '@components/sidebarLeft/tabs/privacy/birthday';
+import AppPrivacySavedMusicTab from '@components/sidebarLeft/tabs/privacy/savedMusic';
 import ChangeLoginEmailTab from '@components/sidebarLeft/tabs/changeLoginEmail';
 import {wrapEmailPattern} from '@components/popups/emailSetup';
 import IS_WEB_AUTHN_SUPPORTED from '@environment/webAuthn';
@@ -406,6 +407,15 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         listenerSetter: this.listenerSetter
       });
 
+      const savedMusicRow = rowsByKeys['inputPrivacyKeySavedMusic'] = new Row({
+        titleLangKey: 'Privacy.SavedMusicRow',
+        subtitleLangKey: SUBTITLE,
+        clickable: () => {
+          this.slider.createTab(AppPrivacySavedMusicTab).open();
+        },
+        listenerSetter: this.listenerSetter
+      });
+
       const createPremiumTitle = (langKey: LangPackKey) => {
         const fragment = document.createDocumentFragment();
         const icon = Icon('star', 'privacy-premium-icon');
@@ -497,7 +507,8 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         groupChatsAddRow,
         voicesRow,
         messagesRow,
-        birthdayRow
+        birthdayRow,
+        savedMusicRow
       ].filter(Boolean).map((row) => row.container));
       this.scrollable.append(section.container);
 

@@ -588,6 +588,10 @@ const lang = {
   'ContactNoteRowDesc': 'only visible to you',
   'SuggestBirthdayRow': 'Suggest Date of Birth',
   'Privacy.BirthdayCaption': 'You can restrict who can see your birthday with granular precision.',
+  'PrivacySavedMusic': 'Saved Music',
+  'Privacy.SavedMusicRow': 'Who can see my saved music?',
+  'Privacy.SavedMusic': 'Who can see my saved music',
+  'Privacy.SavedMusicCaption': 'You can restrict who can see your saved music playlist with granular precision.',
   'PrivacySettings.Messages.PremiumError': 'Only subscribers of [Telegram Premium]() can restrict receiving messages.',
   'Chat.PremiumRequired': 'Subscribe to **Premium** to message **%s**.',
   'Chat.PremiumRequiredButton': 'Get Premium',
@@ -1074,6 +1078,23 @@ const lang = {
   'EnableSharing.Reject': 'Reject',
   'EnableSharing.Accept': 'Accept',
   'SharingStillDisabled': 'Sharing in this chat is still disabled',
+  'SharingStillEnabled': 'Sharing in this chat is still enabled',
+  'ReminderScheduled': 'Reminder scheduled in [Saved Messages]().',
+  'AddDate': 'Add Date',
+  'EditDate': 'Edit Date',
+  'RemoveDate': 'Remove Date',
+  'SelfDestructingOnMobile.Photo.You': 'You sent a self-destructing photo.',
+  'SelfDestructingOnMobile.Video.You': 'You sent a self-destructing video.',
+  'SelfDestructingOnMobile.Voice.You': 'You sent a self-destructing voice message.',
+  'SelfDestructingOnMobile.Round.You': 'You sent a self-destructing round message.',
+  'SelfDestructingOnMobile.Photo': '%s sent you a self-destructing photo. Please view it on your mobile.',
+  'SelfDestructingOnMobile.Video': '%s sent you a self-destructing video. Please view it on your mobile.',
+  'SelfDestructingOnMobile.Voice': '%s sent you a self-destructing voice message. Please view it on your mobile.',
+  'SelfDestructingOnMobile.Round': '%s sent you a self-destructing round message. Please view it on your mobile.',
+  'SelfDestructingOnMobile.Photo.Expired': 'Expired photo',
+  'SelfDestructingOnMobile.Video.Expired': 'Expired video',
+  'SelfDestructingOnMobile.Voice.Expired': 'Expired voice message',
+  'SelfDestructingOnMobile.Round.Expired': 'Expired video message',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -1722,6 +1743,65 @@ const lang = {
   'ScamMessage': 'SCAM',
   'FakeMessage': 'FAKE',
   'TextCopied': 'Text copied to clipboard',
+  'FormattedDate.CopyDate': 'Copy Date',
+  'FormattedDate.DateCopied': 'Date copied to clipboard',
+  'FormattedDate.JustNow': 'just now',
+  'FormattedDate.SecondsAgo': {
+    'one_value': '%1$d second ago',
+    'other_value': '%1$d seconds ago'
+  },
+  'FormattedDate.MinutesAgo': {
+    'one_value': '%1$d minute ago',
+    'other_value': '%1$d minutes ago'
+  },
+  'FormattedDate.HoursAgo': {
+    'one_value': '%1$d hour ago',
+    'other_value': '%1$d hours ago'
+  },
+  'FormattedDate.DaysAgo': {
+    'one_value': '%1$d day ago',
+    'other_value': '%1$d days ago'
+  },
+  'FormattedDate.WeeksAgo': {
+    'one_value': '%1$d week ago',
+    'other_value': '%1$d weeks ago'
+  },
+  'FormattedDate.MonthsAgo': {
+    'one_value': '%1$d month ago',
+    'other_value': '%1$d months ago'
+  },
+  'FormattedDate.YearsAgo': {
+    'one_value': '%1$d year ago',
+    'other_value': '%1$d years ago'
+  },
+  'FormattedDate.InSeconds': {
+    'one_value': 'in %1$d second',
+    'other_value': 'in %1$d seconds'
+  },
+  'FormattedDate.InMinutes': {
+    'one_value': 'in %1$d minute',
+    'other_value': 'in %1$d minutes'
+  },
+  'FormattedDate.InHours': {
+    'one_value': 'in %1$d hour',
+    'other_value': 'in %1$d hours'
+  },
+  'FormattedDate.InDays': {
+    'one_value': 'in %1$d day',
+    'other_value': 'in %1$d days'
+  },
+  'FormattedDate.InWeeks': {
+    'one_value': 'in %1$d week',
+    'other_value': 'in %1$d weeks'
+  },
+  'FormattedDate.InMonths': {
+    'one_value': 'in %1$d month',
+    'other_value': 'in %1$d months'
+  },
+  'FormattedDate.InYears': {
+    'one_value': 'in %1$d year',
+    'other_value': 'in %1$d years'
+  },
   'PaymentInvoice': 'INVOICE',
   'PaymentTestInvoice': 'TEST INVOICE',
   'PaymentReceipt': 'Receipt',
@@ -3227,6 +3307,7 @@ const lang = {
   'Chat.Send.WithoutSound': 'Send Without Sound',
   'Chat.Send.SetReminder': 'Set a Reminder',
   'Chat.Send.ScheduledMessage': 'Schedule Message',
+  'Chat.Send.WithCaption': 'Send GIF with caption',
   'Chat.SendAs.PersonalAccount': 'personal account',
   'Chat.UnpinAllMessagesConfirmation': {
     'one_value': 'Do you want to unpin %d message in this chat?',
@@ -3469,6 +3550,10 @@ const lang = {
   'PreviewSender.SendVideo': {
     'one_value': 'Send Video',
     'other_value': 'Send %d Videos'
+  },
+  'PreviewSender.SendGif': {
+    'one_value': 'Send GIF',
+    'other_value': 'Send %d GIFs'
   },
   'PrivacyAndSecurity.Item.On': 'On',
   'PrivacyAndSecurity.Item.Off': 'Off',

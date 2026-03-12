@@ -22,8 +22,6 @@ export default function useFinalTransform() {
 
   const isCropping = createMemo(() => editorState.currentTab === 'crop');
 
-  const [cropTabAnimationProgress, setCropTabAnimationProgress] = createSignal(0);
-
   let isFirstEffect = true;
   createEffect(
     on(isCropping, () => {
@@ -34,9 +32,15 @@ export default function useFinalTransform() {
 
       editorState.isMoving = true;
 
-      const cancel = animateValue(cropTabAnimationProgress(), isCropping() ? 1 : 0, 200, setCropTabAnimationProgress, {
-        onEnd: () => editorState.isMoving = false
-      });
+      const cancel = animateValue(
+        editorState.cropTabAnimationProgress,
+        isCropping() ? 1 : 0,
+        200,
+        (value) => editorState.cropTabAnimationProgress = value,
+        {
+          onEnd: () => editorState.isMoving = false
+        }
+      );
 
       onCleanup(cancel);
     })
@@ -82,7 +86,7 @@ export default function useFinalTransform() {
     return lerpArray(
       mediaState.translation.map((x) => x * fromCroppedScale - x),
       [0, cropOffset().left + cropOffset().height / 2 - h / 2],
-      cropTabAnimationProgress()
+      editorState.cropTabAnimationProgress
     ) as NumberPair;
   });
 
@@ -97,8 +101,8 @@ export default function useFinalTransform() {
   }
 
   createEffect(
-    on(cropTabAnimationProgress, () => {
-      if([0, 1].includes(cropTabAnimationProgress())) updatePrevValues();
+    on(() => editorState.cropTabAnimationProgress, () => {
+      if([0, 1].includes(editorState.cropTabAnimationProgress)) updatePrevValues();
     })
   );
   createEffect(
@@ -162,12 +166,12 @@ export default function useFinalTransform() {
 
     let {fromCroppedScale, toCropScale, snappedImageScale} = additionalImageScales();
 
-    toCropScale *= lerp(fromCroppedScale, 1, cropTabAnimationProgress());
+    toCropScale *= lerp(fromCroppedScale, 1, editorState.cropTabAnimationProgress);
 
     // const cropTranslation = lerpArray(
     //   translation().map((x) => x * fromCroppedScale - x),
     //   [0, cropOffset().left + cropOffset().height / 2 - h / 2],
-    //   cropTabAnimationProgress()
+    //   editorState.cropTabAnimationProgress
     // );
     // console.log('cropTranslation', cropTranslation)
 

@@ -11,7 +11,7 @@ import htmlToDocumentFragment from '@helpers/dom/htmlToDocumentFragment';
 import {getRestrictionReason} from '@helpers/restrictions';
 import escapeRegExp from '@helpers/string/escapeRegExp';
 import limitSymbols from '@helpers/string/limitSymbols';
-import {Message, DocumentAttribute, DraftMessage} from '@layer';
+import {Message, DocumentAttribute, DraftMessage, MessageMedia, Document, Photo} from '@layer';
 import {MyDocument} from '@appManagers/appDocsManager';
 import {MyDraftMessage} from '@appManagers/appDraftsManager';
 import {MyMessage} from '@appManagers/appMessagesManager';
@@ -81,6 +81,7 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
   const getMyId = () => options.managers ? options.managers.rootScope.getMyId() : rootScope.myId;
 
   const isRestricted = isMessageRestricted(message as any);
+  const isSelfDestructingMedia = !!((message as Message.message).media as MessageMedia.messageMediaPhoto)?.ttl_seconds;
 
   const someRichTextOptions: WrapRichTextOptions = {
     ...options,
@@ -92,23 +93,23 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
   let entities = (message as Message.message).totalEntities ?? (message as DraftMessage.draftMessage).entities;
   if((message as Message.message).media && !isRestricted) {
     assumeType<Message.message>(message);
-    let usingFullGrouepd = true;
+    let usingFullGrouped = true;
     if(message.grouped_id) {
       if(usingMids) {
         const mids = await appMessagesManager.getMidsByMessage(message);
         if(usingMids.length === mids.length) {
           for(const mid of mids) {
             if(!usingMids.includes(mid)) {
-              usingFullGrouepd = false;
+              usingFullGrouped = false;
               break;
             }
           }
         } else {
-          usingFullGrouepd = false;
+          usingFullGrouped = false;
         }
       }
 
-      if(usingFullGrouepd) {
+      if(usingFullGrouped) {
         const groupedText = await appMessagesManager.getGroupedText(message.grouped_id);
         options.text = groupedText?.message || '';
         entities = groupedText?.totalEntities || [];
@@ -119,15 +120,33 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
         }
       }
     } else {
-      usingFullGrouepd = false;
+      usingFullGrouped = false;
+    }
+
+    async function addSelfDestructingMediaPart(
+      langPackKeyPart: 'Photo' | 'Video' | 'Voice' | 'Round',
+      media: Photo | Document
+    ) {
+      const {out} = (message as Message.message).pFlags;
+      addPart(
+        `SelfDestructingOnMobile.${langPackKeyPart}${!media ? '.Expired' : (out ? '.You' : '')}`,
+        undefined,
+        [!out && await wrapPeerTitle({peerId: (message as Message.message).fromId})]
+      );
+      options.text = '';
+      entities = [];
     }
 
     let i = 1;
-    if((!usingFullGrouepd && !withoutMediaType) || !options.text) {
+    if((!usingFullGrouped && !withoutMediaType) || !options.text || isSelfDestructingMedia) {
       const media = message.media;
       switch(media?._) {
         case 'messageMediaPhoto':
-          addPart('AttachPhoto');
+          if(isSelfDestructingMedia) {
+            await addSelfDestructingMediaPart('Photo', media.photo);
+          } else {
+            addPart('AttachPhoto');
+          }
           break;
         case 'messageMediaDice':
           addPart(undefined, plain ? media.emoticon : wrapEmojiText(media.emoticon));
@@ -166,14 +185,26 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
         case 'messageMediaDocument': {
           const document = media.document as MyDocument;
 
-          if(document.type === 'video') {
-            addPart('AttachVideo');
-          } else if(document.type === 'voice') {
-            addPart('AttachAudio');
+          if(document?.type === 'video' || media.pFlags.video) {
+            if(isSelfDestructingMedia) {
+              await addSelfDestructingMediaPart('Video', document);
+            } else {
+              addPart('AttachVideo');
+            }
+          } else if(document?.type === 'voice' || media.pFlags.voice) {
+            if(isSelfDestructingMedia) {
+              await addSelfDestructingMediaPart('Voice', document);
+            } else {
+              addPart('AttachAudio');
+            }
+          } else if(document?.type === 'round' || media.pFlags.round) {
+            if(isSelfDestructingMedia) {
+              await addSelfDestructingMediaPart('Round', document);
+            } else {
+              addPart('AttachRound');
+            }
           } else if(document.type === 'gif') {
             addPart('AttachGif');
-          } else if(document.type === 'round') {
-            addPart('AttachRound');
           } else if(document.type === 'sticker') {
             const i = parts.length;
             if(document.stickerEmojiRaw) {

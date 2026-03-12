@@ -897,7 +897,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
       }
       case 'messageActionNoForwardsToggle': {
         if(action.new_value === action.prev_value) {
-          langPackKey = 'SharingStillDisabled';
+          langPackKey = action.new_value ? 'SharingStillEnabled' : 'SharingStillDisabled';
         } else {
           langPackKey = `Chat.Service.NoForwardsToggle${message.pFlags.out ? '.You' : ''}.${action.new_value ? 'Enabled' : 'Disabled'}` as const;
         }

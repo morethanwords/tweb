@@ -24,7 +24,7 @@ Legend:
 | Hashtags & cashtags | ✅ | |
 | URLs & hyperlinks | ✅ | |
 | Bot commands | ✅ | |
-| Timestamps in messages | ❌ | `messageEntityTimestamp` |
+| Formatted dates | ✅ | `messageEntityFormattedDate` |
 
 ### 1.2 Message Media Types
 
@@ -36,11 +36,11 @@ Legend:
 | Voice messages (audio notes) | ✅ | |
 | Documents / files | ✅ | |
 | Stickers (static, animated, video) | ✅ | WebP, TGS/Lottie, WebM |
-| GIFs | ⚠️ | No captions / sending with caption |
+| GIFs | ✅ | |
 | Location sharing (static) | ✅ | |
 | Live location sharing | ⚠️ | Display only, no GPS sending from web |
 | Contacts (vCard) | ✅ | |
-| Polls (regular & quiz) | ⚠️ | No voting time (`appPollsManager`) |
+| Polls (regular & quiz) | ✅ | `appPollsManager` |
 | Dice / animated random | ✅ | All dice emoji types |
 | Games (HTML5 inline) | ❌ | |
 | Invoices / payment requests | ✅ | |
@@ -79,7 +79,7 @@ Legend:
 | Suggested post actions | ✅ | |
 | Gift TON | ✅ | |
 | Discussion started | ✅ | |
-| No-forwards toggle | ❌ | |
+| No-forwards toggle | ✅ | |
 
 ### 1.4 Message Features
 

@@ -19,6 +19,7 @@ type LocalDOMRect = {
 
 type OpenMediaEditorFromMediaArgs = Omit<MediaEditorProps, 'onCanvasReady' | 'onImageRendered'> & SpawnImageCanvasArgs;
 type OpenMediaEditorFromMediaNoAnimationArgs = Omit<MediaEditorProps, 'onCanvasReady' | 'onImageRendered'> & Omit<SpawnImageCanvasArgs, 'rect'>;
+type OpenMediaEditorFromMediaRawArgs = Omit<MediaEditorProps, 'onCanvasReady' | 'onImageRendered'>;
 
 export function openMediaEditorFromMedia({
   source,
@@ -70,6 +71,14 @@ export function openMediaEditorFromMediaNoAnimation({
         await removeWithFade(spawnedImageCanvas.imageCanvas);
       }
     }
+  }, SolidJSHotReloadGuardProvider);
+}
+
+export function openMediaEditorFromMediaRaw(args: OpenMediaEditorFromMediaRawArgs) {
+  openMediaEditor({
+    ...args,
+    onCanvasReady: async() => {},
+    onImageRendered: () => {}
   }, SolidJSHotReloadGuardProvider);
 }
 

@@ -18,7 +18,7 @@ import LazyLoadQueueBase from '@components/lazyLoadQueueBase';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import tsNow from '@helpers/tsNow';
 import {randomLong} from '@helpers/random';
-import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, UrlAuthResult, MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, InputUser, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities, ChannelsSearchPosts, FactCheck, MessageExtendedMedia, SponsoredMessage, MessagesSponsoredMessages, InputGroupCall, TodoItem, TodoCompletion, SearchPostsFlood} from '@layer';
+import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, UrlAuthResult, MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, InputUser, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities, ChannelsSearchPosts, FactCheck, MessageExtendedMedia, SponsoredMessage, MessagesSponsoredMessages, InputGroupCall, TodoItem, TodoCompletion, SearchPostsFlood, UserFull} from '@layer';
 import {ArgumentTypes, InvokeApiOptions, Modify} from '@types';
 import {logger, LogTypes} from '@lib/logger';
 import {ReferenceContext} from '@lib/storages/references';
@@ -1556,37 +1556,27 @@ export class AppMessagesManager extends AppManager {
       attachType
     } = documentAndMeta;
 
-    if(message && mediaUnread) message.pFlags.media_unread = true;
+    if(message && mediaUnread) {
+      message.pFlags.media_unread = true;
+    }
 
     this.log('sendFile', file, fileType);
     this.log('sendFile', attachType, apiFileName, file.type, options);
 
     const sentDeferred = deferredPromise<InputMedia>();
-    // sentDeferred.cancel = () => {
-    //   const error = new Error('Download canceled');
-    //   error.name = 'AbortError';
-    //   sentDeferred.reject(error);
 
-    //   if(uploadPromise?.cancel) {
-    //     uploadPromise.cancel();
-    //   }
-    // };
-
-    const media: MessageMedia = isDocument ? undefined : {
-      _: photo ? 'messageMediaPhoto' : 'messageMediaDocument',
-      pFlags: {},
-      // preloader,
+    const media: MessageMedia = {
+      _: photo && !isDocument ? 'messageMediaPhoto' : 'messageMediaDocument',
+      pFlags: {
+        ...(options.spoiler ? {spoiler: true} : {})
+      },
       photo,
-      document
+      document: isDocument ? file as Document.document : document
     };
 
-    if(media) {
+    if(!isDocument) {
       defineNotNumerableProperties(media as any, ['promise']);
       (media as any).promise = sentDeferred;
-
-      if(options.spoiler) {
-        (media as MessageMedia.messageMediaPhoto).pFlags.spoiler = true;
-      }
     }
 
     const sendEntities = this.getInputEntities(entities);
@@ -1603,12 +1593,8 @@ export class AppMessagesManager extends AppManager {
 
       message.entities = entities;
       message.message = caption;
-      message.media = isDocument ? {
-        _: 'messageMediaDocument',
-        pFlags: {},
-        document: file
-      } as MessageMedia.messageMediaDocument : media;
-      message.uploadingFileName = [uploadingFileName];
+      message.media = media;
+      message.uploadingFileName = uploadingFileName ? [uploadingFileName] : undefined;
 
       if(options.stars) {
         message.media = this.generateOutgoingPaidMedia([message], options.stars);
@@ -1620,17 +1606,15 @@ export class AppMessagesManager extends AppManager {
       this.rootScope.dispatchEvent('messages_pending');
     };
 
-    let
-      uploaded = false,
-      uploadPromise: ReturnType<ApiFileManager['upload']> = null
-    ;
+    let uploaded = false,
+      uploadPromise: ReturnType<ApiFileManager['upload']>;
 
     const upload = () => {
       if(isDocument) {
         const inputMedia: InputMedia = {
           _: 'inputMediaDocument',
           id: getDocumentInput(file as MyDocument),
-          pFlags: {}
+          pFlags: pickKeys((media as MessageMedia.messageMediaDocument).pFlags, ['spoiler'])
         };
 
         sentDeferred.resolve(inputMedia);
@@ -2417,20 +2401,17 @@ export class AppMessagesManager extends AppManager {
         media = {
           _: 'messageMediaPhoto',
           photo: this.appPhotosManager.getPhoto((inputMedia.id as InputPhoto.inputPhoto).id),
-          pFlags: {}
+          pFlags: pickKeys(inputMedia.pFlags, ['spoiler'])
         };
         break;
       }
 
       case 'inputMediaDocument': {
         const doc = this.appDocsManager.getDoc((inputMedia.id as InputDocument.inputDocument).id);
-        /* if(doc.sticker && doc.stickerSetInput) {
-          appStickersManager.pushPopularSticker(doc.id);
-        } */
         media = {
           _: 'messageMediaDocument',
           document: doc,
-          pFlags: {}
+          pFlags: pickKeys(inputMedia.pFlags, ['spoiler'])
         };
         break;
       }
@@ -2539,7 +2520,6 @@ export class AppMessagesManager extends AppManager {
       }
 
       const paidStars = options.confirmedPaymentResult?.starsAmount || undefined;
-
       const sendAs = options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined;
       let apiPromise: Promise<any>;
       if(options.viaBotId) {
@@ -2561,7 +2541,8 @@ export class AppMessagesManager extends AppManager {
           media: inputMedia as InputMedia,
           random_id: message.random_id,
           reply_to: options.replyTo,
-          message: '',
+          message: message.message,
+          entities: undefined,
           clear_draft: options.clearDraft,
           schedule_date: options.scheduleDate,
           silent: options.silent,
@@ -5200,16 +5181,7 @@ export class AppMessagesManager extends AppManager {
       }
 
       case 'messageMediaPhoto': {
-        if(media.ttl_seconds) {
-          unsupported = true;
-        } else {
-          media.photo = this.appPhotosManager.savePhoto(media.photo, mediaContext);
-        }
-
-        if(!(media as MessageMedia.messageMediaPhoto).photo) { // * found this bug on test DC
-          delete message[key];
-        }
-
+        media.photo = this.appPhotosManager.savePhoto(media.photo, mediaContext);
         break;
       }
 
@@ -5221,18 +5193,8 @@ export class AppMessagesManager extends AppManager {
       }
 
       case 'messageMediaDocument': {
-        if(media.ttl_seconds) {
-          unsupported = true;
-        } else {
-          const originalDoc = media.document;
-
-          media.document = this.appDocsManager.saveDoc(originalDoc, mediaContext, media.alt_documents);
-
-          if(!media.document && originalDoc._ !== 'documentEmpty') {
-            unsupported = true;
-          }
-        }
-
+        const originalDoc = media.document;
+        media.document = this.appDocsManager.saveDoc(originalDoc, mediaContext, media.alt_documents);
         break;
       }
 
@@ -6902,11 +6864,16 @@ export class AppMessagesManager extends AppManager {
     }
 
     this.appProfileManager.modifyCachedFullUser(message.peerId.toUserId(), (userFull) => {
-      const key = message.pFlags.out ? 'noforwards_my_enabled' : 'noforwards_peer_enabled';
+      const {pFlags} = userFull;
       if(action.new_value) {
-        userFull.pFlags[key] = true;
+        if(message.pFlags.out) {
+          pFlags.noforwards_my_enabled = true;
+        } else {
+          pFlags.noforwards_peer_enabled = true;
+        }
       } else {
-        delete userFull.pFlags[key];
+        delete pFlags.noforwards_my_enabled;
+        delete pFlags.noforwards_peer_enabled;
       }
     });
   }
@@ -7775,16 +7742,30 @@ export class AppMessagesManager extends AppManager {
     const peerId = channelId ? channelId.toPeerId(true) : this.findPeerIdByMids(mids);
     for(let i = 0, length = mids.length; i < length; ++i) {
       const mid = mids[i];
-      const message: MyMessage = this.getMessageByPeer(peerId, mid);
+      let message: MyMessage = this.getMessageByPeer(peerId, mid);
       if(message) {
         if(message.pFlags.media_unread) {
-          this.modifyMessage(message, (message) => {
+          message = this.modifyMessage(message, (message) => {
             delete message.pFlags.media_unread;
           });
 
           if(!message.pFlags.out && isMentionUnread(message)) {
             this.modifyCachedMentionsAndSave({peerId, mid, addMention: false});
           }
+        }
+
+        if(((message as Message.message).media as MessageMedia.messageMediaPhoto)?.ttl_seconds) {
+          message = this.modifyMessage(message, (message) => {
+            delete ((message as Message.message).media as MessageMedia.messageMediaPhoto).photo;
+            delete ((message as Message.message).media as MessageMedia.messageMediaDocument).document;
+          });
+
+          this.rootScope.dispatchEvent('message_edit', {
+            message,
+            storageKey: this.getHistoryMessagesStorage(message.peerId).key,
+            peerId,
+            mid: message.mid
+          });
         }
 
         if(getUnreadReactions(message)) {

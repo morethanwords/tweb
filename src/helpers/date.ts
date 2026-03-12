@@ -152,7 +152,7 @@ export function formatFullSentTimeRaw(timestamp: number, options: {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
-        ...(options.combined ? formatTimeOptions: {})
+        ...(options.combined ? formatTimeOptions : {})
       }
     }).element;
     // dateStr = months[time.getMonth()].slice(0, 3) + ' ' + time.getDate() + ', ' + time.getFullYear();
@@ -162,7 +162,7 @@ export function formatFullSentTimeRaw(timestamp: number, options: {
       options: {
         month: 'short',
         day: 'numeric',
-        ...(options.combined ? formatTimeOptions: {})
+        ...(options.combined ? formatTimeOptions : {})
       }
     }).element;
     // dateStr = months[time.getMonth()].slice(0, 3) + ' ' + time.getDate();

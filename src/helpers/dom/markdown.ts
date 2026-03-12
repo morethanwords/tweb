@@ -109,7 +109,7 @@ export function undoRedo(input: HTMLElement, e: Event, type: 'undo' | 'redo', ne
   }
 }
 
-export function applyMarkdown(input: HTMLElement, type: MarkdownType, href?: string) {
+export function applyMarkdown({input, type, href, dateSuffix}: {input: HTMLElement, type: MarkdownType, href?: string, dateSuffix?: string}) {
   // const MONOSPACE_FONT = 'var(--font-monospace)';
   // const SPOILER_FONT = 'spoiler';
   const commandsMap: Partial<{[key in typeof type]: string | (() => void)}> = {
@@ -127,7 +127,7 @@ export function applyMarkdown(input: HTMLElement, type: MarkdownType, href?: str
     const isCombineable = canCombine.includes(type);
     const k = (isCombineable ? canCombine : [type]).filter((type) => hasMarkup[type]?.fully);
     // const k = (isCombineable && false ? canCombine : [type]).filter((type) => hasMarkup[type]?.active);
-    const isRemoving = !!(indexOfAndSplice(k, type) || hasMarkup[type]?.partly);
+    const isRemoving = !!(indexOfAndSplice(k, type) || hasMarkup[type]?.partly) && !dateSuffix;
     if(!isRemoving) {
       k.push(type);
     }
@@ -147,7 +147,7 @@ export function applyMarkdown(input: HTMLElement, type: MarkdownType, href?: str
     if(!k.length) {
       ret = resetCurrentFontFormatting();
     } else {
-      ret = document.execCommand('fontName', false, joinMarkupNames(k));
+      ret = document.execCommand('fontName', false, joinMarkupNames(k) + (dateSuffix || ''));
     }
 
     processCurrentFormatting(
@@ -159,7 +159,8 @@ export function applyMarkdown(input: HTMLElement, type: MarkdownType, href?: str
   };
 
   const canCombine: (typeof type)[] = ['bold', 'italic', 'underline', 'strikethrough', 'spoiler', 'quote'];
-  ([...canCombine, 'monospace'] as const).forEach((type) => {
+  const cantCombine: (typeof type)[] = ['monospace', 'date'];
+  [...canCombine, ...cantCombine].forEach((type) => {
     commandsMap[type] = processCommand.bind(null, type);
   });
 
@@ -257,9 +258,9 @@ export function applyMarkdown(input: HTMLElement, type: MarkdownType, href?: str
       executed.push(typeof(command) === 'function' ? command() : document.execCommand(command, false, null));
     }
   } else  */{
-    if(hasMarkup['monospace']?.partly && type === 'link') {
+    if(cantCombine.some((type) => hasMarkup[type]?.partly) && type === 'link') {
       executed.push(resetCurrentFormatting());
-    } else if(hasMarkup['link']?.partly && type === 'monospace') {
+    } else if(hasMarkup['link']?.partly && cantCombine.includes(type)) {
       executed.push(resetLinkFormatting());
     }
 
@@ -363,12 +364,9 @@ export function handleMarkdownShortcut(input: HTMLElement, e: KeyboardEvent) {
     'KeyU': 'underline',
     'KeyS': 'strikethrough',
     'KeyM': 'monospace',
-    'KeyP': 'spoiler'
+    'KeyP': 'spoiler',
+    'KeyK': 'link'
   };
-
-  if(true/* this.appImManager.markupTooltip */) {
-    formatKeys['KeyK'] = 'link';
-  }
 
   const code = e.code;
   const markdownType = formatKeys[code];
@@ -379,7 +377,7 @@ export function handleMarkdownShortcut(input: HTMLElement, e: KeyboardEvent) {
     if(code === 'KeyK') {
       MarkupTooltip.getInstance().showLinkEditor();
     } else {
-      applyMarkdown(input, markdownType);
+      applyMarkdown({input, type: markdownType});
     }
 
     cancelEvent(e); // cancel legacy event

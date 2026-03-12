@@ -89,6 +89,8 @@ const watchLangFile = () => {
   const currentVersion = {value: getCurrentVersion()};
   const isUpdating = {value: false};
 
+  updateVersion(++currentVersion.value);
+
   console.log(`📊 Current version: ${currentVersion.value}`);
 
   // Check if files exist

@@ -42,7 +42,8 @@ export default class PopupSchedule extends PopupDatePicker {
     maxDate?: Date,
     onPick: (timestamp: number) => void,
     canSendWhenOnline?: boolean,
-    btnConfirmLangKey?: LangPackKey
+    btnConfirmLangKey?: LangPackKey,
+    btnDangerLangKey?: LangPackKey
   }) {
     super(
       checkDate(options.initDate, options.canSendWhenOnline !== undefined ? 10 : undefined),
@@ -75,6 +76,16 @@ export default class PopupSchedule extends PopupDatePicker {
 
       attachClickEvent(btnSendWhenOnline, () => {
         options.onPick(SEND_WHEN_ONLINE_TIMESTAMP);
+        this.hide();
+      });
+    }
+
+    if(options.btnDangerLangKey) {
+      const btnDanger = Button('btn-primary btn-secondary btn-primary-transparent danger popup-schedule-secondary text-uppercase', {text: options.btnDangerLangKey});
+      this.body.append(btnDanger);
+
+      attachClickEvent(btnDanger, () => {
+        options.onPick(undefined);
         this.hide();
       });
     }

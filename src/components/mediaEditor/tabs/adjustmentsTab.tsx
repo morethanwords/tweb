@@ -15,7 +15,7 @@ import {createEffect, createMemo, createSignal, on, onCleanup, Show} from 'solid
 const ADJUST_TIMEOUT = 800;
 
 export default function AdjustmentsTab() {
-  const {editorState, mediaState, actions, mediaType} = useMediaEditorContext();
+  const {editorState, mediaState, actions, mediaType, canImageResultInGIF} = useMediaEditorContext();
 
   const isMobile = useIsMobile();
   const cropOffset = useCropOffset();
@@ -52,7 +52,13 @@ export default function AdjustmentsTab() {
     .map(height => ({value: height, label: height + 'p'}))
   );
 
-  const canShowQualityInput = createMemo(() => (mediaType === 'video' || checkIfHasAnimatedStickers(mediaState.resizableLayers)) && steps().length > 1);
+  const willResultInVideo = createMemo(() => {
+    if(mediaType === 'video') return true;
+    if(canImageResultInGIF && checkIfHasAnimatedStickers(mediaState.resizableLayers)) return true;
+    return false;
+  });
+
+  const canShowQualityInput = createMemo(() => willResultInVideo() && steps().length > 1);
 
   return (
     <>

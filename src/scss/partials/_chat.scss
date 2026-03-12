@@ -1280,6 +1280,10 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
       &-subtitle {
         color: var(--secondary-text-color) !important;
         height: 1.125rem;
+
+        .formatted-date {
+          color: inherit;
+        }
       }
 
       .peer-title {
@@ -1627,6 +1631,10 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
   pre {
     display: inline;
     margin: 0;
+  }
+
+  .formatted-date {
+    cursor: text;
   }
 
   @include animation-level(2) {

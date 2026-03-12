@@ -11,12 +11,11 @@ import type Chat from '@components/chat/chat';
 import type {SendFileDetails} from '@appManagers/appMessagesManager';
 import type {ChatRights} from '@appManagers/appChatsManager';
 import PopupElement from '.';
-import Scrollable from '@components/scrollable';
 import {toastNew} from '@components/toast';
 import SendContextMenu from '@components/chat/sendContextMenu';
 import {createPosterFromMedia, createPosterFromVideo} from '@helpers/createPoster';
 import {MyDocument} from '@appManagers/appDocsManager';
-import I18n, {FormatterArguments, i18n, LangPackKey} from '@lib/langPack';
+import {FormatterArguments, i18n, LangPackKey} from '@lib/langPack';
 import calcImageInBox from '@helpers/calcImageInBox';
 import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
@@ -31,6 +30,7 @@ import onMediaLoad from '@helpers/onMediaLoad';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {SEND_WHEN_ONLINE_TIMESTAMP, SERVER_IMAGE_MIME_TYPES, STARS_CURRENCY, THUMB_TYPE_FULL} from '@appManagers/constants';
 import wrapDocument from '@components/wrappers/document';
+import wrapVideo from '@components/wrappers/video';
 import wrapMediaSpoiler, {toggleMediaSpoiler} from '@components/wrappers/mediaSpoiler';
 import {MiddlewareHelper} from '@helpers/middleware';
 import animationIntersector, {AnimationItemGroup} from '@components/animationIntersector';
@@ -79,13 +79,20 @@ import {makeDateFromTimestamp} from '@helpers/date/makeDateFromTimestamp';
 
 
 type SendFileParams = SendFileDetails & {
-  file?: File,
+  file?: File | MyDocument,
   scaledBlob?: Blob,
   itemDiv: HTMLElement,
   mediaSpoiler?: HTMLElement,
   middlewareHelper: MiddlewareHelper,
   editResult?: MediaEditorFinalResult
 };
+
+function getFileMimeType(file: File | Blob | MyDocument): string {
+  if(file instanceof File || file instanceof Blob) {
+    return file.type;
+  }
+  return file.mime_type;
+}
 
 type ConstructorInputFile = {
   file: File;
@@ -130,13 +137,15 @@ export default class PopupNewMedia extends PopupElement {
   private isMediaEditorOpen = false;
 
   private files: File[] = [];
+  private gifDocument: MyDocument;
   private pendingEditResults = new WeakMap<File, MediaEditorFinalResult>;
 
   constructor(
     private chat: Chat,
     inputFiles: (ConstructorInputFile | File)[],
     willAttachType: PopupNewMedia['willAttach']['type'],
-    private ignoreInputValue?: boolean
+    private ignoreInputValue?: boolean,
+    gifDocument?: MyDocument
   ) {
     super('popup-send-photo popup-new-media', {
       closable: true,
@@ -156,6 +165,7 @@ export default class PopupNewMedia extends PopupElement {
     });
 
     this.animationGroup = 'NEW-MEDIA';
+    this.gifDocument = gifDocument;
     this.construct(willAttachType);
   }
 
@@ -169,7 +179,9 @@ export default class PopupNewMedia extends PopupElement {
     ];
 
     const actionsPromises = actions.map((action) => {
-      return peerId.isAnyChat() && !onlyVisible ? rootScope.managers.appChatsManager.hasRights(peerId.toChatId(), action, undefined, threadId ? true : undefined) : true;
+      return peerId.isAnyChat() && !onlyVisible ?
+        rootScope.managers.appChatsManager.hasRights(peerId.toChatId(), action, undefined, threadId ? true : undefined) :
+        true;
     });
 
     const out: {[action in ChatRights]?: boolean} = {};
@@ -617,9 +629,9 @@ export default class PopupNewMedia extends PopupElement {
   private partition(mimeTypes = MEDIA_MIME_TYPES_SUPPORTED) {
     const media: SendFileParams[] = [], files: SendFileParams[] = [], audio: SendFileParams[] = [];
     this.willAttach.sendFileDetails.forEach((d) => {
-      if(mimeTypes.has(d.file.type)) {
+      if(mimeTypes.has(getFileMimeType(d.file))) {
         media.push(d);
-      } else if(AUDIO_MIME_TYPES_SUPPORTED.has(d.file.type as any)) {
+      } else if(AUDIO_MIME_TYPES_SUPPORTED.has(getFileMimeType(d.file) as any)) {
         audio.push(d);
       } else {
         files.push(d);
@@ -660,12 +672,12 @@ export default class PopupNewMedia extends PopupElement {
 
     let good = this.willAttach.type === 'media' && this.hasAnyMedia();
     if(single && good) {
-      good = this.files.length === 1;
+      good = !!this.gifDocument || this.files.length === 1;
     }
 
     if(good) {
       const media = this.willAttach.sendFileDetails
-      .filter((d) => MEDIA_MIME_TYPES_SUPPORTED.has(d.file.type))
+      .filter((d) => MEDIA_MIME_TYPES_SUPPORTED.has(getFileMimeType(d.file)))
       const mediaWithSpoilers = media.filter((d) => d.mediaSpoiler);
 
       good = single ? true : media.length > 1;
@@ -758,7 +770,7 @@ export default class PopupNewMedia extends PopupElement {
     const editResult = params.editResult?.getResult();
     if(!editResult || editResult instanceof Promise) return undefined;
 
-    return this.wrapMediaEditorBlobInFile(params.file, editResult.blob, params.editResult?.isVideo);
+    return this.wrapMediaEditorBlobInFile(params.file as File, editResult.blob, params.editResult?.isVideo);
   }
 
   private async send(force = false) {
@@ -794,19 +806,19 @@ export default class PopupNewMedia extends PopupElement {
       const isBad: (LangPackKey | boolean)[] = sendFileParams.map((params) => {
         const a: [Set<string> | (() => boolean), LangPackKey, ChatRights][] = [
           [AUDIO_MIME_TYPES_SUPPORTED, 'GlobalAttachAudioRestricted', 'send_audios'],
-          [() => !MEDIA_MIME_TYPES_SUPPORTED.has(params.file.type), 'GlobalAttachDocumentsRestricted', 'send_docs']
+          [() => !MEDIA_MIME_TYPES_SUPPORTED.has(getFileMimeType(params.file)), 'GlobalAttachDocumentsRestricted', 'send_docs']
         ];
 
         if(isMedia) {
           a.unshift(
             [IMAGE_MIME_TYPES_SUPPORTED, 'GlobalAttachPhotoRestricted', 'send_photos'],
-            [() => VIDEO_MIME_TYPES_SUPPORTED.has(params.file.type as any) && params.isAnimated, 'GlobalAttachGifRestricted', 'send_gifs'],
+            [() => VIDEO_MIME_TYPES_SUPPORTED.has(getFileMimeType(params.file) as any) && params.isAnimated, 'GlobalAttachGifRestricted', 'send_gifs'],
             [VIDEO_MIME_TYPES_SUPPORTED, 'GlobalAttachVideoRestricted', 'send_videos']
           );
         }
 
         const found = a.find(([verify]) => {
-          return typeof(verify) === 'function' ? verify() : verify.has(params.file.type);
+          return typeof(verify) === 'function' ? verify() : verify.has(getFileMimeType(params.file));
         });
 
         if(found) {
@@ -959,8 +971,8 @@ export default class PopupNewMedia extends PopupElement {
     const {itemDiv} = params;
     itemDiv.classList.add('popup-item-media');
 
-    const file = params.file;
-    const isVideo = file.type.startsWith('video/');
+    const file = params.file as File;
+    const isVideo = getFileMimeType(file).startsWith('video/');
 
     const editResult = params.editResult;
 
@@ -1110,7 +1122,7 @@ export default class PopupNewMedia extends PopupElement {
       const url = params.objectURL = await apiManagerProxy.invoke('createObjectURL', file);
       await renderImageFromUrlPromise(img, url);
 
-      const mimeType = params.file.type as MTMimeType;
+      const mimeType = getFileMimeType(params.file) as MTMimeType;
       const scaled = await this.scaleImageForTelegram(img, mimeType, true);
       if(scaled) {
         params.objectURL = scaled.url;
@@ -1120,7 +1132,7 @@ export default class PopupNewMedia extends PopupElement {
       params.width = img.naturalWidth;
       params.height = img.naturalHeight;
 
-      if(file.type === 'image/gif') {
+      if(getFileMimeType(file) === 'image/gif') {
         params.isAnimated = true;
 
         promise = Promise.all([
@@ -1155,7 +1167,7 @@ export default class PopupNewMedia extends PopupElement {
         const canEditVideo = await supportsVideoEncoding() && file.size <= MAX_EDITABLE_VIDEO_SIZE;
 
         let equalizeIcon: HTMLSpanElement;
-        if(!this.willAttach.stars && file.type !== 'image/gif' && (!isVideo || canEditVideo)) {
+        if(!this.willAttach.stars && getFileMimeType(file) !== 'image/gif' && (!isVideo || canEditVideo)) {
           import('../mediaEditor'); // prefetch
 
           equalizeIcon = Icon('equalizer', itemCls);
@@ -1304,11 +1316,11 @@ export default class PopupNewMedia extends PopupElement {
 
     const editResult = await params.editResult?.getResult();
     const file = editResult ?
-      this.wrapMediaEditorBlobInFile(params.file, editResult.blob, params.editResult?.isVideo) :
-      params.file;
+      this.wrapMediaEditorBlobInFile(params.file as File, editResult.blob, params.editResult?.isVideo) :
+      params.file as File;
 
-    const isPhoto = file.type.startsWith('image/');
-    const isAudio = AUDIO_MIME_TYPES_SUPPORTED.has(file.type as any);
+    const isPhoto = getFileMimeType(file).startsWith('image/');
+    const isAudio = AUDIO_MIME_TYPES_SUPPORTED.has(getFileMimeType(file) as any);
     if(isPhoto || isAudio || file.size < 20e6) {
       params.objectURL ||= await apiManagerProxy.invoke('createObjectURL', file);
     }
@@ -1394,7 +1406,7 @@ export default class PopupNewMedia extends PopupElement {
     itemDiv.append(docDiv);
   }
 
-  private attachFile = (file: File, oldParams?: Partial<SendFileParams>) => {
+  private attachFile = (file: File | MyDocument, oldParams?: Partial<SendFileParams>) => {
     const willAttach = this.willAttach;
     const shouldCompress = this.shouldCompress(file.type);
 
@@ -1412,13 +1424,50 @@ export default class PopupNewMedia extends PopupElement {
     params.middlewareHelper = this.lateMiddlewareHelper.get().create();
     params.itemDiv = itemDiv;
 
-    const promise = shouldCompress ? this.attachMedia(params) : this.attachDocument(params);
+    const promise = this.gifDocument ? this.attachGifDocument(params) : (shouldCompress ? this.attachMedia(params) : this.attachDocument(params));
     willAttach.sendFileDetails.push(params);
     return promise.catch((err) => {
       itemDiv.style.backgroundColor = '#000';
       console.error('error rendering file', err);
     });
   };
+
+  private async attachGifDocument(params: SendFileParams) {
+    const itemDiv = params.itemDiv;
+    itemDiv.classList.add('popup-item-media');
+
+    const doc = params.file as MyDocument;
+    params.width = doc.w;
+    params.height = doc.h;
+    params.duration = doc.duration;
+    params.isAnimated = true;
+
+    const size = calcImageInBox(doc.w, doc.h, MAX_WIDTH, 320);
+    itemDiv.style.width = size.width + 'px';
+    itemDiv.style.height = size.height + 'px';
+
+    const loadPromises: Promise<any>[] = [];
+    await wrapVideo({
+      doc,
+      container: itemDiv as HTMLDivElement,
+      boxWidth: size.width,
+      boxHeight: size.height,
+      lazyLoadQueue: null,
+      noInfo: true,
+      group: this.animationGroup,
+      middleware: params.middlewareHelper.get(),
+      withoutPreloader: true,
+      loadPromises
+    });
+
+    await Promise.all(loadPromises);
+
+    const gifLabel = i18n('AttachGif');
+    gifLabel.classList.add('gif-label');
+    itemDiv.append(gifLabel);
+
+    return params;
+  }
 
   private shouldCompress(mimeType: string) {
     return this.willAttach.type === 'media' && MEDIA_MIME_TYPES_SUPPORTED.has(mimeType);
@@ -1456,7 +1505,7 @@ export default class PopupNewMedia extends PopupElement {
     );
   }
 
-  private starsState = createRoot(dispose => {
+  private starsState = createRoot((dispose) => {
     this.lateMiddlewareHelper.get().onDestroy(() => void dispose());
 
     const [store, set] = createStore({
@@ -1485,7 +1534,10 @@ export default class PopupNewMedia extends PopupElement {
     const {willAttach, title, files} = this;
     let key: LangPackKey;
     const args: FormatterArguments = [];
-    if(willAttach.type === 'document') {
+    if(this.gifDocument) {
+      key = 'PreviewSender.SendGif';
+      args.push(1);
+    } else if(willAttach.type === 'document') {
       key = 'PreviewSender.SendFile';
       args.push(files.length);
     } else {
@@ -1512,7 +1564,7 @@ export default class PopupNewMedia extends PopupElement {
   }
 
   private appendMediaToContainer(params: SendFileParams) {
-    if(this.shouldCompress(params.file.type)) {
+    if(this.shouldCompress(getFileMimeType(params.file))) {
       const size = calcImageInBox(params.width, params.height, MAX_WIDTH, 320);
       params.itemDiv.style.width = size.width + 'px';
       params.itemDiv.style.height = size.height + 'px';
@@ -1543,10 +1595,10 @@ export default class PopupNewMedia extends PopupElement {
 
     const length = sendFileDetails.length;
     for(let i = 0; i < length;) {
-      const firstType = sendFileDetails[i].file.type;
+      const firstType = getFileMimeType(sendFileDetails[i].file);
       let k = 0, isAudio: boolean;
       for(; k < 10 && i < length; ++i, ++k) {
-        const type = sendFileDetails[i].file.type;
+        const type = getFileMimeType(sendFileDetails[i].file);
         const _isAudio = AUDIO_MIME_TYPES_SUPPORTED.has(type as any);
         isAudio ??= _isAudio;
         if(_isAudio !== isAudio || this.shouldCompress(firstType) !== this.shouldCompress(type)) {
@@ -1572,7 +1624,7 @@ export default class PopupNewMedia extends PopupElement {
       return pendingEditResult;
     };
 
-    const promises = files.map((file) => {
+    const promises = this.gifDocument ? [this.attachFile(this.gifDocument)] : files.map((file) => {
       const oldParams = oldSendFileDetails.find((o) => o.file === file);
       const editResult = oldParams?.editResult || getPendingEditResult(file);
 
@@ -1588,16 +1640,17 @@ export default class PopupNewMedia extends PopupElement {
 
     Promise.all(promises).then(() => {
       mediaContainer.replaceChildren();
-      this.starsState.set({attachedFiles: files.length, isGrouped: this.willAttach?.group && !this.hasGif()});
+      const filesLength = this.gifDocument ? 1 : files.length;
+      this.starsState.set({attachedFiles: filesLength, isGrouped: this.willAttach?.group && !this.hasGif()});
 
-      if(!files.length) {
+      if(!filesLength) {
         return;
       }
 
       this.setTitle();
 
       this.iterate((sendFileDetails) => {
-        const shouldCompress = this.shouldCompress(sendFileDetails[0].file.type);
+        const shouldCompress = this.shouldCompress(getFileMimeType(sendFileDetails[0].file));
         if(shouldCompress && sendFileDetails.length > 1) {
           const albumContainer = document.createElement('div');
           albumContainer.classList.add('popup-item-album', 'popup-item');
@@ -1651,7 +1704,7 @@ export default class PopupNewMedia extends PopupElement {
   }
 
   private canHaveMultipleFiles() {
-    return !this.isEditing() && !this.isSuggestingPost();
+    return !this.isEditing() && !this.isSuggestingPost() && !this.gifDocument;
   }
 
   private canShowActionsForBcr(bcr: DOMRect) {
