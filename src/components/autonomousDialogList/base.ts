@@ -30,6 +30,12 @@ export type BaseConstructorArgs = {
   appDialogsManager: AppDialogsManager;
 };
 
+export type LoadDialogsInnerArgs = {
+  offsetIndex?: number;
+  removePlaceholder?: boolean;
+  canFinish: () => boolean;
+};
+
 export class AutonomousDialogListBase<T extends PossibleDialog = PossibleDialog> {
   public sortedList: SortedDialogList;
   public scrollable: Scrollable;
@@ -52,6 +58,8 @@ export class AutonomousDialogListBase<T extends PossibleDialog = PossibleDialog>
 
   protected skipMigrated = true;
 
+  private refetchTimeout: number;
+
   public requestItemForIdx = (idx: number, itemsLength?: number) => {
     this.cursorFetcher.fetchUntil(idx + 1, itemsLength);
   }
@@ -65,7 +73,7 @@ export class AutonomousDialogListBase<T extends PossibleDialog = PossibleDialog>
     this.cursorFetcher.setCursor(last?.index);
 
     // Make sure the current request is canceled so the cursor is not overriden to a bigger page
-    this.loadDialogsDeferred.reject();
+    this.loadDialogsDeferred?.reject();
   }
 
   constructor({appDialogsManager}: BaseConstructorArgs) {
@@ -163,14 +171,18 @@ export class AutonomousDialogListBase<T extends PossibleDialog = PossibleDialog>
 
   private loadDialogsDeferred: CancellablePromise<SequentialCursorFetcherResult<number>>;
 
-  public async loadDialogs(offsetIndex?: number) {
-    this.loadDialogsDeferred = deferredPromise();
+  private async loadDialogs(offsetIndex?: number) {
+    this.loadDialogsDeferred?.reject();
+    const deferred = this.loadDialogsDeferred = deferredPromise();
 
-    this.loadDialogsInner(offsetIndex)
+    this.loadDialogsInner({offsetIndex, canFinish: () => !deferred.isRejected})
     .then(
-      this.loadDialogsDeferred.resolve.bind(this.loadDialogsDeferred),
-      this.loadDialogsDeferred.reject.bind(this.loadDialogsDeferred)
-    );
+      deferred.resolve.bind(deferred),
+      deferred.reject.bind(deferred)
+    )
+    .finally(() => {
+      this.placeholder?.detach(this.sortedList?.itemsLength() || 0);
+    });
 
     return this.loadDialogsDeferred;
   }
@@ -232,7 +244,7 @@ export class AutonomousDialogListBase<T extends PossibleDialog = PossibleDialog>
     return result;
   }
 
-  protected async loadDialogsInner(offsetIndex?: number, removePlaceholder = true): Promise<SequentialCursorFetcherResult<number>> {
+  protected async loadDialogsInner({offsetIndex, removePlaceholder = true, canFinish}: LoadDialogsInnerArgs): Promise<SequentialCursorFetcherResult<number>> {
     this.checkForDialogsPlaceholder();
 
     /**
@@ -249,9 +261,13 @@ export class AutonomousDialogListBase<T extends PossibleDialog = PossibleDialog>
     const result = await this.dialogsFetcher(offsetIndex, this.guessLoadCount());
 
     if(shouldRefetch) {
-      setTimeout(async() => {
-        const {totalCount} = await this.loadDialogsInner();
-        this.cursorFetcher.setFetchedItemsCount(totalCount);
+      const id = this.refetchTimeout = self.setTimeout(async() => {
+        try {
+          const {totalCount} = await this.loadDialogsInner({
+            canFinish: () => id === this.refetchTimeout
+          });
+          this.cursorFetcher.setFetchedItemsCount(totalCount);
+        } catch{}
       }, 500);
     }
 
@@ -266,7 +282,7 @@ export class AutonomousDialogListBase<T extends PossibleDialog = PossibleDialog>
       return this.sortedList.createItemForKey(key);
     }));
 
-    if(this.loadDialogsDeferred?.isRejected) throw new Error();
+    if(!canFinish()) throw new Error();
 
     this.loadedDialogsAtLeastOnce = true;
     this.hasReachedTheEnd = !!result.isEnd;
@@ -338,8 +354,11 @@ export class AutonomousDialogListBase<T extends PossibleDialog = PossibleDialog>
     this.sortedList.clear();
     this.placeholder?.remove();
     this.loadDialogsDeferred?.reject();
+    this.loadDialogsDeferred = undefined;
     this.cursorFetcher.reset();
     this.hasReachedTheEnd = false;
+    self.clearTimeout(this.refetchTimeout);
+    this.refetchTimeout = undefined;
   }
 
   public reset() {
