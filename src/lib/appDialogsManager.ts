@@ -622,6 +622,7 @@ export class AppDialogsManager {
     rootScope.addEventListener('state_cleared', () => {
       const clearCurrent = REAL_FOLDERS.has(this.filterId);
       this.xd.loadedDialogsAtLeastOnce = false;
+      this.isFirstDialogsLoad = true;
       this.showFiltersPromise = undefined;
 
       /* const clearPromises: Promise<any>[] = [];

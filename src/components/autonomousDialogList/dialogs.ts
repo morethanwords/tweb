@@ -4,7 +4,7 @@ import getDialogIndex from '@appManagers/utils/dialogs/getDialogIndex';
 import getDialogIndexKey from '@appManagers/utils/dialogs/getDialogIndexKey';
 import {isDialog, isForumTopic} from '@appManagers/utils/dialogs/isDialog';
 import ArchiveDialog, {createArchiveDialogState, DisposableArchiveDialogState} from '@components/archiveDialog';
-import {AutonomousDialogListBase, BaseConstructorArgs} from '@components/autonomousDialogList/base';
+import {AutonomousDialogListBase, BaseConstructorArgs, LoadDialogsInnerArgs} from '@components/autonomousDialogList/base';
 import {BADGE_TRANSITION_TIME} from '@components/autonomousDialogList/constants';
 import groupCallActiveIcon from '@components/groupCallActiveIcon';
 import Scrollable from '@components/scrollable';
@@ -245,13 +245,13 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
     return true;
   }
 
-  protected async loadDialogsInner(offsetIndex?: number) {
+  protected async loadDialogsInner({offsetIndex, canFinish}: LoadDialogsInnerArgs) {
     const isFirstLoad = !offsetIndex;
 
     const unblock = isFirstLoad ? this.sortedList.blockAnimation() : noop;
 
     const {result} = await namedPromises({
-      result: super.loadDialogsInner(offsetIndex, false),
+      result: super.loadDialogsInner({offsetIndex, removePlaceholder: false, canFinish}),
       _ignore: this.ensureArchiveDialogHydrated()
     }).finally(unblock);
 
