@@ -743,7 +743,8 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
 
         element = document.createElement('span');
         if(options.wrappingDraft) {
-          createMarkupFormatting('date' + entity.date, element);
+          createMarkupFormatting('date', element);
+          element.dataset.date = '' + entity.date;
         } else {
           element.classList.add('formatted-date');
           element.setAttribute('onclick', 'onFormattedDateClick(this, event)');

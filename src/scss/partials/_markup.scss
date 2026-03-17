@@ -64,6 +64,7 @@
 
 [data-markup*="monospace"] {
   font-family: var(--font-monospace) !important;
+  color: var(--primary-color);
 
   // &[data-language] {
   //   color: var(--primary-color);

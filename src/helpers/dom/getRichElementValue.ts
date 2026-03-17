@@ -11,7 +11,7 @@
 
 import {MessageEntity} from '@layer';
 import matchUrlProtocol from '@lib/richTextProcessor/matchUrlProtocol';
-import BOM from '@helpers/string/bom';
+import {BOM_REG_EXP} from '@helpers/string/bom';
 import {ENTITY_ELEMENT_MAP} from '@lib/richTextProcessor/wrapRichText';
 
 export type MarkdownType = 'bold' | 'italic' | 'underline' | 'strikethrough' |
@@ -137,7 +137,6 @@ const BLOCK_TAGS = new Set([
 //   'UL'
 // ]);
 
-const BOM_REG_EXP = new RegExp(BOM, 'g');
 export const SELECTION_SEPARATOR = '\x01';
 
 export function getFormattedDateEntityByElement(
@@ -145,8 +144,8 @@ export function getFormattedDateEntityByElement(
   offset: number,
   length: number
 ): MessageEntity.messageEntityFormattedDate {
-  const markup = element.dataset.markup;
-  const date = markup ? +markup.split('-')[1].slice(4) : undefined;
+  const dateStr = element.dataset.date;
+  const date = dateStr ? +dateStr : undefined;
   return {
     _: 'messageEntityFormattedDate',
     pFlags: {},
@@ -158,13 +157,23 @@ export function getFormattedDateEntityByElement(
   };
 }
 
-function checkNodeForEntity(node: Node, value: string, entities: MessageEntity[], offset: {offset: number}, line: string[]) {
-  const parentElement = node.parentElement;
+function pushEntity(entities: MessageEntity[], entity: MessageEntity) {
+  entities.push(entity);
+  return entity;
+}
 
+function checkElementForEntity(
+  element: HTMLElement,
+  value: string,
+  entities: MessageEntity[],
+  offset: {offset: number},
+  line: string[],
+  currentEntities: {[_ in MessageEntity['_']]?: MessageEntity}
+) {
   // let closestTag: MarkdownTag, closestElementByTag: Element, closestDepth = Infinity;
   for(const type in markdownTags) {
     const tag = markdownTags[type as MarkdownType];
-    const closest: HTMLElement = parentElement.closest(tag.match + ', [contenteditable="true"]');
+    const closest: HTMLElement = element.closest(tag.match + ', [contenteditable="true"]');
     if(closest?.getAttribute('contenteditable') !== null) {
       /* const depth = getDepth(closest, parentElement.closest('[contenteditable]'));
       if(closestDepth > depth) {
@@ -176,47 +185,77 @@ function checkNodeForEntity(node: Node, value: string, entities: MessageEntity[]
     }
 
     let codeElement: HTMLElement;
-    if(tag.entityName === 'messageEntityCode' && (codeElement = parentElement.closest('[data-language]'))) {
-      entities.push({
+    if(tag.entityName === 'messageEntityCode' && (codeElement = element.closest('[data-language]'))) {
+      (currentEntities[tag.entityName] ||= pushEntity(entities, {
         _: 'messageEntityPre',
         language: codeElement.dataset.language || '',
         offset: offset.offset,
-        length: value.length
-      });
+        length: 0
+      })).length += value.length;
     } else if(tag.entityName === 'messageEntityTextUrl') {
-      let sameUrl = false; // * don't make it textUrl entity if text is the same as the url
-      try {
-        const url1 = new URL((closest as HTMLAnchorElement).href).toString();
-        let url2Before = value;
-        if(!matchUrlProtocol(url2Before)) {
-          url2Before = 'https://' + url2Before;
-        }
+      if(!value) {
+        continue;
+      }
 
-        sameUrl = url1 === new URL(url2Before).toString();
-      } catch(err) {}
-      !sameUrl && entities.push({
-        _: tag.entityName,
-        url: (closest as HTMLAnchorElement).href,
-        offset: offset.offset,
-        length: value.length
-      });
+      let entity = currentEntities[tag.entityName];
+      if(!entity) {
+        let good = false;
+        try {
+          const url1 = new URL((closest as HTMLAnchorElement).href);
+          const url1String = url1.toString();
+          const isRealUrl = url1.protocol === 'http:' || url1.protocol === 'https:';
+          if(!isRealUrl) {
+            throw 1;
+          }
+
+          let url2Before = value;
+          if(!matchUrlProtocol(url2Before)) {
+            url2Before = 'https://' + url2Before;
+          }
+
+          let url2: URL;
+          let url2String: string;
+          try {
+            url2 = new URL(url2Before);
+            url2String = url2.toString();
+          } catch(err) {}
+
+          const isSameUrl = url1String === url2String;
+          good = !isSameUrl;
+        } catch(err) {}
+
+        good && (entity = currentEntities[tag.entityName] = pushEntity(entities, {
+          _: tag.entityName,
+          url: (closest as HTMLAnchorElement).href,
+          offset: offset.offset,
+          length: 0
+        }));
+      }
+
+      if(entity) {
+        entity.length += value.length;
+      }
     } else if(tag.entityName === 'messageEntityMentionName') {
-      entities.push({
+      (currentEntities[tag.entityName] ||= pushEntity(entities, {
         _: tag.entityName,
         offset: offset.offset,
-        length: value.length,
+        length: 0,
         user_id: (closest as HTMLElement).dataset.follow.toUserId()
-      });
+      })).length += value.length;
     } else if(tag.entityName === 'messageEntityBlockquote') {
-      entities.push({
+      (currentEntities[tag.entityName] ||= pushEntity(entities, {
         _: tag.entityName,
         pFlags: {
-          collapsed: /* closest.classList.contains('can-send-collapsd') &&  */!!closest.dataset.collapsed || undefined
+          collapsed: /* closest.classList.contains('can-send-collapsed') &&  */!!closest.dataset.collapsed || undefined
         },
         offset: offset.offset,
-        length: value.length
-      });
+        length: 0
+      })).length += value.length;
     } else if(tag.entityName === 'messageEntityFormattedDate') {
+      if(!value) {
+        continue;
+      }
+
       const entity = getFormattedDateEntityByElement(closest, offset.offset, value.length);
       const {originalText, fakeText} = closest.dataset;
       if(originalText) { // * fix the text
@@ -234,12 +273,16 @@ function checkNodeForEntity(node: Node, value: string, entities: MessageEntity[]
       });
     } */ else {
       // * ignore local visible entities
-      if(!(tag.entityName === 'messageEntityUnderline' && closest.classList.contains('anchor-url') && closest === parentElement)) {
-        entities.push({
+      if(!(
+        tag.entityName === 'messageEntityUnderline' &&
+        closest.classList.contains('anchor-url') &&
+        closest === element
+      )) {
+        (currentEntities[tag.entityName] ||= pushEntity(entities, {
           _: tag.entityName,
           offset: offset.offset,
-          length: value.length
-        });
+          length: 0
+        })).length += value.length;
       }
     }
   }
@@ -265,7 +308,8 @@ export default function getRichElementValue(
   selNode?: Node,
   selOffset?: number,
   entities?: MessageEntity[],
-  offset: {offset: number, isInQuote?: boolean} = {offset: 0}
+  offset: {offset: number} = {offset: 0},
+  currentEntities: {[_ in MessageEntity['_']]?: MessageEntity} = {}
 ) {
   if(node.nodeType === node.TEXT_NODE) { // TEXT
     let nodeValue = node.nodeValue;
@@ -281,10 +325,6 @@ export default function getRichElementValue(
     } */
 
     if(nodeValue) {
-      // if(offset.isInQuote && nodeValue.endsWith('\n')) { // slice last linebreak from quote
-      //   nodeValue = nodeValue.slice(0, -1);
-      // }
-
       if(selNode === node) {
         line.push(nodeValue.substr(0, selOffset) + SELECTION_SEPARATOR + nodeValue.substr(selOffset));
       } else {
@@ -294,8 +334,8 @@ export default function getRichElementValue(
       line.push(SELECTION_SEPARATOR);
     }
 
-    if(entities && nodeValue.length && node.parentNode) {
-      checkNodeForEntity(node, nodeValue, entities, offset, line);
+    if(entities && nodeValue.length && node.parentElement) {
+      checkElementForEntity(node.parentElement, nodeValue, entities, offset, line, currentEntities);
     }
 
     offset.offset += nodeValue.length;
@@ -313,7 +353,7 @@ export default function getRichElementValue(
   };
 
   const isSelected = selNode === node;
-  const isQuote = node.matches(markdownTags.quote.match);
+  const isQuote = /* node.matches(markdownTags.quote.match) &&  */node.matches('.quote'); // * can have inner formatted quotes, check by class
   const isBlock = BLOCK_TAGS.has(node.tagName) || isQuote;
   if(isBlock && ((line.length && line[line.length - 1].slice(-1) !== '\n') || node.tagName === 'BR'/*  || (BLOCK_TAGS.has(node.tagName) && lines.length) */)) {
     pushLine();
@@ -322,7 +362,7 @@ export default function getRichElementValue(
     const stickerEmoji = node.dataset.stickerEmoji;
 
     if(alt && entities) {
-      checkNodeForEntity(node, alt, entities, offset, line);
+      checkElementForEntity(node, alt, entities, offset, line, currentEntities);
     }
 
     if(stickerEmoji && entities) {
@@ -349,14 +389,24 @@ export default function getRichElementValue(
   // const wasLinesLength = lines.length;
   let wasNodeEmpty = true;
 
-  if(isQuote) {
-    offset.isInQuote = true;
+  // * prefill currentEntities for current element
+  if(node.getAttribute('contenteditable') === null) {
+    checkElementForEntity(node, '', entities, offset, line, currentEntities);
   }
 
   let curChild = node.firstChild as HTMLElement;
   while(curChild) {
-    getRichElementValue(curChild, lines, line, selNode, selOffset, entities, offset);
-    curChild = curChild.nextSibling as any;
+    getRichElementValue(
+      curChild,
+      lines,
+      line,
+      selNode,
+      selOffset,
+      entities,
+      offset,
+      curChild.nodeType === curChild.TEXT_NODE ? currentEntities : {...currentEntities}
+    );
+    curChild = curChild.nextSibling as HTMLElement;
 
     if(!isLineEmpty(line)) {
       wasNodeEmpty = false;
@@ -369,8 +419,6 @@ export default function getRichElementValue(
       line[line.length - 1] = lastValue.slice(0, -1);
       offset.offset -= 1;
     }
-
-    offset.isInQuote = false;
   }
 
   // can test on text with list (https://www.who.int/initiatives/sports-and-health)

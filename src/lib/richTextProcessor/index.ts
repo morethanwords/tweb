@@ -12,12 +12,6 @@
 import emojiRegExp from '@vendor/emoji/regex';
 import {MessageEntity} from '@layer';
 
-const EmojiHelper = {
-  emojiMap: (code: string) => { return code; },
-  shortcuts: [] as any,
-  emojis: [] as any
-};
-
 export const ALPHA_CHARS_REG_EXP = 'a-z' +
   '\\u00c0-\\u00d6\\u00d8-\\u00f6\\u00f8-\\u00ff' + // Latin-1
   '\\u0100-\\u024f' + // Latin Extended A and B
@@ -82,13 +76,6 @@ export const SITE_HASHTAGS: {[siteName: string]: string} = {
   'Google Plus': 'https://plus.google.com/explore/{1}'
 };
 
-// export const SITE_MENTIONS: {[siteName in 'Telegram' | 'Twitter' | 'Instagram' | 'GitHub']: string} = {
-//   Telegram: '#{1}',
-//   Twitter: 'https://twitter.com/{1}',
-//   Instagram: 'https://instagram.com/{1}/',
-//   GitHub: 'https://github.com/{1}'
-// };
-
 export const MARKDOWN_ENTITIES: {[markdown: string]: MessageEntity['_']} = {
   '`': 'messageEntityCode',
   '``': 'messageEntityPre',
@@ -101,12 +88,21 @@ export const MARKDOWN_ENTITIES: {[markdown: string]: MessageEntity['_']} = {
 
 export const MARKDOWN_ENTITIES_TYPES = new Set(Object.values(MARKDOWN_ENTITIES));
 
+export const SINGLE_ENTITIES: Set<MessageEntity['_']> = new Set([
+  'messageEntityPre',
+  'messageEntityCode',
+  'messageEntityFormattedDate'
+]);
 export const PASS_CONFLICTING_ENTITIES: Set<MessageEntity['_']> = new Set([
   'messageEntityEmoji',
   'messageEntityLinebreak',
   'messageEntityCaret'
 ]);
 export const PASS_SINGLE_CONFLICTING_ENTITIES = new Set(PASS_CONFLICTING_ENTITIES);
+export const PASS_SINGLE_CONFLICTING_ENTITIES_WITH_QUOTE = new Set<MessageEntity['_']>([
+  'messageEntityCode',
+  'messageEntityFormattedDate'
+]);
 for(const i in MARKDOWN_ENTITIES) {
   PASS_CONFLICTING_ENTITIES.add(MARKDOWN_ENTITIES[i]);
 }
@@ -120,24 +116,3 @@ export const LOCAL_ENTITIES = new Set<MessageEntity['_']>([
   'messageEntityBotCommand',
   'messageEntityTimestamp'
 ]);
-
-/* export function parseEmojis(text: string) {
-  return text.replace(/:([a-z0-9\-\+\*_]+?):/gi, function (all, shortcut) {
-    var emojiCode = EmojiHelper.shortcuts[shortcut]
-    if (emojiCode !== undefined) {
-      return EmojiHelper.emojis[emojiCode][0]
-    }
-    return all
-  })
-} */
-
-
-/* export function replaceUrlEncodings(urlWithEncoded: string) {
-  return urlWithEncoded.replace(/(%[A-Z\d]{2})+/g, (str) => {
-    try {
-      return decodeURIComponent(str);
-    } catch (e) {
-      return str;
-    }
-  });
-} */

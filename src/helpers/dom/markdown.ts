@@ -15,6 +15,7 @@ import getMarkupInSelection from '@helpers/dom/getMarkupInSelection';
 import isSelectionEmpty from '@helpers/dom/isSelectionEmpty';
 import RichInputHandler from '@helpers/dom/richInputHandler';
 import {setDirection} from '@helpers/dom/setInnerHTML';
+import filterUnique from '@helpers/array/filterUnique';
 
 const cacheMap = new WeakMap<HTMLElement, MarkdownCache>();
 
@@ -27,7 +28,11 @@ type MarkdownCache = {
 };
 
 export function joinMarkupNames(types: MarkdownType[]) {
-  return 'markup-' + types.join('-');
+  return 'markup-' + filterUnique(types).join('-');
+}
+
+export function splitMarkupNames(markup: string) {
+  return markup.split('-').slice(1).map((str) => str.split(/\d/, 1)[0]) as MarkdownType[];
 }
 
 export function createMarkdownCache(input: HTMLElement): MarkdownCache {
@@ -109,6 +114,11 @@ export function undoRedo(input: HTMLElement, e: Event, type: 'undo' | 'redo', ne
   }
 }
 
+const canCombine: readonly MarkdownType[] = ['bold', 'italic', 'underline', 'strikethrough', 'spoiler', 'quote'];
+const canCombineWithQuote: readonly MarkdownType[] = ['monospace', 'date'];
+const cantCombine: readonly MarkdownType[] = ['monospace', 'date'];
+const NO_INNER_QUOTES = false;
+
 export function applyMarkdown({input, type, href, dateSuffix}: {input: HTMLElement, type: MarkdownType, href?: string, dateSuffix?: string}) {
   // const MONOSPACE_FONT = 'var(--font-monospace)';
   // const SPOILER_FONT = 'spoiler';
@@ -125,14 +135,30 @@ export function applyMarkdown({input, type, href, dateSuffix}: {input: HTMLEleme
 
   const processCommand = (type: MarkdownType) => {
     const isCombineable = canCombine.includes(type);
-    const k = (isCombineable ? canCombine : [type]).filter((type) => hasMarkup[type]?.fully);
-    // const k = (isCombineable && false ? canCombine : [type]).filter((type) => hasMarkup[type]?.active);
-    const isRemoving = !!(indexOfAndSplice(k, type) || hasMarkup[type]?.partly) && !dateSuffix;
-    if(!isRemoving) {
-      k.push(type);
+    const isQuoteCombineable = isCombineable || canCombineWithQuote.includes(type);
+    const canHaveTypes = isCombineable ? canCombine.slice() : [type];
+
+    // * these types can actually combine
+    if(type === 'quote') canHaveTypes.push(...canCombineWithQuote);
+    else if(canCombineWithQuote.includes(type)) {
+      canHaveTypes.push('quote');
     }
 
-    if(type === 'quote'/*  && k.includes(type) */) {
+    const currentType = hasMarkup[type];
+    const isRemoving = !!(MarkupTooltip.DISPLAY_MARKUP_PARTLY ? currentType?.partly : currentType?.fully) && !dateSuffix;
+    const k = canHaveTypes.filter((type) => hasMarkup[type]?.fully);
+    if(isRemoving) {
+      indexOfAndSplice(k, type);
+    } else {
+      k.push(dateSuffix ? type + dateSuffix as any : type);
+    }
+
+    // * don't spawn inner quote formatting
+    if(NO_INNER_QUOTES && isQuoteCombineable && hasMarkup.quote.fully) {
+      indexOfAndSplice(k, 'quote');
+    }
+
+    if(type === 'quote') {
       const selection = document.getSelection();
       if(selection.rangeCount && getCharAfterRange(selection.getRangeAt(0)) === '\n') {
         const toLeft = false;
@@ -144,22 +170,21 @@ export function applyMarkdown({input, type, href, dateSuffix}: {input: HTMLEleme
     }
 
     let ret: boolean;
-    if(!k.length) {
-      ret = resetCurrentFontFormatting();
+    if(k.length) {
+      ret = document.execCommand('fontName', false, joinMarkupNames(k));
     } else {
-      ret = document.execCommand('fontName', false, joinMarkupNames(k) + (dateSuffix || ''));
+      ret = resetCurrentFontFormatting();
     }
 
-    processCurrentFormatting(
-      input,
-      isCombineable || isRemoving ? {type, active: !isRemoving} : undefined
-    );
+    // try {
+    processCurrentFormatting(input, {type, active: !isRemoving});
+    // } catch(err) {
+    //   console.error('markdown err', err);
+    // }
 
     return ret;
   };
 
-  const canCombine: (typeof type)[] = ['bold', 'italic', 'underline', 'strikethrough', 'spoiler', 'quote'];
-  const cantCombine: (typeof type)[] = ['monospace', 'date'];
   [...canCombine, ...cantCombine].forEach((type) => {
     commandsMap[type] = processCommand.bind(null, type);
   });
@@ -291,12 +316,15 @@ export function processCurrentFormatting(
   toggling?: {
     type: MarkdownType,
     active: boolean
-  }
+  },
+  inputType?: 'historyUndo' | 'historyRedo'
 ) {
-  const quoteClasses = ['quote-like', 'quote-like-icon', 'quote-like-border'];
+  const quoteSelectorByData = '[data-markup*="quote"]';
+  const quoteSelectorByStyle = '[style*="quote"]';
+  const quoteClasses = ['quote', 'quote-block', 'quote-like', 'quote-like-icon', 'quote-like-border'];
   // const perf = performance.now();
   // * add styles
-  (input.querySelectorAll('[style*="font-family"]') as NodeListOf<HTMLElement>)
+  const add = () => (input.querySelectorAll('[style*="font-family"]') as NodeListOf<HTMLElement>)
   .forEach((element) => {
     if(element.style.caretColor) { // cleared blockquote
       element.style.cssText = '';
@@ -308,39 +336,155 @@ export function processCurrentFormatting(
       return;
     }
 
-    element.classList.add('is-markup');
-    element.dataset.markup = fontFamily;
-    setDirection(element);
-
-    if(fontFamily.includes('quote')) {
-      element.classList.add(...quoteClasses);
+    let markup = fontFamily;
+    // * fix inner quotes
+    if(
+      NO_INNER_QUOTES &&
+      markup.includes('quote') &&
+      element.parentElement.closest('[data-markup*="quote"]') &&
+      toggling?.type !== 'quote'
+      // element.parentElement.closest('[style*="quote"]')
+    ) {
+      const splitted = splitMarkupNames(markup);
+      indexOfAndSplice(splitted, 'quote');
+      if(splitted.length) {
+        markup = joinMarkupNames(splitted);
+      } else {
+        element.style.fontFamily = '';
+        delete element.dataset.markup;
+        return;
+      }
     }
+
+    // * process date suffix
+    if(markup.includes('date')) {
+      const dateSuffix = markup.split('date')[1].split('-')[0];
+      if(dateSuffix) {
+        markup = markup.replace('date' + dateSuffix, 'date');
+        element.dataset.date = dateSuffix;
+      }
+    }
+
+    element.classList.add('is-markup');
+    element.dataset.markup = markup;
+    if(fontFamily !== markup) element.style.fontFamily = markup;
+    setDirection(element);
   });
 
   // * remove styles
-  (input.querySelectorAll('.is-markup') as NodeListOf<HTMLElement>)
+  const remove = () => (input.querySelectorAll('.is-markup') as NodeListOf<HTMLElement>)
   .forEach((element) => {
     const fontFamily = element.style.fontFamily;
     if(fontFamily && fontFamily !== FontFamilyName) {
       return;
     }
 
-    // * fix nested formatting
+    // * fix (restore / remove conflicting) nested/intersecting formatting
+    // * for exampe, toggling italic for selection but part of it has bold
+    // let {markup} = element.dataset;
+    // if(toggling && !markup.includes(toggling.type)) {
+    //   if(toggling.active) {
+    //     let goodTypes: MarkdownType[];
+    //     if(cantCombine.includes(toggling.type)) { // * filter out other formatting when adding monospace, etc
+    //       goodTypes = splitMarkupNames(markup)
+    //       .filter((type) => type === 'quote' || type === toggling.type);
+    //     } else { // * filter out monospace, etc when adding bold
+    //       goodTypes = splitMarkupNames(markup)
+    //       .filter((type) => canCombine.includes(type));
+    //     }
+
+    //     if(goodTypes?.length) {
+    //       markup = joinMarkupNames(goodTypes);
+    //       element.style.fontFamily = element.dataset.markup = markup;
+    //       return;
+    //     }
+    //   } else { // * keep the other formatting if we remove something else
+    //     element.style.fontFamily = markup;
+    //     return;
+    //   }
+    // } else if(!toggling && markup) { // * auto mode (undo/redo). preserve intersecting formatting
+    //   element.style.fontFamily = markup;
+    //   return;
+    // }
+    let {markup} = element.dataset;
     if(toggling) {
-      // * if we toggle italic for selection but part of it has bold
-      if(!element.dataset.markup.includes(toggling.type)) {
-        element.style.fontFamily = element.dataset.markup;
+      let goodTypes: MarkdownType[];
+      if(cantCombine.includes(toggling.type)) { // * filter out other formatting when adding monospace, etc
+        goodTypes = splitMarkupNames(markup)
+        .filter((type) => type === 'quote' || type === toggling.type);
+      } else { // * filter out monospace, etc when adding bold
+        goodTypes = splitMarkupNames(markup)
+        .filter((type) => canCombine.includes(type));
+      }
+
+      if(!toggling.active) {
+        indexOfAndSplice(goodTypes, toggling.type);
+      }
+
+      if(goodTypes.length) {
+        markup = joinMarkupNames(goodTypes);
+        element.style.fontFamily = element.dataset.markup = markup;
         return;
       }
-    }
-
-    if(!fontFamily.includes('quote')) {
-      element.classList.remove(...quoteClasses);
+    } else if(!toggling && markup) { // * auto mode (undo/redo). preserve intersecting formatting
+      element.style.fontFamily = markup;
+      return;
     }
 
     element.classList.remove('is-markup');
     delete element.dataset.markup;
   });
+
+  const processQuotes = () => {
+    (input.querySelectorAll(quoteSelectorByData) as NodeListOf<HTMLElement>)
+    .forEach((element) => {
+      const isRealQuote = !element.parentElement.closest(quoteSelectorByData);
+      if(isRealQuote) element.classList.add(...quoteClasses);
+      else element.classList.remove(...quoteClasses);
+      delete element.dataset.brokenQuote;
+    });
+
+    (input.querySelectorAll(`.${quoteClasses[0]}:not(${quoteSelectorByData})`) as NodeListOf<HTMLElement>)
+    .forEach((element) => {
+      element.classList.remove(...quoteClasses);
+      element.dataset.brokenQuote = 'true';
+    });
+  };
+
+  // * fix case when browser decides to mess up the quote
+  // * rely on the browser's ability to set font-family correctly
+  const fixQuotes = () => {
+    (input.querySelectorAll(`${quoteSelectorByData}:not(${quoteSelectorByStyle})`) as NodeListOf<HTMLElement>)
+    .forEach((element) => {
+      // * need to check the length because 'every' will return true if the array is empty
+      const children = Array.from(element.children) as HTMLElement[];
+      const canReallyBeQuote = children.length && children.every((child) => {
+        return child.matches(quoteSelectorByStyle);
+      });
+
+      const {markup} = element.dataset;
+      if(canReallyBeQuote) {
+        element.style.fontFamily = markup;
+      } else {
+        const goodTypes = splitMarkupNames(markup);
+        indexOfAndSplice(goodTypes, 'quote');
+        if(goodTypes.length) {
+          element.dataset.markup = joinMarkupNames(goodTypes);
+        } else {
+          delete element.dataset.markup;
+        }
+      }
+    });
+  };
+
+  if(inputType === 'historyRedo') {
+    // return;
+    fixQuotes();
+  }
+
+  const order = [add, remove];
+  order.forEach((callback) => callback());
+  processQuotes();
   // console.log('process formatting', performance.now() - perf);
 }
 

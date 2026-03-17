@@ -22,12 +22,12 @@ import {applyMarkdown} from '@helpers/dom/markdown';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import overlayCounter from '@helpers/overlayCounter';
 import type PopupSchedule from '@components/popups/schedule';
-import {ENTITY_ELEMENT_MAP} from '@lib/richTextProcessor/wrapRichText';
 
 export type MarkupTooltipTypes = Extract<MarkdownType, 'bold' | 'italic' | 'underline' | 'strikethrough' | 'monospace' | 'spoiler' | 'quote' | 'link' | 'date'>;
 
 export default class MarkupTooltip {
   private static INSTANCE: MarkupTooltip;
+  public static DISPLAY_MARKUP_PARTLY = false;
 
   public container: HTMLElement;
   private wrapper: HTMLElement;
@@ -312,7 +312,8 @@ export default class MarkupTooltip {
     const types = Object.keys(this.buttons) as MarkupTooltipTypes[];
     const markup = getMarkupInSelection(types);
     types.forEach((type) => {
-      if(markup[type].partly) {
+      const {partly, fully} = markup[type];
+      if(MarkupTooltip.DISPLAY_MARKUP_PARTLY ? partly : fully) {
         currentMarkups.add(this.buttons[type as MarkupTooltipTypes]);
       }
     });

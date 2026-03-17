@@ -126,8 +126,8 @@
   }
 }
 
-.quote,
-[data-markup*="quote"] {
+.quote/* ,
+[data-markup*="quote"] */ {
   padding: 1px 0;
   padding-inline: .5625rem 1.125rem;
   margin: 2px 0;
@@ -139,10 +139,18 @@
   vertical-align: bottom;
 }
 
-.quote-block,
-[data-markup*="quote"] {
+.quote-block/* ,
+[data-markup*="quote"] */ {
   display: block;
   width: fit-content;
   margin-inline-end: auto;
   // width: min-content;
+
+  // display: inline-block;
+  // width: 100%;
 }
+
+// [data-markup*="quote"] [data-markup*="quote"] {
+//   display: unset;
+//   width: auto;
+// }

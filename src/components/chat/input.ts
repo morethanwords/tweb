@@ -2787,7 +2787,7 @@ export default class ChatInput {
 
     this.checkAutocomplete(richValue, caretPos, entities);
 
-    processCurrentFormatting(this.messageInput);
+    processCurrentFormatting(this.messageInput, undefined, (e as InputEvent)?.inputType as any);
 
     this.updateSendBtn();
   };

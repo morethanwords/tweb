@@ -5599,7 +5599,7 @@ export class AppMessagesManager extends AppManager {
     }
 
     if(message.media?._ === 'messageMediaDocument' &&
-        ((message.media.document as Document.document).sticker || (message.media.document as Document.document).type === 'round')) {
+        (!message.media.document || (message.media.document as Document.document).sticker || (message.media.document as Document.document).type === 'round')) {
       return false;
     }
 
@@ -10084,6 +10084,7 @@ export class AppMessagesManager extends AppManager {
   public canForward(message: Message.message | Message.messageService) {
     return message?._ === 'message' &&
       !(message as Message.message).pFlags.noforwards &&
+      !(message.media as MessageMedia.messageMediaPhoto)?.ttl_seconds &&
       !this.appPeersManager.noForwards(message.peerId);
   }
 
