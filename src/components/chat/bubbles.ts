@@ -3025,7 +3025,7 @@ export default class ChatBubbles {
 
     if(bubbleFullMid) {
       const message = this.chat.getMessage(bubbleFullMid);
-      const {action} = message as Message.messageService;
+      const action = (message as Message.messageService)?.action;
       if(action?._ === 'messageActionBoostApply') {
         PopupElement.createPopup(PopupBoost, this.peerId);
         return;

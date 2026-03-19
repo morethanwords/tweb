@@ -945,7 +945,7 @@ export default class WebApp {
     const telegramWebView = this.telegramWebView = new TelegramWebView({
       url: this.webViewResultUrl.url.replace('tgWebAppVersion=8.0', 'tgWebAppVersion=9.0'), // fixme
       sandbox: SANDBOX_ATTRIBUTES,
-      allow: 'camera; microphone; geolocation; accelerometer; gyroscope; magnetometer; device-orientation;',
+      allow: 'camera; microphone; geolocation; accelerometer; gyroscope; magnetometer; device-orientation; clipboard-write;',
       onLoad: () => {
         if(this.iconElement) {
           this.iconElement.style.opacity = '0';
