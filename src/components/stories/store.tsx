@@ -199,6 +199,7 @@ export const createStoriesStore = (props: {
   };
 
   let loadState: string;
+  let loadPromise: Promise<boolean>;
   const albumCache = new Map<number | undefined, AlbumCacheItem>();
   const [state, setState] = createStore(initialState);
   const singlePeerId = props.peerId || (props.peers && props.peers[0].peerId);
@@ -245,75 +246,79 @@ export const createStoriesStore = (props: {
   };
 
   const load = (reload = false) => {
-    const {peerId, pinned, archive} = props;
-    if(peerId) {
-      if(pinned || archive) {
-        const {peer} = state;
-        const offsetId = peer && !reload ? peer.stories[peer.stories.length - 1].id : 0;
-        const loadCount = 30;
-        let promise: ReturnType<AppStoriesManager['getPinnedStories']> | ReturnType<AppStoriesManager['getStoriesArchive']> | ReturnType<AppStoriesManager['getAlbumStories']>;
-        let albumsPromise: ReturnType<AppStoriesManager['getAlbums']>;
-        if(state.albumId !== undefined) {
-          promise = rootScope.managers.appStoriesManager.getAlbumStories(peerId, state.albumId, loadCount, offsetId);
-          albumsPromise = !offsetId ? rootScope.managers.appStoriesManager.getAlbums(peerId) : undefined;
-        } else if(pinned) {
-          promise = rootScope.managers.appStoriesManager.getPinnedStories(peerId, loadCount, offsetId);
-          albumsPromise = !offsetId ? rootScope.managers.appStoriesManager.getAlbums(peerId) : undefined;
-        } else {
-          promise = rootScope.managers.appStoriesManager.getStoriesArchive(peerId, loadCount, offsetId);
-        }
-        return Promise.all([promise, albumsPromise]).then(([{count, stories: storyItems}, albums]) => {
-          if(!offsetId && !reload) {
-            const peer: StoriesContextPeerState = {
-              index: 0,
-              peerId,
-              stories: storyItems,
-              count,
-              albums
-            };
-
-            addPeers([peer]);
-            setState({ready: true, loaded: storyItems.length < loadCount});
+    if(loadPromise && !reload) return loadPromise;
+    const doLoad = () => {
+      const {peerId, pinned, archive} = props;
+      if(peerId) {
+        if(pinned || archive) {
+          const {peer} = state;
+          const offsetId = peer && !reload ? peer.stories[peer.stories.length - 1].id : 0;
+          const loadCount = 30;
+          let promise: ReturnType<AppStoriesManager['getPinnedStories']> | ReturnType<AppStoriesManager['getStoriesArchive']> | ReturnType<AppStoriesManager['getAlbumStories']>;
+          let albumsPromise: ReturnType<AppStoriesManager['getAlbums']>;
+          if(state.albumId !== undefined) {
+            promise = rootScope.managers.appStoriesManager.getAlbumStories(peerId, state.albumId, loadCount, offsetId);
+            albumsPromise = !offsetId ? rootScope.managers.appStoriesManager.getAlbums(peerId) : undefined;
+          } else if(pinned) {
+            promise = rootScope.managers.appStoriesManager.getPinnedStories(peerId, loadCount, offsetId);
+            albumsPromise = !offsetId ? rootScope.managers.appStoriesManager.getAlbums(peerId) : undefined;
           } else {
-            batch(() => {
-              setState('peers', 0, 'stories', offsetId ? (stories) => [...stories, ...storyItems] : storyItems);
-              setState('peers', 0, 'count', count);
-              setState('loaded', storyItems.length < loadCount);
-            })
+            promise = rootScope.managers.appStoriesManager.getStoriesArchive(peerId, loadCount, offsetId);
           }
+          return Promise.all([promise, albumsPromise]).then(([{count, stories: storyItems}, albums]) => {
+            if(!offsetId && !reload) {
+              const peer: StoriesContextPeerState = {
+                index: 0,
+                peerId,
+                stories: storyItems,
+                count,
+                albums
+              };
 
-          const loaded = state.loaded;
-          props.onLoad?.(loaded);
-          return loaded;
+              addPeers([peer]);
+              setState({ready: true, loaded: storyItems.length < loadCount});
+            } else {
+              batch(() => {
+                setState('peers', 0, 'stories', offsetId ? (stories) => [...stories, ...storyItems] : storyItems);
+                setState('peers', 0, 'count', count);
+                setState('loaded', storyItems.length < loadCount);
+              })
+            }
+
+            const loaded = state.loaded;
+            props.onLoad?.(loaded);
+            return loaded;
+          });
+        }
+
+        return rootScope.managers.appStoriesManager.getPeerStories(peerId).then((peerStories) => {
+          addPeerStories([peerStories]);
+          setState('loaded', true);
+          props.onLoad?.(true);
+          return true;
         });
       }
 
-      return rootScope.managers.appStoriesManager.getPeerStories(peerId).then((peerStories) => {
-        addPeerStories([peerStories]);
-        setState('loaded', true);
-        props.onLoad?.(true);
-        return true;
+      return rootScope.managers.appStoriesManager.getAllStories(
+        loadState ? true : undefined,
+        loadState,
+        archive
+      ).then((storiesAllStories) => {
+        loadState = storiesAllStories.state;
+        const loaded = !storiesAllStories.pFlags.has_more;
+        setState('loaded', loaded);
+        addPeerStories(storiesAllStories.peer_stories);
+
+        if(!loaded) {
+          // pause(5000).then(load);
+          load();
+        }
+
+        props.onLoad?.(loaded);
+        return loaded;
       });
-    }
-
-    return rootScope.managers.appStoriesManager.getAllStories(
-      loadState ? true : undefined,
-      loadState,
-      archive
-    ).then((storiesAllStories) => {
-      loadState = storiesAllStories.state;
-      const loaded = !storiesAllStories.pFlags.has_more;
-      setState('loaded', loaded);
-      addPeerStories(storiesAllStories.peer_stories);
-
-      if(!loaded) {
-        // pause(5000).then(load);
-        load();
-      }
-
-      props.onLoad?.(loaded);
-      return loaded;
-    });
+    };
+    return loadPromise = doLoad().finally(() => loadPromise = undefined);
   };
 
   const actions: StoriesContextActions = {
