@@ -255,6 +255,7 @@ export const createStoriesStore = (props: {
         let albumsPromise: ReturnType<AppStoriesManager['getAlbums']>;
         if(state.albumId !== undefined) {
           promise = rootScope.managers.appStoriesManager.getAlbumStories(peerId, state.albumId, loadCount, offsetId);
+          albumsPromise = !offsetId ? rootScope.managers.appStoriesManager.getAlbums(peerId) : undefined;
         } else if(pinned) {
           promise = rootScope.managers.appStoriesManager.getPinnedStories(peerId, loadCount, offsetId);
           albumsPromise = !offsetId ? rootScope.managers.appStoriesManager.getAlbums(peerId) : undefined;

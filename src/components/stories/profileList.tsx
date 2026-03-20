@@ -821,6 +821,7 @@ export function StoriesProfileList(props: {
   peerId: PeerId
   pinned?: boolean
   archive?: boolean
+  initialAlbumId?: number
   scrollable: Scrollable
   listenerSetter: ListenerSetter
   withSelection?: boolean
@@ -834,6 +835,7 @@ export function StoriesProfileList(props: {
     peerId: props.peerId,
     pinned: props.pinned,
     archive: props.archive,
+    initialAlbumId: props.initialAlbumId,
     manualLoad: true,
     onLoad: props.onLoad
   });

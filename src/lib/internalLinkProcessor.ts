@@ -1197,8 +1197,8 @@ export class InternalLinkProcessor {
       }
 
       const tab = appSidebarRight.createTab(AppMyStoriesTab);
+      tab.initialAlbumId = albumId;
       await tab.open();
-      tab.setAlbum(albumId, true);
       appSidebarRight.toggleSidebar(true, true);
     } else {
       if(appImManager.chat.peerId !== peerId) {

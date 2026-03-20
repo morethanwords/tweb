@@ -366,7 +366,7 @@ export default class AppStoriesManager extends AppManager {
   public saveStoryItem(
     storyItem: StoryItem,
     cache: StoriesPeerCache,
-    cacheType?: StoriesCacheType | {albumId: number},
+    cacheType?: StoriesCacheType,
     syncAlbumsCache?: boolean
   ): MyStoryItem {
     if(TEST_NO_STORIES || !storyItem || storyItem._ === 'storyItemDeleted') {
@@ -452,12 +452,7 @@ export default class AppStoriesManager extends AppManager {
       );
     }
 
-    if(typeof(cacheType) === 'object' && 'albumId' in cacheType) {
-      const item = cache.albums.get(cacheType.albumId);
-      if(item) {
-        insertStory(item.ids, storyItem, true, StoriesCacheType.Pinned, cache.pinnedToTop);
-      }
-    } else if(cacheType) {
+    if(cacheType) {
       const array = cache[cacheType];
       insertStory(array, storyItem, true, cacheType, cache.pinnedToTop);
     }
@@ -504,7 +499,7 @@ export default class AppStoriesManager extends AppManager {
   public saveStoryItems(
     storyItems: StoryItem[],
     cache: StoriesPeerCache,
-    cacheType?: StoriesCacheType | {albumId: number},
+    cacheType?: StoriesCacheType,
     syncAlbumsCache?: boolean
   ) {
     // if((storyItems as any).saved) return storyItems;
@@ -595,7 +590,7 @@ export default class AppStoriesManager extends AppManager {
   public saveStoriesStories(
     storiesStories: StoriesStories,
     cache: StoriesPeerCache,
-    cacheType?: StoriesCacheType | {albumId: number},
+    cacheType?: StoriesCacheType,
     syncAlbumsCache?: boolean
   ) {
     this.appPeersManager.saveApiPeers(storiesStories);
@@ -954,9 +949,15 @@ export default class AppStoriesManager extends AppManager {
     offsetId: number = 0
   ): MaybePromise<{count: number, stories: StoryItem.storyItem[]}> {
     const cache = this.getPeerStoriesCache(peerId);
-    const cachedAlbum = cache.albums.get(albumId);
+    let cachedAlbum = cache.albums.get(albumId);
     if(!cachedAlbum) {
-      return {count: 0, stories: []};
+      const result = this.getAlbums(peerId);
+      const after = () => {
+        cachedAlbum = cache.albums.get(albumId);
+        if(!cachedAlbum) return {count: 0 as number, stories: [] as StoryItem.storyItem[]};
+        return this.getAlbumStories(peerId, albumId, limit, offsetId);
+      };
+      return result instanceof Promise ? result.then(after) : after();
     }
 
     let slice: StoryItem.storyItem[] | undefined;
@@ -981,11 +982,12 @@ export default class AppStoriesManager extends AppManager {
         offset: cachedAlbum?.ids.length ?? 0
       },
       processResult: (response) => {
-        this.saveStoriesStories(
-          response,
-          cache,
-          {albumId}
-        );
+        this.saveStoriesStories(response, cache);
+        for(const story of response.stories) {
+          if(story._ !== 'storyItemDeleted' && !cachedAlbum.ids.includes(story.id)) {
+            cachedAlbum.ids.push(story.id);
+          }
+        }
         cachedAlbum.count = response.count;
         cachedAlbum.loadedAll = cachedAlbum.ids.length === response.count;
         return this.getAlbumStories(peerId, albumId, limit, offsetId);

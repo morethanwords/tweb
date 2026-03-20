@@ -27,6 +27,7 @@ export default class AppMyStoriesTab extends SliderSuperTab {
   public setAlbum: (albumId: number | undefined, skipAnimation?: boolean) => void;
   public isArchive: boolean;
   public chatId: ChatId;
+  public initialAlbumId: number;
 
   public static getInitArgs() {
     return {
@@ -94,6 +95,7 @@ export default class AppMyStoriesTab extends SliderSuperTab {
         peerId: this.chatId?.toPeerId(true) ?? rootScope.myId,
         pinned: !this.isArchive,
         archive: this.isArchive,
+        initialAlbumId: this.initialAlbumId,
         scrollable: this.scrollable,
         listenerSetter: this.listenerSetter,
         withSelection: true,

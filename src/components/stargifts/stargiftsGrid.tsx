@@ -1,4 +1,4 @@
-import {For, onCleanup, onMount} from 'solid-js';
+import {createMemo, For, onCleanup, onMount} from 'solid-js';
 import {MyStarGift} from '@appManagers/appGiftsManager';
 import {StarsStar} from '@components/popups/stars';
 import {AvatarNewTsx} from '@components/avatarNew';
@@ -42,6 +42,7 @@ function StarGiftGridItem(props: {
   onClick?: () => void
   renderer: SuperStickerRenderer
 }) {
+  const profileCollections = createMemo(() => props.profileCollections ?? []);
   let containerRef!: HTMLDivElement;
   let stickerRef!: HTMLDivElement;
 
@@ -95,14 +96,14 @@ function StarGiftGridItem(props: {
           options: {
             icon: 'folder',
             text: 'StarGiftCollectionsAddToCollection',
-            verify: () => isEditableUniqueGift && props.profileCollections?.length > 0
+            verify: () => isEditableUniqueGift && profileCollections().length > 0
           },
           createSubmenu: () => {
-            if(!saved || !input || !props.profilePeerId || !props.profileCollections?.length) {
+            if(!saved || !input || !props.profilePeerId || !profileCollections().length) {
               return ButtonMenuSync({buttons: []});
             }
 
-            const buttons: ButtonMenuItemOptions[] = props.profileCollections.map((collection) => {
+            const buttons: ButtonMenuItemOptions[] = profileCollections().map((collection) => {
               const checkboxField = new CheckboxField({
                 checked: !!saved.collection_id?.includes(collection.collection_id)
               });

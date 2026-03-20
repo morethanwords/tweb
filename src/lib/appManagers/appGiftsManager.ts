@@ -642,17 +642,36 @@ export default class AppGiftsManager extends AppManager {
     delete?: InputSavedStarGift[],
     title?: string,
   }) {
-    const res = await this.apiManager.invokeApiSingle('payments.updateStarGiftCollection', {
-      peer: this.appPeersManager.getInputPeerById(options.peerId),
-      collection_id: options.collectionId,
-      add_stargift: options.add?.length ? options.add : undefined,
-      delete_stargift: options.delete?.length ? options.delete : undefined,
-      title: options.title
-    });
+    // optimistically update collection_id on affected gifts
+    for(const input of options.add ?? []) {
+      this.rootScope.dispatchEvent('star_gift_update', {input, addCollectionId: options.collectionId});
+    }
+    for(const input of options.delete ?? []) {
+      this.rootScope.dispatchEvent('star_gift_update', {input, removeCollectionId: options.collectionId});
+    }
 
-    if(res.icon) this.appDocsManager.saveDoc(res.icon);
+    try {
+      const res = await this.apiManager.invokeApiSingle('payments.updateStarGiftCollection', {
+        peer: this.appPeersManager.getInputPeerById(options.peerId),
+        collection_id: options.collectionId,
+        add_stargift: options.add?.length ? options.add : undefined,
+        delete_stargift: options.delete?.length ? options.delete : undefined,
+        title: options.title
+      });
 
-    return res;
+      if(res.icon) this.appDocsManager.saveDoc(res.icon);
+
+      return res;
+    } catch(err) {
+      // revert optimistic updates
+      for(const input of options.add ?? []) {
+        this.rootScope.dispatchEvent('star_gift_update', {input, removeCollectionId: options.collectionId});
+      }
+      for(const input of options.delete ?? []) {
+        this.rootScope.dispatchEvent('star_gift_update', {input, addCollectionId: options.collectionId});
+      }
+      throw err;
+    }
   }
 
   public async resolveGiftOffer(msgId: number, action: 'accept' | 'reject') {
