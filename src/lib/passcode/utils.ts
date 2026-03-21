@@ -10,7 +10,7 @@ export async function hashPasscode(passcode: string, salt: Uint8Array) {
   const importedKey = await crypto.subtle.importKey('raw', passcodeBytes, {name: 'PBKDF2'}, false, ['deriveBits']);
 
   const derivedBits = await crypto.subtle.deriveBits(
-    {name: 'PBKDF2', salt, iterations: ITERATIONS, hash: 'SHA-256'},
+    {name: 'PBKDF2', salt: salt as BufferSource, iterations: ITERATIONS, hash: 'SHA-256'},
     importedKey,
     256
   );
@@ -28,7 +28,7 @@ export async function deriveEncryptionKey(passcode: string, salt: Uint8Array): P
   );
 
   return crypto.subtle.deriveKey(
-    {name: 'PBKDF2', salt, iterations: ITERATIONS, hash: 'SHA-256'},
+    {name: 'PBKDF2', salt: salt as BufferSource, iterations: ITERATIONS, hash: 'SHA-256'},
     importedKey, {name: 'AES-GCM', length: 256}, true, ['encrypt', 'decrypt']
   );
 }

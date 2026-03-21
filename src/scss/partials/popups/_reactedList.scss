@@ -4,6 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+@use "../../shared" as *;
+
 .popup-reacted-list {
   --size: 1.5rem;
   --custom-emoji-size: var(--size);

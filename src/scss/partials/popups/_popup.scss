@@ -4,10 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-$popup-footer-button-size: 44px;
-$popup-footer-padding: .5rem;
-$popup-footer-abitlarger-button-size: 48px;
-$popup-footer-abitlarger-padding: 1rem;
+@use "sass:string";
+@use "../../shared" as *;
+@use "popupVariables" as *;
 
 .popup {
   --popup-min-width: auto;
@@ -86,8 +85,8 @@ $popup-footer-abitlarger-padding: 1rem;
     flex-direction: column;
     overflow: hidden;
     margin: auto;
-    min-width: unquote('min(100%, var(--popup-min-width))');
-    max-width: unquote('min(100%, var(--popup-max-width))');
+    min-width: string.unquote('min(100%, var(--popup-min-width))');
+    max-width: string.unquote('min(100%, var(--popup-max-width))');
 
     body.animation-level-0 & {
       transition: none;

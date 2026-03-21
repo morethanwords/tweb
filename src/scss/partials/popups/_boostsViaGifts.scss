@@ -4,6 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+@use "sass:string";
+@use "../../shared" as *;
+
 .popup-boosts {
   $parent: ".popup";
 
@@ -13,7 +16,7 @@
       width: 26.25rem;
       max-width: 26.25rem;
 
-      max-height: unquote('min(100%, 43.5rem)');
+      max-height: string.unquote('min(100%, 43.5rem)');
       border-radius: $border-radius-huge;
     }
 

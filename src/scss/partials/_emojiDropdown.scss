@@ -4,6 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+@use "sass:string";
+@use "../shared" as *;
+
 $menu-item-active-opacity: .8;
 $menu-item-active-background-opacity: .06;
 $menu-inner-transition: cubic-bezier(0.42, 0.0, 0.58, 1.0);
@@ -57,8 +60,8 @@ $menu-search-translateY: -#{$menu-height};
     transform: scale(.85);
     bottom: auto;
     inset-inline-start: auto;
-    top: unquote('min(100vh - var(--height) - .5rem, var(--top))');
-    left: unquote('min(100vw - var(--width) - .5rem, max(.5rem, var(--left)))');
+    top: string.unquote('min(100vh - var(--height) - .5rem, var(--top))');
+    left: string.unquote('min(100vw - var(--width) - .5rem, max(.5rem, var(--left)))');
   }
 
   &.is-under {

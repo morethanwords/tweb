@@ -4,6 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+@use "sass:string";
+@use "../shared" as *;
+
 @keyframes scaleIn {
   from {
     opacity: 0;
@@ -203,7 +206,7 @@
 
       &,
       .selector-list-section-content2 {
-        min-height: unquote('max(360px, 100%)');
+        min-height: string.unquote('max(360px, 100%)');
         // height: 1px; // fix height
       }
     }

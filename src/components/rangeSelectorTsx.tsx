@@ -111,7 +111,7 @@ export default function RangeSelector(props: RangeSelectorProps) {
       rectMax
     );
 
-    if(!vertical && I18n.isRTL) {
+    if(!vertical && I18n.getIsRTL()) {
       offsetAxisValue_ = rectMax - offsetAxisValue_;
     }
 

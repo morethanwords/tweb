@@ -4,6 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+@use "../variables" as *;
+
 @mixin respond-to($media) {
   @if $media == handhelds {
     @media only screen and (max-width: $small-screen) { @content; }

@@ -4,7 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+@use "sass:string";
 @use "sass:math";
+@use "../shared" as *;
+@use "chatVariables" as *;
 
 @keyframes bubbleSelected {
   0% {
@@ -113,7 +116,7 @@
     }
 
     .bubble-content {
-      min-width: unquote('min(100%, 15rem)') !important;
+      min-width: string.unquote('min(100%, 15rem)') !important;
     }
   }
 
@@ -727,7 +730,7 @@
       }
 
       .bubble-content {
-        max-width: unquote('min(420px, 100%)');
+        max-width: string.unquote('min(420px, 100%)');
       }
     }
   }
@@ -863,8 +866,8 @@
 
   &:not(.sticker) {
     .attachment {
-      max-width: unquote('min(420px, 100%)');
-      max-height: unquote('min(400px, 100%)');
+      max-width: string.unquote('min(420px, 100%)');
+      max-height: string.unquote('min(400px, 100%)');
 
       width: max-content;
     }
@@ -883,7 +886,7 @@
 
   &.is-album {
     .attachment {
-      max-width: unquote('min(451px, 100%)');
+      max-width: string.unquote('min(451px, 100%)');
       max-height: none;
       //overflow: hidden;
     }
@@ -1014,7 +1017,7 @@
 
   .reply {
     --font-size: var(--messages-secondary-text-size);
-    // min-width: unquote("max(120px, calc(100% - 1rem))");
+    // min-width: string.unquote("max(120px, calc(100% - 1rem))");
     // max-width: calc(100% - 1rem);
     margin: 0 $reply-padding-horizontal .5rem;
 
@@ -2666,8 +2669,8 @@
   &.has-square-photo {
     #{$parent} {
       &-preview {
-        // max-width: unquote('min(3rem, 100%)');
-        // max-height: unquote('min(3rem, 100%)');
+        // max-width: string.unquote('min(3rem, 100%)');
+        // max-height: string.unquote('min(3rem, 100%)');
         max-width: 100%;
         max-height: 100%;
         margin: 0;
@@ -2687,8 +2690,8 @@
   }
 
   &-preview {
-    max-width: unquote('min(420px, 100%)');
-    max-height: unquote('min(380px, 100%)');
+    max-width: string.unquote('min(420px, 100%)');
+    max-height: string.unquote('min(380px, 100%)');
     border-radius: var(--border-radius);
     overflow: hidden;
     user-select: none;
@@ -3118,7 +3121,7 @@
 .bubble-content-wrapper {
   display: flex;
   flex-direction: column;
-  max-width: unquote('min(var(--max-content-width, 100%), var(--max-width))');
+  max-width: string.unquote('min(var(--max-content-width, 100%), var(--max-width))');
 }
 
 .bubble.service {

@@ -6756,7 +6756,7 @@ export default class ChatBubbles {
         messageDiv.append(timeSpan, _clearfix ??= clearfix());
       });
 
-      if(I18n.isRTL ? !endsWithRTL(context.messageMessage) : haveRTLChar) {
+      if(I18n.getIsRTL() ? !endsWithRTL(context.messageMessage) : haveRTLChar) {
         timeSpan.classList.add('is-block');
       }
 

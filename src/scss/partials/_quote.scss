@@ -4,6 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+@use "../shared" as *;
+
 .quote-like {
   --border-radius: .25rem;
   --primary-color: rgb(var(--peer-color-rgb));

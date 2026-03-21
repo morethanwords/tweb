@@ -4,13 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {a} from 'vitest/dist/reporters-5f784f42';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import replaceContent from '@helpers/dom/replaceContent';
 import {randomLong} from '@helpers/random';
-import {GlobalPrivacySettings, InputPrivacyKey, InputPrivacyRule} from '@layer';
+import {InputPrivacyKey, InputPrivacyRule} from '@layer';
 import {AppManagers} from '@lib/managers';
 import getPrivacyRulesDetails from '@appManagers/utils/privacy/getPrivacyRulesDetails';
 import PrivacyType from '@appManagers/utils/privacy/privacyType';
@@ -20,7 +19,7 @@ import PopupPremium from '@components/popups/premium';
 import RadioField from '@components/radioField';
 import Row, {RadioFormFromRows} from '@components/row';
 import Scrollable from '@components/scrollable';
-import SettingSection, {generateSection} from '@components/settingSection';
+import SettingSection from '@components/settingSection';
 import AppAddMembersTab from '@components/sidebarLeft/tabs/addMembers';
 import {SliderSuperTabEventable} from '@components/sliderTab';
 import {hideToast, toastNew} from '@components/toast';

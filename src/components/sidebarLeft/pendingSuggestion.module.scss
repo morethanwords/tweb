@@ -1,5 +1,5 @@
 // @import "../scss/mixins";
-@import "../../scss/variables";
+@use "../../scss/variables" as *;
 
 .container {
   order: 0;

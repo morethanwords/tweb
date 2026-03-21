@@ -1,6 +1,6 @@
 @charset "UTF-8";
 
-@import "./scss/components/normalize";
+@use "./scss/components/normalize";
 
-@import "./scss/components/global";
-@import "./scss/components/typography";
+@use "./scss/components/global";
+@use "./scss/components/typography";

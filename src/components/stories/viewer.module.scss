@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-@import "../../scss/mixins";
-@import "../../scss/variables";
+@use "../../scss/mixins" as *;
+@use "../../scss/variables" as *;
 
 $shadow: 0px 0 3px rgba(0, 0, 0, 0.20);
 $color-inactive: rgba(255, 255, 255, .5);

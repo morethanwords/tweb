@@ -1,5 +1,5 @@
-@import "../../../../scss/mixins";
-@import "../../../../scss/variables";
+@use "../../../../scss/mixins" as *;
+@use "../../../../scss/variables" as *;
 
 .MainDescription {
   color: var(--secondary-text-color);

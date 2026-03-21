@@ -5,6 +5,7 @@
  */
 
 @use "sass:math";
+@use "../shared" as *;
 
 .peer-typing {
   //display: flex;

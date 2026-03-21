@@ -1,4 +1,4 @@
-@import '../scss/variables.scss';
+@use "../scss/variables.scss" as *;
 
 .wrapper {
   overflow-x: auto;

@@ -1,7 +1,7 @@
-@import "mixins/hover";
-@import "mixins/respondTo";
-@import "mixins/textOverflow";
-@import "mixins/animationLevel";
-@import "mixins/premium";
-@import "mixins/textCenter";
-@import "mixins/sidebarTransform";
+@forward "mixins/hover";
+@forward "mixins/respondTo";
+@forward "mixins/textOverflow";
+@forward "mixins/animationLevel";
+@forward "mixins/premium";
+@forward "mixins/textCenter";
+@forward "mixins/sidebarTransform";

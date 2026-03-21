@@ -4,6 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+@use "../shared" as *;
+@use "popups/popupVariables" as *;
+
 .web-app {
   &-header,
   &-body {

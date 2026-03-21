@@ -6,9 +6,6 @@
 
 // ! https://icomoon.io/app/#/select
 
-$tgico-font-family: "tgico" !default;
-$tgico-font-path: "assets/fonts" !default;
-
 /*
 ! CAN RUN IN DEVELOPER TOOLS TO CONVERT FONT TO VARIABLES:
 `.tgico-select:before {
@@ -19,5 +16,5 @@ $tgico-font-path: "assets/fonts" !default;
 .replace(/\.(.+?):before\{content:"(.+?);\}/g, `$$$1: "\\$2;\n`);
 */
 
-@import "tgico/style";
-@import "tgico/variables";
+@use "tgico/style";
+@forward "tgico/variables";

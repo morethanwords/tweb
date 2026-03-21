@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-@import "../../scss/mixins";
-@import "../../scss/variables";
+@use "../../scss/mixins" as *;
+@use "../../scss/variables" as *;
 
 .List {
   display: flex;

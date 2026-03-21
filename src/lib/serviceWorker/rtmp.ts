@@ -838,7 +838,7 @@ async function getRtmpFetchResponse(event: FetchEvent, params: string, search: s
         return new Response('', {status: 404});
       }
 
-      return new Response(init, {
+      return new Response(init as BodyInit, {
         headers: {
           'Content-Type': MP4_MIME
         }
@@ -855,7 +855,7 @@ async function getRtmpFetchResponse(event: FetchEvent, params: string, search: s
         return new Response('', {status: 404});
       }
 
-      return new Response(r, {
+      return new Response(r as BodyInit, {
         headers: {
           'Content-Type': MP4_MIME
         }

@@ -193,7 +193,7 @@ function _StoriesList(props: {
       }
 
       const translateX = distanceX * value;
-      const translate = `translateX(calc(var(--stories-additional-offset, 0px) * ${value} + ${translateX * (I18n.isRTL ? -1 : 1)}px))`;
+      const translate = `translateX(calc(var(--stories-additional-offset, 0px) * ${value} + ${translateX * (I18n.getIsRTL() ? -1 : 1)}px))`;
       const scaleValue = 1 - (value * (1 - _scale));
       const scale = `scale(${scaleValue})`;
       cssProperties.transform = `${translate} ${scale}`;

@@ -20,7 +20,7 @@ export async function makePasswordHash(password: string, client_salt: Uint8Array
   buffer = bufferConcats(server_salt, buffer, server_salt);
   buffer = await cryptoWorker.invokeCrypto('sha256', buffer);
 
-  let hash = await cryptoWorker.invokeCrypto('pbkdf2', new Uint8Array(buffer), client_salt, 100000);
+  let hash = await cryptoWorker.invokeCrypto('pbkdf2', new Uint8Array(buffer), client_salt as BufferSource, 100000);
   hash = bufferConcats(server_salt, hash, server_salt);
 
   buffer = await cryptoWorker.invokeCrypto('sha256', hash);

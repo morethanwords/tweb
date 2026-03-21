@@ -966,7 +966,7 @@ export default class ChatInput {
       sendingParams.confirmedPaymentResult = preparedPaymentResult;
 
       const duration = (Date.now() - this.recordStartTime) / 1000 | 0;
-      const dataBlob = new Blob([typedArray], {type: 'audio/ogg'});
+      const dataBlob = new Blob([typedArray as BlobPart], {type: 'audio/ogg'});
       opusDecodeController.decode(typedArray, true).then((result) => {
         opusDecodeController.setKeepAlive(false);
 

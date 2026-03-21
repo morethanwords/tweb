@@ -165,7 +165,7 @@ class Stream {
   private saveChunkToCache(deferred: Promise<Uint8Array>, alignedOffset: number, limit: number) {
     return deferred.then((bytes) => {
       const key = this.getChunkKey(alignedOffset, limit);
-      const response = new Response(bytes);
+      const response = new Response(bytes as BodyInit);
 
       return cacheStorage.save({entryName: key, response, size: bytes.length, contentType: 'application/octet-stream'});
     });

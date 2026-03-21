@@ -44,5 +44,5 @@ export function webp2png(data: Uint8Array) {
 
 export function webp2pngAsBlob(data: Uint8Array) {
   const {status, bytes} = webp2png(data);
-  return new Blob([bytes], {type: status === 0 ? 'image/png' : 'image/webp'});
+  return new Blob([bytes as BlobPart], {type: status === 0 ? 'image/png' : 'image/webp'});
 }

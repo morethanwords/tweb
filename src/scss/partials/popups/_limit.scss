@@ -4,9 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+@use "sass:string";
+
 .popup-limit {
   .popup-container {
-    min-width: unquote('min(100%, 22.5rem)');
+    min-width: string.unquote('min(100%, 22.5rem)');
   }
 
   .popup-body {

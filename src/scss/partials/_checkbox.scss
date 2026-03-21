@@ -4,6 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+@use "../shared" as *;
+
 .checkbox-field {
   --size: 1.25rem;
   --offset-left: 0px;

@@ -86,11 +86,17 @@ namespace I18n {
   let pluralRules: Intl.PluralRules;
 
   let cacheLangPackPromise: Promise<LangPackDifference>;
-  export let lastRequestedLangCode: string;
-  export let lastRequestedNormalizedLangCode: string;
-  export let lastAppliedLangCode: string;
-  export let timeFormat: State['settings']['timeFormat'];
-  export let isRTL = false;
+  let lastRequestedLangCode: string;
+  let lastRequestedNormalizedLangCode: string;
+  let lastAppliedLangCode: string;
+  let timeFormat: State['settings']['timeFormat'];
+  let isRTL = false;
+
+  export function getLastRequestedLangCode() { return lastRequestedLangCode; }
+  export function getLastRequestedNormalizedLangCode() { return lastRequestedNormalizedLangCode; }
+  export function getLastAppliedLangCode() { return lastAppliedLangCode; }
+  export function getTimeFormat() { return timeFormat; }
+  export function getIsRTL() { return isRTL; }
 
   export const [langCodeNormalized, setLangCodeNormalized] = createSignal<TranslatableLanguageISO>();
 
@@ -139,7 +145,8 @@ namespace I18n {
         amPmCache.pm = pmText.split(/\s/)[1];
       } catch(err) {
         console.error('cannot get am/pm', err);
-        amPmCache = {am: 'AM', pm: 'PM'};
+        amPmCache.am = 'AM';
+        amPmCache.pm = 'PM';
       }
     }
   }
@@ -595,7 +602,7 @@ namespace I18n {
     return dateTimeFormat;
   }
 
-  export let amPmCache = {am: 'AM', pm: 'PM'};
+  export const amPmCache = {am: 'AM', pm: 'PM'};
   export type IntlDateElementOptions = IntlElementBaseOptions & {
     date?: Date,
     options: Intl.DateTimeFormatOptions
@@ -693,13 +700,13 @@ export async function handleUpdateLangPack(update: {difference: LangPackDifferen
   const {difference} = update;
 
   // Check if this update is for the current language
-  if(difference.lang_code !== I18n.lastRequestedLangCode) {
+  if(difference.lang_code !== I18n.getLastRequestedLangCode()) {
     return;
   }
 
   // Get current langPack from storage
   const storedLangPack = await I18n.getCacheLangPack();
-  if(storedLangPack?.lang_code !== difference.lang_code || storedLangPack.lang_code !== I18n.lastRequestedLangCode) {
+  if(storedLangPack?.lang_code !== difference.lang_code || storedLangPack.lang_code !== I18n.getLastRequestedLangCode()) {
     return;
   }
 
@@ -749,7 +756,7 @@ export function handleUpdateLangPackTooLong(update: {lang_code: string}) {
   const {lang_code} = update;
 
   // Check if this update is for the current language
-  if(lang_code !== I18n.lastRequestedLangCode) {
+  if(lang_code !== I18n.getLastRequestedLangCode()) {
     return;
   }
 
@@ -758,7 +765,7 @@ export function handleUpdateLangPackTooLong(update: {lang_code: string}) {
 }
 
 export function handleStateCleared() {
-  handleUpdateLangPackTooLong({lang_code: I18n.lastRequestedLangCode});
+  handleUpdateLangPackTooLong({lang_code: I18n.getLastRequestedLangCode()});
 }
 
 export async function checkLangPackForUpdates() {
