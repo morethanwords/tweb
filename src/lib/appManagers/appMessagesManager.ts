@@ -9417,7 +9417,7 @@ export class AppMessagesManager extends AppManager {
           limit: (MESSAGES_ALBUM_MAX_SIZE + 1) * 2,
           addOffset: -(MESSAGES_ALBUM_MAX_SIZE + 1)
         });
-      }));
+      }) as Promise<HistoryResult>[]);
       if(!middleware()) {
         return;
       }

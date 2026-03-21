@@ -25,7 +25,7 @@ function getLang(): Promise<[Config.config, LangPackString[], LangPackDifference
         config,
         I18n.getStrings(config.suggested_lang_code, ['Login.ContinueOnLanguage']),
         I18n.getCacheLangPackAndApply()
-      ]);
+      ] as Promise<any>[]);
     } else {
       return [] as any;
     }

@@ -1193,7 +1193,7 @@ export default class AppSearchSuper {
         }
       });
 
-      const awaited = (await Promise.all(results)).filter(Boolean);
+      const awaited = (await Promise.all(results as Promise<K | undefined>[])).filter(Boolean);
       elemsToAppend.push(...awaited);
     }
 
@@ -1552,7 +1552,7 @@ export default class AppSearchSuper {
         }),
 
         renderRecentSearch()
-      ]);
+      ] as Promise<any>[]);
     } else return Promise.resolve();
   }
 
@@ -2453,7 +2453,7 @@ export default class AppSearchSuper {
       this.canViewGifts(),
       this.getGiftsCount(),
       peerId === rootScope.myId && this.managers.appGiftsManager.getPinnedGifts(peerId)
-    ]);
+    ] as Promise<any>[]);
 
     if(!middleware()) {
       return;
@@ -2470,7 +2470,7 @@ export default class AppSearchSuper {
     let firstMediaTab: SearchSuperMediaTab;
     let count = 0;
     mediaTabs.forEach((mediaTab) => {
-      const counter = counters.find((c) => c.filter._ === mediaTab.inputFilter);
+      const counter = counters.find((c: any) => c.filter._ === mediaTab.inputFilter);
 
       mediaTab.menuTab.classList.toggle('hide', !counter.count);
       mediaTab.menuTab.classList.remove('active');

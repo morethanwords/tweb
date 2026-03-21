@@ -15,6 +15,6 @@ import blobSafeMimeType from '@helpers/blob/blobSafeMimeType';
 export default function blobConstruct<T extends Uint8Array | string>(blobParts: Array<T> | T, mimeType: string = ''): Blob {
   blobParts = toArray(blobParts);
   const safeMimeType = blobSafeMimeType(mimeType);
-  const blob = new Blob(blobParts, {type: safeMimeType});
+  const blob = new Blob(blobParts as BlobPart[], {type: safeMimeType});
   return blob;
 }

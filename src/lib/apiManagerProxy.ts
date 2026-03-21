@@ -509,7 +509,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
         webPushApiManager.unsubscribe(),
         this.invokeVoid('terminate', undefined), // * terminate mtproto worker
         this.serviceWorkerRegistration?.unregister().catch(noop) // * release storages
-      ]).finally(() => {
+      ] as Promise<any>[]).finally(() => {
         this.onLoggedOut(accountNumber, migrateTo);
       });
     });

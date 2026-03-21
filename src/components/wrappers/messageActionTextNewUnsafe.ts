@@ -925,7 +925,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
       }
     }
 
-    const waited = args && await Promise.all(args);
+    const waited = args && await Promise.all(args as Promise<any>[]);
 
     if(plain) {
       return I18n.format(langPackKey, true, waited);

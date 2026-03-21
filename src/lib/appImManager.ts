@@ -1251,7 +1251,7 @@ export class AppImManager extends EventListenerBase<{
         });
 
         return Promise.all(promises).then((values) => {
-          values.map((isBad, idx) => {
+          const deletePromises = values.map((isBad, idx) => {
             if(!isBad) {
               return;
             }
@@ -1260,7 +1260,7 @@ export class AppImManager extends EventListenerBase<{
             return cache.delete(request);
           });
 
-          return Promise.all(values.filter(Boolean));
+          return Promise.all(deletePromises.filter(Boolean) as Promise<boolean>[]);
         });
       }).then(() => {
         this.log('deleted files', performance.now() - perf);

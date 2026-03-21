@@ -24,6 +24,7 @@ Run `node build` to build the minimized production version of the app. Copy `pub
 #### Developing: 
 * Install dependencies `docker-compose up tweb.dependencies`.
 * Run develop container `docker-compose up tweb.develop `.
+* Run tests container `docker-compose run --rm tweb.test `.
 * Open http://localhost:8080/ in your browser. 
 
 #### Production:

@@ -747,7 +747,7 @@ export class AppStickersManager extends AppManager {
   private onPreloadStickerSetsResult = (allStickers: MessagesAllStickers) => {
     const sets = (allStickers as MessagesAllStickers.messagesAllStickers).sets;
     const promises = sets.map((set) => this.getStickerSet(getStickerSetInputByStickerSet(set), {useCache: true}));
-    return Promise.all(promises);
+    return Promise.all(promises as Promise<MyMessagesStickerSet>[]);
   };
 
   public preloadStickerSets() {

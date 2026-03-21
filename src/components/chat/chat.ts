@@ -1342,7 +1342,7 @@ export default class Chat extends EventListenerBase<{
       this.getHistoryStorage(true),
       this.peerId.isUser() ? this.managers.appProfileManager.isCachedUserBlocked(this.peerId.toUserId()) : undefined,
       this.managers.appPeersManager.isBotforum(this.peerId)
-    ]).then(([isBot, dialog, historyStorage, isUserBlocked, isBotforum]) => {
+    ] as Promise<any>[]).then(([isBot, dialog, historyStorage, isUserBlocked, isBotforum]) => {
       if(!isBot || isVerificationBot(this.peerId) || isBotforum) {
         return false;
       }

@@ -163,7 +163,7 @@ export default class PromoSlideTab {
       this.createHeading(),
       options.type === 'premium' && !options.isPremiumActive && this.createOptionsForm(),
       this.createFeaturesContainer()
-    ])).filter(Boolean));
+    ] as Promise<any>[])).filter(Boolean));
     options.container.classList.add('fixed-size');
   }
 

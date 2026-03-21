@@ -666,7 +666,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
         return () => {};
       })()
-    ]);
+    ] as Promise<any>[]);
 
     return () => {
       callbacks.forEach((callback) => {

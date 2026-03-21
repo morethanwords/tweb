@@ -20,6 +20,15 @@ services:
       - 8080:8080
     command: pnpm start-in-docker
 
+  tweb.test:
+    container_name: tweb.test
+    build:
+      context: .
+      dockerfile: .docker/Dockerfile_develop
+    volumes:
+      - "./:/app"
+    command: pnpm test
+
   tweb.production:
     container_name: tweb.production
     build:

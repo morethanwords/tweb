@@ -167,7 +167,7 @@ export default function SimilarChannels(props: {
       rootScope.managers.acknowledged.apiManager.getLimit('recommendedChannels', false),
       rootScope.managers.acknowledged.apiManager.getLimit('recommendedChannels', true),
       {cached: !(r instanceof Promise), result: Promise.resolve(r)}
-    ]);
+    ] as Promise<any>[]);
 
     return {
       cached: results.every((result) => result.cached),

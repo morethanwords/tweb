@@ -401,12 +401,12 @@ export default class PeerProfileAvatars {
             backLimit: 0
           }));
 
-          return Promise.all(promises).then(async(result) => {
+          return Promise.all(promises as Promise<any>[]).then(async(result) => {
             const value = result.pop() as typeof result[1];
 
             let {messages, history} = value;
             if(!messages) {
-              messages = value.messages = history.map((mid) => apiManagerProxy.getMessageByPeer(peerId, mid));
+              messages = value.messages = history.map((mid: number) => apiManagerProxy.getMessageByPeer(peerId, mid));
             }
 
             filterChatPhotosMessages(value);

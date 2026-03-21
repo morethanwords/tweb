@@ -238,7 +238,7 @@ function UpgradeAnimation(props: {
       return [`${color} ${base + sectionSize * 0.33}%`, `${color} ${base + sectionSize * 0.67}%`];
     }),
     // final padding
-    `${colors.at(-1)} ${(totalSections - 1) * sectionSize}%`, `${colors.at(-1)} 100%`
+    `${colors[colors.length - 1]} ${(totalSections - 1) * sectionSize}%`, `${colors[colors.length - 1]} 100%`
   ].join(', ');
 
   let modelsContainer!: HTMLDivElement;

@@ -154,7 +154,7 @@ export default function createManagers(
 
   Object.assign(managers.rootScope, {managers});
 
-  const promises: Array<Promise<(() => void) | void> | void>[] = [];
+  const promises: Array<Promise<(() => void) | void> | void> = [];
   let names = Object.keys(managers) as (keyof T)[];
   names.unshift(
     'appUsersManager',
@@ -183,7 +183,7 @@ export default function createManagers(
     managers.apiManager.setUserAuth(userId);
   }
 
-  return Promise.all(promises).then(() => {
+  return Promise.all(promises as Promise<void>[]).then(() => {
     managers.rootScope.dispatchEventSingle('managers_ready');
     return managers;
   });

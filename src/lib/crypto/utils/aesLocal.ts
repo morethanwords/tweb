@@ -14,7 +14,7 @@ export async function encryptLocalData({key, data}: EncryptLocalDataArgs) {
   const encrypted = await crypto.subtle.encrypt(
     {name: 'AES-GCM', iv},
     key,
-    data
+    data as Uint8Array<ArrayBuffer>
   );
 
   const combined = new Uint8Array(iv.length + encrypted.byteLength);
