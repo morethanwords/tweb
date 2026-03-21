@@ -71,7 +71,7 @@ function getChunkFilename(params: RequestFilePartIdentificationParams, range: St
 async function saveChunkToCache(bytes: Uint8Array, params: RequestFilePartIdentificationParams, range: StreamFetchingRange) {
   const filename = getChunkFilename(params, range);
 
-  const response = new Response(bytes);
+  const response = new Response(bytes as BodyInit);
 
   await cacheStorage.save({entryName: filename, response, size: bytes.length, contentType: 'application/octet-stream'});
 }

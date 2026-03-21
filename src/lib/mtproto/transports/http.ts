@@ -56,7 +56,7 @@ export default class HTTP implements MTTransport {
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     // networkStats.addSent(this.dcId, length);
-    return fetch(this.url, {method: 'POST', body, mode, signal: controller.signal})
+    return fetch(this.url, {method: 'POST', body: body as BodyInit, mode, signal: controller.signal})
     .then(async(response) => {
       if(response.status !== 200 && !mode) {
         response.arrayBuffer().then((buffer) => {

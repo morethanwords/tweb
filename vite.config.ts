@@ -1,5 +1,7 @@
-import {defineConfig} from 'vitest/config';
+/// <reference types="vitest/config" />
+import {defineConfig} from 'vite';
 import solidPlugin from 'vite-plugin-solid';
+// @ts-ignore no type declarations
 import handlebars from 'vite-plugin-handlebars';
 import basicSsl from '@vitejs/plugin-basic-ssl';
 import {visualizer} from 'rollup-plugin-visualizer';
@@ -139,13 +141,9 @@ export default defineConfig({
     //   exclude: ['**/*.d.ts', 'src/server/*.ts', 'store/src/**/server.ts']
     // },
     environment: 'jsdom',
-    testTransformMode: {web: ['.[jt]sx?$']},
     // otherwise, solid would be loaded twice:
     // deps: {registerNodeLoader: true},
-    // if you have few tests, try commenting one
-    // or both out to improve performance:
-    threads: false,
-    isolate: false,
+    pool: 'forks',
     globals: true,
     setupFiles: ['./src/tests/setup.ts']
   },
@@ -158,7 +156,7 @@ export default defineConfig({
     copyPublicDir: false,
     emptyOutDir: true,
     minify: NO_MINIFY ? false : undefined,
-    rollupOptions: {
+    rolldownOptions: {
       output: {
         sourcemapIgnoreList: serverOptions.sourcemapIgnoreList
       }
@@ -185,9 +183,9 @@ export default defineConfig({
     alias: USE_OWN_SOLID ? {
       'rxcore': resolve(rootDir, SOLID_PATH, 'web/core'),
       'solid-js/jsx-runtime': resolve(rootDir, SOLID_PATH, 'jsx'),
-      'solid-js/web': resolve(rootDir, SOLID_PATH, 'web'),
-      'solid-js/store': resolve(rootDir, SOLID_PATH, 'store'),
-      'solid-js': resolve(rootDir, SOLID_PATH),
+      'solid-js/web': resolve(rootDir, SOLID_PATH, 'web/dist/web.js'),
+      'solid-js/store': resolve(rootDir, SOLID_PATH, 'store/dist/store.js'),
+      'solid-js': resolve(rootDir, SOLID_PATH, 'dist/solid.js'),
       ...ADDITIONAL_ALIASES
     } : ADDITIONAL_ALIASES
   }

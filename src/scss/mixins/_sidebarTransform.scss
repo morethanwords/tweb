@@ -4,6 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+@use "respondTo" as *;
+
 @mixin sidebar-transform($centered: 0, $transform: true) {
 	@include respond-to(medium-screens) {
 		transition: transform var(--transition-standard-out);

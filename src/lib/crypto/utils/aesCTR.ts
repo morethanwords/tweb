@@ -54,7 +54,7 @@ export default class CTR {
       length: 128
     },
     this.cryptoKey,
-    data
+    data as BufferSource
     );
 
     return arrayBuffer;

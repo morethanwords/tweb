@@ -4,6 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+@use "../shared" as *;
+
 .badge {
   --size: 1.375rem;
   --padding: .4375rem;

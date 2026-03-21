@@ -1,7 +1,7 @@
-@import '../../../scss/variables';
-@import '../../../scss/mixins/respondTo';
-@import '../../../scss/mixins/hover';
-@import '../../../scss/mixins/sidebarTransform';
+@use "../../../scss/variables" as *;
+@use "../../../scss/mixins/respondTo" as *;
+@use "../../../scss/mixins/hover" as *;
+@use "../../../scss/mixins/sidebarTransform" as *;
 
 .pinned-live {
   --ripple-max-opacity: .1;

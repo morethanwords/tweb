@@ -1,5 +1,5 @@
-@import "../scss/mixins.scss";
-@import "../scss/variables.scss";
+@use "../scss/mixins.scss" as *;
+@use "../scss/variables.scss" as *;
 
 .InstantView {
   --iv-max-width: 50rem;

@@ -48,7 +48,7 @@ export default function positionMenu(e: MouseEvent | Touch | TouchEvent, elem: H
     if(additionalPadding.left) paddingLeft += additionalPadding.left;
   }
 
-  if(I18n.isRTL) side = mediaSizes.isMobile ? 'left' : 'right';
+  if(I18n.getIsRTL()) side = mediaSizes.isMobile ? 'left' : 'right';
   else side = mediaSizes.isMobile ? 'right' : 'left';
   let verticalSide: 'top' /* | 'bottom' */ | 'center' = 'top';
 
@@ -137,7 +137,7 @@ export default function positionMenu(e: MouseEvent | Touch | TouchEvent, elem: H
     // (verticalSide === 'center' ? verticalSide : (verticalSide === 'bottom' ? 'top' : 'bottom')) +
     (verticalSide === 'center' ? verticalSide : 'bottom') +
     '-' +
-    (side === 'center' ? side : ((I18n.isRTL ? side === 'right' : side === 'left') ? 'right' : 'left')));
+    (side === 'center' ? side : ((I18n.getIsRTL() ? side === 'right' : side === 'left') ? 'right' : 'left')));
 
   return {
     width: menuWidth,

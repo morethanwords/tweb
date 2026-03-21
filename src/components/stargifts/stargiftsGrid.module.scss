@@ -1,5 +1,5 @@
-@import "../../scss/variables.scss";
-@import "../../scss/mixins/respondTo";
+@use "../../scss/variables.scss" as *;
+@use "../../scss/mixins/respondTo" as *;
 
 .grid {
   display: grid;

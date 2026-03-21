@@ -6,6 +6,7 @@
 	],
 	"settings": {
     "typescript.tsdk": "node_modules/typescript/lib",
-    "files.eol": "\n"
+    "files.eol": "\n",
+    "js/ts.tsdk.path": "node_modules/typescript/lib"
 	}
 }

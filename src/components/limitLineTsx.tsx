@@ -36,7 +36,7 @@ export function LimitLineTsx(props: {
   let tailContainerRef!: HTMLDivElement;
 
   const isSlider = props.onScrub !== undefined
-  const isReverse = () => props.reverse ?? I18n.isRTL
+  const isReverse = () => props.reverse ?? I18n.getIsRTL()
 
   onMount(() => {
     const resizeObserver = new ResizeObserver(updateHintPosition);

@@ -4,6 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+@use "../shared" as *;
+
 :root {
   --sidebar-collapsed-width: 80px;
   --sidebar-max-width: #{calc($large-screen / 4)};

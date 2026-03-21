@@ -5,6 +5,7 @@
  */
 
 @use "sass:math";
+@use "../../shared" as *;
 
 .popup-new-media {
   $parent: ".popup";

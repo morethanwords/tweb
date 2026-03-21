@@ -1,5 +1,5 @@
-@import '../scss/variables';
-@import '../scss/mixins';
+@use "../scss/variables" as *;
+@use "../scss/mixins" as *;
 
 .Radio {
   --size: 1.375rem;

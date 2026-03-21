@@ -4,12 +4,15 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+@use "sass:string";
+@use "../shared" as *;
+
 .inline-helper {
   $parent: ".inline-helper";
   user-select: none;
   
   &:not(.is-gallery) {
-    min-width: unquote("min(20rem, 100%)");
+    min-width: string.unquote("min(20rem, 100%)");
   }
 
   .scrollable {
@@ -91,7 +94,7 @@
     max-width: 100%;
     border-radius: var(--border-radius);
     // padding: 0.4375rem;
-    grid-template-columns: repeat(auto-fill, unquote("minmax(var(--esg-sticker-size), 1fr)"));
+    grid-template-columns: repeat(auto-fill, string.unquote("minmax(var(--esg-sticker-size), 1fr)"));
     grid-gap: 1px;
 
     #{$parent} {

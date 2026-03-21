@@ -4,6 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+@use "../shared" as *;
+
 .invite-link {
   border-radius: $border-radius-medium;
   background-color: var(--background-color);
