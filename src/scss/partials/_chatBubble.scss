@@ -500,6 +500,7 @@
       position: absolute;
       top: 0;
       left: 50%;
+      width: 100%;
       transform: translateX(-50%);
       opacity: 1 !important;
       transition: none !important;
@@ -1712,6 +1713,10 @@
       margin-inline-end: .125rem;
     }
 
+    &-repeat {
+      margin-inline-end: .25rem;
+    }
+
     &-icon {
       pointer-events: none;
       height: 1.125rem;
@@ -1721,7 +1726,7 @@
       }
     }
 
-    &-edited {
+    &-edited, &-repeat {
       overflow: visible;
       font-size: inherit;
     }

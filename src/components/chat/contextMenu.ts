@@ -720,11 +720,12 @@ export default class ChatContextMenu {
           assumeType<Message.message>(this.message);
           this.managers.appMessagesManager.editMessage(this.message, this.message.message, {
             scheduleDate: this.chat.input.scheduleDate,
+            scheduleRepeatPeriod: this.chat.input.scheduleRepeatPeriod,
             entities: this.message.entities
           });
 
           this.chat.input.onMessageSent(false, false);
-        }, new Date(this.message.date * 1000));
+        }, new Date(this.message.date * 1000), (this.message as Message.message).schedule_repeat_period);
       },
       verify: () => this.chat.type === ChatType.Scheduled
     }, {

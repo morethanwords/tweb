@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {ButtonMenuDirection} from '@components/buttonMenuToggle';
+import type {ButtonMenuDirection} from '@components/buttonMenuToggle';
 import I18n from '@lib/langPack';
 import mediaSizes from '@helpers/mediaSizes';
 
@@ -19,6 +19,53 @@ const PADDING_TOP = 8;
 const PADDING_BOTTOM = PADDING_TOP;
 const PADDING_LEFT = 8;
 const PADDING_RIGHT = PADDING_LEFT;
+
+export const DEFAULT_MENU_WINDOW_MARGIN = 16;
+export type MenuHorizontalDirection = 'left' | 'right';
+
+export function getMenuTopPositionForStartDirection(triggerBcr: DOMRect, menu: HTMLElement, offset: [number, number]) {
+  let top = triggerBcr.top + offset[1];
+  const bottom = top + menu.clientHeight;
+  if(bottom + DEFAULT_MENU_WINDOW_MARGIN > window.innerHeight) top -= bottom - window.innerHeight + DEFAULT_MENU_WINDOW_MARGIN;
+  top = Math.max(top, DEFAULT_MENU_WINDOW_MARGIN);
+
+  return top;
+}
+
+export function canMenuFitDirection(
+  triggerBcr: DOMRect,
+  menu: HTMLElement,
+  direction: MenuHorizontalDirection,
+  offset: [number, number]
+) {
+  if(direction === 'right') {
+    const left = triggerBcr.right + offset[0];
+    return left + menu.clientWidth + DEFAULT_MENU_WINDOW_MARGIN <= window.innerWidth;
+  }
+
+  const right = triggerBcr.left - offset[0];
+  return right - menu.clientWidth - DEFAULT_MENU_WINDOW_MARGIN >= 0;
+}
+
+export function getMenuLeftPositionForDirection(
+  triggerBcr: DOMRect,
+  menu: HTMLElement,
+  direction: MenuHorizontalDirection,
+  offset: [number, number]
+) {
+  if(direction === 'right') {
+    let left = triggerBcr.right + offset[0];
+    const right = left + menu.clientWidth;
+    if(right + DEFAULT_MENU_WINDOW_MARGIN > window.innerWidth) left -= right - window.innerWidth + DEFAULT_MENU_WINDOW_MARGIN;
+    return left;
+  }
+
+  const right = triggerBcr.left - offset[0];
+  let left = right - menu.clientWidth;
+  if(left - DEFAULT_MENU_WINDOW_MARGIN < 0) left = DEFAULT_MENU_WINDOW_MARGIN;
+  return left;
+}
+
 export default function positionMenu(e: MouseEvent | Touch | TouchEvent, elem: HTMLElement, side?: 'left' | 'right' | 'center', additionalPadding?: MenuPositionPadding) {
   if((e as TouchEvent).touches) {
     e = (e as TouchEvent).touches[0];

@@ -36,6 +36,7 @@ export type PopupPeerOptions = Omit<PopupOptions, 'buttons' | 'title'> & Partial
 }>;
 export default class PopupPeer extends PopupElement {
   protected description: HTMLParagraphElement;
+  private inputField?: InputField;
 
   constructor(private className: string, options: PopupPeerOptions = {}) {
     super('popup-peer' + (className ? ' ' + className : ''), {
@@ -79,6 +80,7 @@ export default class PopupPeer extends PopupElement {
     }
 
     if(options.inputField) {
+      this.inputField = options.inputField;
       fragment.append(options.inputField.container);
       const button = options.buttons.find((button) => !button.isCancel);
       toggleDisability([button.element], !options.inputField.isValid());
@@ -127,5 +129,10 @@ export default class PopupPeer extends PopupElement {
     }
 
     this.header.after(fragment);
+  }
+
+  public show(animate?: boolean): void {
+    super.show(animate);
+    this.inputField?.input.focus();
   }
 }

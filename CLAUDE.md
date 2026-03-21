@@ -108,6 +108,7 @@ solid-js/store  → src/vendor/solid/store
 - `jsxImportSource: solid-js` — JSX is Solid.js, not React
 - MTProto types live in `src/layer.d.ts` (664KB, auto-generated); import from `@layer`
 - Utility types (AuthState, WorkerTask, etc.) live in `src/types.d.ts`; import from `@types`
+- Global types available everywhere: `PeerId`, `UserId`, `ChatId`, `BotId`, `DocId`, `Long`, `Icon`, `ApiError`, `ErrorType`, `MaybePromise<T>`. Defined in `src/global.d.ts`.
 
 ## Key Patterns
 
@@ -171,6 +172,29 @@ export class AppSomethingManager extends AppManager {
 }
 ```
 
+Normally most of the interaction with MTProto should be done through the app managers,
+wrapping the raw APIs with a nicer interface, caching layer, etc. Managers are the source of truth.
+
+Invoking MTProto methods is done via:
+
+```typescript
+// invoke normally
+await this.apiManager.invokeApi('payments.checkCanSendGift', {gift_id: gift.id})
+// invoke with deduplication
+await this.apiManager.invokeApiSingle('payments.checkCanSendGift', {gift_id: gift.id})
+// invoke and do something with the result (only available inside managers)
+return this.apiManager.invokeApiSingleProcess({
+  method: 'some.method',
+  params: {...},
+  processResult: (result) => {
+    // when the result type has {chats, users} fields, use this method to save them
+    this.appUsersManager.saveApiPeers(result);
+    // when the result is `Updates`, use this method to handle them
+    this.apiUpdatesManager.processUpdateMessage(result);
+  }
+});
+```
+
 ### rootScope
 
 Global event bus and context. Available everywhere:
@@ -181,6 +205,8 @@ import rootScope from '@lib/rootScope';
 rootScope.addEventListener('premium_toggle', handler);
 rootScope.managers.appChatsManager.getChat(chatId);
 ```
+
+IMPORTANT: `rootScope.managers.*` are asynchronous proxies to a whared worker. Every manager method returns a `Promise`, even if the manager's own methods seem synchronous.
 
 ### Imports from `@layer`
 

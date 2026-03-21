@@ -788,6 +788,9 @@ export default class ChatBubbles {
         delete this.bubbles[fullTempMid];
         this.bubbles[fullMid] = bubble;
         bubble.dataset.mid = '' + mid;
+        if(this.chat.type === ChatType.Scheduled) {
+          this.bubbleGroups.changeBubbleMessage(bubble, message);
+        }
 
         const context = this.contexts.get(bubble);
         if(context) {

@@ -18,12 +18,15 @@ import {getCollectibleName} from '@appManagers/utils/gifts/getCollectibleName';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
 import classNames from '@helpers/string/classNames';
 import {StickerTsx} from '@components/wrappers/sticker';
+import PopupBoost from './boost';
 
 export default class PopupStarGiftWear extends PopupElement {
   private gift: MyStarGift;
+  private peerId: PeerId;
 
   constructor(options: {
     gift: MyStarGift,
+    peerId?: PeerId
   }) {
     super(styles.popup, {
       closable: true,
@@ -61,13 +64,13 @@ export default class PopupStarGiftWear extends PopupElement {
 
           <AvatarNewTsx
             class={/* @once */ styles.avatar}
-            peerId={rootScope.myId}
+            peerId={this.peerId}
             size={120}
           />
 
           <div class="profile-avatars-info">
             <div class="profile-name">
-              <PeerTitleTsx peerId={rootScope.myId} withIcons />
+              <PeerTitleTsx peerId={this.peerId} withIcons />
               <StickerTsx
                 class="emoji-status"
                 sticker={this.gift.sticker}
@@ -122,27 +125,47 @@ export default class PopupStarGiftWear extends PopupElement {
   }
 
   private async construct() {
+    this.peerId ||= rootScope.myId;
     this.header.remove();
     this.appendSolid(() => this._construct());
 
-    attachClickEvent(this.btnConfirm, () => {
-      rootScope.managers.appUsersManager.updateEmojiStatus({
-        _: 'inputEmojiStatusCollectible',
-        collectible_id: this.gift.raw.id
-      }).then(() => {
+    attachClickEvent(this.btnConfirm, async() => {
+      const promise = this.peerId === rootScope.myId ?
+        rootScope.managers.appUsersManager.updateEmojiStatus({
+          _: 'inputEmojiStatusCollectible',
+          collectible_id: this.gift.raw.id
+        }) :
+        rootScope.managers.apiManager.invokeApiSingleProcess({
+          method: 'channels.updateEmojiStatus',
+          params: {
+            channel: await rootScope.managers.appChatsManager.getChannelInput(this.peerId.toChatId()),
+            emoji_status: {
+              _: 'inputEmojiStatusCollectible',
+              collectible_id: this.gift.raw.id
+            }
+          }
+        }).then((updates) => {
+          rootScope.managers.apiUpdatesManager.processUpdateMessage(updates);
+        });
+
+      promise.then(() => {
         this.hide();
-      }).catch(() => {
+      }).catch((err: ApiError) => {
+        if(err.type === 'BOOSTS_REQUIRED') {
+          PopupElement.createPopup(PopupBoost, this.peerId);
+          return
+        }
         toastNew({langPackKey: 'Error.AnError'});
       });
     });
   }
 
-  static open(gift: MyStarGift) {
+  static open(gift: MyStarGift, peerId?: PeerId) {
     if(!rootScope.premium) {
       PopupElement.createPopup(PopupPremium);
       return false
     }
 
-    PopupElement.createPopup(PopupStarGiftWear, {gift}).show();
+    PopupElement.createPopup(PopupStarGiftWear, {gift, peerId}).show();
   }
 }
