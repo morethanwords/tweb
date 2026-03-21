@@ -323,10 +323,10 @@ export default function CropHandles() {
     height: size()[1] + diff()[1]
   }));
 
-  const left = () => lerp(normalSpotlightPosition().left, cropSpotlightPosition().left, editorState.cropTabAnimationProgress);
-  const top = () => lerp(normalSpotlightPosition().top, cropSpotlightPosition().top, editorState.cropTabAnimationProgress);
-  const width = () => lerp(normalSpotlightPosition().width, cropSpotlightPosition().width, editorState.cropTabAnimationProgress);
-  const height = () => lerp(normalSpotlightPosition().height, cropSpotlightPosition().height, editorState.cropTabAnimationProgress);
+  const left = createMemo(() => lerp(normalSpotlightPosition().left, cropSpotlightPosition().left, editorState.cropTabAnimationProgress));
+  const top = createMemo(() => lerp(normalSpotlightPosition().top, cropSpotlightPosition().top, editorState.cropTabAnimationProgress));
+  const width = createMemo(() => lerp(normalSpotlightPosition().width, cropSpotlightPosition().width, editorState.cropTabAnimationProgress));
+  const height = createMemo(() => lerp(normalSpotlightPosition().height, cropSpotlightPosition().height, editorState.cropTabAnimationProgress));
 
   const spotlightId = `spotlight-${Math.random().toString(36).substring(2)}`;
 
@@ -415,7 +415,7 @@ const SpotlightMask = (props: {
       />
       <svg class="media-editor__spotlight-mask-svg" width="0" height="0">
         <mask id={props.id}>
-          <rect x="0" y="0" width={editorState.canvasSize?.[0]} height={editorState.canvasSize?.[1]} fill="white"/>
+          <rect x="0" y="0" width={editorState.canvasSize?.[0] + 1} height={editorState.canvasSize?.[1] + 1} fill="white"/>
           <rect
             x={props.left}
             y={props.top}
