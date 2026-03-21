@@ -6,6 +6,7 @@ import {snapToViewport, withCurrentOwner} from '@components/mediaEditor/utils';
 import SwipeHandler from '@components/swipeHandler';
 import {animateValue} from '@helpers/animateValue';
 import {lerp, lerpArray} from '@helpers/lerp';
+import throttle from '@helpers/schedulers/throttle';
 import {batch, createEffect, createMemo, createSignal, on, onCleanup, onMount} from 'solid-js';
 import {modifyMutable, produce} from 'solid-js/store';
 
@@ -298,11 +299,51 @@ export default function CropHandles() {
       }
     });
 
+    const wheelListener = (e: WheelEvent) => {
+      if(!isCropping()) return;
+      e.preventDefault();
+
+      zoomBy(e.deltaY);
+    };
+
+    cropArea.addEventListener('wheel', wheelListener);
+
     onCleanup(() => {
       resizeSwipeHandlers.forEach((handler) => handler.removeListeners());
       translationSwipeHandler.removeListeners();
     });
   });
+
+  const zoomBy = throttle((delta: number) => {
+    let zoomFactor = delta < 0 ? 0.9 : 1.1;
+
+    const {cropMinX, cropMaxX, cropMinY, cropMaxY, imageMinX, imageMaxX, imageMinY, imageMaxY} =
+      getConvenientPositioning({
+        scale: mediaState.scale * zoomFactor,
+        rotation: mediaState.rotation,
+        translation: mediaState.translation
+      });
+
+    const halfImageWidth = (imageMaxX - imageMinX) / 2,
+      halfImageHeight = (imageMaxY - imageMinY) / 2;
+    const imageCenter = [imageMinX + halfImageWidth, imageMinY + halfImageHeight];
+
+    let additionalScale = 1;
+
+    if(imageMinX > cropMinX) additionalScale = Math.max(additionalScale, (imageCenter[0] - cropMinX) / halfImageWidth);
+    if(imageMaxX < cropMaxX) additionalScale = Math.max(additionalScale, (cropMaxX - imageCenter[0]) / halfImageWidth);
+    if(imageMinY > cropMinY) additionalScale = Math.max(additionalScale, (imageCenter[1] - cropMinY) / halfImageHeight);
+    if(imageMaxY < cropMaxY) additionalScale = Math.max(additionalScale, (cropMaxY - imageCenter[1]) / halfImageHeight);
+
+    zoomFactor *= additionalScale;
+    const targetScale = Math.min(MAX_SCALE, mediaState.scale * zoomFactor);
+    zoomFactor = targetScale / mediaState.scale;
+
+    modifyMutable(mediaState, produce((state) => {
+      state.scale = targetScale;
+      state.translation = [state.translation[0] * zoomFactor, state.translation[1] * zoomFactor];
+    }));
+  }, 20, true);
 
   const normalSpotlightPosition = createMemo(() => {
     const [w, h] = editorState.canvasSize ?? [0, 0];
