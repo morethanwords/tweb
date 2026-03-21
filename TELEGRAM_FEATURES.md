@@ -477,7 +477,7 @@ Legend:
 | Messages / new chats | ✅ | Premium |
 | Paid messages (no-paid exceptions) | ✅ | |
 | Gifts | ❌ | |
-| Saved music visibility | ❌ | |
+| Saved music visibility | ✅ | |
 
 ### 10.2 Security Features
 

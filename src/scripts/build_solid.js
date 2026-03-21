@@ -75,7 +75,7 @@ function copyFolder(source, target) {
 const buildedSolidPath = path.join(__dirname, '../vendor/solid');
 deleteFolderRecursive(buildedSolidPath);
 copy.forEach((source) => {
-  const lastParts = source.split('/').slice(-5);
+  const lastParts = source.split(path.sep).slice(-5);
   for(let i = 0; i < lastParts.length; ++i) {
     if(lastParts[i] === 'packages') {
       lastParts.splice(0, i + 2);
@@ -90,7 +90,7 @@ copy.forEach((source) => {
 
   console.log(lastParts);
 
-  const target = path.join(buildedSolidPath, lastParts.join('/'));
+  const target = path.join(buildedSolidPath, lastParts.join(path.sep));
   if(fs.statSync(source).isDirectory()) {
     copyFolder(source, target);
   } else {

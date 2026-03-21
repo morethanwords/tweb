@@ -1,38 +1,44 @@
 import {createRenderEffect, createSignal, onCleanup, Ref, splitProps, ValidComponent} from 'solid-js';
-import {Dynamic, DynamicProps} from 'solid-js/web';
+import {DynamicProps} from 'solid-js/web';
 import ripple from '@components/ripple';
 import classNames from '@helpers/string/classNames';
+import Passthrough from '@helpers/solid/passthrough';
 ripple; // keep
 
-export default function RippleElement<T extends ValidComponent>(props: DynamicProps<T> & {noRipple?: boolean, rippleSquare?: boolean}) {
-  const [, rest] = splitProps(props, ['noRipple', 'rippleSquare']);
+export default function RippleElement<T extends ValidComponent>(props: DynamicProps<T> & {
+  noRipple?: boolean,
+  rippleSquare?: boolean
+}) {
+  const [local, rest] = splitProps(props, ['noRipple', 'rippleSquare', 'component']);
   const [rippleElement, setRippleElement] = createSignal<HTMLElement>();
-  return (
-    <Dynamic
-      {...rest as typeof props}
-      ref={(ref: any) => {
-        createRenderEffect(() => {
-          if(!props.noRipple) {
-            const ret = ripple(ref, undefined, 'no');
-            setRippleElement(ret.element);
-            onCleanup(() => {
-              ret.dispose();
-              setRippleElement();
-            });
-          }
-        });
+  const el = document.createElement(local.component as string || 'div');
 
-        (props.ref as Ref<any>)?.(ref);
-      }}
+  createRenderEffect(() => {
+    if(!local.noRipple) {
+      const ret = ripple(el, undefined, 'no');
+      setRippleElement(ret.element);
+      onCleanup(() => {
+        ret.dispose();
+        setRippleElement();
+      });
+    }
+  });
+
+  (props.ref as Ref<any>)?.(el);
+
+  return (
+    <Passthrough
+      element={el}
+      {...rest as any}
       class={classNames(
         props.class,
-        !props.noRipple && 'rp',
-        !props.noRipple && props.rippleSquare && 'rp-square',
+        !local.noRipple && 'rp',
+        !local.noRipple && local.rippleSquare && 'rp-square',
         ...Object.entries(props.classList || {}).map(([key, value]) => value ? key : undefined)
       )}
     >
       {rippleElement()}
       {props.children}
-    </Dynamic>
+    </Passthrough>
   );
 }
