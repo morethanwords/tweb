@@ -106,7 +106,7 @@ import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUserna
 import replaceContent from '@helpers/dom/replaceContent';
 import getTextWidth from '@helpers/canvas/getTextWidth';
 import {FontFull} from '@config/font';
-import {ChatType} from '@components/chat/chat';
+import {ChatType} from './chatType';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import idleController from '@helpers/idleController';
 import Icon from '@components/icon';

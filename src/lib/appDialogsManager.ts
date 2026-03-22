@@ -93,7 +93,7 @@ import Icon from '@components/icon';
 import setBadgeContent from '@helpers/setBadgeContent';
 import createBadge from '@helpers/createBadge';
 import {isDialog, isForumTopic, isMonoforumDialog, isSavedDialog} from '@appManagers/utils/dialogs/isDialog';
-import {ChatType} from '@components/chat/chat';
+import {ChatType} from '@components/chat/chatType';
 import rtmpCallsController from '@lib/calls/rtmpCallsController';
 import IS_LIVE_STREAM_SUPPORTED from '@environment/liveStreamSupport';
 import {WrapRichTextOptions} from '@richTextProcessor/wrapRichText';

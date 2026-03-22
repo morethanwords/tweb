@@ -19,7 +19,7 @@ import AppSettingsTab from '@components/sidebarLeft/tabs/settings';
 import AppNewChannelTab from '@components/sidebarLeft/tabs/newChannel';
 import AppContactsTab from '@components/sidebarLeft/tabs/contacts';
 import AppArchivedTab from '@components/sidebarLeft/tabs/archivedTab';
-import AppAddMembersTab from '@components/sidebarLeft/tabs/addMembers';
+import createNewGroupTab from '@components/sidebarLeft/tabs/createNewGroupTab';
 import I18n, {i18n} from '@lib/langPack';
 import ButtonMenu, {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import {IS_APPLE, IS_MOBILE_SAFARI} from '@environment/userAgent';
@@ -988,7 +988,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
     const onNewGroupClick = () => {
       closeTabsBefore(() => {
-        AppAddMembersTab.createNewGroupTab(this);
+        createNewGroupTab(this);
       });
     };
 

@@ -1,0 +1,2 @@
+import{M as e,W as t,l as n}from"./langPack-952X1emW.js";import{n as r}from"./dist-DjCW2yZH.js";function i(n,r){e(t(r,(e,t)=>{t&&n.classList.remove(...t.split(` `)),e&&n.classList.add(...e.split(` `))}))}function a(e,...t){e.classList.add(...t)}function o(a){let o=r(()=>a.args,e=>e instanceof Node||typeof e==`string`),s=()=>o.toArray(),c=new n.IntlElement({key:a.key,args:s()});return i(c.element,()=>a.class),e(t(()=>[a.key,s()],([e,t],n)=>{c.update({key:e,args:t})},{defer:!0})),c.element}export{i as n,a as r,o as t};
+//# sourceMappingURL=i18n-3olHywNU.js.map

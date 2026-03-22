@@ -152,7 +152,7 @@ import shouldDisplayGiftCodeAsGift from '@helpers/shouldDisplayGiftCodeAsGift';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import SimilarChannels from '@components/chat/similarChannels';
 import clearMessageId from '@appManagers/utils/messageId/clearMessageId';
-import {ChatType} from '@components/chat/chat';
+import {ChatType} from './chatType';
 import {isSavedDialog} from '@appManagers/utils/dialogs/isDialog';
 import getFwdFromName from '@appManagers/utils/messages/getFwdFromName';
 import isForwardOfForward from '@appManagers/utils/messages/isForwardOfForward';
@@ -364,7 +364,7 @@ let rerenderLogBubblesCallbacks: NoneToVoidFunction[];
 
 if(import.meta.hot) {
   rerenderLogBubblesCallbacks = [];
-  import.meta.hot.accept('./bubbleParts/adminLogsResolver/index.tsx', (module) => {
+  import.meta.hot.accept('./bubbleParts/adminLogsResolver/index.tsx', (module: unknown) => {
     if(!module) return;
     const {resolveAdminLog: newResolveAdminLog} = module as unknown as typeof import('./bubbleParts/adminLogsResolver');
 
@@ -1919,7 +1919,11 @@ export default class ChatBubbles {
   }
 
   public createScrollSaver(reverse = true) {
-    const scrollSaver = new ScrollSaver(this.scrollable, '.bubble:not(.is-date):not(.is-sponsored)', reverse);
+    const scrollSaver = new ScrollSaver(
+      this.scrollable,
+      '.bubble:not(.is-date):not(.is-sponsored):not(.botforum-new-topic-bubble)',
+      reverse
+    );
     return scrollSaver;
   }
 

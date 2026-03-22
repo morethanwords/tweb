@@ -30,7 +30,7 @@ import Scrollable from '@components/scrollable';
 import appSidebarRight from '@components/sidebarRight';
 import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMedia';
 import PopupElement from '@components/popups';
-import {ChatType} from '@components/chat/chat';
+import {ChatType} from './chat/chatType';
 import getFwdFromName from '@appManagers/utils/messages/getFwdFromName';
 import TranslatableMessage from '@components/translatableMessage';
 import {MAX_FILE_SAVE_SIZE} from '@appManagers/constants';

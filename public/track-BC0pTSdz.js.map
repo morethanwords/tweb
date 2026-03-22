@@ -1,0 +1,1 @@
+{"version":3,"file":"track-BC0pTSdz.js","names":[],"sources":["../src/helpers/solid/track.ts"],"sourcesContent":["/**\n * Doesn't do anything, just annotates that something is tracked (in solid-js)\n *\n * @example\n * track(() => [props.size, props.color]);\n */\nexport default function track(cb: () => any) {\n  cb();\n}\n"],"mappings":"AAMA,SAAwB,EAAM,EAAe,CAC3C,GAAI"}

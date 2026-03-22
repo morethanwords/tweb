@@ -21,7 +21,7 @@ import {Poll, PollAnswer} from '@layer';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import confirmationPopup from '@components/confirmationPopup';
 import ButtonIcon from '@components/buttonIcon';
-import {ChatType} from '@components/chat/chat';
+import {ChatType} from '@components/chat/chatType';
 import {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
 
 const MAX_LENGTH_QUESTION = 255;

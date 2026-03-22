@@ -1,0 +1,2 @@
+import{I as e}from"./langPack-952X1emW.js";import{r as t}from"./hotReloadGuard-BDF1W6qQ.js";import{n}from"./promiseCollector-CVK1UVdr.js";var r=()=>{let{rootScope:r}=t(),i=n();return e(()=>{let e=r.managers.apiManager.getAppConfig();return i.collect(e),e})};export{r as t};
+//# sourceMappingURL=useAppConfig-_DSzlGgw.js.map

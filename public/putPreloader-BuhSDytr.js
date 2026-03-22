@@ -1,0 +1,5 @@
+import{T as e}from"./encryptedStorageLayer-DKn_mLUb.js";function t(e,t=!1){let n=`
+  <svg xmlns="http://www.w3.org/2000/svg" class="preloader-circular" viewBox="25 25 50 50">
+  <circle class="preloader-path" cx="50" cy="50" r="20" fill="none" stroke-miterlimit="10"/>
+  </svg>`;if(t){let t=document.createElement(`div`);return t.classList.add(`preloader`),t.innerHTML=n,e&&e.appendChild(t),t}return e.insertAdjacentHTML(`beforeend`,n),e.lastElementChild}e.putPreloader=t;function n(e,n=`check`){let r=e.querySelector(`.tgico`);return r?.remove(),e.disabled=!0,t(e),()=>{e.replaceChildren(),r&&e.append(r),e.removeAttribute(`disabled`)}}function r(){let e=document.createElement(`div`);return e.classList.add(`preloader`),t(e),e}export{t as n,n as r,r as t};
+//# sourceMappingURL=putPreloader-BuhSDytr.js.map

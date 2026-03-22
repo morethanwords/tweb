@@ -84,7 +84,7 @@ import {StoriesContextActions} from '@components/stories/store';
 import Button from '@components/button';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import PopupPremium from '@components/popups/premium';
-import {ChatType} from '@components/chat/chat';
+import {ChatType} from './chat/chatType';
 import getFwdFromName from '@appManagers/utils/messages/getFwdFromName';
 import SidebarSlider from '@components/slider';
 import setBlankToAnchor from '@richTextProcessor/setBlankToAnchor';

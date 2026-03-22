@@ -51,7 +51,7 @@ import liteMode from '@helpers/liteMode';
 import handleVideoLeak from '@helpers/dom/handleVideoLeak';
 import wrapDraft from '@components/wrappers/draft';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
-import {ChatType} from '@components/chat/chat';
+import {ChatType} from '@components/chat/chatType';
 import pause from '@helpers/schedulers/pause';
 import {Accessor, createEffect, createMemo, createRoot, createSignal, Setter} from 'solid-js';
 import SelectedEffect from '@components/chat/selectedEffect';

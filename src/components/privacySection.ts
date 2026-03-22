@@ -20,7 +20,7 @@ import RadioField from '@components/radioField';
 import Row, {RadioFormFromRows} from '@components/row';
 import Scrollable from '@components/scrollable';
 import SettingSection from '@components/settingSection';
-import AppAddMembersTab from '@components/sidebarLeft/tabs/addMembers';
+import {AppAddMembersTab} from '@components/solidJsTabs';
 import {SliderSuperTabEventable} from '@components/sliderTab';
 import {hideToast, toastNew} from '@components/toast';
 

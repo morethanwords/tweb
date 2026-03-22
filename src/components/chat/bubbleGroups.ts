@@ -19,7 +19,7 @@ import partition from '@helpers/array/partition';
 import getMessageThreadId from '@appManagers/utils/messages/getMessageThreadId';
 import {avatarNew} from '@components/avatarNew';
 import {MiddlewareHelper} from '@helpers/middleware';
-import {ChatType} from '@components/chat/chat';
+import {ChatType} from './chatType';
 import getFwdFromName from '@appManagers/utils/messages/getFwdFromName';
 import {getMid, isMessage, isMessageForVerificationBot} from '@components/chat/utils';
 import {canHaveSuggestedPostReplyMarkup} from '@components/chat/bubbleParts/suggestedPostReplyMarkup';

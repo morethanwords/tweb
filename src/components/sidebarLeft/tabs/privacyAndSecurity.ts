@@ -37,8 +37,7 @@ import PopupElement from '@components/popups';
 import AppPrivacyAboutTab from '@components/sidebarLeft/tabs/privacy/about';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import Icon from '@components/icon';
-import {AppPrivacyMessagesTab} from '@components/solidJsTabs';
-import {AppPasscodeEnterPasswordTab, AppPasscodeLockTab, AppPasskeysTab, providedTabs} from '@components/solidJsTabs';
+import {AppPasscodeEnterPasswordTab, AppPasscodeLockTab, AppPasskeysTab, AppPrivacyMessagesTab} from '@components/solidJsTabs/tabs';
 import {joinDeepPath} from '@helpers/object/setDeepProperty';
 import {AgeVerificationPopup} from '@components/popups/ageVerification';
 import {clearSensitiveSpoilers} from '@components/wrappers/mediaSpoiler';
@@ -748,5 +747,3 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
     });
   }
 }
-
-providedTabs.AppPrivacyAndSecurityTab = AppPrivacyAndSecurityTab;

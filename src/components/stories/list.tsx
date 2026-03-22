@@ -22,7 +22,7 @@ import appSidebarLeft from '@components/sidebarLeft';
 import AppMyStoriesTab from '@components/sidebarLeft/tabs/myStories';
 import {toastNew} from '@components/toast';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
-import {ChatType} from '@components/chat/chat';
+import {ChatType} from '@components/chat/chatType';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {useCollapsable} from '@hooks/useCollapsable';
 import createMiddleware from '@helpers/solid/createMiddleware';

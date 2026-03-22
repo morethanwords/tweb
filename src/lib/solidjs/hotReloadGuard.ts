@@ -9,7 +9,7 @@ import type {AutonomousMonoforumThreadList} from '@components/autonomousDialogLi
 import type {avatarNew, StoriesSegments} from '@components/avatarNew';
 import type BusinessHours from '@components/businessHours';
 import type ButtonMenu from '@components/buttonMenu';
-import type {ChatType} from '@components/chat/chat';
+import type {ChatType} from '@components/chat/chatType';
 import type confirmationPopup from '@components/confirmationPopup';
 import type {EmoticonsDropdown} from '@components/emoticonsDropdown';
 import type EmoticonsSearch from '@components/emoticonsDropdown/search';

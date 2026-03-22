@@ -19,7 +19,6 @@ import InputField from '@components/inputField';
 import SettingSection from '@components/settingSection';
 import SidebarSlider from '@components/slider';
 import {SliderSuperTabEventable} from '@components/sliderTab';
-import {providedTabs} from '@components/solidJsTabs';
 import getUserStatusString from '@components/wrappers/getUserStatusString';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {ChatAdministratorRights, ChatPermissions, createSolidTabState} from '@components/sidebarRight/tabs/groupPermissions';
@@ -397,5 +396,3 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
     }
   }
 }
-
-providedTabs.AppUserPermissionsTab = AppUserPermissionsTab;

@@ -1,0 +1,2 @@
+function e(e,t=` `){if(e===void 0)return``;let n=e.toString().split(`.`);return n[0]=n[0].replace(/\B(?=(\d{3})+(?!\d))/g,t),n.join(`.`)}function t(t){return t===void 0?``:e(t,`,`)}function n(t){return t===void 0?``:e(t,` `)}function r(e,t){return e.reduce((e,t)=>e+t,t)}function i(e,t,n,r,i){return(e-t)/(n-t)*(i-r)+r}export{t as a,n as i,r as n,e as r,i as t};
+//# sourceMappingURL=nMap-BWUJKHv1.js.map

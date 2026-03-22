@@ -54,7 +54,7 @@ import {Middleware, MiddlewareHelper, getMiddleware} from '@helpers/middleware';
 import setBadgeContent from '@helpers/setBadgeContent';
 import createBadge from '@helpers/createBadge';
 import AppStatisticsTab from '@components/sidebarRight/tabs/statistics';
-import {ChatType} from '@components/chat/chat';
+import {ChatType} from './chatType';
 import AppBoostsTab from '@components/sidebarRight/tabs/boosts';
 import ChatLive from '@components/chat/topbarLive/container';
 import {RtmpStartStreamPopup} from '@components/rtmp/adminPopup';

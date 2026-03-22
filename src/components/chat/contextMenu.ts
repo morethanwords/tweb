@@ -55,7 +55,7 @@ import PopupPremium from '@components/popups/premium';
 import {ChatInputReplyTo} from '@components/chat/input';
 import {FullMid, makeFullMid, TEST_BUBBLES_DELETION} from '@components/chat/bubbles';
 import AppStatisticsTab from '@components/sidebarRight/tabs/statistics';
-import {ChatType} from '@components/chat/chat';
+import {ChatType} from './chatType';
 import {formatFullSentTime} from '@helpers/date';
 import PopupToggleReadDate from '@components/popups/toggleReadDate';
 import rootScope from '@lib/rootScope';

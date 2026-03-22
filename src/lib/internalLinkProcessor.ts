@@ -48,7 +48,7 @@ import appSidebarLeft from '@components/sidebarLeft';
 import AppContactsTab from '@components/sidebarLeft/tabs/contacts';
 import AppNewChannelTab from '@components/sidebarLeft/tabs/newChannel';
 import PopupCreateContact from '@components/popups/createContact';
-import AppAddMembersTab from '@components/sidebarLeft/tabs/addMembers';
+import createNewGroupTab from '@components/sidebarLeft/tabs/createNewGroupTab';
 import AppSettingsTab from '@components/sidebarLeft/tabs/settings';
 import AppEditProfileTab from '@components/sidebarLeft/tabs/editProfile';
 import showBirthdayPopup, {saveMyBirthday} from '@components/popups/birthday';
@@ -672,7 +672,7 @@ export class InternalLinkProcessor {
           case 'channel':
             return appSidebarLeft.createTab(AppNewChannelTab).open();
           case 'group':
-            return AppAddMembersTab.createNewGroupTab(appSidebarLeft);
+            return createNewGroupTab(appSidebarLeft);
           default:
             return appSidebarLeft.createTab(AppContactsTab).open();
         }

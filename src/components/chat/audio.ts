@@ -28,7 +28,7 @@ import apiManagerProxy from '@lib/apiManagerProxy';
 import {doubleRaf} from '@helpers/schedulers';
 import ListenerSetter from '@helpers/listenerSetter';
 import SetTransition from '@components/singleTransition';
-import {ChatType} from '@components/chat/chat';
+import {ChatType} from './chatType';
 import type {AppImManager} from '@lib/appImManager';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import toggleDisability from '@helpers/dom/toggleDisability';

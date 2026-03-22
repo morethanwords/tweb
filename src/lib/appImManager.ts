@@ -13,7 +13,8 @@ import appSidebarRight, {RIGHT_COLUMN_ACTIVE_CLASSNAME} from '@components/sideba
 import mediaSizes, {ScreenSize} from '@helpers/mediaSizes';
 import {logger, LogTypes} from '@lib/logger';
 import rootScope from '@lib/rootScope';
-import Chat, {ChatSearchKeys, ChatType} from '@components/chat/chat';
+import Chat, {ChatSearchKeys} from '@components/chat/chat';
+import {ChatType} from '@components/chat/chatType';
 import PopupNewMedia, {getCurrentNewMediaPopup} from '@components/popups/newMedia';
 import MarkupTooltip from '@components/chat/markupTooltip';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';

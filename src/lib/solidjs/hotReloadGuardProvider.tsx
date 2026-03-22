@@ -5,7 +5,7 @@ import {AutonomousMonoforumThreadList} from '@components/autonomousDialogList/mo
 import {avatarNew, StoriesSegments} from '@components/avatarNew';
 import BusinessHours from '@components/businessHours';
 import ButtonMenu from '@components/buttonMenu';
-import {ChatType} from '@components/chat/chat';
+import {ChatType} from '@components/chat/chatType';
 import confirmationPopup from '@components/confirmationPopup';
 import {EmoticonsDropdown} from '@components/emoticonsDropdown';
 import EmoticonsSearch from '@components/emoticonsDropdown/search';

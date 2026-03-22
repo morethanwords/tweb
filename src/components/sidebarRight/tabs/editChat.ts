@@ -43,7 +43,7 @@ import apiManagerProxy from '@lib/apiManagerProxy';
 import {AppDirectMessagesTab} from '@components/solidJsTabs';
 import {AppAdminRecentActionsTab} from '@components/solidJsTabs/tabs';
 import appImManager from '@lib/appImManager';
-import {ChatType} from '@components/chat/chat';
+import {ChatType} from '@components/chat/chatType';
 import {appSettings} from '@stores/appSettings';
 import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
 import {isParticipantAdmin} from '@lib/appManagers/utils/chats/isParticipantAdmin';

@@ -81,19 +81,7 @@ import {LEFT_COLUMN_ACTIVE_CLASSNAME} from '@components/sidebarLeft';
 import {AckedResult} from '@lib/superMessagePort';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import hasRights from '@appManagers/utils/chats/hasRights';
-
-
-export enum ChatType {
-  Chat = 'chat',
-  Pinned = 'pinned',
-  Discussion = 'discussion',
-  Scheduled = 'scheduled',
-  Stories = 'stories',
-  Saved = 'saved',
-  Search = 'search',
-  Static = 'static',
-  Logs = 'logs'
-};
+import {ChatType} from '@components/chat/chatType';
 
 export type ChatSearchKeys = Pick<RequestHistoryOptions, 'query' | 'isCacheableSearch' | 'isPublicHashtag' | 'savedReaction' | 'fromPeerId' | 'inputFilter' | 'hashtagType'>;
 export const CHAT_SEARCH_KEYS: (keyof ChatSearchKeys)[] = ['query', 'isCacheableSearch', 'isPublicHashtag', 'savedReaction', 'fromPeerId', 'inputFilter', 'hashtagType'];

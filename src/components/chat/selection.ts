@@ -43,7 +43,7 @@ import IS_STANDALONE from '@environment/standalone';
 import {toastNew} from '@components/toast';
 import confirmationPopup from '@components/confirmationPopup';
 import {makeFullMid} from '@components/chat/bubbles';
-import {ChatType} from '@components/chat/chat';
+import {ChatType} from './chatType';
 
 const accumulateMapSet = (map: Map<any, Set<number>>) => {
   return [...map.values()].reduce((acc, v) => acc + v.size, 0);
