@@ -1,13 +1,10 @@
-import {getOwner, runWithOwner} from 'solid-js';
-
-import BezierEasing from '@vendor/bezierEasing';
+import {HistoryItem, MediaEditorState} from '@components/mediaEditor/context';
+import {FontInfo, FontKey, NumberPair, ResizableLayer, TextLayerInfo} from '@components/mediaEditor/types';
+import StickerType from '@config/stickerType';
+import {IS_FIREFOX} from '@environment/userAgent';
 import {hexaToHsla} from '@helpers/color';
 import {logger} from '@lib/logger';
-
-import {FontInfo, FontKey, NumberPair, ResizableLayer} from '@components/mediaEditor/types';
-import {HistoryItem} from '@components/mediaEditor/context';
-import {IS_FIREFOX} from '@environment/userAgent';
-import StickerType from '@config/stickerType';
+import {getOwner, runWithOwner} from 'solid-js';
 
 export const log = logger('Media editor');
 
@@ -173,4 +170,18 @@ export const fontInfoMap: Record<FontKey, FontInfo> = {
     fontWeight: 400,
     baseline: 0.75
   }
+};
+
+export const textLayerInfoDefaults: TextLayerInfo = {
+  alignment: 'left',
+  style: 'outline',
+  color: '#ffffff',
+  font: 'roboto',
+  size: 40
+};
+
+export const brushDefaults: MediaEditorState['currentBrush'] = {
+  brush: 'pen',
+  color: '#fe4438',
+  size: 18
 };

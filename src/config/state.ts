@@ -15,6 +15,8 @@ import type {ShortcutKey as PasscodeLockShortcutKey} from '@components/sidebarLe
 import {IS_MOBILE} from '@environment/userAgent';
 import getTimeFormat from '@helpers/getTimeFormat';
 import App from '@config/app';
+import {ColoredBrushType} from '@components/mediaEditor/context';
+import {FontKey} from '@components/mediaEditor/types';
 
 const STATE_VERSION = App.version;
 const BUILD = App.build;
@@ -118,7 +120,20 @@ export type StateSettings = {
   cacheTTL: number,
   cacheSize: number,
   showArchiveInChatList: boolean,
+  mediaEditor: {
+    colorByBrush?: Partial<Record<ColoredBrushType, SavedBrushColor>>;
+    brushSize?: number;
+    brushType?: string;
+    textColor?: SavedBrushColor;
+    textSize?: number;
+    textAlignment?: string;
+    textStyle?: string;
+    textFont?: FontKey;
+  },
 };
+
+// (1 - use swatch, 2 - use picker color), (color from swatch), (color from picker)
+export type SavedBrushColor = [1 | 2, string, string];
 
 type CacheSomething<T> = {
   value: T,
@@ -395,7 +410,10 @@ export const SETTINGS_INIT: StateSettings = {
   },
   cacheTTL: 86400 * 7, // 1 week
   cacheSize: 0, // Auto
-  showArchiveInChatList: true
+  showArchiveInChatList: true,
+  mediaEditor: {
+    colorByBrush: {}
+  }
 };
 
 export const STATE_INIT: State = {
