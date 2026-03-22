@@ -41,7 +41,11 @@ export async function getFolderItemsInOrder(folderItems: FolderItemPayload[], ma
   const filtersPromises = folderItems
   .filter((item) => item.id)
   .map((item) => managers.filtersStorage.getFilter(item.id));
-  const filtersArr = await Promise.all(filtersPromises);
+
+  const filtersArr = (
+    await Promise.all(filtersPromises)
+  ).filter(Boolean);
+
   for(const filter of filtersArr) {
     filters.set(filter.id, filter);
   }
