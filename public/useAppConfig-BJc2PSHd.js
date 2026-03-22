@@ -1,0 +1,2 @@
+import{I as e}from"./langPack-DBKM_1Cz.js";import{r as t}from"./hotReloadGuard-BHQeJeuT.js";import{n}from"./promiseCollector-BqCf5K0Q.js";var r=()=>{let{rootScope:r}=t(),i=n();return e(()=>{let e=r.managers.apiManager.getAppConfig();return i.collect(e),e})};export{r as t};
+//# sourceMappingURL=useAppConfig-BJc2PSHd.js.map

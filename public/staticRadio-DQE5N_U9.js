@@ -1,2 +1,0 @@
-import{U as e,Y as t}from"./langPack-952X1emW.js";import{f as n,m as r}from"./web-BAEiAmYP.js";var i={Radio:`_Radio_8rde5_36`,floating:`_floating_8rde5_62`,checked:`_checked_8rde5_66`},a=r(`<span>`),o=r=>{let[o,s]=t(r,[`checked`,`floating`,`class`,`classList`]);return(()=>{let t=a();return n(t,e({get class(){return i.Radio},get classList(){return{[o.class]:!!o.class,[i.checked]:o.checked,[i.floating]:o.floating,"offset-left":o.floating,...o.classList}}},s),!1,!1),t})()};export{o as t};
-//# sourceMappingURL=staticRadio-DQE5N_U9.js.map

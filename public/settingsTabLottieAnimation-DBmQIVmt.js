@@ -1,2 +1,0 @@
-import{U as e,k as t}from"./langPack-952X1emW.js";import{r as n}from"./hotReloadGuard-BDF1W6qQ.js";import{t as r}from"./classNames-B0btgJfY.js";import{n as i}from"./promiseCollector-CVK1UVdr.js";import{t as a}from"./lottieAnimation-0H0OhQFJ.js";var o={Container:`_Container_xlod8_1`},s=s=>{let{lottieLoader:c}=n(),l=i();return t(a,e({lottieLoader:c,onPromise:e=>l.collect(e),restartOnClick:!0,get class(){return r(s.class,o.Container)}},s))};export{s as t};
-//# sourceMappingURL=settingsTabLottieAnimation-DBmQIVmt.js.map

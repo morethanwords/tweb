@@ -1,2 +1,0 @@
-import{U as e,Y as t,p as n}from"./langPack-952X1emW.js";import{c as r,f as i,m as a}from"./web-BAEiAmYP.js";import{t as o}from"./classNames-B0btgJfY.js";var s=a(`<span>`),c=a=>{let[c,l]=t(a,[`icon`,`class`]);return(()=>{let t=s();return i(t,e({get class(){return o(`tgico`,c.class)}},l),!1,!0),r(t,()=>n(c.icon)),t})()};export{c as t};
-//# sourceMappingURL=iconTsx-D23V-RnM.js.map

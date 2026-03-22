@@ -9,7 +9,7 @@ import checker from 'vite-plugin-checker';
 // import devtools from 'solid-devtools/vite'
 import autoprefixer from 'autoprefixer';
 import {resolve} from 'path';
-import {existsSync, copyFileSync} from 'fs';
+import {existsSync, copyFileSync, readFileSync, writeFileSync, readdirSync} from 'fs';
 import {ServerOptions} from 'vite';
 import {watchLangFile} from './watch-lang.js';
 import path from 'path';
@@ -102,6 +102,36 @@ if(USE_OWN_SOLID) {
   console.log('using original solid');
 }
 
+function fixSourcemapContent(): import('vite').Plugin {
+  return {
+    name: 'fix-sourcemap-content',
+    apply: 'build',
+    writeBundle(options) {
+      const outDir = options.dir || 'dist';
+      const mapFiles = readdirSync(outDir).filter((f) => f.endsWith('.js.map'));
+      for(const file of mapFiles) {
+        const mapPath = path.join(outDir, file);
+        const map = JSON.parse(readFileSync(mapPath, 'utf8'));
+        if(!map.sources || !map.sourcesContent) continue;
+        let changed = false;
+        for(let i = 0; i < map.sources.length; i++) {
+          const sourcePath = path.resolve(outDir, map.sources[i]);
+          try {
+            const actual = readFileSync(sourcePath, 'utf8');
+            if(map.sourcesContent[i] !== actual) {
+              map.sourcesContent[i] = actual;
+              changed = true;
+            }
+          } catch(e) {}
+        }
+        if(changed) {
+          writeFileSync(mapPath, JSON.stringify(map));
+        }
+      }
+    }
+  };
+}
+
 export default defineConfig({
   plugins: [
     // devtools({
@@ -122,7 +152,8 @@ export default defineConfig({
     visualizer({
       gzipSize: true,
       template: 'treemap'
-    })
+    }),
+    fixSourcemapContent()
   ].filter(Boolean),
   test: {
     // include: ['**/*.{test,spec}.?(c|m)[jt]s?(x)'],
