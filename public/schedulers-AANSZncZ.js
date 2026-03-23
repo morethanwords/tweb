@@ -1,2 +1,0 @@
-var e;function t(t){e?e.push(t):(e=[t],requestAnimationFrame(()=>{let t=e;e=void 0,t.forEach(e=>e())}))}var n;function r(){return n||(n=new Promise(e=>t(()=>e())),n.then(()=>{n=void 0}),n)}function i(){return new Promise(e=>{t(()=>{t(e)})})}export{t as n,r,i as t};
-//# sourceMappingURL=schedulers-AANSZncZ.js.map

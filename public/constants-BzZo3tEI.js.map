@@ -1,1 +1,0 @@
-{"version":3,"file":"constants-BzZo3tEI.js","names":[],"sources":["../src/lib/accounts/constants.ts"],"sourcesContent":["export const CURRENT_ACCOUNT_QUERY_PARAM = 'account';\n\nexport const MAX_ACCOUNTS_FREE = 3;\nexport const MAX_ACCOUNTS_PREMIUM = 4;\nexport const MAX_ACCOUNTS = MAX_ACCOUNTS_PREMIUM;\n"],"mappings":"AAAA,IAAa,EAA8B"}

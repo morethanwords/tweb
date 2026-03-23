@@ -1,2 +1,0 @@
-import{G as e,M as t,z as n}from"./langPack-DBKM_1Cz.js";import{c as r}from"./appSettings-C0-A4tvX.js";function i(i){let[a,o]=n(0),s=!1,c=e=>{s||(s=!0,r(()=>{s=!1,o(e.scrollTop)}))};return t(()=>{let t=i();if(!t){o(0);return}c(t);let n=()=>c(t);t.addEventListener(`scroll`,n,{passive:!0}),e(()=>{t.removeEventListener(`scroll`,n)})}),a}export{i as t};
-//# sourceMappingURL=useScrollTop-B8CL6fr7.js.map

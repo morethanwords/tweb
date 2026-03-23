@@ -1,1 +1,0 @@
-{"version":3,"file":"pause-C9C5P9XR.js","names":[],"sources":["../src/helpers/schedulers/pause.ts"],"sourcesContent":["export default function pause(ms: number) {\n  return new Promise<void>((resolve) => {\n    setTimeout(resolve, ms);\n  });\n}\n"],"mappings":"AAAA,SAAwB,EAAM,EAAY,CACxC,OAAO,IAAI,QAAe,GAAY,CACpC,WAAW,EAAS,EAAG,EACvB"}

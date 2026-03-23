@@ -1,2 +1,0 @@
-var e=new WeakMap,t=new ResizeObserver(t=>{for(let n of t)e.get(n.target)(n)});function n(n,i){return e.set(n,i),t.observe(n),()=>{r(n)}}function r(n){e.delete(n),t.unobserve(n)}export{r as n,n as t};
-//# sourceMappingURL=resizeObserver-fmz3PGpc.js.map

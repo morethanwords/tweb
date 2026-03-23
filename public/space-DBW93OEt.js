@@ -1,2 +1,0 @@
-import{U as e,Y as t}from"./langPack-DBKM_1Cz.js";import{f as n,m as r}from"./web-NBHH4IqU.js";var i=r(`<div>`);function a(r){let[a,o]=t(r,[`amount`,`withTransition`]);return(()=>{let t=i();return n(t,e(o,{get style(){return{"padding-top":a.amount,transition:a.withTransition?`.2s`:void 0}}}),!1,!1),t})()}export{a as t};
-//# sourceMappingURL=space-DBW93OEt.js.map

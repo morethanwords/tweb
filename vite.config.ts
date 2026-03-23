@@ -9,7 +9,7 @@ import checker from 'vite-plugin-checker';
 // import devtools from 'solid-devtools/vite'
 import autoprefixer from 'autoprefixer';
 import {resolve} from 'path';
-import {existsSync, copyFileSync, readFileSync, writeFileSync, readdirSync} from 'fs';
+import {existsSync, copyFileSync} from 'fs';
 import {ServerOptions} from 'vite';
 import {watchLangFile} from './watch-lang.js';
 import path from 'path';
@@ -102,36 +102,6 @@ if(USE_OWN_SOLID) {
   console.log('using original solid');
 }
 
-function fixSourcemapContent(): import('vite').Plugin {
-  return {
-    name: 'fix-sourcemap-content',
-    apply: 'build',
-    writeBundle(options) {
-      const outDir = options.dir || 'dist';
-      const mapFiles = readdirSync(outDir).filter((f) => f.endsWith('.js.map'));
-      for(const file of mapFiles) {
-        const mapPath = path.join(outDir, file);
-        const map = JSON.parse(readFileSync(mapPath, 'utf8'));
-        if(!map.sources || !map.sourcesContent) continue;
-        let changed = false;
-        for(let i = 0; i < map.sources.length; i++) {
-          const sourcePath = path.resolve(outDir, map.sources[i]);
-          try {
-            const actual = readFileSync(sourcePath, 'utf8');
-            if(map.sourcesContent[i] !== actual) {
-              map.sourcesContent[i] = actual;
-              changed = true;
-            }
-          } catch(e) {}
-        }
-        if(changed) {
-          writeFileSync(mapPath, JSON.stringify(map));
-        }
-      }
-    }
-  };
-}
-
 export default defineConfig({
   plugins: [
     // devtools({
@@ -152,8 +122,7 @@ export default defineConfig({
     visualizer({
       gzipSize: true,
       template: 'treemap'
-    }),
-    fixSourcemapContent()
+    })
   ].filter(Boolean),
   test: {
     // include: ['**/*.{test,spec}.?(c|m)[jt]s?(x)'],
@@ -187,7 +156,7 @@ export default defineConfig({
     copyPublicDir: false,
     emptyOutDir: true,
     minify: NO_MINIFY ? false : undefined,
-    rolldownOptions: {
+    rollupOptions: {
       output: {
         sourcemapIgnoreList: serverOptions.sourcemapIgnoreList
       }
@@ -214,9 +183,9 @@ export default defineConfig({
     alias: USE_OWN_SOLID ? {
       'rxcore': resolve(rootDir, SOLID_PATH, 'web/core'),
       'solid-js/jsx-runtime': resolve(rootDir, SOLID_PATH, 'jsx'),
-      'solid-js/web': resolve(rootDir, SOLID_PATH, 'web/dist/web.js'),
-      'solid-js/store': resolve(rootDir, SOLID_PATH, 'store/dist/store.js'),
-      'solid-js': resolve(rootDir, SOLID_PATH, 'dist/solid.js'),
+      'solid-js/web': resolve(rootDir, SOLID_PATH, 'web'),
+      'solid-js/store': resolve(rootDir, SOLID_PATH, 'store'),
+      'solid-js': resolve(rootDir, SOLID_PATH),
       ...ADDITIONAL_ALIASES
     } : ADDITIONAL_ALIASES
   }

@@ -1,1 +1,0 @@
-{"version":3,"file":"clamp-BppH6tBs.js","names":[],"sources":["../src/helpers/number/clamp.ts"],"sourcesContent":["export default function clamp(v: number, min: number, max: number): number {\n  return Math.min(max, Math.max(min, v));\n}\n"],"mappings":"AAAA,SAAwB,EAAM,EAAW,EAAa,EAAqB,CACzE,OAAO,KAAK,IAAI,EAAK,KAAK,IAAI,EAAK,EAAE,CAAC"}

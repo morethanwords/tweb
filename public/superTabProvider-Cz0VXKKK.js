@@ -1,2 +1,0 @@
-import{Z as e,j as t,k as n}from"./langPack-DBKM_1Cz.js";var r=t(),i=e=>n(r.Provider,{get value(){return[e.self,i.allTabs]},get children(){return e.children}});i.allTabs={};var a=()=>e(r);export{a as n,i as t};
-//# sourceMappingURL=superTabProvider-Cz0VXKKK.js.map

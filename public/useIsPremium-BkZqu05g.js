@@ -1,2 +1,0 @@
-import{G as e,z as t}from"./langPack-DBKM_1Cz.js";import{t as n}from"./listenerSetter-DWbyIjGK.js";import{r}from"./hotReloadGuard-BHQeJeuT.js";var i=()=>{let{rootScope:i}=r(),[a,o]=t(i.premium),s=new n;return s.add(i)(`premium_toggle`,e=>{o(e)}),e(()=>{s.removeAll()}),a};export{i as t};
-//# sourceMappingURL=useIsPremium-BkZqu05g.js.map

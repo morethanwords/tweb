@@ -2038,7 +2038,7 @@ hr {
 
 .inline-icon {
   vertical-align: bottom;
-  line-height: inherit;
+  line-height: inherit !important;
 
   &-left {
     margin-inline-end: .125rem;
