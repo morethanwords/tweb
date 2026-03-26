@@ -1380,10 +1380,6 @@ export default class DialogsStorage extends AppManager {
       return false;
     }
 
-    if(_isDialog && dialog._ !== 'dialog'/*  || peerId === 239602833 */) {
-      this.log.error('saveConversation not regular dialog', dialog, Object.assign({}, dialog));
-    }
-
     if(_isDialog && !channelId && peerId.isAnyChat()) {
       const chat = this.appChatsManager.getChat(peerId.toChatId()) as Chat.chat;
       if(chat && chat.migrated_to && chat.pFlags.deactivated) {
@@ -2081,7 +2077,7 @@ export default class DialogsStorage extends AppManager {
       const {folder_id, peer} = folderPeer;
 
       const peerId = this.appPeersManager.getPeerId(peer);
-      const dialog = this.dropDialog(peerId, undefined, true)[0] as Dialog;
+      const dialog = this.dropDialogFromFolders(peerId, undefined, true)[0] as Dialog;
       if(dialog) {
         if(dialog.pFlags?.pinned) {
           this.handleDialogUnpinning(dialog, folder_id);

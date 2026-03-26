@@ -17,7 +17,7 @@ import type {Mirrors} from '@lib/apiManagerProxy';
 import LazyLoadQueueBase from '@components/lazyLoadQueueBase';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import tsNow from '@helpers/tsNow';
-import {randomLong} from '@helpers/random';
+import {nextRandomUint, randomLong} from '@helpers/random';
 import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, UrlAuthResult, MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, InputUser, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities, ChannelsSearchPosts, FactCheck, MessageExtendedMedia, SponsoredMessage, MessagesSponsoredMessages, InputGroupCall, TodoItem, TodoCompletion, SearchPostsFlood, UserFull} from '@layer';
 import {ArgumentTypes, InvokeApiOptions, Modify} from '@types';
 import {logger, LogTypes} from '@lib/logger';
@@ -3407,7 +3407,7 @@ export class AppMessagesManager extends AppManager {
     filterType?: FilterType,
     offsetBotforumTopic?: ForumTopic
   }) {
-    const log = this.log.bindPrefix('getTopMessages');
+    const log = this.log.bindPrefix('getTopMessages-' + nextRandomUint(16));
     // const dialogs = this.dialogsStorage.getFolder(folderId);
     const offsetId = 0;
     let offsetPeerId: PeerId;
@@ -3426,7 +3426,13 @@ export class AppMessagesManager extends AppManager {
     const peerId = this.dialogsStorage.isVirtualFilter(folderId) ? folderId : undefined;
 
     const processResult = (result: MessagesDialogs | MessagesForumTopics | MessagesSavedDialogs) => {
-      if(!middleware() || result._ === 'messages.dialogsNotModified' || result._ === 'messages.savedDialogsNotModified') return null;
+      if(
+        !middleware() ||
+        result._ === 'messages.dialogsNotModified' ||
+        result._ === 'messages.savedDialogsNotModified'
+      ) {
+        return null;
+      }
 
       log('result', result);
 
@@ -3463,12 +3469,6 @@ export class AppMessagesManager extends AppManager {
         if(!dialog) {
           arr.splice(idx, 1);
           return;
-        }
-
-        // const d = Object.assign({}, dialog);
-        // ! нужно передавать folderId, так как по папке !== 0 нет свойства folder_id
-        if(!peerId) {
-          (dialog as Dialog).folder_id ??= setFolderId;
         }
 
         this.dialogsStorage.saveDialog({
@@ -5418,7 +5418,11 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  public editPeerFolders(peerIds: PeerId[], folderId: number) {
+  public editPeerFolders(peerIds: PeerId[], folderId: REAL_FOLDER_ID) {
+    if(!REAL_FOLDERS.has(folderId)) {
+      throw makeError('UNKNOWN');
+    }
+
     this.apiManager.invokeApi('folders.editPeerFolders', {
       folder_peers: peerIds.map((peerId) => {
         return {
@@ -5428,10 +5432,11 @@ export class AppMessagesManager extends AppManager {
         };
       })
     }).then((updates) => {
-      const peerId = peerIds[0];
-      if(peerIds.length === 1 && folderId === FOLDER_ID_ALL) {
-        this.appProfileManager.refreshPeerSettingsIfNeeded(peerId);
-      }
+      peerIds.forEach((peerId) => {
+        if(folderId === FOLDER_ID_ALL) {
+          this.appProfileManager.refreshPeerSettingsIfNeeded(peerId);
+        }
+      });
 
       // this.log('editPeerFolders updates:', updates);
       this.apiUpdatesManager.processUpdateMessage(updates); // WARNING! возможно тут нужно добавлять channelId, и вызывать апдейт для каждого канала отдельно
