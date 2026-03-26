@@ -1,13 +1,96 @@
-import {createEffect, createResource, JSX, on} from 'solid-js';
+import {createEffect, createResource, JSX, on, Show} from 'solid-js';
 import classNames from '@helpers/string/classNames';
-import {MessageEntity, ReplyMarkup} from '@layer';
+import {Message, MessageEntity, ReplyMarkup} from '@layer';
 import {generateTail} from '@components/chat/utils';
 import {I18nTsx} from '@helpers/solid/i18n';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import rootScope from '@lib/rootScope';
 import ReplyMarkupLayout from '@components/chat/bubbleParts/replyMarkupLayout';
+import {useBubble} from '@components/chat/bubbles/context';
+import Passthrough from '@helpers/solid/passthrough';
 
-function ViaUsername(props: { botId: BotId }) {
+// ---------------------------------------------------------------------------
+// Bubble.Layout — compound layout for the Solid bubble refactoring.
+// ---------------------------------------------------------------------------
+
+export function Layout(props: {
+  children: JSX.Element
+}) {
+  const ctx = useBubble();
+  const {store} = ctx;
+
+  return (
+    <Passthrough
+      element={ctx.bubble}
+      classList={{
+        'bubble': true,
+        'is-out': ctx.isOut(),
+        'is-in': !ctx.isOut(),
+        'just-media': ctx.isStandaloneMedia(),
+        'can-have-tail': ctx.canHaveTail() && !ctx.isRound,
+        'is-message-empty': ctx.isMessageEmpty(),
+        'invert-media': ctx.invertMedia(),
+        'emoji-big can-have-big-emoji': ctx.bigEmojis() > 0,
+        'sticker': ctx.isSticker,
+        'round': ctx.isRound,
+        'is-sponsored': ctx.isSponsored,
+        'with-reply-markup': !!store.replyMarkup,
+        'channel-post': (ctx.message() as Message.message)?.views !== undefined,
+
+        // name component
+        'hidden-profile': ctx.state.isHiddenProfile,
+        'forwarded': ctx.state.isForwarded,
+        'hide-name': ctx.state.hideName !== false,
+
+        [ctx.state.mediaClass || '']: true
+      }}
+    >
+      {props.children}
+
+      <div class="bubble-content-wrapper">
+        <div class="bubble-content">
+          {ctx.isStandaloneMedia() ? (
+            <div class="name-with-reply floating-part">
+              {store.name}
+              {store.reply}
+            </div>
+          ) : (
+            <>
+              {store.name}
+              {store.topicName}
+              {store.reply}
+            </>
+          )}
+          <Show
+            when={ctx.invertMedia()}
+            fallback={<>
+              {store.attachment}
+              {store.messageText}
+            </>}
+          >
+            {store.messageText}
+            {store.attachment}
+          </Show>
+          {store.factCheck}
+          {store.time}
+          {store.reactions}
+          {store.tail}
+          {store.besideButtons}
+        </div>
+        {store.replyMarkup}
+      </div>
+      {store.spoilerOverlay}
+      {store.sendingStatus}
+    </Passthrough>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// BubbleLayout — legacy simple layout (used by webAppPreparedMessage.tsx)
+// Kept for backward compatibility. Does NOT use BubbleContext.
+// ---------------------------------------------------------------------------
+
+function ViaUsername(props: {botId: BotId}) {
   const [resource, ctx] = createResource(async() => {
     const via = document.createElement('span');
     via.innerText = '@' + (await rootScope.managers.appPeersManager.getPeerUsername(props.botId.toPeerId()));
@@ -58,7 +141,7 @@ export function BubbleLayout(props: {
     >
       <div class="bubble-content-wrapper">
         <div class="bubble-content" style={props.contentStyle}>
-          {props.justMedia ? (
+          {props.via && (props.justMedia ? (
             <div class="floating-part name-with-reply" dir="auto">
               <div class="name">
                 {renderVia()}
@@ -74,7 +157,7 @@ export function BubbleLayout(props: {
             >
               {renderVia()}
             </div>
-          )}
+          ))}
           {props.attachment}
           {(props.text || props.content) && (
             <div class={classNames('message spoilers-container', props.attachment && 'mt-shorter')}>

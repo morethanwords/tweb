@@ -198,6 +198,9 @@ import {getRestrictionReason} from '@helpers/restrictions';
 import {isMessageSensitive} from '@appManagers/utils/messages/isMessageRestricted';
 import {getPriceChangedActionMessageLangParams} from '@lib/lang';
 import addSuggestedPostServiceMessage, {checkIfNotMePosted} from '@components/chat/bubbleParts/suggestPostServiceMessage';
+import {renderServiceBubbleContent} from '@components/chat/bubbles/serviceBubbleContent';
+import {createBubbleContext} from '@components/chat/bubbles/context';
+import {Bubble} from '@components/chat/bubbles/bubble';
 import addSuggestedPostReplyMarkup, {canHaveSuggestedPostReplyMarkup} from '@components/chat/bubbleParts/suggestedPostReplyMarkup';
 import type {SeparatorIntersectorRoot} from '@components/chat/bubbleParts/chatThreadSeparator';
 import BotforumNewTopic from '@components/chat/bubbleParts/botforumNewTopic';
@@ -260,7 +263,7 @@ const IGNORE_ACTIONS_ARRAY: [IGNORE_ACTION_KEY, IGNORE_ACTION_VALUE][] = [
   ['messageActionChatMigrateTo', true],
   ['messageActionContactSignUp', true]
 ];
-const IGNORE_ACTIONS = new Map(IGNORE_ACTIONS_ARRAY);
+export const IGNORE_ACTIONS = new Map(IGNORE_ACTIONS_ARRAY);
 
 export const SERVICE_AS_REGULAR: Set<MESSAGE_ACTION_TYPE> = new Set();
 
@@ -280,6 +283,7 @@ export const STICKY_OFFSET = 3;
 const SCROLLED_DOWN_THRESHOLD = 300;
 const PEER_CHANGED_ERROR = new Error('peer changed');
 
+const USE_SOLID_BUBBLES = true;
 const DO_NOT_SLICE_VIEWPORT = false;
 const DO_NOT_SLICE_VIEWPORT_ON_RENDER = false;
 const DO_NOT_SLICE_VIEWPORT_ON_SCROLL = IS_SAFARI;
@@ -479,7 +483,7 @@ export default class ChatBubbles {
   // public messagesCount: number = -1;
 
   private unreadOut = new Set<number>();
-  private needUpdate: {replyToPeerId: PeerId, replyMid?: number, replyStoryId?: number, mid: number, peerId: PeerId, logId?: string | number}[] = []; // if need wrapSingleMessage
+  public needUpdate: {replyToPeerId: PeerId, replyMid?: number, replyStoryId?: number, mid: number, peerId: PeerId, logId?: string | number}[] = []; // if need wrapSingleMessage
 
   private bubbles: {[fullMid: string]: HTMLElement} = {};
   public skippedMids: Set<string> = new Set();
@@ -537,7 +541,7 @@ export default class ChatBubbles {
 
   private fetchNewPromise: Promise<void>;
 
-  private passEntities: Partial<{
+  public passEntities: Partial<{
     [_ in MessageEntity['_']]: boolean
   }> = {};
 
@@ -576,17 +580,17 @@ export default class ChatBubbles {
   private renderNewPromises: Set<Promise<any>> = new Set();
   private updateGradient: boolean;
 
-  private extendedMediaMessages: Set<number> = new Set();
+  public extendedMediaMessages: Set<number> = new Set();
   private pollExtendedMediaMessagesPromise: Promise<void>;
 
   private batchProcessor: BatchProcessor<Awaited<ReturnType<ChatBubbles['safeRenderMessage']>>>;
 
-  private ranks: Map<PeerId, ReturnType<typeof getParticipantRank>>;
-  private processRanks: Set<() => void>;
-  private canShowRanks: boolean;
+  public ranks: Map<PeerId, ReturnType<typeof getParticipantRank>>;
+  public processRanks: Set<() => void>;
+  public canShowRanks: boolean;
   // private reactions: Map<number, ReactionsElement>;
 
-  private updateLocalOnEdit: Map<HTMLElement, (message: Message.message) => void> = new Map();
+  public updateLocalOnEdit: Map<HTMLElement, (message: Message.message) => void> = new Map();
   public replySwipeHandler: SwipeHandler;
 
   private remover: HTMLDivElement;
@@ -613,7 +617,7 @@ export default class ChatBubbles {
 
   private contexts: Map<HTMLElement, BubbleContext> = new Map();
 
-  private webPageClickCallbacks: WeakMap<HTMLElement, (e: MouseEvent) => any> = new WeakMap();
+  public webPageClickCallbacks: WeakMap<HTMLElement, (e: MouseEvent) => any> = new WeakMap();
 
   constructor(
     public chat: Chat,
@@ -1861,7 +1865,7 @@ export default class ChatBubbles {
     // * scheduled part end
   }
 
-  private get peerId() {
+  public get peerId() {
     return this.chat.peerId;
   }
 
@@ -3842,7 +3846,7 @@ export default class ChatBubbles {
     return this.managers.appMessagesManager.getExtendedMedia(this.peerId, mids);
   }
 
-  private setExtendedMediaMessagesPollInterval() {
+  public setExtendedMediaMessagesPollInterval() {
     if(this.pollExtendedMediaMessagesPromise || !this.extendedMediaMessages.size) {
       return;
     }
@@ -5346,7 +5350,7 @@ export default class ChatBubbles {
     return this.middlewareHelper.get(additionalCallback);
   }
 
-  private async wrapMediaSpoiler({
+  public async wrapMediaSpoiler({
     media,
     promise,
     middleware,
@@ -5664,7 +5668,7 @@ export default class ChatBubbles {
     (type === 'history' ? this.unreaded : this.unreadedContent).set(element, mid);
   }
 
-  private modifyBubble = async(callback: () => void) => {
+  public modifyBubble = async(callback: () => void) => {
     const setBatch = !this.batchingModifying;
     (this.batchingModifying ??= []).push(callback);
     if(setBatch) {
@@ -5771,7 +5775,486 @@ export default class ChatBubbles {
     };
   }
 
-  private async renderMessage({
+  private async renderMessage(args: RenderMessageArgs) {
+    if(USE_SOLID_BUBBLES) {
+      return this.renderMessageSolid(args);
+    }
+
+    return this.renderMessageLegacy(args);
+  }
+
+  private async renderMessageSolid({
+    message,
+    fakeServiceContent,
+    additionalPromises = [],
+    reverse = false,
+    bubble,
+    middleware
+  }: RenderMessageArgs) {
+    const loadPromises: Promise<any>[] = [...additionalPromises];
+
+    const isMessage = message._ === 'message';
+    const groupedId = isMessage && message.grouped_id;
+    let groupedMids: number[];
+    const groupedMessages = groupedId ? apiManagerProxy.getMessagesByGroupedId(groupedId) : undefined;
+    const groupedMustBeRenderedFull = this.chat.type !== ChatType.Pinned;
+
+    if(groupedId && groupedMustBeRenderedFull) {
+      groupedMids = groupedMessages.map((m) => m.mid);
+      const mainMessage = getMainGroupedMessage(groupedMessages);
+      if(message.mid !== mainMessage.mid) {
+        return;
+      }
+    }
+
+    const maxBubbleMid = groupedMids ? Math.max(...groupedMids) : message.mid;
+    (bubble as any).maxBubbleMid = maxBubbleMid;
+
+    const hasReactions = message._ === 'message' || (message._ === 'messageService' && message.pFlags.reactions_are_possible);
+    const reactionsMessage = hasReactions ? (groupedId ? getMainGroupedMessage(groupedMessages) : message) : undefined;
+    const our = this.chat.isOurMessage(message);
+    const isOut = this.chat.isOutMessage(message);
+    const isOutgoing = !!message.pFlags.is_outgoing;
+
+    // --- service message handling (same as legacy) ---
+    const isStoryMention = isMessage && !!(message.media as MessageMedia.messageMediaStory)?.pFlags?.via_mention;
+    const isSelfDestructingMedia = isMessage && !!(message.media as MessageMedia.messageMediaPhoto)?.ttl_seconds;
+    const regularAsService = isStoryMention || (isSelfDestructingMedia && !canSeeMessageMedia(message));
+
+    if(
+      this.chat.isBotforum &&
+      (message as Message.messageService).action?._ === 'messageActionTopicCreate' &&
+      this.chat.threadId
+    ) {
+      return;
+    }
+
+    // create DOM structure needed by service and legacy helpers
+    const contentWrapper = document.createElement('div');
+    contentWrapper.classList.add('bubble-content-wrapper');
+    const bubbleContainer = document.createElement('div');
+    bubbleContainer.classList.add('bubble-content');
+    contentWrapper.append(bubbleContainer);
+    bubble.append(contentWrapper);
+
+    // service messages
+    if(regularAsService || (!isMessage && (!message.action || !SERVICE_AS_REGULAR.has(message.action._)))) {
+      const serviceResult = await renderServiceBubbleContent({
+        bubbles: this,
+        message,
+        isMessage,
+        our,
+        bubble,
+        bubbleContainer,
+        contentWrapper,
+        middleware,
+        wrapOptions: {
+          lazyLoadQueue: this.lazyLoadQueue,
+          middleware,
+          customEmojiSize: this.chat.appImManager.customEmojiSize,
+          animationGroup: this.chat.animationGroup
+        },
+        loadPromises,
+        isStoryMention,
+        isSelfDestructingMedia,
+        regularAsService
+      });
+
+      if(serviceResult === undefined) return;
+      if(serviceResult) {
+        return {bubble, promises: loadPromises, message: message as MyMessage | AdminLog, reverse};
+      }
+    }
+
+    // paid/suggested service messages
+    let tmpPromise: Promise<any>;
+    tmpPromise = addPaidServiceMessage({
+      isAnyGroup: this.chat.isAnyGroup,
+      bubble,
+      message,
+      our,
+      peerId: this.peerId,
+      groupedMessages
+    });
+    if(tmpPromise) await tmpPromise;
+
+    tmpPromise = addSuggestedPostServiceMessage({
+      bubble,
+      message,
+      peerId: this.peerId,
+      canManageDirectMessages: this.chat.canManageDirectMessages,
+      loadPromises
+    });
+    if(tmpPromise) await tmpPromise;
+
+    // fakeServiceContent
+    if(fakeServiceContent) {
+      bubble.classList.add('has-fake-service', 'is-forced-rounded');
+      const fakeServiceMessage = document.createElement('div');
+      fakeServiceMessage.classList.add('service-msg');
+      fakeServiceMessage.append(fakeServiceContent);
+      bubble.prepend(fakeServiceMessage);
+    }
+
+    // unread state
+    let isInUnread = !our && !message.pFlags.out && !!message.pFlags.unread;
+    if(!isInUnread && this.chat.peerId.isAnyChat()) {
+      const readMaxId = await this.managers.appMessagesManager.getReadMaxIdIfUnread(this.chat.peerId, this.chat.threadId);
+      if(readMaxId !== undefined && readMaxId < maxBubbleMid) {
+        isInUnread = true;
+      }
+    }
+
+    const unreadMention = isMentionUnread(message);
+    const unreadReactions = getUnreadReactions(message);
+
+    // --- compute derived values ---
+    let messageMedia: MessageMedia = isMessage ? message.media : undefined;
+    if(!isMessage && message.action?._ === 'messageActionPhoneCall') {
+      messageMedia = {_: 'messageMediaCall', action: message.action};
+    }
+
+    const invertMedia = isMessage && !!message.pFlags.invert_media;
+    const doc = (messageMedia as MessageMedia.messageMediaDocument)?.document as MyDocument;
+    const isSticker = !!doc?.sticker;
+    const isRound = doc?.type === 'round';
+    const factCheck = isMessage && message.factcheck;
+    const isSponsored = isMessage && !!(message as Message.message).pFlags.sponsored;
+
+    // big emoji detection
+    let bigEmojis = 0;
+    const messageText = isMessage ? (message as Message.message).message : '';
+    const totalEntities = isMessage ? (message as Message.message).totalEntities : undefined;
+    if(messageText && totalEntities && !messageMedia && !factCheck) {
+      const emojiEntities: MessageEntity[] = [];
+      for(let i = 0, length = totalEntities.length; i < length; ++i) {
+        const entity = totalEntities[i];
+        if(entity._ === 'messageEntityCustomEmoji') {
+          ++i;
+          emojiEntities.push(entity);
+        } else if(entity._ === 'messageEntityEmoji') {
+          emojiEntities.push(entity);
+        }
+      }
+      const strLength = messageText.replace(/\s/g, '').length;
+      const emojiStrLength = emojiEntities.reduce((acc, curr) => acc + curr.length, 0);
+      if(emojiStrLength === strLength) {
+        bigEmojis = Math.min(BIG_EMOJI_SIZES_LENGTH, emojiEntities.length);
+        const emojiSize = BIG_EMOJI_SIZES[bigEmojis];
+        if(emojiSize) {
+          bubble.style.setProperty('--emoji-size', emojiSize + 'px');
+        }
+      }
+    }
+
+    const isStandaloneMedia = isSticker || isRound || (bigEmojis > 0 && this.chat.appSettings.emoji.big);
+    const isMessageEmpty = !messageText && !isSponsored && !factCheck;
+    const canHaveTail = !isSticker && !isRound && !(bigEmojis > 0 && this.chat.appSettings.emoji.big);
+
+    // remove the contentWrapper used by service branch — Layout will create its own
+    contentWrapper.remove();
+
+    // textMid for grouped text editing
+    if(groupedMessages && groupedMessages.length > 1 && isMessage) {
+      const groupedTextMessage = (await import('@appManagers/utils/messages/getGroupedText')).default(groupedMessages);
+      if(groupedTextMessage) {
+        bubble.dataset.textMid = '' + groupedTextMessage.mid;
+      }
+    }
+
+    // customEmojiSize adjusted for big emojis
+    let customEmojiSize = this.chat.appImManager.customEmojiSize;
+    if(bigEmojis > 0) {
+      const emojiSize = BIG_EMOJI_SIZES[bigEmojis];
+      if(emojiSize) {
+        customEmojiSize = makeMediaSize(emojiSize, emojiSize);
+      } else {
+        customEmojiSize = mediaSizes.active.customEmoji;
+      }
+    }
+
+    const wrapOptions: WrapSomethingOptions = {
+      lazyLoadQueue: this.lazyLoadQueue,
+      middleware,
+      customEmojiSize,
+      animationGroup: this.chat.animationGroup
+    };
+
+    // --- apply CSS classes directly to bubble element ---
+    if(isOutgoing && !message.error) {
+      bubble.classList.add('is-outgoing');
+      if((message as Message.message).reactions) {
+        bubble.dataset.ignoreReactions = '1';
+      }
+    }
+
+    // peer color
+    if(isMessage && (isStandaloneMedia || !isOut || message.fwdFromId)) {
+      setPeerColorToElement({
+        peerId: message.fwdFromId || message.fromId,
+        element: bubble,
+        messageHighlighting: isStandaloneMedia,
+        colorAsOut: isOut
+      });
+    }
+
+    // reply-to datasets
+    const replyTo = message.reply_to;
+    if(replyTo?._ === 'messageReplyHeader') {
+      const replyToPeerId = replyTo.reply_to_peer_id ? getPeerId(replyTo.reply_to_peer_id) : this.peerId;
+      bubble.dataset.replyToPeerId = '' + replyToPeerId;
+      bubble.dataset.replyToMid = '' + message.reply_to_mid;
+    } else if(replyTo) {
+      bubble.dataset.replyToPeerId = '' + getPeerId(replyTo.peer);
+      bubble.dataset.replyToStoryId = '' + replyTo.story_id;
+    }
+
+    // old-style BubbleContext for context menu, selection, etc.
+    const oldContext: BubbleContext = {
+      bubble,
+      bubbleContainer: bubble, // will be the bubble-content inside Layout
+      bubbles: this,
+      middleware,
+      loadPromises,
+      isInUnread,
+      isOutgoing,
+      messageMessage: messageText || '',
+      messageMedia,
+      isOut,
+      canHaveTail,
+      isStandaloneMedia,
+      mediaRequiresMessageDiv: false
+    } as any;
+    this.contexts.set(bubble, oldContext);
+    middleware.onDestroy(() => {
+      if(this.contexts.get(bubble) === oldContext) {
+        this.contexts.delete(bubble);
+      }
+    });
+
+    // unread observer
+    if(isInUnread && this.observer) {
+      this.setUnreadObserver('history', bubble, maxBubbleMid);
+    }
+
+    // unread mention/reactions content observer
+    if(this.observer && (unreadMention || unreadReactions) && reactionsMessage) {
+      this.setUnreadObserver('content', bubble, reactionsMessage.mid);
+    }
+
+    // views observer for channel posts
+    if(isMessage && message.views && !message.pFlags.is_outgoing && this.observer) {
+      this.observer.observe(bubble, this.viewsObserverCallback);
+    }
+
+    // no-forwards reactive toggle
+    if(isMessage) {
+      createRoot((dispose) => {
+        middleware.onDestroy(dispose);
+        createEffect(() => {
+          bubble.classList.toggle('no-forwards', !this.canForward(message));
+        });
+      });
+    }
+
+    // message effect observer
+    if(isMessage && message.effect && (isInUnread || isOutgoing)) {
+      this.observer?.observe(bubble, this.messageEffectObserverCallback);
+    }
+
+    // summarizing signal — shared between BesideButtons (toggle) and Text (TranslatableMessage)
+    const [summarizing, setSummarizing] = createSignal(false);
+
+    // --- create Solid context and render ---
+    const ctx = createBubbleContext({
+      bubble,
+      message,
+      groupedMessages,
+      reactionsMessage,
+      isOut,
+      isOutgoing,
+      isService: !isMessage,
+      isStandaloneMedia,
+      isRound,
+      isSticker,
+      isSponsored,
+      isMessage,
+      canHaveTail,
+      isMessageEmpty,
+      invertMedia,
+      bigEmojis,
+      messageMedia,
+      chat: this.chat,
+      middleware,
+      wrapOptions,
+      lazyLoadQueue: this.lazyLoadQueue,
+      bubbles: this,
+      summarizing,
+      setSummarizing,
+      loadPromises,
+      HotReloadGuard: SolidJSHotReloadGuardProvider
+    });
+
+    renderComponent({
+      Component: Bubble,
+      props: {ctx},
+      middleware,
+      HotReloadGuard: SolidJSHotReloadGuardProvider
+    });
+
+    // update old context to point to actual bubble-content now that Layout rendered
+    const actualBubbleContainer = bubble.querySelector('.bubble-content') as HTMLElement;
+    if(actualBubbleContainer) {
+      oldContext.bubbleContainer = actualBubbleContainer;
+    }
+
+    // continuously typing message
+    const usedId = message.mid;
+    if(isMessage && message.pFlags.currentlyTyping || this.currentlyTypingMessages[usedId]) {
+      import('./bubbleParts/continuouslyTypingMessage').then(({wrapContinuouslyTypingMessage}) => {
+        const messageDiv = bubble.querySelector('.message');
+        if(!messageDiv) return;
+
+        const previous = this.currentlyTypingMessages[usedId];
+        previous?.clean();
+
+        const current = this.currentlyTypingMessages[usedId] = wrapContinuouslyTypingMessage({
+          scrollable: this.scrollable.container,
+          bubble,
+          root: messageDiv.firstChild as any,
+          prevPosition: previous?.currentPosition,
+          isEnd: previous?.nextIsEnd
+        });
+
+        middleware.onDestroy(() => {
+          current?.clean();
+          setTimeout(() => {
+            if(current === this.currentlyTypingMessages[usedId]) {
+              this.currentlyTypingMessages[usedId] = undefined;
+            }
+          }, 1000);
+        });
+      });
+    }
+
+    // round video special handling
+    if(isRound) {
+      wrapRoundVideoBubble({
+        bubble,
+        message: message as Message.message,
+        globalMediaDeferred: deferredPromise<HTMLMediaElement>(),
+        searchContext: {
+          peerId: this.peerId,
+          inputFilter: {_: 'inputMessagesFilterRoundVoice'},
+          threadId: this.chat.threadId,
+          useSearch: !(message as Message.message).pFlags.is_scheduled,
+          isScheduled: (message as Message.message).pFlags.is_scheduled
+        }
+      });
+    }
+
+    // thread starter + replies
+    if(isMessage) {
+      const messageWithReplies = await this.managers.appMessagesManager.getMessageWithCommentReplies(message);
+      const isThreadStarter = messageWithReplies && messageWithReplies.mid === this.chat.threadId;
+      if(isThreadStarter) {
+        bubble.classList.add('is-thread-starter', 'is-group-last');
+      }
+      if(messageWithReplies) {
+        bubble.classList.add('with-replies');
+
+        const messageDiv = bubble.querySelector('.message') as HTMLElement;
+        const bubbleContainer = bubble.querySelector('.bubble-content') as HTMLElement;
+        if(messageDiv && bubbleContainer) {
+          const isFooter = MessageRender.renderReplies({
+            bubble,
+            bubbleContainer,
+            message: messageWithReplies,
+            messageDiv,
+            loadPromises,
+            lazyLoadQueue: this.lazyLoadQueue,
+            middleware
+          });
+
+          if(!isFooter) {
+            bubble.classList.add('with-beside-replies');
+          }
+        }
+      } else if(message.replies && this.chat.isAnyGroup) {
+        this.setBubbleRepliesCount(bubble, message.replies.replies);
+      }
+    }
+
+    // savedFrom "Go to Original" button
+    const fwdFrom = isMessage && message.fwd_from;
+    let savedFrom = '';
+    if(this.chat.type === ChatType.Pinned) {
+      savedFrom = makeFullMid(this.chat.peerId, message.mid);
+    } else if(isMessage && (message as Message.message).savedFrom) {
+      savedFrom = (message as Message.message).savedFrom;
+    }
+    if(savedFrom && (this.chat.type === ChatType.Pinned || (fwdFrom && fwdFrom.saved_from_msg_id)) && this.peerId !== REPLIES_PEER_ID) {
+      const goto = document.createElement('div');
+      goto.classList.add('bubble-beside-button', 'with-hover', 'goto-original');
+      goto.append(Icon('arrow_next'));
+      const bubbleContainer = bubble.querySelector('.bubble-content');
+      bubbleContainer?.append(goto);
+      bubble.dataset.savedFrom = savedFrom;
+      bubble.classList.add('with-beside-button');
+    }
+
+    // suggested post / continue topic reply markup
+    const contentWrapperEl = bubble.querySelector('.bubble-content-wrapper') as HTMLElement;
+    if(!isOut && isMessage) {
+      tmpPromise = addSuggestedPostReplyMarkup({message, bubble, contentWrapper: contentWrapperEl, chat: this.chat});
+      if(tmpPromise) await tmpPromise;
+    }
+    if(isMessage) {
+      addContinueLastTopicReplyMarkup({message, bubble, contentWrapper: contentWrapperEl, chat: this.chat});
+    }
+
+    // sponsored after mids
+    if(this.sponsoredAfterMids.size > 0) {
+      const sponsoredMessageAfterMid = groupedMids ? groupedMids.find((it) => this.sponsoredAfterMids.has(it)) : message.mid;
+      const sponsoredMsg = this.sponsoredAfterMids.get(sponsoredMessageAfterMid);
+      if(sponsoredMsg) {
+        const sponsoredBubblePromise = this.safeRenderMessage({
+          message: sponsoredMsg,
+          reverse: false,
+          updatePosition: false,
+          processResult: async(res) => {
+            const b = (await res).bubble;
+            (b as any).message = sponsoredMsg;
+            bubble.appendChild(b);
+            return res;
+          },
+          canAnimateLadder: true
+        });
+        loadPromises.push(sponsoredBubblePromise);
+      }
+    }
+
+    // sending status classes
+    if(our && (this.peerId !== rootScope.myId || isOut)) {
+      if(message.pFlags.unread || isOutgoing) this.unreadOut.add(message.mid);
+      let status: Parameters<ChatBubbles['setBubbleSendingStatus']>[1];
+      if(message.error) status = 'error';
+      else if(isOutgoing) status = 'sending';
+      else status = message.pFlags.unread || (message as Message.message).pFlags.is_scheduled ? 'sent' : 'read';
+      if(isOut || (status !== 'sent' && status !== 'read')) {
+        this.setBubbleSendingStatus(bubble, status, true);
+      }
+    }
+
+    return {
+      bubble,
+      promises: loadPromises,
+      message: message as MyMessage | AdminLog,
+      reverse
+    };
+  }
+
+  private async renderMessageLegacy({
     message,
     originalMessage,
     colorOriginalMessagePeerId,
@@ -5911,524 +6394,27 @@ export default class ChatBubbles {
     }
 
     if(regularAsService || (!isMessage && (!message.action || !SERVICE_AS_REGULAR.has(message.action._)))) {
-      const action = (message as Message.messageService).action;
-      if(action) {
-        const _ = action._;
+      const serviceResult = await renderServiceBubbleContent({
+        bubbles: this,
+        message,
+        isMessage,
+        our,
+        bubble,
+        bubbleContainer,
+        contentWrapper,
+        middleware,
+        wrapOptions,
+        loadPromises,
+        isStoryMention,
+        isSelfDestructingMedia,
+        regularAsService
+      });
 
-        const ignoreAction = IGNORE_ACTIONS.get(_);
-        if(ignoreAction && (ignoreAction === true || ignoreAction(message as Message.messageService))) {
-          return;
-        }
-
-        if(langPack.hasOwnProperty(_) && !langPack[_]) {
-          return;
-        }
+      if(serviceResult === undefined) {
+        return;
       }
 
-      bubble.className = 'bubble service';
-
-      bubbleContainer.replaceChildren();
-
-      const s = document.createElement('div');
-      s.classList.add('service-msg');
-      if(action) {
-        const isGiftCode = action._ === 'messageActionGiftCode';
-        let promise: Promise<any>;
-        if(action._ === 'messageActionGiftStars' || action._ === 'messageActionPrizeStars') {
-          const content = bubbleContainer.cloneNode(false) as HTMLElement;
-          content.classList.add('has-service-before');
-
-          s.append(await wrapMessageActionTextNew({message, middleware}));
-
-          const isSent = message.fromId === rootScope.myId;
-          const isPrize = action._ === 'messageActionPrizeStars';
-
-          let subtitle: HTMLElement;
-          if(isPrize) {
-            subtitle = i18n(
-              'Action.StarGiveawayPrize',
-              [+action.stars, await wrapPeerTitle({peerId: getPeerId(action.boost_peer)})]
-            );
-          } else {
-            subtitle = i18n(isSent ? 'ActionGiftStarsSubtitle' : 'ActionGiftStarsSubtitleYou', [await wrapPeerTitle({peerId: message.peerId})]);
-          }
-
-          this.wrapSomeSolid(() => PremiumGiftBubble({
-            rlottieOptions: {
-              middleware
-            },
-            assetName: 'Gift3',
-            title: i18n(isPrize ? 'BoostingCongratulations' : 'ActionGiftStarsTitle', [action.stars]),
-            subtitle,
-            buttonText: i18n('ActionGiftPremiumView'),
-            buttonCallback: async() => {
-              PopupPayment.create({
-                message: message as Message.message,
-                noPaymentForm: true,
-                transaction: {
-                  _: 'starsTransaction',
-                  date: message.date,
-                  id: action.transaction_id || (isSent ? '' : '1'),
-                  peer: {
-                    _: 'starsTransactionPeer',
-                    peer: isPrize ? action.boost_peer : {
-                      _: 'peerUser',
-                      user_id: isSent ? message.peerId : rootScope.myId
-                    }
-                  },
-                  pFlags: {
-                    gift: isPrize ? undefined : true
-                  },
-                  amount: formatStarsAmount(action.stars),
-                  giveaway_post_id: isPrize ? action.giveaway_msg_id : undefined
-                }
-              });
-            }
-          }), content, middleware);
-
-          bubbleContainer.after(content);
-        } else if(isGiftCode && !shouldDisplayGiftCodeAsGift(action)) {
-          const isUnclaimed = action.pFlags.unclaimed;
-          const isGiveaway = action.pFlags.via_giveaway;
-          const title = i18n(isUnclaimed ? 'BoostingUnclaimedPrize' : 'BoostingCongratulations');
-          const subtitle = document.createElement('span');
-          subtitle.append(
-            i18n(
-              isUnclaimed ? 'BoostingYouHaveUnclaimedPrize' : (isGiveaway ? 'BoostingReceivedPrizeFrom' : (action.boost_peer ? 'BoostingReceivedGiftFrom' : 'BoostingReceivedGiftNoName')),
-              action.boost_peer ? [await wrapPeerTitle({peerId: getPeerId(action.boost_peer)})] : undefined
-            ),
-            document.createElement('br'),
-            document.createElement('br'),
-            i18n(
-              isUnclaimed ? 'BoostingUnclaimedPrizeDuration' : (isGiveaway ? 'BoostingReceivedPrizeDuration' : 'BoostingReceivedGiftDuration'),
-              [formatDaysDuration(action.days, true)]
-            )
-          );
-
-          const assetName = getGiftAssetName(action.days);
-
-          this.wrapSomeSolid(() => PremiumGiftBubble({
-            rlottieOptions: {middleware},
-            assetName,
-            title,
-            subtitle,
-            buttonText: i18n('BoostingReceivedGiftOpenBtn'),
-            buttonCallback: () => {
-              PopupElement.createPopup(PopupGiftLink, action.slug);
-            }
-          }), bubbleContainer, middleware);
-        } else if(action._ === 'messageActionChannelMigrateFrom') {
-          const peerTitle = new PeerTitle();
-          promise = peerTitle.update({peerId: action.chat_id.toPeerId(true), wrapOptions});
-          s.append(i18n('ChatMigration.From', [peerTitle.element]));
-        } else if(action._ === 'messageActionChatMigrateTo') {
-          const peerTitle = new PeerTitle();
-          promise = peerTitle.update({peerId: action.channel_id.toPeerId(true), wrapOptions});
-          s.append(i18n('ChatMigration.To', [peerTitle.element]));
-        } else if(action._ === 'messageActionPaidMessagesPrice') {
-          const result = getPriceChangedActionMessageLangParams(action, this.chat.isBroadcast, () => {
-            const peerTitle = new PeerTitle();
-            promise = peerTitle.update({peerId: message.peerId.toPeerId(true), wrapOptions});
-            return peerTitle.element;
-          });
-          s.append(i18n(
-            result.langPackKey,
-            result.args
-          ));
-        } else if(action._ === 'messageActionPaidMessagesRefunded') {
-          const peerTitle = new PeerTitle();
-          const savedPeerId = this.chat.canManageDirectMessages && getPeerId(message.saved_peer_id);
-          promise = peerTitle.update({peerId: savedPeerId || this.peerId, onlyFirstName: true, wrapOptions});
-
-          s.append(i18n(
-            our ? 'PaidMessages.StarsRefundedByYou' : 'PaidMessages.StarsRefundedToYou',
-            [+action.stars, peerTitle.element]
-          ));
-        } else if(action._ === 'messageActionSuggestedPostApproval' || action._ === 'messageActionSuggestedPostRefund' || action._ === 'messageActionSuggestedPostSuccess') {
-          const {default: SuggestedPostActionContent} = await import('./bubbleParts/suggestedPostActionContent');
-          const content = new SuggestedPostActionContent;
-
-          let peerTitle;
-          if(action._ === 'messageActionSuggestedPostApproval' && checkIfNotMePosted({peerId: this.peerId, canManageDirectMessages: this.chat.canManageDirectMessages, message})) {
-            peerTitle = new PeerTitle();
-            promise = peerTitle.update({peerId: this.peerId, onlyFirstName: this.chat.canManageDirectMessages, limitSymbols: 20, wrapOptions});
-          }
-
-          content.feedProps({
-            action,
-            message,
-            canManageDirectMessages: this.chat.canManageDirectMessages,
-            fromPeerTitle: peerTitle?.element
-          });
-
-          s.append(content);
-        } else if(action._ === 'messageActionSuggestBirthday') {
-          const title = await wrapMessageActionTextNew({message, middleware});
-          const container = wrapSolidComponent(() => SuggestBirthdayBubble({
-            birthday: action.birthday,
-            outgoing: message.pFlags.out,
-            title
-          }), middleware);
-          s.append(container);
-        } else if(action._ === 'messageActionStarGiftPurchaseOffer') {
-          const [title, gift] = await Promise.all([
-            wrapMessageActionTextNew({message, middleware}),
-            this.managers.appGiftsManager.wrapGift(action.gift)
-          ]);
-
-          const container = wrapSolidComponent(() => StarGiftOfferBubble({
-            gift: gift,
-            title,
-            outgoing: message.pFlags.out,
-            action,
-            modifyBubble: this.modifyBubble
-          }), middleware);
-          s.append(container);
-
-          if(!message.pFlags.out && showStarGiftOfferButtons(action)) {
-            bubble.classList.add('with-reply-markup');
-            const buttons = wrapSolidComponent(() => StarGiftOfferReplyMarkup({
-              gift,
-              message: message as Message.messageService,
-              chat: this.chat
-            }), middleware);
-            contentWrapper.append(buttons);
-          }
-        } else if(action._ === 'messageActionNoForwardsRequest' && !action.pFlags.expired) {
-          const peerTitle = message.pFlags.out ? undefined : await wrapPeerTitle({peerId: message.fromId});
-          this.wrapSomeSolid(() => NoForwardsRequestContent({
-            peerTitle
-          }), s, middleware);
-          s.style.maxWidth = '20rem';
-          bubble.classList.add('has-service-description');
-
-          const isExpired = tsNow(true) >= message.date + this.chat.appConfig.no_forwards_request_expire_period;
-          if(!message.pFlags.out && !isExpired) {
-            bubble.classList.add('with-reply-markup');
-            const buttons = wrapSolidComponent(() => NoForwardsRequestReplyMarkup({
-              message: message as Message.messageService,
-              chat: this.chat
-            }), middleware);
-            contentWrapper.append(buttons);
-          }
-        } else {
-          promise = wrapMessageActionTextNew({
-            message,
-            ...wrapOptions
-          }).then((el) => s.append(el));
-        }
-
-        if(action._ === 'messageActionGiftPremium' || (isGiftCode && shouldDisplayGiftCodeAsGift(action))) {
-          const content = bubbleContainer.cloneNode(false) as HTMLElement;
-          content.classList.add('has-service-before');
-
-          const assetName = getGiftAssetName(action.days);
-
-          const title = i18n('ActionGiftPremiumTitle2', [formatDaysDuration(action.days, false)]);
-          const subtitle =
-            action.message ?
-              wrapRichText(action.message.text, {entities: action.message.entities}) :
-              i18n('ActionGiftPremiumSubtitle2');
-
-          this.wrapSomeSolid(() => PremiumGiftBubble({
-            rlottieOptions: {middleware},
-            assetName,
-            title,
-            subtitle,
-            buttonText: i18n(isGiftCode && message.fromId === message.peerId ? 'GiftPremiumUseGiftBtn' : 'ActionGiftPremiumView'),
-            buttonCallback: () => {
-              if(isGiftCode) {
-                const link: InternalLink.InternalLinkGiftCode = {
-                  _: INTERNAL_LINK_TYPE.GIFT_CODE,
-                  slug: action.slug,
-                  stack: this.chat.appImManager.getStackFromElement(bubble)
-                };
-
-                internalLinkProcessor.processGiftCodeLink(link);
-                return;
-              }
-
-              PopupPremium.show({
-                gift: action,
-                peerId: this.peerId,
-                isOut: !!message.pFlags.out
-              });
-            }
-          }), content, middleware);
-
-          bubbleContainer.after(content);
-        } else if(action._ === 'messageActionGiftTon') {
-          const content = bubbleContainer.cloneNode(false) as HTMLElement;
-          content.classList.add('has-service-before');
-
-          const stickers = await this.managers.appStickersManager.getLocalStickerSet('inputStickerSetTonGifts');
-          let idx: number;
-          const amountNum = nanotonToJsNumber(action.amount);
-          if(amountNum > 50) idx = 2;
-          else if(amountNum > 10) idx = 1;
-          else idx = 0;
-
-          this.wrapSomeSolid(() => PremiumGiftBubble({
-            rlottieOptions: {middleware},
-            sticker: stickers.documents[idx] as MyDocument,
-            title: formatNanoton(action.crypto_amount) + ' ' + action.crypto_currency,
-            subtitle: i18n('TonGiftSubtitle'),
-            buttonText: i18n('ActionGiftPremiumView'),
-            buttonCallback: () => {
-              PopupElement.createPopup(PopupStars, {ton: true});
-            }
-          }), content, middleware);
-
-          bubbleContainer.after(content);
-        } else if(action._ === 'messageActionChannelJoined') {
-          bubble.classList.add('is-similar-channels');
-
-          const c = document.createElement('div');
-          c.classList.add('bubble-similar-channels');
-
-          let visible = false;
-          const toggle = (force = !visible, noAnimation?: boolean) => {
-            if(force === visible) {
-              return;
-            }
-
-            visible = force;
-
-            if(force && !c.parentElement) {
-              bubbleContainer.after(c);
-            }
-
-            if(!liteMode.isAvailable('animations')) {
-              noAnimation = true;
-            }
-
-            let scrollSaver: ScrollSaver;
-            if(bubble.isConnected) {
-              scrollSaver = this.createScrollSaver(true);
-              scrollSaver.save();
-            }
-
-            const {duration, easing} = getTransition('standard');
-            const options: KeyframeAnimationOptions = {duration: noAnimation ? 0 : duration, fill: 'forwards', easing};
-            const keyframes: Keyframe[] = [{height: '0'/* , transform: 'scale(0)', opacity: '0' */}, {height: '9.125rem'/* , transform: 'scale(1)', opacity: '1' */}];
-            if(!force) keyframes.reverse();
-            const animation = c.animate(keyframes, options);
-            if(scrollSaver) this.animateSomethingWithScroll(animation.finished, scrollSaver);
-            if(!force) animation.finished.then(() => {
-              if(visible === force) {
-                c.remove();
-              }
-            });
-
-            updateHidden(!force);
-          };
-
-          const deferred = deferredPromise<void>();
-
-          const updateHidden = async(hidden: boolean) => {
-            const array = this.chat.appState.hiddenSimilarChannels.slice();
-            if(hidden) array.push(peerId);
-            else indexOfAndSplice(array, peerId);
-            await this.chat.setAppState('hiddenSimilarChannels', array);
-          };
-
-          const peerId = this.chat.peerId;
-          let cached: boolean;
-          this.wrapSomeSolid(
-            () => SimilarChannels({
-              chatId: peerId.toChatId(),
-              onClose: () => {
-                toggle(false);
-              },
-              onAcked: (_cached) => {
-                cached = _cached;
-                if(!cached) {
-                  deferred.resolve();
-                }
-              },
-              onReady: async() => {
-                bubbleContainer.classList.add('is-clickable');
-                await getHeavyAnimationPromise();
-
-                if(!this.chat.appState.hiddenSimilarChannels.includes(peerId)) {
-                  toggle(true, cached);
-                }
-
-                if(cached) {
-                  deferred.resolve();
-                }
-
-                attachClickEvent(bubbleContainer, () => {
-                  toggle();
-                });
-              },
-              onEmpty: () => {
-                if(deferred.isFulfilled) {
-                  toggle(false);
-                }
-
-                deferred.resolve();
-              }
-            }),
-            c,
-            middleware
-          );
-
-          loadPromises.push(deferred);
-        } else if(action._ === 'messageActionStarGift' || action._ === 'messageActionStarGiftUnique') {
-          const container = document.createElement('div');
-          container.classList.add('bubble-star-gift-container');
-          bubbleContainer.after(container);
-
-          const gift = await this.managers.appGiftsManager.wrapGiftFromMessage(message as Message.messageService)
-          this.wrapSomeSolid(() => StarGiftBubble({
-            gift,
-            fromId: getPeerId(gift.saved.from_id),
-            asUpgrade: gift.isIncoming &&
-              !(action._ === 'messageActionStarGift' && action.pFlags.upgraded) &&
-              (gift.isUpgradedBySender || action.pFlags.prepaid_upgrade),
-            asPrepaidUpgrade: action._ === 'messageActionStarGift' && action.pFlags.upgrade_separate,
-            ownerId: gift.isIncoming ? undefined : message.peerId,
-            wrapStickerOptions: {
-              middleware,
-              lazyLoadQueue: this.lazyLoadQueue,
-              group: this.chat.animationGroup,
-              scrollable: this.scrollable,
-              liteModeKey: 'stickers_chat',
-              play: true,
-              loop: false
-            },
-            onViewClick: async() => {
-              if(action._ === 'messageActionStarGift' && action.upgrade_msg_id) {
-                const upgradeMsg = await this.managers.appMessagesManager.getMessageById(action.upgrade_msg_id);
-                if(!upgradeMsg) {
-                  toastNew({langPackKey: 'MessageNotFound'});
-                  return;
-                }
-
-                const upgradedGift = await this.managers.appGiftsManager.wrapGiftFromMessage(upgradeMsg as Message.messageService);
-                PopupElement.createPopup(PopupStarGiftInfo, {gift: upgradedGift});
-              } else {
-                PopupElement.createPopup(PopupStarGiftInfo, {gift})
-              }
-            }
-          }), container, middleware)
-        } else if(action._ === 'messageActionTodoAppendTasks' || action._ === 'messageActionTodoCompletions') {
-          bubble.classList.add('is-reply')
-        }
-
-        loadPromises.push(promise);
-      } else if(isStoryMention) {
-        const messageMedia = message.media as MessageMedia.messageMediaStory;
-        const storyPeerId = getPeerId(messageMedia.peer);
-        const storyId = messageMedia.id;
-        const isMyStory = storyPeerId === rootScope.myId;
-
-        const result = await modifyAckedPromise(this.managers.acknowledged.appStoriesManager.getStoryById(storyPeerId, storyId));
-        if(!result.cached) {
-          s.append(i18n('Loading'));
-          (result.result as Promise<any>).then(() => {
-            this.safeRenderMessage({
-              message,
-              reverse: true,
-              bubble
-            });
-          });
-        } else if(!result.result) {
-          let elem: HTMLElement;
-          if(isMyStory) elem = i18n('ExpiredStoryMentionYou', [await wrapPeerTitle({peerId: message.peerId})]);
-          else elem = i18n('ExpiredStoryMention');
-          const icon = Icon('bomb', 'expired-story-icon');
-          s.append(icon, elem);
-        } else {
-          s.classList.add('bubble-story-mention-wrapper');
-
-          const avatarContainer = document.createElement('div');
-          avatarContainer.classList.add('bubble-story-mention-avatar-container');
-
-          const avatar = avatarNew({
-            middleware,
-            size: 100,
-            peerId: storyPeerId,
-            lazyLoadQueue: this.lazyLoadQueue,
-            withStories: true,
-            storyId,
-            storyColors: {
-              read: 'rgba(255, 255, 255, .3)'
-            }
-          });
-          avatar.node.dataset.storyId = '' + storyId;
-          loadPromises.push(avatar.readyThumbPromise);
-
-          const deferred = deferredPromise<void>();
-          loadPromises.push(deferred);
-          callbackify(result.result, (storyItem) => {
-            if(!middleware() || !storyItem || storyItem.pFlags.noforwards) {
-              deferred.resolve();
-              return;
-            }
-
-            createRoot((dispose) => {
-              middleware.onClean(() => {
-                deferred.resolve();
-                dispose();
-              });
-
-              const {container, ready} = wrapStoryMedia({
-                peerId: storyPeerId,
-                storyItem: storyItem,
-                forPreview: true,
-                noInfo: true,
-                lazyLoadQueue: this.lazyLoadQueue,
-                withPreloader: true,
-                noAspecter: true
-              });
-
-              createEffect(() => {
-                if(ready()) {
-                  deferred.resolve();
-                  (container as HTMLElement).classList.add('bubble-story-mention-preview');
-                  attachClickEvent(avatarContainer, (e) => {
-                    cancelEvent(e);
-                    createStoriesViewerWithPeer({peerId: storyPeerId, id: storyId, target: () => container as HTMLElement});
-                  }, {listenerSetter: this.listenerSetter});
-                  avatarContainer.append(container as HTMLElement);
-                }
-              });
-            });
-          });
-
-          avatarContainer.append(avatar.node);
-
-          const text = i18n(
-            isMyStory ? 'StoryMentionYou' : 'StoryMention',
-            [await wrapPeerTitle({peerId: isMyStory ? message.peerId : storyPeerId})]
-          );
-          text.classList.add('bubble-story-mention-text');
-
-          const button = Button('bubble-service-button bubble-story-mention-button', {noRipple: true, text: 'StoryMentionView'});
-          attachClickEvent(button, () => {
-            simulateClickEvent(avatar.node);
-            // createStoriesViewerWithPeer({peerId: storyPeerId, id: storyId});
-          }, {listenerSetter: this.listenerSetter});
-
-          s.append(avatarContainer, text, button);
-        }
-      } else if(isSelfDestructingMedia) {
-        const promise = wrapMessageForReply({
-          message,
-          ...wrapOptions
-        }).then((el) => s.append(el));
-
-        loadPromises.push(promise);
-      }
-      bubbleContainer.append(s);
-
-      if((message as Message.messageService).pFlags.is_single) { // * Ignore 'Discussion started'
-        bubble.classList.add('is-group-last');
-      }
-
-      returnService = true;
+      returnService = serviceResult;
     }
 
     if(fakeServiceContent) {
@@ -8688,7 +8674,7 @@ export default class ChatBubbles {
     }
   }
 
-  private setStoryContainerDimensions(container: HTMLElement) {
+  public setStoryContainerDimensions(container: HTMLElement) {
     const ratio = 9 / 16;
     const height = 256;
     const width = height * ratio;
@@ -8696,7 +8682,7 @@ export default class ChatBubbles {
     container.style.height = `${height}px`;
   }
 
-  private async getStoryReplyIfExpired(storyPeerId: PeerId, storyId: number, isWebPage: boolean, noBorder?: boolean) {
+  public async getStoryReplyIfExpired(storyPeerId: PeerId, storyId: number, isWebPage: boolean, noBorder?: boolean) {
     const result = await this.managers.acknowledged.appStoriesManager.getStoryById(storyPeerId, storyId);
     if(result.cached && !(await result.result)) {
       if(isWebPage) {
@@ -8716,12 +8702,12 @@ export default class ChatBubbles {
     }
   }
 
-  private wrapSomeSolid(func: () => JSX.Element, container: HTMLElement, middleware: Middleware) {
+  public wrapSomeSolid(func: () => JSX.Element, container: HTMLElement, middleware: Middleware) {
     const dispose = render(func, container);
     middleware.onClean(dispose);
   }
 
-  private wrapStory({
+  public wrapStory({
     message,
     bubble,
     storyPeerId: peerId,
@@ -8770,7 +8756,7 @@ export default class ChatBubbles {
     }, container, middleware);
   }
 
-  private wrapTitleAndRank(
+  public wrapTitleAndRank(
     title: HTMLElement,
     message: Message.message,
     rank?: Parameters<ChatBubbles['createBubbleNameRank']>[0]
@@ -9749,7 +9735,7 @@ export default class ChatBubbles {
     });
   }
 
-  private makeViewButton<T extends Parameters<typeof Button>[1]>(options: T) {
+  public makeViewButton<T extends Parameters<typeof Button>[1]>(options: T) {
     const button = Button('btn-primary btn-primary-transparent bubble-view-button', options);
     const text = button.querySelector('.i18n');
     if(text) {
