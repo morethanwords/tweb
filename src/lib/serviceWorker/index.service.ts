@@ -151,7 +151,11 @@ serviceMessagePort.addMultipleEventsListeners({
 
   toggleUsingPasscode: (payload) => {
     DeferredIsUsingPasscode.resolveDeferred(payload.isUsingPasscode);
-    EncryptionKeyStore.save(payload.encryptionKey);
+
+    // Make sure the promise is not resloved to null in case the encryption key is not provided and we have a passcode set
+    if(payload.type === 'full') {
+      EncryptionKeyStore.save(payload.encryptionKey);
+    }
   },
 
   saveEncryptionKey: (payload) => {
