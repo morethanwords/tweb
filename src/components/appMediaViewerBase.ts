@@ -1051,10 +1051,7 @@ export default class AppMediaViewerBase<
         rect = realParent.getBoundingClientRect();
       } else if(target.classList.contains('profile-avatars-avatar')) {
         realParent = findUpClassName(target, 'profile-avatars-container');
-        rect = cloneDOMRect(realParent.getBoundingClientRect())
-        // offset for header
-        rect.top += 56
-        rect.height -= 56
+        rect = cloneDOMRect(realParent.getBoundingClientRect());
 
         // * if not active avatar
         if(closing && target.getBoundingClientRect().left !== rect.left) {
