@@ -7,7 +7,7 @@ export default function Passthrough<E extends Element>(props: PassthroughProps<E
   const resolved = children(() => props.children);
 
   createEffect(() => {
-    const [_, others] = splitProps(props, ['element']);
+    const [_, others] = splitProps(props, ['element', 'children']);
     assign(element, {
       ...others,
       children: resolved
