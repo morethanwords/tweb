@@ -642,7 +642,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
     this.serviceMessagePort.invokeVoid('environment', ENVIRONMENT);
 
     DeferredIsUsingPasscode.isUsingPasscode().then((value) => {
-      this.serviceMessagePort.invokeVoid('toggleUsingPasscode', {isUsingPasscode: value});
+      this.serviceMessagePort.invokeVoid('toggleUsingPasscode', {type: 'init', isUsingPasscode: value});
     });
   }
 
