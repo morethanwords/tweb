@@ -5673,7 +5673,8 @@ export namespace MessageEntity {
     _: 'messageEntityTextUrl',
     offset: number,
     length: number,
-    url: string
+    url: string,
+    safe?: boolean
   };
 
   export type messageEntityMentionName = {

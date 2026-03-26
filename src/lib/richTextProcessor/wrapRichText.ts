@@ -555,7 +555,7 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
           let masked = false;
           let onclick: string;
 
-          const wrapped = wrapUrl(url, true);
+          const wrapped = wrapUrl(url, (entity as MessageEntity.messageEntityTextUrl).safe);
           url = wrapped.url;
           onclick = wrapped.onclick;
 

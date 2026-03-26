@@ -1299,5 +1299,14 @@
         "type": "boolean"
       }
     ]
+  },
+  {
+    "predicate": "messageEntityTextUrl",
+    "params": [
+      {
+        "name": "safe",
+        "type": "boolean"
+      }
+    ]
   }
 ]

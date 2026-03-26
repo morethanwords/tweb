@@ -109,7 +109,8 @@ function processRichText(richText: RichText, options: Options): TextWithEntities
         length,
         url: richText.webpage_id ?
           'tg://iv?url=' + encodeURIComponent(richText.url) :
-          richText.url
+          richText.url,
+        safe: !!richText.webpage_id
       }), options);
     case 'textEmail':
       return wrapEntity(richText.text, (offset, length) => ({

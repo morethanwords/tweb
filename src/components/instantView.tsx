@@ -326,7 +326,8 @@ async function onMediaClick({
         length: url.length,
         url: webPageId ?
           'tg://iv?url=' + encodeURIComponent(url) :
-          url
+          url,
+        safe: !!webPageId
       });
     }
 
