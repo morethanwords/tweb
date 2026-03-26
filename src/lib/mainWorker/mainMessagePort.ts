@@ -30,7 +30,7 @@ type MTProtoBroadcastEvent = {
 };
 
 export type ToggleUsingPasscodePayload = {
-  isUsingPasscode: boolean,
+  isUsingPasscode: boolean;
   encryptionKey?: CryptoKey;
 };
 
