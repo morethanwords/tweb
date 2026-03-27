@@ -1409,53 +1409,6 @@ middle-ellipsis-element {
   }
 }
 
-.sidebar-left {
-  &-section {
-    background-color: var(--surface-color);
-    padding: .5rem 0 !important;
-    margin-bottom: .75rem;
-    box-shadow: 0px 1px 3px 0px var(--section-box-shadow-color);
-
-    &.no-shadow {
-      box-shadow: none !important;
-    }
-
-    &-name {
-      padding: .5rem 1rem;
-      display: flex;
-      justify-content: space-between;
-
-      &-right {
-        font-weight: var(--font-weight-normal);
-      }
-    }
-
-    &-caption {
-      margin: -0.1875rem 0 1rem;
-      font-size: var(--font-size-14);
-      line-height: var(--line-height-14);
-      padding: 0 1.5rem;
-
-      &:first-child {
-        margin-top: .8125rem;
-        margin-bottom: .8125rem;
-      }
-
-      @include respond-to(handhelds) {
-        padding: 0 1rem;
-      }
-    }
-
-    &-container {
-      user-select: none;
-
-      a {
-        cursor: pointer;
-      }
-    }
-  }
-}
-
 hr {
   display: none !important;
 }
@@ -2181,13 +2134,13 @@ hr {
 
   &-container {
     @include animation-level(2) {
-      transition: padding-bottom var(--transition-standard-in);
+      transition: padding-bottom var(--transition-standard-in) !important;
     }
 
     .row-icon {
-      top: .75rem;
-      transform: none;
-      font-size: 2rem;
+      top: .75rem !important;
+      transform: none !important;
+      font-size: 2rem !important;
       margin-inline-start: -.3125rem;
     }
 
