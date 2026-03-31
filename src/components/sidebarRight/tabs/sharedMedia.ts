@@ -182,8 +182,10 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     // * body
 
-    const HEADER_HEIGHT = 56;
+    const HEADER_HEIGHT = 72;
+    const cb = this.scrollable.onAdditionalScroll;
     this.scrollable.onAdditionalScroll = () => {
+      cb?.();
       const rect = this.searchSuper.nav.getBoundingClientRect();
       if(!rect.width) return;
 
@@ -203,6 +205,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     const setIsSharedMedia = (isSharedMedia: boolean) => {
       animatedCloseIcon.classList.toggle('state-back', this.isFirst || isSharedMedia);
       this.searchSuper.container.classList.toggle('is-full-viewport', isSharedMedia);
+      this.header.classList.toggle('hide-border', isSharedMedia);
 
       transition(getTitleIndex(isSharedMedia));
 
@@ -383,7 +386,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     };
 
     // * fix scroll position to media tab because of absolute header
-    this.searchSuper.scrollOffset = 56;
+    this.searchSuper.scrollOffset = HEADER_HEIGHT;
 
     if(this.noProfile) {
       this.scrollable.append(this.searchSuper.container);

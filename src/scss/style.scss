@@ -127,6 +127,7 @@
   --round-video-size: 280px;
   --menu-box-shadow: 0px 0px 10px var(--menu-box-shadow-color);
   --menu-backdrop-filter: blur(50px);
+  --section-box-shadow: 0px 1px 4px 0px var(--section-box-shadow-color);
   --font-regular: "Roboto", -apple-system, apple color emoji, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
   --font-monospace: 'Roboto Mono', monospace;
   --font-rounded: -ui-rounded, "Numbers Rounded", "Roboto", "Helvetica Neue", sans-serif;
@@ -256,12 +257,10 @@
   // * Day theme
   --body-background-color: #fff;
   --body-background-color-rgb: 255, 255, 255;
-  --background-color-true: #f4f4f5;
-  // --background-color: #fff;
-  --background-color: var(--background-color-true);
+  @include splitColor(background-color, #f4f4f5, false, false, false, false, true);
   --border-color: #dfe1e5;
   --scrollbar-color: rgba(0, 0, 0, .2);
-  --section-box-shadow-color: rgba(0, 0, 0, .06);
+  --section-box-shadow-color: rgba(0, 0, 0, .05);
   --menu-box-shadow-color: rgba(0, 0, 0, .15);
 
   --input-search-background-color: #fff;
@@ -320,9 +319,7 @@
   // * Night theme
   --body-background-color: #181818;
   --body-background-color-rgb: 24, 24, 24;
-  --background-color-true: #181818;
-  // --background-color: #212121;
-  --background-color: var(--background-color-true);
+  @include splitColor(background-color, #181818, false, false, false, false, true);
   --border-color: #0f0f0f;
   --scrollbar-color: rgba(255, 255, 255, .2);
   --section-box-shadow-color: rgba(0, 0, 0, .12);
@@ -349,7 +346,7 @@
   --menu-background-color: rgba(var(--surface-color-rgb), .75);
   --rlottie-vector-fill: var(--light-secondary-text-color);
   --limit-line-empty-background: var(--light-filled-secondary-text-color);
-  --old-input-background-color: var(--background-color-true);
+  --old-input-background-color: var(--background-color);
 
   // * Night theme end
 }
@@ -472,6 +469,7 @@
 @import "partials/sparkles";
 @import "partials/starsBadge";
 @import "partials/starGift";
+@import "partials/section";
 
 @import "partials/popups/popup";
 @import "partials/popups/editAvatar";
@@ -1536,7 +1534,7 @@ middle-ellipsis-element {
 .gradient-delimiter {
   width: 100%;
   height: .75rem;
-  background-color: var(--background-color-true);
+  background-color: var(--background-color);
   position: relative;
 
   &:before {
@@ -1547,53 +1545,6 @@ middle-ellipsis-element {
     right: 0;
     bottom: 0;
     background: linear-gradient(180deg, rgba(0, 0, 0, .06) 0%, rgba(0, 0, 0, 0) 20%, rgba(0, 0, 0, 0) 94%, rgba(0, 0, 0, .06) 100%);
-  }
-}
-
-.sidebar-left {
-  &-section {
-    background-color: var(--surface-color);
-    padding: .5rem 0 !important;
-    margin-bottom: .75rem;
-    box-shadow: 0px 1px 3px 0px var(--section-box-shadow-color);
-
-    &.no-shadow {
-      box-shadow: none !important;
-    }
-
-    &-name {
-      padding: .5rem 1rem;
-      display: flex;
-      justify-content: space-between;
-
-      &-right {
-        font-weight: var(--font-weight-normal);
-      }
-    }
-
-    &-caption {
-      margin: -0.1875rem 0 1rem;
-      font-size: var(--font-size-14);
-      line-height: var(--line-height-14);
-      padding: 0 1.5rem;
-
-      &:first-child {
-        margin-top: .8125rem;
-        margin-bottom: .8125rem;
-      }
-
-      @include respond-to(handhelds) {
-        padding: 0 1rem;
-      }
-    }
-
-    &-container {
-      user-select: none;
-
-      a {
-        cursor: pointer;
-      }
-    }
   }
 }
 

@@ -1,8 +1,7 @@
 $placeholder-color: #9e9e9e;
-$border-radius: 8px;
-$border-radius-medium: 10px;
-$border-radius-big: 12px;
-$border-radius-huge: 16px;
+$border-radius: 12px;
+$border-radius-medium: 16px;
+$border-radius-big: 24px;
 
 $hover-alpha: .08;
 
@@ -25,3 +24,6 @@ $chat-input-inner-padding-handhelds: .25rem;
 $btn-send-margin: .5rem;
 
 $use-acceleration: false;
+
+$section-rounded-border-radius: $border-radius-big;
+$section-rounded-padding: 1rem;

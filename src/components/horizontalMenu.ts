@@ -6,7 +6,6 @@
 
 import TransitionSlider from '@components/transition';
 import {ScrollableX} from '@components/scrollable';
-import rootScope from '@lib/rootScope';
 import {fastRaf} from '@helpers/schedulers';
 import {FocusDirection} from '@helpers/fastSmoothScroll';
 import findUpAsChild from '@helpers/dom/findUpAsChild';
@@ -80,7 +79,7 @@ export function horizontalMenu(
     if(onClick) {
       const result1 = onClick(id, tabContent, animate);
       const canChange = result1 instanceof Promise ? await result1 : result1;
-      if(canChange !== undefined && !canChange) {
+      if(canChange === false) {
         return;
       }
     }
@@ -115,7 +114,7 @@ export function horizontalMenu(
     }
 
     // a great stripe from Jolly Cobra
-    if(useStripe && prevId !== -1 && animate) {
+    if(prevId !== -1 && animate) {
       mutateCallback(() => {
         const indicator = target.querySelector('i')!;
         const currentIndicator = target.parentElement.children[prevId].querySelector('i')!;
@@ -146,17 +145,10 @@ export function horizontalMenu(
     selectTab(id, animate);
   };
 
-  const useStripe = !tabs.classList.contains('no-stripe');
-
-  // const tagName = tabs.classList.contains('menu-horizontal-div') ? 'BUTTON' : 'LI';
   const tagName = tabs.firstElementChild.tagName;
   attachClickEvent(tabs, (e) => {
     let target = e.target as HTMLElement;
-
     target = findUpAsChild(target, tabs);
-
-    // console.log('tabs click:', target);
-
     if(!target) return false;
 
     let id: number;

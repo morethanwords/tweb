@@ -537,7 +537,7 @@ export class ThemeController {
       button_text_color: '#ffffff',
       hint_color: 'secondary-text-color',
       link_color: 'link-color',
-      secondary_bg_color: 'background-color-true',
+      secondary_bg_color: 'background-color',
       text_color: 'primary-text-color',
       header_bg_color: 'surface-color',
       accent_text_color: 'primary-color',

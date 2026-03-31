@@ -6,7 +6,7 @@
 
 .sidebar {
   &-header {
-    background-color: var(--surface-color);
+    background-color: transparent;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -16,6 +16,10 @@
     user-select: none;
     cursor: default;
 
+    @include animation-level(2) {
+      transition: background-color var(--transition-standard-in);
+    }
+
     .btn-menu {
       overflow-y: overlay;
     }
@@ -23,11 +27,6 @@
     @include respond-to(handhelds) {
       padding-inline: .5rem;
     }
-
-    /* //position: sticky !important;
-    position: sticky !important;
-    top: 0;
-    z-index: 1; */
 
     &__rows {
       overflow: hidden;
@@ -74,12 +73,6 @@
 
     .scrollable-y-bordered & {
       position: relative;
-      // min-height: 3.5625rem;
-      // border-bottom: 1px solid transparent;
-
-      // @include animation-level(2) {
-      //   transition: border-top-color var(--transition-standard-in), border-bottom-color var(--transition-standard-in);
-      // }
 
       &:after {
         content: " ";
@@ -99,7 +92,8 @@
     }
 
     .scrollable-y-bordered:not(.scrolled-start) & {
-      // border-bottom-color: var(--border-color);
+      background-color: var(--surface-color);
+
       &:after {
         opacity: 1;
       }

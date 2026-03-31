@@ -33,7 +33,6 @@ import {HIDDEN_PEER_ID} from '@appManagers/constants';
 import {rgbIntToHex} from '@helpers/color';
 import {makeMediaSize} from '@helpers/mediaSize';
 import type {MyStarGift} from '@appManagers/appGiftsManager';
-import IS_PARALLAX_SUPPORTED from '@environment/parallaxSupport';
 import {generateDelimiter} from '@components/generateDelimiter';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import ListenerSetter from '@helpers/listenerSetter';
@@ -153,10 +152,6 @@ const PeerProfile = (props: {
 
   props.setCollapsedOn.classList.add('profile-container');
 
-  if(!IS_PARALLAX_SUPPORTED) {
-    props.scrollable.container.classList.add('no-parallax');
-  }
-
   if(value.peerId.isUser() && value.peerId !== rootScope.myId) {
     const refreshCurrentUser = () => {
       rootScope.managers.appUsersManager.getApiUsers([value.peerId.toUserId()]);
@@ -187,11 +182,11 @@ const PeerProfile = (props: {
             {props.changeAvatarBtn}
           </div>
         </Show>
+        <div class="profile-content-delimiter"></div>
         <PeerProfile.PersonalChannel />
         <PeerProfile.MainSection />
         <PeerProfile.BotVerification />
         <PeerProfile.BotPermissions />
-        {IS_PARALLAX_SUPPORTED && generateDelimiter()}
         {props.searchSuperContainer}
       </div>
     </PeerProfileContext.Provider>
@@ -223,10 +218,6 @@ PeerProfile.Avatar = () => {
       avatars.cleanup();
     });
 
-    if(IS_PARALLAX_SUPPORTED) {
-      context.scrollable.container.classList.add('parallax');
-    }
-
     return avatars.container;
   }
 
@@ -245,9 +236,6 @@ PeerProfile.Avatar = () => {
     meAsNotes: !!(peerId === rootScope.myId && threadId)
   });
   avatar.node.classList.add('profile-avatar', 'avatar-120');
-  if(IS_PARALLAX_SUPPORTED) {
-    context.scrollable.container.classList.remove('parallax');
-  }
   return (
     <>
       {avatar.node}

@@ -250,26 +250,6 @@
     }
   }
 
-  .sidebar-right-border {
-    display: none;
-  }
-
-  @include respond-to(not-handhelds) {
-    overflow: visible;
-
-    .sidebar-right-border {
-      position: absolute;
-      display: block;
-      height: 100vh;
-      width: 1px;
-      background-color: var(--border-color);
-      inset-inline-end: -1px;
-      top: 0;
-      z-index: 3;
-      pointer-events: none;
-    }
-  }
-
   @include respond-to(floating-left-sidebar) {
     display: flex;
     position: fixed;
@@ -728,22 +708,6 @@
 
       /* transform: translateY(64px);
       height: calc(100% - 64px); */
-    }
-  }
-}
-
-#column-left,
-.settings-slider-popup {
-  .input-wrapper {
-    width: 420px;
-    margin: 0 auto;
-    flex: 0 0 auto;
-    padding: 0 .75rem;
-    max-width: 100%;
-    margin: .75rem 0;
-
-    @include respond-to(handhelds) {
-      width: 100%;
     }
   }
 }

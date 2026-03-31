@@ -53,6 +53,8 @@ body.is-right-column-shown {
 	position: relative;
 	cursor: pointer !important;
   transform: translateY(calc(var(--topbar-floating-call-height) + var(--topbar-floating-audio-height)));
+  background-color: var(--surface-color) !important;
+  border-inline-start: 1px solid var(--border-color);
 
   @include animation-level(2) {
     transition: transform var(--transition-standard-out), margin-bottom 0s 0s;
@@ -120,6 +122,16 @@ body.is-right-column-shown {
 	.sidebar-close-button {
 		position: absolute;
 	}
+
+  &-border-right {
+    width: 1px;
+    height: 100%;
+    background-color: var(--border-color);
+    position: absolute;
+    right: 0;
+
+    @include sidebar-transform();
+  }
 
 	/* @include respond-to(wide-screens) {
 		transition: .2s ease-in-out;

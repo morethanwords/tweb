@@ -101,6 +101,7 @@ $btn-menu-z-index: 4;
 }
 
 .btn-menu {
+  --btn-menu-padding: .25rem;
   --transform-extra: translateX(0);
   --transform-origin-x: center;
   --transform-origin-y: center;
@@ -119,7 +120,7 @@ $btn-menu-z-index: 4;
   &,
   &-items {
     box-shadow: var(--menu-box-shadow);
-    padding: .3125rem 0;
+    padding: var(--btn-menu-padding) 0;
     border-radius: $border-radius-medium;
   }
 
@@ -299,9 +300,9 @@ $btn-menu-z-index: 4;
     text-align: start;
     font-size: var(--font-size-14);
     line-height: var(--line-height-14);
-    border-radius: .3125rem;
-    margin-inline: .3125rem;
-    font-weight: 500;
+    border-radius: $border-radius;
+    margin-inline: var(--btn-menu-padding);
+    font-weight: var(--font-weight-bold);
     transform: scale(1);
 
     &.a {
@@ -340,7 +341,7 @@ $btn-menu-z-index: 4;
     &.btn-menu-search {
       @include hover-background-effect(transparent);
       cursor: default !important;
-      margin-top: .3125rem;
+      margin-top: var(--btn-menu-padding);
     }
 
     &-icon {
@@ -616,7 +617,6 @@ $btn-menu-z-index: 4;
 
   &-footer {
     height: 2rem;
-    // background: var(--background-color-true);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -635,7 +635,7 @@ $btn-menu-z-index: 4;
 
   hr {
     padding: 0;
-    margin: .3125rem 0;
+    margin: var(--btn-menu-padding) 0;
     display: block !important;
     pointer-events: none;
 
@@ -789,7 +789,7 @@ $btn-menu-z-index: 4;
       color: var(--secondary-text-color);
       text-align: center;
       line-height: 14px;
-      margin-top: .3125rem;
+      margin-top: var(--btn-menu-padding);
     }
 
     &-bubble {
@@ -924,14 +924,15 @@ $btn-menu-z-index: 4;
   &-search-delimiter {
     height: 1px;
     background-color: var(--border-color);
-    margin: 0.3125rem;
+    margin: 0 var(--btn-menu-padding);
     margin-bottom: 0;
   }
 
   &-search-scrollable {
     position: relative;
+
     .scrollable {
-      padding-block: 0.3125rem;
+      padding-block: var(--btn-menu-padding);
     }
   }
 }

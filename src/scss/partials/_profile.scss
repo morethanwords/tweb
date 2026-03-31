@@ -15,7 +15,6 @@
       position: relative;
       cursor: pointer;
       user-select: none;
-      background-color: var(--surface-color);
       z-index: 1;
       min-height: 276px;
 
@@ -61,22 +60,10 @@
       display: flex;
       align-items: center;
       flex-wrap: nowrap;
-      transform: translateZ(-1px) scale(2);
+      transform: translate(0, 0);
       transform-origin: left top;
       transition: transform .2s ease-in-out;
       position: absolute;
-
-      .scrollable.no-parallax & {
-        transform: translate(0, 0);
-      }
-
-      // &:before {
-      //   content: " ";
-      //   top: 0;
-      //   right: 0;
-      //   bottom: 0;
-      //   left: 0;
-      // }
     }
 
     &-avatar {
@@ -350,13 +337,14 @@
       }
     }
 
+    &-delimiter {
+      margin-bottom: #{$section-rounded-padding};
+    }
+
     .sidebar-left-section {
       position: relative;
       background-color: var(--surface-color);
-      //padding-top: .5625rem;
       padding-bottom: .5rem;
-      //margin-bottom: .75rem;
-      //box-shadow: 0px 1px 5px -1px rgba(0, 0, 0, .16);
 
       .profile-subtitle {
         .peer-typing-container {
@@ -364,17 +352,6 @@
         }
       }
     }
-
-    /* .search-super {
-      &:before {
-        content: " ";
-        height: 12px;
-        width: 100%;
-        background-color: var(--background-color-true);
-        position: absolute;
-        top: -12px;
-      }
-    } */
 
     &.search-empty {
       .gradient-delimiter {
@@ -545,6 +522,7 @@
 
     .sidebar-header {
       --transition: .1s ease-in-out;
+      background-color: var(--surface-color);
       position: absolute;
       inset-inline: 0;
       z-index: 3;
@@ -572,6 +550,14 @@
           transition: color var(--transition);
         }
       }
+
+      &.hide-border {
+        box-shadow: var(--section-box-shadow);
+
+        &:after {
+          opacity: 0;
+        }
+      }
     }
 
     // .sidebar-content {
@@ -585,7 +571,8 @@
     }
 
     .search-super-tabs-scrollable {
-      top: 3.5rem;
+      top: 4.5rem;
+      margin-bottom: #{$section-rounded-padding};
     }
   }
 

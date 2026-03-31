@@ -507,6 +507,12 @@ export default class AppSearchSuper {
       this.selection.isStoriesArchive = true;
     }
 
+    const fadeGradientContainer = document.createElement('div');
+    fadeGradientContainer.classList.add('search-super-fade-gradient-container');
+    const fadeGradient = document.createElement('div');
+    fadeGradient.classList.add('search-super-fade-gradient');
+    fadeGradientContainer.append(fadeGradient);
+
     const navScrollableContainer = this.navScrollableContainer = document.createElement('div');
     navScrollableContainer.classList.add('search-super-tabs-scrollable', 'menu-horizontal-scrollable', 'sticky');
 
@@ -524,10 +530,8 @@ export default class AppSearchSuper {
       menuTab.classList.add('menu-horizontal-div-item');
       const span = document.createElement('span');
       span.classList.add('menu-horizontal-div-item-span');
-      const i = document.createElement('i');
 
       span.append(mediaTab.menuTabName = i18n(mediaTab.name));
-      span.append(i);
 
       menuTab.append(span);
 
@@ -605,7 +609,7 @@ export default class AppSearchSuper {
       mediaTab.contentTab = content;
     }
 
-    this.container.append(navScrollableContainer, this.tabsContainer);
+    this.container.append(fadeGradientContainer, navScrollableContainer, this.tabsContainer);
 
     // * construct end
 
@@ -810,7 +814,7 @@ export default class AppSearchSuper {
       element: this.container,
       position: 'start',
       startCallback: this.scrollStartCallback,
-      getElementPosition: this.scrollOffset ? ({elementPosition}) => Math.max(0, elementPosition - this.scrollOffset) : undefined
+      getElementPosition: this.scrollOffset ? ({elementPosition}) => elementPosition - this.scrollOffset : undefined
     });
   }
 

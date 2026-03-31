@@ -562,13 +562,10 @@ export class AppSidebarLeft extends SidebarSlider {
       this.onSomethingOpenInsideChange();
     }
 
-    const rightBorder = document.createElement('div');
-    rightBorder.classList.add('sidebar-right-border');
-
     const resizeHandle = document.createElement('div');
     resizeHandle.classList.add('sidebar-resize-handle');
 
-    this.sidebarEl.append(rightBorder, resizeHandle);
+    this.sidebarEl.append(resizeHandle);
 
     const throttledSetToStorage = throttle((width: number) => {
       localStorage.setItem('sidebar-left-width', width + '');
