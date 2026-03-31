@@ -477,6 +477,8 @@ export default class PollElement extends HTMLElement {
 
       if(!appSidebarRight.isTabExists(AppPollResultsTab)) {
         appSidebarRight.createTab(AppPollResultsTab).open(this.message);
+      } else {
+        appSidebarRight.toggleSidebar(true);
       }
     }, {listenerSetter: this.listenerSetter});
     ripple(this.viewResults);

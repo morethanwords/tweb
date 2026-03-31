@@ -1,5 +1,7 @@
-import {defineConfig} from 'vitest/config';
+/// <reference types="vitest/config" />
+import {defineConfig} from 'vite';
 import solidPlugin from 'vite-plugin-solid';
+// @ts-ignore no type declarations
 import handlebars from 'vite-plugin-handlebars';
 import basicSsl from '@vitejs/plugin-basic-ssl';
 import {visualizer} from 'rollup-plugin-visualizer';
@@ -15,8 +17,13 @@ import path from 'path';
 const rootDir = resolve(__dirname);
 const certsDir = path.join(rootDir, 'certs');
 const ENV_LOCAL_FILE_PATH = path.join(rootDir, '.env.local');
+const LANG_PACK_LOCAL_FILE_PATH = path.join(rootDir, 'src', 'langPackLocalVersion.ts');
 
 const isDEV = process.env.NODE_ENV === 'development';
+if(!existsSync(LANG_PACK_LOCAL_FILE_PATH)) {
+  copyFileSync(path.join(rootDir, 'src', 'langPackLocalVersion.example.ts'), LANG_PACK_LOCAL_FILE_PATH);
+}
+
 if(isDEV) {
   if(!existsSync(ENV_LOCAL_FILE_PATH)) {
     copyFileSync(path.join(rootDir, '.env.local.example'), ENV_LOCAL_FILE_PATH);
@@ -134,13 +141,9 @@ export default defineConfig({
     //   exclude: ['**/*.d.ts', 'src/server/*.ts', 'store/src/**/server.ts']
     // },
     environment: 'jsdom',
-    testTransformMode: {web: ['.[jt]sx?$']},
     // otherwise, solid would be loaded twice:
     // deps: {registerNodeLoader: true},
-    // if you have few tests, try commenting one
-    // or both out to improve performance:
-    threads: false,
-    isolate: false,
+    pool: 'forks',
     globals: true,
     setupFiles: ['./src/tests/setup.ts']
   },

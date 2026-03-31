@@ -731,11 +731,11 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
           langPackKey = action.pFlags.upgrade ? 'ActionGiftUpgradedSelf' : 'ActionGiftTransferredSelf';
         } else {
           if(action.pFlags.upgrade) {
-            langPackKey = message.pFlags.out ? 'ActionGiftUpgradedOutbound' : 'ActionGiftUpgradedInbound'
+            langPackKey = message.pFlags.out ? 'ActionGiftUpgradedOutbound' : 'ActionGiftUpgradedInbound';
           } else if(message.pFlags.out && action.pFlags.from_offer) {
             langPackKey = 'ActionGiftSold';
           } else {
-            langPackKey = message.pFlags.out ? 'ActionGiftTransferredOutbound' : 'ActionGiftTransferredInbound'
+            langPackKey = message.pFlags.out ? 'ActionGiftTransferredOutbound' : 'ActionGiftTransferredInbound';
           }
           args = [getNameDivHTML(message.peerId, plain)];
         }
@@ -825,10 +825,10 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
       case 'messageActionSuggestedPostApproval': {
         if(action.pFlags.balance_too_low) {
           langPackKey = 'SuggestedPosts.BalanceTooLow';
-          args = [wrapEmojiText('❌')]
+          args = [wrapEmojiText('❌')];
         } else if(action.pFlags.rejected) {
           langPackKey = 'SuggestedPosts.GenericRejectedPost';
-          args = [wrapEmojiText('❌')]
+          args = [wrapEmojiText('❌')];
         } else {
           langPackKey = 'SuggestedPosts.AgreementReached';
           args = [wrapEmojiText('🤝')];
@@ -861,16 +861,58 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
       }
       case 'messageActionStarGiftPurchaseOfferDeclined':
         if(action.pFlags.expired) {
-          langPackKey = 'StarGiftOffer.ExpiredFull'
+          langPackKey = 'StarGiftOffer.ExpiredFull';
         } else {
-          langPackKey = message.pFlags.out ? 'StarGiftOffer.RejectedFullOutgoing' : 'StarGiftOffer.RejectedFullIncoming'
+          langPackKey = message.pFlags.out ? 'StarGiftOffer.RejectedFullOutgoing' : 'StarGiftOffer.RejectedFullIncoming';
         }
         args = [
           getNameDivHTML(message.peerId, plain),
           i18n('Stars', [numberThousandSplitterForStars(action.price.amount)]),
           getCollectibleName(action.gift as StarGift.starGiftUnique)
         ];
-        break
+        break;
+      case 'messageActionNewCreatorPending': {
+        langPackKey = 'Chat.Service.NewCreatorPending';
+        args = [
+          getNameDivHTML(action.new_creator_id.toPeerId(), plain),
+          getNameDivHTML(message.fromId, plain)
+        ];
+        break;
+      }
+      case 'messageActionChangeCreator': {
+        langPackKey = 'Chat.Service.ChangeCreator';
+        args = [
+          getNameDivHTML(message.fromId, plain),
+          getNameDivHTML(action.new_creator_id.toPeerId(), plain)
+        ];
+        break;
+      }
+      case 'messageActionBoostApply': {
+        langPackKey = 'UserBoostedGroup';
+        args = [
+          getNameDivHTML(message.fromId, plain),
+          action.boosts
+        ];
+        break;
+      }
+      case 'messageActionNoForwardsToggle': {
+        if(action.new_value === action.prev_value) {
+          langPackKey = action.new_value ? 'SharingStillEnabled' : 'SharingStillDisabled';
+        } else {
+          langPackKey = `Chat.Service.NoForwardsToggle${message.pFlags.out ? '.You' : ''}.${action.new_value ? 'Enabled' : 'Disabled'}` as const;
+        }
+        args = [getNameDivHTML(message.fromId, plain)];
+        break;
+      }
+      case 'messageActionNoForwardsRequest': {
+        if(action.pFlags.expired) {
+          langPackKey = 'EnableSharingRequested.Expired';
+        } else {
+          langPackKey = `Chat.Service.NoForwardsRequest${message.pFlags.out ? '.You' : ''}.${action.new_value ? 'Enable' : 'Disable'}` as const;
+          args = [getNameDivHTML(message.fromId, plain)];
+        }
+        break;
+      }
       default:
         langPackKey = (langPack[_] || `[${action._}]`) as any;
         break;

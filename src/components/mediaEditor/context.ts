@@ -1,18 +1,16 @@
-import {Accessor, createContext, createEffect, createSignal, on, useContext, createMemo} from 'solid-js';
-import {createMutable, modifyMutable, produce, Store} from 'solid-js/store';
-
-import exceptKeys from '@helpers/object/exceptKeys';
-import throttle from '@helpers/schedulers/throttle';
-import type {AppManagers} from '@lib/managers';
-import type {ObjectPath} from '@types';
-
 import {AdjustmentKey, adjustmentsConfig} from '@components/mediaEditor/adjustments';
 import {BrushDrawnLine} from '@components/mediaEditor/canvas/brushPainter';
 import {FinalTransform} from '@components/mediaEditor/canvas/useFinalTransform';
 import type {MediaEditorProps} from '@components/mediaEditor/mediaEditor';
 import {MediaType, NumberPair, ResizableLayer, StickerRenderingInfo, TextLayerInfo} from '@components/mediaEditor/types';
-import {approximateDeepEqual, snapToAvailableQuality, traverseObjectDeep} from '@components/mediaEditor/utils';
+import {approximateDeepEqual, brushDefaults, textLayerInfoDefaults, traverseObjectDeep} from '@components/mediaEditor/utils';
 import {RenderingPayload} from '@components/mediaEditor/webgl/initWebGL';
+import exceptKeys from '@helpers/object/exceptKeys';
+import throttle from '@helpers/schedulers/throttle';
+import type {AppManagers} from '@lib/managers';
+import type {ObjectPath} from '@types';
+import {Accessor, createContext, createEffect, createMemo, createSignal, on, useContext} from 'solid-js';
+import {createMutable, modifyMutable, produce, Store} from 'solid-js/store';
 
 
 type EditingMediaStateWithoutHistory = {
@@ -57,6 +55,9 @@ export type HistoryItem = {
   };
 };
 
+export type ColoredBrushType = 'pen' | 'brush' | 'neon' | 'arrow';
+export type BrushType = ColoredBrushType | 'blur' | 'eraser';
+
 export type MediaEditorState = {
   isReady: boolean;
 
@@ -64,8 +65,10 @@ export type MediaEditorState = {
   renderingPayload?: RenderingPayload;
 
   currentTab: string;
+  cropTabAnimationProgress: number;
 
-  imageSize?: NumberPair;
+  mediaSize?: NumberPair;
+  mediaRatio?: number;
   canvasSize?: NumberPair;
   fixedImageRatioKey?: string;
   finalTransform: FinalTransform;
@@ -80,7 +83,7 @@ export type MediaEditorState = {
   currentBrush: {
     color: string;
     size: number;
-    brush: string;
+    brush: BrushType;
   };
   previewBrushSize?: number;
 
@@ -99,7 +102,7 @@ export enum SetVideoTimeFlags {
 
 export type EditorOverridableGlobalActions = {
   pushToHistory: (item: HistoryItem) => void;
-  setInitialImageRatio: (ratio: number) => void;
+  updateMediaStateClone: (callback: (state: EditingMediaState) => void) => void;
   redrawBrushes: () => void;
   abortDrawerSlide: () => void;
   resetRotationWheel: () => void;
@@ -107,7 +110,7 @@ export type EditorOverridableGlobalActions = {
 };
 
 
-const getDefaultEditingMediaState = (props: MediaEditorProps): EditingMediaState => ({
+const getDefaultEditingMediaState = (): EditingMediaState => ({
   scale: 1,
   rotation: 0,
   translation: [0, 0],
@@ -119,7 +122,7 @@ const getDefaultEditingMediaState = (props: MediaEditorProps): EditingMediaState
   videoCropLength: 1,
   videoThumbnailPosition: 0,
   videoMuted: false,
-  videoQuality: snapToAvailableQuality(props.mediaSize[1]),
+  videoQuality: 0,
 
   adjustments: Object.fromEntries(adjustmentsConfig.map(entry => [entry.key, 0])) as Record<AdjustmentKey, number>,
 
@@ -137,8 +140,9 @@ const getDefaultMediaEditorState = (): MediaEditorState => ({
   renderingPayload: undefined,
 
   currentTab: 'adjustments',
+  cropTabAnimationProgress: 0,
 
-  imageSize: undefined,
+  mediaSize: undefined,
   canvasSize: undefined,
   fixedImageRatioKey: undefined,
   finalTransform: {
@@ -148,21 +152,11 @@ const getDefaultMediaEditorState = (): MediaEditorState => ({
     translation: [0, 0]
   },
 
-  currentTextLayerInfo: {
-    alignment: 'left',
-    style: 'outline',
-    color: '#ffffff',
-    font: 'roboto',
-    size: 40
-  },
+  currentTextLayerInfo: structuredClone(textLayerInfoDefaults),
   selectedResizableLayer: undefined,
   stickersLayersInfo: {},
 
-  currentBrush: {
-    brush: 'pen',
-    color: '#fe4438',
-    size: 18
-  },
+  currentBrush: structuredClone(brushDefaults),
   previewBrushSize: undefined,
 
   resizeHandlesContainer: undefined,
@@ -177,15 +171,17 @@ export type MediaEditorContextValue = {
 
   mediaSrc: string;
   mediaType: MediaType;
-  mediaBlob: Blob;
-  mediaSize: NumberPair;
+  getMediaBlob: () => Promise<Blob | null>;
+  canImageResultInGIF: boolean;
+  isEditingForAvatar: boolean;
+  isEditingForumAvatar: boolean;
+  dontCreatePreview: boolean;
 
   mediaState: Store<EditingMediaState>;
   editorState: Store<MediaEditorState>;
   actions: EditorOverridableGlobalActions;
 
-  hasModifications: Accessor<boolean>;
-  imageRatio: number;
+  canFinish: Accessor<boolean>;
 
   resizableLayersSeed: number;
 };
@@ -196,13 +192,20 @@ const MediaEditorContext = createContext<MediaEditorContextValue>();
 export function createContextValue(props: MediaEditorProps): MediaEditorContextValue {
   const mediaStateInit = props.editingMediaState ?
     structuredClone(props.editingMediaState) : // Prevent mutable store being synchronized with the passed object reference
-    getDefaultEditingMediaState(props);
+    getDefaultEditingMediaState();
 
   const mediaStateInitClone = structuredClone(mediaStateInit);
 
 
   const mediaState = createMutable(mediaStateInit);
   const editorState = createMutable(getDefaultMediaEditorState());
+
+  if(props.initialTab) {
+    editorState.currentTab = props.initialTab;
+    if(props.initialTab === 'crop') {
+      editorState.cropTabAnimationProgress = 1;
+    }
+  }
 
   const actions: EditorOverridableGlobalActions = {
     pushToHistory: (item: HistoryItem) => {
@@ -211,8 +214,8 @@ export function createContextValue(props: MediaEditorProps): MediaEditorContextV
         redoHistory.length && redoHistory.splice(0, Infinity);
       }));
     },
-    setInitialImageRatio: (ratio: number) => {
-      mediaStateInitClone.currentImageRatio = ratio;
+    updateMediaStateClone: (callback) => {
+      callback(mediaStateInitClone);
     },
     redrawBrushes: () => {},
     abortDrawerSlide: () => {},
@@ -245,15 +248,17 @@ export function createContextValue(props: MediaEditorProps): MediaEditorContextV
 
     mediaSrc: props.mediaSrc,
     mediaType: props.mediaType,
-    mediaBlob: props.mediaBlob,
-    mediaSize: props.mediaSize,
+    getMediaBlob: props.getMediaBlob,
+    canImageResultInGIF: props.canImageResultInGIF || false,
+    isEditingForAvatar: props.isEditingForAvatar || false,
+    isEditingForumAvatar: props.isEditingForumAvatar || false,
+    dontCreatePreview: props.dontCreatePreview || false,
 
     mediaState,
     editorState,
     actions,
 
-    hasModifications,
-    imageRatio: props.mediaSize[0] / props.mediaSize[1],
+    canFinish: createMemo(() => props.isEditingForAvatar || hasModifications()),
 
     // [0-1] make sure it's different even after reopening the editor, note that there might be some items in history!
     resizableLayersSeed: Math.random()

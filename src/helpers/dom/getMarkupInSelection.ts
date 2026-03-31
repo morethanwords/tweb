@@ -4,9 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import filterUnique from '@helpers/array/filterUnique';
 import {markdownTags, MarkdownType} from '@helpers/dom/getRichElementValue';
 
-export default function getMarkupInSelection<T extends MarkdownType>(types: T[]) {
+export default function getMarkupInSelection<T extends MarkdownType>(types: T[], ignoreNoContentEditable?: boolean) {
   type ResultByType = {elements: HTMLElement[], fully: boolean, partly: boolean, textLength: number};
   const result: Record<T, ResultByType> = {} as Record<T, ResultByType>;
   types.forEach((tag) => result[tag] = {elements: [], fully: false, partly: false, textLength: 0});
@@ -20,9 +21,13 @@ export default function getMarkupInSelection<T extends MarkdownType>(types: T[])
   const root = commonAncestor.nodeType === commonAncestor.ELEMENT_NODE ?
     commonAncestor as HTMLElement :
     (commonAncestor as ChildNode).parentElement;
-  const contentEditable = root.closest('[contenteditable="true"]');
+  let contentEditable = root.closest('[contenteditable="true"]');
   if(!contentEditable) {
-    return result;
+    if(ignoreNoContentEditable) {
+      contentEditable = root;
+    } else {
+      return result;
+    }
   }
 
   const treeWalker = document.createTreeWalker(
@@ -49,6 +54,7 @@ export default function getMarkupInSelection<T extends MarkdownType>(types: T[])
 
   for(const type of types) {
     const item = result[type];
+    item.elements = filterUnique(item.elements);
     item.fully = item.textLength >= textLength;
     item.partly = !!item.elements.length;
   }

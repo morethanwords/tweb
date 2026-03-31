@@ -23,7 +23,7 @@ import {bigIntToSigned, bigIntToUnsigned} from '@helpers/bigInt/bigIntConversion
 const boolFalse = +Schema.API.constructors.find((c) => c.predicate === 'boolFalse').id;
 const boolTrue = +Schema.API.constructors.find((c) => c.predicate === 'boolTrue').id;
 const vector = +Schema.API.constructors.find((c) => c.predicate === 'vector').id;
-const gzipPacked = +Schema.MTProto.constructors.find((c) => c.predicate === 'gzip_packed').id;
+export const gzipPacked = +Schema.MTProto.constructors.find((c) => c.predicate === 'gzip_packed').id;
 
 // * using slice to have a new buffer, otherwise the buffer will be copied to main thread
 const sliceMethod: 'slice' | 'subarray' = 'slice'; // subarray
@@ -429,7 +429,7 @@ class TLDeserialization<FetchLongAs extends Long> {
       this.intView = new Int32Array(buffer);
       this.byteView = new Uint8Array(this.buffer);
     } else {
-      this.buffer = buffer.buffer;
+      this.buffer = buffer.buffer as ArrayBuffer;
       this.intView = new Int32Array(buffer.buffer, buffer.byteOffset, buffer.byteLength / 4);
       this.byteView = buffer;
     }
@@ -600,7 +600,7 @@ class TLDeserialization<FetchLongAs extends Long> {
 
   public fetchRawBytes(len: number | false, typed: true, field: string): Uint8Array;
   public fetchRawBytes(len: number | false, typed: false, field: string): number[];
-  public fetchRawBytes(len: number | false, typed: boolean = true, field: string) {
+  public fetchRawBytes(len: number | false, typed: boolean = true, field: string): Uint8Array | number[] {
     if(len === false) {
       len = this.readInt((field || '') + '_length');
       if(len > this.byteView.byteLength) {
@@ -689,7 +689,7 @@ class TLDeserialization<FetchLongAs extends Long> {
 
       if(constructorCmp === gzipPacked) { // Gzip packed
         const compressed = this.fetchBytes(field + '[packed_string]');
-        const uncompressed = gzipUncompress(compressed) as Uint8Array;
+        const uncompressed = gzipUncompress(compressed as unknown as ArrayBuffer) as Uint8Array;
         const newDeserializer = new TLDeserialization(uncompressed); // rpc_result is packed here
 
         return newDeserializer.fetchObject(type, field);

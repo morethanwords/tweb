@@ -32,7 +32,7 @@ export type DefinedSolidElement<ObservedAttribute extends string = string, Props
  * Note that it might still need a refresh if you change other parameters except the component logic
  *
  * @example
- * // your-element.tsx
+ * // my-element.tsx
  * const MyElement = defineSolidElement({
  *   name: 'my-element',
  *   observedAttributes: ['size', 'something-else'],

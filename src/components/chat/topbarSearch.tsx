@@ -52,11 +52,13 @@ import PopupPremium from '@components/popups/premium';
 import usePremium from '@stores/premium';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import Animated from '@helpers/solid/animations';
-import Chat, {ChatType} from '@components/chat/chat';
+import Chat from '@components/chat/chat';
+import {ChatType} from './chatType';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import getHistoryStorageKey, {getHistoryStorageType} from '@appManagers/utils/messages/getHistoryStorageKey';
 import {ScreenSize, useMediaSizes} from '@helpers/mediaSizes';
 import ButtonCorner from '@components/buttonCorner';
+import deferSideEffect from '@helpers/solid/deferSideEffect';
 
 export const ScrollableYTsx = (props: {
   children: JSX.Element,
@@ -901,7 +903,12 @@ export default function TopbarSearch(props: {
         setShowingSmallResults(false);
 
         const message = messages()[idx];
-        appImManager.chat.setMessageId({lastMsgId: message.mid, lastMsgPeerId: message.peerId});
+        deferSideEffect(() => {
+          appImManager.chat.setMessageId({
+            lastMsgId: message.mid,
+            lastMsgPeerId: message.peerId
+          });
+        });
       },
       {defer: true}
     )
@@ -1077,8 +1084,10 @@ export default function TopbarSearch(props: {
         }
       }
 
-      appImManager.chat.setMessageId({
-        savedReaction: reaction ? [reaction as Reaction.reactionCustomEmoji | Reaction.reactionEmoji] : undefined
+      deferSideEffect(() => {
+        appImManager.chat.setMessageId({
+          savedReaction: reaction ? [reaction as Reaction.reactionCustomEmoji | Reaction.reactionEmoji] : undefined
+        });
       });
     }
   ));
@@ -1089,7 +1098,14 @@ export default function TopbarSearch(props: {
       return;
     }
 
-    appImManager.chat.setMessageId({lastMsgId: undefined, lastMsgPeerId: undefined, mediaTimestamp: undefined, savedReaction: undefined});
+    deferSideEffect(() => {
+      appImManager.chat.setMessageId({
+        lastMsgId: undefined,
+        lastMsgPeerId: undefined,
+        mediaTimestamp: undefined,
+        savedReaction: undefined
+      });
+    });
   });
 
   // * reset search on close

@@ -9,11 +9,11 @@ import {useCropOffset} from '@components/mediaEditor/canvas/useCropOffset';
 
 export function animateToNewRotationOrRatio(newRotation: number) {
   const {editorState, mediaState} = useMediaEditorContext();
-  if(!editorState.imageSize) return;
+  if(!editorState.mediaSize) return;
 
   const cropOffset = useCropOffset();
 
-  const [w, h] = editorState.imageSize;
+  const [w, h] = editorState.mediaSize;
 
   const snappedRotation90 = Math.round((newRotation / Math.PI) * 2);
   const isReversedRatio = Math.abs(snappedRotation90) & 1;

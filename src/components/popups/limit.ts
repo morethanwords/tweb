@@ -52,6 +52,13 @@ const a: {[type in ApiLimitType]?: {
     descriptionPremium: 'LimitReachedPinDialogsPremium',
     descriptionLocked: 'LimitReachedPinDialogsLocked',
     icon: 'limit_pin'
+  },
+  channels: {
+    title: 'LimitReached',
+    description: 'LimitReachedCommunities',
+    descriptionPremium: 'LimitReachedCommunitiesPremium',
+    descriptionLocked: 'LimitReachedCommunitiesLocked',
+    icon: 'limit_chat'
   }
 };
 
@@ -60,8 +67,10 @@ class P extends PopupPeer {
     isPremium: boolean,
     limit: number,
     limitPremium: number,
-    feature?: PremiumPromoFeatureType
-  }, _a: typeof a[keyof typeof a]) {
+    feature?: PremiumPromoFeatureType,
+    popupRef?: (popup: P) => any,
+    strings: typeof a[keyof typeof a]
+  }) {
     super('popup-limit', {
       buttons: options.isPremium === undefined ? [{
         langKey: 'LimitReached.Ok',
@@ -79,15 +88,16 @@ class P extends PopupPeer {
         langKey: 'Cancel',
         isCancel: true
       }]),
-      descriptionLangKey: options.isPremium === undefined ? _a.descriptionLocked : (options.isPremium ? _a.descriptionPremium : _a.description),
+      descriptionLangKey: options.isPremium === undefined ? options.strings.descriptionLocked : (options.isPremium ? options.strings.descriptionPremium : options.strings.description),
       descriptionLangArgs: options.isPremium ? [options.limitPremium] : [options.limit, options.limitPremium],
-      titleLangKey: _a.title
+      titleLangKey: options.strings.title,
+      body: !!options.popupRef
     });
 
     const limit = new LimitLine({
       limitPremium: options.limitPremium,
       hint: {
-        icon: _a.icon,
+        icon: options.strings.icon,
         content: '' + (options.isPremium ? options.limitPremium : options.limit)
       }
     });
@@ -109,7 +119,10 @@ class P extends PopupPeer {
   }
 }
 
-export default async function showLimitPopup(type: keyof typeof a) {
+export default async function showLimitPopup(
+  type: keyof typeof a,
+  popupRef?: ConstructorParameters<typeof P>[0]['popupRef']
+) {
   // const featureMap: {[type in keyof typeof a]?: PremiumPromoFeatureType} = {
   //   folders: 'double_limits',
   //   pin: 'double_limits',
@@ -117,17 +130,24 @@ export default async function showLimitPopup(type: keyof typeof a) {
   // };
   const feature: PremiumPromoFeatureType = 'double_limits';
 
-  const _a = a[type];
   const [appConfig, limit, limitPremium] = await Promise.all([
     rootScope.managers.apiManager.getAppConfig(),
     ...[false, true].map((v) => rootScope.managers.apiManager.getLimit(type, v))
   ]);
   const isLocked = appConfig.premium_purchase_blocked;
-  new P({
+  const popup = new P({
     isPremium: isLocked ? undefined : rootScope.premium,
     limit,
     limitPremium,
     // feature: featureMap[type]
-    feature
-  }, _a).show();
+    feature,
+    popupRef,
+    strings: a[type]
+  });
+
+  if(popupRef) {
+    popupRef(popup);
+  } else {
+    popup.show();
+  }
 }

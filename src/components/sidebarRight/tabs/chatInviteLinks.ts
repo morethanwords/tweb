@@ -32,6 +32,8 @@ import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {wrapLeftDuration} from '@components/wrappers/wrapDuration';
 import AppChatInviteLinkTab from '@components/sidebarRight/tabs/chatInviteLink';
 import AppEditChatInviteLink from '@components/sidebarRight/tabs/editChatInviteLink';
+import hasRights from '@lib/appManagers/utils/chats/hasRights';
+import apiManagerProxy from '@lib/apiManagerProxy';
 
 type ChatInvite = ExportedChatInvite.chatInviteExported;
 
@@ -117,7 +119,7 @@ export default class AppChatInviteLinksTab extends SliderSuperTabEventable {
       animationData: !adminId && lottieLoader.loadAnimationFromURLManually('UtyanLinks'),
       invites: rootScope.managers.appChatInvitesManager.getExportedChatInvites({chatId, adminId}),
       invitesRevoked: rootScope.managers.appChatInvitesManager.getExportedChatInvites({chatId, adminId, revoked: true}),
-      adminsInvites: !adminId && rootScope.managers.appChatInvitesManager.getAdminsWithInvites(chatId),
+      adminsInvites: !adminId && hasRights(apiManagerProxy.getChat(chatId), 'change_type') && rootScope.managers.appChatInvitesManager.getAdminsWithInvites(chatId),
       chatFull: rootScope.managers.appProfileManager.getChatFull(chatId)
     };
   }
@@ -319,7 +321,7 @@ export default class AppChatInviteLinksTab extends SliderSuperTabEventable {
     if(!this.adminId) {
       const section = adminsLinks = new SettingSection({name: 'LinksCreatedByOtherAdmins'});
 
-      const promise = p.adminsInvites.then((adminsInvites) => {
+      const promise = (p.adminsInvites || Promise.reject()).then((adminsInvites) => {
         let {admins} = adminsInvites;
         admins = admins.filter((admin) => admin.admin_id.toPeerId(false) !== rootScope.myId);
         if(!admins.length) {

@@ -11,7 +11,7 @@ import I18n, {LangPackKey, i18n, join, joinElementsWith} from '@lib/langPack';
 import Section from '@components/section';
 import {SliderSuperTabEventable} from '@components/sliderTab';
 import {For, render} from 'solid-js/web';
-import {Accessor, JSX, createEffect, createRoot, createSignal, onMount} from 'solid-js';
+import {Accessor, JSX, Show, createEffect, createRoot, createSignal, onMount} from 'solid-js';
 import formatNumber from '@helpers/number/formatNumber';
 import {FontFamily} from '@config/font';
 import {DcId, PickByType} from '@types';
@@ -32,7 +32,7 @@ import {wrapStoryMedia} from '@components/stories/preview';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import appDialogsManager from '@lib/appDialogsManager';
-import Button from '@components/button';
+import Button from '@components/buttonTsx';
 import themeController from '@helpers/themeController';
 import assumeType from '@helpers/assumeType';
 import getChatMembersString from '@components/wrappers/getChatMembersString';
@@ -42,8 +42,6 @@ import {createStoriesViewerWithPeer} from '@components/stories/viewer';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {avatarNew} from '@components/avatarNew';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
-import toggleDisability from '@helpers/dom/toggleDisability';
-import ListenerSetter from '@helpers/listenerSetter';
 
 const CHANNEL_GRAPHS_TITLES: {[key in keyof PickByType<StatsBroadcastStats, StatsGraph>]: LangPackKey} = {
   growth_graph: 'GrowthChartTitle',
@@ -137,17 +135,20 @@ export const createLoadableList = <T extends any = any>(props: Partial<LoadableL
   }, {equals: false});
 };
 
-export const createMoreButton = (
+export const MoreButton = (props: {
   count: number,
-  callback: (button: HTMLElement) => any,
-  listenerSetter: ListenerSetter,
-  key: LangPackKey = 'PollResults.LoadMore'
-) => {
-  const button = Button('btn btn-primary btn-transparent primary', {icon: 'down', text: key, textArgs: [count]});
-  attachClickEvent(button, () => {
-    callback(button);
-  }, {listenerSetter});
-  return button;
+  callback: Parameters<typeof Button>[0]['onClick'],
+  key?: LangPackKey
+}) => {
+  return (
+    <Button
+      text={props.key || 'PollResults.LoadMore'}
+      textArgs={[props.count]}
+      onClick={(e) => props.callback(e)}
+      class="btn btn-primary btn-transparent primary"
+      icon="down"
+    />
+  );
 };
 
 const StatisticsOverviewItem = ({
@@ -501,17 +502,17 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
 
           const chatlist = appDialogsManager.createChatList();
           chatlist.append(...topPeers.splice(0, 10).map(({container}) => container));
-          let moreButton: HTMLElement;
-          if(topPeers.length) {
-            moreButton = createMoreButton(topPeers.length, () => {
-              moreButton.remove();
+          const [moreButton, setMoreButton] = createSignal<JSX.Element>(topPeers.length && MoreButton({
+            count: topPeers.length,
+            callback: () => {
+              setMoreButton(undefined);
               chatlist.append(...topPeers.map(({container}) => container));
-            }, this.listenerSetter);
-          }
+            }
+          }));
           return (
             <Section name={topPeersTitles[idx()]} nameRight={period && formatDateRange(period.min_date, period.max_date)}>
               {chatlist}
-              {moreButton}
+              {moreButton()}
             </Section>
           );
         }}</For>
@@ -539,15 +540,12 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
           >
             {publicForwards().rendered}
           </div>
-          {publicForwards().loadMore && createMoreButton(
-            publicForwards().count - publicForwards().rendered.length,
-            (button) => {
-              const toggle = toggleDisability(button, true);
-              const promise = publicForwards().loadMore();
-              promise.finally(() => toggle());
-            },
-            this.listenerSetter
-          )}
+          <Show when={!!publicForwards().loadMore}>
+            <MoreButton
+              count={publicForwards().count - publicForwards().rendered.length}
+              callback={() => publicForwards().loadMore()}
+            />
+          </Show>
         </Section>}
       </>
     );
@@ -825,7 +823,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
     const manager = this.managers.appStatisticsManager;
     const loadLimit = 100;
     const func = this.isBroadcast ? manager.getBroadcastStats : (this.isMegagroup ? manager.getMegagroupStats : (this.isStory ? manager.getStoryStats : manager.getMessageStats));
-    const postPromise = this.isMessage ? this.managers.appMessagesManager.reloadMessages(peerId, this.mid) : undefined;
+    const postPromise = this.isMessage ? this.managers.appMessagesManager.reloadMessage(peerId, this.mid) : undefined;
     const postPublicForwardsPromise = this.isMessage ? manager.getMessagePublicForwards({peerId, mid: this.mid, limit: loadLimit}) : undefined;
     const storyPromise = this.isStory ? this.managers.appStoriesManager.getStoryById(peerId, this.storyId) : undefined;
     const storyPublicForwardsPromise = this.isStory ? manager.getStoryPublicForwards({peerId, id: this.storyId, limit: loadLimit}) : undefined;
@@ -864,7 +862,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
     recentPosts.forEach((postInteractionCounters) => {
       let promise: PromiseLike<any>;
       if(postInteractionCounters._ === 'postInteractionCountersMessage') {
-        promise = this.managers.appMessagesManager.reloadMessages(peerId, postInteractionCounters.msg_id)
+        promise = this.managers.appMessagesManager.reloadMessage(peerId, postInteractionCounters.msg_id)
         .then((message) => {
           if(!message) {
             indexOfAndSplice(recentPosts, postInteractionCounters);

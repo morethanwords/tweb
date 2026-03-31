@@ -109,6 +109,33 @@ type InvokeApiWithReferenceContext = {file_reference: ReferenceBytes};
 // * use together with appDocsManager `TEST_FILE_REFERENCE`
 // let TEST_FILE_REFERENCE_DOC_ID: DocId = '5436366378309293244';
 
+const mimeTypesCompressed = new Set<string>([
+  'application/zip',
+  'application/x-7z-compressed',
+  'application/x-rar-compressed',
+  'application/gzip',
+  'application/x-bzip2',
+  'application/x-xz',
+  'application/zstd',
+  'application/pdf',
+  'application/epub+zip',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/wasm',
+  'application/x-protobuf',
+  'application/octet-stream'
+]);
+
+function isAlreadyCompressed(mimeType: string): boolean {
+  return (
+    mimeType.startsWith('image/') ||
+    mimeType.startsWith('video/') ||
+    mimeType.startsWith('audio/') ||
+    mimeTypesCompressed.has(mimeType)
+  );
+}
+
 export class ApiFileManager extends AppManager {
   private cacheStorage = new CacheStorageController('cachedFiles');
   private downloadStorage = new DownloadStorage();
@@ -1080,7 +1107,14 @@ export class ApiFileManager extends AppManager {
             const buffer = await readBlobAsArrayBuffer(blob);
             checkCancel();
 
-            self.debug && self.log('Upload file part, isBig:', isBigFile, part, buffer.byteLength, new Uint8Array(buffer).length, new Uint8Array(buffer).slice().length);
+            self.debug && self.log(
+              'Upload file part, isBig:',
+              isBigFile,
+              part,
+              buffer.byteLength,
+              new Uint8Array(buffer).length,
+              new Uint8Array(buffer).slice().length
+            );
 
             return self.apiManager.invokeApi(method, {
               file_id: fileId,
@@ -1088,7 +1122,8 @@ export class ApiFileManager extends AppManager {
               file_total_parts: totalParts,
               bytes: buffer
             } as any, {
-              fileUpload: true
+              fileUpload: true,
+              gzipCompress: isAlreadyCompressed(file.type) ? undefined : true
             }).then(() => {
               if(canceled) {
                 return;

@@ -108,14 +108,15 @@ export default function hasRights(
     // }
 
     case 'invite_links': {
-      if(chat._ === 'chat') {
-        return false;
-      }
+      // if(chat._ === 'chat') {
+      //   return false;
+      // }
 
       return isAdmin && !!myFlags['invite_users'];
     }
 
     // * only creator can do that
+    case 'toggle_forum':
     case 'change_type':
     case 'delete_chat': {
       return false;
@@ -143,7 +144,7 @@ export default function hasRights(
     }
 
     case 'view_participants': {
-      return !!(chat._ === 'chat' || !chat.pFlags.broadcast || chat.pFlags.creator || chat.admin_rights);
+      return !!(chat._ === 'chat' || !chat.pFlags.broadcast || chat.pFlags.creator || isAdmin);
     }
 
     case 'create_giveaway': {
@@ -154,6 +155,10 @@ export default function hasRights(
     // * admin can manage all topics
     case 'manage_topics': {
       return isAdmin ? !!myFlags[action] : !myFlags[action];
+    }
+
+    case 'just_admin': {
+      return isAdmin;
     }
 
     // case 'view_statistics': {

@@ -27,6 +27,7 @@ import getParticipantsCount from '@appManagers/utils/chats/getParticipantsCount'
 import callbackifyAll from '@helpers/callbackifyAll';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import {PEER_FULL_TTL} from '@appManagers/constants';
+import {isParticipantAdmin} from '@lib/appManagers/utils/chats/isParticipantAdmin';
 
 export type UserTyping = Partial<{userId: UserId, action: SendMessageAction, timeout: number}>;
 
@@ -59,6 +60,8 @@ export class AppProfileManager extends AppManager {
       updateChatParticipantAdd: this.onUpdateChatParticipantAdd,
 
       updateChatParticipantDelete: this.onUpdateChatParticipantDelete,
+
+      updateChatParticipantAdmin: this.onUpdateChatParticipantAdmin,
 
       updateUserTyping: this.onUpdateUserTyping,
       updateChatUserTyping: this.onUpdateUserTyping,
@@ -147,8 +150,8 @@ export class AppProfileManager extends AppManager {
         userFull.wallpaper = this.appThemesManager.saveWallPaper(userFull.wallpaper);
 
         const botInfo = userFull.bot_info;
+        const referenceContext: ReferenceContext = {type: 'userFull', userId: id};
         if(botInfo) {
-          const referenceContext: ReferenceContext = {type: 'userFull', userId: id};
           botInfo.description_document = this.appDocsManager.saveDoc(botInfo.description_document, referenceContext);
           botInfo.description_photo = this.appPhotosManager.savePhoto(botInfo.description_photo, referenceContext);
         }
@@ -160,6 +163,9 @@ export class AppProfileManager extends AppManager {
             userFull.personal_channel_message,
             userFull.personal_channel_id
           );
+        }
+        if(userFull.saved_music) {
+          userFull.saved_music = this.appDocsManager.saveDoc(userFull.saved_music, referenceContext);
         }
 
         this.appNotificationsManager.savePeerSettings({
@@ -184,6 +190,26 @@ export class AppProfileManager extends AppManager {
     const intro = profile?.business_intro;
 
     return intro && (intro.title || intro.description || intro.sticker);
+  }
+
+  public async getSavedMusic(userId: UserId, offset: number = 0, limit: number = 50) {
+    const result = await this.apiManager.invokeApi('users.getSavedMusic', {
+      id: this.appUsersManager.getUserInput(userId),
+      offset,
+      limit,
+      hash: 0
+    });
+
+    if(result._ === 'users.savedMusicNotModified') {
+      return {count: result.count, documents: []};
+    }
+
+    const referenceContext: ReferenceContext = {type: 'savedMusic', userId};
+    const documents = result.documents
+    .map((doc) => this.appDocsManager.saveDoc(doc, referenceContext))
+    .filter(Boolean);
+
+    return {count: result.count, documents};
   }
 
   public getProfileByPeerId(peerId: PeerId, override?: boolean) {
@@ -370,14 +396,22 @@ export class AppProfileManager extends AppManager {
         throw makeError('CHAT_PRIVATE');
       }
 
-      if(filter._ === 'channelParticipantsSearch' && filter.q.trim()) {
-        return {
-          ...chatParticipants,
-          participants: this.filterParticipantsByQuery(chatParticipants.participants, filter.q)
-        };
+      let {participants} = chatParticipants;
+      if(filter._ === 'channelParticipantsAdmins') {
+        participants = participants.filter((participant) => {
+          return isParticipantAdmin(participant);
+        });
       }
 
-      return chatParticipants;
+      const query = (filter as ChannelParticipantsFilter.channelParticipantsAdmins).q;
+      if(query?.trim()) {
+        participants = this.filterParticipantsByQuery(participants, query);
+      }
+
+      return {
+        ...chatParticipants,
+        participants
+      };
     });
   }
 
@@ -931,31 +965,21 @@ export class AppProfileManager extends AppManager {
     });
   }
 
-  private onUpdateChatParticipants = (update: Update.updateChatParticipants) => {
+  private onUpdateChatParticipants = (update: Update.updateChatParticipants) => this.modifyCachedFullChat(update.participants.chat_id, (chatFull) => {
     const participants = update.participants;
-    if(participants._ !== 'chatParticipants') {
-      return;
+    (chatFull as ChatFull.chatFull).participants = participants;
+  });
+
+  private onUpdateChatParticipantAdd = (update: Update.updateChatParticipantAdd) => this.modifyCachedFullChat(update.chat_id, (chatFull) => {
+    const _participants = (chatFull as ChatFull.chatFull).participants as ChatParticipants.chatParticipants;
+    if(_participants?._ !== 'chatParticipants') {
+      return false;
     }
 
-    const chatId = participants.chat_id;
-    const chatFull = this.chatsFull[chatId] as ChatFull.chatFull;
-    if(chatFull !== undefined) {
-      chatFull.participants = participants;
-      this.rootScope.dispatchEvent('chat_full_update', chatId);
-    }
-  };
-
-  private onUpdateChatParticipantAdd = (update: Update.updateChatParticipantAdd) => {
-    const chatFull = this.chatsFull[update.chat_id] as ChatFull.chatFull;
-    if(chatFull === undefined) {
-      return;
-    }
-
-    const _participants = chatFull.participants as ChatParticipants.chatParticipants;
-    const participants = _participants.participants || [];
-    for(let i = 0, length = participants.length; i < length; i++) {
+    const participants = _participants.participants;
+    for(let i = 0, length = participants.length; i < length; ++i) {
       if(participants[i].user_id === update.user_id) {
-        return;
+        return false;
       }
     }
 
@@ -967,26 +991,47 @@ export class AppProfileManager extends AppManager {
     });
 
     _participants.version = update.version;
-    this.rootScope.dispatchEvent('chat_full_update', update.chat_id);
-  };
+  });
 
-  private onUpdateChatParticipantDelete = (update: Update.updateChatParticipantDelete) => {
-    const chatFull = this.chatsFull[update.chat_id] as ChatFull.chatFull;
-    if(chatFull === undefined) {
-      return;
+  private onUpdateChatParticipantDelete = (update: Update.updateChatParticipantDelete) => this.modifyCachedFullChat(update.chat_id, (chatFull) => {
+    const _participants = (chatFull as ChatFull.chatFull).participants as ChatParticipants.chatParticipants;
+    if(_participants?._ !== 'chatParticipants') {
+      return false;
     }
 
-    const _participants = chatFull.participants as ChatParticipants.chatParticipants;
-    const participants = _participants.participants || [];
+    const participants = _participants.participants;
     for(let i = 0, length = participants.length; i < length; i++) {
       if(participants[i].user_id === update.user_id) {
         participants.splice(i, 1);
         _participants.version = update.version;
-        this.rootScope.dispatchEvent('chat_full_update', update.chat_id);
         return;
       }
     }
-  };
+
+    return false;
+  });
+
+  private onUpdateChatParticipantAdmin = (update: Update.updateChatParticipantAdmin) => this.modifyCachedFullChat(update.chat_id, (chatFull) => {
+    const _participants = (chatFull as ChatFull.chatFull).participants as ChatParticipants.chatParticipants;
+    if(_participants?._ !== 'chatParticipants') {
+      return false;
+    }
+
+    const participants = _participants.participants;
+    for(let i = 0, length = participants.length; i < length; i++) {
+      if(participants[i].user_id === update.user_id) {
+        participants[i] = {
+          _: update.is_admin ? 'chatParticipantAdmin' : 'chatParticipant',
+          user_id: update.user_id,
+          inviter_id: this.appUsersManager.getSelf().id,
+          date: tsNow(true)
+        };
+        return;
+      }
+    }
+
+    return false;
+  });
 
   private onUpdateUserTyping = (update: Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChannelUserTyping) => {
     const fromId = (update as Update.updateUserTyping).user_id ?
@@ -1172,6 +1217,20 @@ export class AppProfileManager extends AppManager {
           userFull.note = note.text === '' ? undefined : note;
           return true;
         });
+      }
+    });
+  }
+
+  public toggleNoForwards(peerId: PeerId, enabled: boolean, requestMsgId?: number) {
+    return this.apiManager.invokeApi('messages.toggleNoForwards', {
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      enabled,
+      request_msg_id: requestMsgId ? getServerMessageId(requestMsgId) : undefined
+    }).then((updates) => {
+      if(peerId.isAnyChat()) {
+        this.appChatsManager.onChatUpdated(peerId.toChatId(), updates);
+      } else {
+        this.apiUpdatesManager.processUpdateMessage(updates);
       }
     });
   }

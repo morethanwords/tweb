@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, ReactionCount, MessagePeerReaction, PhoneCall, Config, Reaction, AttachMenuBot, PeerSettings, StoryItem, PeerStories, SavedDialog, SavedReactionTag, InputSavedStarGift, LangPackDifference, StarsAmount, MessageEntity, HelpPromoData} from '@layer';
+import type {Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, ReactionCount, MessagePeerReaction, PhoneCall, Config, Reaction, AttachMenuBot, PeerSettings, StoryItem, PeerStories, SavedDialog, SavedReactionTag, InputSavedStarGift, LangPackDifference, StarsAmount, MessageEntity, HelpPromoData, StoriesStealthMode, StoryAlbum} from '@layer';
 import type {Dialog, ForumTopic, MessagesStorageKey, MyMessage} from '@appManagers/appMessagesManager';
 import type {MyDialogFilter} from '@lib/storages/filters';
 import type {AnyDialog, Folder} from '@lib/storages/dialogs';
@@ -23,13 +23,13 @@ import type {ArgumentTypes} from '@types';
 import type {RtmpCallInstance} from '@lib/calls/rtmpCallsController';
 import type {ApiManager} from '@appManagers/apiManager';
 import type {MonoforumDialog} from '@lib/storages/monoforumDialogs';
+import type {MyStarGift} from '@appManagers/appGiftsManager';
+import type {MyPromoData} from '@appManagers/appPromoManager';
+import type {ActiveAccountNumber} from '@lib/accounts/types';
 import {NULL_PEER_ID, UserAuth} from '@appManagers/constants';
 import EventListenerBase, {EventListenerListeners} from '@helpers/eventListenerBase';
 import {MOUNT_CLASS_TO} from '@config/debug';
 import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
-import {ActiveAccountNumber} from '@lib/accounts/types';
-import type {MyStarGift} from '@appManagers/appGiftsManager';
-import type {MyPromoData} from '@appManagers/appPromoManager';
 
 export type BroadcastEvents = {
   'chat_full_update': ChatId,
@@ -112,6 +112,10 @@ export type BroadcastEvents = {
   'stories_read': {peerId: PeerId, maxReadId: number},
   'stories_downloaded': {peerId: PeerId, ids: number[]},
   'stories_position': {peerId: PeerId, position: StoriesListPosition},
+  'stories_stealth_mode': StoriesStealthMode,
+  'story_album_created': {peerId: PeerId, albumId: number, albums: StoryAlbum[]},
+  'story_album_updated': {peerId: PeerId, albumId: number, addStories?: StoryItem.storyItem[], deleteStories?: number[], albums: StoryAlbum[]},
+  'story_album_deleted': {peerId: PeerId, albumId: number, albums: StoryAlbum[]},
 
   'replies_updated': Message.message,
   'replies_short_update': Message.message,
@@ -223,9 +227,11 @@ export type BroadcastEvents = {
     resalePrice?: StarsAmount[],
     unsaved?: boolean,
     converted?: boolean,
-    wearing?: boolean
+    wearing?: boolean,
+    addCollectionId?: number,
+    removeCollectionId?: number
   },
-  'my_pinned_stargifts': {gifts: InputSavedStarGift[]},
+  'pinned_stargifts': {peerId: PeerId, gifts: InputSavedStarGift[]},
   'star_gift_list_update': {peerId: PeerId},
   'star_gift_upgrade': {gift: MyStarGift, savedId?: Long, fromMsgId?: number},
 

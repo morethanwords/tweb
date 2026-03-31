@@ -106,7 +106,7 @@ const createChargeForMessasgesSection = (
     element,
     dispose,
     promise: promiseCollectorHelper.await()
-  }
+  };
 };
 
 export default createChargeForMessasgesSection;

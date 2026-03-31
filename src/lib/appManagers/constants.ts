@@ -19,6 +19,7 @@ export const REPLIES_HIDDEN_CHANNEL_ID: ChatId = 777;
 export const HIDDEN_PEER_ID: PeerId = 2666000;
 export const SERVICE_PEER_ID: PeerId = 777000;
 export const MUTE_UNTIL = 0x7FFFFFFF;
+export const BANNED_RIGHTS_UNTIL_FOREVER = 0x7FFFFFFF;
 export const BOT_START_PARAM = '';
 export const MAX_FILE_SAVE_SIZE = 20 * 1024 * 1024;
 export const THUMB_TYPE_FULL = '';

@@ -24,6 +24,7 @@ import sha256 from '@lib/crypto/utils/sha256';
 import {aesCtrDestroy, aesCtrPrepare, aesCtrProcess} from '@lib/crypto/aesCtrUtils';
 import ctx from '@environment/ctx';
 import {decryptLocalData, encryptLocalData} from '@lib/crypto/utils/aesLocal';
+// import gzipCompress from '@helpers/gzipCompress';
 
 console.log('CryptoWorker start');
 
@@ -38,6 +39,7 @@ const cryptoMethods: CryptoMethods = {
   // 'factorize-tdlib': factorizeTdlibPQ,
   // 'factorize-new-new': pqPrimeLeemonNew,
   'mod-pow': bytesModPow,
+  // 'gzipCompress': gzipCompress,
   'gzipUncompress': gzipUncompress,
   'computeSRP': computeSRP,
   'generate-dh': generateDh,

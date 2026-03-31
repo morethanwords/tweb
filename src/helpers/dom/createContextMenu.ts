@@ -13,6 +13,9 @@ import {getMiddleware, Middleware} from '@helpers/middleware';
 import positionMenu from '@helpers/positionMenu';
 import {attachContextMenuListener} from '@helpers/dom/attachContextMenuListener';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
+import {logger} from '@lib/logger';
+
+const log = logger('createContextMenu');
 
 export default function createContextMenu<T extends ButtonMenuItemOptionsVerifiable>({
   buttons,
@@ -66,7 +69,12 @@ export default function createContextMenu<T extends ButtonMenuItemOptionsVerifia
     const r = async() => {
       try {
         await onOpen?.(e, target);
-      } catch{
+      } catch(e) {
+        if(e instanceof Error) {
+          log.error('Error opening context menu:', e);
+        } else {
+          log('Opening context menu was blocked, reason:', e);
+        }
         onClose?.();
         return;
       }

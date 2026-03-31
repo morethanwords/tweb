@@ -47,14 +47,14 @@ const log = logger('MediaEditor.createFinalResult');
 
 export async function createFinalResult(): Promise<MediaEditorFinalResult> {
   const context = useMediaEditorContext();
-  const {editorState, mediaState, mediaSrc, mediaType, imageRatio} = context;
+  const {editorState, mediaState, mediaSrc, mediaType, canImageResultInGIF} = context;
   const {resizableLayers, adjustments} = mediaState;
 
   const owner = getOwner();
 
   const cropOffset = useCropOffset();
 
-  const hasAnimatedStickers = checkIfHasAnimatedStickers(resizableLayers);
+  const hasAnimatedStickers = checkIfHasAnimatedStickers(resizableLayers) && canImageResultInGIF;
 
   const willResultInVideo = hasAnimatedStickers || mediaType === 'video';
 
@@ -65,7 +65,7 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
     newRatio: mediaState.currentImageRatio,
     scale: mediaState.scale,
     videoType,
-    imageRatio: imageRatio,
+    imageRatio: editorState.mediaRatio,
     cropOffset: cropOffset()
   });
 
@@ -76,7 +76,7 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
     newRatio: mediaState.currentImageRatio,
     scale: mediaState.scale,
     videoType,
-    imageRatio,
+    imageRatio: editorState.mediaRatio,
     cropOffset: cropOffset(),
     quality: willResultInVideo ? Math.min(maxQuality, mediaState.videoQuality) : undefined
   });
@@ -169,13 +169,13 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
 
   const renderResult = await renderPromise;
 
-  const animatedPreview = await spawnAnimatedPreview({
+  const animatedPreview = renderResult.preview ? await spawnAnimatedPreview({
     context,
     cropOffset,
     scaledWidth,
     scaledHeight,
     previewBlob: renderResult.preview
-  });
+  }) : undefined;
 
   Promise.resolve(renderResult.getResult())?.catch(noop)?.finally(() => {
     cleanupWebGl(gl);

@@ -9,7 +9,7 @@ import {HistoryItem, useMediaEditorContext} from '@components/mediaEditor/contex
 import {processHistoryItem} from '@components/mediaEditor/utils';
 
 export default function Topbar(props: {onClose: () => void; onFinish: () => void}) {
-  const {hasModifications, mediaState, editorState} = useMediaEditorContext();
+  const {canFinish, mediaState, editorState} = useMediaEditorContext();
 
   let doneButton: HTMLDivElement;
 
@@ -66,10 +66,10 @@ export default function Topbar(props: {onClose: () => void; onFinish: () => void
         ref={doneButton}
         class="media-editor__topbar-done"
         classList={{
-          'media-editor__topbar-done--disabled': !hasModifications()
+          'media-editor__topbar-done--disabled': !canFinish()
         }}
         onClick={() => {
-          if(hasModifications()) props.onFinish();
+          if(canFinish()) props.onFinish();
         }}
       >
         {i18n('Done')}

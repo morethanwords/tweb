@@ -18,7 +18,7 @@ import useHeavyAnimationCheck, {getHeavyAnimationPromise} from '@hooks/useHeavyA
 import I18n, {LangPackKey, i18n, join} from '@lib/langPack';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import {getMiddleware, Middleware, MiddlewareHelper} from '@helpers/middleware';
-import {ChannelParticipant, Chat, ChatFull, ChatParticipant, Document, Message, MessageMedia, MessagesChats, Peer, Photo, StoryItem, Update, User, UserFull, WebPage} from '@layer';
+import {BotMenuButton, ChannelParticipant, Chat, ChatFull, ChatParticipant, ChatParticipants, Document, Message, MessageMedia, MessagesChats, MessagesFilter, Peer, Photo, StoryItem, Update, User, UserFull, WebPage} from '@layer';
 import SortedUserList from '@components/sortedUserList';
 import findUpTag from '@helpers/dom/findUpTag';
 import appSidebarRight from '@components/sidebarRight';
@@ -78,12 +78,13 @@ import {NULL_PEER_ID} from '@appManagers/constants';
 import createParticipantContextMenu from '@helpers/dom/createParticipantContextMenu';
 import findAndSpliceAll from '@helpers/array/findAndSpliceAll';
 import deferredPromise from '@helpers/cancellablePromise';
-import {createEffect, createRoot, on} from 'solid-js';
-import StoriesProfileList from '@components/stories/profileList';
+import {children, createEffect, createRoot, For, on} from 'solid-js';
+import {StoriesProfileList} from '@components/stories/profileList';
+import {StoriesContextActions} from '@components/stories/store';
 import Button from '@components/button';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import PopupPremium from '@components/popups/premium';
-import {ChatType} from '@components/chat/chat';
+import {ChatType} from './chat/chatType';
 import getFwdFromName from '@appManagers/utils/messages/getFwdFromName';
 import SidebarSlider from '@components/slider';
 import setBlankToAnchor from '@richTextProcessor/setBlankToAnchor';
@@ -109,6 +110,7 @@ import {AutonomousSavedDialogList} from '@components/autonomousDialogList/savedD
 import SetTransition from '@components/singleTransition';
 import liteMode from '@helpers/liteMode';
 import {wrapGlobalPostsSearch} from './sidebarLeft/globalPostsSearch';
+import createMiddleware from '@helpers/solid/createMiddleware';
 
 // const testScroll = false;
 
@@ -166,14 +168,11 @@ class SearchContextMenu {
   private noForwards: boolean;
   private message: MyMessage;
   private selectedMessages: MyMessage[];
-  private storyItem: StoryItem.storyItem;
-  // private isSavedDialog: boolean;
 
   constructor(
     private attachTo: HTMLElement,
     private searchSuper: AppSearchSuper,
-    private listenerSetter: ListenerSetter,
-    private storiesPinned: boolean
+    private listenerSetter: ListenerSetter
   ) {
     this.managers = searchSuper.managers;
 
@@ -188,7 +187,9 @@ class SearchContextMenu {
         item = findUpClassName(e.target, 'search-super-item');
       } catch(e) {}
 
+      // stories have their own context menu in StoriesProfileTab
       const isStory = !!findUpClassName(e.target, 'search-super-content-stories');
+      if(isStory) return;
 
       if(!item) return;
 
@@ -203,12 +204,11 @@ class SearchContextMenu {
         this.peerId = item.dataset.peerId.toPeerId();
         this.mid = +item.dataset.mid;
         this.isSelected = searchSuper.selection.isMidSelected(this.peerId, this.mid);
-        this.message = isStory ? undefined : await this.managers.appMessagesManager.getMessageByPeer(this.peerId, this.mid);
-        this.storyItem = isStory ? await this.managers.appStoriesManager.getStoryById(this.peerId, this.mid) : undefined;
-        this.noForwards = isStory || (searchSuper.selection.isSelecting ?
+        this.message = await this.managers.appMessagesManager.getMessageByPeer(this.peerId, this.mid);
+        this.noForwards = searchSuper.selection.isSelecting ?
           this.searchSuper.selection.selectionForwardBtn.classList.contains('hide') :
-          !(await this.managers.appMessagesManager.canForward(this.message)));
-        this.selectedMessages = !isStory && searchSuper.selection.isSelecting ? await searchSuper.selection.getSelectedMessages() : undefined;
+          !(await this.managers.appMessagesManager.canForward(this.message));
+        this.selectedMessages = searchSuper.selection.isSelecting ? await searchSuper.selection.getSelectedMessages() : undefined;
         // this.isSavedDialog = !!(searchSuper.searchContext.peerId === rootScope.myId && searchSuper.searchContext.threadId);
 
         const f = await Promise.all(this.buttons.map(async(button) => {
@@ -273,33 +273,12 @@ class SearchContextMenu {
       icon: 'message',
       text: 'Message.Context.Goto',
       onClick: this.onGotoClick,
-      verify: () => !this.storyItem,
       withSelection: true
-    }, {
-      icon: 'archive',
-      text: 'Archive',
-      onClick: () => this.onStoryTogglePinClick(false),
-      verify: () => this.storyItem && this.storyItem.pFlags.pinned && this.managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'pin')
-    }, {
-      icon: 'unarchive',
-      text: 'Unarchive',
-      onClick: () => this.onStoryTogglePinClick(true),
-      verify: () => this.storyItem && !this.storyItem.pFlags.pinned && this.managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'pin')
-    }, {
-      icon: 'pin',
-      text: 'ChatList.Context.Pin',
-      onClick: () => this.onStoryToggleToTopClick(true),
-      verify: () => this.storiesPinned && this.storyItem && this.storyItem.pinnedIndex === undefined && this.managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'pin')
-    }, {
-      icon: 'unpin',
-      text: 'ChatList.Context.Unpin',
-      onClick: () => this.onStoryToggleToTopClick(false),
-      verify: () => this.storiesPinned && this.storyItem && this.storyItem.pinnedIndex !== undefined && this.managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'pin')
     }, {
       icon: 'select',
       text: 'Message.Context.Select',
       onClick: this.onSelectClick,
-      verify: () => !this.isSelected && (!this.storyItem || this.storyItem.pFlags.out),
+      verify: () => !this.isSelected,
       withSelection: true
     }, {
       icon: 'select',
@@ -312,13 +291,7 @@ class SearchContextMenu {
       className: 'danger',
       text: 'Delete',
       onClick: this.onDeleteClick,
-      verify: () => {
-        if(this.storyItem) {
-          return this.managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'delete');
-        }
-
-        return !this.searchSuper.selection.isSelecting && this.managers.appMessagesManager.canDeleteMessage(this.message);
-      }
+      verify: () => !this.searchSuper.selection.isSelecting && this.managers.appMessagesManager.canDeleteMessage(this.message)
     }, {
       icon: 'delete',
       className: 'danger',
@@ -360,9 +333,7 @@ class SearchContextMenu {
   };
 
   private onDeleteClick = () => {
-    if(this.storyItem) {
-      this.searchSuper.selection.onDeleteStoriesClick([this.storyItem.id]);
-    } else if(this.searchSuper.selection.isSelecting) {
+    if(this.searchSuper.selection.isSelecting) {
       simulateClickEvent(this.searchSuper.selection.selectionDeleteBtn);
     } else {
       PopupElement.createPopup(
@@ -372,14 +343,6 @@ class SearchContextMenu {
         ChatType.Chat
       );
     }
-  };
-
-  private onStoryTogglePinClick = (pin: boolean) => {
-    this.searchSuper.selection.onPinStoriesClick([this.storyItem.id], pin);
-  };
-
-  private onStoryToggleToTopClick = (pin: boolean) => {
-    this.searchSuper.selection.onPinStoriesToTopClick([this.storyItem.id], pin);
   };
 }
 
@@ -416,7 +379,7 @@ export default class AppSearchSuper {
   public loadMutex: Promise<any>;
 
   private nextRates: Partial<{[type in SearchSuperMediaType]: number}> = {};
-  private loadPromises: Partial<{[type in SearchSuperMediaType]: Promise<void>}> = {};
+  private loadPromises: Partial<{[type in SearchSuperMediaType]: Promise<any>}> = {};
   private loaded: Partial<{[type in SearchSuperMediaType]: boolean}> = {};
   private loadedChats = false;
   private firstLoad = true;
@@ -441,8 +404,11 @@ export default class AppSearchSuper {
   private membersParticipantMap: Map<PeerId, ChatParticipant | ChannelParticipant>;
   private membersMiddlewareHelper: MiddlewareHelper;
 
-  private _loadStories: () => Promise<void>;
+  public storiesActions: StoriesContextActions;
+  public storiesSetAlbum: (albumId: number | undefined, skipAnimation?: boolean) => void;
   private _loadSavedDialogs: (side: 'top' | 'bottom') => Promise<any>;
+
+  private _loadMoreApps: () => Promise<void>;
 
   private skipScroll: boolean;
 
@@ -468,7 +434,6 @@ export default class AppSearchSuper {
   private listenerSetter: ListenerSetter;
   private swipeHandler: SwipeHandler;
 
-  public onStoriesLengthChange: (length: number) => void;
   public storiesArchive: boolean;
 
   public counters: Partial<{[type in SearchSuperMediaType]: number}> = {};
@@ -480,6 +445,7 @@ export default class AppSearchSuper {
 
   public stargiftsStore: StarGiftsProfileStore;
   public stargiftsActions: StarGiftsProfileActions;
+  public stargiftsSetCollection: (collectionId: number) => void;
 
   constructor(options: Pick<
     AppSearchSuper,
@@ -501,11 +467,8 @@ export default class AppSearchSuper {
     this.container.classList.add('search-super');
 
     this.listenerSetter = new ListenerSetter();
-    this.searchContextMenu = new SearchContextMenu(this.container, this, this.listenerSetter, !this.storiesArchive);
+    this.searchContextMenu = new SearchContextMenu(this.container, this, this.listenerSetter);
     this.selection = new SearchSelection(this, this.managers, this.listenerSetter);
-    if(this.storiesArchive) {
-      this.selection.isStoriesArchive = true;
-    }
 
     const fadeGradientContainer = document.createElement('div');
     fadeGradientContainer.classList.add('search-super-fade-gradient-container');
@@ -558,7 +521,11 @@ export default class AppSearchSuper {
           const children = Array.from(this.tabsMenu.children) as HTMLElement[];
 
           const prevChild = this.mediaTabs[prevId];
-          if(prevChild.type === 'gifts' && this.stargiftsActions.handleSwipe(xDiff)) {
+          if(prevChild.type === 'gifts' && this.stargiftsActions?.handleSwipe(xDiff, this.stargiftsSetCollection)) {
+            return
+          }
+
+          if(prevChild.type === 'stories' && this.storiesActions?.handleSwipe(xDiff, this.storiesSetAlbum)) {
             return
           }
 
@@ -639,9 +606,6 @@ export default class AppSearchSuper {
       const newMediaTab = this.mediaTabs[id];
       this.onChangeTab?.(newMediaTab);
 
-      if(this.selection) {
-        this.selection.isStories = newMediaTab.type === 'stories';
-      }
 
       const fromMediaTab = this.mediaTab;
       this.mediaTab = newMediaTab;
@@ -949,12 +913,13 @@ export default class AppSearchSuper {
     return {element: div, message};
   }
 
-  private async processDocumentFilter({message, inputFilter}: ProcessSearchSuperResult) {
+  private async processDocumentFilter({message, inputFilter, middleware}: ProcessSearchSuperResult) {
     const document = getMediaFromMessage(message, true) as Document.document;
     const showSender = this.showSender || (['voice', 'round'] as MyDocument['type'][]).includes(document.type);
 
     const div = await wrapDocument({
       message,
+      middleware,
       withTime: !showSender,
       fontWeight: 400,
       voiceAsMusic: true,
@@ -1212,7 +1177,7 @@ export default class AppSearchSuper {
       await Promise.all(promises);
       if(!middleware()) {
         // this.log.warn('peer changed');
-        return;
+        return 0;
       }
     }
 
@@ -1266,6 +1231,8 @@ export default class AppSearchSuper {
     // if(type !== 'inputMessagesFilterEmpty') {
     this.afterPerforming(inputFilter === 'inputMessagesFilterEmpty' ? 1 : length, sharedMediaDiv);
     // }
+
+    return length;
   }
 
   private afterPerforming(length: number, contentTab: HTMLElement) {
@@ -1474,29 +1441,48 @@ export default class AppSearchSuper {
 
         this.searchGroups.recent.list.replaceChildren();
 
-        appState.recentSearch.slice(0, 20).forEach(async(peerId) => {
-          const {dom} = appDialogsManager.addDialogNew({
-            peerId: peerId,
-            container: this.searchGroups.recent.list,
-            meAsSaved: true,
-            avatarSize: 'abitbigger',
-            autonomous: true,
-            wrapOptions: {
-              middleware
-            },
-            withStories: true
+        createRoot((dispose) => {
+          middleware.onClean(dispose);
+
+          const arr = For({
+            each: appState.recentSearch,
+            children: (peerId) => {
+              const middlewareHelper = createMiddleware();
+              const {dom} = appDialogsManager.addDialogNew({
+                peerId: peerId,
+                container: false,
+                meAsSaved: true,
+                avatarSize: 'abitbigger',
+                autonomous: true,
+                wrapOptions: {
+                  middleware: middlewareHelper.get()
+                },
+                withStories: true
+              });
+
+              (async() => {
+                dom.lastMessageSpan.append(await (peerId.isUser() ?
+                  Promise.resolve(getUserStatusString(await this.managers.appUsersManager.getUser(peerId.toUserId()))) :
+                  getChatMembersString(peerId.toChatId())));
+              })();
+
+              return dom.containerEl;
+            }
           });
 
-          dom.lastMessageSpan.append(await (peerId.isUser() ?
-            Promise.resolve(getUserStatusString(await this.managers.appUsersManager.getUser(peerId.toUserId()))) :
-            getChatMembersString(peerId.toChatId())));
-        });
+          const elements = children(() => arr);
+          createEffect(() => {
+            this.searchGroups.recent.list.replaceChildren(...(elements.toArray() as HTMLElement[]));
+          });
 
-        if(!appState.recentSearch.length) {
-          this.searchGroups.recent.clear();
-        } else if(setActive) {
-          this.searchGroups.recent.setActive();
-        }
+          createEffect(() => {
+            if(!appState.recentSearch.length) {
+              this.searchGroups.recent.clear();
+            } else if(setActive) {
+              this.searchGroups.recent.setActive();
+            }
+          });
+        });
       };
 
       return Promise.all([
@@ -1595,26 +1581,68 @@ export default class AppSearchSuper {
             middleware
           });
 
-          const onParticipantUpdate = (update: Update.updateChannelParticipant) => {
-            const peerId = getParticipantPeerId(update.prev_participant || update.new_participant);
-            const wasRendered = membersList.has(peerId);
-            if(wasRendered || (update.new_participant as ChannelParticipant.channelParticipantBanned).pFlags?.left) {
-              membersList.ranks.delete(peerId);
-              membersList.delete(peerId);
-              membersParticipantMap.delete(peerId);
-              this.setCounter(mediaTab.type, this.counters[mediaTab.type] - 1);
-            }
-
-            if((!update.prev_participant || wasRendered) && update.new_participant) {
-              renderParticipants([update.new_participant]);
-              this.setCounter(mediaTab.type, this.counters[mediaTab.type] + 1);
-            }
+          const deleteByPeerId = (peerId: PeerId) => {
+            membersList.ranks.delete(peerId);
+            membersList.delete(peerId);
+            membersParticipantMap.delete(peerId);
+            this.setCounter(mediaTab.type, this.counters[mediaTab.type] - 1);
           };
 
-          rootScope.addEventListener('chat_participant', onParticipantUpdate);
-          middleware.onClean(() => {
-            rootScope.removeEventListener('chat_participant', onParticipantUpdate);
-          });
+          const renderParticipant = (participant: ChannelParticipant | ChatParticipant) => {
+            renderParticipants([participant]);
+            this.setCounter(mediaTab.type, this.counters[mediaTab.type] + 1);
+          };
+
+          if(apiManagerProxy.getChat(chatId)._ === 'chat') {
+            const onChatFullUpdate = async(_chatId: ChatId) => {
+              if(chatId !== _chatId) {
+                return;
+              }
+
+              const chatFull = await this.managers.appProfileManager.getChatFull(chatId) as ChatFull.chatFull;
+              if(!middleware()) {
+                return;
+              }
+
+              const participants = chatFull.participants as ChatParticipants.chatParticipants;
+              const processedPeerIds = new Set<PeerId>();
+              for(const participant of participants.participants) {
+                const peerId = participant.user_id.toPeerId(false);
+                processedPeerIds.add(peerId);
+                renderParticipant(participant);
+              }
+
+              membersParticipantMap.forEach((participant, peerId) => {
+                if(!processedPeerIds.has(peerId)) {
+                  deleteByPeerId(peerId);
+                }
+              });
+            };
+            rootScope.addEventListener('chat_full_update', onChatFullUpdate);
+            middleware.onClean(() => {
+              rootScope.removeEventListener('chat_full_update', onChatFullUpdate);
+            });
+          } else {
+            const onParticipantUpdate = (update: Update.updateChannelParticipant) => {
+              if(chatId !== update.channel_id) {
+                return;
+              }
+
+              const peerId = getParticipantPeerId(update.prev_participant || update.new_participant);
+              const wasRendered = membersList.has(peerId);
+              if(wasRendered || (update.new_participant as ChannelParticipant.channelParticipantBanned).pFlags?.left) {
+                deleteByPeerId(peerId);
+              }
+
+              if((!update.prev_participant || wasRendered) && update.new_participant) {
+                renderParticipant(update.new_participant);
+              }
+            };
+            rootScope.addEventListener('chat_participant', onParticipantUpdate);
+            middleware.onClean(() => {
+              rootScope.removeEventListener('chat_participant', onParticipantUpdate);
+            });
+          }
         }
       }
 
@@ -1651,10 +1679,16 @@ export default class AppSearchSuper {
       for(const {peerId, rank, participant} of filtered) {
         if(rank) {
           membersList.ranks.set(peerId, rank);
+        } else {
+          membersList.ranks.delete(peerId);
         }
 
         membersParticipantMap.set(peerId, participant as ChannelParticipant);
-        membersList.add(peerId);
+        if(membersList.has(peerId)) {
+          membersList.update(peerId);
+        } else {
+          membersList.add(peerId);
+        }
       }
     };
 
@@ -1724,47 +1758,44 @@ export default class AppSearchSuper {
     return promise;
   }
 
-  private async loadStories({mediaTab}: SearchSuperLoadTypeOptions) {
-    if(this._loadStories) {
-      return this._loadStories();
+  private loadStories({mediaTab}: SearchSuperLoadTypeOptions) {
+    if(this.storiesActions) {
+      return this.storiesActions.load();
     }
 
     const middleware = this.middleware.get();
     const promise = deferredPromise<void>();
     createRoot((dispose) => {
       middleware.onClean(() => {
-        this._loadStories = undefined;
+        this.storiesActions = undefined;
+        this.storiesSetAlbum = undefined;
         dispose();
         promise.reject();
       });
 
-      const storiesList = StoriesProfileList({
+      const {render: storiesList, actions, setAlbum} = StoriesProfileList({
         peerId: this.searchContext.peerId,
         pinned: !this.storiesArchive,
         archive: this.storiesArchive,
+        scrollable: this.scrollable,
+        listenerSetter: this.listenerSetter,
+        withSelection: true,
+        selectionMount: this.navScrollableContainer,
         onReady: () => {
           promise.resolve();
-
-          const res = (storiesList as any)();
-          mediaTab.contentTab.append(typeof(res) === 'function' ? res() : res);
+          mediaTab.contentTab.append(getFirstChild(storiesList, v => v instanceof Element) as Element);
           this.afterPerforming(1, mediaTab.contentTab);
         },
-        onLoadCallback: (callback) => {
-          this._loadStories = async() => {
-            await callback()
-          };
-        },
-        onLoad: (loaded) => {
+        onLoad: (loaded: boolean) => {
           this.loaded[mediaTab.type] = loaded;
         },
-        onLengthChange: (length) => {
-          this.onStoriesLengthChange?.(length);
+        onCountChange: (length: number) => {
           this.setCounter(mediaTab.type, length);
-        },
-        selection: this.selection
+        }
       });
-
-      this._loadStories();
+      this.storiesActions = actions;
+      this.storiesSetAlbum = setAlbum;
+      this.storiesActions.load();
     });
     return promise;
   }
@@ -1792,6 +1823,8 @@ export default class AppSearchSuper {
 
         return Promise.all(loadPromises);
       });
+
+      appDialogsManager.setListClickListener({list: chatlist, autonomous: true});
 
       await Promise.all(promises);
       return chatlist;
@@ -2008,8 +2041,27 @@ export default class AppSearchSuper {
   }
 
   private async loadApps({mediaTab, middleware}: SearchSuperLoadTypeOptions) {
+    if(this._loadMoreApps) {
+      return this._loadMoreApps();
+    }
+
+    const onClick = (el: HTMLElement): boolean => {
+      (async() => {
+        const peerId = el.dataset.peerId.toPeerId();
+        const userFull = await this.managers.appProfileManager.getProfile(peerId);
+        appImManager.openWebApp({
+          botId: peerId.toUserId(),
+          url: (userFull.bot_info.menu_button as BotMenuButton.botMenuButton).url,
+          buttonText: (userFull.bot_info.menu_button as BotMenuButton.botMenuButton).text,
+          fromBotMenu: true,
+          peerId
+        });
+      })();
+      return false;
+    };
+
     if(this.searchContext.query) {
-      const group = new SearchGroup('ChatList.Filter.Bots', 'apps');
+      const group = new SearchGroup('ChatList.Filter.Bots', 'apps', undefined, undefined, undefined, undefined, onClick);
       group.setActive();
 
       const SEARCH_LIMIT = 200; // will get filtered anyway
@@ -2033,7 +2085,7 @@ export default class AppSearchSuper {
     const myTopApps = await rootScope.managers.appUsersManager.getTopPeers('bots_app');
 
     if(myTopApps.length) {
-      const group = new SearchGroup('MiniApps.Apps', 'apps');
+      const group = new SearchGroup('MiniApps.Apps', 'apps', undefined, undefined, undefined, undefined, onClick);
       group.setActive();
       mediaTab.contentTab.append(group.container);
 
@@ -2043,40 +2095,42 @@ export default class AppSearchSuper {
       this.renderPeerDialogs(myTopApps.map((app) => app.id.toPeerId(false)), group, middleware, 'bots');
     }
 
-    const group = new SearchGroup('MiniApps.Popular', 'apps');
+    const group = new SearchGroup('MiniApps.Popular', 'apps', undefined, undefined, undefined, undefined, onClick);
     group.setActive();
     mediaTab.contentTab.append(group.container);
 
     type GetPopularAppsResult = ReturnType<typeof rootScope.managers.appAttachMenuBotsManager.getPopularAppBots>;
-    let currentOffset: string | null = '', loadPromise: GetPopularAppsResult;
+    let currentOffset: string = '', loadPromise: GetPopularAppsResult;
     const APPS_LIMIT_PER_LOAD = 20;
 
     const loadMoreApps = async() => {
-      if(loadPromise || !middleware() || currentOffset === null) return;
+      if(
+        loadPromise ||
+        !middleware() ||
+        currentOffset === undefined
+      ) return;
 
       loadPromise = rootScope.managers.appAttachMenuBotsManager.getPopularAppBots(currentOffset, APPS_LIMIT_PER_LOAD);
       const {nextOffset, userIds} = await loadPromise;
 
       await this.renderPeerDialogs(userIds.map((id) => id.toPeerId(false)), group, middleware, 'bots');
 
-      currentOffset = nextOffset || null;
+      currentOffset = nextOffset || undefined;
       loadPromise = undefined;
+
+      if(!currentOffset) {
+        this.loaded[mediaTab.type] = true;
+      }
     }
 
-    const scrollTarget = this.scrollable.container;
-
-    scrollTarget.addEventListener('scroll', () => {
-      const offset = 120;
-      if(this.mediaTab !== mediaTab) return; // There is one scrollable for all tabs
-      if(scrollTarget.scrollTop + scrollTarget.clientHeight >= scrollTarget.scrollHeight - offset) {
-        loadMoreApps();
-      }
-    });
-
+    this._loadMoreApps = loadMoreApps;
     await loadMoreApps();
 
+    middleware.onClean(() => {
+      this._loadMoreApps = undefined;
+    });
+
     this.afterPerforming(1, mediaTab.contentTab);
-    this.loaded[mediaTab.type] = true;
   }
 
   globalPostsSearch: ReturnType<typeof wrapGlobalPostsSearch>;
@@ -2092,9 +2146,9 @@ export default class AppSearchSuper {
     this.globalPostsSearch.loadMore();
   }
 
-  private loadGifts() {
+  private loadGifts(): Promise<void> {
     const mediaTab = this.mediaTabsMap.get('gifts');
-    if(!mediaTab) return;
+    if(!mediaTab) return Promise.resolve();
 
     if(!this.stargiftsStore) {
       const middleware = this.middleware.get();
@@ -2103,7 +2157,7 @@ export default class AppSearchSuper {
 
         const scrollTarget = this.scrollable.container;
 
-        const {render: giftsList, store, actions} = StarGiftsProfileTab({
+        const {render: giftsList, store, actions, setCollection} = StarGiftsProfileTab({
           peerId: this.searchContext.peerId,
           scrollParent: scrollTarget,
           onCountChange: (count) => {
@@ -2125,10 +2179,19 @@ export default class AppSearchSuper {
         }))
         this.stargiftsStore = store;
         this.stargiftsActions = actions;
+        this.stargiftsSetCollection = setCollection;
 
         mediaTab.contentTab.append(getFirstChild(giftsList, v => v instanceof Element) as Element);
+
+        if(this.mediaTab?.type === 'gifts') {
+          this.onChangeTab?.(this.mediaTab);
+        }
       });
-      return
+      return Promise.resolve();
+    }
+
+    if(this.stargiftsStore.loading || this.stargiftsStore.loaded) {
+      return Promise.resolve();
     }
 
     return this.stargiftsActions.loadNext();
@@ -2164,6 +2227,8 @@ export default class AppSearchSuper {
       promise = this.loadApps(options);
     } else if(type === 'posts') {
       promise = this.loadPosts(options);
+    } else if(type === 'gifts') {
+      promise = this.loadGifts();
     }
 
     if(promise) {
@@ -2173,6 +2238,10 @@ export default class AppSearchSuper {
         }
 
         this.loadPromises[type] = null;
+
+        setTimeout(() => {
+          this.scrollable.checkForTriggers();
+        }, 0);
       });
     }
 
@@ -2310,12 +2379,21 @@ export default class AppSearchSuper {
   }
 
   private canLoadMediaTab(mediaTab: SearchSuperMediaTab) {
+    if(mediaTab.type === 'gifts') {
+      return !this.stargiftsStore || (!this.stargiftsStore.loading && !this.stargiftsStore.loaded);
+    }
+
     const inputFilter = mediaTab.inputFilter;
     return !this.loaded[mediaTab.type] || (this.historyStorage[inputFilter] && this.usedFromHistory[inputFilter] < this.historyStorage[inputFilter].length);
   }
 
   private isMessageSensitive(message: Message.message) {
     return isSensitive((usePeer(message.peerId) as User.user).restriction_reason || []) || isMessageSensitive(message);
+  }
+
+  public getSearchCounters(filters: MessagesFilter[]) {
+    const {peerId, threadId} = this.searchContext;
+    return this.managers.appMessagesManager.getSearchCounters(peerId, filters, undefined, threadId);
   }
 
   private async loadFirstTime() {
@@ -2336,16 +2414,18 @@ export default class AppSearchSuper {
       canViewGroups,
       canViewStories,
       canViewSimilar,
+      canViewGifts,
       giftsCount,
       maybePinnedGifts
     ] = await Promise.all([
-      this.managers.appMessagesManager.getSearchCounters(peerId, filters, undefined, threadId),
+      this.getSearchCounters(filters),
       this.canViewSavedDialogs(),
       this.canViewSaved(),
       this.canViewMembers(),
       this.canViewGroups(),
       this.canViewStories(),
       this.canViewSimilar(),
+      this.canViewGifts(),
       this.getGiftsCount(),
       peerId === rootScope.myId && this.managers.appGiftsManager.getPinnedGifts(peerId)
     ]);
@@ -2390,7 +2470,7 @@ export default class AppSearchSuper {
     const similarTab = this.mediaTabsMap.get('similar');
     const giftsTab = this.mediaTabsMap.get('gifts');
 
-    const showGiftsTab = giftsCount !== 0 && threadId == null;
+    const showGiftsTab = canViewGifts && giftsCount !== 0;
 
     const a: [SearchSuperMediaTab, boolean][] = [
       [savedDialogsTab, canViewSavedDialogs],
@@ -2473,7 +2553,6 @@ export default class AppSearchSuper {
       if(!middleware()) {
         return;
       }
-      this.loadGifts()
 
       this.loadFirstTimePromise = undefined;
       this.firstLoad = false;
@@ -2653,7 +2732,7 @@ export default class AppSearchSuper {
       return false;
     }
 
-    if(peerId === rootScope.myId && !this.onStoriesLengthChange) {
+    if(peerId === rootScope.myId) {
       return false;
     }
 
@@ -2682,8 +2761,16 @@ export default class AppSearchSuper {
     }
   }
 
+  public canViewGifts() {
+    return !this.searchContext.threadId && this.mediaTabsMap.has('gifts');
+  }
+
   public async getGiftsCount() {
-    const {peerId} = this.searchContext
+    const {peerId, threadId} = this.searchContext;
+    if(threadId) {
+      return;
+    }
+
     const full = await this.managers.appProfileManager.getProfileByPeerId(peerId);
     return (full as UserFull | ChatFull.channelFull).stargifts_count ?? 0;
   }

@@ -12,9 +12,9 @@ export async function encryptLocalData({key, data}: EncryptLocalDataArgs) {
   const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
 
   const encrypted = await crypto.subtle.encrypt(
-    {name: 'AES-GCM', iv},
+    {name: 'AES-GCM', iv: iv as BufferSource},
     key,
-    data
+    data as BufferSource
   );
 
   const combined = new Uint8Array(iv.length + encrypted.byteLength);
@@ -34,9 +34,9 @@ export async function decryptLocalData({key, encryptedData}: DecryptLocalDataArg
   const ciphertext = encryptedData.slice(IV_LENGTH);
 
   const decrypted = await crypto.subtle.decrypt(
-    {name: 'AES-GCM', iv},
+    {name: 'AES-GCM', iv: iv as BufferSource},
     key,
-    ciphertext
+    ciphertext as BufferSource
   );
 
   return new SuperMessagePort.TransferableResult(decrypted, [decrypted])

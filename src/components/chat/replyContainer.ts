@@ -81,7 +81,7 @@ export async function wrapReplyDivAndCaption(options: {
 
   let setMedia = false, isRound = false;
   const mediaChildren = mediaEl ? Array.from(mediaEl.children).slice() : [];
-  if(messageMedia && mediaEl) {
+  if(messageMedia && mediaEl && !(messageMedia as MessageMedia.messageMediaPhoto).ttl_seconds) {
     messageMedia = (messageMedia as MessageMedia.messageMediaWebPage).webpage as WebPage.webPage || messageMedia;
     const photo = (messageMedia as MessageMedia.messageMediaPhoto).photo as Photo.photo;
     const document = (messageMedia as MessageMedia.messageMediaDocument).document as Document.document;

@@ -12,14 +12,15 @@ import {Middleware} from '@helpers/middleware';
 import formatNumber from '@helpers/number/formatNumber';
 import {AvailableEffect, Message, MessageReplyHeader} from '@layer';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
-import {i18n, _i18n} from '@lib/langPack';
+import {i18n, _i18n, LangPackKey} from '@lib/langPack';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import rootScope from '@lib/rootScope';
 import Icon from '@components/icon';
 import PeerTitle from '@components/peerTitle';
 import wrapReply from '@components/wrappers/reply';
-import Chat, {ChatType} from '@components/chat/chat';
+import Chat from '@components/chat/chat';
+import {ChatType} from './chatType';
 import RepliesElement from '@components/chat/replies';
 import ChatBubbles from '@components/chat/bubbles';
 import getFwdFromName from '@appManagers/utils/messages/getFwdFromName';
@@ -33,8 +34,28 @@ import appDownloadManager from '@lib/appDownloadManager';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
 import {makeTime} from '@components/chat/utils';
+import {formatNanoton} from '@helpers/paymentsWrapCurrencyAmount';
 
 const NBSP = '&nbsp;';
+
+const DAY = 86400;
+const SCHEDULE_REPEAT_MAP: {period: number, key: LangPackKey, args?: any[]}[] = [
+  {period: DAY, key: 'Schedule.Repeated.Daily'},
+  {period: 7 * DAY, key: 'Schedule.Repeated.Weekly'},
+  {period: 14 * DAY, key: 'Schedule.Repeated.Biweekly'},
+  {period: 30 * DAY, key: 'Schedule.Repeated.Monthly'},
+  {period: 91 * DAY, key: 'Schedule.Repeated.EveryMonth', args: [3]},
+  {period: 182 * DAY, key: 'Schedule.Repeated.EveryMonth', args: [6]},
+  {period: 365 * DAY, key: 'Schedule.Repeated.Yearly'}
+];
+
+const makeScheduleRepeatPeriod = (period: number) => {
+  const entry = SCHEDULE_REPEAT_MAP.find((e) => e.period >= period) ?? SCHEDULE_REPEAT_MAP[SCHEDULE_REPEAT_MAP.length - 1];
+  const span = document.createElement('span');
+  span.classList.add('time-repeat', 'time-part');
+  span.append(i18n(entry.key, entry.args));
+  return span;
+};
 
 const makeEdited = () => {
   const edited = document.createElement('i');
@@ -206,6 +227,17 @@ export namespace MessageRender {
     const fwdFrom = isMessage && message.fwd_from;
     const time: HTMLElement = /* isSponsored ? undefined :  */makeTime(date, includeDate);
     if(isMessage) {
+      const messageMedia = message.media;
+      if(messageMedia?._ === 'messageMediaDice' && messageMedia.game_outcome) {
+        const span = document.createElement('span');
+        span.classList.add('time-dice');
+        span.textContent = formatNanoton(messageMedia.game_outcome.stake_ton_amount);
+
+        const icon = Icon('ton', 'time-icon', 'time-part');
+
+        args.push(span, icon);
+      }
+
       if(message.views) {
         const postViewsSpan = document.createElement('span');
         postViewsSpan.classList.add('post-views');
@@ -262,6 +294,12 @@ export namespace MessageRender {
       args.push(sponsoredSpan = makeSponsored());
     } */
 
+    let repeatSpan: HTMLElement;
+    if(isMessage && message.schedule_repeat_period) {
+      repeatSpan = makeScheduleRepeatPeriod(message.schedule_repeat_period);
+      args.push(repeatSpan);
+    }
+
     if(time) {
       args.push(time);
     }
@@ -293,6 +331,9 @@ export namespace MessageRender {
     //   _reactionsElement.init(reactionsMessage, 'inline');
     //   _reactionsElement.render();
     // }
+    if(repeatSpan) {
+      clonedArgs[clonedArgs.indexOf(repeatSpan)] = makeScheduleRepeatPeriod((message as Message.message).schedule_repeat_period);
+    }
     if(effectSpan) {
       clonedArgs[clonedArgs.indexOf(effectSpan)] = makeEffect({
         docId: (message as Message.message).effect,

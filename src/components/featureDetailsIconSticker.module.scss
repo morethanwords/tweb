@@ -1,0 +1,34 @@
+.Container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  --size: 100px;
+  --icon-size: calc(var(--size) * 0.6);
+
+  width: var(--size);
+  height: var(--size);
+
+  border-radius: 50%;
+  background-color: var(--primary-color);
+
+  color: white;
+
+  &:global(.background-gradient-avatar) {
+    --color-top: var(--avatar-color-top);
+    --color-bottom: var(--avatar-color-bottom);
+    background: linear-gradient(var(--color-top), var(--color-bottom));
+  }
+
+  &:global(.background-gradient-archive) {
+    background: linear-gradient(#5CAFFA, #408ACF);
+  }
+
+  &:global(.background-gradient-stories) {
+    background: linear-gradient(225deg, #34C76F, #3DA1FD);
+  }
+}
+
+.Icon {
+  font-size: var(--icon-size);
+}

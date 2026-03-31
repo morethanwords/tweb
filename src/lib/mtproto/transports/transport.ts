@@ -8,10 +8,11 @@ import type EventListenerBase from '@helpers/eventListenerBase';
 import type MTPNetworker from '@lib/mtproto/networker';
 
 export default interface MTTransport {
-  networker: MTPNetworker;
+  networker?: MTPNetworker;
   send: (data: Uint8Array) => void;
   connected: boolean;
   destroy: () => void;
+  noScheduler?: boolean;
 }
 
 export interface MTConnection extends EventListenerBase<{

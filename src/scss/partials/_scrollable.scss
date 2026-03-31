@@ -4,6 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+@use "../shared" as *;
+
 html.overlay-scroll {
   .scrollable::-webkit-scrollbar {
     width: 0;
@@ -98,12 +100,18 @@ html.custom-scroll {
     overflow-x: auto;
     scrollbar-width: none; // Firefox only
     -ms-overflow-style: none;
+    overscroll-behavior-x: contain;
   }
 
   &.scrollable-y {
     overflow-y: auto;
     overflow-y: overlay;
     scrollbar-width: none;
+    overscroll-behavior-y: contain;
+
+    html.overlay-scroll & {
+      scrollbar-width: thin;
+    }
 
     .is-firefox & {
       scrollbar-width: thin;
@@ -168,7 +176,7 @@ html.custom-scroll {
     &-container {
       position: sticky;
       top: 0;
-      z-index: 5;
+      z-index: 4;
     }
   }
 }

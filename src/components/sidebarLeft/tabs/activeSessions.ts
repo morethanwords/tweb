@@ -9,7 +9,6 @@ import Row from '@components/row';
 import {Authorization} from '@layer';
 import {formatDateAccordingToTodayNew} from '@helpers/date';
 import {ButtonMenuSync} from '@components/buttonMenu';
-import {toast} from '@components/toast';
 import I18n from '@lib/langPack';
 import PopupPeer from '@components/popups/peer';
 import findUpClassName from '@helpers/dom/findUpClassName';
@@ -22,6 +21,7 @@ import positionMenu from '@helpers/positionMenu';
 import contextMenuController from '@helpers/contextMenuController';
 import SettingSection from '@components/settingSection';
 import PopupElement from '@components/popups';
+import {toastNew} from '@components/toast';
 
 export default class AppActiveSessionsTab extends SliderSuperTabEventable {
   public authorizations: Authorization.authorization[];
@@ -105,7 +105,7 @@ export default class AppActiveSessionsTab extends SliderSuperTabEventable {
 
     const onError = (err: ApiError) => {
       if(err.type === 'FRESH_RESET_AUTHORISATION_FORBIDDEN') {
-        toast(I18n.format('RecentSessions.Error.FreshReset', true));
+        toastNew({langPackKey: 'RecentSessions.Error.FreshReset'});
       }
     };
 

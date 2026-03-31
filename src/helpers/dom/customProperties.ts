@@ -53,6 +53,10 @@ export class CustomProperties {
   }
 
   public getPropertyAsColor(name: CustomProperty) {
+    if(name[0] === '#') {
+      return name;
+    }
+
     const value = this.getProperty(name);
     if(value[0] === '#') {
       return value;

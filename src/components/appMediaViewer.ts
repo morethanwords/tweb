@@ -30,7 +30,7 @@ import Scrollable from '@components/scrollable';
 import appSidebarRight from '@components/sidebarRight';
 import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMedia';
 import PopupElement from '@components/popups';
-import {ChatType} from '@components/chat/chat';
+import {ChatType} from './chat/chatType';
 import getFwdFromName from '@appManagers/utils/messages/getFwdFromName';
 import TranslatableMessage from '@components/translatableMessage';
 import {MAX_FILE_SAVE_SIZE} from '@appManagers/constants';
@@ -38,6 +38,7 @@ import {i18n} from '@lib/langPack';
 import wrapEmojiText from '@richTextProcessor/wrapEmojiText';
 import wrapWebPageDescription from '@components/wrappers/webPageDescription';
 import Button from '@components/button';
+import onQuoteClick from '@helpers/dom/onQuoteClick';
 
 type AppMediaViewerTargetType = {
   element: HTMLElement,
@@ -49,12 +50,20 @@ type AppMediaViewerTargetType = {
 
 export const onMediaCaptionClick = (caption: HTMLElement, e: MouseEvent) => {
   const a = findUpTag(e.target, 'A');
+  const spoiler = findUpClassName(e.target, 'spoiler');
+  const quoteDiv = findUpClassName(e.target, 'quote-like-collapsable');
+  const isSpoilerVisible = caption.classList.contains('is-spoiler-visible');
+  if(quoteDiv && !a && (!spoiler || isSpoilerVisible)) {
+    if(onQuoteClick(e, quoteDiv)) {
+      return;
+    }
+  }
+
   if(!a || a.classList.contains('timestamp')) {
     return;
   }
 
-  const spoiler = findUpClassName(e.target, 'spoiler');
-  if(a instanceof HTMLAnchorElement && (!spoiler || caption.classList.contains('is-spoiler-visible'))) { // close viewer if it's t.me/ redirect
+  if(a instanceof HTMLAnchorElement && (!spoiler || isSpoilerVisible)) { // close viewer if it's t.me/ redirect
     const onclick = a.getAttribute('onclick');
     if(!onclick || onclick.includes('showMaskedAlert')) {
       return;
@@ -397,7 +406,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     const noForwards = await this.managers.appPeersManager.noForwards(message.peerId);
     const isServiceMessage = message._ === 'messageService';
     const cantForwardMessage = isServiceMessage || noAuthor || !(await this.managers.appMessagesManager.canForward(message));
-    const cantDownloadMessage = (isServiceMessage ? noForwards : cantForwardMessage && !isSponsored) || !canSaveMessageMedia(message);
+    const cantDownloadMessage = (isServiceMessage ? noForwards : cantForwardMessage && !isSponsored) || !canSaveMessageMedia(message, noForwards);
     const a: [(HTMLElement | ButtonMenuItemOptionsVerifiable)[], boolean][] = [
       [[this.buttons.forward, this.btnMenuForward], cantForwardMessage],
       [[this.buttons.download, this.btnMenuDownload], cantDownloadMessage],

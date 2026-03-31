@@ -1,4 +1,4 @@
-import {For, Match, onMount, Show, Switch} from 'solid-js';
+import {createMemo, createSignal, For, Match, onMount, Show, Switch, untrack} from 'solid-js';
 import rootScope from '@lib/rootScope';
 import {PreloaderTsx} from '@components/putPreloader';
 import PopupElement from '@components/popups';
@@ -6,7 +6,7 @@ import PopupStarGiftInfo from '@components/popups/starGiftInfo';
 import {StarGiftsGrid} from '@components/stargifts/stargiftsGrid';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import CheckboxField from '@components/checkboxField';
-import {Transition} from 'solid-transition-group';
+import {AnimationList} from '@helpers/solid/animationList';
 import {ChipTab, ChipTabs} from '@components/chipTabs';
 import {I18nTsx} from '@helpers/solid/i18n';
 import classNames from '@helpers/string/classNames';
@@ -128,6 +128,7 @@ async function openAddGiftsPopup({actions, collectionId, peerId}: {
 export function profileStarGiftsButtonMenu(props: {
   store?: StarGiftsProfileStore
   actions?: StarGiftsProfileActions
+  verify: () => boolean
   peerId: PeerId
 }): ButtonMenuItemOptionsVerifiable[] {
   const FILTER_GROUPS = [['unlimited', 'limited', 'upgradable', 'unique'], ['displayed', 'hidden']] as const
@@ -168,63 +169,62 @@ export function profileStarGiftsButtonMenu(props: {
 
     props.actions.setFilters(payload)
   }
-  const self = props.peerId === rootScope.myId;
   return [
     {
       icon: 'sort_date',
       text: 'StarGiftSortByDate',
       onClick: () => props.actions.setFilters({sort: 'date'}),
-      verify: () => props.store?.sort === 'value'
+      verify: () => props.verify() && props.store?.sort === 'value'
     },
     {
       icon: 'sort_price',
       text: 'StarGiftSortByValue',
       onClick: () => props.actions.setFilters({sort: 'value'}),
-      verify: () => props.store?.sort === 'date'
+      verify: () => props.verify() && props.store?.sort === 'date'
     },
     {
       icon: 'folder',
       text: 'StarGiftCollectionsAdd',
       onClick: () => openCreateCollectionPopup({actions: props.actions, peerId: props.peerId}),
-      verify: () => props.store != null && self
+      verify: () => props.verify() && props.store != null && props.store.canManageGifts
     },
     {
       checkboxField: checkboxsByFilter.unlimited,
       text: 'StarGiftShowUnlimited',
       separator: true,
       onClick: () => toggleFilter('unlimited'),
-      verify: () => props.store != null
+      verify: () => props.verify() && props.store != null
     },
     {
       checkboxField: checkboxsByFilter.limited,
       text: 'StarGiftShowLimited',
       onClick: () => toggleFilter('limited'),
-      verify: () => props.store != null
+      verify: () => props.verify() && props.store != null
     },
     {
       checkboxField: checkboxsByFilter.upgradable,
       text: 'StarGiftShowUpgradable',
       onClick: () => toggleFilter('upgradable'),
-      verify: () => props.store != null
+      verify: () => props.verify() && props.store != null
     },
     {
       checkboxField: checkboxsByFilter.unique,
       text: 'StarGiftShowUnique',
       onClick: () => toggleFilter('unique'),
-      verify: () => props.store != null
+      verify: () => props.verify() && props.store != null
     },
     {
       checkboxField: checkboxsByFilter.displayed,
       text: 'StarGiftShowDisplayed',
       separator: true,
       onClick: () => toggleFilter('displayed'),
-      verify: () => props.store != null && self
+      verify: () => props.verify() && props.store != null && props.store.canManageGifts
     },
     {
       checkboxField: checkboxsByFilter.hidden,
       text: 'StarGiftShowHidden',
       onClick: () => toggleFilter('hidden'),
-      verify: () => props.store != null && self
+      verify: () => props.verify() && props.store != null && props.store.canManageGifts
     }
   ]
 }
@@ -240,9 +240,112 @@ export function StarGiftsProfileTab(props: {
     peerId: props.peerId,
     onCountChange: props.onCountChange
   });
-  const self = props.peerId === rootScope.myId;
 
   onMount(() => actions.loadNext())
+
+  const [direction, setDirection] = createSignal(0)
+  let scrollDiff = 0
+  let wrapperRef!: HTMLDivElement
+
+  const scrollPositions = new Map<number, number>()
+
+  const getScrollBase = () => {
+    const searchSuper = wrapperRef?.closest('.search-super') as HTMLElement
+    if(!searchSuper) return 0
+    return searchSuper.offsetTop === 0 ? 0 : searchSuper.offsetTop - 56
+  }
+
+  const slideKeyframes = (_element: Element, removed: boolean): Keyframe[] => {
+    const dir = direction()
+    const yOffset = scrollDiff ? ` translateY(${scrollDiff}px)` : ''
+    if(removed) {
+      // AnimationList reverses these for exit; Y offset compensates scroll change
+      return [
+        {transform: `translateX(${-dir * 100}%)${yOffset}`},
+        {transform: `translateX(0)${yOffset}`}
+      ]
+    }
+    return [{transform: `translateX(${dir * 100}%)`}, {transform: 'translateX(0)'}]
+  }
+
+  const setCollection = (newId: number) => {
+    if(newId === store.chosenCollection) return
+
+    const collections = store.collections
+    const oldIndex = store.chosenCollection === ALL_COLLECTIONS_ID ? -1 :
+      (collections?.findIndex((c) => c.collection_id === store.chosenCollection) ?? -1)
+    const newIndex = newId === ALL_COLLECTIONS_ID ? -1 :
+      (collections?.findIndex((c) => c.collection_id === newId) ?? -1)
+    const dir = newIndex > oldIndex ? 1 : newIndex < oldIndex ? -1 : 0
+
+    const scrollable = props.scrollParent
+    const scrollBase = getScrollBase()
+    const oldScrollTop = scrollable?.scrollTop ?? 0
+    const oldScroll = oldScrollTop - scrollBase
+    if(scrollable && oldScroll >= 0) {
+      scrollPositions.set(store.chosenCollection, Math.max(0, oldScroll))
+    }
+
+    if(dir) setDirection(dir)
+    actions.setFilters({chosenCollection: newId})
+
+    const newScroll = scrollPositions.get(newId) ?? 0
+    const targetScrollTop = scrollBase + newScroll
+    if(scrollable && oldScroll >= 0) {
+      scrollDiff = targetScrollTop - oldScrollTop
+      scrollable.scrollTop = targetScrollTop
+    } else {
+      scrollDiff = 0
+    }
+  }
+
+  const collectionContent = createMemo(() => {
+    store.chosenCollection
+    return untrack(() => (
+      <div class={styles.collectionContent}>
+        <Switch>
+          <Match when={store.loading && store.items.length === 0}>
+            <PreloaderTsx />
+          </Match>
+          <Match when={store.items.length === 0 && store.chosenCollection !== ALL_COLLECTIONS_ID && store.canManageGifts}>
+            <div class={/* @once */ styles.empty}>
+              <I18nTsx class={/* @once */ styles.emptyTitle} key="StarGiftCollectionsEmptyTitle" />
+              <I18nTsx class={/* @once */ styles.emptySubtitle} key="StarGiftCollectionsEmptySubtitle" />
+              <Button
+                class="btn-primary btn-color-primary btn-control"
+                text="StarGiftCollectionsAddGifts"
+                onClick={() => openAddGiftsPopup({
+                  actions,
+                  collectionId: store.chosenCollection,
+                  peerId: props.peerId
+                })}
+              />
+            </div>
+          </Match>
+          <Match when={store.items.length === 0}>
+            <div class={/* @once */ styles.empty}>
+              <I18nTsx class={/* @once */ styles.emptySubtitle} key="StarGiftCollectionsEmptyOther" />
+            </div>
+          </Match>
+          <Match when={true}>
+            <StarGiftsGrid
+              class={/* @once */ styles.grid}
+              items={unwrap(store.items)}
+              view='profile'
+              profilePeerId={props.peerId}
+              canManageGifts={store.canManageGifts}
+              profileCollections={store.collections ? unwrap(store.collections) : undefined}
+              scrollParent={props.scrollParent}
+              autoplay={false}
+              onClick={(item) => {
+                PopupElement.createPopup(PopupStarGiftInfo, {gift: item});
+              }}
+            />
+          </Match>
+        </Switch>
+      </div>
+    ))
+  })
 
   const render = (
     <div class={classNames(styles.tab, store.hasCollections && styles.hasCollections)}>
@@ -250,14 +353,13 @@ export function StarGiftsProfileTab(props: {
         <ChipTabs
           class={/* @once */ styles.collections}
           value={store.chosenCollection.toString()}
+          needIntersectionObserver
           onChange={(id) => {
             if(id === ADD_COLLECTION_ID.toString()) {
               openCreateCollectionPopup({actions, peerId: props.peerId})
               return false
             }
-            if(Number(id) === store.chosenCollection) return false
-
-            actions.setFilters({chosenCollection: Number(id)})
+            setCollection(Number(id))
           }}
           contextMenuButtons={(id_) => {
             const id = Number(id_)
@@ -280,7 +382,7 @@ export function StarGiftsProfileTab(props: {
               }
             ]
 
-            if(props.peerId === rootScope.myId) {
+            if(store.canManageGifts) {
               buttons.push(
                 {
                   icon: 'add',
@@ -345,7 +447,7 @@ export function StarGiftsProfileTab(props: {
               </ChipTab>
             )}
           </For>
-          <Show when={self}>
+          <Show when={store.canManageGifts}>
             <ChipTab value={ADD_COLLECTION_ID.toString()} class={/* @once */ styles.addCollection}>
               <IconTsx icon="add" />
               <I18nTsx key="StarGiftCollectionsAdd" />
@@ -354,62 +456,17 @@ export function StarGiftsProfileTab(props: {
         </ChipTabs>
       </Show>
 
-      <Transition
-        onEnter={(el, done) => {
-          const a = el.animate([{opacity: 0}, {opacity: 1}], {
-            duration: 100
-          });
-          a.finished.then(done);
-        }}
-        onExit={(el, done) => {
-          const a = el.animate([{opacity: 1}, {opacity: 0}], {
-            duration: 100
-          });
-          a.finished.then(done);
-        }}
-        mode="outin"
-      >
-        <Switch>
-          <Match when={store.loading && store.items.length === 0}>
-            <PreloaderTsx />
-          </Match>
-          <Match when={store.items.length === 0 && store.chosenCollection !== ALL_COLLECTIONS_ID && self}>
-            <div class={/* @once */ styles.empty}>
-              <I18nTsx class={/* @once */ styles.emptyTitle} key="StarGiftCollectionsEmptyTitle" />
-              <I18nTsx class={/* @once */ styles.emptySubtitle} key="StarGiftCollectionsEmptySubtitle" />
-              <Button
-                class="btn-primary btn-color-primary btn-control"
-                text="StarGiftCollectionsAddGifts"
-                onClick={() => openAddGiftsPopup({
-                  actions,
-                  collectionId: store.chosenCollection,
-                  peerId: props.peerId
-                })}
-              />
-            </div>
-          </Match>
-          <Match when={store.items.length === 0}>
-            <div class={/* @once */ styles.empty}>
-              <I18nTsx class={/* @once */ styles.emptySubtitle} key="StarGiftCollectionsEmptyOther" />
-            </div>
-          </Match>
-          <Match when={true}>
-            <StarGiftsGrid
-              class={/* @once */ styles.grid}
-              items={unwrap(store.items)}
-              view='profile'
-              scrollParent={props.scrollParent}
-              autoplay={false}
-              onClick={(item) => {
-                PopupElement.createPopup(PopupStarGiftInfo, {gift: item});
-              }}
-            />
-          </Match>
-        </Switch>
-      </Transition>
+      <div ref={wrapperRef} class={styles.contentWrapper}>
+        <AnimationList
+          animationOptions={{duration: 250, easing: 'cubic-bezier(.4, 0, .2, 1)'}}
+          keyframes={slideKeyframes}
+          mode="replacement"
+        >
+          {collectionContent()}
+        </AnimationList>
+      </div>
     </div>
   );
 
-  return {render, store, actions};
+  return {render, store, actions, setCollection};
 }
-

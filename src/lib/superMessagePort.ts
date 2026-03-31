@@ -566,7 +566,7 @@ class SuperMessagePort<
     return {
       type,
       payload,
-      id: this.taskId++,
+      id: this.getNextTaskId(),
       transfer
     } as K;
   }
@@ -588,6 +588,10 @@ class SuperMessagePort<
 
     tasks.push(task);
     this.releasePending();
+  }
+
+  public getNextTaskId() {
+    return this.taskId++;
   }
 
   public invokeVoid<T extends keyof Send>(type: T, payload: Parameters<Send[T]>[0], port?: SendPort, transfer?: Transferable[]) {

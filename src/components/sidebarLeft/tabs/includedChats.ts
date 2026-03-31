@@ -12,7 +12,6 @@ import ButtonIcon from '@components/buttonIcon';
 import Button from '@components/button';
 import AppEditFolderTab from '@components/sidebarLeft/tabs/editFolder';
 import I18n, {i18n, LangPackKey, _i18n, join} from '@lib/langPack';
-import {toast} from '@components/toast';
 import copy from '@helpers/object/copy';
 import forEachReverse from '@helpers/array/forEachReverse';
 import setInnerHTML from '@helpers/dom/setInnerHTML';

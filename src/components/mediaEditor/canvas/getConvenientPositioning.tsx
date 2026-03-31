@@ -24,7 +24,7 @@ export default function getConvenientPositioning({
 
   const cropOffset = useCropOffset();
 
-  const [w, h] = editorState.imageSize;
+  const [w, h] = editorState.mediaSize;
   const [imageWidth, imageHeight] = snapToViewport(w / h, cropOffset().width, cropOffset().height);
 
   const imageLeftTop = [-imageWidth / 2, imageHeight / 2];

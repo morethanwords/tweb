@@ -553,7 +553,7 @@ export default class DialogsStorage extends AppManager {
 
     let verify: (d: Folder['dialogs'][0]) => boolean;
     if(topicOrSavedId) {
-      if(this.isFilterIdForForum(folderId)) {
+      if(this.isFilterIdForForum(folderId) || this.appPeersManager.isBotforum(peerId)) {
         verify = (dialog) => (dialog as ForumTopic).id === topicOrSavedId;
       } else {
         verify = (dialog) => (dialog as SavedDialog).savedPeerId === topicOrSavedId;
@@ -1289,6 +1289,19 @@ export default class DialogsStorage extends AppManager {
     }
   }
 
+  public applyLocalForumTopics(topics: ForumTopic[]) {
+    this.dialogsStorage.applyDialogs({
+      _: 'messages.forumTopics',
+      topics: topics,
+      count: 0,
+      chats: [],
+      messages: [],
+      pFlags: {},
+      pts: 0,
+      users: []
+    });
+  }
+
   // ! do not use draft here, empty dialogs with drafts are excluded from .getDialogs response
   private getDialogOffsetDate(dialog: AnyDialog) {
     const message = this.getDialogMessageForState(dialog);
@@ -1365,10 +1378,6 @@ export default class DialogsStorage extends AppManager {
     if(!peerId) {
       this.log.error('saveConversation no peerId???', dialog, folderId);
       return false;
-    }
-
-    if(_isDialog && dialog._ !== 'dialog'/*  || peerId === 239602833 */) {
-      this.log.error('saveConversation not regular dialog', dialog, Object.assign({}, dialog));
     }
 
     if(_isDialog && !channelId && peerId.isAnyChat()) {
@@ -1619,11 +1628,11 @@ export default class DialogsStorage extends AppManager {
         this.cachedResults.query = query;
         this.cachedResults.folderId = filterId;
 
-        const index = isForum ? this.getForumTopicsCache(filterId).index : this.dialogsIndex;
+        const index = (isForum || isBotforum) ? this.getForumTopicsCache(filterId).index : this.dialogsIndex;
         const results = index.search(query);
 
         const dialogs: DialogsStorage['cachedResults']['dialogs'] = [];
-        if(isForum) for(const topicId of results) {
+        if(isForum || isBotforum) for(const topicId of results) {
           const topic = this.getForumTopic(filterId, topicId);
           if(topic) {
             dialogs.push(topic);
@@ -1936,7 +1945,14 @@ export default class DialogsStorage extends AppManager {
       return true;
     }
 
-    const chatId = forumTopic.peerId.toChatId();
+    const peerId = forumTopic.peerId;
+
+    // Note: currently, it doesn't matter if the user can't create the topics inside the botforum. We allow the user to manage the topics anyway.
+    if(this.appPeersManager.isBotforum(peerId)) return true;
+
+    if(!peerId.isAnyChat()) return false;
+
+    const chatId = peerId.toChatId();
     return ((this.appChatsManager.getChat(chatId) as Chat.channel).admin_rights ? this.appChatsManager.hasRights(forumTopic.peerId.toChatId(), 'manage_topics') : false);
   }
 
@@ -2061,7 +2077,7 @@ export default class DialogsStorage extends AppManager {
       const {folder_id, peer} = folderPeer;
 
       const peerId = this.appPeersManager.getPeerId(peer);
-      const dialog = this.dropDialog(peerId)[0] as Dialog;
+      const dialog = this.dropDialogFromFolders(peerId, undefined, true)[0] as Dialog;
       if(dialog) {
         if(dialog.pFlags?.pinned) {
           this.handleDialogUnpinning(dialog, folder_id);

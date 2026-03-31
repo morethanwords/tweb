@@ -5,6 +5,7 @@
  */
 
 @use "sass:math";
+@use "../shared" as *;
 
 $row-border-radius: $border-radius-medium;
 

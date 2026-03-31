@@ -73,6 +73,19 @@ export class AppUsersManager extends AppManager {
 
     this.rootScope.addEventListener('state_synchronized', this.updateUsersStatuses);
 
+    this.rootScope.addEventListener('peer_deleted', (peerId) => {
+      this.appStateManager.getState().then((state) => {
+        const recentSearch = state.recentSearch;
+        if(!recentSearch) return;
+        const idx = recentSearch.indexOf(peerId);
+        if(idx !== -1) {
+          recentSearch.splice(idx, 1);
+          this.peersStorage.releasePeer(peerId, 'recentSearch');
+          this.appStateManager.pushToState('recentSearch', recentSearch);
+        }
+      });
+    });
+
     this.apiUpdatesManager.addMultipleEventsListeners({
       updateUserStatus: (update) => {
         const userId = update.user_id;
@@ -758,6 +771,10 @@ export class AppUsersManager extends AppManager {
 
   public isBotforum(id: UserId) {
     return this.users[id] && !!this.users[id].pFlags.bot_forum_view;
+  }
+
+  public canManageBotforumTopics(id: UserId) {
+    return this.users[id] && !!this.users[id].pFlags.bot_forum_can_manage_topics;
   }
 
   public isAttachMenuBot(id: UserId) {

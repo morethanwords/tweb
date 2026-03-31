@@ -16,7 +16,7 @@ import findUpTag from '@helpers/dom/findUpTag';
 import {toastNew} from '@components/toast';
 import PopupMute from '@components/popups/mute';
 import {AppManagers} from '@lib/managers';
-import {CAN_HIDE_TOPIC, FOLDER_ID_ARCHIVE, GENERAL_TOPIC_ID, REAL_FOLDERS} from '@appManagers/constants';
+import {CAN_HIDE_TOPIC, FOLDER_ID_ARCHIVE, GENERAL_TOPIC_ID, REAL_FOLDER_ID, REAL_FOLDERS} from '@appManagers/constants';
 import showLimitPopup from '@components/popups/limit';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import PopupElement from '@components/popups';
@@ -61,7 +61,7 @@ export default class DialogsContextMenu {
         this.monoforumParentPeerId = +li.dataset.monoforumParentPeerId || undefined;
 
         if(li.dataset.isAllChats) {
-          throw {};
+          throw 'All chats dialog';
         }
 
         this.dialog = this.monoforumParentPeerId ?
@@ -83,7 +83,14 @@ export default class DialogsContextMenu {
       onClose: () => {
         this.buttons?.forEach(button => button?.onClose?.());
         this.li.classList.remove('menu-open');
-        this.li = this.peerId = this.dialog = this.filterId = this.threadId = this.canManageTopics = undefined;
+
+        this.li =
+        this.peerId =
+        this.dialog =
+        this.filterId =
+        this.threadId =
+        this.monoforumParentPeerId =
+        this.canManageTopics = undefined;
       },
       findElement: (e) => {
         return findUpTag(e.target, DIALOG_LIST_ELEMENT_TAG);
@@ -302,7 +309,7 @@ export default class DialogsContextMenu {
   private onArchiveClick = async() => {
     const dialog = await this.managers.appMessagesManager.getDialogOnly(this.peerId);
     if(dialog) {
-      this.managers.appMessagesManager.editPeerFolders([dialog.peerId], +!dialog.folder_id);
+      this.managers.appMessagesManager.editPeerFolders([dialog.peerId], +!dialog.folder_id as REAL_FOLDER_ID);
     }
   };
 

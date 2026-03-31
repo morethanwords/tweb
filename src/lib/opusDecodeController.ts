@@ -176,7 +176,7 @@ export class OpusDecodeController {
 
   public async decode(typedArray: Uint8Array, withWaveform = false) {
     return this.pushDecodeTask(typedArray, withWaveform).then(async(result) => {
-      const dataBlob = new Blob([result.bytes], {type: 'audio/wav'});
+      const dataBlob = new Blob([result.bytes as BlobPart], {type: 'audio/wav'});
       return {url: await apiManagerProxy.invoke('createObjectURL', dataBlob), waveform: result.waveform};
     });
   }

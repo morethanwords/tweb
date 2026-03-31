@@ -4,6 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+@use "../../shared" as *;
+
 .popup-translate {
   --popup-min-width: 20rem;
   --popup-max-width: 25rem;

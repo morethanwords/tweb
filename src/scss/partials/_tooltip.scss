@@ -4,6 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+@use "../shared" as *;
+
 .tooltip {
   position: fixed;
   padding: .5625rem 1rem;

@@ -123,7 +123,7 @@ export default function filterMessagesByInputFilter({
     if(neededFlags?.some((flag) => (message as any as Message.message).pFlags[flag])) {
       found = true;
     } else if(message._ === 'message') {
-      if(message.media && neededContents[message.media._]/*  && !message.fwd_from */) {
+      if(message.media && neededContents[message.media._] && !(message.media as MessageMedia.messageMediaPhoto).ttl_seconds/*  && !message.fwd_from */) {
         const doc = (message.media as MessageMedia.messageMediaDocument).document as MyDocument;
         if(doc &&
           (

@@ -4,6 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+@use "../shared" as *;
+@use "popups/popupVariables" as *;
+
 .web-app {
   &-header,
   &-body {
@@ -48,12 +51,14 @@
 
   &-footer {
     --row-count: 1;
-    background-color: var(--surface-color);
+    --bg-color: var(--surface-color);
+    background-color: var(--bg-color);
     height: 0;
     flex: 0 0 auto;
     position: relative;
 
-    &.position-top, &.position-bottom {
+    &.position-top,
+    &.position-bottom {
       --row-count: 2;
     }
 
@@ -120,6 +125,13 @@
     width: calc(var(--browser-width) - 1rem);
     color: var(--text-color);
 
+    &-content {
+      width: 100%;
+      display: block;
+      pointer-events: none;
+      position: relative;
+    }
+
     .has-two-buttons & {
       width: calc(var(--browser-width) / 2 - 0.75rem);
       left: calc(var(--browser-width) / 2 + 0.25rem);
@@ -179,6 +191,10 @@
         transform: scale(1);
         pointer-events: auto;
       }
+    }
+
+    .custom-emoji {
+      margin-inline-end: .25rem;
     }
   }
 }

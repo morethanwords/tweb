@@ -18,7 +18,7 @@ let set = false;
 function getLang(): Promise<[Config.config, LangPackString[], LangPackDifference.langPackDifference]> {
   if(cachedPromise) return cachedPromise;
   return cachedPromise = rootScope.managers.apiManager.getConfig().then((config) => {
-    if(config.suggested_lang_code !== I18n.lastRequestedLangCode) {
+    if(config.suggested_lang_code !== I18n.getLastRequestedLangCode()) {
       // I18n.loadLangPack(config.suggested_lang_code);
 
       return Promise.all([

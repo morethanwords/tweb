@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appDialogsManager from '@lib/appDialogsManager';
+import appDialogsManager, {AppDialogsManager} from '@lib/appDialogsManager';
 import Scrollable from '@components/scrollable';
 import InputSearch from '@components/inputSearch';
 import replaceContent from '@helpers/dom/replaceContent';
 import {i18n, LangPackKey} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
-import {getMiddleware, Middleware, MiddlewareHelper} from '@helpers/middleware';
+import {Middleware, MiddlewareHelper} from '@helpers/middleware';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {Message} from '@layer';
 import apiManagerProxy from '@lib/apiManagerProxy';
@@ -28,7 +28,7 @@ export class SearchGroup {
     className?: string,
     clickable = true,
     public autonomous = true,
-    public onFound?: () => void,
+    public onFound?: Parameters<AppDialogsManager['setListClickListener']>[0]['onFound'],
     public noIcons?: boolean
   ) {
     this.list = appDialogsManager.createChatList();

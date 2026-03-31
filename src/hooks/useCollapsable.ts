@@ -4,6 +4,7 @@ import {animateSingle, cancelAnimationByKey} from '@helpers/animation';
 import {CancellablePromise} from '@helpers/cancellablePromise';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import findUpClassName from '@helpers/dom/findUpClassName';
+import WheelClassifier from '@helpers/dom/wheelClassifier';
 import liteMode from '@helpers/liteMode';
 import clamp from '@helpers/number/clamp';
 import debounce from '@helpers/schedulers/debounce';
@@ -70,11 +71,25 @@ export function useCollapsable(props: {
   };
 
   const debounced = debounce(onScrolled, 75, false, true);
+  const classifier = new WheelClassifier();
 
   const onMove = (delta: number, e?: WheelEvent | TouchEvent) => {
     const scrollTop = props.scrollable().scrollTop;
     const isWheel = e instanceof WheelEvent;
     if(isWheel || true) {
+      if(scrollTop && progress() !== STATE_FOLDED) {
+        setProgress(STATE_FOLDED);
+        debounced.clearTimeout();
+        return;
+      }
+
+      if(isWheel) {
+        const type = classifier.push(e as WheelEvent);
+        if(type === 'inertia') {
+          return;
+        }
+      }
+
       const newState = delta < 0 ? STATE_UNFOLDED : STATE_FOLDED;
       if((scrollTop && progress() !== STATE_UNFOLDED) || debounced.isDebounced()) {
         debounced();

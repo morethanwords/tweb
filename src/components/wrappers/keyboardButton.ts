@@ -18,28 +18,38 @@ import rootScope from '@lib/rootScope';
 import AppSelectPeers, {SelectSearchPeerType} from '@components/appSelectPeers';
 import Chat from '@components/chat/chat';
 import confirmationPopup from '@components/confirmationPopup';
-import Icon from '@components/icon';
 import PopupPickUser from '@components/popups/pickUser';
 import {toast, toastNew} from '@components/toast';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
+import wrapCustomEmoji from '@components/wrappers/customEmoji';
+import {makeMediaSize} from '@helpers/mediaSize';
+import ReplyMarkupLayout from '@components/chat/bubbleParts/replyMarkupLayout';
+import classNames from '@helpers/string/classNames';
 
 export default function wrapKeyboardButton({
   button,
   chat,
   message,
-  noTextInject,
-  replyMarkup
+  replyMarkup,
+  wrapOptions,
+  onClick: _onClick,
+  className
 }: {
   button: KeyboardButton,
   chat: Chat,
   message?: Message.message,
   replyMarkup?: ReplyMarkup,
-  noTextInject?: boolean
+  wrapOptions?: WrapSomethingOptions,
+  onClick?: () => void,
+  className?: string
 }) {
   let text: DocumentFragment | HTMLElement = wrapRichText(button.text, {noLinks: true, noLinebreaks: true});
-  let buttonEl: HTMLButtonElement | HTMLAnchorElement;
-  let buttonIcon: HTMLElement;
+  let buttonEl: HTMLElement;
+  let icon: Icon;
   let onClick: (e: Event) => void;
+  let as: 'button' | 'a' = 'button';
+  const refCallbacks: ((ref: HTMLElement) => void)[] = [];
+  const classNamesArr: string[] = [className].filter(Boolean);
 
   const {peerId} = chat;
   const messageMedia = message?.media;
@@ -57,17 +67,25 @@ export default function wrapKeyboardButton({
         }]
       });
 
-      buttonEl = htmlToDocumentFragment(r).firstElementChild as HTMLAnchorElement;
-      buttonEl.classList.add('is-link');
-      buttonIcon = Icon('arrow_next');
+      const anchor = htmlToDocumentFragment(r).firstElementChild as HTMLAnchorElement;
+      as = 'a';
+      classNamesArr.push('is-link', anchor.className);
+      icon = 'arrow_next';
+
+      refCallbacks.push((ref) => {
+        anchor.getAttributeNames().forEach((name) => {
+          if(name !== 'class') {
+            ref.setAttribute(name, anchor.getAttribute(name));
+          }
+        });
+      });
 
       break;
     }
 
     case 'keyboardButtonSwitchInline': {
-      buttonEl = document.createElement('button');
-      buttonEl.classList.add('is-switch-inline');
-      buttonIcon = Icon('forward_filled');
+      classNamesArr.push('is-switch-inline');
+      icon = 'forward_filled';
       onClick = (e) => {
         cancelEvent(e);
 
@@ -106,24 +124,22 @@ export default function wrapKeyboardButton({
     case 'keyboardButtonBuy': {
       const mediaInvoice = messageMedia._ === 'messageMediaInvoice' ? messageMedia : undefined;
       if(mediaInvoice?.extended_media) {
-        break;
+        return;
       }
 
-      buttonEl = document.createElement('button');
-      buttonEl.classList.add('is-buy');
-      buttonIcon = Icon('card');
+      classNamesArr.push('is-buy');
+      icon = 'card';
 
       if(mediaInvoice?.receipt_msg_id) {
         text = i18n('Message.ReplyActionButtonShowReceipt');
-        buttonEl.classList.add('is-receipt');
+        classNamesArr.push('is-receipt');
       }
 
       break;
     }
 
     case 'keyboardButtonUrlAuth': {
-      buttonEl = document.createElement('button');
-      buttonEl.classList.add('is-url-auth');
+      classNamesArr.push('is-url-auth');
 
       const {url, button_id} = button;
 
@@ -143,9 +159,8 @@ export default function wrapKeyboardButton({
 
     case 'keyboardButtonSimpleWebView':
     case 'keyboardButtonWebView': {
-      buttonEl = document.createElement('button');
-      buttonEl.classList.add('is-web-view');
-      buttonIcon = Icon('webview');
+      classNamesArr.push('is-web-view');
+      icon = 'webview';
 
       onClick = () => {
         const toggle = toggleDisability([buttonEl], true);
@@ -162,8 +177,7 @@ export default function wrapKeyboardButton({
     }
 
     case 'keyboardButtonRequestPhone': {
-      buttonEl = document.createElement('button');
-      buttonEl.classList.add('is-request-phone');
+      classNamesArr.push('is-request-phone');
 
       onClick = () => {
         chat.appImManager.requestPhone(peerId);
@@ -172,7 +186,6 @@ export default function wrapKeyboardButton({
     }
 
     case 'keyboardButtonCallback': {
-      buttonEl = document.createElement('button');
       onClick = () => {
         rootScope.managers.appInlineBotsManager.callbackButtonClick(peerId, messageMid, button)
         .then((callbackAnswer) => {
@@ -186,7 +199,6 @@ export default function wrapKeyboardButton({
     }
 
     case 'keyboardButtonRequestPeer': {
-      buttonEl = document.createElement('button');
       onClick = async() => {
         let filterPeerTypeBy: AppSelectPeers['filterPeerTypeBy'];
         const peerType = button.peer_type;
@@ -343,8 +355,7 @@ export default function wrapKeyboardButton({
     }
 
     case 'keyboardButtonCopy': {
-      buttonEl = document.createElement('button');
-      buttonIcon = Icon('copy');
+      icon = 'copy';
 
       onClick = () => {
         copyTextToClipboard(button.copy_text);
@@ -354,8 +365,6 @@ export default function wrapKeyboardButton({
     }
 
     default: {
-      buttonEl = document.createElement('button');
-
       if(!message) {
         onClick = () => {
           rootScope.managers.appMessagesManager.sendText({peerId, text: button.text});
@@ -366,13 +375,49 @@ export default function wrapKeyboardButton({
     }
   }
 
-  if(buttonIcon) {
-    buttonIcon.classList.add('reply-markup-button-icon');
+  let bg: 'success' | 'danger' | 'primary';
+  if(button.style) {
+    if(button.style.pFlags.bg_success) bg = 'success';
+    else if(button.style.pFlags.bg_danger) bg = 'danger';
+    else if(button.style.pFlags.bg_primary) bg = 'primary';
+
+    if(bg) {
+      classNamesArr.push(
+        'reply-markup-button-bg',
+        `reply-markup-button-bg-${bg}`
+      );
+    }
   }
 
-  if(!noTextInject) {
-    buttonEl?.append(text);
+  if(button.style?.icon) {
+    let customEmojiSize = wrapOptions?.customEmojiSize;
+    if(customEmojiSize) {
+      customEmojiSize = makeMediaSize(
+        customEmojiSize.width - 2,
+        customEmojiSize.height - 2
+      );
+    }
+
+    text.prepend(
+      wrapCustomEmoji({
+        docIds: [button.style.icon],
+        ...wrapOptions,
+        textColor: bg ? 'white' : wrapOptions.textColor,
+        customEmojiSize
+      }),
+      ' '
+    );
   }
 
-  return {text, buttonEl, buttonIcon, onClick};
+  return ReplyMarkupLayout.Button({
+    children: text,
+    class: classNames(...classNamesArr),
+    onClick: _onClick ? (e) => (_onClick(), onClick(e)) : onClick,
+    icon,
+    ref: (ref) => {
+      buttonEl = ref;
+      refCallbacks.forEach((cb) => cb(ref));
+    },
+    as
+  });
 }

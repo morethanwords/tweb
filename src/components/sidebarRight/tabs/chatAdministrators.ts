@@ -21,6 +21,8 @@ import SettingSection from '@components/settingSection';
 import {SliderSuperTabEventable} from '@components/sliderTab';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import AppUserPermissionsTab from '@components/sidebarRight/tabs/userPermissions';
+import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
+import {isParticipantAdmin} from '@lib/appManagers/utils/chats/isParticipantAdmin';
 
 export function createSelectorForParticipants(options: ConstructorParameters<typeof AppSelectPeers>[0]) {
   const deferred = deferredPromise<void>();
@@ -109,19 +111,17 @@ export default class AppChatAdministratorsTab extends SliderSuperTabEventable {
           return i18n('ChannelCreator');
         }
 
-        const promotedBy = (participant as ChannelParticipant.channelParticipantAdmin).promoted_by.toPeerId(false);
+        const promotedBy = (
+          (participant as ChannelParticipant.channelParticipantAdmin).promoted_by ||
+          (participant as ChatParticipant.chatParticipantAdmin).inviter_id
+        ).toPeerId(false);
         return i18n('EditAdminPromotedBy', [await wrapPeerTitle({peerId: promotedBy})]);
       },
       onSelect: (peerId) => {
         const participant = this.selector.participants.get(peerId);
         openPermissions(participant);
       },
-      channelParticipantsUpdateFilter: (participant) => {
-        return ([
-          'channelParticipantAdmin',
-          'channelParticipantCreator'
-        ] as ChannelParticipant['_'][]).includes(participant?._);
-      }
+      channelParticipantsUpdateFilter: isParticipantAdmin
       // noDelimiter: canToggleAntiSpam
     });
 
@@ -151,14 +151,19 @@ export default class AppChatAdministratorsTab extends SliderSuperTabEventable {
 
       if(!canToggleAntiSpam) row.toggleDisability(canToggleAntiSpam);
 
-      this.eventListener.addEventListener('destroy', () => {
+      this.listenerSetter.add(row.checkboxField.input)('change', () => {
         const _checked = row.checkboxField.checked;
         if(_checked === checked) {
           return;
         }
 
-        this.managers.appChatsManager.toggleAntiSpam(chatId, _checked);
-      }, {once: true});
+        const promise = handleChannelsTooMuch(() => this.managers.appChatsManager.toggleAntiSpam(chatId, _checked))
+        .catch((err) => {
+          console.error('toggleAntiSpam error', err);
+          row.checkboxField.setValueSilently(!_checked);
+        });
+        row.disableWithPromise(promise);
+      });
 
       section.content.append(row.container);
 

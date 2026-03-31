@@ -164,7 +164,7 @@ const ChatThreadSeparator = defineSolidElement({
         peerId: isMonoforum ? props.chat.peerId : props.peerId,
         monoforumThreadId: isMonoforum ? props.peerId : undefined,
         threadId: props.threadId,
-        lastMsgId: props.lastMsgId
+        lastMsgId: props.lastMsgId === props.threadId ? undefined : props.lastMsgId
       });
     };
 

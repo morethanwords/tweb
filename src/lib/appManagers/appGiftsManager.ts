@@ -289,7 +289,7 @@ export default class AppGiftsManager extends AppManager {
     return res.gifts;
   }
 
-  private myPinnedGifts: InputSavedStarGift[] = [];
+  private pinnedGiftsByPeer = new Map<PeerId, InputSavedStarGift[]>();
   public async getProfileGifts(params: {
     peerId: PeerId,
     offset?: string,
@@ -363,8 +363,8 @@ export default class AppGiftsManager extends AppManager {
       }
     }
 
-    if(params.peerId === this.rootScope.myId && !params.offset) {
-      this.myPinnedGifts = wrapped.filter((it) => it.saved?.pFlags.pinned_to_top).map((it) => it.input);
+    if(!params.offset) {
+      this.pinnedGiftsByPeer.set(params.peerId, wrapped.filter((it) => it.saved?.pFlags.pinned_to_top).map((it) => it.input));
     }
 
     return {
@@ -501,19 +501,21 @@ export default class AppGiftsManager extends AppManager {
     return res?.gifts[0];
   }
 
-  public async togglePinnedGift(gift: InputSavedStarGift) {
-    const idx = this.myPinnedGifts.findIndex((it) => inputStarGiftEquals(it, gift));
+  public async togglePinnedGift(gift: InputSavedStarGift, peerId: PeerId) {
+    const pinned = (this.pinnedGiftsByPeer.get(peerId) ?? []).slice();
+    const idx = pinned.findIndex((it) => inputStarGiftEquals(it, gift));
     if(idx !== -1) {
-      this.myPinnedGifts.splice(idx, 1);
+      pinned.splice(idx, 1);
     } else {
-      this.myPinnedGifts.push(gift);
+      pinned.push(gift);
     }
 
     await this.apiManager.invokeApiSingle('payments.toggleStarGiftsPinnedToTop', {
-      peer: {_:'inputPeerSelf'},
-      stargift: this.myPinnedGifts
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      stargift: pinned
     });
-    this.rootScope.dispatchEvent('my_pinned_stargifts', {gifts: this.myPinnedGifts});
+    this.pinnedGiftsByPeer.set(peerId, pinned);
+    this.rootScope.dispatchEvent('pinned_stargifts', {peerId, gifts: pinned});
   }
 
   public upgradeStarGift(input: InputSavedStarGift, keepDetails: boolean) {
@@ -528,12 +530,17 @@ export default class AppGiftsManager extends AppManager {
     });
   }
 
-  public transferStarGift(input: InputSavedStarGift, toId: PeerId) {
+  public transferStarGift(input: InputSavedStarGift, toId: PeerId, fromId?: PeerId) {
     return this.apiManager.invokeApiSingle('payments.transferStarGift', {
       stargift: input,
       to_id: this.appPeersManager.getInputPeerById(toId)
     }).then((updates) => {
       this.apiUpdatesManager.processUpdateMessage(updates);
+
+      if(fromId !== undefined) {
+        this.rootScope.dispatchEvent('star_gift_list_update', {peerId: fromId});
+      }
+      this.rootScope.dispatchEvent('star_gift_list_update', {peerId: toId});
     });
   }
 
@@ -635,17 +642,36 @@ export default class AppGiftsManager extends AppManager {
     delete?: InputSavedStarGift[],
     title?: string,
   }) {
-    const res = await this.apiManager.invokeApiSingle('payments.updateStarGiftCollection', {
-      peer: this.appPeersManager.getInputPeerById(options.peerId),
-      collection_id: options.collectionId,
-      add_stargift: options.add?.length ? options.add : undefined,
-      delete_stargift: options.delete?.length ? options.delete : undefined,
-      title: options.title
-    });
+    // optimistically update collection_id on affected gifts
+    for(const input of options.add ?? []) {
+      this.rootScope.dispatchEvent('star_gift_update', {input, addCollectionId: options.collectionId});
+    }
+    for(const input of options.delete ?? []) {
+      this.rootScope.dispatchEvent('star_gift_update', {input, removeCollectionId: options.collectionId});
+    }
 
-    if(res.icon) this.appDocsManager.saveDoc(res.icon);
+    try {
+      const res = await this.apiManager.invokeApiSingle('payments.updateStarGiftCollection', {
+        peer: this.appPeersManager.getInputPeerById(options.peerId),
+        collection_id: options.collectionId,
+        add_stargift: options.add?.length ? options.add : undefined,
+        delete_stargift: options.delete?.length ? options.delete : undefined,
+        title: options.title
+      });
 
-    return res;
+      if(res.icon) this.appDocsManager.saveDoc(res.icon);
+
+      return res;
+    } catch(err) {
+      // revert optimistic updates
+      for(const input of options.add ?? []) {
+        this.rootScope.dispatchEvent('star_gift_update', {input, removeCollectionId: options.collectionId});
+      }
+      for(const input of options.delete ?? []) {
+        this.rootScope.dispatchEvent('star_gift_update', {input, addCollectionId: options.collectionId});
+      }
+      throw err;
+    }
   }
 
   public async resolveGiftOffer(msgId: number, action: 'accept' | 'reject') {

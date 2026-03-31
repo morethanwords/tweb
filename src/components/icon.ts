@@ -27,7 +27,7 @@ export function OverlayedIcon(icons: (Icon | IconWithClass)[], className?: strin
 
 export default function Icon(icon: Icon, ...classes: string[]) {
   const span = document.createElement('span');
-  if(I18n.isRTL && IconsReverse.has(icon)) {
+  if(I18n.getIsRTL() && IconsReverse.has(icon)) {
     classes.push('icon-reflect');
   }
 

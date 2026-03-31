@@ -145,7 +145,7 @@ export default [{
 
     'no-unexpected-multiline': 'error',
     'no-return-await': 'error',
-    '@typescript-eslint/await-thenable': 'error'
+    '@typescript-eslint/await-thenable': 'off'
   }
 }, {
   files: ['**/*.ts', '**/*.tsx'],

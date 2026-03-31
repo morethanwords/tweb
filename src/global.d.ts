@@ -123,7 +123,7 @@ declare global {
     'translations' | 'animated_emoji' | 'more_upload' | 'emoji_status' | 'profile_badge' |
     'advanced_chat_management' | 'no_ads' | 'app_icons' | 'infinite_reactions' |
     'animated_userpics' | 'premium_stickers' | 'peer_colors' | 'wallpapers' |
-    'saved_tags' | 'last_seen' | 'message_privacy';
+    'saved_tags' | 'last_seen' | 'message_privacy' | 'pm_noforwards';
 
   type MTMimeType = 'video/quicktime' | 'image/gif' | 'image/jpeg' | 'application/pdf' |
     'video/mp4' | 'image/webp' | 'audio/mpeg' | 'audio/ogg' | 'application/octet-stream' |
@@ -140,9 +140,10 @@ declare global {
   type ReferenceError = 'NO_NEW_CONTEXT' | 'NO_CONTEXT';
   type NetworkerError = 'NETWORK_BAD_RESPONSE' | 'NETWORK_BAD_REQUEST';
   type FiltersError = 'PINNED_DIALOGS_TOO_MUCH';
+  type RLottieError = 'FRAME_OUT_OF_RANGE' | 'ITEM_DESTROYED' | 'FILE_INVALID';
 
   type LocalFileError = ApiFileManagerError | ReferenceError | StorageError;
-  type LocalErrorType = LocalFileError | NetworkerError | FiltersError |
+  type LocalErrorType = LocalFileError | NetworkerError | FiltersError | RLottieError |
     'UNKNOWN' | 'NO_DOC' | 'MIDDLEWARE' | 'PORT_DISCONNECTED' | 'NO_AUTO_DOWNLOAD' | 'CHAT_PRIVATE' | 'NO_WASM' |
     'CANCELED' | 'TIMEOUT' | 'TAB_ALREADY_OPEN';
 
@@ -172,7 +173,8 @@ declare global {
     'FILE_REFERENCE_INVALID' | 'USER_NOT_MUTUAL_CONTACT' | 'FROZEN_METHOD_INVALID' |
     'EMAIL_INVALID' | 'EMAIL_NOT_ALLOWED' | 'EMAIL_VERIFY_EXPIRED' | 'CODE_INVALID' |
     'PASSWORD_RECOVERY_NA' | '2FA_RECENT_CONFIRM' | `2FA_CONFIRM_WAIT_${number}` |
-    'PASSKEY_CREDENTIAL_NOT_FOUND' | 'SUMMARY_FLOOD_PREMIUM' | 'AUTH_TOKEN_EXPIRED';
+    'PASSKEY_CREDENTIAL_NOT_FOUND' | 'SUMMARY_FLOOD_PREMIUM' | 'AUTH_TOKEN_EXPIRED' |
+    'CHANNELS_TOO_MUCH' | 'BOOSTS_REQUIRED';
 
   type ErrorType = LocalErrorType | ServerErrorType;
 

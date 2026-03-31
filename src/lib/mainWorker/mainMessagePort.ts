@@ -12,6 +12,7 @@ import type toggleStorages from '@helpers/toggleStorages';
 import type {ActiveAccountNumber} from '@lib/accounts/types';
 import type {LoadStateResult} from '@appManagers/utils/state/loadState';
 import type {PasscodeStorageValue} from '@lib/commonStateStorage';
+import type {ThreadedWorkerType} from '@lib/appManagers/appManagersManager';
 import SuperMessagePort from '@lib/superMessagePort';
 import {CacheStorageDbName} from '@lib/files/cacheStorage';
 
@@ -29,8 +30,12 @@ type MTProtoBroadcastEvent = {
 };
 
 export type ToggleUsingPasscodePayload = {
-  isUsingPasscode: boolean,
+  isUsingPasscode: boolean;
   encryptionKey?: CryptoKey;
+};
+
+export type ThreadedWorkerEvents = {
+  port: (payload: void, source: MessageEventSource, event: MessageEvent) => void
 };
 
 export default class MTProtoMessagePort<Master extends boolean = true> extends SuperMessagePort<{
@@ -42,10 +47,10 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   toggleStorages: (payload: {enabled: boolean, clearWrite: boolean}) => ReturnType<typeof toggleStorages>,
   serviceWorkerOnline: (online: boolean) => void,
   serviceWorkerPort: (payload: void, source: MessageEventSource, event: MessageEvent) => void,
-  cryptoPort: (payload: void, source: MessageEventSource, event: MessageEvent) => void,
+  threadedPort: (payload: ThreadedWorkerType, source: MessageEventSource, event: MessageEvent) => void,
   createObjectURL: (blob: Blob) => string,
   tabState: (payload: TabState, source: MessageEventSource) => void,
-  createProxyWorkerURLs: (payload: {originalUrl: string, blob: Blob}) => string[],
+  createProxyWorkerURLs: (payload: {originalUrl: string, blob: Blob, type: ThreadedWorkerType}) => string[],
   setInterval: (timeout: number) => number,
   clearInterval: (intervalId: number) => void,
   terminate: () => void,

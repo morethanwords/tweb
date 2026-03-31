@@ -12,7 +12,7 @@ import PopupPayment from '@components/popups/payment';
 import PopupPeer from '@components/popups/peer';
 import PopupPickUser from '@components/popups/pickUser';
 import PopupStickers from '@components/popups/stickers';
-import {toastNew, toast, hideToast} from '@components/toast';
+import {toastNew, hideToast} from '@components/toast';
 import {MOUNT_CLASS_TO} from '@config/debug';
 import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
 import addAnchorListener from '@helpers/addAnchorListener';
@@ -48,12 +48,13 @@ import appSidebarLeft from '@components/sidebarLeft';
 import AppContactsTab from '@components/sidebarLeft/tabs/contacts';
 import AppNewChannelTab from '@components/sidebarLeft/tabs/newChannel';
 import PopupCreateContact from '@components/popups/createContact';
-import AppAddMembersTab from '@components/sidebarLeft/tabs/addMembers';
+import createNewGroupTab from '@components/sidebarLeft/tabs/createNewGroupTab';
 import AppSettingsTab from '@components/sidebarLeft/tabs/settings';
 import AppEditProfileTab from '@components/sidebarLeft/tabs/editProfile';
 import showBirthdayPopup, {saveMyBirthday} from '@components/popups/birthday';
 import showLogOutPopup from '@components/popups/logOut';
 import {getStickerSetInputByShortName} from '@lib/appManagers/utils/stickers/getStickerSetInput';
+import AppMyStoriesTab from '@components/sidebarLeft/tabs/myStories';
 
 export class InternalLinkProcessor {
   protected managers: AppManagers;
@@ -671,7 +672,7 @@ export class InternalLinkProcessor {
           case 'channel':
             return appSidebarLeft.createTab(AppNewChannelTab).open();
           case 'group':
-            return AppAddMembersTab.createNewGroupTab(appSidebarLeft);
+            return createNewGroupTab(appSidebarLeft);
           default:
             return appSidebarLeft.createTab(AppContactsTab).open();
         }
@@ -840,7 +841,7 @@ export class InternalLinkProcessor {
       return PopupElement.createPopup(PopupJoinChatInvite, link.invite, chatInvite);
     }, (err: ApiError) => {
       if(err.type === 'INVITE_HASH_EXPIRED') {
-        toast(i18n('InviteExpired'));
+        toastNew({langPackKey: 'InviteExpired'});
       }
     });
   };
@@ -1186,12 +1187,28 @@ export class InternalLinkProcessor {
   public processStoryAlbumLink = async(link: InternalLink.InternalLinkStoryAlbum) => {
     const peer = await this.managers.appUsersManager.resolveUsername(link.domain);
     const peerId = peer.id.toPeerId(peer._ !== 'user');
-    if(appImManager.chat.peerId !== peerId) {
-      await appImManager.setInnerPeer({peerId});
-      await pause(500);
+    const albumId = +link.id;
+
+    if(peerId === rootScope.myId) {
+      const existing = appSidebarRight.getTab(AppMyStoriesTab);
+      if(existing) {
+        existing.setAlbum(albumId);
+        return;
+      }
+
+      const tab = appSidebarRight.createTab(AppMyStoriesTab);
+      tab.initialAlbumId = albumId;
+      await tab.open();
+      appSidebarRight.toggleSidebar(true, true);
+    } else {
+      if(appImManager.chat.peerId !== peerId) {
+        await appImManager.setInnerPeer({peerId});
+        await pause(500);
+      }
+      appSidebarRight.toggleSidebar(true, true);
+      appSidebarRight.sharedMediaTab.setSearchTab('stories');
+      appSidebarRight.sharedMediaTab.searchSuper.storiesSetAlbum(albumId);
     }
-    appSidebarRight.toggleSidebar(true, true);
-    appSidebarRight.sharedMediaTab.setSearchTab('stories');
   };
 
   public processInstantViewLink = (link: InternalLink.InternalLinkInstantView) => {

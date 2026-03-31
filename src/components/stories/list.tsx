@@ -4,11 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {JSX, createSignal, For, createEffect, createResource, Accessor, onMount, createMemo, splitProps, on, Show, onCleanup} from 'solid-js';
+import {JSX, createSignal, For, createEffect, Accessor, onMount, createMemo, splitProps, on, Show, onCleanup} from 'solid-js';
 import {ScrollableX} from '@components/scrollable';
 import {createStoriesViewer} from '@components/stories/viewer';
 import styles from '@components/stories/list.module.scss';
-import PeerTitle from '@components/peerTitle';
 import mediaSizes from '@helpers/mediaSizes';
 import rootScope from '@lib/rootScope';
 import {fastSmoothScrollToStart} from '@helpers/fastSmoothScroll';
@@ -23,12 +22,13 @@ import appSidebarLeft from '@components/sidebarLeft';
 import AppMyStoriesTab from '@components/sidebarLeft/tabs/myStories';
 import {toastNew} from '@components/toast';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
-import {ChatType} from '@components/chat/chat';
+import {ChatType} from '@components/chat/chatType';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {useCollapsable} from '@hooks/useCollapsable';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import ListenerSetter from '@helpers/listenerSetter';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
+import showStoriesStealthModePopup from '@components/popups/storiesStealthMode';
 
 
 const TEST_COUNT = 0;
@@ -126,8 +126,8 @@ function _StoriesList(props: {
     createStoriesViewer({onExit, target});
   });
 
-  const onItemClick = (peer: PeerStories, e: MouseEvent) => {
-    if(progress() !== STATE_UNFOLDED) {
+  const onItemClick = (peer: PeerStories, e?: MouseEvent) => {
+    if(progress() !== STATE_UNFOLDED && e) {
       return onContainerClick(e);
     }
 
@@ -193,7 +193,7 @@ function _StoriesList(props: {
       }
 
       const translateX = distanceX * value;
-      const translate = `translateX(calc(var(--stories-additional-offset, 0px) * ${value} + ${translateX * (I18n.isRTL ? -1 : 1)}px))`;
+      const translate = `translateX(calc(var(--stories-additional-offset, 0px) * ${value} + ${translateX * (I18n.getIsRTL() ? -1 : 1)}px))`;
       const scaleValue = 1 - (value * (1 - _scale));
       const scale = `scale(${scaleValue})`;
       cssProperties.transform = `${translate} ${scale}`;
@@ -323,7 +323,7 @@ function _StoriesList(props: {
       onResize();
       window.clearTimeout(timeoutId);
       setHasTransition(false);
-      setTimeout(() => {
+      timeoutId = self.setTimeout(() => {
         setHasTransition(true);
       }, 100);
     });
@@ -428,6 +428,22 @@ function _StoriesList(props: {
         onClick: () => toggleMute(false),
         verify: () => !isSelf && rootScope.managers.appNotificationsManager.isPeerStoriesMuted(peer.peerId),
         multiline: true
+      }, {
+        icon: 'eyecross_outline',
+        text: 'Stories.StealthMode.View',
+        onClick: () => {
+          const {peerId} = peer;
+          showStoriesStealthModePopup({
+            onActivate: () => {
+              const peer = peers().find((p) => p.peerId === peerId);
+              if(!peer) {
+                return;
+              }
+
+              onItemClick(peer);
+            }
+          });
+        }
       }, {
         icon: 'archive',
         text: 'ArchivePeerStories',

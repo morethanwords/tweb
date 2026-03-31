@@ -35,6 +35,7 @@ import IS_INSTALL_PROMPT_SUPPORTED from '@environment/installPrompt';
 import cacheInstallPrompt from '@helpers/dom/installPrompt';
 import {fillLocalizedDates} from '@helpers/date';
 import {nextRandomUint} from '@helpers/random';
+import {createEffect} from 'solid-js';
 import {IS_OVERLAY_SCROLL_SUPPORTED, USE_CUSTOM_SCROLL, USE_NATIVE_SCROLL} from '@environment/overlayScrollSupport';
 import IMAGE_MIME_TYPES_SUPPORTED, {IMAGE_MIME_TYPES_SUPPORTED_PROMISE} from '@environment/imageMimeTypesSupport';
 import MEDIA_MIME_TYPES_SUPPORTED from '@environment/mediaMimeTypesSupport';
@@ -216,10 +217,17 @@ function setRootClasses() {
 
   if(USE_NATIVE_SCROLL) {
     add.push('native-scroll');
-  } else if(IS_OVERLAY_SCROLL_SUPPORTED) {
-    add.push('overlay-scroll');
-  } else if(USE_CUSTOM_SCROLL) {
-    add.push('custom-scroll');
+  } else {
+    createEffect(() => {
+      const root = document.documentElement;
+      if(IS_OVERLAY_SCROLL_SUPPORTED()) {
+        root.classList.add('overlay-scroll');
+        root.classList.remove('custom-scroll');
+      } else if(USE_CUSTOM_SCROLL()) {
+        root.classList.remove('overlay-scroll');
+        root.classList.add('custom-scroll');
+      }
+    });
   }
 
   // root.style.setProperty('--quote-icon', `"${getIconContent('quote')}"`);
@@ -459,7 +467,7 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
     return;
   }
 
-  apiManagerProxy.onLanguageChange(I18n.lastRequestedLangCode);
+  apiManagerProxy.onLanguageChange(I18n.getLastRequestedLangCode());
   await apiManagerProxy.sendAllStates(allStates);
 
   console.timeLog(TIME_LABEL, 'sent all states (2)');
@@ -522,20 +530,22 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
     };
 
     if(data.isTest !== Modes.test) {
-      const urlSearchParams = new URLSearchParams(location.search);
+      const url = new URL(location.href);
       if(+params.tgWebAuthTest) {
-        urlSearchParams.set('test', '1');
+        url.searchParams.set('test', '1');
       } else {
-        urlSearchParams.delete('test');
+        url.searchParams.delete('test');
       }
 
-      location.search = urlSearchParams.toString();
+      appNavigationController.navigateToUrl(url.toString());
       return;
     }
 
     rootScope.managers.appStateManager.pushToState('authState', authState = {_: 'authStateSignImport', data});
+  }
 
-    // appNavigationController.overrideHash('?tgaddr=' + encodeURIComponent(params.tgaddr));
+  if(params.tgWebAuthToken) {
+    appNavigationController.overrideHash(params.tgaddr ? '#?tgaddr=' + encodeURIComponent(params.tgaddr) : '');
   }
 
   if(authState._ !== 'authStateSignedIn'/*  || 1 === 1 */) {

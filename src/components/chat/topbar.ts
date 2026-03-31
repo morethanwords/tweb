@@ -25,9 +25,9 @@ import findUpClassName from '@helpers/dom/findUpClassName';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
-import {toast, toastNew} from '@components/toast';
+import {toastNew} from '@components/toast';
 import replaceContent from '@helpers/dom/replaceContent';
-import {ChatFull, Chat as MTChat, GroupCall, Dialog, InputGroupCall} from '@layer';
+import {ChatFull, Chat as MTChat, GroupCall, Dialog, InputGroupCall, UserFull} from '@layer';
 import PopupPickUser from '@components/popups/pickUser';
 import PopupPeer, {PopupPeerCheckboxOptions} from '@components/popups/peer';
 import AppEditContactTab from '@components/sidebarRight/tabs/editContact';
@@ -54,7 +54,7 @@ import {Middleware, MiddlewareHelper, getMiddleware} from '@helpers/middleware';
 import setBadgeContent from '@helpers/setBadgeContent';
 import createBadge from '@helpers/createBadge';
 import AppStatisticsTab from '@components/sidebarRight/tabs/statistics';
-import {ChatType} from '@components/chat/chat';
+import {ChatType} from './chatType';
 import AppBoostsTab from '@components/sidebarRight/tabs/boosts';
 import ChatLive from '@components/chat/topbarLive/container';
 import {RtmpStartStreamPopup} from '@components/rtmp/adminPopup';
@@ -82,6 +82,9 @@ import ButtonMenu, {ButtonMenuItemOptionsVerifiable} from '@components/buttonMen
 import Icon from '@components/icon';
 import {getDefaultOptions} from '@components/sidebarLeft/tabs/autoDeleteMessages/options';
 import {createAutoDeleteIcon} from '@components/chat/utils';
+import PopupBoost from '@components/popups/boost';
+import PopupPremium from '@components/popups/premium';
+import showNoForwardsPopup from '@components/popups/noForwards';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -467,6 +470,16 @@ export default class ChatTopbar {
       direction: 'left-start'
     });
 
+    const onBoostClick = async() => {
+      const {peerId} = this;
+      if(await this.managers.appProfileManager.canViewStatistics(peerId)) {
+        this.appSidebarRight.createTab(AppBoostsTab).open(this.peerId);
+        this.appSidebarRight.toggleSidebar(true);
+      } else {
+        PopupElement.createPopup(PopupBoost, this.peerId);
+      }
+    };
+
     this.menuButtons = [this.autoDeleteBtnMenuOptions, {
       icon: 'search',
       text: 'Search',
@@ -570,7 +583,7 @@ export default class ChatTopbar {
         const original = selection.toggleByElement.bind(selection);
         selection.toggleByElement = async(bubble) => {
           this.chat.setAppSettings('chatContextMenuHintWasShown', true);
-          toast(i18n('Chat.Menu.Hint'));
+          toastNew({langPackKey: 'Chat.Menu.Hint'});
 
           selection.toggleByElement = original;
           selection.toggleByElement(bubble);
@@ -656,12 +669,14 @@ export default class ChatTopbar {
       verify: () => !this.chat.monoforumThreadId && this.managers.appProfileManager.canViewStatistics(this.peerId)
     }, {
       icon: 'addboost',
-      text: 'Boosts',
-      onClick: () => {
-        this.appSidebarRight.createTab(AppBoostsTab).open(this.peerId);
-        this.appSidebarRight.toggleSidebar(true);
-      },
-      verify: () => this.chat.isBroadcast && this.managers.appProfileManager.canViewStatistics(this.peerId)
+      text: 'BoostChannel',
+      onClick: onBoostClick,
+      verify: async() => this.chat.isBroadcast
+    }, {
+      icon: 'addboost',
+      text: 'BoostGroup',
+      onClick: onBoostClick,
+      verify: async() => this.chat.isMegagroup
     }, {
       icon: 'bots',
       text: 'Settings',
@@ -720,6 +735,57 @@ export default class ChatTopbar {
       verify: async() => {
         const userFull = await this.managers.appProfileManager.getCachedFullUser(this.peerId.toUserId());
         return !!userFull?.pFlags?.blocked;
+      }
+    }, {
+      icon: 'sharingoff',
+      text: 'DisableSharing',
+      onClick: () => {
+        if(!rootScope.premium) {
+          PopupPremium.show({feature: 'pm_noforwards'});
+          return;
+        }
+
+        const cb = () => this.managers.appProfileManager.toggleNoForwards(this.peerId, true);
+        if(this.chat.appSettings.seenTooltips.noForwards) {
+          cb();
+        } else {
+          showNoForwardsPopup(() => {
+            setAppSettings('seenTooltips', 'noForwards', true);
+            cb();
+          });
+        }
+      },
+      verify: async() => {
+        if(!this.peerId.isUser() || this.peerId === rootScope.myId) return false;
+        const userFull = this.chat.fullPeer() as UserFull.userFull;
+        if(!userFull) return false;
+        return !userFull.pFlags.noforwards_my_enabled && !userFull.pFlags.noforwards_peer_enabled;
+      }
+    }, {
+      icon: 'sharingon',
+      text: 'EnableSharing',
+      onClick: async() => {
+        const userFull = this.chat.fullPeer() as UserFull.userFull;
+        const {peerId} = this;
+
+        if(userFull.pFlags.noforwards_peer_enabled) {
+          await confirmationPopup({
+            titleLangKey: 'EnableSharing',
+            descriptionLangKey: 'EnableSharingCaption',
+            descriptionLangArgs: [new PeerTitle({peerId}).element],
+            button: {
+              langKey: 'SendRequest'
+            }
+          });
+        }
+
+        this.managers.appProfileManager.toggleNoForwards(peerId, false);
+      },
+      verify: async() => {
+        if(!this.peerId.isUser() || this.peerId === rootScope.myId) return false;
+        const userFull = this.chat.fullPeer() as UserFull.userFull;
+        if(!userFull) return false;
+        return !!(userFull?.pFlags?.noforwards_my_enabled || userFull?.pFlags?.noforwards_peer_enabled);
       }
     }, {
       icon: 'dollar_circle',

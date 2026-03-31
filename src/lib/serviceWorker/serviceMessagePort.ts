@@ -11,7 +11,6 @@ import type {Document, InputFileLocation, InputGroupCall} from '@layer';
 import type {GroupCallRtmpState} from '@appManagers/appGroupCallsManager';
 import type {ActiveAccountNumber} from '@lib/accounts/types';
 import type {getEnvironment} from '@environment/utils';
-import type {ToggleUsingPasscodePayload} from '@lib/mainWorker/mainMessagePort';
 import type {VideoStreamInfo} from '@lib/calls/videoStreamInfo';
 import type {PushKey, PushSingleManager} from '@appManagers/pushSingleManager';
 import SuperMessagePort from '@lib/superMessagePort';
@@ -54,6 +53,15 @@ export type ServiceEvent = {
   port: (payload: void, source: MessageEventSource, event: MessageEvent) => void
 };
 
+export type SWToggleUsingPasscodePayload = {
+  type: 'init';
+  isUsingPasscode: boolean;
+} | {
+  type: 'full';
+  isUsingPasscode: boolean;
+  encryptionKey?: CryptoKey;
+};
+
 export default class ServiceMessagePort<Master extends boolean = false> extends SuperMessagePort<{
   // from main thread to service worker
   environment: (environment: ReturnType<typeof getEnvironment>) => void,
@@ -66,7 +74,7 @@ export default class ServiceMessagePort<Master extends boolean = false> extends 
   toggleStreamInUse: (payload: {url: string, inUse: boolean, accountNumber: ActiveAccountNumber}) => void,
   toggleCacheStorage: (value: boolean) => void,
   resetEncryptableCacheStorages: () => void,
-  toggleUsingPasscode: (payload: ToggleUsingPasscodePayload, source: MessageEventSource) => void,
+  toggleUsingPasscode: (payload: SWToggleUsingPasscodePayload, source: MessageEventSource) => void,
   saveEncryptionKey: (payload: CryptoKey) => void,
   fillPushObject: (payload: PushNotificationObject) => PushNotificationObject,
   disableCacheStoragesByNames: (names: CacheStorageDbName[]) => void,

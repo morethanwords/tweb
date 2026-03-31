@@ -22,6 +22,7 @@ import {addFullScreenListener, getFullScreenElement} from '@helpers/dom/fullScre
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import MarkupTooltip from '@components/chat/markupTooltip';
 import Button from '@components/buttonTsx';
+import {doubleRaf} from '@helpers/schedulers';
 
 export type PopupButton = {
   text?: HTMLElement | DocumentFragment | Text,
@@ -278,10 +279,15 @@ const PopupElement = (props: {
 
   if(props.show !== undefined) {
     createEffect(on(() => props.show, (_show) => {
+      let callback: () => void;
       if(_show) {
-        show();
+        callback = show;
       } else if(shown()) {
-        hide();
+        callback = hide;
+      }
+
+      if(callback) {
+        doubleRaf().then(callback);
       }
     }));
   } else {
@@ -308,7 +314,7 @@ const PopupElement = (props: {
               return;
             }
 
-            if(props.closable === false) return
+            if(props.closable === false) return;
 
             hide();
           })}

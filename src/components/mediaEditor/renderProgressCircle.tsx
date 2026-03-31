@@ -1,4 +1,5 @@
 import {StandaloneSignal} from '@components/mediaEditor/types';
+import {ProgressCircleSVG} from '@components/progressCircleSVG';
 
 export default function RenderProgressCircle(props: {creationProgress: StandaloneSignal<number>}) {
   const [progress] = props.creationProgress.signal;
@@ -36,38 +37,7 @@ export default function RenderProgressCircle(props: {creationProgress: Standalon
         }
       }}
     >
-      <svg width="100%" height="100%" viewBox="0 0 120 120">
-        <circle
-          cx="60"
-          cy="60"
-          r={radius}
-          fill="none"
-          stroke="white"
-          stroke-width={strokeWidth + ''}
-          stroke-dasharray={circumference + ''}
-          stroke-dashoffset={strokeDashoffset()}
-          stroke-linecap="round"
-          style={{
-            // 'transition': 'stroke-dashoffset 0.12s',
-            'transform': 'rotate(-90deg)',
-            'transform-origin': '50% 50%'
-          }}
-        />
-
-        <text
-          x="50%"
-          y="50%"
-          dy=".3em"
-          text-anchor="middle"
-          style={{
-            'font-size': '30px',
-            'font-weight': 'bolder',
-            'fill': 'white'
-          }}
-        >
-          {(progress() * 100).toFixed(0)}%
-        </text>
-      </svg>
+      <ProgressCircleSVG progress={progress()} strokeThickness={1 / 10} withText stroke='white' />
     </div>
   );
 }

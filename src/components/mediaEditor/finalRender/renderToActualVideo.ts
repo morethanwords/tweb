@@ -63,7 +63,8 @@ export default async function renderToActualVideo({
   const {
     editorState: {pixelRatio},
     mediaState: {videoCropStart, videoCropLength, videoMuted, videoThumbnailPosition},
-    mediaBlob
+    getMediaBlob,
+    dontCreatePreview
   } = context;
 
   const {media: {video}} = renderingPayload;
@@ -116,9 +117,9 @@ export default async function renderToActualVideo({
   async function initMuxerAndEncoder() {
     const {Muxer, ArrayBufferTarget} = await import('mp4-muxer');
 
-    let audioBuffer: AudioBuffer;
+    let audioBuffer: AudioBuffer, mediaBlob: Blob;
 
-    if(!videoMuted && await supportsAudioEncoding()) try {
+    if(!videoMuted && await supportsAudioEncoding() && (mediaBlob = await getMediaBlob())) try {
       audioBuffer = await extractAudioFragment(mediaBlob, startTime, endTime);
     } catch{}
 
@@ -312,7 +313,7 @@ export default async function renderToActualVideo({
 
   setProgress(0);
 
-  const preview = await runWithOwner(owner, () => generateVideoPreview({scaledWidth, scaledHeight}));
+  const preview = dontCreatePreview ? undefined : await runWithOwner(owner, () => generateVideoPreview({scaledWidth, scaledHeight}));
 
   const resultPromise = new Promise<MediaEditorFinalResultPayload>(async(resolve, reject) => {
     const firstFrameSeekDeferred = deferredPromise<void>();

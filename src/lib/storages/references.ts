@@ -32,7 +32,8 @@ export type ReferenceContext =
   ReferenceContext.referenceContextFavedStickers |
   ReferenceContext.referenceContextStickerSet |
   ReferenceContext.referenceContextAvailableEffects |
-  ReferenceContext.referenceContextStickerSearch;
+  ReferenceContext.referenceContextStickerSearch |
+  ReferenceContext.referenceContextSavedMusic;
 
 export namespace ReferenceContext {
   export type referenceContextProfilePhoto = {
@@ -135,6 +136,11 @@ export namespace ReferenceContext {
     type: 'stickerSearch',
     emoticon: string
   };
+
+  export type referenceContextSavedMusic = {
+    type: 'savedMusic',
+    userId: UserId
+  };
 }
 
 export type ReferenceBytes = Photo.photo['file_reference'];
@@ -232,7 +238,7 @@ export class ReferencesStorage extends AppManager {
     switch(context?.type) {
       case 'message': {
         // const message = copy(this.appMessagesManager.getMessageByPeer(context.peerId, context.messageId));
-        return this.appMessagesManager.reloadMessages(context.peerId, context.messageId, true);
+        return this.appMessagesManager.reloadMessage(context.peerId, context.messageId, true);
         // .then((_message) => {
         //   this.log('FILE_REFERENCE_EXPIRED: got message', context, message, _message);
         // });
@@ -294,6 +300,9 @@ export class ReferencesStorage extends AppManager {
           includeServerStickers: true,
           includeOurStickers: false
         });
+
+      case 'savedMusic':
+        return this.appProfileManager.getSavedMusic(context.userId, 0, 100);
 
       default: {
         this.log.warn('not implemented context', context);

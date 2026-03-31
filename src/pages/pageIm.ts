@@ -20,9 +20,11 @@ const onFirstMount = () => {
 
   return Promise.all([
     import('../lib/appDialogsManager'),
+    import('../vendor/recorder.min.js'),
     loadFonts()/* .then(() => new Promise((resolve) => window.requestAnimationFrame(resolve))) */,
     'requestVideoFrameCallback' in HTMLVideoElement.prototype ? Promise.resolve() : import('../helpers/dom/requestVideoFrameCallbackPolyfill')
-  ]).then(([appDialogsManager]) => {
+  ]).then(([appDialogsManager, recorder]) => {
+    (window as any).Recorder = recorder.default;
     appDialogsManager.default.start();
     document.body.classList.remove('has-auth-pages');
     setTimeout(() => {

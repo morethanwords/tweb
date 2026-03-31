@@ -1,4 +1,4 @@
-@import '../../scss/mixins';
+@use "../../scss/mixins" as *;
 
 .popup {
   :global {

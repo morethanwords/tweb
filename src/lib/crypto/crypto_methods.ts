@@ -5,6 +5,7 @@
  */
 
 import type bytesModPow from '@helpers/bytes/bytesModPow';
+// import type gzipCompress from '@helpers/gzipCompress';
 import type gzipUncompress from '@helpers/gzipUncompress';
 import type getEmojisFingerprint from '@lib/calls/helpers/getEmojisFingerprint';
 import type {aesCtrDestroy, aesCtrPrepare, aesCtrProcess} from '@lib/crypto/aesCtrUtils';
@@ -29,6 +30,7 @@ export type CryptoMethods = {
   'factorize': typeof factorizeBrentPollardPQ,
   // 'factorize-tdlib': typeof factorizeTdlibPQ,
   'mod-pow': typeof bytesModPow,
+  // 'gzipCompress': typeof gzipCompress,
   'gzipUncompress': typeof gzipUncompress,
   'computeSRP': typeof computeSRP,
   'generate-dh': typeof generateDh,

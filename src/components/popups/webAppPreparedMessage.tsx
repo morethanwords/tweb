@@ -218,6 +218,7 @@ export default class PopupWebAppPreparedMessage extends PopupElement<{
                 document: doc
               }
             } as Message.message,
+            middleware: this.middlewareHelper.get(),
             sizeType: 'documentName',
             fontSize: rootScope.settings.messagesTextSize,
             canTranscribeVoice: false,

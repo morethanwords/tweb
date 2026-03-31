@@ -1,25 +1,52 @@
-import {createEffect, JSX} from 'solid-js';
-
-import {i18n} from '@lib/langPack';
-
-import Space from '@components/space';
-
 import {ArrowBrush, BlurBrush, EraserBrush, MarkerBrush, NeonBrush, PenBrush} from '@components/mediaEditor/brushesSvg';
-import {createStoredColor} from '@components/mediaEditor/createStoredColor';
-import {useMediaEditorContext} from '@components/mediaEditor/context';
 import ColorPicker from '@components/mediaEditor/colorPicker';
+import {BrushType, MediaEditorState, useMediaEditorContext} from '@components/mediaEditor/context';
+import {createStoredColor} from '@components/mediaEditor/createStoredColor';
 import LargeButton from '@components/mediaEditor/largeButton';
 import RangeInput from '@components/mediaEditor/rangeInput';
+import Space from '@components/space';
+import {i18n} from '@lib/langPack';
+import {createEffect, JSX, untrack} from 'solid-js';
+import {createStoredValue, Optional} from '../createStoredValue';
+import {brushDefaults} from '../utils';
+
+const brushSizeMin = 2;
+const brushSizeMax = 32;
 
 export default function BrushTab() {
   const {editorState, mediaType} = useMediaEditorContext();
 
   const savedBrushColors = {
-    pen: createStoredColor('media-editor-pen-color', '#fe4438'),
-    arrow: createStoredColor('media-editor-arrow-color', '#ffd60a'),
-    brush: createStoredColor('media-editor-brush-color', '#ff8901'),
-    neon: createStoredColor('media-editor-neon-color', '#62e5e0')
+    pen: createStoredColor(['colorByBrush', 'pen'], '#fe4438'),
+    arrow: createStoredColor(['colorByBrush', 'arrow'], '#ffd60a'),
+    brush: createStoredColor(['colorByBrush', 'brush'], '#ff8901'),
+    neon: createStoredColor(['colorByBrush', 'neon'], '#62e5e0')
   };
+
+  const [savedSize, setSavedSize] = createStoredValue<number>({
+    key: 'brushSize',
+    defaultValue: brushDefaults.size,
+    validate: (value) => {
+      const parsed = Number(value);
+
+      if(isNaN(parsed) || parsed < brushSizeMin || parsed > brushSizeMax) {
+        return Optional.none();
+      }
+
+      return Optional.value(parsed | 0);
+    }
+  });
+
+  const availableBrushes = ['pen', 'arrow', 'brush', 'neon', 'blur']; // we don't want eraser saved
+  const [savedBrush, setSavedBrush] = createStoredValue<BrushType>({
+    key: 'brushType',
+    defaultValue: brushDefaults.brush,
+    validate: (value) => availableBrushes.includes(value) ? Optional.value(value) : Optional.none(),
+    skipSaving: (value) => !availableBrushes.includes(value)
+  });
+
+  createSyncedBrushProp('size', savedSize);
+  createSyncedBrushProp('brush', savedBrush);
 
   function savedBrushSignal(brush: string) {
     return savedBrushColors[brush as keyof typeof savedBrushColors];
@@ -43,10 +70,10 @@ export default function BrushTab() {
     setSavedColor?.(color);
   }
 
-  const brushButton = (text: JSX.Element, brushSvg: JSX.Element, brush: string) => (
+  const brushButton = (text: JSX.Element, brushSvg: JSX.Element, brush: BrushType) => (
     <LargeButton
       active={editorState.currentBrush.brush === brush}
-      onClick={() => void (editorState.currentBrush.brush = brush)}
+      onClick={() => void setSavedBrush(brush)}
       class={`media-editor__brush-button`}
     >
       <div
@@ -89,18 +116,18 @@ export default function BrushTab() {
         <ColorPicker
           value={editorState.currentBrush.color}
           onChange={setColor}
-          colorKey={editorState.currentBrush.brush}
+          colorKey={savedBrush()}
           previousColor={savedBrushSignal(editorState.currentBrush.brush)?.[0]().previous}
         />
       </div>
       <Space amount="16px" />
       <RangeInput
         label={i18n('MediaEditor.Size')}
-        min={2}
-        max={32}
-        value={editorState.currentBrush.size}
+        min={brushSizeMin}
+        max={brushSizeMax}
+        value={savedSize()}
         onChange={(size) => {
-          editorState.currentBrush.size = size;
+          setSavedSize(size);
           editorState.previewBrushSize = size;
           removeSizePreview();
         }}
@@ -120,4 +147,14 @@ export default function BrushTab() {
       {brushButton(i18n('MediaEditor.Brushes.Eraser'), <EraserBrush />, 'eraser')}
     </>
   );
+}
+
+function createSyncedBrushProp<T extends keyof MediaEditorState['currentBrush']>(key: T, getter: () => MediaEditorState['currentBrush'][T]) {
+  const {editorState} = useMediaEditorContext();
+
+  editorState.currentBrush[key] = getter();
+
+  createEffect(() => {
+    untrack(() => editorState.currentBrush)[key] = getter();
+  });
 }

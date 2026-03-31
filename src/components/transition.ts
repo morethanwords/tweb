@@ -15,7 +15,7 @@ import I18n from '@lib/langPack';
 const USE_3D = true;
 
 function makeTranslate(x: number, y: number) {
-  if(I18n.isRTL) {
+  if(I18n.getIsRTL()) {
     x = -x;
   }
 

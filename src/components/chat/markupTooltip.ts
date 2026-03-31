@@ -12,7 +12,7 @@ import {_i18n} from '@lib/langPack';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import isSelectionEmpty from '@helpers/dom/isSelectionEmpty';
-import {MarkdownType} from '@helpers/dom/getRichElementValue';
+import {getFormattedDateEntityByElement, MarkdownType} from '@helpers/dom/getRichElementValue';
 import getVisibleRect from '@helpers/dom/getVisibleRect';
 import clamp from '@helpers/number/clamp';
 import matchUrl from '@lib/richTextProcessor/matchUrl';
@@ -21,11 +21,13 @@ import getMarkupInSelection from '@helpers/dom/getMarkupInSelection';
 import {applyMarkdown} from '@helpers/dom/markdown';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import overlayCounter from '@helpers/overlayCounter';
+import type PopupSchedule from '@components/popups/schedule';
 
-export type MarkupTooltipTypes = Extract<MarkdownType, 'bold' | 'italic' | 'underline' | 'strikethrough' | 'monospace' | 'spoiler' | 'quote' | 'link'>;
+export type MarkupTooltipTypes = Extract<MarkdownType, 'bold' | 'italic' | 'underline' | 'strikethrough' | 'monospace' | 'spoiler' | 'quote' | 'link' | 'date'>;
 
 export default class MarkupTooltip {
   private static INSTANCE: MarkupTooltip;
+  public static DISPLAY_MARKUP_PARTLY = false;
 
   public container: HTMLElement;
   private wrapper: HTMLElement;
@@ -39,7 +41,10 @@ export default class MarkupTooltip {
   private savedRange: Range;
   private mouseUpCounter: number = 0;
   private input: HTMLElement;
+  private linkInputFocusTimeout: number;
   // private log: ReturnType<typeof logger>;
+
+  public static PopupSchedule: typeof PopupSchedule;
 
   constructor() {
     // this.log = logger('MARKUP');
@@ -69,6 +74,7 @@ export default class MarkupTooltip {
       'monospace',
       'spoiler',
       ['quote', 'quote_outline'],
+      ['date', 'calendar'],
       'link'
     ];
     arr.forEach((c) => {
@@ -77,21 +83,26 @@ export default class MarkupTooltip {
       const button = ButtonIcon(icon, {noRipple: true});
       tools1.append(this.buttons[type] = button);
 
-      if(c !== 'link') {
+      if(type === 'link') {
+        attachClickEvent(button, (e) => {
+          cancelEvent(e);
+          this.showLinkEditor();
+          this.cancelClosening();
+        });
+      } else if(type === 'date') {
+        attachClickEvent(button, (e) => {
+          cancelEvent(e);
+          this.showDatePicker();
+        });
+      } else {
         button.addEventListener('mousedown', (e) => {
           cancelEvent(e);
-          applyMarkdown(this.input, type);
+          applyMarkdown({input: this.input, type});
           this.cancelClosening();
 
           /* this.mouseUpCounter = 0;
           this.setMouseUpEvent(); */
           // this.hide();
-        });
-      } else {
-        attachClickEvent(button, (e) => {
-          cancelEvent(e);
-          this.showLinkEditor();
-          this.cancelClosening();
         });
       }
     });
@@ -128,6 +139,7 @@ export default class MarkupTooltip {
       // this.log('linkBackButton click');
       cancelEvent(e);
       this.container.classList.remove('is-link');
+      this.clearLinkInputFocusTimeout();
       // input.value = '';
       this.resetSelection();
       this.setTooltipPosition();
@@ -163,6 +175,45 @@ export default class MarkupTooltip {
     });
   }
 
+  private clearLinkInputFocusTimeout() {
+    if(this.linkInputFocusTimeout) {
+      clearTimeout(this.linkInputFocusTimeout);
+      this.linkInputFocusTimeout = undefined;
+    }
+  }
+
+  public showDatePicker() {
+    this.saveRange();
+    const {input} = this;
+    const markup = getMarkupInSelection(['date']);
+    const element = markup.date.elements[0];
+    let initDate = new Date();
+    if(element) {
+      const entity = getFormattedDateEntityByElement(element, 0, 0);
+      initDate = new Date(entity.date * 1000);
+    }
+    new MarkupTooltip.PopupSchedule({
+      initDate,
+      onPick: (timestamp: number) => {
+        setTimeout(() => {
+          this.resetSelection();
+
+          // if(!timestamp) {
+          //   ENTITY_ELEMENT_MAP.delete(element);
+          // }
+
+          applyMarkdown({
+            input,
+            type: 'date',
+            dateSuffix: timestamp ? '' + timestamp : undefined
+          });
+        }, 0);
+      },
+      btnConfirmLangKey: element ? 'EditDate' : 'AddDate',
+      btnDangerLangKey: element ? 'RemoveDate' : undefined
+    }).show();
+  }
+
   public showLinkEditor() {
     if(!this.container || !this.container.classList.contains('is-visible')) { // * if not inited yet (Ctrl+A + Ctrl+K)
       this.show();
@@ -171,8 +222,7 @@ export default class MarkupTooltip {
     const button = this.buttons.link;
     this.container.classList.add('is-link');
 
-    const selection = document.getSelection();
-    this.savedRange = selection.getRangeAt(0);
+    this.saveRange();
 
     const markup = getMarkupInSelection(['link']);
     const anchor = markup['link'].elements.find((element) => element.tagName === 'A') as HTMLAnchorElement;
@@ -185,7 +235,8 @@ export default class MarkupTooltip {
 
     this.setTooltipPosition(true);
 
-    setTimeout(() => {
+    this.linkInputFocusTimeout = window.setTimeout(() => {
+      this.linkInputFocusTimeout = undefined;
       this.linkInput.focus(); // !!! instant focus will break animation
     }, 200);
     this.linkInput.classList.toggle('is-valid', this.isLinkValid());
@@ -198,7 +249,7 @@ export default class MarkupTooltip {
     if(url && !matchUrlProtocol(url)) {
       url = 'https://' + url;
     }
-    applyMarkdown(this.input, 'link', url);
+    applyMarkdown({input: this.input, type: 'link', href: url});
     setTimeout(() => {
       this.hide();
     }, 0);
@@ -212,7 +263,11 @@ export default class MarkupTooltip {
     const selection = window.getSelection();
     selection.removeAllRanges();
     selection.addRange(range);
-    this.input.focus();
+    this.input?.focus();
+  }
+
+  private saveRange(selection: Selection = document.getSelection()) {
+    return this.savedRange = selection.getRangeAt(0);
   }
 
   public hide() {
@@ -229,6 +284,7 @@ export default class MarkupTooltip {
     appNavigationController.removeByType('markup');
 
     if(this.hideTimeout) clearTimeout(this.hideTimeout);
+    this.clearLinkInputFocusTimeout();
     this.hideTimeout = window.setTimeout(() => {
       this.hideTimeout = undefined;
       this.container.classList.add('hide');
@@ -256,7 +312,8 @@ export default class MarkupTooltip {
     const types = Object.keys(this.buttons) as MarkupTooltipTypes[];
     const markup = getMarkupInSelection(types);
     types.forEach((type) => {
-      if(markup[type].partly) {
+      const {partly, fully} = markup[type];
+      if(MarkupTooltip.DISPLAY_MARKUP_PARTLY ? partly : fully) {
         currentMarkups.add(this.buttons[type as MarkupTooltipTypes]);
       }
     });
@@ -281,7 +338,9 @@ export default class MarkupTooltip {
     const rowsWrapper = findUpClassName(this.input, 'rows-wrapper') ||
       findUpClassName(this.input, 'input-message-container') ||
       findUpClassName(this.input, 'input-field');
-    const currentTools = this.container.classList.contains('is-link') ? this.wrapper.lastElementChild : this.wrapper.firstElementChild;
+    const currentTools = this.container.classList.contains('is-link') ?
+      this.wrapper.lastElementChild :
+      this.wrapper.firstElementChild;
     const bodyRect = document.body.getBoundingClientRect();
     const selectionRect = range.getBoundingClientRect();
     const inputRect = rowsWrapper.getBoundingClientRect();
@@ -390,7 +449,7 @@ export default class MarkupTooltip {
     if(IS_TOUCH_SUPPORTED) {
       e && cancelEvent(e);
       if(this.mouseUpCounter++ === 0) {
-        this.resetSelection(this.savedRange);
+        this.resetSelection();
       } else {
         this.hide();
         return;
@@ -431,6 +490,9 @@ export default class MarkupTooltip {
     if(this.addedListener) return;
     this.addedListener = true;
     document.addEventListener('selectionchange', (e) => {
+      if(this.linkInputFocusTimeout) { // * if it soon will be focused, ignore the event because of click event
+        return;
+      }
       // this.log('selectionchange');
 
       if(document.activeElement === this.linkInput) {
@@ -461,7 +523,7 @@ export default class MarkupTooltip {
             return;
           }
 
-          this.savedRange = selection.getRangeAt(0);
+          this.saveRange(selection);
           this.setMouseUpEvent();
           /* document.addEventListener('touchend', (e) => {
             cancelEvent(e);

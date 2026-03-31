@@ -16,6 +16,9 @@ import appImManager from '@lib/appImManager';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import SettingSection from '@components/settingSection';
 import {handleMissingInvitees} from '@components/addChatUsers';
+import type {AppChatsManager} from '@lib/appManagers/appChatsManager';
+import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
+import toggleDisability from '@helpers/dom/toggleDisability';
 
 interface OpenStreetMapInterface {
   place_id?: number;
@@ -100,11 +103,16 @@ export default class AppNewGroupTab extends SliderSuperTab {
     attachClickEvent(this.nextBtn, () => {
       const title = this.groupNameInputField.value;
       const userIds = this.peerIds.map((peerId) => peerId.toUserId());
+      const toggle = toggleDisability(this.nextBtn, true);
 
       let promise: Promise<{chatId: ChatId, missingInvitees: MissingInvitee[]}>;
       if(this.isGeoChat) {
-        if(!this.userLocationAddress || !this.userLocationCoords) return;
-        promise = this.managers.appChatsManager.createChannel({
+        if(!this.userLocationAddress || !this.userLocationCoords) {
+          toggle();
+          return;
+        }
+
+        const options: Parameters<AppChatsManager['createChannel']>[0] = {
           title,
           about: '',
           geo_point: {
@@ -113,7 +121,9 @@ export default class AppNewGroupTab extends SliderSuperTab {
           },
           address: this.userLocationAddress,
           megagroup: true
-        }).then(async(chatId) => {
+        };
+        promise = handleChannelsTooMuch(() => this.managers.appChatsManager.createChannel(options))
+        .then(async(chatId) => {
           if(this.uploadAvatar) {
             this.uploadAvatar().then((inputFile) => {
               this.managers.appChatsManager.editPhoto(chatId, inputFile);
@@ -126,14 +136,14 @@ export default class AppNewGroupTab extends SliderSuperTab {
           return {chatId, missingInvitees};
         });
       } else {
-        this.nextBtn.disabled = true;
-
         if(asChannel) {
-          promise = this.managers.appChatsManager.createChannel({
+          const options: Parameters<AppChatsManager['createChannel']>[0] = {
             megagroup: true,
             title,
             about: ''
-          }).then((chatId) => ({chatId, missingInvitees: [] as MissingInvitee[]}));
+          };
+          promise = handleChannelsTooMuch(() => this.managers.appChatsManager.createChannel(options))
+          .then((chatId) => ({chatId, missingInvitees: [] as MissingInvitee[]}));
 
           if(peerIds.length) {
             promise = promise.then(({chatId}) => {
@@ -160,6 +170,7 @@ export default class AppNewGroupTab extends SliderSuperTab {
       }
 
       if(!promise) {
+        toggle();
         return;
       }
 
@@ -168,6 +179,9 @@ export default class AppNewGroupTab extends SliderSuperTab {
         this.close();
         if(openAfter) appImManager.setInnerPeer({peerId: chatId.toPeerId(true)});
         handleMissingInvitees(chatId, missingInvitees);
+      }, (err) => {
+        console.error('createGroup error', err);
+        toggle();
       });
     }, {listenerSetter: this.listenerSetter});
 

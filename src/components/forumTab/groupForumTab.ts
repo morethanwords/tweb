@@ -5,7 +5,7 @@ import apiManagerProxy from '@lib/apiManagerProxy';
 import rootScope from '@lib/rootScope';
 import {AutonomousForumTopicList} from '@components/autonomousDialogList/forumTopics';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
-import {ChatType} from '@components/chat/chat';
+import {ChatType} from '@components/chat/chatType';
 import PopupElement from '@components/popups';
 import PopupDeleteDialog from '@components/popups/deleteDialog';
 import appSidebarLeft from '@components/sidebarLeft';

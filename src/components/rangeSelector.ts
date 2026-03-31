@@ -169,7 +169,7 @@ export default class RangeSelector {
       rectMax
     );
 
-    if(!this.vertical && I18n.isRTL) {
+    if(!this.vertical && I18n.getIsRTL()) {
       offsetAxisValue = rectMax - offsetAxisValue;
     }
 

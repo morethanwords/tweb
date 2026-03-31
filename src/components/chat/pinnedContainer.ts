@@ -15,6 +15,7 @@ import {attachClickEvent} from '@helpers/dom/clickEvent';
 import {Message, StoryItem} from '@layer';
 import safeAssign from '@helpers/object/safeAssign';
 import ButtonIcon from '@components/buttonIcon';
+import {MyDocument} from '../../lib/appManagers/appDocsManager';
 
 const classNames: string[] = ['is-pinned-message-shown', 'is-pinned-audio-shown'];
 const CLASSNAME_BASE = 'pinned-container';
@@ -25,6 +26,7 @@ export type WrapPinnedContainerOptions = {
   message?: Message.message | Message.messageService,
   storyItem?: StoryItem.storyItem,
   isChatSensitive?: boolean,
+  savedMusicDocId?: DocId,
 };
 
 export default class PinnedContainer {
@@ -142,9 +144,14 @@ export default class PinnedContainer {
   }
 
   public fill(options: WrapPinnedContainerOptions) {
-    const {message} = options;
+    const {message, savedMusicDocId} = options;
     this.container.dataset.peerId = '' + message.peerId;
     this.container.dataset.mid = '' + message.mid;
+    if(savedMusicDocId) {
+      this.container.dataset.savedMusicDocId = '' + savedMusicDocId;
+    } else {
+      delete this.container.dataset.savedMusicDocId;
+    }
     this.divAndCaption.fill(options);
     this.topbar?.setUtilsWidth();
   }

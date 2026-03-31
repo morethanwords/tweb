@@ -5,11 +5,11 @@
  */
 
 import type {MyDocument} from '@appManagers/appDocsManager';
+import getDocumentInput from '@appManagers/utils/docs/getDocumentInput';
 import type {MyDraftMessage} from '@appManagers/appDraftsManager';
 import type {AppMessagesManager, MessageSendingParams, MyMessage, SuggestedPostPayload} from '@appManagers/appMessagesManager';
 import type Chat from '@components/chat/chat';
 import {AppImManager, APP_TABS} from '@lib/appImManager';
-import '../../../public/recorder.min';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import opusDecodeController from '@lib/opusDecodeController';
 import {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable, ButtonMenuSync} from '@components/buttonMenu';
@@ -18,7 +18,7 @@ import PopupCreatePoll from '@components/popups/createPoll';
 import PopupForward from '@components/popups/forward';
 import PopupNewMedia, {getCurrentNewMediaPopup} from '@components/popups/newMedia';
 import {toast, toastNew} from '@components/toast';
-import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageMedia, InputReplyTo, Chat as MTChat, User, ChatFull, Dialog} from '@layer';
+import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageMedia, InputReplyTo, Chat as MTChat, User, ChatFull, Dialog, PhotoSize, Photo, Document} from '@layer';
 import StickersHelper from '@components/chat/stickersHelper';
 import ButtonIcon from '@components/buttonIcon';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
@@ -32,7 +32,7 @@ import tsNow from '@helpers/tsNow';
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
 import {IS_MOBILE, IS_MOBILE_SAFARI} from '@environment/userAgent';
 import I18n, {FormatterArguments, i18n, join, LangPackKey} from '@lib/langPack';
-import {AttachedMediaType, canUploadAsWhenEditing, createAutoDeleteIcon, generateTail} from '@components/chat/utils';
+import {AttachedMediaType, canUploadAsWhenEditing, createAutoDeleteIcon, generateTail, getMediaTypeForMessage, slowModeTimer} from '@components/chat/utils';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import ButtonCorner from '@components/buttonCorner';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
@@ -105,7 +105,7 @@ import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUserna
 import replaceContent from '@helpers/dom/replaceContent';
 import getTextWidth from '@helpers/canvas/getTextWidth';
 import {FontFull} from '@config/font';
-import {ChatType} from '@components/chat/chat';
+import {ChatType} from './chatType';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import idleController from '@helpers/idleController';
 import Icon from '@components/icon';
@@ -144,6 +144,20 @@ import {makeMessageMediaInputForSuggestedPost} from '@appManagers/utils/messages
 import showFrozenPopup from '@components/popups/frozen';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
 import {setPeerColorToElement} from '@components/peerColors';
+import getMainGroupedMessage from '@lib/appManagers/utils/messages/getMainGroupedMessage';
+import appDownloadManager, {DownloadBlob} from '@lib/appDownloadManager';
+import {MediaEditorProps} from '@components/mediaEditor/mediaEditor';
+import {NumberPair} from '@components/mediaEditor/types';
+import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
+import AttachMenuButton from './attachMenuButton';
+import pause from '@helpers/schedulers/pause';
+import onMediaLoad from '@helpers/onMediaLoad';
+import createVideo from '@helpers/dom/createVideo';
+import {MAX_EDITABLE_VIDEO_SIZE} from '@components/mediaEditor/support';
+import getDocumentDownloadOptions from '@lib/appManagers/utils/docs/getDocumentDownloadOptions';
+import getPhotoDownloadOptions from '@lib/appManagers/utils/photos/getPhotoDownloadOptions';
+import {getFileNameByLocation} from '@helpers/fileName';
+import {Middleware, getMiddleware, MiddlewareHelper} from '@helpers/middleware';
 
 // console.log('Recorder', Recorder);
 
@@ -167,6 +181,13 @@ export type ChatInputReplyTo = Pick<MessageSendingParams, 'replyToMsgId' | 'repl
 
 const CLASS_NAME = 'chat-input';
 const PEER_EXCEPTIONS = new Set<ChatType>([ChatType.Scheduled, ChatType.Stories, ChatType.Saved]);
+
+type WatchDownloadProgressArgs<T> = {
+  getDownloadPromise: () => DownloadBlob;
+  getResult: () => Promise<T>;
+  middleware: Middleware;
+  cancel: () => void;
+};
 
 export default class ChatInput {
   // private static AUTO_COMPLETE_REG_EXP = /(\s|^)((?::|.)(?!.*[:@]).*|(?:[@\/]\S*))$/;
@@ -192,7 +213,7 @@ export default class ChatInput {
 
   private replyKeyboard: ReplyKeyboard;
 
-  public attachMenu: HTMLElement;
+  public attachMenu: InstanceType<typeof AttachMenuButton>;
   private attachMenuButtons: ButtonMenuItemOptionsVerifiable[];
 
   public btnSuggestPost: HTMLElement;
@@ -246,6 +267,7 @@ export default class ChatInput {
   public editMessage: Message.message;
   private noWebPage: true;
   public scheduleDate: number;
+  public scheduleRepeatPeriod: number;
   public sendSilent: true;
   public startParam: string;
   public invertMedia: boolean;
@@ -280,6 +302,7 @@ export default class ChatInput {
   private mentionsHelper: MentionsHelper;
   private inlineHelper: InlineHelper;
   private listenerSetter: ListenerSetter;
+  private middlewareHelper: MiddlewareHelper;
   private hoverListenerSetter: ListenerSetter;
 
   private pinnedControlBtn: HTMLButtonElement;
@@ -374,6 +397,7 @@ export default class ChatInput {
 
   public suggestedPost: SuggestedPostPayload;
   private inputHelperNavigationItem: NavigationItem;
+  private placeholderParamsMiddlewareHelper: MiddlewareHelper;
 
   constructor(
     public chat: Chat,
@@ -383,6 +407,7 @@ export default class ChatInput {
   ) {
     this.listenerSetter = new ListenerSetter();
     this.hoverListenerSetter = new ListenerSetter();
+    this.middlewareHelper = getMiddleware();
     this.excludeParts = {};
     this.isFocused = false;
     this.emoticonsDropdown = emoticonsDropdown;
@@ -425,6 +450,8 @@ export default class ChatInput {
     if(!this.excludeParts.downButton) {
       this.constructGoDownButton();
     }
+
+    this.placeholderParamsMiddlewareHelper = getMiddleware();
 
     // * constructor end
 
@@ -806,7 +833,8 @@ export default class ChatInput {
       listenerSetter: this.listenerSetter,
       managers: this.managers,
       btnHover: this.btnToggleReplyMarkup,
-      chatInput: this
+      chatInput: this,
+      middleware: this.middlewareHelper.get()
     });
     this.listenerSetter.add(this.replyKeyboard)('open', () => this.btnToggleReplyMarkup.classList.add('active'));
     this.listenerSetter.add(this.replyKeyboard)('close', () => this.btnToggleReplyMarkup.classList.remove('active'));
@@ -937,7 +965,7 @@ export default class ChatInput {
       sendingParams.confirmedPaymentResult = preparedPaymentResult;
 
       const duration = (Date.now() - this.recordStartTime) / 1000 | 0;
-      const dataBlob = new Blob([typedArray], {type: 'audio/ogg'});
+      const dataBlob = new Blob([typedArray as BlobPart], {type: 'audio/ogg'});
       opusDecodeController.decode(typedArray, true).then((result) => {
         opusDecodeController.setKeepAlive(false);
 
@@ -1006,6 +1034,8 @@ export default class ChatInput {
 
     // const getSendMediaRights = () => Promise.all([this.chat.canSend('send_photos'), this.chat.canSend('send_videos')]).then(([photos, videos]) => ({photos, videos}));
 
+    const inputThis = this;
+
     this.attachMenuButtons = [{
       icon: 'image',
       text: 'Chat.Input.Attach.PhotoOrVideo',
@@ -1028,6 +1058,15 @@ export default class ChatInput {
       onClick: () => this.onAttachClick(true),
       verify: () => canUploadAsWhenEditing({asWhat: 'document', message: this.editMessage})
       // verify: () => this.chat.canSend('send_docs')
+    }, {
+      icon: 'brush',
+      get text() {
+        return inputThis.editMessage?.media?._ === 'messageMediaPhoto' ?
+          'EditThisPhoto' :
+          'EditThisVideo';
+      },
+      onClick: () => this.editMediaWithEditor(),
+      verify: () => this.editMessage && getMediaTypeForMessage(this.editMessage) === 'media' && canEditMediaWithEditor(this.editMessage?.media)
     }, {
       icon: 'gift',
       text: 'GiftPremium',
@@ -1078,7 +1117,10 @@ export default class ChatInput {
     }];
 
     const attachMenuButtons = this.attachMenuButtons.slice();
-    this.attachMenu = ButtonMenuToggle({
+    this.attachMenu = new AttachMenuButton;
+
+    ButtonMenuToggle({
+      container: this.attachMenu,
       buttonOptions: {noRipple: true},
       listenerSetter: this.listenerSetter,
       direction: 'top-left',
@@ -1136,7 +1178,6 @@ export default class ChatInput {
       }
     });
     this.attachMenu.classList.add('attach-file');
-    this.attachMenu.firstElementChild.replaceWith(Icon(getAttachIcon()));
 
     this.btnSuggestPost = ButtonIcon('suggested hide');
     attachClickEvent(this.btnSuggestPost, wrapAsyncClickHandler(async() => {
@@ -1735,7 +1776,7 @@ export default class ChatInput {
     return user.status?._ !== 'userStatusOnline';
   };
 
-  public setScheduleTimestamp(timestamp: number, callback: () => void) {
+  public setScheduleTimestamp(timestamp: number, callback: () => void, repeatPeriod?: number) {
     const middleware = this.getMiddleware();
     const minTimestamp = (Date.now() / 1000 | 0) + 10;
     if(timestamp <= minTimestamp) {
@@ -1743,6 +1784,7 @@ export default class ChatInput {
     }
 
     this.scheduleDate = timestamp;
+    this.scheduleRepeatPeriod = repeatPeriod;
     callback();
 
     if(this.chat.type !== ChatType.Scheduled && this.chat.type !== ChatType.Stories && timestamp) {
@@ -1765,7 +1807,8 @@ export default class ChatInput {
 
   public scheduleSending = async(
     callback: () => void = this.sendMessage.bind(this, true),
-    initDate = new Date()
+    initDate?: Date,
+    initRepeatPeriod?: number
   ) => {
     const middleware = this.getMiddleware();
     const canSendWhenOnline = await this.canSendWhenOnline();
@@ -1774,15 +1817,18 @@ export default class ChatInput {
     }
 
     PopupElement.createPopup(PopupSchedule, {
-      initDate,
-      onPick: (timestamp) => {
+      initDate: initDate ?? new Date(),
+      addMinutes: initDate === undefined,
+      onPick: (timestamp, repeatPeriod) => {
         if(!middleware()) {
           return;
         }
 
-        this.setScheduleTimestamp(timestamp, callback);
+        this.setScheduleTimestamp(timestamp, callback, repeatPeriod);
       },
-      canSendWhenOnline
+      canSendWhenOnline,
+      canRepeat: true,
+      initRepeatPeriod
     }).show();
   };
 
@@ -1922,8 +1968,10 @@ export default class ChatInput {
     // this.chat.log.error('Input destroying');
 
     this.autocompleteHelperController.destroy();
+    this.placeholderParamsMiddlewareHelper.destroy();
     appNavigationController.removeItem(this.inputHelperNavigationItem);
     this.listenerSetter.removeAll();
+    this.middlewareHelper.destroy();
     this.setCurrentHover();
   }
 
@@ -2096,7 +2144,7 @@ export default class ChatInput {
       this.chat?.canSend('send_plain') || true,
       this.getNeededFakeContainer(startParam),
       modifyAckedPromise(this.managers.acknowledged.appProfileManager.getProfileByPeerId(peerId)),
-      btnScheduled ? modifyAckedPromise(this.managers.acknowledged.appMessagesManager.getScheduledMessages(peerId)) : undefined,
+      btnScheduled && !this.chat.threadId ? modifyAckedPromise(this.managers.acknowledged.appMessagesManager.getScheduledMessages(peerId)) : undefined,
       sendAs ? (sendAs.setPeerId(peerId), sendAs.updateManual(true)) : undefined,
       wrapPeerTitle({peerId, onlyFirstName: true}),
       this.chat.isPremiumRequiredToContact(),
@@ -2232,6 +2280,8 @@ export default class ChatInput {
         });
       }
 
+      haveSomethingInControl ||= this.chat.isBotforum && this.chat.canManageBotforumTopics;
+
       this.botStartBtn.classList.toggle('hide', haveSomethingInControl);
 
       if(this.messageInput) {
@@ -2355,7 +2405,8 @@ export default class ChatInput {
     this.updateOffset('commands', forwards, skipAnimation, useRafs, true);
   }
 
-  private async getPlaceholderParams(canSend?: boolean): Promise<Parameters<ChatInput['updateMessageInputPlaceholder']>[0]> {
+  public async getPlaceholderParams(canSend?: boolean): Promise<Parameters<ChatInput['updateMessageInputPlaceholder']>[0]> {
+    this.placeholderParamsMiddlewareHelper.clean();
     canSend ??= await this.chat.canSend('send_plain');
     const {peerId, threadId, isForum, type} = this.chat;
     let key: LangPackKey, args: FormatterArguments, inputStarsCountEl: HTMLElement;
@@ -2371,13 +2422,23 @@ export default class ChatInput {
         this.chat.monoforumThreadId || this.directMessagesHandler.store.isReplying ?
           'Message' :
           'ChannelDirectMessages.ChooseMessage';
+    } else if(this.chat.isBotforum && !this.chat.canManageBotforumTopics && !this.chat.threadId) {
+      key = 'OffThreadMessage'
     } else if(
       (this.sendAsPeerId !== undefined && this.sendAsPeerId !== rootScope.myId) ||
       await this.managers.appMessagesManager.isAnonymousSending(peerId)
     ) {
       key = 'SendAnonymously';
     } else if(type === ChatType.Stories) {
-      key = 'Story.ReplyPlaceholder';
+      const stealthModeActiveUntilDate = this.chat.stealthMode?.active_until_date || 0;
+      if(stealthModeActiveUntilDate > tsNow(true)) {
+        const {element, dispose} = slowModeTimer(() => stealthModeActiveUntilDate - tsNow(true));
+        key = 'Stories.StealthMode.Placeholder';
+        args = [element];
+        this.placeholderParamsMiddlewareHelper.get().onClean(dispose);
+      } else {
+        key = 'Story.ReplyPlaceholder';
+      }
     } else if(isForum && type === ChatType.Chat && !threadId) {
       const topic = await this.managers.dialogsStorage.getForumTopic(peerId, GENERAL_TOPIC_ID);
       if(topic) {
@@ -2400,7 +2461,15 @@ export default class ChatInput {
     return {key, args, inputStarsCountEl};
   }
 
-  private updateMessageInputPlaceholder({key, args = [], inputStarsCountEl}: {key: LangPackKey, args?: FormatterArguments, inputStarsCountEl?: HTMLElement}) {
+  public updateMessageInputPlaceholder({
+    key,
+    args = [],
+    inputStarsCountEl
+  }: {
+    key: LangPackKey,
+    args?: FormatterArguments,
+    inputStarsCountEl?: HTMLElement
+  }) {
     // console.warn('[input] update placeholder');
     // const i = I18n.weakMap.get(this.messageInput) as I18n.IntlElement;
     const i = I18n.weakMap.get(this.messageInputField.placeholder) as I18n.IntlElement;
@@ -2723,7 +2792,7 @@ export default class ChatInput {
 
     this.checkAutocomplete(richValue, caretPos, entities);
 
-    processCurrentFormatting(this.messageInput);
+    processCurrentFormatting(this.messageInput, undefined, (e as InputEvent)?.inputType as any);
 
     this.updateSendBtn();
   };
@@ -3169,17 +3238,9 @@ export default class ChatInput {
         return false;
       }
 
-      const s = document.createElement('span');
-      onClose = eachSecond(() => {
-        const leftDuration = getLeftDuration();
-        s.replaceChildren(wrapSlowModeLeftDuration(leftDuration));
-
-        if(!leftDuration) {
-          close();
-        }
-      }, true);
-
-      textElement = i18n('SlowModeHint', [s]);
+      const {element, dispose} = slowModeTimer(getLeftDuration);
+      onClose = dispose;
+      textElement = i18n('SlowModeHint', [element]);
     }
 
     const {close} = showTooltip({
@@ -3332,7 +3393,7 @@ export default class ChatInput {
       }).catch((e: Error) => {
         switch(e.name as string) {
           case 'NotAllowedError': {
-            toast('Please allow access to your microphone');
+            toastNew({langPackKey: 'NoMicrophoneAccess'});
             break;
           }
 
@@ -3692,7 +3753,9 @@ export default class ChatInput {
     });
 
     createEffect(on(() => store.isEditing, (isEditing) => {
-      this.attachMenu.firstElementChild.replaceChildren(Icon(getAttachIcon(isEditing)));
+      this.attachMenu.feedProps({
+        isEditing: isEditing
+      });
     }, {
       defer: true
     }));
@@ -3712,11 +3775,11 @@ export default class ChatInput {
     createEffect(() => {
       if(!store.isMonoforumAllChats) return;
 
-      this.getPlaceholderParams().then(params => this.updateMessageInputPlaceholder(params));
+      this.getPlaceholderParams().then((params) => this.updateMessageInputPlaceholder(params));
 
       if(store.isReplying) return;
 
-      this.messageInputField?.input?.classList.add('hide')
+      this.messageInputField?.input?.classList.add('hide');
       this.attachMenu?.classList.add('hide');
       this.messageInputField?.setHidden(true);
       this.btnToggleEmoticons?.setAttribute('disabled', '');
@@ -3735,11 +3798,11 @@ export default class ChatInput {
     });
 
     createEffect(() => {
-      this.getPlaceholderParams().then(params => this.updateMessageInputPlaceholder(params));
+      this.getPlaceholderParams().then((params) => this.updateMessageInputPlaceholder(params));
 
       if(!store.isSuggestingUneditablePostChange) return;
 
-      this.messageInputField?.input?.classList.add('hide')
+      this.messageInputField?.input?.classList.add('hide');
       this.messageInputField?.setHidden(true);
       this.btnToggleEmoticons?.setAttribute('disabled', '');
       this.autocompleteHelperController.hideOtherHelpers();
@@ -3786,6 +3849,7 @@ export default class ChatInput {
     }
 
     this.scheduleDate = undefined;
+    this.scheduleRepeatPeriod = undefined;
     this.sendSilent = undefined;
 
     const {totalEntities} = this.getValueAndEntities(this.messageInput);
@@ -3911,10 +3975,23 @@ export default class ChatInput {
       const forwarding = copy(this.forwarding);
       // setTimeout(() => {
       for(const fromPeerId in forwarding) {
+        const mids = forwarding[fromPeerId];
+        if(mids.length === 1) {
+          const msg = await this.managers.appMessagesManager.getMessageByPeer(fromPeerId.toPeerId(), mids[0]) as Message.message;
+          if(msg?.pFlags?.fakeForSavedMusic) {
+            const doc = (msg.media as MessageMedia.messageMediaDocument).document as MyDocument;
+            this.managers.appMessagesManager.sendOther({
+              ...sendingParams,
+              inputMedia: {_: 'inputMediaDocument', id: getDocumentInput(doc), pFlags: {}}
+            });
+            this.managers.appMessagesManager.deleteMessageFromHistoryStorage(fromPeerId.toPeerId(), mids[0]);
+            continue;
+          }
+        }
         this.managers.appMessagesManager.forwardMessages({
           ...sendingParams,
           fromPeerId: fromPeerId.toPeerId(),
-          mids: forwarding[fromPeerId],
+          mids,
           dropAuthor: this.forwardElements && this.forwardElements.hideSender.checkboxField.checked,
           dropCaptions: this.isDroppingCaptions()
         }).catch(async(err: ApiError) => {
@@ -4252,7 +4329,7 @@ export default class ChatInput {
       if(!message) { // load missing replying message
         title = i18n('Loading');
 
-        this.managers.appMessagesManager.reloadMessages(replyToPeerId, replyToMsgId).then((_message) => {
+        this.managers.appMessagesManager.reloadMessage(replyToPeerId, replyToMsgId).then((_message) => {
           if(!deepEqual(this.getReplyTo(), replyTo)) {
             return;
           }
@@ -4314,7 +4391,7 @@ export default class ChatInput {
     this.center(true);
   }
 
-  public clearHelper(type?: ChatInputHelperType) {
+  public clearHelper(type?: ChatInputHelperType, willHaveHelper?: boolean) {
     if(this.helperType === 'edit' && type !== 'edit') {
       this.clearInput();
     }
@@ -4351,7 +4428,11 @@ export default class ChatInput {
       this.restoreInputLock = undefined;
     }
 
-    if(this.chat.container && this.chat.container.classList.contains('is-helper-active')) {
+    if(
+      this.chat.container &&
+      this.chat.container.classList.contains('is-helper-active') &&
+      !willHaveHelper
+    ) {
       appNavigationController.removeByType('input-helper');
       this.chat.container.classList.remove('is-helper-active');
       this.t();
@@ -4414,7 +4495,7 @@ export default class ChatInput {
     }
 
     if(type !== 'webpage') {
-      this.clearHelper(type);
+      this.clearHelper(type, true);
       this.helperType = type;
       this.helperFunc = callerFunc;
     }
@@ -4537,8 +4618,261 @@ export default class ChatInput {
 
     return element;
   }
+
+  private async tryGetEditMediaElementFromChat() {
+    const groupedId = this.editMessage?.grouped_id;
+    const groupedMessages = groupedId ? await this.managers.appMessagesManager.getMessagesByGroupedId(groupedId) : undefined;
+
+    const mainMessage = groupedId ? getMainGroupedMessage(groupedMessages) : this.editMessage;
+    const mainMessageMid = mainMessage?.mid;
+
+    if(!mainMessage) return;
+    const bubble = this.chat.bubbles.getBubble(mainMessage.peerId, mainMessageMid);
+    if(!bubble) return;
+
+    let mediaElement: Element;
+    const mediaSelectors = ['.media-video', '.media-container-aspecter .media-photo', '.media-photo']; // Prioritize video over photo, as there might be both (probably the photo is the thumbnail)
+    const getMedia = (element: Element) => mediaSelectors.map(selector => element.querySelector(selector)).filter(Boolean)[0];
+    if(groupedId) {
+      const groupedItem = bubble.querySelector(`.grouped-item[data-mid="${this.editMessage.mid}"]`);
+      mediaElement = getMedia(groupedItem);
+    } else {
+      mediaElement = getMedia(bubble);
+    }
+
+    if(!(mediaElement instanceof HTMLImageElement || mediaElement instanceof HTMLVideoElement)) return;
+
+    const bcr = mediaElement.getBoundingClientRect();
+    if(!bcr.width || !bcr.height) return;
+
+    const bubblesBcr = this.chat.bubbles.container.getBoundingClientRect();
+
+    if(bcr.top < bubblesBcr.top || bcr.bottom > bubblesBcr.bottom) return;
+
+    return mediaElement;
+  }
+
+  private async editMediaWithEditor(): Promise<void> {
+    if(!this.editMessage) return;
+
+    const media = this.editMessage.media;
+
+    const mediaElement = await this.tryGetEditMediaElementFromChat();
+
+    const payload = getOpenMediaPayload(media);
+    if(!payload) return;
+
+    const middlewareHelper = this.getMiddleware().create();
+    const middleware = middlewareHelper.get();
+
+    let downloadPromise: DownloadBlob;
+    const {result, waitBeforeCleanup} = await this.watchDownloadProgress({
+      getDownloadPromise: () => (downloadPromise = payload.downloadMediaBlob()),
+      getResult: async() => {
+        const mediaBlob = await downloadPromise;
+        const mediaUrl = await apiManagerProxy.invoke('createObjectURL', mediaBlob);
+        let createdMediaElement: HTMLVideoElement | HTMLImageElement;
+        try {
+          createdMediaElement = !mediaElement ? await payload.createCanvasSource(mediaUrl, middleware) : undefined;
+        } catch{}
+
+        return {mediaBlob, mediaUrl, createdMediaElement};
+      },
+      middleware,
+      cancel: () => middlewareHelper.destroy()
+    });
+
+    if(!result) return;
+
+    if(!middleware()) return;
+
+    const {mediaBlob, mediaUrl, createdMediaElement} = result;
+
+    if(!mediaElement && !createdMediaElement) return;
+
+    const {openMediaEditorFromMedia, openMediaEditorFromMediaNoAnimation} = await import('@components/mediaEditor');
+
+    if(!middleware()) return;
+
+    const openEditor = mediaElement ? openMediaEditorFromMedia : openMediaEditorFromMediaNoAnimation;
+    const usedMediaElement = mediaElement || createdMediaElement;
+
+    waitBeforeCleanup().then(() => {
+      middlewareHelper.destroy();
+    });
+
+    openEditor({
+      managers: this.managers,
+      mediaSrc: mediaUrl,
+      mediaType: payload.mediaType,
+      getMediaBlob: () => Promise.resolve(mediaBlob),
+      rect: usedMediaElement.getBoundingClientRect(),
+      animatedCanvasSize: getSourceSize(usedMediaElement),
+      source: usedMediaElement,
+      onClose: () => { },
+      onEditFinish: async(result) => {
+        const popup = new PopupNewMedia(this.chat, [
+          {
+            file: new File([mediaBlob], payload.fileName, {type: mediaBlob.type}),
+            editResult: result
+          }
+        ], 'media');
+
+        popup.show(false);
+      },
+      canImageResultInGIF: !this.isEditingMediaFromAlbum()
+    });
+  }
+
+  private async watchDownloadProgress<T>({getDownloadPromise, getResult, middleware, cancel}: WatchDownloadProgressArgs<T>) {
+    const minProgress = 0.1;
+
+    let result: T, wasLoading = false, timeout: number, waitBeforeCleanup: () => Promise<void> = async() => {};
+
+    try {
+      const downloadPromise = getDownloadPromise();
+
+      middleware.onDestroy(() => {
+        downloadPromise.cancel?.();
+
+        if(!wasLoading) return;
+        this.attachMenu.feedProps({
+          isLoading: false,
+          loadingProgress: undefined,
+          onCancel: undefined
+        });
+      });
+
+      downloadPromise.addNotifyListener((details: {done: number, total: number}) => {
+        if(!middleware()) return;
+
+        this.attachMenu.feedProps({
+          loadingProgress: Math.max(minProgress, details.done / details.total) || minProgress
+        });
+      });
+
+      // Late start in case the media is cached
+      timeout = self.setTimeout(() => {
+        wasLoading = true;
+        this.attachMenu.feedProps({
+          isLoading: true,
+          loadingProgress: minProgress,
+          onCancel: () => {
+            cancel();
+          }
+        });
+      }, 120);
+
+      result = await getResult();
+    } finally {
+      self.clearTimeout(timeout);
+
+      if(wasLoading) {
+        this.attachMenu.feedProps({
+          loadingProgress: 1
+        });
+
+        await pause(150); // wait for the loading animation to animate to full
+
+        waitBeforeCleanup = () => pause(400);
+      }
+    }
+
+    return {result, waitBeforeCleanup};
+  }
+
+  private isEditingMediaFromAlbum() {
+    return !!this.editMessage?.grouped_id;
+  }
 }
 
-const getAttachIcon = (isEditing?: boolean): Icon => {
-  return isEditing ? 'attach_edit' : 'attach';
+function getOpenMediaPayload(media: MessageMedia | null | undefined) {
+  if(!media) return;
+  if(media._ === 'messageMediaPhoto' && media.photo?._ === 'photo') return getOpenMediaPhotoPayload(media.photo);
+  if(media._ === 'messageMediaDocument' && media.document?._ === 'document') return getOpenMediaVideoPayload(media.document);
+}
+
+function canEditMediaWithEditor(media: MessageMedia) {
+  return !!getOpenMediaPayload(media);
+}
+
+type OpenMediaPayload = {
+  fileName: string;
+  mediaType: MediaEditorProps['mediaType']
+  createCanvasSource: (url: string, middleware: Middleware) => Promise<HTMLImageElement | HTMLVideoElement>;
+  downloadMediaBlob: () => DownloadBlob;
 };
+
+function getOpenMediaPhotoPayload(photo: Photo.photo): OpenMediaPayload {
+  const photoSizes = photo.sizes.slice().filter((size) => (size as PhotoSize.photoSize).w) as PhotoSize.photoSize[];
+  photoSizes.sort((a, b) => b.size - a.size);
+  const fullPhotoSize = photoSizes?.[0];
+
+  if(!fullPhotoSize?.w || !fullPhotoSize?.h) return;
+
+  return {
+    fileName: tryGetFileName(() => getFileNameByLocation(getPhotoDownloadOptions(photo, fullPhotoSize).location)),
+    mediaType: 'image',
+    createCanvasSource: createImageSource,
+    downloadMediaBlob: () =>
+      appDownloadManager.downloadMedia({
+        media: photo,
+        thumb: fullPhotoSize
+      })
+  };
+}
+
+function getOpenMediaVideoPayload(document: Document.document): OpenMediaPayload {
+  if(!document.size || document.size > MAX_EDITABLE_VIDEO_SIZE) return;
+
+  return {
+    fileName: tryGetFileName(() => document.file_name || getFileNameByLocation(getDocumentDownloadOptions(document).location)),
+    mediaType: 'video',
+    createCanvasSource: createVideoSource,
+    downloadMediaBlob: () =>
+      appDownloadManager.downloadMedia({
+        media: document,
+        thumb: undefined
+      })
+  };
+}
+
+async function createImageSource(url: string) {
+  const img = new Image();
+  await renderImageFromUrlPromise(img, url);
+  return img;
+}
+
+async function createVideoSource(url: string, middleware: Middleware) {
+  const video = createVideo({middleware});
+
+  video.playsInline = true;
+  video.src = url;
+  video.controls = false;
+  video.muted = true;
+  video.preload = 'auto';
+
+  const deferred = deferredPromise<void>();
+  video.requestVideoFrameCallback(() => {
+    deferred.resolve();
+  });
+
+  await onMediaLoad(video);
+
+  await deferred;
+
+  return video;
+}
+
+function getSourceSize(source: HTMLVideoElement | HTMLImageElement): NumberPair {
+  return source instanceof HTMLVideoElement ? [source.videoWidth, source.videoHeight] : [source.naturalWidth, source.naturalHeight];
+}
+
+function tryGetFileName(fn: () => string) {
+  const defaultFileName = 'edited-media';
+  try {
+    return fn() || defaultFileName;
+  } catch{
+    return 'edited-media';
+  }
+}

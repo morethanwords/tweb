@@ -28,6 +28,7 @@ import wrapDraftText from '@lib/richTextProcessor/wrapDraftText';
 import {createCustomFiller, insertCustomFillers} from '@lib/richTextProcessor/wrapRichText';
 import type {MarkupTooltipTypes} from '@components/chat/markupTooltip';
 import forEachReverse from '@helpers/array/forEachReverse';
+import findAndSpliceAll from '@helpers/array/findAndSpliceAll';
 
 export async function insertRichTextAsHTML(input: HTMLElement, text: string, entities: MessageEntity[], wrappingForPeerId?: PeerId) {
   const loadPromises: Promise<any>[] = [];
@@ -305,7 +306,7 @@ let init = () => {
           plainTextLength += line.length;
           richValueSplitted.splice(plainTextLength, 0, '\n');
           richValue.entities.forEach((entity) => {
-            if(entity.offset >= (plainTextLength - lineIndex)) {
+            if(entity.offset > (plainTextLength - lineIndex + 1)) {
               entity.offset += 1;
             }
           });
@@ -335,6 +336,13 @@ let init = () => {
       text = plainText;
       entities = parseEntities(text);
       entities = entities.filter(filterEntity);
+    }
+
+    if(entities?.length) {
+      const ignoreEntities = new Set<MessageEntity['_']>([
+        'messageEntityPhone'
+      ]);
+      findAndSpliceAll(entities, (entity) => ignoreEntities.has(entity._));
     }
 
     insertRichTextAsHTML(input, text, entities, peerId);

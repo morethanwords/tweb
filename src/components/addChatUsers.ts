@@ -14,7 +14,7 @@ import PopupElement from '@components/popups';
 import PopupPeer, {PopupPeerButtonCallbackCheckboxes, PopupPeerCheckboxOptions} from '@components/popups/peer';
 import PopupPickUser from '@components/popups/pickUser';
 import PopupPremium from '@components/popups/premium';
-import AppAddMembersTab from '@components/sidebarLeft/tabs/addMembers';
+import {AppAddMembersTab} from '@components/solidJsTabs';
 import SidebarSlider from '@components/slider';
 import {toastNew} from '@components/toast';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
@@ -228,7 +228,7 @@ export default async function addChatUsers({
           rootScope.managers.appChatsManager.inviteToChannel(id, peerIds) :
           rootScope.managers.appChatsManager.addChatUser(id, peerIds, checked.size ? undefined : 0);
         promise.then((missingInvitees) => handleMissingInvitees(id, missingInvitees), onError);
-        tab.attachToPromise(promise);
+        tab.payload.attachToPromise(promise);
       });
 
       return false;

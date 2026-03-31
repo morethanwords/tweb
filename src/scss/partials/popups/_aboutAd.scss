@@ -4,6 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+@use "../../shared" as *;
+
 .popup-about-ad {
   --popup-max-width: 420px;
   $parent: ".popup";

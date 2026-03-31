@@ -27,6 +27,7 @@ import EventListenerBase from '@helpers/eventListenerBase';
 import animationIntersector from '@components/animationIntersector';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import setCurrentTime from '@helpers/dom/setCurrentTime';
+import ListLoader, {ListLoaderOptions} from '../helpers/listLoader';
 
 // TODO: Safari: проверить стрим, включить его и сразу попробовать включить видео или другую песню
 // TODO: Safari: попробовать замаскировать подгрузку последнего чанка
@@ -61,6 +62,19 @@ type MediaDetails = {
   isSingle?: boolean
 };
 
+export type MediaListLoader = ListLoader<MediaItem, Message.message> & {
+  goRound: (length: number, dispatchJump?: boolean) => void
+  getPrevious: (withOtherSide?: boolean) => MediaItem[]
+  getNext: (withOtherSide?: boolean) => MediaItem[]
+  cleanup: () => void
+  setCurrent: (item: MediaItem) => void
+  repositionTo?: (mid: number, peerId: PeerId) => boolean
+};
+export type MediaListLoaderOptions = Omit<ListLoaderOptions<MediaItem, Message.message>, 'loadMore'> & {
+  onEmptied?: () => void,
+};
+export type MediaListLoaderFactory = (options: MediaListLoaderOptions) => MediaListLoader;
+
 export type PlaybackMediaType = 'voice' | 'video' | 'audio';
 
 export class AppMediaPlaybackController extends EventListenerBase<{
@@ -85,7 +99,8 @@ export class AppMediaPlaybackController extends EventListenerBase<{
   public willBePlayedMedia: HTMLMediaElement;
   private searchContext: MediaSearchContext;
 
-  private listLoader: SearchListLoader<MediaItem>;
+  private listLoader: MediaListLoader;
+  private listLoaderFactory: MediaListLoaderFactory;
 
   public volume: number;
   public muted: boolean;
@@ -576,6 +591,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
       doc: getMediaFromMessage(message, true) as MyDocument,
       message,
       media: playingMedia,
+      isSavedMusic: Boolean(message.pFlags.fakeForSavedMusic),
       playbackParams: this.getPlaybackParams()
     };
   }
@@ -601,7 +617,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
 
       const verify = (element: MediaItem) => element.mid === mid && element.peerId === peerId;
       const listLoader = this.listLoader;
-      const current = listLoader.getCurrent();
+      const current = listLoader.current;
       if(!current || !verify(current)) {
         let jumpLength: number;
 
@@ -626,7 +642,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
 
         if(jumpLength) {
           this.go(jumpLength, false);
-        } else {
+        } else if(!listLoader.repositionTo?.(mid, peerId)) {
           this.setTargets({peerId, mid});
         }
       }
@@ -670,7 +686,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     const listLoader = this.listLoader;
     if(
       this.lockedSwitchers ||
-      (!this.round && listLoader.current && !listLoader.next.length) ||
+      (!this.round && listLoader.current && !listLoader.getNext(false).length) ||
       !listLoader.getNext(true).length ||
       !this.next()
     ) {
@@ -837,6 +853,10 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     this.willBePlayedMedia = media;
   }
 
+  public getListLoaderFactory() {
+    return this.listLoaderFactory;
+  }
+
   public setSearchContext(context: MediaSearchContext) {
     if(deepEqual(this.searchContext, context)) {
       return false;
@@ -850,10 +870,19 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     return this.searchContext;
   }
 
-  public setTargets(current: MediaItem, prev?: MediaItem[], next?: MediaItem[]) {
+  private static defaultLoaderFactory: MediaListLoaderFactory = (options: MediaListLoaderOptions) => new SearchListLoader(options);
+
+  public setTargets(
+    current: MediaItem,
+    prev?: MediaItem[],
+    next?: MediaItem[],
+    loaderFactory: MediaListLoaderFactory = AppMediaPlaybackController.defaultLoaderFactory
+  ) {
     let listLoader = this.listLoader;
-    if(!listLoader) {
-      listLoader = this.listLoader = new SearchListLoader({
+    if(!listLoader || this.listLoaderFactory !== loaderFactory) {
+      listLoader?.cleanup();
+
+      listLoader = this.listLoader = loaderFactory({
         loadCount: 10,
         loadWhenLeft: 5,
         processItem: (message: Message.message) => {
@@ -868,19 +897,23 @@ export class AppMediaPlaybackController extends EventListenerBase<{
           this.stop();
         }
       });
+      this.listLoaderFactory = loaderFactory;
     } else {
       listLoader.reset();
     }
 
-    const reverse = this.searchContext.folderId !== undefined ? false : true;
-    if(prev) {
-      listLoader.setTargets(prev, next, reverse);
-    } else {
-      listLoader.reverse = reverse;
+
+    if(listLoader instanceof SearchListLoader) {
+      const reverse = this.searchContext.folderId !== undefined ? false : true;
+      listLoader.setSearchContext(this.searchContext);
+      if(prev) {
+        listLoader.setTargets(prev, next, reverse);
+      } else {
+        listLoader.reverse = reverse;
+      }
     }
 
-    listLoader.setSearchContext(this.searchContext);
-    listLoader.current = current;
+    listLoader.setCurrent(current);
 
     listLoader.load(true);
     listLoader.load(false);

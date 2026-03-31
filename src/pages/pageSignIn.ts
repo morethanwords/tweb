@@ -30,7 +30,9 @@ import commonStateStorage from '@lib/commonStateStorage';
 import PasskeyLoginButton from '@components/passkeyLoginButton';
 
 // import _countries from '@/countries_pretty.json';
-let btnNext: HTMLButtonElement = null, btnQr: HTMLButtonElement;
+let btnNext: HTMLButtonElement = null,
+  btnQr: HTMLButtonElement,
+  passkeyButton: ReturnType<typeof PasskeyLoginButton>;
 
 const onFirstMount = () => {
   /* if(Modes.test) {
@@ -173,7 +175,7 @@ const onFirstMount = () => {
   attachClickEvent(btnNext, onSubmit);
 
   btnQr = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'Login.QR.Login'});
-  const passkeyButton = PasskeyLoginButton();
+  passkeyButton = PasskeyLoginButton();
 
   const qrMounted = false;
   btnQr.addEventListener('click', () => {
@@ -284,12 +286,11 @@ const page = new Page('page-sign', true, onFirstMount, () => {
   if(btnNext) {
     replaceContent(btnNext, i18n('Login.Next'));
     ripple(btnNext);
-    btnNext.removeAttribute('disabled');
   }
 
-  if(btnQr) {
-    btnQr.removeAttribute('disabled');
-  }
+  [btnNext, btnQr, passkeyButton?.button].filter(Boolean).forEach((btn) => {
+    btn.removeAttribute('disabled');
+  });
 
   rootScope.managers.appStateManager.pushToState('authState', {_: 'authStateSignIn'});
 });

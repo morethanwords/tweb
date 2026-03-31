@@ -81,6 +81,11 @@ export class BotforumTab extends ForumTab {
       }
     });
 
+    this.listenerSetter.add(rootScope)('dialog_drop', (dialog) => {
+      if(this.peerId !== dialog.peerId) return;
+      this.updateDialogsCount();
+    });
+
     this.listenerSetter.add(rootScope)('dialog_draft', ({dialog}) => {
       if(!isDialog(dialog) || dialog.peerId !== this.peerId) return;
       this.updateAllChatsDialog(dialog);
@@ -123,13 +128,21 @@ export class BotforumTab extends ForumTab {
       }));
 
       this.title.append(peerTitle);
-      this.subtitle.append(this.dialogsCountI18nEl = i18n('TopicsCount', [dialogs ? dialogs.count + '' : '~']))
+      this.subtitle.append(this.dialogsCountI18nEl = this.getTopicsCountI18n(dialogs ? dialogs.count : null));
     } catch{}
+  }
+
+  private getTopicsCountI18n(count: number | null) {
+    if(count === 0) {
+      return i18n('NoTopics');
+    }
+
+    return i18n('TopicsCount', [count ? count + '' : '~']);
   }
 
   private updateDialogsCount = asyncThrottle(async() => {
     if(!this.dialogsCountI18nEl) return;
     const {count} = await this.managers.dialogsStorage.getDialogs({filterId: this.peerId, limit: 1});
-    this.dialogsCountI18nEl.replaceWith(this.dialogsCountI18nEl = i18n('TopicsCount', [count + '']));
+    this.dialogsCountI18nEl.replaceWith(this.dialogsCountI18nEl = this.getTopicsCountI18n(count));
   }, 0);
 }

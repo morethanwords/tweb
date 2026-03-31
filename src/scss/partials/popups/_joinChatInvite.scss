@@ -3,6 +3,9 @@
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
+
+@use "../../shared" as *;
+
  
 .popup-join-chat-invite {
   --popup-min-width: 22.5rem;

@@ -1,6 +1,7 @@
 import {providedTabs} from '@components/solidJsTabs/providedTabs';
 import {SuperTabProvider} from '@components/solidJsTabs/superTabProvider';
 import {
+  AppAddMembersTab,
   AppDirectMessagesTab,
   AppNotificationsTab,
   AppPasscodeEnterPasswordTab,
@@ -16,6 +17,7 @@ SuperTabProvider.allTabs = providedTabs;
 export {providedTabs};
 
 export {
+  AppAddMembersTab,
   AppDirectMessagesTab,
   AppNotificationsTab,
   AppPasscodeEnterPasswordTab,

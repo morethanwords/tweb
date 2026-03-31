@@ -1,8 +1,12 @@
 import contextMenuController from '@helpers/contextMenuController';
+import {
+  canMenuFitDirection,
+  getMenuLeftPositionForDirection,
+  getMenuTopPositionForStartDirection
+} from '@helpers/positionMenu';
 import {doubleRaf} from '@helpers/schedulers';
 
-
-export type FloatingButtonMenuDirection = 'right-start' | 'left-start'; // Add other directions as necessary
+export type FloatingButtonMenuDirection = 'right-start' | 'left-start';
 
 export type AttachFloatingButtonMenuOptions = {
   element: HTMLElement;
@@ -15,8 +19,6 @@ export type AttachFloatingButtonMenuOptions = {
   onClose?: () => void;
 };
 
-const offsetFromWindowMargin = 16;
-
 export default function attachFloatingButtonMenu({
   element,
   triggerEvent,
@@ -28,9 +30,13 @@ export default function attachFloatingButtonMenu({
   onClose: onCloseArg
 }: AttachFloatingButtonMenuOptions) {
   let opened = false;
+  let hovered = false;
+  let requestId = 0;
+
   const listener = (): void => void (async() => {
+    hovered = true;
     if(opened || !canOpen()) return;
-    opened = true;
+    const currentRequestId = ++requestId;
 
     const triggerBcr = element.getBoundingClientRect();
 
@@ -39,11 +45,17 @@ export default function attachFloatingButtonMenu({
       menu = await createMenu();
     } catch{}
 
-    if(!menu) {
-      opened = false;
-      onCloseArg?.();
+    if(
+      !menu ||
+      opened ||
+      currentRequestId !== requestId ||
+      !hovered ||
+      !canOpen()
+    ) {
       return;
     }
+
+    opened = true;
 
     const onClose = async() => {
       opened = false;
@@ -52,57 +64,44 @@ export default function attachFloatingButtonMenu({
 
     document.body.append(menu);
 
+    const actualDirection = getDirection(triggerBcr, menu, direction, offset);
+    menu.style.transformOrigin = actualDirection === 'right-start' ? '0 0' : '100% 0';
 
-    if(direction === 'right-start') {
-      menu.style.transformOrigin = '0 0';
+    const left = getMenuLeftPositionForDirection(triggerBcr, menu, actualDirection === 'right-start' ? 'right' : 'left', offset);
+    const top = getMenuTopPositionForStartDirection(triggerBcr, menu, offset);
 
-      const left = getLeftPositionForRightDirection(triggerBcr, menu, offset, offsetFromWindowMargin);
-      const top = getTopPositionForStartDirection(triggerBcr, menu, offset, offsetFromWindowMargin);
-
-      menu.style.left = left + 'px';
-      menu.style.top = top + 'px';
-    } else if(direction === 'left-start') {
-      menu.style.transformOrigin = '100% 0';
-
-      const left = getLeftPositionForLeftDirection(triggerBcr, menu, offset, offsetFromWindowMargin);
-      const top = getTopPositionForStartDirection(triggerBcr, menu, offset, offsetFromWindowMargin);
-
-      menu.style.left = left + 'px';
-      menu.style.top = top + 'px';
-    }
+    menu.style.left = left + 'px';
+    menu.style.top = top + 'px';
 
     await doubleRaf();
     contextMenuController.addAdditionalMenu(menu, element, level, onClose);
   })();
 
+  const onMouseLeave = () => {
+    hovered = false;
+    ++requestId;
+  };
+
   element.addEventListener(triggerEvent, listener);
+  if(triggerEvent === 'mouseenter') {
+    element.addEventListener('mouseleave', onMouseLeave);
+  }
 
   return () => {
     element.removeEventListener(triggerEvent, listener);
+    element.removeEventListener('mouseleave', onMouseLeave);
   };
 }
 
-const getTopPositionForStartDirection = (triggerBcr: DOMRect, menu: HTMLElement, offset: [number, number], offsetFromWindowMargin: number) => {
-  let top = triggerBcr.top + offset[1];
-  const bottom = top + menu.clientHeight;
-  if(bottom + offsetFromWindowMargin > window.innerHeight) top -= bottom - window.innerHeight + offsetFromWindowMargin;
-  top = Math.max(top, offsetFromWindowMargin);
+const getDirection = (
+  triggerBcr: DOMRect,
+  menu: HTMLElement,
+  direction: FloatingButtonMenuDirection,
+  offset: [number, number]
+): FloatingButtonMenuDirection => {
+  if(direction === 'right-start') {
+    return canMenuFitDirection(triggerBcr, menu, 'right', offset) || !canMenuFitDirection(triggerBcr, menu, 'left', offset) ? 'right-start' : 'left-start';
+  }
 
-  return top;
-};
-
-const getLeftPositionForRightDirection = (triggerBcr: DOMRect, menu: HTMLElement, offset: [number, number], offsetFromWindowMargin: number) => {
-  let left = triggerBcr.right + offset[0];
-  const right = left + menu.clientWidth; // cannot use .getBoundingClientRect as it has scale
-  if(right + offsetFromWindowMargin > window.innerWidth) left -= right - window.innerWidth + offsetFromWindowMargin;
-
-  return left;
-};
-
-const getLeftPositionForLeftDirection = (triggerBcr: DOMRect, menu: HTMLElement, offset: [number, number], offsetFromWindowMargin: number) => {
-  const right = triggerBcr.left - offset[0];
-  let left = right - menu.clientWidth;
-  if(left - offsetFromWindowMargin < 0) left = offsetFromWindowMargin;
-
-  return left;
+  return canMenuFitDirection(triggerBcr, menu, 'left', offset) || !canMenuFitDirection(triggerBcr, menu, 'right', offset) ? 'left-start' : 'right-start';
 };

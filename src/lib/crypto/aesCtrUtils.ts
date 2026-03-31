@@ -22,7 +22,7 @@ export async function aesCtrPrepare({encKey, encIv, decKey, decIv}: {[k in 'encK
   const promises = a.map(([mode, key]) => {
     return subtle.importKey(
       'raw',
-      key,
+      key as BufferSource,
       {name: 'AES-CTR'},
       false,
       [mode]

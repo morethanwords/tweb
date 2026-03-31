@@ -1,13 +1,13 @@
-import {batch, createEffect, createMemo, on, onCleanup, onMount} from 'solid-js';
-
-import createElementFromMarkup from '@helpers/createElementFromMarkup';
-import {i18n} from '@lib/langPack';
-
-import {ResizableLayerProps, TextLayerInfo, TextRenderingInfoLine} from '@components/mediaEditor/types';
-import {fontInfoMap, getContrastColor, log} from '@components/mediaEditor/utils';
-import {HistoryItem, useMediaEditorContext} from '@components/mediaEditor/context';
-
 import {ResizableContainer} from '@components/mediaEditor/canvas/resizableLayers';
+import {HistoryItem, useMediaEditorContext} from '@components/mediaEditor/context';
+import {ResizableLayerProps, TextLayerInfo, TextRenderingInfoLine} from '@components/mediaEditor/types';
+import {fontInfoMap, getContrastColor} from '@components/mediaEditor/utils';
+import createElementFromMarkup from '@helpers/createElementFromMarkup';
+import track from '@helpers/solid/track';
+import {i18n} from '@lib/langPack';
+import {batch, createEffect, createMemo, on, onCleanup, onMount} from 'solid-js';
+import {modifyMutable, reconcile} from 'solid-js/store';
+
 
 export default function TextLayerContent(props: ResizableLayerProps) {
   const {editorState, mediaState, actions} = useMediaEditorContext();
@@ -17,7 +17,7 @@ export default function TextLayerContent(props: ResizableLayerProps) {
   const onFocus = () => {
     batch(() => {
       editorState.selectedResizableLayer = props.layer.id;
-      editorState.currentTextLayerInfo = {...props.layer.textInfo};
+      modifyMutable(editorState.currentTextLayerInfo, reconcile(props.layer.textInfo));
     });
   };
 
@@ -107,6 +107,7 @@ export default function TextLayerContent(props: ResizableLayerProps) {
   }
 
   createEffect(() => {
+    track(() => ({...props.layer.textInfo}));
     updateBackground();
   });
 
@@ -130,7 +131,7 @@ export default function TextLayerContent(props: ResizableLayerProps) {
   createEffect(
     on(() => ({...editorState.currentTextLayerInfo}), () => {
       if(editorState.selectedResizableLayer !== props.layer.id) return;
-      props.layer.textInfo = {...editorState.currentTextLayerInfo};
+      modifyMutable(props.layer.textInfo, reconcile(editorState.currentTextLayerInfo));
     })
   );
 

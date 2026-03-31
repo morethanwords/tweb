@@ -5,14 +5,17 @@
  */
 
 import type {ChatRights} from '@appManagers/appChatsManager';
+import type {MyDocument} from '@appManagers/appDocsManager';
 import flatten from '@helpers/array/flatten';
 import appImManager from '@lib/appImManager';
 import rootScope from '@lib/rootScope';
 import {toastNew} from '@components/toast';
 import PopupPickUser from '@components/popups/pickUser';
 import getMediaFromMessage from '@appManagers/utils/messages/getMediaFromMessage';
+import getDocumentInput from '@appManagers/utils/docs/getDocumentInput';
 import PopupElement from '.';
 import {useAppConfig, useIsFrozen} from '@stores/appState';
+import {Message, MessageMedia} from '@layer';
 
 export default class PopupForward extends PopupPickUser {
   constructor(
@@ -36,6 +39,18 @@ export default class PopupForward extends PopupPickUser {
           for(const fromPeerId in peerIdMids) {
             const mids = peerIdMids[fromPeerId];
             count += mids.length;
+            if(mids.length === 1) {
+              const message = await this.managers.appMessagesManager.getMessageByPeer(fromPeerId.toPeerId(), mids[0]) as Message.message;
+              if(message?.pFlags?.fakeForSavedMusic) {
+                const doc = (message.media as MessageMedia.messageMediaDocument).document as MyDocument;
+                this.managers.appMessagesManager.sendOther({
+                  peerId,
+                  inputMedia: {_: 'inputMediaDocument', id: getDocumentInput(doc), pFlags: {}}
+                });
+                this.managers.appMessagesManager.deleteMessageFromHistoryStorage(fromPeerId.toPeerId(), mids[0]);
+                continue;
+              }
+            }
             this.managers.appMessagesManager.forwardMessages({
               peerId,
               fromPeerId: fromPeerId.toPeerId(),
@@ -44,7 +59,7 @@ export default class PopupForward extends PopupPickUser {
           }
 
           toastNew({
-            langPackKey: count > 0 ? 'FwdMessagesToSavedMessages' : 'FwdMessageToSavedMessages'
+            langPackKey: count > 1 ? 'FwdMessagesToSavedMessages' : 'FwdMessageToSavedMessages'
           });
 
           return;

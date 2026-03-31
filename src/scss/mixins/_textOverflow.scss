@@ -4,8 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+@use "sass:meta";
+
 @mixin text-overflow($no-wrap: true) {
-  @if type-of($no-wrap) == number {
+  @if meta.type-of($no-wrap) == number {
     display: -webkit-box;
     -webkit-line-clamp: $no-wrap;
     -webkit-box-orient: vertical;

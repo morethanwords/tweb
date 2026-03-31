@@ -903,14 +903,12 @@ export class AppReactionsManager extends AppManager {
     }
 
     if(savedPeerId === undefined) {
-      if(message._ === 'messageService') return
       this.processMessageReactionsChanges({
         message,
         changedResults,
         removedResults,
         savedPeerId: this.appPeersManager.getPeerId(message.saved_peer_id)
       });
-      return
     }
 
     const tags = this.savedReactionsTags.get(savedPeerId);

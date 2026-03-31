@@ -19,7 +19,7 @@ import partition from '@helpers/array/partition';
 import getMessageThreadId from '@appManagers/utils/messages/getMessageThreadId';
 import {avatarNew} from '@components/avatarNew';
 import {MiddlewareHelper} from '@helpers/middleware';
-import {ChatType} from '@components/chat/chat';
+import {ChatType} from './chatType';
 import getFwdFromName from '@appManagers/utils/messages/getFwdFromName';
 import {getMid, isMessage, isMessageForVerificationBot} from '@components/chat/utils';
 import {canHaveSuggestedPostReplyMarkup} from '@components/chat/bubbleParts/suggestedPostReplyMarkup';
@@ -510,6 +510,7 @@ export default class BubbleGroups {
 
       if(item.message._ !== 'message') return;
       if(!bubbleAddons.continueLastTopicReplyMarkup) return;
+      if(!getMessageThreadId(item.message, {isBotforum: this.chat.isBotforum})) return;
 
       bubbleAddons.continueLastTopicReplyMarkup.feedProps<false>({
         visible: visible && !(item.message.reply_markup as ReplyMarkup.replyInlineMarkup)?.rows

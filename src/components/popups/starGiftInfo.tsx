@@ -1,8 +1,7 @@
-import {createMemo, createSignal, For, Index, JSX, Match, onMount, Show, Switch} from 'solid-js';
+import {createMemo, createSignal, Index, JSX, Match, onMount, Show, Switch} from 'solid-js';
 import PopupElement from '.';
-import {Peer, PaymentsUniqueStarGiftValueInfo, StarGift, StarGiftAttribute} from '@layer';
+import {Peer, PaymentsUniqueStarGiftValueInfo, StarGift, StarGiftAttribute, StarGiftAttributeRarity} from '@layer';
 import {MyDocument} from '@appManagers/appDocsManager';
-import {StickerTsx} from '@components/wrappers/sticker';
 import {i18n, LangPackKey} from '@lib/langPack';
 import {StarsStar} from '@components/popups/stars';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
@@ -41,7 +40,6 @@ import {getCollectibleName} from '@appManagers/utils/gifts/getCollectibleName';
 import {updateStarGift} from '@appManagers/utils/gifts/updateStarGift';
 import wrapMessageEntities from '@lib/richTextProcessor/wrapMessageEntities';
 import PopupStarGiftValue from '@components/popups/starGiftValue';
-import appSidebarRight from '@components/sidebarRight';
 import Icon from '@components/icon';
 import PopupStarGiftWear from '@components/popups/starGiftWear';
 import {setQuizHint} from '@components/poll';
@@ -53,25 +51,43 @@ import {rgbIntToHex} from '@helpers/color';
 import wrapSticker from '@components/wrappers/sticker';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
-import Animated, {SimpleAnimation} from '@helpers/solid/animations';
+import {SimpleAnimation} from '@helpers/solid/animations';
 import BezierEasing from '@vendor/bezierEasing';
 import {AnimatedSuper} from '@components/animatedSuper';
 import {ConfettiContainer, ConfettiRef} from '@components/confetti';
 import {PreloaderTsx} from '@components/putPreloader';
 import {showCreateStarGiftOfferPopup} from '@components/popups/createStarGiftOffer';
+import {getCanManagePeerGifts} from '@components/stargifts/canManageGifts';
 
-function AttributeTableButton(props: { permille: number }) {
+function AttributeTableButton(props: {rarity: StarGiftAttributeRarity}) {
+  if(props.rarity._ !== 'starGiftAttributeRarity') {
+    const map: Record<Exclude<StarGiftAttributeRarity['_'], 'starGiftAttributeRarity'>, {langKey: LangPackKey, color: string}> = {
+      'starGiftAttributeRarityUncommon': {langKey: 'StarGiftRarityUncommon', color: 'green'},
+      'starGiftAttributeRarityRare': {langKey: 'StarGiftRarityRare', color: 'blue'},
+      'starGiftAttributeRarityEpic': {langKey: 'StarGiftRarityEpic', color: 'violet'},
+      'starGiftAttributeRarityLegendary': {langKey: 'StarGiftRarityLegendary', color: 'gold'}
+    };
+
+    return (
+      <TableButtonWithTooltip
+        class={`rarity rarity-${map[props.rarity._].color} disable-hover`}
+      >
+        {i18n(map[props.rarity._].langKey)}
+      </TableButtonWithTooltip>
+    );
+  }
+
   return (
     <TableButtonWithTooltip
-      tooltipTextElement={i18n('StarGiftAttributeTooltip', [`${props.permille / 10}%`])}
+      tooltipTextElement={i18n('StarGiftAttributeTooltip', [`${props.rarity.permille / 10}%`])}
       tooltipClass="popup-star-gift-info-tooltip"
     >
-      {props.permille / 10}%
+      {props.rarity.permille / 10}%
     </TableButtonWithTooltip>
   );
 }
 
-export function AttributeValue(props: { name: string, permille: number, onClick?: () => void }) {
+export function AttributeValue(props: {name: string, rarity: StarGiftAttributeRarity, onClick?: () => void}) {
   return (
     <div class="popup-star-gift-info-attribute-value">
       {props.onClick ? (
@@ -79,7 +95,7 @@ export function AttributeValue(props: { name: string, permille: number, onClick?
           {props.name}
         </span>
       ) : props.name}
-      <AttributeTableButton permille={props.permille} />
+      <AttributeTableButton rarity={props.rarity} />
     </div>
   )
 }
@@ -102,9 +118,10 @@ function calculateEasedIntervals(count: number, duration: number): number[] {
   return intervals;
 }
 
+type AnimatedAttributeValueItem = {name: string, rarity: StarGiftAttributeRarity};
 function AnimatedAttributeValue(props: {
-  items: {name: string, rarity_permille: number}[],
-  actual: {name: string, rarity_permille: number},
+  items: AnimatedAttributeValueItem[],
+  actual: AnimatedAttributeValueItem,
   duration: number,
   count: number,
   onComplete?: () => void,
@@ -113,7 +130,7 @@ function AnimatedAttributeValue(props: {
 }) {
   const [position, setPosition] = createSignal(0);
 
-  const items: {name: string, rarity_permille: number}[] = [];
+  const items: AnimatedAttributeValueItem[] = [];
   while(items.length < props.count - 1) {
     const left = props.count - 1 - items.length;
     items.push(...props.items.slice(0, left));
@@ -170,7 +187,7 @@ function AnimatedAttributeValue(props: {
             <Match when={index === position()}>
               <AttributeValue
                 name={item().name}
-                permille={item().rarity_permille}
+                rarity={item().rarity}
                 onClick={props.onClick}
               />
             </Match>
@@ -497,7 +514,7 @@ export default class PopupStarGiftInfo extends PopupElement {
     this.construct();
   }
 
-  private _construct({value}: { value: PaymentsUniqueStarGiftValueInfo }) {
+  private _construct(props: {value: PaymentsUniqueStarGiftValueInfo | null, canManageGifts: boolean}) {
     const {
       saved,
       raw: gift,
@@ -515,12 +532,13 @@ export default class PopupStarGiftInfo extends PopupElement {
     const lastSaleDate = (gift as StarGift.starGift).last_sale_date ? (new Date((gift as StarGift.starGift).last_sale_date * 1000)) : null;
     const starsValue = (gift as StarGift.starGift).stars;
 
-    const isOwnedUniqueGift = gift._ === 'starGiftUnique' && getPeerId(gift.owner_id) === rootScope.myId
-    const canSave = gift._ === 'starGift' && isIncoming && !isConverted || (isOwnedUniqueGift && saved !== undefined)
     let input = this.gift.input;
     if(!input && gift._ === 'starGiftUnique') {
       input = {_: 'inputSavedStarGiftSlug', slug: gift.slug}
     }
+    const ownerPeerId = this.gift.ownerId;
+    const isEditableUniqueGift = gift._ === 'starGiftUnique' && ownerPeerId !== undefined && props.canManageGifts;
+    const canSave = gift._ === 'starGift' && isIncoming && !isConverted || (isEditableUniqueGift && saved !== undefined)
 
     const [isListed, setIsListed] = createSignal((gift as StarGift.starGiftUnique).resell_amount !== undefined);
     const [resellOnlyTon, setResellOnlyTon] = createSignal(this.gift.resellOnlyTon);
@@ -655,7 +673,7 @@ export default class PopupStarGiftInfo extends PopupElement {
           ) : (
             <AttributeValue
               name={collectibleAttributes.model.name}
-              permille={collectibleAttributes.model.rarity_permille}
+              rarity={collectibleAttributes.model.rarity}
               onClick={() => handleAttributeClick(collectibleAttributes.model)}
             />
           )
@@ -675,7 +693,7 @@ export default class PopupStarGiftInfo extends PopupElement {
           ) : (
             <AttributeValue
               name={collectibleAttributes.backdrop.name}
-              permille={collectibleAttributes.backdrop.rarity_permille}
+              rarity={collectibleAttributes.backdrop.rarity}
               onClick={() => handleAttributeClick(collectibleAttributes.backdrop)}
             />
           )
@@ -695,7 +713,7 @@ export default class PopupStarGiftInfo extends PopupElement {
           ) : (
             <AttributeValue
               name={collectibleAttributes.pattern.name}
-              permille={collectibleAttributes.pattern.rarity_permille}
+              rarity={collectibleAttributes.pattern.rarity}
               onClick={() => handleAttributeClick(collectibleAttributes.pattern)}
             />
           )
@@ -709,15 +727,15 @@ export default class PopupStarGiftInfo extends PopupElement {
           ])
         ]);
 
-        if(value) {
+        if(props.value) {
           rows.push([
             'StarGiftValue',
             <>
-              ~{paymentsWrapCurrencyAmount(value.value, value.currency)}
+              ~{paymentsWrapCurrencyAmount(props.value.value, props.value.currency)}
               <TableButton
                 text="StarGiftValueLearnMore"
                 onClick={() => {
-                  PopupElement.createPopup(PopupStarGiftValue, {gift: this.gift, value}).show();
+                  PopupElement.createPopup(PopupStarGiftValue, {gift: this.gift, value: props.value}).show();
                 }}
               />
             </>
@@ -891,7 +909,7 @@ export default class PopupStarGiftInfo extends PopupElement {
     }
 
     const handleSell = async(changePrice = false) => {
-      if(!isOwnedUniqueGift || !saved) return;
+      if(!isEditableUniqueGift || !saved) return;
 
       if(isListed() && !changePrice) {
         await confirmationPopup({
@@ -945,7 +963,7 @@ export default class PopupStarGiftInfo extends PopupElement {
 
     let stickerContainer!: HTMLDivElement;
     onMount(() => {
-      if(isOwnedUniqueGift) {
+      if(isEditableUniqueGift) {
         // ! preload options for resale floor price
         this.managers.appGiftsManager.getStarGiftOptions().catch(() => {})
       }
@@ -1009,9 +1027,10 @@ export default class PopupStarGiftInfo extends PopupElement {
               {
                 icon: saved?.pFlags.pinned_to_top ? 'unpin' : 'pin',
                 text: saved?.pFlags.pinned_to_top ? 'StarGiftUnpin' : 'StarGiftPin',
-                verify: () => isOwnedUniqueGift,
+                verify: () => isEditableUniqueGift,
                 onClick: () => {
-                  this.managers.appGiftsManager.togglePinnedGift(input).then(() => {
+                  if(ownerPeerId === undefined) return;
+                  this.managers.appGiftsManager.togglePinnedGift(input, ownerPeerId).then(() => {
                     this.hide();
                   });
                 }
@@ -1019,7 +1038,7 @@ export default class PopupStarGiftInfo extends PopupElement {
               {
                 icon: 'tag_alt_outline',
                 text: 'StarGiftChangePrice',
-                verify: () => isOwnedUniqueGift && isListed(),
+                verify: () => isEditableUniqueGift && isListed(),
                 onClick: () => handleSell(true)
               },
               {
@@ -1108,7 +1127,7 @@ export default class PopupStarGiftInfo extends PopupElement {
             </div>
           )}
 
-          {isOwnedUniqueGift && (
+          {isEditableUniqueGift && (
             <div class="popup-star-gift-info-actions">
               <Button
                 noRipple
@@ -1126,11 +1145,26 @@ export default class PopupStarGiftInfo extends PopupElement {
                 class="popup-star-gift-info-action"
                 icon={isWearing() ? 'crownoff' : 'crown'}
                 text={isWearing() ? 'StarGiftWearStop' : 'StarGiftWear'}
-                onClick={() => {
+                onClick={async() => {
+                  if(ownerPeerId === undefined) return;
                   if(isWearing()) {
-                    rootScope.managers.appUsersManager.updateEmojiStatus({_: 'emojiStatusEmpty'});
+                    if(ownerPeerId === rootScope.myId) {
+                      rootScope.managers.appUsersManager.updateEmojiStatus({_: 'emojiStatusEmpty'});
+                    } else {
+                      rootScope.managers.apiManager.invokeApiSingleProcess({
+                        method: 'channels.updateEmojiStatus',
+                        params: {
+                          channel: await rootScope.managers.appChatsManager.getChannelInput(ownerPeerId.toChatId()),
+                          emoji_status: {_: 'emojiStatusEmpty'}
+                        }
+                      }).then((updates) => {
+                        rootScope.managers.apiUpdatesManager.processUpdateMessage(updates);
+                      }).catch(() => {
+                        toastNew({langPackKey: 'Error.AnError'});
+                      });
+                    }
                   } else {
-                    PopupStarGiftWear.open(this.gift)
+                    PopupStarGiftWear.open(this.gift, ownerPeerId)
                   }
                 }}
               />
@@ -1163,6 +1197,12 @@ export default class PopupStarGiftInfo extends PopupElement {
             </a>
           </div>
         )}
+
+        {saved.pFlags.name_hidden && (
+          <div class="popup-star-gift-info-hint">
+            {i18n('StarGiftHiddenSender')}
+          </div>
+        )}
       </div>
     );
   }
@@ -1170,8 +1210,11 @@ export default class PopupStarGiftInfo extends PopupElement {
   private async construct() {
     this.header.remove();
     const gift = this.gift.raw;
-    const value = gift._ === 'starGiftUnique' ? await this.managers.appGiftsManager.getGiftValue(gift.slug) : null;
-    this.appendSolid(() => this._construct({value}));
+    const [value, canManageGifts] = await Promise.all([
+      gift._ === 'starGiftUnique' ? this.managers.appGiftsManager.getGiftValue(gift.slug) : Promise.resolve(null),
+      this.gift.ownerId !== undefined ? getCanManagePeerGifts(this.gift.ownerId) : Promise.resolve(false)
+    ]);
+    this.appendSolid(() => this._construct({value, canManageGifts}));
 
     if(this.isResale) {
       const resaleRecipient = this.resaleRecipient ?? rootScope.myId;

@@ -12,9 +12,10 @@
 import {MOUNT_CLASS_TO} from '@config/debug';
 import {MessageEntity} from '@layer';
 import combineSameEntities from '@lib/richTextProcessor/combineSameEntities';
-import findConflictingEntity, {SINGLE_ENTITIES} from '@lib/richTextProcessor/findConflictingEntity';
+import findConflictingEntity from '@lib/richTextProcessor/findConflictingEntity';
 import sortEntities from '@lib/richTextProcessor/sortEntities';
 import getRichElementValue, {SELECTION_SEPARATOR} from '@helpers/dom/getRichElementValue';
+import {SINGLE_ENTITIES} from '@lib/richTextProcessor';
 
 export function getCaretPos(field: Node) {
   const sel = window.getSelection();
@@ -95,14 +96,14 @@ export default function getRichValueWithCaret(
       entity.length -= length - trimmedLength;
     } */
 
-    const single = entities.filter((entity) => SINGLE_ENTITIES.has(entity._));
-    for(let i = 0; i < entities.length; ++i) {
+    const singleEntities = entities.filter((entity) => SINGLE_ENTITIES.has(entity._));
+    for(let i = 0; i < entities.length; ++i) { // * filter conflicting entities
       const entity = entities[i];
       if(SINGLE_ENTITIES.has(entity._)) {
         continue;
       }
 
-      const conflictingEntity = findConflictingEntity(single, entity);
+      const conflictingEntity = findConflictingEntity(singleEntities, entity);
       if(!conflictingEntity) {
         continue;
       }

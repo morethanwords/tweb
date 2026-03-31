@@ -9,13 +9,13 @@ import tsNow from '@helpers/tsNow';
 import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
 import formatDuration, {DurationType} from '@helpers/formatDuration';
 import {createCurrentTime} from '@helpers/solid/createCurrentTime';
-import ripple from '@components/ripple';
 
 import styles from '@components/chat/bubbles/starGiftOffer.module.scss';
 import {MyDocument} from '@appManagers/appDocsManager';
 import {StarGiftBackdrop} from '@components/stargifts/stargiftBackdrop';
 import {StickerTsx} from '@components/wrappers/sticker';
 import Icon from '@components/icon';
+import ReplyMarkupLayout from '@components/chat/bubbleParts/replyMarkupLayout';
 import Chat from '@components/chat/chat';
 import confirmationPopup from '@components/confirmationPopup';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
@@ -23,14 +23,13 @@ import rootScope from '@lib/rootScope';
 import {transferStarGiftConfirmationPopup} from '@components/popups/transferStarGift';
 import PopupElement from '../../popups';
 import PopupStarGiftInfo from '../../popups/starGiftInfo';
-ripple; // keep
 
 function wrapExpiresIn(duration: number) {
-  const formatted = formatDuration(duration, 2)
+  const formatted = formatDuration(duration, 2);
   if(formatted[0].type <= DurationType.Minutes) {
-    formatted.splice(1, Infinity)
+    formatted.splice(1, Infinity);
   }
-  return wrapFormattedDuration(formatted)
+  return wrapFormattedDuration(formatted);
 }
 
 export function StarGiftOfferBubble(props: {
@@ -43,8 +42,8 @@ export function StarGiftOfferBubble(props: {
   const now = createCurrentTime({
     fn: () => tsNow(true),
     updateWrapper: props.modifyBubble
-  })
-  const expired = () => props.action.expires_at < now()
+  });
+  const expired = () => props.action.expires_at < now();
 
   return (
     <div
@@ -115,33 +114,29 @@ export function StarGiftOfferReplyMarkup(props: {
       }
     });
 
-    await rootScope.managers.appGiftsManager.resolveGiftOffer(props.message.id, 'reject')
-  }
+    await rootScope.managers.appGiftsManager.resolveGiftOffer(props.message.id, 'reject');
+  };
   const onAcceptClick = () => {
     transferStarGiftConfirmationPopup({
       gift: props.gift,
       recipient: props.message.peerId,
       fromOffer: props.message.action as MessageAction.messageActionStarGiftPurchaseOffer,
       handleSubmit: async() => {
-        await rootScope.managers.appGiftsManager.resolveGiftOffer(props.message.id, 'accept')
+        await rootScope.managers.appGiftsManager.resolveGiftOffer(props.message.id, 'accept');
       }
-    })
-  }
+    });
+  };
 
   return (
-    <div class="reply-markup">
-      <div class="reply-markup-row">
-        <button class="reply-markup-button is-first" use:ripple onClick={onRejectClick}>
-          <span class="reply-markup-button-text reply-markup-suggested-action">
-            {Icon('crossround_filled')}{/* @once */i18n('StarGiftOffer.Reject')}
-          </span>
-        </button>
-        <button class="reply-markup-button is-last" use:ripple onClick={onAcceptClick}>
-          <span class="reply-markup-button-text reply-markup-suggested-action">
-            {Icon('checkround_filled')}{/* @once */i18n('StarGiftOffer.Accept')}
-          </span>
-        </button>
-      </div>
-    </div>
-  )
+    <ReplyMarkupLayout>
+      <ReplyMarkupLayout.Row>
+        <ReplyMarkupLayout.Button textClass="reply-markup-suggested-action" onClick={onRejectClick}>
+          {Icon('crossround_filled')}{/* @once */i18n('StarGiftOffer.Reject')}
+        </ReplyMarkupLayout.Button>
+        <ReplyMarkupLayout.Button textClass="reply-markup-suggested-action" onClick={onAcceptClick}>
+          {Icon('checkround_filled')}{/* @once */i18n('StarGiftOffer.Accept')}
+        </ReplyMarkupLayout.Button>
+      </ReplyMarkupLayout.Row>
+    </ReplyMarkupLayout>
+  );
 }

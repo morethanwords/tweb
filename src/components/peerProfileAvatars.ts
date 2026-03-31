@@ -62,6 +62,7 @@ export default class PeerProfileAvatars {
   private unfold: (e?: MouseEvent) => void;
   private fakeAvatar: ReturnType<typeof avatarNew>;
   private hasNoPhoto: boolean;
+  public onNeedWhiteChanged: (needWhite: boolean) => void;
 
   constructor(
     private scrollable: Scrollable,
@@ -279,7 +280,7 @@ export default class PeerProfileAvatars {
     const o = scrollable.onAdditionalScroll;
     scrollable.onAdditionalScroll = () => {
       o?.();
-      this.updateHeaderFilled();
+      fastRaf(this.updateHeaderFilled);
     };
 
     this.middlewareHelper.onDestroy(() => {
@@ -568,11 +569,10 @@ export default class PeerProfileAvatars {
       this.hasBackgroundColor = !!backgroundStr;
     };
 
-    const {colorSet, backgroundEmojiId} = usePeerProfileAppearance(this.peerId);
+    const peerProfileAppearance = usePeerProfileAppearance(this.peerId);
     const deferred = deferredPromise<void>();
     createEffect(() => {
-      const bgColors = colorSet()?.bg_colors;
-      const docId = backgroundEmojiId();
+      const {bgColors, backgroundEmojiId} = peerProfileAppearance()
       // const docId = '5301072507598550489';
 
       setBackgroundColors(bgColors);
@@ -582,7 +582,7 @@ export default class PeerProfileAvatars {
       createEffect(on(
         isNightTheme,
         () => {
-          const promise = renderBackgroundEmoji(docId, !!bgColors);
+          const promise = renderBackgroundEmoji(backgroundEmojiId, !!bgColors);
           if(promise) promise.then(deferred.resolve.bind(deferred));
           else deferred.resolve();
         }
@@ -723,6 +723,7 @@ export default class PeerProfileAvatars {
     const needWhite = this.hasBackgroundColor || !collapsed;
     if(this.setCollapsedOn.classList.contains('need-white') !== needWhite) {
       this.setCollapsedOn.classList.toggle('need-white', needWhite);
+      this.onNeedWhiteChanged?.(needWhite);
       changeTitleEmojiColor(this.info, needWhite ? 'white' : 'primary-color');
     }
     this.updateHeaderFilled();
@@ -732,11 +733,11 @@ export default class PeerProfileAvatars {
     return this.setCollapsedOn.classList.contains('is-collapsed');
   }
 
-  public updateHeaderFilled() {
+  updateHeaderFilled = () => {
     this.setCollapsedOn.classList.toggle(
       'header-filled',
       (!this.hasBackgroundColor && this.isCollapsed() && this.scrollable.scrollPosition >= 5) ||
-        this.scrollable.scrollPosition >= 240
+        this.scrollable.scrollPosition >= 200
     );
   }
 

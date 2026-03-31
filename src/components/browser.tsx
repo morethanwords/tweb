@@ -58,6 +58,7 @@ import assumeType from '@helpers/assumeType';
 import {useAppSettings} from '@stores/appSettings';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import clamp from '@helpers/number/clamp';
+import windowSize from '@helpers/windowSize';
 
 type BrowserPageProps<T = {}> = T & {
   title: string, // plain text
@@ -195,7 +196,7 @@ function BrowserHeader(props: {
     }
 
     const listenerSetter = new ListenerSetter();
-    const copied = page.menuButtons.map((button) => button.element ? button : copy(button));
+    const copied = page.menuButtons.map((button) => (button = unwrap(button), button.element ? button : copy(button)));
     const buttons = (await filterButtonMenuItems(copied)).map((button) => {
       button.options = {listenerSetter};
       return button;
@@ -300,10 +301,12 @@ function BrowserHeader(props: {
       >
         {collapsedTitle()}
       </div>
-      <BrowserHeaderButton
-        icon={state.collapsed ? 'app_expand' : 'app_shrink'}
-        onClick={() => actions.toggleCollapsed()}
-      />
+      <Show when={state.canCollapse}>
+        <BrowserHeaderButton
+          icon={state.collapsed ? 'app_expand' : 'app_shrink'}
+          onClick={() => actions.toggleCollapsed()}
+        />
+      </Show>
     </div>
   );
 }
@@ -313,7 +316,8 @@ type BrowserContextState = {
   index: number,
   page: BrowserPageProps,
   destroyed: boolean,
-  collapsed: boolean
+  collapsed: boolean,
+  canCollapse: boolean
 };
 type BrowserContextActions = {
   add: (page: BrowserPageProps) => void,
@@ -321,7 +325,8 @@ type BrowserContextActions = {
   close: (page: BrowserPageProps) => void,
   destroy: () => void,
   toggleCollapsed: (collapse?: boolean) => void,
-  replace: (page: BrowserPageProps, originalPage: BrowserPageProps) => void
+  replace: (page: BrowserPageProps, originalPage: BrowserPageProps) => void,
+  setCanCollapse: (canCollapse: boolean) => void
 };
 
 export type BrowserContextValue = [
@@ -339,7 +344,8 @@ function createBrowserStore(props: {
       return state.pages[state.index];
     },
     destroyed: false,
-    collapsed: false
+    collapsed: false,
+    canCollapse: true
   };
 
   const [state, setState] = createStore<BrowserContextState>(initialState);
@@ -418,6 +424,10 @@ function createBrowserStore(props: {
       setState('destroyed', true);
     },
     toggleCollapsed: (collapse) => {
+      if(!untrack(() => state.canCollapse)) {
+        collapse = false;
+      }
+
       setState('collapsed', collapse ?? ((v) => !v));
     },
     replace: (page, originalPage) => {
@@ -425,6 +435,12 @@ function createBrowserStore(props: {
       page = makeBrowserPage(page);
       originalPage.dispose();
       setState('pages', state.pages.findIndex((_page) => _page.id === originalPage.id), reconcile(page));
+    },
+    setCanCollapse: (canCollapse) => {
+      setState({
+        canCollapse,
+        ...(!canCollapse && {collapsed: false})
+      });
     }
   });
 
@@ -490,6 +506,26 @@ function Browser(props: {
 
     createEffect(() => {
       const {movable} = movablePanel;
+      if(!movable) {
+        createEffect(() => {
+          setMovableState({
+            width: windowSize.width - 16,
+            height: Math.min(688, windowSize.height - 16 * 2)
+          });
+
+          ref.style.width = movableState().width + 'px';
+          ref.style.height = movableState().height + 'px';
+        });
+
+        actions.setCanCollapse(false);
+        ref.classList.add(styles.noMovable);
+        onCleanup(() => {
+          actions.setCanCollapse(true);
+          ref.classList.remove(styles.noMovable);
+        });
+        return;
+      }
+
       const {collapsed} = state;
       const collapsedWidth = 328;
       const collapsedHeight = 48;

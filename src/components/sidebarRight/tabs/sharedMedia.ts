@@ -25,13 +25,16 @@ import addChatUsers from '@components/addChatUsers';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
-import ButtonMenuToggle from '@components/buttonMenuToggle';
+import ButtonMenuToggle, {filterButtonMenuItems} from '@components/buttonMenuToggle';
 import appImManager from '@lib/appImManager';
 import {useIsFrozen} from '@stores/appState';
 import {profileStarGiftsButtonMenu} from '@components/stargifts/profileList';
+import {profileStoriesButtonMenu} from '@components/stories/profileList';
 import {createRoot} from 'solid-js';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import namedPromises from '@helpers/namedPromises';
+import hasRights from '@lib/appManagers/utils/chats/hasRights';
+import {ButtonMenuItemOptionsVerifiable} from '../../buttonMenu';
 
 type SharedMediaHistoryStorage = Partial<{
   [type in SearchSuperType]: {mid: number, peerId: PeerId}[]
@@ -117,24 +120,32 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     this.editBtn = ButtonIcon('edit');
 
     const self = this;
+    let lastMediaTabType: SearchSuperMediaTab['type'];
+    const btnMenuButtons: ButtonMenuItemOptionsVerifiable[] = [
+      {
+        icon: 'message',
+        text: 'SavedViewAsMessages',
+        onClick: () => {
+          appImManager.toggleViewAsMessages(rootScope.myId, true);
+        },
+        verify: () => this.peerId === rootScope.myId && this.isFirst
+      },
+      ...profileStoriesButtonMenu({
+        peerId: this.peerId,
+        slider: this.slider,
+        verify: () => lastMediaTabType === 'stories'
+      }),
+      ...profileStarGiftsButtonMenu({
+        get store() { return self.searchSuper.stargiftsStore },
+        get actions() { return self.searchSuper.stargiftsActions },
+        verify: () => lastMediaTabType === 'gifts',
+        peerId: this.peerId
+      })
+    ];
     const btnMenu = this.btnMenu = ButtonMenuToggle({
       listenerSetter: this.listenerSetter,
       direction: 'bottom-left',
-      buttons: [
-        {
-          icon: 'message',
-          text: 'SavedViewAsMessages',
-          onClick: () => {
-            appImManager.toggleViewAsMessages(rootScope.myId, true);
-          },
-          verify: () => this.peerId === rootScope.myId && this.isFirst
-        },
-        ...profileStarGiftsButtonMenu({
-          get store() { return self.searchSuper.stargiftsStore },
-          get actions() { return self.searchSuper.stargiftsActions },
-          peerId: this.peerId
-        })
-      ]
+      buttons: btnMenuButtons
     });
 
     transitionFirstItem.element.append(this.editBtn);
@@ -186,7 +197,8 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     const cb = this.scrollable.onAdditionalScroll;
     this.scrollable.onAdditionalScroll = () => {
       cb?.();
-      const rect = this.searchSuper.nav.getBoundingClientRect();
+      const isSingle = this.searchSuper.navScrollableContainer.classList.contains('is-single');
+      const rect = (isSingle ? this.searchSuper.container : this.searchSuper.nav).getBoundingClientRect();
       if(!rect.width) return;
 
       const top = rect.top - 1;
@@ -308,7 +320,6 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     // this.container.prepend(this.closeBtn.parentElement);
 
-    // let lastMediaTabType: SearchSuperMediaTab['type'];
     this.searchSuper = new AppSearchSuper({
       mediaTabs: [{
         name: 'SharedMedia.SavedDialogs',
@@ -355,8 +366,8 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       }],
       scrollable: this.scrollable,
       onChangeTab: (mediaTab) => {
-        // lastMediaTabType = mediaTab.type;
         transitionSubtitle(c.findIndex((item) => item[0] === mediaTab.type));
+        lastMediaTabType = mediaTab.type;
 
         const timeout = mediaTab.type === 'members' && liteMode.isAvailable('animations') ? 250 : 0;
         setTimeout(() => {
@@ -364,7 +375,13 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         }, timeout);
 
         if(!this.isFirst) {
-          this.btnMenu.classList.toggle('hide', mediaTab.type !== 'gifts');
+          if(mediaTab.type === 'gifts' || mediaTab.type === 'stories') {
+            filterButtonMenuItems(btnMenuButtons).then((items) => {
+              this.btnMenu.classList.toggle('hide', items.length === 0);
+            })
+          } else {
+            this.btnMenu.classList.add('hide');
+          }
         }
       },
       managers: this.managers,
@@ -443,8 +460,9 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         this.threadId === threadId
       ) {
         this.searchSuper.usedFromHistory[inputFilter] += filtered.length;
-        this.searchSuper.performSearchResult({messages: filtered, mediaTab, append: false});
-        this.searchSuper.setCounter(mediaTab.type, this.searchSuper.counters[mediaTab.type] + filtered.length);
+        this.searchSuper.performSearchResult({messages: filtered, mediaTab, append: false}).then((length) => {
+          this.searchSuper.setCounter(mediaTab.type, this.searchSuper.counters[mediaTab.type] + length);
+        });
       }
     }
   }
@@ -462,7 +480,13 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     }
   }
 
-  public _deleteDeletedMessages(historyStorage: SharedMediaHistoryStorage, peerId: PeerId, mids: number[], threadId?: number) {
+  public _deleteDeletedMessages(
+    historyStorage: SharedMediaHistoryStorage,
+    peerId: PeerId,
+    mids: number[],
+    threadId?: number
+  ) {
+    const notFound: Set<SearchSuperMediaTab> = new Set();
     for(const mid of mids) {
       for(const mediaTab of this.searchSuper.mediaTabs) {
         const inputFilter = mediaTab.inputFilter;
@@ -473,9 +497,6 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         const isGood = mediaTab.type === 'saved' ?
           this.peerId === threadId :
           this.peerId === peerId && this.threadId === threadId;
-        if(isGood) {
-          this.searchSuper.setCounter(mediaTab.type, this.searchSuper.counters[mediaTab.type] - mids.length);
-        }
 
         const idx = history.findIndex((m) => m.mid === mid);
         if(idx === -1) {
@@ -497,6 +518,13 @@ export default class AppSharedMediaTab extends SliderSuperTab {
             if(idx !== -1 && this.searchSuper.usedFromHistory[inputFilter] >= (idx + 1)) {
               --this.searchSuper.usedFromHistory[inputFilter];
             }
+
+            this.searchSuper.setCounter(
+              mediaTab.type,
+              this.searchSuper.counters[mediaTab.type] - 1
+            );
+          } else {
+            notFound.add(mediaTab);
           }
         }
 
@@ -504,6 +532,25 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         // break;
       }
     }
+
+    const filters = Array.from(notFound).map((mediaTab) => ({_: mediaTab.inputFilter}));
+    if(!filters.length) {
+      return;
+    }
+
+    const middleware = this.searchSuper.middleware.get();
+    this.searchSuper.getSearchCounters(filters).then((counters) => {
+      if(!middleware()) {
+        return;
+      }
+
+      notFound.forEach((mediaTab) => {
+        const counter = counters.find((c) => c.filter._ === mediaTab.inputFilter);
+        if(counter) {
+          this.searchSuper.setCounter(mediaTab.type, counter.count);
+        }
+      });
+    });
   }
 
   public deleteDeletedMessages(peerId: PeerId, msgs: BroadcastEvents['history_delete']['msgs']) {
@@ -648,7 +695,6 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
   private async toggleEditBtn(manual: true): Promise<() => void>;
   private async toggleEditBtn(manual?: false): Promise<void>;
-
   private async toggleEditBtn(manual?: boolean): Promise<(() => void) | void> {
     const {peerId} = this;
     let show: boolean;
@@ -663,7 +709,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         show = await this.managers.dialogsStorage.canManageTopic(await this.managers.dialogsStorage.getForumTopic(peerId, this.threadId));
       } else {
         const chat = apiManagerProxy.getChat(chatId);
-        show = !!(chat as Chat.channel).admin_rights || await this.managers.appChatsManager.hasRights(chatId, 'change_info');
+        show = hasRights(chat, 'change_info');
       }
     }
 

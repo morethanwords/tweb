@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-@import "../scss/mixins";
-@import "../scss/variables";
+@use "../scss/mixins" as *;
+@use "../scss/variables" as *;
 
 $transition: .2s var(--transition-standard-easing);
 
@@ -289,6 +289,12 @@ $transition: .2s var(--transition-standard-easing);
         height: 100%;
       }
     }
+  }
+
+  &.noMovable {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
   }
 
   &.collapsed {

@@ -4,6 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+@use "sass:string";
+@use "../../shared" as *;
+
 .popup-chatlist-invite {
   $parent: ".popup";
 
@@ -11,8 +14,8 @@
     &-container {
       //max-height: 468px;
       height: auto;
-      max-height: unquote('min(640px, 100%)');
-      min-width: unquote('min(100%, 22.5rem)');
+      max-height: string.unquote('min(640px, 100%)');
+      min-width: string.unquote('min(100%, 22.5rem)');
       max-width: 22.5rem;
       // padding: 0;
     }

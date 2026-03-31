@@ -4,6 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+@use "../shared" as *;
+
 :root {
   --sidebar-collapsed-width: 80px;
   --sidebar-max-width: #{calc($large-screen / 4)};
@@ -99,7 +101,7 @@
         z-index: 4;
       }
 
-      .stories-list {
+      .item-main .stories-list {
         display: none;
       }
 
@@ -1031,13 +1033,14 @@
 
 .sidebar-left {
   &-section {
-    /* padding-bottom: .75rem;
+    background-color: var(--surface-color);
+    padding: .5rem 0 !important;
+    margin-bottom: .75rem;
+    box-shadow: 0px 1px 3px 0px var(--section-box-shadow-color);
 
-    @include respond-to(handhelds) {
-      padding-bottom: .5rem;
-    } */
-    // user-select: none;
-    padding: .5rem 0 1rem;
+    &.no-shadow {
+      box-shadow: none !important;
+    }
 
     &.with-fake-delimiter {
       padding-top: 0 !important;
@@ -1092,25 +1095,45 @@
     }
 
     &-name {
-      padding: 1rem;
+      padding: .5rem 1rem;
+      display: flex;
+      justify-content: space-between;
 
       @include respond-to(handhelds) {
         padding: .5rem 1rem;
         font-size: .875rem;
       }
+
+      &-right {
+        font-weight: var(--font-weight-normal);
+      }
     }
 
     &-caption {
-      margin-top: 1rem;
-      font-size: 1rem;
+      margin: -0.1875rem 0 1rem;
+      font-size: var(--font-size-14);
+      line-height: var(--line-height-14);
       color: var(--secondary-text-color);
-      line-height: var(--line-height);
-      padding: 0 1rem;
+      padding: 0 1.5rem;
       word-break: break-word;
+
+      &:first-child {
+        margin-top: .8125rem;
+        margin-bottom: .8125rem;
+      }
 
       @include respond-to(handhelds) {
         margin: .5rem;
         font-size: .875rem;
+        padding: 0 1rem;
+      }
+    }
+
+    &-container {
+      user-select: none;
+
+      a {
+        cursor: pointer;
       }
     }
 
@@ -1153,7 +1176,6 @@
 .add-members-container,
 #search-private-container,
 #stickers-container,
-#poll-results-container,
 #search-gifs-container {
   background-color: var(--surface-color) !important;
 }
@@ -1589,6 +1611,10 @@
   .sticker-container {
     width: 100px;
     height: 100px;
+  }
+
+  .search-super-content-container {
+    min-height: calc(100vh - 57px);
   }
 }
 

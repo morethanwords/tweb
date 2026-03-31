@@ -7,7 +7,7 @@ import {useMediaEditorContext} from '@components/mediaEditor/context';
 
 export default function FinishButton(props: {onClick: () => void}) {
   let container: HTMLDivElement;
-  const {hasModifications} = useMediaEditorContext();
+  const {canFinish} = useMediaEditorContext();
 
   onMount(() => {
     ripple(container);
@@ -19,7 +19,7 @@ export default function FinishButton(props: {onClick: () => void}) {
       onClick={props.onClick}
       class="media-editor__finish-button"
       classList={{
-        'media-editor__finish-button--hidden': !hasModifications()
+        'media-editor__finish-button--hidden': !canFinish()
       }}
     >
       <svg width="18" height="16" viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg">

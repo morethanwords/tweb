@@ -4,8 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+@use "../shared" as *;
+
 .markup-tooltip {
-	$widthRegular: 282px;
+	$widthRegular: 312px;
 	$widthLink: 420px;
 	$padding: 7px;
 

@@ -55,16 +55,20 @@ const scrollsIntersector = new IntersectionObserver((entries) => {
 }); */
 
 const SCROLL_THROTTLE = /* IS_ANDROID ? 200 :  */24;
-const USE_OWN_SCROLL = !IS_OVERLAY_SCROLL_SUPPORTED;
 
-let throttleMeasurement: (callback: () => void) => number,
-  cancelMeasurement: (id: number) => void;
-if(USE_OWN_SCROLL) {
-  throttleMeasurement = (callback) => requestAnimationFrame(callback);
-  cancelMeasurement = (id) => cancelAnimationFrame(id);
-} else {
-  throttleMeasurement = (callback) => window.setTimeout(callback, SCROLL_THROTTLE);
-  cancelMeasurement = (id) => window.clearTimeout(id);
+function throttleMeasurement(callback: () => void): number {
+  if(!IS_OVERLAY_SCROLL_SUPPORTED()) {
+    return requestAnimationFrame(callback);
+  }
+  return window.setTimeout(callback, SCROLL_THROTTLE);
+}
+
+function cancelMeasurement(id: number): void {
+  if(!IS_OVERLAY_SCROLL_SUPPORTED()) {
+    cancelAnimationFrame(id);
+  } else {
+    window.clearTimeout(id);
+  }
 }
 
 export class ScrollableBase {
@@ -246,7 +250,7 @@ export class ScrollableBase {
   };
 
   public updateThumb(scrollPosition = this.scrollPosition) {
-    if(!USE_OWN_SCROLL || !this.thumb) {
+    if(IS_OVERLAY_SCROLL_SUPPORTED() || !this.thumb) {
       return;
     }
 
@@ -306,7 +310,7 @@ export class ScrollableBase {
   };
 
   public onSizeChange() {
-    if(USE_OWN_SCROLL && this.thumb) {
+    if(!IS_OVERLAY_SCROLL_SUPPORTED() && this.thumb) {
       this.onScroll();
     }
   }
@@ -395,7 +399,7 @@ export default class Scrollable extends ScrollableBase {
     this.offsetSizeProperty = 'offsetHeight';
     this.clientAxis = 'clientY';
 
-    if(USE_OWN_SCROLL) {
+    if(!IS_OVERLAY_SCROLL_SUPPORTED()) {
       this.thumbContainer = document.createElement('div');
       this.thumbContainer.classList.add('scrollable-thumb-container');
       this.thumb = document.createElement('div');

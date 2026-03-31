@@ -34,7 +34,7 @@ import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMedia';
 import noop from '@helpers/noop';
 import middlewarePromise from '@helpers/middlewarePromise';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
-import {Message, WallPaper, Chat as MTChat, Reaction, AvailableReaction, ChatFull, MessageEntity, PaymentsPaymentForm, InputPeer, ChatTheme, UserFull, User} from '@layer';
+import {Message, WallPaper, Chat as MTChat, Reaction, AvailableReaction, ChatFull, MessageEntity, PaymentsPaymentForm, InputPeer, ChatTheme, UserFull, User, StoriesStealthMode} from '@layer';
 import animationIntersector, {AnimationItemGroup} from '@components/animationIntersector';
 import {getColorsFromWallPaper} from '@helpers/color';
 import apiManagerProxy from '@lib/apiManagerProxy';
@@ -46,7 +46,7 @@ import isForwardOfForward from '@appManagers/utils/messages/isForwardOfForward';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {SendReactionOptions} from '@appManagers/appReactionsManager';
 import {MiddlewareHelper, getMiddleware} from '@helpers/middleware';
-import {Accessor, batch, createEffect, createRoot, createSignal, on, onCleanup, untrack} from 'solid-js';
+import {Accessor, createEffect, createMemo, createRoot, createSignal, on, onCleanup, Signal, untrack} from 'solid-js';
 import TopbarSearch from '@components/chat/topbarSearch';
 import createUnifiedSignal from '@helpers/solid/createUnifiedSignal';
 import liteMode from '@helpers/liteMode';
@@ -81,19 +81,7 @@ import {LEFT_COLUMN_ACTIVE_CLASSNAME} from '@components/sidebarLeft';
 import {AckedResult} from '@lib/superMessagePort';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import hasRights from '@appManagers/utils/chats/hasRights';
-
-
-export enum ChatType {
-  Chat = 'chat',
-  Pinned = 'pinned',
-  Discussion = 'discussion',
-  Scheduled = 'scheduled',
-  Stories = 'stories',
-  Saved = 'saved',
-  Search = 'search',
-  Static = 'static',
-  Logs = 'logs'
-};
+import {ChatType} from '@components/chat/chatType';
 
 export type ChatSearchKeys = Pick<RequestHistoryOptions, 'query' | 'isCacheableSearch' | 'isPublicHashtag' | 'savedReaction' | 'fromPeerId' | 'inputFilter' | 'hashtagType'>;
 export const CHAT_SEARCH_KEYS: (keyof ChatSearchKeys)[] = ['query', 'isCacheableSearch', 'isPublicHashtag', 'savedReaction', 'fromPeerId', 'inputFilter', 'hashtagType'];
@@ -126,6 +114,7 @@ export default class Chat extends EventListenerBase<{
   public query: string;
   public inputFilter: RequestHistoryOptions['inputFilter'];
   public hashtagType: 'this' | 'my' | 'public';
+  public peerIdSignal: Signal<PeerId>;
 
   public setPeerPromise: Promise<void>;
   public peerChanged: boolean;
@@ -134,8 +123,7 @@ export default class Chat extends EventListenerBase<{
 
   public type: ChatType;
   public messagesStorageKey: MessagesStorageKey;
-  public historyStorageKeySignal: ReturnType<typeof createUnifiedSignal<HistoryStorageKey>>;
-  public historyStorageKeyNoThreadIdSignal: ReturnType<typeof createUnifiedSignal<HistoryStorageKey>>;
+  public disposeHistoryStorage: () => void;
   public isStandalone: boolean;
 
   public noForwards: boolean;
@@ -168,10 +156,12 @@ export default class Chat extends EventListenerBase<{
   public isMonoforum: boolean;
   public isBotforum: boolean;
   public canManageDirectMessages: boolean;
+  public canManageBotforumTopics: boolean;
   public isTemporaryThread: boolean;
   public noInput: boolean;
 
   public starsAmount: number | undefined;
+  public stealthMode: StoriesStealthMode | undefined;
 
   public animationGroup: AnimationItemGroup;
 
@@ -198,6 +188,7 @@ export default class Chat extends EventListenerBase<{
   public historyStorage: ReturnType<typeof useHistoryStorage>;
   public historyStorageNoThreadId: ReturnType<typeof useHistoryStorage>;
   public peerTranslation: ReturnType<typeof usePeerTranslation>;
+  public fullPeer: Accessor<ChatFull | UserFull>;
 
   public staticMessages: MyMessage[] = [];
 
@@ -235,7 +226,7 @@ export default class Chat extends EventListenerBase<{
       this.container.append(this.backgroundEl);
     }
 
-    this.peerId = NULL_PEER_ID;
+    this.peerIdSignal = createSignal(this.peerId = NULL_PEER_ID);
 
     this.backgroundTempId = 0;
     this.sharedMediaTabs = [];
@@ -246,22 +237,7 @@ export default class Chat extends EventListenerBase<{
       [this.appState, this.setAppState] = useAppState();
       [this.appSettings, this.setAppSettings] = useAppSettings();
       this.appConfig = useAppConfig();
-      this.historyStorageKeySignal = createUnifiedSignal();
-      this.historyStorageKeyNoThreadIdSignal = createUnifiedSignal();
-
-      createEffect(on(
-        () => [this.historyStorageKeySignal(), this.historyStorageKeyNoThreadIdSignal()],
-        ([key, keyNoThreadId]) => {
-          this.historyStorage = useHistoryStorage(key);
-          this.historyStorageNoThreadId = useHistoryStorage(keyNoThreadId);
-
-          this.managers.appMessagesManager.toggleHistoryKeySubscription(key, true);
-          onCleanup(() => {
-            this.managers.appMessagesManager.toggleHistoryKeySubscription(key, false);
-          });
-        },
-        {defer: true}
-      ));
+      this.fullPeer = createMemo(() => useFullPeer(this.peerIdSignal[0]())());
     });
   }
 
@@ -928,6 +904,7 @@ export default class Chat extends EventListenerBase<{
 
     const isForum = apiManagerProxy.isForum(peerId);
     const isBotforum = apiManagerProxy.isBotforum(peerId);
+    const canManageBotforumTopics = apiManagerProxy.canManageBotforumTopics(peerId);
 
     if(threadId && !isForum && !isBotforum) {
       options.type = options.peerId === rootScope.myId ? ChatType.Saved : ChatType.Discussion;
@@ -992,6 +969,7 @@ export default class Chat extends EventListenerBase<{
     this.isMonoforum = !!(chat?._ === 'channel' && chat?.pFlags?.monoforum);
     this.isBotforum = isBotforum;
     this.canManageDirectMessages = canManageDirectMessages;
+    this.canManageBotforumTopics = canManageBotforumTopics;
 
     if(starsAmount.cached) {
       this.starsAmount = await starsAmount.result;
@@ -1063,7 +1041,7 @@ export default class Chat extends EventListenerBase<{
     const samePeer = this.appImManager.isSamePeer(this, options);
     if(!samePeer) {
       this.appImManager.dispatchEvent('peer_changing', this);
-      this.peerId = peerId || NULL_PEER_ID;
+      this.peerIdSignal[1](this.peerId = peerId || NULL_PEER_ID);
       this.threadId = threadId;
       this.monoforumThreadId = monoforumThreadId;
       this.isTemporaryThread = isTempId(threadId);
@@ -1086,7 +1064,7 @@ export default class Chat extends EventListenerBase<{
     this.staticMessages = messages || [];
 
     if(!peerId) {
-      this.peerId = 0;
+      this.peerIdSignal[1](this.peerId = 0);
       let promise: Promise<any>;
 
       if(this.hasBackgroundSet() && this === this.appImManager.chats[0]) {
@@ -1155,9 +1133,22 @@ export default class Chat extends EventListenerBase<{
   }
 
   private changeHistoryStorageKey(key: HistoryStorageKey, keyNoThreadId: HistoryStorageKey) {
-    batch(() => {
-      this.historyStorageKeySignal(key);
-      this.historyStorageKeyNoThreadIdSignal(keyNoThreadId);
+    this.disposeHistoryStorage?.();
+    this.disposeHistoryStorage = undefined;
+    if(!key) {
+      return;
+    }
+
+    this.disposeHistoryStorage = createRoot((dispose) => {
+      this.historyStorage = useHistoryStorage(key);
+      this.historyStorageNoThreadId = useHistoryStorage(keyNoThreadId);
+
+      this.managers.appMessagesManager.toggleHistoryKeySubscription(key, true);
+      onCleanup(() => {
+        this.managers.appMessagesManager.toggleHistoryKeySubscription(key, false);
+      });
+
+      return dispose;
     });
   }
 
@@ -1337,9 +1328,10 @@ export default class Chat extends EventListenerBase<{
       this.managers.appPeersManager.isBot(this.peerId),
       this.managers.appMessagesManager.getDialogOnly(this.peerId),
       this.getHistoryStorage(true),
-      this.peerId.isUser() ? this.managers.appProfileManager.isCachedUserBlocked(this.peerId.toUserId()) : undefined
-    ]).then(([isBot, dialog, historyStorage, isUserBlocked]) => {
-      if(!isBot || isVerificationBot(this.peerId)) {
+      this.peerId.isUser() ? this.managers.appProfileManager.isCachedUserBlocked(this.peerId.toUserId()) : undefined,
+      this.managers.appPeersManager.isBotforum(this.peerId)
+    ]).then(([isBot, dialog, historyStorage, isUserBlocked, isBotforum]) => {
+      if(!isBot || isVerificationBot(this.peerId) || isBotforum) {
         return false;
       }
 
@@ -1367,6 +1359,7 @@ export default class Chat extends EventListenerBase<{
           replyToMsgId: this.input.suggestedPost.changeMid
         } : {}),
         scheduleDate: this.input.scheduleDate,
+        scheduleRepeatPeriod: this.input.scheduleRepeatPeriod,
         silent: this.input.sendSilent,
         sendAsPeerId: this.input.sendAsPeerId,
         effect: this.input.effect(),

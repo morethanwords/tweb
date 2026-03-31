@@ -193,7 +193,7 @@ export class AppStickersManager extends AppManager {
       set = this.names[set] || getStickerSetInputByShortName(set);
     }
 
-    const cacheKey = JSON.stringify(set);
+    const cacheKey = this.getCacheKey(set);
     if(this.getStickerSetPromises[cacheKey]) {
       return this.getStickerSetPromises[cacheKey];
     }
@@ -370,7 +370,8 @@ export class AppStickersManager extends AppManager {
 
   public getAnimatedEmojiSticker(emoji: string, isAnimation?: boolean) {
     const id = isAnimation ? STICKERS_LOCAL_IDS.EMOJI_ANIMATIONS : STICKERS_LOCAL_IDS.EMOJI;
-    const stickerSet = this.storage.getFromCache(id);
+    const cacheKey = this.getCacheKey(getStickerSetInputByLocalId(id));
+    const stickerSet = this.storage.getFromCache(cacheKey);
     // const stickerSet = await this.getStickerSet({id});
     if(!stickerSet?.documents) return;
 
@@ -634,24 +635,26 @@ export class AppStickersManager extends AppManager {
   }
 
   public async toggleStickerSet(set: StickerSet.stickerSet) {
-    const stickerSet = this.storage.getFromCache(set.id);
+    const input = getStickerSetInputByStickerSet(set);
+    const cacheKey = this.getCacheKey(input);
+    const stickerSet = this.storage.getFromCache(cacheKey);
     set = stickerSet.set;
 
     if(set.installed_date) {
       const res = await this.apiManager.invokeApi('messages.uninstallStickerSet', {
-        stickerset: getStickerSetInputByStickerSet(set)
+        stickerset: input
       });
 
       if(res) {
         delete set.installed_date;
         this.saveStickerSetLocal(stickerSet);
         this.rootScope.dispatchEvent('stickers_deleted', set);
-        this.storage.delete(set.id, true);
+        this.storage.delete(cacheKey, true);
         return true;
       }
     } else {
       const res = await this.apiManager.invokeApi('messages.installStickerSet', {
-        stickerset: getStickerSetInputByStickerSet(set),
+        stickerset: input,
         archived: false
       });
 

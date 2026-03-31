@@ -10,7 +10,7 @@ import {MOUNT_CLASS_TO} from '@config/debug';
 import matchUrlProtocol from '@lib/richTextProcessor/matchUrlProtocol';
 import {T_ME_PREFIXES} from '@appManagers/constants';
 
-export default function wrapUrl(url: string, unsafe?: number | boolean) {
+export default function wrapUrl(url: string, safe?: boolean) {
   if(!matchUrlProtocol(url)) {
     url = 'https://' + url;
   }
@@ -70,11 +70,20 @@ export default function wrapUrl(url: string, unsafe?: number | boolean) {
 
     switch(tgMatch[1]) {
       // * local
-      case 'iv':
-        out.url = decodeURIComponent(new URL(url).searchParams.get('url'));
+      case 'iv': {
+        try {
+          if(!safe) {
+            throw 'unsafe';
+          }
+
+          out.url = decodeURIComponent(new URL(url).searchParams.get('url'));
+        } catch(err) {
+          onclick = undefined;
+        }
         break;
+      }
     }
-  }/*  else if(unsafe) {
+  }/*  else if(!safe) {
     url = 'tg://unsafe_url?url=' + encodeURIComponent(url);
   } */
 

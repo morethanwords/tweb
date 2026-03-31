@@ -1,3 +1,4 @@
+@use "../shared" as *;
 .reply-keyboard {
   background: var(--surface-color);
   position: absolute !important;
@@ -42,26 +43,44 @@
 
   &-button {
     width: 100%;
-    border-radius: .375rem;
+    border-radius: .375rem !important;
     border: 2px solid var(--primary-color);
     text-align: center;
-    color: var(--primary-color);
+    color: var(--primary-color) !important;
     background-color: transparent;
     height: 3rem;
     font-weight: var(--font-weight-bold);
     font-size: .9375rem;
+    position: relative;
 
     @include animation-level(2) {
       transition: color .15s, background-color .15s;
     }
 
-    @include hover() {
-      background-color: var(--primary-color);
-      color: #fff;
+    &:not(.reply-markup-button-bg) {
+      .custom-emoji-canvas {
+        @include animation-level(2) {
+          transition: filter .15s;
+        }
+      }
+
+      @include hover() {
+        background-color: var(--primary-color);
+        color: #fff !important;
+
+        .custom-emoji-canvas {
+          filter: brightness(0) invert(1);
+        }
+      }
     }
 
     & + & {
       margin-left: .3125rem;
+    }
+
+    &.reply-markup-button-bg {
+      background-color: rgb(var(--background-color-rgb)) !important;
+      border: none;
     }
   }
 

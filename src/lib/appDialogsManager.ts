@@ -93,7 +93,7 @@ import Icon from '@components/icon';
 import setBadgeContent from '@helpers/setBadgeContent';
 import createBadge from '@helpers/createBadge';
 import {isDialog, isForumTopic, isMonoforumDialog, isSavedDialog} from '@appManagers/utils/dialogs/isDialog';
-import {ChatType} from '@components/chat/chat';
+import {ChatType} from '@components/chat/chatType';
 import rtmpCallsController from '@lib/calls/rtmpCallsController';
 import IS_LIVE_STREAM_SUPPORTED from '@environment/liveStreamSupport';
 import {WrapRichTextOptions} from '@richTextProcessor/wrapRichText';
@@ -113,6 +113,8 @@ import {ForumTab} from '@components/forumTab/forumTab';
 import {fillForumTabRegister} from '@components/forumTab/fillRegister';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import {fastSmoothScrollToStart} from '@helpers/fastSmoothScroll';
+import ArchiveDialog, {archiveDialogTagName} from '@components/archiveDialog';
+import {createArchiveDialogContextMenu} from '@components/archiveDialogContextMenu';
 
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
@@ -620,6 +622,7 @@ export class AppDialogsManager {
     rootScope.addEventListener('state_cleared', () => {
       const clearCurrent = REAL_FOLDERS.has(this.filterId);
       this.xd.loadedDialogsAtLeastOnce = false;
+      this.isFirstDialogsLoad = true;
       this.showFiltersPromise = undefined;
 
       /* const clearPromises: Promise<any>[] = [];
@@ -845,7 +848,7 @@ export class AppDialogsManager {
 
 
       const dialogElements = [
-        this.xd?.sortedList?.get?.(peerId), this.forumTab?.xd?.sortedList?.get(threadId || monoforumThreadId || peerId)
+        this.xd?.sortedList?.getDialogElement?.(peerId), this.forumTab?.xd?.sortedList?.getDialogElement(threadId || monoforumThreadId || peerId)
       ].filter(Boolean);
 
       dialogElements.forEach(dialogElement => {
@@ -1169,7 +1172,7 @@ export class AppDialogsManager {
   public l(filter: Parameters<AppDialogsManager['addFilter']>[0]) {
     const xd = this.xds[filter.id] = new AutonomousDialogList({filterId: filter.id, appDialogsManager: this});
     const {scrollable, list} = xd.generateScrollable(filter);
-    this.setListClickListener({list, onFound: null, withContext: true});
+    this.setListClickListener({list, onFound: null, withContext: true, withArchiveContext: filter.id === FOLDER_ID_ALL});
 
     return {ul: list, xd, scrollable};
   }
@@ -1782,12 +1785,14 @@ export class AppDialogsManager {
     list,
     onFound,
     withContext = false,
+    withArchiveContext = false,
     autonomous = false,
     openInner = false
   }: {
     list: HTMLElement,
     onFound?: (target: HTMLElement) => void | boolean,
     withContext?: boolean,
+    withArchiveContext?: boolean,
     autonomous?: boolean,
     openInner?: boolean
   }) {
@@ -1798,19 +1803,46 @@ export class AppDialogsManager {
     const findAvatarWithStories = (target: EventTarget) => {
       return (target as HTMLElement).closest('.avatar.has-stories') as HTMLElement;
     };
+
+    const getOpenStoryCallback = (target: EventTarget) => {
+      const avatar = findAvatarWithStories(target);
+
+      if(avatar) return () => {
+        appImManager.openStoriesFromAvatar(avatar);
+      };
+
+      const archiveAvatar = (target as HTMLElement).closest('.archive-dialog-with-stories') as HTMLElement;
+      const archiveDialog = (target as HTMLElement).closest(archiveDialogTagName);
+
+      if(archiveAvatar && archiveDialog instanceof ArchiveDialog) return () => {
+        archiveDialog.controls?.openStory?.();
+      };
+    }
+
     const isOpeningStoriesDisabled = () => appSidebarLeft.isCollapsed() && !appSidebarLeft.hasSomethingOpenInside();
+
+    let willOpenStory = false;
+
+    const setWillOpenStory = (e: Event) => willOpenStory = !isOpeningStoriesDisabled() && !!getOpenStoryCallback(e.target);
 
     list.dataset.autonomous = '' + +autonomous;
     list.addEventListener('mousedown', (e) => {
       if(
         e.button !== 0 ||
-        (!isOpeningStoriesDisabled() && findAvatarWithStories(e.target))
+        setWillOpenStory(e)
       ) {
         return;
       }
 
       this.log('dialogs click list');
       const target = e.target as HTMLElement;
+
+      const archiveElem = findUpTag(target, archiveDialogTagName);
+      if(archiveElem) {
+        appSidebarLeft.openArchiveTab();
+        return;
+      }
+
       const elem = findUpTag(target, DIALOG_LIST_ELEMENT_TAG);
 
       if(!elem) {
@@ -1917,13 +1949,20 @@ export class AppDialogsManager {
         cancelEvent(e);
       }
 
-      if(isOpeningStoriesDisabled()) return;
-      const avatar = findAvatarWithStories(e.target);
-      avatar && appImManager.openStoriesFromAvatar(avatar);
+      if(!willOpenStory || isOpeningStoriesDisabled()) return;
+
+      const callback = getOpenStoryCallback(e.target);
+      callback?.();
     }, {capture: true});
 
     if(withContext) {
       this.contextMenu.attach(list);
+    }
+
+    if(withArchiveContext) {
+      createArchiveDialogContextMenu({
+        element: list
+      });
     }
   }
 
@@ -2036,7 +2075,9 @@ export class AppDialogsManager {
     }
 
     if(!lastMessage && !draftMessage/*  || (lastMessage._ === 'messageService' && !lastMessage.rReply) */) {
-      dom.lastMessageSpan.replaceChildren();
+      const withNoMessagesText = apiManagerProxy.isBotforum(peerId);
+
+      dom.lastMessageSpan.replaceChildren(...(withNoMessagesText ? [i18n('NoMessagesYet')] : []));
       dom.lastTimeSpan.replaceChildren();
       delete dom.listEl.dataset.mid;
 
@@ -2077,7 +2118,7 @@ export class AppDialogsManager {
       if(lastMessage && !draftMessage && !isRestricted) {
         const media = getMediaFromMessage(lastMessage, true);
         const videoTypes: Set<MyDocument['type']> = new Set(['video', 'gif', 'round']);
-        if(media && (media._ === 'photo' || videoTypes.has(media.type))) {
+        if(media && (media._ === 'photo' || videoTypes.has(media.type)) && !(((lastMessage as Message.message).media) as MessageMedia.messageMediaPhoto)?.ttl_seconds) {
           const spoiler = ((lastMessage as Message.message).media as MessageMedia.messageMediaPhoto | MessageMedia.messageMediaDocument)?.pFlags?.spoiler;
           const size = choosePhotoSize(media, 20, 20);
 

@@ -13,7 +13,8 @@ import appSidebarRight, {RIGHT_COLUMN_ACTIVE_CLASSNAME} from '@components/sideba
 import mediaSizes, {ScreenSize} from '@helpers/mediaSizes';
 import {logger, LogTypes} from '@lib/logger';
 import rootScope from '@lib/rootScope';
-import Chat, {ChatSearchKeys, ChatType} from '@components/chat/chat';
+import Chat, {ChatSearchKeys} from '@components/chat/chat';
+import {ChatType} from '@components/chat/chatType';
 import PopupNewMedia, {getCurrentNewMediaPopup} from '@components/popups/newMedia';
 import MarkupTooltip from '@components/chat/markupTooltip';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
@@ -42,7 +43,7 @@ import MEDIA_MIME_TYPES_SUPPORTED from '@environment/mediaMimeTypesSupport';
 import IMAGE_MIME_TYPES_SUPPORTED from '@environment/imageMimeTypesSupport';
 import {NULL_PEER_ID, STARS_CURRENCY} from '@appManagers/constants';
 import telegramMeWebManager from '@lib/telegramMeWebManager';
-import {ONE_DAY} from '@helpers/date';
+import {formatDate, ONE_DAY} from '@helpers/date';
 import TopbarCall from '@components/topbarCall';
 import confirmationPopup from '@components/confirmationPopup';
 import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
@@ -62,7 +63,7 @@ import {AppManagers} from '@lib/managers';
 import uiNotificationsManager from '@lib/uiNotificationsManager';
 import appMediaPlaybackController from '@components/appMediaPlaybackController';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
-import wrapRichText from '@lib/richTextProcessor/wrapRichText';
+import wrapRichText, {ENTITY_ELEMENT_MAP} from '@lib/richTextProcessor/wrapRichText';
 import wrapUrl from '@lib/richTextProcessor/wrapUrl';
 import getUserStatusString from '@components/wrappers/getUserStatusString';
 import getChatMembersString from '@components/wrappers/getChatMembersString';
@@ -135,6 +136,13 @@ import {canUploadAsWhenEditing} from '@components/chat/utils';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import {usePeer} from '@stores/peers';
 import {untrack} from 'solid-js';
+import showStoriesStealthModePopup from '@components/popups/storiesStealthMode';
+import {ButtonMenuItemOptions, ButtonMenuSync} from '@components/buttonMenu';
+import contextMenuController from '@helpers/contextMenuController';
+import positionMenu from '@helpers/positionMenu';
+import {copyTextToClipboard} from '@helpers/clipboard';
+import PopupSchedule from '@components/popups/schedule';
+import {getFullDate} from '@helpers/date/getFullDate';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -515,6 +523,77 @@ export class AppImManager extends EventListenerBase<{
       });
     };
 
+    (window as any).onFormattedDateClick = async(element: HTMLAnchorElement, e: MouseEvent) => {
+      cancelEvent(e);
+
+      const bubble = findUpClassName(element, 'bubble') as HTMLDivElement;
+      if(!bubble) {
+        return;
+      }
+
+      const {mid, peerId} = bubble.dataset;
+      const message = apiManagerProxy.getMessageByPeer(peerId.toPeerId(), +mid);
+      const canForward = await this.managers.appMessagesManager.canForward(message);
+      const entity = ENTITY_ELEMENT_MAP.get(element);
+      const timestamp = (entity as MessageEntity.messageEntityFormattedDate).date;
+      const date = new Date(timestamp * 1000);
+      const dateElement = formatDate(date, {withTime: true});
+      const text = dateElement.textContent;
+
+      const buttons: ButtonMenuItemOptions[] = [{
+        icon: 'calendar',
+        regularText: dateElement,
+        onClick: () => {}
+      }, {
+        icon: 'copy',
+        text: 'FormattedDate.CopyDate',
+        onClick: () => {
+          copyTextToClipboard(text);
+          toastNew({langPackKey: 'FormattedDate.DateCopied'});
+        }
+      }, canForward && {
+        icon: 'scheduled',
+        text: 'Chat.Send.SetReminder',
+        onClick: () => {
+          new PopupSchedule({
+            initDate: date,
+            onPick: (_timestamp: number) => {
+              this.managers.appMessagesManager.forwardMessages({
+                peerId: rootScope.myId,
+                scheduleDate: _timestamp,
+                mids: [message.mid],
+                fromPeerId: message.peerId
+              });
+
+              const {hide} = setQuizHint({
+                icon: 'saved',
+                textElement: i18n('ReminderScheduled', [
+                  anchorCallback(() => {
+                    hide();
+                    this.openScheduled(rootScope.myId);
+                  })
+                ]),
+                appendTo: this.chat.bubbles.container,
+                from: 'top',
+                duration: 5000
+              });
+            }
+          }).show();
+        }
+      }];
+
+      const menu = ButtonMenuSync({buttons: buttons.filter(Boolean)});
+      menu.classList.add('contextmenu');
+
+      document.body.append(menu);
+      positionMenu(e, menu);
+      contextMenuController.openBtnMenu(menu, () => {
+        setTimeout(() => {
+          menu.remove();
+        }, 300);
+      });
+    };
+
     document.addEventListener('mousemove', (e) => {
       const mediaStickerWrapper = findUpClassName(e.target, 'media-sticker-wrapper');
       if(!mediaStickerWrapper ||
@@ -606,7 +685,10 @@ export class AppImManager extends EventListenerBase<{
         tab.accountNumber === currentTab.accountNumber &&
         tab.id !== currentTab.id
       );
-      if(!currentTab.idleStartTime || accountOtherTabs.every((tab) => tab.idleStartTime < currentTab.idleStartTime)) {
+      if(
+        !currentTab.idleStartTime ||
+        accountOtherTabs.every((tab) => (tab.idleStartTime || Infinity) < currentTab.idleStartTime)
+      ) {
         this.audioAssetPlayer.playWithThrottle({name: 'message_sent', volume: 0.2}, 300);
       }
     });
@@ -702,6 +784,10 @@ export class AppImManager extends EventListenerBase<{
     // PopupElement.createPopup(PopupAboutAd);
 
     // PopupElement.createPopup(PopupBoostsViaGifts, -5000866300);
+
+    // Promise.resolve(apiManagerProxy.getAppConfig()).then(() => {
+    //   showStoriesStealthModePopup();
+    // });
   }
 
   public adjustChatPatternBackground() {
@@ -1200,10 +1286,14 @@ export class AppImManager extends EventListenerBase<{
 
   private attachKeydownListener() {
     const IGNORE_KEYS = new Set(['PageUp', 'PageDown', 'Meta', 'Control']);
-    const onKeyDown = (e: KeyboardEvent) => {
+    const onKeyDown = async(e: KeyboardEvent) => {
       const key = e.key;
       const isSelectionCollapsed = document.getSelection().isCollapsed;
-      if(overlayCounter.isOverlayActive || IGNORE_KEYS.has(key)) return;
+      if(
+        overlayCounter.isOverlayActive ||
+        IGNORE_KEYS.has(key) ||
+        !e.isTrusted // * ignore synthetic events
+      ) return;
 
       const target = e.target as HTMLElement;
 
@@ -1223,22 +1313,81 @@ export class AppImManager extends EventListenerBase<{
         return;
       } else if(e.altKey && (key === 'ArrowUp' || key === 'ArrowDown')) {
         cancelEvent(e);
-        this.managers.dialogsStorage.getNextDialog(this.chat.peerId, key === 'ArrowDown', appDialogsManager.filterId).then((dialog) => {
+        this.managers.dialogsStorage.getNextDialog(
+          this.chat.peerId,
+          key === 'ArrowDown',
+          appDialogsManager.filterId
+        ).then((dialog) => {
           if(dialog) {
             this.setPeer({peerId: dialog.peerId});
           }
         });
-      } else if(key === 'ArrowUp' && this.chat?.type !== ChatType.Scheduled) {
-        if(!appDialogsManager.contextMenu?.hasAddToFolderOpen() && !chat?.input?.editMsgId && chat?.input?.isInputEmpty()) {
-          this.managers.appMessagesManager.getFirstMessageToEdit(chat.peerId, chat.threadId).then((message) => {
-            if(message) {
+        return;
+      } else if((key === 'ArrowUp' || key === 'ArrowDown') && this.chat?.type !== ChatType.Scheduled) {
+        if(
+          !appDialogsManager.contextMenu?.hasAddToFolderOpen() &&
+          !chat?.input?.editMsgId
+        ) {
+          const forReply = e.metaKey || e.ctrlKey;
+          if(!forReply && !chat?.input?.isInputEmpty()) {
+            return;
+          }
+
+          const up = key === 'ArrowUp';
+          const {replyToMsgId} = this.chat.input;
+          const {peerId, threadId} = this.chat;
+          if((!forReply && !up) || (forReply && !up && !replyToMsgId)) {
+            return;
+          }
+
+          cancelEvent(e);
+          const middleware = this.chat.bubbles.getMiddleware();
+          if(forReply && !(await chat.canSend())) {
+            return;
+          }
+
+          if(!middleware()) {
+            return;
+          }
+
+          this.managers.appMessagesManager.getFirstMessageToEdit({
+            peerId,
+            threadId,
+            forReply,
+            mid: forReply ? replyToMsgId : undefined,
+            up
+          }).then(async(message) => {
+            if(chat !== this.chat || !middleware()) {
+              return;
+            }
+
+            if(!message) {
+              if(forReply && chat.input.replyToMsgId === replyToMsgId) {
+                chat.input.onHelperCancel();
+              }
+
+              return;
+            }
+
+            if(forReply) {
+              const bubble = chat.bubbles.getBubble(message.peerId, message.mid);
+              await chat.input.initMessageReply(chat.input.getChatInputReplyToFromMessage(message));
+              if(bubble) {
+                chat.bubbles.scrollToBubble(bubble, 'center');
+                chat.bubbles.highlightBubble(bubble);
+              } else {
+                chat.setMessageId({
+                  lastMsgId: message.mid,
+                  lastMsgPeerId: message.peerId
+                });
+              }
+            } else {
               chat.input.initMessageEditing(message.mid);
-              cancelEvent(e); // * prevent from scrolling
             }
           });
-        } else {
-          return;
         }
+
+        return;
       } else if(key === 'ArrowDown') {
         return;
       }
@@ -1263,8 +1412,9 @@ export class AppImManager extends EventListenerBase<{
   // * restrict copying no forwards content
   private attachCopyListener() {
     document.addEventListener('copy', (e) => {
+      let peerId: PeerId;
       const nodes = getSelectedNodes();
-      nodes.some((node) => {
+      const foundRestrictedNode = nodes.some((node) => {
         let element: HTMLElement = node as HTMLElement;
         if(node.nodeType !== node.ELEMENT_NODE) {
           element = node.parentElement;
@@ -1279,15 +1429,25 @@ export class AppImManager extends EventListenerBase<{
           return false;
         }
 
-        e.preventDefault();
-        const peerId = bubble.dataset.peerId.toPeerId();
-        const chat = apiManagerProxy.getChat(peerId.toChatId());
-        toastNew({
-          langPackKey: (chat as MTChat.channel).pFlags.broadcast ? 'CopyRestricted.Channel' : 'CopyRestricted.Group'
-        });
-
+        peerId = bubble.dataset.peerId.toPeerId();
         return true;
       });
+
+      if(foundRestrictedNode) {
+        e.preventDefault();
+
+        let langPackKey: LangPackKey;
+        if(peerId.isUser()) {
+          langPackKey = 'CopyRestricted.User';
+        } else {
+          const chat = apiManagerProxy.getChat(peerId.toChatId());
+          langPackKey = (chat as MTChat.channel).pFlags.broadcast ?
+            'CopyRestricted.Channel' :
+            'CopyRestricted.Group';
+        }
+
+        toastNew({langPackKey});
+      }
     });
   }
 
@@ -1423,7 +1583,7 @@ export class AppImManager extends EventListenerBase<{
 
     const channelId = isChannel ? (options.peer as MTChat.channel).id : undefined;
     const isForum = !!(options.peer as MTChat.channel).pFlags.forum;
-    const isBotforum = !!(options.peer?._ === 'user' && options.peer?.pFlags?.bot_forum_view);
+    const isBotforum = !!(isUser && (options.peer as User.user).pFlags.bot_forum_view);
 
     await Promise.all(keys.map(async(key) => {
       options[key] &&= await this.managers.appMessagesIdsManager.generateMessageId(options[key], channelId);
@@ -1444,18 +1604,26 @@ export class AppImManager extends EventListenerBase<{
       return;
     }
 
-    if(!commentId && !threadId && !lastMsgId && isBotforum) {
+    if(isBotforum && this.chat.peerId !== peerId) {
       appDialogsManager.toggleForumTabByPeerId(peerId, true);
     }
 
     // handle t.me/username/thread or t.me/username/messageId
-    if(isForum && lastMsgId && !threadId) {
-      const message = await this.managers.appMessagesManager.reloadMessages(peerId, lastMsgId);
-      if(message) {
-        threadId = options.threadId = getMessageThreadId(message, {isForum});
-      } else {
-        threadId = options.threadId = lastMsgId;
-        lastMsgId = options.lastMsgId = undefined;
+    if(lastMsgId && !threadId) {
+      if(isForum) {
+        const message = await this.managers.appMessagesManager.reloadMessage(peerId, lastMsgId);
+        if(message) {
+          threadId = options.threadId = getMessageThreadId(message, {isForum});
+        } else {
+          threadId = options.threadId = lastMsgId;
+          lastMsgId = options.lastMsgId = undefined;
+        }
+      } else if(isBotforum) {
+        const topic = await this.managers.dialogsStorage.getForumTopicById(peerId, lastMsgId);
+        if(topic) {
+          threadId = options.threadId = lastMsgId;
+          lastMsgId = options.lastMsgId = undefined;
+        }
       }
     }
 
@@ -1521,7 +1689,7 @@ export class AppImManager extends EventListenerBase<{
       return this.setInnerPeer(options);
     }
 
-    return this.managers.appMessagesManager.reloadMessages(options.peerId, options.threadId).then(async(message) => {
+    return this.managers.appMessagesManager.reloadMessage(options.peerId, options.threadId).then(async(message) => {
       if(!message) {
         options.lastMsgId = undefined;
       }
@@ -1759,7 +1927,11 @@ export class AppImManager extends EventListenerBase<{
       const top = chatBubbles.scrollable.scrollPosition;
 
       const position = {
-        mids: chatBubbles.getRenderedHistory('desc', true).map((fullMid) => splitFullMid(fullMid).mid),
+        mids: chatBubbles.getRenderedHistory(
+          'desc',
+          true,
+          false
+        ).map((fullMid) => splitFullMid(fullMid).mid),
         top
       };
 
@@ -1903,6 +2075,7 @@ export class AppImManager extends EventListenerBase<{
     document.addEventListener('paste', this.onDocumentPaste, true);
     this.attachDragAndDropListeners();
     MarkupTooltip.getInstance().handleSelection();
+    MarkupTooltip.PopupSchedule = PopupSchedule;
   }
 
   private attachDragAndDropListeners() {

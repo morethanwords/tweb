@@ -98,3 +98,31 @@ export const AppMessagesAutoDeleteTab =
     title: 'AutoDeleteMessages',
     getComponentModule: () => import('../sidebarLeft/tabs/autoDeleteMessages')
   });
+
+export const AppArchiveSettingsTab =
+  scaffoldSolidJSTab({
+    title: 'ArchiveSettings',
+    getComponentModule: () => import('../sidebarLeft/tabs/archiveSettingsTab')
+  });
+
+
+type AppAddMembersTabPayload = {
+  title: LangPackKey;
+  placeholder: LangPackKey;
+  type: 'channel' | 'chat' | 'privacy';
+  takeOut?: (peerIds: PeerId[]) => Promise<any> | false | void;
+  skippable: boolean;
+  selectedPeerIds?: PeerId[];
+  attachToPromise?: (promise: Promise<any>) => void;
+};
+
+export const AppAddMembersTab =
+  scaffoldSolidJSTab<AppAddMembersTabPayload>({
+    title: 'GroupAddMembers',
+    getComponentModule: () => import('../sidebarLeft/tabs/addMembers')
+  });
+(AppAddMembersTab as any).noSame = true;
+const _origAddMembersInit = (AppAddMembersTab.prototype as any).init;
+(AppAddMembersTab.prototype as any).init = function(payload: AppAddMembersTabPayload, overrideTitle?: LangPackKey) {
+  return _origAddMembersInit.call(this, payload, overrideTitle || payload.title);
+};

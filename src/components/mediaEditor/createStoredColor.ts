@@ -1,43 +1,36 @@
-import {createSignal} from 'solid-js';
-
 import {colorPickerSwatches} from '@components/mediaEditor/colorPicker';
+import {SavedBrushColor} from '@config/state';
+import {createStoredValue, Optional, StoredValueKey} from './createStoredValue';
 
-export function createStoredColor(key: string, defaultColor: string) {
-  // (1 - use swatch, 2 - use picker color), (color from swatch), (color from picker)
-  type SavedColor = [1 | 2, string, string];
 
-  const [savedColor, setSavedColor] = createSignal<SavedColor>(
-    (() => {
-      const fallback = () => {
-        const value = [colorPickerSwatches.includes(defaultColor) ? 1 : 2, defaultColor, defaultColor] as SavedColor;
-        localStorage.setItem(key, JSON.stringify(value));
-        return value;
-      };
-      try {
-        const value: SavedColor = JSON.parse(localStorage.getItem(key));
-        if(
-          !(value instanceof Array) ||
-          typeof value[0] !== 'number' ||
-          typeof value[1] !== 'string' ||
-          typeof value[2] !== 'string'
-        ) {
-          return fallback();
-        }
-        return value;
-      } catch{}
-      return fallback();
-    })()
-  );
+export function createStoredColor(key: StoredValueKey, defaultColor: string) {
+  const [savedColor, setSavedColor] = createStoredValue<SavedBrushColor>({
+    key,
+    validate: (value: any) => {
+      if(
+        !(value instanceof Array) ||
+        typeof value[0] !== 'number' ||
+        typeof value[1] !== 'string' ||
+        typeof value[2] !== 'string'
+      ) {
+        return Optional.none();
+      }
+
+      return Optional.value(value as SavedBrushColor);
+    },
+    defaultValue: [colorPickerSwatches.includes(defaultColor) ? 1 : 2, defaultColor, defaultColor] as SavedBrushColor
+  });
 
   function setColor(color: string) {
-    let value: SavedColor;
+    let value: SavedBrushColor;
+
     if(colorPickerSwatches.includes(color)) {
       value = [1, color, color];
     } else {
       value = [2, savedColor()[1], color];
     }
+
     setSavedColor(value);
-    localStorage.setItem(key, JSON.stringify(value));
   }
 
   return [

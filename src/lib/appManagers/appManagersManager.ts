@@ -10,6 +10,7 @@ import {MOUNT_CLASS_TO} from '@config/debug';
 import callbackify from '@helpers/callbackify';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import cryptoMessagePort from '@lib/crypto/cryptoMessagePort';
+import rlottieMessagePort from '@lib/rlottie/rlottieMessagePort';
 import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
 import {AppStoragesManager} from '@appManagers/appStoragesManager';
 import createManagers from '@appManagers/createManagers';
@@ -19,6 +20,7 @@ import rootScope from '@lib/rootScope';
 import AccountController from '@lib/accounts/accountController';
 import pushSingleManager from '@appManagers/pushSingleManager';
 import Modes from '@config/modes';
+import SuperMessagePort from '@lib/superMessagePort';
 
 type Managers = Awaited<ReturnType<typeof createManagers>>;
 
@@ -28,12 +30,21 @@ const CAN_USE_SERVICE_WORKER = !Modes.noServiceWorker;
 type ManagersByAccount = Record<ActiveAccountNumber, Managers>;
 type StateManagersByAccount = Record<ActiveAccountNumber, AppStateManager>;
 
+type ThreadedSharedWorker = {
+  urls: string[],
+  attached: number,
+  promise: CancellablePromise<void>,
+  superMessagePort?: SuperMessagePort<any, any, any>,
+  threads: number
+};
+
+export const THREADED_WORKERS_TYPES = ['crypto', 'rlottie'] as const;
+export type ThreadedWorkerType = typeof THREADED_WORKERS_TYPES[number];
+
 export class AppManagersManager {
   private managersByAccount: Promise<ManagersByAccount> | ManagersByAccount;
   public readonly stateManagersByAccount: StateManagersByAccount;
-  private cryptoWorkersURLs: string[];
-  private cryptoPortsAttached: number;
-  private cryptoPortPromise: CancellablePromise<void>;
+  private threadedSharedWorkers: {[type in ThreadedWorkerType]?: ThreadedSharedWorker};
 
   private _isServiceWorkerOnline: boolean;
 
@@ -43,12 +54,28 @@ export class AppManagersManager {
   constructor() {
     this._isServiceWorkerOnline = CAN_USE_SERVICE_WORKER;
 
-    this.cryptoWorkersURLs = [];
-    this.cryptoPortsAttached = 0;
-    this.cryptoPortPromise = deferredPromise();
-    this.cryptoPortPromise.then(() => {
-      this.cryptoPortPromise = undefined;
-    });
+    this.threadedSharedWorkers = {};
+    for(
+      const {type, superMessagePort, threads} of THREADED_WORKERS_TYPES.map((type) => {
+        return {
+          type,
+          superMessagePort: type === 'crypto' ? cryptoMessagePort : rlottieMessagePort,
+          threads: type === 'crypto' ? App.cryptoWorkers : App.lottieWorkers
+        };
+      })
+    ) {
+      this.threadedSharedWorkers[type] = {
+        urls: [],
+        attached: 0,
+        promise: deferredPromise(),
+        superMessagePort,
+        threads
+      };
+
+      this.threadedSharedWorkers[type].promise.then(() => {
+        this.threadedSharedWorkers[type].promise = undefined;
+      });
+    }
 
     this.stateManagersByAccount = {
       1: new AppStateManager(1),
@@ -93,33 +120,35 @@ export class AppManagersManager {
       });
     });
 
-    port.addEventListener('cryptoPort', (payload, source, event) => {
+    port.addEventListener('threadedPort', (type, source, event) => {
+      const threadedWorker = this.threadedSharedWorkers[type];
       const port = event.ports[0];
-      if(this.cryptoPortsAttached >= this.cryptoWorkersURLs.length) {
+      if(threadedWorker.attached >= threadedWorker.urls.length) {
         port.close();
         return;
       }
 
-      ++this.cryptoPortsAttached;
-      cryptoMessagePort.attachPort(port);
-      this.cryptoPortPromise?.resolve();
+      ++threadedWorker.attached;
+      threadedWorker.superMessagePort.attachPort(port);
+      threadedWorker.promise?.resolve();
     });
 
-    port.addEventListener('createProxyWorkerURLs', ({originalUrl, blob}) => {
-      let length = this.cryptoWorkersURLs.length;
+    port.addEventListener('createProxyWorkerURLs', ({originalUrl, blob, type}) => {
+      const {urls, threads} = this.threadedSharedWorkers[type];
+      let length = urls.length;
       if(!length) {
-        this.cryptoWorkersURLs.push(originalUrl);
+        urls.push(originalUrl);
         ++length;
       }
 
-      const maxLength = App.cryptoWorkers;
+      const maxLength = threads;
       if(length === maxLength) {
-        return this.cryptoWorkersURLs;
+        return urls;
       }
 
       const newURLs = new Array(maxLength - length).fill(undefined).map(() => URL.createObjectURL(blob));
-      this.cryptoWorkersURLs.push(...newURLs);
-      return this.cryptoWorkersURLs;
+      urls.push(...newURLs);
+      return urls;
     });
 
     rootScope.addEventListener('account_logged_in', async({accountNumber, userId}) => {
@@ -142,10 +171,15 @@ export class AppManagersManager {
       await Promise.all([
         // new Promise(() => {}),
         appStoragesManager.loadStorages(),
-        this.cryptoPortPromise
+        this.threadedSharedWorkers.crypto.promise
       ]);
 
-      const managers = await createManagers(appStoragesManager, stateManager, accountNumber, stateManager.userId);
+      const managers = await createManagers(
+        appStoragesManager,
+        stateManager,
+        accountNumber,
+        stateManager.userId
+      );
 
       return [
         accountNumber,

@@ -13,7 +13,7 @@ import PopupForward from '@components/popups/forward';
 import PopupPinMessage from '@components/popups/unpinMessage';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import PopupSendNow from '@components/popups/sendNow';
-import {toast, toastNew} from '@components/toast';
+import {toastNew} from '@components/toast';
 import I18n, {i18n, LangPackKey} from '@lib/langPack';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import cancelEvent from '@helpers/dom/cancelEvent';
@@ -55,7 +55,7 @@ import PopupPremium from '@components/popups/premium';
 import {ChatInputReplyTo} from '@components/chat/input';
 import {FullMid, makeFullMid, TEST_BUBBLES_DELETION} from '@components/chat/bubbles';
 import AppStatisticsTab from '@components/sidebarRight/tabs/statistics';
-import {ChatType} from '@components/chat/chat';
+import {ChatType} from './chatType';
 import {formatFullSentTime} from '@helpers/date';
 import PopupToggleReadDate from '@components/popups/toggleReadDate';
 import rootScope from '@lib/rootScope';
@@ -89,6 +89,8 @@ import prepareTextWithEntitiesForCopying from '@helpers/prepareTextWithEntitiesF
 import {runWithHotReloadGuard} from '@lib/solidjs/runWithHotReloadGuard';
 import {PartialByKeys} from '@types';
 import {ContextMenuDeleteOptionText} from '@components/chat/contextMenuDeleteOptionText';
+import getMarkupInSelection from '@helpers/dom/getMarkupInSelection';
+import isNodeFullyInsideRange from '@helpers/dom/isNodeFullyInsideRange';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -718,11 +720,12 @@ export default class ChatContextMenu {
           assumeType<Message.message>(this.message);
           this.managers.appMessagesManager.editMessage(this.message, this.message.message, {
             scheduleDate: this.chat.input.scheduleDate,
+            scheduleRepeatPeriod: this.chat.input.scheduleRepeatPeriod,
             entities: this.message.entities
           });
 
           this.chat.input.onMessageSent(false, false);
-        }, new Date(this.message.date * 1000));
+        }, new Date(this.message.date * 1000), (this.message as Message.message).schedule_repeat_period);
       },
       verify: () => this.chat.type === ChatType.Scheduled
     }, {
@@ -736,7 +739,11 @@ export default class ChatContextMenu {
         this.isTextSelected &&
         !this.isTextFromMultipleMessagesSelected &&
         (!this.chat.peerTranslation.enabled() || this.message.pFlags.out) &&
-        (this.chat.bubbles.canForward(this.message) || this.chat.canSend())
+        (this.chat.bubbles.canForward(this.message) || this.chat.canSend()) &&
+        (() => {
+          const {date} = getMarkupInSelection(['date'], true);
+          return !date.elements[0] || isNodeFullyInsideRange(document.getSelection().getRangeAt(0), date.elements[0].firstChild);
+        })()
     }, {
       icon: 'reply',
       text: 'Reply',
@@ -1158,7 +1165,7 @@ export default class ChatContextMenu {
       return message.some((message) => ChatContextMenu.canDownload(message, withTarget, noForwards, container));
     }
 
-    if(!canSaveMessageMedia(message) || noForwards) {
+    if(!canSaveMessageMedia(message, noForwards)) {
       return false;
     }
 
@@ -1690,7 +1697,7 @@ export default class ChatContextMenu {
   private onCopyLinkClick = () => {
     const {url, isPrivate} = this.linkToMessage;
     const key: LangPackKey = isPrivate ? 'LinkCopiedPrivateInfo' : 'LinkCopied';
-    toast(I18n.format(key, true));
+    toastNew({langPackKey: key});
     copyTextToClipboard(url);
   };
 

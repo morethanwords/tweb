@@ -9,7 +9,7 @@ import {ResizableLayerProps} from '@components/mediaEditor/types';
 import {ResizableContainer} from '@components/mediaEditor/canvas/resizableLayers';
 
 export default function StickerLayerContent(props: ResizableLayerProps) {
-  const {editorState} = useMediaEditorContext();
+  const {editorState, canImageResultInGIF} = useMediaEditorContext();
 
   let container: HTMLDivElement;
 
@@ -22,8 +22,8 @@ export default function StickerLayerContent(props: ResizableLayerProps) {
       group: 'none',
       width: 500,
       height: 500,
-      play: true,
-      loop: true,
+      play: canImageResultInGIF,
+      loop: canImageResultInGIF,
       withThumb: false,
       middleware: middleware.get()
     });
