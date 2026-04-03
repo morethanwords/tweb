@@ -56,7 +56,6 @@ body.is-right-column-shown {
 	cursor: pointer !important;
   transform: translateY(calc(var(--topbar-floating-call-height) + var(--topbar-floating-audio-height)));
   background-color: var(--surface-color) !important;
-  border-inline-start: 1px solid var(--border-color);
 
   @include animation-level(2) {
     transition: transform var(--transition-standard-out), margin-bottom 0s 0s;
@@ -125,14 +124,25 @@ body.is-right-column-shown {
 		position: absolute;
 	}
 
-  &-border-right {
+  &-border {
     width: 1px;
-    height: 100%;
+    height: calc(100% + var(--pinned-floating-height));
     background-color: var(--border-color);
     position: absolute;
-    right: 0;
+    top: 0;
+    z-index: 1;
 
-    @include sidebar-transform();
+    &-left {
+      left: 0;
+    }
+
+    &-right {
+      right: -1px;
+
+      @include sidebar-transform() {
+        right: 0;
+      }
+    }
   }
 
 	/* @include respond-to(wide-screens) {

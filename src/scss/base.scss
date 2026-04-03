@@ -97,6 +97,7 @@
   --menu-box-shadow: 0px 0px 10px var(--menu-box-shadow-color);
   --menu-backdrop-filter: blur(50px);
   --section-box-shadow: 0px 1px 4px 0px var(--section-box-shadow-color);
+  --section-box-shadow-big: 0px 1px 8px 0px var(--section-box-shadow-big-color);
   --font-regular: "Roboto", -apple-system, apple color emoji, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
   --font-monospace: 'Roboto Mono', monospace;
   --font-rounded: -ui-rounded, "Numbers Rounded", "Roboto", "Helvetica Neue", sans-serif;
@@ -203,6 +204,7 @@
   --border-color: #dfe1e5;
   --scrollbar-color: rgba(0, 0, 0, .2);
   --section-box-shadow-color: rgba(0, 0, 0, .05);
+  --section-box-shadow-big-color: rgba(0, 0, 0, .1);
   --menu-box-shadow-color: rgba(0, 0, 0, .15);
 
   --input-search-background-color: #fff;
@@ -265,6 +267,7 @@
   --border-color: #0f0f0f;
   --scrollbar-color: rgba(255, 255, 255, .2);
   --section-box-shadow-color: rgba(0, 0, 0, .12);
+  --section-box-shadow-big-color: rgba(0, 0, 0, .24);
 
   --input-search-background-color: #181818;
   --input-search-border-color: #2f2f2f;

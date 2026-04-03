@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {children, createContext, createEffect, createMemo, createSignal, JSX, on, onCleanup, Ref} from 'solid-js';
+import {children, createContext, createEffect, createMemo, createSignal, JSX, on, onCleanup, Ref, untrack} from 'solid-js';
 import {IS_OVERLAY_SCROLL_SUPPORTED} from '@environment/overlayScrollSupport';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import {IS_MOBILE_SAFARI, IS_SAFARI} from '@environment/userAgent';
@@ -46,6 +46,7 @@ export default function Scrollable(props: {
   children: JSX.Element,
   ref?: Ref<HTMLDivElement>,
   thumbRef?: (el: HTMLDivElement) => void,
+  contextRef?: (ctx: ScrollableContextValue) => void,
   class?: string,
   classList?: JSX.HTMLAttributes<HTMLDivElement>['classList'],
   axis?: 'x' | 'y',
@@ -253,9 +254,9 @@ export default function Scrollable(props: {
 
   const onWheel = (e: WheelEvent) => {
     e.stopPropagation();
-    const target = e.target as HTMLElement;
-    if(!e.deltaX && target.scrollWidth > target.clientWidth) {
-      target.scrollLeft += e.deltaY / 4;
+    const container = ref;
+    if(!e.deltaX && container.scrollWidth > container.clientWidth) {
+      container.scrollLeft += e.deltaY / 4;
       cancelEvent(e);
     }
   };
@@ -286,6 +287,10 @@ export default function Scrollable(props: {
     onSizeChange,
     setScrollPositionSilently
   };
+
+  if(props.contextRef) {
+    untrack(() => props.contextRef)(value);
+  }
 
   const resolvedChildren = children(() => {
     return (

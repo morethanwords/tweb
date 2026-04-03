@@ -15,6 +15,7 @@ import DialogsContextMenu from '@components/dialogsContextMenu';
 import {horizontalMenu, horizontalMenuObjArgs} from '@components/horizontalMenu';
 import ripple from '@components/ripple';
 import Scrollable, {ScrollableX} from '@components/scrollable';
+import ScrollableTsx, {ScrollableContextValue} from '@components/scrollable2';
 import {formatDateAccordingToTodayNew} from '@helpers/date';
 import {IS_MOBILE_SAFARI} from '@environment/userAgent';
 import {logger, LogTypes} from '@lib/logger';
@@ -115,6 +116,12 @@ import LazyLoadQueue from '@components/lazyLoadQueue';
 import {fastSmoothScrollToStart} from '@helpers/fastSmoothScroll';
 import ArchiveDialog, {archiveDialogTagName} from '@components/archiveDialog';
 import {createArchiveDialogContextMenu} from '@components/archiveDialogContextMenu';
+import {createEffect, createRoot, For, on, untrack} from 'solid-js';
+import Tabs from '@components/tabs';
+import useFolders from '@stores/folders';
+import FoldersTabs from '@components/foldersTabs';
+import deferSideEffect from '@helpers/solid/deferSideEffect';
+import clamp from '@helpers/number/clamp';
 
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
@@ -468,18 +475,14 @@ export class DialogElement extends Row {
 
 type FilterRendered = {
   id: number,
-  menu: HTMLElement,
   container: HTMLElement,
-  unread: HTMLElement,
-  title: HTMLElement,
   scrollable: Scrollable,
   topNotification?: Row,
   topNotificationContainer?: HTMLElement,
   topNotificationData?: {
     _: 'chatlistUpdates',
     chatlistUpdates: ChatlistsChatlistUpdates
-  },
-  middlewareHelper: MiddlewareHelper,
+  }
 };
 
 type GetDialogOptions = {
@@ -511,8 +514,8 @@ export class AppDialogsManager {
 
   public filterId: number;
   public folders: {[k in 'menu' | 'container' | 'menuScrollContainer']: HTMLElement} = {
-    menu: document.getElementById('folders-tabs'),
-    menuScrollContainer: null,
+    menu: undefined,
+    menuScrollContainer: undefined,
     container: document.getElementById('folders-container')
   };
   private filtersRendered: {
@@ -563,14 +566,14 @@ export class AppDialogsManager {
 
   private lazyLoadQueue: LazyLoadQueue;
 
+  private ignoreFolderChange: boolean;
+
   public start() {
     const managers = this.managers = getProxiedManagers();
 
     this.contextMenu = new DialogsContextMenu(managers);
     this.stateMiddlewareHelper = getMiddleware();
     this.lazyLoadQueue = new LazyLoadQueue(5, true);
-
-    this.folders.menuScrollContainer = this.folders.menu.parentElement;
 
     // this.onListLengthChange = debounce(this._onListLengthChange, 100, false, true);
     this.onListLengthChange = () => void this._onListLengthChange();
@@ -581,7 +584,6 @@ export class AppDialogsManager {
 
     const storiesListContainer = this.storiesListContainer = document.createElement('div');
     storiesListContainer.classList.add('stories-list');
-
 
     fillForumTabRegister();
 
@@ -595,8 +597,14 @@ export class AppDialogsManager {
       handleTabSwipe({
         element: this.folders.container,
         onSwipe: (xDiff) => {
-          const prevId = selectTab.prevId();
-          selectTab(xDiff < 0 ? prevId + 1 : prevId - 1);
+          const folders = useFolders();
+          const prevIndex = folders.selectedFolderIndex();
+          const newIndex = clamp(
+            xDiff < 0 ? prevIndex + 1 : prevIndex - 1,
+            0,
+            folders.folderItems.length - 1
+          );
+          folders.onClick()(newIndex);
         },
         verifyTouchTarget: () => {
           return !this.forumTab;
@@ -608,30 +616,11 @@ export class AppDialogsManager {
       key: 'FilterAllChatsShort'
     });
 
-    rootScope.addEventListener('premium_toggle', async(isPremium) => {
-      if(isPremium) {
-        return;
-      }
-
-      const isFolderAvailable = await this.managers.filtersStorage.isFilterIdAvailable(this.filterId);
-      if(!isFolderAvailable) {
-        selectTab(whichChild(this.filtersRendered[FOLDER_ID_ALL].menu), false);
-      }
-    });
-
     rootScope.addEventListener('state_cleared', () => {
       const clearCurrent = REAL_FOLDERS.has(this.filterId);
       this.xd.loadedDialogsAtLeastOnce = false;
       this.isFirstDialogsLoad = true;
       this.showFiltersPromise = undefined;
-
-      /* const clearPromises: Promise<any>[] = [];
-      for(const name in this.managers.appStateManager.storagesResults) {
-        const results = this.managers.appStateManager.storagesResults[name as keyof AppStateManager['storages']];
-        const storage = this.managers.appStateManager.storages[name as keyof AppStateManager['storages']];
-        results.length = 0;
-        clearPromises.push(storage.clear());
-      } */
 
       if(clearCurrent) {
         this.xd.clear();
@@ -641,91 +630,26 @@ export class AppDialogsManager {
       this.onStateLoaded(useAppState()[0]);
     });
 
-    this.setFilterId(FOLDER_ID_ALL);
-    this.addFilter({
-      id: FOLDER_ID_ALL,
-      title: {_: 'textWithEntities', text: '', entities: []},
-      localId: FOLDER_ID_ALL
-    });
-
-    const foldersScrollable = new ScrollableX(this.folders.menuScrollContainer);
-    bottomPart.prepend(this.folders.menuScrollContainer);
-    const selectTab = this.selectTab = horizontalMenuObjArgs({
-      tabs: this.folders.menu,
-      content: this.folders.container,
-      onClick: async(id, tabContent) => {
-        /* if(id !== 0) {
-          id += 1;
-        } */
-
-        const _id = id;
-        id = +tabContent.dataset.filterId || FOLDER_ID_ALL;
-
-        rootScope.dispatchEventSingle('changing_folder_from_chatlist', id);
-
-        const isFilterAvailable = this.filterId === -1 || REAL_FOLDERS.has(id) || await this.managers.filtersStorage.isFilterIdAvailable(id);
-        if(!isFilterAvailable) {
-          showLimitPopup('folders');
-          return false;
-        }
-
-        const wasFilterId = this.filterId;
-        if(!IS_MOBILE_SAFARI) {
-          if(_id) {
-            if(!this.filtersNavigationItem) {
-              this.filtersNavigationItem = {
-                type: 'filters',
-                onPop: () => {
-                  selectTab(0);
-                  this.filtersNavigationItem = undefined;
-                }
-              };
-
-              appNavigationController.spliceItems(1, 0, this.filtersNavigationItem);
-            }
-          } else if(this.filtersNavigationItem) {
-            appNavigationController.removeItem(this.filtersNavigationItem);
-            this.filtersNavigationItem = undefined;
+    createRoot(() => {
+      let scrollableContext: ScrollableContextValue;
+      FoldersTabs({
+        scrollableProps: {
+          class: 'folders-tabs-scrollable hide',
+          ref: (ref) => {
+            this.folders.container.before(this.folders.menuScrollContainer = ref);
+          },
+          scrollableProps: {
+            contextRef: (ref) => scrollableContext = ref
+          }
+        },
+        menuProps: {
+          id: 'folders-tabs',
+          ref: (ref) => {
+            this.folders.menu = ref;
+            this.onRef(scrollableContext);
           }
         }
-
-        if(wasFilterId === id) {
-          fastSmoothScrollToStart(this.xds[id].scrollable.container, 'y');
-          return;
-        }
-
-        this.xds[id].clear();
-        const promise = this.setFilterIdAndChangeTab(id).then(() => {
-          // if(cached) {
-          //   return renderPromise;
-          // }
-        });
-
-        if(wasFilterId !== -1) {
-          return promise;
-        }
-      },
-      onTransitionEnd: () => {
-        for(const folderId in this.xds) {
-          if(+folderId !== this.filterId) {
-            this.xds[folderId].clear();
-          }
-        }
-      },
-      scrollableX: foldersScrollable,
-      onChange: ({element, active}) => {
-        const renderer: CustomEmojiRendererElement = element?.querySelector('custom-emoji-renderer-element');
-        renderer?.setTextColor(getFolderTitleTextColor(active));
-      }
-    });
-
-    createFolderContextMenu({
-      appSidebarLeft,
-      AppChatFoldersTab,
-      AppEditFolderTab,
-      managers: this.managers,
-      className: 'menu-horizontal-div-item',
-      listenTo: this.folders.menu
+      });
     });
 
     const [appState] = useAppState();
@@ -762,7 +686,91 @@ export class AppDialogsManager {
 
     appSidebarLeft.onCollapsedChange();
     this.onStateLoaded(appState);
-    // selectTab(0, false);
+  }
+
+  private onRef(scrollableContext: ScrollableContextValue) {
+    this.setFilterId(FOLDER_ID_ALL);
+    this.addFilter({
+      id: FOLDER_ID_ALL,
+      title: {_: 'textWithEntities', text: '', entities: []},
+      localId: FOLDER_ID_ALL
+    });
+
+    const {setSelectedFolderId, setOnClick, folderItems} = useFolders();
+    const selectFolderByIndex = async(index: number) => {
+      const id = folderItems[index].filter.id;
+      const wasFilterId = this.filterId;
+
+      const available = wasFilterId === -1 ||
+        REAL_FOLDERS.has(id) ||
+        await rootScope.managers.filtersStorage.isFilterIdAvailable(id);
+      if(!available) {
+        showLimitPopup('folders');
+        return false;
+      }
+
+      if(!IS_MOBILE_SAFARI) {
+        if(index) {
+          if(!this.filtersNavigationItem) {
+            this.filtersNavigationItem = {
+              type: 'filters',
+              onPop: () => {
+                selectFolderByIndex(0);
+                this.filtersNavigationItem = undefined;
+              }
+            };
+
+            appNavigationController.spliceItems(1, 0, this.filtersNavigationItem);
+          }
+        } else if(this.filtersNavigationItem) {
+          appNavigationController.removeItem(this.filtersNavigationItem);
+          this.filtersNavigationItem = undefined;
+        }
+      }
+
+      if(wasFilterId === id) {
+        fastSmoothScrollToStart(this.xds[id].scrollable.container, 'y');
+        return;
+      }
+
+      setSelectedFolderId(id);
+
+      this.xds[id].clear();
+      const promise = this.setFilterIdAndChangeTab(id);
+      if(wasFilterId !== -1) {
+        return promise;
+      }
+    };
+
+    setOnClick(() => selectFolderByIndex);
+
+    this.bottomPart.prepend(this.folders.menuScrollContainer);
+    this.selectTab = horizontalMenuObjArgs({
+      tabs: this.folders.menu,
+      content: this.folders.container,
+      onClick: selectFolderByIndex,
+      onTransitionEnd: () => {
+        for(const folderId in this.xds) {
+          if(+folderId !== this.filterId) {
+            this.xds[folderId].clear();
+          }
+        }
+      },
+      scrollableX: scrollableContext,
+      onChange: ({element, active}) => {
+        const renderer: CustomEmojiRendererElement = element?.querySelector('custom-emoji-renderer-element');
+        renderer?.setTextColor(getFolderTitleTextColor(active));
+      }
+    });
+
+    createFolderContextMenu({
+      appSidebarLeft,
+      AppChatFoldersTab,
+      AppEditFolderTab,
+      managers: this.managers,
+      className: 'menu-horizontal-div-item',
+      listenTo: this.folders.menu
+    });
   }
 
   private _renderStories() {
@@ -797,14 +805,6 @@ export class AppDialogsManager {
   }
 
   private initListeners() {
-    rootScope.addEventListener('dialog_flush', ({dialog}) => {
-      if(!dialog) {
-        return;
-      }
-
-      this.setFiltersUnreadCount();
-    });
-
     rootScope.addEventListener('folder_unread', async(folder) => {
       if(folder.id < 0) {
         const dialogElement = this.xd.getDialogElement(folder.id);
@@ -816,8 +816,6 @@ export class AppDialogsManager {
           dialog: await this.managers.dialogsStorage.getDialogOnly(folder.id),
           dialogElement
         });
-      } else {
-        this.setFilterUnreadCount(folder.id);
       }
     });
 
@@ -826,7 +824,11 @@ export class AppDialogsManager {
     });
 
     appImManager.addEventListener('peer_changed', ({peerId, threadId, monoforumThreadId, isForum}) => {
-      const options: Parameters<AppImManager['isSamePeer']>[0] = {peerId, monoforumThreadId, threadId: isForum || rootScope.myId ? threadId : undefined};
+      const options: Parameters<AppImManager['isSamePeer']>[0] = {
+        peerId,
+        monoforumThreadId,
+        threadId: isForum || rootScope.myId ? threadId : undefined
+      };
 
       const getOptionsForElement = (element: HTMLElement) => {
         const elementThreadId = +element?.dataset?.threadId || undefined;
@@ -846,9 +848,9 @@ export class AppDialogsManager {
         }
       }
 
-
       const dialogElements = [
-        this.xd?.sortedList?.getDialogElement?.(peerId), this.forumTab?.xd?.sortedList?.getDialogElement(threadId || monoforumThreadId || peerId)
+        this.xd?.sortedList?.getDialogElement?.(peerId),
+        this.forumTab?.xd?.sortedList?.getDialogElement(threadId || monoforumThreadId || peerId)
       ].filter(Boolean);
 
       dialogElements.forEach(dialogElement => {
@@ -873,40 +875,26 @@ export class AppDialogsManager {
 
       if(!this.filtersRendered[filter.id]) {
         this.addFilter(filter);
-        return;
       }
-
-      const elements = this.filtersRendered[filter.id];
-      const active = this.filterId === filter.id;
-      setInnerHTML(elements.title, await wrapFolderTitle(filter.title, elements.middlewareHelper.get(), false, {textColor: getFolderTitleTextColor(active)}));
     });
 
     rootScope.addEventListener('filter_delete', (filter) => {
       const elements = this.filtersRendered[filter.id];
       if(!elements) return;
 
-      // set tab
-      // (this.folders.menu.firstElementChild.children[Math.max(0, filter.id - 2)] as HTMLElement).click();
       elements.container.remove();
-      elements.menu.remove();
-      elements.middlewareHelper.destroy();
 
       this.xds[filter.id].destroy();
       delete this.xds[filter.id];
       delete this.filtersRendered[filter.id];
 
       this.onFiltersLengthChange();
-
-      if(this.filterId === filter.id) {
-        this.selectTab(0, false);
-      }
     });
 
     rootScope.addEventListener('filter_order', async(order) => {
       order = order.slice();
       indexOfAndSplice(order, FOLDER_ID_ARCHIVE);
 
-      const containerToAppend = this.folders.menu as HTMLElement;
       const r = await Promise.all(order.map(async(filterId) => {
         const [indexKey, filter] = await Promise.all([
           this.managers.dialogsStorage.getDialogIndexKeyByFilterId(filterId),
@@ -922,24 +910,8 @@ export class AppDialogsManager {
 
         this.xds[filterId].setIndexKey(indexKey);
 
-        positionElementByIndex(renderedFilter.menu, containerToAppend, filter.localId);
         positionElementByIndex(renderedFilter.container, this.folders.container, filter.localId);
       });
-
-      /* if(this.filterId) {
-        const tabIndex = order.indexOf(this.filterId) + 1;
-        selectTab.prevId = tabIndex;
-      } */
-    });
-
-    rootScope.addEventListener('filter_joined', (filter) => {
-      const filterRendered = this.filtersRendered[filter.id];
-      this.selectTab(filterRendered.menu);
-    });
-
-    rootScope.addEventListener('changing_folder_from_sidebar', ({id, dontAnimate}) => {
-      const filterRendered = this.filtersRendered[id];
-      this.selectTab(filterRendered.menu, !dontAnimate);
     });
   }
 
@@ -970,7 +942,11 @@ export class AppDialogsManager {
   public setDialogActive(listEl: HTMLElement, active: boolean) {
     const dom = (listEl as any).dialogDom as DialogDom;
     this.setDialogActiveStatus(listEl, active);
-    listEl.classList.toggle('is-forum-open', this.forumTab?.peerId === listEl.dataset.peerId.toPeerId() && !listEl.dataset.threadId && !listEl.dataset.isAllChats);
+    listEl.classList.toggle(
+      'is-forum-open',
+      this.forumTab?.peerId === listEl.dataset.peerId.toPeerId() &&
+        !listEl.dataset.threadId &&
+        !listEl.dataset.isAllChats);
     if(active) {
       this.lastActiveElements.add(listEl);
     } else {
@@ -1024,7 +1000,6 @@ export class AppDialogsManager {
     }
 
     addFiltersPromise && await wrapPromiseWithMiddleware(addFiltersPromise);
-    // this.folders.menu.children[0].classList.add('active');
 
     this.renderStories();
     this.doNotRenderChatList = undefined;
@@ -1142,33 +1117,6 @@ export class AppDialogsManager {
     return promise;
   };
 
-  private async setFilterUnreadCount(filterId: number) {
-    // if(filterId === FOLDER_ID_ALL) {
-    //   return;
-    // }
-
-    const unreadSpan = this.filtersRendered[filterId]?.unread;
-    if(!unreadSpan) {
-      return;
-    }
-
-    const {
-      unreadUnmutedCount,
-      unreadCount,
-      unreadMentionsCount
-    } = await this.managers.dialogsStorage.getFolderUnreadCount(filterId);
-
-    unreadSpan.classList.toggle('badge-gray', !unreadUnmutedCount && !unreadMentionsCount);
-    const count = filterId === FOLDER_ID_ALL ? unreadUnmutedCount : unreadCount;
-    setBadgeContent(unreadSpan, count ? '' + count : '');
-  }
-
-  private setFiltersUnreadCount() {
-    for(const filterId in this.filtersRendered) {
-      this.setFilterUnreadCount(+filterId);
-    }
-  }
-
   public l(filter: Parameters<AppDialogsManager['addFilter']>[0]) {
     const xd = this.xds[filter.id] = new AutonomousDialogList({filterId: filter.id, appDialogsManager: this});
     const {scrollable, list} = xd.generateScrollable(filter);
@@ -1254,34 +1202,11 @@ export class AppDialogsManager {
       return;
     }
 
-    const containerToAppend = this.folders.menu as HTMLElement;
     const renderedFilter = this.filtersRendered[id];
     if(renderedFilter) {
-      positionElementByIndex(renderedFilter.menu, containerToAppend, filter.localId);
       positionElementByIndex(renderedFilter.container, this.folders.container, filter.localId);
       return;
     }
-
-    const middlewareHelper = getMiddleware();
-
-    const menuTab = document.createElement('div');
-    menuTab.classList.add('menu-horizontal-div-item');
-    const span = document.createElement('span');
-    span.classList.add('menu-horizontal-div-item-span');
-    const titleSpan = document.createElement('span');
-    titleSpan.classList.add('text-super');
-    if(id === FOLDER_ID_ALL) titleSpan.append(this.allChatsIntlElement.element);
-    else setInnerHTML(titleSpan, wrapFolderTitle(filter.title, middlewareHelper.get(), true, {textColor: 'secondary-text-color'}));
-    const unreadSpan = createBadge('div', 20, 'primary');
-    const i = document.createElement('i');
-    span.append(titleSpan, unreadSpan, i);
-    ripple(menuTab);
-    menuTab.append(span);
-
-    menuTab.dataset.filterId = '' + id;
-
-    positionElementByIndex(menuTab, containerToAppend, filter.localId);
-    // containerToAppend.append(li);
 
     const {ul, scrollable} = this.l(filter);
     scrollable.container.classList.add('tabs-tab', 'chatlist-parts', 'folders-scrollable');
@@ -1307,12 +1232,8 @@ export class AppDialogsManager {
 
     this.filtersRendered[id] = {
       id,
-      menu: menuTab,
       container: div,
-      unread: unreadSpan,
-      title: titleSpan,
-      scrollable,
-      middlewareHelper
+      scrollable
     };
 
     this.onFiltersLengthChange();
@@ -1337,10 +1258,6 @@ export class AppDialogsManager {
 
       if(show !== wasShowing) {
         this.folders.menuScrollContainer.classList.toggle('hide', !show);
-        if(show && !wasShowing) {
-          this.setFiltersUnreadCount();
-        }
-
         this.chatsContainer.classList.toggle('has-filters', show);
       }
 

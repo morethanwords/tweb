@@ -294,16 +294,16 @@
 
   .item-main .menu-horizontal {
     &-scrollable {
-      // --scrollable-size: var(--menu-size);
       z-index: 1;
       background-color: var(--surface-color);
       position: relative;
       top: unset;
       flex: 0 0 auto;
-
-      @include respond-to(handhelds) {
-        box-shadow: 0px 1px 5px -1px rgba(0, 0, 0, .16);
-      }
+      box-shadow: var(--section-box-shadow-big);
+      margin: .5rem .5rem 0;
+      position: absolute;
+      top: 0;
+      inset-inline: 0;
 
       .scrollable {
         position: relative;
@@ -498,7 +498,7 @@
       height: calc(100% - var(--scrollable-size));
 
       .folders-scrollable {
-        padding-top: .5rem;
+        padding-top: 4rem;
       }
 
       .dialogs-placeholder-canvas {
@@ -1032,138 +1032,6 @@
 }
 
 .sidebar-left {
-  &-section {
-    background-color: var(--surface-color);
-    padding: .5rem 0 !important;
-    margin-bottom: .75rem;
-    box-shadow: 0px 1px 3px 0px var(--section-box-shadow-color);
-
-    &.no-shadow {
-      box-shadow: none !important;
-    }
-
-    &.with-fake-delimiter {
-      padding-top: 0 !important;
-      box-shadow: none;
-
-      .gradient-delimiter {
-        margin-bottom: .5rem;
-      }
-    }
-
-    &.no-padding-top {
-      padding-top: 0 !important;
-    }
-
-    @include respond-to(handhelds) {
-      padding-bottom: .5rem;
-    }
-
-    &-content {
-      @include respond-to(not-handhelds) {
-        margin: 0 .5rem;
-      }
-
-      > .btn-primary {
-        margin: 0;
-      }
-
-      > .checkbox-field {
-        .checkbox-box {
-          inset-inline-start: auto;
-        }
-      }
-
-      @include respond-to(handhelds) {
-        > .checkbox-ripple,
-        > .btn-primary {
-          border-radius: 0;
-        }
-      }
-
-      &.full-width {
-        margin: 0 !important;
-      }
-
-      > .media-sticker-wrapper {
-        width: 86px;
-        height: 86px;
-        margin: 1px auto 29px;
-        flex: 0 0 auto;
-        position: relative;
-      }
-    }
-
-    &-name {
-      padding: .5rem 1rem;
-      display: flex;
-      justify-content: space-between;
-
-      @include respond-to(handhelds) {
-        padding: .5rem 1rem;
-        font-size: .875rem;
-      }
-
-      &-right {
-        font-weight: var(--font-weight-normal);
-      }
-    }
-
-    &-caption {
-      margin: -0.1875rem 0 1rem;
-      font-size: var(--font-size-14);
-      line-height: var(--line-height-14);
-      color: var(--secondary-text-color);
-      padding: 0 1.5rem;
-      word-break: break-word;
-
-      &:first-child {
-        margin-top: .8125rem;
-        margin-bottom: .8125rem;
-      }
-
-      @include respond-to(handhelds) {
-        margin: .5rem;
-        font-size: .875rem;
-        padding: 0 1rem;
-      }
-    }
-
-    &-container {
-      user-select: none;
-
-      a {
-        cursor: pointer;
-      }
-    }
-
-    .checkbox-field,
-    .radio-field {
-      margin: 0;
-    }
-
-    // * comment later
-    // &:first-child:not(.no-delimiter) {
-    //   padding-top: 0;
-    // }
-
-    .checkbox-field {
-      display: flex;
-      align-items: center;
-      height: 3.5rem;
-      padding: 0 1.125rem;
-    }
-
-    &-disabled {
-      pointer-events: none !important;
-      opacity: .25;
-    }
-
-    .chatlist {
-      padding: 0;
-    }
-  }
-
   &-h2 {
     color: var(--primary-color);
     font-size: 16px;

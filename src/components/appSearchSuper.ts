@@ -111,6 +111,7 @@ import SetTransition from '@components/singleTransition';
 import liteMode from '@helpers/liteMode';
 import {wrapGlobalPostsSearch} from './sidebarLeft/globalPostsSearch';
 import createMiddleware from '@helpers/solid/createMiddleware';
+import Tabs from '@components/tabs';
 
 // const testScroll = false;
 
@@ -470,12 +471,6 @@ export default class AppSearchSuper {
     this.searchContextMenu = new SearchContextMenu(this.container, this, this.listenerSetter);
     this.selection = new SearchSelection(this, this.managers, this.listenerSetter);
 
-    const fadeGradientContainer = document.createElement('div');
-    fadeGradientContainer.classList.add('search-super-fade-gradient-container');
-    const fadeGradient = document.createElement('div');
-    fadeGradient.classList.add('search-super-fade-gradient');
-    fadeGradientContainer.append(fadeGradient);
-
     const navScrollableContainer = this.navScrollableContainer = document.createElement('div');
     navScrollableContainer.classList.add('search-super-tabs-scrollable', 'menu-horizontal-scrollable', 'sticky');
 
@@ -493,10 +488,12 @@ export default class AppSearchSuper {
       menuTab.classList.add('menu-horizontal-div-item');
       const span = document.createElement('span');
       span.classList.add('menu-horizontal-div-item-span');
+      const i = document.createElement('i');
+      i.classList.add('menu-horizontal-div-item-background');
 
       span.append(mediaTab.menuTabName = i18n(mediaTab.name));
 
-      menuTab.append(span);
+      menuTab.append(i, span);
 
       ripple(menuTab);
 
@@ -576,7 +573,7 @@ export default class AppSearchSuper {
       mediaTab.contentTab = content;
     }
 
-    this.container.append(fadeGradientContainer, navScrollableContainer, this.tabsContainer);
+    this.container.append(Tabs.MenuGradient() as HTMLElement, navScrollableContainer, this.tabsContainer);
 
     // * construct end
 

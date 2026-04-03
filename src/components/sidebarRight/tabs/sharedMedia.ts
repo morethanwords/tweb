@@ -221,7 +221,9 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
       transition(getTitleIndex(isSharedMedia));
 
-      if(!isSharedMedia) {
+      if(isSharedMedia) {
+        this.container.classList.add('header-filled');
+      } else {
         this.searchSuper.cleanScrollPositions();
       }
     };
@@ -399,7 +401,6 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     this.searchSuper.scrollStartCallback = () => {
       setIsSharedMedia(true);
-      this.container.classList.add('header-filled');
     };
 
     // * fix scroll position to media tab because of absolute header
@@ -681,6 +682,10 @@ export default class AppSharedMediaTab extends SliderSuperTab {
             }
           }, SolidJSHotReloadGuardProvider));
         });
+
+        if(this.noProfile) {
+          this.container.classList.add('profile-container');
+        }
 
         return () => {};
       })()

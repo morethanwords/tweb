@@ -19,7 +19,6 @@ import useStars, {prefetchStars} from '@stores/stars';
 import safeAssign from '@helpers/object/safeAssign';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
-import {Tabs} from '@components/sidebarRight/tabs/boosts';
 import {createLoadableList} from '@components/sidebarRight/tabs/statistics';
 import Row from '@components/rowTsx';
 import {formatFullSentTime} from '@helpers/date';
@@ -47,6 +46,7 @@ import wrapLocalSticker from '@components/wrappers/localSticker';
 import bigInt from 'big-integer';
 import safeWindowOpen from '@helpers/dom/safeWindowOpen';
 import {IconTsx} from '@components/iconTsx';
+import Tabs from '@components/tabs';
 
 export function StarsStrokeStar(props: {stroke?: boolean, style?: JSX.HTMLAttributes<HTMLDivElement>['style']}) {
   return (
@@ -764,7 +764,7 @@ export default class PopupStars extends PopupElement {
 
     const transactionsSection = (
       <Section class="popup-stars-transactions-section">
-        <Tabs
+        <Tabs.Simple
           tab={tab}
           onChange={setTab}
           class="popup-stars-transactions"

@@ -72,9 +72,11 @@ export default class PopupSharedFolderInvite extends PopupElement {
     const makeItem = () => {
       const item = document.createElement('div');
       item.classList.add('menu-horizontal-div-item');
+      const i = document.createElement('i');
+      i.classList.add('menu-horizontal-div-item-background');
       const span = document.createElement('span');
       span.classList.add('menu-horizontal-div-item-span');
-      item.append(span);
+      item.append(i, span);
       nav.append(item);
       return span;
     };
@@ -83,8 +85,7 @@ export default class PopupSharedFolderInvite extends PopupElement {
     const activeItem = makeItem();
     activeItem.parentElement.classList.add('active');
     activeItem.append(
-      await wrapFolderTitle(filter ? filter.title : (chatlistInvite as ChatlistsChatlistInvite.chatlistsChatlistInvite).title, this.middlewareHelper.get()),
-      document.createElement('i')
+      await wrapFolderTitle(filter ? filter.title : (chatlistInvite as ChatlistsChatlistInvite.chatlistsChatlistInvite).title, this.middlewareHelper.get())
     );
     makeItem().append(i18n('FilterPersonal'));
 

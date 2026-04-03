@@ -40,7 +40,6 @@ $menu-size: 3rem;
     font-size: 1rem;
     font-weight: var(--font-weight-bold);
     position: relative;
-    transition: none !important;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -48,17 +47,27 @@ $menu-size: 3rem;
     border-radius: 1.25rem;
     margin: 0 .25rem;
 
+    @include animation-level(2) {
+      transition: background-color var(--tabs-transition) !important;
+    }
+
     @include hover-background-effect();
+
+    .c-ripple {
+      display: none;
+    }
 
     &.active {
       color: var(--primary-color);
-      background-color: var(--light-primary-color);
+      // background: transparent !important;
+
+      .menu-horizontal-div-item-background {
+        opacity: 1;
+      }
 
       .c-ripple__circle {
         background-color: var(--light-primary-color);
       }
-  
-      @include hover-background-effect(primary);
 
       .badge {
         background-color: var(--primary-color);
@@ -72,6 +81,25 @@ $menu-size: 3rem;
       overflow: visible;
       pointer-events: none;
       white-space: nowrap;
+      z-index: 2;
+    }
+
+    &-background {
+      position: absolute;
+      left: 0;
+      opacity: 0;
+      background-color: var(--light-filled-primary-color);
+      height: 100%;
+      width: 100%;
+      border-radius: inherit;
+      pointer-events: none;
+      box-sizing: content-box;
+      transform-origin: left;
+      z-index: 1;
+
+      &.animate {
+        transition: transform var(--tabs-transition);
+      }
     }
   }
 }

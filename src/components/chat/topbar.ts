@@ -158,7 +158,10 @@ export default class ChatTopbar {
     this.btnBack.append(this.btnBackBadge);
 
     const borderRight = document.createElement('div');
-    borderRight.classList.add('topbar-border-right');
+    borderRight.classList.add('topbar-border', 'topbar-border-right');
+
+    const borderLeft = document.createElement('div');
+    borderLeft.classList.add('topbar-border', 'topbar-border-left');
 
     // * chat info section
     this.chatInfoContainer = document.createElement('div');
@@ -252,7 +255,7 @@ export default class ChatTopbar {
     this.pushButtonToVerify(this.btnDirectMessages, this.verifyDirectMessagesButton.bind(this));
 
     this.chatInfoContainer.append(this.btnBack, this.chatInfo, this.chatUtils);
-    this.container.append(borderRight, this.chatInfoContainer);
+    this.container.append(borderLeft, borderRight, this.chatInfoContainer);
 
     if(this.pinnedMessage) {
       this.appendPinnedMessage(this.pinnedMessage);

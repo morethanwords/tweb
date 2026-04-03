@@ -7,12 +7,13 @@
 import TransitionSlider from '@components/transition';
 import {ScrollableX} from '@components/scrollable';
 import {fastRaf} from '@helpers/schedulers';
-import {FocusDirection} from '@helpers/fastSmoothScroll';
+import fastSmoothScroll, {FocusDirection} from '@helpers/fastSmoothScroll';
 import findUpAsChild from '@helpers/dom/findUpAsChild';
 import whichChild from '@helpers/dom/whichChild';
 import ListenerSetter from '@helpers/listenerSetter';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import liteMode from '@helpers/liteMode';
+import {ScrollableContextValue} from '@components/scrollable2';
 
 type OnChangeArgs = {
   element: HTMLElement;
@@ -25,7 +26,7 @@ type Args = {
   onClick?: (id: number, tabContent: HTMLDivElement, animate: boolean) => void | boolean | Promise<void | boolean>;
   onTransitionEnd?: () => void;
   transitionTime?: number;
-  scrollableX?: ScrollableX;
+  scrollableX?: ScrollableX | ScrollableContextValue;
   listenerSetter?: ListenerSetter;
   onChange?: (args: OnChangeArgs) => void;
 };
@@ -35,14 +36,14 @@ export function horizontalMenuObjArgs({tabs, content, onClick, onTransitionEnd, 
 }
 
 export function horizontalMenu(
-  tabs: HTMLElement,
-  content: HTMLElement,
-  onClick?: (id: number, tabContent: HTMLDivElement, animate: boolean) => void | boolean | Promise<void | boolean>,
-  onTransitionEnd?: () => void,
-  transitionTime = 200,
-  scrollableX?: ScrollableX,
-  listenerSetter?: ListenerSetter,
-  onChange?: (args: OnChangeArgs) => void
+  tabs: Args['tabs'],
+  content: Args['content'],
+  onClick?: Args['onClick'],
+  onTransitionEnd?: Args['onTransitionEnd'],
+  transitionTime: Args['transitionTime'] = 200,
+  scrollableX?: Args['scrollableX'],
+  listenerSetter?: Args['listenerSetter'],
+  onChange?: Args['onChange']
 ) {
   const selectTab = TransitionSlider({
     content,
@@ -73,7 +74,11 @@ export function horizontalMenu(
     }
   });
 
-  const selectTarget = async(target: HTMLElement, id: number, animate = true) => {
+  const selectTarget = async(
+    target: HTMLElement,
+    id: number,
+    animate = true
+  ) => {
     const tabContent = content.children[id] as HTMLDivElement;
 
     if(onClick) {
@@ -85,7 +90,8 @@ export function horizontalMenu(
     }
 
     if(scrollableX) {
-      scrollableX.scrollIntoViewNew({
+      fastSmoothScroll({
+        container: scrollableX.container,
         element: target.parentElement.children[id] as HTMLElement,
         position: 'center',
         forceDirection: animate ? undefined : FocusDirection.Static,
@@ -105,7 +111,7 @@ export function horizontalMenu(
 
     const mutateCallback = animate ? fastRaf : (cb: () => void) => cb();
 
-    const prev = tabs.querySelector(tagName.toLowerCase() + '.active') as HTMLElement;
+    const prev = tabs.querySelector(tabs.firstElementChild.tagName.toLowerCase() + '.active') as HTMLElement;
     if(prev) {
       mutateCallback(() => {
         prev.classList.remove('active');
@@ -115,15 +121,16 @@ export function horizontalMenu(
 
     // a great stripe from Jolly Cobra
     if(prevId !== -1 && animate) {
+      const selector = '.menu-horizontal-div-item-background';
       mutateCallback(() => {
-        const indicator = target.querySelector('i')!;
-        const currentIndicator = target.parentElement.children[prevId].querySelector('i')!;
+        const indicator = target.querySelector(selector)! as HTMLElement;
+        const currentIndicator = target.parentElement.children[prevId].querySelector(selector)! as HTMLElement;
 
         currentIndicator.classList.remove('animate');
         indicator.classList.remove('animate');
 
         // We move and resize our indicator so it repeats the position and size of the previous one.
-        const shiftLeft = currentIndicator.parentElement.parentElement.offsetLeft - indicator.parentElement.parentElement.offsetLeft;
+        const shiftLeft = currentIndicator.parentElement.offsetLeft - indicator.parentElement.offsetLeft;
         const scaleFactor = currentIndicator.clientWidth / indicator.clientWidth;
         indicator.style.transform = `translate3d(${shiftLeft}px, 0, 0) scale3d(${scaleFactor}, 1, 1)`;
 
@@ -145,7 +152,6 @@ export function horizontalMenu(
     selectTab(id, animate);
   };
 
-  const tagName = tabs.firstElementChild.tagName;
   attachClickEvent(tabs, (e) => {
     let target = e.target as HTMLElement;
     target = findUpAsChild(target, tabs);

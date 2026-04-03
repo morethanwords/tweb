@@ -5,7 +5,7 @@ import classNames from '@helpers/string/classNames';
 export default function Badge(props: {
   tag: 'span' | 'div',
   size: number,
-  color: string,
+  color: 'primary' | 'gray',
   children: JSX.Element,
   class?: string
 }) {

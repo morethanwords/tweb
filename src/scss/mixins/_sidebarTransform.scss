@@ -20,13 +20,13 @@
       }
 
 			transition: transform var(--transition-standard-in);
+
+      @content;
 		}
 
 		body.animation-level-0 & {
 			transition: none;
 		}
-
-		@content;
 	}
 }
 
@@ -44,12 +44,12 @@
       }
 
 			transition: transform var(--transition-standard-in);
+
+      @content;
 		}
 
 		:global(body.animation-level-0) & {
 			transition: none;
 		}
-
-		@content;
 	}
 }

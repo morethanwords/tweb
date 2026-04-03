@@ -172,7 +172,7 @@
     width: 100%;
     visibility: hidden;
 
-    .search-super.is-full-viewport & {
+    .is-full-viewport & {
       visibility: visible;
     }
 
@@ -205,19 +205,17 @@
 
   &-tabs-scrollable {
 	  position: sticky !important;
-    //top: -1px;
-    top: 0px;
+    top: 1rem;
     z-index: 2;
     background-color: var(--surface-color);
-
-    // &:before,
-    &:after {
-      z-index: 0;
-    }
 
     .scrollable {
       position: relative;
       display: flex;
+    }
+
+    .is-full-viewport & {
+      margin-bottom: 5.5rem;
     }
 
     &.is-single {
@@ -237,11 +235,6 @@
       //   top: -1px;
       //   background-color: var(--border-color);
       // }
-
-      // &:before,
-      &:after {
-        display: none;
-      }
 
       .search-super-nav-scrollable {
         opacity: 0 !important;
