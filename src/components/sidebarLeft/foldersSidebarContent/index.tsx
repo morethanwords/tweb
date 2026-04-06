@@ -10,7 +10,6 @@ import {logger, LogTypes} from '@lib/logger';
 import {REAL_FOLDERS} from '@appManagers/constants';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
-import {MyDialogFilter} from '@lib/storages/filters';
 import useHasFoldersSidebar from '@stores/foldersSidebar';
 import useFolders from '@stores/folders';
 import {IconTsx} from '@components/iconTsx';
@@ -22,10 +21,6 @@ import {getFolderTitle} from '@components/sidebarLeft/foldersSidebarContent/util
 keepMe(ripple);
 
 const log = logger('FoldersSidebarContent', LogTypes.Debug);
-
-export type FoldersSidebarControls = {
-  hydrateFilters: (filters: MyDialogFilter[]) => void;
-};
 
 export function FoldersSidebarContent(props: {
   notificationsElement: HTMLElement;
@@ -177,9 +172,8 @@ export function renderFoldersSidebarContent(
   notificationsElement: HTMLElement,
   HotReloadGuardProvider: typeof SolidJSHotReloadGuardProvider,
   middleware: Middleware
-): FoldersSidebarControls {
+) {
   const [hasFoldersSidebar] = useHasFoldersSidebar();
-  const {hydrateFilters} = useFolders();
 
   const dispose = render(() => (
     <HotReloadGuardProvider>
@@ -191,8 +185,4 @@ export function renderFoldersSidebarContent(
     </HotReloadGuardProvider>
   ), element);
   middleware.onDestroy(dispose);
-
-  return {
-    hydrateFilters
-  };
 }

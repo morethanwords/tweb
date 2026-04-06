@@ -8,6 +8,7 @@ let initialized = false;
 function init() {
   initialized = true;
   const outer = document.createElement('div');
+  outer.id = 'scrollbar-width';
   outer.style.cssText = 'position:fixed;top:-200px;left:-200px;width:100px;height:100px;overflow:scroll;visibility:hidden;pointer-events:none;opacity:0;';
   const inner = document.createElement('div');
   inner.style.cssText = 'width:100%;height:200px;';

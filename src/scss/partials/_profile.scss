@@ -331,35 +331,12 @@
   }
 
   &-content {
-    /* flex: 1 1 auto; */
     flex: 0 0 auto;
     display: flex;
     flex-direction: column;
-    /* height: 100%; */
     position: relative;
     width: 100%;
 
-    /* .checkbox-field {
-      margin: 0;
-      padding: 0;
-      margin-left: -54px;
-    }
-
-    .checkbox-caption {
-      padding-left: 54px;
-    } */
-
-    /* &-wrapper {
-      flex: 1 1 auto;
-      display: flex;
-      flex-direction: column;
-      padding-bottom: 13px;
-
-      @include respond-to(not-handhelds) {
-        padding-top: 15px;
-      }
-    } */
-     
     .stars-rating-icon {
       display: flex;
       align-items: center;
@@ -626,9 +603,11 @@
       //transform: none;
     }
 
-    .search-super-tabs-scrollable {
-      top: 4.5rem;
-      margin-bottom: #{$section-rounded-padding};
+    .search-super {
+      &-tabs-scrollable {
+        top: 4.5rem;
+        margin-bottom: #{$section-rounded-padding};
+      }
     }
   }
 

@@ -539,7 +539,6 @@ export class AppDialogsManager {
   private filtersNavigationItem: NavigationItem;
 
   private managers: AppManagers;
-  private selectTab: ReturnType<typeof horizontalMenu>;
 
   public doNotRenderChatList: boolean;
   public isFirstDialogsLoad: boolean;
@@ -696,7 +695,7 @@ export class AppDialogsManager {
       localId: FOLDER_ID_ALL
     });
 
-    const {setSelectedFolderId, setOnClick, folderItems} = useFolders();
+    const {setSelectedFolderId, onClick, setOnClick, folderItems} = useFolders();
     const selectFolderByIndex = async(index: number) => {
       const id = folderItems[index].filter.id;
       const wasFilterId = this.filterId;
@@ -715,7 +714,7 @@ export class AppDialogsManager {
             this.filtersNavigationItem = {
               type: 'filters',
               onPop: () => {
-                selectFolderByIndex(0);
+                onClick()(0);
                 this.filtersNavigationItem = undefined;
               }
             };
@@ -742,10 +741,8 @@ export class AppDialogsManager {
       }
     };
 
-    setOnClick(() => selectFolderByIndex);
-
     this.bottomPart.prepend(this.folders.menuScrollContainer);
-    this.selectTab = horizontalMenuObjArgs({
+    const selectTab = horizontalMenuObjArgs({
       tabs: this.folders.menu,
       content: this.folders.container,
       onClick: selectFolderByIndex,
@@ -762,6 +759,8 @@ export class AppDialogsManager {
         renderer?.setTextColor(getFolderTitleTextColor(active));
       }
     });
+
+    setOnClick(() => selectTab);
 
     createFolderContextMenu({
       appSidebarLeft,
@@ -970,16 +969,20 @@ export class AppDialogsManager {
       this.resizeStoriesList =
       undefined;
 
-    const addFilters = (filters: MyDialogFilter[]) => {
+    const {onClick: _onClick, hydrateFilters} = useFolders();
+    const onClick = untrack(_onClick);
+
+    const addFilters = async(filters: MyDialogFilter[]) => {
       for(const filter of filters) {
         this.addFilter(filter);
       }
-      appSidebarLeft.foldersSidebarControls?.hydrateFilters?.(filters);
+
+      await untrack(() => hydrateFilters(filters));
     };
 
     let addFiltersPromise: Promise<any>;
     if(haveFilters) {
-      addFilters(filtersArr);
+      await addFilters(filtersArr);
     } else {
       addFiltersPromise = this.managers.filtersStorage.getDialogFilters().then(addFilters);
     }
@@ -996,7 +999,7 @@ export class AppDialogsManager {
 
     // show the placeholder before the filters, and then will reset to the default tab again
     if(!haveFilters) {
-      this.selectTab(0, false);
+      onClick(0, false);
     }
 
     addFiltersPromise && await wrapPromiseWithMiddleware(addFiltersPromise);
@@ -1005,7 +1008,7 @@ export class AppDialogsManager {
     this.doNotRenderChatList = undefined;
 
     this.filterId = -1;
-    this.selectTab(0, false);
+    onClick(0, false);
 
     if(!this.initedListeners) {
       this.initListeners();
@@ -1025,19 +1028,6 @@ export class AppDialogsManager {
       renderPendingSuggestion(this.suggestionContainer);
     }
   }
-
-  /* private getOffset(side: 'top' | 'bottom'): {index: number, pos: number} {
-    if(!this.scroll.loadedAll[side]) {
-      const element = (side === 'top' ? this.chatList.firstElementChild : this.chatList.lastElementChild) as HTMLElement;
-      if(element) {
-        const peerId = element.dataset.peerId;
-        const dialog = this.managers.appMessagesManager.getDialogByPeerId(peerId);
-        return {index: dialog[0].index, pos: dialog[1]};
-      }
-    }
-
-    return {index: 0, pos: -1};
-  } */
 
   public onTabChange = () => {
     const {filterId} = this;

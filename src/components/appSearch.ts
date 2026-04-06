@@ -4,96 +4,19 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appDialogsManager, {AppDialogsManager} from '@lib/appDialogsManager';
+import appDialogsManager from '@lib/appDialogsManager';
 import Scrollable from '@components/scrollable';
 import InputSearch from '@components/inputSearch';
 import replaceContent from '@helpers/dom/replaceContent';
-import {i18n, LangPackKey} from '@lib/langPack';
+import {i18n} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
 import {Middleware, MiddlewareHelper} from '@helpers/middleware';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {Message} from '@layer';
 import apiManagerProxy from '@lib/apiManagerProxy';
+import type {SearchGroup, SearchGroupType} from '@components/searchGroup';
 
-export class SearchGroup {
-  container: HTMLDivElement;
-  nameEl: HTMLDivElement;
-  list: HTMLUListElement;
-  placeholder?: HTMLElement;
-
-  constructor(
-    public name: LangPackKey | boolean,
-    public type: string,
-    private clearable = true,
-    className?: string,
-    clickable = true,
-    public autonomous = true,
-    public onFound?: Parameters<AppDialogsManager['setListClickListener']>[0]['onFound'],
-    public noIcons?: boolean
-  ) {
-    this.list = appDialogsManager.createChatList();
-    this.container = document.createElement('div');
-    if(className) this.container.className = className;
-
-    if(name) {
-      this.nameEl = document.createElement('div');
-      this.nameEl.classList.add('search-group__name');
-      if(typeof(name) === 'string') {
-        this.nameEl.append(i18n(name));
-      }
-      this.container.append(this.nameEl);
-    }
-
-    this.container.classList.add('search-group', 'search-group-' + type);
-    this.container.append(this.list);
-    this.container.style.display = 'none';
-
-    if(clickable) {
-      appDialogsManager.setListClickListener({list: this.list, onFound, withContext: undefined, autonomous});
-    }
-  }
-
-  public createPlaceholder?: () => HTMLElement;
-
-  addPlaceholder(el: HTMLElement) {
-    this.removePlaceholder();
-    this.placeholder = el;
-    this.container.append(el);
-  }
-
-  removePlaceholder() {
-    this.placeholder?.remove();
-    this.placeholder = undefined;
-  }
-
-  clear() {
-    this.container.style.display = 'none';
-
-    this.removePlaceholder();
-
-    if(this.clearable) {
-      Array.from(this.list.children).forEach((el) => {
-        const dialogElement = (el as any).dialogElement;
-        if(dialogElement) dialogElement?.remove();
-        else el.remove();
-      });
-    }
-  }
-
-  setActive() {
-    this.container.style.display = '';
-  }
-
-  toggle() {
-    if(this.list.childElementCount) {
-      this.setActive();
-    } else {
-      this.clear();
-    }
-  }
-}
-
-export type SearchGroupType = 'contacts' | 'globalContacts' | 'messages' | string;
+export type {SearchGroup, SearchGroupType};
 
 export default class AppSearch {
   private minMsgId = 0;

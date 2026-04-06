@@ -288,38 +288,19 @@
     }
   }
 
-  // .item-main {
-  //   --menu-size: 3.1875rem;
-  // }
-
   .item-main .menu-horizontal {
     &-scrollable {
-      z-index: 1;
-      background-color: var(--surface-color);
-      position: relative;
-      top: unset;
+      z-index: 2;
       flex: 0 0 auto;
-      box-shadow: var(--section-box-shadow-big);
-      margin: .5rem .5rem 0;
-      position: absolute;
-      top: 0;
-      inset-inline: 0;
-
-      .scrollable {
-        position: relative;
-      }
 
       .badge {
         margin-inline-start: 5px;
-        //line-height: inherit !important;
       }
     }
 
     &-div {
-      position: relative !important;
       justify-content: flex-start;
       z-index: 0;
-      // padding: 0 0 5px; // 4px + 1px border // floating design
       --padding-horizontal: .6875rem;
 
       @include respond-to(handhelds) {
@@ -330,30 +311,21 @@
         flex: 0 0 auto;
         min-width: 3rem;
       }
-
-      &__stripe {
-        display: none;
-      }
     }
   }
 
   .folders-tabs-scrollable {
+    position: absolute;
+    top: 0;
     display: none;
+    inset-inline: 0;
+    margin: .5rem .5rem 0;
+    box-shadow: var(--section-box-shadow-big);
 
     .has-horizontal-folders & {
       display: block;
     }
   }
-
-  /* .folders-tabs-scrollable {
-    .menu-horizontal-div-item:first-child {
-      margin-inline-start: .6875rem;
-
-      @include respond-to(handhelds) {
-        margin-inline-start: .1875rem;
-      }
-    }
-  } */
 
   .item-main {
     --offset-top: 0;
@@ -432,11 +404,7 @@
 
     .search-super-tabs-scrollable {
       flex: 0 0 auto;
-      position: relative !important;
-
-      &:before {
-        display: none;
-      }
+      margin-bottom: #{$section-rounded-padding * 2};
 
       .menu-horizontal-div-item {
         flex: 1 0 auto !important;
@@ -459,15 +427,8 @@
 
   #chatlist-container {
     max-height: 100%;
-    // overflow: hidden;
     position: relative;
     background-color: var(--surface-color);
-
-    // &.has-filters {
-    //   .connection-status-bottom {
-    //     height: calc(100% + var(--offset-top) * -1);
-    //   }
-    // }
   }
 
   #folders-container {
@@ -504,10 +465,6 @@
       .dialogs-placeholder-canvas {
         top: .5rem;
       }
-
-      /* .chatlist {
-        top: .5rem;
-      } */
     }
   }
 
@@ -525,16 +482,6 @@
     .chatlist {
       display: flex;
       flex-direction: row;
-      margin-top: -1px;
-      padding: 0 0 1px;
-
-      &:before,
-      &:after {
-        content: " ";
-        display: inline-block;
-        width: .3125rem;
-        flex: 0 0 auto;
-      }
 
       &-chat {
         width: 4.875rem;
@@ -574,19 +521,10 @@
         top: .75rem !important;
       }
     }
+  }
 
-    .search-group-scrollable {
-      position: relative;
-
-      @include respond-to(handhelds) {
-        margin-inline-start: -7px;
-        margin-top: 4px;
-      }
-
-      > .scrollable {
-        position: relative;
-      }
-    }
+  .search-group-scrollable-x {
+    position: relative;
   }
 
   .item-main .sidebar-content {
@@ -875,10 +813,31 @@
 #search-container {
   display: flex;
   top: var(--offset-top) !important;
+  background-color: var(--background-color);
 
   .scrollable-y {
     position: relative;
     flex: 1 1 auto;
+  }
+
+  .search-super-content-music {
+    .audio:not(.audio-show-progress) {
+      .audio-time, 
+      .audio-description:before {
+        display: none;
+      }
+    }
+  }
+
+  .search-group.is-short {
+    .chatlist-chat:nth-child(n + 4) {
+      display: none;
+    }
+  }
+  .search-group.is-short-5 {
+    .chatlist-chat:nth-child(n + 6) {
+      display: none;
+    }
   }
 }
 
@@ -910,20 +869,7 @@
 
 .new-group-members {
   padding: 1.5rem 0 .4375rem;
-
-  .search-group__name {
-    text-transform: capitalize;
-  }
 }
-
-// #folders-tabs {
-//   @include premium(true) {
-//     .menu-horizontal-div-item:nth-child(n+12) {
-//       pointer-events: none;
-//       opacity: .2;
-//     }
-//   }
-// }
 
 .edit-profile-container {
   .scroll-wrapper {
@@ -932,8 +878,7 @@
 }
 
 .chat-folders-container,
-.edit-folder-container,
-.people-nearby-container {
+.edit-folder-container {
   user-select: none;
 
   .sticker-container {
@@ -1004,30 +949,7 @@
   }
 
   .btn-icon {
-    //@include respond-to(handhelds) {
-      font-size: 22px;
-    //}
-  }
-}
-
-@include respond-to(handhelds) {
-  .search-group-recent.search-group.search-group-contacts ul {
-    margin-top: 0;
-  }
-
-  .search-group.search-group-contacts ul,
-  .search-group.search-group-messages ul {
-    margin-top: 7px;
-  }
-
-  .search-group.search-group-messages {
-    margin-top: -6px;
-  }
-}
-
-@include respond-to(not-handhelds) {
-  .search-group-recent.search-group.search-group-contacts {
-    padding: 0px 0 7px;
+    font-size: 22px;
   }
 }
 

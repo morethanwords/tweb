@@ -6,99 +6,111 @@
 
 @use "../shared" as *;
 
-$menu-size: 3rem;
+.menu-horizontal {
+  &-scrollable {
+    --scrollable-size: #{$menu-height};
+    height: var(--scrollable-size);
+    margin: 0 $section-rounded-padding;
+    border-radius: $border-radius-big;
+    overflow: hidden;
+    box-shadow: var(--section-box-shadow);
+    background-color: var(--surface-color);
 
-.menu-horizontal-scrollable {
-  --scrollable-size: #{$menu-size};
-  height: var(--scrollable-size);
-  margin: 0 $section-rounded-padding;
-  border-radius: $border-radius-big;
-  overflow: hidden;
-  box-shadow: var(--section-box-shadow);
-}
-
-.menu-horizontal-div {
-  --size: var(--scrollable-size, #{$menu-size});
-  --padding-horizontal: 0px;
-  width: 100%;
-  height: var(--size);
-  display: flex;
-  justify-content: space-around;
-  flex-direction: row;
-  position: relative;
-  z-index: 2;
-  user-select: none;
-  padding: .25rem 0;
-  color: var(--secondary-text-color);
-
-  &-item {
-    height: 100%;
-    padding: 0 1rem;
-    cursor: pointer;
-    text-align: center;
-    flex: 1 1 auto;
-    font-size: 1rem;
-    font-weight: var(--font-weight-bold);
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    line-height: var(--line-height);
-    border-radius: 1.25rem;
-    margin: 0 .25rem;
-
-    @include animation-level(2) {
-      transition: background-color var(--tabs-transition) !important;
-    }
-
-    @include hover-background-effect();
-
-    .c-ripple {
-      display: none;
-    }
-
-    &.active {
-      color: var(--primary-color);
-      // background: transparent !important;
-
-      .menu-horizontal-div-item-background {
-        opacity: 1;
-      }
-
-      .c-ripple__circle {
-        background-color: var(--light-primary-color);
-      }
-
-      .badge {
-        background-color: var(--primary-color);
-      }
-    }
-
-    &-span {
+    .scrollable-x {
+      display: flex;
       position: relative;
-      display: inline-flex;
-      align-items: center;
-      overflow: visible;
-      pointer-events: none;
-      white-space: nowrap;
-      z-index: 2;
+    }
+  }
+
+  &-div {
+    --size: var(--scrollable-size, #{$menu-height});
+    --padding-horizontal: 0px;
+    width: 100%;
+    height: var(--size);
+    display: flex;
+    justify-content: space-around;
+    flex-direction: row;
+    position: relative;
+    z-index: 2;
+    user-select: none;
+    padding: .25rem 0;
+    color: var(--secondary-text-color);
+    background-color: var(--surface-color);
+
+    .menu-horizontal-scrollable & {
+      width: auto;
+      flex: 1 1 auto;
     }
 
-    &-background {
-      position: absolute;
-      left: 0;
-      opacity: 0;
-      background-color: var(--light-filled-primary-color);
+    &-item {
       height: 100%;
-      width: 100%;
-      border-radius: inherit;
-      pointer-events: none;
-      box-sizing: content-box;
-      transform-origin: left;
-      z-index: 1;
+      padding: 0 1rem;
+      cursor: pointer;
+      text-align: center;
+      flex: 1 1 auto;
+      font-size: 1rem;
+      font-weight: var(--font-weight-bold);
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: var(--line-height);
+      border-radius: 1.25rem;
+      margin: 0 .25rem;
 
-      &.animate {
-        transition: transform var(--tabs-transition);
+      @include animation-level(2) {
+        transition: background-color var(--tabs-transition) !important;
+      }
+
+      @include hover-background-effect();
+
+      .c-ripple {
+        display: none;
+      }
+
+      &.active {
+        color: var(--primary-color);
+        // background: transparent !important;
+
+        .menu-horizontal-div-item-background {
+          opacity: 1;
+        }
+
+        .c-ripple__circle {
+          background-color: var(--light-primary-color);
+        }
+
+        .badge {
+          background-color: var(--primary-color);
+        }
+      }
+
+      &-span {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        overflow: visible;
+        pointer-events: none;
+        white-space: nowrap;
+        z-index: 2;
+      }
+
+      &-background {
+        position: absolute;
+        left: 0;
+        opacity: 0;
+        background-color: var(--light-filled-primary-color);
+        height: 100%;
+        width: 100%;
+        border-radius: inherit;
+        pointer-events: none;
+        box-sizing: content-box;
+        transform-origin: left;
+        z-index: 1;
+
+        &.animate {
+          transition: transform var(--tabs-transition);
+        }
       }
     }
   }

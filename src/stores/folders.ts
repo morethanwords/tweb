@@ -1,4 +1,4 @@
-import {createMemo, createRoot, createSignal, untrack} from 'solid-js';
+import {createEffect, createMemo, createRoot, createSignal, untrack} from 'solid-js';
 import {createStore, reconcile} from 'solid-js/store';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import rootScope from '@lib/rootScope';
@@ -51,10 +51,16 @@ async function getFolderItemsInOrder(folderItems: StoredFolder[], managers: AppM
 }
 
 const useFoldersStore = createRoot(() => {
-  const [selectedFolderId, setSelectedFolderId] = createSignal<number>(FOLDER_ID_ALL);
+  const [selectedFolderId, _setSelectedFolderId] = createSignal<number>(FOLDER_ID_ALL);
   const [folderItems, setFolderItems] = createStore<StoredFolder[]>([]);
-  const [onClick, setOnClick] = createSignal<(index: number) => any>();
   const selectedFolderIndex = createMemo(() => folderItems.findIndex(({id}) => id === selectedFolderId()));
+
+  let setSelectedFolderId: (index: number, dontAnimate?: boolean) => any;
+  const [onClick, setOnClick] = createSignal<typeof setSelectedFolderId>();
+
+  createEffect(() => {
+    setSelectedFolderId = onClick();
+  });
 
   function updateFolderItem(folderId: number, payload: Partial<StoredFolder>) {
     const idx = folderItems.findIndex((item) => item.id === folderId);
@@ -202,7 +208,7 @@ const useFoldersStore = createRoot(() => {
 
   return {
     selectedFolderId,
-    setSelectedFolderId,
+    setSelectedFolderId: _setSelectedFolderId,
     selectedFolderIndex,
     folderItems,
     hydrateFilters,

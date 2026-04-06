@@ -6,12 +6,11 @@
 
 import appImManager from '@lib/appImManager';
 import rootScope from '@lib/rootScope';
-import {SearchGroup} from '@components/appSearch';
+import {createSearchGroup, SearchGroup} from '@components/searchGroup';
 import Scrollable, {ScrollableX} from '@components/scrollable';
 import InputSearch from '@components/inputSearch';
 import SidebarSlider, {SliderSuperTab} from '@components/slider';
 import TransitionSlider from '@components/transition';
-import AppNewGroupTab from '@components/sidebarLeft/tabs/newGroup';
 import AppSearchSuper, {SearchSuperMediaType} from '@components/appSearchSuper';
 import {DateData, fillTipDates} from '@helpers/date';
 import {MOUNT_CLASS_TO} from '@config/debug';
@@ -32,8 +31,7 @@ import sessionStorage from '@lib/sessionStorage';
 import {attachClickEvent, CLICK_EVENT_NAME, simulateClickEvent} from '@helpers/dom/clickEvent';
 import ButtonIcon from '@components/buttonIcon';
 import confirmationPopup from '@components/confirmationPopup';
-import type SortedUserList from '@components/sortedUserList';
-import Button, {ButtonOptions, replaceButtonIcon} from '@components/button';
+import {replaceButtonIcon} from '@components/button';
 import noop from '@helpers/noop';
 import ripple from '@components/ripple';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
@@ -43,7 +41,6 @@ import themeController from '@helpers/themeController';
 import contextMenuController from '@helpers/contextMenuController';
 import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG} from '@lib/appDialogsManager';
 import apiManagerProxy from '@lib/apiManagerProxy';
-import SettingSection, {SettingSectionOptions} from '@components/settingSection';
 import {FOLDER_ID_ARCHIVE, TEST_NO_STORIES} from '@appManagers/constants';
 import mediaSizes from '@helpers/mediaSizes';
 import {doubleRaf, fastRaf} from '@helpers/schedulers';
@@ -76,7 +73,7 @@ import pause from '@helpers/schedulers/pause';
 import AccountsLimitPopup from '@components/sidebarLeft/accountsLimitPopup';
 import {changeAccount} from '@lib/accounts/changeAccount';
 import uiNotificationsManager from '@lib/uiNotificationsManager';
-import {FoldersSidebarControls, renderFoldersSidebarContent} from '@components/sidebarLeft/foldersSidebarContent';
+import {renderFoldersSidebarContent} from '@components/sidebarLeft/foldersSidebarContent';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import SwipeHandler, {getEvent} from '@components/swipeHandler';
 import clamp from '@helpers/number/clamp';
@@ -135,8 +132,6 @@ export class AppSidebarLeft extends SidebarSlider {
 
   private onResize: () => void;
 
-  public foldersSidebarControls: FoldersSidebarControls;
-
   constructor() {
     super({
       sidebarEl: document.getElementById('column-left') as HTMLDivElement,
@@ -146,7 +141,6 @@ export class AppSidebarLeft extends SidebarSlider {
 
   construct(managers: AppManagers) {
     this.managers = managers;
-    // this._selectTab(0); // make first tab as default
 
     this.chatListContainer = document.getElementById('chatlist-container');
     this.inputSearch = new InputSearch({oldStyle: true});
@@ -154,7 +148,6 @@ export class AppSidebarLeft extends SidebarSlider {
     const sidebarHeader = this.sidebarEl.querySelector('.item-main .sidebar-header');
     sidebarHeader.append(this.inputSearch.container);
 
-    // this.toolsBtn = this.sidebarEl.querySelector('.sidebar-tools-button') as HTMLButtonElement;
     this.backBtn = this.sidebarEl.querySelector('.sidebar-back-button') as HTMLButtonElement;
 
     this.toolsBtn = this.createToolsMenu();
@@ -166,7 +159,12 @@ export class AppSidebarLeft extends SidebarSlider {
 
     const mainMiddleware = this.middlewareHelper.get();
     const foldersSidebar = document.getElementById('folders-sidebar');
-    this.foldersSidebarControls = renderFoldersSidebarContent(foldersSidebar, this.totalNotificationsCountSidebar, SolidJSHotReloadGuardProvider, mainMiddleware);
+    renderFoldersSidebarContent(
+      foldersSidebar,
+      this.totalNotificationsCountSidebar,
+      SolidJSHotReloadGuardProvider,
+      mainMiddleware
+    );
 
     // If it has z-index to early, the browser makes it shift a few times before showing it properly in its position (on very large screens)
     // Doesn't solve the blinking, which doesn't seem to appear when the project is built
@@ -1043,17 +1041,16 @@ export class AppSidebarLeft extends SidebarSlider {
     const scrollable = new Scrollable(searchContainer);
 
     const close = () => {
-      // setTimeout(() => {
       simulateClickEvent(this.backBtn);
-      // }, 0);
     };
 
+    const middleware = this.middlewareHelper.get();
     this.searchGroups = {
-      contacts: new SearchGroup('SearchAllChatsShort', 'contacts', undefined, undefined, undefined, undefined, close),
-      globalContacts: new SearchGroup('GlobalSearch', 'contacts', undefined, undefined, undefined, undefined, close),
-      messages: new SearchGroup('SearchMessages', 'messages'),
-      people: new SearchGroup(false, 'contacts', true, 'search-group-people', true, false, close, true),
-      recent: new SearchGroup('Recent', 'contacts', true, 'search-group-recent', true, true, close)
+      contacts: createSearchGroup({name: 'SearchAllChatsShort', type: 'contacts', onFound: close, middleware}),
+      globalContacts: createSearchGroup({name: 'GlobalSearch', type: 'contacts', onFound: close, middleware}),
+      messages: createSearchGroup({name: 'SearchMessages', type: 'messages', middleware}),
+      people: createSearchGroup({name: false, type: 'contacts', className: 'search-group-people', autonomous: false, onFound: close, noIcons: true, middleware, scrollableX: true}),
+      recent: createSearchGroup({name: 'Recent', type: 'contacts', className: 'search-group-recent', onFound: close, middleware})
     };
 
     this.searchGroups.messages.createPlaceholder = () => {
@@ -1069,15 +1066,13 @@ export class AppSidebarLeft extends SidebarSlider {
       return placeholder;
     };
 
-    const chatTypeMenu = new ChatTypeMenu;
+    const chatTypeMenu = new ChatTypeMenu();
     chatTypeMenu.feedProps({
       onChange: (chatType) => void updateSearchQuery({search: this.inputSearch.value, chatType}),
       selected: 'all'
     });
 
     this.searchGroups.messages.nameEl.append(chatTypeMenu);
-
-    // bots.getPopularAppBots
 
     const searchSuper = this.searchSuper = new AppSearchSuper({
       mediaTabs: [{
@@ -1122,7 +1117,7 @@ export class AppSidebarLeft extends SidebarSlider {
       managers: this.managers
     });
 
-    let prevTab: SearchSuperMediaType
+    let prevTab: SearchSuperMediaType;
     searchSuper.onChangeTab = (tab) => {
       if(prevTab === 'posts') {
         simulateClickEvent(this.inputSearch.clearBtn);
@@ -1137,7 +1132,6 @@ export class AppSidebarLeft extends SidebarSlider {
 
     this.watchChannelsTabVisibility();
 
-    searchContainer.prepend(searchSuper.nav.parentElement.parentElement);
     scrollable.append(searchSuper.container);
 
     const resetSearch = () => {
@@ -1335,12 +1329,6 @@ export class AppSidebarLeft extends SidebarSlider {
       const peerId = target.getAttribute('data-peer-id').toPeerId();
       this.managers.appUsersManager.pushRecentSearch(peerId);
     }, {capture: true});
-
-    const peopleContainer = document.createElement('div');
-    peopleContainer.classList.add('search-group-scrollable');
-    peopleContainer.append(this.searchGroups.people.list);
-    this.searchGroups.people.container.append(peopleContainer);
-    const peopleScrollable = new ScrollableX(peopleContainer);
 
     let first = true;
     let hideNewBtnMenuTimeout: number;
@@ -1547,25 +1535,6 @@ export class AppSidebarLeft extends SidebarSlider {
   };
 }
 
-export class SettingChatListSection extends SettingSection {
-  public sortedList: SortedUserList;
-
-  constructor(options: SettingSectionOptions & {sortedList: SortedUserList}) {
-    super(options);
-
-    this.sortedList = options.sortedList;
-
-    this.content.append(this.sortedList.list);
-  }
-
-  public makeButton(options: ButtonOptions) {
-    const button = Button('folder-category-button btn btn-primary btn-transparent', options);
-    if(this.title) this.content.insertBefore(button, this.title.nextSibling);
-    else this.content.prepend(button);
-    return button;
-  }
-}
-
 const appSidebarLeft = new AppSidebarLeft();
 MOUNT_CLASS_TO.appSidebarLeft = appSidebarLeft;
 export default appSidebarLeft;
@@ -1585,9 +1554,4 @@ function getVersionLink() {
   btnMenuFooter.append(t);
 
   return btnMenuFooter;
-  // btnMenu.classList.add('has-footer');
-  // btnMenu.append(btnMenuFooter);
-
-  // const a = btnMenu.querySelector('.a .btn-menu-item-icon');
-  // if(a) a.textContent = 'A';
 }

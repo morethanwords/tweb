@@ -7,7 +7,8 @@
 import appSidebarRight from '..';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import rootScope from '@lib/rootScope';
-import AppSearch, {SearchGroup} from '@components/appSearch';
+import AppSearch from '@components/appSearch';
+import {createSearchGroup} from '@components/searchGroup';
 import ButtonIcon from '@components/buttonIcon';
 import InputSearch from '@components/inputSearch';
 import PopupElement from '@components/popups';
@@ -49,7 +50,7 @@ export default class AppPrivateSearchTab extends SliderSuperTab {
       c,
       this.inputSearch,
       {
-        messages: new SearchGroup('Chat.Search.PrivateSearch', 'messages')
+        messages: createSearchGroup({name: 'Chat.Search.PrivateSearch', type: 'messages', middleware: this.middlewareHelper.get()})
       },
       this.middlewareHelper.get(),
       undefined,

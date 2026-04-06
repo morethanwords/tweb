@@ -36,6 +36,7 @@
 @use "partials/slider";
 @use "partials/leftSidebar";
 @use "partials/rightSidebar";
+@use "partials/searchSuper";
 @use "partials/mediaViewer";
 @use "partials/scrollable";
 @use "partials/emojiDropdown";
@@ -53,7 +54,6 @@
 @use "partials/row";
 @use "partials/colorPicker";
 @use "partials/replyKeyboard";
-// @import "partials/peopleNearby";
 @use "partials/spoiler";
 @use "partials/emojiAnimation";
 @use "partials/reactions";

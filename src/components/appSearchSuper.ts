@@ -8,7 +8,7 @@ import type {AppMessagesManager, MyInputMessagesFilter, MyMessage, RequestHistor
 import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG, DialogDom} from '@lib/appDialogsManager';
 import {logger} from '@lib/logger';
 import rootScope from '@lib/rootScope';
-import {SearchGroup, SearchGroupType} from '@components/appSearch';
+import {createSearchGroup, SearchGroup, SearchGroupType} from '@components/searchGroup';
 import {horizontalMenu} from '@components/horizontalMenu';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import {putPreloader} from '@components/putPreloader';
@@ -24,7 +24,6 @@ import findUpTag from '@helpers/dom/findUpTag';
 import appSidebarRight from '@components/sidebarRight';
 import mediaSizes from '@helpers/mediaSizes';
 import appImManager from '@lib/appImManager';
-import positionElementByIndex from '@helpers/dom/positionElementByIndex';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import handleTabSwipe from '@helpers/dom/handleTabSwipe';
 import windowSize from '@helpers/windowSize';
@@ -40,7 +39,6 @@ import {MyDocument} from '@appManagers/appDocsManager';
 import AppMediaViewer from '@components/appMediaViewer';
 import lockTouchScroll from '@helpers/dom/lockTouchScroll';
 import copy from '@helpers/object/copy';
-import getObjectKeysAndSort from '@helpers/object/getObjectKeysAndSort';
 import safeAssign from '@helpers/object/safeAssign';
 import findAndSplice from '@helpers/array/findAndSplice';
 import {ScrollStartCallbackDimensions} from '@helpers/fastSmoothScroll';
@@ -112,8 +110,7 @@ import liteMode from '@helpers/liteMode';
 import {wrapGlobalPostsSearch} from './sidebarLeft/globalPostsSearch';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import Tabs from '@components/tabs';
-
-// const testScroll = false;
+import Section from '@components/section';
 
 export type SearchSuperType = MyInputMessagesFilter/*  | 'members' */;
 export type SearchSuperContext = {
@@ -138,6 +135,7 @@ export type SearchSuperMediaTab = {
   name: LangPackKey,
   type: SearchSuperMediaType,
   contentTab?: HTMLElement,
+  itemsTab?: HTMLElement,
   menuTab?: HTMLElement,
   menuTabName?: HTMLElement;
   scroll?: {scrollTop: number, scrollHeight: number}
@@ -388,14 +386,6 @@ export default class AppSearchSuper {
   private log = logger('SEARCH-SUPER');
   public selectTab: ReturnType<typeof horizontalMenu>;
 
-  private monthContainers: Partial<{
-    [type in SearchSuperType]: {
-      [timestamp: number]: {
-        container: HTMLElement,
-        items: HTMLElement
-      }
-    }
-  }> = {};
 
   private searchGroupMedia: SearchGroup;
 
@@ -418,7 +408,6 @@ export default class AppSearchSuper {
   public scrollable: Scrollable;
   public searchGroups?: {[group in SearchGroupType]: SearchGroup};
   public asChatList? = false;
-  public groupByMonth? = true;
   public hideEmptyTabs? = true;
   public onChangeTab?: (mediaTab: SearchSuperMediaTab) => void;
   public showSender? = false;
@@ -454,7 +443,6 @@ export default class AppSearchSuper {
     'scrollable' |
     'searchGroups' |
     'asChatList' |
-    'groupByMonth' |
     'hideEmptyTabs' |
     'onChangeTab' |
     'showSender' |
@@ -563,21 +551,39 @@ export default class AppSearchSuper {
 
       container.append(content);
 
+      const useSection = mediaTab.type !== 'stories' && mediaTab.type !== 'media' && mediaTab.type !== 'gifts' && mediaTab.type !== 'chats';
+      let itemsContainer = content;
+      if(useSection) {
+        const items = document.createElement('div');
+        createRoot(() => {
+          Section({
+            noDelimiter: true,
+            class: 'hide',
+            ref: (ref) => {
+              content.append(ref);
+            },
+            children: [items]
+          });
+        });
+        itemsContainer = items;
+      }
+
       this.tabsContainer.append(container);
 
       const {inputFilter} = mediaTab;
       if(inputFilter) {
-        this.tabs[inputFilter] = content;
+        this.tabs[inputFilter] = itemsContainer;
       }
 
       mediaTab.contentTab = content;
+      mediaTab.itemsTab = itemsContainer;
     }
 
     this.container.append(Tabs.MenuGradient() as HTMLElement, navScrollableContainer, this.tabsContainer);
 
     // * construct end
 
-    this.searchGroupMedia = new SearchGroup(false, 'messages', true);
+    this.searchGroupMedia = createSearchGroup({type: 'messages'});
 
     // this.scrollable.onScrolledTop = () => {
     //   if(this.mediaTab.contentTab && this.canLoadMediaTab(this.mediaTab)/* && false */) {
@@ -656,7 +662,7 @@ export default class AppSearchSuper {
       /* this.log('setVirtualContainer', id, this.sharedMediaSelected, this.sharedMediaSelected.childElementCount);
       this.scroll.setVirtualContainer(this.sharedMediaSelected); */
 
-      if(this.prevTabId !== -1 && !newMediaTab.contentTab.childElementCount) { // quick brown fix
+      if(this.prevTabId !== -1 && !newMediaTab.itemsTab.childElementCount) { // quick brown fix
         // this.contentContainer.classList.remove('loaded');
         this.load(true);
       }
@@ -1182,20 +1188,19 @@ export default class AppSearchSuper {
 
     if(length) {
       const method = append ? 'append' : 'prepend';
-      const groupByMonth = this.groupByMonth && !isSaved;
       const threadId = isSaved ? this.searchContext.peerId : undefined;
+      const container = this.tabs[inputFilter];
       elemsToAppend.forEach((details) => {
         const {element, message} = details;
         if(!message) {
           debugger;
         }
 
-        const monthContainer = this.getMonthContainerByTimestamp(groupByMonth ? message.date : 0, inputFilter);
         element.classList.add('search-super-item');
         element.dataset.mid = '' + message.mid;
         element.dataset.peerId = '' + message.peerId;
         threadId && (element.dataset.threadId = '' + threadId);
-        monthContainer.items[method](element);
+        container[method](element);
 
         if(this.selection?.isSelecting) {
           this.selection.toggleElementCheckbox(element, true);
@@ -1206,9 +1211,7 @@ export default class AppSearchSuper {
         let chatlist = sharedMediaDiv.querySelector<HTMLElement>('.chatlist');
         if(!chatlist) {
           chatlist = appDialogsManager.createChatList({new: true});
-          const monthContainer = this.getMonthContainerByTimestamp(0, inputFilter).container;
-          monthContainer.replaceWith(chatlist);
-          chatlist.append(monthContainer);
+          container.append(chatlist);
 
           appDialogsManager.setListClickListener({
             list: chatlist,
@@ -1226,16 +1229,20 @@ export default class AppSearchSuper {
     }
 
     // if(type !== 'inputMessagesFilterEmpty') {
-    this.afterPerforming(inputFilter === 'inputMessagesFilterEmpty' ? 1 : length, sharedMediaDiv);
+    this.afterPerforming(inputFilter === 'inputMessagesFilterEmpty' ? 1 : length, mediaTab);
     // }
 
     return length;
   }
 
-  private afterPerforming(length: number, contentTab: HTMLElement) {
+  private afterPerforming(length: number, mediaTab: SearchSuperMediaTab) {
+    const contentTab = mediaTab.contentTab;
     if(!contentTab) {
       return;
     }
+
+    // * remove 'hide' from section
+    contentTab.firstElementChild?.classList.remove('hide');
 
     const parent = contentTab.parentElement;
     Array.from(parent.children).slice(1).forEach((child) => {
@@ -1244,7 +1251,7 @@ export default class AppSearchSuper {
 
     // this.contentContainer.classList.add('loaded');
 
-    if(!length && !contentTab.childElementCount) {
+    if(!length && !mediaTab.itemsTab.childElementCount) {
       const div = document.createElement('div');
       div.append(i18n('Chat.Search.NothingFound'));
       div.classList.add('position-center', 'text-center', 'content-empty', 'no-select');
@@ -1565,8 +1572,8 @@ export default class AppSearchSuper {
             appImManager.setInnerPeer({peerId});
           });
         });
-        mediaTab.contentTab.append(membersList.list);
-        this.afterPerforming(1, mediaTab.contentTab);
+        mediaTab.itemsTab.append(membersList.list);
+        this.afterPerforming(1, mediaTab);
 
         if(chatId) {
           const middleware = membersMiddlewareHelper.get();
@@ -1722,7 +1729,7 @@ export default class AppSearchSuper {
           return;
         }
 
-        const list = mediaTab.contentTab.firstElementChild as HTMLUListElement;
+        const list = mediaTab.itemsTab.firstElementChild as HTMLUListElement;
         this.nextRates[mediaTab.type] = (list ? list.childElementCount : 0) + participants.participants.length;
 
         if(participants.participants.length < LOAD_COUNT) {
@@ -1781,7 +1788,7 @@ export default class AppSearchSuper {
         onReady: () => {
           promise.resolve();
           mediaTab.contentTab.append(getFirstChild(storiesList, v => v instanceof Element) as Element);
-          this.afterPerforming(1, mediaTab.contentTab);
+          this.afterPerforming(1, mediaTab);
         },
         onLoad: (loaded: boolean) => {
           this.loaded[mediaTab.type] = loaded;
@@ -1862,8 +1869,8 @@ export default class AppSearchSuper {
         return;
       }
 
-      mediaTab.contentTab.replaceChildren(chatlist);
-      this.afterPerforming(1, mediaTab.contentTab);
+      mediaTab.itemsTab.replaceChildren(chatlist);
+      this.afterPerforming(1, mediaTab);
       this.loaded[mediaTab.type] = true;
 
       const count = (messagesChats as MessagesChats.messagesChatsSlice).count ?? messagesChats.chats.length;
@@ -1871,7 +1878,7 @@ export default class AppSearchSuper {
 
       if(!isPremium && !isPremiumFeaturesHidden) {
         paywall ||= createPaywall(premiumLimit);
-        mediaTab.contentTab.append(paywall);
+        mediaTab.itemsTab.append(paywall);
       }
     };
 
@@ -1923,8 +1930,8 @@ export default class AppSearchSuper {
 
     onAnyUpdate();
 
-    mediaTab.contentTab.append(list);
-    this.afterPerforming(1, mediaTab.contentTab);
+    mediaTab.itemsTab.append(list);
+    this.afterPerforming(1, mediaTab);
 
     this._loadSavedDialogs = () => Promise.resolve(xd.onChatsScroll());
     middleware.onClean(() => {
@@ -1986,7 +1993,7 @@ export default class AppSearchSuper {
 
   private async loadChannels({mediaTab, middleware}: SearchSuperLoadTypeOptions) {
     if(this.searchContext.query) {
-      const group = new SearchGroup('Channels', 'channels');
+      const group = createSearchGroup({name: 'Channels', type: 'channels', middleware});
       group.setActive();
       group.nameEl.style.display = 'none';
 
@@ -2000,9 +2007,9 @@ export default class AppSearchSuper {
       this.renderPeerDialogs(filteredResults.map((user) => user.toPeerId(true)), group, middleware);
 
       if(filteredResults.length) {
-        mediaTab.contentTab.append(group.container);
+        mediaTab.itemsTab.append(group.container);
       }
-      this.afterPerforming(filteredResults.length, mediaTab.contentTab);
+      this.afterPerforming(filteredResults.length, mediaTab);
 
       this.loaded[mediaTab.type] = true;
       return;
@@ -2013,9 +2020,9 @@ export default class AppSearchSuper {
     const channelDialogs = channelDialogsWithUndefined.filter(Boolean);
 
     if(channelDialogs.length) {
-      const group = new SearchGroup('Chat.Search.JoinedChannels', 'channels');
+      const group = createSearchGroup({name: 'Chat.Search.JoinedChannels', type: 'channels', middleware});
       group.setActive();
-      mediaTab.contentTab.append(group.container);
+      mediaTab.itemsTab.append(group.container);
 
       const SHOW_MORE_LIMIT = 5;
       if(channelDialogs.length > SHOW_MORE_LIMIT) this.appendShowMoreButton(group);
@@ -2026,14 +2033,14 @@ export default class AppSearchSuper {
     const recommendations = await this.managers.appChatsManager.getChannelRecommendations();
 
     if(recommendations.chats.length) {
-      const group = new SearchGroup('SimilarChannels', 'channels');
+      const group = createSearchGroup({name: 'SimilarChannels', type: 'channels', middleware});
       group.setActive();
-      mediaTab.contentTab.append(group.container);
+      mediaTab.itemsTab.append(group.container);
 
       this.renderPeerDialogs(recommendations.chats.map((chat) => chat.id.toPeerId(true)), group, middleware);
     }
 
-    this.afterPerforming(1, mediaTab.contentTab);
+    this.afterPerforming(1, mediaTab);
     this.loaded[mediaTab.type] = true;
   }
 
@@ -2058,7 +2065,7 @@ export default class AppSearchSuper {
     };
 
     if(this.searchContext.query) {
-      const group = new SearchGroup('ChatList.Filter.Bots', 'apps', undefined, undefined, undefined, undefined, onClick);
+      const group = createSearchGroup({name: 'ChatList.Filter.Bots', type: 'apps', onFound: onClick, middleware});
       group.setActive();
 
       const SEARCH_LIMIT = 200; // will get filtered anyway
@@ -2071,9 +2078,9 @@ export default class AppSearchSuper {
       this.renderPeerDialogs(filteredResults.map((user) => user.toPeerId(false)), group, middleware, 'bots');
 
       if(filteredResults.length) {
-        mediaTab.contentTab.append(group.container);
+        mediaTab.itemsTab.append(group.container);
       }
-      this.afterPerforming(filteredResults.length, mediaTab.contentTab);
+      this.afterPerforming(filteredResults.length, mediaTab);
 
       this.loaded[mediaTab.type] = true;
       return;
@@ -2082,9 +2089,9 @@ export default class AppSearchSuper {
     const myTopApps = await rootScope.managers.appUsersManager.getTopPeers('bots_app');
 
     if(myTopApps.length) {
-      const group = new SearchGroup('MiniApps.Apps', 'apps', undefined, undefined, undefined, undefined, onClick);
+      const group = createSearchGroup({name: 'MiniApps.Apps', type: 'apps', onFound: onClick, middleware});
       group.setActive();
-      mediaTab.contentTab.append(group.container);
+      mediaTab.itemsTab.append(group.container);
 
       const SHOW_MORE_LIMIT = 5;
       if(myTopApps.length > SHOW_MORE_LIMIT)  this.appendShowMoreButton(group);
@@ -2092,9 +2099,9 @@ export default class AppSearchSuper {
       this.renderPeerDialogs(myTopApps.map((app) => app.id.toPeerId(false)), group, middleware, 'bots');
     }
 
-    const group = new SearchGroup('MiniApps.Popular', 'apps', undefined, undefined, undefined, undefined, onClick);
+    const group = createSearchGroup({name: 'MiniApps.Popular', type: 'apps', onFound: onClick, middleware});
     group.setActive();
-    mediaTab.contentTab.append(group.container);
+    mediaTab.itemsTab.append(group.container);
 
     type GetPopularAppsResult = ReturnType<typeof rootScope.managers.appAttachMenuBotsManager.getPopularAppBots>;
     let currentOffset: string = '', loadPromise: GetPopularAppsResult;
@@ -2127,7 +2134,7 @@ export default class AppSearchSuper {
       this._loadMoreApps = undefined;
     });
 
-    this.afterPerforming(1, mediaTab.contentTab);
+    this.afterPerforming(1, mediaTab);
   }
 
   globalPostsSearch: ReturnType<typeof wrapGlobalPostsSearch>;
@@ -2137,7 +2144,7 @@ export default class AppSearchSuper {
         middleware,
         query: this.searchContext.query
       });
-      mediaTab.contentTab.append(this.globalPostsSearch.dom);
+      mediaTab.itemsTab.append(this.globalPostsSearch.dom);
     }
 
     this.globalPostsSearch.loadMore();
@@ -2178,7 +2185,7 @@ export default class AppSearchSuper {
         this.stargiftsActions = actions;
         this.stargiftsSetCollection = setCollection;
 
-        mediaTab.contentTab.append(getFirstChild(giftsList, v => v instanceof Element) as Element);
+        mediaTab.itemsTab.append(getFirstChild(giftsList, v => v instanceof Element) as Element);
 
         if(this.mediaTab?.type === 'gifts') {
           this.onChangeTab?.(this.mediaTab);
@@ -2587,55 +2594,6 @@ export default class AppSearchSuper {
     });
   }
 
-  private getMonthContainerByTimestamp(timestamp: number, type: SearchSuperType) {
-    const date = new Date(timestamp * 1000);
-    date.setHours(0, 0, 0);
-    date.setDate(1);
-    const dateTimestamp = date.getTime();
-    const containers = this.monthContainers[type] ?? (this.monthContainers[type] = {});
-    if(!(dateTimestamp in containers)) {
-      const container = document.createElement('div');
-      container.className = 'search-super-month';
-
-      const name = document.createElement('div');
-      name.classList.add('search-super-month-name');
-
-      const options: Intl.DateTimeFormatOptions = {
-        month: 'long'
-      };
-
-      if(date.getFullYear() !== new Date().getFullYear()) {
-        options.year = 'numeric';
-      }
-
-      const dateElement = new I18n.IntlDateElement({
-        date,
-        options
-      }).element;
-      name.append(dateElement);
-
-      container.append(name);
-
-      const items = document.createElement('div');
-      items.classList.add('search-super-month-items');
-
-      container.append(name, items);
-
-      const haveTimestamps = getObjectKeysAndSort(containers, 'desc');
-      let i = 0;
-      for(; i < haveTimestamps.length; ++i) {
-        const t = haveTimestamps[i];
-        if(dateTimestamp > t) {
-          break;
-        }
-      }
-
-      containers[dateTimestamp] = {container, items};
-      positionElementByIndex(container, this.tabs[type], i);
-    }
-
-    return containers[dateTimestamp];
-  }
 
   public setPinnedGifts(gifts: MyStarGift[]) {
     const giftsTab = this.mediaTabsMap.get('gifts')
@@ -2820,9 +2778,10 @@ export default class AppSearchSuper {
     });
   }
 
-  public cleanupHTML(goFirst = false) {
+  public cleanupHTML() {
     this.mediaTabs.forEach((tab) => {
-      tab.contentTab.replaceChildren();
+      tab.itemsTab.replaceChildren();
+      tab.contentTab.firstElementChild?.classList.add('hide');
 
       if(this.hideEmptyTabs) {
         // tab.menuTab.classList.add('hide');
@@ -2836,43 +2795,17 @@ export default class AppSearchSuper {
 
       if(tab.inputFilter && !this.historyStorage[tab.inputFilter]) {
         const parent = tab.contentTab.parentElement;
-        // if(!testScroll) {
         if(!parent.querySelector('.preloader')) {
           putPreloader(parent, true);
         }
-        // }
 
         const empty = parent.querySelector('.content-empty');
         empty?.remove();
       }
     });
 
-    /* if(goFirst) {
-      const membersTab = this.mediaTabsMap.get('members');
-      if(membersTab) {
-        let idx = this.canViewMembers() ? 0 : 1;
-        membersTab.menuTab.classList.toggle('hide', idx !== 0);
-
-        this.selectTab(idx, false);
-      } else {
-        this.selectTab(0, false);
-      }
-    } */
-
-    this.monthContainers = {};
     this.searchGroupMedia.clear();
     this.scrollable.scrollPosition = 0;
-
-    /* if(testScroll) {
-      for(let i = 0; i < 1500; ++i) {
-        let div = document.createElement('div');
-        div.insertAdjacentHTML('beforeend', `<img class="media-image" src="assets/img/camomile.jpg">`);
-        div.classList.add('grid-item');
-        div.dataset.id = '' + (i / 3 | 0);
-        //div.innerText = '' + (i / 3 | 0);
-        this.tabs.inputMessagesFilterPhotoVideo.append(div);
-      }
-    } */
   }
 
   private copySearchContext(newInputFilter: MyInputMessagesFilter, nextRate: number, skipSensitive: boolean) {

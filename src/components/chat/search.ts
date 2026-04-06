@@ -5,7 +5,8 @@
  */
 
 import type ChatTopbar from '@components/chat/topbar';
-import AppSearch, {SearchGroup} from '@components/appSearch';
+import AppSearch from '@components/appSearch';
+import {createSearchGroup, SearchGroup} from '@components/searchGroup';
 import PopupDatePicker from '@components/popups/datePicker';
 import ripple from '@components/ripple';
 import InputSearch from '@components/inputSearch';
@@ -73,7 +74,7 @@ export default class ChatSearch {
     this.results = document.createElement('div');
     this.results.classList.add('chat-search-results', 'chatlist-container');
 
-    this.searchGroup = new SearchGroup(false, 'messages', undefined, '', false);
+    this.searchGroup = createSearchGroup({type: 'messages', className: '', clickable: false, middleware: this.middlewareHelper.get()});
     attachClick(this.searchGroup.list, this.onResultsClick);
 
     this.appSearch = new AppSearch(
