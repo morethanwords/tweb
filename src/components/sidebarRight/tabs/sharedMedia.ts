@@ -391,15 +391,13 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         item[2].compareAndUpdate({key: item[1], args: [length]});
       },
       openSavedDialogsInner: !this.isFirst,
-      slider: this.slider
+      slider: this.slider,
+      scrollOffset: OFFSET
     });
 
     this.searchSuper.scrollStartCallback = () => {
       setIsSharedMedia(true);
     };
-
-    // * fix scroll position to media tab because of absolute header
-    this.searchSuper.scrollOffset = OFFSET;
 
     if(this.noProfile) {
       this.scrollable.append(this.searchSuper.container);
@@ -677,8 +675,15 @@ export default class AppSharedMediaTab extends SliderSuperTab {
           }, SolidJSHotReloadGuardProvider));
         });
 
+        // * keep same layout
         if(this.noProfile) {
           this.container.classList.add('profile-container');
+
+          const content = document.createElement('div');
+          content.classList.add('profile-content');
+
+          this.searchSuper.container.replaceWith(content);
+          content.append(this.searchSuper.container);
         }
 
         return () => {};

@@ -1871,6 +1871,7 @@ const lang = {
   'PrivacyClearShipping': 'Shipping info',
   'PrivacyClearPayment': 'Payment info',
   'Clear': 'Clear',
+  'ClearRecentSearch': 'clear',
   'Save': 'Save',
   'PaymentCheckoutName': 'Name',
   'ClearRecentStickersAlertTitle': 'Clear recent stickers',

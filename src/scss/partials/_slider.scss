@@ -114,6 +114,45 @@
       }
     }
   }
+
+  &-gradient {
+    --alpha: 1;
+    --gradient-color-rgb: var(--background-color-rgb);
+    --gradient-color: rgba(var(--gradient-color-rgb), var(--alpha));
+    height: 80px;
+    background: linear-gradient(180deg, var(--gradient-color), transparent 100%);
+    position: absolute;
+    width: 100%;
+    // visibility: hidden;
+
+    // .is-full-viewport & {
+    //   visibility: visible;
+    // }
+
+    .night & {
+      --alpha: 0.7;
+    }
+
+    &-container {
+      z-index: 2;
+      position: relative;
+      // pointer-events: none;
+    }
+
+    &-smaller {
+      height: 64px;
+    }
+
+    &-color {
+      &-surface {
+        --gradient-color-rgb: var(--surface-color-rgb);
+      }
+
+      &-background {
+        --gradient-color-rgb: var(--background-color-rgb);
+      }
+    }
+  }
 }
 
 .tabs-container {

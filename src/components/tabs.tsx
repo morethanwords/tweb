@@ -66,6 +66,30 @@ Tabs.MenuScrollable = (props: {
   );
 };
 
+Tabs.MenuGradient = (props: {
+  color: 'surface' | 'background',
+  smaller?: boolean,
+  className?: string
+}) => {
+  return (
+    <div
+      class={classNames(
+        'menu-horizontal-gradient-container',
+        props.className && props.className + '-container'
+      )}
+    >
+      <div
+        class={classNames(
+          'menu-horizontal-gradient',
+          'menu-horizontal-gradient-color-' + props.color,
+          props.smaller && 'menu-horizontal-gradient-smaller',
+          props.className
+        )}
+      ></div>
+    </div>
+  );
+};
+
 Tabs.Content = (props: {
   class: string,
   ref?: Ref<HTMLDivElement>,
@@ -139,14 +163,6 @@ Tabs.Simple = (props: {
   selectTab(props.tab());
 
   return ret;
-};
-
-Tabs.MenuGradient = () => {
-  return (
-    <div class="search-super-fade-gradient-container">
-      <div class="search-super-fade-gradient"></div>
-    </div>
-  );
 };
 
 export default Tabs;

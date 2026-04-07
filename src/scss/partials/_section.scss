@@ -20,7 +20,7 @@
 
     &-content {
       @include respond-to(not-handhelds) {
-        margin: 0 .5rem;
+        margin: 0 var(--section-margin-inline);
       }
 
       > .btn-primary {

@@ -2,7 +2,7 @@
   :global {
     .popup-container {
       width: 26.25rem;
-      height: calc(100vh - 6.5rem);
+      height: calc(var(--100vh) - 6.5rem);
       border-radius: 14px;
       padding: 0;
     }

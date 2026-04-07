@@ -6,7 +6,7 @@
 
 import type {ReactionsContext} from '@appManagers/appReactionsManager';
 import type {RequestHistoryOptions} from '@appManagers/appMessagesManager';
-import {createEffect, createSignal, onCleanup, JSX, createMemo, onMount, splitProps, on, untrack, batch, Accessor} from 'solid-js';
+import {createEffect, createSignal, onCleanup, JSX, createMemo, onMount, on, untrack, batch, Accessor} from 'solid-js';
 import InputSearch from '@components/inputSearch';
 import {ButtonIconTsx} from '@components/buttonIconTsx';
 import classNames from '@helpers/string/classNames';
@@ -17,7 +17,6 @@ import apiManagerProxy from '@lib/apiManagerProxy';
 import appDialogsManager from '@lib/appDialogsManager';
 import {ChannelsChannelParticipants, Message, MessageReactions, Reaction, ReactionCount, SavedReactionTag} from '@layer';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
-import Scrollable from '@components/scrollable';
 import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
 import {createLoadableList} from '@components/sidebarRight/tabs/statistics';
 import {Middleware, getMiddleware} from '@helpers/middleware';
@@ -43,7 +42,7 @@ import AppSelectPeers from '@components/appSelectPeers';
 import PeerTitle from '@components/peerTitle';
 import ReactionsElement from '@components/chat/reactions';
 import ReactionElement, {ReactionLayoutType} from '@components/chat/reaction';
-import {ScrollableXTsx} from '@components/stories/list';
+import Scrollable from '@components/scrollable2';
 import reactionsEqual from '@appManagers/utils/reactions/reactionsEqual';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import fastSmoothScroll from '@helpers/fastSmoothScroll';
@@ -59,30 +58,6 @@ import getHistoryStorageKey, {getHistoryStorageType} from '@appManagers/utils/me
 import {ScreenSize, useMediaSizes} from '@helpers/mediaSizes';
 import ButtonCorner from '@components/buttonCorner';
 import deferSideEffect from '@helpers/solid/deferSideEffect';
-
-export const ScrollableYTsx = (props: {
-  children: JSX.Element,
-  onScrolledBottom?: () => void,
-  onScrolledTop?: () => void,
-} & JSX.HTMLAttributes<HTMLDivElement>) => {
-  const [, rest] = splitProps(props, ['onScrolledBottom', 'onScrolledTop']);
-  let container: HTMLDivElement;
-  const ret = (
-    <div ref={container} {...rest}>
-      {props.children}
-    </div>
-  );
-
-  const scrollable = new Scrollable(undefined, undefined, undefined, undefined, container);
-  scrollable.onScrolledBottom = props.onScrolledBottom;
-  scrollable.onScrolledTop = props.onScrolledTop;
-
-  onCleanup(() => {
-    scrollable.destroy();
-  });
-
-  return ret;
-};
 
 type SearchType = RequestHistoryOptions['hashtagType'];
 const SEARCH_TYPES: SearchType[] = ['this', 'my', 'public'];
@@ -1264,12 +1239,10 @@ export default function TopbarSearch(props: {
 
   let scrollableDiv: HTMLDivElement;
   const scrollable = (
-    <ScrollableYTsx
+    <Scrollable
       ref={scrollableDiv}
-      {...(!isSmallScreen() && {
-        class: 'topbar-search-left-results topbar-search-left-collapsable',
-        style: calculateResultsHeight() ? {height: calculateResultsHeight() + 'px'} : undefined
-      })}
+      class={!isSmallScreen() ? 'topbar-search-left-results topbar-search-left-collapsable' : undefined}
+      style={!isSmallScreen() && calculateResultsHeight() ? {height: calculateResultsHeight() + 'px'} : undefined}
       onScrolledBottom={() => {
         loadMore()?.();
       }}
@@ -1278,27 +1251,27 @@ export default function TopbarSearch(props: {
       <Animated type="cross-fade">
         {list()?.element}
       </Animated>
-    </ScrollableYTsx>
+    </Scrollable>
   );
 
   let reactionsScrollableDiv: HTMLDivElement;
   const reactionsScrollable = (
-    <ScrollableXTsx ref={reactionsScrollableDiv} class="topbar-search-left-reactions-scrollable">
+    <Scrollable axis="x" ref={reactionsScrollableDiv} class="topbar-search-left-reactions-scrollable">
       <div class="topbar-search-left-reactions-padding"></div>
       {reactionsElement()}
       <div class="topbar-search-left-reactions-padding"></div>
-    </ScrollableXTsx>
+    </Scrollable>
   );
 
   let searchTypesScrollableDiv: HTMLDivElement;
   const searchTypesScrollable = (
-    <ScrollableXTsx ref={searchTypesScrollableDiv} class="topbar-search-left-reactions-scrollable">
+    <Scrollable axis="x" ref={searchTypesScrollableDiv} class="topbar-search-left-reactions-scrollable">
       <div class="topbar-search-left-reactions-padding"></div>
       <div class="topbar-search-left-search-types">
         {SEARCH_TYPES.map((type) => (<SearchTypeEntity type={type} />))}
       </div>
       <div class="topbar-search-left-reactions-padding"></div>
-    </ScrollableXTsx>
+    </Scrollable>
   );
 
   let container: HTMLDivElement;

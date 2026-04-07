@@ -604,8 +604,8 @@ $btn-menu-z-index: 4;
   /* &-toggle  */&-overlay {
     left: -100vw;
     right: -100vw;
-    top: -100vh;
-    bottom: -100vh;
+    top: calc(var(--100vh) * -1);
+    bottom: calc(var(--100vh) * -1);
 
     width: auto !important;
     max-width: none !important;
@@ -1119,6 +1119,10 @@ $btn-menu-z-index: 4;
 
   &:not(.btn-primary):not(.btn-corner).menu-open {
     background-color: var(--light-secondary-text-color);
+
+    &.primary {
+      background-color: var(--light-primary-color);
+    }
   }
 
   .btn-menu {

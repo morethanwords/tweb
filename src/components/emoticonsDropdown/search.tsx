@@ -14,7 +14,7 @@ import {AppEmojiManager} from '@appManagers/appEmojiManager';
 import {LangPackKey} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
 import InputSearch from '@components/inputSearch';
-import {ScrollableXTsx} from '@components/stories/list';
+import Scrollable from '@components/scrollable2';
 import wrapSticker from '@components/wrappers/sticker';
 import {AnimationItemGroup} from '@components/animationIntersector';
 
@@ -77,16 +77,19 @@ function addSearchCategories(props: {
 
   let scrollableContainer: HTMLDivElement;
   const scrollable = (
-    <ScrollableXTsx
-      ref={scrollableContainer}
+    <Scrollable
+      axis="x"
+      ref={(el) => {
+        scrollableContainer = el;
+        el.addEventListener('click', (e) => {
+          if(e.target === inputSearch.currentPlaceholder) {
+            placeCaretAtEnd(inputSearch.input, true, true);
+          }
+        });
+      }}
       class="emoticons-search-input-scrollable"
       classList={{'is-searching': props.searching(), 'is-scrolled': scrolled()}}
-      onClick={(e) => {
-        if(e.target === inputSearch.currentPlaceholder) {
-          placeCaretAtEnd(inputSearch.input, true, true);
-        }
-      }}
-      onAdditionalScroll={() => {
+      onScroll={() => {
         setScrolled(scrollableContainer.scrollLeft > 0);
       }}
     >
@@ -94,7 +97,7 @@ function addSearchCategories(props: {
       <div class="emoticons-search-input-categories">
         <For each={emojiGroups()}>{EmojiGroup}</For>
       </div>
-    </ScrollableXTsx>
+    </Scrollable>
   );
 
   inputSearch.input.after(scrollableContainer);

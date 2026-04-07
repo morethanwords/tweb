@@ -22,6 +22,7 @@ export type SectionOptions = {
   fakeGradientDelimiter?: boolean,
   noShadow?: boolean,
   class?: JSX.HTMLAttributes<HTMLDivElement>['class'],
+  innerClass?: string,
   contentProps?: JSX.HTMLAttributes<HTMLDivElement>,
   ref?: Ref<HTMLDivElement>
 };
@@ -44,7 +45,7 @@ const SectionCaption = (props: Pick<SectionOptions, 'caption' | 'captionArgs' | 
   );
 };
 const Section: ParentComponent<SectionOptions & JSX.HTMLAttributes<HTMLDivElement>> = (props) => {
-  const [, rest] = splitProps(props, ['name', 'nameRef', 'nameArgs', 'nameRight', 'caption', 'captionArgs', 'captionOld', 'captionRef', 'noDelimiter', 'fakeGradientDelimiter', 'noShadow', 'class', 'contentProps']);
+  const [, rest] = splitProps(props, ['name', 'nameRef', 'nameArgs', 'nameRight', 'innerClass', 'caption', 'captionArgs', 'captionOld', 'captionRef', 'noDelimiter', 'fakeGradientDelimiter', 'noShadow', 'class', 'contentProps']);
   return (
     <div
       class={classNames(className + '-container', props.class)}
@@ -55,7 +56,8 @@ const Section: ParentComponent<SectionOptions & JSX.HTMLAttributes<HTMLDivElemen
         class={classNames(
           className,
           props.noShadow && 'no-shadow',
-          props.fakeGradientDelimiter ? 'with-fake-delimiter' : props.noDelimiter && 'no-delimiter'
+          props.fakeGradientDelimiter ? 'with-fake-delimiter' : props.noDelimiter && 'no-delimiter',
+          props.innerClass
         )}
       >
         {props.fakeGradientDelimiter ? generateDelimiter() : (!props.noDelimiter && <hr />)}

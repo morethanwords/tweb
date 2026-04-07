@@ -7,6 +7,8 @@
 @use "../shared" as *;
 
 .search-super {
+  --super-offset: 1rem;
+  --super-height: calc(var(--100vh) - var(--super-offset));
   $menu-offset: $menu-height + $section-rounded-padding;
   width: 100%;
   max-width: 100%;
@@ -14,33 +16,10 @@
   position: absolute;
   display: flex;
   flex-direction: column;
+  min-height: var(--super-height);
 
   &.sliding {
     max-height: none !important;
-  }
-
-  &-fade-gradient {
-    --gradient-color: var(--background-color);
-    height: 81px;
-    background: linear-gradient(180deg, var(--gradient-color), transparent 100%);
-    position: absolute;
-    width: 100%;
-    visibility: hidden;
-
-    .is-full-viewport & {
-      visibility: visible;
-    }
-
-    .night & {
-      --gradient-color: rgba(var(--background-color-rgb), 0.7);
-    }
-
-    &-container {
-      position: sticky;
-      top: 3.5rem;
-      z-index: 2;
-      pointer-events: none;
-    }
   }
 
   &-tabs-scrollable {
@@ -48,10 +27,8 @@
     top: 1rem;
     z-index: 2;
     background-color: var(--surface-color);
-
-    // .is-full-viewport & {
-    //   margin-bottom: 5.5rem;
-    // }
+    top: var(--super-offset);
+    margin-bottom: #{$section-rounded-padding};
 
     &.is-single {
       order: 1;
@@ -97,7 +74,7 @@
 
     // * fix saving scroll on tab switching, when FROM tab has height < 100vh, and another is scrolled less than the FROM tab's height
     // * adding 1 extra pixel for scroll
-    min-height: calc(100vh - #{$menu-offset});
+    min-height: calc(var(--super-height) - #{$menu-offset});
   }
 
   &-tabs-container {
@@ -116,6 +93,13 @@
         height: 50px;
         width: 50px;
       }
+    }
+  }
+
+  &-tabs-gradient {
+    &-container {
+      position: sticky;
+      top: calc(var(--super-offset) - #{$section-rounded-padding});
     }
   }
 

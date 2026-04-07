@@ -12,7 +12,7 @@
 .title {
   font-size: var(--font-size-18);
   line-height: var(--line-height-18);
-  font-weight: 500;
+  font-weight: var(--font-weight-bold);
 }
 
 .description {
@@ -44,7 +44,7 @@
 .remainingUntilReset {
   font-size: var(--font-size-13);
   line-height: var(--line-height-13);
-  font-weight: 400;
+  font-weight: var(--font-weight-normal);
   opacity: 0.8;
 }
 
@@ -59,8 +59,4 @@
   font-size: var(--font-size-14);
   line-height: var(--line-height-14);
   margin-top: 0.5rem;
-}
-
-.results {
-  padding: 0.5rem;
 }

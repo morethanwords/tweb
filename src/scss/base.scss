@@ -9,6 +9,7 @@
 
 :root {
   --vh: 1vh;
+  --100vh: calc(var(--vh) * 100);
   --z-below: -1;
   --hover-alpha: #{$hover-alpha};
   --reflect: 1;
@@ -163,6 +164,8 @@
   --premium-gradient: linear-gradient(52.62deg, #6B93FF 12.22%, #976FFF 50.25%, #E46ACE 98.83%);
   --star-background-color: var(--surface-color);
 
+  --section-margin-inline: 0;
+
   @include respond-to(handhelds) {
     --right-column-width: 100vw;
     --esg-sticker-size: 68px;
@@ -180,6 +183,8 @@
     --chat-input-size: #{$chat-input-size};
     --chat-input-padding: #{$chat-padding};
     --chat-input-inner-padding: #{$chat-input-inner-padding};
+
+    --section-margin-inline: 0.5rem;
   }
 
   @include respond-to(esg-bottom) {
@@ -349,7 +354,7 @@ body {
   overflow: hidden; // + disable overscroll behavior on macOS
 
   @include respond-to(handhelds) {
-    height: calc(var(--vh, 1vh) * 100);
+    height: var(--100vh);
   }
 
   /* @include respond-to(handhelds) {
@@ -2410,6 +2415,16 @@ hr {
 
 .margin-0 {
   margin: 0 !important;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.hover-underline {
+  @include hover() {
+    text-decoration: underline;
+  }
 }
 
 .overlayed-icon {

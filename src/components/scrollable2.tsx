@@ -49,6 +49,7 @@ export default function Scrollable(props: {
   contextRef?: (ctx: ScrollableContextValue) => void,
   class?: string,
   classList?: JSX.HTMLAttributes<HTMLDivElement>['classList'],
+  style?: JSX.CSSProperties,
   axis?: 'x' | 'y',
   withBorders?: 'both' | 'top' | 'bottom' | 'manual',
   onScrolledTop?: () => void,
@@ -324,6 +325,8 @@ export default function Scrollable(props: {
         ] : [])
       )}
       onScroll={!ignoreScrollEvent() && onScroll}
+      classList={props.classList}
+      style={props.style}
       onWheel={(axis === 'x' && !IS_TOUCH_SUPPORTED && onWheel) || undefined}
     >
       {!IS_OVERLAY_SCROLL_SUPPORTED() && axis === 'y' && (

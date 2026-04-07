@@ -5,7 +5,7 @@
  */
 
 import {JSX, createSignal, For, createEffect, Accessor, onMount, createMemo, splitProps, on, Show, onCleanup} from 'solid-js';
-import {ScrollableX} from '@components/scrollable';
+import Scrollable from '@components/scrollable2';
 import {createStoriesViewer} from '@components/stories/viewer';
 import styles from '@components/stories/list.module.scss';
 import mediaSizes from '@helpers/mediaSizes';
@@ -30,36 +30,7 @@ import ListenerSetter from '@helpers/listenerSetter';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
 import showStoriesStealthModePopup from '@components/popups/storiesStealthMode';
 
-
 const TEST_COUNT = 0;
-
-export const ScrollableXTsx = (props: {
-  children: JSX.Element,
-  onAdditionalScroll?: () => void
-} & JSX.HTMLAttributes<HTMLDivElement>) => {
-  const [, rest] = splitProps(props, ['onAdditionalScroll']);
-  let container: HTMLDivElement;
-  const ret = (
-    <div ref={container} {...rest}>
-      {props.children}
-    </div>
-  );
-
-  const scrollable = new ScrollableX(undefined, undefined, undefined, undefined, container);
-
-  if(props.onAdditionalScroll) {
-    scrollable.setListeners();
-    scrollable.onAdditionalScroll = props.onAdditionalScroll;
-  }
-
-  onCleanup(() => {
-    scrollable.destroy();
-  });
-
-  return ret;
-};
-
-
 const ITEM_MARGIN = 0;
 const ITEM_WIDTH = 74 + ITEM_MARGIN * 2;
 const ITEM_AVATAR_SIZE = 54;
@@ -73,7 +44,8 @@ function _StoriesList(props: {
   listenWheelOn: HTMLElement,
   archive?: boolean,
   offsetX?: number,
-  resizeCallback?: (callback: () => void) => void
+  resizeCallback?: (callback: () => void) => void,
+  onExpand?: () => void
 }) {
   type PeerStories = typeof stories['peers'][0];
   const [stories, actions] = useStories();
@@ -106,7 +78,10 @@ function _StoriesList(props: {
   const items = new WeakMap<PeerStories, HTMLDivElement>();
   const itemsTarget = new WeakMap<HTMLDivElement, PeerStories>();
 
-  const onContainerClick = (e: MouseEvent) => unfold(e);
+  const onContainerClick = (e: MouseEvent) => {
+    unfold(e);
+    props.onExpand?.();
+  };
 
   createEffect(() => {
     const peer = viewerPeer();
@@ -346,7 +321,7 @@ function _StoriesList(props: {
       class={styles.ListContainer}
       style={calculateMovement()}
     >
-      <ScrollableXTsx>
+      <Scrollable axis="x">
         <div
           class={styles.List}
           classList={{
@@ -355,7 +330,7 @@ function _StoriesList(props: {
         >
           <For each={peers()}>{Item}</For>
         </div>
-      </ScrollableXTsx>
+      </Scrollable>
     </div>
   );
 

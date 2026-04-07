@@ -602,13 +602,6 @@
       flex-direction: column;
       //transform: none;
     }
-
-    .search-super {
-      &-tabs-scrollable {
-        top: 4.5rem;
-        margin-bottom: #{$section-rounded-padding};
-      }
-    }
   }
 
   &-name {
@@ -1001,7 +994,7 @@
     align-items: center;
     justify-content: center;
     padding: 2rem 0;
-    height: calc(100vh - 96px);
+    height: calc(var(--100vh) - 96px);
     position: relative;
 
     .title {

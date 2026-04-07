@@ -116,7 +116,7 @@ import LazyLoadQueue from '@components/lazyLoadQueue';
 import {fastSmoothScrollToStart} from '@helpers/fastSmoothScroll';
 import ArchiveDialog, {archiveDialogTagName} from '@components/archiveDialog';
 import {createArchiveDialogContextMenu} from '@components/archiveDialogContextMenu';
-import {createEffect, createRoot, For, on, untrack} from 'solid-js';
+import {children, createEffect, createRoot, For, on, untrack} from 'solid-js';
 import Tabs from '@components/tabs';
 import useFolders from '@stores/folders';
 import FoldersTabs from '@components/foldersTabs';
@@ -631,11 +631,11 @@ export class AppDialogsManager {
 
     createRoot(() => {
       let scrollableContext: ScrollableContextValue;
-      FoldersTabs({
+      const element = FoldersTabs({
         scrollableProps: {
           class: 'folders-tabs-scrollable hide',
           ref: (ref) => {
-            this.folders.container.before(this.folders.menuScrollContainer = ref);
+            this.folders.menuScrollContainer = ref;
           },
           scrollableProps: {
             contextRef: (ref) => scrollableContext = ref
@@ -649,6 +649,9 @@ export class AppDialogsManager {
           }
         }
       });
+
+      const resolvedChildren = children(() => element).toArray();
+      this.folders.container.before(...resolvedChildren as any);
     });
 
     const [appState] = useAppState();
@@ -782,6 +785,11 @@ export class AppDialogsManager {
       offsetX: -1,
       resizeCallback: (callback) => {
         this.resizeStoriesList = callback;
+      },
+      onExpand: () => {
+        const container = this.xd.scrollable.container;
+        container.classList.add('scrolled-start');
+        fastSmoothScrollToStart(container, 'y');
       }
     });
   }

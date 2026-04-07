@@ -137,8 +137,9 @@ export type SearchSuperMediaTab = {
   contentTab?: HTMLElement,
   itemsTab?: HTMLElement,
   menuTab?: HTMLElement,
-  menuTabName?: HTMLElement;
-  scroll?: {scrollTop: number, scrollHeight: number}
+  menuTabName?: HTMLElement,
+  scroll?: {scrollTop: number, scrollHeight: number},
+  hideOn?: HTMLElement
 };
 
 type SearchSuperLoadTypeOptions = {
@@ -436,6 +437,7 @@ export default class AppSearchSuper {
   public stargiftsStore: StarGiftsProfileStore;
   public stargiftsActions: StarGiftsProfileActions;
   public stargiftsSetCollection: (collectionId: number) => void;
+  private menuGradient: HTMLElement;
 
   constructor(options: Pick<
     AppSearchSuper,
@@ -446,7 +448,8 @@ export default class AppSearchSuper {
     'hideEmptyTabs' |
     'onChangeTab' |
     'showSender' |
-    'managers'
+    'managers' |
+    'scrollOffset'
   > & Partial<Pick<AppSearchSuper, 'storiesArchive' | 'onLengthChange' | 'openSavedDialogsInner' | 'slider'>>) {
     safeAssign(this, options);
 
@@ -542,6 +545,15 @@ export default class AppSearchSuper {
       });
     }
 
+    const noSectionTypes: Set<SearchSuperMediaType> = new Set([
+      'stories',
+      'media',
+      'gifts',
+      'chats',
+      'channels',
+      'apps',
+      'posts'
+    ]);
     for(const mediaTab of this.mediaTabs) {
       const container = document.createElement('div');
       container.classList.add('search-super-tab-container', 'search-super-container-' + mediaTab.type, 'tabs-tab');
@@ -551,7 +563,7 @@ export default class AppSearchSuper {
 
       container.append(content);
 
-      const useSection = mediaTab.type !== 'stories' && mediaTab.type !== 'media' && mediaTab.type !== 'gifts' && mediaTab.type !== 'chats';
+      const useSection = !noSectionTypes.has(mediaTab.type);
       let itemsContainer = content;
       if(useSection) {
         const items = document.createElement('div');
@@ -560,7 +572,7 @@ export default class AppSearchSuper {
             noDelimiter: true,
             class: 'hide',
             ref: (ref) => {
-              content.append(ref);
+              content.append(mediaTab.hideOn = ref);
             },
             children: [items]
           });
@@ -579,7 +591,14 @@ export default class AppSearchSuper {
       mediaTab.itemsTab = itemsContainer;
     }
 
-    this.container.append(Tabs.MenuGradient() as HTMLElement, navScrollableContainer, this.tabsContainer);
+    this.container.append(
+      this.menuGradient = Tabs.MenuGradient({
+        color: 'background',
+        className: 'search-super-tabs-gradient'
+      }) as HTMLElement,
+      navScrollableContainer,
+      this.tabsContainer
+    );
 
     // * construct end
 
@@ -1241,8 +1260,9 @@ export default class AppSearchSuper {
       return;
     }
 
-    // * remove 'hide' from section
-    contentTab.firstElementChild?.classList.remove('hide');
+    if(mediaTab.hideOn) {
+      mediaTab.hideOn.classList.remove('hide');
+    }
 
     const parent = contentTab.parentElement;
     Array.from(parent.children).slice(1).forEach((child) => {
@@ -1266,8 +1286,8 @@ export default class AppSearchSuper {
 
     for(const i in this.searchGroups) {
       const group = this.searchGroups[i as SearchGroupType];
-      this.tabs.inputMessagesFilterEmpty.append(group.container);
       group.clear();
+      this.tabs.inputMessagesFilterEmpty.append(group.container);
     }
 
     const query = this.searchContext.query;
@@ -1412,18 +1432,7 @@ export default class AppSearchSuper {
             }
 
             if(this.searchGroups.globalContacts.list.childElementCount > 3) {
-              const showMore = document.createElement('div');
-              showMore.classList.add('search-group__show-more');
-              const intlElement = new I18n.IntlElement({
-                key: 'Separator.ShowMore'
-              });
-              showMore.append(intlElement.element);
-              this.searchGroups.globalContacts.nameEl.append(showMore);
-              attachClickEvent(showMore, () => {
-                const isShort = this.searchGroups.globalContacts.container.classList.toggle('is-short');
-                intlElement.key = isShort ? 'Separator.ShowMore' : 'Separator.ShowLess';
-                intlElement.update();
-              });
+              this.searchGroups.globalContacts.needShowMoreButton('is-short');
             }
           }
         }),
@@ -1942,27 +1951,6 @@ export default class AppSearchSuper {
     return xd.onChatsScroll();
   }
 
-
-  private appendShowMoreButton(group: SearchGroup, toggleClassName = 'is-short-5') {
-    let shouldShowMore = false;
-
-    const showMoreButton: HTMLDivElement = createElementFromMarkup(`
-      <div class="search-group__show-more"></div>
-    `);
-    group.nameEl.append(showMoreButton);
-
-    updateShowMoreContent();
-
-    attachClickEvent(showMoreButton, () => {
-      shouldShowMore = !shouldShowMore;
-      updateShowMoreContent();
-    });
-    function updateShowMoreContent() {
-      showMoreButton.replaceChildren(i18n(shouldShowMore ? 'Separator.ShowLess' : 'Separator.ShowMore'));
-      group.container.classList.toggle(toggleClassName, !shouldShowMore);
-    }
-  }
-
   private async renderPeerDialogs(peerIds: PeerId[], group: SearchGroup, middleware: Middleware, type?: 'bots' | 'channels') {
     if(!middleware()) return;
 
@@ -2025,7 +2013,7 @@ export default class AppSearchSuper {
       mediaTab.itemsTab.append(group.container);
 
       const SHOW_MORE_LIMIT = 5;
-      if(channelDialogs.length > SHOW_MORE_LIMIT) this.appendShowMoreButton(group);
+      if(channelDialogs.length > SHOW_MORE_LIMIT) group.needShowMoreButton();
 
       this.renderPeerDialogs(channelDialogs.map((dialog) => dialog.peerId), group, middleware);
     }
@@ -2094,7 +2082,7 @@ export default class AppSearchSuper {
       mediaTab.itemsTab.append(group.container);
 
       const SHOW_MORE_LIMIT = 5;
-      if(myTopApps.length > SHOW_MORE_LIMIT)  this.appendShowMoreButton(group);
+      if(myTopApps.length > SHOW_MORE_LIMIT) group.needShowMoreButton();
 
       this.renderPeerDialogs(myTopApps.map((app) => app.id.toPeerId(false)), group, middleware, 'bots');
     }
@@ -2529,7 +2517,9 @@ export default class AppSearchSuper {
       this.selectTab(this.mediaTabs.indexOf(firstMediaTab), false);
       // firstMediaTab.menuTab.classList.add('active');
 
-      this.navScrollableContainer.classList.toggle('is-single', count <= 1);
+      const isSingle = count <= 1;
+      this.navScrollableContainer.classList.toggle('is-single', isSingle);
+      this.menuGradient.classList.toggle('hide', isSingle);
     }
   }
 
@@ -2541,7 +2531,9 @@ export default class AppSearchSuper {
   private updateContainerHidden(changeActive = false) {
     const visibleTabs = this.mediaTabs.filter((tab) => !tab.menuTab.classList.contains('hide'));
     this.toggleContainerHidden(visibleTabs.length === 0);
-    this.navScrollableContainer.classList.toggle('is-single', visibleTabs.length <= 1);
+    const isSingle = visibleTabs.length <= 1;
+    this.navScrollableContainer.classList.toggle('is-single', isSingle);
+    this.menuGradient.classList.toggle('hide', isSingle);
     if(changeActive && visibleTabs.length) {
       this.selectTab(this.mediaTabs.indexOf(visibleTabs[0]), false);
     }
@@ -2781,7 +2773,10 @@ export default class AppSearchSuper {
   public cleanupHTML() {
     this.mediaTabs.forEach((tab) => {
       tab.itemsTab.replaceChildren();
-      tab.contentTab.firstElementChild?.classList.add('hide');
+
+      if(tab.hideOn) {
+        tab.hideOn.classList.add('hide');
+      }
 
       if(this.hideEmptyTabs) {
         // tab.menuTab.classList.add('hide');

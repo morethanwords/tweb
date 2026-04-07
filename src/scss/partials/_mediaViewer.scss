@@ -392,8 +392,7 @@ $inactive-opacity: .4;
       top: 50% !important;
       transform: translate3d(-50%, -50%, 0) !important;
       max-width: 100vw;
-      // max-height: calc((var(--vh, 1vh) * 100) - 120px);
-      max-height: calc((var(--vh, 1vh) * 100) - var(--padding-vertical));
+      max-height: calc(var(--100vh) - var(--padding-vertical));
 
       @include respond-to(handhelds) {
         --padding-vertical: 7.5rem;

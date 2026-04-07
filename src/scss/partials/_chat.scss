@@ -1315,7 +1315,7 @@
     max-height: calc(30rem - 2.5rem) !important; // 2.5rem - input helper (reply)
 
     @media only screen and (max-height: 30rem) {
-      max-height: string.unquote('max(36px, calc(100vh - 10rem))');
+      max-height: string.unquote('max(36px, calc(var(--100vh) - 10rem))');
     }
 
     @include respond-to(handhelds) {

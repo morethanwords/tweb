@@ -1072,7 +1072,9 @@ export class AppSidebarLeft extends SidebarSlider {
       selected: 'all'
     });
 
-    this.searchGroups.messages.nameEl.append(chatTypeMenu);
+    this.searchGroups.messages.setNameRight({
+      children: chatTypeMenu
+    });
 
     const searchSuper = this.searchSuper = new AppSearchSuper({
       mediaTabs: [{
@@ -1114,7 +1116,8 @@ export class AppSidebarLeft extends SidebarSlider {
       asChatList: true,
       hideEmptyTabs: false,
       showSender: true,
-      managers: this.managers
+      managers: this.managers,
+      scrollOffset: 16
     });
 
     let prevTab: SearchSuperMediaType;
@@ -1403,20 +1406,21 @@ export class AppSidebarLeft extends SidebarSlider {
       chatTypeMenu.props.selected = 'all';
     });
 
-    const clearRecentSearchBtn = ButtonIcon('close');
-    this.searchGroups.recent.nameEl.append(clearRecentSearchBtn);
-    clearRecentSearchBtn.addEventListener('click', () => {
-      confirmationPopup({
-        descriptionLangKey: 'Search.Confirm.ClearHistory',
-        button: {
-          langKey: 'ClearButton',
-          isDanger: true
-        }
-      }).then(() => {
-        return this.managers.appUsersManager.clearRecentSearch().then(() => {
-          this.searchGroups.recent.clear();
+    this.searchGroups.recent.setNameRight({
+      onClick: () => {
+        confirmationPopup({
+          descriptionLangKey: 'Search.Confirm.ClearHistory',
+          button: {
+            langKey: 'ClearButton',
+            isDanger: true
+          }
+        }).then(() => {
+          return this.managers.appUsersManager.clearRecentSearch().then(() => {
+            this.searchGroups.recent.clear();
+          });
         });
-      });
+      },
+      children: i18n('ClearRecentSearch')
     });
 
     return this.searchInitResult = {

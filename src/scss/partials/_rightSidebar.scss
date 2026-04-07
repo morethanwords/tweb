@@ -63,14 +63,6 @@
       flex: 1 1 auto;
     }
   }
-
-  .sidebar-search {
-    display: none;
-
-    &.active {
-      display: flex;
-    }
-  }
 }
 
 .group-permissions-container {
@@ -81,22 +73,14 @@
 
 .shared-media-container {
   $header-offset: $header-height + $section-rounded-padding;
-  $menu-offset: $menu-height + $section-rounded-padding;
 
   .search-super {
-    top: #{$header-offset};
-    min-height: calc((var(--vh, 1vh) * 100) - #{$header-offset});
-
-    // * look at searchSuper's same line
-    &-content-container {
-      min-height: calc(100vh - #{$menu-offset} - #{$header-offset});
-    }
+    --super-offset: #{$header-offset};
+    top: 100% !important;
   }
 
   .profile-content {
-    .search-super {
-      top: 100% !important;
-    }
+    min-height: #{$header-offset};
   }
 
   .sidebar-header .transition {

@@ -49,6 +49,7 @@ export default function FoldersTabs(props: {
 
   return (
     <Tabs>
+      <Tabs.MenuGradient color="surface" smaller />
       <Tabs.MenuScrollable {...(props.scrollableProps || {})}>
         <Tabs.Menu {...(props.menuProps || {})}>
           <For each={folderItems}>{Tab}</For>

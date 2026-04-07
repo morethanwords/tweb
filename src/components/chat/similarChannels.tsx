@@ -9,7 +9,7 @@ import {i18n} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
 import {AvatarNew} from '@components/avatarNew';
 import PeerTitle from '@components/peerTitle';
-import {ScrollableXTsx} from '@components/stories/list';
+import Scrollable from '@components/scrollable2';
 import formatNumber from '@helpers/number/formatNumber';
 import {Chat, MessagesChats, User} from '@layer';
 import computeLockColor from '@helpers/computeLockColor';
@@ -305,11 +305,11 @@ export default function SimilarChannels(props: {
         {i18n('SimilarChannels')}
         <ButtonIconTsx icon="close" onClick={props.onClose} />
       </div>
-      <ScrollableXTsx>
+      <Scrollable axis="x">
         <div class="similar-channels-list-margin"></div>
         {list()}
         <div class="similar-channels-list-margin"></div>
-      </ScrollableXTsx>
+      </Scrollable>
     </div>
   );
 }

@@ -17,7 +17,7 @@
     }
 
     &-container {
-      max-height: calc(100vh - 5rem);
+      max-height: calc(var(--100vh) - 5rem);
     }
 
     &-footer {
