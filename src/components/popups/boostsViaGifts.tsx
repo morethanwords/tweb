@@ -220,11 +220,12 @@ export default class PopupBoostsViaGifts extends PopupElement {
             {
               peerType: ['channelParticipants'],
               peerId: this.peerId,
-              onMultiSelect: (peerIds) => {
-                setSpecificPeerIds(peerIds);
+              onSelect: (arr) => {
+                setSpecificPeerIds(arr.map(({peerId}) => peerId));
                 updateSpecific(true);
                 starsRow.checkboxField.setValueSilently(true);
               },
+              multiSelect: true,
               placeholder: 'SearchPlaceholder',
               exceptSelf: true,
               titleLangKey: 'Giveaway.Type.Specific.Modal.SelectUsers',
@@ -347,9 +348,10 @@ export default class PopupBoostsViaGifts extends PopupElement {
         PopupPickUser,
         {
           filterPeerTypeBy: ['isBroadcast'],
-          onMultiSelect: (peerIds) => {
-            setPeerIds([this.peerId, ...peerIds]);
+          onSelect: (arr) => {
+            setPeerIds([this.peerId, ...arr.map(({peerId}) => peerId)]);
           },
+          multiSelect: true,
           placeholder: 'SearchPlaceholder',
           titleLangKey: 'AddChannels',
           initial: peerIds().filter((peerId) => peerId !== this.peerId),
@@ -382,7 +384,7 @@ export default class PopupBoostsViaGifts extends PopupElement {
           }).then(() => {
             ignorePrivatePeerId = peerId;
             popup.selector.add({key: peerId});
-            popup.selector.toggleElementCheckboxByPeerId(peerId, true);
+            popup.selector.toggleElementCheckboxByKey(peerId, true);
             ignorePrivatePeerId = undefined;
           });
           return false;
@@ -434,9 +436,10 @@ export default class PopupBoostsViaGifts extends PopupElement {
             });
           },
           placeholder: 'Search',
-          onMultiSelect: (iso2s) => {
-            setCountries(iso2s as any as string[]);
+          onSelect: (iso2s) => {
+            setCountries(iso2s.map(({peerId}) => peerId) as any as string[]);
           },
+          multiSelect: true,
           getMoreCustom: async(q) => {
             const filtered = filterCountries(q, true);
             lastFiltered = new Map();

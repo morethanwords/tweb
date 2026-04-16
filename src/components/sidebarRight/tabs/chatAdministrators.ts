@@ -33,7 +33,6 @@ export function createSelectorForParticipants(options: ConstructorParameters<typ
     headerSearch: true,
     placeholder: 'SearchPlaceholder',
     meAsSaved: false,
-    noShadow: false,
     onFirstRender: () => {
       deferred.resolve();
     }
@@ -79,10 +78,11 @@ export default class AppChatAdministratorsTab extends SliderSuperTabEventable {
       const popup = PopupElement.createPopup(
         PopupPickUser,
         {
+          titleLangKey: 'Administrators',
           peerType: ['channelParticipants'],
           peerId,
-          onSelect: (peerId) => {
-            const participant = popup.selector.participants.get(peerId);
+          onSelect: (chosen) => {
+            const participant = popup.selector.participants.get(chosen[0].peerId);
             openPermissions(participant);
           },
           placeholder: 'SearchPlaceholder'

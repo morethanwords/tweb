@@ -42,11 +42,12 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
 
     attachClickEvent(btnAdd, (e) => {
       PopupElement.createPopup(PopupPickUser, {
+        titleLangKey: 'BlockedUsers',
         peerType: ['contacts'],
         placeholder: 'BlockModal.Search.Placeholder',
-        onSelect: (peerId) => {
+        onSelect: (chosen) => {
           // console.log('block', peerId);
-          this.managers.appUsersManager.toggleBlock(peerId, true);
+          this.managers.appUsersManager.toggleBlock(chosen[0].peerId, true);
         }
       });
     }, {listenerSetter: this.listenerSetter});

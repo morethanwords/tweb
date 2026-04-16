@@ -36,6 +36,7 @@ import getObjectKeysAndSort from '@helpers/object/getObjectKeysAndSort';
 import forEachReverse from '@helpers/array/forEachReverse';
 import deepEqual from '@helpers/object/deepEqual';
 import splitStringByLength from '@helpers/string/splitStringByLength';
+import sliceMessageEntities from '@helpers/sliceMessageEntities';
 import debounce from '@helpers/schedulers/debounce';
 import {AppManager} from '@appManagers/manager';
 import getPhotoMediaInput from '@appManagers/utils/photos/getPhotoMediaInput';
@@ -1320,7 +1321,10 @@ export class AppMessagesManager extends AppManager {
 
     peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
 
-    let entities = options.entities;
+    const originalEntities = options.entities;
+    let entities = splitted.length > 1 && originalEntities?.length ?
+      sliceMessageEntities(originalEntities, 0, text.length) :
+      originalEntities;
     if(!options.viaBotId) {
       [text, entities] = parseMarkdown(text, entities);
     }
@@ -1489,12 +1493,15 @@ export class AppMessagesManager extends AppManager {
     });
 
     const promises: ReturnType<AppMessagesManager['sendText']>[] = [message.promise];
+    let partOffset = splitted[0].length;
     for(let i = 1; i < splitted.length; ++i) {
       promises.push(this.sendText({
         ...options,
         peerId,
-        text: splitted[i]
+        text: splitted[i],
+        entities: originalEntities?.length ? sliceMessageEntities(originalEntities, partOffset, splitted[i].length) : undefined
       }));
+      partOffset += splitted[i].length;
     }
 
     return Promise.all(promises).then(noop);

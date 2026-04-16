@@ -613,7 +613,8 @@ export default class ChatTopbar {
       onClick: () => {
         const contactPeerId = this.peerId;
         PopupPickUser.createSharingPicker({
-          onSelect: async(peerId, _, monoforumThreadId) => {
+          onSelect: async(chosen) => {
+            const {peerId, monoforumThreadId} = chosen[0];
             const preparedPaymentResult = await PaidMessagesInterceptor.prepareStarsForPayment({messageCount: 1, peerId});
             if(preparedPaymentResult === PAYMENT_REJECTED) throw new Error();
 

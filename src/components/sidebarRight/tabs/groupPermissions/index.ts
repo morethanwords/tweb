@@ -639,10 +639,11 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
         icon: 'adduser',
         clickable: () => {
           PopupElement.createPopup(PopupPickUser, {
+            titleLangKey: 'Exceptions',
             peerType: ['channelParticipants'],
-            onSelect: (peerId) => {
+            onSelect: (chosen) => {
               setTimeout(() => {
-                openPermissions(peerId);
+                openPermissions(chosen[0].peerId);
               }, 0);
             },
             placeholder: 'ExceptionModal.Search.Placeholder',

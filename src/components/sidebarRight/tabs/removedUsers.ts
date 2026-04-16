@@ -36,10 +36,11 @@ export default class AppRemovedUsersTab extends SliderSuperTabEventable {
       const popup = PopupElement.createPopup(
         PopupPickUser,
         {
+          titleLangKey: 'RemovedUsers',
           peerType: ['channelParticipants'],
           peerId: chatId.toPeerId(true),
-          onSelect: (peerId) => {
-            const participant = popup.selector.participants.get(peerId);
+          onSelect: (chosen) => {
+            const participant = popup.selector.participants.get(chosen[0].peerId);
             this.managers.appChatsManager.kickFromChat(chatId, participant);
           },
           placeholder: 'SearchPlaceholder'

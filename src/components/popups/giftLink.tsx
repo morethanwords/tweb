@@ -10,9 +10,8 @@ import {PaymentsCheckedGiftCode} from '@layer';
 import renderImageFromUrl from '@helpers/dom/renderImageFromUrl';
 import {LangPackKey, i18n} from '@lib/langPack';
 import {InviteLink} from '@components/sidebarLeft/tabs/sharedFolder';
-import {For, JSX} from 'solid-js';
-import {formatDaysDuration, formatFullSentTime, formatMonthsDuration} from '@helpers/date';
-import {AvatarNew} from '@components/avatarNew';
+import {JSX} from 'solid-js';
+import {formatDaysDuration, formatFullSentTime} from '@helpers/date';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import appImManager, {ChatSetPeerOptions} from '@lib/appImManager';
 import rootScope from '@lib/rootScope';
@@ -219,12 +218,13 @@ export default class PopupGiftLink extends PopupElement {
 
   public static shareGiftLink(url: string, openAfter?: boolean) {
     PopupPickUser.createSharingPicker({
-      onSelect: async(peerId, _, monoforumThreadId) => {
+      onSelect: async([{peerId, threadId, monoforumThreadId}]) => {
         const preparedPaymentResult = await PaidMessagesInterceptor.prepareStarsForPayment({messageCount: 1, peerId});
         if(preparedPaymentResult === PAYMENT_REJECTED) throw new Error();
 
         rootScope.managers.appMessagesManager.sendText({
           peerId,
+          threadId,
           text: url,
           replyToMonoforumPeerId: monoforumThreadId,
           confirmedPaymentResult: preparedPaymentResult

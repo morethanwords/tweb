@@ -169,6 +169,27 @@
       -webkit-mask-image: none;
     }
   }
+
+  &.checkbox-color-white {
+    background: #fff;
+    border-radius: 50%;
+
+    &::before {
+      --inner-size: .125rem;
+      content: " ";
+      position: absolute;
+      width: calc(var(--size) - (var(--inner-size) * 2));
+      height: calc(var(--size) - (var(--inner-size) * 2));
+      left: var(--inner-size);
+      top: var(--inner-size);
+      border: 2px solid var(--secondary-color);
+      border-radius: inherit;
+    }
+
+    .checkbox-box-border {
+      border-color: #fff;
+    }
+  }
 }
 
 .radio-field {

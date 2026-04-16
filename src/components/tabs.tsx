@@ -21,8 +21,9 @@ const Tabs = (props: {
 
 Tabs.Menu = (props: {
   class?: string,
-  id?: string
+  id?: string,
   ref?: Ref<HTMLDivElement>,
+  onClick?: (e: MouseEvent) => void,
   children: JSX.Element
 }) => {
   return (
@@ -30,6 +31,7 @@ Tabs.Menu = (props: {
       ref={props.ref}
       class={classNames('menu-horizontal-div', props.class)}
       id={props.id}
+      onClick={props.onClick}
     >
       {props.children}
     </div>
@@ -69,10 +71,12 @@ Tabs.MenuScrollable = (props: {
 Tabs.MenuGradient = (props: {
   color: 'surface' | 'background',
   smaller?: boolean,
-  className?: string
+  className?: string,
+  ref?: Ref<HTMLDivElement>
 }) => {
   return (
     <div
+      ref={props.ref}
       class={classNames(
         'menu-horizontal-gradient-container',
         props.className && props.className + '-container'

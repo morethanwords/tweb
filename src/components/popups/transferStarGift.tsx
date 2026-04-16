@@ -291,10 +291,11 @@ export default function transferStarGift(gift: MyStarGift, toPeerId?: PeerId): P
 
   const popup = PopupElementOld.createPopup(PopupPickUser, {
     placeholder: 'StarGiftTransferTo',
-    onSelect: handleSelection,
+    onSelect: ([{peerId}]) => handleSelection(peerId),
     exceptSelf: !isOwnedByChannel,
     selfPresence: 'StarGiftTransferToMyself',
-    filterPeerTypeBy: ['isRegularUser', 'isBroadcast']
+    filterPeerTypeBy: ['isRegularUser', 'isBroadcast'],
+    titleLangKey: 'StarGiftTransferTo'
   });
 
   if(saved.can_export_at !== undefined && saved.can_export_at < now) {

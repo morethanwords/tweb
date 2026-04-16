@@ -290,23 +290,13 @@
     &-scrollable {
       z-index: 2;
       flex: 0 0 auto;
-
-      .badge {
-        margin-inline-start: 5px;
-      }
     }
 
     &-div {
       justify-content: flex-start;
       z-index: 0;
-      --padding-horizontal: .6875rem;
-
-      @include respond-to(handhelds) {
-        --padding-horizontal: .1875rem;
-      }
 
       &-item {
-        flex: 0 0 auto;
         min-width: 3rem;
       }
     }
@@ -787,42 +777,6 @@
   }
 }
 
-.new-channel-container,
-.new-group-container,
-.edit-profile-container {
-  .sidebar-content {
-    flex-direction: column;
-  }
-
-  .chatlist-container {
-    flex: 1 1 auto;
-  }
-
-  .caption {
-    font-size: .875rem;
-    margin-top: 14px;
-    margin-inline-start: 23px;
-    color: var(--secondary-text-color);
-    padding-inline-end: 24px;
-  }
-}
-
-.new-group-container {
-  .search-group {
-    margin-top: .5rem;
-  }
-}
-
-.new-group-members {
-  padding: 1.5rem 0 .4375rem;
-}
-
-.edit-profile-container {
-  .scroll-wrapper {
-    width: 100%;
-  }
-}
-
 .chat-folders-container,
 .edit-folder-container {
   user-select: none;
@@ -851,16 +805,6 @@
   }
 }
 
-.people-nearby-container {
-  .sticker-container {
-    margin: 1rem auto;
-  }
-
-  .caption {
-    margin-bottom: 1rem;
-  }
-}
-
 .edit-folder-container {
   .caption {
     margin-bottom: 18px;
@@ -885,23 +829,6 @@
   .chatlist-chat {
     padding-inline-end: 3.5rem !important;
   }
-}
-
-.sidebar-left {
-  &-h2 {
-    color: var(--primary-color);
-    font-size: 16px;
-    font-weight: var(--font-weight-bold);
-  }
-}
-
-#chats-archived-container,
-#contacts-container,
-.add-members-container,
-#search-private-container,
-#stickers-container,
-#search-gifs-container {
-  background-color: var(--surface-color) !important;
 }
 
 #chats-archived-container {

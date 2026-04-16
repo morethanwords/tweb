@@ -111,6 +111,7 @@ import {wrapGlobalPostsSearch} from './sidebarLeft/globalPostsSearch';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import Tabs from '@components/tabs';
 import Section from '@components/section';
+import createTopPeersList from '@components/topPeersList';
 
 export type SearchSuperType = MyInputMessagesFilter/*  | 'members' */;
 export type SearchSuperContext = {
@@ -1499,35 +1500,21 @@ export default class AppSearchSuper {
       };
 
       return Promise.all([
-        this.managers.appUsersManager.getTopPeers('correspondents').then((peers) => {
-          if(!middleware()) return;
+        createTopPeersList({
+          middleware,
+          onFound: close,
+          group: this.searchGroups.people,
+          modifyPeers: (peers) => {
+            peers = peers.slice(0, 15);
+            const idx = peers.findIndex((peer) => peer.id === rootScope.myId);
+            if(idx !== -1) {
+              peers = peers.slice();
+              peers.splice(idx, 1);
+            }
 
-          peers = peers.slice(0, 15);
-          const idx = peers.findIndex((peer) => peer.id === rootScope.myId);
-          if(idx !== -1) {
-            peers = peers.slice();
-            peers.splice(idx, 1);
+            return peers;
           }
-
-          peers.forEach((peer) => {
-            const {dom} = appDialogsManager.addDialogNew({
-              peerId: peer.id,
-              container: this.searchGroups.people.list,
-              onlyFirstName: true,
-              avatarSize: 'bigger',
-              autonomous: false,
-              noIcons: this.searchGroups.people.noIcons,
-              wrapOptions: {
-                middleware
-              },
-              withStories: true
-            });
-
-            dom.subtitleEl.remove();
-          });
-
-          this.searchGroups.people.toggle();
-        }),
+        }).promise,
 
         renderRecentSearch()
       ]);

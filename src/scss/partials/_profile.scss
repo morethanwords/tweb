@@ -359,7 +359,7 @@
     }
 
     &-delimiter {
-      margin-bottom: #{$section-rounded-padding};
+      margin-bottom: var(--section-padding-bottom);
     }
 
     .sidebar-left-section {
@@ -844,8 +844,8 @@
   &-bot-verification {
     --custom-emoji-size: 1rem;
     font-size: var(--font-size-14);
-    padding-inline: 1rem;
-    margin-bottom: .75rem;
+    padding-inline: var(--section-padding-inline);
+    margin-bottom: var(--section-padding-bottom);
     color: var(--secondary-text-color);
     display: flex;
     align-items: center;

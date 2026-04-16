@@ -8,17 +8,12 @@
 @use "../../shared" as *;
 
 .popup-new-media {
+  --popup-width: 420px;
+  --popup-max-height: 100%;
   $parent: ".popup";
 
   #{$parent} {
     &-container {
-      width: 420px;
-      max-width: 420px;
-      /* padding: 12px 20px 50px; */
-      padding: 12px 20px 32.5px;
-      //max-height: unquote('min(640px, 100%)');
-      max-height: 100%;
-
       img,
       video {
         border-radius: inherit;
@@ -28,14 +23,6 @@
     }
 
     &-header {
-      flex: 0 0 auto;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 9px;
-      padding: 12px 20px 15px;
-      position: relative;
-
       .btn-primary {
         width: auto;
         height: 2.25rem;
@@ -52,7 +39,7 @@
       overflow: hidden;
       // width: fit-content;
       width: 100%;
-      border-radius: $border-radius-medium;
+      border-radius: $section-rounded-border-radius;
       user-select: none;
       position: relative;
     }
@@ -99,40 +86,14 @@
 }
 
 .popup-new-media.popup-send-photo {
-  .popup-container {
-    width: 25rem;
-    max-width: 25rem;
-    padding: 0;
-
-    &.border-top-offset {
-      .popup-input-container {
-        overflow: unset;
-
-        &:before {
-          top: -8px;
-        }
-      }
-    }
-  }
-
   .menu-send {
     top: unset;
     bottom: 3.5rem;
     right: .5rem;
   }
 
-  .popup-header {
-    padding: 0 1rem;
-    height: 3.5rem;
-    margin: 0;
-  }
-
   .popup-body {
     position: relative;
-
-    .scrollable {
-      padding: 0 .5rem;
-    }
   }
 
   .input-message-container {

@@ -28,7 +28,7 @@
     z-index: 2;
     background-color: var(--surface-color);
     top: var(--super-offset);
-    margin-bottom: #{$section-rounded-padding};
+    margin-bottom: var(--section-padding-bottom);
 
     &.is-single {
       order: 1;
@@ -99,7 +99,7 @@
   &-tabs-gradient {
     &-container {
       position: sticky;
-      top: calc(var(--super-offset) - #{$section-rounded-padding});
+      top: calc(var(--super-offset) - var(--section-padding-bottom));
     }
   }
 

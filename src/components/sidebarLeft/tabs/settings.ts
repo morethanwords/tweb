@@ -270,11 +270,12 @@ export default class AppSettingsTab extends SliderSuperTab {
       icon: 'gift',
       clickable: () => {
         PopupElement.createPopup(PopupPickUser, {
+          titleLangKey: 'SendGiftTo',
           placeholder: 'Chat.Menu.SendGift',
           selfPresence: 'SendGiftSelfCaption',
           meAsSaved: false,
-          onSelect: (peerId) => {
-            PopupElement.createPopup(PopupSendGift, {peerId});
+          onSelect: (chosen) => {
+            PopupElement.createPopup(PopupSendGift, {peerId: chosen[0].peerId});
           },
           filterPeerTypeBy: ['isRegularUser', 'isBroadcast']
         });

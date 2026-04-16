@@ -63,7 +63,8 @@ export async function handleMissingInvitees(chatId: ChatId, missingInvitees: Mis
     {
       peerType: ['custom'],
       getMoreCustom: async() => ({result: missingInviteeIds, isEnd: true}),
-      onMultiSelect: async(peerIds) => {
+      onSelect: async(chosen) => {
+        const peerIds = chosen.map((c) => c.peerId);
         if(cantSendMessages) {
           onPremiumClick();
           return;

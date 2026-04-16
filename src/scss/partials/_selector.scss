@@ -24,36 +24,47 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-
-  .selector-search-section {
-    padding: 0 !important;
-    margin-bottom: 0 !important;
-    position: relative;
-    z-index: 1;
-  }
-
-  &-search-container {
-    flex: 0 0 auto;
-    //flex: 1 1 auto;
-    position: relative;
-    max-height: 132px;
-    overflow: hidden;
-
-    .scrollable {
-      position: relative;
-      max-height: inherit; // fix safari
-    }
-  }
+  position: relative;
 
   &-search {
-    // padding: 0 1.5rem;
-    padding-inline: 1rem;
+    --selector-search-height: 3rem;
+    --selector-user-size: 1.875rem;
     display: flex;
     flex-flow: wrap;
+    align-content: flex-start;
     position: relative;
+    min-height: var(--selector-search-height);
+    padding: .5625rem;
+    gap: .5625rem;
+    flex: 0 0 auto;
+
+    @include animation-level(2) {
+      transition: height .15s ease;
+    }
+
+    &-container {
+      flex: 0 0 auto;
+      //flex: 1 1 auto;
+      position: relative;
+      max-height: 132px;
+      overflow: hidden;
+
+      .scrollable-y {
+        position: relative;
+        max-height: inherit; // fix safari
+      }
+    }
 
     &-section {
+      --section-margin-inline: 0;
+      padding: 0;
+      overflow: hidden;
+
       &-container {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+
         &.is-countries {
           .selector-user-avatar {
             --multiplier: 1.125;
@@ -64,46 +75,65 @@
     }
 
     &-input {
-      border: none;
+      --border-width: 0;
       outline: none;
       flex: 1 1 auto;
       line-height: 1;
+      padding-inline-end: 0;
+      background: none;
+
+      &-container {
+        --icon-left-offset: .4375rem;
+        --icon-left-add-offset: .5rem;
+        --height: var(--selector-user-size);
+        margin: 0;
+        flex: 1 1 0;
+        min-width: 150px;
+
+        @include animation-level(2) {
+          transition: transform .15s ease;
+        }
+      }
     }
 
-    // ! only in this container need this padding
-    .selector-search-input {
-      padding: 7px 0px 19px 0px;
+    &-gradient {
+      &-container {
+        position: sticky;
+        top: 0;
+      }
     }
   }
 
   &-user {
-    --selector-user-size: 2rem;
-    color: var(--primary-text-color);
-    background-color: var(--light-secondary-text-color);
-    font-size: 1rem;
+    color: var(--primary-color);
+    background-color: var(--light-primary-color);
     padding-inline-end: .75rem;
-    margin-inline: -.25rem .75rem;
     height: var(--selector-user-size);
     line-height: var(--selector-user-size);
-    margin-bottom: 7px;
     border-radius: 1.5rem;
     user-select: none;
     flex: 0 0 auto;
     max-width: 11.25rem;
+    font-size: var(--font-size-16);
+    font-weight: var(--font-weight-bold);
+
+    // &.is-last {
+    //   margin-inline-end: -.375rem;
+    // }
 
     &-alone {
       margin: 0;
     }
 
-    &.hover-primary {
-      @include hover() {
-        background-color: var(--light-primary-color);
-      }
+    // &.hover-primary {
+    //   @include hover() {
+    //     background-color: var(--light-primary-color);
+    //   }
 
-      .selector-user-avatar-close {
-        display: none;
-      }
-    }
+    //   .selector-user-avatar-close {
+    //     display: none;
+    //   }
+    // }
 
     @include text-overflow();
 
@@ -122,6 +152,7 @@
     }
 
     @include hover() {
+      color: var(--primary-text-color);
       background-color: var(--light-danger-color);
       cursor: pointer;
 
@@ -180,34 +211,35 @@
     }
   }
 
-  .chatlist-container {
-    height: 100%;
-    flex: 1 1 auto;
+  &-scrollable {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: var(--section-padding-bottom);
+  }
 
-    .scrollable {
-      display: flex;
-      flex-direction: column;
-
-      .sidebar-left-section-container,
-      .gradient-delimiter {
-        flex: 0 0 auto;
-      }
-    }
+  &-height-container {
+    min-height: string.unquote('max(360px, calc(100% - 8rem))');
+    position: relative;
+    z-index: 0;
   }
 
   &-list-section-container {
-    flex: 1 1 auto !important;
-    // flex: 0 0 auto;
-    // min-height: 360px;
+    height: 100%;
+    opacity: 1;
+
+    @include animation-level(2) {
+      transition: opacity var(--transition-standard-in);
+    }
 
     .sidebar-left-section {
       display: flex;
       flex-direction: column;
+      // height: 100%;
+      min-height: 100%;
+      // overflow: hidden;
 
-      &,
-      .selector-list-section-content2 {
-        min-height: string.unquote('max(360px, 100%)');
-        // height: 1px; // fix height
+      &-content {
+        position: relative;
       }
     }
 
@@ -217,14 +249,13 @@
     }
   }
 
-  > hr {
-    margin: 0;
-    padding: 0;
-  }
-
   .checkbox {
     margin-top: 11px;
     padding-inline-start: 11px;
+  }
+
+  &-multiselect-hidden .checkbox-field:not(.checkbox-field-toggle) {
+    opacity: 0;
   }
 
   .checkbox-field:not(.checkbox-field-toggle) {
@@ -249,15 +280,20 @@
     .checkbox-box-border {
       z-index: unset;
     }
-
-    .checkbox-box-check {
-      --offset: 6px;
-    }
   }
 
   &-left {
     .checkbox-field-round {
       inset-inline: 1.125rem auto;
+    }
+  }
+
+  .search-group-people .checkbox-field-round {
+    inset-inline-end: .5rem;
+    transform: none;
+
+    .checkbox-box-border {
+      z-index: 1;
     }
   }
 
@@ -349,6 +385,15 @@
 
   &-forum-topic {
     font-weight: var(--font-weight-bold);
+
+    &-all {
+      font-size: 2rem;
+
+      .emoji-image {
+        width: 2rem;
+        height: 2rem;
+      }
+    }
   }
 
   &-premium-lock {

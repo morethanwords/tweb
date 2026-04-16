@@ -647,6 +647,10 @@ export class AppDialogsManager {
             this.folders.menu = ref;
             this.onRef(scrollableContext);
           }
+        },
+        gradientProps: {
+          color: 'surface',
+          smaller: true
         }
       });
 

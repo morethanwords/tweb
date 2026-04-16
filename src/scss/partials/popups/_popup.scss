@@ -9,10 +9,14 @@
 @use "popupVariables" as *;
 
 .popup {
-  --popup-min-width: auto;
-  --popup-max-width: auto;
+  --popup-width: auto;
+  --popup-height: auto;
+  --popup-min-width: var(--popup-width);
+  --popup-max-width: var(--popup-width);
+  --popup-min-height: var(--popup-height);
+  --popup-max-height: var(--popup-height);
   --link-color: var(--primary-color);
-  position: fixed!important;
+  position: fixed !important;
   top: 0;
   right: 0;
   bottom: 0;
@@ -74,10 +78,8 @@
   &-container {
     --translateX: 0;
     position: relative;
-    /* max-width: 400px; */
-    border-radius: $border-radius-medium;
-    background-color: var(--surface-color);
-    padding: 1rem;
+    border-radius: 2.5rem;
+    background-color: var(--background-color);
     transform: translate3d(var(--translateX), 3rem, 0);
     backface-visibility: hidden;
     transition: transform var(--popup-transition-time) var(--popup-transition-function);
@@ -85,8 +87,12 @@
     flex-direction: column;
     overflow: hidden;
     margin: auto;
+    width: var(--popup-width);
+    height: var(--popup-height);
     min-width: string.unquote('min(100%, var(--popup-min-width))');
     max-width: string.unquote('min(100%, var(--popup-max-width))');
+    min-height: string.unquote('min(100%, var(--popup-min-height))');
+    max-height: string.unquote('min(100%, var(--popup-max-height))');
 
     body.animation-level-0 & {
       transition: none;
@@ -118,20 +124,22 @@
   }
 
   &-close {
+    --secondary-text-color: var(--primary-text-color);
     z-index: 3;
     justify-self: center;
     flex: 0 0 auto;
     width: 2.5rem;
     height: 2.5rem;
-    margin-inline-end: 1.5rem;
+    margin-inline-end: 1rem;
   }
 
   &-header {
     display: flex;
-    margin-bottom: 2rem;
     align-items: center;
     flex: 0 0 auto;
     position: relative;
+    height: 3.5rem;
+    padding: 0 1rem;
 
     &.is-floating {
       position: absolute;

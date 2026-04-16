@@ -1113,6 +1113,11 @@ class ApiManagerProxy extends MTProtoMessagePort {
     return !!(peer as User.user)?.pFlags?.bot_forum_view;
   }
 
+  public isMonoforum(peerId: PeerId) {
+    const peer = this.getPeer(peerId);
+    return !!(peer as Chat.channel)?.pFlags?.monoforum;
+  }
+
   public canManageBotforumTopics(peerId: PeerId) {
     const peer = this.getPeer(peerId);
     return !!(peer as User.user)?.pFlags?.bot_forum_can_manage_topics;

@@ -31,6 +31,100 @@ type Args = {
   onChange?: (args: OnChangeArgs) => void;
 };
 
+export type SelectTargetArgs = {
+  target: HTMLElement;
+  id: number;
+  animate?: boolean;
+  tabs: HTMLElement;
+  content?: HTMLElement;
+  onClick?: Args['onClick'];
+  scrollableX?: Args['scrollableX'];
+  transitionTime?: number;
+  prevId?: number;
+  selectTab?: (id: number, animate: boolean) => void;
+  onChange?: (args: OnChangeArgs) => void;
+};
+
+export async function selectTarget({
+  target,
+  id,
+  animate = true,
+  tabs,
+  content,
+  onClick,
+  scrollableX,
+  transitionTime = 200,
+  prevId = -1,
+  selectTab,
+  onChange
+}: SelectTargetArgs) {
+  if(onClick) {
+    const tabContent = content?.children[id] as HTMLDivElement;
+    const result1 = onClick(id, tabContent, animate);
+    const canChange = result1 instanceof Promise ? await result1 : result1;
+    if(canChange === false) {
+      return;
+    }
+  }
+
+  if(scrollableX) {
+    fastSmoothScroll({
+      container: scrollableX.container,
+      element: target.parentElement.children[id] as HTMLElement,
+      position: 'center',
+      forceDirection: animate ? undefined : FocusDirection.Static,
+      forceDuration: transitionTime,
+      axis: 'x'
+    });
+  }
+
+  if(!liteMode.isAvailable('animations')) {
+    animate = false;
+  }
+
+  if(target.classList.contains('active') || id === prevId) {
+    return false;
+  }
+
+  const mutateCallback = animate ? fastRaf : (cb: () => void) => cb();
+
+  const prev = tabs.querySelector(tabs.firstElementChild.tagName.toLowerCase() + '.active') as HTMLElement;
+  if(prev) {
+    mutateCallback(() => {
+      prev.classList.remove('active');
+      onChange?.({element: prev, active: false});
+    });
+  }
+
+  // a great stripe from Jolly Cobra
+  if(prevId !== -1 && animate) {
+    const selector = '.menu-horizontal-div-item-background';
+    mutateCallback(() => {
+      const indicator = target.querySelector(selector)! as HTMLElement;
+      const currentIndicator = target.parentElement.children[prevId].querySelector(selector)! as HTMLElement;
+
+      currentIndicator.classList.remove('animate');
+      indicator.classList.remove('animate');
+
+      const shiftLeft = currentIndicator.parentElement.offsetLeft - indicator.parentElement.offsetLeft;
+      const scaleFactor = currentIndicator.clientWidth / indicator.clientWidth;
+      indicator.style.transform = `translate3d(${shiftLeft}px, 0, 0) scale3d(${scaleFactor}, 1, 1)`;
+
+      fastRaf(() => {
+        indicator.classList.add('animate');
+        indicator.style.transform = 'none';
+      });
+    });
+  }
+
+  mutateCallback(() => {
+    target.classList.add('active');
+    onChange?.({element: target, active: true});
+  });
+
+  selectTab?.(id, animate);
+}
+
 export function horizontalMenuObjArgs({tabs, content, onClick, onTransitionEnd, transitionTime, scrollableX, listenerSetter, onChange}: Args) {
   return horizontalMenu(tabs, content, onClick, onTransitionEnd, transitionTime, scrollableX, listenerSetter, onChange);
 }
@@ -45,7 +139,7 @@ export function horizontalMenu(
   listenerSetter?: Args['listenerSetter'],
   onChange?: Args['onChange']
 ) {
-  const selectTab = TransitionSlider({
+  const _selectTab = TransitionSlider({
     content,
     type: tabs || content.dataset.animation === 'tabs' ? 'tabs' : 'navigation',
     transitionTime,
@@ -54,10 +148,26 @@ export function horizontalMenu(
   });
 
   if(!tabs) {
-    return selectTab;
+    return _selectTab;
   }
 
-  const proxy = new Proxy(selectTab, {
+  const _selectTarget = (target: HTMLElement, id: number, animate = true) => {
+    return selectTarget({
+      target,
+      id,
+      animate,
+      tabs,
+      content,
+      onClick,
+      scrollableX,
+      transitionTime,
+      prevId: _selectTab.prevId(),
+      selectTab: _selectTab,
+      onChange
+    });
+  };
+
+  const proxy = new Proxy(_selectTab, {
     apply: (target, that, args) => {
       const animate = args[1] !== undefined ? args[1] : true;
 
@@ -70,87 +180,9 @@ export function horizontalMenu(
         el = (tabs.querySelector(`[data-tab="${id}"]`) || tabs.children[id]) as HTMLElement;
       }
 
-      selectTarget(el, id, animate);
+      _selectTarget(el, id, animate);
     }
   });
-
-  const selectTarget = async(
-    target: HTMLElement,
-    id: number,
-    animate = true
-  ) => {
-    const tabContent = content.children[id] as HTMLDivElement;
-
-    if(onClick) {
-      const result1 = onClick(id, tabContent, animate);
-      const canChange = result1 instanceof Promise ? await result1 : result1;
-      if(canChange === false) {
-        return;
-      }
-    }
-
-    if(scrollableX) {
-      fastSmoothScroll({
-        container: scrollableX.container,
-        element: target.parentElement.children[id] as HTMLElement,
-        position: 'center',
-        forceDirection: animate ? undefined : FocusDirection.Static,
-        forceDuration: transitionTime,
-        axis: 'x'
-      });
-    }
-
-    if(!liteMode.isAvailable('animations')) {
-      animate = false;
-    }
-
-    const prevId = selectTab.prevId();
-    if(target.classList.contains('active') || id === prevId) {
-      return false;
-    }
-
-    const mutateCallback = animate ? fastRaf : (cb: () => void) => cb();
-
-    const prev = tabs.querySelector(tabs.firstElementChild.tagName.toLowerCase() + '.active') as HTMLElement;
-    if(prev) {
-      mutateCallback(() => {
-        prev.classList.remove('active');
-        onChange?.({element: prev, active: false});
-      });
-    }
-
-    // a great stripe from Jolly Cobra
-    if(prevId !== -1 && animate) {
-      const selector = '.menu-horizontal-div-item-background';
-      mutateCallback(() => {
-        const indicator = target.querySelector(selector)! as HTMLElement;
-        const currentIndicator = target.parentElement.children[prevId].querySelector(selector)! as HTMLElement;
-
-        currentIndicator.classList.remove('animate');
-        indicator.classList.remove('animate');
-
-        // We move and resize our indicator so it repeats the position and size of the previous one.
-        const shiftLeft = currentIndicator.parentElement.offsetLeft - indicator.parentElement.offsetLeft;
-        const scaleFactor = currentIndicator.clientWidth / indicator.clientWidth;
-        indicator.style.transform = `translate3d(${shiftLeft}px, 0, 0) scale3d(${scaleFactor}, 1, 1)`;
-
-        // console.log(`translate3d(${shiftLeft}px, 0, 0) scale3d(${scaleFactor}, 1, 1)`);
-
-        fastRaf(() => {
-          // Now we remove the transform to let it animate to its own position and size.
-          indicator.classList.add('animate');
-          indicator.style.transform = 'none';
-        });
-      });
-    }
-
-    mutateCallback(() => {
-      target.classList.add('active');
-      onChange?.({element: target, active: true});
-    });
-
-    selectTab(id, animate);
-  };
 
   attachClickEvent(tabs, (e) => {
     let target = e.target as HTMLElement;
@@ -167,7 +199,7 @@ export function horizontalMenu(
       id = whichChild(target);
     }
 
-    selectTarget(target, id);
+    _selectTarget(target, id);
   }, {listenerSetter});
 
   return proxy;

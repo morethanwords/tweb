@@ -182,9 +182,9 @@ export function getExamplesAnchor(hide: (callback: () => void) => void) {
     const {userIds: botIds} = await popularAppBotsPromise;
     loading = false;
     PopupElement.createPopup(PopupPickUser, {
-      onSelect: (peerId) => {
+      onSelect: ([obj]) => {
         hide(() => {
-          appImManager.setInnerPeer({peerId});
+          appImManager.setInnerPeer(obj);
         });
       },
       peerType: ['custom'],
@@ -194,7 +194,7 @@ export function getExamplesAnchor(hide: (callback: () => void) => void) {
           isEnd: true
         };
       },
-      headerLangPackKey: 'SearchAppsExamples'
+      titleLangKey: 'SearchAppsExamples'
     });
   });
   anchor.append(i18n('GiftStarsSubtitleLinkName'));

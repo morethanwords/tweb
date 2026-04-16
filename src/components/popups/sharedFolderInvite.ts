@@ -205,7 +205,7 @@ export default class PopupSharedFolderInvite extends PopupElement {
       this.selector.remove = (...args) => {
         const peerId = args[0].toPeerId();
         if(alreadyPeerIds.includes(peerId)) {
-          const container = this.selector.getElementByPeerId(peerId);
+          const container = this.selector.getElementByKey(peerId);
           shake(container);
           return false;
         }

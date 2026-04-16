@@ -10,7 +10,7 @@
   &-scrollable {
     --scrollable-size: #{$menu-height};
     height: var(--scrollable-size);
-    margin: 0 $section-rounded-padding;
+    margin: 0 var(--section-padding-inline);
     border-radius: $border-radius-big;
     overflow: hidden;
     box-shadow: var(--section-box-shadow);
@@ -57,6 +57,7 @@
       line-height: var(--line-height);
       border-radius: 1.25rem;
       margin: 0 .25rem;
+      min-width: 1px; // * fix width
 
       @include animation-level(2) {
         transition: background-color var(--tabs-transition) !important;
@@ -111,6 +112,10 @@
         &.animate {
           transition: transform var(--tabs-transition);
         }
+      }
+
+      .badge {
+        margin-inline-start: 5px;
       }
     }
   }

@@ -22,7 +22,6 @@ import {createSignal, createEffect, JSX, For, Accessor, onCleanup, createMemo, m
 import {unwrap} from 'solid-js/store';
 import {assign, Portal} from 'solid-js/web';
 import rootScope from '@lib/rootScope';
-import ListenerSetter from '@helpers/listenerSetter';
 import {Middleware} from '@helpers/middleware';
 import wrapRichText, {WrapRichTextOptions} from '@lib/richTextProcessor/wrapRichText';
 import wrapMessageEntities from '@lib/richTextProcessor/wrapMessageEntities';
@@ -104,11 +103,11 @@ import safeWindowOpen from '@helpers/dom/safeWindowOpen';
 import wrapUrl from '@lib/richTextProcessor/wrapUrl';
 import PopupReportAd from '@components/popups/reportAd';
 import {useAppSettings} from '@stores/appSettings';
-import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
 import showStoriesStealthModePopup from '@components/popups/storiesStealthMode';
 import {useAppConfig} from '@stores/appState';
-import {wrapFormattedDuration, wrapStoriesStealthModeDuration} from '@components/wrappers/wrapDuration';
+import {wrapStoriesStealthModeDuration} from '@components/wrappers/wrapDuration';
 import {handleShareStory} from './share';
+import createListenerSetter from '@helpers/solid/createListenerSetter';
 
 export const STORY_DURATION = 5e3;
 const STORY_HEADER_AVATAR_SIZE = 32;
@@ -124,30 +123,6 @@ rootScope.addEventListener('app_config', (appConfig) => {
 });
 
 const x = new OverlayClickHandler(undefined, true);
-
-const MessageInputField = (props: {}) => {
-  const inputField = new InputFieldAnimated({
-    placeholder: 'PreviewSender.CaptionPlaceholder',
-    name: 'message',
-    withLinebreaks: true
-  });
-
-  inputField.input.classList.replace('input-field-input', 'input-message-input');
-  inputField.inputFake.classList.replace('input-field-input', 'input-message-input');
-
-  return (
-    <div class="input-message-container">
-      {inputField.input}
-      {inputField.inputFake}
-    </div>
-  );
-};
-
-export function createListenerSetter() {
-  const listenerSetter = new ListenerSetter();
-  onCleanup(() => listenerSetter.removeAll());
-  return listenerSetter;
-}
 
 const StorySlides = (props: {
   state: StoriesContextPeerState,
@@ -2372,6 +2347,7 @@ const Stories = (props: {
     const popup: PopupPickUser = PopupElement.createPopup(
       PopupPickUser,
       {
+        titleLangKey: 'StoryViewers',
         peerType: ['custom'],
         getMoreCustom: (q) => {
           const loadCount = 50;
@@ -2404,9 +2380,9 @@ const Stories = (props: {
             reaction: view.reaction
           });
         },
-        onSelect: (peerId) => {
+        onSelect: ([obj]) => {
           props.close(() => {
-            appImManager.setInnerPeer({peerId});
+            appImManager.setInnerPeer(obj);
           });
         },
         placeholder: 'SearchPlaceholder',

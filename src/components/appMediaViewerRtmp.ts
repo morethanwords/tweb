@@ -90,7 +90,8 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
 
   private onForward = async() => {
     PopupPickUser.createSharingPicker({
-      onSelect: async(peerId, _, monoforumThreadId) => {
+      onSelect: async(chosen) => {
+        const {peerId, monoforumThreadId} = chosen[0];
         const preparedPaymentResult = await PaidMessagesInterceptor.prepareStarsForPayment({messageCount: 1, peerId});
         if(preparedPaymentResult === PAYMENT_REJECTED) throw new Error();
 

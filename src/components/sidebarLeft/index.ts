@@ -35,6 +35,7 @@ import {replaceButtonIcon} from '@components/button';
 import noop from '@helpers/noop';
 import ripple from '@components/ripple';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
+import ListenerSetter from '@helpers/listenerSetter';
 import formatNumber from '@helpers/number/formatNumber';
 import {AppManagers} from '@lib/managers';
 import themeController from '@helpers/themeController';
@@ -1044,6 +1045,7 @@ export class AppSidebarLeft extends SidebarSlider {
       simulateClickEvent(this.backBtn);
     };
 
+    const searchListenerSetter = new ListenerSetter();
     const middleware = this.middlewareHelper.get();
     this.searchGroups = {
       contacts: createSearchGroup({name: 'SearchAllChatsShort', type: 'contacts', onFound: close, middleware}),
@@ -1133,7 +1135,7 @@ export class AppSidebarLeft extends SidebarSlider {
       }
     };
 
-    this.watchChannelsTabVisibility();
+    this.watchChannelsTabVisibility(searchListenerSetter);
 
     scrollable.append(searchSuper.container);
 
@@ -1336,10 +1338,35 @@ export class AppSidebarLeft extends SidebarSlider {
     let first = true;
     let hideNewBtnMenuTimeout: number;
     // const transition = Transition.bind(null, searchContainer.parentElement, 150);
+    const cleanup = () => {
+      pickedElements.forEach((el) => {
+        el.middlewareHelper.destroy();
+        el.remove();
+      });
+      pickedElements.length = 0;
+
+      this.inputSearch.value = '';
+      this.inputSearch.container.classList.remove('is-picked', 'is-picked-twice');
+      this.inputSearch.input.style.removeProperty('--paddingLeft');
+      this.inputSearch.onChange = undefined;
+      this.inputSearch.onClear = undefined;
+
+      searchSuper.destroy();
+      helperMiddlewareHelper.destroy();
+      searchContainer.replaceChildren();
+      searchListenerSetter.removeAll();
+
+      this.searchInitResult = undefined;
+      this.searchSuper = undefined;
+
+      this.inputSearch.input.addEventListener('focus', () => this.initSearch(), {once: true});
+    };
+
     const transition = TransitionSlider({
       content: searchContainer.parentElement,
       type: 'zoom-fade',
       transitionTime: 150,
+      listenerSetter: searchListenerSetter,
       onTransitionStart: (id) => {
         searchContainer.parentElement.parentElement.classList.toggle('is-search-active', id === 1);
       },
@@ -1347,8 +1374,7 @@ export class AppSidebarLeft extends SidebarSlider {
         if(hideNewBtnMenuTimeout) clearTimeout(hideNewBtnMenuTimeout);
 
         if(id === 0 && !first) {
-          searchSuper.selectTab(0, false);
-          this.inputSearch.onClearClick();
+          cleanup();
           hideNewBtnMenuTimeout = window.setTimeout(() => {
             hideNewBtnMenuTimeout = 0;
             this.newBtnMenu.classList.remove('is-hidden');
@@ -1388,7 +1414,7 @@ export class AppSidebarLeft extends SidebarSlider {
       this.onSomethingOpenInsideChange();
     };
 
-    this.inputSearch.input.addEventListener('focus', onFocus);
+    searchListenerSetter.add(this.inputSearch.input)('focus', onFocus);
     onFocus();
 
     attachClickEvent(this.backBtn, (e) => {
@@ -1404,7 +1430,7 @@ export class AppSidebarLeft extends SidebarSlider {
       this.onSomethingOpenInsideChange(true);
 
       chatTypeMenu.props.selected = 'all';
-    });
+    }, {listenerSetter: searchListenerSetter});
 
     this.searchGroups.recent.setNameRight({
       onClick: () => {
@@ -1454,26 +1480,29 @@ export class AppSidebarLeft extends SidebarSlider {
     };
   }
 
-  private async watchChannelsTabVisibility() {
+  private async watchChannelsTabVisibility(listenerSetter: ListenerSetter) {
     const checkChannelsVisiblity = async() => {
+      if(!this.searchSuper) return;
       const dialogs = await this.managers.dialogsStorage.getCachedDialogs();
 
+      if(!this.searchSuper) return;
       let hasChannels = false;
       for(const dialog of dialogs) {
         hasChannels = await this.managers.appPeersManager.isBroadcast(dialog.peerId);
         if(hasChannels) break;
       }
 
+      if(!this.searchSuper) return;
       const channelsTab = this.searchSuper.mediaTabs.find((tab) => tab.type === 'channels');
       channelsTab.menuTab?.classList.toggle('hide', !hasChannels);
     };
 
     checkChannelsVisiblity();
 
-    rootScope.addEventListener('channel_update', () => {
+    listenerSetter.add(rootScope)('channel_update', () => {
       pause(200).then(() => checkChannelsVisiblity());
     });
-    rootScope.addEventListener('peer_deleted', () => {
+    listenerSetter.add(rootScope)('peer_deleted', () => {
       checkChannelsVisiblity();
     });
   }

@@ -42,6 +42,7 @@ import {getPreviewBytesFromURL} from '@helpers/bytes/getPreviewURLFromBytes';
 import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import InputFieldAnimated from '@components/inputFieldAnimated';
+import InputFieldMessage from '@components/inputFieldMessage';
 import IMAGE_MIME_TYPES_SUPPORTED from '@environment/imageMimeTypesSupport';
 import VIDEO_MIME_TYPES_SUPPORTED from '@environment/videoMimeTypesSupport';
 import rootScope from '@lib/rootScope';
@@ -62,7 +63,6 @@ import {MediaEditorFinalResult, MediaEditorFinalResultPayload} from '@components
 import RenderProgressCircle from '@components/mediaEditor/renderProgressCircle';
 import {delay} from '@components/mediaEditor/utils';
 import {IS_MOBILE} from '@environment/userAgent';
-import throttle from '@helpers/schedulers/throttle';
 import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
 import {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
 import ListenerSetter from '@helpers/listenerSetter';
@@ -327,47 +327,38 @@ export default class PopupNewMedia extends PopupElement {
     this.mediaContainer.classList.add('popup-photo');
     this.scrollable.container.append(this.mediaContainer);
 
-    const inputContainer = document.createElement('div');
-    inputContainer.classList.add('popup-input-container');
-
-    const c = document.createElement('div');
-    c.classList.add('popup-input-inputs', 'input-message-container');
-
-    this.messageInputField = new InputFieldAnimated({
-      placeholder: 'PreviewSender.CaptionPlaceholder',
-      name: 'message',
-      withLinebreaks: true,
-      maxLength: this.captionLengthMax
-    });
-
-    this.messageInputField.input.dataset.animationGroup = this.animationGroup;
-    this.listenerSetter.add(this.scrollable.container)('scroll', this.onScroll);
-    this.listenerSetter.add(this.messageInputField.input)('scroll', this.onScroll);
-
-    this.listenerSetter.add(this.messageInputField.input)('input', throttle((e) => {
-      const {value} = getRichValueWithCaret(this.messageInputField.input);
-
-      this.starsState.set({hasMessage: !!value.trim()})
-    }, 120, true));
-
-    this.messageInputField.input.classList.replace('input-field-input', 'input-message-input');
-    this.messageInputField.inputFake.classList.replace('input-field-input', 'input-message-input');
-
-    c.append(this.messageInputField.input, this.messageInputField.placeholder, this.messageInputField.inputFake);
-    inputContainer.append(c, this.btnConfirm);
-
+    let draft: DocumentFragment;
     if(!this.ignoreInputValue) {
       this.wasDraft = this.chat.input.getCurrentInputAsDraft();
       if(this.wasDraft) {
-        const wrappedDraft = wrapDraft(this.wasDraft, {
+        draft = wrapDraft(this.wasDraft, {
           wrappingForPeerId: this.chat.peerId,
           animationGroup: this.animationGroup
         });
 
-        this.messageInputField.setValueSilently(wrappedDraft);
         this.chat.input.messageInputField.value = '';
       }
     }
+
+    const inputContainer = createRoot((dispose) => {
+      this.lateMiddlewareHelper.onDestroy(dispose);
+
+      return InputFieldMessage({
+        class: 'popup-input-inputs',
+        maxLength: this.captionLengthMax,
+        animationGroup: this.animationGroup,
+        listenerSetter: this.listenerSetter,
+        onScroll: this.onScroll,
+        onInput: (hasValue) => this.starsState.set({hasMessage: hasValue}),
+        draft,
+        ref: (inputField) => {
+          this.messageInputField = inputField;
+        },
+        children: this.btnConfirm
+      }) as HTMLElement;
+    });
+
+    this.listenerSetter.add(this.scrollable.container)('scroll', this.onScroll);
 
     if(this.chat.input.editMessage) {
       this.willAttach.invertMedia = this.chat.input.editMessage.pFlags?.invert_media;
@@ -394,18 +385,18 @@ export default class PopupNewMedia extends PopupElement {
           cancelEvent(e);
 
           const element = await ButtonMenu({
-            buttons: [
-              {
-                text: 'MessageScheduleEditTime',
-                icon: 'schedule',
-                onClick: () => {
-                  const editMessage = this.chat.input.editMessage;
-                  this.chat.input.scheduleSending(() => {
-                    this.send(true);
-                  }, editMessage?.date ? makeDateFromTimestamp(editMessage.date) : undefined, editMessage?.schedule_repeat_period);
-                }
+            buttons: [{
+              text: 'MessageScheduleEditTime',
+              icon: 'schedule',
+              onClick: () => {
+                const editMessage = this.chat.input.editMessage;
+                this.chat.input.scheduleSending(
+                  () => this.send(true),
+                  editMessage?.date ? makeDateFromTimestamp(editMessage.date) : undefined,
+                  editMessage?.schedule_repeat_period
+                );
               }
-            ],
+            }],
             listenerSetter: this.listenerSetter
           });
           element.classList.add('menu-send', 'top-left');

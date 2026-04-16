@@ -130,7 +130,8 @@ export class InviteLink {
 
   public shareLink = (url: string = this.url) => {
     PopupPickUser.createSharingPicker({
-      onSelect: async(peerId, _, monoforumThreadId) => {
+      onSelect: async(chosen) => {
+        const {peerId, monoforumThreadId} = chosen[0];
         // Cannot use normal import here :(
         const {default: PaidMessagesInterceptor, PAYMENT_REJECTED} = await import('../../chat/paidMessagesInterceptor');
 

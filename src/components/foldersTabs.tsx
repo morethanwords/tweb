@@ -10,7 +10,8 @@ import {For} from 'solid-js';
 
 export default function FoldersTabs(props: {
   scrollableProps?: Partial<Parameters<typeof Tabs.MenuScrollable>[0]>,
-  menuProps?: Partial<Parameters<typeof Tabs.Menu>[0]>
+  menuProps?: Partial<Parameters<typeof Tabs.Menu>[0]>,
+  gradientProps?: Parameters<typeof Tabs.MenuGradient>[0]
 }) {
   const {folderItems} = useFolders();
 
@@ -49,7 +50,7 @@ export default function FoldersTabs(props: {
 
   return (
     <Tabs>
-      <Tabs.MenuGradient color="surface" smaller />
+      {props.gradientProps && <Tabs.MenuGradient {...props.gradientProps} />}
       <Tabs.MenuScrollable {...(props.scrollableProps || {})}>
         <Tabs.Menu {...(props.menuProps || {})}>
           <For each={folderItems}>{Tab}</For>

@@ -271,6 +271,7 @@ const lang = {
   'SelectAll': 'select all',
   'SelectAll2': 'Select All',
   'SearchPlaceholder': 'Search...',
+  'Deselect': 'Deselect',
   'DeselectAll': 'deselect all',
   'UsernamesBotHelp': 'Drag and drop links to change the order in which they will be displayed on the bot info page.',
   'UsernameActivateLinkBotMessage': 'Do you want to show this link on the bot info page?',
@@ -1120,6 +1121,12 @@ const lang = {
   'SelfDestructingOnMobile.Video.Expired': 'Expired video',
   'SelfDestructingOnMobile.Voice.Expired': 'Expired voice message',
   'SelfDestructingOnMobile.Round.Expired': 'Expired video message',
+  'ShareWith': 'Share with',
+  'SendGiftTo': 'Send Gift To',
+  'Administrators': 'Administrators',
+  'Exceptions': 'Exceptions',
+  'RemovedUsers': 'Removed Users',
+  'StoryViewers': 'Story Viewers',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',

@@ -7,18 +7,15 @@
 import type {ChatRights} from '@appManagers/appChatsManager';
 import type {Dialog} from '@appManagers/appMessagesManager';
 import type {AppPeersManager, IsPeerType} from '@appManagers/appPeersManager';
-import appDialogsManager, {DialogElement, DialogElementSize as DialogElementSize} from '@lib/appDialogsManager';
+import appDialogsManager, {AppDialogsManager, DialogElement, DialogElementSize as DialogElementSize} from '@lib/appDialogsManager';
 import rootScope from '@lib/rootScope';
 import Scrollable from '@components/scrollable';
 import {FocusDirection} from '@helpers/fastSmoothScroll';
 import CheckboxField from '@components/checkboxField';
-import {i18n, LangPackKey, _i18n} from '@lib/langPack';
+import {i18n, LangPackKey} from '@lib/langPack';
 import findUpAttribute from '@helpers/dom/findUpAttribute';
-import findUpClassName from '@helpers/dom/findUpClassName';
-import PeerTitle from '@components/peerTitle';
 import cancelEvent from '@helpers/dom/cancelEvent';
-import replaceContent from '@helpers/dom/replaceContent';
-import debounce from '@helpers/schedulers/debounce';
+import InputSearch from '@components/inputSearch';
 import windowSize from '@helpers/windowSize';
 import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
 import filterUnique from '@helpers/array/filterUnique';
@@ -34,24 +31,25 @@ import {ChannelParticipant, ChannelParticipantsFilter, ChannelsChannelParticipan
 import canSendToUser from '@appManagers/utils/users/canSendToUser';
 import hasRights from '@appManagers/utils/chats/hasRights';
 import getDialogIndex from '@appManagers/utils/dialogs/getDialogIndex';
-import {generateDelimiter} from '@components/generateDelimiter';
 import SettingSection from '@components/settingSection';
-import liteMode from '@helpers/liteMode';
 import emptyPlaceholder from '@components/emptyPlaceholder';
 import {Middleware, MiddlewareHelper, getMiddleware} from '@helpers/middleware';
 import {createSignal, Setter, JSX, createRoot, createEffect} from 'solid-js';
 import DialogsPlaceholder from '@helpers/dialogsPlaceholder';
 import ListenerSetter from '@helpers/listenerSetter';
-import {avatarNew} from '@components/avatarNew';
 import Icon from '@components/icon';
 import wrapEmojiText from '@richTextProcessor/wrapEmojiText';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {hideToast, toastNew} from '@components/toast';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import anchorCallback from '@helpers/dom/anchorCallback';
+import SelectorSearch from '@components/selectorSearch';
 import PopupPremium from '@components/popups/premium';
 import formatNumber from '@helpers/number/formatNumber';
 import namedPromises from '@helpers/namedPromises';
+import createContextMenu from '@helpers/dom/createContextMenu';
+import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
+import {REAL_FOLDERS} from '@lib/appManagers/constants';
 
 export type SelectSearchPeerType = 'contacts' | 'dialogs' | 'channelParticipants' | 'custom';
 export type FilterPeerTypeByFunc = (peer: ReturnType<AppPeersManager['getPeer']>) => boolean;
@@ -65,11 +63,9 @@ export default class AppSelectPeers {
     avatarSize: 48
   } */);
   protected oldList: HTMLElement;
-  private chatsContainer = document.createElement('div');
   public scrollable: Scrollable;
-  private selectedScrollable: Scrollable;
-
-  private selectedContainer: HTMLElement;
+  public selectorSearch: SelectorSearch;
+  public inputSearch: InputSearch;
   public input: HTMLInputElement;
 
   // public selected: {[peerId: PeerId]: HTMLElement} = {};
@@ -78,6 +74,7 @@ export default class AppSelectPeers {
   public freezed = false;
 
   private folderId = 0;
+  private selectedFolderId: number;
   private offsetIndex = 0;
   private promise: Promise<any>;
 
@@ -90,10 +87,13 @@ export default class AppSelectPeers {
 
   private appendTo: HTMLElement;
   private onChange: (length: number) => void;
+  public onSearchChange: (query: string) => void;
   private peerType: SelectSearchPeerType[] = ['dialogs'];
   public renderResultsFunc: (peerIds: PeerId[], append?: boolean) => void | Promise<void>;
+  private additionalDialogParams: (key: PeerId) => Partial<Parameters<AppDialogsManager['addDialogNew']>[0]>;
   private chatRightsActions: ChatRights[];
-  private multiSelect = true;
+  public multiSelect: 'enabled' | 'hidden' | 'disabled' = 'enabled';
+  private multiSelectWasHidden: boolean;
   private headerSearch: boolean;
   private noSearch: boolean;
   private rippleEnabled = true;
@@ -103,9 +103,7 @@ export default class AppSelectPeers {
   private channelParticipantsFilter: ChannelParticipantsFilter | ((q: string) => ChannelParticipantsFilter);
   private channelParticipantsUpdateFilter: (participant: ChannelParticipant | ChatParticipant) => boolean;
   private meAsSaved: boolean;
-  private noShadow: boolean;
-  private noDelimiter: boolean;
-  private onSelect: (peerId: PeerId) => void;
+  private onSelect: (peerId: PeerId, adding: boolean, e: MouseEvent) => MaybePromise<void | boolean>;
 
   private tempIds: {[k in keyof AppSelectPeers['loadedWhat']]: number} = {};
   private peerId: PeerId;
@@ -154,6 +152,7 @@ export default class AppSelectPeers {
 
   private excludePeerIds: Set<PeerId>;
   public getPeerIdFromKey: (key: string | PeerId) => PeerId;
+  public heightContainer: HTMLElement;
 
   constructor(options: {
     appendTo: AppSelectPeers['appendTo'],
@@ -165,7 +164,7 @@ export default class AppSelectPeers {
     onFirstRender?: () => void,
     renderResultsFunc?: AppSelectPeers['renderResultsFunc'],
     chatRightsActions?: AppSelectPeers['chatRightsActions'],
-    multiSelect?: AppSelectPeers['multiSelect'],
+    multiSelect?: AppSelectPeers['multiSelect'] | boolean,
     headerSearch?: AppSelectPeers['headerSearch'],
     channelParticipantsFilter?: AppSelectPeers['channelParticipantsFilter'],
     channelParticipantsUpdateFilter?: AppSelectPeers['channelParticipantsUpdateFilter'],
@@ -182,8 +181,6 @@ export default class AppSelectPeers {
     getSubtitleForElement?: AppSelectPeers['getSubtitleForElement'],
     processElementAfter?: AppSelectPeers['processElementAfter'],
     meAsSaved?: AppSelectPeers['meAsSaved'],
-    noShadow?: AppSelectPeers['noShadow'],
-    noDelimiter?: AppSelectPeers['noDelimiter'],
     onSelect?: AppSelectPeers['onSelect'],
     scrollable?: AppSelectPeers['scrollable'],
     getMoreCustom?: AppSelectPeers['getMoreCustom'],
@@ -197,16 +194,20 @@ export default class AppSelectPeers {
     excludeBotforums?: boolean,
     placeholderSizes?: ConstructorParameters<typeof DialogsPlaceholder>[0],
     getPeerIdFromKey?: AppSelectPeers['getPeerIdFromKey'],
-    topSectionContentElements?: HTMLElement[]
+    additionalDialogParams?: AppSelectPeers['additionalDialogParams']
   }) {
     safeAssign(this, options);
 
+    if(typeof(options.multiSelect) === 'boolean') {
+      this.multiSelect = options.multiSelect ? 'enabled' : 'disabled';
+    }
+
+    this.listenerSetter ??= new ListenerSetter();
     this.checkboxSide ??= 'right';
     this.exceptSelf ??= false;
     this.meAsSaved ??= !(this.peerType.length === 1 && this.peerType[0] === 'channelParticipants');
-    this.headerSearch ??= this.multiSelect && !this.noSearch;
+    this.headerSearch = /* this.multiSelect !== 'disabled' &&  */!this.noSearch;
     // this.noSearch ??= !this.multiSelect;
-    this.noShadow ??= !!this.input || !this.sectionCaption;
     this.excludePeerIds ??= new Set();
     if(this.exceptSelf) this.excludePeerIds.add(rootScope.myId);
 
@@ -228,6 +229,9 @@ export default class AppSelectPeers {
       'selector-' + this.design,
       'selector-' + this.checkboxSide
     );
+
+    this.setMultiSelectMode(this.multiSelect);
+    this.multiSelectWasHidden = this.multiSelect === 'hidden';
 
     const f = (this.renderResultsFunc || this.renderResults).bind(this);
     this.renderResultsFunc = async(peerIds, append?: boolean) => {
@@ -301,7 +305,7 @@ export default class AppSelectPeers {
           return {peerId, userId, requirement, requiredStars: starsAmount, canManageDirectMessages};
         })).then((result) => {
           for(const {peerId, requirement, requiredStars, canManageDirectMessages} of result) {
-            const element = this.getElementByPeerId(peerId.toPeerId(false));
+            const element = this.getElementByKey(peerId.toPeerId(false));
             if(!element) {
               continue;
             }
@@ -331,66 +335,15 @@ export default class AppSelectPeers {
       }
     };
 
-    if(!this.noSearch) {
-      this.input = document.createElement('input');
-      this.input.classList.add('selector-search-input');
-      this.input.type = 'text';
-      _i18n(this.input, this.placeholder || 'SendMessageTo', undefined, 'placeholder');
-
-      const debouncedInput = debounce(this.onInput, 200, false, true);
-      this.input.addEventListener('input', debouncedInput);
-    }
-
-    if(this.headerSearch) {
-      const section = this.searchSection = new SettingSection({});
-      section.innerContainer.classList.add('selector-search-section');
-      section.container.classList.add('selector-search-section-container');
-      const topContainer = document.createElement('div');
-      topContainer.classList.add('selector-search-container');
-
-      this.selectedContainer = document.createElement('div');
-      this.selectedContainer.classList.add('selector-search');
-
-      this.selectedContainer.append(this.input);
-      topContainer.append(this.selectedContainer);
-      this.selectedScrollable = new Scrollable(topContainer);
-
-      // let delimiter = document.createElement('hr');
-
-      if(this.multiSelect) attachClickEvent(this.selectedContainer, (e) => {
-        if(this.freezed) return;
-        let target = e.target as HTMLElement;
-        target = findUpClassName(target, 'selector-user');
-
-        if(!target) return;
-
-        const peerId = target.dataset.key;
-        const li = this.chatsContainer.querySelector('[data-peer-id="' + peerId + '"]') as HTMLElement;
-        if(!li) {
-          this.remove(peerId.toPeerId());
-        } else {
-          simulateClickEvent(li);
-        }
-      });
-
-      section.content.append(topContainer);
-      this.container.append(section.container/* , delimiter */);
-    }
-
-    this.chatsContainer.classList.add('chatlist-container');
-    // this.chatsContainer.append(this.list);
+    this.heightContainer = document.createElement('div');
+    this.heightContainer.classList.add('selector-height-container');
     const section = this.section = new SettingSection({
       name: this.sectionNameLangPackKey,
-      caption: this.sectionCaption,
-      noShadow: this.noShadow
+      caption: this.sectionCaption
     });
 
     if(this.sectionNameLangPackKey) {
       section.content = section.generateContentElement();
-    }
-
-    if(options.topSectionContentElements) {
-      section.content.append(...options.topSectionContentElements);
     }
 
     // it can't have full height then
@@ -400,17 +353,42 @@ export default class AppSelectPeers {
     }
 
     section.content.append(this.list);
-    this.chatsContainer.append(section.container);
-    if(!this.scrollable) {
-      this.scrollable = new Scrollable(this.chatsContainer);
-    } else {
-      this.scrollable.append(this.chatsContainer);
+    this.heightContainer.append(section.container);
+
+    this.scrollable ||= new Scrollable();
+    this.scrollable.container.classList.add('selector-scrollable');
+
+    this.container.append(this.scrollable.container);
+    const appendTo = this.scrollable;
+    // const appendTo = this.container;
+
+    appendTo.append(this.heightContainer);
+
+    if(!this.noSearch) {
+      this.selectorSearch = new SelectorSearch({
+        middlewareHelper: this.middlewareHelper,
+        multiSelect: this.multiSelect !== 'disabled',
+        onInput: () => this.onInput(),
+        onChipClick: (key) => {
+          if(this.freezed) return;
+          const li = this.getElementByKey(key) as HTMLElement;
+          if(!li) {
+            this.remove(key);
+          } else {
+            simulateClickEvent(li);
+          }
+        }
+      });
+      this.searchSection = this.selectorSearch.section;
+      this.inputSearch = this.selectorSearch.inputSearch;
+      this.input = this.selectorSearch.input;
+      appendTo.prepend(this.selectorSearch.gradient, this.selectorSearch.section.container);
     }
 
-    attachClickEvent(this.chatsContainer, (e) => {
+    attachClickEvent(this.container, async(e) => {
       const target = findUpAttribute(e.target, 'data-peer-id') as HTMLElement;
 
-      if(!target) return;
+      if(!target || !target.classList.contains('row')) return;
       cancelEvent(e);
       if(this.freezed) return;
 
@@ -433,36 +411,74 @@ export default class AppSelectPeers {
         return;
       }
 
+      const adding = !this.selected.has(key);
       if(this.onSelect) {
-        this.onSelect(key);
-        return;
+        const result = await this.onSelect(key, adding, e);
+        if(result === false) {
+          return;
+        }
+
+        if(this.multiSelect === 'disabled') {
+          return;
+        }
       }
 
-      if(!this.multiSelect) {
+      if(this.multiSelect !== 'enabled') {
         this.add({key});
         return;
       }
 
       // target.classList.toggle('active');
-      const result = this.selected.has(key) ? this.remove(key) : this.add({key});
+      const result = adding ? this.add({key}) : this.remove(key);
       if(!result) {
         return;
       }
 
-      const checkbox = target.querySelector('input') as HTMLInputElement;
-      checkbox.checked = !checkbox.checked;
+      this.toggleElementCheckboxByKey(key, adding);
     });
+
+    if(this.multiSelect === 'hidden') {
+      let target: HTMLElement;
+      let key: PeerId | string;
+      const contextMenuButtons: ButtonMenuItemOptionsVerifiable[] = [{
+        icon: 'select',
+        text: 'SelectChat',
+        onClick: () => {
+          this.setMultiSelectMode('enabled');
+          // this.add({key});
+          // this.toggleElementCheckboxByKey(key, true);
+          simulateClickEvent(target);
+        },
+        verify: () => !this.selected.has(key)
+      }, {
+        icon: 'close',
+        text: 'Deselect',
+        onClick: () => {
+          // this.remove(key);
+          // this.toggleElementCheckboxByKey(key, false);
+          simulateClickEvent(target);
+        },
+        verify: () => this.selected.has(key)
+      }];
+
+      createContextMenu({
+        listenTo: this.container,
+        buttons: contextMenuButtons,
+        findElement: (e) => findUpAttribute(e.target, 'data-peer-id') as HTMLElement,
+        onOpen: (_e, _target) => {
+          target = _target;
+          key = target.dataset.peerId;
+          key = key.isPeerId() ? key.toPeerId() : key;
+        },
+        listenerSetter: this.listenerSetter,
+        middleware: this.middlewareHelper.get()
+      });
+    }
 
     this.scrollable.onScrolledBottom = () => {
       this.getMoreResults();
     };
 
-    if(this.input && !this.noDelimiter) {
-      this.scrollable.prepend(generateDelimiter());
-    }
-
-    this.listenerSetter = new ListenerSetter();
-    this.container.append(this.chatsContainer);
     this.appendTo.append(this.container);
 
     const onChatParticipant = (
@@ -565,6 +581,8 @@ export default class AppSelectPeers {
     this.emptySearchPlaceholderMiddlewareHelper?.destroy();
     this.listenerSetter.removeAll();
     this.dialogsPlaceholder?.removeWithoutUnmounting();
+    this.selectorSearch?.destroy();
+    this.inputSearch?.remove();
   }
 
   public deletePeerId(peerId: PeerId) {
@@ -584,7 +602,7 @@ export default class AppSelectPeers {
   }
 
   private onInput = () => {
-    const value = this.input.value;
+    const value = this.inputSearch.value;
     if(this.query === value) {
       return;
     }
@@ -594,7 +612,7 @@ export default class AppSelectPeers {
     }
 
     if(this.peerType.includes('dialogs')) {
-      this.folderId = 0;
+      this.folderId = value ? 0 : this.selectedFolderId;
       this.offsetIndex = 0;
     }
 
@@ -609,6 +627,7 @@ export default class AppSelectPeers {
 
     this.promise = undefined;
     this.query = value;
+    this.onSearchChange?.(value);
     this.renderedPeerIds.clear();
     this.needSwitchList = true;
     this.middlewareHelperLoader.clean();
@@ -681,7 +700,7 @@ export default class AppSelectPeers {
   };
 
   public clearInput() {
-    this.input.value = '';
+    this.inputSearch.value = '';
     this.onInput();
   }
 
@@ -768,16 +787,20 @@ export default class AppSelectPeers {
         }
 
         this.loadedWhat.dialogs = true;
-        this.offsetIndex = 0;
-        this.folderId = 1;
 
-        return this.getMoreDialogs();
+        if(this.selectedFolderId !== undefined) {
+          this.loadedWhat.archived = true;
+        } else {
+          this.offsetIndex = 0;
+          this.folderId = 1;
+          return this.getMoreDialogs();
+        }
       } else {
         this.loadedWhat.archived = true;
+      }
 
-        if(!this.loadedWhat.contacts/*  && this.peerType.includes('contacts') */) {
-          return this.getMoreContacts();
-        }
+      if(this.canLoadContacts()) {
+        return this.getMoreContacts();
       }
     } else if(this.renderedPeerIds.size < pageCount) {
       return this.getMoreDialogs();
@@ -793,8 +816,12 @@ export default class AppSelectPeers {
     }
   }
 
+  private canLoadContacts() {
+    return !(this.loadedWhat.contacts || !REAL_FOLDERS.has(this.folderId));
+  }
+
   private async getMoreContacts() {
-    if(this.loadedWhat.contacts) {
+    if(!this.canLoadContacts()) {
       return;
     }
 
@@ -961,7 +988,7 @@ export default class AppSelectPeers {
       return this.getMoreSomething('dialogs');
     }
 
-    if((this.peerType.includes('contacts') || this.peerType.includes('dialogs')) && !this.loadedWhat.contacts) {
+    if((this.peerType.includes('contacts') || this.peerType.includes('dialogs')) && !this.loadedWhat.contacts && this.canLoadContacts()) {
       return this.getMoreSomething('contacts');
     }
 
@@ -991,6 +1018,10 @@ export default class AppSelectPeers {
           createEffect(() => {
             setDescription(i18n('RequestJoin.List.SearchEmpty', [wrapEmojiText(query())]));
           });
+
+          createEffect(() => {
+            this.section.container.style.opacity = hide() ? '1' : '0';
+          });
         });
         return emptyPlaceholder({
           middleware,
@@ -1002,7 +1033,7 @@ export default class AppSelectPeers {
             return;
           }
 
-          this.section.content.prepend(container);
+          this.heightContainer.append(container);
         });
       } else {
         this.dialogsPlaceholder?.detach(length);
@@ -1089,7 +1120,8 @@ export default class AppSelectPeers {
         wrapOptions: {
           middleware: this.middlewareHelperLoader.get()
         },
-        withStories: this.withStories
+        withStories: this.withStories,
+        ...(this.additionalDialogParams?.(key) || {})
       });
 
       if(this.getPeerIdFromKey) {
@@ -1100,7 +1132,7 @@ export default class AppSelectPeers {
 
       const {dom} = dialogElement;
 
-      if(this.multiSelect) {
+      if(this.multiSelect !== 'disabled') {
         const selected = this.selected.has(key);
         dom.containerEl.prepend(this.checkbox(selected));
       }
@@ -1137,9 +1169,13 @@ export default class AppSelectPeers {
     return subtitleEl;
   }
 
-  public checkbox(selected?: boolean) {
+  public checkbox(
+    selected?: boolean,
+    color: ConstructorParameters<typeof CheckboxField>[0]['color'] = 'secondary'
+  ) {
     const checkboxField = new CheckboxField({
-      round: this.design === 'round'
+      round: this.design === 'round',
+      color
     });
     if(selected) {
       checkboxField.input.checked = selected;
@@ -1148,65 +1184,7 @@ export default class AppSelectPeers {
     return checkboxField.label;
   }
 
-  public static renderEntity({key, middleware, title, avatarSize, fallbackIcon, meAsSaved = true}: {
-    key: PeerId | string,
-    middleware: Middleware,
-    title?: string | HTMLElement,
-    avatarSize: number,
-    fallbackIcon?: Icon,
-    meAsSaved?: boolean
-  }) {
-    const div = document.createElement('div');
-    div.classList.add('selector-user');
-    div.middlewareHelper = middleware.create();
-
-    const avatarContainer = document.createElement('div');
-    avatarContainer.classList.add('selector-user-avatar-container');
-    const avatarClose = document.createElement('div');
-    avatarClose.classList.add('selector-user-avatar-close');
-    avatarClose.append(Icon('close'));
-    const avatarEl = avatarNew({
-      middleware: div.middlewareHelper.get(),
-      size: avatarSize,
-      isDialog: meAsSaved
-    });
-    avatarEl.node.classList.add('selector-user-avatar');
-    avatarContainer.append(avatarEl.node, avatarClose);
-
-    div.dataset.key = '' + key;
-    const promises: Promise<any>[] = [];
-    if(key.isPeerId()) {
-      if(title === undefined) {
-        const peerTitle = new PeerTitle();
-        promises.push(peerTitle.update({peerId: key.toPeerId(), dialog: meAsSaved}));
-        title = peerTitle.element;
-      }
-
-      avatarEl.render({
-        peerId: key as PeerId
-      });
-
-      promises.push(avatarEl.readyThumbPromise);
-    } else if(fallbackIcon) {
-      avatarEl.setIcon(fallbackIcon);
-    }
-
-    if(title) {
-      const t = document.createElement('div');
-      t.classList.add('selector-user-title');
-      if(typeof(title) === 'string') {
-        t.innerHTML = title;
-      } else {
-        replaceContent(t, title);
-        t.append(title);
-      }
-      div.append(t);
-    }
-
-    div.insertAdjacentElement('afterbegin', avatarContainer);
-
-    return {element: div, avatar: avatarEl, promises};
-  }
+  public static renderEntity = SelectorSearch.renderEntity;
 
   public add({
     key,
@@ -1220,7 +1198,7 @@ export default class AppSelectPeers {
     scroll?: boolean,
     fireOnChange?: boolean,
     fallbackIcon?: Icon
-  }): boolean | ReturnType<typeof AppSelectPeers['renderEntity']> {
+  }): boolean | ReturnType<typeof SelectorSearch['renderEntity']> {
     if(this.limit && this.selected.size >= this.limit) {
       this.limitCallback?.();
       return false;
@@ -1229,70 +1207,44 @@ export default class AppSelectPeers {
     // console.trace('add');
     this.selected.add(key);
 
-    if(!this.multiSelect || !this.input) {
+    if(this.multiSelect !== 'enabled' || !this.input) {
       fireOnChange && this.onChange?.(this.selected.size);
-      return !!this.multiSelect;
+      return this.multiSelect !== 'disabled';
     }
 
     if(this.query.trim()) {
       this.clearInput();
     }
 
-    const rendered = AppSelectPeers.renderEntity({
+    const rendered = this.selectorSearch.addChip({
       key,
       middleware: this.middlewareHelper.get(),
       title,
-      avatarSize: 32,
+      scroll,
       fallbackIcon
     });
-    const {element} = rendered;
-
-    if(scroll) {
-      element.classList.add('scale-in');
-    }
-
-    this.selectedContainer.insertBefore(element, this.input);
-    // this.selectedScrollable.scrollTop = this.selectedScrollable.scrollHeight;
     fireOnChange && this.onChange?.(this.selected.size);
-
-    if(scroll) {
-      this.selectedScrollable.scrollIntoViewNew({
-        element: this.input,
-        position: 'center'
-      });
-    }
 
     return rendered;
   }
 
   public remove(key: PeerId | string, fireOnChange = true): boolean {
-    if(!this.multiSelect) {
+    if(this.multiSelect !== 'enabled') {
       return false;
     }
 
-    if(!this.input) {
+    const onRemoved = () => {
       this.selected.delete(key);
-      fireOnChange && this.onChange?.(this.selected.size);
-      return true;
-    }
-
-    // const div = this.selected[peerId];
-    const div = this.selectedContainer.querySelector(`[data-key="${key}"]`) as HTMLElement;
-    div.classList.remove('scale-in');
-    void div.offsetWidth;
-    div.classList.add('scale-out');
-
-    const onAnimationEnd = () => {
-      this.selected.delete(key);
-      div.remove();
-      div.middlewareHelper.destroy();
+      if(!this.selected.size && this.multiSelectWasHidden) {
+        this.setMultiSelectMode('hidden');
+      }
       fireOnChange && this.onChange?.(this.selected.size);
     };
 
-    if(liteMode.isAvailable('animations')) {
-      div.addEventListener('animationend', onAnimationEnd, {once: true});
-    } else {
-      onAnimationEnd();
+    onRemoved();
+
+    if(this.selectorSearch) {
+      this.selectorSearch.removeChip(key);
     }
 
     return true;
@@ -1302,18 +1254,14 @@ export default class AppSelectPeers {
     return [...this.selected];
   }
 
-  public getElementByPeerId(peerId: PeerId) {
-    return this.list.querySelector<HTMLElement>(`[data-peer-id="${peerId}"]`);
+  public getElementByKey(key: PeerId | string) {
+    return this.container.querySelector<HTMLElement>(`.row[data-peer-id="${key}"]`);
   }
 
-  public toggleElementCheckboxByPeerId(peerId: PeerId, checked?: boolean) {
-    const element = this.getElementByPeerId(peerId);
-    if(!element) {
-      return;
-    }
-
-    const checkbox = element.querySelector('input') as HTMLInputElement;
-    checkbox.checked = checked === undefined ? !checkbox.checked : checked;
+  public toggleElementCheckboxByKey(key: PeerId | string, checked?: boolean) {
+    const checkboxes = this.findCheckboxes(key);
+    const value = checked === undefined ? undefined : checked;
+    checkboxes.forEach((checkbox) => checkbox.checked = value ?? !checkbox.checked);
   }
 
   public addBatch(values: any[]) {
@@ -1327,23 +1275,37 @@ export default class AppSelectPeers {
         scroll: false,
         fireOnChange: false
       });
-      this.toggleElementCheckboxByPeerId(value, true);
+      this.toggleElementCheckboxByKey(value, true);
     });
 
     this.onChange?.(this.selected.size);
   }
 
-  public removeBatch(values: any[]) {
+  public removeBatch(values: any[], fireOnChange = true) {
     if(!values.length) {
       return;
     }
 
     values.forEach((value) => {
       this.remove(value, false);
-      this.toggleElementCheckboxByPeerId(value, false);
+      this.toggleElementCheckboxByKey(value, false);
     });
 
-    this.onChange?.(this.selected.size);
+    if(fireOnChange) {
+      this.onChange?.(this.selected.size);
+    }
+  }
+
+  private findCheckboxes(key: PeerId | string): HTMLInputElement[] {
+    const query = `[data-peer-id="${key}"] input`;
+    const containers: Element[] = [this.container];
+
+    // if(!this.container.closest('.selector')) {
+    //   const selectorSearch = document.querySelector('.selector-search');
+    //   if(selectorSearch) containers.push(selectorSearch);
+    // }
+
+    return containers.flatMap((c) => [...c.querySelectorAll<HTMLInputElement>(query)]);
   }
 
   public addInitial(values: any[]) {
@@ -1353,12 +1315,24 @@ export default class AppSelectPeers {
 
     this.addBatch(values);
 
-    this.input && window.requestAnimationFrame(() => { // ! not the best place for this raf though it works
-      this.selectedScrollable.scrollIntoViewNew({
-        element: this.input,
-        position: 'center',
-        forceDirection: FocusDirection.Static
-      });
+    this.selectorSearch && window.requestAnimationFrame(() => { // ! not the best place for this raf though it works
+      this.selectorSearch.scrollToInput(FocusDirection.Static);
     });
+  }
+
+  public setMultiSelectMode(mode: 'enabled' | 'hidden' | 'disabled') {
+    this.multiSelect = mode;
+    this.container.classList.toggle('selector-multiselect-hidden', mode === 'hidden');
+  }
+
+  public setFolderId(folderId: number) {
+    const willBeFolderId = folderId || undefined;
+    if(this.selectedFolderId === willBeFolderId) {
+      return;
+    }
+
+    this.selectedFolderId = willBeFolderId;
+    this.query = '\x01'; // force onInput to detect a change
+    this.onInput();
   }
 }

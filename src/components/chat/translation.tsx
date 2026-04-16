@@ -72,8 +72,8 @@ export function pickLanguage<T extends boolean>(
           isEnd: true
         };
       },
-      onSelect: !multi ? deferred.resolve.bind(deferred) as any : undefined,
-      onMultiSelect: multi ? deferred.resolve.bind(deferred) as any : undefined,
+      onSelect: ([{peerId}]) => deferred.resolve(peerId as any),
+      multiSelect: multi,
       titleLangKey: multi ? 'Telegram.LanguageViewController' : undefined,
       checkboxSide: 'left',
       noPlaceholder: true

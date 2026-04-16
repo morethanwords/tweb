@@ -9,19 +9,17 @@
 .sidebar-left {
   &-section {
     background-color: var(--surface-color);
-    padding: .5rem 0 !important;
+    padding: .5rem 0;
     border-radius: #{$section-rounded-border-radius};
-    margin-bottom: #{$section-rounded-padding};
+    margin-bottom: var(--section-padding-bottom);
     box-shadow: var(--section-box-shadow);
 
     &.no-shadow {
-      box-shadow: none !important;
+      box-shadow: none;
     }
 
     &-content {
-      @include respond-to(not-handhelds) {
-        margin: 0 var(--section-margin-inline);
-      }
+      margin: 0 var(--section-margin-inline);
 
       > .btn-primary {
         margin: 0;
@@ -57,6 +55,9 @@
       padding: .5rem 1rem;
       display: flex;
       justify-content: space-between;
+      color: var(--primary-color);
+      font-size: var(--font-size-16);
+      font-weight: var(--font-weight-bold);
 
       &-right {
         font-weight: var(--font-weight-normal);
@@ -78,7 +79,7 @@
 
     &-container {
       user-select: none;
-      padding-inline: #{$section-rounded-padding};
+      padding-inline: var(--section-padding-inline);
 
       a {
         cursor: pointer;

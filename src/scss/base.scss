@@ -165,6 +165,8 @@
   --star-background-color: var(--surface-color);
 
   --section-margin-inline: 0;
+  --section-padding-inline: #{$section-rounded-padding};
+  --section-padding-bottom: var(--section-padding-inline);
 
   @include respond-to(handhelds) {
     --right-column-width: 100vw;

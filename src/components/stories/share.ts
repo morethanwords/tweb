@@ -10,7 +10,8 @@ export function handleShareStory(options: {
   onSend?: (toPeerId: PeerId) => void
 }) {
   const popup = PopupPickUser.createSharingPicker({
-    onSelect: async(peerId, _, monoforumThreadId) => {
+    onSelect: async(chosen) => {
+      const {peerId, monoforumThreadId} = chosen[0];
       const storyPeerId = options.peerId;
 
       const preparedPaymentResult = await PaidMessagesInterceptor.prepareStarsForPayment({messageCount: 1, peerId});

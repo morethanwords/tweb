@@ -34,7 +34,6 @@ import {HIDDEN_PEER_ID} from '@appManagers/constants';
 import {rgbIntToHex} from '@helpers/color';
 import {makeMediaSize} from '@helpers/mediaSize';
 import type {MyStarGift} from '@appManagers/appGiftsManager';
-import {generateDelimiter} from '@components/generateDelimiter';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import ListenerSetter from '@helpers/listenerSetter';
 import {resolveFirst} from '@solid-primitives/refs';

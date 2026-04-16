@@ -249,8 +249,8 @@ export default function SimilarChannels(props: {
 
       if(premium()) {
         PopupElement.createPopup(PopupPickUser, {
-          onSelect: (peerId) => {
-            appImManager.setInnerPeer({peerId});
+          onSelect: ([first]) => {
+            appImManager.setInnerPeer(first);
           },
           peerType: ['custom'],
           getMoreCustom: async() => {
@@ -259,7 +259,7 @@ export default function SimilarChannels(props: {
               isEnd: true
             };
           },
-          headerLangPackKey: 'SimilarChannels'
+          titleLangKey: 'SimilarChannels'
         });
         return;
       }
