@@ -1041,7 +1041,7 @@
       position: relative;
       flex: 1;
 
-      mask-image: url(assets/img/media-editor-rotation-wheel-mask.svg);
+      mask-image: url('/assets/img/media-editor-rotation-wheel-mask.svg');
       mask-size: 100% 100%;
     }
 
@@ -1267,7 +1267,7 @@
 
       &--vertical {
         background-size: 1px 9px;
-        background-image: url(assets/img/media-editor-border-part-vertical.svg);
+        background-image: url('/assets/img/media-editor-border-part-vertical.svg');
         top: 0;
         width: 1px;
         height: 100%;
@@ -1280,7 +1280,7 @@
 
       &--horizontal {
         background-size: 9px 1px;
-        background-image: url(assets/img/media-editor-border-part.svg);
+        background-image: url('/assets/img/media-editor-border-part.svg');
         left: 0;
         height: 1px;
         width: 100%;

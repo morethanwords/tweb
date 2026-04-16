@@ -780,12 +780,7 @@ PeerProfile.Birthday = () => {
     const birthday$ = birthday();
     if(!birthday$) return '';
 
-    const date = new Date();
-    date.setDate(birthday$.day);
-    date.setMonth(birthday$.month - 1);
-    if(birthday$.year) {
-      date.setFullYear(birthday$.year);
-    }
+    const date = new Date(birthday$.year ?? new Date().getFullYear(), birthday$.month - 1, birthday$.day);
 
     const el = new I18n.IntlDateElement({
       date,
