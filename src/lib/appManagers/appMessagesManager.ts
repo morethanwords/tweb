@@ -8645,6 +8645,7 @@ export class AppMessagesManager extends AppManager {
       message.peerId === this.appPeersManager.peerId ||
       this.appPeersManager.isBroadcast(message.peerId) ||
       this.appPeersManager.isMonoforum(message.peerId) ||
+      this.appPeersManager.isBot(message.peerId) ||
       (message as Message.message).pFlags.is_scheduled
     ) {
       return false;

@@ -3831,12 +3831,12 @@
     height: 2px;
 
     opacity: 0.075;
-    background-image: url(assets/img/chat-thread-separator-dash-black.svg);
+    background-image: url('/assets/img/chat-thread-separator-dash-black.svg');
   }
 
   .night &::before {
     opacity: 0.15;
-    background-image: url(assets/img/chat-thread-separator-dash.svg);
+    background-image: url('/assets/img/chat-thread-separator-dash.svg');
   }
 }
 

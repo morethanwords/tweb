@@ -11,11 +11,20 @@ const log = logger('createCacheStorageThreadedControls');
 export type CacheStorageThreadedControls = ReturnType<typeof createCacheStorageThreadedControls>;
 
 export function createCacheStorageThreadedControls({apiManagerProxy}: CreateCacheStorageThreadedControlsArgs) {
+  const invokeServiceWorkerIfAvailable = (method: 'disableCacheStoragesByNames' | 'enableCacheStoragesByNames' | 'resetOpenCacheStoragesByNames', names: CacheStorageDbName[]) => {
+    const serviceMessagePort = apiManagerProxy.serviceMessagePort;
+    if(!serviceMessagePort) {
+      return Promise.resolve();
+    }
+
+    return serviceMessagePort.invoke(method, names);
+  };
+
   const disableCacheStoragesOnAllThreads = async(names: CacheStorageDbName[]) => {
     CacheStorageController.temporarilyToggleByNames(names, false);
     await Promise.all([
       apiManagerProxy.invoke('disableCacheStoragesByNames', names),
-      apiManagerProxy.serviceMessagePort.invoke('disableCacheStoragesByNames', names)
+      invokeServiceWorkerIfAvailable('disableCacheStoragesByNames', names)
     ]);
   };
 
@@ -23,7 +32,7 @@ export function createCacheStorageThreadedControls({apiManagerProxy}: CreateCach
     CacheStorageController.temporarilyToggleByNames(names, true);
     await Promise.all([
       apiManagerProxy.invoke('enableCacheStoragesByNames', names),
-      apiManagerProxy.serviceMessagePort.invoke('enableCacheStoragesByNames', names)
+      invokeServiceWorkerIfAvailable('enableCacheStoragesByNames', names)
     ]);
   };
 
@@ -31,7 +40,7 @@ export function createCacheStorageThreadedControls({apiManagerProxy}: CreateCach
     CacheStorageController.resetOpenStoragesByNames(names);
     await Promise.all([
       apiManagerProxy.invoke('resetOpenCacheStoragesByNames', names),
-      apiManagerProxy.serviceMessagePort.invoke('resetOpenCacheStoragesByNames', names)
+      invokeServiceWorkerIfAvailable('resetOpenCacheStoragesByNames', names)
     ]);
   };
 
