@@ -133,7 +133,14 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       ...profileStoriesButtonMenu({
         peerId: this.peerId,
         slider: this.slider,
-        verify: () => lastMediaTabType === 'stories'
+        verify: () => lastMediaTabType === 'stories',
+        canEdit: () => {
+          if(this.peerId === rootScope.myId) return true;
+          if(this.peerId.isAnyChat()) {
+            return this.managers.appChatsManager.hasRights(this.peerId.toChatId(), 'edit_stories');
+          }
+          return false;
+        }
       }),
       ...profileStarGiftsButtonMenu({
         get store() { return self.searchSuper.stargiftsStore },

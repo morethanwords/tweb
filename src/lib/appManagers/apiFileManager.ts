@@ -1130,7 +1130,7 @@ export class ApiFileManager extends AppManager {
               }
 
               ++doneParts;
-              const progress: Progress = {done: doneParts * partSize, offset, total: fileSize, fileName};
+              const progress: Progress = {done: Math.min(doneParts * partSize, fileSize), offset, total: fileSize, fileName};
               deferred.notify(progress);
 
               if(doneParts >= totalParts) {

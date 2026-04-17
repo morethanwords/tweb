@@ -649,7 +649,7 @@ export default class ChatTopbar {
       text: 'Chat.Menu.SendGift',
       onClick: () => PopupElement.createPopup(PopupSendGift, {peerId: this.peerId}),
       verify: async() => (
-        this.chat.isChannel || (this.chat.peerId.isUser() && this.managers.appUsersManager.isRegularUser(this.peerId))
+        this.chat.isChannel || (this.chat.peerId.isUser() && !this.chat.isBot && (await this.managers.appUsersManager.isRegularUser(this.peerId)))
       ) && !(this.chat.type === ChatType.Logs)
     }, {
       icon: 'message',
@@ -753,7 +753,7 @@ export default class ChatTopbar {
         }
       },
       verify: async() => {
-        if(!this.peerId.isUser() || this.peerId === rootScope.myId) return false;
+        if(!this.peerId.isUser() || this.peerId === rootScope.myId || this.chat.isBot) return false;
         const userFull = this.chat.fullPeer() as UserFull.userFull;
         if(!userFull) return false;
         return !userFull.pFlags.noforwards_my_enabled && !userFull.pFlags.noforwards_peer_enabled;
@@ -779,7 +779,7 @@ export default class ChatTopbar {
         this.managers.appProfileManager.toggleNoForwards(peerId, false);
       },
       verify: async() => {
-        if(!this.peerId.isUser() || this.peerId === rootScope.myId) return false;
+        if(!this.peerId.isUser() || this.peerId === rootScope.myId || this.chat.isBot) return false;
         const userFull = this.chat.fullPeer() as UserFull.userFull;
         if(!userFull) return false;
         return !!(userFull?.pFlags?.noforwards_my_enabled || userFull?.pFlags?.noforwards_peer_enabled);

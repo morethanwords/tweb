@@ -783,7 +783,7 @@ export function profileStoriesButtonMenu(props: {
   verify: () => boolean,
   isArchive?: boolean,
   onAlbumCreated?: (albumId: number) => void,
-  canEdit?: () => boolean,
+  canEdit?: () => boolean | Promise<boolean>,
 }): ButtonMenuItemOptionsVerifiable[] {
   return [{
     icon: 'archive',
@@ -796,11 +796,11 @@ export function profileStoriesButtonMenu(props: {
       }
       tab.open();
     },
-    verify: () => (
+    verify: () => Promise.resolve(props.canEdit?.() ?? true).then((canEdit) => (
       props.verify() &&
       !props.isArchive &&
-      (props.canEdit?.() ?? true)
-    )
+      canEdit
+    ))
   }, {
     icon: 'folder',
     text: 'Stories.Albums.CreateAlbum',
@@ -808,11 +808,11 @@ export function profileStoriesButtonMenu(props: {
       const albumId = await openCreateAlbumPopup(props.peerId);
       if(albumId !== undefined) props.onAlbumCreated?.(albumId);
     },
-    verify: () => (
+    verify: () => Promise.resolve(props.canEdit?.() ?? true).then((canEdit) => (
       props.verify() &&
       !props.isArchive &&
-      (props.canEdit?.() ?? true)
-    )
+      canEdit
+    ))
   }];
 }
 

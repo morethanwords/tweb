@@ -810,7 +810,7 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
           }
         } else {
           element = document.createElement('blockquote');
-          element.classList.add('quote');
+          element.classList.add('quote', 'quote-block');
 
           // * ? because of layer migration
           if(entity.pFlags?.collapsed/*  || true */) {

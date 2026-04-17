@@ -433,6 +433,16 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
     res.thumb = photoRes;
 
     if((!canAutoplay && doc.type !== 'gif') || onlyPreview) {
+      const earlyUploadFileName = uploadingFileName ?? message?.uploadingFileName?.[0];
+      if(earlyUploadFileName && container && !onlyPreview) {
+        preloader = new ProgressivePreloader({
+          attachMethod: 'prepend',
+          isUpload: true
+        });
+        preloader.attachPromise(appDownloadManager.getUpload(earlyUploadFileName));
+        preloader.attach(container, false);
+      }
+
       res.loadPromise = photoRes.loadPromises.full;
       return res;
     }
