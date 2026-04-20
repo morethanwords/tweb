@@ -78,8 +78,7 @@ export async function saveLottiePreview(doc: MyDocument, canvas: HTMLCanvasEleme
   }
 
   if(!blob) {
-    console.error('trying to save sticker preview with no blob', arguments);
-    debugger;
+    console.error('trying to save sticker preview with no blob', arguments); 
     return;
   }
 
