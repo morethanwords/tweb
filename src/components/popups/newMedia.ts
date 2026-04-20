@@ -76,6 +76,7 @@ import cancelEvent from '@helpers/dom/cancelEvent';
 import ButtonMenu from '@components/buttonMenu';
 import contextMenuController from '@helpers/contextMenuController';
 import {makeDateFromTimestamp} from '@helpers/date/makeDateFromTimestamp';
+import Section from '@components/section';
 
 
 type SendFileParams = SendFileDetails & {
@@ -149,7 +150,7 @@ export default class PopupNewMedia extends PopupElement {
   ) {
     super('popup-send-photo popup-new-media', {
       closable: true,
-      withConfirm: getDefaultSendBtnLangKey({isEditing: !!chat.input.editMessage}),
+      withConfirm: true,
       confirmShortcutIsSendShortcut: true,
       body: true,
       title: true,
@@ -166,6 +167,7 @@ export default class PopupNewMedia extends PopupElement {
 
     this.animationGroup = 'NEW-MEDIA';
     this.gifDocument = gifDocument;
+    // this.updateConfirmBtnContent(0);
     this.construct(willAttachType);
   }
 
@@ -333,7 +335,8 @@ export default class PopupNewMedia extends PopupElement {
       if(this.wasDraft) {
         draft = wrapDraft(this.wasDraft, {
           wrappingForPeerId: this.chat.peerId,
-          animationGroup: this.animationGroup
+          animationGroup: this.animationGroup,
+          middleware: this.lateMiddlewareHelper.get()
         });
 
         this.chat.input.messageInputField.value = '';
@@ -344,17 +347,18 @@ export default class PopupNewMedia extends PopupElement {
       this.lateMiddlewareHelper.onDestroy(dispose);
 
       return InputFieldMessage({
-        class: 'popup-input-inputs',
         maxLength: this.captionLengthMax,
         animationGroup: this.animationGroup,
         listenerSetter: this.listenerSetter,
         onScroll: this.onScroll,
         onInput: (hasValue) => this.starsState.set({hasMessage: hasValue}),
+        stars: this.starsState.totalStars,
         draft,
         ref: (inputField) => {
           this.messageInputField = inputField;
         },
-        children: this.btnConfirm
+        children: this.btnConfirm,
+        btnConfirm: this.btnConfirm
       }) as HTMLElement;
     });
 
@@ -1244,7 +1248,11 @@ export default class PopupNewMedia extends PopupElement {
         actions.style.opacity = '1';
 
         const listener = (e: MouseEvent) => {
-          if((e.target as HTMLElement)?.closest?.('.popup-item-media-action-menu') || e.target === itemDiv || itemDiv.contains(e.target as Node)) return;
+          if(
+            (e.target as HTMLElement)?.closest?.('.popup-item-media-action-menu') ||
+            e.target === itemDiv ||
+            itemDiv.contains(e.target as Node)
+          ) return;
           this.hideActiveActionsMenu();
         }
         this.actionsMenuListenerSetter.add(document)('pointermove', listener);
@@ -1416,7 +1424,9 @@ export default class PopupNewMedia extends PopupElement {
     params.middlewareHelper = this.lateMiddlewareHelper.get().create();
     params.itemDiv = itemDiv;
 
-    const promise = this.gifDocument ? this.attachGifDocument(params) : (shouldCompress ? this.attachMedia(params) : this.attachDocument(params));
+    const promise = this.gifDocument ?
+      this.attachGifDocument(params) :
+      (shouldCompress ? this.attachMedia(params) : this.attachDocument(params));
     willAttach.sendFileDetails.push(params);
     return promise.catch((err) => {
       itemDiv.style.backgroundColor = '#000';
@@ -1483,20 +1493,6 @@ export default class PopupNewMedia extends PopupElement {
     this.show();
   }
 
-  private updateConfirmBtnContent(stars: number): void {
-    if(!stars) return void replaceContent(this.btnConfirm, i18n(getDefaultSendBtnLangKey({isEditing: this.isEditing()})));
-
-    const span = document.createElement('span');
-    span.classList.add('popup-confirm-btn-inner');
-
-    span.append(Icon('star', 'popup-confirm-btn-inner-star'), numberThousandSplitterForStars(stars) + '');
-
-    replaceContent(
-      this.btnConfirm,
-      span
-    );
-  }
-
   private starsState = createRoot((dispose) => {
     this.lateMiddlewareHelper.get().onDestroy(() => void dispose());
 
@@ -1511,11 +1507,7 @@ export default class PopupNewMedia extends PopupElement {
     const totalMessages = createMemo(() => +shouldCountMessage() + store.attachedFiles);
     const totalStars = createMemo(() => store.starsAmount * totalMessages());
 
-    createEffect(() => {
-      this.updateConfirmBtnContent(totalStars());
-    });
-
-    return {store, set, totalMessages};
+    return {store, set, totalMessages, totalStars};
   });
 
   public setStarsAmount(starsAmount: number) {
@@ -1555,14 +1547,38 @@ export default class PopupNewMedia extends PopupElement {
     replaceContent(title, i18n(key, args));
   }
 
+  private currentFileSection: HTMLElement;
+
   private appendMediaToContainer(params: SendFileParams) {
     if(this.shouldCompress(getFileMimeType(params.file))) {
+      this.currentFileSection = undefined;
+
       const size = calcImageInBox(params.width, params.height, MAX_WIDTH, 320);
       params.itemDiv.style.width = size.width + 'px';
       params.itemDiv.style.height = size.height + 'px';
+
+      this.mediaContainer.append(params.itemDiv);
+      return;
     }
 
-    this.mediaContainer.append(params.itemDiv);
+    if(!this.currentFileSection) {
+      const items = document.createElement('div');
+      createRoot((dispose) => {
+        Section({
+          class: 'popup-send-photo-documents',
+          ref: (ref: HTMLDivElement) => {
+            this.currentFileSection = ref;
+          },
+          children: [items]
+        });
+
+        this.middlewareHelper.onDestroy(dispose);
+      });
+      this.mediaContainer.append(this.currentFileSection);
+      this.currentFileSection = items;
+    }
+
+    this.currentFileSection.append(params.itemDiv);
   }
 
   private hasGif() {
@@ -1632,6 +1648,7 @@ export default class PopupNewMedia extends PopupElement {
 
     Promise.all(promises).then(() => {
       mediaContainer.replaceChildren();
+      this.currentFileSection = undefined;
       const filesLength = this.gifDocument ? 1 : files.length;
       this.starsState.set({attachedFiles: filesLength, isGrouped: this.willAttach?.group && !this.hasGif()});
 
@@ -1644,6 +1661,7 @@ export default class PopupNewMedia extends PopupElement {
       this.iterate((sendFileDetails) => {
         const shouldCompress = this.shouldCompress(getFileMimeType(sendFileDetails[0].file));
         if(shouldCompress && sendFileDetails.length > 1) {
+          this.currentFileSection = undefined;
           const albumContainer = document.createElement('div');
           albumContainer.classList.add('popup-item-album', 'popup-item');
           albumContainer.append(...sendFileDetails.map((s) => s.itemDiv));
@@ -1653,7 +1671,7 @@ export default class PopupNewMedia extends PopupElement {
             items: sendFileDetails.map((o) => ({w: o.width, h: o.height})),
             maxWidth: MAX_WIDTH,
             minWidth: 100,
-            spacing: 4
+            spacing: 2
           });
 
           mediaContainer.append(albumContainer);
@@ -1747,17 +1765,5 @@ export default class PopupNewMedia extends PopupElement {
     this.hideActiveActionsMenu();
   }
 }
-
-type GetDefaultSendBtnLangKeyArgs = {
-  isEditing: boolean;
-};
-
-function getDefaultSendBtnLangKey({isEditing}: GetDefaultSendBtnLangKeyArgs) {
-  if(isEditing) {
-    return 'Edit';
-  }
-  return 'Modal.Send';
-}
-
 
 (window as any).PopupNewMedia = PopupNewMedia;

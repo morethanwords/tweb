@@ -5,7 +5,7 @@
  */
 
 import type {MyDocument} from '@appManagers/appDocsManager';
-import {EMOJI_TEXT_COLOR, EmoticonsDropdown, EMOTICONSSTICKERGROUP} from '..';
+import {EmoticonsDropdown} from '..';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import {fastRaf} from '@helpers/schedulers';
@@ -835,7 +835,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
   private createEmojiRendererForCategory(category: EmojiTabCategory) {
     const middleware = category.middlewareHelper.get();
     const renderer = CustomEmojiRendererElement.create({
-      animationGroup: EMOTICONSSTICKERGROUP,
+      animationGroup: this.animationGroup,
       customEmojiSize: mediaSizes.active.esgCustomEmoji,
       textColor: this.textColor,
       middleware

@@ -13,6 +13,10 @@ import {toastNew} from '@components/toast';
 import PopupPickUser from '@components/popups/pickUser';
 import getMediaFromMessage from '@appManagers/utils/messages/getMediaFromMessage';
 import getDocumentInput from '@appManagers/utils/docs/getDocumentInput';
+import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
+import {copyTextToClipboard} from '@helpers/clipboard';
+import {i18n} from '@lib/langPack';
 import PopupElement from '.';
 import {useAppConfig, useIsFrozen} from '@stores/appState';
 import {Message, MessageMedia} from '@layer';
@@ -88,8 +92,31 @@ export default class PopupForward extends PopupPickUser {
         peerType: ['custom'],
         noSearch: true,
         headerLangPackKey: 'Forward'
-      })
+      }),
+      footerButton: (element) => {
+        element.append(i18n('CopyLink'));
+      }
     });
+
+    if(peerIdMids) {
+      attachClickEvent(this.btnConfirm, async() => {
+        const fromPeerIdStr = Object.keys(peerIdMids)[0];
+        const fromPeerId = fromPeerIdStr.toPeerId();
+        const mid = peerIdMids[fromPeerIdStr as any as number][0];
+        const username = await this.managers.appPeersManager.getPeerUsername(fromPeerId);
+        const msgId = getServerMessageId(mid);
+        let url = 'https://t.me/';
+        if(username) {
+          url += username + '/' + msgId;
+        } else {
+          url += 'c/' + fromPeerId.toChatId() + '/' + msgId;
+        }
+
+        copyTextToClipboard(url);
+        toastNew({langPackKey: 'LinkCopied'});
+        this.hide();
+      }, {listenerSetter: this.listenerSetter});
+    }
   }
 
   public static async create(...args: ConstructorParameters<typeof PopupForward>) {

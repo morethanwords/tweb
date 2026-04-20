@@ -465,6 +465,10 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
     });
   }
 
+  protected get animationGroup() {
+    return this.emoticonsDropdown?.animationGroup || EMOTICONSSTICKERGROUP;
+  }
+
   // * common methods for tabs
 
   public renderStickerSetThumb({set, menuTabPadding, middleware, textColor}: {
@@ -476,7 +480,7 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
     wrapStickerSetThumb({
       set,
       container: menuTabPadding,
-      group: EMOTICONSSTICKERGROUP,
+      group: this.animationGroup,
       lazyLoadQueue: this.emoticonsDropdown?.lazyLoadQueue,
       width: 32,
       height: 32,
@@ -489,7 +493,7 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
   public createStickerRenderer() {
     const superStickerRenderer = new SuperStickerRenderer({
       regularLazyLoadQueue: this.emoticonsDropdown.lazyLoadQueue,
-      group: EMOTICONSSTICKERGROUP,
+      group: this.animationGroup,
       managers: this.managers,
       intersectionObserverInit: this.emoticonsDropdown.intersectionOptions
     });

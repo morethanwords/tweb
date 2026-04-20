@@ -305,10 +305,14 @@
   .folders-tabs-scrollable {
     position: absolute;
     top: 0;
-    display: none;
     inset-inline: 0;
     margin: .5rem .5rem 0;
     box-shadow: var(--section-box-shadow-big);
+  }
+
+  .folders-tabs-scrollable,
+  .folders-tabs-gradient-container {
+    display: none;
 
     .has-horizontal-folders & {
       display: block;

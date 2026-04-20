@@ -56,7 +56,7 @@ $menu-search-translateY: -#{$menu-height};
   }
 
   &.is-standalone {
-    transform-origin: calc(9rem * var(--reflect)) 4.625rem !important;
+    transform-origin: calc(9rem * var(--reflect)) 4.625rem;
     transform: scale(.85);
     bottom: auto;
     inset-inline-start: auto;

@@ -623,7 +623,7 @@ $btn-menu-z-index: 4;
     border-bottom-left-radius: inherit;
     border-bottom-right-radius: inherit;
     font-size: .875rem;
-    color: #a2acb4;
+    color: var(--input-placeholder-color);
     font-weight: 500;
     font-size: 12px;
     // cursor: default;

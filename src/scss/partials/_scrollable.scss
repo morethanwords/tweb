@@ -68,7 +68,7 @@ html.custom-scroll {
   display: none; // for safari iOS
 }
 
-/* .no-scrollbar::-webkit-scrollbar {
+.no-scrollbar::-webkit-scrollbar {
   width: 0;
   height: 0;
 }
@@ -76,7 +76,11 @@ html.custom-scroll {
 .no-scrollbar::-webkit-scrollbar-thumb {
   width: 0;
   height: 0;
-} */
+}
+
+.no-scrollbar {
+  scrollbar-width: none !important;
+}
 
 .scrollable {
   width: 100%;

@@ -261,7 +261,7 @@
   }
 
   &-placeholder {
-    color: #a2acb4;
+    color: var(--input-placeholder-color);
     display: block; /* For Firefox By Ariel Flesler */
     pointer-events: none;
     position: absolute;

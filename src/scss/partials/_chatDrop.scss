@@ -47,7 +47,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #a2acb4;
+  color: var(--input-placeholder-color);
   transition: color .2s ease-in-out;
   pointer-events: all;
   flex: 1 1 auto;
@@ -65,7 +65,7 @@
     &-path {
       fill: none;
       stroke-dasharray: 13.5, 11;
-      stroke: #a2acb4;
+      stroke: var(--input-placeholder-color);
       stroke-width: 2;
       stroke-linecap: round;
       transition: stroke .2s ease-in-out;

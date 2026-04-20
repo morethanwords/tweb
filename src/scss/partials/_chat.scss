@@ -1324,7 +1324,7 @@
 
     &[data-inline-placeholder]:after {
       content: attr(data-inline-placeholder);
-      color: #a2acb4;
+      color: var(--input-message-placeholder-color);
       pointer-events: none;
     }
   }

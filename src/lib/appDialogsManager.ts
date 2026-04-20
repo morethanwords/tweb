@@ -513,9 +513,10 @@ export class AppDialogsManager {
   public contextMenu: DialogsContextMenu;
 
   public filterId: number;
-  public folders: {[k in 'menu' | 'container' | 'menuScrollContainer']: HTMLElement} = {
+  public folders: {[k in 'menu' | 'container' | 'menuScrollContainer' | 'menuGradient']: HTMLElement} = {
     menu: undefined,
     menuScrollContainer: undefined,
+    menuGradient: undefined,
     container: document.getElementById('folders-container')
   };
   private filtersRendered: {
@@ -649,8 +650,13 @@ export class AppDialogsManager {
           }
         },
         gradientProps: {
+          className: 'folders-tabs-gradient',
           color: 'surface',
-          smaller: true
+          smaller: true,
+          ref: (ref) => {
+            this.folders.menuGradient = ref;
+            ref.classList.add('hide');
+          }
         }
       });
 
@@ -1260,6 +1266,7 @@ export class AppDialogsManager {
 
       if(show !== wasShowing) {
         this.folders.menuScrollContainer.classList.toggle('hide', !show);
+        this.folders.menuGradient.classList.toggle('hide', !show);
         this.chatsContainer.classList.toggle('has-filters', show);
       }
 

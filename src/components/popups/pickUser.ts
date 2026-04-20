@@ -10,7 +10,6 @@ import PopupElement from '.';
 import {LangPackKey, i18n} from '@lib/langPack';
 import {Modify} from '@types';
 import {IsPeerType} from '@appManagers/appPeersManager';
-import ButtonCorner from '@components/buttonCorner';
 import {simulateClickEvent} from '@helpers/dom/clickEvent';
 import TransitionSlider from '@components/transition';
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
@@ -123,8 +122,8 @@ export default class PopupPickUser extends PopupElement {
         },
         body: true,
         title: options.titleLangKey ?? true,
-        footer: !!options.footerButton || undefined,
-        withConfirm: !!options.footerButton || undefined
+        footer: true,
+        withConfirm: true
       }
     );
 
@@ -231,15 +230,10 @@ export default class PopupPickUser extends PopupElement {
       });
     }
 
-    if(!this.btnConfirm) {
-      this.btnConfirm = this.btnConfirmOnEnter = ButtonCorner({icon: 'check'});
-      this.body.append(this.btnConfirm);
-    } else if(this.footer) {
-      this.footer.append(this.btnConfirm);
-      this.body.after(this.footer);
-      this.footer.classList.add('abitlarger');
-      options.footerButton?.(this.btnConfirm);
-    }
+    this.footer.append(this.btnConfirm);
+    this.body.after(this.footer);
+    this.footer.classList.add('abitlarger');
+    options.footerButton?.(this.btnConfirm);
 
     // attachClickEvent(this.btnConfirm, () => {
     //   onSelect(this.selector.getSelected() as PeerId[]);
