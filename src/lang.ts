@@ -566,6 +566,7 @@ const lang = {
   'Search.EmptyFrom': 'There were no messages from **%@**.',
   'Search.EmptyHashtag': 'There were no results for "%@". Try another hashtag.',
   'Search.HelpHashtag': 'Enter a hashtag to find messages containing it.',
+  'Search.EmptyQuery': 'Try searching.',
   'Search.From': 'From:',
   'Search.Member': 'Search Members',
   'Search.Hashtag': 'Search Hashtag',
@@ -1995,6 +1996,11 @@ const lang = {
   'LimitReachedSharedFolderInvitesLocked': 'You have reached the limit of **%1$d** links. We are working to let you increase this limit in the future.',
   'FwdMessageToSavedMessages': 'Message forwarded to **Saved Messages**.',
   'FwdMessagesToSavedMessages': 'Messages forwarded to **Saved Messages**.',
+  'FwdMessageTo': 'Message forwarded to %s.',
+  'FwdMessagesTo': 'Messages forwarded to %s.',
+  'FwdMessagesToChats': {
+    'other_value': '%d chats'
+  },
   'ColorTheme': 'Color theme',
   'SendAsFile': 'Send as file',
   'SendAsFiles': 'Send as files',

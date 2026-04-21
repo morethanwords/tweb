@@ -1278,9 +1278,9 @@ export class AppMessagesManager extends AppManager {
       viaBotId: BotId,
       queryId: string,
       resultId: string,
-      noWebPage: true,
+      noWebPage: boolean,
       replyMarkup: ReplyMarkup,
-      clearDraft: true,
+      clearDraft: boolean,
       invertMedia: boolean,
       webPage: WebPage,
       webPageOptions: Partial<{
@@ -2373,7 +2373,7 @@ export class AppMessagesManager extends AppManager {
       inputMedia: InputMedia | {_: 'messageMediaPending', messageMedia: MessageMedia},
       viaBotId: BotId,
       replyMarkup: ReplyMarkup,
-      clearDraft: true,
+      clearDraft: boolean,
       queryId: string
       resultId: string,
       geoPoint: GeoPoint,

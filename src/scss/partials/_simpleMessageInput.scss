@@ -38,10 +38,9 @@
   }
 
   &-inputs {
+    --imc-padding-horizontal: .125rem;
     min-height: inherit;
     max-height: inherit;
-    padding-inline-start: .125rem;
-    // margin-top: -.5rem;
   }
 
   &-input {
@@ -50,7 +49,8 @@
 
   &-confirm {
     flex: 0 0 auto;
-    width: 4.125rem;
+    width: auto;
+    min-width: 4.125rem;
     padding: 0 .5rem;
     height: 2.625rem;
     line-height: 2.5rem;
@@ -61,6 +61,16 @@
     display: flex;
     align-items: center;
     justify-content: center;
+
+    &-content {
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+
+      &-item {
+        grid-area: 1 / 1;
+      }
+    }
 
     &-icon {
       font-size: 1.5625rem;

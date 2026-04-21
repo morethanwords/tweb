@@ -29,7 +29,7 @@ import handleTabSwipe from '@helpers/dom/handleTabSwipe';
 import windowSize from '@helpers/windowSize';
 import {formatPhoneNumber} from '@helpers/formatPhoneNumber';
 import {ButtonMenuItemOptions, ButtonMenuSync} from '@components/buttonMenu';
-import PopupForward from '@components/popups/forward';
+import showForwardPopup from '@components/popups/forward';
 import PopupDeleteMessages from '@components/popups/deleteMessages';
 import Row from '@components/row';
 import htmlToDocumentFragment from '@helpers/dom/htmlToDocumentFragment';
@@ -319,7 +319,7 @@ class SearchContextMenu {
     if(this.searchSuper.selection.isSelecting) {
       simulateClickEvent(this.searchSuper.selection.selectionForwardBtn);
     } else {
-      PopupElement.createPopup(PopupForward, {
+      showForwardPopup({
         [this.peerId]: [this.mid]
       });
     }

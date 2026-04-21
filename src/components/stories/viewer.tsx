@@ -39,7 +39,7 @@ import Chat from '@components/chat/chat';
 import {ChatType} from '@components/chat/chatType';
 import middlewarePromise from '@helpers/middlewarePromise';
 import emoticonsDropdown from '@components/emoticonsDropdown';
-import PopupPickUser from '@components/popups/pickUser';
+import showPickUserPopup from '@components/popups/pickUser';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import {copyTextToClipboard} from '@helpers/clipboard';
@@ -2344,52 +2344,49 @@ const Stories = (props: {
   const openViewsList = isMe && (() => {
     let nextOffset: string;
     const viewsMap: Map<PeerId, StoryView.storyView> = new Map();
-    const popup: PopupPickUser = PopupElement.createPopup(
-      PopupPickUser,
-      {
-        titleLangKey: 'StoryViewers',
-        peerType: ['custom'],
-        getMoreCustom: (q) => {
-          const loadCount = 50;
-          return rootScope.managers.appStoriesManager.getStoryViewsList(
-            props.state.peerId,
-            currentStory().id,
-            loadCount,
-            nextOffset,
-            q
-          ).then(({nextOffset: _nextOffset, views}) => {
-            nextOffset = _nextOffset;
-            return {
-              result: views.map((storyView) => {
-                const peerId = storyView.user_id.toPeerId(false);
-                viewsMap.set(peerId, storyView);
-                return peerId;
-              }),
-              isEnd: !nextOffset
-            };
-          });
-        },
-        processElementAfter: (peerId, dialogElement) => {
-          const view = viewsMap.get(peerId);
-          return processDialogElementForReaction({
-            dialogElement,
-            peerId,
-            date: view.date,
-            isMine: true,
-            middleware: popup.selector.middlewareHelperLoader.get(),
-            reaction: view.reaction
-          });
-        },
-        onSelect: ([obj]) => {
-          props.close(() => {
-            appImManager.setInnerPeer(obj);
-          });
-        },
-        placeholder: 'SearchPlaceholder',
-        exceptSelf: true,
-        meAsSaved: false
-      }
-    );
+    const popup = showPickUserPopup({
+      titleLangKey: 'StoryViewers',
+      peerType: ['custom'],
+      getMoreCustom: (q) => {
+        const loadCount = 50;
+        return rootScope.managers.appStoriesManager.getStoryViewsList(
+          props.state.peerId,
+          currentStory().id,
+          loadCount,
+          nextOffset,
+          q
+        ).then(({nextOffset: _nextOffset, views}) => {
+          nextOffset = _nextOffset;
+          return {
+            result: views.map((storyView) => {
+              const peerId = storyView.user_id.toPeerId(false);
+              viewsMap.set(peerId, storyView);
+              return peerId;
+            }),
+            isEnd: !nextOffset
+          };
+        });
+      },
+      processElementAfter: (peerId, dialogElement) => {
+        const view = viewsMap.get(peerId);
+        return processDialogElementForReaction({
+          dialogElement,
+          peerId,
+          date: view.date,
+          isMine: true,
+          middleware: popup.selector.middlewareHelperLoader.get(),
+          reaction: view.reaction
+        });
+      },
+      onSelect: ([obj]) => {
+        props.close(() => {
+          appImManager.setInnerPeer(obj);
+        });
+      },
+      placeholder: 'SearchPlaceholder',
+      exceptSelf: true,
+      meAsSaved: false
+    });
   });
 
   const onDeleteClick = isMe && (async() => {

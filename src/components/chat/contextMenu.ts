@@ -9,7 +9,7 @@ import type Chat from '@components/chat/chat';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import ButtonMenu, {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import PopupDeleteMessages from '@components/popups/deleteMessages';
-import PopupForward from '@components/popups/forward';
+import showForwardPopup from '@components/popups/forward';
 import PopupPinMessage from '@components/popups/unpinMessage';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import PopupSendNow from '@components/popups/sendNow';
@@ -1736,7 +1736,7 @@ export default class ChatContextMenu {
     } else {
       const peerId = this.messagePeerId;
       const mids = this.isTargetAGroupedItem ? [this.mid] : await this.chat.getMidsByMid(peerId, this.mid);
-      PopupForward.create({
+      showForwardPopup({
         [peerId]: mids
       });
     }

@@ -12,7 +12,7 @@ import Button from '@components/button';
 import {DelimiterWithText} from '@components/chat/giveaway';
 import PopupElement from '@components/popups';
 import PopupPeer, {PopupPeerButtonCallbackCheckboxes, PopupPeerCheckboxOptions} from '@components/popups/peer';
-import PopupPickUser from '@components/popups/pickUser';
+import showPickUserPopup from '@components/popups/pickUser';
 import PopupPremium from '@components/popups/premium';
 import {AppAddMembersTab} from '@components/solidJsTabs';
 import SidebarSlider from '@components/slider';
@@ -58,8 +58,7 @@ export async function handleMissingInvitees(chatId: ChatId, missingInvitees: Mis
     footerButton.replaceChildren(i18n(cantSendMessages ? 'InviteViaLink.Premium.Subscribe' : (count ? 'InviteViaLink.Send' : 'InviteViaLink.Skip')));
   };
   const initial = missingInviteeIds.filter((peerId) => !premiumRequireIds.has(peerId));
-  const popup = PopupElement.createPopup(
-    PopupPickUser,
+  const popup = showPickUserPopup(
     {
       peerType: ['custom'],
       getMoreCustom: async() => ({result: missingInviteeIds, isEnd: true}),

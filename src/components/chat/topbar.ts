@@ -28,7 +28,7 @@ import {attachClickEvent} from '@helpers/dom/clickEvent';
 import {toastNew} from '@components/toast';
 import replaceContent from '@helpers/dom/replaceContent';
 import {ChatFull, Chat as MTChat, GroupCall, Dialog, InputGroupCall, UserFull} from '@layer';
-import PopupPickUser from '@components/popups/pickUser';
+import {showSharingPickerPopup} from '@components/popups/pickUser';
 import PopupPeer, {PopupPeerCheckboxOptions} from '@components/popups/peer';
 import AppEditContactTab from '@components/sidebarRight/tabs/editContact';
 import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
@@ -612,7 +612,7 @@ export default class ChatTopbar {
       text: 'ShareContact',
       onClick: () => {
         const contactPeerId = this.peerId;
-        PopupPickUser.createSharingPicker({
+        showSharingPickerPopup({
           onSelect: async(chosen) => {
             const {peerId, monoforumThreadId} = chosen[0];
             const preparedPaymentResult = await PaidMessagesInterceptor.prepareStarsForPayment({messageCount: 1, peerId});

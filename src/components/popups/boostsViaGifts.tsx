@@ -23,7 +23,7 @@ import {HelpCountry, InputInvoice, InputStorePaymentPurpose, PremiumGiftCodeOpti
 import cancelEvent from '@helpers/dom/cancelEvent';
 import PopupPremium from '@components/popups/premium';
 import {premiumOptionsForm} from '@components/premium/promoSlideTab';
-import PopupPickUser from '@components/popups/pickUser';
+import showPickUserPopup from '@components/popups/pickUser';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import toggleDisability from '@helpers/dom/toggleDisability';
 import getChatMembersString from '@components/wrappers/getChatMembersString';
@@ -215,23 +215,20 @@ export default class PopupBoostsViaGifts extends PopupElement {
           }
 
           cancelEvent(e);
-          const popup = PopupElement.createPopup(
-            PopupPickUser,
-            {
-              peerType: ['channelParticipants'],
-              peerId: this.peerId,
-              onSelect: (arr) => {
-                setSpecificPeerIds(arr.map(({peerId}) => peerId));
-                updateSpecific(true);
-                starsRow.checkboxField.setValueSilently(true);
-              },
-              multiSelect: true,
-              placeholder: 'SearchPlaceholder',
-              exceptSelf: true,
-              titleLangKey: 'Giveaway.Type.Specific.Modal.SelectUsers',
-              initial: specificPeerIds()
-            }
-          );
+          const popup = showPickUserPopup({
+            peerType: ['channelParticipants'],
+            peerId: this.peerId,
+            onSelect: (arr) => {
+              setSpecificPeerIds(arr.map(({peerId}) => peerId));
+              updateSpecific(true);
+              starsRow.checkboxField.setValueSilently(true);
+            },
+            multiSelect: true,
+            placeholder: 'SearchPlaceholder',
+            exceptSelf: true,
+            titleLangKey: 'Giveaway.Type.Specific.Modal.SelectUsers',
+            initial: specificPeerIds()
+          });
 
           popup.selector.setLimit(this.subscribersLimit, () => {
             toastNew({langPackKey: 'Giveaway.MaximumSubscribers', langPackArguments: [this.subscribersLimit]});
@@ -344,26 +341,22 @@ export default class PopupBoostsViaGifts extends PopupElement {
 
     attachClickEvent(addChannelButton, async() => {
       const toggle = toggleDisability(addChannelButton, true);
-      const popup = PopupElement.createPopup(
-        PopupPickUser,
-        {
-          filterPeerTypeBy: ['isBroadcast'],
-          onSelect: (arr) => {
-            setPeerIds([this.peerId, ...arr.map(({peerId}) => peerId)]);
-          },
-          multiSelect: true,
-          placeholder: 'SearchPlaceholder',
-          titleLangKey: 'AddChannels',
-          initial: peerIds().filter((peerId) => peerId !== this.peerId),
-          excludePeerIds: new Set([this.peerId])
-        }
-      );
+      const popup = showPickUserPopup({
+        filterPeerTypeBy: ['isBroadcast'],
+        onSelect: (arr) => {
+          setPeerIds([this.peerId, ...arr.map(({peerId}) => peerId)]);
+        },
+        multiSelect: true,
+        placeholder: 'SearchPlaceholder',
+        titleLangKey: 'AddChannels',
+        initial: peerIds().filter((peerId) => peerId !== this.peerId),
+        excludePeerIds: new Set([this.peerId]),
+        onCloseAfterTimeout: () => toggle()
+      });
 
       popup.selector.setLimit(this.channelsLimit, () => {
         toastNew({langPackKey: 'BoostingSelectUpToWarningChannelsPlural', langPackArguments: [this.channelsLimit]});
       });
-
-      popup.addEventListener('closeAfterTimeout', () => toggle(), {once: true});
 
       const _add = popup.selector.add.bind(popup.selector);
       let ignorePrivatePeerId: PeerId;
@@ -411,51 +404,48 @@ export default class PopupBoostsViaGifts extends PopupElement {
       }
 
       let lastFiltered: Map<string, HelpCountry>;
-      const popup = PopupElement.createPopup(
-        PopupPickUser,
-        {
-          peerType: ['custom'],
-          renderResultsFunc: (iso2s) => {
-            iso2s.forEach((iso2) => {
-              const country = lastFiltered.get(iso2 as any as string);
-              const emoji = getCountryEmoji(country.iso2);
-              const title = document.createDocumentFragment();
-              const emojiContainer = document.createElement('span');
-              emojiContainer.classList.add('selector-countries-emoji');
-              emojiContainer.append(wrapEmojiText(emoji))
-              title.append(emojiContainer, ' ', i18n(country.default_name as any));
-              const row = new Row({
-                title,
-                clickable: true,
-                havePadding: true
-              });
-
-              row.container.append(popup.selector.checkbox(popup.selector.selected.has(iso2)));
-              row.container.dataset.peerId = '' + iso2;
-              popup.selector.list.append(row.container);
+      const popup = showPickUserPopup({
+        peerType: ['custom'],
+        renderResultsFunc: (iso2s) => {
+          iso2s.forEach((iso2) => {
+            const country = lastFiltered.get(iso2 as any as string);
+            const emoji = getCountryEmoji(country.iso2);
+            const title = document.createDocumentFragment();
+            const emojiContainer = document.createElement('span');
+            emojiContainer.classList.add('selector-countries-emoji');
+            emojiContainer.append(wrapEmojiText(emoji))
+            title.append(emojiContainer, ' ', i18n(country.default_name as any));
+            const row = new Row({
+              title,
+              clickable: true,
+              havePadding: true
             });
-          },
-          placeholder: 'Search',
-          onSelect: (iso2s) => {
-            setCountries(iso2s.map(({peerId}) => peerId) as any as string[]);
-          },
-          multiSelect: true,
-          getMoreCustom: async(q) => {
-            const filtered = filterCountries(q, true);
-            lastFiltered = new Map();
-            return {
-              result: filtered.map((country) => {
-                lastFiltered.set(country.iso2, country);
-                return country.iso2;
-              }) as any,
-              isEnd: true
-            };
-          },
-          titleLangKey: 'BoostingSelectCountry',
-          checkboxSide: 'left',
-          noPlaceholder: true
-        }
-      );
+
+            row.container.append(popup.selector.checkbox(popup.selector.selected.has(iso2)));
+            row.container.dataset.peerId = '' + iso2;
+            popup.selector.list.append(row.container);
+          });
+        },
+        placeholder: 'Search',
+        onSelect: (iso2s) => {
+          setCountries(iso2s.map(({peerId}) => peerId) as any as string[]);
+        },
+        multiSelect: true,
+        getMoreCustom: async(q) => {
+          const filtered = filterCountries(q, true);
+          lastFiltered = new Map();
+          return {
+            result: filtered.map((country) => {
+              lastFiltered.set(country.iso2, country);
+              return country.iso2;
+            }) as any,
+            isEnd: true
+          };
+        },
+        titleLangKey: 'BoostingSelectCountry',
+        checkboxSide: 'left',
+        noPlaceholder: true
+      });
 
       const _add = popup.selector.add.bind(popup.selector);
       popup.selector.add = ({key, scroll}) => {

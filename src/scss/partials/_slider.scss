@@ -110,7 +110,7 @@
         z-index: 1;
 
         &.animate {
-          transition: transform var(--tabs-transition);
+          transition: transform var(--tabs-transition), width var(--tabs-transition);
         }
       }
 

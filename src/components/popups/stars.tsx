@@ -34,7 +34,7 @@ import currencyStarIcon from '@components/currencyStarIcon';
 import {wrapChatInviteAvatar, wrapChatInviteTitle} from '@components/popups/joinChatInvite';
 import tsNow from '@helpers/tsNow';
 import Button from '@components/buttonTsx';
-import PopupPickUser from '@components/popups/pickUser';
+import showPickUserPopup, {showContactPickerPopup} from '@components/popups/pickUser';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import rootScope from '@lib/rootScope';
 import appImManager from '@lib/appImManager';
@@ -181,7 +181,7 @@ export function getExamplesAnchor(hide: (callback: () => void) => void) {
     loading = true;
     const {userIds: botIds} = await popularAppBotsPromise;
     loading = false;
-    PopupElement.createPopup(PopupPickUser, {
+    showPickUserPopup({
       onSelect: ([obj]) => {
         hide(() => {
           appImManager.setInnerPeer(obj);
@@ -789,7 +789,7 @@ export default class PopupStars extends PopupElement {
               text="TelegramStarsGift"
               onClick={async() => {
                 this.hide();
-                const peerId = await PopupPickUser.createContactPicker();
+                const peerId = await showContactPickerPopup();
                 PopupElement.createPopup(PopupStars, {
                   giftPeerId: peerId,
                   onTopup: async(stars) => {

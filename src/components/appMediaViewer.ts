@@ -25,7 +25,7 @@ import {MediaSearchContext} from '@components/appMediaPlaybackController';
 import AppMediaViewerBase, {MEDIA_VIEWER_CLASSNAME} from '@components/appMediaViewerBase';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import PopupDeleteMessages from '@components/popups/deleteMessages';
-import PopupForward from '@components/popups/forward';
+import showForwardPopup from '@components/popups/forward';
 import Scrollable from '@components/scrollable';
 import appSidebarRight from '@components/sidebarRight';
 import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMedia';
@@ -239,7 +239,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     const target = this.target;
     if(target.mid) {
       // appSidebarRight.forwardTab.open([target.mid]);
-      PopupElement.createPopup(PopupForward, {
+      showForwardPopup({
         [target.peerId]: [target.mid]
       }, () => {
         return this.close();

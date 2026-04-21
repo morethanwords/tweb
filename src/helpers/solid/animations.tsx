@@ -2,6 +2,7 @@ import {JSX} from 'solid-js';
 import {Dynamic} from 'solid-js/web';
 import {AnimationList} from '@helpers/solid/animationList';
 import {getTransition} from '@config/transitions';
+import classNames from '@helpers/string/classNames';
 
 type AnimationType = 'cross-fade' | 'grow-width' | 'grow-height';
 
@@ -22,14 +23,15 @@ const ANIMATIONS: {[key in AnimationType]: Keyframe[] | ((element: Element) => K
 export function SimpleAnimation(props: Pick<
   Parameters<typeof AnimationList>[0], 'children' | 'keyframes' | 'mode' | 'appear'
 > & {
-  noItemClass?: boolean
+  noItemClass?: boolean,
+  itemClass?: string
 }) {
   return (
     <AnimationList
       animationOptions={{duration: 200, easing: getTransition('standard').easing}}
       keyframes={props.keyframes}
       mode={props.mode || 'replacement'}
-      itemClassName={!props.noItemClass && 'animated-item'}
+      itemClass={classNames(!props.noItemClass && 'animated-item', props.itemClass)}
       appear={props.appear}
     >
       {props.children}
@@ -46,7 +48,8 @@ export default function Animated(props: {
   type: AnimationType,
   mode?: Parameters<typeof AnimationList>[0]['mode'],
   appear?: boolean,
-  noItemClass?: boolean
+  noItemClass?: boolean,
+  itemClass?: string
 }) {
   return (
     <Dynamic
@@ -55,6 +58,7 @@ export default function Animated(props: {
       mode={props.mode}
       appear={props.appear}
       noItemClass={props.noItemClass}
+      itemClass={props.itemClass}
     >
       {props.children}
     </Dynamic>

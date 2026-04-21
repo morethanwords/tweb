@@ -18,7 +18,7 @@ import rootScope from '@lib/rootScope';
 import AppSelectPeers, {SelectSearchPeerType} from '@components/appSelectPeers';
 import Chat from '@components/chat/chat';
 import confirmationPopup from '@components/confirmationPopup';
-import PopupPickUser from '@components/popups/pickUser';
+import {showPickUser3Popup, showPickUser2Popup} from '@components/popups/pickUser';
 import {toast, toastNew} from '@components/toast';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import wrapCustomEmoji from '@components/wrappers/customEmoji';
@@ -109,7 +109,7 @@ export default function wrapKeyboardButton({
             types = button.peer_types.map((type) => map[type._]);
           }
 
-          return PopupPickUser.createPicker(types, ['send_inline']);
+          return showPickUser3Popup(types, ['send_inline']);
         });
 
         promise.then(async(chosenPeerId) => {
@@ -283,7 +283,7 @@ export default function wrapKeyboardButton({
           };
         }
 
-        const requestedPeerIds = await PopupPickUser.createPicker2({
+        const requestedPeerIds = await showPickUser2Popup({
           peerType: _peerType,
           filterPeerTypeBy,
           multiSelect: true,

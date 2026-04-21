@@ -12,14 +12,15 @@ export function AnimationList(props: {
   animationOptions: KeyframeAnimationOptions,
   keyframes: Keyframe[] | ((element: Element, removed: boolean) => Keyframe[]),
   mode: 'replacement' | 'add-remove'/*  | 'add' */ | 'remove',
-  itemClassName?: string,
+  itemClass?: string,
   appear?: boolean
 }) {
   const children = resolveElements(() => props.children).toArray;
 
-  const addClassName = props.itemClassName ? (added: Element[]) => {
+  const itemClassSplitted = props.itemClass?.split(' ');
+  const addClassName = itemClassSplitted?.length ? (added: Element[]) => {
     added.forEach((element) => {
-      element.classList.add(props.itemClassName);
+      element.classList.add(...itemClassSplitted);
     });
   } : undefined;
 

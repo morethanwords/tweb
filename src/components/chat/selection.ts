@@ -13,7 +13,7 @@ import Button from '@components/button';
 import ButtonIcon from '@components/buttonIcon';
 import CheckboxField from '@components/checkboxField';
 import PopupDeleteMessages from '@components/popups/deleteMessages';
-import PopupForward from '@components/popups/forward';
+import showForwardPopup from '@components/popups/forward';
 import SetTransition from '@components/singleTransition';
 import ListenerSetter from '@helpers/listenerSetter';
 import PopupSendNow from '@components/popups/sendNow';
@@ -716,7 +716,7 @@ export class SearchSelection extends AppSelection {
             obj[fromPeerId] = Array.from(mids).sort((a, b) => a - b);
           }
 
-          PopupElement.createPopup(PopupForward, obj, () => {
+          showForwardPopup(obj, () => {
             this.cancelSelection();
           });
         }, attachClickOptions);
@@ -1019,7 +1019,7 @@ export default class ChatSelection extends AppSelection {
               obj[fromPeerId] = Array.from(mids).sort((a, b) => a - b);
             }
 
-            PopupElement.createPopup(PopupForward, obj, () => {
+            showForwardPopup(obj, () => {
               this.cancelSelection();
             });
           }, attachClickOptions);

@@ -13,12 +13,13 @@
   --popup-width: 420px;
   --popup-height: 40.625rem;
 
-  // #{$parent} {
-  //   &-body {
-  //     padding-inline: var(--section-padding-inline);
-  //     padding-bottom: var(--section-padding-bottom);
-  //   }
-  // }
+  &-footer-item {
+    position: absolute !important;
+    inset-inline: var(--popup-footer-padding);
+    bottom: var(--popup-footer-padding);
+    width: auto;
+    margin: 0;
+  }
 
   &-auto-height {
     height: auto !important;
@@ -34,6 +35,11 @@
       &-gradient-container {
         z-index: 3;
       }
+    }
+
+    &-height-container {
+      padding-bottom: 4rem;
+      flex-shrink: 0;
     }
 
     &.active {
@@ -90,5 +96,9 @@
         inset-inline: 0;
       }
     }
+  }
+
+  .simple-message-input-container {
+    box-shadow: 0px -1px 4px 1px var(--section-box-shadow-color);
   }
 }

@@ -6,12 +6,16 @@ import ListenerSetter from '@helpers/listenerSetter';
 import throttle from '@helpers/schedulers/throttle';
 import {LangPackKey} from '@lib/langPack';
 import {EmoticonsDropdown} from '@components/emoticonsDropdown';
-import {Accessor, createEffect, JSX, onCleanup} from 'solid-js';
+import {Accessor, createEffect, JSX, onCleanup, Ref, Show, untrack} from 'solid-js';
+import {Portal} from 'solid-js/web';
 import cloneDOMRect from '@helpers/dom/cloneDOMRect';
 import type {AnimationItemGroup} from '@components/animationIntersector';
-import replaceContent from '@helpers/dom/replaceContent';
-import Icon from '@components/icon';
+import {IconTsx} from '@components/iconTsx';
 import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
+import Button from '@components/buttonTsx';
+import Animated from '@helpers/solid/animations';
+import {getTransition} from '@config/transitions';
+import liteMode from '@helpers/liteMode';
 
 type InputFieldMessageProps = {
   placeholder?: LangPackKey,
@@ -21,11 +25,11 @@ type InputFieldMessageProps = {
   animationGroup?: AnimationItemGroup,
   listenerSetter?: ListenerSetter,
   onScroll?: () => void,
-  onInput?: (hasValue: boolean) => void,
+  onInput?: (hasValue: boolean, length: number) => void,
   draft?: Parameters<InputFieldAnimated['setValueSilently']>[0],
   ref?: (inputField: InputFieldAnimated) => void,
-  children?: JSX.Element,
   btnConfirm?: HTMLElement,
+  btnProps?: Parameters<typeof Button>[0],
   stars?: Accessor<number>
 };
 
@@ -38,34 +42,80 @@ const InputFieldMessage = (props: InputFieldMessageProps) => {
   });
 
   const additionalClass = 'simple-message-input';
-  if(props.btnConfirm) {
+  let btnConfirm = untrack(() => props.btnConfirm);
+
+  {
     const _additionalClass = additionalClass + '-confirm';
-    props.btnConfirm.classList.add(_additionalClass);
+    const contentClass = _additionalClass + '-content';
+    let contentWrapper: HTMLDivElement;
+    const inner = () => (
+      <Animated
+        type="cross-fade"
+        itemClass={contentClass + '-item'}
+        noItemClass
+      >
+        <Show
+          when={props.stars?.() ?? 0}
+          fallback={<IconTsx icon="logo" class={_additionalClass + '-icon'} />}
+        >
+          <span class={_additionalClass + '-inner'}>
+            <IconTsx icon="star" class={_additionalClass + '-inner-star'} />
+            {numberThousandSplitterForStars(props.stars?.() ?? 0) + ''}
+          </span>
+        </Show>
+      </Animated>
+    );
 
-    const updateConfirmBtnContent = (stars: number) => {
-      if(!stars) {
-        replaceContent(
-          props.btnConfirm,
-          Icon('logo', _additionalClass + '-icon')
-        );
-        return;
-      }
+    if(btnConfirm) {
+      btnConfirm.classList.add(_additionalClass);
 
-      const span = document.createElement('span');
-      span.classList.add(_additionalClass + '-inner');
-      span.append(
-        Icon('star', _additionalClass + '-inner-star'),
-        numberThousandSplitterForStars(stars) + ''
-      );
+      <Portal
+        mount={btnConfirm}
+        ref={(el) => {
+          contentWrapper = el;
+          el.classList.add(contentClass);
+        }}
+      >
+        {inner()}
+      </Portal>;
+    } else {
+      <Button
+        {...(props.btnProps || {})}
+        ref={(ref) => {
+          btnConfirm = ref;
+          (props.btnProps?.ref as any)(ref);
+        }}
+        primaryFilled
+        class={classNames(_additionalClass, props.btnProps.class)}
+        noRipple
+      >
+        <div ref={contentWrapper} class={contentClass}>
+          {inner()}
+        </div>
+      </Button>;
+    }
 
-      replaceContent(
-        props.btnConfirm,
-        span
-      );
-    };
-
+    let prevWidth: number;
     createEffect(() => {
-      updateConfirmBtnContent(props.stars());
+      props.stars?.();
+      queueMicrotask(() => {
+        const last = contentWrapper?.lastElementChild as HTMLElement | null;
+        if(!last?.offsetWidth) return;
+        const style = getComputedStyle(btnConfirm);
+        const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+        const minWidth = parseFloat(style.minWidth) || 0;
+        const currentWidth = Math.max(last.offsetWidth + padding, minWidth);
+        if(prevWidth !== undefined && prevWidth !== currentWidth && liteMode.isAvailable('animations')) {
+          btnConfirm.animate([
+            {width: prevWidth + 'px'},
+            {width: currentWidth + 'px'}
+          ], {
+            duration: 200,
+            easing: getTransition('standard').easing
+          });
+        }
+        prevWidth = currentWidth;
+      });
     });
   }
 
@@ -91,7 +141,8 @@ const InputFieldMessage = (props: InputFieldMessageProps) => {
     if(props.onInput) {
       props.listenerSetter.add(inputField.input)('input', throttle(() => {
         const {value} = getRichValueWithCaret(inputField.input);
-        props.onInput(!!value.trim());
+        const trimmed = value.trim();
+        props.onInput(!!trimmed, trimmed ? value.length : 0);
       }, 120, true));
     }
   }
@@ -132,7 +183,7 @@ const InputFieldMessage = (props: InputFieldMessageProps) => {
         {inputField.placeholder}
         {inputField.inputFake}
       </div>
-      {props.children}
+      {btnConfirm}
     </div>
   );
 };

@@ -22,7 +22,7 @@ import RTMP_STATE from '@lib/calls/rtmpState';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import {ExportedChatInvite} from '@layer';
 import rootScope from '@lib/rootScope';
-import PopupPickUser from '@components/popups/pickUser';
+import {showSharingPickerPopup} from '@components/popups/pickUser';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
 
@@ -89,7 +89,7 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
   }
 
   private onForward = async() => {
-    PopupPickUser.createSharingPicker({
+    showSharingPickerPopup({
       onSelect: async(chosen) => {
         const {peerId, monoforumThreadId} = chosen[0];
         const preparedPaymentResult = await PaidMessagesInterceptor.prepareStarsForPayment({messageCount: 1, peerId});

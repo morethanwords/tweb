@@ -26,7 +26,7 @@ import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import confirmationPopup from '@components/confirmationPopup';
 import PopupElement from '@components/popups';
 import PopupPeer, {PopupPeerOptions} from '@components/popups/peer';
-import PopupPickUser from '@components/popups/pickUser';
+import {showPickUser3Popup} from '@components/popups/pickUser';
 import TelegramWebView from '@components/telegramWebView';
 import wrapAttachBotIcon from '@components/wrappers/attachBotIcon';
 import getPeerTitle from '@components/wrappers/getPeerTitle';
@@ -423,7 +423,7 @@ export default class WebApp {
     const chat = appImManager.chat;
     let peerId = chat.peerId, threadId = chat.threadId;
     if(chat_types?.length) {
-      const chosenPeerId = await PopupPickUser.createPicker(chat_types, ['send_inline']);
+      const chosenPeerId = await showPickUser3Popup(chat_types, ['send_inline']);
       if(peerId !== chosenPeerId) {
         peerId = chosenPeerId;
         threadId = undefined;

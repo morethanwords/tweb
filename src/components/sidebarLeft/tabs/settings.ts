@@ -35,7 +35,7 @@ import useStars from '@stores/stars';
 import PopupStars from '@components/popups/stars';
 import {renderPeerProfile} from '@components/peerProfile';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
-import PopupPickUser from '@components/popups/pickUser';
+import showPickUserPopup from '@components/popups/pickUser';
 import PopupSendGift from '@components/popups/sendGift';
 import {formatNanoton} from '@helpers/paymentsWrapCurrencyAmount';
 import showLogOutPopup from '@components/popups/logOut';
@@ -269,7 +269,7 @@ export default class AppSettingsTab extends SliderSuperTab {
       titleLangKey: 'Chat.Menu.SendGift',
       icon: 'gift',
       clickable: () => {
-        PopupElement.createPopup(PopupPickUser, {
+        showPickUserPopup({
           titleLangKey: 'SendGiftTo',
           placeholder: 'Chat.Menu.SendGift',
           selfPresence: 'SendGiftSelfCaption',

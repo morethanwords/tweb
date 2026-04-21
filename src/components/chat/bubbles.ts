@@ -13,7 +13,7 @@ import {logger} from '@lib/logger';
 import rootScope from '@lib/rootScope';
 import BubbleGroups from '@components/chat/bubbleGroups';
 import PopupDatePicker from '@components/popups/datePicker';
-import PopupForward from '@components/popups/forward';
+import showForwardPopup from '@components/popups/forward';
 import PopupStickers from '@components/popups/stickers';
 import ProgressivePreloader from '@components/preloader';
 import Scrollable, {SliceSides} from '@components/scrollable';
@@ -2925,7 +2925,7 @@ export default class ChatBubbles {
         return;
       } else if(target.classList.contains('forward')) {
         const message = this.chat.getMessage(bubbleFullMid);
-        PopupElement.createPopup(PopupForward, {
+        showForwardPopup({
           [this.peerId]: await this.managers.appMessagesManager.getMidsByMessage(message)
         });
         // appSidebarRight.forwardTab.open([mid]);

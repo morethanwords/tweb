@@ -107,12 +107,15 @@ export async function selectTarget({
       indicator.classList.remove('animate');
 
       const shiftLeft = currentIndicator.parentElement.offsetLeft - indicator.parentElement.offsetLeft;
-      const scaleFactor = currentIndicator.clientWidth / indicator.clientWidth;
-      indicator.style.transform = `translate3d(${shiftLeft}px, 0, 0) scale3d(${scaleFactor}, 1, 1)`;
+      const clientWidth = indicator.clientWidth;
+      const scaleFactor = currentIndicator.clientWidth / clientWidth;
+      indicator.style.transform = `translate3d(${shiftLeft}px, 0, 0)`;
+      indicator.style.width = `${clientWidth * scaleFactor}px`;
 
       fastRaf(() => {
         indicator.classList.add('animate');
         indicator.style.transform = 'none';
+        indicator.style.width = '';
       });
     });
   }

@@ -15,7 +15,7 @@ import opusDecodeController from '@lib/opusDecodeController';
 import {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable, ButtonMenuSync} from '@components/buttonMenu';
 import emoticonsDropdown, {EmoticonsDropdown} from '@components/emoticonsDropdown';
 import PopupCreatePoll from '@components/popups/createPoll';
-import PopupForward from '@components/popups/forward';
+import showForwardPopup from '@components/popups/forward';
 import PopupNewMedia, {getCurrentNewMediaPopup} from '@components/popups/newMedia';
 import {toast, toastNew} from '@components/toast';
 import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageMedia, InputReplyTo, Chat as MTChat, User, ChatFull, Dialog, PhotoSize, Photo, Document} from '@layer';
@@ -115,7 +115,7 @@ import deepEqual from '@helpers/object/deepEqual';
 import {clearMarkdownExecutions, createMarkdownCache, handleMarkdownShortcut, maybeClearUndoHistory, processCurrentFormatting} from '@helpers/dom/markdown';
 import MarkupTooltip from '@components/chat/markupTooltip';
 import PopupPremium from '@components/popups/premium';
-import PopupPickUser from '@components/popups/pickUser';
+import {showReplyPickerPopup} from '@components/popups/pickUser';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {isSavedDialog} from '@appManagers/utils/dialogs/isDialog';
 import getFwdFromName from '@appManagers/utils/messages/getFwdFromName';
@@ -1494,7 +1494,8 @@ export default class ChatInput {
 
   public onAttachClick = async(documents?: boolean, photos?: boolean, videos?: boolean) => {
     if(!this.editMessage && await this.showSlowModeTooltipIfNeeded({
-      element: this.attachMenu
+      element: this.attachMenu,
+      container: this.btnSendContainer.parentElement
     })) {
       return;
     }
@@ -3200,24 +3201,30 @@ export default class ChatInput {
     this.updateSendBtn();
   }
 
-  public async showSlowModeTooltipIfNeeded({
-    container,
+  public static async showSlowModeTooltipIfNeeded({
+    peerId,
+    managers,
     element,
+    container,
     sendingFew,
-    textOverflow
+    textOverflow,
+    emoticonsDropdown: _emoticonsDropdown
   }: {
+    peerId: PeerId,
+    managers: AppManagers,
+    element: HTMLElement,
     container?: HTMLElement,
-    element?: HTMLElement,
     sendingFew?: boolean,
-    textOverflow?: boolean
-  } = {}) {
-    const {peerId} = this.chat;
+    textOverflow?: boolean,
+    emoticonsDropdown?: EmoticonsDropdown
+  }) {
     if(peerId.isUser()) {
       return false;
     }
 
+    _emoticonsDropdown ??= emoticonsDropdown;
     const chatId = peerId.toChatId();
-    const chat = this.chat.peer as MTChat.channel;
+    const chat = await managers.appChatsManager.getChat(chatId) as MTChat.channel;
 
     if(!chat.pFlags.slowmode_enabled) {
       return false;
@@ -3228,36 +3235,51 @@ export default class ChatInput {
       textElement = i18n('SlowmodeSendErrorTooLong');
     } else if(sendingFew) {
       textElement = i18n('SlowmodeSendError');
-    } else if(await this.managers.appMessagesManager.hasOutgoingMessage(peerId)) {
+    } else if(await managers.appMessagesManager.hasOutgoingMessage(peerId)) {
       textElement = i18n('SlowmodeSendError');
     } else {
-      const chatFull = await this.managers.appProfileManager.getChatFull(chatId) as ChatFull.channelFull;
+      const chatFull = await managers.appProfileManager.getChatFull(chatId) as ChatFull.channelFull;
 
       const getLeftDuration = () => Math.max(0, (chatFull.slowmode_next_send_date || 0) - tsNow(true));
       if(!getLeftDuration()) {
         return false;
       }
 
-      const {element, dispose} = slowModeTimer(getLeftDuration);
+      const {element: timerElement, dispose} = slowModeTimer(getLeftDuration);
       onClose = dispose;
-      textElement = i18n('SlowModeHint', [element]);
+      textElement = i18n('SlowModeHint', [timerElement]);
     }
 
-    const {close} = showTooltip({
-      element: element || this.btnSendContainer,
+    showTooltip({
+      element,
       vertical: 'top',
-      container: container || this.btnSendContainer.parentElement,
+      container: container || element.parentElement,
       textElement,
       onClose: () => {
         onClose?.();
-        this.emoticonsDropdown.setIgnoreMouseOut('tooltip', false);
+        _emoticonsDropdown.setIgnoreMouseOut('tooltip', false);
       },
       auto: true
     });
 
-    this.emoticonsDropdown.setIgnoreMouseOut('tooltip', true);
+    _emoticonsDropdown.setIgnoreMouseOut('tooltip', true);
 
     return true;
+  }
+
+  public getDefaultParamsForSlowModeTooltip(): Parameters<typeof ChatInput['showSlowModeTooltipIfNeeded']>[0] {
+    return {
+      element: this.btnSendContainer,
+      peerId: this.chat.peerId,
+      managers: this.managers
+    };
+  }
+
+  public showSlowModeTooltipIfNeeded(options: Partial<Parameters<typeof ChatInput['showSlowModeTooltipIfNeeded']>[0]> = {}) {
+    return ChatInput.showSlowModeTooltipIfNeeded({
+      ...this.getDefaultParamsForSlowModeTooltip(),
+      ...options
+    });
   }
 
   private onBtnSendClick = async(e: Event) => {
@@ -3549,21 +3571,20 @@ export default class ChatInput {
     this.clearHelper();
     this.updateSendBtn();
     let selected = false;
-    const popup = PopupElement.createPopup(
-      PopupForward,
+    showForwardPopup(
       forwarding,
       () => {
         selected = true;
+      },
+      undefined,
+      () => {
+        this.helperWaitingForward = false;
+
+        if(!selected) {
+          helperFunc();
+        }
       }
     );
-
-    popup.addEventListener('close', () => {
-      this.helperWaitingForward = false;
-
-      if(!selected) {
-        helperFunc();
-      }
-    });
   }
 
   private async changeReplyRecipient() {
@@ -3586,7 +3607,7 @@ export default class ChatInput {
   }
 
   public async createReplyPicker(replyTo: ChatInputReplyTo) {
-    const {peerId, threadId, monoforumThreadId} = await PopupPickUser.createReplyPicker({
+    const {peerId, threadId, monoforumThreadId} = await showReplyPickerPopup({
       excludeBotforums: true,
       ...(this.chat.isMonoforum ? {excludeMonoforums: true} : undefined)
     });
@@ -3882,6 +3903,113 @@ export default class ChatInput {
     this.onMessageSent2?.();
   }
 
+  public static async sendMessageWithForward({
+    sendingParams,
+    inputField,
+    chatType,
+    forwarding,
+    sendTextParams = {},
+    forwardParams = {},
+    slowModeParams,
+    paidMessageInterceptor
+  }: {
+    sendingParams: MessageSendingParams,
+    inputField: InputFieldAnimated,
+    chatType?: ChatType,
+    forwarding?: ChatInput['forwarding'],
+    sendTextParams?: Parameters<AppMessagesManager['sendText']>[0],
+    forwardParams?: Pick<Parameters<AppMessagesManager['forwardMessages']>[0], 'dropAuthor' | 'dropCaptions'>,
+    slowModeParams: Pick<Parameters<typeof ChatInput['showSlowModeTooltipIfNeeded']>[0], 'peerId' | 'managers' | 'element'>,
+    paidMessageInterceptor?: PaidMessagesInterceptor
+  }) {
+    const {value, entities} = getRichValueWithCaret(inputField.input, true, false);
+    const trimmedValue = value.trim();
+
+    let messageCount = 0;
+    if(chatType !== ChatType.Scheduled) {
+      if(forwarding) {
+        for(const fromPeerId in forwarding) {
+          messageCount += forwarding[fromPeerId].length;
+        }
+      }
+
+      const config = await rootScope.managers.apiManager.getConfig();
+      const MAX_LENGTH = config.message_length_max;
+      const textOverflow = value.length > MAX_LENGTH;
+
+      messageCount += trimmedValue ?
+        splitStringByLength(value, MAX_LENGTH).length :
+        0;
+
+      if(await this.showSlowModeTooltipIfNeeded({
+        ...slowModeParams,
+        sendingFew: messageCount > 1,
+        textOverflow
+      })) {
+        return false;
+      }
+    }
+
+    let preparedPaymentResult: Awaited<ReturnType<PaidMessagesInterceptor['prepareStarsForPayment']>>;
+    if(messageCount) {
+      const promise = paidMessageInterceptor ?
+        paidMessageInterceptor.prepareStarsForPayment(messageCount) :
+        PaidMessagesInterceptor.prepareStarsForPayment({peerId: sendingParams.peerId, messageCount});
+      preparedPaymentResult = await promise;
+    }
+
+    if(preparedPaymentResult === PAYMENT_REJECTED) return false;
+    sendingParams.confirmedPaymentResult = preparedPaymentResult;
+
+    if(trimmedValue || sendingParams.suggestedPost?.hasMedia) {
+      rootScope.managers.appMessagesManager.sendText({
+        ...sendTextParams,
+        ...sendingParams,
+        text: value,
+        entities
+      });
+    }
+
+    forwarding = copy(forwarding);
+    for(const fromPeerId in forwarding) {
+      const mids = forwarding[fromPeerId];
+      if(mids.length === 1) {
+        const msg = await rootScope.managers.appMessagesManager.getMessageByPeer(
+          fromPeerId.toPeerId(),
+          mids[0]
+        ) as Message.message;
+        if(msg?.pFlags?.fakeForSavedMusic) {
+          const doc = (msg.media as MessageMedia.messageMediaDocument).document as MyDocument;
+          rootScope.managers.appMessagesManager.sendOther({
+            ...sendingParams,
+            inputMedia: {_: 'inputMediaDocument', id: getDocumentInput(doc), pFlags: {}}
+          });
+          rootScope.managers.appMessagesManager.deleteMessageFromHistoryStorage(
+            fromPeerId.toPeerId(),
+            mids[0]
+          );
+          continue;
+        }
+      }
+
+      rootScope.managers.appMessagesManager.forwardMessages({
+        ...forwardParams,
+        ...sendingParams,
+        fromPeerId: fromPeerId.toPeerId(),
+        mids
+      }).catch(async(err: ApiError) => {
+        if(err.type === 'VOICE_MESSAGES_FORBIDDEN') {
+          toastNew({
+            langPackKey: 'Chat.SendVoice.PrivacyError',
+            langPackArguments: [await wrapPeerTitle({peerId: sendingParams.peerId})]
+          });
+        }
+      });
+    }
+
+    return {value};
+  }
+
   public async sendMessage(force = false) {
     const {editMsgId, chat} = this;
     if(chat.type === ChatType.Scheduled && !force && !editMsgId) {
@@ -3893,73 +4021,30 @@ export default class ChatInput {
     const {noWebPage} = this;
     const sendingParams = this.chat.getMessageSendingParams();
 
-    const {value, entities} = getRichValueWithCaret(this.messageInputField.input, true, false);
-    const trimmedValue = value.trim();
-
-    let messageCount = 0;
-    if(chat.type !== ChatType.Scheduled && !editMsgId) {
-      if(this.forwarding) {
-        for(const fromPeerId in this.forwarding) {
-          messageCount += this.forwarding[fromPeerId].length;
-        }
-      }
-
-      const config = await this.managers.apiManager.getConfig();
-      const MAX_LENGTH = config.message_length_max;
-      const textOverflow = value.length > MAX_LENGTH;
-
-      messageCount += trimmedValue ?
-        splitStringByLength(value, MAX_LENGTH).length :
-        0;
-
-      if(await this.showSlowModeTooltipIfNeeded({
-        sendingFew: messageCount > 1,
-        textOverflow
-      })) {
-        return;
-      }
-    }
-
-    const preparedPaymentResult = !editMsgId && messageCount ?
-      await this.paidMessageInterceptor.prepareStarsForPayment(messageCount) :
-      undefined;
-
-    if(preparedPaymentResult === PAYMENT_REJECTED) return;
-
-    sendingParams.confirmedPaymentResult = preparedPaymentResult;
-
-    if(editMsgId) {
-      const message = this.editMessage;
-      if(trimmedValue || message.media) {
-        this.managers.appMessagesManager.editMessage(
-          message,
-          value,
-          {
-            entities,
-            noWebPage,
-            webPage: this.getWebPagePromise ? undefined : this.willSendWebPage,
-            webPageOptions: this.webPageOptions,
-            invertMedia: this.willSendWebPage ? this.invertMedia : this.editMessage?.pFlags?.invert_media
-          }
-        );
-
-        this.onMessageSent();
-      } else {
-        PopupElement.createPopup(PopupDeleteMessages, peerId, [editMsgId], chat.type);
-
-        return;
-      }
-    } else if(trimmedValue || this.suggestedPost?.hasMedia) {
-      this.managers.appMessagesManager.sendText({
-        ...sendingParams,
-        text: value,
-        entities,
-        noWebPage,
-        webPage: this.getWebPagePromise ? undefined : this.willSendWebPage,
-        webPageOptions: this.webPageOptions,
-        invertMedia: this.willSendWebPage ? this.invertMedia : undefined,
-        clearDraft: true
+    if(!editMsgId) {
+      const result = await ChatInput.sendMessageWithForward({
+        inputField: this.messageInputField,
+        sendingParams,
+        chatType: chat.type,
+        forwarding: this.forwarding,
+        forwardParams: this.forwarding ? {
+          dropAuthor: this.forwardElements && this.forwardElements.hideSender.checkboxField.checked,
+          dropCaptions: this.isDroppingCaptions()
+        } : undefined,
+        sendTextParams: {
+          noWebPage,
+          webPage: this.getWebPagePromise ? undefined : this.willSendWebPage,
+          webPageOptions: this.webPageOptions,
+          invertMedia: this.willSendWebPage ? this.invertMedia : undefined,
+          clearDraft: true
+        },
+        slowModeParams: this.getDefaultParamsForSlowModeTooltip(),
+        paidMessageInterceptor: this.paidMessageInterceptor
       });
+
+      if(!result) {
+        return;
+      }
 
       if(PEER_EXCEPTIONS.has(this.chat.type)) {
         this.onMessageSent(true);
@@ -3968,49 +4053,35 @@ export default class ChatInput {
       }
       if(this.suggestedPost) this.clearHelper();
       // this.onMessageSent();
-    }
 
-    // * wait for sendText set messageId for invokeAfterMsg
-    if(this.forwarding) {
-      const forwarding = copy(this.forwarding);
-      // setTimeout(() => {
-      for(const fromPeerId in forwarding) {
-        const mids = forwarding[fromPeerId];
-        if(mids.length === 1) {
-          const msg = await this.managers.appMessagesManager.getMessageByPeer(fromPeerId.toPeerId(), mids[0]) as Message.message;
-          if(msg?.pFlags?.fakeForSavedMusic) {
-            const doc = (msg.media as MessageMedia.messageMediaDocument).document as MyDocument;
-            this.managers.appMessagesManager.sendOther({
-              ...sendingParams,
-              inputMedia: {_: 'inputMediaDocument', id: getDocumentInput(doc), pFlags: {}}
-            });
-            this.managers.appMessagesManager.deleteMessageFromHistoryStorage(fromPeerId.toPeerId(), mids[0]);
-            continue;
-          }
-        }
-        this.managers.appMessagesManager.forwardMessages({
-          ...sendingParams,
-          fromPeerId: fromPeerId.toPeerId(),
-          mids,
-          dropAuthor: this.forwardElements && this.forwardElements.hideSender.checkboxField.checked,
-          dropCaptions: this.isDroppingCaptions()
-        }).catch(async(err: ApiError) => {
-          if(err.type === 'VOICE_MESSAGES_FORBIDDEN') {
-            toastNew({
-              langPackKey: 'Chat.SendVoice.PrivacyError',
-              langPackArguments: [await wrapPeerTitle({peerId})]
-            });
-          }
-        });
-      }
-
-      if(!value) {
+      if(!result.value) {
         this.onMessageSent();
       }
-      // }, 0);
+
+      return;
     }
 
-    // this.onMessageSent();
+    const {value, entities} = getRichValueWithCaret(this.messageInputField.input, true, false);
+    const trimmedValue = value.trim();
+    const message = this.editMessage;
+    if(trimmedValue || message.media) {
+      this.managers.appMessagesManager.editMessage(
+        message,
+        value,
+        {
+          entities,
+          noWebPage,
+          webPage: this.getWebPagePromise ? undefined : this.willSendWebPage,
+          webPageOptions: this.webPageOptions,
+          invertMedia: this.willSendWebPage ? this.invertMedia : this.editMessage?.pFlags?.invert_media
+        }
+      );
+
+      this.onMessageSent();
+    } else {
+      PopupElement.createPopup(PopupDeleteMessages, peerId, [editMsgId], chat.type);
+      return;
+    }
   }
 
 
@@ -4051,7 +4122,12 @@ export default class ChatInput {
       return false;
     }
 
-    if(await this.showSlowModeTooltipIfNeeded({element: target})) {
+    if(await this.showSlowModeTooltipIfNeeded({
+      peerId: this.chat.peerId,
+      managers: this.managers,
+      element: target,
+      container: this.btnSendContainer.parentElement
+    })) {
       return false;
     }
 

@@ -12,7 +12,7 @@ import {i18n} from '@lib/langPack';
 import AppSelectPeers from '@components/appSelectPeers';
 import ButtonCorner from '@components/buttonCorner';
 import PopupElement from '@components/popups';
-import PopupPickUser from '@components/popups/pickUser';
+import showPickUserPopup from '@components/popups/pickUser';
 import SettingSection from '@components/settingSection';
 import {SliderSuperTabEventable} from '@components/sliderTab';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
@@ -33,19 +33,16 @@ export default class AppRemovedUsersTab extends SliderSuperTabEventable {
     if(canChangePermissions) this.content.append(this.addBtn);
 
     attachClickEvent(this.addBtn, () => {
-      const popup = PopupElement.createPopup(
-        PopupPickUser,
-        {
-          titleLangKey: 'RemovedUsers',
-          peerType: ['channelParticipants'],
-          peerId: chatId.toPeerId(true),
-          onSelect: (chosen) => {
-            const participant = popup.selector.participants.get(chosen[0].peerId);
-            this.managers.appChatsManager.kickFromChat(chatId, participant);
-          },
-          placeholder: 'SearchPlaceholder'
-        }
-      );
+      const popup = showPickUserPopup({
+        titleLangKey: 'RemovedUsers',
+        peerType: ['channelParticipants'],
+        peerId: chatId.toPeerId(true),
+        onSelect: (chosen) => {
+          const participant = popup.selector.participants.get(chosen[0].peerId);
+          this.managers.appChatsManager.kickFromChat(chatId, participant);
+        },
+        placeholder: 'SearchPlaceholder'
+      });
     }, {listenerSetter: this.listenerSetter});
 
     const {selector, loadPromise} = createSelectorForParticipants({

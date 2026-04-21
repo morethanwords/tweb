@@ -2,7 +2,7 @@ import type {MyStarGift} from '@appManagers/appGiftsManager';
 import deferredPromise from '@helpers/cancellablePromise';
 import rootScope from '@lib/rootScope';
 import PopupPayment from '@components/popups/payment';
-import PopupPickUser from '@components/popups/pickUser';
+import showPickUserPopup from '@components/popups/pickUser';
 import confirmationPopup from '@components/confirmationPopup';
 import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
 import {MessageAction, StarGift} from '@layer';
@@ -289,13 +289,18 @@ export default function transferStarGift(gift: MyStarGift, toPeerId?: PeerId): P
 
   const isOwnedByChannel = gift.ownerId && gift.ownerId.isAnyChat();
 
-  const popup = PopupElementOld.createPopup(PopupPickUser, {
+  const popup = showPickUserPopup({
     placeholder: 'StarGiftTransferTo',
     onSelect: ([{peerId}]) => handleSelection(peerId),
     exceptSelf: !isOwnedByChannel,
     selfPresence: 'StarGiftTransferToMyself',
     filterPeerTypeBy: ['isRegularUser', 'isBroadcast'],
-    titleLangKey: 'StarGiftTransferTo'
+    titleLangKey: 'StarGiftTransferTo',
+    onClose: () => {
+      if(!peerSelectorResolved) {
+        deferred.resolve(false);
+      }
+    }
   });
 
   if(saved.can_export_at !== undefined && saved.can_export_at < now) {
@@ -309,12 +314,6 @@ export default function transferStarGift(gift: MyStarGift, toPeerId?: PeerId): P
     });
     popup.selector.list.before(fragmentRow.container);
   }
-
-  popup.addEventListener('close', () => {
-    if(!peerSelectorResolved) {
-      deferred.resolve(false);
-    }
-  }, {once: true});
 
   return deferred;
 }

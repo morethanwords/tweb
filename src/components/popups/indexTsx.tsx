@@ -4,12 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {createContext, useContext, createSignal, onCleanup, JSX, Show, children, createRoot, Accessor, createEffect, untrack, on} from 'solid-js';
+import {createContext, useContext, createSignal, onCleanup, JSX, Show, createRoot, Accessor, createEffect, untrack, on} from 'solid-js';
 import {createStore} from 'solid-js/store';
 import {Portal} from 'solid-js/web';
 import classNames from '@helpers/string/classNames';
 import {IconTsx} from '@components/iconTsx';
-import RippleElement from '@components/rippleElement';
 import {FormatterArguments, i18n, LangPackKey} from '@lib/langPack';
 import {AppManagers} from '@lib/managers';
 import overlayCounter from '@helpers/overlayCounter';
@@ -23,6 +22,10 @@ import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import MarkupTooltip from '@components/chat/markupTooltip';
 import Button from '@components/buttonTsx';
 import {doubleRaf} from '@helpers/schedulers';
+import Scrollable, {ScrollableContextValue} from '@components/scrollable2';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import {simulateClickEvent} from '@helpers/dom/clickEvent';
+import isSendShortcutPressed from '@helpers/dom/isSendShortcutPressed';
 
 export type PopupButton = {
   text?: HTMLElement | DocumentFragment | Text,
@@ -53,12 +56,13 @@ export type PopupOptions = Partial<{
   buttons: Array<PopupButton>,
   title: boolean | LangPackKey | DocumentFragment | HTMLElement,
   floatingHeader: boolean,
-  withFooterConfirm: boolean
+  withFooterConfirm: boolean,
+  btnConfirmOnEnter?: Accessor<HTMLElement>
 }>;
 
 type PopupKind = 'header' | 'title' | 'body' | 'footer' | 'buttons' | 'closeButton' | 'confirmButton';
 
-type PopupContextValue = {
+export type PopupContextValue = {
   register: (kind: PopupKind, element: JSX.Element) => JSX.Element,
   registerButton: (props: PopupButton, element: JSX.Element) => JSX.Element,
   store: {[key in PopupKind]?: JSX.Element},
@@ -73,10 +77,11 @@ type PopupContextValue = {
   lateMiddlewareHelper: MiddlewareHelper,
   navigationItem: NavigationItem | undefined,
   // scrollable: Scrollable | undefined,
+  scrollableRef?: ScrollableContextValue,
   withoutOverlay: boolean,
   night: boolean,
   confirmShortcutIsSendShortcut: boolean,
-  // btnConfirmOnEnter: HTMLElement | undefined,
+  btnConfirmOnEnter: HTMLElement | undefined,
   isConfirmationNeededOnClose: PopupOptions['isConfirmationNeededOnClose'],
   closable: boolean,
   withConfirm: LangPackKey | boolean,
@@ -90,7 +95,7 @@ type PopupControllerContextValue = {
   dispose: () => void
 };
 
-const PopupContext = createContext<PopupContextValue>();
+export const PopupContext = createContext<PopupContextValue>();
 const PopupControllerContext = createContext<PopupControllerContextValue>();
 
 const DEFAULT_APPEND_TO = document.body;
@@ -165,27 +170,27 @@ const PopupElement = (props: {
     }
 
     // Add keyboard event listener
-    // setTimeout(() => {
-    //   const element = popupElement();
-    //   if(!element || !element.classList.contains('active')) return;
+    setTimeout(() => {
+      const element = popupElement();
+      if(!element || !element.classList.contains('active')) return;
 
-    //   const handleKeydown = (e: KeyboardEvent) => {
-    //     const btnConfirm = btnConfirmOnEnter();
-    //     if(!btnConfirm ||
-    //        (btnConfirm as HTMLButtonElement).disabled ||
-    //        PopupElementTsx.POPUPS[PopupElementTsx.POPUPS.length - 1] !== value) {
-    //       return;
-    //     }
+      const handleKeydown = (e: KeyboardEvent) => {
+        const btnConfirm = value.btnConfirmOnEnter;
+        if(!btnConfirm ||
+           (btnConfirm as HTMLButtonElement).disabled ||
+           PopupElement.POPUPS[PopupElement.POPUPS.length - 1] !== value) {
+          return;
+        }
 
-    //     if(confirmShortcutIsSendShortcut ? isSendShortcutPressed(e) : e.key === 'Enter') {
-    //       simulateClickEvent(btnConfirm);
-    //       cancelEvent(e);
-    //     }
-    //   };
+        if(confirmShortcutIsSendShortcut ? isSendShortcutPressed(e) : e.key === 'Enter') {
+          simulateClickEvent(btnConfirm);
+          cancelEvent(e);
+        }
+      };
 
-    //   document.body.addEventListener('keydown', handleKeydown);
-    //   onCleanup(() => document.body.removeEventListener('keydown', handleKeydown));
-    // }, 0);
+      document.body.addEventListener('keydown', handleKeydown);
+      middlewareHelper.get().onClean(() => document.body.removeEventListener('keydown', handleKeydown));
+    }, 0);
   };
 
   const hide = () => {
@@ -261,7 +266,7 @@ const PopupElement = (props: {
     withoutOverlay,
     night,
     confirmShortcutIsSendShortcut,
-    // get btnConfirmOnEnter() { return btnConfirmOnEnter(); },
+    get btnConfirmOnEnter() { return props.btnConfirmOnEnter(); },
     isConfirmationNeededOnClose,
     closable: props.closable || false,
     withConfirm: props.withConfirm || false,
@@ -424,12 +429,33 @@ PopupElement.Body = (props: {
   ));
 };
 
+PopupElement.Scrollable = (props: Parameters<typeof Scrollable>[0]) => {
+  const context = useContext(PopupContext);
+  return context.register('body', (
+    <Scrollable
+      contextRef={(ref) => {
+        context.scrollableRef = ref;
+        props.contextRef?.(ref);
+      }}
+      {...props}
+    />
+  ));
+};
+
 PopupElement.Footer = (props: {
   children: JSX.Element,
-  class?: string
+  class?: string,
+  floating?: boolean
 }) => {
   return useContext(PopupContext).register('footer', (
-    <div class={classNames('popup-footer popup-footer-abitlarger', props.class)}>
+    <div
+      class={classNames(
+        'popup-footer popup-footer-abitlarger',
+        props.floating && 'popup-footer-floating',
+        props.class
+      )}
+    >
+      {/* {props.floating && <Tabs.MenuGradient className="popup-footer-gradient" color="background" />} */}
       {props.children}
     </div>
   ));

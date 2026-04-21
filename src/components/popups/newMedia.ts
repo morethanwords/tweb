@@ -54,7 +54,7 @@ import wrapDraft from '@components/wrappers/draft';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import {ChatType} from '@components/chat/chatType';
 import pause from '@helpers/schedulers/pause';
-import {Accessor, createEffect, createMemo, createRoot, createSignal, Setter} from 'solid-js';
+import {Accessor, createMemo, createRoot, createSignal, Setter} from 'solid-js';
 import SelectedEffect from '@components/chat/selectedEffect';
 import PopupMakePaid from '@components/popups/makePaid';
 import paymentsWrapCurrencyAmount from '@helpers/paymentsWrapCurrencyAmount';
@@ -63,7 +63,6 @@ import {MediaEditorFinalResult, MediaEditorFinalResultPayload} from '@components
 import RenderProgressCircle from '@components/mediaEditor/renderProgressCircle';
 import {delay} from '@components/mediaEditor/utils';
 import {IS_MOBILE} from '@environment/userAgent';
-import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
 import {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
 import ListenerSetter from '@helpers/listenerSetter';
 import canVideoBeAnimated from '@appManagers/utils/docs/canVideoBeAnimated';
@@ -357,7 +356,6 @@ export default class PopupNewMedia extends PopupElement {
         ref: (inputField) => {
           this.messageInputField = inputField;
         },
-        children: this.btnConfirm,
         btnConfirm: this.btnConfirm
       }) as HTMLElement;
     });
@@ -856,9 +854,7 @@ export default class PopupNewMedia extends PopupElement {
     const preparedPaymentResult = !this.chat.input.editMsgId ?
       await this.chat.input.paidMessageInterceptor.prepareStarsForPayment(this.starsState.totalMessages()) :
       undefined;
-
     if(preparedPaymentResult === PAYMENT_REJECTED) return;
-
     sendingParams.confirmedPaymentResult = preparedPaymentResult;
 
     let effect = this.effect?.();

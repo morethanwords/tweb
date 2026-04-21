@@ -89,7 +89,7 @@ import {MiddleEllipsisElement} from '@components/middleEllipsis';
 import parseUriParams from '@helpers/string/parseUriParams';
 import getMessageThreadId from '@appManagers/utils/messages/getMessageThreadId';
 import findUpTag from '@helpers/dom/findUpTag';
-import PopupForward from '@components/popups/forward';
+import showForwardPopup from '@components/popups/forward';
 import AppBackgroundTab from '@components/sidebarLeft/tabs/background';
 import partition from '@helpers/array/partition';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
@@ -798,7 +798,7 @@ export class AppImManager extends EventListenerBase<{
     const share = apiManagerProxy.share;
     if(share) {
       apiManagerProxy.share = undefined;
-      PopupElement.createPopup(PopupForward, undefined, async(peerId, threadId) => {
+      showForwardPopup(undefined, async(peerId, threadId) => {
         await this.setPeer({peerId, threadId});
         if(share.files?.length) {
           const foundMedia = share.files.some((file) => MEDIA_MIME_TYPES_SUPPORTED.has(file.type));

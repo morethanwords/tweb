@@ -21,7 +21,7 @@ import PopupPremium from '@components/popups/premium';
 import appImManager from '@lib/appImManager';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import PopupElement from '@components/popups';
-import PopupPickUser from '@components/popups/pickUser';
+import showPickUserPopup from '@components/popups/pickUser';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {ButtonIconTsx} from '@components/buttonIconTsx';
 import {IconTsx} from '@components/iconTsx';
@@ -248,7 +248,7 @@ export default function SimilarChannels(props: {
       }
 
       if(premium()) {
-        PopupElement.createPopup(PopupPickUser, {
+        showPickUserPopup({
           onSelect: ([first]) => {
             appImManager.setInnerPeer(first);
           },

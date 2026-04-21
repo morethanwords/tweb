@@ -19,9 +19,7 @@ import InputSearch from '@components/inputSearch';
 import windowSize from '@helpers/windowSize';
 import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
 import filterUnique from '@helpers/array/filterUnique';
-import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import safeAssign from '@helpers/object/safeAssign';
-import findAndSplice from '@helpers/array/findAndSplice';
 import {AppManagers} from '@lib/managers';
 import filterAsync from '@helpers/array/filterAsync';
 import getParticipantPeerId from '@appManagers/utils/chats/getParticipantPeerId';
@@ -49,7 +47,7 @@ import formatNumber from '@helpers/number/formatNumber';
 import namedPromises from '@helpers/namedPromises';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
-import {REAL_FOLDERS} from '@lib/appManagers/constants';
+import {FOLDER_ID_ALL, REAL_FOLDERS} from '@lib/appManagers/constants';
 
 export type SelectSearchPeerType = 'contacts' | 'dialogs' | 'channelParticipants' | 'custom';
 export type FilterPeerTypeByFunc = (peer: ReturnType<AppPeersManager['getPeer']>) => boolean;
@@ -63,7 +61,7 @@ export default class AppSelectPeers {
     avatarSize: 48
   } */);
   protected oldList: HTMLElement;
-  public scrollable: Scrollable;
+  public scrollable: Scrollable/*  | ScrollableContextValue */;
   public selectorSearch: SelectorSearch;
   public inputSearch: InputSearch;
   public input: HTMLInputElement;
@@ -136,6 +134,8 @@ export default class AppSelectPeers {
   public section: SettingSection;
 
   public participants: Map<PeerId, ChatParticipant | ChannelParticipant> = new Map();
+  public starsAmountByPeer: Map<PeerId, number> = new Map();
+  public onStarsAmountUpdate: () => void;
   private listenerSetter: ListenerSetter;
   public getMoreCustom: (q: string, middleware: () => boolean) => Promise<{result: PeerId[], isEnd: boolean}>;
 
@@ -153,6 +153,8 @@ export default class AppSelectPeers {
   private excludePeerIds: Set<PeerId>;
   public getPeerIdFromKey: (key: string | PeerId) => PeerId;
   public heightContainer: HTMLElement;
+
+  public children: Array<HTMLElement>;
 
   constructor(options: {
     appendTo: AppSelectPeers['appendTo'],
@@ -210,6 +212,7 @@ export default class AppSelectPeers {
     // this.noSearch ??= !this.multiSelect;
     this.excludePeerIds ??= new Set();
     if(this.exceptSelf) this.excludePeerIds.add(rootScope.myId);
+    this.children = [];
 
     this.middlewareHelper = options.middleware.create();
     this.middlewareHelperLoader = this.middlewareHelper.get().create();
@@ -305,6 +308,8 @@ export default class AppSelectPeers {
           return {peerId, userId, requirement, requiredStars: starsAmount, canManageDirectMessages};
         })).then((result) => {
           for(const {peerId, requirement, requiredStars, canManageDirectMessages} of result) {
+            this.starsAmountByPeer.set(peerId.toPeerId(false), +requiredStars || 0);
+
             const element = this.getElementByKey(peerId.toPeerId(false));
             if(!element) {
               continue;
@@ -331,6 +336,8 @@ export default class AppSelectPeers {
               element.append(starsBadge);
             }
           }
+
+          this.onStarsAmountUpdate?.();
         });
       }
     };
@@ -355,14 +362,13 @@ export default class AppSelectPeers {
     section.content.append(this.list);
     this.heightContainer.append(section.container);
 
+    const hadScrollable = !!this.scrollable;
     this.scrollable ||= new Scrollable();
     this.scrollable.container.classList.add('selector-scrollable');
 
     this.container.append(this.scrollable.container);
-    const appendTo = this.scrollable;
-    // const appendTo = this.container;
 
-    appendTo.append(this.heightContainer);
+    this.children.push(this.heightContainer);
 
     if(!this.noSearch) {
       this.selectorSearch = new SelectorSearch({
@@ -382,7 +388,7 @@ export default class AppSelectPeers {
       this.searchSection = this.selectorSearch.section;
       this.inputSearch = this.selectorSearch.inputSearch;
       this.input = this.selectorSearch.input;
-      appendTo.prepend(this.selectorSearch.gradient, this.selectorSearch.section.container);
+      this.children.unshift(this.selectorSearch.gradient, this.selectorSearch.section.container);
     }
 
     attachClickEvent(this.container, async(e) => {
@@ -555,6 +561,10 @@ export default class AppSelectPeers {
         });
       }
     }, 0);
+
+    if(!hadScrollable) {
+      (this.scrollable as Scrollable).append(...this.children);
+    }
   }
 
   public static convertPeerTypes(types: TelegramChoosePeerType[]) {
@@ -612,7 +622,7 @@ export default class AppSelectPeers {
     }
 
     if(this.peerType.includes('dialogs')) {
-      this.folderId = value ? 0 : this.selectedFolderId;
+      this.folderId = (value ? FOLDER_ID_ALL : this.selectedFolderId) ?? FOLDER_ID_ALL;
       this.offsetIndex = 0;
     }
 
@@ -708,7 +718,7 @@ export default class AppSelectPeers {
     if(
       !this.exceptSelf &&
       !this.offsetIndex &&
-      this.folderId === 0 &&
+      this.folderId === FOLDER_ID_ALL &&
       this.peerType.includes('dialogs') &&
       (!this.query || await this.managers.appUsersManager.testSelfSearch(this.query))
     ) {
@@ -760,7 +770,6 @@ export default class AppSelectPeers {
       const newOffsetIndex = getDialogIndex(dialogs[dialogs.length - 1]) || 0;
 
       dialogs = dialogs.slice();
-      findAndSplice(dialogs, (d) => d.peerId === rootScope.myId); // no my account
 
       if(this.chatRightsActions) {
         dialogs = await filterAsync(dialogs, (d) => this.filterByRights(d.peerId));
@@ -871,8 +880,6 @@ export default class AppSelectPeers {
 
         this.cachedContacts = filterUnique(cachedContacts.concat(resultPeerIds));
       } else this.cachedContacts = cachedContacts.slice();
-
-      indexOfAndSplice(this.cachedContacts, rootScope.myId); // no my account
     }
 
     // if(this.cachedContacts.length) {
@@ -938,7 +945,6 @@ export default class AppSelectPeers {
       this.participants.set(peerId, participant);
       return peerId;
     });
-    if(this.exceptSelf) indexOfAndSplice(peerIds, rootScope.myId);
     await this.renderResultsFunc(peerIds);
 
     const count = (chatParticipants as ChannelsChannelParticipants.channelsChannelParticipants).count ?? participants.length;
@@ -971,7 +977,6 @@ export default class AppSelectPeers {
 
     const {result, isEnd} = res;
 
-    if(this.exceptSelf) indexOfAndSplice(result, rootScope.myId);
     await this.renderResultsFunc(result);
 
     if(isEnd) {
@@ -1016,7 +1021,12 @@ export default class AppSelectPeers {
         createRoot((dispose) => {
           middleware.onClean(dispose);
           createEffect(() => {
-            setDescription(i18n('RequestJoin.List.SearchEmpty', [wrapEmojiText(query())]));
+            const query$ = query();
+            setDescription(
+              query$.trim() ?
+                i18n('RequestJoin.List.SearchEmpty', [wrapEmojiText(query$)]) :
+                i18n('Search.EmptyQuery')
+            );
           });
 
           createEffect(() => {

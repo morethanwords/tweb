@@ -37,7 +37,8 @@ export type ScrollableContextValue = {
   getDistanceToEnd: () => number,
   container: HTMLDivElement,
   onSizeChange: () => void,
-  setScrollPositionSilently: (value: number) => void
+  setScrollPositionSilently: (value: number) => void,
+  checkForTriggers: () => void
 };
 
 export const ScrollableContext = createContext<ScrollableContextValue>();
@@ -286,7 +287,8 @@ export default function Scrollable(props: {
       return ref;
     },
     onSizeChange,
-    setScrollPositionSilently
+    setScrollPositionSilently,
+    checkForTriggers
   };
 
   if(props.contextRef) {

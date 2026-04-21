@@ -10,7 +10,7 @@ import PopupSharedFolderInvite from '@components/popups/sharedFolderInvite';
 import PopupJoinChatInvite from '@components/popups/joinChatInvite';
 import PopupPayment from '@components/popups/payment';
 import PopupPeer from '@components/popups/peer';
-import PopupPickUser from '@components/popups/pickUser';
+import {showPickUser3Popup, showSharingPicker2Popup} from '@components/popups/pickUser';
 import PopupStickers from '@components/popups/stickers';
 import {toastNew, hideToast} from '@components/toast';
 import {MOUNT_CLASS_TO} from '@config/debug';
@@ -955,7 +955,7 @@ export class InternalLinkProcessor {
         return attachMenuBot.peer_types.some((peerType) => peerType._ === peerTypePredicate);
       });
 
-      const chosenPeerId = await PopupPickUser.createPicker(filteredTypes);
+      const chosenPeerId = await showPickUser3Popup(filteredTypes);
       await appImManager.setInnerPeer({peerId: chosenPeerId});
     }
 
@@ -1153,7 +1153,7 @@ export class InternalLinkProcessor {
   };
 
   public processShareLink = async(link: InternalLink.InternalLinkShare) => {
-    const {peerId, threadId, monoforumThreadId} = await PopupPickUser.createSharingPicker2();
+    const {peerId, threadId, monoforumThreadId} = await showSharingPicker2Popup();
     appImManager.setInnerPeer({
       peerId,
       threadId,

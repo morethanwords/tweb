@@ -17,7 +17,7 @@ import appImManager, {ChatSetPeerOptions} from '@lib/appImManager';
 import rootScope from '@lib/rootScope';
 import PeerTitle from '@components/peerTitle';
 import cancelEvent from '@helpers/dom/cancelEvent';
-import PopupPickUser from '@components/popups/pickUser';
+import {showSharingPickerPopup} from '@components/popups/pickUser';
 import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
 import toggleDisability from '@helpers/dom/toggleDisability';
 import {toastNew} from '@components/toast';
@@ -217,7 +217,7 @@ export default class PopupGiftLink extends PopupElement {
   }
 
   public static shareGiftLink(url: string, openAfter?: boolean) {
-    PopupPickUser.createSharingPicker({
+    showSharingPickerPopup({
       onSelect: async([{peerId, threadId, monoforumThreadId}]) => {
         const preparedPaymentResult = await PaidMessagesInterceptor.prepareStarsForPayment({messageCount: 1, peerId});
         if(preparedPaymentResult === PAYMENT_REJECTED) throw new Error();
