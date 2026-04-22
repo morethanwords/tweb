@@ -3504,6 +3504,7 @@ const lang = {
   'LiteMode.Key.video.Title': 'Autoplay Videos',
   'LiteMode.Key.stickers.Title': 'Sticker Animations',
   'LiteMode.Key.animations.Title': 'Interface Animations',
+  'LiteMode.Key.blur.Title': 'Blur Effects',
   // 'LiteMode.Key.emoji.Info': 'Loop animated emoji in messages, reactions and statuses.',
   // 'LiteMode.Key.gif.Info': 'Autoplay and loop GIFs in chats and in the keyboard.',
   // 'LiteMode.Key.video.Info': 'Autoplay and loop videos and video messages in chats.',

@@ -67,6 +67,7 @@
 
 .group-permissions-container {
   .range-steps-selector {
+    margin-top: 1.5rem;
     padding-inline: 1.1875rem;
   }
 }
@@ -81,6 +82,11 @@
 
   .profile-content {
     min-height: #{$header-offset};
+  }
+
+  .search-super-content-stories-albums {
+    margin-top: -.375rem;
+    margin-bottom: .625rem;
   }
 
   .sidebar-header .transition {
@@ -225,10 +231,6 @@
     margin-bottom: .5625rem !important;
   }
 
-  .sidebar-left-section {
-    padding: 0 0 .5rem;
-  }
-
   .chatlist-new {
     padding: 0;
   }
@@ -271,11 +273,6 @@
 }
 
 .group-type-container {
-  .sidebar-left-section-caption {
-    font-size: .875rem;
-    margin-top: .8125rem;
-  }
-
   .input-wrapper {
     margin-top: .875rem !important;
   }

@@ -964,7 +964,7 @@ $btn-menu-z-index: 4;
 }
 
 .btn-primary {
-  border-radius: $border-radius-medium;
+  border-radius: $button-border-radius;
   width: 100%;
   text-align: center;
   height: 54px;
@@ -1175,7 +1175,7 @@ $btn-menu-z-index: 4;
   font-size: 1.5rem;
   position: relative;
   border-radius: 50%;
-  backdrop-filter: blur(25px);
+  backdrop-filter: var(--blur-off, blur(25px));
 
   &-container {
     display: flex;

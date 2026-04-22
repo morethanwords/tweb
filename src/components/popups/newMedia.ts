@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {render} from 'solid-js/web';
+import {Portal, render} from 'solid-js/web';
 import {createStore} from 'solid-js/store';
 
 import type Chat from '@components/chat/chat';
@@ -21,6 +21,7 @@ import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import MEDIA_MIME_TYPES_SUPPORTED from '@environment/mediaMimeTypesSupport';
 import getGifDuration from '@helpers/getGifDuration';
+import toHHMMSS from '@helpers/string/toHHMMSS';
 import replaceContent from '@helpers/dom/replaceContent';
 import createVideo from '@helpers/dom/createVideo';
 import prepareAlbum from '@components/prepareAlbum';
@@ -41,6 +42,7 @@ import {DocumentAttribute, DraftMessage, Photo, PhotoSize} from '@layer';
 import {getPreviewBytesFromURL} from '@helpers/bytes/getPreviewURLFromBytes';
 import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
+import Button from '@components/buttonTsx';
 import InputFieldAnimated from '@components/inputFieldAnimated';
 import InputFieldMessage from '@components/inputFieldMessage';
 import IMAGE_MIME_TYPES_SUPPORTED from '@environment/imageMimeTypesSupport';
@@ -342,10 +344,10 @@ export default class PopupNewMedia extends PopupElement {
       }
     }
 
-    const inputContainer = createRoot((dispose) => {
+    createRoot((dispose) => {
       this.lateMiddlewareHelper.onDestroy(dispose);
 
-      return InputFieldMessage({
+      const children = InputFieldMessage({
         maxLength: this.captionLengthMax,
         animationGroup: this.animationGroup,
         listenerSetter: this.listenerSetter,
@@ -357,7 +359,12 @@ export default class PopupNewMedia extends PopupElement {
           this.messageInputField = inputField;
         },
         btnConfirm: this.btnConfirm
-      }) as HTMLElement;
+      });
+
+      Portal({
+        mount: this.container,
+        children
+      });
     });
 
     this.listenerSetter.add(this.scrollable.container)('scroll', this.onScroll);
@@ -365,8 +372,6 @@ export default class PopupNewMedia extends PopupElement {
     if(this.chat.input.editMessage) {
       this.willAttach.invertMedia = this.chat.input.editMessage.pFlags?.invert_media;
     }
-
-    this.container.append(inputContainer);
 
     this.attachFiles();
 
@@ -972,13 +977,21 @@ export default class PopupNewMedia extends PopupElement {
 
     const myself = this;
 
+    function addVideoTime() {
+      if(params.isAnimated || !params.duration) return;
+      const videoTime = document.createElement('span');
+      videoTime.classList.add('video-time');
+      videoTime.textContent = toHHMMSS(params.duration, false);
+      itemDiv.append(videoTime);
+    }
+
     if(editResult) {
       const result = editResult.getResult();
 
       function addGifLabel() {
         if(!params.isAnimated) return;
         const gifLabel = i18n('AttachGif');
-        gifLabel.classList.add('gif-label');
+        gifLabel.classList.add('video-time');
         itemDiv.append(gifLabel);
       }
 
@@ -987,6 +1000,7 @@ export default class PopupNewMedia extends PopupElement {
           await putEditedImage(editResult.preview);
           await putEditedVideo(result);
           addGifLabel();
+          addVideoTime();
         } else {
           await putEditedImage(result.blob, true);
         }
@@ -1107,6 +1121,8 @@ export default class PopupNewMedia extends PopupElement {
         url: await apiManagerProxy.invoke('createObjectURL', thumb.blob),
         ...thumb
       };
+
+      addVideoTime();
     } else {
       const img = new Image();
       itemDiv.append(img);
@@ -1203,7 +1219,7 @@ export default class PopupNewMedia extends PopupElement {
           spoilerToggle = document.createElement('span');
           spoilerToggle.classList.add(itemCls, 'spoiler-toggle');
           if(params.mediaSpoiler) spoilerToggle.dataset.toggled = 'true';
-          spoilerToggle.append(Icon('mediaspoiler'), Icon('mediaspoileroff'));
+          spoilerToggle.append(Icon('mediaspoiler', 'spoiler-on'), Icon('mediaspoileroff', 'spoiler-off'));
           spoilerToggle.addEventListener('click', () => {
             if(spoilerToggle.dataset.disabled) return; // Prevent double clicks
             spoilerToggle.dataset.toggled = spoilerToggle.dataset.toggled === 'true' ? 'false' : 'true'
@@ -1212,15 +1228,7 @@ export default class PopupNewMedia extends PopupElement {
         }
 
         const deleteIcon = Icon('delete', itemCls);
-        deleteIcon.addEventListener('click', () => {
-          const idx = this.files.findIndex((file) => file === params.file);
-          if(idx >= 0) {
-            this.hideActiveActionsMenu();
-            this.files.splice(idx, 1);
-            params.editResult?.creationProgress?.dispose();
-            this.files.length ? this.attachFiles() : this.destroy();
-          }
-        });
+        deleteIcon.addEventListener('click', () => this.removeFile(params));
 
         const resultPromise = params?.editResult?.getResult();
         let cancelBtn: HTMLDivElement;
@@ -1265,6 +1273,15 @@ export default class PopupNewMedia extends PopupElement {
     }
 
     return promise;
+  }
+
+  private removeFile(params: SendFileParams) {
+    const idx = this.files.findIndex((file) => file === params.file);
+    if(idx < 0) return;
+    this.hideActiveActionsMenu();
+    this.files.splice(idx, 1);
+    params.editResult?.creationProgress?.dispose();
+    this.files.length ? this.attachFiles() : this.destroy();
   }
 
   private async hideActiveActionsMenu() {
@@ -1400,6 +1417,20 @@ export default class PopupNewMedia extends PopupElement {
     }
 
     itemDiv.append(docDiv);
+
+    createRoot((dispose) => {
+      params.middlewareHelper.get().onDestroy(dispose);
+      Button.Icon({
+        icon: 'delete',
+        class: 'popup-item-document-delete',
+        noRipple: true,
+        onClick: (e) => {
+          e.stopPropagation();
+          this.removeFile(params);
+        },
+        ref: (ref) => itemDiv.append(ref)
+      });
+    });
   }
 
   private attachFile = (file: File | MyDocument, oldParams?: Partial<SendFileParams>) => {
@@ -1461,7 +1492,7 @@ export default class PopupNewMedia extends PopupElement {
     await Promise.all(loadPromises);
 
     const gifLabel = i18n('AttachGif');
-    gifLabel.classList.add('gif-label');
+    gifLabel.classList.add('video-time');
     itemDiv.append(gifLabel);
 
     return params;
@@ -1688,6 +1719,15 @@ export default class PopupNewMedia extends PopupElement {
           }
         });
       });
+
+      const topLevelItems = mediaContainer.children;
+      for(let i = 1; i < topLevelItems.length; ++i) {
+        const prev = topLevelItems[i - 1];
+        const curr = topLevelItems[i];
+        if(prev.classList.contains('popup-item') && curr.classList.contains('popup-item')) {
+          curr.classList.add('popup-item-stacked');
+        }
+      }
 
       this.setUnlockPlaceholders();
     }).then(() => {

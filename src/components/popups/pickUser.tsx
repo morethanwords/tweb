@@ -40,6 +40,7 @@ import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {Accessor, createSignal, JSX, untrack, useContext} from 'solid-js';
 import fastSmoothScroll from '@helpers/fastSmoothScroll';
 import {AppManagers} from '@lib/managers';
+import {REAL_FOLDERS} from '@lib/appManagers/constants';
 
 type PopupPickUserSelectedItem = {
   peerId: PeerId,
@@ -336,6 +337,8 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
     const lateMiddleware = untrack(() => context.lateMiddlewareHelper).get();
     lateMiddleware.onClean(unobserve);
 
+    const deferred = deferredPromise<void>();
+
     const scrollToStart = (callback: () => void) => {
       let clicked = false;
       const onFinish = () => {
@@ -360,13 +363,14 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
     };
 
     const onTabClick = (target: HTMLElement, id: number) => {
-      selectTarget({
+      return selectTarget({
         target,
         id,
         tabs: menu,
         onClick: async() => {
           const filterId = +(target.dataset.filterId || 0);
-          const available = await rootScope.managers.filtersStorage.isFilterIdAvailable(filterId);
+          const available = REAL_FOLDERS.has(filterId) ||
+            await rootScope.managers.filtersStorage.isFilterIdAvailable(filterId);
           if(!available) {
             showLimitPopup('folders');
             return false;
@@ -394,9 +398,10 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
       menuProps: {
         ref: (ref) => {
           menu = ref;
-          queueMicrotask(() => {
+          queueMicrotask(async() => {
             const first = ref.firstElementChild as HTMLElement;
-            if(first) onTabClick(first, 0);
+            if(first) await onTabClick(first, 0);
+            deferred.resolve();
           });
         },
         onClick: (e) => {
@@ -418,9 +423,11 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
     selector.onSearchChange = (query) => {
       mount.classList.toggle('is-collapsed', !!query);
     };
+
+    return deferred;
   };
 
-  function Inner(): JSX.Element {
+  function Inner() {
     context = useContext(PopupContext);
     managers = untrack(() => context.managers);
     middleware = untrack(() => context.middlewareHelper.get());
@@ -470,7 +477,8 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
       rippleEnabled: false,
       avatarSize: 'abitbigger',
       managers,
-      night
+      night,
+      noInstantLoad: true
     });
     selector.container.classList.add('tabs-tab');
 
@@ -481,6 +489,7 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
     };
     setMultiSelectMode(selector.multiSelect);
 
+    const loadPromises: Promise<any>[] = [];
     if(options.showTopPeers) {
       const {group, promise} = createTopPeersList({
         middleware,
@@ -496,7 +505,7 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
       });
       selector.heightContainer.before(group.container);
 
-      createFolderTabs(group.container);
+      loadPromises.push(createFolderTabs(group.container));
 
       const prevOnSearchChange = selector.onSearchChange;
       selector.onSearchChange = (query) => {
@@ -541,6 +550,10 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
       });
       transition(selector.container);
     }
+
+    Promise.all(loadPromises).then(() => {
+      selector.loadFirst();
+    });
 
     return tabsContainer;
   }

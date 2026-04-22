@@ -17,7 +17,7 @@ $transition: .2s var(--transition-standard-easing);
   // top: 100px;
   // left: calc(50vw - 240px);
   z-index: 4;
-  backdrop-filter: blur(20px);
+  backdrop-filter: var(--blur-off, blur(20px));
   // background-color: rgba(var(--surface-color-rgb), .65);
   background-color: rgba(var(--body-background-color-rgb), .65);
   box-shadow: 0px 0px 16px 0px rgba(0, 0, 0, .15);

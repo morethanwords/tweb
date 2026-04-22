@@ -388,6 +388,7 @@ html.is-ios {
 html.no-backdrop {
   --menu-background-color: var(--surface-color);
   --menu-backdrop-filter: none;
+  --blur-off: none;
 }
 
 @supports(padding: string.unquote('max(0px)')) {
@@ -741,7 +742,7 @@ input:-webkit-autofill:active {
   border-radius: $border-radius-medium;
   max-width: string.unquote('min(30rem, calc(100vw - 2rem))');
   opacity: 0;
-  backdrop-filter: blur(25px);
+  backdrop-filter: var(--blur-off, blur(25px));
   pointer-events: all;
   word-break: break-word;
 

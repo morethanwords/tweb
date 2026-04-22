@@ -579,6 +579,11 @@ export default class AppSearchSuper {
           });
         });
         itemsContainer = items;
+      } else if(mediaTab.type === 'media') {
+        const grid = document.createElement('div');
+        grid.classList.add('search-super-content-media-grid');
+        content.append(grid);
+        itemsContainer = grid;
       }
 
       this.tabsContainer.append(container);

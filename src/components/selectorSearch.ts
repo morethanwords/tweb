@@ -341,10 +341,12 @@ export default class SelectorSearch {
 
     const keyStr = '' + key;
     let threadId: number;
-    if(keyStr.includes('_')) {
+    if(keyStr.includes('_')) { // * handle threads
       const [_peerId, _threadId] = keyStr.split('_');
-      key = _peerId.toPeerId();
-      threadId = +_threadId;
+      if(_peerId.isPeerId()) { // * needed
+        key = _peerId.toPeerId();
+        threadId = +_threadId;
+      }
     }
 
     div.dataset.key = keyStr;

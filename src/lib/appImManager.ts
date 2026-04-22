@@ -2009,6 +2009,9 @@ export class AppImManager extends EventListenerBase<{
     document.body.classList.toggle('animation-level-1', false);
     document.body.classList.toggle('animation-level-2', liteMode.isAvailable('animations'));
 
+    // Firefox keeps no-backdrop unconditionally — it renders backdrop-filter poorly.
+    document.documentElement.classList.toggle('no-backdrop', !liteMode.isAvailable('blur') || IS_FIREFOX);
+
     this.chatsSelectTabDebounced = debounce(() => {
       const topbar = this.chat.topbar;
       topbar.pinnedMessage?.setCorrectIndex(0); // * буду молиться богам, чтобы это ничего не сломало, но это исправляет получение пиннеда после анимации

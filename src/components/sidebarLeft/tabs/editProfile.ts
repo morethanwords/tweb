@@ -77,6 +77,19 @@ export default class AppEditProfileTab extends SliderSuperTab {
     const [bioMaxLength, user, userFull] = await Promise.all([p.bioMaxLength, p.user, p.userFull]);
 
     {
+      this.editPeer = new EditPeer({
+        peerId: rootScope.myId,
+        inputFields,
+        listenerSetter: this.listenerSetter,
+        middleware: this.middlewareHelper.get()
+      });
+
+      this.content.append(this.editPeer.nextBtn);
+
+      this.scrollable.append(this.editPeer.avatarEdit.container);
+    }
+
+    {
       const section = generateSection(this.scrollable, undefined, 'Bio.Description');
       const inputWrapper = document.createElement('div');
       inputWrapper.classList.add('input-wrapper');
@@ -109,16 +122,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
         this.bioInputField
       );
 
-      this.editPeer = new EditPeer({
-        peerId: rootScope.myId,
-        inputFields,
-        listenerSetter: this.listenerSetter,
-        middleware: this.middlewareHelper.get()
-      });
-
-      this.content.append(this.editPeer.nextBtn);
-
-      section.append(this.editPeer.avatarEdit.container, inputWrapper);
+      section.append(inputWrapper);
 
       if(!userFull.birthday) {
         const addBirthdayRow = new Row({

@@ -44,7 +44,8 @@ export default class AppPowerSavingTab extends SliderSuperTab {
       // ['emoji', ['emoji_panel', 'emoji_messages']],
       ['effects', ['effects_reactions', 'effects_premiumstickers', 'effects_emoji']],
       ['chat', ['chat_background', 'chat_spoilers']],
-      'animations'
+      'animations',
+      'blur'
     ];
 
     let fields: PowerSavingCheckboxFieldsField[], checkboxFields: CheckboxFields<PowerSavingCheckboxFieldsField>;

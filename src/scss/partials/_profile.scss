@@ -844,7 +844,7 @@
   &-bot-verification {
     --custom-emoji-size: 1rem;
     font-size: var(--font-size-14);
-    padding-inline: var(--section-padding-inline);
+    padding-inline: calc(var(--section-padding-inline) + var(--section-margin-inline));
     margin-bottom: var(--section-padding-bottom);
     color: var(--secondary-text-color);
     display: flex;
@@ -946,16 +946,11 @@
 }
 
 .search-super-content-stories {
-  background-color: var(--background-color)!important;
+  background-color: var(--background-color) !important;
   display: flex;
   flex-direction: column;
 
   &-albums {
-    position: sticky!important;
-    top: 6.5rem;
-    z-index: 3;
-    background-color: var(--background-color);
-
     .stories-album-chip {
       max-width: 8rem;
     }

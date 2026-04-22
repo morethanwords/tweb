@@ -111,7 +111,7 @@
     }
   }
 
-  .popup-photo > .popup-item-media {
+  .popup-item-media:not(.album-item) {
     position: relative;
 
     display: flex;
@@ -132,11 +132,11 @@
     object-fit: contain;
   }
 
-  .gif-label {
+  .video-time {
     --height: calc(var(--messages-time-text-size) + .375rem);
     position: absolute;
-    top: 3px;
-    left: 3px;
+    top: .75rem;
+    left: .75rem;
     border-radius: var(--height);
     background-color: var(--message-time-background);
     padding: 0px 6px;
@@ -150,14 +150,14 @@
     line-height: 1;
   }
 
-  .popup-photo > .popup-item {
+  .popup-item:not(.album-item) {
     position: relative;
     border-radius: inherit;
     overflow: hidden;
   }
 
-  .popup-photo > .popup-item + .popup-item {
-    margin-top: .5rem;
+  .popup-item-stacked {
+    margin-top: .5rem !important;
   }
 
   .drop {
@@ -172,9 +172,31 @@
     border-radius: $border-radius-medium;
     cursor: default;
     height: 3.5rem;
+    padding-inline-end: 3.5rem;
 
     @include hover-background-effect() {
       --message-background-color: var(--light-filled-secondary-text-color);
+    }
+  }
+
+  .popup-item-document {
+    @include hover() {
+      .popup-item-document-delete {
+        opacity: 1;
+      }
+    }
+  }
+
+  .popup-item-document-delete {
+    position: absolute;
+    top: 50%;
+    inset-inline-end: .5rem;
+    transform: translateY(-50%);
+    opacity: 0;
+    z-index: 2;
+
+    .is-touch & {
+      opacity: 1;
     }
   }
 
@@ -286,7 +308,7 @@
   border-radius: 999px;
 
   background-color: rgba(0, 0, 0, .4);
-  backdrop-filter: blur(35px);
+  backdrop-filter: var(--blur-off, blur(35px));
 
   @supports (-moz-animation: animation 1s) {
     // Firefox doesn't render backdrop-filter by default
@@ -339,8 +361,11 @@
   &:hover {
     color: #ffffff;
   }
+}
 
-  > span {
+.spoiler-toggle {
+  .spoiler-on,
+  .spoiler-off {
     position: absolute;
     left: 50%;
     top: 50%;
@@ -348,16 +373,16 @@
     transition: .2s;
   }
 
-  > span:nth-child(2) {
+  .spoiler-off {
     opacity: 0;
   }
 
   &[data-toggled="true"] {
-    > span:nth-child(1) {
+    .spoiler-on {
       opacity: 0;
     }
 
-    > span:nth-child(2) {
+    .spoiler-off {
       opacity: 1;
     }
   }

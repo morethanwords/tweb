@@ -681,7 +681,7 @@ $color-inactive: rgba(255, 255, 255, .5);
       left: 50%;
       transform: translateX(-50%);
       background-color: rgba(0, 0, 0, .5) !important;
-      backdrop-filter: blur(25px);
+      backdrop-filter: var(--blur-off, blur(25px));
       opacity: 1 !important;
       visibility: visible !important;
       // max-width: 355px;
@@ -749,7 +749,7 @@ $color-inactive: rgba(255, 255, 255, .5);
       --primary-text-color: #fff;
       --focus-translateX: 0px;
       --chat-input-background-color: rgba(0, 0, 0, .5);
-      --backdrop-filter: blur(25px);
+      --backdrop-filter: var(--blur-off, blur(25px));
       position: absolute;
       bottom: 0;
       width: var(--stories-width);
@@ -941,7 +941,7 @@ $color-inactive: rgba(255, 255, 255, .5);
 
       .record-ripple {
         background: rgba(0, 0, 0, .25);
-        backdrop-filter: blur(5px);
+        backdrop-filter: var(--blur-off, blur(5px));
         opacity: 1;
       }
     }

@@ -3010,6 +3010,7 @@
 "LiteMode.Key.video.Title" = "Autoplay Videos";
 "LiteMode.Key.stickers.Title" = "Sticker Animations";
 "LiteMode.Key.animations.Title" = "Interface Animations";
+"LiteMode.Key.blur.Title" = "Blur Effects";
 "LiteMode.Info" = "Reduce all power-intensive animations and improve performance.";
 "LiteMode.EnableText" = "Power Saving Mode";
 "LiteMode.DisableAlert" = "Disable Power Saving Mode";

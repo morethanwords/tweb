@@ -40,7 +40,7 @@
 
   &-background,
   &-notch {
-    backdrop-filter: blur(25px);
+    backdrop-filter: var(--blur-off, blur(25px));
     background-color: rgba(29, 29, 29, .74);
   }
 

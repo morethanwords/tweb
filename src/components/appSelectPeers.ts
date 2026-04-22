@@ -156,6 +156,9 @@ export default class AppSelectPeers {
 
   public children: Array<HTMLElement>;
 
+  private loadedFirst: boolean;
+  private onFirstRender: () => void;
+
   constructor(options: {
     appendTo: AppSelectPeers['appendTo'],
     managers: AppSelectPeers['managers'],
@@ -163,7 +166,7 @@ export default class AppSelectPeers {
     onChange?: AppSelectPeers['onChange'],
     peerType?: AppSelectPeers['peerType'],
     peerId?: AppSelectPeers['peerId'],
-    onFirstRender?: () => void,
+    onFirstRender?: AppSelectPeers['onFirstRender'],
     renderResultsFunc?: AppSelectPeers['renderResultsFunc'],
     chatRightsActions?: AppSelectPeers['chatRightsActions'],
     multiSelect?: AppSelectPeers['multiSelect'] | boolean,
@@ -196,7 +199,8 @@ export default class AppSelectPeers {
     excludeBotforums?: boolean,
     placeholderSizes?: ConstructorParameters<typeof DialogsPlaceholder>[0],
     getPeerIdFromKey?: AppSelectPeers['getPeerIdFromKey'],
-    additionalDialogParams?: AppSelectPeers['additionalDialogParams']
+    additionalDialogParams?: AppSelectPeers['additionalDialogParams'],
+    noInstantLoad?: boolean
   }) {
     safeAssign(this, options);
 
@@ -394,7 +398,10 @@ export default class AppSelectPeers {
     attachClickEvent(this.container, async(e) => {
       const target = findUpAttribute(e.target, 'data-peer-id') as HTMLElement;
 
-      if(!target || !target.classList.contains('row')) return;
+      if(
+        !target ||
+        (!target.classList.contains('row') && !target.classList.contains('btn-primary')) // * exception for 'includedChats' buttons
+      ) return;
       cancelEvent(e);
       if(this.freezed) return;
 
@@ -552,19 +559,30 @@ export default class AppSelectPeers {
       this.destroy();
     });
 
-    // WARNING TIMEOUT
-    setTimeout(() => {
-      const getResultsPromise = this.getMoreResults() as Promise<any>;
-      if(options.onFirstRender) {
-        getResultsPromise.then(() => {
-          options.onFirstRender();
-        });
-      }
-    }, 0);
+    if(!options.noInstantLoad) {
+      this.loadFirst();
+    }
 
     if(!hadScrollable) {
       (this.scrollable as Scrollable).append(...this.children);
     }
+  }
+
+  public loadFirst() {
+    if(this.loadedFirst) {
+      return;
+    }
+
+    this.loadedFirst = true;
+    // WARNING TIMEOUT
+    setTimeout(() => {
+      const getResultsPromise = this.getMoreResults() as Promise<any>;
+      if(this.onFirstRender) {
+        getResultsPromise.then(() => {
+          this.onFirstRender();
+        });
+      }
+    }, 0);
   }
 
   public static convertPeerTypes(types: TelegramChoosePeerType[]) {
@@ -611,6 +629,10 @@ export default class AppSelectPeers {
     }
   }
 
+  private _setFolderId(value: string) {
+    this.folderId = (value ? FOLDER_ID_ALL : this.selectedFolderId) ?? FOLDER_ID_ALL;
+  }
+
   private onInput = () => {
     const value = this.inputSearch.value;
     if(this.query === value) {
@@ -622,7 +644,7 @@ export default class AppSelectPeers {
     }
 
     if(this.peerType.includes('dialogs')) {
-      this.folderId = (value ? FOLDER_ID_ALL : this.selectedFolderId) ?? FOLDER_ID_ALL;
+      this._setFolderId(value);
       this.offsetIndex = 0;
     }
 
@@ -1342,6 +1364,11 @@ export default class AppSelectPeers {
     }
 
     this.selectedFolderId = willBeFolderId;
+    if(!this.loadedFirst) {
+      this._setFolderId('');
+      return;
+    }
+
     this.query = '\x01'; // force onInput to detect a change
     this.onInput();
   }

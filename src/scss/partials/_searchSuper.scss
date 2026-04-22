@@ -100,6 +100,7 @@
     &-container {
       position: sticky;
       top: calc(var(--super-offset) - var(--section-padding-bottom));
+      pointer-events: none;
     }
   }
 
@@ -187,17 +188,14 @@
     padding: 0 1px 1px;
   }
 
-  &-content-media {
-    border-radius: $border-radius-big;
-    overflow: hidden;
-  }
-
-  &-content-media {
+  &-content-media-grid {
     width: 100%;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     grid-auto-rows: 1fr;
     grid-gap: 1px;
+    border-radius: $border-radius-big;
+    overflow: hidden;
   }
 
   &-content-files {
