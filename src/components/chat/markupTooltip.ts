@@ -335,7 +335,8 @@ export default class MarkupTooltip {
     const selection = document.getSelection();
     const range = selection.getRangeAt(0);
 
-    const rowsWrapper = findUpClassName(this.input, 'rows-wrapper') ||
+    const rowsWrapper = findUpClassName(this.input, 'simple-message-input-container') ||
+      findUpClassName(this.input, 'rows-wrapper') ||
       findUpClassName(this.input, 'input-message-container') ||
       findUpClassName(this.input, 'input-field');
     const currentTools = this.container.classList.contains('is-link') ?
