@@ -1185,6 +1185,7 @@ export class AppSidebarLeft extends SidebarSlider {
         return;
       }
 
+      target.classList.remove('selector-user-primary');
       const key = target.dataset.key;
       if(key.indexOf('date_') === 0) {
         const [_, minDate, maxDate] = key.split('_');
@@ -1212,7 +1213,8 @@ export class AppSidebarLeft extends SidebarSlider {
         title,
         middleware: helperMiddlewareHelper.get(),
         avatarSize: 30,
-        fallbackIcon: 'calendarfilter'
+        fallbackIcon: 'calendarfilter',
+        primary: true
       }).element;
     };
 

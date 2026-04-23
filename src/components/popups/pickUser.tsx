@@ -59,7 +59,7 @@ export type PopupPickUserOptions = Modify<ConstructorParameters<typeof AppSelect
   titleLangKey: LangPackKey,
   initial?: PeerId[],
   useTopics?: boolean,
-  footerButton?: (element: HTMLElement) => void,
+  footerButtonProps?: Parameters<typeof PopupElement['FooterButton']>[0],
   footer?: (ctx: {multiSelect: Accessor<AppSelectPeers['multiSelect']>}) => JSX.Element,
   autoHeight?: boolean,
   showTopPeers?: boolean,
@@ -136,16 +136,23 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
   const tabsContainer = document.createElement('div');
   tabsContainer.classList.add('tabs-container');
 
+  let busy = false;
   const finalize = async() => {
-    if(_onSelect) {
+    if(busy) {
+      return;
+    }
+
+    busy = true;
+    try {
       const res = _onSelect(selected);
       if(res instanceof Promise) {
-        try {
-          await res;
-        } catch(err) {
-          return;
-        }
+        await res;
       }
+
+      busy = false;
+    } catch(err) {
+      busy = false;
+      throw err;
     }
 
     setShow(false);
@@ -220,8 +227,8 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
       multiSelect,
       placeholder,
       peerType: ['custom'],
-      onSelect: (peerId, adding) => {
-        onSingleSelect(fs, peerId, adding);
+      onChange: (length, changes) => {
+        changes.forEach(({key, add}) => onSingleSelect(fs, key, add));
       },
       getMoreCustom: async(q, middleware) => {
         if(lastQuery !== q) {
@@ -438,9 +445,10 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
       multiSelect,
       middleware,
       appendTo: tabsContainer,
-      onChange: (length) => {
+      onChange: (length, changes) => {
         btnConfirm?.classList.toggle('is-visible', !!length);
-        options.onChange?.(length);
+        changes.forEach(({key, add}) => onSingleSelect(selector, key, add));
+        options.onChange?.(length, changes);
       },
       onSelect: async(peerId, adding, e) => {
         let _isMonoforum = false;
@@ -463,8 +471,6 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
           });
           return false;
         }
-
-        onSingleSelect(selector, peerId, adding);
       },
       onFirstRender: () => {
         setShow(true);
@@ -562,10 +568,16 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
     if(options.footer) {
       return options.footer({multiSelect: multiSelectMode});
     }
-    btnConfirm = document.createElement('button');
-    btnConfirm.classList.add('btn-primary', 'btn-color-primary');
-    options.footerButton?.(btnConfirm);
-    return btnConfirm;
+
+    return (
+      <PopupElement.FooterButton
+        confirm
+        callback={() => {
+          finalize();
+        }}
+        {...(options.footerButtonProps || {})}
+      />
+    );
   }
 
   createPopup(() => {

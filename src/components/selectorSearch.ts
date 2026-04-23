@@ -165,20 +165,30 @@ export default class SelectorSearch {
     }
   }
 
-  public addChip({key, middleware, title, scroll = true, avatarSize = 30, fallbackIcon}: {
+  public addChip({
+    key,
+    middleware,
+    title,
+    scroll = true,
+    avatarSize = 30,
+    fallbackIcon,
+    primary
+  }: {
     key: PeerId | string,
     middleware: Middleware,
     title?: string | HTMLElement,
     scroll?: boolean,
     avatarSize?: number,
-    fallbackIcon?: Icon
+    fallbackIcon?: Icon,
+    primary?: boolean
   }) {
     const rendered = SelectorSearch.renderEntity({
       key,
       middleware,
       title,
       avatarSize,
-      fallbackIcon
+      fallbackIcon,
+      primary
     });
     const {element, promises} = rendered;
 
@@ -314,17 +324,30 @@ export default class SelectorSearch {
     this.inputSearch.remove();
   }
 
-  public static renderEntity({key, middleware, title, avatarSize, fallbackIcon, meAsSaved = true}: {
+  public static renderEntity({
+    key,
+    middleware,
+    title,
+    avatarSize,
+    fallbackIcon,
+    meAsSaved = true,
+    primary
+  }: {
     key: PeerId | string,
     middleware: Middleware,
     title?: string | HTMLElement,
     avatarSize: number,
     fallbackIcon?: Icon,
-    meAsSaved?: boolean
+    meAsSaved?: boolean,
+    primary?: boolean
   }) {
     const div = document.createElement('div');
     div.classList.add('selector-user');
     div.middlewareHelper = middleware.create();
+
+    if(primary) {
+      div.classList.add('selector-user-primary');
+    }
 
     const avatarContainer = document.createElement('div');
     avatarContainer.classList.add('selector-user-avatar-container');

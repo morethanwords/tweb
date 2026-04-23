@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {createContext, useContext, createSignal, onCleanup, JSX, Show, createRoot, Accessor, createEffect, untrack, on} from 'solid-js';
+import {createContext, useContext, createSignal, onCleanup, JSX, Show, createRoot, Accessor, createEffect, untrack, on, Ref, Setter, onMount} from 'solid-js';
 import {createStore} from 'solid-js/store';
 import {Portal} from 'solid-js/web';
 import classNames from '@helpers/string/classNames';
@@ -26,6 +26,7 @@ import Scrollable, {ScrollableContextValue} from '@components/scrollable2';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {simulateClickEvent} from '@helpers/dom/clickEvent';
 import isSendShortcutPressed from '@helpers/dom/isSendShortcutPressed';
+import noop from '@helpers/noop';
 
 export type PopupButton = {
   text?: HTMLElement | DocumentFragment | Text,
@@ -82,6 +83,7 @@ export type PopupContextValue = {
   night: boolean,
   confirmShortcutIsSendShortcut: boolean,
   btnConfirmOnEnter: HTMLElement | undefined,
+  setBtnConfirmOnEnter: Setter<HTMLElement>,
   isConfirmationNeededOnClose: PopupOptions['isConfirmationNeededOnClose'],
   closable: boolean,
   withConfirm: LangPackKey | boolean,
@@ -247,6 +249,13 @@ const PopupElement = (props: {
   const [destroyed, setDestroyed] = createSignal(false);
   const [hiding, setHiding] = createSignal(false);
   const [popupElement, setPopupElement] = createSignal<HTMLElement>();
+  const [btnConfirmOnEnter, setBtnConfirmOnEnter] = createSignal<HTMLElement>();
+
+  if(props.btnConfirmOnEnter) {
+    createEffect(() => {
+      setBtnConfirmOnEnter(props.btnConfirmOnEnter());
+    });
+  }
 
   const value: PopupContextValue = {
     register,
@@ -266,7 +275,8 @@ const PopupElement = (props: {
     withoutOverlay,
     night,
     confirmShortcutIsSendShortcut,
-    get btnConfirmOnEnter() { return props.btnConfirmOnEnter(); },
+    get btnConfirmOnEnter() { return btnConfirmOnEnter(); },
+    setBtnConfirmOnEnter: props.btnConfirmOnEnter ? noop as typeof setBtnConfirmOnEnter : setBtnConfirmOnEnter,
     isConfirmationNeededOnClose,
     closable: props.closable || false,
     withConfirm: props.withConfirm || false,
@@ -488,7 +498,9 @@ PopupElement.Button = (props: {
   iconRight?: Icon,
   class?: string,
   noDefaultClass?: boolean,
-  disabled?: boolean
+  disabled?: boolean,
+  ref?: Ref<HTMLButtonElement>,
+  confirm?: boolean
 }) => {
   const context = useContext(PopupContext);
 
@@ -518,6 +530,19 @@ PopupElement.Button = (props: {
     context.hide();
   };
 
+  onMount(() => {
+    createEffect(() => {
+      if(props.confirm) {
+        context.setBtnConfirmOnEnter(ref);
+
+        onCleanup(() => {
+          context.setBtnConfirmOnEnter();
+        });
+      }
+    });
+  });
+
+  let ref: HTMLButtonElement;
   return context.registerButton(props, (
     <Button
       class={classNames(
@@ -533,6 +558,10 @@ PopupElement.Button = (props: {
       iconClass={classNames('popup-button-icon', props.iconLeft ? 'left' : 'right')}
       text={props.langKey}
       textArgs={props.langArgs}
+      ref={(_ref) => {
+        ref = _ref as HTMLButtonElement;
+        (props.ref as any)?.(ref);
+      }}
     >{props.children}</Button>
   ));
 };

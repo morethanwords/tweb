@@ -28,7 +28,6 @@
 
   &-search {
     --selector-search-height: 3rem;
-    --selector-user-size: 1.875rem;
     display: flex;
     flex-flow: wrap;
     align-content: flex-start;
@@ -105,8 +104,8 @@
   }
 
   &-user {
-    color: var(--primary-color);
-    background-color: var(--light-primary-color);
+    color: var(--secondary-text-color);
+    background-color: var(--light-secondary-text-color);
     padding-inline-end: .75rem;
     height: var(--selector-user-size);
     line-height: var(--selector-user-size);
@@ -116,10 +115,12 @@
     max-width: 11.25rem;
     font-size: var(--font-size-16);
     font-weight: var(--font-weight-bold);
+    cursor: pointer;
 
-    // &.is-last {
-    //   margin-inline-end: -.375rem;
-    // }
+    &-primary {
+      color: var(--primary-color);
+      background-color: var(--light-primary-color);
+    }
 
     &-alone {
       margin: 0;
@@ -154,7 +155,6 @@
     @include hover() {
       color: var(--primary-text-color);
       background-color: var(--light-danger-color);
-      cursor: pointer;
 
       .selector-user-avatar-close {
         opacity: 1;

@@ -70,12 +70,18 @@ export function pickLanguage<T extends boolean>(
         isEnd: true
       };
     },
-    onSelect: ([{peerId}]) => deferred.resolve(peerId as any),
+    onSelect: (results) => {
+      const keys = results.map(({key}) => key);
+      deferred.resolve(multi ? keys as any : keys[0]);
+    },
     multiSelect: multi,
     titleLangKey: multi ? 'Telegram.LanguageViewController' : undefined,
     checkboxSide: 'left',
     noPlaceholder: true,
-    onClose: () => deferred.reject()
+    onClose: () => deferred.reject(),
+    footerButtonProps: {
+      children: i18n('Save')
+    }
   });
 
   if(selected) {

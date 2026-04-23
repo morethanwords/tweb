@@ -267,24 +267,10 @@ export default async function showForwardPopup(
     };
   }
 
-  let busy = false;
   let btnRef: HTMLElement, inputField: InputFieldAnimated;
   handle = showPickUserPopup({
     peerType: ['dialogs', 'contacts'],
-    onSelect: async(...args) => {
-      if(busy) {
-        return;
-      }
-
-      busy = true;
-      try {
-        await onSelect(...args);
-        busy = false;
-      } catch(err) {
-        busy = false;
-        throw err;
-      }
-    },
+    onSelect,
     onChange: () => {
       const selected = handle.selector.getSelected() ?? [];
       const peerIds = selected.filter((k): k is PeerId => k.isPeerId());
@@ -332,10 +318,7 @@ export default async function showForwardPopup(
               />
             }
           >
-            <PopupElement.FooterButton
-              class="btn-primary btn-color-primary"
-              callback={handleCopyLink}
-            >
+            <PopupElement.FooterButton callback={handleCopyLink}>
               {i18n('CopyLink')}
             </PopupElement.FooterButton>
           </Show>

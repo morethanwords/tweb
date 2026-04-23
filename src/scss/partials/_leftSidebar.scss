@@ -324,11 +324,6 @@
     background-color: var(--surface-color);
 
     .input-search {
-      /* &-input {
-        --paddingLeft: 0px;
-        padding-inline-start: calc(42px - var(--border-width) + var(--paddingLeft));
-      } */
-
       .selector-user {
         --selector-user-size: 32px;
         position: absolute !important;
@@ -374,11 +369,12 @@
 
     .search-helper {
       display: flex;
-      margin-inline-start: 11px;
+      margin-inline-start: .625rem;
+      align-items: center;
 
       .selector-user {
-        margin-top: 7px;
-        font-size: 14px;
+        display: flex; // * fix last item's margin
+        margin-inline-end: .375rem;
 
         @include hover() {
           background-color: var(--light-primary-color);

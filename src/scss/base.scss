@@ -168,6 +168,8 @@
   --section-padding-inline: #{$section-rounded-padding};
   --section-padding-bottom: var(--section-padding-inline);
 
+  --selector-user-size: 1.875rem;
+
   @include respond-to(handhelds) {
     --right-column-width: 100vw;
     --esg-sticker-size: 68px;

@@ -68,6 +68,7 @@ export default class AppSelectPeers {
 
   // public selected: {[peerId: PeerId]: HTMLElement} = {};
   public selected = new Set<PeerId | string>();
+  private changes: {key: PeerId | string, add: boolean}[] = [];
 
   public freezed = false;
 
@@ -84,7 +85,7 @@ export default class AppSelectPeers {
   private renderedPeerIds: Set<PeerId> = new Set();
 
   private appendTo: HTMLElement;
-  private onChange: (length: number) => void;
+  private onChange: (length: number, changes: {key: PeerId | string, add: boolean}[]) => void;
   public onSearchChange: (query: string) => void;
   private peerType: SelectSearchPeerType[] = ['dialogs'];
   public renderResultsFunc: (peerIds: PeerId[], append?: boolean) => void | Promise<void>;
@@ -1237,10 +1238,14 @@ export default class AppSelectPeers {
     }
 
     // console.trace('add');
+    const added = !this.selected.has(key);
     this.selected.add(key);
+    if(added) {
+      this.changes.push({key, add: true});
+    }
 
     if(this.multiSelect !== 'enabled' || !this.input) {
-      fireOnChange && this.onChange?.(this.selected.size);
+      fireOnChange && this.dispatchOnChange();
       return this.multiSelect !== 'disabled';
     }
 
@@ -1253,9 +1258,10 @@ export default class AppSelectPeers {
       middleware: this.middlewareHelper.get(),
       title,
       scroll,
-      fallbackIcon
+      fallbackIcon,
+      primary: true
     });
-    fireOnChange && this.onChange?.(this.selected.size);
+    fireOnChange && this.dispatchOnChange();
 
     return rendered;
   }
@@ -1266,11 +1272,11 @@ export default class AppSelectPeers {
     }
 
     const onRemoved = () => {
-      this.selected.delete(key);
-      if(!this.selected.size && this.multiSelectWasHidden) {
-        this.setMultiSelectMode('hidden');
+      const removed = this.selected.delete(key);
+      if(removed) {
+        this.changes.push({key, add: false});
       }
-      fireOnChange && this.onChange?.(this.selected.size);
+      fireOnChange && this.dispatchOnChange();
     };
 
     onRemoved();
@@ -1310,7 +1316,7 @@ export default class AppSelectPeers {
       this.toggleElementCheckboxByKey(value, true);
     });
 
-    this.onChange?.(this.selected.size);
+    this.dispatchOnChange();
   }
 
   public removeBatch(values: any[], fireOnChange = true) {
@@ -1324,7 +1330,18 @@ export default class AppSelectPeers {
     });
 
     if(fireOnChange) {
-      this.onChange?.(this.selected.size);
+      this.dispatchOnChange();
+    }
+  }
+
+  private dispatchOnChange() {
+    const changes = this.changes;
+    this.changes = [];
+    // * important order here
+    // * onChange should be fired with old multiselect state
+    this.onChange?.(this.selected.size, changes);
+    if(!this.selected.size && this.multiSelectWasHidden) {
+      this.setMultiSelectMode('hidden');
     }
   }
 

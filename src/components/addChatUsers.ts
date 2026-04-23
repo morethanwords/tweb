@@ -91,7 +91,7 @@ export async function handleMissingInvitees(chatId: ChatId, missingInvitees: Mis
       initial,
       headerSearch: false,
       noSearch: true,
-      footerButton: /* cantSendMessages ? undefined :  */(element) => footerButton = element,
+      footerButtonProps: /* cantSendMessages ? undefined :  */{ref: (element) => footerButton = element},
       chatRightsActions: ['send_messages'],
       autoHeight: cantSendMessages
     }
