@@ -20,10 +20,10 @@ export const colorPickerSwatches = [
   '#bd5cf3'
 ];
 
-const PICKER_WIDTH_PX = 200;
-const PICKER_HEIGHT_PX = 120;
-const SLIDER_WIDTH_PX = 304;
-const DEFAULT_SIZE_PX = 384;
+const normalPickerWidth = 200;
+const pickerHeight = 120;
+const normalSliderWidth = 304;
+const normalContainerSize = 384;
 
 
 export default function ColorPicker(props: {
@@ -37,7 +37,10 @@ export default function ColorPicker(props: {
   const [collapsed, setCollapsed] = createSignal(colorPickerSwatches.includes(props.value));
   const [collapsing, setCollapsing] = createSignal(false);
 
-  const [containerSize, setContainerSize] = createSignal(DEFAULT_SIZE_PX);
+  const [containerSize, setContainerSize] = createSignal(normalContainerSize);
+
+  const pickerBoxWidth = createMemo(() => Math.max(0, normalPickerWidth + containerSize() - normalContainerSize));
+  const sliderWidth = createMemo(() => Math.max(0, normalSliderWidth + containerSize() - normalContainerSize));
 
   let sizeContainer: HTMLDivElement;
 
@@ -65,59 +68,53 @@ export default function ColorPicker(props: {
     }
   };
 
-  // let colorPicker: _ColorPicker;
-
-  const colorPicker = createMemo(
-    on(containerSize, () => {
-      const colorPicker = new _ColorPicker({
-        buildLayout: (parts) => {
-          return (
+  const colorPicker = new _ColorPicker({
+    buildLayout: (parts) => {
+      return (
+        <div
+          class="media-editor__color-picker"
+          classList={{'media-editor__color-picker--collapsed': collapsed()}}
+          style={{'--picker-height': pickerHeight + 'px'}}
+        >
+          <div class="media-editor__color-picker-swatches">
+            {colorPickerSwatches.map(swatch)}
             <div
-              class="media-editor__color-picker"
-              classList={{'media-editor__color-picker--collapsed': collapsed()}}
-              style={{'--picker-height': PICKER_HEIGHT_PX + 'px'}}
+              class="media-editor__color-picker-swatch media-editor__color-picker-swatch--gradient"
+              classList={{'media-editor__color-picker-swatch--active': !collapsed()}}
+              onClick={onCollapseToggle}
             >
-              <div class="media-editor__color-picker-swatches">
-                {colorPickerSwatches.map(swatch)}
-                <div
-                  class="media-editor__color-picker-swatch media-editor__color-picker-swatch--gradient"
-                  classList={{'media-editor__color-picker-swatch--active': !collapsed()}}
-                  onClick={onCollapseToggle}
-                >
-                  <div class="media-editor__color-picker-swatch-color" />
-                </div>
+              <div class="media-editor__color-picker-swatch-color" />
+            </div>
 
-                <div class="media-editor__color-picker-slider">{parts.slider}</div>
-              </div>
+            <div class="media-editor__color-picker-slider">{parts.slider}</div>
+          </div>
 
-              <div class="media-editor__color-picker-layout-wrapper">
-                <div class="media-editor__color-picker-layout">
-                  <div class="media-editor__color-picker-box">{parts.pickerBox}</div>
-                  <div class="media-editor__color-picker-inputs">
-                    {parts.hexInput}
-                    {parts.rgbInput}
-                  </div>
-                </div>
+          <div class="media-editor__color-picker-layout-wrapper">
+            <div class="media-editor__color-picker-layout">
+              <div class="media-editor__color-picker-box">{parts.pickerBox}</div>
+              <div class="media-editor__color-picker-inputs">
+                {parts.hexInput}
+                {parts.rgbInput}
               </div>
             </div>
-          ) as HTMLDivElement;
-        },
-        pickerBoxWidth: PICKER_WIDTH_PX + containerSize() - DEFAULT_SIZE_PX,
-        pickerBoxHeight: PICKER_HEIGHT_PX,
-        sliderWidth: SLIDER_WIDTH_PX + containerSize() - DEFAULT_SIZE_PX,
-        thickSlider: true
-      });
-      colorPicker.onChange = (color) => {
-        if(color.hex !== props.value) props.onChange(color.hex);
-        actions.abortDrawerSlide();
-      };
-      colorPicker.container.querySelectorAll('.media-editor__color-picker-swatch').forEach((element) => {
-        ripple(element as HTMLElement);
-      });
+          </div>
+        </div>
+      ) as HTMLDivElement;
+    },
+    pickerBoxWidth: pickerBoxWidth(),
+    pickerBoxHeight: pickerHeight,
+    sliderWidth: sliderWidth(),
+    thickSlider: true
+  });
 
-      return colorPicker;
-    })
-  );
+  colorPicker.onChange = (color) => {
+    if(color.hex !== props.value) props.onChange(color.hex);
+    actions.abortDrawerSlide();
+  };
+
+  colorPicker.container.querySelectorAll('.media-editor__color-picker-swatch').forEach((element) => {
+    ripple(element as HTMLElement);
+  });
 
   onMount(() => {
     setContainerSize(sizeContainer.clientWidth);
@@ -130,6 +127,14 @@ export default function ColorPicker(props: {
 
     onCleanup(() => {
       observer.disconnect();
+    });
+  });
+
+  createEffect(() => {
+    colorPicker.adjustSize({
+      pickerBoxWidth: pickerBoxWidth(),
+      pickerBoxHeight: pickerHeight,
+      sliderWidth: sliderWidth()
     });
   });
 
@@ -152,15 +157,15 @@ export default function ColorPicker(props: {
 
   createEffect(
     on(
-      () => [collapsing(), colorPicker(), props.value],
+      () => [collapsing(), props.value],
       async() => {
         await doubleRaf();
-        if(!collapsing() && props.value !== colorPicker().getCurrentColor().hex) {
-          colorPicker().setColor(props.value);
+        if(!collapsing() && props.value !== colorPicker.getCurrentColor().hex) {
+          colorPicker.setColor(props.value);
         }
       }
     )
   );
 
-  return <div ref={sizeContainer}>{colorPicker().container}</div>;
+  return <div ref={sizeContainer}>{colorPicker.container}</div>;
 }
