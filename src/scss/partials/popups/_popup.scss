@@ -239,14 +239,29 @@
     }
 
     &-floating {
+      --popup-footer-gradient-start: 50%;
       position: absolute;
       bottom: 0;
       inset-inline: 0;
-      background: linear-gradient(0deg, var(--background-color) 50%, transparent 100%);
+      background: linear-gradient(
+        0deg,
+        var(--background-color) var(--popup-footer-gradient-start),
+        transparent 100%
+      );
 
-      .popup-footer-button.btn-primary {
-        box-shadow: 0px -6px 12px 0px rgba(var(--surface-color-rgb, 1));
+      .btn-primary-transparent.danger {
+        background: var(--background-color);
+        box-shadow: 0px 0px 12px 4px var(--section-box-shadow-color);
+
+        @include hover() {
+          background-color: var(--danger-color) !important;
+          color: #fff !important;
+        }
       }
+    }
+
+    &-sticky {
+      position: sticky;
     }
   }
 

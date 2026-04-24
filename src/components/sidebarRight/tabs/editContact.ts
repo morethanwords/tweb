@@ -157,7 +157,8 @@ export default class AppEditContactTab extends SliderSuperTab {
         profileSubtitleDiv.classList.add('profile-subtitle');
         profileSubtitleDiv.append(i18n('EditContact.OriginalName'));
 
-        section.content.append(div, profileNameDiv, profileSubtitleDiv, inputWrapper);
+        this.scrollable.append(div, profileNameDiv, profileSubtitleDiv);
+        section.content.append(inputWrapper);
 
         if(!isNew) {
           const notificationsRow = new Row({

@@ -75,7 +75,7 @@ export function pickLanguage<T extends boolean>(
       deferred.resolve(multi ? keys as any : keys[0]);
     },
     multiSelect: multi,
-    titleLangKey: multi ? 'Telegram.LanguageViewController' : undefined,
+    titleLangKey: 'Telegram.LanguageViewController',
     checkboxSide: 'left',
     noPlaceholder: true,
     onClose: () => deferred.reject(),

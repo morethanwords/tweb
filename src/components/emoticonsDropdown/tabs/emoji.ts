@@ -31,11 +31,10 @@ import mediaSizes from '@helpers/mediaSizes';
 import {StickerSet} from '@layer';
 import findAndSplice from '@helpers/array/findAndSplice';
 import positionElementByIndex from '@helpers/dom/positionElementByIndex';
-import PopupStickers from '@components/popups/stickers';
+import showStickersPopup from '@components/popups/stickers';
 import {hideToast, toastNew} from '@components/toast';
 import safeAssign from '@helpers/object/safeAssign';
 import liteMode from '@helpers/liteMode';
-import PopupElement from '@components/popups';
 import CustomEmojiElement from '@lib/customEmoji/element';
 import {CustomEmojiRendererElement} from '@lib/customEmoji/renderer';
 import Icon from '@components/icon';
@@ -952,12 +951,11 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
         return;
       }
 
-      PopupElement.createPopup(
-        PopupStickers,
+      showStickersPopup(
         getStickerSetInputById(category.set),
         true,
         this.emoticonsDropdown.chatInput
-      ).show();
+      );
       return;
     }
 

@@ -37,7 +37,7 @@ import showLimitPopup from '@components/popups/limit';
 import type DialogsStorage from '@lib/storages/dialogs';
 import type MonoforumDialogsStorage from '@lib/storages/monoforumDialogs';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
-import {Accessor, createSignal, JSX, untrack, useContext} from 'solid-js';
+import {Accessor, createSignal, JSX, Show, untrack, useContext} from 'solid-js';
 import fastSmoothScroll from '@helpers/fastSmoothScroll';
 import {AppManagers} from '@lib/managers';
 import {REAL_FOLDERS} from '@lib/appManagers/constants';
@@ -177,10 +177,7 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
     if(adding) selected.push(item);
     else findAndSplice(selected, (item) => item.key === key);
 
-    if(
-      sel.getSelected().length ||
-      sel.multiSelect === 'enabled'
-    ) {
+    if((sel.multiSelect === 'enabled' && selected.length) || !selected.length) {
       return;
     }
 
@@ -586,10 +583,6 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
         class="popup-forward"
         containerClass={options.autoHeight ? 'popup-forward-auto-height' : undefined}
         closable
-        body
-        footer
-        withConfirm
-        title={options.titleLangKey ?? true}
         show={show()}
         onClose={() => {
           options.onClose?.();
@@ -611,9 +604,11 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
         <PopupElement.Body>
           <Inner />
         </PopupElement.Body>
-        <PopupElement.Footer class="popup-forward-footer" floating>
-          <FooterInner />
-        </PopupElement.Footer>
+        <Show when={multiSelect !== 'disabled'}>
+          <PopupElement.Footer class="popup-forward-footer" floating>
+            <FooterInner />
+          </PopupElement.Footer>
+        </Show>
       </PopupElement>
     );
   });

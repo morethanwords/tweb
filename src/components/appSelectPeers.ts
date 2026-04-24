@@ -431,18 +431,8 @@ export default class AppSelectPeers {
         if(result === false) {
           return;
         }
-
-        if(this.multiSelect === 'disabled') {
-          return;
-        }
       }
 
-      if(this.multiSelect !== 'enabled') {
-        this.add({key});
-        return;
-      }
-
-      // target.classList.toggle('active');
       const result = adding ? this.add({key}) : this.remove(key);
       if(!result) {
         return;
@@ -459,8 +449,6 @@ export default class AppSelectPeers {
         text: 'SelectChat',
         onClick: () => {
           this.setMultiSelectMode('enabled');
-          // this.add({key});
-          // this.toggleElementCheckboxByKey(key, true);
           simulateClickEvent(target);
         },
         verify: () => !this.selected.has(key)
@@ -468,8 +456,6 @@ export default class AppSelectPeers {
         icon: 'close',
         text: 'Deselect',
         onClick: () => {
-          // this.remove(key);
-          // this.toggleElementCheckboxByKey(key, false);
           simulateClickEvent(target);
         },
         verify: () => this.selected.has(key)
@@ -1369,7 +1355,7 @@ export default class AppSelectPeers {
     });
   }
 
-  public setMultiSelectMode(mode: 'enabled' | 'hidden' | 'disabled') {
+  public setMultiSelectMode(mode: AppSelectPeers['multiSelect']) {
     this.multiSelect = mode;
     this.container.classList.toggle('selector-multiselect-hidden', mode === 'hidden');
   }

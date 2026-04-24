@@ -254,21 +254,22 @@
 }
 
 .edit-contact-container {
-  .input-wrapper {
-    margin-top: 1.8125rem !important;
-  }
-
   .avatar-placeholder {
     filter: none !important;
   }
 
   .avatar-edit {
-    margin-bottom: 1.375rem !important;
+    margin-bottom: .75rem !important;
   }
 
   .profile-name {
     font-size: 1.5rem;
     line-height: var(--line-height);
+    justify-content: center;
+  }
+
+  .profile-subtitle {
+    margin-bottom: 1rem;
   }
 }
 

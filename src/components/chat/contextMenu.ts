@@ -43,7 +43,7 @@ import filterUnique from '@helpers/array/filterUnique';
 import replaceContent from '@helpers/dom/replaceContent';
 import wrapEmojiText, {wrapEmojiTextWithEntities} from '@lib/richTextProcessor/wrapEmojiText';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
-import PopupStickers from '@components/popups/stickers';
+import showStickersPopup from '@components/popups/stickers';
 import getMediaFromMessage from '@appManagers/utils/messages/getMediaFromMessage';
 import canSaveMessageMedia from '@appManagers/utils/messages/canSaveMessageMedia';
 import getGroupedText from '@appManagers/utils/messages/getGroupedText';
@@ -604,7 +604,7 @@ export default class ChatContextMenu {
         text: 'Loading',
         onClick: () => {
           this.emojiInputsPromise.then((inputs) => {
-            PopupElement.createPopup(PopupStickers, inputs, true, this.chat.input).show();
+            showStickersPopup(inputs, true, this.chat.input);
           });
         },
         verify: () => reactionCount.reaction._ === 'reactionCustomEmoji',
@@ -1075,7 +1075,7 @@ export default class ChatContextMenu {
       text: 'Loading',
       onClick: () => {
         this.emojiInputsPromise.then((inputs) => {
-          PopupElement.createPopup(PopupStickers, inputs, true, this.chat.input).show();
+          showStickersPopup(inputs, true, this.chat.input);
         });
       },
       verify: () => !!this.getUniqueCustomEmojisFromMessage().length,

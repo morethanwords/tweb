@@ -11,7 +11,7 @@ import PopupJoinChatInvite from '@components/popups/joinChatInvite';
 import PopupPayment from '@components/popups/payment';
 import PopupPeer from '@components/popups/peer';
 import {showPickUser3Popup, showSharingPicker2Popup} from '@components/popups/pickUser';
-import PopupStickers from '@components/popups/stickers';
+import showStickersPopup from '@components/popups/stickers';
 import {toastNew, hideToast} from '@components/toast';
 import {MOUNT_CLASS_TO} from '@config/debug';
 import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
@@ -802,9 +802,7 @@ export class InternalLinkProcessor {
   };
 
   public processStickerSetLink = (link: InternalLink.InternalLinkStickerSet | InternalLink.InternalLinkEmojiSet) => {
-    const popup = PopupElement.createPopup(PopupStickers, getStickerSetInputByShortName(link.set), link._ === INTERNAL_LINK_TYPE.EMOJI_SET);
-    popup.show();
-    return popup;
+    return showStickersPopup(getStickerSetInputByShortName(link.set), link._ === INTERNAL_LINK_TYPE.EMOJI_SET);
   };
 
   public processJoinChatLink = (link: InternalLink.InternalLinkJoinChat) => {

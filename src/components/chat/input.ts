@@ -87,7 +87,8 @@ import ChatSendAs from '@components/chat/sendAs';
 import filterAsync from '@helpers/array/filterAsync';
 import InputFieldAnimated from '@components/inputFieldAnimated';
 import getStickerEffectThumb from '@appManagers/utils/stickers/getStickerEffectThumb';
-import PopupStickers from '@components/popups/stickers';
+import {STICKERS_POPUP_KIND} from '@components/popups/stickers';
+import PopupElementTsx from '@components/popups/indexTsx';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import wrapReply from '@components/wrappers/reply';
 import {getEmojiFromElement} from '@components/emoticonsDropdown/tabs/emoji';
@@ -1794,9 +1795,7 @@ export default class ChatInput {
           return;
         }
 
-        const popups = PopupElement.getPopups(PopupStickers);
-        popups.forEach((popup) => popup.hide());
-
+        PopupElementTsx.getPopups(STICKERS_POPUP_KIND).forEach((popup) => popup.hide());
         this.appImManager.openScheduled(this.chat.peerId);
       }, 0);
     }

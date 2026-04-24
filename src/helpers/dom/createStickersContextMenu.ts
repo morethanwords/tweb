@@ -5,7 +5,7 @@
  */
 
 import type {MyDocument} from '@appManagers/appDocsManager';
-import PopupStickers from '@components/popups/stickers';
+import showStickersPopup from '@components/popups/stickers';
 import rootScope from '@lib/rootScope';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import findUpClassName from '@helpers/dom/findUpClassName';
@@ -87,12 +87,7 @@ export default function createStickersContextMenu({
     onClick: () => {
       const attribute = doc.attributes.find((attr) => attr._ === 'documentAttributeCustomEmoji') as DocumentAttribute.documentAttributeCustomEmoji;
       const inputStickerSet = attribute.stickerset as InputStickerSet.inputStickerSetID;
-      PopupElement.createPopup(
-        PopupStickers,
-        inputStickerSet,
-        true,
-        chatInput
-      ).show();
+      showStickersPopup(inputStickerSet, true, chatInput);
     },
     verify: () => canViewPack
   }, {
@@ -113,7 +108,7 @@ export default function createStickersContextMenu({
   }] : [{
     icon: 'stickers',
     text: 'Context.ViewStickerSet',
-    onClick: () => PopupElement.createPopup(PopupStickers, doc.stickerSetInput, false, chatInput).show(),
+    onClick: () => showStickersPopup(doc.stickerSetInput, false, chatInput),
     verify: () => !isPack && !isGif
   }, {
     icon: isGif ? 'gifs' : 'favourites',

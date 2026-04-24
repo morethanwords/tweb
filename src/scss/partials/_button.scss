@@ -974,10 +974,10 @@ $btn-menu-z-index: 4;
   overflow: hidden;
   position: relative;
   padding: 0; // new
-  transition: .2s opacity;
+  transition: .2s opacity, .2s background-color, .2s color;
 
   @include hover() {
-    transition: /* .2s background-color,  */.2s opacity;
+    // transition: /* .2s background-color,  */.2s opacity;
     background: var(--dark-primary-color);
   }
 

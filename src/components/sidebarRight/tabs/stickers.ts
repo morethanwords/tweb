@@ -8,7 +8,7 @@ import {SliderSuperTab} from '@components/slider';
 import InputSearch from '@components/inputSearch';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import appImManager from '@lib/appImManager';
-import PopupStickers from '@components/popups/stickers';
+import showStickersPopup from '@components/popups/stickers';
 import animationIntersector from '@components/animationIntersector';
 import appSidebarRight from '..';
 import {StickerSet, StickerSetCovered} from '@layer';
@@ -20,7 +20,6 @@ import setInnerHTML from '@helpers/dom/setInnerHTML';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import attachStickerViewerListeners from '@components/stickerViewer';
 import wrapSticker from '@components/wrappers/sticker';
-import PopupElement from '@components/popups';
 import {getStickerSetInputById as getStickerSetInputById, getStickerSetInputByStickerSet} from '@lib/appManagers/utils/stickers/getStickerSetInput';
 
 export default class AppStickersTab extends SliderSuperTab {
@@ -85,7 +84,7 @@ export default class AppStickersTab extends SliderSuperTab {
         });
       } else {
         this.managers.appStickersManager.getStickerSet(input).then((full) => {
-          PopupElement.createPopup(PopupStickers, getStickerSetInputByStickerSet(full.set)).show();
+          showStickersPopup(getStickerSetInputByStickerSet(full.set));
         });
       }
     }, {listenerSetter: this.listenerSetter});

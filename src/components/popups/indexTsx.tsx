@@ -48,16 +48,8 @@ export type PopupOptions = Partial<{
   onCloseAfterTimeout: () => void,
   isConfirmationNeededOnClose: () => void | boolean | Promise<any>,
   // overlayClosable: boolean,
-  withConfirm: LangPackKey | boolean,
-  body: boolean,
-  footer: boolean,
   confirmShortcutIsSendShortcut: boolean,
   withoutOverlay: boolean,
-  scrollable: boolean,
-  buttons: Array<PopupButton>,
-  title: boolean | LangPackKey | DocumentFragment | HTMLElement,
-  floatingHeader: boolean,
-  withFooterConfirm: boolean,
   btnConfirmOnEnter?: Accessor<HTMLElement>
 }>;
 
@@ -77,7 +69,6 @@ export type PopupContextValue = {
   middlewareHelper: MiddlewareHelper,
   lateMiddlewareHelper: MiddlewareHelper,
   navigationItem: NavigationItem | undefined,
-  // scrollable: Scrollable | undefined,
   scrollableRef?: ScrollableContextValue,
   withoutOverlay: boolean,
   night: boolean,
@@ -86,11 +77,8 @@ export type PopupContextValue = {
   setBtnConfirmOnEnter: Setter<HTMLElement>,
   isConfirmationNeededOnClose: PopupOptions['isConfirmationNeededOnClose'],
   closable: boolean,
-  withConfirm: LangPackKey | boolean,
-  body: boolean,
-  footer: boolean,
-  title: boolean | LangPackKey | DocumentFragment | HTMLElement,
-  element: HTMLElement | undefined
+  element: HTMLElement | undefined,
+  kind: symbol | undefined
 };
 
 type PopupControllerContextValue = {
@@ -112,9 +100,11 @@ addFullScreenListener(DEFAULT_APPEND_TO, onFullScreenChange);
 const PopupElement = (props: {
   class?: string,
   containerClass?: string,
+  containerProps?: JSX.HTMLAttributes<HTMLDivElement>,
   managers?: AppManagers,
   children: JSX.Element,
-  show?: boolean
+  show?: boolean,
+  kind?: symbol
 } & PopupOptions) => {
   const [shown, setShown] = createSignal(false);
   const [store, setStore] = createStore<PopupContextValue['store']>({});
@@ -279,11 +269,8 @@ const PopupElement = (props: {
     setBtnConfirmOnEnter: props.btnConfirmOnEnter ? noop as typeof setBtnConfirmOnEnter : setBtnConfirmOnEnter,
     isConfirmationNeededOnClose,
     closable: props.closable || false,
-    withConfirm: props.withConfirm || false,
-    body: props.body || false,
-    footer: props.footer || false,
-    title: props.title || false,
-    get element() { return popupElement(); }
+    get element() { return popupElement(); },
+    kind: props.kind
   };
 
   // Add to popups array
@@ -334,7 +321,14 @@ const PopupElement = (props: {
             hide();
           })}
         >
-          <div class={classNames('popup-container z-depth-1', props.containerClass)}>
+          <div
+            {...(props.containerProps || {})}
+            class={classNames(
+              'popup-container z-depth-1',
+              props.containerClass,
+              props.containerProps?.class
+            )}
+          >
             {props.children}
           </div>
         </div>
@@ -344,7 +338,7 @@ const PopupElement = (props: {
 };
 
 // Static properties
-PopupElement.POPUPS = [] as any[];
+PopupElement.POPUPS = [] as PopupContextValue[];
 PopupElement.MANAGERS = undefined as any;
 
 PopupElement.Header = (props: {
@@ -376,7 +370,7 @@ PopupElement.Title = (props: {
 
   return context.register('title', (
     <Show when={titleContent()}>
-      <div class="popup-title">
+      <div class="popup-title" dir="auto">
         {titleContent()}
       </div>
     </Show>
@@ -410,27 +404,10 @@ PopupElement.CloseButton = (props: {
   ));
 };
 
-PopupElement.ConfirmButton = (props: {
-  withConfirm?: LangPackKey | boolean
-}) => {
-  const context = useContext(PopupContext);
-
-  if(!context.withConfirm) return null;
-
-  return context.register('confirmButton', (
-    <button class="btn-primary btn-color-primary">
-      <Show when={context.withConfirm !== true}>
-        {i18n(context.withConfirm as LangPackKey)}
-      </Show>
-    </button>
-  ));
-};
-
 PopupElement.Body = (props: {
   children: JSX.Element,
   class?: string,
-  scrollable?: boolean,
-  floatingHeader?: boolean
+  scrollable?: boolean
 }) => {
   return useContext(PopupContext).register('body', (
     <div class={classNames('popup-body', props.class)}>
@@ -455,13 +432,15 @@ PopupElement.Scrollable = (props: Parameters<typeof Scrollable>[0]) => {
 PopupElement.Footer = (props: {
   children: JSX.Element,
   class?: string,
-  floating?: boolean
+  floating?: boolean,
+  sticky?: boolean
 }) => {
   return useContext(PopupContext).register('footer', (
     <div
       class={classNames(
         'popup-footer popup-footer-abitlarger',
-        props.floating && 'popup-footer-floating',
+        (props.floating || props.sticky) && 'popup-footer-floating',
+        (props.floating || props.sticky) && 'popup-footer-sticky',
         props.class
       )}
     >
@@ -471,7 +450,11 @@ PopupElement.Footer = (props: {
   ));
 };
 
-PopupElement.FooterButton = (props: Parameters<typeof PopupElement.Button>[0] & {secondary?: boolean}) => {
+PopupElement.FooterButton = (
+  props: Omit<Parameters<typeof PopupElement.Button>[0], 'danger'> & {
+    color?: 'primary' | 'secondary' | 'danger'/*  | 'transparent' */
+  }
+) => {
   return (
     <PopupElement.Button
       {...props}
@@ -479,7 +462,10 @@ PopupElement.FooterButton = (props: Parameters<typeof PopupElement.Button>[0] & 
       class={classNames(
         'popup-footer-button',
         'btn-primary',
-        props.secondary ? 'btn-transparent primary text-bold' : 'btn-color-primary',
+        props.color === 'danger' && 'btn-primary-transparent danger',
+        props.color === 'secondary' && 'btn-transparent primary text-bold',
+        // props.color === 'transparent' && 'btn-primary-transparent',
+        (!props.color || props.color === 'primary') && 'btn-color-primary',
         props.class
       )}
     />
@@ -578,8 +564,10 @@ PopupElement.Buttons = (props: {
   ));
 };
 
-PopupElement.getPopups = <T extends any>(popupConstructor: any) => {
-  return PopupElement.POPUPS.filter((element) => element instanceof popupConstructor) as T[];
+PopupElement.getPopups = (popupKind: symbol) => {
+  return PopupElement.POPUPS.filter((element) => {
+    return element.kind === popupKind;
+  });
 };
 
 export const addCancelButton = (buttons: PopupButton[]) => {

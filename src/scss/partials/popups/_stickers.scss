@@ -8,7 +8,16 @@
 
 .popup-stickers {
   $parent: ".popup";
+  --background-color: var(--surface-color);
+  --popup-width: 420px;
+  --popup-max-height: 420px;
   user-select: none;
+
+  #{$parent} {
+    &-footer {
+      --popup-footer-gradient-start: 0%;
+    }
+  }
 
   .scrollable {
     &.is-loading {
@@ -19,24 +28,6 @@
 
   .super-emojis {
     padding: 0 .5rem;
-  }
-
-  #{$parent} {
-    &-container {
-      max-width: 420px;
-      max-height: 420px;
-      width: 420px;
-      padding: 0;
-    }
-
-    &-footer {
-      color: var(--primary-color);
-  
-      .btn-primary {
-        width: auto;
-        margin: 0 auto;
-      }
-    }
   }
 
   .sticker-set {
@@ -69,8 +60,8 @@
         @include respond-to(handhelds) {
           margin-bottom: 8px;
         }
-  
-        &:hover {
+
+        @include hover() {
           border-radius: 12px;
           background-color: var(--light-secondary-text-color);
         }

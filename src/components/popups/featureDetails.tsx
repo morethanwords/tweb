@@ -54,7 +54,7 @@ export default function showFeatureDetailsPopup(props: FeatureDetailsPopupProps)
           <PopupElement.FooterButton
             callback={button.onClick ? () => button.onClick?.(close) : close}
             cancel={button.isCancel}
-            secondary={button.isSecondary}
+            color={button.isSecondary ? 'secondary' : undefined}
           >
             {button.text}
           </PopupElement.FooterButton>

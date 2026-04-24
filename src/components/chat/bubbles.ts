@@ -14,7 +14,7 @@ import rootScope from '@lib/rootScope';
 import BubbleGroups from '@components/chat/bubbleGroups';
 import PopupDatePicker from '@components/popups/datePicker';
 import showForwardPopup from '@components/popups/forward';
-import PopupStickers from '@components/popups/stickers';
+import showStickersPopup from '@components/popups/stickers';
 import ProgressivePreloader from '@components/preloader';
 import Scrollable, {SliceSides} from '@components/scrollable';
 import StickyIntersector from '@components/stickyIntersector';
@@ -2858,7 +2858,7 @@ export default class ChatBubbles {
       const doc = ((message as Message.message).media as MessageMedia.messageMediaDocument)?.document as Document.document;
 
       if(doc?.stickerSetInput) {
-        PopupElement.createPopup(PopupStickers, doc.stickerSetInput, undefined, this.chat.input).show();
+        showStickersPopup(doc.stickerSetInput, undefined, this.chat.input);
       }
 
       return;
@@ -3048,12 +3048,7 @@ export default class ChatBubbles {
       }
 
       const inputStickerSet = attribute.stickerset as InputStickerSet.inputStickerSetID;
-      PopupElement.createPopup(
-        PopupStickers,
-        inputStickerSet,
-        true,
-        this.chat.input
-      ).show();
+      showStickersPopup(inputStickerSet, true, this.chat.input);
     });
   }
 
@@ -5456,12 +5451,7 @@ export default class ChatBubbles {
         showPremiumInfo: () => {
           const a = anchorCallback(() => {
             hideToast();
-            PopupElement.createPopup(
-              PopupStickers,
-              doc.stickerSetInput,
-              undefined,
-              this.chat.input
-            ).show();
+            showStickersPopup(doc.stickerSetInput, undefined, this.chat.input);
           });
 
           toastNew({

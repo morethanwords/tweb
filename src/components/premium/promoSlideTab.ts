@@ -27,8 +27,7 @@ import PopupGiftLink from '@components/popups/giftLink';
 import lastItem from '@helpers/array/lastItem';
 import maybe2x from '@helpers/maybe2x';
 import wrapSticker from '@components/wrappers/sticker';
-import PopupStickers from '@components/popups/stickers';
-import PopupElement from '@components/popups';
+import showStickersPopup from '@components/popups/stickers';
 
 type PromoSlideTabOptions = PopupPremiumProps & {
   container: HTMLElement,
@@ -250,7 +249,7 @@ export default class PromoSlideTab {
         title = i18n('TelegramPremiumPeerTitleEmojiStatus', [
           peerTitle,
           anchorCallback(() => {
-            PopupElement.createPopup(PopupStickers, doc.stickerSetInput, true).show()
+            showStickersPopup(doc.stickerSetInput, true)
           }),
           stickerset.set.title
         ])

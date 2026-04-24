@@ -163,8 +163,8 @@ export default class AppEditChatTab extends SliderSuperTab {
         this.editPeer.avatarEdit.container.classList.add('disable-hover');
       }
 
-      section.content.append(this.editPeer.avatarEdit.container, inputWrapper);
-      this.scrollable.append(section.container);
+      section.content.append(inputWrapper);
+      this.scrollable.append(this.editPeer.avatarEdit.container, section.container);
     }
 
     {
