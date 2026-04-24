@@ -259,7 +259,8 @@ export default function SimilarChannels(props: {
               isEnd: true
             };
           },
-          titleLangKey: 'SimilarChannels'
+          titleLangKey: 'SimilarChannels',
+          noSearch: true
         });
         return;
       }

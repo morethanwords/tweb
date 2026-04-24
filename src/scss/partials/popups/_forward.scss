@@ -44,7 +44,7 @@
     }
 
     &-height-container {
-      padding-bottom: 4rem;
+      padding-bottom: calc(#{$button-height} + var(--section-padding-bottom));
       flex-shrink: 0;
     }
 

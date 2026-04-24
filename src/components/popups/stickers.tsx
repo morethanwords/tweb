@@ -36,7 +36,6 @@ import toArray from '@helpers/array/toArray';
 import ListenerSetter from '@helpers/listenerSetter';
 import {createSignal, JSX, onCleanup, onMount, Show, untrack, useContext} from 'solid-js';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
-import Scrollable from '@components/scrollable2';
 import MyShow from '@helpers/solid/myShow';
 
 const ANIMATION_GROUP: AnimationItemGroup = 'STICKERS-POPUP';
@@ -341,31 +340,32 @@ export default function showStickersPopup(
           {menuEl()}
         </PopupElement.Header>
         <PopupElement.Body>
-          <Scrollable
+          <PopupElement.Scrollable
             ref={scrollableEl}
             class={!isLoaded() && 'is-loading'}
+            withBorders="top"
           >
             <Show when={isLoaded()} fallback={putPreloader(undefined, true)}>
               {containers()}
             </Show>
-            <PopupElement.Footer sticky>
-              <PopupElement.FooterButton
-                noRipple
-                color={isLoaded() ? (isAdd() ? 'primary' : 'danger') : 'secondary'}
-                callback={async() => {
-                  await managers.appStickersManager.toggleStickerSets(
-                    rawSetsRef.map((set) => set.set)
-                  );
-                }}
-                disabled={!isLoaded()}
-              >
-                <MyShow when={isLoaded()} fallback={i18n('Loading')}>
-                  {buttonText()}
-                </MyShow>
-              </PopupElement.FooterButton>
-            </PopupElement.Footer>
-          </Scrollable>
+          </PopupElement.Scrollable>
         </PopupElement.Body>
+        <PopupElement.Footer floating={isLoaded()}>
+          <PopupElement.FooterButton
+            noRipple
+            color={isLoaded() ? (isAdd() ? 'primary' : 'danger') : 'secondary'}
+            callback={async() => {
+              await managers.appStickersManager.toggleStickerSets(
+                rawSetsRef.map((set) => set.set)
+              );
+            }}
+            disabled={!isLoaded()}
+          >
+            <MyShow when={isLoaded()} fallback={i18n('Loading')}>
+              {buttonText()}
+            </MyShow>
+          </PopupElement.FooterButton>
+        </PopupElement.Footer>
       </>
     );
   }
@@ -380,6 +380,7 @@ export default function showStickersPopup(
       onCloseAfterTimeout={() => {
         deferredCloseCallbacks.splice(0).forEach((cb) => cb());
       }}
+      old
     >
       <Inner />
     </PopupElement>

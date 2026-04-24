@@ -215,6 +215,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
   private onReady: () => void;
   private stickerRenderer: SuperStickerRenderer;
   private showLocks: boolean;
+  private nativeEmojiFadeReady: boolean;
   public initPromise: Promise<void>;
 
   constructor(options: {
@@ -364,6 +365,10 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
     // if(visible)
     category.elements.items.replaceChildren(...newChildren);
 
+    if(visible && this.nativeEmojiFadeReady) {
+      this.fadeInNativeEmojis(newChildren);
+    }
+
     if(renderer && !visible) {
       const customEmojis: Parameters<CustomEmojiRendererElement['add']>[0]['addCustomEmojis'] = new Map();
       category.items.forEach(({docId, element}) => {
@@ -415,6 +420,19 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
   private onCategoryVisibility = ({target, visible}: Pick<OnVisibilityChangeItem, 'target' | 'visible'>) => {
     this._onCategoryVisibility(this.categoriesMap.get(target), visible);
   };
+
+  private fadeInNativeEmojis(parents: HTMLElement[]) {
+    const natives: HTMLElement[] = [];
+    for(const parent of parents) {
+      const child = parent.firstElementChild as HTMLElement | null;
+      if(child?.classList.contains('emoji-native')) {
+        natives.push(child);
+      }
+    }
+    if(!natives.length) return;
+    natives.forEach((el) => { el.style.opacity = '0'; });
+    fastRaf(() => natives.forEach((el) => { el.style.opacity = ''; }));
+  }
 
   public destroy() {
     super.destroy();
@@ -525,6 +543,20 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
       this.additionalLocalStickerSet?.()
     ]).then(([_, recent, recentCustom, sets, mainSets, additionalSets, additionalLocalStickerSet]) => {
       preloader.remove();
+
+      // Native emojis (IS_EMOJI_SUPPORTED === true) have no load event, so without
+      // staging they pop in the moment IntersectionObserver inserts them into the
+      // DOM. Flip the gate now so that `_onCategoryVisibility` starts applying a
+      // JS-driven opacity transition for subsequent insertions, and retroactively
+      // fade any category that's already been mounted and populated.
+      if(IS_EMOJI_SUPPORTED && liteMode.isAvailable('animations')) {
+        this.nativeEmojiFadeReady = true;
+        for(const category of this.categoriesMap.values()) {
+          if(this.isCategoryVisible(category)) {
+            this.fadeInNativeEmojis(Array.from(category.elements.items.children) as HTMLElement[]);
+          }
+        }
+      }
 
       const docIdsToCustomEmoji = (docIds: DocId[]): ReturnType<typeof getEmojiFromElement>[] => {
         return docIds.map((docId) => {

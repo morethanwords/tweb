@@ -22,6 +22,7 @@ export default class CustomEmojiElement extends HTMLElement {
   public syncedPlayer: SyncedPlayer;
   public clean: boolean;
   public lastChildWas: Node;
+  public savedChildren: Node[];
   // public docId: DocId;
   public placeholder: HTMLImageElement;
   public middlewareHelper: MiddlewareHelper;

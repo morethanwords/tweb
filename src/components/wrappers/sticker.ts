@@ -84,7 +84,7 @@ const getThumbFromContainer = (container: HTMLElement) => {
   return element;
 };
 
-export default async function wrapSticker({doc, div, middleware, loadStickerMiddleware, lazyLoadQueue, exportLoad, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises, needFadeIn, needUpscale, skipRatio, static: asStatic, managers = rootScope.managers, fullThumb, isOut, noPremium, withLock, relativeEffect, loopEffect, isCustomEmoji, syncedVideo, liteModeKey, isEffect, textColor, scrollable, showPremiumInfo, useCache, initFrame}: {
+export default async function wrapSticker({doc, div, middleware, loadStickerMiddleware, lazyLoadQueue, exportLoad, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises, needFadeIn, needUpscale, skipRatio, static: asStatic, managers = rootScope.managers, fullThumb, isOut, noPremium, withLock, relativeEffect, loopEffect, isCustomEmoji, syncedVideo, liteModeKey, isEffect, textColor, scrollable, showPremiumInfo, useCache, initFrame, keepThumb}: {
   doc: MyDocument,
   div: HTMLElement | HTMLElement[],
   middleware?: Middleware,
@@ -119,7 +119,11 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
   scrollable?: Scrollable
   showPremiumInfo?: () => void,
   useCache?: boolean,
-  initFrame?: number
+  initFrame?: number,
+  // Caller-managed thumb lifecycle: when true, wrapSticker doesn't auto-remove
+  // the thumb after the media is appended, so the caller can keep it visible
+  // underneath during a custom fade-in and remove it when finished.
+  keepThumb?: boolean
 }) {
   const options = arguments[0];
   div = toArray(div);
@@ -616,7 +620,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
 
               if(!media) {
                 if(!isSingleVideo || !isAnimated) {
-                  UNMOUNT_THUMBS && thumbImage?.remove();
+                  UNMOUNT_THUMBS && !keepThumb && thumbImage?.remove();
                 }
 
                 return;
@@ -697,10 +701,10 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
                 thumbImage && thumbImage.classList.add('fade-out');
                 onAnimationEnd(media, () => {
                   media.classList.remove('fade-in');
-                  UNMOUNT_THUMBS && thumbImage?.remove();
+                  UNMOUNT_THUMBS && !keepThumb && thumbImage?.remove();
                 }, 400);
               } else {
-                UNMOUNT_THUMBS && thumbImage?.remove();
+                UNMOUNT_THUMBS && !keepThumb && thumbImage?.remove();
               }
 
               if(isAnimated) {

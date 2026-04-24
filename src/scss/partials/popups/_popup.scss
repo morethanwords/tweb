@@ -15,6 +15,14 @@
   --popup-max-width: var(--popup-width);
   --popup-min-height: var(--popup-height);
   --popup-max-height: var(--popup-height);
+
+  // --popup-footer-padding: #{$popup-footer-padding};
+  // --popup-footer-button-height: #{$popup-footer-button-size};
+  --popup-footer-padding: #{$popup-footer-abitlarger-padding};
+  --popup-footer-button-height: #{$popup-footer-abitlarger-button-size};
+  --popup-footer-height: calc(var(--popup-footer-padding) * 2 + var(--popup-footer-button-height));
+  --popup-footer-gradient-start: 50%;
+
   --link-color: var(--primary-color);
   position: fixed !important;
   top: 0;
@@ -203,11 +211,9 @@
   }
 
   &-footer {
-    --popup-footer-padding: #{$popup-footer-padding};
-    --popup-footer-button-height: #{$popup-footer-button-size};
     flex: 0 0 auto;
     padding: var(--popup-footer-padding);
-    min-height: calc(var(--popup-footer-padding) * 2 + var(--popup-footer-button-height));
+    min-height: var(--popup-footer-height);
 
     &-button.btn-primary {
       display: block;
@@ -218,11 +224,11 @@
       text-transform: uppercase;
     }
 
-    &.abitlarger,
-    &-abitlarger {
-      --popup-footer-padding: #{$popup-footer-abitlarger-padding};
-      --popup-footer-button-height: #{$popup-footer-abitlarger-button-size};
-    }
+    // &.abitlarger,
+    // &-abitlarger {
+    //   --popup-footer-padding: #{$popup-footer-abitlarger-padding};
+    //   --popup-footer-button-height: #{$popup-footer-abitlarger-button-size};
+    // }
 
     &-caption {
       display: block;
@@ -239,7 +245,6 @@
     }
 
     &-floating {
-      --popup-footer-gradient-start: 50%;
       position: absolute;
       bottom: 0;
       inset-inline: 0;
@@ -248,6 +253,7 @@
         var(--background-color) var(--popup-footer-gradient-start),
         transparent 100%
       );
+      z-index: 1;
 
       .btn-primary-transparent.danger {
         background: var(--background-color);
@@ -316,6 +322,10 @@
         margin: 0 !important;
       }
     }
+  }
+
+  &.old {
+    --background-color: var(--surface-color);
   }
 }
 

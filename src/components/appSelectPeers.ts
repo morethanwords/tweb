@@ -394,6 +394,8 @@ export default class AppSelectPeers {
       this.inputSearch = this.selectorSearch.inputSearch;
       this.input = this.selectorSearch.input;
       this.children.unshift(this.selectorSearch.gradient, this.selectorSearch.section.container);
+    } else {
+      this.scrollable.attachBorderListeners();
     }
 
     attachClickEvent(this.container, async(e) => {

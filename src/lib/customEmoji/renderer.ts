@@ -15,6 +15,8 @@ import replaceContent from '@helpers/dom/replaceContent';
 import framesCache from '@helpers/framesCache';
 import {MediaSize} from '@helpers/mediaSize';
 import mediaSizes from '@helpers/mediaSizes';
+import liteMode from '@helpers/liteMode';
+import apiManagerProxy from '@lib/apiManagerProxy';
 import {Middleware, MiddlewareHelper, getMiddleware} from '@helpers/middleware';
 import noop from '@helpers/noop';
 import {DocumentAttribute} from '@layer';
@@ -217,6 +219,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
     this.isCanvasClean = false;
 
     const {width, height, dpr} = canvas;
+    const animationsEnabled = liteMode.isAvailable('emoji_appear');
     let _color: string;
     for(const [elements, offsets] of offsetsMap) {
       const player = this.playersSynced.get(elements);
@@ -250,7 +253,26 @@ export class CustomEmojiRendererElement extends HTMLElement {
       const maxLeft = width - frameWidth;
       const color = this.textColored.has(elements) ? (_color ??= customProperties.getProperty(this.textColor())) : undefined;
 
-      if(!this.clearedElements.has(elements) && !this.isSelectable) {
+      let alpha = 1;
+      if(animationsEnabled) {
+        let startTime = elementsFadeInStartTimes.get(elements);
+        if(startTime === undefined) {
+          // Skip fade if a raster thumb <img> is already visible under the canvas —
+          // the canvas frame replacing it would otherwise read as a blink. Path-size
+          // <svg> placeholders are visually different enough that the fade still helps.
+          const skipFade = hasRasterThumbPlaceholder(elements);
+          startTime = skipFade ? 0 : performance.now();
+          elementsFadeInStartTimes.set(elements, startTime);
+        }
+        alpha = Math.min(1, (performance.now() - startTime) / CUSTOM_EMOJI_FADE_IN_DURATION);
+      }
+      // putImageData ignores globalAlpha, so fade only applies on the drawImage path
+      const applyFade = alpha < 1 && !isImageData;
+
+      // Keep the placeholder DOM children visible underneath until the fade completes,
+      // otherwise there's a visible gap between the thumb being removed and the canvas
+      // frame becoming opaque enough to see.
+      if(!applyFade && !this.clearedElements.has(elements) && !this.isSelectable) {
         if(this.isSelectable/*  && false */) {
           elements.forEach((element) => {
             element.lastChildWas ??= element.lastChild;
@@ -258,11 +280,16 @@ export class CustomEmojiRendererElement extends HTMLElement {
           });
         } else {
           elements.forEach((element) => {
+            element.savedChildren ??= Array.from(element.childNodes);
             element.replaceChildren();
           });
         }
 
         this.clearedElements.add(elements);
+      }
+
+      if(applyFade) {
+        context.globalAlpha = alpha;
       }
 
       offsets.forEach(({top, left}) => {
@@ -282,6 +309,49 @@ export class CustomEmojiRendererElement extends HTMLElement {
           applyColorOnContext(context, color, left, top, frameWidth, frameHeight);
         }
       });
+
+      if(applyFade) {
+        context.globalAlpha = 1;
+      }
+    }
+
+    // Restore placeholders for groups that exited the viewport so they fade-in next time.
+    // We deliberately ignore groups that are merely paused (window blur, idle, animations
+    // disabled, etc.) but still on-screen — restoring there would re-trigger the fade
+    // on every unpause. animationIntersector already tracks per-element viewport visibility
+    // via IntersectionObserver, so reuse that instead of running a second viewport check.
+    for(const elements of this.customEmojis.values()) {
+      if(
+        !offsetsMap.has(elements) &&
+        this.clearedElements.has(elements) &&
+        !isAnyElementVisible(elements)
+      ) {
+        this.restorePlaceholders(elements);
+      }
+    }
+  }
+
+  public restorePlaceholders(elements: CustomEmojiElements) {
+    if(this.isSelectable) {
+      return;
+    }
+
+    elements.forEach((element) => {
+      const saved = element.savedChildren;
+      if(saved?.length && !element.firstChild) {
+        element.replaceChildren(...saved);
+      }
+    });
+
+    this.clearedElements.delete(elements);
+    elementsFadeInStartTimes.delete(elements);
+  }
+
+  public restoreAllPlaceholders() {
+    for(const elements of this.customEmojis.values()) {
+      if(this.clearedElements.has(elements) && !isAnyElementVisible(elements)) {
+        this.restorePlaceholders(elements);
+      }
     }
   }
 
@@ -456,9 +526,25 @@ export class CustomEmojiRendererElement extends HTMLElement {
       renderer.textColored.add(customEmojis);
     }
 
+    // If the doc is already cached locally with a URL, the media will appear
+    // (almost) instantly — playing a fade-in over already-visible content reads
+    // as a blink, so we skip it in that case.
+    const cacheContext = apiManagerProxy.getCacheContext(doc);
+    const isAlreadyAvailable = !!(cacheContext.downloaded && cacheContext.url);
+
     const loadStickerMiddleware = willHaveSyncedPlayer ? middleware.create().get(() => {
       return !!syncedPlayer.middlewares.size;
     }) : undefined;
+
+    // When we'll do our own JS fade on a DOM path, tell wrapSticker to leave the
+    // thumb in the DOM so we can keep it visible underneath the media as it fades
+    // in (avoiding a perceptual "gap" between the thumb disappearing and the
+    // fade-in reaching a visible opacity).
+    const willDomFade =
+      !willHaveSyncedPlayer &&
+      !this.isSelectable &&
+      (stickerType === StickerType.Static || onlyThumb || isStatic || !isAlreadyAvailable) &&
+      liteMode.isAvailable('emoji_appear');
 
     const _loadPromises: Promise<any>[] = [];
     const promise = isPaidReactionEmoji ? this.wrapPaidReactionEmoji(newElementsArray[0]) : wrapSticker({
@@ -480,7 +566,8 @@ export class CustomEmojiRendererElement extends HTMLElement {
       onlyThumb,
       withThumb: withThumb ?? (renderer.clearedElements.has(customEmojis) ? false : undefined),
       syncedVideo: this.isSelectable,
-      textColor: renderer.textColor
+      textColor: renderer.textColor,
+      keepThumb: willDomFade
     });
 
     if(loadPromises) {
@@ -510,117 +597,140 @@ export class CustomEmojiRendererElement extends HTMLElement {
     }
 
     if(stickerType === StickerType.Static || onlyThumb || isStatic) {
-      if(this.isSelectable) {
-        addition.onRender = () => Promise.all(_loadPromises).then(() => {
+      addition.onRender = () => {
+        // Pre-hide the real media (not the container) synchronously, before the
+        // next browser paint. With keepThumb=true, wrapSticker leaves the thumb in
+        // DOM — we absolutely-position it so it overlays the media, and it stays
+        // at full opacity throughout. The media fades 0 -> 1 on top, so the user
+        // sees a crossfade from thumb to media with no perceptual gap.
+        if(willDomFade) {
+          newElementsArray.forEach(preHideMediaWithThumbOverlay);
+        }
+        return Promise.all(_loadPromises).then(() => {
           if(!middleware()) return;
-          newElementsArray.forEach((element) => {
-            const {placeholder} = element;
-            placeholder.src = (element.firstElementChild as HTMLImageElement).src;
-          });
+          if(this.isSelectable) {
+            newElementsArray.forEach((element) => {
+              const {placeholder} = element;
+              placeholder.src = (element.firstElementChild as HTMLImageElement).src;
+            });
+          } else {
+            newElementsArray.forEach(fadeInMediaAndCleanupThumbs);
+          }
         });
-      }
+      };
 
       return promise.then((res) => ({...res, ...addition}));
     }
 
-    addition.onRender = (_p) => Promise.all(_loadPromises).then(() => {
-      if(!middleware() || !doc.animated) {
-        return;
+    addition.onRender = (_p) => {
+      // Same approach as the static path — fade the <video> directly, keep the
+      // thumb overlaid underneath so any compositor timing on the video layer
+      // doesn't produce a visible gap (the thumb covers it until the fade completes).
+      if(willDomFade) {
+        newElementsArray.forEach(preHideMediaWithThumbOverlay);
       }
+      return Promise.all(_loadPromises).then(() => {
+        if(!middleware() || !doc.animated) {
+          return;
+        }
 
-      const players = Array.isArray(_p) ? _p as HTMLVideoElement[] : [_p as RLottiePlayer];
-      const player = Array.isArray(players) ? players[0] : players;
-      assumeType<RLottiePlayer | HTMLVideoElement>(player);
-      newElementsArray.forEach((element, idx) => {
-        const player = players[idx] || players[0];
-        element.player = player;
+        const players = Array.isArray(_p) ? _p as HTMLVideoElement[] : [_p as RLottiePlayer];
+        const player = Array.isArray(players) ? players[0] : players;
+        assumeType<RLottiePlayer | HTMLVideoElement>(player);
+        newElementsArray.forEach((element, idx) => {
+          const player = players[idx] || players[0];
+          element.player = player;
 
-        if(syncedPlayer) {
-          element.syncedPlayer = syncedPlayer;
-          if(element.paused) {
-            element.syncedPlayer.pausedElements.add(element);
-          } else if(player.paused) {
-            player.play();
+          if(syncedPlayer) {
+            element.syncedPlayer = syncedPlayer;
+            if(element.paused) {
+              element.syncedPlayer.pausedElements.add(element);
+            } else if(player.paused) {
+              player.play();
+            }
           }
+
+          if(element.isConnected || middleware()) {
+            animationIntersector.addAnimation({
+              animation: element,
+              group: element.renderer.animationGroup,
+              observeElement: element.placeholder ?? element,
+              controlled: true,
+              type: 'emoji'
+            });
+          }
+        });
+
+        if(player instanceof RLottiePlayer || (player instanceof HTMLVideoElement && this.isSelectable)) {
+          syncedPlayer.player = player;
+          renderer.playersSynced.set(customEmojis, player);
         }
 
-        if(element.isConnected || middleware()) {
-          animationIntersector.addAnimation({
-            animation: element,
-            group: element.renderer.animationGroup,
-            observeElement: element.placeholder ?? element,
-            controlled: true,
-            type: 'emoji'
-          });
-        }
-      });
+        if(player instanceof RLottiePlayer) {
+          player.group = renderer.animationGroup;
 
-      if(player instanceof RLottiePlayer || (player instanceof HTMLVideoElement && this.isSelectable)) {
-        syncedPlayer.player = player;
-        renderer.playersSynced.set(customEmojis, player);
-      }
-
-      if(player instanceof RLottiePlayer) {
-        player.group = renderer.animationGroup;
-
-        player.overrideRender ??= (frame) => {
-          syncedPlayersFrames.set(player, frame);
+          player.overrideRender ??= (frame) => {
+            syncedPlayersFrames.set(player, frame);
           // frames.set(containers, frame);
-        };
-      } else if(player instanceof HTMLVideoElement) {
+          };
+        } else if(player instanceof HTMLVideoElement) {
         // player.play();
 
-        // const cache = framesCache.getCache(key);
-        // let {width, height} = renderer.size;
-        // width *= dpr;
-        // height *= dpr;
+          // const cache = framesCache.getCache(key);
+          // let {width, height} = renderer.size;
+          // width *= dpr;
+          // height *= dpr;
 
-        // const onFrame = (frame: ImageBitmap | HTMLCanvasElement) => {
-        //   topFrames.set(player, frame);
-        //   player.requestVideoFrameCallback(callback);
-        // };
+          // const onFrame = (frame: ImageBitmap | HTMLCanvasElement) => {
+          //   topFrames.set(player, frame);
+          //   player.requestVideoFrameCallback(callback);
+          // };
 
-        // let frameNo = -1, lastTime = 0;
-        // const callback: VideoFrameRequestCallback = (now, metadata) => {
-        //   const time = player.currentTime;
-        //   if(lastTime > time) {
-        //     frameNo = -1;
-        //   }
+          // let frameNo = -1, lastTime = 0;
+          // const callback: VideoFrameRequestCallback = (now, metadata) => {
+          //   const time = player.currentTime;
+          //   if(lastTime > time) {
+          //     frameNo = -1;
+          //   }
 
-        //   const _frameNo = ++frameNo;
-        //   lastTime = time;
-        //   // const frameNo = Math.floor(player.currentTime * 1000 / CUSTOM_EMOJI_FRAME_INTERVAL);
-        //   // const frameNo = metadata.presentedFrames;
-        //   const imageBitmap = cache.framesNew.get(_frameNo);
+          //   const _frameNo = ++frameNo;
+          //   lastTime = time;
+          //   // const frameNo = Math.floor(player.currentTime * 1000 / CUSTOM_EMOJI_FRAME_INTERVAL);
+          //   // const frameNo = metadata.presentedFrames;
+          //   const imageBitmap = cache.framesNew.get(_frameNo);
 
-        //   if(imageBitmap) {
-        //     onFrame(imageBitmap);
-        //   } else if(IS_IMAGE_BITMAP_SUPPORTED) {
-        //     createImageBitmap(player, {resizeWidth: width, resizeHeight: height}).then((imageBitmap) => {
-        //       cache.framesNew.set(_frameNo, imageBitmap);
-        //       if(frameNo === _frameNo) onFrame(imageBitmap);
-        //     });
-        //   } else {
-        //     const canvas = document.createElement('canvas');
-        //     const context = canvas.getContext('2d');
-        //     canvas.width = width;
-        //     canvas.height = height;
-        //     context.drawImage(player, 0, 0);
-        //     cache.framesNew.set(_frameNo, canvas);
-        //     onFrame(canvas);
-        //   }
-        // };
+          //   if(imageBitmap) {
+          //     onFrame(imageBitmap);
+          //   } else if(IS_IMAGE_BITMAP_SUPPORTED) {
+          //     createImageBitmap(player, {resizeWidth: width, resizeHeight: height}).then((imageBitmap) => {
+          //       cache.framesNew.set(_frameNo, imageBitmap);
+          //       if(frameNo === _frameNo) onFrame(imageBitmap);
+          //     });
+          //   } else {
+          //     const canvas = document.createElement('canvas');
+          //     const context = canvas.getContext('2d');
+          //     canvas.width = width;
+          //     canvas.height = height;
+          //     context.drawImage(player, 0, 0);
+          //     cache.framesNew.set(_frameNo, canvas);
+          //     onFrame(canvas);
+          //   }
+          // };
 
         // // player.requestVideoFrameCallback(callback);
         // // setInterval(callback, CUSTOM_EMOJI_FRAME_INTERVAL);
-      }
+        }
 
-      if(willHaveSyncedPlayer) {
-        const dpr = getLottiePixelRatio(this.size.width, this.size.height);
-        renderer.canvas.dpr = dpr;
-        setRenderInterval();
-      }
-    });
+        if(willHaveSyncedPlayer) {
+          const dpr = getLottiePixelRatio(this.size.width, this.size.height);
+          renderer.canvas.dpr = dpr;
+          setRenderInterval();
+        } else if(!isAlreadyAvailable) {
+          // DOM-rendered path (e.g. non-selectable WebM video) — fade-in via JS opacity
+          newElementsArray.forEach(fadeInMediaAndCleanupThumbs);
+        }
+      });
+    };
 
     let syncedPlayer: SyncedPlayer;
     const key = [docId, size.width, size.height].join('-');
@@ -851,10 +961,27 @@ export type CustomEmojiRendererElementOptions = Partial<{
 }> & WrapSomethingOptions;
 
 const CUSTOM_EMOJI_INSTANT_PLAY = true; // do not wait for animationIntersector
+const CUSTOM_EMOJI_FADE_IN_DURATION = 250;
+
+const isAnyElementVisible = (elements: CustomEmojiElements) => {
+  for(const element of elements) {
+    if(animationIntersector.isVisible(element)) return true;
+  }
+  return false;
+};
+
+const hasRasterThumbPlaceholder = (elements: CustomEmojiElements) => {
+  for(const element of elements) {
+    return !!element.querySelector?.('img');
+  }
+  return false;
+};
+
 let emojiRenderInterval: number;
 const emojiRenderers: Set<CustomEmojiRenderer> = new Set();
 const syncedPlayers: Map<string, SyncedPlayer> = new Map();
 const syncedPlayersFrames: Map<RLottiePlayer | HTMLVideoElement, CustomEmojiFrame> = new Map();
+const elementsFadeInStartTimes: WeakMap<CustomEmojiElements, number> = new WeakMap();
 export const renderEmojis = (renderers = emojiRenderers) => {
   const r = Array.from(renderers);
   const t = r.filter((r) => r.isConnected && r.checkForAnyFrame() && !r.ignoreSettingDimensions);
@@ -872,6 +999,10 @@ export const renderEmojis = (renderers = emojiRenderers) => {
     if(offsets.size) {
       return [renderer, offsets] as const;
     }
+
+    // No visible groups in this renderer — restore any cleared placeholders
+    // so they fade-in fresh when scrolled back into view.
+    renderer.restoreAllPlaceholders();
   }).filter(Boolean);
 
   for(const [renderer] of o) {
@@ -901,6 +1032,71 @@ const clearRenderInterval = () => {
 
   clearInterval(emojiRenderInterval);
   emojiRenderInterval = undefined;
+};
+
+// JS-driven fade-in for DOM-rendered custom emojis (images and non-synced videos).
+// Uses inline `opacity` updated on a single shared rAF loop — avoids CSS `animation`
+// which can cause heavy repaints / extra compositor layers when many emojis appear.
+type DomFadeIn = {element: HTMLElement, startTime: number};
+const domFadeIns: Set<DomFadeIn> = new Set();
+let domFadeRaf: number;
+const stepDomFadeIns = () => {
+  const now = performance.now();
+  for(const fade of domFadeIns) {
+    const alpha = Math.min(1, (now - fade.startTime) / CUSTOM_EMOJI_FADE_IN_DURATION);
+    if(alpha >= 1) {
+      fade.element.style.removeProperty('opacity');
+      fade.element.style.removeProperty('will-change');
+      domFadeIns.delete(fade);
+    } else {
+      fade.element.style.setProperty('opacity', String(alpha));
+    }
+  }
+  domFadeRaf = domFadeIns.size ? requestAnimationFrame(stepDomFadeIns) : undefined;
+};
+const startDomFadeIn = (element: HTMLElement) => {
+  if(!liteMode.isAvailable('emoji_appear')) {
+    return;
+  }
+  element.style.setProperty('opacity', '0');
+  domFadeIns.add({element, startTime: performance.now()});
+  if(!domFadeRaf) {
+    domFadeRaf = requestAnimationFrame(stepDomFadeIns);
+  }
+};
+
+// Pre-hide the media element and overlay the thumb so the thumb stays visible
+// at full opacity underneath while the media fades in on top. Called synchronously
+// in onRender, as a microtask after wrapSticker's rAF appended the media — this
+// runs before the next paint so the media never composites at opacity 1.
+const preHideMediaWithThumbOverlay = (el: HTMLElement) => {
+  const media = el.querySelector('.media-sticker:not(.thumbnail)');
+  if(media instanceof HTMLElement) {
+    media.style.setProperty('opacity', '0');
+    media.style.setProperty('will-change', 'opacity');
+  }
+  const thumb = el.querySelector('.thumbnail');
+  if(thumb instanceof HTMLElement) {
+    // Take the thumb out of flow so it overlays the media at the same rect.
+    // DOM order (thumb before media) keeps media painted on top, so as media
+    // fades 0 -> 1 the thumb is gradually obscured — a crossfade.
+    thumb.style.setProperty('position', 'absolute');
+    thumb.style.setProperty('top', '0');
+    thumb.style.setProperty('left', '0');
+  }
+};
+
+// Kicks off the rAF fade on the media and schedules thumb removal when the
+// fade would have finished. If there's no separate media element (shouldn't
+// normally happen on the DOM fade paths), we leave the thumb in place rather
+// than tearing it out.
+const fadeInMediaAndCleanupThumbs = (el: HTMLElement) => {
+  const media = el.querySelector('.media-sticker:not(.thumbnail)');
+  if(!(media instanceof HTMLElement)) return;
+  startDomFadeIn(media);
+  setTimeout(() => {
+    el.querySelectorAll('.thumbnail').forEach((t) => t.remove());
+  }, CUSTOM_EMOJI_FADE_IN_DURATION);
 };
 
 (window as any).syncedPlayers = syncedPlayers;

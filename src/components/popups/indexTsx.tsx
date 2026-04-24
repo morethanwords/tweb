@@ -50,7 +50,8 @@ export type PopupOptions = Partial<{
   // overlayClosable: boolean,
   confirmShortcutIsSendShortcut: boolean,
   withoutOverlay: boolean,
-  btnConfirmOnEnter?: Accessor<HTMLElement>
+  btnConfirmOnEnter?: Accessor<HTMLElement>,
+  old: boolean
 }>;
 
 type PopupKind = 'header' | 'title' | 'body' | 'footer' | 'buttons' | 'closeButton' | 'confirmButton';
@@ -78,7 +79,8 @@ export type PopupContextValue = {
   isConfirmationNeededOnClose: PopupOptions['isConfirmationNeededOnClose'],
   closable: boolean,
   element: HTMLElement | undefined,
-  kind: symbol | undefined
+  kind: symbol | undefined,
+  old?: boolean
 };
 
 type PopupControllerContextValue = {
@@ -209,6 +211,7 @@ const PopupElement = (props: {
     setTimeout(() => {
       setHiding(false);
       middlewareHelper.destroy();
+      controllerContext.dispose(); // * call it here for the content
       MarkupTooltip.getInstance().hide();
 
       if(!withoutOverlay) {
@@ -231,7 +234,6 @@ const PopupElement = (props: {
         animationIntersector.checkAnimations2(false);
       }
 
-      controllerContext.dispose();
       props.onCloseAfterTimeout?.();
     }, 250);
   };
@@ -270,7 +272,8 @@ const PopupElement = (props: {
     isConfirmationNeededOnClose,
     closable: props.closable || false,
     get element() { return popupElement(); },
-    kind: props.kind
+    kind: props.kind,
+    old: props.old
   };
 
   // Add to popups array
@@ -309,14 +312,20 @@ const PopupElement = (props: {
             night && 'night',
             withoutOverlay && 'no-overlay',
             shown() && 'active',
-            hiding() && 'hiding'
+            hiding() && 'hiding',
+            props.old && 'old'
           )}
           onClick={/* store.closeButton &&  */((e) => {
-            if(findUpClassName(e.target, 'popup-container') || !(e.target as HTMLElement).isConnected) {
+            if(
+              findUpClassName(e.target, 'popup-container') ||
+              !(e.target as HTMLElement).isConnected
+            ) {
               return;
             }
 
-            if(props.closable === false) return;
+            if(props.closable === false) {
+              return;
+            }
 
             hide();
           })}
@@ -425,6 +434,10 @@ PopupElement.Scrollable = (props: Parameters<typeof Scrollable>[0]) => {
         props.contextRef?.(ref);
       }}
       {...props}
+      class={classNames(
+        'popup-scrollable',
+        props.class
+      )}
     />
   ));
 };
@@ -440,7 +453,7 @@ PopupElement.Footer = (props: {
       class={classNames(
         'popup-footer popup-footer-abitlarger',
         (props.floating || props.sticky) && 'popup-footer-floating',
-        (props.floating || props.sticky) && 'popup-footer-sticky',
+        props.sticky && 'popup-footer-sticky',
         props.class
       )}
     >

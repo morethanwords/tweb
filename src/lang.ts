@@ -200,6 +200,7 @@ const lang = {
   'LiteMode.Key.chat_spoilers.Title': 'Animated spoiler effect',
   'LiteMode.Key.stickers_panel.Title': 'Autoplay in panel',
   'LiteMode.Key.stickers_chat.Title': 'Autoplay in chat',
+  'LiteMode.Key.emoji_appear.Title': 'Emoji appear effect',
   'LiteMode.Key.emoji_panel.Title': 'Autoplay in panel',
   'LiteMode.Key.emoji_messages.Title': 'Autoplay in messages',
   'LiteMode.Key.effects.Title': 'Interactive Effects',

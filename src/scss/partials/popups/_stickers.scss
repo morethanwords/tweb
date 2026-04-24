@@ -8,21 +8,18 @@
 
 .popup-stickers {
   $parent: ".popup";
-  --background-color: var(--surface-color);
   --popup-width: 420px;
   --popup-max-height: 420px;
-  user-select: none;
+  --popup-footer-gradient-start: 0%;
 
   #{$parent} {
-    &-footer {
-      --popup-footer-gradient-start: 0%;
-    }
-  }
+    &-scrollable {
+      padding-bottom: var(--popup-footer-height);
 
-  .scrollable {
-    &.is-loading {
-      min-height: 9rem;
-      position: relative;
+      &.is-loading {
+        min-height: 9rem;
+        position: relative;
+      }
     }
   }
 

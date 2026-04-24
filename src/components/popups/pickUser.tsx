@@ -481,7 +481,8 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
       avatarSize: 'abitbigger',
       managers,
       night,
-      noInstantLoad: true
+      noInstantLoad: true,
+      noSearch: options.noSearch
     });
     selector.container.classList.add('tabs-tab');
 

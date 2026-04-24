@@ -151,7 +151,7 @@ export default function TextLayerContent(props: ResizableLayerProps) {
 
   const intialContent = (() => {
     const layerInfo = props.layer.textRenderingInfo;
-    if(!layerInfo) return <div>{i18n('MediaEditor.TypeSomething')}</div>;
+    if(!layerInfo) return <div>{/* {i18n('MediaEditor.TypeSomething')} */}</div>;
     return layerInfo.lines.map((line) => <div>{line.content}</div>);
   })();
 

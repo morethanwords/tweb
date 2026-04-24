@@ -364,6 +364,7 @@ export const SETTINGS_INIT: StateSettings = {
     effects_reactions: false,
     effects_emoji: false,
     emoji: false,
+    emoji_appear: false,
     emoji_messages: false,
     emoji_panel: false,
     gif: false,
