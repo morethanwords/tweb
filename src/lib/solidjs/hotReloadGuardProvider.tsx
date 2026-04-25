@@ -10,6 +10,7 @@ import confirmationPopup from '@components/confirmationPopup';
 import {EmoticonsDropdown} from '@components/emoticonsDropdown';
 import EmoticonsSearch from '@components/emoticonsDropdown/search';
 import EmojiTab from '@components/emoticonsDropdown/tabs/emoji';
+import {createEmojiDropdownButton} from '@components/inputFieldEmoji';
 import {InputFieldTsx} from '@components/inputFieldTsx';
 import PasswordMonkey from '@components/monkeys/password';
 import PasswordInputField from '@components/passwordInputField';
@@ -28,6 +29,7 @@ import Row from '@components/rowTsx';
 import appSidebarLeft from '@components/sidebarLeft';
 import AppChatFoldersTab from '@components/sidebarLeft/tabs/chatFolders';
 import AppEditFolderTab from '@components/sidebarLeft/tabs/editFolder';
+import appSidebarRight from '@components/sidebarRight';
 import Slideshow from '@components/slideshow'; // Added import
 import {StoriesProvider, useStories} from '@components/stories/store';
 import {hideToast, toast, toastNew} from '@components/toast';
@@ -57,7 +59,6 @@ import rootScope from '@lib/rootScope';
 import {SolidJSHotReloadGuardContext} from '@lib/solidjs/hotReloadGuard';
 import uiNotificationsManager from '@lib/uiNotificationsManager';
 import {useAppSettings} from '@stores/appSettings';
-import appSidebarRight from '@components/sidebarRight';
 
 export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
   return (
@@ -126,7 +127,8 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       StoriesProvider,
       useStories,
       StoriesSegments,
-      appSidebarRight
+      appSidebarRight,
+      createEmojiDropdownButton
     }}>
       {props.children}
     </SolidJSHotReloadGuardContext.Provider>

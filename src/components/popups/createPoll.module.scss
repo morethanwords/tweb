@@ -1,0 +1,88 @@
+.popup {
+  --popup-min-width: 420px;
+  --popup-max-width: 420px;
+}
+
+.container {
+  padding: 0;
+  max-height: min(640px,100%);
+}
+
+.header {
+  flex-wrap: wrap;
+  padding: 12px 20px 15px;
+  margin-bottom: 0;
+}
+
+.flexFull {
+  flex-basis: 100%;
+}
+
+.wrapper {
+  padding: 2px;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: stretch;
+}
+
+.relative {
+  position: relative;
+}
+
+.confirmButton {
+  text-transform: uppercase;
+  height: 2.25rem;
+  font-size: var(--font-size-14);
+  padding: 0 1.375rem;
+  border-radius: 10px;
+  line-height: 2.25rem;
+  width: unset;
+}
+
+.caption {
+  color: var(--secondary-text-color);
+  font-weight: var(--font-weight-bold);
+  padding: 1rem 1.5rem 0;
+}
+
+.hr {
+  display: block !important;
+}
+
+.inputField {
+  word-break: break-word;
+  padding: 0.5rem 0; // Push a little bit from the top and bottom border when the text wraps multiple lines
+  min-height: 1em;
+  width: 100%;
+  font-size: inherit;
+}
+
+/* .inputFieldFake {
+  opacity: 0;
+  pointer-events: none;
+  position: absolute !important;
+
+  top: 0;
+  left: 0;
+  right: unset;
+  bottom: unset !important;
+
+  width: 100% !important;
+  height: unset !important;
+
+  z-index: -3;
+} */
+
+.animatedInputFieldWrapper {
+  position: relative;
+  /* height: 100%; */
+  width: 100%;
+}
+
+
+// Keep the icon closer to top when the text wraps multiple lines
+.sideContentWithFixedIcon {
+  align-self: stretch;
+  padding-top: calc((var(--height) - 40px) / 2);
+}

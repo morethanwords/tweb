@@ -14,7 +14,7 @@ import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import opusDecodeController from '@lib/opusDecodeController';
 import {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable, ButtonMenuSync} from '@components/buttonMenu';
 import emoticonsDropdown, {EmoticonsDropdown} from '@components/emoticonsDropdown';
-import PopupCreatePoll from '@components/popups/createPoll';
+import PopupCreatePoll from '@components/popups/createPollOld';
 import PopupForward from '@components/popups/forward';
 import PopupNewMedia, {getCurrentNewMediaPopup} from '@components/popups/newMedia';
 import {toast, toastNew} from '@components/toast';
@@ -158,6 +158,7 @@ import getDocumentDownloadOptions from '@lib/appManagers/utils/docs/getDocumentD
 import getPhotoDownloadOptions from '@lib/appManagers/utils/photos/getPhotoDownloadOptions';
 import {getFileNameByLocation} from '@helpers/fileName';
 import {Middleware, getMiddleware, MiddlewareHelper} from '@helpers/middleware';
+import {openCreatePollPopup} from '@components/popups/createPoll';
 
 // console.log('Recorder', Recorder);
 
@@ -1087,8 +1088,9 @@ export default class ChatInput {
           toastNew({langPackKey: POSTING_NOT_ALLOWED_MAP[action]});
           return;
         }
+        openCreatePollPopup(SolidJSHotReloadGuardProvider);
 
-        PopupElement.createPopup(PopupCreatePoll, this.chat).show();
+        // PopupElement.createPopup(PopupCreatePoll, this.chat).show();
       },
       verify: () => {
         if(this.editMsgId) return;

@@ -14,6 +14,7 @@ import type confirmationPopup from '@components/confirmationPopup';
 import type {EmoticonsDropdown} from '@components/emoticonsDropdown';
 import type EmoticonsSearch from '@components/emoticonsDropdown/search';
 import type EmojiTab from '@components/emoticonsDropdown/tabs/emoji';
+import type {createEmojiDropdownButton} from '@components/inputFieldEmoji';
 import type {InputFieldTsx} from '@components/inputFieldTsx';
 import type PasswordMonkey from '@components/monkeys/password';
 import type PasswordInputField from '@components/passwordInputField';
@@ -33,12 +34,13 @@ import type Row from '@components/rowTsx';
 import type {AppSidebarLeft} from '@components/sidebarLeft';
 import type AppChatFoldersTab from '@components/sidebarLeft/tabs/chatFolders';
 import type AppEditFolderTab from '@components/sidebarLeft/tabs/editFolder';
+import type {AppSidebarRight} from '@components/sidebarRight';
 import type Slideshow from '@components/slideshow';
-import {StoriesProvider, useStories} from '@components/stories/store';
+import type {StoriesProvider, useStories} from '@components/stories/store';
 import type {hideToast, toast, toastNew} from '@components/toast';
 import type {wrapAdaptiveCustomEmoji} from '@components/wrappers/customEmojiSimple';
 import type DocumentTsx from '@components/wrappers/documentTsx';
-import wrapFolderTitle from '@components/wrappers/folderTitle';
+import type wrapFolderTitle from '@components/wrappers/folderTitle';
 import type getPeerTitle from '@components/wrappers/getPeerTitle';
 import type {wrapTopicIcon} from '@components/wrappers/messageActionTextNewUnsafe';
 import type wrapPeerTitle from '@components/wrappers/peerTitle';
@@ -63,7 +65,6 @@ import type {RootScope} from '@lib/rootScope';
 import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import type uiNotificationsManager from '@lib/uiNotificationsManager';
 import type {useAppSettings} from '@stores/appSettings';
-import type {AppSidebarRight} from '@components/sidebarRight';
 
 
 export type SolidJSHotReloadGuardContextValue = {
@@ -132,6 +133,7 @@ export type SolidJSHotReloadGuardContextValue = {
   useStories: typeof useStories;
   StoriesSegments: typeof StoriesSegments;
   appSidebarRight: AppSidebarRight;
+  createEmojiDropdownButton: typeof createEmojiDropdownButton;
 };
 
 export type LockScreenHotReloadGuardContextValue = Pick<

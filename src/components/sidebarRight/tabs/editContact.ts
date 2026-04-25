@@ -21,8 +21,6 @@ import getPeerId from '@appManagers/utils/peers/getPeerId';
 import formatUserPhone from '@components/wrappers/formatUserPhone';
 import SettingSection from '@components/settingSection';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
-import {wrapEmojiTextWithEntities} from '@lib/richTextProcessor/wrapEmojiText';
-import EditFolderInput from '@components/sidebarLeft/tabs/editFolderInput';
 import {InputFieldEmoji} from '@components/inputFieldEmoji';
 import {toastNew} from '@components/toast';
 import showBirthdayPopup, {suggestUserBirthday} from '@components/popups/birthday';
@@ -88,7 +86,8 @@ export default class AppEditContactTab extends SliderSuperTab {
           label: 'ContactNoteRow',
           name: 'contact-note',
           maxLength: 128,
-          withLinebreaks: true
+          withLinebreaks: true,
+          dropdownFromInputCenter: true
         });
         if(fullUser.note) {
           this.noteInputField.setRichOriginalValue(fullUser.note);

@@ -395,22 +395,6 @@ PopupElement.CloseButton = (props: {
   ));
 };
 
-PopupElement.ConfirmButton = (props: {
-  withConfirm?: LangPackKey | boolean
-}) => {
-  const context = useContext(PopupContext);
-
-  if(!context.withConfirm) return null;
-
-  return context.register('confirmButton', (
-    <button class="btn-primary btn-color-primary">
-      <Show when={context.withConfirm !== true}>
-        {i18n(context.withConfirm as LangPackKey)}
-      </Show>
-    </button>
-  ));
-};
-
 PopupElement.Body = (props: {
   children: JSX.Element,
   class?: string,

@@ -12,10 +12,17 @@
   align-items: center;
   padding: 0 var(--padding-horizontal);
 
-  height: var(--height);
   border-radius: var(--border-radius);
 
   cursor: text;
+
+  &.fixedHeight {
+    height: var(--height);
+  }
+
+  &.minHeight {
+    min-height: var(--height);
+  }
 
   &.clickable {
     cursor: pointer;
@@ -23,6 +30,10 @@
 
   &.withEndButtonIcon {
     padding-right: calc(var(--padding-horizontal) - 0.5rem);
+  }
+
+  &.withStartButtonIcon {
+    padding-left: calc(var(--padding-horizontal) - 0.5rem);
   }
 
   &:hover .BorderThin {
@@ -132,6 +143,7 @@
   top: 50%;
   transform: translateY(-50%);
   font-size: 1rem;
+  line-height: 1;
   color: $placeholder-color;
   pointer-events: none;
 

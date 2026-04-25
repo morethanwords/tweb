@@ -1,6 +1,7 @@
-import {Accessor, batch, createContext, createSignal, JSX, onMount, ParentProps, Ref, Setter, splitProps, useContext} from 'solid-js';
+import {Accessor, batch, createContext, createSignal, JSX, mergeProps, onMount, ParentProps, Ref, Setter, splitProps, useContext} from 'solid-js';
 import {requestRAF} from '@helpers/solid/requestRAF';
 import styles from '@components/simpleFormField/styles.module.scss';
+import classNames from '@helpers/string/classNames';
 
 
 type SimpleFormFieldContextValue = {
@@ -22,8 +23,23 @@ const SimpleFormField = (inProps: ParentProps<{
   isError?: boolean;
   clickable?: boolean;
   withEndButtonIcon?: boolean;
+  withStartButtonIcon?: boolean;
+  withMinHeight?: boolean;
 } & Omit<JSX.HTMLAttributes<HTMLDivElement>, 'onChange' | 'onClick'>>) => {
-  const [props, restProps] = splitProps(inProps, ['value', 'onChange', 'isError', 'children', 'onClick', 'class', 'classList', 'clickable', 'withEndButtonIcon']);
+  const [props, restProps] = splitProps(inProps, [
+    'value',
+    'onChange',
+    'isError',
+    'children',
+    'onClick',
+    'class',
+    'classList',
+    'clickable',
+    'withEndButtonIcon',
+    'withStartButtonIcon',
+    'withMinHeight'
+  ]);
+
   const [input, setInput] = createSignal<HTMLInputElement>();
   const [offsetElement, setOffsetElement] = createSignal<HTMLElement>();
 
@@ -47,6 +63,9 @@ const SimpleFormField = (inProps: ParentProps<{
           [styles.clickable]: props.clickable,
           [props.class]: !!props.class,
           [styles.withEndButtonIcon]: props.withEndButtonIcon,
+          [styles.withStartButtonIcon]: props.withStartButtonIcon,
+          [styles.fixedHeight]: !props.withMinHeight,
+          [styles.minHeight]: props.withMinHeight,
           ...props.classList
         }}
         onClick={(...args) => {
@@ -67,7 +86,7 @@ SimpleFormField.Input = (inProps: {
   ref?: Ref<HTMLInputElement>;
   forceFieldValue?: boolean;
 } & Omit<JSX.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'onInput' | 'ref'>) => {
-  const [props, restProps] = splitProps(inProps, ['ref', 'class', 'classList', 'forceFieldValue']);
+  const [props, restProps] = splitProps(inProps, ['ref', 'class', 'forceFieldValue']);
 
   const context = useContext(Context);
 
@@ -78,11 +97,7 @@ SimpleFormField.Input = (inProps: {
         context.setOffsetElement(el);
         if(props.ref instanceof Function) props.ref(el);
       })}
-      class={styles.Input}
-      classList={{
-        [props.class]: !!props.class,
-        ...props.classList
-      }}
+      class={classNames(styles.Input, props.class)}
       value={context.value()}
       onInput={(e) => {
         context.onChange(e.currentTarget.value)
@@ -93,13 +108,15 @@ SimpleFormField.Input = (inProps: {
   );
 };
 
-SimpleFormField.InputStub = (props: ParentProps) => {
+SimpleFormField.InputStub = (props: ParentProps<{
+  class?: string;
+}>) => {
   const context = useContext(Context);
 
   return (
     <div
       ref={context.setOffsetElement}
-      class={styles.InputStub}
+      class={classNames(styles.InputStub, props.class)}
     >
       {props.children}
     </div>
@@ -148,11 +165,12 @@ SimpleFormField.Label = (props: ParentProps<{
 };
 
 SimpleFormField.SideContent = (props: ParentProps<{
+  class?: string;
   first?: boolean;
   last?: boolean;
 }>) => {
   return (
-    <div class={styles.SideContent} classList={{
+    <div class={classNames(styles.SideContent, props.class)} classList={{
       [styles.first]: props.first,
       [styles.last]: props.last
     }}>

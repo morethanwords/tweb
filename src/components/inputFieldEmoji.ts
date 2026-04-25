@@ -14,14 +14,21 @@ import InputField, {InputFieldOptions, insertRichTextAsHTML} from '@components/i
 
 import styles from '@components/inputFieldEmoji.module.scss';
 
-const createEmojiDropdownButton = ({
+type CreateEmojiDropdownButtonArgs = {
+  inputField: InputField,
+  onEmoticonsDropdown: (emoticonsDropdown?: EmoticonsDropdown) => void
+
+  className?: string
+  fromInputCenter?: boolean;
+};
+
+export const createEmojiDropdownButton = ({
   inputField,
-  onEmoticonsDropdown
-}: {
-  inputField: InputFieldEmoji,
-  onEmoticonsDropdown: (emoticonsDropdown: EmoticonsDropdown) => void
-}) => {
-  const button = ButtonIcon('smile ' + styles.EmojiButton);
+  onEmoticonsDropdown,
+  className,
+  fromInputCenter
+}: CreateEmojiDropdownButtonArgs) => {
+  const button = ButtonIcon('smile' + (className ? ' ' + className : ''));
   if(inputField.options.withLinebreaks) {
     button.classList.add(styles.multiline);
   }
@@ -52,7 +59,7 @@ const createEmojiDropdownButton = ({
       tabsToRender: [emojiTab],
       customParentElement: document.body,
       getOpenPosition: () => {
-        if(inputField.options.withLinebreaks) {
+        if(fromInputCenter) {
           const rect = inputField.input.getBoundingClientRect()
           const cloned = cloneDOMRect(rect);
           cloned.top += rect.height
@@ -81,6 +88,7 @@ const createEmojiDropdownButton = ({
     emoticonsDropdown.addEventListener('closed', () => {
       emoticonsDropdown.hideAndDestroy();
       emoticonsDropdown = undefined;
+      onEmoticonsDropdown();
     });
 
     emoticonsDropdown.onButtonClick();
@@ -91,21 +99,27 @@ const createEmojiDropdownButton = ({
   return {button};
 };
 
+type AdditionalOptions = {
+  dropdownFromInputCenter?: boolean;
+};
+
 export class InputFieldEmoji extends InputField {
   private emoticonsDropdown: EmoticonsDropdown;
   private richOriginalValue: TextWithEntities;
 
-  constructor(options?: InputFieldOptions) {
+  constructor(options?: InputFieldOptions & AdditionalOptions) {
     super({
       canWrapCustomEmojis: true,
       ...options
     })
 
     const {button} = createEmojiDropdownButton({
+      className: styles.EmojiButton,
       inputField: this,
       onEmoticonsDropdown: (emoticonsDropdown) => {
         this.emoticonsDropdown = emoticonsDropdown;
-      }
+      },
+      fromInputCenter: options.dropdownFromInputCenter
     });
     this.input.after(button);
   }
