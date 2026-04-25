@@ -86,3 +86,18 @@
   align-self: stretch;
   padding-top: calc((var(--height) - 40px) / 2);
 }
+
+.emojiDropdownButton {
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+
+  &:hover, &.forceFocused {
+    opacity: 1;
+  }
+}
+
+.formField {
+  &:focus-within .emojiDropdownButton {
+    opacity: 1;
+  }
+}

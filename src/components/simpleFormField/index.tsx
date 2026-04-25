@@ -1,7 +1,7 @@
-import {Accessor, batch, createContext, createSignal, JSX, mergeProps, onMount, ParentProps, Ref, Setter, splitProps, useContext} from 'solid-js';
-import {requestRAF} from '@helpers/solid/requestRAF';
 import styles from '@components/simpleFormField/styles.module.scss';
+import {requestRAF} from '@helpers/solid/requestRAF';
 import classNames from '@helpers/string/classNames';
+import {Accessor, batch, createContext, createMemo, createSignal, JSX, onMount, ParentProps, Ref, Setter, splitProps, useContext} from 'solid-js';
 
 
 type SimpleFormFieldContextValue = {
@@ -11,9 +11,15 @@ type SimpleFormFieldContextValue = {
   setOffsetElement: Setter<HTMLElement>;
   value: Accessor<string>;
   onChange: (value: string) => void;
+  forceFocused: Accessor<boolean>;
+  useSetForceFocused: () => (focused: boolean) => void;
 };
 
 const Context = createContext<SimpleFormFieldContextValue>();
+
+export const useSimpleFormFieldContext = () => useContext(Context);
+
+type ObjectRef = {};
 
 const SimpleFormField = (inProps: ParentProps<{
   value?: string;
@@ -43,6 +49,10 @@ const SimpleFormField = (inProps: ParentProps<{
   const [input, setInput] = createSignal<HTMLInputElement>();
   const [offsetElement, setOffsetElement] = createSignal<HTMLElement>();
 
+  const [forceFocusedRefs, setForceFocusedRefs] = createSignal<ObjectRef[]>([]);
+
+  const forceFocused = createMemo(() => forceFocusedRefs().length > 0);
+
   const contextValue: SimpleFormFieldContextValue = {
     input,
     setInput,
@@ -51,21 +61,33 @@ const SimpleFormField = (inProps: ParentProps<{
     value: () => props.value,
     get onChange() {
       return props.onChange;
+    },
+    forceFocused,
+    useSetForceFocused: () => {
+      const ref = {};
+
+      return (focused: boolean) => {
+        const newValue = forceFocusedRefs().filter((ref) => ref !== ref);
+
+        setForceFocusedRefs(
+          focused ? [...newValue, ref] : newValue
+        );
+      };
     }
   };
 
   return (
     <Context.Provider value={contextValue}>
       <div
-        class={styles.Container}
+        class={classNames(styles.Container, props.class)}
         classList={{
           [styles.error]: props.isError,
           [styles.clickable]: props.clickable,
-          [props.class]: !!props.class,
           [styles.withEndButtonIcon]: props.withEndButtonIcon,
           [styles.withStartButtonIcon]: props.withStartButtonIcon,
           [styles.fixedHeight]: !props.withMinHeight,
           [styles.minHeight]: props.withMinHeight,
+          [styles.forceFocused]: forceFocused(),
           ...props.classList
         }}
         onClick={(...args) => {
@@ -88,7 +110,7 @@ SimpleFormField.Input = (inProps: {
 } & Omit<JSX.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'onInput' | 'ref'>) => {
   const [props, restProps] = splitProps(inProps, ['ref', 'class', 'forceFieldValue']);
 
-  const context = useContext(Context);
+  const context = useSimpleFormFieldContext();
 
   return (
     <input
@@ -111,7 +133,7 @@ SimpleFormField.Input = (inProps: {
 SimpleFormField.InputStub = (props: ParentProps<{
   class?: string;
 }>) => {
-  const context = useContext(Context);
+  const context = useSimpleFormFieldContext();
 
   return (
     <div
@@ -127,7 +149,7 @@ SimpleFormField.Label = (props: ParentProps<{
   active?: boolean;
   forceOffset?: number;
 }>) => {
-  const context = useContext(Context);
+  const context = useSimpleFormFieldContext();
 
   const [offset, setOffset] = createSignal(0);
   const [noTransition, setNoTransition] = createSignal(true);

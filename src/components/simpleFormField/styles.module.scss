@@ -40,11 +40,11 @@
     border-color: var(--primary-color);
   }
 
-  &:focus-within .BorderThick {
+  &:focus-within .BorderThick, &.forceFocused .BorderThick {
     opacity: 1;
   }
 
-  &:focus-within .Label, .Label.active {
+  &:focus-within .Label, &.forceFocused .Label, .Label.active {
     --cover-padding: 0.25rem;
     font-size: 0.8rem;
     top: 0;
@@ -53,7 +53,7 @@
     background-color: var(--surface-color);
   }
 
-  &:focus-within .Label {
+  &:focus-within .Label, &.forceFocused .Label {
     color: var(--primary-color);
     font-weight: bold;
   }
