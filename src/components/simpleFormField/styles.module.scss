@@ -24,6 +24,10 @@
     min-height: var(--height);
   }
 
+  &.solidBackground {
+    background-color: var(--surface-color);
+  }
+
   &.clickable {
     cursor: pointer;
   }

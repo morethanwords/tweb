@@ -141,19 +141,22 @@ const BodyContent = () => {
 
         <Space amount='0.5rem' />
 
-        <For each={items()}>
-          {(item, index) => (
-            <>
-              <PollOptionField
-                ref={sortable.registerItem(item.id)}
-                dragByRef={sortable.registerHandle(item.id)}
-                onPointerDown={sortable.getProps(item.id).onPointerDown}
-                style={sortable.getStyle(item.id)}
-              />
-              {index() < itemsLength() - 1 && <Space amount='0.75rem' />}
-            </>
-          )}
-        </For>
+        <div>
+
+          <For each={items()}>
+            {(item, index) => (
+              <>
+                <PollOptionField
+                  ref={sortable.registerItem(item.id)}
+                  dragByRef={sortable.registerHandle(item.id)}
+                  onPointerDown={sortable.getProps(item.id).onPointerDown}
+                  style={sortable.getStyle(item.id)}
+                />
+                {index() < itemsLength() - 1 && <Space amount='0.75rem' />}
+              </>
+            )}
+          </For>
+        </div>
 
         <Space amount='0.5rem' />
 
@@ -194,6 +197,7 @@ const PollOptionField = (props: {
       withEndButtonIcon
       withStartButtonIcon
       withMinHeight
+      solidBackground
       style={props.style}
     >
       <SimpleFormField.SideContent
