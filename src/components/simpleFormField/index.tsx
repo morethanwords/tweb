@@ -1,7 +1,7 @@
 import styles from '@components/simpleFormField/styles.module.scss';
 import {requestRAF} from '@helpers/solid/requestRAF';
 import classNames from '@helpers/string/classNames';
-import {Accessor, batch, createContext, createMemo, createSignal, JSX, onMount, ParentProps, Ref, Setter, splitProps, useContext} from 'solid-js';
+import {Accessor, batch, createContext, createMemo, createSignal, JSX, onCleanup, onMount, ParentProps, Ref, Setter, splitProps, useContext} from 'solid-js';
 
 
 type SimpleFormFieldContextValue = {
@@ -66,13 +66,19 @@ const SimpleFormField = (inProps: ParentProps<{
     useSetForceFocused: () => {
       const ref = {};
 
-      return (focused: boolean) => {
+      const setter = (focused: boolean) => {
         const newValue = forceFocusedRefs().filter((ref) => ref !== ref);
 
         setForceFocusedRefs(
           focused ? [...newValue, ref] : newValue
         );
       };
+
+      onCleanup(() => {
+        setter(false);
+      });
+
+      return setter;
     }
   };
 
@@ -186,16 +192,22 @@ SimpleFormField.Label = (props: ParentProps<{
   );
 };
 
-SimpleFormField.SideContent = (props: ParentProps<{
+SimpleFormField.SideContent = (inProps: JSX.HTMLAttributes<HTMLDivElement> & {
   class?: string;
   first?: boolean;
   last?: boolean;
-}>) => {
+}) => {
+  const [props, restProps] = splitProps(inProps, ['class', 'first', 'last', 'classList', 'children']);
   return (
-    <div class={classNames(styles.SideContent, props.class)} classList={{
-      [styles.first]: props.first,
-      [styles.last]: props.last
-    }}>
+    <div
+      class={classNames(styles.SideContent, props.class)}
+      classList={{
+        [styles.first]: props.first,
+        [styles.last]: props.last,
+        ...props.classList
+      }}
+      {...restProps}
+    >
       {props.children}
     </div>
   );

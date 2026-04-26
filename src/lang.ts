@@ -3514,6 +3514,7 @@ const lang = {
   'NewPoll.Anonymous': 'Anonymous Voting',
   'NewPoll.Explanation.Placeholder': 'Add a Comment (Optional)',
   'NewPoll.OptionsAddOption': 'Add an Option',
+  'NewPoll.Option': 'Option',
   'NewPoll.MultipleChoice': 'Multiple Answers',
   'NewPoll.Quiz': 'Quiz Mode',
   'Notification.Contact.Reacted': '%1$@ to your "%2$@"',

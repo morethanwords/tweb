@@ -2,17 +2,20 @@ import {ButtonIconTsx} from '@components/buttonIconTsx';
 import Button from '@components/buttonTsx';
 import {MarkupTooltipTypes} from '@components/chat/markupTooltip';
 import {EmoticonsDropdown} from '@components/emoticonsDropdown';
+import {IconTsx} from '@components/iconTsx';
 import InputField from '@components/inputField';
 import Scrollable from '@components/scrollable2';
 import SimpleFormField, {useSimpleFormFieldContext} from '@components/simpleFormField';
 import Space from '@components/space';
+import {createSortableList} from '@helpers/solid/createSortableList';
 import {I18nTsx} from '@helpers/solid/i18n';
 import classNames from '@helpers/string/classNames';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
-import {createMemo, createSignal, For, onCleanup} from 'solid-js';
+import {createMemo, createSignal, For, JSX, onCleanup, Ref} from 'solid-js';
 import styles from './createPoll.module.scss';
 import PopupElement, {createPopup} from './indexTsx';
+
 
 const supportedDescriptionFormattingTypes: MarkupTooltipTypes[] = ['bold', 'italic', 'link', 'underline', 'monospace', 'spoiler', 'strikethrough'];
 
@@ -26,15 +29,7 @@ export const CreatePollPopup = () => {
       <Header />
       <hr class={styles.hr} />
       <PopupElement.Body>
-        <Scrollable>
-          <For each={new Array(100).fill(0)}>
-            {() => (
-              <div class={styles.caption}>
-                <I18nTsx key='PollOptions' />
-              </div>
-            )}
-          </For>
-        </Scrollable>
+        <BodyContent />
       </PopupElement.Body>
       <PopupElement.Footer>
         ssomething
@@ -94,7 +89,7 @@ const Header = () => {
         <SimpleFormField.Label><I18nTsx key='AskAQuestion' /></SimpleFormField.Label>
 
         <SimpleFormField.SideContent class={styles.sideContentWithFixedIcon} first last>
-          <EmojiDropdownButton inputField={/* @once */ questionInput} />
+          <EmojiDropdownButton inputField={questionInput} />
         </SimpleFormField.SideContent>
       </SimpleFormField>
 
@@ -112,7 +107,7 @@ const Header = () => {
         </SimpleFormField.InputStub>
         <SimpleFormField.Label><I18nTsx key='DescriptionOptionalPlaceholder' /></SimpleFormField.Label>
         <SimpleFormField.SideContent class={styles.sideContentWithFixedIcon} first last>
-          <EmojiDropdownButton inputField={/* @once */ descriptionInput} />
+          <EmojiDropdownButton inputField={descriptionInput} />
         </SimpleFormField.SideContent>
         <SimpleFormField.SideContent class={styles.sideContentWithFixedIcon} first last>
           <ButtonIconTsx icon='attach' />
@@ -120,6 +115,107 @@ const Header = () => {
       </SimpleFormField>
 
     </PopupElement.Header>
+  );
+};
+
+
+const BodyContent = () => {
+  let idSeed = 0;
+  const [items, setItems] = createSignal([...Array(14).fill('').map(() => ({id: idSeed++}))]);
+  const itemsLength = createMemo(() => items().length);
+
+  const [scrollable, setScrollable] = createSignal<HTMLElement>();
+
+  const sortable = createSortableList({
+    container: scrollable,
+    items,
+    getId: item => item.id,
+    onReorder: setItems
+  });
+
+
+  return (
+    <Scrollable ref={setScrollable}>
+      <div class={styles.caption}>
+        <I18nTsx key='PollOptions' />
+
+        <Space amount='0.5rem' />
+
+        <For each={items()}>
+          {(item, index) => (
+            <>
+              <PollOptionField
+                ref={sortable.registerItem(item.id)}
+                dragByRef={sortable.registerHandle(item.id)}
+                onPointerDown={sortable.getProps(item.id).onPointerDown}
+                style={sortable.getStyle(item.id)}
+              />
+              {index() < itemsLength() - 1 && <Space amount='0.75rem' />}
+            </>
+          )}
+        </For>
+
+        <Space amount='0.5rem' />
+
+        <Button class={styles.addOptionButton} primary>
+          <IconTsx class={styles.addOptionButtonIcon} icon='plus' />
+          <I18nTsx key='NewPoll.OptionsAddOption' />
+        </Button>
+      </div>
+    </Scrollable>
+  );
+};
+
+const PollOptionField = (props: {
+  ref?: Ref<HTMLDivElement>;
+  dragByRef?: Ref<HTMLDivElement>;
+  style?: JSX.CSSProperties;
+  onPointerDown?: JSX.HTMLAttributes<HTMLElement>['onPointerDown'];
+}) => {
+  const [value, setValue] = createSignal('');
+
+  const inputField = new InputField({
+    placeholder: 'NewPoll.Option',
+    canWrapCustomEmojis: true,
+    onRawInput: (value) => {
+      setValue(value);
+    }
+  });
+
+  inputField.input.classList.replace('input-field-input', styles.inputField);
+  inputField.placeholder.classList.add(styles.inputFieldPlaceholder);
+
+  return (
+    <SimpleFormField
+      ref={props.ref}
+      value={value()}
+      onChange={setValue}
+      class={classNames(styles.flexFull, styles.formField)}
+      withEndButtonIcon
+      withStartButtonIcon
+      withMinHeight
+      style={props.style}
+    >
+      <SimpleFormField.SideContent
+        ref={props.dragByRef}
+        class={styles.draggableSideContent}
+        first
+        last
+        onPointerDown={props.onPointerDown}
+      >
+        <IconTsx icon='menu' />
+      </SimpleFormField.SideContent>
+      <SimpleFormField.InputStub>
+        {inputField.input}
+        {inputField.placeholder}
+      </SimpleFormField.InputStub>
+      <SimpleFormField.SideContent class={styles.sideContentWithFixedIcon} first last>
+        <EmojiDropdownButton inputField={inputField} />
+      </SimpleFormField.SideContent>
+      <SimpleFormField.SideContent class={styles.sideContentWithFixedIcon} first last>
+        <ButtonIconTsx icon='attach' />
+      </SimpleFormField.SideContent>
+    </SimpleFormField>
   );
 };
 
@@ -139,8 +235,7 @@ const EmojiDropdownButton = (props: { inputField: InputField }) => {
 
         setForceFocused(!!emoticonsDropdown);
         button.classList.toggle(styles.forceFocused, !!emoticonsDropdown);
-      },
-      fromInputCenter: true
+      }
     });
 
     onCleanup(() => {

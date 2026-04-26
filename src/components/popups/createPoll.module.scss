@@ -48,6 +48,7 @@
 
 .hr {
   display: block !important;
+  padding-bottom: 0;
 }
 
 .inputField {
@@ -100,4 +101,29 @@
   &:focus-within .emojiDropdownButton {
     opacity: 1;
   }
+}
+
+.addOptionButton {
+  &Icon {
+    font-size: 1.25rem;
+  }
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.inputFieldPlaceholder {
+  inset-inline-start: unset;
+}
+
+.draggableSideContent {
+  display: flex;
+  align-items: center;
+
+  padding: 0.25rem 0.5rem;
+  font-size: 1.2rem;
+
+  cursor: grab;
 }
