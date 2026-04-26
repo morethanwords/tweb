@@ -126,4 +126,6 @@
   font-size: 1.2rem;
 
   cursor: grab;
+  touch-action: none;
+  user-select: none;
 }

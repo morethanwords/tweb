@@ -148,7 +148,6 @@ const BodyContent = () => {
               <>
                 <PollOptionField
                   ref={sortable.registerItem(item.id)}
-                  dragByRef={sortable.registerHandle(item.id)}
                   onPointerDown={sortable.getProps(item.id).onPointerDown}
                   style={sortable.getStyle(item.id)}
                 />
@@ -171,7 +170,6 @@ const BodyContent = () => {
 
 const PollOptionField = (props: {
   ref?: Ref<HTMLDivElement>;
-  dragByRef?: Ref<HTMLDivElement>;
   style?: JSX.CSSProperties;
   onPointerDown?: JSX.HTMLAttributes<HTMLElement>['onPointerDown'];
 }) => {
@@ -201,7 +199,6 @@ const PollOptionField = (props: {
       style={props.style}
     >
       <SimpleFormField.SideContent
-        ref={props.dragByRef}
         class={styles.draggableSideContent}
         first
         last

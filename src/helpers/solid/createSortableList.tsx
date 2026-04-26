@@ -1,3 +1,4 @@
+import {animateValue} from '@helpers/animateValue';
 import cloneDOMRect from '@helpers/dom/cloneDOMRect';
 import throttleWith from '@helpers/schedulers/throttleWith';
 import {useIsCleaned} from '@hooks/useIsCleaned';
@@ -12,15 +13,9 @@ import {
 import {createStore} from 'solid-js/store';
 import {requestRAF} from './requestRAF';
 import {subscribeOn} from './subscribeOn';
-import {animateValue} from '@helpers/animateValue';
 
 
 type Id = string | number;
-
-type RectMap = Map<
-  Id,
-  DOMRectEditable
->;
 
 type Args<T> = {
   items: Accessor<T[]>;
@@ -28,6 +23,11 @@ type Args<T> = {
   onReorder: (next: T[]) => void;
   container: () => HTMLElement | undefined;
 };
+
+type RectMap = Map<
+  Id,
+  DOMRectEditable
+>;
 
 type DragState = {
   id: Id;
@@ -40,7 +40,7 @@ type DragState = {
   currentScrollTop: number;
 };
 
-type GhostState = {
+type FinishingAnimationState = {
   id: Id;
   shift: number;
 };
@@ -48,14 +48,18 @@ type GhostState = {
 const autoScrollThreshold = 60;
 const autoScrollSpeedBase = 6;
 
-export function createSortableList<T>(
-  {container, items, getId, onReorder}: Args<T>
-) {
+export function createSortableList<T>({
+  container,
+  items,
+  getId,
+  onReorder
+}: Args<T>) {
   const elements = new Map<Id, HTMLElement>();
-  const handles = new Map<Id, HTMLElement>();
 
   let containerRect: DOMRectEditable;
   let containerScrollHeight: number;
+  let autoScrollRef = {};
+  let cancelGhostAnimation: () => void;
 
   const rects: RectMap = new Map();
 
@@ -72,31 +76,41 @@ export function createSortableList<T>(
 
   const isCleaned = useIsCleaned();
 
-
   const [dragState, setDragState] = createStore<DragState>(structuredClone(intialDragState));
-  const [ghostState, setGhostState] = createStore<GhostState>({id: null, shift: 0});
+  const [finishingAnimationState, setFinishingAnimationState] = createStore<FinishingAnimationState>({id: null, shift: 0});
 
   const scrollAdjustment = createMemo(() => dragState.currentScrollTop - dragState.initialScrollTop);
 
-  function findIndexById(id: Id) {
+
+  // Utils
+
+  const findIndexById = (id: Id) => {
     return items().findIndex((x) => getId(x) === id);
-  }
+  };
 
-  function registerItem(id: Id) {
-    return (el: HTMLElement) => {
-      elements.set(id, el);
-      onCleanup(() => elements.delete(id));
-    };
-  }
+  const getRectAtIndex = (index: number) => {
+    if(index < 0 || index >= items().length) return null;
+    return rects.get(getId(items()[index]));
+  };
 
-  function registerHandle(id: Id) {
-    return (el: HTMLElement) => {
-      handles.set(id, el);
-      onCleanup(() => handles.delete(id));
-    };
-  }
+  const calculateShift = (id: Id) => {
+    let shift = dragState.deltaY + scrollAdjustment();
+    const rect = rects.get(id);
+    const firstRect = getRectAtIndex(0);
+    const lastRect = getRectAtIndex(items().length - 1);
 
-  function measure() {
+    if(rect && firstRect && lastRect) {
+      shift = Math.max(shift, firstRect.top - rect.top);
+      shift = Math.min(shift, lastRect.bottom - rect.bottom);
+    }
+
+    return shift;
+  };
+
+
+  // Event handling
+
+  const measure = () => {
     rects.clear();
 
     const localContainer = container();
@@ -118,14 +132,36 @@ export function createSortableList<T>(
 
       rects.set(id, cloned);
     }
+  };
+
+  const updateOverIndex = (y: number) => {
+    if(!containerRect) return;
+
+    let idx = 0;
+
+    const ids = items().map(getId);
+
+    y += - containerRect.top + scrollAdjustment();
+
+    for(let i = 0; i < ids.length; i++) {
+      const id = ids[i];
+      const rect = rects.get(id);
+      if(rect && y >= rect.top) {
+        idx = i;
+      }
+    }
+
+    setDragState({
+      overIndex: idx
+    });
   }
 
-  function startDrag(e: PointerEvent, id: Id) {
+  const startDrag = (e: PointerEvent, id: Id) => {
     if(e.button !== 0 && e.pointerType !== 'touch') return;
 
     e.preventDefault();
 
-    cancelAnimation?.();
+    cancelGhostAnimation?.();
 
     requestRAF(() => {
       measure();
@@ -150,60 +186,40 @@ export function createSortableList<T>(
       window.addEventListener('pointerup', handlePointerUp);
       window.addEventListener('pointercancel', handlePointerUp);
     });
-  }
-
-  function updateOverIndex(y: number) {
-    if(!containerRect) return;
-
-    let idx = 0;
-
-    const ids = items().map(getId);
-
-    y += - containerRect.top + scrollAdjustment();
-
-    for(let i = 0; i < ids.length; i++) {
-      const id = ids[i];
-      const rect = rects.get(id);
-      if(rect && y >= rect.top) {
-        idx = i;
-      }
-    }
-
-    setDragState({
-      overIndex: idx
-    });
-  }
+  };
 
   const handlePointerMove = throttleWith(requestRAF, (e: PointerEvent) => {
     if(!dragState.isDragging) return;
 
-    setDragState({
-      deltaY: e.clientY - dragState.pointerStartY
-    });
-
     const y = e.clientY;
 
     batch(() => {
+      setDragState({
+        deltaY: y - dragState.pointerStartY
+      });
       updateOverIndex(y);
       loopAutoScroll(y);
     });
   });
 
-  function autoScroll(y: number) {
+  const handlePointerUp = () => {
+    endDrag();
+    removeWindowListeners();
+  };
+
+  const autoScroll = (y: number) => {
     if(isCleaned() || !dragState.isDragging) return false;
 
     const localContainer = container();
     if(!localContainer || !containerRect || !containerScrollHeight) return false;
 
-    const r = localContainer.getBoundingClientRect();
-
     let speed = 0;
 
-    if(y < r.top + autoScrollThreshold) {
-      const t = 1 - Math.max(0, y - r.top) / autoScrollThreshold;
+    if(y < containerRect.top + autoScrollThreshold) {
+      const t = 1 - Math.max(0, y - containerRect.top) / autoScrollThreshold;
       speed = -autoScrollSpeedBase * t;
-    } else if(y > r.bottom - autoScrollThreshold) {
-      const t = 1 - Math.max(0, r.bottom - y) / autoScrollThreshold;
+    } else if(y > containerRect.bottom - autoScrollThreshold) {
+      const t = 1 - Math.max(0, containerRect.bottom - y) / autoScrollThreshold;
       speed = autoScrollSpeedBase * t;
     }
 
@@ -216,44 +232,39 @@ export function createSortableList<T>(
 
     if(Math.abs(speed) === 0) return false;
 
-    localContainer.scrollTop += speed;
-
-    // for(const [id, rect] of rects) {
-    //   if(id === dragState.id) continue;
-    //   rect.top += speed;
-    //   rect.bottom += speed;
-    // }
-    // measure();
+    localContainer.scrollTop = scrollTop + speed;
     updateOverIndex(y);
 
     return true;
-  }
+  };
 
-  let id = {};
-  let cancelAnimation: () => void;
 
-  function loopAutoScroll(y: number) {
-    id = {};
+  const loopAutoScroll = (y: number) => {
+    autoScrollRef = {};
 
-    const savedId = id;
+    const savedRef = autoScrollRef;
 
     const frame = () => {
-      if(id === savedId && autoScroll(y)) {
+      if(autoScrollRef === savedRef && autoScroll(y)) {
         requestRAF(frame);
       }
     };
 
     requestRAF(frame);
-  }
+  };
 
-  function endDrag() {
+  const endDrag = () => {
     if(!dragState.isDragging) return;
 
     const {startIndex, overIndex, id} = dragState;
 
     const fromRect = rects.get(getId(items()[startIndex]));
     const toRect = rects.get(getId(items()[overIndex]));
-    const moved = (toRect?.top ?? 0) - (fromRect?.top ?? 0);
+    const moved = toRect && fromRect ? (
+      overIndex < startIndex ?
+        toRect.top - fromRect.top :
+        toRect.bottom - fromRect.bottom
+    ) : 0;
 
     const shift = calculateShift(id) - moved;
 
@@ -261,24 +272,24 @@ export function createSortableList<T>(
       setDragState(intialDragState);
       onReorder(reorder(items(), startIndex, overIndex));
 
-      setGhostState({
+      setFinishingAnimationState({
         id,
         shift
       });
     });
 
-    cancelAnimation = animateValue(shift, 0, 200, (value) => {
-      setGhostState('shift', value);
+    cancelGhostAnimation = animateValue(shift, 0, 200, (value) => {
+      setFinishingAnimationState('shift', value);
     }, {
       onEnd: () => {
-        setGhostState({id: null, shift: 0});
+        setFinishingAnimationState({id: null, shift: 0});
       }
     });
 
     rects.clear();
   }
 
-  function reorder(list: T[], from: number, to: number) {
+  const reorder = (list: T[], from: number, to: number) => {
     if(from === to) return list;
     const copy = list.slice();
     const [moved] = copy.splice(from, 1);
@@ -286,40 +297,46 @@ export function createSortableList<T>(
     return copy;
   }
 
-  function removeWindowListeners() {
+
+  const removeWindowListeners = () => {
     window.removeEventListener('pointermove', handlePointerMove);
     window.removeEventListener('pointerup', handlePointerUp);
     window.removeEventListener('pointercancel', handlePointerUp);
-  }
+  };
 
-  onCleanup(() => {
-    id = {};
-    cancelAnimation?.();
-    removeWindowListeners();
-  });
+
+  // Effects
 
   createEffect(() => {
     const localContainer = container();
     if(!localContainer) return;
 
     subscribeOn(localContainer)('scroll', () => {
+      if(!dragState.isDragging) return;
+
       setDragState({
         currentScrollTop: localContainer.scrollTop
       });
     }, {passive: true});
   });
 
-  function handlePointerUp() {
-    endDrag();
+  onCleanup(() => {
+    autoScrollRef = {};
+    cancelGhostAnimation?.();
     removeWindowListeners();
+  });
+
+
+  // Resulting functions
+
+  const registerItem = (id: Id) => (el: HTMLElement) => {
+    elements.set(id, el);
+    onCleanup(() => elements.delete(id));
   };
 
-
-  function getProps(id: Id) {
-    return {
-      onPointerDown: (e) => startDrag(e, id)
-    } satisfies JSX.HTMLAttributes<HTMLElement>;
-  }
+  const itemProps = (id: Id) => ({
+    onPointerDown: (e) => startDrag(e, id)
+  } satisfies JSX.HTMLAttributes<HTMLElement>);
 
   const baseMovingStyle = {
     'position': 'relative',
@@ -327,10 +344,10 @@ export function createSortableList<T>(
     'z-index': 1
   } satisfies JSX.CSSProperties;
 
-  function getStyle(id: Id): JSX.CSSProperties {
-    if(id === ghostState.id) {
+  const itemStyle = (id: Id) => {
+    if(id === finishingAnimationState.id) {
       return {
-        'transform': `translateY(${ghostState.shift}px)`,
+        'transform': `translateY(${finishingAnimationState.shift}px)`,
         ...baseMovingStyle
       };
     }
@@ -370,30 +387,11 @@ export function createSortableList<T>(
     };
   }
 
-  function getRectAtIndex(index: number) {
-    if(index < 0 || index >= items().length) return null;
-    return rects.get(getId(items()[index]));
-  };
-
-  function calculateShift(id: Id) {
-    let shift = dragState.deltaY + scrollAdjustment();
-    const rect = rects.get(id);
-    const firstRect = getRectAtIndex(0);
-    const lastRect = getRectAtIndex(items().length - 1);
-
-    if(rect && firstRect && lastRect) {
-      shift = Math.max(shift, firstRect.top - rect.top);
-      shift = Math.min(shift, lastRect.bottom - rect.bottom);
-    }
-
-    return shift;
-  }
-
   return {
-    registerItem,
-    registerHandle,
     draggingId: (): Id | null => dragState.id,
-    getProps,
-    getStyle
+
+    registerItem,
+    getProps: itemProps,
+    getStyle: itemStyle
   };
 }
