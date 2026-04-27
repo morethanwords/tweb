@@ -4512,7 +4512,24 @@ const lang = {
   'ArchiveFeatureDetails.Hide.Subtitle': 'Right-click on the Archive and choose **%s**. You can always access it from the main menu.',
   'ArchiveFeatureDetails.Stories.Title': 'Stories',
   'ArchiveFeatureDetails.Stories.Subtitle': 'Archive Stories from your contacts separately from chats with them.',
-  'ArchiveFeatureDetails.Button': 'Got it'
+  'ArchiveFeatureDetails.Button': 'Got it',
+
+  'NewPoll.ShowWhoVoted': 'Show Who Voted',
+  'NewPoll.ShowWhoVotedSubtitle': 'Display who voted for each option',
+  'NewPoll.AllowMultipleAnswers': 'Allow Multiple Answers',
+  'NewPoll.AllowMultipleAnswersSubtitle': 'Voters can select more than one option',
+  'NewPoll.AllowAddingOptions': 'Allow Adding Options',
+  'NewPoll.AllowAddingOptionsSubtitle': 'Participants can suggest new options',
+  'NewPoll.AllowRevoting': 'Allow Revoting',
+  'NewPoll.AllowRevotingSubtitle': 'Voters can change their answers',
+  'NewPoll.ShuffleOptions': 'Shuffle Options',
+  'NewPoll.ShuffleOptionsSubtitle': 'Answers appear in random order for each voter',
+  'NewPoll.SetCorrectAnswer': 'Set Correct Answer',
+  'NewPoll.SetCorrectAnswerSubtitle': 'Mark one option as the correct answer',
+  'NewPoll.LimitDuration': 'Limit Duration',
+  'NewPoll.LimitDurationSubtitle': 'Automatically close the poll after a certain time',
+  'NewPoll.PollDuration': 'Poll Duration',
+  'NewPoll.HideResults': 'Hide Results'
 };
 
 export default lang;

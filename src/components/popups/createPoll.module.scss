@@ -5,7 +5,7 @@
 
 .container {
   padding: 0;
-  max-height: min(640px,100%);
+  max-height: min(800px,100%);
 }
 
 .header {
@@ -40,7 +40,7 @@
   width: unset;
 }
 
-.caption {
+.sectionTitle {
   color: var(--secondary-text-color);
   font-weight: var(--font-weight-bold);
   padding: 1rem 1.5rem 0;
@@ -49,6 +49,10 @@
 .hr {
   display: block !important;
   padding-bottom: 0;
+}
+
+.smallerHrWrapper {
+  padding: 0 0.75rem;
 }
 
 .inputField {
@@ -128,4 +132,22 @@
   cursor: grab;
   touch-action: none;
   user-select: none;
+}
+
+.section {
+  padding: 0 1.5rem;
+}
+
+.mediaIcon {
+  color: white;
+  border-radius: 10px;
+  background: linear-gradient(45deg, var(--gradient-start), var(--gradient-end));
+  inset-inline-start: 1.25rem !important;
+  font-size: 1.125rem;
+}
+
+.caption {
+  font-size: 14px;
+  color: var(--secondary-text-color);
+  padding: 0.25rem 1rem;
 }

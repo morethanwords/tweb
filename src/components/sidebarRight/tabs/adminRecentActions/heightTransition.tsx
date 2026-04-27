@@ -6,6 +6,7 @@ import liteMode from '@helpers/liteMode';
 
 type HeightTransitionProps = {
   onRunningAnimations?: (value: number) => void;
+  onAfterEnter?: () => void;
   scale?: boolean;
 };
 
@@ -25,7 +26,10 @@ export const HeightTransition = (props: ParentProps<HeightTransitionProps>) => {
   return (
     <Transition
       onBeforeEnter={increase}
-      onAfterEnter={decrease}
+      onAfterEnter={() => {
+        decrease();
+        props.onAfterEnter?.();
+      }}
       onBeforeExit={increase}
       onAfterExit={decrease}
 
