@@ -1,0 +1,147 @@
+import {ButtonIconTsx} from '@components/buttonIconTsx';
+import Button from '@components/buttonTsx';
+import InputField from '@components/inputField';
+import Scrollable from '@components/scrollable2';
+import SimpleFormField from '@components/simpleFormField';
+import Space from '@components/space';
+import {I18nTsx} from '@helpers/solid/i18n';
+import classNames from '@helpers/string/classNames';
+import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import {createSignal} from 'solid-js';
+import PopupElement, {createPopup} from '../indexTsx';
+import {supportedDescriptionFormattingTypes} from './config';
+import {EmojiDropdownButton} from './emojiDropdownButton';
+import {PollOptionsSectionContent} from './pollOptionsSectionContent';
+import {PollSettingsSectionContent} from './pollSettingsSectionContent';
+import styles from './styles.module.scss';
+
+
+export const CreatePollPopup = () => {
+  return (
+    <PopupElement
+      show
+      class={styles.popup}
+      containerClass={styles.container}
+    >
+      <Header />
+      <hr class={styles.hr} />
+      <PopupElement.Body>
+        <BodyContent />
+      </PopupElement.Body>
+    </PopupElement>
+  );
+};
+
+const Header = () => {
+  const [question, setQuestion] = createSignal('');
+  const [description, setDescription] = createSignal('');
+
+  const questionInput = new InputField({
+    canWrapCustomEmojis: true,
+    onRawInput: (value) => {
+      setQuestion(value);
+    }
+  });
+
+  questionInput.input.classList.replace('input-field-input', styles.inputField);
+
+  const descriptionInput = new InputField({
+    canHaveFormatting: supportedDescriptionFormattingTypes,
+    canWrapCustomEmojis: true,
+    withLinebreaks: true,
+    onRawInput: (value) => {
+      setDescription(value);
+    }
+  });
+
+  descriptionInput.input.classList.replace('input-field-input', styles.inputField);
+
+  return (
+    <PopupElement.Header class={styles.header}>
+      <PopupElement.CloseButton class={styles.closeButton} />
+
+      <PopupElement.Title>
+        <I18nTsx key='NewPoll' />
+      </PopupElement.Title>
+
+      <Button class={styles.confirmButton} primaryFilled>
+        <I18nTsx key='Create' />
+      </Button>
+
+      <Space amount='1rem' class={styles.flexFull} />
+
+      <SimpleFormField
+        value={question()}
+        onChange={setQuestion}
+        class={classNames(styles.flexFull, styles.formField)}
+        withEndButtonIcon
+        withMinHeight
+      >
+        <SimpleFormField.InputStub>
+          {questionInput.input}
+        </SimpleFormField.InputStub>
+        <SimpleFormField.Label><I18nTsx key='AskAQuestion' /></SimpleFormField.Label>
+
+        <SimpleFormField.SideContent class={styles.sideContentWithFixedIcon} first last>
+          <EmojiDropdownButton inputField={questionInput} />
+        </SimpleFormField.SideContent>
+      </SimpleFormField>
+
+      <Space amount='1rem' class={styles.flexFull} />
+
+      <SimpleFormField
+        value={description()}
+        onChange={setDescription}
+        class={classNames(styles.flexFull, styles.formField)}
+        withEndButtonIcon
+        withMinHeight
+      >
+        <SimpleFormField.InputStub>
+          {descriptionInput.input}
+        </SimpleFormField.InputStub>
+        <SimpleFormField.Label><I18nTsx key='DescriptionOptionalPlaceholder' /></SimpleFormField.Label>
+        <SimpleFormField.SideContent class={styles.sideContentWithFixedIcon} first last>
+          <EmojiDropdownButton inputField={descriptionInput} />
+        </SimpleFormField.SideContent>
+        <SimpleFormField.SideContent class={styles.sideContentWithFixedIcon} first last>
+          <ButtonIconTsx icon='attach' />
+        </SimpleFormField.SideContent>
+      </SimpleFormField>
+
+    </PopupElement.Header>
+  );
+};
+
+const BodyContent = () => {
+  const [scrollable, setScrollable] = createSignal<HTMLElement>();
+
+  return (
+    <Scrollable ref={setScrollable}>
+      <div class={styles.sectionTitle}>
+        <I18nTsx key='PollOptions' />
+      </div>
+
+      <Space amount='0.5rem' />
+
+      <div class={styles.section}>
+        <PollOptionsSectionContent scrollable={scrollable()} />
+      </div>
+
+      <div class={styles.sectionTitle}>
+        <I18nTsx key='Settings' />
+      </div>
+
+      <Space amount='0.5rem' />
+
+      <div class={styles.section}>
+        <PollSettingsSectionContent />
+      </div>
+
+      <Space amount='1.5rem' />
+    </Scrollable>
+  );
+};
+
+export function openCreatePollPopup(HotReloadGuard: typeof SolidJSHotReloadGuardProvider) {
+  createPopup(() => <HotReloadGuard><CreatePollPopup /></HotReloadGuard>);
+}
