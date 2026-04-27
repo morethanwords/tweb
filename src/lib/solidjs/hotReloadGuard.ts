@@ -52,6 +52,7 @@ import type wrapStickerSetThumb from '@components/wrappers/stickerSetThumb';
 import type wrapTopicNameButton from '@components/wrappers/topicNameButton';
 import type VideoTsx from '@components/wrappers/videoTsx';
 import type {formatDate} from '@helpers/date';
+import type {getFileAndOpenEditor} from '@helpers/getFileAndOpenEditor';
 import type {ThemeController} from '@helpers/themeController';
 import type apiManagerProxy from '@lib/apiManagerProxy';
 import type {AppDialogsManager} from '@lib/appDialogsManager';
@@ -134,6 +135,7 @@ export type SolidJSHotReloadGuardContextValue = {
   StoriesSegments: typeof StoriesSegments;
   appSidebarRight: AppSidebarRight;
   createEmojiDropdownButton: typeof createEmojiDropdownButton;
+  getFileAndOpenEditor: typeof getFileAndOpenEditor;
 };
 
 export type LockScreenHotReloadGuardContextValue = Pick<

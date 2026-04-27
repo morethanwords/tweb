@@ -5,18 +5,15 @@
  */
 
 import Icon from '@components/icon';
-import {animateValue} from '@helpers/animateValue';
+import {animateImageToTarget} from '@helpers/animateImageToTarget';
 import type {CancellablePromise} from '@helpers/cancellablePromise';
-import deferredPromise from '@helpers/cancellablePromise';
+import {createImageAndURLFromBlob} from '@helpers/createImageAndURLFromBlob';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
-import {lerp} from '@helpers/lerp';
+import {getFileAndOpenEditor} from '@helpers/getFileAndOpenEditor';
 import type {InputFile} from '@layer';
-import apiManagerProxy from '@lib/apiManagerProxy';
 import appDownloadManager from '@lib/appDownloadManager';
-import rootScope from '@lib/rootScope';
 import {MediaEditorFinalResult} from './mediaEditor/finalRender/createFinalResult';
 import {snapToViewport} from './mediaEditor/utils';
-import IMAGE_MIME_TYPES_SUPPORTED from '@environment/imageMimeTypesSupport';
 
 
 type Options = {
@@ -41,7 +38,8 @@ export default class AvatarEdit {
 
     attachClickEvent(this.container, () => {
       getFileAndOpenEditor({
-        isForum: options?.isForum,
+        isEditingForAvatar: true,
+        isEditingForumAvatar: options?.isForum,
         onFinish: (result) => {
           finishFromResult({
             result,
@@ -57,44 +55,6 @@ export default class AvatarEdit {
     const ctx = this.canvas.getContext('2d');
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
   }
-}
-
-type GetFileAndOpenEditorArgs = {
-  isForum?: boolean;
-  dontCreatePreview?: boolean;
-  onFinish: (result: MediaEditorFinalResult) => void;
-};
-
-export async function getFileAndOpenEditor({isForum, onFinish, dontCreatePreview}: GetFileAndOpenEditorArgs) {
-  const input = createHiddenFileInput();
-  // this.container.append(input); // Do not append to the container, it will cause an infinite loop as click will propagate to the container
-  document.body.append(input);
-
-  const file = await getFileFromInput(input).finally(() => {
-    input.remove();
-  });
-
-  if(!file) return;
-
-
-  const imgResult = await createImageAndURLFromBlob(file); // make sure to render the image to know if it's valid
-  if(!imgResult.ok) return;
-
-  const {openMediaEditorFromMediaRaw} = await import('./mediaEditor');
-
-  openMediaEditorFromMediaRaw({
-    isEditingForAvatar: true,
-    isEditingForumAvatar: isForum,
-    canImageResultInGIF: false,
-    getMediaBlob: async() => file,
-    managers: rootScope.managers,
-    mediaSrc: imgResult.url,
-    mediaType: 'image',
-    initialTab: 'crop',
-    onEditFinish: onFinish,
-    dontCreatePreview,
-    onClose: () => { }
-  });
 }
 
 type FinishFromResultArgs = {
@@ -118,7 +78,7 @@ async function finishFromResult({result: editorResult, canvas, onChange}: Finish
   const img = imgResult.img;
 
   const animatedImg = editorResult.animatedPreview;
-  await animateImageToTarget(animatedImg, canvas);
+  await animateImageToTarget({animatedImg, target: canvas, targetIsRound: true});
 
   const [width, height] = snapToViewport(1, editorResult.width, editorResult.height);
 
@@ -140,78 +100,4 @@ async function finishFromResult({result: editorResult, canvas, onChange}: Finish
   }).finished;
 
   animatedImg.remove();
-}
-
-type RenderImageAndURLFromBlobResult = {
-  ok: true;
-  url: string;
-  img: HTMLImageElement;
-} | {
-  ok: false;
-};
-
-async function createImageAndURLFromBlob(blob: Blob): Promise<RenderImageAndURLFromBlobResult> {
-  const url = await apiManagerProxy.invoke('createObjectURL', blob);
-
-  const img = new Image();
-  img.src = url;
-
-  try {
-    await img.decode();
-    return {ok: true, url, img};
-  } catch{
-    return {ok: false};
-  }
-}
-
-function createHiddenFileInput(): HTMLInputElement {
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.style.display = 'none';
-  input.accept = [...IMAGE_MIME_TYPES_SUPPORTED].join(',');
-
-  return input;
-}
-
-function getFileFromInput(input: HTMLInputElement): Promise<File | undefined> {
-  const promise = new Promise<File | undefined>((resolve) => {
-    input.addEventListener('change', () => {
-      const file = input.files?.[0];
-      resolve(file);
-    }, false);
-  });
-
-  input.click();
-
-  return promise;
-}
-
-async function animateImageToTarget(animatedImg: HTMLImageElement, target: HTMLElement): Promise<void> {
-  const deferred = deferredPromise<void>();
-
-  const bcr = animatedImg.getBoundingClientRect();
-  const left = bcr.left + bcr.width / 2, top = bcr.top + bcr.height / 2, width = bcr.width, height = bcr.height;
-  const targetBcr = target.getBoundingClientRect();
-  const leftDiff = (targetBcr.left + targetBcr.width / 2) - left;
-  const topDiff = (targetBcr.top + targetBcr.height / 2) - top;
-
-  animateValue(
-    0, 1, 200,
-    (progress) => {
-      animatedImg.style.transform = `translate(calc(${progress * leftDiff
-      }px - 50%), calc(${progress * topDiff
-      }px - 50%))`;
-      animatedImg.style.width = lerp(width, targetBcr.width, progress) + 'px';
-      animatedImg.style.height = lerp(height, targetBcr.height, progress) + 'px';
-      // TODO: Forum shape is different
-      animatedImg.style.borderRadius = lerp(0, 50, progress) + '%';
-    },
-    {
-      onEnd: () => {
-        deferred.resolve();
-      }
-    }
-  );
-
-  await deferred;
 }

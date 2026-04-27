@@ -29,6 +29,7 @@ export type MediaEditorProps = {
   editingMediaState?: EditingMediaState;
   isEditingForAvatar?: boolean;
   isEditingForumAvatar?: boolean;
+  canFinishWithoutChanges?: boolean;
   canImageResultInGIF?: boolean;
   dontCreatePreview?: boolean;
   initialTab?: string;

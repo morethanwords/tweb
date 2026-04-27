@@ -28,7 +28,6 @@ import SettingSection from '@components/settingSection';
 import AppStickersAndEmojiTab from '@components/sidebarLeft/tabs/stickersAndEmoji';
 import ButtonCorner from '@components/buttonCorner';
 import PopupPremium from '@components/popups/premium';
-import appImManager from '@lib/appImManager';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {createEffect, createRoot} from 'solid-js';
 import useStars from '@stores/stars';
@@ -39,8 +38,8 @@ import PopupPickUser from '@components/popups/pickUser';
 import PopupSendGift from '@components/popups/sendGift';
 import {formatNanoton} from '@helpers/paymentsWrapCurrencyAmount';
 import showLogOutPopup from '@components/popups/logOut';
-import {getFileAndOpenEditor} from '@components/avatarEdit';
 import appDownloadManager from '@lib/appDownloadManager';
+import {getFileAndOpenEditor} from '@helpers/getFileAndOpenEditor';
 
 export default class AppSettingsTab extends SliderSuperTab {
   private buttons: {
@@ -80,6 +79,7 @@ export default class AppSettingsTab extends SliderSuperTab {
     const changeAvatarBtn = ButtonCorner({icon: 'cameraadd', className: 'profile-change-avatar'});
     attachClickEvent(changeAvatarBtn, () => {
       getFileAndOpenEditor({
+        isEditingForAvatar: true,
         dontCreatePreview: true,
         onFinish: async(editorResult) => {
           if(editorResult.isVideo) return;

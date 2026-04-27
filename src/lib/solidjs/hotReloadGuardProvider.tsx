@@ -47,6 +47,7 @@ import wrapStickerSetThumb from '@components/wrappers/stickerSetThumb';
 import wrapTopicNameButton from '@components/wrappers/topicNameButton';
 import VideoTsx from '@components/wrappers/videoTsx';
 import {formatDate} from '@helpers/date';
+import {getFileAndOpenEditor} from '@helpers/getFileAndOpenEditor';
 import themeController from '@helpers/themeController';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import appDialogsManager from '@lib/appDialogsManager';
@@ -128,7 +129,8 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       useStories,
       StoriesSegments,
       appSidebarRight,
-      createEmojiDropdownButton
+      createEmojiDropdownButton,
+      getFileAndOpenEditor
     }}>
       {props.children}
     </SolidJSHotReloadGuardContext.Provider>

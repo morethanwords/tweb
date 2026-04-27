@@ -43,7 +43,7 @@
 .sectionTitle {
   color: var(--secondary-text-color);
   font-weight: var(--font-weight-bold);
-  padding: 1rem 2.5rem 0;
+  padding: 1rem 2.25rem 0;
 }
 
 .hr {
@@ -136,7 +136,7 @@
 }
 
 .section {
-  padding: 0 1.5rem;
+  padding: 0 1.25rem;
 }
 
 .mediaIcon {
@@ -151,4 +151,13 @@
   font-size: 14px;
   color: var(--secondary-text-color);
   padding: 0.25rem 1rem;
+}
+
+.mediaAttachmentImage {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 8px;
+
+  cursor: pointer;
 }
