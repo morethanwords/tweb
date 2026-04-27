@@ -32,6 +32,7 @@ const SimpleFormField = (inProps: ParentProps<{
   withStartButtonIcon?: boolean;
   withMinHeight?: boolean;
   solidBackground?: boolean;
+  hoverDisabled?: boolean;
 } & Omit<JSX.HTMLAttributes<HTMLDivElement>, 'onChange' | 'onClick'>>) => {
   const [props, restProps] = splitProps(inProps, [
     'value',
@@ -45,7 +46,8 @@ const SimpleFormField = (inProps: ParentProps<{
     'withEndButtonIcon',
     'withStartButtonIcon',
     'withMinHeight',
-    'solidBackground'
+    'solidBackground',
+    'hoverDisabled'
   ]);
 
   const [input, setInput] = createSignal<HTMLInputElement>();
@@ -97,6 +99,7 @@ const SimpleFormField = (inProps: ParentProps<{
           [styles.minHeight]: props.withMinHeight,
           [styles.forceFocused]: forceFocused(),
           [styles.solidBackground]: props.solidBackground,
+          [styles.hoverEnabled]: !props.hoverDisabled,
           ...props.classList
         }}
         onClick={(...args) => {
