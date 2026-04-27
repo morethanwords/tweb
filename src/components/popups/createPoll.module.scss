@@ -43,7 +43,7 @@
 .sectionTitle {
   color: var(--secondary-text-color);
   font-weight: var(--font-weight-bold);
-  padding: 1rem 1.5rem 0;
+  padding: 1rem 2.5rem 0;
 }
 
 .hr {
@@ -126,7 +126,8 @@
   display: flex;
   align-items: center;
 
-  padding: 0.25rem 0.5rem;
+  align-self: stretch;
+  padding: 0 0.5rem;
   font-size: 1.2rem;
 
   cursor: grab;
@@ -142,7 +143,7 @@
   color: white;
   border-radius: 10px;
   background: linear-gradient(45deg, var(--gradient-start), var(--gradient-end));
-  inset-inline-start: 1.25rem !important;
+  inset-inline-start: 1rem !important;
   font-size: 1.125rem;
 }
 

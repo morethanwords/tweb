@@ -226,7 +226,7 @@ const BodyContent = () => {
           title='NewPoll.ShowWhoVoted'
           subtitle='NewPoll.ShowWhoVotedSubtitle'
           mediaStyle={getGradientStyle(0)}
-          icon='eye'
+          icon='eye1'
           checked={settings.showWhoVoted}
           onClick={handleSettingsFlag('showWhoVoted')}
         />
@@ -234,7 +234,7 @@ const BodyContent = () => {
           title='NewPoll.AllowMultipleAnswers'
           subtitle='NewPoll.AllowMultipleAnswersSubtitle'
           mediaStyle={getGradientStyle(1)}
-          icon='list'
+          icon='poll_multiple_answers'
           checked={settings.allowMultipleAnswers}
           onClick={handleSettingsFlag('allowMultipleAnswers')}
         />
