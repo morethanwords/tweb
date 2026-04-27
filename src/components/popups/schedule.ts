@@ -57,6 +57,8 @@ export default class PopupSchedule extends PopupDatePicker {
   private canSendWhenOnline: boolean;
   private isCustomButtonText: boolean;
   protected repeatPeriod: number;
+  private btnConfirmTodayLangKey?: LangPackKey;
+  private btnConfirmOnDateLangKey?: LangPackKey;
 
   constructor(options: {
     initDate: Date,
@@ -67,7 +69,9 @@ export default class PopupSchedule extends PopupDatePicker {
     addMinutes?: boolean,
     canRepeat?: boolean,
     initRepeatPeriod?: number,
-    btnConfirmLangKey?: LangPackKey
+    btnConfirmLangKey?: LangPackKey,
+    btnConfirmTodayLangKey?: LangPackKey,
+    btnConfirmOnDateLangKey?: LangPackKey,
     btnDangerLangKey?: LangPackKey
   }) {
     super(
@@ -90,6 +94,8 @@ export default class PopupSchedule extends PopupDatePicker {
     this.repeatPeriod = options.initRepeatPeriod || 0;
     this.canSendWhenOnline = options.canSendWhenOnline;
     this.isCustomButtonText = !!options.btnConfirmLangKey;
+    this.btnConfirmTodayLangKey = options.btnConfirmTodayLangKey;
+    this.btnConfirmOnDateLangKey = options.btnConfirmOnDateLangKey;
 
     this.element.classList.add('popup-schedule');
     this.header.append(this.controlsDiv);
@@ -198,11 +204,11 @@ export default class PopupSchedule extends PopupDatePicker {
     sendDate.setHours(+this.hoursInputField.value, +this.minutesInputField.value);
 
     if(this.selectedDate.getTime() === date.getTime()) {
-      key = 'Schedule.SendToday';
+      key = this.btnConfirmTodayLangKey ?? 'Schedule.SendToday';
     }/*  else if(this.selectedDate.getTime() === (date.getTime() + 86400e3)) {
       dayStr = 'Tomorrow';
     } */ else {
-      key = 'Schedule.SendDate';
+      key = this.btnConfirmOnDateLangKey ?? 'Schedule.SendDate';
 
       const dateOptions: Intl.DateTimeFormatOptions = {
         month: 'short',

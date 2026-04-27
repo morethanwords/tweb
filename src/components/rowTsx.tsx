@@ -222,11 +222,10 @@ Row.Icon = (props: {
   ));
 };
 
-Row.RightContent = (props: {
-  children: JSX.Element
-}) => {
+Row.RightContent = (inProps: JSX.HTMLAttributes<HTMLDivElement>) => {
+  const [props, restProps] = splitProps(inProps, ['class']);
   return useContext(RowContext).register('rightContent', (
-    <div class="row-right">{props.children}</div>
+    <div class={classNames('row-right', props.class)} {...restProps} />
   ));
 };
 

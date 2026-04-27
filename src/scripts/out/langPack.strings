@@ -3931,6 +3931,9 @@
 "NewPoll.LimitDurationSubtitle" = "Automatically close the poll after a certain time";
 "NewPoll.PollDuration" = "Poll Duration";
 "NewPoll.HideResults" = "Hide Results";
+"NewPoll.MinEndTime" = "Minimum End Time: %s";
+"NewPoll.EndToday" = "End today at %@";
+"NewPoll.EndDate" = "End on %@ at %@";
 "Login.Title" = "Sign in to Telegram";
 "Login.PhoneLabel" = "Phone Number";
 "Login.PhoneLabelInvalid" = "Phone Number Invalid";

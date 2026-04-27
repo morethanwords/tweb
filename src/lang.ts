@@ -4529,7 +4529,10 @@ const lang = {
   'NewPoll.LimitDuration': 'Limit Duration',
   'NewPoll.LimitDurationSubtitle': 'Automatically close the poll after a certain time',
   'NewPoll.PollDuration': 'Poll Duration',
-  'NewPoll.HideResults': 'Hide Results'
+  'NewPoll.HideResults': 'Hide Results',
+  'NewPoll.MinEndTime': 'Minimum End Time: %s',
+  'NewPoll.EndToday': 'End today at %@',
+  'NewPoll.EndDate': 'End on %@ at %@'
 };
 
 export default lang;

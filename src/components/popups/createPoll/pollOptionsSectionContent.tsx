@@ -4,6 +4,7 @@ import InputField from '@components/inputField';
 import {HeightTransition} from '@components/sidebarRight/tabs/adminRecentActions/heightTransition';
 import SimpleFormField from '@components/simpleFormField';
 import Space from '@components/space';
+import blurActiveElement from '@helpers/dom/blurActiveElement';
 import focusInput from '@helpers/dom/focusInput';
 import {createSortableList} from '@helpers/solid/createSortableList';
 import {I18nTsx} from '@helpers/solid/i18n';
@@ -38,6 +39,7 @@ export const PollOptionsSectionContent = (props: {
   });
 
   const onAdd = () => {
+    blurActiveElement();
     setItems(prev => [...prev, createItem(true)]);
   };
 

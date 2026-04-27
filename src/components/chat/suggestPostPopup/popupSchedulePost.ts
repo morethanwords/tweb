@@ -1,13 +1,14 @@
-import {formatTime} from '@helpers/date';
-import {i18n} from '@lib/langPack';
-import PopupSchedule from '@components/popups/schedule';
 import styles from '@components/chat/suggestPostPopup/styles.module.scss';
+import PopupSchedule from '@components/popups/schedule';
+import {formatTime} from '@helpers/date';
+import {i18n, LangPackKey} from '@lib/langPack';
 
 
 const MILLIS_IN_MINUTE = 60 * 1000;
 
 type Args = {
   minTimeDate: Date;
+  captionKey: LangPackKey;
 } & ConstructorParameters<typeof PopupSchedule>[0];
 
 export default class PopupSchedulePost extends PopupSchedule {
@@ -15,7 +16,7 @@ export default class PopupSchedulePost extends PopupSchedule {
   protected minTimeDate: Date;
 
   constructor(args: Args) {
-    const {minTimeDate, ...rest} = args;
+    const {minTimeDate, captionKey, ...rest} = args;
 
     super(rest);
 
@@ -23,9 +24,11 @@ export default class PopupSchedulePost extends PopupSchedule {
 
     this.caption = document.createElement('div');
     this.caption.classList.add(styles.Caption, styles.center);
-    this.caption.append(i18n('SuggestedPosts.PublishingTime.MinSendTime', [formatTime(minTimeDate)]));
+    this.caption.append(i18n(captionKey, [formatTime(minTimeDate)]));
 
     this.timeDiv.after(this.caption);
+
+    this.setTimeTitle(); // Set the time title again when btn confirm lang keys are overriden
   }
 
   public setTimeTitle() {

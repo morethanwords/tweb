@@ -26,10 +26,10 @@ const PublishTimeField = (props: Props) => {
 
     new PopupSchedulePost({
       initDate: new Date(minTimeDate),
+      captionKey: 'SuggestedPosts.PublishingTime.MinSendTime',
       minDate,
       minTimeDate,
       onPick: (timestamp) => {
-        console.log(timestamp);
         props.onChange(timestamp);
       }
     }).show();
