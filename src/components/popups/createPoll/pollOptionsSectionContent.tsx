@@ -110,7 +110,7 @@ const PollOptionFieldWithAnimation = (props: {
         ref={props.sortable.itemRef(props.item.id)}
         onPointerDown={props.sortable.handleProps(props.item.id).onPointerDown}
         style={props.sortable.itemStyle(props.item.id)}
-        hoverDisabled={!done()}
+        hoverDisabled={!done() || props.sortable.draggingId() !== null}
         inputFieldRef={props.inputFieldRef}
         onEnter={props.onEnter}
         onEmptyBackspace={props.onEmptyBackspace}

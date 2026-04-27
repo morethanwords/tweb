@@ -57,7 +57,6 @@ export const PollSettingsSectionContent = () => {
 
   const [limitDurationExtraElement, setLimitDurationExtraElement] = createSignal<HTMLElement>();
   const [explanationElement, setExplanationElement] = createSignal<HTMLElement>();
-  const [runningAnimations, setRunningAnimations] = createSignal(0);
   const [isDurationMenuOpen, setIsDurationMenuOpen] = createSignal(false);
 
   const [settings, setSettings] = createStore<PollSettingsStore>({
@@ -155,11 +154,10 @@ export const PollSettingsSectionContent = () => {
         onClick={handleSettingsFlag('durationLimited')}
       />
       <HeightTransition
-        onRunningAnimations={setRunningAnimations}
         onAfterEnter={() => limitDurationExtraElement()?.scrollIntoView({behavior: 'smooth', block: 'center'})}
       >
         <Show when={settings.durationLimited}>
-          <div style={{overflow: runningAnimations() ? 'hidden' : undefined}}>
+          <div style={{overflow: !isDurationMenuOpen() ? 'hidden' : undefined}}>
             <Space amount='0.25rem' />
             <div class={styles.smallerHrWrapper}>
               <hr class={styles.hr} />
