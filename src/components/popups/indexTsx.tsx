@@ -296,6 +296,8 @@ const PopupElement = (props: {
     }, 0);
   }
 
+  let mouseDownTarget: Element;
+
   return (
     <PopupContext.Provider value={value}>
       <Portal mount={appendPopupTo()}>
@@ -309,12 +311,19 @@ const PopupElement = (props: {
             shown() && 'active',
             hiding() && 'hiding'
           )}
+          onMouseDown={(e) => {
+            mouseDownTarget = e.target;
+          }}
           onClick={/* store.closeButton &&  */((e) => {
             if(findUpClassName(e.target, 'popup-container') || !(e.target as HTMLElement).isConnected) {
               return;
             }
 
             if(props.closable === false) return;
+
+            // Prevent hiding the popup when the click started inside the popup and ended outside
+            if(mouseDownTarget && mouseDownTarget !== e.target) return;
+            mouseDownTarget = undefined;
 
             hide();
           })}
