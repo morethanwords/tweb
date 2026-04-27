@@ -10,11 +10,19 @@ import classNames from '@helpers/string/classNames';
 import {LangPackKey} from '@lib/langPack';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {FilterBooleanKeys} from '@types';
-import {createSignal, JSX, Show} from 'solid-js';
+import {createSignal, JSX, onMount, Show} from 'solid-js';
 import {createStore} from 'solid-js/store';
 import {supportedDescriptionFormattingTypes} from './config';
 import {EmojiDropdownButton} from './emojiDropdownButton';
 import styles from './styles.module.scss';
+import contextMenuController from '@helpers/contextMenuController';
+import {requestRAF} from '@helpers/solid/requestRAF';
+import {formatTime} from '@helpers/date';
+import formatDuration from '@helpers/formatDuration';
+import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
+import {oneDayInSeconds, oneHourInSeconds, oneWeekInSeconds} from '@lib/constants';
+import {createAutoDeleteIcon} from '@components/autoDeleteIcon';
+import pause from '@helpers/schedulers/pause';
 
 
 type PollSettingsStore = {
@@ -27,16 +35,20 @@ type PollSettingsStore = {
   durationLimited: boolean;
 
   duration: number;
+
+  explanation: string;
   hideResults: boolean;
 }
 
 type BooleanSettingKey = FilterBooleanKeys<PollSettingsStore>;
 
 export const PollSettingsSectionContent = () => {
-  const {Row} = useHotReloadGuard();
+  const {Row, ButtonMenuSync} = useHotReloadGuard();
 
   const [limitDurationExtraElement, setLimitDurationExtraElement] = createSignal<HTMLElement>();
   const [explanationElement, setExplanationElement] = createSignal<HTMLElement>();
+  const [runningAnimations, setRunningAnimations] = createSignal(0);
+  const [isDurationMenuOpen, setIsDurationMenuOpen] = createSignal(false);
 
   const [settings, setSettings] = createStore<PollSettingsStore>({
     showWhoVoted: true,
@@ -47,10 +59,9 @@ export const PollSettingsSectionContent = () => {
     hasCorrectAnswer: false,
     durationLimited: false,
     duration: 0,
+    explanation: '',
     hideResults: false
   });
-
-  const [explanation, setExplanation] = createSignal('');
 
   const handleSettingsFlag = <T extends BooleanSettingKey>(flag: T) => () => {
     setSettings(flag, prev => !prev);
@@ -61,7 +72,7 @@ export const PollSettingsSectionContent = () => {
     canWrapCustomEmojis: true,
     withLinebreaks: true,
     onRawInput: (value) => {
-      setExplanation(value);
+      setSettings('explanation', value);
     }
   });
 
@@ -125,20 +136,30 @@ export const PollSettingsSectionContent = () => {
         checked={settings.durationLimited}
         onClick={handleSettingsFlag('durationLimited')}
       />
-      <HeightTransition onAfterEnter={() => limitDurationExtraElement()?.scrollIntoView({behavior: 'smooth', block: 'center'})}>
+      <HeightTransition
+        onRunningAnimations={setRunningAnimations}
+        onAfterEnter={() => limitDurationExtraElement()?.scrollIntoView({behavior: 'smooth', block: 'center'})}
+      >
         <Show when={settings.durationLimited}>
-          <div style={{overflow: 'hidden'}}>
+          <div style={{overflow: runningAnimations() ? 'hidden' : undefined}}>
+            <Space amount='0.25rem' />
             <div class={styles.smallerHrWrapper}>
               <hr class={styles.hr} />
             </div>
-            <Row>
-              <Row.Title>
-                <I18nTsx key='NewPoll.PollDuration' />
-              </Row.Title>
-              <Row.RightContent>
-                     24 hours
-              </Row.RightContent>
-            </Row>
+            <Space amount='0.25rem' />
+            <div style={{'position': 'relative'}}>
+              <Row clickable={() => setIsDurationMenuOpen(prev => !prev)}>
+                <Row.Title>
+                  <I18nTsx key='NewPoll.PollDuration' />
+                </Row.Title>
+                <Row.RightContent>
+                      24 hours
+                </Row.RightContent>
+              </Row>
+              <Show when={isDurationMenuOpen()}>
+                <PollDurationMenu onClose={() => setIsDurationMenuOpen(false)} />
+              </Show>
+            </div>
             <Row ref={setLimitDurationExtraElement} clickable={handleSettingsFlag('hideResults')}>
               <Row.Title>
                 <I18nTsx key='NewPoll.HideResults' />
@@ -159,8 +180,8 @@ export const PollSettingsSectionContent = () => {
             <Space amount='1rem' />
 
             <SimpleFormField
-              value={explanation()}
-              onChange={setExplanation}
+              value={settings.explanation}
+              onChange={(value) => setSettings('explanation', value)}
               class={classNames(styles.flexFull, styles.formField)}
               withEndButtonIcon
               withMinHeight
@@ -227,5 +248,57 @@ const SettingsOption = (props: {
         <StaticSwitch checked={props.checked} />
       </Row.RightContent>
     </Row>
+  );
+};
+
+const durationOptions = [
+  oneHourInSeconds,
+  oneHourInSeconds * 3,
+  oneHourInSeconds * 8,
+  oneDayInSeconds,
+  oneDayInSeconds * 3,
+  oneWeekInSeconds
+];
+
+const PollDurationMenu = (props: {
+  onOptionClick?: (duration: number) => void;
+  onClose?: () => void
+}) => {
+  const {ButtonMenuSync} = useHotReloadGuard();
+
+  const format = (duration: number) => wrapFormattedDuration(formatDuration(duration, 1));
+
+  const buttonMenu = ButtonMenuSync({
+    buttons: [
+      ...durationOptions.map((duration) => ({
+        iconElement: createAutoDeleteIcon(duration),
+        regularText: format(duration),
+        onClick: () => {
+          props.onOptionClick?.(duration);
+        }
+      })),
+      {
+        icon: 'tools',
+        text: 'Other',
+        onClick: () => {
+
+        }
+      }
+    ]
+  });
+
+  buttonMenu.classList.add('top-left');
+
+  onMount(() => {
+    requestRAF(() => {
+      contextMenuController.openBtnMenu(buttonMenu, async() => {
+        await pause(400);
+        props.onClose?.();
+      });
+    });
+  });
+
+  return (
+    <>{buttonMenu}</>
   );
 };

@@ -9,6 +9,7 @@ import type {AutonomousMonoforumThreadList} from '@components/autonomousDialogLi
 import type {avatarNew, StoriesSegments} from '@components/avatarNew';
 import type BusinessHours from '@components/businessHours';
 import type ButtonMenu from '@components/buttonMenu';
+import type {ButtonMenuSync} from '@components/buttonMenu';
 import type {ChatType} from '@components/chat/chatType';
 import type confirmationPopup from '@components/confirmationPopup';
 import type {EmoticonsDropdown} from '@components/emoticonsDropdown';
@@ -130,6 +131,7 @@ export type SolidJSHotReloadGuardContextValue = {
   formatDate: typeof formatDate;
   wrapFolderTitle: typeof wrapFolderTitle;
   ButtonMenu: typeof ButtonMenu;
+  ButtonMenuSync: typeof ButtonMenuSync;
   StoriesProvider: typeof StoriesProvider;
   useStories: typeof useStories;
   StoriesSegments: typeof StoriesSegments;
