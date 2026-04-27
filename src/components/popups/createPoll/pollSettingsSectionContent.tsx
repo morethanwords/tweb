@@ -189,6 +189,9 @@ export const PollSettingsSectionContent = () => {
               <Row.Title>
                 <I18nTsx key='NewPoll.HideResults' />
               </Row.Title>
+              <Row.Subtitle>
+                <I18nTsx key='NewPoll.HideResultsSubtitle' />
+              </Row.Subtitle>
               <Row.RightContent>
                 <StaticSwitch
                   checked={settings.hideResults}

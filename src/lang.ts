@@ -4530,6 +4530,7 @@ const lang = {
   'NewPoll.LimitDurationSubtitle': 'Automatically close the poll after a certain time',
   'NewPoll.PollDuration': 'Poll Duration',
   'NewPoll.HideResults': 'Hide Results',
+  'NewPoll.HideResultsSubtitle': 'Results will not be visible until the polls ends',
   'NewPoll.MinEndTime': 'Minimum End Time: %s',
   'NewPoll.EndToday': 'End today at %@',
   'NewPoll.EndDate': 'End on %@ at %@'
