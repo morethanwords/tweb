@@ -48,7 +48,7 @@ import currencyStarIcon from '@components/currencyStarIcon';
 import type {ActiveAccountNumber} from '@lib/accounts/types';
 import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
 import {appSettings} from '@stores/appSettings';
-import {createAutoDeleteIcon} from '@components/chat/utils';
+import {createAutoDeleteIcon} from '@components/autoDeleteIcon';
 import {resolveElements} from '@solid-primitives/refs';
 import toArray from '@helpers/array/toArray';
 import computeLockColor from '@helpers/computeLockColor';

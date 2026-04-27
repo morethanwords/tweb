@@ -81,7 +81,7 @@ import createSubmenuTrigger from '@components/createSubmenuTrigger';
 import ButtonMenu, {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import Icon from '@components/icon';
 import {getDefaultOptions} from '@components/sidebarLeft/tabs/autoDeleteMessages/options';
-import {createAutoDeleteIcon} from '@components/chat/utils';
+import {createAutoDeleteIcon} from '@components/autoDeleteIcon';
 import PopupBoost from '@components/popups/boost';
 import PopupPremium from '@components/popups/premium';
 import showNoForwardsPopup from '@components/popups/noForwards';

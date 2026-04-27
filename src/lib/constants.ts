@@ -17,6 +17,7 @@ export const HTTPHeaderNames = {
   contentType: 'Content-Type'
 };
 
+export const oneHourInSeconds = 60 * 60;
 export const oneDayInSeconds = 24 * 60 * 60;
 export const oneWeekInSeconds = oneDayInSeconds * 7;
 export const oneMonthInSeconds = oneDayInSeconds * 31;
