@@ -53,7 +53,13 @@ export const PollOptionsSectionContent = (props: {
               setItems(index(), 'inputField', inputField);
             }}
             onEnter={() => {
-              onAdd();
+              for(const item of items.slice(index() + 1)) {
+                if(!item.inputField?.value) {
+                  focusInput(item.inputField?.input);
+                  return;
+                }
+              }
+              if(item.inputField?.value) onAdd();
             }}
             onEmptyBackspace={() => {
               if(items.length === 1) return;
