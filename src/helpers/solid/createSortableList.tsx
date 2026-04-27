@@ -13,9 +13,10 @@ import {
 import {createStore} from 'solid-js/store';
 import {requestRAF} from './requestRAF';
 import {subscribeOn} from './subscribeOn';
+import styles from './createSortableList.module.scss';
 
 
-type Id = string | number;
+type Id = string | number; // probably could be anything
 
 type Args<T> = {
   items: Accessor<T[]>;
@@ -59,7 +60,7 @@ export function createSortableList<T>({
   let containerRect: DOMRectEditable;
   let containerScrollHeight: number;
   let autoScrollRef = {};
-  let cancelGhostAnimation: () => void;
+  let cancelFinishingAnimation: () => void;
 
   const rects: RectMap = new Map();
 
@@ -81,8 +82,6 @@ export function createSortableList<T>({
 
   const scrollAdjustment = createMemo(() => dragState.currentScrollTop - dragState.initialScrollTop);
 
-
-  // Utils
 
   const findIndexById = (id: Id) => {
     return items().findIndex((x) => getId(x) === id);
@@ -107,8 +106,6 @@ export function createSortableList<T>({
     return shift;
   };
 
-
-  // Event handling
 
   const measure = () => {
     rects.clear();
@@ -161,7 +158,7 @@ export function createSortableList<T>({
 
     e.preventDefault();
 
-    cancelGhostAnimation?.();
+    cancelFinishingAnimation?.();
 
     requestRAF(() => {
       measure();
@@ -272,18 +269,20 @@ export function createSortableList<T>({
       setDragState(intialDragState);
       onReorder(reorder(items(), startIndex, overIndex));
 
+      if(shift === 0) return;
+
       setFinishingAnimationState({
         id,
         shift
       });
-    });
 
-    cancelGhostAnimation = animateValue(shift, 0, 200, (value) => {
-      setFinishingAnimationState('shift', value);
-    }, {
-      onEnd: () => {
-        setFinishingAnimationState({id: null, shift: 0});
-      }
+      cancelFinishingAnimation = animateValue(shift, 0, 200, (value) => {
+        setFinishingAnimationState('shift', value);
+      }, {
+        onEnd: () => {
+          setFinishingAnimationState({id: null, shift: 0});
+        }
+      });
     });
 
     rects.clear();
@@ -305,8 +304,6 @@ export function createSortableList<T>({
   };
 
 
-  // Effects
-
   createEffect(() => {
     const localContainer = container();
     if(!localContainer) return;
@@ -320,21 +317,29 @@ export function createSortableList<T>({
     }, {passive: true});
   });
 
+  createEffect(() => {
+    if(!dragState.isDragging) return;
+
+    document.body.classList.add(styles.grabbing);
+
+    onCleanup(() => {
+      document.body.classList.remove(styles.grabbing);
+    });
+  });
+
   onCleanup(() => {
     autoScrollRef = {};
-    cancelGhostAnimation?.();
+    cancelFinishingAnimation?.();
     removeWindowListeners();
   });
 
 
-  // Resulting functions
-
-  const registerItem = (id: Id) => (el: HTMLElement) => {
+  const itemRef = (id: Id) => (el: HTMLElement) => {
     elements.set(id, el);
     onCleanup(() => elements.delete(id));
   };
 
-  const itemProps = (id: Id) => ({
+  const handleProps = (id: Id) => ({
     onPointerDown: (e) => startDrag(e, id)
   } satisfies JSX.HTMLAttributes<HTMLElement>);
 
@@ -364,8 +369,6 @@ export function createSortableList<T>({
     }
 
     const activeRect = rects.get(dragState.id);
-
-
     const prevRect = getRectAtIndex(dragState.startIndex - 1);
     const nextRect = getRectAtIndex(dragState.startIndex + 1);
 
@@ -390,8 +393,8 @@ export function createSortableList<T>({
   return {
     draggingId: (): Id | null => dragState.id,
 
-    registerItem,
-    getProps: itemProps,
-    getStyle: itemStyle
+    itemRef,
+    handleProps,
+    itemStyle
   };
 }

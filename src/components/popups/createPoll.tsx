@@ -147,9 +147,10 @@ const BodyContent = () => {
             {(item, index) => (
               <>
                 <PollOptionField
-                  ref={sortable.registerItem(item.id)}
-                  onPointerDown={sortable.getProps(item.id).onPointerDown}
-                  style={sortable.getStyle(item.id)}
+                  ref={sortable.itemRef(item.id)}
+                  value={item.id.toString()}
+                  onPointerDown={sortable.handleProps(item.id).onPointerDown}
+                  style={sortable.itemStyle(item.id)}
                 />
                 {index() < itemsLength() - 1 && <Space amount='0.75rem' />}
               </>
@@ -170,6 +171,7 @@ const BodyContent = () => {
 
 const PollOptionField = (props: {
   ref?: Ref<HTMLDivElement>;
+  value?: string;
   style?: JSX.CSSProperties;
   onPointerDown?: JSX.HTMLAttributes<HTMLElement>['onPointerDown'];
 }) => {
@@ -183,6 +185,7 @@ const PollOptionField = (props: {
     }
   });
 
+  props.value && inputField.setValueSilently(props.value);
   inputField.input.classList.replace('input-field-input', styles.inputField);
   inputField.placeholder.classList.add(styles.inputFieldPlaceholder);
 
