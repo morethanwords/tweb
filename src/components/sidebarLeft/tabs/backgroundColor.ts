@@ -33,6 +33,9 @@ export default class AppBackgroundColorTab extends SliderSuperTab {
     const section = new SettingSection({});
     this.colorPicker = new ColorPicker();
 
+    const middleware = this.middlewareHelper.get();
+    middleware.onDestroy(this.colorPicker.attachAutoResize());
+
     section.content.append(this.colorPicker.container);
 
     this.scrollable.append(section.container);

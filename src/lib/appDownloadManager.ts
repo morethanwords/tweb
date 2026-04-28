@@ -25,6 +25,7 @@ import getPhotoDownloadOptions from '@appManagers/utils/photos/getPhotoDownloadO
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {IS_MOBILE_SAFARI} from '@environment/userAgent';
 import isWebFileLocation from '@appManagers/utils/webFiles/isWebFileLocation';
+import {MIME_TYPE_EXTENSION_MAP} from '@environment/mimeTypeMap';
 
 export type ResponseMethodBlob = 'blob';
 export type ResponseMethodJson = 'json';
@@ -257,7 +258,12 @@ export class AppDownloadManager {
       const downloadOptions = isDocument ?
         getDocumentDownloadOptions(media) :
         getPhotoDownloadOptions(media as any, options.thumb as PhotoSize.photoSize);
-      return (options.media as MyDocument).file_name || getFileNameByLocation(downloadOptions.location);
+      const docFileName = (options.media as MyDocument).file_name;
+      if(docFileName) return docFileName;
+      let name = getFileNameByLocation(downloadOptions.location);
+      const ext = MIME_TYPE_EXTENSION_MAP[downloadOptions.mimeType];
+      if(ext) name += '.' + ext;
+      return name;
     };
 
     // const {fileName: cacheFileName} = getDownloadMediaDetails(options);

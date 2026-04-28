@@ -805,7 +805,8 @@ export class ApiFileManager extends AppManager {
       downloadPrepared = downloadStorage.prepareWriting({
         fileName: downloadFileName,
         downloadId,
-        size: possibleSize
+        size: possibleSize,
+        mimeType: options.mimeType
       });
       attach(downloadPrepared, fileName);
 

@@ -3,6 +3,7 @@ import createElementFromMarkup from '@helpers/createElementFromMarkup';
 import attachGrabListeners from '@helpers/dom/attachGrabListeners';
 import clamp from '@helpers/number/clamp';
 import InputField, {InputState} from '@components/inputField';
+import {observeResize} from './resizeObserver';
 
 export type ColorPickerColor = {
   hsl: string;
@@ -15,13 +16,22 @@ export type ColorPickerColor = {
 };
 
 
-interface ColorPickerOptions {
-  buildLayout?: typeof ColorPicker.defaultBuildLayout
-  pickerBoxWidth?: number
-  pickerBoxHeight?: number
-  sliderWidth?: number
-  thickSlider?: boolean
-}
+type ConstructorArgs = {
+  buildLayout?: typeof ColorPicker.defaultBuildLayout;
+  thickSlider?: boolean;
+} & AdjustSizeArgs;
+
+type AdjustSizeArgs = {
+  pickerBoxWidth?: number;
+  pickerBoxHeight?: number;
+  sliderWidth?: number;
+};
+
+const defaultPickerBoxWidth = 380;
+const defaultPickerBoxHeight = 198;
+const pickerBoxRatio = defaultPickerBoxWidth / defaultPickerBoxHeight;
+const defaultSliderWidth = defaultPickerBoxWidth;
+const sliderHeight = 24;
 
 export default class ColorPicker {
   private static BASE_CLASS = 'color-picker';
@@ -44,18 +54,21 @@ export default class ColorPicker {
     hue: SVGSVGElement,
     hueDragger: SVGSVGElement,
     saturation: SVGLinearGradientElement,
+    boxRect: SVGRectElement,
+    hueRect: SVGRectElement,
   } = {} as any;
   private hexInputField: InputField;
   private rgbInputField: InputField;
   public onChange: (color: ReturnType<ColorPicker['getCurrentColor']>) => void;
 
+
   constructor({
     buildLayout = ColorPicker.defaultBuildLayout,
-    pickerBoxWidth = 380,
-    pickerBoxHeight = 198,
-    sliderWidth = pickerBoxWidth,
+    pickerBoxWidth = defaultPickerBoxWidth,
+    pickerBoxHeight = defaultPickerBoxHeight,
+    sliderWidth = defaultSliderWidth,
     thickSlider = false
-  }: ColorPickerOptions = {}) {
+  }: ConstructorArgs = {}) {
     // Multiple instances of color pickers will need different id's for SVG markup
     const id = ColorPicker.idSeed++;
 
@@ -75,7 +88,7 @@ export default class ColorPicker {
             <rect x="0" y="0" width="100%" height="100%" fill="url(#color-picker-brightness-${id})"></rect>
           </pattern>
         </defs>
-        <rect rx="10" ry="10" x="0" y="0" width="${pickerBoxWidth}" height="${pickerBoxHeight}" fill="url(#color-picker-pattern-${id})"></rect>
+        <rect id="color-picker-box-rect-${id}" rx="10" ry="10" x="0" y="0" width="${pickerBoxWidth}" height="${pickerBoxHeight}" fill="url(#color-picker-pattern-${id})"></rect>
         <svg class="${ColorPicker.BASE_CLASS + '-dragger'} ${ColorPicker.BASE_CLASS + '-box-dragger'}" x="0" y="0">
           <circle r="11" fill="inherit" stroke="#fff" stroke-width="2"></circle>
         </svg>
@@ -83,8 +96,8 @@ export default class ColorPicker {
     `)
 
     const slider: HTMLDivElement = createElementFromMarkup(`
-      <div class="${ColorPicker.BASE_CLASS + '-sliders'}" style="width: ${sliderWidth}px; height: 24px">
-        <svg class="${ColorPicker.BASE_CLASS + '-color-slider'}" viewBox="0 0 ${sliderWidth} 24">
+      <div class="${ColorPicker.BASE_CLASS + '-sliders'}" style="width: ${sliderWidth}px; height: ${sliderHeight}px">
+        <svg class="${ColorPicker.BASE_CLASS + '-color-slider'}" viewBox="0 0 ${sliderWidth} ${sliderHeight}">
           <defs>
             <linearGradient id="hue-${id}" x1="100%" y1="0%" x2="0%" y2="0%">
               <stop offset="0%" stop-color="#f00"></stop>
@@ -96,7 +109,7 @@ export default class ColorPicker {
               <stop offset="100%" stop-color="#f00"></stop>
             </linearGradient>
           </defs>
-          <rect rx="${thickSlider ? 10 : 4}" x="0" y="${thickSlider ? 3 : 9}" width="${sliderWidth}" height="${thickSlider ? 20 : 8}" fill="url(#hue-${id})"></rect>
+          <rect id="color-picker-hue-rect-${id}" rx="${thickSlider ? 10 : 4}" x="0" y="${thickSlider ? 3 : 9}" width="${sliderWidth}" height="${thickSlider ? 20 : 8}" fill="url(#hue-${id})"></rect>
           <svg class="${ColorPicker.BASE_CLASS + '-dragger'} ${ColorPicker.BASE_CLASS + '-color-slider-dragger'}" x="0" y="13">
             <circle r="11" fill="inherit" stroke="#fff" stroke-width="2"></circle>
           </svg>
@@ -107,11 +120,13 @@ export default class ColorPicker {
     this.elements.box = pickerBox;
     this.elements.boxDragger = pickerBox.lastElementChild as SVGSVGElement;
     this.elements.saturation = pickerBox.querySelector(`#color-picker-saturation-${id}`);
+    this.elements.boxRect = pickerBox.querySelector(`#color-picker-box-rect-${id}`);
 
     this.elements.sliders = slider;
 
     this.elements.hue = slider.firstElementChild as SVGSVGElement;
     this.elements.hueDragger = this.elements.hue.lastElementChild as any;
+    this.elements.hueRect = slider.querySelector(`#color-picker-hue-rect-${id}`);
 
     this.hexInputField = new InputField({plainText: true, label: 'Appearance.Color.Hex'});
     this.rgbInputField = new InputField({plainText: true, label: 'Appearance.Color.RGB'});
@@ -121,7 +136,7 @@ export default class ColorPicker {
       slider,
       hexInput: this.hexInputField.container,
       rgbInput: this.rgbInputField.container
-    })
+    });
 
     this.hexInputField.input.addEventListener('input', () => {
       let value = this.hexInputField.value.replace(/#/g, '').slice(0, 6);
@@ -171,6 +186,29 @@ export default class ColorPicker {
     );
 
     return container;
+  }
+
+  public adjustSize({pickerBoxWidth, pickerBoxHeight, sliderWidth}: AdjustSizeArgs) {
+    this.elements.box.setAttribute('viewBox', `0 0 ${pickerBoxWidth} ${pickerBoxHeight}`);
+    this.elements.box.style.width = `${pickerBoxWidth}px`;
+    this.elements.box.style.height = `${pickerBoxHeight}px`;
+
+    this.elements.boxRect.setAttribute('width', `${pickerBoxWidth}`);
+    this.elements.boxRect.setAttribute('height', `${pickerBoxHeight}`);
+
+    this.elements.sliders.style.width = `${sliderWidth}px`;
+    this.elements.sliders.style.height = `${sliderHeight}px`;
+
+    this.elements.hue.setAttribute('viewBox', `0 0 ${sliderWidth} ${sliderHeight}`);
+
+    this.elements.hueRect.setAttribute('width', `${sliderWidth}`);
+  }
+
+  public attachAutoResize() {
+    return observeResize(this.container, (entry) => {
+      const width = entry.contentRect.width;
+      this.adjustSize({pickerBoxWidth: width, pickerBoxHeight: width / pickerBoxRatio, sliderWidth: width});
+    });
   }
 
   private onGrabStart = () => {
