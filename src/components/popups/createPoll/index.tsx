@@ -1,9 +1,9 @@
-import {ButtonIconTsx} from '@components/buttonIconTsx';
 import Button from '@components/buttonTsx';
 import InputField from '@components/inputField';
 import Scrollable from '@components/scrollable2';
 import SimpleFormField from '@components/simpleFormField';
 import Space from '@components/space';
+import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import {I18nTsx} from '@helpers/solid/i18n';
 import classNames from '@helpers/string/classNames';
 import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
@@ -11,8 +11,10 @@ import {createSignal} from 'solid-js';
 import PopupElement, {createPopup} from '../indexTsx';
 import {supportedDescriptionFormattingTypes} from './config';
 import {EmojiDropdownButton} from './emojiDropdownButton';
+import {MediaAttachment} from './mediaAttachment';
 import {PollOptionsSectionContent} from './pollOptionsSectionContent';
 import {PollSettingsSectionContent} from './pollSettingsSectionContent';
+import {CreatePollContext, createPollStoreContextValue, useCreatePollContext} from './storeContext';
 import styles from './styles.module.scss';
 
 
@@ -23,23 +25,28 @@ export const CreatePollPopup = () => {
       class={styles.popup}
       containerClass={styles.container}
     >
-      <Header />
-      <hr class={styles.hr} />
-      <PopupElement.Body>
-        <BodyContent />
-      </PopupElement.Body>
+      <CreatePollContext.Provider value={createPollStoreContextValue()}>
+        <Header />
+        <hr class={styles.hr} />
+        <PopupElement.Body>
+          <BodyContent />
+        </PopupElement.Body>
+      </CreatePollContext.Provider>
     </PopupElement>
   );
 };
 
 const Header = () => {
-  const [question, setQuestion] = createSignal('');
-  const [description, setDescription] = createSignal('');
+  const context = useCreatePollContext();
 
   const questionInput = new InputField({
     canWrapCustomEmojis: true,
-    onRawInput: (value) => {
-      setQuestion(value);
+    onRawInput: () => {
+      const {value, entities} = getRichValueWithCaret(questionInput.input);
+      context.setStore({
+        question: value,
+        questionEntities: entities
+      });
     }
   });
 
@@ -49,8 +56,12 @@ const Header = () => {
     canHaveFormatting: supportedDescriptionFormattingTypes,
     canWrapCustomEmojis: true,
     withLinebreaks: true,
-    onRawInput: (value) => {
-      setDescription(value);
+    onRawInput: () => {
+      const {value, entities} = getRichValueWithCaret(descriptionInput.input);
+      context.setStore({
+        description: value,
+        descriptionEntities: entities
+      });
     }
   });
 
@@ -71,8 +82,7 @@ const Header = () => {
       <Space amount='1rem' class={styles.flexFull} />
 
       <SimpleFormField
-        value={question()}
-        onChange={setQuestion}
+        value={context.store.question}
         class={classNames(styles.flexFull, styles.formField)}
         withEndButtonIcon
         withMinHeight
@@ -90,8 +100,7 @@ const Header = () => {
       <Space amount='1rem' class={styles.flexFull} />
 
       <SimpleFormField
-        value={description()}
-        onChange={setDescription}
+        value={context.store.description}
         class={classNames(styles.flexFull, styles.formField)}
         withEndButtonIcon
         withMinHeight
@@ -103,9 +112,7 @@ const Header = () => {
         <SimpleFormField.SideContent class={styles.sideContentWithFixedIcon} first last>
           <EmojiDropdownButton inputField={descriptionInput} />
         </SimpleFormField.SideContent>
-        <SimpleFormField.SideContent class={styles.sideContentWithFixedIcon} first last>
-          <ButtonIconTsx icon='attach' />
-        </SimpleFormField.SideContent>
+        <MediaAttachment />
       </SimpleFormField>
 
     </PopupElement.Header>

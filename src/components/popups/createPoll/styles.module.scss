@@ -165,3 +165,38 @@
 .pollDuration{
   color: var(--primary-color);
 }
+
+.pollOption {
+  &Row {
+    display: flex;
+  }
+
+  &CheckWrapper {
+    display: flex;
+    align-items: center;
+    padding-left: 0.375rem;
+    padding-right: 0.125rem;
+  }
+
+  &InputField {
+    flex: 1;
+  }
+}
+
+.checkButtonWrapper {
+  display: inline-flex;
+  position: relative;
+  overflow: hidden;
+
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+  width: 2.5rem;
+  height: 2.5rem;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--light-filled-secondary-text-color);
+  }
+}
