@@ -1,0 +1,87 @@
+@use "../scss/mixins" as *;
+
+.Checkbox {
+  --size: 1.25rem;
+
+  width: var(--size);
+  height: var(--size);
+  border-radius: 0.3125rem;
+  overflow: hidden;
+
+  position: relative;
+
+  html.is-safari & {
+    -webkit-mask-image: -webkit-radial-gradient(
+      circle,
+      white 100%,
+      black 100%
+    ); // fix safari overflow
+  }
+
+  &.checked .Check {
+    use {
+      stroke-dasharray: 24.19, 24.19;
+      visibility: visible;
+      transition: stroke-dasharray .1s .15s ease-in-out, visibility 0s .15s;
+    }
+  }
+
+  &.checked .Background {
+    transform: scale(1);
+
+    @include animation-level-global(2) {
+      transition: transform .2s 0s ease-in-out;
+    }
+  }
+}
+
+.Check,
+.Background,
+.Border {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.Border {
+  inset-inline: 0;
+  bottom: 0;
+  border-radius: inherit;
+  border: 2px solid #8d969c;
+  //border-color: #000;
+}
+
+.Background {
+  // it is needed for circle scale animation
+  inset: -15%;
+
+  background-color: var(--primary-color);
+  transform: scale(0);
+  border-radius: 50%;
+
+  @include animation-level-global(2) {
+    transition: transform 0.2s 0.05s ease-in-out;
+  }
+}
+
+.Check {
+  --offset: 7px;
+  width: calc(var(--size) - var(--offset));
+  height: calc(var(--size) - var(--offset));
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
+  use {
+    stroke: #fff;
+    stroke-width: 3.75;
+    stroke-linecap: round;
+    stroke-dasharray: 0, 24.19;
+    stroke-dashoffset: 0;
+    visibility: hidden; // fix blinking on parent's transform
+
+    @include animation-level-global(2) {
+      transition: stroke-dasharray 0.1s ease-in-out, visibility 0s 0.1s;
+    }
+  }
+}
