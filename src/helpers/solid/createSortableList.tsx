@@ -10,15 +10,15 @@ import {
   JSX,
   onCleanup
 } from 'solid-js';
-import {createStore} from 'solid-js/store';
+import {createStore, SetStoreFunction, Store} from 'solid-js/store';
+import styles from './createSortableList.module.scss';
 import {requestRAF} from './requestRAF';
 import {subscribeOn} from './subscribeOn';
-import styles from './createSortableList.module.scss';
 
 
 type Id = string | number; // probably could be anything
 
-type Args<T> = {
+export type CreateSortableListArgs<T> = {
   items: Accessor<T[]>;
   getId: (item: T) => Id;
   onReorder: (next: T[]) => void;
@@ -46,24 +46,60 @@ type FinishingAnimationState = {
   shift: number;
 };
 
+type DragContext<T> = CreateSortableListArgs<T> & {
+  elements: Map<Id, HTMLElement>;
+  rects: RectMap;
+
+  // Will get assigned as properties (context.containerRect = ...)
+  containerRect?: DOMRectEditable;
+  containerScrollHeight?: number;
+  cancelFinishingAnimation?: () => void;
+
+  dragState: Store<DragState>;
+  setDragState: SetStoreFunction<DragState>;
+  resetDragState: () => void;
+  finishingAnimationState: Store<FinishingAnimationState>;
+  setFinishingAnimationState: SetStoreFunction<FinishingAnimationState>;
+  scrollAdjustment: Accessor<number>;
+};
+
 const autoScrollThreshold = 60;
 const autoScrollSpeedBase = 6;
 
-export function createSortableList<T>({
-  container,
-  items,
-  getId,
-  onReorder
-}: Args<T>) {
-  const elements = new Map<Id, HTMLElement>();
+export const createSortableList = <T, >(args: CreateSortableListArgs<T>) => {
+  const context = createDragContextValue(args);
 
-  let containerRect: DOMRectEditable;
-  let containerScrollHeight: number;
-  let autoScrollRef = {};
-  let cancelFinishingAnimation: () => void;
+  const startDrag = useStartDrag(context);
 
-  const rects: RectMap = new Map();
+  watchScrollPosition(context);
+  attachGrabbingClassname(context);
 
+  onCleanup(() => {
+    context.cancelFinishingAnimation?.();
+  });
+
+  const itemRef = (id: Id) => (el: HTMLElement) => {
+    context.elements.set(id, el);
+    onCleanup(() => context.elements.delete(id));
+  };
+
+  const dragHandleProps = (id: Id) => ({
+    onPointerDown: (e) => startDrag(e, id)
+  } satisfies JSX.HTMLAttributes<HTMLElement>);
+
+  const itemStyle = useItemStyle(context);
+
+  return {
+    isDragging: () => context.dragState.isDragging,
+    draggingId: () => context.dragState.id,
+
+    itemRef,
+    itemStyle,
+    dragHandleProps
+  };
+};
+
+const createDragContextValue = <T, >({container, items, getId, onReorder}: CreateSortableListArgs<T>): DragContext<T> => {
   const intialDragState: DragState = {
     id: null,
     isDragging: false,
@@ -75,24 +111,52 @@ export function createSortableList<T>({
     currentScrollTop: 0
   };
 
-  const isCleaned = useIsCleaned();
+  const [dragState, setDragState] = createStore<DragState>(
+    // Unlink from initial state so it doesn't mutate it directly
+    structuredClone(intialDragState)
+  );
 
-  const [dragState, setDragState] = createStore<DragState>(structuredClone(intialDragState));
   const [finishingAnimationState, setFinishingAnimationState] = createStore<FinishingAnimationState>({id: null, shift: 0});
 
   const scrollAdjustment = createMemo(() => dragState.currentScrollTop - dragState.initialScrollTop);
 
+  const resetDragState = () => setDragState(intialDragState);
 
-  const findIndexById = (id: Id) => {
-    return items().findIndex((x) => getId(x) === id);
+  return {
+    container,
+    items,
+    getId,
+    onReorder,
+
+    elements: new Map<Id, HTMLElement>(),
+    rects: new Map<Id, DOMRectEditable>(),
+
+    dragState,
+    setDragState,
+    resetDragState,
+    finishingAnimationState,
+    setFinishingAnimationState,
+
+    scrollAdjustment
   };
+}
 
-  const getRectAtIndex = (index: number) => {
-    if(index < 0 || index >= items().length) return null;
-    return rects.get(getId(items()[index]));
-  };
+const useFindIndexById = <T, >(context: DragContext<T>) => (id: Id) => {
+  const {items, getId} = context;
+  return items().findIndex((x) => getId(x) === id);
+};
 
-  const calculateShift = (id: Id) => {
+const useGetRectAtIndex = <T, >(context: DragContext<T>) => (index: number) => {
+  const {items, getId, rects} = context;
+  if(index < 0 || index >= items().length) return null;
+  return rects.get(getId(items()[index]));
+};
+
+const useCalculateShift = <T, >(context: DragContext<T>) => {
+  const {dragState, scrollAdjustment, items, rects} = context;
+  const getRectAtIndex = useGetRectAtIndex(context);
+
+  return (id: Id) => {
     let shift = dragState.deltaY + scrollAdjustment();
     const rect = rects.get(id);
     const firstRect = getRectAtIndex(0);
@@ -105,63 +169,94 @@ export function createSortableList<T>({
 
     return shift;
   };
+};
 
+const useMeasureElements = <T, >(context: DragContext<T>) => () =>  {
+  const {rects, elements, container, items, getId} = context;
 
-  const measure = () => {
-    rects.clear();
+  rects.clear();
 
-    const localContainer = container();
-    if(!localContainer) return;
-    containerRect = cloneDOMRect(localContainer.getBoundingClientRect());
-    containerScrollHeight = localContainer.scrollHeight;
+  const localContainer = container();
+  if(!localContainer) return;
 
-    for(const item of items()) {
-      const id = getId(item);
-      const el = elements.get(id);
-      if(!el) continue;
+  context.containerRect = cloneDOMRect(localContainer.getBoundingClientRect());
+  context.containerScrollHeight = localContainer.scrollHeight;
 
-      const cloned = cloneDOMRect(el.getBoundingClientRect());
+  for(const item of items()) {
+    const id = getId(item);
+    const el = elements.get(id);
+    if(!el) continue;
 
-      cloned.top -= containerRect.top;
-      cloned.bottom -= containerRect.top;
-      cloned.left -= containerRect.left;
-      cloned.right -= containerRect.left;
+    const cloned = cloneDOMRect(el.getBoundingClientRect());
 
-      rects.set(id, cloned);
+    const {containerRect} = context;
+
+    cloned.top -= containerRect.top;
+    cloned.bottom -= containerRect.top;
+    cloned.left -= containerRect.left;
+    cloned.right -= containerRect.left;
+
+    rects.set(id, cloned);
+  }
+};
+
+const useUpdateOverIndex = <T, >(context: DragContext<T>) => (y: number) => {
+  const {containerRect, scrollAdjustment, items, getId, setDragState, rects} = context;
+  if(!containerRect) return;
+
+  let idx = 0;
+
+  const ids = items().map(getId);
+
+  y += - containerRect.top + scrollAdjustment();
+
+  for(let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    const rect = rects.get(id);
+    if(rect && y >= rect.top) {
+      idx = i;
     }
-  };
-
-  const updateOverIndex = (y: number) => {
-    if(!containerRect) return;
-
-    let idx = 0;
-
-    const ids = items().map(getId);
-
-    y += - containerRect.top + scrollAdjustment();
-
-    for(let i = 0; i < ids.length; i++) {
-      const id = ids[i];
-      const rect = rects.get(id);
-      if(rect && y >= rect.top) {
-        idx = i;
-      }
-    }
-
-    setDragState({
-      overIndex: idx
-    });
   }
 
-  const startDrag = (e: PointerEvent, id: Id) => {
+  setDragState({
+    overIndex: idx
+  });
+};
+
+const useStartDrag = <T, >(context: DragContext<T>) => {
+  const {setDragState, container} = context;
+
+  const findIndexById = useFindIndexById(context);
+  const measureElements = useMeasureElements(context);
+
+  const handlePointerMove = useHandlePointerMove(context);
+  const handlePointerUp = useHandlePointerUp(context, () => removeListeners);
+
+  const setListeners = () => {
+    window.addEventListener('pointermove', handlePointerMove, {passive: false});
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
+  };
+
+  const removeListeners = () => {
+    window.removeEventListener('pointermove', handlePointerMove);
+    window.removeEventListener('pointerup', handlePointerUp);
+    window.removeEventListener('pointercancel', handlePointerUp);
+  };
+
+  onCleanup(() => {
+    removeListeners();
+  });
+
+  return (e: PointerEvent, id: Id) => {
     if(e.button !== 0 && e.pointerType !== 'touch') return;
 
     e.preventDefault();
 
-    cancelFinishingAnimation?.();
+    context.cancelFinishingAnimation?.();
 
     requestRAF(() => {
-      measure();
+      measureElements();
 
       const index = findIndexById(id);
 
@@ -176,16 +271,18 @@ export function createSortableList<T>({
         pointerStartY: e.clientY
       });
 
-      window.addEventListener('pointermove', handlePointerMove, {
-        passive: false
-      });
-
-      window.addEventListener('pointerup', handlePointerUp);
-      window.addEventListener('pointercancel', handlePointerUp);
+      setListeners();
     });
-  };
+  }
+};
 
-  const handlePointerMove = throttleWith(requestRAF, (e: PointerEvent) => {
+const useHandlePointerMove = <T, >(context: DragContext<T>) => {
+  const {dragState, setDragState} = context;
+
+  const updateOverIndex = useUpdateOverIndex(context);
+  const loopAutoScroll = useLoopAutoScroll(context);
+
+  return throttleWith(requestRAF, (e: PointerEvent) => {
     if(!dragState.isDragging) return;
 
     const y = e.clientY;
@@ -198,13 +295,26 @@ export function createSortableList<T>({
       loopAutoScroll(y);
     });
   });
+};
 
-  const handlePointerUp = () => {
+const useHandlePointerUp = <T, >(context: DragContext<T>, getRemoveListeners: () => () => void) => {
+  const endDrag = useEndDrag(context);
+
+  return () => {
+    const removeListeners = getRemoveListeners();
+
     endDrag();
-    removeWindowListeners();
+    removeListeners();
   };
+};
 
-  const autoScroll = (y: number) => {
+const useStartAutoScroll = <T, >(context: DragContext<T>) => {
+  const isCleaned = useIsCleaned();
+  const updateOverIndex = useUpdateOverIndex(context);
+
+  return (y: number) => {
+    const {dragState, container, containerRect, containerScrollHeight} = context;
+
     if(isCleaned() || !dragState.isDragging) return false;
 
     const localContainer = container();
@@ -233,10 +343,22 @@ export function createSortableList<T>({
     updateOverIndex(y);
 
     return true;
-  };
+  }
+};
 
+const useLoopAutoScroll = <T, >(context: DragContext<T>) => {
+  const {dragState} = context;
+  const autoScroll = useStartAutoScroll(context);
 
-  const loopAutoScroll = (y: number) => {
+  let autoScrollRef = {};
+
+  onCleanup(() => {
+    autoScrollRef = {};
+  });
+
+  return (y: number) => {
+    if(!dragState.isDragging) return;
+
     autoScrollRef = {};
 
     const savedRef = autoScrollRef;
@@ -248,9 +370,15 @@ export function createSortableList<T>({
     };
 
     requestRAF(frame);
-  };
+  }
+};
 
-  const endDrag = () => {
+const useEndDrag = <T, >(context: DragContext<T>) => {
+  const calculateShift = useCalculateShift(context);
+
+  return () => {
+    const {dragState, onReorder, items, rects, setFinishingAnimationState, getId, resetDragState} = context;
+
     if(!dragState.isDragging) return;
 
     const {startIndex, overIndex, id} = dragState;
@@ -266,7 +394,7 @@ export function createSortableList<T>({
     const shift = calculateShift(id) - moved;
 
     batch(() => {
-      setDragState(intialDragState);
+      resetDragState();
       onReorder(reorder(items(), startIndex, overIndex));
 
       if(shift === 0) return;
@@ -276,7 +404,7 @@ export function createSortableList<T>({
         shift
       });
 
-      cancelFinishingAnimation = animateValue(shift, 0, 200, (value) => {
+      context.cancelFinishingAnimation = animateValue(shift, 0, 200, (value) => {
         setFinishingAnimationState('shift', value);
       }, {
         onEnd: () => {
@@ -287,35 +415,27 @@ export function createSortableList<T>({
 
     rects.clear();
   }
+};
 
-  const reorder = (list: T[], from: number, to: number) => {
-    if(from === to) return list;
-    const copy = list.slice();
-    const [moved] = copy.splice(from, 1);
-    copy.splice(to, 0, moved);
-    return copy;
-  }
-
-
-  const removeWindowListeners = () => {
-    window.removeEventListener('pointermove', handlePointerMove);
-    window.removeEventListener('pointerup', handlePointerUp);
-    window.removeEventListener('pointercancel', handlePointerUp);
-  };
-
+const watchScrollPosition = <T, >(context: DragContext<T>) => {
+  const {container, dragState, setDragState} = context;
 
   createEffect(() => {
     const localContainer = container();
     if(!localContainer) return;
 
-    subscribeOn(localContainer)('scroll', () => {
+    subscribeOn(localContainer)('scroll', throttleWith(requestRAF, () => {
       if(!dragState.isDragging) return;
 
       setDragState({
         currentScrollTop: localContainer.scrollTop
       });
-    }, {passive: true});
+    }), {passive: true});
   });
+};
+
+const attachGrabbingClassname = <T, >(context: DragContext<T>) => {
+  const {dragState} = context;
 
   createEffect(() => {
     if(!dragState.isDragging) return;
@@ -326,30 +446,16 @@ export function createSortableList<T>({
       document.body.classList.remove(styles.grabbing);
     });
   });
+};
 
-  onCleanup(() => {
-    autoScrollRef = {};
-    cancelFinishingAnimation?.();
-    removeWindowListeners();
-  });
+const useItemStyle = <T, >(context: DragContext<T>) => {
+  const findIndexById = useFindIndexById(context);
+  const getRectAtIndex = useGetRectAtIndex(context);
+  const calculateShift = useCalculateShift(context);
 
+  return (id: Id) => {
+    const {dragState, finishingAnimationState, rects} = context;
 
-  const itemRef = (id: Id) => (el: HTMLElement) => {
-    elements.set(id, el);
-    onCleanup(() => elements.delete(id));
-  };
-
-  const handleProps = (id: Id) => ({
-    onPointerDown: (e) => startDrag(e, id)
-  } satisfies JSX.HTMLAttributes<HTMLElement>);
-
-  const baseMovingStyle = {
-    'position': 'relative',
-    'transition': 'none',
-    'z-index': 1
-  } satisfies JSX.CSSProperties;
-
-  const itemStyle = (id: Id) => {
     if(id === finishingAnimationState.id) {
       return {
         'transform': `translateY(${finishingAnimationState.shift}px)`,
@@ -389,12 +495,18 @@ export function createSortableList<T>({
       transition: 'transform 0.2s'
     };
   }
+};
 
-  return {
-    draggingId: (): Id | null => dragState.id,
+const baseMovingStyle = {
+  'position': 'relative',
+  'transition': 'none',
+  'z-index': 1
+} satisfies JSX.CSSProperties;
 
-    itemRef,
-    handleProps,
-    itemStyle
-  };
-}
+const reorder = <T, >(list: T[], from: number, to: number) => {
+  if(from === to) return list;
+  const copy = list.slice();
+  const [moved] = copy.splice(from, 1);
+  copy.splice(to, 0, moved);
+  return copy;
+};

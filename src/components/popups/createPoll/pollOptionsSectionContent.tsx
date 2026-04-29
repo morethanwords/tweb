@@ -124,7 +124,7 @@ const PollOptionFullField = (props: {
   const canAnimate = props.canAnimate;
   const [done, setDone] = createSignal(!canAnimate);
 
-  const onSortablePointerDown = props.sortable.handleProps(props.item.id).onPointerDown;
+  const onSortablePointerDown = props.sortable.dragHandleProps(props.item.id).onPointerDown;
 
   const onRadioClick = () => {
     batch(() => {
