@@ -1,4 +1,5 @@
 import {MessageEntity} from '@layer';
+import {oneDayInSeconds} from '@lib/constants';
 import {createComputed, createContext, untrack, useContext} from 'solid-js';
 import {createStore, SetStoreFunction, Store} from 'solid-js/store';
 
@@ -73,7 +74,7 @@ export const createPollStoreContextValue = (): CreatePollContextValue => {
     shuffleOptions: true,
     hasCorrectAnswer: false,
     durationLimited: false,
-    timeLimit: {type: 'duration', duration: 0},
+    timeLimit: {type: 'duration', duration: oneDayInSeconds},
     explanation: '',
     explanationEntities: [],
     explanationAttachment: {},

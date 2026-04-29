@@ -27,7 +27,7 @@ import styles from './styles.module.scss';
 
 type BooleanSettingKey = FilterBooleanKeys<CreatePollStore>;
 
-const minEndTimeFromNowMinutes = 15;
+const minEndTimeFromNowMinutes = 5;
 
 export const PollSettingsSectionContent = () => {
   const {Row} = useHotReloadGuard();
@@ -57,7 +57,7 @@ export const PollSettingsSectionContent = () => {
   });
 
   const formatTimeInSpan = (timestamp: number) => {
-    // Without the span solid will throw an error when the state is updated
+    // Without the span, solid will throw an error when the state is updated
     const span = document.createElement('span');
     span.appendChild(formatFullSentTime(timestamp, true));
     return span;
@@ -127,7 +127,7 @@ export const PollSettingsSectionContent = () => {
         onAfterEnter={() => limitDurationExtraElement()?.scrollIntoView({behavior: 'smooth', block: 'center'})}
       >
         <Show when={context.store.durationLimited}>
-          <div style={{overflow: !isDurationMenuOpen() ? 'hidden' : undefined}}>
+          <div ref={setLimitDurationExtraElement} style={{overflow: !isDurationMenuOpen() ? 'hidden' : undefined}}>
             <Space amount='0.25rem' />
             <div class={styles.smallerHrWrapper}>
               <hr class={styles.hr} />
@@ -139,8 +139,12 @@ export const PollSettingsSectionContent = () => {
                   <I18nTsx key='NewPoll.PollDuration' />
                 </Row.Title>
                 <Row.RightContent class={styles.pollDuration}>
-                  {context.store.timeLimit.type === 'duration' && wrapFormattedDuration(formatDuration(context.store.timeLimit.duration))}
-                  {context.store.timeLimit.type === 'timestamp' && formatTimeInSpan(context.store.timeLimit.timestamp)}
+                  <Show when={context.store.timeLimit.type === 'duration' && context.store.timeLimit.duration} keyed>
+                    {(duration) => wrapFormattedDuration(formatDuration(duration))}
+                  </Show>
+                  <Show when={context.store.timeLimit.type === 'timestamp' && context.store.timeLimit.timestamp} keyed>
+                    {(timestamp) => formatTimeInSpan(timestamp)}
+                  </Show>
                 </Row.RightContent>
               </Row>
               <Show when={isDurationMenuOpen()}>
@@ -155,7 +159,7 @@ export const PollSettingsSectionContent = () => {
                 />
               </Show>
             </div>
-            <Row ref={setLimitDurationExtraElement} clickable={handleSettingsFlag('hideResults')}>
+            <Row clickable={handleSettingsFlag('hideResults')}>
               <Row.Title>
                 <I18nTsx key='NewPoll.HideResults' />
               </Row.Title>
