@@ -294,7 +294,7 @@ const useHandlePointerMove = <T, >(context: DragContext<T>) => {
       updateOverIndex(y);
       loopAutoScroll(y);
     });
-  });
+  }, false);
 };
 
 const useHandlePointerUp = <T, >(context: DragContext<T>, getRemoveListeners: () => () => void) => {
@@ -430,7 +430,7 @@ const watchScrollPosition = <T, >(context: DragContext<T>) => {
       setDragState({
         currentScrollTop: localContainer.scrollTop
       });
-    }), {passive: true});
+    }, false), {passive: true});
   });
 };
 
