@@ -5,14 +5,16 @@ import styles from './staticCheckbox.module.scss';
 
 export const StaticCheckbox = (inProps: {
   checked?: boolean;
+  round?: boolean;
 } & JSX.HTMLAttributes<HTMLDivElement>) => {
-  const [props, restProps] = splitProps(inProps, ['checked', 'class', 'classList']);
+  const [props, restProps] = splitProps(inProps, ['checked', 'round', 'class', 'classList']);
 
   return (
     <div
       class={classNames(styles.Checkbox, props.class)}
       classList={{
         [styles.checked]: props.checked,
+        [styles.round]: props.round,
         ...props.classList
       }}
       {...restProps}

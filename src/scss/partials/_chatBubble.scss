@@ -1592,6 +1592,13 @@
     // }
   }
 
+  &.is-poll {
+    .message {
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+    }
+  }
+
   .document {
     height: 54px !important;
 
@@ -2594,7 +2601,7 @@
   &:has(.reaction.is-paid.effect-active) {
     z-index: 3;
   }
-  
+
   .reply-markup-button-bg {
     background-color: rgba(var(--background-color-rgb), .8) !important;
 

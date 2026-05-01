@@ -6993,6 +6993,7 @@ export default class ChatBubbles {
       context.attachmentDiv = document.createElement('div');
       context.attachmentDiv.classList.add('attachment');
 
+
       switch(context.messageMedia._) {
         case 'messageMediaPhotoExternal':
         case 'messageMediaPhoto': {
@@ -8083,12 +8084,26 @@ export default class ChatBubbles {
         }
 
         default:
-          context.attachmentDiv = undefined;
-          context.mediaRequiresMessageDiv = true;
-          noAttachmentDivNeeded = true;
-          messageDiv.replaceChildren(i18n(UNSUPPORTED_LANG_PACK_KEY));
-          bubble.timeAppenders[0].callback();
-          this.log.warn('unrecognized media type:', context.messageMedia._, message);
+          if(message.mid === 4294967371) {
+            context.mediaRequiresMessageDiv = true;
+
+            const {PollMessageContent} = await import('./bubbleParts/pollMessageContent');
+            const pollMessageContent = new PollMessageContent();
+            pollMessageContent.HotReloadGuard = SolidJSHotReloadGuardProvider;
+            pollMessageContent.feedProps({});
+
+            messageDiv.prepend(pollMessageContent);
+            bubble.classList.add('poll-message');
+
+            bubble.classList.add('is-poll');
+          } else {
+            context.attachmentDiv = undefined;
+            context.mediaRequiresMessageDiv = true;
+            noAttachmentDivNeeded = true;
+            messageDiv.replaceChildren(i18n(UNSUPPORTED_LANG_PACK_KEY));
+            bubble.timeAppenders[0].callback();
+            this.log.warn('unrecognized media type:', context.messageMedia._, message);
+          }
           break;
       }
 

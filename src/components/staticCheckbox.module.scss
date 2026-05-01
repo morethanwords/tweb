@@ -2,6 +2,7 @@
 
 .Checkbox {
   --size: 1.25rem;
+  --check-scale: 1;
 
   width: var(--size);
   height: var(--size);
@@ -32,6 +33,10 @@
     @include animation-level-global(2) {
       transition: transform .2s 0s ease-in-out;
     }
+  }
+
+  &.round {
+    border-radius: 50%;
   }
 }
 
@@ -70,7 +75,7 @@
   height: calc(var(--size) - var(--offset));
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%) scale(var(--check-scale));
 
   use {
     stroke: #fff;
