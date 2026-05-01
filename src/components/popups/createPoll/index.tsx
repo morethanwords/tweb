@@ -10,7 +10,7 @@ import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvi
 import {createSignal} from 'solid-js';
 import PopupElement, {createPopup} from '../indexTsx';
 import {supportedDescriptionFormattingTypes} from './config';
-import {EmojiDropdownButton} from './emojiDropdownButton';
+import {EmojiButtonWithOpacity as EmojiDropdownButton} from './emojiButtonWithOpacity';
 import {MediaAttachment} from './mediaAttachment';
 import {PollOptionsSectionContent} from './pollOptionsSectionContent';
 import {PollSettingsSectionContent} from './pollSettingsSectionContent';
@@ -112,7 +112,15 @@ const Header = () => {
         <SimpleFormField.SideContent class={styles.sideContentWithFixedIcon} first last>
           <EmojiDropdownButton inputField={descriptionInput} />
         </SimpleFormField.SideContent>
-        <MediaAttachment />
+        <SimpleFormField.SideContent class={styles.sideContentWithFixedIcon} first={!context.store.descriptionAttachment} last>
+          <MediaAttachment
+            imgClass={styles.mediaAttachmentImage}
+            objectUrl={context.store.descriptionAttachment?.objectUrl}
+            onChange={(objectUrl) => {
+              context.setStore('descriptionAttachment', {objectUrl});
+            }}
+          />
+        </SimpleFormField.SideContent>
       </SimpleFormField>
 
     </PopupElement.Header>

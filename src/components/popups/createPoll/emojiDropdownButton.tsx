@@ -1,18 +1,20 @@
 import {EmoticonsDropdown} from '@components/emoticonsDropdown';
 import InputField from '@components/inputField';
-import {useSimpleFormFieldContext} from '@components/simpleFormField';
+import {attachClassName} from '@helpers/solid/classname';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {createMemo, onCleanup} from 'solid-js';
-import styles from './styles.module.scss';
 
 
-export const EmojiDropdownButton = (props: { inputField: InputField }) => {
+export type EmojiDropdownButtonProps = {
+  class?: string;
+  onToggle?: (hasDropdown: boolean) => void;
+  inputField: InputField
+};
+
+export const EmojiDropdownButton = (props: EmojiDropdownButtonProps) => {
   const {createEmojiDropdownButton} = useHotReloadGuard();
-  const {useSetForceFocused} = useSimpleFormFieldContext();
 
   const button = createMemo(() => {
-    const setForceFocused = useSetForceFocused();
-
     let emoticonsDropdown: EmoticonsDropdown;
 
     const {button} = createEmojiDropdownButton({
@@ -20,20 +22,22 @@ export const EmojiDropdownButton = (props: { inputField: InputField }) => {
       onEmoticonsDropdown: (value) => {
         emoticonsDropdown = value;
 
-        setForceFocused(!!emoticonsDropdown);
-        button.classList.toggle(styles.forceFocused, !!emoticonsDropdown);
+        props.onToggle?.(!!emoticonsDropdown);
       }
     });
 
+    attachClassName(button, () => props.class);
+
+    button.tabIndex = -1;
+
     onCleanup(() => {
+      props.onToggle?.(false);
       emoticonsDropdown?.hideAndDestroy();
     });
 
-    button.classList.add(styles.emojiDropdownButton);
-    button.tabIndex = -1;
-
     return button;
   });
+
 
   return (
     <>{button()}</>

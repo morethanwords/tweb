@@ -14,9 +14,9 @@ import {I18nTsx} from '@helpers/solid/i18n';
 import classNames from '@helpers/string/classNames';
 import {batch, children, createMemo, createSignal, For, JSX, mapArray, onMount, Ref, Show} from 'solid-js';
 import {Transition} from 'solid-transition-group';
-import {EmojiDropdownButton} from './emojiDropdownButton';
+import {EmojiButtonWithOpacity as EmojiDropdownButton} from './emojiButtonWithOpacity';
 import {MediaAttachment} from './mediaAttachment';
-import {StorePollOption, useCreatePollContext} from './storeContext';
+import {AttachedMedia, StorePollOption, useCreatePollContext} from './storeContext';
 import styles from './styles.module.scss';
 
 
@@ -59,8 +59,7 @@ export const PollOptionsSectionContent = (props: {
     blurActiveElement();
     context.setStore('pollOptions', context.store.pollOptions.length, {
       text: '',
-      entities: [],
-      attachment: {}
+      entities: []
     });
   };
 
@@ -162,6 +161,7 @@ const PollOptionFullField = (props: {
         </Show>
         <PollOptionInputField
           value={props.item.option.text}
+          attachment={props.item.option.attachment}
           onChange={props.onChange}
           onPointerDown={(e) => {
             blurActiveElement();
@@ -223,6 +223,7 @@ const PollOptionInputField = (props: {
   onPointerDown?: JSX.HTMLAttributes<HTMLElement>['onPointerDown'];
   hoverDisabled?: boolean;
   onChange: (option: Partial<StorePollOption>) => void;
+  attachment?: AttachedMedia;
 
   onEnter?: () => void;
   onEmptyBackspace?: () => void;
@@ -280,7 +281,15 @@ const PollOptionInputField = (props: {
       <SimpleFormField.SideContent class={styles.sideContentWithFixedIcon} first last>
         <EmojiDropdownButton inputField={inputField} />
       </SimpleFormField.SideContent>
-      <MediaAttachment />
+      <SimpleFormField.SideContent class={styles.sideContentWithFixedIcon} first={!props.attachment} last>
+        <MediaAttachment
+          imgClass={styles.mediaAttachmentImage}
+          objectUrl={props.attachment?.objectUrl}
+          onChange={(objectUrl) => {
+            props.onChange?.({attachment: {objectUrl}});
+          }}
+        />
+      </SimpleFormField.SideContent>
     </SimpleFormField>
   );
 };

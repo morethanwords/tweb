@@ -1,22 +1,17 @@
 import {ButtonIconTsx} from '@components/buttonIconTsx';
-import SimpleFormField from '@components/simpleFormField';
 import {animateImageToTarget} from '@helpers/animateImageToTarget';
 import {requestRAF} from '@helpers/solid/requestRAF';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {createEffect, createSignal, onCleanup, Show} from 'solid-js';
-import {createStore} from 'solid-js/store';
-import styles from './styles.module.scss';
 
 
-type MediaAttachmentStore = {
-  hasAttachment: boolean;
-  attachmentUrl?: string;
-};
-
-export const MediaAttachment = () => {
+export const MediaAttachment = (props: {
+  imgClass?: string;
+  btnClass?: string;
+  objectUrl?: string;
+  onChange?: (url: string | undefined) => void;
+}) => {
   const {getFileAndOpenEditor} = useHotReloadGuard();
-
-  const [store, setStore] = createStore<MediaAttachmentStore>({hasAttachment: false});
 
   const [img, setImg] = createSignal<HTMLImageElement>();
 
@@ -26,9 +21,15 @@ export const MediaAttachment = () => {
         if(editorResult.isVideo || !editorResult.animatedPreview) return;
 
         const result = await editorResult.getResult();
-        setStore({hasAttachment: true, attachmentUrl: URL.createObjectURL(result.blob)});
+        const url = URL.createObjectURL(result.blob);
+        props.onChange?.(url);
 
         requestRAF(async() => {
+          if(!img()) {
+            editorResult.animatedPreview.remove();
+            return;
+          }
+
           await animateImageToTarget({
             animatedImg: editorResult.animatedPreview,
             target: img()
@@ -40,21 +41,21 @@ export const MediaAttachment = () => {
   };
 
   createEffect(() => {
-    if(!store.attachmentUrl) return;
+    if(!props.objectUrl) return;
 
     onCleanup(() => {
-      URL.revokeObjectURL(store.attachmentUrl);
+      URL.revokeObjectURL(props.objectUrl);
     });
   });
 
   return (
-    <SimpleFormField.SideContent class={styles.sideContentWithFixedIcon} first={!store.hasAttachment} last>
-      <Show when={!store.hasAttachment}>
-        <ButtonIconTsx icon='attach' onClick={onClick} />
+    <>
+      <Show when={!props.objectUrl}>
+        <ButtonIconTsx class={props.btnClass} icon='attach' onClick={onClick} />
       </Show>
-      <Show when={store.hasAttachment}>
-        <img ref={setImg} class={styles.mediaAttachmentImage} src={store.attachmentUrl} alt='' />
+      <Show when={props.objectUrl}>
+        <img ref={setImg} class={props.imgClass} src={props.objectUrl} alt='' />
       </Show>
-    </SimpleFormField.SideContent>
+    </>
   );
 };

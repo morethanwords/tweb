@@ -6,7 +6,7 @@ import {createContext, useContext} from 'solid-js';
 
 import type AppMediaViewer from '@components/appMediaViewer';
 import type {AutonomousMonoforumThreadList} from '@components/autonomousDialogList/monoforumThreads';
-import type {avatarNew, StoriesSegments} from '@components/avatarNew';
+import type {AvatarNewTsx, avatarNew, StoriesSegments} from '@components/avatarNew';
 import type BusinessHours from '@components/businessHours';
 import type ButtonMenu from '@components/buttonMenu';
 import type {ButtonMenuSync} from '@components/buttonMenu';
@@ -140,6 +140,7 @@ export type SolidJSHotReloadGuardContextValue = {
   createEmojiDropdownButton: typeof createEmojiDropdownButton;
   getFileAndOpenEditor: typeof getFileAndOpenEditor;
   PopupSchedulePost: typeof PopupSchedulePost;
+  AvatarNewTsx: typeof AvatarNewTsx;
 };
 
 export type LockScreenHotReloadGuardContextValue = Pick<

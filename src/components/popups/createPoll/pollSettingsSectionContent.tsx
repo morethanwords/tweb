@@ -20,7 +20,7 @@ import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {FilterBooleanKeys} from '@types';
 import {createSignal, JSX, onMount, Show} from 'solid-js';
 import {supportedDescriptionFormattingTypes} from './config';
-import {EmojiDropdownButton} from './emojiDropdownButton';
+import {EmojiButtonWithOpacity as EmojiDropdownButton} from './emojiButtonWithOpacity';
 import {MediaAttachment} from './mediaAttachment';
 import {CreatePollStore, useCreatePollContext} from './storeContext';
 import styles from './styles.module.scss';
@@ -194,7 +194,15 @@ export const PollSettingsSectionContent = () => {
               <SimpleFormField.SideContent class={styles.sideContentWithFixedIcon} first last>
                 <EmojiDropdownButton inputField={explanationInput} />
               </SimpleFormField.SideContent>
-              <MediaAttachment />
+              <SimpleFormField.SideContent class={styles.sideContentWithFixedIcon} first={!context.store.explanationAttachment} last>
+                <MediaAttachment
+                  imgClass={styles.mediaAttachmentImage}
+                  objectUrl={context.store.explanationAttachment?.objectUrl}
+                  onChange={(objectUrl) => {
+                    context.setStore('explanationAttachment', {objectUrl});
+                  }}
+                />
+              </SimpleFormField.SideContent>
             </SimpleFormField>
 
             <div class={styles.caption}>

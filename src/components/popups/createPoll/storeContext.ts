@@ -10,7 +10,7 @@ export type CreatePollStore = {
 
   description: string;
   descriptionEntities: MessageEntity[];
-  descriptionAttachment: {};
+  descriptionAttachment?: AttachedMedia;
 
   pollOptions: StorePollOption[];
 
@@ -26,7 +26,7 @@ export type CreatePollStore = {
 
   explanation: string;
   explanationEntities: MessageEntity[];
-  explanationAttachment: {};
+  explanationAttachment?: AttachedMedia;
 
   hideResults: boolean;
 };
@@ -42,8 +42,12 @@ export type TimeLimit = {
 export type StorePollOption = {
   text: string;
   entities: MessageEntity[];
-  attachment: {};
+  attachment?: AttachedMedia;
   checked?: boolean;
+};
+
+export type AttachedMedia = {
+  objectUrl: string;
 };
 
 export type CreatePollContextValue = {
@@ -61,11 +65,9 @@ export const createPollStoreContextValue = (): CreatePollContextValue => {
     questionEntities: [],
     description: '',
     descriptionEntities: [],
-    descriptionAttachment: {},
     pollOptions: [{
       text: '',
-      entities: [],
-      attachment: {}
+      entities: []
     }],
     showWhoVoted: true,
     allowMultipleAnswers: true,
@@ -77,7 +79,6 @@ export const createPollStoreContextValue = (): CreatePollContextValue => {
     timeLimit: {type: 'duration', duration: oneDayInSeconds},
     explanation: '',
     explanationEntities: [],
-    explanationAttachment: {},
     hideResults: false
   });
 

@@ -3320,6 +3320,7 @@ const lang = {
   'ChatService.UserJoinedChannelByRequest': '%@ joined the channel by request',
   'ChatList.Service.VoiceChatScheduled': '%1$@ scheduled a video chat for %2$@',
   'ChatList.Service.VoiceChatScheduledYou': 'You scheduled a video chat for %2$@',
+  'Chat.Poll.AddAnOption': 'Add an Option',
   'Chat.Poll.Unvote': 'Retract Vote',
   'Chat.Poll.Stop': 'Stop Poll',
   'Chat.Poll.ViewResults': 'View Results',

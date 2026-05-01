@@ -2,7 +2,7 @@ import {ParentProps} from 'solid-js';
 
 import AppMediaViewer from '@components/appMediaViewer';
 import {AutonomousMonoforumThreadList} from '@components/autonomousDialogList/monoforumThreads';
-import {avatarNew, StoriesSegments} from '@components/avatarNew';
+import {avatarNew, AvatarNewTsx, StoriesSegments} from '@components/avatarNew';
 import BusinessHours from '@components/businessHours';
 import ButtonMenu, {ButtonMenuSync} from '@components/buttonMenu';
 import {ChatType} from '@components/chat/chatType';
@@ -133,7 +133,8 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       appSidebarRight,
       createEmojiDropdownButton,
       getFileAndOpenEditor,
-      PopupSchedulePost
+      PopupSchedulePost,
+      AvatarNewTsx
     }}>
       {props.children}
     </SolidJSHotReloadGuardContext.Provider>
