@@ -10,6 +10,7 @@ import {LogTypes} from '@lib/logger';
 import parseMarkdown from '@lib/richTextProcessor/parseMarkdown';
 import {AppManager} from '@appManagers/manager';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
+import assumeType from '@helpers/assumeType';
 
 type PollId = Poll['id'];
 
@@ -91,7 +92,7 @@ export class AppPollsManager extends AppManager {
     };
   }
 
-  public getInputMediaPoll(poll: Poll, correctAnswers?: Uint8Array[], solution?: string, solutionEntities?: MessageEntity[]): InputMedia.inputMediaPoll {
+  public getInputMediaPoll(poll: Poll, correctAnswers?: number[], solution?: string, solutionEntities?: MessageEntity[]): InputMedia.inputMediaPoll {
     if(solution) {
       [solution, solutionEntities] = parseMarkdown(solution, solutionEntities);
     } else {
@@ -134,8 +135,10 @@ export class AppPollsManager extends AppManager {
     const poll: Poll = (message.media as MessageMedia.messageMediaPoll).poll;
 
     const options: Uint8Array[] = optionIds.map((index) => {
-      return poll.answers[index].option;
-    });
+      const answer = poll.answers[index];
+      if(answer._ !== 'pollAnswer') return;
+      return answer.option;
+    }).filter(Boolean);
 
     const messageId = message.mid;
     const peerId = message.peerId;
@@ -161,9 +164,12 @@ export class AppPollsManager extends AppManager {
   public getResults(message: Message.message) {
     const inputPeer = this.appPeersManager.getInputPeerById(message.peerId);
 
+    assumeType<MessageMedia.messageMediaPoll>(message.media);
+
     return this.apiManager.invokeApi('messages.getPollResults', {
       peer: inputPeer,
-      msg_id: getServerMessageId(message.mid)
+      msg_id: getServerMessageId(message.mid),
+      poll_hash: message.media?.poll?.hash ?? 0
     }).then((updates) => {
       this.apiUpdatesManager.processUpdateMessage(updates);
       this.log('getResults updates:', updates);

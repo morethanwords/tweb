@@ -206,6 +206,7 @@ export default function wrapKeyboardButton({
         const isRequestingUser = peerType._ === 'requestPeerTypeUser';
         const isRequestingChannel = peerType._ === 'requestPeerTypeBroadcast';
         const isRequestingGroup = peerType._ === 'requestPeerTypeChat';
+        const isRequestingBotCreation = peerType._ === 'requestPeerTypeCreateBot';
 
         const _peerType: SelectSearchPeerType[] = ['dialogs'];
         if(isRequestingUser) {
@@ -226,6 +227,8 @@ export default function wrapKeyboardButton({
           };
 
           _peerType.push('contacts');
+        } else if(isRequestingBotCreation) {
+          // TODO: Find out how to handle this case
         } else {
           let commonChatIds: ChatId[];
           if(isRequestingGroup) {

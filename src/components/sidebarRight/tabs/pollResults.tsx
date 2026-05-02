@@ -74,6 +74,8 @@ export default class AppPollResultsTab extends SliderSuperTab {
 
       let offset: string, limit = 4;
       const load = async() => {
+        if(answer._ !== 'pollAnswer') return;
+
         const votesList = await this.managers.appPollsManager.getVotes(
           message,
           answer.option,

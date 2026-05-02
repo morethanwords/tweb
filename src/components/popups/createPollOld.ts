@@ -38,7 +38,7 @@ export default class PopupCreatePoll extends PopupElement {
   private multipleCheckboxField: PopupCreatePoll['anonymousCheckboxField'];
   private quizCheckboxField: PopupCreatePoll['anonymousCheckboxField'];
 
-  private correctAnswers: Uint8Array[];
+  private correctAnswers: number[];
   private quizSolutionField: InputField;
   private optionInputFields: InputField[];
   private sent: boolean;
@@ -293,6 +293,8 @@ export default class PopupCreatePoll extends PopupElement {
 
     const poll: Poll = {
       _: 'poll',
+      // TODO: Find out what the hash is about
+      hash: '0',
       pFlags,
       question: {_: 'textWithEntities', text: question, entities: []},
       answers: answers.map((value, idx) => {
@@ -366,7 +368,7 @@ export default class PopupCreatePoll extends PopupElement {
     const label = findUpTag(target, 'LABEL');
     const idx = whichChild(label);
 
-    if(this.correctAnswers && this.correctAnswers[0][0] === idx) {
+    if(this.correctAnswers && this.correctAnswers[0] === idx) {
       this.correctAnswers = undefined;
     }
 
@@ -410,7 +412,7 @@ export default class PopupCreatePoll extends PopupElement {
       const checked = radioField.input.checked;
       if(checked) {
         const idx = whichChild(radioField.label);
-        this.correctAnswers = [new Uint8Array([idx])];
+        this.correctAnswers = [idx];
         this.handleChange();
       }
     });

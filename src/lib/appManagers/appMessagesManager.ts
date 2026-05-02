@@ -7052,6 +7052,7 @@ export class AppMessagesManager extends AppManager {
       unread_count: 0,
       unread_mentions_count: 0,
       unread_reactions_count: 0,
+      unread_poll_votes_count: 0,
       notify_settings: {_: 'peerNotifySettings'},
       pFlags: {
         title_missing: true
