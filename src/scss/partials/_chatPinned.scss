@@ -278,17 +278,18 @@
   cursor: pointer;
 
   &.is-floating {
-    position: absolute !important;
-    top: var(--topbar-height);
-    right: 0;
-    left: 0;
+    position: relative !important;
+    inset-inline: 0;
     margin: 0;
     width: auto;
     height: var(--container-height);
     max-height: var(--container-height);
+    overflow: hidden;
     background-color: var(--surface-color) !important;
-    // box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, .15);
-    // box-shadow: 0px 2px 3px 0px rgb(0 0 0 / 10%);
+
+    &:not(:last-child) {
+      border-bottom: 1px solid var(--border-color);
+    }
 
     .pinned-container-wrapper {
       order: 0;
@@ -301,52 +302,11 @@
       @include respond-to(handhelds) {
         padding: 0 .5rem;
       }
-
-      /* &-utils {
-        position: relative;
-        z-index: 0;
-      } */
     }
 
     .pinned-container-content {
       margin-inline-end: .5rem;
-
-      @include respond-to(medium-screens) {
-				body.is-right-column-shown & {
-          padding-right: var(--right-column-width);
-        }
-      }
     }
-
-    /* &:before {
-      content: " ";
-      height: 1px;
-      background-color: var(--border-color);
-      top: 0;
-      right: 0;
-      left: 0;
-      position: absolute;
-    } */
-
-    &:before {
-      content: " ";
-      border-top: 1px solid var(--border-color);
-      // border-bottom: 1px solid var(--border-color);
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-    }
-
-    // &:before {
-    //   width: 100%;
-    //   content: " ";
-    //   height: 52px;
-    //   left: 0;
-    //   top: 0;
-    //   position: absolute;
-    //   /* box-shadow: inset 0px 2px 3px 0px rgba(0, 0, 0, .15); */
-    //   box-shadow: inset 0px 1px 2px 0px rgba(0, 0, 0, .15);
-    // }
   }
 
   &-content {
@@ -612,8 +572,19 @@
   --container-height: var(--topbar-audio-height);
 
   z-index: 2;
-  top: calc(var(--topbar-audio-height) * -1) !important;
-  transform: translateY(calc(var(--topbar-floating-audio-height) + var(--topbar-floating-call-height)));
+  top: 0 !important;
+  // Hidden state: shift the plate fully past column-center's top inset so no
+  // sliver peeks through the page-chats gutter on the first animation frame.
+  transform: translateY(calc(-1 * (var(--topbar-audio-height) + var(--page-chats-padding))));
+
+  body.is-pinned-audio-shown & {
+    transform: translateY(0);
+  }
+
+  max-width: calc(var(--messages-container-width) - var(--chat-input-padding) * 2);
+  margin-inline: auto !important;
+  border-radius: $border-radius-big;
+  overflow: hidden;
 
   &:not(.is-visible) {
     display: none !important;
@@ -668,10 +639,8 @@
     right: 0;
     bottom: 0;
     left: 0;
-    transform: scaleX(var(--topbar-floating-scaleX)) translateY(var(--translateY));
+    transform: translateY(var(--translateY));
     transform-origin: var(--transform-origin-left-center);
-
-    @include sidebar-transform(0, false);
 
     &:before {
       @include animation-level(2) {

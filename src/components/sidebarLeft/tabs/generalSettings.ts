@@ -9,7 +9,7 @@ import Button from '@components/button';
 import CheckboxField from '@components/checkboxField';
 import RadioField from '@components/radioField';
 import rootScope from '@lib/rootScope';
-import {IS_APPLE, IS_SAFARI} from '@environment/userAgent';
+import {IS_SAFARI} from '@environment/userAgent';
 import Row from '@components/row';
 import AppBackgroundTab from '@components/sidebarLeft/tabs/background';
 import I18n, {LangPackKey, _i18n, join} from '@lib/langPack';
@@ -415,38 +415,6 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
         themesContainer,
         form
       );
-    }
-
-    {
-      const container = section('General.Keyboard');
-
-      const form = document.createElement('form');
-
-      const name = 'send-shortcut';
-      const stateKey = joinDeepPath('settings', 'sendShortcut');
-
-      const enterRow = new Row({
-        radioField: new RadioField({
-          langKey: 'General.SendShortcut.Enter',
-          name,
-          value: 'enter',
-          stateKey
-        }),
-        subtitleLangKey: 'General.SendShortcut.NewLine.ShiftEnter'
-      });
-
-      const ctrlEnterRow = new Row({
-        radioField: new RadioField({
-          name,
-          value: 'ctrlEnter',
-          stateKey
-        }),
-        subtitleLangKey: 'General.SendShortcut.NewLine.Enter'
-      });
-      _i18n(ctrlEnterRow.radioField.main, 'General.SendShortcut.CtrlEnter', [IS_APPLE ? '⌘' : 'Ctrl']);
-
-      form.append(enterRow.container, ctrlEnterRow.container);
-      container.append(form);
     }
 
     if(IS_GEOLOCATION_SUPPORTED) {

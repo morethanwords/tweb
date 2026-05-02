@@ -38,7 +38,8 @@
   }
 
   &-inputs {
-    --imc-padding-horizontal: .125rem;
+    --imc-padding-inline-start: .125rem;
+    --imc-padding-inline-end: .125rem;
     min-height: inherit;
     max-height: inherit;
   }

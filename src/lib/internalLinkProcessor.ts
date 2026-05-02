@@ -50,7 +50,7 @@ import AppNewChannelTab from '@components/sidebarLeft/tabs/newChannel';
 import PopupCreateContact from '@components/popups/createContact';
 import createNewGroupTab from '@components/sidebarLeft/tabs/createNewGroupTab';
 import AppSettingsTab from '@components/sidebarLeft/tabs/settings';
-import AppEditProfileTab from '@components/sidebarLeft/tabs/editProfile';
+import {AppEditProfileTab, getEditProfileInitArgs} from '@components/solidJsTabs';
 import showBirthdayPopup, {saveMyBirthday} from '@components/popups/birthday';
 import showLogOutPopup from '@components/popups/logOut';
 import {getStickerSetInputByShortName} from '@lib/appManagers/utils/stickers/getStickerSetInput';
@@ -696,7 +696,7 @@ export class InternalLinkProcessor {
           case 'edit/bio':
           case 'edit/username':
             const tab = appSidebarLeft.createTab(AppEditProfileTab);
-            return tab.open().then(() => tab.focus(pathnameParams[1]));
+            return tab.open({...getEditProfileInitArgs(), focusOn: pathnameParams[1]});
           case 'edit/birthday':
             return this.managers.appProfileManager.getProfile(rootScope.myId).then((userFull) => {
               showBirthdayPopup({

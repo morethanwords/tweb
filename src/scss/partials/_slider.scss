@@ -164,49 +164,22 @@
   min-width: 100%;
   width: 100%;
   display: grid;
-  //grid-template-columns: 1fr;
   grid-template-columns: 100%;
   grid-template-rows: 100%;
 
-  /* @include respond-to(not-handhelds) {
-    overflow-x: hidden;
-  } */
-
-  // &.animated {
-  //   transition: .3s transform;
-  // }
-  
   .tabs-tab {
-    // * can't define these rules because of old firefox, though they don't work
-    //height: 100%;
-    //max-height: 100%;
-    //width: 100%;
-    //max-width: 100%;
-    
     display: none;
     flex-direction: column;
     grid-row-start: 1;
     grid-column-start: 1;
-    background-color: var(--background-color);
 
     body.animation-level-0 & {
       transition: none !important;
     }
-    
-    //@include respond-to(not-handhelds) {
-      overflow: hidden;
-    //}
 
     &.active {
       display: flex;
     }
-    
-    /* > div:not(.scroll-padding) {
-      width: 100%;
-      max-width: 100%;
-      //overflow: hidden;
-      position: relative;
-    } */
   }
 
   /* &[data-animation="tabs"] {

@@ -56,7 +56,7 @@ import {simulateClickEvent} from '@helpers/dom/clickEvent';
 import PopupCall from '@components/call';
 import copy from '@helpers/object/copy';
 import numberThousandSplitter from '@helpers/number/numberThousandSplitter';
-import ChatBackgroundPatternRenderer from '@components/chat/patternRenderer';
+import appChatBackground, {AppChatBackground} from '@components/chat/bubbles/chatBackground';
 import {IS_CHROMIUM, IS_FIREFOX} from '@environment/userAgent';
 import compareVersion from '@helpers/compareVersion';
 import {AppManagers} from '@lib/managers';
@@ -188,6 +188,7 @@ export class AppImManager extends EventListenerBase<{
 }> {
   public columnEl = document.getElementById('column-center') as HTMLDivElement;
   public chatsContainer: HTMLElement;
+  public appChatBackground: AppChatBackground;
 
   public offline = false;
   public updateStatusInterval = 0;
@@ -206,8 +207,6 @@ export class AppImManager extends EventListenerBase<{
 
   private topbarCall: TopbarCall;
   private chatAudio: ChatAudio;
-
-  public lastBackgroundUrl: string;
 
   public managers: AppManagers;
 
@@ -268,6 +267,9 @@ export class AppImManager extends EventListenerBase<{
         this.updateStatusInterval = window.setInterval(() => this.updateStatus(), 50e3);
       }
     });
+
+    this.appChatBackground = appChatBackground;
+    this.appChatBackground.attach(document.body);
 
     this.chatsContainer = document.createElement('div');
     this.chatsContainer.classList.add('chats-container', 'tabs-container');
@@ -791,7 +793,7 @@ export class AppImManager extends EventListenerBase<{
   }
 
   public adjustChatPatternBackground() {
-    ChatBackgroundPatternRenderer.resizeInstancesOf(this.chatsContainer);
+    this.appChatBackground.resize();
   }
 
   private checkForShare() {
@@ -1868,37 +1870,32 @@ export class AppImManager extends EventListenerBase<{
     });
   }
 
-  public setCurrentBackground(broadcastEvent = false, skipAnimation?: boolean): ReturnType<AppImManager['setBackground']> {
+  public setCurrentBackground(broadcastEvent = false, skipAnimation?: boolean): Promise<void> {
     const theme = themeController.getTheme();
 
     const slug = (theme.settings?.wallpaper as WallPaper.wallPaper)?.slug;
     if(slug) {
       const defaultTheme = SETTINGS_INIT.themes.find((t) => t.name === theme.name);
-      // const isDefaultBackground = theme.background.blur === defaultTheme.background.blur &&
-      // slug === defaultslug;
-
-      // if(!isDefaultBackground) {
       return Promise.resolve(ChatBackgroundStore.getBackground({
         slug,
         managers: this.managers,
         appDownloadManager
-      })).then((url) => {
-        return this.setBackground(url, broadcastEvent, skipAnimation);
-      }, () => { // * if NO_ENTRY_FOUND
-        theme.settings = copy(defaultTheme.settings); // * reset background
+      })).then(() => {
+        return this.setBackground(broadcastEvent, skipAnimation);
+      }, () => {
+        theme.settings = copy(defaultTheme.settings);
         return this.setCurrentBackground(true);
       });
-      // }
     }
 
-    return this.setBackground('', broadcastEvent, skipAnimation);
+    return this.setBackground(broadcastEvent, skipAnimation);
   }
 
-  public setBackground(url: string, broadcastEvent = true, skipAnimation?: boolean): Promise<void> {
-    this.log('setBackground', url, broadcastEvent, skipAnimation);
-    this.lastBackgroundUrl = url;
-    const promises = this.chats.map((chat) => chat.setBackgroundIfNotSet({url, skipAnimation}));
-    return Promise.resolve(promises[promises.length - 1]).then(() => {
+  public setBackground(broadcastEvent = true, skipAnimation?: boolean): Promise<void> {
+    this.log('setBackground', broadcastEvent, skipAnimation);
+    return this.appChatBackground.setBackground({
+      transition: skipAnimation ? 'instant' : 'fade'
+    }).then(() => {
       if(broadcastEvent) {
         rootScope.dispatchEvent('background_change');
       }
@@ -2445,10 +2442,6 @@ export class AppImManager extends EventListenerBase<{
 
     this.chatsContainer.append(chat.container);
 
-    // if(this.chats.length) {
-    //   chat.setBackground({url: this.lastBackgroundUrl, skipAnimation: true});
-    // }
-
     this.chats.push(chat);
 
     return chat;
@@ -2482,6 +2475,10 @@ export class AppImManager extends EventListenerBase<{
     }
 
     this.chatsSelectTab(chatTo, animate);
+
+    if(chatTo !== chatFrom && chatTo.peerId) {
+      chatTo.publishBackground(animate === false ? 'auto' : 'crossfade-backwards');
+    }
 
     if(justReturn) {
       this.dispatchEvent('peer_changed', chatTo);
@@ -2585,7 +2582,7 @@ export class AppImManager extends EventListenerBase<{
       if(peerId) {
         Promise.all([
           promise,
-          chat.setBackgroundPromise
+          this.appChatBackground.getReadyPromise()
         ]).then(() => {
           // window.requestAnimationFrame(() => {
           setTimeout(() => { // * setTimeout is better here
@@ -2635,6 +2632,10 @@ export class AppImManager extends EventListenerBase<{
     let chat = oldChat;
     if(oldChat.inited) { // * use first not inited chat
       chat = this.createNewChat();
+    }
+
+    if(chat !== oldChat && oldChat.peerId) {
+      chat.preferredBackgroundTransition = 'crossfade-forwards';
     }
 
     this.dispatchEvent('chat_changing', {from: oldChat, to: chat});

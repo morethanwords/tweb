@@ -48,6 +48,16 @@
       flex-shrink: 0;
     }
 
+    &-list-section-container {
+      height: auto;
+      // height: 1px;
+      // min-height: 184px;
+    }
+
+    &-scrollable {
+      padding-bottom: 0;
+    }
+
     &.active {
       height: auto;
       overflow: hidden;

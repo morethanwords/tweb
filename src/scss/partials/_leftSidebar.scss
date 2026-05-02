@@ -9,6 +9,11 @@
 :root {
   --sidebar-collapsed-width: 80px;
   --sidebar-max-width: #{calc($large-screen / 4)};
+  --effective-left-bar-width: var(--current-sidebar-left-width, var(--sidebar-max-width));
+}
+
+html:has(#column-left.is-collapsed) {
+  --effective-left-bar-width: var(--sidebar-left-width-when-collapsed, var(--sidebar-collapsed-width));
 }
 
 #column-left {
@@ -21,6 +26,13 @@
   flex: var(--current-width) 1 auto;
   max-width: #{$max-width};
   width: var(--current-width);
+
+  border-radius: $border-radius-big;
+  box-shadow: var(--column-box-shadow);
+  overflow: hidden;
+  z-index: 1;
+  margin-block: var(--page-chats-padding);
+  margin-inline-start: var(--page-chats-padding);
 
   .sidebar-header-search-trigger {
     display: none;
@@ -97,7 +109,7 @@
 
       .btn-corner.btn-update {
         position: fixed !important;
-        left: calc(max(0px, (100vw - #{$large-screen}) / 2) + 12px) !important;
+        left: calc(var(--page-chats-padding) + 12px) !important;
         z-index: 4;
       }
 
@@ -123,7 +135,7 @@
         .sidebar-header.main-search-sidebar-header .sidebar-header__btn-container:not(.force-static) {
           position: fixed;
           top: 8px;
-          left: calc(max(0px, (100vw - #{$large-screen}) / 2) + 20px) !important;
+          left: calc(var(--page-chats-padding) + 20px) !important;
         }
         .force-static {
           margin-left: 4px;
@@ -192,10 +204,10 @@
       position: fixed;
       top: 0;
       bottom: 0;
-      left: calc(max(0px, (100vw - #{$large-screen}) / 2) + var(--sidebar-collapsed-width)) !important;
+      left: calc(var(--page-chats-padding) + var(--sidebar-collapsed-width)) !important;
 
       body:not(.has-folders-sidebar) & {
-        left: calc(max(0px, (100vw - #{$large-screen}) / 2)) !important;
+        left: var(--page-chats-padding) !important;
       }
 
       z-index: 3;

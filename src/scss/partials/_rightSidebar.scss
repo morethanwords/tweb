@@ -14,6 +14,10 @@
     box-shadow: 0 0.25rem 0.5rem 0.1rem rgba(0, 0, 0, .2);
   }
 
+  border-radius: $border-radius-big;
+  box-shadow: var(--column-box-shadow);
+  overflow: hidden;
+
   @include respond-to(handhelds) {
     body:not(.is-right-column-shown) & {
       transform: translate3d(100vw, 0, 0);
@@ -38,9 +42,10 @@
     width: calc(var(--right-column-width));
     transition: transform var(--transition-standard-out);
     position: absolute;
-    inset-inline-end: 0;
+    inset-inline-end: var(--page-chats-padding);
+    inset-block: var(--page-chats-padding);
     z-index: 3;
-    transform: translate3d(calc((var(--right-column-width) + 0.5rem) * var(--reflect)), 0, 0);
+    transform: translate3d(calc((var(--right-column-width) + var(--page-chats-padding)) * var(--reflect)), 0, 0);
     //transform: translate3d(calc(var(--right-column-width) + 1px), 0, 0);
 
     .sidebar-content {

@@ -196,6 +196,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     const HEADER_HEIGHT = 56;
     const ADDITIONAL_OFFSET = 16;
     const OFFSET = HEADER_HEIGHT + ADDITIONAL_OFFSET;
+    const BODY_PADDING = 16;
     const cb = this.scrollable.onAdditionalScroll;
     this.scrollable.onAdditionalScroll = () => {
       cb?.();
@@ -204,7 +205,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       if(!rect.width) return;
 
       const top = rect.top - 1;
-      setIsSharedMedia(top <= OFFSET);
+      setIsSharedMedia(top <= (OFFSET + BODY_PADDING));
     };
 
     const getTitleIndex = (isSharedMedia = transition.prevId() !== TitleIndex.Profile) => {

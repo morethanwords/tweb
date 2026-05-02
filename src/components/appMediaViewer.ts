@@ -14,6 +14,7 @@ import setInnerHTML from '@helpers/dom/setInnerHTML';
 import mediaSizes from '@helpers/mediaSizes';
 import SearchListLoader from '@helpers/searchListLoader';
 import {Message, MessageMedia, WebPage} from '@layer';
+import confirmationPopup from '@components/confirmationPopup';
 import appDownloadManager from '@lib/appDownloadManager';
 import appImManager from '@lib/appImManager';
 import {MyMessage} from '@appManagers/appMessagesManager';
@@ -81,6 +82,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
   protected btnMenuForward: ButtonMenuItemOptionsVerifiable;
   protected btnMenuDownload: ButtonMenuItemOptionsVerifiable;
   protected btnMenuDelete: ButtonMenuItemOptionsVerifiable;
+  private deleteAsChatPhoto = false;
 
   get searchContext() {
     return this.listLoader.searchContext;
@@ -221,8 +223,28 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     });
   };
 
-  onDeleteClick = () => {
+  onDeleteClick = async() => {
     const target = this.target;
+    if(this.deleteAsChatPhoto) {
+      try {
+        await confirmationPopup({
+          titleLangKey: 'Delete',
+          descriptionLangKey: 'AreYouSureDeletePhoto',
+          button: {
+            langKey: 'Delete',
+            isDanger: true
+          }
+        });
+      } catch{
+        return;
+      }
+
+      await this.managers.appChatsManager.editPhoto(target.peerId.toChatId());
+      this.target = {element: this.content.media} as any;
+      this.close();
+      return;
+    }
+
     PopupElement.createPopup(
       PopupDeleteMessages,
       target.peerId,
@@ -407,10 +429,18 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     const isServiceMessage = message._ === 'messageService';
     const cantForwardMessage = isServiceMessage || noAuthor || !(await this.managers.appMessagesManager.canForward(message));
     const cantDownloadMessage = (isServiceMessage ? noForwards : cantForwardMessage && !isSponsored) || !canSaveMessageMedia(message, noForwards);
+    const action = isServiceMessage ? (message as Message.messageService).action : undefined;
+    const isChatPhotoEdit = !!action &&
+      (action._ === 'messageActionChannelEditPhoto' || action._ === 'messageActionChatEditPhoto') &&
+      message.peerId.isAnyChat();
+    const cantDeleteMessage = isChatPhotoEdit ?
+      !(await this.managers.appChatsManager.hasRights(message.peerId.toChatId(), 'change_info')) :
+      !(await this.managers.appMessagesManager.canDeleteMessage(message));
+    this.deleteAsChatPhoto = isChatPhotoEdit && !cantDeleteMessage;
     const a: [(HTMLElement | ButtonMenuItemOptionsVerifiable)[], boolean][] = [
       [[this.buttons.forward, this.btnMenuForward], cantForwardMessage],
       [[this.buttons.download, this.btnMenuDownload], cantDownloadMessage],
-      [[this.buttons.delete, this.btnMenuDelete], !(await this.managers.appMessagesManager.canDeleteMessage(message))]
+      [[this.buttons.delete, this.btnMenuDelete], cantDeleteMessage]
     ];
 
     a.forEach(([buttons, hide]) => {

@@ -1,7 +1,3 @@
-// .container {
-//   margin-bottom: .75rem;
-// }
-
 .title {
   font-size: var(--font-size-24);
   line-height: var(--line-height-24);
@@ -21,16 +17,18 @@
   }
 }
 
-.lottieWrapper {
+.sticker {
+  --sticker-size: 130px;
+  position: relative;
   margin: .125rem auto .5rem;
-  width: 130px;
-  height: 130px;
+  width: var(--sticker-size);
+  height: var(--sticker-size);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.lottieAnimation {
+.lottie {
   width: var(--size);
   height: var(--size);
   max-width: 100%;

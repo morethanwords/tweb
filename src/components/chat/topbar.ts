@@ -9,7 +9,6 @@ import type {AppSidebarRight} from '@components/sidebarRight';
 import type Chat from '@components/chat/chat';
 import {RIGHT_COLUMN_ACTIVE_CLASSNAME} from '@components/sidebarRight';
 import mediaSizes, {ScreenSize} from '@helpers/mediaSizes';
-import {IS_SAFARI} from '@environment/userAgent';
 import rootScope, {BroadcastEvents} from '@lib/rootScope';
 import Button, {replaceButtonIcon} from '@components/button';
 import ButtonIcon from '@components/buttonIcon';
@@ -88,10 +87,9 @@ import showNoForwardsPopup from '@components/popups/noForwards';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
-const PINNED_ALWAYS_FLOATING = false;
-
 export default class ChatTopbar {
   public container: HTMLDivElement;
+  public floatingPlatesWrapper: HTMLDivElement;
   private btnBack: HTMLButtonElement;
   private btnBackBadge: HTMLElement;
   private chatInfo: HTMLDivElement;
@@ -122,7 +120,6 @@ export default class ChatTopbar {
   public pinnedMessage: ChatPinnedMessage;
   private pinnedContainers: PinnedContainer[];
 
-  private setUtilsRAF: number;
 
   public listenerSetter: ListenerSetter;
 
@@ -156,12 +153,6 @@ export default class ChatTopbar {
     this.btnBackBadge = createBadge('span', 20, 'primary');
     this.btnBackBadge.classList.add('back-unread-badge');
     this.btnBack.append(this.btnBackBadge);
-
-    const borderRight = document.createElement('div');
-    borderRight.classList.add('topbar-border', 'topbar-border-right');
-
-    const borderLeft = document.createElement('div');
-    borderLeft.classList.add('topbar-border', 'topbar-border-left');
 
     // * chat info section
     this.chatInfoContainer = document.createElement('div');
@@ -255,7 +246,11 @@ export default class ChatTopbar {
     this.pushButtonToVerify(this.btnDirectMessages, this.verifyDirectMessagesButton.bind(this));
 
     this.chatInfoContainer.append(this.btnBack, this.chatInfo, this.chatUtils);
-    this.container.append(borderLeft, borderRight, this.chatInfoContainer);
+    this.container.append(this.chatInfoContainer);
+
+    this.floatingPlatesWrapper = document.createElement('div');
+    this.floatingPlatesWrapper.classList.add('topbar-floating-plates', 'hide');
+    this.container.append(this.floatingPlatesWrapper);
 
     if(this.pinnedMessage) {
       this.appendPinnedMessage(this.pinnedMessage);
@@ -269,7 +264,7 @@ export default class ChatTopbar {
       this.chatRemoveFee,
       this.chatSponsored
     ].filter(Boolean);
-    this.container.append(...pinnedContainers.map((pinnedContainer) => pinnedContainer.container));
+    this.floatingPlatesWrapper.append(...pinnedContainers.map((pinnedContainer) => pinnedContainer.container));
 
     // * construction end
 
@@ -1026,7 +1021,6 @@ export default class ChatTopbar {
         }
 
         this.btnJoin.classList.toggle('hide', !(chat as Channel)?.pFlags?.left);
-        this.setUtilsWidth();
         this.verifyButtons();
       }
     });
@@ -1180,14 +1174,10 @@ export default class ChatTopbar {
   };
 
   private onResize = () => {
-    this.setUtilsWidth(true);
     this.setFloating();
   };
 
   private onChangeScreen = (from: ScreenSize, to: ScreenSize) => {
-    const isFloating = to === ScreenSize.mobile || PINNED_ALWAYS_FLOATING;
-    // this.chatAudio && this.chatAudio.divAndCaption.container.classList.toggle('is-floating', to === ScreenSize.mobile);
-    this.pinnedMessage && this.pinnedMessage.pinnedMessageContainer.container.classList.toggle('is-floating', isFloating);
     this.onResize();
   };
 
@@ -1220,11 +1210,7 @@ export default class ChatTopbar {
     if(this.pinnedMessage && this.pinnedMessage !== pinnedMessage) {
       this.pinnedMessage.pinnedMessageContainer.container.replaceWith(container);
     } else {
-      if(PINNED_ALWAYS_FLOATING) {
-        this.container.append(container);
-      } else {
-        this.chatUtils.prepend(container);
-      }
+      this.floatingPlatesWrapper.prepend(container);
     }
   }
 
@@ -1250,10 +1236,10 @@ export default class ChatTopbar {
         newAvatar = avatarNew({
           middleware: (newAvatarMiddlewareHelper = getMiddleware()).get(),
           isDialog: true,
-          size: 42,
+          size: 40,
           peerId: usePeerId,
           threadId: useThreadId,
-          wrapOptions: {customEmojiSize: makeMediaSize(32, 32)},
+          wrapOptions: {customEmojiSize: makeMediaSize(30, 30)},
           withStories: true,
           meAsNotes: isSaved
         });
@@ -1340,8 +1326,6 @@ export default class ChatTopbar {
       callbackify(autoDeletePeriod?.result, (value) => {
         this.avatar?.setAutoDeletePeriod(value);
       });
-
-      this.setUtilsWidth();
 
       this.verifyButtons();
 
@@ -1523,58 +1507,34 @@ export default class ChatTopbar {
     this.btnMute.style.display = isBroadcast ? '' : 'none';
   }
 
-  // ! У МЕНЯ ПРОСТО СГОРЕЛО, САФАРИ КОНЧЕННЫЙ БРАУЗЕР - ЕСЛИ НЕ СКРЫВАТЬ БЛОК, ТО ПРИ ПЕРЕВОРОТЕ ЭКРАНА НА АЙФОНЕ БЛОК БУДЕТ НЕПРАВИЛЬНО ШИРИНЫ, ДАЖЕ БЕЗ ЭТОЙ ФУНКЦИИ!
-  public setUtilsWidth = (resize = false) => {
-    // return;
-    if(this.setUtilsRAF) window.cancelAnimationFrame(this.setUtilsRAF);
-
-    if(IS_SAFARI && resize) {
-      this.chatUtils.classList.add('hide');
-    }
-
-    this.setUtilsRAF = window.requestAnimationFrame(() => {
-      if(IS_SAFARI && resize) {
-        this.chatUtils.classList.remove('hide');
-      }
-
-      const width = /* chatUtils.scrollWidth */this.chatUtils.getBoundingClientRect().width;
-      this.chat.log('utils width:', width);
-      this.container.style.setProperty('--utils-width', width + 'px');
-
-      this.setUtilsRAF = 0;
-    });
-  };
-
   public setFloating = () => {
     const containers = [
-      ...(this.pinnedContainers || []),
-      this.pinnedMessage?.pinnedMessageContainer
+      this.pinnedMessage?.pinnedMessageContainer,
+      ...(this.pinnedContainers || [])
     ].filter(Boolean);
-    let top = 56, floatingHeight = 0;
+    const TOPBAR_GAP = 8;
+    let platesHeight = 0;
     const count = containers.reduce((acc, container) => {
       const isFloating = container.isFloating();
       this.container.classList.toggle(`is-pinned-${container.className}-floating`, isFloating);
 
-      if(!container.isVisible()) {
+      if(!container.isVisible() || !isFloating) {
         return acc;
       }
 
-      if(isFloating) {
-        let height = container.height;
-        if(height === 'auto') {
-          height = container.container.offsetHeight;
-        }
-        floatingHeight += height;
-        container.container.style.top = top + 'px';
-        top += height;
-      } else {
-        container.container.style.top = '';
+      let height = container.height;
+      if(height === 'auto') {
+        height = container.container.offsetHeight;
       }
+      platesHeight += height;
 
-      return acc + +isFloating;
+      return acc + 1;
     }, 0);
+    const floatingHeight = count > 0 ? platesHeight + TOPBAR_GAP : 0;
+    this.floatingPlatesWrapper.classList.toggle('hide', count === 0);
     this.container.dataset.floating = '' + count;
-    this.container.style.setProperty('--pinned-floating-height', `calc(${floatingHeight}px + var(--topbar-floating-call-height) + var(--topbar-floating-audio-height))`);
+    this.chat.container.style.setProperty('--pinned-floating-height', `calc(${floatingHeight}px + var(--topbar-floating-call-height) + var(--topbar-floating-audio-height))`);
+    this.chat.updatePinnedFloatingHeight(floatingHeight);
   };
 
   private messagesCounter({

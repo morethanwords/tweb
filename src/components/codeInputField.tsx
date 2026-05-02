@@ -21,7 +21,8 @@ export default class CodeInputFieldCompat {
   constructor(public options: {
     length: number
     onChange?: (code: string) => void
-    onFill?: (code: string) => void
+    onFill?: (code: string) => void,
+    class?: string
   }) {
     this.errorSignal = createSignal(false);
     this.disabledSignal = createSignal(false);

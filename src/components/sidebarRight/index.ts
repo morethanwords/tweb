@@ -38,24 +38,8 @@ export class AppSidebarRight extends SidebarSlider {
       }
     });
 
-    let removeTransitionTimeoutId: number;
-    const toggleBgScalableTransition = (value: boolean) => {
-      document.querySelectorAll('.chat-background-item-scalable').forEach((_el) => {
-        const el = _el as HTMLElement;
-        if(!value) {
-          el.style.setProperty('transition', 'none', 'important');
-        } else {
-          el.style.removeProperty('transition');
-        }
-      });
-    }
     rootScope.addEventListener('resizing_left_sidebar', () => {
-      window.clearTimeout(removeTransitionTimeoutId);
-      toggleBgScalableTransition(false);
       this.setColumnProportion();
-      removeTransitionTimeoutId = window.setTimeout(() => {
-        toggleBgScalableTransition(true);
-      }, 100);
     });
     mediaSizes.addEventListener('resize', () => {
       this.setColumnProportion();

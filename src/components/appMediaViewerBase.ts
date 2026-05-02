@@ -826,7 +826,7 @@ export default class AppMediaViewerBase<
     this.toggleZoom(value !== ZOOM_INITIAL_VALUE);
   };
 
-  protected setBtnMenuToggle(buttons: ButtonMenuItemOptions[]) {
+  protected setBtnMenuToggle(buttons: ButtonMenuItemOptionsVerifiable[]) {
     const btnMenuToggle = ButtonMenuToggle({buttonOptions: {onlyMobile: true}, direction: 'bottom-left', buttons});
     this.topbar.append(btnMenuToggle);
   }

@@ -1,4 +1,4 @@
-import {JSX} from 'solid-js';
+import {JSX, Show} from 'solid-js';
 import {Dynamic} from 'solid-js/web';
 import {AnimationList} from '@helpers/solid/animationList';
 import {getTransition} from '@config/transitions';
@@ -6,7 +6,7 @@ import classNames from '@helpers/string/classNames';
 
 type AnimationType = 'cross-fade' | 'grow-width' | 'grow-height';
 
-const growKeyframes = (property: 'width' | 'height', size: number): Keyframe[] => {
+export const growKeyframes = (property: 'width' | 'height', size: number): Keyframe[] => {
   return [
     {[property]: 0, opacity: 0},
     // {width: clientWidth / 2 + 'px', opacity: .25},
@@ -62,5 +62,24 @@ export default function Animated(props: {
     >
       {props.children}
     </Dynamic>
+  );
+}
+
+// `overflow: hidden` makes the wrapper a block formatting context so any
+// negative margins on the child are contained — `wrapper.clientHeight` then
+// equals the full layout space, which is what `grow-height` animates from
+// `0` to.
+export function GrowHeightReveal(props: {
+  when: Parameters<typeof Show>[0]['when'],
+  children: JSX.Element
+}) {
+  return (
+    <Animated type="grow-height" noItemClass mode="add-remove" appear>
+      <Show when={props.when}>
+        <div style={{overflow: 'hidden'}}>
+          {props.children}
+        </div>
+      </Show>
+    </Animated>
   );
 }

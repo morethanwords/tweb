@@ -28,8 +28,6 @@ import {AnimatedSuper} from '@components/animatedSuper';
 import {AnimatedCounter} from '@components/animatedCounter';
 import {isMessageSensitive} from '@appManagers/utils/messages/isMessageRestricted';
 
-const ALWAYS_FLOATING = false;
-
 export default class ChatPinnedMessage {
   private static LOAD_COUNT = 50;
   private static LOAD_OFFSET = 5;
@@ -98,7 +96,7 @@ export default class ChatPinnedMessage {
 
         return false;
       },
-      floating: ALWAYS_FLOATING,
+      floating: true,
       height: 52
     });
 

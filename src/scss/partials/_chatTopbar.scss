@@ -7,11 +7,11 @@
 @use "../shared" as *;
 
 body.is-calling:not(.backwards):not(.animating) {
-  --topbar-floating-call-height: var(--topbar-call-height);
+  --topbar-floating-call-height: calc(var(--topbar-call-height) + var(--plates-gap));
 }
 
 body.is-pinned-audio-shown {
-  --topbar-floating-audio-height: var(--topbar-audio-height);
+  --topbar-floating-audio-height: calc(var(--topbar-audio-height) + var(--plates-gap));
 }
 
 // * fix blank space underneath topbar when animating
@@ -35,55 +35,45 @@ body.is-right-column-shown {
 }
 
 .topbar {
-  --topbar-height: 3.5rem;
   --topbar-avatar-active-size: 0px;
   --topbar-close-active-size: 2.5rem;
   --topbar-avatar-close-gap: 2px;
+  --topbar-box-shadow: 0px 1px 5px -1px rgba(0, 0, 0, .21);
 
   --pinned-container-height: 3.25rem;
 	--pinned-audio-height: var(--pinned-container-height);
 	--pinned-message-height: var(--pinned-container-height);
   --pinned-translation-height: 2.625rem;
   --pinned-live-height: 3.5rem;
-  --pinned-floating-height: 0px;
 
-	width: 100%;
+  min-height: var(--chat-topbar-height) !important;
+	max-width: calc(var(--messages-container-width) - var(--chat-input-padding) * 2);
+	margin-inline: auto;
 	z-index: 2;
-	min-height: var(--topbar-height) !important;
-	max-height: var(--topbar-height) !important;
-	margin-bottom: var(--pinned-floating-height);
-	position: relative;
+  height: var(--chat-topbar-height) !important;
+	position: absolute;
+	top: 0;
+  inset-inline: 0;
 	cursor: pointer !important;
-  transform: translateY(calc(var(--topbar-floating-call-height) + var(--topbar-floating-audio-height)));
+  transform: translate3d(0, calc(var(--topbar-floating-call-height) + var(--topbar-floating-audio-height)), 0);
   background-color: var(--surface-color) !important;
+  border-radius: $border-radius-big;
+  padding-inline: .25rem .5rem !important;
+  box-shadow: var(--topbar-box-shadow);
 
   @include animation-level(2) {
-    transition: transform var(--transition-standard-out), margin-bottom 0s 0s;
+    &.sidebar-header {
+      transition: transform var(--transition-standard-in), margin-bottom 0s 0s, background-color var(--transition-standard-in);
+    }
   }
 
-	&:before {
-		content: " ";
-		position: absolute;
-		height: calc(var(--topbar-height) + var(--pinned-floating-height) - var(--topbar-floating-call-height) - var(--topbar-floating-audio-height));
-		top: 0;
-		right: 0;
-		left: 0;
-		box-shadow: 0px 1px 5px -1px rgba(0, 0, 0, .21);
-		pointer-events: none;
-	}
-
-	&:not(.is-pinned-message-floating) {
-		.chat-utils {
-			position: relative;
-			z-index: 1;
-		}
-	}
+  @include respond-to(only-medium-screens) {
+    body.is-right-column-shown & {
+      transform: translate3d(calc(var(--right-column-width) / -2 * var(--reflect)), calc(var(--topbar-floating-call-height) + var(--topbar-floating-audio-height)), 0);
+    }
+  }
 
 	@include respond-to(not-handhelds) {
-		.menu-search {
-			display: none;
-		}
-
 		&.is-pinned-message-shown:not(.hide-pinned) {
 			.pinned-message {
 				display: flex;
@@ -101,12 +91,8 @@ body.is-right-column-shown {
 			}
 
 			.chat-info {
-				padding-inline-start: .1875rem;
+				padding-inline-start: 0;
 			}
-
-      // .topbar-search-container {
-      //   inset-inline-start: 4.4375rem;
-      // }
 		}
 	}
 
@@ -116,6 +102,22 @@ body.is-right-column-shown {
     --topbar-avatar-close-gap: 6px;
   }
 
+  .topbar-floating-plates {
+    position: absolute;
+    top: calc(var(--chat-topbar-height) + .5rem);
+    inset-inline: 0;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--surface-color);
+    border-radius: $border-radius-big;
+    overflow: hidden;
+    box-shadow: var(--topbar-box-shadow);
+
+    &.hide {
+      display: none;
+    }
+  }
+
 	.pinned-container-wrapper-utils {
 		@include sidebar-transform();
 	}
@@ -123,46 +125,6 @@ body.is-right-column-shown {
 	.sidebar-close-button {
 		position: absolute;
 	}
-
-  &-border {
-    width: 1px;
-    height: calc(100% + var(--pinned-floating-height));
-    background-color: var(--border-color);
-    position: absolute;
-    top: 0;
-    z-index: 1;
-
-    &-left {
-      left: 0;
-    }
-
-    &-right {
-      right: -1px;
-
-      @include sidebar-transform() {
-        right: 0;
-      }
-    }
-  }
-
-	/* @include respond-to(wide-screens) {
-		transition: .2s ease-in-out;
-		align-self: start;
-
-		body.is-right-column-shown & {
-			width: calc(100% - (#{$large-screen} / 4));
-		}
-
-		body.animation-level-0 & {
-			transition: none;
-		}
-	} */
-
-	/* @include respond-to(handhelds) {
-		position: sticky;
-		top: 0;
-		z-index: 3;
-	} */
 
 	.user-title {
 		font-size: 1rem;
@@ -205,33 +167,16 @@ body.is-right-column-shown {
 		flex: 1 1 auto;
 		overflow: hidden;
 		padding-inline-start: 49px;
-    height: 46px;
-    padding-top: 2px;
-    padding-bottom: 2px;
 
 		@include respond-to(handhelds) {
 			padding-inline-start: 52px;
     }
 
-		//&.have-utils-width {
-			max-width: calc(100% - var(--utils-width));
-
-			@include respond-to(medium-screens) {
-				body.is-right-column-shown & {
-					max-width: calc(100% - var(--right-column-width) - var(--utils-width));
-				}
-			}
-		//}
-
     &-container {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      height: 3.5rem;
-      max-height: 3.5rem;
-      flex: 1 1 auto;
-      max-width: 100%;
-      z-index: 1; // fix menu overlap
+      width: 100%;
+      height: inherit;
     }
 	}
 
@@ -239,10 +184,6 @@ body.is-right-column-shown {
 		display: flex;
 		align-items: center;
 		flex: 0 0 auto;
-
-		/* position: absolute;
-    right: 0px;
-    padding-right: inherit; */
 
 		@include sidebar-transform();
 
@@ -268,7 +209,7 @@ body.is-right-column-shown {
 
 	.content {
 		flex: 1 1 auto;
-		padding-inline-start: 1.125rem;
+		padding-inline-start: 1rem;
 		max-width: 100%;
 		overflow: hidden;
 	}
@@ -284,7 +225,6 @@ body.is-right-column-shown {
 
 		.bottom {
 			font-size: .875rem;
-			//line-height: 18px;
 			color: var(--secondary-text-color);
 
 			.online {
@@ -324,15 +264,11 @@ body.is-right-column-shown {
 		.content {
 			padding-inline-start: 16px;
 		}
-
-		/* .user-title {
-			font-size: 20px;
-		}
-
-		.sidebar-close-button:before {
-			margin-top: 1px;
-		} */
 	}
+
+  .btn-icon {
+    margin-inline-start: 0 !important;
+  }
 
   &-call {
     &-container {

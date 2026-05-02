@@ -283,18 +283,18 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
         });
         fs.list[!append ? 'append' : 'prepend'](...elements);
       },
-      placeholderSizes: _isMonoforum ? undefined : {
-        avatarSize: 32,
-        avatarMarginRight: 72 - 32 - 17,
-        marginVertical: 8,
-        marginLeft: 17,
-        lineMarginVertical: 11,
-        gapVertical: 0,
-        totalHeight: 48,
-        statusWidth: 0,
-        noSecondLine: true,
-        night
-      },
+      // placeholderSizes: _isMonoforum ? undefined : {
+      //   avatarSize: 32,
+      //   avatarMarginRight: 72 - 32 - 17,
+      //   marginVertical: 8,
+      //   marginLeft: 17,
+      //   lineMarginVertical: 11,
+      //   gapVertical: 0,
+      //   totalHeight: 48,
+      //   statusWidth: 0,
+      //   noSecondLine: true,
+      //   night
+      // },
       onFirstRender: () => {
         deferred.resolve();
       },
@@ -477,6 +477,7 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
           selector.inputSearch.input.focus();
         }
       },
+      noPlaceholder: true,
       rippleEnabled: false,
       avatarSize: 'abitbigger',
       managers,
@@ -605,7 +606,7 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
         <PopupElement.Body>
           <Inner />
         </PopupElement.Body>
-        <Show when={multiSelect !== 'disabled'}>
+        <Show when={multiSelect !== 'disabled' || options.footer}>
           <PopupElement.Footer class="popup-forward-footer" floating>
             <FooterInner />
           </PopupElement.Footer>

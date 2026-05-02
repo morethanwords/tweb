@@ -1,12 +1,48 @@
-.Container {
+.Container,
+.Layer {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
 
-  width: 100%;
-  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+
+  background-color: #e6ebee;
+
+  :global(html.night) & {
+    background-color: var(--border-color);
+  }
+}
+
+.Slot {
+  position: absolute;
+  inset: 0;
+
+  opacity: 0;
+
+  &.IsPattern {
+    background-color: #000;
+  }
+
+  &.IsImage {
+    background-color: #000;
+  }
+}
+
+.SlotActive {
+  opacity: 1;
+}
+
+.SlotFade {
+  transition: opacity .2s ease;
+}
+
+.SlotCrossfadeForwards {
+  transition: opacity var(--transition-standard-in);
+}
+
+.SlotCrossfadeBackwards {
+  transition: opacity var(--transition-standard-out);
 }
 
 .CanvasCommon {
@@ -22,8 +58,13 @@
   object-fit: cover;
 
   opacity: var(--opacity-max, 1);
+}
 
-  &.blend {
-    mix-blend-mode: soft-light;
-  }
+.GradientCanvas {
+  height: 150%;
+  top: -25%;
+}
+
+.Blend {
+  mix-blend-mode: soft-light;
 }

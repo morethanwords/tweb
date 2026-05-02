@@ -1907,7 +1907,8 @@ export default class AppSearchSuper {
       itemSize: 72,
       scrollable: this.scrollable,
       indexKey: 'index_0',
-      virtualFilterId: rootScope.myId
+      virtualFilterId: rootScope.myId,
+      extraPaddingBottom: 0
     });
 
     const list = xd.sortedList.list;

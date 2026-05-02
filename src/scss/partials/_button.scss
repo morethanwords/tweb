@@ -967,7 +967,7 @@ $btn-menu-z-index: 4;
   border-radius: $button-border-radius;
   width: 100%;
   text-align: center;
-  height: 54px;
+  height: $button-height;
   border: none;
   font-weight: var(--font-weight-bold);
   cursor: pointer;
@@ -975,6 +975,8 @@ $btn-menu-z-index: 4;
   position: relative;
   padding: 0; // new
   transition: .2s opacity, .2s background-color, .2s color;
+  line-height: var(--line-height);
+  text-transform: uppercase;
 
   @include hover() {
     // transition: /* .2s background-color,  */.2s opacity;
@@ -1023,15 +1025,10 @@ $btn-menu-z-index: 4;
   display: flex;
   align-items: center;
   padding: 0 1rem;
-  height: 3rem;
-  //width: auto;
-  //text-transform: capitalize;
+  height: $button-height;
+  text-transform: unset;
   font-weight: normal;
   line-height: var(--line-height); // * it centers the text
-
-  @include respond-to(handhelds) {
-    height: 3rem;
-  }
 
   @include hover-background-effect();
 
@@ -1153,7 +1150,7 @@ $btn-menu-z-index: 4;
 }
 
 .btn-secondary {
-  margin-top: -1rem !important;
+  margin-top: -1rem;
 }
 
 .btn-color-primary {

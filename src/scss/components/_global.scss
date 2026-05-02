@@ -37,6 +37,11 @@ button {
   font-size: inherit;
 }
 
+input:focus,
+button:focus {
+  outline: none;
+}
+
 img, 
 video {
   -webkit-user-drag: none;

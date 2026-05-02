@@ -8,48 +8,36 @@
 
 @mixin sidebar-transform($centered: 0, $transform: true) {
 	@include respond-to(medium-screens) {
-		transition: transform var(--transition-standard-out);
-
 		body.is-right-column-shown & {
-      @if $transform {
-        @if $centered != 0 {
-          transform: translate3d(calc(var(--right-column-width) * #{$centered} * -.5 * var(--reflect)), 0, 0);
-        } @else {
-          transform: translate3d(calc(var(--right-column-width) * -1 * var(--reflect)), 0, 0);
-        }
-      }
-
-			transition: transform var(--transition-standard-in);
+      // Shift disabled — topbar now shifts as a single unit, so the
+      // per-element shifts that used to live here are no longer needed.
+      // Function kept so existing callers compile while the migration completes.
+      // @if $transform {
+      //   @if $centered != 0 {
+      //     transform: translate3d(calc(var(--right-column-width) * #{$centered} * -.5 * var(--reflect)), 0, 0);
+      //   } @else {
+      //     transform: translate3d(calc(var(--right-column-width) * -1 * var(--reflect)), 0, 0);
+      //   }
+      // }
 
       @content;
-		}
-
-		body.animation-level-0 & {
-			transition: none;
 		}
 	}
 }
 
 @mixin sidebar-transform-global($centered: 0, $transform: true) {
 	@include respond-to(medium-screens) {
-		transition: transform var(--transition-standard-out);
-
 		:global(body.is-right-column-shown) & {
-      @if $transform {
-        @if $centered != 0 {
-          transform: translate3d(calc(var(--right-column-width) * #{$centered} * -.5 * var(--reflect)), 0, 0);
-        } @else {
-          transform: translate3d(calc(var(--right-column-width) * -1 * var(--reflect)), 0, 0);
-        }
-      }
-
-			transition: transform var(--transition-standard-in);
+      // Shift disabled — see sidebar-transform comment above.
+      // @if $transform {
+      //   @if $centered != 0 {
+      //     transform: translate3d(calc(var(--right-column-width) * #{$centered} * -.5 * var(--reflect)), 0, 0);
+      //   } @else {
+      //     transform: translate3d(calc(var(--right-column-width) * -1 * var(--reflect)), 0, 0);
+      //   }
+      // }
 
       @content;
-		}
-
-		:global(body.animation-level-0) & {
-			transition: none;
 		}
 	}
 }

@@ -1472,7 +1472,7 @@ export default class ChatContextMenu {
       // emojisButton.element.append(i18n('Loading'));
     }
 
-    this.chat.container.append(element);
+    document.body.append(element);
     this.buttons.forEach((button) => button.onOpen?.());
 
     return {

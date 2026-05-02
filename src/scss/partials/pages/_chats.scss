@@ -8,12 +8,14 @@
 
 .page-chats {
   display: flex;
-  max-width: $large-screen !important;
   position: relative;
+
+  // Padding moved to each column individually so they can independently control
+  // their outer spacing — useful for the mobile slider where the active column
+  // should occupy the full viewport (no parent gutter peeking through during slide).
 
   #main-columns {
     width: 100%;
-    overflow: hidden;
     position: relative;
     height: 100%;
     min-height: 100%;
@@ -26,49 +28,28 @@
       display: flex !important;
       z-index: 1;
     }
+
+    // Mobile slider: when ready, zero out per-column padding so the active
+    // column goes edge-to-edge during the swipe transition.
+    // #column-left,
+    // #column-center,
+    // #column-right {
+    //   margin: 0;
+    //   inset: 0;
+    // }
   }
 
   @include respond-to(not-handhelds) {
     #column-center {
-      display: flex!important;
-      width: 100%;
+      display: flex !important;
     }
 
     #column-right {
-      display: flex!important;
-    }
-
-    .main-column {
-      height: 100%;
-      position: relative;
-      min-height: 100%;
-      max-height: 100%;
-      //z-index: auto;
+      display: flex !important;
     }
 
     #main-columns {
       display: flex;
-    }
-  }
-
-  @include respond-to(large-screens) {
-    &:before,
-    &:after {
-      content: " ";
-      position: absolute;
-      top: 0;
-      bottom: 0;
-      width: 1px;
-      background-color: var(--border-color);
-      pointer-events: none;
-    }
-
-    &:before {
-      left: -1px;
-    }
-
-    &:after {
-      right: -1px;
     }
   }
 

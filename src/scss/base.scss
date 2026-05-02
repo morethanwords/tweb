@@ -9,7 +9,8 @@
 
 :root {
   --vh: 1vh;
-  --100vh: calc(var(--vh) * 100);
+  --page-chats-padding: #{$page-chats-padding};
+  --100vh: calc(var(--vh) * 100 - 2 * var(--page-chats-padding));
   --z-below: -1;
   --hover-alpha: #{$hover-alpha};
   --reflect: 1;
@@ -99,6 +100,7 @@
   --menu-backdrop-filter: blur(50px);
   --section-box-shadow: 0px 1px 4px 0px var(--section-box-shadow-color);
   --section-box-shadow-big: 0px 1px 8px 0px var(--section-box-shadow-big-color);
+  --column-box-shadow: 0px 0px 4px 0px var(--column-box-shadow-color);
   --font-regular: "Roboto", -apple-system, apple color emoji, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
   --font-monospace: 'Roboto Mono', monospace;
   --font-rounded: -ui-rounded, "Numbers Rounded", "Roboto", "Helvetica Neue", sans-serif;
@@ -130,9 +132,10 @@
 
   --custom-emoji-size: 1.25rem;
 
-  --chat-input-border-radius: 1rem;
+  --chat-input-border-radius: #{$border-radius-big};
   --chat-input-max-width: var(--messages-container-width);
   --chat-input-btn-send-margin: #{$btn-send-margin};
+  --plates-gap: 0.5rem;
 
   // https://github.com/overtake/TelegramSwift/blob/5cc7d2475fe4738a6aa0486c23eaf80a89d33b97/submodules/TGUIKit/TGUIKit/PresentationTheme.swift#L2054
   @include avatar-color("red", #FF845E, #D45246);
@@ -215,6 +218,7 @@
   --section-box-shadow-color: rgba(0, 0, 0, .05);
   --section-box-shadow-big-color: rgba(0, 0, 0, .1);
   --menu-box-shadow-color: rgba(0, 0, 0, .15);
+  --column-box-shadow-color: #0000001A;
 
   --input-search-background-color: #fff;
   --input-search-border-color: #dfe1e5;
@@ -280,6 +284,7 @@
   --scrollbar-color: rgba(255, 255, 255, .2);
   --section-box-shadow-color: rgba(0, 0, 0, .12);
   --section-box-shadow-big-color: rgba(0, 0, 0, .24);
+  --column-box-shadow-color: rgba(0, 0, 0, .24);
 
   --input-search-background-color: #181818;
   --input-search-border-color: #2f2f2f;
@@ -416,10 +421,6 @@ body {
   user-select: none;
 
   transition: background-color 0.2s;
-
-  &.has-auth-pages {
-    background-color: var(--surface-color);
-  }
 }
 
 
@@ -499,7 +500,6 @@ samp {
   width: 100%;
   //min-width: 100%;
   margin: 0 auto;
-  max-width: $large-screen;
 
   //@include respond-to(not-handhelds) {
     height: 100%;
@@ -875,7 +875,7 @@ b {
     align-items: center;
     padding: 0 1rem;
     justify-content: space-between;
-    height: 3.5rem;
+    height: 3rem;
     cursor: pointer;
     /* font-weight: 500; */
 
@@ -904,38 +904,8 @@ b {
   text-align: end;
 }
 
-// this dimensions will be used for monkey business
-.auth-image {
-  width: 166px;
-  height: 166px;
-  margin: 0 auto 18px;
-  position: relative;
-
-  @include respond-to(handhelds) {
-    width: 120px;
-    height: 120px;
-  }
-}
-
-/* .phone-wrapper {
-  display: flex;
-  align-items: ;
-} */
-
-.phone-edit {
-  width: 1.5rem;
-  height: 1.5rem;
-  margin-inline-start: .4rem;
-  opacity: .5;
-  transition: .2s opacity;
-  cursor: pointer;
-  font-size: 1.5rem;
-  line-height: 1;
-
-  @include hover() {
-    opacity: 1;
-  }
-}
+// `.auth-image`, `.phone-edit`, `.phone-wrapper` used to live here; they're now
+// scoped to the auth flow in `src/pages/authFlow.module.scss`.
 
 .emoji-native {
   display: inline !important;

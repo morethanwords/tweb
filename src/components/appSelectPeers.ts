@@ -243,12 +243,9 @@ export default class AppSelectPeers {
 
     const f = (this.renderResultsFunc || this.renderResults).bind(this);
     this.renderResultsFunc = async(peerIds, append?: boolean) => {
-      const {needSwitchList} = this;
       const middleware = this.middlewareHelperLoader.get();
-      if(needSwitchList) {
+      if(this.needSwitchList) {
         this.needSwitchList = false;
-        this.oldList.replaceWith(this.list);
-        this.oldList = undefined;
       }
 
       peerIds = peerIds.filter((peerId) => {
@@ -295,6 +292,18 @@ export default class AppSelectPeers {
       }
 
       await f(peerIds, append);
+      if(!middleware()) {
+        return;
+      }
+
+      // Mount the new list only when we're not waiting on a search promise.
+      // The search promise's then() handles the in-flight case. This branch
+      // covers callers that invoke renderResultsFunc directly (e.g. realtime
+      // chat_participant updates) outside of any pending search.
+      if(this.oldList && !this.promise) {
+        this.oldList.replaceWith(this.list);
+        this.oldList = undefined;
+      }
 
       if(!this.promise) {
         this.processPlaceholderOnResults();
@@ -353,6 +362,8 @@ export default class AppSelectPeers {
       name: this.sectionNameLangPackKey,
       caption: this.sectionCaption
     });
+
+    section.container.classList.add('is-visible');
 
     if(this.sectionNameLangPackKey) {
       section.content = section.generateContentElement();
@@ -642,8 +653,10 @@ export default class AppSelectPeers {
       ++this.tempIds[i];
     }
 
-    const oldList = this.list;
-    this.oldList = oldList;
+    // Keep the currently mounted list reference until the new search resolves.
+    // ??= so that rapid re-typing doesn't overwrite the in-DOM list with a
+    // detached one from a still-pending previous search.
+    this.oldList ??= this.list;
     this.list = appDialogsManager.createChatList();
 
     this.promise = undefined;
@@ -672,50 +685,13 @@ export default class AppSelectPeers {
       this.loadedWhat.custom = false;
     }
 
-    oldList.style.position = 'absolute';
-    const height = oldList.parentElement?.clientHeight ?? 0;
-    // const elementHeight = oldList.lastElementChild?.scrollHeight;
-    // let oldListHeight = oldList.scrollHeight;
-    // while(elementHeight && oldListHeight > height) {
-    //   oldList.lastElementChild.remove();
-    //   oldListHeight -= elementHeight;
-    // }
-    if(height) {
-      oldList.style.overflow = 'hidden';
-      oldList.style.height = `${height}px`;
+    // Only force the section open (hiding the empty placeholder) when there's
+    // actually previous content to show during the new search. If the previous
+    // search was empty, leave the placeholder visible — its query text is
+    // updated by processPlaceholderOnResults once the new search resolves.
+    if(this.oldList?.childElementCount) {
+      this.emptySearchPlaceholderHideSetter?.(true);
     }
-
-    height && this.dialogsPlaceholder?.attach({
-      container: this.section.content,
-      blockScrollable: this.scrollable,
-      // getRectFrom: () => this.section.content.getBoundingClientRect()
-      getRectFrom: () => {
-        const scrollableRect = this.scrollable.container.getBoundingClientRect()
-        const rect = this.section.content.getBoundingClientRect();
-        return {
-          width: rect.width,
-          height: scrollableRect.height
-        };
-      }
-      // getRectFrom: () => {
-      //   const rect = this.section.content.getBoundingClientRect();
-      //   const nameRect = this.section.title.getBoundingClientRect();
-      //   return {
-      //     top: rect.top + (nameRect ? nameRect.height : 0),
-      //     right: rect.right,
-      //     bottom: rect.bottom,
-      //     left: rect.left,
-      //     height: rect.height - (nameRect ? nameRect.height : 0),
-      //     width: rect.width
-      //   };
-      // }
-      // onRemove: () => {
-      //   if(!this.list.childElementCount) {
-      //     this.emptySearchPlaceholderHideSetter?.(false);
-      //   }
-      // }
-    });
-    this.emptySearchPlaceholderHideSetter?.(true);
 
     this.getMoreResults();
   };
@@ -1041,7 +1017,7 @@ export default class AppSelectPeers {
           });
 
           createEffect(() => {
-            this.section.container.style.opacity = hide() ? '1' : '0';
+            this.section.container.classList.toggle('is-visible', hide());
           });
         });
         return emptyPlaceholder({
@@ -1088,6 +1064,12 @@ export default class AppSelectPeers {
       }
 
       if(middleware()) {
+        // Search is done — swap the previous list out for the freshly built one.
+        if(this.oldList) {
+          this.oldList.replaceWith(this.list);
+          this.oldList = undefined;
+        }
+
         const loadedWhatValues = Object.values(this.loadedWhat);
         const loadedAll = loadedWhatValues.every((v) => v);
 

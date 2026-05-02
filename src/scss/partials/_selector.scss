@@ -225,10 +225,14 @@
 
   &-list-section-container {
     height: 100%;
-    opacity: 1;
+    opacity: 0;
 
-    @include animation-level(2) {
-      transition: opacity var(--transition-standard-in);
+    &.is-visible {
+      opacity: 1;
+
+      @include animation-level(2) {
+        transition: opacity var(--transition-standard-in);
+      }
     }
 
     .sidebar-left-section {

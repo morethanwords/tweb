@@ -56,6 +56,7 @@ import createBadge from '@helpers/createBadge';
 import {MyDocument} from '@appManagers/appDocsManager';
 import getAttachMenuBotIcon from '@appManagers/utils/attachMenuBots/getAttachMenuBotIcon';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import wrapUrl from '@lib/richTextProcessor/wrapUrl';
 import flatten from '@helpers/array/flatten';
 import {AttachMenuBot, EmojiStatus, User} from '@layer';
 import {Middleware, MiddlewareHelper} from '@helpers/middleware';
@@ -1260,6 +1261,17 @@ export class AppSidebarLeft extends SidebarSlider {
         chatTypeMenu.props.selected = 'all';
       }
       updateSearchQuery({search: value, chatType: chatTypeMenu.props.selected});
+    };
+
+    this.inputSearch.onEnter = (value) => {
+      const trimmed = value.trim();
+      if(!trimmed) return;
+      const wrapped = wrapUrl(trimmed);
+      if(!wrapped.onclick) return;
+      this.inputSearch.value = '';
+      this.inputSearch.onChange?.('');
+      simulateClickEvent(this.backBtn);
+      appImManager.openUrl(trimmed);
     };
 
     type UpdateSearchQueryArgs = {

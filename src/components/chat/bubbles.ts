@@ -472,6 +472,8 @@ export default class ChatBubbles {
   public container: HTMLDivElement;
   public chatInner: HTMLDivElement;
   public scrollable: Scrollable;
+  public paddingTop: HTMLDivElement;
+  public paddingBottom: HTMLDivElement;
 
   private getHistoryTopPromise: Promise<boolean>;
   private getHistoryBottomPromise: Promise<boolean>;
@@ -3555,10 +3557,19 @@ export default class ChatBubbles {
     }
 
     this.scrollable = new Scrollable(null, 'IM', /* 10300 */300);
+    this.scrollable.container.classList.add('bubbles-scrollable');
     this.setLoaded('top', false, false);
     this.setLoaded('bottom', false, false);
 
-    this.scrollable.container.append(this.chatInner);
+    this.paddingTop = document.createElement('div');
+    this.paddingTop.classList.add('bubbles-padding', 'bubbles-padding-top');
+    this.paddingTop.style.height = this.chat.chatPaddingTop[0]() + 'px';
+
+    this.paddingBottom = document.createElement('div');
+    this.paddingBottom.classList.add('bubbles-padding', 'bubbles-padding-bottom');
+    this.paddingBottom.style.height = this.chat.chatPaddingBottom[0]() + 'px';
+
+    this.scrollable.container.append(this.paddingTop, this.chatInner, this.paddingBottom);
 
     /* const getScrollOffset = () => {
       //return Math.round(Math.max(300, appPhotosManager.windowH / 1.5));
@@ -3783,7 +3794,7 @@ export default class ChatBubbles {
     // this.reactions.delete(mid);
   }
 
-  private animateSomethingWithScroll(promise: Promise<any>, scrollSaver?: ScrollSaver) {
+  public animateSomethingWithScroll(promise: Promise<any>, scrollSaver?: ScrollSaver) {
     if(!scrollSaver) {
       scrollSaver = this.createScrollSaver(true);
       scrollSaver.save();
@@ -4017,7 +4028,7 @@ export default class ChatBubbles {
       element = this.getLastDateGroup();
     } */
 
-    const margin = 4; // * 4 = .25rem
+    const margin = 4 + this.chat.chatPaddingTop[0](); // * 4 = .25rem, plus chat-padding-top to clear the topbar
     /* if(isLastBubble && this.chat.type === 'chat' && this.bubblesContainer.classList.contains('is-chat-input-hidden')) {
       margin = 20;
     } */
@@ -4272,7 +4283,7 @@ export default class ChatBubbles {
 
     // clear messages
     if(bubblesToo) {
-      this.scrollable.replaceChildren();
+      this.scrollable.replaceChildren(this.paddingTop, this.paddingBottom);
       this.chatInner.replaceChildren();
       this.cleanupPlaceholders();
     }
@@ -4692,7 +4703,7 @@ export default class ChatBubbles {
 
     if(!cached && !samePeer) {
       await m(this.chat.finishPeerChange(finishPeerChangeOptions));
-      this.scrollable.replaceChildren();
+      this.scrollable.replaceChildren(this.paddingTop, this.paddingBottom);
       this.preloader.attach(this.container);
     }
 
@@ -4719,7 +4730,7 @@ export default class ChatBubbles {
       const scrollable = this.scrollable;
       scrollable.lastScrollDirection = 0;
       scrollable.lastScrollPosition = 0;
-      scrollable.replaceChildren(chatInner);
+      scrollable.replaceChildren(this.paddingTop, chatInner, this.paddingBottom);
 
       if(oldPlaceholderBubble) {
         this.cleanupPlaceholders(oldPlaceholderBubble);
@@ -5098,7 +5109,6 @@ export default class ChatBubbles {
 
       [this.chatInner, this.remover].forEach((element) => {
         element.classList.toggle('is-chat', isLikeGroup);
-        element.classList.toggle('no-input', noInput);
         element.classList.toggle('no-messages', !hasMessages);
         element.classList.toggle('with-message-avatars', isVerificationBot(peerId));
         element.classList.toggle('is-broadcast', isBroadcast);

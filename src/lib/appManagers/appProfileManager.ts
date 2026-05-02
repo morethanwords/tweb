@@ -745,6 +745,51 @@ export class AppProfileManager extends AppManager {
     });
   }
 
+  public getAdminedPersonalChannels() {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'channels.getAdminedPublicChannels',
+      params: {
+        for_personal: true
+      },
+      processResult: (result) => {
+        this.appChatsManager.saveApiChats(result.chats);
+        return result.chats.map((chat) => chat.id);
+      }
+    });
+  }
+
+  public updatePersonalChannel(channelId?: ChatId) {
+    const channel: InputChannel = channelId ?
+      this.appChatsManager.getChannelInput(channelId) :
+      {_: 'inputChannelEmpty'};
+
+    return this.apiManager.invokeApi('account.updatePersonalChannel', {
+      channel
+    }).then(() => {
+      const myId = this.rootScope.myId;
+
+      if(!channelId) {
+        this.modifyCachedFullUser(myId.toUserId(), (userFull) => {
+          delete userFull.personal_channel_id;
+          delete userFull.personal_channel_message;
+          return true;
+        });
+        return;
+      }
+
+      const dialog = this.dialogsStorage.getDialogOnly(channelId.toPeerId(true));
+      if(dialog) {
+        this.modifyCachedFullUser(myId.toUserId(), (userFull) => {
+          userFull.personal_channel_id = channelId;
+          userFull.personal_channel_message = dialog.top_message;
+          return true;
+        });
+      } else {
+        this.refreshFullPeer(myId);
+      }
+    });
+  }
+
   public setBotInfo(botId: BotId, name?: string, about?: string) {
     return this.apiManager.invokeApi('bots.setBotInfo', {
       lang_code: '',
@@ -825,7 +870,8 @@ export class AppProfileManager extends AppManager {
         return getPhotoInput(photo);
       })
     }).then((deletedList) => {
-
+      this.apiManager.clearCache('photos.getUserPhotos', () => true);
+      return this.appUsersManager.getApiUsers([this.rootScope.myId.toUserId()]).then(() => deletedList);
     });
   }
 

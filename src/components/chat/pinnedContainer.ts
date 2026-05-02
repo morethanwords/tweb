@@ -15,7 +15,6 @@ import {attachClickEvent} from '@helpers/dom/clickEvent';
 import {Message, StoryItem} from '@layer';
 import safeAssign from '@helpers/object/safeAssign';
 import ButtonIcon from '@components/buttonIcon';
-import {MyDocument} from '../../lib/appManagers/appDocsManager';
 
 const classNames: string[] = ['is-pinned-message-shown', 'is-pinned-audio-shown'];
 const CLASSNAME_BASE = 'pinned-container';
@@ -131,7 +130,6 @@ export default class PinnedContainer {
 
     if(this.topbar) {
       this.topbar.setFloating();
-      this.topbar.setUtilsWidth();
     }
   }
 
@@ -153,6 +151,5 @@ export default class PinnedContainer {
       delete this.container.dataset.savedMusicDocId;
     }
     this.divAndCaption.fill(options);
-    this.topbar?.setUtilsWidth();
   }
 }

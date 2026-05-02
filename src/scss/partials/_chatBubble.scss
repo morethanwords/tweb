@@ -54,10 +54,11 @@
   &-avatar {
     position: sticky !important;
     top: 0;
-    bottom: $bubble-overflow-big;
+    bottom: calc(var(--chat-padding-bottom) + #{$bubble-overflow-big} + .25rem);
     cursor: pointer;
     pointer-events: all;
     overflow: hidden;
+    transition: bottom var(--transition-standard-out);
 
     .bubbles.is-selecting & {
       transform: translate3d(0, 0, 0) scale3d(1, 1, 1);
@@ -459,7 +460,7 @@
 
   &.is-date {
     position: sticky;
-    top: $bubble-overflow-big;
+    top: calc(var(--chat-padding-top) + #{$bubble-overflow-big});
     padding-bottom: #{$bubble-overflow-big + $bubble-margin};
     z-index: 2;
     transition: opacity .3s ease;
@@ -3088,11 +3089,7 @@
 // * fix scroll with only 1 bubble
 .bubbles-group-last {
   .bubble.is-group-last {
-    // margin-bottom: $bubble-overflow;
-    margin-bottom: 0;
-    /* &:after, .document-container:last-of-type .document-selection {
-      bottom: 0 !important;
-    } */
+    // margin-bottom: 0;
 
     &:after,
     .document-container.is-last .document-selection {
@@ -3372,32 +3369,6 @@
     /* html:not(.is-firefox) */ &-wrapper {
       &.can-zoom-fade {
         transform-origin: var(--transform-origin-right-center);
-      }
-
-      @include respond-to(medium-screens) {
-        transform: translateX(calc((var(--chat-input-size) + #{$btn-send-margin}) * var(--reflect) * -1)) scale(1);
-
-        &.zoom-fade {
-          transform: translateX(calc((var(--chat-input-size) + #{$btn-send-margin}) * var(--reflect) * -1)) scale3d(.8, .8, 1);
-        }
-
-        @include animation-level(2) {
-          transition: var(--bubble-transition-out);
-        }
-
-        //@include respond-to(no-floating-left-sidebar) {
-          body.is-right-column-shown & {
-            transform: translateX(0) scale(1);
-
-            @include animation-level(2) {
-              transition: var(--bubble-transition-in);
-            }
-
-            &.zoom-fade {
-              transform: translateX(0) scale3d(.8, .8, 1);
-            }
-          }
-        //}
       }
     }
   }

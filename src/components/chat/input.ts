@@ -195,6 +195,8 @@ export default class ChatInput {
   private static AUTO_COMPLETE_REG_EXP = /(\s|^)((?:(?:@|^\/)\S*)|(?::|^[^:@\/])(?!.*[:@\/]).*)$/;
   public messageInput: HTMLElement;
   public messageInputField: InputFieldAnimated;
+  private inputHeightDelta = 0;
+  private helperVisible = false;
   private fileInput: HTMLInputElement;
   private inputMessageContainer: HTMLDivElement;
   private btnSend: HTMLButtonElement;
@@ -230,7 +232,8 @@ export default class ChatInput {
     menuContainer: HTMLElement,
     replyInAnother: ButtonMenuItemOptions,
     doNotReply: ButtonMenuItemOptions,
-    doNotQuote: ButtonMenuItemOptions
+    doNotQuote: ButtonMenuItemOptions,
+    content: HTMLElement
   } = {} as any;
 
   private forwardElements: {
@@ -436,9 +439,6 @@ export default class ChatInput {
 
     this.rowsWrapperWrapper.append(this.rowsWrapper);
 
-    const tail = generateTail(!this.chat.isMainChat);
-    this.rowsWrapper.append(tail);
-
     const fakeRowsWrapper = this.fakeRowsWrapper = document.createElement('div');
     fakeRowsWrapper.classList.add('fake-wrapper', 'fake-rows-wrapper');
 
@@ -569,13 +569,17 @@ export default class ChatInput {
     this.replyElements.container = document.createElement('div');
     this.replyElements.container.classList.add('reply-wrapper', 'rows-wrapper-row');
 
+    this.replyElements.content = document.createElement('div');
+    this.replyElements.content.classList.add('reply-wrapper-content');
+
     this.replyElements.iconBtn = this.createButtonIcon('');
     this.replyElements.cancelBtn = this.createButtonIcon('close reply-cancel', {noRipple: true});
 
-    this.replyElements.container.append(this.replyElements.iconBtn, this.replyElements.cancelBtn);
+    this.replyElements.content.append(this.replyElements.iconBtn, this.replyElements.cancelBtn);
+    this.replyElements.container.append(this.replyElements.content);
 
     attachClickEvent(this.replyElements.cancelBtn, this.onHelperCancel, {listenerSetter: this.listenerSetter});
-    attachClickEvent(this.replyElements.container, this.onHelperClick, {listenerSetter: this.listenerSetter});
+    attachClickEvent(this.replyElements.content, this.onHelperClick, {listenerSetter: this.listenerSetter});
 
     const buttons: ButtonMenuItemOptions[] = [{
       icon: 'message_jump',
@@ -609,7 +613,7 @@ export default class ChatInput {
       this.replyHover = new DropdownHover({element: btnMenu});
     }
 
-    this.replyElements.container.append(btnMenu);
+    this.replyElements.content.append(btnMenu);
   }
 
   private constructForwardElements() {
@@ -670,7 +674,7 @@ export default class ChatInput {
             this.forwardWasDroppingAuthor = !checked;
           }
 
-          const replyTitle = this.replyElements.container.querySelector('.reply-title');
+          const replyTitle = this.replyElements.content.querySelector('.reply-title');
           if(replyTitle) {
             const el = replyTitle.firstElementChild as HTMLElement;
             const i = I18n.weakMap.get(el) as I18n.IntlElement;
@@ -703,7 +707,7 @@ export default class ChatInput {
     }
 
     forwardElements.modifyArgs = forwardButtons.slice(0, -2);
-    this.replyElements.container.append(forwardBtnMenu);
+    this.replyElements.content.append(forwardBtnMenu);
   }
 
   private constructWebPageElements() {
@@ -757,7 +761,7 @@ export default class ChatInput {
       this.webPageHover = new DropdownHover({element: btnMenu});
     }
 
-    this.replyElements.container.append(btnMenu);
+    this.replyElements.content.append(btnMenu);
   }
 
   private constructMentionButton(isReaction?: boolean) {
@@ -1124,7 +1128,7 @@ export default class ChatInput {
       container: this.attachMenu,
       buttonOptions: {noRipple: true},
       listenerSetter: this.listenerSetter,
-      direction: 'top-left',
+      direction: 'top-right',
       buttons: this.attachMenuButtons,
       onOpenBefore: this.excludeParts.attachMenu ? undefined : async() => {
         const attachMenuBots = (this.chat.isMonoforum || this.editMsgId) ? [] : await this.managers.appAttachMenuBotsManager.getAttachMenuBots();
@@ -1200,13 +1204,13 @@ export default class ChatInput {
 
     this.newMessageWrapper.append(...[
       this.botCommandsToggle,
-      this.btnToggleEmoticons,
+      this.attachMenu,
       this.inputMessageContainer,
       this.btnScheduled,
       this.btnToggleReplyMarkup,
       this.btnSuggestPost,
       this.btnAutoDeletePeriod,
-      this.attachMenu,
+      this.btnToggleEmoticons,
       this.recordTimeEl,
       this.fileInput
     ].filter(Boolean));
@@ -1231,7 +1235,7 @@ export default class ChatInput {
     this.btnSend = this.createButtonIcon();
     this.btnSend.classList.add('btn-circle', 'btn-send', 'animated-button-icon');
     const icons: [Icon, string][] = [
-      ['send', 'send'],
+      ['logo', 'send'],
       ['schedule', 'schedule'],
       ['check', 'edit'],
       ['microphone_filled', 'record'],
@@ -1282,7 +1286,10 @@ export default class ChatInput {
       onEffect: this.setEffect
     });
 
-    this.inputContainer.append(...[this.btnReaction, this.btnCancelRecord, this.btnSendContainer].filter(Boolean));
+    // Move the morphing send/record button into the input row as the last button.
+    // btnCancelRecord is built above but intentionally not appended to the DOM.
+    this.newMessageWrapper.append(this.btnSendContainer);
+    this.inputContainer.append(...[this.btnReaction].filter(Boolean));
 
     if(this.btnToggleEmoticons) {
       this.emoticonsDropdown.attachButtonListener(this.btnToggleEmoticons, this.listenerSetter);
@@ -2540,6 +2547,11 @@ export default class ChatInput {
     this.updateSendBtn();
   }
 
+  private notifyChatInputHeight() {
+    const helperPx = this.helperVisible ? 48 : 0;
+    this.chat.updateChatInputHeight(this.inputHeightDelta + helperPx);
+  }
+
   private attachMessageInputField() {
     const oldInputField = this.messageInputField;
     this.messageInputField = new InputFieldAnimated({
@@ -2548,6 +2560,12 @@ export default class ChatInput {
       name: 'message',
       withLinebreaks: true
     });
+
+    const DEFAULT_INPUT_HEIGHT = 37;
+    this.messageInputField.onChangeHeight = (newHeight) => {
+      this.inputHeightDelta = Math.max(0, newHeight - DEFAULT_INPUT_HEIGHT);
+      this.notifyChatInputHeight();
+    };
 
     this.messageInputField.input.tabIndex = -1;
     this.messageInputField.input.classList.replace('input-field-input', 'input-message-input');
@@ -4510,6 +4528,8 @@ export default class ChatInput {
     ) {
       appNavigationController.removeByType('input-helper');
       this.chat.container.classList.remove('is-helper-active');
+      this.helperVisible = false;
+      this.notifyChatInputHeight();
       this.t();
     }
 
@@ -4582,7 +4602,7 @@ export default class ChatInput {
 
     this.btnSuggestPost?.classList.toggle('hide', !this.canShowSuggestPostButton(true));
 
-    const replyParent = this.replyElements.container;
+    const replyParent = this.replyElements.content;
     const oldReply = replyParent.lastElementChild.previousElementSibling;
     const haveReply = oldReply.classList.contains('reply');
 
@@ -4607,6 +4627,8 @@ export default class ChatInput {
 
     if(!this.chat.container.classList.contains('is-helper-active')) {
       this.chat.container.classList.add('is-helper-active');
+      this.helperVisible = true;
+      this.notifyChatInputHeight();
       this.t();
     }
 

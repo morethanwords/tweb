@@ -25,7 +25,7 @@ import SettingSection from '@components/settingSection';
 import UsernamesSection from '@components/usernamesSection';
 import getPeerEditableUsername from '@appManagers/utils/peers/getPeerEditableUsername';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
-import {purchaseUsernameCaption} from '@components/sidebarLeft/tabs/editProfile';
+import {purchaseUsernameCaption} from '@components/sidebarLeft/tabs/purchaseUsernameCaption';
 import confirmationPopup from '@components/confirmationPopup';
 import PopupElement from '@components/popups';
 import apiManagerProxy from '@lib/apiManagerProxy';

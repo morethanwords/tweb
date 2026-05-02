@@ -8,9 +8,8 @@ import {SliderSuperTab} from '@components/slider';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import AppPrivacyAndSecurityTab from '@components/sidebarLeft/tabs/privacyAndSecurity';
 import AppGeneralSettingsTab from '@components/sidebarLeft/tabs/generalSettings';
-import AppEditProfileTab from '@components/sidebarLeft/tabs/editProfile';
 import AppChatFoldersTab from '@components/sidebarLeft/tabs/chatFolders';
-import {AppNotificationsTab} from '@components/solidJsTabs';
+import {AppEditProfileTab, AppKeyboardShortcutsTab, AppNotificationsTab, getEditProfileInitArgs} from '@components/solidJsTabs';
 import AppLanguageTab from '@components/sidebarLeft/tabs/language';
 import lottieLoader from '@lib/rlottie/lottieLoader';
 import PopupPeer from '@components/popups/peer';
@@ -212,6 +211,14 @@ export default class AppSettingsTab extends SliderSuperTab {
           this.slider.createTab(AppLanguageTab).open(languageArgs);
         },
         listenerSetter: this.listenerSetter
+      }),
+      new Row({
+        titleLangKey: 'KeyboardShortcuts.Title',
+        icon: 'keyboard',
+        clickable: () => {
+          this.slider.createTab(AppKeyboardShortcutsTab).open();
+        },
+        listenerSetter: this.listenerSetter
       })
     );
 
@@ -305,9 +312,9 @@ export default class AppSettingsTab extends SliderSuperTab {
     ].filter(Boolean));
 
     const getEditProfileArgs = () => {
-      editProfileArgs = AppEditProfileTab.getInitArgs();
+      editProfileArgs = getEditProfileInitArgs();
     };
-    let editProfileArgs: ReturnType<typeof AppEditProfileTab['getInitArgs']>;
+    let editProfileArgs: ReturnType<typeof getEditProfileInitArgs>;
     attachClickEvent(this.buttons.edit, () => {
       const tab = this.slider.createTab(AppEditProfileTab);
       tab.open(editProfileArgs);
