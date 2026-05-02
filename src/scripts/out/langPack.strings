@@ -2869,6 +2869,7 @@
 "Chat.Poll.TotalVotesResultEmpty" = "No votes";
 "Chat.Quiz.TotalVotesEmpty" = "No answers yet";
 "Chat.Quiz.TotalVotesResultEmpty" = "No answers";
+"Chat.Quiz.Explanation" = "Explanation";
 "Chat.Pinned.DontShow" = "Don't Show Pinned Messages";
 "Chat.Title.Comments_one" = "%d Comment";
 "Chat.Title.Comments_other" = "%d Comments";

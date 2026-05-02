@@ -11,7 +11,7 @@
   gap: 0.75rem;
 
   --vertical-padding: 0.75rem;
-  padding: var(--vertical-padding) 1rem var(--vertical-padding) 1.25rem;
+  padding: var(--vertical-padding) 0.75rem var(--vertical-padding) 1rem;
 
   min-width: 240px;
 
@@ -46,7 +46,7 @@
 }
 
 .red {
-  background-color: red;
+  background-color: darkcyan;
 }
 
 .clickableArea {
@@ -139,7 +139,7 @@
   position: absolute;
   top: 50%;
   right: 0;
-  transform: translateY(-50%);
+  transform: translate(0.25rem, -50%);
   white-space: nowrap;
   font-weight: var(--font-weight-bold);
 }
@@ -148,7 +148,7 @@
   position: absolute;
   bottom: 0;
   left: 0;
-  transform: translate(-1.375rem, 0.875rem);
+  transform: translate(-1.5rem, 0.875rem);
 
   --size: 0.875rem;
   --check-scale: 1.25;
@@ -157,7 +157,6 @@
 .footer {
   display: flex;
   justify-content: center;
-  margin-top: 0.5rem;
   padding: 0.75rem 0;
   font-size: 0.875rem;
   color: var(--secondary-text-color);
@@ -165,22 +164,29 @@
 
 .header {
   display: flex;
-  gap: 0.25rem;
-  flex-direction: column;
-  padding: 0.75rem 1.25rem 0.25rem;
-}
-
-.title {
-  font-weight: var(--font-weight-bold);
-}
-
-.subtitle {
-  color: var(--secondary-text-color);
-  font-size: 0.875rem;
-
-  display: flex;
+  gap: 1rem;
+  padding: 0.75rem 0.625rem 0.25rem 1rem;
   align-items: center;
-  gap: 0.5rem;
+
+  &TitleContainer {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  &Title {
+    font-weight: var(--font-weight-bold);
+  }
+
+  &Subtitle {
+    color: var(--secondary-text-color);
+    font-size: 0.875rem;
+
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
 }
 
 .avatarGroup {
@@ -238,5 +244,35 @@
   &Placeholder {
     left: 0;
     top: 0;
+  }
+}
+
+.explanationImage {
+  width: 100%;
+  height: auto;
+  max-height: 420px;
+  aspect-ratio: 1 / 1;
+  background-color: darkcyan;
+  border-radius: 4px;
+}
+
+.description {
+  font-size: 0.875em;
+  padding: 0.75rem 1rem 0;
+}
+
+.pollImage {
+  width: 100%;
+  height: auto;
+  max-height: 420px;
+  aspect-ratio: 1 / 1;
+  background-color: darkcyan;
+
+  border-radius: 4px;
+  border-start-start-radius: calc(var(--border-start-start-radius) - 1px);
+  border-start-end-radius: calc(var(--border-start-end-radius) - 1px);
+
+  &Wrapper {
+    padding: 1px;
   }
 }

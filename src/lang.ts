@@ -3342,6 +3342,7 @@ const lang = {
   'Chat.Poll.TotalVotesResultEmpty': 'No votes',
   'Chat.Quiz.TotalVotesEmpty': 'No answers yet',
   'Chat.Quiz.TotalVotesResultEmpty': 'No answers',
+  'Chat.Quiz.Explanation': 'Explanation',
   // "Chat.Poll.Stop.Confirm.Header": "Stop Poll?",
   // "Chat.Poll.Stop.Confirm.Text": "If you stop this poll now, nobody will be able to vote in it anymore. This action cannot be undone.",
   // "Chat.Pinned.UnpinAll": {

@@ -1,8 +1,11 @@
+import {ButtonIconTsx} from '@components/buttonIconTsx';
 import {IconTsx} from '@components/iconTsx';
 import InputField from '@components/inputField';
 import {EmojiDropdownButton} from '@components/popups/createPoll/emojiDropdownButton';
 import {MediaAttachment} from '@components/popups/createPoll/mediaAttachment';
 import ripple from '@components/ripple';
+import {HeightTransition} from '@components/sidebarRight/tabs/adminRecentActions/heightTransition';
+import Space from '@components/space';
 import {StaticCheckbox} from '@components/staticCheckbox';
 import {keepMe} from '@helpers/keepMe';
 import formatNumber from '@helpers/number/formatNumber';
@@ -184,6 +187,12 @@ const AddOption = (props: {}) => {
     }
   });
 
+  const onAfterEnter = () => {
+    if(toggled()) {
+      inputField.input.focus();
+    }
+  };
+
   inputField.placeholder.classList.add(styles.inputFieldPlaceholder);
 
   return (
@@ -193,7 +202,7 @@ const AddOption = (props: {}) => {
       </Show>
 
       <div class={styles.checkContainer}>
-        <Transition name='fade-2'>
+        <Transition name='fade'>
           <Show when={!toggled()}>
             <IconTsx icon='add' class={styles.addOptionPlus} />
           </Show>
@@ -204,7 +213,7 @@ const AddOption = (props: {}) => {
       </div>
       <div class={styles.labelRow}>
         <div class={styles.labelText}>
-          <Transition name='fade-2' mode='outin'>
+          <Transition name='fade' mode='outin' onAfterEnter={onAfterEnter}>
             <Show when={toggled()} fallback={<I18nTsx key='Chat.Poll.AddAnOption' />}>
               <div class={styles.inputFieldInternals}>
                 {inputField.input}
@@ -228,10 +237,43 @@ const AddOption = (props: {}) => {
   );
 };
 
+const Explanation = () => {
+  const {wrapReply, i18n} = useHotReloadGuard();
+
+  const middleware = createMiddleware().get();
+
+  // const {container} = wrapReply({
+  //   title: i18n('Chat.Quiz.Explanation'),
+  //   subtitle: 'some content here',
+  //   middleware
+  // });
+
+  // container.append(< as HTMLDivElement);
+
+  return (
+    <>
+      <div class='reply quote-like quote-like-border'>
+        <div class='reply-content'>
+          <div class='reply-title'>
+            <I18nTsx key='Chat.Quiz.Explanation' />
+          </div>
+          <div class='reply-subtitle'>
+            Some explanation text here
+          </div>
+          <Space amount='0.5rem' />
+          <div class={styles.explanationImage}>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
 export const PollMessageContent = defineSolidElement({
   name: 'poll-message-content',
   component: (props: PassedProps<Props>) => {
-    const [toggled, setToggled] = createSignal(false);
+    const [toggled, setToggled] = createSignal(true);
+    const [explanationToggled, setExplanationToggled] = createSignal(false);
     const withImage = true;
 
     const options: TextWithEntities[] = [
@@ -259,19 +301,37 @@ export const PollMessageContent = defineSolidElement({
 
     return (
       <>
-        <div class={styles.header}>
-          <div class={styles.title}>
-            A new poll here
-          </div>
-          <div class={styles.subtitle}>
-            Anonymous poll
-            <Transition name='fade-2'>
-              <Show when={toggled()}>
-                <AvatarGroup />
-              </Show>
-            </Transition>
-          </div>
+        <div class={styles.pollImageWrapper}>
+          <div class={styles.pollImage} />
         </div>
+        <div class={styles.description}>
+          A big poll for big people. Choose what you want to vote for. Don't worry, your vote is anonymous. Probably
+        </div>
+        <div class={styles.header}>
+          <div class={styles.headerTitleContainer}>
+            <div class={styles.headerTitle}>
+              A new poll here
+            </div>
+            <div class={styles.headerSubtitle}>
+              Anonymous poll
+              <Transition name='fade-2'>
+                <Show when={toggled()}>
+                  <AvatarGroup />
+                </Show>
+              </Transition>
+            </div>
+          </div>
+
+          <ButtonIconTsx icon='lamp' onClick={() => setExplanationToggled(p => !p)} />
+        </div>
+
+        <HeightTransition scale>
+          <Show when={explanationToggled()}>
+            <div style={{overflow: 'hidden'}}>
+              <Explanation />
+            </div>
+          </Show>
+        </HeightTransition>
 
         {options.map((option) => (
           <PollOption text={option} toggled={toggled()} onToggle={() => setToggled(p => !p)} withImage={withImage} />
