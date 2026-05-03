@@ -4,13 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import copy from '@helpers/object/copy';
-import {InputMedia, Message, MessageEntity, MessageMedia, Poll, PollResults} from '@layer';
-import {LogTypes} from '@lib/logger';
-import parseMarkdown from '@lib/richTextProcessor/parseMarkdown';
 import {AppManager} from '@appManagers/manager';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
+import type {CreatePollPayload} from '@components/popups/createPoll/storeContext';
 import assumeType from '@helpers/assumeType';
+import copy from '@helpers/object/copy';
+import {InputMedia, Message, MessageEntity, MessageMedia, Poll, PollAnswer, PollResults, TextWithEntities} from '@layer';
+import {LogTypes} from '@lib/logger';
+import parseMarkdown from '@lib/richTextProcessor/parseMarkdown';
 
 type PollId = Poll['id'];
 
@@ -207,5 +208,61 @@ export class AppPollsManager extends AppManager {
     }, (err) => {
       this.log.error('stopPoll error:', err);
     });
+  }
+
+  public makeInputMediaPoll(payload: CreatePollPayload) {
+    const flag = (value: boolean) => value ? true as const : undefined;
+
+    const [solution, solutionEntities] = parseMarkdown(payload.explanation, payload.explanationEntities);
+
+    const inptMediaPoll: InputMedia.inputMediaPoll = {
+      _: 'inputMediaPoll',
+      poll: {
+        _: 'poll',
+        question: {
+          _: 'textWithEntities',
+          text: payload.question,
+          entities: payload.questionEntities
+        },
+        answers: payload.pollOptions.map((option): PollAnswer => ({
+          _: 'inputPollAnswer',
+          text: {
+            _: 'textWithEntities',
+            text: option.text,
+            entities: option.entities
+          },
+          // TODO: media
+          media: undefined
+        })),
+        id: undefined,
+        hash: undefined,
+        pFlags: {
+          hide_results_until_close: flag(payload.hideResults),
+          multiple_choice: flag(payload.allowMultipleAnswers),
+          public_voters: flag(payload.showWhoVoted),
+          revoting_disabled: flag(!payload.allowRevoting),
+          shuffle_answers: flag(payload.shuffleOptions),
+          quiz: flag(payload.hasCorrectAnswer),
+          open_answers: flag(payload.allowAddingOptions)
+        },
+        close_date: payload.timeLimit.type === 'timestamp' ? payload.timeLimit.timestamp : undefined,
+        close_period: payload.timeLimit.type === 'duration' ? payload.timeLimit.duration : undefined
+      },
+      attached_media: undefined,
+      solution: solution,
+      solution_entities: solutionEntities,
+      solution_media: undefined
+    };
+
+    const messageText: TextWithEntities.textWithEntities = {
+      _: 'textWithEntities',
+      text: payload.description,
+      entities: payload.descriptionEntities
+    };
+
+    return {
+      messageText,
+      inptMediaPoll
+    };
   }
 }

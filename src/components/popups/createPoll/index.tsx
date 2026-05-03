@@ -8,25 +8,34 @@ import {I18nTsx} from '@helpers/solid/i18n';
 import classNames from '@helpers/string/classNames';
 import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import {createSignal} from 'solid-js';
+import {unwrap} from 'solid-js/store';
 import PopupElement, {createPopup} from '../indexTsx';
 import {supportedDescriptionFormattingTypes} from './config';
 import {EmojiButtonWithOpacity as EmojiDropdownButton} from './emojiButtonWithOpacity';
 import {MediaAttachment} from './mediaAttachment';
 import {PollOptionsSectionContent} from './pollOptionsSectionContent';
 import {PollSettingsSectionContent} from './pollSettingsSectionContent';
-import {CreatePollContext, createPollStoreContextValue, useCreatePollContext} from './storeContext';
+import {CreatePollContext, CreatePollPayload, createPollStoreContextValue, useCreatePollContext} from './storeContext';
 import styles from './styles.module.scss';
 
 
-export const CreatePollPopup = () => {
+type CreatePollPopupProps = {
+  onSubmit: (payload: CreatePollPayload) => void;
+};
+
+export const CreatePollPopup = (props: CreatePollPopupProps) => {
+  const context = createPollStoreContextValue();
+
   return (
     <PopupElement
       show
       class={styles.popup}
       containerClass={styles.container}
     >
-      <CreatePollContext.Provider value={createPollStoreContextValue()}>
-        <Header />
+      <CreatePollContext.Provider value={context}>
+        <Header onSubmit={() => {
+          props.onSubmit(structuredClone(unwrap(context.store)));
+        }} />
         <hr class={styles.hr} />
         <PopupElement.Body>
           <BodyContent />
@@ -36,7 +45,9 @@ export const CreatePollPopup = () => {
   );
 };
 
-const Header = () => {
+const Header = (props: {
+  onSubmit: () => void;
+}) => {
   const context = useCreatePollContext();
 
   const questionInput = new InputField({
@@ -75,7 +86,7 @@ const Header = () => {
         <I18nTsx key='NewPoll' />
       </PopupElement.Title>
 
-      <Button class={styles.confirmButton} primaryFilled>
+      <Button class={styles.confirmButton} primaryFilled onClick={props.onSubmit}>
         <I18nTsx key='Create' />
       </Button>
 
@@ -157,6 +168,6 @@ const BodyContent = () => {
   );
 };
 
-export function openCreatePollPopup(HotReloadGuard: typeof SolidJSHotReloadGuardProvider) {
-  createPopup(() => <HotReloadGuard><CreatePollPopup /></HotReloadGuard>);
+export function openCreatePollPopup(props: CreatePollPopupProps, HotReloadGuard: typeof SolidJSHotReloadGuardProvider) {
+  createPopup(() => <HotReloadGuard><CreatePollPopup {...props} /></HotReloadGuard>);
 }

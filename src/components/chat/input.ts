@@ -1089,7 +1089,22 @@ export default class ChatInput {
           toastNew({langPackKey: POSTING_NOT_ALLOWED_MAP[action]});
           return;
         }
-        openCreatePollPopup(SolidJSHotReloadGuardProvider);
+        openCreatePollPopup({
+          onSubmit: async(payload) => {
+            const sendingParams = this.chat.getMessageSendingParams();
+
+
+            const preparedPaymentResult = await this.chat.input.paidMessageInterceptor.prepareStarsForPayment(1);
+            if(preparedPaymentResult === PAYMENT_REJECTED) return;
+
+            sendingParams.confirmedPaymentResult = preparedPaymentResult;
+
+            this.managers.appMessagesManager.sendOther({
+              ...sendingParams,
+              inputMedia: (await this.managers.appPollsManager.makeInputMediaPoll(payload)).inptMediaPoll
+            });
+          }
+        }, SolidJSHotReloadGuardProvider);
 
         // PopupElement.createPopup(PopupCreatePoll, this.chat).show();
       },

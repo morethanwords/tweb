@@ -192,25 +192,20 @@ const EnterAnimationWrapper = (props: {
   const resolvedChildren = children(() => props.children);
 
   return (
-    <>
-      <Show when={!done()}>
-        <HeightTransition
-          onAfterEnter={() => {
-            setDone(true)
-            props.onDone();
-          }}
-        >
-          <Show when={visible()}>
-            <div style={{overflow: 'hidden'}}>
-              {resolvedChildren()}
-            </div>
-          </Show>
-        </HeightTransition>
-      </Show>
-      <Show when={done()}>
-        {resolvedChildren()}
-      </Show>
-    </>
+    <Show when={!done()} fallback={resolvedChildren()}>
+      <HeightTransition
+        onAfterEnter={() => {
+          setDone(true)
+          props.onDone();
+        }}
+      >
+        <Show when={visible()}>
+          <div style={{overflow: 'hidden'}}>
+            {resolvedChildren()}
+          </div>
+        </Show>
+      </HeightTransition>
+    </Show>
   );
 };
 

@@ -3,6 +3,7 @@ import {oneDayInSeconds} from '@lib/constants';
 import {createComputed, createContext, untrack, useContext} from 'solid-js';
 import {createStore, SetStoreFunction, Store} from 'solid-js/store';
 
+export type CreatePollPayload = CreatePollStore;
 
 export type CreatePollStore = {
   question: string;
