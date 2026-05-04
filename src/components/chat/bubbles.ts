@@ -192,7 +192,7 @@ import PopupStarGiftInfo from '@components/popups/starGiftInfo';
 import {StarGiftBubble, UniqueStarGiftWebPageBox} from '@components/chat/bubbles/starGift';
 import {PremiumGiftBubble} from '@components/chat/bubbles/premiumGift';
 import {UnknownUserBubble} from '@components/chat/bubbles/unknownUser';
-import {generateTail, getMid, isMessage, isMessageForVerificationBot, isVerificationBot} from '@components/chat/utils';
+import {generateTail, getMid, getPollMessageContentPropsFromMessage, isMessage, isMessageForVerificationBot, isVerificationBot} from '@components/chat/utils';
 import {ChecklistBubble} from '@components/chat/bubbles/checklist';
 import {getRestrictionReason} from '@helpers/restrictions';
 import {isMessageSensitive} from '@appManagers/utils/messages/isMessageRestricted';
@@ -224,6 +224,7 @@ import {NoForwardsRequestContent, NoForwardsRequestReplyMarkup} from '@component
 import tsNow from '@helpers/tsNow';
 import wrapMessageForReply from '@components/wrappers/messageForReply';
 import canSeeMessageMedia from '@lib/appManagers/utils/messages/canSeeMessageMedia';
+import {PollMessageContentProps} from './bubbleParts/pollMessageContent';
 
 // TODO: fix new message won't be rendered if an old one is rendering in the moment
 
@@ -7695,19 +7696,27 @@ export default class ChatBubbles {
         }
 
         case 'messageMediaPoll': {
-          context.mediaRequiresMessageDiv = true;
+          let props: PollMessageContentProps;
+          if(message._ === 'message' && (props = getPollMessageContentPropsFromMessage(message))) {
+            context.mediaRequiresMessageDiv = true;
 
-          const pollElement = wrapPoll({
-            message: message as Message.message,
-            managers: this.managers,
-            middleware,
-            translatableParams,
-            richTextOptions: getRichTextOptions()
-          });
-          messageDiv.prepend(pollElement);
-          bubble.classList.add('poll-message');
+            const {PollMessageContent} = await import('./bubbleParts/pollMessageContent');
+            const pollMessageContent = new PollMessageContent();
+            pollMessageContent.HotReloadGuard = SolidJSHotReloadGuardProvider;
+            pollMessageContent.feedProps(props);
 
-          break;
+            messageDiv.prepend(pollMessageContent);
+            bubble.classList.add('poll-message');
+
+            bubble.classList.add('is-poll');
+
+            break;
+          }
+          // const messageSignal = createSignal(message);
+          // this.updateLocalOnEdit.set(bubble, msg => messageSignal[1](msg));
+          // middleware.onClean(() => {
+          //   this.updateLocalOnEdit.delete(bubble);
+          // });
         }
         case 'messageMediaToDo': {
           context.mediaRequiresMessageDiv = true;
@@ -8084,26 +8093,12 @@ export default class ChatBubbles {
         }
 
         default:
-          if(message.mid === 4294967371) {
-            context.mediaRequiresMessageDiv = true;
-
-            const {PollMessageContent} = await import('./bubbleParts/pollMessageContent');
-            const pollMessageContent = new PollMessageContent();
-            pollMessageContent.HotReloadGuard = SolidJSHotReloadGuardProvider;
-            pollMessageContent.feedProps({});
-
-            messageDiv.prepend(pollMessageContent);
-            bubble.classList.add('poll-message');
-
-            bubble.classList.add('is-poll');
-          } else {
-            context.attachmentDiv = undefined;
-            context.mediaRequiresMessageDiv = true;
-            noAttachmentDivNeeded = true;
-            messageDiv.replaceChildren(i18n(UNSUPPORTED_LANG_PACK_KEY));
-            bubble.timeAppenders[0].callback();
-            this.log.warn('unrecognized media type:', context.messageMedia._, message);
-          }
+          context.attachmentDiv = undefined;
+          context.mediaRequiresMessageDiv = true;
+          noAttachmentDivNeeded = true;
+          messageDiv.replaceChildren(i18n(UNSUPPORTED_LANG_PACK_KEY));
+          bubble.timeAppenders[0].callback();
+          this.log.warn('unrecognized media type:', context.messageMedia._, message);
           break;
       }
 

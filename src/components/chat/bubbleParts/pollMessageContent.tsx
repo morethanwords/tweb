@@ -7,36 +7,39 @@ import ripple from '@components/ripple';
 import {HeightTransition} from '@components/sidebarRight/tabs/adminRecentActions/heightTransition';
 import Space from '@components/space';
 import {StaticCheckbox} from '@components/staticCheckbox';
+import StaticRadio from '@components/staticRadio';
 import {keepMe} from '@helpers/keepMe';
 import formatNumber from '@helpers/number/formatNumber';
+import {attachHotClassName} from '@helpers/solid/classname';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {requestRAF} from '@helpers/solid/requestRAF';
 import classNames from '@helpers/string/classNames';
-import {TextWithEntities} from '@layer';
+import {MessageEntity} from '@layer';
+import {LangPackKey} from '@lib/langPack';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {batch, createEffect, createSignal, JSX, onCleanup, onMount, Show} from 'solid-js';
+import {batch, createEffect, createMemo, createSelector, createSignal, For, JSX, onCleanup, onMount, Show} from 'solid-js';
 import {Transition} from 'solid-transition-group';
 import styles from './pollMessageContent.module.scss';
 
 keepMe(ripple);
 
-
 if(import.meta.hot) import.meta.hot.accept();
-
-type Props = {
-
-};
 
 
 const PollOption = (props: {
   withImage?: boolean;
   clickable?: boolean;
-  text: TextWithEntities;
+  text: {
+    text: string;
+    entities: MessageEntity[];
+  };
   toggled: boolean;
+  checked: boolean;
   onToggle: () => void;
+  isCheckbox: boolean;
 }) => {
   const [fillWidth, setFillWidth] = createSignal(0);
 
@@ -60,7 +63,12 @@ const PollOption = (props: {
       <div class={styles.checkContainer}>
         <Transition name='fade-2'>
           <Show when={!toggled()}>
-            <StaticCheckbox class={styles.checkbox} />
+            <Show
+              when={props.isCheckbox}
+              fallback={<StaticRadio class={styles.checkbox} checked={props.checked} />}
+            >
+              <StaticCheckbox class={styles.checkbox} checked={props.checked} />
+            </Show>
           </Show>
           <Show when={toggled()}>
             <div class={styles.percent}>
@@ -238,82 +246,132 @@ const AddOption = (props: {}) => {
 };
 
 const Explanation = () => {
-  const {wrapReply, i18n} = useHotReloadGuard();
-
-  const middleware = createMiddleware().get();
-
-  // const {container} = wrapReply({
-  //   title: i18n('Chat.Quiz.Explanation'),
-  //   subtitle: 'some content here',
-  //   middleware
-  // });
-
-  // container.append(< as HTMLDivElement);
-
   return (
-    <>
-      <div class='reply quote-like quote-like-border'>
-        <div class='reply-content'>
-          <div class='reply-title'>
-            <I18nTsx key='Chat.Quiz.Explanation' />
-          </div>
-          <div class='reply-subtitle'>
+    <div class='reply quote-like quote-like-border'>
+      <div class='reply-content'>
+        <div class='reply-title'>
+          <I18nTsx key='Chat.Quiz.Explanation' />
+        </div>
+        <div class='reply-subtitle'>
             Some explanation text here
-          </div>
-          <Space amount='0.5rem' />
-          <div class={styles.explanationImage}>
-          </div>
+        </div>
+        <Space amount='0.5rem' />
+        <div class={styles.explanationImage}>
         </div>
       </div>
-    </>
+    </div>
   );
+};
+
+
+const PollType = (props: Pick<PollMessageContentProps, 'closed' | 'hasCorrectAnswer' | 'showWhoVoted'>) => {
+  const key = createMemo((): LangPackKey => {
+    if(props.closed) return 'Chat.Poll.Type.Closed';
+    if(props.hasCorrectAnswer) return props.showWhoVoted ? 'Chat.Poll.Type.Quiz' : 'Chat.Poll.Type.AnonymousQuiz';
+    return props.showWhoVoted ? 'Chat.Poll.Type.Public' : 'Chat.Poll.Type.Anonymous';
+  });
+
+  return (
+    <I18nTsx key={key()} />
+  );
+};
+
+// const votersCount = results.total_voters || 0;
+// let key: LangPackKey;
+// const args: FormatterArguments = [votersCount];
+// if(this.isClosed) {
+//   if(this.isQuiz) key = votersCount ? 'Chat.Quiz.TotalVotes' : 'Chat.Quiz.TotalVotesResultEmpty';
+//   else key = votersCount ? 'Chat.Poll.TotalVotes1' : 'Chat.Poll.TotalVotesResultEmpty';
+// } else {
+//   if(this.isQuiz) key = votersCount ? 'Chat.Quiz.TotalVotes' : 'Chat.Quiz.TotalVotesEmpty';
+//   else key = votersCount ? 'Chat.Poll.TotalVotes1' : 'Chat.Poll.TotalVotesEmpty';
+// }
+const PollResults = (props: Pick<PollMessageContentProps, 'closed' | 'hasCorrectAnswer' | 'showWhoVoted'>) => {
+  const votersCount = 0;
+
+  const key = createMemo((): LangPackKey => {
+    if(props.closed) {
+      if(props.hasCorrectAnswer) return votersCount ? 'Chat.Quiz.TotalVotes' : 'Chat.Poll.TotalVotesResultEmpty';
+      else return votersCount ? 'Chat.Poll.TotalVotes1' : 'Chat.Poll.TotalVotesResultEmpty';
+    } else {
+      if(props.hasCorrectAnswer) return votersCount ? 'Chat.Quiz.TotalVotes' : 'Chat.Quiz.TotalVotesEmpty';
+      else return votersCount ? 'Chat.Poll.TotalVotes1' : 'Chat.Poll.TotalVotesEmpty';
+    }
+  });
+
+  return (
+    <I18nTsx key={key()} args={[votersCount]} />
+  );
+};
+
+
+type Option = {
+  text: string;
+  entities: MessageEntity[];
+};
+
+export type PollMessageContentProps = {
+  question: string;
+  questionEntities: MessageEntity[];
+  description: string;
+  descriptionEntities: MessageEntity[];
+  pollOptions: Option[];
+  allowAddingOptions: boolean;
+  allowMultipleAnswers: boolean;
+  hasCorrectAnswer: boolean;
+  shuffleOptions: boolean;
+  showWhoVoted: boolean;
+  closed: boolean;
+  hideResults: boolean;
 };
 
 export const PollMessageContent = defineSolidElement({
   name: 'poll-message-content',
-  component: (props: PassedProps<Props>) => {
-    const [toggled, setToggled] = createSignal(true);
+  component: (props: PassedProps<PollMessageContentProps>) => {
+    const [toggled, setToggled] = createSignal(false);
     const [explanationToggled, setExplanationToggled] = createSignal(false);
     const withImage = true;
 
-    const options: TextWithEntities[] = [
-      {
-        _: 'textWithEntities',
-        text: 'Option 1',
-        entities: []
-      },
-      {
-        _: 'textWithEntities',
-        text: 'Option 2 more and more text here with something more and more here',
-        entities: []
-      },
-      {
-        _: 'textWithEntities',
-        text: 'Option 3',
-        entities: []
-      },
-      {
-        _: 'textWithEntities',
-        text: 'Option 4',
-        entities: []
-      }
-    ];
+    attachHotClassName(props.element, styles.container);
+
+    const middleware = createMiddleware().get();
+
+    const [chosenIndices, setChosenIndices] = createSignal<number[]>([]);
+    const hasSelectedSomething = createMemo(() => chosenIndices().length > 0);
+
+    const isChecked = createSelector(chosenIndices, (index: number, indices) => indices.includes(index));
+
+    const [isFooterClickable, setIsFooterClickable] = createSignal(false);
+
+    const handleToggle = (index: number) => {
+      setChosenIndices(prev => {
+        if(!props.allowMultipleAnswers) {
+          return prev.includes(index) ? [] : [index];
+        } else if(prev.includes(index)) {
+          return prev.filter(i => i !== index);
+        } else {
+          return [...prev, index];
+        }
+      });
+    };
 
     return (
       <>
         <div class={styles.pollImageWrapper}>
           <div class={styles.pollImage} />
         </div>
-        <div class={styles.description}>
-          A big poll for big people. Choose what you want to vote for. Don't worry, your vote is anonymous. Probably
-        </div>
+        <Show when={props.description}>
+          <div class={styles.description}>
+            {wrapRichText(props.description, {entities: props.descriptionEntities, middleware})}
+          </div>
+        </Show>
         <div class={styles.header}>
           <div class={styles.headerTitleContainer}>
             <div class={styles.headerTitle}>
-              A new poll here
+              {wrapRichText(props.question, {entities: props.questionEntities, middleware})}
             </div>
             <div class={styles.headerSubtitle}>
-              Anonymous poll
+              <PollType {...props} />
               <Transition name='fade-2'>
                 <Show when={toggled()}>
                   <AvatarGroup />
@@ -322,7 +380,9 @@ export const PollMessageContent = defineSolidElement({
             </div>
           </div>
 
-          <ButtonIconTsx icon='lamp' onClick={() => setExplanationToggled(p => !p)} />
+          <Show when={false}>
+            <ButtonIconTsx icon='lamp' onClick={() => setExplanationToggled(p => !p)} />
+          </Show>
         </div>
 
         <HeightTransition scale>
@@ -333,13 +393,39 @@ export const PollMessageContent = defineSolidElement({
           </Show>
         </HeightTransition>
 
-        {options.map((option) => (
-          <PollOption text={option} toggled={toggled()} onToggle={() => setToggled(p => !p)} withImage={withImage} />
-        ))}
-        <AddOption />
+        <For each={props.pollOptions}>
+          {(option, index) => (
+            <PollOption
+              text={option}
+              toggled={toggled()}
+              checked={isChecked(index())}
+              onToggle={() => handleToggle(index())}
+              withImage={withImage}
+              isCheckbox={props.allowMultipleAnswers}
+            />
+          )}
+        </For>
 
-        <div class={styles.footer}>
-          <I18nTsx key='Chat.Poll.TotalVotesEmpty' />
+        <Show when={props.allowAddingOptions}>
+          <AddOption />
+        </Show>
+
+        <div
+          class={styles.footer}
+          classList={{[styles.clickable]: isFooterClickable()}}
+          use:ripple={hasSelectedSomething()}
+        >
+          <Transition
+            name='fade-2'
+            mode='outin'
+            onAfterExit={() => {
+              setIsFooterClickable(hasSelectedSomething());
+            }}
+          >
+            <Show when={hasSelectedSomething()} fallback={<PollResults {...props} />}>
+              <I18nTsx key='Chat.Poll.SubmitVote' />
+            </Show>
+          </Transition>
         </div>
       </>
     );
