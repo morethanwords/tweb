@@ -106,14 +106,9 @@
 		align-self: center;
 		display: none !important;
 		margin: 0 !important;
-    margin-inline-end: .75rem !important;
 
 		@include animation-level(2) {
 			animation: grow-icon .4s forwards ease-in-out !important;
-		}
-
-		@include respond-to(esg-bottom-new) {
-			margin-inline-end: .125rem !important;
 		}
 	}
 
@@ -931,8 +926,8 @@
     --send-as-margin-right: .375rem;
     --send-as-total-size: calc(var(--send-as-size) + var(--send-as-margin-left) + var(--send-as-margin-right));
     --commands-size: 2.375rem;
-    --commands-margin-left: .25rem;
-    --commands-margin-right: .375rem;
+    --commands-margin-left: 0rem;
+    --commands-margin-right: 0rem;
     --commands-total-size: calc(var(--commands-size) + var(--commands-margin-left) + var(--commands-margin-right));
     --offset-translateX: 0px;
 		align-items: flex-end;
@@ -942,7 +937,7 @@
     .new-message-send-as-container {
       position: absolute;
       flex: 0 0 auto;
-      bottom: calc(var(--padding-vertical) + .4375rem);
+      bottom: calc(var(--padding-vertical));
       cursor: pointer;
       transform: scale(0);
       z-index: 2;
@@ -951,8 +946,8 @@
 
     .new-message-bot-commands {
       width: var(--commands-size);
-      height: 1.875rem;
-      border-radius: 1.875rem;
+      height: 2.5rem;
+      border-radius: 1.25rem;
       background-color: var(--primary-color);
       display: flex;
       align-items: center;
@@ -1093,7 +1088,7 @@
       }
 
       &[data-offset="commands"] {
-        --offset-translateX: calc(var(--commands-size) + .625rem);
+        --offset-translateX: var(--commands-size);
       }
 
       .attach-file,

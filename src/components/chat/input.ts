@@ -24,7 +24,7 @@ import ButtonIcon from '@components/buttonIcon';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import ListenerSetter, {Listener} from '@helpers/listenerSetter';
 import Button, {replaceButtonIcon} from '@components/button';
-import PopupSchedule from '@components/popups/schedule';
+import showScheduleSendingPopup from '@components/popups/scheduleSendingPopup';
 import SendMenu from '@components/chat/sendContextMenu';
 import rootScope from '@lib/rootScope';
 import PopupPinMessage from '@components/popups/unpinMessage';
@@ -1823,9 +1823,8 @@ export default class ChatInput {
       return;
     }
 
-    PopupElement.createPopup(PopupSchedule, {
-      initDate: initDate ?? new Date(),
-      addMinutes: initDate === undefined,
+    showScheduleSendingPopup({
+      initDate,
       onPick: (timestamp, repeatPeriod) => {
         if(!middleware()) {
           return;
@@ -1834,9 +1833,8 @@ export default class ChatInput {
         this.setScheduleTimestamp(timestamp, callback, repeatPeriod);
       },
       canSendWhenOnline,
-      canRepeat: true,
       initRepeatPeriod
-    }).show();
+    });
   };
 
   public async setUnreadCount() {

@@ -21,7 +21,7 @@ import getMarkupInSelection from '@helpers/dom/getMarkupInSelection';
 import {applyMarkdown} from '@helpers/dom/markdown';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import overlayCounter from '@helpers/overlayCounter';
-import type PopupSchedule from '@components/popups/schedule';
+import type showDatePickerPopup from '@components/popups/datePicker';
 
 export type MarkupTooltipTypes = Extract<MarkdownType, 'bold' | 'italic' | 'underline' | 'strikethrough' | 'monospace' | 'spoiler' | 'quote' | 'link' | 'date'>;
 
@@ -44,7 +44,7 @@ export default class MarkupTooltip {
   private linkInputFocusTimeout: number;
   // private log: ReturnType<typeof logger>;
 
-  public static PopupSchedule: typeof PopupSchedule;
+  public static showDatePickerPopup: typeof showDatePickerPopup;
 
   constructor() {
     // this.log = logger('MARKUP');
@@ -192,8 +192,9 @@ export default class MarkupTooltip {
       const entity = getFormattedDateEntityByElement(element, 0, 0);
       initDate = new Date(entity.date * 1000);
     }
-    new MarkupTooltip.PopupSchedule({
+    MarkupTooltip.showDatePickerPopup({
       initDate,
+      withTime: true,
       onPick: (timestamp: number) => {
         setTimeout(() => {
           this.resetSelection();
@@ -211,7 +212,7 @@ export default class MarkupTooltip {
       },
       btnConfirmLangKey: element ? 'EditDate' : 'AddDate',
       btnDangerLangKey: element ? 'RemoveDate' : undefined
-    }).show();
+    });
   }
 
   public showLinkEditor() {

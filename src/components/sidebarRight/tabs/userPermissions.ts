@@ -31,7 +31,7 @@ import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
 import {ButtonMenuItemOptions} from '@components/buttonMenu';
 import {BANNED_RIGHTS_UNTIL_FOREVER} from '@lib/appManagers/constants';
 import tsNow from '@helpers/tsNow';
-import PopupSchedule from '@components/popups/schedule';
+import showDatePickerPopup from '@components/popups/datePicker';
 import PopupElement from '@components/popups';
 import {formatDate, formatFullSentTime} from '@helpers/date';
 import {createEffect, createRoot} from 'solid-js';
@@ -305,13 +305,14 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
           }), {
             text: 'UserPermissions.Duration.Custom',
             onClick: () => {
-              PopupElement.createPopup(PopupSchedule, {
+              showDatePickerPopup({
                 initDate: new Date(),
+                withTime: true,
                 onPick: (timestamp) => {
                   getDurationOnClick(timestamp, true)();
                 },
                 btnConfirmLangKey: 'Set'
-              }).show();
+              });
             }
           }]
         },

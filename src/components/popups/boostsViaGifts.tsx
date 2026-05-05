@@ -12,7 +12,7 @@ import Section from '@components/section';
 import RangeStepsSelector from '@components/rangeStepsSelector';
 import {Accessor, For, JSX, createEffect, createMemo, createSignal, untrack} from 'solid-js';
 import tsNow from '@helpers/tsNow';
-import PopupSchedule from '@components/popups/schedule';
+import showDatePickerPopup from '@components/popups/datePicker';
 import {formatFullSentTime, formatMonthsDuration} from '@helpers/date';
 import renderImageFromUrl from '@helpers/dom/renderImageFromUrl';
 import Icon from '@components/icon';
@@ -169,15 +169,15 @@ export default class PopupBoostsViaGifts extends PopupElement {
       clickable: () => {
         const maxDate = new Date(Date.now() + (this.appConfig.giveaway_period_max ?? 604800) * 1000);
         const initDate = new Date(expiration() * 1000);
-        const popup = new PopupSchedule({
+        showDatePickerPopup({
           initDate,
+          withTime: true,
           onPick: (timestamp) => {
             setExpiration(timestamp);
           },
           btnConfirmLangKey: 'Save',
           maxDate
         });
-        popup.show();
       },
       listenerSetter: this.listenerSetter
     });

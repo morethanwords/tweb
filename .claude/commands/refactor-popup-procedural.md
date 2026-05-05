@@ -30,7 +30,7 @@ If the current user prompt names the file (even indirectly, e.g. via an open edi
 3. Write the new `.tsx` file.
 4. Delete the old `.ts` file if extensions differ.
 5. Update every caller: `PopupElement.createPopup(PopupXxx, ...args).show()` → `showXxxPopup(...args)`. If the file no longer uses `PopupElement` at all, drop the now-unused `import PopupElement from '@components/popups'`.
-6. Replace `PopupElement.getPopups(PopupXxx)` usages with an exported `hideAllXxxPopups()` helper backed by a module-level `Set<Handle>` (see skeleton).
+6. For batch close (`PopupElement.getPopups(PopupXxx).forEach((p) => p.hide())`), keep the symbol pattern: export a `XXX_POPUP_KIND = Symbol('xxx-popup')`, pass `kind={XXX_POPUP_KIND}` to `<PopupElement>`, and callers use `PopupElement.getPopups(XXX_POPUP_KIND).forEach((p) => p.hide())` (now an Accessor — `p.hide` is a method on the context). Do **not** export a `Handle` type or maintain a parallel `Set<Handle>` / `hideAllXxxPopups()` helper — the popup registry already tracks all open popups by symbol.
 7. Run `pnpm lint`, `npx tsc --noEmit`, and ESLint on the new `.tsx` explicitly. Fix findings. `pnpm lint` only globs `.ts`, so also run `npx eslint "src/**/**.tsx"`.
 
 ## Target file skeleton
@@ -47,19 +47,18 @@ import ListenerSetter from '@helpers/listenerSetter';
 import {putPreloader} from '@components/putPreloader';
 // ... all other imports copied over, minus the old PopupElement from '.' ...
 
-export type XxxPopupHandle = {hide: () => void};
-
-const activePopups = new Set<XxxPopupHandle>();
-export function hideAllXxxPopups() {
-  for(const h of activePopups) h.hide();
-}
+// Only needed if external code does batch-close via getPopups; otherwise drop entirely.
+export const XXX_POPUP_KIND = Symbol('xxx-popup');
 
 const TEST_LOADING_DELAY = 0; // bump >0 to manually preview the loading UI during dev
 
-export default function showXxxPopup(/* same params as ctor */): XxxPopupHandle {
+export default function showXxxPopup(/* same params as ctor */): void {
+  // Only reach for a `show` signal + local `handle` if some non-button internal
+  // logic needs to close the popup (e.g. async "shouldHide" branch). Buttons
+  // auto-close on resolve via PopupElement.Button's handleClick — don't add a
+  // handle just to call it from a callback prop. Cancel buttons need no callback.
   const [show, setShow] = createSignal(true);
-  const handle: XxxPopupHandle = {hide: () => setShow(false)};
-  activePopups.add(handle);
+  const handle = {hide: () => setShow(false)}; // optional; remove if unused
 
   // closure state the old class kept as fields (for values outside the reactive render)
   let someState: SomeType;
@@ -225,7 +224,7 @@ export default function showXxxPopup(/* same params as ctor */): XxxPopupHandle 
     - `middleware.onClean(destroy)` / `middleware.onDestroy(cb)` — for helpers returning a `destroy` function.
     - Raw `addEventListener` (only for `{capture: true}`, since Solid's `onClick` is bubble-phase) + paired `middleware.onDestroy(() => removeEventListener(...))`.
 
-11. **Replace `PopupElement.getPopups(PopupXxx)`** with an exported `hideAllXxxPopups()` helper backed by a module-level `Set<Handle>` added on call and deleted in `onCleanup`. Update the caller (usually [src/components/chat/input.ts](src/components/chat/input.ts)).
+11. **Symbol kind, not `Set<Handle>`.** For batch close, export `XXX_POPUP_KIND = Symbol('xxx-popup')`, pass `kind={XXX_POPUP_KIND}` to `<PopupElement>`, and have callers use `PopupElement.getPopups(XXX_POPUP_KIND).forEach((p) => p.hide())` directly. Do **not** export a `Handle` type, do **not** maintain a parallel `Set<Handle>`, do **not** ship a `hideAllXxxPopups()` helper. The popup registry already does this — keep it as the source of truth. Reference: see `STICKERS_POPUP_KIND` in [src/components/popups/stickers.tsx](src/components/popups/stickers.tsx).
 
 12. **Closure-scoped `let` vs signals.** Fields the class mutated later in async code (`this.sets = ...`, `this.isEmojis ??= ...`) become `let` variables in the closure shared between `Inner` and the outer function — only if they're **not read by JSX**. Values JSX reads must be signals.
 
@@ -240,9 +239,9 @@ export default function showXxxPopup(/* same params as ctor */): XxxPopupHandle 
 | Old | New |
 |---|---|
 | `PopupElement.createPopup(PopupXxx, a, b).show()` | `showXxxPopup(a, b)` |
-| `const p = PopupElement.createPopup(PopupXxx, a); p.show(); return p;` | `return showXxxPopup(a);` |
-| `PopupElement.getPopups(PopupXxx).forEach((p) => p.hide())` | `hideAllXxxPopups()` |
-| `import PopupXxx from '@components/popups/xxx'` | `import showXxxPopup from '@components/popups/xxx'` (or `{hideAllXxxPopups}`) |
+| `const p = PopupElement.createPopup(PopupXxx, a); p.show(); return p;` | `showXxxPopup(a);` (function returns `void`) |
+| `PopupElement.getPopups(PopupXxx).forEach((p) => p.hide())` | `PopupElement.getPopups(XXX_POPUP_KIND).forEach((p) => p.hide())` |
+| `import PopupXxx from '@components/popups/xxx'` | `import showXxxPopup, {XXX_POPUP_KIND} from '@components/popups/xxx'` |
 
 After removing the last use of `PopupElement` in a file, delete its import.
 
@@ -258,6 +257,8 @@ After removing the last use of `PopupElement` in a file, delete its import.
 - [ ] One `PopupElement.FooterButton` with reactive `color`/`disabled` instead of a `<Show>` swap of two button elements.
 - [ ] `MyShow` used for lightweight content swaps; `Show` from `solid-js` only when remount is needed.
 - [ ] Signal updates at end of async load batched via `setTimeout(onReady, TEST_LOADING_DELAY)` with a module-level `TEST_LOADING_DELAY = 0` constant.
+- [ ] No `XxxPopupHandle` type / `Set<Handle>` / `hideAllXxxPopups()` shipped. Symbol kind only when batch close is needed; otherwise function returns `void` and ships nothing.
+- [ ] No internal `handle` / `show` signal unless **non-button** code paths need to close the popup. Buttons auto-close via `context.hide()` on callback resolve — don't add a callback that just calls `handle.hide()`.
 - [ ] `FooterButton` callback wraps manager calls so it returns `Promise<void>` (`async() => { await … }`).
 - [ ] All async loads gate on `middleware()` after every `await`.
 - [ ] UI smoke: can't verify from code alone — state this explicitly rather than claiming visual parity.

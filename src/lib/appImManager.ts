@@ -141,7 +141,7 @@ import {ButtonMenuItemOptions, ButtonMenuSync} from '@components/buttonMenu';
 import contextMenuController from '@helpers/contextMenuController';
 import positionMenu from '@helpers/positionMenu';
 import {copyTextToClipboard} from '@helpers/clipboard';
-import PopupSchedule from '@components/popups/schedule';
+import showDatePickerPopup from '@components/popups/datePicker';
 import {getFullDate} from '@helpers/date/getFullDate';
 
 export type ChatSavedPosition = {
@@ -557,8 +557,9 @@ export class AppImManager extends EventListenerBase<{
         icon: 'scheduled',
         text: 'Chat.Send.SetReminder',
         onClick: () => {
-          new PopupSchedule({
+          showDatePickerPopup({
             initDate: date,
+            withTime: true,
             onPick: (_timestamp: number) => {
               this.managers.appMessagesManager.forwardMessages({
                 peerId: rootScope.myId,
@@ -580,7 +581,7 @@ export class AppImManager extends EventListenerBase<{
                 duration: 5000
               });
             }
-          }).show();
+          });
         }
       }];
 
@@ -2075,7 +2076,7 @@ export class AppImManager extends EventListenerBase<{
     document.addEventListener('paste', this.onDocumentPaste, true);
     this.attachDragAndDropListeners();
     MarkupTooltip.getInstance().handleSelection();
-    MarkupTooltip.PopupSchedule = PopupSchedule;
+    MarkupTooltip.showDatePickerPopup = showDatePickerPopup;
   }
 
   private attachDragAndDropListeners() {

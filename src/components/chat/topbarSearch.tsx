@@ -11,7 +11,7 @@ import InputSearch from '@components/inputSearch';
 import {ButtonIconTsx} from '@components/buttonIconTsx';
 import classNames from '@helpers/string/classNames';
 import PopupElement from '@components/popups';
-import PopupDatePicker from '@components/popups/datePicker';
+import showDatePickerPopup from '@components/popups/datePicker';
 import rootScope, {BroadcastEvents} from '@lib/rootScope';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import appDialogsManager from '@lib/appDialogsManager';
@@ -1228,11 +1228,10 @@ export default function TopbarSearch(props: {
     <ButtonIconTsx
       icon="calendar"
       onClick={() => {
-        PopupElement.createPopup(
-          PopupDatePicker,
-          new Date(),
-          props.onDatePick
-        ).show();
+        showDatePickerPopup({
+          initDate: new Date(),
+          onPick: props.onDatePick
+        });
       }}
     />
   );

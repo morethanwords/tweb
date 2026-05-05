@@ -9,7 +9,7 @@ export default function RippleElement<T extends ValidComponent>(props: DynamicPr
   noRipple?: boolean,
   rippleSquare?: boolean
 }) {
-  const [local, rest] = splitProps(props, ['noRipple', 'rippleSquare', 'component']);
+  const [local, rest] = splitProps(props, ['noRipple', 'rippleSquare', 'component', 'children', 'class', 'classList']);
   const [rippleElement, setRippleElement] = createSignal<HTMLElement>();
   const el = document.createElement(local.component as string || 'div');
 
@@ -31,14 +31,14 @@ export default function RippleElement<T extends ValidComponent>(props: DynamicPr
       element={el}
       {...rest as any}
       class={classNames(
-        props.class,
+        local.class,
         !local.noRipple && 'rp',
         !local.noRipple && local.rippleSquare && 'rp-square',
-        ...Object.entries(props.classList || {}).map(([key, value]) => value ? key : undefined)
+        ...Object.entries(local.classList || {}).map(([key, value]) => value ? key : undefined)
       )}
     >
       {rippleElement()}
-      {props.children}
+      {local.children}
     </Passthrough>
   );
 }

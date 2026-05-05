@@ -1614,6 +1614,16 @@ const lang = {
     'one_value': '%1$d day',
     'other_value': '%1$d days'
   },
+  'Calendar.SelectedDays': {
+    'one_value': '%1$d day selected',
+    'other_value': '%1$d days selected'
+  },
+  'Calendar.ClearHistory': 'Clear History',
+  'Calendar.ClearHistory.Confirm': 'Are you sure you want to delete all messages for the %1$@?',
+  'Calendar.ClearHistory.SelectedDays': {
+    'one_value': 'selected day',
+    'other_value': 'selected %1$d days'
+  },
   'Weeks': {
     'one_value': '%1$d week',
     'other_value': '%1$d weeks'

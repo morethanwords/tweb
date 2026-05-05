@@ -172,10 +172,19 @@ export class AppSomethingManager extends AppManager {
 }
 ```
 
-Normally most of the interaction with MTProto should be done through the app managers,
-wrapping the raw APIs with a nicer interface, caching layer, etc. Managers are the source of truth.
+All interaction with MTProto MUST go through the app managers. Managers wrap the raw APIs with a nicer interface, a caching layer, and the side-effect handling (saving peers, dispatching updates) the rest of the app expects. Managers are the source of truth.
 
-Invoking MTProto methods is done via:
+**Strict rule — never call `apiManager.invokeApi*` directly from UI / component code.** Even though `rootScope.managers.apiManager.invokeApi(...)` runs in the worker (it goes through the manager proxy), it bypasses every wrapper: no caching, no `saveApiPeers`, no `processUpdateMessage`, no dedup with the rest of the app. If a component needs MTProto data, add (or extend) a method on the relevant `app*Manager` and call THAT from the UI:
+
+```typescript
+// ❌ wrong — UI making a raw MTProto call
+const result = await rootScope.managers.apiManager.invokeApi('messages.getSearchResultsCalendar', {...});
+
+// ✅ right — manager method wraps the call, UI invokes by domain intent
+const result = await rootScope.managers.appMessagesManager.getSearchResultsCalendar({peerId, filter, offsetDate});
+```
+
+Invoking MTProto methods (inside a manager) is done via:
 
 ```typescript
 // invoke normally
@@ -188,7 +197,7 @@ return this.apiManager.invokeApiSingleProcess({
   params: {...},
   processResult: (result) => {
     // when the result type has {chats, users} fields, use this method to save them
-    this.appUsersManager.saveApiPeers(result);
+    this.appPeersManager.saveApiPeers(result);
     // when the result is `Updates`, use this method to handle them
     this.apiUpdatesManager.processUpdateMessage(result);
   }
@@ -249,6 +258,7 @@ import {Message, Chat, User, InputPeer} from '@layer';
 - Do not use `var` — use `const`/`let`
 - Do not add trailing commas in arrays/objects
 - Do not use heavy CSS selectors (deep descendant chains, universal `*`, expensive attribute matchers, `:not()` with complex arguments) — prefer a dedicated class on the target element
+- Do not call `apiManager.invokeApi*` from UI / component code — wrap the request in an `app*Manager` method and call that instead. See "App Managers" above.
 
 ## Running Tests
 

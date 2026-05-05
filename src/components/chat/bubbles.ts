@@ -12,7 +12,8 @@ import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import {logger} from '@lib/logger';
 import rootScope from '@lib/rootScope';
 import BubbleGroups from '@components/chat/bubbleGroups';
-import PopupDatePicker from '@components/popups/datePicker';
+import showDatePickerPopup from '@components/popups/datePicker';
+import confirmationPopup from '@components/confirmationPopup';
 import showForwardPopup from '@components/popups/forward';
 import showStickersPopup from '@components/popups/stickers';
 import ProgressivePreloader from '@components/preloader';
@@ -2529,7 +2530,41 @@ export default class ChatBubbles {
       for(const timestamp in this.dateMessages) {
         const d = this.dateMessages[timestamp];
         if(d.div === bubble) {
-          PopupElement.createPopup(PopupDatePicker, new Date(+timestamp), this.onDatePick).show();
+          // Multi-select range only makes sense when the user can actually
+          // delete messages on both sides — otherwise the range pick is a
+          // dead-end UI.
+          const {peerId, threadId, monoforumThreadId} = this.chat;
+          const canDeleteDays = peerId.isUser() && !threadId && !monoforumThreadId;
+          showDatePickerPopup({
+            initDate: new Date(+timestamp),
+            onPick: this.onDatePick,
+            peerId,
+            canMultiSelect: canDeleteDays,
+            // When revoke is allowed, swap the multi-select primary action
+            // to a danger "Clear History" that gates on a confirmation.
+            multiSelectAction: canDeleteDays ? {
+              langKey: 'Calendar.ClearHistory',
+              isDanger: true,
+              callback: async(fromTs, toTs) => {
+                const dayCount = Math.round((toTs - fromTs) / 86400);
+                await confirmationPopup({
+                  descriptionLangKey: 'Calendar.ClearHistory.Confirm',
+                  descriptionLangArgs: [
+                    i18n('Calendar.ClearHistory.SelectedDays', [dayCount])
+                  ],
+                  button: {langKey: 'Delete', isDanger: true}
+                });
+
+                this.managers.appMessagesManager.flushHistory({
+                  peerId,
+                  justClear: true,
+                  revoke: true,
+                  minDate: fromTs,
+                  maxDate: toTs
+                });
+              }
+            } : undefined
+          });
           break;
         }
       }

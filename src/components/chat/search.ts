@@ -7,7 +7,7 @@
 import type ChatTopbar from '@components/chat/topbar';
 import AppSearch from '@components/appSearch';
 import {createSearchGroup, SearchGroup} from '@components/searchGroup';
-import PopupDatePicker from '@components/popups/datePicker';
+import showDatePickerPopup from '@components/popups/datePicker';
 import ripple from '@components/ripple';
 import InputSearch from '@components/inputSearch';
 import type Chat from '@components/chat/chat';
@@ -20,7 +20,6 @@ import ListenerSetter from '@helpers/listenerSetter';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
 import {IS_MOBILE_SAFARI} from '@environment/userAgent';
-import PopupElement from '@components/popups';
 import {DIALOG_LIST_ELEMENT_TAG} from '@lib/appDialogsManager';
 import {MiddlewareHelper, getMiddleware} from '@helpers/middleware';
 import ButtonIcon from '@components/buttonIcon';
@@ -178,7 +177,7 @@ export default class ChatSearch {
 
   private onDateClick = (e: MouseEvent) => {
     cancelEvent(e);
-    PopupElement.createPopup(PopupDatePicker, new Date(), this.chat.bubbles.onDatePick).show();
+    showDatePickerPopup({initDate: new Date(), onPick: this.chat.bubbles.onDatePick});
   };
 
   private selectResult(elem: HTMLElement) {
