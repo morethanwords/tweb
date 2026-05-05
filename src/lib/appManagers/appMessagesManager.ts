@@ -461,6 +461,27 @@ type EditMessageMediaArgs = {
   }> & Partial<Pick<Parameters<AppMessagesManager['sendText']>[0], 'webPage' | 'webPageOptions' | 'noWebPage' | 'invertMedia'>>
 };
 
+type MakeMediaUploadDeferredArgs = Pick<SendFileDetails, 'file'>;
+
+type SyncSentAndUploadPromisesArgs = {
+  sentDeferred: CancellablePromise<any>;
+  uploadFileDeferred: CancellablePromise<any>;
+  file: File | Blob;
+};
+
+type UploadMediaFileArgs =
+  Pick<SendFileDetails, 'objectURL' | 'thumb' | 'spoiler'>
+  &
+  Pick<ReturnType<AppMessagesManager['makeDocumentAndMetaForSendingFile']>, 'fileType' | 'apiFileName' | 'attachType' | 'attributes' | 'actionName'>
+  &
+  {
+    peerId: PeerId;
+    uploadingFileName: string;
+    file: File | Blob;
+
+    onUploadDeferred?: (deferred: CancellablePromise<any>) => void;
+  };
+
 type InvokeEditMessageMediaArgs = {
   message: Message.message;
   inputMedia: InputMedia;
@@ -963,12 +984,7 @@ export class AppMessagesManager extends AppManager {
       ])
     });
 
-    const sentDeferred = deferredPromise<InputMedia>();
-
-    const uploadingFileName = !isDocument ? getFileNameForUpload(file as File | Blob) : undefined;
-    if(uploadingFileName) {
-      this.uploadFilePromises[uploadingFileName] = sentDeferred;
-    }
+    const {deferred: sentDeferred, uploadingFileName} = this.makeMediaUploadDeferred({file});
 
     const media: MessageMedia = isDocument ? undefined : {
       _: photo ? 'messageMediaPhoto' : 'messageMediaDocument',
@@ -992,11 +1008,6 @@ export class AppMessagesManager extends AppManager {
     } as MessageMedia.messageMediaDocument : media;
     message.uploadingFileName = [uploadingFileName];
 
-    let
-      uploaded = false,
-      uploadPromise: ReturnType<ApiFileManager['upload']> = null
-    ;
-
     const upload = () => {
       if(isDocument) {
         const inputMedia: InputMedia = {
@@ -1007,114 +1018,26 @@ export class AppMessagesManager extends AppManager {
 
         sentDeferred.resolve(inputMedia);
       } else if(file instanceof File || file instanceof Blob) {
-        const load = () => {
-          if(!uploaded || message?.error) {
-            uploaded = false;
-
-            uploadPromise = this.apiFileManager.upload({file, fileName: uploadingFileName});
-            uploadPromise.catch((err) => {
-              if(uploaded) {
-                return;
-              }
-
-              this.log('cancelling upload', media);
-
-              // this.setTyping(peerId, {_: 'sendMessageCancelAction'}, undefined, options.threadId);
-              sentDeferred.reject(err);
-            });
-
-            uploadPromise.addNotifyListener((progress: Progress) => {
-              /* if(DEBUG) {
-                this.log('upload progress', progress);
-              } */
-
-              const percents = Math.max(1, Math.floor(100 * progress.done / progress.total));
-              // if(actionName) {
-              //   this.setTyping(peerId, {_: actionName, progress: percents | 0}, undefined, options.threadId);
-              // }
-              sentDeferred.notifyAll(progress);
-            });
-
-            sentDeferred.notifyAll({done: 0, total: file.size});
-          }
-
-          let thumbUploadPromise: ReturnType<typeof this.uploadThumbAndCover>;
-          if(attachType === 'video' && sendFileDetails.objectURL && sendFileDetails.thumb?.blob) {
-            thumbUploadPromise = this.uploadThumbAndCover({
-              blob: sendFileDetails.thumb.blob,
-              isCover: !!sendFileDetails.thumb.isCover,
-              peer: this.appPeersManager.getInputPeerById(peerId)
-            });
-          }
-
-          uploadPromise && uploadPromise.then(async(inputFile) => {
-            /* if(DEBUG) {
-              this.log('appMessagesManager: sendFile uploaded:', inputFile);
-            } */
-
-            (inputFile as InputFile.inputFile).name = apiFileName;
-            uploaded = true;
-            let inputMedia: InputMedia;
-            switch(attachType) {
-              case 'photo':
-                inputMedia = {
-                  _: 'inputMediaUploadedPhoto',
-                  file: inputFile,
-                  pFlags: {
-                    spoiler: sendFileDetails.spoiler || undefined
-                  }
-                };
-                break;
-
-              default:
-                inputMedia = {
-                  _: 'inputMediaUploadedDocument',
-                  file: inputFile,
-                  mime_type: fileType,
-                  pFlags: {
-                    force_file: actionName === 'sendMessageUploadDocumentAction' || undefined,
-                    spoiler: sendFileDetails.spoiler || undefined
-                    // nosound_video: options.noSound ? true : undefined
-                  },
-                  attributes
-                };
+        try {
+          const uploadMediaPromise = this.uploadMediaFile({
+            peerId,
+            ...pickKeys(sendFileDetails, ['objectURL', 'thumb', 'spoiler']),
+            file,
+            uploadingFileName,
+            fileType,
+            apiFileName,
+            attachType,
+            attributes,
+            actionName,
+            onUploadDeferred: (uploadFileDeferred) => {
+              this.syncSentAndUploadPromises({sentDeferred, uploadFileDeferred, file});
             }
-
-            // if(options.stars && !options.isGroupedItem) {
-            //   inputMedia = {
-            //     _: 'inputMediaPaidMedia',
-            //     extended_media: [inputMedia],
-            //     stars_amount: '' + options.stars
-            //   };
-            // }
-
-            if(thumbUploadPromise) {
-              try {
-                const thumbUploadResult = await thumbUploadPromise;
-                assumeType<InputMedia.inputMediaUploadedDocument>(inputMedia);
-
-                inputMedia.thumb = thumbUploadResult.file;
-                inputMedia.video_cover = thumbUploadResult.coverPhoto;
-              } catch(err) {
-                this.log.error('sendFile thumb upload error:', err);
-              }
-            }
-
-            sentDeferred.resolve(inputMedia);
-          }, (error: ApiError) => {
-            this.revertMessageEdit(message.mid);
           });
 
-          return sentDeferred;
-        };
-
-        load();
-        // if(options.isGroupedItem) {
-        // } else {
-        //   this.sendSmthLazyLoadQueue.push({
-        //     load
-        //   });
-        // }
+          uploadMediaPromise.then((inputMedia) => sentDeferred.resolve(inputMedia), (e) => sentDeferred.reject(e));
+        } catch{
+          this.revertMessageEdit(message.mid);
+        }
       }
 
       return sentDeferred;
@@ -1131,6 +1054,7 @@ export class AppMessagesManager extends AppManager {
     });
 
     const inputMedia = await sentDeferred;
+    MTProtoMessagePort.getInstance<false>().invoke('log', {m: 'my-debug', inputMedia});
 
     const callInvoke = (message: Message.message) => this.invokeEditMessageMedia({
       message,
@@ -1148,6 +1072,84 @@ export class AppMessagesManager extends AppManager {
       if(message?._ !== 'message') return;
       return callInvoke(message);
     });
+  }
+
+  private makeMediaUploadDeferred({file}: MakeMediaUploadDeferredArgs) {
+    const deferred = deferredPromise<InputMedia>();
+
+    const uploadingFileName = file instanceof Blob ? getFileNameForUpload(file) : undefined;
+    if(uploadingFileName) {
+      this.uploadFilePromises[uploadingFileName] = deferred;
+    }
+
+    return {deferred, uploadingFileName};
+  }
+
+  private syncSentAndUploadPromises({sentDeferred, uploadFileDeferred, file}: SyncSentAndUploadPromisesArgs) {
+    uploadFileDeferred.addNotifyListener((progress: Progress) => {
+      sentDeferred.notifyAll(progress);
+    });
+
+    sentDeferred.notifyAll({done: 0, total: file.size});
+  }
+
+  private async uploadMediaFile({peerId, file, uploadingFileName, fileType, apiFileName, attachType, attributes, objectURL, thumb, spoiler, actionName, onUploadDeferred}: UploadMediaFileArgs) {
+    const uploadPromise = this.apiFileManager.upload({file, fileName: uploadingFileName});
+    onUploadDeferred?.(uploadPromise);
+
+    let thumbUploadPromise: ReturnType<typeof this.uploadThumbAndCover>;
+    if(attachType === 'video' && objectURL && thumb?.blob) {
+      thumbUploadPromise = this.uploadThumbAndCover({
+        blob: thumb.blob,
+        isCover: !!thumb.isCover,
+        peer: this.appPeersManager.getInputPeerById(peerId)
+      });
+    }
+
+    const inputFile = await uploadPromise;
+
+    (inputFile as InputFile.inputFile).name = apiFileName;
+
+    let inputMedia: InputMedia;
+
+    switch(attachType) {
+      case 'photo':
+        inputMedia = {
+          _: 'inputMediaUploadedPhoto',
+          file: inputFile,
+          pFlags: {
+            spoiler: spoiler || undefined
+          }
+        };
+        break;
+
+      default:
+        inputMedia = {
+          _: 'inputMediaUploadedDocument',
+          file: inputFile,
+          mime_type: fileType,
+          pFlags: {
+            force_file: actionName === 'sendMessageUploadDocumentAction' || undefined,
+            spoiler: spoiler || undefined
+            // nosound_video: options.noSound ? true : undefined
+          },
+          attributes
+        };
+    }
+
+    if(thumbUploadPromise) {
+      try {
+        const thumbUploadResult = await thumbUploadPromise;
+        assumeType<InputMedia.inputMediaUploadedDocument>(inputMedia);
+
+        inputMedia.thumb = thumbUploadResult.file;
+        inputMedia.video_cover = thumbUploadResult.coverPhoto;
+      } catch(err) {
+        this.log.error('sendFile thumb upload error:', err);
+      }
+    }
+
+    return inputMedia;
   }
 
   private runTempUpdateForMessageEdit(message: Message.message) {
