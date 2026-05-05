@@ -162,6 +162,22 @@ export class AppPollsManager extends AppManager {
     });
   }
 
+  public addPollAnswer(message: Message.message, text: TextWithEntities) {
+    const peerId = message.peerId;
+    const inputPeer = this.appPeersManager.getInputPeerById(peerId);
+
+    // TODO: Uploading media too
+    return this.apiManager.invokeApi('messages.addPollAnswer', {
+      peer: inputPeer,
+      msg_id: getServerMessageId(message.mid),
+      answer: {
+        _: 'inputPollAnswer',
+        text
+      }}).then((updates) => {
+      this.apiUpdatesManager.processUpdateMessage(updates);
+    });
+  }
+
   public getResults(message: Message.message) {
     const inputPeer = this.appPeersManager.getInputPeerById(message.peerId);
 

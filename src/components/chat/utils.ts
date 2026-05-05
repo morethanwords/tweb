@@ -121,28 +121,3 @@ export function slowModeTimer(getLeftDuration: () => number) {
   }, true);
   return {element: s, dispose};
 }
-
-export function getPollMessageContentPropsFromMessage(message: Message.message): PollMessageContentProps | undefined {
-  if(message.media?._ !== 'messageMediaPoll') return;
-
-  const poll = message.media.poll;
-  const flag = (value: any) => !!value;
-
-  return {
-    question: poll.question.text,
-    questionEntities: poll.question.entities,
-    description: message.message,
-    descriptionEntities: message.entities,
-    pollOptions: poll.answers.filter(answer => answer._ === 'pollAnswer').map(answer => ({
-      text: answer.text.text,
-      entities: answer.text.entities
-    })),
-    allowAddingOptions: flag(poll.pFlags.open_answers),
-    allowMultipleAnswers: flag(poll.pFlags.multiple_choice),
-    hasCorrectAnswer: flag(poll.pFlags.quiz),
-    shuffleOptions: flag(poll.pFlags.shuffle_answers),
-    showWhoVoted: flag(poll.pFlags.public_voters),
-    closed: flag(poll.pFlags.closed),
-    hideResults: flag(poll.pFlags.hide_results_until_close)
-  };
-}
