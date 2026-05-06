@@ -3092,7 +3092,7 @@ export default class ChatInput {
         }
       } else if(this.chat.appSettings.emoji.suggest) { // emoji
         query = query.replace(/^\s*/, '');
-        if(!value.match(/^\s*:(.+):\s*$/) && !value.match(/:[;!@#$%^&*()-=|]/) && query) {
+        if(!value.match(/^\s*:(.+):\s*$/) && !value.match(/:[;!@#$%^&*()\-=|]/) && query) {
           foundHelper = this.emojiHelper;
           this.emojiHelper.checkQuery(query, firstChar);
         }
