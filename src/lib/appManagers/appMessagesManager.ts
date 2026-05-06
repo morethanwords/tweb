@@ -473,6 +473,7 @@ type InvokeSendPollArgs = Pick<ReturnType<AppMessagesManager['makePollMedia']>, 
   peerId: PeerId; // migrated
   params: Omit<MessageSendingParams, 'peerId'>;
   randomId: string;
+  payload: CreatePollPayload;
   parsedPayload: ReturnType<AppMessagesManager['parseAllPollMarkdown']>;
   uploadingMedia: ReturnType<AppMessagesManager['startUploadingAllPollMedia']>;
 };
@@ -2632,7 +2633,7 @@ export class AppMessagesManager extends AppManager {
   private uploadPollMedia(peerId: PeerId, media: AttachedMedia) {
     const mediaTempId = this.mediaTempId++;
 
-    const {photo, document, attachType, actionName, fileType, apiFileName, attributes} = this.makeDocumentAndMetaForSendingFile({
+    const {photo, document} = this.makeDocumentAndMetaForSendingFile({
       file: media.blob,
       objectURL: media.objectUrl,
       isDocument: false,
@@ -2781,8 +2782,18 @@ export class AppMessagesManager extends AppManager {
     };
   }
 
-  private async invokeSendPoll({peerId, params, randomId, pollWithoutAnswers, parsedPayload, uploadingMedia}: InvokeSendPollArgs) {
+  private async invokeSendPoll({peerId, params, randomId, pollWithoutAnswers, payload, parsedPayload, uploadingMedia}: InvokeSendPollArgs) {
     // TODO: Consider lazy load queue
+
+    const getCorrectAnswers = () => {
+      const result = payload.pollOptions
+      .map((option, index) => ({option, index}))
+      .filter(({option}) => option.checked)
+      .map(({index}) => index)
+      if(!result.length) return;
+
+      return result;
+    };
 
     const inputMediaPoll: InputMedia.inputMediaPoll = {
       _: 'inputMediaPoll',
@@ -2804,10 +2815,11 @@ export class AppMessagesManager extends AppManager {
           media: await uploadingMedia.pollOptions.get(index)?.deferred
         })))
       },
+      correct_answers: getCorrectAnswers(),
       attached_media: await uploadingMedia.description?.deferred,
       solution: parsedPayload.explanation.text || undefined,
-      solution_entities: parsedPayload.explanation.text ? this.getInputEntities(parsedPayload.explanation.entities) : undefined,
-      solution_media: undefined
+      solution_entities: parsedPayload.explanation.text ? this.getInputEntities(parsedPayload.explanation.entities) || [] : undefined,
+      solution_media: await uploadingMedia.explanation?.deferred
     };
 
     const paidStars = params.confirmedPaymentResult?.starsAmount || undefined;
@@ -2864,6 +2876,7 @@ export class AppMessagesManager extends AppManager {
           params,
           randomId: message.random_id,
           pollWithoutAnswers,
+          payload,
           parsedPayload,
           uploadingMedia
         });

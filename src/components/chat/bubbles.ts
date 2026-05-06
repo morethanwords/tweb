@@ -7705,7 +7705,8 @@ export default class ChatBubbles {
             pollMessageContent.feedProps({
               message,
               poll: context.messageMedia.poll,
-              results: context.messageMedia.results
+              results: context.messageMedia.results,
+              media: context.messageMedia
             });
 
             messageDiv.prepend(pollMessageContent);

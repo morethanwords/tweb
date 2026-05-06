@@ -3,11 +3,13 @@ import {IconTsx} from '@components/iconTsx';
 import InputField from '@components/inputField';
 import {EmojiDropdownButton} from '@components/popups/createPoll/emojiDropdownButton';
 import {MediaAttachment} from '@components/popups/createPoll/mediaAttachment';
+import {AttachedMedia} from '@components/popups/createPoll/storeContext';
 import ripple from '@components/ripple';
 import {HeightTransition} from '@components/sidebarRight/tabs/adminRecentActions/heightTransition';
 import Space from '@components/space';
 import {StaticCheckbox} from '@components/staticCheckbox';
 import StaticRadio from '@components/staticRadio';
+import PhotoTsx from '@components/wrappers/photoTsx';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import {keepMe} from '@helpers/keepMe';
 import formatNumber from '@helpers/number/formatNumber';
@@ -18,7 +20,7 @@ import {requestRAF} from '@helpers/solid/requestRAF';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import classNames from '@helpers/string/classNames';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
-import {Message, MessageEntity, Poll, PollResults, TextWithEntities} from '@layer';
+import {InputMedia, Message, MessageEntity, MessageMedia, Photo, Poll, PollResults, TextWithEntities} from '@layer';
 import getPeerId from '@lib/appManagers/utils/peers/getPeerId';
 import {LangPackKey} from '@lib/langPack';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
@@ -28,7 +30,6 @@ import {batch, createEffect, createMemo, createSelector, createSignal, For, JSX,
 import {unwrap} from 'solid-js/store';
 import {Transition} from 'solid-transition-group';
 import styles from './pollMessageContent.module.scss';
-import {AttachedMedia} from '@components/popups/createPoll/storeContext';
 
 keepMe(ripple);
 
@@ -46,6 +47,7 @@ type LocalTextWithEntities = Pick<TextWithEntities, 'text' | 'entities'>;
 
 const PollOption = (props: {
   withImage?: boolean;
+  photo?: Photo.photo;
   clickable?: boolean;
   text: LocalTextWithEntities;
   checked: boolean;
@@ -122,7 +124,11 @@ const PollOption = (props: {
         </Transition>
       </div>
       <Show when={props.withImage}>
-        <div class={classNames(styles.optionImage, styles.red)}></div>
+        <div class={classNames(styles.optionImage)}>
+          <Show when={props.photo}>
+            <PhotoTsx photo={props.photo} boxWidth={36} boxHeight={36} />
+          </Show>
+        </div>
       </Show>
     </div>
   );
@@ -266,19 +272,27 @@ const AddOption = (props: {
   );
 };
 
-const Explanation = () => {
+const Explanation = (props: LocalTextWithEntities & {
+  photo?: Photo.photo;
+}) => {
+  const middleware = createMiddleware().get();
   return (
     <div class='reply quote-like quote-like-border'>
       <div class='reply-content'>
         <div class='reply-title'>
           <I18nTsx key='Chat.Quiz.Explanation' />
         </div>
-        <div class='reply-subtitle'>
-            Some explanation text here
-        </div>
-        <Space amount='0.5rem' />
-        <div class={styles.explanationImage}>
-        </div>
+        <Show when={props.text}>
+          <div class='reply-subtitle'>
+            {wrapRichText(props.text, {entities: props.entities, middleware})}
+          </div>
+        </Show>
+        <Show when={props.photo}>
+          <Space amount='0.5rem' />
+          <div class={styles.explanationImage}>
+            <PhotoTsx photo={props.photo} />
+          </div>
+        </Show>
       </div>
     </div>
   );
@@ -324,6 +338,7 @@ export type PollMessageContentProps = {
   poll: Poll;
   message: Message.message;
   results: PollResults;
+  media: MessageMedia.messageMediaPoll;
 };
 
 export const PollMessageContent = defineSolidElement({
@@ -331,7 +346,7 @@ export const PollMessageContent = defineSolidElement({
   component: (props: PassedProps<PollMessageContentProps>) => {
     attachHotClassName(props.element, styles.container);
 
-    const {rootScope} = useHotReloadGuard();
+    const {rootScope, wrapPhoto} = useHotReloadGuard();
 
     const middleware = createMiddleware().get();
 
@@ -381,12 +396,27 @@ export const PollMessageContent = defineSolidElement({
       return roundPercents(results.map(r => totalVotes ? (r.voters ?? 0) / totalVotes * 100 : 0));
     });
 
+    const hasPhotoInOptions = createMemo(() => props.poll.answers.some(a => a.media?._ === 'messageMediaPhoto' && a.media.photo?._ === 'photo'));
+
+    const hasExplanation = createMemo(() => {
+      return !!props.results.solution || !!props.results.solution_media;
+    });
+
+    const getPhoto = (media: MessageMedia | InputMedia | undefined): Photo.photo | undefined => {
+      return media?._ === 'messageMediaPhoto' && media.photo?._ === 'photo' ? unwrap(media.photo) : undefined;
+    };
+
+    const explanationPhoto = createMemo(() => getPhoto(props.results.solution_media));
+    const descriptionPhoto = createMemo(() => getPhoto(props.media.attached_media));
+
     const resultForOption = (index: number): PollOptionResult => isShowingResult() ? ({
       chosen: props.results?.results?.[index]?.pFlags?.chosen ?? false,
       percent: roundedPercents()[index],
       voters: props.results?.results?.[index]?.voters ?? 0,
       peerIds: props.results?.results?.[index]?.recent_voters?.map(peer => getPeerId(peer)) ?? []
     }) : undefined;
+
+    const photoForOption = (index: number): Photo.photo | undefined => getPhoto(props.poll.answers[index]?.media);
 
     subscribeOn(rootScope)('poll_update', ({poll, results}) => {
       if(poll.id !== props.poll.id) return;
@@ -442,9 +472,13 @@ export const PollMessageContent = defineSolidElement({
 
     return (
       <>
-        <div class={styles.pollImageWrapper}>
-          <div class={styles.pollImage} />
-        </div>
+        <Show when={descriptionPhoto()}>
+          <div class={styles.pollImageWrapper}>
+            <div class={styles.pollImage}>
+              <PhotoTsx photo={descriptionPhoto()} />
+            </div>
+          </div>
+        </Show>
         <Show when={description()}>
           <div class={styles.description}>
             {wrapRichText(description(), {entities: descriptionEntities(), middleware})}
@@ -465,7 +499,7 @@ export const PollMessageContent = defineSolidElement({
             </div>
           </div>
 
-          <Show when={false}>
+          <Show when={hasExplanation()}>
             <ButtonIconTsx icon='lamp' onClick={() => setExplanationToggled(p => !p)} />
           </Show>
         </div>
@@ -473,7 +507,7 @@ export const PollMessageContent = defineSolidElement({
         <HeightTransition scale>
           <Show when={explanationToggled()}>
             <div style={{overflow: 'hidden'}}>
-              <Explanation />
+              <Explanation text={props.results?.solution} entities={props.results?.solution_entities} photo={explanationPhoto()} />
             </div>
           </Show>
         </HeightTransition>
@@ -482,7 +516,8 @@ export const PollMessageContent = defineSolidElement({
           {(option, index) => (
             <PollOption
               text={option.text}
-              withImage={withImage}
+              withImage={hasPhotoInOptions()}
+              photo={photoForOption(index())}
               isCheckbox={allowMultipleAnswers()}
 
               checked={isChecked(index())}

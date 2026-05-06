@@ -18,7 +18,7 @@
   --vertical-padding: 0.75rem;
   padding: var(--vertical-padding) 0.75rem var(--vertical-padding) 1rem;
 
-  min-width: 320px;
+  min-width: 280px;
 
   &.hasImage {
     --vertical-padding: 0.5rem;
@@ -30,6 +30,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 
   width: 2.25rem;
   height: 2.25rem;
@@ -262,12 +263,9 @@
 }
 
 .explanationImage {
-  width: 100%;
-  height: auto;
-  max-height: 420px;
-  aspect-ratio: 1 / 1;
-  background-color: darkcyan;
   border-radius: 4px;
+  position: relative;
+  overflow: hidden;
 }
 
 .description {
@@ -276,11 +274,8 @@
 }
 
 .pollImage {
-  width: 100%;
-  height: auto;
-  max-height: 420px;
-  aspect-ratio: 1 / 1;
-  background-color: darkcyan;
+  position: relative;
+  overflow: hidden;
 
   border-radius: 4px;
   border-start-start-radius: calc(var(--border-start-start-radius) - 1px);
