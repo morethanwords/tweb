@@ -21,6 +21,7 @@ import {FilterBooleanKeys} from '@types';
 import {createSignal, JSX, onMount, Show} from 'solid-js';
 import {supportedDescriptionFormattingTypes} from './config';
 import {EmojiButtonWithOpacity as EmojiDropdownButton} from './emojiButtonWithOpacity';
+import {useCreatePollLimits, useLabelError} from './hooks';
 import {MediaAttachment} from './mediaAttachment';
 import {CreatePollStore, useCreatePollContext} from './storeContext';
 import styles from './styles.module.scss';
@@ -31,13 +32,14 @@ const minEndTimeFromNowMinutes = 5;
 
 export const PollSettingsSectionContent = () => {
   const {Row} = useHotReloadGuard();
-
+  const {maxExplanationLength} = useCreatePollLimits();
   const context = useCreatePollContext();
 
   const [limitDurationExtraElement, setLimitDurationExtraElement] = createSignal<HTMLElement>();
   const [explanationElement, setExplanationElement] = createSignal<HTMLElement>();
   const [isDurationMenuOpen, setIsDurationMenuOpen] = createSignal(false);
 
+  const explanationLabelError = useLabelError(() => context.store.explanation, maxExplanationLength);
 
   const handleSettingsFlag = <T extends BooleanSettingKey>(flag: T) => () => {
     context.setStore(flag, prev => !prev);
@@ -186,6 +188,7 @@ export const PollSettingsSectionContent = () => {
               class={classNames(styles.flexFull, styles.formField)}
               withEndButtonIcon
               withMinHeight
+              isError={explanationLabelError.hasError()}
             >
               <SimpleFormField.InputStub>
                 {explanationInput.input}
@@ -194,7 +197,7 @@ export const PollSettingsSectionContent = () => {
               <SimpleFormField.SideContent class={styles.sideContentWithFixedIcon} first last>
                 <EmojiDropdownButton inputField={explanationInput} />
               </SimpleFormField.SideContent>
-              <SimpleFormField.SideContent class={styles.sideContentWithFixedIcon} first={!context.store.explanationAttachment} last>
+              <SimpleFormField.SideContent class={classNames(styles.sideContentWithFixedIcon, styles.formFieldSideLengthLeft)} first={!context.store.explanationAttachment} last>
                 <MediaAttachment
                   imgClass={styles.mediaAttachmentImage}
                   objectUrl={context.store.explanationAttachment?.objectUrl}
@@ -202,6 +205,11 @@ export const PollSettingsSectionContent = () => {
                     context.setStore('explanationAttachment', value);
                   }}
                 />
+                <Show when={explanationLabelError.shouldShowLengthLeft()}>
+                  <div class={styles.formFieldSideLengthLeft}>
+                    {explanationLabelError.lengthLeft()}
+                  </div>
+                </Show>
               </SimpleFormField.SideContent>
             </SimpleFormField>
 
@@ -274,6 +282,8 @@ const PollDurationMenu = (props: {
 }) => {
   const {ButtonMenuSync, PopupSchedulePost} = useHotReloadGuard();
 
+  const {closePeriodMax} = useCreatePollLimits();
+
   const format = (duration: number) => wrapFormattedDuration(formatDuration(duration, 1));
 
   const buttonMenu = ButtonMenuSync({
@@ -295,11 +305,15 @@ const PollDurationMenu = (props: {
           const minDate = new Date(minTimeDate);
           minDate.setHours(0, 0, 0, 0);
 
+          const maxDate = new Date(minDate);
+          maxDate.setDate(maxDate.getDate() + Math.floor(closePeriodMax() / oneDayInSeconds));
+
           new PopupSchedulePost({
             initDate: new Date(minTimeDate),
             captionKey: 'NewPoll.MinEndTime',
             minDate,
             minTimeDate,
+            maxDate,
             onPick: (timestamp) => {
               props.onCustomTimestamp(timestamp);
             },

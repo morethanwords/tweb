@@ -3937,6 +3937,8 @@
 "NewPoll.MinEndTime" = "Minimum End Time: %s";
 "NewPoll.EndToday" = "End today at %@";
 "NewPoll.EndDate" = "End on %@ at %@";
+"NewPoll.OptionsLeft_one" = "You can add %d more option";
+"NewPoll.OptionsLeft_other" = "You can add %d more options";
 "Login.Title" = "Sign in to Telegram";
 "Login.PhoneLabel" = "Phone Number";
 "Login.PhoneLabelInvalid" = "Phone Number Invalid";

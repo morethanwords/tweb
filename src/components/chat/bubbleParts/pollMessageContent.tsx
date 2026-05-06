@@ -572,6 +572,9 @@ export const PollMessageContent = defineSolidElement({
             </Switch>
           </Transition>
         </div>
+
+        {/* some space for the time span */}
+        <Space amount='0.75rem' />
       </>
     );
   }

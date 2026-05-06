@@ -40,7 +40,7 @@
     padding-left: calc(var(--padding-horizontal) - 0.5rem);
   }
 
-  &.hoverEnabled:hover .BorderThin {
+  &.hoverEnabled:hover:not(.error) .BorderThin {
     border-color: var(--primary-color);
   }
 
@@ -62,7 +62,7 @@
     font-weight: bold;
   }
 
-  &.hoverEnabled:hover .Label {
+  &.hoverEnabled:hover:not(.error) .Label {
     color: var(--primary-color);
   }
 

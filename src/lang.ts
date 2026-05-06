@@ -4535,7 +4535,11 @@ const lang = {
   'NewPoll.HideResultsSubtitle': 'Results will not be visible until the polls ends',
   'NewPoll.MinEndTime': 'Minimum End Time: %s',
   'NewPoll.EndToday': 'End today at %@',
-  'NewPoll.EndDate': 'End on %@ at %@'
+  'NewPoll.EndDate': 'End on %@ at %@',
+  'NewPoll.OptionsLeft': {
+    'one_value': 'You can add %d more option',
+    'other_value': 'You can add %d more options'
+  }
 };
 
 export default lang;

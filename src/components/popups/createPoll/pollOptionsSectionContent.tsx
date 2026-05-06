@@ -15,6 +15,7 @@ import classNames from '@helpers/string/classNames';
 import {batch, children, createMemo, createSignal, For, JSX, mapArray, onMount, Ref, Show} from 'solid-js';
 import {Transition} from 'solid-transition-group';
 import {EmojiButtonWithOpacity as EmojiDropdownButton} from './emojiButtonWithOpacity';
+import {useCreatePollLimits, useLabelError} from './hooks';
 import {MediaAttachment} from './mediaAttachment';
 import {AttachedMedia, StorePollOption, useCreatePollContext} from './storeContext';
 import styles from './styles.module.scss';
@@ -29,6 +30,8 @@ type Item = {
 export const PollOptionsSectionContent = (props: {
   scrollable: HTMLElement
 }) => {
+  const {maxOptions} = useCreatePollLimits();
+
   let idSeed = 0;
 
   const [canAnimate, setCanAnimate] = createSignal(false);
@@ -41,6 +44,8 @@ export const PollOptionsSectionContent = (props: {
   }));
 
   const items = createMemo(rawMappedItems);
+
+  const optionsLeft = createMemo(() => Math.max(0, maxOptions() - items().length));
 
   const sortable = createSortableList({
     container: () => props.scrollable,
@@ -56,6 +61,7 @@ export const PollOptionsSectionContent = (props: {
   });
 
   const onAdd = () => {
+    if(optionsLeft() === 0) return;
     blurActiveElement();
     context.setStore('pollOptions', context.store.pollOptions.length, {
       text: '',
@@ -99,10 +105,19 @@ export const PollOptionsSectionContent = (props: {
 
       <Space amount='0.5rem' />
 
-      <Button class={styles.addOptionButton} primary onClick={onAdd}>
-        <IconTsx class={styles.addOptionButtonIcon} icon='plus' />
-        <I18nTsx key='NewPoll.OptionsAddOption' />
-      </Button>
+      <HeightTransition>
+        <Show when={optionsLeft() > 0}>
+          <div style={{overflow: 'hidden'}}>
+            <div class={styles.caption}>
+              <I18nTsx key='NewPoll.OptionsLeft' args={optionsLeft().toString()} />
+            </div>
+            <Button class={styles.addOptionButton} primary onClick={onAdd}>
+              <IconTsx class={styles.addOptionButtonIcon} icon='plus' />
+              <I18nTsx key='NewPoll.OptionsAddOption' />
+            </Button>
+          </div>
+        </Show>
+      </HeightTransition>
     </>
   );
 };
@@ -223,6 +238,10 @@ const PollOptionInputField = (props: {
   onEnter?: () => void;
   onEmptyBackspace?: () => void;
 }) => {
+  const {maxOptionLength} = useCreatePollLimits();
+
+  const labelError = useLabelError(() => props.value, maxOptionLength);
+
   const inputField = new InputField({
     placeholder: 'NewPoll.Option',
     canWrapCustomEmojis: true,
@@ -260,6 +279,7 @@ const PollOptionInputField = (props: {
       solidBackground
       hoverDisabled={props.hoverDisabled}
       style={props.style}
+      isError={labelError.hasError()}
     >
       <SimpleFormField.SideContent
         class={styles.draggableSideContent}
@@ -276,7 +296,7 @@ const PollOptionInputField = (props: {
       <SimpleFormField.SideContent class={styles.sideContentWithFixedIcon} first last>
         <EmojiDropdownButton inputField={inputField} />
       </SimpleFormField.SideContent>
-      <SimpleFormField.SideContent class={styles.sideContentWithFixedIcon} first={!props.attachment} last>
+      <SimpleFormField.SideContent class={classNames(styles.sideContentWithFixedIcon, styles.sideContentWithLimit)} first={!props.attachment} last>
         <MediaAttachment
           imgClass={styles.mediaAttachmentImage}
           objectUrl={props.attachment?.objectUrl}
@@ -284,6 +304,11 @@ const PollOptionInputField = (props: {
             props.onChange?.({attachment: value});
           }}
         />
+        <Show when={labelError.shouldShowLengthLeft()}>
+          <div class={styles.formFieldSideLengthLeft}>
+            {labelError.lengthLeft()}
+          </div>
+        </Show>
       </SimpleFormField.SideContent>
     </SimpleFormField>
   );

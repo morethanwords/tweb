@@ -7,11 +7,12 @@ import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import {I18nTsx} from '@helpers/solid/i18n';
 import classNames from '@helpers/string/classNames';
 import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
-import {createSignal} from 'solid-js';
+import {createMemo, createSignal, Show} from 'solid-js';
 import {unwrap} from 'solid-js/store';
 import PopupElement, {createPopup} from '../indexTsx';
 import {supportedDescriptionFormattingTypes} from './config';
 import {EmojiButtonWithOpacity as EmojiDropdownButton} from './emojiButtonWithOpacity';
+import {useCreatePollLimits, useLabelError} from './hooks';
 import {MediaAttachment} from './mediaAttachment';
 import {PollOptionsSectionContent} from './pollOptionsSectionContent';
 import {PollSettingsSectionContent} from './pollSettingsSectionContent';
@@ -49,6 +50,11 @@ const Header = (props: {
   onSubmit: () => void;
 }) => {
   const context = useCreatePollContext();
+  const {maxQuestionLength, maxDescriptionLength} = useCreatePollLimits();
+  const canSubmit = useCanSubmit();
+
+  const questionError = useLabelError(() => context.store.question, maxQuestionLength);
+  const descriptionError = useLabelError(() => context.store.description, maxDescriptionLength);
 
   const questionInput = new InputField({
     canWrapCustomEmojis: true,
@@ -86,7 +92,7 @@ const Header = (props: {
         <I18nTsx key='NewPoll' />
       </PopupElement.Title>
 
-      <Button class={styles.confirmButton} primaryFilled onClick={props.onSubmit}>
+      <Button class={styles.confirmButton} primaryFilled onClick={props.onSubmit} disabled={!canSubmit()}>
         <I18nTsx key='Create' />
       </Button>
 
@@ -97,11 +103,17 @@ const Header = (props: {
         class={classNames(styles.flexFull, styles.formField)}
         withEndButtonIcon
         withMinHeight
+        isError={questionError.hasError()}
       >
         <SimpleFormField.InputStub>
           {questionInput.input}
         </SimpleFormField.InputStub>
-        <SimpleFormField.Label><I18nTsx key='AskAQuestion' /></SimpleFormField.Label>
+        <SimpleFormField.Label>
+          <I18nTsx key='AskAQuestion' />
+          <Show when={questionError.shouldShowLengthLeft()}>
+            ({questionError.lengthLeft()})
+          </Show>
+        </SimpleFormField.Label>
 
         <SimpleFormField.SideContent class={styles.sideContentWithFixedIcon} first last>
           <EmojiDropdownButton inputField={questionInput} />
@@ -115,6 +127,7 @@ const Header = (props: {
         class={classNames(styles.flexFull, styles.formField)}
         withEndButtonIcon
         withMinHeight
+        isError={descriptionError.hasError()}
       >
         <SimpleFormField.InputStub>
           {descriptionInput.input}
@@ -123,7 +136,7 @@ const Header = (props: {
         <SimpleFormField.SideContent class={styles.sideContentWithFixedIcon} first last>
           <EmojiDropdownButton inputField={descriptionInput} />
         </SimpleFormField.SideContent>
-        <SimpleFormField.SideContent class={styles.sideContentWithFixedIcon} first={!context.store.descriptionAttachment} last>
+        <SimpleFormField.SideContent class={classNames(styles.sideContentWithFixedIcon, styles.formFieldSideLengthLeft)} first={!context.store.descriptionAttachment} last>
           <MediaAttachment
             imgClass={styles.mediaAttachmentImage}
             objectUrl={context.store.descriptionAttachment?.objectUrl}
@@ -131,6 +144,11 @@ const Header = (props: {
               context.setStore('descriptionAttachment', value);
             }}
           />
+          <Show when={descriptionError.shouldShowLengthLeft()}>
+            <div class={styles.formFieldSideLengthLeft}>
+              {descriptionError.lengthLeft()}
+            </div>
+          </Show>
         </SimpleFormField.SideContent>
       </SimpleFormField>
 
@@ -166,6 +184,25 @@ const BodyContent = () => {
       <Space amount='1.5rem' />
     </Scrollable>
   );
+};
+
+function useCanSubmit() {
+  const {store} = useCreatePollContext();
+  const {maxOptions, maxQuestionLength, maxDescriptionLength, maxOptionLength, maxExplanationLength} = useCreatePollLimits();
+
+  return createMemo(() => {
+    if(!store.question) return false;
+    if(store.question.length > maxQuestionLength()) return false;
+    if(store.description.length > maxDescriptionLength()) return false;
+    if(store.pollOptions.length < 2) return false;
+    if(store.pollOptions.length > maxOptions()) return false;
+    if(store.pollOptions.some((option) => !option.text)) return false;
+    if(store.pollOptions.some((option) => option.text.length > maxOptionLength())) return false;
+    if(store.hasCorrectAnswer && !store.pollOptions.some((option) => option.checked)) return false;
+    if(store.hasCorrectAnswer && store.explanation.length > maxExplanationLength()) return false;
+
+    return true;
+  });
 };
 
 export function openCreatePollPopup(props: CreatePollPopupProps, HotReloadGuard: typeof SolidJSHotReloadGuardProvider) {
