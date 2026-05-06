@@ -127,8 +127,8 @@ const Header = (props: {
           <MediaAttachment
             imgClass={styles.mediaAttachmentImage}
             objectUrl={context.store.descriptionAttachment?.objectUrl}
-            onChange={(objectUrl) => {
-              context.setStore('descriptionAttachment', {objectUrl});
+            onAttach={(value) => {
+              context.setStore('descriptionAttachment', value);
             }}
           />
         </SimpleFormField.SideContent>

@@ -1093,16 +1093,12 @@ export default class ChatInput {
           onSubmit: async(payload) => {
             const sendingParams = this.chat.getMessageSendingParams();
 
-
             const preparedPaymentResult = await this.chat.input.paidMessageInterceptor.prepareStarsForPayment(1);
             if(preparedPaymentResult === PAYMENT_REJECTED) return;
 
             sendingParams.confirmedPaymentResult = preparedPaymentResult;
 
-            this.managers.appMessagesManager.sendOther({
-              ...sendingParams,
-              inputMedia: (await this.managers.appPollsManager.makeInputMediaPoll(payload)).inptMediaPoll
-            });
+            this.managers.appMessagesManager.sendPollMessage(sendingParams, payload);
           }
         }, SolidJSHotReloadGuardProvider);
 

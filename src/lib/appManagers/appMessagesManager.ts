@@ -2628,6 +2628,7 @@ export class AppMessagesManager extends AppManager {
     return promise;
   }
 
+
   private uploadPollMedia(peerId: PeerId, media: AttachedMedia) {
     const mediaTempId = this.mediaTempId++;
 
@@ -2650,22 +2651,28 @@ export class AppMessagesManager extends AppManager {
       document
     };
 
-    const uploadMediaPromise = this.uploadMediaFile({
-      peerId,
-      objectURL: media.objectUrl,
-      file: media.blob,
-      uploadingFileName,
-      fileType,
-      apiFileName,
-      attachType,
-      attributes,
-      actionName,
-      onUploadDeferred: (uploadFileDeferred) => {
-        this.syncSentAndUploadPromises({sentDeferred: deferred, uploadFileDeferred, file: media.blob});
-      }
-    });
+    const uploadFileDeferred = this.apiFileManager.upload({file: media.blob, fileName: uploadingFileName});
+    this.syncSentAndUploadPromises({sentDeferred: deferred, uploadFileDeferred, file: media.blob});
 
-    uploadMediaPromise.then((inputMedia) => deferred.resolve(inputMedia), (e) => deferred.reject(e));
+    uploadFileDeferred.then(async(inputFile) => {
+      const media = await this.apiManager.invokeApi('messages.uploadMedia', {
+        media: {
+          _: 'inputMediaUploadedPhoto',
+          file: inputFile,
+          pFlags: {}
+        },
+        peer: this.appPeersManager.getInputPeerById(peerId)
+      });
+      if(media._ !== 'messageMediaPhoto') throw new Error('Unexpected media type');
+
+      const photo = this.appPhotosManager.savePhoto(media.photo);
+
+      deferred.resolve({
+        _: 'inputMediaPhoto',
+        id: getPhotoInput(photo),
+        pFlags: {}
+      });
+    }, (e) => deferred.reject(e));
 
     return {
       uploadingFileName,
@@ -2781,17 +2788,18 @@ export class AppMessagesManager extends AppManager {
       _: 'inputMediaPoll',
       poll: {
         ...pollWithoutAnswers,
+        hash: 0,
         question: {
           _: 'textWithEntities',
           text: parsedPayload.question.text,
-          entities: this.getInputEntities(parsedPayload.question.entities)
+          entities: this.getInputEntities(parsedPayload.question.entities) || []
         },
         answers: await Promise.all(parsedPayload.pollOptions.map(async(option, index): Promise<PollAnswer.inputPollAnswer> => ({
           _: 'inputPollAnswer',
           text: {
             _: 'textWithEntities',
             text: option.text,
-            entities: this.getInputEntities(option.entities)
+            entities: this.getInputEntities(option.entities) || []
           },
           media: await uploadingMedia.pollOptions.get(index)?.deferred
         })))
@@ -2808,7 +2816,7 @@ export class AppMessagesManager extends AppManager {
       peer: this.appPeersManager.getInputPeerById(peerId),
       media: inputMediaPoll,
       message: parsedPayload.description.text,
-      entities: this.getInputEntities(parsedPayload.description.entities),
+      entities: this.getInputEntities(parsedPayload.description.entities) || [],
       random_id: randomId,
       reply_to: params.replyTo,
       schedule_date: params.scheduleDate,
