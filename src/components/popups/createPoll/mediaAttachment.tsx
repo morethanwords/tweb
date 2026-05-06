@@ -3,13 +3,14 @@ import {animateImageToTarget} from '@helpers/animateImageToTarget';
 import {requestRAF} from '@helpers/solid/requestRAF';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {createEffect, createSignal, onCleanup, Show} from 'solid-js';
+import {AttachedMedia} from './storeContext';
 
 
 export const MediaAttachment = (props: {
   imgClass?: string;
   btnClass?: string;
   objectUrl?: string;
-  onChange?: (url: string | undefined) => void;
+  onAttach?: (url: AttachedMedia) => void;
 }) => {
   const {getFileAndOpenEditor} = useHotReloadGuard();
 
@@ -22,7 +23,14 @@ export const MediaAttachment = (props: {
 
         const result = await editorResult.getResult();
         const url = URL.createObjectURL(result.blob);
-        props.onChange?.(url);
+
+        props.onAttach?.({
+          type: 'photo',
+          objectUrl: url,
+          blob: result.blob,
+          width: editorResult.width,
+          height: editorResult.height
+        });
 
         requestRAF(async() => {
           if(!img()) {

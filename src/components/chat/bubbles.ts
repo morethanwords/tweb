@@ -192,7 +192,7 @@ import PopupStarGiftInfo from '@components/popups/starGiftInfo';
 import {StarGiftBubble, UniqueStarGiftWebPageBox} from '@components/chat/bubbles/starGift';
 import {PremiumGiftBubble} from '@components/chat/bubbles/premiumGift';
 import {UnknownUserBubble} from '@components/chat/bubbles/unknownUser';
-import {generateTail, getMid, getPollMessageContentPropsFromMessage, isMessage, isMessageForVerificationBot, isVerificationBot} from '@components/chat/utils';
+import {generateTail, getMid, isMessage, isMessageForVerificationBot, isVerificationBot} from '@components/chat/utils';
 import {ChecklistBubble} from '@components/chat/bubbles/checklist';
 import {getRestrictionReason} from '@helpers/restrictions';
 import {isMessageSensitive} from '@appManagers/utils/messages/isMessageRestricted';
@@ -7696,14 +7696,17 @@ export default class ChatBubbles {
         }
 
         case 'messageMediaPoll': {
-          let props: PollMessageContentProps;
-          if(message._ === 'message' && (props = getPollMessageContentPropsFromMessage(message))) {
+          if(message._ === 'message') {
             context.mediaRequiresMessageDiv = true;
 
             const {PollMessageContent} = await import('./bubbleParts/pollMessageContent');
             const pollMessageContent = new PollMessageContent();
             pollMessageContent.HotReloadGuard = SolidJSHotReloadGuardProvider;
-            pollMessageContent.feedProps(props);
+            pollMessageContent.feedProps({
+              message,
+              poll: context.messageMedia.poll,
+              results: context.messageMedia.results
+            });
 
             messageDiv.prepend(pollMessageContent);
             bubble.classList.add('poll-message');

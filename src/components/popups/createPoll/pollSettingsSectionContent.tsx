@@ -198,8 +198,8 @@ export const PollSettingsSectionContent = () => {
                 <MediaAttachment
                   imgClass={styles.mediaAttachmentImage}
                   objectUrl={context.store.explanationAttachment?.objectUrl}
-                  onChange={(objectUrl) => {
-                    context.setStore('explanationAttachment', {objectUrl});
+                  onAttach={(value) => {
+                    context.setStore('explanationAttachment', value);
                   }}
                 />
               </SimpleFormField.SideContent>

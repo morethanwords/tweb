@@ -280,8 +280,8 @@ const PollOptionInputField = (props: {
         <MediaAttachment
           imgClass={styles.mediaAttachmentImage}
           objectUrl={props.attachment?.objectUrl}
-          onChange={(objectUrl) => {
-            props.onChange?.({attachment: {objectUrl}});
+          onAttach={(value) => {
+            props.onChange?.({attachment: value});
           }}
         />
       </SimpleFormField.SideContent>

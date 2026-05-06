@@ -18,7 +18,7 @@ import LazyLoadQueueBase from '@components/lazyLoadQueueBase';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import tsNow from '@helpers/tsNow';
 import {nextRandomUint, randomLong} from '@helpers/random';
-import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, UrlAuthResult, MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, InputUser, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities, ChannelsSearchPosts, FactCheck, MessageExtendedMedia, SponsoredMessage, MessagesSponsoredMessages, InputGroupCall, TodoItem, TodoCompletion, SearchPostsFlood, UserFull} from '@layer';
+import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, UrlAuthResult, MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, InputUser, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities, ChannelsSearchPosts, FactCheck, MessageExtendedMedia, SponsoredMessage, MessagesSponsoredMessages, InputGroupCall, TodoItem, TodoCompletion, SearchPostsFlood, UserFull, PollAnswer, Poll} from '@layer';
 import {ArgumentTypes, InvokeApiOptions, Modify} from '@types';
 import {logger, LogTypes} from '@lib/logger';
 import {ReferenceContext} from '@lib/storages/references';
@@ -96,6 +96,7 @@ import pickKeys from '@helpers/object/pickKeys';
 import namedPromises from '@helpers/namedPromises';
 import callbackifyAll from '@helpers/callbackifyAll';
 import {createBotforumTopicFromAction} from './utils/dialogs/createBotforumTopicFromAction';
+import {AttachedMedia, CreatePollPayload} from '@components/popups/createPoll/storeContext';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -459,6 +460,21 @@ type EditMessageMediaArgs = {
     entities: MessageEntity[];
     isMedia: boolean;
   }> & Partial<Pick<Parameters<AppMessagesManager['sendText']>[0], 'webPage' | 'webPageOptions' | 'noWebPage' | 'invertMedia'>>
+};
+
+type MakePollMediaArgs = {
+  peerId: PeerId;
+  payload: CreatePollPayload;
+  parsedPayload: ReturnType<AppMessagesManager['parseAllPollMarkdown']>;
+  uploadingMedia: ReturnType<AppMessagesManager['startUploadingAllPollMedia']>;
+};
+
+type InvokeSendPollArgs = Pick<ReturnType<AppMessagesManager['makePollMedia']>, 'pollWithoutAnswers'> & {
+  peerId: PeerId; // migrated
+  params: Omit<MessageSendingParams, 'peerId'>;
+  randomId: string;
+  parsedPayload: ReturnType<AppMessagesManager['parseAllPollMarkdown']>;
+  uploadingMedia: ReturnType<AppMessagesManager['startUploadingAllPollMedia']>;
 };
 
 type MakeMediaUploadDeferredArgs = Pick<SendFileDetails, 'file'>;
@@ -2611,6 +2627,265 @@ export class AppMessagesManager extends AppManager {
     const promise = message.promise;
     return promise;
   }
+
+  private uploadPollMedia(peerId: PeerId, media: AttachedMedia) {
+    const mediaTempId = this.mediaTempId++;
+
+    const {photo, document, attachType, actionName, fileType, apiFileName, attributes} = this.makeDocumentAndMetaForSendingFile({
+      file: media.blob,
+      objectURL: media.objectUrl,
+      isDocument: false,
+      mediaTempId,
+      width: media.width,
+      height: media.height,
+      isMedia: true
+    });
+
+    const {deferred, uploadingFileName} = this.makeMediaUploadDeferred({file: media.blob});
+
+    const messageMedia: MessageMedia = {
+      _: photo ? 'messageMediaPhoto' : 'messageMediaDocument',
+      pFlags: {},
+      photo,
+      document
+    };
+
+    const uploadMediaPromise = this.uploadMediaFile({
+      peerId,
+      objectURL: media.objectUrl,
+      file: media.blob,
+      uploadingFileName,
+      fileType,
+      apiFileName,
+      attachType,
+      attributes,
+      actionName,
+      onUploadDeferred: (uploadFileDeferred) => {
+        this.syncSentAndUploadPromises({sentDeferred: deferred, uploadFileDeferred, file: media.blob});
+      }
+    });
+
+    uploadMediaPromise.then((inputMedia) => deferred.resolve(inputMedia), (e) => deferred.reject(e));
+
+    return {
+      uploadingFileName,
+      deferred,
+      messageMedia
+    };
+  }
+
+  private startUploadingAllPollMedia(peerId: PeerId, payload: CreatePollPayload) {
+    const description = payload.descriptionAttachment ? this.uploadPollMedia(peerId, payload.descriptionAttachment) : undefined;
+    const explanation = payload.explanationAttachment ? this.uploadPollMedia(peerId, payload.explanationAttachment) : undefined;
+
+    const pollOptions = new Map<number, ReturnType<AppMessagesManager['uploadPollMedia']>>;
+
+    for(const [index, option] of payload.pollOptions.entries()) {
+      if(option.attachment) {
+        pollOptions.set(index, this.uploadPollMedia(peerId, option.attachment));
+      }
+    }
+
+    return {
+      description,
+      explanation,
+      pollOptions
+    };
+  }
+
+  private parseAllPollMarkdown(payload: CreatePollPayload) {
+    const toTextAndEntities = (ret: ReturnType<typeof parseMarkdown>) => ({text: ret[0], entities: ret[1]});
+
+    const question = toTextAndEntities(parseMarkdown(payload.question, payload.questionEntities));
+    const description = toTextAndEntities(parseMarkdown(payload.description, payload.descriptionEntities));
+    const explanation = toTextAndEntities(parseMarkdown(payload.explanation, payload.explanationEntities));
+    const pollOptions = payload.pollOptions.map((option) => toTextAndEntities(parseMarkdown(option.text, option.entities)));
+
+    return {
+      question,
+      description,
+      explanation,
+      pollOptions
+    };
+  }
+
+  private makePollMedia({peerId, payload, parsedPayload, uploadingMedia}: MakePollMediaArgs) {
+    const pollId = randomLong();
+
+    const flag = (value: boolean) => value ? true as const : undefined;
+
+    const pollWithoutAnswers: Omit<Poll.poll, 'answers'> = {
+      _: 'poll',
+      question: {
+        _: 'textWithEntities',
+        ...parsedPayload.question
+      },
+      id: pollId,
+      hash: undefined,
+      pFlags: {
+        hide_results_until_close: flag(payload.hideResults),
+        multiple_choice: flag(payload.allowMultipleAnswers),
+        public_voters: flag(payload.showWhoVoted),
+        revoting_disabled: flag(!payload.allowRevoting),
+        shuffle_answers: flag(payload.shuffleOptions),
+        quiz: flag(payload.hasCorrectAnswer),
+        open_answers: flag(payload.allowAddingOptions)
+      },
+      close_date: payload.timeLimit.type === 'timestamp' ? payload.timeLimit.timestamp : undefined,
+      close_period: payload.timeLimit.type === 'duration' ? payload.timeLimit.duration : undefined
+    };
+
+    const answersForMedia = payload.pollOptions.map((_, index): PollAnswer.pollAnswer => ({
+      _: 'pollAnswer',
+      text: {
+        _: 'textWithEntities',
+        ...parsedPayload.pollOptions[index]
+      },
+      option: new Uint8Array([index]),
+      added_by: this.appPeersManager.getOutputPeer(peerId),
+      media: uploadingMedia.pollOptions.get(index)?.messageMedia
+    }));
+
+    const pollForMedia: Poll.poll = {
+      ...pollWithoutAnswers,
+      answers: answersForMedia
+    };
+
+    const savePollResult = this.appPollsManager.savePoll(pollForMedia, {
+      _: 'pollResults',
+      total_voters: 0,
+      pFlags: {},
+      recent_voters: [],
+      solution: parsedPayload.explanation.text,
+      solution_entities: parsedPayload.explanation.entities,
+      solution_media: uploadingMedia.explanation?.messageMedia
+    });
+
+    const messageMedia: MessageMedia.messageMediaPoll = {
+      _: 'messageMediaPoll',
+      poll: savePollResult.poll,
+      results: savePollResult.results,
+      attached_media: uploadingMedia.description?.messageMedia
+    };
+
+    return {
+      pollWithoutAnswers,
+      messageMedia
+    };
+  }
+
+  private async invokeSendPoll({peerId, params, randomId, pollWithoutAnswers, parsedPayload, uploadingMedia}: InvokeSendPollArgs) {
+    // TODO: Consider lazy load queue
+
+    const inputMediaPoll: InputMedia.inputMediaPoll = {
+      _: 'inputMediaPoll',
+      poll: {
+        ...pollWithoutAnswers,
+        question: {
+          _: 'textWithEntities',
+          text: parsedPayload.question.text,
+          entities: this.getInputEntities(parsedPayload.question.entities)
+        },
+        answers: await Promise.all(parsedPayload.pollOptions.map(async(option, index): Promise<PollAnswer.inputPollAnswer> => ({
+          _: 'inputPollAnswer',
+          text: {
+            _: 'textWithEntities',
+            text: option.text,
+            entities: this.getInputEntities(option.entities)
+          },
+          media: await uploadingMedia.pollOptions.get(index)?.deferred
+        })))
+      },
+      attached_media: await uploadingMedia.description?.deferred,
+      solution: parsedPayload.explanation.text || undefined,
+      solution_entities: parsedPayload.explanation.text ? this.getInputEntities(parsedPayload.explanation.entities) : undefined,
+      solution_media: undefined
+    };
+
+    const paidStars = params.confirmedPaymentResult?.starsAmount || undefined;
+
+    const updates = await this.apiManager.invokeApi('messages.sendMedia', {
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      media: inputMediaPoll,
+      message: parsedPayload.description.text,
+      entities: this.getInputEntities(parsedPayload.description.entities),
+      random_id: randomId,
+      reply_to: params.replyTo,
+      schedule_date: params.scheduleDate,
+      schedule_repeat_period: params.scheduleRepeatPeriod || undefined,
+      silent: params.silent,
+      send_as: params.sendAsPeerId ? this.appPeersManager.getInputPeerById(params.sendAsPeerId) : undefined,
+      update_stickersets_order: params.updateStickersetOrder,
+      invert_media: params.invertMedia,
+      effect: params.effect,
+      allow_paid_stars: paidStars
+    });
+
+    this.apiUpdatesManager.processUpdateMessage(updates)
+    this.apiUpdatesManager.processPaidMessageUpdate({
+      paidStars,
+      wereStarsReserved: params.confirmedPaymentResult?.canUndo
+    });
+  }
+
+  public async sendPollMessage(params: MessageSendingParams, payload: CreatePollPayload) {
+    const peerId = this.appPeersManager.getPeerMigratedTo(params.peerId) || params.peerId;
+
+    await this.checkSendOptions(params);
+
+    const message = this.generateOutgoingMessage(peerId, params);
+
+    const uploadingMedia = this.startUploadingAllPollMedia(peerId, payload);
+    const parsedPayload = this.parseAllPollMarkdown(payload);
+
+    const {pollWithoutAnswers, messageMedia} = this.makePollMedia({peerId, payload, parsedPayload, uploadingMedia});
+
+    message.media = messageMedia;
+    message.message = parsedPayload.description.text;
+    message.entities = parsedPayload.description.entities;
+    message.uploadingFileName = [
+      uploadingMedia.description?.uploadingFileName,
+      uploadingMedia.explanation?.uploadingFileName,
+      ...Array.from(uploadingMedia.pollOptions.values()).map((attachment) => attachment.uploadingFileName)
+    ].filter(Boolean);
+
+    message.send = async() => {
+      try {
+        await this.invokeSendPoll({
+          peerId,
+          params,
+          randomId: message.random_id,
+          pollWithoutAnswers,
+          parsedPayload,
+          uploadingMedia
+        });
+      } catch(err) {
+        const error = err as ApiError;
+
+        const repayRequest = this.repayRequestHandler.tryRegisterRequest({
+          error,
+          messageCount: 1,
+          paidStars: params.confirmedPaymentResult?.starsAmount || undefined,
+          repayCallback: (override) => {
+            this.sendPollMessage({...params, ...override}, payload);
+          },
+          wereStarsReserved: params.confirmedPaymentResult?.canUndo
+        });
+
+        this.toggleError(message, error, repayRequest);
+      }
+    };
+
+    this.beforeMessageSending(message, {
+      isScheduled: !!params.scheduleDate || undefined,
+      threadId: params.threadId
+    });
+  }
+
+  private toggleError(message: Message.message, error?: ApiError, repayRequest?: RepayRequest) {
+    this.onMessagesSendError([message], error, repayRequest);
+    this.rootScope.dispatchEvent('messages_pending');
+  };
 
   public getMonoforumThreadId(peerId: PeerId, savedPeerId: Peer) {
     return savedPeerId && this.appPeersManager.isMonoforum(peerId) ? this.appPeersManager.getPeerId(savedPeerId) : undefined;

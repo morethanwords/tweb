@@ -48,7 +48,11 @@ export type StorePollOption = {
 };
 
 export type AttachedMedia = {
+  type: 'photo';
   objectUrl: string;
+  blob: Blob;
+  width: number;
+  height: number;
 };
 
 export type CreatePollContextValue = {

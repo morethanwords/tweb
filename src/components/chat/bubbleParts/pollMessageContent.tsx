@@ -28,6 +28,7 @@ import {batch, createEffect, createMemo, createSelector, createSignal, For, JSX,
 import {unwrap} from 'solid-js/store';
 import {Transition} from 'solid-transition-group';
 import styles from './pollMessageContent.module.scss';
+import {AttachedMedia} from '@components/popups/createPoll/storeContext';
 
 keepMe(ripple);
 
@@ -200,7 +201,7 @@ const AddOption = (props: {
   onVisibleChange: (visible: boolean) => void;
   onInput: (text: LocalTextWithEntities) => void;
 }) => {
-  const [attachment, setAttachment] = createSignal('');
+  const [attachment, setAttachment] = createSignal<AttachedMedia>();
 
   const visible = () => props.visible;
 
@@ -256,8 +257,8 @@ const AddOption = (props: {
           <MediaAttachment
             btnClass={styles.optionImageBtn}
             imgClass={styles.optionImageImg}
-            objectUrl={attachment()}
-            onChange={setAttachment}
+            objectUrl={attachment()?.objectUrl}
+            onAttach={setAttachment}
           />
         </Show>
       </div>
