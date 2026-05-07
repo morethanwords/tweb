@@ -21,7 +21,7 @@ import {FilterBooleanKeys} from '@types';
 import {createSignal, JSX, onMount, Show} from 'solid-js';
 import {supportedDescriptionFormattingTypes} from './config';
 import {EmojiButtonWithOpacity as EmojiDropdownButton} from './emojiButtonWithOpacity';
-import {useCreatePollLimits, useLabelError} from './hooks';
+import {useCreatePollLimits} from './hooks';
 import {MediaAttachment} from './mediaAttachment';
 import {CreatePollStore, useCreatePollContext} from './storeContext';
 import styles from './styles.module.scss';
@@ -38,8 +38,6 @@ export const PollSettingsSectionContent = () => {
   const [limitDurationExtraElement, setLimitDurationExtraElement] = createSignal<HTMLElement>();
   const [explanationElement, setExplanationElement] = createSignal<HTMLElement>();
   const [isDurationMenuOpen, setIsDurationMenuOpen] = createSignal(false);
-
-  const explanationLabelError = useLabelError(() => context.store.explanation, maxExplanationLength);
 
   const handleSettingsFlag = <T extends BooleanSettingKey>(flag: T) => () => {
     context.setStore(flag, prev => !prev);
@@ -188,16 +186,20 @@ export const PollSettingsSectionContent = () => {
               class={classNames(styles.flexFull, styles.formField)}
               withEndButtonIcon
               withMinHeight
-              isError={explanationLabelError.hasError()}
             >
               <SimpleFormField.InputStub>
                 {explanationInput.input}
               </SimpleFormField.InputStub>
               <SimpleFormField.Label><I18nTsx key='NewPoll.Explanation.Placeholder' /></SimpleFormField.Label>
-              <SimpleFormField.SideContent class={styles.sideContentWithFixedIcon} first last>
+              <SimpleFormField.SideContent withFixedIcon first last>
                 <EmojiDropdownButton inputField={explanationInput} />
               </SimpleFormField.SideContent>
-              <SimpleFormField.SideContent class={classNames(styles.sideContentWithFixedIcon, styles.formFieldSideLengthLeft)} first={!context.store.explanationAttachment} last>
+              <SimpleFormField.WithAutoLengthCounter
+                maxLength={maxExplanationLength()}
+                first={!context.store.explanationAttachment}
+                last
+                withFixedIcon
+              >
                 <MediaAttachment
                   imgClass={styles.mediaAttachmentImage}
                   objectUrl={context.store.explanationAttachment?.objectUrl}
@@ -205,12 +207,7 @@ export const PollSettingsSectionContent = () => {
                     context.setStore('explanationAttachment', value);
                   }}
                 />
-                <Show when={explanationLabelError.shouldShowLengthLeft()}>
-                  <div class={styles.formFieldSideLengthLeft}>
-                    {explanationLabelError.lengthLeft()}
-                  </div>
-                </Show>
-              </SimpleFormField.SideContent>
+              </SimpleFormField.WithAutoLengthCounter>
             </SimpleFormField>
 
             <div class={styles.caption}>

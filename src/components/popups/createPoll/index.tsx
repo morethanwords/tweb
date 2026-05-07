@@ -1,18 +1,18 @@
 import Button from '@components/buttonTsx';
 import InputField from '@components/inputField';
 import Scrollable from '@components/scrollable2';
-import SimpleFormField from '@components/simpleFormField';
+import SimpleFormField, {useMaxLengthError} from '@components/simpleFormField';
 import Space from '@components/space';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import {I18nTsx} from '@helpers/solid/i18n';
 import classNames from '@helpers/string/classNames';
 import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
-import {createMemo, createSignal, Show} from 'solid-js';
+import {createSignal, Show} from 'solid-js';
 import {unwrap} from 'solid-js/store';
 import PopupElement, {createPopup} from '../indexTsx';
 import {supportedDescriptionFormattingTypes} from './config';
 import {EmojiButtonWithOpacity as EmojiDropdownButton} from './emojiButtonWithOpacity';
-import {useCreatePollLimits, useLabelError} from './hooks';
+import {useCanSubmit, useCreatePollLimits} from './hooks';
 import {MediaAttachment} from './mediaAttachment';
 import {PollOptionsSectionContent} from './pollOptionsSectionContent';
 import {PollSettingsSectionContent} from './pollSettingsSectionContent';
@@ -53,8 +53,7 @@ const Header = (props: {
   const {maxQuestionLength, maxDescriptionLength} = useCreatePollLimits();
   const canSubmit = useCanSubmit();
 
-  const questionError = useLabelError(() => context.store.question, maxQuestionLength);
-  const descriptionError = useLabelError(() => context.store.description, maxDescriptionLength);
+  const questionError = useMaxLengthError(() => context.store.question, maxQuestionLength);
 
   const questionInput = new InputField({
     canWrapCustomEmojis: true,
@@ -115,7 +114,7 @@ const Header = (props: {
           </Show>
         </SimpleFormField.Label>
 
-        <SimpleFormField.SideContent class={styles.sideContentWithFixedIcon} first last>
+        <SimpleFormField.SideContent withFixedIcon first last>
           <EmojiDropdownButton inputField={questionInput} />
         </SimpleFormField.SideContent>
       </SimpleFormField>
@@ -127,16 +126,20 @@ const Header = (props: {
         class={classNames(styles.flexFull, styles.formField)}
         withEndButtonIcon
         withMinHeight
-        isError={descriptionError.hasError()}
       >
         <SimpleFormField.InputStub>
           {descriptionInput.input}
         </SimpleFormField.InputStub>
         <SimpleFormField.Label><I18nTsx key='DescriptionOptionalPlaceholder' /></SimpleFormField.Label>
-        <SimpleFormField.SideContent class={styles.sideContentWithFixedIcon} first last>
+        <SimpleFormField.SideContent withFixedIcon first last>
           <EmojiDropdownButton inputField={descriptionInput} />
         </SimpleFormField.SideContent>
-        <SimpleFormField.SideContent class={classNames(styles.sideContentWithFixedIcon, styles.formFieldSideLengthLeft)} first={!context.store.descriptionAttachment} last>
+        <SimpleFormField.WithAutoLengthCounter
+          maxLength={maxDescriptionLength()}
+          first={!context.store.descriptionAttachment}
+          last
+          withFixedIcon
+        >
           <MediaAttachment
             imgClass={styles.mediaAttachmentImage}
             objectUrl={context.store.descriptionAttachment?.objectUrl}
@@ -144,12 +147,7 @@ const Header = (props: {
               context.setStore('descriptionAttachment', value);
             }}
           />
-          <Show when={descriptionError.shouldShowLengthLeft()}>
-            <div class={styles.formFieldSideLengthLeft}>
-              {descriptionError.lengthLeft()}
-            </div>
-          </Show>
-        </SimpleFormField.SideContent>
+        </SimpleFormField.WithAutoLengthCounter>
       </SimpleFormField>
 
     </PopupElement.Header>
@@ -184,25 +182,6 @@ const BodyContent = () => {
       <Space amount='1.5rem' />
     </Scrollable>
   );
-};
-
-function useCanSubmit() {
-  const {store} = useCreatePollContext();
-  const {maxOptions, maxQuestionLength, maxDescriptionLength, maxOptionLength, maxExplanationLength} = useCreatePollLimits();
-
-  return createMemo(() => {
-    if(!store.question) return false;
-    if(store.question.length > maxQuestionLength()) return false;
-    if(store.description.length > maxDescriptionLength()) return false;
-    if(store.pollOptions.length < 2) return false;
-    if(store.pollOptions.length > maxOptions()) return false;
-    if(store.pollOptions.some((option) => !option.text)) return false;
-    if(store.pollOptions.some((option) => option.text.length > maxOptionLength())) return false;
-    if(store.hasCorrectAnswer && !store.pollOptions.some((option) => option.checked)) return false;
-    if(store.hasCorrectAnswer && store.explanation.length > maxExplanationLength()) return false;
-
-    return true;
-  });
 };
 
 export function openCreatePollPopup(props: CreatePollPopupProps, HotReloadGuard: typeof SolidJSHotReloadGuardProvider) {

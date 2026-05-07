@@ -170,4 +170,21 @@
   &.last {
     margin-right: 0;
   }
+
+  // Keep the icon closer to top when the text wraps multiple lines
+  &.withFixedIcon {
+    align-self: stretch;
+    padding-top: calc((var(--height) - 40px) / 2);
+  }
+
+  .lengthLeft {
+    padding-bottom: 0.375rem;
+  }
+
+  &.withLimit {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+  }
 }

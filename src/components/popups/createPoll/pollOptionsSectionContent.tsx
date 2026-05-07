@@ -15,7 +15,7 @@ import classNames from '@helpers/string/classNames';
 import {batch, children, createMemo, createSignal, For, JSX, mapArray, onMount, Ref, Show} from 'solid-js';
 import {Transition} from 'solid-transition-group';
 import {EmojiButtonWithOpacity as EmojiDropdownButton} from './emojiButtonWithOpacity';
-import {useCreatePollLimits, useLabelError} from './hooks';
+import {useCreatePollLimits} from './hooks';
 import {MediaAttachment} from './mediaAttachment';
 import {AttachedMedia, StorePollOption, useCreatePollContext} from './storeContext';
 import styles from './styles.module.scss';
@@ -240,8 +240,6 @@ const PollOptionInputField = (props: {
 }) => {
   const {maxOptionLength} = useCreatePollLimits();
 
-  const labelError = useLabelError(() => props.value, maxOptionLength);
-
   const inputField = new InputField({
     placeholder: 'NewPoll.Option',
     canWrapCustomEmojis: true,
@@ -279,7 +277,6 @@ const PollOptionInputField = (props: {
       solidBackground
       hoverDisabled={props.hoverDisabled}
       style={props.style}
-      isError={labelError.hasError()}
     >
       <SimpleFormField.SideContent
         class={styles.draggableSideContent}
@@ -293,10 +290,15 @@ const PollOptionInputField = (props: {
         {inputField.input}
         {inputField.placeholder}
       </SimpleFormField.InputStub>
-      <SimpleFormField.SideContent class={styles.sideContentWithFixedIcon} first last>
+      <SimpleFormField.SideContent withFixedIcon first last>
         <EmojiDropdownButton inputField={inputField} />
       </SimpleFormField.SideContent>
-      <SimpleFormField.SideContent class={classNames(styles.sideContentWithFixedIcon, styles.sideContentWithLimit)} first={!props.attachment} last>
+      <SimpleFormField.WithAutoLengthCounter
+        maxLength={maxOptionLength()}
+        first={!props.attachment}
+        last
+        withFixedIcon
+      >
         <MediaAttachment
           imgClass={styles.mediaAttachmentImage}
           objectUrl={props.attachment?.objectUrl}
@@ -304,12 +306,7 @@ const PollOptionInputField = (props: {
             props.onChange?.({attachment: value});
           }}
         />
-        <Show when={labelError.shouldShowLengthLeft()}>
-          <div class={styles.formFieldSideLengthLeft}>
-            {labelError.lengthLeft()}
-          </div>
-        </Show>
-      </SimpleFormField.SideContent>
+      </SimpleFormField.WithAutoLengthCounter>
     </SimpleFormField>
   );
 };

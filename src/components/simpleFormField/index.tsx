@@ -1,7 +1,7 @@
 import styles from '@components/simpleFormField/styles.module.scss';
 import {requestRAF} from '@helpers/solid/requestRAF';
 import classNames from '@helpers/string/classNames';
-import {Accessor, batch, createContext, createMemo, createSignal, JSX, onCleanup, onMount, ParentProps, Ref, Setter, splitProps, useContext} from 'solid-js';
+import {Accessor, batch, createContext, createEffect, createMemo, createSignal, JSX, onCleanup, onMount, ParentProps, Ref, Setter, splitProps, useContext, Show} from 'solid-js';
 
 
 type SimpleFormFieldContextValue = {
@@ -13,13 +13,14 @@ type SimpleFormFieldContextValue = {
   onChange: (value: string) => void;
   forceFocused: Accessor<boolean>;
   useSetForceFocused: () => (focused: boolean) => void;
+  forceError: Accessor<boolean>;
+  useSetForceError: () => (error: boolean) => void;
 };
 
 const Context = createContext<SimpleFormFieldContextValue>();
 
 export const useSimpleFormFieldContext = () => useContext(Context);
 
-type ObjectRef = {};
 
 const SimpleFormField = (inProps: ParentProps<{
   value?: string;
@@ -53,9 +54,8 @@ const SimpleFormField = (inProps: ParentProps<{
   const [input, setInput] = createSignal<HTMLInputElement>();
   const [offsetElement, setOffsetElement] = createSignal<HTMLElement>();
 
-  const [forceFocusedRefs, setForceFocusedRefs] = createSignal<ObjectRef[]>([]);
-
-  const forceFocused = createMemo(() => forceFocusedRefs().length > 0);
+  const {value: forceFocused, useSetter: useSetForceFocused} = useForceState();
+  const {value: forceError, useSetter: useSetForceError} = useForceState();
 
   const contextValue: SimpleFormFieldContextValue = {
     input,
@@ -67,23 +67,9 @@ const SimpleFormField = (inProps: ParentProps<{
       return props.onChange;
     },
     forceFocused,
-    useSetForceFocused: () => {
-      const ref = {};
-
-      const setter = (focused: boolean) => {
-        const newValue = forceFocusedRefs().filter((ref) => ref !== ref);
-
-        setForceFocusedRefs(
-          focused ? [...newValue, ref] : newValue
-        );
-      };
-
-      onCleanup(() => {
-        setter(false);
-      });
-
-      return setter;
-    }
+    useSetForceFocused,
+    forceError,
+    useSetForceError
   };
 
   return (
@@ -91,7 +77,7 @@ const SimpleFormField = (inProps: ParentProps<{
       <div
         class={classNames(styles.Container, props.class)}
         classList={{
-          [styles.error]: props.isError,
+          [styles.error]: props.isError || forceError(),
           [styles.clickable]: props.clickable,
           [styles.withEndButtonIcon]: props.withEndButtonIcon,
           [styles.withStartButtonIcon]: props.withStartButtonIcon,
@@ -198,18 +184,22 @@ SimpleFormField.Label = (props: ParentProps<{
   );
 };
 
-SimpleFormField.SideContent = (inProps: JSX.HTMLAttributes<HTMLDivElement> & {
+type SideContentProps = JSX.HTMLAttributes<HTMLDivElement> & {
   class?: string;
   first?: boolean;
   last?: boolean;
-}) => {
-  const [props, restProps] = splitProps(inProps, ['class', 'first', 'last', 'classList', 'children']);
+  withFixedIcon?: boolean;
+};
+
+SimpleFormField.SideContent = (inProps: SideContentProps) => {
+  const [props, restProps] = splitProps(inProps, ['class', 'first', 'last', 'withFixedIcon', 'classList', 'children']);
   return (
     <div
       class={classNames(styles.SideContent, props.class)}
       classList={{
         [styles.first]: props.first,
         [styles.last]: props.last,
+        [styles.withFixedIcon]: props.withFixedIcon,
         ...props.classList
       }}
       {...restProps}
@@ -217,6 +207,99 @@ SimpleFormField.SideContent = (inProps: JSX.HTMLAttributes<HTMLDivElement> & {
       {props.children}
     </div>
   );
+};
+
+type WithLengthCounterProps = SideContentProps & {
+  showLengthLeft: boolean;
+  lengthLeft: number;
+};
+
+SimpleFormField.WithLengthCounter = (inProps: WithLengthCounterProps) => {
+  const [props, restProps] = splitProps(inProps, ['class', 'showLengthLeft', 'lengthLeft', 'children']);
+
+  return (
+    <SimpleFormField.SideContent
+      class={classNames(styles.withLimit, props.class)}
+      {...restProps}
+    >
+      {props.children}
+      <Show when={props.showLengthLeft}>
+        <div class={styles.lengthLeft}>
+          {props.lengthLeft}
+        </div>
+      </Show>
+    </SimpleFormField.SideContent>
+  );
+};
+
+type WithAutoLengthCounterProps = SideContentProps & {
+  maxLength: number;
+};
+
+SimpleFormField.WithAutoLengthCounter = (inProps: WithAutoLengthCounterProps) => {
+  const [props, restProps] = splitProps(inProps, ['maxLength']);
+
+  const context = useSimpleFormFieldContext();
+
+  const {shouldShowLengthLeft, lengthLeft, hasError} = useMaxLengthError(context.value, () => props.maxLength);
+
+  const setForceError = context.useSetForceError();
+  createEffect(() => {
+    setForceError(hasError());
+  });
+
+  return (
+    <SimpleFormField.WithLengthCounter
+      showLengthLeft={shouldShowLengthLeft()}
+      lengthLeft={lengthLeft()}
+      {...restProps}
+    />
+  );
+};
+
+/**
+ * Aggregates a boolean state across multiple independent consumers.
+ *
+ * Each consumer obtains its own setter via `useSetter()`. The aggregated
+ * `value` is `true` whenever at least one consumer has set its flag to `true`.
+ * The setter is automatically reset on cleanup of the calling owner.
+ */
+export const useForceState = () => {
+  type ObjectRef = {};
+
+  const [refs, setRefs] = createSignal<ObjectRef[]>([]);
+
+  const value = createMemo(() => refs().length > 0);
+
+  const useSetter = () => {
+    const ref: ObjectRef = {};
+
+    const setter = (active: boolean) => {
+      const filtered = refs().filter((other) => other !== ref);
+
+      setRefs(active ? [...filtered, ref] : filtered);
+    };
+
+    onCleanup(() => {
+      setter(false);
+    });
+
+    return setter;
+  };
+
+  return {value, useSetter};
+};
+
+export const useMaxLengthError = (value: Accessor<string>, maxLength: Accessor<number>) => {
+  const threshold = () => Math.min(40, Math.round(maxLength() / 3));
+  const lengthLeft = () => maxLength() - value().length;
+  const shouldShowLengthLeft = createMemo(() => lengthLeft() < threshold());
+
+  return {
+    hasError: createMemo(() => value().length > maxLength()),
+    shouldShowLengthLeft,
+    lengthLeft
+  };
 };
 
 export default SimpleFormField;
