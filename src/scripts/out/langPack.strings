@@ -1715,6 +1715,11 @@
 "DeleteTopics_one" = "Delete topic";
 "DeleteTopics_other" = "Delete topics";
 "DeleteSelectedTopic" = "Are you sure you want delete %s?";
+"DeleteChats_one" = "Delete %d chat";
+"DeleteChats_other" = "Delete %d chats";
+"AreYouSureDeleteSelectedChats_one" = "Are you sure you want to delete %d chat? This action cannot be undone.";
+"AreYouSureDeleteSelectedChats_other" = "Are you sure you want to delete %d chats? This action cannot be undone.";
+"DeleteMessagesOptionAlsoForContacts" = "Also delete for contacts";
 "NewTopic" = "New Topic";
 "CreateTopicTitle" = "Choose a topic name and icon";
 "CreateGeneralTopicTitle" = "Choose topic name";

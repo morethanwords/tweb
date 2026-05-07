@@ -285,6 +285,18 @@ export default class DialogsContextMenu {
 
   private getBulkButtons() {
     this.bulkButtons ??= [{
+      icon: 'unread',
+      text: 'MarkAsUnread',
+      onClick: this.onBulkMarkUnreadClick
+    }, {
+      icon: 'mute',
+      text: 'ChatList.Context.Mute',
+      onClick: this.onBulkMuteClick
+    }, {
+      icon: 'archive',
+      text: 'Archive',
+      onClick: this.onBulkArchiveClick
+    }, {
       icon: 'delete',
       className: 'danger',
       text: 'Delete',
@@ -292,6 +304,28 @@ export default class DialogsContextMenu {
     }];
     return this.bulkButtons;
   }
+
+  private onBulkMarkUnreadClick = () => {
+    for(const peerId of appDialogsManager.selectedPeerIds) {
+      this.managers.appMessagesManager.markDialogUnread({peerId});
+    }
+    appDialogsManager.exitChatSelectionMode();
+  };
+
+  private onBulkMuteClick = () => {
+    const peerIds = Array.from(appDialogsManager.selectedPeerIds);
+    import('@components/popups/bulkMute').then(({default: PopupBulkMute}) => {
+      PopupElement.createPopup(PopupBulkMute, peerIds, () => {
+        appDialogsManager.exitChatSelectionMode();
+      });
+    });
+  };
+
+  private onBulkArchiveClick = () => {
+    const peerIds = Array.from(appDialogsManager.selectedPeerIds);
+    this.managers.appMessagesManager.editPeerFolders(peerIds, FOLDER_ID_ARCHIVE);
+    appDialogsManager.exitChatSelectionMode();
+  };
 
   private onBulkDeleteClick = () => {
     const peerIds = Array.from(appDialogsManager.selectedPeerIds);
