@@ -223,7 +223,7 @@ export const PollSettingsSectionContent = () => {
               >
                 <MediaAttachment
                   imgClass={styles.mediaAttachmentImage}
-                  objectUrl={context.store.explanationAttachment?.objectUrl}
+                  attachedMedia={context.store.explanationAttachment}
                   onAttach={(value) => {
                     context.setStore('explanationAttachment', value);
                   }}

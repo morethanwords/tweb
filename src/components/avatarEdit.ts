@@ -40,7 +40,7 @@ export default class AvatarEdit {
       getFileAndOpenEditor({
         isEditingForAvatar: true,
         isEditingForumAvatar: options?.isForum,
-        onFinish: (result) => {
+        onFinish: ({editorResult: result}) => {
           finishFromResult({
             result,
             onChange,

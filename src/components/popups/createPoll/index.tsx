@@ -165,7 +165,7 @@ const Header = (props: {
         >
           <MediaAttachment
             imgClass={styles.mediaAttachmentImage}
-            objectUrl={context.store.descriptionAttachment?.objectUrl}
+            attachedMedia={context.store.descriptionAttachment}
             onAttach={(value) => {
               context.setStore('descriptionAttachment', value);
             }}

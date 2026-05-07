@@ -263,7 +263,7 @@ const AddOption = (props: {
           <MediaAttachment
             btnClass={styles.optionImageBtn}
             imgClass={styles.optionImageImg}
-            objectUrl={attachment()?.objectUrl}
+            attachedMedia={attachment()}
             onAttach={setAttachment}
           />
         </Show>

@@ -50,7 +50,9 @@ export type StorePollOption = {
 export type AttachedMedia = {
   type: 'photo';
   objectUrl: string;
+  originalObjectUrl?: string;
   blob: Blob;
+  originalBlob?: Blob;
   width: number;
   height: number;
 };

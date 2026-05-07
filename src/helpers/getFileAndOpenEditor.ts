@@ -4,11 +4,16 @@ import {createImageAndURLFromBlob} from '@helpers/createImageAndURLFromBlob';
 import rootScope from '@lib/rootScope';
 
 
+type OnFinishArgs = {
+  editorResult: MediaEditorFinalResult;
+  originalFile: File;
+};
+
 type GetFileAndOpenEditorArgs = {
   dontCreatePreview?: boolean;
   isEditingForAvatar?: boolean;
   isEditingForumAvatar?: boolean;
-  onFinish: (result: MediaEditorFinalResult) => void;
+  onFinish: (args: OnFinishArgs) => void;
 };
 
 export async function getFileAndOpenEditor({onFinish, dontCreatePreview, isEditingForAvatar, isEditingForumAvatar}: GetFileAndOpenEditorArgs) {
@@ -37,7 +42,7 @@ export async function getFileAndOpenEditor({onFinish, dontCreatePreview, isEditi
     mediaSrc: imgResult.url,
     mediaType: 'image',
     initialTab: 'crop',
-    onEditFinish: onFinish,
+    onEditFinish: (editorResult) => onFinish({editorResult, originalFile: file}),
     dontCreatePreview,
     onClose: () => { }
   });

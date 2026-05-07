@@ -81,7 +81,7 @@ export default class AppSettingsTab extends SliderSuperTab {
       getFileAndOpenEditor({
         isEditingForAvatar: true,
         dontCreatePreview: true,
-        onFinish: async(editorResult) => {
+        onFinish: async({editorResult}) => {
           if(editorResult.isVideo) return;
           const resultPayload = await editorResult.getResult();
           const inputFile = await appDownloadManager.upload(resultPayload.blob)

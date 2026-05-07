@@ -3893,6 +3893,7 @@
 "PostsSearch.StarsSpent" = "**%s** spent on extra search";
 "EditThisPhoto" = "Edit this photo";
 "EditThisVideo" = "Edit this video";
+"ReplacePhoto" = "Replace photo";
 "ArchiveSettings" = "Archive Settings";
 "ArchiveSettings.UnmutedChats.Title" = "Unmuted Chats";
 "ArchiveSettings.UnmutedChats.Action" = "Always keep archived";

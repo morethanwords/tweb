@@ -301,7 +301,7 @@ const PollOptionInputField = (props: {
       >
         <MediaAttachment
           imgClass={styles.mediaAttachmentImage}
-          objectUrl={props.attachment?.objectUrl}
+          attachedMedia={props.attachment}
           onAttach={(value) => {
             props.onChange?.({attachment: value});
           }}
