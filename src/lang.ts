@@ -1962,6 +1962,15 @@ const lang = {
     'other_value': 'Delete topics'
   },
   'DeleteSelectedTopic': 'Are you sure you want delete %s?',
+  'DeleteChats': {
+    'one_value': 'Delete %d chat',
+    'other_value': 'Delete %d chats'
+  },
+  'AreYouSureDeleteSelectedChats': {
+    'one_value': 'Are you sure you want to delete %d chat? This action cannot be undone.',
+    'other_value': 'Are you sure you want to delete %d chats? This action cannot be undone.'
+  },
+  'DeleteMessagesOptionAlsoForContacts': 'Also delete for contacts',
   'NewTopic': 'New Topic',
   'CreateTopicTitle': 'Choose a topic name and icon',
   'CreateGeneralTopicTitle': 'Choose topic name',

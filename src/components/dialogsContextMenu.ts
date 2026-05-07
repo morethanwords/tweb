@@ -11,6 +11,7 @@ import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG} from '@lib/appDialogsManager
 import rootScope from '@lib/rootScope';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import PopupDeleteDialog from '@components/popups/deleteDialog';
+import PopupDeleteDialogs from '@components/popups/deleteDialogs';
 import {i18n, LangPackKey, _i18n} from '@lib/langPack';
 import findUpTag from '@helpers/dom/findUpTag';
 import {toastNew} from '@components/toast';
@@ -30,10 +31,12 @@ import memoizeAsyncWithTTL from '@helpers/memoizeAsyncWithTTL';
 import {MonoforumDialog} from '@lib/storages/monoforumDialogs';
 import {openRemoveFeePopup} from '@components/chat/removeFee';
 import apiManagerProxy from '@lib/apiManagerProxy';
+import filterAsync from '@helpers/array/filterAsync';
 
 
 export default class DialogsContextMenu {
   private buttons: ButtonMenuItemOptionsVerifiable[];
+  private bulkButtons: ButtonMenuItemOptionsVerifiable[];
 
   private peerId: PeerId;
   private filterId: number;
@@ -44,6 +47,7 @@ export default class DialogsContextMenu {
   private canDelete: boolean;
   private li: HTMLElement;
   private addToFolderMenu: InstanceType<typeof AddToFolderDropdownMenu>;
+  private isBulkContext: boolean;
 
   constructor(private managers: AppManagers) {
 
@@ -52,7 +56,15 @@ export default class DialogsContextMenu {
   public attach(element: HTMLElement) {
     createContextMenu({
       listenTo: element,
-      buttons: this.getButtons(),
+      buttons: [...this.getButtons(), ...this.getBulkButtons()],
+      filterButtons: async(buttons) => {
+        if(this.isBulkContext) {
+          return this.getBulkButtons();
+        }
+        return filterAsync(this.getButtons(), (button) => {
+          return button?.verify ? button.verify() as Promise<boolean> : true;
+        });
+      },
       onOpen: async(e, li) => {
         this.li = li;
         li.classList.add('menu-open');
@@ -64,6 +76,18 @@ export default class DialogsContextMenu {
           throw 'All chats dialog';
         }
 
+        // Check if we're in multi-select mode and right-clicked a selected chat
+        this.isBulkContext = appDialogsManager.isSelectingChats &&
+          appDialogsManager.selectedPeerIds.has(this.peerId) &&
+          !this.threadId &&
+          !this.monoforumParentPeerId &&
+          appDialogsManager.selectedPeerIds.size > 1;
+
+        if(this.isBulkContext) {
+          // No need to load dialog info for bulk context
+          return;
+        }
+
         this.dialog = this.monoforumParentPeerId ?
           await this.managers.monoforumDialogsStorage.getDialogByParent(this.monoforumParentPeerId, this.peerId):
           await this.managers.dialogsStorage.getAnyDialog(this.peerId, this.threadId);
@@ -72,6 +96,8 @@ export default class DialogsContextMenu {
         this.canDelete = await this.checkIfCanDelete();
       },
       onOpenBefore: async() => {
+        if(this.isBulkContext) return;
+
         this.buttons?.forEach(button => button?.onOpen?.());
         // delete button
         const langPackKey: LangPackKey = this.threadId ? 'Delete' : await this.managers.appPeersManager.getDeleteButtonText(this.peerId);
@@ -81,7 +107,9 @@ export default class DialogsContextMenu {
         }
       },
       onClose: () => {
-        this.buttons?.forEach(button => button?.onClose?.());
+        if(!this.isBulkContext) {
+          this.buttons?.forEach(button => button?.onClose?.());
+        }
         this.li.classList.remove('menu-open');
 
         this.li =
@@ -90,7 +118,8 @@ export default class DialogsContextMenu {
         this.filterId =
         this.threadId =
         this.monoforumParentPeerId =
-        this.canManageTopics = undefined;
+        this.canManageTopics =
+        this.isBulkContext = undefined;
       },
       findElement: (e) => {
         return findUpTag(e.target, DIALOG_LIST_ELEMENT_TAG);
@@ -253,6 +282,57 @@ export default class DialogsContextMenu {
 
     return this.buttons = this.buttons.filter(Boolean);
   }
+
+  private getBulkButtons() {
+    this.bulkButtons ??= [{
+      icon: 'unread',
+      text: 'MarkAsUnread',
+      onClick: this.onBulkMarkUnreadClick
+    }, {
+      icon: 'mute',
+      text: 'ChatList.Context.Mute',
+      onClick: this.onBulkMuteClick
+    }, {
+      icon: 'archive',
+      text: 'Archive',
+      onClick: this.onBulkArchiveClick
+    }, {
+      icon: 'delete',
+      className: 'danger',
+      text: 'Delete',
+      onClick: this.onBulkDeleteClick
+    }];
+    return this.bulkButtons;
+  }
+
+  private onBulkMarkUnreadClick = () => {
+    for(const peerId of appDialogsManager.selectedPeerIds) {
+      this.managers.appMessagesManager.markDialogUnread({peerId});
+    }
+    appDialogsManager.exitChatSelectionMode();
+  };
+
+  private onBulkMuteClick = () => {
+    const peerIds = Array.from(appDialogsManager.selectedPeerIds);
+    import('@components/popups/bulkMute').then(({default: PopupBulkMute}) => {
+      PopupElement.createPopup(PopupBulkMute, peerIds, () => {
+        appDialogsManager.exitChatSelectionMode();
+      });
+    });
+  };
+
+  private onBulkArchiveClick = () => {
+    const peerIds = Array.from(appDialogsManager.selectedPeerIds);
+    this.managers.appMessagesManager.editPeerFolders(peerIds, FOLDER_ID_ARCHIVE);
+    appDialogsManager.exitChatSelectionMode();
+  };
+
+  private onBulkDeleteClick = () => {
+    const peerIds = Array.from(appDialogsManager.selectedPeerIds);
+    PopupElement.createPopup(PopupDeleteDialogs, peerIds, () => {
+      appDialogsManager.exitChatSelectionMode();
+    });
+  };
 
   private createAddToFolderSubmenu = async({middleware}: CreateSubmenuArgs) => {
     if(!isDialog(this.dialog)) return;
