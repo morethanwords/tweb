@@ -353,7 +353,7 @@ export default class ChatTopbar {
       }));
 
       results.forEach(({button, result}) => {
-        button.element.classList.toggle('hide', !result);
+        button.element?.classList.toggle('hide', !result);
       });
     };
 
