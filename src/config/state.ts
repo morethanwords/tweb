@@ -170,6 +170,7 @@ export type State = {
   hideChatJoinRequests: {[peerId: PeerId]: number},
   // stateId?: number, // ! DEPRECATED
   notifySettings: {[k in Exclude<NotifyPeer['_'], 'notifyPeer'>]?: PeerNotifySettings.peerNotifySettings},
+  notifyContactsSignUp?: boolean,
   confirmedWebViews: BotId[],
   hiddenSimilarChannels: number[],
   appConfig: MTAppConfig,
@@ -438,6 +439,7 @@ export const STATE_INIT: State = {
   hideChatJoinRequests: {},
   // stateId: nextRandomUint(32),
   notifySettings: {},
+  notifyContactsSignUp: true,
   confirmedWebViews: [],
   hiddenSimilarChannels: [],
   appConfig: {} as any,

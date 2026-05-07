@@ -55,6 +55,10 @@ export class AppNotificationsManager extends AppManager {
           });
         }
       }
+
+      if(state.notifyContactsSignUp !== undefined) {
+        this.notifyContactsSignUp = Promise.resolve(state.notifyContactsSignUp);
+      }
     });
   }
 
@@ -141,8 +145,9 @@ export class AppNotificationsManager extends AppManager {
 
   public setContactSignUpNotification(silent: boolean) {
     this.apiManager.invokeApi('account.setContactSignUpNotification', {silent})
-    .then((value) => {
+    .then(() => {
       this.notifyContactsSignUp = Promise.resolve(!silent);
+      this.appStateManager.pushToState('notifyContactsSignUp', !silent);
     });
   }
 
