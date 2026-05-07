@@ -389,6 +389,15 @@ export class AppSidebarLeft extends SidebarSlider {
     });
   }
 
+  public enterChatSelectionMode(selectedPeerIds: Set<PeerId>) {
+  }
+
+  public updateChatSelectionCount(count: number) {
+  }
+
+  public exitChatSelectionMode() {
+  }
+
   /**
    * Focus search input by pressing Escape
    */

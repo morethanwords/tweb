@@ -563,6 +563,11 @@ export class AppDialogsManager {
 
   private lazyLoadQueue: LazyLoadQueue;
 
+  // Multi-select state
+  public selectedPeerIds: Set<PeerId> = new Set();
+  public isSelectingChats: boolean = false;
+  private selectionNavigationItem: NavigationItem;
+
   public start() {
     const managers = this.managers = getProxiedManagers();
 
@@ -980,6 +985,80 @@ export class AppDialogsManager {
     if(dom?.callIcon) {
       dom.callIcon.setActive(active);
     }
+  }
+
+  public setDialogSelected(listEl: HTMLElement, selected: boolean) {
+    listEl.classList.toggle('is-selected-chat', selected);
+    this.setDialogActiveStatus(listEl, selected);
+  }
+
+  public enterChatSelectionMode(firstPeerId: PeerId, firstListEl: HTMLElement) {
+    if(this.isSelectingChats) return;
+    this.isSelectingChats = true;
+    this.selectedPeerIds.clear();
+
+    // Also include the currently open/active chat if there is one
+    for(const activeEl of this.lastActiveElements) {
+      const activePeerId = activeEl.dataset.peerId?.toPeerId();
+      if(activePeerId && activePeerId !== firstPeerId && !activeEl.dataset.threadId && !activeEl.dataset.monoforumParentPeerId) {
+        this.selectedPeerIds.add(activePeerId);
+        this.setDialogSelected(activeEl, true);
+      }
+    }
+
+    this.selectedPeerIds.add(firstPeerId);
+    this.setDialogSelected(firstListEl, true);
+
+    this.selectionNavigationItem = {
+      type: 'chat-multiselect' as any,
+      onPop: () => {
+        this.exitChatSelectionMode();
+        return true;
+      }
+    };
+    appNavigationController.pushItem(this.selectionNavigationItem);
+
+    appSidebarLeft.enterChatSelectionMode(this.selectedPeerIds);
+  }
+
+  public toggleChatSelection(peerId: PeerId, listEl: HTMLElement) {
+    if(this.selectedPeerIds.has(peerId)) {
+      this.selectedPeerIds.delete(peerId);
+      this.setDialogSelected(listEl, false);
+    } else {
+      this.selectedPeerIds.add(peerId);
+      this.setDialogSelected(listEl, true);
+    }
+
+    if(this.selectedPeerIds.size === 0) {
+      this.exitChatSelectionMode();
+      return;
+    }
+
+    appSidebarLeft.updateChatSelectionCount(this.selectedPeerIds.size);
+  }
+
+  public exitChatSelectionMode() {
+    if(!this.isSelectingChats) return;
+    this.isSelectingChats = false;
+
+    // Remove visual selection from selected chats, but preserve active state for the currently open chat
+    document.querySelectorAll<HTMLElement>('.chatlist .is-selected-chat').forEach((el) => {
+      el.classList.remove('is-selected-chat');
+      // Only remove active styling if this chat is not the currently open one
+      if(!this.lastActiveElements.has(el)) {
+        this.setDialogActiveStatus(el, false);
+      }
+    });
+
+    this.selectedPeerIds.clear();
+
+    if(this.selectionNavigationItem) {
+      appNavigationController.removeItem(this.selectionNavigationItem);
+      this.selectionNavigationItem = null;
+    }
+
+    appSidebarLeft.exitChatSelectionMode();
   }
 
   private async onStateLoaded(state: State) {
@@ -1912,10 +1991,25 @@ export class AppDialogsManager {
       }
 
       if(e.ctrlKey || e.metaKey) {
+        // Ctrl+Click: toggle selection on this chat
+        if(!threadId && !monoforumParentPeerId) {
+          if(!this.isSelectingChats) {
+            this.enterChatSelectionMode(peerId, elem);
+          } else {
+            this.toggleChatSelection(peerId, elem);
+          }
+          cancelEvent(e);
+          return;
+        }
         // TODO: How about opening a monoforum in new tab?
         this.openDialogInNewTab(elem);
         cancelEvent(e);
         return;
+      }
+
+      // In selection mode, a plain click exits selection and opens the chat normally
+      if(this.isSelectingChats && !threadId && !monoforumParentPeerId) {
+        this.exitChatSelectionMode();
       }
 
       if(autonomous) {
