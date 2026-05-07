@@ -92,6 +92,7 @@ export const PollSettingsSectionContent = () => {
           mediaStyle={getGradientStyle(2)}
           icon='checklist_add'
           checked={context.store.allowAddingOptions}
+          disabled={context.store.hasCorrectAnswer}
           onClick={handleSettingsFlag('allowAddingOptions')}
         />
       </Show>
@@ -117,7 +118,18 @@ export const PollSettingsSectionContent = () => {
         mediaStyle={getGradientStyle(5)}
         icon='checklist_done'
         checked={context.store.hasCorrectAnswer}
-        onClick={handleSettingsFlag('hasCorrectAnswer')}
+        onClick={() => {
+          if(!context.store.hasCorrectAnswer) {
+            context.setStore({
+              hasCorrectAnswer: true,
+              allowAddingOptions: false
+            });
+          } else {
+            context.setStore({
+              hasCorrectAnswer: false
+            });
+          }
+        }}
       />
       <SettingsOption
         title='NewPoll.LimitDuration'
@@ -261,7 +273,7 @@ const SettingsOption = (props: {
       </Row.Title>
       <Row.Subtitle><I18nTsx key={props.subtitle} /></Row.Subtitle>
       <Row.RightContent>
-        <StaticSwitch checked={props.checked} />
+        <StaticSwitch checked={props.checked} handleContent={props.disabled ? <StaticSwitch.HandleIcon icon='lock' /> : undefined} />
       </Row.RightContent>
     </Row>
   );

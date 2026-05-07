@@ -48,5 +48,9 @@ export const getFinalPayload = (context: CreatePollContextValue) => {
     cloned.showWhoVoted = false;
   }
 
+  if(cloned.hasCorrectAnswer) {
+    cloned.allowAddingOptions = false;
+  }
+
   return cloned;
 };
