@@ -6492,6 +6492,10 @@ export default class ChatBubbles {
           needToSetHTML = false;
         }
       }
+
+      if(context.messageMedia?._ === 'messageMediaPoll') {
+        context.messageMessage = totalEntities = undefined;
+      }
     } else {
       if(message.action._ === 'messageActionPhoneCall') {
         context.messageMedia = {
@@ -7698,6 +7702,7 @@ export default class ChatBubbles {
         case 'messageMediaPoll': {
           if(message._ === 'message') {
             context.mediaRequiresMessageDiv = true;
+            context.messageMessage = totalEntities = undefined;
 
             const {PollMessageContent} = await import('./bubbleParts/pollMessageContent');
             const pollMessageContent = new PollMessageContent();
@@ -7711,8 +7716,6 @@ export default class ChatBubbles {
 
             messageDiv.prepend(pollMessageContent);
             bubble.classList.add('poll-message');
-
-            bubble.classList.add('is-poll');
 
             break;
           }

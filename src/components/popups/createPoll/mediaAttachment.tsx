@@ -36,12 +36,14 @@ export const MediaAttachment = (props: {
 
   const isCleaned = useIsCleaned();
 
-  const onChoose = () => {
+  const onChoose = wrapAsyncClickHandler(async() => {
     blurActiveElement();
-    getFileAndOpenEditor({
+
+    // there is a dynamic import there
+    await getFileAndOpenEditor({
       onFinish: (args) => handleFinish(args.editorResult, args.originalFile)
     });
-  };
+  });
 
   const onEdit = wrapAsyncClickHandler(async() => {
     if(!img() || !props.attachedMedia || !originalValues) return;
@@ -86,7 +88,7 @@ export const MediaAttachment = (props: {
     });
 
     requestRAF(async() => {
-      if(!img()) {
+      if(!img() || isCleaned()) {
         editorResult.animatedPreview.remove();
         return;
       }
