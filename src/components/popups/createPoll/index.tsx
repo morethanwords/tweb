@@ -107,12 +107,14 @@ const Header = (props: {
         isError={questionError.hasError()}
       >
         <SimpleFormField.InputStub>
-          {questionInput.input}
+          <Scrollable relative class={styles.inputScrollable}>
+            {questionInput.input}
+          </Scrollable>
         </SimpleFormField.InputStub>
         <SimpleFormField.Label>
           <I18nTsx key='AskAQuestion' />
           <Show when={questionError.shouldShowLengthLeft()}>
-            ({questionError.lengthLeft()})
+            {' '}({questionError.lengthLeft()})
           </Show>
         </SimpleFormField.Label>
 
@@ -130,7 +132,9 @@ const Header = (props: {
         withMinHeight
       >
         <SimpleFormField.InputStub>
-          {descriptionInput.input}
+          <Scrollable relative class={styles.inputScrollable}>
+            {descriptionInput.input}
+          </Scrollable>
         </SimpleFormField.InputStub>
         <SimpleFormField.Label><I18nTsx key='DescriptionOptionalPlaceholder' /></SimpleFormField.Label>
         <SimpleFormField.SideContent withFixedIcon first last>

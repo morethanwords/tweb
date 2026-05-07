@@ -193,3 +193,13 @@
     background: var(--light-filled-secondary-text-color);
   }
 }
+
+.inputScrollable {
+  max-height: 4.5em;
+  margin: 0.25rem 0;
+}
+
+.pollDurationMenu {
+  position: fixed;
+  top: unset;
+}

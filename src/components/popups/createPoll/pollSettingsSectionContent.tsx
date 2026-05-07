@@ -10,15 +10,17 @@ import contextMenuController from '@helpers/contextMenuController';
 import {formatFullSentTime} from '@helpers/date';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import formatDuration from '@helpers/formatDuration';
+import {positionFloatingMenu} from '@helpers/positionMenu';
 import pause from '@helpers/schedulers/pause';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {requestRAF} from '@helpers/solid/requestRAF';
 import classNames from '@helpers/string/classNames';
+import {useIsCleaned} from '@hooks/useIsCleaned';
 import {oneDayInSeconds, oneHourInSeconds, oneWeekInSeconds} from '@lib/constants';
 import {LangPackKey} from '@lib/langPack';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {FilterBooleanKeys} from '@types';
-import {createSignal, JSX, onMount, Show} from 'solid-js';
+import {Accessor, createEffect, createSignal, JSX, on, onCleanup, Show} from 'solid-js';
 import {supportedDescriptionFormattingTypes} from './config';
 import {EmojiButtonWithOpacity as EmojiDropdownButton} from './emojiButtonWithOpacity';
 import {useCreatePollLimits} from './hooks';
@@ -37,11 +39,9 @@ export const PollSettingsSectionContent = () => {
 
   const [limitDurationExtraElement, setLimitDurationExtraElement] = createSignal<HTMLElement>();
   const [explanationElement, setExplanationElement] = createSignal<HTMLElement>();
+  const [pollDurationRowElement, setPollDurationRowElement] = createSignal<HTMLElement>();
   const [isDurationMenuOpen, setIsDurationMenuOpen] = createSignal(false);
 
-  const handleSettingsFlag = <T extends BooleanSettingKey>(flag: T) => () => {
-    context.setStore(flag, prev => !prev);
-  };
 
   const explanationInput = new InputField({
     canHaveFormatting: supportedDescriptionFormattingTypes,
@@ -56,6 +56,8 @@ export const PollSettingsSectionContent = () => {
     }
   });
 
+  explanationInput.input.classList.replace('input-field-input', styles.inputField);
+
   const formatTimeInSpan = (timestamp: number) => {
     // Without the span, solid will throw an error when the state is updated
     const span = document.createElement('span');
@@ -63,7 +65,21 @@ export const PollSettingsSectionContent = () => {
     return span;
   };
 
-  explanationInput.input.classList.replace('input-field-input', styles.inputField);
+  const handleSettingsFlag = <T extends BooleanSettingKey>(flag: T) => () => {
+    context.setStore(flag, prev => !prev);
+  };
+
+  usePollDurationMenu({
+    open: isDurationMenuOpen,
+    container: pollDurationRowElement,
+    onOptionClick: (duration) => {
+      context.setStore('timeLimit', {type: 'duration', duration});
+    },
+    onCustomTimestamp: (timestamp) => {
+      context.setStore('timeLimit', {type: 'timestamp', timestamp});
+    },
+    onClose: () => setIsDurationMenuOpen(false)
+  });
 
   return (
     <>
@@ -150,7 +166,7 @@ export const PollSettingsSectionContent = () => {
             </div>
             <Space amount='0.25rem' />
             <div style={{'position': 'relative'}}>
-              <Row clickable={() => setIsDurationMenuOpen(prev => !prev)}>
+              <Row ref={setPollDurationRowElement} clickable={() => setIsDurationMenuOpen(prev => !prev)}>
                 <Row.Title>
                   <I18nTsx key='NewPoll.PollDuration' />
                 </Row.Title>
@@ -163,17 +179,6 @@ export const PollSettingsSectionContent = () => {
                   </Show>
                 </Row.RightContent>
               </Row>
-              <Show when={isDurationMenuOpen()}>
-                <PollDurationMenu
-                  onOptionClick={(duration) => {
-                    context.setStore('timeLimit', {type: 'duration', duration});
-                  }}
-                  onCustomTimestamp={(timestamp) => {
-                    context.setStore('timeLimit', {type: 'timestamp', timestamp});
-                  }}
-                  onClose={() => setIsDurationMenuOpen(false)}
-                />
-              </Show>
             </div>
             <Row clickable={handleSettingsFlag('hideResults')}>
               <Row.Title>
@@ -288,68 +293,81 @@ const durationOptions = [
   oneWeekInSeconds
 ];
 
-const PollDurationMenu = (props: {
+type PollDurationMenuArgs = {
+  open: Accessor<boolean>;
+  container: Accessor<HTMLElement>;
   onOptionClick: (duration: number) => void;
   onCustomTimestamp: (timestamp: number) => void;
-  onClose?: () => void
-}) => {
+  onClose?: () => void;
+};
+
+const usePollDurationMenu = (args: PollDurationMenuArgs) => {
   const {ButtonMenuSync, PopupSchedulePost} = useHotReloadGuard();
 
   const {closePeriodMax} = useCreatePollLimits();
 
   const format = (duration: number) => wrapFormattedDuration(formatDuration(duration, 1));
 
-  const buttonMenu = ButtonMenuSync({
-    buttons: [
-      ...durationOptions.map((duration) => ({
-        iconElement: createAutoDeleteIcon(duration),
-        regularText: format(duration),
-        onClick: () => {
-          props.onOptionClick(duration);
+  const isCleaned = useIsCleaned();
+
+  createEffect(on(args.open, (open) => {
+    if(!open) return;
+
+    const buttonMenu = ButtonMenuSync({
+      buttons: [
+        ...durationOptions.map((duration) => ({
+          iconElement: createAutoDeleteIcon(duration),
+          regularText: format(duration),
+          onClick: () => {
+            args.onOptionClick(duration);
+          }
+        })),
+        {
+          icon: 'tools',
+          text: 'Other',
+          onClick: () => {
+            const minTimeDate = new Date();
+            minTimeDate.setMinutes(minTimeDate.getMinutes() + minEndTimeFromNowMinutes);
+
+            const minDate = new Date(minTimeDate);
+            minDate.setHours(0, 0, 0, 0);
+
+            const maxDate = new Date(minDate);
+            maxDate.setDate(maxDate.getDate() + Math.floor(closePeriodMax() / oneDayInSeconds));
+
+            new PopupSchedulePost({
+              initDate: new Date(minTimeDate),
+              captionKey: 'NewPoll.MinEndTime',
+              minDate,
+              minTimeDate,
+              maxDate,
+              onPick: (timestamp) => {
+                args.onCustomTimestamp(timestamp);
+              },
+              btnConfirmTodayLangKey: 'NewPoll.EndToday',
+              btnConfirmOnDateLangKey: 'NewPoll.EndDate'
+            }).show();
+          }
         }
-      })),
-      {
-        icon: 'tools',
-        text: 'Other',
-        onClick: () => {
-          const minTimeDate = new Date();
-          minTimeDate.setMinutes(minTimeDate.getMinutes() + minEndTimeFromNowMinutes);
+      ]
+    });
 
-          const minDate = new Date(minTimeDate);
-          minDate.setHours(0, 0, 0, 0);
+    buttonMenu.classList.add(styles.pollDurationMenu);
 
-          const maxDate = new Date(minDate);
-          maxDate.setDate(maxDate.getDate() + Math.floor(closePeriodMax() / oneDayInSeconds));
+    document.body.appendChild(buttonMenu);
 
-          new PopupSchedulePost({
-            initDate: new Date(minTimeDate),
-            captionKey: 'NewPoll.MinEndTime',
-            minDate,
-            minTimeDate,
-            maxDate,
-            onPick: (timestamp) => {
-              props.onCustomTimestamp(timestamp);
-            },
-            btnConfirmTodayLangKey: 'NewPoll.EndToday',
-            btnConfirmOnDateLangKey: 'NewPoll.EndDate'
-          }).show();
-        }
-      }
-    ]
-  });
-
-  buttonMenu.classList.add('top-left');
-
-  onMount(() => {
     requestRAF(() => {
+      if(isCleaned()) return;
+
+      positionFloatingMenu(args.container().getBoundingClientRect(), buttonMenu, 'top-end');
       contextMenuController.openBtnMenu(buttonMenu, async() => {
         await pause(400);
-        props.onClose?.();
+        args.onClose?.();
       });
     });
-  });
 
-  return (
-    <>{buttonMenu}</>
-  );
+    onCleanup(() => {
+      buttonMenu.remove();
+    });
+  }));
 };
