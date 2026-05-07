@@ -6,12 +6,13 @@ import Space from '@components/space';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import {I18nTsx} from '@helpers/solid/i18n';
 import classNames from '@helpers/string/classNames';
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import {createSignal, Show} from 'solid-js';
 import PopupElement, {createPopup} from '../indexTsx';
 import {supportedDescriptionFormattingTypes} from './config';
 import {EmojiButtonWithOpacity as EmojiDropdownButton} from './emojiButtonWithOpacity';
-import {getFinalPayload, useCanSubmit, useCreatePollLimits} from './hooks';
+import {getFinalPayload, hasMeaningfulChanges, useCanSubmit, useCreatePollLimits} from './hooks';
 import {MediaAttachment} from './mediaAttachment';
 import {PollOptionsSectionContent} from './pollOptionsSectionContent';
 import {PollSettingsSectionContent} from './pollSettingsSectionContent';
@@ -25,15 +26,31 @@ type CreatePollPopupProps = {
 };
 
 export const CreatePollPopup = (props: CreatePollPopupProps) => {
+  const {confirmationPopup} = useHotReloadGuard();
+
   const context = createPollStoreContextValue({
     isBroadcast: () => props.isBroadcast ?? false
   });
+
+  const isConfirmationNeededOnClose = () => {
+    if(!hasMeaningfulChanges(context.store)) return false;
+
+    return confirmationPopup({
+      titleLangKey: 'CancelPollAlertTitle',
+      descriptionLangKey: 'CancelPollAlertText',
+      button: {
+        langKey: 'Discard',
+        isDanger: true
+      }
+    });
+  };
 
   return (
     <PopupElement
       show
       class={styles.popup}
       containerClass={styles.container}
+      isConfirmationNeededOnClose={isConfirmationNeededOnClose}
     >
       <CreatePollContext.Provider value={context}>
         <Header onSubmit={() => {

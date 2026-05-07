@@ -2,7 +2,7 @@ import {useAppConfig} from '@stores/appState';
 import usePremium from '@stores/premium';
 import {createMemo} from 'solid-js';
 import {unwrap} from 'solid-js/store';
-import {CreatePollContextValue, useCreatePollContext} from './storeContext';
+import {CreatePollContextValue, CreatePollStore, useCreatePollContext} from './storeContext';
 
 export const useCreatePollLimits = () => {
   const appConfig = useAppConfig();
@@ -57,4 +57,12 @@ export const getFinalPayload = (context: CreatePollContextValue) => {
   }
 
   return cloned;
+};
+
+export const hasMeaningfulChanges = (store: CreatePollStore) => {
+  return store.question !== '' ||
+    store.description !== '' ||
+    store.descriptionAttachment ||
+    store.pollOptions.some((option) => option.text !== '' || option.attachment) ||
+    (store.hasCorrectAnswer && (store.explanation !== '' || store.explanationAttachment));
 };
