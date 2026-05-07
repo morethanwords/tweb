@@ -1,7 +1,7 @@
 import styles from '@components/simpleFormField/styles.module.scss';
 import {requestRAF} from '@helpers/solid/requestRAF';
 import classNames from '@helpers/string/classNames';
-import {Accessor, batch, createContext, createEffect, createMemo, createSignal, JSX, onCleanup, onMount, ParentProps, Ref, Setter, splitProps, useContext, Show} from 'solid-js';
+import {Accessor, batch, createContext, createEffect, createMemo, createSignal, JSX, onCleanup, onMount, ParentProps, Ref, Setter, Show, splitProps, useContext} from 'solid-js';
 
 
 type SimpleFormFieldContextValue = {
@@ -274,11 +274,11 @@ export const useForceState = () => {
   const useSetter = () => {
     const ref: ObjectRef = {};
 
-    const setter = (active: boolean) => {
-      const filtered = refs().filter((other) => other !== ref);
-
-      setRefs(active ? [...filtered, ref] : filtered);
-    };
+    const setter = (active: boolean) =>
+      setRefs(refs => {
+        const filtered = refs.filter((other) => other !== ref);
+        return active ? [...filtered, ref] : filtered;
+      });
 
     onCleanup(() => {
       setter(false);

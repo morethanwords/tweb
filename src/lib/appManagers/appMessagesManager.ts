@@ -2790,6 +2790,7 @@ export class AppMessagesManager extends AppManager {
       .map((option, index) => ({option, index}))
       .filter(({option}) => option.checked)
       .map(({index}) => index)
+
       if(!result.length) return;
 
       return result;

@@ -1090,6 +1090,7 @@ export default class ChatInput {
           return;
         }
         openCreatePollPopup({
+          isBroadcast: this.chat.isBroadcast,
           onSubmit: async(payload) => {
             const sendingParams = this.chat.getMessageSendingParams();
 

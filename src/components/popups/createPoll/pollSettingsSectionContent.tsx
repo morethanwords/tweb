@@ -67,14 +67,16 @@ export const PollSettingsSectionContent = () => {
 
   return (
     <>
-      <SettingsOption
-        title='NewPoll.ShowWhoVoted'
-        subtitle='NewPoll.ShowWhoVotedSubtitle'
-        mediaStyle={getGradientStyle(0)}
-        icon='eye1'
-        checked={context.store.showWhoVoted}
-        onClick={handleSettingsFlag('showWhoVoted')}
-      />
+      <Show when={!context.isBroadcast()}>
+        <SettingsOption
+          title='NewPoll.ShowWhoVoted'
+          subtitle='NewPoll.ShowWhoVotedSubtitle'
+          mediaStyle={getGradientStyle(0)}
+          icon='eye1'
+          checked={context.store.showWhoVoted}
+          onClick={handleSettingsFlag('showWhoVoted')}
+        />
+      </Show>
       <SettingsOption
         title='NewPoll.AllowMultipleAnswers'
         subtitle='NewPoll.AllowMultipleAnswersSubtitle'
@@ -83,14 +85,16 @@ export const PollSettingsSectionContent = () => {
         checked={context.store.allowMultipleAnswers}
         onClick={handleSettingsFlag('allowMultipleAnswers')}
       />
-      <SettingsOption
-        title='NewPoll.AllowAddingOptions'
-        subtitle='NewPoll.AllowAddingOptionsSubtitle'
-        mediaStyle={getGradientStyle(2)}
-        icon='checklist_add'
-        checked={context.store.allowAddingOptions}
-        onClick={handleSettingsFlag('allowAddingOptions')}
-      />
+      <Show when={!context.isBroadcast()}>
+        <SettingsOption
+          title='NewPoll.AllowAddingOptions'
+          subtitle='NewPoll.AllowAddingOptionsSubtitle'
+          mediaStyle={getGradientStyle(2)}
+          icon='checklist_add'
+          checked={context.store.allowAddingOptions}
+          onClick={handleSettingsFlag('allowAddingOptions')}
+        />
+      </Show>
       <SettingsOption
         title='NewPoll.AllowRevoting'
         subtitle='NewPoll.AllowRevotingSubtitle'

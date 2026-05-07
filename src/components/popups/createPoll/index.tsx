@@ -8,11 +8,10 @@ import {I18nTsx} from '@helpers/solid/i18n';
 import classNames from '@helpers/string/classNames';
 import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import {createSignal, Show} from 'solid-js';
-import {unwrap} from 'solid-js/store';
 import PopupElement, {createPopup} from '../indexTsx';
 import {supportedDescriptionFormattingTypes} from './config';
 import {EmojiButtonWithOpacity as EmojiDropdownButton} from './emojiButtonWithOpacity';
-import {useCanSubmit, useCreatePollLimits} from './hooks';
+import {getFinalPayload, useCanSubmit, useCreatePollLimits} from './hooks';
 import {MediaAttachment} from './mediaAttachment';
 import {PollOptionsSectionContent} from './pollOptionsSectionContent';
 import {PollSettingsSectionContent} from './pollSettingsSectionContent';
@@ -21,11 +20,14 @@ import styles from './styles.module.scss';
 
 
 type CreatePollPopupProps = {
+  isBroadcast?: boolean;
   onSubmit: (payload: CreatePollPayload) => void;
 };
 
 export const CreatePollPopup = (props: CreatePollPopupProps) => {
-  const context = createPollStoreContextValue();
+  const context = createPollStoreContextValue({
+    isBroadcast: () => props.isBroadcast ?? false
+  });
 
   return (
     <PopupElement
@@ -35,7 +37,7 @@ export const CreatePollPopup = (props: CreatePollPopupProps) => {
     >
       <CreatePollContext.Provider value={context}>
         <Header onSubmit={() => {
-          props.onSubmit(structuredClone(unwrap(context.store)));
+          props.onSubmit(getFinalPayload(context));
         }} />
         <hr class={styles.hr} />
         <PopupElement.Body>

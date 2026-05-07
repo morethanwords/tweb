@@ -1,7 +1,8 @@
 import {useAppConfig} from '@stores/appState';
 import usePremium from '@stores/premium';
 import {createMemo} from 'solid-js';
-import {useCreatePollContext} from './storeContext';
+import {unwrap} from 'solid-js/store';
+import {CreatePollContextValue, useCreatePollContext} from './storeContext';
 
 export const useCreatePollLimits = () => {
   const appConfig = useAppConfig();
@@ -35,4 +36,17 @@ export const useCanSubmit = () => {
 
     return true;
   });
-}
+};
+
+export const getFinalPayload = (context: CreatePollContextValue) => {
+  const {store, isBroadcast} = context;
+
+  const cloned = structuredClone(unwrap(store));
+
+  if(isBroadcast()) {
+    cloned.allowAddingOptions = false;
+    cloned.showWhoVoted = false;
+  }
+
+  return cloned;
+};

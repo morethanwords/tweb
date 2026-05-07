@@ -1,6 +1,6 @@
 import {MessageEntity} from '@layer';
 import {oneDayInSeconds} from '@lib/constants';
-import {createComputed, createContext, untrack, useContext} from 'solid-js';
+import {Accessor, createComputed, createContext, untrack, useContext} from 'solid-js';
 import {createStore, SetStoreFunction, Store} from 'solid-js/store';
 
 export type CreatePollPayload = CreatePollStore;
@@ -55,7 +55,11 @@ export type AttachedMedia = {
   height: number;
 };
 
-export type CreatePollContextValue = {
+export type CreatePollContextExtra = {
+  isBroadcast: Accessor<boolean>;
+};
+
+export type CreatePollContextValue = CreatePollContextExtra & {
   store: Store<CreatePollStore>;
   setStore: SetStoreFunction<CreatePollStore>;
 };
@@ -64,7 +68,7 @@ export const CreatePollContext = createContext<CreatePollContextValue>();
 
 export const useCreatePollContext = () => useContext(CreatePollContext);
 
-export const createPollStoreContextValue = (): CreatePollContextValue => {
+export const createPollStoreContextValue = (extra: CreatePollContextExtra): CreatePollContextValue => {
   const [store, setStore] = createStore<CreatePollStore>({
     question: '',
     questionEntities: [],
@@ -99,5 +103,9 @@ export const createPollStoreContextValue = (): CreatePollContextValue => {
     }
   });
 
-  return {store, setStore};
+  return {
+    store,
+    setStore,
+    ...extra
+  };
 };
