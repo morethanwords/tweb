@@ -1,12 +1,8 @@
 import contextMenuController from '@helpers/contextMenuController';
-import {
-  canMenuFitDirection,
-  getMenuLeftPositionForDirection,
-  getMenuTopPositionForStartDirection
-} from '@helpers/positionMenu';
+import {FloatingMenuDirection, positionFloatingMenu} from '@helpers/positionMenu';
 import {doubleRaf} from '@helpers/schedulers';
 
-export type FloatingButtonMenuDirection = 'right-start' | 'left-start';
+export type FloatingButtonMenuDirection = FloatingMenuDirection;
 
 export type AttachFloatingButtonMenuOptions = {
   element: HTMLElement;
@@ -64,14 +60,7 @@ export default function attachFloatingButtonMenu({
 
     document.body.append(menu);
 
-    const actualDirection = getDirection(triggerBcr, menu, direction, offset);
-    menu.style.transformOrigin = actualDirection === 'right-start' ? '0 0' : '100% 0';
-
-    const left = getMenuLeftPositionForDirection(triggerBcr, menu, actualDirection === 'right-start' ? 'right' : 'left', offset);
-    const top = getMenuTopPositionForStartDirection(triggerBcr, menu, offset);
-
-    menu.style.left = left + 'px';
-    menu.style.top = top + 'px';
+    positionFloatingMenu(triggerBcr, menu, direction, offset);
 
     await doubleRaf();
     contextMenuController.addAdditionalMenu(menu, element, level, onClose);
@@ -92,16 +81,3 @@ export default function attachFloatingButtonMenu({
     element.removeEventListener('mouseleave', onMouseLeave);
   };
 }
-
-const getDirection = (
-  triggerBcr: DOMRect,
-  menu: HTMLElement,
-  direction: FloatingButtonMenuDirection,
-  offset: [number, number]
-): FloatingButtonMenuDirection => {
-  if(direction === 'right-start') {
-    return canMenuFitDirection(triggerBcr, menu, 'right', offset) || !canMenuFitDirection(triggerBcr, menu, 'left', offset) ? 'right-start' : 'left-start';
-  }
-
-  return canMenuFitDirection(triggerBcr, menu, 'left', offset) || !canMenuFitDirection(triggerBcr, menu, 'right', offset) ? 'left-start' : 'right-start';
-};
