@@ -1099,7 +1099,7 @@ export default class ChatInput {
 
             sendingParams.confirmedPaymentResult = preparedPaymentResult;
 
-            this.managers.appMessagesManager.sendPollMessage(sendingParams, payload);
+            this.managers.appPollsManager.sendPollMessage(sendingParams, payload);
           }
         }, SolidJSHotReloadGuardProvider);
 
