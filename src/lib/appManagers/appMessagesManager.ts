@@ -2739,8 +2739,8 @@ export class AppMessagesManager extends AppManager {
         quiz: flag(payload.hasCorrectAnswer),
         open_answers: flag(payload.allowAddingOptions)
       },
-      close_date: payload.timeLimit.type === 'timestamp' ? payload.timeLimit.timestamp : undefined,
-      close_period: payload.timeLimit.type === 'duration' ? payload.timeLimit.duration : undefined
+      close_date: payload.timeLimit?.type === 'timestamp' ? payload.timeLimit.timestamp : undefined,
+      close_period: payload.timeLimit?.type === 'duration' ? payload.timeLimit.duration : undefined
     };
 
     const answersForMedia = payload.pollOptions.map((_, index): PollAnswer.pollAnswer => ({

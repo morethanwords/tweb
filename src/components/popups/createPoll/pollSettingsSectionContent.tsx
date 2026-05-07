@@ -155,10 +155,10 @@ export const PollSettingsSectionContent = () => {
                   <I18nTsx key='NewPoll.PollDuration' />
                 </Row.Title>
                 <Row.RightContent class={styles.pollDuration}>
-                  <Show when={context.store.timeLimit.type === 'duration' && context.store.timeLimit.duration} keyed>
+                  <Show when={context.store.timeLimit?.type === 'duration' && context.store.timeLimit.duration} keyed>
                     {(duration) => wrapFormattedDuration(formatDuration(duration))}
                   </Show>
-                  <Show when={context.store.timeLimit.type === 'timestamp' && context.store.timeLimit.timestamp} keyed>
+                  <Show when={context.store.timeLimit?.type === 'timestamp' && context.store.timeLimit.timestamp} keyed>
                     {(timestamp) => formatTimeInSpan(timestamp)}
                   </Show>
                 </Row.RightContent>

@@ -52,5 +52,9 @@ export const getFinalPayload = (context: CreatePollContextValue) => {
     cloned.allowAddingOptions = false;
   }
 
+  if(!cloned.durationLimited) {
+    cloned.timeLimit = undefined;
+  }
+
   return cloned;
 };

@@ -23,7 +23,7 @@ export type CreatePollStore = {
   hasCorrectAnswer: boolean;
   durationLimited: boolean;
 
-  timeLimit: TimeLimit;
+  timeLimit?: TimeLimit;
 
   explanation: string;
   explanationEntities: MessageEntity[];
