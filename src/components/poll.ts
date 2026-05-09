@@ -618,7 +618,7 @@ export default class PollElement extends HTMLElement {
         element: target,
         container: target.parentElement,
         vertical: 'top',
-        textElement: i18n('Chat.Poll.TotalVotes1', [result.voters]),
+        textElement: i18n('Chat.Poll.MembersVoted', [result.voters]),
         offsetY: 12,
         auto: true
       });
@@ -857,11 +857,11 @@ export default class PollElement extends HTMLElement {
     let key: LangPackKey;
     const args: FormatterArguments = [votersCount];
     if(this.isClosed) {
-      if(this.isQuiz) key = votersCount ? 'Chat.Quiz.TotalVotes' : 'Chat.Quiz.TotalVotesResultEmpty';
-      else key = votersCount ? 'Chat.Poll.TotalVotes1' : 'Chat.Poll.TotalVotesResultEmpty';
+      if(this.isQuiz) key = votersCount ? 'Chat.Quiz.MembersAnswered' : 'Chat.Quiz.TotalVotesResultEmpty';
+      else key = votersCount ? 'Chat.Poll.MembersVoted' : 'Chat.Poll.TotalVotesResultEmpty';
     } else {
-      if(this.isQuiz) key = votersCount ? 'Chat.Quiz.TotalVotes' : 'Chat.Quiz.TotalVotesEmpty';
-      else key = votersCount ? 'Chat.Poll.TotalVotes1' : 'Chat.Poll.TotalVotesEmpty';
+      if(this.isQuiz) key = votersCount ? 'Chat.Quiz.MembersAnswered' : 'Chat.Quiz.TotalVotesEmpty';
+      else key = votersCount ? 'Chat.Poll.MembersVoted' : 'Chat.Poll.TotalVotesEmpty';
     }
 
     replaceContent(this.votersCountDiv, i18n(key, args));

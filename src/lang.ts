@@ -3330,13 +3330,13 @@ const lang = {
   'Chat.Poll.Type.AnonymousQuiz': 'Anonymous Quiz',
   'Chat.Poll.Type.Quiz': 'Quiz',
   'Chat.Poll.Type.Closed': 'Final Results',
-  'Chat.Poll.TotalVotes1': {
-    'one_value': '%d vote',
-    'other_value': '%d votes'
+  'Chat.Poll.MembersVoted': {
+    'one_value': '%d member voted',
+    'other_value': '%d members voted'
   },
-  'Chat.Quiz.TotalVotes': {
-    'one_value': '%d answer',
-    'other_value': '%d answers'
+  'Chat.Quiz.MembersAnswered': {
+    'one_value': '%d member answered',
+    'other_value': '%d members answered'
   },
   'Chat.Poll.TotalVotesEmpty': 'No votes yet',
   'Chat.Poll.TotalVotesResultEmpty': 'No votes',

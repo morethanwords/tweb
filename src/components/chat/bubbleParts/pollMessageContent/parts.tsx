@@ -84,13 +84,14 @@ export const PollType = (props: CommonProps) => {
 
 export const PollVotes = (props: CommonProps & { votersCount: number }) => {
   const key = createMemo((): LangPackKey => {
-    if(props.closed) {
-      if(props.hasCorrectAnswer) return props.votersCount ? 'Chat.Quiz.TotalVotes' : 'Chat.Poll.TotalVotesResultEmpty';
-      else return props.votersCount ? 'Chat.Poll.TotalVotes1' : 'Chat.Poll.TotalVotesResultEmpty';
-    } else {
-      if(props.hasCorrectAnswer) return props.votersCount ? 'Chat.Quiz.TotalVotes' : 'Chat.Quiz.TotalVotesEmpty';
-      else return props.votersCount ? 'Chat.Poll.TotalVotes1' : 'Chat.Poll.TotalVotesEmpty';
+    if(!props.votersCount) {
+      if(props.closed) return 'Chat.Poll.TotalVotesResultEmpty';
+      else return 'Chat.Poll.TotalVotesEmpty';
     }
+
+    if(props.hasCorrectAnswer) return 'Chat.Quiz.MembersAnswered';
+
+    return 'Chat.Poll.MembersVoted';
   });
 
   return (

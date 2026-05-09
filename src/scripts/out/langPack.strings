@@ -2861,10 +2861,10 @@
 "Chat.Poll.Type.AnonymousQuiz" = "Anonymous Quiz";
 "Chat.Poll.Type.Quiz" = "Quiz";
 "Chat.Poll.Type.Closed" = "Final Results";
-"Chat.Poll.TotalVotes1_one" = "%d vote";
-"Chat.Poll.TotalVotes1_other" = "%d votes";
-"Chat.Quiz.TotalVotes_one" = "%d answer";
-"Chat.Quiz.TotalVotes_other" = "%d answers";
+"Chat.Poll.MembersVoted_one" = "%d member voted";
+"Chat.Poll.MembersVoted_other" = "%d members voted";
+"Chat.Quiz.MembersAnswered_one" = "%d member answered";
+"Chat.Quiz.MembersAnswered_other" = "%d members answered";
 "Chat.Poll.TotalVotesEmpty" = "No votes yet";
 "Chat.Poll.TotalVotesResultEmpty" = "No votes";
 "Chat.Quiz.TotalVotesEmpty" = "No answers yet";

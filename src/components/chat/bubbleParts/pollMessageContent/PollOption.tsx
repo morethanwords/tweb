@@ -94,7 +94,7 @@ export const PollOption = (props: {
             {wrapRichText(props.text.text, {entities: props.text.entities, middleware})}
           </AutoHeight>
         </div>
-        <Show when={isShowingResult()}>
+        <Show when={isShowingResult() && props.result.voters}>
           <div class={styles.labelStats}>
             <div class={styles.labelNumber}>
               {formatNumber(props.result.voters, 1)}

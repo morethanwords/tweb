@@ -35,7 +35,7 @@ export default class AppPollResultsTab extends SliderSuperTab {
       <div class="sidebar-header__rows">
         {this.title}
         <div class="sidebar-header__subtitle">
-          {i18n('Chat.Poll.TotalVotes1', [poll.results.total_voters])}
+          {i18n('Chat.Poll.MembersVoted', [poll.results.total_voters])}
         </div>
       </div>
     ) as HTMLElement);
@@ -56,7 +56,7 @@ export default class AppPollResultsTab extends SliderSuperTab {
       setInnerHTML(answerTitle, answerTextWrapped);
       answerTitle.append(' — ', Math.round(percents[idx]) + '%');
 
-      const answerPercents = i18n('Chat.Poll.TotalVotes1', [result.voters]);
+      const answerPercents = i18n('Chat.Poll.MembersVoted', [result.voters]);
 
       // Humans
       const list = appDialogsManager.createChatList();
