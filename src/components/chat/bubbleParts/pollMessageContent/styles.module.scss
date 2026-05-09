@@ -76,8 +76,6 @@
     align-items: center;
     gap: 1.5rem;
     flex: 1;
-
-    pointer-events: none;
   }
 
   &Text {
@@ -88,6 +86,7 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    user-select: none;
   }
 
   &Number {
@@ -120,7 +119,7 @@
       left: 0;
       height: 100%;
       --zero-offset: 5px;
-      width: max(var(--zero-offset), calc(var(--progress, 0) * (100% - var(--zero-offset))));
+      width: calc(var(--zero-offset) + var(--progress, 0) * (100% - var(--zero-offset)));
 
       border-radius: inherit;
       background-color: var(--primary-color);
@@ -151,6 +150,7 @@
   transform: translate(0.25rem, -50%);
   white-space: nowrap;
   font-weight: var(--font-weight-bold);
+  user-select: none;
 }
 
 .chosenCheckbox {
@@ -170,6 +170,7 @@
   justify-content: center;
   padding: 0.75rem 0;
   font-size: 0.875rem;
+  user-select: none;
 
   color: var(--secondary-text-color);
 
@@ -204,6 +205,8 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
+
+    user-select: none;
   }
 }
 
