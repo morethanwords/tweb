@@ -41,7 +41,7 @@ export const PollOption = (props: {
 
   // On initial render with existing result, the percentage will be shown immediately
   // Otherwise, it will be hidden until the path animation ends
-  const [canShowPercentage, setCanShowPercentage] = createSignal(true);
+  const [canShowPercentage, setCanShowPercentage] = createSignal(isShowingResult());
 
   const percentage = createMemo(() => clamp(props.result?.percent ?? 0, 0, 100));
 

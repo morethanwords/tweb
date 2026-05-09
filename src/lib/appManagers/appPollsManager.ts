@@ -153,12 +153,12 @@ export class AppPollsManager extends AppManager {
     }
   }
 
-  public sendVote(message: Message.message, optionIds: number[]): Promise<void> {
+  public async sendVote(message: Message.message, optionIds: number[]): Promise<void> {
     const poll: Poll = (message.media as MessageMedia.messageMediaPoll).poll;
 
     const options: Uint8Array[] = optionIds.map((index) => {
       const answer = poll.answers[index];
-      if(answer._ !== 'pollAnswer') return;
+      if(answer?._ !== 'pollAnswer') return;
       return answer.option;
     }).filter(Boolean);
 
@@ -173,30 +173,31 @@ export class AppPollsManager extends AppManager {
       });
     }
 
-    return this.apiManager.invokeApi('messages.sendVote', {
+    const updates = await this.apiManager.invokeApi('messages.sendVote', {
       peer: inputPeer,
       msg_id: getServerMessageId(message.mid),
       options
-    }).then((updates) => {
-      this.log('sendVote updates:', updates);
-      this.apiUpdatesManager.processUpdateMessage(updates);
     });
+
+    this.log('sendVote updates:', updates);
+    this.apiUpdatesManager.processUpdateMessage(updates);
   }
 
-  public addPollAnswer(message: Message.message, text: TextWithEntities) {
+  public async addPollAnswer(message: Message.message, text: TextWithEntities) {
     const peerId = message.peerId;
     const inputPeer = this.appPeersManager.getInputPeerById(peerId);
 
     // TODO: Uploading media too
-    return this.apiManager.invokeApi('messages.addPollAnswer', {
+    const updates = await this.apiManager.invokeApi('messages.addPollAnswer', {
       peer: inputPeer,
       msg_id: getServerMessageId(message.mid),
       answer: {
         _: 'inputPollAnswer',
         text
-      }}).then((updates) => {
-      this.apiUpdatesManager.processUpdateMessage(updates);
+      }
     });
+
+    this.apiUpdatesManager.processUpdateMessage(updates);
   }
 
   public getResults(message: Message.message) {

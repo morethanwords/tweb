@@ -184,7 +184,7 @@
 .header {
   display: flex;
   gap: 1rem;
-  padding: 0.75rem 0.625rem 0.25rem 1rem;
+  padding: 0.75rem 0.625rem 0.25rem 0.5rem;
   align-items: center;
 
   &TitleContainer {
@@ -276,7 +276,7 @@
 
 .description {
   font-size: 0.875em;
-  padding: 0.75rem 1rem 0;
+  padding: 0.75rem 0.5rem 0;
 }
 
 .pollImage {

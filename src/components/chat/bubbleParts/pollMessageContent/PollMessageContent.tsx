@@ -78,6 +78,17 @@ export const PollMessageContent = defineSolidElement({
     const votersCount = createMemo(() => props.results?.total_voters ?? 0);
     const recentVoters = createMemo(() => props.results?.recent_voters?.map(peer => getPeerId(peer)) ?? []);
 
+    const getOverridenMessage = (): Message.message => ({
+      ...unwrap(props.message),
+      media: {
+        _: 'messageMediaPoll',
+        ...unwrap(props.media),
+        // On poll_update, only the poll and results are updated, not the message itself
+        poll: unwrap(props.poll),
+        results: unwrap(props.results)
+      }
+    });
+
     const roundedPercents = createMemo(() => {
       const results = props.results?.results;
       if(!results) return [];
@@ -136,7 +147,7 @@ export const PollMessageContent = defineSolidElement({
     const sendVote = async() => {
       if(isShowingResult() || !hasSelectedSomething()) return;
 
-      await rootScope.managers.appPollsManager.sendVote(unwrap(props.message), chosenIndexes());
+      await rootScope.managers.appPollsManager.sendVote(getOverridenMessage(), chosenIndexes());
 
       setChosenIndexes([]);
     };
@@ -146,7 +157,7 @@ export const PollMessageContent = defineSolidElement({
       if(isShowingResult() || !text) return;
 
       await rootScope.managers.appPollsManager.addPollAnswer(
-        unwrap(props.message),
+        getOverridenMessage(),
         {
           _: 'textWithEntities',
           text,
