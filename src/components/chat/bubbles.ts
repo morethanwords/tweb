@@ -224,7 +224,7 @@ import {NoForwardsRequestContent, NoForwardsRequestReplyMarkup} from '@component
 import tsNow from '@helpers/tsNow';
 import wrapMessageForReply from '@components/wrappers/messageForReply';
 import canSeeMessageMedia from '@lib/appManagers/utils/messages/canSeeMessageMedia';
-import {PollMessageContentProps} from './bubbleParts/pollMessageContent';
+import {PollMessageContent} from './bubbleParts/pollMessageContent';
 
 // TODO: fix new message won't be rendered if an old one is rendering in the moment
 
@@ -932,13 +932,6 @@ export default class ChatBubbles {
               element.dataset.docId = '' + doc.id;
               (element as any).doc = doc;
             }
-          }
-        } else if(poll) {
-          const pollElement = bubble.querySelector('poll-element') as PollElement;
-          if(pollElement) {
-            pollElement.message = message;
-            pollElement.setAttribute('poll-id', '' + poll.id);
-            pollElement.setAttribute('message-id', '' + mid);
           }
         } else if(webPage?._ === 'webPage' && !bubble.querySelector('.web')) {
           const isLast = this.getLastBubble() === bubble;
@@ -7714,16 +7707,25 @@ export default class ChatBubbles {
               media: context.messageMedia
             });
 
+            this.updateLocalOnEdit.set(bubble, msg => {
+              if(msg.media?._ !== 'messageMediaPoll') return;
+              pollMessageContent.feedProps<false>({
+                message: msg,
+                poll: msg.media.poll,
+                results: msg.media.results,
+                media: msg.media
+              });
+            });
+            middleware.onClean(() => {
+              this.updateLocalOnEdit.delete(bubble);
+            });
+
             messageDiv.prepend(pollMessageContent);
             bubble.classList.add('poll-message');
 
             break;
           }
           // const messageSignal = createSignal(message);
-          // this.updateLocalOnEdit.set(bubble, msg => messageSignal[1](msg));
-          // middleware.onClean(() => {
-          //   this.updateLocalOnEdit.delete(bubble);
-          // });
         }
         case 'messageMediaToDo': {
           context.mediaRequiresMessageDiv = true;

@@ -9,7 +9,7 @@ import classNames from '@helpers/string/classNames';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import {createSignal, Show} from 'solid-js';
-import PopupElement, {createPopup} from '../indexTsx';
+import PopupElement, {createPopup, useSnitchedPopupContext} from '../indexTsx';
 import {supportedDescriptionFormattingTypes} from './config';
 import {EmojiButtonWithOpacity as EmojiDropdownButton} from './emojiButtonWithOpacity';
 import {getFinalPayload, hasMeaningfulChanges, useCanSubmit, useCreatePollLimits} from './hooks';
@@ -32,6 +32,8 @@ export const CreatePollPopup = (props: CreatePollPopupProps) => {
     isBroadcast: () => props.isBroadcast ?? false
   });
 
+  const {SnitchPopupContext, popupContext} = useSnitchedPopupContext();
+
   const isConfirmationNeededOnClose = () => {
     if(!hasMeaningfulChanges(context.store)) return false;
 
@@ -52,10 +54,14 @@ export const CreatePollPopup = (props: CreatePollPopupProps) => {
       containerClass={styles.container}
       isConfirmationNeededOnClose={isConfirmationNeededOnClose}
     >
+      <SnitchPopupContext />
       <CreatePollContext.Provider value={context}>
-        <Header onSubmit={() => {
-          props.onSubmit(getFinalPayload(context));
-        }} />
+        <Header
+          onSubmit={() => {
+            props.onSubmit(getFinalPayload(context));
+            popupContext()?.destroy();
+          }}
+        />
         <hr class={styles.hr} />
         <PopupElement.Body>
           <BodyContent />

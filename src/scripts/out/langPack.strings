@@ -3940,6 +3940,7 @@
 "NewPoll.EndDate" = "End on %@ at %@";
 "NewPoll.OptionsLeft_one" = "You can add %d more option";
 "NewPoll.OptionsLeft_other" = "You can add %d more options";
+"NewPoll.CouldNotCreate" = "Could not create poll";
 "Login.Title" = "Sign in to Telegram";
 "Login.PhoneLabel" = "Phone Number";
 "Login.PhoneLabelInvalid" = "Phone Number Invalid";

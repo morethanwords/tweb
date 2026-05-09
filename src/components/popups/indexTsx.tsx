@@ -65,6 +65,9 @@ type PopupContextValue = {
   buttons: PopupButton[],
   shown: () => boolean,
   show: () => void,
+  /**
+   * Note: Will trigger isConfirmationNeededOnClose if was set
+   */
   hide: () => void,
   destroy: () => void,
   destroyed: boolean,
@@ -101,6 +104,18 @@ const onFullScreenChange = () => {
 };
 
 addFullScreenListener(DEFAULT_APPEND_TO, onFullScreenChange);
+
+export const useSnitchedPopupContext = () => {
+  let context: PopupContextValue;
+
+  return {
+    SnitchPopupContext: () => {
+      context = useContext(PopupContext);
+      return <></>;
+    },
+    popupContext: () => context
+  }
+};
 
 const PopupElement = (props: {
   class?: string,
