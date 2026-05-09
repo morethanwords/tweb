@@ -120,7 +120,7 @@
       left: 0;
       height: 100%;
       --zero-offset: 5px;
-      width: max(var(--zero-offset), calc(var(--fill-width, 0) * (100% - var(--zero-offset))));
+      width: max(var(--zero-offset), calc(var(--progress, 0) * (100% - var(--zero-offset))));
 
       border-radius: inherit;
       background-color: var(--primary-color);

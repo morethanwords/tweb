@@ -11,7 +11,7 @@ import {requestRAF} from '@helpers/solid/requestRAF';
 import classNames from '@helpers/string/classNames';
 import {Photo} from '@layer';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
-import {createEffect, createMemo, createSignal, onCleanup, onMount, Show} from 'solid-js';
+import {Accessor, createEffect, createMemo, createSignal, onCleanup, onMount, Show, untrack} from 'solid-js';
 import {Transition} from 'solid-transition-group';
 import {AutoHeight} from './AutoHeight';
 import {AvatarGroup} from './parts';
@@ -37,11 +37,13 @@ export const PollOption = (props: {
 }) => {
   const isShowingResult = createMemo(() => !!props.result);
 
-  const [canAnimate, setCanAnimate] = createSignal(true);
+  const [canAnimate, setCanAnimate] = createSignal(false);
 
   // On initial render with existing result, the percentage will be shown immediately
   // Otherwise, it will be hidden until the path animation ends
-  const [canShowPercentage, setCanShowPercentage] = createSignal(false);
+  const [canShowPercentage, setCanShowPercentage] = createSignal(true);
+
+  const percentage = createMemo(() => clamp(props.result?.percent ?? 0, 0, 100));
 
   const middleware = createMiddleware().get();
 
@@ -77,7 +79,7 @@ export const PollOption = (props: {
           </Show>
           <Show when={isShowingResult() && canShowPercentage()}>
             <div class={styles.percent}>
-              <AnimatedPercentage value={props.result.percent || 0} canAnimate={canAnimate()} />%
+              <AnimatedPercentage percentage={percentage()} canAnimate={canAnimate()} />
             </div>
           </Show>
         </Transition>
@@ -138,48 +140,67 @@ export const PollOption = (props: {
 };
 
 const PollProgressLine = (props: {
-  progress: number;
-  canAnimate?: boolean;
+  progress: number; // 0-1
+  canAnimate: boolean;
 }) => {
-  const [fillWidth, setFillWidth] = createSignal(props.canAnimate ? 0 : props.progress);
-
-  onMount(() => {
-    if(!props.canAnimate) return;
-
-    requestRAF(() => requestRAF(() => {
-      setFillWidth(props.progress);
-    }));
-  });
+  const animatedProgress = useAnimatedValueFromZero(
+    () => props.progress,
+    () => props.canAnimate,
+    (value, prevValue) => progressTransitionTimeBase * Math.abs(value - prevValue)
+  );
 
   return (
     <div class={styles.labelProgress}>
       <div
         class={styles.labelProgressFill}
         style={{
-          '--fill-width': fillWidth(),
-          '--transition-time': `${progressTransitionTimeBase * props.progress}ms`
+          '--progress': animatedProgress()
         }}
       />
     </div>
   );
 };
 
+// Needs to be separate so it doesn't animate when results are not shown. Also it makes sure it resets when the vote is retracted.
 const AnimatedPercentage = (props: {
-  value: number;
-  canAnimate?: boolean;
+  percentage: number; // 0-100
+  canAnimate: boolean;
 }) => {
-  const value = createMemo(() => clamp(props.value, 0, 100));
-  const [current, setCurrent] = createSignal(props.canAnimate ? 0 : value());
+  const animatedPercentage = useAnimatedValueFromZero(
+    () => props.percentage,
+    () => props.canAnimate,
+    (value, prevValue) => progressTransitionTimeBase * 1.5 * Math.abs(value - prevValue) / 100
+  );
 
-  onMount(() => {
-    if(!props.canAnimate || props.value === 0) return;
+  return <>{animatedPercentage() | 0}%</>;
+};
 
-    const duration = progressTransitionTimeBase * 1.5 * value() / 100;
-    const cancel = animateValue(0, value(), duration, (value) => setCurrent(value | 0));
+/**
+ * Animates initially from zero, then from the previous value to the new value when it changes.
+ */
+const useAnimatedValueFromZero = (value: Accessor<number>, canAnimate: Accessor<boolean>, getDurationFromValue: (value: number, prevValue: number) => number) => {
+  let prevValue = 0;
+  const [current, setCurrent] = createSignal(canAnimate() ? 0 : value());
+
+  createEffect(() => {
+    if(!canAnimate()) {
+      prevValue = value();
+      return;
+    }
+
+    if(value() === prevValue) return;
+
+    const duration = getDurationFromValue(value(), prevValue);
+    const cancel = animateValue(prevValue, value(), duration, setCurrent, {
+      easing: p => p
+    });
+
+    prevValue = value();
+
     onCleanup(cancel);
   });
 
-  return <>{current()}</>;
-};
+  return current;
+}
 
 export default PollOption;
