@@ -5,18 +5,18 @@ import {HeightTransition} from '@components/sidebarRight/tabs/adminRecentActions
 import Space from '@components/space';
 import PhotoTsx from '@components/wrappers/photoTsx';
 import {keepMe} from '@helpers/keepMe';
+import {attachHotClassName} from '@helpers/solid/classname';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {I18nTsx} from '@helpers/solid/i18n';
-import {attachHotClassName} from '@helpers/solid/classname';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
-import {InputMedia, Message, MessageEntity, MessageMedia, Photo, Poll, PollResults} from '@layer';
+import {InputMedia, Message, MessageEntity, MessageMedia, Photo, Poll, PollAnswer, PollResults} from '@layer';
 import getPeerId from '@lib/appManagers/utils/peers/getPeerId';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {batch, createMemo, createSelector, createSignal, For, Match, Show, Switch} from 'solid-js';
-import {unwrap} from 'solid-js/store';
+import {batch, createComputed, createMemo, createSelector, createSignal, For, Match, Show, Switch} from 'solid-js';
+import {createStore, reconcile, unwrap} from 'solid-js/store';
 import {Transition} from 'solid-transition-group';
 import {AddOption} from './AddOption';
 import {AvatarGroup, Explanation, PollType, PollVotes} from './parts';
@@ -38,7 +38,7 @@ export const PollMessageContent = defineSolidElement({
   component: (props: PassedProps<PollMessageContentProps>) => {
     attachHotClassName(props.element, styles.container);
 
-    const {rootScope, wrapPhoto} = useHotReloadGuard();
+    const {rootScope} = useHotReloadGuard();
 
     const middleware = createMiddleware().get();
 
@@ -51,7 +51,8 @@ export const PollMessageContent = defineSolidElement({
       entities: []
     });
 
-    const withImage = true;
+    const [pollOptions, setPollOptions] = createStore<PollAnswer.pollAnswer[]>([]);
+
     let inputField: InputField;
 
     const hasSelectedSomething = createMemo(() => chosenIndexes().length > 0);
@@ -66,7 +67,6 @@ export const PollMessageContent = defineSolidElement({
     const questionEntities = () => props.poll.question.entities;
     const description = () => props.message.message;
     const descriptionEntities = () => props.message.entities;
-    const pollOptions = createMemo(() => props.poll.answers.filter(answer => answer._ === 'pollAnswer'));
     const allowAddingOptions = createMemo(() => flag(props.poll.pFlags.open_answers));
     const allowMultipleAnswers = createMemo(() => flag(props.poll.pFlags.multiple_choice));
     const hasCorrectAnswer = createMemo(() => flag(props.poll.pFlags.quiz));
@@ -92,6 +92,10 @@ export const PollMessageContent = defineSolidElement({
 
     const hasExplanation = createMemo(() => {
       return !!props.results.solution || !!props.results.solution_media;
+    });
+
+    createComputed(() => {
+      setPollOptions(reconcile(props.poll.answers.filter(answer => answer._ === 'pollAnswer')));
     });
 
     const getPhoto = (media: MessageMedia | InputMedia | undefined): Photo.photo | undefined => {
@@ -204,7 +208,7 @@ export const PollMessageContent = defineSolidElement({
           </Show>
         </HeightTransition>
 
-        <For each={pollOptions()}>
+        <For each={pollOptions}>
           {(option, index) => (
             <PollOption
               text={option.text}

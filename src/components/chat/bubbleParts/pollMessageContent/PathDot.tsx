@@ -31,7 +31,7 @@ const PathDot: Component<PathDotProps> = (rawProps) => {
       width: 160,
       height: 100,
       radius: 20,
-      dotColor: '#3b82f6',
+      dotColor: 'var(--primary-color)',
       dotThickness: 6,
       dotLength: 8,
       duration: 2,
@@ -89,7 +89,7 @@ const PathDot: Component<PathDotProps> = (rawProps) => {
       [{strokeDashoffset: from}, {strokeDashoffset: to}],
       {
         duration: props.duration * 1000,
-        easing: 'linear',
+        easing: 'ease-in',
         fill: 'forwards',
         iterations: 1
       }
@@ -112,7 +112,6 @@ const PathDot: Component<PathDotProps> = (rawProps) => {
       width={svgWidth()}
       height={svgHeight()}
       viewBox={`0 0 ${svgWidth()} ${svgHeight()}`}
-      xmlns="http://www.w3.org/2000/svg"
     >
       {/* Travelling dot */}
       <path

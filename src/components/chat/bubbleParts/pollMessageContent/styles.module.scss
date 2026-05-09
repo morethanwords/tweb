@@ -105,7 +105,7 @@
     width: 100%;
     height: 0.25rem;
     border-radius: 0.25rem;
-    transform: translateY(0.5625rem);
+    transform: translateY(9px);
 
     --opacity: 0.15;
     background-color: rgba(0, 0, 0, var(--opacity));
@@ -119,12 +119,13 @@
       top: 0;
       left: 0;
       height: 100%;
-      width: calc(var(--fill-width, 0) * 100%);
+      --zero-offset: 5px;
+      width: max(var(--zero-offset), calc(var(--fill-width, 0) * (100% - var(--zero-offset))));
 
       border-radius: inherit;
       background-color: var(--primary-color);
 
-      transition: width 0.3s ease;
+      transition: width var(--transition-time) linear;
     }
   }
 }
@@ -286,4 +287,11 @@
   &Wrapper {
     padding: 1px;
   }
+}
+
+.pathDot {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  transform: translate(-23px, 9px);
 }
