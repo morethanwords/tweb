@@ -7701,6 +7701,7 @@ export default class ChatBubbles {
             const pollMessageContent = new PollMessageContent();
             pollMessageContent.HotReloadGuard = SolidJSHotReloadGuardProvider;
             pollMessageContent.feedProps({
+              isOutgoing: isOut,
               message,
               poll: context.messageMedia.poll,
               results: context.messageMedia.results,

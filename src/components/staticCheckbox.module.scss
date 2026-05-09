@@ -52,7 +52,7 @@
   inset-inline: 0;
   bottom: 0;
   border-radius: inherit;
-  border: 2px solid #8d969c;
+  border: 2px solid var(--checkbox-border-color, #8d969c);
   //border-color: #000;
 }
 
@@ -78,7 +78,7 @@
   transform: translate(-50%, -50%) scale(var(--check-scale));
 
   use {
-    stroke: #fff;
+    stroke: var(--check-color, #fff);
     stroke-width: 3.75;
     stroke-linecap: round;
     stroke-dasharray: 0, 24.19;

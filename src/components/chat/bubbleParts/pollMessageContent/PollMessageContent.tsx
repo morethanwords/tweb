@@ -23,10 +23,12 @@ import {AvatarGroup, Explanation, PollType, PollVotes} from './parts';
 import {PollOption} from './PollOption';
 import styles from './styles.module.scss';
 import {PollOptionResult, roundPercents} from './utils';
+import {PollMessageContentPropsContext} from './context';
 
 keepMe(ripple);
 
 export type PollMessageContentProps = {
+  isOutgoing?: boolean;
   poll: Poll;
   message: Message.message;
   results: PollResults;
@@ -178,7 +180,7 @@ export const PollMessageContent = defineSolidElement({
     });
 
     return (
-      <>
+      <PollMessageContentPropsContext.Provider value={props}>
         <Show when={descriptionPhoto()}>
           <div class={styles.pollImageWrapper}>
             <div class={styles.pollImage}>
@@ -282,7 +284,7 @@ export const PollMessageContent = defineSolidElement({
 
         {/* some space for the time span */}
         <Space amount='0.75rem' />
-      </>
+      </PollMessageContentPropsContext.Provider>
     );
   }
 });

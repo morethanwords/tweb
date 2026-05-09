@@ -9,17 +9,25 @@ import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {createMemo, For, Show} from 'solid-js';
 import styles from './styles.module.scss';
 import {LocalTextWithEntities} from './utils';
+import {usePollMessageContentProps} from './context';
 
 export const AvatarGroup = (props: {
   peerIds: PeerId[];
 }) => {
   const {AvatarNewTsx} = useHotReloadGuard();
+  const contextProps = usePollMessageContentProps();
 
   return (
     <div class={styles.avatarGroup}>
       <For each={props.peerIds}>
         {(peerId, index) => (
-          <div class={styles.avatarGroupItem} classList={{[styles.pushOverNext]: index() > 0}}>
+          <div
+            class={styles.avatarGroupItem}
+            classList={{
+              [styles.pushOverNext]: index() > 0,
+              [styles.outgoing]: contextProps.isOutgoing
+            }}
+          >
             <div class={styles.avatarGroupItemWrapper}>
               <AvatarNewTsx class={styles.avatarGroupItemAvatar} size={24} peerId={peerId} />
             </div>

@@ -3,11 +3,15 @@ import {JSX, splitProps} from 'solid-js';
 import styles from './staticCheckbox.module.scss';
 
 
-export const StaticCheckbox = (inProps: {
+export type StaticCheckboxProps = {
   checked?: boolean;
   round?: boolean;
-} & JSX.HTMLAttributes<HTMLDivElement>) => {
-  const [props, restProps] = splitProps(inProps, ['checked', 'round', 'class', 'classList']);
+  borderColor?: string;
+  checkColor?: string;
+} & JSX.HTMLAttributes<HTMLDivElement>;
+
+export const StaticCheckbox = (inProps: StaticCheckboxProps) => {
+  const [props, restProps] = splitProps(inProps, ['checked', 'round', 'checkColor', 'borderColor', 'class', 'classList']);
 
   return (
     <div
@@ -19,9 +23,13 @@ export const StaticCheckbox = (inProps: {
       }}
       {...restProps}
     >
-      <div class={styles.Border}></div>
+      <div class={styles.Border} style={{'--checkbox-border-color': props.borderColor}}></div>
       <div class={styles.Background}></div>
-      <svg class={styles.Check} viewBox="0 0 24 24"><use href="#check" x="-1"></use></svg>
+      <svg
+        class={styles.Check}
+        viewBox="0 0 24 24"
+        style={{'--check-color': props.checkColor}}
+      ><use href="#check" x="-1"></use></svg>
     </div>
   );
 };

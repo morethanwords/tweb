@@ -231,6 +231,10 @@
     border-radius: 50%;
     border: 2px solid var(--surface-color);
   }
+
+  &.outgoing &Wrapper {
+    border-color: var(--message-out-background-color);
+  }
 }
 
 .addOptionPlus {

@@ -1,5 +1,4 @@
 import ripple from '@components/ripple';
-import {StaticCheckbox} from '@components/staticCheckbox';
 import StaticRadio from '@components/staticRadio';
 import PhotoTsx from '@components/wrappers/photoTsx';
 import {animateValue} from '@helpers/animateValue';
@@ -11,13 +10,16 @@ import {requestRAF} from '@helpers/solid/requestRAF';
 import classNames from '@helpers/string/classNames';
 import {Photo} from '@layer';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
-import {Accessor, createEffect, createMemo, createSignal, onCleanup, onMount, Show, untrack} from 'solid-js';
+import {Accessor, createEffect, createMemo, createSignal, onCleanup, onMount, Show} from 'solid-js';
 import {Transition} from 'solid-transition-group';
+import {InMessageCheckbox} from '../inMessageCheckbox';
 import {AutoHeight} from './AutoHeight';
+import {usePollMessageContentProps} from './context';
 import {AvatarGroup} from './parts';
 import PathDot from './PathDot';
 import styles from './styles.module.scss';
 import {LocalTextWithEntities, PollOptionResult} from './utils';
+
 
 keepMe(ripple);
 
@@ -35,6 +37,8 @@ export const PollOption = (props: {
 
   result?: PollOptionResult;
 }) => {
+  const contextProps = usePollMessageContentProps();
+
   const isShowingResult = createMemo(() => !!props.result);
 
   const [canAnimate, setCanAnimate] = createSignal(false);
@@ -74,7 +78,7 @@ export const PollOption = (props: {
               when={props.isCheckbox}
               fallback={<StaticRadio class={styles.checkbox} checked={props.checked} />}
             >
-              <StaticCheckbox class={styles.checkbox} checked={props.checked} />
+              <InMessageCheckbox class={styles.checkbox} checked={props.checked} isOutgoing={contextProps.isOutgoing} />
             </Show>
           </Show>
           <Show when={isShowingResult() && canShowPercentage()}>
@@ -124,7 +128,12 @@ export const PollOption = (props: {
         </Transition>
         <Transition name='fade-2'>
           <Show when={isShowingResult() && canShowPercentage()}>
-            <StaticCheckbox round={!props.isCheckbox} class={styles.chosenCheckbox} checked={props.result.chosen} />
+            <InMessageCheckbox
+              round={!props.isCheckbox}
+              class={styles.chosenCheckbox}
+              checked={props.result.chosen}
+              isOutgoing={contextProps.isOutgoing}
+            />
           </Show>
         </Transition>
       </div>
