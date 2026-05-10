@@ -38,19 +38,23 @@
       border-radius: 6px;
     }
 
-    &Img {
-       width: 100%;
-       height: 100%;
-       object-fit: cover;
-       border-radius: inherit;
-     }
+    &.clickable {
+      cursor: pointer;
+    }
 
-     &Btn {
-       position: absolute;
-       top: 50%;
-       left: 50%;
-       transform: translate(-50%, -50%);
-     }
+    &AttachImg {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: inherit;
+    }
+
+    &AttachBtn {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
   }
 }
 

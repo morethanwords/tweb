@@ -105,11 +105,14 @@ export const AddOption = (props: {
           </Transition>
         </div>
       </div>
-      <div class={styles.pollOptionMedia}>
+      <div class={styles.pollOptionMedia} classList={{
+        [styles.stripped]: !!attachment(),
+        [styles.clickable]: !!attachment()
+      }}>
         <Show when={visible()}>
           <MediaAttachment
-            btnClass={styles.pollOptionMediaBtn}
-            imgClass={styles.pollOptionMediaImg}
+            btnClass={styles.pollOptionMediaAttachBtn}
+            imgClass={styles.pollOptionMediaAttachImg}
             attachedMedia={attachment()}
             onAttach={setAttachment}
           />

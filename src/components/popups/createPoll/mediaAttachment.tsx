@@ -156,7 +156,7 @@ export const MediaAttachment = (props: {
         <ButtonIconTsx class={props.btnClass} icon='attach' onClick={onChoose} />
       </Show>
       <Show when={props.attachedMedia?.objectUrl}>
-        <img ref={setImg} class={props.imgClass} src={props.attachedMedia.objectUrl} alt='' onClick={() => setIsMenuOpen(true)} />
+        <img ref={setImg} class={props.imgClass} src={props.attachedMedia.objectUrl} alt='' on:click={() => setIsMenuOpen(true)} />
       </Show>
     </>
   );

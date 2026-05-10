@@ -138,7 +138,7 @@ export const PollOption = (props: {
         </Transition>
       </div>
       <Show when={props.withImage}>
-        <div class={classNames(styles.pollOptionMedia, styles.stripped)}>
+        <div class={classNames(styles.pollOptionMedia, styles.stripped)} classList={{[styles.clickable]: !!props.photo}}>
           <Show when={props.photo}>
             <PhotoTsx photo={props.photo} boxWidth={36} boxHeight={36} />
           </Show>
