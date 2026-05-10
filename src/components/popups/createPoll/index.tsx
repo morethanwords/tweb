@@ -1,10 +1,11 @@
 import Button from '@components/buttonTsx';
 import InputField from '@components/inputField';
 import Scrollable from '@components/scrollable2';
-import SimpleFormField, {useMaxLengthError} from '@components/simpleFormField';
+import SimpleFormField from '@components/simpleFormField';
 import Space from '@components/space';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import {I18nTsx} from '@helpers/solid/i18n';
+import {useMaxLengthError} from '@helpers/solid/useMaxLengthError';
 import classNames from '@helpers/string/classNames';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';

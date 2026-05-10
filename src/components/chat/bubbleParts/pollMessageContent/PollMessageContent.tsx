@@ -1,16 +1,20 @@
 import {ButtonIconTsx} from '@components/buttonIconTsx';
 import InputField from '@components/inputField';
+import {useCreatePollLimits} from '@components/popups/createPoll/hooks';
 import ripple from '@components/ripple';
 import {HeightTransition} from '@components/sidebarRight/tabs/adminRecentActions/heightTransition';
 import Space from '@components/space';
 import PhotoTsx from '@components/wrappers/photoTsx';
+import {mergeSeed, seededShuffle} from '@helpers/array/seededShuffle';
+import compareUint8Arrays from '@helpers/bytes/compareUint8Arrays';
 import {keepMe} from '@helpers/keepMe';
+import intToUint from '@helpers/number/intToUint';
 import {attachHotClassName} from '@helpers/solid/classname';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
-import {InputMedia, Message, MessageEntity, MessageMedia, Photo, Poll, PollAnswer, PollResults} from '@layer';
+import {InputMedia, Message, MessageMedia, Photo, Poll, PollAnswer, PollResults} from '@layer';
 import getPeerId from '@lib/appManagers/utils/peers/getPeerId';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
@@ -19,11 +23,11 @@ import {batch, createComputed, createMemo, createSelector, createSignal, For, Ma
 import {createStore, reconcile, unwrap} from 'solid-js/store';
 import {Transition} from 'solid-transition-group';
 import {AddOption} from './AddOption';
+import {PollMessageContentPropsContext} from './context';
 import {AvatarGroup, Explanation, PollType, PollVotes} from './parts';
 import {PollOption} from './PollOption';
 import styles from './styles.module.scss';
-import {PollOptionResult, roundPercents} from './utils';
-import {PollMessageContentPropsContext} from './context';
+import {LocalTextWithEntities, PollOptionResult, roundPercents} from './utils';
 
 keepMe(ripple);
 
@@ -40,15 +44,18 @@ export const PollMessageContent = defineSolidElement({
   component: (props: PassedProps<PollMessageContentProps>) => {
     attachHotClassName(props.element, styles.container);
 
-    const {rootScope} = useHotReloadGuard();
+    const {rootScope, useAppSettings} = useHotReloadGuard();
+    const [appSettings] = useAppSettings();
 
     const middleware = createMiddleware().get();
+
+    const {maxOptions} = useCreatePollLimits();
 
     const [explanationToggled, setExplanationToggled] = createSignal(false);
     const [chosenIndexes, setChosenIndexes] = createSignal<number[]>([]);
     const [isFooterClickable, setIsFooterClickable] = createSignal(false);
     const [isAddingNewOptionVisible, setIsAddingNewOptionVisible] = createSignal(false);
-    const [newOptionText, setNewOptionText] = createSignal<{ text: string, entities: MessageEntity[] }>({
+    const [newOptionText, setNewOptionText] = createSignal<LocalTextWithEntities>({
       text: '',
       entities: []
     });
@@ -56,13 +63,6 @@ export const PollMessageContent = defineSolidElement({
     const [pollOptions, setPollOptions] = createStore<PollAnswer.pollAnswer[]>([]);
 
     let inputField: InputField;
-
-    const hasSelectedSomething = createMemo(() => chosenIndexes().length > 0);
-    const isChecked = createSelector(chosenIndexes, (index: number, indices) => indices.includes(index));
-    const isShowingResult = createMemo(() => !!props.poll.chosenIndexes?.length || props.poll.pFlags.closed);
-    const hasTypedNewOption = createMemo(() => newOptionText().text.length > 0);
-    const willFooterBeClickable = createMemo(() => hasSelectedSomething() || hasTypedNewOption());
-
     const flag = (value: any) => !!value;
 
     const question = () => props.poll.question.text;
@@ -75,10 +75,17 @@ export const PollMessageContent = defineSolidElement({
     const shuffleOptions = createMemo(() => flag(props.poll.pFlags.shuffle_answers));
     const showWhoVoted = createMemo(() => flag(props.poll.pFlags.public_voters));
     const closed = createMemo(() => flag(props.poll.pFlags.closed));
-    const hideResults = createMemo(() => flag(props.poll.pFlags.hide_results_until_close));
+    // const hideResults = createMemo(() => flag(props.poll.pFlags.hide_results_until_close));
 
     const votersCount = createMemo(() => props.results?.total_voters ?? 0);
     const recentVoters = createMemo(() => props.results?.recent_voters?.map(peer => getPeerId(peer)) ?? []);
+
+    const hasSelectedSomething = createMemo(() => chosenIndexes().length > 0);
+    const isChecked = createSelector(chosenIndexes, (index: number, indices) => indices.includes(index));
+    const isShowingResult = createMemo(() => !!props.poll.chosenIndexes?.length || props.poll.pFlags.closed);
+    const hasTypedNewOption = createMemo(() => newOptionText().text.length > 0);
+    const willFooterBeClickable = createMemo(() => hasSelectedSomething() || hasTypedNewOption());
+    const canShowAddOption = createMemo(() => allowAddingOptions() && !isShowingResult() && pollOptions.length < maxOptions());
 
     const getOverridenMessage = (): Message.message => ({
       ...unwrap(props.message),
@@ -108,7 +115,15 @@ export const PollMessageContent = defineSolidElement({
     });
 
     createComputed(() => {
-      setPollOptions(reconcile(props.poll.answers.filter(answer => answer._ === 'pollAnswer')));
+      let filteredAnswers = props.poll.answers.filter(answer => answer._ === 'pollAnswer');
+
+      if(shuffleOptions) filteredAnswers = seededShuffle(filteredAnswers, mergeSeed([
+        intToUint(appSettings.userRandomSeed),
+        intToUint(props.message.mid),
+        intToUint(props.message.peerId)
+      ]));
+
+      setPollOptions(reconcile(filteredAnswers));
     });
 
     const getPhoto = (media: MessageMedia | InputMedia | undefined): Photo.photo | undefined => {
@@ -118,21 +133,18 @@ export const PollMessageContent = defineSolidElement({
     const explanationPhoto = createMemo(() => getPhoto(props.results.solution_media));
     const descriptionPhoto = createMemo(() => getPhoto(props.media.attached_media));
 
-    const resultForOption = (index: number): PollOptionResult => isShowingResult() ? ({
-      chosen: props.results?.results?.[index]?.pFlags?.chosen ?? false,
-      percent: roundedPercents()[index],
-      voters: props.results?.results?.[index]?.voters ?? 0,
-      peerIds: props.results?.results?.[index]?.recent_voters?.map(peer => getPeerId(peer)) ?? []
+    const initialIdxFromShuffledIdx = (idx: number) =>
+      props.poll.answers.findIndex(other => other._ === 'pollAnswer' && compareUint8Arrays(other.option, pollOptions[idx]?.option))
+    ;
+
+    const resultForOption = (initialIdx: number): PollOptionResult => isShowingResult() ? ({
+      chosen: props.results?.results?.[initialIdx]?.pFlags?.chosen ?? false,
+      percent: roundedPercents()[initialIdx],
+      voters: props.results?.results?.[initialIdx]?.voters ?? 0,
+      peerIds: props.results?.results?.[initialIdx]?.recent_voters?.map(peer => getPeerId(peer)) ?? []
     }) : undefined;
 
-    const photoForOption = (index: number): Photo.photo | undefined => getPhoto(props.poll.answers[index]?.media);
-
-    subscribeOn(rootScope)('poll_update', ({poll, results}) => {
-      if(poll.id !== props.poll.id) return;
-
-      props.poll = poll;
-      props.results = results;
-    });
+    const photoForOption = (initialIdx: number): Photo.photo | undefined => getPhoto(props.poll.answers[initialIdx]?.media);
 
     const handleToggle = (index: number) => {
       setChosenIndexes(prev => {
@@ -150,13 +162,15 @@ export const PollMessageContent = defineSolidElement({
       setChosenIndexes([]);
       setIsAddingNewOptionVisible(false);
       setNewOptionText({text: '', entities: []});
-      inputField.setValueSilently('');
+      inputField?.setValueSilently('');
     });
 
     const sendVote = async() => {
       if(isShowingResult() || !hasSelectedSomething()) return;
 
-      await rootScope.managers.appPollsManager.sendVote(getOverridenMessage(), chosenIndexes());
+      const optionIndexes = chosenIndexes().map(initialIdxFromShuffledIdx).filter(idx => idx !== -1);
+
+      await rootScope.managers.appPollsManager.sendVote(getOverridenMessage(), optionIndexes);
 
       resetInteractiveState();
     };
@@ -180,6 +194,13 @@ export const PollMessageContent = defineSolidElement({
     const onFooterClick = wrapAsyncClickHandler(async() => {
       if(hasSelectedSomething()) await sendVote();
       if(hasTypedNewOption()) await addOption();
+    });
+
+    subscribeOn(rootScope)('poll_update', ({poll, results}) => {
+      if(poll.id !== props.poll.id) return;
+
+      props.poll = poll;
+      props.results = results;
     });
 
     return (
@@ -229,19 +250,19 @@ export const PollMessageContent = defineSolidElement({
             <PollOption
               text={option.text}
               withImage={hasPhotoInOptions()}
-              photo={photoForOption(index())}
+              photo={photoForOption(initialIdxFromShuffledIdx(index()))}
               isCheckbox={allowMultipleAnswers()}
 
               checked={isChecked(index())}
               onToggle={() => handleToggle(index())}
 
-              result={resultForOption(index())}
+              result={resultForOption(initialIdxFromShuffledIdx(index()))}
             />
           )}
         </For>
 
         <HeightTransition>
-          <Show when={allowAddingOptions() && !isShowingResult()}>
+          <Show when={canShowAddOption()}>
             <div style={{overflow: 'hidden'}}>
               <AddOption
                 inputFieldRef={(value: InputField) => void (inputField = value)}

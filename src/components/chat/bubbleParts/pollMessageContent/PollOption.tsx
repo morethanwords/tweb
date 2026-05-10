@@ -67,7 +67,7 @@ export const PollOption = (props: {
   });
 
   return (
-    <div class={styles.pollOption} classList={{[styles.hasImage]: props.withImage}}>
+    <div class={styles.pollOption} classList={{[styles.hasMedia]: props.withImage}}>
       <Show when={!isShowingResult()}>
         <div class={styles.clickableArea} classList={{[styles.outgoing]: contextProps.isOutgoing}} use:ripple onClick={props.onToggle} />
       </Show>
@@ -138,7 +138,7 @@ export const PollOption = (props: {
         </Transition>
       </div>
       <Show when={props.withImage}>
-        <div class={classNames(styles.optionImage)}>
+        <div class={classNames(styles.pollOptionMedia, styles.stripped)}>
           <Show when={props.photo}>
             <PhotoTsx photo={props.photo} boxWidth={36} boxHeight={36} />
           </Show>

@@ -17,6 +17,7 @@ import getTimeFormat from '@helpers/getTimeFormat';
 import App from '@config/app';
 import {ColoredBrushType} from '@components/mediaEditor/context';
 import {FontKey} from '@components/mediaEditor/types';
+import {randomUint32Fast} from '@helpers/random';
 
 const STATE_VERSION = App.version;
 const BUILD = App.build;
@@ -130,6 +131,7 @@ export type StateSettings = {
     textStyle?: string;
     textFont?: FontKey;
   },
+  userRandomSeed: number,
 };
 
 // (1 - use swatch, 2 - use picker color), (color from swatch), (color from picker)
@@ -413,7 +415,8 @@ export const SETTINGS_INIT: StateSettings = {
   showArchiveInChatList: true,
   mediaEditor: {
     colorByBrush: {}
-  }
+  },
+  userRandomSeed: randomUint32Fast()
 };
 
 export const STATE_INIT: State = {

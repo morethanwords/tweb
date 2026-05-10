@@ -1,5 +1,6 @@
 import styles from '@components/simpleFormField/styles.module.scss';
 import {requestRAF} from '@helpers/solid/requestRAF';
+import {useMaxLengthError} from '@helpers/solid/useMaxLengthError';
 import classNames from '@helpers/string/classNames';
 import {Accessor, batch, createContext, createEffect, createMemo, createSignal, JSX, onCleanup, onMount, ParentProps, Ref, Setter, Show, splitProps, useContext} from 'solid-js';
 
@@ -288,18 +289,6 @@ export const useForceState = () => {
   };
 
   return {value, useSetter};
-};
-
-export const useMaxLengthError = (value: Accessor<string>, maxLength: Accessor<number>) => {
-  const threshold = () => Math.min(40, Math.round(maxLength() / 3));
-  const lengthLeft = () => maxLength() - value().length;
-  const shouldShowLengthLeft = createMemo(() => lengthLeft() < threshold());
-
-  return {
-    hasError: createMemo(() => value().length > maxLength()),
-    shouldShowLengthLeft,
-    lengthLeft
-  };
 };
 
 export default SimpleFormField;

@@ -153,25 +153,26 @@ export class AppPollsManager extends AppManager {
     }
   }
 
-  public async sendVote(message: Message.message, optionIds: number[]): Promise<void> {
-    const poll: Poll = (message.media as MessageMedia.messageMediaPoll).poll;
-
-    const options: Uint8Array[] = optionIds.map((index) => {
-      const answer = poll.answers[index];
-      if(answer?._ !== 'pollAnswer') return;
-      return answer.option;
-    }).filter(Boolean);
-
+  public async sendVote(message: Message.message, optionIndexes: number[]): Promise<void> {
     const messageId = message.mid;
-    const peerId = message.peerId;
-    const inputPeer = this.appPeersManager.getInputPeerById(peerId);
 
     if(message.pFlags.is_outgoing) {
       return this.appMessagesManager.invokeAfterMessageIsSent(messageId, 'sendVote', (message) => {
         this.log('invoke sendVote callback');
-        return this.sendVote(message as Message.message, optionIds);
+        return this.sendVote(message as Message.message, optionIndexes);
       });
     }
+
+    const poll: Poll = (message.media as MessageMedia.messageMediaPoll).poll;
+
+    const peerId = message.peerId;
+    const inputPeer = this.appPeersManager.getInputPeerById(peerId);
+
+    const options: Uint8Array[] = optionIndexes.map((index) => {
+      const answer = poll.answers[index];
+      if(answer?._ !== 'pollAnswer') return;
+      return answer.option;
+    }).filter(Boolean);
 
     const updates = await this.apiManager.invokeApi('messages.sendVote', {
       peer: inputPeer,

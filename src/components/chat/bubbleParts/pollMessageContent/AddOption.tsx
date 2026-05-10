@@ -78,7 +78,7 @@ export const AddOption = (props: {
   };
 
   return (
-    <div class={classNames(styles.pollOption, styles.hasImage)}>
+    <div class={classNames(styles.pollOption, styles.hasMedia)}>
       <Show when={!visible()}>
         <div class={styles.clickableArea} classList={{[styles.outgoing]: contextProps.isOutgoing}} use:ripple={!visible()} onClick={() => props.onVisibleChange(!visible())} />
       </Show>
@@ -105,11 +105,11 @@ export const AddOption = (props: {
           </Transition>
         </div>
       </div>
-      <div class={styles.optionImage}>
+      <div class={styles.pollOptionMedia}>
         <Show when={visible()}>
           <MediaAttachment
-            btnClass={styles.optionImageBtn}
-            imgClass={styles.optionImageImg}
+            btnClass={styles.pollOptionMediaBtn}
+            imgClass={styles.pollOptionMediaImg}
             attachedMedia={attachment()}
             onAttach={setAttachment}
           />
