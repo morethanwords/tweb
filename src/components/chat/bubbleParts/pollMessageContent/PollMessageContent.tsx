@@ -146,12 +146,19 @@ export const PollMessageContent = defineSolidElement({
       });
     };
 
+    const resetInteractiveState = () => batch(() => {
+      setChosenIndexes([]);
+      setIsAddingNewOptionVisible(false);
+      setNewOptionText({text: '', entities: []});
+      inputField.setValueSilently('');
+    });
+
     const sendVote = async() => {
       if(isShowingResult() || !hasSelectedSomething()) return;
 
       await rootScope.managers.appPollsManager.sendVote(getOverridenMessage(), chosenIndexes());
 
-      setChosenIndexes([]);
+      resetInteractiveState();
     };
 
     const addOption = async() => {
@@ -167,11 +174,7 @@ export const PollMessageContent = defineSolidElement({
         }
       );
 
-      batch(() => {
-        setIsAddingNewOptionVisible(false);
-        setNewOptionText({text: '', entities: []});
-      });
-      inputField.setValueSilently('');
+      resetInteractiveState();
     };
 
     const onFooterClick = wrapAsyncClickHandler(async() => {
