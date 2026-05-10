@@ -57,12 +57,17 @@ function createHiddenFileInput(): HTMLInputElement {
   return input;
 }
 
-function getFileFromInput(input: HTMLInputElement): Promise<File | undefined> {
-  const promise = new Promise<File | undefined>((resolve) => {
+function getFileFromInput(input: HTMLInputElement): Promise<File | void> {
+  const promise = new Promise<File | void>((resolve) => {
     input.addEventListener('change', () => {
       const file = input.files?.[0];
       resolve(file);
-    }, false);
+    });
+
+    window.addEventListener('focus', () => {
+      input.remove();
+      resolve();
+    }, {once: true});
   });
 
   input.click();
