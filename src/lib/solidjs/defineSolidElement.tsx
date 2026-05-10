@@ -1,4 +1,4 @@
-import {createEffect, createRoot, JSX, ParentProps} from 'solid-js';
+import {createEffect, createRoot, JSX, ParentProps, untrack} from 'solid-js';
 import {createMutable, unwrap} from 'solid-js/store';
 import {render} from 'solid-js/web';
 import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
@@ -208,7 +208,7 @@ export default function defineSolidElement<Props extends Object, ObservedAttribu
       const Wrapper = this.HotReloadGuard || ((props: ParentProps) => <>{props.children}</>);
 
       // JSX is mandatory here for cleanup to work!
-      this.disposeContent = render(() => <Wrapper>{ComponentToMount(this.propsStore, this.attributesStore, this.controls)}</Wrapper>, this.mountPoint);
+      this.disposeContent = render(() => <Wrapper>{untrack(() => ComponentToMount(this.propsStore, this.attributesStore, this.controls))}</Wrapper>, this.mountPoint);
     }
 
     private unmount() {
