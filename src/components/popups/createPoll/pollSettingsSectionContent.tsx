@@ -1,7 +1,6 @@
 import {createAutoDeleteIcon} from '@components/autoDeleteIcon';
 import {IconTsx} from '@components/iconTsx';
 import InputField from '@components/inputField';
-import {HeightTransition} from '@components/sidebarRight/tabs/adminRecentActions/heightTransition';
 import SimpleFormField from '@components/simpleFormField';
 import Space from '@components/space';
 import StaticSwitch from '@components/staticSwitch';
@@ -12,6 +11,7 @@ import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import formatDuration from '@helpers/formatDuration';
 import {positionFloatingMenu} from '@helpers/positionMenu';
 import pause from '@helpers/schedulers/pause';
+import {HeightTransition} from '@helpers/solid/heightTransition';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {requestRAF} from '@helpers/solid/requestRAF';
 import classNames from '@helpers/string/classNames';

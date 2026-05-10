@@ -1,7 +1,6 @@
 import Button from '@components/buttonTsx';
 import {IconTsx} from '@components/iconTsx';
 import InputField from '@components/inputField';
-import {HeightTransition} from '@components/sidebarRight/tabs/adminRecentActions/heightTransition';
 import SimpleFormField from '@components/simpleFormField';
 import Space from '@components/space';
 import {StaticCheckbox} from '@components/staticCheckbox';
@@ -10,6 +9,7 @@ import blurActiveElement from '@helpers/dom/blurActiveElement';
 import focusInput from '@helpers/dom/focusInput';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import {createSortableList} from '@helpers/solid/createSortableList';
+import {HeightTransition} from '@helpers/solid/heightTransition';
 import {I18nTsx} from '@helpers/solid/i18n';
 import classNames from '@helpers/string/classNames';
 import {batch, children, createMemo, createSignal, For, JSX, mapArray, onMount, Ref, Show} from 'solid-js';

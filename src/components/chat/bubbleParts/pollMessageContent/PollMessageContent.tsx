@@ -2,7 +2,6 @@ import {ButtonIconTsx} from '@components/buttonIconTsx';
 import InputField from '@components/inputField';
 import {useCreatePollLimits} from '@components/popups/createPoll/hooks';
 import ripple from '@components/ripple';
-import {HeightTransition} from '@components/sidebarRight/tabs/adminRecentActions/heightTransition';
 import Space from '@components/space';
 import PhotoTsx from '@components/wrappers/photoTsx';
 import {mergeSeed, seededShuffle} from '@helpers/array/seededShuffle';
@@ -11,6 +10,7 @@ import {keepMe} from '@helpers/keepMe';
 import intToUint from '@helpers/number/intToUint';
 import {attachHotClassName} from '@helpers/solid/classname';
 import createMiddleware from '@helpers/solid/createMiddleware';
+import {HeightTransition} from '@helpers/solid/heightTransition';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
@@ -87,17 +87,6 @@ export const PollMessageContent = defineSolidElement({
     const willFooterBeClickable = createMemo(() => hasSelectedSomething() || hasTypedNewOption());
     const canShowAddOption = createMemo(() => allowAddingOptions() && !isShowingResult() && pollOptions.length < maxOptions());
 
-    const getOverridenMessage = (): Message.message => ({
-      ...unwrap(props.message),
-      media: {
-        _: 'messageMediaPoll',
-        ...unwrap(props.media),
-        // On poll_update, only the poll and results are updated, not the message itself
-        poll: unwrap(props.poll),
-        results: unwrap(props.results)
-      }
-    });
-
     const roundedPercents = createMemo(() => {
       const results = props.results?.results;
       if(!results) return [];
@@ -126,6 +115,17 @@ export const PollMessageContent = defineSolidElement({
       setPollOptions(reconcile(filteredAnswers));
     });
 
+    const getOverridenMessage = (): Message.message => ({
+      ...unwrap(props.message),
+      media: {
+        _: 'messageMediaPoll',
+        ...unwrap(props.media),
+        // On poll_update, only the poll and results are updated, not the message itself
+        poll: unwrap(props.poll),
+        results: unwrap(props.results)
+      }
+    });
+
     const getPhoto = (media: MessageMedia | InputMedia | undefined): Photo.photo | undefined => {
       return media?._ === 'messageMediaPhoto' && media.photo?._ === 'photo' ? unwrap(media.photo) : undefined;
     };
@@ -137,14 +137,14 @@ export const PollMessageContent = defineSolidElement({
       props.poll.answers.findIndex(other => other._ === 'pollAnswer' && compareUint8Arrays(other.option, pollOptions[idx]?.option))
     ;
 
-    const resultForOption = (initialIdx: number): PollOptionResult => isShowingResult() ? ({
+    const getResultForOption = (initialIdx: number): PollOptionResult => isShowingResult() ? ({
       chosen: props.results?.results?.[initialIdx]?.pFlags?.chosen ?? false,
       percent: roundedPercents()[initialIdx],
       voters: props.results?.results?.[initialIdx]?.voters ?? 0,
       peerIds: props.results?.results?.[initialIdx]?.recent_voters?.map(peer => getPeerId(peer)) ?? []
     }) : undefined;
 
-    const photoForOption = (initialIdx: number): Photo.photo | undefined => getPhoto(props.poll.answers[initialIdx]?.media);
+    const getPhotoForOption = (initialIdx: number): Photo.photo | undefined => getPhoto(props.poll.answers[initialIdx]?.media);
 
     const handleToggle = (index: number) => {
       setChosenIndexes(prev => {
@@ -250,13 +250,13 @@ export const PollMessageContent = defineSolidElement({
             <PollOption
               text={option.text}
               withImage={hasPhotoInOptions()}
-              photo={photoForOption(initialIdxFromShuffledIdx(index()))}
+              photo={getPhotoForOption(initialIdxFromShuffledIdx(index()))}
               isCheckbox={allowMultipleAnswers()}
 
               checked={isChecked(index())}
               onToggle={() => handleToggle(index())}
 
-              result={resultForOption(initialIdxFromShuffledIdx(index()))}
+              result={getResultForOption(initialIdxFromShuffledIdx(index()))}
             />
           )}
         </For>
