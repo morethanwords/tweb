@@ -60,7 +60,6 @@ export const PollMessageContent = defineSolidElement({
       entities: []
     });
 
-    const [pollOptions, setPollOptions] = createStore<PollAnswer.pollAnswer[]>([]);
 
     let inputField: InputField;
     const flag = (value: any) => !!value;
@@ -72,20 +71,13 @@ export const PollMessageContent = defineSolidElement({
     const allowAddingOptions = createMemo(() => flag(props.poll.pFlags.open_answers));
     const allowMultipleAnswers = createMemo(() => flag(props.poll.pFlags.multiple_choice));
     const hasCorrectAnswer = createMemo(() => flag(props.poll.pFlags.quiz));
-    const shuffleOptions = createMemo(() => flag(props.poll.pFlags.shuffle_answers));
+    const shuffleOptions = createMemo(() => !props.poll.pFlags.creator && flag(props.poll.pFlags.shuffle_answers));
     const showWhoVoted = createMemo(() => flag(props.poll.pFlags.public_voters));
     const closed = createMemo(() => flag(props.poll.pFlags.closed));
     // const hideResults = createMemo(() => flag(props.poll.pFlags.hide_results_until_close));
 
     const votersCount = createMemo(() => props.results?.total_voters ?? 0);
     const recentVoters = createMemo(() => props.results?.recent_voters?.map(peer => getPeerId(peer)) ?? []);
-
-    const hasSelectedSomething = createMemo(() => chosenIndexes().length > 0);
-    const isChecked = createSelector(chosenIndexes, (index: number, indices) => indices.includes(index));
-    const isShowingResult = createMemo(() => !!props.poll.chosenIndexes?.length || props.poll.pFlags.closed);
-    const hasTypedNewOption = createMemo(() => newOptionText().text.length > 0);
-    const willFooterBeClickable = createMemo(() => hasSelectedSomething() || hasTypedNewOption());
-    const canShowAddOption = createMemo(() => allowAddingOptions() && !isShowingResult() && pollOptions.length < maxOptions());
 
     const roundedPercents = createMemo(() => {
       const results = props.results?.results;
@@ -103,17 +95,38 @@ export const PollMessageContent = defineSolidElement({
       return !!props.results.solution || !!props.results.solution_media;
     });
 
+    let initialOptions = props.poll.answers.filter(answer => answer._ === 'pollAnswer');
+
+    if(shuffleOptions()) initialOptions = seededShuffle(initialOptions, mergeSeed([
+      intToUint(appSettings.userRandomSeed),
+      intToUint(props.message.mid),
+      intToUint(props.message.peerId)
+    ]));
+
+    const [pollOptions, setPollOptions] = createStore<PollAnswer.pollAnswer[]>(initialOptions);
+
     createComputed(() => {
-      let filteredAnswers = props.poll.answers.filter(answer => answer._ === 'pollAnswer');
+      const filteredOptions = props.poll.answers.filter(answer => answer._ === 'pollAnswer');
 
-      if(shuffleOptions) filteredAnswers = seededShuffle(filteredAnswers, mergeSeed([
-        intToUint(appSettings.userRandomSeed),
-        intToUint(props.message.mid),
-        intToUint(props.message.peerId)
-      ]));
+      // Keep the order after intial shuffle and append new options at the end when the poll was already rendered
+      filteredOptions.forEach((option) => {
+        const idx = pollOptions.findIndex(other => compareUint8Arrays(other.option, option.option));
+        if(idx === -1) setPollOptions(pollOptions.length, option);
+        else setPollOptions(idx, reconcile(option));
+      });
 
-      setPollOptions(reconcile(filteredAnswers));
+      // Remove options that are no longer in the poll, should not happen, but let it be
+      setPollOptions(prev =>
+        prev.filter(option => filteredOptions.some(other => compareUint8Arrays(option.option, other.option)))
+      );
     });
+
+    const hasSelectedSomething = createMemo(() => chosenIndexes().length > 0);
+    const isChecked = createSelector(chosenIndexes, (index: number, indices) => indices.includes(index));
+    const isShowingResult = createMemo(() => !!props.poll.chosenIndexes?.length || props.poll.pFlags.closed);
+    const hasTypedNewOption = createMemo(() => newOptionText().text.length > 0);
+    const willFooterBeClickable = createMemo(() => hasSelectedSomething() || hasTypedNewOption());
+    const canShowAddOption = createMemo(() => allowAddingOptions() && !isShowingResult() && pollOptions.length < maxOptions());
 
     const getOverridenMessage = (): Message.message => ({
       ...unwrap(props.message),
