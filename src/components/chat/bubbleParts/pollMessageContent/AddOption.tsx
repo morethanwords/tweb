@@ -1,3 +1,4 @@
+import appNavigationController, {NavigationItem} from '@components/appNavigationController';
 import {IconTsx} from '@components/iconTsx';
 import InputField from '@components/inputField';
 import {EmojiDropdownButton} from '@components/popups/createPoll/emojiDropdownButton';
@@ -8,8 +9,9 @@ import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import {keepMe} from '@helpers/keepMe';
 import {I18nTsx} from '@helpers/solid/i18n';
 import classNames from '@helpers/string/classNames';
-import {createSignal, Show} from 'solid-js';
+import {createEffect, createSignal, onCleanup, Show} from 'solid-js';
 import {Transition} from 'solid-transition-group';
+import {usePollMessageContentProps} from './context';
 import styles from './styles.module.scss';
 import {LocalTextWithEntities} from './utils';
 
@@ -19,8 +21,12 @@ export const AddOption = (props: {
   inputFieldRef: (value: InputField) => void;
   visible: boolean;
   onVisibleChange: (visible: boolean) => void;
+  value: string;
   onInput: (text: LocalTextWithEntities) => void;
+  onEnter: () => void;
 }) => {
+  const contextProps = usePollMessageContentProps();
+
   const [attachment, setAttachment] = createSignal<AttachedMedia>();
 
   const visible = () => props.visible;
@@ -34,20 +40,47 @@ export const AddOption = (props: {
     }
   });
 
+  inputField.input.classList.add(styles.inputFieldInput);
+  inputField.placeholder.classList.add(...[styles.inputFieldPlaceholder, contextProps.isOutgoing ? styles.outgoing : null].filter(Boolean));
+
+  inputField.input.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter') {
+      props.onEnter?.();
+    }
+
+    if(e.key === 'Backspace' && props.value === '') {
+      e.preventDefault();
+      props.onVisibleChange(false);
+    }
+  });
+
+  props.inputFieldRef(inputField);
+
+  createEffect(() => {
+    if(!visible()) return;
+
+    const navigationItem: NavigationItem = {
+      type: 'inline-message-input',
+      onPop: () => void props.onVisibleChange(false)
+    };
+
+    appNavigationController.pushItem(navigationItem);
+
+    onCleanup(() => {
+      appNavigationController.removeItem(navigationItem);
+    });
+  });
+
   const onAfterEnter = () => {
     if(visible()) {
       inputField.input.focus();
     }
   };
 
-  props.inputFieldRef(inputField);
-
-  inputField.placeholder.classList.add(styles.inputFieldPlaceholder);
-
   return (
     <div class={classNames(styles.pollOption, styles.hasImage)}>
       <Show when={!visible()}>
-        <div class={styles.clickableArea} use:ripple={!visible()} onClick={() => props.onVisibleChange(!visible())} />
+        <div class={styles.clickableArea} classList={{[styles.outgoing]: contextProps.isOutgoing}} use:ripple={!visible()} onClick={() => props.onVisibleChange(!visible())} />
       </Show>
 
       <div class={styles.checkContainer}>

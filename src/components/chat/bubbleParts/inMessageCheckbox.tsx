@@ -1,12 +1,14 @@
 import {StaticCheckboxProps, StaticCheckbox} from '@components/staticCheckbox';
 
 
-export const InMessageCheckbox = (inProps: Omit<StaticCheckboxProps, 'checkColor'> & {
+export const InMessageCheckbox = (props: Omit<StaticCheckboxProps, 'checkColor' | 'borderColor'> & {
   isOutgoing?: boolean;
 }) => {
-  return <StaticCheckbox
-    {...inProps}
-    checkColor={inProps.isOutgoing ? 'var(--message-out-background-color)' : undefined}
-    borderColor={inProps.isOutgoing ? 'white' : undefined}
-  />;
+  return (
+    <StaticCheckbox
+      {...props}
+      checkColor={props.isOutgoing ? 'var(--message-out-background-color)' : undefined}
+      borderColor={props.isOutgoing ? 'white' : undefined}
+    />
+  );
 };

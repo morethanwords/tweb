@@ -242,7 +242,9 @@ export const PollMessageContent = defineSolidElement({
             <div style={{overflow: 'hidden'}}>
               <AddOption
                 inputFieldRef={(value: InputField) => void (inputField = value)}
+                value={newOptionText().text}
                 onInput={setNewOptionText}
+                onEnter={addOption}
                 visible={isAddingNewOptionVisible()}
                 onVisibleChange={setIsAddingNewOptionVisible}
               />
@@ -267,7 +269,7 @@ export const PollMessageContent = defineSolidElement({
               <Match when={hasSelectedSomething()}>
                 <I18nTsx key='Chat.Poll.SubmitVote' />
               </Match>
-              <Match when={hasTypedNewOption()}>
+              <Match when={hasTypedNewOption() && !isShowingResult()}>
                 <I18nTsx key='Save' />
               </Match>
               <Match when>

@@ -69,7 +69,7 @@ export const PollOption = (props: {
   return (
     <div class={styles.pollOption} classList={{[styles.hasImage]: props.withImage}}>
       <Show when={!isShowingResult()}>
-        <div class={styles.clickableArea} use:ripple onClick={props.onToggle} />
+        <div class={styles.clickableArea} classList={{[styles.outgoing]: contextProps.isOutgoing}} use:ripple onClick={props.onToggle} />
       </Show>
       <div class={styles.checkContainer}>
         <Transition name='fade-2'>
@@ -127,11 +127,11 @@ export const PollOption = (props: {
           </Show>
         </Transition>
         <Transition name='fade-2'>
-          <Show when={isShowingResult() && canShowPercentage()}>
+          <Show when={isShowingResult() && canShowPercentage() && props.result.chosen}>
             <InMessageCheckbox
               round={!props.isCheckbox}
               class={styles.chosenCheckbox}
-              checked={props.result.chosen}
+              checked
               isOutgoing={contextProps.isOutgoing}
             />
           </Show>

@@ -66,6 +66,10 @@
   cursor: pointer;
 
   @include hover-global(gray, background-color, true);
+
+  &.outgoing {
+    @include hover-global(rgba(255, 255, 255, 0.1), background-color, true);
+  }
 }
 
 .label {
@@ -266,9 +270,17 @@
     pointer-events: initial;
   }
 
+  &Input {
+    background-color: unset;
+  }
+
   &Placeholder {
     left: 0;
     top: 0;
+
+    &.outgoing {
+      color: white;
+    }
   }
 }
 

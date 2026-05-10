@@ -17,7 +17,7 @@ export type NavigationItem = {
     'esg' | 'multiselect' | 'input-helper' | 'autocomplete-helper' | 'markup' |
     'global-search' | 'voice' | 'mobile-search' | 'filters' | 'global-search-focus' |
     'toast' | 'dropdown' | 'forum' | 'stories' | 'stories-focus' | 'topbar-search' |
-    'settings-popup' | 'monoforum',
+    'settings-popup' | 'monoforum' | 'inline-message-input',
   onPop: (canAnimate: boolean) => boolean | void,
   onEscape?: () => boolean,
   noHistory?: boolean,
