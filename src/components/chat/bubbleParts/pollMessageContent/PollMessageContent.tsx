@@ -60,21 +60,19 @@ export const PollMessageContent = defineSolidElement({
       entities: []
     });
 
-
     let inputField: InputField;
-    const flag = (value: any) => !!value;
 
     const question = () => props.poll.question.text;
     const questionEntities = () => props.poll.question.entities;
     const description = () => props.message.message;
     const descriptionEntities = () => props.message.entities;
-    const allowAddingOptions = createMemo(() => flag(props.poll.pFlags.open_answers));
-    const allowMultipleAnswers = createMemo(() => flag(props.poll.pFlags.multiple_choice));
-    const hasCorrectAnswer = createMemo(() => flag(props.poll.pFlags.quiz));
-    const shuffleOptions = createMemo(() => !props.poll.pFlags.creator && flag(props.poll.pFlags.shuffle_answers));
-    const showWhoVoted = createMemo(() => flag(props.poll.pFlags.public_voters));
-    const closed = createMemo(() => flag(props.poll.pFlags.closed));
-    // const hideResults = createMemo(() => flag(props.poll.pFlags.hide_results_until_close));
+    const allowAddingOptions = createMemo(() => !!props.poll.pFlags.open_answers);
+    const allowMultipleAnswers = createMemo(() => !!props.poll.pFlags.multiple_choice);
+    const hasCorrectAnswer = createMemo(() => !!props.poll.pFlags.quiz);
+    const shuffleOptions = createMemo(() => !props.poll.pFlags.creator && !!props.poll.pFlags.shuffle_answers);
+    const showWhoVoted = createMemo(() => !!props.poll.pFlags.public_voters);
+    const closed = createMemo(() => !!props.poll.pFlags.closed);
+    // const hideResults = createMemo(() => !!props.poll.pFlags.hide_results_until_close);
 
     const votersCount = createMemo(() => props.results?.total_voters ?? 0);
     const recentVoters = createMemo(() => props.results?.recent_voters?.map(peer => getPeerId(peer)) ?? []);
