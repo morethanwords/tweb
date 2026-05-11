@@ -22,12 +22,11 @@ export const AddOption = (props: {
   visible: boolean;
   onVisibleChange: (visible: boolean) => void;
   value: string;
-  onInput: (text: LocalTextWithEntities) => void;
+  attachment?: AttachedMedia;
+  onPartialChange: (text: Partial<LocalTextWithEntities & {attachment?: AttachedMedia}>) => void;
   onEnter: () => void;
 }) => {
   const contextProps = usePollMessageContentProps();
-
-  const [attachment, setAttachment] = createSignal<AttachedMedia>();
 
   const visible = () => props.visible;
 
@@ -36,7 +35,7 @@ export const AddOption = (props: {
     canWrapCustomEmojis: true,
     onRawInput: () => {
       const {value, entities} = getRichValueWithCaret(inputField.input, true, false);
-      props.onInput({text: value, entities});
+      props.onPartialChange({text: value, entities});
     }
   });
 
@@ -106,15 +105,15 @@ export const AddOption = (props: {
         </div>
       </div>
       <div class={styles.pollOptionMedia} classList={{
-        [styles.stripped]: !!attachment(),
-        [styles.clickable]: !!attachment()
+        [styles.stripped]: !!props.attachment,
+        [styles.clickable]: !!props.attachment
       }}>
         <Show when={visible()}>
           <MediaAttachment
             btnClass={styles.pollOptionMediaAttachBtn}
             imgClass={styles.pollOptionMediaAttachImg}
-            attachedMedia={attachment()}
-            onAttach={setAttachment}
+            attachedMedia={props.attachment}
+            onAttach={(attachment) => props.onPartialChange({attachment})}
           />
         </Show>
       </div>

@@ -19,7 +19,7 @@ export const AvatarGroup = (props: {
 
   return (
     <div class={styles.avatarGroup}>
-      <For each={props.peerIds}>
+      <For each={props.peerIds.slice(0, 3)}>
         {(peerId, index) => (
           <div
             class={styles.avatarGroupItem}

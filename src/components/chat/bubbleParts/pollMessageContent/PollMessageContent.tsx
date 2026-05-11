@@ -1,6 +1,7 @@
 import {ButtonIconTsx} from '@components/buttonIconTsx';
 import InputField from '@components/inputField';
 import {useCreatePollLimits} from '@components/popups/createPoll/hooks';
+import {AttachedMedia} from '@components/popups/createPoll/storeContext';
 import ripple from '@components/ripple';
 import Space from '@components/space';
 import PhotoTsx from '@components/wrappers/photoTsx';
@@ -23,6 +24,7 @@ import {batch, createComputed, createMemo, createSelector, createSignal, For, Ma
 import {createStore, reconcile, unwrap} from 'solid-js/store';
 import {Transition} from 'solid-transition-group';
 import {AddOption} from './AddOption';
+import {AutoHeight} from './AutoHeight';
 import {PollMessageContentPropsContext} from './context';
 import {AvatarGroup, Explanation, PollType, PollVotes} from './parts';
 import {PollOption} from './PollOption';
@@ -37,6 +39,10 @@ export type PollMessageContentProps = {
   message: Message.message;
   results: PollResults;
   media: MessageMedia.messageMediaPoll;
+};
+
+type NewOptionStore = LocalTextWithEntities & {
+  attachment?: AttachedMedia;
 };
 
 export const PollMessageContent = defineSolidElement({
@@ -55,7 +61,7 @@ export const PollMessageContent = defineSolidElement({
     const [chosenIndexes, setChosenIndexes] = createSignal<number[]>([]);
     const [isFooterClickable, setIsFooterClickable] = createSignal(false);
     const [isAddingNewOptionVisible, setIsAddingNewOptionVisible] = createSignal(false);
-    const [newOptionText, setNewOptionText] = createSignal<LocalTextWithEntities>({
+    const [newOption, setNewOption] = createStore<NewOptionStore>({
       text: '',
       entities: []
     });
@@ -122,7 +128,7 @@ export const PollMessageContent = defineSolidElement({
     const hasSelectedSomething = createMemo(() => chosenIndexes().length > 0);
     const isChecked = createSelector(chosenIndexes, (index: number, indices) => indices.includes(index));
     const isShowingResult = createMemo(() => !!props.poll.chosenIndexes?.length || props.poll.pFlags.closed);
-    const hasTypedNewOption = createMemo(() => newOptionText().text.length > 0);
+    const hasTypedNewOption = createMemo(() => newOption.text.length > 0);
     const willFooterBeClickable = createMemo(() => hasSelectedSomething() || hasTypedNewOption());
     const canShowAddOption = createMemo(() => allowAddingOptions() && !isShowingResult() && pollOptions.length < maxOptions());
 
@@ -172,7 +178,7 @@ export const PollMessageContent = defineSolidElement({
     const resetInteractiveState = () => batch(() => {
       setChosenIndexes([]);
       setIsAddingNewOptionVisible(false);
-      setNewOptionText({text: '', entities: []});
+      setNewOption(reconcile({text: '', entities: []}));
       inputField?.setValueSilently('');
     });
 
@@ -187,16 +193,17 @@ export const PollMessageContent = defineSolidElement({
     };
 
     const addOption = async() => {
-      const {text, entities} = newOptionText();
+      const {text, entities, attachment} = unwrap(newOption);
       if(isShowingResult() || !text) return;
 
-      await rootScope.managers.appPollsManager.addPollAnswer(
+      rootScope.managers.appPollsManager.addPollAnswer(
         getOverridenMessage(),
         {
           _: 'textWithEntities',
           text,
           entities
-        }
+        },
+        attachment
       );
 
       resetInteractiveState();
@@ -256,29 +263,32 @@ export const PollMessageContent = defineSolidElement({
           </Show>
         </HeightTransition>
 
-        <For each={pollOptions}>
-          {(option, index) => (
-            <PollOption
-              text={option.text}
-              withImage={hasPhotoInOptions()}
-              photo={getPhotoForOption(initialIdxFromShuffledIdx(index()))}
-              isCheckbox={allowMultipleAnswers()}
+        <AutoHeight>
+          <For each={pollOptions}>
+            {(option, index) => (
+              <PollOption
+                text={option.text}
+                withImage={hasPhotoInOptions()}
+                photo={getPhotoForOption(initialIdxFromShuffledIdx(index()))}
+                isCheckbox={allowMultipleAnswers()}
 
-              checked={isChecked(index())}
-              onToggle={() => handleToggle(index())}
+                checked={isChecked(index())}
+                onToggle={() => handleToggle(index())}
 
-              result={getResultForOption(initialIdxFromShuffledIdx(index()))}
-            />
-          )}
-        </For>
+                result={getResultForOption(initialIdxFromShuffledIdx(index()))}
+              />
+            )}
+          </For>
+        </AutoHeight>
 
         <HeightTransition>
           <Show when={canShowAddOption()}>
             <div style={{overflow: 'hidden'}}>
               <AddOption
                 inputFieldRef={(value: InputField) => void (inputField = value)}
-                value={newOptionText().text}
-                onInput={setNewOptionText}
+                value={newOption.text}
+                attachment={newOption.attachment}
+                onPartialChange={setNewOption}
                 onEnter={addOption}
                 visible={isAddingNewOptionVisible()}
                 onVisibleChange={setIsAddingNewOptionVisible}

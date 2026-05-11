@@ -52,17 +52,15 @@ export class AppPollsManager extends AppManager {
       updateMessagePoll: (update) => {
         this.log('updateMessagePoll:', update);
 
-        let poll: Poll = update.poll || this.polls[update.poll_id];
+        const poll: Poll = update.poll || this.polls[update.poll_id];
         if(!poll) {
           return;
         }
 
-        let results = update.results;
-        const ret = this.savePoll(poll, results as any);
-        poll = ret.poll;
-        results = ret.results;
+        const results = update.results;
+        if(!results) return;
 
-        this.rootScope.dispatchEvent('poll_update', {poll, results: results as any});
+        this.saveAndDispatchPoll(poll, results as any);
       }
     });
   }
@@ -84,6 +82,11 @@ export class AppPollsManager extends AppManager {
     }
 
     return {poll, results};
+  }
+
+  public saveAndDispatchPoll(poll: Poll, results: PollResults, message?: Message.message) {
+    const ret = this.savePoll(poll, results, message);
+    this.rootScope.dispatchEvent('poll_update', {poll: ret.poll, results: ret.results});
   }
 
   public saveResults(poll: Poll, results: PollResults) {
@@ -184,17 +187,53 @@ export class AppPollsManager extends AppManager {
     this.apiUpdatesManager.processUpdateMessage(updates);
   }
 
-  public async addPollAnswer(message: Message.message, text: TextWithEntities) {
-    const peerId = message.peerId;
+  public async addPollAnswer(message: Message.message, text: TextWithEntities, media?: AttachedMedia) {
+    if(message.media?._ !== 'messageMediaPoll') return;
+
+    const peerId = this.appPeersManager.getPeerMigratedTo(message.peerId) || message.peerId;
+
+    const uploadingMedia = media ? this.uploadPollMedia(peerId, media) : undefined;
+
+    const currentPollData = structuredClone(this.getPoll(message.media.poll.id));
+
+    const updatedPoll: Poll.poll = {
+      ...currentPollData.poll,
+      answers: [
+        ...currentPollData.poll.answers,
+        {
+          _: 'pollAnswer',
+          text: text,
+          media: uploadingMedia?.messageMedia,
+          option: new Uint8Array()
+        }
+      ]
+    };
+
+    const updatedResults: PollResults = {
+      ...currentPollData.results,
+      results: [
+        ...currentPollData.results.results,
+        {
+          _: 'pollAnswerVoters',
+          option: new Uint8Array(),
+          voters: 0,
+          recent_voters: [],
+          pFlags: {}
+        }
+      ]
+    };
+
+    this.saveAndDispatchPoll(updatedPoll, updatedResults);
+
     const inputPeer = this.appPeersManager.getInputPeerById(peerId);
 
-    // TODO: Uploading media too
     const updates = await this.apiManager.invokeApi('messages.addPollAnswer', {
       peer: inputPeer,
       msg_id: getServerMessageId(message.mid),
       answer: {
         _: 'inputPollAnswer',
-        text
+        text,
+        media: await uploadingMedia?.deferred
       }
     });
 
@@ -368,7 +407,7 @@ export class AppPollsManager extends AppManager {
         _: 'textWithEntities',
         ...parsedPayload.pollOptions[index]
       },
-      option: new Uint8Array([index]),
+      option: new Uint8Array([]),
       added_by: this.appPeersManager.getOutputPeer(peerId),
       media: uploadingMedia.pollOptions.get(index)?.messageMedia
     }));
