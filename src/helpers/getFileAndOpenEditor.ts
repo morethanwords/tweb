@@ -64,9 +64,13 @@ function getFileFromInput(input: HTMLInputElement): Promise<File | void> {
       resolve(file);
     });
 
+    // Resolve the promise if the user cancels the file selection
     window.addEventListener('focus', () => {
-      input.remove();
-      resolve();
+      // It seems like the focus event fires before the change event, so we need to wait a bit before resolving
+      setTimeout(() => {
+        input.remove();
+        resolve();
+      }, 1000);
     }, {once: true});
   });
 
