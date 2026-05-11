@@ -144,8 +144,9 @@ export const PollOption = (props: {
               round={!props.allowMultipleAnswers}
               class={styles.chosenCheckbox}
               classList={{
-                [styles.correct]: props.hasCorrectAnswer && props.result.correct,
-                [styles.wrong]: props.hasCorrectAnswer && !props.result.correct
+                // Let it be white when the poll is sent by us
+                [styles.correct]: !contextProps.isOutgoing && props.hasCorrectAnswer && props.result.correct,
+                [styles.wrong]: !contextProps.isOutgoing && props.hasCorrectAnswer && !props.result.correct
               }}
               checked
               cross={props.hasCorrectAnswer ? !props.result.correct : undefined}
@@ -171,6 +172,8 @@ const PollProgressLine = (inProps: JSX.HTMLAttributes<HTMLDivElement> & {
   hasCorrectAnswer?: boolean;
   correct?: boolean;
 }) => {
+  const contextProps = usePollMessageContentProps();
+
   const [props, restProps] = splitProps(inProps, ['class', 'classList', 'progress', 'canAnimate', 'hasCorrectAnswer', 'correct']);
 
   const animatedProgress = useAnimatedValueFromZero(
@@ -183,8 +186,9 @@ const PollProgressLine = (inProps: JSX.HTMLAttributes<HTMLDivElement> & {
     <div
       class={classNames(styles.labelProgress, props.class)}
       classList={{
-        [styles.correct]: props.hasCorrectAnswer && props.correct,
-        [styles.wrong]: props.hasCorrectAnswer && !props.correct,
+        [styles.correct]: !contextProps.isOutgoing && props.hasCorrectAnswer && props.correct,
+        [styles.wrong]: !contextProps.isOutgoing && props.hasCorrectAnswer && !props.correct,
+        [styles.isOutgoing]: contextProps.isOutgoing && props.hasCorrectAnswer,
         ...props.classList
       }}
       {...restProps}>
