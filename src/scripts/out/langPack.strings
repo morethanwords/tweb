@@ -2863,6 +2863,10 @@
 "Chat.Poll.Type.Closed" = "Final Results";
 "Chat.Poll.MembersVoted_one" = "%d member voted";
 "Chat.Poll.MembersVoted_other" = "%d members voted";
+"Chat.Poll.OptionAdded" = "%s added **%s** to the poll";
+"Chat.Poll.OptionAddedMe" = "You added **%s** to the poll";
+"Chat.Poll.OptionDeleted" = "%s deleted **%s** from the poll";
+"Chat.Poll.OptionDeletedMe" = "You deleted **%s** from the poll";
 "Chat.Quiz.MembersAnswered_one" = "%d member answered";
 "Chat.Quiz.MembersAnswered_other" = "%d members answered";
 "Chat.Poll.TotalVotesEmpty" = "No votes yet";

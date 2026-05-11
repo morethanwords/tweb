@@ -3334,6 +3334,10 @@ const lang = {
     'one_value': '%d member voted',
     'other_value': '%d members voted'
   },
+  'Chat.Poll.OptionAdded': '%s added **%s** to the poll',
+  'Chat.Poll.OptionAddedMe': 'You added **%s** to the poll',
+  'Chat.Poll.OptionDeleted': '%s deleted **%s** from the poll',
+  'Chat.Poll.OptionDeletedMe': 'You deleted **%s** from the poll',
   'Chat.Quiz.MembersAnswered': {
     'one_value': '%d member answered',
     'other_value': '%d members answered'

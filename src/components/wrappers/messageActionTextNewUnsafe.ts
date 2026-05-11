@@ -32,6 +32,7 @@ import formatStarsAmount from '@appManagers/utils/payments/formatStarsAmount';
 import {getPriceChangedActionMessageLangParams} from '@lib/lang';
 import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
 import {getCollectibleName} from '@appManagers/utils/gifts/getCollectibleName';
+import {truncateTextWithEntities} from '@helpers/string/truncateTextWithEntities';
 
 async function wrapLinkToMessage(options: WrapMessageForReplyOptions) {
   const wrapped = await wrapMessageForReply(options);
@@ -91,7 +92,9 @@ const TODO_JOIN_OPTIONS: Parameters<typeof joinTexts>[1] = {
     b.append(el);
     return b;
   }
-}
+};
+
+const MAX_ANSWER_TEXT_LENGTH = 20;
 
 type WrapTopicIconOptions = {
   topic: Pick<ForumTopic.forumTopic, 'icon_color' | 'icon_emoji_id' | 'title' | 'id'>,
@@ -211,6 +214,16 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
 
     const getNameDivHTML = (peerId: PeerId, plain: boolean) => {
       return plain ? getPeerTitle({peerId, plainText: plain}) : wrapPeerTitle({peerId});
+    };
+
+    const wrapTruncatedText = (text: string, entities: MessageEntity[] | undefined, maxLength: number) => {
+      const truncated = truncateTextWithEntities(text, entities, maxLength);
+
+      if(plain) {
+        return wrapPlainText(truncated.text, truncated.entities);
+      } else {
+        return wrapRichText(truncated.text, {entities: truncated.entities, noLinks});
+      }
     };
 
     const getSeveralNameDivHTML = async(peerIds: PeerId[], plain: boolean) => {
@@ -910,6 +923,28 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         } else {
           langPackKey = `Chat.Service.NoForwardsRequest${message.pFlags.out ? '.You' : ''}.${action.new_value ? 'Enable' : 'Disable'}` as const;
           args = [getNameDivHTML(message.fromId, plain)];
+        }
+        break;
+      }
+      case 'messageActionPollAppendAnswer': {
+        const truncatedAnswerText = wrapTruncatedText(action.answer.text.text, action.answer.text.entities, MAX_ANSWER_TEXT_LENGTH);
+        if(message.pFlags.out) {
+          langPackKey = 'Chat.Poll.OptionAddedMe';
+          args = [truncatedAnswerText];
+        } else {
+          langPackKey = 'Chat.Poll.OptionAdded';
+          args = [getNameDivHTML(message.fromId, plain), truncatedAnswerText];
+        }
+        break;
+      }
+      case 'messageActionPollDeleteAnswer': {
+        const truncatedAnswerText = wrapTruncatedText(action.answer.text.text, action.answer.text.entities, MAX_ANSWER_TEXT_LENGTH);
+        if(message.pFlags.out) {
+          langPackKey = 'Chat.Poll.OptionDeletedMe';
+          args = [truncatedAnswerText];
+        } else {
+          langPackKey = 'Chat.Poll.OptionDeleted';
+          args = [getNameDivHTML(message.fromId, plain), truncatedAnswerText];
         }
         break;
       }
