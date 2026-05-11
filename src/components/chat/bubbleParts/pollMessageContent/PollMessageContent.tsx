@@ -279,6 +279,8 @@ export const PollMessageContent = defineSolidElement({
               />
             )}
           </For>
+          {/* Add some space as the checkbox (when showing result) might overflow the container */}
+          <Space amount='0.25rem' />
         </AutoHeight>
 
         <HeightTransition>
