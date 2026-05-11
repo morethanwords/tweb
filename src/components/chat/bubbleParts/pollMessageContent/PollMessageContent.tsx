@@ -1,12 +1,12 @@
 import {ButtonIconTsx} from '@components/buttonIconTsx';
 import InputField from '@components/inputField';
 import {useCreatePollLimits} from '@components/popups/createPoll/hooks';
-import {AttachedMedia} from '@components/popups/createPoll/storeContext';
 import ripple from '@components/ripple';
 import Space from '@components/space';
 import PhotoTsx from '@components/wrappers/photoTsx';
 import {mergeSeed, seededShuffle} from '@helpers/array/seededShuffle';
 import compareUint8Arrays from '@helpers/bytes/compareUint8Arrays';
+import {setCaretAtEnd} from '@helpers/dom/setCaretAt';
 import {keepMe} from '@helpers/keepMe';
 import intToUint from '@helpers/number/intToUint';
 import {attachHotClassName} from '@helpers/solid/classname';
@@ -17,6 +17,8 @@ import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
 import {InputMedia, Message, MessageMedia, Photo, Poll, PollAnswer, PollResults} from '@layer';
 import getPeerId from '@lib/appManagers/utils/peers/getPeerId';
+import {sliceTextWithEntities} from '@lib/richTextProcessor/sliceTextWithEntities';
+import wrapDraftText from '@lib/richTextProcessor/wrapDraftText';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
@@ -29,7 +31,7 @@ import {PollMessageContentPropsContext} from './context';
 import {AvatarGroup, Explanation, PollType, PollVotes} from './parts';
 import {PollOption} from './PollOption';
 import styles from './styles.module.scss';
-import {LocalTextWithEntities, PollOptionResult, roundPercents} from './utils';
+import {NewOptionValues, PollOptionResult, roundPercents} from './utils';
 
 keepMe(ripple);
 
@@ -39,10 +41,6 @@ export type PollMessageContentProps = {
   message: Message.message;
   results: PollResults;
   media: MessageMedia.messageMediaPoll;
-};
-
-type NewOptionStore = LocalTextWithEntities & {
-  attachment?: AttachedMedia;
 };
 
 export const PollMessageContent = defineSolidElement({
@@ -55,13 +53,13 @@ export const PollMessageContent = defineSolidElement({
 
     const middleware = createMiddleware().get();
 
-    const {maxOptions} = useCreatePollLimits();
+    const {maxOptions, maxOptionLength} = useCreatePollLimits();
 
     const [explanationToggled, setExplanationToggled] = createSignal(false);
     const [chosenIndexes, setChosenIndexes] = createSignal<number[]>([]);
     const [isFooterClickable, setIsFooterClickable] = createSignal(false);
     const [isAddingNewOptionVisible, setIsAddingNewOptionVisible] = createSignal(false);
-    const [newOption, setNewOption] = createStore<NewOptionStore>({
+    const [newOption, setNewOption] = createStore<NewOptionValues>({
       text: '',
       entities: []
     });
@@ -154,12 +152,17 @@ export const PollMessageContent = defineSolidElement({
       props.poll.answers.findIndex(other => other._ === 'pollAnswer' && compareUint8Arrays(other.option, pollOptions[idx]?.option))
     ;
 
-    const getResultForOption = (initialIdx: number): PollOptionResult => isShowingResult() ? ({
-      chosen: props.results?.results?.[initialIdx]?.pFlags?.chosen ?? false,
-      percent: roundedPercents()[initialIdx],
-      voters: props.results?.results?.[initialIdx]?.voters ?? 0,
-      peerIds: props.results?.results?.[initialIdx]?.recent_voters?.map(peer => getPeerId(peer)) ?? []
-    }) : undefined;
+    const getResultForOption = (initialIdx: number): PollOptionResult => {
+      if(!isShowingResult()) return undefined;
+      const result = props.results?.results?.[initialIdx];
+      return {
+        correct: result?.pFlags?.correct ?? false,
+        chosen: result?.pFlags?.chosen ?? false,
+        percent: roundedPercents()[initialIdx],
+        voters: result?.voters ?? 0,
+        peerIds: result?.recent_voters?.map(peer => getPeerId(peer)) ?? []
+      };
+    };
 
     const getPhotoForOption = (initialIdx: number): Photo.photo | undefined => getPhoto(props.poll.answers[initialIdx]?.media);
 
@@ -173,6 +176,17 @@ export const PollMessageContent = defineSolidElement({
           return [...prev, index];
         }
       });
+    };
+
+    const handleNewOptionChanged = (values: Partial<NewOptionValues>) => {
+      const sliced = sliceTextWithEntities(values.text ?? '', values.entities ?? [], 0, maxOptionLength());
+      setNewOption(sliced);
+      if(sliced.text.length < inputField?.value.length) {
+        inputField?.setValueSilently(
+          wrapDraftText(sliced.text, {entities: sliced.entities, middleware}),
+        );
+        setCaretAtEnd(inputField?.input);
+      }
     };
 
     const resetInteractiveState = () => batch(() => {
@@ -270,7 +284,8 @@ export const PollMessageContent = defineSolidElement({
                 text={option.text}
                 withImage={hasPhotoInOptions()}
                 photo={getPhotoForOption(initialIdxFromShuffledIdx(index()))}
-                isCheckbox={allowMultipleAnswers()}
+                allowMultipleAnswers={allowMultipleAnswers()}
+                hasCorrectAnswer={hasCorrectAnswer()}
 
                 checked={isChecked(index())}
                 onToggle={() => handleToggle(index())}
@@ -290,7 +305,7 @@ export const PollMessageContent = defineSolidElement({
                 inputFieldRef={(value: InputField) => void (inputField = value)}
                 value={newOption.text}
                 attachment={newOption.attachment}
-                onPartialChange={setNewOption}
+                onPartialChange={handleNewOptionChanged}
                 onEnter={addOption}
                 visible={isAddingNewOptionVisible()}
                 onVisibleChange={setIsAddingNewOptionVisible}

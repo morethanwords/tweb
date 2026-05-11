@@ -1,11 +1,14 @@
 @use "../scss/mixins" as *;
 
 .Checkbox {
-  --size: 1.25rem;
-  --check-scale: 1;
+  --checkbox-size: 1.25rem;
+  --checkbox-scale: 1;
+  --checkbox-background-color: var(--primary-color);
+  --checkbox-border-color: #8d969c;
+  --checkbox-check-color: white;
 
-  width: var(--size);
-  height: var(--size);
+  width: var(--checkbox-size);
+  height: var(--checkbox-size);
   border-radius: 0.3125rem;
   overflow: hidden;
 
@@ -52,7 +55,7 @@
   inset-inline: 0;
   bottom: 0;
   border-radius: inherit;
-  border: 2px solid var(--checkbox-border-color, #8d969c);
+  border: 2px solid var(--checkbox-border-color);
   //border-color: #000;
 }
 
@@ -60,7 +63,7 @@
   // it is needed for circle scale animation
   inset: -15%;
 
-  background-color: var(--primary-color);
+  background-color: var(--checkbox-background-color);
   transform: scale(0);
   border-radius: 50%;
 
@@ -71,14 +74,14 @@
 
 .Check {
   --offset: 7px;
-  width: calc(var(--size) - var(--offset));
-  height: calc(var(--size) - var(--offset));
+  width: calc(var(--checkbox-size) - var(--offset));
+  height: calc(var(--checkbox-size) - var(--offset));
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%) scale(var(--check-scale));
+  transform: translate(-50%, -50%) scale(var(--checkbox-scale));
 
   use {
-    stroke: var(--check-color, #fff);
+    stroke: var(--checkbox-check-color);
     stroke-width: 3.75;
     stroke-linecap: round;
     stroke-dasharray: 0, 24.19;

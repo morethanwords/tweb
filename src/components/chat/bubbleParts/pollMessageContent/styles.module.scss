@@ -133,6 +133,14 @@
 
       transition: width var(--transition-time) linear;
     }
+
+    &.correct &Fill {
+      background-color: var(--gc-green-text-color);
+    }
+
+    &.wrong &Fill {
+      background-color: var(--gc-red-text-color);
+    }
   }
 }
 
@@ -166,8 +174,16 @@
   left: 0;
   transform: translate(-1.5rem, 0.875rem);
 
-  --size: 0.875rem;
-  --check-scale: 1.25;
+  --checkbox-size: 0.875rem;
+  --checkbox-scale: 1.25;
+
+  &.correct {
+    --checkbox-background-color: var(--gc-green-text-color);
+  }
+
+  &.wrong {
+    --checkbox-background-color: var(--gc-red-text-color);
+  }
 }
 
 .footer {
@@ -211,7 +227,7 @@
 
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.25rem;
 
     user-select: none;
   }
@@ -287,10 +303,16 @@
   }
 }
 
-.explanationImage {
-  border-radius: 4px;
-  position: relative;
-  overflow: hidden;
+.explanation {
+  &Text {
+    white-space: pre-wrap;
+  }
+
+  &Image {
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+  }
 }
 
 .description {

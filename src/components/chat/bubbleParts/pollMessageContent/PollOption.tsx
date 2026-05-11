@@ -10,7 +10,7 @@ import {requestRAF} from '@helpers/solid/requestRAF';
 import classNames from '@helpers/string/classNames';
 import {Photo} from '@layer';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
-import {Accessor, createEffect, createMemo, createSignal, onCleanup, onMount, Show} from 'solid-js';
+import {Accessor, createEffect, createMemo, createSignal, JSX, onCleanup, onMount, Show, splitProps} from 'solid-js';
 import {Transition} from 'solid-transition-group';
 import {InMessageCheckbox} from '../inMessageCheckbox';
 import {AutoHeight} from './AutoHeight';
@@ -33,7 +33,8 @@ export const PollOption = (props: {
   text: LocalTextWithEntities;
   checked: boolean;
   onToggle: () => void;
-  isCheckbox: boolean;
+  allowMultipleAnswers: boolean;
+  hasCorrectAnswer: boolean;
 
   result?: PollOptionResult;
 }) => {
@@ -48,6 +49,12 @@ export const PollOption = (props: {
   const [canShowPercentage, setCanShowPercentage] = createSignal(isShowingResult());
 
   const percentage = createMemo(() => clamp(props.result?.percent ?? 0, 0, 100));
+
+  const canShowPercentageCheckbox = createMemo(() => (
+    isShowingResult() && canShowPercentage() &&
+    // Show a checkbox when the option is chosen in poll mode, or always when in quiz mode with check and cross marks
+    (props.result.chosen || props.hasCorrectAnswer)
+  ));
 
   const middleware = createMiddleware().get();
 
@@ -75,7 +82,7 @@ export const PollOption = (props: {
         <Transition name='fade-2'>
           <Show when={!isShowingResult()}>
             <Show
-              when={props.isCheckbox}
+              when={props.allowMultipleAnswers}
               fallback={<StaticRadio class={styles.checkbox} checked={props.checked} />}
             >
               <InMessageCheckbox class={styles.checkbox} checked={props.checked} isOutgoing={contextProps.isOutgoing} />
@@ -107,7 +114,12 @@ export const PollOption = (props: {
 
         <Transition name='fade-2'>
           <Show when={isShowingResult() && canShowPercentage()}>
-            <PollProgressLine progress={(props.result.percent || 0) / 100} canAnimate={canAnimate()} />
+            <PollProgressLine
+              progress={(props.result.percent || 0) / 100}
+              canAnimate={canAnimate()}
+              hasCorrectAnswer={props.hasCorrectAnswer}
+              correct={props.result.correct}
+            />
           </Show>
         </Transition>
         <Transition name='fade-2'>
@@ -127,11 +139,16 @@ export const PollOption = (props: {
           </Show>
         </Transition>
         <Transition name='fade-2'>
-          <Show when={isShowingResult() && canShowPercentage() && props.result.chosen}>
+          <Show when={canShowPercentageCheckbox()}>
             <InMessageCheckbox
-              round={!props.isCheckbox}
+              round={!props.allowMultipleAnswers}
               class={styles.chosenCheckbox}
+              classList={{
+                [styles.correct]: props.hasCorrectAnswer && props.result.correct,
+                [styles.wrong]: props.hasCorrectAnswer && !props.result.correct
+              }}
               checked
+              cross={props.hasCorrectAnswer ? !props.result.correct : undefined}
               isOutgoing={contextProps.isOutgoing}
             />
           </Show>
@@ -148,10 +165,14 @@ export const PollOption = (props: {
   );
 };
 
-const PollProgressLine = (props: {
+const PollProgressLine = (inProps: JSX.HTMLAttributes<HTMLDivElement> & {
   progress: number; // 0-1
   canAnimate: boolean;
+  hasCorrectAnswer?: boolean;
+  correct?: boolean;
 }) => {
+  const [props, restProps] = splitProps(inProps, ['class', 'classList', 'progress', 'canAnimate', 'hasCorrectAnswer', 'correct']);
+
   const animatedProgress = useAnimatedValueFromZero(
     () => props.progress,
     () => props.canAnimate,
@@ -159,7 +180,14 @@ const PollProgressLine = (props: {
   );
 
   return (
-    <div class={styles.labelProgress}>
+    <div
+      class={classNames(styles.labelProgress, props.class)}
+      classList={{
+        [styles.correct]: props.hasCorrectAnswer && props.correct,
+        [styles.wrong]: props.hasCorrectAnswer && !props.correct,
+        ...props.classList
+      }}
+      {...restProps}>
       <div
         class={styles.labelProgressFill}
         style={{

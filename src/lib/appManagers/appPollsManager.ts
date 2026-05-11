@@ -212,7 +212,7 @@ export class AppPollsManager extends AppManager {
     const updatedResults: PollResults = {
       ...currentPollData.results,
       results: [
-        ...currentPollData.results.results,
+        ...(currentPollData.results?.results ?? []),
         {
           _: 'pollAnswerVoters',
           option: new Uint8Array(),

@@ -9,11 +9,11 @@ import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import {keepMe} from '@helpers/keepMe';
 import {I18nTsx} from '@helpers/solid/i18n';
 import classNames from '@helpers/string/classNames';
-import {createEffect, createSignal, onCleanup, Show} from 'solid-js';
+import {createEffect, onCleanup, Show} from 'solid-js';
 import {Transition} from 'solid-transition-group';
 import {usePollMessageContentProps} from './context';
 import styles from './styles.module.scss';
-import {LocalTextWithEntities} from './utils';
+import {NewOptionValues} from './utils';
 
 keepMe(ripple);
 
@@ -23,7 +23,7 @@ export const AddOption = (props: {
   onVisibleChange: (visible: boolean) => void;
   value: string;
   attachment?: AttachedMedia;
-  onPartialChange: (text: Partial<LocalTextWithEntities & {attachment?: AttachedMedia}>) => void;
+  onPartialChange: (text: Partial<NewOptionValues>) => void;
   onEnter: () => void;
 }) => {
   const contextProps = usePollMessageContentProps();

@@ -3,15 +3,26 @@ import {JSX, splitProps} from 'solid-js';
 import styles from './staticCheckbox.module.scss';
 
 
-export type StaticCheckboxProps = {
+export type StaticCheckboxProps = JSX.HTMLAttributes<HTMLDivElement> & {
   checked?: boolean;
   round?: boolean;
-  borderColor?: string;
-  checkColor?: string;
-} & JSX.HTMLAttributes<HTMLDivElement>;
+  /**
+   * TODO: animation from unchecked to checked is not yet supported, used as static for now
+   */
+  cross?: boolean;
+};
 
 export const StaticCheckbox = (inProps: StaticCheckboxProps) => {
-  const [props, restProps] = splitProps(inProps, ['checked', 'round', 'checkColor', 'borderColor', 'class', 'classList']);
+  const [props, restProps] = splitProps(
+    inProps,
+    [
+      'class',
+      'classList',
+      'checked',
+      'round',
+      'cross'
+    ],
+  );
 
   return (
     <div
@@ -23,13 +34,12 @@ export const StaticCheckbox = (inProps: StaticCheckboxProps) => {
       }}
       {...restProps}
     >
-      <div class={styles.Border} style={{'--checkbox-border-color': props.borderColor}}></div>
+      <div class={styles.Border}></div>
       <div class={styles.Background}></div>
       <svg
         class={styles.Check}
         viewBox="0 0 24 24"
-        style={{'--check-color': props.checkColor}}
-      ><use href="#check" x="-1"></use></svg>
+      ><use href={props.cross ? '#checkbox-cross' : '#check'} x="-1"></use></svg>
     </div>
   );
 };

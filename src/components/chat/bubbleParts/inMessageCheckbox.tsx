@@ -1,14 +1,21 @@
-import {StaticCheckboxProps, StaticCheckbox} from '@components/staticCheckbox';
+import {StaticCheckbox, StaticCheckboxProps} from '@components/staticCheckbox';
+import {splitProps} from 'solid-js';
+import styles from './inMessageCheckbox.module.scss';
 
 
-export const InMessageCheckbox = (props: Omit<StaticCheckboxProps, 'checkColor' | 'borderColor'> & {
+export const InMessageCheckbox = (inProps: StaticCheckboxProps & {
   isOutgoing?: boolean;
 }) => {
+  const [props, restProps] = splitProps(inProps, ['isOutgoing', 'classList', 'class']);
+
   return (
     <StaticCheckbox
-      {...props}
-      checkColor={props.isOutgoing ? 'var(--message-out-background-color)' : undefined}
-      borderColor={props.isOutgoing ? 'white' : undefined}
+      class={props.class}
+      classList={{
+        [styles.isOutgoing]: props.isOutgoing,
+        ...props.classList
+      }}
+      {...restProps}
     />
   );
 };

@@ -2,14 +2,15 @@ import Space from '@components/space';
 import PhotoTsx from '@components/wrappers/photoTsx';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {I18nTsx} from '@helpers/solid/i18n';
+import classNames from '@helpers/string/classNames';
 import {Photo} from '@layer';
 import {LangPackKey} from '@lib/langPack';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {createMemo, For, Show} from 'solid-js';
+import {usePollMessageContentProps} from './context';
 import styles from './styles.module.scss';
 import {LocalTextWithEntities} from './utils';
-import {usePollMessageContentProps} from './context';
 
 export const AvatarGroup = (props: {
   peerIds: PeerId[];
@@ -49,7 +50,7 @@ export const Explanation = (props: LocalTextWithEntities & {
           <I18nTsx key='Chat.Quiz.Explanation' />
         </div>
         <Show when={props.text}>
-          <div class='reply-subtitle'>
+          <div class={classNames(styles.explanationText, 'reply-subtitle')}>
             {wrapRichText(props.text, {entities: props.entities, middleware})}
           </div>
         </Show>

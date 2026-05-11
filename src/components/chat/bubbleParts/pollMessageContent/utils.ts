@@ -1,3 +1,4 @@
+import {AttachedMedia} from '@components/popups/createPoll/storeContext';
 import {TextWithEntities} from '@layer';
 
 export type PollOptionResult = {
@@ -5,6 +6,11 @@ export type PollOptionResult = {
   percent: number;
   peerIds: PeerId[];
   chosen: boolean;
+  correct: boolean;
+};
+
+export type NewOptionValues = LocalTextWithEntities & {
+  attachment?: AttachedMedia;
 };
 
 export type LocalTextWithEntities = Pick<TextWithEntities, 'text' | 'entities'>;
