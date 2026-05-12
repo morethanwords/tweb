@@ -20,6 +20,6 @@ export default function getCallProtocol(): PhoneCallProtocol {
     },
     min_layer: 92,
     max_layer: 92,
-    library_versions: ['4.0.0']
+    library_versions: ['7.0.0']
   };
 }
