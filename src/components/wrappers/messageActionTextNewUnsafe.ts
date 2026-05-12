@@ -222,7 +222,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
       if(plain) {
         return wrapPlainText(truncated.text, truncated.entities);
       } else {
-        return wrapRichText(truncated.text, {entities: truncated.entities, noLinks});
+        return htmlToSpan(wrapEmojiText(truncated.text, false, truncated.entities));
       }
     };
 
@@ -928,6 +928,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
       }
       case 'messageActionPollAppendAnswer': {
         const truncatedAnswerText = wrapTruncatedText(action.answer.text.text, action.answer.text.entities, MAX_ANSWER_TEXT_LENGTH);
+
         if(message.pFlags.out) {
           langPackKey = 'Chat.Poll.OptionAddedMe';
           args = [truncatedAnswerText];

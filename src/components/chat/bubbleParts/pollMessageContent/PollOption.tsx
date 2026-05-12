@@ -18,11 +18,11 @@ import {usePollMessageContentProps} from './context';
 import {AvatarGroup} from './parts';
 import PathDot from './PathDot';
 import styles from './styles.module.scss';
-import {LocalTextWithEntities, PollOptionResult} from './utils';
+import {dataPollViewerIdx, DataPollViewerIdxDirectivePayload, LocalTextWithEntities, PollOptionResult} from './utils';
 
 
 keepMe(ripple);
-
+keepMe(dataPollViewerIdx);
 
 const progressTransitionTimeBase = 600; // ms
 
@@ -35,6 +35,7 @@ export const PollOption = (props: {
   onToggle: () => void;
   allowMultipleAnswers: boolean;
   hasCorrectAnswer: boolean;
+  pollViewerPayload?: DataPollViewerIdxDirectivePayload;
 
   result?: PollOptionResult;
 }) => {
@@ -156,7 +157,11 @@ export const PollOption = (props: {
         </Transition>
       </div>
       <Show when={props.withImage}>
-        <div class={classNames(styles.pollOptionMedia, styles.stripped)} classList={{[styles.clickable]: !!props.photo}}>
+        <div
+          class={classNames(styles.pollOptionMedia, styles.stripped)}
+          classList={{[styles.clickable]: !!props.photo}}
+          use:dataPollViewerIdx={props.pollViewerPayload}
+        >
           <Show when={props.photo}>
             <PhotoTsx photo={props.photo} boxWidth={36} boxHeight={36} />
           </Show>

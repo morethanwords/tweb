@@ -1,5 +1,6 @@
 import {AttachedMedia} from '@components/popups/createPoll/storeContext';
 import {TextWithEntities} from '@layer';
+import {Accessor, createEffect, onCleanup} from 'solid-js';
 
 export type PollOptionResult = {
   voters: number;
@@ -26,7 +27,10 @@ export function roundPercents(percents: number[]): number[] {
   const sum = base.reduce((a, b) => a + b, 0);
   const diff = 100 - sum;
 
-  remainders.sort((a, b) => b.remainder - a.remainder);
+  remainders.sort((a, b) => {
+    if(a.remainder === b.remainder) return base[b.index] - base[a.index];
+    return b.remainder - a.remainder;
+  });
 
   const mxI = Math.min(diff, remainders.length);
 
@@ -36,3 +40,27 @@ export function roundPercents(percents: number[]): number[] {
 
   return base;
 }
+
+export type DataPollViewerIdxDirectivePayload = [number | undefined, Map<number, HTMLElement>];
+
+declare module 'solid-js' {
+  namespace JSX {
+    interface Directives {
+      dataPollViewerIdx: DataPollViewerIdxDirectivePayload;
+    }
+  }
+}
+
+export const dataPollViewerIdx = (el: HTMLElement, payload: Accessor<DataPollViewerIdxDirectivePayload>) => {
+  createEffect(() => {
+    const [idx, map] = payload();
+    if(idx === undefined) return;
+
+    el.dataset.pollViewerIdx = idx.toString();
+    map.set(idx, el);
+
+    onCleanup(() => {
+      map.delete(idx);
+    });
+  });
+};

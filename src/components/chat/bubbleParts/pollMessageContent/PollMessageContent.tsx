@@ -31,9 +31,12 @@ import {PollMessageContentPropsContext} from './context';
 import {AvatarGroup, Explanation, PollType, PollVotes} from './parts';
 import {PollOption} from './PollOption';
 import styles from './styles.module.scss';
-import {NewOptionValues, PollOptionResult, roundPercents} from './utils';
+import {dataPollViewerIdx, NewOptionValues, PollOptionResult, roundPercents} from './utils';
+import {AppMediaViewerStaticTargetType} from '@components/appMediaViewerStatic';
+
 
 keepMe(ripple);
+keepMe(dataPollViewerIdx);
 
 export type PollMessageContentProps = {
   isOutgoing?: boolean;
@@ -43,12 +46,22 @@ export type PollMessageContentProps = {
   media: MessageMedia.messageMediaPoll;
 };
 
+type Controls = {
+  openMediaViewer: (idx: number) => void;
+};
+
+type MediaViewerPayloadIndexes = {
+  description?: number;
+  explanation?: number;
+  options: Map<number, number>;
+};
+
 export const PollMessageContent = defineSolidElement({
   name: 'poll-message-content',
-  component: (props: PassedProps<PollMessageContentProps>) => {
+  component: (props: PassedProps<PollMessageContentProps>, _, controls: Controls) => {
     attachHotClassName(props.element, styles.container);
 
-    const {rootScope, useAppSettings} = useHotReloadGuard();
+    const {rootScope, useAppSettings, AppMediaViewerStatic} = useHotReloadGuard();
     const [appSettings] = useAppSettings();
 
     const middleware = createMiddleware().get();
@@ -117,7 +130,7 @@ export const PollMessageContent = defineSolidElement({
         else setPollOptions(idx, reconcile(option));
       });
 
-      // Remove options that are no longer in the poll, should not happen, but let it be
+      // Remove options that are no longer in the poll
       setPollOptions(prev =>
         prev.filter(option => filteredOptions.some(other => compareUint8Arrays(option.option, other.option)))
       );
@@ -235,11 +248,58 @@ export const PollMessageContent = defineSolidElement({
       props.results = results;
     });
 
+    const mediaViewerPayload = createMemo(() => {
+      let idxSeed = 0;
+
+      const photos: Photo.photo[] = [];
+      const indexes: MediaViewerPayloadIndexes = {
+        options: new Map()
+      };
+
+      if(descriptionPhoto()) {
+        photos.push(descriptionPhoto());
+        indexes.description = idxSeed++;
+      }
+
+      if(explanationPhoto()) {
+        photos.push(explanationPhoto());
+        indexes.explanation = idxSeed++;
+      }
+
+      props.poll.answers.forEach((option, idx) => {
+        if(getPhoto(option.media)) {
+          photos.push(getPhoto(option.media));
+          indexes.options.set(idx, idxSeed++);
+        }
+      });
+
+      return {photos, indexes};
+    });
+
+    const elementByIndexMap = new Map<number, HTMLElement>();
+
+    controls.openMediaViewer = (idx: number) => {
+      const getTarget = (idx: number): AppMediaViewerStaticTargetType => ({
+        media: mediaViewerPayload().photos[idx],
+        element: elementByIndexMap.get(idx),
+        fromId: props.message.fromId,
+        timestamp: props.message.date,
+        peerId: props.message.peerId
+      });
+
+      new AppMediaViewerStatic().openMedia({
+        allTargets: mediaViewerPayload().photos.map((_, idx) => getTarget(idx)),
+        index: idx,
+        fromRight: 0,
+        ...getTarget(idx)
+      });
+    };
+
     return (
       <PollMessageContentPropsContext.Provider value={props}>
         <Show when={descriptionPhoto()}>
           <div class={styles.pollImageWrapper}>
-            <div class={styles.pollImage}>
+            <div class={styles.pollImage} use:dataPollViewerIdx={[mediaViewerPayload().indexes.description, elementByIndexMap]}>
               <PhotoTsx photo={descriptionPhoto()} />
             </div>
           </div>
@@ -272,27 +332,35 @@ export const PollMessageContent = defineSolidElement({
         <HeightTransition scale>
           <Show when={explanationToggled()}>
             <div style={{overflow: 'hidden'}}>
-              <Explanation text={props.results?.solution} entities={props.results?.solution_entities} photo={explanationPhoto()} />
+              <Explanation
+                text={props.results?.solution}
+                entities={props.results?.solution_entities}
+                photo={explanationPhoto()}
+                pollViewerPayload={[mediaViewerPayload().indexes.explanation, elementByIndexMap]}
+              />
             </div>
           </Show>
         </HeightTransition>
 
         <AutoHeight>
           <For each={pollOptions}>
-            {(option, index) => (
-              <PollOption
-                text={option.text}
-                withImage={hasPhotoInOptions()}
-                photo={getPhotoForOption(initialIdxFromShuffledIdx(index()))}
-                allowMultipleAnswers={allowMultipleAnswers()}
-                hasCorrectAnswer={hasCorrectAnswer()}
+            {(option, index) => {
+              const initialIdx = createMemo(() => initialIdxFromShuffledIdx(index()));
 
-                checked={isChecked(index())}
-                onToggle={() => handleToggle(index())}
-
-                result={getResultForOption(initialIdxFromShuffledIdx(index()))}
-              />
-            )}
+              return (
+                <PollOption
+                  text={option.text}
+                  withImage={hasPhotoInOptions()}
+                  photo={getPhotoForOption(initialIdx())}
+                  allowMultipleAnswers={allowMultipleAnswers()}
+                  hasCorrectAnswer={hasCorrectAnswer()}
+                  checked={isChecked(index())}
+                  onToggle={() => handleToggle(index())}
+                  pollViewerPayload={[mediaViewerPayload().indexes.options.get(initialIdx()), elementByIndexMap]}
+                  result={getResultForOption(initialIdx())}
+                />
+              );
+            }}
           </For>
           {/* Add some space as the checkbox (when showing result) might overflow the container */}
           <Space amount='0.25rem' />

@@ -1,5 +1,6 @@
 import Space from '@components/space';
 import PhotoTsx from '@components/wrappers/photoTsx';
+import {keepMe} from '@helpers/keepMe';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {I18nTsx} from '@helpers/solid/i18n';
 import classNames from '@helpers/string/classNames';
@@ -10,7 +11,10 @@ import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {createMemo, For, Show} from 'solid-js';
 import {usePollMessageContentProps} from './context';
 import styles from './styles.module.scss';
-import {LocalTextWithEntities} from './utils';
+import {dataPollViewerIdx, DataPollViewerIdxDirectivePayload, LocalTextWithEntities} from './utils';
+
+
+keepMe(dataPollViewerIdx);
 
 export const AvatarGroup = (props: {
   peerIds: PeerId[];
@@ -41,10 +45,11 @@ export const AvatarGroup = (props: {
 
 export const Explanation = (props: LocalTextWithEntities & {
   photo?: Photo.photo;
+  pollViewerPayload?: DataPollViewerIdxDirectivePayload;
 }) => {
   const middleware = createMiddleware().get();
   return (
-    <div class='reply quote-like quote-like-border'>
+    <div class='reply quote-like quote-like-border' use:dataPollViewerIdx={props.pollViewerPayload}>
       <div class='reply-content'>
         <div class='reply-title'>
           <I18nTsx key='Chat.Quiz.Explanation' />

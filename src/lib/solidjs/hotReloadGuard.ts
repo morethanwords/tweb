@@ -5,8 +5,9 @@ import {createContext, useContext} from 'solid-js';
  */
 
 import type AppMediaViewer from '@components/appMediaViewer';
+import AppMediaViewerStatic from '@components/appMediaViewerStatic';
 import type {AutonomousMonoforumThreadList} from '@components/autonomousDialogList/monoforumThreads';
-import type {AvatarNewTsx, avatarNew, StoriesSegments} from '@components/avatarNew';
+import type {avatarNew, AvatarNewTsx, StoriesSegments} from '@components/avatarNew';
 import type BusinessHours from '@components/businessHours';
 import type ButtonMenu from '@components/buttonMenu';
 import type {ButtonMenuSync} from '@components/buttonMenu';
@@ -141,6 +142,7 @@ export type SolidJSHotReloadGuardContextValue = {
   getFileAndOpenEditor: typeof getFileAndOpenEditor;
   PopupSchedulePost: typeof PopupSchedulePost;
   AvatarNewTsx: typeof AvatarNewTsx;
+  AppMediaViewerStatic: typeof AppMediaViewerStatic;
 };
 
 export type LockScreenHotReloadGuardContextValue = Pick<

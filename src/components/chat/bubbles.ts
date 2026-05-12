@@ -27,7 +27,7 @@ import LazyLoadQueue from '@components/lazyLoadQueue';
 import ListenerSetter from '@helpers/listenerSetter';
 import PollElement, {setQuizHint} from '@components/poll';
 import AudioElement from '@components/audio';
-import {ChannelParticipant, Chat as MTChat, ChatParticipant, Document, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, SponsoredMessage, User, UserFull, WebPage, WebPageAttribute, Reaction, DocumentAttribute, InputStickerSet, TextWithEntities, FactCheck, WebDocument, MessageExtendedMedia, PeerSettings, LangPackString, ForumTopic} from '@layer';
+import {ChannelParticipant, Chat as MTChat, ChatParticipant, Document, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, SponsoredMessage, User, UserFull, WebPage, WebPageAttribute, Reaction, DocumentAttribute, InputStickerSet, TextWithEntities, FactCheck, WebDocument, MessageExtendedMedia, PeerSettings, LangPackString, ForumTopic, MessageAction} from '@layer';
 import {BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID, SEND_WHEN_ONLINE_TIMESTAMP, STARS_CURRENCY} from '@appManagers/constants';
 import {FocusDirection, ScrollStartCallbackDimensions} from '@helpers/fastSmoothScroll';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation} from '@hooks/useHeavyAnimationCheck';
@@ -224,7 +224,7 @@ import {NoForwardsRequestContent, NoForwardsRequestReplyMarkup} from '@component
 import tsNow from '@helpers/tsNow';
 import wrapMessageForReply from '@components/wrappers/messageForReply';
 import canSeeMessageMedia from '@lib/appManagers/utils/messages/canSeeMessageMedia';
-import {PollMessageContent} from './bubbleParts/pollMessageContent';
+import type {PollMessageContent} from './bubbleParts/pollMessageContent';
 
 // TODO: fix new message won't be rendered if an old one is rendering in the moment
 
@@ -321,6 +321,13 @@ const webPageTypes: {[type in WebPage.webPage['type']]?: LangPackKey} = {
   telegram_megagroup_request: 'Chat.Message.RequestToJoin',
   telegram_stickerset: 'OpenStickers'
 };
+
+const serviceMessageActionsWithReply: (MessageAction['_'])[] = [
+  'messageActionTodoAppendTasks',
+  'messageActionTodoCompletions',
+  'messageActionPollAppendAnswer',
+  'messageActionPollDeleteAnswer'
+];
 
 const webPageTypesSiteNames: {[type in WebPage.webPage['type']]?: LangPackKey} = {
   telegram_livestream: 'PeerInfo.Action.LiveStream'
@@ -3056,6 +3063,13 @@ export default class ChatBubbles {
     const documentDiv = findUpClassName(target, 'document-with-thumb');
 
     if(this.chat.type === ChatType.Logs) return;
+
+    let pollViewerTarget: HTMLElement | null
+    if(pollViewerTarget = target.closest('[data-poll-viewer-idx]')) {
+      const pollMessageContent = pollViewerTarget.closest('poll-message-content') as InstanceType<typeof PollMessageContent>;
+      pollMessageContent.controls?.openMediaViewer?.(+pollViewerTarget.dataset.pollViewerIdx);
+      return true;
+    }
 
     if(
       (target.tagName === 'IMG' && !target.classList.contains('emoji') && !target.classList.contains('document-thumb')) ||
@@ -6307,7 +6321,7 @@ export default class ChatBubbles {
               }
             }
           }), container, middleware)
-        } else if(action._ === 'messageActionTodoAppendTasks' || action._ === 'messageActionTodoCompletions') {
+        } else if(serviceMessageActionsWithReply.includes(action._)) {
           bubble.classList.add('is-reply')
         }
 

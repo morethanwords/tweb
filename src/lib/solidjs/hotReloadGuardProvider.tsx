@@ -1,6 +1,7 @@
 import {ParentProps} from 'solid-js';
 
 import AppMediaViewer from '@components/appMediaViewer';
+import AppMediaViewerStatic from '@components/appMediaViewerStatic';
 import {AutonomousMonoforumThreadList} from '@components/autonomousDialogList/monoforumThreads';
 import {avatarNew, AvatarNewTsx, StoriesSegments} from '@components/avatarNew';
 import BusinessHours from '@components/businessHours';
@@ -134,7 +135,8 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       createEmojiDropdownButton,
       getFileAndOpenEditor,
       PopupSchedulePost,
-      AvatarNewTsx
+      AvatarNewTsx,
+      AppMediaViewerStatic
     }}>
       {props.children}
     </SolidJSHotReloadGuardContext.Provider>
