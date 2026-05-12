@@ -177,7 +177,7 @@
   position: absolute;
   bottom: 0;
   left: 0;
-  transform: translate(-1.5rem, 0.875rem);
+  transform: translate(-1.5rem, 14px);
 
   --checkbox-size: 0.875rem;
   --checkbox-scale: 1.25;
@@ -188,6 +188,26 @@
 
   &.wrong {
     --checkbox-background-color: var(--gc-red-text-color);
+  }
+
+  &Dot {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    transform: translate(-36px, 11px);
+
+    width: 0.5rem;
+    height: 0.5rem;
+    background-color: var(--primary-color);
+    border-radius: 50%;
+
+    &.correct {
+      background-color: var(--gc-green-text-color);
+    }
+
+    &.wrong {
+      background-color: var(--gc-red-text-color);
+    }
   }
 }
 

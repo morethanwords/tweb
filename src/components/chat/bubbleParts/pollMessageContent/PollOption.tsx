@@ -140,6 +140,17 @@ export const PollOption = (props: {
           </Show>
         </Transition>
         <Transition name='fade-2'>
+          <Show when={canShowPercentageCheckbox() && props.hasCorrectAnswer && props.result.chosen}>
+            <div
+              class={styles.chosenCheckboxDot}
+              classList={{
+                [styles.correct]: !contextProps.isOutgoing && props.result.correct,
+                [styles.wrong]: !contextProps.isOutgoing && !props.result.correct
+              }}
+            />
+          </Show>
+        </Transition>
+        <Transition name='fade-2'>
           <Show when={canShowPercentageCheckbox()}>
             <InMessageCheckbox
               round={!props.allowMultipleAnswers}
