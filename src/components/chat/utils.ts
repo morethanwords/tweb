@@ -1,15 +1,11 @@
-import {formatFullSentTimeRaw, formatTime} from '@helpers/date';
-import {DurationType} from '@helpers/formatDuration';
-import {Document, Message} from '@layer';
 import {AdminLog} from '@appManagers/appChatsManager';
 import {MyMessage} from '@appManagers/appMessagesManager';
-import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {VERIFICATION_CODES_BOT_ID} from '@appManagers/constants';
-import Icon, {OverlayedIcon} from '@components/icon';
-import {findMatchingCustomOption} from '@components/sidebarLeft/tabs/autoDeleteMessages/options';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {wrapSlowModeLeftDuration} from '@components/wrappers/wrapDuration';
+import {formatFullSentTimeRaw, formatTime} from '@helpers/date';
 import eachSecond from '@helpers/eachSecond';
-import {PollMessageContentProps} from './bubbleParts/pollMessageContent';
+import {Document, Message} from '@layer';
 
 
 export function isMessageForVerificationBot(message: MyMessage) {
