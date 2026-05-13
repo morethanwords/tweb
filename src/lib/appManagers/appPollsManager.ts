@@ -40,6 +40,8 @@ type RefetchTimeoutPayload = {
   closeTimestamp: number;
 };
 
+const pollAnswerOptionOffset = 48;
+
 export class AppPollsManager extends AppManager {
   public polls: {[id: PollId]: Poll} = {};
   public results: {[id: PollId]: PollResults} = {};
@@ -231,6 +233,8 @@ export class AppPollsManager extends AppManager {
 
     const currentPollData = structuredClone(this.getPoll(message.media.poll.id));
 
+    const optionNumber = pollAnswerOptionOffset + currentPollData.poll.answers.length;
+
     const updatedPoll: Poll.poll = {
       ...currentPollData.poll,
       answers: [
@@ -239,7 +243,7 @@ export class AppPollsManager extends AppManager {
           _: 'pollAnswer',
           text: text,
           media: uploadingMedia?.messageMedia,
-          option: new Uint8Array()
+          option: new Uint8Array([optionNumber])
         }
       ]
     };
@@ -250,7 +254,7 @@ export class AppPollsManager extends AppManager {
         ...(currentPollData.results?.results ?? []),
         {
           _: 'pollAnswerVoters',
-          option: new Uint8Array(),
+          option: new Uint8Array([optionNumber]),
           voters: 0,
           recent_voters: [],
           pFlags: {}
@@ -444,7 +448,8 @@ export class AppPollsManager extends AppManager {
         revoting_disabled: flag(!payload.allowRevoting),
         shuffle_answers: flag(payload.shuffleOptions),
         quiz: flag(payload.hasCorrectAnswer),
-        open_answers: flag(payload.allowAddingOptions)
+        open_answers: flag(payload.allowAddingOptions),
+        creator: true
       },
       close_date: payload.timeLimit?.type === 'timestamp' ? payload.timeLimit.timestamp : undefined,
       close_period: payload.timeLimit?.type === 'duration' ? payload.timeLimit.duration : undefined
@@ -456,7 +461,7 @@ export class AppPollsManager extends AppManager {
         _: 'textWithEntities',
         ...parsedPayload.pollOptions[index]
       },
-      option: new Uint8Array([]),
+      option: new Uint8Array([pollAnswerOptionOffset + index]),
       added_by: this.appPeersManager.getOutputPeer(peerId),
       media: uploadingMedia.pollOptions.get(index)?.messageMedia
     }));
