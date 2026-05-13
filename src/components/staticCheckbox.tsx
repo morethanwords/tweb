@@ -39,7 +39,12 @@ export const StaticCheckbox = (inProps: StaticCheckboxProps) => {
       <svg
         class={styles.Check}
         viewBox="0 0 24 24"
-      ><use href={props.cross ? '#checkbox-cross' : '#check'} x="-1"></use></svg>
+      >
+        <use
+          href={props.cross ? '#checkbox-cross' : '#check'}
+          x={props.cross ? undefined : '-1'}
+        />
+      </svg>
     </div>
   );
 };

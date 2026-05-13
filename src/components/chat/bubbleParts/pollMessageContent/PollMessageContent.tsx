@@ -33,6 +33,7 @@ import {PollOption} from './PollOption';
 import styles from './styles.module.scss';
 import {dataPollViewerIdx, NewOptionValues, PollOptionResult, roundPercents} from './utils';
 import {AppMediaViewerStaticTargetType} from '@components/appMediaViewerStatic';
+import {RemainingTime} from '@components/remainingTime';
 
 
 keepMe(ripple);
@@ -89,6 +90,7 @@ export const PollMessageContent = defineSolidElement({
     const shuffleOptions = createMemo(() => !props.poll.pFlags.creator && !!props.poll.pFlags.shuffle_answers);
     const showWhoVoted = createMemo(() => !!props.poll.pFlags.public_voters);
     const closed = createMemo(() => !!props.poll.pFlags.closed);
+    const closesAtTimestamp = createMemo(() => props.poll.close_date);
     // const hideResults = createMemo(() => !!props.poll.pFlags.hide_results_until_close);
 
     const votersCount = createMemo(() => props.results?.total_voters ?? 0);
@@ -142,6 +144,7 @@ export const PollMessageContent = defineSolidElement({
     const hasTypedNewOption = createMemo(() => newOption.text.length > 0);
     const willFooterBeClickable = createMemo(() => hasSelectedSomething() || hasTypedNewOption());
     const canShowAddOption = createMemo(() => allowAddingOptions() && !isShowingResult() && pollOptions.length < maxOptions());
+    const shouldShowCloseTimer = createMemo(() => !props.poll.pFlags.closed && !!closesAtTimestamp() && closesAtTimestamp() > new Date().getTime() / 1000);
 
     const getOverridenMessage = (): Message.message => ({
       ...unwrap(props.message),
@@ -388,7 +391,10 @@ export const PollMessageContent = defineSolidElement({
 
         <div
           class={styles.footer}
-          classList={{[styles.clickable]: isFooterClickable()}}
+          classList={{
+            [styles.clickable]: isFooterClickable(),
+            [styles.outgoing]: props.isOutgoing
+          }}
           use:ripple={isFooterClickable()}
           onClick={onFooterClick}
         >
@@ -406,7 +412,7 @@ export const PollMessageContent = defineSolidElement({
               <Match when={hasTypedNewOption() && !isShowingResult()}>
                 <I18nTsx key='Save' />
               </Match>
-              <Match when>
+              <Match when={isShowingResult()}>
                 <PollVotes
                   votersCount={votersCount()}
                   closed={closed()}
@@ -414,9 +420,22 @@ export const PollMessageContent = defineSolidElement({
                   showWhoVoted={showWhoVoted()}
                 />
               </Match>
+              <Match when>
+                <I18nTsx key='Chat.Poll.SelectAnOption' />
+              </Match>
             </Switch>
           </Transition>
         </div>
+
+        <Show when={shouldShowCloseTimer()}>
+          <div class={styles.timer}>
+            <div class={styles.timerContent}>
+              <RemainingTime finishTimestamp={closesAtTimestamp()}>
+                {(time) => <I18nTsx key='Chat.Poll.EndsIn' args={[time()]} />}
+              </RemainingTime>
+            </div>
+          </div>
+        </Show>
 
         {/* some space for the time span */}
         <Space amount='0.75rem' />

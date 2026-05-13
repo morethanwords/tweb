@@ -2863,6 +2863,8 @@
 "Chat.Poll.Type.Closed" = "Final Results";
 "Chat.Poll.MembersVoted_one" = "%d member voted";
 "Chat.Poll.MembersVoted_other" = "%d members voted";
+"Chat.Poll.SelectAnOption" = "Select an option";
+"Chat.Poll.EndsIn" = "ends in %s";
 "Chat.Poll.OptionAdded" = "%s added **%s** to the poll";
 "Chat.Poll.OptionAddedMe" = "You added **%s** to the poll";
 "Chat.Poll.OptionDeleted" = "%s deleted **%s** from the poll";
