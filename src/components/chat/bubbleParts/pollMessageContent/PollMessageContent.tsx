@@ -22,7 +22,7 @@ import wrapDraftText from '@lib/richTextProcessor/wrapDraftText';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {batch, createComputed, createMemo, createSelector, createSignal, For, Match, Show, Switch} from 'solid-js';
+import {batch, createComputed, createMemo, createResource, createSelector, createSignal, For, Match, Show, Switch} from 'solid-js';
 import {createStore, reconcile, unwrap} from 'solid-js/store';
 import {Transition} from 'solid-transition-group';
 import {AddOption} from './AddOption';
@@ -78,6 +78,8 @@ export const PollMessageContent = defineSolidElement({
       entities: []
     });
 
+    const [timeOffset] = createResource(() => rootScope.managers.timeManager.getServerTimeOffset());
+
     let inputField: InputField;
 
     const question = () => props.poll.question.text;
@@ -90,7 +92,7 @@ export const PollMessageContent = defineSolidElement({
     const shuffleOptions = createMemo(() => !props.poll.pFlags.creator && !!props.poll.pFlags.shuffle_answers);
     const showWhoVoted = createMemo(() => !!props.poll.pFlags.public_voters);
     const closed = createMemo(() => !!props.poll.pFlags.closed);
-    const closesAtTimestamp = createMemo(() => props.poll.close_date);
+    const closesAtTimestamp = createMemo(() => timeOffset.state === 'ready' ? props.poll.close_date - timeOffset() : 0);
     // const hideResults = createMemo(() => !!props.poll.pFlags.hide_results_until_close);
 
     const votersCount = createMemo(() => props.results?.total_voters ?? 0);

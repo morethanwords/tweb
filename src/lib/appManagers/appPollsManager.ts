@@ -35,11 +35,16 @@ type InvokeSendPollArgs = Pick<ReturnType<AppPollsManager['makePollMedia']>, 'po
   uploadingMedia: ReturnType<AppPollsManager['startUploadingAllPollMedia']>;
 };
 
+type RefetchTimeoutPayload = {
+  timerId: number;
+  closeTimestamp: number;
+};
 
 export class AppPollsManager extends AppManager {
   public polls: {[id: PollId]: Poll} = {};
   public results: {[id: PollId]: PollResults} = {};
   public pollToMessages: {[id: PollId]: Set<string>} = {};
+  private refetchResultsTimeouts: {[id: PollId]: RefetchTimeoutPayload} = {};
 
   constructor() {
     super();
@@ -65,6 +70,20 @@ export class AppPollsManager extends AppManager {
     });
   }
 
+  public clear = (init?: boolean) => {
+    if(init) return;
+
+    this.polls = {};
+    this.results = {};
+    this.pollToMessages = {};
+
+    Object.values(this.refetchResultsTimeouts).forEach(({timerId}) => {
+      self.clearTimeout(timerId);
+    });
+
+    this.refetchResultsTimeouts = {};
+  };
+
   public savePoll(poll: Poll, results: PollResults, message?: Message.message) {
     if(message) {
       this.updatePollToMessage(message, true);
@@ -79,6 +98,22 @@ export class AppPollsManager extends AppManager {
 
       poll.chosenIndexes = [];
       results = this.saveResults(poll, results);
+    }
+
+    const refetchResultTimeout = this.refetchResultsTimeouts[id];
+    if(refetchResultTimeout && refetchResultTimeout.closeTimestamp !== poll.close_date) {
+      self.clearTimeout(refetchResultTimeout.timerId);
+      delete this.refetchResultsTimeouts[id];
+    }
+
+    if(poll.close_date) {
+      this.refetchResultsTimeouts[id] = {
+        timerId: self.setTimeout(() => {
+          this.refetchResultsForPoll(id);
+          delete this.refetchResultsTimeouts[id];
+        }, poll.close_date - this.timeManager.getServerTimeOffset() - Date.now() / 1000),
+        closeTimestamp: poll.close_date
+      };
     }
 
     return {poll, results};
@@ -253,6 +288,20 @@ export class AppPollsManager extends AppManager {
       this.apiUpdatesManager.processUpdateMessage(updates);
       this.log('getResults updates:', updates);
     });
+  }
+
+  public refetchResultsForPoll(pollId: PollId) {
+    const messages = this.pollToMessages[pollId];
+    if(!messages) return;
+
+    for(const key of messages) {
+      const [peerId, mid] = key.split('_');
+
+      const message = this.appMessagesManager.getMessageByPeer(peerId.toPeerId(), +mid);
+      if(message?._ === 'message') {
+        this.getResults(message);
+      }
+    }
   }
 
   public getVotes(message: Message.message, option?: Uint8Array, offset?: string, limit = 20) {
