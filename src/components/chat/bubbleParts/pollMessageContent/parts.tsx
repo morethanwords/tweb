@@ -1,6 +1,7 @@
 import Space from '@components/space';
 import PhotoTsx from '@components/wrappers/photoTsx';
 import {keepMe} from '@helpers/keepMe';
+import formatNumber from '@helpers/number/formatNumber';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {I18nTsx} from '@helpers/solid/i18n';
 import classNames from '@helpers/string/classNames';
@@ -101,6 +102,6 @@ export const PollVotes = (props: CommonProps & { votersCount: number }) => {
   });
 
   return (
-    <I18nTsx key={key()} args={[props.votersCount.toString()]} />
+    <I18nTsx key={key()} args={[formatNumber(props.votersCount, 1)]} />
   );
 };
