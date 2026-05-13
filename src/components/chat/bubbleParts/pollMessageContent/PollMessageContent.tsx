@@ -62,7 +62,7 @@ export const PollMessageContent = defineSolidElement({
   component: (props: PassedProps<PollMessageContentProps>, _, controls: Controls) => {
     attachHotClassName(props.element, styles.container);
 
-    const {rootScope, useAppSettings, AppMediaViewerStatic} = useHotReloadGuard();
+    const {rootScope, useAppSettings, AppMediaViewerStatic, appSidebarRight, AppPollResultsTab} = useHotReloadGuard();
     const [appSettings] = useAppSettings();
 
     const middleware = createMiddleware().get();
@@ -144,9 +144,13 @@ export const PollMessageContent = defineSolidElement({
     const isChecked = createSelector(chosenIndexes, (index: number, indices) => indices.includes(index));
     const isShowingResult = createMemo(() => !!props.poll.chosenIndexes?.length || props.poll.pFlags.closed);
     const hasTypedNewOption = createMemo(() => newOption.text.length > 0);
-    const willFooterBeClickable = createMemo(() => hasSelectedSomething() || hasTypedNewOption());
     const canShowAddOption = createMemo(() => allowAddingOptions() && !isShowingResult() && pollOptions.length < maxOptions());
-    const shouldShowCloseTimer = createMemo(() => !props.poll.pFlags.closed && !!closesAtTimestamp() && closesAtTimestamp() > new Date().getTime() / 1000);
+    const canShowCloseTimer = createMemo(() => !props.poll.pFlags.closed && !!closesAtTimestamp() && closesAtTimestamp() > new Date().getTime() / 1000);
+    const canShowViewResults = createMemo(() => showWhoVoted() && !!props.results.total_voters && isShowingResult());
+
+    const willFooterBeClickable = createMemo(() => canShowViewResults() || hasSelectedSomething() || hasTypedNewOption());
+
+    setIsFooterClickable(willFooterBeClickable());
 
     const getOverridenMessage = (): Message.message => ({
       ...unwrap(props.message),
@@ -245,9 +249,18 @@ export const PollMessageContent = defineSolidElement({
       resetInteractiveState();
     };
 
+    const openViewResults = () => {
+      if(!appSidebarRight.isTabExists(AppPollResultsTab)) {
+        appSidebarRight.createTab(AppPollResultsTab).open(getOverridenMessage());
+      } else {
+        appSidebarRight.toggleSidebar(true);
+      }
+    };
+
     const onFooterClick = wrapAsyncClickHandler(async() => {
-      if(hasSelectedSomething()) await sendVote();
-      if(hasTypedNewOption()) await addOption();
+      if(canShowViewResults()) openViewResults();
+      else if(hasSelectedSomething()) await sendVote();
+      else if(hasTypedNewOption()) await addOption();
     });
 
     subscribeOn(rootScope)('poll_update', ({poll, results}) => {
@@ -408,6 +421,9 @@ export const PollMessageContent = defineSolidElement({
             }}
           >
             <Switch>
+              <Match when={canShowViewResults()}>
+                <I18nTsx key='Chat.Poll.ViewResults' />
+              </Match>
               <Match when={hasSelectedSomething()}>
                 <I18nTsx key='Chat.Poll.SubmitVote' />
               </Match>
@@ -429,7 +445,7 @@ export const PollMessageContent = defineSolidElement({
           </Transition>
         </div>
 
-        <Show when={shouldShowCloseTimer()}>
+        <Show when={canShowCloseTimer()}>
           <div class={styles.timer}>
             <div class={styles.timerContent}>
               <RemainingTime finishTimestamp={closesAtTimestamp()}>

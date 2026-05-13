@@ -32,6 +32,7 @@ import appSidebarLeft from '@components/sidebarLeft';
 import AppChatFoldersTab from '@components/sidebarLeft/tabs/chatFolders';
 import AppEditFolderTab from '@components/sidebarLeft/tabs/editFolder';
 import appSidebarRight from '@components/sidebarRight';
+import AppPollResultsTab from '@components/sidebarRight/tabs/pollResults';
 import Slideshow from '@components/slideshow'; // Added import
 import {StoriesProvider, useStories} from '@components/stories/store';
 import {hideToast, toast, toastNew} from '@components/toast';
@@ -136,7 +137,8 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       getFileAndOpenEditor,
       PopupSchedulePost,
       AvatarNewTsx,
-      AppMediaViewerStatic
+      AppMediaViewerStatic,
+      AppPollResultsTab
     }}>
       {props.children}
     </SolidJSHotReloadGuardContext.Provider>

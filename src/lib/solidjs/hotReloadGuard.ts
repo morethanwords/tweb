@@ -38,6 +38,7 @@ import type {AppSidebarLeft} from '@components/sidebarLeft';
 import type AppChatFoldersTab from '@components/sidebarLeft/tabs/chatFolders';
 import type AppEditFolderTab from '@components/sidebarLeft/tabs/editFolder';
 import type {AppSidebarRight} from '@components/sidebarRight';
+import AppPollResultsTab from '@components/sidebarRight/tabs/pollResults';
 import type Slideshow from '@components/slideshow';
 import type {StoriesProvider, useStories} from '@components/stories/store';
 import type {hideToast, toast, toastNew} from '@components/toast';
@@ -143,6 +144,7 @@ export type SolidJSHotReloadGuardContextValue = {
   PopupSchedulePost: typeof PopupSchedulePost;
   AvatarNewTsx: typeof AvatarNewTsx;
   AppMediaViewerStatic: typeof AppMediaViewerStatic;
+  AppPollResultsTab: typeof AppPollResultsTab;
 };
 
 export type LockScreenHotReloadGuardContextValue = Pick<
