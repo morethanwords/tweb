@@ -191,7 +191,11 @@ export const PollMessageContent = defineSolidElement({
       });
     };
 
-    const handleNewOptionChanged = (values: Partial<NewOptionValues>) => {
+    const handleNewOptionChanged = (values: Partial<NewOptionValues>) => batch(() => {
+      if('attachment' in values) setNewOption({attachment: values.attachment});
+
+      if(!('text' in values && 'entities' in values)) return;
+
       const sliced = sliceTextWithEntities(values.text ?? '', values.entities ?? [], 0, maxOptionLength());
       setNewOption(sliced);
       if(sliced.text.length < inputField?.value.length) {
@@ -200,7 +204,7 @@ export const PollMessageContent = defineSolidElement({
         );
         setCaretAtEnd(inputField?.input);
       }
-    };
+    });
 
     const resetInteractiveState = () => batch(() => {
       setChosenIndexes([]);
