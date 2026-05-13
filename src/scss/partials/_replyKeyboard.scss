@@ -1,4 +1,5 @@
 @use "../shared" as *;
+
 .reply-keyboard {
   background: var(--surface-color);
   position: absolute !important;
@@ -19,10 +20,6 @@
   display: flex !important;
   flex-direction: column;
   overflow: hidden;
-
-  @include respond-to(esg-bottom-new) {
-		bottom: calc(100% + .5rem);
-	}
 
 	&.active {
 		opacity: 1;

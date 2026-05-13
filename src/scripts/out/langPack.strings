@@ -565,7 +565,7 @@
 "Rtmp.Watching_other" = "%s watching";
 "Rtmp.Topbar.Title" = "Live Stream";
 "Rtmp.Topbar.NoViewers" = "No viewers";
-"Rtmp.Topbar.Join" = "JOIN";
+"Rtmp.Topbar.Join" = "Join";
 "Rtmp.Topbar.StreamWith" = "Stream With...";
 "Rtmp.Topbar.StartVideoChat" = "Start Video Chat";
 "Rtmp.MediaViewer.Live" = "LIVE";
@@ -1029,6 +1029,7 @@
 "Exceptions" = "Exceptions";
 "RemovedUsers" = "Removed Users";
 "StoryViewers" = "Story Viewers";
+"PinnedMessages" = "Pinned Messages";
 "GroupsAndChannelsLimitTitle" = "Groups and Channels";
 "GroupsAndChannelsLimitSubtitle" = "Join up to %d channels and large groups";
 "PinChatsLimitTitle" = "Pinned Chats";
@@ -1417,6 +1418,12 @@
 "Hours_other" = "%1$d hours";
 "Days_one" = "%1$d day";
 "Days_other" = "%1$d days";
+"Calendar.SelectedDays_one" = "%1$d day selected";
+"Calendar.SelectedDays_other" = "%1$d days selected";
+"Calendar.ClearHistory" = "Clear History";
+"Calendar.ClearHistory.Confirm" = "Are you sure you want to delete all messages for the %1$@?";
+"Calendar.ClearHistory.SelectedDays_one" = "selected day";
+"Calendar.ClearHistory.SelectedDays_other" = "selected %1$d days";
 "Weeks_one" = "%1$d week";
 "Weeks_other" = "%1$d weeks";
 "Months_one" = "%1$d month";
@@ -1814,6 +1821,8 @@
 "ChatThemeDisabledYou" = "You disabled the chat theme";
 "ThemeDay" = "Day";
 "ThemeNight" = "Night";
+"ThemeTinted" = "Tinted";
+"ThemeArctic" = "Arctic";
 "AutoNightSystemDefault" = "System Default";
 "GlobalAttachPlainRestricted" = "Sending text messages isn't allowed in this group.";
 "GlobalAttachDocumentsRestricted" = "Sending documents isn't allowed in this group.";

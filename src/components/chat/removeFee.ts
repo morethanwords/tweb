@@ -11,27 +11,31 @@ import PeerTitle from '@components/peerTitle';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import Chat from '@components/chat/chat';
 import PinnedContainer from '@components/chat/pinnedContainer';
-import styles from '@components/chat/removeFee.module.scss';
 import type ChatTopbar from '@components/chat/topbar';
-
+import {MiddlewareHelper} from '@helpers/middleware';
+import {createRoot} from 'solid-js';
 
 type SetArgs = {
-  peerId: PeerId;
-  monoforumThreadId?: PeerId;
-  starsCharged: number;
+  peerId: PeerId,
+  monoforumThreadId?: PeerId,
+  starsCharged: number
 };
 
+const className = 'remove-fee';
+
 export default class ChatRemoveFee extends PinnedContainer {
+  private middlewareHelper: MiddlewareHelper;
+
   constructor(protected topbar: ChatTopbar, protected chat: Chat, protected managers: AppManagers) {
     super({
       topbar,
       chat,
       listenerSetter: topbar.listenerSetter,
-      className: 'remove-fee',
-      onClose: () => {},
-      floating: true,
-      height: 64
+      className,
+      height: 74
     });
+
+    this.middlewareHelper = chat.middlewareHelper.get().create();
   }
 
   public hide() {
@@ -46,44 +50,42 @@ export default class ChatRemoveFee extends PinnedContainer {
   }
 
   private set({peerId, monoforumThreadId, starsCharged}: SetArgs) {
+    this.middlewareHelper.clean();
     this.toggle(false);
 
     const content = document.createElement('div');
-    content.classList.add(styles.Content);
+    content.classList.add('pinned-' + className + '-content');
 
     const inlineStars = document.createElement('span');
-    inlineStars.classList.add('inline-stars', 'inline-stars--reversed');
     inlineStars.append(
-      numberThousandSplitterForStars(+starsCharged),
-      Icon('star')
+      Icon('star', 'inline-icon', 'inline-icon-left'),
+      numberThousandSplitterForStars(+starsCharged)
     );
 
     const peerTitle = new PeerTitle();
-    peerTitle.update({peerId: monoforumThreadId || peerId, onlyFirstName: true});
+    peerTitle.update({peerId: monoforumThreadId || peerId, onlyFirstName: true, limitSymbols: 20});
 
-    content.append(i18n('PaidMessages.UserPaysForMessagesNotice', [peerTitle.element, inlineStars]));
+    const text = i18n('PaidMessages.UserPaysForMessagesNotice', [peerTitle.element, inlineStars]);
+    text.classList.add('pinned-' + className + '-text', 'text-overflow-no-wrap');
+    content.append(text);
 
-    const button = Button(`btn primary ${styles.RemoveFeeButton}`, {text: 'PaidMessages.RemoveFee'})
-    content.append(button);
-
-    let disabled = false;
-
-    attachClickEvent(button, async() => {
-      if(disabled) return;
-      disabled = true;
-
-      try {
-        await openRemoveFeePopup({
-          parentPeerId: monoforumThreadId ? peerId : undefined,
-          peerId: monoforumThreadId || peerId,
-          managers: this.chat.managers
-        });
-        this.hide();
-      } finally {
-        disabled = false;
-      }
+    let button: HTMLElement;
+    createRoot((dispose) => {
+      this.middlewareHelper.get().onClean(dispose);
+      this.createPrimaryButton({
+        onClick: async() => {
+          await openRemoveFeePopup({
+            parentPeerId: monoforumThreadId ? peerId : undefined,
+            peerId: monoforumThreadId || peerId,
+            managers: this.chat.managers
+          });
+          this.hide();
+        },
+        children: i18n('PaidMessages.RemoveFee'),
+        ref: (_button) => button = _button
+      });
     });
-
+    content.append(button);
     this.container.replaceChildren(content);
   }
 
@@ -123,10 +125,10 @@ export default class ChatRemoveFee extends PinnedContainer {
 }
 
 type OpenRemoveFeePopupArgs = {
-  peerId: PeerId;
-  parentPeerId?: PeerId;
-  requirePayment?: boolean;
-  managers: AppManagers;
+  peerId: PeerId,
+  parentPeerId?: PeerId,
+  requirePayment?: boolean,
+  managers: AppManagers
 };
 
 export async function openRemoveFeePopup({peerId, parentPeerId, managers, requirePayment}: OpenRemoveFeePopupArgs) {
@@ -134,7 +136,6 @@ export async function openRemoveFeePopup({peerId, parentPeerId, managers, requir
   const revenue = !requirePayment ? await managers.appUsersManager.getPaidMessagesRevenue({userId, parentPeerId}) : undefined;
 
   const shouldRefund = await confirmationPopup({
-    className: styles.ConfirmationPopup,
     titleLangKey: requirePayment ? 'PaidMessages.ChargeFee' : 'PaidMessages.RemoveFee',
     descriptionLangKey: requirePayment ? 'PaidMessages.ChargeFeeWarning' : 'PaidMessages.RemoveFeeWarning',
     descriptionLangArgs: [await wrapPeerTitle({peerId, onlyFirstName: true})],

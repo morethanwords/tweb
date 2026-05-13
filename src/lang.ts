@@ -675,7 +675,7 @@ const lang = {
   },
   'Rtmp.Topbar.Title': 'Live Stream',
   'Rtmp.Topbar.NoViewers': 'No viewers',
-  'Rtmp.Topbar.Join': 'JOIN',
+  'Rtmp.Topbar.Join': 'Join',
   'Rtmp.Topbar.StreamWith': 'Stream With...',
   'Rtmp.Topbar.StartVideoChat': 'Start Video Chat',
   'Rtmp.MediaViewer.Live': 'LIVE',
@@ -1180,6 +1180,7 @@ const lang = {
   'Exceptions': 'Exceptions',
   'RemovedUsers': 'Removed Users',
   'StoryViewers': 'Story Viewers',
+  'PinnedMessages': 'Pinned Messages',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -2071,8 +2072,10 @@ const lang = {
   'ChatThemeChangedTo': '%1$s changed the chat theme to %2$s',
   'ChatThemeDisabled': '%1$s disabled the chat theme',
   'ChatThemeDisabledYou': 'You disabled the chat theme',
-  'ThemeDay': 'Day',
+  'ThemeDay': 'Classic',
   'ThemeNight': 'Night',
+  'ThemeLight': 'Day',
+  'ThemeTinted': 'Dark',
   'AutoNightSystemDefault': 'System Default',
   'GlobalAttachPlainRestricted': 'Sending text messages isn\'t allowed in this group.',
   'GlobalAttachDocumentsRestricted': 'Sending documents isn\'t allowed in this group.',

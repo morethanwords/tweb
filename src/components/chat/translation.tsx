@@ -114,8 +114,7 @@ export default class ChatTranslation extends PinnedContainer {
       chat,
       listenerSetter: topbar.listenerSetter,
       className: 'translation',
-      floating: true,
-      height: 42
+      height: 48
     });
 
     [this.peerId, this.setPeerId] = createSignal<PeerId>(NULL_PEER_ID);
@@ -178,12 +177,11 @@ export default class ChatTranslation extends PinnedContainer {
       }],
       listenerSetter
     });
-    menu.classList.add('pinned-translation-menu', 'primary');
+    menu.classList.add('pinned-translation-menu');
     return (
       <>
-        <div
-          class="pinned-translation-button"
-          onClick={() => {
+        {this.createPrimaryButton({
+          onClick: () => {
             const translation = peerTranslation();
             if(!translation.canTranslate()) {
               PopupPremium.show({feature: 'translations'});
@@ -191,14 +189,17 @@ export default class ChatTranslation extends PinnedContainer {
             }
 
             translation.toggle(!translation.enabled());
-          }}
-        >
-          {Icon('premium_translate', 'pinned-translation-button-icon')}
-          {peerTranslation().enabled() ?
-            i18n('ShowOriginalButton') :
-            i18n('TranslateToButton', [i18n(`Language.${peerTranslation().language()}`)])
-          }
-        </div>
+          },
+          children: (
+            <>
+              {Icon('premium_translate', 'pinned-translation-primary-button-icon')}
+              {peerTranslation().enabled() ?
+                i18n('ShowOriginalButton') :
+                i18n('TranslateToButton', [i18n(`Language.${peerTranslation().language()}`)])
+              }
+            </>
+          )
+        })}
         {menu}
       </>
     );

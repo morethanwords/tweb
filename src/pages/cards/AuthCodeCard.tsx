@@ -16,6 +16,7 @@ import {toastNew} from '@components/toast';
 import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
+import focusWhenConnected from '@helpers/dom/focusWhenConnected';
 import replaceContent from '@helpers/dom/replaceContent';
 import formatDuration from '@helpers/formatDuration';
 import mediaSizes from '@helpers/mediaSizes';
@@ -31,6 +32,8 @@ import ctx from '@environment/ctx';
 import AuthCard from '@/pages/AuthCard';
 import {CardSpec, useAuthFlow} from '@/pages/authFlow';
 import styles from '@/pages/authFlow.module.scss';
+
+if(import.meta.hot) import.meta.hot.accept();
 
 type Spec = Extract<CardSpec, {name: 'authCode'}>;
 
@@ -305,12 +308,14 @@ export default function AuthCodeCard(props: {spec: Spec}) {
 
   /* ---------- lifecycle ---------- */
 
+  let cancelFocus: (() => void) | undefined;
   onMount(() => {
     applySentCode();
-    fastRaf(() => codeInputField.input.focus());
+    cancelFocus = focusWhenConnected(codeInputField.input);
   });
 
   onCleanup(() => {
+    cancelFocus?.();
     if(resetEmailTimer) clearTimeout(resetEmailTimer);
     monkey?.remove();
     player?.remove();

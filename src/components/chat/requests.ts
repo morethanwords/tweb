@@ -44,7 +44,6 @@ export default class ChatRequests extends PinnedContainer {
       onClose: () => {
         this.chat.setAppState('hideChatJoinRequests', this.peerId, Date.now());
       },
-      floating: true,
       height: 52
     });
 

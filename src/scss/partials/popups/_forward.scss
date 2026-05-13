@@ -19,12 +19,28 @@
     }
   }
 
+  &-footer {
+    @include animation-level(2) {
+      transition: transform var(--transition-standard-in);
+    }
+
+    &:has(.popup-forward-footer-content.is-hidden) {
+      transform: translateY(100%);
+    }
+  }
+
   &-footer-item {
     position: absolute !important;
     inset-inline: var(--popup-footer-padding);
     bottom: var(--popup-footer-padding);
     width: auto;
     margin: 0;
+  }
+
+  .menu-send {
+    top: unset;
+    bottom: calc(var(--popup-footer-padding) + 3rem + .25rem);
+    inset-inline-end: calc(var(--popup-footer-padding) + .25rem);
   }
 
   &-auto-height {

@@ -23,10 +23,6 @@
   align-items: center;
   background-color: var(--surface-color);
 
-	/* @include respond-to(esg-bottom-new) {
-		bottom: calc(100% + .5rem);
-	} */
-
   &:not(.is-visible) {
 		display: none;
 	}

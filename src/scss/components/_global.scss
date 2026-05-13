@@ -103,11 +103,6 @@ Utility Classes
   overflow: hidden;
 }
 
-// No Text Select
-.no-select/* , .no-select * */ {
-  user-select: none;
-}
-
 .no-transition {
   &,
   &:before,

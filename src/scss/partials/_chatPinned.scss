@@ -11,18 +11,17 @@
 
   &-border {
     position: relative;
-    height: 2rem;
-    width: .125rem;
+    height: 2.5rem;
+    width: .1875rem;
     flex: 0 0 auto;
-    // padding: .125rem 0;
 
     &-wrapper-1 {
       position: relative;
       top: 50%;
       transform: translateY(-50%);
-      height: 2rem;
-      width: .125rem;
-      border-radius: 1px;
+      height: 2.5rem;
+      width: .1875rem;
+      border-radius: 3px;
       background: var(--primary-color);
     }
 
@@ -31,15 +30,6 @@
       --height: 2.5rem;
       height: var(--height);
       overflow: hidden;
-      /* mask-image: linear-gradient(to bottom, transparent 0, black var(--mask-height), black calc(var(--height) - var(--mask-height)), transparent var(--height));
-      
-      &.mask-top {
-        mask-image: linear-gradient(to bottom, transparent 0, black var(--mask-height));
-      }
-
-      &.mask-bottom {
-        mask-image: linear-gradient(to bottom, black calc(var(--height) - var(--mask-height)), transparent var(--height));
-      } */
 
       &:before, 
       &:after {
@@ -101,9 +91,9 @@
       position: absolute;
       left: 0;
       top: 0;
-      width: 2px;
+      width: 3px;
       background: currentColor;
-      border-radius: 1px;
+      border-radius: 3px;
     }
 
     body:not(.animation-level-0) & {
@@ -114,13 +104,8 @@
     }
   }
 
-  &-content {
-    --height: 32px;
-    height: var(--height);
-  }
-
   &-media {
-    border-radius: .1875rem;
+    border-radius: .25rem;
   }
 }
 
@@ -132,9 +117,7 @@
   cursor: pointer;
   display: flex;
   align-items: center;
-  overflow: hidden;
   position: relative;
-  user-select: none;
 
   &-content {
     flex-grow: 1;
@@ -210,6 +193,7 @@
   display: block;
   white-space: initial;
   font-size: var(--font-size);
+  overflow: hidden;
   // width: min-content;
   // max-width: 100%;
   // min-width: 100%;
@@ -270,43 +254,28 @@
 
 .pinned-container {
   --container-height: var(--pinned-container-height);
+  --pc-button-height: 2.5rem;
+  position: relative;
+  inset-inline: 0;
+  margin: 0;
+  width: auto;
+  height: var(--container-height);
+  max-height: var(--container-height);
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex: 0 0 auto;
-  overflow: visible;
-  cursor: pointer;
+  background-color: var(--surface-color) !important;
+  padding: .25rem;
 
-  &.is-floating {
-    position: relative !important;
-    inset-inline: 0;
-    margin: 0;
-    width: auto;
-    height: var(--container-height);
-    max-height: var(--container-height);
-    overflow: hidden;
-    background-color: var(--surface-color) !important;
+  &.is-first {
+    border-top-left-radius: $border-radius-big;
+    border-top-right-radius: $border-radius-big;
+  }
 
-    &:not(:last-child) {
-      border-bottom: 1px solid var(--border-color);
-    }
-
-    .pinned-container-wrapper {
-      order: 0;
-      padding: 0 1rem;
-      height: 100%;
-      border-radius: 0;
-      z-index: 0;
-      max-width: 100%;
-
-      @include respond-to(handhelds) {
-        padding: 0 .5rem;
-      }
-    }
-
-    .pinned-container-content {
-      margin-inline-end: .5rem;
-    }
+  &.is-last {
+    border-bottom-left-radius: $border-radius-big;
+    border-bottom-right-radius: $border-radius-big;
   }
 
   &-content {
@@ -314,13 +283,13 @@
     overflow: hidden;
     position: relative;
     pointer-events: none;
+    margin-inline-end: .5rem;
   }
 
   .btn-icon {
     font-size: 1.5rem;
     display: flex;
     justify-content: center;
-    // z-index: 1;
     flex: 0 0 auto;
   }
 
@@ -329,9 +298,13 @@
     flex: 1 1 auto;
     overflow: hidden;
     align-items: center;
-    padding: .25rem;
-    border-radius: .25rem;
-    order: 1;
+    order: 0;
+    padding: 0 1rem;
+    height: 100%;
+    border-radius: 0;
+    z-index: 0;
+    max-width: 100%;
+    cursor: pointer;
 
     &-utils {
       flex: 0 0 auto;
@@ -339,120 +312,96 @@
       align-items: center;
       position: relative;
     }
+  }
 
-    /* html.no-touch &:hover {
-      background-color: var(--light-secondary-text-color);
-    } */
+  &-action-button {
+    --font-size: var(--font-size-16);
+    --custom-emoji-size: calc(var(--font-size) + 4px);
+    height: var(--pc-button-height);
+    border-radius: calc(var(--pc-button-height) / 2);
+    padding: 0 1rem;
+    background-color: var(--primary-color);
+    color: #fff;
+    border: none;
+    outline: none;
+    font-weight: var(--font-weight-bold);
+    line-height: var(--pc-button-height);
+    cursor: pointer;
+    text-decoration: none;
+    max-width: 10rem;
+    transition: opacity .2s ease;
+
+    @include hover() {
+      background-color: var(--dark-primary-color);
+    }
+
+    &.is-leaving {
+      opacity: 0;
+      pointer-events: none;
+    }
+  }
+
+  &-primary-button {
+    font-size: var(--font-size-16);
+    font-weight: var(--font-weight-bold);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: calc(100%);
+    height: var(--pc-button-height);
+    border-radius: calc(var(--pc-button-height) / 2);
   }
 }
 
 .pinned-message {
-  // display: none;
+  --pm-item-height: 2.5rem;
+  --pm-row-height: 1.25rem;
+  --pm-media-offset: var(--pm-item-height) + .375rem;
+  --container-height: var(--pinned-message-height);
   display: flex;
-  width: auto;
+  cursor: initial;
+
+  &-wrapper {
+    --ripple-color: var(--light-primary-color);
+    height: 2.75rem;
+    padding: .125rem .25rem;
+    border-radius: .5rem;
+  }
+
+  &-action {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    position: relative;
+
+    &-button {
+      position: absolute;
+      inset-inline-end: 0;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+  }
+
+  &.has-custom-action-button .pinned-message-wrapper {
+    padding-inline-end: var(--action-button-width, 8rem);
+  }
 
   &-content {
     overflow: visible !important; // * fix blinking in Safari iOS, transform overflow
+    justify-content: flex-end;
+    height: var(--pm-item-height);
   }
 
-  &-media-container {
-    width: 2rem;
-    height: 2rem;
-    position: absolute;
-    margin-inline-start: -.25rem;
+  &-media {
+    width: inherit !important;
+    height: inherit !important;
 
-    @include animation-level(2) {
-      transition: transform var(--pm-transition)/* , opacity var(--pm-transition) */;
-    }
-  }
-
-  /* &-media {
-    transform: none !important;
-
-    &.is-hiding {
-      &.backwards {
-        
-      }
-    }
-  } */
-  
-  // * fix blink in safari, can't add translateX from nowhere...
-  &-title, 
-  &-subtitle {
-    transform: translateX(0);
-  }
-
-  &.is-media {
-    .pinned-message-title, 
-    .pinned-message-subtitle {
-      transform: translateX(calc(2.25rem * var(--reflect)));
-      //overflow: hidden !important;
-    }
-  }
-
-  &:not(.is-media) &-media-container {
-    transform: scale(0);
-    //opacity: 0;
-  }
-
-  .pinned-container-wrapper {
-    min-width: 16rem;
-  }
-
-  &:not(.is-floating) {
-    margin-inline-end: 1rem;
-    //width: 15.5rem;
-
-    /* .pinned-message-content {
-      margin-right: 2.25rem;
-    } */
-
-    .pinned-container-wrapper-utils {
-      display: none;
-    }
-
-    > .pinned-message-close {
-      display: flex;
-      margin-inline-end: .75rem;
-      order: 0;
-    }
-  }
-
-  &.is-media {
-    .pinned-message-title, 
-    .pinned-message-subtitle {
-      width: calc(100% - 2.25rem);    
-    }
-  }
-
-  &.is-floating {
-    --container-height: var(--pinned-message-height);
-    /* .chat:not(.type-discussion) & {
-      .pinned-container-wrapper {
-        padding-right: 3rem;
-      }
-    } */
-
-    > .btn-icon {
-      display: none;
-    }
-
-    .pinned-container-wrapper {
-      padding-inline-start: 1rem;
-    }
-
-    .pinned-container-content {
-      margin-inline-end: 0;
-    }
-  }
-
-  &-content {
-    .pinned-message-title, 
-    .pinned-message-subtitle {
-      position: relative;
-      height: calc(var(--height) / 2);
-      min-height: calc(var(--height) / 2);
-      overflow: visible;
+    &-container {
+      width: var(--pm-item-height);
+      height: var(--pm-item-height);
+      position: absolute;
+      margin-inline-start: -.25rem;
 
       @include animation-level(2) {
         transition: transform var(--pm-transition);
@@ -460,15 +409,37 @@
     }
   }
 
+  &:not(.is-media) &-media-container {
+    transform: scale(0);
+  }
+
+  &-title, 
+  &-subtitle {
+    position: relative;
+    height: var(--pm-row-height);
+    min-height: var(--pm-row-height);
+    overflow: visible;
+    transform: translateX(0);
+
+    .is-media & {
+      width: calc(100% - var(--pm-media-offset));
+      transform: translateX(calc(var(--pm-media-offset) * var(--reflect)));
+    }
+
+    @include animation-level(2) {
+      transition: transform var(--pm-transition);
+    }
+  }
+
   &-title {
-    // margin-top: -.125rem;
-    margin-bottom: .25rem;
+    font-weight: var(--font-weight-bold);
+    margin-bottom: -2px;
   }
 
   &-subtitle {
     .animated-super-row {
       font-size: var(--font-size-14);
-      line-height: 16px;
+      line-height: 18px;
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;
@@ -491,41 +462,16 @@
         transform: scale(0.68);
         opacity: 0;
       }
-
-      /* .animated-super-row {
-        transition: none !important;
-      } */
     }
   }
 
   .animated-super-row {
-    --translateY: 16px;
+    --translateY: var(--pm-row-height);
   }
 
   .pinned-message-media {
-    --translateY: 32px;
+    --translateY: var(--pm-item-height);
   }
-
-  /* .animated-super-row.is-hiding {
-    &.from-top {
-      transform: translateY(-16px);
-    }
-  
-    &.from-bottom {
-      transform: translateY(16px);
-    }
-  }
-  
-  .pinned-message-media.is-hiding {
-    &.from-top {
-      transform: translateY(-32px);
-    }
-  
-    &.from-bottom {
-      transform: translateY(32px);
-    }
-  } */
- 
 
   &.hide ~ .chat-pinlist, 
   &:not(.is-many) ~ .chat-pinlist {
@@ -536,28 +482,12 @@
     .pinned-message-close {
       display: none;
     }
-    
-    &:not(.is-floating) {
-      .pinned-message-pinlist {
-        display: none;
-      }
-    }
-  
-    &.is-floating {
-      .pinned-message-close {
-        display: none;
-      }
-    }
   }
 
   &:not(.is-many) {
     .pinned-message-pinlist {
       display: none;
     }
-  }
-
-  &-pinlist {
-    order: 2;
   }
 
   .chat[data-type="discussion"] & {
@@ -581,10 +511,11 @@
     transform: translateY(0);
   }
 
+  position: absolute;
+  width: calc(var(--messages-container-width) - var(--chat-input-padding) * 2);
   max-width: calc(var(--messages-container-width) - var(--chat-input-padding) * 2);
   margin-inline: auto !important;
   border-radius: $border-radius-big;
-  overflow: hidden;
 
   &:not(.is-visible) {
     display: none !important;
@@ -593,13 +524,10 @@
   &-wrapper {
     overflow: visible !important;
     z-index: 1 !important;
+    padding: 0;
 
     > .btn-icon {
       margin-inline-start: 0 !important;
-    }
-
-    &-utils {
-      @include sidebar-transform(0, true);
     }
   }
 
@@ -628,7 +556,11 @@
   }
 
   &-content {
-    margin-inline-start: .75rem;
+    margin-inline-start: .25rem;
+    pointer-events: all;
+    padding-block: .25rem;
+    padding-inline: .5rem .25rem;
+    border-radius: .5rem;
   }
 
   &-progress {
@@ -641,6 +573,7 @@
     left: 0;
     transform: translateY(var(--translateY));
     transform-origin: var(--transform-origin-left-center);
+    transition: transform var(--transition-standard-out);
 
     &:before {
       @include animation-level(2) {
@@ -670,10 +603,8 @@
 
     &-wrapper {
       position: absolute;
-      height: .5rem;
-      right: 0;
-      bottom: 0;
-      left: 0;
+      inset: 0;
+      border-radius: inherit;
       overflow: hidden;
     }
   }
@@ -746,8 +677,6 @@
   &-title {
     color: var(--primary-color);
     font-weight: var(--font-weight-bold);
-
-    @include sidebar-transform(1, true);
   }
 
   &-title,
@@ -783,27 +712,9 @@
       }
     }
 
-    @include sidebar-transform(1, true);
-
     &-text {
       display: block;
       pointer-events: none;
-    }
-
-    // &.is-first {
-    //   @include sidebar-transform(1, true);
-    // }
-
-    &.is-first &-text {
-      @include sidebar-transform(-0.5, true);
-    }
-
-    // &.is-last {
-    //   @include sidebar-transform(1, true);
-    // }
-
-    &.is-last &-text {
-      @include sidebar-transform(0.5, true);
     }
   }
 
@@ -839,18 +750,12 @@
 .pinned-translation {
   height: var(--pinned-translation-height) !important;
   color: var(--primary-color);
-  font-size: var(--font-size-15);
+  font-size: var(--font-size);
+  justify-content: center;
 
-  &-button {
-    font-weight: var(--font-weight-bold);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    height: 100%;
+  &-primary-button {
+    width: calc(100% - var(--pc-button-height) * 2 - 1rem);
     gap: .375rem;
-
-    @include sidebar-transform(1, true);
 
     &-icon {
       font-size: 1.25rem;
@@ -859,18 +764,26 @@
 
   &-menu {
     position: absolute;
-    inset-inline-end: 1.25rem;
-    padding: .25rem;
-    @include sidebar-transform(0, true);
-
-    @include respond-to(handhelds) {
-      inset-inline-end: .75rem;
-    }
+    inset-inline-end: .25rem;
   }
 }
 
 .pinned-remove-fee {
-  --container-height: 64px;
-  cursor: initial;
-  @include sidebar-transform(1, true);
+  --container-height: var(--pinned-fee-height);
+
+  &-text {
+    font-size: var(--font-size-14);
+    text-align: center;
+    color: var(--secondary-text-color);
+    margin-bottom: .125rem;
+  }
+
+  &-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    width: 100%;
+    height: 100%;
+    padding-block: 0.25rem;
+  }
 }

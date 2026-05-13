@@ -62,7 +62,7 @@
 
   @include animation-level(2) {
     .main-column {
-      transition: transform var(--tabs-transition), filter var(--tabs-transition);;
+      transition: transform var(--tabs-transition), opacity var(--tabs-transition);
     }
   }
 }

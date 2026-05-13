@@ -15,6 +15,7 @@ import TelInputField from '@components/telInputField';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import App from '@config/app';
 import cancelEvent from '@helpers/dom/cancelEvent';
+import focusWhenConnected from '@helpers/dom/focusWhenConnected';
 import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
 import replaceContent from '@helpers/dom/replaceContent';
 import {HelpCountry, HelpCountryCode} from '@layer';
@@ -28,6 +29,8 @@ import {TrueDcId} from '@types';
 import AuthCard from '@/pages/AuthCard';
 import {CardSpec, useAuthFlow} from '@/pages/authFlow';
 import styles from '@/pages/authFlow.module.scss';
+
+if(import.meta.hot) import.meta.hot.accept();
 
 type Spec = Extract<CardSpec, {name: 'signIn'}>;
 
@@ -213,11 +216,12 @@ export default function SignInCard(_props: {spec: Spec}) {
 
   /* ---------- lifecycle ---------- */
 
+  let cancelFocus: (() => void) | undefined;
   onMount(() => {
     managers.appStateManager.pushToState('authState', {_: 'authStateSignIn'});
 
     if(!IS_TOUCH_SUPPORTED) {
-      setTimeout(() => telEl.focus(), 0);
+      cancelFocus = focusWhenConnected(telEl, () => !cancelled);
     }
 
     tryAgain();
@@ -225,6 +229,7 @@ export default function SignInCard(_props: {spec: Spec}) {
 
   onCleanup(() => {
     cancelled = true;
+    cancelFocus?.();
   });
 
   /* ---------- render ---------- */

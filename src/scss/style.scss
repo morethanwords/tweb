@@ -9,6 +9,7 @@
 @use "base";
 @use "components/prism";
 @use "fonts";
+@use "partials/ripple";
 @use "partials/section";
 @use "partials/input";
 @use "partials/inputSearch";
@@ -45,7 +46,6 @@
 @use "partials/selector";
 @use "partials/gifsMasonry";
 @use "partials/preloader";
-@use "partials/ripple";
 @use "partials/avatar";
 @use "partials/document";
 @use "partials/audio";

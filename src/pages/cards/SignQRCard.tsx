@@ -28,6 +28,8 @@ import AuthCard from '@/pages/AuthCard';
 import {CardSpec, useAuthFlow} from '@/pages/authFlow';
 import styles from '@/pages/authFlow.module.scss';
 
+if(import.meta.hot) import.meta.hot.accept();
+
 type Spec = Extract<CardSpec, {name: 'signQR'}>;
 
 const FETCH_INTERVAL = 3;

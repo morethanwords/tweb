@@ -15,8 +15,14 @@ import type {ShortcutKey as PasscodeLockShortcutKey} from '@components/sidebarLe
 import {IS_MOBILE} from '@environment/userAgent';
 import getTimeFormat from '@helpers/getTimeFormat';
 import App from '@config/app';
+import {getAccentPresetsForBase} from '@config/themePresets';
 import {ColoredBrushType} from '@components/mediaEditor/context';
 import {FontKey} from '@components/mediaEditor/types';
+
+// Factory tinted ("Dark") collapses onto the first base-color preset (blue) so the accent picker
+// can omit a separate "default" swatch — resetting to factory now reaches the same state the user
+// gets by tapping the blue circle.
+const TINTED_DEFAULT_PRESET = getAccentPresetsForBase('baseThemeTinted')[0];
 
 const STATE_VERSION = App.version;
 const BUILD = App.build;
@@ -32,11 +38,13 @@ export type Background = {
   id: string | number,  // wallpaper id
 };
 
+export type AppThemeSettings = Modify<ThemeSettings, {
+  highlightingColor: string
+}>;
+
 export type AppTheme = Modify<Theme, {
-  name: 'day' | 'night' | 'system',
-  settings?: Modify<ThemeSettings, {
-    highlightingColor: string
-  }>
+  name: 'day' | 'night' | 'light' | 'tinted' | 'system',
+  settings?: Array<AppThemeSettings>
 }>;
 
 export type AutoDownloadPeerTypeSettings = {
@@ -77,6 +85,14 @@ export type StateSettings = {
   background?: Background, // ! DEPRECATED
   themes: AppTheme[],
   theme: AppTheme['name'],
+  // Last explicitly-picked theme variant on each side. The burger-menu Dark-Mode toggle uses
+  // these so toggling away and back returns to the same variant (e.g. tinted ↔ classic ↔ tinted)
+  // instead of always flipping to the legacy night/classic pair. Updated in themeController on
+  // settings.theme changes; radios/UI / `switchTheme(name)` direct calls feed it.
+  lastThemeNames: {
+    dark: Extract<AppTheme['name'], 'night' | 'tinted'>,
+    light: Extract<AppTheme['name'], 'day' | 'light'>
+  },
   notifications: {
     sound: boolean,
     push: boolean,
@@ -270,6 +286,68 @@ export const DEFAULT_THEME: Theme = {
         fourth_background_color: 0x4f5bd5
       }
     }
+  }, {
+    _: 'themeSettings',
+    pFlags: {},
+    base_theme: {_: 'baseThemeTinted'},
+    // accent + wallpaper aligned with iOS Dark Blue ("nightAccent"). See submodules/Telegram-iOS/
+    // submodules/TelegramPresentationData/Sources/DefaultDarkTintedPresentationTheme.swift —
+    // the home wallpaper is the `.blue` baseColor variant from `colorWallpaper` (line 13-14):
+    //   case .blue: return (.variant7, 40, [0x1e3557, 0x182036, 0x1c4352, 0x16263a])
+    // accent + bubble gradient come from the blue base-color preset so factory state matches what
+    // the accent picker offers as its first swatch (the "default" swatch is hidden on tinted).
+    accent_color: TINTED_DEFAULT_PRESET.accent_color,
+    message_colors: TINTED_DEFAULT_PRESET.message_colors,
+    wallpaper: {
+      _: 'wallPaper',
+      pFlags: {
+        default: true,
+        pattern: true,
+        dark: true
+      },
+      access_hash: '',
+      document: undefined,
+      id: '',
+      slug: 'pattern',
+      settings: {
+        _: 'wallPaperSettings',
+        pFlags: {},
+        // iOS stores intensity 40 (positive) for these dark wallpapers. tweb's pattern renderer
+        // expects the dark-pattern sign convention: dark wallpapers carry negative intensity, abs
+        // value used as the pattern overlay opacity. So we flip iOS' 40 to -40.
+        intensity: -40,
+        background_color: 0x1e3557,
+        second_background_color: 0x182036,
+        third_background_color: 0x1c4352,
+        fourth_background_color: 0x16263a
+      }
+    }
+  }, {
+    _: 'themeSettings',
+    pFlags: {},
+    base_theme: {_: 'baseThemeDay'},
+    accent_color: 0x2D7ED5,
+    message_colors: [0x2D7ED5],
+    wallpaper: {
+      _: 'wallPaper',
+      pFlags: {
+        default: true,
+        pattern: true
+      },
+      access_hash: '',
+      document: undefined,
+      id: '',
+      slug: 'pattern',
+      settings: {
+        _: 'wallPaperSettings',
+        pFlags: {},
+        intensity: 50,
+        background_color: 0xb1e0fa,
+        second_background_color: 0x82b0d8,
+        third_background_color: 0xa0d8e8,
+        fourth_background_color: 0xe5f0f8
+      }
+    }
   }],
   slug: '',
   title: '',
@@ -277,18 +355,24 @@ export const DEFAULT_THEME: Theme = {
   pFlags: {default: true}
 };
 
-const makeDefaultAppTheme = (
-  name: AppTheme['name'],
-  baseTheme: BaseTheme['_'],
-  highlightingColor: string
-): AppTheme => {
+// Per-base highlighting colors used when nothing has been computed from a wallpaper yet.
+// Stored on every settings entry so that switching the active base theme keeps highlights coherent
+// (mirrors how iOS persists a per-base TelegramThemeSettings array).
+const DEFAULT_HIGHLIGHTING_COLORS: {[base in BaseTheme['_']]?: string} = {
+  baseThemeClassic: 'hsla(86.4, 43.846153%, 45.117647%, .4)',
+  baseThemeNight: 'hsla(299.142857, 44.166666%, 37.470588%, .4)',
+  baseThemeTinted: 'hsla(258.461538, 50%, 65.490196%, .4)',
+  baseThemeDay: 'hsla(210, 67.741935%, 50.588235%, .4)'
+};
+
+const makeDefaultAppTheme = (name: AppTheme['name']): AppTheme => {
   return {
     ...DEFAULT_THEME,
     name,
-    settings: {
-      ...DEFAULT_THEME.settings.find((s) => s.base_theme._ === baseTheme),
-      highlightingColor
-    }
+    settings: DEFAULT_THEME.settings.map((s) => ({
+      ...s,
+      highlightingColor: DEFAULT_HIGHLIGHTING_COLORS[s.base_theme._] ?? ''
+    }))
   };
 };
 
@@ -339,10 +423,16 @@ export const SETTINGS_INIT: StateSettings = {
     big: true
   },
   themes: [
-    makeDefaultAppTheme('day', 'baseThemeClassic', 'hsla(86.4, 43.846153%, 45.117647%, .4)'),
-    makeDefaultAppTheme('night', 'baseThemeNight', 'hsla(299.142857, 44.166666%, 37.470588%, .4)')
+    makeDefaultAppTheme('day'),
+    makeDefaultAppTheme('night'),
+    makeDefaultAppTheme('tinted'),
+    makeDefaultAppTheme('light')
   ],
   theme: 'system',
+  lastThemeNames: {
+    dark: 'night',
+    light: 'day'
+  },
   notifications: {
     sound: false,
     push: true,

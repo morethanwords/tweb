@@ -15,16 +15,21 @@ import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId'
 import {copyTextToClipboard} from '@helpers/clipboard';
 import {i18n, join} from '@lib/langPack';
 import {useAppConfig, useIsFrozen} from '@stores/appState';
-import {Message} from '@layer';
+import {Message, User} from '@layer';
 import {createMemo, createRoot, Show} from 'solid-js';
 import {createStore} from 'solid-js/store';
 import Animated from '@helpers/solid/animations';
+import classNames from '@helpers/string/classNames';
 import InputFieldMessage from '@components/inputFieldMessage';
 import PopupElement from '@components/popups/indexTsx';
 import InputFieldAnimated from '@components/inputFieldAnimated';
 import ChatInput from '@components/chat/input';
 import ListenerSetter from '@helpers/listenerSetter';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
+import SendMenu from '@components/chat/sendContextMenu';
+import showScheduleSendingPopup from '@components/popups/scheduleSendingPopup';
+import {getMiddleware} from '@helpers/middleware';
+import {SEND_WHEN_ONLINE_TIMESTAMP} from '@appManagers/constants';
 
 async function resolveChatRightsActions(peerIdMids: {[fromPeerId: PeerId]: number[]}): Promise<ChatRights[]> {
   const messagesPromises = Object.keys(peerIdMids).map((peerId) => {
@@ -119,6 +124,12 @@ export default async function showForwardPopup(
   const {message_length_max: MAX_MESSAGE_LENGTH} = await rootScope.managers.apiManager.getConfig();
 
   const listenerSetter = new ListenerSetter();
+  const sendMenuMiddleware = getMiddleware();
+  let sendMenu: SendMenu | undefined;
+  let sendMenuElement: HTMLElement | undefined;
+  let silent = false;
+  let scheduleDate: number | undefined;
+  let scheduleRepeatPeriod: number | undefined;
 
   // eslint-disable-next-line prefer-const -- referenced by starsState memo created before the popup handle is assigned
   let handle: ReturnType<typeof showPickUserPopup>;
@@ -203,7 +214,10 @@ export default async function showForwardPopup(
         inputField,
         sendingParams: {
           peerId,
-          threadId
+          threadId,
+          silent: silent || undefined,
+          scheduleDate: scheduleDate || undefined,
+          scheduleRepeatPeriod: scheduleRepeatPeriod || undefined
         },
         forwarding: peerIdMids,
         slowModeParams: {
@@ -217,6 +231,84 @@ export default async function showForwardPopup(
     }
 
     return success;
+  };
+
+  const updateSendMenuPeerParams = () => {
+    if(!sendMenu) return;
+    const selected = handle?.selector?.getSelected() ?? [];
+    const peerIds = selected.filter((k): k is PeerId => k.isPeerId());
+    const allSelf = peerIds.length > 0 && peerIds.every((p) => p === rootScope.myId);
+    const peerId = allSelf ?
+      rootScope.myId :
+      (peerIds.find((p) => p !== rootScope.myId) ?? rootScope.myId);
+    const map = handle?.selector?.starsAmountByPeer;
+    const isPaid = map ? peerIds.some((p) => (map.get(p) || 0) > 0) : false;
+    sendMenu.setPeerParams({peerId, isPaid});
+  };
+
+  const setupSendMenu = (btn: HTMLElement) => {
+    if(!btn) return;
+    sendMenuElement?.remove();
+    sendMenuElement = undefined;
+    sendMenuMiddleware.clean();
+
+    if(!popupContainerEl) return;
+
+    sendMenu = new SendMenu({
+      onSilentClick: () => {
+        silent = true;
+        finalizingThroughButton = true;
+        handle.finalize();
+      },
+      onScheduleClick: () => {
+        showScheduleSendingPopup({
+          onPick: (timestamp, repeatPeriod) => {
+            scheduleDate = timestamp;
+            scheduleRepeatPeriod = repeatPeriod;
+            finalizingThroughButton = true;
+            handle.finalize();
+          },
+          canSendWhenOnline: false
+        });
+      },
+      onSendWhenOnlineClick: () => {
+        scheduleDate = SEND_WHEN_ONLINE_TIMESTAMP;
+        finalizingThroughButton = true;
+        handle.finalize();
+      },
+      canSendWhenOnline: async() => {
+        const selected = handle?.selector?.getSelected() ?? [];
+        const peerIds = selected.filter((k): k is PeerId => k.isPeerId());
+        if(peerIds.length !== 1) return false;
+        const peerId = peerIds[0];
+        if(peerId === rootScope.myId || !peerId.isUser()) return false;
+        if(!(await rootScope.managers.appUsersManager.isUserOnlineVisible(peerId.toUserId()))) {
+          return false;
+        }
+        const user = await rootScope.managers.appUsersManager.getUser(peerId.toUserId()) as User.user;
+        if(user?.pFlags?.bot) return false;
+        return user?.status?._ !== 'userStatusOnline';
+      },
+      middleware: sendMenuMiddleware.get(),
+      openSide: 'top-left',
+      onContextElement: btn,
+      onOpen: () => {
+        const peerIds = (handle?.selector?.getSelected() ?? []).filter((k) => k.isPeerId());
+        return peerIds.length > 0;
+      },
+      onRef: (element) => {
+        sendMenuElement = element;
+        popupContainerEl.appendChild(element);
+      }
+    });
+
+    updateSendMenuPeerParams();
+  };
+
+  const resetSendOptions = () => {
+    silent = false;
+    scheduleDate = undefined;
+    scheduleRepeatPeriod = undefined;
   };
 
   let onSelect: Parameters<typeof showPickUserPopup>[0]['onSelect'];
@@ -267,14 +359,16 @@ export default async function showForwardPopup(
     };
   }
 
-  let btnRef: HTMLElement, inputField: InputFieldAnimated;
+  let btnRef: HTMLElement, inputField: InputFieldAnimated, popupContainerEl: HTMLElement;
   handle = showPickUserPopup({
     peerType: ['dialogs', 'contacts'],
+    containerProps: {ref: (el) => popupContainerEl = el},
     onSelect,
     onChange: () => {
       const selected = handle.selector.getSelected() ?? [];
       const peerIds = selected.filter((k): k is PeerId => k.isPeerId());
       starsState.set('selectedPeers', peerIds);
+      updateSendMenuPeerParams();
     },
     multiSelect: 'hidden',
     placeholder: 'ShareModal.Search.ForwardPlaceholder',
@@ -297,36 +391,46 @@ export default async function showForwardPopup(
       headerLangPackKey: 'Forward'
     }),
     footer: ({multiSelect}) => {
-      const showCopyLink = () => canCopyLink && multiSelect() === 'hidden';
+      const hasMessage = () => !!starsState.store.messageLength;
+      const showCopyLink = () => canCopyLink && multiSelect() === 'hidden' && !hasMessage();
+      const isFooterHidden = () => !canCopyLink && multiSelect() === 'hidden' && !hasMessage();
       return (
-        <Animated type="cross-fade" itemClass="popup-forward-footer-item">
-          <Show
-            when={showCopyLink()}
-            fallback={
-              <InputFieldMessage
-                btnProps={{
-                  ref: (ref) => btnRef = ref,
-                  onClick: () => {
-                    finalizingThroughButton = true;
-                    handle.finalize();
-                  }
-                }}
-                ref={(ref) => inputField = ref}
-                listenerSetter={listenerSetter}
-                onInput={(_hasValue, length) => starsState.set('messageLength', length)}
-                stars={starsState.totalStars}
-              />
-            }
-          >
-            <PopupElement.FooterButton callback={handleCopyLink}>
-              {i18n('CopyLink')}
-            </PopupElement.FooterButton>
-          </Show>
-        </Animated>
+        <div class={classNames('popup-forward-footer-content', isFooterHidden() && 'is-hidden')}>
+          <Animated type="cross-fade" itemClass="popup-forward-footer-item">
+            <Show
+              when={showCopyLink()}
+              fallback={
+                <InputFieldMessage
+                  btnProps={{
+                    ref: (ref) => {
+                      btnRef = ref;
+                      setupSendMenu(ref);
+                    },
+                    onClick: () => {
+                      resetSendOptions();
+                      finalizingThroughButton = true;
+                      handle.finalize();
+                    }
+                  }}
+                  ref={(ref) => inputField = ref}
+                  listenerSetter={listenerSetter}
+                  onInput={(_hasValue, length) => starsState.set('messageLength', length)}
+                  stars={starsState.totalStars}
+                />
+              }
+            >
+              <PopupElement.FooterButton callback={handleCopyLink}>
+                {i18n('CopyLink')}
+              </PopupElement.FooterButton>
+            </Show>
+          </Animated>
+        </div>
       );
     },
     onClose: () => {
       listenerSetter.removeAll();
+      sendMenuElement?.remove();
+      sendMenuMiddleware.destroy();
       starsStateDispose?.();
       handle.selector && (handle.selector.onStarsAmountUpdate = undefined);
       onClose?.();

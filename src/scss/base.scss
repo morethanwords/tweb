@@ -11,6 +11,12 @@
   --vh: 1vh;
   --page-chats-padding: #{$page-chats-padding};
   --100vh: calc(var(--vh) * 100 - 2 * var(--page-chats-padding));
+  --main-column-border-radius: #{$border-radius-big};
+
+  @include respond-to(handhelds) {
+    --page-chats-padding: 0;
+    --main-column-border-radius: 0;
+  }
   --z-below: -1;
   --hover-alpha: #{$hover-alpha};
   --reflect: 1;
@@ -123,7 +129,7 @@
   --topbar-call-group-call-height: 3rem;
   --topbar-call-call-height: 3rem;
   --topbar-call-rtmp-height: 1.6875rem;
-  --topbar-audio-height: 3.25rem;
+  --topbar-audio-height: 3rem;
   --topbar-floating-call-height: 0px;
   --topbar-floating-audio-height: 0px;
 
@@ -192,11 +198,6 @@
     --chat-input-inner-padding: #{$chat-input-inner-padding};
 
     --section-margin-inline: 0.5rem;
-  }
-
-  @include respond-to(esg-bottom) {
-    --chat-input-size: #{$chat-input-handhelds-size};
-    --chat-input-inner-padding: #{$chat-input-inner-padding-handhelds};
   }
 
   @include respond-to(only-medium-screens) {
@@ -366,7 +367,10 @@ body {
   overflow: hidden; // + disable overscroll behavior on macOS
 
   @include respond-to(handhelds) {
-    height: var(--100vh);
+    // Use the JS-tracked viewport directly (handles iOS URL bar) — NOT
+    // `--100vh`, which subtracts page-chats-padding and would leave a
+    // gap below body that pushed the column visually short.
+    height: calc(var(--vh) * 100);
   }
 
   /* @include respond-to(handhelds) {
@@ -414,6 +418,11 @@ html {
   //text-rendering: optimizeSpeed;
 }
 
+input,
+textarea {
+  user-select: text;
+}
+
 body {
   //touch-action: pan-x pan-y;
   background-color: var(--body-background-color);
@@ -452,15 +461,6 @@ body.deactivated-backwards {
     filter: grayscale(0);
   }
 }
-
-/* body {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  min-height: 0!important;
-} */
 
 a {
   color: var(--link-color);
@@ -1092,7 +1092,8 @@ not screen and (                min-resolution: 2dppx) {
   }
 }
 
-.popup-disable-password, .popup-skip-email {
+.popup-disable-password,
+.popup-skip-email {
   .popup-description {
     max-width: 284px;
   }
@@ -1111,7 +1112,6 @@ not screen and (                min-resolution: 2dppx) {
     //overflow: hidden;
     position: relative;
     cursor: pointer;
-    user-select: none;
 
     &-media {
       position: absolute;
@@ -1170,6 +1170,10 @@ middle-ellipsis-element {
 
 .hover-primary-effect {
   @include hover-background-effect(primary);
+
+  .c-ripple__circle {
+    background-color: var(--light-primary-color);
+  }
 }
 
 .hover-danger-effect {
@@ -1423,29 +1427,10 @@ hr {
   line-height: inherit;
   border-radius: $border-radius;
   cursor: pointer;
-  user-select: none;
   vertical-align: middle;
   width: var(--esg-emoji-total-size);
   height: var(--esg-emoji-total-size);
-
-  // html:not(.emoji-supported) & {
-    position: relative;
-  // }
-
-  // border-radius: unset;
-
-  // @include hover-effect() {
-  //   &:before {
-  //     content: " ";
-  //     border-radius: $border-radius;
-  //     background-color: var(--light-secondary-text-color);
-  //     position: absolute;
-  //     top: -.1875rem;
-  //     right: -.1875rem;
-  //     bottom: -.1875rem;
-  //     left: -.1875rem;
-  //   }
-  // }
+  position: relative;
 
   .emoji-placeholder {
     position: absolute;
@@ -1837,6 +1822,18 @@ hr {
       padding-inline-end: 0;
       padding-top: 0 !important;
       padding-bottom: 0 !important;
+    }
+  }
+
+  &-row {
+    .row-title {
+      display: flex;
+      align-items: center;
+      gap: .25rem;
+    }
+
+    .accordion-icon {
+      --translateY: 0;
     }
   }
 }

@@ -12,6 +12,8 @@ import type Chat from '@components/chat/chat';
 import {AppImManager, APP_TABS} from '@lib/appImManager';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import opusDecodeController from '@lib/opusDecodeController';
+import VoiceWaveformAnalyser from '@helpers/voiceWaveformAnalyser';
+import NativeVoiceRecorder, {isNativeVoiceRecorderSupported} from '@helpers/voiceRecorder/nativeVoiceRecorder';
 import {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable, ButtonMenuSync} from '@components/buttonMenu';
 import emoticonsDropdown, {EmoticonsDropdown} from '@components/emoticonsDropdown';
 import PopupCreatePoll from '@components/popups/createPoll';
@@ -280,6 +282,7 @@ export default class ChatInput {
   public setEffect: Setter<DocId>;
 
   private recorder: any;
+  private waveformAnalyser: VoiceWaveformAnalyser;
   public recording = false;
   private recordCanceled = false;
   private recordTimeEl: HTMLElement;
@@ -915,19 +918,31 @@ export default class ChatInput {
   }
 
   private constructRecorder() {
-    const Recorder = (window as any).Recorder;
-    if(Recorder) try {
-      this.recorder = new Recorder({
-        // encoderBitRate: 32,
-        // encoderPath: "../dist/encoderWorker.min.js",
-        encoderSampleRate: 48000,
-        monitorGain: 0,
-        numberOfChannels: 1,
-        recordingGain: 1,
-        reuseWorker: true
-      });
-    } catch(err) {
-      console.error('Recorder constructor error:', err);
+    const config = {
+      // encoderBitRate: 32,
+      // encoderPath: "../dist/encoderWorker.min.js",
+      encoderSampleRate: 48000,
+      monitorGain: 0,
+      numberOfChannels: 1,
+      recordingGain: 1,
+      reuseWorker: true
+    };
+
+    if(isNativeVoiceRecorderSupported()) {
+      try {
+        this.recorder = new NativeVoiceRecorder(config);
+      } catch(err) {
+        console.error('NativeVoiceRecorder constructor error:', err);
+      }
+    }
+
+    if(!this.recorder) {
+      const Recorder = (window as any).Recorder;
+      if(Recorder) try {
+        this.recorder = new Recorder(config);
+      } catch(err) {
+        console.error('Recorder constructor error:', err);
+      }
     }
 
     if(!this.recorder) {
@@ -940,6 +955,11 @@ export default class ChatInput {
       this.setRecording(false);
       this.chatInput.classList.remove('is-locked');
       this.recordRippleEl.style.transform = '';
+
+      if(this.waveformAnalyser) {
+        this.waveformAnalyser.finish();
+        this.waveformAnalyser = undefined;
+      }
     };
 
     this.recorder.ondataavailable = async(typedArray: Uint8Array) => {
@@ -958,6 +978,9 @@ export default class ChatInput {
         this.recordingNavigationItem = undefined;
       }
 
+      const waveform = this.waveformAnalyser?.finish();
+      this.waveformAnalyser = undefined;
+
       if(this.recordCanceled) {
         return;
       }
@@ -971,7 +994,7 @@ export default class ChatInput {
 
       const duration = (Date.now() - this.recordStartTime) / 1000 | 0;
       const dataBlob = new Blob([typedArray as BlobPart], {type: 'audio/ogg'});
-      opusDecodeController.decode(typedArray, true).then((result) => {
+      opusDecodeController.decode(typedArray, false).then((result) => {
         opusDecodeController.setKeepAlive(false);
 
         // тут objectURL ставится уже с audio/wav
@@ -981,7 +1004,7 @@ export default class ChatInput {
           isVoiceMessage: true,
           isMedia: true,
           duration,
-          waveform: result.waveform,
+          waveform,
           objectURL: result.url,
           clearDraft: true
         });
@@ -1405,7 +1428,7 @@ export default class ChatInput {
         // ! костыль, это скроет закреплённые сообщения сразу, вместо того, чтобы ждать пока анимация перехода закончится
         const originalChat = this.chat.appImManager.chat;
         if(originalChat.topbar.pinnedMessage) {
-          originalChat.topbar.pinnedMessage.pinnedMessageContainer.toggle(true);
+          originalChat.topbar.pinnedMessage.setHidden(true);
         }
       });
     });
@@ -3391,6 +3414,8 @@ export default class ChatInput {
 
         const sourceNode: MediaStreamAudioSourceNode = this.recorder.sourceNode;
         const context = sourceNode.context;
+
+        this.waveformAnalyser = new VoiceWaveformAnalyser(sourceNode);
 
         const analyser = context.createAnalyser();
         sourceNode.connect(analyser);

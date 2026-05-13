@@ -93,8 +93,6 @@ ul.chatlist {
   width: 100%;
   background-color: var(--surface-color);
 
-  user-select: none;
-  -webkit-user-select: none; /* disable selection/Copy of UIWebView */
   -webkit-touch-callout: none; /* disable the IOS popup when long-press on a link */
 
   &-chat {

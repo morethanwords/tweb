@@ -422,16 +422,6 @@ export class AppSelection extends EventListenerBase<{
 
     this.dispatchEvent('toggle', this.isSelecting);
 
-    // const bubblesContainer = this.bubbles.bubblesContainer;
-    // bubblesContainer.classList.toggle('is-selecting', !!size);
-
-    /* if(bubblesContainer.classList.contains('is-chat-input-hidden')) {
-      const scrollable = this.appImManager.scrollable;
-      if(scrollable.isScrolledDown) {
-        scrollable.scrollTo(scrollable.scrollHeight, 'top', true, true, 200);
-      }
-    } */
-
     if(!IS_TOUCH_SUPPORTED) {
       this.listenElement.classList.toggle('no-select', this.isSelecting);
 

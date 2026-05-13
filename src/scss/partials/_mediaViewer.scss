@@ -89,6 +89,9 @@ $inactive-opacity: .4;
     max-height: 100%;
     max-width: 100%;
     overflow: hidden;
+    padding-top: var(--padding-vertical-top);
+    padding-bottom: var(--padding-vertical-bottom);
+    box-sizing: border-box;
   }
 
   /* &-stub {
@@ -224,7 +227,7 @@ $inactive-opacity: .4;
     width: 7rem;
     height: calc(100% - var(--offset-top));
     cursor: pointer;
-    // z-index: 5;
+    z-index: 1;
 
     html.no-touch & {
       --offset-top: 3.75rem;
@@ -327,7 +330,6 @@ $inactive-opacity: .4;
       height: 100%;
       max-width: 100%;
       max-height: 100%;
-      user-select: none;
       object-fit: cover;
       //object-fit: contain;
       opacity: 1;
@@ -348,7 +350,6 @@ $inactive-opacity: .4;
     }
 
     .thumbnail-avatar {
-      user-select: none;
       opacity: 1;
       transition: opacity var(--transition-standard-in);
     }
@@ -389,13 +390,12 @@ $inactive-opacity: .4;
 
     &.center {
       left: 50% !important;
-      top: 50% !important;
+      top: calc(50% + (var(--padding-vertical-top) - var(--padding-vertical-bottom)) / 2) !important;
       transform: translate3d(-50%, -50%, 0) !important;
       max-width: 100vw;
-      max-height: calc(var(--100vh) - var(--padding-vertical));
+      max-height: calc(100vh - var(--padding-vertical-top) - var(--padding-vertical-bottom));
 
       @include respond-to(handhelds) {
-        --padding-vertical: 7.5rem;
         width: 100% !important;
         height: 100% !important;
         max-width: 100vw !important;
@@ -530,7 +530,8 @@ $inactive-opacity: .4;
   &-whole {
     --open-duration: .2s;
     --move-duration: .35s;
-    --padding-vertical: 15rem;
+    // --padding-vertical-top / --padding-vertical-bottom are set by JS
+    // (AppMediaViewerBase.applyLayoutVariables) — single source of truth.
     inset: 0;
     position: fixed!important;
     display: block;
@@ -572,7 +573,7 @@ $inactive-opacity: .4;
         opacity: 0;
         transition: opacity var(--open-duration) 0s, visibility 0s var(--open-duration);
       } */
-  
+
       .btn-menu-toggle:not(.playback-rate) {
         color: rgba(255, 255, 255, $inactive-opacity);
         opacity: 1;
@@ -611,10 +612,6 @@ $inactive-opacity: .4;
       .thumbnail-avatar {
         pointer-events: none;
       }
-
-      .media-viewer-caption {
-        user-select: none;
-      }
     }
   }
 
@@ -629,6 +626,18 @@ $inactive-opacity: .4;
 
     @include animation-level(2) {
       transition: transform var(--open-duration);
+    }
+  }
+
+  &-mover-wrapper {
+    position: absolute;
+    inset: 0;
+    // No overflow:hidden — the mover slides freely outside the wrapper bounds during
+    // prev/next nav. clip-path (set inline by JS) provides the open/close animation
+    // clipping in viewport coords without scaling.
+
+    @include animation-level(2) {
+      transition: clip-path var(--open-duration);
     }
   }
 
@@ -733,7 +742,6 @@ $inactive-opacity: .4;
 }
 
 .media-viewer-whole.live {
-  --padding-vertical: 7.5rem;
 
   .media-viewer-topbar {
     padding: 0 .75rem;

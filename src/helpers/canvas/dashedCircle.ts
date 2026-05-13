@@ -40,7 +40,7 @@ export default class DashedCircle {
 
     this.centerX = this.width / 2;
     this.centerY = this.height / 2;
-    this.radius = options.radius * this.dpr;
+    this.radius = options.radius * this.dpr - 0.5;
     this.gapLength = options.gap * this.dpr;
     this.totalLength = Math.PI * this.radius * 2;
     // this.startAngle = -1.5 + this.gapLength * 0 / this.totalLength;

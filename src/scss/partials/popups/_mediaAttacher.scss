@@ -40,7 +40,6 @@
       // width: fit-content;
       width: 100%;
       border-radius: $section-rounded-border-radius;
-      user-select: none;
       position: relative;
     }
   }
@@ -145,7 +144,6 @@
     color: white;
     display: flex;
     align-items: center;
-    user-select: none;
     height: var(--height);
     line-height: 1;
   }

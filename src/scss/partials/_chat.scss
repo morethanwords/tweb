@@ -437,6 +437,7 @@
 }
 
 #column-center {
+	--page-chats-padding: 1rem;
 	position: absolute;
 	inset: var(--page-chats-padding);
 
@@ -451,13 +452,19 @@
 	}
 
 	@include respond-to(handhelds) {
+		// `.main-column { width: 100% }` would combine with `position: absolute`
+		// + `inset: var(--page-chats-padding)` to make the box overflow the
+		// right edge by exactly one page-chats-padding. Let `inset` size it.
+		width: auto;
+
 		body.is-left-column-shown & {
 			transform: translate3d(100vw, 0, 0);
+			opacity: 0;
 		}
 
 		body.is-right-column-shown & {
 			transform: translate3d(-25vw, 0, 0);
-      filter: brightness(80%);
+			opacity: 0;
 		}
 	}
 
@@ -553,8 +560,8 @@
 	--padding-vertical: .25rem;
 	--padding-horizontal: .25rem;
 	--padding: var(--padding-vertical) var(--padding-horizontal);
-  --button-size: 2.125rem;
-  --button-horizontal-margin: .4375rem;
+  --button-size: 2.5rem;
+  --button-horizontal-margin: 0.25rem;
 	display: flex;
 	align-items: center;
 	flex-direction: column;
@@ -776,10 +783,6 @@
 	@media only screen and (max-width: 420px) {
 		max-width: 100%;
 	}
-
-	@include respond-to(esg-bottom) {
-		--padding-vertical: 1px;
-	}
 }
 
 .rows-wrapper {
@@ -829,11 +832,6 @@
 
 		@include animation-level(2) {
 			transition: height var(--transition-standard-out)/* , opacity .15s ease-out */;
-		}
-
-		@include respond-to(esg-bottom-new) {
-			padding-top: .3125rem;
-			margin-bottom: -.3125rem;
 		}
 
 		.chat.is-helper-active & {
@@ -1147,7 +1145,7 @@
 		flex: 0 0 auto;
 		font-size: 1.5rem;
 		color: var(--secondary-text-color);
-		margin-block: 0 3px;
+		margin-block: 0 0;
     margin-inline: var(--button-horizontal-margin);
 		padding: 0;
 		width: var(--button-size);
@@ -1213,12 +1211,21 @@
   margin-inline-end: 0.125rem;
 }
 
+.bubbles-viewport {
+  position: absolute;
+  inset-inline: 0;
+  top: var(--chat-padding-top);
+  bottom: var(--chat-padding-bottom);
+  margin-block: calc(var(--page-chats-padding) * -1);
+}
+
 .bubbles {
 	--translateY: 0;
 	width: 100%;
 	flex: 1 1 auto;
 	position: absolute;
   inset-block: calc(var(--page-chats-padding) * -1);
+  padding-inline: .5rem;
   z-index: 1; // fix safari topbar bug
 
 	transform: translate3d(0, var(--translateY), 0);
@@ -1228,30 +1235,19 @@
 		transition: none !important;
 	}
 
-	.chat[data-type="chat"] &.is-chat-input-hidden.is-selecting:not(.backwards) {
-		transition: transform var(--transition-standard-in);
-		--translateY: -78px;
-
-		@include respond-to(handhelds) {
-			--translateY: -58px;
-		}
-
-		.bubbles-inner {
-			transition: transform var(--transition-standard-in);
-			transform: translateY(calc(var(--translateY) * -1));
-		}
-	}
-
   &-scrollable {
     height: auto;
     display: block;
-    --bubbles-scrollable-fade: calc(3rem + var(--page-chats-padding));
+    --bubbles-scrollable-fade-top: calc(3rem + var(--page-chats-padding));
+    --bubbles-scrollable-fade-top-add: var(--pinned-floating-height);
+    --bubbles-scrollable-fade-bottom: calc(3rem + var(--page-chats-padding));
     --bubbles-scrollable-fade-color: rgba(255, 255, 255, 0.5);
     mask-image: linear-gradient(
       to bottom,
       var(--bubbles-scrollable-fade-color) 0,
-      #000 var(--bubbles-scrollable-fade),
-      #000 calc(100% - var(--bubbles-scrollable-fade)),
+      var(--bubbles-scrollable-fade-color) var(--bubbles-scrollable-fade-top-add),
+      #000 var(--bubbles-scrollable-fade-top),
+      #000 calc(100% - var(--bubbles-scrollable-fade-bottom)),
       var(--bubbles-scrollable-fade-color) 100%
     );
   }
@@ -1298,40 +1294,26 @@
 		} */
 	}
 
-	&:not(.scrolled-down):not(.search-results-active) {
-		//> .bubbles-transform-helper {
-			// ! these lines will blur messages if chat input helper is active
-			//> .scrollable {
-				//-webkit-mask-image: -webkit-linear-gradient(bottom, transparent, #000 28px);
-				//mask-image: linear-gradient(0deg, transparent 0, #000 28px);
-			//}
+}
 
-			& + .chat-input {
-				.bubbles-go-down {
-					cursor: pointer;
-					//--translateY: 0;
-					opacity: 1;
-					visibility: visible;
+.chat.is-go-down-visible {
+  .bubbles-go-down {
+    cursor: pointer;
+    opacity: 1;
+    visibility: visible;
 
-					@include animation-level(2) {
-						transition: opacity var(--layer-transition), visibility 0s 0s !important;
-					}
+    @include animation-level(2) {
+      transition: opacity var(--layer-transition), transform var(--layer-transition), visibility 0s 0s !important;
+    }
+  }
 
-					/* &.is-broadcast {
-						--translateY: 79px !important;
-					} */
-				}
+  .bubbles-go-mention {
+    --translateY: calc(var(--chat-input-size) * -1 + -.625rem);
 
-				.bubbles-go-mention {
-					--translateY: calc(var(--chat-input-size) * -1 + -.625rem);
-
-          &.is-visible + .bubbles-go-reaction {
-            --translateY: calc(var(--chat-input-size) * -2 + -.625rem * 2);
-          }
-				}
-			}
-		//}
-	}
+    &.is-visible + .bubbles-go-reaction {
+      --translateY: calc(var(--chat-input-size) * -2 + -.625rem * 2);
+    }
+  }
 }
 
 .bubbles-remover {
@@ -1356,6 +1338,13 @@
   width: 100%;
   flex: 0 0 auto;
   transition: height var(--transition-standard-out);
+
+  &-top {
+    // top padding must follow --chat-padding-top instantly — its CSS var changes
+    // are not transitionable, so any transition here desyncs chatInner from the
+    // bubblesViewport and looks like a wrong-direction scroll.
+    transition: none;
+  }
 
   @include animation-level(0) {
     transition: none !important;
@@ -1442,7 +1431,7 @@
 	opacity: 0;
 	visibility: hidden;
 	transform: none !important;
-	transition: opacity var(--layer-transition), visibility 0s .2s !important;
+	transition: opacity var(--layer-transition), transform var(--layer-transition), visibility 0s .2s !important;
 }
 
 .bubbles-go-mention {
@@ -1503,9 +1492,14 @@
 
 .bubbles-corner-button {
 	inset-inline-end: var(--chat-input-padding);
-	bottom: calc(var(--chat-input-size) + var(--bottom) + 10px);
+	bottom: calc(var(--chat-input-size) + .5rem);
 	z-index: 2;
 	overflow: visible;
+  transform: translateY(calc(var(--chat-input-height) * -1)) !important;
+
+  @include animation-level(2) {
+    transition: transform var(--transition-standard-in);
+  }
 
 	.badge {
 		position: absolute;

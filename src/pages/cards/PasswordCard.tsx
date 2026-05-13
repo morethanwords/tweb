@@ -15,6 +15,7 @@ import {toastNew} from '@components/toast';
 import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import cancelEvent from '@helpers/dom/cancelEvent';
+import focusWhenConnected from '@helpers/dom/focusWhenConnected';
 import htmlToSpan from '@helpers/dom/htmlToSpan';
 import replaceContent from '@helpers/dom/replaceContent';
 import formatDuration from '@helpers/formatDuration';
@@ -26,6 +27,8 @@ import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import AuthCard from '@/pages/AuthCard';
 import {CardSpec, useAuthFlow} from '@/pages/authFlow';
 import styles from '@/pages/authFlow.module.scss';
+
+if(import.meta.hot) import.meta.hot.accept();
 
 type Spec = Extract<CardSpec, {name: 'password'}>;
 
@@ -201,6 +204,7 @@ export default function PasswordCard(_props: {spec: Spec}) {
 
   /* ---------- lifecycle ---------- */
 
+  let cancelFocus: (() => void) | undefined;
   onMount(() => {
     managers.appStateManager.pushToState('authState', {_: 'authStatePassword'});
 
@@ -210,10 +214,11 @@ export default function PasswordCard(_props: {spec: Spec}) {
 
     getState();
 
-    passwordInput.focus();
+    cancelFocus = focusWhenConnected(passwordInput);
   });
 
   onCleanup(() => {
+    cancelFocus?.();
     monkey?.remove();
     if(getStateInterval) {
       clearInterval(getStateInterval);

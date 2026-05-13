@@ -928,8 +928,8 @@ export default class ChatContextMenu {
       icon: 'unpin',
       text: 'Message.Context.Unpin',
       onClick: this.onUnpinClick,
-      verify: () => (this.message as Message.message).pFlags.pinned &&
-        this.managers.appPeersManager.canPinMessage(this.message.peerId) &&
+      verify: async() => (this.message as Message.message).pFlags.pinned &&
+        await this.managers.appPeersManager.canPinMessage(this.message.peerId) &&
         !useIsFrozen()
     }, {
       icon: 'download',

@@ -1279,32 +1279,34 @@ export default class ChatBubbles {
       }
     });
 
-    /* if(false)  */this.stickyIntersector = new StickyIntersector(this.scrollable.container, (stuck, target) => {
+    const stuckContainers = new WeakSet<HTMLElement>();
+
+    this.stickyIntersector = new StickyIntersector(this.scrollable.container, (stuck, target) => {
+      // target.classList.toggle('is-sticky', stuck);
+      // return;
+
+      if(stuck) stuckContainers.add(target);
+      else stuckContainers.delete(target);
+
+      // Only the bottom-most (latest-timestamp) stuck date should carry is-sticky.
+      let newStickyDate: HTMLElement;
+      let latestTimestamp = -Infinity;
       for(const timestamp in this.dateMessages) {
         const dateMessage = this.dateMessages[timestamp];
-        if(dateMessage.container === target) {
-          const dateBubble = dateMessage.div;
-
-          // dateMessage.container.classList.add('has-sticky-dates');
-
-          // SetTransition(dateBubble, 'kek', stuck, this.previousStickyDate ? 300 : 0);
-          // if(this.previousStickyDate) {
-          // dateBubble.classList.add('kek');
-          // }
-
-          dateBubble.classList.toggle('is-sticky', stuck);
-          if(stuck) {
-            this.previousStickyDate = dateBubble;
-          }
-
-          break;
+        const ts = +timestamp;
+        if(stuckContainers.has(dateMessage.container) && ts > latestTimestamp) {
+          latestTimestamp = ts;
+          newStickyDate = dateMessage.div;
         }
       }
 
-      if(this.previousStickyDate) {
-        // fastRaf(() => {
-        // this.bubblesContainer.classList.add('has-sticky-dates');
-        // });
+      if(this.previousStickyDate !== newStickyDate) {
+        if(this.previousStickyDate) {
+          this.previousStickyDate.classList.remove('is-sticky');
+        }
+
+        newStickyDate?.classList.add('is-sticky');
+        this.previousStickyDate = newStickyDate;
       }
     });
 
@@ -3513,6 +3515,7 @@ export default class ChatBubbles {
       this.container.classList.remove('scrolled-down');
       this.scrolledDown = false;
     }
+    this.updateGoDownVisibility();
 
     this.checkIntersectingVideos();
   };
@@ -3758,7 +3761,10 @@ export default class ChatBubbles {
       const isGroupFirstBubble = bubble.classList.contains('is-group-first');
 
       placeholder.style.cssText = `width: 100%; height: ${height}px;`;
-      deletingItem.element.style.cssText = `position: absolute; z-index: 0; left: 0; right: 0; top: ${deletingItem.rect.top - 56}px; height: ${deletingItem.rect.height}px;`;
+      // top is in the remover container's coordinate system — the container fills .bubbles
+      // which extends past the visible viewport via inset-block: -page-chats-padding.
+      const removerRect = this.remover.parentElement.getBoundingClientRect();
+      deletingItem.element.style.cssText = `position: absolute; z-index: 0; left: 0; right: 0; top: ${deletingItem.rect.top - removerRect.top}px; height: ${deletingItem.rect.height}px;`;
 
       this.remover.append(deletingItem.element);
 
@@ -4063,10 +4069,14 @@ export default class ChatBubbles {
       element = this.getLastDateGroup();
     } */
 
-    const margin = 4 + this.chat.chatPaddingTop[0](); // * 4 = .25rem, plus chat-padding-top to clear the topbar
-    /* if(isLastBubble && this.chat.type === 'chat' && this.bubblesContainer.classList.contains('is-chat-input-hidden')) {
-      margin = 20;
-    } */
+    // Scroll positions are computed against bubblesViewport (the visible bubble area)
+    // rather than scrollable.container, which extends into the topbar and chat-input
+    // zones via inset-block: -page-chats-padding.
+    const bubblesViewportRect = this.chat.bubblesViewport.getBoundingClientRect();
+    const containerRect = this.scrollable.container.getBoundingClientRect();
+    // For 'end', fastSmoothScroll's path uses raw containerRect.bottom and isn't
+    // overridable, so compensate via margin to land at viewport.bottom instead.
+    const margin = 4 + (position === 'end' ? containerRect.bottom - bubblesViewportRect.bottom : 0);
 
     const isTogglingHelper = this.chat.container.classList.contains('is-toggling-helper');
     const isChangingHeight = isTogglingHelper || (
@@ -4096,7 +4106,8 @@ export default class ChatBubbles {
         /* const rowsWrapperHeight = this.chat.input.rowsWrapper.getBoundingClientRect().height;
         const diff = rowsWrapperHeight - 54;
         return rect.height + diff; */
-      } : undefined,
+      } : () => bubblesViewportRect.height,
+      getElementPosition: ({elementRect}) => elementRect.top - bubblesViewportRect.top,
       fallbackToElementStartWhenCentering,
       startCallback: (dimensions) => {
         // this.onScroll(true, this.scrolledDown && dimensions.distanceToEnd <= SCROLLED_DOWN_THRESHOLD ? undefined : dimensions);
@@ -4287,6 +4298,19 @@ export default class ChatBubbles {
     this.observer && delete this.observer;
     this.stickyIntersector && delete this.stickyIntersector;
   }
+
+  public updateStickyIntersectorRootMargin = () => {
+    if(!this.stickyIntersector) return;
+    const top = this.chat.chatPaddingTop[0]();
+    const bottom = this.chat.chatPaddingBottom[0]();
+    this.stickyIntersector.setRootMargin(`-${top}px 0px -${bottom}px 0px`);
+  };
+
+  public updateGoDownVisibility = () => {
+    const visible = !this.scrolledDown &&
+                    !this.container.classList.contains('search-results-active');
+    this.chat.container.classList.toggle('is-go-down-visible', visible);
+  };
 
   public cleanup(bubblesToo = false) {
     this.log('cleanup');

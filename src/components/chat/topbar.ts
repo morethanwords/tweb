@@ -13,7 +13,7 @@ import rootScope, {BroadcastEvents} from '@lib/rootScope';
 import Button, {replaceButtonIcon} from '@components/button';
 import ButtonIcon from '@components/buttonIcon';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
-import ChatPinnedMessage from '@components/chat/pinnedMessage';
+import createChatPinnedMessage, {ChatPinnedMessageController} from '@components/chat/pinnedMessage';
 import ListenerSetter from '@helpers/listenerSetter';
 import PopupDeleteDialog from '@components/popups/deleteDialog';
 import appNavigationController from '@components/appNavigationController';
@@ -99,7 +99,6 @@ export default class ChatTopbar {
   private subtitle: HTMLDivElement;
   private chatUtils: HTMLDivElement;
   private btnJoin: HTMLButtonElement;
-  private btnPinned: HTMLButtonElement;
   private btnCall: HTMLButtonElement;
   private btnGroupCall: HTMLButtonElement;
   private btnGroupCallMenu: HTMLElement;
@@ -117,7 +116,7 @@ export default class ChatTopbar {
   private chatLive: ChatLive;
   private chatTranslation: ChatTranslation;
   private chatSponsored: ChatTopbarSponsored;
-  public pinnedMessage: ChatPinnedMessage;
+  public pinnedMessage: ChatPinnedMessageController;
   private pinnedContainers: PinnedContainer[];
 
 
@@ -230,7 +229,6 @@ export default class ChatTopbar {
       // this.pinnedMessage ? this.pinnedMessage.pinnedMessageContainer.divAndCaption.container : null,
       this.btnJoin,
       this.btnDirectMessages,
-      this.btnPinned,
       this.btnCall,
       this.btnGroupCall,
       this.btnGroupCallMenu,
@@ -277,7 +275,6 @@ export default class ChatTopbar {
       if(
         findUpClassName(e.target, 'topbar-search-container') ||
         !(e.target as HTMLElement).isConnected ||
-        findUpClassName(e.target, 'pinned-translation') ||
         findUpClassName(e.target, 'chat-search-top')
       ) {
         return;
@@ -286,18 +283,7 @@ export default class ChatTopbar {
       const container = findUpClassName(e.target, 'pinned-container');
       blurActiveElement();
       if(container) {
-        cancelEvent(e);
-
-        if(findUpClassName(e.target, 'progress-line') || findUpClassName(e.target, 'pinned-container-wrapper-utils')) {
-          return;
-        }
-
-        const mid = +container.dataset.mid;
-        if(container.classList.contains('pinned-message')) {
-          // if(!this.pinnedMessage.locked) {
-          this.pinnedMessage.followPinnedMessage(mid);
-          // }
-        }
+        return;
       } else {
         const avatar = findUpAvatar(e.target);
         if(mediaSizes.activeScreen === ScreenSize.medium && document.body.classList.contains(LEFT_COLUMN_ACTIVE_CLASSNAME)) {
@@ -956,7 +942,7 @@ export default class ChatTopbar {
     this.subtitle = document.createElement('div');
     this.subtitle.classList.add('info');
 
-    this.pinnedMessage = new ChatPinnedMessage(this, this.chat, this.managers);
+    this.pinnedMessage = createChatPinnedMessage(this, this.chat, this.managers);
 
     this.btnJoin = Button('btn-primary btn-color-primary chat-join hide');
     this.btnDirectMessages = ButtonIcon('message force-show-on-mobile');
@@ -979,15 +965,10 @@ export default class ChatTopbar {
       }],
       icon: 'videochat'
     });
-    this.btnPinned = ButtonIcon('pinlist chat-pinlist');
     this.btnMute = ButtonIcon('mute');
 
     this.attachClickEvent(this.btnCall, this.onCallClick.bind(this, 'voice'));
     this.attachClickEvent(this.btnGroupCall, this.onJoinGroupCallClick);
-
-    this.attachClickEvent(this.btnPinned, () => {
-      this.openPinned(true);
-    });
 
     this.attachClickEvent(this.btnMute, () => {
       const muted = !!+this.btnMute.dataset.muted;
@@ -1073,12 +1054,12 @@ export default class ChatTopbar {
       const middleware = this.chat.bubbles.getMiddleware();
       if(!middleware() || !this.pinnedMessage) return;
 
-      this.pinnedMessage.hidden = !!this.chat.appState.hiddenPinnedMessages[this.chat.peerId];
+      this.pinnedMessage.setUserHidden(!!this.chat.appState.hiddenPinnedMessages[this.chat.peerId]);
 
       if(isTopMessage) {
         this.pinnedMessage.unsetScrollDownListener();
         this.pinnedMessage.testMid(mid, 0); // * because slider will not let get bubble by document.elementFromPoint
-      } else if(!this.pinnedMessage.locked) {
+      } else if(!this.pinnedMessage.isLocked()) {
         this.pinnedMessage.handleFollowingPinnedMessage();
         this.pinnedMessage.testMid(mid);
       }
@@ -1115,7 +1096,7 @@ export default class ChatTopbar {
   public openPinned(byCurrent: boolean) {
     this.chat.appImManager.setInnerPeer({
       peerId: this.peerId,
-      lastMsgId: byCurrent ? +this.pinnedMessage.pinnedMessageContainer.container.dataset.mid : 0,
+      lastMsgId: byCurrent ? +this.pinnedMessage.container.dataset.mid : 0,
       type: ChatType.Pinned
     });
   }
@@ -1205,10 +1186,10 @@ export default class ChatTopbar {
     }
   }
 
-  private appendPinnedMessage(pinnedMessage: ChatPinnedMessage) {
-    const container = pinnedMessage.pinnedMessageContainer.container;
+  private appendPinnedMessage(pinnedMessage: ChatPinnedMessageController) {
+    const container = pinnedMessage.container;
     if(this.pinnedMessage && this.pinnedMessage !== pinnedMessage) {
-      this.pinnedMessage.pinnedMessageContainer.container.replaceWith(container);
+      this.pinnedMessage.container.replaceWith(container);
     } else {
       this.floatingPlatesWrapper.prepend(container);
     }
@@ -1304,10 +1285,6 @@ export default class ChatTopbar {
         this.btnLogFilters.classList.toggle('hide', this.chat.type !== ChatType.Logs);
       }
 
-      if(this.btnPinned) {
-        this.btnPinned.classList.toggle('hide', !canHaveSomeButtons);
-      }
-
       if(this.avatar !== newAvatar) {
         if(newAvatar) {
           this.person.prepend(newAvatar.node);
@@ -1338,23 +1315,22 @@ export default class ChatTopbar {
       const isPinnedMessagesNeeded = this.chat.isPinnedMessagesNeeded();
       if(isPinnedMessagesNeeded || this.chat.type === ChatType.Discussion) {
         if(this.chat.wasAlreadyUsed || !this.pinnedMessage) { // * change
-          const newPinnedMessage = new ChatPinnedMessage(this, this.chat, this.managers);
+          const newPinnedMessage = createChatPinnedMessage(this, this.chat, this.managers);
           this.appendPinnedMessage(newPinnedMessage);
           this.pinnedMessage?.destroy();
           this.pinnedMessage = newPinnedMessage;
+          this.setFloating();
         }
 
         if(isPinnedMessagesNeeded) {
-          this.pinnedMessage.hidden = !!this.chat.appState.hiddenPinnedMessages[peerId];
+          this.pinnedMessage.setUserHidden(!!this.chat.appState.hiddenPinnedMessages[peerId]);
         } else if(this.chat.type === ChatType.Discussion) {
-          this.pinnedMessage.pinnedMid = this.chat.threadId;
-          this.pinnedMessage.count = 1;
-          this.pinnedMessage.pinnedIndex = 0;
-          this.pinnedMessage._setPinnedMessage();
+          this.pinnedMessage.setStaticMessage(this.chat.threadId);
         }
       } else if(this.pinnedMessage) {
         this.pinnedMessage.destroy();
         this.pinnedMessage = undefined;
+        this.setFloating();
       }
 
       setTitleCallback();
@@ -1438,7 +1414,7 @@ export default class ChatTopbar {
             // ! костыль, это скроет закреплённые сообщения сразу, вместо того, чтобы ждать пока анимация перехода закончится
             const originalChat = this.chat.appImManager.chat;
             if(originalChat.topbar.pinnedMessage) {
-              originalChat.topbar.pinnedMessage.pinnedMessageContainer.toggle(true);
+              originalChat.topbar.pinnedMessage.setHidden(true);
             }
           }
         });
@@ -1509,16 +1485,16 @@ export default class ChatTopbar {
 
   public setFloating = () => {
     const containers = [
-      this.pinnedMessage?.pinnedMessageContainer,
+      this.pinnedMessage,
       ...(this.pinnedContainers || [])
     ].filter(Boolean);
     const TOPBAR_GAP = 8;
+    const PLATE_DIVIDER = 1;
     let platesHeight = 0;
+    let firstVisible: typeof containers[number];
+    let lastVisible: typeof containers[number];
     const count = containers.reduce((acc, container) => {
-      const isFloating = container.isFloating();
-      this.container.classList.toggle(`is-pinned-${container.className}-floating`, isFloating);
-
-      if(!container.isVisible() || !isFloating) {
+      if(!container.isVisible()) {
         return acc;
       }
 
@@ -1527,10 +1503,16 @@ export default class ChatTopbar {
         height = container.container.offsetHeight;
       }
       platesHeight += height;
+      firstVisible ??= container;
+      lastVisible = container;
 
       return acc + 1;
     }, 0);
-    const floatingHeight = count > 0 ? platesHeight + TOPBAR_GAP : 0;
+    containers.forEach((container) => {
+      container.container.classList.toggle('is-first', container === firstVisible);
+      container.container.classList.toggle('is-last', container === lastVisible);
+    });
+    const floatingHeight = count > 0 ? platesHeight + Math.max(0, count - 1) * PLATE_DIVIDER + TOPBAR_GAP : 0;
     this.floatingPlatesWrapper.classList.toggle('hide', count === 0);
     this.container.dataset.floating = '' + count;
     this.chat.container.style.setProperty('--pinned-floating-height', `calc(${floatingHeight}px + var(--topbar-floating-call-height) + var(--topbar-floating-audio-height))`);

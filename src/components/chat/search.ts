@@ -92,6 +92,7 @@ export default class ChatSearch {
           replaceContent(this.foundCountEl, value ? i18n('NoResult') : '');
           this.results.classList.remove('active');
           this.chat.bubbles.container.classList.remove('search-results-active');
+          this.chat.bubbles.updateGoDownVisibility();
           this.upBtn.setAttribute('disabled', 'true');
           this.downBtn.setAttribute('disabled', 'true');
         } else {
@@ -167,6 +168,7 @@ export default class ChatSearch {
     this.footer.remove();
     this.listenerSetter.removeAll();
     this.chat.bubbles.container.classList.remove('search-results-active');
+    this.chat.bubbles.updateGoDownVisibility();
     this.chat.search = undefined;
     appNavigationController.removeItem(this.navigationItem);
   }
@@ -202,6 +204,7 @@ export default class ChatSearch {
 
     this.results.classList.remove('active');
     this.chat.bubbles.container.classList.remove('search-results-active');
+    this.chat.bubbles.updateGoDownVisibility();
 
     const res = this.chat.setPeer({peerId, lastMsgId});
     this.setPeerPromise = ((res instanceof Promise ? res : Promise.resolve(res)) as Promise<any>).then(() => {
@@ -227,6 +230,7 @@ export default class ChatSearch {
   private onFooterClick = (e: MouseEvent) => {
     if(this.foundCount) {
       this.chat.bubbles.container.classList.toggle('search-results-active');
+      this.chat.bubbles.updateGoDownVisibility();
       this.results.classList.toggle('active');
     }
   };

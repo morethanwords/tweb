@@ -30,7 +30,6 @@ import findUpClassName from '@helpers/dom/findUpClassName';
 import renderImageFromUrl, {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
 import getVisibleRect from '@helpers/dom/getVisibleRect';
 import cancelEvent from '@helpers/dom/cancelEvent';
-import fillPropertyValue from '@helpers/fillPropertyValue';
 import generatePathData from '@helpers/generatePathData';
 import replaceContent from '@helpers/dom/replaceContent';
 import {doubleRaf, fastRaf} from '@helpers/schedulers';
@@ -88,6 +87,17 @@ const ZOOM_MAX_VALUE = 4;
 
 const OPEN_TRANSITION_TIME = 200;
 const MOVE_TRANSITION_TIME = 350;
+
+// Vertical reserves around the media (px). Single source of truth for layout —
+// both mediaBoxSize math and the CSS variables driving .media-viewer-content
+// padding / .media-viewer-mover.center positioning are derived from these.
+const RESERVE_TOP_DESKTOP = 80;
+const RESERVE_BOTTOM_DESKTOP = 110;
+const RESERVE_TOP_MOBILE_OR_LIVE = 120;
+const RESERVE_BOTTOM_MOBILE_OR_LIVE = 0;
+
+// Min displayed width for videos that get a player UI.
+const VIDEO_MIN_WIDTH = 420;
 
 export const MEDIA_VIEWER_CLASSNAME = 'media-viewer';
 
@@ -899,11 +909,13 @@ export default class AppMediaViewerBase<
   protected removeGlobalListeners() {
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
+    mediaSizes.removeEventListener('resize', this.applyLayoutVariables);
   }
 
   protected setGlobalListeners() {
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
+    mediaSizes.addEventListener('resize', this.applyLayoutVariables);
   }
 
   public setMediaTimestamp(timestamp: number) {
@@ -1011,6 +1023,16 @@ export default class AppMediaViewerBase<
   protected async setMoverToTarget(target: HTMLElement, closing = false, fromRight = 0) {
     this.dispatchEvent('setMoverBefore');
 
+    // On open: hide source-bubble floating overlays (e.g. .video-time / .time) instantly
+    // so they don't overlap the mover at the thumb position. On close: animate them back.
+    // Uses the original target before any re-target, so floatings on the actual chat
+    // bubble we're animating to/from are the ones affected.
+    if(closing) {
+      this.revealHiddenFloatings();
+    } else if(target) {
+      this.hideFloatings(target);
+    }
+
     const mover = this.content.mover;
 
     if(!closing) {
@@ -1070,18 +1092,45 @@ export default class AppMediaViewerBase<
     }
 
     let needOpacity = false;
+    let clipInsets: {top: number, right: number, bottom: number, left: number};
     if(target === this.content.media) {
       needOpacity = true;
     } else if(!target.classList.contains('profile-avatars-avatar')) {
       const overflowElement = findUpClassName(realParent, 'scrollable');
-      const visibleRect = getVisibleRect(realParent, overflowElement, true);
+      let overflowRect: DOMRectMinified;
+      // In chats, scrollable extends past the visible bubble area via negative inset-block,
+      // so clip the overflow rect to .bubbles-viewport (the actual visible region between
+      // topbar and chat-input) when present.
+      const chatContainer = overflowElement && findUpClassName(realParent, 'chat');
+      const bubblesViewport = chatContainer?.querySelector(':scope > .bubbles-viewport') as HTMLElement;
+      if(bubblesViewport) {
+        const baseRect = overflowElement.getBoundingClientRect();
+        const viewportRect = bubblesViewport.getBoundingClientRect();
+        overflowRect = {
+          top: Math.max(baseRect.top, viewportRect.top),
+          right: Math.min(baseRect.right, viewportRect.right),
+          bottom: Math.min(baseRect.bottom, viewportRect.bottom),
+          left: Math.max(baseRect.left, viewportRect.left)
+        };
+      }
+      const visibleRect = overflowElement && getVisibleRect(realParent, overflowElement, true, undefined, overflowRect);
 
-      if(closing && visibleRect && (visibleRect.overflow.vertical === 2 || visibleRect.overflow.horizontal === 2)) {
+      if(closing && overflowElement && (!visibleRect || visibleRect.overflow.vertical === 2 || visibleRect.overflow.horizontal === 2)) {
         target = this.content.media;
         realParent = target.parentElement as HTMLElement;
         rect = target.getBoundingClientRect();
-      } else if(visibleRect && (visibleRect.overflow.vertical === 1 || visibleRect.overflow.horizontal === 1)) {
+      } else if(overflowElement && !visibleRect) {
+        // Target fully outside the visible bubble area — fall back to opacity fade.
         needOpacity = true;
+      } else if(visibleRect && (visibleRect.overflow.vertical || visibleRect.overflow.horizontal)) {
+        // Target partially overlapped (e.g. clipped behind topbar / chat-input) —
+        // animate clip-path from the visible portion to the full mover.
+        clipInsets = {
+          top: visibleRect.rect.top - rect.top,
+          right: rect.right - visibleRect.rect.right,
+          bottom: rect.bottom - visibleRect.rect.bottom,
+          left: visibleRect.rect.left - rect.left
+        };
       }
     }
 
@@ -1158,12 +1207,23 @@ export default class AppMediaViewerBase<
       transform += `scale3d(${scaleX},${scaleY},1) `;
     }
 
-    let borderRadius = window.getComputedStyle(realParent).getPropertyValue('border-radius');
-    const brSplitted = fillPropertyValue(borderRadius) as string[];
-    borderRadius = brSplitted.map((r) => (parseInt(r) / scaleX) + 'px').join(' ');
-    if(!wasActive) {
-      mover.style.borderRadius = borderRadius;
-    }
+    // Per-corner radii (tl, tr, br, bl) in viewport px. Inherits from clipping ancestors
+    // (e.g. the rounded sharedMedia grid container) when the corresponding corner of
+    // realParent coincides with the ancestor's corner — otherwise interior cells would
+    // pick up the grid's outer rounding incorrectly.
+    const effectiveCornerRadii = this.computeEffectiveCornerRadii(realParent, rect);
+    // The mover is non-uniformly scaled (scaleX may differ from scaleY when the thumb's
+    // aspect doesn't match the full media's — typical for sharedMedia square cells over
+    // landscape photos). Express radii as elliptical X/Y per corner so the visible
+    // corner stays circular at viewport scale instead of stretching with the mover.
+    const xRadii = effectiveCornerRadii.map((r) => r / scaleX);
+    const yRadii = effectiveCornerRadii.map((r) => r / scaleY);
+    // borderRadius (kept as a string for sizeTailPath, which only parses the first 4 X
+    // values to drive the SVG bubble-tail path). The mover itself does NOT get inline
+    // border-radius — the rounding is folded into clip-path's `round` modifier below
+    // so it applies to the inset rectangle (the actual visible silhouette) rather than
+    // the underlying full-size mover.
+    const borderRadius = `${xRadii.map((v) => v + 'px').join(' ')} / ${yRadii.map((v) => v + 'px').join(' ')}`;
     // let borderRadius = '0px 0px 0px 0px';
 
     if(closing && zoomValue !== 1) {
@@ -1175,6 +1235,48 @@ export default class AppMediaViewerBase<
     }
 
     needOpacity && (mover.style.opacity = '0'/* !closing ? '0' : '' */);
+
+    // clip-path lives on the mover's wrapper (per-mover element that never scales).
+    // Putting it on the scaled mover would make visible_inset = local_inset × scale,
+    // a non-monotonic product (the visible clip line bumps outward mid-animation
+    // before retracting). Anchored to the unscaled wrapper, every value interpolates
+    // linearly in viewport pixels. The wrapper is a sibling of the arrow buttons in
+    // moversContainer, so the clip-path doesn't affect them; and during prev/next
+    // nav the wrapper is left at inset(0) so the slide is unobstructed.
+    const formatInsetRound = (insetT: number, insetR: number, insetB: number, insetL: number, xs: number[], ys: number[]) => {
+      const xStr = xs.map((v) => v + 'px').join(' ');
+      const yStr = ys.map((v) => v + 'px').join(' ');
+      return `inset(${insetT}px ${insetR}px ${insetB}px ${insetL}px round ${xStr} / ${yStr})`;
+    };
+    const vw = windowSize.width;
+    const vh = windowSize.height;
+    const wrapper = mover.parentElement;
+    const allZerosClipPath = formatInsetRound(0, 0, 0, 0, [0, 0, 0, 0], [0, 0, 0, 0]);
+    if(!wasActive) {
+      // Visible portion of the target in viewport coords (= wrapper coords).
+      const visT = rect.top + (clipInsets?.top || 0);
+      const visR = rect.right - (clipInsets?.right || 0);
+      const visB = rect.bottom - (clipInsets?.bottom || 0);
+      const visL = rect.left + (clipInsets?.left || 0);
+      const initialClipPath = formatInsetRound(
+        visT,
+        vw - visR,
+        vh - visB,
+        visL,
+        effectiveCornerRadii,
+        effectiveCornerRadii
+      );
+      // Open: initial clipped+rounded shape; after doubleRaf we'll set inset(0) to
+      // animate the clip away in lockstep with the mover scaling up.
+      // Close: previous open left wrapper.clipPath = inset(0), so this transitions
+      // cleanly into the target clipped+rounded shape.
+      wrapper.style.clipPath = initialClipPath;
+    } else {
+      // Nav: keep the wrapper unclipped so the mover slides freely. Establish an
+      // explicit inset(0) inline so a future close from this mover transitions
+      // smoothly (none → inset() doesn't interpolate, but inset(0) → inset(target) does).
+      wrapper.style.clipPath = allZerosClipPath;
+    }
 
     /* if(wasActive) {
       this.log('setMoverToTarget', mover.style.transform);
@@ -1401,6 +1503,11 @@ export default class AppMediaViewerBase<
     mover.style.transform = `translate3d(${containerRect.left}px,${containerRect.top}px,0) scale3d(1,1,1)`;
     // mover.style.transform = `translate(-50%,-50%) scale(1,1)`;
     needOpacity && (mover.style.opacity = ''/* closing ? '0' : '' */);
+    if(!wasActive) {
+      // Retract the wrapper's clip to inset(0) (no clip) — same syntactic structure
+      // as initialClipPath so CSS interpolates each value linearly in viewport px.
+      wrapper.style.clipPath = allZerosClipPath;
+    }
 
     if(aspecter) {
       this.setFullAspect(aspecter, containerRect, rect);
@@ -1551,21 +1658,33 @@ export default class AppMediaViewerBase<
 
     setTimeout(() => {
       mover.middlewareHelper.destroy();
-      mover.remove();
+      // Remove the wrapper too so it doesn't leak.
+      (mover.parentElement || mover).remove();
     }, 350);
   }
 
   protected setNewMover() {
+    // Each mover lives inside its own wrapper. Wrapper carries the clip-path
+    // (in viewport coords, never scales) so animating it gives a monotonic
+    // visible silhouette — putting clip-path on the scaled mover instead makes
+    // visible_inset = local × scale, a non-monotonic product. The wrapper is
+    // a sibling of the prev/next arrow buttons inside moversContainer, so the
+    // clip-path never affects them. Old wrappers stay in place during nav and
+    // get removed alongside their mover by moveTheMover.
+    const wrapper = document.createElement('div');
+    wrapper.classList.add(MEDIA_VIEWER_CLASSNAME + '-mover-wrapper');
+
     const newMover = document.createElement('div');
     newMover.classList.add('media-viewer-mover');
     newMover.style.display = 'none';
     newMover.middlewareHelper = this.middlewareHelper.get().create();
+    wrapper.appendChild(newMover);
 
     if(this.content.mover) {
-      const oldMover = this.content.mover;
-      oldMover.parentElement.append(newMover);
+      const oldWrapper = this.content.mover.parentElement;
+      oldWrapper.parentElement.appendChild(wrapper);
     } else {
-      this.moversContainer.append(newMover);
+      this.moversContainer.appendChild(wrapper);
     }
 
     return this.content.mover = newMover;
@@ -1653,11 +1772,140 @@ export default class AppMediaViewerBase<
     });
   }
 
+  // Walk up from element collecting per-corner radii (tl, tr, br, bl) in viewport px.
+  // For each clipping ancestor (overflow != visible) with non-zero border-radius, inherit
+  // the ancestor's corner radius only when element's corresponding corner coincides with
+  // the ancestor's — so interior items in a rounded container don't pick up the outer
+  // rounding, but a corner item does.
+  protected computeEffectiveCornerRadii(element: HTMLElement, elementRect: DOMRectMinified): [number, number, number, number] {
+    const TOLERANCE = 1.5; // sub-pixel + grid-gap slack
+    const radii: [number, number, number, number] = [0, 0, 0, 0];
+
+    const elementStyle = window.getComputedStyle(element);
+    radii[0] = parseFloat(elementStyle.borderTopLeftRadius) || 0;
+    radii[1] = parseFloat(elementStyle.borderTopRightRadius) || 0;
+    radii[2] = parseFloat(elementStyle.borderBottomRightRadius) || 0;
+    radii[3] = parseFloat(elementStyle.borderBottomLeftRadius) || 0;
+
+    let ancestor = element.parentElement;
+    let depth = 0;
+    while(ancestor && ancestor !== document.body && depth++ < 20) {
+      const aStyle = window.getComputedStyle(ancestor);
+      if(aStyle.overflow !== 'visible') {
+        const aTL = parseFloat(aStyle.borderTopLeftRadius) || 0;
+        const aTR = parseFloat(aStyle.borderTopRightRadius) || 0;
+        const aBR = parseFloat(aStyle.borderBottomRightRadius) || 0;
+        const aBL = parseFloat(aStyle.borderBottomLeftRadius) || 0;
+
+        if(aTL || aTR || aBR || aBL) {
+          const aRect = ancestor.getBoundingClientRect();
+          const sameLeft = Math.abs(elementRect.left - aRect.left) < TOLERANCE;
+          const sameRight = Math.abs(elementRect.right - aRect.right) < TOLERANCE;
+          const sameTop = Math.abs(elementRect.top - aRect.top) < TOLERANCE;
+          const sameBottom = Math.abs(elementRect.bottom - aRect.bottom) < TOLERANCE;
+
+          if(aTL && sameLeft && sameTop) radii[0] = Math.max(radii[0], aTL);
+          if(aTR && sameRight && sameTop) radii[1] = Math.max(radii[1], aTR);
+          if(aBR && sameRight && sameBottom) radii[2] = Math.max(radii[2], aBR);
+          if(aBL && sameLeft && sameBottom) radii[3] = Math.max(radii[3], aBL);
+        }
+      }
+      ancestor = ancestor.parentElement;
+    }
+
+    return radii;
+  }
+
+  protected getLayoutReserves(): {top: number, bottom: number} {
+    const compact = mediaSizes.isMobile || this.live;
+    return {
+      top: compact ? RESERVE_TOP_MOBILE_OR_LIVE : RESERVE_TOP_DESKTOP,
+      bottom: compact ? RESERVE_BOTTOM_MOBILE_OR_LIVE : RESERVE_BOTTOM_DESKTOP
+    };
+  }
+
+  // Floating overlays on the source/target bubble (e.g. .video-time, .time.is-floating) should
+  // not show during the open/close animation — they'd overlap the mover's silhouette
+  // at the thumb position. On open: hide instantly. On close: animate them back.
+  protected hiddenFloatings = new Set<HTMLElement>();
+
+  // Floating overlays we hide while the viewer animates open / reveal back on close.
+  // Each context is keyed by a `trigger` class found in the target's ancestry; the
+  // matching context's layers each pick their own ancestor (containerClass) and run
+  // a querySelectorAll inside it for the floating selectors. This lets a single
+  // context hide elements at multiple DOM levels — e.g. profile avatars need to
+  // hide both the info/gradient overlays inside .profile-avatars-container AND the
+  // .sidebar-header that's a sibling of .sidebar-content several levels up.
+  protected static readonly FLOATING_CONTEXTS: ReadonlyArray<{
+    readonly trigger: string,
+    readonly layers: ReadonlyArray<{readonly containerClass: string, readonly selectors: string}>
+  }> = [{
+      trigger: 'profile-avatars-container',
+      layers: [
+        {containerClass: 'profile-avatars-container', selectors: '.profile-avatars-info, .profile-avatars-gradient, .profile-music-container'},
+        {containerClass: 'sidebar-slider-item', selectors: ':scope > .sidebar-header'}
+      ]
+    }, {
+      trigger: 'bubble',
+      layers: [{containerClass: 'bubble', selectors: '.video-time, .time.is-floating'}]
+    }, {
+      trigger: 'grid-item',
+      layers: [{containerClass: 'grid-item', selectors: '.video-time, .time.is-floating'}]
+    }];
+
+  protected hideFloatings(target: HTMLElement) {
+    if(!target) return;
+    const context = AppMediaViewerBase.FLOATING_CONTEXTS.find(({trigger}) => findUpClassName(target, trigger));
+    if(!context) return;
+    for(const {containerClass, selectors} of context.layers) {
+      const container = findUpClassName(target, containerClass);
+      if(!container) continue;
+      container.querySelectorAll<HTMLElement>(selectors).forEach((el) => {
+        if(this.hiddenFloatings.has(el)) return;
+        el.style.transition = 'none';
+        el.style.opacity = '0';
+        this.hiddenFloatings.add(el);
+      });
+    }
+  }
+
+  protected revealHiddenFloatings() {
+    if(!this.hiddenFloatings.size) return;
+    const elements = Array.from(this.hiddenFloatings);
+    this.hiddenFloatings.clear();
+    // Wait for the viewer's close animation to settle, THEN fade the floatings back in.
+    // The mover obscures them while it's still animating to the thumb position, so
+    // running both transitions in parallel wastes the reveal — we'd be fading in
+    // elements that aren't visible yet.
+    setTimeout(() => {
+      elements.forEach((el) => {
+        // Literal duration: --open-duration is scoped to .media-viewer-whole and these
+        // floating overlays live in the chat bubble (outside that scope), so the var
+        // would be undefined and the transition would snap in one frame.
+        el.style.transition = `opacity ${OPEN_TRANSITION_TIME}ms`;
+        el.style.opacity = '';
+      });
+      setTimeout(() => {
+        elements.forEach((el) => {
+          el.style.transition = '';
+        });
+      }, OPEN_TRANSITION_TIME);
+    }, OPEN_TRANSITION_TIME);
+  }
+
+  protected applyLayoutVariables = () => {
+    const {top, bottom} = this.getLayoutReserves();
+    const {style} = this.wholeDiv;
+    style.setProperty('--padding-vertical-top', `${top}px`);
+    style.setProperty('--padding-vertical-bottom', `${bottom}px`);
+  };
+
   protected get mediaBoxSize(): MediaSize {
     const {width, height} = windowSize;
+    const {top, bottom} = this.getLayoutReserves();
     return new MediaSize(
       width,
-      height - 120 - (mediaSizes.isMobile || this.live ? 0 : 120) - this.extraHeightPadding
+      height - top - bottom - this.extraHeightPadding
     );
   }
 
@@ -1751,6 +1999,7 @@ export default class AppMediaViewerBase<
     this.log('openMedia', media, fromId, prevTargets, nextTargets, isLiveStream, isDocument, isVideo);
 
     this.live = isLiveStream;
+    this.applyLayoutVariables();
 
     if(this.isFirstOpen) {
       // this.targetContainer = targetContainer;
@@ -1842,6 +2091,23 @@ export default class AppMediaViewerBase<
       noZoom: mediaSizes.isMobile ? false : true,
       pushDocumentSize: !!(isDocument && media.w && media.h)
     }).photoSize;
+
+    const isVideoWithPlayer = isLiveStream || (isVideo && (media as MyDocument).type !== 'gif');
+    if(isVideoWithPlayer) {
+      const currentWidth = parseFloat(container.style.width);
+      if(currentWidth > 0 && currentWidth < VIDEO_MIN_WIDTH) {
+        const currentHeight = parseFloat(container.style.height);
+        const aspect = currentWidth / currentHeight;
+        let newWidth = Math.min(VIDEO_MIN_WIDTH, mediaBoxSize.width);
+        let newHeight = newWidth / aspect;
+        if(newHeight > mediaBoxSize.height) {
+          newHeight = mediaBoxSize.height;
+          newWidth = newHeight * aspect;
+        }
+        container.style.width = newWidth + 'px';
+        container.style.height = newHeight + 'px';
+      }
+    }
     if(useContainerAsTarget && !isLiveStream) {
       const cacheContext = await this.managers.thumbsStorage.getCacheContext(media, size?.type);
       let img: HTMLImageElement | HTMLCanvasElement;

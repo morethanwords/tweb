@@ -152,7 +152,6 @@
       // inset-inline-start: calc(var(--padding-horizontal) * -1);
       margin-inline-start: -100%;
       pointer-events: none;
-      user-select: none;
       text-align: end;
       white-space: pre;
       width: 100%;
@@ -388,7 +387,6 @@
     display: flex;
     align-items: center;
     cursor: pointer;
-    user-select: none;
   }
 
   &Icon {

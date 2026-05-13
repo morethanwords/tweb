@@ -62,7 +62,6 @@
     transform-origin: var(--transform-origin-left-center);
     pointer-events: none;
     margin-top: calc((var(--height) - 1.5rem) / 2); // * Center of first line
-    user-select: none;
     white-space: nowrap;
 
     @include animation-level(2) {

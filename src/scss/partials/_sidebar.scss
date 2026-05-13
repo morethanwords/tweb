@@ -15,7 +15,6 @@
     padding-inline: 1rem;
     min-height: 3.5rem;
     flex: 0 0 auto;
-    user-select: none;
     cursor: default;
 
     @include animation-level(2) {
@@ -66,7 +65,7 @@
     }
 
     .btn-icon + .btn-icon {
-      margin-inline-start: .5rem;
+      margin-inline-start: .25rem;
     }
 
     &-right {

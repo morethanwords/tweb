@@ -19,7 +19,7 @@
   color: var(--secondary-text-color);
   font-family: var(--font-monospace);
   font-size: .8125rem;
-  font-weight: 500;
+  font-weight: var(--font-weight-bold);
   line-height: 1;
 }
 
@@ -27,7 +27,6 @@
   color: var(--secondary-text-color);
   font-size: .75rem;
   opacity: .65;
-  user-select: none;
 }
 
 .or {
@@ -35,5 +34,4 @@
   font-size: .8125rem;
   margin: 0 .125rem;
   opacity: .75;
-  user-select: none;
 }

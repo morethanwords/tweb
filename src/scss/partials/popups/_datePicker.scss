@@ -55,7 +55,6 @@
     &-weekdays {
       display: grid;
       grid-template-columns: repeat(7, 1fr);
-      user-select: none;
     }
 
     &-weekday {
@@ -81,7 +80,6 @@
     &-months {
       position: relative;
       width: 100%;
-      user-select: none;
     }
 
     &-month-section {

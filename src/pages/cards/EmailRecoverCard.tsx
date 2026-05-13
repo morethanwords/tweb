@@ -10,14 +10,16 @@ import Button from '@components/buttonTsx';
 import CodeInputFieldCompat from '@components/codeInputField';
 import {wrapEmailPattern} from '@components/popups/emailSetup';
 import MediaHeader from '@components/mediaHeader';
+import focusWhenConnected from '@helpers/dom/focusWhenConnected';
 import replaceContent from '@helpers/dom/replaceContent';
 import mediaSizes from '@helpers/mediaSizes';
-import {fastRaf} from '@helpers/schedulers';
 import {i18n} from '@lib/langPack';
 
 import AuthCard from '@/pages/AuthCard';
 import {CardSpec, useAuthFlow} from '@/pages/authFlow';
 import styles from '@/pages/authFlow.module.scss';
+
+if(import.meta.hot) import.meta.hot.accept();
 
 type Spec = Extract<CardSpec, {name: 'emailRecover'}>;
 
@@ -61,11 +63,13 @@ export default function EmailRecoverCard(props: {spec: Spec}) {
 
   /* ---------- lifecycle ---------- */
 
+  let cancelFocus: (() => void) | undefined;
   onMount(() => {
-    fastRaf(() => codeInputField.input.focus());
+    cancelFocus = focusWhenConnected(codeInputField.input);
   });
 
   onCleanup(() => {
+    cancelFocus?.();
     codeInputField.cleanup();
   });
 

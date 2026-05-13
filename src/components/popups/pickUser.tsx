@@ -63,7 +63,8 @@ export type PopupPickUserOptions = Modify<ConstructorParameters<typeof AppSelect
   footer?: (ctx: {multiSelect: Accessor<AppSelectPeers['multiSelect']>}) => JSX.Element,
   autoHeight?: boolean,
   showTopPeers?: boolean,
-  btnConfirmOnEnter?: Parameters<typeof PopupElement>[0]['btnConfirmOnEnter']
+  btnConfirmOnEnter?: Parameters<typeof PopupElement>[0]['btnConfirmOnEnter'],
+  containerProps?: Parameters<typeof PopupElement>[0]['containerProps']
 }>;
 
 async function wrapTopicRow({
@@ -584,6 +585,7 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
       <PopupElement
         class="popup-forward"
         containerClass={options.autoHeight ? 'popup-forward-auto-height' : undefined}
+        containerProps={options.containerProps}
         closable
         show={show()}
         onClose={() => {

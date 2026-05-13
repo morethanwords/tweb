@@ -556,6 +556,7 @@ export class AppDialogsManager {
   public resizeStoriesList: () => void;
 
   private suggestionContainer: HTMLElement;
+  private foldersOverlay: HTMLElement;
 
   private lazyLoadQueue: LazyLoadQueue;
 
@@ -574,6 +575,21 @@ export class AppDialogsManager {
     const bottomPart = this.bottomPart = document.createElement('div');
     bottomPart.classList.add('connection-status-bottom');
     bottomPart.append(this.folders.container);
+
+    // Single absolute overlay sitting above the chatlist (#folders-container) that hosts every
+    // panel currently rendered there: pending suggestion, folder tabs scrollable, gradient.
+    // The panels flow naturally inside; only the overlay itself is absolutely positioned, so a
+    // new panel above the tabs just stacks instead of overlapping (see _leftSidebar.scss).
+    this.foldersOverlay = document.createElement('div');
+    this.foldersOverlay.classList.add('chatlist-overlay');
+    bottomPart.prepend(this.foldersOverlay);
+
+    // Surface the overlay's live height to the parent so the chatlist below can leave matching
+    // top padding — .folders-scrollable reads var(--chatlist-overlay-height) for its padding-top.
+    new ResizeObserver((entries) => {
+      const height = entries[0].borderBoxSize?.[0]?.blockSize ?? entries[0].contentRect.height;
+      bottomPart.style.setProperty('--chatlist-overlay-height', height + 'px');
+    }).observe(this.foldersOverlay);
 
     const storiesListContainer = this.storiesListContainer = document.createElement('div');
     storiesListContainer.classList.add('stories-list');
@@ -654,7 +670,7 @@ export class AppDialogsManager {
       });
 
       const resolvedChildren = children(() => element).toArray();
-      this.folders.container.before(...resolvedChildren as any);
+      this.foldersOverlay.append(...resolvedChildren as any);
     });
 
     const [appState] = useAppState();
@@ -747,7 +763,7 @@ export class AppDialogsManager {
       }
     };
 
-    this.bottomPart.prepend(this.folders.menuScrollContainer);
+    this.foldersOverlay.append(this.folders.menuScrollContainer);
     const selectTab = horizontalMenuObjArgs({
       tabs: this.folders.menu,
       content: this.folders.container,
@@ -1035,7 +1051,7 @@ export class AppDialogsManager {
 
     if(!this.suggestionContainer) {
       this.suggestionContainer = document.createElement('div');
-      this.folders.container.parentElement.prepend(this.suggestionContainer);
+      this.foldersOverlay.prepend(this.suggestionContainer);
       renderPendingSuggestion(this.suggestionContainer);
     }
   }

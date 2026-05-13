@@ -33,6 +33,8 @@ import styles from '@/pages/authFlow.module.scss';
 import {bootstrapIm} from '@/pages/bootstrapIm';
 import Button from '@components/buttonTsx';
 
+if(import.meta.hot) import.meta.hot.accept();
+
 /* ------------------------------------------------------------------ */
 /* Lazy card slots — same chunk-splitting as the legacy dynamic imports */
 /* ------------------------------------------------------------------ */

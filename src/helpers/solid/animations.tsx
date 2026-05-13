@@ -71,12 +71,20 @@ export default function Animated(props: {
 // `0` to.
 export function GrowHeightReveal(props: {
   when: Parameters<typeof Show>[0]['when'],
+  // Pass `appear={false}` when the wrapper might already be revealed on first
+  // mount (e.g. settings tab opening with the gate already satisfied) — skips
+  // the enter animation on initial paint, later toggles still animate.
+  appear?: boolean,
+  // Class applied to the internal `overflow:hidden` wrapper. Use when the revealed content
+  // needs the wrapper itself to extend past the parent (e.g. negative-margin section-edge
+  // strips — the wrapper's overflow:hidden would otherwise clip the extension).
+  class?: string,
   children: JSX.Element
 }) {
   return (
-    <Animated type="grow-height" noItemClass mode="add-remove" appear>
+    <Animated type="grow-height" noItemClass mode="add-remove" appear={props.appear ?? true}>
       <Show when={props.when}>
-        <div style={{overflow: 'hidden'}}>
+        <div class={props.class} style={{overflow: 'hidden'}}>
           {props.children}
         </div>
       </Show>

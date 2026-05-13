@@ -15,20 +15,20 @@ import {SponsoredMessage} from '@layer';
 import classNames from '@helpers/string/classNames';
 
 import styles from '@components/chat/topbarSponsored.module.scss';
-import {Ripple} from '@components/rippleTsx';
 import {I18nTsx} from '@helpers/solid/i18n';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import appImManager from '@lib/appImManager';
-import {getMiddleware} from '@helpers/middleware';
 import PhotoTsx from '@components/wrappers/photoTsx';
 import {MyPhoto} from '@appManagers/appPhotosManager';
-import {ButtonIconTsx} from '@components/buttonIconTsx';
 import PopupPremium from '@components/popups/premium';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import {getSponsoredMessageButtons} from '@components/chat/contextMenu';
 import PopupReportAd from '@components/popups/reportAd';
+import createMiddleware from '@helpers/solid/createMiddleware';
+import Button from '@components/buttonTsx';
+import RippleElement from '@components/rippleElement';
 
 export default class ChatTopbarSponsored extends PinnedContainer {
   private dispose: () => void;
@@ -41,7 +41,6 @@ export default class ChatTopbarSponsored extends PinnedContainer {
       chat,
       listenerSetter: topbar.listenerSetter,
       className: 'sponsored',
-      floating: true,
       height: 'auto'
     });
 
@@ -54,15 +53,14 @@ export default class ChatTopbarSponsored extends PinnedContainer {
 
     const [message, setMessage] = createSignal<SponsoredMessage>();
 
-    const middleware = getMiddleware()
-
     createEffect(on(peerId, (peerId$) => {
       setMessage(undefined);
       this.toggle(true);
       if(peerId$ === NULL_PEER_ID || !peerId$.isUser()) return;
       if(!this.chat.isBot) return;
 
-      this.managers.appMessagesManager.getSponsoredMessage(peerId$).then((message) => {
+      this.managers.appMessagesManager.getSponsoredMessage(peerId$)
+      .then((message) => {
         if(peerId() !== peerId$) return;
 
         if(message._ === 'messages.sponsoredMessages' && message.messages.length) {
@@ -70,23 +68,25 @@ export default class ChatTopbarSponsored extends PinnedContainer {
           this.toggle(false);
         }
       });
-    }))
+    }));
 
     const photo = () => {
       const message$ = message();
       if(message$.photo) return message$.photo as MyPhoto;
       if(message$.media && message$.media._ === 'messageMediaPhoto') return message$.media.photo as MyPhoto;
       return undefined;
-    }
+    };
+
+    const middleware = createMiddleware().get();
 
     return (
       <Show when={message()}>
-        <div
-          class={/* @once */ classNames(styles.container, 'quote-like')}
-          on:click={() => appImManager.onSponsoredMessageClick(message())}
+        <RippleElement
+          component="div"
+          class={/* @once */ classNames(styles.container, 'quote-like-hoverable', 'overflow-hidden')}
+          onClick={() => appImManager.onSponsoredMessageClick(message())}
           ref={(el) => {
-            if(!el) return;
-            return createContextMenu({
+            createContextMenu({
               listenTo: el,
               buttons: getSponsoredMessageButtons({
                 message: message(),
@@ -98,12 +98,13 @@ export default class ChatTopbarSponsored extends PinnedContainer {
                 handleCopy: () => {
                   copyTextToClipboard(message().message);
                 }
-              })
+              }),
+              middleware
             });
           }}
         >
-          {photo() && (
-            <div class={/* @once */ styles.photoWrap}>
+          <Show when={photo()}>
+            <div class={/* @once */ classNames(styles.photoWrap, 'disable-hover')}>
               <PhotoTsx
                 class={/* @once */ styles.photo}
                 photo={photo()}
@@ -112,29 +113,25 @@ export default class ChatTopbarSponsored extends PinnedContainer {
                 withoutPreloader
               />
             </div>
-          )}
-          <div class={/* @once */ styles.content}>
-            <div class={/* @once */ styles.title}>
-              <I18nTsx class={/* @once */ styles.ad} key="SponsoredMessageAd" />
+          </Show>
+          <div class={/* @once */ classNames(styles.content, 'disable-hover')}>
+            <div class="text-bold">
+              <I18nTsx class="primary" key="SponsoredMessageAd" />
               {' '}
               {wrapEmojiText(message().title)}
             </div>
-            <div class={/* @once */ styles.text}>
+            <div class="pre-wrap">
               {wrapRichText(message().message, {entities: message().entities})}
             </div>
           </div>
-          <div class={/* @once */ styles.actions}>
-            <ButtonIconTsx
-              icon="close"
-              // onMouseDown={e => e.stopPropagation()}
-              noRipple
-              on:click={(e) => {
-                e.stopPropagation();
-                PopupPremium.show({feature: 'no_ads'})
-              }}
-            />
-          </div>
-        </div>
+        </RippleElement>
+        <Button.Icon
+          icon="close"
+          onClick={(e) => {
+            e.stopPropagation();
+            PopupPremium.show({feature: 'no_ads'});
+          }}
+        />
       </Show>
     );
   }

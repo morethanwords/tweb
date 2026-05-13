@@ -1133,6 +1133,7 @@ export default function TopbarSearch(props: {
 
     const onShowingSmallResultsChange = (value = showingSmallResults()) => {
       props.chat.bubbles.container.classList.toggle('search-results-active', value);
+      props.chat.bubbles.updateGoDownVisibility();
       resultsElement.classList.toggle('active', value);
     };
 

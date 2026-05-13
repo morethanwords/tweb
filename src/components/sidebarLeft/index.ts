@@ -14,7 +14,7 @@ import TransitionSlider from '@components/transition';
 import AppSearchSuper, {SearchSuperMediaType} from '@components/appSearchSuper';
 import {DateData, fillTipDates} from '@helpers/date';
 import {MOUNT_CLASS_TO} from '@config/debug';
-import AppSettingsTab from '@components/sidebarLeft/tabs/settings';
+import {AppSettingsTab} from '@components/solidJsTabs';
 import AppNewChannelTab from '@components/sidebarLeft/tabs/newChannel';
 import AppContactsTab from '@components/sidebarLeft/tabs/contacts';
 import AppArchivedTab from '@components/sidebarLeft/tabs/archivedTab';

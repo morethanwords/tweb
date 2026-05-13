@@ -27,7 +27,7 @@ html:has(#column-left.is-collapsed) {
   max-width: #{$max-width};
   width: var(--current-width);
 
-  border-radius: $border-radius-big;
+  border-radius: var(--main-column-border-radius);
   box-shadow: var(--column-box-shadow);
   overflow: hidden;
   z-index: 1;
@@ -255,12 +255,16 @@ html:has(#column-left.is-collapsed) {
   }
 
   @include respond-to(handhelds) {
-    width: 100%;
-    max-width: 100%;
+    // Let the parent grid (`#main-columns`, `grid-template-columns: 100%`)
+    // stretch this item; combined with both inline margins it fits the
+    // viewport without overflowing past the right edge.
+    width: auto;
+    max-width: none;
+    margin-inline-end: var(--page-chats-padding);
 
     body:not(.is-left-column-shown) & {
       transform: translate3d(-25vw, 0, 0);
-      filter: brightness(80%);
+      opacity: 0;
     }
   }
 
@@ -302,6 +306,7 @@ html:has(#column-left.is-collapsed) {
     &-scrollable {
       z-index: 2;
       flex: 0 0 auto;
+      position: relative;
     }
 
     &-div {
@@ -314,20 +319,36 @@ html:has(#column-left.is-collapsed) {
     }
   }
 
-  .folders-tabs-scrollable {
+  .chatlist-overlay {
     position: absolute;
     top: 0;
     inset-inline: 0;
-    margin: .5rem .5rem 0;
-    box-shadow: var(--section-box-shadow-big);
+    z-index: 2;
+    // Children (pending suggestion, gradient, folder tabs) flow naturally — adding a panel above
+    // the tabs just stacks instead of overlapping.
   }
 
-  .folders-tabs-scrollable,
-  .folders-tabs-gradient-container {
-    display: none;
+  .folders-tabs {
+    &-scrollable {
+      margin: .5rem;
+      box-shadow: var(--section-box-shadow-big);
+      display: none;
 
-    .has-horizontal-folders & {
-      display: block;
+      .has-horizontal-folders & {
+        display: block;
+      }
+    }
+
+    &-gradient {
+      --alpha: 1 !important;
+      height: 100%;
+
+      &-container {
+        position: absolute;
+        // inset: 0 0 auto;
+        inset: 0;
+        z-index: -1;
+      }
     }
   }
 
@@ -419,6 +440,9 @@ html:has(#column-left.is-collapsed) {
       position: absolute;
       border-bottom: none !important;
       transition: transform var(--tabs-transition);
+      // Match the live overlay height so suggestion + tabs never cover the first chatlist row
+      // (variable set by ResizeObserver in appDialogsManager — see .chatlist-overlay).
+      padding-top: var(--chatlist-overlay-height, 0);
 
       .has-pending-suggestion &,
       .has-horizontal-folders & {
@@ -428,18 +452,10 @@ html:has(#column-left.is-collapsed) {
       &.active { // fix safari 14.0.2 scrollHeight
         display: block;
       }
-
-      .has-folders-sidebar & {
-        padding-top: 0 !important;
-      }
     }
 
     .has-horizontal-folders & {
       height: calc(100% - var(--scrollable-size));
-
-      .folders-scrollable {
-        padding-top: 4rem;
-      }
 
       .dialogs-placeholder-canvas {
         top: .5rem;
@@ -791,8 +807,6 @@ html:has(#column-left.is-collapsed) {
 
 .chat-folders-container,
 .edit-folder-container {
-  user-select: none;
-
   .sticker-container {
     width: 86px;
     height: 86px;
@@ -1149,7 +1163,6 @@ html:has(#column-left.is-collapsed) {
   transform: translateY(-50%);
   text-align: center;
   line-height: var(--line-height);
-  user-select: none;
   margin: 0 auto;
   padding: 0 1rem;
   position: relative;

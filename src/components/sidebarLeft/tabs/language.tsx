@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {createMemo, createRoot} from 'solid-js';
+import {createMemo, onMount} from 'solid-js';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import {randomLong} from '@helpers/random';
 import {LangPackLanguage} from '@layer';
@@ -18,151 +18,165 @@ import RadioField from '@components/radioField';
 import Row, {RadioFormFromRows} from '@components/row';
 import RowTsx from '@components/rowTsx';
 import Section from '@components/section';
-import SettingSection from '@components/settingSection';
-import {SliderSuperTab} from '@components/slider'
 import {useAppSettings} from '@stores/appSettings';
+import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
+import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 
-export default class AppLanguageTab extends SliderSuperTab {
-  public static getInitArgs() {
-    return {
-      languages1: rootScope.managers.apiManager.invokeApiCacheable('langpack.getLanguages', {
-        lang_pack: 'web'
-      }),
-      // languages2: rootScope.managers.apiManager.invokeApiCacheable('langpack.getLanguages', {
-      //   lang_pack: 'macos'
-      // })
-      languages2: Promise.resolve([] as LangPackLanguage[])
-    };
-  }
+// ─────────────────────────────────────────────────────────────────────────────
+// Section 1 — translation toggles + "Do not translate" picker
+// ─────────────────────────────────────────────────────────────────────────────
 
-  public init(p: ReturnType<typeof AppLanguageTab['getInitArgs']>) {
-    this.header.classList.add('with-border');
-    this.container.classList.add('language-container');
-    this.setTitle('Telegram.LanguageViewController');
+const TranslateSection = () => {
+  const [appSettings, setAppSettings] = useAppSettings();
+  const isPremium = usePremium();
 
-    const section1 = createRoot((dispose) => {
-      this.middlewareHelper.get().onDestroy(dispose);
+  const doNotTranslate = createMemo(() => {
+    const arr = appSettings.translations.doNotTranslate;
+    if(!arr.length) {
+      return [I18n.langCodeNormalized()];
+    }
 
-      const [appSettings, setAppSettings] = useAppSettings();
-      const isPremium = usePremium();
-      const doNotTranslate = createMemo(() => {
-        const arr = appSettings.translations.doNotTranslate;
-        if(!arr.length) {
-          return [I18n.langCodeNormalized()];
-        }
+    return arr;
+  });
 
-        return arr;
-      });
-
-      let container: HTMLDivElement;
-      (
-        <Section
-          ref={container}
-          name="TranslateMessages"
-          caption={isPremium() ? 'Translation.DoNotShow' : 'Language.TranslateMessages.Channel.Premium'}
-          captionArgs={[anchorCallback(() => {
+  return (
+    <Section
+      name="TranslateMessages"
+      caption={isPremium() ? 'Translation.DoNotShow' : 'Language.TranslateMessages.Channel.Premium'}
+      captionArgs={[anchorCallback(() => {
+        PopupPremium.show({feature: 'translations'});
+      })]}
+    >
+      <RowTsx>
+        <RowTsx.CheckboxFieldToggle>
+          <CheckboxFieldTsx
+            checked={appSettings.translations.showInMenu}
+            toggle
+            onChange={(checked) => {
+              setAppSettings('translations', 'showInMenu', checked);
+            }}
+          />
+        </RowTsx.CheckboxFieldToggle>
+        <RowTsx.Title>{i18n('ShowTranslateButton')}</RowTsx.Title>
+      </RowTsx>
+      <RowTsx
+        fakeDisabled={!isPremium()}
+        clickable={(e) => {
+          if(!isPremium()) {
+            e.preventDefault();
             PopupPremium.show({feature: 'translations'});
-          })]}
-        >
-          <RowTsx>
-            <RowTsx.CheckboxFieldToggle>
-              <CheckboxFieldTsx
-                checked={appSettings.translations.showInMenu}
-                toggle
-                onChange={(checked) => {
-                  setAppSettings('translations', 'showInMenu', checked);
-                }}
-              />
-            </RowTsx.CheckboxFieldToggle>
-            <RowTsx.Title>{i18n('ShowTranslateButton')}</RowTsx.Title>
-          </RowTsx>
-          <RowTsx
-            fakeDisabled={!isPremium()}
-            clickable={(e) => {
-              if(!isPremium()) {
-                e.preventDefault();
-                PopupPremium.show({feature: 'translations'});
-              }
+          }
+        }}
+      >
+        <RowTsx.CheckboxFieldToggle>
+          <CheckboxFieldTsx
+            checked={appSettings.translations.enabled}
+            toggle
+            onChange={(checked) => {
+              setAppSettings('translations', 'enabled', checked);
             }}
-          >
-            <RowTsx.CheckboxFieldToggle>
-              <CheckboxFieldTsx
-                checked={appSettings.translations.enabled}
-                toggle
-                onChange={(checked) => {
-                  setAppSettings('translations', 'enabled', checked);
-                }}
-              />
-            </RowTsx.CheckboxFieldToggle>
-            <RowTsx.Title>{i18n('ShowTranslateChatButton')}</RowTsx.Title>
-          </RowTsx>
-          {appSettings.translations.enabled && (<RowTsx
-            clickable={async() => {
-              const languages = await pickLanguage(true, doNotTranslate());
-              setAppSettings('translations', 'doNotTranslate', languages);
-            }}
-          >
-            <RowTsx.Title
-              titleRight={doNotTranslate().length < 3 ?
-                join(doNotTranslate().map((lang) => i18n(`Language.${lang}`)), false) :
-                i18n('Languages', [doNotTranslate().length])
-              }
-              titleRightSecondary
-            >{i18n('DoNotTranslate')}</RowTsx.Title>
-          </RowTsx>)}
-        </Section>
-      );
+          />
+        </RowTsx.CheckboxFieldToggle>
+        <RowTsx.Title>{i18n('ShowTranslateChatButton')}</RowTsx.Title>
+      </RowTsx>
+      {appSettings.translations.enabled && (<RowTsx
+        clickable={async() => {
+          const languages = await pickLanguage(true, doNotTranslate());
+          setAppSettings('translations', 'doNotTranslate', languages);
+        }}
+      >
+        <RowTsx.Title
+          titleRight={doNotTranslate().length < 3 ?
+            join(doNotTranslate().map((lang) => i18n(`Language.${lang}`)), false) :
+            i18n('Languages', [doNotTranslate().length])
+          }
+          titleRightSecondary
+        >{i18n('DoNotTranslate')}</RowTsx.Title>
+      </RowTsx>)}
+    </Section>
+  );
+};
 
-      return container;
+// ─────────────────────────────────────────────────────────────────────────────
+// Section 2 — language radio list. The fetch is collected into the tab's
+// promise collector so opening waits for the list (avoids showing an empty
+// section that suddenly fills with 50+ rows). On repeat opens
+// `invokeApiCacheable` returns synchronously from cache, so no real wait.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const LanguageListSection = () => {
+  const promiseCollector = usePromiseCollector();
+  let containerEl!: HTMLDivElement;
+
+  promiseCollector.collect((async() => {
+    const langs1 = await rootScope.managers.apiManager.invokeApiCacheable('langpack.getLanguages', {
+      lang_pack: 'web'
+    });
+    // macos langpack disabled in legacy tab — kept the structure for parity
+    const langs2: LangPackLanguage[] = [];
+
+    const radioRows = new Map<string, Row>();
+    const rendered = new Set<string>();
+    const webLangCodes = langs1.map((language) => language.lang_code);
+    const random = randomLong();
+
+    langs1.concat(langs2).forEach((language) => {
+      if(rendered.has(language.lang_code)) return;
+      rendered.add(language.lang_code);
+
+      const row = new Row({
+        radioField: new RadioField({
+          text: language.name,
+          name: random,
+          value: language.lang_code
+        }),
+        subtitle: language.native_name
+      });
+
+      radioRows.set(language.lang_code, row);
     });
 
-    const section = new SettingSection({});
-
-    const radioRows: Map<string, Row> = new Map();
-
-    const promise = Promise.all([
-      p.languages1,
-      p.languages2
-    ]).then(([languages1, languages2]) => {
-      const rendered: Set<string> = new Set();
-      const webLangCodes = languages1.map((language) => language.lang_code);
-
-      const random = randomLong();
-      languages1.concat(languages2).forEach((language) => {
-        if(rendered.has(language.lang_code)) return;
-        rendered.add(language.lang_code);
-
-        const row = new Row({
-          radioField: new RadioField({
-            text: language.name,
-            name: random,
-            value: language.lang_code
-          }),
-          subtitle: language.native_name
-        });
-
-        radioRows.set(language.lang_code, row);
-      });
-
-      const form = RadioFormFromRows([...radioRows.values()], (value) => {
-        I18n.getLangPackAndApply(value, webLangCodes.includes(value));
-      });
-
-      I18n.getCacheLangPackAndApply().then((langPack) => {
-        const row = radioRows.get(langPack.lang_code);
-        if(!row) {
-          console.error('no row', row, langPack);
-          return;
-        }
-
-        row.radioField.setValueSilently(true);
-      });
-
-      section.content.append(form);
+    const form = RadioFormFromRows([...radioRows.values()], (value) => {
+      I18n.getLangPackAndApply(value, webLangCodes.includes(value));
     });
 
-    this.scrollable.append(section1, section.container);
+    containerEl.replaceChildren(form);
 
-    return promise;
-  }
-}
+    const langPack = await I18n.getCacheLangPackAndApply();
+    const row = radioRows.get(langPack.lang_code);
+    if(!row) {
+      console.error('no row', row, langPack);
+      return;
+    }
+
+    row.radioField.setValueSilently(true);
+  })());
+
+  return (
+    <Section>
+      <div ref={containerEl} />
+    </Section>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tab root
+// ─────────────────────────────────────────────────────────────────────────────
+
+const Language = () => {
+  const [tab] = useSuperTab();
+
+  onMount(() => {
+    tab.header.classList.add('with-border');
+    tab.container.classList.add('language-container');
+  });
+
+  return (
+    <>
+      <TranslateSection />
+      <LanguageListSection />
+    </>
+  );
+};
+
+export default Language;

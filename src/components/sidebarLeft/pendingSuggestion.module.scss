@@ -1,28 +1,7 @@
 // @import "../scss/mixins";
 @use "../../scss/variables" as *;
 
-.container {
-  order: 0;
-  // padding: 0 .5rem;
-  // margin: .5rem 0;
-
-  // interpolate-size: allow-keywords;
-  // height: 0;
-  // overflow: hidden;
-  // transition: height 200ms ease-in-out;
-
-  // &.shown {
-  //   height: max-content;
-  // }
-}
-
 .suggestion {
-  margin: .5rem;
-
-  :global(.has-vertical-folders) & {
-    margin-bottom: 0;
-  }
-
   &Subtitle {
     font-size: var(--font-size-16);
     line-height: var(--line-height-16);
@@ -30,10 +9,15 @@
 
   &Container {
     overflow: hidden;
+    margin: .5rem;
+
+    :global(.has-vertical-folders) & {
+      margin-bottom: 0;
+    }
   }
 
   &.danger {
-    background-color: rgba(var(--danger-color-rgb), $hover-alpha);
+    background-color: var(--light-filled-danger-color) !important;
 
     .suggestionTitle {
       color: var(--danger-color);
@@ -41,7 +25,7 @@
   }
 
   &.secondary {
-    background-color: rgba(var(--secondary-text-color-rgb), $hover-alpha);
+    background-color: var(--light-filled-secondary-text-color) !important;
   }
 }
 

@@ -64,7 +64,6 @@ $btn-menu-z-index: 4;
   transition: transform var(--btn-corner-transition) !important;
   transform: translate3d(0, var(--translateY), 0);
   z-index: 1;
-  user-select: none;
   background-color: var(--primary-color);
   text-align: center;
   font-size: 1.5rem;
@@ -114,7 +113,6 @@ $btn-menu-z-index: 4;
   font-size: 1rem;
   min-width: 11.25rem;
   // max-width: 16.25rem;
-  -webkit-user-select: none; /* disable selection/Copy of UIWebView */
   -webkit-touch-callout: none; /* disable the IOS popup when long-press on a link */
   width: max-content;
   transform-origin: var(--transform-origin-x) var(--transform-origin-y);
@@ -597,7 +595,6 @@ $btn-menu-z-index: 4;
     bottom: 0;
     z-index: $btn-menu-z-index;
     cursor: default;
-    user-select: none;
     //background-color: rgba(0, 0, 0, .2);
   }
 
@@ -974,7 +971,7 @@ $btn-menu-z-index: 4;
   overflow: hidden;
   position: relative;
   padding: 0; // new
-  transition: .2s opacity, .2s background-color, .2s color;
+  transition: opacity var(--transition-standard-out), background-color var(--transition-standard-out), color var(--transition-standard-out);
   line-height: var(--line-height);
   text-transform: uppercase;
 

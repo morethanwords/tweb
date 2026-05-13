@@ -6,7 +6,6 @@
 
 import type Chat from '@components/chat/chat';
 import type ChatTopbar from '@components/chat/topbar';
-import mediaSizes from '@helpers/mediaSizes';
 import DivAndCaption from '@components/divAndCaption';
 import ripple from '@components/ripple';
 import ListenerSetter from '@helpers/listenerSetter';
@@ -15,8 +14,10 @@ import {attachClickEvent} from '@helpers/dom/clickEvent';
 import {Message, StoryItem} from '@layer';
 import safeAssign from '@helpers/object/safeAssign';
 import ButtonIcon from '@components/buttonIcon';
+import Button from '@components/buttonTsx';
+import classNames from '@helpers/string/classNames';
+import {JSX, Ref} from 'solid-js';
 
-const classNames: string[] = ['is-pinned-message-shown', 'is-pinned-audio-shown'];
 const CLASSNAME_BASE = 'pinned-container';
 
 export type WrapPinnedContainerOptions = {
@@ -32,15 +33,13 @@ export default class PinnedContainer {
   public wrapperUtils: HTMLElement;
   public btnClose: HTMLElement;
   public container: HTMLElement;
-  protected wrapper: HTMLElement;
+  public wrapper: HTMLElement;
 
   protected topbar?: ChatTopbar;
   protected chat: Chat;
   protected listenerSetter: ListenerSetter;
   public className: string;
   public divAndCaption: DivAndCaption<(options: WrapPinnedContainerOptions) => void>;
-
-  protected floating = false;
 
   public onClose?: () => void | Promise<boolean>;
 
@@ -53,7 +52,6 @@ export default class PinnedContainer {
     className: PinnedContainer['className'],
     divAndCaption?: PinnedContainer['divAndCaption'],
     onClose?: PinnedContainer['onClose'],
-    floating?: PinnedContainer['floating'],
     height: number | 'auto'
   }) {
     safeAssign(this, options);
@@ -75,7 +73,6 @@ export default class PinnedContainer {
 
     this.wrapper = document.createElement('div');
     this.wrapper.classList.add(CLASSNAME_BASE + '-wrapper', `pinned-${className}-wrapper`);
-    ripple(this.wrapper);
 
     this.wrapperUtils = document.createElement('div');
     this.wrapperUtils.classList.add(CLASSNAME_BASE + '-wrapper-utils', `pinned-${className}-wrapper-utils`);
@@ -110,23 +107,9 @@ export default class PinnedContainer {
       return;
     }
 
-    // const scrollable = this.chat.bubbles.scrollable;
-
-    const isFloating = (this.floating || mediaSizes.isMobile) && !hide;
-    // const scrollTop = isFloating || this.divAndCaption.container.classList.contains('is-floating') ? scrollable.scrollTop : undefined;
-
-    this.container.classList.toggle('is-floating', isFloating);
     this.container.classList.toggle('hide', hide);
 
     (this.topbar ? this.topbar.container : document.body).classList.toggle(`is-pinned-${this.className}-shown`, !hide);
-
-    // const active = classNames.filter((className) => this.topbar.container.classList.contains(className));
-    // const maxActive = hide ? 0 : 1;
-
-    // * not sure when it became unneeded
-    // if(scrollTop !== undefined && active.length <= maxActive/*  && !scrollable.isScrolledDown */) {
-    //   scrollable.scrollTop = scrollTop + ((hide ? -1 : 1) * HEIGHT);
-    // }
 
     if(this.topbar) {
       this.topbar.setFloating();
@@ -137,8 +120,41 @@ export default class PinnedContainer {
     return !this.container.classList.contains('hide');
   }
 
-  public isFloating() {
-    return this.container.classList.contains('is-floating');
+  public createActionButton(options: {
+    text: HTMLElement | DocumentFragment | string,
+    onClick?: (e: Event) => void,
+    as?: 'button' | 'a'
+  }): HTMLElement {
+    const btn = document.createElement(options.as || 'button');
+    btn.classList.add(
+      CLASSNAME_BASE + '-action-button',
+      'pinned-' + this.className + '-action-button',
+      'text-overflow-no-wrap'
+    );
+    if(typeof(options.text) === 'string') {
+      btn.textContent = options.text;
+    } else {
+      btn.append(options.text);
+    }
+    if(options.onClick) {
+      attachClickEvent(btn, options.onClick, {listenerSetter: this.listenerSetter});
+    }
+    return btn;
+  }
+
+  public createPrimaryButton(props: {
+    onClick: () => void,
+    children: JSX.Element,
+    ref?: Ref<HTMLElement>
+  }) {
+    return Button({
+      class: classNames(
+        CLASSNAME_BASE + '-primary-button',
+        `pinned-${this.className}-primary-button`
+      ),
+      primaryTransparent: true,
+      ...props
+    });
   }
 
   public fill(options: WrapPinnedContainerOptions) {

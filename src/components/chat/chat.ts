@@ -83,6 +83,7 @@ export default class Chat extends EventListenerBase<{
   setPeer: (mid: number, isTopMessage: boolean) => void
 }> {
   public container: HTMLElement;
+  public bubblesViewport: HTMLElement;
 
   public topbar: ChatTopbar;
   public bubbles: ChatBubbles;
@@ -280,6 +281,7 @@ export default class Chat extends EventListenerBase<{
     this.chatPaddingBottom[1](bottom);
     if(this.bubbles?.paddingTop) this.bubbles.paddingTop.style.height = top + 'px';
     if(this.bubbles?.paddingBottom) this.bubbles.paddingBottom.style.height = bottom + 'px';
+    this.bubbles?.updateStickyIntersectorRootMargin?.();
   }
 
   public applyContainerTheme() {
@@ -452,7 +454,10 @@ export default class Chat extends EventListenerBase<{
 
     this.bubbles.attachContainerListeners();
 
-    this.container.append(this.topbar.container, this.bubbles.container, this.input.chatInput);
+    this.bubblesViewport = document.createElement('div');
+    this.bubblesViewport.classList.add('bubbles-viewport', 'disable-hover');
+
+    this.container.append(this.topbar.container, this.bubbles.container, this.bubblesViewport, this.input.chatInput);
 
     this.bubbles.listenerSetter.add(rootScope)('dialog_migrate', ({migrateFrom, migrateTo}) => {
       if(this.peerId === migrateFrom) {

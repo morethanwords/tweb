@@ -13,6 +13,7 @@ import {ChatFull, GroupCall, InputGroupCall, Chat as MTChat} from '@layer';
 import appImManager from '@lib/appImManager';
 import {useChat} from '@stores/peers';
 import {useFullPeer} from '@stores/fullPeers';
+import {i18n} from '@lib/langPack';
 
 export default class ChatLive extends PinnedContainer {
   private dispose: () => void;
@@ -25,8 +26,7 @@ export default class ChatLive extends PinnedContainer {
       chat,
       listenerSetter: topbar.listenerSetter,
       className: 'live',
-      floating: true,
-      height: 56
+      height: 48
     });
 
     [this.peerId, this.setPeerId] = createSignal<PeerId>(NULL_PEER_ID);
@@ -114,12 +114,16 @@ export default class ChatLive extends PinnedContainer {
       appImManager.joinLiveStream(peerId());
     };
 
+    const actionButton = this.createActionButton({
+      text: i18n('Rtmp.Topbar.Join'),
+      onClick: onJoinClicked
+    });
+
     return (
       <Show when={shouldShow()}>
         <TopbarLive
           watching={watching()}
-          animationTrigger={peerId}
-          onJoin={onJoinClicked}
+          actionButton={actionButton}
         />
       </Show>
     );

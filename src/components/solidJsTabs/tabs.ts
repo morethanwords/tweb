@@ -130,6 +130,33 @@ export const AppArchiveSettingsTab =
     getComponentModule: () => import('../sidebarLeft/tabs/archiveSettingsTab')
   });
 
+export const AppGeneralSettingsTab =
+  scaffoldSolidJSTab({
+    title: 'Telegram.GeneralSettingsViewController',
+    getComponentModule: () => import('../sidebarLeft/tabs/generalSettings')
+  });
+
+
+export const AppChatBackgroundTab =
+  scaffoldSolidJSTab({
+    title: 'ChatBackground',
+    getComponentModule: () => import('../sidebarLeft/tabs/background')
+  });
+
+
+export const AppLanguageTab =
+  scaffoldSolidJSTab({
+    title: 'Telegram.LanguageViewController',
+    getComponentModule: () => import('../sidebarLeft/tabs/language')
+  });
+
+
+export const AppSettingsTab =
+  scaffoldSolidJSTab({
+    title: 'Settings',
+    getComponentModule: () => import('../sidebarLeft/tabs/settings')
+  });
+
 
 type AppAddMembersTabPayload = {
   title: LangPackKey;

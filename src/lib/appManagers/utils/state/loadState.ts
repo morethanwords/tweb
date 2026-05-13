@@ -6,7 +6,7 @@
 
 import App from '@config/app';
 import DEBUG from '@config/debug';
-import {CommonState as StateCommon, State, COMMON_STATE_INIT, STATE_INIT} from '@config/state';
+import {CommonState as StateCommon, State, COMMON_STATE_INIT, STATE_INIT, AppTheme} from '@config/state';
 import compareVersion from '@helpers/compareVersion';
 import copy from '@helpers/object/copy';
 import validateInitObject from '@helpers/object/validateInitObject';
@@ -183,6 +183,24 @@ const STATE_STEPS = {
       );
     }, undefined, SKIP_VALIDATING_PATHS);
   },
+  // Idempotent migration: legacy state stored AppTheme.settings as a single ThemeSettings;
+  // the new shape mirrors the MTProto Theme.settings array (one entry per BaseTheme), so
+  // switching dark/light keeps a cloud theme's per-base customizations. Wrap any leftover
+  // singular settings into a one-element array — getThemeSettings handles the rest.
+  MIGRATE_THEMES: (writer: ReturnType<typeof CommonStateWriter>) => {
+    const themes = writer.state.settings?.themes as AppTheme[] | undefined;
+    if(!themes) return;
+    let migrated = false;
+    themes.forEach((theme) => {
+      if(theme.settings && !Array.isArray(theme.settings)) {
+        theme.settings = [theme.settings as any];
+        migrated = true;
+      }
+    });
+    if(migrated) {
+      writer.push('settings', writer.state.settings);
+    }
+  },
   VERSION: (writer: ReturnType<typeof StateWriter>) => {
     let newVersion: string, oldVersion: string;
     if(writer.state.version !== STATE_VERSION || writer.state.build !== BUILD/*  || true */) {
@@ -270,6 +288,7 @@ async function loadStateForAccount(accountNumber: ActiveAccountNumber): Promise<
   STATE_STEPS.REFRESH(writer);
   STATE_STEPS.VALIDATE(writer, STATE_INIT);
   STATE_STEPS.VALIDATE(commonWriter, COMMON_STATE_INIT);
+  STATE_STEPS.MIGRATE_THEMES(commonWriter);
   const {newVersion, oldVersion} = STATE_STEPS.VERSION(writer);
 
   return {
@@ -332,6 +351,7 @@ async function loadOldState(): Promise<LoadStateResult> {
   STATE_STEPS.REFRESH(writer);
   STATE_STEPS.VALIDATE(writer, STATE_INIT);
   STATE_STEPS.VALIDATE(commonWriter, COMMON_STATE_INIT);
+  STATE_STEPS.MIGRATE_THEMES(commonWriter);
   const {newVersion, oldVersion} = STATE_STEPS.VERSION(writer);
 
   if(DEBUG) {

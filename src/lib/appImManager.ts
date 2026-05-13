@@ -90,7 +90,7 @@ import parseUriParams from '@helpers/string/parseUriParams';
 import getMessageThreadId from '@appManagers/utils/messages/getMessageThreadId';
 import findUpTag from '@helpers/dom/findUpTag';
 import showForwardPopup from '@components/popups/forward';
-import AppBackgroundTab from '@components/sidebarLeft/tabs/background';
+import {AppBackgroundTab} from '@components/sidebarLeft/tabs/background';
 import partition from '@helpers/array/partition';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import liteMode, {LiteModeKey} from '@helpers/liteMode';
@@ -129,7 +129,7 @@ import ChatBackgroundStore from '@lib/chatBackgroundStore';
 import useLockScreenShortcut from '@appManagers/utils/useLockScreenShortcut';
 import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
 import IS_WEB_APP_BROWSER_SUPPORTED from '@environment/webAppBrowserSupport';
-import ChatAudio from '@components/chat/audio';
+import createChatAudio, {ChatAudioController} from '@components/chat/audio';
 import AudioAssetPlayer from '@helpers/audioAssetPlayer';
 import {MyMessage} from '@appManagers/appMessagesManager';
 import {canUploadAsWhenEditing} from '@components/chat/utils';
@@ -206,7 +206,7 @@ export class AppImManager extends EventListenerBase<{
   private backgroundPromises: {[url: string]: MaybePromise<string>};
 
   private topbarCall: TopbarCall;
-  private chatAudio: ChatAudio;
+  private chatAudio: ChatAudioController;
 
   public managers: AppManagers;
 
@@ -240,20 +240,16 @@ export class AppImManager extends EventListenerBase<{
     this.log = logger('IM', LogTypes.Log | LogTypes.Warn | LogTypes.Debug | LogTypes.Error);
 
     this.backgroundPromises = {};
+    // Pre-cache the bundled wallpaper svg for every base entry — multiple base themes
+    // can reference the same `pattern` slug, so we dedupe via the cache itself.
     SETTINGS_INIT.themes.forEach((theme) => {
-      const themeSettings = theme.settings;
-      if(!themeSettings) {
-        return;
-      }
+      theme.settings?.forEach(({wallpaper}) => {
+        const slug = (wallpaper as WallPaper.wallPaper)?.slug;
+        if(!slug) return;
 
-      const {wallpaper} = themeSettings;
-      const slug = (wallpaper as WallPaper.wallPaper).slug;
-      if(!slug) {
-        return;
-      }
-
-      const url = 'assets/img/' + slug + '.svg' + (IS_FIREFOX ? '?1' : '');
-      ChatBackgroundStore.setBackgroundUrlToCache({slug, url})
+        const url = 'assets/img/' + slug + '.svg' + (IS_FIREFOX ? '?1' : '');
+        ChatBackgroundStore.setBackgroundUrlToCache({slug, url});
+      });
     });
 
     this.selectTab(APP_TABS.CHATLIST);
@@ -671,7 +667,7 @@ export class AppImManager extends EventListenerBase<{
       this.topbarCall = new TopbarCall(managers);
     }
 
-    this.chatAudio = new ChatAudio(this, managers);
+    this.chatAudio = createChatAudio(this, managers);
     this.columnEl.append(this.chatAudio.container);
 
     this.audioAssetPlayer = new AudioAssetPlayer({
@@ -1873,8 +1869,9 @@ export class AppImManager extends EventListenerBase<{
 
   public setCurrentBackground(broadcastEvent = false, skipAnimation?: boolean): Promise<void> {
     const theme = themeController.getTheme();
+    const themeSettings = themeController.getThemeSettings(theme);
 
-    const slug = (theme.settings?.wallpaper as WallPaper.wallPaper)?.slug;
+    const slug = (themeSettings?.wallpaper as WallPaper.wallPaper)?.slug;
     if(slug) {
       const defaultTheme = SETTINGS_INIT.themes.find((t) => t.name === theme.name);
       return Promise.resolve(ChatBackgroundStore.getBackground({

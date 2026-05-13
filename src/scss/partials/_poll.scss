@@ -11,7 +11,6 @@ poll-element {
   display: block;
   //min-width: 280px;
   width: 330px;
-  user-select: none;
   color: var(--primary-text-color);
   
   @include respond-to(handhelds) {

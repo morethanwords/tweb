@@ -6,11 +6,66 @@
 
 import formatBytes from '@helpers/formatBytes';
 import debounce from '@helpers/schedulers/debounce';
-import I18n from '@lib/langPack';
+import I18n, {LangPackKey, _i18n} from '@lib/langPack';
 import {useAppSettings} from '@stores/appSettings';
 import {SliderSuperTabEventable} from '@components/sliderTab';
-import {RangeSettingSelector} from '@components/sidebarLeft/tabs/generalSettings';
+import RangeSelector from '@components/rangeSelector';
 import {autoDownloadPeerTypeSection} from '@components/sidebarLeft/tabs/autoDownload/photo';
+
+class RangeSettingSelector {
+  public container: HTMLDivElement;
+  public valueContainer: HTMLElement;
+  private range: RangeSelector;
+
+  public onChange: (value: number) => void;
+
+  constructor(
+    name: LangPackKey,
+    step: number,
+    initialValue: number,
+    minValue: number,
+    maxValue: number,
+    writeValue = true
+  ) {
+    const BASE_CLASS = 'range-setting-selector';
+    this.container = document.createElement('div');
+    this.container.classList.add(BASE_CLASS);
+
+    const details = document.createElement('div');
+    details.classList.add(BASE_CLASS + '-details');
+
+    const nameDiv = document.createElement('div');
+    nameDiv.classList.add(BASE_CLASS + '-name');
+    _i18n(nameDiv, name);
+
+    const valueDiv = this.valueContainer = document.createElement('div');
+    valueDiv.classList.add(BASE_CLASS + '-value');
+
+    if(writeValue) {
+      valueDiv.innerHTML = '' + initialValue;
+    }
+
+    details.append(nameDiv, valueDiv);
+
+    this.range = new RangeSelector({
+      step,
+      min: minValue,
+      max: maxValue
+    }, initialValue);
+    this.range.setListeners();
+    this.range.setHandlers({
+      onScrub: (value) => {
+        this.onChange?.(value);
+
+        if(writeValue) {
+          valueDiv.innerText = '' + value;
+        }
+      }
+    });
+
+    this.container.append(details, this.range.container);
+  }
+}
 
 export default class AppAutoDownloadFileTab extends SliderSuperTabEventable {
   public init() {

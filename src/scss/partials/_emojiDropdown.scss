@@ -25,7 +25,6 @@ $menu-search-translateY: -#{$menu-height};
 	background: var(--surface-color);
 	overflow: hidden;
 	flex: 1 1 auto;
-	user-select: none;
   position: absolute;
   inset-inline-end: $chat-padding;
   bottom: calc(var(--chat-input-size) + .5rem);

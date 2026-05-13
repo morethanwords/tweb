@@ -65,6 +65,14 @@ export type ChatBackgroundProps = {
   themeController?: ThemeController;
   /** Override the global managers — same reason as `themeController`. */
   managers?: AppManagers;
+  /**
+   * Pattern-canvas size (CSS pixels). Defaults to the window size — correct for full-screen chat
+   * backgrounds, but wasteful for thumbnails. Picker / theme-tile previews should pass the actual
+   * rendered size of `.background-item` so we don't build a 1400×900 canvas to be CSS-scaled into
+   * a ~72×96 tile.
+   */
+  width?: number;
+  height?: number;
   gradientRendererRef?: (value: ChatBackgroundGradientRenderer | undefined) => void;
   onHighlightColor?: (hsla: string) => void;
   onCachedStatus?: (cached: boolean) => void;
@@ -96,6 +104,7 @@ type BuiltContent = {
   resolved: ResolvedBackground;
   isPattern: boolean;
   isDarkPattern: boolean;
+  isTinted: boolean;
   patternRenderer?: ChatBackgroundPatternRenderer;
   patternCanvas?: HTMLCanvasElement;
   gradientRenderer?: ChatBackgroundGradientRenderer;
@@ -172,13 +181,30 @@ function getWallPaperUrl(
 function buildContent(
   layer: HTMLElement,
   resolved: ResolvedBackground,
-  url: string | undefined
+  url: string | undefined,
+  width: number,
+  height: number
 ): BuiltContent {
   const {wallPaper} = resolved;
   const colors = getColorsFromWallPaper(wallPaper);
   const isPattern = !!(wallPaper as WallPaper.wallPaper)?.pFlags?.pattern;
-  const intensity = wallPaper.settings?.intensity && wallPaper.settings.intensity / 100;
-  const isDarkPattern = !!intensity && intensity < 0;
+  const themeName = (resolved.theme as AppTheme)?.name;
+  // Two compositing strategies for dark patterns:
+  // - Default (mask): pattern canvas painted black with pattern-shape holes, covering most of the gradient.
+  //   Only the pattern shape gets the gradient color. Used by `night` (its bright peach/pink/purple gradient
+  //   would be too vivid at full opacity — the mask "darkens" the result by black-ing the gaps).
+  // - Overlay (Android-faithful): gradient at full opacity, pattern image as a soft-light overlay (with
+  //   color invert because the bundled pattern.svg is black-on-transparent and we need light doodles over
+  //   the dark gradient). Matches MotionBackgroundDrawable's positive-intensity flow. Used by `tinted` so
+  //   its dark navy gradient is actually visible (matches Android Dark Blue's appearance).
+  const useOverlayRender = themeName === 'tinted';
+  // Tinted forces its rendering parameters from the default tinted wallpaper so picker selections preserve
+  // the "Dark Blue" rendering style (overlay + intensity 38) regardless of the picked theme's intensity sign.
+  // Picker still controls gradient colors and accent — only the rendering knobs (intensity, isDarkPattern)
+  // are held to default tinted's values.
+  let intensity = wallPaper.settings?.intensity && wallPaper.settings.intensity / 100;
+  if(useOverlayRender) intensity = -0.38;
+  const isDarkPattern = useOverlayRender || (!!intensity && intensity < 0);
 
   let patternCanvas: HTMLCanvasElement | undefined;
   let gradientCanvas: HTMLCanvasElement | undefined;
@@ -190,13 +216,14 @@ function buildContent(
     patternRenderer = ChatBackgroundPatternRenderer.getInstance({
       element: layer,
       url,
-      width: windowSize.width,
-      height: windowSize.height,
-      mask: isDarkPattern
+      width,
+      height,
+      mask: isDarkPattern && !useOverlayRender
     });
     patternCanvas = patternRenderer.createCanvas();
     patternCanvas.classList.add(styles.CanvasCommon);
-    if(!isDarkPattern) patternCanvas.classList.add(styles.Blend);
+    if(!isDarkPattern || useOverlayRender) patternCanvas.classList.add(styles.Blend);
+    if(useOverlayRender) patternCanvas.classList.add(styles.DarkPatternInvert);
   } else if(url) {
     image = document.createElement('img');
     image.classList.add(styles.CanvasCommon);
@@ -210,10 +237,12 @@ function buildContent(
   }
 
   if(intensity) {
-    const setOpacityTo = image ?? (isDarkPattern ? gradientCanvas : patternCanvas);
-    let opacityMax = Math.abs(intensity) * (isDarkPattern ? .5 : 1);
+    // Mask path applies opacity to the gradient (so the small visible gradient area in pattern shape
+    // is dimmed). Overlay path applies opacity to the pattern overlay (gradient stays full).
+    const setOpacityTo = image ?? (isDarkPattern && !useOverlayRender ? gradientCanvas : patternCanvas);
+    let opacityMax = Math.abs(intensity) * (isDarkPattern && !useOverlayRender ? .5 : 1);
     if(image) opacityMax = Math.max(0.3, 1 - intensity);
-    else if(isDarkPattern) opacityMax = Math.max(0.3, opacityMax);
+    else if(isDarkPattern && !useOverlayRender) opacityMax = Math.max(0.3, opacityMax);
     setOpacityTo?.style.setProperty('--opacity-max', '' + opacityMax);
   }
 
@@ -231,6 +260,7 @@ function buildContent(
     resolved,
     isPattern,
     isDarkPattern,
+    isTinted: useOverlayRender,
     patternRenderer,
     patternCanvas,
     gradientRenderer,
@@ -250,6 +280,7 @@ function disposeBuilt(built: BuiltContent) {
 function attachBuiltToSlot(slot: Slot, built: BuiltContent) {
   slot.el.classList.toggle(styles.IsPattern, built.isPattern);
   slot.el.classList.toggle(styles.IsImage, !!built.image);
+  slot.el.classList.toggle(styles.IsTinted, built.isTinted);
 
   if(built.gradientCanvas) slot.el.append(built.gradientCanvas);
   if(built.patternCanvas) slot.el.append(built.patternCanvas);
@@ -432,7 +463,13 @@ export const ChatBackground: Component<ChatBackgroundProps> = (props) => {
       }
 
       // Build canvases/renderers offstage; only mount into the slot once we know we're still current.
-      const built = buildContent(layer, resolved, url);
+      const built = buildContent(
+        layer,
+        resolved,
+        url,
+        props.width ?? windowSize.width,
+        props.height ?? windowSize.height
+      );
       await built.readyPromise;
       if(myTempId !== tempId) {
         disposeBuilt(built);
