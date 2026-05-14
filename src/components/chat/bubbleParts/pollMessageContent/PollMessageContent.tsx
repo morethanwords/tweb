@@ -229,14 +229,13 @@ export const PollMessageContent = defineSolidElement({
 
       const optionIndexes = chosenIndexes().map(initialIdxFromShuffledIdx).filter(idx => idx !== -1);
 
-      // await pause(200);
       await rootScope.managers.appPollsManager.sendVote(getOverridenMessage(), optionIndexes);
 
       resetInteractiveState();
     });
 
     // In case the vote is sent immediately, we delay the pending state to avoid showing the spinner too soon
-    const delayedSendVotePending = createDelayed(sendVoteMutation.isPending, false, 200);
+    const delayedSendVotePending = createDelayed(sendVoteMutation.isPending, false, value => value ? 100 : -1);
 
     const addOptionMutation = createMutation(async() => {
       const {text, entities, attachment} = unwrap(newOption);

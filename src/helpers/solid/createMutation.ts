@@ -1,3 +1,4 @@
+import noop from '@helpers/noop';
 import {createMemo, createSignal} from 'solid-js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -93,7 +94,7 @@ export function createMutation<TData, TError = Error, TVariables = void>(
 
   const mutate = (variables: TVariables): void => {
     // Swallow the rejection — state already reflects it.
-    mutateAsync(variables).catch((): void => undefined);
+    mutateAsync(variables).catch(noop);
   };
 
   return {
