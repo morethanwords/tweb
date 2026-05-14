@@ -1326,10 +1326,6 @@
     }
   }
 
-  &.poll-message {
-    --max-content-width: 400px;
-  }
-
   &.document-message {
     --max-content-width: 325px;
   }
@@ -1595,6 +1591,10 @@
   &.poll-message {
     .message {
       margin: 0 !important;
+    }
+
+    .reactions-block {
+      margin: -1rem 0.5rem 0.375rem 0.25rem;
     }
   }
 
