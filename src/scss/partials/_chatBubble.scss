@@ -873,7 +873,7 @@
     }
   }
 
-  img:not(.emoji),
+  img:not(.emoji):not(.custom-emoji-placeholder),
   video {
     object-fit: cover;
     width: 100%;
