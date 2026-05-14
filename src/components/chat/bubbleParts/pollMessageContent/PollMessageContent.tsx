@@ -13,6 +13,7 @@ import {keepMe} from '@helpers/keepMe';
 import intToUint from '@helpers/number/intToUint';
 import {attachHotClassName} from '@helpers/solid/classname';
 import createMiddleware from '@helpers/solid/createMiddleware';
+import {createMutation} from '@helpers/solid/createMutation';
 import {HeightTransition} from '@helpers/solid/heightTransition';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
@@ -33,7 +34,7 @@ import {PollMessageContentPropsContext} from './context';
 import {AvatarGroup, Explanation, PollType, PollVotes} from './parts';
 import {PollOption} from './PollOption';
 import styles from './styles.module.scss';
-import {dataPollViewerIdx, NewOptionValues, PollOptionResult, roundPercents} from './utils';
+import {createDelayed, dataPollViewerIdx, NewOptionValues, PollOptionResult, roundPercents} from './utils';
 
 
 keepMe(ripple);
@@ -71,7 +72,7 @@ export const PollMessageContent = defineSolidElement({
 
     const [explanationToggled, setExplanationToggled] = createSignal(false);
     const [chosenIndexes, setChosenIndexes] = createSignal<number[]>([]);
-    const [isFooterClickable, setIsFooterClickable] = createSignal(false);
+    const [canFooterClickable, setCanFooterClickable] = createSignal(false);
     const [isAddingNewOptionVisible, setIsAddingNewOptionVisible] = createSignal(false);
     const [newOption, setNewOption] = createStore<NewOptionValues>({
       text: '',
@@ -150,7 +151,9 @@ export const PollMessageContent = defineSolidElement({
 
     const willFooterBeClickable = createMemo(() => canShowViewResults() || hasSelectedSomething() || hasTypedNewOption());
 
-    setIsFooterClickable(willFooterBeClickable());
+    const isFooterClickable = createMemo(() => canFooterClickable() && !sendVoteMutation.isPending());
+
+    setCanFooterClickable(willFooterBeClickable());
 
     const getOverridenMessage = (): Message.message => ({
       ...unwrap(props.message),
@@ -222,21 +225,24 @@ export const PollMessageContent = defineSolidElement({
       inputField?.setValueSilently('');
     });
 
-    const sendVote = async() => {
+    const sendVoteMutation = createMutation(async() => {
       if(isShowingResult() || !hasSelectedSomething()) return;
 
       const optionIndexes = chosenIndexes().map(initialIdxFromShuffledIdx).filter(idx => idx !== -1);
 
+      // await pause(200);
       await rootScope.managers.appPollsManager.sendVote(getOverridenMessage(), optionIndexes);
 
       resetInteractiveState();
-    };
+    });
 
-    const addOption = async() => {
+    const delayedSendVotePending = createDelayed(sendVoteMutation.isPending, false, 100);
+
+    const addOptionMutation = createMutation(async() => {
       const {text, entities, attachment} = unwrap(newOption);
       if(isShowingResult() || !text) return;
 
-      rootScope.managers.appPollsManager.addPollAnswer(
+      const promise = rootScope.managers.appPollsManager.addPollAnswer(
         getOverridenMessage(),
         {
           _: 'textWithEntities',
@@ -247,7 +253,9 @@ export const PollMessageContent = defineSolidElement({
       );
 
       resetInteractiveState();
-    };
+
+      await promise;
+    });
 
     const openViewResults = () => {
       if(!appSidebarRight.isTabExists(AppPollResultsTab)) {
@@ -259,8 +267,8 @@ export const PollMessageContent = defineSolidElement({
 
     const onFooterClick = wrapAsyncClickHandler(async() => {
       if(canShowViewResults()) openViewResults();
-      else if(hasSelectedSomething()) await sendVote();
-      else if(hasTypedNewOption()) await addOption();
+      else if(hasSelectedSomething()) await sendVoteMutation.mutateAsync();
+      else if(hasTypedNewOption()) await addOptionMutation.mutateAsync();
     });
 
     subscribeOn(rootScope)('poll_update', ({poll, results}) => {
@@ -380,6 +388,7 @@ export const PollMessageContent = defineSolidElement({
                   onToggle={() => handleToggle(index())}
                   pollViewerPayload={[mediaViewerPayload().indexes.options.get(initialIdx()), elementByIndexMap]}
                   result={getResultForOption(initialIdx())}
+                  isPendingVote={delayedSendVotePending()}
                 />
               );
             }}
@@ -396,7 +405,7 @@ export const PollMessageContent = defineSolidElement({
                 value={newOption.text}
                 attachment={newOption.attachment}
                 onPartialChange={handleNewOptionChanged}
-                onEnter={addOption}
+                onEnter={addOptionMutation.mutate}
                 visible={isAddingNewOptionVisible()}
                 onVisibleChange={setIsAddingNewOptionVisible}
               />
@@ -417,7 +426,7 @@ export const PollMessageContent = defineSolidElement({
             name='fade-2'
             mode='outin'
             onAfterExit={() => {
-              setIsFooterClickable(willFooterBeClickable());
+              setCanFooterClickable(willFooterBeClickable());
             }}
           >
             <Switch>

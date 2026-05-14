@@ -1,6 +1,6 @@
 import {AttachedMedia} from '@components/popups/createPoll/storeContext';
 import {TextWithEntities} from '@layer';
-import {Accessor, createEffect, onCleanup} from 'solid-js';
+import {Accessor, createEffect, createSignal, onCleanup} from 'solid-js';
 
 export type PollOptionResult = {
   voters: number;
@@ -63,4 +63,31 @@ export const dataPollViewerIdx = (el: HTMLElement, payload: Accessor<DataPollVie
       map.delete(idx);
     });
   });
+};
+
+export const createDelayed = <T>(value: () => T, defaultValue: T, delay: number) => {
+  const [current, setCurrent] = createSignal<T>(defaultValue);
+
+  let timeout: number;
+
+  createEffect(() => {
+    const val = value();
+
+    timeout = self.setTimeout(() => {
+      setCurrent(() => val);
+    }, delay);
+
+    onCleanup(() => {
+      self.clearTimeout(timeout);
+    });
+  });
+
+  const result = () => current();
+
+  result.set = (value: T) => {
+    self.clearTimeout(timeout);
+    setCurrent(() => value);
+  };
+
+  return result;
 };

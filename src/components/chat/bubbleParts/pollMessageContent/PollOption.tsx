@@ -1,4 +1,5 @@
 import ripple from '@components/ripple';
+import {Spinner} from '@components/spinner';
 import StaticRadio from '@components/staticRadio';
 import PhotoTsx from '@components/wrappers/photoTsx';
 import {animateValue} from '@helpers/animateValue';
@@ -10,7 +11,7 @@ import {requestRAF} from '@helpers/solid/requestRAF';
 import classNames from '@helpers/string/classNames';
 import {Photo} from '@layer';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
-import {Accessor, createEffect, createMemo, createSignal, JSX, onCleanup, onMount, Show, splitProps} from 'solid-js';
+import {Accessor, createEffect, createMemo, createSignal, JSX, Match, onCleanup, onMount, Show, splitProps, Switch} from 'solid-js';
 import {Transition} from 'solid-transition-group';
 import {InMessageCheckbox} from '../inMessageCheckbox';
 import {AutoHeight} from './AutoHeight';
@@ -18,7 +19,7 @@ import {usePollMessageContentProps} from './context';
 import {AvatarGroup} from './parts';
 import PathDot from './PathDot';
 import styles from './styles.module.scss';
-import {dataPollViewerIdx, DataPollViewerIdxDirectivePayload, LocalTextWithEntities, PollOptionResult} from './utils';
+import {createDelayed, dataPollViewerIdx, DataPollViewerIdxDirectivePayload, LocalTextWithEntities, PollOptionResult} from './utils';
 
 
 keepMe(ripple);
@@ -36,6 +37,7 @@ export const PollOption = (props: {
   allowMultipleAnswers: boolean;
   hasCorrectAnswer: boolean;
   pollViewerPayload?: DataPollViewerIdxDirectivePayload;
+  isPendingVote?: boolean;
 
   result?: PollOptionResult;
 }) => {
@@ -57,6 +59,9 @@ export const PollOption = (props: {
     (props.result.chosen || props.hasCorrectAnswer)
   ));
 
+  // So it waits a little bit for the spinner to disappear
+  const delayedIsPendingVote = createDelayed(() => props.isPendingVote ?? false, false, 200);
+
   const middleware = createMiddleware().get();
 
   onMount(() => {
@@ -74,26 +79,40 @@ export const PollOption = (props: {
     }
   });
 
+  createEffect(() => {
+    // set immediately when isPendingVote is true, then delay it to hide the spinner
+    if(props.isPendingVote) {
+      delayedIsPendingVote.set(true);
+    }
+  });
+
   return (
     <div class={styles.pollOption} classList={{[styles.hasMedia]: props.withImage}}>
       <Show when={!isShowingResult()}>
         <div class={styles.clickableArea} classList={{[styles.outgoing]: contextProps.isOutgoing}} use:ripple onClick={props.onToggle} />
       </Show>
       <div class={styles.checkContainer}>
-        <Transition name='fade-2'>
-          <Show when={!isShowingResult()}>
-            <Show
-              when={props.allowMultipleAnswers}
-              fallback={<StaticRadio class={styles.checkbox} checked={props.checked} />}
-            >
-              <InMessageCheckbox class={styles.checkbox} checked={props.checked} isOutgoing={contextProps.isOutgoing} />
-            </Show>
-          </Show>
-          <Show when={isShowingResult() && canShowPercentage()}>
-            <div class={styles.percent}>
-              <AnimatedPercentage percentage={percentage()} canAnimate={canAnimate()} />
-            </div>
-          </Show>
+        <Transition name='fade'>
+          <Switch>
+            <Match when={props.isPendingVote}>
+              <div class={styles.spinnerContainer}>
+                <Spinner />
+              </div>
+            </Match>
+            <Match when={!isShowingResult()}>
+              <Show
+                when={props.allowMultipleAnswers}
+                fallback={<StaticRadio class={styles.checkbox} checked={props.checked} />}
+              >
+                <InMessageCheckbox class={styles.checkbox} checked={props.checked} isOutgoing={contextProps.isOutgoing} />
+              </Show>
+            </Match>
+            <Match when={canShowPercentage()}>
+              <div class={styles.percent}>
+                <AnimatedPercentage percentage={percentage()} canAnimate={canAnimate()} />
+              </div>
+            </Match>
+          </Switch>
         </Transition>
       </div>
       <div class={styles.labelRow}>
@@ -124,7 +143,7 @@ export const PollOption = (props: {
           </Show>
         </Transition>
         <Transition name='fade-2'>
-          <Show when={canAnimate() && isShowingResult() && !canShowPercentage()}>
+          <Show when={canAnimate() && isShowingResult() && !canShowPercentage() && !delayedIsPendingVote()}>
             <PathDot
               class={styles.pathDot}
               dotColor='var(--primary-color)'
