@@ -236,7 +236,8 @@ export const PollMessageContent = defineSolidElement({
       resetInteractiveState();
     });
 
-    const delayedSendVotePending = createDelayed(sendVoteMutation.isPending, false, 100);
+    // In case the vote is sent immediately, we delay the pending state to avoid showing the spinner too soon
+    const delayedSendVotePending = createDelayed(sendVoteMutation.isPending, false, 200);
 
     const addOptionMutation = createMutation(async() => {
       const {text, entities, attachment} = unwrap(newOption);

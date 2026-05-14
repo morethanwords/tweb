@@ -60,7 +60,7 @@ export const PollOption = (props: {
   ));
 
   // So it waits a little bit for the spinner to disappear
-  const delayedIsPendingVote = createDelayed(() => props.isPendingVote ?? false, false, 200);
+  const delayedIsPendingVote = createDelayed(() => props.isPendingVote ?? false, false, 100);
 
   const middleware = createMiddleware().get();
 
