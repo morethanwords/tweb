@@ -1,6 +1,8 @@
+import {AppMediaViewerStaticTargetType} from '@components/appMediaViewerStatic';
 import {ButtonIconTsx} from '@components/buttonIconTsx';
 import InputField from '@components/inputField';
-import {useCreatePollLimits} from '@components/popups/createPoll/hooks';
+import {useCreatePollLimits} from '@components/popups/createPoll/useCreatePollLimits';
+import {RemainingTime} from '@components/remainingTime';
 import ripple from '@components/ripple';
 import Space from '@components/space';
 import PhotoTsx from '@components/wrappers/photoTsx';
@@ -32,8 +34,6 @@ import {AvatarGroup, Explanation, PollType, PollVotes} from './parts';
 import {PollOption} from './PollOption';
 import styles from './styles.module.scss';
 import {dataPollViewerIdx, NewOptionValues, PollOptionResult, roundPercents} from './utils';
-import {AppMediaViewerStaticTargetType} from '@components/appMediaViewerStatic';
-import {RemainingTime} from '@components/remainingTime';
 
 
 keepMe(ripple);

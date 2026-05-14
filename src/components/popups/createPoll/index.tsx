@@ -13,12 +13,13 @@ import {createSignal, Show} from 'solid-js';
 import PopupElement, {createPopup, useSnitchedPopupContext} from '../indexTsx';
 import {supportedDescriptionFormattingTypes} from './config';
 import {EmojiButtonWithOpacity as EmojiDropdownButton} from './emojiButtonWithOpacity';
-import {getFinalPayload, hasMeaningfulChanges, useCanSubmit, useCreatePollLimits, useSupportsMedia} from './hooks';
+import {getFinalPayload, hasMeaningfulChanges, useCanSubmit, useSupportsMedia} from './hooks';
 import {MediaAttachment} from './mediaAttachment';
 import {PollOptionsSectionContent} from './pollOptionsSectionContent';
 import {PollSettingsSectionContent} from './pollSettingsSectionContent';
 import {CreatePollContext, CreatePollPayload, createPollStoreContextValue, SupportedMediaType, useCreatePollContext} from './storeContext';
 import styles from './styles.module.scss';
+import {useCreatePollLimits} from './useCreatePollLimits';
 
 
 type CreatePollPopupProps = {

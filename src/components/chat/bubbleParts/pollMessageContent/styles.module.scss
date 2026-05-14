@@ -174,13 +174,16 @@
 }
 
 .chosenCheckbox {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  transform: translate(-1.5rem, 14px);
+  // For some reason those styles do not take priority over the default ones, so doubling the specificity here
+  &#{&} {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    transform: translate(-1.5rem, 14px);
 
-  --checkbox-size: 0.875rem;
-  --checkbox-scale: 1.25;
+    --checkbox-size: 0.875rem;
+    --checkbox-scale: 1.25;
+  }
 
   &.correct {
     --checkbox-background-color: var(--gc-green-text-color);

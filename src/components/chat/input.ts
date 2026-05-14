@@ -158,7 +158,6 @@ import getDocumentDownloadOptions from '@lib/appManagers/utils/docs/getDocumentD
 import getPhotoDownloadOptions from '@lib/appManagers/utils/photos/getPhotoDownloadOptions';
 import {getFileNameByLocation} from '@helpers/fileName';
 import {Middleware, getMiddleware, MiddlewareHelper} from '@helpers/middleware';
-import {openCreatePollPopup} from '@components/popups/createPoll';
 import {createAutoDeleteIcon} from '@components/autoDeleteIcon';
 
 // console.log('Recorder', Recorder);
@@ -1093,6 +1092,8 @@ export default class ChatInput {
           toastNew({langPackKey: POSTING_NOT_ALLOWED_MAP[pollsAction]});
           return;
         }
+
+        const {openCreatePollPopup} = await import('@components/popups/createPoll');
 
         openCreatePollPopup({
           isBroadcast: this.chat.isBroadcast,
