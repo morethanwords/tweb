@@ -72,7 +72,7 @@ export const PollMessageContent = defineSolidElement({
 
     const [explanationToggled, setExplanationToggled] = createSignal(false);
     const [chosenIndexes, setChosenIndexes] = createSignal<number[]>([]);
-    const [canFooterClickable, setCanFooterClickable] = createSignal(false);
+    const [canFooterBeClickable, setCanFooterBeClickable] = createSignal(false);
     const [isAddingNewOptionVisible, setIsAddingNewOptionVisible] = createSignal(false);
     const [newOption, setNewOption] = createStore<NewOptionValues>({
       text: '',
@@ -149,11 +149,10 @@ export const PollMessageContent = defineSolidElement({
     const canShowCloseTimer = createMemo(() => !props.poll.pFlags.closed && !!closesAtTimestamp() && closesAtTimestamp() > new Date().getTime() / 1000);
     const canShowViewResults = createMemo(() => showWhoVoted() && !!props.results.total_voters && isShowingResult());
 
+    // The footer will have the clickable classname added/removed only after the out animation has finished
     const willFooterBeClickable = createMemo(() => canShowViewResults() || hasSelectedSomething() || hasTypedNewOption());
 
-    const isFooterClickable = createMemo(() => canFooterClickable() && !sendVoteMutation.isPending());
-
-    setCanFooterClickable(willFooterBeClickable());
+    setCanFooterBeClickable(willFooterBeClickable());
 
     const getOverridenMessage = (): Message.message => ({
       ...unwrap(props.message),
@@ -243,7 +242,7 @@ export const PollMessageContent = defineSolidElement({
       const {text, entities, attachment} = unwrap(newOption);
       if(isShowingResult() || !text) return;
 
-      const promise = rootScope.managers.appPollsManager.addPollAnswer(
+      await rootScope.managers.appPollsManager.addPollAnswer(
         getOverridenMessage(),
         {
           _: 'textWithEntities',
@@ -254,9 +253,12 @@ export const PollMessageContent = defineSolidElement({
       );
 
       resetInteractiveState();
-
-      await promise;
     });
+
+    const wrappedAddOption = wrapAsyncClickHandler(addOptionMutation.mutateAsync);
+
+    // Make the footer unclickable immediately when there are pending requests
+    const isFooterClickable = createMemo(() => canFooterBeClickable() && !sendVoteMutation.isPending() && !addOptionMutation.isPending());
 
     const openViewResults = () => {
       if(!appSidebarRight.isTabExists(AppPollResultsTab)) {
@@ -269,7 +271,7 @@ export const PollMessageContent = defineSolidElement({
     const onFooterClick = wrapAsyncClickHandler(async() => {
       if(canShowViewResults()) openViewResults();
       else if(hasSelectedSomething()) await sendVoteMutation.mutateAsync();
-      else if(hasTypedNewOption()) await addOptionMutation.mutateAsync();
+      else if(hasTypedNewOption()) await wrappedAddOption();
     });
 
     subscribeOn(rootScope)('poll_update', ({poll, results}) => {
@@ -406,9 +408,10 @@ export const PollMessageContent = defineSolidElement({
                 value={newOption.text}
                 attachment={newOption.attachment}
                 onPartialChange={handleNewOptionChanged}
-                onEnter={addOptionMutation.mutate}
+                onEnter={wrappedAddOption}
                 visible={isAddingNewOptionVisible()}
                 onVisibleChange={setIsAddingNewOptionVisible}
+                isPending={addOptionMutation.isPending()}
               />
             </div>
           </Show>
@@ -427,7 +430,7 @@ export const PollMessageContent = defineSolidElement({
             name='fade-2'
             mode='outin'
             onAfterExit={() => {
-              setCanFooterClickable(willFooterBeClickable());
+              setCanFooterBeClickable(willFooterBeClickable());
             }}
           >
             <Switch>

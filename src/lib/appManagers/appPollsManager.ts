@@ -231,38 +231,38 @@ export class AppPollsManager extends AppManager {
 
     const uploadingMedia = media ? this.uploadPollMedia(peerId, media) : undefined;
 
-    const currentPollData = structuredClone(this.getPoll(message.media.poll.id));
+    // const currentPollData = structuredClone(this.getPoll(message.media.poll.id));
 
-    const optionNumber = pollAnswerOptionOffset + currentPollData.poll.answers.length;
+    // const optionNumber = pollAnswerOptionOffset + currentPollData.poll.answers.length;
 
-    const updatedPoll: Poll.poll = {
-      ...currentPollData.poll,
-      answers: [
-        ...currentPollData.poll.answers,
-        {
-          _: 'pollAnswer',
-          text: text,
-          media: uploadingMedia?.messageMedia,
-          option: new Uint8Array([optionNumber])
-        }
-      ]
-    };
+    // const updatedPoll: Poll.poll = {
+    //   ...currentPollData.poll,
+    //   answers: [
+    //     ...currentPollData.poll.answers,
+    //     {
+    //       _: 'pollAnswer',
+    //       text: text,
+    //       media: uploadingMedia?.messageMedia,
+    //       option: new Uint8Array([optionNumber])
+    //     }
+    //   ]
+    // };
 
-    const updatedResults: PollResults = {
-      ...currentPollData.results,
-      results: [
-        ...(currentPollData.results?.results ?? []),
-        {
-          _: 'pollAnswerVoters',
-          option: new Uint8Array([optionNumber]),
-          voters: 0,
-          recent_voters: [],
-          pFlags: {}
-        }
-      ]
-    };
+    // const updatedResults: PollResults = {
+    //   ...currentPollData.results,
+    //   results: [
+    //     ...(currentPollData.results?.results ?? []),
+    //     {
+    //       _: 'pollAnswerVoters',
+    //       option: new Uint8Array([optionNumber]),
+    //       voters: 0,
+    //       recent_voters: [],
+    //       pFlags: {}
+    //     }
+    //   ]
+    // };
 
-    this.saveAndDispatchPoll(updatedPoll, updatedResults);
+    // this.saveAndDispatchPoll(updatedPoll, updatedResults);
 
     const inputPeer = this.appPeersManager.getInputPeerById(peerId);
 

@@ -326,6 +326,8 @@
 
   &Input {
     background-color: unset;
+    // prevent the input collapsing when removing contenteditable
+    min-height: calc(1em * var(--line-height));
   }
 
   &Placeholder {
@@ -398,4 +400,8 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+}
+
+.pointerDisabled {
+  pointer-events: none;
 }

@@ -19,7 +19,7 @@ import {usePollMessageContentProps} from './context';
 import {AvatarGroup} from './parts';
 import PathDot from './PathDot';
 import styles from './styles.module.scss';
-import {createDelayed, dataPollViewerIdx, DataPollViewerIdxDirectivePayload, LocalTextWithEntities, PollOptionResult} from './utils';
+import {createDelayed, dataPollViewerIdx, DataPollViewerIdxDirectivePayload, LocalTextWithEntities, PollOptionResult, spinnerThickness} from './utils';
 
 
 keepMe(ripple);
@@ -60,7 +60,7 @@ export const PollOption = (props: {
   ));
 
   // So it waits a little bit for the spinner to disappear
-  const delayedIsPendingVote = createDelayed(() => props.isPendingVote ?? false, false, 100);
+  const delayedIsPendingVote = createDelayed(() => props.isPendingVote ?? false, false, (value) => value ? -1 : 100);
 
   const middleware = createMiddleware().get();
 
@@ -79,13 +79,6 @@ export const PollOption = (props: {
     }
   });
 
-  createEffect(() => {
-    // set immediately when isPendingVote is true, then delay it to hide the spinner
-    if(props.isPendingVote) {
-      delayedIsPendingVote.set(true);
-    }
-  });
-
   return (
     <div class={styles.pollOption} classList={{[styles.hasMedia]: props.withImage}}>
       <Show when={!isShowingResult()}>
@@ -96,7 +89,7 @@ export const PollOption = (props: {
           <Switch>
             <Match when={props.isPendingVote}>
               <div class={styles.spinnerContainer}>
-                <Spinner />
+                <Spinner thickness={spinnerThickness} />
               </div>
             </Match>
             <Match when={!isShowingResult()}>
