@@ -2,7 +2,8 @@ import {useAppConfig} from '@stores/appState';
 import usePremium from '@stores/premium';
 import {createMemo} from 'solid-js';
 import {unwrap} from 'solid-js/store';
-import {CreatePollContextValue, CreatePollStore, useCreatePollContext} from './storeContext';
+import {CreatePollContextValue, CreatePollStore, SupportedMediaType, useCreatePollContext} from './storeContext';
+
 
 export const useCreatePollLimits = () => {
   const appConfig = useAppConfig();
@@ -65,4 +66,9 @@ export const hasMeaningfulChanges = (store: CreatePollStore) => {
     store.descriptionAttachment ||
     store.pollOptions.some((option) => option.text !== '' || option.attachment) ||
     (store.hasCorrectAnswer && (store.explanation !== '' || store.explanationAttachment));
+};
+
+export const useSupportsMedia = () => {
+  const {supportedMediaTypes} = useCreatePollContext();
+  return (mediaType: SupportedMediaType) => supportedMediaTypes().includes(mediaType);
 };

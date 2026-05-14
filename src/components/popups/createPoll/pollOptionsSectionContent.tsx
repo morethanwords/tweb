@@ -15,7 +15,7 @@ import classNames from '@helpers/string/classNames';
 import {batch, children, createMemo, createSignal, For, JSX, mapArray, onMount, Ref, Show} from 'solid-js';
 import {Transition} from 'solid-transition-group';
 import {EmojiButtonWithOpacity as EmojiDropdownButton} from './emojiButtonWithOpacity';
-import {useCreatePollLimits} from './hooks';
+import {useCreatePollLimits, useSupportsMedia} from './hooks';
 import {MediaAttachment} from './mediaAttachment';
 import {AttachedMedia, StorePollOption, useCreatePollContext} from './storeContext';
 import styles from './styles.module.scss';
@@ -239,6 +239,7 @@ const PollOptionInputField = (props: {
   onEmptyBackspace?: () => void;
 }) => {
   const {maxOptionLength} = useCreatePollLimits();
+  const supportsMedia = useSupportsMedia();
 
   const inputField = new InputField({
     placeholder: 'NewPoll.Option',
@@ -293,20 +294,22 @@ const PollOptionInputField = (props: {
       <SimpleFormField.SideContent withFixedIcon first last>
         <EmojiDropdownButton inputField={inputField} />
       </SimpleFormField.SideContent>
-      <SimpleFormField.WithAutoLengthCounter
-        maxLength={maxOptionLength()}
-        first={!props.attachment}
-        last
-        withFixedIcon
-      >
-        <MediaAttachment
-          imgClass={styles.mediaAttachmentImage}
-          attachedMedia={props.attachment}
-          onAttach={(value) => {
-            props.onChange?.({attachment: value});
-          }}
-        />
-      </SimpleFormField.WithAutoLengthCounter>
+      <Show when={supportsMedia('photo')}>
+        <SimpleFormField.WithAutoLengthCounter
+          maxLength={maxOptionLength()}
+          first={!props.attachment}
+          last
+          withFixedIcon
+        >
+          <MediaAttachment
+            imgClass={styles.mediaAttachmentImage}
+            attachedMedia={props.attachment}
+            onAttach={(value) => {
+              props.onChange?.({attachment: value});
+            }}
+          />
+        </SimpleFormField.WithAutoLengthCounter>
+      </Show>
     </SimpleFormField>
   );
 };

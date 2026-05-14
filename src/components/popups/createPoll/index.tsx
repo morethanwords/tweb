@@ -13,16 +13,17 @@ import {createSignal, Show} from 'solid-js';
 import PopupElement, {createPopup, useSnitchedPopupContext} from '../indexTsx';
 import {supportedDescriptionFormattingTypes} from './config';
 import {EmojiButtonWithOpacity as EmojiDropdownButton} from './emojiButtonWithOpacity';
-import {getFinalPayload, hasMeaningfulChanges, useCanSubmit, useCreatePollLimits} from './hooks';
+import {getFinalPayload, hasMeaningfulChanges, useCanSubmit, useCreatePollLimits, useSupportsMedia} from './hooks';
 import {MediaAttachment} from './mediaAttachment';
 import {PollOptionsSectionContent} from './pollOptionsSectionContent';
 import {PollSettingsSectionContent} from './pollSettingsSectionContent';
-import {CreatePollContext, CreatePollPayload, createPollStoreContextValue, useCreatePollContext} from './storeContext';
+import {CreatePollContext, CreatePollPayload, createPollStoreContextValue, SupportedMediaType, useCreatePollContext} from './storeContext';
 import styles from './styles.module.scss';
 
 
 type CreatePollPopupProps = {
   isBroadcast?: boolean;
+  supportedMediaTypes?: SupportedMediaType[];
   onSubmit: (payload: CreatePollPayload) => void;
 };
 
@@ -30,7 +31,8 @@ export const CreatePollPopup = (props: CreatePollPopupProps) => {
   const {confirmationPopup} = useHotReloadGuard();
 
   const context = createPollStoreContextValue({
-    isBroadcast: () => props.isBroadcast ?? false
+    isBroadcast: () => props.isBroadcast ?? false,
+    supportedMediaTypes: () => props.supportedMediaTypes ?? []
   });
 
   const {SnitchPopupContext, popupContext} = useSnitchedPopupContext();
@@ -78,6 +80,7 @@ const Header = (props: {
   const context = useCreatePollContext();
   const {maxQuestionLength, maxDescriptionLength} = useCreatePollLimits();
   const canSubmit = useCanSubmit();
+  const supportsMedia = useSupportsMedia();
 
   const questionError = useMaxLengthError(() => context.store.question, maxQuestionLength);
 
@@ -164,20 +167,22 @@ const Header = (props: {
         <SimpleFormField.SideContent withFixedIcon first last>
           <EmojiDropdownButton inputField={descriptionInput} />
         </SimpleFormField.SideContent>
-        <SimpleFormField.WithAutoLengthCounter
-          maxLength={maxDescriptionLength()}
-          first={!context.store.descriptionAttachment}
-          last
-          withFixedIcon
-        >
-          <MediaAttachment
-            imgClass={styles.mediaAttachmentImage}
-            attachedMedia={context.store.descriptionAttachment}
-            onAttach={(value) => {
-              context.setStore('descriptionAttachment', value);
-            }}
-          />
-        </SimpleFormField.WithAutoLengthCounter>
+        <Show when={supportsMedia('photo')}>
+          <SimpleFormField.WithAutoLengthCounter
+            maxLength={maxDescriptionLength()}
+            first={!context.store.descriptionAttachment}
+            last
+            withFixedIcon
+          >
+            <MediaAttachment
+              imgClass={styles.mediaAttachmentImage}
+              attachedMedia={context.store.descriptionAttachment}
+              onAttach={(value) => {
+                context.setStore('descriptionAttachment', value);
+              }}
+            />
+          </SimpleFormField.WithAutoLengthCounter>
+        </Show>
       </SimpleFormField>
 
     </PopupElement.Header>

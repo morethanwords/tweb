@@ -57,8 +57,11 @@ export type AttachedMedia = {
   height: number;
 };
 
+export type SupportedMediaType = 'photo';
+
 export type CreatePollContextExtra = {
   isBroadcast: Accessor<boolean>;
+  supportedMediaTypes: Accessor<SupportedMediaType[]>;
 };
 
 export type CreatePollContextValue = CreatePollContextExtra & {

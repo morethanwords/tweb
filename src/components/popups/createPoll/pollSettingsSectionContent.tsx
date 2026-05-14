@@ -23,7 +23,7 @@ import {FilterBooleanKeys} from '@types';
 import {Accessor, createEffect, createSignal, JSX, on, onCleanup, Show} from 'solid-js';
 import {supportedDescriptionFormattingTypes} from './config';
 import {EmojiButtonWithOpacity as EmojiDropdownButton} from './emojiButtonWithOpacity';
-import {useCreatePollLimits} from './hooks';
+import {useCreatePollLimits, useSupportsMedia} from './hooks';
 import {MediaAttachment} from './mediaAttachment';
 import {CreatePollStore, useCreatePollContext} from './storeContext';
 import styles from './styles.module.scss';
@@ -36,6 +36,7 @@ export const PollSettingsSectionContent = () => {
   const {Row} = useHotReloadGuard();
   const {maxExplanationLength} = useCreatePollLimits();
   const context = useCreatePollContext();
+  const supportsMedia = useSupportsMedia();
 
   const [limitDurationExtraElement, setLimitDurationExtraElement] = createSignal<HTMLElement>();
   const [explanationElement, setExplanationElement] = createSignal<HTMLElement>();
@@ -215,20 +216,22 @@ export const PollSettingsSectionContent = () => {
               <SimpleFormField.SideContent withFixedIcon first last>
                 <EmojiDropdownButton inputField={explanationInput} />
               </SimpleFormField.SideContent>
-              <SimpleFormField.WithAutoLengthCounter
-                maxLength={maxExplanationLength()}
-                first={!context.store.explanationAttachment}
-                last
-                withFixedIcon
-              >
-                <MediaAttachment
-                  imgClass={styles.mediaAttachmentImage}
-                  attachedMedia={context.store.explanationAttachment}
-                  onAttach={(value) => {
-                    context.setStore('explanationAttachment', value);
-                  }}
-                />
-              </SimpleFormField.WithAutoLengthCounter>
+              <Show when={supportsMedia('photo')}>
+                <SimpleFormField.WithAutoLengthCounter
+                  maxLength={maxExplanationLength()}
+                  first={!context.store.explanationAttachment}
+                  last
+                  withFixedIcon
+                >
+                  <MediaAttachment
+                    imgClass={styles.mediaAttachmentImage}
+                    attachedMedia={context.store.explanationAttachment}
+                    onAttach={(value) => {
+                      context.setStore('explanationAttachment', value);
+                    }}
+                  />
+                </SimpleFormField.WithAutoLengthCounter>
+              </Show>
             </SimpleFormField>
 
             <div class={styles.caption}>

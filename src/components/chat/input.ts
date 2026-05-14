@@ -1084,13 +1084,19 @@ export default class ChatInput {
       icon: 'poll',
       text: 'Poll',
       onClick: async() => {
-        const action: ChatRights = 'send_polls';
-        if(!(await this.chat.canSend(action))) {
-          toastNew({langPackKey: POSTING_NOT_ALLOWED_MAP[action]});
+        const pollsAction: ChatRights = 'send_polls';
+        const photosAction: ChatRights = 'send_photos';
+        const canSendPolls = () => this.chat.canSend(pollsAction);
+        const canSendPhotos = () => this.chat.canSend(photosAction);
+
+        if(!(await canSendPolls())) {
+          toastNew({langPackKey: POSTING_NOT_ALLOWED_MAP[pollsAction]});
           return;
         }
+
         openCreatePollPopup({
           isBroadcast: this.chat.isBroadcast,
+          supportedMediaTypes: await canSendPhotos() ? ['photo'] : undefined,
           onSubmit: async(payload) => {
             const sendingParams = this.chat.getMessageSendingParams();
 
