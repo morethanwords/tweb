@@ -415,10 +415,11 @@ export class AppPollsManager extends AppManager {
   private parseAllPollMarkdown(payload: CreatePollPayload) {
     const toTextAndEntities = (ret: ReturnType<typeof parseMarkdown>) => ({text: ret[0], entities: ret[1]});
 
-    const question = toTextAndEntities(parseMarkdown(payload.question, payload.questionEntities));
-    const description = toTextAndEntities(parseMarkdown(payload.description, payload.descriptionEntities));
-    const explanation = toTextAndEntities(parseMarkdown(payload.explanation, payload.explanationEntities));
-    const pollOptions = payload.pollOptions.map((option) => toTextAndEntities(parseMarkdown(option.text, option.entities)));
+    // Note: question and poll options do not support formatting entities
+    const question = toTextAndEntities([payload.question, payload.questionEntities]);
+    const description = toTextAndEntities(parseMarkdown(payload.description, structuredClone(payload.descriptionEntities)));
+    const explanation = toTextAndEntities(parseMarkdown(payload.explanation, structuredClone(payload.explanationEntities)));
+    const pollOptions = payload.pollOptions.map((option) => toTextAndEntities([option.text, option.entities]));
 
     return {
       question,
