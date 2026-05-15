@@ -1,4 +1,5 @@
 import {AppMediaViewerStaticTargetType} from '@components/appMediaViewerStatic';
+import {AutoHeight} from '@components/autoHeight';
 import {ButtonIconTsx} from '@components/buttonIconTsx';
 import InputField from '@components/inputField';
 import {useCreatePollLimits} from '@components/popups/createPoll/useCreatePollLimits';
@@ -381,27 +382,32 @@ export const PollMessageContent = defineSolidElement({
           </Show>
         </HeightTransition>
 
-        <TransitionGroup name='fade-2' moveClass='t-move'>
-          <For each={pollOptions}>
-            {(option, index) => {
-              const initialIdx = createMemo(() => initialIdxFromShuffledIdx(index()));
+        <AutoHeight>
+          <TransitionGroup name='fade-2' moveClass='t-move'>
+            <For each={pollOptions}>
+              {(option, index) => {
+                const initialIdx = createMemo(() => initialIdxFromShuffledIdx(index()));
 
-              return (
-                <PollOption
-                  text={option.text}
-                  withImage={hasPhotoInOptions()}
-                  photo={getPhotoForOption(initialIdx())}
-                  allowMultipleAnswers={allowMultipleAnswers()}
-                  hasCorrectAnswer={hasCorrectAnswer()}
-                  checked={isChecked(index())}
-                  onToggle={() => handleToggle(index())}
-                  pollViewerPayload={[mediaViewerPayload().indexes.options.get(initialIdx()), elementByIndexMap]}
-                  result={getResultForOption(initialIdx())}
-                  isPendingVote={delayedSendVotePending()}
-                />
-              );
-            }}
-          </For>
+                return (
+                  <PollOption
+                    text={option.text}
+                    withImage={hasPhotoInOptions()}
+                    photo={getPhotoForOption(initialIdx())}
+                    allowMultipleAnswers={allowMultipleAnswers()}
+                    hasCorrectAnswer={hasCorrectAnswer()}
+                    checked={isChecked(index())}
+                    onToggle={() => handleToggle(index())}
+                    pollViewerPayload={[mediaViewerPayload().indexes.options.get(initialIdx()), elementByIndexMap]}
+                    result={getResultForOption(initialIdx())}
+                    isPendingVote={delayedSendVotePending()}
+                  />
+                );
+              }}
+            </For>
+          </TransitionGroup>
+        </AutoHeight>
+
+        <HeightTransition>
           <Show when={canShowAddOption()}>
             <div style={{overflow: 'hidden'}}>
               <AddOption
@@ -416,8 +422,7 @@ export const PollMessageContent = defineSolidElement({
               />
             </div>
           </Show>
-        </TransitionGroup>
-
+        </HeightTransition>
 
         <div
           class={styles.footer}

@@ -1,7 +1,7 @@
+import {AutoHeight} from '@components/autoHeight';
 import Button from '@components/buttonTsx';
 import {IconTsx} from '@components/iconTsx';
 import InputField from '@components/inputField';
-import {AutoHeight} from '@components/popups/createPoll/autoHeight';
 import SimpleFormField from '@components/simpleFormField';
 import Space from '@components/space';
 import {StaticCheckbox} from '@components/staticCheckbox';
@@ -14,7 +14,7 @@ import {createSortableList} from '@helpers/solid/createSortableList';
 import {HeightTransition} from '@helpers/solid/heightTransition';
 import {I18nTsx} from '@helpers/solid/i18n';
 import classNames from '@helpers/string/classNames';
-import {batch, children, createMemo, createSignal, For, JSX, mapArray, onMount, Ref, Show} from 'solid-js';
+import {batch, children, createMemo, For, JSX, mapArray, onMount, Ref, Show} from 'solid-js';
 import {Transition, TransitionGroup} from 'solid-transition-group';
 import {EmojiButtonWithOpacity as EmojiDropdownButton} from './emojiButtonWithOpacity';
 import {useSupportsMedia} from './hooks';
