@@ -6,6 +6,7 @@ import {animateValue} from '@helpers/animateValue';
 import {keepMe} from '@helpers/keepMe';
 import clamp from '@helpers/number/clamp';
 import formatNumber from '@helpers/number/formatNumber';
+import {createDelayed} from '@helpers/solid/createDelayed';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {requestRAF} from '@helpers/solid/requestRAF';
 import classNames from '@helpers/string/classNames';
@@ -14,12 +15,11 @@ import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import {Accessor, createEffect, createMemo, createSignal, JSX, Match, onCleanup, onMount, Show, splitProps, Switch} from 'solid-js';
 import {Transition} from 'solid-transition-group';
 import {InMessageCheckbox} from '../inMessageCheckbox';
-import {AutoHeight} from './AutoHeight';
 import {usePollMessageContentProps} from './context';
 import {AvatarGroup} from './parts';
 import PathDot from './PathDot';
 import styles from './styles.module.scss';
-import {createDelayed, dataPollViewerIdx, DataPollViewerIdxDirectivePayload, LocalTextWithEntities, PollOptionResult, spinnerThickness} from './utils';
+import {dataPollViewerIdx, DataPollViewerIdxDirectivePayload, LocalTextWithEntities, PollOptionResult, spinnerThickness} from './utils';
 
 
 keepMe(ripple);
@@ -110,9 +110,7 @@ export const PollOption = (props: {
       </div>
       <div class={styles.labelRow}>
         <div class={styles.labelText}>
-          <AutoHeight>
-            {wrapRichText(props.text.text, {entities: props.text.entities, middleware})}
-          </AutoHeight>
+          {wrapRichText(props.text.text, {entities: props.text.entities, middleware})}
         </div>
         <Show when={isShowingResult() && props.result.voters}>
           <div class={styles.labelStats}>

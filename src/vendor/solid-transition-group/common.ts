@@ -2,9 +2,9 @@
 
 import {createMemo} from 'solid-js';
 import type {TransitionEvents, TransitionProps} from '@vendor/solid-transition-group/transition';
-// import type {TransitionGroupProps} from '@vendor/solid-transition-group/transitionGroup';
+import type {TransitionGroupProps} from '@vendor/solid-transition-group/transitionGroup';
 
-export function createClassnames(props: TransitionProps/*  & TransitionGroupProps */) {
+export function createClassnames(props: TransitionProps & TransitionGroupProps) {
   return createMemo(() => {
     const name = props.name || 's';
     return {
@@ -13,8 +13,8 @@ export function createClassnames(props: TransitionProps/*  & TransitionGroupProp
       enterTo: (props.enterToClass || name + '-enter-to').split(' '),
       exitActive: (props.exitActiveClass || name + '-exit-active').split(' '),
       exit: (props.exitClass || name + '-exit').split(' '),
-      exitTo: (props.exitToClass || name + '-exit-to').split(' ')
-      // move: (props.moveClass || name + '-move').split(' ')
+      exitTo: (props.exitToClass || name + '-exit-to').split(' '),
+      move: (props.moveClass || name + '-move').split(' ')
     };
   });
 }

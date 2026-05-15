@@ -8,13 +8,14 @@ import ripple from '@components/ripple';
 import {Spinner} from '@components/spinner';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import {keepMe} from '@helpers/keepMe';
+import {createDelayed} from '@helpers/solid/createDelayed';
 import {I18nTsx} from '@helpers/solid/i18n';
 import classNames from '@helpers/string/classNames';
 import {createEffect, Match, onCleanup, Show, Switch} from 'solid-js';
 import {Transition} from 'solid-transition-group';
 import {usePollMessageContentProps} from './context';
 import styles from './styles.module.scss';
-import {createDelayed, NewOptionValues, spinnerThickness} from './utils';
+import {NewOptionValues, spinnerThickness} from './utils';
 
 keepMe(ripple);
 

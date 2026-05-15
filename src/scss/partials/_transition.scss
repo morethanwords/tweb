@@ -178,6 +178,10 @@
   opacity: 0;
 }
 
+.t-move {
+  transition: transform 0.2s ease-out;
+}
+
 /*
  * zoom-fade
  */

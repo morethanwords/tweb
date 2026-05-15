@@ -3,7 +3,8 @@ import {batch, createSignal, JSX, onCleanup, onMount} from 'solid-js';
 export const AutoHeight = (props: {
   children: JSX.Element;
   duration?: number;
-  easing?: string;
+  overflowHidden?: boolean;
+  easing?: JSX.CSSProperties['transition-property'];
 }) => {
   let containerRef!: HTMLDivElement;
   let contentRef!: HTMLDivElement;
@@ -29,8 +30,8 @@ export const AutoHeight = (props: {
       ref={containerRef}
       style={{
         height: canHaveHeight() ? `${height()}px` : 'auto',
-        overflow: 'hidden',
-        transition: canHaveHeight() ? `height ${props.duration ?? 300}ms ${props.easing ?? 'ease'}` : 'none'
+        overflow: props.overflowHidden ? 'hidden' : undefined,
+        transition: canHaveHeight() ? `height ${props.duration ?? 200}ms ${props.easing ?? 'ease'}` : 'none'
       }}
     >
       <div ref={contentRef}>{props.children}</div>

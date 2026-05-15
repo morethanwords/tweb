@@ -1,6 +1,7 @@
 import Button from '@components/buttonTsx';
 import {IconTsx} from '@components/iconTsx';
 import InputField from '@components/inputField';
+import {AutoHeight} from '@components/popups/createPoll/autoHeight';
 import SimpleFormField from '@components/simpleFormField';
 import Space from '@components/space';
 import {StaticCheckbox} from '@components/staticCheckbox';
@@ -8,12 +9,13 @@ import StaticRadio from '@components/staticRadio';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
 import focusInput from '@helpers/dom/focusInput';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
+import {createDelayed} from '@helpers/solid/createDelayed';
 import {createSortableList} from '@helpers/solid/createSortableList';
 import {HeightTransition} from '@helpers/solid/heightTransition';
 import {I18nTsx} from '@helpers/solid/i18n';
 import classNames from '@helpers/string/classNames';
 import {batch, children, createMemo, createSignal, For, JSX, mapArray, onMount, Ref, Show} from 'solid-js';
-import {Transition} from 'solid-transition-group';
+import {Transition, TransitionGroup} from 'solid-transition-group';
 import {EmojiButtonWithOpacity as EmojiDropdownButton} from './emojiButtonWithOpacity';
 import {useSupportsMedia} from './hooks';
 import {MediaAttachment} from './mediaAttachment';
@@ -26,6 +28,7 @@ type Item = {
   id: number;
   option: StorePollOption;
   inputField?: InputField;
+  isNew: boolean;
 };
 
 export const PollOptionsSectionContent = (props: {
@@ -34,19 +37,22 @@ export const PollOptionsSectionContent = (props: {
   const {maxOptions} = useCreatePollLimits();
 
   let idSeed = 0;
-
-  const [canAnimate, setCanAnimate] = createSignal(false);
+  let isNew = false;
 
   const context = useCreatePollContext();
 
   const rawMappedItems = mapArray(() => context.store.pollOptions, (option): Item => ({
     id: idSeed++,
-    option
+    option,
+    isNew
   }));
+
+  isNew = true;
 
   const items = createMemo(rawMappedItems);
 
   const optionsLeft = createMemo(() => Math.max(0, maxOptions() - items().length));
+  const canShowAddOption = createMemo(() => optionsLeft() > 0);
 
   const sortable = createSortableList({
     container: () => props.scrollable,
@@ -57,9 +63,9 @@ export const PollOptionsSectionContent = (props: {
     }
   });
 
-  onMount(() => {
-    setCanAnimate(true);
-  });
+  const isDragging = createDelayed(sortable.isDragging, false, (value) => value ? -1 : 100);
+
+  const delayedCanShowAddOption = createDelayed(canShowAddOption, canShowAddOption(), value => value ? 200 : -1);
 
   const onAdd = () => {
     if(optionsLeft() === 0) return;
@@ -70,44 +76,62 @@ export const PollOptionsSectionContent = (props: {
     });
   };
 
+  const Parent = (props: { children: JSX.Element }) => {
+    const resolved = children(() => props.children);
+    return (
+      <Show when={!isDragging()} fallback={resolved()}>
+        <TransitionGroup name='fade-2' moveClass='t-move'>
+          {resolved()}
+        </TransitionGroup>
+      </Show>
+    );
+  };
+
   return (
     <>
-      <For each={items()}>
-        {(item, index) => (
-          <PollOptionFullField
-            item={item}
-            index={index()}
-            sortable={sortable}
-            canAnimate={canAnimate()}
-            inputFieldRef={(inputField) => {
-              item.inputField = inputField;
-            }}
-            onChange={(option) => {
-              context.setStore('pollOptions', index(), option);
-            }}
-            onEnter={() => {
-              for(const item of items().slice(index() + 1)) {
-                if(!item.inputField?.value) {
-                  focusInput(item.inputField?.input);
-                  return;
-                }
-              }
-              if(item.inputField?.value) onAdd();
-            }}
-            onEmptyBackspace={() => {
-              if(items().length === 1) return;
+      <AutoHeight>
+        <Parent>
+          <For each={items()}>
+            {(item, index) => (
+              <>
+                {index() > 0 && <Space amount='0.75rem' />}
+                <PollOptionFullField
+                  item={item}
+                  index={index()}
+                  sortable={sortable}
+                  inputFieldRef={(inputField) => {
+                    item.inputField = inputField;
+                  }}
+                  onChange={(option) => {
+                    context.setStore('pollOptions', index(), option);
+                  }}
+                  onEnter={() => {
+                    for(const item of items().slice(index() + 1)) {
+                      if(!item.inputField?.value) {
+                        focusInput(item.inputField?.input);
+                        return;
+                      }
+                    }
+                    if(item.inputField?.value) onAdd();
+                  }}
+                  onEmptyBackspace={() => {
+                    if(items().length === 1) return;
 
-              context.setStore('pollOptions', prev => prev.filter((_, i) => i !== index()));
-              focusInput(items()[Math.max(0, index() - 1)]?.inputField?.input);
-            }}
-          />
-        )}
-      </For>
+                    context.setStore('pollOptions', prev => prev.filter((_, i) => i !== index()));
+                    focusInput(items()[Math.max(0, index() - 1)]?.inputField?.input);
+                  }}
+                />
+              </>
+            )}
+          </For>
+        </Parent>
+      </AutoHeight>
 
       <Space amount='0.5rem' />
 
+      {/* Note: Adding the below inside TransitionGroup behaves weirdly (probably due to the fact how the order of memos update) */}
       <HeightTransition>
-        <Show when={optionsLeft() > 0}>
+        <Show when={delayedCanShowAddOption()}>
           <div style={{overflow: 'hidden'}}>
             <div class={styles.caption}>
               <I18nTsx key='NewPoll.OptionsLeft' args={optionsLeft().toString()} />
@@ -128,16 +152,11 @@ const PollOptionFullField = (props: {
   index: number;
   sortable: ReturnType<typeof createSortableList>;
   onChange: (option: Partial<StorePollOption>) => void;
-  canAnimate?: boolean;
   inputFieldRef?: (value: InputField) => void;
   onEnter?: () => void;
   onEmptyBackspace?: () => void;
 }) => {
   const context = useCreatePollContext();
-
-  // Detach reactivity
-  const canAnimate = props.canAnimate;
-  const [done, setDone] = createSignal(!canAnimate);
 
   const onSortablePointerDown = props.sortable.dragHandleProps(props.item.id).onPointerDown;
 
@@ -148,83 +167,52 @@ const PollOptionFullField = (props: {
     });
   };
 
-  return (
-    <EnterAnimationWrapper canAnimate={canAnimate} onDone={() => {
-      setDone(true);
-      focusInput(props.item.inputField?.input);
-    }}>
-      {props.index > 0 && <Space amount='0.75rem' />}
-      <div
-        ref={props.sortable.itemRef(props.item.id)}
-        class={styles.pollOptionRow}
-        style={props.sortable.itemStyle(props.item.id)}
-      >
-        <Show when={context.store.hasCorrectAnswer}>
-          <div class={styles.pollOptionCheckWrapper}>
-            <Transition name='fade-2' duration={200} mode='outin'>
-              <Show when={!context.store.allowMultipleAnswers}>
-                <div class={styles.checkButtonWrapper} onClick={onRadioClick}>
-                  <StaticRadio checked={props.item.option.checked} />
-                </div>
-              </Show>
-              <Show when={context.store.allowMultipleAnswers}>
-                <div class={styles.checkButtonWrapper} onClick={() => props.onChange({checked: !props.item.option.checked})}>
-                  <StaticCheckbox checked={props.item.option.checked} />
-                </div>
-              </Show>
-            </Transition>
-          </div>
-        </Show>
-        <PollOptionInputField
-          value={props.item.option.text}
-          attachment={props.item.option.attachment}
-          onChange={props.onChange}
-          onPointerDown={(e) => {
-            blurActiveElement();
-            onSortablePointerDown(e);
-          }}
-          hoverDisabled={!done() || props.sortable.draggingId() !== null}
-          inputFieldRef={props.inputFieldRef}
-          onEnter={props.onEnter}
-          onEmptyBackspace={props.onEmptyBackspace}
-        />
-      </div>
-    </EnterAnimationWrapper>
-  );
-};
-
-const EnterAnimationWrapper = (props: {
-  canAnimate?: boolean;
-  onDone: () => void;
-  children: JSX.Element;
-}) => {
-  const [visible, setVisible] = createSignal(!props.canAnimate);
-  const [done, setDone] = createSignal(!props.canAnimate);
-
   onMount(() => {
-    setVisible(true);
+    if(!props.item.isNew) return;
+
+    setTimeout(() => {
+      focusInput(props.item.inputField?.input);
+    }, 100);
   });
 
-  const resolvedChildren = children(() => props.children);
-
   return (
-    <Show when={!done()} fallback={resolvedChildren()}>
-      <HeightTransition
-        onAfterEnter={() => {
-          setDone(true)
-          props.onDone();
+    <div
+      ref={props.sortable.itemRef(props.item.id)}
+      class={styles.pollOptionRow}
+      style={props.sortable.itemStyle(props.item.id)}
+    >
+      <Show when={context.store.hasCorrectAnswer}>
+        <div class={styles.pollOptionCheckWrapper}>
+          <Transition name='fade-2' duration={200} mode='outin'>
+            <Show when={!context.store.allowMultipleAnswers}>
+              <div class={styles.checkButtonWrapper} onClick={onRadioClick}>
+                <StaticRadio checked={props.item.option.checked} />
+              </div>
+            </Show>
+            <Show when={context.store.allowMultipleAnswers}>
+              <div class={styles.checkButtonWrapper} onClick={() => props.onChange({checked: !props.item.option.checked})}>
+                <StaticCheckbox checked={props.item.option.checked} />
+              </div>
+            </Show>
+          </Transition>
+        </div>
+      </Show>
+      <PollOptionInputField
+        value={props.item.option.text}
+        attachment={props.item.option.attachment}
+        onChange={props.onChange}
+        onPointerDown={(e) => {
+          blurActiveElement();
+          onSortablePointerDown(e);
         }}
-      >
-        <Show when={visible()}>
-          <div style={{overflow: 'hidden'}}>
-            {resolvedChildren()}
-          </div>
-        </Show>
-      </HeightTransition>
-    </Show>
+        hoverDisabled={props.sortable.draggingId() !== null}
+        inputFieldRef={props.inputFieldRef}
+        onEnter={props.onEnter}
+        onEmptyBackspace={props.onEmptyBackspace}
+      />
+    </div>
   );
 };
-
 
 const PollOptionInputField = (props: {
   ref?: Ref<HTMLDivElement>;

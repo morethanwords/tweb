@@ -12,6 +12,7 @@ import {setCaretAtEnd} from '@helpers/dom/setCaretAt';
 import {keepMe} from '@helpers/keepMe';
 import intToUint from '@helpers/number/intToUint';
 import {attachHotClassName} from '@helpers/solid/classname';
+import {createDelayed} from '@helpers/solid/createDelayed';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {createMutation} from '@helpers/solid/createMutation';
 import {HeightTransition} from '@helpers/solid/heightTransition';
@@ -25,16 +26,15 @@ import wrapDraftText from '@lib/richTextProcessor/wrapDraftText';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {batch, createComputed, createMemo, createResource, createSelector, createSignal, For, Match, Show, Switch} from 'solid-js';
+import {batch, createComputed, createMemo, createResource, createSelector, createSignal, For, Match, Show, Switch, untrack} from 'solid-js';
 import {createStore, reconcile, unwrap} from 'solid-js/store';
-import {Transition} from 'solid-transition-group';
+import {Transition, TransitionGroup} from 'solid-transition-group';
 import {AddOption} from './AddOption';
-import {AutoHeight} from './AutoHeight';
 import {PollMessageContentPropsContext} from './context';
 import {AvatarGroup, Explanation, PollType, PollVotes} from './parts';
 import {PollOption} from './PollOption';
 import styles from './styles.module.scss';
-import {createDelayed, dataPollViewerIdx, NewOptionValues, PollOptionResult, roundPercents} from './utils';
+import {dataPollViewerIdx, NewOptionValues, PollOptionResult, roundPercents} from './utils';
 
 
 keepMe(ripple);
@@ -130,8 +130,8 @@ export const PollMessageContent = defineSolidElement({
 
       // Keep the order after intial shuffle and append new options at the end when the poll was already rendered
       filteredOptions.forEach((option) => {
-        const idx = pollOptions.findIndex(other => compareUint8Arrays(other.option, option.option));
-        if(idx === -1) setPollOptions(pollOptions.length, option);
+        const idx = untrack(() => pollOptions.findIndex(other => compareUint8Arrays(other.option, option.option)));
+        if(idx === -1) setPollOptions(untrack(() => pollOptions.length), option);
         else setPollOptions(idx, reconcile(option));
       });
 
@@ -172,9 +172,16 @@ export const PollMessageContent = defineSolidElement({
     const explanationPhoto = createMemo(() => getPhoto(props.results.solution_media));
     const descriptionPhoto = createMemo(() => getPhoto(props.media.attached_media));
 
-    const initialIdxFromShuffledIdx = (idx: number) =>
-      props.poll.answers.findIndex(other => other._ === 'pollAnswer' && compareUint8Arrays(other.option, pollOptions[idx]?.option))
-    ;
+    const initialIdxFromShuffledIdx = (idx: number) => {
+      const shuffledOption = pollOptions[idx]?.option;
+
+      return props.poll.answers.findIndex(
+        other => other._ === 'pollAnswer' &&
+          other.option &&
+          shuffledOption &&
+          compareUint8Arrays(other.option, shuffledOption)
+      )
+    };
 
     const getResultForOption = (initialIdx: number): PollOptionResult => {
       if(!isShowingResult()) return undefined;
@@ -374,7 +381,7 @@ export const PollMessageContent = defineSolidElement({
           </Show>
         </HeightTransition>
 
-        <AutoHeight>
+        <TransitionGroup name='fade-2' moveClass='t-move'>
           <For each={pollOptions}>
             {(option, index) => {
               const initialIdx = createMemo(() => initialIdxFromShuffledIdx(index()));
@@ -395,11 +402,6 @@ export const PollMessageContent = defineSolidElement({
               );
             }}
           </For>
-          {/* Add some space as the checkbox (when showing result) might overflow the container */}
-          <Space amount='0.25rem' />
-        </AutoHeight>
-
-        <HeightTransition>
           <Show when={canShowAddOption()}>
             <div style={{overflow: 'hidden'}}>
               <AddOption
@@ -414,7 +416,8 @@ export const PollMessageContent = defineSolidElement({
               />
             </div>
           </Show>
-        </HeightTransition>
+        </TransitionGroup>
+
 
         <div
           class={styles.footer}
