@@ -34,9 +34,10 @@ import {AddOption} from './AddOption';
 import {PollMessageContentPropsContext} from './context';
 import {AvatarGroup, Explanation, PollType, PollVotes} from './parts';
 import {PollOption} from './PollOption';
+import {getRoundedPercentsFromResults} from './roundPercents';
 import {shouldShufflePollOptions, shufflePollOptions} from './shuffle';
 import styles from './styles.module.scss';
-import {attachSpoilerOverlay, dataPollViewerIdx, NewOptionValues, PollOptionResult, roundPercents} from './utils';
+import {attachSpoilerOverlay, dataPollViewerIdx, NewOptionValues, PollOptionResult} from './utils';
 
 
 keepMe(ripple);
@@ -106,15 +107,7 @@ export const PollMessageContent = defineSolidElement({
     const votersCount = createMemo(() => props.results?.total_voters ?? 0);
     const recentVoters = createMemo(() => props.results?.recent_voters?.map(peer => getPeerId(peer)) ?? []);
 
-    const roundedPercents = createMemo(() => {
-      const results = props.results?.results;
-      if(!results) return [];
-
-      const totalVotes = results.reduce((acc, r) => acc + (r.voters ?? 0), 0);
-      if(!totalVotes) return new Array(results.length).fill(0);
-
-      return roundPercents(results.map(r => totalVotes ? (r.voters ?? 0) / totalVotes * 100 : 0));
-    });
+    const roundedPercents = createMemo(() => getRoundedPercentsFromResults(props.results));
 
     const hasPhotoInOptions = createMemo(() => props.poll.answers.some(a => a.media?._ === 'messageMediaPhoto' && a.media.photo?._ === 'photo'));
 

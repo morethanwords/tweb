@@ -7,7 +7,6 @@
 import {render} from 'solid-js/web';
 import {SliderSuperTab} from '@components/slider';
 import appSidebarRight from '..';
-import {roundPercents} from '@components/poll';
 import appDialogsManager from '@lib/appDialogsManager';
 import {i18n} from '@lib/langPack';
 import setInnerHTML from '@helpers/dom/setInnerHTML';
@@ -19,6 +18,8 @@ import wrapTextWithEntities from '@lib/richTextProcessor/wrapTextWithEntities';
 import {Show, untrack} from 'solid-js';
 import {createLoadableList, MoreButton} from '@components/sidebarRight/tabs/statistics';
 import {formatFullSentTimeRaw} from '@helpers/date';
+import {getRoundedPercentsFromResults} from '@components/chat/bubbleParts/pollMessageContent/roundPercents';
+
 
 export default class AppPollResultsTab extends SliderSuperTab {
   private dispose: VoidFunction;
@@ -40,8 +41,7 @@ export default class AppPollResultsTab extends SliderSuperTab {
       </div>
     ) as HTMLElement);
 
-    const percents = poll.results.results.map((v) => v.voters / poll.results.total_voters * 100);
-    roundPercents(percents);
+    const percents = getRoundedPercentsFromResults(poll.results);
 
     const getSections = () => poll.results.results.map((result, idx) => {
       if(!result.voters) {

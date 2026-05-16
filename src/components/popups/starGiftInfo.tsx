@@ -42,7 +42,7 @@ import wrapMessageEntities from '@lib/richTextProcessor/wrapMessageEntities';
 import PopupStarGiftValue from '@components/popups/starGiftValue';
 import Icon from '@components/icon';
 import PopupStarGiftWear from '@components/popups/starGiftWear';
-import {setQuizHint} from '@components/poll';
+import {setQuizHint} from '@components/quizHint';
 import createStarGiftUpgradePopup from '@components/popups/starGiftUpgrade';
 import classNames from '@helpers/string/classNames';
 import PopupPayment from '@components/popups/payment';
