@@ -7730,6 +7730,7 @@ export default class ChatBubbles {
               media: context.messageMedia,
               autoDownload: this.chat.autoDownload,
               lazyLoadQueue: this.lazyLoadQueue,
+              animationGroup: this.chat.animationGroup,
               loadPromises
             });
 

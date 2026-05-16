@@ -1,3 +1,4 @@
+import {AnimationItemGroup} from '@components/animationIntersector';
 import {AppMediaViewerStaticTargetType} from '@components/appMediaViewerStatic';
 import {AutoHeight} from '@components/autoHeight';
 import {ButtonIconTsx} from '@components/buttonIconTsx';
@@ -26,7 +27,7 @@ import {sliceTextWithEntities} from '@lib/richTextProcessor/sliceTextWithEntitie
 import wrapDraftText from '@lib/richTextProcessor/wrapDraftText';
 import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {batch, createComputed, createMemo, createResource, createSelector, createSignal, For, Match, Show, Switch, untrack} from 'solid-js';
+import {batch, createComputed, createEffect, createMemo, createResource, createSelector, createSignal, For, Match, Show, Switch, untrack} from 'solid-js';
 import {createStore, reconcile, unwrap} from 'solid-js/store';
 import {Transition, TransitionGroup} from 'solid-transition-group';
 import {AddOption} from './AddOption';
@@ -35,7 +36,7 @@ import {AvatarGroup, Explanation, PollType, PollVotes} from './parts';
 import {PollOption} from './PollOption';
 import {shouldShufflePollOptions, shufflePollOptions} from './shuffle';
 import styles from './styles.module.scss';
-import {dataPollViewerIdx, NewOptionValues, PollOptionResult, roundPercents} from './utils';
+import {attachSpoilerOverlay, dataPollViewerIdx, NewOptionValues, PollOptionResult, roundPercents} from './utils';
 
 
 keepMe(ripple);
@@ -50,6 +51,7 @@ export type PollMessageContentProps = {
   media: MessageMedia.messageMediaPoll;
   autoDownload?: ChatAutoDownloadSettings;
   lazyLoadQueue?: false | LazyLoadQueue;
+  animationGroup?: AnimationItemGroup;
   loadPromises: Promise<any>[];
 };
 
@@ -83,6 +85,7 @@ export const PollMessageContent = defineSolidElement({
       text: '',
       entities: []
     });
+    const [descriptionElement, setDescriptionElement] = createSignal<HTMLDivElement>();
 
     const [timeOffset] = createResource(() => rootScope.managers.timeManager.getServerTimeOffset());
 
@@ -292,6 +295,11 @@ export const PollMessageContent = defineSolidElement({
       props.results = results;
     });
 
+    createEffect(() => {
+      if(!descriptionElement()) return;
+      attachSpoilerOverlay(descriptionElement(), props);
+    });
+
     const mediaViewerPayload = createMemo(() => {
       let idxSeed = 0;
 
@@ -354,7 +362,7 @@ export const PollMessageContent = defineSolidElement({
           </div>
         </Show>
         <Show when={descriptionText()}>
-          <div class={styles.description}>
+          <div ref={setDescriptionElement} class={styles.description}>
             <TranslatableMessageTsx
               peerId={props.peerId}
               textWithEntities={{_: 'textWithEntities', text: descriptionText(), entities: unwrap(descriptionEntities())}}

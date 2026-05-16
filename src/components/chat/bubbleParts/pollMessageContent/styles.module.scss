@@ -365,6 +365,10 @@
 .description {
   font-size: 0.875em;
   padding: 0.75rem 0.5rem 0;
+
+  &:global(.is-hovering-spoiler) {
+    cursor: pointer;
+  }
 }
 
 .pollImage {
