@@ -369,28 +369,34 @@ export class AppPollsManager extends AppManager {
       document
     };
 
-    const uploadFileDeferred = this.apiFileManager.upload({file: media.blob, fileName: uploadingFileName});
-    this.appMessagesManager.syncSentAndUploadPromises({sentDeferred: deferred, uploadFileDeferred, file: media.blob});
+    this.appMessagesManager.sendSmthLazyLoadQueue.push({
+      load: () => {
+        const uploadFileDeferred = this.apiFileManager.upload({file: media.blob, fileName: uploadingFileName});
+        this.appMessagesManager.syncSentAndUploadPromises({sentDeferred: deferred, uploadFileDeferred, file: media.blob});
 
-    uploadFileDeferred.then(async(inputFile) => {
-      const media = await this.apiManager.invokeApi('messages.uploadMedia', {
-        media: {
-          _: 'inputMediaUploadedPhoto',
-          file: inputFile,
-          pFlags: {}
-        },
-        peer: this.appPeersManager.getInputPeerById(peerId)
-      });
-      if(media._ !== 'messageMediaPhoto') throw new Error('Unexpected media type');
+        uploadFileDeferred.then(async(inputFile) => {
+          const media = await this.apiManager.invokeApi('messages.uploadMedia', {
+            media: {
+              _: 'inputMediaUploadedPhoto',
+              file: inputFile,
+              pFlags: {}
+            },
+            peer: this.appPeersManager.getInputPeerById(peerId)
+          });
+          if(media._ !== 'messageMediaPhoto') throw new Error('Unexpected media type');
 
-      const photo = this.appPhotosManager.savePhoto(media.photo);
+          const photo = this.appPhotosManager.savePhoto(media.photo);
 
-      deferred.resolve({
-        _: 'inputMediaPhoto',
-        id: getPhotoInput(photo),
-        pFlags: {}
-      });
-    }, (e) => deferred.reject(e));
+          deferred.resolve({
+            _: 'inputMediaPhoto',
+            id: getPhotoInput(photo),
+            pFlags: {}
+          });
+        }, (e) => deferred.reject(e));
+
+        return uploadFileDeferred;
+      }
+    });
 
     return {
       uploadingFileName,

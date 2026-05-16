@@ -544,7 +544,7 @@ export class AppMessagesManager extends AppManager {
     messageSendCallbacks: Array<() => void>;
   }> = {};
 
-  private sendSmthLazyLoadQueue = new LazyLoadQueueBase(10);
+  public sendSmthLazyLoadQueue = new LazyLoadQueueBase(10);
 
   private needSingleMessages: Map<PeerId, Map<number, CancellablePromise<Message.message | Message.messageService>>> = new Map();
   private fetchSingleMessagesPromise: Promise<void>;
