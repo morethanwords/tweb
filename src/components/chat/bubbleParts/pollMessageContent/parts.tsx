@@ -73,7 +73,7 @@ export const Explanation = (props: LocalTextWithEntities & {
         <Show when={props.photo}>
           <Space amount='0.5rem' />
           <div class={styles.explanationImage}>
-            <PhotoTsx photo={props.photo} loadPromises={contextProps.loadPromises} />
+            <PhotoTsx photo={props.photo} loadPromises={contextProps.loadPromises} autoDownloadSize={contextProps.autoDownload?.photo} />
           </div>
         </Show>
       </div>

@@ -56,6 +56,16 @@
       left: 50%;
       transform: translate(-50%, -50%);
     }
+
+    :global(.preloader-container) {
+      height: 30px;
+      width: 30px;
+
+      :global(.preloader-download), :global(.preloader-close) {
+        width: 20px;
+        height: 20px;
+      }
+    }
   }
 }
 

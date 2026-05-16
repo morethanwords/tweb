@@ -188,7 +188,13 @@ export const PollOption = (props: {
           use:dataPollViewerIdx={props.pollViewerPayload}
         >
           <Show when={props.photo}>
-            <PhotoTsx photo={props.photo} boxWidth={36} boxHeight={36} withoutPreloader loadPromises={contextProps.loadPromises} />
+            <PhotoTsx
+              photo={props.photo}
+              boxWidth={36}
+              boxHeight={36}
+              loadPromises={contextProps.loadPromises}
+              autoDownloadSize={contextProps.autoDownload?.photo}
+            />
           </Show>
         </div>
       </Show>

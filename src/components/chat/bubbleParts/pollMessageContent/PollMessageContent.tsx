@@ -2,6 +2,7 @@ import {AppMediaViewerStaticTargetType} from '@components/appMediaViewerStatic';
 import {AutoHeight} from '@components/autoHeight';
 import {ButtonIconTsx} from '@components/buttonIconTsx';
 import InputField from '@components/inputField';
+import type LazyLoadQueue from '@components/lazyLoadQueue';
 import {useCreatePollLimits} from '@components/popups/createPoll/useCreatePollLimits';
 import {RemainingTime} from '@components/remainingTime';
 import ripple from '@components/ripple';
@@ -18,6 +19,7 @@ import {HeightTransition} from '@helpers/solid/heightTransition';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
+import type {ChatAutoDownloadSettings} from '@hooks/useAutoDownloadSettings';
 import {InputMedia, Message, MessageMedia, Photo, Poll, PollAnswer, PollResults} from '@layer';
 import getPeerId from '@lib/appManagers/utils/peers/getPeerId';
 import {sliceTextWithEntities} from '@lib/richTextProcessor/sliceTextWithEntities';
@@ -46,6 +48,8 @@ export type PollMessageContentProps = {
   message: Message.message;
   results: PollResults;
   media: MessageMedia.messageMediaPoll;
+  autoDownload?: ChatAutoDownloadSettings;
+  lazyLoadQueue?: false | LazyLoadQueue;
   loadPromises: Promise<any>[];
 };
 
@@ -340,7 +344,12 @@ export const PollMessageContent = defineSolidElement({
         <Show when={descriptionPhoto()}>
           <div class={styles.pollImageWrapper}>
             <div class={styles.pollImage} use:dataPollViewerIdx={[mediaViewerPayload().indexes.description, elementByIndexMap]}>
-              <PhotoTsx photo={descriptionPhoto()} loadPromises={props.loadPromises} />
+              <PhotoTsx
+                photo={descriptionPhoto()}
+                loadPromises={props.loadPromises}
+                autoDownloadSize={props.autoDownload?.photo}
+                lazyLoadQueue={props.lazyLoadQueue}
+              />
             </div>
           </div>
         </Show>

@@ -3066,6 +3066,13 @@ export default class ChatBubbles {
 
     let pollViewerTarget: HTMLElement | null
     if(pollViewerTarget = target.closest('[data-poll-viewer-idx]')) {
+      const preloader = pollViewerTarget.querySelector<HTMLElement>('.preloader-container');
+      if(preloader && e) {
+        simulateClickEvent(preloader);
+        cancelEvent(e);
+        return;
+      }
+
       const pollMessageContent = pollViewerTarget.closest('poll-message-content') as InstanceType<typeof PollMessageContent>;
       pollMessageContent.controls?.openMediaViewer?.(+pollViewerTarget.dataset.pollViewerIdx);
       return true;
@@ -7721,6 +7728,8 @@ export default class ChatBubbles {
               poll: context.messageMedia.poll,
               results: context.messageMedia.results,
               media: context.messageMedia,
+              autoDownload: this.chat.autoDownload,
+              lazyLoadQueue: this.lazyLoadQueue,
               loadPromises
             });
 
