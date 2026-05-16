@@ -42,6 +42,7 @@ import AppPollResultsTab from '@components/sidebarRight/tabs/pollResults';
 import type Slideshow from '@components/slideshow';
 import type {StoriesProvider, useStories} from '@components/stories/store';
 import type {hideToast, toast, toastNew} from '@components/toast';
+import {TranslatableMessageTsx} from '@components/translatableMessage';
 import type {wrapAdaptiveCustomEmoji} from '@components/wrappers/customEmojiSimple';
 import type DocumentTsx from '@components/wrappers/documentTsx';
 import type wrapFolderTitle from '@components/wrappers/folderTitle';
@@ -145,6 +146,7 @@ export type SolidJSHotReloadGuardContextValue = {
   AvatarNewTsx: typeof AvatarNewTsx;
   AppMediaViewerStatic: typeof AppMediaViewerStatic;
   AppPollResultsTab: typeof AppPollResultsTab;
+  TranslatableMessageTsx: typeof TranslatableMessageTsx;
 };
 
 export type LockScreenHotReloadGuardContextValue = Pick<

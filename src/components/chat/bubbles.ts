@@ -7717,9 +7717,11 @@ export default class ChatBubbles {
             pollMessageContent.feedProps({
               isOutgoing: isOut,
               message,
+              peerId: this.peerId,
               poll: context.messageMedia.poll,
               results: context.messageMedia.results,
-              media: context.messageMedia
+              media: context.messageMedia,
+              loadPromises
             });
 
             this.updateLocalOnEdit.set(bubble, msg => {

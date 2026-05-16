@@ -24,7 +24,6 @@ import {InputMedia, Message, MessageMedia, Photo, Poll, PollAnswer, PollResults}
 import getPeerId from '@lib/appManagers/utils/peers/getPeerId';
 import {sliceTextWithEntities} from '@lib/richTextProcessor/sliceTextWithEntities';
 import wrapDraftText from '@lib/richTextProcessor/wrapDraftText';
-import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {batch, createComputed, createMemo, createResource, createSelector, createSignal, For, Match, Show, Switch, untrack} from 'solid-js';
@@ -44,9 +43,11 @@ keepMe(dataPollViewerIdx);
 export type PollMessageContentProps = {
   isOutgoing?: boolean;
   poll: Poll;
+  peerId: PeerId;
   message: Message.message;
   results: PollResults;
   media: MessageMedia.messageMediaPoll;
+  loadPromises: Promise<any>[];
 };
 
 type Controls = {
@@ -64,7 +65,7 @@ export const PollMessageContent = defineSolidElement({
   component: (props: PassedProps<PollMessageContentProps>, _, controls: Controls) => {
     attachHotClassName(props.element, styles.container);
 
-    const {rootScope, useAppSettings, AppMediaViewerStatic, appSidebarRight, AppPollResultsTab} = useHotReloadGuard();
+    const {rootScope, useAppSettings, AppMediaViewerStatic, appSidebarRight, AppPollResultsTab, TranslatableMessageTsx} = useHotReloadGuard();
     const [appSettings] = useAppSettings();
 
     const middleware = createMiddleware().get();
@@ -84,9 +85,8 @@ export const PollMessageContent = defineSolidElement({
 
     let inputField: InputField;
 
-    const question = () => props.poll.question.text;
-    const questionEntities = () => props.poll.question.entities;
-    const description = () => props.message.message;
+    const question = () => props.poll.question;
+    const descriptionText = () => props.message.message;
     const descriptionEntities = () => props.message.entities;
     const allowAddingOptions = createMemo(() => !!props.poll.pFlags.open_answers);
     const allowMultipleAnswers = createMemo(() => !!props.poll.pFlags.multiple_choice);
@@ -340,19 +340,27 @@ export const PollMessageContent = defineSolidElement({
         <Show when={descriptionPhoto()}>
           <div class={styles.pollImageWrapper}>
             <div class={styles.pollImage} use:dataPollViewerIdx={[mediaViewerPayload().indexes.description, elementByIndexMap]}>
-              <PhotoTsx photo={descriptionPhoto()} />
+              <PhotoTsx photo={descriptionPhoto()} loadPromises={props.loadPromises} />
             </div>
           </div>
         </Show>
-        <Show when={description()}>
+        <Show when={descriptionText()}>
           <div class={styles.description}>
-            {wrapRichText(description(), {entities: descriptionEntities(), middleware})}
+            <TranslatableMessageTsx
+              peerId={props.peerId}
+              textWithEntities={{_: 'textWithEntities', text: descriptionText(), entities: unwrap(descriptionEntities())}}
+              richTextOptions={{middleware: createMiddleware().get(), loadPromises: props.loadPromises}}
+            />
           </div>
         </Show>
         <div class={styles.header}>
           <div class={styles.headerTitleContainer}>
             <div class={styles.headerTitle}>
-              {wrapRichText(question(), {entities: questionEntities(), middleware})}
+              <TranslatableMessageTsx
+                peerId={props.peerId}
+                textWithEntities={unwrap(question())}
+                richTextOptions={{middleware, loadPromises: props.loadPromises}}
+              />
             </div>
             <div class={styles.headerSubtitle}>
               <PollType closed={closed()} hasCorrectAnswer={hasCorrectAnswer()} showWhoVoted={showWhoVoted()} />

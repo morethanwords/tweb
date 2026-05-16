@@ -10,6 +10,7 @@ import {LangPackKey} from '@lib/langPack';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {createMemo, For, Show} from 'solid-js';
+import {unwrap} from 'solid-js/store';
 import {usePollMessageContentProps} from './context';
 import styles from './styles.module.scss';
 import {dataPollViewerIdx, DataPollViewerIdxDirectivePayload, LocalTextWithEntities} from './utils';
@@ -48,7 +49,11 @@ export const Explanation = (props: LocalTextWithEntities & {
   photo?: Photo.photo;
   pollViewerPayload?: DataPollViewerIdxDirectivePayload;
 }) => {
+  const {TranslatableMessageTsx} = useHotReloadGuard();
+  const contextProps = usePollMessageContentProps();
+
   const middleware = createMiddleware().get();
+
   return (
     <div class='reply quote-like quote-like-border' use:dataPollViewerIdx={props.pollViewerPayload}>
       <div class='reply-content'>
@@ -58,12 +63,17 @@ export const Explanation = (props: LocalTextWithEntities & {
         <Show when={props.text}>
           <div class={classNames(styles.explanationText, 'reply-subtitle')}>
             {wrapRichText(props.text, {entities: props.entities, middleware})}
+            <TranslatableMessageTsx
+              peerId={contextProps.peerId}
+              textWithEntities={{_: 'textWithEntities', text: props.text, entities: unwrap(props.entities)}}
+              richTextOptions={{middleware, loadPromises: contextProps.loadPromises}}
+            />
           </div>
         </Show>
         <Show when={props.photo}>
           <Space amount='0.5rem' />
           <div class={styles.explanationImage}>
-            <PhotoTsx photo={props.photo} />
+            <PhotoTsx photo={props.photo} loadPromises={contextProps.loadPromises} />
           </div>
         </Show>
       </div>

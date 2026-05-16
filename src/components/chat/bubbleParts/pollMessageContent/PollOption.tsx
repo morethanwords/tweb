@@ -11,8 +11,9 @@ import createMiddleware from '@helpers/solid/createMiddleware';
 import {requestRAF} from '@helpers/solid/requestRAF';
 import classNames from '@helpers/string/classNames';
 import {Photo} from '@layer';
-import wrapRichText from '@lib/richTextProcessor/wrapRichText';
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {Accessor, createEffect, createMemo, createSignal, JSX, Match, onCleanup, onMount, Show, splitProps, Switch} from 'solid-js';
+import {unwrap} from 'solid-js/store';
 import {Transition} from 'solid-transition-group';
 import {InMessageCheckbox} from '../inMessageCheckbox';
 import {usePollMessageContentProps} from './context';
@@ -41,6 +42,7 @@ export const PollOption = (props: {
 
   result?: PollOptionResult;
 }) => {
+  const {TranslatableMessageTsx} = useHotReloadGuard()
   const contextProps = usePollMessageContentProps();
 
   const isShowingResult = createMemo(() => !!props.result);
@@ -61,8 +63,6 @@ export const PollOption = (props: {
 
   // So it waits a little bit for the spinner to disappear
   const delayedIsPendingVote = createDelayed(() => props.isPendingVote ?? false, false, (value) => value ? -1 : 100);
-
-  const middleware = createMiddleware().get();
 
   onMount(() => {
     requestRAF(() => {
@@ -110,7 +110,11 @@ export const PollOption = (props: {
       </div>
       <div class={styles.labelRow}>
         <div class={styles.labelText}>
-          {wrapRichText(props.text.text, {entities: props.text.entities, middleware})}
+          <TranslatableMessageTsx
+            peerId={contextProps.peerId}
+            textWithEntities={{_: 'textWithEntities', text: props.text.text, entities: unwrap(props.text.entities)}}
+            richTextOptions={{middleware: createMiddleware().get(), loadPromises: contextProps.loadPromises}}
+          />
         </div>
         <Show when={isShowingResult() && props.result.voters}>
           <div class={styles.labelStats}>
@@ -184,7 +188,7 @@ export const PollOption = (props: {
           use:dataPollViewerIdx={props.pollViewerPayload}
         >
           <Show when={props.photo}>
-            <PhotoTsx photo={props.photo} boxWidth={36} boxHeight={36} withoutPreloader />
+            <PhotoTsx photo={props.photo} boxWidth={36} boxHeight={36} withoutPreloader loadPromises={contextProps.loadPromises} />
           </Show>
         </div>
       </Show>
