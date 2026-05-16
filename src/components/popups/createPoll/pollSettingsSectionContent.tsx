@@ -140,7 +140,8 @@ export const PollSettingsSectionContent = () => {
           if(!context.store.hasCorrectAnswer) {
             context.setStore({
               hasCorrectAnswer: true,
-              allowAddingOptions: false
+              allowAddingOptions: false,
+              allowRevoting: false
             });
           } else {
             context.setStore({
