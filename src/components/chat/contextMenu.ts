@@ -955,7 +955,9 @@ export default class ChatContextMenu {
       onClick: this.onRetractVote,
       verify: () => {
         const poll = (this.message as any).media?.poll as Poll;
-        return poll && poll.chosenIndexes.length && !poll.pFlags.closed && !poll.pFlags.quiz;
+        if(poll?.pFlags.closed || !poll?.chosenIndexes?.length) return false;
+
+        return !poll.pFlags.revoting_disabled;
       }/* ,
       cancelEvent: true */
     }, {
