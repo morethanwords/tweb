@@ -91,6 +91,10 @@ import {PartialByKeys} from '@types';
 import {ContextMenuDeleteOptionText} from '@components/chat/contextMenuDeleteOptionText';
 import getMarkupInSelection from '@helpers/dom/getMarkupInSelection';
 import isNodeFullyInsideRange from '@helpers/dom/isNodeFullyInsideRange';
+import parseEntities from '@lib/richTextProcessor/parseEntities';
+import {concatTextsWithEntities} from '@lib/richTextProcessor/concatTextsWithEntities';
+import {shouldShufflePollOptions, shufflePollOptions} from './bubbleParts/pollMessageContent/shuffle';
+import {useAppSettings} from '@stores/appSettings';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -422,7 +426,7 @@ export default class ChatContextMenu {
       this.canOpenReactedList = undefined;
       this.linkToMessage = await this.getUrlToMessage();
       this.selectedMessagesText = await this.getSelectedMessagesText();
-      this.messageLanguage = this.chat.appConfig.freeze_since_date || this.selectedMessages || !this.message ? undefined : await detectLanguageForTranslation((this.message as Message.message).message);
+      this.messageLanguage = await this.getMessageLanguage();
 
       if(checklistItemId) {
         const media = (this.message as Message.message).media as MessageMedia.messageMediaToDo;
@@ -888,21 +892,30 @@ export default class ChatContextMenu {
     }, {
       icon: 'premium_translate',
       text: 'TranslateMessage',
-      onClick: () => {
+      onClick: async() => {
+        // save values as they're removed immediately (while the promise is awaited)
+        const peerId = this.peerId;
+        const message = this.message;
+        const messageLanguage = this.messageLanguage;
+        const isTextSelected = this.isTextSelected;
+
         if(!this.chat.peerTranslation.canTranslate(true)) {
           PopupPremium.show({feature: 'translations'});
         } else {
           let textWithEntities: TextWithEntities;
-          if(this.isTextSelected) {
+          if(isTextSelected) {
             const {text, entities} = this.getQuotedText();
             textWithEntities = {_: 'textWithEntities', text, entities};
           }
+          if(message?._ === 'message' && message.media?._ === 'messageMediaPoll') {
+            textWithEntities = await this.getPollTextWithEntities(message);
+          }
 
           PopupElement.createPopup(PopupTranslate, {
-            peerId: textWithEntities ? this.peerId : this.message.peerId,
+            peerId: textWithEntities ? peerId : message.peerId,
             textWithEntities,
-            message: textWithEntities ? undefined : this.message as Message.message,
-            detectedLanguage: this.messageLanguage
+            message: textWithEntities ? undefined : message as Message.message,
+            detectedLanguage: messageLanguage
           });
         }
       },
@@ -1936,5 +1949,72 @@ export default class ChatContextMenu {
         }
       }
     };
+  }
+
+  private async getMessageLanguage() {
+    if(this.chat.appConfig.freeze_since_date || this.selectedMessages || !this.message) return;
+
+    if(this.message._ === 'message' && this.message.media?._ === 'messageMediaPoll') {
+      const text = (await this.getPollTextWithEntities(this.message))?.text;
+      if(!text) return;
+
+      return detectLanguageForTranslation(text);
+    }
+
+    return detectLanguageForTranslation((this.message as Message.message).message);
+  }
+
+  private async getPollTextWithEntities(message: MyMessage) {
+    if(message?._ !== 'message' || message.media?._ !== 'messageMediaPoll') return;
+
+    const listDotText = '🔘 ';
+    const listDotEntities = parseEntities(listDotText);
+    const listDot: TextWithEntities = {_: 'textWithEntities', text: listDotText, entities: listDotEntities};
+    const lineBreakText = '\n';
+    const lineBreakEntities = parseEntities(lineBreakText);
+    const lineBreak: TextWithEntities = {_: 'textWithEntities', text: lineBreakText, entities: lineBreakEntities};
+
+    // Note: poll_update doesn't modify the message, so we're getting the poll and results separately
+    const {poll, results} = await this.managers.appPollsManager.getPoll(message.media.poll.id);
+
+    if(!poll) return;
+
+    const [appSettings] = useAppSettings();
+
+    let answers = poll.answers.filter(answer => answer._ === 'pollAnswer');
+
+    if(shouldShufflePollOptions(poll)) {
+      answers = shufflePollOptions({
+        initialOptions: answers,
+        seed: appSettings.userRandomSeed,
+        mid: message.mid,
+        peerId: message.peerId
+      });
+    }
+
+    const parts: TextWithEntities[] = [
+      {
+        _: 'textWithEntities',
+        text: message.message,
+        entities: message.entities
+      },
+      lineBreak,
+      poll.question,
+      lineBreak,
+      ...answers.filter(answer => answer._ === 'pollAnswer').map(answer => concatTextsWithEntities([
+        listDot,
+        answer.text,
+        lineBreak
+      ])),
+      ...(results?.solution ? [
+        {
+          _: 'textWithEntities',
+          text: results.solution,
+          entities: results.solution_entities ?? []
+        } as TextWithEntities
+      ] : [])
+    ];
+
+    return concatTextsWithEntities(parts);
   }
 }

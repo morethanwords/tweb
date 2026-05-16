@@ -7,11 +7,9 @@ import {RemainingTime} from '@components/remainingTime';
 import ripple from '@components/ripple';
 import Space from '@components/space';
 import PhotoTsx from '@components/wrappers/photoTsx';
-import {mergeSeed, seededShuffle} from '@helpers/array/seededShuffle';
 import compareUint8Arrays from '@helpers/bytes/compareUint8Arrays';
 import {setCaretAtEnd} from '@helpers/dom/setCaretAt';
 import {keepMe} from '@helpers/keepMe';
-import intToUint from '@helpers/number/intToUint';
 import {attachHotClassName} from '@helpers/solid/classname';
 import {createDelayed} from '@helpers/solid/createDelayed';
 import createMiddleware from '@helpers/solid/createMiddleware';
@@ -33,6 +31,7 @@ import {AddOption} from './AddOption';
 import {PollMessageContentPropsContext} from './context';
 import {AvatarGroup, Explanation, PollType, PollVotes} from './parts';
 import {PollOption} from './PollOption';
+import {shouldShufflePollOptions, shufflePollOptions} from './shuffle';
 import styles from './styles.module.scss';
 import {dataPollViewerIdx, NewOptionValues, PollOptionResult, roundPercents} from './utils';
 
@@ -91,7 +90,7 @@ export const PollMessageContent = defineSolidElement({
     const allowAddingOptions = createMemo(() => !!props.poll.pFlags.open_answers);
     const allowMultipleAnswers = createMemo(() => !!props.poll.pFlags.multiple_choice);
     const hasCorrectAnswer = createMemo(() => !!props.poll.pFlags.quiz);
-    const shuffleOptions = createMemo(() => !props.poll.pFlags.creator && !!props.poll.pFlags.shuffle_answers);
+    const shuffleOptions = createMemo(() => shouldShufflePollOptions(props.poll));
     const showWhoVoted = createMemo(() => !!props.poll.pFlags.public_voters);
     const closed = createMemo(() => !!props.poll.pFlags.closed);
     const closesAtTimestamp = createMemo(() => timeOffset.state === 'ready' ? props.poll.close_date - timeOffset() : 0);
@@ -118,11 +117,12 @@ export const PollMessageContent = defineSolidElement({
 
     let initialOptions = props.poll.answers.filter(answer => answer._ === 'pollAnswer');
 
-    if(shuffleOptions()) initialOptions = seededShuffle(initialOptions, mergeSeed([
-      intToUint(appSettings.userRandomSeed),
-      intToUint(props.message.mid),
-      intToUint(props.message.peerId)
-    ]));
+    if(shuffleOptions()) initialOptions = shufflePollOptions({
+      initialOptions,
+      seed: appSettings.userRandomSeed,
+      mid: props.message.mid,
+      peerId: props.message.peerId
+    });
 
     const [pollOptions, setPollOptions] = createStore<PollAnswer.pollAnswer[]>(initialOptions);
 
