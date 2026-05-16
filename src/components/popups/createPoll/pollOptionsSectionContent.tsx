@@ -229,6 +229,13 @@ const PollOptionInputField = (props: {
 }) => {
   const {maxOptionLength} = useCreatePollLimits();
   const supportsMedia = useSupportsMedia();
+  const {store} = useCreatePollContext();
+
+  const isDuplicate = createMemo(() => {
+    const text = props.value;
+    if(!text) return false;
+    return store.pollOptions.filter((option) => option.text === text).length > 1;
+  });
 
   const inputField = new InputField({
     placeholder: 'NewPoll.Option',
@@ -266,6 +273,7 @@ const PollOptionInputField = (props: {
       withMinHeight
       solidBackground
       hoverDisabled={props.hoverDisabled}
+      isError={isDuplicate()}
       style={props.style}
     >
       <SimpleFormField.SideContent

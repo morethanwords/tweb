@@ -16,6 +16,7 @@ export const useCanSubmit = () => {
     if(store.pollOptions.length > maxOptions()) return false;
     if(store.pollOptions.some((option) => !option.text)) return false;
     if(store.pollOptions.some((option) => option.text.length > maxOptionLength())) return false;
+    if(new Set(store.pollOptions.map((option) => option.text)).size !== store.pollOptions.length) return false;
     if(store.hasCorrectAnswer && !store.pollOptions.some((option) => option.checked)) return false;
     if(store.hasCorrectAnswer && store.explanation.length > maxExplanationLength()) return false;
 
