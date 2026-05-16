@@ -35,6 +35,8 @@ const SimpleFormField = (inProps: ParentProps<{
   withMinHeight?: boolean;
   solidBackground?: boolean;
   hoverDisabled?: boolean;
+
+  isMarkupTooltipHost?: boolean;
 } & Omit<JSX.HTMLAttributes<HTMLDivElement>, 'onChange' | 'onClick'>>) => {
   const [props, restProps] = splitProps(inProps, [
     'value',
@@ -49,7 +51,8 @@ const SimpleFormField = (inProps: ParentProps<{
     'withStartButtonIcon',
     'withMinHeight',
     'solidBackground',
-    'hoverDisabled'
+    'hoverDisabled',
+    'isMarkupTooltipHost'
   ]);
 
   const [input, setInput] = createSignal<HTMLInputElement>();
@@ -93,6 +96,7 @@ const SimpleFormField = (inProps: ParentProps<{
           contextValue.input()?.focus();
           props.onClick?.(...args);
         }}
+        data-markup-tooltip-host={props.isMarkupTooltipHost}
         {...restProps}
       >
         <div class={styles.BorderThin} />

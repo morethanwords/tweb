@@ -158,6 +158,7 @@ const Header = (props: {
         class={classNames(styles.flexFull, styles.formField)}
         withEndButtonIcon
         withMinHeight
+        isMarkupTooltipHost
       >
         <SimpleFormField.InputStub>
           <Scrollable relative class={styles.inputScrollable}>

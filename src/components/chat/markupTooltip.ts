@@ -34,6 +34,7 @@ export default class MarkupTooltip {
   private buttons: {[type in MarkupTooltipTypes]: HTMLElement} = {} as any;
   private linkBackButton: HTMLElement;
   private linkApplyButton: HTMLButtonElement;
+  private linkDelimiter: HTMLElement;
   private hideTimeout: number;
   private addedListener = false;
   private waitingForMouseUp = false;
@@ -162,6 +163,7 @@ export default class MarkupTooltip {
     delimiter2.classList.add('markup-tooltip-delimiter');
     delimiter3.classList.add('markup-tooltip-delimiter');
     tools1.insertBefore(delimiter1, this.buttons.link);
+    this.linkDelimiter = delimiter1;
     applyDiv.append(delimiter3, this.linkApplyButton);
     tools2.append(this.linkBackButton, delimiter2, this.linkInput, applyDiv);
     // tools1.insertBefore(delimiter2, this.buttons.link.nextSibling);
@@ -337,7 +339,11 @@ export default class MarkupTooltip {
 
     const rowsWrapper = findUpClassName(this.input, 'rows-wrapper') ||
       findUpClassName(this.input, 'input-message-container') ||
-      findUpClassName(this.input, 'input-field');
+      findUpClassName(this.input, 'input-field') ||
+      this.input?.closest('[data-markup-tooltip-host]');
+
+    if(!rowsWrapper) return;
+
     const currentTools = this.container.classList.contains('is-link') ?
       this.wrapper.lastElementChild :
       this.wrapper.firstElementChild;
@@ -405,6 +411,18 @@ export default class MarkupTooltip {
     this.container.classList.toggle('night', overlayCounter.isDarkOverlayActive);
 
     this.setActiveMarkupButton();
+
+    const canFormat = this.input.getAttribute('can-format');
+    const allowedTypes = canFormat ?
+      new Set(canFormat.split(',').filter(Boolean) as MarkupTooltipTypes[]) :
+      null;
+    (Object.keys(this.buttons) as MarkupTooltipTypes[]).forEach((type) => {
+      const hidden = !!allowedTypes && !allowedTypes.has(type);
+      this.buttons[type].classList.toggle('hide', hidden);
+      if(type === 'link') {
+        this.linkDelimiter.classList.toggle('hide', hidden);
+      }
+    });
 
     this.container.classList.remove('is-link');
     const isFirstShow = this.container.classList.contains('hide');

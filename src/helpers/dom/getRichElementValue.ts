@@ -390,7 +390,7 @@ export default function getRichElementValue(
   let wasNodeEmpty = true;
 
   // * prefill currentEntities for current element
-  if(node.getAttribute('contenteditable') === null) {
+  if(node.getAttribute('contenteditable') === null && entities) {
     checkElementForEntity(node, '', entities, offset, line, currentEntities);
   }
 

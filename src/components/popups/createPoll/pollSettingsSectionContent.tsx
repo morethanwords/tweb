@@ -209,6 +209,7 @@ export const PollSettingsSectionContent = () => {
               class={classNames(styles.flexFull, styles.formField)}
               withEndButtonIcon
               withMinHeight
+              isMarkupTooltipHost
             >
               <SimpleFormField.InputStub>
                 {explanationInput.input}
