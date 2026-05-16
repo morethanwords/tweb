@@ -99,6 +99,7 @@ export class AppPollsManager extends AppManager {
       this.polls[id] = poll;
 
       poll.chosenIndexes = [];
+      poll.correctIndexes = [];
       results = this.saveResults(poll, results);
     }
 
@@ -135,10 +136,15 @@ export class AppPollsManager extends AppManager {
 
     if(!results.pFlags.min) { // ! https://core.telegram.org/constructor/pollResults - min
       poll.chosenIndexes.length = 0;
+      poll.correctIndexes.length = 0;
+
       if(results?.results?.length) {
         results.results.forEach((answer, idx) => {
           if(answer.pFlags?.chosen) {
             poll.chosenIndexes.push(idx);
+          }
+          if(answer.pFlags?.correct) {
+            poll.correctIndexes.push(idx);
           }
         });
       }

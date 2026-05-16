@@ -9402,7 +9402,8 @@ export namespace Poll {
     close_period?: number,
     close_date?: number,
     hash: string | number,
-    chosenIndexes?: number[]
+    chosenIndexes?: number[],
+    correctIndexes?: number[],
   };
 }
 
@@ -23322,4 +23323,3 @@ export interface MethodDeclMap {
   'bots.requestWebViewButton': {req: BotsRequestWebViewButton, res: BotsRequestedButton},
   'bots.getRequestedWebViewButton': {req: BotsGetRequestedWebViewButton, res: KeyboardButton},
 }
-

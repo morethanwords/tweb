@@ -188,8 +188,8 @@ export const PollMessageContent = defineSolidElement({
       if(!isShowingResult()) return undefined;
       const result = props.results?.results?.[initialIdx];
       return {
-        correct: result?.pFlags?.correct ?? false,
-        chosen: result?.pFlags?.chosen ?? false,
+        correct: props.poll.correctIndexes?.includes(initialIdx) ?? false,
+        chosen: props.poll.chosenIndexes?.includes(initialIdx) ?? false,
         percent: roundedPercents()[initialIdx],
         voters: result?.voters ?? 0,
         peerIds: result?.recent_voters?.map(peer => getPeerId(peer)) ?? []
