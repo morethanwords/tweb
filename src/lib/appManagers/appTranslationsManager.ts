@@ -247,6 +247,6 @@ export default class AppTranslationsManager extends AppManager {
   }
 
   private getInputEntities(entities: MessageEntity[]): MessageEntity[] {
-    return this.appMessagesManager.getInputEntities(entities).filter((entity) => entity._ !== 'messageEntityEmoji');
+    return entities ? this.appMessagesManager.getInputEntities(entities)?.filter((entity) => entity._ !== 'messageEntityEmoji') || [] : [];
   }
 }
