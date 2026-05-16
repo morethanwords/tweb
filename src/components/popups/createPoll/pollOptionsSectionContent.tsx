@@ -158,8 +158,6 @@ const PollOptionFullField = (props: {
 }) => {
   const context = useCreatePollContext();
 
-  const onSortablePointerDown = props.sortable.dragHandleProps(props.item.id).onPointerDown;
-
   const onRadioClick = () => {
     batch(() => {
       context.setStore('pollOptions', (option) => option.checked, 'checked', false);
@@ -203,7 +201,7 @@ const PollOptionFullField = (props: {
         onChange={props.onChange}
         onPointerDown={(e) => {
           blurActiveElement();
-          onSortablePointerDown(e);
+          props.sortable.dragHandleProps(props.item.id).onPointerDown(e);
         }}
         hoverDisabled={props.sortable.draggingId() !== null}
         inputFieldRef={props.inputFieldRef}

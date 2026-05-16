@@ -508,8 +508,6 @@ export class AppPollsManager extends AppManager {
   }
 
   private async invokeSendPoll({peerId, params, randomId, pollWithoutAnswers, payload, parsedPayload, uploadingMedia}: InvokeSendPollArgs) {
-    // TODO: Consider lazy load queue
-
     const getCorrectAnswers = () => {
       const result = payload.pollOptions
       .map((option, index) => ({option, index}))

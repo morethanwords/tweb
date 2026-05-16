@@ -862,6 +862,10 @@
       {
         "name": "chosenIndexes",
         "type": "number[]"
+      },
+      {
+        "name": "correctIndexes",
+        "type": "number[]"
       }
     ]
   },
