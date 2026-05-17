@@ -23,7 +23,7 @@ import {FilterBooleanKeys} from '@types';
 import {Accessor, createEffect, createSignal, JSX, on, onCleanup, Show} from 'solid-js';
 import {supportedDescriptionFormattingTypes} from './config';
 import {EmojiButtonWithOpacity as EmojiDropdownButton} from './emojiButtonWithOpacity';
-import {useSupportsMedia} from './hooks';
+import {useSupportsMedia} from './utils';
 import {MediaAttachment} from './mediaAttachment';
 import {CreatePollStore, useCreatePollContext} from './storeContext';
 import styles from './styles.module.scss';

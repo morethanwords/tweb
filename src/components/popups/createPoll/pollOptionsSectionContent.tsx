@@ -17,14 +17,14 @@ import classNames from '@helpers/string/classNames';
 import {batch, children, createMemo, For, JSX, mapArray, onMount, Ref, Show} from 'solid-js';
 import {Transition, TransitionGroup} from 'solid-transition-group';
 import {EmojiButtonWithOpacity as EmojiDropdownButton} from './emojiButtonWithOpacity';
-import {useSupportsMedia} from './hooks';
+import {useSupportsMedia} from './utils';
 import {MediaAttachment} from './mediaAttachment';
 import {AttachedMedia, StorePollOption, useCreatePollContext} from './storeContext';
 import styles from './styles.module.scss';
 import {useCreatePollLimits} from './useCreatePollLimits';
 
 
-type Item = {
+type MappedItem = {
   id: number;
   option: StorePollOption;
   inputField?: InputField;
@@ -41,7 +41,7 @@ export const PollOptionsSectionContent = (props: {
 
   const context = useCreatePollContext();
 
-  const rawMappedItems = mapArray(() => context.store.pollOptions, (option): Item => ({
+  const rawMappedItems = mapArray(() => context.store.pollOptions, (option): MappedItem => ({
     id: idSeed++,
     option,
     isNew
@@ -49,14 +49,14 @@ export const PollOptionsSectionContent = (props: {
 
   isNew = true;
 
-  const items = createMemo(rawMappedItems);
+  const mappedItems = createMemo(rawMappedItems);
 
-  const optionsLeft = createMemo(() => Math.max(0, maxOptions() - items().length));
+  const optionsLeft = createMemo(() => Math.max(0, maxOptions() - mappedItems().length));
   const canShowAddOption = createMemo(() => optionsLeft() > 0);
 
   const sortable = createSortableList({
     container: () => props.scrollable,
-    items,
+    items: mappedItems,
     getId: item => item.id,
     onReorder: (newItems) => {
       context.setStore('pollOptions', newItems.map(item => item.option));
@@ -76,7 +76,7 @@ export const PollOptionsSectionContent = (props: {
     });
   };
 
-  const Parent = (props: { children: JSX.Element }) => {
+  const TransitionGroupWhenNotDragging = (props: { children: JSX.Element }) => {
     const resolved = children(() => props.children);
     return (
       <Show when={!isDragging()} fallback={resolved()}>
@@ -90,41 +90,22 @@ export const PollOptionsSectionContent = (props: {
   return (
     <>
       <AutoHeight>
-        <Parent>
-          <For each={items()}>
+        <TransitionGroupWhenNotDragging>
+          <For each={mappedItems()}>
             {(item, index) => (
               <>
                 {index() > 0 && <Space amount='0.75rem' />}
                 <PollOptionFullField
-                  item={item}
                   index={index()}
+                  mappedItem={item}
+                  mappedItems={mappedItems()}
                   sortable={sortable}
-                  inputFieldRef={(inputField) => {
-                    item.inputField = inputField;
-                  }}
-                  onChange={(option) => {
-                    context.setStore('pollOptions', index(), option);
-                  }}
-                  onEnter={() => {
-                    for(const item of items().slice(index() + 1)) {
-                      if(!item.inputField?.value) {
-                        focusInput(item.inputField?.input);
-                        return;
-                      }
-                    }
-                    if(item.inputField?.value) onAdd();
-                  }}
-                  onEmptyBackspace={() => {
-                    if(items().length === 1) return;
-
-                    context.setStore('pollOptions', prev => prev.filter((_, i) => i !== index()));
-                    focusInput(items()[Math.max(0, index() - 1)]?.inputField?.input);
-                  }}
+                  onAdd={onAdd}
                 />
               </>
             )}
           </For>
-        </Parent>
+        </TransitionGroupWhenNotDragging>
       </AutoHeight>
 
       <Space amount='0.5rem' />
@@ -148,65 +129,90 @@ export const PollOptionsSectionContent = (props: {
 };
 
 const PollOptionFullField = (props: {
-  item: Item;
   index: number;
+  mappedItem: MappedItem;
+  mappedItems: MappedItem[];
   sortable: ReturnType<typeof createSortableList>;
-  onChange: (option: Partial<StorePollOption>) => void;
-  inputFieldRef?: (value: InputField) => void;
-  onEnter?: () => void;
-  onEmptyBackspace?: () => void;
+  onAdd: () => void;
 }) => {
-  const context = useCreatePollContext();
+  const {store, setStore} = useCreatePollContext();
 
-  const onRadioClick = () => {
-    batch(() => {
-      context.setStore('pollOptions', (option) => option.checked, 'checked', false);
-      context.setStore('pollOptions', props.index, 'checked', true);
-    });
-  };
+  const value = () => props.mappedItem.option.text;
+
+  const isDuplicate = createMemo(() => {
+    const text = value();
+    if(!text) return false;
+    return store.pollOptions.filter((option) => option.text === text).length > 1;
+  });
 
   onMount(() => {
-    if(!props.item.isNew) return;
+    if(!props.mappedItem.isNew) return;
 
     setTimeout(() => {
-      focusInput(props.item.inputField?.input);
+      focusInput(props.mappedItem.inputField?.input);
     }, 100);
   });
 
+
+  const onRadioClick = () => {
+    batch(() => {
+      setStore('pollOptions', (option) => option.checked, 'checked', false);
+      setStore('pollOptions', props.index, 'checked', true);
+    });
+  };
+
   return (
     <div
-      ref={props.sortable.itemRef(props.item.id)}
+      ref={props.sortable.itemRef(props.mappedItem.id)}
       class={styles.pollOptionRow}
-      style={props.sortable.itemStyle(props.item.id)}
+      style={props.sortable.itemStyle(props.mappedItem.id)}
     >
-      <Show when={context.store.hasCorrectAnswer}>
+      <Show when={store.hasCorrectAnswer}>
         <div class={styles.pollOptionCheckWrapper}>
           <Transition name='fade-2' duration={200} mode='outin'>
-            <Show when={!context.store.allowMultipleAnswers}>
+            <Show when={!store.allowMultipleAnswers}>
               <div class={styles.checkButtonWrapper} onClick={onRadioClick}>
-                <StaticRadio checked={props.item.option.checked} />
+                <StaticRadio checked={props.mappedItem.option.checked} />
               </div>
             </Show>
-            <Show when={context.store.allowMultipleAnswers}>
-              <div class={styles.checkButtonWrapper} onClick={() => props.onChange({checked: !props.item.option.checked})}>
-                <StaticCheckbox checked={props.item.option.checked} />
+            <Show when={store.allowMultipleAnswers}>
+              <div class={styles.checkButtonWrapper} onClick={() => setStore('pollOptions', props.index, 'checked', (v) => !v)}>
+                <StaticCheckbox checked={props.mappedItem.option.checked} />
               </div>
             </Show>
           </Transition>
         </div>
       </Show>
       <PollOptionInputField
-        value={props.item.option.text}
-        attachment={props.item.option.attachment}
-        onChange={props.onChange}
+        value={value()}
+        attachment={props.mappedItem.option.attachment}
+        isError={isDuplicate()}
         onPointerDown={(e) => {
           blurActiveElement();
-          props.sortable.dragHandleProps(props.item.id).onPointerDown(e);
+          props.sortable.dragHandleProps(props.mappedItem.id).onPointerDown(e);
         }}
         hoverDisabled={props.sortable.draggingId() !== null}
-        inputFieldRef={props.inputFieldRef}
-        onEnter={props.onEnter}
-        onEmptyBackspace={props.onEmptyBackspace}
+        inputFieldRef={(inputField) => {
+          props.mappedItem.inputField = inputField;
+        }}
+        onChange={(option) => {
+          setStore('pollOptions', props.index, option);
+        }}
+        onEnter={() => {
+          for(const item of props.mappedItems.slice(props.index + 1)) {
+            if(!item.inputField?.value) {
+              focusInput(item.inputField?.input);
+              return;
+            }
+          }
+          if(props.mappedItem.inputField?.value) props.onAdd();
+        }}
+        onEmptyBackspace={() => {
+          if(props.mappedItems.length === 1) return;
+
+          setStore('pollOptions', prev => prev.filter((_, i) => i !== props.index));
+          focusInput(props.mappedItems[Math.max(0, props.index - 1)]?.inputField?.input);
+        }}
       />
     </div>
   );
@@ -214,26 +220,22 @@ const PollOptionFullField = (props: {
 
 const PollOptionInputField = (props: {
   ref?: Ref<HTMLDivElement>;
-  inputFieldRef?: (value: InputField) => void;
-  value?: string;
-  style?: JSX.CSSProperties;
-  onPointerDown?: JSX.HTMLAttributes<HTMLElement>['onPointerDown'];
-  hoverDisabled?: boolean;
-  onChange: (option: Partial<StorePollOption>) => void;
-  attachment?: AttachedMedia;
+  inputFieldRef: (value: InputField) => void;
 
+  value: string;
+  hoverDisabled?: boolean;
+  isError?: boolean;
+  attachment?: AttachedMedia;
+  style?: JSX.CSSProperties;
+
+  onChange: (option: Partial<StorePollOption>) => void;
   onEnter?: () => void;
   onEmptyBackspace?: () => void;
+  onPointerDown?: JSX.HTMLAttributes<HTMLElement>['onPointerDown'];
 }) => {
   const {maxOptionLength} = useCreatePollLimits();
   const supportsMedia = useSupportsMedia();
-  const {store} = useCreatePollContext();
 
-  const isDuplicate = createMemo(() => {
-    const text = props.value;
-    if(!text) return false;
-    return store.pollOptions.filter((option) => option.text === text).length > 1;
-  });
 
   const inputField = new InputField({
     placeholder: 'NewPoll.Option',
@@ -271,7 +273,7 @@ const PollOptionInputField = (props: {
       withMinHeight
       solidBackground
       hoverDisabled={props.hoverDisabled}
-      isError={isDuplicate()}
+      isError={props.isError}
       style={props.style}
     >
       <SimpleFormField.SideContent
