@@ -1,4 +1,4 @@
-import {createEffect, createSignal, onCleanup} from 'solid-js';
+import {createEffect, createSignal, onCleanup, untrack} from 'solid-js';
 
 /**
  *
@@ -12,7 +12,7 @@ export const createDelayed = <T>(value: () => T, defaultValue: T, delay: number 
   createEffect(() => {
     const val = value();
 
-    const resolvedDelay = typeof delay === 'function' ? delay(val) : delay;
+    const resolvedDelay = typeof delay === 'function' ? untrack(() => delay(val)) : delay;
 
     if(resolvedDelay < 0) {
       setCurrent(() => val);
