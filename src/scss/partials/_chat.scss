@@ -383,15 +383,6 @@
     max-width: var(--messages-container-width) !important;
   }
 
-  @include respond-to(only-medium-screens) {
-    width: calc(100% - var(--right-column-width)) !important;
-
-    body.is-right-column-shown & {
-      transition: transform var(--transition-standard-in);
-      transform: translate3d(calc(var(--right-column-width) / -2 * var(--reflect)), var(--translateY), 0) !important;
-    }
-  }
-
   .bubbles.is-selecting:not(.backwards) ~ & {
     .selection-wrapper {
       opacity: 1;
@@ -437,26 +428,35 @@
 }
 
 #column-center {
-	--page-chats-padding: 1rem;
 	position: absolute;
 	inset: var(--page-chats-padding);
 
-	@include respond-to(large-screens) {
-		transform: translateX(calc(var(--effective-left-bar-width) / 2 * var(--reflect)));
+	// Only shift the chat off the left bar once the viewport is wide enough that the
+	// chat content (messages-container-width) plus the left bar + gap + outer paddings
+	// actually fit — otherwise the shift just pushes chat content past the right edge.
+	// --folders-sidebar-offset (0 normally, ~5.5rem when folders panel is shown) is
+	// folded into the left side so chat content stays centered past the panel too.
+	@include respond-to(medium-screens) {
+		transform: translateX(calc((var(--folders-sidebar-offset) + var(--left-column-width)) / 2 * var(--reflect)));
 		transition: transform var(--transition-standard-out);
+	}
 
-		body.is-right-column-shown & {
-			transform: translateX(calc((var(--effective-left-bar-width) - var(--right-column-width)) / 2 * var(--reflect)));
+	@include respond-to(medium-screens) {
+		body.is-right-column-shown:not(.right-column-floats) & {
+			transform: translateX(calc((var(--folders-sidebar-offset) + var(--left-column-width) - var(--right-column-width)) / 2 * var(--reflect)));
 			transition: transform var(--transition-standard-in);
 		}
 	}
 
-	@include respond-to(handhelds) {
-		// `.main-column { width: 100% }` would combine with `position: absolute`
-		// + `inset: var(--page-chats-padding)` to make the box overflow the
-		// right edge by exactly one page-chats-padding. Let `inset` size it.
-		width: auto;
+	// While the user is dragging a sidebar resize handle, the chat should
+	// track the sidebar edge instantly — animating the transform makes the
+	// chat lag behind the pointer.
+	body.resizing-left-sidebar &,
+	body.resizing-right-sidebar & {
+		transition: none !important;
+	}
 
+	@include respond-to(handhelds) {
 		body.is-left-column-shown & {
 			transform: translate3d(100vw, 0, 0);
 			opacity: 0;
@@ -469,14 +469,6 @@
 	}
 
 	@include respond-to(floating-left-sidebar) {
-		position: fixed !important;
-    inset: 0;
-		transform: translateZ(0);
-
-		@include animation-level(2) {
-			transition: transform var(--layer-transition);
-		}
-
 		body.is-left-column-shown & {
 			//transform: translate3d(26.5rem, 0, 0);
 			transform: translate3d(26.5625rem, 0, 0); // + 1px to show left border
@@ -528,10 +520,8 @@
     --pinned-floating-height: 0px;
     top: calc(56px + var(--pinned-floating-height) + var(--padding));
 
-    @include respond-to(medium-screens) {
-      body.is-right-column-shown & {
-        inset-inline-end: calc(var(--right-column-width));
-      }
+    body.is-right-column-shown:not(.right-column-floats) & {
+      inset-inline-end: calc(var(--right-column-width));
     }
 
     @include respond-to(handhelds) {
@@ -1253,12 +1243,6 @@
   }
 
 	// ! WARNING, НЕЛЬЗЯ СТАВИТЬ ТРАНСФОРМ КРОМЕ TRANSLATEZ(0) НА БЛОК С OVERFLOW, ОН БУДЕТ ПРЫГАТЬ ВВЕРХ ПРИ ВКЛЮЧЕННОМ ПРАВИЛЕ И ЭТО НЕ ИСПРАВИТЬ JS'ОМ!
-	@include respond-to(only-medium-screens) {
-		body.is-right-column-shown & {
-			transition: transform var(--transition-standard-in);
-			transform: translate3d(calc(var(--right-column-width) / -2 * var(--reflect)), var(--translateY), 0);
-		}
-	}
 
 	&.is-selecting {
     @include animation-level(2) {
@@ -1368,7 +1352,7 @@
 		transition: none !important;
 	}
 
-	@include respond-to(medium-screens) {
+	body:not(.right-column-floats) & {
 		width: calc(100% - var(--right-column-width) - var(--chat-input-padding) * 2);
 	}
 

@@ -6,12 +6,14 @@ import {keepMe} from '@helpers/keepMe';
 import {Middleware} from '@helpers/middleware';
 import pause from '@helpers/schedulers/pause';
 import Animated from '@helpers/solid/animations';
+import classNames from '@helpers/string/classNames';
 import {logger, LogTypes} from '@lib/logger';
 import {REAL_FOLDERS} from '@appManagers/constants';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import useHasFoldersSidebar from '@stores/foldersSidebar';
 import useFolders from '@stores/folders';
+import appChatBackground from '@components/chat/bubbles/chatBackground';
 import {IconTsx} from '@components/iconTsx';
 import ripple from '@components/ripple';
 import Scrollable from '@components/scrollable2';
@@ -49,6 +51,11 @@ export function FoldersSidebarContent(props: {
   const [folderItemRefs, setFolderItemRefs] = createStore<Record<number, HTMLDivElement>>({});
   const isSelected = createSelector(selectedFolderId);
 
+  // Tracks whether a gradient renderer is currently active. When false (image-only wallpapers)
+  // we fall back to backdrop-filter via a CSS class so the bar still has some translucency.
+  const [hasGradient, setHasGradient] = createSignal(false);
+  let backgroundCanvas: HTMLCanvasElement;
+
   let folderItemsContainer: HTMLDivElement;
 
   async function _onClick(folderId: number) {
@@ -66,7 +73,7 @@ export function FoldersSidebarContent(props: {
     const _menuTarget = menuTarget();
     if(!_menuTarget) return;
 
-    appSidebarLeft.createToolsMenu(_menuTarget);
+    appSidebarLeft.createToolsMenu(_menuTarget, {top: 8, left: 48});
     _menuTarget.classList.add('sidebar-tools-button', 'is-visible');
     _menuTarget.append(props.notificationsElement);
   });
@@ -82,8 +89,27 @@ export function FoldersSidebarContent(props: {
       listenTo: folderItemsContainer
     });
 
+    // Mirror the chat-background gradient into our own canvas — cheap stand-in for
+    // backdrop-filter: blur(40px). The bar always sits over the chat background, so the visible
+    // result of a heavy blur over that area is mathematically close to the gradient itself
+    // (the high-frequency pattern blurs to a near-constant tint that we approximate via the
+    // dark overlay). Falls back to backdrop-filter when no gradient is active.
+    let detachMirror: (() => void) | undefined;
+    const unsubscribeRenderer = appChatBackground.onActiveGradientRendererChange((renderer) => {
+      detachMirror?.();
+      detachMirror = undefined;
+      if(renderer && backgroundCanvas) {
+        detachMirror = renderer.attachMirror(backgroundCanvas);
+        setHasGradient(true);
+      } else {
+        setHasGradient(false);
+      }
+    });
+
     onCleanup(() => {
       contextMenu.destroy();
+      unsubscribeRenderer();
+      detachMirror?.();
     });
   });
 
@@ -104,12 +130,16 @@ export function FoldersSidebarContent(props: {
   let openingChatFolders = false;
   return (
     <>
-      <FolderItem ref={setMenuTarget} class="folders-sidebar__menu-button" icon="menu" />
+      <div class={classNames('folders-sidebar__background', !hasGradient() && 'folders-sidebar__background--no-gradient')}>
+        <canvas ref={backgroundCanvas} class="folders-sidebar__background-gradient" />
+        <div class="folders-sidebar__background-tint" />
+      </div>
+      <FolderItem ref={setMenuTarget} class="folders-sidebar__menu-button is-first" icon="menu" />
 
       <div class="folders-sidebar__scrollable-position">
         <Scrollable
           ref={folderItemsContainer}
-          class="folders-sidebar__scrollable"
+          class="folders-sidebar__scrollable no-scrollbar"
           onScroll={updateCanShowAddFolders}
           withBorders="both"
         >
@@ -150,7 +180,7 @@ export function FoldersSidebarContent(props: {
       </div>
 
       <FolderItem
-        class="folders-sidebar__menu-button"
+        class="folders-sidebar__menu-button is-last"
         icon="equalizer"
         onClick={() => {
           if(openingChatFolders || appSidebarLeft.getTab(AppChatFoldersTab)) return;
@@ -168,12 +198,17 @@ export function FoldersSidebarContent(props: {
 }
 
 export function renderFoldersSidebarContent(
-  element: HTMLElement,
+  parentEl: HTMLElement,
   notificationsElement: HTMLElement,
   HotReloadGuardProvider: typeof SolidJSHotReloadGuardProvider,
   middleware: Middleware
 ) {
   const [hasFoldersSidebar] = useHasFoldersSidebar();
+
+  const foldersSidebar = document.createElement('div');
+  foldersSidebar.id = 'folders-sidebar';
+  foldersSidebar.className = 'folders-sidebar sidebar-left-common';
+  parentEl.insertBefore(foldersSidebar, parentEl.firstChild);
 
   const dispose = render(() => (
     <HotReloadGuardProvider>
@@ -183,6 +218,10 @@ export function renderFoldersSidebarContent(
         />
       </Show>
     </HotReloadGuardProvider>
-  ), element);
-  middleware.onDestroy(dispose);
+  ), foldersSidebar);
+
+  middleware.onDestroy(() => {
+    dispose();
+    foldersSidebar.remove();
+  });
 }

@@ -21,7 +21,7 @@ body.is-pinned-audio-shown, body.is-calling:not(.backwards) {
   }
 }
 
-.topbar-call-container,
+.pinned-call,
 .pinned-audio {
   @include animation-level(2) {
     transition: transform var(--transition-standard-out);
@@ -64,12 +64,6 @@ body.is-right-column-shown {
   @include animation-level(2) {
     &.sidebar-header {
       transition: transform var(--transition-standard-in), margin-bottom 0s 0s, background-color var(--transition-standard-in);
-    }
-  }
-
-  @include respond-to(only-medium-screens) {
-    body.is-right-column-shown & {
-      transform: translate3d(calc(var(--right-column-width) / -2 * var(--reflect)), calc(var(--topbar-floating-call-height) + var(--topbar-floating-audio-height)), 0);
     }
   }
 
@@ -144,16 +138,6 @@ body.is-right-column-shown {
 	}
 
 	.btn-menu-toggle {
-		.btn-menu {
-			top: calc(100% + 7px);
-			max-height: calc(var(--100vh) - 4.375rem);
-
-			@include respond-to(handhelds) {
-				max-height: calc(var(--100vh) - 3.75rem);
-				top: 29px;
-			}
-		}
-
 		@include respond-to(handhelds) {
 			margin-inline-start: 0;
 		}
@@ -257,136 +241,6 @@ body.is-right-column-shown {
 			padding-inline-start: 16px;
 		}
 	}
-
-  &-call {
-    &-container {
-      height: var(--topbar-call-height) !important;
-      min-height: auto !important;
-      position: absolute;
-      top: calc(var(--topbar-call-height) * -1);
-      inset-inline: 1px 0; // because I have border-right on left sidebar that "pushes" the chat
-      color: #fff;
-      z-index: 3;
-      cursor: pointer !important;
-      transform: translateY(var(--topbar-floating-call-height));
-
-      body:not(.has-chat):not(.is-pinned-audio-shown) & {
-        background: none !important;
-      }
-
-      @include respond-to(until-floating-left-sidebar) {
-        inset-inline-start: 0;
-      }
-
-      .btn-icon {
-        color: inherit;
-        width: 2.5rem;
-        height: 2.5rem;
-        padding: 0;
-        flex: 0 0 auto;
-      }
-
-      .peer-title {
-        font-weight: var(--font-weight-bold);
-        white-space: nowrap;
-      }
-
-      &.is-group-call {
-        @media only screen and (max-width: 480px) {
-          .topbar-call-left,
-          .topbar-call-right {
-            width: auto;
-          }
-
-          .group-call-description {
-            display: none;
-          }
-        }
-      }
-
-      &.is-call {
-        @media only screen and (max-width: 480px) {
-          .topbar-call-left,
-          .topbar-call-right {
-            width: 6.25rem;
-          }
-
-          .call-description:not(.has-duration) {
-            display: none;
-          }
-        }
-      }
-
-      &.is-rtmp {
-        font-size: var(--font-size-14);
-
-        .topbar-call-left {
-          font-weight: var(--font-weight-bold);
-        }
-
-        .rtmp-description {
-          margin-inline-start: .5rem;
-          opacity: .6;
-        }
-      }
-    }
-
-    &-left,
-    &-right {
-      flex: 0 0 auto;
-      width: 12rem;
-    }
-
-    &-left {
-      display: flex;
-      align-items: center;
-
-      .btn-icon {
-        margin-inline-end: .375rem;
-      }
-
-      .call-description {
-        white-space: nowrap;
-      }
-
-      .call-description-duration {
-        font-weight: var(--font-weight-bold);
-      }
-    }
-
-    &-center {
-      @include text-overflow();
-
-      @include respond-to(medium-screens) {
-        // ! it flicks over the left side :(
-        // body.is-right-column-shown & {
-          padding: 0 calc(var(--right-column-width) / 2);
-        // }
-      }
-    }
-
-    &-right {
-      display: flex;
-      justify-content: flex-end;
-    }
-
-    &-weave {
-      position: absolute;
-      top: 0;
-      right: 0;
-      bottom: -1.125rem;
-      left: 0;
-      z-index: -1;
-      transform: scale(var(--topbar-floating-scaleX), -1);
-      transform-origin: var(--transform-origin-left-center);
-      pointer-events: none;
-
-      &-canvas {
-        width: 100%;
-        height: 100%;
-      }
-    }
-  }
 
   .back-unread-badge {
     position: absolute;

@@ -34,6 +34,10 @@
     @media only screen and (max-width: $floating-left-sidebar) { @content; }
   } @else if $media == no-floating-left-sidebar {
     @media only screen and (min-width: $floating-left-sidebar + 1) { @content; }
+  } @else if $media == floating-right-sidebar {
+    @media only screen and (min-width: $small-screen + 1) and (max-width: $right-sidebar-fits - 1px) { @content; }
+  } @else if $media == no-floating-right-sidebar {
+    @media only screen and (min-width: $right-sidebar-fits) { @content; }
   }
 
   @else if $media == esg-top { // topbar + chat input + margin bottom + height of ESG 

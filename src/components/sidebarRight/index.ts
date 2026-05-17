@@ -12,12 +12,13 @@ import {MOUNT_CLASS_TO} from '@config/debug';
 import {AppManagers} from '@lib/managers';
 import appNavigationController from '@components/appNavigationController';
 import rootScope from '@lib/rootScope';
+import {installColumnWidthsUpdater} from '@helpers/updateColumnWidths';
+import installColumnResize from '@helpers/installColumnResize';
 
 
 export const RIGHT_COLUMN_ACTIVE_CLASSNAME = 'is-right-column-shown';
 
 export class AppSidebarRight extends SidebarSlider {
-  private isColumnProportionSet = false;
   public sharedMediaTab: AppSharedMediaTab;
   // public rect: DOMRect;
 
@@ -38,12 +39,8 @@ export class AppSidebarRight extends SidebarSlider {
       }
     });
 
-    rootScope.addEventListener('resizing_left_sidebar', () => {
-      this.setColumnProportion();
-    });
-    mediaSizes.addEventListener('resize', () => {
-      this.setColumnProportion();
-    });
+    installColumnWidthsUpdater();
+    installColumnResize({columnEl: this.sidebarEl, side: 'right'});
   }
 
   public createSharedMediaTab() {
@@ -95,17 +92,6 @@ export class AppSidebarRight extends SidebarSlider {
     super.onCloseTab(id, animate, isNavigation);
   }
 
-  private setColumnProportion() {
-    const middleWidth = this.sidebarEl.previousElementSibling.scrollWidth;
-    const proportion = this.sidebarEl.scrollWidth / middleWidth;
-    document.documentElement.style.setProperty('--right-column-proportion', '' + proportion);
-    document.documentElement.style.setProperty('--middle-column-width', middleWidth + 'px');
-    document.documentElement.style.setProperty('--middle-column-width-value', '' + middleWidth);
-    // this.rect = this.sidebarEl.getBoundingClientRect();
-
-    return proportion;
-  }
-
   public hide() {
     document.body.classList.remove(RIGHT_COLUMN_ACTIVE_CLASSNAME);
     appNavigationController.removeByType('right');
@@ -131,11 +117,6 @@ export class AppSidebarRight extends SidebarSlider {
 
     if(!active && !this.historyTabIds.length) {
       this.sharedMediaTab.open();
-    }
-
-    if(!this.isColumnProportionSet) {
-      this.setColumnProportion();
-      this.isColumnProportionSet = true;
     }
 
     const animationPromise = appImManager.selectTab(active ? APP_TABS.CHAT : APP_TABS.PROFILE, animate);

@@ -202,6 +202,7 @@ export default class ChatTopbar {
         listenerSetter: this.listenerSetter,
         direction: 'bottom-left',
         buttons: this.menuButtons,
+        positionPadding: {top: 7},
         onOpenBefore: async() => {
           const hasAutoDeleteButton = await this.chat.canManageAutoDelete();
           if(!hasAutoDeleteButton) return;

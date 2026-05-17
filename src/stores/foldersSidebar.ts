@@ -1,11 +1,19 @@
 import {createEffect, createRoot, createSignal} from 'solid-js';
 import {ScreenSize, useMediaSizes} from '@helpers/mediaSizes';
+import {setFoldersSidebarShown} from '@helpers/updateColumnWidths';
 
 const hasFoldersSidebarSignal = createRoot(() => {
   const [hasFoldersSidebar, setHasFoldersSidebar] = createSignal(false);
+  const mediaSizes = useMediaSizes();
 
+  // Signal carries the user preference; the body class reflects ACTUAL
+  // visibility (preference AND viewport wide enough — folders sidebar is
+  // hidden by SCSS at <=925px regardless of preference). updateColumnWidths
+  // also gets notified so it can account for the panel's reserved space.
   createEffect(() => {
-    document.body.classList.toggle('has-folders-sidebar', hasFoldersSidebar());
+    const visible = hasFoldersSidebar() && !mediaSizes.isLessThanFloatingLeftSidebar;
+    document.body.classList.toggle('has-folders-sidebar', visible);
+    setFoldersSidebarShown(visible);
   });
 
   return [hasFoldersSidebar, setHasFoldersSidebar] as const;
@@ -31,6 +39,35 @@ const isSidebarCollapsedSignal = createRoot(() => {
 
 export function useIsSidebarCollapsed() {
   return isSidebarCollapsedSignal;
+}
+
+// Whether something is open inside the left sidebar (a tab — settings,
+// archive, etc., search input focused, or a forum). Mirrors the
+// `has-open-tabs` class on `#column-left`; pushed in from
+// AppSidebarLeft.onSomethingOpenInsideChange so reactive consumers (e.g.
+// the collapsed-search-trigger button) can drive their visibility from a
+// signal instead of CSS selectors that combine three sidebar classes.
+const hasOpenLeftTabsSignal = createRoot(() => {
+  const [hasOpenLeftTabs, setHasOpenLeftTabs] = createSignal(false);
+  return [hasOpenLeftTabs, setHasOpenLeftTabs] as const;
+});
+
+export function useHasOpenLeftTabs() {
+  return hasOpenLeftTabsSignal;
+}
+
+// Whether the left sidebar's search input is focused / search panel is open.
+// Drives the burger element's "back-arrow vs menu icon" state via a Solid
+// effect so the class wiring stays in one place — combined with
+// useHasFoldersSidebar, which pins the back state on permanently when the
+// folders panel provides the main menu trigger.
+const isLeftSearchActiveSignal = createRoot(() => {
+  const [isLeftSearchActive, setIsLeftSearchActive] = createSignal(false);
+  return [isLeftSearchActive, setIsLeftSearchActive] as const;
+});
+
+export function useIsLeftSearchActive() {
+  return isLeftSearchActiveSignal;
 }
 
 createRoot(() => {

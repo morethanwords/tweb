@@ -84,7 +84,9 @@ const appColorMap: {[name in AppColorName]: AppColor} = {
   'saved-color': {
     lightFilled: true
   },
-  'green-color': {},
+  'green-color': {
+    rgb: true
+  },
   'background-color': {
     rgb: true
   },
@@ -329,7 +331,9 @@ export class ThemeController {
     }
 
     const e = document.createElement('div');
-    this.applyTheme(this.getTheme('night'), e, true);
+    // Mirror the active theme into .night when current is already dark (night/tinted) so menus
+    // that opt into `.night` match the active palette instead of the static 'night' base.
+    this.applyTheme(isNight ? theme : this.getTheme('night'), e, true);
     style.textContent = `.night {${e.style.cssText}}`;
 
     this.applyHighlightingColor();

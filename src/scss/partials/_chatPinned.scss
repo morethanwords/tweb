@@ -508,7 +508,7 @@
   transform: translateY(calc(-1 * (var(--topbar-audio-height) + var(--page-chats-padding))));
 
   body.is-pinned-audio-shown & {
-    transform: translateY(0);
+    transform: translateY(var(--topbar-floating-call-height));
   }
 
   position: absolute;
@@ -765,6 +765,89 @@
   &-menu {
     position: absolute;
     inset-inline-end: .25rem;
+  }
+}
+
+.pinned-call {
+  --container-height: var(--topbar-call-height);
+  height: var(--container-height) !important;
+  max-height: var(--container-height) !important;
+  position: absolute;
+  top: 0 !important;
+  width: calc(var(--messages-container-width) - var(--chat-input-padding) * 2);
+  max-width: calc(var(--messages-container-width) - var(--chat-input-padding) * 2);
+  margin-inline: auto !important;
+  z-index: 3;
+  color: #fff;
+  cursor: pointer !important;
+  padding: 0 !important;
+  font-size: var(--font-size-12);
+  background: linear-gradient(90deg, #0976E3, #2BCEFF) !important;
+  overflow: hidden;
+
+  transform: translateY(calc(-1 * (var(--topbar-call-height) + var(--page-chats-padding))));
+
+  body.is-calling:not(.backwards) & {
+    transform: translateY(0);
+  }
+
+  &.is-group-call {
+    background: linear-gradient(90deg, #52CE5D, #00B1C0) !important;
+  }
+
+  &.is-rtmp {
+    background: linear-gradient(90deg, #4588E3, #976FFF, #E46ACE) !important;
+    font-weight: var(--font-weight-bold);
+  }
+
+  &-wrapper {
+    padding: 0 .25rem !important;
+    overflow: hidden;
+  }
+
+  &-left,
+  &-right {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+  }
+
+  &-right {
+    justify-content: flex-end;
+  }
+
+  &-center {
+    @include text-overflow();
+    flex: 1 1 auto;
+    text-align: center;
+    margin: 0 .5rem;
+    font-weight: var(--font-weight-bold);
+    line-height: 1;
+  }
+
+  .btn-icon {
+    color: inherit;
+    width: 1.25rem;
+    height: 1.25rem;
+    padding: 0;
+    font-size: 1rem;
+    flex: 0 0 auto;
+  }
+
+  .peer-title {
+    white-space: nowrap;
+  }
+
+  .group-call-description,
+  .call-description,
+  .rtmp-description {
+    white-space: nowrap;
+    opacity: .8;
+  }
+
+  .call-description-duration {
+    font-weight: var(--font-weight-bold);
   }
 }
 

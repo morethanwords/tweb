@@ -514,6 +514,7 @@ const appChatBackground = (() => {
   const [props, setProps] = createSignal<ChatBackgroundProps>({});
 
   let activeGradientRenderer: ChatBackgroundGradientRenderer | undefined;
+  const gradientRendererListeners = new Set<(r: ChatBackgroundGradientRenderer | undefined) => void>();
   let mounted = false;
 
   // `pendingResolve` resolves the promise returned from the in-flight setBackground call.
@@ -541,7 +542,10 @@ const appChatBackground = (() => {
         theme={props().theme}
         wallPaper={props().wallPaper}
         transition={props().transition}
-        gradientRendererRef={(r) => activeGradientRenderer = r}
+        gradientRendererRef={(r) => {
+          activeGradientRenderer = r;
+          for(const listener of gradientRendererListeners) listener(r);
+        }}
         onHighlightColor={(hsla) => {
           lastHighlightHsla = hsla;
           // Always update the global root — the auth shell, sidebars, and any
@@ -626,6 +630,18 @@ const appChatBackground = (() => {
     attach,
     setBackground,
     getActiveGradientRenderer: () => activeGradientRenderer,
+    /**
+     * Subscribe to changes of the active gradient renderer (replaced on wallpaper/theme swap).
+     * Listener is called with the current renderer immediately on subscribe. Returns an
+     * unsubscribe function.
+     */
+    onActiveGradientRendererChange: (listener: (r: ChatBackgroundGradientRenderer | undefined) => void) => {
+      gradientRendererListeners.add(listener);
+      listener(activeGradientRenderer);
+      return () => {
+        gradientRendererListeners.delete(listener);
+      };
+    },
     getReadyPromise: () => latestReady,
     resize: () => ChatBackgroundPatternRenderer.resizeInstancesOf(element)
   };

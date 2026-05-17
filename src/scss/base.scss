@@ -17,6 +17,7 @@
     --page-chats-padding: 0;
     --main-column-border-radius: 0;
   }
+
   --z-below: -1;
   --hover-alpha: #{$hover-alpha};
   --reflect: 1;
@@ -96,6 +97,7 @@
   --font-size-13: 13px;
   --font-size-12: 12px;
   --font-size-11: 11px;
+  --font-size-10: 10px;
   --font-size: var(--font-size-16);
   --esg-sticker-size: 72px;
   --esg-custom-emoji-size: 36px;
@@ -126,9 +128,7 @@
   }
 
   --topbar-floating-scaleX: 1;
-  --topbar-call-group-call-height: 3rem;
-  --topbar-call-call-height: 3rem;
-  --topbar-call-rtmp-height: 1.6875rem;
+  --topbar-call-height: 1.5rem;
   --topbar-audio-height: 3rem;
   --topbar-floating-call-height: 0px;
   --topbar-floating-audio-height: 0px;
@@ -179,6 +179,14 @@
 
   --selector-user-size: 1.875rem;
 
+  // --default-column-width, --left-column-visual-width,
+  // --left-column-width, --middle-column-width, --right-column-width and the
+  // `body.right-column-floats` class are owned by
+  // helpers/updateColumnWidths.ts. The values below are the initial-paint
+  // fallback; the helper takes over at runtime (mediaSizes resize / left-
+  // sidebar resize).
+  --default-column-width: #{$default-column-width};
+
   @include respond-to(handhelds) {
     --right-column-width: 100vw;
     --esg-sticker-size: 68px;
@@ -191,17 +199,13 @@
   }
 
   @include respond-to(not-handhelds) {
-    --right-column-width: calc(#{$large-screen} / 4);
+    --right-column-width: #{$default-column-width};
 
     --chat-input-size: #{$chat-input-size};
     --chat-input-padding: #{$chat-padding};
     --chat-input-inner-padding: #{$chat-input-inner-padding};
 
     --section-margin-inline: 0.5rem;
-  }
-
-  @include respond-to(only-medium-screens) {
-    --right-column-width: 25vw;
   }
 
   --passcode-lock-screen-z-index: 100000;
@@ -211,10 +215,6 @@
 
 :root {
   // * Day theme
-  --body-background-color: #fff;
-  --body-background-color-rgb: 255, 255, 255;
-  @include splitColor(background-color, #f4f4f5, false, false, false, false, true);
-  --border-color: #dfe1e5;
   --scrollbar-color: rgba(0, 0, 0, .2);
   --section-box-shadow-color: rgba(0, 0, 0, .05);
   --section-box-shadow-big-color: rgba(0, 0, 0, .1);
@@ -227,10 +227,7 @@
   --input-placeholder-color: #9BA0A5;
   --input-message-placeholder-color: #a2acb4;
 
-  --secondary-color: #c4c9cc;
   --warning-color: #fed85a;
-  --green-color: #3ba748;
-  --green-color-rgb: 59, 167, 72;
 
   // --avatar-online-color: #0ac630;
   --avatar-online-color: var(--primary-color);
@@ -239,7 +236,6 @@
   --chatlist-status-color: var(--avatar-online-color);
   --chatlist-pinned-color: #a2abb2;
   --badge-text-color: #fff;
-  --link-color: #00488f;
   --ripple-color: rgba(0, 0, 0, #{$hover-alpha});
   --skeleton-color: rgba(0, 0, 0, .12);
   --poll-circle-color: var(--border-color);
@@ -276,12 +272,7 @@
 }
 
 .night {
-//:root {
   // * Night theme
-  --body-background-color: #181818;
-  --body-background-color-rgb: 24, 24, 24;
-  @include splitColor(background-color, #181818, false, false, false, false, true);
-  --border-color: #0f0f0f;
   --scrollbar-color: rgba(255, 255, 255, .2);
   --section-box-shadow-color: rgba(0, 0, 0, .12);
   --section-box-shadow-big-color: rgba(0, 0, 0, .24);
@@ -290,8 +281,6 @@
   --input-search-background-color: #181818;
   --input-search-border-color: #2f2f2f;
 
-  --secondary-color: #707579;
-
   // --avatar-online-color: #0ac630;
   --avatar-online-color: var(--primary-color);
   // --avatar-color-top: var(--peer-avatar-violet-top);
@@ -299,7 +288,6 @@
   --chatlist-status-color: var(--primary-color);
   --chatlist-pinned-color: var(--secondary-color);
   --badge-text-color: #fff;
-  --link-color: var(--primary-color);
   --ripple-color: rgba(255, 255, 255, #{$hover-alpha});
   --skeleton-color: rgba(255, 255, 255, .12);
   --poll-circle-color: #fff;

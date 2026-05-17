@@ -52,7 +52,7 @@ import PopupElement from '@components/popups';
 import PasscodeLockScreenController from '@components/passcodeLock/passcodeLockScreenController'; PasscodeLockScreenController;
 import type {LangPackDifference} from '@layer';
 import commonStateStorage from '@lib/commonStateStorage';
-import {MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, SIDEBAR_COLLAPSE_FACTOR} from '@components/sidebarLeft/constants';
+import {isUserCollapsedLeft} from '@helpers/updateColumnWidths';
 import useHasFoldersSidebar, {useIsSidebarCollapsed} from '@stores/foldersSidebar';
 import appNavigationController from '@components/appNavigationController';
 import {preventCrossTabDynamicImportDeadlock} from '@helpers/preventDeadlock';
@@ -188,25 +188,12 @@ function setViewportHeightListeners() {
 }
 
 function setSidebarLeftWidth() {
-  const sidebarEl = document.getElementById('column-left');
-  const storedWidth = localStorage.getItem('sidebar-left-width');
-
-  let validatedWidth = parseInt(storedWidth);
-  validatedWidth = isNaN(validatedWidth) ? undefined : validatedWidth;
-
-  if(validatedWidth > MAX_SIDEBAR_WIDTH) validatedWidth = MAX_SIDEBAR_WIDTH;
-  else if(validatedWidth < MIN_SIDEBAR_WIDTH * SIDEBAR_COLLAPSE_FACTOR) validatedWidth = 0;
-  else if(validatedWidth < MIN_SIDEBAR_WIDTH) validatedWidth = MIN_SIDEBAR_WIDTH;
-
-  if(typeof validatedWidth === 'number' && String(validatedWidth) !== storedWidth)
-    localStorage.setItem('sidebar-left-width', validatedWidth + '');
-
-  if(validatedWidth === 0) {
-    sidebarEl.classList.add('is-collapsed');
-    useIsSidebarCollapsed()[1](true);
-  } else if(validatedWidth) {
-    document.documentElement.style.setProperty('--current-sidebar-left-width', validatedWidth + 'px');
-  }
+  // updateColumnWidths owns the loaded preference and the CSS vars; we only
+  // need to mirror the collapsed state onto the DOM/class + the SolidJS
+  // store before first paint.
+  if(!isUserCollapsedLeft()) return;
+  document.getElementById('column-left').classList.add('is-collapsed');
+  useIsSidebarCollapsed()[1](true);
 }
 
 function setRootClasses() {

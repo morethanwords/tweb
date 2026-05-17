@@ -53,7 +53,9 @@
       width: var(--right-column-width);
     }
 
-    body.animation-level-0 & {
+    body.animation-level-0 &,
+    body.resizing-left-sidebar &,
+    body.resizing-right-sidebar & {
 			transition: none;
 		}
   }

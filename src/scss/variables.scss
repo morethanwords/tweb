@@ -14,6 +14,20 @@ $large-screen: 1680px;
 
 $floating-left-sidebar: 925px;
 $messages-container-width: 728px;
+// Standard sidebar width — kept in sync with DEFAULT_COLUMN_WIDTH in
+// helpers/updateColumnWidths.ts (single source of truth for runtime widths).
+$default-column-width: 360px;
+// Max sidebar width — user can resize columns up to this; SCSS uses it for
+// thresholds (e.g. when the right column starts overlapping).
+$max-sidebar-width: 480px;
+
+// Viewport min-width where the right column docks instead of floating.
+// Layout: page-chats-padding + left-bar + page-chats-padding (gap) + chat +
+// page-chats-padding (gap) + right-bar + page-chats-padding.
+// Computed against the default widths; matches `RIGHT_COLUMN_FITS` in
+// helpers/updateColumnWidths.ts so SCSS @media queries and the JS
+// `body.right-column-floats` flag agree on the threshold.
+$right-sidebar-fits: $default-column-width + $default-column-width + $messages-container-width + 64px;
 
 $chat-input-size: 3rem;
 $chat-input-handhelds-size: 3rem;

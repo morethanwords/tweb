@@ -44,7 +44,7 @@ import IMAGE_MIME_TYPES_SUPPORTED from '@environment/imageMimeTypesSupport';
 import {NULL_PEER_ID, STARS_CURRENCY} from '@appManagers/constants';
 import telegramMeWebManager from '@lib/telegramMeWebManager';
 import {formatDate, ONE_DAY} from '@helpers/date';
-import TopbarCall from '@components/topbarCall';
+import createTopbarCall, {TopbarCallController} from '@components/topbarCall';
 import confirmationPopup from '@components/confirmationPopup';
 import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
 import IS_CALL_SUPPORTED from '@environment/callSupport';
@@ -205,7 +205,7 @@ export class AppImManager extends EventListenerBase<{
 
   private backgroundPromises: {[url: string]: MaybePromise<string>};
 
-  private topbarCall: TopbarCall;
+  private topbarCall: TopbarCallController;
   private chatAudio: ChatAudioController;
 
   public managers: AppManagers;
@@ -664,7 +664,8 @@ export class AppImManager extends EventListenerBase<{
     // });
 
     if(IS_CALL_SUPPORTED || IS_GROUP_CALL_SUPPORTED) {
-      this.topbarCall = new TopbarCall(managers);
+      this.topbarCall = createTopbarCall(managers);
+      this.columnEl.append(this.topbarCall.container);
     }
 
     this.chatAudio = createChatAudio(this, managers);

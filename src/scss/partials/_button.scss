@@ -109,6 +109,10 @@ $btn-menu-z-index: 4;
   position: absolute;
   z-index: $btn-menu-z-index;
   top: 100%;
+
+  &-submenu {
+    z-index: $btn-menu-z-index + 1;
+  }
   // transform: scale(.8) !important;
   font-size: 1rem;
   min-width: 11.25rem;
@@ -1117,10 +1121,6 @@ $btn-menu-z-index: 4;
     &.primary {
       background-color: var(--light-primary-color);
     }
-  }
-
-  .btn-menu {
-    margin-top: .5rem;
   }
 }
 

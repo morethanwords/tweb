@@ -68,14 +68,26 @@ export async function selectTarget({
   }
 
   if(scrollableX) {
-    fastSmoothScroll({
-      container: scrollableX.container,
-      element: target.parentElement.children[id] as HTMLElement,
-      position: 'center',
-      forceDirection: animate ? undefined : FocusDirection.Static,
-      forceDuration: transitionTime,
-      axis: 'x'
-    });
+    const containerEl = scrollableX.container;
+    // Skip the scroll round-trip when there's no actual scrolling to do:
+    //   - row has no horizontal overflow (every tab is already visible)
+    //   - selecting the first tab while already at scrollLeft 0 (you can't
+    //     scroll past the start to "center" it, so fastSmoothScroll
+    //     clamps path to 0 and no-ops anyway)
+    // Common at the moment the search panel opens — `selectTab(0)` runs
+    // against a row whose scroll position is the default 0.
+    const noOverflow = containerEl.scrollWidth <= containerEl.clientWidth;
+    const isFirstAndAtStart = id === 0 && containerEl.scrollLeft === 0;
+    if(!noOverflow && !isFirstAndAtStart) {
+      fastSmoothScroll({
+        container: containerEl,
+        element: target.parentElement.children[id] as HTMLElement,
+        position: 'center',
+        forceDirection: animate ? undefined : FocusDirection.Static,
+        forceDuration: transitionTime,
+        axis: 'x'
+      });
+    }
   }
 
   if(!liteMode.isAvailable('animations')) {
