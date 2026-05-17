@@ -146,7 +146,9 @@ import {getFullDate} from '@helpers/date/getFullDate';
 
 export type ChatSavedPosition = {
   mids: number[],
-  top: number
+  top: number,
+  /** Last-displayed pinned mid; used to restore the pinned plate synchronously on re-entry. */
+  pinnedMid?: number
 };
 
 export type ChatSetPeerOptions = {
@@ -1922,13 +1924,14 @@ export class AppImManager extends EventListenerBase<{
       chatBubbles.sliceViewport(true);
       const top = chatBubbles.scrollable.scrollPosition;
 
-      const position = {
+      const position: ChatSavedPosition = {
         mids: chatBubbles.getRenderedHistory(
           'desc',
           true,
           false
         ).map((fullMid) => splitFullMid(fullMid).mid),
-        top
+        top,
+        pinnedMid: chat.topbar?.pinnedMessage?.currentPinnedMid || undefined
       };
 
       chatPositions[key] = position;

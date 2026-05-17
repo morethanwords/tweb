@@ -54,7 +54,19 @@ export type ChatPinnedMessageController = TopbarPlateController & {
    * Discussion-mode: forces the plate to display a single static message
    * (the thread root) without paging or scroll tracking.
    */
-  setStaticMessage: (mid: number) => void
+  setStaticMessage: (mid: number) => void,
+
+  /** Currently displayed pinned mid, for persisting in saved scroll position. */
+  readonly currentPinnedMid: number,
+  /**
+   * Populate state and content for the hint mid (from saved scroll position
+   * or `fullPeer.pinned_msg_id`) but keep the plate visually hidden. Pair
+   * with `revealPrepared`, called sync at the bubbles-mount moment so the
+   * plate flips visible in the same paint frame.
+   */
+  prepareInitial: (mid: number) => void,
+  /** Flip the prepared plate visible. No-op if `prepareInitial` was skipped. */
+  revealPrepared: () => void
 };
 
 export default function createChatPinnedMessage(
@@ -99,6 +111,10 @@ export default function createChatPinnedMessage(
 
   // Captured from inside the plate's render fn — drives `hide` class.
   let plateSetHidden!: (hidden: boolean) => void;
+  // True when `prepareInitial` has populated state/content but the visual
+  // reveal is deferred until `revealPrepared` is called — so the plate
+  // flips visible in the same paint frame as bubbles mount.
+  let prepared = false;
 
   // ────────────────────────────────────────────────────────────────────────
   // DOM bits that live as siblings of the Body inside the plate root.
@@ -431,7 +447,7 @@ export default function createChatPinnedMessage(
     });
   }
 
-  async function _setPinnedMessage() {
+  async function _setPinnedMessage(skipReveal = false) {
     if(count) {
       const message = chat.getMessage(pinnedMid);
 
@@ -440,8 +456,6 @@ export default function createChatPinnedMessage(
       if(!isLast) {
         animatedCounter.setCount(count - pinnedIndex);
       }
-
-      plateSetHidden(false);
 
       const fromTop = pinnedIndex > wasPinnedIndex;
       debug && log('setPinnedMessage: fromTop', fromTop, pinnedIndex, wasPinnedIndex);
@@ -466,6 +480,13 @@ export default function createChatPinnedMessage(
       await Promise.all(loadPromises);
 
       plate.container.classList.toggle('is-media', isMediaSet);
+
+      // Flip the plate visible only after content (text + media) is in
+      // the DOM — otherwise the user sees an empty plate for a paint
+      // frame while wrapReplyDivAndCaption is still resolving.
+      if(!skipReveal) {
+        plateSetHidden(false);
+      }
 
       animatedSubtitle.animate(pinnedIndex, wasPinnedIndex);
       if(isMediaSet) {
@@ -612,6 +633,30 @@ export default function createChatPinnedMessage(
       count = 1;
       pinnedIndex = 0;
       _setPinnedMessage();
+    },
+    get currentPinnedMid() {
+      return pinnedMid;
+    },
+    prepareInitial: (mid: number) => {
+      if(userHidden || !mid || pinnedMid === mid) return;
+      // Bail unless the message is in cache — without it `_setPinnedMessage`
+      // can't render content synchronously, and revealing an empty plate
+      // (paddingTop=128 but no title/subtitle) looks worse than letting
+      // the async testMid → getCurrentIndex path handle it normally.
+      if(!chat.getMessage(mid)) return;
+      pinnedMid = mid;
+      count = Math.max(count, 1);
+      pinnedIndex = 0;
+      // Populate content but DON'T flip visibility yet — that's the job
+      // of `revealPrepared`, called sync at the bubbles-mount moment so
+      // both appear in the same paint frame.
+      _setPinnedMessage(true);
+      prepared = true;
+    },
+    revealPrepared: () => {
+      if(!prepared) return;
+      prepared = false;
+      plateSetHidden(false);
     },
     destroy: () => {
       animatedMedia.destroy();

@@ -4789,6 +4789,11 @@ export default class ChatBubbles {
       const scrollable = this.scrollable;
       scrollable.lastScrollDirection = 0;
       scrollable.lastScrollPosition = 0;
+      // Reveal the pinned plate prepared earlier in `chat.setPeer`. Done
+      // in the same sync block as `replaceChildren` so plate visibility
+      // and the new bubbles mount paint together — no intermediate frame
+      // where the new plate sits over the old bubbles.
+      this.chat.topbar?.revealPreparedPinnedMessage();
       scrollable.replaceChildren(this.paddingTop, chatInner, this.paddingBottom);
 
       if(oldPlaceholderBubble) {

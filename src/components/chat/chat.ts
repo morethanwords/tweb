@@ -921,6 +921,14 @@ export default class Chat extends EventListenerBase<{
       });
     }
 
+    // Set up the pinned-message plate before bubbles render so its height
+    // is already accounted for in paddingTop when bubbles set their initial
+    // scroll. If we can hint a mid (saved position or cached fullPeer) the
+    // plate flips visible synchronously — no 100-200 ms post-render flicker.
+    if(!samePeer) {
+      this.topbar?.setupPinnedMessageForPeer();
+    }
+
     const bubblesSetPeerPromise = this.bubbles.setPeer({...options, samePeer, sameSearch});
     const setPeerPromise = this.setPeerPromise = bubblesSetPeerPromise.then((result) => {
       return result.promise;

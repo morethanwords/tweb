@@ -9723,6 +9723,28 @@ export class AppMessagesManager extends AppManager {
 
       this.saveApiResult(historyResult);
 
+      // Mirror `pFlags.pinned` onto messages returned by a pinned-filter
+      // query. `onUpdatePinnedMessages` only fires for *changes* the server
+      // pushes during this session; messages already pinned before the
+      // session started would otherwise stay flagless in the regular
+      // history storage, conflicting with later writes of the same
+      // message and breaking call sites that read `message.pFlags.pinned`
+      // (e.g. the bubble context menu's Pin/Unpin choice).
+      if(inputFilter?._ === 'inputMessagesFilterPinned' && messages.length) {
+        const channelId = this.appPeersManager.isChannel(peerId) ? peerId.toChatId() : undefined;
+        const storage = this.getHistoryMessagesStorage(peerId);
+        for(const message of messages) {
+          if(!message || message._ === 'messageEmpty') continue;
+          const mid = this.appMessagesIdsManager.generateMessageId(message.id, channelId);
+          const stored = storage.get(mid) as Message.message;
+          if(stored && !stored.pFlags.pinned) {
+            this.modifyMessage(stored, (m) => {
+              m.pFlags.pinned = true;
+            }, storage);
+          }
+        }
+      }
+
       if(fetchTargetedMessage) {
         const index = messages.findIndex((message) => message.id === offsetId);
         // if(index !== -1) {
@@ -10248,6 +10270,16 @@ export class AppMessagesManager extends AppManager {
 
   private resetPinnedMessagesCache(peerId: PeerId, mids: number[], pinned: boolean) {
     delete this.pinnedMessages[this.getPinnedMessagesKey(peerId)];
+    // Also drop the cached `inputMessagesFilterPinned` search storages
+    // for this peer. Otherwise a subsequent `getHistory({inputFilter: pinned})`
+    // returns the stale pre-update slice, leaving the plate showing a
+    // now-unpinned message.
+    const peerSearches = this.searchesStorage[peerId];
+    if(peerSearches) {
+      for(const threadKey in peerSearches) {
+        delete peerSearches[threadKey]?.inputMessagesFilterPinned;
+      }
+    }
     this.appStateManager.getState().then((state) => {
       delete state.hiddenPinnedMessages[peerId];
       this.rootScope.dispatchEvent('peer_pinned_messages', {peerId, mids, pinned});

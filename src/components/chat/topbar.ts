@@ -78,6 +78,7 @@ import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
 import liteMode from '@helpers/liteMode';
 import createSubmenuTrigger from '@components/createSubmenuTrigger';
 import ButtonMenu, {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
+import {getCachedFullPeer} from '@stores/fullPeers';
 import Icon from '@components/icon';
 import {getDefaultOptions} from '@components/sidebarLeft/tabs/autoDeleteMessages/options';
 import {createAutoDeleteIcon} from '@components/chat/utils';
@@ -1196,6 +1197,96 @@ export default class ChatTopbar {
     }
   }
 
+  private pinnedMessageSetupForPeerId: PeerId | undefined;
+  /**
+   * Plate swap deferred from `setupPinnedMessageForPeer` until the
+   * bubbles-mount moment inside `bubbles.setPeer`. `kind='install'`
+   * carries a detached new plate; `kind='destroy'` means the new peer
+   * has no plate, but the old one must stay visible until bubbles swap.
+   */
+  private pendingPinnedSetup:
+    | {kind: 'install', newPlate: ChatPinnedMessageController}
+    | {kind: 'destroy'}
+    | null = null;
+
+  /**
+   * Prepare the pinned-message plate for the chat's current peer. Called
+   * early in `chat.setPeer`. Does NOT touch the DOM — the change is
+   * staged into `pendingPinnedSetup` and applied atomically by
+   * `revealPreparedPinnedMessage` right before bubbles mount, so plate
+   * and bubbles paint in the same frame.
+   *
+   * Idempotent per peerId: re-invocation from `finishPeerChange` (the
+   * fallback path for `fromTemporaryThread`, where the early call from
+   * `chat.setPeer` is skipped) is a no-op when already staged.
+   *
+   * If a hint mid is available (last saved pinned, or
+   * `fullPeer.pinned_msg_id` from cache) the new plate's content is
+   * pre-rendered via `prepareInitial`. The async refine path runs later.
+   */
+  public setupPinnedMessageForPeer() {
+    const peerId = this.chat.peerId;
+    if(this.pinnedMessageSetupForPeerId === peerId) return;
+    this.pinnedMessageSetupForPeerId = peerId;
+
+    // Drop an orphaned pending plate from an even earlier peer change.
+    if(this.pendingPinnedSetup?.kind === 'install') {
+      this.pendingPinnedSetup.newPlate.destroy();
+    }
+    this.pendingPinnedSetup = null;
+
+    const isPinnedMessagesNeeded = this.chat.isPinnedMessagesNeeded();
+    const wantsPlate = isPinnedMessagesNeeded || this.chat.type === ChatType.Discussion;
+    if(!wantsPlate) {
+      if(this.pinnedMessage) {
+        this.pendingPinnedSetup = {kind: 'destroy'};
+      }
+      return;
+    }
+
+    const newPlate = createChatPinnedMessage(this, this.chat, this.managers);
+
+    if(this.chat.type === ChatType.Discussion) {
+      newPlate.setStaticMessage(this.chat.threadId);
+    } else {
+      newPlate.setUserHidden(!!this.chat.appState.hiddenPinnedMessages[peerId]);
+      const savedPosition = this.chat.appImManager.getChatSavedPosition(this.chat);
+      const fullPeer = getCachedFullPeer(peerId);
+      const hintMid = savedPosition?.pinnedMid || fullPeer?.pinned_msg_id;
+      if(hintMid) {
+        newPlate.prepareInitial(hintMid);
+      }
+    }
+
+    this.pendingPinnedSetup = {kind: 'install', newPlate};
+  }
+
+  /**
+   * Atomically apply the deferred plate change. Called sync from
+   * `bubbles.setPeer` right before `replaceChildren(chatInner)` so the
+   * plate swap (destroy old + install new, or just destroy old) paints
+   * together with the new bubbles mount — no intermediate frame.
+   */
+  public revealPreparedPinnedMessage() {
+    const pending = this.pendingPinnedSetup;
+    if(!pending) {
+      this.pinnedMessage?.revealPrepared();
+      return;
+    }
+    this.pendingPinnedSetup = null;
+
+    const old = this.pinnedMessage;
+    if(pending.kind === 'install') {
+      this.appendPinnedMessage(pending.newPlate);
+      this.pinnedMessage = pending.newPlate;
+      pending.newPlate.revealPrepared();
+    } else {
+      this.pinnedMessage = undefined;
+    }
+    old?.destroy();
+    this.setFloating();
+  }
+
   public async finishPeerChange(options: Parameters<Chat['finishPeerChange']>[0]) {
     const {peerId, threadId, monoforumThreadId} = this.chat;
     const {middleware} = options;
@@ -1313,26 +1404,12 @@ export default class ChatTopbar {
         this.btnMore.classList.toggle('hide', !canHaveMore);
       }
 
-      const isPinnedMessagesNeeded = this.chat.isPinnedMessagesNeeded();
-      if(isPinnedMessagesNeeded || this.chat.type === ChatType.Discussion) {
-        if(this.chat.wasAlreadyUsed || !this.pinnedMessage) { // * change
-          const newPinnedMessage = createChatPinnedMessage(this, this.chat, this.managers);
-          this.appendPinnedMessage(newPinnedMessage);
-          this.pinnedMessage?.destroy();
-          this.pinnedMessage = newPinnedMessage;
-          this.setFloating();
-        }
-
-        if(isPinnedMessagesNeeded) {
-          this.pinnedMessage.setUserHidden(!!this.chat.appState.hiddenPinnedMessages[peerId]);
-        } else if(this.chat.type === ChatType.Discussion) {
-          this.pinnedMessage.setStaticMessage(this.chat.threadId);
-        }
-      } else if(this.pinnedMessage) {
-        this.pinnedMessage.destroy();
-        this.pinnedMessage = undefined;
-        this.setFloating();
-      }
+      // Fallback for code paths (e.g. `fromTemporaryThread`) that skip
+      // the early call from `chat.setPeer` AND the bubbles-mount swap
+      // hook in `bubbles.setPeer`. Idempotent for the current peerId; if
+      // the normal path already applied the change, this is a no-op.
+      this.setupPinnedMessageForPeer();
+      this.revealPreparedPinnedMessage();
 
       setTitleCallback();
       setStatusCallback?.();
