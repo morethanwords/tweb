@@ -4,6 +4,7 @@
 
 .container {
   display: block;
+  width: min-content;
   /* min-width: 300px; */
 }
 
@@ -365,6 +366,7 @@
 .description {
   font-size: 0.875em;
   padding: 0.75rem 0.5rem 0;
+  text-wrap: balance;
 
   &:global(.is-hovering-spoiler) {
     cursor: pointer;
