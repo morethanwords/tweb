@@ -5,7 +5,9 @@
  */
 
 import SwipeHandler, {getEvent} from '@components/swipeHandler';
+import {toastNew} from '@components/toast';
 import rootScope from '@lib/rootScope';
+import {appSettings, setAppSettings} from '@stores/appSettings';
 import {
   MIN_SIDEBAR_WIDTH,
   SIDEBAR_COLLAPSE_FACTOR,
@@ -57,15 +59,19 @@ export default function installColumnResize(opts: InstallColumnResizeOptions): v
     onStart: () => {
       handle.classList.add('is-active');
       document.body.classList.add(otherBodyClass);
+      if(!appSettings.seenTooltips.sidebarResize) {
+        setAppSettings('seenTooltips', 'sidebarResize', true);
+        toastNew({langPackKey: 'Sidebar.Resize.ShiftTip'});
+      }
     },
     onSwipe: (_, __, _e) => {
       const e = getEvent(_e);
       const rect = columnEl.getBoundingClientRect();
       // The handle sits on the inner edge of its column; width is the
       // distance from the OUTER edge to the pointer.
-      const rawWidth = side === 'left'
-        ? Math.round(e.clientX - rect.left)
-        : Math.round(rect.right - e.clientX);
+      const rawWidth = side === 'left' ?
+        Math.round(e.clientX - rect.left) :
+        Math.round(rect.right - e.clientX);
 
       const isShift = (e as MouseEvent).shiftKey === true;
 

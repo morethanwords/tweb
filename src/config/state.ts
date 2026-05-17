@@ -111,7 +111,8 @@ export type StateSettings = {
   tabsInSidebar: boolean,
   seenTooltips: {
     storySound: boolean,
-    noForwards: boolean
+    noForwards: boolean,
+    sidebarResize: boolean
   },
   playbackParams: ReturnType<AppMediaPlaybackController['getPlaybackParams']>,
   translations: {
@@ -481,7 +482,8 @@ export const SETTINGS_INIT: StateSettings = {
   chatContextMenuHintWasShown: false,
   seenTooltips: {
     storySound: false,
-    noForwards: false
+    noForwards: false,
+    sidebarResize: false
   },
   translations: {
     peers: {},

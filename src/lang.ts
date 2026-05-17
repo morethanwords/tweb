@@ -4039,6 +4039,7 @@ const lang = {
   'AddToFolder': 'Add to Folder',
   'AddToFolderSearch': 'Type to search quickly',
   'AddToFolderTip': 'Hold Shift to select more folders at once',
+  'Sidebar.Resize.ShiftTip': 'Hold **Shift** to resize both columns at once',
   'AddToFolderEmptySearchResult': 'Tip: Use **Escape** to clear the search',
 
   'BotSetEmojiStatusTitle': 'Set Emoji Status',

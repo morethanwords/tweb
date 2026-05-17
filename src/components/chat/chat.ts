@@ -242,9 +242,18 @@ export default class Chat extends EventListenerBase<{
 
   public updatePinnedFloatingHeight(value: number) {
     if(this.pinnedFloatingHeightPx === value) return;
-    // this.preservePaddingScroll();
+    const delta = value - this.pinnedFloatingHeightPx;
     this.pinnedFloatingHeightPx = value;
+    const scrollable = this.bubbles?.scrollable;
+    const wasAtEnd = scrollable?.isScrolledToEnd;
     this.recomputePaddings();
+    // Compensate only when the chat was pinned to the bottom: paddingTop
+    // grows inside the scroller, so without this the chat drifts off the
+    // end. Mid-scroll is left alone — a restored saved scroll position
+    // already accounts for the eventual plate height.
+    if(scrollable && wasAtEnd && delta > 0) {
+      scrollable.setScrollPositionSilently(scrollable.scrollPosition + delta);
+    }
   }
 
   private preservePaddingScroll() {
