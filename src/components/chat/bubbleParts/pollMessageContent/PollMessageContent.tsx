@@ -9,35 +9,32 @@ import {RemainingTime} from '@components/remainingTime';
 import ripple from '@components/ripple';
 import Space from '@components/space';
 import PhotoTsx from '@components/wrappers/photoTsx';
-import compareUint8Arrays from '@helpers/bytes/compareUint8Arrays';
 import {setCaretAtEnd} from '@helpers/dom/setCaretAt';
 import {keepMe} from '@helpers/keepMe';
 import {attachHotClassName} from '@helpers/solid/classname';
-import {createDelayed} from '@helpers/solid/createDelayed';
 import createMiddleware from '@helpers/solid/createMiddleware';
-import {createMutation} from '@helpers/solid/createMutation';
 import {HeightTransition} from '@helpers/solid/heightTransition';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
 import type {ChatAutoDownloadSettings} from '@hooks/useAutoDownloadSettings';
-import {InputMedia, Message, MessageMedia, Photo, Poll, PollAnswer, PollResults} from '@layer';
-import getPeerId from '@lib/appManagers/utils/peers/getPeerId';
+import {Message, MessageMedia, Photo, Poll, PollResults} from '@layer';
 import {sliceTextWithEntities} from '@lib/richTextProcessor/sliceTextWithEntities';
 import wrapDraftText from '@lib/richTextProcessor/wrapDraftText';
 import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {batch, createComputed, createEffect, createMemo, createResource, createSelector, createSignal, For, Match, Show, Switch, untrack} from 'solid-js';
+import {batch, createEffect, createMemo, createSelector, createSignal, For, Match, Show, Switch} from 'solid-js';
 import {createStore, reconcile, unwrap} from 'solid-js/store';
 import {Transition, TransitionGroup} from 'solid-transition-group';
 import {AddOption} from './AddOption';
 import {PollMessageContentPropsContext} from './context';
 import {AvatarGroup, Explanation, PollType, PollVotes} from './parts';
 import {PollOption} from './PollOption';
-import {getRoundedPercentsFromResults} from './roundPercents';
-import {shouldShufflePollOptions, shufflePollOptions} from './shuffle';
 import styles from './styles.module.scss';
-import {attachSpoilerOverlay, dataPollViewerIdx, NewOptionValues, PollOptionResult} from './utils';
+import {usePollDerivedProps} from './usePollDerivedProps';
+import {usePollMutations} from './usePollMutations';
+import {usePollOptionsStore} from './usePollOptionsStore';
+import {attachSpoilerOverlay, dataPollViewerIdx, NewOptionValues} from './utils';
 
 
 keepMe(ripple);
@@ -71,13 +68,13 @@ export const PollMessageContent = defineSolidElement({
   component: (props: PassedProps<PollMessageContentProps>, _, controls: Controls) => {
     attachHotClassName(props.element, styles.container);
 
+    // ----- Setup / external dependencies -----
     const {rootScope, useAppSettings, AppMediaViewerStatic, appSidebarRight, AppPollResultsTab, TranslatableMessageTsx} = useHotReloadGuard();
     const [appSettings] = useAppSettings();
-
+    const {maxOptionLength} = useCreatePollLimits();
     const middleware = createMiddleware().get();
 
-    const {maxOptions, maxOptionLength} = useCreatePollLimits();
-
+    // ----- Local state -----
     const [explanationToggled, setExplanationToggled] = createSignal(false);
     const [chosenIndexes, setChosenIndexes] = createSignal<number[]>([]);
     const [canFooterBeClickable, setCanFooterBeClickable] = createSignal(false);
@@ -88,116 +85,109 @@ export const PollMessageContent = defineSolidElement({
     });
     const [descriptionElement, setDescriptionElement] = createSignal<HTMLDivElement>();
 
-    const [timeOffset] = createResource(() => rootScope.managers.timeManager.getServerTimeOffset());
-
     let inputField: InputField;
+    const elementByIndexMap = new Map<number, HTMLElement>();
 
-    const question = () => props.poll.question;
-    const descriptionText = () => props.message.message;
-    const descriptionEntities = () => props.message.entities;
-    const allowAddingOptions = createMemo(() => !!props.poll.pFlags.open_answers);
-    const allowMultipleAnswers = createMemo(() => !!props.poll.pFlags.multiple_choice);
-    const hasCorrectAnswer = createMemo(() => !!props.poll.pFlags.quiz);
-    const shuffleOptions = createMemo(() => shouldShufflePollOptions(props.poll));
-    const showWhoVoted = createMemo(() => !!props.poll.pFlags.public_voters);
-    const closed = createMemo(() => !!props.poll.pFlags.closed);
-    const closesAtTimestamp = createMemo(() => timeOffset.state === 'ready' ? props.poll.close_date - timeOffset() : 0);
-    // const hideResults = createMemo(() => !!props.poll.pFlags.hide_results_until_close);
-
-    const votersCount = createMemo(() => props.results?.total_voters ?? 0);
-    const recentVoters = createMemo(() => props.results?.recent_voters?.map(peer => getPeerId(peer)) ?? []);
-
-    const roundedPercents = createMemo(() => getRoundedPercentsFromResults(props.results));
-
-    const hasPhotoInOptions = createMemo(() => props.poll.answers.some(a => a.media?._ === 'messageMediaPhoto' && a.media.photo?._ === 'photo'));
-
-    const hasExplanation = createMemo(() => {
-      return !!props.results.solution || !!props.results.solution_media;
+    // ----- Poll options store & derived props -----
+    const [pollOptions] = usePollOptionsStore({
+      props,
+      userRandomSeed: appSettings.userRandomSeed
     });
 
-    let initialOptions = props.poll.answers.filter(answer => answer._ === 'pollAnswer');
-
-    if(shuffleOptions()) initialOptions = shufflePollOptions({
-      initialOptions,
-      seed: appSettings.userRandomSeed,
-      mid: props.message.mid,
-      peerId: props.message.peerId
+    const {
+      question,
+      descriptionText,
+      descriptionEntities,
+      allowMultipleAnswers,
+      hasCorrectAnswer,
+      showWhoVoted,
+      closed,
+      closesAtTimestamp,
+      votersCount,
+      recentVoters,
+      hasPhotoInOptions,
+      hasExplanation,
+      hasSelectedSomething,
+      isShowingResult,
+      hasTypedNewOption,
+      canShowAddOption,
+      canShowCloseTimer,
+      canShowViewResults,
+      willFooterBeClickable,
+      explanationPhoto,
+      descriptionPhoto,
+      getOverridenMessage,
+      initialIdxFromShuffledIdx,
+      getResultForOption,
+      getPhotoForOption
+    } = usePollDerivedProps({
+      props,
+      pollOptions,
+      chosenIndexes,
+      newOptionText: () => newOption.text
     });
 
-    const [pollOptions, setPollOptions] = createStore<PollAnswer.pollAnswer[]>(initialOptions);
-
-    createComputed(() => {
-      const filteredOptions = props.poll.answers.filter(answer => answer._ === 'pollAnswer');
-
-      // Keep the order after intial shuffle and append new options at the end when the poll was already rendered
-      filteredOptions.forEach((option) => {
-        const idx = untrack(() => pollOptions.findIndex(other => compareUint8Arrays(other.option, option.option)));
-        if(idx === -1) setPollOptions(untrack(() => pollOptions.length), option);
-        else setPollOptions(idx, reconcile(option));
-      });
-
-      // Remove options that are no longer in the poll
-      setPollOptions(prev =>
-        prev.filter(option => filteredOptions.some(other => compareUint8Arrays(option.option, other.option)))
-      );
-    });
-
-    const hasSelectedSomething = createMemo(() => chosenIndexes().length > 0);
     const isChecked = createSelector(chosenIndexes, (index: number, indices) => indices.includes(index));
-    const isShowingResult = createMemo(() => !!props.poll.chosenIndexes?.length || props.poll.pFlags.closed);
-    const hasTypedNewOption = createMemo(() => newOption.text.length > 0);
-    const canShowAddOption = createMemo(() => allowAddingOptions() && !isShowingResult() && pollOptions.length < maxOptions());
-    const canShowCloseTimer = createMemo(() => !props.poll.pFlags.closed && !!closesAtTimestamp() && closesAtTimestamp() > new Date().getTime() / 1000);
-    const canShowViewResults = createMemo(() => showWhoVoted() && !!props.results.total_voters && isShowingResult());
-
-    // The footer will have the clickable classname added/removed only after the out animation has finished
-    const willFooterBeClickable = createMemo(() => canShowViewResults() || hasSelectedSomething() || hasTypedNewOption());
 
     setCanFooterBeClickable(willFooterBeClickable());
 
-    const getOverridenMessage = (): Message.message => ({
-      ...unwrap(props.message),
-      media: {
-        _: 'messageMediaPoll',
-        ...unwrap(props.media),
-        // On poll_update, only the poll and results are updated, not the message itself
-        poll: unwrap(props.poll),
-        results: unwrap(props.results)
-      }
+    // ----- Mutations -----
+    const resetInteractiveState = () => batch(() => {
+      setChosenIndexes([]);
+      setIsAddingNewOptionVisible(false);
+      setNewOption(reconcile({text: '', entities: []}));
+      inputField?.setValueSilently('');
     });
 
-    const getPhoto = (media: MessageMedia | InputMedia | undefined): Photo.photo | undefined => {
-      return media?._ === 'messageMediaPhoto' && media.photo?._ === 'photo' ? unwrap(media.photo) : undefined;
-    };
+    const {
+      sendVoteMutation,
+      delayedSendVotePending,
+      addOptionMutation,
+      wrappedAddOption
+    } = usePollMutations({
+      getOverridenMessage,
+      isShowingResult,
+      hasSelectedSomething,
+      chosenIndexes,
+      initialIdxFromShuffledIdx,
+      newOption,
+      onSuccess: resetInteractiveState
+    });
 
-    const explanationPhoto = createMemo(() => getPhoto(props.results.solution_media));
-    const descriptionPhoto = createMemo(() => getPhoto(props.media.attached_media));
+    // Make the footer unclickable immediately when there are pending requests
+    const isFooterClickable = createMemo(() => canFooterBeClickable() && !sendVoteMutation.isPending() && !addOptionMutation.isPending());
 
-    const initialIdxFromShuffledIdx = (idx: number) => {
-      const shuffledOption = pollOptions[idx]?.option;
+    // ----- Media viewer payload -----
+    const mediaViewerPayload = createMemo(() => {
+      let idxSeed = 0;
 
-      return props.poll.answers.findIndex(
-        other => other._ === 'pollAnswer' &&
-          other.option &&
-          shuffledOption &&
-          compareUint8Arrays(other.option, shuffledOption)
-      )
-    };
-
-    const getResultForOption = (initialIdx: number): PollOptionResult => {
-      if(!isShowingResult()) return undefined;
-      const result = props.results?.results?.[initialIdx];
-      return {
-        correct: props.poll.correctIndexes?.includes(initialIdx) ?? false,
-        chosen: props.poll.chosenIndexes?.includes(initialIdx) ?? false,
-        percent: roundedPercents()[initialIdx],
-        voters: result?.voters ?? 0,
-        peerIds: result?.recent_voters?.map(peer => getPeerId(peer)) ?? []
+      const photos: Photo.photo[] = [];
+      const indexes: MediaViewerPayloadIndexes = {
+        options: new Map()
       };
-    };
 
-    const getPhotoForOption = (initialIdx: number): Photo.photo | undefined => getPhoto(props.poll.answers[initialIdx]?.media);
+      if(descriptionPhoto()) {
+        photos.push(descriptionPhoto());
+        indexes.description = idxSeed++;
+      }
 
+      if(explanationPhoto()) {
+        photos.push(explanationPhoto());
+        indexes.explanation = idxSeed++;
+      }
+
+      props.poll.answers.forEach((option, idx) => {
+        const photo = getPhotoForOption(idx);
+        if(photo) {
+          photos.push(photo);
+          indexes.options.set(idx, idxSeed++);
+        }
+      });
+
+      return {photos, indexes};
+    });
+
+    // ----- Event handlers -----
     const handleToggle = (index: number) => {
       setChosenIndexes(prev => {
         if(!allowMultipleAnswers()) {
@@ -225,48 +215,6 @@ export const PollMessageContent = defineSolidElement({
       }
     });
 
-    const resetInteractiveState = () => batch(() => {
-      setChosenIndexes([]);
-      setIsAddingNewOptionVisible(false);
-      setNewOption(reconcile({text: '', entities: []}));
-      inputField?.setValueSilently('');
-    });
-
-    const sendVoteMutation = createMutation(async() => {
-      if(isShowingResult() || !hasSelectedSomething()) return;
-
-      const optionIndexes = chosenIndexes().map(initialIdxFromShuffledIdx).filter(idx => idx !== -1);
-
-      await rootScope.managers.appPollsManager.sendVote(getOverridenMessage(), optionIndexes);
-
-      resetInteractiveState();
-    });
-
-    // In case the vote is sent immediately, we delay the pending state to avoid showing the spinner too soon
-    const delayedSendVotePending = createDelayed(sendVoteMutation.isPending, false, value => value ? 100 : -1);
-
-    const addOptionMutation = createMutation(async() => {
-      const {text, entities, attachment} = unwrap(newOption);
-      if(isShowingResult() || !text) return;
-
-      await rootScope.managers.appPollsManager.addPollAnswer(
-        getOverridenMessage(),
-        {
-          _: 'textWithEntities',
-          text,
-          entities
-        },
-        attachment
-      );
-
-      resetInteractiveState();
-    });
-
-    const wrappedAddOption = wrapAsyncClickHandler(addOptionMutation.mutateAsync);
-
-    // Make the footer unclickable immediately when there are pending requests
-    const isFooterClickable = createMemo(() => canFooterBeClickable() && !sendVoteMutation.isPending() && !addOptionMutation.isPending());
-
     const openViewResults = () => {
       if(!appSidebarRight.isTabExists(AppPollResultsTab)) {
         appSidebarRight.createTab(AppPollResultsTab).open(getOverridenMessage());
@@ -281,6 +229,7 @@ export const PollMessageContent = defineSolidElement({
       else if(hasTypedNewOption()) await wrappedAddOption();
     });
 
+    // ----- Effects & subscriptions -----
     subscribeOn(rootScope)('poll_update', ({poll, results}) => {
       if(poll.id !== props.poll.id) return;
 
@@ -293,36 +242,7 @@ export const PollMessageContent = defineSolidElement({
       attachSpoilerOverlay(descriptionElement(), props);
     });
 
-    const mediaViewerPayload = createMemo(() => {
-      let idxSeed = 0;
-
-      const photos: Photo.photo[] = [];
-      const indexes: MediaViewerPayloadIndexes = {
-        options: new Map()
-      };
-
-      if(descriptionPhoto()) {
-        photos.push(descriptionPhoto());
-        indexes.description = idxSeed++;
-      }
-
-      if(explanationPhoto()) {
-        photos.push(explanationPhoto());
-        indexes.explanation = idxSeed++;
-      }
-
-      props.poll.answers.forEach((option, idx) => {
-        if(getPhoto(option.media)) {
-          photos.push(getPhoto(option.media));
-          indexes.options.set(idx, idxSeed++);
-        }
-      });
-
-      return {photos, indexes};
-    });
-
-    const elementByIndexMap = new Map<number, HTMLElement>();
-
+    // ----- Imperative controls -----
     controls.openMediaViewer = (idx: number) => {
       const getTarget = (idx: number): AppMediaViewerStaticTargetType => ({
         media: mediaViewerPayload().photos[idx],
