@@ -231,6 +231,7 @@ export default function createChatAudio(
 
     repeatEl.classList.toggle('hide', !isMusic);
     onPlaybackParams(playbackParams);
+    volumeSelector.setMaxVolume(isMusic ? 1 : 2);
     volumeSelector.setGlobalVolume();
 
     progressLine.setMedia({media, duration: duration = doc.duration});

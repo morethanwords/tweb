@@ -32,6 +32,45 @@ import getTextWidth from '@helpers/canvas/getTextWidth';
 import {FontFullBold} from '@config/font';
 import {KeyboardButton, Message} from '@layer';
 import TopbarPlate, {createTopbarPlate, TopbarPlateController} from '@components/chat/topbarPlate';
+import {createSignal, JSX} from 'solid-js';
+import classNames from '@helpers/string/classNames';
+
+/**
+ * Top-level body component so solid-refresh can swap it on HMR. All
+ * inputs are stable DOM elements / callbacks owned by the factory's
+ * closure — the closure (signals, listeners, pin-list state) is
+ * preserved across reloads because the factory isn't re-invoked.
+ */
+function PinnedMessagePlateBody(props: {
+  menu: HTMLElement,
+  actionContainer: HTMLElement,
+  border: JSX.Element,
+  mediaContainer: HTMLElement,
+  subtitleContainer: HTMLElement,
+  counterContainer: HTMLElement,
+  onFollow: () => void
+}) {
+  return (
+    <>
+      {props.menu}
+      <TopbarPlate.Body class="hover-primary-effect" onClick={props.onFollow}>
+        {props.border}
+        <TopbarPlate.Content>
+          {props.mediaContainer}
+          <TopbarPlate.Title>
+            {i18n('PinnedMessage')}
+            {' '}
+            {props.counterContainer}
+          </TopbarPlate.Title>
+          <TopbarPlate.Subtitle>
+            {props.subtitleContainer}
+          </TopbarPlate.Subtitle>
+        </TopbarPlate.Content>
+      </TopbarPlate.Body>
+      {props.actionContainer}
+    </>
+  );
+}
 
 const LOAD_COUNT = 50;
 const LOAD_OFFSET = 5;
@@ -56,15 +95,21 @@ export type ChatPinnedMessageController = TopbarPlateController & {
    */
   setStaticMessage: (mid: number) => void,
 
-  /** Currently displayed pinned mid, for persisting in saved scroll position. */
-  readonly currentPinnedMid: number,
   /**
-   * Populate state and content for the hint mid (from saved scroll position
-   * or `fullPeer.pinned_msg_id`) but keep the plate visually hidden. Pair
-   * with `revealPrepared`, called sync at the bubbles-mount moment so the
-   * plate flips visible in the same paint frame.
+   * Currently displayed plate state, or undefined when no pin is shown.
+   * Captured on chat exit into `ChatSavedPosition.pinnedMessages` so the
+   * next `prepareInitial` can restore the exact same view (mid + index
+   * within the pinned list + total count) atomically with bubbles.
    */
-  prepareInitial: (mid: number) => void,
+  readonly pinnedMessages: {mid: number, index: number, count: number} | undefined,
+  /**
+   * Populate state and content from a hint (saved plate state or just a
+   * mid from `fullPeer.pinned_msg_id`) but keep the plate visually hidden.
+   * Pair with `revealPrepared`, called sync from `topbar.finishPeerChange`
+   * after `Promise.all(promises)` so plate and bubbles paint together.
+   * Returns a promise that resolves once `prepared` flips true.
+   */
+  prepareInitial: (data: {mid: number, index?: number, count?: number}) => Promise<void>,
   /** Flip the prepared plate visible. No-op if `prepareInitial` was skipped. */
   revealPrepared: () => void
 };
@@ -115,6 +160,12 @@ export default function createChatPinnedMessage(
   // reveal is deferred until `revealPrepared` is called — so the plate
   // flips visible in the same paint frame as bubbles mount.
   let prepared = false;
+
+  // Reactive flags applied to the plate root via `createTopbarPlate({class})`
+  // so we don't mutate `plate.container.classList` from imperative paths.
+  const [isMedia, setIsMedia] = createSignal(false);
+  const [isMany, setIsMany] = createSignal(false);
+  const [hasCustomActionButton, setHasCustomActionButton] = createSignal(false);
 
   // ────────────────────────────────────────────────────────────────────────
   // DOM bits that live as siblings of the Body inside the plate root.
@@ -173,32 +224,24 @@ export default function createChatPinnedMessage(
     modifier: 'message',
     height: 48,
     initiallyHidden: true,
+    class: () => classNames(
+      isMedia() && 'is-media',
+      isMany() && 'is-many',
+      hasCustomActionButton() && 'has-custom-action-button'
+    ),
     onVisibilityChange: () => topbar.setFloating(),
     render: ({setHidden}) => {
       plateSetHidden = setHidden;
-
       return (
-        <>
-          {menu}
-          <TopbarPlate.Body
-            class="hover-primary-effect"
-            onClick={() => followPinnedMessage(pinnedMid)}
-          >
-            {pinnedMessageBorder.render(1, 0)}
-            <TopbarPlate.Content>
-              {animatedMedia.container}
-              <TopbarPlate.Title>
-                {i18n('PinnedMessage')}
-                {' '}
-                {animatedCounter.container}
-              </TopbarPlate.Title>
-              <TopbarPlate.Subtitle>
-                {animatedSubtitle.container}
-              </TopbarPlate.Subtitle>
-            </TopbarPlate.Content>
-          </TopbarPlate.Body>
-          {actionContainer}
-        </>
+        <PinnedMessagePlateBody
+          menu={menu}
+          actionContainer={actionContainer}
+          border={pinnedMessageBorder.render(1, 0)}
+          mediaContainer={animatedMedia.container}
+          subtitleContainer={animatedSubtitle.container}
+          counterContainer={animatedCounter.container}
+          onFollow={() => followPinnedMessage(pinnedMid)}
+        />
       );
     }
   });
@@ -214,6 +257,14 @@ export default function createChatPinnedMessage(
       plateSetHidden(false);
     }
 
+    // Anchor the post-update display at the pin the user was looking at
+    // — `setCorrectIndex(0)` would derive the new pin from whatever bubble
+    // is at the viewport bottom, and after following a mid-list pin the
+    // bottom-visible bubble usually has a mid greater than every remaining
+    // pin, so the plate would snap to the newest pin (mids[0]) regardless
+    // of where the user was browsing.
+    const anchorMid = pinnedMid;
+
     loadedTop = loadedBottom = false;
     pinnedIndex = -1;
     pinnedMid = 0;
@@ -221,7 +272,19 @@ export default function createChatPinnedMessage(
     mids = [];
     offsetIndex = 0;
     pinnedMaxMid = 0;
-    setCorrectIndex(0);
+
+    if(anchorMid) {
+      // Fetch around the anchor so the new mids window contains its
+      // neighbours, then re-position at the anchor. If still pinned,
+      // testMid finds it exactly; if unpinned, it falls onto the
+      // next-older pin (the one now occupying the same slot).
+      const promise = getCurrentIndexPromise ??= getCurrentIndex(anchorMid, false);
+      promise.then(() => {
+        if(count) testMid(anchorMid);
+      });
+    } else {
+      setCorrectIndex(0);
+    }
   });
 
   listenerSetter.add(rootScope)('peer_pinned_hidden', ({peerId}) => {
@@ -280,7 +343,13 @@ export default function createChatPinnedMessage(
       return getCurrentIndexPromise ??= getCurrentIndex(mid, lastScrollDirection !== undefined);
     }
 
-    const changed = pinnedIndex !== currentIndex;
+    const newPinnedMid = mids.find((_mid) => _mid <= mid) || mids[mids.length - 1];
+    // Also detect pin-mid drift at the same numeric index — e.g. a new pin
+    // pushed the previous "newest" down, so `pinnedIndex=0` still matches
+    // but the actual pin at that slot is different. Without this check
+    // the plate would keep rendering the stale hint after the server data
+    // resolves.
+    const changed = pinnedIndex !== currentIndex || pinnedMid !== newPinnedMid;
     if(changed) {
       if(waitForScrollBottom && lastScrollDirection !== undefined) {
         if(pinnedIndex === 0 || pinnedIndex > currentIndex) { // если не скроллил вниз и пытается поставить нижний пиннед - выйти
@@ -289,7 +358,7 @@ export default function createChatPinnedMessage(
       }
 
       pinnedIndex = currentIndex;
-      pinnedMid = mids.find((_mid) => _mid <= mid) || mids[mids.length - 1];
+      pinnedMid = newPinnedMid;
       return setPinnedMessageDebounced();
     }
   }
@@ -357,6 +426,8 @@ export default function createChatPinnedMessage(
       }
 
       offsetIndex = Math.max(0, result.offsetIdOffset) ? result.offsetIdOffset - backLimited : 0;
+      const oldCount = count;
+      const oldPinnedMid = pinnedMid;
       mids = history.slice();
       count = result.count;
 
@@ -368,6 +439,19 @@ export default function createChatPinnedMessage(
       loadedBottom = !offsetIndex;
 
       bound && bound('result', mid, result, backLimited, offsetIndex, loadedTop, loadedBottom);
+
+      // If `prepareInitial` seeded a stale hint (e.g. count=1 from
+      // `fullPeer.pinned_msg_id` while the real pinned count is 2, or a
+      // new pin was added that shifted what mids[0] is), the upcoming
+      // `setCorrectIndex` → `testMid` may not fully reconcile in one
+      // task: it sees the same numeric `pinnedIndex` and skips. Reconcile
+      // `pinnedMid` against the fresh window here so the sync first
+      // `_setPinnedMessage` already paints with the right pin.
+      const reconciledMid = mids[pinnedIndex - offsetIndex];
+      if(oldCount !== count || (reconciledMid && oldPinnedMid !== reconciledMid)) {
+        if(reconciledMid) pinnedMid = reconciledMid;
+        setPinnedMessageDebounced();
+      }
     } catch(err) {
       log.error('getCurrentIndex error', err);
     }
@@ -479,7 +563,7 @@ export default function createChatPinnedMessage(
 
       await Promise.all(loadPromises);
 
-      plate.container.classList.toggle('is-media', isMediaSet);
+      setIsMedia(isMediaSet);
 
       // Flip the plate visible only after content (text + media) is in
       // the DOM — otherwise the user sees an empty plate for a paint
@@ -506,7 +590,7 @@ export default function createChatPinnedMessage(
       updateActionButton();
     }
 
-    plate.container.classList.toggle('is-many', count > 1);
+    setIsMany(count > 1);
   }
 
   function getSingleInlineButton(message?: Message.message): KeyboardButton | undefined {
@@ -568,7 +652,7 @@ export default function createChatPinnedMessage(
       plate.container.style.setProperty('--action-button-width', `${buttonWidth + TEXT_TO_BUTTON_GAP}px`);
     }
 
-    plate.container.classList.toggle('has-custom-action-button', !!newBtn);
+    setHasCustomActionButton(!!newBtn);
 
     if(oldBtn) {
       oldBtn.classList.add('is-leaving');
@@ -634,23 +718,16 @@ export default function createChatPinnedMessage(
       pinnedIndex = 0;
       _setPinnedMessage();
     },
-    get currentPinnedMid() {
-      return pinnedMid;
+    get pinnedMessages() {
+      return pinnedMid ? {mid: pinnedMid, index: pinnedIndex, count} : undefined;
     },
-    prepareInitial: (mid: number) => {
+    prepareInitial: async({mid, index, count: hintCount}) => {
       if(userHidden || !mid || pinnedMid === mid) return;
-      // Bail unless the message is in cache — without it `_setPinnedMessage`
-      // can't render content synchronously, and revealing an empty plate
-      // (paddingTop=128 but no title/subtitle) looks worse than letting
-      // the async testMid → getCurrentIndex path handle it normally.
       if(!chat.getMessage(mid)) return;
       pinnedMid = mid;
-      count = Math.max(count, 1);
-      pinnedIndex = 0;
-      // Populate content but DON'T flip visibility yet — that's the job
-      // of `revealPrepared`, called sync at the bubbles-mount moment so
-      // both appear in the same paint frame.
-      _setPinnedMessage(true);
+      pinnedIndex = index ?? 0;
+      count = Math.max(hintCount ?? 1, pinnedIndex + 1);
+      await _setPinnedMessage(true);
       prepared = true;
     },
     revealPrepared: () => {

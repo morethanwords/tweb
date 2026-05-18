@@ -145,10 +145,22 @@ import showDatePickerPopup from '@components/popups/datePicker';
 import {getFullDate} from '@helpers/date/getFullDate';
 
 export type ChatSavedPosition = {
-  mids: number[],
-  top: number,
-  /** Last-displayed pinned mid; used to restore the pinned plate synchronously on re-entry. */
-  pinnedMid?: number
+  /**
+   * Scroll/history restore data. Present only when the user left the chat
+   * scrolled away from the bottom — when scrolled all the way down there's
+   * nothing to restore. Always paired (`mids` ↔ `top`), checked via
+   * `savedPosition?.mids` at consumers.
+   */
+  mids?: number[],
+  top?: number,
+  /**
+   * Last-displayed pinned plate state. Captured on exit, restored on
+   * re-entry so the plate paints atomically with bubbles without the
+   * async `testMid → getCurrentIndex` lag. Saved independently of
+   * `mids`/`top` so the hint survives even when the user scrolls to the
+   * bottom before leaving.
+   */
+  pinnedMessages?: {mid: number, index: number, count: number}
 };
 
 export type ChatSetPeerOptions = {
@@ -1908,43 +1920,39 @@ export class AppImManager extends EventListenerBase<{
       return;
     }
 
-    // const bubble = chat.bubbles.getBubbleByPoint('top');
-    // if(bubble) {
-    // const top = bubble.getBoundingClientRect().top;
     const chatBubbles = chat.bubbles;
     const key = chat.peerId + (chat.threadId ? '_' + chat.threadId : '');
 
     const chatPositions = this.chatPositions;
-    if(
+    const pinnedMessages = chat.topbar?.pinnedMessage?.pinnedMessages;
+    const shouldSavePosition =
       !(chatBubbles.scrollable.getDistanceToEnd() <= 16 && chatBubbles.scrollable.loadedAll.bottom) &&
       chatBubbles.getRenderedLength() &&
       !chat.savedReaction &&
-      chatBubbles.getViewportSlice().invisibleBottom.length // * don't save if we're close to the end (or sponsored is below)
-    ) {
+      chatBubbles.getViewportSlice().invisibleBottom.length; // * don't save if we're close to the end (or sponsored is below)
+
+    if(shouldSavePosition) {
       chatBubbles.sliceViewport(true);
-      const top = chatBubbles.scrollable.scrollPosition;
-
       const position: ChatSavedPosition = {
-        mids: chatBubbles.getRenderedHistory(
-          'desc',
-          true,
-          false
-        ).map((fullMid) => splitFullMid(fullMid).mid),
-        top,
-        pinnedMid: chat.topbar?.pinnedMessage?.currentPinnedMid || undefined
+        mids: chatBubbles.getRenderedHistory('desc', true, false).map((fullMid) => splitFullMid(fullMid).mid),
+        top: chatBubbles.scrollable.scrollPosition,
+        pinnedMessages
       };
-
       chatPositions[key] = position;
-
       this.log('saved chat position:', position);
+    } else if(pinnedMessages) {
+      // Position itself isn't worth restoring, but the pinned hint is —
+      // keep it so the next prepareInitial paints the plate with the
+      // real count/index instead of the fullPeer fallback (count=1),
+      // which would otherwise animate when the true count resolves.
+      chatPositions[key] = {pinnedMessages};
+      this.log('saved pinned-only hint:', pinnedMessages);
     } else {
       delete chatPositions[key];
-
       this.log('deleted chat position');
     }
 
     this.chatPositions = chatPositions;
-    // }
   }
 
   public getChatSavedPosition(chat: Chat): ChatSavedPosition {

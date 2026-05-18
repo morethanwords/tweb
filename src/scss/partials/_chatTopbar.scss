@@ -96,7 +96,7 @@ body.is-right-column-shown {
     --topbar-avatar-close-gap: 6px;
   }
 
-  .topbar-floating-plates {
+  &-floating-plates {
     position: absolute;
     top: calc(var(--chat-topbar-height) + .5rem);
     inset-inline: 0;
@@ -106,6 +106,7 @@ body.is-right-column-shown {
     background-color: var(--border-color);
     border-radius: $border-radius-big;
     box-shadow: var(--topbar-box-shadow);
+    overflow: hidden;
 
     &.hide {
       display: none;

@@ -294,6 +294,13 @@ $inactive-opacity: .4;
     //transform-origin: bottom right;
     overflow: hidden;
     transform: translateZ(0) scale3d(1, 1, 1);
+    // Pre-promote the mover to its own compositor layer. Without this hint the
+    // first open per page session is visibly janky in browsers that lazily
+    // promote layers (notably Safari and Firefox): the very first transform
+    // animation on a fresh mover instance triggers layer creation mid-flight,
+    // dropping a few frames at the start. translateZ above is the older hack
+    // for the same goal but is no longer reliable everywhere.
+    will-change: transform;
     border-radius: 0;
 
     &:not(.center) {
@@ -635,6 +642,10 @@ $inactive-opacity: .4;
     // No overflow:hidden — the mover slides freely outside the wrapper bounds during
     // prev/next nav. clip-path (set inline by JS) provides the open/close animation
     // clipping in viewport coords without scaling.
+    // Hint the compositor that clip-path will animate (open/close transition).
+    // Without this, the first open per session can stutter on browsers that
+    // lazy-promote layers for clip-path animations.
+    will-change: clip-path;
 
     @include animation-level(2) {
       transition: clip-path var(--open-duration);

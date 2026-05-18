@@ -11,7 +11,7 @@
 
 import type {MyTopPeer} from '@appManagers/appUsersManager';
 import tsNow from '@helpers/tsNow';
-import {ChannelParticipantsFilter, ChannelsChannelParticipants, ChannelParticipant, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, SendMessageAction, Update, UserFull, Photo, PhotoSize, Updates, ChatParticipant, PeerSettings, SendAsPeer, InputGroupCall, Birthday, TextWithEntities} from '@layer';
+import {ChannelParticipantsFilter, ChannelsChannelParticipants, ChannelParticipant, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, SendMessageAction, Update, UserFull, Photo, PhotoSize, Updates, ChatParticipant, PeerSettings, SendAsPeer, InputGroupCall, Birthday, TextWithEntities, UsersUserFull, MessagesChatFull} from '@layer';
 import SearchIndex from '@lib/searchIndex';
 import {AppManager} from '@appManagers/manager';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
@@ -123,12 +123,94 @@ export class AppProfileManager extends AppManager {
       this.invalidateChannelParticipants(chatId);
     });
 
+    this.rootScope.addEventListener('peer_pinned_messages', ({peerId}) => {
+      this.refreshFullPeerIfNeeded(peerId);
+    });
+
     this.typingsInPeer = {};
     this.peerSettings = {};
   }
 
+  private saveFullPeer<T extends UserFull.userFull | ChatFull>(peerId: PeerId, fullPeer: T): T {
+    const isUser = peerId.isUser();
+
+    if(isUser) {
+      const userFull = fullPeer as UserFull.userFull;
+      if(userFull.profile_photo) {
+        userFull.profile_photo = this.appPhotosManager.savePhoto(userFull.profile_photo, {type: 'profilePhoto', peerId});
+      }
+      userFull.wallpaper = this.appThemesManager.saveWallPaper(userFull.wallpaper);
+
+      const referenceContext: ReferenceContext = {type: 'userFull', userId: peerId.toUserId()};
+
+      const botInfo = userFull.bot_info;
+      if(botInfo) {
+        botInfo.description_document = this.appDocsManager.saveDoc(botInfo.description_document, referenceContext);
+        botInfo.description_photo = this.appPhotosManager.savePhoto(botInfo.description_photo, referenceContext);
+      }
+
+      userFull.business_intro = this.appBusinessManager.saveBusinessIntro(peerId.toUserId(), userFull.business_intro);
+
+      if(userFull.personal_channel_message) {
+        userFull.personal_channel_message = this.appMessagesIdsManager.generateMessageId(
+          userFull.personal_channel_message,
+          userFull.personal_channel_id
+        );
+      }
+
+      if(userFull.saved_music) {
+        userFull.saved_music = this.appDocsManager.saveDoc(userFull.saved_music, referenceContext);
+      }
+    } else {
+      const fullChat = fullPeer as ChatFull;
+      if(fullChat.chat_photo?.id) {
+        fullChat.chat_photo = this.appPhotosManager.savePhoto(fullChat.chat_photo, {type: 'profilePhoto', peerId});
+      }
+
+      if(fullChat._ === 'channelFull') {
+        fullChat.wallpaper = this.appThemesManager.saveWallPaper(fullChat.wallpaper);
+      }
+
+      if(fullChat.call) {
+        this.appGroupCallsManager.saveGroupCall(fullChat.call as InputGroupCall.inputGroupCall, peerId);
+      }
+    }
+
+    if(fullPeer.pinned_msg_id) {
+      fullPeer.pinned_msg_id = this.appMessagesIdsManager.generateMessageId(
+        fullPeer.pinned_msg_id,
+        isUser ? undefined : peerId.toChatId()
+      );
+    }
+
+    this.appNotificationsManager.savePeerSettings({
+      peerId,
+      settings: fullPeer.notify_settings
+    });
+
+    this.fullExpiration[peerId] = Date.now() + PEER_FULL_TTL;
+
+    if(isUser) {
+      const userId = peerId.toUserId();
+      this.usersFull[userId] = fullPeer as UserFull.userFull;
+      this.rootScope.dispatchEvent('user_full_update', userId);
+    } else {
+      const chatId = peerId.toChatId();
+      this.chatsFull[chatId] = fullPeer as ChatFull;
+      this.rootScope.dispatchEvent('chat_full_update', chatId);
+    }
+
+    return fullPeer;
+  }
+
+  private saveFullPeerResult(peerId: PeerId, result: UsersUserFull | MessagesChatFull) {
+    this.appPeersManager.saveApiPeers(result);
+    return this.saveFullPeer(peerId, (result as UsersUserFull).full_user || (result as MessagesChatFull).full_chat);
+  }
+
   public getProfile(id: UserId, override?: boolean) {
-    if(this.usersFull[id] && !override && Date.now() < this.fullExpiration[id.toPeerId()]) {
+    const peerId = id.toPeerId(false);
+    if(this.usersFull[id] && !override && Date.now() < this.fullExpiration[peerId]) {
       return this.usersFull[id];
     }
 
@@ -138,48 +220,7 @@ export class AppProfileManager extends AppManager {
         id: this.appUsersManager.getUserInput(id)
       },
       processResult: (usersUserFull) => {
-        this.appChatsManager.saveApiChats(usersUserFull.chats, true);
-        this.appUsersManager.saveApiUsers(usersUserFull.users);
-
-        const userFull = usersUserFull.full_user;
-        const peerId = id.toPeerId(false);
-        if(userFull.profile_photo) {
-          userFull.profile_photo = this.appPhotosManager.savePhoto(userFull.profile_photo, {type: 'profilePhoto', peerId});
-        }
-
-        userFull.wallpaper = this.appThemesManager.saveWallPaper(userFull.wallpaper);
-
-        const botInfo = userFull.bot_info;
-        const referenceContext: ReferenceContext = {type: 'userFull', userId: id};
-        if(botInfo) {
-          botInfo.description_document = this.appDocsManager.saveDoc(botInfo.description_document, referenceContext);
-          botInfo.description_photo = this.appPhotosManager.savePhoto(botInfo.description_photo, referenceContext);
-        }
-
-        userFull.business_intro = this.appBusinessManager.saveBusinessIntro(id, userFull.business_intro);
-
-        if(userFull.personal_channel_message) {
-          userFull.personal_channel_message = this.appMessagesIdsManager.generateMessageId(
-            userFull.personal_channel_message,
-            userFull.personal_channel_id
-          );
-        }
-        if(userFull.saved_music) {
-          userFull.saved_music = this.appDocsManager.saveDoc(userFull.saved_music, referenceContext);
-        }
-
-        this.appNotificationsManager.savePeerSettings({
-          peerId,
-          settings: userFull.notify_settings
-        });
-
-        this.usersFull[id] = userFull;
-        this.fullExpiration[peerId] = Date.now() + PEER_FULL_TTL;
-
-        // appMessagesManager.savePinnedMessage(id, userFull.pinned_msg_id);
-
-        this.rootScope.dispatchEvent('user_full_update', id);
-        return userFull;
+        return this.saveFullPeerResult(peerId, usersUserFull) as UserFull;
       }
     });
   }
@@ -274,30 +315,6 @@ export class AppProfileManager extends AppManager {
     }
   }
 
-  /* public getPeerBots(peerId: PeerId) {
-    var peerBots: any[] = [];
-    if(peerId >= 0 && !appUsersManager.isBot(peerId) ||
-      (appPeersManager.isChannel(peerId) && !appPeersManager.isMegagroup(peerId))) {
-      return Promise.resolve(peerBots);
-    }
-    if(peerId >= 0) {
-      return this.getProfile(peerId).then((userFull: any) => {
-        var botInfo = userFull.bot_info;
-        if(botInfo && botInfo._ !== 'botInfoEmpty') {
-          peerBots.push(botInfo);
-        }
-        return peerBots;
-      });
-    }
-
-    return this.getChatFull(peerId.toChatId()).then((chatFull: any) => {
-      chatFull.bot_info.forEach((botInfo: any) => {
-        peerBots.push(this.saveBotInfo(botInfo))
-      });
-      return peerBots;
-    });
-  } */
-
   public getChatFull(id: ChatId, override?: boolean) {
     if(this.appChatsManager.isChannel(id)) {
       return this.getChannelFull(id, override);
@@ -322,28 +339,7 @@ export class AppProfileManager extends AppManager {
         chat_id: id
       },
       processResult: (result) => {
-        this.appChatsManager.saveApiChats(result.chats, true);
-        this.appUsersManager.saveApiUsers(result.users);
-        const chatFull = result.full_chat as ChatFull.chatFull;
-        if(chatFull && chatFull.chat_photo && chatFull.chat_photo.id) {
-          chatFull.chat_photo = this.appPhotosManager.savePhoto(chatFull.chat_photo, {type: 'profilePhoto', peerId});
-        }
-
-        if(chatFull.call) {
-          this.appGroupCallsManager.saveGroupCall(chatFull.call as InputGroupCall.inputGroupCall, peerId);
-        }
-
-        // appMessagesManager.savePinnedMessage(peerId, fullChat.pinned_msg_id);
-        this.appNotificationsManager.savePeerSettings({
-          peerId,
-          settings: chatFull.notify_settings
-        });
-
-        this.chatsFull[id] = chatFull;
-        this.fullExpiration[peerId] = Date.now() + PEER_FULL_TTL;
-        this.rootScope.dispatchEvent('chat_full_update', id);
-
-        return chatFull;
+        return this.saveFullPeerResult(peerId, result) as ChatFull.chatFull;
       }
     });
   }
@@ -574,30 +570,7 @@ export class AppProfileManager extends AppManager {
         channel: this.appChatsManager.getChannelInput(id)
       },
       processResult: (result) => {
-        this.appChatsManager.saveApiChats(result.chats, true);
-        this.appUsersManager.saveApiUsers(result.users);
-        const fullChannel = result.full_chat as ChatFull.channelFull;
-        if(fullChannel && fullChannel.chat_photo.id) {
-          fullChannel.chat_photo = this.appPhotosManager.savePhoto(fullChannel.chat_photo, {type: 'profilePhoto', peerId});
-          // appPhotosManager.savePhoto(fullChannel.chat_photo);
-        }
-
-        fullChannel.wallpaper = this.appThemesManager.saveWallPaper(fullChannel.wallpaper);
-
-        if(fullChannel.call) {
-          this.appGroupCallsManager.saveGroupCall(fullChannel.call as InputGroupCall.inputGroupCall, peerId);
-        }
-
-        this.appNotificationsManager.savePeerSettings({
-          peerId,
-          settings: fullChannel.notify_settings
-        });
-
-        this.chatsFull[id] = fullChannel;
-        this.fullExpiration[peerId] = Date.now() + PEER_FULL_TTL;
-        this.rootScope.dispatchEvent('chat_full_update', id);
-
-        return fullChannel;
+        return this.saveFullPeerResult(peerId, result) as ChatFull.channelFull;
       },
       processError: (error) => {
         switch(error.type) {

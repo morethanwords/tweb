@@ -229,6 +229,13 @@ export type CreateTopbarPlateOptions = {
   height: number | 'auto',
   /** Defaults to `true` — plate stays hidden until first content is ready. */
   initiallyHidden?: boolean,
+  /**
+   * Reactive class accessor applied to the plate root in addition to the
+   * built-in `pinned-container` / `pinned-${modifier}` / `hide` classes.
+   * Use this instead of mutating `controller.container.classList` from
+   * imperative callers so class state stays in the Solid reactive system.
+   */
+  class?: Accessor<string>,
   /** Called every time `hidden` flips — typically wires `topbar.setFloating`. */
   onVisibilityChange?: (visible: boolean) => void,
   /**
@@ -262,6 +269,7 @@ export const createTopbarPlate = (options: CreateTopbarPlateOptions): TopbarPlat
     <TopbarPlate
       modifier={options.modifier}
       hidden={hidden()}
+      class={options.class?.()}
       ref={(el) => (plateEl = el)}
     >
       {options.render({hidden, setHidden})}

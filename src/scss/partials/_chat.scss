@@ -795,10 +795,8 @@
 		align-items: center;
 		width: 100%;
 		position: relative;
-		// z-index: 2;
-		// background-color: var(--surface-color);
-		// border-radius: var(--chat-input-border-radius);
 		padding: var(--padding);
+    gap: var(--padding-horizontal);
 	}
 
 	.reply-wrapper {
@@ -1118,25 +1116,14 @@
       }
     }
 
-    .btn-menu {
-			inset-block-end: calc(100% + 0.9735rem);
-
-      &.top-left {
-        inset-inline-end: calc(var(--padding-horizontal) * -1);
-      }
-
-      &.top-right {
-        inset-inline-start: calc(var(--padding-horizontal) * -1 - .4375rem);
-      }
-		}
 	}
 
 	.btn-icon {
 		flex: 0 0 auto;
 		font-size: 1.5rem;
 		color: var(--secondary-text-color);
-		margin-block: 0 0;
-    margin-inline: var(--button-horizontal-margin);
+		// margin-block: 0 0;
+    // margin-inline: var(--button-horizontal-margin);
 		padding: 0;
 		width: var(--button-size);
 		height: var(--button-size);

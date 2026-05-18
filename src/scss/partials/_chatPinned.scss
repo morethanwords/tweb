@@ -268,15 +268,15 @@
   background-color: var(--surface-color) !important;
   padding: .25rem;
 
-  &.is-first {
-    border-top-left-radius: $border-radius-big;
-    border-top-right-radius: $border-radius-big;
-  }
+  // &.is-first {
+  //   border-top-left-radius: $border-radius-big;
+  //   border-top-right-radius: $border-radius-big;
+  // }
 
-  &.is-last {
-    border-bottom-left-radius: $border-radius-big;
-    border-bottom-right-radius: $border-radius-big;
-  }
+  // &.is-last {
+  //   border-bottom-left-radius: $border-radius-big;
+  //   border-bottom-right-radius: $border-radius-big;
+  // }
 
   &-content {
     flex: 1 1 auto;
@@ -636,9 +636,9 @@
       &-container {
         position: absolute;
         top: 100%;
-        width: 5rem;
+        width: 7rem;
         padding: .75rem 1rem;
-        margin-top: 2.25rem;
+        margin-top: 3.25rem;
         transform: rotate(270deg);
         border-radius: $border-radius-medium;
         background-color: var(--surface-color);

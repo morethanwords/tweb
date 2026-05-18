@@ -165,6 +165,31 @@ export default class Chat extends EventListenerBase<{
   public currentWallPaper: WallPaper;
   public preferredBackgroundTransition?: ChatBackgroundTransition;
 
+  /**
+   * Stashed by `_handleBackgrounds` on the peer-change publish: a bundle of the staging-slot
+   * reveal, container `--message-highlighting-color` apply and `applyContainerTheme` (when
+   * applicable). Invoked by `revealPreparedBackground` from `bubbles.setPeer` in the same sync
+   * block as `scrollable.replaceChildren`, so wallpaper flip, theme vars, and bubble mount land
+   * in one paint frame instead of two.
+   *
+   * `undefined` outside a peer change. Same-bg short-circuits store a no-op (still bundled with
+   * theme/hsla apply), so callers can always invoke unconditionally.
+   */
+  private pendingBackgroundReveal: (() => void) | undefined;
+  /**
+   * True when the currently-stored `pendingBackgroundReveal` carries an actual staging-slot
+   * flip (`reveal !== noop`). Same-bg short-circuits in subsequent publishes during the same
+   * peer-change scope must not downgrade a real flip to a noop one — without this flag,
+   * comparing the bundled callbacks against `noop` directly is impossible.
+   */
+  private pendingBackgroundRevealIsReal: boolean;
+  /**
+   * Set true once `revealPreparedBackground` runs. Lets `deferReveal` callbacks that arrive
+   * after the bubbles mount (not-cached wallpaper path) fire their bundled reveal inline
+   * instead of waiting forever in `pendingBackgroundReveal`.
+   */
+  private bubblesRevealCalled: boolean;
+
   public ignoreSearchCleaning: boolean;
 
   public stars: Accessor<Long>;
@@ -301,15 +326,27 @@ export default class Chat extends EventListenerBase<{
 
   public publishBackground(
     transition: ChatBackgroundTransition = 'auto',
-    onCachedStatus?: (cached: boolean) => void
+    onCachedStatus?: (cached: boolean) => void,
+    deferReveal?: (reveal: () => void) => void
   ): Promise<void> {
     if(this !== this.appImManager.chat) {
       onCachedStatus?.(true);
+      deferReveal?.(noop);
       return Promise.resolve();
     }
 
     const finalTransition = this.preferredBackgroundTransition ?? transition;
     this.preferredBackgroundTransition = undefined;
+
+    // When `deferReveal` is provided, stash the hsla and apply it as part of the bundled
+    // reveal — otherwise `--message-highlighting-color` lands on the container ahead of the
+    // staging-slot flip, and bubbles read the new highlighting color while the old wallpaper
+    // is still on screen.
+    let pendingHsla: string | undefined;
+    const applyPendingHsla = () => {
+      if(pendingHsla === undefined || !this.container) return;
+      themeController.applyHighlightingColor({hsla: pendingHsla, element: this.container});
+    };
 
     return this.appImManager.appChatBackground.setBackground({
       theme: this.currentTheme,
@@ -321,30 +358,89 @@ export default class Chat extends EventListenerBase<{
       // the most recently opened chat's value and leak into other chats whose
       // containers still inherit from `:root`.
       onHighlightColor: (hsla) => {
+        if(deferReveal) {
+          pendingHsla = hsla;
+          return;
+        }
         if(this.container) {
           themeController.applyHighlightingColor({hsla, element: this.container});
         }
-      }
+      },
+      deferReveal: deferReveal ? (slotReveal) => {
+        // Bundle slot flip and hsla apply into one callback — caller invokes them together,
+        // sync with the bubbles mount.
+        deferReveal(() => {
+          slotReveal();
+          applyPendingHsla();
+        });
+      } : undefined
     });
   }
 
   private _handleBackgrounds() {
     const log = this.log.bindPrefix('handleBackgrounds');
     const deferred = deferredPromise<() => void>();
+    // Wipe any leftover reveal from a previous peer change that errored out before
+    // `bubbles.setPeer` reached `revealPreparedBackground`.
+    this.pendingBackgroundReveal = undefined;
+    this.pendingBackgroundRevealIsReal = false;
+    this.bubblesRevealCalled = false;
 
     const publish = () => {
       const applyTheme = () => this.applyContainerTheme();
+      // First publish in this peer-change scope owns the staging-slot reveal — it's the one
+      // racing the bubbles mount. Later re-publishes (night toggle, fullPeer details update)
+      // happen well after bubbles are settled, so they reveal inline as before.
+      const isFirstPublish = !deferred.isFulfilled;
+
+      // For not-cached wallpapers, `onCachedStatus(false)` resolves the deferred early with
+      // `applyTheme` so `finishPeerChange` doesn't block on a slow image download — in that
+      // case `applyTheme` runs via `callbacks.forEach` and must not also run in the bundled
+      // reveal (would double-apply the heavy theme computation).
+      let themeOwnedByCallbacks = false;
+
+      const deferRevealCb = isFirstPublish ? (reveal: () => void) => {
+        const isReal = reveal !== noop;
+        // Bundle slot flip + theme apply so wallpaper, theme vars and `--message-highlighting-color`
+        // (set inside `publishBackground`'s wrapped `onHighlightColor` → bundled into `reveal`)
+        // all land in one sync block alongside the bubbles mount.
+        const bundled = themeOwnedByCallbacks ? reveal : () => {
+          reveal();
+          applyTheme();
+        };
+
+        // Late stage: bubbles already mounted (e.g. not-cached wallpaper path where
+        // `onCachedStatus(false)` resolved the deferred and bubbles ran ahead). Fire the
+        // bundled reveal now — the SCSS fade transition still animates the slot in.
+        if(this.bubblesRevealCalled) {
+          bundled();
+          return;
+        }
+
+        // Don't let a same-bg short-circuit (which hands back the `noop` sentinel) downgrade
+        // a real pending reveal from an earlier publish in this peer-change scope.
+        if(!isReal && this.pendingBackgroundRevealIsReal) {
+          return;
+        }
+        this.pendingBackgroundReveal = bundled;
+        this.pendingBackgroundRevealIsReal = isReal;
+      } : undefined;
+
       const promise = this.publishBackground('auto', (cached) => {
         if(!cached && !deferred.isFulfilled) {
-          // Cached canvas not ready yet — defer theme application to the
-          // finishPeerChange callback so vars + wallpaper apply atomically.
+          // Cached canvas not ready yet — let `finishPeerChange` proceed without the bundled
+          // reveal (it'll fire late via `bubblesRevealCalled`); apply theme inline so bubbles
+          // mount against the new vars even before the wallpaper fades in.
+          themeOwnedByCallbacks = true;
           deferred.resolve(applyTheme);
         }
-      });
+      }, deferRevealCb);
 
       promise.then(() => {
         if(!deferred.isFulfilled) {
-          deferred.resolve(applyTheme);
+          // Cached path: wallpaper fully staged. `applyTheme` is bundled into the reveal —
+          // resolve with `noop` so `callbacks.forEach` doesn't apply it ahead of the slot flip.
+          deferred.resolve(noop);
         } else {
           // Subsequent publishes (night toggle, peer details change): canvas
           // already settled, just apply theme inline now that it's painted.
@@ -414,6 +510,24 @@ export default class Chat extends EventListenerBase<{
     onCleanup(() => rootScope.removeEventListener('theme_changed', onThemeChanged));
 
     return deferred;
+  }
+
+  /**
+   * Run the pending wallpaper flip + theme apply + `--message-highlighting-color` apply
+   * bundle, if any, synchronously. Called from `bubbles.setPeer` in the same sync block as
+   * `scrollable.replaceChildren` so all chat-visual state lands with the bubbles mount in one
+   * paint frame instead of bleeding the new highlighting/wallpaper onto the old bubbles first.
+   *
+   * Idempotent: clears the pending bundle after invocation. Setting `bubblesRevealCalled`
+   * also flips `_handleBackgrounds` into late-stage mode for any `deferReveal` callback that
+   * arrives afterwards (not-cached wallpaper path).
+   */
+  public revealPreparedBackground() {
+    const reveal = this.pendingBackgroundReveal;
+    this.pendingBackgroundReveal = undefined;
+    this.pendingBackgroundRevealIsReal = false;
+    this.bubblesRevealCalled = true;
+    reveal?.();
   }
 
   private handleBackgrounds() {
@@ -919,14 +1033,6 @@ export default class Chat extends EventListenerBase<{
           }
         })
       });
-    }
-
-    // Set up the pinned-message plate before bubbles render so its height
-    // is already accounted for in paddingTop when bubbles set their initial
-    // scroll. If we can hint a mid (saved position or cached fullPeer) the
-    // plate flips visible synchronously — no 100-200 ms post-render flicker.
-    if(!samePeer) {
-      this.topbar?.setupPinnedMessageForPeer();
     }
 
     const bubblesSetPeerPromise = this.bubbles.setPeer({...options, samePeer, sameSearch});

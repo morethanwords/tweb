@@ -40,6 +40,7 @@ import {AppManagers} from '@lib/managers';
 import {AppTheme} from '@config/state';
 import {appState} from '@stores/appState';
 import classNames from '@helpers/string/classNames';
+import noop from '@helpers/noop';
 
 import styles from '@components/chat/bubbles/chatBackground.module.scss';
 
@@ -77,6 +78,17 @@ export type ChatBackgroundProps = {
   onHighlightColor?: (hsla: string) => void;
   onCachedStatus?: (cached: boolean) => void;
   onReady?: () => void;
+  /**
+   * Hand off the staging-slot reveal to the caller. When set, the effect builds and stages the
+   * new bg offstage as usual, then calls `deferReveal(reveal)` — the caller is responsible for
+   * invoking `reveal()` synchronously at the right moment (typically alongside bubble mount, so
+   * bg flip + bubbles paint in the same frame). `onReady` still fires once staging is complete,
+   * so awaiters of `setBackground`'s returned promise don't block on the visual reveal.
+   *
+   * If the bg is unchanged (effect short-circuits), `deferReveal` is still called with a no-op
+   * `reveal` so callers can unconditionally invoke it.
+   */
+  deferReveal?: (reveal: () => void) => void;
 };
 
 type ResolvedBackground = {
@@ -439,6 +451,9 @@ export const ChatBackground: Component<ChatBackgroundProps> = (props) => {
       if(visibleSlot.appliedTheme === resolved.theme && visibleSlot.appliedWallPaper === resolved.wallPaper) {
         log('same background, skipping');
         props.onCachedStatus?.(true);
+        // No DOM change to reveal — the caller will still try to invoke reveal in sync with
+        // bubbles mount, so hand them a no-op so they don't have to special-case.
+        props.deferReveal?.(noop);
         props.onReady?.();
         return;
       }
@@ -487,7 +502,18 @@ export const ChatBackground: Component<ChatBackgroundProps> = (props) => {
       const hsla = computeHighlightingHsla(built);
       if(hsla) props.onHighlightColor?.(hsla);
 
-      presentStagingSlot(transition);
+      // Staging slot now holds the new bg, off-screen. Two paths:
+      //  - deferReveal: hand the reveal to the caller so they can flip the slot synchronously
+      //    in the same JS task as the bubbles mount — no intermediate paint where the new bg
+      //    sits behind the old bubbles.
+      //  - default: reveal immediately, matching pre-existing behavior for inline previews,
+      //    initial mount, theme toggle, etc.
+      const reveal = () => presentStagingSlot(transition);
+      if(props.deferReveal) {
+        props.deferReveal(reveal);
+      } else {
+        reveal();
+      }
       props.onReady?.();
     }
   ));
@@ -560,6 +586,7 @@ const appChatBackground = (() => {
         }}
         onCachedStatus={(cached) => props().onCachedStatus?.(cached)}
         onReady={() => props().onReady?.()}
+        deferReveal={props().deferReveal}
       />
     ), element);
   };
@@ -569,7 +596,8 @@ const appChatBackground = (() => {
     wallPaper?: WallPaper,
     transition?: ChatBackgroundTransition,
     onCachedStatus?: (cached: boolean) => void,
-    onHighlightColor?: (hsla: string) => void
+    onHighlightColor?: (hsla: string) => void,
+    deferReveal?: (reveal: () => void) => void
   } = {}): Promise<void> => {
     // Resolve any in-flight promise as superseded so awaiters don't hang.
     pendingResolve?.();
@@ -588,6 +616,9 @@ const appChatBackground = (() => {
       if(lastHighlightHsla !== undefined) {
         opts.onHighlightColor?.(lastHighlightHsla);
       }
+      // Hand caller a no-op reveal — they'll invoke it unconditionally in sync with bubbles
+      // mount; nothing to flip when bg is unchanged.
+      opts.deferReveal?.(noop);
       resolve();
       if(pendingResolve === resolve) pendingResolve = undefined;
       return latestReady;
@@ -599,6 +630,7 @@ const appChatBackground = (() => {
       transition: opts.transition,
       onCachedStatus: opts.onCachedStatus,
       onHighlightColor: opts.onHighlightColor,
+      deferReveal: opts.deferReveal,
       onReady: () => {
         hasSettled = true;
         lastAppliedTheme = opts.theme;

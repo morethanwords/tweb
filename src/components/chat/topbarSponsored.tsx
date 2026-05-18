@@ -4,12 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {createEffect, createSignal, on, Show} from 'solid-js';
-import {render} from 'solid-js/web';
+import {Accessor, createEffect, createSignal, on, Show} from 'solid-js';
 import {AppManagers} from '@lib/managers';
 import {NULL_PEER_ID} from '@appManagers/constants';
 import Chat from '@components/chat/chat';
-import PinnedContainer from '@components/chat/pinnedContainer';
 import ChatTopbar from '@components/chat/topbar';
 import {SponsoredMessage} from '@layer';
 import classNames from '@helpers/string/classNames';
@@ -29,115 +27,124 @@ import PopupReportAd from '@components/popups/reportAd';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import Button from '@components/buttonTsx';
 import RippleElement from '@components/rippleElement';
+import {createTopbarPlate, TopbarPlateController} from '@components/chat/topbarPlate';
 
-export default class ChatTopbarSponsored extends PinnedContainer {
-  private dispose: () => void;
-  private peerId: () => PeerId;
-  public setPeerId: (peerId: PeerId) => void;
+export type ChatSponsoredPlate = TopbarPlateController & {
+  setPeerId: (peerId: PeerId) => void
+};
 
-  constructor(protected topbar: ChatTopbar, protected chat: Chat, protected managers: AppManagers) {
-    super({
-      topbar,
-      chat,
-      listenerSetter: topbar.listenerSetter,
-      className: 'sponsored',
-      height: 'auto'
+function SponsoredPlateBody(props: {
+  peerId: Accessor<PeerId>,
+  chat: Chat,
+  managers: AppManagers,
+  setHidden: (hidden: boolean) => void
+}) {
+  const [message, setMessage] = createSignal<SponsoredMessage>();
+
+  createEffect(on(props.peerId, (peerId$) => {
+    setMessage(undefined);
+    props.setHidden(true);
+    if(peerId$ === NULL_PEER_ID || !peerId$.isUser()) return;
+    if(!props.chat.isBot) return;
+
+    props.managers.appMessagesManager.getSponsoredMessage(peerId$)
+    .then((m) => {
+      if(props.peerId() !== peerId$) return;
+
+      if(m._ === 'messages.sponsoredMessages' && m.messages.length) {
+        setMessage(m.messages[0]);
+        props.setHidden(false);
+      }
     });
+  }));
 
-    [this.peerId, this.setPeerId] = createSignal<PeerId>(NULL_PEER_ID);
-    this.dispose = render(() => this.init(), this.container);
-  }
+  const photo = () => {
+    const m = message();
+    if(m.photo) return m.photo as MyPhoto;
+    if(m.media && m.media._ === 'messageMediaPhoto') return m.media.photo as MyPhoto;
+    return undefined;
+  };
 
-  private init() {
-    const {peerId} = this;
+  const middleware = createMiddleware().get();
 
-    const [message, setMessage] = createSignal<SponsoredMessage>();
-
-    createEffect(on(peerId, (peerId$) => {
-      setMessage(undefined);
-      this.toggle(true);
-      if(peerId$ === NULL_PEER_ID || !peerId$.isUser()) return;
-      if(!this.chat.isBot) return;
-
-      this.managers.appMessagesManager.getSponsoredMessage(peerId$)
-      .then((message) => {
-        if(peerId() !== peerId$) return;
-
-        if(message._ === 'messages.sponsoredMessages' && message.messages.length) {
-          setMessage(message.messages[0]);
-          this.toggle(false);
-        }
-      });
-    }));
-
-    const photo = () => {
-      const message$ = message();
-      if(message$.photo) return message$.photo as MyPhoto;
-      if(message$.media && message$.media._ === 'messageMediaPhoto') return message$.media.photo as MyPhoto;
-      return undefined;
-    };
-
-    const middleware = createMiddleware().get();
-
-    return (
-      <Show when={message()}>
-        <RippleElement
-          component="div"
-          class={/* @once */ classNames(styles.container, 'quote-like-hoverable', 'overflow-hidden')}
-          onClick={() => appImManager.onSponsoredMessageClick(message())}
-          ref={(el) => {
-            createContextMenu({
-              listenTo: el,
-              buttons: getSponsoredMessageButtons({
-                message: message(),
-                handleReportAd: () => {
-                  PopupReportAd.createAdReport(message(), () => {
-                    this.toggle(false);
-                  });
-                },
-                handleCopy: () => {
-                  copyTextToClipboard(message().message);
-                }
-              }),
-              middleware
-            });
-          }}
-        >
-          <Show when={photo()}>
-            <div class={/* @once */ classNames(styles.photoWrap, 'disable-hover')}>
-              <PhotoTsx
-                class={/* @once */ styles.photo}
-                photo={photo()}
-                boxWidth={32}
-                boxHeight={32}
-                withoutPreloader
-              />
-            </div>
-          </Show>
-          <div class={/* @once */ classNames(styles.content, 'disable-hover')}>
-            <div class="text-bold">
-              <I18nTsx class="primary" key="SponsoredMessageAd" />
-              {' '}
-              {wrapEmojiText(message().title)}
-            </div>
-            <div class="pre-wrap">
-              {wrapRichText(message().message, {entities: message().entities})}
-            </div>
+  return (
+    <Show when={message()}>
+      <RippleElement
+        component="div"
+        class={/* @once */ classNames(styles.container, 'quote-like-hoverable', 'overflow-hidden')}
+        onClick={() => appImManager.onSponsoredMessageClick(message())}
+        ref={(el) => {
+          createContextMenu({
+            listenTo: el,
+            buttons: getSponsoredMessageButtons({
+              message: message(),
+              handleReportAd: () => {
+                PopupReportAd.createAdReport(message(), () => props.setHidden(false));
+              },
+              handleCopy: () => {
+                copyTextToClipboard(message().message);
+              }
+            }),
+            middleware
+          });
+        }}
+      >
+        <Show when={photo()}>
+          <div class={/* @once */ classNames(styles.photoWrap, 'disable-hover')}>
+            <PhotoTsx
+              class={/* @once */ styles.photo}
+              photo={photo()}
+              boxWidth={32}
+              boxHeight={32}
+              withoutPreloader
+            />
           </div>
-        </RippleElement>
-        <Button.Icon
-          icon="close"
-          onClick={(e) => {
-            e.stopPropagation();
-            PopupPremium.show({feature: 'no_ads'});
-          }}
-        />
-      </Show>
-    );
-  }
+        </Show>
+        <div class={/* @once */ classNames(styles.content, 'disable-hover')}>
+          <div class="text-bold">
+            <I18nTsx class="primary" key="SponsoredMessageAd" />
+            {' '}
+            {wrapEmojiText(message().title)}
+          </div>
+          <div class="pre-wrap">
+            {wrapRichText(message().message, {entities: message().entities})}
+          </div>
+        </div>
+      </RippleElement>
+      <Button.Icon
+        icon="close"
+        onClick={(e) => {
+          e.stopPropagation();
+          PopupPremium.show({feature: 'no_ads'});
+        }}
+      />
+    </Show>
+  );
+}
 
-  public destroy() {
-    super.destroy();
-    this.dispose();
-  }
+export default function createChatSponsoredPlate(
+  topbar: ChatTopbar,
+  chat: Chat,
+  managers: AppManagers
+): ChatSponsoredPlate {
+  const [peerId, setPeerIdSignal] = createSignal<PeerId>(NULL_PEER_ID);
+
+  const plate = createTopbarPlate({
+    modifier: 'sponsored',
+    height: 'auto',
+    onVisibilityChange: () => topbar.setFloating(),
+    render: ({setHidden}) => (
+      <SponsoredPlateBody
+        peerId={peerId}
+        chat={chat}
+        managers={managers}
+        setHidden={setHidden}
+      />
+    )
+  });
+
+  return {
+    ...plate,
+    setPeerId: (next) => setPeerIdSignal(next)
+  };
 }

@@ -1040,8 +1040,44 @@ export default class AppMediaViewerBase<
       // mover.append(this.buttons.prev, this.buttons.next);
     }
 
-    const zoomValue = this.isZooming && closing /* && false */ ? this.transform.scale : ZOOM_INITIAL_VALUE;
-    /* if(!(zoomValue > 1 && closing)) */ this.removeCenterFromMover(mover);
+    const zoomValue = this.isZooming && closing ? this.transform.scale : ZOOM_INITIAL_VALUE;
+    const zoomedClose = closing && zoomValue !== 1;
+    if(zoomedClose) {
+      // Closing while zoomed. We can't animate moversContainer's transform from the
+      // current zoom to a target matrix: the mover's wrapper carries the close
+      // clip-path (in wrapper-local coords), and if moversContainer is non-identity
+      // the clip values get visually scaled+translated with it — at end of the
+      // animation the visible clip ends up as a tiny rectangle far from where the
+      // mover lands, and the user sees a crushed/displaced thumbnail.
+      //
+      // Instead, transfer the zoom transform from moversContainer to the mover
+      // synchronously (no visible jump — same frame, no transition), reset
+      // moversContainer to identity, and let the standard close path animate the
+      // mover from its current zoomed-view position to the target thumb rect.
+      // initialContentRect is the pre-zoom media bbox (captured by setZoomValue
+      // before the first zoom is applied), so multiplying by `zoom` and adding
+      // the pan offset reproduces the user's current viewport position exactly.
+      const zoom = this.transform.scale;
+      const panX = this.transform.x;
+      const panY = this.transform.y;
+      const baseRect = this.initialContentRect ?? this.content.media.getBoundingClientRect();
+      const visualX = zoom * baseRect.left + panX;
+      const visualY = zoom * baseRect.top + panY;
+
+      this.moversContainer.classList.add('no-transition');
+      // mover still has .no-transition from the open path, so setting its
+      // transform here doesn't animate. Apply mover transform, drop .center
+      // (which would override via !important), and reset the container —
+      // all in the same frame so the visual position stays unchanged.
+      mover.style.transform = `translate3d(${visualX}px, ${visualY}px, 0) scale3d(${zoom}, ${zoom}, 1)`;
+      mover.classList.remove('center');
+      this.moversContainer.style.transform = '';
+      void mover.offsetLeft; // reflow to commit the no-transition reset
+      mover.classList.remove('no-transition');
+      this.moversContainer.classList.remove('no-transition');
+    } else {
+      this.removeCenterFromMover(mover);
+    }
     if(closing) {
       void mover.offsetLeft; // reflow
       await doubleRaf();
@@ -1134,6 +1170,9 @@ export default class AppMediaViewerBase<
       }
     }
 
+    // moversContainer is identity at this point (the zoomedClose branch above
+    // reset it after transferring its transform to the mover), so this returns
+    // the pre-zoom layout rect just like for a non-zoomed close.
     const containerRect = this.content.media.getBoundingClientRect();
 
     let transform = '';
@@ -1226,13 +1265,7 @@ export default class AppMediaViewerBase<
     const borderRadius = `${xRadii.map((v) => v + 'px').join(' ')} / ${yRadii.map((v) => v + 'px').join(' ')}`;
     // let borderRadius = '0px 0px 0px 0px';
 
-    if(closing && zoomValue !== 1) {
-      const left = rect.left - (windowSize.width * scaleX - rect.width) / 2;
-      const top = rect.top - (windowSize.height * scaleY - rect.height) / 2;
-      this.moversContainer.style.transform = `matrix(${scaleX}, 0, 0, ${scaleY}, ${left}, ${top})`;
-    } else {
-      mover.style.transform = transform;
-    }
+    mover.style.transform = transform;
 
     needOpacity && (mover.style.opacity = '0'/* !closing ? '0' : '' */);
 
