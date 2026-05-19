@@ -47,7 +47,7 @@
     --margin-vertical: .5rem;
 
     &.is-chosen {
-      &:not(.backwards) {
+      &.forwards {
         // --counter-color: var(--primary-text-color);
         --counter-color: #fff;
       }

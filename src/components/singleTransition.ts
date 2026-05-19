@@ -77,6 +77,7 @@ const SetTransition = (options: SetTransitionOptions) => {
 
   element.classList.add('animating');
 
+  element.classList.toggle('forwards', forwards);
   element.classList.toggle('backwards', !forwards);
   (element as any)[$TRANSITION_TIMEOUT] = '' + setTimeout(afterTimeout, duration);
 };

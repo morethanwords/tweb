@@ -44,11 +44,11 @@
       }
     }
 
-    &:not(.backwards) {
+    &.forwards {
       .spoiler {
         background-color: transparent;
         // box-shadow: 0 0 30px 30px transparent;
-    
+
         &-text {
           // filter: blur(0);
           opacity: 1;

@@ -65,6 +65,7 @@ import appMediaPlaybackController from '@components/appMediaPlaybackController';
 import {BOT_START_PARAM, GENERAL_TOPIC_ID, NULL_PEER_ID, SEND_PAID_WITH_STARS_DELAY, SEND_WHEN_ONLINE_TIMESTAMP} from '@appManagers/constants';
 import setCaretAt from '@helpers/dom/setCaretAt';
 import DropdownHover from '@helpers/dropdownHover';
+import {positionMenuTrigger} from '@helpers/positionMenu';
 import findUpTag from '@helpers/dom/findUpTag';
 import toggleDisability from '@helpers/dom/toggleDisability';
 import callbackify from '@helpers/callbackify';
@@ -611,12 +612,11 @@ export default class ChatInput {
       buttons,
       listenerSetter: this.listenerSetter
     });
+    btnMenu.classList.add('reply-line-menu', 'top-right');
 
     if(!IS_TOUCH_SUPPORTED) {
-      this.replyHover = new DropdownHover({element: btnMenu});
+      this.replyHover = this.createReplyLineHover(btnMenu);
     }
-
-    this.replyElements.content.append(btnMenu);
   }
 
   private constructForwardElements() {
@@ -705,12 +705,13 @@ export default class ChatInput {
       listenerSetter: this.listenerSetter
     });
 
+    forwardBtnMenu.classList.add('reply-line-menu', 'top-right');
+
     if(!IS_TOUCH_SUPPORTED) {
-      this.forwardHover = new DropdownHover({element: forwardBtnMenu});
+      this.forwardHover = this.createReplyLineHover(forwardBtnMenu);
     }
 
     forwardElements.modifyArgs = forwardButtons.slice(0, -2);
-    this.replyElements.content.append(forwardBtnMenu);
   }
 
   private constructWebPageElements() {
@@ -760,11 +761,11 @@ export default class ChatInput {
       listenerSetter: this.listenerSetter
     });
 
-    if(!IS_TOUCH_SUPPORTED) {
-      this.webPageHover = new DropdownHover({element: btnMenu});
-    }
+    btnMenu.classList.add('reply-line-menu', 'top-right');
 
-    this.replyElements.content.append(btnMenu);
+    if(!IS_TOUCH_SUPPORTED) {
+      this.webPageHover = this.createReplyLineHover(btnMenu);
+    }
   }
 
   private constructMentionButton(isReaction?: boolean) {
@@ -2001,6 +2002,14 @@ export default class ChatInput {
     this.listenerSetter.removeAll();
     this.middlewareHelper.destroy();
     this.setCurrentHover();
+
+    [
+      this.replyElements?.menuContainer,
+      this.forwardElements?.container,
+      this.webPageElements?.container
+    ].forEach((menu) => {
+      if(menu?.parentElement === document.body) menu.remove();
+    });
   }
 
   public cleanup(helperToo = true) {
@@ -3598,7 +3607,7 @@ export default class ChatInput {
     }
 
     if(IS_TOUCH_SUPPORTED && possibleBtnMenuContainer && !possibleBtnMenuContainer.classList.contains('active')) {
-      contextMenuController.openBtnMenu(possibleBtnMenuContainer);
+      this.openReplyLineMenuTouch(possibleBtnMenuContainer);
     }
   };
 
@@ -4495,6 +4504,41 @@ export default class ChatInput {
     this.hoverListenerSetter.removeAll();
     this.currentHover = dropdownHover;
     dropdownHover?.attachButtonListener(newReply, this.listenerSetter);
+  }
+
+  private createReplyLineHover(menu: HTMLElement) {
+    const hover = new DropdownHover({element: menu});
+
+    hover.addEventListener('open', () => {
+      if(!menu.parentElement) {
+        document.body.append(menu);
+      }
+      this.positionReplyLineMenu(menu);
+    });
+
+    hover.addEventListener('closed', () => {
+      menu.remove();
+    });
+
+    return hover;
+  }
+
+  private positionReplyLineMenu(menu: HTMLElement) {
+    const trigger = this.replyElements.content?.querySelector('.reply') as HTMLElement || this.replyElements.iconBtn;
+    if(!trigger) return;
+    positionMenuTrigger(trigger, menu, 'top-right', {top: 8, bottom: 8, left: 8, right: 8});
+  }
+
+  private openReplyLineMenuTouch(menu: HTMLElement) {
+    if(!menu.parentElement) {
+      document.body.append(menu);
+    }
+    this.positionReplyLineMenu(menu);
+    contextMenuController.openBtnMenu(menu, () => {
+      setTimeout(() => {
+        if(!menu.classList.contains('active')) menu.remove();
+      }, 300);
+    });
   }
 
   public setReplyTo(replyTo: ChatInputReplyTo) {

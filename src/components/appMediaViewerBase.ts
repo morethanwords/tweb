@@ -1880,10 +1880,10 @@ export default class AppMediaViewerBase<
       ]
     }, {
       trigger: 'bubble',
-      layers: [{containerClass: 'bubble', selectors: '.video-time, .time.is-floating'}]
+      layers: [{containerClass: 'bubble', selectors: '.video-time, .time.is-floating, .video-play'}]
     }, {
       trigger: 'grid-item',
-      layers: [{containerClass: 'grid-item', selectors: '.video-time, .time.is-floating'}]
+      layers: [{containerClass: 'grid-item', selectors: '.video-time, .time.is-floating, .video-play'}]
     }];
 
   protected hideFloatings(target: HTMLElement) {

@@ -318,7 +318,10 @@ export default async function showForwardPopup(
     onSelect = async(chosen) => {
       const sentToPeerIds: Set<PeerId> = new Set();
       const succeeded: Array<typeof chosen[0]> = [];
-      const openChat = chosen.length === 1 && !finalizingThroughButton;
+      const isSavedMessagesNoText = chosen.length === 1 &&
+        chosen[0].peerId === rootScope.myId &&
+        !starsState.store.messageLength;
+      const openChat = chosen.length === 1 && !finalizingThroughButton && !isSavedMessagesNoText;
       for(const item of chosen) {
         const success = await processSingle(
           item,

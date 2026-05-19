@@ -418,7 +418,7 @@
     }
 
     &.is-visible {
-      &:not(.backwards) {
+      &.forwards {
         transform: scale(1);
         opacity: 1;
       }
@@ -938,7 +938,7 @@
         }
       }
 
-      &:not(.backwards) {
+      &.forwards {
         transition: border-radius var(--transition-standard-in);
 
         .album-item-media {

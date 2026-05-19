@@ -947,6 +947,13 @@ export default class ChatSelection extends AppSelection {
     const {needTranslateX, widthFrom, widthTo} = await this.chat.input.center(animate);
 
     SetTransition({
+      element: this.input.chatInput,
+      className: 'is-selecting',
+      forwards,
+      duration: animate ? 200 : 0
+    });
+
+    SetTransition({
       element: this.listenElement,
       className: 'is-selecting',
       forwards,

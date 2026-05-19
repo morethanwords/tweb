@@ -35,7 +35,7 @@
         @include dialog-badge-transition-reset();
       }
 
-      &.is-visible:not(.backwards):after {
+      &.is-visible.forwards:after {
         @include dialog-badge-transition-visible();
       }
 
@@ -53,7 +53,7 @@
     } @else {
       @include dialog-badge-transition-reset();
 
-      &.is-visible:not(.backwards) {
+      &.is-visible.forwards {
         @include dialog-badge-transition-visible();
       }
 
@@ -114,7 +114,7 @@ ul.chatlist {
     &.is-muted {
       body:not(.animation-level-0) & {
         &.animating {
-          &:not(.backwards) {
+          &.forwards {
             .dialog-muted-icon {
               animation: fade-in-opacity .2s ease-in-out forwards;
             }
@@ -429,7 +429,7 @@ ul.chatlist {
         transition: height var(--transition-standard-in);
       }
 
-      &.is-visible:not(.backwards) {
+      &.is-visible.forwards {
         height: 4rem;
       }
     }
@@ -655,7 +655,7 @@ ul.chatlist {
       transition: transform var(--chatlist-badge-transition-in);
     }
 
-    &.is-visible:not(.backwards) .avatar-auto-delete-timer  {
+    &.is-visible.forwards .avatar-auto-delete-timer  {
       transform: scale(0);
     }
   }

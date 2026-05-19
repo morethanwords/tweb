@@ -109,7 +109,7 @@
     //   transform: translateY(.375rem);
     // }
 
-    &:not(.backwards) {
+    &.forwards {
       transform: scale(1);
       // transform: translateY(0);
 

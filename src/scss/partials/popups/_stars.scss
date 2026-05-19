@@ -455,7 +455,7 @@
       pointer-events: none;
 
       &.is-visible {
-        &:not(.backwards) {
+        &.forwards {
           transform: scale(1);
           opacity: 1;
         }

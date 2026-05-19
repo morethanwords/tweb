@@ -131,7 +131,7 @@
     }
 
     &.is-chosen {
-      &:not(.backwards) {
+      &.forwards {
         &:before {
           transform: scale(1, 1);
           opacity: 1;
@@ -191,7 +191,7 @@
         z-index: 2;
       }
 
-      &.is-chosen:not(.backwards) {
+      &.is-chosen.forwards {
         color: #fff;
       }
 
@@ -246,11 +246,11 @@
     padding-inline: .375rem;
 
     &.is-chosen {
-      &:not(.backwards) {
+      &.forwards {
         --counter-color: var(--message-icon-text-color);
         --background-color: var(--chosen-background-color);
         --dot-color: var(--message-reaction-tag-dot-color);
-  
+
         // .reaction-tag-svg-circle {
         //   fill: var(--message-reaction-tag-dot-color);
         // }

@@ -41,6 +41,7 @@
   display: flex;
 	align-items: center;
 	justify-content: center;
+  overflow: hidden;
 
   &.show-controls:not(.default-live) .ckin__video {
     cursor: pointer;

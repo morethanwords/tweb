@@ -6,7 +6,7 @@
 
 @use "../shared" as *;
 
-body.is-calling:not(.backwards):not(.animating) {
+body.is-calling.forwards:not(.animating) {
   --topbar-floating-call-height: calc(var(--topbar-call-height) + var(--plates-gap));
 }
 
@@ -15,7 +15,7 @@ body.is-pinned-audio-shown {
 }
 
 // * fix blank space underneath topbar when animating
-body.is-pinned-audio-shown, body.is-calling:not(.backwards) {
+body.is-pinned-audio-shown, body.is-calling.forwards {
   .topbar {
     transition-delay: 0s, .25s !important;
   }

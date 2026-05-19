@@ -458,7 +458,7 @@
     }
 
     &.is-last {
-      &:not(.backwards) {
+      &.forwards {
         transform: scale(0.68);
         opacity: 0;
       }
@@ -787,7 +787,7 @@
 
   transform: translateY(calc(-1 * (var(--topbar-call-height) + var(--page-chats-padding))));
 
-  body.is-calling:not(.backwards) & {
+  body.is-calling.forwards & {
     transform: translateY(0);
   }
 

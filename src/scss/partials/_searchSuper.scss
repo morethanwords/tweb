@@ -56,7 +56,7 @@
         opacity: 1 !important;
       }
 
-      &.is-selecting:not(.backwards) {
+      &.is-selecting.forwards {
         opacity: 1;
         // transform: translateY(calc(var(--scrollable-size) * -1));
       }
@@ -359,11 +359,11 @@
     }
 
     &.is-selecting {
-      &:not(.backwards) {
+      &.forwards {
         .search-super-nav-scrollable {
           opacity: 0;
         }
-  
+
         .search-super-selection-container {
           opacity: 1;
           pointer-events: all;

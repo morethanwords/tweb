@@ -114,6 +114,7 @@
   --font-rounded: -ui-rounded, "Numbers Rounded", "Roboto", "Helvetica Neue", sans-serif;
   --font-weight-bold: 500;
   --font-weight-normal: 400;
+  --font-weight: var(--font-weight-normal);
   --selection-background-color: rgba(var(--primary-color-rgb), .4);
   --selection-color: inherit;
   --white: #ffffff;
@@ -1689,7 +1690,7 @@ hr {
     &.is-revealing {
       opacity: 1;
 
-      &:not(.backwards) {
+      &.forwards {
         opacity: 0;
       }
 
