@@ -458,10 +458,8 @@
     }
 
     &.is-last {
-      &.forwards {
-        transform: scale(0.68);
-        opacity: 0;
-      }
+      transform: scale(0.68);
+      opacity: 0;
     }
   }
 
@@ -512,8 +510,8 @@
   }
 
   position: absolute;
-  width: calc(var(--messages-container-width) - var(--chat-input-padding) * 2);
-  max-width: calc(var(--messages-container-width) - var(--chat-input-padding) * 2);
+  width: var(--chat-width);
+  max-width: var(--chat-width);
   margin-inline: auto !important;
   border-radius: $border-radius-big;
 
@@ -774,8 +772,8 @@
   max-height: var(--container-height) !important;
   position: absolute;
   top: 0 !important;
-  width: calc(var(--messages-container-width) - var(--chat-input-padding) * 2);
-  max-width: calc(var(--messages-container-width) - var(--chat-input-padding) * 2);
+  width: var(--chat-width);
+  max-width: var(--chat-width);
   margin-inline: auto !important;
   z-index: 3;
   color: #fff;

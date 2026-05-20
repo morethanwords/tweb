@@ -497,8 +497,6 @@ export const ChatBackground: Component<ChatBackgroundProps> = (props) => {
       clearSlot(stagingSlot);
       attachBuiltToSlot(stagingSlot, built);
 
-      props.gradientRendererRef?.(built.gradientRenderer);
-
       const hsla = computeHighlightingHsla(built);
       if(hsla) props.onHighlightColor?.(hsla);
 
@@ -508,7 +506,13 @@ export const ChatBackground: Component<ChatBackgroundProps> = (props) => {
       //    sits behind the old bubbles.
       //  - default: reveal immediately, matching pre-existing behavior for inline previews,
       //    initial mount, theme toggle, etc.
-      const reveal = () => presentStagingSlot(transition);
+      // `gradientRendererRef` rides inside `reveal` so mirror consumers (folders sidebar
+      // canvas) swap their source in the same paint frame as the slot flip — otherwise the
+      // sidebar repaints to the new gradient while the chat still shows the old wallpaper.
+      const reveal = () => {
+        presentStagingSlot(transition);
+        props.gradientRendererRef?.(built.gradientRenderer);
+      };
       if(props.deferReveal) {
         props.deferReveal(reveal);
       } else {

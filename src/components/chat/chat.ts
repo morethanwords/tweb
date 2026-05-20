@@ -261,7 +261,7 @@ export default class Chat extends EventListenerBase<{
     if(this.chatInputSurplusPx === surplus) return;
     this.preservePaddingScroll();
     this.chatInputSurplusPx = surplus;
-    this.container.style.setProperty('--chat-input-height', surplus + 'px');
+    this.container.style.setProperty('--chat-input-height-surplus', surplus + 'px');
     this.recomputePaddings();
   }
 

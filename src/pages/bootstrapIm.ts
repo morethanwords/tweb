@@ -6,6 +6,7 @@
 
 import blurActiveElement from '@helpers/dom/blurActiveElement';
 import loadFonts from '@helpers/dom/loadFonts';
+import {doubleRaf} from '@helpers/schedulers';
 import isNativeVoiceRecorderSupported from '@helpers/voiceRecorder/isNativeSupported';
 import rootScope from '@lib/rootScope';
 
@@ -54,6 +55,15 @@ export async function bootstrapIm(): Promise<void> {
     (window as any).Recorder = recorder.default;
   }
   appDialogsManager.start();
+  // start() toggles body.is-left-column-shown synchronously
+  // (appImManager.selectTab(CHATLIST)). The .main-column transform/opacity
+  // transition in _chats.scss is gated by :not(.has-auth-pages) so the bar
+  // doesn't slide in from its off-screen handheld state. The two class
+  // changes (add is-left-column-shown, remove has-auth-pages) would
+  // otherwise batch into a single style commit and the gate would have no
+  // effect — yield a frame so the committed state still has has-auth-pages
+  // and the transform/opacity jump is instant.
+  await doubleRaf();
   document.body.classList.remove('has-auth-pages');
 
   // Tear down the auth UI 1s after IM appears — same delay the legacy

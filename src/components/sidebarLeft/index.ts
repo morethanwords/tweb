@@ -607,7 +607,10 @@ export class AppSidebarLeft extends SidebarSlider {
       side: 'left',
       isCollapsed: () => this.isCollapsed(),
       setCollapsed: (collapsed) => {
-        this.sidebarEl.classList.toggle('is-collapsed', collapsed);
+        // Drag only fires off-handheld (the resize handle is display:none
+        // at handheld), so the raw drag value is already the effective
+        // one — push it into the signal and the mirror effect in
+        // setSidebarLeftWidth (index.ts) toggles #column-left.is-collapsed.
         useIsSidebarCollapsed()[1](collapsed);
       },
       onCollapsedChange: () => this.onCollapsedChange(true),

@@ -10,7 +10,7 @@
 .bot-commands {
   --offset: .5rem;
   position: absolute !important;
-  bottom: calc(100% - #{$chat-input-size} / 2);
+  bottom: calc(100% - var(--chat-input-height) / 2);
   right: calc(var(--offset) * -1);
   left: calc(var(--offset) * -1);
   width: auto !important;

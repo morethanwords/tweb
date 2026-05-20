@@ -24,19 +24,9 @@
 
   @include respond-to(handhelds) {
     .main-column {
-      width: 100%;
       display: flex !important;
       z-index: 1;
     }
-
-    // Mobile slider: when ready, zero out per-column padding so the active
-    // column goes edge-to-edge during the swipe transition.
-    // #column-left,
-    // #column-center,
-    // #column-right {
-    //   margin: 0;
-    //   inset: 0;
-    // }
   }
 
   @include respond-to(not-handhelds) {
@@ -60,9 +50,12 @@
     flex: 0 0 auto;
   }
 
-  @include animation-level(2) {
-    .main-column {
-      transition: transform var(--tabs-transition), opacity var(--tabs-transition);
-    }
+  // Gated on :not(.has-auth-pages) so the boot-time flip of
+  // body.is-left-column-shown (applied by appDialogsManager.start() before
+  // bootstrapIm removes has-auth-pages) doesn't animate the column in
+  // from its handheld off-screen state. After auth/boot the transition
+  // engages for genuine tab transitions.
+  body.animation-level-2:not(.has-auth-pages) & .main-column {
+    transition: transform var(--tabs-transition), opacity var(--tabs-transition);
   }
 }

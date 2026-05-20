@@ -9,12 +9,14 @@
 
 :root {
   --vh: 1vh;
-  --page-chats-padding: #{$page-chats-padding};
-  --100vh: calc(var(--vh) * 100 - 2 * var(--page-chats-padding));
+  // --page-chats-padding is owned by helpers/updateColumnWidths.ts — single
+  // JS-driven signal (16 on desktop, 8 on handheld). Don't reintroduce a
+  // SCSS @media override here; consumers in chat / sidebars / bubble math
+  // depend on the value being the same at every scope.
+  --100vh: calc(var(--vh) * 100);
   --main-column-border-radius: #{$border-radius-big};
 
   @include respond-to(handhelds) {
-    --page-chats-padding: 0;
     --main-column-border-radius: 0;
   }
 
@@ -66,7 +68,7 @@
   --message-beside-button-size: 2.375rem;
   --message-beside-button-margin: calc((var(--message-beside-button-size) + .5rem) * -1);
   --message-time-background: rgba(0, 0, 0, .35);
-  --messages-container-width: #{$messages-container-width};
+  // --chat-width is owned by helpers/updateColumnWidths.ts — no default here.
   --messages-text-size: 16px;
   --messages-line-height: 1.3125;
   // --messages-line-height: calc(var(--messages-text-size) + 5px);
@@ -139,10 +141,17 @@
 
   --custom-emoji-size: 1.25rem;
 
+  --chat-bubbles-padding: .5rem;
   --chat-input-border-radius: #{$border-radius-big};
-  --chat-input-max-width: var(--messages-container-width);
+  --chat-input-max-width: var(--chat-width);
   --chat-input-btn-send-margin: #{$btn-send-margin};
+  --chat-input-padding: 0px;
+  --chat-input-height: 3rem;
   --plates-gap: 0.5rem;
+
+  @include respond-to(not-handhelds) {
+    --chat-bubbles-padding: 0px;
+  }
 
   // https://github.com/overtake/TelegramSwift/blob/5cc7d2475fe4738a6aa0486c23eaf80a89d33b97/submodules/TGUIKit/TGUIKit/PresentationTheme.swift#L2054
   @include avatar-color("red", #FF845E, #D45246);
@@ -193,19 +202,9 @@
     --esg-sticker-size: 68px;
     --popup-sticker-size: 68px;
     --round-video-size: 240px;
-
-    --chat-input-size: #{$chat-input-handhelds-size};
-    --chat-input-padding: #{$chat-padding-handhelds};
-    --chat-input-inner-padding: #{$chat-input-inner-padding-handhelds};
   }
 
   @include respond-to(not-handhelds) {
-    --right-column-width: #{$default-column-width};
-
-    --chat-input-size: #{$chat-input-size};
-    --chat-input-padding: #{$chat-padding};
-    --chat-input-inner-padding: #{$chat-input-inner-padding};
-
     --section-margin-inline: 0.5rem;
   }
 

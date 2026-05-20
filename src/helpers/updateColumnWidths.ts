@@ -28,11 +28,42 @@
  *   --middle-column-width         column-center's layout width (vw - 2 × outer
  *                                  padding).
  *   --middle-column-width-value   numeric copy used by SCSS calc().
+ *   --chat-width                  the rendered chat-content max width —
+ *                                  CHAT_WIDTH_MAX on docked desktop, the
+ *                                  middle-column width when it's tighter
+ *                                  (narrow desktop / handheld). Consumed by
+ *                                  .chat / .bubbles-inner / topbar plates as
+ *                                  a max-width.
+ *   --right-sidebar-fits          viewport threshold (px) at which the right
+ *                                  column can dock at default size without
+ *                                  overlapping a CHAT_WIDTH_MAX-wide chat.
+ *                                  Exposed for any SCSS consumer that needs
+ *                                  to react to the same threshold the JS
+ *                                  layout decision uses; @media queries
+ *                                  can't read it, but JS toggles
+ *                                  `body.right-column-floats` from the same
+ *                                  math, so style your rules against that
+ *                                  class instead of a media query.
+ *   --page-chats-padding          outer chrome around each column. Owned by
+ *                                  JS in two scopes:
+ *                                    • :root            16 desktop / 0  handheld
+ *                                                       (used by #column-left
+ *                                                        and #column-right
+ *                                                        margins).
+ *                                    • #column-center   16 desktop / 8  handheld
+ *                                                       (used by the chat
+ *                                                        `inset`, .bubbles
+ *                                                        inset-block, fade
+ *                                                        math, pinned-call /
+ *                                                        pinned-audio
+ *                                                        off-screen
+ *                                                        translateY — every
+ *                                                        bubble-padding
+ *                                                        descendant inherits
+ *                                                        the same number).
  *
  * Toggles `body.right-column-floats` when the right column overlays the chat
  * (viewport too narrow to fit left + chat + right + paddings side-by-side).
- *
- * Mirrors SCSS constants — keep these in sync with src/scss/variables.scss.
  */
 
 import mediaSizes from '@helpers/mediaSizes';
@@ -54,11 +85,25 @@ const FOLDERS_SIDEBAR_WIDTH = 72;
 const FOLDERS_SIDEBAR_GAP = 8;
 const FOLDERS_SIDEBAR_OFFSET = FOLDERS_SIDEBAR_WIDTH + FOLDERS_SIDEBAR_GAP;
 
-// $page-chats-padding: 1rem (16px on the default 16px root font size).
-const PAGE_CHATS_PADDING = 16;
-// $messages-container-width — minimum horizontal slot the chat content
-// expects between the columns before the right column starts to float.
-const MESSAGES_CONTAINER_WIDTH = 728;
+// Outer page padding values, written into `--page-chats-padding` by JS in
+// two scopes (see below). The sidebar value collapses to 0 on handheld so
+// #column-left / #column-right fill the screen; the chat keeps 8 so the
+// floating topbar / chat-input plates have breathing room.
+const PAGE_CHATS_PADDING_ROOT_DESKTOP = 16;
+const PAGE_CHATS_PADDING_ROOT_HANDHELD = 0;
+const PAGE_CHATS_PADDING_CHAT_DESKTOP = 16;
+const PAGE_CHATS_PADDING_CHAT_HANDHELD = 8;
+// Used in right-column-fits math (desktop threshold).
+const PAGE_CHATS_PADDING = PAGE_CHATS_PADDING_ROOT_DESKTOP;
+// Visual cap on chat-content max width — bubbles / pinned plates / topbar
+// inner row don't grow past this even on huge viewports. Exposed via the
+// `--chat-width` CSS variable (clamped to the actually-available middle
+// column width on narrower viewports).
+const CHAT_WIDTH_MAX = 696;
+// Extra spacing used inside the right-sidebar-fit equation — historical
+// `+ 64px` from $right-sidebar-fits, kept as-is so the threshold doesn't
+// shift.
+const RIGHT_SIDEBAR_FITS_EXTRA = 64;
 
 const STORAGE_KEY_LEFT = 'sidebar-left-width';
 const STORAGE_KEY_RIGHT = 'sidebar-right-width';
@@ -210,6 +255,10 @@ const last = {
   defaultColumn: -1,
   foldersWidth: -1,
   foldersOffset: -1,
+  chatWidth: -1,
+  rightSidebarFits: -1,
+  pageChatsPaddingRoot: -1,
+  pageChatsPaddingChat: -1,
   floats: undefined as boolean | undefined
 };
 let installed = false;
@@ -228,9 +277,29 @@ export default function updateColumnWidths(): void {
   // layout, so resizing either column (or collapsing the left, or toggling
   // the folders panel) immediately re-evaluates the floats decision.
   const foldersOffset = foldersSidebarShown ? FOLDERS_SIDEBAR_OFFSET : 0;
-  const rightColumnFits = foldersOffset + layoutLeftWidth + rightWidth + MESSAGES_CONTAINER_WIDTH + PAGE_CHATS_PADDING * 4;
-  const floats = !isMobile && vw < rightColumnFits;
+  const rightColumnFits = foldersOffset + layoutLeftWidth + rightWidth + CHAT_WIDTH_MAX + PAGE_CHATS_PADDING * 4;
+  // Handheld is a slider — the right column overlays the chat, so it
+  // always floats. Without this body.right-column-floats stays off and the
+  // `.bubbles-inner { width: calc(100% - var(--right-column-width) ...) }`
+  // rule in _chat.scss subtracts the right column from the chat width,
+  // collapsing the messages column to 0 / a tiny centered strip.
+  const floats = isMobile || vw < rightColumnFits;
   const middleWidth = isMobile ? vw : vw - PAGE_CHATS_PADDING * 2;
+  // Chat content max width — fills the viewport on handheld (single-
+  // column slider) and caps at CHAT_WIDTH_MAX otherwise. On narrower
+  // desktop viewports where the middle column is tighter than the cap,
+  // shrink to match so SCSS `max-width: var(--chat-width)` rules don't
+  // overshoot the available space.
+  const chatWidth = isMobile ? vw : Math.min(middleWidth, CHAT_WIDTH_MAX);
+  // Viewport threshold at which the right column can dock at default size
+  // without overlapping a CHAT_WIDTH_MAX chat. Exposed for any caller that
+  // wants to read the same number JS uses for `body.right-column-floats`.
+  const rightSidebarFits = DEFAULT_COLUMN_WIDTH * 2 + CHAT_WIDTH_MAX + RIGHT_SIDEBAR_FITS_EXTRA;
+  // Outer chrome — split into two scopes so left/right sidebars can drop
+  // to 0 on handheld (full-screen slider) while the chat keeps an 8px
+  // breathing room for the floating topbar / chat-input plates.
+  const pageChatsPaddingRoot = isMobile ? PAGE_CHATS_PADDING_ROOT_HANDHELD : PAGE_CHATS_PADDING_ROOT_DESKTOP;
+  const pageChatsPaddingChat = isMobile ? PAGE_CHATS_PADDING_CHAT_HANDHELD : PAGE_CHATS_PADDING_CHAT_DESKTOP;
 
   if(last.defaultColumn !== defaultColumnWidth) {
     root.style.setProperty('--default-column-width', defaultColumnWidth + 'px');
@@ -260,6 +329,28 @@ export default function updateColumnWidths(): void {
   if(last.foldersOffset !== foldersOffset) {
     root.style.setProperty('--folders-sidebar-offset', foldersOffset + 'px');
     last.foldersOffset = foldersOffset;
+  }
+  if(last.chatWidth !== chatWidth) {
+    root.style.setProperty('--chat-width', chatWidth + 'px');
+    last.chatWidth = chatWidth;
+  }
+  if(last.rightSidebarFits !== rightSidebarFits) {
+    root.style.setProperty('--right-sidebar-fits', rightSidebarFits + 'px');
+    last.rightSidebarFits = rightSidebarFits;
+  }
+  if(last.pageChatsPaddingRoot !== pageChatsPaddingRoot) {
+    root.style.setProperty('--page-chats-padding', pageChatsPaddingRoot + 'px');
+    last.pageChatsPaddingRoot = pageChatsPaddingRoot;
+  }
+  if(last.pageChatsPaddingChat !== pageChatsPaddingChat) {
+    const center = document.getElementById('column-center');
+    // Skip the cache update if #column-center isn't in the DOM yet (initial
+    // module-import run before HTML parse reaches the chat container) so
+    // the next call retries.
+    if(center) {
+      center.style.setProperty('--page-chats-padding', pageChatsPaddingChat + 'px');
+      last.pageChatsPaddingChat = pageChatsPaddingChat;
+    }
   }
   if(last.floats !== floats) {
     document.body.classList.toggle('right-column-floats', floats);

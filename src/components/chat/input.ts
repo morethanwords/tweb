@@ -287,7 +287,6 @@ export default class ChatInput {
   public recording = false;
   private recordCanceled = false;
   private recordTimeEl: HTMLElement;
-  private recordRippleEl: HTMLElement;
   private recordStartTime = 0;
   private recordingOverlayListener: Listener;
   private recordingNavigationItem: NavigationItem;
@@ -955,7 +954,6 @@ export default class ChatInput {
     this.recorder.onstop = () => {
       this.setRecording(false);
       this.chatInput.classList.remove('is-locked');
-      this.recordRippleEl.style.transform = '';
 
       if(this.waveformAnalyser) {
         this.waveformAnalyser.finish();
@@ -1253,9 +1251,6 @@ export default class ChatInput {
     this.btnSendContainer = document.createElement('div');
     this.btnSendContainer.classList.add('btn-send-container');
 
-    this.recordRippleEl = document.createElement('div');
-    this.recordRippleEl.classList.add('record-ripple');
-
     this.btnSend = this.createButtonIcon();
     this.btnSend.classList.add('btn-circle', 'btn-send', 'animated-button-icon');
     const icons: [Icon, string][] = [
@@ -1269,7 +1264,7 @@ export default class ChatInput {
 
     this.addStarsBadge();
 
-    this.btnSendContainer.append(this.recordRippleEl, this.btnSend);
+    this.btnSendContainer.append(this.btnSend);
 
     createRoot((dispose) => {
       this.chat.destroyMiddlewareHelper.onDestroy(dispose);
@@ -3422,33 +3417,10 @@ export default class ChatInput {
         this.recordStartTime = Date.now();
 
         const sourceNode: MediaStreamAudioSourceNode = this.recorder.sourceNode;
-        const context = sourceNode.context;
-
         this.waveformAnalyser = new VoiceWaveformAnalyser(sourceNode);
 
-        const analyser = context.createAnalyser();
-        sourceNode.connect(analyser);
-        // analyser.connect(context.destination);
-        analyser.fftSize = 32;
-
-        const frequencyData = new Uint8Array(analyser.frequencyBinCount);
-        const max = frequencyData.length * 255;
-        const min = 54 / 150;
         const r = () => {
           if(!this.recording) return;
-
-          analyser.getByteFrequencyData(frequencyData);
-
-          let sum = 0;
-          frequencyData.forEach((value) => {
-            sum += value;
-          });
-
-          const percents = Math.min(1, (sum / max) + min);
-          // console.log('frequencyData', frequencyData, percents);
-
-          this.recordRippleEl.style.transform = `scale(${percents})`;
-          // this.recordRippleEl.style.transform = `scale(0.8)`;
 
           const diff = Date.now() - this.recordStartTime;
           const ms = diff % 1000;

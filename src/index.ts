@@ -53,6 +53,7 @@ import PasscodeLockScreenController from '@components/passcodeLock/passcodeLockS
 import type {LangPackDifference} from '@layer';
 import commonStateStorage from '@lib/commonStateStorage';
 import {isUserCollapsedLeft} from '@helpers/updateColumnWidths';
+import {useMediaSizes} from '@helpers/mediaSizes';
 import useHasFoldersSidebar, {useIsSidebarCollapsed} from '@stores/foldersSidebar';
 import appNavigationController from '@components/appNavigationController';
 import {preventCrossTabDynamicImportDeadlock} from '@helpers/preventDeadlock';
@@ -188,12 +189,35 @@ function setViewportHeightListeners() {
 }
 
 function setSidebarLeftWidth() {
-  // updateColumnWidths owns the loaded preference and the CSS vars; we only
-  // need to mirror the collapsed state onto the DOM/class + the SolidJS
-  // store before first paint.
-  if(!isUserCollapsedLeft()) return;
-  document.getElementById('column-left').classList.add('is-collapsed');
-  useIsSidebarCollapsed()[1](true);
+  // updateColumnWidths owns the loaded preference and the CSS vars; we
+  // mirror the EFFECTIVE collapsed state onto:
+  //   • the SolidJS signal (consumed by pendingSuggestion etc.)
+  //   • the #column-left.is-collapsed class
+  //
+  // "Effective" = persisted preference AND not on handheld. At handheld
+  // the layout is single-column, so the bar must render expanded —
+  // `.is-collapsed .item-main` would otherwise clamp the inner slider to
+  // --default-column-width and leave a gap on the right edge of the
+  // column, and pendingSuggestion would fall back to its icon-only mode.
+  //
+  // 601-925px (floating range) keeps the class on intentionally — the
+  // drawer's SCSS expects it and pendingSuggestion's icon-only variant
+  // fits the 360-wide drawer. The wider `isCollapsed()` getter still
+  // returns false there for its own layout decisions inside sidebarLeft.
+  //
+  // The effects react to viewport changes; the drag handler in
+  // sidebarLeft pushes preference changes into the signal and class
+  // directly (drag only happens off-handheld, so its raw value is
+  // already the effective one).
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useIsSidebarCollapsed();
+  const sizes = useMediaSizes();
+  createEffect(() => {
+    setIsSidebarCollapsed(isUserCollapsedLeft() && !sizes.isMobile);
+  });
+  createEffect(() => {
+    const el = document.getElementById('column-left');
+    if(el) el.classList.toggle('is-collapsed', isSidebarCollapsed());
+  });
 }
 
 function setRootClasses() {

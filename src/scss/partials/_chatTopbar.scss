@@ -48,7 +48,7 @@ body.is-right-column-shown {
   --pinned-fee-height: 4.625rem;
 
   min-height: var(--chat-topbar-height) !important;
-	max-width: calc(var(--messages-container-width) - var(--chat-input-padding) * 2);
+	max-width: var(--chat-width);
 	margin-inline: auto;
 	z-index: 2;
   height: var(--chat-topbar-height) !important;
