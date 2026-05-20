@@ -4629,7 +4629,24 @@ const lang = {
     'one_value': 'You can add %d more option',
     'other_value': 'You can add %d more options'
   },
-  'NewPoll.CouldNotCreate': 'Could not create poll'
+  'NewPoll.CouldNotCreate': 'Could not create poll',
+
+  'CreateBot.Title': 'Create Bot',
+  'CreateBot.Description': '**%s** would like to create and manage a chatbot on your behalf.',
+  'CreateBot.Name.Label': 'Bot Name',
+  'CreateBot.Username.Label': 'Bot Username',
+  'CreateBot.Link': 'Link: %s',
+  'CreateBot.Create': 'Create',
+  'CreateBot.Username.Checking': 'Checking username...',
+  'CreateBot.Username.Available': 'Username is available.',
+  'CreateBot.Username.Taken': 'This username is already taken.',
+  'CreateBot.Username.TooShort': 'Username is too short.',
+  'CreateBot.Username.TooLong': 'Username is too long.',
+  'CreateBot.Username.MustStartLetter': 'Username must start with a letter.',
+  'CreateBot.Username.InvalidChars': 'Username can only contain letters, numbers and underscores.',
+  'CreateBot.Username.Invalid': 'Username is invalid.',
+  'CreateBot.Username.Error': 'Username check failed.',
+  'CreateBot.BotWasCreated': 'The bot **%s** was created'
 };
 
 export default lang;

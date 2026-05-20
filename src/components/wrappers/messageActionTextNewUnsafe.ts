@@ -949,6 +949,11 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         }
         break;
       }
+      case 'messageActionManagedBotCreated': {
+        langPackKey = 'CreateBot.BotWasCreated';
+        args = [getNameDivHTML(action.bot_id.toPeerId(), plain)];
+        break;
+      }
       default:
         langPackKey = (langPack[_] || `[${action._}]`) as any;
         break;

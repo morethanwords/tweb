@@ -25,6 +25,8 @@ import wrapCustomEmoji from '@components/wrappers/customEmoji';
 import {makeMediaSize} from '@helpers/mediaSize';
 import ReplyMarkupLayout from '@components/chat/bubbleParts/replyMarkupLayout';
 import classNames from '@helpers/string/classNames';
+import showCreateBotPopup from '@components/popups/createBot';
+import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 
 export type KeyboardButtonHandler = {
   text: DocumentFragment | HTMLElement,
@@ -210,7 +212,6 @@ export function getKeyboardButtonHandler({
 
     case 'keyboardButtonRequestPeer': {
       onClick = async() => {
-        let filterPeerTypeBy: AppSelectPeers['filterPeerTypeBy'];
         const peerType = button.peer_type;
 
         const isRequestingUser = peerType._ === 'requestPeerTypeUser';
@@ -218,6 +219,37 @@ export function getKeyboardButtonHandler({
         const isRequestingGroup = peerType._ === 'requestPeerTypeChat';
         const isRequestingBotCreation = peerType._ === 'requestPeerTypeCreateBot';
 
+        if(isRequestingBotCreation) {
+          showCreateBotPopup({
+            requestingPeerId: peerId,
+            suggestedBotName: peerType.suggested_name,
+            suggestedUsername: peerType.suggested_username,
+            onCreate: async({name, username}) => {
+              try {
+                const user = await rootScope.managers.appBotsManager.createManagedBot({
+                  managerId: peerId,
+                  botName: name,
+                  username: username
+                });
+
+                await rootScope.managers.appMessagesManager.sendBotRequestedPeer(
+                  peerId,
+                  messageMid,
+                  button.button_id,
+                  [user.id.toPeerId()]
+                );
+
+                return true;
+              } catch{
+                return false;
+              }
+            },
+            HotReloadGuard: SolidJSHotReloadGuardProvider
+          });
+          return;
+        }
+
+        let filterPeerTypeBy: AppSelectPeers['filterPeerTypeBy'];
         const _peerType: SelectSearchPeerType[] = ['dialogs'];
         if(isRequestingUser) {
           filterPeerTypeBy = (peer) => {
@@ -237,8 +269,6 @@ export function getKeyboardButtonHandler({
           };
 
           _peerType.push('contacts');
-        } else if(isRequestingBotCreation) {
-          // TODO: Find out how to handle this case
         } else {
           let commonChatIds: ChatId[];
           if(isRequestingGroup) {
