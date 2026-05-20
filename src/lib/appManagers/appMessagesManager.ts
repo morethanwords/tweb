@@ -3392,7 +3392,12 @@ export class AppMessagesManager extends AppManager {
 
   public getReadMaxIdIfUnread(peerId: PeerId, threadId?: number) {
     const historyStorage = this.getHistoryStorage(peerId, threadId);
-    if(threadId && !this.appChatsManager.isForum(peerId.toChatId())) {
+    // Forum topics (channel.pFlags.forum) AND botforum topics (user.pFlags.bot_forum_view)
+    // both fall through to the "topic" branch — they have their own per-topic
+    // historyStorage.readMaxId. Only legacy reply-thread discussions in plain
+    // channels use the merged-with-parent read cursor.
+    const isAnyForum = this.appChatsManager.isForum(peerId.toChatId()) || this.appPeersManager.isBotforum(peerId);
+    if(threadId && !isAnyForum) {
       const chatHistoryStorage = this.getHistoryStorage(peerId);
       const readMaxId = Math.max(chatHistoryStorage.readMaxId ?? 0, historyStorage.readMaxId);
       const message = this.getMessageByPeer(peerId, historyStorage.maxId); // usually message is missing, so pFlags.out won't be there anyway
@@ -6270,7 +6275,8 @@ export class AppMessagesManager extends AppManager {
       }
 
       if(!force) {
-        const dialog = this.appChatsManager.isForum(peerId.toChatId()) && threadId ?
+        const isAnyForum = this.appChatsManager.isForum(peerId.toChatId()) || this.appPeersManager.isBotforum(peerId);
+        const dialog = isAnyForum && threadId ?
           this.dialogsStorage.getForumTopic(peerId, threadId) :
           this.appPeersManager.isMonoforum(peerId) && monoforumThreadId ?
             this.monoforumDialogsStorage.getDialogByParent(peerId, monoforumThreadId) :
@@ -6289,13 +6295,16 @@ export class AppMessagesManager extends AppManager {
 
     const historyStorage = this.getHistoryStorage(peerId, threadId || monoforumThreadId);
 
-    if(historyStorage.triedToReadMaxId >= maxId) {
-      return Promise.resolve();
-    }
+    // The server call is the only thing that may be redundant when
+    // `triedToReadMaxId >= maxId`. The local apply must always run because the
+    // user can scroll into messages whose mid <= a previously-read maxId
+    // (e.g. messages loaded later, or scrolling up after a fast jump to bottom).
+    // Without this, the unread counter "freezes" mid-scroll on high-volume chats.
+    const skipServerCall = historyStorage.triedToReadMaxId >= maxId || !!historyStorage.readPromise;
 
     let apiPromise: Promise<any>;
     if(monoforumThreadId) {
-      if(!historyStorage.readPromise) {
+      if(!skipServerCall) {
         apiPromise = this.apiManager.invokeApi('messages.readSavedHistory', {
           parent_peer: this.appPeersManager.getInputPeerById(peerId),
           peer: this.appPeersManager.getInputPeerById(monoforumThreadId),
@@ -6310,7 +6319,7 @@ export class AppMessagesManager extends AppManager {
         saved_peer_id: this.appPeersManager.getOutputPeer(monoforumThreadId)
       });
     } else if(threadId) {
-      if(!historyStorage.readPromise) {
+      if(!skipServerCall) {
         apiPromise = this.apiManager.invokeApi('messages.readDiscussion', {
           peer: this.appPeersManager.getInputPeerById(peerId),
           msg_id: getServerMessageId(threadId),
@@ -6338,7 +6347,7 @@ export class AppMessagesManager extends AppManager {
         });
       }
     } else if(this.appPeersManager.isChannel(peerId)) {
-      if(!historyStorage.readPromise) {
+      if(!skipServerCall) {
         apiPromise = this.apiManager.invokeApi('channels.readHistory', {
           channel: this.appChatsManager.getChannelInput(peerId.toChatId()),
           max_id: getServerMessageId(maxId)
@@ -6353,7 +6362,7 @@ export class AppMessagesManager extends AppManager {
         pts: undefined
       });
     } else {
-      if(!historyStorage.readPromise) {
+      if(!skipServerCall) {
         apiPromise = this.apiManager.invokeApi('messages.readHistory', {
           peer: this.appPeersManager.getInputPeerById(peerId),
           max_id: getServerMessageId(maxId)
@@ -6378,11 +6387,20 @@ export class AppMessagesManager extends AppManager {
 
     this.rootScope.dispatchEvent('notification_reset', this.appPeersManager.getPeerString(peerId));
 
+    // Track the highest maxId we've locally applied so future overlapping calls
+    // can correctly decide whether the server call is still needed.
+    if(!(historyStorage.triedToReadMaxId >= maxId)) {
+      historyStorage.triedToReadMaxId = maxId;
+    }
+
     if(historyStorage.readPromise) {
       return historyStorage.readPromise;
     }
 
-    historyStorage.triedToReadMaxId = maxId;
+    if(!apiPromise) {
+      // server call was skipped because triedToReadMaxId already covered it
+      return Promise.resolve();
+    }
 
     apiPromise.finally(() => {
       delete historyStorage.readPromise;
@@ -6583,6 +6601,31 @@ export class AppMessagesManager extends AppManager {
       return Promise.resolve();
     }
 
+    // Inspect the messages BEFORE we strip the local-form mids: we need to
+    // know whether any of them are mentions or carry unread reactions, so we
+    // can issue the dedicated server-side "mark mentions/reactions as read"
+    // calls. `messages.readMessageContents` only clears `media_unread` for
+    // specific mids — it does NOT decrement the chat's `unread_mentions_count`
+    // / `unread_reactions_count` counters on the server (those are tracked
+    // separately and are reset only by `messages.readMentions` /
+    // `messages.readReactions`). Without that, after reload the server keeps
+    // reporting the old badge — exactly what issue #380 describes.
+    let hasMention = false;
+    let hasUnreadReaction = false;
+    for(const mid of msgIds) {
+      const message = this.getMessageByPeer(peerId, mid) as MyMessage;
+      if(!message) continue;
+      if(isMentionUnread(message)) hasMention = true;
+      if(getUnreadReactions(message)) hasUnreadReaction = true;
+    }
+
+    // Capture the badge state BEFORE processLocalUpdate (called below) flips
+    // our local counters to 0 — otherwise the follow-up readMentions would
+    // always be skipped and the server-side counter would stay stale.
+    const dialog = this.dialogsStorage.getAnyDialog(peerId) as Dialog | ForumTopic | undefined;
+    const hadUnreadMentions = !!dialog?.unread_mentions_count;
+    const hadUnreadReactions = !!dialog?.unread_reactions_count;
+
     msgIds = msgIds.map((mid) => getServerMessageId(mid));
     let promise: Promise<any>, update: Update.updateChannelReadMessagesContents | Update.updateReadMessagesContents;
     if(peerId.isAnyChat() && this.appPeersManager.isChannel(peerId)) {
@@ -6616,6 +6659,17 @@ export class AppMessagesManager extends AppManager {
     }
 
     this.apiUpdatesManager.processLocalUpdate(update);
+
+    if(hasMention || hasUnreadReaction) {
+      const followUps: Promise<any>[] = [promise];
+      if(hasMention && hadUnreadMentions) {
+        followUps.push(this.readMentions(peerId).catch(noop));
+      }
+      if(hasUnreadReaction && hadUnreadReactions) {
+        followUps.push(this.readMentions(peerId, undefined, true).catch(noop));
+      }
+      promise = Promise.all(followUps).then(() => {});
+    }
 
     return promise;
   }
@@ -7441,7 +7495,12 @@ export class AppMessagesManager extends AppManager {
     const inboxUnread = !message.pFlags.out && message.pFlags.unread;
 
     {
-      if(inboxUnread && message.mid > dialog.top_message && !isSaved) {
+      // Guard against double-counting: never increment for a message whose mid
+      // is already covered by `read_inbox_max_id` (e.g. a stale replay from
+      // the after-reload queue, or a duplicated update bypassing pts dedup).
+      const readInboxMaxId = (dialog as MTDialog.dialog).read_inbox_max_id;
+      const isPastReadCursor = readInboxMaxId !== undefined && message.mid <= readInboxMaxId;
+      if(inboxUnread && message.mid > dialog.top_message && !isSaved && !isPastReadCursor) {
         const releaseUnreadCount = this.dialogsStorage.prepareDialogUnreadCountModifying(dialog);
 
         ++dialog.unread_count;
@@ -7587,7 +7646,7 @@ export class AppMessagesManager extends AppManager {
     const mid = this.appMessagesIdsManager.generateMessageId(message.id, channelId);
     const storage = this.getHistoryMessagesStorage(peerId);
     if(!storage.has(mid)) {
-      this.fixDialogUnreadMentionsIfNoMessage({peerId, threadId: getMessageThreadId(message, {isForum: this.appPeersManager.isForum(peerId)}), force: true});
+      this.fixDialogUnreadMentionsIfNoMessage({peerId, threadId: getMessageThreadId(message, {isForum: this.appPeersManager.isForum(peerId), isBotforum: this.appPeersManager.isBotforum(peerId)}), force: true});
       // this.fixDialogUnreadMentionsIfNoMessage(peerId);
       return;
     }
@@ -7746,6 +7805,9 @@ export class AppMessagesManager extends AppManager {
     const releaseUnreadCount = foundDialog && this.dialogsStorage.prepareDialogUnreadCountModifying(foundDialog);
     const readMaxId = this.getReadMaxIdIfUnread(peerId, threadId || monoforumThreadId);
     const monoforumDialogsTouched: Record<PeerId, MonoforumDialog> = {};
+    // Forum: aggregate mention reads from a topic up to the parent forum dialog
+    const isTopicRead = !!threadId && (isForum || isBotforum) && foundDialog && isForumTopic(foundDialog);
+    let parentMentionDecrement = 0;
 
     for(let i = 0, length = history.length; i < length; i++) {
       const mid = history[i];
@@ -7787,6 +7849,7 @@ export class AppMessagesManager extends AppManager {
         if(isMentionUnread(message)) {
           newUnreadMentionsCount = --foundDialog.unread_mentions_count;
           this.modifyCachedMentions({peerId, mid: message.mid, add: false});
+          if(isTopicRead) ++parentMentionDecrement;
         }
       }
 
@@ -7854,6 +7917,20 @@ export class AppMessagesManager extends AppManager {
       this.rootScope.dispatchEvent('messages_read');
     }
 
+    // Forum: propagate the topic's mention reads to the parent forum dialog so
+    // its mention badge stays in sync. Without this the parent shows a stale
+    // count even after every mention in the topic was read.
+    if(parentMentionDecrement > 0) {
+      const parentDialog = this.getDialogOnly(peerId);
+      if(parentDialog) {
+        const releaseParent = this.dialogsStorage.prepareDialogUnreadCountModifying(parentDialog);
+        parentDialog.unread_mentions_count = Math.max(0, parentDialog.unread_mentions_count - parentMentionDecrement);
+        releaseParent();
+        this.rootScope.dispatchEvent('dialog_unread', {peerId, dialog: parentDialog});
+        this.dialogsStorage.setDialogToState(parentDialog);
+      }
+    }
+
     if(!threadId && channelId) {
       const threadKeyPart = peerId + '_';
       for(const threadKey in this.threadsToReplies) {
@@ -7881,12 +7958,35 @@ export class AppMessagesManager extends AppManager {
       let message: MyMessage = this.getMessageByPeer(peerId, mid);
       if(message) {
         if(message.pFlags.media_unread) {
+          // Capture the mention-unread state BEFORE clearing media_unread.
+          // `isMentionUnread` requires `pFlags.media_unread`; if we evaluated
+          // it after the delete it would always be false and the dialog's
+          // `unread_mentions_count` would never decrement. (issue #380)
+          const wasMentionUnread = !message.pFlags.out && isMentionUnread(message);
+
           message = this.modifyMessage(message, (message) => {
             delete message.pFlags.media_unread;
           });
 
-          if(!message.pFlags.out && isMentionUnread(message)) {
-            this.modifyCachedMentionsAndSave({peerId, mid, addMention: false});
+          if(wasMentionUnread) {
+            this.modifyCachedMentionsAndSave({peerId, mid, threadId, addMention: false});
+
+            // Forum / botforum: also bring down the parent forum dialog's
+            // aggregate mention badge (mirrors the Bug-4 propagation in
+            // onUpdateReadHistory).
+            if(threadId && (
+              this.appChatsManager.isForum(peerId.toChatId()) ||
+              this.appPeersManager.isBotforum(peerId)
+            )) {
+              const parentDialog = this.getDialogOnly(peerId);
+              if(parentDialog && parentDialog.unread_mentions_count > 0) {
+                const releaseParent = this.dialogsStorage.prepareDialogUnreadCountModifying(parentDialog);
+                parentDialog.unread_mentions_count = Math.max(0, parentDialog.unread_mentions_count - 1);
+                releaseParent();
+                this.rootScope.dispatchEvent('dialog_unread', {peerId, dialog: parentDialog});
+                this.dialogsStorage.setDialogToState(parentDialog);
+              }
+            }
           }
         }
 
@@ -9996,7 +10096,7 @@ export class AppMessagesManager extends AppManager {
     force?: boolean,
     threadId?: number
   ): Promise<boolean> {
-    if(threadId && !this.appPeersManager.isForum(peerId)) {
+    if(threadId && !this.appPeersManager.isForum(peerId) && !this.appPeersManager.isBotforum(peerId)) {
       threadId = undefined;
     }
 
