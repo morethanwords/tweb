@@ -1,11 +1,10 @@
 
-import {children, createEffect, createSignal, For, onCleanup, onMount, Show, JSX} from 'solid-js';
+import {createEffect, createSignal, For, onCleanup, onMount, Show, JSX} from 'solid-js';
 import SwipeHandler from '@components/swipeHandler';
 import styles from '@components/slideshow.module.scss';
 import classNames from '@helpers/string/classNames';
 import {fastRaf} from '@helpers/schedulers';
 import findUpClassName from '@helpers/dom/findUpClassName';
-import IS_PARALLAX_SUPPORTED from '@environment/parallaxSupport';
 import {IconTsx} from '@components/iconTsx';
 
 export type SlideshowProps<T> = {
@@ -18,8 +17,8 @@ export type SlideshowProps<T> = {
   onClick?: (index: number) => void;
 };
 
-const SCALE = IS_PARALLAX_SUPPORTED ? 2 : 1;
-const TRANSLATE_TEMPLATE = IS_PARALLAX_SUPPORTED ? `translate3d({x}, 0, -1px) scale(${SCALE})` : 'translate({x}, 0)';
+const SCALE = 1;
+const TRANSLATE_TEMPLATE = 'translate({x}, 0)';
 
 export default function Slideshow<T>(props: SlideshowProps<T>) {
   let container: HTMLDivElement;

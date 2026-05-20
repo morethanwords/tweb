@@ -13,10 +13,11 @@ import Icon from '@components/icon';
 import InputField from '@components/inputField';
 import ProgressivePreloader from '@components/preloader';
 import SetTransition from '@components/singleTransition';
+import classNames from '@helpers/string/classNames';
 
 export default class InputSearch {
   public container: HTMLElement;
-  public input: HTMLElement;
+  public input: HTMLInputElement;
   public inputField: InputField;
   public clearBtn: HTMLElement;
   public searchIcon: HTMLElement;
@@ -28,6 +29,7 @@ export default class InputSearch {
   public onClear: (e?: MouseEvent, wasEmpty?: boolean) => void;
   public onDebounce: (start: boolean) => void;
   public onBack: () => void;
+  public onEnter: (value: string) => void;
 
   private statusPreloader: ProgressivePreloader;
   private currentLangPackKey: LangPackKey;
@@ -39,6 +41,7 @@ export default class InputSearch {
 
   private alwaysShowClear: boolean;
   private arrowBack: boolean;
+  private noPlaceholderAnimation: boolean;
 
   constructor(options: {
     placeholder?: LangPackKey,
@@ -47,13 +50,15 @@ export default class InputSearch {
     onFocusChange?: (isFocused: boolean) => void,
     onDebounce?: (start: boolean) => void,
     onBack?: () => void,
+    onEnter?: (value: string) => void,
     alwaysShowClear?: boolean,
     noBorder?: boolean,
     noFocusEffect?: boolean,
     debounceTime?: number,
     verifyDebounce?: (value: string, prevValue: string) => boolean,
     arrowBack?: boolean,
-    oldStyle?: boolean
+    oldStyle?: boolean,
+    noPlaceholderAnimation?: boolean
   } = {}) {
     this.inputField = new InputField({
       // placeholder,
@@ -74,11 +79,13 @@ export default class InputSearch {
     this.onClear = options.onClear;
     this.onDebounce = options.onDebounce;
     this.onBack = options.onBack;
+    this.onEnter = options.onEnter;
     this.debounceTime = options.debounceTime ?? 300;
     this.verifyDebounce = options.verifyDebounce;
     this.alwaysShowClear = options.alwaysShowClear;
+    this.noPlaceholderAnimation = options.noPlaceholderAnimation;
 
-    const input = this.input = this.inputField.input;
+    const input = this.input = this.inputField.input as HTMLInputElement;
     input.classList.add('input-search-input');
 
     if(!options.noFocusEffect) {
@@ -89,6 +96,7 @@ export default class InputSearch {
     const clearBtn = this.clearBtn = this.createButtonIcon('close', 'input-search-clear');
 
     this.listenerSetter.add(input)('input', this.onInput);
+    this.listenerSetter.add(input)('keydown', this.onKeyDown);
     attachClickEvent(clearBtn, this.onClearClick, {listenerSetter: this.listenerSetter, cancelMouseDown: true});
 
     if(options.placeholder) {
@@ -188,7 +196,10 @@ export default class InputSearch {
     }
 
     this.currentPlaceholder = i18n(langPackKey, args);
-    this.currentPlaceholder.classList.add('input-search-placeholder', 'will-animate');
+    this.currentPlaceholder.classList.add(...[
+      'input-search-placeholder',
+      !this.noPlaceholderAnimation && 'will-animate'
+    ].filter(Boolean));
     this.container.append(this.currentPlaceholder);
   };
 
@@ -212,6 +223,13 @@ export default class InputSearch {
       this.onDebounce?.(false);
       this.onChange(value);
     }, this.debounceTime);
+  };
+
+  onKeyDown = (e: KeyboardEvent) => {
+    if(e.key !== 'Enter' || !this.onEnter) return;
+    const value = this.value;
+    if(!value) return;
+    this.onEnter(value);
   };
 
   onClearClick = (e?: MouseEvent) => {

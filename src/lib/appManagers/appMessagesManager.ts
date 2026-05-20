@@ -18,7 +18,7 @@ import LazyLoadQueueBase from '@components/lazyLoadQueueBase';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import tsNow from '@helpers/tsNow';
 import {nextRandomUint, randomLong} from '@helpers/random';
-import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, UrlAuthResult, MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, InputUser, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities, ChannelsSearchPosts, FactCheck, MessageExtendedMedia, SponsoredMessage, MessagesSponsoredMessages, InputGroupCall, TodoItem, TodoCompletion, SearchPostsFlood, UserFull} from '@layer';
+import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, UrlAuthResult, MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, InputUser, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities, ChannelsSearchPosts, FactCheck, MessageExtendedMedia, SponsoredMessage, MessagesSponsoredMessages, InputGroupCall, TodoItem, TodoCompletion, SearchPostsFlood, UserFull, MessagesDeleteSavedHistory, ChannelsDeleteParticipantHistory, MessagesDeleteHistory, MessagesDeleteTopicHistory} from '@layer';
 import {ArgumentTypes, InvokeApiOptions, Modify} from '@types';
 import {logger, LogTypes} from '@lib/logger';
 import {ReferenceContext} from '@lib/storages/references';
@@ -36,6 +36,7 @@ import getObjectKeysAndSort from '@helpers/object/getObjectKeysAndSort';
 import forEachReverse from '@helpers/array/forEachReverse';
 import deepEqual from '@helpers/object/deepEqual';
 import splitStringByLength from '@helpers/string/splitStringByLength';
+import sliceMessageEntities from '@helpers/sliceMessageEntities';
 import debounce from '@helpers/schedulers/debounce';
 import {AppManager} from '@appManagers/manager';
 import getPhotoMediaInput from '@appManagers/utils/photos/getPhotoMediaInput';
@@ -249,11 +250,11 @@ const passHistoryStorageProperties: Set<keyof HistoryStorage> = new Set([
 ]);
 
 export type SuggestedPostPayload = {
-  stars?: number;
-  timestamp?: number;
-  changeMid?: number;
-  hasMedia?: boolean;
-  monoforumThreadId?: PeerId;
+  stars?: number,
+  timestamp?: number,
+  changeMid?: number,
+  hasMedia?: boolean,
+  monoforumThreadId?: PeerId
 };
 
 export type MessageSendingParams = Partial<{
@@ -319,8 +320,8 @@ export type RequestHistoryOptions = {
 };
 
 type GetHistoryTypeOptions = {
-  threadId?: number;
-  monoforumPeerId?: number;
+  threadId?: number,
+  monoforumPeerId?: number
 };
 
 export type SearchStorageFilterKey = string;
@@ -332,77 +333,85 @@ type GetUnreadMentionsOptions = {
 };
 
 type UploadThumbAndCoverArgs = {
-  peer: InputPeer;
-  blob: Blob;
-  isCover: boolean;
+  peer: InputPeer,
+  blob: Blob,
+  isCover: boolean
 };
 
 type UploadVideoCoverArgs = {
-  peer: InputPeer;
-  file: InputFile;
+  peer: InputPeer,
+  file: InputFile
 };
 
 type ReadHistoryArgs = {
-  peerId: PeerId;
-  maxId?: number;
-  threadId?: number;
-  monoforumThreadId?: PeerId;
-  force?: boolean;
+  peerId: PeerId,
+  maxId?: number,
+  threadId?: number,
+  monoforumThreadId?: PeerId,
+  force?: boolean
 };
 
 type MarkDialogUnreadArgs = {
-  peerId: PeerId;
-  read?: boolean;
-  monoforumThreadId?: PeerId;
+  peerId: PeerId,
+  read?: boolean,
+  monoforumThreadId?: PeerId
 };
 
 type FlushHistoryArgs = {
-  peerId: PeerId;
-  justClear?: boolean;
-  revoke?: boolean;
-  threadOrSavedId?: number;
-  monoforumThreadId?: PeerId;
+  peerId: PeerId,
+  justClear?: boolean,
+  revoke?: boolean,
+  threadOrSavedId?: number,
+  monoforumThreadId?: PeerId,
+  // Date-range delete bounds (unix seconds, inclusive). Honoured ONLY for the
+  // user-peer branch (`messages.deleteHistory`); ignored elsewhere because
+  // `channels.deleteHistory` and friends don't accept date params.
+  minDate?: number,
+  maxDate?: number
 };
 
 type DoFlushHistoryArgs = {
-  peerId: PeerId;
-  justClear?: boolean;
-  revoke?: boolean;
-  threadOrSavedId?: number;
-  monoforumThreadId?: PeerId;
-  participantPeerId?: PeerId;
+  peerId: PeerId,
+  justClear?: boolean,
+  revoke?: boolean,
+  threadOrSavedId?: number,
+  monoforumThreadId?: PeerId,
+  participantPeerId?: PeerId,
+  minDate?: number,
+  maxDate?: number,
+  recursion?: boolean
 };
 
 type SendContactArgs = {
-  peerId: PeerId;
-  monoforumThreadId?: PeerId;
-  contactPeerId: PeerId;
-  confirmedPaymentResult?: ConfirmedPaymentResult;
+  peerId: PeerId,
+  monoforumThreadId?: PeerId,
+  contactPeerId: PeerId,
+  confirmedPaymentResult?: ConfirmedPaymentResult
 };
 
 type GenerateTopicCreatedServiceMessageArgs = {
-  peerId: PeerId;
-  title: string;
+  peerId: PeerId,
+  title: string
 };
 
 type CreateBotforumTopicArgs = {
-  peerId: PeerId;
-  title: string;
-  tempId: number;
-  randomId: string;
-  message: ReturnType<AppMessagesManager['generateTopicCreatedServiceMessage']>;
-  iconColor?: number;
+  peerId: PeerId,
+  title: string,
+  tempId: number,
+  randomId: string,
+  message: ReturnType<AppMessagesManager['generateTopicCreatedServiceMessage']>,
+  iconColor?: number
 };
 
 type GetPendingOrCreateBotforumTopicArgs = {
-  peerId: PeerId;
-  title?: string;
+  peerId: PeerId,
+  title?: string
 };
 
 type GenerateTypingBotforumMessageArgs = {
-  peerId: PeerId;
-  threadId: number;
-  action: SendMessageAction.sendMessageTextDraftAction;
+  peerId: PeerId,
+  threadId: number,
+  action: SendMessageAction.sendMessageTextDraftAction
 };
 
 type SendFileArgs = MessageSendingParams & SendFileDetails & Partial<{
@@ -1277,9 +1286,9 @@ export class AppMessagesManager extends AppManager {
       viaBotId: BotId,
       queryId: string,
       resultId: string,
-      noWebPage: true,
+      noWebPage: boolean,
       replyMarkup: ReplyMarkup,
-      clearDraft: true,
+      clearDraft: boolean,
       invertMedia: boolean,
       webPage: WebPage,
       webPageOptions: Partial<{
@@ -1320,7 +1329,10 @@ export class AppMessagesManager extends AppManager {
 
     peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
 
-    let entities = options.entities;
+    const originalEntities = options.entities;
+    let entities = splitted.length > 1 && originalEntities?.length ?
+      sliceMessageEntities(originalEntities, 0, text.length) :
+      originalEntities;
     if(!options.viaBotId) {
       [text, entities] = parseMarkdown(text, entities);
     }
@@ -1489,12 +1501,15 @@ export class AppMessagesManager extends AppManager {
     });
 
     const promises: ReturnType<AppMessagesManager['sendText']>[] = [message.promise];
+    let partOffset = splitted[0].length;
     for(let i = 1; i < splitted.length; ++i) {
       promises.push(this.sendText({
         ...options,
         peerId,
-        text: splitted[i]
+        text: splitted[i],
+        entities: originalEntities?.length ? sliceMessageEntities(originalEntities, partOffset, splitted[i].length) : undefined
       }));
+      partOffset += splitted[i].length;
     }
 
     return Promise.all(promises).then(noop);
@@ -2366,7 +2381,7 @@ export class AppMessagesManager extends AppManager {
       inputMedia: InputMedia | {_: 'messageMediaPending', messageMedia: MessageMedia},
       viaBotId: BotId,
       replyMarkup: ReplyMarkup,
-      clearDraft: true,
+      clearDraft: boolean,
       queryId: string
       resultId: string,
       geoPoint: GeoPoint,
@@ -4423,9 +4438,18 @@ export class AppMessagesManager extends AppManager {
     return promise || this.reloadConversationsPromise;
   }
 
-  public doFlushHistory({peerId, justClear, revoke, threadOrSavedId, participantPeerId, monoforumThreadId}: DoFlushHistoryArgs): Promise<true> {
+  public doFlushHistory({
+    peerId,
+    justClear,
+    revoke,
+    threadOrSavedId,
+    participantPeerId,
+    monoforumThreadId,
+    minDate,
+    maxDate,
+    recursion
+  }: DoFlushHistoryArgs): Promise<true> {
     const isSavedDialog = this.appPeersManager.isSavedDialog(peerId, threadOrSavedId);
-    let promise: Promise<true>;
     const processResult = (affectedHistory: MessagesAffectedHistory) => {
       this.apiUpdatesManager.processLocalUpdate({
         _: 'updatePts',
@@ -4433,8 +4457,9 @@ export class AppMessagesManager extends AppManager {
         pts_count: affectedHistory.pts_count
       });
 
+      let filterMessage: (message: MyMessage) => boolean;
+      const deletedMids: number[] = [];
       if(!affectedHistory.offset) {
-        let filterMessage: (message: MyMessage) => boolean;
         if(monoforumThreadId) {
           filterMessage = (message) => this.appPeersManager.getPeerId(message.saved_peer_id) === monoforumThreadId;
         } else if(participantPeerId) {
@@ -4451,91 +4476,134 @@ export class AppMessagesManager extends AppManager {
         } else if(this.appPeersManager.isBotforum(peerId) && threadOrSavedId) {
           filterMessage = (message) => getMessageThreadId(message, {isBotforum: true}) === threadOrSavedId;
         }
+      }
 
-        if(filterMessage) {
-          const messagesStorage = this.getHistoryMessagesStorage(peerId);
-          const deletedMids: number[] = [];
-          for(const [mid, message] of messagesStorage) {
-            if(filterMessage(message)) {
-              deletedMids.push(mid);
-            }
+      if(minDate !== undefined || maxDate !== undefined) {
+        const c = filterMessage;
+        filterMessage = (message) => {
+          if(c && !c(message)) {
+            return false;
           }
 
-          this.apiUpdatesManager.processLocalUpdate(peerId.isUser() ? {
-            _: 'updateDeleteMessages',
-            messages: deletedMids,
-            pts: undefined,
-            pts_count: undefined
-          } : {
-            _: 'updateDeleteChannelMessages',
-            channel_id: peerId.toChatId(),
-            messages: deletedMids,
-            pts: undefined,
-            pts_count: undefined
-          });
-        }
+          const date = message.date;
+          return (minDate === undefined || date >= minDate) &&
+            (maxDate === undefined || date <= maxDate);
+        };
+      }
 
+      if(filterMessage) {
+        const messagesStorage = this.getHistoryMessagesStorage(peerId);
+        for(const [mid, message] of messagesStorage) {
+          if(filterMessage(message)) {
+            deletedMids.push(mid);
+          }
+        }
+      }
+
+      if(deletedMids.length) {
+        this.apiUpdatesManager.processLocalUpdate(peerId.isUser() ? {
+          _: 'updateDeleteMessages',
+          messages: deletedMids,
+          pts: undefined,
+          pts_count: undefined
+        } : {
+          _: 'updateDeleteChannelMessages',
+          channel_id: peerId.toChatId(),
+          messages: deletedMids,
+          pts: undefined,
+          pts_count: undefined
+        });
+      }
+
+      if(!affectedHistory.offset) {
         return true;
       }
 
-      return this.doFlushHistory({peerId, justClear, revoke, threadOrSavedId, monoforumThreadId});
+      return this.doFlushHistory({
+        peerId,
+        justClear,
+        revoke,
+        threadOrSavedId,
+        monoforumThreadId,
+        minDate,
+        maxDate,
+        recursion: true
+      });
     };
 
+    let method: 'messages.deleteSavedHistory' | 'channels.deleteParticipantHistory' | 'messages.deleteHistory' | 'messages.deleteTopicHistory';
+    let params: MessagesDeleteSavedHistory | ChannelsDeleteParticipantHistory | MessagesDeleteHistory | MessagesDeleteTopicHistory;
+    const options = recursion ? {overwrite: true} : undefined;
     if(monoforumThreadId) {
-      promise = this.apiManager.invokeApiSingleProcess({
-        method: 'messages.deleteSavedHistory',
-        params: {
-          parent_peer: this.appPeersManager.getInputPeerById(peerId),
-          peer: this.appPeersManager.getInputPeerById(monoforumThreadId),
-          max_id: 0
-        },
-        processResult
-      });
+      method = 'messages.deleteSavedHistory';
+      params = {
+        parent_peer: this.appPeersManager.getInputPeerById(peerId),
+        peer: this.appPeersManager.getInputPeerById(monoforumThreadId),
+        max_id: 0,
+        min_date: minDate,
+        max_date: maxDate
+      };
     } else if(participantPeerId) {
-      promise = this.apiManager.invokeApiSingleProcess({
-        method: 'channels.deleteParticipantHistory',
-        params: {
-          channel: this.appChatsManager.getChannelInput(peerId.toChatId()),
-          participant: this.appPeersManager.getInputPeerById(participantPeerId)
-        },
-        processResult
-      });
+      method = 'channels.deleteParticipantHistory';
+      params = {
+        channel: this.appChatsManager.getChannelInput(peerId.toChatId()),
+        participant: this.appPeersManager.getInputPeerById(participantPeerId)
+      };
     } else if(!threadOrSavedId) {
-      promise = this.apiManager.invokeApiSingleProcess({
-        method: 'messages.deleteHistory',
-        params: {
-          just_clear: justClear,
-          revoke,
-          peer: this.appPeersManager.getInputPeerById(peerId),
-          max_id: 0
-        },
-        processResult
-      });
+      method = 'messages.deleteHistory';
+      params = {
+        just_clear: justClear,
+        revoke,
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        max_id: 0,
+        min_date: minDate,
+        max_date: maxDate
+      };
     } else if(isSavedDialog) {
-      promise = this.apiManager.invokeApiSingleProcess({
-        method: 'messages.deleteSavedHistory',
-        params: {
-          peer: this.appPeersManager.getInputPeerById(threadOrSavedId),
-          max_id: 0
-        },
-        processResult
-      });
+      method = 'messages.deleteSavedHistory';
+      params = {
+        peer: this.appPeersManager.getInputPeerById(threadOrSavedId),
+        max_id: 0,
+        min_date: minDate,
+        max_date: maxDate
+      };
     } else {
-      promise = this.apiManager.invokeApiSingleProcess({
-        method: 'messages.deleteTopicHistory',
-        params: {
-          peer: this.appPeersManager.getInputPeerById(peerId),
-          top_msg_id: getServerMessageId(threadOrSavedId)
-        },
-        processResult
-      });
+      method = 'messages.deleteTopicHistory';
+      params = {
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        top_msg_id: getServerMessageId(threadOrSavedId)
+      };
     }
 
-    return promise;
+    return this.apiManager.invokeApiSingleProcess({
+      method,
+      params,
+      options,
+      processResult
+    });;
   }
 
-  public async flushHistory({peerId, justClear, revoke, threadOrSavedId, monoforumThreadId}: FlushHistoryArgs) {
-    if(this.appPeersManager.isChannel(peerId) && !threadOrSavedId && !monoforumThreadId) {
+  public async flushHistory({
+    peerId,
+    justClear,
+    revoke,
+    threadOrSavedId,
+    monoforumThreadId,
+    minDate,
+    maxDate
+  }: FlushHistoryArgs) {
+    // Skip the channel-wide-clear shortcut when the caller asked for a date
+    // range — channels.deleteHistory has no min_date/max_date and would
+    // otherwise wipe the entire channel. Date-bounded calls fall through to
+    // doFlushHistory → messages.deleteHistory below; if the server rejects
+    // that for channels, the await will throw and the picker stays open.
+    if(
+      this.appPeersManager.isChannel(peerId) &&
+      !threadOrSavedId &&
+      !monoforumThreadId &&
+      !minDate &&
+      !maxDate
+    ) {
       const promise = this.getHistory({
         peerId,
         offsetId: 0,
@@ -4562,7 +4630,20 @@ export class AppMessagesManager extends AppManager {
       });
     }
 
-    return this.doFlushHistory({peerId, justClear, revoke, threadOrSavedId, monoforumThreadId}).then(() => {
+    const partly = minDate !== undefined || maxDate !== undefined;
+    return this.doFlushHistory({
+      peerId,
+      justClear,
+      revoke,
+      threadOrSavedId,
+      monoforumThreadId,
+      minDate,
+      maxDate
+    }).then(() => {
+      if(partly) {
+        return;
+      }
+
       if(monoforumThreadId) {
         this.monoforumDialogsStorage.dropDeletedDialogs(peerId, [monoforumThreadId]);
         return;
@@ -5867,6 +5948,47 @@ export class AppMessagesManager extends AppManager {
     }
 
     return result;
+  }
+
+  // True if the user can revoke (delete-for-everyone) messages in this peer.
+  // - self chat: false (only one side exists)
+  // - bot: false (we can only delete our own messages, not the bot's)
+  // - user-to-user: true (either party can revoke any message)
+  // - chat / channel: requires the `delete_messages` admin right
+  public canRevokeMessages(peerId: PeerId): boolean {
+    if(peerId === this.rootScope.myId) return false;
+    if(peerId.isUser()) return !this.appPeersManager.isBot(peerId);
+    return this.appChatsManager.hasRights(peerId.toChatId(), 'delete_messages');
+  }
+
+  public getSearchResultsCalendar({
+    peerId,
+    filter,
+    offsetId = 0,
+    offsetDate = 0,
+    threadId
+  }: {
+    peerId: PeerId,
+    filter: MessagesFilter,
+    offsetId?: number,
+    offsetDate?: number,
+    threadId?: number
+  }) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'messages.getSearchResultsCalendar',
+      params: {
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        saved_peer_id: threadId ? this.appPeersManager.getInputPeerById(threadId) : undefined,
+        filter,
+        offset_id: offsetId,
+        offset_date: offsetDate
+      },
+      processResult: (result) => {
+        this.appPeersManager.saveApiPeers(result);
+        this.saveMessages(result.messages);
+        return result;
+      }
+    });
   }
 
   public filterMessagesByInputFilterFromStorage(inputFilter: MyInputMessagesFilter, history: number[], storage: MessagesStorage | MessagesStorageKey, limit: number) {
@@ -9602,6 +9724,28 @@ export class AppMessagesManager extends AppManager {
 
       this.saveApiResult(historyResult);
 
+      // Mirror `pFlags.pinned` onto messages returned by a pinned-filter
+      // query. `onUpdatePinnedMessages` only fires for *changes* the server
+      // pushes during this session; messages already pinned before the
+      // session started would otherwise stay flagless in the regular
+      // history storage, conflicting with later writes of the same
+      // message and breaking call sites that read `message.pFlags.pinned`
+      // (e.g. the bubble context menu's Pin/Unpin choice).
+      if(inputFilter?._ === 'inputMessagesFilterPinned' && messages.length) {
+        const channelId = this.appPeersManager.isChannel(peerId) ? peerId.toChatId() : undefined;
+        const storage = this.getHistoryMessagesStorage(peerId);
+        for(const message of messages) {
+          if(!message || message._ === 'messageEmpty') continue;
+          const mid = this.appMessagesIdsManager.generateMessageId(message.id, channelId);
+          const stored = storage.get(mid) as Message.message;
+          if(stored && !stored.pFlags.pinned) {
+            this.modifyMessage(stored, (m) => {
+              m.pFlags.pinned = true;
+            }, storage);
+          }
+        }
+      }
+
       if(fetchTargetedMessage) {
         const index = messages.findIndex((message) => message.id === offsetId);
         // if(index !== -1) {
@@ -10127,6 +10271,16 @@ export class AppMessagesManager extends AppManager {
 
   private resetPinnedMessagesCache(peerId: PeerId, mids: number[], pinned: boolean) {
     delete this.pinnedMessages[this.getPinnedMessagesKey(peerId)];
+    // Also drop the cached `inputMessagesFilterPinned` search storages
+    // for this peer. Otherwise a subsequent `getHistory({inputFilter: pinned})`
+    // returns the stale pre-update slice, leaving the plate showing a
+    // now-unpinned message.
+    const peerSearches = this.searchesStorage[peerId];
+    if(peerSearches) {
+      for(const threadKey in peerSearches) {
+        delete peerSearches[threadKey]?.inputMessagesFilterPinned;
+      }
+    }
     this.appStateManager.getState().then((state) => {
       delete state.hiddenPinnedMessages[peerId];
       this.rootScope.dispatchEvent('peer_pinned_messages', {peerId, mids, pinned});

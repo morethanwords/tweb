@@ -15,7 +15,7 @@ import AppSelectPeers from '@components/appSelectPeers';
 import ButtonCorner from '@components/buttonCorner';
 import CheckboxField from '@components/checkboxField';
 import PopupElement from '@components/popups';
-import PopupPickUser from '@components/popups/pickUser';
+import showPickUserPopup from '@components/popups/pickUser';
 import Row from '@components/row';
 import SettingSection from '@components/settingSection';
 import {SliderSuperTabEventable} from '@components/sliderTab';
@@ -33,7 +33,6 @@ export function createSelectorForParticipants(options: ConstructorParameters<typ
     headerSearch: true,
     placeholder: 'SearchPlaceholder',
     meAsSaved: false,
-    noShadow: false,
     onFirstRender: () => {
       deferred.resolve();
     }
@@ -76,18 +75,16 @@ export default class AppChatAdministratorsTab extends SliderSuperTabEventable {
     if(canAddAdmins) this.content.append(this.addBtn);
 
     attachClickEvent(this.addBtn, () => {
-      const popup = PopupElement.createPopup(
-        PopupPickUser,
-        {
-          peerType: ['channelParticipants'],
-          peerId,
-          onSelect: (peerId) => {
-            const participant = popup.selector.participants.get(peerId);
-            openPermissions(participant);
-          },
-          placeholder: 'SearchPlaceholder'
-        }
-      );
+      const popup = showPickUserPopup({
+        titleLangKey: 'Administrators',
+        peerType: ['channelParticipants'],
+        peerId,
+        onSelect: (chosen) => {
+          const participant = popup.selector.participants.get(chosen[0].peerId);
+          openPermissions(participant);
+        },
+        placeholder: 'SearchPlaceholder'
+      });
     }, {listenerSetter: this.listenerSetter});
 
     const openPermissions = async(participant: ChatParticipant | ChannelParticipant) => {

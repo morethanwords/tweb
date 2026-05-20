@@ -1,4 +1,4 @@
-import {createStore, reconcile} from 'solid-js/store';
+import {createStore, reconcile, unwrap} from 'solid-js/store';
 import {ChatFull, UserFull} from '@layer';
 import rootScope from '@lib/rootScope';
 import useDynamicCachedValue from '@helpers/solid/useDynamicCachedValue';
@@ -55,4 +55,9 @@ export function useFullPeer(peerId: PeerId) {
     () => _useFullPeer.name + '-' + peerId,
     () => _useFullPeer(peerId)
   )();
+}
+
+/** Sync read of the cached fullPeer (no fetch, no reactive subscription). */
+export function getCachedFullPeer(peerId: PeerId): PeerFull | undefined {
+  return unwrap(state[peerId]);
 }

@@ -39,21 +39,33 @@ export default function getMarkupInSelection<T extends MarkdownType>(types: T[],
   let nodes = 0, node: Node, textLength = 0;
   while(node = treeWalker.nextNode()) {
     ++nodes;
-    const nodeValueLength = node.nodeValue?.length || 0;
-    textLength += nodeValueLength;
+
+    const element = node.nodeType === node.ELEMENT_NODE ? node as HTMLElement : node.parentElement;
+
+    let value = node.nodeValue;
+    if(!value) {
+      const alt = element.dataset.stickerEmoji || (element as HTMLImageElement).alt;
+      value = alt;
+    }
+
+    const valueLength = value?.length || 0;
+    textLength += valueLength;
     for(const type of types) {
       const tag = markdownTags[type];
-      const _node = node.nodeType === node.ELEMENT_NODE ? node as HTMLElement : node.parentElement;
-      const matches = _node.closest(tag.match);
+      const matches = element.closest(tag.match);
       if(matches) {
-        result[type].elements.push(_node);
-        result[type].textLength += nodeValueLength;
+        result[type].elements.push(element);
+        result[type].textLength += valueLength;
       }
     }
   }
 
   for(const type of types) {
     const item = result[type];
+    if(!item.elements.length) {
+      continue;
+    }
+
     item.elements = filterUnique(item.elements);
     item.fully = item.textLength >= textLength;
     item.partly = !!item.elements.length;

@@ -97,7 +97,7 @@ export default class Shimmer {
     lightLeft = clamp(this.lightSource - this.lightSpread, 0, 1);
     lightRight = clamp(this.lightSource + this.lightSpread, 0, 1);
 
-    const backgroundColor = customProperties.getProperty('background-color-true', this.night);
+    const backgroundColor = customProperties.getProperty('background-color', this.night);
     const shimmerColor = customProperties.getProperty('surface-color', this.night);
     gradient.addColorStop(lightLeft, backgroundColor);
     gradient.addColorStop(lightCenter, shimmerColor);

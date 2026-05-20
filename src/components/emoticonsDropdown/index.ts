@@ -125,12 +125,15 @@ export class EmoticonsDropdown extends DropdownHover {
 
   public isStandalone: boolean;
 
+  public animationGroup: AnimationItemGroup;
+
   constructor(options: {
-    customParentElement?: HTMLElement,
+    customParentElement?: HTMLElement | (() => HTMLElement),
     // customAnchorElement?: HTMLElement,
     getOpenPosition?: () => DOMRectEditable,
     tabsToRender?: EmoticonsTab[],
     customOnSelect?: (emoji: {element: HTMLElement} & ReturnType<typeof getEmojiFromElement>) => void,
+    animationGroup?: AnimationItemGroup
   } = {}) {
     super({
       element: renderEmojiDropdownElement(),
@@ -142,7 +145,8 @@ export class EmoticonsDropdown extends DropdownHover {
 
     this.listenerSetter = new ListenerSetter();
     this.isStandalone = !!options?.tabsToRender;
-    this.element.classList.toggle('is-standalone', this.isStandalone)
+    this.element.classList.toggle('is-standalone', this.isStandalone);
+    this.animationGroup = options.animationGroup || EMOTICONSSTICKERGROUP;
 
     this.rights = {
       send_gifs: undefined,
@@ -170,7 +174,9 @@ export class EmoticonsDropdown extends DropdownHover {
       } */
 
       if(options.customParentElement) {
-        options.customParentElement.append(this.element);
+        const c = options.customParentElement;
+        const parent = typeof(c) === 'function' ? c() : c;
+        parent.append(this.element);
       } else if(this.element.parentElement !== this.chatInput.chatInput) {
         this.chatInput.chatInput.append(this.element);
       }
@@ -179,14 +185,14 @@ export class EmoticonsDropdown extends DropdownHover {
 
       this.lazyLoadQueue.lock();
       // this.lazyLoadQueue.unlock();
-      animationIntersector.lockIntersectionGroup(EMOTICONSSTICKERGROUP);
+      animationIntersector.lockIntersectionGroup(this.animationGroup);
 
       const tab = this.tab;
       tab.onOpen?.();
     });
 
     this.addEventListener('opened', () => {
-      animationIntersector.unlockIntersectionGroup(EMOTICONSSTICKERGROUP);
+      animationIntersector.unlockIntersectionGroup(this.animationGroup);
       this.lazyLoadQueue.unlockAndRefresh();
 
       // this.container.classList.remove('disable-hover');
@@ -205,8 +211,8 @@ export class EmoticonsDropdown extends DropdownHover {
       this.lazyLoadQueue.lock();
 
       // нужно залочить группу и выключить стикеры
-      animationIntersector.lockIntersectionGroup(EMOTICONSSTICKERGROUP);
-      animationIntersector.checkAnimations(true, EMOTICONSSTICKERGROUP);
+      animationIntersector.lockIntersectionGroup(this.animationGroup);
+      animationIntersector.checkAnimations(true, this.animationGroup);
 
       const tab = this.tab;
       tab.onClose?.();
@@ -214,7 +220,7 @@ export class EmoticonsDropdown extends DropdownHover {
 
     this.addEventListener('closed', () => {
       // теперь можно убрать visible, чтобы они не включились после фокуса
-      animationIntersector.unlockIntersectionGroup(EMOTICONSSTICKERGROUP);
+      animationIntersector.unlockIntersectionGroup(this.animationGroup);
       this.lazyLoadQueue.unlock();
       this.lazyLoadQueue.refresh();
 
@@ -286,7 +292,7 @@ export class EmoticonsDropdown extends DropdownHover {
     this.selectTab = horizontalMenu(this.tabsEl, this.container, this.onSelectTabClick, () => {
       const {tab} = this;
       tab.init?.();
-      animationIntersector.checkAnimations(false, EMOTICONSSTICKERGROUP);
+      animationIntersector.checkAnimations(false, this.animationGroup);
     });
 
     this.searchButton = this.element.querySelector('.emoji-tabs-search');
@@ -448,7 +454,7 @@ export class EmoticonsDropdown extends DropdownHover {
       return false;
     }
 
-    animationIntersector.checkAnimations(true, EMOTICONSSTICKERGROUP);
+    animationIntersector.checkAnimations(true, this.animationGroup);
 
     this.tabId = id;
     this.searchButton.classList.toggle('hide', this.tabId === this.getTab(EmojiTab)?.tabId);

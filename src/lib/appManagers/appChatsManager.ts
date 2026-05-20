@@ -663,10 +663,12 @@ export class AppChatsManager extends AppManager {
     this.onChatUpdatedForce(id, updates);
   }
 
-  public editPhoto(id: ChatId, inputFile: InputFile) {
-    const inputChatPhoto: InputChatPhoto = {
+  public editPhoto(id: ChatId, inputFile?: InputFile) {
+    const inputChatPhoto: InputChatPhoto = inputFile ? {
       _: 'inputChatUploadedPhoto',
       file: inputFile
+    } : {
+      _: 'inputChatPhotoEmpty'
     };
 
     let promise: any;

@@ -553,7 +553,10 @@ export default class FiltersStorage extends AppManager {
     }
 
     const limit = await this.apiManager.getLimit('folders');
-    const isFolderAvailable = this.filtersArr.filter((filter) => !REAL_FOLDERS.has(filter.id)).slice(0, limit).some((filter) => filter.id === filterId);
+    const isFolderAvailable = this.filtersArr
+    .filter((filter) => !REAL_FOLDERS.has(filter.id))
+    .slice(0, limit)
+    .some((filter) => filter.id === filterId);
 
     return isFolderAvailable;
   }

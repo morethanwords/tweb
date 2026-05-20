@@ -4,18 +4,18 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import {createEffect, createRoot} from 'solid-js';
 import appImManager from '@lib/appImManager';
 import rootScope from '@lib/rootScope';
-import {SearchGroup} from '@components/appSearch';
+import {createSearchGroup, SearchGroup} from '@components/searchGroup';
 import Scrollable, {ScrollableX} from '@components/scrollable';
 import InputSearch from '@components/inputSearch';
 import SidebarSlider, {SliderSuperTab} from '@components/slider';
 import TransitionSlider from '@components/transition';
-import AppNewGroupTab from '@components/sidebarLeft/tabs/newGroup';
 import AppSearchSuper, {SearchSuperMediaType} from '@components/appSearchSuper';
 import {DateData, fillTipDates} from '@helpers/date';
 import {MOUNT_CLASS_TO} from '@config/debug';
-import AppSettingsTab from '@components/sidebarLeft/tabs/settings';
+import {AppSettingsTab} from '@components/solidJsTabs';
 import AppNewChannelTab from '@components/sidebarLeft/tabs/newChannel';
 import AppContactsTab from '@components/sidebarLeft/tabs/contacts';
 import AppArchivedTab from '@components/sidebarLeft/tabs/archivedTab';
@@ -32,20 +32,21 @@ import sessionStorage from '@lib/sessionStorage';
 import {attachClickEvent, CLICK_EVENT_NAME, simulateClickEvent} from '@helpers/dom/clickEvent';
 import ButtonIcon from '@components/buttonIcon';
 import confirmationPopup from '@components/confirmationPopup';
-import type SortedUserList from '@components/sortedUserList';
-import Button, {ButtonOptions, replaceButtonIcon} from '@components/button';
+import {replaceButtonIcon} from '@components/button';
 import noop from '@helpers/noop';
 import ripple from '@components/ripple';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
+import ListenerSetter from '@helpers/listenerSetter';
 import formatNumber from '@helpers/number/formatNumber';
 import {AppManagers} from '@lib/managers';
 import themeController from '@helpers/themeController';
 import contextMenuController from '@helpers/contextMenuController';
 import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG} from '@lib/appDialogsManager';
 import apiManagerProxy from '@lib/apiManagerProxy';
-import SettingSection, {SettingSectionOptions} from '@components/settingSection';
 import {FOLDER_ID_ARCHIVE, TEST_NO_STORIES} from '@appManagers/constants';
 import mediaSizes from '@helpers/mediaSizes';
+import updateColumnWidths, {setOpenTabsLeftSidebar} from '@helpers/updateColumnWidths';
+import installColumnResize from '@helpers/installColumnResize';
 import {doubleRaf, fastRaf} from '@helpers/schedulers';
 import {getInstallPrompt} from '@helpers/dom/installPrompt';
 import liteMode from '@helpers/liteMode';
@@ -58,6 +59,7 @@ import createBadge from '@helpers/createBadge';
 import {MyDocument} from '@appManagers/appDocsManager';
 import getAttachMenuBotIcon from '@appManagers/utils/attachMenuBots/getAttachMenuBotIcon';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import wrapUrl from '@lib/richTextProcessor/wrapUrl';
 import flatten from '@helpers/array/flatten';
 import {AttachMenuBot, EmojiStatus, User} from '@layer';
 import {Middleware, MiddlewareHelper} from '@helpers/middleware';
@@ -76,11 +78,8 @@ import pause from '@helpers/schedulers/pause';
 import AccountsLimitPopup from '@components/sidebarLeft/accountsLimitPopup';
 import {changeAccount} from '@lib/accounts/changeAccount';
 import uiNotificationsManager from '@lib/uiNotificationsManager';
-import {FoldersSidebarControls, renderFoldersSidebarContent} from '@components/sidebarLeft/foldersSidebarContent';
+import {renderFoldersSidebarContent} from '@components/sidebarLeft/foldersSidebarContent';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
-import SwipeHandler, {getEvent} from '@components/swipeHandler';
-import clamp from '@helpers/number/clamp';
-import throttle from '@helpers/schedulers/throttle';
 import AppChatFoldersTab from '@components/sidebarLeft/tabs/chatFolders';
 import {SliderSuperTabConstructable} from '@components/sliderTab';
 import SettingsSliderPopup from '@components/sidebarLeft/settingsSliderPopup';
@@ -91,16 +90,18 @@ import {toastNew} from '@components/toast';
 import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
 import EncryptionKeyStore from '@lib/passcode/keyStore';
 import createLockButton from '@components/sidebarLeft/lockButton';
-import {MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, SIDEBAR_COLLAPSE_FACTOR} from '@components/sidebarLeft/constants';
 import createSubmenuTrigger, {CreateSubmenuArgs} from '@components/createSubmenuTrigger';
 import ChatTypeMenu from '@components/chatTypeMenu';
 import {RequestHistoryOptions} from '@appManagers/appMessagesManager';
 import EmptySearchPlaceholder from '@components/emptySearchPlaceholder';
-import useHasFoldersSidebar, {useIsSidebarCollapsed} from '@stores/foldersSidebar';
+import useHasFoldersSidebar, {
+  useIsSidebarCollapsed,
+  useHasOpenLeftTabs,
+  useIsLeftSearchActive
+} from '@stores/foldersSidebar';
 import isObject from '@helpers/object/isObject';
 import {useAppSettings} from '@stores/appSettings';
 import {openEmojiStatusPicker} from '@components/sidebarLeft/emojiStatusPicker';
-import {animateValue} from '@helpers/animateValue';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -127,15 +128,18 @@ export class AppSidebarLeft extends SidebarSlider {
   private searchGroups: {[k in 'contacts' | 'globalContacts' | 'messages' | 'people' | 'recent']: SearchGroup} = {} as any;
   public searchSuper: AppSearchSuper;
   private searchInitResult: SearchInitResult;
-  private isSearchActive = false;
+  private get isSearchActive() {
+    return useIsLeftSearchActive()[0]();
+  }
+  private set isSearchActive(value: boolean) {
+    useIsLeftSearchActive()[1](value);
+  }
   private searchTriggerWhenCollapsed: HTMLElement;
 
   private updateBtn: HTMLElement;
   private hasUpdate: boolean;
 
   private onResize: () => void;
-
-  public foldersSidebarControls: FoldersSidebarControls;
 
   constructor() {
     super({
@@ -146,7 +150,6 @@ export class AppSidebarLeft extends SidebarSlider {
 
   construct(managers: AppManagers) {
     this.managers = managers;
-    // this._selectTab(0); // make first tab as default
 
     this.chatListContainer = document.getElementById('chatlist-container');
     this.inputSearch = new InputSearch({oldStyle: true});
@@ -154,19 +157,26 @@ export class AppSidebarLeft extends SidebarSlider {
     const sidebarHeader = this.sidebarEl.querySelector('.item-main .sidebar-header');
     sidebarHeader.append(this.inputSearch.container);
 
-    // this.toolsBtn = this.sidebarEl.querySelector('.sidebar-tools-button') as HTMLButtonElement;
     this.backBtn = this.sidebarEl.querySelector('.sidebar-back-button') as HTMLButtonElement;
 
     this.toolsBtn = this.createToolsMenu();
-    this.toolsBtn.classList.add('sidebar-tools-button', 'is-visible');
+    // .is-visible is owned by the Solid effect below (see "burger element
+    // has two visual states") — don't seed it here.
+    this.toolsBtn.classList.add('sidebar-tools-button');
     this.totalNotificationsCount = createBadge('span', 20, 'primary');
     this.totalNotificationsCount.classList.add('sidebar-tools-button-notifications');
     this.totalNotificationsCountSidebar = this.totalNotificationsCount.cloneNode(true) as HTMLElement;
     this.toolsBtn.append(this.totalNotificationsCount);
 
     const mainMiddleware = this.middlewareHelper.get();
-    const foldersSidebar = document.getElementById('folders-sidebar');
-    this.foldersSidebarControls = renderFoldersSidebarContent(foldersSidebar, this.totalNotificationsCountSidebar, SolidJSHotReloadGuardProvider, mainMiddleware);
+    // renderFoldersSidebarContent creates the #folders-sidebar element
+    // itself and inserts it as the first child of #main-columns.
+    renderFoldersSidebarContent(
+      document.getElementById('main-columns'),
+      this.totalNotificationsCountSidebar,
+      SolidJSHotReloadGuardProvider,
+      mainMiddleware
+    );
 
     // If it has z-index to early, the browser makes it shift a few times before showing it properly in its position (on very large screens)
     // Doesn't solve the blinking, which doesn't seem to appear when the project is built
@@ -349,12 +359,12 @@ export class AppSidebarLeft extends SidebarSlider {
     }
 
     this.onResize = () => {
-      const rect = this.rect = this.tabsContainer.getBoundingClientRect();
-      document.documentElement.style.setProperty('--left-column-width', rect.width + 'px');
+      this.rect = this.tabsContainer.getBoundingClientRect();
+      updateColumnWidths();
     };
 
     fastRaf(this.onResize);
-    mediaSizes.addEventListener('resize', this.onResize);
+    // mediaSizes.resize subscription happens inside installColumnWidthsUpdater().
 
     this.searchTriggerWhenCollapsed = document.createElement('div');
     this.searchTriggerWhenCollapsed.className = 'sidebar-header-search-trigger';
@@ -364,6 +374,48 @@ export class AppSidebarLeft extends SidebarSlider {
     });
 
     this.buttonsContainer.parentElement.prepend(this.searchTriggerWhenCollapsed);
+
+    // Visibility lives in JS — drives the `.is-visible` class from the
+    // signals that decide whether the icon-only search affordance should
+    // be shown. The CSS only reads that class, no body/parent-selector
+    // cascades.
+    createRoot(() => {
+      const [hasFoldersSidebar] = useHasFoldersSidebar();
+      const [isCollapsed] = useIsSidebarCollapsed();
+      const [hasOpenLeftTabs] = useHasOpenLeftTabs();
+      createEffect(() => {
+        const visible =
+          hasFoldersSidebar() &&
+          isCollapsed() &&
+          !hasOpenLeftTabs();
+        this.searchTriggerWhenCollapsed.classList.toggle('is-visible', visible);
+      });
+    });
+
+    // The burger element has two visual states: the three-line menu icon (a
+    // click on it opens the burger menu) and the back arrow (a click on it
+    // closes the open search). Three classes encode that state — toolsBtn /
+    // backBtn `.is-visible` (which click target is active) and the animated
+    // icon's `.state-back` (which shape it renders as). They all flow from
+    // the same condition, so a single Solid effect owns the truth:
+    //
+    //   showBack = useHasFoldersSidebar OR useIsLeftSearchActive
+    //
+    // When the folders panel is shown it has its own menu trigger, so the
+    // in-sidebar burger never serves as a menu — it stays in back state
+    // regardless of search activity. Without folders sidebar, back state
+    // follows the search-active signal.
+    createRoot(() => {
+      const [hasFoldersSidebar] = useHasFoldersSidebar();
+      const [isLeftSearchActive] = useIsLeftSearchActive();
+      const animatedMenuIcon = this.buttonsContainer.firstElementChild as HTMLElement;
+      createEffect(() => {
+        const showBack = hasFoldersSidebar() || isLeftSearchActive();
+        this.toolsBtn.classList.toggle('is-visible', !showBack);
+        this.backBtn.classList.toggle('is-visible', showBack);
+        animatedMenuIcon.classList.toggle('state-back', showBack);
+      });
+    });
 
     const sidebarOverlay = document.querySelector('.sidebar-left-overlay');
     sidebarOverlay.addEventListener('click', () => {
@@ -410,6 +462,10 @@ export class AppSidebarLeft extends SidebarSlider {
   }
 
   public isCollapsed() {
+    // In the floating range the bar is always rendered expanded — the
+    // is-collapsed class is preserved as the remembered preference for
+    // wider viewports, but every consumer should see "not collapsed".
+    if(mediaSizes.isLessThanFloatingLeftSidebar) return false;
     return this.sidebarEl.classList.contains('is-collapsed');
   }
 
@@ -443,7 +499,7 @@ export class AppSidebarLeft extends SidebarSlider {
   }
 
   private isAnimatingCollapse = false;
-  private onSomethingOpenInsideChange = (closingSearch = false, force = false) => {
+  private onSomethingOpenInsideChange = (force = false) => {
     const wasFloating = this.sidebarEl.classList.contains('has-open-tabs');
     const isFloating = force || this.hasSomethingOpenInside();
     const isCollapsed = this.isCollapsed();
@@ -451,8 +507,15 @@ export class AppSidebarLeft extends SidebarSlider {
     this.sidebarEl.classList.toggle('has-open-tabs', isFloating);
     this.sidebarEl.classList.toggle('has-real-tabs', this.hasTabsInNavigation());
     this.sidebarEl.classList.toggle('has-forum-open', !!appDialogsManager.forumTab);
+    useHasOpenLeftTabs()[1](isFloating);
 
-    const sidebarPlaceholder = document.querySelector('.sidebar-left-placeholder');
+    // Keep the pop-out flag in sync with the actual tabs state regardless of
+    // the early-return paths below. If we only set it inside the
+    // isFloating/!isFloating branches, opening a tab from an expanded sidebar
+    // and then closing it would leave the flag stuck at true — and a later
+    // collapse via the resize handle would render at default width instead of
+    // SIDEBAR_COLLAPSED_WIDTH.
+    setOpenTabsLeftSidebar(isFloating);
 
     if(!isCollapsed && !this.hasSomethingOpenInside()) {
       pause(300).then(() => {
@@ -465,10 +528,14 @@ export class AppSidebarLeft extends SidebarSlider {
     if(wasFloating === isFloating) return;
 
 
-    const WIDTH_WHEN_COLLAPSED = 80;
-    const FULL_WIDTH = 420;
+    // Width is animated by CSS (transition on #column-left.is-collapsed
+    // width). The numbers below define how long we hold the auxiliary
+    // class state — they must match the layer-transition duration the CSS
+    // rule uses (currently 200ms).
     const ANIMATION_TIME = 200;
-    // Need to wait until the sliding animation is finished, this one needs to be faster to avoid random layout shifting
+    // Wait a touch longer than the width transition before removing the
+    // force-* classes so child layouts don't shift while the bar is still
+    // visually resizing.
     const DELAY_AFTER_ANIMATION = 150;
 
     if(isFloating) {
@@ -480,64 +547,37 @@ export class AppSidebarLeft extends SidebarSlider {
       !this.isSearchActive && this.sidebarEl.classList.add('force-hide-search');
 
       this.isAnimatingCollapse = true;
-      animateValue(WIDTH_WHEN_COLLAPSED, FULL_WIDTH, ANIMATION_TIME, (value) => {
-        this.sidebarEl.style.setProperty('--sidebar-left-width-when-collapsed', value + 'px');
-      }, {
-        onEnd: async() => {
-          await pause(DELAY_AFTER_ANIMATION);
-          this.isAnimatingCollapse = false;
-          this.sidebarEl.style.removeProperty('--sidebar-left-width-when-collapsed');
-          this.sidebarEl.classList.remove(
-            'force-hide-large-content',
-            'force-hide-menu',
-            'force-hide-search',
-            'force-chatlist-thin'
-          );
-        }
+      pause(ANIMATION_TIME + DELAY_AFTER_ANIMATION).then(() => {
+        this.isAnimatingCollapse = false;
+        this.sidebarEl.classList.remove(
+          'force-hide-large-content',
+          'force-hide-menu',
+          'force-hide-search',
+          'force-chatlist-thin'
+        );
       });
       if(!appDialogsManager.forumTab)
         appDialogsManager.xd?.toggleAvatarUnreadBadges(false, undefined);
     } else {
-      const [hasFoldersSidebar] = useHasFoldersSidebar();
-
-      sidebarPlaceholder.classList.add('keep-active');
       this.sidebarEl.classList.add(
         'force-fixed',
         'hide-add-folders',
         'force-chatlist-thin'
       );
-      closingSearch && this.sidebarEl.classList.add('animate-search-out');
-
-      this.buttonsContainer.classList.add('force-static', 'is-visible');
-      closingSearch && hasFoldersSidebar() && this.toolsBtn.parentElement.firstElementChild.classList.add('state-back');
 
       this.isAnimatingCollapse = true;
-      animateValue(FULL_WIDTH, WIDTH_WHEN_COLLAPSED, ANIMATION_TIME, (value) => {
-        this.sidebarEl.style.setProperty('--sidebar-left-width-when-collapsed', value + 'px');
-      }, {
-        onEnd: async() => {
-          await pause(DELAY_AFTER_ANIMATION);
-          this.sidebarEl.style.removeProperty('--sidebar-left-width-when-collapsed');
-          this.sidebarEl.classList.remove(
-            'force-fixed',
-            'hide-add-folders',
-            'animate-search-out',
-            'force-chatlist-thin'
-          );
-          sidebarPlaceholder.classList.remove('keep-active');
+      pause(ANIMATION_TIME + DELAY_AFTER_ANIMATION).then(() => {
+        this.sidebarEl.classList.remove(
+          'force-fixed',
+          'hide-add-folders',
+          'force-chatlist-thin'
+        );
 
-          appDialogsManager.xd.toggleAvatarUnreadBadges(true, undefined);
-          this.buttonsContainer.classList.remove('force-static');
-          this.buttonsContainer.classList.remove('is-visible');
-          this.buttonsContainer.style.transition = 'none';
+        appDialogsManager.xd.toggleAvatarUnreadBadges(true, undefined);
 
-          pause(200).then(() => {
-            this.buttonsContainer.style.removeProperty('transition');
-            this.isAnimatingCollapse = false;
-            if(this.isSearchActive) return;
-            this.toolsBtn.parentElement.firstElementChild.classList.toggle('state-back', false);
-          });
-        }
+        pause(200).then(() => {
+          this.isAnimatingCollapse = false;
+        });
       });
     }
   }
@@ -562,57 +602,24 @@ export class AppSidebarLeft extends SidebarSlider {
       this.onSomethingOpenInsideChange();
     }
 
-    const rightBorder = document.createElement('div');
-    rightBorder.classList.add('sidebar-right-border');
-
-    const resizeHandle = document.createElement('div');
-    resizeHandle.classList.add('sidebar-resize-handle');
-
-    this.sidebarEl.append(rightBorder, resizeHandle);
-
-    const throttledSetToStorage = throttle((width: number) => {
-      localStorage.setItem('sidebar-left-width', width + '');
-    }, 200);
-
-    new SwipeHandler({
-      element: resizeHandle,
-      setCursorTo: document.body,
-      onStart: () => {
-        resizeHandle.classList.add('is-active');
-        document.body.classList.add('resizing-left-sidebar');
+    installColumnResize({
+      columnEl: this.sidebarEl,
+      side: 'left',
+      isCollapsed: () => this.isCollapsed(),
+      setCollapsed: (collapsed) => {
+        // Drag only fires off-handheld (the resize handle is display:none
+        // at handheld), so the raw drag value is already the effective
+        // one — push it into the signal and the mirror effect in
+        // setSidebarLeftWidth (index.ts) toggles #column-left.is-collapsed.
+        useIsSidebarCollapsed()[1](collapsed);
       },
-      onSwipe: (_, __, _e) => {
-        const e = getEvent(_e);
-        const rect = this.sidebarEl.getBoundingClientRect();
-
-        const width = Math.round(e.clientX - rect.left);
-        const clampedWidth = clamp(width % 2 ? width + 1 : width, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH);
-
-        document.documentElement.style.setProperty('--current-sidebar-left-width', clampedWidth + 'px');
-        this.onResize();
-        rootScope.dispatchEvent('resizing_left_sidebar');
-
-        const wasCollapsed = this.isCollapsed();
-        const isCollapsed = !this.hasSomethingOpenInside() && width < MIN_SIDEBAR_WIDTH * SIDEBAR_COLLAPSE_FACTOR;
-        this.sidebarEl.classList.toggle('is-collapsed', isCollapsed);
-        useIsSidebarCollapsed()[1](isCollapsed);
-
-        if(isCollapsed !== wasCollapsed)
-          this.onCollapsedChange(true);
-
-        appImManager.adjustChatPatternBackground();
-
-
-        throttledSetToStorage(isCollapsed ? 0 : clampedWidth);
-      },
-      onReset: () => {
-        resizeHandle.classList.remove('is-active');
-        document.body.classList.remove('resizing-left-sidebar');
-      }
-    })
+      onCollapsedChange: () => this.onCollapsedChange(true),
+      preventCollapse: () => this.hasSomethingOpenInside(),
+      onSwipeTick: () => appImManager.adjustChatPatternBackground()
+    });
   }
 
-  public createToolsMenu(mountTo?: HTMLElement) {
+  public createToolsMenu(mountTo?: HTMLElement, positionPadding?: Parameters<typeof ButtonMenuToggle>[0]['positionPadding']) {
     const closeTabsBefore = async(clb: () => void) => {
       this.closeEverythingInside() && await pause(200);
 
@@ -706,6 +713,7 @@ export class AppSidebarLeft extends SidebarSlider {
       direction: 'bottom-right',
       buttons: filteredButtons,
       container: mountTo,
+      positionPadding,
       onOpenBefore: async() => {
         const emptyAttachMenuBots: AttachMenuBot[] = [];
         const attachMenuBots = await Promise.race([
@@ -1021,7 +1029,8 @@ export class AppSidebarLeft extends SidebarSlider {
     const btnMenu = ButtonMenuToggle({
       direction: 'top-left',
       buttons: this.createNewChatsMenuOptions(false),
-      noIcon: true
+      noIcon: true,
+      positionPadding: {bottom: 10}
     });
     btnMenu.className = 'btn-new-menu btn-circle rp btn-corner z-depth-1 btn-menu-toggle animated-button-icon';
     btnMenu.tabIndex = -1;
@@ -1046,17 +1055,17 @@ export class AppSidebarLeft extends SidebarSlider {
     const scrollable = new Scrollable(searchContainer);
 
     const close = () => {
-      // setTimeout(() => {
       simulateClickEvent(this.backBtn);
-      // }, 0);
     };
 
+    const searchListenerSetter = new ListenerSetter();
+    const middleware = this.middlewareHelper.get();
     this.searchGroups = {
-      contacts: new SearchGroup('SearchAllChatsShort', 'contacts', undefined, undefined, undefined, undefined, close),
-      globalContacts: new SearchGroup('GlobalSearch', 'contacts', undefined, undefined, undefined, undefined, close),
-      messages: new SearchGroup('SearchMessages', 'messages'),
-      people: new SearchGroup(false, 'contacts', true, 'search-group-people', true, false, close, true),
-      recent: new SearchGroup('Recent', 'contacts', true, 'search-group-recent', true, true, close)
+      contacts: createSearchGroup({name: 'SearchAllChatsShort', type: 'contacts', onFound: close, middleware}),
+      globalContacts: createSearchGroup({name: 'GlobalSearch', type: 'contacts', onFound: close, middleware}),
+      messages: createSearchGroup({name: 'SearchMessages', type: 'messages', middleware}),
+      people: createSearchGroup({name: false, type: 'contacts', className: 'search-group-people', autonomous: false, onFound: close, noIcons: true, middleware, scrollableX: true}),
+      recent: createSearchGroup({name: 'Recent', type: 'contacts', className: 'search-group-recent', onFound: close, middleware})
     };
 
     this.searchGroups.messages.createPlaceholder = () => {
@@ -1072,15 +1081,15 @@ export class AppSidebarLeft extends SidebarSlider {
       return placeholder;
     };
 
-    const chatTypeMenu = new ChatTypeMenu;
+    const chatTypeMenu = new ChatTypeMenu();
     chatTypeMenu.feedProps({
       onChange: (chatType) => void updateSearchQuery({search: this.inputSearch.value, chatType}),
       selected: 'all'
     });
 
-    this.searchGroups.messages.nameEl.append(chatTypeMenu);
-
-    // bots.getPopularAppBots
+    this.searchGroups.messages.setNameRight({
+      children: chatTypeMenu
+    });
 
     const searchSuper = this.searchSuper = new AppSearchSuper({
       mediaTabs: [{
@@ -1122,10 +1131,11 @@ export class AppSidebarLeft extends SidebarSlider {
       asChatList: true,
       hideEmptyTabs: false,
       showSender: true,
-      managers: this.managers
+      managers: this.managers,
+      scrollOffset: 16
     });
 
-    let prevTab: SearchSuperMediaType
+    let prevTab: SearchSuperMediaType;
     searchSuper.onChangeTab = (tab) => {
       if(prevTab === 'posts') {
         simulateClickEvent(this.inputSearch.clearBtn);
@@ -1138,9 +1148,8 @@ export class AppSidebarLeft extends SidebarSlider {
       }
     };
 
-    this.watchChannelsTabVisibility();
+    this.watchChannelsTabVisibility(searchListenerSetter);
 
-    searchContainer.prepend(searchSuper.nav.parentElement.parentElement);
     scrollable.append(searchSuper.container);
 
     const resetSearch = () => {
@@ -1189,6 +1198,7 @@ export class AppSidebarLeft extends SidebarSlider {
         return;
       }
 
+      target.classList.remove('selector-user-primary');
       const key = target.dataset.key;
       if(key.indexOf('date_') === 0) {
         const [_, minDate, maxDate] = key.split('_');
@@ -1216,7 +1226,8 @@ export class AppSidebarLeft extends SidebarSlider {
         title,
         middleware: helperMiddlewareHelper.get(),
         avatarSize: 30,
-        fallbackIcon: 'calendarfilter'
+        fallbackIcon: 'calendarfilter',
+        primary: true
       }).element;
     };
 
@@ -1262,6 +1273,17 @@ export class AppSidebarLeft extends SidebarSlider {
         chatTypeMenu.props.selected = 'all';
       }
       updateSearchQuery({search: value, chatType: chatTypeMenu.props.selected});
+    };
+
+    this.inputSearch.onEnter = (value) => {
+      const trimmed = value.trim();
+      if(!trimmed) return;
+      const wrapped = wrapUrl(trimmed);
+      if(!wrapped.onclick) return;
+      this.inputSearch.value = '';
+      this.inputSearch.onChange?.('');
+      simulateClickEvent(this.backBtn);
+      appImManager.openUrl(trimmed);
     };
 
     type UpdateSearchQueryArgs = {
@@ -1339,19 +1361,38 @@ export class AppSidebarLeft extends SidebarSlider {
       this.managers.appUsersManager.pushRecentSearch(peerId);
     }, {capture: true});
 
-    const peopleContainer = document.createElement('div');
-    peopleContainer.classList.add('search-group-scrollable');
-    peopleContainer.append(this.searchGroups.people.list);
-    this.searchGroups.people.container.append(peopleContainer);
-    const peopleScrollable = new ScrollableX(peopleContainer);
-
     let first = true;
     let hideNewBtnMenuTimeout: number;
     // const transition = Transition.bind(null, searchContainer.parentElement, 150);
+    const cleanup = () => {
+      pickedElements.forEach((el) => {
+        el.middlewareHelper.destroy();
+        el.remove();
+      });
+      pickedElements.length = 0;
+
+      this.inputSearch.value = '';
+      this.inputSearch.container.classList.remove('is-picked', 'is-picked-twice');
+      this.inputSearch.input.style.removeProperty('--paddingLeft');
+      this.inputSearch.onChange = undefined;
+      this.inputSearch.onClear = undefined;
+
+      searchSuper.destroy();
+      helperMiddlewareHelper.destroy();
+      searchContainer.replaceChildren();
+      searchListenerSetter.removeAll();
+
+      this.searchInitResult = undefined;
+      this.searchSuper = undefined;
+
+      this.inputSearch.input.addEventListener('focus', () => this.initSearch(), {once: true});
+    };
+
     const transition = TransitionSlider({
       content: searchContainer.parentElement,
       type: 'zoom-fade',
       transitionTime: 150,
+      listenerSetter: searchListenerSetter,
       onTransitionStart: (id) => {
         searchContainer.parentElement.parentElement.classList.toggle('is-search-active', id === 1);
       },
@@ -1359,8 +1400,7 @@ export class AppSidebarLeft extends SidebarSlider {
         if(hideNewBtnMenuTimeout) clearTimeout(hideNewBtnMenuTimeout);
 
         if(id === 0 && !first) {
-          searchSuper.selectTab(0, false);
-          this.inputSearch.onClearClick();
+          cleanup();
           hideNewBtnMenuTimeout = window.setTimeout(() => {
             hideNewBtnMenuTimeout = 0;
             this.newBtnMenu.classList.remove('is-hidden');
@@ -1374,13 +1414,12 @@ export class AppSidebarLeft extends SidebarSlider {
 
     transition(0);
 
-    const activeClassName = 'is-visible';
     const onFocus = () => {
-      this.toolsBtn.classList.remove(activeClassName);
-      this.backBtn.classList.add(activeClassName);
+      // toolsBtn/backBtn `.is-visible` and the animated icon's `.state-back`
+      // are owned by the Solid effect in init() — flipping `isSearchActive`
+      // below propagates to all three classes.
       this.newBtnMenu.classList.add('is-hidden');
       this.updateBtn.classList.add('is-hidden');
-      this.toolsBtn.parentElement.firstElementChild.classList.toggle('state-back', true);
 
       const navigationType: NavigationItem['type'] = 'global-search';
       if(!IS_MOBILE_SAFARI && !appNavigationController.findItemByType(navigationType)) {
@@ -1395,53 +1434,68 @@ export class AppSidebarLeft extends SidebarSlider {
 
       transition(1);
 
+      // Decide whether the burger should grow/shrink with a transition.
+      // Only set it on the first focus of this open cycle — re-focusing the
+      // input while search is already open would otherwise see the burger's
+      // own `.is-visible` and flip the flag off, breaking the close
+      // animation. Driven structurally off the search trigger's class
+      // because the user prefers checking button presence over proxying
+      // through `.is-collapsed`.
+      if(!this.buttonsContainer.classList.contains('is-visible')) {
+        const triggerIsVisible = this.searchTriggerWhenCollapsed.classList.contains('is-visible');
+        this.buttonsContainer.classList.toggle('appear-animated', !triggerIsVisible);
+      }
+
       this.buttonsContainer.classList.add('is-visible');
       this.isSearchActive = true;
       this.onSomethingOpenInsideChange();
     };
 
-    this.inputSearch.input.addEventListener('focus', onFocus);
+    searchListenerSetter.add(this.inputSearch.input)('focus', onFocus);
     onFocus();
 
     attachClickEvent(this.backBtn, (e) => {
-      this.toolsBtn.classList.add(activeClassName);
-      this.backBtn.classList.remove(activeClassName);
-      this.toolsBtn.parentElement.firstElementChild.classList.toggle('state-back', false);
-
+      // Burger state classes flip back when `isSearchActive` becomes false
+      // — see the init() effect that owns toolsBtn/backBtn/state-back.
       appNavigationController.removeByType('global-search');
 
       transition(0);
       this.buttonsContainer.classList.remove('is-visible');
       this.isSearchActive = false;
-      this.onSomethingOpenInsideChange(true);
+      this.onSomethingOpenInsideChange();
 
       chatTypeMenu.props.selected = 'all';
+    }, {listenerSetter: searchListenerSetter});
+
+    this.searchGroups.recent.setNameRight({
+      onClick: () => {
+        confirmationPopup({
+          descriptionLangKey: 'Search.Confirm.ClearHistory',
+          button: {
+            langKey: 'ClearButton',
+            isDanger: true
+          }
+        }).then(() => {
+          return this.managers.appUsersManager.clearRecentSearch().then(() => {
+            this.searchGroups.recent.clear();
+          });
+        });
+      },
+      children: i18n('ClearRecentSearch')
     });
 
-    const clearRecentSearchBtn = ButtonIcon('close');
-    this.searchGroups.recent.nameEl.append(clearRecentSearchBtn);
-    clearRecentSearchBtn.addEventListener('click', () => {
-      confirmationPopup({
-        descriptionLangKey: 'Search.Confirm.ClearHistory',
-        button: {
-          langKey: 'ClearButton',
-          isDanger: true
-        }
-      }).then(() => {
-        return this.managers.appUsersManager.clearRecentSearch().then(() => {
-          this.searchGroups.recent.clear();
-        });
-      });
-    });
+    const focusInput = () => {
+      this.inputSearch.input.focus({preventScroll: true});
+    };
 
     return this.searchInitResult = {
       open: (focus = true) => {
         onFocus();
-        focus && this.inputSearch.input.focus();
+        if(focus) focusInput();
       },
       openWithPeerId: (peerId: PeerId) => {
         onFocus();
-        this.inputSearch.input.focus();
+        focusInput();
 
         selectedPeerId = peerId;
 
@@ -1465,26 +1519,29 @@ export class AppSidebarLeft extends SidebarSlider {
     };
   }
 
-  private async watchChannelsTabVisibility() {
+  private async watchChannelsTabVisibility(listenerSetter: ListenerSetter) {
     const checkChannelsVisiblity = async() => {
+      if(!this.searchSuper) return;
       const dialogs = await this.managers.dialogsStorage.getCachedDialogs();
 
+      if(!this.searchSuper) return;
       let hasChannels = false;
       for(const dialog of dialogs) {
         hasChannels = await this.managers.appPeersManager.isBroadcast(dialog.peerId);
         if(hasChannels) break;
       }
 
+      if(!this.searchSuper) return;
       const channelsTab = this.searchSuper.mediaTabs.find((tab) => tab.type === 'channels');
       channelsTab.menuTab?.classList.toggle('hide', !hasChannels);
     };
 
     checkChannelsVisiblity();
 
-    rootScope.addEventListener('channel_update', () => {
+    listenerSetter.add(rootScope)('channel_update', () => {
       pause(200).then(() => checkChannelsVisiblity());
     });
-    rootScope.addEventListener('peer_deleted', () => {
+    listenerSetter.add(rootScope)('peer_deleted', () => {
       checkChannelsVisiblity();
     });
   }
@@ -1505,6 +1562,18 @@ export class AppSidebarLeft extends SidebarSlider {
       return popup.slider.createTab(ctor, destroyable, doNotAppend);
     }
     return super.createTab(ctor, destroyable, doNotAppend);
+  }
+
+  // Every non-main tab in the left sidebar gets `.item-secondary`. The
+  // chatlist (HTML-declared `.item-main`) keeps its identity; archive /
+  // settings / contacts / etc. (all SliderSuperTab-created) flow through
+  // `addTab` and pick up the marker here, so SCSS rules that target
+  // "secondary" tabs don't have to enumerate every subclass.
+  public addTab(tab: SliderSuperTab) {
+    super.addTab(tab);
+    if(!tab.container.classList.contains('item-main')) {
+      tab.container.classList.add('item-secondary');
+    }
   }
 
   public async closeTabsBefore(clb: () => void) {
@@ -1550,25 +1619,6 @@ export class AppSidebarLeft extends SidebarSlider {
   };
 }
 
-export class SettingChatListSection extends SettingSection {
-  public sortedList: SortedUserList;
-
-  constructor(options: SettingSectionOptions & {sortedList: SortedUserList}) {
-    super(options);
-
-    this.sortedList = options.sortedList;
-
-    this.content.append(this.sortedList.list);
-  }
-
-  public makeButton(options: ButtonOptions) {
-    const button = Button('folder-category-button btn btn-primary btn-transparent', options);
-    if(this.title) this.content.insertBefore(button, this.title.nextSibling);
-    else this.content.prepend(button);
-    return button;
-  }
-}
-
 const appSidebarLeft = new AppSidebarLeft();
 MOUNT_CLASS_TO.appSidebarLeft = appSidebarLeft;
 export default appSidebarLeft;
@@ -1588,9 +1638,4 @@ function getVersionLink() {
   btnMenuFooter.append(t);
 
   return btnMenuFooter;
-  // btnMenu.classList.add('has-footer');
-  // btnMenu.append(btnMenuFooter);
-
-  // const a = btnMenu.querySelector('.a .btn-menu-item-icon');
-  // if(a) a.textContent = 'A';
 }

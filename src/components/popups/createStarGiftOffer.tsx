@@ -147,7 +147,6 @@ export async function showCreateStarGiftOfferPopup(options: {
         containerClass={styles.popupContainer}
         show={show()}
         closable={true}
-        withConfirm={true}
         onClose={() => {
           if(!isCreated) {
             options.onFinish?.('cancel');

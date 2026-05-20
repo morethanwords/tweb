@@ -20,7 +20,6 @@
     --ripple-duration: 0.4s;
     --ripple-start-scale: 0.4;
     cursor: pointer;
-    user-select: none;
 
     @include hover() {
       background-color: rgba(var(--primary-color-rgb), .2);

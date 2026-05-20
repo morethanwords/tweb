@@ -8,15 +8,18 @@
 
 .sidebar {
   &-header {
-    background-color: var(--surface-color);
+    background-color: transparent;
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding-inline: 1rem;
     min-height: 3.5rem;
     flex: 0 0 auto;
-    user-select: none;
     cursor: default;
+
+    @include animation-level(2) {
+      transition: background-color var(--transition-standard-in);
+    }
 
     .btn-menu {
       overflow-y: overlay;
@@ -25,11 +28,6 @@
     @include respond-to(handhelds) {
       padding-inline: .5rem;
     }
-
-    /* //position: sticky !important;
-    position: sticky !important;
-    top: 0;
-    z-index: 1; */
 
     &__rows {
       overflow: hidden;
@@ -67,7 +65,7 @@
     }
 
     .btn-icon + .btn-icon {
-      margin-inline-start: .5rem;
+      margin-inline-start: .25rem;
     }
 
     &-right {
@@ -76,12 +74,6 @@
 
     .scrollable-y-bordered & {
       position: relative;
-      // min-height: 3.5625rem;
-      // border-bottom: 1px solid transparent;
-
-      // @include animation-level(2) {
-      //   transition: border-top-color var(--transition-standard-in), border-bottom-color var(--transition-standard-in);
-      // }
 
       &:after {
         content: " ";
@@ -101,7 +93,8 @@
     }
 
     .scrollable-y-bordered:not(.scrolled-start) & {
-      // border-bottom-color: var(--border-color);
+      background-color: var(--surface-color);
+
       &:after {
         opacity: 1;
       }
@@ -123,14 +116,6 @@
     display: flex; /* idk why but need */
     position: relative;
     flex: 1 1 auto;
-
-    /* @include respond-to(handhelds) {
-      margin-top: 60px;
-    } */
-
-    /* > div {
-      width: 100%;
-    } */
   }
 
   &-emoji-status-emoji {
@@ -138,6 +123,12 @@
       color: var(--sparkles-color, var(--primary-text-color));
       font-size: 6px;
       opacity: 0.5;
+    }
+  }
+
+  &-slider {
+    &-item {
+      background-color: var(--background-color);
     }
   }
 }

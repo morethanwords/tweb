@@ -15,7 +15,7 @@ import setBlankToAnchor from '@lib/richTextProcessor/setBlankToAnchor';
 import getPeerEditableUsername from '@appManagers/utils/peers/getPeerEditableUsername';
 import SettingSection, {generateSection} from '@components/settingSection';
 import UsernamesSection from '@components/usernamesSection';
-import {purchaseUsernameCaption} from '@components/sidebarLeft/tabs/editProfile';
+import {purchaseUsernameCaption} from '@components/sidebarLeft/tabs/purchaseUsernameCaption';
 import Button from '@components/button';
 import wrapUrl from '@lib/richTextProcessor/wrapUrl';
 

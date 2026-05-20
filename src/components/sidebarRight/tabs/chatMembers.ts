@@ -26,7 +26,6 @@ export function createSelectorForTab(options: ConstructorParameters<typeof AppSe
     headerSearch: true,
     placeholder: 'SearchPlaceholder',
     meAsSaved: false,
-    noShadow: false,
     onFirstRender: () => {
       deferred.resolve();
     }

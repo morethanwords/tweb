@@ -13,7 +13,7 @@ import PopupPeer from '@components/popups/peer';
 import SettingSection from '@components/settingSection';
 import {SliderSuperTab} from '@components/slider';
 import wrapStickerEmoji from '@components/wrappers/stickerEmoji';
-import AppSettingsTab from '@components/sidebarLeft/tabs/settings';
+import {AppSettingsTab} from '@components/solidJsTabs';
 import AppTwoStepVerificationEmailTab from '@components/sidebarLeft/tabs/2fa/email';
 import AppTwoStepVerificationEnterPasswordTab from '@components/sidebarLeft/tabs/2fa/enterPassword';
 

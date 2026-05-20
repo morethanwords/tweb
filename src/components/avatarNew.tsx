@@ -581,9 +581,9 @@ export const AvatarNew = (props: {
 
   const _render = async(onlyThumb?: boolean) => {
     const middleware = middlewareHelper.get();
-    const {isDialog, withStories, storyId, isBig, peerTitle: title, threadId, wrapOptions} = props;
+    const {isDialog, withStories, storyId, isBig, peerTitle: title, wrapOptions} = props;
 
-    let {peerId} = props;
+    let {peerId, threadId} = props;
     if(title !== undefined) {
       peerId = NULL_PEER_ID;
     }
@@ -613,6 +613,12 @@ export const AvatarNew = (props: {
         middleware.onDestroy(dispose);
       });
       return;
+    }
+
+    // * fix monoforum
+    if(threadId && apiManagerProxy.isMonoforum(peerId)) {
+      peerId = threadId;
+      threadId = undefined;
     }
 
     const peer = props.peer ?? apiManagerProxy.getPeer(peerId);

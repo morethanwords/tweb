@@ -79,14 +79,14 @@
 	}
 
 	.btn-icon {
-		border-radius: $border-radius !important;
-		width: 30px;
-		height: 30px;
+		border-radius: .625rem !important;
+		width: 1.875rem;
+		height: 1.875rem;
 		padding: 0;
 
 		&.active {
-			color: #fff!important;
-			background-color: var(--primary-color)!important;
+			color: #fff !important;
+			background-color: var(--primary-color) !important;
 		}
 	}
 

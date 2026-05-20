@@ -178,6 +178,11 @@ export class AnimationIntersector {
     }
   }
 
+  public isVisible(animation: AnimationItem['animation']) {
+    const item = this.byPlayer.get(animation);
+    return !!item && this.visible.has(item);
+  }
+
   public addAnimation(options: {
     animation: AnimationItem['animation'],
     group?: AnimationItemGroup,

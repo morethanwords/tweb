@@ -23,10 +23,6 @@
   align-items: center;
   background-color: var(--surface-color);
 
-	/* @include respond-to(esg-bottom-new) {
-		bottom: calc(100% + .5rem);
-	} */
-
   &:not(.is-visible) {
 		display: none;
 	}
@@ -42,10 +38,10 @@
 		}
 	}
 
-	.bubbles:not(.is-selecting) ~ .chat-input &.is-visible:not(.backwards),
-  #stories-viewer &.is-visible:not(.backwards) {
+	.chat-input:not(.is-selecting) &.is-visible.forwards,
+	#stories-viewer &.is-visible.forwards {
 		visibility: visible;
-		
+
 		@include animation-level(2) {
 			animation-name: fade-in-opacity;
 			transition: visibility 0s 0s;

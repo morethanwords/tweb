@@ -8,11 +8,9 @@
 @use "chatVariables" as *;
 
 .bot-commands {
-  --border-radius-padding: #{$border-radius-big * 2};
   --offset: .5rem;
   position: absolute !important;
-  // bottom: 100%;
-  bottom: calc(100% - var(--border-radius-padding));
+  bottom: calc(100% - var(--chat-input-height) / 2);
   right: calc(var(--offset) * -1);
   left: calc(var(--offset) * -1);
   width: auto !important;
@@ -54,7 +52,7 @@
       }
     }
 
-    &:not(.backwards) {
+    &.forwards {
       .scrollable {
         transform: translateY(0);
         opacity: 1;
@@ -66,7 +64,6 @@
     border-radius: inherit;
     width: 100%;
     height: var(--height);
-    // padding-bottom: var(--border-radius-padding);
     padding-bottom: 0;
 
     &-element {

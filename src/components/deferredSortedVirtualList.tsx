@@ -19,21 +19,22 @@ import styles from '@components/deferredSortedVirtualList.module.scss';
 
 
 type CreateDeferredSortedVirtualListArgs<T> = {
-  scrollable: HTMLElement;
-  getItemElement: (item: T, id: any) => HTMLElement;
-  onItemUnmount?: (item: T) => void;
-  onListShrinked: () => void;
-  requestItemForIdx: (idx: number, itemsLength: number) => void;
-  sortWith: (a: number, b: number) => number;
-  itemSize: LoadingDialogSkeletonSize;
-  noAvatar?: boolean;
-  onListLengthChange?: () => void;
+  scrollable: HTMLElement,
+  getItemElement: (item: T, id: any) => HTMLElement,
+  onItemUnmount?: (item: T) => void,
+  onListShrinked: () => void,
+  requestItemForIdx: (idx: number, itemsLength: number) => void,
+  sortWith: (a: number, b: number) => number,
+  itemSize: LoadingDialogSkeletonSize,
+  noAvatar?: boolean,
+  onListLengthChange?: () => void,
+  extraPaddingBottom?: number
 };
 
 export type DeferredSortedVirtualListItem<T> = {
-  id: any;
-  index: number;
-  value: T;
+  id: any,
+  index: number,
+  value: T
 };
 
 
@@ -50,7 +51,8 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
     sortWith,
     itemSize,
     onListLengthChange,
-    noAvatar
+    noAvatar,
+    extraPaddingBottom = 8
   } = args;
 
   const [items, setItems] = createSignal<DeferredSortedVirtualListItem<T>[]>([]);
@@ -324,7 +326,7 @@ export const createDeferredSortedVirtualList = <T, >(args: CreateDeferredSortedV
     }}
     scrollableHost={scrollable}
     thresholdPadding={72 * 4}
-    extraPaddingBottom={8} // 0.5rem
+    extraPaddingBottom={extraPaddingBottom} // 0.5rem
   />;
 
   return {

@@ -9,7 +9,7 @@ import type Chat from '@components/chat/chat';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import ButtonMenu, {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import PopupDeleteMessages from '@components/popups/deleteMessages';
-import PopupForward from '@components/popups/forward';
+import showForwardPopup from '@components/popups/forward';
 import PopupPinMessage from '@components/popups/unpinMessage';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import PopupSendNow from '@components/popups/sendNow';
@@ -43,7 +43,7 @@ import filterUnique from '@helpers/array/filterUnique';
 import replaceContent from '@helpers/dom/replaceContent';
 import wrapEmojiText, {wrapEmojiTextWithEntities} from '@lib/richTextProcessor/wrapEmojiText';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
-import PopupStickers from '@components/popups/stickers';
+import showStickersPopup from '@components/popups/stickers';
 import getMediaFromMessage from '@appManagers/utils/messages/getMediaFromMessage';
 import canSaveMessageMedia from '@appManagers/utils/messages/canSaveMessageMedia';
 import getGroupedText from '@appManagers/utils/messages/getGroupedText';
@@ -604,7 +604,7 @@ export default class ChatContextMenu {
         text: 'Loading',
         onClick: () => {
           this.emojiInputsPromise.then((inputs) => {
-            PopupElement.createPopup(PopupStickers, inputs, true, this.chat.input).show();
+            showStickersPopup(inputs, true, this.chat.input);
           });
         },
         verify: () => reactionCount.reaction._ === 'reactionCustomEmoji',
@@ -928,8 +928,8 @@ export default class ChatContextMenu {
       icon: 'unpin',
       text: 'Message.Context.Unpin',
       onClick: this.onUnpinClick,
-      verify: () => (this.message as Message.message).pFlags.pinned &&
-        this.managers.appPeersManager.canPinMessage(this.message.peerId) &&
+      verify: async() => (this.message as Message.message).pFlags.pinned &&
+        await this.managers.appPeersManager.canPinMessage(this.message.peerId) &&
         !useIsFrozen()
     }, {
       icon: 'download',
@@ -1075,7 +1075,7 @@ export default class ChatContextMenu {
       text: 'Loading',
       onClick: () => {
         this.emojiInputsPromise.then((inputs) => {
-          PopupElement.createPopup(PopupStickers, inputs, true, this.chat.input).show();
+          showStickersPopup(inputs, true, this.chat.input);
         });
       },
       verify: () => !!this.getUniqueCustomEmojisFromMessage().length,
@@ -1472,7 +1472,7 @@ export default class ChatContextMenu {
       // emojisButton.element.append(i18n('Loading'));
     }
 
-    this.chat.container.append(element);
+    document.body.append(element);
     this.buttons.forEach((button) => button.onOpen?.());
 
     return {
@@ -1736,7 +1736,7 @@ export default class ChatContextMenu {
     } else {
       const peerId = this.messagePeerId;
       const mids = this.isTargetAGroupedItem ? [this.mid] : await this.chat.getMidsByMid(peerId, this.mid);
-      PopupForward.create({
+      showForwardPopup({
         [peerId]: mids
       });
     }

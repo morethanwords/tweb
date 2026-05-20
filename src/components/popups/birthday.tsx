@@ -266,7 +266,7 @@ export default async function showBirthdayPopup(props: {
           <Show when={props.fromSuggestion && props.initialDate.year}>
             <PopupElement.FooterButton
               langKey="BirthdayPopup.HideYear"
-              secondary
+              color="secondary"
               callback={() => {
                 setYear(undefined);
                 yearField.setValueSilently('');
@@ -277,7 +277,7 @@ export default async function showBirthdayPopup(props: {
           <Show when={props.fromProfile && props.initialDate}>
             <PopupElement.FooterButton
               langKey="BirthdayPopup.Remove"
-              secondary
+              color="secondary"
               callback={async() => {
                 await props.onSave(null);
                 return true;

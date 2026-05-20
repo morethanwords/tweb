@@ -37,6 +37,11 @@ button {
   font-size: inherit;
 }
 
+input:focus,
+button:focus {
+  outline: none;
+}
+
 img, 
 video {
   -webkit-user-drag: none;
@@ -96,11 +101,6 @@ Utility Classes
 
 .hide-overflow {
   overflow: hidden;
-}
-
-// No Text Select
-.no-select/* , .no-select * */ {
-  user-select: none;
 }
 
 .no-transition {

@@ -1,36 +1,76 @@
 @use "../shared" as *;
-:root {
-  --folders-sidebar-item-color: #717579;
-}
 
 .folders-sidebar {
-  position: relative;
-  flex: 5rem 0 0;
+  --folders-sidebar-item-color: rgba(255, 255, 255, .7);
+  --folders-sidebar-item-selected-color: rgba(255, 255, 255, 1);
+  --folders-sidebar-background: rgba(0, 0, 0, .2);
+  --folders-sidebar-background-hover: rgba(255, 255, 255, #{$hover-alpha});
+  --folders-sidebar-item-ripple-color: rgba(255, 255, 255, #{$hover-alpha});
+
+  // Floats over the page-chats area as an absolute panel (mirrors how the
+  // columns position themselves). The left column is pushed right by an
+  // equivalent margin so an 8px gap separates them — see _leftSidebar.scss.
+  position: absolute;
+  inset-block: var(--page-chats-padding);
+  inset-inline-start: var(--page-chats-padding);
+  width: var(--folders-sidebar-width);
 
   display: flex;
   flex-direction: column;
 
-  --background: #212121;
-  --background-hover: #272727;
+  border-radius: var(--main-column-border-radius);
 
-  .night & {
-    --background: #141414;
-    --background-hover: #1b1b1b;
-  }
-
-  background-color: var(--background);
   color: var(--folders-sidebar-item-color);
-
-  z-index: 4;
-
-  --folder-item-ripple-color: rgba(255, 255, 255, #{$hover-alpha});
 
   @include respond-to(until-floating-left-sidebar) {
     display: none;
   }
 
+  .night & {
+    --folders-sidebar-background: rgba(0, 0, 0, .2);
+    --folders-sidebar-background-hover: rgba(0, 0, 0, #{$hover-alpha});
+  }
+
   body:not(.has-folders-sidebar) & {
     display: none;
+  }
+
+  &__background {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    overflow: hidden;
+
+    // Mirrored gradient canvas — replaces backdrop-filter: blur(40px). The 50×50 source is
+    // CSS-stretched to fill the bar; the natural bilinear upscale gives a soft, blur-like
+    // gradient that follows the main chat background.
+    &-gradient {
+      position: absolute;
+      inset-inline: 0;
+      // Match the chat-background gradient sizing (`height: 150%; top: -25%`) so the visible
+      // gradient region is similar to what sits behind the bar on the page.
+      top: -25%;
+      // width: 100%;
+      height: 150%;
+    }
+
+    // Dark tint sitting on top of the gradient — replicates the constant darkening that a
+    // heavy blur of the chat-background pattern would produce, plus the original bar tint.
+    &-tint {
+      position: absolute;
+      inset: 0;
+      background-color: var(--folders-sidebar-background);
+    }
+
+    // No gradient renderer (image-only wallpaper) — hide the empty canvas and fall back to
+    // the original backdrop-filter so the bar still has translucency.
+    &--no-gradient &-gradient {
+      display: none;
+    }
+
+    &--no-gradient &-tint {
+      backdrop-filter: blur(40px);
+    }
   }
 
   &__scrollable {
@@ -50,7 +90,7 @@
 
   &__folder-item {
     --size: 1.875rem;
-    --ripple-color: var(--folder-item-ripple-color) !important;
+    --ripple-color: var(--folders-sidebar-item-ripple-color) !important;
     position: relative;
     flex-shrink: 0;
     flex-grow: 0;
@@ -61,22 +101,20 @@
     justify-content: center;
     align-items: center;
 
-    background-color: var(--background);
-
     flex-direction: column;
     gap: .375rem;
 
     padding: .75rem 0;
     min-height: 3.5rem;
 
-    font-size: 10px;
+    font-size: var(--font-size-10);
     line-height: 12px;
     font-weight: var(--font-weight-bold);
 
     cursor: pointer;
 
     @include hover() {
-      --background: var(--background-hover);
+      background: var(--folders-sidebar-background-hover);
     }
 
     &-icon {
@@ -108,17 +146,16 @@
       position: absolute;
       top: 6px;
       right: 19px;
-
-      font-size: 12px;
+      font-size: var(--font-size-12);
       line-height: 18px !important;
-
-      box-shadow: 0 0 0 1px var(--background);
-
+      // box-shadow: 0 0 0 1px var(--folders-sidebar-background-hover);
       transition: none !important;
       pointer-events: none;
+      background-color: var(--white);
+      color: rgba(0, 0, 0, .5);
 
       &.badge-gray {
-        background-color: var(--folders-sidebar-item-color);
+        background-color: var(--white);
       }
     }
 
@@ -139,17 +176,23 @@
     }
 
     &--selected {
-      color: var(--primary-color);
+      color: var(--folders-sidebar-item-selected-color);
     }
   }
 
   &__menu-button {
-    .folders-sidebar__folder-item-icon {
-      font-size: 1.5rem;
+    &.is-first {
+      border-top-left-radius: inherit;
+      border-top-right-radius: inherit;
     }
 
-    .btn-menu {
-      inset-inline: 3rem auto;
+    &.is-last {
+      border-bottom-left-radius: inherit;
+      border-bottom-right-radius: inherit;
+    }
+
+    .folders-sidebar__folder-item-icon {
+      font-size: 1.5rem;
     }
   }
 
@@ -159,12 +202,6 @@
     bottom: 1.25rem;
     left: 50%;
     transform: translateX(-50%) !important;
-
-    .btn-menu.top-left {
-      --transform-origin-x: var(--transform-origin-inline-start);
-      inset-inline: 0 auto;
-      inset-block: auto 120%;
-    }
 
     @include respond-to(no-floating-left-sidebar) {
       html:has(#column-left.is-collapsed) & {
@@ -189,7 +226,6 @@
     height: 5.5rem;
     border-top-right-radius: $border-radius;
     border-bottom-right-radius: $border-radius;
-    background-color: var(--background);
 
     mask-image: url('/assets/img/add-chats-to-folder-shape.svg');
 
@@ -205,7 +241,7 @@
     cursor: pointer;
 
     @include hover() {
-      --background: var(--background-hover);
+      background: var(--folders-sidebar-background-hover);
     }
 
     :has(#column-left.is-collapsed:not(.has-open-tabs)) & {
@@ -221,3 +257,4 @@
     }
   }
 }
+

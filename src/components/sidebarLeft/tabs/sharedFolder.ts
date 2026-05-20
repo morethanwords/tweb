@@ -28,7 +28,7 @@ import ButtonIcon from '@components/buttonIcon';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import type {ConfirmedPaymentResult} from '@components/chat/paidMessagesInterceptor';
 import confirmationPopup from '@components/confirmationPopup';
-import PopupPickUser from '@components/popups/pickUser';
+import {showSharingPickerPopup} from '@components/popups/pickUser';
 import ripple from '@components/ripple';
 import SettingSection from '@components/settingSection';
 import {SliderSuperTabEventable} from '@components/sliderTab';
@@ -129,8 +129,9 @@ export class InviteLink {
   };
 
   public shareLink = (url: string = this.url) => {
-    PopupPickUser.createSharingPicker({
-      onSelect: async(peerId, _, monoforumThreadId) => {
+    showSharingPickerPopup({
+      onSelect: async(chosen) => {
+        const {peerId, monoforumThreadId} = chosen[0];
         // Cannot use normal import here :(
         const {default: PaidMessagesInterceptor, PAYMENT_REJECTED} = await import('../../chat/paidMessagesInterceptor');
 

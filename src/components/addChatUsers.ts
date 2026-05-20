@@ -12,7 +12,7 @@ import Button from '@components/button';
 import {DelimiterWithText} from '@components/chat/giveaway';
 import PopupElement from '@components/popups';
 import PopupPeer, {PopupPeerButtonCallbackCheckboxes, PopupPeerCheckboxOptions} from '@components/popups/peer';
-import PopupPickUser from '@components/popups/pickUser';
+import showPickUserPopup from '@components/popups/pickUser';
 import PopupPremium from '@components/popups/premium';
 import {AppAddMembersTab} from '@components/solidJsTabs';
 import SidebarSlider from '@components/slider';
@@ -58,12 +58,12 @@ export async function handleMissingInvitees(chatId: ChatId, missingInvitees: Mis
     footerButton.replaceChildren(i18n(cantSendMessages ? 'InviteViaLink.Premium.Subscribe' : (count ? 'InviteViaLink.Send' : 'InviteViaLink.Skip')));
   };
   const initial = missingInviteeIds.filter((peerId) => !premiumRequireIds.has(peerId));
-  const popup = PopupElement.createPopup(
-    PopupPickUser,
+  const popup = showPickUserPopup(
     {
       peerType: ['custom'],
       getMoreCustom: async() => ({result: missingInviteeIds, isEnd: true}),
-      onMultiSelect: async(peerIds) => {
+      onSelect: async(chosen) => {
+        const peerIds = chosen.map((c) => c.peerId);
         if(cantSendMessages) {
           onPremiumClick();
           return;
@@ -91,7 +91,7 @@ export async function handleMissingInvitees(chatId: ChatId, missingInvitees: Mis
       initial,
       headerSearch: false,
       noSearch: true,
-      footerButton: /* cantSendMessages ? undefined :  */(element) => footerButton = element,
+      footerButtonProps: /* cantSendMessages ? undefined :  */{ref: (element) => footerButton = element},
       chatRightsActions: ['send_messages'],
       autoHeight: cantSendMessages
     }

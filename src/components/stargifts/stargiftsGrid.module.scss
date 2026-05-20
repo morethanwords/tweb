@@ -4,7 +4,7 @@
 .grid {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  padding: 1rem;
+  padding: 0 1rem 1rem;
   gap: 0.625rem;
   flex: 1 0 auto;
   height: min-content;

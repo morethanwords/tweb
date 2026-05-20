@@ -4,18 +4,22 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {AppTheme} from '@config/state';
-import type {Theme} from '@layer';
-import type AppBackgroundTab from '@components/sidebarLeft/tabs/background';
+import type {AppTheme, AppThemeSettings} from '@config/state';
+import type {AccentPreset} from '@config/themePresets';
+import type {BaseTheme, Theme, ThemeSettings} from '@layer';
+import {blendWallpaperForTinted, presetThemeId, presetToThemeSettings} from '@config/themePresets';
+import type {AppBackgroundTab} from '@components/sidebarLeft/tabs/background';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import rootScope from '@lib/rootScope';
 import {changeColorAccent, ColorRgb, getAccentColor, getAverageColor, getRgbColorFromTelegramColor, hexToRgb, hslaStringToHex, hslaStringToRgba, hslaToRgba, hsvToRgb, mixColors, rgbaToHexa, rgbaToHsla, rgbToHsv} from '@helpers/color';
+import {SETTINGS_INIT} from '@config/state';
 import {MOUNT_CLASS_TO} from '@config/debug';
 import customProperties from '@helpers/dom/customProperties';
 import {TelegramWebViewTheme} from '@types';
 import windowSize from '@helpers/windowSize';
 import liteMode from '@helpers/liteMode';
 import {useAppSettings} from '@stores/appSettings';
+import {joinDeepPath} from '@helpers/object/setDeepProperty';
 import {logger} from '@lib/logger';
 import pause from '@helpers/schedulers/pause';
 import Transitions, {getTransition} from '@config/transitions';
@@ -23,7 +27,9 @@ import Transitions, {getTransition} from '@config/transitions';
 export type AppColorName = 'primary-color' | 'message-out-primary-color' |
   'surface-color' | 'danger-color' | 'primary-text-color' |
   'secondary-text-color' | 'message-out-background-color' |
-  'saved-color' | 'message-background-color' | 'green-color';
+  'saved-color' | 'message-background-color' | 'green-color' |
+  'background-color' | 'body-background-color' | 'border-color' |
+  'secondary-color' | 'link-color' | 'input-search-background-color';
 type AppColor = {
   rgb?: boolean,
   light?: boolean,
@@ -78,7 +84,19 @@ const appColorMap: {[name in AppColorName]: AppColor} = {
   'saved-color': {
     lightFilled: true
   },
-  'green-color': {}
+  'green-color': {
+    rgb: true
+  },
+  'background-color': {
+    rgb: true
+  },
+  'body-background-color': {
+    rgb: true
+  },
+  'border-color': {},
+  'secondary-color': {},
+  'link-color': {},
+  'input-search-background-color': {}
 };
 
 const colorMap: {
@@ -87,7 +105,6 @@ const colorMap: {
   }
 } = {
   day: {
-    // 'background-color': '#f4f4f5',
     'primary-color': '#3390ec',
     'message-out-primary-color': '#5CA853',
     'message-background-color': '#ffffff',
@@ -96,10 +113,16 @@ const colorMap: {
     'primary-text-color': '#000000',
     'secondary-text-color': '#707579',
     'saved-color': '#359AD4',
-    'green-color': '#70b768'
+    'green-color': '#70b768',
+    // SCSS-side defaults migrated from base.scss :root
+    'background-color': '#f4f4f5',
+    'body-background-color': '#ffffff',
+    'border-color': '#dfe1e5',
+    'secondary-color': '#c4c9cc',
+    'link-color': '#00488f',
+    'input-search-background-color': '#ffffff'
   },
   night: {
-    // 'background-color': '#181818',
     'primary-color': '#8774E1',
     'message-out-primary-color': '#8774E1',
     'message-background-color': '#212121',
@@ -108,9 +131,69 @@ const colorMap: {
     'primary-text-color': '#ffffff',
     'secondary-text-color': '#aaaaaa',
     'saved-color': '#8774E1',
-    'green-color': '#5CC85E'
+    'green-color': '#5CC85E',
+    // SCSS-side defaults migrated from base.scss .night
+    'background-color': '#181818',
+    'body-background-color': '#181818',
+    'border-color': '#0f0f0f',
+    'secondary-color': '#707579',
+    'link-color': '#8774E1', // SCSS resolves to var(--primary-color)
+    'input-search-background-color': '#181818'
+  },
+  tinted: {
+    // base colors ported from Telegram-Android darkblue.attheme (Dark Blue / Tinted)
+    // mapping: surface ← windowBackgroundWhite, message-bg ← chat_inBubble, primary-text ← windowBackgroundWhiteBlackText,
+    // secondary-text ← windowBackgroundWhiteGrayText, green ← windowBackgroundWhiteGreenText2.
+    // Accent #3685FA — Theme.java::loadDefaultThemes(): Dark Blue's "home" ThemeAccent ID 0
+    // (sortAccents puts isHome first, isHome for Dark Blue = id 0; that accent is at array index 8 of Dark Blue's accentColor[]).
+    'primary-color': '#3685FA',
+    'message-out-primary-color': '#3685FA',
+    'message-background-color': '#232E3B',
+    'surface-color': '#1D2733',
+    'danger-color': '#FF595A',
+    'primary-text-color': '#FFFFFF',
+    'secondary-text-color': '#7D8B99',
+    'saved-color': '#3685FA',
+    'green-color': '#61D36B',
+    // background / body-bg ← windowBackgroundGray, border ← divider (alpha-stripped),
+    // input-search-bg ← chat_messagePanelBackground, link ← windowBackgroundWhiteLinkText
+    'background-color': '#151E27',
+    'body-background-color': '#151E27',
+    'border-color': '#0F151B',
+    'secondary-color': '#7D8B99',
+    'link-color': '#5EABE1',
+    'input-search-background-color': '#212D3B'
+  },
+  light: {
+    // base colors ported from Telegram-Android day.attheme (Android's "Day" / baseThemeDay)
+    // Distinct from tweb's existing `day` theme (which maps to baseThemeClassic with green outgoing bubbles)
+    // primary ← chat_outBubble (#2D7ED5 — signature Day blue, replaces day's green out-message).
+    'primary-color': '#2D7ED5',
+    'message-out-primary-color': '#2D7ED5',
+    'message-background-color': '#F0F0F0', // chat_inBubble — light gray (vs day's pure white)
+    'surface-color': '#FFFFFF',
+    'danger-color': '#DF3F40',
+    'primary-text-color': '#333333', // windowBackgroundWhiteBlackText
+    'secondary-text-color': '#8C8E91', // windowBackgroundWhiteGrayText
+    'saved-color': '#2D7ED5',
+    'green-color': '#04AC35', // windowBackgroundWhiteGreenText2
+    'background-color': '#F4F4F5',
+    'body-background-color': '#FFFFFF',
+    'border-color': '#DFE1E5',
+    'secondary-color': '#C4C9CC',
+    'link-color': '#238AE3', // windowBackgroundWhiteBlueText
+    'input-search-background-color': '#FFFFFF'
   }
 };
+
+const themeNameToBaseTheme: {[name in Exclude<AppTheme['name'], 'system'>]: BaseTheme['_']} = {
+  day: 'baseThemeClassic',
+  night: 'baseThemeNight',
+  light: 'baseThemeDay',
+  tinted: 'baseThemeTinted'
+};
+
+const NIGHT_THEME_NAMES = new Set<AppTheme['name']>(['night', 'tinted']);
 
 const log = logger('THEME');
 
@@ -131,7 +214,22 @@ export class ThemeController {
       this.setWorkerThemeParams();
     });
 
-    // rootScope.addEventListener('settings_updated', ())
+    // Track the last variant the user explicitly picked on each "side" (dark vs light) so the
+    // burger-menu Dark-Mode toggle can restore the user's last choice instead of always flipping
+    // to the legacy night/day pair. Stored in `settings.lastThemeNames` for persistence; updated
+    // here whenever `settings.theme` changes (radio in General Settings, switchTheme calls).
+    const themeKey = joinDeepPath('settings', 'theme');
+    rootScope.addEventListener('settings_updated', ({key, value}) => {
+      if(key !== themeKey) return;
+      const [, setAppSettings] = useAppSettings();
+      if(value === 'night' || value === 'tinted') {
+        setAppSettings('lastThemeNames', 'dark', value);
+      } else if(value === 'day' || value === 'light') {
+        setAppSettings('lastThemeNames', 'light', value);
+      }
+      // 'system' — don't update either side; burger-menu toggle still falls back to the
+      // most recently picked dark/light variant from before.
+    });
   }
 
   private setWorkerThemeParams() {
@@ -151,7 +249,8 @@ export class ThemeController {
 
   public setThemeColor(color = this.themeColor) {
     if(!color) {
-      color = this.isNight() ? '#212121' : '#ffffff';
+      const themeName = this.getResolvedThemeName();
+      color = colorMap[themeName]?.['surface-color'] || (this.isNight() ? '#212121' : '#ffffff');
     }
 
     const themeColorElem = this.themeColorElem;
@@ -197,8 +296,9 @@ export class ThemeController {
     if(!hsla) {
       hsla = 'hsla(85.5319, 36.9171%, 40.402%, .4)';
       const theme = this.getTheme();
-      if(theme.settings?.highlightingColor) {
-        hsla = theme.settings.highlightingColor;
+      const themeSettings = this.getThemeSettings(theme);
+      if(themeSettings?.highlightingColor) {
+        hsla = themeSettings.highlightingColor;
       }
     }
 
@@ -231,7 +331,9 @@ export class ThemeController {
     }
 
     const e = document.createElement('div');
-    this.applyTheme(rootScope.settings.themes.find((theme) => theme.name === 'night'), e, true);
+    // Mirror the active theme into .night when current is already dark (night/tinted) so menus
+    // that opt into `.night` match the active palette instead of the static 'night' base.
+    this.applyTheme(isNight ? theme : this.getTheme('night'), e, true);
     style.textContent = `.night {${e.style.cssText}}`;
 
     this.applyHighlightingColor();
@@ -313,37 +415,77 @@ export class ThemeController {
   }
 
   public async switchTheme(
-    name: AppTheme['name'] = this.isNight() ? 'day' : 'night',
+    name?: AppTheme['name'],
     coordinates?: {x: number, y: number}
   ) {
+    if(name === undefined) {
+      // Burger-menu Dark-Mode toggle. Resolve to the user's last explicitly-picked variant on the
+      // opposite side so e.g. tinted → classic instead of tinted → day, and back tinted again
+      // instead of falling to night. Defensive: rootScope.settings can be missing during early
+      // bootstrap; fall back to the legacy night/day pair in that case.
+      const last = rootScope.settings?.lastThemeNames;
+      name = this.isNight() ?
+        (last?.light ?? 'day') :
+        (last?.dark ?? 'night');
+    }
     const [, setAppSettings] = useAppSettings();
     await setAppSettings('theme', name);
     rootScope.dispatchEvent('theme_change', coordinates);
   }
 
   public isNight() {
-    return this.getTheme().name === 'night';
+    return this.isNightThemeName(this.getTheme()?.name);
   }
 
-  public getTheme(name: AppTheme['name'] = rootScope.settings.theme === 'system' ? this.systemTheme : rootScope.settings.theme) {
-    return rootScope.settings.themes.find((t) => t.name === name);
+  public isNightThemeName(name: AppTheme['name']) {
+    return NIGHT_THEME_NAMES.has(name);
+  }
+
+  public getResolvedThemeName(): AppTheme['name'] {
+    const setting = rootScope.settings.theme;
+    return setting === 'system' ? this.systemTheme : setting;
+  }
+
+  public getTheme(name: AppTheme['name'] = this.getResolvedThemeName()) {
+    return rootScope.settings.themes.find((t) => t.name === name) ??
+      SETTINGS_INIT.themes.find((t) => t.name === name);
+  }
+
+  private getThemeName(theme: Theme | AppTheme): AppTheme['name'] {
+    const appTheme = theme as AppTheme;
+    if(appTheme?.name && appTheme.name !== 'system') return appTheme.name;
+    return this.getResolvedThemeName();
+  }
+
+  public getBaseThemeForName(name: AppTheme['name']): BaseTheme['_'] {
+    return themeNameToBaseTheme[name as Exclude<AppTheme['name'], 'system'>] ??
+      (this.isNightThemeName(name) ? 'baseThemeNight' : 'baseThemeClassic');
   }
 
   // theme applier
-  private bindColorApplier(options: Pick<Parameters<ThemeController['applyAppColor']>[0], 'element' | 'isNight' | 'saveToCache'>) {
+  private bindColorApplier(
+    options: Pick<Parameters<ThemeController['applyAppColor']>[0], 'element' | 'isNight' | 'themeName' | 'saveToCache'>,
+    // Effective surface for this theme apply pass. When themeName === 'tinted', `applyTheme`
+    // pre-computes the iOS-derived surface and forwards it here so every light-filled-* mix uses
+    // the same surface that --surface-color ends up with — otherwise mixColor falls back to the
+    // *static* `colorMap[name]['surface-color']` and produces visibly off shades for things like
+    // --light-filled-secondary-text-color, where the iOS-derived surface differs from the baseline.
+    defaultMixColor?: ColorRgb
+  ) {
     const appliedColors: Set<AppColorName> = new Set();
+    const fallbackName: AppTheme['name'] = options.themeName ?? (options.isNight ? 'night' : 'day');
     return {
       applyAppColor: (_options: Omit<Parameters<ThemeController['applyAppColor']>[0], keyof typeof options>) => {
         appliedColors.add(_options.name);
-        return this.applyAppColor({..._options, ...options});
+        return this.applyAppColor({mixColor: defaultMixColor, ..._options, ...options});
       },
       finalize: () => {
-        const isNight = options.isNight;
         for(const name in appColorMap) {
           if(!appliedColors.has(name as AppColorName)) {
             this.applyAppColor({
               name: name as AppColorName,
-              hex: colorMap[isNight ? 'night' : 'day'][name as AppColorName],
+              hex: colorMap[fallbackName][name as AppColorName],
+              mixColor: defaultMixColor,
               ...options
             });
           }
@@ -360,6 +502,7 @@ export class ThemeController {
     darkenAlpha = lightenAlpha,
     mixColor,
     isNight = this.isNight(),
+    themeName,
     saveToCache
   }: {
     name: AppColorName,
@@ -369,13 +512,15 @@ export class ThemeController {
     darkenAlpha?: number,
     mixColor?: ColorRgb,
     isNight?: boolean,
+    themeName?: AppTheme['name'],
     saveToCache?: boolean
   }) {
     const appColor = appColorMap[name];
     const rgb = hexToRgb(hex);
     const hsla = rgbaToHsla(...rgb);
 
-    mixColor ??= hexToRgb(colorMap[isNight ? 'night' : 'day']['surface-color']);
+    const resolvedName: AppTheme['name'] = themeName ?? (isNight ? 'night' : 'day');
+    mixColor ??= hexToRgb(colorMap[resolvedName]['surface-color']);
     const lightenedRgb = mixColors(rgb, mixColor, lightenAlpha);
 
     const darkenedHsla: typeof hsla = {
@@ -402,48 +547,176 @@ export class ThemeController {
     });
   }
 
-  public async applyNewTheme(theme: Theme) {
-    const isNight = this.isNightTheme(theme);
+  // Apply one of the iOS-style accent presets (see src/config/themePresets.ts).
+  // Builds a synthetic Theme that wraps the preset for the current base, then routes
+  // through applyNewTheme so the multi-base settings array, tinted blending, and
+  // background-document download all reuse the cloud-theme codepath.
+  public applyAccentPreset(preset: AccentPreset) {
     const currentTheme = this.getTheme();
+    const baseTheme = this.getBaseThemeForName(currentTheme.name);
+    const settings = presetToThemeSettings(preset, baseTheme);
+    // iOS dayColorPresets have `wallpaper: nil` — those presets only swap accent + bubbles
+    // and keep the current wallpaper. Mirror that here: setBackgroundDocument requires a
+    // WallPaper, so fall back to the current AppTheme's wallpaper when the preset omits one.
+    if(!settings.wallpaper) {
+      settings.wallpaper = this.getThemeSettings(currentTheme)?.wallpaper;
+    }
+    const synthetic: Theme = {
+      _: 'theme',
+      id: presetThemeId(preset),
+      access_hash: '',
+      slug: '',
+      title: '',
+      pFlags: {},
+      settings: [settings]
+    };
+    return this.applyNewTheme(synthetic);
+  }
+
+  // Reset the active AppTheme to its factory defaults (the entry from SETTINGS_INIT).
+  // Used as the "no preset" choice in the accent picker — gets the user back to the
+  // bundled day/night/light/tinted look without nuking unrelated state.
+  public resetActiveTheme() {
+    const currentTheme = this.getTheme();
+    const defaultTheme = SETTINGS_INIT.themes.find((t) => t.name === currentTheme.name);
+    if(!defaultTheme) return Promise.resolve();
+    return this.applyNewTheme({...defaultTheme, settings: defaultTheme.settings});
+  }
+
+  public async applyNewTheme(theme: Theme) {
+    const currentTheme = this.getTheme();
+    const themeName = currentTheme.name;
+    const isNight = this.isNightThemeName(themeName);
+    const baseTheme = this.getBaseThemeForName(themeName);
     const themes = rootScope.settings.themes.slice();
-    const themeSettings = theme.settings.find((themeSettings) => themeSettings.base_theme._ === (isNight ? 'baseThemeNight' : 'baseThemeClassic'));
+    const themeSettings = theme.settings.find((s) => s.base_theme._ === baseTheme) ??
+      theme.settings.find((s) => s.base_theme._ === (isNight ? 'baseThemeNight' : 'baseThemeClassic'));
+    // Wallpaper handling on tinted (Dark Blue):
+    // - Curated sources (factory reset DEFAULT_THEME, accent-color picker presets) ship pre-dark
+    //   gradients designed for the tinted palette — pass through verbatim.
+    // - Any other source (cloud themes picked from the carousel, in particular) is blended with
+    //   the default tinted gradient + accent hint so the chat reads as Dark Blue regardless of the
+    //   cloud theme's wallpaper colors. Even cloud themes that ship a baseThemeTinted entry get
+    //   blended — Telegram's official tinted entries are still designed for native pattern
+    //   rendering, which tweb's overlay-render branch doesn't dim aggressively enough.
+    //   Strictly not iOS data behavior (iOS uses `forcedWallpaper` verbatim and relies on
+    //   MotionBackgroundDrawable to darken), but matches the perceived iOS visual on tweb.
+    // Curated sources are recognised by their synthetic id: empty (factory reset) or 'preset:*'
+    // (accent preset). Server cloud themes carry numeric/hash ids.
+    const themeId = String(theme.id ?? '');
+    const isCurated = themeId === '' || themeId.startsWith('preset:');
+    let effectiveWallpaper = themeSettings.wallpaper;
+    if(themeName === 'tinted' && !isCurated && effectiveWallpaper) {
+      effectiveWallpaper = blendWallpaperForTinted(effectiveWallpaper, themeSettings.accent_color);
+    }
+
+    // Preserve every base entry from the cloud theme (mirrors iOS' `[TelegramThemeSettings]`).
+    // Only the entry matching the current base gets the (optionally tinted-blended) wallpaper.
+    // The matching entry is the same object that setBackgroundDocument will mutate to fill in
+    // `highlightingColor` once the wallpaper's average color is computed.
+    const newSettings: AppTheme['settings'] = theme.settings.map((s) => ({
+      ...s,
+      wallpaper: s.base_theme._ === themeSettings.base_theme._ ? effectiveWallpaper : s.wallpaper,
+      highlightingColor: ''
+    }));
+    const targetSettings = newSettings.find((s) => s.base_theme._ === themeSettings.base_theme._);
+
     const newAppTheme: AppTheme = {
       ...theme,
-      name: currentTheme.name,
-      settings: {
-        ...themeSettings,
-        highlightingColor: ''
-      }
+      name: themeName,
+      settings: newSettings
     };
 
-    await this.AppBackgroundTab.setBackgroundDocument(themeSettings.wallpaper, newAppTheme.settings);
-    themes[themes.indexOf(currentTheme)] = newAppTheme;
+    await this.AppBackgroundTab.setBackgroundDocument(effectiveWallpaper, targetSettings);
+    let idx = themes.indexOf(currentTheme);
+    if(idx < 0) idx = themes.findIndex((t) => t.name === themeName);
+    if(idx < 0) {
+      themes.push(newAppTheme);
+    } else {
+      themes[idx] = newAppTheme;
+    }
     const [, setAppSettings] = useAppSettings();
     await setAppSettings('themes', themes);
-    rootScope.dispatchEvent('theme_change');
+    // Don't dispatch 'theme_change' here. setBackgroundDocument's onReady chain already invokes
+    // appImManager.applyCurrentTheme(), which calls themeController.setTheme() — the very thing
+    // the 'theme_change' listener would re-trigger. Re-dispatching ran setTheme() (and therefore
+    // a full view-transition snapshot) twice per accent-preset / cloud-theme apply, which on tweb
+    // surfaced as a multi-second hang on click. The post-event 'theme_changed' is fired inside
+    // _setTheme() so all subscribers (worker theme params, tab pickers, etc.) still get notified.
   }
 
   private isNightTheme(theme: Theme | AppTheme) {
-    return (theme as AppTheme).name === 'night' || this.isNight();
+    return this.isNightThemeName(this.getThemeName(theme));
   }
 
-  public getThemeSettings(theme: Theme | AppTheme, isNight?: boolean) {
-    isNight ??= this.isNightTheme(theme);
-    const themeSettings = Array.isArray(theme.settings) ?
-      theme.settings.find((settings) => settings.base_theme._ === (isNight ? 'baseThemeNight' : 'baseThemeClassic')) :
-      theme.settings;
-    return themeSettings;
+  public getThemeSettings(theme: AppTheme, isNight?: boolean): AppThemeSettings;
+  public getThemeSettings(theme: Theme, isNight?: boolean): ThemeSettings;
+  public getThemeSettings(theme: Theme | AppTheme, isNight?: boolean): ThemeSettings | AppThemeSettings;
+  public getThemeSettings(theme: Theme | AppTheme, isNight?: boolean): ThemeSettings | AppThemeSettings {
+    if(!theme?.settings) return undefined;
+    // Legacy state may have stored a single ThemeSettings object instead of an array;
+    // pass it through unchanged so reads keep working until the next save migrates it.
+    if(!Array.isArray(theme.settings)) return theme.settings as any;
+    const themeName = this.getThemeName(theme);
+    const baseTheme = this.getBaseThemeForName(themeName);
+    return theme.settings.find((s) => s.base_theme._ === baseTheme) ??
+      theme.settings.find((s) => s.base_theme._ === ((isNight ?? this.isNightThemeName(themeName)) ? 'baseThemeNight' : 'baseThemeClassic'));
   }
 
   public applyTheme(theme: Theme | AppTheme, element = document.documentElement, saveToCache?: boolean) {
-    const isNight = this.isNightTheme(theme);
+    const themeName = this.getThemeName(theme);
+    const isNight = this.isNightThemeName(themeName);
     const themeSettings = this.getThemeSettings(theme, isNight);
-    const baseColors = colorMap[isNight ? 'night' : 'day'];
+    const baseColors = colorMap[themeName] || colorMap[isNight ? 'night' : 'day'];
 
     let hsvTemp1 = rgbToHsv(...hexToRgb(baseColors['primary-color'])); // primary base
     let hsvTemp2 = rgbToHsv(...getRgbColorFromTelegramColor(themeSettings.accent_color)); // new primary
 
-    const newAccentRgb = changeColorAccent(
+    // For 'tinted' (Dark Blue / iOS nightAccent) the surface palette is *fully* derived from the
+    // accent via iOS `UIColor.withMultiplied(hue:, saturation:, brightness:)` — see
+    // submodules/TelegramPresentationData/Sources/DefaultDarkTintedPresentationTheme.swift, lines
+    // 94–114 (customizeDefaultDarkTintedPresentationTheme). Each multiplier is reproduced verbatim.
+    // Computed up front because the resulting surface is also used as the `defaultMixColor` for
+    // every light-filled-* mix below (so e.g. --light-filled-secondary-text-color blends against
+    // the iOS-derived navy, not the static colorMap entry).
+    let tintedSurfaceRgb: ColorRgb | undefined;
+    let tintedAccentRgb: ColorRgb | undefined;
+    let mainBackgroundColor: string | undefined;
+    let additionalBackgroundColor: string | undefined;
+    let inputBackgroundColor: string | undefined;
+    let mainSeparatorColor: string | undefined;
+    let mainSecondaryColor: string | undefined;
+    let mainSecondaryTextColor: string | undefined;
+    if(themeName === 'tinted') {
+      // iOS reassigns the accent before deriving surfaces (line 94-96):
+      //   let hsb = initialAccentColor.hsb
+      //   accentColor = UIColor(hue: hsb.0, saturation: hsb.1, brightness: max(hsb.2, 0.18))
+      // i.e. the *raw* user-picked accent with its brightness clamped to ≥0.18 so very dark
+      // accents don't collapse the whole palette to black. We don't pipe through tweb's
+      // `changeColorAccent` here — that's a tweb-only adapter for the global --primary-color and
+      // would leave surfaces drifting away from the iOS-derived values.
+      const rawAccentRgb = getRgbColorFromTelegramColor(themeSettings.accent_color);
+      const accHsv = rgbToHsv(...rawAccentRgb);
+      const clampedV = Math.max(accHsv[2], 0.18);
+      tintedAccentRgb = hsvToRgb(accHsv[0], accHsv[1], clampedV);
+      const withMul = (h: number, s: number, b: number) => rgbaToHexa(hsvToRgb(
+        (accHsv[0] * h) % 360,
+        Math.min(1, accHsv[1] * s),
+        Math.min(1, clampedV * b)
+      ));
+      mainBackgroundColor       = withMul(1.024, 0.585, 0.25);
+      additionalBackgroundColor = withMul(1.024, 0.573, 0.18);
+      inputBackgroundColor      = withMul(1.02,  0.609, 0.15);
+      mainSeparatorColor        = withMul(1.033, 0.426, 0.34);
+      mainSecondaryColor        = withMul(1.019, 0.109, 0.59);
+      mainSecondaryTextColor    = withMul(0.956, 0.17,  1.0);
+      tintedSurfaceRgb          = hexToRgb(mainBackgroundColor);
+    }
+
+    // For tinted use the iOS-style accent (raw, brightness-clamped) for --primary-color directly —
+    // bypasses tweb's `changeColorAccent` HSV adapter, which would shift e.g. cyan #00c2ed into
+    // #00b2da. iOS `customizePresentationTheme` for nightAccent uses the clamped accent verbatim.
+    const newAccentRgb = tintedAccentRgb ?? changeColorAccent(
       hsvTemp1,
       hsvTemp2,
       hexToRgb(baseColors['primary-color']),
@@ -451,7 +724,10 @@ export class ThemeController {
     );
     const newAccentHex = rgbaToHexa(newAccentRgb);
 
-    const {applyAppColor, finalize} = this.bindColorApplier({element, isNight, saveToCache});
+    // Default mixColor for every light-filled-* in this pass. For tinted use the iOS-derived
+    // surface so panels, secondary text, primary buttons all share a consistent fill.
+    const defaultMixColor = tintedSurfaceRgb;
+    const {applyAppColor, finalize} = this.bindColorApplier({element, isNight, themeName, saveToCache}, defaultMixColor);
 
     applyAppColor({
       name: 'primary-color',
@@ -466,6 +742,21 @@ export class ThemeController {
       mixColor: [255, 255, 255]
     });
 
+    if(themeName === 'tinted') {
+      // iOS → tweb CSS var mapping. mainBackgroundColor is the chat-list/settings panel surface;
+      // additionalBackgroundColor is the page/list backdrop; inputBackgroundColor is the search
+      // input chrome. mainBackgroundColor doubles for the incoming-bubble fill (matches iOS
+      // chat.message.incoming.bubble.fill which uses the same derived background color).
+      applyAppColor({name: 'surface-color', hex: mainBackgroundColor!});
+      applyAppColor({name: 'background-color', hex: additionalBackgroundColor!});
+      applyAppColor({name: 'body-background-color', hex: additionalBackgroundColor!});
+      applyAppColor({name: 'message-background-color', hex: mainBackgroundColor!});
+      applyAppColor({name: 'input-search-background-color', hex: inputBackgroundColor!});
+      applyAppColor({name: 'border-color', hex: mainSeparatorColor!});
+      applyAppColor({name: 'secondary-color', hex: mainSecondaryColor!});
+      applyAppColor({name: 'secondary-text-color', hex: mainSecondaryTextColor!});
+    }
+
     if(!themeSettings.message_colors?.length) {
       return;
     }
@@ -473,7 +764,10 @@ export class ThemeController {
     const messageLightenAlpha = isNight ? 1 : 0.12;
     const baseMessageColor = hexToRgb(baseColors['message-out-primary-color']);
     hsvTemp1 = rgbToHsv(...baseMessageColor);
-    const baseMessageOutBackgroundColor = mixColors(baseMessageColor, hexToRgb(baseColors['surface-color']), messageLightenAlpha);
+    // Use the iOS-derived surface for tinted so message-out-background-color and downstream
+    // computations sit on the same surface as the chat panels.
+    const surfaceForMessage = tintedSurfaceRgb ?? hexToRgb(baseColors['surface-color']);
+    const baseMessageOutBackgroundColor = mixColors(baseMessageColor, surfaceForMessage, messageLightenAlpha);
 
     const firstColor = getRgbColorFromTelegramColor(themeSettings.message_colors[0]);
 
@@ -503,7 +797,7 @@ export class ThemeController {
 
     const accentColor2 = themeSettings.outbox_accent_color !== undefined && rgbToHsv(...getRgbColorFromTelegramColor(themeSettings.outbox_accent_color));
 
-    let newMessageOutBackgroundColor = mixColors(myMessagesAccent, hexToRgb(baseColors['surface-color']), messageLightenAlpha);
+    let newMessageOutBackgroundColor = mixColors(myMessagesAccent, surfaceForMessage, messageLightenAlpha);
 
     if(!isNight/*  || true */) {
       const messageOutBackgroundColorHsl = rgbaToHsla(...newMessageOutBackgroundColor);
@@ -537,7 +831,7 @@ export class ThemeController {
       button_text_color: '#ffffff',
       hint_color: 'secondary-text-color',
       link_color: 'link-color',
-      secondary_bg_color: 'background-color-true',
+      secondary_bg_color: 'background-color',
       text_color: 'primary-text-color',
       header_bg_color: 'surface-color',
       accent_text_color: 'primary-color',

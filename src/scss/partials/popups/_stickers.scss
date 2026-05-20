@@ -8,44 +8,23 @@
 
 .popup-stickers {
   $parent: ".popup";
-  user-select: none;
+  --popup-width: 420px;
+  --popup-max-height: 420px;
+  --popup-footer-gradient-start: 0%;
 
-  .scrollable {
-    &.is-loading {
-      min-height: 9rem;
-      position: relative;
+  #{$parent} {
+    &-scrollable {
+      padding-bottom: var(--popup-footer-height);
+
+      &.is-loading {
+        min-height: 9rem;
+        position: relative;
+      }
     }
   }
 
   .super-emojis {
     padding: 0 .5rem;
-  }
-
-  #{$parent} {
-    &-container {
-      max-width: 420px;
-      max-height: 420px;
-      width: 420px;
-      padding: 0;
-    }
-  
-    &-close {
-      font-size: 1.5rem;
-    }
-  
-    &-header {
-      margin: .625rem 1rem;
-      flex: 0 0 auto;
-    }
-
-    &-footer {
-      color: var(--primary-color);
-  
-      .btn-primary {
-        width: auto;
-        margin: 0 auto;
-      }
-    }
   }
 
   .sticker-set {
@@ -78,8 +57,8 @@
         @include respond-to(handhelds) {
           margin-bottom: 8px;
         }
-  
-        &:hover {
+
+        @include hover() {
           border-radius: 12px;
           background-color: var(--light-secondary-text-color);
         }

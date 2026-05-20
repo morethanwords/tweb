@@ -32,6 +32,7 @@ function moveFiles(outPath) {
 }`;
   const idx = styleText.indexOf(p);
   styleText = styleText.slice(0, idx + p.length) + '\n';
+  styleText = styleText.replace('\n', '\n@use "../variables" as *;\n');
   fs.writeFileSync(stylesOutPath + 'style.scss', styleText);
 
   let variablesText = fs.readFileSync(outPath + 'variables.scss').toString();

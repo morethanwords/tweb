@@ -10,14 +10,11 @@
   overflow: clip;
   flex: 1;
   display: grid;
-
-  > :global(*) {
-    grid-area: 1 / 1;
-  }
 }
 
 .collectionContent {
   min-height: 0;
+  grid-area: 1 / 1;
 }
 
 .hasCollections .grid,
@@ -26,13 +23,9 @@
 }
 
 .collections {
-  position: sticky!important;
-  top: 3rem;
-  z-index: 3;
-  background-color: var(--background-color);
-
   :global(.profile-container) & {
-    top: 6.5rem;
+    margin-top: -.375rem;
+    margin-bottom: .625rem;
   }
 }
 

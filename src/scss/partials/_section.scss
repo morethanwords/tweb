@@ -1,0 +1,109 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+@use "../shared" as *;
+
+.sidebar-left {
+  &-section {
+    background-color: var(--surface-color);
+    padding: .5rem 0;
+    border-radius: #{$section-rounded-border-radius};
+    margin-bottom: var(--section-padding-bottom);
+    box-shadow: var(--section-box-shadow);
+
+    &.no-shadow {
+      box-shadow: none;
+    }
+
+    &-content {
+      margin: 0 var(--section-margin-inline);
+
+      > .btn-primary {
+        margin: 0;
+      }
+
+      > .checkbox-field {
+        .checkbox-box {
+          inset-inline-start: auto;
+        }
+      }
+
+      @include respond-to(handhelds) {
+        > .checkbox-ripple,
+        > .btn-primary {
+          border-radius: 0;
+        }
+      }
+
+      &.full-width {
+        margin: 0 !important;
+      }
+
+      > .media-sticker-wrapper {
+        width: 86px;
+        height: 86px;
+        margin: 1px auto 29px;
+        flex: 0 0 auto;
+        position: relative;
+      }
+    }
+
+    &-name {
+      padding: .5rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      color: var(--primary-color);
+      font-size: var(--font-size-16);
+      font-weight: var(--font-weight-bold);
+
+      &-right {
+        font-weight: var(--font-weight-normal);
+      }
+    }
+
+    &-caption {
+      margin: -0.375rem 0 1rem;
+      font-size: var(--font-size-14);
+      line-height: var(--line-height-14);
+      color: var(--secondary-text-color);
+      padding: 0 1rem;
+
+      &:first-child {
+        margin-top: .8125rem;
+        margin-bottom: .8125rem;
+      }
+    }
+
+    &-container {
+      padding-inline: var(--section-padding-inline);
+
+      a {
+        cursor: pointer;
+      }
+    }
+
+    .checkbox-field,
+    .radio-field {
+      margin: 0;
+    }
+
+    .checkbox-field {
+      display: flex;
+      align-items: center;
+      height: 3.5rem;
+      padding: 0 1.125rem;
+    }
+
+    &-disabled {
+      pointer-events: none !important;
+      opacity: .25;
+    }
+
+    .chatlist {
+      padding: 0;
+    }
+  }
+}

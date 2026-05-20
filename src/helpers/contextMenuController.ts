@@ -20,6 +20,7 @@ type AdditionalMenuItem = {
 
 class ContextMenuController extends OverlayClickHandler {
   protected additionalMenus: AdditionalMenuItem[] = [];
+  protected menuOpenTarget: HTMLElement;
 
   constructor() {
     super('menu', true);
@@ -100,9 +101,9 @@ class ContextMenuController extends OverlayClickHandler {
     }
 
     if(this.element) {
-      const {parentElement} = this.element;
       this.element.classList.remove('active');
-      parentElement && parentElement.classList.remove('menu-open');
+      this.menuOpenTarget?.classList.remove('menu-open');
+      this.menuOpenTarget = undefined;
 
       if(this.element.classList.contains('night')) {
         const element = this.element;
@@ -129,16 +130,22 @@ class ContextMenuController extends OverlayClickHandler {
     }
   }
 
-  public openBtnMenu(element: HTMLElement, onClose?: () => void) {
-    if(overlayCounter.isDarkOverlayActive) {
+  protected shouldApplyNight(triggerElement?: HTMLElement) {
+    if(overlayCounter.isDarkOverlayActive) return true;
+    const nightAncestor = triggerElement && findUpClassName(triggerElement, 'night');
+    return !!nightAncestor && nightAncestor !== document.documentElement;
+  }
+
+  public openBtnMenu(element: HTMLElement, onClose?: () => void, triggerElement?: HTMLElement) {
+    if(this.shouldApplyNight(triggerElement)) {
       element.classList.add('night');
     }
 
     super.open(element);
 
-    const {parentElement} = this.element;
     this.element.classList.add('active', 'was-open');
-    parentElement.classList.add('menu-open');
+    this.menuOpenTarget = triggerElement ?? this.element.parentElement;
+    this.menuOpenTarget?.classList.add('menu-open');
 
     if(onClose) {
       this.addEventListener('toggle', onClose, {once: true});
@@ -164,6 +171,9 @@ class ContextMenuController extends OverlayClickHandler {
         onClose();
       }
     });
+    if(this.shouldApplyNight(triggerElement)) {
+      element.classList.add('night');
+    }
     element.classList.add('active', 'was-open');
 
     if(onClose) {

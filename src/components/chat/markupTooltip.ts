@@ -5,6 +5,7 @@
  */
 
 import ButtonIcon from '@components/buttonIcon';
+import {replaceButtonIcon} from '@components/button';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import {IS_APPLE, IS_MOBILE} from '@environment/userAgent';
 import appNavigationController from '@components/appNavigationController';
@@ -21,7 +22,7 @@ import getMarkupInSelection from '@helpers/dom/getMarkupInSelection';
 import {applyMarkdown} from '@helpers/dom/markdown';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import overlayCounter from '@helpers/overlayCounter';
-import type PopupSchedule from '@components/popups/schedule';
+import type showDatePickerPopup from '@components/popups/datePicker';
 
 export type MarkupTooltipTypes = Extract<MarkdownType, 'bold' | 'italic' | 'underline' | 'strikethrough' | 'monospace' | 'spoiler' | 'quote' | 'link' | 'date'>;
 
@@ -32,6 +33,7 @@ export default class MarkupTooltip {
   public container: HTMLElement;
   private wrapper: HTMLElement;
   private buttons: {[type in MarkupTooltipTypes]: HTMLElement} = {} as any;
+  private buttonIcons: Partial<{[type in MarkupTooltipTypes]: {inactive: Icon, active: Icon}}> = {};
   private linkBackButton: HTMLElement;
   private linkApplyButton: HTMLButtonElement;
   private hideTimeout: number;
@@ -44,7 +46,7 @@ export default class MarkupTooltip {
   private linkInputFocusTimeout: number;
   // private log: ReturnType<typeof logger>;
 
-  public static PopupSchedule: typeof PopupSchedule;
+  public static showDatePickerPopup: typeof showDatePickerPopup;
 
   constructor() {
     // this.log = logger('MARKUP');
@@ -66,21 +68,25 @@ export default class MarkupTooltip {
     tools1.classList.add('markup-tooltip-tools', 'markup-tooltip-tools-regular');
     tools2.classList.add('markup-tooltip-tools', 'markup-tooltip-tools-link');
 
-    const arr: Array<keyof MarkupTooltip['buttons'] | [keyof MarkupTooltip['buttons'], Icon]> = [
+    const arr: Array<keyof MarkupTooltip['buttons'] | [keyof MarkupTooltip['buttons'], Icon] | [keyof MarkupTooltip['buttons'], Icon, Icon]> = [
       'bold',
       'italic',
       'underline',
       'strikethrough',
       'monospace',
       'spoiler',
-      ['quote', 'quote_outline'],
+      ['quote', 'quote_outline', 'quote'],
       ['date', 'calendar'],
       'link'
     ];
     arr.forEach((c) => {
       const type = typeof(c) === 'string' ? c : c[0];
-      const icon = typeof(c) === 'string' ? c : c[1];
-      const button = ButtonIcon(icon, {noRipple: true});
+      const inactiveIcon = (typeof(c) === 'string' ? c : c[1]) as Icon;
+      const activeIcon = typeof(c) === 'string' ? undefined : c[2];
+      if(activeIcon !== undefined && activeIcon !== inactiveIcon) {
+        this.buttonIcons[type] = {inactive: inactiveIcon, active: activeIcon};
+      }
+      const button = ButtonIcon(inactiveIcon, {noRipple: true});
       tools1.append(this.buttons[type] = button);
 
       if(type === 'link') {
@@ -192,8 +198,9 @@ export default class MarkupTooltip {
       const entity = getFormattedDateEntityByElement(element, 0, 0);
       initDate = new Date(entity.date * 1000);
     }
-    new MarkupTooltip.PopupSchedule({
+    MarkupTooltip.showDatePickerPopup({
       initDate,
+      withTime: true,
       onPick: (timestamp: number) => {
         setTimeout(() => {
           this.resetSelection();
@@ -211,7 +218,7 @@ export default class MarkupTooltip {
       },
       btnConfirmLangKey: element ? 'EditDate' : 'AddDate',
       btnDangerLangKey: element ? 'RemoveDate' : undefined
-    }).show();
+    });
   }
 
   public showLinkEditor() {
@@ -325,9 +332,16 @@ export default class MarkupTooltip {
     const activeButtons = this.getActiveMarkupButton();
 
     for(const i in this.buttons) {
-      // @ts-ignore
-      const button = this.buttons[i];
-      button.classList.toggle('active', activeButtons.includes(button));
+      const type = i as MarkupTooltipTypes;
+      const button = this.buttons[type];
+      const isActive = activeButtons.includes(button);
+      const wasActive = button.classList.contains('active');
+      button.classList.toggle('active', isActive);
+
+      const icons = this.buttonIcons[type];
+      if(icons && wasActive !== isActive) {
+        replaceButtonIcon(button, isActive ? icons.active : icons.inactive);
+      }
     }
   }
 
@@ -335,7 +349,8 @@ export default class MarkupTooltip {
     const selection = document.getSelection();
     const range = selection.getRangeAt(0);
 
-    const rowsWrapper = findUpClassName(this.input, 'rows-wrapper') ||
+    const rowsWrapper = findUpClassName(this.input, 'simple-message-input-container') ||
+      findUpClassName(this.input, 'rows-wrapper') ||
       findUpClassName(this.input, 'input-message-container') ||
       findUpClassName(this.input, 'input-field');
     const currentTools = this.container.classList.contains('is-link') ?

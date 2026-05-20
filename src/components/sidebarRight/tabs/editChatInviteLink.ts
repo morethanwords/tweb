@@ -20,7 +20,7 @@ import CheckboxField from '@components/checkboxField';
 import InputField from '@components/inputField';
 import {InputStarsField} from '@components/popups/makePaid';
 import {InputRightNumber} from '@components/popups/payment';
-import PopupSchedule from '@components/popups/schedule';
+import showDatePickerPopup from '@components/popups/datePicker';
 import {setButtonLoader} from '@components/putPreloader';
 import RangeSelector from '@components/rangeSelector';
 import RangeStepsSelector from '@components/rangeStepsSelector';
@@ -218,12 +218,12 @@ export default class AppEditChatInviteLink extends SliderSuperTabEventable<{
             initDate.setDate(initDate.getDate() + 7);
           }
 
-          const popup = new PopupSchedule({
+          showDatePickerPopup({
             initDate,
+            withTime: true,
             onPick: setCustomTimestamp,
             btnConfirmLangKey: 'Save'
           });
-          popup.show();
         },
         listenerSetter: this.listenerSetter
       });

@@ -6,120 +6,155 @@
 
 @use "../shared" as *;
 
-$menu-size: 3rem;
+.menu-horizontal {
+  &-scrollable {
+    --scrollable-size: #{$menu-height};
+    height: var(--scrollable-size);
+    margin: 0 var(--section-padding-inline);
+    border-radius: $border-radius-big;
+    overflow: hidden;
+    box-shadow: var(--section-box-shadow);
+    background-color: var(--surface-color);
 
-.menu-horizontal-scrollable {
-  --scrollable-size: #{$menu-size};
-  height: var(--scrollable-size);
-  
-  &:after {
-    content: " ";
-    position: absolute;
-    height: 1px;
-    border-bottom: 1px solid var(--border-color);
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: -1;
-  }
-
-  .menu-horizontal-div {
-    border-bottom: none;
-  }
-}
-
-.menu-horizontal-div {
-  --size: var(--scrollable-size, #{$menu-size});
-  --padding-horizontal: 0px;
-  width: 100%;
-  height: var(--size);
-  display: flex;
-  justify-content: space-around;
-  flex-direction: row;
-  position: relative;
-  z-index: 2;
-  user-select: none;
-
-  color: var(--secondary-text-color);
-  border-bottom: 1px solid var(--border-color);
-
-  &:not(.no-stripe) {
-    &:before,
-    &:after {
-      content: " ";
-      width: var(--padding-horizontal);
-      flex: 0 0 auto;
-    }
-
-    .menu-horizontal-div-item {
-      border-radius: $border-radius-medium $border-radius-medium 0 0;
+    .scrollable-x {
+      display: flex;
+      position: relative;
     }
   }
 
-  &-item {
-    height: 100%;
-    padding: 0 1rem;
-    cursor: pointer;
-    text-align: center;
-    flex: 1 1 auto;
-    font-size: 1rem;
-    font-weight: var(--font-weight-bold);
-    position: relative;
-    transition: none !important;
+  &-div {
+    --size: var(--scrollable-size, #{$menu-height});
+    --padding-horizontal: 0px;
+    width: 100%;
+    height: var(--size);
     display: flex;
-    align-items: center;
-    justify-content: center;
-    line-height: var(--line-height);
-    border-radius: 0;
+    justify-content: space-around;
+    flex-direction: row;
+    position: relative;
+    z-index: 2;
+    padding: .25rem 0;
+    color: var(--secondary-text-color);
+    background-color: var(--surface-color);
 
-    @include hover-background-effect();
+    .menu-horizontal-scrollable & {
+      width: auto;
+      flex: 1 1 auto;
+    }
 
-    &.active {
-      color: var(--primary-color);
+    &-item {
+      height: 100%;
+      padding: 0 1rem;
+      cursor: pointer;
+      text-align: center;
+      flex: 1 1 auto;
+      font-size: 1rem;
+      font-weight: var(--font-weight-bold);
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: var(--line-height);
+      border-radius: 1.25rem;
+      margin: 0 .25rem;
+      min-width: 1px; // * fix width
 
-      i {
-        opacity: 1;
+      @include animation-level(2) {
+        transition: background-color var(--tabs-transition) !important;
       }
 
-      .c-ripple__circle {
-        background-color: var(--light-primary-color);
+      @include hover-background-effect();
+
+      .c-ripple {
+        display: none;
       }
-  
-      @include hover-background-effect(primary);
+
+      &.active {
+        color: var(--primary-color);
+        // background: transparent !important;
+
+        .menu-horizontal-div-item-background {
+          opacity: 1;
+        }
+
+        .c-ripple__circle {
+          background-color: var(--light-primary-color);
+        }
+
+        .badge {
+          background-color: var(--primary-color);
+        }
+      }
+
+      &-span {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        overflow: visible;
+        pointer-events: none;
+        white-space: nowrap;
+        z-index: 2;
+      }
+
+      &-background {
+        position: absolute;
+        left: 0;
+        opacity: 0;
+        background-color: var(--light-filled-primary-color);
+        height: 100%;
+        width: 100%;
+        border-radius: inherit;
+        pointer-events: none;
+        box-sizing: content-box;
+        transform-origin: left;
+        z-index: 1;
+
+        &.animate {
+          transition: transform var(--tabs-transition), width var(--tabs-transition);
+        }
+      }
 
       .badge {
-        background-color: var(--primary-color);
+        margin-inline-start: 5px;
       }
-    }
-
-    &-span {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      overflow: visible;
-      pointer-events: none;
-      white-space: nowrap;
     }
   }
 
-  i {
+  &-gradient {
+    --alpha: 1;
+    --gradient-color-rgb: var(--background-color-rgb);
+    --gradient-color: rgba(var(--gradient-color-rgb), var(--alpha));
+    height: 80px;
+    background: linear-gradient(180deg, var(--gradient-color), transparent 100%);
     position: absolute;
-    bottom: -.8125rem;
-    left: 0;
-    opacity: 0;
-    background-color: var(--primary-color);
-    height: .1875rem;
     width: 100%;
-    border-radius: .1875rem .1875rem 0 0;
-    pointer-events: none;
-    /* padding-right: .5rem;
-    margin-left: -.25rem; */
-    box-sizing: content-box;
-    transform-origin: left;
-    z-index: 1;
+    // visibility: hidden;
 
-    &.animate {
-      transition: transform var(--tabs-transition);
+    // .is-full-viewport & {
+    //   visibility: visible;
+    // }
+
+    .night & {
+      --alpha: 0.7;
+    }
+
+    &-container {
+      z-index: 2;
+      position: relative;
+      // pointer-events: none;
+    }
+
+    &-smaller {
+      height: 64px;
+    }
+
+    &-color {
+      &-surface {
+        --gradient-color-rgb: var(--surface-color-rgb);
+      }
+
+      &-background {
+        --gradient-color-rgb: var(--background-color-rgb);
+      }
     }
   }
 }
@@ -128,49 +163,22 @@ $menu-size: 3rem;
   min-width: 100%;
   width: 100%;
   display: grid;
-  //grid-template-columns: 1fr;
   grid-template-columns: 100%;
   grid-template-rows: 100%;
 
-  /* @include respond-to(not-handhelds) {
-    overflow-x: hidden;
-  } */
-
-  // &.animated {
-  //   transition: .3s transform;
-  // }
-  
   .tabs-tab {
-    // * can't define these rules because of old firefox, though they don't work
-    //height: 100%;
-    //max-height: 100%;
-    //width: 100%;
-    //max-width: 100%;
-    
     display: none;
     flex-direction: column;
     grid-row-start: 1;
     grid-column-start: 1;
-    background-color: var(--background-color);
 
     body.animation-level-0 & {
       transition: none !important;
     }
-    
-    //@include respond-to(not-handhelds) {
-      overflow: hidden;
-    //}
 
     &.active {
       display: flex;
     }
-    
-    /* > div:not(.scroll-padding) {
-      width: 100%;
-      max-width: 100%;
-      //overflow: hidden;
-      position: relative;
-    } */
   }
 
   /* &[data-animation="tabs"] {

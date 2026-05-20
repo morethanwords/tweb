@@ -2,7 +2,7 @@ import Section from '@components/section';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import type {AppPasskeysTab} from '@components/solidJsTabs';
 import anchorCallback from '@helpers/dom/anchorCallback';
-import StickerAndTitle from '@components/stickerAndTitle';
+import MediaHeader from '@components/mediaHeader';
 import {createEffect, createSignal, For, Show} from 'solid-js';
 import {formatFullSentTime} from '@helpers/date';
 import createMiddleware from '@helpers/solid/createMiddleware';
@@ -102,11 +102,10 @@ const PasskeysTab = () => {
       caption="Privacy.Passkeys.Caption"
       captionArgs={[anchorCallback(() => showPasskeyPopup(onCreation))]}
     >
-      <StickerAndTitle
-        sticker={{name: 'key', size: 100}}
-        subtitle={i18n('Passkey.Subtitle')}
-        subtitleSecondary
-      />
+      <MediaHeader>
+        <MediaHeader.Sticker name="key" size={100} />
+        <MediaHeader.Subtitle secondary>{i18n('Passkey.Subtitle')}</MediaHeader.Subtitle>
+      </MediaHeader>
       <div class={styles.items}>
         <For each={tab.payload.passkeys}>
           {PasskeyItem}

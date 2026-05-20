@@ -5,7 +5,6 @@
  */
 
 import type {AppMessagesManager} from '@appManagers/appMessagesManager';
-import IS_PARALLAX_SUPPORTED from '@environment/parallaxSupport';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import findAndSplice from '@helpers/array/findAndSplice';
 import cancelEvent from '@helpers/dom/cancelEvent';
@@ -41,8 +40,8 @@ export const SHOW_NO_AVATAR = true;
 
 export default class PeerProfileAvatars {
   private static BASE_CLASS = 'profile-avatars';
-  private static SCALE = IS_PARALLAX_SUPPORTED ? 2 : 1;
-  private static TRANSLATE_TEMPLATE = IS_PARALLAX_SUPPORTED ? `translate3d({x}, 0, -1px) scale(${PeerProfileAvatars.SCALE})` : 'translate({x}, 0)';
+  private static SCALE = 1;
+  private static TRANSLATE_TEMPLATE = 'translate({x}, 0)';
   public container: HTMLElement;
   private avatars: HTMLElement;
   private gradient: HTMLElement;

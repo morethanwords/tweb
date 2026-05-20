@@ -1,29 +1,76 @@
-.Container {
+.Container,
+.Layer {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
 
-  width: 100%;
-  height: 100%;
+  // background-color: #e6ebee;
+  // :global(html.night) & {
+  //   background-color: var(--border-color);
+  // }
+}
+
+.Slot {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+
+  &.IsPattern {
+    background-color: #000;
+  }
+
+  &.IsImage {
+    background-color: var(--body-background-color, #000);
+  }
+
+  &.IsTinted {
+    // Was hard-coded #000. For dark themes that produced a pure-black backdrop, with the
+    // gradient canvas only contributing 30-50% opacity on top — visually collapsing tinted
+    // and night to «just black». Android's actual rendering uses the gradient as the full
+    // background (positive intensity) without a black backdrop. Falling back to the theme
+    // body-bg gives the correct «dark navy with gradient overlay» look for tinted while
+    // leaving night nearly identical (#181818 instead of #000).
+    background-color: var(--body-background-color, #000);
+  }
+}
+
+.SlotActive {
+  opacity: 1;
+}
+
+.SlotFade {
+  transition: opacity .2s ease;
+}
+
+.SlotCrossfadeForwards {
+  transition: opacity var(--transition-standard-in);
+}
+
+.SlotCrossfadeBackwards {
+  transition: opacity var(--transition-standard-out);
 }
 
 .CanvasCommon {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-
+  inset: 0;
   width: 100%;
   height: 100%;
-
   object-fit: cover;
-
   opacity: var(--opacity-max, 1);
+}
 
-  &.blend {
-    mix-blend-mode: soft-light;
-  }
+.GradientCanvas {
+  height: 150%;
+  top: -25%;
+}
+
+.Blend {
+  mix-blend-mode: soft-light;
+}
+
+// For dark patterns: invert the (black-on-transparent) pattern image so it draws as white doodles,
+// then soft-light over the dark gradient lifts them — matches Android's "lighter pattern over dark gradient" look.
+.DarkPatternInvert {
+  filter: invert(1);
 }

@@ -9,6 +9,17 @@
 
 :root {
   --vh: 1vh;
+  // --page-chats-padding is owned by helpers/updateColumnWidths.ts — single
+  // JS-driven signal (16 on desktop, 8 on handheld). Don't reintroduce a
+  // SCSS @media override here; consumers in chat / sidebars / bubble math
+  // depend on the value being the same at every scope.
+  --100vh: calc(var(--vh) * 100);
+  --main-column-border-radius: #{$border-radius-big};
+
+  @include respond-to(handhelds) {
+    --main-column-border-radius: 0;
+  }
+
   --z-below: -1;
   --hover-alpha: #{$hover-alpha};
   --reflect: 1;
@@ -57,7 +68,7 @@
   --message-beside-button-size: 2.375rem;
   --message-beside-button-margin: calc((var(--message-beside-button-size) + .5rem) * -1);
   --message-time-background: rgba(0, 0, 0, .35);
-  --messages-container-width: #{$messages-container-width};
+  // --chat-width is owned by helpers/updateColumnWidths.ts — no default here.
   --messages-text-size: 16px;
   --messages-line-height: 1.3125;
   // --messages-line-height: calc(var(--messages-text-size) + 5px);
@@ -88,6 +99,7 @@
   --font-size-13: 13px;
   --font-size-12: 12px;
   --font-size-11: 11px;
+  --font-size-10: 10px;
   --font-size: var(--font-size-16);
   --esg-sticker-size: 72px;
   --esg-custom-emoji-size: 36px;
@@ -96,11 +108,15 @@
   --round-video-size: 280px;
   --menu-box-shadow: 0px 0px 10px var(--menu-box-shadow-color);
   --menu-backdrop-filter: blur(50px);
+  --section-box-shadow: 0px 1px 4px 0px var(--section-box-shadow-color);
+  --section-box-shadow-big: 0px 1px 8px 0px var(--section-box-shadow-big-color);
+  --column-box-shadow: 0px 0px 4px 0px var(--column-box-shadow-color);
   --font-regular: "Roboto", -apple-system, apple color emoji, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
   --font-monospace: 'Roboto Mono', monospace;
   --font-rounded: -ui-rounded, "Numbers Rounded", "Roboto", "Helvetica Neue", sans-serif;
   --font-weight-bold: 500;
   --font-weight-normal: 400;
+  --font-weight: var(--font-weight-normal);
   --selection-background-color: rgba(var(--primary-color-rgb), .4);
   --selection-color: inherit;
   --white: #ffffff;
@@ -115,10 +131,8 @@
   }
 
   --topbar-floating-scaleX: 1;
-  --topbar-call-group-call-height: 3rem;
-  --topbar-call-call-height: 3rem;
-  --topbar-call-rtmp-height: 1.6875rem;
-  --topbar-audio-height: 3.25rem;
+  --topbar-call-height: 1.5rem;
+  --topbar-audio-height: 3rem;
   --topbar-floating-call-height: 0px;
   --topbar-floating-audio-height: 0px;
 
@@ -127,9 +141,17 @@
 
   --custom-emoji-size: 1.25rem;
 
-  --chat-input-border-radius: 1rem;
-  --chat-input-max-width: var(--messages-container-width);
+  --chat-bubbles-padding: .5rem;
+  --chat-input-border-radius: #{$border-radius-big};
+  --chat-input-max-width: var(--chat-width);
   --chat-input-btn-send-margin: #{$btn-send-margin};
+  --chat-input-padding: 0px;
+  --chat-input-height: 3rem;
+  --plates-gap: 0.5rem;
+
+  @include respond-to(not-handhelds) {
+    --chat-bubbles-padding: 0px;
+  }
 
   // https://github.com/overtake/TelegramSwift/blob/5cc7d2475fe4738a6aa0486c23eaf80a89d33b97/submodules/TGUIKit/TGUIKit/PresentationTheme.swift#L2054
   @include avatar-color("red", #FF845E, #D45246);
@@ -161,32 +183,29 @@
   --premium-gradient: linear-gradient(52.62deg, #6B93FF 12.22%, #976FFF 50.25%, #E46ACE 98.83%);
   --star-background-color: var(--surface-color);
 
+  --section-margin-inline: 0;
+  --section-padding-inline: #{$section-rounded-padding};
+  --section-padding-bottom: var(--section-padding-inline);
+
+  --selector-user-size: 1.875rem;
+
+  // --default-column-width, --left-column-visual-width,
+  // --left-column-width, --middle-column-width, --right-column-width and the
+  // `body.right-column-floats` class are owned by
+  // helpers/updateColumnWidths.ts. The values below are the initial-paint
+  // fallback; the helper takes over at runtime (mediaSizes resize / left-
+  // sidebar resize).
+  --default-column-width: #{$default-column-width};
+
   @include respond-to(handhelds) {
     --right-column-width: 100vw;
     --esg-sticker-size: 68px;
     --popup-sticker-size: 68px;
     --round-video-size: 240px;
-
-    --chat-input-size: #{$chat-input-handhelds-size};
-    --chat-input-padding: #{$chat-padding-handhelds};
-    --chat-input-inner-padding: #{$chat-input-inner-padding-handhelds};
   }
 
   @include respond-to(not-handhelds) {
-    --right-column-width: calc(#{$large-screen} / 4);
-
-    --chat-input-size: #{$chat-input-size};
-    --chat-input-padding: #{$chat-padding};
-    --chat-input-inner-padding: #{$chat-input-inner-padding};
-  }
-
-  @include respond-to(esg-bottom) {
-    --chat-input-size: #{$chat-input-handhelds-size};
-    --chat-input-inner-padding: #{$chat-input-inner-padding-handhelds};
-  }
-
-  @include respond-to(only-medium-screens) {
-    --right-column-width: 25vw;
+    --section-margin-inline: 0.5rem;
   }
 
   --passcode-lock-screen-z-index: 100000;
@@ -194,51 +213,21 @@
   --star-golden-color: #fecf16;
 }
 
-@mixin splitColor($property, $color, $light: true, $dark: true, $light-filled: false, $dark-filled: false, $rgb: false, $alpha: $hover-alpha) {
-  --#{$property}: #{$color};
-
-  $lightened: hover-color($color);
-  @if $light != false {
-    --light-#{$property}: #{$lightened};
-  }
-
-  @if $light-filled != false {
-    --light-filled-#{$property}: #{rgba-to-rgb($lightened, $light-filled)};
-  }
-
-  $darkened: darken($color, $alpha * 100);
-  @if $dark != false {
-    --dark-#{$property}: #{$darkened};
-  }
-
-  @if $dark-filled != false {
-    --dark-filled-#{$property}: #{rgba-to-rgb($darkened, $dark-filled)};
-  }
-
-  @if $rgb != false {
-    --#{$property}-rgb: #{red($color)}, #{green($color)}, #{blue($color)};
-  }
-}
-
 :root {
   // * Day theme
-  --body-background-color: #fff;
-  --body-background-color-rgb: 255, 255, 255;
-  --background-color-true: #f4f4f5;
-  // --background-color: #fff;
-  --background-color: var(--background-color-true);
-  --border-color: #dfe1e5;
   --scrollbar-color: rgba(0, 0, 0, .2);
-  --section-box-shadow-color: rgba(0, 0, 0, .06);
+  --section-box-shadow-color: rgba(0, 0, 0, .05);
+  --section-box-shadow-big-color: rgba(0, 0, 0, .1);
   --menu-box-shadow-color: rgba(0, 0, 0, .15);
+  --column-box-shadow-color: #0000001A;
 
   --input-search-background-color: #fff;
   --input-search-border-color: #dfe1e5;
 
-  --secondary-color: #c4c9cc;
+  --input-placeholder-color: #9BA0A5;
+  --input-message-placeholder-color: #a2acb4;
+
   --warning-color: #fed85a;
-  --green-color: #3ba748;
-  --green-color-rgb: 59, 167, 72;
 
   // --avatar-online-color: #0ac630;
   --avatar-online-color: var(--primary-color);
@@ -247,7 +236,6 @@
   --chatlist-status-color: var(--avatar-online-color);
   --chatlist-pinned-color: #a2abb2;
   --badge-text-color: #fff;
-  --link-color: #00488f;
   --ripple-color: rgba(0, 0, 0, #{$hover-alpha});
   --skeleton-color: rgba(0, 0, 0, .12);
   --poll-circle-color: var(--border-color);
@@ -284,21 +272,14 @@
 }
 
 .night {
-//:root {
   // * Night theme
-  --body-background-color: #181818;
-  --body-background-color-rgb: 24, 24, 24;
-  --background-color-true: #181818;
-  // --background-color: #212121;
-  --background-color: var(--background-color-true);
-  --border-color: #0f0f0f;
   --scrollbar-color: rgba(255, 255, 255, .2);
   --section-box-shadow-color: rgba(0, 0, 0, .12);
+  --section-box-shadow-big-color: rgba(0, 0, 0, .24);
+  --column-box-shadow-color: rgba(0, 0, 0, .24);
 
   --input-search-background-color: #181818;
   --input-search-border-color: #2f2f2f;
-
-  --secondary-color: #707579;
 
   // --avatar-online-color: #0ac630;
   --avatar-online-color: var(--primary-color);
@@ -307,7 +288,6 @@
   --chatlist-status-color: var(--primary-color);
   --chatlist-pinned-color: var(--secondary-color);
   --badge-text-color: #fff;
-  --link-color: var(--primary-color);
   --ripple-color: rgba(255, 255, 255, #{$hover-alpha});
   --skeleton-color: rgba(255, 255, 255, .12);
   --poll-circle-color: #fff;
@@ -317,7 +297,7 @@
   --menu-background-color: rgba(var(--surface-color-rgb), .75);
   --rlottie-vector-fill: var(--light-secondary-text-color);
   --limit-line-empty-background: var(--light-filled-secondary-text-color);
-  --old-input-background-color: var(--background-color-true);
+  --old-input-background-color: var(--background-color);
 
   // * Night theme end
 }
@@ -375,7 +355,10 @@ body {
   overflow: hidden; // + disable overscroll behavior on macOS
 
   @include respond-to(handhelds) {
-    height: calc(var(--vh, 1vh) * 100);
+    // Use the JS-tracked viewport directly (handles iOS URL bar) — NOT
+    // `--100vh`, which subtracts page-chats-padding and would leave a
+    // gap below body that pushed the column visually short.
+    height: calc(var(--vh) * 100);
   }
 
   /* @include respond-to(handhelds) {
@@ -404,6 +387,7 @@ html.is-ios {
 html.no-backdrop {
   --menu-background-color: var(--surface-color);
   --menu-backdrop-filter: none;
+  --blur-off: none;
 }
 
 @supports(padding: string.unquote('max(0px)')) {
@@ -422,6 +406,11 @@ html {
   //text-rendering: optimizeSpeed;
 }
 
+input,
+textarea {
+  user-select: text;
+}
+
 body {
   //touch-action: pan-x pan-y;
   background-color: var(--body-background-color);
@@ -429,10 +418,6 @@ body {
   user-select: none;
 
   transition: background-color 0.2s;
-
-  &.has-auth-pages {
-    background-color: var(--surface-color);
-  }
 }
 
 
@@ -464,15 +449,6 @@ body.deactivated-backwards {
     filter: grayscale(0);
   }
 }
-
-/* body {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  min-height: 0!important;
-} */
 
 a {
   color: var(--link-color);
@@ -512,7 +488,6 @@ samp {
   width: 100%;
   //min-width: 100%;
   margin: 0 auto;
-  max-width: $large-screen;
 
   //@include respond-to(not-handhelds) {
     height: 100%;
@@ -757,7 +732,7 @@ input:-webkit-autofill:active {
   border-radius: $border-radius-medium;
   max-width: string.unquote('min(30rem, calc(100vw - 2rem))');
   opacity: 0;
-  backdrop-filter: blur(25px);
+  backdrop-filter: var(--blur-off, blur(25px));
   pointer-events: all;
   word-break: break-word;
 
@@ -888,7 +863,7 @@ b {
     align-items: center;
     padding: 0 1rem;
     justify-content: space-between;
-    height: 3.5rem;
+    height: 3rem;
     cursor: pointer;
     /* font-weight: 500; */
 
@@ -917,38 +892,8 @@ b {
   text-align: end;
 }
 
-// this dimensions will be used for monkey business
-.auth-image {
-  width: 166px;
-  height: 166px;
-  margin: 0 auto 18px;
-  position: relative;
-
-  @include respond-to(handhelds) {
-    width: 120px;
-    height: 120px;
-  }
-}
-
-/* .phone-wrapper {
-  display: flex;
-  align-items: ;
-} */
-
-.phone-edit {
-  width: 1.5rem;
-  height: 1.5rem;
-  margin-inline-start: .4rem;
-  opacity: .5;
-  transition: .2s opacity;
-  cursor: pointer;
-  font-size: 1.5rem;
-  line-height: 1;
-
-  @include hover() {
-    opacity: 1;
-  }
-}
+// `.auth-image`, `.phone-edit`, `.phone-wrapper` used to live here; they're now
+// scoped to the auth flow in `src/pages/authFlow.module.scss`.
 
 .emoji-native {
   display: inline !important;
@@ -1135,7 +1080,8 @@ not screen and (                min-resolution: 2dppx) {
   }
 }
 
-.popup-disable-password, .popup-skip-email {
+.popup-disable-password,
+.popup-skip-email {
   .popup-description {
     max-width: 284px;
   }
@@ -1154,7 +1100,6 @@ not screen and (                min-resolution: 2dppx) {
     //overflow: hidden;
     position: relative;
     cursor: pointer;
-    user-select: none;
 
     &-media {
       position: absolute;
@@ -1213,6 +1158,10 @@ middle-ellipsis-element {
 
 .hover-primary-effect {
   @include hover-background-effect(primary);
+
+  .c-ripple__circle {
+    background-color: var(--light-primary-color);
+  }
 }
 
 .hover-danger-effect {
@@ -1395,7 +1344,7 @@ middle-ellipsis-element {
 .gradient-delimiter {
   width: 100%;
   height: .75rem;
-  background-color: var(--background-color-true);
+  background-color: var(--background-color);
   position: relative;
 
   &:before {
@@ -1466,29 +1415,10 @@ hr {
   line-height: inherit;
   border-radius: $border-radius;
   cursor: pointer;
-  user-select: none;
   vertical-align: middle;
   width: var(--esg-emoji-total-size);
   height: var(--esg-emoji-total-size);
-
-  // html:not(.emoji-supported) & {
-    position: relative;
-  // }
-
-  // border-radius: unset;
-
-  // @include hover-effect() {
-  //   &:before {
-  //     content: " ";
-  //     border-radius: $border-radius;
-  //     background-color: var(--light-secondary-text-color);
-  //     position: absolute;
-  //     top: -.1875rem;
-  //     right: -.1875rem;
-  //     bottom: -.1875rem;
-  //     left: -.1875rem;
-  //   }
-  // }
+  position: relative;
 
   .emoji-placeholder {
     position: absolute;
@@ -1759,7 +1689,7 @@ hr {
     &.is-revealing {
       opacity: 1;
 
-      &:not(.backwards) {
+      &.forwards {
         opacity: 0;
       }
 
@@ -1880,6 +1810,18 @@ hr {
       padding-inline-end: 0;
       padding-top: 0 !important;
       padding-bottom: 0 !important;
+    }
+  }
+
+  &-row {
+    .row-title {
+      display: flex;
+      align-items: center;
+      gap: .25rem;
+    }
+
+    .accordion-icon {
+      --translateY: 0;
     }
   }
 }
@@ -2436,6 +2378,16 @@ hr {
 
 .margin-0 {
   margin: 0 !important;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.hover-underline {
+  @include hover() {
+    text-decoration: underline;
+  }
 }
 
 .overlayed-icon {

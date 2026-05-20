@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {children, createContext, createEffect, createMemo, createSignal, JSX, on, onCleanup, Ref} from 'solid-js';
+import {children, createContext, createEffect, createMemo, createSignal, JSX, on, onCleanup, Ref, untrack} from 'solid-js';
 import {IS_OVERLAY_SCROLL_SUPPORTED} from '@environment/overlayScrollSupport';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import {IS_MOBILE_SAFARI, IS_SAFARI} from '@environment/userAgent';
@@ -37,7 +37,8 @@ export type ScrollableContextValue = {
   getDistanceToEnd: () => number,
   container: HTMLDivElement,
   onSizeChange: () => void,
-  setScrollPositionSilently: (value: number) => void
+  setScrollPositionSilently: (value: number) => void,
+  checkForTriggers: () => void
 };
 
 export const ScrollableContext = createContext<ScrollableContextValue>();
@@ -46,8 +47,10 @@ export default function Scrollable(props: {
   children: JSX.Element,
   ref?: Ref<HTMLDivElement>,
   thumbRef?: (el: HTMLDivElement) => void,
+  contextRef?: (ctx: ScrollableContextValue) => void,
   class?: string,
   classList?: JSX.HTMLAttributes<HTMLDivElement>['classList'],
+  style?: JSX.CSSProperties,
   axis?: 'x' | 'y',
   withBorders?: 'both' | 'top' | 'bottom' | 'manual',
   onScrolledTop?: () => void,
@@ -253,9 +256,9 @@ export default function Scrollable(props: {
 
   const onWheel = (e: WheelEvent) => {
     e.stopPropagation();
-    const target = e.target as HTMLElement;
-    if(!e.deltaX && target.scrollWidth > target.clientWidth) {
-      target.scrollLeft += e.deltaY / 4;
+    const container = ref;
+    if(!e.deltaX && container.scrollWidth > container.clientWidth) {
+      container.scrollLeft += e.deltaY / 4;
       cancelEvent(e);
     }
   };
@@ -284,8 +287,13 @@ export default function Scrollable(props: {
       return ref;
     },
     onSizeChange,
-    setScrollPositionSilently
+    setScrollPositionSilently,
+    checkForTriggers
   };
+
+  if(props.contextRef) {
+    untrack(() => props.contextRef)(value);
+  }
 
   const resolvedChildren = children(() => {
     return (
@@ -319,6 +327,8 @@ export default function Scrollable(props: {
         ] : [])
       )}
       onScroll={!ignoreScrollEvent() && onScroll}
+      classList={props.classList}
+      style={props.style}
       onWheel={(axis === 'x' && !IS_TOUCH_SUPPORTED && onWheel) || undefined}
     >
       {!IS_OVERLAY_SCROLL_SUPPORTED() && axis === 'y' && (

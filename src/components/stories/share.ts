@@ -1,7 +1,7 @@
 import {StoryItem} from '../../layer';
 import rootScope from '../../lib/rootScope';
 import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '../chat/paidMessagesInterceptor';
-import PopupPickUser from '../popups/pickUser';
+import {showSharingPickerPopup} from '../popups/pickUser';
 
 export function handleShareStory(options: {
   story: StoryItem,
@@ -9,8 +9,9 @@ export function handleShareStory(options: {
   onClose?: () => void
   onSend?: (toPeerId: PeerId) => void
 }) {
-  const popup = PopupPickUser.createSharingPicker({
-    onSelect: async(peerId, _, monoforumThreadId) => {
+  showSharingPickerPopup({
+    onSelect: async(chosen) => {
+      const {peerId, monoforumThreadId} = chosen[0];
       const storyPeerId = options.peerId;
 
       const preparedPaymentResult = await PaidMessagesInterceptor.prepareStarsForPayment({messageCount: 1, peerId});
@@ -30,8 +31,7 @@ export function handleShareStory(options: {
 
       options.onSend?.(peerId);
     },
-    chatRightsActions: ['send_media']
+    chatRightsActions: ['send_media'],
+    onCloseAfterTimeout: options.onClose
   });
-
-  if(options.onClose) popup.addEventListener('closeAfterTimeout', options.onClose);
 }

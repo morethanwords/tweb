@@ -5,7 +5,7 @@ import {ButtonIconTsx} from '@components/buttonIconTsx';
 import {IconTsx} from '@components/iconTsx';
 import SimpleFormField from '@components/simpleFormField';
 import styles from '@components/chat/suggestPostPopup/commonStyles.module.scss';
-import PopupSchedulePost from '@components/chat/suggestPostPopup/popupSchedulePost';
+import showSchedulePostPopup from '@components/chat/suggestPostPopup/popupSchedulePost';
 
 
 type Props = {
@@ -24,7 +24,7 @@ const PublishTimeField = (props: Props) => {
     const minDate = new Date(minTimeDate);
     minDate.setHours(0, 0, 0, 0);
 
-    new PopupSchedulePost({
+    showSchedulePostPopup({
       initDate: new Date(minTimeDate),
       minDate,
       minTimeDate,
@@ -32,7 +32,7 @@ const PublishTimeField = (props: Props) => {
         console.log(timestamp);
         props.onChange(timestamp);
       }
-    }).show();
+    });
   };
 
   const onCrossClick = (event: MouseEvent) => {

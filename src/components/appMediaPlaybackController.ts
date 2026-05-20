@@ -123,6 +123,9 @@ export class AppMediaPlaybackController extends EventListenerBase<{
   private managers: AppManagers;
   private skipMediaPlayEvent: boolean;
 
+  private gainAudioContext: AudioContext;
+  private mediaGainMap: WeakMap<HTMLMediaElement, {source: MediaElementAudioSourceNode, gain: GainNode, limiter: DynamicsCompressorNode}> = new WeakMap();
+
   construct(managers: AppManagers) {
     this.managers = managers;
     this.container = document.createElement('div');
@@ -191,8 +194,12 @@ export class AppMediaPlaybackController extends EventListenerBase<{
           // @ts-ignore
           this[_key] = value;
           if(this.playingMedia && (key !== 'loop' || this.playingMediaType === 'audio') && key !== 'round') {
-            // @ts-ignore
-            this.playingMedia[key] = value;
+            if(key === 'volume' || key === 'muted') {
+              this.applyVolumeToMedia(this.playingMedia, this.volume, this.muted, this.playingMediaType);
+            } else {
+              // @ts-ignore
+              this.playingMedia[key] = value;
+            }
           }
 
           if(key === 'playbackRate' && this.playingMediaType !== undefined) {
@@ -218,6 +225,69 @@ export class AppMediaPlaybackController extends EventListenerBase<{
 
   private dispatchPlaybackParams() {
     this.dispatchEvent('playbackParams', this.getPlaybackParams());
+  }
+
+  private getOrCreateMediaGain(media: HTMLMediaElement) {
+    let entry = this.mediaGainMap.get(media);
+    if(entry) return entry;
+
+    try {
+      const AC = (window.AudioContext || (window as any).webkitAudioContext) as typeof AudioContext;
+      if(!AC) return undefined;
+      if(!this.gainAudioContext) this.gainAudioContext = new AC();
+      const ctx = this.gainAudioContext;
+
+      const source = ctx.createMediaElementSource(media);
+      const gain = ctx.createGain();
+      // Brick-wall limiter after the gain — keeps amplified peaks below 0 dB so quadratic
+      // boosts raise perceived loudness instead of just clipping to the same ceiling.
+      const limiter = ctx.createDynamicsCompressor();
+      limiter.threshold.value = -1;
+      limiter.knee.value = 0;
+      limiter.ratio.value = 20;
+      limiter.attack.value = 0;
+      limiter.release.value = 0.05;
+      source.connect(gain);
+      gain.connect(limiter);
+      limiter.connect(ctx.destination);
+      entry = {source, gain, limiter};
+      this.mediaGainMap.set(media, entry);
+
+      if(ctx.state === 'suspended') ctx.resume().catch(() => {});
+
+      return entry;
+    } catch(e) {
+      return undefined;
+    }
+  }
+
+  private applyVolumeToMedia(
+    media: HTMLMediaElement,
+    volume: number,
+    muted: boolean,
+    mediaType: PlaybackMediaType
+  ) {
+    if(mediaType === 'voice') {
+      const entry = this.getOrCreateMediaGain(media);
+      if(entry) {
+        if(this.gainAudioContext?.state === 'suspended') this.gainAudioContext.resume().catch(() => {});
+        // Below 100% linear (natural volume control), above 100% quadratic so the slider
+        // delivers perceptual loudness, not just a 2× peak multiplier (e.g. 200% → 4× ≈ +12 dB).
+        const amp = volume <= 1 ? volume : volume * volume;
+        const target = muted ? 0 : amp;
+        try {
+          entry.gain.gain.setTargetAtTime(target, this.gainAudioContext.currentTime, 0.01);
+        } catch(e) {
+          entry.gain.gain.value = target;
+        }
+        media.volume = 1;
+        media.muted = muted;
+        return;
+      }
+    }
+
+    media.volume = Math.min(volume, 1);
+    media.muted = muted;
   }
 
   public getPlaybackParams() {
@@ -941,8 +1011,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     this.playingMedia = media;
     this.playingMediaType = mediaType;
     if(!standalone) {
-      this.playingMedia.volume = this.volume;
-      this.playingMedia.muted = this.muted;
+      this.applyVolumeToMedia(this.playingMedia, this.volume, this.muted, mediaType);
       this.playingMedia.playbackRate = this.playbackRate;
       if(mediaType === 'audio') {
         this.playingMedia.loop = this.loop;

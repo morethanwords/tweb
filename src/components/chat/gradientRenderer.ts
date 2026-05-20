@@ -52,6 +52,9 @@ export default class ChatBackgroundGradientRenderer {
   private _ctx: CanvasRenderingContext2D;
   private _hc: HTMLCanvasElement;
   private _hctx: CanvasRenderingContext2D;
+  // Additional output canvases that mirror the main one — used to render the same gradient
+  // somewhere else (e.g. the folders sidebar background, as a cheap stand-in for backdrop-filter).
+  private _mirrors = new Set<CanvasRenderingContext2D>();
 
   // private _addedScrollListener: boolean;
   private _animatingToNextPosition: boolean;
@@ -264,6 +267,9 @@ export default class ChatBackgroundGradientRenderer {
   private drawImageData(id: ImageData) {
     this._hctx.putImageData(id, 0, 0);
     this._ctx.drawImage(this._hc, 0, 0, this._width, this._height);
+    for(const ctx of this._mirrors) {
+      ctx.drawImage(this._hc, 0, 0, this._width, this._height);
+    }
   }
 
   private drawGradient(positions: Point[]) {
@@ -322,13 +328,42 @@ export default class ChatBackgroundGradientRenderer {
   private update() {
     if(this._colors.length < 2) {
       const color = this._colors[0];
-      this._ctx.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
+      const fill = `rgb(${color.r}, ${color.g}, ${color.b})`;
+      this._ctx.fillStyle = fill;
       this._ctx.fillRect(0, 0, this._width, this._height);
+      for(const ctx of this._mirrors) {
+        ctx.fillStyle = fill;
+        ctx.fillRect(0, 0, this._width, this._height);
+      }
       return;
     }
 
     const position = this.curPosition(this._phase, this._tail);
     this.drawGradient(position);
+  }
+
+  /**
+   * Register an additional output canvas that mirrors the main gradient. Every redraw of the
+   * main canvas also redraws the mirror. Returns an unsubscribe function. The mirror canvas is
+   * resized to the internal gradient resolution (50×50) — host CSS is expected to stretch it.
+   */
+  public attachMirror(canvas: HTMLCanvasElement): () => void {
+    canvas.width = this._width;
+    canvas.height = this._height;
+    const ctx = canvas.getContext('2d', {alpha: false});
+    this._mirrors.add(ctx);
+
+    if(this._colors?.length >= 2 && this._hc) {
+      ctx.drawImage(this._hc, 0, 0, this._width, this._height);
+    } else if(this._colors?.length) {
+      const color = this._colors[0];
+      ctx.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
+      ctx.fillRect(0, 0, this._width, this._height);
+    }
+
+    return () => {
+      this._mirrors.delete(ctx);
+    };
   }
 
   public toNextPosition(getProgress?: () => number) {

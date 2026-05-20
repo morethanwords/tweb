@@ -9,8 +9,7 @@
 
 .inline-helper {
   $parent: ".inline-helper";
-  user-select: none;
-  
+
   &:not(.is-gallery) {
     min-width: string.unquote("min(20rem, 100%)");
   }

@@ -8,34 +8,12 @@
 @use "../../shared" as *;
 
 .popup-new-media {
+  --popup-width: 420px;
+  --popup-max-height: 100%;
   $parent: ".popup";
 
   #{$parent} {
-    &-container {
-      width: 420px;
-      max-width: 420px;
-      /* padding: 12px 20px 50px; */
-      padding: 12px 20px 32.5px;
-      //max-height: unquote('min(640px, 100%)');
-      max-height: 100%;
-
-      img,
-      video {
-        border-radius: inherit;
-        width: 100%;
-        height: 100%;
-      }
-    }
-
     &-header {
-      flex: 0 0 auto;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 9px;
-      padding: 12px 20px 15px;
-      position: relative;
-
       .btn-primary {
         width: auto;
         height: 2.25rem;
@@ -47,24 +25,22 @@
       }
     }
 
+    &-body {
+      img,
+      video {
+        border-radius: inherit;
+        width: 100%;
+        height: 100%;
+      }
+    }
+
     &-photo {
       max-width: 100%;
       overflow: hidden;
       // width: fit-content;
       width: 100%;
-      border-radius: $border-radius-medium;
-      user-select: none;
+      border-radius: $section-rounded-border-radius;
       position: relative;
-    }
-
-    &-confirm-btn-inner {
-      display: flex;
-      align-items: center;
-      gap: 0.125rem;
-
-      &-star {
-        font-size: 1.125rem;
-      }
     }
   }
 
@@ -99,93 +75,18 @@
 }
 
 .popup-new-media.popup-send-photo {
-  .popup-container {
-    width: 25rem;
-    max-width: 25rem;
-    padding: 0;
-
-    &.border-top-offset {
-      .popup-input-container {
-        overflow: unset;
-
-        &:before {
-          top: -8px;
-        }
-      }
-    }
-  }
-
   .menu-send {
     top: unset;
-    bottom: 3.5rem;
-    right: .5rem;
-  }
-
-  .popup-header {
-    padding: 0 1rem;
-    height: 3.5rem;
-    margin: 0;
+    bottom: 4.5rem;
+    right: var(--section-padding-inline);
   }
 
   .popup-body {
     position: relative;
-
-    .scrollable {
-      padding: 0 .5rem;
-    }
   }
 
-  .input-message-container {
-    min-height: inherit;
-    max-height: inherit;
-    // margin-top: -.5rem;
-  }
-
-  .input-message-input {
-    max-height: inherit !important;
-  }
-
-  .btn-primary {
-    flex: 0 0 auto;
-    width: auto;
-    padding: 0 1rem;
-    height: 2.5rem;
-    line-height: 2.5rem;
-    text-transform: uppercase;
-    margin-bottom: .5rem;
-  }
-
-  .popup-input-container {
-    --height: 3.5rem;
-    --max-height: 8.375rem;
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    padding: 0 .5rem;
-    min-height: var(--height);
-    max-height: var(--max-height);
-    position: relative;
-    flex: 0 0 auto;
-    overflow: hidden;
-
-    &:before {
-      content: " ";
-      position: absolute;
-      height: 1px;
-      top: 0;
-      left: 0;
-      right: 0;
-      background-color: var(--border-color);
-      opacity: 0;
-
-      @include animation-level(2) {
-        transition: opacity var(--transition-standard-in);
-      }
-    }
-
-    &.has-border-top:before {
-      opacity: 1;
-    }
+  .scrollable {
+    border: none !important;
   }
 
   .checkbox-field {
@@ -209,7 +110,7 @@
     }
   }
 
-  .popup-photo > .popup-item-media {
+  .popup-item-media:not(.album-item) {
     position: relative;
 
     display: flex;
@@ -230,11 +131,11 @@
     object-fit: contain;
   }
 
-  .gif-label {
+  .video-time {
     --height: calc(var(--messages-time-text-size) + .375rem);
     position: absolute;
-    top: 3px;
-    left: 3px;
+    top: .75rem;
+    left: .75rem;
     border-radius: var(--height);
     background-color: var(--message-time-background);
     padding: 0px 6px;
@@ -243,19 +144,18 @@
     color: white;
     display: flex;
     align-items: center;
-    user-select: none;
     height: var(--height);
     line-height: 1;
   }
 
-  .popup-photo > .popup-item {
+  .popup-item:not(.album-item) {
     position: relative;
     border-radius: inherit;
     overflow: hidden;
   }
 
-  .popup-photo > .popup-item + .popup-item {
-    margin-top: .5rem;
+  .popup-item-stacked {
+    margin-top: .5rem !important;
   }
 
   .drop {
@@ -267,13 +167,34 @@
     --icon-margin: .5rem;
     --icon-size: 3rem;
     --padding: .25rem;
-    margin: 0 .25rem;
     border-radius: $border-radius-medium;
     cursor: default;
     height: 3.5rem;
+    padding-inline-end: 3.5rem;
 
     @include hover-background-effect() {
       --message-background-color: var(--light-filled-secondary-text-color);
+    }
+  }
+
+  .popup-item-document {
+    @include hover() {
+      .popup-item-document-delete {
+        opacity: 1;
+      }
+    }
+  }
+
+  .popup-item-document-delete {
+    position: absolute;
+    top: 50%;
+    inset-inline-end: .5rem;
+    transform: translateY(-50%);
+    opacity: 0;
+    z-index: 2;
+
+    .is-touch & {
+      opacity: 1;
     }
   }
 
@@ -289,10 +210,7 @@
     &-name {
       width: 100%;
       max-width: 100%;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      line-height: 1.5;
-      margin-bottom: .125rem;
+      @include text-overflow(false);
     }
 
     &-ico {
@@ -300,14 +218,13 @@
       font-weight: normal;
       line-height: 11px;
       letter-spacing: 0;
-      border-radius: #{math.div($border-radius-medium, 2)};
+      border-radius: #{math.div($border-radius-big, 2)};
     }
 
-    /* &.photo {
-      .document-ico {
-        border-radius: $border-radius;
-      }
-    } */
+    &-size {
+      color: var(--input-placeholder-color);
+      margin-top: .125rem;
+    }
   }
 
   .btn-menu-reactions {
@@ -320,16 +237,18 @@
     }
   }
 
-  .btn-primary {
-    overflow: unset;
-  }
-
   .btn-send-effect {
     &-container {
       bottom: -.25rem;
       inset-inline-end: -.25rem;
       box-shadow: var(--menu-box-shadow);
     }
+  }
+}
+
+.popup-send-photo {
+  &-documents {
+    --section-padding-bottom: 0;
   }
 }
 
@@ -387,7 +306,7 @@
   border-radius: 999px;
 
   background-color: rgba(0, 0, 0, .4);
-  backdrop-filter: blur(35px);
+  backdrop-filter: var(--blur-off, blur(35px));
 
   @supports (-moz-animation: animation 1s) {
     // Firefox doesn't render backdrop-filter by default
@@ -440,8 +359,11 @@
   &:hover {
     color: #ffffff;
   }
+}
 
-  > span {
+.spoiler-toggle {
+  .spoiler-on,
+  .spoiler-off {
     position: absolute;
     left: 50%;
     top: 50%;
@@ -449,16 +371,16 @@
     transition: .2s;
   }
 
-  > span:nth-child(2) {
+  .spoiler-off {
     opacity: 0;
   }
 
   &[data-toggled="true"] {
-    > span:nth-child(1) {
+    .spoiler-on {
       opacity: 0;
     }
 
-    > span:nth-child(2) {
+    .spoiler-off {
       opacity: 1;
     }
   }

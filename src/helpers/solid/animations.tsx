@@ -1,11 +1,12 @@
-import {JSX} from 'solid-js';
+import {JSX, Show} from 'solid-js';
 import {Dynamic} from 'solid-js/web';
 import {AnimationList} from '@helpers/solid/animationList';
 import {getTransition} from '@config/transitions';
+import classNames from '@helpers/string/classNames';
 
 type AnimationType = 'cross-fade' | 'grow-width' | 'grow-height';
 
-const growKeyframes = (property: 'width' | 'height', size: number): Keyframe[] => {
+export const growKeyframes = (property: 'width' | 'height', size: number): Keyframe[] => {
   return [
     {[property]: 0, opacity: 0},
     // {width: clientWidth / 2 + 'px', opacity: .25},
@@ -22,14 +23,15 @@ const ANIMATIONS: {[key in AnimationType]: Keyframe[] | ((element: Element) => K
 export function SimpleAnimation(props: Pick<
   Parameters<typeof AnimationList>[0], 'children' | 'keyframes' | 'mode' | 'appear'
 > & {
-  noItemClass?: boolean
+  noItemClass?: boolean,
+  itemClass?: string
 }) {
   return (
     <AnimationList
       animationOptions={{duration: 200, easing: getTransition('standard').easing}}
       keyframes={props.keyframes}
       mode={props.mode || 'replacement'}
-      itemClassName={!props.noItemClass && 'animated-item'}
+      itemClass={classNames(!props.noItemClass && 'animated-item', props.itemClass)}
       appear={props.appear}
     >
       {props.children}
@@ -46,7 +48,8 @@ export default function Animated(props: {
   type: AnimationType,
   mode?: Parameters<typeof AnimationList>[0]['mode'],
   appear?: boolean,
-  noItemClass?: boolean
+  noItemClass?: boolean,
+  itemClass?: string
 }) {
   return (
     <Dynamic
@@ -55,8 +58,36 @@ export default function Animated(props: {
       mode={props.mode}
       appear={props.appear}
       noItemClass={props.noItemClass}
+      itemClass={props.itemClass}
     >
       {props.children}
     </Dynamic>
+  );
+}
+
+// `overflow: hidden` makes the wrapper a block formatting context so any
+// negative margins on the child are contained — `wrapper.clientHeight` then
+// equals the full layout space, which is what `grow-height` animates from
+// `0` to.
+export function GrowHeightReveal(props: {
+  when: Parameters<typeof Show>[0]['when'],
+  // Pass `appear={false}` when the wrapper might already be revealed on first
+  // mount (e.g. settings tab opening with the gate already satisfied) — skips
+  // the enter animation on initial paint, later toggles still animate.
+  appear?: boolean,
+  // Class applied to the internal `overflow:hidden` wrapper. Use when the revealed content
+  // needs the wrapper itself to extend past the parent (e.g. negative-margin section-edge
+  // strips — the wrapper's overflow:hidden would otherwise clip the extension).
+  class?: string,
+  children: JSX.Element
+}) {
+  return (
+    <Animated type="grow-height" noItemClass mode="add-remove" appear={props.appear ?? true}>
+      <Show when={props.when}>
+        <div class={props.class} style={{overflow: 'hidden'}}>
+          {props.children}
+        </div>
+      </Show>
+    </Animated>
   );
 }

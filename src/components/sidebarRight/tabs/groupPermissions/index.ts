@@ -19,7 +19,7 @@ import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUserna
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {i18n, join, LangPackKey} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
-import PopupPickUser from '@components/popups/pickUser';
+import showPickUserPopup from '@components/popups/pickUser';
 import Row from '@components/row';
 import SettingSection from '@components/settingSection';
 import SliderSuperTab, {SliderSuperTabEventable} from '@components/sliderTab';
@@ -638,11 +638,12 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
         subtitleLangKey: 'Loading',
         icon: 'adduser',
         clickable: () => {
-          PopupElement.createPopup(PopupPickUser, {
+          showPickUserPopup({
+            titleLangKey: 'Exceptions',
             peerType: ['channelParticipants'],
-            onSelect: (peerId) => {
+            onSelect: (chosen) => {
               setTimeout(() => {
-                openPermissions(peerId);
+                openPermissions(chosen[0].peerId);
               }, 0);
             },
             placeholder: 'ExceptionModal.Search.Placeholder',

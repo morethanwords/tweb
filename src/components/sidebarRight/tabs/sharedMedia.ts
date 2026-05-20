@@ -201,13 +201,18 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     // * body
 
     const HEADER_HEIGHT = 56;
+    const ADDITIONAL_OFFSET = 16;
+    const OFFSET = HEADER_HEIGHT + ADDITIONAL_OFFSET;
+    const BODY_PADDING = 16;
+    const cb = this.scrollable.onAdditionalScroll;
     this.scrollable.onAdditionalScroll = () => {
+      cb?.();
       const isSingle = this.searchSuper.navScrollableContainer.classList.contains('is-single');
       const rect = (isSingle ? this.searchSuper.container : this.searchSuper.nav).getBoundingClientRect();
       if(!rect.width) return;
 
       const top = rect.top - 1;
-      setIsSharedMedia(top <= HEADER_HEIGHT);
+      setIsSharedMedia(top <= (OFFSET + BODY_PADDING));
     };
 
     const getTitleIndex = (isSharedMedia = transition.prevId() !== TitleIndex.Profile) => {
@@ -222,10 +227,13 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     const setIsSharedMedia = (isSharedMedia: boolean) => {
       animatedCloseIcon.classList.toggle('state-back', this.isFirst || isSharedMedia);
       this.searchSuper.container.classList.toggle('is-full-viewport', isSharedMedia);
+      this.header.classList.toggle('hide-border', isSharedMedia);
 
       transition(getTitleIndex(isSharedMedia));
 
-      if(!isSharedMedia) {
+      if(isSharedMedia) {
+        this.container.classList.add('header-filled');
+      } else {
         this.searchSuper.cleanScrollPositions();
       }
     };
@@ -317,13 +325,6 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       this.deleteDeletedMessages(peerId, msgs);
     });
 
-    // Calls when message successfully sent and we have an id
-    // this.listenerSetter.add(rootScope)('message_sent', ({message}) => {
-    //   this.renderNewMessage(message);
-    // });
-
-    // this.container.prepend(this.closeBtn.parentElement);
-
     this.searchSuper = new AppSearchSuper({
       mediaTabs: [{
         name: 'SharedMedia.SavedDialogs',
@@ -398,16 +399,13 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         item[2].compareAndUpdate({key: item[1], args: [length]});
       },
       openSavedDialogsInner: !this.isFirst,
-      slider: this.slider
+      slider: this.slider,
+      scrollOffset: OFFSET
     });
 
     this.searchSuper.scrollStartCallback = () => {
       setIsSharedMedia(true);
-      this.container.classList.add('header-filled');
     };
-
-    // * fix scroll position to media tab because of absolute header
-    this.searchSuper.scrollOffset = 56;
 
     if(this.noProfile) {
       this.scrollable.append(this.searchSuper.container);
@@ -581,7 +579,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     return () => {
       this.editBtn.classList.add('hide');
-      this.searchSuper.cleanupHTML(true);
+      this.searchSuper.cleanupHTML();
       this.container.classList.toggle('can-add-members', canViewMembers && hasRights);
     };
     // console.log('cleanupHTML shared media time:', performance.now() - perf);
@@ -668,7 +666,6 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     const callbacks = await Promise.all([
       this.cleanupHTML(),
       this.toggleEditBtn(true),
-      // this.profile?.fillProfileElements(),
       this.changeTitleKey(),
       (() => {
         !this.noProfile && createRoot((dispose) => {
@@ -685,6 +682,17 @@ export default class AppSharedMediaTab extends SliderSuperTab {
             }
           }, SolidJSHotReloadGuardProvider));
         });
+
+        // * keep same layout
+        if(this.noProfile) {
+          this.container.classList.add('profile-container');
+
+          const content = document.createElement('div');
+          content.classList.add('profile-content');
+
+          this.searchSuper.container.replaceWith(content);
+          content.append(this.searchSuper.container);
+        }
 
         return () => {};
       })()

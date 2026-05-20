@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {render} from 'solid-js/web';
+import {Portal, render} from 'solid-js/web';
 import {createStore} from 'solid-js/store';
 
 import type Chat from '@components/chat/chat';
@@ -21,6 +21,7 @@ import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import MEDIA_MIME_TYPES_SUPPORTED from '@environment/mediaMimeTypesSupport';
 import getGifDuration from '@helpers/getGifDuration';
+import toHHMMSS from '@helpers/string/toHHMMSS';
 import replaceContent from '@helpers/dom/replaceContent';
 import createVideo from '@helpers/dom/createVideo';
 import prepareAlbum from '@components/prepareAlbum';
@@ -41,7 +42,9 @@ import {DocumentAttribute, DraftMessage, Photo, PhotoSize} from '@layer';
 import {getPreviewBytesFromURL} from '@helpers/bytes/getPreviewURLFromBytes';
 import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
+import Button from '@components/buttonTsx';
 import InputFieldAnimated from '@components/inputFieldAnimated';
+import InputFieldMessage from '@components/inputFieldMessage';
 import IMAGE_MIME_TYPES_SUPPORTED from '@environment/imageMimeTypesSupport';
 import VIDEO_MIME_TYPES_SUPPORTED from '@environment/videoMimeTypesSupport';
 import rootScope from '@lib/rootScope';
@@ -53,7 +56,7 @@ import wrapDraft from '@components/wrappers/draft';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import {ChatType} from '@components/chat/chatType';
 import pause from '@helpers/schedulers/pause';
-import {Accessor, createEffect, createMemo, createRoot, createSignal, Setter} from 'solid-js';
+import {Accessor, createMemo, createRoot, createSignal, Setter} from 'solid-js';
 import SelectedEffect from '@components/chat/selectedEffect';
 import PopupMakePaid from '@components/popups/makePaid';
 import paymentsWrapCurrencyAmount from '@helpers/paymentsWrapCurrencyAmount';
@@ -62,8 +65,6 @@ import {MediaEditorFinalResult, MediaEditorFinalResultPayload} from '@components
 import RenderProgressCircle from '@components/mediaEditor/renderProgressCircle';
 import {delay} from '@components/mediaEditor/utils';
 import {IS_MOBILE} from '@environment/userAgent';
-import throttle from '@helpers/schedulers/throttle';
-import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
 import {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
 import ListenerSetter from '@helpers/listenerSetter';
 import canVideoBeAnimated from '@appManagers/utils/docs/canVideoBeAnimated';
@@ -76,6 +77,7 @@ import cancelEvent from '@helpers/dom/cancelEvent';
 import ButtonMenu from '@components/buttonMenu';
 import contextMenuController from '@helpers/contextMenuController';
 import {makeDateFromTimestamp} from '@helpers/date/makeDateFromTimestamp';
+import Section from '@components/section';
 
 
 type SendFileParams = SendFileDetails & {
@@ -149,7 +151,7 @@ export default class PopupNewMedia extends PopupElement {
   ) {
     super('popup-send-photo popup-new-media', {
       closable: true,
-      withConfirm: getDefaultSendBtnLangKey({isEditing: !!chat.input.editMessage}),
+      withConfirm: true,
       confirmShortcutIsSendShortcut: true,
       body: true,
       title: true,
@@ -166,6 +168,7 @@ export default class PopupNewMedia extends PopupElement {
 
     this.animationGroup = 'NEW-MEDIA';
     this.gifDocument = gifDocument;
+    // this.updateConfirmBtnContent(0);
     this.construct(willAttachType);
   }
 
@@ -327,53 +330,48 @@ export default class PopupNewMedia extends PopupElement {
     this.mediaContainer.classList.add('popup-photo');
     this.scrollable.container.append(this.mediaContainer);
 
-    const inputContainer = document.createElement('div');
-    inputContainer.classList.add('popup-input-container');
-
-    const c = document.createElement('div');
-    c.classList.add('popup-input-inputs', 'input-message-container');
-
-    this.messageInputField = new InputFieldAnimated({
-      placeholder: 'PreviewSender.CaptionPlaceholder',
-      name: 'message',
-      withLinebreaks: true,
-      maxLength: this.captionLengthMax
-    });
-
-    this.messageInputField.input.dataset.animationGroup = this.animationGroup;
-    this.listenerSetter.add(this.scrollable.container)('scroll', this.onScroll);
-    this.listenerSetter.add(this.messageInputField.input)('scroll', this.onScroll);
-
-    this.listenerSetter.add(this.messageInputField.input)('input', throttle((e) => {
-      const {value} = getRichValueWithCaret(this.messageInputField.input);
-
-      this.starsState.set({hasMessage: !!value.trim()})
-    }, 120, true));
-
-    this.messageInputField.input.classList.replace('input-field-input', 'input-message-input');
-    this.messageInputField.inputFake.classList.replace('input-field-input', 'input-message-input');
-
-    c.append(this.messageInputField.input, this.messageInputField.placeholder, this.messageInputField.inputFake);
-    inputContainer.append(c, this.btnConfirm);
-
+    let draft: DocumentFragment;
     if(!this.ignoreInputValue) {
       this.wasDraft = this.chat.input.getCurrentInputAsDraft();
       if(this.wasDraft) {
-        const wrappedDraft = wrapDraft(this.wasDraft, {
+        draft = wrapDraft(this.wasDraft, {
           wrappingForPeerId: this.chat.peerId,
-          animationGroup: this.animationGroup
+          animationGroup: this.animationGroup,
+          middleware: this.lateMiddlewareHelper.get()
         });
 
-        this.messageInputField.setValueSilently(wrappedDraft);
         this.chat.input.messageInputField.value = '';
       }
     }
 
+    createRoot((dispose) => {
+      this.lateMiddlewareHelper.onDestroy(dispose);
+
+      const children = InputFieldMessage({
+        maxLength: this.captionLengthMax,
+        animationGroup: this.animationGroup,
+        listenerSetter: this.listenerSetter,
+        onScroll: this.onScroll,
+        onInput: (hasValue) => this.starsState.set({hasMessage: hasValue}),
+        stars: this.starsState.totalStars,
+        draft,
+        ref: (inputField) => {
+          this.messageInputField = inputField;
+        },
+        btnConfirm: this.btnConfirm
+      });
+
+      Portal({
+        mount: this.container,
+        children
+      });
+    });
+
+    this.listenerSetter.add(this.scrollable.container)('scroll', this.onScroll);
+
     if(this.chat.input.editMessage) {
       this.willAttach.invertMedia = this.chat.input.editMessage.pFlags?.invert_media;
     }
-
-    this.container.append(inputContainer);
 
     this.attachFiles();
 
@@ -394,18 +392,18 @@ export default class PopupNewMedia extends PopupElement {
           cancelEvent(e);
 
           const element = await ButtonMenu({
-            buttons: [
-              {
-                text: 'MessageScheduleEditTime',
-                icon: 'schedule',
-                onClick: () => {
-                  const editMessage = this.chat.input.editMessage;
-                  this.chat.input.scheduleSending(() => {
-                    this.send(true);
-                  }, editMessage?.date ? makeDateFromTimestamp(editMessage.date) : undefined, editMessage?.schedule_repeat_period);
-                }
+            buttons: [{
+              text: 'MessageScheduleEditTime',
+              icon: 'schedule',
+              onClick: () => {
+                const editMessage = this.chat.input.editMessage;
+                this.chat.input.scheduleSending(
+                  () => this.send(true),
+                  editMessage?.date ? makeDateFromTimestamp(editMessage.date) : undefined,
+                  editMessage?.schedule_repeat_period
+                );
               }
-            ],
+            }],
             listenerSetter: this.listenerSetter
           });
           element.classList.add('menu-send', 'top-left');
@@ -861,9 +859,7 @@ export default class PopupNewMedia extends PopupElement {
     const preparedPaymentResult = !this.chat.input.editMsgId ?
       await this.chat.input.paidMessageInterceptor.prepareStarsForPayment(this.starsState.totalMessages()) :
       undefined;
-
     if(preparedPaymentResult === PAYMENT_REJECTED) return;
-
     sendingParams.confirmedPaymentResult = preparedPaymentResult;
 
     let effect = this.effect?.();
@@ -981,13 +977,21 @@ export default class PopupNewMedia extends PopupElement {
 
     const myself = this;
 
+    function addVideoTime() {
+      if(params.isAnimated || !params.duration) return;
+      const videoTime = document.createElement('span');
+      videoTime.classList.add('video-time');
+      videoTime.textContent = toHHMMSS(params.duration, false);
+      itemDiv.append(videoTime);
+    }
+
     if(editResult) {
       const result = editResult.getResult();
 
       function addGifLabel() {
         if(!params.isAnimated) return;
         const gifLabel = i18n('AttachGif');
-        gifLabel.classList.add('gif-label');
+        gifLabel.classList.add('video-time');
         itemDiv.append(gifLabel);
       }
 
@@ -996,6 +1000,7 @@ export default class PopupNewMedia extends PopupElement {
           await putEditedImage(editResult.preview);
           await putEditedVideo(result);
           addGifLabel();
+          addVideoTime();
         } else {
           await putEditedImage(result.blob, true);
         }
@@ -1116,6 +1121,8 @@ export default class PopupNewMedia extends PopupElement {
         url: await apiManagerProxy.invoke('createObjectURL', thumb.blob),
         ...thumb
       };
+
+      addVideoTime();
     } else {
       const img = new Image();
       itemDiv.append(img);
@@ -1212,7 +1219,7 @@ export default class PopupNewMedia extends PopupElement {
           spoilerToggle = document.createElement('span');
           spoilerToggle.classList.add(itemCls, 'spoiler-toggle');
           if(params.mediaSpoiler) spoilerToggle.dataset.toggled = 'true';
-          spoilerToggle.append(Icon('mediaspoiler'), Icon('mediaspoileroff'));
+          spoilerToggle.append(Icon('mediaspoiler', 'spoiler-on'), Icon('mediaspoileroff', 'spoiler-off'));
           spoilerToggle.addEventListener('click', () => {
             if(spoilerToggle.dataset.disabled) return; // Prevent double clicks
             spoilerToggle.dataset.toggled = spoilerToggle.dataset.toggled === 'true' ? 'false' : 'true'
@@ -1221,15 +1228,7 @@ export default class PopupNewMedia extends PopupElement {
         }
 
         const deleteIcon = Icon('delete', itemCls);
-        deleteIcon.addEventListener('click', () => {
-          const idx = this.files.findIndex((file) => file === params.file);
-          if(idx >= 0) {
-            this.hideActiveActionsMenu();
-            this.files.splice(idx, 1);
-            params.editResult?.creationProgress?.dispose();
-            this.files.length ? this.attachFiles() : this.destroy();
-          }
-        });
+        deleteIcon.addEventListener('click', () => this.removeFile(params));
 
         const resultPromise = params?.editResult?.getResult();
         let cancelBtn: HTMLDivElement;
@@ -1253,7 +1252,11 @@ export default class PopupNewMedia extends PopupElement {
         actions.style.opacity = '1';
 
         const listener = (e: MouseEvent) => {
-          if((e.target as HTMLElement)?.closest?.('.popup-item-media-action-menu') || e.target === itemDiv || itemDiv.contains(e.target as Node)) return;
+          if(
+            (e.target as HTMLElement)?.closest?.('.popup-item-media-action-menu') ||
+            e.target === itemDiv ||
+            itemDiv.contains(e.target as Node)
+          ) return;
           this.hideActiveActionsMenu();
         }
         this.actionsMenuListenerSetter.add(document)('pointermove', listener);
@@ -1270,6 +1273,15 @@ export default class PopupNewMedia extends PopupElement {
     }
 
     return promise;
+  }
+
+  private removeFile(params: SendFileParams) {
+    const idx = this.files.findIndex((file) => file === params.file);
+    if(idx < 0) return;
+    this.hideActiveActionsMenu();
+    this.files.splice(idx, 1);
+    params.editResult?.creationProgress?.dispose();
+    this.files.length ? this.attachFiles() : this.destroy();
   }
 
   private async hideActiveActionsMenu() {
@@ -1405,6 +1417,20 @@ export default class PopupNewMedia extends PopupElement {
     }
 
     itemDiv.append(docDiv);
+
+    createRoot((dispose) => {
+      params.middlewareHelper.get().onDestroy(dispose);
+      Button.Icon({
+        icon: 'delete',
+        class: 'popup-item-document-delete',
+        noRipple: true,
+        onClick: (e) => {
+          e.stopPropagation();
+          this.removeFile(params);
+        },
+        ref: (ref) => itemDiv.append(ref)
+      });
+    });
   }
 
   private attachFile = (file: File | MyDocument, oldParams?: Partial<SendFileParams>) => {
@@ -1425,7 +1451,9 @@ export default class PopupNewMedia extends PopupElement {
     params.middlewareHelper = this.lateMiddlewareHelper.get().create();
     params.itemDiv = itemDiv;
 
-    const promise = this.gifDocument ? this.attachGifDocument(params) : (shouldCompress ? this.attachMedia(params) : this.attachDocument(params));
+    const promise = this.gifDocument ?
+      this.attachGifDocument(params) :
+      (shouldCompress ? this.attachMedia(params) : this.attachDocument(params));
     willAttach.sendFileDetails.push(params);
     return promise.catch((err) => {
       itemDiv.style.backgroundColor = '#000';
@@ -1464,7 +1492,7 @@ export default class PopupNewMedia extends PopupElement {
     await Promise.all(loadPromises);
 
     const gifLabel = i18n('AttachGif');
-    gifLabel.classList.add('gif-label');
+    gifLabel.classList.add('video-time');
     itemDiv.append(gifLabel);
 
     return params;
@@ -1492,20 +1520,6 @@ export default class PopupNewMedia extends PopupElement {
     this.show();
   }
 
-  private updateConfirmBtnContent(stars: number): void {
-    if(!stars) return void replaceContent(this.btnConfirm, i18n(getDefaultSendBtnLangKey({isEditing: this.isEditing()})));
-
-    const span = document.createElement('span');
-    span.classList.add('popup-confirm-btn-inner');
-
-    span.append(Icon('star', 'popup-confirm-btn-inner-star'), numberThousandSplitterForStars(stars) + '');
-
-    replaceContent(
-      this.btnConfirm,
-      span
-    );
-  }
-
   private starsState = createRoot((dispose) => {
     this.lateMiddlewareHelper.get().onDestroy(() => void dispose());
 
@@ -1520,11 +1534,7 @@ export default class PopupNewMedia extends PopupElement {
     const totalMessages = createMemo(() => +shouldCountMessage() + store.attachedFiles);
     const totalStars = createMemo(() => store.starsAmount * totalMessages());
 
-    createEffect(() => {
-      this.updateConfirmBtnContent(totalStars());
-    });
-
-    return {store, set, totalMessages};
+    return {store, set, totalMessages, totalStars};
   });
 
   public setStarsAmount(starsAmount: number) {
@@ -1564,14 +1574,38 @@ export default class PopupNewMedia extends PopupElement {
     replaceContent(title, i18n(key, args));
   }
 
+  private currentFileSection: HTMLElement;
+
   private appendMediaToContainer(params: SendFileParams) {
     if(this.shouldCompress(getFileMimeType(params.file))) {
+      this.currentFileSection = undefined;
+
       const size = calcImageInBox(params.width, params.height, MAX_WIDTH, 320);
       params.itemDiv.style.width = size.width + 'px';
       params.itemDiv.style.height = size.height + 'px';
+
+      this.mediaContainer.append(params.itemDiv);
+      return;
     }
 
-    this.mediaContainer.append(params.itemDiv);
+    if(!this.currentFileSection) {
+      const items = document.createElement('div');
+      createRoot((dispose) => {
+        Section({
+          class: 'popup-send-photo-documents',
+          ref: (ref: HTMLDivElement) => {
+            this.currentFileSection = ref;
+          },
+          children: [items]
+        });
+
+        this.middlewareHelper.onDestroy(dispose);
+      });
+      this.mediaContainer.append(this.currentFileSection);
+      this.currentFileSection = items;
+    }
+
+    this.currentFileSection.append(params.itemDiv);
   }
 
   private hasGif() {
@@ -1641,6 +1675,7 @@ export default class PopupNewMedia extends PopupElement {
 
     Promise.all(promises).then(() => {
       mediaContainer.replaceChildren();
+      this.currentFileSection = undefined;
       const filesLength = this.gifDocument ? 1 : files.length;
       this.starsState.set({attachedFiles: filesLength, isGrouped: this.willAttach?.group && !this.hasGif()});
 
@@ -1653,6 +1688,7 @@ export default class PopupNewMedia extends PopupElement {
       this.iterate((sendFileDetails) => {
         const shouldCompress = this.shouldCompress(getFileMimeType(sendFileDetails[0].file));
         if(shouldCompress && sendFileDetails.length > 1) {
+          this.currentFileSection = undefined;
           const albumContainer = document.createElement('div');
           albumContainer.classList.add('popup-item-album', 'popup-item');
           albumContainer.append(...sendFileDetails.map((s) => s.itemDiv));
@@ -1662,7 +1698,7 @@ export default class PopupNewMedia extends PopupElement {
             items: sendFileDetails.map((o) => ({w: o.width, h: o.height})),
             maxWidth: MAX_WIDTH,
             minWidth: 100,
-            spacing: 4
+            spacing: 2
           });
 
           mediaContainer.append(albumContainer);
@@ -1683,6 +1719,15 @@ export default class PopupNewMedia extends PopupElement {
           }
         });
       });
+
+      const topLevelItems = mediaContainer.children;
+      for(let i = 1; i < topLevelItems.length; ++i) {
+        const prev = topLevelItems[i - 1];
+        const curr = topLevelItems[i];
+        if(prev.classList.contains('popup-item') && curr.classList.contains('popup-item')) {
+          curr.classList.add('popup-item-stacked');
+        }
+      }
 
       this.setUnlockPlaceholders();
     }).then(() => {
@@ -1756,17 +1801,5 @@ export default class PopupNewMedia extends PopupElement {
     this.hideActiveActionsMenu();
   }
 }
-
-type GetDefaultSendBtnLangKeyArgs = {
-  isEditing: boolean;
-};
-
-function getDefaultSendBtnLangKey({isEditing}: GetDefaultSendBtnLangKeyArgs) {
-  if(isEditing) {
-    return 'Edit';
-  }
-  return 'Modal.Send';
-}
-
 
 (window as any).PopupNewMedia = PopupNewMedia;

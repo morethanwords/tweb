@@ -188,7 +188,7 @@ export default abstract class ApiManagerMethods extends AppManager {
     const cacheKey = options.cacheKey || JSON.stringify(params);
     const map = cache[method] ??= new Map();
     const oldPromise = map.get(cacheKey);
-    if(oldPromise) {
+    if(oldPromise && !options.overwrite) {
       return oldPromise;
     }
 
