@@ -63,15 +63,15 @@ export default class AppMediaViewerStatic extends AppMediaViewerBase<never, 'for
   };
 
   onForwardClick = () => {
-    const target = this.target;
-    if(target.mid) {
-      // appSidebarRight.forwardTab.open([target.mid]);
-      PopupElement.createPopup(PopupForward, {
-        [target.peerId]: [target.mid]
-      }, () => {
-        return this.close();
-      });
-    }
+    // const target = this.target;
+    // if(target.mid) {
+    //   // appSidebarRight.forwardTab.open([target.mid]);
+    //   PopupElement.createPopup(PopupForward, {
+    //     [target.peerId]: [target.mid]
+    //   }, () => {
+    //     return this.close();
+    //   });
+    // }
   };
 
   onAuthorClick = async(e: MouseEvent) => {

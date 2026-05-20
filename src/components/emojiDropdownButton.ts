@@ -17,7 +17,7 @@ const createEmojiDropdownButton = ({
   ...rest
 }: {
   inputField: InputField,
-  class: string,
+  class?: string,
   onEmoticonsDropdown?: (emoticonsDropdown: EmoticonsDropdown) => void
 } & Pick<ConstructorParameters<typeof EmoticonsDropdown>[0], 'customParentElement' | 'getOpenPosition' | 'animationGroup'>) => createRoot((dispose) => {
   let button: HTMLButtonElement;

@@ -28,6 +28,7 @@ import {MediaAttachment} from './mediaAttachment';
 import {CreatePollStore, useCreatePollContext} from './storeContext';
 import styles from './styles.module.scss';
 import {useCreatePollLimits} from './useCreatePollLimits';
+import showSchedulePostPopup from '@components/chat/suggestPostPopup/popupSchedulePost';
 
 type BooleanSettingKey = FilterBooleanKeys<CreatePollStore>;
 
@@ -341,18 +342,18 @@ const usePollDurationMenu = (args: PollDurationMenuArgs) => {
             const maxDate = new Date(minDate);
             maxDate.setDate(maxDate.getDate() + Math.floor(closePeriodMax() / oneDayInSeconds));
 
-            new PopupSchedulePost({
+            showSchedulePostPopup({
               initDate: new Date(minTimeDate),
-              captionKey: 'NewPoll.MinEndTime',
+              // captionKey: 'NewPoll.MinEndTime',
               minDate,
               minTimeDate,
               maxDate,
               onPick: (timestamp) => {
                 args.onCustomTimestamp(timestamp);
-              },
-              btnConfirmTodayLangKey: 'NewPoll.EndToday',
-              btnConfirmOnDateLangKey: 'NewPoll.EndDate'
-            }).show();
+              }
+              // btnConfirmTodayLangKey: 'NewPoll.EndToday',
+              // btnConfirmOnDateLangKey: 'NewPoll.EndDate'
+            });
           }
         }
       ]

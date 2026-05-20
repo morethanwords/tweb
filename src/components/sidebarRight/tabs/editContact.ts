@@ -86,8 +86,7 @@ export default class AppEditContactTab extends SliderSuperTab {
           label: 'ContactNoteRow',
           name: 'contact-note',
           maxLength: 128,
-          withLinebreaks: true,
-          dropdownFromInputCenter: true
+          withLinebreaks: true
         });
         if(fullUser.note) {
           this.noteInputField.setRichOriginalValue(fullUser.note);

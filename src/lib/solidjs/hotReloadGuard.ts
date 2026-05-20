@@ -17,7 +17,7 @@ import type confirmationPopup from '@components/confirmationPopup';
 import type {EmoticonsDropdown} from '@components/emoticonsDropdown';
 import type EmoticonsSearch from '@components/emoticonsDropdown/search';
 import type EmojiTab from '@components/emoticonsDropdown/tabs/emoji';
-import type {createEmojiDropdownButton} from '@components/inputFieldEmoji';
+import type createEmojiDropdownButton from '@components/emojiDropdownButton';
 import type {InputFieldTsx} from '@components/inputFieldTsx';
 import type PasswordMonkey from '@components/monkeys/password';
 import type PasswordInputField from '@components/passwordInputField';
