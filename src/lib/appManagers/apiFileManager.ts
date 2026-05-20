@@ -92,6 +92,7 @@ const MAX_DOWNLOAD_FILE_PART_SIZE = 1 * 1024 * 1024;
 const MAX_UPLOAD_FILE_PART_SIZE = 512 * 1024;
 const MIN_PART_SIZE = 64 * 1024;
 const AVG_PART_SIZE = 512 * 1024;
+const TGS_MAX_DECOMPRESSED_SIZE = 1 * 1024 * 1024;
 
 const REGULAR_DOWNLOAD_DELTA = (9 * 512 * 1024) / MIN_PART_SIZE;
 // const PREMIUM_DOWNLOAD_DELTA = REGULAR_DOWNLOAD_DELTA * 2;
@@ -514,7 +515,7 @@ export class ApiFileManager extends AppManager {
   private uncompressTGS = (bytes: Uint8Array, fileName: string) => {
     // this.log('uncompressTGS', bytes, bytes.slice().buffer);
     // slice нужен потому что в uint8array - 5053 length, в arraybuffer - 5084
-    return this.cryptoWorker.invokeCrypto('gzipUncompress', bytes.slice().buffer, false) as Promise<Uint8Array>;
+    return this.cryptoWorker.invokeCrypto('gzipUncompress', bytes.slice().buffer, false, TGS_MAX_DECOMPRESSED_SIZE) as Promise<Uint8Array>;
   };
 
   private uncompressTGV = (bytes: Uint8Array, fileName: string) => {
