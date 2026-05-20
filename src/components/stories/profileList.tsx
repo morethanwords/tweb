@@ -638,7 +638,10 @@ function StoriesGrid(props: {
           element: searchSuper,
           container: scrollable,
           position: 'center',
-          axis: 'y'
+          axis: 'y',
+          getElementPosition: ({elementPosition}) => {
+            return elementPosition - 24;
+          }
         });
       }
     }

@@ -19,7 +19,7 @@ import toggleDisability from '@helpers/dom/toggleDisability';
 import wrapStickerEmoji from '@components/wrappers/stickerEmoji';
 import SettingSection from '@components/settingSection';
 import lottieLoader from '@lib/rlottie/lottieLoader';
-import AppSettingsTab from '@components/sidebarLeft/tabs/settings';
+import {AppSettingsTab} from '@components/solidJsTabs';
 import {toastNew} from '@components/toast';
 import {ForgotPasswordLink} from '@components/sidebarLeft/tabs/2fa/enterPassword';
 

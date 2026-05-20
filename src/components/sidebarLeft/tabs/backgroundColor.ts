@@ -5,6 +5,7 @@
  */
 
 import {AppTheme} from '@config/state';
+import {blendWallpaperForTinted} from '@config/themePresets';
 import {hexaToRgba} from '@helpers/color';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import findUpClassName from '@helpers/dom/findUpClassName';
@@ -96,7 +97,7 @@ export default class AppBackgroundColorTab extends SliderSuperTab {
 
   private setActive() {
     const active = this.grid.querySelector('.active');
-    const background = this.theme.settings;
+    const background = themeController.getThemeSettings(this.theme);
     const wallPaper = background.wallpaper;
     const color = wallPaper.settings.background_color;
     const target = color ? this.grid.querySelector(`.grid-item[data-color="${color}"]`) : null;
@@ -118,10 +119,10 @@ export default class AppBackgroundColorTab extends SliderSuperTab {
       this.colorPicker.setColor(hex);
     } else {
       const rgba = hexaToRgba(hex);
-      const settings = this.theme.settings;
+      const settings = themeController.getThemeSettings(this.theme);
       const hsla = highlightingColor(rgba);
 
-      const wallPaper: WallPaper.wallPaperNoFile = {
+      let wallPaper: WallPaper = {
         _: 'wallPaperNoFile',
         id: 0,
         pFlags: {},
@@ -131,6 +132,12 @@ export default class AppBackgroundColorTab extends SliderSuperTab {
           pFlags: {}
         }
       };
+
+      // On tinted base, blend the picked solid color toward the iOS Dark Blue palette so
+      // single-color picks from "Set Color" land in the navy family same as Chat Wallpaper grid.
+      if(this.theme.name === 'tinted') {
+        wallPaper = blendWallpaperForTinted(wallPaper, settings.accent_color);
+      }
 
       settings.wallpaper = wallPaper;
       settings.highlightingColor = hsla;
@@ -150,7 +157,7 @@ export default class AppBackgroundColorTab extends SliderSuperTab {
 
   onOpen() {
     setTimeout(() => {
-      const settings = this.theme.settings;
+      const settings = themeController.getThemeSettings(this.theme);
       const color = settings?.wallpaper?.settings?.background_color;
 
       const isColored = !!color && settings.wallpaper._ === 'wallPaperNoFile';

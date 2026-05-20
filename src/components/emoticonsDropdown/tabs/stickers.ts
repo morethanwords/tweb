@@ -13,7 +13,7 @@ import {AppManagers} from '@lib/managers';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import rootScope from '@lib/rootScope';
 import {putPreloader} from '@components/putPreloader';
-import PopupStickers from '@components/popups/stickers';
+import showStickersPopup from '@components/popups/stickers';
 import findAndSplice from '@helpers/array/findAndSplice';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import noop from '@helpers/noop';
@@ -22,7 +22,6 @@ import confirmationPopup from '@components/confirmationPopup';
 import VisibilityIntersector, {OnVisibilityChangeItem} from '@components/visibilityIntersector';
 import findUpAsChild from '@helpers/dom/findUpAsChild';
 import forEachReverse from '@helpers/array/forEachReverse';
-import PopupElement from '@components/popups';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import getStickerEffectThumb from '@appManagers/utils/stickers/getStickerEffectThumb';
 import StickersTabCategory, {EmoticonsTabStyles} from '@components/emoticonsDropdown/category';
@@ -148,7 +147,7 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
           return;
         }
 
-        PopupElement.createPopup(PopupStickers, getStickerSetInputById(category.set), false, this.emoticonsDropdown.chatInput).show();
+        showStickersPopup(getStickerSetInputById(category.set), false, this.emoticonsDropdown.chatInput);
         return;
       }
 

@@ -11,7 +11,7 @@ import blurActiveElement from '@helpers/dom/blurActiveElement';
 import {IS_STICKY_INPUT_BUGGED} from '@helpers/dom/fixSafariStickyInputFocusing';
 import loadFonts from '@helpers/dom/loadFonts';
 import IS_EMOJI_SUPPORTED from '@environment/emojiSupport';
-import {IS_ANDROID, IS_APPLE, IS_APPLE_MOBILE, IS_FIREFOX, IS_MOBILE, IS_MOBILE_SAFARI, IS_SAFARI} from '@environment/userAgent';
+import {IS_ANDROID, IS_APPLE, IS_APPLE_MOBILE, IS_FIREFOX, IS_MOBILE, IS_SAFARI} from '@environment/userAgent';
 import '@/materialize.scss';
 import '@/scss/style.scss';
 import pause from '@helpers/schedulers/pause';
@@ -39,7 +39,7 @@ import {createEffect} from 'solid-js';
 import {IS_OVERLAY_SCROLL_SUPPORTED, USE_CUSTOM_SCROLL, USE_NATIVE_SCROLL} from '@environment/overlayScrollSupport';
 import IMAGE_MIME_TYPES_SUPPORTED, {IMAGE_MIME_TYPES_SUPPORTED_PROMISE} from '@environment/imageMimeTypesSupport';
 import MEDIA_MIME_TYPES_SUPPORTED from '@environment/mediaMimeTypesSupport';
-import {doubleRaf, fastRafPromise} from '@helpers/schedulers';
+import {doubleRaf} from '@helpers/schedulers';
 import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
 import AccountController from '@lib/accounts/accountController';
 import {changeAccount} from '@lib/accounts/changeAccount';
@@ -52,10 +52,12 @@ import PopupElement from '@components/popups';
 import PasscodeLockScreenController from '@components/passcodeLock/passcodeLockScreenController'; PasscodeLockScreenController;
 import type {LangPackDifference} from '@layer';
 import commonStateStorage from '@lib/commonStateStorage';
-import {MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, SIDEBAR_COLLAPSE_FACTOR} from '@components/sidebarLeft/constants';
+import {isUserCollapsedLeft} from '@helpers/updateColumnWidths';
+import {useMediaSizes} from '@helpers/mediaSizes';
 import useHasFoldersSidebar, {useIsSidebarCollapsed} from '@stores/foldersSidebar';
 import appNavigationController from '@components/appNavigationController';
 import {preventCrossTabDynamicImportDeadlock} from '@helpers/preventDeadlock';
+import appChatBackground from '@components/chat/bubbles/chatBackground';
 
 // import commonStateStorage from '@lib/commonStateStorage';
 // import { STATE_INIT } from '@config/state';
@@ -187,25 +189,35 @@ function setViewportHeightListeners() {
 }
 
 function setSidebarLeftWidth() {
-  const sidebarEl = document.getElementById('column-left');
-  const storedWidth = localStorage.getItem('sidebar-left-width');
-
-  let validatedWidth = parseInt(storedWidth);
-  validatedWidth = isNaN(validatedWidth) ? undefined : validatedWidth;
-
-  if(validatedWidth > MAX_SIDEBAR_WIDTH) validatedWidth = MAX_SIDEBAR_WIDTH;
-  else if(validatedWidth < MIN_SIDEBAR_WIDTH * SIDEBAR_COLLAPSE_FACTOR) validatedWidth = 0;
-  else if(validatedWidth < MIN_SIDEBAR_WIDTH) validatedWidth = MIN_SIDEBAR_WIDTH;
-
-  if(typeof validatedWidth === 'number' && String(validatedWidth) !== storedWidth)
-    localStorage.setItem('sidebar-left-width', validatedWidth + '');
-
-  if(validatedWidth === 0) {
-    sidebarEl.classList.add('is-collapsed');
-    useIsSidebarCollapsed()[1](true);
-  } else if(validatedWidth) {
-    document.documentElement.style.setProperty('--current-sidebar-left-width', validatedWidth + 'px');
-  }
+  // updateColumnWidths owns the loaded preference and the CSS vars; we
+  // mirror the EFFECTIVE collapsed state onto:
+  //   • the SolidJS signal (consumed by pendingSuggestion etc.)
+  //   • the #column-left.is-collapsed class
+  //
+  // "Effective" = persisted preference AND not on handheld. At handheld
+  // the layout is single-column, so the bar must render expanded —
+  // `.is-collapsed .item-main` would otherwise clamp the inner slider to
+  // --default-column-width and leave a gap on the right edge of the
+  // column, and pendingSuggestion would fall back to its icon-only mode.
+  //
+  // 601-925px (floating range) keeps the class on intentionally — the
+  // drawer's SCSS expects it and pendingSuggestion's icon-only variant
+  // fits the 360-wide drawer. The wider `isCollapsed()` getter still
+  // returns false there for its own layout decisions inside sidebarLeft.
+  //
+  // The effects react to viewport changes; the drag handler in
+  // sidebarLeft pushes preference changes into the signal and class
+  // directly (drag only happens off-handheld, so its raw value is
+  // already the effective one).
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useIsSidebarCollapsed();
+  const sizes = useMediaSizes();
+  createEffect(() => {
+    setIsSidebarCollapsed(isUserCollapsedLeft() && !sizes.isMobile);
+  });
+  createEffect(() => {
+    const el = document.getElementById('column-left');
+    if(el) el.classList.toggle('is-collapsed', isSidebarCollapsed());
+  });
 }
 
 function setRootClasses() {
@@ -407,10 +419,13 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
     rootScope.settings = await commonStateStorage.get('settings');
     themeController.setThemeListener();
 
+    appChatBackground.attach();
+    appChatBackground.setBackground({transition: 'instant'});
+
     const langPack = await I18n.getCacheLangPackAndApply();
     setDocumentLangPackProperties(langPack);
 
-    if(IS_BETA) import('./pages/pageIm'); // cache it
+    if(IS_BETA) import('./pages/bootstrapIm'); // cache it
     // const settings = await commonStateStorage.get('settings');
     // const timeFormat =
     // I18n.setTimeFormat(settings?.timeFormat || STATE_INIT.settings?.timeFormat);
@@ -482,7 +497,7 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
   themeController.setThemeListener();
 
   // * fetch lang pack updates
-  if(langPack.localVersion !== App.langPackLocalVersion && IS_BETA) {
+  if((langPack.localVersion !== App.langPackLocalVersion || true) && IS_BETA) {
     I18n.getLangPackAndApply(langPack.lang_code);
   } else {
     checkLangPackForUpdates();
@@ -512,6 +527,8 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
 
   console.timeLog(TIME_LABEL, 'IMAGE_MIME_TYPES_SUPPORTED_PROMISE');
 
+  appChatBackground.attach();
+  appChatBackground.setBackground({transition: 'instant'});
 
   setDocumentLangPackProperties(langPack);
 
@@ -563,47 +580,6 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
       }
     })();
 
-    const el = document.getElementById('auth-pages');
-    let scrollable: HTMLElement;
-
-    let isEnteringAnimationFinished = false;
-
-    const finishEnteringAnimation = async() => {
-      if(isEnteringAnimationFinished) return;
-      isEnteringAnimationFinished = true;
-
-      await doubleRaf();
-      el.classList.add('auth-pages-entering');
-
-      await pause(1000); // Need a little more time for the animation to finish
-      el.classList.remove('auth-pages-enter', 'auth-pages-entering');
-    }
-
-    if(el) {
-      if(await sessionStorage.get('should_animate_auth')) {
-        await sessionStorage.delete('should_animate_auth');
-        el.classList.add('auth-pages-enter');
-
-        // Just in case
-        pause(1000).then(() => finishEnteringAnimation());
-      }
-
-      scrollable = el.querySelector('.scrollable') as HTMLElement;
-      if((!IS_TOUCH_SUPPORTED || IS_MOBILE_SAFARI)) {
-        scrollable.classList.add('no-scrollbar');
-      }
-
-      // * don't remove this line
-      scrollable.style.opacity = '0';
-
-      const placeholder = document.createElement('div');
-      placeholder.classList.add('auth-placeholder');
-
-      scrollable.prepend(placeholder);
-      scrollable.append(placeholder.cloneNode());
-    }
-
-
     try {
       await Promise.all([
         import('./lib/telegramMeWebManager'),
@@ -616,106 +592,39 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
 
     }
 
-    let pagePromise: Promise<void>;
-    // langPromise.then(async() => {
-    switch(authState._) {
-      case 'authStateSignIn':
-        pagePromise = (await import('./pages/pageSignIn')).default.mount();
-        break;
-      case 'authStateSignQr':
-        pagePromise = (await import('./pages/pageSignQR')).default.mount();
-        break;
-      case 'authStateAuthCode':
-        pagePromise = (await import('./pages/pageAuthCode')).default.mount(authState.sentCode);
-        break;
-      case 'authStatePassword':
-        pagePromise = (await import('./pages/pagePassword')).default.mount();
-        break;
-      case 'authStateSignUp':
-        pagePromise = (await import('./pages/pageSignUp')).default.mount(authState.authCode);
-        break;
-      case 'authStateSignImport':
-        pagePromise = (await import('./pages/pageSignImport')).default.mount(authState.data);
-        break;
-    }
-    // });
-
-    if(scrollable) {
-      // wait for text appear
-      if(pagePromise) {
-        await pagePromise;
-      }
-
-      const promise = 'fonts' in document ?
-        Promise.race([
-          pause(1000),
-          document.fonts.ready
-        ]) :
-        Promise.resolve();
-
-      promise.then(async() => {
-        await pause(20);
-        finishEnteringAnimation();
-      });
-
-      fadeInWhenFontsReady(scrollable, promise);
-    }
-
-    /* setTimeout(async() => {
-      (await import('./pages/pageAuthCode')).default.mount({
-        "_": "auth.sentCode",
-        "pFlags": {},
-        "flags": 6,
-        "type": {
-          "_": "auth.sentCodeTypeSms",
-          "length": 5
-        },
-        "phone_code_hash": "",
-        "next_type": {
-          "_": "auth.codeTypeCall"
-        },
-        "timeout": 120,
-        "phone_number": ""
-      });
-
-      (await import('./pages/pageSignQR')).default.mount();
-
-      (await import('./pages/pagePassword')).default.mount();
-
-      (await import('./pages/pageSignUp')).default.mount({
-        "phone_code_hash": "",
-        "phone_number": ""
-      });
-    }, 500); */
+    const {mountAuthFlow} = await import('./pages/mountAuthFlow');
+    mountAuthFlow(authState);
   } else {
     console.log('Will mount IM page:', Date.now() / 1000);
 
     const fontsPromise = loadFonts();
     fadeInWhenFontsReady(document.getElementById('main-columns'), fontsPromise);
 
-    const [page, shouldAnimate] = await Promise.all([
-      import('./pages/pageIm').then((module) => module.default),
+    const [{bootstrapIm}, shouldAnimate] = await Promise.all([
+      import('./pages/bootstrapIm'),
       sessionStorage.get('should_animate_main')
     ]);
 
+    const pageChatsEl = document.getElementById('page-chats') as HTMLDivElement;
+
     if(shouldAnimate) {
       await sessionStorage.delete('should_animate_main');
-      page.pageEl.classList.add('main-screen-enter');
+      pageChatsEl.classList.add('main-screen-enter');
 
-      await page.mount();
-      console.timeLog(TIME_LABEL, 'await page.mount()');
+      await bootstrapIm();
+      console.timeLog(TIME_LABEL, 'await bootstrapIm()');
 
       await fontsPromise;
       console.timeLog(TIME_LABEL, 'await fontsPromise');
 
 
       await doubleRaf();
-      page.pageEl.classList.add('main-screen-entering');
+      pageChatsEl.classList.add('main-screen-entering');
       await pause(200);
 
-      page.pageEl.classList.remove('main-screen-enter', 'main-screen-entering');
+      pageChatsEl.classList.remove('main-screen-enter', 'main-screen-entering');
     } else {
-      await page.mount();
+      await bootstrapIm();
     }
   }
 });

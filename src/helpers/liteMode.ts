@@ -8,10 +8,10 @@ import {MOUNT_CLASS_TO} from '@config/debug';
 import rootScope from '@lib/rootScope';
 
 export type LiteModeKey = 'all' | 'gif' | 'video' |
-  'emoji' | 'emoji_panel' | 'emoji_messages' |
+  'emoji' | 'emoji_panel' | 'emoji_messages' | 'emoji_appear' |
   'effects' | 'effects_reactions' | 'effects_premiumstickers' | 'effects_emoji' |
   'stickers' | 'stickers_panel' | 'stickers_chat' |
-  'chat' | 'chat_background' | 'chat_spoilers' | 'animations';
+  'chat' | 'chat_background' | 'chat_spoilers' | 'animations' | 'blur';
 
 export class LiteMode {
   public isEnabled() {

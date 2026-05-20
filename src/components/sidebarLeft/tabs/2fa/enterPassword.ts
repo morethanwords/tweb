@@ -24,7 +24,7 @@ import tsNow from '@helpers/tsNow';
 import {toastNew} from '@components/toast';
 import formatDuration from '@helpers/formatDuration';
 import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
-import AppSettingsTab from '@components/sidebarLeft/tabs/settings';
+import {AppSettingsTab} from '@components/solidJsTabs';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import {AppManagers} from '@lib/managers';
 import safeAssign from '@helpers/object/safeAssign';

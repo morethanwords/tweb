@@ -77,9 +77,6 @@ export default class AppContactsTab extends SliderSuperTab {
     list.classList.add('contacts-container');
     appDialogsManager.setListClickListener({
       list,
-      onFound: () => {
-        this.close();
-      },
       withContext: undefined,
       autonomous: true
     });

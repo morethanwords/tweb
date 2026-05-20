@@ -85,12 +85,15 @@ export default class AppBotsManager extends AppManager {
     const oldValue = await this.readBotDeviceStorage(botId, key);
     if(oldValue === value) return null;
 
+    const existed = !!oldValue;
+    if(!existed && !value) return null;
+
     const prevQuota = Number((await this.readBotInternalStorage(botId, 'deviceStorageUsed')) ?? '0');
     const oldItemQuota = oldValue ? key.length + oldValue.length : 0;
     const newQuota = prevQuota - oldItemQuota + (value ? key.length + value.length : 0);
 
     const prevQuotaKeys = Number((await this.readBotInternalStorage(botId, 'deviceStorageUsedKeys')) ?? '0');
-    const newQuotaKeys = prevQuotaKeys + (value ? 1 : -1);
+    const newQuotaKeys = prevQuotaKeys + (value ? 1 : 0) - (existed ? 1 : 0);
 
     if(newQuota > DEVICE_STORAGE_QUOTA_SIZE || newQuotaKeys > DEVICE_STORAGE_QUOTA_KEYS) {
       return 'QUOTA_EXCEEDED';
@@ -117,6 +120,7 @@ export default class AppBotsManager extends AppManager {
     const keysToDelete = keys.filter(key => typeof key === 'string' && key.startsWith(prefix)) as string[];
     await Promise.all(keysToDelete.map(key => this.webAppStorage.delete(key)));
     await this.writeBotInternalStorage(botId, 'deviceStorageUsed', '0');
+    await this.writeBotInternalStorage(botId, 'deviceStorageUsedKeys', '0');
   }
 
   public async getPreparedMessage(botId: BotId, messageId: string) {

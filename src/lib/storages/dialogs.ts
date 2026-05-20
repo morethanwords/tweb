@@ -1440,6 +1440,37 @@ export default class DialogsStorage extends AppManager {
     if(!isSaved) {
       dialog.read_inbox_max_id = this.appMessagesIdsManager.generateMessageId(wasDialogBefore && !dialog.read_inbox_max_id ? (wasDialogBefore as typeof dialog).read_inbox_max_id : dialog.read_inbox_max_id, channelId);
       dialog.read_outbox_max_id = this.appMessagesIdsManager.generateMessageId(wasDialogBefore && !dialog.read_outbox_max_id ? (wasDialogBefore as typeof dialog).read_outbox_max_id : dialog.read_outbox_max_id, channelId);
+
+      // Stale-snapshot guard: if local read state has advanced past what the
+      // server snapshot reports (e.g. user just read messages locally and a
+      // delayed reloadConversation result lands afterwards), preserve the
+      // local read cursor and unread counts. Otherwise the counter visibly
+      // jumps back up before the next read brings it down again — looks
+      // like the unread count "duplicated".
+      if(wasDialogBefore) {
+        const wasReadInbox = (wasDialogBefore as typeof dialog).read_inbox_max_id;
+        const wasReadOutbox = (wasDialogBefore as typeof dialog).read_outbox_max_id;
+        const wasUnread = (wasDialogBefore as typeof dialog).unread_count;
+        const wasUnreadMentions = (wasDialogBefore as typeof dialog).unread_mentions_count;
+        const wasUnreadReactions = (wasDialogBefore as typeof dialog).unread_reactions_count;
+
+        if(wasReadInbox > dialog.read_inbox_max_id) {
+          dialog.read_inbox_max_id = wasReadInbox;
+          if(typeof wasUnread === 'number') {
+            dialog.unread_count = Math.min(dialog.unread_count, wasUnread);
+          }
+          if(typeof wasUnreadMentions === 'number') {
+            dialog.unread_mentions_count = Math.min(dialog.unread_mentions_count, wasUnreadMentions);
+          }
+          if(typeof wasUnreadReactions === 'number') {
+            dialog.unread_reactions_count = Math.min(dialog.unread_reactions_count, wasUnreadReactions);
+          }
+        }
+
+        if(wasReadOutbox > dialog.read_outbox_max_id) {
+          dialog.read_outbox_max_id = wasReadOutbox;
+        }
+      }
     }
 
     if(_isDialog && dialog.folder_id === undefined) {

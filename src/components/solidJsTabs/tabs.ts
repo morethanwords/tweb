@@ -6,6 +6,8 @@ import {InstanceOf} from '@types';
 import {SetStoreFunction} from 'solid-js/store';
 import {scaffoldSolidJSTab} from '@components/solidJsTabs/scaffoldSolidJSTab';
 import {SuperTabProvider} from '@components/solidJsTabs/superTabProvider';
+import rootScope from '@lib/rootScope';
+import type {EditProfileTabPayload} from '@components/sidebarLeft/tabs/editProfile';
 
 
 export const AppPasscodeLockTab =
@@ -65,6 +67,29 @@ export const AppNotificationsTab =
   });
 
 
+export function getEditProfileInitArgs(): Omit<EditProfileTabPayload, 'focusOn'> {
+  return {
+    bioMaxLength: rootScope.managers.apiManager.getLimit('bio'),
+    user: rootScope.managers.appUsersManager.getSelf(),
+    userFull: rootScope.managers.appProfileManager.getProfile(rootScope.myId.toUserId())
+  };
+}
+
+export const AppEditProfileTab =
+  scaffoldSolidJSTab<EditProfileTabPayload>({
+    title: 'EditAccount.Title',
+    getComponentModule: () => import('../sidebarLeft/tabs/editProfile')
+  });
+(AppEditProfileTab as any).noSame = true;
+
+
+export const AppKeyboardShortcutsTab =
+  scaffoldSolidJSTab({
+    title: 'KeyboardShortcuts.Title',
+    getComponentModule: () => import('../sidebarLeft/tabs/keyboardShortcuts')
+  });
+
+
 type AppAdminRecentActionsTabPayload = {
   channelId: ChatId;
   isBroadcast: boolean;
@@ -103,6 +128,33 @@ export const AppArchiveSettingsTab =
   scaffoldSolidJSTab({
     title: 'ArchiveSettings',
     getComponentModule: () => import('../sidebarLeft/tabs/archiveSettingsTab')
+  });
+
+export const AppGeneralSettingsTab =
+  scaffoldSolidJSTab({
+    title: 'Telegram.GeneralSettingsViewController',
+    getComponentModule: () => import('../sidebarLeft/tabs/generalSettings')
+  });
+
+
+export const AppChatBackgroundTab =
+  scaffoldSolidJSTab({
+    title: 'ChatBackground',
+    getComponentModule: () => import('../sidebarLeft/tabs/background')
+  });
+
+
+export const AppLanguageTab =
+  scaffoldSolidJSTab({
+    title: 'Telegram.LanguageViewController',
+    getComponentModule: () => import('../sidebarLeft/tabs/language')
+  });
+
+
+export const AppSettingsTab =
+  scaffoldSolidJSTab({
+    title: 'Settings',
+    getComponentModule: () => import('../sidebarLeft/tabs/settings')
   });
 
 

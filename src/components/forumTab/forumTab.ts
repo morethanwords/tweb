@@ -11,7 +11,7 @@ import {AutonomousDialogListBase} from '@components/autonomousDialogList/base';
 import ButtonIcon from '@components/buttonIcon';
 import Icon from '@components/icon';
 import appSidebarLeft from '@components/sidebarLeft';
-import {MAX_SIDEBAR_WIDTH} from '@components/sidebarLeft/constants';
+import {MAX_SIDEBAR_WIDTH} from '@helpers/updateColumnWidths';
 import SetTransition from '@components/singleTransition';
 import {SliderSuperTabEventable} from '@components/sliderTab';
 import {Register} from '@components/forumTab/register';

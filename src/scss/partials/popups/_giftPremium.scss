@@ -16,9 +16,8 @@
       padding: 0;
       width: 26.25rem;
       max-width: 26.25rem;
-
       max-height: string.unquote('min(100%, 43.5rem)');
-      border-radius: $border-radius-huge;
+      border-radius: $border-radius-big;
     }
 
     &-header {

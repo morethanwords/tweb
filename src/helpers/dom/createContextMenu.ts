@@ -100,7 +100,7 @@ export default function createContextMenu<T extends ButtonMenuItemOptionsVerifia
           onCloseAfter?.();
           destroy();
         }, 300);
-      });
+      }, target);
     };
 
     r();

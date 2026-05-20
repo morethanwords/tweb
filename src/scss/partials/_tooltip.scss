@@ -40,7 +40,7 @@
 
   &-background,
   &-notch {
-    backdrop-filter: blur(25px);
+    backdrop-filter: var(--blur-off, blur(25px));
     background-color: rgba(29, 29, 29, .74);
   }
 
@@ -109,7 +109,7 @@
     //   transform: translateY(.375rem);
     // }
 
-    &:not(.backwards) {
+    &.forwards {
       transform: scale(1);
       // transform: translateY(0);
 

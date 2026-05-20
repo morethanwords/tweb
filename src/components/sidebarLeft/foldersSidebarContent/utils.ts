@@ -6,17 +6,28 @@ import {DialogFilter} from '@layer';
 import assumeType from '@helpers/assumeType';
 
 import {FolderItemPayload} from '@components/sidebarLeft/foldersSidebarContent/types';
+import extractEmojiFromFilterTitle, {ExtractEmojiFromFilterTitleResult} from '@components/sidebarLeft/foldersSidebarContent/extractEmojiFromFilterTitle';
+import {i18n} from '@lib/langPack';
 
-export async function getNotificationCountForFilter(filterId: number, managers: AppManagers) {
-  const {
-    unreadUnmutedCount,
-    unreadCount,
-    unreadMentionsCount
-  } = await managers.dialogsStorage.getFolderUnreadCount(filterId);
+export function getFolderTitle(filter: MyDialogFilter) {
+  let cleanTitle: ExtractEmojiFromFilterTitleResult;
+
+  const titleRest = filter.id === FOLDER_ID_ALL ? {
+    name: i18n('FilterAllChats')
+  } : {
+    title: (cleanTitle = extractEmojiFromFilterTitle(filter.title)).text
+  };
+
+  const iconRest: Pick<FolderItemPayload, 'iconDocId' | 'emojiIcon'> = {
+    iconDocId: cleanTitle?.docId,
+    emojiIcon: cleanTitle?.emoji
+  };
 
   return {
-    count: filterId === FOLDER_ID_ALL ? unreadUnmutedCount : unreadCount,
-    muted: !unreadUnmutedCount && !!unreadCount && !unreadMentionsCount
+    icon: getIconForFilter(filter),
+    ...titleRest,
+    ...iconRest,
+    dontAnimate: !!filter?.pFlags?.title_noanimate
   };
 }
 
@@ -33,25 +44,4 @@ export function getIconForFilter(filter: MyDialogFilter): Icon {
 
   if(matchedIcons.length === 1) return matchedIcons[0];
   return 'limit_folders';
-}
-
-export async function getFolderItemsInOrder(folderItems: FolderItemPayload[], managers: AppManagers) {
-  const filters = new Map<number, MyDialogFilter>();
-
-  const filtersPromises = folderItems
-  .filter((item) => item.id)
-  .map((item) => managers.filtersStorage.getFilter(item.id));
-
-  const filtersArr = (
-    await Promise.all(filtersPromises)
-  ).filter(Boolean);
-
-  for(const filter of filtersArr) {
-    filters.set(filter.id, filter);
-  }
-
-  return folderItems.sort((a, b) => {
-    if(!a.id || !b.id) return 0;
-    return filters.get(a.id)?.localId - filters.get(b.id)?.localId;
-  });
 }

@@ -9,10 +9,22 @@
 @use "popupVariables" as *;
 
 .popup {
-  --popup-min-width: auto;
-  --popup-max-width: auto;
+  --popup-width: auto;
+  --popup-height: auto;
+  --popup-min-width: var(--popup-width);
+  --popup-max-width: var(--popup-width);
+  --popup-min-height: var(--popup-height);
+  --popup-max-height: var(--popup-height);
+
+  // --popup-footer-padding: #{$popup-footer-padding};
+  // --popup-footer-button-height: #{$popup-footer-button-size};
+  --popup-footer-padding: #{$popup-footer-abitlarger-padding};
+  --popup-footer-button-height: #{$popup-footer-abitlarger-button-size};
+  --popup-footer-height: calc(var(--popup-footer-padding) * 2 + var(--popup-footer-button-height));
+  --popup-footer-gradient-start: 50%;
+
   --link-color: var(--primary-color);
-  position: fixed!important;
+  position: fixed !important;
   top: 0;
   right: 0;
   bottom: 0;
@@ -31,7 +43,6 @@
   transition-timing-function: var(--popup-transition-function);
   overflow: auto;
   display: flex;
-  user-select: none;
   color: var(--primary-text-color);
   font-size: 1rem;
 
@@ -74,10 +85,8 @@
   &-container {
     --translateX: 0;
     position: relative;
-    /* max-width: 400px; */
-    border-radius: $border-radius-medium;
-    background-color: var(--surface-color);
-    padding: 1rem;
+    border-radius: 2.5rem;
+    background-color: var(--background-color);
     transform: translate3d(var(--translateX), 3rem, 0);
     backface-visibility: hidden;
     transition: transform var(--popup-transition-time) var(--popup-transition-function);
@@ -85,8 +94,12 @@
     flex-direction: column;
     overflow: hidden;
     margin: auto;
+    width: var(--popup-width);
+    height: var(--popup-height);
     min-width: string.unquote('min(100%, var(--popup-min-width))');
     max-width: string.unquote('min(100%, var(--popup-max-width))');
+    min-height: string.unquote('min(100%, var(--popup-min-height))');
+    max-height: string.unquote('min(100%, var(--popup-max-height))');
 
     body.animation-level-0 & {
       transition: none;
@@ -117,21 +130,26 @@
     margin: auto;
   }
 
+  &:not(.old) &-close {
+    --secondary-text-color: var(--primary-text-color);
+  }
+
   &-close {
     z-index: 3;
     justify-self: center;
     flex: 0 0 auto;
     width: 2.5rem;
     height: 2.5rem;
-    margin-inline-end: 1.5rem;
+    margin-inline-end: 1rem;
   }
 
   &-header {
     display: flex;
-    margin-bottom: 2rem;
     align-items: center;
     flex: 0 0 auto;
     position: relative;
+    height: 3.5rem;
+    padding: 0 1rem;
 
     &.is-floating {
       position: absolute;
@@ -171,6 +189,7 @@
 
     .btn-icon {
       flex: 0 0 auto;
+      color: var(--primary-text-color);
     }
   }
 
@@ -195,26 +214,23 @@
 
   &-footer {
     flex: 0 0 auto;
-    padding: #{$popup-footer-padding};
-    text-align: center;
+    padding: var(--popup-footer-padding);
+    min-height: var(--popup-footer-height);
 
-    .btn-primary {
+    &-button.btn-primary {
       display: block;
-      text-transform: uppercase;
       padding: 0 1.0625rem;
-      height: #{$popup-footer-button-size};
-      line-height: #{$popup-footer-button-size};
+      height: var(--popup-footer-button-height);
+      line-height: var(--popup-footer-button-height);
+      border-radius: calc(var(--popup-footer-button-height) / 2);
+      text-transform: uppercase;
     }
 
-    &.abitlarger,
-    &-abitlarger {
-      padding: #{$popup-footer-abitlarger-padding};
-
-      .btn-primary {
-        height: #{$popup-footer-abitlarger-button-size};
-        line-height: #{$popup-footer-abitlarger-button-size};
-      }
-    }
+    // &.abitlarger,
+    // &-abitlarger {
+    //   --popup-footer-padding: #{$popup-footer-abitlarger-padding};
+    //   --popup-footer-button-height: #{$popup-footer-abitlarger-button-size};
+    // }
 
     &-caption {
       display: block;
@@ -229,16 +245,43 @@
         margin-top: .625rem;
       }
     }
+
+    &-floating {
+      position: absolute;
+      bottom: 0;
+      inset-inline: 0;
+      background: linear-gradient(
+        0deg,
+        var(--background-color) var(--popup-footer-gradient-start),
+        transparent 100%
+      );
+      z-index: 1;
+
+      .btn-primary-transparent.danger {
+        background: #fff;
+        box-shadow: 0px 0px 12px 4px var(--section-box-shadow-color) !important;
+
+        @include hover() {
+          background-color: var(--danger-color) !important;
+          color: #fff !important;
+        }
+      }
+    }
+
+    &-sticky {
+      position: sticky;
+    }
   }
 
   &-button {
+    --height: 2.5rem;
     font-weight: var(--font-weight-bold);
     padding: 0 1rem;
     text-transform: uppercase;
     border-radius: $border-radius-medium;
     position: relative;
     max-width: 100%;
-    height: 2.5rem;
+    height: var(--height);
     @include text-overflow();
 
     & + & {
@@ -279,6 +322,16 @@
 
       .popup-button {
         margin: 0 !important;
+      }
+    }
+  }
+
+  &.old {
+    --background-color: var(--surface-color);
+
+    .popup-header {
+      .btn-icon {
+        color: var(--secondary-text-color);
       }
     }
   }

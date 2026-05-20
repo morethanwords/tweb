@@ -13,6 +13,7 @@ export type SectionOptions = {
   name?: LangPackKey | HTMLElement | DocumentFragment | JSX.Element,
   nameArgs?: FormatterArguments,
   nameRight?: JSX.Element,
+  nameRef?: Ref<HTMLDivElement>,
   caption?: LangPackKey | Exclude<JSX.Element, string>,
   captionArgs?: FormatterArguments,
   captionOld?: boolean,
@@ -21,6 +22,7 @@ export type SectionOptions = {
   fakeGradientDelimiter?: boolean,
   noShadow?: boolean,
   class?: JSX.HTMLAttributes<HTMLDivElement>['class'],
+  innerClass?: string,
   contentProps?: JSX.HTMLAttributes<HTMLDivElement>,
   ref?: Ref<HTMLDivElement>
 };
@@ -43,7 +45,7 @@ const SectionCaption = (props: Pick<SectionOptions, 'caption' | 'captionArgs' | 
   );
 };
 const Section: ParentComponent<SectionOptions & JSX.HTMLAttributes<HTMLDivElement>> = (props) => {
-  const [, rest] = splitProps(props, ['name', 'nameArgs', 'nameRight', 'caption', 'captionArgs', 'captionOld', 'captionRef', 'noDelimiter', 'fakeGradientDelimiter', 'noShadow', 'class', 'contentProps']);
+  const [, rest] = splitProps(props, ['name', 'nameRef', 'nameArgs', 'nameRight', 'innerClass', 'caption', 'captionArgs', 'captionOld', 'captionRef', 'noDelimiter', 'fakeGradientDelimiter', 'noShadow', 'class', 'contentProps']);
   return (
     <div
       class={classNames(className + '-container', props.class)}
@@ -54,13 +56,14 @@ const Section: ParentComponent<SectionOptions & JSX.HTMLAttributes<HTMLDivElemen
         class={classNames(
           className,
           props.noShadow && 'no-shadow',
-          props.fakeGradientDelimiter ? 'with-fake-delimiter' : props.noDelimiter && 'no-delimiter'
+          props.fakeGradientDelimiter ? 'with-fake-delimiter' : props.noDelimiter && 'no-delimiter',
+          props.innerClass
         )}
       >
         {props.fakeGradientDelimiter ? generateDelimiter() : (!props.noDelimiter && <hr />)}
         <SectionContent {...props.contentProps}>
           {props.name && (
-            <div class={classNames('sidebar-left-h2', className + '-name')}>
+            <div ref={props.nameRef} class={classNames('sidebar-left-h2', className + '-name')}>
               {typeof(props.name) === 'string' ? i18n(props.name as LangPackKey, props.nameArgs) : props.name}
               {props.nameRight && <div class={className + '-name-right'}>{props.nameRight}</div>}
             </div>

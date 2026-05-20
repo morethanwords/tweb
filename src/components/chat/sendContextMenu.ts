@@ -64,7 +64,7 @@ export default class SendMenu {
       icon: 'online',
       text: 'Schedule.SendWhenOnline',
       onClick: this.options.onSendWhenOnlineClick,
-      verify: () => this.type === 'schedule' && this.options.canSendWhenOnline?.() && !this.isPaid
+      verify: async() => this.type === 'schedule' && (await this.options.canSendWhenOnline?.()) && !this.isPaid
     }, {
       icon: 'crossround',
       text: 'Effect.Remove',

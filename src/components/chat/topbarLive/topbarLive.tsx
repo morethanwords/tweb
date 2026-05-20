@@ -1,22 +1,18 @@
 import {numberThousandSplitterForWatching} from '@helpers/number/numberThousandSplitter';
 import {cnTopbarLive} from '@components/chat/topbarLive/topbarLive.cn';
-import {TopbarLiveButton} from '@components/chat/topbarLive/button';
 
 import {Skeleton} from '@components/skeleton';
 
 import '@components/chat/topbarLive/topbarLive.scss';
 import {i18n} from '@lib/langPack';
-import wrapReply from '@components/wrappers/reply';
-import {attachClickEvent} from '@helpers/dom/clickEvent';
-import {onCleanup, Accessor} from 'solid-js';
+import Button from '@components/buttonTsx';
+import {JSX} from 'solid-js';
+import classNames from '@helpers/string/classNames';
 
-export interface TopbarLiveProps {
-  watching?: number;
-  onJoin: () => void;
-  animationTrigger: Accessor<PeerId>;
-}
-
-export const TopbarLive = (props: TopbarLiveProps) => {
+export const TopbarLive = (props: {
+  watching: number,
+  actionButton: JSX.Element
+}) => {
   const watching = () => props.watching > 0 ?
     i18n('Rtmp.Watching', [numberThousandSplitterForWatching(Math.max(0, props.watching))]) :
     i18n('Rtmp.Topbar.NoViewers');
@@ -29,23 +25,18 @@ export const TopbarLive = (props: TopbarLiveProps) => {
     </div>
   );
 
-  const {container} = wrapReply({
-    title: i18n('Rtmp.Topbar.Title'),
-    subtitle: subtitle as HTMLElement
-  });
-
-  const background = document.createElement('div');
-  background.classList.add(cnTopbarLive() + '-background');
-
-  container.prepend(background);
-  container.classList.remove('quote-like-hoverable');
-  container.classList.add(cnTopbarLive() + '-wrapper');
-
-  onCleanup(attachClickEvent(container, props.onJoin));
-
-  let button: HTMLButtonElement;
-  <TopbarLiveButton ref={button} animationTrigger={props.animationTrigger} />;
-  container.append(button);
-
-  return container;
+  return (
+    <>
+      <Button.Icon icon="livestream" class="danger disable-hover" />
+      <div class={cnTopbarLive('-content')}>
+        <div class={classNames(cnTopbarLive('-title'), 'primary', 'text-bold')}>
+          {i18n('Rtmp.Topbar.Title')}
+        </div>
+        <div class={classNames(cnTopbarLive('-subtitle'), 'secondary')}>
+          {subtitle}
+        </div>
+      </div>
+      {props.actionButton}
+    </>
+  );
 };

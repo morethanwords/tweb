@@ -6,7 +6,7 @@
       width: 26.25rem;
       background: var(--light-filled-secondary-text-color);
       margin-top: 3.625rem;
-      height: calc(100vh - 6.5rem);
+      height: calc(var(--100vh) - 6.5rem);
       transition: var(--transition-standard-out);
       transition-property: height, margin-top, max-height;
       padding: 0;
@@ -27,7 +27,7 @@
 
 :global(.popup-container).isChosenGift  {
   margin-top: 0rem;
-  height: calc(100vh - 2.875rem);
+  height: calc(var(--100vh) - 2.875rem);
   max-height: 800px;
 }
 

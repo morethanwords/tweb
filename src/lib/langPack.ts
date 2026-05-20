@@ -7,7 +7,7 @@
 import type lang from '@/lang';
 import type langSign from '@/langSign';
 import type {State} from '@config/state';
-import {MOUNT_CLASS_TO} from '@config/debug';
+import {IS_BETA, MOUNT_CLASS_TO} from '@config/debug';
 import {HelpCountry, LangPackDifference, LangPackString} from '@layer';
 import App from '@config/app';
 import rootScope from '@lib/rootScope';
@@ -79,6 +79,7 @@ export type FormatterArgument = string | number | Node | FormatterArgument[];
 export type FormatterArguments = FormatterArgument[];
 
 export const UNSUPPORTED_LANG_PACK_KEY: LangPackKey = IS_MOBILE ? 'Message.Unsupported.Mobile' : 'Message.Unsupported.Desktop';
+const TEST_LOCAL = IS_BETA && true;
 
 namespace I18n {
   export const strings: Map<LangPackKey, LangPackString> = new Map();
@@ -240,11 +241,13 @@ namespace I18n {
     return loadLangPack(langCode, web, ignoreCache).then(([langPack1, langPack2, localLangPack1, localLangPack2, countries, _]) => {
       let strings: LangPackString[] = [];
 
-      [localLangPack1, localLangPack2].forEach((l) => {
+      const pushLocal = () => [localLangPack1, localLangPack2].forEach((l) => {
         formatLocalStrings(l.default as any, strings);
       });
 
+      if(!TEST_LOCAL) pushLocal();
       strings = strings.concat(...[langPack1.strings, langPack2.strings].filter(Boolean));
+      if(TEST_LOCAL) pushLocal();
 
       langPack1.strings = strings;
       langPack1.countries = countries;

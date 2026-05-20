@@ -7,7 +7,7 @@
 import {SliderSuperTab} from '@components/slider';
 import {ButtonMenuSync} from '@components/buttonMenu';
 import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG} from '@lib/appDialogsManager';
-import PopupPickUser from '@components/popups/pickUser';
+import showPickUserPopup from '@components/popups/pickUser';
 import rootScope from '@lib/rootScope';
 import findUpTag from '@helpers/dom/findUpTag';
 import ButtonCorner from '@components/buttonCorner';
@@ -41,12 +41,13 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
     this.content.append(btnAdd);
 
     attachClickEvent(btnAdd, (e) => {
-      PopupElement.createPopup(PopupPickUser, {
+      showPickUserPopup({
+        titleLangKey: 'BlockedUsers',
         peerType: ['contacts'],
         placeholder: 'BlockModal.Search.Placeholder',
-        onSelect: (peerId) => {
+        onSelect: (chosen) => {
           // console.log('block', peerId);
-          this.managers.appUsersManager.toggleBlock(peerId, true);
+          this.managers.appUsersManager.toggleBlock(chosen[0].peerId, true);
         }
       });
     }, {listenerSetter: this.listenerSetter});

@@ -32,12 +32,13 @@ export default class VolumeSelector extends RangeSelector {
     useGlobalVolume?: VolumeSelector['useGlobalVolume'],
     vertical?: boolean,
     media?: HTMLMediaElement,
+    maxVolume?: number,
     onVolumeChange?: VolumeSelector['onVolumeChange']
   }) {
     super({
       step: 0.01,
       min: 0,
-      max: 1,
+      max: options.maxVolume ?? 1,
       vertical: options.vertical
     }, 1);
 
@@ -46,7 +47,7 @@ export default class VolumeSelector extends RangeSelector {
     this.setListeners();
     this.setHandlers({
       onScrub: (_value) => {
-        const value = Math.max(Math.min(_value, 1), 0);
+        const value = Math.max(Math.min(_value, this.max), 0);
 
         if(this.useGlobalVolume) {
           this.modifyGlobal(() => {
@@ -155,5 +156,12 @@ export default class VolumeSelector extends RangeSelector {
   public setGlobalVolume = (eventType?: Parameters<VolumeSelector['setVolume']>[0]['eventType']) => {
     const {volume, muted} = appMediaPlaybackController;
     return this.setVolume({volume, muted, eventType});
+  };
+
+  public setMaxVolume = (max: number) => {
+    if(this.max === max) return;
+    this.max = max;
+    this.seek.max = '' + max;
+    this.setFilled(+this.seek.value);
   };
 }

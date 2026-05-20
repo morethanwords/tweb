@@ -262,7 +262,7 @@ export namespace MessageRender {
       }
 
       if(chatType !== ChatType.Pinned && message.pFlags.pinned) {
-        const i = Icon('pinnedchat', 'time-icon', 'time-pinned', 'time-part');
+        const i = Icon('pinnedchat_filled', 'time-icon', 'time-pinned', 'time-part');
         args.unshift(i);
       }
 
@@ -276,7 +276,7 @@ export namespace MessageRender {
         inlineStars.classList.add('inline-stars', 'bubble-meta-inline-stars');
         inlineStars.append(
           numberThousandSplitterForStars(+message.paid_message_stars * Math.max(groupedMessagesCount || 0, 1)),
-          Icon('star')
+          Icon('star', 'inline-stars-icon')
         );
         args.push(inlineStars)
       }

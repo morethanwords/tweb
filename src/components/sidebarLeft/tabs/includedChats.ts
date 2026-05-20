@@ -14,14 +14,11 @@ import AppEditFolderTab from '@components/sidebarLeft/tabs/editFolder';
 import I18n, {i18n, LangPackKey, _i18n, join} from '@lib/langPack';
 import copy from '@helpers/object/copy';
 import forEachReverse from '@helpers/array/forEachReverse';
-import setInnerHTML from '@helpers/dom/setInnerHTML';
-import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import {REAL_FOLDERS} from '@appManagers/constants';
 import rootScope from '@lib/rootScope';
 import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
 import SettingSection from '@components/settingSection';
 import {DialogFilter} from '@layer';
-import Icon from '@components/icon';
 import showLimitPopup from '@components/popups/limit';
 import wrapFolderTitle from '@components/wrappers/folderTitle';
 
@@ -202,20 +199,20 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
 
     categoriesSection.container.classList.add('folder-categories');
 
-    let details: {[flag: string]: {ico: Icon, text: LangPackKey}};
+    let details: {[flag: string]: {ico: Icon, icoFilled?: Icon, text: LangPackKey}};
     if(this.type === 'excluded') {
       details = {
         exclude_muted: {ico: 'mute', text: 'ChatList.Filter.MutedChats'},
-        exclude_archived: {ico: 'archive', text: 'ChatList.Filter.Archive'},
+        exclude_archived: {ico: 'archive', icoFilled: 'archive_filled', text: 'ChatList.Filter.Archive'},
         exclude_read: {ico: 'readchats', text: 'ChatList.Filter.ReadChats'}
       };
     } else {
       details = {
-        contacts: {ico: 'newprivate', text: 'ChatList.Filter.Contacts'},
+        contacts: {ico: 'newprivate', icoFilled: 'newprivate_filled', text: 'ChatList.Filter.Contacts'},
         non_contacts: {ico: 'noncontacts', text: 'ChatList.Filter.NonContacts'},
-        groups: {ico: 'group', text: 'ChatList.Filter.Groups'},
-        broadcasts: {ico: 'newchannel', text: 'ChatList.Filter.Channels'},
-        bots: {ico: 'bots', text: 'ChatList.Filter.Bots'}
+        groups: {ico: 'group', icoFilled: 'group_filled', text: 'ChatList.Filter.Groups'},
+        broadcasts: {ico: 'newchannel', icoFilled: 'channel_filled', text: 'ChatList.Filter.Channels'},
+        bots: {ico: 'bots', icoFilled: 'bot_filled', text: 'ChatList.Filter.Bots'}
       };
     }
 
@@ -247,22 +244,26 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
 
     let addedInitial = false;
     const _add = this.selector.add.bind(this.selector);
-    this.selector.add = ({key: peerId, title, scroll}) => {
-      if(this.selector.selected.size >= this.limit && addedInitial && !details[peerId]) {
+    this.selector.add = ({key, title, scroll}) => {
+      const d = details[key];
+      if(this.selector.selected.size >= this.limit && addedInitial && !d) {
         showLimitPopup('folderPeers');
         return false;
       }
 
       const ret = _add({
-        key: peerId,
-        title: details[peerId] ? i18n(details[peerId].text) : undefined,
+        key,
+        title: d ? i18n(d.text) : undefined,
         scroll,
-        fallbackIcon: details[peerId]?.ico
+        fallbackIcon: d ? d.icoFilled || d.ico : undefined
       });
       return ret;
     };
 
-    this.selector.scrollable.append(categoriesSection.container, this.selector.scrollable.container.lastElementChild);
+    this.selector.scrollable.append(
+      categoriesSection.container,
+      this.selector.scrollable.container.lastElementChild
+    );
 
     this.selector.addInitial(selectedPeers);
     addedInitial = true;

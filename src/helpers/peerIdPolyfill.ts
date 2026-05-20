@@ -20,7 +20,7 @@ String.prototype.toPeerId = function(isChat?: boolean) {
 };
 
 String.prototype.isPeerId = function(): this is string {
-  return /^[\d-]/.test(this.toString());
+  return /^-?\d+$/.test(this.toString());
 };
 
 // * don't return just 'this', because Firefox returns empty `Number` class

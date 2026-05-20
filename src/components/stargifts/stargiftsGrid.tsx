@@ -17,7 +17,7 @@ import {IconTsx} from '@components/iconTsx';
 import formatNumber from '@helpers/number/formatNumber';
 import {changeBrightness, getRgbColorFromTelegramColor, rgbaToHexa, rgbIntToHex} from '@helpers/color';
 import createContextMenu from '@helpers/dom/createContextMenu';
-import PopupPickUser from '@components/popups/pickUser';
+import {showSharingPicker2Popup} from '@components/popups/pickUser';
 import appImManager from '@lib/appImManager';
 import {StarGift, StarGiftCollection} from '@layer';
 import {copyTextToClipboard} from '@helpers/clipboard';
@@ -61,7 +61,7 @@ function StarGiftGridItem(props: {
           text: 'ShareFile',
           verify: () => raw._ === 'starGiftUnique',
           onClick: () => {
-            PopupPickUser.createSharingPicker2().then(({peerId, threadId, monoforumThreadId}) => {
+            showSharingPicker2Popup().then(({peerId, threadId, monoforumThreadId}) => {
               rootScope.managers.appMessagesManager.sendText({peerId, threadId, replyToMonoforumPeerId: monoforumThreadId, text: 'https://t.me/nft/' + (raw as StarGift.starGiftUnique).slug});
               appImManager.setInnerPeer({peerId, threadId, monoforumThreadId});
             });

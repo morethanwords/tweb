@@ -1,19 +1,12 @@
 import {JSX} from 'solid-js';
-import type {MiddlewareHelper} from '@helpers/middleware';
 import {TextWithEntities} from '@layer';
+import type {StoredFolder} from '@stores/folders';
 
-
-export type FolderItemPayload = {
-  id?: number;
-  icon: Icon;
-  iconDocId?: DocId;
-  emojiIcon?: string;
-  dontAnimate?: boolean;
-  name?: JSX.Element;
-  title?: TextWithEntities.textWithEntities;
-  notifications?: {
-    count: number,
-    muted: boolean
-  };
-  chatsCount?: number | null;
+export type FolderItemPayload = Partial<StoredFolder> & {
+  icon: Icon,
+  iconDocId?: DocId,
+  emojiIcon?: string,
+  dontAnimate?: boolean,
+  name?: JSX.Element,
+  title?: TextWithEntities.textWithEntities
 };

@@ -34,7 +34,7 @@
   }
 
   &.is-visible {
-    &:not(.backwards) {
+    &.forwards {
       &:before {
         opacity: 1;
 
@@ -100,7 +100,7 @@
         transition: transform var(--sticker-viewer-switch-transition), opacity var(--sticker-viewer-switch-transition) !important;
       }
 
-      &:not(.backwards) {
+      &.forwards {
         transform: scale(0.4) translateX(var(--translateX)) !important;
         opacity: 0 !important;
       }

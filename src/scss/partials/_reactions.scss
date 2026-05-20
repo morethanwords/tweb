@@ -70,7 +70,7 @@
 
   &.tooltip {
     transform: translate(-50%, 0);
-    &.is-visible:not(.backwards) {
+    &.is-visible.forwards {
       transform: translate(-50%, 0);
     }
     &.mounted {

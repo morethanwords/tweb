@@ -45,7 +45,8 @@ export default class SortedDialogList {
     requestItemForIdx: (idx: number, itemsLength: number) => void,
     onListShrinked: () => void,
     itemSize: LoadingDialogSkeletonSize,
-    noAvatar?: boolean // For the loading skeleton placeholder
+    noAvatar?: boolean // For the loading skeleton placeholder,
+    extraPaddingBottom?: number
   }) {
     safeAssign(this, pickKeys(options, [
       'appDialogsManager',
@@ -101,7 +102,8 @@ export default class SortedDialogList {
       sortWith: (a, b) => b - a,
       itemSize: options.itemSize,
       noAvatar: options.noAvatar,
-      onListLengthChange: options.onListLengthChange
+      onListLengthChange: options.onListLengthChange,
+      extraPaddingBottom: options.extraPaddingBottom
     });
 
     this.list = this.virtualList.list;

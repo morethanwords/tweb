@@ -12,6 +12,7 @@ import {render} from 'solid-js/web';
 import {AutonomousDialogList} from '@components/autonomousDialogList/dialogs';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import {getArchiveContextMenuButtons} from '@components/archiveDialogContextMenu';
+import {fastSmoothScrollToStart} from '@helpers/fastSmoothScroll';
 
 
 export default class AppArchivedTab extends SliderSuperTab {
@@ -75,6 +76,11 @@ export default class AppArchivedTab extends SliderSuperTab {
         offsetX: -64,
         resizeCallback: (callback) => {
           this.resizeStoriesContainer = callback;
+        },
+        onExpand: () => {
+          const container = this.autonomousDialogList.scrollable.container;
+          this.container.classList.add('scrolled-start');
+          fastSmoothScrollToStart(container, 'y');
         }
       });
     }, this.storiesListContainer);

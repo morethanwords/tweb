@@ -20,7 +20,7 @@ import wrapVideo from '@components/wrappers/video';
 import wrapDocument from '@components/wrappers/document';
 import rootScope from '@lib/rootScope';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
-import PopupPickUser from '@components/popups/pickUser';
+import {showPickUser2Popup} from '@components/popups/pickUser';
 import appImManager from '@lib/appImManager';
 import generateQId from '@appManagers/utils/inlineBots/generateQId';
 
@@ -46,7 +46,7 @@ export default class PopupWebAppPreparedMessage extends PopupElement<{
           callback: async() => {
             const availableTypes = new Set(this.message.peer_types.map(it => it._))
 
-            const chosenPeerId = await PopupPickUser.createPicker2({
+            const chosenPeerId = await showPickUser2Popup({
               peerType: ['dialogs', 'contacts'],
               filterPeerTypeBy: (peer) => {
                 if(peer._ === 'user') {

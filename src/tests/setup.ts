@@ -1,8 +1,3 @@
-import crypto from 'crypto';
+import {installNodeEnv} from './api/nodeEnv';
 
-Object.defineProperty(global.self, 'crypto', {
-  value: {
-    subtle: crypto.webcrypto.subtle,
-    getRandomValues: crypto.webcrypto.getRandomValues.bind(crypto.webcrypto)
-  }
-});
+installNodeEnv();

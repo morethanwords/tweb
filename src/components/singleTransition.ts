@@ -69,6 +69,7 @@ const SetTransition = (options: SetTransitionOptions) => {
   };
 
   onTransitionStart?.();
+  element.classList.toggle('forwards', forwards);
   if(!liteMode.isAvailable('animations') || !duration) {
     element.classList.remove('animating', 'backwards');
     afterTimeout();

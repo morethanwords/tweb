@@ -7,26 +7,23 @@
 @use "../shared" as *;
 
 .input-wrapper {
-  width: 360px;
+  width: 100%;
   margin: 0 auto;
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: 100%;
 }
 
 .input-field {
-  --height: 54px;
-  --border-radius: #{$border-radius-medium};
+  --height: #{$input-height};
+  --border-radius: #{$input-border-radius};
   // --padding: calc((var(--height) - var(--border-width) * 2 - var(--line-height)) / 2);
-  --padding: 1rem;
+  --padding: 0.8125rem;
   --padding-horizontal: 1rem;
   --border-width: 1px;
   position: relative;
   display: flex;
   align-items: center;
-
-  @include respond-to(handhelds) {
-    --height: 50px;
-    --padding: .9375rem;
-    --padding-horizontal: .9375rem;
-  }
   
   .arrow-down {
     position: absolute;
@@ -65,7 +62,6 @@
     transform-origin: var(--transform-origin-left-center);
     pointer-events: none;
     margin-top: calc((var(--height) - 1.5rem) / 2); // * Center of first line
-    user-select: none;
     white-space: nowrap;
 
     @include animation-level(2) {
@@ -116,10 +112,6 @@
     z-index: 1;
     line-height: var(--line-height);
 
-    /* &:-internal-autofill-selected {
-      -webkit-box-shadow: 0 0 0px 1000px var(--surface-color) inset;
-    } */
-
     &:-webkit-autofill,
     &:-webkit-autofill:hover,
     &:-webkit-autofill:focus,
@@ -133,8 +125,8 @@
     &:-webkit-autofill:hover,
     &:-webkit-autofill:focus,
     &:-webkit-autofill:active {
-      font-family: "Roboto", -apple-system, apple color emoji, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif !important;
-      font-size: 1rem !important;
+      font-family: var(--font-family);
+      font-size: var(--font-size) !important;
       color: var(--primary-text-color) !important;
     }
 
@@ -144,8 +136,6 @@
 
     @include hover() {
       &:not(:focus):not(.error):not(.valid) {
-        //border-color: var(--color-gray);
-        //border-color: #000;
         border-color: var(--primary-color);
         transition: .2s border-color;
 
@@ -153,28 +143,12 @@
           color: var(--primary-color);
         }
       }
-
-      /* &:not(:focus):not(.error):not(.valid) ~ label {
-        transition: .2s transform, .2s padding, .1s opacity, font-weight 0s 1s;
-      } */
     }
 
-    /* font-weight: 500; */
-
-    /* &:hover {
-      border-color: #000;
-    } */
-    
     &:focus {
       border-color: var(--primary-color);
-      //padding: 0 calc(1rem - 1px);
     }
-    
-    /* &:disabled {
-      background-color: #fff;
-      color: #000;
-    } */
-    
+
     &.error {
       border-color: var(--danger-color);
 
@@ -247,8 +221,7 @@
 
     // * override scrollable styles
     bottom: auto!important;
-    left: var(--imc-padding-horizontal) !important;
-    right: var(--imc-padding-horizontal)!important;
+    inset-inline: var(--imc-padding-inline-start) var(--imc-padding-inline-end) !important;
     width: auto !important;
     height: auto!important;
 
@@ -261,7 +234,7 @@
   }
 
   &-placeholder {
-    color: #a2acb4;
+    color: var(--input-placeholder-color);
     display: block; /* For Firefox By Ariel Flesler */
     pointer-events: none;
     position: absolute;
@@ -305,28 +278,13 @@
   }
 }
 
-.input-wrapper {
-  display: grid;
-  gap: 1.5rem;
-  grid-template-columns: 100%;
-}
-
 ::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */
-  color: #909192;
+  color: var(--input-placeholder-color);
   opacity: 1; /* Firefox */
 }
 
-:-ms-input-placeholder { /* Internet Explorer 10-11 */
-  color: #909192;
-}
-
 ::-ms-input-placeholder { /* Microsoft Edge */
-  color: #909192;
-}
-
-input:focus,
-button:focus {
-  outline: none;
+  color: var(--input-placeholder-color);
 }
 
 .input-clear {
@@ -360,189 +318,6 @@ button:focus {
 
   100% {
     transform: translateX(0);
-  }
-}
-
-.input-search {
-  --border-width: 1px;
-  --height: 44px;
-  --border-radius: 22px;
-  --icon-left-add-offset: .1875rem;
-  --icon-left-offset: calc(.8125rem + var(--icon-left-add-offset));
-  --icon-size: 1.5rem;
-  --padding-horizontal: calc(var(--height) + 3px + var(--icon-left-add-offset) - var(--border-width));
-  position: relative;
-  width: 100%;
-  margin-inline: .5rem;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-
-  @include respond-to(handhelds) {
-    margin-inline-start: 1rem;
-  }
-
-  @keyframes grow-input {
-    from {
-      transform: scale(.5);
-      opacity: 0;
-    }
-
-    to {
-      transform: scale(1);
-      opacity: var(--max-opacity, 1);
-    }
-  }
-
-  @keyframes hide-input {
-    from {
-      transform: scale(1);
-      opacity: var(--max-opacity, 1);
-    }
-
-    to {
-      transform: scale(.5);
-      opacity: 0;
-    }
-  }
-
-  .will-animate {
-    @include animation-level(2) {
-      animation: grow-input .25s forwards ease-in-out;
-    }
-
-    &.is-hiding {
-      @include animation-level(2) {
-        animation: hide-input .25s forwards ease-in-out;
-      }
-
-      @include animation-level(0) {
-        opacity: 0;
-      }
-    }
-  }
-
-  &.show-placeholder &-placeholder {
-    display: block !important;
-  }
-
-  &.old-style &-input {
-    background-color: var(--old-input-background-color);
-    border-color: transparent;
-  }
-
-  &-placeholder {
-    position: absolute;
-    color: $placeholder-color;
-    z-index: 1;
-    white-space: nowrap;
-    inset-inline-start: calc(var(--padding-horizontal) + var(--border-width));
-    pointer-events: none;
-    transform-origin: left center;
-  }
-
-  &-input {
-    --border-width: inherit;
-    --padding-horizontal: inherit;
-    background-color: var(--input-search-background-color);
-    padding: 0px var(--padding-horizontal);
-    height: var(--height);
-    min-height: var(--height) !important;
-    max-height: var(--height) !important;
-    //line-height: calc(var(--height) + 2px - var(--border-width) * 2);
-    border-color: var(--input-search-border-color);
-    line-height: var(--line-height-16);
-    
-    @include animation-level(2) {
-      transition: background-color .2s ease-in-out, border-color .2s ease-in-out;
-    }
-
-    @include hover() {
-      &:not(:focus) {
-        border-color: var(--secondary-color) !important;
-        //border-color: #000;
-      }
-    }
-
-    &.with-focus-effect:focus {
-      background-color: transparent;
-      border-color: var(--primary-color);
-
-      & ~ .input-search-part {
-        --max-opacity: 1;
-        color: var(--primary-color);
-      }
-
-      & ~ .preloader-container {
-        .preloader-path-new {
-          stroke: var(--primary-color);
-        }
-      }
-
-      & ~ .input-search-button {
-        @include hover-background-effect(primary);
-      }
-    }
-
-    /* &:empty:before {
-      color: #909192 !important;
-    } */
-
-    &.is-empty ~ .input-search-clear:not(.always-visible),
-    &:not(.is-empty) ~ .input-search-placeholder {
-      display: none;
-    }
-  }
-
-  &.is-picked .input-search-placeholder {
-    display: none;
-  }
-
-  .input-search-part {
-    --max-opacity: .6;
-    position: absolute;
-    // top: 50%;
-    // transform: translate(0, -50%);
-    text-align: center;
-    font-size: var(--icon-size);
-    color: var(--secondary-text-color);
-    opacity: var(--max-opacity);
-    line-height: 1;
-    z-index: 1;
-
-    @include animation-level(2) {
-      transition: opacity .2s ease-out, color .2s ease-out;
-    }
-  }
-
-  &-icon,
-  .preloader-container {
-    width: var(--icon-size);
-    height: var(--icon-size);
-    inset-inline-start: var(--icon-left-offset);
-    pointer-events: none;
-  }
-
-  .preloader-container {
-    right: auto;
-    z-index: 1;
-
-    .preloader-path-new {
-      stroke: var(--secondary-color);
-
-      @include animation-level(2) {
-        transition: stroke .2s ease-out !important;
-      }
-    }
-  }
-
-  &-clear {
-    inset-inline-end: calc((var(--height) - 2.25rem) / 2);
-    z-index: 1;
-  }
-
-  &-button {
-    padding: .375rem !important;
   }
 }
 

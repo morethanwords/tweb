@@ -35,7 +35,7 @@
         @include dialog-badge-transition-reset();
       }
 
-      &.is-visible:not(.backwards):after {
+      &.is-visible.forwards:after {
         @include dialog-badge-transition-visible();
       }
 
@@ -53,7 +53,7 @@
     } @else {
       @include dialog-badge-transition-reset();
 
-      &.is-visible:not(.backwards) {
+      &.is-visible.forwards {
         @include dialog-badge-transition-visible();
       }
 
@@ -74,84 +74,6 @@
 
 .chatlist-container {
   position: relative;
-
-  .search-group-recent.search-group {
-    @include respond-to(handhelds) {
-      padding: 2px 0 0;
-    }
-  }
-
-  .search-group {
-    width: 100%;
-    padding: 1rem 0 .5rem;
-    margin-bottom: 17px;
-
-    @include respond-to(handhelds) {
-      margin-bottom: 0;
-    }
-
-    &.is-hidden {
-      opacity: 0;
-    }
-
-    &.is-visible {
-      opacity: 1;
-
-      &.animating {
-        transition: opacity var(--transition-standard-in);
-      }
-    }
-
-    &__name {
-      color: var(--secondary-text-color);
-      padding: 0 23px;
-      padding-bottom: 1rem;
-      font-weight: var(--font-weight-bold);
-      user-select: none;
-
-      @include respond-to(handhelds) {
-        padding: 5px 9px 0 16px;
-        font-size: 15px;
-      }
-    }
-
-    &-contacts {
-      border-bottom: 1px solid var(--border-color);
-
-      @include respond-to(handhelds) {
-        padding: 0px 0 2px;
-      }
-
-      // .search-group__name {
-      //   padding-bottom: 17px;
-
-      //   @include respond-to(handhelds) {
-      //     padding-bottom: 0;
-      //   }
-      // }
-    }
-
-    &-people.search-group-contacts {
-      padding: 5px 0 5px !important;
-    }
-
-    &:last-child {
-      border-bottom: none;
-    }
-  }
-
-  .search-super {
-    .search-group {
-      margin-bottom: 0px;
-      padding: 0 0 .5rem;
-
-      &__name {
-        padding-top: 1rem;
-        display: flex;
-        justify-content: space-between;
-      }
-    }
-  }
 }
 
 ul.chatlist {
@@ -171,8 +93,6 @@ ul.chatlist {
   width: 100%;
   background-color: var(--surface-color);
 
-  user-select: none;
-  -webkit-user-select: none; /* disable selection/Copy of UIWebView */
   -webkit-touch-callout: none; /* disable the IOS popup when long-press on a link */
 
   &-chat {
@@ -194,7 +114,7 @@ ul.chatlist {
     &.is-muted {
       body:not(.animation-level-0) & {
         &.animating {
-          &:not(.backwards) {
+          &.forwards {
             .dialog-muted-icon {
               animation: fade-in-opacity .2s ease-in-out forwards;
             }
@@ -509,7 +429,7 @@ ul.chatlist {
         transition: height var(--transition-standard-in);
       }
 
-      &.is-visible:not(.backwards) {
+      &.is-visible.forwards {
         height: 4rem;
       }
     }
@@ -735,7 +655,7 @@ ul.chatlist {
       transition: transform var(--chatlist-badge-transition-in);
     }
 
-    &.is-visible:not(.backwards) .avatar-auto-delete-timer  {
+    &.is-visible.forwards .avatar-auto-delete-timer  {
       transform: scale(0);
     }
   }

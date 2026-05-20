@@ -8,26 +8,46 @@
 
 :root {
   --sidebar-collapsed-width: 80px;
-  --sidebar-max-width: #{calc($large-screen / 4)};
 }
 
 #column-left {
-  //display: flex;
+  display: flex;
   flex-direction: column;
 
-  $max-width: calc($large-screen / 4);
-  --current-width: var(--current-sidebar-left-width, #{$max-width});
+  // Width is owned entirely by JS — helpers/updateColumnWidths.ts sets
+  // --left-column-visual-width based on the viewport rules (fixed at
+  // --default-column-width in floating mode, user-resizable otherwise).
+  flex: var(--left-column-visual-width) 1 auto;
+  width: var(--left-column-visual-width);
 
-  flex: var(--current-width) 1 auto;
-  max-width: #{$max-width};
-  width: var(--current-width);
+  overflow: hidden;
+  border-radius: var(--main-column-border-radius);
+  box-shadow: var(--column-box-shadow);
+  z-index: 1;
+  margin-block: var(--page-chats-padding);
+  // --folders-sidebar-offset (0px or 5.5rem) sits side-by-side with the
+  // page padding so the column lands 8px past the folders panel when shown.
+  margin-inline-start: calc(var(--page-chats-padding) + var(--folders-sidebar-offset));
 
+  // Icon-only search affordance shown when the sidebar is collapsed and
+  // there's no room for the full search input. Visibility is owned by JS —
+  // sidebarLeft/index.ts toggles `.is-visible` from a Solid effect driven by
+  // useHasFoldersSidebar / useIsSidebarCollapsed / useHasOpenLeftTabs /
+  // useIsAnimatingLeftSearchOut. SCSS only reads the class.
   .sidebar-header-search-trigger {
     display: none;
+
+    &.is-visible {
+      display: flex;
+      flex: 0 0 auto;
+      width: 2.5rem;
+      margin-inline-start: .75rem;
+    }
   }
 
   .main-search-sidebar-header {
-    // padding-inline-end: .75rem;
+    transition: background-color var(--transition-standard-in), opacity var(--transition-standard-in);
+    opacity: 1;
 
     &.is-input-the-last-child {
       padding-inline-end: .5rem;
@@ -43,34 +63,51 @@
   }
 
   @include respond-to(no-floating-left-sidebar) {
-    &.is-collapsed {
-      width: var(--sidebar-left-width-when-collapsed, var(--sidebar-collapsed-width));
-
-      >.sidebar-slider {
-        overflow: hidden;
-        width: 100%;
+    body.has-folders-sidebar & {
+      .item-main {
+        --stories-additional-offset: -47px;
       }
+    }
+  }
 
-      >.sidebar-slider>.tabs-tab {
-        width: var(--sidebar-left-inner-width-when-collapsed, var(--sidebar-collapsed-width));
-      }
+  &.is-collapsed {
+    // Smooth pop-out when a tab / search / forum opens (80px → 360px) and
+    // the reverse on close. Only in collapsed mode — the resize handle's
+    // live drag stays instant via `body.resizing-left-sidebar`. Duration /
+    // curve match the slider tab's own translate transition
+    // (`--transition-standard-in` in `_slider.scss .animating .tabs-tab`)
+    // so the column and the incoming tab arrive in lockstep.
+    transition: width var(--transition-standard-in);
 
-      #chatlist-container {
-        --stories-scrolled: 92px !important;
-      }
-      #chatlist-container .chatlist {
+    body.resizing-left-sidebar & {
+      transition: none;
+    }
+
+    .item-main,
+    .item-secondary {
+      width: var(--default-column-width);
+    }
+
+    .connection-status-bottom {
+      width: var(--sidebar-collapsed-width);
+    }
+
+    #chatlist-container {
+      --stories-scrolled: 92px !important;
+
+      .chatlist {
         padding: 0;
       }
 
-      #chatlist-container .virtual-chatlist {
+      .virtual-chatlist {
         margin: 0 !important;
       }
 
-      #chatlist-container .loading-dialog-skeleton {
+      .loading-dialog-skeleton {
         padding-left: 13px;
       }
 
-      #chatlist-container .chatlist-chat {
+      .chatlist-chat {
         padding-inline-end: 0;
         border-radius: 0;
         .row-media-bigger {
@@ -80,84 +117,96 @@
           display: none;
         }
       }
+    }
 
+    // Burger in collapsed mode.
+    //
+    // With folders sidebar: the burger and the search trigger occupy the
+    // exact same slot — opening search just swaps the icon. No
+    // width-grow animation, no margin shift. Hidden via `display: none`
+    // (rather than `width: 0`) so there's no layout state to animate
+    // through, and the visible margin matches the trigger's `.75rem`
+    // offset.
+    //
+    // Without folders sidebar: the in-sidebar burger is the only menu
+    // trigger, so when the column is narrow and nothing is open inside
+    // we float it at a fixed offset over the chatlist.
+    .left-sidebar-burger {
       body.has-folders-sidebar & {
-        .sidebar-header-search-trigger {
-          display: block;
-          width: 0px;
-          transition: width .1s, opacity .2s;
-          overflow: hidden;
-          margin-left: 4px;
+        &:not(.is-visible) {
+          display: none;
         }
-      }
 
-      #new-menu {
-        display: none !important;
-      }
-
-      .btn-corner.btn-update {
-        position: fixed !important;
-        left: calc(max(0px, (100vw - #{$large-screen}) / 2) + 12px) !important;
-        z-index: 4;
-      }
-
-      .item-main .stories-list {
-        display: none;
-      }
-
-      .topics-container.is-floating {
-        .sidebar-content, .sidebar-header {
-          width: calc(var(--sidebar-max-width) - var(--offset) - 1px);
+        &.is-visible {
+          margin-inline-start: .75rem;
         }
       }
     }
 
-    &.is-collapsed:not(.has-real-tabs) {
+    body:not(.has-folders-sidebar) & .left-sidebar-burger {
+      margin-inline-start: .75rem;
+    }
+
+    #new-menu {
+      display: none !important;
+    }
+
+    .btn-update {
+      position: fixed !important;
+      left: calc(var(--page-chats-padding) + 12px) !important;
+      z-index: 4;
+    }
+
+    .item-main .stories-list {
+      display: none;
+    }
+
+    .topics-container.is-floating {
+      .sidebar-content,
+      .sidebar-header {
+        width: calc(var(--default-column-width) - var(--offset) - 1px);
+      }
+    }
+
+    &:not(.has-real-tabs) {
       .topics-container {
         transform: translateX(0) !important;
       }
     }
 
-    &.is-collapsed:not(.has-open-tabs) {
+    &.can-menu-have-z-index:not(.has-open-tabs) {
       body:not(.has-folders-sidebar) & {
-        .sidebar-header.main-search-sidebar-header .sidebar-header__btn-container:not(.force-static) {
-          position: fixed;
-          top: 8px;
-          left: calc(max(0px, (100vw - #{$large-screen}) / 2) + 20px) !important;
-        }
-        .force-static {
-          margin-left: 4px;
-        }
-      }
-    }
-    &.is-collapsed.can-menu-have-z-index:not(.has-open-tabs) {
-      body:not(.has-folders-sidebar) & {
-        .sidebar-header.main-search-sidebar-header .sidebar-header__btn-container:not(.force-static) {
+        .left-sidebar-burger {
           z-index: 4;
         }
       }
     }
 
-    body:not(.has-folders-sidebar) &.is-collapsed.force-hide-menu {
-      .btn-menu {
-        display: none;
-      }
-    }
-
-    &.is-collapsed:not(.has-open-tabs):not(.animate-search-out), &.is-collapsed.force-hide-search {
-      .sidebar-header.main-search-sidebar-header {
-        >:not(.sidebar-header-search-trigger):not(.sidebar-header__btn-container) {
+    &.force-hide-menu {
+      body:not(.has-folders-sidebar) & {
+        .btn-menu {
           display: none;
         }
-        body.has-folders-sidebar & {
-          .sidebar-header-search-trigger {
-            width: 40px;
-          }
+      }
+    }
+
+    // Hide wide header contents while the column is narrow (no tab open, or
+    // mid-open animation) — only the burger and the JS-driven collapsed
+    // search affordance remain. Listed explicitly so the search trigger's
+    // own visibility (managed in JS via `.is-visible`) stays untouched.
+    &:not(.has-open-tabs),
+    &.force-hide-search {
+      .main-search-sidebar-header {
+        .input-search,
+        .sidebar-emoji-status,
+        .sidebar-lock-button {
+          display: none;
         }
       }
     }
 
-    &.is-collapsed:not(.has-open-tabs), &.is-collapsed.force-hide-large-content {
+    &:not(.has-open-tabs),
+    &.force-hide-large-content {
       .sidebar-left-contacts-section {
         display: none;
       }
@@ -166,123 +215,58 @@
       }
     }
 
-    &.is-collapsed.animate-search-out {
-      body.has-folders-sidebar & {
-        .sidebar-header.main-search-sidebar-header {
-          .sidebar-header-search-trigger {
-            opacity: 0;
-          }
-          transform: translateX(20px);
-          opacity: 0;
-          transition: .1s ease-out;
-        }
-      }
-      body:not(.has-folders-sidebar) & {
-        .sidebar-header.main-search-sidebar-header {
-          >:not(.sidebar-header__btn-container) {
-            transform: translateX(20px);
-            opacity: 0;
-            transition: .1s ease-out;
-          }
-        }
-      }
-    }
-
-    &.is-collapsed.has-open-tabs, &.is-collapsed.force-fixed {
-      position: fixed;
-      top: 0;
-      bottom: 0;
-      left: calc(max(0px, (100vw - #{$large-screen}) / 2) + var(--sidebar-collapsed-width)) !important;
-
-      body:not(.has-folders-sidebar) & {
-        left: calc(max(0px, (100vw - #{$large-screen}) / 2)) !important;
-      }
-
+    &.has-open-tabs,
+    &.force-fixed {
       z-index: 3;
-      // overflow: hidden;
 
-      width: var(--sidebar-left-width-when-collapsed, #{$max-width});
-      >.sidebar-slider>.tabs-tab {
-        width: var(--sidebar-left-inner-width-when-collapsed, #{$max-width});
-      }
-
-      .btn-corner.btn-update {
+      .btn-update {
         display: none;
       }
-
-      body:not(.has-folders-sidebar) & {
-        .sidebar-header__btn-container {
-          margin-left: 4px;
-        }
-      }
     }
 
-    &.is-collapsed.force-chatlist-thin {
+    &.force-chatlist-thin {
       #chatlist-container .chatlist {
         width: var(--sidebar-collapsed-width);
       }
     }
 
-    &.is-collapsed.has-open-tabs.has-forum-open {
+    &.has-forum-open {
       body.has-folders-sidebar & {
-        .sidebar-header.main-search-sidebar-header {
+        .main-search-sidebar-header {
           pointer-events: none;
-        }
-        .sidebar-header-search-trigger,
-        .can-have-forum .input-search {
           opacity: 0;
         }
-      }
-    }
-
-    body.has-folders-sidebar & {
-      .tabs-tab.item-main {
-        --stories-additional-offset: -47px;
       }
     }
   }
 
   @include respond-to(handhelds) {
-    width: 100%;
-    max-width: 100%;
+    // Let the parent grid (`#main-columns`, `grid-template-columns: 100%`)
+    // stretch this item; combined with both inline margins it fits the
+    // viewport without overflowing past the right edge.
+    width: auto;
+    max-width: none;
+    margin-inline-end: var(--page-chats-padding);
 
     body:not(.is-left-column-shown) & {
       transform: translate3d(-25vw, 0, 0);
-      filter: brightness(80%);
-    }
-  }
-
-  .sidebar-right-border {
-    display: none;
-  }
-
-  @include respond-to(not-handhelds) {
-    overflow: visible;
-
-    .sidebar-right-border {
-      position: absolute;
-      display: block;
-      height: 100vh;
-      width: 1px;
-      background-color: var(--border-color);
-      inset-inline-end: -1px;
-      top: 0;
-      z-index: 3;
-      pointer-events: none;
+      opacity: 0;
     }
   }
 
   @include respond-to(floating-left-sidebar) {
-    display: flex;
-    position: fixed;
-    left: 0;
+    // Absolute (not fixed) so the drawer participates in #main-columns' box
+    // and inherits its height via top/bottom — no separate height/inset:0
+    // gymnastics. Out of flex flow either way, so the chat lays out
+    // unaffected.
+    position: absolute;
     top: 0;
-    /* height: calc(var(--vh, 1vh) * 100);
-    min-height: calc(var(--vh, 1vh) * 100) !important; */
-    width: 26.5rem;
-    transform: translate3d(-5rem, 0, 0);
+    bottom: 0;
+    inset-inline-start: 0;
+    // Slide fully off-screen (own width + the outer page padding) so no peek
+    // shows through the chat when the drawer is closed.
+    transform: translate3d(calc((var(--left-column-visual-width) + var(--page-chats-padding)) * -1 * var(--reflect)), 0, 0);
     transition: transform var(--layer-transition);
-    max-width: unset;
 
     body.animation-level-0 & {
       transition: none;
@@ -293,98 +277,65 @@
     }
   }
 
-  @include respond-to(no-floating-left-sidebar) {
-    display: flex;
-  }
-
   @include respond-to(before-medium-screens) {
-    flex: var(--current-width) 2 auto;
+    flex: var(--left-column-visual-width) 2 auto;
   }
-
-  // ! WARNING, ОЧЕНЬ КРУТОЙ КОСТЫЛЬ - ФИКС ЧЁРНОЙ РАМКИ У КАРТИНОК С ХВОСТИКОМ
-  html.is-safari & {
-    @include respond-to(large-screens) {
-      max-width: calc(#{$large-screen} / 4 - 1.25px);
-    }
-  }
-
-  // .item-main {
-  //   --menu-size: 3.1875rem;
-  // }
 
   .item-main .menu-horizontal {
     &-scrollable {
-      // --scrollable-size: var(--menu-size);
-      z-index: 1;
-      background-color: var(--surface-color);
-      position: relative;
-      top: unset;
+      z-index: 2;
       flex: 0 0 auto;
-
-      @include respond-to(handhelds) {
-        box-shadow: 0px 1px 5px -1px rgba(0, 0, 0, .16);
-      }
-
-      .scrollable {
-        position: relative;
-      }
-
-      .badge {
-        margin-inline-start: 5px;
-        //line-height: inherit !important;
-      }
+      position: relative;
     }
 
     &-div {
-      position: relative !important;
       justify-content: flex-start;
       z-index: 0;
-      // padding: 0 0 5px; // 4px + 1px border // floating design
-      --padding-horizontal: .6875rem;
-
-      @include respond-to(handhelds) {
-        --padding-horizontal: .1875rem;
-      }
 
       &-item {
-        flex: 0 0 auto;
         min-width: 3rem;
       }
-
-      &__stripe {
-        display: none;
-      }
     }
   }
 
-  .folders-tabs-scrollable {
-    display: none;
-
-    .has-horizontal-folders & {
-      display: block;
-    }
+  .chatlist-overlay {
+    position: absolute;
+    top: 0;
+    inset-inline: 0;
+    z-index: 2;
+    // Children (pending suggestion, gradient, folder tabs) flow naturally — adding a panel above
+    // the tabs just stacks instead of overlapping.
   }
 
-  /* .folders-tabs-scrollable {
-    .menu-horizontal-div-item:first-child {
-      margin-inline-start: .6875rem;
+  .folders-tabs {
+    &-scrollable {
+      margin: .5rem;
+      box-shadow: var(--section-box-shadow-big);
+      display: none;
 
-      @include respond-to(handhelds) {
-        margin-inline-start: .1875rem;
+      .has-horizontal-folders & {
+        display: block;
       }
     }
-  } */
+
+    &-gradient {
+      --alpha: 1 !important;
+      height: 100%;
+
+      &-container {
+        position: absolute;
+        // inset: 0 0 auto;
+        inset: 0;
+        z-index: -1;
+      }
+    }
+  }
 
   .item-main {
     --offset-top: 0;
     background-color: var(--surface-color);
 
     .input-search {
-      /* &-input {
-        --paddingLeft: 0px;
-        padding-inline-start: calc(42px - var(--border-width) + var(--paddingLeft));
-      } */
-
       .selector-user {
         --selector-user-size: 32px;
         position: absolute !important;
@@ -430,15 +381,12 @@
 
     .search-helper {
       display: flex;
-      margin-inline-start: 28px;
-
-      @include respond-to(handhelds) {
-       margin-inline-start: 20px;
-      }
+      margin-inline-start: .625rem;
+      align-items: center;
 
       .selector-user {
-        margin-top: 7px;
-        font-size: 14px;
+        display: flex; // * fix last item's margin
+        margin-inline-end: .375rem;
 
         @include hover() {
           background-color: var(--light-primary-color);
@@ -447,27 +395,6 @@
         &-avatar-close {
           display: none !important;
         }
-      }
-    }
-
-    .search-super-tabs-scrollable {
-      flex: 0 0 auto;
-      position: relative !important;
-
-      &:before {
-        display: none;
-      }
-
-      .menu-horizontal-div-item {
-        flex: 1 0 auto !important;
-      }
-    }
-
-    .search-super {
-      .preloader {
-        height: 100%;
-        top: 50%;
-        transform: translate(-50%, -50%);
       }
     }
   }
@@ -479,15 +406,8 @@
 
   #chatlist-container {
     max-height: 100%;
-    // overflow: hidden;
     position: relative;
     background-color: var(--surface-color);
-
-    // &.has-filters {
-    //   .connection-status-bottom {
-    //     height: calc(100% + var(--offset-top) * -1);
-    //   }
-    // }
   }
 
   #folders-container {
@@ -499,6 +419,9 @@
       position: absolute;
       border-bottom: none !important;
       transition: transform var(--tabs-transition);
+      // Match the live overlay height so suggestion + tabs never cover the first chatlist row
+      // (variable set by ResizeObserver in appDialogsManager — see .chatlist-overlay).
+      padding-top: var(--chatlist-overlay-height, 0);
 
       .has-pending-suggestion &,
       .has-horizontal-folders & {
@@ -508,26 +431,14 @@
       &.active { // fix safari 14.0.2 scrollHeight
         display: block;
       }
-
-      .has-folders-sidebar & {
-        padding-top: 0 !important;
-      }
     }
 
     .has-horizontal-folders & {
       height: calc(100% - var(--scrollable-size));
 
-      .folders-scrollable {
-        padding-top: .5rem;
-      }
-
       .dialogs-placeholder-canvas {
         top: .5rem;
       }
-
-      /* .chatlist {
-        top: .5rem;
-      } */
     }
   }
 
@@ -541,81 +452,9 @@
     height: 100%;
   }
 
-  .search-group-people {
-    .chatlist {
-      display: flex;
-      flex-direction: row;
-      margin-top: -1px;
-      padding: 0 0 1px;
-
-      &:before,
-      &:after {
-        content: " ";
-        display: inline-block;
-        width: .3125rem;
-        flex: 0 0 auto;
-      }
-
-      &-chat {
-        width: 4.875rem;
-        max-width: 4.875rem;
-        height: 6.125rem;
-        display: flex;
-        flex-direction: column;
-        justify-content: flex-end;
-        align-items: center;
-        flex: 0 0 auto;
-        padding: 0 !important;
-        border-radius: $border-radius-medium;
-      }
-    }
-
-    .dialog {
-      &-title-details,
-      &-subtitle {
-        display: none;
-      }
-
-      &-title {
-        max-width: 65px;
-        padding-bottom: .75rem;
-
-        .user-title {
-          font-size: .75rem !important;
-        }
-
-        .peer-title {
-          font-weight: var(--font-weight-normal) !important;
-        }
-      }
-
-      &-avatar {
-        inset-inline-start: auto !important;
-        top: .75rem !important;
-      }
-    }
-
-    .search-group-scrollable {
-      position: relative;
-
-      @include respond-to(handhelds) {
-        margin-inline-start: -7px;
-        margin-top: 4px;
-      }
-
-      > .scrollable {
-        position: relative;
-      }
-    }
-  }
-
   .item-main .sidebar-content {
     // overflow: unset;
     justify-content: center;
-
-    .btn-menu {
-      bottom: calc(100% + 10px);
-    }
 
     .btn-corner {
       &:not(.menu-open) .animated-button-icon-icon-first,
@@ -646,106 +485,19 @@
     } */
   }
 
-  .connection-status {
-    width: 100%;
-    padding: 0 .5rem .5rem;
+  .connection-status-bottom {
+    --offset-top: 92px;
+    position: absolute;
+    inset: 0;
     overflow: hidden;
-    flex: 0 0 auto;
+    background-color: var(--surface-color);
+    transform: translateY(calc(var(--offset-top) - var(--stories-scrolled)));
+    height: 100%;
+    display: flex;
+    flex-direction: column;
 
-    &:not(.is-shown) {
-      .connection-status-button {
-        display: none;
-      }
-    }
-
-    &.is-shown {
-      &.animating {
-        .connection-status-button,
-        & + .connection-status-bottom {
-          transition: transform var(--layer-transition);
-        }
-      }
-
-      &:not(.backwards) {
-        .connection-status-button {
-          transform: translateY(0);
-        }
-
-        & + .connection-status-bottom {
-          transform: translateY(calc(64px + var(--offset-top)));
-        }
-      }
-
-      &:not(.animating):not(.backwards) {
-        & + .connection-status-bottom {
-          height: calc(100% - 64px + var(--offset-top));
-        }
-      }
-    }
-
-    &-button {
-      color: #2e3939;
-      align-self: center;
-      cursor: default;
-      padding-inline-start: 4.5rem;
-      text-align: start;
-      height: 3.5rem;
-
-      .force-reconnect {
-        cursor: pointer;
-        text-decoration: underline;
-        color: inherit;
-      }
-
-      transform: translateY(-100%);
-
-      .preloader-container {
-        right: auto;
-        inset-inline-start: 1rem;
-        width: 1.5rem;
-        height: 1.5rem;
-
-        .preloader-path-new {
-          stroke: #2e3939;
-        }
-      }
-    }
-
-    &-bottom {
-      --offset-top: 92px;
-      position: absolute;
-      inset: 0;
-      overflow: hidden;
-      background-color: var(--surface-color);
-
-      transform: translateY(calc(var(--offset-top) - var(--stories-scrolled)));
-      height: 100%;
-
-      display: flex;
-      flex-direction: column;
-
-      @include animation-level(2) {
-        transition: transform var(--transition-standard-in);
-      }
-
-      /* transform: translateY(64px);
-      height: calc(100% - 64px); */
-    }
-  }
-}
-
-#column-left,
-.settings-slider-popup {
-  .input-wrapper {
-    width: 420px;
-    margin: 0 auto;
-    flex: 0 0 auto;
-    padding: 0 .75rem;
-    max-width: 100%;
-    margin: .75rem 0;
-
-    @include respond-to(handhelds) {
-      width: 100%;
+    @include animation-level(2) {
+      transition: transform var(--transition-standard-in);
     }
   }
 }
@@ -773,19 +525,6 @@
   }
 }
 
-.sidebar-left-placeholder {
-  display: none;
-
-  @include respond-to(no-floating-left-sidebar) {
-    html:has(#column-left.is-collapsed.has-open-tabs) &,
-    &.keep-active {
-      display: block;
-      flex: var(--sidebar-collapsed-width) 0 0;
-      width: var(--sidebar-collapsed-width);
-    }
-  }
-}
-
 .sidebar-tools-submenu {
   min-width: 200px;
 }
@@ -804,7 +543,16 @@
     }
   }
 
-  .sidebar-header__btn-container {
+  // Holds the burger / back-button / animated state icon at the start of
+  // .main-search-sidebar-header. JS adds `.is-visible` when search opens
+  // (the burger needs to appear next to the input).
+  //
+  // Width/opacity animate only when there's nothing else to the left of
+  // the search input at the moment the burger appears — JS captures
+  // that as the `.appear-animated` class so this transition fires for
+  // both the open and the close of the burger in the expanded sidebar,
+  // but stays out of the way of the instant collapsed-mode swap.
+  .left-sidebar-burger {
     position: relative;
     width: 2.5rem;
     height: 2.5rem;
@@ -815,12 +563,11 @@
 
     @include respond-to(no-floating-left-sidebar) {
       body.has-folders-sidebar & {
-        width: 0px;
+        width: 0;
         opacity: 0;
         overflow: hidden;
         pointer-events: none;
         margin-inline-start: 0;
-        transition: width 0.12s, opacity 0.12s, margin-inline-start 0.12s;
 
         &.is-visible {
           width: 2.5rem;
@@ -840,12 +587,10 @@
       right: 0;
       bottom: 0;
       left: 0;
-      // z-index: 2;
       z-index: 2; // over forum
       margin: 0;
 
       &.is-visible {
-        //margin-top: 1px;
         opacity: 1;
         visibility: visible;
       }
@@ -856,6 +601,19 @@
         margin-top: -.25rem;
       }
     }
+  }
+
+  // Animate the burger opening AND closing when there's no other button
+  // sitting where it appears (the only such case in practice is the
+  // expanded sidebar — collapsed always has the search trigger as a peer).
+  // The decision is captured in JS via `.appear-animated` because the
+  // structural check (trigger's .is-visible) would race the Solid effect
+  // that removes that class — by the time CSS sees paint, the trigger has
+  // already vanished and pure :has() can't tell "trigger was just here"
+  // from "trigger never was". The class persists across the open lifetime,
+  // so the close transition (width 2.5rem → 0) also runs.
+  .left-sidebar-burger.appear-animated {
+    transition: width 0.12s, opacity 0.12s, margin-inline-start 0.12s;
   }
 
   .sidebar-tools-button {
@@ -871,8 +629,7 @@
 
     .btn-menu {
       min-width: 200px;
-      max-height: calc(100 * var(--vh) - 3.75rem);
-      z-index: 6;
+      max-height: calc(var(--100vh) - 3.75rem);
 
       &-item {
         --padding-right: .375rem;
@@ -911,6 +668,45 @@
 #search-container {
   display: flex;
   top: var(--offset-top) !important;
+  background-color: var(--background-color);
+  flex-direction: column;
+  width: 100%;
+  max-height: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3;
+
+  .search-super {
+    --super-offset: 1rem;
+    --super-height: calc(var(--100vh) - #{$header-height} - var(--super-offset));
+    top: 1rem;
+
+    &-tabs-scrollable {
+      flex: 0 0 auto;
+
+      .menu-horizontal-div-item {
+        flex: 1 0 auto !important;
+      }
+    }
+
+    &-content-music {
+      .audio:not(.audio-show-progress) {
+        .audio-time, 
+        .audio-description:before {
+          display: none;
+        }
+      }
+    }
+
+    .preloader {
+      height: 100%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+    }
+  }
 
   .scrollable-y {
     position: relative;
@@ -918,60 +714,8 @@
   }
 }
 
-.new-channel-container,
-.new-group-container,
-.edit-profile-container {
-  .sidebar-content {
-    flex-direction: column;
-  }
-
-  .chatlist-container {
-    flex: 1 1 auto;
-  }
-
-  .caption {
-    font-size: .875rem;
-    margin-top: 14px;
-    margin-inline-start: 23px;
-    color: var(--secondary-text-color);
-    padding-inline-end: 24px;
-  }
-}
-
-.new-group-container {
-  .search-group {
-    margin-top: .5rem;
-  }
-}
-
-.new-group-members {
-  padding: 1.5rem 0 .4375rem;
-
-  .search-group__name {
-    text-transform: capitalize;
-  }
-}
-
-// #folders-tabs {
-//   @include premium(true) {
-//     .menu-horizontal-div-item:nth-child(n+12) {
-//       pointer-events: none;
-//       opacity: .2;
-//     }
-//   }
-// }
-
-.edit-profile-container {
-  .scroll-wrapper {
-    width: 100%;
-  }
-}
-
 .chat-folders-container,
-.edit-folder-container,
-.people-nearby-container {
-  user-select: none;
-
+.edit-folder-container {
   .sticker-container {
     width: 86px;
     height: 86px;
@@ -993,16 +737,6 @@
 .shared-folder-container {
   .sticker-container {
     margin-bottom: .375rem;
-  }
-}
-
-.people-nearby-container {
-  .sticker-container {
-    margin: 1rem auto;
-  }
-
-  .caption {
-    margin-bottom: 1rem;
   }
 }
 
@@ -1030,190 +764,6 @@
   .chatlist-chat {
     padding-inline-end: 3.5rem !important;
   }
-}
-
-.search-group-recent {
-  .search-group__name {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .btn-icon {
-    //@include respond-to(handhelds) {
-      font-size: 22px;
-    //}
-  }
-}
-
-@include respond-to(handhelds) {
-  .search-group-recent.search-group.search-group-contacts ul {
-    margin-top: 0;
-  }
-
-  .search-group.search-group-contacts ul,
-  .search-group.search-group-messages ul {
-    margin-top: 7px;
-  }
-
-  .search-group.search-group-messages {
-    margin-top: -6px;
-  }
-}
-
-@include respond-to(not-handhelds) {
-  .search-group-recent.search-group.search-group-contacts {
-    padding: 0px 0 7px;
-  }
-}
-
-.sidebar-left {
-  &-section {
-    background-color: var(--surface-color);
-    padding: .5rem 0 !important;
-    margin-bottom: .75rem;
-    box-shadow: 0px 1px 3px 0px var(--section-box-shadow-color);
-
-    &.no-shadow {
-      box-shadow: none !important;
-    }
-
-    &.with-fake-delimiter {
-      padding-top: 0 !important;
-      box-shadow: none;
-
-      .gradient-delimiter {
-        margin-bottom: .5rem;
-      }
-    }
-
-    &.no-padding-top {
-      padding-top: 0 !important;
-    }
-
-    @include respond-to(handhelds) {
-      padding-bottom: .5rem;
-    }
-
-    &-content {
-      @include respond-to(not-handhelds) {
-        margin: 0 .5rem;
-      }
-
-      > .btn-primary {
-        margin: 0;
-      }
-
-      > .checkbox-field {
-        .checkbox-box {
-          inset-inline-start: auto;
-        }
-      }
-
-      @include respond-to(handhelds) {
-        > .checkbox-ripple,
-        > .btn-primary {
-          border-radius: 0;
-        }
-      }
-
-      &.full-width {
-        margin: 0 !important;
-      }
-
-      > .media-sticker-wrapper {
-        width: 86px;
-        height: 86px;
-        margin: 1px auto 29px;
-        flex: 0 0 auto;
-        position: relative;
-      }
-    }
-
-    &-name {
-      padding: .5rem 1rem;
-      display: flex;
-      justify-content: space-between;
-
-      @include respond-to(handhelds) {
-        padding: .5rem 1rem;
-        font-size: .875rem;
-      }
-
-      &-right {
-        font-weight: var(--font-weight-normal);
-      }
-    }
-
-    &-caption {
-      margin: -0.1875rem 0 1rem;
-      font-size: var(--font-size-14);
-      line-height: var(--line-height-14);
-      color: var(--secondary-text-color);
-      padding: 0 1.5rem;
-      word-break: break-word;
-
-      &:first-child {
-        margin-top: .8125rem;
-        margin-bottom: .8125rem;
-      }
-
-      @include respond-to(handhelds) {
-        margin: .5rem;
-        font-size: .875rem;
-        padding: 0 1rem;
-      }
-    }
-
-    &-container {
-      user-select: none;
-
-      a {
-        cursor: pointer;
-      }
-    }
-
-    .checkbox-field,
-    .radio-field {
-      margin: 0;
-    }
-
-    // * comment later
-    // &:first-child:not(.no-delimiter) {
-    //   padding-top: 0;
-    // }
-
-    .checkbox-field {
-      display: flex;
-      align-items: center;
-      height: 3.5rem;
-      padding: 0 1.125rem;
-    }
-
-    &-disabled {
-      pointer-events: none !important;
-      opacity: .25;
-    }
-
-    .chatlist {
-      padding: 0;
-    }
-  }
-
-  &-h2 {
-    color: var(--primary-color);
-    font-size: 16px;
-    font-weight: var(--font-weight-bold);
-  }
-}
-
-#chats-archived-container,
-#contacts-container,
-.add-members-container,
-#search-private-container,
-#stickers-container,
-#search-gifs-container {
-  background-color: var(--surface-color) !important;
 }
 
 #chats-archived-container {
@@ -1522,7 +1072,6 @@
   transform: translateY(-50%);
   text-align: center;
   line-height: var(--line-height);
-  user-select: none;
   margin: 0 auto;
   padding: 0 1rem;
   position: relative;
@@ -1650,7 +1199,7 @@
   }
 
   .search-super-content-container {
-    min-height: calc(100vh - 57px);
+    min-height: calc(var(--100vh) - 57px);
   }
 }
 
@@ -1692,7 +1241,6 @@
 .sidebar-resize-handle {
   position: absolute;
   top: 0;
-  right: -3px;
   bottom: 0;
   width: 5px;
 
@@ -1709,8 +1257,18 @@
     box-shadow: 0 0 0px 0.5px rgba(128, 128, 128, 1);
   }
 
+  // Left column: handle sits on its right edge. Right column: handle on its
+  // left edge.
+  &-left {
+    right: -3px;
+  }
+
+  &-right {
+    left: -3px;
+  }
+
   html:has(.btn-menu.active) &,
-  #column-left.is-collapsed.has-open-tabs & {
+  #column-left.is-collapsed.has-open-tabs &-left {
     display: none;
   }
 
@@ -1757,36 +1315,16 @@
 }
 
 .settings-slider-popup {
+  --popup-width: 25rem !important;
+  --popup-height: calc(var(--vh) * 100 - 2rem) !important;
+
   .popup-header {
     display: none;
   }
 
-  .popup-container {
-    padding: 0;
-    max-width: 100%;
-    width: calc($large-screen / 4);
-
-    border-radius: 16px;
-  }
-
-  .avatar-edit {
-    width: 120px;
-    height: 120px;
-    margin: 1rem auto 2rem;
-    flex: 0 0 auto;
-  }
-
-  // * remove last margin from last section
-  // .sidebar-left-section-container:not(.profile-content *):last-child .sidebar-left-section:last-child {
-  //   margin-bottom: 0;
-  // }
-
-  &__height-limit {
-    height: 85vh;
-
-    > div {
-      height: 85vh;
-    }
+  &__height-limit,
+  .sidebar-slider {
+    height: 100%;
   }
 }
 

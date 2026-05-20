@@ -34,8 +34,6 @@ import {HIDDEN_PEER_ID} from '@appManagers/constants';
 import {rgbIntToHex} from '@helpers/color';
 import {makeMediaSize} from '@helpers/mediaSize';
 import type {MyStarGift} from '@appManagers/appGiftsManager';
-import IS_PARALLAX_SUPPORTED from '@environment/parallaxSupport';
-import {generateDelimiter} from '@components/generateDelimiter';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import ListenerSetter from '@helpers/listenerSetter';
 import {resolveFirst} from '@solid-primitives/refs';
@@ -65,6 +63,7 @@ type PeerProfileContextValue = {
   setCollapsedOn: HTMLElement,
   isDialog: boolean,
   onPinnedGiftsChange: (gifts: MyStarGift[]) => void,
+  onAvatarReady: (promise: Promise<void>) => void,
   needWhite: boolean,
   setNeedWhite: (needWhite: boolean) => void,
 
@@ -119,7 +118,7 @@ const PeerProfile = (props: {
   setCollapsedOn: HTMLElement,
   searchSuperContainer?: HTMLElement,
   onPinnedGiftsChange?: (gifts: MyStarGift[]) => void,
-  changeAvatarBtn?: HTMLElement
+  onAvatarReady?: (promise: Promise<void>) => void
 }) => {
   const {rootScope} = useHotReloadGuard();
   const fullPeer = useFullPeer(props.peerId);
@@ -131,6 +130,7 @@ const PeerProfile = (props: {
     setCollapsedOn: props.setCollapsedOn,
     isDialog: props.isDialog,
     onPinnedGiftsChange: props.onPinnedGiftsChange,
+    onAvatarReady: props.onAvatarReady,
     get needWhite() { return needWhite() },
     setNeedWhite,
 
@@ -178,10 +178,6 @@ const PeerProfile = (props: {
 
   props.setCollapsedOn.classList.add('profile-container');
 
-  if(!IS_PARALLAX_SUPPORTED) {
-    props.scrollable.container.classList.add('no-parallax');
-  }
-
   if(value.peerId.isUser() && value.peerId !== rootScope.myId) {
     const refreshCurrentUser = () => {
       rootScope.managers.appUsersManager.getApiUsers([value.peerId.toUserId()]);
@@ -208,16 +204,11 @@ const PeerProfile = (props: {
         <Show when={!value.needSimpleAvatar}>
           <PeerProfile.AutoAvatar />
         </Show>
-        <Show when={props.changeAvatarBtn}>
-          <div class="profile-change-avatar-container">
-            {props.changeAvatarBtn}
-          </div>
-        </Show>
+        <div class="profile-content-delimiter"></div>
         <PeerProfile.PersonalChannel />
         <PeerProfile.MainSection />
         <PeerProfile.BotVerification />
         <PeerProfile.BotPermissions />
-        {IS_PARALLAX_SUPPORTED && generateDelimiter()}
         {props.searchSuperContainer}
       </div>
     </PeerProfileContext.Provider>
@@ -241,7 +232,14 @@ PeerProfile.Avatar = () => {
     );
     avatars.onNeedWhiteChanged = context.setNeedWhite;
 
-    avatars.setPeer(context.peerId);
+    // Expose the readiness promise so the host (e.g. settings tab's
+    // promiseCollector) can wait for the avatar before showing the tab —
+    // otherwise the gradient header renders empty for the duration of the
+    // setPeer pipeline (peer photo IPC + appearance + thumb load) and the
+    // avatar pops in mid-transition. NOTE: optional-call short-circuits arg
+    // evaluation, so we MUST call setPeer first and pass the result through.
+    const setPeerPromise = avatars.setPeer(context.peerId);
+    context.onAvatarReady?.(setPeerPromise);
     avatars.info.append(name, subtitle);
     avatars.container.append(
       wrapSolidComponent(PeerProfile.PinnedGifts, middleware.get()),
@@ -254,10 +252,6 @@ PeerProfile.Avatar = () => {
     onCleanup(() => {
       avatars.cleanup();
     });
-
-    if(IS_PARALLAX_SUPPORTED) {
-      context.scrollable.container.classList.add('parallax');
-    }
 
     return avatars.container;
   }
@@ -277,9 +271,8 @@ PeerProfile.Avatar = () => {
     meAsNotes: !!(peerId === rootScope.myId && threadId)
   });
   avatar.node.classList.add('profile-avatar', 'avatar-120');
-  if(IS_PARALLAX_SUPPORTED) {
-    context.scrollable.container.classList.remove('parallax');
-  }
+  // Same as above — let the host wait for the simple-avatar thumb.
+  context.onAvatarReady?.(avatar.readyThumbPromise);
   return (
     <>
       {avatar.node}

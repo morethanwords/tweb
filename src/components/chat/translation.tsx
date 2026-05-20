@@ -4,8 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {createEffect, createMemo, createSignal, onCleanup} from 'solid-js';
-import {render} from 'solid-js/web';
+import {Accessor, createEffect, createMemo, createSignal} from 'solid-js';
 import deferredPromise from '@helpers/cancellablePromise';
 import ListenerSetter from '@helpers/listenerSetter';
 import usePeerTranslation from '@hooks/usePeerTranslation';
@@ -17,17 +16,16 @@ import Languages from '@lib/tinyld/languages';
 import usePremium from '@stores/premium';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import Icon from '@components/icon';
-import PopupElement from '@components/popups';
-import PopupPickUser from '@components/popups/pickUser';
+import showPickUserPopup from '@components/popups/pickUser';
 import PopupPremium from '@components/popups/premium';
 import Row from '@components/row';
 import Chat from '@components/chat/chat';
-import PinnedContainer from '@components/chat/pinnedContainer';
 import ChatTopbar from '@components/chat/topbar';
 import {useAppSettings} from '@stores/appSettings';
 import {toastNew} from '@components/toast';
 import {usePeer} from '@stores/peers';
 import {Chat as MTChat} from '@layer';
+import TopbarPlate, {createTopbarPlate, TopbarPlateController} from '@components/chat/topbarPlate';
 
 export function pickLanguage<T extends boolean>(
   multi?: T,
@@ -43,45 +41,45 @@ export function pickLanguage<T extends boolean>(
     index.indexObjectArray(iso2, [iso2, name, translated]);
   });
 
-  const popup = PopupElement.createPopup(
-    PopupPickUser,
-    {
-      peerType: ['custom'],
-      renderResultsFunc: (iso2s) => {
-        iso2s.forEach((iso2) => {
-          const [name, translated] = map.get(iso2 as any as string);
-          const row = new Row({
-            title: translated,
-            subtitle: name,
-            clickable: true,
-            havePadding: multi
-          });
-
-          if(multi) {
-            row.container.append(popup.selector.checkbox(popup.selector.selected.has(iso2)));
-          }
-          row.container.dataset.peerId = '' + iso2;
-          popup.selector.list.append(row.container);
+  const popup = showPickUserPopup({
+    peerType: ['custom'],
+    renderResultsFunc: (iso2s) => {
+      iso2s.forEach((iso2) => {
+        const [name, translated] = map.get(iso2 as any as string);
+        const row = new Row({
+          title: translated,
+          subtitle: name,
+          clickable: true,
+          havePadding: multi
         });
-      },
-      placeholder: 'Search',
-      getMoreCustom: async(q) => {
-        const filtered = q ? [...index.search(q)] : Languages.map(([iso2]) => iso2);
-        return {
-          result: filtered as any,
-          isEnd: true
-        };
-      },
-      onSelect: !multi ? deferred.resolve.bind(deferred) as any : undefined,
-      onMultiSelect: multi ? deferred.resolve.bind(deferred) as any : undefined,
-      titleLangKey: multi ? 'Telegram.LanguageViewController' : undefined,
-      checkboxSide: 'left',
-      noPlaceholder: true
-    }
-  );
 
-  popup.addEventListener('close', () => {
-    deferred.reject();
+        if(multi) {
+          row.container.append(popup.selector.checkbox(popup.selector.selected.has(iso2)));
+        }
+        row.container.dataset.peerId = '' + iso2;
+        popup.selector.list.append(row.container);
+      });
+    },
+    placeholder: 'Search',
+    getMoreCustom: async(q) => {
+      const filtered = q ? [...index.search(q)] : Languages.map(([iso2]) => iso2);
+      return {
+        result: filtered as any,
+        isEnd: true
+      };
+    },
+    onSelect: (results) => {
+      const keys = results.map(({key}) => key);
+      deferred.resolve(multi ? keys as any : keys[0]);
+    },
+    multiSelect: multi,
+    titleLangKey: 'Telegram.LanguageViewController',
+    checkboxSide: 'left',
+    noPlaceholder: true,
+    onClose: () => deferred.reject(),
+    footerButtonProps: {
+      children: i18n('Save')
+    }
   });
 
   if(selected) {
@@ -91,7 +89,6 @@ export function pickLanguage<T extends boolean>(
         key: key,
         title: i18n(`Language.${key as TranslatableLanguageISO}`),
         scroll,
-        // fallbackIcon: 'close'
         fallbackIcon: 'check'
       });
       return ret;
@@ -103,109 +100,107 @@ export function pickLanguage<T extends boolean>(
   return deferred as any;
 }
 
-export default class ChatTranslation extends PinnedContainer {
-  private dispose: () => void;
-  private peerId: () => PeerId;
-  public setPeerId: (peerId: PeerId) => void;
+export type ChatTranslationPlate = TopbarPlateController & {
+  setPeerId: (peerId: PeerId) => void
+};
 
-  constructor(protected topbar: ChatTopbar, protected chat: Chat, protected managers: AppManagers) {
-    super({
-      topbar,
-      chat,
-      listenerSetter: topbar.listenerSetter,
-      className: 'translation',
-      floating: true,
-      height: 42
-    });
+/**
+ * Top-level component so solid-refresh can swap it on HMR. The plate
+ * factory's closure state (the peerId signal) is preserved because the
+ * factory isn't re-invoked when this file hot-updates.
+ */
+function TranslationPlateBody(props: {
+  peerId: Accessor<PeerId>,
+  managers: AppManagers,
+  setHidden: (hidden: boolean) => void
+}) {
+  const i = new I18n.IntlElement({key: 'DoNotTranslateLanguage'});
 
-    [this.peerId, this.setPeerId] = createSignal<PeerId>(NULL_PEER_ID);
-    this.dispose = render(() => this.init(), this.container);
-  }
+  const peerTranslation = createMemo(() => usePeerTranslation(props.peerId()));
+  const isPremium = usePremium();
 
-  private init() {
-    const {peerId} = this;
+  createEffect(() => {
+    i.compareAndUpdate({args: [i18n(`Language.${peerTranslation().peerLanguage()}`)]});
+  });
 
-    const i = new I18n.IntlElement({
-      key: 'DoNotTranslateLanguage'
-    });
+  createEffect(() => props.setHidden(!peerTranslation().shouldShow()));
 
-    const peerTranslation = createMemo(() => usePeerTranslation(peerId()));
-    const isPremium = usePremium();
+  const listenerSetter = new ListenerSetter();
+  const menu = ButtonMenuToggle({
+    direction: 'bottom-left',
+    buttons: [{
+      icon: 'premium_translate',
+      text: 'Chat.Translate.Menu.To',
+      onClick: async() => {
+        const iso2 = await pickLanguage(false);
+        peerTranslation().setLanguage(iso2);
+      },
+      verify: isPremium
+    }, {
+      icon: 'hand',
+      textElement: i.element,
+      onClick: () => {
+        const [_, setAppSettings] = useAppSettings();
+        setAppSettings('translations', 'doNotTranslate', (arr) => [...arr, peerTranslation().peerLanguage()]);
+      },
+      verify: isPremium,
+      separatorDown: true
+    }, {
+      icon: 'crossround',
+      text: 'Hide',
+      onClick: () => {
+        const peer = usePeer(props.peerId());
+        toastNew({
+          langPackKey: (peer as MTChat.channel).pFlags.broadcast ?
+            'TranslationBarHiddenChannel' :
+            'TranslationBarHidden'
+        });
+        props.managers.appTranslationsManager.togglePeerTranslations(props.peerId(), true);
+      }
+    }],
+    listenerSetter
+  });
+  menu.classList.add('pinned-translation-menu');
 
-    createEffect(() => {
-      i.compareAndUpdate({args: [
-        i18n(`Language.${peerTranslation().peerLanguage()}`)
-      ]});
-    });
-
-    createEffect(() => {
-      this.toggle(!peerTranslation().shouldShow());
-    });
-
-    const listenerSetter = new ListenerSetter();
-    onCleanup(() => listenerSetter.removeAll());
-    const menu = ButtonMenuToggle({
-      direction: 'bottom-left',
-      buttons: [{
-        icon: 'premium_translate',
-        text: 'Chat.Translate.Menu.To',
-        onClick: async() => {
-          const iso2 = await pickLanguage(false);
-          peerTranslation().setLanguage(iso2);
-        },
-        verify: isPremium
-      }, {
-        icon: 'hand',
-        textElement: i.element,
-        onClick: () => {
-          const [_, setAppSettings] = useAppSettings();
-          setAppSettings('translations', 'doNotTranslate', (arr) => [...arr, peerTranslation().peerLanguage()]);
-        },
-        verify: isPremium,
-        separatorDown: true
-      }, {
-        icon: 'crossround',
-        text: 'Hide',
-        onClick: () => {
-          const peer = usePeer(peerId());
-          toastNew({
-            langPackKey: (peer as MTChat.channel).pFlags.broadcast ?
-              'TranslationBarHiddenChannel' :
-              'TranslationBarHidden'
-          });
-          this.managers.appTranslationsManager.togglePeerTranslations(peerId(), true);
-        }
-      }],
-      listenerSetter
-    });
-    menu.classList.add('pinned-translation-menu', 'primary');
-    return (
-      <>
-        <div
-          class="pinned-translation-button"
-          onClick={() => {
-            const translation = peerTranslation();
-            if(!translation.canTranslate()) {
-              PopupPremium.show({feature: 'translations'});
-              return;
-            }
-
-            translation.toggle(!translation.enabled());
-          }}
-        >
-          {Icon('premium_translate', 'pinned-translation-button-icon')}
-          {peerTranslation().enabled() ?
-            i18n('ShowOriginalButton') :
-            i18n('TranslateToButton', [i18n(`Language.${peerTranslation().language()}`)])
+  return (
+    <>
+      <TopbarPlate.PrimaryButton
+        onClick={() => {
+          const translation = peerTranslation();
+          if(!translation.canTranslate()) {
+            PopupPremium.show({feature: 'translations'});
+            return;
           }
-        </div>
-        {menu}
-      </>
-    );
-  }
+          translation.toggle(!translation.enabled());
+        }}
+      >
+        {Icon('premium_translate', 'pinned-translation-primary-button-icon')}
+        {peerTranslation().enabled() ?
+          i18n('ShowOriginalButton') :
+          i18n('TranslateToButton', [i18n(`Language.${peerTranslation().language()}`)])
+        }
+      </TopbarPlate.PrimaryButton>
+      {menu}
+    </>
+  );
+}
 
-  public destroy() {
-    super.destroy();
-    this.dispose();
-  }
+export default function createChatTranslationPlate(
+  topbar: ChatTopbar,
+  chat: Chat,
+  managers: AppManagers
+): ChatTranslationPlate {
+  const [peerId, setPeerIdSignal] = createSignal<PeerId>(NULL_PEER_ID);
+
+  const plate = createTopbarPlate({
+    modifier: 'translation',
+    height: 48,
+    onVisibilityChange: () => topbar.setFloating(),
+    render: ({setHidden}) => <TranslationPlateBody peerId={peerId} managers={managers} setHidden={setHidden} />
+  });
+
+  return {
+    ...plate,
+    setPeerId: (next) => setPeerIdSignal(next)
+  };
 }

@@ -44,7 +44,7 @@ import IMAGE_MIME_TYPES_SUPPORTED from '@environment/imageMimeTypesSupport';
 import {NULL_PEER_ID, STARS_CURRENCY} from '@appManagers/constants';
 import telegramMeWebManager from '@lib/telegramMeWebManager';
 import {formatDate, ONE_DAY} from '@helpers/date';
-import TopbarCall from '@components/topbarCall';
+import createTopbarCall, {TopbarCallController} from '@components/topbarCall';
 import confirmationPopup from '@components/confirmationPopup';
 import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
 import IS_CALL_SUPPORTED from '@environment/callSupport';
@@ -56,7 +56,7 @@ import {simulateClickEvent} from '@helpers/dom/clickEvent';
 import PopupCall from '@components/call';
 import copy from '@helpers/object/copy';
 import numberThousandSplitter from '@helpers/number/numberThousandSplitter';
-import ChatBackgroundPatternRenderer from '@components/chat/patternRenderer';
+import appChatBackground, {AppChatBackground} from '@components/chat/bubbles/chatBackground';
 import {IS_CHROMIUM, IS_FIREFOX} from '@environment/userAgent';
 import compareVersion from '@helpers/compareVersion';
 import {AppManagers} from '@lib/managers';
@@ -89,8 +89,8 @@ import {MiddleEllipsisElement} from '@components/middleEllipsis';
 import parseUriParams from '@helpers/string/parseUriParams';
 import getMessageThreadId from '@appManagers/utils/messages/getMessageThreadId';
 import findUpTag from '@helpers/dom/findUpTag';
-import PopupForward from '@components/popups/forward';
-import AppBackgroundTab from '@components/sidebarLeft/tabs/background';
+import showForwardPopup from '@components/popups/forward';
+import {AppBackgroundTab} from '@components/sidebarLeft/tabs/background';
 import partition from '@helpers/array/partition';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import liteMode, {LiteModeKey} from '@helpers/liteMode';
@@ -129,7 +129,7 @@ import ChatBackgroundStore from '@lib/chatBackgroundStore';
 import useLockScreenShortcut from '@appManagers/utils/useLockScreenShortcut';
 import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
 import IS_WEB_APP_BROWSER_SUPPORTED from '@environment/webAppBrowserSupport';
-import ChatAudio from '@components/chat/audio';
+import createChatAudio, {ChatAudioController} from '@components/chat/audio';
 import AudioAssetPlayer from '@helpers/audioAssetPlayer';
 import {MyMessage} from '@appManagers/appMessagesManager';
 import {canUploadAsWhenEditing} from '@components/chat/utils';
@@ -141,12 +141,26 @@ import {ButtonMenuItemOptions, ButtonMenuSync} from '@components/buttonMenu';
 import contextMenuController from '@helpers/contextMenuController';
 import positionMenu from '@helpers/positionMenu';
 import {copyTextToClipboard} from '@helpers/clipboard';
-import PopupSchedule from '@components/popups/schedule';
+import showDatePickerPopup from '@components/popups/datePicker';
 import {getFullDate} from '@helpers/date/getFullDate';
 
 export type ChatSavedPosition = {
-  mids: number[],
-  top: number
+  /**
+   * Scroll/history restore data. Present only when the user left the chat
+   * scrolled away from the bottom — when scrolled all the way down there's
+   * nothing to restore. Always paired (`mids` ↔ `top`), checked via
+   * `savedPosition?.mids` at consumers.
+   */
+  mids?: number[],
+  top?: number,
+  /**
+   * Last-displayed pinned plate state. Captured on exit, restored on
+   * re-entry so the plate paints atomically with bubbles without the
+   * async `testMid → getCurrentIndex` lag. Saved independently of
+   * `mids`/`top` so the hint survives even when the user scrolls to the
+   * bottom before leaving.
+   */
+  pinnedMessages?: {mid: number, index: number, count: number}
 };
 
 export type ChatSetPeerOptions = {
@@ -188,6 +202,7 @@ export class AppImManager extends EventListenerBase<{
 }> {
   public columnEl = document.getElementById('column-center') as HTMLDivElement;
   public chatsContainer: HTMLElement;
+  public appChatBackground: AppChatBackground;
 
   public offline = false;
   public updateStatusInterval = 0;
@@ -204,10 +219,8 @@ export class AppImManager extends EventListenerBase<{
 
   private backgroundPromises: {[url: string]: MaybePromise<string>};
 
-  private topbarCall: TopbarCall;
-  private chatAudio: ChatAudio;
-
-  public lastBackgroundUrl: string;
+  private topbarCall: TopbarCallController;
+  private chatAudio: ChatAudioController;
 
   public managers: AppManagers;
 
@@ -241,20 +254,16 @@ export class AppImManager extends EventListenerBase<{
     this.log = logger('IM', LogTypes.Log | LogTypes.Warn | LogTypes.Debug | LogTypes.Error);
 
     this.backgroundPromises = {};
+    // Pre-cache the bundled wallpaper svg for every base entry — multiple base themes
+    // can reference the same `pattern` slug, so we dedupe via the cache itself.
     SETTINGS_INIT.themes.forEach((theme) => {
-      const themeSettings = theme.settings;
-      if(!themeSettings) {
-        return;
-      }
+      theme.settings?.forEach(({wallpaper}) => {
+        const slug = (wallpaper as WallPaper.wallPaper)?.slug;
+        if(!slug) return;
 
-      const {wallpaper} = themeSettings;
-      const slug = (wallpaper as WallPaper.wallPaper).slug;
-      if(!slug) {
-        return;
-      }
-
-      const url = 'assets/img/' + slug + '.svg' + (IS_FIREFOX ? '?1' : '');
-      ChatBackgroundStore.setBackgroundUrlToCache({slug, url})
+        const url = 'assets/img/' + slug + '.svg' + (IS_FIREFOX ? '?1' : '');
+        ChatBackgroundStore.setBackgroundUrlToCache({slug, url});
+      });
     });
 
     this.selectTab(APP_TABS.CHATLIST);
@@ -268,6 +277,9 @@ export class AppImManager extends EventListenerBase<{
         this.updateStatusInterval = window.setInterval(() => this.updateStatus(), 50e3);
       }
     });
+
+    this.appChatBackground = appChatBackground;
+    this.appChatBackground.attach(document.body);
 
     this.chatsContainer = document.createElement('div');
     this.chatsContainer.classList.add('chats-container', 'tabs-container');
@@ -555,8 +567,9 @@ export class AppImManager extends EventListenerBase<{
         icon: 'scheduled',
         text: 'Chat.Send.SetReminder',
         onClick: () => {
-          new PopupSchedule({
+          showDatePickerPopup({
             initDate: date,
+            withTime: true,
             onPick: (_timestamp: number) => {
               this.managers.appMessagesManager.forwardMessages({
                 peerId: rootScope.myId,
@@ -578,7 +591,7 @@ export class AppImManager extends EventListenerBase<{
                 duration: 5000
               });
             }
-          }).show();
+          });
         }
       }];
 
@@ -665,10 +678,11 @@ export class AppImManager extends EventListenerBase<{
     // });
 
     if(IS_CALL_SUPPORTED || IS_GROUP_CALL_SUPPORTED) {
-      this.topbarCall = new TopbarCall(managers);
+      this.topbarCall = createTopbarCall(managers);
+      this.columnEl.append(this.topbarCall.container);
     }
 
-    this.chatAudio = new ChatAudio(this, managers);
+    this.chatAudio = createChatAudio(this, managers);
     this.columnEl.append(this.chatAudio.container);
 
     this.audioAssetPlayer = new AudioAssetPlayer({
@@ -791,14 +805,14 @@ export class AppImManager extends EventListenerBase<{
   }
 
   public adjustChatPatternBackground() {
-    ChatBackgroundPatternRenderer.resizeInstancesOf(this.chatsContainer);
+    this.appChatBackground.resize();
   }
 
   private checkForShare() {
     const share = apiManagerProxy.share;
     if(share) {
       apiManagerProxy.share = undefined;
-      PopupElement.createPopup(PopupForward, undefined, async(peerId, threadId) => {
+      showForwardPopup(undefined, async(peerId, threadId) => {
         await this.setPeer({peerId, threadId});
         if(share.files?.length) {
           const foundMedia = share.files.some((file) => MEDIA_MIME_TYPES_SUPPORTED.has(file.type));
@@ -1868,37 +1882,33 @@ export class AppImManager extends EventListenerBase<{
     });
   }
 
-  public setCurrentBackground(broadcastEvent = false, skipAnimation?: boolean): ReturnType<AppImManager['setBackground']> {
+  public setCurrentBackground(broadcastEvent = false, skipAnimation?: boolean): Promise<void> {
     const theme = themeController.getTheme();
+    const themeSettings = themeController.getThemeSettings(theme);
 
-    const slug = (theme.settings?.wallpaper as WallPaper.wallPaper)?.slug;
+    const slug = (themeSettings?.wallpaper as WallPaper.wallPaper)?.slug;
     if(slug) {
       const defaultTheme = SETTINGS_INIT.themes.find((t) => t.name === theme.name);
-      // const isDefaultBackground = theme.background.blur === defaultTheme.background.blur &&
-      // slug === defaultslug;
-
-      // if(!isDefaultBackground) {
       return Promise.resolve(ChatBackgroundStore.getBackground({
         slug,
         managers: this.managers,
         appDownloadManager
-      })).then((url) => {
-        return this.setBackground(url, broadcastEvent, skipAnimation);
-      }, () => { // * if NO_ENTRY_FOUND
-        theme.settings = copy(defaultTheme.settings); // * reset background
+      })).then(() => {
+        return this.setBackground(broadcastEvent, skipAnimation);
+      }, () => {
+        theme.settings = copy(defaultTheme.settings);
         return this.setCurrentBackground(true);
       });
-      // }
     }
 
-    return this.setBackground('', broadcastEvent, skipAnimation);
+    return this.setBackground(broadcastEvent, skipAnimation);
   }
 
-  public setBackground(url: string, broadcastEvent = true, skipAnimation?: boolean): Promise<void> {
-    this.log('setBackground', url, broadcastEvent, skipAnimation);
-    this.lastBackgroundUrl = url;
-    const promises = this.chats.map((chat) => chat.setBackgroundIfNotSet({url, skipAnimation}));
-    return Promise.resolve(promises[promises.length - 1]).then(() => {
+  public setBackground(broadcastEvent = true, skipAnimation?: boolean): Promise<void> {
+    this.log('setBackground', broadcastEvent, skipAnimation);
+    return this.appChatBackground.setBackground({
+      transition: skipAnimation ? 'instant' : 'fade'
+    }).then(() => {
       if(broadcastEvent) {
         rootScope.dispatchEvent('background_change');
       }
@@ -1910,42 +1920,39 @@ export class AppImManager extends EventListenerBase<{
       return;
     }
 
-    // const bubble = chat.bubbles.getBubbleByPoint('top');
-    // if(bubble) {
-    // const top = bubble.getBoundingClientRect().top;
     const chatBubbles = chat.bubbles;
     const key = chat.peerId + (chat.threadId ? '_' + chat.threadId : '');
 
     const chatPositions = this.chatPositions;
-    if(
+    const pinnedMessages = chat.topbar?.pinnedMessage?.pinnedMessages;
+    const shouldSavePosition =
       !(chatBubbles.scrollable.getDistanceToEnd() <= 16 && chatBubbles.scrollable.loadedAll.bottom) &&
       chatBubbles.getRenderedLength() &&
       !chat.savedReaction &&
-      chatBubbles.getViewportSlice().invisibleBottom.length // * don't save if we're close to the end (or sponsored is below)
-    ) {
+      chatBubbles.getViewportSlice().invisibleBottom.length; // * don't save if we're close to the end (or sponsored is below)
+
+    if(shouldSavePosition) {
       chatBubbles.sliceViewport(true);
-      const top = chatBubbles.scrollable.scrollPosition;
-
-      const position = {
-        mids: chatBubbles.getRenderedHistory(
-          'desc',
-          true,
-          false
-        ).map((fullMid) => splitFullMid(fullMid).mid),
-        top
+      const position: ChatSavedPosition = {
+        mids: chatBubbles.getRenderedHistory('desc', true, false).map((fullMid) => splitFullMid(fullMid).mid),
+        top: chatBubbles.scrollable.scrollPosition,
+        pinnedMessages
       };
-
       chatPositions[key] = position;
-
       this.log('saved chat position:', position);
+    } else if(pinnedMessages) {
+      // Position itself isn't worth restoring, but the pinned hint is —
+      // keep it so the next prepareInitial paints the plate with the
+      // real count/index instead of the fullPeer fallback (count=1),
+      // which would otherwise animate when the true count resolves.
+      chatPositions[key] = {pinnedMessages};
+      this.log('saved pinned-only hint:', pinnedMessages);
     } else {
       delete chatPositions[key];
-
       this.log('deleted chat position');
     }
 
     this.chatPositions = chatPositions;
-    // }
   }
 
   public getChatSavedPosition(chat: Chat): ChatSavedPosition {
@@ -2008,6 +2015,9 @@ export class AppImManager extends EventListenerBase<{
     document.body.classList.toggle('animation-level-0', !liteMode.isAvailable('animations'));
     document.body.classList.toggle('animation-level-1', false);
     document.body.classList.toggle('animation-level-2', liteMode.isAvailable('animations'));
+
+    // Firefox keeps no-backdrop unconditionally — it renders backdrop-filter poorly.
+    document.documentElement.classList.toggle('no-backdrop', !liteMode.isAvailable('blur') || IS_FIREFOX);
 
     this.chatsSelectTabDebounced = debounce(() => {
       const topbar = this.chat.topbar;
@@ -2075,7 +2085,7 @@ export class AppImManager extends EventListenerBase<{
     document.addEventListener('paste', this.onDocumentPaste, true);
     this.attachDragAndDropListeners();
     MarkupTooltip.getInstance().handleSelection();
-    MarkupTooltip.PopupSchedule = PopupSchedule;
+    MarkupTooltip.showDatePickerPopup = showDatePickerPopup;
   }
 
   private attachDragAndDropListeners() {
@@ -2442,10 +2452,6 @@ export class AppImManager extends EventListenerBase<{
 
     this.chatsContainer.append(chat.container);
 
-    // if(this.chats.length) {
-    //   chat.setBackground({url: this.lastBackgroundUrl, skipAnimation: true});
-    // }
-
     this.chats.push(chat);
 
     return chat;
@@ -2479,6 +2485,10 @@ export class AppImManager extends EventListenerBase<{
     }
 
     this.chatsSelectTab(chatTo, animate);
+
+    if(chatTo !== chatFrom && chatTo.peerId) {
+      chatTo.publishBackground(animate === false ? 'auto' : 'crossfade-backwards');
+    }
 
     if(justReturn) {
       this.dispatchEvent('peer_changed', chatTo);
@@ -2582,7 +2592,7 @@ export class AppImManager extends EventListenerBase<{
       if(peerId) {
         Promise.all([
           promise,
-          chat.setBackgroundPromise
+          this.appChatBackground.getReadyPromise()
         ]).then(() => {
           // window.requestAnimationFrame(() => {
           setTimeout(() => { // * setTimeout is better here
@@ -2632,6 +2642,10 @@ export class AppImManager extends EventListenerBase<{
     let chat = oldChat;
     if(oldChat.inited) { // * use first not inited chat
       chat = this.createNewChat();
+    }
+
+    if(chat !== oldChat && oldChat.peerId) {
+      chat.preferredBackgroundTransition = 'crossfade-forwards';
     }
 
     this.dispatchEvent('chat_changing', {from: oldChat, to: chat});

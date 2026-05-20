@@ -9,7 +9,7 @@ import Button from '@components/button';
 import SettingSection from '@components/settingSection';
 import {SliderSuperTab} from '@components/slider';
 import wrapStickerEmoji from '@components/wrappers/stickerEmoji';
-import AppSettingsTab from '@components/sidebarLeft/tabs/settings';
+import {AppSettingsTab} from '@components/solidJsTabs';
 
 type ConstructorArgs = {
   messageFor: 'password' | 'email';

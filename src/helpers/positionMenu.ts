@@ -326,7 +326,7 @@ export function positionMenuTrigger(trigger: HTMLElement, menu: HTMLElement, dir
     const top = triggerRect.top + triggerRect.height + (additionalPadding?.top ?? 0);
     menu.style.top = `${Math.max(top, additionalPadding?.top ?? 0)}px`
   } else {
-    const bottom = window.innerHeight - triggerRect.top - triggerRect.height - (additionalPadding?.bottom ?? 0)
+    const bottom = window.innerHeight - triggerRect.top + (additionalPadding?.bottom ?? 0)
     menu.style.bottom = `${Math.max(bottom, additionalPadding?.bottom ?? 0)}px`
   }
 

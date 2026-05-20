@@ -11,7 +11,7 @@ import {render} from 'solid-js/web';
 import styles from '@components/sidebarLeft/tabs/changeLoginEmail.module.scss';
 import {AccountSentEmailCode} from '@layer';
 import {toastNew} from '@components/toast';
-import AppSettingsTab from '@components/sidebarLeft/tabs/settings';
+import {AppSettingsTab} from '@components/solidJsTabs';
 
 class ChangeLoginEmailCodeTab extends SliderSuperTab {
   private dispose: VoidFunction

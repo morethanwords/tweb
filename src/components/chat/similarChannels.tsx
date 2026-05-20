@@ -9,7 +9,7 @@ import {i18n} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
 import {AvatarNew} from '@components/avatarNew';
 import PeerTitle from '@components/peerTitle';
-import {ScrollableXTsx} from '@components/stories/list';
+import Scrollable from '@components/scrollable2';
 import formatNumber from '@helpers/number/formatNumber';
 import {Chat, MessagesChats, User} from '@layer';
 import computeLockColor from '@helpers/computeLockColor';
@@ -21,7 +21,7 @@ import PopupPremium from '@components/popups/premium';
 import appImManager from '@lib/appImManager';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import PopupElement from '@components/popups';
-import PopupPickUser from '@components/popups/pickUser';
+import showPickUserPopup from '@components/popups/pickUser';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {ButtonIconTsx} from '@components/buttonIconTsx';
 import {IconTsx} from '@components/iconTsx';
@@ -248,9 +248,9 @@ export default function SimilarChannels(props: {
       }
 
       if(premium()) {
-        PopupElement.createPopup(PopupPickUser, {
-          onSelect: (peerId) => {
-            appImManager.setInnerPeer({peerId});
+        showPickUserPopup({
+          onSelect: ([first]) => {
+            appImManager.setInnerPeer(first);
           },
           peerType: ['custom'],
           getMoreCustom: async() => {
@@ -259,7 +259,8 @@ export default function SimilarChannels(props: {
               isEnd: true
             };
           },
-          headerLangPackKey: 'SimilarChannels'
+          titleLangKey: 'SimilarChannels',
+          noSearch: true
         });
         return;
       }
@@ -305,11 +306,11 @@ export default function SimilarChannels(props: {
         {i18n('SimilarChannels')}
         <ButtonIconTsx icon="close" onClick={props.onClose} />
       </div>
-      <ScrollableXTsx>
+      <Scrollable axis="x">
         <div class="similar-channels-list-margin"></div>
         {list()}
         <div class="similar-channels-list-margin"></div>
-      </ScrollableXTsx>
+      </Scrollable>
     </div>
   );
 }

@@ -1,0 +1,2 @@
+import{e8 as s,b as a,a5 as n}from"./index-DNp74U6Y.js";import{c as i}from"./classNames-CN4lTu6a.js";import{L as m}from"./emailSetup-tx8ByyB6.js";import{a9 as c}from"./appDialogsManager-BPVTNOCq.js";const l="_Container_xlod8_1",C={Container:l},L=o=>{const{lottieLoader:t}=s(),e=c();return a(m,n({lottieLoader:t,onPromise:r=>e.collect(r),restartOnClick:!0,get class(){return i(o.class,C.Container)}},o))};export{L as S};
+//# sourceMappingURL=settingsTabLottieAnimation-CdZ8l9jF.js.map

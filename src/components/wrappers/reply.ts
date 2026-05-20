@@ -7,16 +7,24 @@
 import {rgbIntToHex} from '@helpers/color';
 import {setDirection} from '@helpers/dom/setInnerHTML';
 import themeController from '@helpers/themeController';
-import {MessageEntity, MessageReplyHeader, Peer, PeerColor, User} from '@layer';
+import {Message, MessageEntity, MessageReplyHeader, Peer, PeerColor, StoryItem, User} from '@layer';
 import {getPeerColorsByPeer} from '@appManagers/utils/peers/getPeerColorById';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import rootScope from '@lib/rootScope';
-import {WrapPinnedContainerOptions} from '@components/chat/pinnedContainer';
 import ReplyContainer from '@components/chat/replyContainer';
 import {setPeerColorToElement} from '@components/peerColors';
 import ripple from '@components/ripple';
 import wrapEmojiPattern from '@components/wrappers/emojiPattern';
 import wrapSticker from '@components/wrappers/sticker';
+
+export type WrapPinnedContainerOptions = {
+  title: string | HTMLElement | DocumentFragment,
+  subtitle?: WrapPinnedContainerOptions['title'],
+  message?: Message.message | Message.messageService,
+  storyItem?: StoryItem.storyItem,
+  isChatSensitive?: boolean,
+  savedMusicDocId?: DocId
+};
 
 export type WrapReplyOptions = WrapPinnedContainerOptions & {
   setColorPeerId?: PeerId,

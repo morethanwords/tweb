@@ -13,7 +13,7 @@ import Button from '@components/button';
 import ButtonIcon from '@components/buttonIcon';
 import CheckboxField from '@components/checkboxField';
 import PopupDeleteMessages from '@components/popups/deleteMessages';
-import PopupForward from '@components/popups/forward';
+import showForwardPopup from '@components/popups/forward';
 import SetTransition from '@components/singleTransition';
 import ListenerSetter from '@helpers/listenerSetter';
 import PopupSendNow from '@components/popups/sendNow';
@@ -26,7 +26,7 @@ import cancelEvent from '@helpers/dom/cancelEvent';
 import cancelSelection from '@helpers/dom/cancelSelection';
 import getSelectedText from '@helpers/dom/getSelectedText';
 import replaceContent from '@helpers/dom/replaceContent';
-import AppSearchSuper from '@components/appSearchSuper';
+import type AppSearchSuper from '@components/appSearchSuper';
 import isInDOM from '@helpers/dom/isInDOM';
 import {randomLong} from '@helpers/random';
 import {attachClickEvent, AttachClickOptions} from '@helpers/dom/clickEvent';
@@ -422,16 +422,6 @@ export class AppSelection extends EventListenerBase<{
 
     this.dispatchEvent('toggle', this.isSelecting);
 
-    // const bubblesContainer = this.bubbles.bubblesContainer;
-    // bubblesContainer.classList.toggle('is-selecting', !!size);
-
-    /* if(bubblesContainer.classList.contains('is-chat-input-hidden')) {
-      const scrollable = this.appImManager.scrollable;
-      if(scrollable.isScrolledDown) {
-        scrollable.scrollTo(scrollable.scrollHeight, 'top', true, true, 200);
-      }
-    } */
-
     if(!IS_TOUCH_SUPPORTED) {
       this.listenElement.classList.toggle('no-select', this.isSelecting);
 
@@ -716,7 +706,7 @@ export class SearchSelection extends AppSelection {
             obj[fromPeerId] = Array.from(mids).sort((a, b) => a - b);
           }
 
-          PopupElement.createPopup(PopupForward, obj, () => {
+          showForwardPopup(obj, () => {
             this.cancelSelection();
           });
         }, attachClickOptions);
@@ -957,6 +947,13 @@ export default class ChatSelection extends AppSelection {
     const {needTranslateX, widthFrom, widthTo} = await this.chat.input.center(animate);
 
     SetTransition({
+      element: this.input.chatInput,
+      className: 'is-selecting',
+      forwards,
+      duration: animate ? 200 : 0
+    });
+
+    SetTransition({
       element: this.listenElement,
       className: 'is-selecting',
       forwards,
@@ -1019,7 +1016,7 @@ export default class ChatSelection extends AppSelection {
               obj[fromPeerId] = Array.from(mids).sort((a, b) => a - b);
             }
 
-            PopupElement.createPopup(PopupForward, obj, () => {
+            showForwardPopup(obj, () => {
               this.cancelSelection();
             });
           }, attachClickOptions);

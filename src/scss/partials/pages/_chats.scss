@@ -8,12 +8,14 @@
 
 .page-chats {
   display: flex;
-  max-width: $large-screen !important;
   position: relative;
+
+  // Padding moved to each column individually so they can independently control
+  // their outer spacing — useful for the mobile slider where the active column
+  // should occupy the full viewport (no parent gutter peeking through during slide).
 
   #main-columns {
     width: 100%;
-    overflow: hidden;
     position: relative;
     height: 100%;
     min-height: 100%;
@@ -22,7 +24,6 @@
 
   @include respond-to(handhelds) {
     .main-column {
-      width: 100%;
       display: flex !important;
       z-index: 1;
     }
@@ -30,79 +31,15 @@
 
   @include respond-to(not-handhelds) {
     #column-center {
-      display: flex!important;
-      width: 100%;
+      display: flex !important;
     }
 
     #column-right {
-      display: flex!important;
-    }
-
-    .main-column {
-      height: 100%;
-      position: relative;
-      min-height: 100%;
-      max-height: 100%;
-      //z-index: auto;
+      display: flex !important;
     }
 
     #main-columns {
       display: flex;
-    }
-  }
-
-  /* @include respond-to(floating-left-sidebar) {
-    .main-column {
-      height: calc(var(--vh, 1vh) * 100) !important;
-      min-height: calc(var(--vh, 1vh) * 100) !important;
-    }
-  } */
-
-  /* @include respond-to(until-floating-left-sidebar) {
-    .main-column {
-      display: flex !important;
-
-      &.active {
-        z-index: 3;
-      }
-
-      &.to {
-        z-index: 4;
-      }
-    }
-  } */
-  
-  #search-container,
-  .sidebar-search {
-    flex-direction: column;
-    width: 100%;
-    max-height: 100%;
-    height: 100%;
-    overflow: hidden;
-    position: absolute;
-    left: 0;
-    top: 0;
-    z-index: 3;
-  }
-
-  @include respond-to(large-screens) {
-    &:before,
-    &:after {
-      content: " ";
-      position: absolute;
-      top: 0;
-      bottom: 0;
-      width: 1px;
-      background-color: var(--border-color);
-      pointer-events: none;
-    }
-
-    &:before {
-      left: -1px;
-    }
-
-    &:after {
-      right: -1px;
     }
   }
 
@@ -113,9 +50,12 @@
     flex: 0 0 auto;
   }
 
-  @include animation-level(2) {
-    .main-column {
-      transition: transform var(--tabs-transition), filter var(--tabs-transition);;
-    }
+  // Gated on :not(.has-auth-pages) so the boot-time flip of
+  // body.is-left-column-shown (applied by appDialogsManager.start() before
+  // bootstrapIm removes has-auth-pages) doesn't animate the column in
+  // from its handheld off-screen state. After auth/boot the transition
+  // engages for genuine tab transitions.
+  body.animation-level-2:not(.has-auth-pages) & .main-column {
+    transition: transform var(--tabs-transition), opacity var(--tabs-transition);
   }
 }

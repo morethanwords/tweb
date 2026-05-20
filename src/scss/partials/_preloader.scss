@@ -54,7 +54,7 @@ $transition: .2s ease-in-out;
     }
 
     &.is-visible {
-      &:not(.backwards) {
+      &.forwards {
         opacity: 1;
         transform: scale(1);
       }
@@ -75,7 +75,7 @@ $transition: .2s ease-in-out;
     }
 
     &.is-visible {
-      &:not(.backwards) {
+      &.forwards {
         opacity: 1;
       }
     }
@@ -93,7 +93,7 @@ $transition: .2s ease-in-out;
   .preloader {
     &-container-rtmp {
       &.is-visible {
-        &:not(.backwards) {
+        &.forwards {
           backdrop-filter: blur(10px) brightness(0.8);
         }
       }

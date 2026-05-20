@@ -10,8 +10,8 @@ import PopupSharedFolderInvite from '@components/popups/sharedFolderInvite';
 import PopupJoinChatInvite from '@components/popups/joinChatInvite';
 import PopupPayment from '@components/popups/payment';
 import PopupPeer from '@components/popups/peer';
-import PopupPickUser from '@components/popups/pickUser';
-import PopupStickers from '@components/popups/stickers';
+import {showPickUser3Popup, showSharingPicker2Popup} from '@components/popups/pickUser';
+import showStickersPopup from '@components/popups/stickers';
 import {toastNew, hideToast} from '@components/toast';
 import {MOUNT_CLASS_TO} from '@config/debug';
 import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
@@ -49,8 +49,7 @@ import AppContactsTab from '@components/sidebarLeft/tabs/contacts';
 import AppNewChannelTab from '@components/sidebarLeft/tabs/newChannel';
 import PopupCreateContact from '@components/popups/createContact';
 import createNewGroupTab from '@components/sidebarLeft/tabs/createNewGroupTab';
-import AppSettingsTab from '@components/sidebarLeft/tabs/settings';
-import AppEditProfileTab from '@components/sidebarLeft/tabs/editProfile';
+import {AppEditProfileTab, AppSettingsTab, getEditProfileInitArgs} from '@components/solidJsTabs';
 import showBirthdayPopup, {saveMyBirthday} from '@components/popups/birthday';
 import showLogOutPopup from '@components/popups/logOut';
 import {getStickerSetInputByShortName} from '@lib/appManagers/utils/stickers/getStickerSetInput';
@@ -696,7 +695,7 @@ export class InternalLinkProcessor {
           case 'edit/bio':
           case 'edit/username':
             const tab = appSidebarLeft.createTab(AppEditProfileTab);
-            return tab.open().then(() => tab.focus(pathnameParams[1]));
+            return tab.open({...getEditProfileInitArgs(), focusOn: pathnameParams[1]});
           case 'edit/birthday':
             return this.managers.appProfileManager.getProfile(rootScope.myId).then((userFull) => {
               showBirthdayPopup({
@@ -802,9 +801,7 @@ export class InternalLinkProcessor {
   };
 
   public processStickerSetLink = (link: InternalLink.InternalLinkStickerSet | InternalLink.InternalLinkEmojiSet) => {
-    const popup = PopupElement.createPopup(PopupStickers, getStickerSetInputByShortName(link.set), link._ === INTERNAL_LINK_TYPE.EMOJI_SET);
-    popup.show();
-    return popup;
+    return showStickersPopup(getStickerSetInputByShortName(link.set), link._ === INTERNAL_LINK_TYPE.EMOJI_SET);
   };
 
   public processJoinChatLink = (link: InternalLink.InternalLinkJoinChat) => {
@@ -955,7 +952,7 @@ export class InternalLinkProcessor {
         return attachMenuBot.peer_types.some((peerType) => peerType._ === peerTypePredicate);
       });
 
-      const chosenPeerId = await PopupPickUser.createPicker(filteredTypes);
+      const chosenPeerId = await showPickUser3Popup(filteredTypes);
       await appImManager.setInnerPeer({peerId: chosenPeerId});
     }
 
@@ -1153,7 +1150,7 @@ export class InternalLinkProcessor {
   };
 
   public processShareLink = async(link: InternalLink.InternalLinkShare) => {
-    const {peerId, threadId, monoforumThreadId} = await PopupPickUser.createSharingPicker2();
+    const {peerId, threadId, monoforumThreadId} = await showSharingPicker2Popup();
     appImManager.setInnerPeer({
       peerId,
       threadId,

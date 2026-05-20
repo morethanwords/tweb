@@ -6,205 +6,311 @@
 
 @use "../../shared" as *;
 
-.popup-date-picker {
-  $parent: ".popup";
-  user-select: none;
+.popup-schedule {
+  --popup-width: 420px;
+  --date-picker-cell: 2.5rem;
+  --date-picker-scroll-height: 312px;
 
-  #{$parent} {
-    &-container {
-      // max-width: 300px;
-      // max-height: 424px;
-      /* min-width: 300px;
-      width: 300px; */
-      padding: 12px 14px;
-
-      @media (min-height: 470px) {
-        &[data-lines="7"] {
-          top: 19px;
-          //left: 8px;
-        }
-
-        &[data-lines="5"] {
-          top: -19px;
-        }
-      }
-    }
-
-    &-header {
-      margin-left: 6px;
-      margin-top: 4px;  
-      margin-bottom: 1.375rem;
-      // flex: 0 0 auto;
-    }
-
-    &-title {
-      font-weight: var(--font-weight-bold);
-      font-size: 20px;  
-    }
-
-    &-buttons {
-      order: 2;
-      margin-right: -2px;
-      
-      & button + button {
-        margin-left: 9px;
-        margin-top: 0;
-      }
-    }
+  @include respond-to(handhelds) {
+    --popup-width: 312px;
+    --date-picker-scroll-height: 280px;
   }
-  
+
+  .popup-body {
+    padding-inline: 1rem;
+    padding-bottom: .25rem;
+  }
+
   .date-picker {
     &-controls {
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex: 0 0 auto;
-
-      .date-picker-month-title {
-        font-size: 14px;
-        font-weight: var(--font-weight-bold);
-      }
-    }
-
-    &-prev {
-      transform: rotate(90deg);
-    }
-
-    &-next {
-      transform: rotate(-90deg);
     }
 
     &-prev,
     &-next {
       &:disabled {
-        visibility: hidden;
+        visibility: visible;
       }
     }
 
-    &-months {
-      margin-top: 7px;
-      margin-bottom: 1.5rem;
-      user-select: none;
-    }
-
-    &-month {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      width: 100%;
-      justify-content: center;
-
-      .btn-icon {
-        justify-self: center;
-        width: 38px;
-        height: 38px;
-        font-size: 12px;
-        color: var(--secondary-text-color);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-
-        &:disabled {
-          opacity: 1;
-        }
-      }
-
-      &-date:disabled {
-        opacity: .7 !important;
-      }
-
-      .btn-icon:not(:disabled) {
-        color: var(--primary-text-color);
-      }
-
-      .btn-icon.active {
-        color: var(--badge-text-color);
-        border-radius: 50%;
+    &-multiselect {
+      &.is-active {
+        // !important required because the global `.primary { color: !important }`
+        // would otherwise leave the icon coloured the same as the active background.
+        color: var(--badge-text-color) !important;
         background-color: var(--primary-color) !important;
       }
     }
-  }
-}
 
-.popup-schedule {
-  .popup-header {
-    margin-top: 5px;
-    margin-bottom: 17px;
-    margin-left: 0;
-
-    @include respond-to(handhelds) {
-      margin-left: 3px;
-    }
-  }
-
-  .popup-container {
-    min-width: 420px;
-    width: 420px;
-    padding: 4px 16px 16px 16px;
-
-    @include respond-to(handhelds) {
-      min-width: 312px;
-      width: 312px;
-      padding: 4px 14px 14px 14px;
+    &-month-title {
+      font-weight: var(--font-weight-bold);
+      font-size: var(--font-size-20);
+      flex: 1 1 auto;
     }
 
-    &[data-lines="5"] {
-      top: -16px;
+    // Per-month sticky weekday header (rendered inside each month section).
+    &-weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
     }
 
-    &[data-lines="7"] {
-      top: 16px;
+    &-weekday {
+      height: var(--date-picker-cell);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      // font-weight: var(--font-weight-bold);
+      font-size: var(--font-size-14);
+      color: var(--primary-text-color);
     }
-  }
 
-  .date-picker {
-    &-month {
-      margin-right: -20px;
-      margin-left: 2px;
-      width: unset;
-
-      @include respond-to(handhelds) {
-        margin-left: 0;
-        margin-right: -6px;
-      }
-
-      &-title {
-        font-weight: var(--font-weight-bold);
-        font-size: 20px;
-        flex: 1 1 auto;
-      }
-
-      .btn-icon {
-        justify-self: auto;
-        font-weight: var(--font-weight-bold);
-        font-size: 14px;
-        width: 36px;
-        height: 36px;
-        margin-top: -4px;
-      }
-
-      &-date:disabled {
-        color: #9ba3a8 !important;
-      }
-
-      &-day {
-        font-weight: var(--font-weight-bold);
-        color: var(--primary-text-color) !important;
-        font-size: 14px !important;
-      }
+    &-scrollable {
+      height: var(--date-picker-scroll-height);
+      // Hide horizontal overflow caused by absolutely-positioned month sections.
+      overflow-x: hidden;
+      position: relative;
+      // No CSS-level smooth scroll — would also animate the initial position
+      // assignment in onMount. Smoothness is opted-in per call via
+      // scrollTo({behavior: 'smooth'}) in scrollToSection().
     }
 
     &-months {
-      margin-bottom: 14px;
+      position: relative;
+      width: 100%;
+    }
 
-      @include respond-to(handhelds) {
-        margin-bottom: 13px;
+    &-month-section {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      padding-inline: 1rem;
+      box-sizing: border-box;
+    }
+
+    &-month-label {
+      height: var(--date-picker-cell);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: var(--font-weight-bold);
+      font-size: var(--font-size);
+      color: var(--primary-text-color);
+    }
+
+    &-month-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      row-gap: .25rem;
+    }
+
+    // Empty alignment cells for days that don't belong to the current month.
+    &-spacer {
+      width: 100%;
+      height: var(--date-picker-cell);
+    }
+
+    // ─── Cells ───────────────────────────────────────────────────────────
+    // The button itself spans the FULL grid track (so the range bar via ::after
+    // can stretch across the gap to neighbouring cells without dependence on
+    // the actual track width). The visible "tap target" is a fixed 2.5rem
+    // circle painted by ::before — that's what gets the hover/active fill.
+    &-month-date {
+      position: relative;
+      width: 100%;
+      height: var(--date-picker-cell);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: var(--font-weight-bold);
+      font-size: var(--font-size-14);
+      color: var(--primary-text-color);
+      background: none !important;
+      border-radius: 0;
+
+      // The 2.5rem circle (hover, active fill, photo backdrop) — centered in
+      // the wider track. Day number & photo render on top via z-index.
+      .date-picker-cell-photo,
+      &::before {
+        position: absolute;
+        width: var(--date-picker-cell) !important;
+        height: var(--date-picker-cell) !important;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        border-radius: 50%;
+      }
+
+      &::before {
+        content: '';
+        z-index: 0;
+        background-color: transparent;
+        transition: background-color .12s;
+      }
+
+      // Hover — light-grey circle on the 2.5rem element (not on the bar).
+      @include hover() {
+        &::before {
+          background-color: var(--light-secondary-text-color);
+        }
+      }
+
+      &.danger {
+        @include hover() {
+          &::before {
+            background-color: var(--light-danger-color);
+          }
+        }
+      }
+
+      // Active = single-pick, OR a multi-select range endpoint.
+      // Painted as a primary-coloured filled circle on ::before so it sits
+      // visually on top of the connecting bar (::after).
+      &.active {
+        color: var(--badge-text-color);
+
+        &::before {
+          background-color: var(--primary-color) !important;
+        }
+      }
+
+      // Hover on cells INSIDE the multi-select range — match the bar's tone
+      // (light-primary) instead of the default neutral grey, so hovering
+      // anywhere on the bar feels visually contiguous with it.
+      &.in-range {
+        @include hover() {
+          &::before {
+            background-color: var(--light-primary-color);
+          }
+        }
+      }
+
+      // ─── Range selection ───────────────────────────────────────────────
+      // The connecting bar is ::after — full track width, full cell height,
+      // light-filled-primary colour, painted BEHIND the ::before circle.
+      &.in-range::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: var(--light-filled-primary-color);
+        z-index: -1;
+      }
+
+      // Bar reaches a row edge (col 0 / col 6) without an endpoint there —
+      // round the bar's outer corner so it doesn't clip flat against the
+      // grid boundary.
+      &.range-edge-left::after {
+        border-top-left-radius: 999px;
+        border-bottom-left-radius: 999px;
+      }
+      &.range-edge-right::after {
+        border-top-right-radius: 999px;
+        border-bottom-right-radius: 999px;
+      }
+
+      // For NON-endpoint row-edge cells: also clip the bar to align with the
+      // 2.5rem circle's edge instead of extending all the way to the track
+      // edge. Otherwise a small "lip" of bar pokes past the visible cell area
+      // (no neighbouring cell in this row to absorb the overflow). Endpoints
+      // are handled by .range-start / .range-end below.
+      &.range-edge-left:not(.range-start)::after {
+        left: calc(50% - var(--date-picker-cell) / 2);
+      }
+      &.range-edge-right:not(.range-end)::after {
+        right: calc(50% - var(--date-picker-cell) / 2);
+      }
+
+      // Range endpoints — the .active circle visually IS the bar's terminus,
+      // so clip the bar at the cell center and drop the rounded outer corner
+      // (it would otherwise stick out past the circle). These rules come
+      // AFTER range-edge-* so they win at equal specificity.
+      &.range-start::after {
+        left: 50%;
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+      }
+      &.range-end::after {
+        right: 50%;
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+      }
+
+      // Single-day range (start === end on the same cell): no bar at all.
+      &.range-start.range-end::after {
+        display: none;
+      }
+
+      // Endpoint sitting at a ROW boundary with no in-range neighbour to
+      // connect to in this row — drop the bar so it doesn't poke past the
+      // circle into the empty grid track. Covers e.g. range start at col 6
+      // (next cell is in another row) and range end at col 0.
+      &.range-start.range-edge-right::after,
+      &.range-end.range-edge-left::after {
+        display: none;
+      }
+
+      // Cell that has media in the chat — circular thumb sits on top of the
+      // bar (z:1) but behind the day number (z:2).
+      &.with-media {
+        color: #fff !important;
+
+        .date-picker-cell-photo {
+          overflow: hidden;
+          pointer-events: none;
+          z-index: 1;
+          // Animate the thumb shrink/grow when the cell enters/leaves the
+          // multi-select range — handed off to the .in-range rule below.
+          transform: translate(-50%, -50%) scale(1);
+          transition: transform var(--transition-standard-in);
+
+          img,
+          canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+          }
+
+          // Subtle dim so the day number stays legible.
+          &::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, .35);
+            border-radius: inherit;
+          }
+        }
+
+        // Inside a multi-select range — shrink the photo to 80% so the bar
+        // becomes the dominant visual; the day number sits clearly on the bar.
+        &.in-range,
+        &.active {
+          .date-picker-cell-photo {
+            transform: translate(-50%, -50%) scale(.8);
+          }
+        }
       }
     }
 
+    &-day-num {
+      font: inherit;
+      color: inherit;
+      pointer-events: none;
+      position: relative;
+      z-index: 2; // sit on top of both the range bar and the photo overlay
+    }
+
+    // ─── Time inputs (unchanged) ───────────────────────────────────────────
     &-time {
       display: flex;
       justify-content: center;
-      margin-bottom: 1.5rem;
+      margin: 1rem 0;
 
       @include respond-to(handhelds) {
         margin-bottom: 22px;
@@ -223,23 +329,6 @@
         font-weight: var(--font-weight-bold);
       }
     }
-
-    &-controls {
-      .btn-icon {
-        &:disabled {
-          visibility: visible;
-          //opacity: 1;
-        }
-      }
-    }
-  }
-
-  .btn-primary {
-    @include respond-to(handhelds) {
-      height: 50px;
-      width: 280px;
-      margin-left: 2px;
-    }
   }
 
   &-secondary {
@@ -247,7 +336,7 @@
   }
 
   &-repeat {
-    margin-bottom: .5rem;
+    margin-inline: var(--section-padding-inline);
 
     .row-right {
       display: flex;

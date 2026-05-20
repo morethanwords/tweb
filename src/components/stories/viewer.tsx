@@ -22,7 +22,6 @@ import {createSignal, createEffect, JSX, For, Accessor, onCleanup, createMemo, m
 import {unwrap} from 'solid-js/store';
 import {assign, Portal} from 'solid-js/web';
 import rootScope from '@lib/rootScope';
-import ListenerSetter from '@helpers/listenerSetter';
 import {Middleware} from '@helpers/middleware';
 import wrapRichText, {WrapRichTextOptions} from '@lib/richTextProcessor/wrapRichText';
 import wrapMessageEntities from '@lib/richTextProcessor/wrapMessageEntities';
@@ -40,7 +39,7 @@ import Chat from '@components/chat/chat';
 import {ChatType} from '@components/chat/chatType';
 import middlewarePromise from '@helpers/middlewarePromise';
 import emoticonsDropdown from '@components/emoticonsDropdown';
-import PopupPickUser from '@components/popups/pickUser';
+import showPickUserPopup from '@components/popups/pickUser';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import {copyTextToClipboard} from '@helpers/clipboard';
@@ -104,11 +103,11 @@ import safeWindowOpen from '@helpers/dom/safeWindowOpen';
 import wrapUrl from '@lib/richTextProcessor/wrapUrl';
 import PopupReportAd from '@components/popups/reportAd';
 import {useAppSettings} from '@stores/appSettings';
-import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
 import showStoriesStealthModePopup from '@components/popups/storiesStealthMode';
 import {useAppConfig} from '@stores/appState';
-import {wrapFormattedDuration, wrapStoriesStealthModeDuration} from '@components/wrappers/wrapDuration';
+import {wrapStoriesStealthModeDuration} from '@components/wrappers/wrapDuration';
 import {handleShareStory} from './share';
+import createListenerSetter from '@helpers/solid/createListenerSetter';
 
 export const STORY_DURATION = 5e3;
 const STORY_HEADER_AVATAR_SIZE = 32;
@@ -124,30 +123,6 @@ rootScope.addEventListener('app_config', (appConfig) => {
 });
 
 const x = new OverlayClickHandler(undefined, true);
-
-const MessageInputField = (props: {}) => {
-  const inputField = new InputFieldAnimated({
-    placeholder: 'PreviewSender.CaptionPlaceholder',
-    name: 'message',
-    withLinebreaks: true
-  });
-
-  inputField.input.classList.replace('input-field-input', 'input-message-input');
-  inputField.inputFake.classList.replace('input-field-input', 'input-message-input');
-
-  return (
-    <div class="input-message-container">
-      {inputField.input}
-      {inputField.inputFake}
-    </div>
-  );
-};
-
-export function createListenerSetter() {
-  const listenerSetter = new ListenerSetter();
-  onCleanup(() => listenerSetter.removeAll());
-  return listenerSetter;
-}
 
 const StorySlides = (props: {
   state: StoriesContextPeerState,
@@ -2369,51 +2344,49 @@ const Stories = (props: {
   const openViewsList = isMe && (() => {
     let nextOffset: string;
     const viewsMap: Map<PeerId, StoryView.storyView> = new Map();
-    const popup: PopupPickUser = PopupElement.createPopup(
-      PopupPickUser,
-      {
-        peerType: ['custom'],
-        getMoreCustom: (q) => {
-          const loadCount = 50;
-          return rootScope.managers.appStoriesManager.getStoryViewsList(
-            props.state.peerId,
-            currentStory().id,
-            loadCount,
-            nextOffset,
-            q
-          ).then(({nextOffset: _nextOffset, views}) => {
-            nextOffset = _nextOffset;
-            return {
-              result: views.map((storyView) => {
-                const peerId = storyView.user_id.toPeerId(false);
-                viewsMap.set(peerId, storyView);
-                return peerId;
-              }),
-              isEnd: !nextOffset
-            };
-          });
-        },
-        processElementAfter: (peerId, dialogElement) => {
-          const view = viewsMap.get(peerId);
-          return processDialogElementForReaction({
-            dialogElement,
-            peerId,
-            date: view.date,
-            isMine: true,
-            middleware: popup.selector.middlewareHelperLoader.get(),
-            reaction: view.reaction
-          });
-        },
-        onSelect: (peerId) => {
-          props.close(() => {
-            appImManager.setInnerPeer({peerId});
-          });
-        },
-        placeholder: 'SearchPlaceholder',
-        exceptSelf: true,
-        meAsSaved: false
-      }
-    );
+    const popup = showPickUserPopup({
+      titleLangKey: 'StoryViewers',
+      peerType: ['custom'],
+      getMoreCustom: (q) => {
+        const loadCount = 50;
+        return rootScope.managers.appStoriesManager.getStoryViewsList(
+          props.state.peerId,
+          currentStory().id,
+          loadCount,
+          nextOffset,
+          q
+        ).then(({nextOffset: _nextOffset, views}) => {
+          nextOffset = _nextOffset;
+          return {
+            result: views.map((storyView) => {
+              const peerId = storyView.user_id.toPeerId(false);
+              viewsMap.set(peerId, storyView);
+              return peerId;
+            }),
+            isEnd: !nextOffset
+          };
+        });
+      },
+      processElementAfter: (peerId, dialogElement) => {
+        const view = viewsMap.get(peerId);
+        return processDialogElementForReaction({
+          dialogElement,
+          peerId,
+          date: view.date,
+          isMine: true,
+          middleware: popup.selector.middlewareHelperLoader.get(),
+          reaction: view.reaction
+        });
+      },
+      onSelect: ([obj]) => {
+        props.close(() => {
+          appImManager.setInnerPeer(obj);
+        });
+      },
+      placeholder: 'SearchPlaceholder',
+      exceptSelf: true,
+      meAsSaved: false
+    });
   });
 
   const onDeleteClick = isMe && (async() => {

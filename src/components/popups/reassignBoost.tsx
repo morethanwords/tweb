@@ -216,7 +216,7 @@ export default class PopupReassignBoost extends PopupPeer {
 
     const _add = this.selector.add.bind(this.selector);
     this.selector.add = (...args) => {
-      const element = this.selector.getElementByPeerId(args[0].key as any);
+      const element = this.selector.getElementByKey(args[0].key as any);
       if(element.classList.contains('is-unavailable')) {
         toastNew({
           langPackKey: 'Boost.Reassign.Wait',

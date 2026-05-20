@@ -7,11 +7,7 @@
   background-color: var(--surface-color);
 
   &.multiline {
-    top: 8px;
+    top: 4px;
     transform: none;
   }
-}
-
-.EmoticonsDropdown, .StickerViewer {
-  z-index: 6;
 }

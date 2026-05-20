@@ -1,15 +1,15 @@
 // https://github.com/evgeny-nadymov/telegram-react/blob/master/src/Components/ColumnMiddle/PinnedMessageBorder.js
 
 enum BAR_HEIGHTS {
-  ONE = 32,
-  TWO = 15,
-  THREE = 10,
-  FOUR = 8,
-  MORE = 8
+  ONE = 40,
+  TWO = 19,
+  THREE = 12,
+  FOUR = 10,
+  MORE = 10
 };
 
-const GAP = 1;
-const WIDTH = 2;
+const GAP = 2;
+const WIDTH = 3;
 const BASE_CLASS = 'pinned-message-border';
 
 export default class PinnedMessageBorder {
@@ -29,7 +29,7 @@ export default class PinnedMessageBorder {
   };
 
   private getClipPath = (id: string, barHeight: number, count: number) => {
-    const radius = 1;
+    const radius = 1.5;
 
     let d = '';
     /* if(count === 3) {
@@ -67,7 +67,7 @@ export default class PinnedMessageBorder {
       barHeight = BAR_HEIGHTS.THREE;
     } else if(count === 4) {
       barHeight = BAR_HEIGHTS.FOUR;
-    } else if(count > 3) {
+    } else {
       barHeight = BAR_HEIGHTS.MORE;
     }
 
@@ -84,7 +84,7 @@ export default class PinnedMessageBorder {
       markHeight = BAR_HEIGHTS.THREE;
     } else if(count === 4) {
       markHeight = BAR_HEIGHTS.FOUR;
-    } else if(count > 3) {
+    } else {
       markHeight = BAR_HEIGHTS.MORE;
     }
 
@@ -112,14 +112,14 @@ export default class PinnedMessageBorder {
   };
 
   private getTrackTranslateY = (index: number, count: number, barHeight: number, trackHeight: number) => {
-    if(count <= 4) {
+    if(count <= 3) {
       return 0;
     }
 
     if(index <= 1) {
       return 0;
     } else if(index >= (count - 2)) {
-      return trackHeight - BAR_HEIGHTS.ONE - barHeight;
+      return trackHeight - BAR_HEIGHTS.ONE/*  - barHeight */;
     }
 
     // return (index + 1) * barHeight + index * GAP;
@@ -174,7 +174,7 @@ export default class PinnedMessageBorder {
     }
 
     this.wrapper.className = BASE_CLASS + '-wrapper';
-    this.wrapper.style.cssText = `clip-path: url(#${clipPathId}); width: 2px; height: ${trackHeight}px; transform: translateY(-${trackTranslateY}px);`;
+    this.wrapper.style.cssText = `clip-path: url(#${clipPathId}); width: ${WIDTH}px; height: ${trackHeight}px; transform: translateY(-${trackTranslateY}px);`;
 
     if(!this.svg) {
       this.svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');

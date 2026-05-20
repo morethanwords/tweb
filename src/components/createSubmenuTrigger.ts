@@ -42,7 +42,11 @@ export default function createSubmenuTrigger({
     attachFloatingButtonMenu({
       element: menuBtnOptions.element,
       direction,
-      createMenu: () => createSubmenu({middleware: currentMiddleware.get()}),
+      createMenu: async() => {
+        const menu = await createSubmenu({middleware: currentMiddleware.get()});
+        menu.classList.add('btn-menu-submenu');
+        return menu;
+      },
       offset: [-5, -5],
       level: 2,
       triggerEvent: 'mouseenter',

@@ -15,8 +15,7 @@ import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import rootScope from '@lib/rootScope';
 import CheckboxField from '@components/checkboxField';
 import LazyLoadQueue from '@components/lazyLoadQueue';
-import PopupElement from '@components/popups';
-import PopupStickers from '@components/popups/stickers';
+import showStickersPopup from '@components/popups/stickers';
 import Row from '@components/row';
 import SettingSection from '@components/settingSection';
 import SliderSuperTab from '@components/sliderTab';
@@ -212,7 +211,7 @@ export default class AppStickersAndEmojiTab extends SliderSuperTab {
           subtitleLangArgs: [stickerSet.count],
           havePadding: true,
           clickable: () => {
-            PopupElement.createPopup(PopupStickers, getStickerSetInputById(stickerSet)).show();
+            showStickersPopup(getStickerSetInputById(stickerSet));
           },
           listenerSetter: this.listenerSetter
         });

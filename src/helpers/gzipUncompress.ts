@@ -1,12 +1,33 @@
-// export function gzipUncompress(bytes: ArrayBuffer, toString: true): string;
+import {Decompress, decompressSync} from 'fflate';
 
-import {decompressSync} from 'fflate';
-// import dT from '@helpers/dT';
+export default function gzipUncompress(bytes: ArrayBuffer, toString?: boolean, maxSize?: number): string | Uint8Array {
+  let result: Uint8Array;
 
-// export function gzipUncompress(bytes: ArrayBuffer, toString?: false): Uint8Array;
-export default function gzipUncompress(bytes: ArrayBuffer, toString?: boolean): string | Uint8Array {
-  // console.log(dT(), 'Gzip uncompress start');
-  const result = decompressSync(new Uint8Array(bytes));
-  // console.log(dT(), 'Gzip uncompress finish'/* , result */);
+  if(maxSize === undefined) {
+    result = decompressSync(new Uint8Array(bytes));
+  } else {
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    let exceeded = false;
+    const decompressor = new Decompress((chunk) => {
+      if(exceeded) return;
+      total += chunk.length;
+      if(total > maxSize) {
+        exceeded = true;
+        return;
+      }
+      chunks.push(chunk);
+    });
+    decompressor.push(new Uint8Array(bytes), true);
+    if(exceeded) throw new Error('GZIP_MAX_SIZE_EXCEEDED');
+
+    result = new Uint8Array(total);
+    let offset = 0;
+    for(const c of chunks) {
+      result.set(c, offset);
+      offset += c.length;
+    }
+  }
+
   return toString ? new TextDecoder().decode(result) : result;
 }

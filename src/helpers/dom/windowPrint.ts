@@ -5,7 +5,7 @@ function preparePrint() {
   }
 
   const chatClone = chat.cloneNode(true) as HTMLElement;
-  chatClone.querySelectorAll('.chat-input, .chat-background').forEach((element) => element.remove());
+  chatClone.querySelectorAll('.chat-input').forEach((element) => element.remove());
   const bubbles = chatClone.querySelector('.bubbles');
   const bubblesInner = bubbles.querySelector('.bubbles-inner');
   bubbles.replaceChildren(bubblesInner);

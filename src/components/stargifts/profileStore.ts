@@ -3,7 +3,7 @@ import {StarGiftCollection} from '@layer';
 import {batch, onMount} from 'solid-js';
 import {MyStarGift} from '@appManagers/appGiftsManager';
 import rootScope from '@lib/rootScope';
-import {createListenerSetter} from '@components/stories/viewer';
+import createListenerSetter from '@helpers/solid/createListenerSetter';
 import {updateStarGift} from '@appManagers/utils/gifts/updateStarGift';
 import {inputStarGiftEquals} from '@appManagers/utils/gifts/inputStarGiftEquals';
 import untrackActions from '@helpers/solid/untrackActions';

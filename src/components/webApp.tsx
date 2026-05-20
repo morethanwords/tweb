@@ -26,7 +26,7 @@ import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import confirmationPopup from '@components/confirmationPopup';
 import PopupElement from '@components/popups';
 import PopupPeer, {PopupPeerOptions} from '@components/popups/peer';
-import PopupPickUser from '@components/popups/pickUser';
+import {showPickUser3Popup} from '@components/popups/pickUser';
 import TelegramWebView from '@components/telegramWebView';
 import wrapAttachBotIcon from '@components/wrappers/attachBotIcon';
 import getPeerTitle from '@components/wrappers/getPeerTitle';
@@ -48,6 +48,7 @@ import ButtonIcon from '@components/buttonIcon';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import type {RequestWebViewOptions} from '@appManagers/appAttachMenuBotsManager';
 import {createSvgFromBytes} from '@helpers/bytes/getPathFromBytes';
+import clamp from '@helpers/number/clamp';
 import PopupWebAppPreparedMessage from '@components/popups/webAppPreparedMessage';
 import appDownloadManager from '@lib/appDownloadManager';
 import IS_WEB_APP_BROWSER_SUPPORTED from '@environment/webAppBrowserSupport';
@@ -423,7 +424,7 @@ export default class WebApp {
     const chat = appImManager.chat;
     let peerId = chat.peerId, threadId = chat.threadId;
     if(chat_types?.length) {
-      const chosenPeerId = await PopupPickUser.createPicker(chat_types, ['send_inline']);
+      const chosenPeerId = await showPickUser3Popup(chat_types, ['send_inline']);
       if(peerId !== chosenPeerId) {
         peerId = chosenPeerId;
         threadId = undefined;
@@ -840,6 +841,7 @@ export default class WebApp {
     const shouldEmit = this._deviceOrientationFreqMs !== -1 && performance.now() - this._deviceOrientationLastEvent > this._deviceOrientationFreqMs;
     if(!shouldEmit) return;
 
+    this._deviceOrientationLastEvent = performance.now();
     this.telegramWebView.dispatchWebViewEvent('device_orientation_changed', {
       absolute: event.absolute,
       alpha: event.alpha,
@@ -1097,7 +1099,7 @@ export default class WebApp {
       },
       // we can't use w3c sensors reliably with iframes unfortunately: https://w3c.github.io/sensors/#focused-area :c
       web_app_start_accelerometer: (data) => {
-        this._accelerometerFreqMs = 1000 / data.refresh_rate;
+        this._accelerometerFreqMs = clamp(data.refresh_rate, 20, 1000);
         this.setupDeviceMotion();
       },
       web_app_stop_accelerometer: () => {
@@ -1106,7 +1108,7 @@ export default class WebApp {
         this.telegramWebView.dispatchWebViewEvent('accelerometer_stopped', undefined);
       },
       web_app_start_gyroscope: (data) => {
-        this._gyroscopeFreqMs = 1000 / data.refresh_rate;
+        this._gyroscopeFreqMs = clamp(data.refresh_rate, 20, 1000);
         this.setupDeviceMotion();
       },
       web_app_stop_gyroscope: () => {
@@ -1115,7 +1117,7 @@ export default class WebApp {
         this.telegramWebView.dispatchWebViewEvent('gyroscope_stopped', undefined);
       },
       web_app_start_device_orientation: (data) => {
-        this._deviceOrientationFreqMs = 1000 / data.refresh_rate;
+        this._deviceOrientationFreqMs = clamp(data.refresh_rate, 20, 1000);
         this._deviceOrientationAbsolute = data.need_absolute && !IS_SAFARI;
         const eventName = this._deviceOrientationAbsolute ? 'deviceorientationabsolute' : 'deviceorientation';
         window.addEventListener(eventName, this.handleDeviceOrientation, true);

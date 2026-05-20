@@ -25,19 +25,18 @@ $menu-search-translateY: -#{$menu-height};
 	background: var(--surface-color);
 	overflow: hidden;
 	flex: 1 1 auto;
-	user-select: none;
   position: absolute;
-  inset-inline-start: $chat-padding;
-  bottom: 5.125rem;
+  inset-inline-end: 0;
+  bottom: calc(var(--chat-input-height) + .5rem);
   max-width: calc(100% - 1rem);
   max-height: 26.25rem;
   box-shadow: 0px 5px 10px 5px rgba(16, 35, 47, .14);
   z-index: 4;
   border-radius: 1.25rem;
   transition: transform var(--esg-transition), opacity var(--esg-transition);
-  transform: scale(0);
+  transform: scale(.85);
   opacity: 0;
-  transform-origin: 0 100%;
+  transform-origin: 100% 100%;
   backdrop-filter: var(--menu-backdrop-filter);
   background-color: var(--menu-background-color);
   // background-color: rgba(var(--surface-color-rgb), var(--backdrop-opacity));
@@ -47,7 +46,7 @@ $menu-search-translateY: -#{$menu-height};
   }
 
   .is-rtl & {
-    transform-origin: 100% 100%;
+    transform-origin: 0 100%;
   }
 
   &.smaller {
@@ -56,7 +55,7 @@ $menu-search-translateY: -#{$menu-height};
   }
 
   &.is-standalone {
-    transform-origin: calc(9rem * var(--reflect)) 4.625rem !important;
+    transform-origin: calc(9rem * var(--reflect)) 4.625rem;
     transform: scale(.85);
     bottom: auto;
     inset-inline-start: auto;
@@ -66,7 +65,7 @@ $menu-search-translateY: -#{$menu-height};
 
   &.is-under {
     --width: 100%;
-    --height: min(282px, calc(var(--vh) * 100 - 135px));
+    --height: min(282px, calc(var(--100vh) - 135px));
     position: relative;
     transform: none;
     inset: unset;

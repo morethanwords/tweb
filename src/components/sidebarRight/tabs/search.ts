@@ -7,11 +7,11 @@
 import appSidebarRight from '..';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import rootScope from '@lib/rootScope';
-import AppSearch, {SearchGroup} from '@components/appSearch';
+import AppSearch from '@components/appSearch';
+import {createSearchGroup} from '@components/searchGroup';
 import ButtonIcon from '@components/buttonIcon';
 import InputSearch from '@components/inputSearch';
-import PopupElement from '@components/popups';
-import PopupDatePicker from '@components/popups/datePicker';
+import showDatePickerPopup from '@components/popups/datePicker';
 import {SliderSuperTab} from '@components/slider';
 
 export default class AppPrivateSearchTab extends SliderSuperTab {
@@ -49,7 +49,7 @@ export default class AppPrivateSearchTab extends SliderSuperTab {
       c,
       this.inputSearch,
       {
-        messages: new SearchGroup('Chat.Search.PrivateSearch', 'messages')
+        messages: createSearchGroup({name: 'Chat.Search.PrivateSearch', type: 'messages', middleware: this.middlewareHelper.get()})
       },
       this.middlewareHelper.get(),
       undefined,
@@ -66,7 +66,7 @@ export default class AppPrivateSearchTab extends SliderSuperTab {
       this.btnPickDate.classList.toggle('hide', !this.onDatePick);
       if(this.onDatePick) {
         attachClickEvent(this.btnPickDate, () => {
-          PopupElement.createPopup(PopupDatePicker, new Date(), this.onDatePick).show();
+          showDatePickerPopup({initDate: new Date(), onPick: this.onDatePick});
         }, {listenerSetter: this.listenerSetter});
       }
 

@@ -18,7 +18,7 @@ import rootScope from '@lib/rootScope';
 import AppSelectPeers, {SelectSearchPeerType} from '@components/appSelectPeers';
 import Chat from '@components/chat/chat';
 import confirmationPopup from '@components/confirmationPopup';
-import PopupPickUser from '@components/popups/pickUser';
+import {showPickUser3Popup, showPickUser2Popup} from '@components/popups/pickUser';
 import {toast, toastNew} from '@components/toast';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import wrapCustomEmoji from '@components/wrappers/customEmoji';
@@ -26,13 +26,22 @@ import {makeMediaSize} from '@helpers/mediaSize';
 import ReplyMarkupLayout from '@components/chat/bubbleParts/replyMarkupLayout';
 import classNames from '@helpers/string/classNames';
 
-export default function wrapKeyboardButton({
+export type KeyboardButtonHandler = {
+  text: DocumentFragment | HTMLElement,
+  onClick?: (e: Event) => void,
+  icon?: Icon,
+  as: 'button' | 'a',
+  classNames: string[],
+  refCallbacks: ((ref: HTMLElement) => void)[],
+  bg?: 'success' | 'danger' | 'primary'
+};
+
+export function getKeyboardButtonHandler({
   button,
   chat,
   message,
   replyMarkup,
   wrapOptions,
-  onClick: _onClick,
   className
 }: {
   button: KeyboardButton,
@@ -40,15 +49,16 @@ export default function wrapKeyboardButton({
   message?: Message.message,
   replyMarkup?: ReplyMarkup,
   wrapOptions?: WrapSomethingOptions,
-  onClick?: () => void,
   className?: string
-}) {
+}): KeyboardButtonHandler | undefined {
   let text: DocumentFragment | HTMLElement = wrapRichText(button.text, {noLinks: true, noLinebreaks: true});
   let buttonEl: HTMLElement;
   let icon: Icon;
   let onClick: (e: Event) => void;
   let as: 'button' | 'a' = 'button';
-  const refCallbacks: ((ref: HTMLElement) => void)[] = [];
+  const refCallbacks: ((ref: HTMLElement) => void)[] = [(ref) => {
+    buttonEl = ref;
+  }];
   const classNamesArr: string[] = [className].filter(Boolean);
 
   const {peerId} = chat;
@@ -109,7 +119,7 @@ export default function wrapKeyboardButton({
             types = button.peer_types.map((type) => map[type._]);
           }
 
-          return PopupPickUser.createPicker(types, ['send_inline']);
+          return showPickUser3Popup(types, ['send_inline']);
         });
 
         promise.then(async(chosenPeerId) => {
@@ -286,7 +296,7 @@ export default function wrapKeyboardButton({
           };
         }
 
-        const requestedPeerIds = await PopupPickUser.createPicker2({
+        const requestedPeerIds = await showPickUser2Popup({
           peerType: _peerType,
           filterPeerTypeBy,
           multiSelect: true,
@@ -412,15 +422,38 @@ export default function wrapKeyboardButton({
     );
   }
 
-  return ReplyMarkupLayout.Button({
-    children: text,
-    class: classNames(...classNamesArr),
-    onClick: _onClick ? (e) => (_onClick(), onClick(e)) : onClick,
+  return {
+    text,
+    onClick,
     icon,
+    as,
+    classNames: classNamesArr,
+    refCallbacks,
+    bg
+  };
+}
+
+export default function wrapKeyboardButton(options: {
+  button: KeyboardButton,
+  chat: Chat,
+  message?: Message.message,
+  replyMarkup?: ReplyMarkup,
+  wrapOptions?: WrapSomethingOptions,
+  onClick?: () => void,
+  className?: string
+}) {
+  const handler = getKeyboardButtonHandler(options);
+  if(!handler) return;
+
+  const {onClick: _onClick} = options;
+  return ReplyMarkupLayout.Button({
+    children: handler.text,
+    class: classNames(...handler.classNames),
+    onClick: _onClick ? (e) => (_onClick(), handler.onClick(e)) : handler.onClick,
+    icon: handler.icon,
     ref: (ref) => {
-      buttonEl = ref;
-      refCallbacks.forEach((cb) => cb(ref));
+      handler.refCallbacks.forEach((cb) => cb(ref));
     },
-    as
+    as: handler.as
   });
 }

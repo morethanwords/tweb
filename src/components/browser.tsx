@@ -59,6 +59,7 @@ import {useAppSettings} from '@stores/appSettings';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import clamp from '@helpers/number/clamp';
 import windowSize from '@helpers/windowSize';
+import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 
 type BrowserPageProps<T = {}> = T & {
   title: string, // plain text
@@ -491,7 +492,7 @@ function Browser(props: {
 
           return true;
         },
-        aspectRatio,
+        aspectRatio: IS_TOUCH_SUPPORTED ? aspectRatio : undefined,
         resetTransition: true
       },
       onResize: (movableState) => {

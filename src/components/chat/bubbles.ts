@@ -12,9 +12,10 @@ import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import {logger} from '@lib/logger';
 import rootScope from '@lib/rootScope';
 import BubbleGroups from '@components/chat/bubbleGroups';
-import PopupDatePicker from '@components/popups/datePicker';
-import PopupForward from '@components/popups/forward';
-import PopupStickers from '@components/popups/stickers';
+import showDatePickerPopup from '@components/popups/datePicker';
+import confirmationPopup from '@components/confirmationPopup';
+import showForwardPopup from '@components/popups/forward';
+import showStickersPopup from '@components/popups/stickers';
 import ProgressivePreloader from '@components/preloader';
 import Scrollable, {SliceSides} from '@components/scrollable';
 import StickyIntersector from '@components/stickyIntersector';
@@ -479,6 +480,8 @@ export default class ChatBubbles {
   public container: HTMLDivElement;
   public chatInner: HTMLDivElement;
   public scrollable: Scrollable;
+  public paddingTop: HTMLDivElement;
+  public paddingBottom: HTMLDivElement;
 
   private getHistoryTopPromise: Promise<boolean>;
   private getHistoryBottomPromise: Promise<boolean>;
@@ -1276,32 +1279,34 @@ export default class ChatBubbles {
       }
     });
 
-    /* if(false)  */this.stickyIntersector = new StickyIntersector(this.scrollable.container, (stuck, target) => {
+    const stuckContainers = new WeakSet<HTMLElement>();
+
+    this.stickyIntersector = new StickyIntersector(this.scrollable.container, (stuck, target) => {
+      // target.classList.toggle('is-sticky', stuck);
+      // return;
+
+      if(stuck) stuckContainers.add(target);
+      else stuckContainers.delete(target);
+
+      // Only the bottom-most (latest-timestamp) stuck date should carry is-sticky.
+      let newStickyDate: HTMLElement;
+      let latestTimestamp = -Infinity;
       for(const timestamp in this.dateMessages) {
         const dateMessage = this.dateMessages[timestamp];
-        if(dateMessage.container === target) {
-          const dateBubble = dateMessage.div;
-
-          // dateMessage.container.classList.add('has-sticky-dates');
-
-          // SetTransition(dateBubble, 'kek', stuck, this.previousStickyDate ? 300 : 0);
-          // if(this.previousStickyDate) {
-          // dateBubble.classList.add('kek');
-          // }
-
-          dateBubble.classList.toggle('is-sticky', stuck);
-          if(stuck) {
-            this.previousStickyDate = dateBubble;
-          }
-
-          break;
+        const ts = +timestamp;
+        if(stuckContainers.has(dateMessage.container) && ts > latestTimestamp) {
+          latestTimestamp = ts;
+          newStickyDate = dateMessage.div;
         }
       }
 
-      if(this.previousStickyDate) {
-        // fastRaf(() => {
-        // this.bubblesContainer.classList.add('has-sticky-dates');
-        // });
+      if(this.previousStickyDate !== newStickyDate) {
+        if(this.previousStickyDate) {
+          this.previousStickyDate.classList.remove('is-sticky');
+        }
+
+        newStickyDate?.classList.add('is-sticky');
+        this.previousStickyDate = newStickyDate;
       }
     });
 
@@ -2527,7 +2532,41 @@ export default class ChatBubbles {
       for(const timestamp in this.dateMessages) {
         const d = this.dateMessages[timestamp];
         if(d.div === bubble) {
-          PopupElement.createPopup(PopupDatePicker, new Date(+timestamp), this.onDatePick).show();
+          // Multi-select range only makes sense when the user can actually
+          // delete messages on both sides — otherwise the range pick is a
+          // dead-end UI.
+          const {peerId, threadId, monoforumThreadId} = this.chat;
+          const canDeleteDays = peerId.isUser() && !threadId && !monoforumThreadId;
+          showDatePickerPopup({
+            initDate: new Date(+timestamp),
+            onPick: this.onDatePick,
+            peerId,
+            canMultiSelect: canDeleteDays,
+            // When revoke is allowed, swap the multi-select primary action
+            // to a danger "Clear History" that gates on a confirmation.
+            multiSelectAction: canDeleteDays ? {
+              langKey: 'Calendar.ClearHistory',
+              isDanger: true,
+              callback: async(fromTs, toTs) => {
+                const dayCount = Math.round((toTs - fromTs) / 86400);
+                await confirmationPopup({
+                  descriptionLangKey: 'Calendar.ClearHistory.Confirm',
+                  descriptionLangArgs: [
+                    i18n('Calendar.ClearHistory.SelectedDays', [dayCount])
+                  ],
+                  button: {langKey: 'Delete', isDanger: true}
+                });
+
+                this.managers.appMessagesManager.flushHistory({
+                  peerId,
+                  justClear: true,
+                  revoke: true,
+                  minDate: fromTs,
+                  maxDate: toTs
+                });
+              }
+            } : undefined
+          });
           break;
         }
       }
@@ -2858,7 +2897,7 @@ export default class ChatBubbles {
       const doc = ((message as Message.message).media as MessageMedia.messageMediaDocument)?.document as Document.document;
 
       if(doc?.stickerSetInput) {
-        PopupElement.createPopup(PopupStickers, doc.stickerSetInput, undefined, this.chat.input).show();
+        showStickersPopup(doc.stickerSetInput, undefined, this.chat.input);
       }
 
       return;
@@ -2925,7 +2964,7 @@ export default class ChatBubbles {
         return;
       } else if(target.classList.contains('forward')) {
         const message = this.chat.getMessage(bubbleFullMid);
-        PopupElement.createPopup(PopupForward, {
+        showForwardPopup({
           [this.peerId]: await this.managers.appMessagesManager.getMidsByMessage(message)
         });
         // appSidebarRight.forwardTab.open([mid]);
@@ -3048,12 +3087,7 @@ export default class ChatBubbles {
       }
 
       const inputStickerSet = attribute.stickerset as InputStickerSet.inputStickerSetID;
-      PopupElement.createPopup(
-        PopupStickers,
-        inputStickerSet,
-        true,
-        this.chat.input
-      ).show();
+      showStickersPopup(inputStickerSet, true, this.chat.input);
     });
   }
 
@@ -3495,6 +3529,7 @@ export default class ChatBubbles {
       this.container.classList.remove('scrolled-down');
       this.scrolledDown = false;
     }
+    this.updateGoDownVisibility();
 
     this.checkIntersectingVideos();
   };
@@ -3574,10 +3609,19 @@ export default class ChatBubbles {
     }
 
     this.scrollable = new Scrollable(null, 'IM', /* 10300 */300);
+    this.scrollable.container.classList.add('bubbles-scrollable');
     this.setLoaded('top', false, false);
     this.setLoaded('bottom', false, false);
 
-    this.scrollable.container.append(this.chatInner);
+    this.paddingTop = document.createElement('div');
+    this.paddingTop.classList.add('bubbles-padding', 'bubbles-padding-top');
+    this.paddingTop.style.height = this.chat.chatPaddingTop[0]() + 'px';
+
+    this.paddingBottom = document.createElement('div');
+    this.paddingBottom.classList.add('bubbles-padding', 'bubbles-padding-bottom');
+    this.paddingBottom.style.height = this.chat.chatPaddingBottom[0]() + 'px';
+
+    this.scrollable.container.append(this.paddingTop, this.chatInner, this.paddingBottom);
 
     /* const getScrollOffset = () => {
       //return Math.round(Math.max(300, appPhotosManager.windowH / 1.5));
@@ -3731,7 +3775,10 @@ export default class ChatBubbles {
       const isGroupFirstBubble = bubble.classList.contains('is-group-first');
 
       placeholder.style.cssText = `width: 100%; height: ${height}px;`;
-      deletingItem.element.style.cssText = `position: absolute; z-index: 0; left: 0; right: 0; top: ${deletingItem.rect.top - 56}px; height: ${deletingItem.rect.height}px;`;
+      // top is in the remover container's coordinate system — the container fills .bubbles
+      // which extends past the visible viewport via inset-block: -page-chats-padding.
+      const removerRect = this.remover.parentElement.getBoundingClientRect();
+      deletingItem.element.style.cssText = `position: absolute; z-index: 0; left: 0; right: 0; top: ${deletingItem.rect.top - removerRect.top}px; height: ${deletingItem.rect.height}px;`;
 
       this.remover.append(deletingItem.element);
 
@@ -3802,7 +3849,7 @@ export default class ChatBubbles {
     // this.reactions.delete(mid);
   }
 
-  private animateSomethingWithScroll(promise: Promise<any>, scrollSaver?: ScrollSaver) {
+  public animateSomethingWithScroll(promise: Promise<any>, scrollSaver?: ScrollSaver) {
     if(!scrollSaver) {
       scrollSaver = this.createScrollSaver(true);
       scrollSaver.save();
@@ -4036,10 +4083,14 @@ export default class ChatBubbles {
       element = this.getLastDateGroup();
     } */
 
-    const margin = 4; // * 4 = .25rem
-    /* if(isLastBubble && this.chat.type === 'chat' && this.bubblesContainer.classList.contains('is-chat-input-hidden')) {
-      margin = 20;
-    } */
+    // Scroll positions are computed against bubblesViewport (the visible bubble area)
+    // rather than scrollable.container, which extends into the topbar and chat-input
+    // zones via inset-block: -page-chats-padding.
+    const bubblesViewportRect = this.chat.bubblesViewport.getBoundingClientRect();
+    const containerRect = this.scrollable.container.getBoundingClientRect();
+    // For 'end', fastSmoothScroll's path uses raw containerRect.bottom and isn't
+    // overridable, so compensate via margin to land at viewport.bottom instead.
+    const margin = 4 + (position === 'end' ? containerRect.bottom - bubblesViewportRect.bottom : 0);
 
     const isTogglingHelper = this.chat.container.classList.contains('is-toggling-helper');
     const isChangingHeight = isTogglingHelper || (
@@ -4069,7 +4120,8 @@ export default class ChatBubbles {
         /* const rowsWrapperHeight = this.chat.input.rowsWrapper.getBoundingClientRect().height;
         const diff = rowsWrapperHeight - 54;
         return rect.height + diff; */
-      } : undefined,
+      } : () => bubblesViewportRect.height,
+      getElementPosition: ({elementRect}) => elementRect.top - bubblesViewportRect.top,
       fallbackToElementStartWhenCentering,
       startCallback: (dimensions) => {
         // this.onScroll(true, this.scrolledDown && dimensions.distanceToEnd <= SCROLLED_DOWN_THRESHOLD ? undefined : dimensions);
@@ -4261,6 +4313,19 @@ export default class ChatBubbles {
     this.stickyIntersector && delete this.stickyIntersector;
   }
 
+  public updateStickyIntersectorRootMargin = () => {
+    if(!this.stickyIntersector) return;
+    const top = this.chat.chatPaddingTop[0]();
+    const bottom = this.chat.chatPaddingBottom[0]();
+    this.stickyIntersector.setRootMargin(`-${top}px 0px -${bottom}px 0px`);
+  };
+
+  public updateGoDownVisibility = () => {
+    const visible = !this.scrolledDown &&
+                    !this.container.classList.contains('search-results-active');
+    this.chat.container.classList.toggle('is-go-down-visible', visible);
+  };
+
   public cleanup(bubblesToo = false) {
     this.log('cleanup');
 
@@ -4291,7 +4356,7 @@ export default class ChatBubbles {
 
     // clear messages
     if(bubblesToo) {
-      this.scrollable.replaceChildren();
+      this.scrollable.replaceChildren(this.paddingTop, this.paddingBottom);
       this.chatInner.replaceChildren();
       this.cleanupPlaceholders();
     }
@@ -4448,7 +4513,10 @@ export default class ChatBubbles {
         savedPosition = this.chat.appImManager.getChatSavedPosition(this.chat);
       }
 
-      if(savedPosition) {
+      // `savedPosition` may carry only a pinned hint (no `mids`/`top`) when
+      // the user left the chat scrolled to the bottom. Treat such entries
+      // as "no scroll restore" — only the topbar plate consumes the hint.
+      if(savedPosition?.mids) {
 
       } else if(this.chat.type === ChatType.Search) {
         lastMsgFullMid = topMessageFullMid;
@@ -4676,7 +4744,7 @@ export default class ChatBubbles {
     }
 
     let result: Awaited<ReturnType<ChatBubbles['getHistory']>>;
-    if(!savedPosition) {
+    if(!savedPosition?.mids) {
       result = await m(this.getHistory1(
         !isJump && !additionalFullMid && lastMsgFullMid === topMessageFullMid ? EMPTY_FULL_MID : lastMsgFullMid,
         true,
@@ -4711,7 +4779,12 @@ export default class ChatBubbles {
 
     if(!cached && !samePeer) {
       await m(this.chat.finishPeerChange(finishPeerChangeOptions));
-      this.scrollable.replaceChildren();
+      // Flip the staging-slot wallpaper that `finishPeerChange` prepared, in the same sync
+      // block as clearing the old bubbles. Otherwise the bg DOM swap (running inside the
+      // Solid effect's `await built.readyPromise`) can paint a frame ahead of the cleared
+      // bubbles, briefly showing the new wallpaper behind the old chat's messages.
+      this.chat.revealPreparedBackground();
+      this.scrollable.replaceChildren(this.paddingTop, this.paddingBottom);
       this.preloader.attach(this.container);
     }
 
@@ -4738,7 +4811,10 @@ export default class ChatBubbles {
       const scrollable = this.scrollable;
       scrollable.lastScrollDirection = 0;
       scrollable.lastScrollPosition = 0;
-      scrollable.replaceChildren(chatInner);
+      // Flip the staged wallpaper sync with bubbles mount — see the matching call in the
+      // not-cached branch above.
+      this.chat.revealPreparedBackground();
+      scrollable.replaceChildren(this.paddingTop, chatInner, this.paddingBottom);
 
       if(oldPlaceholderBubble) {
         this.cleanupPlaceholders(oldPlaceholderBubble);
@@ -4767,7 +4843,7 @@ export default class ChatBubbles {
       ]);
 
       // if(dialog && lastMsgID && lastMsgID !== topMessage && (this.bubbles[lastMsgID] || this.firstUnreadBubble)) {
-      if(savedPosition) {
+      if(savedPosition?.mids) {
         scrollable.setScrollPositionSilently(savedPosition.top);
       } else if(haveToScrollToBubble) {
         let unsetPadding: () => void;
@@ -5016,7 +5092,7 @@ export default class ChatBubbles {
 
     const middleware = this.getMiddleware();
     const needFetchInterval = await this.managers.appMessagesManager.isFetchIntervalNeeded(peerId);
-    const needFetchNew = savedPosition || needFetchInterval;
+    const needFetchNew = !!savedPosition?.mids || needFetchInterval;
     if(!needFetchNew) {
       return;
     }
@@ -5117,7 +5193,6 @@ export default class ChatBubbles {
 
       [this.chatInner, this.remover].forEach((element) => {
         element.classList.toggle('is-chat', isLikeGroup);
-        element.classList.toggle('no-input', noInput);
         element.classList.toggle('no-messages', !hasMessages);
         element.classList.toggle('with-message-avatars', isVerificationBot(peerId));
         element.classList.toggle('is-broadcast', isBroadcast);
@@ -5470,12 +5545,7 @@ export default class ChatBubbles {
         showPremiumInfo: () => {
           const a = anchorCallback(() => {
             hideToast();
-            PopupElement.createPopup(
-              PopupStickers,
-              doc.stickerSetInput,
-              undefined,
-              this.chat.input
-            ).show();
+            showStickersPopup(doc.stickerSetInput, undefined, this.chat.input);
           });
 
           toastNew({
@@ -8950,7 +9020,7 @@ export default class ChatBubbles {
         const {lastMsgFullMid, topMessageFullMid, savedPosition} = this.setPeerOptions;
         this.setPeerOptions = undefined;
         // ! warning
-        if((lastMsgFullMid === EMPTY_FULL_MID && !savedPosition) || (topMessageFullMid !== EMPTY_FULL_MID && this.getBubble(topMessageFullMid)) || lastMsgFullMid === topMessageFullMid) {
+        if((lastMsgFullMid === EMPTY_FULL_MID && !savedPosition?.mids) || (topMessageFullMid !== EMPTY_FULL_MID && this.getBubble(topMessageFullMid)) || lastMsgFullMid === topMessageFullMid) {
           isEnd.bottom = true;
         }
       }
