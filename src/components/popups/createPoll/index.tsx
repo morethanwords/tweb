@@ -78,9 +78,26 @@ export const CreatePollPopup = (props: CreatePollPopupProps) => {
 const Header = (props: {
   onSubmit: () => void;
 }) => {
+  const canSubmit = useCanSubmit();
+
+  return (
+    <PopupElement.Header class={styles.header}>
+      <PopupElement.CloseButton class={styles.closeButton} />
+
+      <PopupElement.Title>
+        <I18nTsx key='NewPoll' />
+      </PopupElement.Title>
+
+      <Button class={styles.confirmButton} primaryFilled onClick={props.onSubmit} disabled={!canSubmit()}>
+        <I18nTsx key='Create' />
+      </Button>
+    </PopupElement.Header>
+  );
+};
+
+const QuestionAndDescription = () => {
   const context = useCreatePollContext();
   const {maxQuestionLength, maxDescriptionLength} = useCreatePollLimits();
-  const canSubmit = useCanSubmit();
   const supportsMedia = useSupportsMedia();
 
   const questionError = useMaxLengthError(() => context.store.question, maxQuestionLength);
@@ -114,19 +131,7 @@ const Header = (props: {
   descriptionInput.input.classList.replace('input-field-input', styles.inputField);
 
   return (
-    <PopupElement.Header class={styles.header}>
-      <PopupElement.CloseButton class={styles.closeButton} />
-
-      <PopupElement.Title>
-        <I18nTsx key='NewPoll' />
-      </PopupElement.Title>
-
-      <Button class={styles.confirmButton} primaryFilled onClick={props.onSubmit} disabled={!canSubmit()}>
-        <I18nTsx key='Create' />
-      </Button>
-
-      <Space amount='1rem' class={styles.flexFull} />
-
+    <>
       <SimpleFormField
         value={context.store.question}
         class={classNames(styles.flexFull, styles.formField)}
@@ -186,8 +191,7 @@ const Header = (props: {
           </SimpleFormField.WithAutoLengthCounter>
         </Show>
       </SimpleFormField>
-
-    </PopupElement.Header>
+    </>
   );
 };
 
@@ -196,24 +200,40 @@ const BodyContent = () => {
 
   return (
     <Scrollable ref={setScrollable}>
-      <div class={styles.sectionTitle}>
-        <I18nTsx key='PollOptions' />
+      <Space amount='1rem' />
+
+      <div class={styles.sectionWrapper}>
+        <div class={styles.section}>
+          <QuestionAndDescription />
+        </div>
       </div>
 
-      <Space amount='0.5rem' />
+      <Space amount='1rem' />
 
-      <div class={styles.section}>
-        <PollOptionsSectionContent scrollable={scrollable()} />
+      <div class={styles.sectionWrapper}>
+        <div class={styles.section}>
+          <div class={styles.sectionTitle}>
+            <I18nTsx key='PollOptions' />
+          </div>
+
+          <Space amount='0.5rem' />
+
+          <PollOptionsSectionContent scrollable={scrollable()} />
+        </div>
       </div>
 
-      <div class={styles.sectionTitle}>
-        <I18nTsx key='Settings' />
-      </div>
+      <Space amount='1rem' />
 
-      <Space amount='0.5rem' />
+      <div class={styles.sectionWrapper}>
+        <div class={styles.section}>
+          <div class={styles.sectionTitle}>
+            <I18nTsx key='Settings' />
+          </div>
 
-      <div class={styles.section}>
-        <PollSettingsSectionContent />
+          <Space amount='0.5rem' />
+
+          <PollSettingsSectionContent />
+        </div>
       </div>
 
       <Space amount='1.5rem' />
