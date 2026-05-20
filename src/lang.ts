@@ -4646,7 +4646,9 @@ const lang = {
   'CreateBot.Username.InvalidChars': 'Username can only contain letters, numbers and underscores.',
   'CreateBot.Username.Invalid': 'Username is invalid.',
   'CreateBot.Username.Error': 'Username check failed.',
-  'CreateBot.BotWasCreated': 'The bot **%s** was created'
+  'CreateBot.BotWasCreated': 'The bot **%s** was created',
+  'CreateBot.TooManyBotsCreated': 'You have created too many bots. Please wait %s before creating a new one.',
+  'CreateBot.FailedToCreate': 'Failed to create the bot.'
 };
 
 export default lang;
