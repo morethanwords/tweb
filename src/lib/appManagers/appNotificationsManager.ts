@@ -136,7 +136,8 @@ export class AppNotificationsManager extends AppManager {
 
   public getContactSignUpNotification() {
     if(this.notifyContactsSignUp) return this.notifyContactsSignUp;
-    return this.notifyContactsSignUp = this.apiManager.invokeApi('account.getContactSignUpNotification');
+    return this.notifyContactsSignUp = this.apiManager.invokeApi('account.getContactSignUpNotification')
+    .then((silent) => !silent);
   }
 
   public setContactSignUpNotification(silent: boolean) {
