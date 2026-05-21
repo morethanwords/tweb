@@ -28,7 +28,7 @@ import {MediaAttachment} from './mediaAttachment';
 import {CreatePollStore, useCreatePollContext} from './storeContext';
 import styles from './styles.module.scss';
 import {useCreatePollLimits} from './useCreatePollLimits';
-import showSchedulePostPopup from '@components/chat/suggestPostPopup/popupSchedulePost';
+import showDatePickerPopup from '@components/popups/datePicker';
 
 type BooleanSettingKey = FilterBooleanKeys<CreatePollStore>;
 
@@ -309,7 +309,7 @@ type PollDurationMenuArgs = {
 };
 
 const usePollDurationMenu = (args: PollDurationMenuArgs) => {
-  const {ButtonMenuSync, PopupSchedulePost} = useHotReloadGuard();
+  const {ButtonMenuSync} = useHotReloadGuard();
 
   const {closePeriodMax} = useCreatePollLimits();
 
@@ -342,12 +342,13 @@ const usePollDurationMenu = (args: PollDurationMenuArgs) => {
             const maxDate = new Date(minDate);
             maxDate.setDate(maxDate.getDate() + Math.floor(closePeriodMax() / oneDayInSeconds));
 
-            showSchedulePostPopup({
+            showDatePickerPopup({
               initDate: new Date(minTimeDate),
               minSendDateLangKey: 'NewPoll.MinEndTime',
               minDate,
               minTimeDate,
               maxDate,
+              withTime: true,
               onPick: (timestamp) => {
                 args.onCustomTimestamp(timestamp);
               },

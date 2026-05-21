@@ -7,7 +7,6 @@ import {avatarNew, AvatarNewTsx, StoriesSegments} from '@components/avatarNew';
 import BusinessHours from '@components/businessHours';
 import ButtonMenu, {ButtonMenuSync} from '@components/buttonMenu';
 import {ChatType} from '@components/chat/chatType';
-import PopupSchedulePost from '@components/chat/suggestPostPopup/popupSchedulePost';
 import confirmationPopup from '@components/confirmationPopup';
 import createEmojiDropdownButton from '@components/emojiDropdownButton';
 import {EmoticonsDropdown} from '@components/emoticonsDropdown';
@@ -136,7 +135,6 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       appSidebarRight,
       createEmojiDropdownButton,
       getFileAndOpenEditor,
-      PopupSchedulePost,
       AvatarNewTsx,
       AppMediaViewerStatic,
       AppPollResultsTab,

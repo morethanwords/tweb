@@ -5,7 +5,7 @@ import {ButtonIconTsx} from '@components/buttonIconTsx';
 import {IconTsx} from '@components/iconTsx';
 import SimpleFormField from '@components/simpleFormField';
 import styles from '@components/chat/suggestPostPopup/commonStyles.module.scss';
-import showSchedulePostPopup from '@components/chat/suggestPostPopup/popupSchedulePost';
+import showDatePickerPopup from '@components/popups/datePicker';
 
 
 type Props = {
@@ -24,11 +24,11 @@ const PublishTimeField = (props: Props) => {
     const minDate = new Date(minTimeDate);
     minDate.setHours(0, 0, 0, 0);
 
-    showSchedulePostPopup({
+    showDatePickerPopup({
       initDate: new Date(minTimeDate),
-      // captionKey: 'SuggestedPosts.PublishingTime.MinSendTime',
       minDate,
       minTimeDate,
+      withTime: true,
       onPick: (timestamp) => {
         props.onChange(timestamp);
       }
