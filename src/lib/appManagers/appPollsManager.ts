@@ -145,7 +145,17 @@ export class AppPollsManager extends AppManager {
 
   public saveResults(poll: Poll, results: PollResults) {
     if(this.results[poll.id]) {
-      results = Object.assign(this.results[poll.id], results);
+      const existingResults = this.results[poll.id];
+
+      // in some cases, results are returned without results or pFlags.min, so we need to clear chosen indexes
+      // for example when retracting vote from a poll with close_date and hide_results_until_close
+      if(!results.pFlags.min && !results.results) {
+        existingResults.results?.forEach(result => {
+          delete result.pFlags.chosen;
+        });
+      }
+
+      results = Object.assign(existingResults, results);
     } else {
       this.results[poll.id] = results;
     }
