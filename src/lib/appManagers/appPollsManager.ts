@@ -15,6 +15,7 @@ import {LogTypes} from '@lib/logger';
 import parseMarkdown from '@lib/richTextProcessor/parseMarkdown';
 import {MessageSendingParams} from './appMessagesManager';
 import getPhotoInput from './utils/photos/getPhotoInput';
+import {oneHourInSeconds} from '@lib/constants';
 
 type PollId = Poll['id'];
 
@@ -47,6 +48,7 @@ export class AppPollsManager extends AppManager {
   public results: {[id: PollId]: PollResults} = {};
   public pollToMessages: {[id: PollId]: Set<string>} = {};
   private refetchResultsTimeouts: {[id: PollId]: RefetchTimeoutPayload} = {};
+  private createdPollIds: Set<string> = new Set();
 
   constructor() {
     super();
@@ -84,6 +86,7 @@ export class AppPollsManager extends AppManager {
     });
 
     this.refetchResultsTimeouts = {};
+    this.createdPollIds.clear();
   };
 
   public savePoll(poll: Poll, results: PollResults, message?: Message.message) {
@@ -103,23 +106,36 @@ export class AppPollsManager extends AppManager {
       results = this.saveResults(poll, results);
     }
 
+    this.checkRefetchPollTimeout(poll);
+
+    return {poll, results};
+  }
+
+  private checkRefetchPollTimeout(poll: Poll) {
+    const id = poll.id;
+    if(this.createdPollIds.has(id.toString())) return;
+
     const refetchResultTimeout = this.refetchResultsTimeouts[id];
+
     if(refetchResultTimeout && refetchResultTimeout.closeTimestamp !== poll.close_date) {
       self.clearTimeout(refetchResultTimeout.timerId);
       delete this.refetchResultsTimeouts[id];
     }
 
-    if(poll.close_date) {
-      this.refetchResultsTimeouts[id] = {
-        timerId: self.setTimeout(() => {
-          this.refetchResultsForPoll(id);
-          delete this.refetchResultsTimeouts[id];
-        }, poll.close_date - this.timeManager.getServerTimeOffset() - Date.now() / 1000),
-        closeTimestamp: poll.close_date
-      };
-    }
+    const nowInSeconds = Date.now() / 1000;
+    const closeDate = poll.close_date ? poll.close_date - this.timeManager.getServerTimeOffset() : 0;
 
-    return {poll, results};
+    if(!closeDate || closeDate <= nowInSeconds || this.refetchResultsTimeouts[id]) return;
+
+    const diffInSeconds = closeDate - nowInSeconds;
+    if(diffInSeconds >= oneHourInSeconds) return;
+
+    this.refetchResultsTimeouts[id] = {
+      timerId: self.setTimeout(() => {
+        this.refetchResultsForPoll(id);
+      }, diffInSeconds * 1000),
+      closeTimestamp: poll.close_date
+    };
   }
 
   public saveAndDispatchPoll(poll: Poll, results: PollResults, message?: Message.message) {
@@ -443,6 +459,7 @@ export class AppPollsManager extends AppManager {
 
   private makePollMedia({peerId, payload, parsedPayload, uploadingMedia}: MakePollMediaArgs) {
     const pollId = randomLong();
+    this.createdPollIds.add(pollId);
 
     const flag = (value: boolean) => value ? true as const : undefined;
 
