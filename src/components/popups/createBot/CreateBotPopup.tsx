@@ -1,11 +1,12 @@
 import styles from '@components/popups/createBot/createBot.module.scss';
 import PopupElement from '@components/popups/indexTsx';
 import SimpleFormField from '@components/simpleFormField';
+import Space from '@components/space';
 import {createMutation} from '@helpers/solid/createMutation';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {LangPackKey} from '@lib/langPack';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {createEffect, createMemo, createSignal, on, onCleanup, Show} from 'solid-js';
+import {createComputed, createMemo, createSignal, on, onCleanup, Show} from 'solid-js';
 
 
 const USERNAME_SUFFIX = 'bot';
@@ -74,7 +75,7 @@ const CreateBotPopup = (props: CreateBotPopupProps) => {
   }
 
   // Constantly check username availability when it changes
-  createEffect(on(usernameValue, (value) => {
+  createComputed(on(usernameValue, (value) => {
     const localResult = validateUsernameLocally(value);
     if(localResult) {
       setUsernameStatus(localResult);
@@ -126,6 +127,7 @@ const CreateBotPopup = (props: CreateBotPopupProps) => {
   const usernameStatusKey = createMemo((): LangPackKey => {
     const s = usernameStatus();
     switch(s.state) {
+      case 'idle': return 'CreateBot.Username.Caption';
       case 'loading': return 'CreateBot.Username.Checking';
       case 'available': return 'CreateBot.Username.Available';
       case 'taken': return 'CreateBot.Username.Taken';
@@ -140,7 +142,6 @@ const CreateBotPopup = (props: CreateBotPopupProps) => {
         break;
       case 'error': return 'CreateBot.Username.Error';
     }
-    return undefined;
   });
 
   const usernameStatusClass = createMemo(() => {
@@ -157,22 +158,23 @@ const CreateBotPopup = (props: CreateBotPopupProps) => {
         <PopupElement.CloseButton class={styles.popupCloseButton} />
       </PopupElement.Header>
       <PopupElement.Body class={styles.popupBody}>
-        <div class={styles.avatar}>
-          <AvatarNewTsx peerId={props.requestingPeerId} size={120} />
+        <div class={styles.header}>
+          <div class={styles.avatar}>
+            <AvatarNewTsx peerId={props.requestingPeerId} size={120} />
+          </div>
+
+          <I18nTsx class={styles.title} key="CreateBot.Title" />
+
+          <div class={styles.subtitle}>
+            <I18nTsx
+              key="CreateBot.Description"
+              args={[<PeerTitleTsx peerId={props.requestingPeerId} />]}
+            />
+          </div>
         </div>
 
-        <I18nTsx class={styles.title} key="CreateBot.Title" />
-
-        <div class={styles.subtitle}>
-          <I18nTsx
-            key="CreateBot.Description"
-            args={[<PeerTitleTsx peerId={props.requestingPeerId} />]}
-          />
-        </div>
-
-        <div class={styles.fields}>
+        <div class={styles.section}>
           <SimpleFormField
-            class={styles.field}
             value={botName()}
             onChange={setBotName}
             isError={!!nameError() && botName().length > 0}
@@ -185,61 +187,67 @@ const CreateBotPopup = (props: CreateBotPopupProps) => {
               maxLength={MAX_BOT_NAME_LENGTH}
             />
           </SimpleFormField>
+        </div>
 
-          <div>
-            <SimpleFormField
-              class={`${styles.field} ${styles.usernameField}`}
-              value={usernameValue()}
-              onChange={handleUsernameChange}
-              isError={usernameStatus().state === 'taken' || usernameStatus().state === 'invalid'}
-            >
-              <SimpleFormField.SideContent first last class={styles.usernameFieldHiddenPrefix}>
-                {USERNAME_PREFIX}
-              </SimpleFormField.SideContent>
-              <SimpleFormField.Label active>
-                <I18nTsx key="CreateBot.Username.Label" />
-              </SimpleFormField.Label>
-              <SimpleFormField.Input
-                forceFieldValue
-                class={styles.usernameInput}
-                autocapitalize="off"
-                autocomplete="off"
-                spellcheck={false}
-              />
-              <div class={styles.usernameOverlay}>
-                <span class={styles.usernameOverlayPrefix}>{USERNAME_PREFIX}</span>
-                <span class={styles.usernameOverlayValue}>{usernameValue()}</span>
-                <span class={styles.usernameOverlaySuffix}>{USERNAME_SUFFIX}</span>
-              </div>
-            </SimpleFormField>
+        <div class={styles.caption}>
+          <I18nTsx key="CreateBot.Name.Caption" />
+        </div>
 
-            <div class={styles.linkInfo}>
-              <Show
-                when={usernameStatus().state === 'available'}
-                fallback={
-                  <Show when={usernameStatusKey()}>
-                    <span class={usernameStatusClass()}>
-                      <I18nTsx key={usernameStatusKey()} />
-                    </span>
-                  </Show>
-                }
-              >
-                <I18nTsx
-                  key="CreateBot.Link"
-                  args={[
-                    <span class={styles.linkInfoLink}>
-                      t.me/{fullUsername()}
-                    </span>
-                  ]}
-                />
-              </Show>
+        <Space amount='1rem' />
+
+        <div class={styles.section}>
+          <SimpleFormField
+            class={styles.usernameField}
+            value={usernameValue()}
+            onChange={handleUsernameChange}
+            isError={usernameStatus().state === 'taken' || usernameStatus().state === 'invalid'}
+          >
+            <SimpleFormField.SideContent first last class={styles.usernameFieldHiddenPrefix}>
+              {USERNAME_PREFIX}
+            </SimpleFormField.SideContent>
+            <SimpleFormField.Label active>
+              <I18nTsx key="CreateBot.Username.Label" />
+            </SimpleFormField.Label>
+            <SimpleFormField.Input
+              forceFieldValue
+              class={styles.usernameInput}
+              autocapitalize="off"
+              autocomplete="off"
+              spellcheck={false}
+            />
+            <div class={styles.usernameOverlay}>
+              <span class={styles.usernameOverlayPrefix}>{USERNAME_PREFIX}</span>
+              <span class={styles.usernameOverlayValue}>{usernameValue()}</span>
+              <span class={styles.usernameOverlaySuffix}>{USERNAME_SUFFIX}</span>
             </div>
-          </div>
+          </SimpleFormField>
+        </div>
+
+        <div class={styles.caption}>
+          <Show
+            when={usernameStatus().state === 'available'}
+            fallback={
+              <Show when={usernameStatusKey()}>
+                <span class={usernameStatusClass()}>
+                  <I18nTsx key={usernameStatusKey()} />
+                </span>
+              </Show>
+            }
+          >
+            <I18nTsx
+              key="CreateBot.Link"
+              args={[
+                <span class={styles.linkInfoLink}>
+                  t.me/{fullUsername()}
+                </span>
+              ]}
+            />
+          </Show>
         </div>
       </PopupElement.Body>
       <PopupElement.Footer class={styles.popupFooter}>
         <PopupElement.FooterButton
-          secondary
+          color='secondary'
           langKey="Cancel"
           callback={() => {
             setShow(false);

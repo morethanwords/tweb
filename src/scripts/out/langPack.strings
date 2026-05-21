@@ -4025,7 +4025,9 @@
 "CreateBot.Title" = "Create Bot";
 "CreateBot.Description" = "**%s** would like to create and manage a chatbot on your behalf.";
 "CreateBot.Name.Label" = "Bot Name";
+"CreateBot.Name.Caption" = "Choose a name for your bot";
 "CreateBot.Username.Label" = "Bot Username";
+"CreateBot.Username.Caption" = "Choose a username for your bot";
 "CreateBot.Link" = "Link: %s";
 "CreateBot.Create" = "Create";
 "CreateBot.Username.Checking" = "Checking username...";
