@@ -41,7 +41,7 @@
 }
 
 .sectionTitle {
-  color: var(--secondary-text-color);
+  color: var(--primary-color);
   font-weight: var(--font-weight-bold);
   padding: 0 1rem;
 }
@@ -198,11 +198,6 @@
   &:hover {
     background: var(--light-filled-secondary-text-color);
   }
-}
-
-.inputScrollable {
-  max-height: 4.5em;
-  margin: 0.25rem 0;
 }
 
 .pollDurationMenu {

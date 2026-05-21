@@ -97,7 +97,7 @@ export const AddOption = (props: {
       </Show>
 
       <div class={styles.checkContainer}>
-        <Transition name='fade'>
+        <Transition name='fade' mode='outin'>
           <Switch>
             <Match when={!visible()}>
               <IconTsx icon='add' class={styles.addOptionPlus} />

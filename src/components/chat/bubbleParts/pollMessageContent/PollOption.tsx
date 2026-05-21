@@ -224,7 +224,6 @@ const PollProgressLine = (inProps: JSX.HTMLAttributes<HTMLDivElement> & {
       classList={{
         [styles.correct]: !contextProps.isOutgoing && props.hasCorrectAnswer && props.correct,
         [styles.wrong]: !contextProps.isOutgoing && props.hasCorrectAnswer && !props.correct,
-        [styles.isOutgoing]: contextProps.isOutgoing && props.hasCorrectAnswer,
         ...props.classList
       }}
       {...restProps}>

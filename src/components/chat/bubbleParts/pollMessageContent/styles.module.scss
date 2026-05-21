@@ -153,10 +153,6 @@
     &.wrong &Fill {
       background-color: var(--gc-red-text-color);
     }
-
-    &.isOutgoing &Fill {
-      background-color: white;
-    }
   }
 }
 

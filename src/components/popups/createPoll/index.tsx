@@ -140,9 +140,7 @@ const QuestionAndDescription = () => {
         isError={questionError.hasError()}
       >
         <SimpleFormField.InputStub>
-          <Scrollable relative class={styles.inputScrollable}>
-            {questionInput.input}
-          </Scrollable>
+          {questionInput.input}
         </SimpleFormField.InputStub>
         <SimpleFormField.Label>
           <I18nTsx key='AskAQuestion' />
@@ -166,9 +164,7 @@ const QuestionAndDescription = () => {
         isMarkupTooltipHost
       >
         <SimpleFormField.InputStub>
-          <Scrollable relative class={styles.inputScrollable}>
-            {descriptionInput.input}
-          </Scrollable>
+          {descriptionInput.input}
         </SimpleFormField.InputStub>
         <SimpleFormField.Label><I18nTsx key='DescriptionOptionalPlaceholder' /></SimpleFormField.Label>
         <SimpleFormField.SideContent withFixedIcon first last>

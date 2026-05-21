@@ -344,15 +344,15 @@ const usePollDurationMenu = (args: PollDurationMenuArgs) => {
 
             showSchedulePostPopup({
               initDate: new Date(minTimeDate),
-              // captionKey: 'NewPoll.MinEndTime',
+              minSendDateLangKey: 'NewPoll.MinEndTime',
               minDate,
               minTimeDate,
               maxDate,
               onPick: (timestamp) => {
                 args.onCustomTimestamp(timestamp);
-              }
-              // btnConfirmTodayLangKey: 'NewPoll.EndToday',
-              // btnConfirmOnDateLangKey: 'NewPoll.EndDate'
+              },
+              sendTodayLangKey: 'NewPoll.EndToday',
+              sendDateLangKey: 'NewPoll.EndDate'
             });
           }
         }
