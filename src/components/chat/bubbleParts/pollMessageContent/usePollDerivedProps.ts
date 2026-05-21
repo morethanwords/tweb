@@ -41,6 +41,7 @@ export function usePollDerivedProps({props, pollOptions, chosenIndexes, newOptio
   const shuffleOptions = createMemo(() => shouldShufflePollOptions(props.poll));
   const showWhoVoted = createMemo(() => !!props.poll.pFlags.public_voters);
   const closed = createMemo(() => !!props.poll.pFlags.closed);
+  const hideResults = createMemo(() => !!props.poll.pFlags.hide_results_until_close && !closed() && !props.poll.pFlags.creator);
   const closesAtTimestamp = createMemo(() => timeOffset.state === 'ready' ? props.poll.close_date - timeOffset() : 0);
 
   const votersCount = createMemo(() => props.results?.total_voters ?? 0);
@@ -61,7 +62,7 @@ export function usePollDerivedProps({props, pollOptions, chosenIndexes, newOptio
   const canShowCloseTimer = createMemo(() =>
     !props.poll.pFlags.closed && !!closesAtTimestamp() && closesAtTimestamp() > new Date().getTime() / 1000
   );
-  const canShowViewResults = createMemo(() => showWhoVoted() && !!props.results.total_voters && isShowingResult());
+  const canShowViewResults = createMemo(() => showWhoVoted() && !!props.results.results?.some(r => !!r.voters) && isShowingResult());
 
   // The footer will have the clickable classname added/removed only after the out animation has finished
   const willFooterBeClickable = createMemo(() => canShowViewResults() || hasSelectedSomething() || hasTypedNewOption());
@@ -116,6 +117,7 @@ export function usePollDerivedProps({props, pollOptions, chosenIndexes, newOptio
     shuffleOptions,
     showWhoVoted,
     closed,
+    hideResults,
     closesAtTimestamp,
     votersCount,
     recentVoters,

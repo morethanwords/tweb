@@ -39,6 +39,7 @@ export const PollOption = (props: {
   hasCorrectAnswer: boolean;
   pollViewerPayload?: DataPollViewerIdxDirectivePayload;
   isPendingVote?: boolean;
+  hideResults?: boolean;
 
   result?: PollOptionResult;
 }) => {
@@ -92,12 +93,12 @@ export const PollOption = (props: {
                 <Spinner thickness={spinnerThickness} />
               </div>
             </Match>
-            <Match when={!isShowingResult()}>
+            <Match when={!isShowingResult() || props.hideResults}>
               <Show
                 when={props.allowMultipleAnswers}
-                fallback={<StaticRadio class={styles.checkbox} checked={props.checked} />}
+                fallback={<StaticRadio class={styles.checkbox} checked={isShowingResult() ? props.result?.chosen : props.checked} />}
               >
-                <InMessageCheckbox class={styles.checkbox} checked={props.checked} isOutgoing={contextProps.isOutgoing} />
+                <InMessageCheckbox class={styles.checkbox} checked={isShowingResult() ? props.result?.chosen : props.checked} isOutgoing={contextProps.isOutgoing} />
               </Show>
             </Match>
             <Match when={canShowPercentage()}>
@@ -128,7 +129,7 @@ export const PollOption = (props: {
         </Show>
 
         <Transition name='fade-2'>
-          <Show when={isShowingResult() && canShowPercentage()}>
+          <Show when={isShowingResult() && canShowPercentage() && !props.hideResults}>
             <PollProgressLine
               progress={(props.result.percent || 0) / 100}
               canAnimate={canAnimate()}
@@ -138,7 +139,7 @@ export const PollOption = (props: {
           </Show>
         </Transition>
         <Transition name='fade-2'>
-          <Show when={canAnimate() && isShowingResult() && !canShowPercentage() && !delayedIsPendingVote()}>
+          <Show when={canAnimate() && isShowingResult() && !canShowPercentage() && !delayedIsPendingVote() && !props.hideResults}>
             <PathDot
               class={styles.pathDot}
               dotColor='var(--primary-color)'
@@ -154,7 +155,7 @@ export const PollOption = (props: {
           </Show>
         </Transition>
         <Transition name='fade-2'>
-          <Show when={canShowPercentageCheckbox() && props.hasCorrectAnswer && props.result.chosen}>
+          <Show when={canShowPercentageCheckbox() && props.hasCorrectAnswer && props.result.chosen && !props.hideResults}>
             <div
               class={styles.chosenCheckboxDot}
               classList={{
@@ -165,7 +166,7 @@ export const PollOption = (props: {
           </Show>
         </Transition>
         <Transition name='fade-2'>
-          <Show when={canShowPercentageCheckbox()}>
+          <Show when={canShowPercentageCheckbox() && !props.hideResults}>
             <InMessageCheckbox
               round={!props.allowMultipleAnswers}
               class={styles.chosenCheckbox}

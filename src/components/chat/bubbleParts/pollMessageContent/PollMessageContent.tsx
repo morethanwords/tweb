@@ -102,6 +102,7 @@ export const PollMessageContent = defineSolidElement({
       hasCorrectAnswer,
       showWhoVoted,
       closed,
+      hideResults,
       closesAtTimestamp,
       votersCount,
       recentVoters,
@@ -338,6 +339,7 @@ export const PollMessageContent = defineSolidElement({
                     pollViewerPayload={[mediaViewerPayload().indexes.options.get(initialIdx()), elementByIndexMap]}
                     result={getResultForOption(initialIdx())}
                     isPendingVote={delayedSendVotePending()}
+                    hideResults={hideResults()}
                   />
                 );
               }}
