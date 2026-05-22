@@ -91,7 +91,12 @@ export const AddOption = (props: {
   };
 
   return (
-    <div class={classNames(styles.pollOption, styles.hasMedia)}>
+    <div
+      class={classNames(styles.pollOption, styles.hasMedia, styles.isAddOption)}
+      classList={{
+        [styles.isIncoming]: !contextProps.isOutgoing
+      }}
+    >
       <Show when={!visible()}>
         <div class={styles.clickableArea} classList={{[styles.outgoing]: contextProps.isOutgoing}} use:ripple={!visible()} onClick={() => props.onVisibleChange(!visible())} />
       </Show>
@@ -113,6 +118,7 @@ export const AddOption = (props: {
           </Switch>
         </Transition>
       </div>
+      <div class={styles.pollOptionSpacerFirst}></div>
       <div class={styles.labelRow}>
         <div class={styles.labelText}>
           <Transition name='fade' mode='outin' onAfterEnter={onAfterEnter}>
@@ -125,6 +131,7 @@ export const AddOption = (props: {
           </Transition>
         </div>
       </div>
+      <div class={styles.pollOptionSpacerLast}></div>
       <div
         class={styles.pollOptionMedia}
         classList={{

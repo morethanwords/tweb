@@ -368,7 +368,8 @@ export const PollMessageContent = defineSolidElement({
           class={styles.footer}
           classList={{
             [styles.clickable]: isFooterClickable(),
-            [styles.outgoing]: props.isOutgoing
+            [styles.outgoing]: props.isOutgoing,
+            [styles.withTime]: canShowCloseTimer()
           }}
           use:ripple={isFooterClickable()}
           onClick={onFooterClick}
@@ -414,9 +415,6 @@ export const PollMessageContent = defineSolidElement({
             </div>
           </div>
         </Show>
-
-        {/* some space for the time span */}
-        <Space amount='0.75rem' />
       </PollMessageContentPropsContext.Provider>
     );
   }

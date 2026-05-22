@@ -65,6 +65,8 @@ export const PollOption = (props: {
   // So it waits a little bit for the spinner to disappear
   const delayedIsPendingVote = createDelayed(() => props.isPendingVote ?? false, false, (value) => value ? -1 : 100);
 
+  const showPathDot = createMemo(() => canAnimate() && isShowingResult() && !canShowPercentage() && !delayedIsPendingVote() && !props.hideResults);
+
   onMount(() => {
     requestRAF(() => {
       setCanAnimate(true);
@@ -109,6 +111,7 @@ export const PollOption = (props: {
           </Switch>
         </Transition>
       </div>
+      <div class={styles.pollOptionSpacerFirst}></div>
       <div class={styles.labelRow}>
         <div class={styles.labelText}>
           <TranslatableMessageTsx
@@ -138,22 +141,20 @@ export const PollOption = (props: {
             />
           </Show>
         </Transition>
-        <Transition name='fade-2'>
-          <Show when={canAnimate() && isShowingResult() && !canShowPercentage() && !delayedIsPendingVote() && !props.hideResults}>
-            <PathDot
-              class={styles.pathDot}
-              dotColor='var(--primary-color)'
-              width={34}
-              height={24}
-              dotThickness={4}
-              dotLength={3.6}
-              radius={8}
-              padding={0}
-              duration={0.4}
-              onAnimationEnd={() => void setCanShowPercentage(true)}
-            />
-          </Show>
-        </Transition>
+        <Show when={showPathDot()}>
+          <PathDot
+            class={styles.pathDot}
+            dotColor='var(--primary-color)'
+            width={48}
+            height={24}
+            dotThickness={4}
+            dotLength={3.6}
+            radius={8}
+            padding={0}
+            duration={0.4}
+            onAnimationEnd={() => void setCanShowPercentage(true)}
+          />
+        </Show>
         <Transition name='fade-2'>
           <Show when={canShowPercentageCheckbox() && props.hasCorrectAnswer && props.result.chosen && !props.hideResults}>
             <div
@@ -183,6 +184,7 @@ export const PollOption = (props: {
         </Transition>
       </div>
       <Show when={props.withImage}>
+        <div class={styles.pollOptionSpacerLast}></div>
         <div
           class={classNames(styles.pollOptionMedia, styles.stripped)}
           classList={{[styles.clickable]: !!props.photo}}

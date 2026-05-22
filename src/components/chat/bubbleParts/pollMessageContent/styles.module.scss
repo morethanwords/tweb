@@ -14,12 +14,10 @@
   display: flex;
   align-items: center;
 
-  gap: 0.75rem;
-
   --vertical-padding: 0.75rem;
-  padding: var(--vertical-padding) 0.75rem var(--vertical-padding) 1rem;
+  padding: var(--vertical-padding) 0.75rem var(--vertical-padding) 0.625rem;
 
-  min-width: 280px;
+  min-width: 260px;
 
   &.hasMedia {
     --vertical-padding: 0.5rem;
@@ -31,8 +29,8 @@
     align-items: center;
     justify-content: center;
 
-    width: 2.25rem;
-    height: 2.25rem;
+    width: 2rem;
+    height: 2rem;
 
     &.stripped {
       overflow: hidden;
@@ -67,6 +65,20 @@
         height: 20px;
       }
     }
+  }
+
+  &SpacerFirst {
+    flex-shrink: 0;
+    width: 1.5rem;
+  }
+
+  &SpacerLast {
+    flex-shrink: 0;
+    width: 0.5rem;
+  }
+
+  &.isAddOption.isIncoming {
+    color: #939fa9;
   }
 }
 
@@ -112,7 +124,7 @@
     color: var(--secondary-text-color);
     white-space: nowrap;
     flex-shrink: 0;
-    font-size: 0.875rem;
+    font-size: 0.75rem;
   }
 
   &Progress {
@@ -158,8 +170,8 @@
 
 .checkContainer {
   position: relative;
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 1.5rem;
+  height: 1.5rem;
 }
 
 .checkbox {
@@ -170,11 +182,11 @@
 }
 
 .percent {
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   position: absolute;
   top: 50%;
   right: 0;
-  transform: translate(0.25rem, -50%);
+  transform: translate(0.5rem, calc(-50% + 2px));
   white-space: nowrap;
   font-weight: var(--font-weight-bold);
   user-select: none;
@@ -186,7 +198,7 @@
     position: absolute;
     bottom: 0;
     left: 0;
-    transform: translate(-1.5rem, 14px);
+    transform: translate(-1.75rem, 14px);
 
     --checkbox-size: 0.875rem;
     --checkbox-scale: 1.25;
@@ -204,7 +216,7 @@
     position: absolute;
     bottom: 0;
     left: 0;
-    transform: translate(-36px, 11px);
+    transform: translate(-40px, 11px);
 
     width: 0.5rem;
     height: 0.5rem;
@@ -226,7 +238,7 @@
   overflow: hidden;
   display: flex;
   justify-content: center;
-  padding: 0.75rem 1.5rem;
+  padding: 0.75rem 1.5rem 1.25rem;
   font-size: 0.875rem;
   user-select: none;
   text-align: center;
@@ -244,12 +256,19 @@
       @include hover-global(rgba(255, 255, 255, 0.1), background-color, true);
     }
   }
+
+  &.withTime {
+    padding-bottom: 2rem;
+  }
+
+  border-end-end-radius: var(--border-end-end-radius);
+  border-end-start-radius: var(--border-end-start-radius);
 }
 
 .header {
   display: flex;
   gap: 1rem;
-  padding: 0.75rem 0.625rem 0.25rem 0.5rem;
+  padding: 0.25rem 0.625rem 0.25rem 0.5rem;
   align-items: center;
 
   &TitleContainer {
@@ -285,6 +304,7 @@
 
 .avatarGroupItem {
   position: relative;
+  cursor: pointer;
 
   &.pushOverNext {
     width: 0.625rem;
@@ -360,8 +380,7 @@
 }
 
 .description {
-  font-size: 0.875em;
-  padding: 0.75rem 0.5rem 0;
+  padding: 0.5rem 0.5rem 0.25rem;
   text-wrap: balance;
 
   &:global(.is-hovering-spoiler) {
@@ -388,18 +407,19 @@
   position: absolute;
   bottom: 0;
   left: 0;
-  transform: translate(-23px, 9px);
+  transform: translate(-37px, 9px);
 }
 
 .timer {
   position: relative;
   height: 0;
+  pointer-events: none;
 
   &Content {
     position: absolute;
     bottom: 0;
     left: 50%;
-    transform: translate(-50%, 0.25rem);
+    transform: translate(-50%, -1rem);
     font-size: 0.75rem;
     color: var(--secondary-text-color);
   }
