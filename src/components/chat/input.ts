@@ -51,7 +51,7 @@ import MentionsHelper from '@components/chat/mentionsHelper';
 import fixSafariStickyInput from '@helpers/dom/fixSafariStickyInput';
 import ReplyKeyboard from '@components/chat/replyKeyboard';
 import InlineHelper from '@components/chat/inlineHelper';
-import debounce from '@helpers/schedulers/debounce';
+import debounce, {DebounceReturnType} from '@helpers/schedulers/debounce';
 import {putPreloader} from '@components/putPreloader';
 import SetTransition from '@components/singleTransition';
 import PeerTitle from '@components/peerTitle';
@@ -332,7 +332,7 @@ export default class ChatInput {
 
   private btnPreloader: HTMLButtonElement;
 
-  private saveDraftDebounced: () => void;
+  private saveDraftDebounced: DebounceReturnType<() => void>;
 
   private fakeRowsWrapper: HTMLDivElement;
 
@@ -1536,6 +1536,9 @@ export default class ChatInput {
       }
 
       if(this.chat.threadId !== threadId || this.chat.monoforumThreadId !== monoforumThreadId || this.chat.peerId !== peerId || PEER_EXCEPTIONS.has(this.chat.type)) return;
+      if(!draft) {
+        this.saveDraftDebounced.clearTimeout();
+      }
       this.setDraft(draft, true, force);
     });
 
@@ -2389,7 +2392,7 @@ export default class ChatInput {
 
   public async setDraft(draft?: MyDraftMessage, fromUpdate = true, force = false) {
     if(
-      (!force && !isInputEmpty(this.messageInput)) ||
+      (!force && draft && !isInputEmpty(this.messageInput)) ||
       PEER_EXCEPTIONS.has(this.chat.type)
     ) {
       return false;
@@ -2419,9 +2422,12 @@ export default class ChatInput {
               this.onMessageSent();
             });
           });
+        } else if(fromUpdate && !this.saveDraftDebounced.isDebounced()) {
+          this.clearInput();
+          this.clearHelper();
         }
 
-        return false;
+        return fromUpdate;
       }
     }
 
