@@ -62,7 +62,6 @@ export const Explanation = (props: LocalTextWithEntities & {
         </div>
         <Show when={props.text}>
           <div class={classNames(styles.explanationText, 'reply-subtitle')}>
-            {wrapRichText(props.text, {entities: props.entities, middleware})}
             <TranslatableMessageTsx
               peerId={contextProps.peerId}
               textWithEntities={{_: 'textWithEntities', text: props.text, entities: unwrap(props.entities)}}
