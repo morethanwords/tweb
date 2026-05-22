@@ -32,6 +32,12 @@ pnpm lint           # ESLint on src/**/*.ts
 
 Debug query params: `?test=1` (test DCs), `?debug=1` (verbose logging), `?noSharedWorker=1` (disable shared worker).
 
+### Preview
+
+Launch an authorized local preview with `bash scripts/start-preview.sh` (never
+plain `vite`) — it mints a fresh per-preview auth + picks a free port. Flags and
+details: see the script header. `.claude/launch.json` is wired to it.
+
 ## Directory Structure
 
 ```
@@ -83,23 +89,17 @@ solid-js/web    → src/vendor/solid/web
 solid-js/store  → src/vendor/solid/store
 ```
 
-## Code Style (enforced by ESLint)
+## Code Style (all ESLint-enforced)
 
-- **Indent**: 2 spaces (no tabs)
-- **Quotes**: single quotes; template literals allowed
-- **Line endings**: Unix (LF); file must end with newline
-- **No trailing spaces**
-- **Comma dangle**: never (`{a: 1, b: 2}` not `{a: 1, b: 2,}`)
-- **Object/array spacing**: no spaces inside braces/brackets
-  - `{a: 1}` not `{ a: 1 }`
-  - `[1, 2]` not `[ 1, 2 ]`
-- **Keyword spacing**: no space after `if`, `for`, `while`, `switch`, `catch`
-  - `if(condition)` not `if (condition)`
-  - `for(...)` not `for (...)`
-- **Function paren**: no space before paren — `function foo()` not `function foo ()`
-- **No `return await`**: use `return promise` directly
-- **Max 2 consecutive blank lines**
-- **`prefer-const`** with destructuring: `all`
+Non-obvious rules — these differ from common defaults:
+
+- **No space after keywords**: `if(cond)`, `for(...)`, `while(...)`, `switch`, `catch` — not `if (cond)`
+- **No space inside `{}` / `[]`**: `{a: 1}` and `[1, 2]` — not `{ a: 1 }`
+- **No trailing comma** anywhere
+- **No space before function paren**: `function foo()`
+- **No `return await`** — return the promise directly
+
+Standard defaults, also enforced: 2-space indent, single quotes, LF + final newline, no trailing whitespace, max 2 blank lines, `prefer-const`.
 
 ## TypeScript Notes
 
@@ -249,16 +249,12 @@ import {Message, Chat, User, InputPeer} from '@layer';
 
 ## What NOT to Do
 
+(Style rules are in "Code Style"; the import-alias and `invokeApi`-from-UI rules
+are in "Path Aliases" and "App Managers" — not repeated here.)
+
 - Do not add `eslint-disable` without a reason
-- Do not use `return await` (rule enforced)
-- Do not use spaces inside `{}` for objects or `[]` for arrays
-- Do not use `if (` with a space — use `if(`
 - Do not import from `react` or use React patterns — this is Solid.js
-- Do not use relative `../../` imports when an alias exists
-- Do not use `var` — use `const`/`let`
-- Do not add trailing commas in arrays/objects
 - Do not use heavy CSS selectors (deep descendant chains, universal `*`, expensive attribute matchers, `:not()` with complex arguments) — prefer a dedicated class on the target element
-- Do not call `apiManager.invokeApi*` from UI / component code — wrap the request in an `app*Manager` method and call that instead. See "App Managers" above.
 
 ## Running Tests
 
@@ -270,18 +266,9 @@ pnpm test src/tests/foo    # specific test file
 Vitest config: `threads: false`, `globals: true`, jsdom environment, setup in `src/tests/setup.ts`.
 
 <!-- rtk-instructions v2 -->
-# RTK (Rust Token Killer) - Token-Optimized Commands
+## RTK — token-optimized commands
 
-## Golden Rule
-
-**Always prefix commands with `rtk`**. If RTK has a dedicated filter, it uses it. If not, it passes through unchanged. This means RTK is always safe to use.
-
-**Important**: Even in command chains with `&&`, use `rtk`:
-```bash
-# ❌ Wrong
-git add . && git commit -m "msg" && git push
-
-# ✅ Correct
-rtk git add . && rtk git commit -m "msg" && rtk git push
-```
+Prefix every shell command with `rtk`, including each command inside `&&`
+chains: `rtk git add . && rtk git commit -m "msg"`. RTK applies a filter when it
+has one, otherwise passes through unchanged — so it is always safe.
 <!-- /rtk-instructions -->

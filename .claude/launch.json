@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "tweb",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["scripts/start-preview.sh"],
+      "autoPort": true
+    }
+  ]
+}
