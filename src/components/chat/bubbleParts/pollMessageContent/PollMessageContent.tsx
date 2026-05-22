@@ -247,7 +247,7 @@ export const PollMessageContent = defineSolidElement({
     controls.openMediaViewer = (idx: number) => {
       const getTarget = (idx: number): AppMediaViewerStaticTargetType => ({
         media: mediaViewerPayload().photos[idx],
-        element: elementByIndexMap.get(idx),
+        element: elementByIndexMap.get(idx)?.querySelector('.media-photo'),
         fromId: props.message.fromId,
         timestamp: props.message.date,
         peerId: props.message.peerId
