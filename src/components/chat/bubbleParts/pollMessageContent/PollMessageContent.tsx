@@ -78,7 +78,7 @@ export const PollMessageContent = defineSolidElement({
     const [explanationToggled, setExplanationToggled] = createSignal(false);
     const [chosenIndexes, setChosenIndexes] = createSignal<number[]>([]);
     const [canFooterBeClickable, setCanFooterBeClickable] = createSignal(false);
-    const [isAddingNewOptionVisible, setIsAddingNewOptionVisible] = createSignal(false);
+    const [isAddingNewOptionActive, setIsAddingNewOptionActive] = createSignal(false);
     const [newOption, setNewOption] = createStore<NewOptionValues>({
       text: '',
       entities: []
@@ -135,7 +135,7 @@ export const PollMessageContent = defineSolidElement({
     // ----- Mutations -----
     const resetInteractiveState = () => batch(() => {
       setChosenIndexes([]);
-      setIsAddingNewOptionVisible(false);
+      setIsAddingNewOptionActive(false);
       setNewOption(reconcile({text: '', entities: []}));
       inputField?.setValueSilently('');
     });
@@ -356,8 +356,8 @@ export const PollMessageContent = defineSolidElement({
                 attachment={newOption.attachment}
                 onPartialChange={handleNewOptionChanged}
                 onEnter={wrappedAddOption}
-                visible={isAddingNewOptionVisible()}
-                onVisibleChange={setIsAddingNewOptionVisible}
+                active={isAddingNewOptionActive()}
+                onActiveChange={setIsAddingNewOptionActive}
                 isPending={addOptionMutation.isPending()}
               />
             </div>

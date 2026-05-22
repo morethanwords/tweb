@@ -21,8 +21,8 @@ keepMe(ripple);
 
 export const AddOption = (props: {
   inputFieldRef: (value: InputField) => void;
-  visible: boolean;
-  onVisibleChange: (visible: boolean) => void;
+  active: boolean;
+  onActiveChange: (visible: boolean) => void;
   value: string;
   attachment?: AttachedMedia;
   onPartialChange: (text: Partial<NewOptionValues>) => void;
@@ -31,8 +31,9 @@ export const AddOption = (props: {
 }) => {
   const contextProps = usePollMessageContentProps();
 
-  const visible = () => props.visible;
+  const active = () => props.active;
   const delayedIsPending = createDelayed(() => props.isPending, false, (value) => value ? 200 : -1);
+  const delayedIsClickable = createDelayed(() => !active(), !active(), (value) => value ? -1 : 400);
 
   const inputField = new InputField({
     placeholder: 'NewPoll.Option',
@@ -53,19 +54,24 @@ export const AddOption = (props: {
 
     if(e.key === 'Backspace' && props.value === '') {
       e.preventDefault();
-      props.onVisibleChange(false);
+      props.onActiveChange(false);
     }
   });
 
   props.inputFieldRef(inputField);
 
   createEffect(() => {
-    if(!visible()) return;
+    if(!active()) return;
 
     const navigationItem: NavigationItem = {
       type: 'inline-message-input',
-      onPop: () => void props.onVisibleChange(false)
+      onPop: () => void props.onActiveChange(false)
     };
+
+    const existing = appNavigationController.findItemByType('inline-message-input');
+    if(existing) {
+      appNavigationController.backByItem(existing.item);
+    }
 
     appNavigationController.pushItem(navigationItem);
 
@@ -85,7 +91,7 @@ export const AddOption = (props: {
   });
 
   const onAfterEnter = () => {
-    if(visible()) {
+    if(active()) {
       inputField.input.focus();
     }
   };
@@ -94,17 +100,20 @@ export const AddOption = (props: {
     <div
       class={classNames(styles.pollOption, styles.hasMedia, styles.isAddOption)}
       classList={{
+        [styles.isOutgoing]: contextProps.isOutgoing,
         [styles.isIncoming]: !contextProps.isOutgoing
       }}
     >
-      <Show when={!visible()}>
-        <div class={styles.clickableArea} classList={{[styles.outgoing]: contextProps.isOutgoing}} use:ripple={!visible()} onClick={() => props.onVisibleChange(!visible())} />
-      </Show>
+      <Transition name='fade-4' mode='outin' duration={400}>
+        <Show when={delayedIsClickable()}>
+          <div class={styles.clickableArea} classList={{[styles.outgoing]: contextProps.isOutgoing}} use:ripple={delayedIsClickable()} onClick={() => props.onActiveChange(!active())} />
+        </Show>
+      </Transition>
 
       <div class={styles.checkContainer}>
         <Transition name='fade' mode='outin'>
           <Switch>
-            <Match when={!visible()}>
+            <Match when={!active()}>
               <IconTsx icon='add' class={styles.addOptionPlus} />
             </Match>
             <Match when={delayedIsPending()}>
@@ -112,7 +121,7 @@ export const AddOption = (props: {
                 <Spinner thickness={spinnerThickness} />
               </div>
             </Match>
-            <Match when={visible()}>
+            <Match when={active()}>
               <EmojiDropdownButton class={classNames(styles.emojiDropdownButton, props.isPending && styles.pointerDisabled)} inputField={inputField} />
             </Match>
           </Switch>
@@ -122,7 +131,7 @@ export const AddOption = (props: {
       <div class={styles.labelRow}>
         <div class={styles.labelText}>
           <Transition name='fade' mode='outin' onAfterEnter={onAfterEnter}>
-            <Show when={visible()} fallback={<I18nTsx key='Chat.Poll.AddAnOption' />}>
+            <Show when={active()} fallback={<I18nTsx key='Chat.Poll.AddAnOption' />}>
               <div class={styles.inputFieldInternals}>
                 {inputField.input}
                 {inputField.placeholder}
@@ -140,7 +149,7 @@ export const AddOption = (props: {
           [styles.pointerDisabled]: props.isPending
         }}
       >
-        <Show when={visible()}>
+        <Show when={active()}>
           <MediaAttachment
             btnClass={styles.pollOptionMediaAttachBtn}
             imgClass={styles.pollOptionMediaAttachImg}

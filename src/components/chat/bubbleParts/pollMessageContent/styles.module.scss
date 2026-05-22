@@ -54,6 +54,7 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
+      color: inherit;
     }
 
     :global(.preloader-container) {
@@ -80,6 +81,26 @@
   &.isAddOption.isIncoming {
     color: #939fa9;
   }
+
+  &.isAddOption.isOutgoing {
+    color: var(--secondary-text-color);
+
+    :global(.night) & {
+      color: inherit;
+    }
+  }
+}
+
+@mixin hoverable {
+  @include hover-global(rgba(0, 0, 0, 0.05), background-color, true);
+
+  @include hover-global(rgba(255, 255, 255, 0.075), background-color, true, true);
+
+  &.outgoing {
+    @include hover-global(rgba(0, 0, 0, 0.05), background-color, true);
+
+    @include hover-global(rgba(255, 255, 255, 0.1), background-color, true, true);
+  }
 }
 
 .clickableArea {
@@ -92,11 +113,7 @@
   z-index: 1;
   cursor: pointer;
 
-  @include hover-global(gray, background-color, true);
-
-  &.outgoing {
-    @include hover-global(rgba(255, 255, 255, 0.1), background-color, true);
-  }
+  @include hoverable;
 }
 
 .label {
@@ -250,11 +267,7 @@
     color: var(--primary-color);
     font-weight: var(--font-weight-bold);
 
-    @include hover-global(gray, background-color, true);
-
-    &.outgoing {
-      @include hover-global(rgba(255, 255, 255, 0.1), background-color, true);
-    }
+    @include hoverable;
   }
 
   &.withTime {
@@ -336,6 +349,7 @@
   left: 50%;
   transform: translate(-50%, -50%);
   padding: 0.25rem;
+  color: inherit;
 
   // The emoji is off center a little bit
   /* :global(.tgico) {
@@ -361,9 +375,7 @@
     left: 0;
     top: 0;
 
-    &.outgoing {
-      color: white;
-    }
+    color: inherit;
   }
 }
 

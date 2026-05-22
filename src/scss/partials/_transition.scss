@@ -171,10 +171,17 @@
   transition: opacity 0.2s ease-out;
 }
 
+.fade-4-enter-active,
+.fade-4-exit-active {
+  transition: opacity 0.4s ease-out;
+}
+
 .fade-enter,
 .fade-exit-to,
 .fade-2-enter,
-.fade-2-exit-to {
+.fade-2-exit-to,
+.fade-4-enter,
+.fade-4-exit-to {
   opacity: 0;
 }
 
