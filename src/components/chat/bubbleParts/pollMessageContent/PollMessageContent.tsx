@@ -91,7 +91,7 @@ export const PollMessageContent = defineSolidElement({
     // ----- Poll options store & derived props -----
     const [pollOptions] = usePollOptionsStore({
       props,
-      userRandomSeed: appSettings.userRandomSeed
+      userId: rootScope.myId
     });
 
     const {

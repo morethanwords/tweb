@@ -94,7 +94,6 @@ import isNodeFullyInsideRange from '@helpers/dom/isNodeFullyInsideRange';
 import parseEntities from '@lib/richTextProcessor/parseEntities';
 import {concatTextsWithEntities} from '@lib/richTextProcessor/concatTextsWithEntities';
 import {shouldShufflePollOptions, shufflePollOptions} from './bubbleParts/pollMessageContent/shuffle';
-import {useAppSettings} from '@stores/appSettings';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -1981,16 +1980,13 @@ export default class ChatContextMenu {
 
     if(!poll) return;
 
-    const [appSettings] = useAppSettings();
-
     let answers = poll.answers.filter(answer => answer._ === 'pollAnswer');
 
     if(shouldShufflePollOptions(poll)) {
       answers = shufflePollOptions({
-        initialOptions: answers,
-        seed: appSettings.userRandomSeed,
-        mid: message.mid,
-        peerId: message.peerId
+        options: answers,
+        userId: rootScope.myId,
+        pollId: poll.id
       });
     }
 
