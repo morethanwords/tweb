@@ -321,49 +321,45 @@ export const PollMessageContent = defineSolidElement({
           </Show>
         </HeightTransition>
 
-        <AutoHeight>
-          <TransitionGroup name='fade-2' moveClass='t-move'>
-            <For each={pollOptions}>
-              {(option, index) => {
-                const initialIdx = createMemo(() => initialIdxFromShuffledIdx(index()));
+        <TransitionGroup name='fade-2' moveClass='t-move'>
+          <For each={pollOptions}>
+            {(option, index) => {
+              const initialIdx = createMemo(() => initialIdxFromShuffledIdx(index()));
 
-                return (
-                  <PollOption
-                    text={option.text}
-                    withImage={hasPhotoInOptions()}
-                    photo={getPhotoForOption(initialIdx())}
-                    allowMultipleAnswers={allowMultipleAnswers()}
-                    hasCorrectAnswer={hasCorrectAnswer()}
-                    checked={isChecked(index())}
-                    onToggle={() => handleToggle(index())}
-                    pollViewerPayload={[mediaViewerPayload().indexes.options.get(initialIdx()), elementByIndexMap]}
-                    initialIdx={initialIdx()}
-                    result={getResultForOption(initialIdx())}
-                    isPendingVote={delayedSendVotePending()}
-                    hideResults={hideResults()}
-                  />
-                );
-              }}
-            </For>
-          </TransitionGroup>
-        </AutoHeight>
+              return (
+                <PollOption
+                  text={option.text}
+                  withImage={hasPhotoInOptions()}
+                  photo={getPhotoForOption(initialIdx())}
+                  allowMultipleAnswers={allowMultipleAnswers()}
+                  hasCorrectAnswer={hasCorrectAnswer()}
+                  checked={isChecked(index())}
+                  onToggle={() => handleToggle(index())}
+                  pollViewerPayload={[mediaViewerPayload().indexes.options.get(initialIdx()), elementByIndexMap]}
+                  initialIdx={initialIdx()}
+                  result={getResultForOption(initialIdx())}
+                  isPendingVote={delayedSendVotePending()}
+                  hideResults={hideResults()}
+                />
+              );
+            }}
+          </For>
+        </TransitionGroup>
 
-        <HeightTransition>
-          <Show when={canShowAddOption()}>
-            <div style={{overflow: 'hidden'}}>
-              <AddOption
-                inputFieldRef={(value: InputField) => void (inputField = value)}
-                value={newOption.text}
-                attachment={newOption.attachment}
-                onPartialChange={handleNewOptionChanged}
-                onEnter={wrappedAddOption}
-                active={isAddingNewOptionActive()}
-                onActiveChange={setIsAddingNewOptionActive}
-                isPending={addOptionMutation.isPending()}
-              />
-            </div>
-          </Show>
-        </HeightTransition>
+        <Show when={canShowAddOption()}>
+          <div style={{overflow: 'hidden'}}>
+            <AddOption
+              inputFieldRef={(value: InputField) => void (inputField = value)}
+              value={newOption.text}
+              attachment={newOption.attachment}
+              onPartialChange={handleNewOptionChanged}
+              onEnter={wrappedAddOption}
+              active={isAddingNewOptionActive()}
+              onActiveChange={setIsAddingNewOptionActive}
+              isPending={addOptionMutation.isPending()}
+            />
+          </div>
+        </Show>
 
         <div
           class={styles.footer}
