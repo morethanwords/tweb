@@ -55,7 +55,7 @@ export const Explanation = (props: LocalTextWithEntities & {
   const middleware = createMiddleware().get();
 
   return (
-    <div class='reply quote-like quote-like-border' use:dataPollViewerIdx={props.pollViewerPayload}>
+    <div class={'reply quote-like quote-like-border ' + styles.explanation} use:dataPollViewerIdx={props.pollViewerPayload}>
       <div class='reply-content'>
         <div class='reply-title'>
           <I18nTsx key='Chat.Quiz.Explanation' />

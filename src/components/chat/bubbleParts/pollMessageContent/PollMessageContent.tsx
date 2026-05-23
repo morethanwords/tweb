@@ -308,18 +308,16 @@ export const PollMessageContent = defineSolidElement({
           </Show>
         </div>
 
-        <HeightTransition scale>
-          <Show when={explanationToggled()}>
-            <div style={{overflow: 'hidden'}}>
-              <Explanation
-                text={props.results?.solution}
-                entities={props.results?.solution_entities}
-                photo={explanationPhoto()}
-                pollViewerPayload={[mediaViewerPayload().indexes.explanation, elementByIndexMap]}
-              />
-            </div>
-          </Show>
-        </HeightTransition>
+        <Show when={explanationToggled()}>
+          <div style={{overflow: 'hidden'}}>
+            <Explanation
+              text={props.results?.solution}
+              entities={props.results?.solution_entities}
+              photo={explanationPhoto()}
+              pollViewerPayload={[mediaViewerPayload().indexes.explanation, elementByIndexMap]}
+            />
+          </div>
+        </Show>
 
         <TransitionGroup name='fade-2' moveClass='t-move'>
           <For each={pollOptions}>
