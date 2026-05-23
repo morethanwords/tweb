@@ -3420,7 +3420,7 @@ const lang = {
   'Chat.Poll.OptionAddedMe': 'You added **%s** to the poll',
   'Chat.Poll.OptionDeleted': '%s deleted **%s** from the poll',
   'Chat.Poll.OptionDeletedMe': 'You deleted **%s** from the poll',
-  'Chat.Poll.ReplyToOption': 'Reply to Option',
+  'Chat.Poll.ReplyToOption': 'Reply to Poll Option',
   'Chat.Poll.CopyOption': 'Copy Option',
   'Chat.Poll.CopyOptionLink': 'Copy Option Link',
   'Chat.Quiz.MembersAnswered': {

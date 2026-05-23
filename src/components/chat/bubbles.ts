@@ -1400,7 +1400,8 @@ export default class ChatBubbles {
           findUpClassName(e.target, 'time') ||
           findUpClassName(e.target, 'code-header-button') ||
           findUpClassName(e.target, 'reaction') ||
-          findUpClassName(e.target, 'bubble-beside-button')
+          findUpClassName(e.target, 'bubble-beside-button') ||
+          (e.target as HTMLElement)?.closest?.('poll-message-content')
         ) {
           return;
         }

@@ -174,6 +174,7 @@ export async function wrapReplyDivAndCaption(options: {
 
   const {titleEl, subtitleEl, mediaEl, message, loadPromises, animationGroup, middleware, lazyLoadQueue, replyHeader} = options;
   let {storyItem, quote} = options;
+  let quoteIcon: HTMLElement | undefined;
 
   let wrappedTitle = options.title;
   if(wrappedTitle !== undefined) {
@@ -200,6 +201,7 @@ export async function wrapReplyDivAndCaption(options: {
   if(isMessageReply && replyHeader.poll_option && message?._ === 'message' && message.media?._ === 'messageMediaPoll') {
     const pollOption = message.media.poll.answers.find(answer => answer._ === 'pollAnswer' && compareUint8Arrays(replyHeader.poll_option, answer.option));
     if(pollOption) {
+      quoteIcon = Icon('checkround_filled');
       quote ??= {
         text: pollOption.text.text,
         entities: pollOption.text.entities
@@ -242,7 +244,8 @@ export async function wrapReplyDivAndCaption(options: {
       // noTextFormat: true
     });
 
-    subtitleEl.replaceChildren(fragment);
+    subtitleEl.classList.add('with-icon');
+    subtitleEl.replaceChildren(...[quoteIcon, fragment].filter(Boolean));
   } else if(message) {
     const fragment = await wrapMessageForReply(options);
     subtitleEl.replaceChildren(fragment);

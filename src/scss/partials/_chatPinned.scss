@@ -31,7 +31,7 @@
       height: var(--height);
       overflow: hidden;
 
-      &:before, 
+      &:before,
       &:after {
         position: absolute;
         left: 0;
@@ -97,7 +97,7 @@
     }
 
     body:not(.animation-level-0) & {
-      &-wrapper, 
+      &-wrapper,
       &-mark {
         transition: transform .25s ease-in-out;
       }
@@ -109,7 +109,7 @@
   }
 }
 
-.pinned-message, 
+.pinned-message,
 .reply {
   --font-size: var(--font-size-14);
   --custom-emoji-size: calc(var(--font-size) + 4px);
@@ -134,14 +134,20 @@
   &-title {
     color: var(--primary-color);
   }
-  
-  &-title, 
+
+  &-title,
   &-subtitle {
     font-size: var(--font-size);
     line-height: var(--line-height);
     position: relative; // ! WARNING (for custom emoji)
 
     @include text-overflow();
+  }
+
+  &-subtitle.with-icon {
+    display: flex;
+    align-items: center;
+    gap: 2px;
   }
 
   &-media {
@@ -413,7 +419,7 @@
     transform: scale(0);
   }
 
-  &-title, 
+  &-title,
   &-subtitle {
     position: relative;
     height: var(--pm-row-height);
@@ -471,9 +477,9 @@
     --translateY: var(--pm-item-height);
   }
 
-  &.hide ~ .chat-pinlist, 
+  &.hide ~ .chat-pinlist,
   &:not(.is-many) ~ .chat-pinlist {
-    display: none; 
+    display: none;
   }
 
   &.is-many {
@@ -543,7 +549,7 @@
     color: var(--secondary-text-color);
   }
 
-  &-title, 
+  &-title,
   &-subtitle {
     font-size: var(--font-size-14);
     line-height: var(--line-height-14);
