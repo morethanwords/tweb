@@ -384,7 +384,7 @@ export const PollMessageContent = defineSolidElement({
           >
             <Switch>
               <Match when={canShowViewResults()}>
-                <I18nTsx key='Chat.Poll.ViewResults' />
+                <I18nTsx key='Chat.Poll.ViewVotes' args={votersCount()?.toString()} />
               </Match>
               <Match when={hasSelectedSomething()}>
                 <I18nTsx key='Chat.Poll.SubmitVote' />

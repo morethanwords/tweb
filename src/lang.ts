@@ -3403,7 +3403,7 @@ const lang = {
   'Chat.Poll.AddAnOption': 'Add an Option',
   'Chat.Poll.Unvote': 'Retract Vote',
   'Chat.Poll.Stop': 'Stop Poll',
-  'Chat.Poll.ViewResults': 'View Results',
+  'Chat.Poll.ViewVotes': 'View Votes (%s)',
   'Chat.Poll.SubmitVote': 'Vote',
   'Chat.Poll.Type.Anonymous': 'Anonymous Poll',
   'Chat.Poll.Type.Public': 'Poll',
