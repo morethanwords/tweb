@@ -514,6 +514,13 @@ export namespace MessageRender {
       }
     }
 
+    if(!isStoryReply) {
+      const messageReplyHeader = replyTo as MessageReplyHeader.messageReplyHeader;
+      if(messageReplyHeader.poll_option) {
+        originalPeerTitle = i18n('Chat.Poll.ReplyToOption');
+      }
+    }
+
     const isStoryExpired = isStoryReply && originalStory.cached && !(await originalStory.result);
     const {container, fillPromise} = wrapReply({
       title: originalPeerTitle,

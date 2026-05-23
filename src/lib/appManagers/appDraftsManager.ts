@@ -252,7 +252,8 @@ export class AppDraftsManager extends AppManager {
       if(replyTo) {
         params.reply_to = {
           _: 'inputReplyToMessage',
-          reply_to_msg_id: getServerMessageId(replyTo.reply_to_msg_id)
+          reply_to_msg_id: getServerMessageId(replyTo.reply_to_msg_id),
+          poll_option: replyTo.poll_option
         };
 
         if(replyTo.reply_to_peer_id && !isObject(replyTo.reply_to_peer_id)) {

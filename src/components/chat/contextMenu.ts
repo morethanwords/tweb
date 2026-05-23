@@ -19,7 +19,7 @@ import findUpClassName from '@helpers/dom/findUpClassName';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
 import isSelectionEmpty from '@helpers/dom/isSelectionEmpty';
-import {Message, Poll, Chat as MTChat, MessageMedia, AvailableReaction, MessageEntity, InputStickerSet, StickerSet, Document, Reaction, Photo, SponsoredMessage, ChannelParticipant, TextWithEntities, SponsoredPeer, TodoItem, TodoCompletion, MessageReplyHeader} from '@layer';
+import {Message, Poll, Chat as MTChat, MessageMedia, InputStickerSet, StickerSet, Document, Reaction, Photo, SponsoredMessage, TextWithEntities, TodoItem, TodoCompletion, MessageReplyHeader, PollAnswer} from '@layer';
 import assumeType from '@helpers/assumeType';
 import PopupSponsored from '@components/popups/sponsored';
 import ListenerSetter from '@helpers/listenerSetter';
@@ -94,6 +94,8 @@ import isNodeFullyInsideRange from '@helpers/dom/isNodeFullyInsideRange';
 import parseEntities from '@lib/richTextProcessor/parseEntities';
 import {concatTextsWithEntities} from '@lib/richTextProcessor/concatTextsWithEntities';
 import {shouldShufflePollOptions, shufflePollOptions} from './bubbleParts/pollMessageContent/shuffle';
+import {truncateTextWithEntities} from '@helpers/string/truncateTextWithEntities';
+import {pollOptionToLink} from './bubbleParts/pollMessageContent/utils';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -206,6 +208,7 @@ export default class ChatContextMenu {
   private sponsoredMessage: SponsoredMessage;
   private noForwards: boolean;
   private checklistItem: {item: TodoItem, completion?: TodoCompletion};
+  private pollAnswer: PollAnswer.pollAnswer;
 
   private reactionsMenu: ChatReactionsMenu;
   private listenerSetter: ListenerSetter;
@@ -354,6 +357,12 @@ export default class ChatContextMenu {
       checklistItemId = +(checklistItemElement as HTMLElement).dataset.checklistItemId;
     }
 
+    let pollOptionIdx: number;
+    const pollOptionElement = (e.target as HTMLElement).closest('[data-poll-option-idx]');
+    if(pollOptionElement) {
+      pollOptionIdx = +(pollOptionElement as HTMLElement).dataset.pollOptionIdx;
+    }
+
     const prepareForMessage = async() => {
       const isSponsored = this.isSponsored = mid < 0;
       this.isSelectable = this.chat.selection.canSelectBubble(bubble);
@@ -435,6 +444,14 @@ export default class ChatContextMenu {
         };
       } else {
         this.checklistItem = undefined;
+      }
+
+      if(pollOptionIdx !== undefined) {
+        const media = (this.message as Message.message).media as MessageMedia.messageMediaPoll;
+        const answer = media?.poll?.answers?.[pollOptionIdx];
+        this.pollAnswer = answer?._ === 'pollAnswer' ? answer : undefined;
+      } else {
+        this.pollAnswer = undefined;
       }
     };
 
@@ -701,6 +718,18 @@ export default class ChatContextMenu {
         separatorDown: true
       },
       createSubmenu: this.createChecklistItemSubmenu
+    }) as ChatContextMenuButton, createSubmenuTrigger({
+      options: {
+        icon: 'more',
+        get regularText() {
+          if(!self.pollAnswer) return undefined;
+          const truncated = truncateTextWithEntities(self.pollAnswer.text.text, self.pollAnswer.text.entities, 24);
+          return wrapEmojiTextWithEntities({_: 'textWithEntities', ...truncated});
+        },
+        verify: () => this.pollAnswer !== undefined,
+        separatorDown: true
+      },
+      createSubmenu: this.createPollAnswerSubmenu
     }) as ChatContextMenuButton, {
       icon: 'send2',
       text: 'MessageScheduleSend',
@@ -1169,6 +1198,52 @@ export default class ChatContextMenu {
     })
   }
 
+  private createPollAnswerSubmenu = async({middleware}: CreateSubmenuArgs) => {
+    const pollAnswer = this.pollAnswer;
+    const message = this.message as Message.message & {media: MessageMedia.messageMediaPoll};
+    const canReply = !this.isLegacy &&
+      !message.pFlags.is_outgoing &&
+      !!this.chat.input.messageInput &&
+      this.chat.type !== ChatType.Scheduled &&
+      (this.chat.bubbles.canForward(message) || await this.chat.canSend());
+    const canCopyLink = !!this.linkToMessage;
+
+    const buttons: ButtonMenuItemOptionsVerifiable[] = [
+      {
+        icon: 'reply',
+        text: 'Chat.Poll.ReplyToOption',
+        verify: () => canReply,
+        onClick: () => this.onReplyToPollOptionClick(pollAnswer)
+      },
+      {
+        icon: 'copy',
+        text: 'Chat.Poll.CopyOption',
+        onClick: () => copyTextToClipboard(pollAnswer.text.text)
+      },
+      {
+        icon: 'link',
+        text: 'Chat.Poll.CopyOptionLink',
+        verify: () => canCopyLink,
+        onClick: () => {
+          const {url, isPrivate} = this.linkToMessage;
+          const optionParam = pollOptionToLink(pollAnswer.option);
+          const fullUrl = url + (url.includes('?') ? '&' : '?') + 'option=' + optionParam;
+          const key: LangPackKey = isPrivate ? 'LinkCopiedPrivateInfo' : 'LinkCopied';
+          toastNew({langPackKey: key});
+          copyTextToClipboard(fullUrl);
+        }
+      }
+    ];
+
+    const filteredButtons = await filterAsync(buttons, (button) => button.verify?.() ?? true);
+
+    if(!middleware()) return;
+
+    return ButtonMenu({
+      buttons: filteredButtons
+    })
+  }
+
   public static canDownload(
     message: MyMessage | MyMessage[],
     withTarget?: HTMLElement,
@@ -1599,6 +1674,20 @@ export default class ChatContextMenu {
   private onReplyClick = async() => {
     const {peerId, message} = this;
     const replyTo = this.chat.input.getChatInputReplyToFromMessage(message);
+
+    if(!await this.chat.canSend()) {
+      replyTo.replyToPeerId = peerId;
+      this.chat.input.createReplyPicker(replyTo);
+      return;
+    }
+
+    this.chat.input.initMessageReply(replyTo);
+  };
+
+  private onReplyToPollOptionClick = async(pollAnswer: PollAnswer.pollAnswer) => {
+    const {peerId, message} = this;
+    const replyTo = this.chat.input.getChatInputReplyToFromMessage(message);
+    replyTo.replyToPollOption = pollAnswer.option;
 
     if(!await this.chat.canSend()) {
       replyTo.replyToPeerId = peerId;

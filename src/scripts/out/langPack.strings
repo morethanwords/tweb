@@ -1819,10 +1819,10 @@
 "ChatThemeChangedTo" = "%1$s changed the chat theme to %2$s";
 "ChatThemeDisabled" = "%1$s disabled the chat theme";
 "ChatThemeDisabledYou" = "You disabled the chat theme";
-"ThemeDay" = "Day";
+"ThemeDay" = "Classic";
 "ThemeNight" = "Night";
-"ThemeTinted" = "Tinted";
-"ThemeArctic" = "Arctic";
+"ThemeLight" = "Day";
+"ThemeTinted" = "Dark";
 "AutoNightSystemDefault" = "System Default";
 "GlobalAttachPlainRestricted" = "Sending text messages isn't allowed in this group.";
 "GlobalAttachDocumentsRestricted" = "Sending documents isn't allowed in this group.";
@@ -2943,6 +2943,9 @@
 "Chat.Poll.OptionAddedMe" = "You added **%s** to the poll";
 "Chat.Poll.OptionDeleted" = "%s deleted **%s** from the poll";
 "Chat.Poll.OptionDeletedMe" = "You deleted **%s** from the poll";
+"Chat.Poll.ReplyToOption" = "Reply to Option";
+"Chat.Poll.CopyOption" = "Copy Option";
+"Chat.Poll.CopyOptionLink" = "Copy Option Link";
 "Chat.Quiz.MembersAnswered_one" = "%d member answered";
 "Chat.Quiz.MembersAnswered_other" = "%d members answered";
 "Chat.Poll.TotalVotesEmpty" = "No votes yet";
@@ -3489,6 +3492,7 @@
 "AddToFolder" = "Add to Folder";
 "AddToFolderSearch" = "Type to search quickly";
 "AddToFolderTip" = "Hold Shift to select more folders at once";
+"Sidebar.Resize.ShiftTip" = "Hold **Shift** to resize both columns at once";
 "AddToFolderEmptySearchResult" = "Tip: Use **Escape** to clear the search";
 "BotSetEmojiStatusTitle" = "Set Emoji Status";
 "BotSetEmojiStatusText" = "Do you want to set this emoji status suggested by **%s**?";

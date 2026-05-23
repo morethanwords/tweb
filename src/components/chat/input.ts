@@ -19,7 +19,7 @@ import emoticonsDropdown, {EmoticonsDropdown} from '@components/emoticonsDropdow
 import showForwardPopup from '@components/popups/forward';
 import PopupNewMedia, {getCurrentNewMediaPopup} from '@components/popups/newMedia';
 import {toast, toastNew} from '@components/toast';
-import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageMedia, InputReplyTo, Chat as MTChat, User, ChatFull, Dialog, PhotoSize, Photo, Document} from '@layer';
+import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageMedia, InputReplyTo, Chat as MTChat, User, ChatFull, Dialog, PhotoSize, Photo, Document, TextWithEntities} from '@layer';
 import StickersHelper from '@components/chat/stickersHelper';
 import ButtonIcon from '@components/buttonIcon';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
@@ -162,6 +162,8 @@ import getPhotoDownloadOptions from '@lib/appManagers/utils/photos/getPhotoDownl
 import {getFileNameByLocation} from '@helpers/fileName';
 import {Middleware, getMiddleware, MiddlewareHelper} from '@helpers/middleware';
 import {createAutoDeleteIcon} from '@components/autoDeleteIcon';
+import compareUint8Arrays from '@helpers/bytes/compareUint8Arrays';
+import {LocalTextWithOptionalEntities} from './bubbleParts/pollMessageContent/utils';
 
 // console.log('Recorder', Recorder);
 
@@ -180,7 +182,7 @@ export const POSTING_NOT_ALLOWED_MAP: {[action in ChatRights]?: LangPackKey} = {
 
 type ChatInputHelperType = 'edit' | 'webpage' | 'forward' | 'reply' | 'suggested';
 type ChatSendBtnIcon = 'send' | 'record' | 'edit' | 'schedule' | 'forward';
-export type ChatInputReplyTo = Pick<MessageSendingParams, 'replyToMsgId' | 'replyToQuote' | 'replyToStoryId' | 'replyToPeerId' | 'replyToMonoforumPeerId'>;
+export type ChatInputReplyTo = Pick<MessageSendingParams, 'replyToMsgId' | 'replyToQuote' | 'replyToPollOption' | 'replyToStoryId' | 'replyToPeerId' | 'replyToMonoforumPeerId'>;
 
 
 const CLASS_NAME = 'chat-input';
@@ -268,6 +270,7 @@ export default class ChatInput {
   public replyToMsgId: MessageSendingParams['replyToMsgId'];
   public replyToStoryId: MessageSendingParams['replyToStoryId'];
   public replyToQuote: MessageSendingParams['replyToQuote'];
+  public replyToPollOption: MessageSendingParams['replyToPollOption'];
   public replyToPeerId: MessageSendingParams['replyToPeerId'];
   public replyToMonoforumPeerId: MessageSendingParams['replyToMonoforumPeerId'];
   public editMsgId: number;
@@ -405,6 +408,12 @@ export default class ChatInput {
   public suggestedPost: SuggestedPostPayload;
   private inputHelperNavigationItem: NavigationItem;
   private placeholderParamsMiddlewareHelper: MiddlewareHelper;
+
+  private savedReplyToPollOption?: {
+    msgId: number;
+    option: Uint8Array;
+    text: TextWithEntities;
+  };
 
   constructor(
     public chat: Chat,
@@ -1946,6 +1955,7 @@ export default class ChatInput {
           top_msg_id: this.chat.threadId,
           reply_to_peer_id: replyTo.replyToPeerId,
           monoforum_peer_id: replyTo.replyToMonoforumPeerId,
+          poll_option: replyTo.replyToPollOption,
           ...(replyTo.replyToQuote && {
             quote_text: replyTo.replyToQuote.text,
             quote_entities: replyTo.replyToQuote.entities,
@@ -2111,6 +2121,7 @@ export default class ChatInput {
           entities: replyTo.quote_entities,
           offset: replyTo.quote_offset
         },
+        replyToPollOption: replyTo.poll_option,
         replyToMonoforumPeerId: replyTo.monoforum_peer_id && getPeerId(replyTo.monoforum_peer_id)
       });
     }
@@ -3664,8 +3675,8 @@ export default class ChatInput {
       return;
     }
 
-    const {replyToMsgId, replyToStoryId, replyToQuote, replyToPeerId, replyToMonoforumPeerId} = this;
-    return {replyToMsgId, replyToStoryId, replyToQuote, replyToPeerId, replyToMonoforumPeerId};
+    const {replyToMsgId, replyToStoryId, replyToQuote, replyToPollOption, replyToPeerId, replyToMonoforumPeerId} = this;
+    return {replyToMsgId, replyToStoryId, replyToQuote, replyToPollOption, replyToPeerId, replyToMonoforumPeerId};
   }
 
   public async clearInput(canSetDraft = true, fireEvent = true, clearValue = '') {
@@ -4435,13 +4446,16 @@ export default class ChatInput {
       return;
     }
 
-    let {replyToMsgId, replyToQuote, replyToPeerId} = replyTo;
+    let {replyToMsgId, replyToQuote, replyToPeerId, replyToPollOption} = replyTo;
     replyToPeerId ??= this.chat.peerId;
     let message = await (
       replyToPeerId ?
         this.managers.appMessagesManager.getMessageByPeer(replyToPeerId, replyToMsgId) :
         this.chat.getMessage(replyToMsgId)
     );
+
+    this.setSavedReplyToPollOption(replyToMsgId, replyToPollOption, message);
+
     const f = () => {
       let title: HTMLElement, subtitle: string | HTMLElement;
       if(!message) { // load missing replying message
@@ -4453,12 +4467,17 @@ export default class ChatInput {
           }
 
           message = _message;
+
           if(!message) {
             this.clearHelper('reply');
           } else {
+            this.setSavedReplyToPollOption(replyToMsgId, replyToPollOption, message);
+
             f();
           }
         });
+      } else if(replyToPollOption && this.savedReplyToPollOption) {
+        title = i18n('Chat.Poll.ReplyToOption');
       } else {
         const peerId = message.fromId;
         title = new PeerTitle({
@@ -4470,6 +4489,14 @@ export default class ChatInput {
         title = i18n(replyToQuote ? 'ReplyToQuote' : 'ReplyTo', [title]);
       }
 
+      let quote: LocalTextWithOptionalEntities;
+
+      if(replyToPollOption && this.savedReplyToPollOption) {
+        quote = this.savedReplyToPollOption.text;
+      } else if(message) {
+        quote = replyToQuote;
+      }
+
       const newReply = this.setTopInfo({
         type: 'reply',
         callerFunc: f,
@@ -4477,7 +4504,7 @@ export default class ChatInput {
         subtitle,
         message,
         setColorPeerId: message?.fromId,
-        quote: message ? replyToQuote : undefined
+        quote
       });
       this.setReplyTo(replyTo);
 
@@ -4487,6 +4514,22 @@ export default class ChatInput {
       this.setCurrentHover(this.replyHover, newReply);
     };
     f();
+  }
+
+  private async setSavedReplyToPollOption(msgId?: number, option?: Uint8Array, message?: Message) {
+    if(!msgId || !option || message?._ !== 'message' || message?.media?._ !== 'messageMediaPoll') {
+      this.savedReplyToPollOption = undefined;
+      return;
+    }
+
+    const pollOption = message.media.poll.answers.find(answer => answer._ === 'pollAnswer' && compareUint8Arrays(option, answer.option));
+
+    if(!pollOption) {
+      this.savedReplyToPollOption = undefined;
+      return;
+    }
+
+    this.savedReplyToPollOption = {msgId, option, text: pollOption.text};
   }
 
   private setCurrentHover(dropdownHover?: DropdownHover, newReply?: HTMLElement) {
@@ -4535,10 +4578,11 @@ export default class ChatInput {
   }
 
   public setReplyTo(replyTo: ChatInputReplyTo) {
-    const {replyToMsgId, replyToQuote, replyToPeerId, replyToStoryId, replyToMonoforumPeerId} = replyTo || {};
+    const {replyToMsgId, replyToQuote, replyToPollOption, replyToPeerId, replyToStoryId, replyToMonoforumPeerId} = replyTo || {};
     this.replyToMsgId = replyToMsgId;
     this.replyToStoryId = replyToStoryId;
     this.replyToQuote = replyToQuote;
+    this.replyToPollOption = replyToPollOption;
     this.replyToPeerId = replyToPeerId;
     this.replyToMonoforumPeerId = replyToMonoforumPeerId;
     this.center(true);

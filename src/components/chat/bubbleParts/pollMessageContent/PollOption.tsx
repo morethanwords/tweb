@@ -40,6 +40,7 @@ export const PollOption = (props: {
   pollViewerPayload?: DataPollViewerIdxDirectivePayload;
   isPendingVote?: boolean;
   hideResults?: boolean;
+  initialIdx?: number;
 
   result?: PollOptionResult;
 }) => {
@@ -83,7 +84,7 @@ export const PollOption = (props: {
   });
 
   return (
-    <div class={styles.pollOption} classList={{[styles.hasMedia]: props.withImage}}>
+    <div class={styles.pollOption} classList={{[styles.hasMedia]: props.withImage}} data-poll-option-idx={props.initialIdx}>
       <Show when={!isShowingResult()}>
         <div class={styles.clickableArea} classList={{[styles.outgoing]: contextProps.isOutgoing}} use:ripple onClick={props.onToggle} />
       </Show>

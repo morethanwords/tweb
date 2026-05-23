@@ -337,6 +337,7 @@ export const PollMessageContent = defineSolidElement({
                     checked={isChecked(index())}
                     onToggle={() => handleToggle(index())}
                     pollViewerPayload={[mediaViewerPayload().indexes.options.get(initialIdx()), elementByIndexMap]}
+                    initialIdx={initialIdx()}
                     result={getResultForOption(initialIdx())}
                     isPendingVote={delayedSendVotePending()}
                     hideResults={hideResults()}

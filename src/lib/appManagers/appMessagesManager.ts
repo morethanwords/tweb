@@ -264,6 +264,7 @@ export type MessageSendingParams = Partial<{
   replyToMsgId: number,
   replyToStoryId: number,
   replyToQuote: {text: string, entities?: MessageEntity[], offset?: number},
+  replyToPollOption: Uint8Array,
   replyToPeerId: PeerId,
   replyTo: InputReplyTo,
   replyToMonoforumPeerId: PeerId,
@@ -2657,6 +2658,7 @@ export class AppMessagesManager extends AppManager {
         reply_to_msg_id: getServerMessageId(options.replyToMsgId),
         reply_to_peer_id: options.replyToPeerId && this.appPeersManager.getInputPeerById(options.replyToPeerId),
         top_msg_id: options.threadId ? getServerMessageId(options.threadId) : undefined,
+        poll_option: options.replyToPollOption,
         ...(options.replyToQuote && {
           quote_text: options.replyToQuote.text,
           quote_entities: options.replyToQuote.entities,
@@ -3007,7 +3009,8 @@ export class AppMessagesManager extends AppManager {
     const header: MessageReplyHeader = {
       _: 'messageReplyHeader',
       pFlags: {},
-      reply_to_msg_id: replyToMsgId || replyToTopId
+      reply_to_msg_id: replyToMsgId || replyToTopId,
+      poll_option: replyTo.poll_option
     };
 
     if(replyToTopId && ((isForum && GENERAL_TOPIC_ID !== replyToTopId) || isBotforum)) {

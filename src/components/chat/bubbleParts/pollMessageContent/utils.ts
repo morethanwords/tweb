@@ -19,6 +19,7 @@ export type NewOptionValues = LocalTextWithEntities & {
 };
 
 export type LocalTextWithEntities = Pick<TextWithEntities, 'text' | 'entities'>;
+export type LocalTextWithOptionalEntities = Pick<TextWithEntities, 'text'> & Partial<Pick<TextWithEntities, 'entities'>>;
 
 export type DataPollViewerIdxDirectivePayload = [number | undefined, Map<number, HTMLElement>];
 
@@ -73,3 +74,9 @@ export const attachSpoilerOverlay = (descriptionElement: HTMLDivElement, props: 
 };
 
 export const spinnerThickness = 2 / 12;
+
+export function pollOptionToLink(option: Uint8Array): string {
+  let binary = '';
+  for(let i = 0; i < option.length; i++) binary += String.fromCharCode(option[i]);
+  return btoa(binary).replace(/=+$/, '');
+}
