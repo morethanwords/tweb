@@ -9,6 +9,7 @@ import ButtonMenu, {ButtonMenuSync} from '@components/buttonMenu';
 import {ChatType} from '@components/chat/chatType';
 import confirmationPopup from '@components/confirmationPopup';
 import createEmojiDropdownButton from '@components/emojiDropdownButton';
+import {useStickersDropdown} from '@components/popups/createPoll/stickersDropdown';
 import {EmoticonsDropdown} from '@components/emoticonsDropdown';
 import EmoticonsSearch from '@components/emoticonsDropdown/search';
 import EmojiTab from '@components/emoticonsDropdown/tabs/emoji';
@@ -134,6 +135,7 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       StoriesSegments,
       appSidebarRight,
       createEmojiDropdownButton,
+      useStickersDropdown,
       getFileAndOpenEditor,
       AvatarNewTsx,
       AppMediaViewerStatic,

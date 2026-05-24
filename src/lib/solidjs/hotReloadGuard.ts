@@ -17,6 +17,7 @@ import type {EmoticonsDropdown} from '@components/emoticonsDropdown';
 import type EmoticonsSearch from '@components/emoticonsDropdown/search';
 import type EmojiTab from '@components/emoticonsDropdown/tabs/emoji';
 import type createEmojiDropdownButton from '@components/emojiDropdownButton';
+import type {useStickersDropdown} from '@components/popups/createPoll/stickersDropdown';
 import type {InputFieldTsx} from '@components/inputFieldTsx';
 import type PasswordMonkey from '@components/monkeys/password';
 import type PasswordInputField from '@components/passwordInputField';
@@ -140,6 +141,7 @@ export type SolidJSHotReloadGuardContextValue = {
   StoriesSegments: typeof StoriesSegments;
   appSidebarRight: AppSidebarRight;
   createEmojiDropdownButton: typeof createEmojiDropdownButton;
+  useStickersDropdown: typeof useStickersDropdown;
   getFileAndOpenEditor: typeof getFileAndOpenEditor;
   AvatarNewTsx: typeof AvatarNewTsx;
   AppMediaViewerStatic: typeof AppMediaViewerStatic;

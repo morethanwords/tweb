@@ -149,8 +149,8 @@ export class EmoticonsDropdown extends DropdownHover {
     this.animationGroup = options.animationGroup || EMOTICONSSTICKERGROUP;
 
     this.rights = {
-      send_gifs: undefined,
-      send_stickers: undefined
+      send_gifs: this.isStandalone || undefined,
+      send_stickers: this.isStandalone || undefined
     };
 
     this.addEventListener('open', async() => {
@@ -365,7 +365,7 @@ export class EmoticonsDropdown extends DropdownHover {
 
     const HIDE_EMOJI_TAB = IS_APPLE_MOBILE && false;
 
-    const INIT_TAB_ID = HIDE_EMOJI_TAB ? this.getTab(StickersTab).tabId : this.getTab(EmojiTab).tabId;
+    const INIT_TAB_ID = (HIDE_EMOJI_TAB ? this.getTab(StickersTab) : this.getTab(EmojiTab))?.tabId ?? this.tabsToRender[0]?.tabId ?? 0;
 
     if(HIDE_EMOJI_TAB) {
       (this.tabsEl.children[1] as HTMLElement).classList.add('hide');
