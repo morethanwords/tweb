@@ -1249,6 +1249,10 @@ export default class ChatInput {
     this.autocompleteHelperController = new AutocompleteHelperController();
     this.stickersHelper = new StickersHelper(this.rowsWrapper, this.autocompleteHelperController, this.chat, this.managers);
     this.emojiHelper = new EmojiHelper(this.rowsWrapper, this.autocompleteHelperController, this, this.managers);
+    // * stickers + custom-emoji-by-emoji suggestions can be visible at the same time;
+    // * emoji helper positions itself above the stickers panel and hides on stickers scroll
+    this.emojiHelper.addSibling(this.stickersHelper);
+    this.emojiHelper.attachStickersHelper(this.stickersHelper);
     if(!this.excludeParts.commandsHelper) this.commandsHelper = new CommandsHelper(this.rowsWrapper, this.autocompleteHelperController, this, this.managers);
     this.mentionsHelper = new MentionsHelper(this.rowsWrapper, this.autocompleteHelperController, this, this.managers);
     this.inlineHelper = new InlineHelper(this.rowsWrapper, this.autocompleteHelperController, this.chat, this.managers);
@@ -3095,7 +3099,7 @@ export default class ChatInput {
     });
   }
 
-  public insertAtCaret(insertText: string, insertEntity?: MessageEntity, isHelper = true) {
+  public insertAtCaret(insertText: string, insertEntity?: MessageEntity, isHelper = true, replaceText?: string) {
     if(!this.canSendPlain()) {
       toastNew({
         langPackKey: POSTING_NOT_ALLOWED_MAP['send_plain']
@@ -3117,13 +3121,18 @@ export default class ChatInput {
     const newValue = newPrefix + insertText + suffix;
 
     if(isHelper && caretPos !== -1) {
-      const match = matches ? matches[2] : fullValue;
+      const match = replaceText ?? (matches ? matches[2] : fullValue);
       // const {node, selection} = getCaretPosNew(this.messageInput);
 
       const selection = document.getSelection();
       // const range = document.createRange();
+      // * a typed emoji can be an <img> on platforms without native emoji support, so the
+      // * selected text has to be resolved back to its rich value instead of selection.toString()
+      const getSelectedValue = replaceText !== undefined ?
+        () => getRichValueWithCaret(selection.getRangeAt(0).cloneContents(), false, false).value :
+        () => selection.toString();
       let counter = 0;
-      while(selection.toString() !== match) {
+      while(getSelectedValue() !== match) {
         if(++counter >= 10000) {
           throw new Error('lolwhat');
         }
@@ -3214,16 +3223,42 @@ export default class ChatInput {
     // // document.execCommand('insertHTML', true, wrapEmojiText(emoji));
   }
 
-  public onEmojiSelected = (emoji: ReturnType<typeof getEmojiFromElement>, autocomplete: boolean) => {
+  public onEmojiSelected = (emoji: ReturnType<typeof getEmojiFromElement>, autocomplete: boolean, replaceText?: string) => {
     const entity: MessageEntity = emoji.docId ? {
       _: 'messageEntityCustomEmoji',
       document_id: emoji.docId,
       length: emoji.emoji.length,
       offset: 0
     } : getEmojiEntityFromEmoji(emoji.emoji);
-    this.insertAtCaret(emoji.emoji, entity, autocomplete);
+    // * inserting a custom emoji can leave the rich text identical (same character, different
+    // * entity type) — clear previousQuery so checkAutocomplete re-evaluates the new entities
+    this.previousQuery = undefined;
+    this.insertAtCaret(emoji.emoji, entity, autocomplete, replaceText);
     return true;
   };
+
+  // * finds a regular emoji ending exactly at the caret. for a lone whole-input emoji this fires
+  // * alongside the stickers helper (registered as siblings) so both panels can be visible.
+  // * skips when the same range is also covered by a custom-emoji entity — that means the user
+  // * has already picked a custom variant and re-suggesting would be redundant
+  private getCustomEmojiSuggestionEmoticon(value: string, entities: MessageEntity[]) {
+    const emojiEntity = entities.find((entity) =>
+      entity._ === 'messageEntityEmoji' &&
+      (entity.offset + entity.length) === value.length
+    );
+    if(!emojiEntity) {
+      return undefined;
+    }
+    const overlappingCustom = entities.some((entity) =>
+      entity._ === 'messageEntityCustomEmoji' &&
+      entity.offset === emojiEntity.offset &&
+      entity.length === emojiEntity.length
+    );
+    if(overlappingCustom) {
+      return undefined;
+    }
+    return value.slice(emojiEntity.offset);
+  }
 
   private async checkAutocomplete(value?: string, caretPos?: number, entities?: MessageEntity[]) {
     // return;
@@ -3253,8 +3288,17 @@ export default class ChatInput {
 
     this.previousQuery = value;
 
+    const foundHelpers = new Set<AutocompleteHelper>();
+
+    // * suggest custom emoji for a regular emoji typed right before the caret. this can coexist
+    // * with the stickers helper when the input is a lone whole-input emoji (they're siblings)
+    const customEmojiEmoticon = this.chat.appSettings.emoji.suggest && this.getCustomEmojiSuggestionEmoticon(value, entities);
+    if(customEmojiEmoticon) {
+      foundHelpers.add(this.emojiHelper);
+      this.emojiHelper.checkEmoticon(customEmojiEmoticon);
+    }
+
     const matches = value.match(ChatInput.AUTO_COMPLETE_REG_EXP);
-    let foundHelper: AutocompleteHelper;
     if(matches) {
       const entity = entities[0];
 
@@ -3265,13 +3309,13 @@ export default class ChatInput {
         this.stickersHelper &&
         this.chat.appSettings.stickers.suggest !== 'none' &&
         await this.chat.canSend('send_stickers') &&
-        (['messageEntityEmoji', 'messageEntityCustomEmoji'] as MessageEntity['_'][]).includes(entity?._) &&
+        entity?._ === 'messageEntityEmoji' &&
         entity.length === value.length &&
         !entity.offset
       ) {
-        foundHelper = this.stickersHelper;
+        foundHelpers.add(this.stickersHelper);
         this.stickersHelper.checkEmoticon(value);
-      } else if(firstChar === '@') { // mentions
+      } else if(!foundHelpers.size && firstChar === '@') { // mentions
         const topMsgId = this.chat.threadId ? getServerMessageId(this.chat.threadId) : undefined;
         const result = this.mentionsHelper.checkQuery(
           query,
@@ -3280,29 +3324,38 @@ export default class ChatInput {
           this.globalMentions
         );
         if(result) {
-          foundHelper = this.mentionsHelper;
+          foundHelpers.add(this.mentionsHelper);
         }
-      } else if(!matches[1] && firstChar === '/') { // commands
+      } else if(!foundHelpers.size && !matches[1] && firstChar === '/') { // commands
         if(this.commandsHelper && await this.commandsHelper.checkQuery(query, this.chat.peerId)) {
-          foundHelper = this.commandsHelper;
+          foundHelpers.add(this.commandsHelper);
         }
-      } else if(this.chat.appSettings.emoji.suggest) { // emoji
+      } else if(!foundHelpers.size && this.chat.appSettings.emoji.suggest) { // emoji
         query = query.replace(/^\s*/, '');
-        if(!value.match(/^\s*:(.+):\s*$/) && !value.match(/:[;!@#$%^&*()\-=|]/) && query) {
-          foundHelper = this.emojiHelper;
+        // * skip when the input ends with an emoji entity — regular emoji is handled by the
+        // * emoticon-suggestion path above, custom emoji needs no suggestions at all
+        const hasEmojiEntityAtEnd = entities.some((e) =>
+          (e._ === 'messageEntityEmoji' || e._ === 'messageEntityCustomEmoji') &&
+          (e.offset + e.length) === value.length
+        );
+        if(!hasEmojiEntityAtEnd && !value.match(/^\s*:(.+):\s*$/) && !value.match(/:[;!@#$%^&*()\-=|]/) && query) {
+          foundHelpers.add(this.emojiHelper);
           this.emojiHelper.checkQuery(query, firstChar);
         }
       }
     }
 
     let canSendInline: boolean;
-    if(!foundHelper) {
+    if(!foundHelpers.size) {
       canSendInline = await this.chat.canSend('send_inline');
     }
 
-    foundHelper = this.checkInlineAutocomplete(value, canSendInline, foundHelper);
+    const inlineResult = this.checkInlineAutocomplete(value, canSendInline, foundHelpers.values().next().value);
+    if(inlineResult === this.inlineHelper) {
+      foundHelpers.add(this.inlineHelper);
+    }
 
-    this.autocompleteHelperController.hideOtherHelpers(foundHelper);
+    this.autocompleteHelperController.hideOtherHelpers(foundHelpers);
   }
 
   private checkInlineAutocomplete(value: string, canSendInline: boolean, foundHelper?: AutocompleteHelper): AutocompleteHelper {

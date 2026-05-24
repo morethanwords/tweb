@@ -1,4 +1,5 @@
 import type ChatInput from '@components/chat/input';
+import type StickersHelper from '@components/chat/stickersHelper';
 import {appendEmoji as wrapAppEmoji, getEmojiFromElement} from '@components/emoticonsDropdown/tabs/emoji';
 import {ScrollableX} from '@components/scrollable';
 import AutocompleteHelper from '@components/chat/autocompleteHelper';
@@ -15,6 +16,9 @@ import rootScope from '@lib/rootScope';
 export default class EmojiHelper extends AutocompleteHelper {
   private scrollable: ScrollableX;
   private innerList: HTMLElement;
+  // * set when the helper is suggesting custom emoji for a regular emoji typed before the caret
+  private emoticon: string;
+  private stickersHelper: StickersHelper;
 
   constructor(
     appendTo: HTMLElement,
@@ -27,7 +31,7 @@ export default class EmojiHelper extends AutocompleteHelper {
       controller,
       listType: 'x',
       onSelect: (target) => {
-        chatInput.onEmojiSelected(getEmojiFromElement(target as any), true);
+        chatInput.onEmojiSelected(getEmojiFromElement(target as any), true, this.emoticon);
       },
       getNavigationList: () => this.innerList
     });
@@ -145,7 +149,8 @@ export default class EmojiHelper extends AutocompleteHelper {
   }
 
   public checkQuery(query: string, firstChar: string) {
-    const middleware = this.controller.getMiddleware();
+    const middleware = this.getMiddleware();
+    this.emoticon = undefined;
     const q = query.replace(/^:/, '');
     this.managers.appEmojiManager.prepareAndSearchEmojis({q, addCustom: true}).then(async(emojis) => {
       if(!middleware()) {
@@ -154,6 +159,41 @@ export default class EmojiHelper extends AutocompleteHelper {
 
       this.render(emojis, firstChar !== ':', middleware);
       // console.log(emojis);
+    });
+  }
+
+  // * the two helpers can both be visible. emoji helper overlays on top of the stickers helper
+  // * via DOM order; we still need to hide it when the user scrolls the stickers panel so the
+  // * stickers underneath the strip are reachable
+  public attachStickersHelper(stickersHelper: StickersHelper) {
+    this.stickersHelper = stickersHelper;
+    stickersHelper.container.addEventListener('scroll', this.onStickersScroll, {passive: true, capture: true});
+  }
+
+  private onStickersScroll = () => {
+    // * fromController=true so the cascade in toggle() doesn't also hide the stickers panel
+    if(!this.hidden) {
+      this.toggle(true, true);
+    }
+  };
+
+  // * suggest custom emoji variants for a regular emoji typed right before the caret
+  public checkEmoticon(emoticon: string) {
+    const middleware = this.getMiddleware();
+    this.emoticon = emoticon;
+    this.managers.appEmojiManager.searchCustomEmoji(emoticon).then((emojiList) => {
+      if(!middleware()) {
+        return;
+      }
+
+      let emojis: AppEmoji[] = emojiList.document_id.map((docId) => ({docId, emoji: ''}));
+      // * the result is custom emoji only — drop the ones a non-premium user can't use here,
+      // * otherwise render() would show an empty strip instead of hiding it
+      if(!rootScope.premium) {
+        emojis = emojis.filter((emoji) => this.chatInput.emoticonsDropdown.canUseEmoji(emoji, false));
+      }
+
+      this.render(emojis, true, middleware);
     });
   }
 }

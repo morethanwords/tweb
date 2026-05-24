@@ -7,6 +7,7 @@ import SetTransition from '@components/singleTransition';
 import AutocompleteHelperController from '@components/chat/autocompleteHelperController';
 import safeAssign from '@helpers/object/safeAssign';
 import liteMode from '@helpers/liteMode';
+import {getMiddleware, MiddlewareHelper} from '@helpers/middleware';
 
 export default class AutocompleteHelper extends EventListenerBase<{
   hidden: () => void,
@@ -14,7 +15,7 @@ export default class AutocompleteHelper extends EventListenerBase<{
   hiding: () => void
 }> {
   protected hidden = true;
-  protected container: HTMLElement;
+  public container: HTMLElement;
   protected list: HTMLElement;
   protected resetTarget: () => void;
   protected attach: () => void;
@@ -28,6 +29,11 @@ export default class AutocompleteHelper extends EventListenerBase<{
   protected waitForKey?: string[];
 
   protected navigationItem: NavigationItem;
+
+  // * helpers in this set are allowed to remain visible alongside this one
+  public siblings: Set<AutocompleteHelper> = new Set();
+  // * per-helper middleware so concurrent sibling helpers don't cancel each other
+  private middlewareHelper: MiddlewareHelper = getMiddleware();
 
   constructor(options: {
     appendTo: HTMLElement,
@@ -49,6 +55,16 @@ export default class AutocompleteHelper extends EventListenerBase<{
     this.attachNavigation();
 
     this.controller?.addHelper(this);
+  }
+
+  public getMiddleware() {
+    this.middlewareHelper.clean();
+    return this.middlewareHelper.get();
+  }
+
+  public addSibling(other: AutocompleteHelper) {
+    this.siblings.add(other);
+    other.siblings.add(this);
   }
 
   public toggleListNavigation(enabled: boolean) {
@@ -126,7 +142,12 @@ export default class AutocompleteHelper extends EventListenerBase<{
     this.hidden = hide;
 
     if(!hide) {
-      this.controller && this.controller.hideOtherHelpers(this);
+      if(this.controller) {
+        // * preserve self + siblings so a sibling that's still loading isn't killed by us showing
+        const preserve = new Set<AutocompleteHelper>([this]);
+        this.siblings.forEach((sibling) => preserve.add(sibling));
+        this.controller.hideOtherHelpers(preserve);
+      }
       this.dispatchEvent('visible'); // fire it before so target will be set
     } else {
       if(this.navigationItem) {
@@ -138,6 +159,7 @@ export default class AutocompleteHelper extends EventListenerBase<{
         this.controller.hideOtherHelpers();
       }
 
+      this.middlewareHelper.clean();
       this.detach?.(); // force detach here
     }
 

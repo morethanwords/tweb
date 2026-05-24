@@ -34,14 +34,14 @@ export default class AutocompleteHelperController {
     this.helpers.add(helper);
   }
 
-  public hideOtherHelpers(preserveHelper?: AutocompleteHelper) {
+  public hideOtherHelpers(preserveHelpers?: Set<AutocompleteHelper>) {
     this.helpers.forEach((helper) => {
-      if(helper !== preserveHelper) {
+      if(!preserveHelpers?.has(helper)) {
         helper.toggle(true, true);
       }
     });
 
-    if(!preserveHelper) {
+    if(!preserveHelpers?.size) {
       this.middleware.clean();
     }
   }

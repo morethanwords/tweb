@@ -57,7 +57,7 @@ export default class StickersHelper extends AutocompleteHelper {
   }
 
   public checkEmoticon(emoticon: string) {
-    const middleware = this.controller.getMiddleware();
+    const middleware = this.getMiddleware();
 
     preloadAnimatedEmojiSticker(emoticon);
     this.managers.appStickersManager.getStickersByEmoticon({
