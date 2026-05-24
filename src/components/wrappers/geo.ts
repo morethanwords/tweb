@@ -11,40 +11,53 @@ import makeGoogleMapsUrl from '@helpers/makeGoogleMapsUrl';
 import mediaSizes from '@helpers/mediaSizes';
 import {Middleware} from '@helpers/middleware';
 import tsNow from '@helpers/tsNow';
-import {GeoPoint, MessageMedia, Message} from '@layer';
+import {GeoPoint, MessageMedia} from '@layer';
 import I18n, {i18n, LangPackKey, FormatterArguments} from '@lib/langPack';
 import setBlankToAnchor from '@lib/richTextProcessor/setBlankToAnchor';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import {avatarNew} from '@components/avatarNew';
-import ChatBubbles from '@components/chat/bubbles';
 import GeoPin from '@components/geoPin';
 import wrapPhoto from '@components/wrappers/photo';
+
+export type GeoLiveUpdate = {
+  messageMedia: MessageMedia.messageMediaGeoLive,
+  date: number,
+  editDate?: number
+};
+
+export type WrapGeoResult = {
+  canHaveTail: boolean | undefined,
+  mediaRequiresMessageDiv: boolean | undefined,
+  isVenue: boolean,
+  isLive: boolean,
+  isLiveExpired: boolean,
+  footer?: HTMLElement,
+  title?: HTMLElement,
+  address?: HTMLElement,
+  update?: (data?: GeoLiveUpdate, isExpired?: boolean) => void
+};
 
 export default function wrapGeo({
   messageMedia,
   attachmentDiv,
-  bubble,
-  timeSpan,
   wrapOptions,
-  message,
+  peerId,
+  date,
+  editDate,
   middleware,
   loadPromises,
-  messageDiv,
-  updateLocationOnEdit
+  onLiveExpire
 }: {
   messageMedia: MessageMedia.messageMediaVenue | MessageMedia.messageMediaGeo | MessageMedia.messageMediaGeoLive,
   attachmentDiv: HTMLElement,
-  bubble: HTMLElement,
-  timeSpan: HTMLElement,
   wrapOptions: WrapSomethingOptions,
-  message: Message.message,
+  peerId?: PeerId,
+  date: number,
+  editDate?: number,
   middleware: Middleware,
   loadPromises: Promise<any>[],
-  messageDiv: HTMLElement,
-  updateLocationOnEdit: ChatBubbles['updateLocalOnEdit']
-}) {
-  bubble.classList.add('photo');
-
+  onLiveExpire?: (footer: HTMLElement) => void
+}): WrapGeoResult {
   const container = document.createElement('a');
   container.classList.add('geo-container', 'shimmer-bright');
 
@@ -127,7 +140,7 @@ export default function wrapGeo({
       const avatar = avatarNew({
         middleware,
         size: 54,
-        peerId: message.fromId,
+        peerId,
         isDialog: false,
         wrapOptions: newWrapOptions
       });
@@ -168,18 +181,19 @@ export default function wrapGeo({
   setAnchorURL(geo);
   wrapGeo(messageMedia, loadPromises);
 
-  let liveExpiration = isLive ? (message.date + (messageMedia as MessageMedia.messageMediaGeoLive).period) * 1000 : undefined;
+  let liveExpiration = isLive ? (date + (messageMedia as MessageMedia.messageMediaGeoLive).period) * 1000 : undefined;
   const isLiveExpired = isLive && Date.now() >= liveExpiration;
 
-  const ret = {
-    canHaveTail: undefined as boolean,
-    mediaRequiresMessageDiv: undefined as boolean
+  const ret: WrapGeoResult = {
+    canHaveTail: undefined,
+    mediaRequiresMessageDiv: undefined,
+    isVenue,
+    isLive,
+    isLiveExpired
   };
 
   let footer: HTMLElement, title: HTMLElement, address: HTMLElement;
   if(isVenue || (isLive && !isLiveExpired)) {
-    bubble.classList.remove('is-message-empty');
-
     footer = document.createElement('div');
     footer.classList.add('geo-footer');
 
@@ -190,8 +204,10 @@ export default function wrapGeo({
     address.classList.add('geo-footer-address');
 
     footer.append(title, address);
-    messageDiv.append(footer);
     ret.mediaRequiresMessageDiv = true;
+    ret.footer = footer;
+    ret.title = title;
+    ret.address = address;
   } else {
     ret.canHaveTail = false;
   }
@@ -205,7 +221,6 @@ export default function wrapGeo({
     title.append(wrapEmojiText((messageMedia as MessageMedia.messageMediaVenue).title));
     address.append(wrapEmojiText((messageMedia as MessageMedia.messageMediaVenue).address));
   } else if(isLive && !isLiveExpired) {
-    timeSpan.classList.add('hide');
     title.classList.add('disable-hover');
     address.classList.add('disable-hover');
     footer.classList.add('is-live');
@@ -235,36 +250,39 @@ export default function wrapGeo({
 
     footer.append(timer);
 
-    let lastMessage = message as Message.message, cleaned = false;
-    const update = (message = lastMessage, isExpired?: boolean) => {
+    let lastData: GeoLiveUpdate = {
+      messageMedia: messageMedia as MessageMedia.messageMediaGeoLive,
+      date,
+      editDate
+    };
+    let cleaned = false;
+    const update = (data: GeoLiveUpdate = lastData, isExpired?: boolean) => {
       if(cleaned) {
         return;
       }
 
-      const messageMedia = message.media as MessageMedia.messageMediaGeoLive;
-      const {period} = messageMedia;
-      const newGeo = messageMedia.geo as GeoPoint.geoPoint;
-      liveExpiration = isExpired ? 0 : (message.date + period) * 1000;
+      const {messageMedia: newMedia, date: newDate, editDate: newEditDate} = data;
+      const {period} = newMedia;
+      const newGeo = newMedia.geo as GeoPoint.geoPoint;
+      liveExpiration = isExpired ? 0 : (newDate + period) * 1000;
 
-      if(lastMessage !== message) {
-        if(lastMessage && (geo.lat !== newGeo.lat || geo.long !== newGeo.long)) {
+      if(lastData !== data) {
+        if(geo.lat !== newGeo.lat || geo.long !== newGeo.long) {
           setAnchorURL(newGeo);
-          wrapGeo(messageMedia);
+          wrapGeo(newMedia);
         }
 
-        lastMessage = message;
+        lastData = data;
       }
 
       if(Date.now() >= liveExpiration) {
-        bubble.classList.add('is-message-empty');
         container.classList.add('is-expired');
-        timeSpan.classList.remove('hide');
-        footer.replaceWith(timeSpan);
+        onLiveExpire?.(footer);
         clean();
         return;
       }
 
-      container.style.setProperty('--heading', `${messageMedia.heading}deg`);
+      container.style.setProperty('--heading', `${newMedia.heading}deg`);
 
       if(newGeo.accuracy_radius !== undefined) {
         const accuracyRadiusPx = newGeo.accuracy_radius / getMetersPerPixel(newGeo.lat, zoom);
@@ -272,11 +290,11 @@ export default function wrapGeo({
       }
 
       let langPackKey: LangPackKey, langPackArgs: FormatterArguments;
-      if((tsNow(true) - (message.edit_date ?? message.date)) < 60) {
+      if((tsNow(true) - (newEditDate ?? newDate)) < 60) {
         langPackKey = 'LocationUpdatedJustNow';
       } else {
         langPackKey = 'UpdatedMinutes';
-        langPackArgs = [Math.floor((tsNow(true) - message.edit_date) / 60)];
+        langPackArgs = [Math.floor((tsNow(true) - newEditDate) / 60)];
       }
 
       const timeLeft = (liveExpiration - Date.now()) / 1000;
@@ -299,16 +317,12 @@ export default function wrapGeo({
 
     const clean = () => {
       cleaned = true;
-      updateLocationOnEdit.delete(bubble);
       clearInterval(interval);
     };
 
-    updateLocationOnEdit.set(bubble, update);
     middleware.onClean(clean);
-  }
 
-  if(address) {
-    address.append(timeSpan);
+    ret.update = update;
   }
 
   return ret;
