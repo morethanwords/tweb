@@ -291,7 +291,7 @@ const PollOptionInputField = (props: {
       <SimpleFormField.SideContent withFixedIcon first last>
         <EmojiDropdownButton inputField={inputField} />
       </SimpleFormField.SideContent>
-      <Show when={supportsMedia('photo')}>
+      <Show when={supportsMedia('photo') || supportsMedia('sticker')}>
         <SimpleFormField.WithAutoLengthCounter
           maxLength={maxOptionLength()}
           first={!props.attachment}

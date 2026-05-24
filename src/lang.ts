@@ -4632,7 +4632,9 @@ const lang = {
     'one_value': 'You can add %d more option',
     'other_value': 'You can add %d more options'
   },
-  'NewPoll.CouldNotCreate': 'Could not create poll'
+  'NewPoll.CouldNotCreate': 'Could not create poll',
+
+  'ReplaceSticker': 'Replace Sticker'
 };
 
 export default lang;

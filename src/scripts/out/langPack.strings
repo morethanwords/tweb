@@ -4026,6 +4026,7 @@
 "NewPoll.OptionsLeft_one" = "You can add %d more option";
 "NewPoll.OptionsLeft_other" = "You can add %d more options";
 "NewPoll.CouldNotCreate" = "Could not create poll";
+"ReplaceSticker" = "Replace Sticker";
 "Login.Title" = "Sign in to Telegram";
 "Login.PhoneLabel" = "Phone Number";
 "Login.PhoneLabelInvalid" = "Phone Number Invalid";

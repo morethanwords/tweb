@@ -8,13 +8,15 @@ import blurActiveElement from '@helpers/dom/blurActiveElement';
 import noop from '@helpers/noop';
 import {positionFloatingMenu} from '@helpers/positionMenu';
 import pause from '@helpers/schedulers/pause';
+import createMiddleware from '@helpers/solid/createMiddleware';
 import {requestRAF} from '@helpers/solid/requestRAF';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
 import {useIsCleaned} from '@hooks/useIsCleaned';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {createEffect, createSignal, on, onCleanup, Show} from 'solid-js';
-import {AttachedMedia} from './storeContext';
+import {createEffect, createSignal, on, onCleanup, onMount, Show} from 'solid-js';
 import {useStickersDropdown} from './stickersDropdown';
+import {AttachedMedia} from './storeContext';
+import {useSupportsMedia} from './utils';
 
 
 export const MediaAttachment = (props: {
@@ -23,13 +25,17 @@ export const MediaAttachment = (props: {
   attachedMedia?: AttachedMedia;
   onAttach?: (value: AttachedMedia | undefined) => void;
 }) => {
-  const {getFileAndOpenEditor, rootScope} = useHotReloadGuard();
+  const {getFileAndOpenEditor, rootScope, wrapSticker} = useHotReloadGuard();
+  const supportsMedia = useSupportsMedia();
 
   const [img, setImg] = createSignal<HTMLImageElement>();
+  const [stickerEl, setStickerEl] = createSignal<HTMLDivElement>();
   const [btn, setBtn] = createSignal<HTMLElement>();
 
   const setStickersDropdownPivot = useStickersDropdown({
-    onStickerClick: () => {}
+    onStickerClick: ({docId}) => {
+      props.onAttach?.({type: 'sticker', docId});
+    }
   });
 
   type OriginalValues = {
@@ -51,8 +57,14 @@ export const MediaAttachment = (props: {
     });
   });
 
+  const onChooseSticker = (pivot: HTMLElement | undefined) => {
+    if(!pivot) return;
+    blurActiveElement();
+    setStickersDropdownPivot(pivot);
+  };
+
   const onEdit = wrapAsyncClickHandler(async() => {
-    if(!img() || !props.attachedMedia || !originalValues) return;
+    if(!img() || !props.attachedMedia || props.attachedMedia.type !== 'photo' || !originalValues) return;
 
     const {openMediaEditorFromMedia} = await import('@components/mediaEditor');
 
@@ -108,23 +120,28 @@ export const MediaAttachment = (props: {
     });
   };
 
+  const mainMenuButtons: MenuButtons = [];
+  if(supportsMedia('photo')) {
+    mainMenuButtons.push({
+      icon: 'image',
+      text: 'AttachPhoto',
+      onClick: onChoose
+    });
+  }
+  if(supportsMedia('sticker')) {
+    mainMenuButtons.push({
+      icon: 'stickers_face',
+      text: 'AttachSticker',
+      onClick: () => onChooseSticker(btn())
+    });
+  }
+
   const setMainMenuOpen = useMenu({
     pivot: btn,
-    buttons: [
-      {
-        icon: 'image',
-        text: 'AttachPhoto',
-        onClick: onChoose
-      },
-      {
-        icon: 'stickers_face',
-        text: 'AttachSticker',
-        onClick: () => setStickersDropdownPivot(btn())
-      }
-    ]
+    buttons: mainMenuButtons
   });
 
-  const setIsPhotoMenuOpen= useMenu({
+  const setIsPhotoMenuOpen = useMenu({
     pivot: img,
     buttons: [
       {
@@ -148,15 +165,97 @@ export const MediaAttachment = (props: {
     ]
   });
 
+  const setIsStickerMenuOpen = useMenu({
+    pivot: stickerEl,
+    buttons: [
+      {
+        icon: 'replace',
+        text: 'ReplaceSticker',
+        onClick: () => onChooseSticker(stickerEl())
+      },
+      {
+        icon: 'delete',
+        text: 'Remove',
+        onClick: () => {
+          props.onAttach(undefined);
+        }
+      }
+    ]
+  });
+
+  const onMainButtonClick = (e: MouseEvent) => {
+    if(mainMenuButtons.length === 0) return;
+    if(mainMenuButtons.length === 1) {
+      mainMenuButtons[0].onClick(e);
+      return;
+    }
+    setMainMenuOpen(true);
+  };
+
   return (
     <>
       <Show when={!props.attachedMedia}>
-        <ButtonIconTsx ref={setBtn} class={props.btnClass} icon='attach' onClick={() => setMainMenuOpen(true)} />
+        <ButtonIconTsx ref={setBtn} class={props.btnClass} icon='attach' onClick={onMainButtonClick} />
       </Show>
-      <Show when={props.attachedMedia?.objectUrl}>
-        <img ref={setImg} class={props.imgClass} src={props.attachedMedia.objectUrl} alt='' on:click={() => setIsPhotoMenuOpen(true)} />
+      <Show when={props.attachedMedia?.type === 'photo' && props.attachedMedia}>
+        <img ref={setImg} class={props.imgClass} src={(props.attachedMedia as Extract<AttachedMedia, {type: 'photo'}>).objectUrl} alt='' on:click={() => setIsPhotoMenuOpen(true)} />
+      </Show>
+      <Show when={props.attachedMedia?.type === 'sticker' && props.attachedMedia} keyed>
+        {(sticker) => (
+          <StickerPreview
+            docId={sticker.docId}
+            wrapSticker={wrapSticker}
+            getDoc={(docId) => rootScope.managers.appDocsManager.getDoc(docId)}
+            class={props.imgClass}
+            ref={setStickerEl}
+            onClick={() => setIsStickerMenuOpen(true)}
+          />
+        )}
       </Show>
     </>
+  );
+};
+
+const StickerPreview = (props: {
+  docId: DocId;
+  wrapSticker: ReturnType<typeof useHotReloadGuard>['wrapSticker'];
+  getDoc: (docId: DocId) => Promise<any>;
+  class?: string;
+  ref?: (el: HTMLDivElement) => void;
+  onClick?: () => void;
+}) => {
+  let container: HTMLDivElement;
+
+  onMount(() => {
+    const middleware = createMiddleware();
+
+    (async() => {
+      const doc = await props.getDoc(props.docId);
+      if(!middleware.get()()) return;
+
+      props.wrapSticker({
+        div: container,
+        doc,
+        group: 'none',
+        width: 40,
+        height: 40,
+        play: true,
+        loop: true,
+        withThumb: false,
+        middleware: middleware.get()
+      });
+    })();
+  });
+
+  return (
+    <div
+      ref={(el) => {
+        container = el;
+        props.ref?.(el);
+      }}
+      class={props.class}
+      onClick={props.onClick}
+    />
   );
 };
 

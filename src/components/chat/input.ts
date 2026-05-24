@@ -164,6 +164,7 @@ import {Middleware, getMiddleware, MiddlewareHelper} from '@helpers/middleware';
 import {createAutoDeleteIcon} from '@components/autoDeleteIcon';
 import compareUint8Arrays from '@helpers/bytes/compareUint8Arrays';
 import {LocalTextWithOptionalEntities} from './bubbleParts/pollMessageContent/utils';
+import {SupportedMediaType} from '@components/popups/createPoll/storeContext';
 
 // console.log('Recorder', Recorder);
 
@@ -1120,8 +1121,10 @@ export default class ChatInput {
       onClick: async() => {
         const pollsAction: ChatRights = 'send_polls';
         const photosAction: ChatRights = 'send_photos';
+        const stickersAction: ChatRights = 'send_stickers';
         const canSendPolls = () => this.chat.canSend(pollsAction);
         const canSendPhotos = () => this.chat.canSend(photosAction);
+        const canSendStickers = () => this.chat.canSend(stickersAction);
 
         if(!(await canSendPolls())) {
           toastNew({langPackKey: POSTING_NOT_ALLOWED_MAP[pollsAction]});
@@ -1130,9 +1133,14 @@ export default class ChatInput {
 
         const {openCreatePollPopup} = await import('@components/popups/createPoll');
 
+        const supportedMediaTypes: SupportedMediaType[] = [];
+
+        if(await canSendPhotos()) supportedMediaTypes.push('photo');
+        if(await canSendStickers()) supportedMediaTypes.push('sticker');
+
         openCreatePollPopup({
           isBroadcast: this.chat.isBroadcast,
-          supportedMediaTypes: await canSendPhotos() ? ['photo'] : undefined,
+          supportedMediaTypes: supportedMediaTypes,
           onSubmit: async(payload) => {
             const sendingParams = this.chat.getMessageSendingParams();
 

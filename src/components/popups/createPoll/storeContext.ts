@@ -47,7 +47,7 @@ export type StorePollOption = {
   checked?: boolean;
 };
 
-export type AttachedMedia = {
+export type AttachedPhoto = {
   type: 'photo';
   objectUrl: string;
   originalObjectUrl?: string;
@@ -57,7 +57,14 @@ export type AttachedMedia = {
   height: number;
 };
 
-export type SupportedMediaType = 'photo';
+export type AttachedSticker = {
+  type: 'sticker';
+  docId: DocId;
+};
+
+export type AttachedMedia = AttachedPhoto | AttachedSticker;
+
+export type SupportedMediaType = 'photo' | 'sticker';
 
 export type CreatePollContextExtra = {
   isBroadcast: Accessor<boolean>;
