@@ -4,8 +4,26 @@
     {
       "name": "tweb",
       "runtimeExecutable": "bash",
-      "runtimeArgs": ["scripts/start-preview.sh"],
-      "autoPort": true
+      "runtimeArgs": ["scripts/start-preview.sh", "--port", "9001"],
+      "port": 9001
+    },
+    {
+      "name": "tweb-debug",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["scripts/start-preview.sh", "--no-worker", "--port", "9011"],
+      "port": 9011
+    },
+    {
+      "name": "tweb-a",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "TWEB_MASTER_SEED=seed.json exec bash scripts/start-preview.sh --id account-a --port 9003"],
+      "port": 9003
+    },
+    {
+      "name": "tweb-b",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "TWEB_MASTER_SEED=seed-b.json exec bash scripts/start-preview.sh --id account-b --port 9002"],
+      "port": 9002
     }
   ]
 }

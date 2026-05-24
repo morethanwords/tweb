@@ -95,6 +95,10 @@ export default function AuthCardsHost(): JSX.Element {
   /* ---------- transition into the IM page ---------- */
 
   async function toIm(): Promise<void> {
+    // `#page-chats` hides the cards the instant it shows, but the fixed corner
+    // buttons (z-index: 100) sit above it — fade them out now so they don't
+    // linger until the host is disposed ~1s later.
+    hostEl.classList.add(styles.leaving);
     await bootstrapIm();
   }
 
@@ -161,7 +165,7 @@ export default function AuthCardsHost(): JSX.Element {
             (!IS_TOUCH_SUPPORTED || IS_MOBILE_SAFARI) && 'no-scrollbar'
           )}
         >
-          <div class={styles.placeholder} />
+          <div class={classNames(styles.placeholder, styles.placeholderTop)} />
           <div class={styles.cardsContainer}>
             <CardsTransition />
           </div>

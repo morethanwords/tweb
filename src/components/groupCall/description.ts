@@ -20,13 +20,14 @@ export default class GroupCallDescriptionElement {
 
   public update(instance: GroupCallInstance) {
     const {state} = instance;
+    const groupCall = instance.groupCall as GroupCall.groupCall | undefined;
 
     let key: LangPackKey, args: FormatterArguments;
     if(state === GROUP_CALL_STATE.CONNECTING) {
       key = 'VoiceChat.Status.Connecting';
     } else {
       key = 'VoiceChat.Status.Members';
-      args = [(instance.groupCall as GroupCall.groupCall).participants_count];
+      args = [groupCall?.participants_count ?? 1];
     }
 
     const {descriptionIntl} = this;

@@ -27,6 +27,9 @@ import findUpClassName from '@helpers/dom/findUpClassName';
 import toggleClassName from '@helpers/toggleClassName';
 import themeController from '@helpers/themeController';
 import groupCallsController from '@lib/calls/groupCallsController';
+import {render} from 'solid-js/web';
+import {createSignal} from 'solid-js';
+import FingerprintBadge from '@components/conferenceCall/fingerprintBadge';
 
 export enum GROUP_CALL_PARTICIPANT_MUTED_STATE {
   UNMUTED,
@@ -268,7 +271,38 @@ export default class PopupGroupCall extends PopupElement {
     this.toggleRightColumn();
     this.onFullScreenChange();
 
+    this.mountFingerprintBadgeIfConference();
+
     this.updateInstance();
+  }
+
+  // When this popup is hosting a TdE2E conference (instance.e2e is set),
+  // append a fingerprint badge to the header so users can visually verify
+  // the call is encrypted to the same key on every participant's device.
+  // No-op for legacy voice chats.
+  private mountFingerprintBadgeIfConference(): void {
+    const {instance} = this;
+    if(!instance?.e2e) return;
+
+    const [hash, setHash] = createSignal<Uint8Array | undefined>(
+      instance.e2eStatus?.verification?.emojiHash
+    );
+    this.listenerSetter.add(instance)('e2eStatus', (status) => {
+      setHash(status.verification?.emojiHash);
+    });
+
+    const mount = document.createElement('span');
+    mount.classList.add(className + '-header-fingerprint');
+    this.header.append(mount);
+
+    const dispose = render(() => (
+      <FingerprintBadge emojiHash={hash()} />
+    ), mount);
+
+    this.addEventListener('close', () => {
+      dispose();
+      mount.remove();
+    });
   }
 
   private constructButtons() {

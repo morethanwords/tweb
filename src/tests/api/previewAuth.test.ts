@@ -203,6 +203,25 @@ describeOrSkip('preview auth', () => {
       });
       expect(String(probeSelfAgain?.[0]?.id)).toBe(String(seed.userId));
 
+      // ---- Phase 3.5: authorize every data center ----
+      // A fresh login only touches the account home DC, but the browser boots
+      // against App.baseDcId (2) — a different DC. A real session holds keys
+      // for several DCs; a home-DC-only seed makes the preview do a fresh DH
+      // handshake on the base DC and hit AUTH_KEY_UNREGISTERED. Force an
+      // authorized call to every other DC so tweb exports/imports the auth and
+      // persists each dc{n}_auth_key into account2.
+      for(let dcId = 1 as TrueDcSeed; dcId <= 5; dcId = (dcId + 1) as TrueDcSeed) {
+        if(dcId === homeDc) continue;
+        try {
+          await fresh.apiManager.invokeApi('users.getUsers', {
+            id: [{_: 'inputUserSelf'}]
+          }, {dcId});
+          console.log(`[previewAuth] authorized dc${dcId}`);
+        } catch(err: any) {
+          console.log(`[previewAuth] dc${dcId} authorize skipped: ${err?.type || err}`);
+        }
+      }
+
       // ---- Phase 4: emit the preview seed ----
       let timeOffset: number;
       try {
@@ -214,9 +233,11 @@ describeOrSkip('preview auth', () => {
         authKeys: {},
         timeOffset: timeOffset ?? undefined
       };
+      // re-read account2 — Phase 3.5 authorized more DCs after the earlier snapshot
+      const account2Final: any = await sessionStorage.get('account2' as any);
       for(let i = 1 as TrueDcSeed; i <= 5; i = (i + 1) as TrueDcSeed) {
-        const key = account2?.[`dc${i}_auth_key`];
-        const salt = account2?.[`dc${i}_server_salt`];
+        const key = account2Final?.[`dc${i}_auth_key`];
+        const salt = account2Final?.[`dc${i}_server_salt`];
         if(key && salt) previewSeed.authKeys[i] = {key, salt};
       }
 

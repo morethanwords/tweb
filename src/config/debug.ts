@@ -1,6 +1,10 @@
 import Modes from '@config/modes';
 
 export const IS_BETA = import.meta.env.DEV;
+// True only under the authorized local preview (the flag is injected by
+// vite.preview.config.ts). Gates the preview-only un-blocking — see
+// helpers/dom/previewRaf.ts and helpers/preventDeadlock.ts.
+export const IS_PREVIEW = !!import.meta.env.VITE_PREVIEW;
 export const DEBUG = (IS_BETA || Modes.debug)/*  && false */;
 const ctx: any = typeof(window) !== 'undefined' ? window : self;
 export const MOUNT_CLASS_TO: any = DEBUG || true/*  && false */ ? ctx : {};

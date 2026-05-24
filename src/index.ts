@@ -1,5 +1,8 @@
 /* @refresh reload */
 
+// must run before any other module — under the preview flag it swaps
+// requestAnimationFrame for a timer so a non-painting tab still boots
+import '@helpers/dom/previewRaf';
 import App from '@config/app';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
 import {IS_STICKY_INPUT_BUGGED} from '@helpers/dom/fixSafariStickyInputFocusing';

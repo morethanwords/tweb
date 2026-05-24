@@ -78,16 +78,32 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   toggleUsingPasscode: (payload: ToggleUsingPasscodePayload, source: MessageEventSource) => void,
 } & MTProtoBroadcastEvent, Master> {
   private static INSTANCE: MTProtoMessagePort;
+  // In Modes.noWorker, both the proxy (master) and the worker-side port live
+  // in the same realm; the legacy INSTANCE field would only hold the last one
+  // constructed. These two track both so getMasterInstance/getNonMasterInstance
+  // resolve to the right end of the in-process channel.
+  private static MASTER_INSTANCE: MTProtoMessagePort<true>;
+  private static NON_MASTER_INSTANCE: MTProtoMessagePort<false>;
 
-  constructor() {
+  constructor(isMaster: boolean = true) {
     super('MTPROTO');
 
     MTProtoMessagePort.INSTANCE = this;
+    if(isMaster) MTProtoMessagePort.MASTER_INSTANCE = this as any;
+    else MTProtoMessagePort.NON_MASTER_INSTANCE = this as any;
 
     MOUNT_CLASS_TO && (MOUNT_CLASS_TO.mtprotoMessagePort = this);
   }
 
   public static getInstance<Master extends boolean>() {
     return this.INSTANCE as MTProtoMessagePort<Master>;
+  }
+
+  public static getMasterInstance() {
+    return this.MASTER_INSTANCE;
+  }
+
+  public static getNonMasterInstance() {
+    return this.NON_MASTER_INSTANCE;
   }
 }

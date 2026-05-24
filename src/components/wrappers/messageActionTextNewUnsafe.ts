@@ -269,6 +269,31 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         break;
       }
 
+      case 'messageActionConferenceCall': {
+        // tdesktop renders this as a media bubble (MediaCall) with state
+        // Invitation / Active / Missed / Hangup. We render service text +
+        // a Join anchor while the call is still joinable. The Join anchor
+        // resolves the conference via inputGroupCallInviteMessage(msg_id).
+        const isMissed = !!action.pFlags.missed;
+        const hasDuration = action.duration !== undefined;
+        const isJoinable = !isMissed && !hasDuration;
+        const isOut = !!message.pFlags.out;
+
+        if(isMissed) {
+          langPackKey = 'Chat.Service.ConferenceCall.Missed';
+          args = [];
+        } else if(hasDuration) {
+          langPackKey = 'Chat.Service.ConferenceCall.Ended';
+          args = [wrapCallDuration(action.duration, plain)];
+        } else {
+          langPackKey = isOut ?
+            'Chat.Service.ConferenceCall.Outgoing' :
+            'Chat.Service.ConferenceCall.Incoming';
+          args = [noLinks || !isJoinable ? '' : wrapJoinVoiceChatAnchor(message as any)];
+        }
+        break;
+      }
+
       case 'messageActionGroupCallScheduled': {
         const today = new Date();
         const date = new Date(action.schedule_date * 1000);

@@ -49,6 +49,15 @@ export default function fixLocalOffer(options: {
     const localMLine = mediaLine.toString();
 
     const codec = data[section.mediaType];
+    // Pre-added recvonly transceivers (used by the conference path to
+    // receive-side pre-attach RTCRtpScriptTransform before the decoder
+    // exists) leave us with extra audio/video m-lines that the server's
+    // join response has no codec mapping for. Skip munging — Chrome's own
+    // SDP is fine; we only need to munge the sending-side mids whose
+    // codecs we're aligning with the server's list.
+    if(!codec) {
+      return;
+    }
     const payloadTypes = codec['payload-types'];
 
     /* forEachReverse(payloadTypes, (payloadType, idx, arr) => {

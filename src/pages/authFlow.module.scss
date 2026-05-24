@@ -8,6 +8,11 @@
 
 @use "../scss/shared" as *;
 
+// Inset and `.btn-icon` box size of the fixed corner buttons (`.closeButton` /
+// `.themeButton`). `.placeholderTop` reuses both to reserve matching clearance.
+$corner-button-inset: 24px;
+$corner-button-size: 2.5rem;
+
 // ----- Shell ---------------------------------------------------------
 
 // Outer auth-flow container. Hosts the back button and the scrollable.
@@ -39,7 +44,7 @@
 .themeButton {
   position: fixed;
   display: flex;
-  top: 24px;
+  top: $corner-button-inset;
   z-index: 100;
   background-color: var(--message-highlighting-color);
   color: #fff;
@@ -50,11 +55,23 @@
 }
 
 .closeButton {
-  left: 24px;
+  left: $corner-button-inset;
 }
 
 .themeButton {
-  right: 24px;
+  right: $corner-button-inset;
+}
+
+// `toIm()` sets `.leaving` on the host when the IM page takes over: the cards
+// are instantly hidden behind `#page-chats`, but these fixed buttons sit above
+// it (z-index: 100) — fade them out instead of letting them linger until the
+// host is disposed ~1s later.
+.leaving {
+  .closeButton,
+  .themeButton {
+    opacity: 0;
+    pointer-events: none;
+  }
 }
 
 // `<Scrollable>` wrapper. The opacity transition is used for the fade-in
@@ -74,6 +91,13 @@
   flex: 1;
   min-height: 1rem;
   width: 100%;
+}
+
+// The top spacer also clears the fixed corner buttons: on a short viewport it
+// would otherwise collapse to `min-height` and tuck the first card under them.
+// Floor it at button inset + button box + a 1rem breathing gap.
+.placeholderTop {
+  min-height: calc(#{$corner-button-inset} + #{$corner-button-size} + 1rem);
 }
 
 // Horizontal max-width container around the active card.

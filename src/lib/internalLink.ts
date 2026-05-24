@@ -27,7 +27,8 @@ export enum INTERNAL_LINK_TYPE {
   INSTANT_VIEW,
   NEW,
   SETTINGS,
-  CONTACTS
+  CONTACTS,
+  CONFERENCE_CALL
 };
 
 export type InternalLink =
@@ -55,7 +56,8 @@ export type InternalLink =
   InternalLink.InternalLinkInstantView |
   InternalLink.InternalLinkNew |
   InternalLink.InternalLinkSettings |
-  InternalLink.InternalLinkContacts;
+  InternalLink.InternalLinkContacts |
+  InternalLink.InternalLinkConferenceCall;
 
 export namespace InternalLink {
   export interface InternalLinkMessage {
@@ -217,6 +219,15 @@ export namespace InternalLink {
     _: INTERNAL_LINK_TYPE.CONTACTS,
     type?: 'search' | 'sort' | 'new' | 'invite' | 'manage'
   }
+
+  // t.me/call/<slug> and tg://call?slug=<slug> — invite link for a
+  // TdE2E-encrypted conference call. The slug resolves to an
+  // `inputGroupCallSlug` that we feed straight into
+  // `groupCallsController.joinConference`.
+  export interface InternalLinkConferenceCall {
+    _: INTERNAL_LINK_TYPE.CONFERENCE_CALL,
+    slug: string
+  }
 }
 
 export type InternalLinkTypeMap = {
@@ -244,5 +255,6 @@ export type InternalLinkTypeMap = {
   [INTERNAL_LINK_TYPE.INSTANT_VIEW]: InternalLink.InternalLinkInstantView,
   [INTERNAL_LINK_TYPE.NEW]: InternalLink.InternalLinkNew,
   [INTERNAL_LINK_TYPE.SETTINGS]: InternalLink.InternalLinkSettings,
-  [INTERNAL_LINK_TYPE.CONTACTS]: InternalLink.InternalLinkContacts
+  [INTERNAL_LINK_TYPE.CONTACTS]: InternalLink.InternalLinkContacts,
+  [INTERNAL_LINK_TYPE.CONFERENCE_CALL]: InternalLink.InternalLinkConferenceCall
 };

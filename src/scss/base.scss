@@ -14,6 +14,13 @@
   // SCSS @media override here; consumers in chat / sidebars / bubble math
   // depend on the value being the same at every scope.
   --100vh: calc(var(--vh) * 100);
+  // Height of a column's content area — `--100vh` minus the top + bottom
+  // page-chats-padding insets. Use this (not `--100vh`) for elements sized
+  // against the visible space inside #column-left / #column-center /
+  // #column-right. `var(--page-chats-padding)` is resolved at the consumer
+  // site, so the right per-scope value is picked up automatically (root
+  // scope on the side sidebars, chat scope inside #column-center).
+  --100vh-inset: calc(var(--100vh) - 2 * var(--page-chats-padding));
   --main-column-border-radius: #{$border-radius-big};
 
   @include respond-to(handhelds) {
@@ -355,10 +362,9 @@ body {
   overflow: hidden; // + disable overscroll behavior on macOS
 
   @include respond-to(handhelds) {
-    // Use the JS-tracked viewport directly (handles iOS URL bar) — NOT
-    // `--100vh`, which subtracts page-chats-padding and would leave a
-    // gap below body that pushed the column visually short.
-    height: calc(var(--vh) * 100);
+    // Pin to the JS-tracked viewport so the iOS URL bar collapsing doesn't
+    // leave a gap below body.
+    height: var(--100vh);
   }
 
   /* @include respond-to(handhelds) {

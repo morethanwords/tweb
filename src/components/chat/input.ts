@@ -16,6 +16,8 @@ import PopupNewMedia, {getCurrentNewMediaPopup} from '@components/popups/newMedi
 import {toast, toastNew} from '@components/toast';
 import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageMedia, InputReplyTo, Chat as MTChat, User, ChatFull, Dialog, PhotoSize, Photo, Document} from '@layer';
 import StickersHelper from '@components/chat/stickersHelper';
+import ChatInputPlate from '@components/chat/controlPlate';
+import PopupSendGift from '@components/popups/sendGift';
 import ButtonIcon from '@components/buttonIcon';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import ListenerSetter, {Listener} from '@helpers/listenerSetter';
@@ -126,6 +128,7 @@ import {Accessor, createEffect, createMemo, createRoot, createSignal, on, onClea
 import {createStore} from 'solid-js/store';
 import SelectedEffect from '@components/chat/selectedEffect';
 import windowSize from '@helpers/windowSize';
+import mediaSizes from '@helpers/mediaSizes';
 import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
 import accumulate from '@helpers/array/accumulate';
 import splitStringByLength from '@helpers/string/splitStringByLength';
@@ -333,6 +336,9 @@ export default class ChatInput {
   private onlyPremiumBtnText: I18n.IntlElement;
   private frozenBtn: HTMLButtonElement;
   private joinBtn: HTMLButtonElement;
+  private channelMuteBtn: HTMLButtonElement;
+  private directControlBtn: HTMLButtonElement;
+  private giftControlBtn: HTMLButtonElement;
   private rowsWrapperWrapper: HTMLDivElement;
   private controlContainer: HTMLElement;
   private fakeSelectionWrapper: HTMLDivElement;
@@ -359,6 +365,8 @@ export default class ChatInput {
 
   private isFocused: boolean;
   private freezedFocused: boolean;
+  /** True while `finishPeerChange` runs — suppresses animated plate centering. */
+  private peerChanging: boolean;
   public onFocusChange: (isFocused: boolean) => void;
   public onMenuToggle: (isOpen: boolean) => void;
   public onRecording: (isRecording: boolean) => void;
@@ -442,7 +450,13 @@ export default class ChatInput {
     const fakeSelectionWrapper = this.fakeSelectionWrapper = document.createElement('div');
     fakeSelectionWrapper.classList.add('fake-wrapper', 'fake-selection-wrapper');
 
-    this.inputContainer.append(this.rowsWrapperWrapper, fakeRowsWrapper, fakeSelectionWrapper);
+    // Shared rounded surface behind every plate (input row / control / selection).
+    // Plates are transparent and cross-fade their content on top of it, so the
+    // background never disappears mid-transition.
+    const background = document.createElement('div');
+    background.classList.add('chat-input-background');
+
+    this.inputContainer.append(background, this.rowsWrapperWrapper, fakeRowsWrapper, fakeSelectionWrapper);
     this.chatInput.append(this.inputContainer);
 
     if(!this.excludeParts.downButton) {
@@ -1376,15 +1390,17 @@ export default class ChatInput {
 
     this.saveDraftDebounced = debounce(() => this.saveDraft(), 2500, false, true);
 
-    const makeControlButton = (langKey: LangPackKey | HTMLElement) => {
-      const button = Button('btn-primary btn-transparent text-bold chat-input-control-button');
+    const makeControlButton = (langKey: LangPackKey | HTMLElement, filled?: boolean) => {
+      const button = Button(`btn-primary ${filled ? 'btn-color-primary' : 'btn-transparent'} text-bold chat-input-control-button chat-input-plate-button`);
       button.append(langKey instanceof HTMLElement ? langKey : i18n(langKey));
       return button;
     };
 
     this.botStartBtn = makeControlButton('BotStart');
     this.unblockBtn = makeControlButton('Unblock');
-    this.joinBtn = this.chat.topbar && makeControlButton('ChannelJoin');
+    this.joinBtn = this.chat.topbar && makeControlButton('ChannelJoin', true);
+    this.channelMuteBtn = makeControlButton('ChatList.Context.Mute');
+    this.channelMuteBtn.classList.add('hide');
     this.onlyPremiumBtnText = new I18n.IntlElement({key: 'Chat.Input.PremiumRequiredButton', args: [0, document.createElement('a')]});
     this.onlyPremiumBtn = makeControlButton(this.onlyPremiumBtnText.element);
     const frozenText = document.createElement('span');
@@ -1405,9 +1421,12 @@ export default class ChatInput {
       showFrozenPopup();
     }, {listenerSetter: this.listenerSetter});
     this.joinBtn && attachClickEvent(this.joinBtn, this.chat.topbar.onJoinClick.bind(this.chat.topbar, this.joinBtn), {listenerSetter: this.listenerSetter});
+    attachClickEvent(this.channelMuteBtn, () => {
+      this.managers.appMessagesManager.togglePeerMute({peerId: this.chat.peerId});
+    }, {listenerSetter: this.listenerSetter});
 
     // * pinned part start
-    this.pinnedControlBtn = Button('btn-primary btn-transparent text-bold chat-input-control-button', {icon: 'unpin'});
+    this.pinnedControlBtn = Button('btn-primary btn-transparent text-bold chat-input-control-button chat-input-plate-button', {icon: 'unpin'});
 
     this.listenerSetter.add(this.pinnedControlBtn)('click', () => {
       const peerId = this.chat.peerId;
@@ -1431,15 +1450,43 @@ export default class ChatInput {
       });
     }, {listenerSetter: this.listenerSetter});
 
+    // Channel "can't write" plate side buttons: write-in-direct (shown only
+    // when the channel has a linked direct-messages chat) and gift.
+    this.directControlBtn = this.createButtonIcon('comments hide');
+    attachClickEvent(this.directControlBtn, () => {
+      const channel = this.chat.peer as MTChat.channel;
+      const monoforumId = channel?.linked_monoforum_id;
+      if(monoforumId) {
+        this.chat.appImManager.setInnerPeer({peerId: monoforumId.toPeerId(true)});
+      }
+    }, {listenerSetter: this.listenerSetter});
+
+    this.giftControlBtn = this.createButtonIcon('gift hide');
+    attachClickEvent(this.giftControlBtn, () => {
+      PopupElement.createPopup(PopupSendGift, {peerId: this.chat.peerId});
+    }, {listenerSetter: this.listenerSetter});
+
+    // The control container is now a single uniform-width plate:
+    // Button.Icon + Button + Button.Icon (see controlPlate.tsx). All the
+    // single-button states share the centre slot — only one is ever visible.
+    const controlPlate = ChatInputPlate({
+      left: this.directControlBtn,
+      right: this.giftControlBtn,
+      center: [
+        this.botStartBtn,
+        this.unblockBtn,
+        this.joinBtn,
+        this.channelMuteBtn,
+        this.onlyPremiumBtn,
+        this.frozenBtn,
+        this.pinnedControlBtn,
+        this.openChatBtn
+      ].filter(Boolean)
+    }) as HTMLElement;
+
     this.controlContainer.append(...[
-      this.botStartBtn,
-      this.unblockBtn,
-      this.joinBtn,
-      this.onlyPremiumBtn,
-      this.frozenBtn,
-      this.replyInTopicOverlay,
-      this.pinnedControlBtn,
-      this.openChatBtn
+      controlPlate,
+      this.replyInTopicOverlay
     ].filter(Boolean));
   }
 
@@ -1509,6 +1556,13 @@ export default class ChatInput {
         this.btnAutoDeletePeriod.classList.remove('hide');
       } else {
         this.btnAutoDeletePeriod.classList.add('hide');
+      }
+    });
+
+    // Keep the channel "can't write" plate's Mute/Unmute label in sync.
+    this.listenerSetter.add(rootScope)('dialog_notify_settings', (dialog) => {
+      if(this.chat.peerId === dialog.peerId) {
+        this.updateChannelMuteButton();
       }
     });
   }
@@ -1640,7 +1694,12 @@ export default class ChatInput {
   }
 
   public async center(animate = false) {
-    return this._center(await this.getNeededFakeContainer(), animate);
+    // While a peer change is in progress the plate must switch instantly —
+    // otherwise an animated centering (e.g. from `dialogs_multiupdate`) races
+    // `finishPeerChange` and the control plate flickers on chat switch.
+    // Captured before the await so it reflects the moment `center` was called.
+    const animated = animate && !this.peerChanging;
+    return this._center(await this.getNeededFakeContainer(), animated);
   }
 
   public setStartParam(startParam?: string) {
@@ -1715,6 +1774,38 @@ export default class ChatInput {
     }
   }
 
+  /**
+   * A broadcast channel the user can't post in — whether a plain subscriber or
+   * not subscribed at all. Drives the "can't write" plate (join / mute + gift).
+   */
+  public async isChannelControlNeeded() {
+    if(!this.joinBtn || this.chat.type !== ChatType.Chat || this.chat.peerId.isUser() || this.chat.isMonoforum) {
+      return false;
+    }
+
+    if(!(this.chat.peer as MTChat.channel)?.pFlags?.broadcast) {
+      return false;
+    }
+
+    return !(await this.chat.canSend('send_messages'));
+  }
+
+  // Keeps the channel "can't write" plate's centre button labelled Mute/Unmute.
+  private updateChannelMuteButton() {
+    if(!this.channelMuteBtn) {
+      return;
+    }
+
+    const peerId = this.chat.peerId;
+    this.managers.appNotificationsManager.isPeerLocalMuted({peerId, respectType: false}).then((muted) => {
+      if(this.chat.peerId !== peerId) {
+        return;
+      }
+
+      this.channelMuteBtn.replaceChildren(i18n(muted ? 'ChatList.Context.Unmute' : 'ChatList.Context.Mute'));
+    });
+  }
+
   public async getNeededFakeContainer(startParam = this.startParam) {
     if(this.chat.selection?.isSelecting) {
       return this.fakeSelectionWrapper;
@@ -1727,6 +1818,7 @@ export default class ChatInput {
       this.isReplyInTopicOverlayNeeded() ||
       (this.chat.peerId.isUser() && (this.chat.isUserBlocked || this.chat.isPremiumRequired)) ||
       this.getJoinButtonType() ||
+      await this.isChannelControlNeeded() ||
       (this.frozenBtn && this.chat.appConfig.freeze_since_date && !(await this.chat.canSend()))
     ) {
       return this.controlContainer;
@@ -2132,6 +2224,8 @@ export default class ChatInput {
   public async finishPeerChange(options: Parameters<Chat['finishPeerChange']>[0]) {
     const {peerId, startParam, middleware} = options;
 
+    this.peerChanging = true;
+
     const {
       forwardElements,
       btnScheduled,
@@ -2161,7 +2255,8 @@ export default class ChatInput {
       isPremiumRequired,
       appConfig,
       autoDeletePeriod,
-      canManageAutoDelete
+      canManageAutoDelete,
+      peerMuted
     ] = await Promise.all([
       this.managers.appPeersManager.isBroadcast(peerId),
       this.managers.appPeersManager.canPinMessage(peerId),
@@ -2176,7 +2271,8 @@ export default class ChatInput {
       this.chat.isPremiumRequiredToContact(),
       apiManagerProxy.getAppConfig(),
       modifyAckedPromise(this.chat.getAutoDeletePeriod()),
-      this.chat.canManageAutoDelete()
+      this.chat.canManageAutoDelete(),
+      this.managers.appNotificationsManager.isPeerLocalMuted({peerId, respectType: false})
     ]);
 
     const placeholderParams = this.messageInput ? await this.getPlaceholderParams(canSendPlain) : undefined;
@@ -2248,10 +2344,40 @@ export default class ChatInput {
 
       if(this.chat && this.joinBtn) {
         const type = this.getJoinButtonType();
-        const good = !haveSomethingInControl && !!type;
+        const channel = this.chat.peer as MTChat.channel;
+
+        // A broadcast channel the user can't post in: not subscribed -> Subscribe
+        // (primary filled), subscribed -> Mute (transparent). Megagroups keep
+        // using getJoinButtonType().
+        const cantPostBroadcast = isBroadcast && !canSend &&
+          this.chat.type === ChatType.Chat && !peerId.isUser() && !this.chat.isMonoforum;
+        const showJoin = !!type || (cantPostBroadcast && !!channel?.pFlags?.left);
+        const showMute = cantPostBroadcast && !channel?.pFlags?.left;
+        const good = !haveSomethingInControl && (showJoin || showMute);
         haveSomethingInControl ||= good;
-        this.joinBtn.classList.toggle('hide', !good);
-        this.joinBtn.replaceChildren(i18n(type === 'request' ? 'ChannelJoinRequest' : 'ChannelJoin'));
+
+        this.joinBtn.classList.toggle('hide', !(good && showJoin));
+        if(good && showJoin) {
+          // "Subscribe" for a broadcast channel; "Join" for a group you must
+          // join before you can post.
+          const joinKey: LangPackKey = isBroadcast ?
+            'Chat.Subscribe' :
+            type === 'request' ? 'ChannelJoinRequest' : 'ChannelJoin';
+          this.joinBtn.replaceChildren(i18n(joinKey));
+        }
+
+        this.channelMuteBtn.classList.toggle('hide', !(good && showMute));
+        if(good && showMute) {
+          // Synchronous initial label (no flash); live toggles are handled by
+          // the dialog_notify_settings listener -> updateChannelMuteButton().
+          this.channelMuteBtn.replaceChildren(i18n(peerMuted ? 'ChatList.Context.Unmute' : 'ChatList.Context.Mute'));
+        }
+
+        // Channel "can't write" plate: write-in-direct (only when the channel
+        // has a linked direct-messages chat) on the left, gift on the right.
+        // Both are channel-only — a megagroup join just shows the centre button.
+        this.directControlBtn.classList.toggle('hide', !(good && channel?.linked_monoforum_id));
+        this.giftControlBtn.classList.toggle('hide', !(good && isBroadcast));
       }
 
       if(this.chat && this.pinnedControlBtn) {
@@ -2347,6 +2473,8 @@ export default class ChatInput {
         isMonoforumAllChats: isMonoforum && canManageDirectMessages && !monoforumThreadId,
         isReplying: !!this.helperType
       });
+
+      this.peerChanging = false;
       // console.warn('[input] finishpeerchange ends');
     };
   }
@@ -2571,6 +2699,32 @@ export default class ChatInput {
     this.chat.updateChatInputHeight(this.inputHeightDelta + helperPx);
   }
 
+  // Single source of truth for `.input-message-input` max-height. The same
+  // value is pushed to InputFieldAnimated, which writes it as inline
+  // style.maxHeight AND uses it to clamp the auto-grow read of
+  // `inputFake.scrollHeight` — so `--chat-input-height-surplus` matches
+  // what the user actually sees.
+  private static MESSAGE_INPUT_MAX_HEIGHT_DEFAULT = 440; // 27.5rem
+  private static MESSAGE_INPUT_MAX_HEIGHT_MOBILE = 160; // 10rem
+  private static MESSAGE_INPUT_MAX_HEIGHT_MIN = 36;
+  private static SHORT_VIEWPORT_HEIGHT = 480; // 30rem
+  private static SHORT_VIEWPORT_RESERVED = 160; // 10rem reserved for chrome
+
+  private computeMessageInputMaxHeight() {
+    if(mediaSizes.isMobile) return ChatInput.MESSAGE_INPUT_MAX_HEIGHT_MOBILE;
+    if(windowSize.height <= ChatInput.SHORT_VIEWPORT_HEIGHT) {
+      // Mirror the old `max(36px, calc(--100vh-inset - 10rem))`. Chat-scope
+      // page-chats-padding is 16 on non-mobile (mobile is handled above).
+      const available = windowSize.height - 2 * 16 - ChatInput.SHORT_VIEWPORT_RESERVED;
+      return Math.max(ChatInput.MESSAGE_INPUT_MAX_HEIGHT_MIN, available);
+    }
+    return ChatInput.MESSAGE_INPUT_MAX_HEIGHT_DEFAULT;
+  }
+
+  private syncMessageInputMaxHeight = () => {
+    this.messageInputField?.setMaxHeight(this.computeMessageInputMaxHeight());
+  };
+
   private attachMessageInputField() {
     const oldInputField = this.messageInputField;
     this.messageInputField = new InputFieldAnimated({
@@ -2592,6 +2746,11 @@ export default class ChatInput {
     this.messageInput = this.messageInputField.input;
     this.attachMessageInputListeners();
     createMarkdownCache(this.messageInput);
+
+    this.syncMessageInputMaxHeight();
+    if(!oldInputField) {
+      this.listenerSetter.add(mediaSizes)('resize', this.syncMessageInputMaxHeight);
+    }
 
     if(IS_STICKY_INPUT_BUGGED) {
       fixSafariStickyInputFocusing(this.messageInput);

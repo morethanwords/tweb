@@ -38,6 +38,7 @@ import {toastNew} from '@components/toast';
 import confirmationPopup from '@components/confirmationPopup';
 import {makeFullMid} from '@components/chat/bubbles';
 import {ChatType} from './chatType';
+import ChatInputPlate from '@components/chat/controlPlate';
 
 const accumulateMapSet = (map: Map<any, Set<number>>) => {
   return [...map.values()].reduce((acc, v) => acc + v.size, 0);
@@ -747,8 +748,6 @@ export default class ChatSelection extends AppSelection {
   public selectionSendNowBtn: HTMLElement;
   public selectionForwardBtn: HTMLElement;
   public selectionDeleteBtn: HTMLElement;
-  private selectionLeft: HTMLDivElement;
-  private selectionRight: HTMLDivElement;
 
   constructor(
     private chat: Chat,
@@ -938,7 +937,8 @@ export default class ChatSelection extends AppSelection {
   }
 
   protected onToggleSelection = async(forwards: boolean, animate: boolean) => {
-    const {needTranslateX, widthFrom, widthTo} = await this.chat.input.center(animate);
+    // Every plate is the same width now, so this just cross-fades.
+    await this.chat.input.center(animate);
 
     SetTransition({
       element: this.input.chatInput,
@@ -960,114 +960,76 @@ export default class ChatSelection extends AppSelection {
             this.selectionSendNowBtn =
             this.selectionForwardBtn =
             this.selectionDeleteBtn =
-            this.selectionLeft =
-            this.selectionRight =
             null;
           this.selectedText = undefined;
         }
-
-        /* fastRaf(() => {
-          this.bubbles.onScroll();
-        }); */
       }
     });
 
-    // const chatInput = this.appImManager.chatInput;
+    if(this.isSelecting && !this.selectionContainer) {
+      this.selectionInputWrapper = document.createElement('div');
+      this.selectionInputWrapper.classList.add('chat-input-wrapper', 'selection-wrapper');
 
-    const translateButtonsX = widthFrom < widthTo ? undefined : needTranslateX * 2;
-    if(this.isSelecting) {
-      if(!this.selectionContainer) {
-        this.selectionInputWrapper = document.createElement('div');
-        this.selectionInputWrapper.classList.add('chat-input-wrapper', 'selection-wrapper');
+      const attachClickOptions: AttachClickOptions = {listenerSetter: this.listenerSetter};
 
-        // const background = document.createElement('div');
-        // background.classList.add('chat-input-wrapper-background');
+      // Centre slot — the "N selected" count, styled as a transparent button;
+      // tapping it clears the selection.
+      this.selectionCountEl = document.createElement('div');
+      this.selectionCountEl.classList.add('selection-container-count');
+      const countButton = Button('btn-primary btn-transparent text-bold chat-input-plate-button');
+      countButton.append(this.selectionCountEl);
+      attachClickEvent(countButton, () => this.cancelSelection(), attachClickOptions);
 
-        this.selectionContainer = document.createElement('div');
-        this.selectionContainer.classList.add('selection-container');
+      // Left slot — delete.
+      this.selectionDeleteBtn = ButtonIcon('delete danger selection-container-delete');
+      attachClickEvent(this.selectionDeleteBtn, () => {
+        PopupElement.createPopup(
+          PopupDeleteMessages,
+          this.chat.peerId,
+          this.getSelectedMids(),
+          this.chat.type,
+          () => {
+            this.cancelSelection();
+          }
+        );
+      }, attachClickOptions);
 
-        const attachClickOptions: AttachClickOptions = {listenerSetter: this.listenerSetter};
-        const btnCancel = ButtonIcon('close', {noRipple: true});
-        attachClickEvent(btnCancel, () => this.cancelSelection(), {once: true, listenerSetter: this.listenerSetter});
-
-        this.selectionCountEl = document.createElement('div');
-        this.selectionCountEl.classList.add('selection-container-count');
-
-        if(this.chat.type === ChatType.Scheduled) {
-          this.selectionSendNowBtn = Button('btn-primary btn-transparent btn-short text-bold selection-container-send', {icon: 'send2'});
-          this.selectionSendNowBtn.append(i18n('MessageScheduleSend'));
-          attachClickEvent(this.selectionSendNowBtn, () => {
-            PopupElement.createPopup(PopupSendNow, this.chat.peerId, [...this.selectedMids.get(this.chat.peerId)], () => {
-              this.cancelSelection();
-            });
-          }, attachClickOptions);
-        } else {
-          this.selectionForwardBtn = Button('btn-primary btn-transparent text-bold selection-container-forward', {icon: 'forward'});
-          this.selectionForwardBtn.append(i18n('Forward'));
-          attachClickEvent(this.selectionForwardBtn, () => {
-            const obj: {[fromPeerId: PeerId]: number[]} = {};
-            for(const [fromPeerId, mids] of this.selectedMids) {
-              obj[fromPeerId] = Array.from(mids).sort((a, b) => a - b);
-            }
-
-            showForwardPopup(obj, () => {
-              this.cancelSelection();
-            });
-          }, attachClickOptions);
-        }
-
-        this.selectionDeleteBtn = Button('btn-primary btn-transparent danger text-bold selection-container-delete', {icon: 'delete'});
-        this.selectionDeleteBtn.append(i18n('Delete'));
-        attachClickEvent(this.selectionDeleteBtn, () => {
-          // if(TEST_BUBBLES_DELETION) {
-          //   return this.chat.bubbles.deleteMessagesByIds(this.getSelectedMids(), true);
-          // }
-
-          PopupElement.createPopup(
-            PopupDeleteMessages,
-            this.chat.peerId,
-            this.getSelectedMids(),
-            this.chat.type,
-            () => {
-              this.cancelSelection();
-            }
-          );
+      // Right slot — forward (or "send now" for scheduled messages).
+      let rightButton: HTMLElement;
+      if(this.chat.type === ChatType.Scheduled) {
+        rightButton = this.selectionSendNowBtn = ButtonIcon('send2 selection-container-send');
+        attachClickEvent(this.selectionSendNowBtn, () => {
+          PopupElement.createPopup(PopupSendNow, this.chat.peerId, [...this.selectedMids.get(this.chat.peerId)], () => {
+            this.cancelSelection();
+          });
         }, attachClickOptions);
+      } else {
+        rightButton = this.selectionForwardBtn = ButtonIcon('forward selection-container-forward');
+        attachClickEvent(this.selectionForwardBtn, () => {
+          const obj: {[fromPeerId: PeerId]: number[]} = {};
+          for(const [fromPeerId, mids] of this.selectedMids) {
+            obj[fromPeerId] = Array.from(mids).sort((a, b) => a - b);
+          }
 
-        const left = this.selectionLeft = document.createElement('div');
-        left.classList.add('selection-container-left');
-        left.append(btnCancel, this.selectionCountEl);
-
-        const right = this.selectionRight = document.createElement('div');
-        right.classList.add('selection-container-right');
-        right.append(...[
-          this.selectionSendNowBtn,
-          this.selectionForwardBtn,
-          this.selectionDeleteBtn
-        ].filter(Boolean))
-
-        if(translateButtonsX !== undefined) {
-          left.style.transform = `translateX(${-translateButtonsX}px)`;
-          right.style.transform = `translateX(${translateButtonsX}px)`;
-        }
-
-        this.selectionContainer.append(left, right);
-
-        // background.style.opacity = '0';
-        this.selectionInputWrapper.style.opacity = '0';
-        this.selectionInputWrapper.append(/* background,  */this.selectionContainer);
-        this.input.inputContainer.append(this.selectionInputWrapper);
-
-        void this.selectionInputWrapper.offsetLeft; // reflow
-        // background.style.opacity = '';
-        this.selectionInputWrapper.style.opacity = '';
+          showForwardPopup(obj, () => {
+            this.cancelSelection();
+          });
+        }, attachClickOptions);
       }
 
-      this.selectionLeft.style.transform = '';
-      this.selectionRight.style.transform = '';
-    } else if(this.selectionLeft && translateButtonsX !== undefined) {
-      this.selectionLeft.style.transform = `translateX(-${translateButtonsX}px)`;
-      this.selectionRight.style.transform = `translateX(${translateButtonsX}px)`;
+      this.selectionContainer = ChatInputPlate({
+        class: 'selection-container',
+        left: this.selectionDeleteBtn,
+        center: countButton,
+        right: rightButton
+      }) as HTMLElement;
+
+      this.selectionInputWrapper.style.opacity = '0';
+      this.selectionInputWrapper.append(this.selectionContainer);
+      this.input.inputContainer.append(this.selectionInputWrapper);
+
+      void this.selectionInputWrapper.offsetLeft; // reflow
+      this.selectionInputWrapper.style.opacity = '';
     }
   };
 

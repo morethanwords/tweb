@@ -268,6 +268,8 @@
 	}
 
   .reply-in-topic-overlay {
+    position: absolute;
+    inset: 0;
     background-color: inherit;
     border-radius: inherit;
     z-index: 3;
@@ -330,6 +332,12 @@
           transition: opacity $input-half-transition-time .075s;
         }
 
+        // Plates cross-fade in place — every plate is the same width, so
+        // switching between them is a pure opacity transition.
+        .new-message-wrapper {
+          transition: opacity $input-half-transition-time;
+        }
+
         .btn-send {
           transition: $input-transition-time transform;
         }
@@ -354,13 +362,6 @@
   .bubbles.is-selecting.animating ~ & {
     .new-message-wrapper {
       transition: opacity $input-half-transition-time 0s;
-    }
-
-    .selection-container {
-      &-left,
-      &-right {
-        transition: transform $input-transition-time;
-      }
     }
   }
 
@@ -521,8 +522,6 @@
 	max-width: 100%;
 	justify-content: center;
 	border-radius: var(--chat-input-border-radius);
-  background-color: var(--surface-color);
-  box-shadow: $chat-input-box-shadow;
 	min-height: var(--chat-input-height);
 	max-height: 30rem;
 	flex: 0 0 auto;
@@ -530,16 +529,26 @@
 	z-index: 3;
 }
 
-.chat-input-control {
-  --padding-vertical: .3125rem;
-  --padding-horizontal: 0;
-  --padding: var(--padding-vertical) var(--padding-horizontal);
+// Shared rounded surface that sits behind every footer plate (input row,
+// control container, selection). Plates themselves are transparent and only
+// cross-fade their content, so they never fade into emptiness.
+.chat-input-background {
   position: absolute;
-  margin: 0 auto;
-  width: auto;
-  height: var(--chat-input-height);
-  padding: var(--padding);
+  inset-inline: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: var(--chat-input-border-radius);
   background-color: var(--surface-color);
+  box-shadow: $chat-input-box-shadow;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.chat-input-control {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: var(--chat-input-height);
   z-index: 3;
   visibility: hidden;
 
@@ -549,24 +558,74 @@
 }
 
 .chat-input-control-button {
-  height: 2.5rem;
-  padding: 0 .625rem;
-  justify-content: center;
-
-  @include respond-to(handhelds) {
-    font-size: 15px;
-  }
-
   &::before {
     margin-inline-end: 10px;
+  }
+}
+
+// Unified footer plate — `Button.Icon + Button + Button.Icon`, same spacing
+// and sizes as the topbar translation plate. See `controlPlate.tsx`.
+.chat-input-plate {
+  flex: 0 0 auto;
+  // Visible, primary-tinted ripple on the plate buttons, matching the
+  // topbar plates — the inherited global ripple is barely visible.
+  --ripple-color: var(--light-primary-color);
+
+  &-side {
+    flex: 0 0 var(--button-size);
+    height: var(--button-size);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &-center {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &-button {
+    width: 100%;
+    max-width: 100%;
+    height: var(--button-size);
+    border-radius: calc(var(--button-size) / 2);
+    padding: 0 1rem;
+    justify-content: center;
+    font-weight: var(--font-weight-bold);
+    @include text-overflow();
+  }
+
+  .btn-icon {
+    flex: 0 0 auto;
+    font-size: 1.5rem;
+    width: var(--button-size);
+    height: var(--button-size);
+    color: var(--secondary-text-color);
+
+    &.danger {
+      color: var(--danger-color);
+      --ripple-color: var(--light-danger-color);
+    }
   }
 }
 
 .selection-wrapper,
 .fake-selection-wrapper {
 	position: absolute;
-	top: 0;
 	max-width: 100%;
+}
+
+.fake-selection-wrapper {
+  top: 0;
+  inset-inline-start: var(--padding-horizontal);
+  width: calc(100% - (var(--padding-horizontal) * 2));
+}
+
+.selection-wrapper {
+  bottom: 0;
 }
 
 .selection-wrapper,
@@ -575,93 +634,17 @@
 }
 
 .selection-wrapper {
-  background-color: var(--surface-color);
-
   &:before {
     content: none;
   }
 
-  // .chat-input-wrapper-background {
-    // transition: visibility 0s 3s;
-    // opacity: 0;
-    // transition: opacity 0s 3s;
-    // box-shadow: 0px 1px 8px 1px rgb(0 0 0);
-  // }
-
-	.selection-container {
-		display: flex;
-		justify-content: space-between;
-		height: 100%;
-		//background-color: #ccc;
-		border-radius: inherit;
-		padding: inherit;
-		user-select: none;
-		font-size: 15px;
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		width: 100%;
-
-    &-left,
-    &-right {
-      display: flex;
-      justify-content: space-between;
-		  align-items: center;
-      transform: translateX(0);
-    }
-
-    &-right {
-      flex: 0 0 auto;
-    }
-
-		&-count {
-			color: var(--primary-text-color);
-			font-weight: var(--font-weight-bold);
-			flex-grow: 1;
-			white-space: nowrap;
-			//padding-left: .5rem;
-			// text-transform: capitalize;
-		}
-
-		.btn-icon {
-			margin-inline: 6px 5px;
-			//color: #3f454a;
-			height: 42px;
-			width: 42px;
-			line-height: 42px;
-		}
-
-		.btn-primary {
-			height: 2.5rem;
-			width: auto;
-
-			@include respond-to(handhelds) {
-				padding: 0 .5rem;
-			}
-
-			@media only screen and (max-width: 380px) {
-				font-size: 0;
-
-				.button-icon {
-					margin: 0;
-				}
-			}
-		}
-
-		&-forward {
-			.button-icon {
-				margin-inline-end: 14px;
-			}
-		}
-
-		&-delete {
-			margin-inline: .375rem .625rem;
-
-			.button-icon {
-				margin-inline-end: 10px;
-			}
-		}
-	}
+  // The selection plate now uses the unified `chat-input-plate` layout
+  // (delete icon · "N selected" transparent button · forward icon).
+  .selection-container-count {
+    color: var(--primary-text-color);
+    font-weight: var(--font-weight-bold);
+    white-space: nowrap;
+  }
 }
 
 .fake-wrapper {
@@ -834,15 +817,10 @@
   }
 
   .input-message-input {
-    max-height: calc(30rem - 2.5rem) !important; // 2.5rem - input helper (reply)
-
-    @media only screen and (max-height: 30rem) {
-      max-height: string.unquote('max(36px, calc(var(--100vh) - 10rem))');
-    }
-
-    @include respond-to(handhelds) {
-      max-height: 10rem;
-    }
+    // max-height is JS-owned — see ChatInput.computeMessageInputMaxHeight()
+    // in components/chat/input.ts. The same number drives both the inline
+    // style.maxHeight and the scrollHeight clamp in InputFieldAnimated, so
+    // `--chat-input-height-surplus` matches what the user actually sees.
 
     &[data-inline-placeholder]:after {
       content: attr(data-inline-placeholder);

@@ -13,6 +13,7 @@ import toggleStorages from '@helpers/toggleStorages';
 import appTabsManager from '@appManagers/appTabsManager';
 import callbackify from '@helpers/callbackify';
 import Modes from '@config/modes';
+import {IS_WORKER} from '@helpers/context';
 import {ActiveAccountNumber} from '@lib/accounts/types';
 import commonStateStorage from '@lib/commonStateStorage';
 import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
@@ -30,7 +31,10 @@ import {MainBroadcastChannelEvents, unversionedMainBroadcastChannelName} from '@
 const log = logger('MTPROTO');
 // let haveState = false;
 
-const port = new MTProtoMessagePort<false>();
+// pass isMaster=false so the non-master singleton lookup is correct when this
+// module is imported into the main thread under Modes.noWorker (otherwise
+// MTProtoMessagePort.MASTER_INSTANCE would be overwritten).
+const port = new MTProtoMessagePort<false>(false);
 
 const mainBroadcastChannel = createBroadcastChannelWrapper<MainBroadcastChannelEvents>(unversionedMainBroadcastChannelName);
 
@@ -279,12 +283,11 @@ appTabsManager.onTabStateChange = () => {
   }
 };
 
-listenMessagePort(port, (source) => {
+const onTabConnect = (source: MessageEventSource) => {
   appTabsManager.addTab(source);
   if(isFirst) {
     isFirst = false;
     resetNotificationsCount();
-    // port.invoke('log', 'Shared worker first connection')
   } else {
     callbackify(appManagersManager.getManagersByAccount(), (managers) => {
       for(const key in managers) {
@@ -295,16 +298,30 @@ listenMessagePort(port, (source) => {
       }
     });
   }
+};
 
-  // port.invokeVoid('hello', undefined, source);
-  // if(!sentHello) {
-  //   port.invokeVoid('hello', undefined, source);
-  //   sentHello = true;
-  // }
-}, (source) => {
+const onTabDisconnect = (source: MessageEventSource) => {
   appTabsManager.deleteTab(source);
   autoLockControls.removeTab(source);
-});
+};
+
+// Auto-listen only when actually running inside a Worker context.
+// In Modes.noWorker the proxy imports this module and drives connectInProcessTab
+// manually; falling through to listenMessagePort's else-branch would attach
+// `self` (the window) as a port and intercept unrelated window.postMessage.
+if(IS_WORKER) {
+  listenMessagePort(port, onTabConnect, onTabDisconnect);
+}
+
+// Used by apiManagerProxy in Modes.noWorker: feed it one end of a MessageChannel
+// whose other end is attached to the proxy. Mirrors the SharedWorker `connect`
+// flow but for an in-realm port pair.
+export function connectInProcessTab(p: MessagePort) {
+  port.attachListenPort(p);
+  port.attachSendPort(p);
+  p.start?.();
+  onTabConnect(p as any);
+}
 
 
 function selfTerminate() {

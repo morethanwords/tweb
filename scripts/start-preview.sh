@@ -13,24 +13,28 @@
 # from the Telegram service chat — two concurrent mints would collide.
 #
 # Usage (run from anywhere — the script cd's to the repo root itself):
-#   bash scripts/start-preview.sh [--id <id>] [--port <port>] [--remint]
+#   bash scripts/start-preview.sh [--id <id>] [--port <port>] [--remint] [--no-worker]
 #
-#   --id      preview identity; the auth is cached per id.
-#             Default: the current worktree directory name.
-#   --port    fixed port. Default: first free port from 9001 upward.
-#   --remint  discard the cached auth for this id and mint a fresh one.
+#   --id          preview identity; the auth is cached per id.
+#                 Default: the current worktree directory name.
+#   --port        fixed port. Default: first free port from 9001 upward.
+#   --remint      discard the cached auth for this id and mint a fresh one.
+#   --no-worker   run MTProto + crypto in the main thread (debug only). Sets
+#                 Modes.noWorker at build time so breakpoints span the full
+#                 pipeline without needing ?noWorker=1 in the URL.
 #
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 REPO="$(pwd)"
 
-ID=""; PORT=""; REMINT=0
+ID=""; PORT=""; REMINT=0; NO_WORKER=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --id) ID="${2:?}"; shift 2;;
     --port) PORT="${2:?}"; shift 2;;
     --remint) REMINT=1; shift;;
+    --no-worker) NO_WORKER=1; shift;;
     *) echo "[start-preview] unknown arg: $1" >&2; exit 1;;
   esac
 done
@@ -40,9 +44,15 @@ done
 ID="$(printf '%s' "$ID" | tr -c 'A-Za-z0-9._-' '_')"
 
 # the master seed lives in the MAIN worktree's tmp/ (tmp/ is gitignored, so a
-# fresh worktree has none of its own) — locate it via the shared git dir
+# fresh worktree has none of its own) — locate it via the shared git dir.
+# TWEB_MASTER_SEED may be: unset (default seed.json), an absolute path, or a
+# bare filename which we resolve against the main worktree's tmp/.
 MAIN="$(cd "$(dirname "$(git rev-parse --git-common-dir)")" && pwd)"
-MASTER_SEED="${TWEB_MASTER_SEED:-$MAIN/tmp/seed.json}"
+MASTER_SEED="${TWEB_MASTER_SEED:-seed.json}"
+case "$MASTER_SEED" in
+  /*) ;;  # already absolute — leave as-is
+  *) MASTER_SEED="$MAIN/tmp/$MASTER_SEED" ;;
+esac
 if [ ! -f "$MASTER_SEED" ]; then
   echo "[start-preview] master seed not found: $MASTER_SEED" >&2
   echo "[start-preview] set TWEB_MASTER_SEED or place tmp/seed.json in the main repo" >&2
@@ -80,7 +90,7 @@ if [ -z "$PORT" ]; then
 fi
 [ -n "$PORT" ] || { echo "[start-preview] no free port in 9001-9099" >&2; exit 1; }
 
-echo "[start-preview] id=$ID  port=$PORT  seed=$SEED"
+echo "[start-preview] id=$ID  port=$PORT  seed=$SEED  no-worker=$NO_WORKER"
 echo "[start-preview] preview: http://localhost:$PORT"
-exec env PREVIEW_SEED="$SEED" pnpm exec vite \
+exec env PREVIEW_SEED="$SEED" TWEB_PREVIEW=1 TWEB_NO_WORKER="$NO_WORKER" pnpm exec vite \
   --config vite.preview.config.ts --port "$PORT" --strictPort

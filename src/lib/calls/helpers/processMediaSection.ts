@@ -4,7 +4,7 @@ import SDP from '@lib/calls/sdp';
 import {Ssrc} from '@lib/calls/types';
 import parseMediaSectionInfo from '@lib/calls/helpers/parseMediaSectionInfo';
 
-export default function processMediaSection(sdp: SDP, media: SDP['media'][0]) {
+export default function processMediaSection(sdp: SDP, media: SDP['media'][0], opts?: {forE2eConference?: boolean}) {
   const sectionInfo = parseMediaSectionInfo(sdp, media);
 
   const mediaType: Exclude<typeof media['mediaType'], 'application'> = media.mediaType as any;
@@ -14,8 +14,14 @@ export default function processMediaSection(sdp: SDP, media: SDP['media'][0]) {
     type: mediaType
   };
 
-  // do not change this value, otherwise onconnectionstatechange won't fire
-  sectionInfo.fingerprint.setup = 'active';
+  // Legacy SFU: client is active (initiates DTLS). Conference SFU: client is
+  // passive (server initiates) — verified against tdesktop's captured
+  // phone_joinGroupCall params for a working conference. Getting this wrong
+  // hangs the DTLS handshake forever; ICE goes to connected but no RTP
+  // packets ever flow.
+  // The legacy comment ("do not change this value, otherwise
+  // onconnectionstatechange won't fire") still applies to non-conference.
+  sectionInfo.fingerprint.setup = opts?.forE2eConference ? 'passive' : 'active';
   const payload: JoinGroupCallJsonPayload = {
     'fingerprints': [sectionInfo.fingerprint],
     'pwd': sectionInfo.pwd,

@@ -15,18 +15,26 @@ export default class GroupCallTitleElement {
   public update(instance: GroupCallInstance) {
     const {peerTitle, appendTo} = this;
     const groupCall = instance.groupCall as GroupCall.groupCall;
-    const peerId = instance.chatId.toPeerId(true);
-    if(groupCall.title) {
+    if(groupCall?.title) {
       setInnerHTML(appendTo, wrapEmojiText(groupCall.title));
-    } else {
-      if(peerTitle.options.peerId !== peerId) {
-        peerTitle.options.peerId = peerId;
-        peerTitle.update();
-      }
+      return;
+    }
 
-      if(peerTitle.element.parentElement !== appendTo) {
-        appendTo.append(peerTitle.element);
-      }
+    // TdE2E conferences don't have a backing chat — use a plain title.
+    // Eventually this can list participant names.
+    if(instance.e2e && (!instance.chatId || instance.chatId === NULL_PEER_ID)) {
+      setInnerHTML(appendTo, wrapEmojiText('Encrypted call'));
+      return;
+    }
+
+    const peerId = instance.chatId.toPeerId(true);
+    if(peerTitle.options.peerId !== peerId) {
+      peerTitle.options.peerId = peerId;
+      peerTitle.update();
+    }
+
+    if(peerTitle.element.parentElement !== appendTo) {
+      appendTo.append(peerTitle.element);
     }
   }
 }

@@ -1,0 +1,79 @@
+/*
+ * Minimal styles for the conference-call SolidJS primitives introduced in
+ * Phase 6. Kept intentionally small — the full popup design (mirroring
+ * tdesktop's conference panel) is deferred until the live-call surface is
+ * actually wired up in Phase 7+.
+ */
+
+.conference-fingerprint-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  user-select: none;
+
+  &__emoji {
+    font-size: 1.5rem;
+    line-height: 1;
+  }
+
+  &__pending {
+    display: inline-block;
+    width: 4.5rem;
+    height: 1.5rem;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.08);
+  }
+}
+
+.conference-participants {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  &__row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &--self {
+      font-weight: 500;
+    }
+
+    &--muted {
+      opacity: 0.6;
+    }
+  }
+
+  &__name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__chip {
+    flex-shrink: 0;
+    padding: 0.125rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    background: rgba(0, 0, 0, 0.06);
+
+    &--muted {
+      background: rgba(220, 70, 70, 0.15);
+      color: rgb(220, 70, 70);
+    }
+  }
+}

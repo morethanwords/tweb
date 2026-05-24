@@ -623,7 +623,7 @@
 
     .btn-menu {
       min-width: 200px;
-      max-height: calc(var(--100vh) - 3.75rem);
+      max-height: calc(var(--100vh-inset) - 3.75rem);
 
       &-item {
         --padding-right: .375rem;
@@ -675,7 +675,7 @@
 
   .search-super {
     --super-offset: 1rem;
-    --super-height: calc(var(--100vh) - #{$header-height} - var(--super-offset));
+    --super-height: calc(var(--100vh-inset) - #{$header-height} - var(--super-offset));
     top: 1rem;
 
     &-tabs-scrollable {
@@ -1193,7 +1193,7 @@
   }
 
   .search-super-content-container {
-    min-height: calc(var(--100vh) - 57px);
+    min-height: calc(var(--100vh-inset) - 57px);
   }
 }
 

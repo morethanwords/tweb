@@ -1,30 +1,157 @@
+/*
+ * 1-on-1 phone call. CallInstance owns the call lifecycle (DH key exchange,
+ * accept/confirm, signaling transport) and the tgcalls v2 (13.0.0) P2P engine:
+ * RTCPeerConnection setup, ICE, SDP negotiation and media streams. The engine
+ * is a port of Telegram Web A (telegram-tt) src/lib/vibecalls/phone/phoneCall.ts —
+ * its state lives in `this.p2p` (created in joinPhoneCall, cleared in
+ * stopPhoneCall; `!this.p2p` means the engine has not been started / is stopped).
+ */
+
+import {gunzipSync, gzipSync} from 'fflate';
 import ctx from '@environment/ctx';
-import {IS_SAFARI} from '@environment/userAgent';
 import assumeType from '@helpers/assumeType';
 import safeAssign from '@helpers/object/safeAssign';
-import debounce from '@helpers/schedulers/debounce';
-import {GroupCallParticipantVideoSourceGroup, PhoneCall, PhoneCallDiscardReason, PhoneCallProtocol, Update} from '@layer';
+import {PhoneCall, PhoneCallDiscardReason, PhoneCallProtocol, PhoneConnection} from '@layer';
 import {emojiFromCodePoints} from '@vendor/emoji';
-import type {AppCallsManager, CallId} from '@appManagers/appCallsManager';
+import type {CallId} from '@appManagers/appCallsManager';
 import type {AppManagers} from '@lib/managers';
 import {logger} from '@lib/logger';
 import apiManagerProxy from '@lib/apiManagerProxy';
-import CallConnectionInstance from '@lib/calls/callConnectionInstance';
 import CallInstanceBase from '@lib/calls/callInstanceBase';
 import callsController from '@lib/calls/callsController';
 import CALL_STATE from '@lib/calls/callState';
 import {GROUP_CALL_AMPLITUDE_ANALYSE_INTERVAL_MS} from '@lib/calls/constants';
-import parseSignalingData from '@lib/calls/helpers/parseSignalingData';
-import stopTrack from '@lib/calls/helpers/stopTrack';
-import localConferenceDescription, {ConferenceEntry, generateSsrc} from '@lib/calls/localConferenceDescription';
 import getCallProtocol from '@lib/calls/p2P/getCallProtocol';
-import getRtcConfiguration from '@lib/calls/p2P/getRtcConfiguration';
 import P2PEncryptor from '@lib/calls/p2P/p2PEncryptor';
-import {p2pParseCandidate, P2PSdpBuilder} from '@lib/calls/p2P/p2PSdpBuilder';
-import {parseSdp} from '@lib/calls/sdp/utils';
-import {WebRTCLineType} from '@lib/calls/sdpBuilder';
+import ByteBuf from '@lib/calls/p2P/byteBuf';
+import {isSctpPacket, SctpSignaling} from '@lib/calls/p2P/sctpSignaling';
+import {black, silence} from '@lib/calls/p2P/fallbackMedia';
+import {
+  ActiveLocalMedia,
+  buildIceServers,
+  buildSsrc,
+  Conference,
+  Connection,
+  filterRemoteVideoPayloadTypes,
+  getCandidateUfrag,
+  getDefaultAudioPayloadTypes,
+  getDefaultVideoPayloadTypes,
+  getRemoteDescriptionMids,
+  getRemoteDescriptionUfrags,
+  getStreamTrack,
+  getUserStream,
+  hasLiveTrack,
+  MediaMids,
+  normalizeCandidateComponent,
+  orderMediaContents,
+  parseInitialSetup,
+  parseMediaContent,
+  parseMediaContents,
+  parseMediaContentMids,
+  payloadTypeToConference,
+  QueuedCandidate,
+  SsrcEntry,
+  stopStream,
+  StreamType,
+  summarizeContents,
+  summarizeTrack,
+  tryAddCandidate,
+  validateRemoteAnswerSdp
+} from '@lib/calls/p2P/utils';
+import {
+  getSdpDirection,
+  getSdpPort,
+  parseBundleMids,
+  parseExtmaps,
+  parsePayloadTypes,
+  parseSdpSections,
+  summarizeSdp,
+  SdpSection
+} from '@lib/calls/p2P/sdpCommon';
+import {SDPBuilder} from '@lib/calls/sdpBuilder';
 import StreamManager from '@lib/calls/streamManager';
-import {AudioCodec, CallMediaState, CallSignalingData, DiffieHellmanInfo, P2PAudioCodec, P2PVideoCodec, VideoCodec} from '@lib/calls/types';
+import {CallMediaState, DiffieHellmanInfo, P2PMediaContent, P2PMessage} from '@lib/calls/types';
+
+const ICE_CANDIDATE_POOL_SIZE = 10;
+const DEFAULT_AUDIO_MID = '0';
+const DEFAULT_VIDEO_MID = '1';
+const DEFAULT_PRESENTATION_MID = '2';
+const DEFAULT_DATA_MID = '3';
+const DATA_CHANNEL_ID = 0;
+
+type RemoteMediaState = {
+  isMuted: boolean;
+  videoState: CallMediaState['videoState'];
+  videoRotation: CallMediaState['videoRotation'];
+  screencastState: CallMediaState['screencastState'];
+  isBatteryLow: boolean;
+};
+
+type LocalMediaParameters = {
+  audioPayloadTypes: Conference['audioPayloadTypes'];
+  audioExtensions: Conference['audioExtensions'];
+  videoPayloadTypes: Conference['videoPayloadTypes'];
+  videoExtensions: Conference['videoExtensions'];
+};
+
+// Live state of the P2P engine: the RTCPeerConnection, its transceivers/senders,
+// the media streams and all the negotiation bookkeeping. Created in joinPhoneCall,
+// cleared in stopPhoneCall.
+type State = {
+  connection: RTCPeerConnection;
+  dataChannel?: RTCDataChannel;
+  isStarting?: boolean;
+  isMakingOffer?: boolean;
+  isUpdatingExclusiveVideo?: boolean;
+  remoteSetup?: Extract<P2PMessage, { '@type': 'InitialSetup' }>;
+  pendingRemoteNegotiation?: Extract<P2PMessage, { '@type': 'NegotiateChannels' }>;
+  queuedRemoteNegotiation?: Extract<P2PMessage, { '@type': 'NegotiateChannels' }>;
+  pendingLocalExchangeId?: string;
+  localCandidateExchangeId?: string;
+  pendingLocalContentMids?: Record<string, string>;
+  pendingRemoteContentMids?: Record<string, string>;
+  appliedRemoteExchangeId?: string;
+  appliedRemoteExchangeIds: Set<string>;
+  appliedRemoteUfrag?: string;
+  isApplyingRemoteNegotiation?: boolean;
+  handledRemoteExchangeIds: Set<string>;
+  pendingCandidates: QueuedCandidate[];
+  transceivers: {
+    audio: RTCRtpTransceiver;
+    remoteAudio?: RTCRtpTransceiver;
+    video?: RTCRtpTransceiver;
+    presentation?: RTCRtpTransceiver;
+    remoteVideo?: RTCRtpTransceiver;
+    remotePresentation?: RTCRtpTransceiver;
+  };
+  senders: {
+    audio: RTCRtpSender;
+    video?: RTCRtpSender;
+    presentation?: RTCRtpSender;
+  };
+  streams: {
+    video?: MediaStream;
+    audio?: MediaStream;
+    presentation?: MediaStream;
+    ownAudio?: MediaStream;
+    ownVideo?: MediaStream;
+    ownPresentation?: MediaStream;
+  };
+  audioContext: AudioContext;
+  silence: MediaStream;
+  blackVideo: MediaStream;
+  blackPresentation: MediaStream;
+  remoteMediaState: RemoteMediaState;
+  audio: HTMLAudioElement;
+  facingMode?: VideoFacingModeEnum;
+  exchangeId: number;
+  lastLocalSetupKey?: string;
+};
+
+// An update emitted by the P2P engine and routed back into the UI.
+type Update =
+  {'@type': 'updatePhoneCallConnectionState', connectionState: RTCPeerConnectionState} |
+  ({'@type': 'updatePhoneCallMediaState'} & RemoteMediaState);
 
 export default class CallInstance extends CallInstanceBase<{
   state: (state: CALL_STATE) => void,
@@ -40,13 +167,14 @@ export default class CallInstance extends CallInstanceBase<{
   public protocol: PhoneCallProtocol;
   public isOutgoing: boolean;
   public encryptionKey: Uint8Array;
-  public connectionInstance: CallConnectionInstance;
+  // One P2PEncryptor per call handles BOTH directions — encrypt and decrypt use
+  // complementary `x` key-derivation offsets internally, so a single instance
+  // (constructed with this peer's real isOutgoing) is correct for send + receive.
   public encryptor: P2PEncryptor;
-  public decryptor: P2PEncryptor;
-  public candidates: RTCIceCandidate[];
 
-  public offerReceived: boolean;
-  public offerSent: boolean;
+  // SCTP framing for the 13.0.0 signaling protocol; undefined when the call
+  // negotiated network_signaling_nosctp (then the encrypted blob is sent raw).
+  private sctp: SctpSignaling | undefined;
 
   public createdParticipantEntries: boolean;
   public release: () => Promise<void>;
@@ -56,27 +184,30 @@ export default class CallInstance extends CallInstanceBase<{
   public connectedAt: number;
   public discardReason: PhoneCallDiscardReason;
 
-  private managers: AppManagers;
+  // Kept only to satisfy CallInstanceBase (its cleanup() stops it); the P2P
+  // engine owns the actual RTCPeerConnection, streams and tracks.
+  public streamManager: StreamManager;
 
+  public wasTryingToJoin: boolean;
+
+  private managers: AppManagers;
   private hangUpTimeout: number;
 
-  private mediaStates: {
-    input: CallMediaState,
-    output?: CallMediaState
-  };
-
-  private sendMediaState: () => Promise<void>;
+  private joined: boolean;
+  private p2pConnectionState: RTCPeerConnectionState;
+  private outputMediaState: CallMediaState;
+  private videoElements: Map<CallMediaState['type'], HTMLVideoElement>;
 
   private decryptQueue: Uint8Array[];
 
   private getEmojisFingerprintPromise: Promise<CallInstance['emojisFingerprint']>;
   private emojisFingerprint: [string, string, string, string];
 
-  private wasStartingScreen: boolean;
-  private wasStartingVideo: boolean;
-  public wasTryingToJoin: boolean;
-
-  public streamManager: StreamManager;
+  // Live tgcalls v2 P2P engine state; undefined until joinPhoneCall, cleared by
+  // stopPhoneCall. `!this.p2p` means the engine is not running.
+  private p2p: State;
+  // Serializes data-channel signaling messages so they are processed in order.
+  private dataChannelSignalingMessagePromise: Promise<void>;
 
   constructor(options: {
     isOutgoing: boolean,
@@ -95,10 +226,11 @@ export default class CallInstance extends CallInstanceBase<{
     safeAssign(this, options);
 
     this.createdAt = Date.now();
-    this.offerReceived = false;
-    this.offerSent = false;
+    this.joined = false;
     this.decryptQueue = [];
-    this.candidates = [];
+    this.dataChannelSignalingMessagePromise = Promise.resolve();
+    this.videoElements = new Map();
+    this.streamManager = new StreamManager(GROUP_CALL_AMPLITUDE_ANALYSE_INTERVAL_MS);
 
     this.addEventListener('state', (state) => {
       this.log('state', CALL_STATE[state]);
@@ -107,58 +239,21 @@ export default class CallInstance extends CallInstanceBase<{
         this.cleanup();
       }
     });
-
-    const streamManager = this.streamManager = new StreamManager(GROUP_CALL_AMPLITUDE_ANALYSE_INTERVAL_MS);
-    streamManager.direction = 'sendrecv';
-    streamManager.types.push('screencast');
-    if(!this.isOutgoing) {
-      streamManager.locked = true;
-      streamManager.canCreateConferenceEntry = false;
-    }
-
-    let mediaState: CallMediaState = {
-      '@type': 'MediaState',
-      'type': 'input',
-      'lowBattery': false,
-      'muted': true,
-      'screencastState': 'inactive',
-      'videoRotation': 0,
-      'videoState': 'inactive'
-    };
-
-    const self = this;
-    mediaState = new Proxy(mediaState, {
-      set: function(target, key, value) {
-        // @ts-ignore
-        target[key] = value;
-        self.setMediaState(mediaState);
-        self.sendMediaState();
-        return true;
-      }
-    });
-
-    this.mediaStates = {
-      input: mediaState
-    };
-
-    this.sendMediaState = debounce(this._sendMediaState.bind(this), 0, false, true);
   }
 
   get connectionState() {
-    const {_connectionState, connectionInstance} = this;
-    if(_connectionState !== undefined) {
-      return _connectionState;
-    } else if(!connectionInstance) {
-      return CALL_STATE.CONNECTING;
-    } else {
-      const {iceConnectionState} = connectionInstance.connection;
-      if(iceConnectionState === 'closed') {
-        return CALL_STATE.CLOSED;
-      } else if(iceConnectionState !== 'connected' && (!IS_SAFARI || iceConnectionState !== 'completed')) {
-        return CALL_STATE.CONNECTING;
-      } else {
+    if(this._connectionState !== undefined) {
+      return this._connectionState;
+    }
+
+    switch(this.p2pConnectionState) {
+      case 'connected':
         return CALL_STATE.CONNECTED;
-      }
+      case 'failed':
+      case 'closed':
+        return CALL_STATE.CLOSED;
+      default:
+        return CALL_STATE.CONNECTING;
     }
   }
 
@@ -170,127 +265,100 @@ export default class CallInstance extends CallInstanceBase<{
     return index;
   }
 
+  // The P2P engine owns the RTCPeerConnection — there is no LocalConferenceDescription.
+  public get description(): any {
+    return undefined;
+  }
+
+  // Media is acquired by the P2P engine; skip CallInstanceBase's stream pre-prompt.
+  public requestInputSource() {
+    return Promise.resolve();
+  }
+
   public getVideoElement(type: CallMediaState['type']) {
-    if(type === 'input') return this.elements.get('main');
-    else {
-      const mediaState = this.getMediaState('output');
-      if(!mediaState) {
-        return;
-      }
-
-      const type: WebRTCLineType = mediaState.videoState === 'active' ? 'video' : (mediaState.screencastState === 'active' ? 'screencast' : undefined);
-      if(!type) {
-        return;
-      }
-
-      const entry = this.description.findEntry((entry) => entry.type === type);
-      if(!entry) {
-        return;
-      }
-
-      return this.elements.get('' + entry.recvEntry.source);
+    const streams = this.getStreams();
+    if(!streams) {
+      return undefined;
     }
+
+    const stream = type === 'input' ?
+      (this.isSharingScreen ? streams.ownPresentation : streams.ownVideo) :
+      (streams.presentation || streams.video);
+    if(!stream) {
+      return undefined;
+    }
+
+    let element = this.videoElements.get(type);
+    if(!element) {
+      element = document.createElement('video');
+      element.autoplay = true;
+      element.muted = true;
+      element.setAttribute('playsinline', 'true');
+      this.videoElements.set(type, element);
+    }
+
+    if(element.srcObject !== stream) {
+      element.srcObject = stream;
+    }
+
+    return element;
   }
 
-  public async startScreenSharingInternal() {
-    try {
-      this.wasStartingScreen = true;
-      this.wasStartingVideo = false;
-      this.streamManager.types = ['audio', 'screencast'];
-      await this.requestScreen();
-    } catch(err) {
-      this.log.error('startScreenSharing error', err);
-    }
+  public toggleScreenSharing() {
+    return this.toggleStream('presentation').then(() => {
+      this.dispatchEvent('mediaState', this.getMediaState('input'));
+    });
   }
 
-  public async toggleScreenSharing() {
-    if(this.isSharingVideo) {
-      await this.stopVideoSharing();
-    }
-
-    if(this.isSharingScreen) {
-      return this.stopVideoSharing();
-    } else {
-      return this.startScreenSharingInternal();
-    }
+  public toggleVideoSharing() {
+    return this.toggleStream('video').then(() => {
+      this.dispatchEvent('mediaState', this.getMediaState('input'));
+    });
   }
 
-  public async startVideoSharingInternal() {
-    try {
-      this.wasStartingScreen = false;
-      this.wasStartingVideo = true;
-      this.streamManager.types = ['audio', 'video'];
-      await this.requestInputSource(false, true, false);
-    } catch(err) {
-      this.log.error('startVideoSharing error', err);
-    }
+  private getOwnTrackEnabled(streamType: StreamType) {
+    const streams = this.getStreams();
+    const stream = streamType === 'audio' ? streams?.ownAudio :
+      (streamType === 'video' ? streams?.ownVideo : streams?.ownPresentation);
+    return !!stream?.getTracks()[0]?.enabled;
   }
 
-  public async stopVideoSharing() {
-    const mediaState = this.getMediaState('input');
-    mediaState.videoState = mediaState.screencastState = 'inactive';
-
-    const {streamManager, description} = this;
-    const track = streamManager.inputStream.getVideoTracks()[0];
-    if(track) {
-      stopTrack(track);
-      streamManager.appendToConference(description); // clear sender track
-    }
-  }
-
-  public async toggleVideoSharing() {
-    if(this.isSharingScreen) {
-      await this.stopVideoSharing();
+  public getMediaState(type: CallMediaState['type']): CallMediaState {
+    if(type === 'output') {
+      return this.outputMediaState;
     }
 
-    if(this.isSharingVideo) {
-      return this.stopVideoSharing();
-    } else {
-      return this.startVideoSharingInternal();
-    }
-  }
-
-  public getMediaState(type: CallMediaState['type']) {
-    return this.mediaStates[type];
+    return {
+      '@type': 'MediaState',
+      'type': 'input',
+      'muted': this.isMuted,
+      'lowBattery': false,
+      'screencastState': this.isSharingScreen ? 'active' : 'inactive',
+      'videoRotation': 0,
+      'videoState': this.isSharingVideo ? 'active' : 'inactive'
+    };
   }
 
   public setMediaState(mediaState: CallMediaState) {
-    this.mediaStates[mediaState.type] = mediaState;
+    this.outputMediaState = mediaState;
     this.dispatchEvent('mediaState', mediaState);
   }
 
-  public isSharingVideoType(type: 'video' | 'screencast') {
-    try {
-      const hasVideoTrack = super.isSharingVideo;
-      return hasVideoTrack && !!((this.wasStartingScreen && type === 'screencast') || (this.wasStartingVideo && type === 'video'));
-
-      // ! it will be used before the track appears
-      // return !!this.description.entries.find((entry) => entry.type === type && entry.transceiver.sender.track.enabled);
-    } catch(err) {
-      return false;
-    }
-  }
-
   public get isSharingVideo() {
-    return this.isSharingVideoType('video');
+    return this.getOwnTrackEnabled('video');
   }
 
   public get isSharingScreen() {
-    return this.isSharingVideoType('screencast');
+    return this.getOwnTrackEnabled('presentation');
   }
 
   public get isMuted() {
-    const audioTrack = this.streamManager.inputStream.getAudioTracks()[0];
-    return !audioTrack?.enabled;
+    return !this.getOwnTrackEnabled('audio');
   }
 
   public get isClosing() {
     const {connectionState} = this;
     return connectionState === CALL_STATE.CLOSING || connectionState === CALL_STATE.CLOSED;
-  }
-
-  public get description(): localConferenceDescription {
-    return this.connectionInstance?.description;
   }
 
   public setHangUpTimeout(timeout: number, reason: Parameters<CallInstance['hangUp']>[0]) {
@@ -325,12 +393,9 @@ export default class CallInstance extends CallInstanceBase<{
       return;
     }
 
-    // this.clearHangUpTimeout();
     this.overrideConnectionState(CALL_STATE.EXCHANGING_KEYS);
 
     const call = this.call as PhoneCall.phoneCallRequested;
-    this.requestInputSource(true, !!call.pFlags.video, false);
-
     const g_a_hash = call.g_a_hash;
     this.managers.appCallsManager.generateDh().then(async(dh) => {
       this.dh = { // ! it is correct
@@ -350,156 +415,7 @@ export default class CallInstance extends CallInstanceBase<{
       await this.managers.appCallsManager.savePhonePhoneCall(phonePhoneCall);
     }).catch((err) => {
       this.log.error('accept call error', err);
-      // if(err.type === 'CALL_PROTOCOL_COMPAT_LAYER_INVALID') {
-
-      // }
-
       this.hangUp('phoneCallDiscardReasonHangup');
-    });
-  }
-
-  public joinCall() {
-    this.log('joinCall');
-
-    this.getEmojisFingerprint();
-
-    this.overrideConnectionState();
-
-    const {isOutgoing, encryptionKey, streamManager} = this;
-
-    const configuration = getRtcConfiguration(this.call as PhoneCall.phoneCall);
-    this.log('joinCall configuration', configuration);
-    if(!configuration) return;
-
-    const connectionInstance = this.connectionInstance = new CallConnectionInstance({
-      call: this,
-      streamManager,
-      log: this.log.bindPrefix('connection')
-    });
-
-    const connection = connectionInstance.createPeerConnection(configuration);
-    connection.addEventListener('iceconnectionstatechange', () => {
-      const state = this.connectionState;
-      if(this.connectedAt === undefined && state === CALL_STATE.CONNECTED) {
-        this.connectedAt = Date.now();
-      }
-
-      this.dispatchEvent('state', state);
-    });
-    connection.addEventListener('negotiationneeded', () => {
-      connectionInstance.negotiate();
-    });
-    connection.addEventListener('icecandidate', (event) => {
-      const {candidate} = event;
-      connection.log('onicecandidate', candidate);
-      if(candidate?.candidate) {
-        this.sendIceCandidate(candidate);
-      }
-    });
-    connection.addEventListener('track', (event) => {
-      const {track} = event;
-      connection.log('ontrack', track);
-      this.onTrack(event);
-    });
-
-    const description = connectionInstance.createDescription();
-
-    this.encryptor = new P2PEncryptor(isOutgoing, encryptionKey);
-    this.decryptor = new P2PEncryptor(!isOutgoing, encryptionKey);
-
-    this.log('currentCall', this);
-
-    if(isOutgoing) {
-      connectionInstance.appendStreamToConference();
-    }
-
-    this.createDataChannel();
-
-    this.processDecryptQueue();
-  }
-
-  private createDataChannelEntry() {
-    const dataChannelEntry = this.description.createEntry('application');
-    dataChannelEntry.setDirection('sendrecv');
-    dataChannelEntry.sendEntry = dataChannelEntry.recvEntry = dataChannelEntry;
-  }
-
-  private createDataChannel() {
-    if(this.connectionInstance.dataChannel) {
-      return;
-    }
-
-    const channel = this.connectionInstance.createDataChannel({
-      id: 0,
-      negotiated: true
-    });
-    channel.addEventListener('message', (e) => {
-      this.applyDataChannelData(JSON.parse(e.data));
-    });
-    channel.addEventListener('open', () => {
-      this.sendMediaState();
-    });
-  }
-
-  private applyDataChannelData(data: CallMediaState) {
-    switch(data['@type']) {
-      case 'MediaState': {
-        data.type = 'output';
-        this.log('got output media state', data);
-        this.setMediaState(data);
-        break;
-      }
-
-      default:
-        this.log.error('unknown data channel data:', data);
-        break;
-    }
-  }
-
-  private _sendMediaState() {
-    const {connectionInstance} = this;
-    if(!connectionInstance) return;
-
-    const mediaState = {...this.getMediaState('input')};
-    // mediaState.videoRotation = 90;
-    delete mediaState.type;
-    this.log('sendMediaState', mediaState);
-
-    connectionInstance.sendDataChannelData(mediaState);
-  }
-
-  public async sendCallSignalingData(data: CallSignalingData) {
-    /* if(data['@type'] === 'InitialSetup') {
-      this.filterNotVP8(data);
-    } */
-
-    const json = JSON.stringify(data);
-    const arr = new TextEncoder().encode(json);
-    const {bytes} = await this.encryptor.encryptRawPacket(arr);
-
-    this.log('sendCallSignalingData', this.id, json);
-    await this.managers.apiManager.invokeApi('phone.sendSignalingData', {
-      peer: await this.managers.appCallsManager.getCallInput(this.id),
-      data: bytes
-    });
-  }
-
-  public sendIceCandidate(iceCandidate: RTCIceCandidate) {
-    this.log('sendIceCandidate', iceCandidate);
-    const {candidate, sdpMLineIndex} = iceCandidate;
-    if(sdpMLineIndex !== 0) {
-      return;
-    }
-
-    const parsed = p2pParseCandidate(candidate);
-    // const parsed = {sdpString: candidate};
-    /* if(parsed.address.ip !== '') {
-      return;
-    } */
-
-    this.sendCallSignalingData({
-      '@type': 'Candidates',
-      'candidates': [parsed]
     });
   }
 
@@ -507,9 +423,12 @@ export default class CallInstance extends CallInstanceBase<{
     const {protocol, id, call} = this;
     const dh = this.dh as DiffieHellmanInfo.a;
 
-    // this.clearHangUpTimeout();
     this.overrideConnectionState(CALL_STATE.EXCHANGING_KEYS);
-    const {key, key_fingerprint} = await this.managers.appCallsManager.computeKey((call as PhoneCall.phoneCallAccepted).g_b, dh.a, dh.p);
+    const {key, key_fingerprint} = await this.managers.appCallsManager.computeKey(
+      (call as PhoneCall.phoneCallAccepted).g_b,
+      dh.a,
+      dh.p
+    );
 
     const phonePhoneCall = await this.managers.apiManager.invokeApi('phone.confirmCall', {
       peer: await this.managers.appCallsManager.getCallInput(id),
@@ -523,61 +442,149 @@ export default class CallInstance extends CallInstanceBase<{
     this.joinCall();
   }
 
+  public joinCall() {
+    if(this.joined) {
+      return;
+    }
+
+    this.log('joinCall');
+    this.joined = true;
+
+    this.getEmojisFingerprint();
+
+    const call = this.call as PhoneCall.phoneCall;
+    const {isOutgoing, encryptionKey} = this;
+
+    this.encryptor = new P2PEncryptor(isOutgoing, encryptionKey);
+    this.sctp = this.getCustomParam('network_signaling_nosctp') ? undefined : new SctpSignaling();
+
+    const connections: Connection[] = (call.connections || [])
+    .filter((connection): connection is PhoneConnection.phoneConnectionWebrtc => {
+      return connection._ === 'phoneConnectionWebrtc';
+    })
+    .map((connection) => ({
+      ip: connection.ip,
+      ipv6: connection.ipv6,
+      port: +connection.port,
+      username: connection.username,
+      password: connection.password,
+      isTurn: !!connection.pFlags.turn,
+      isStun: !!connection.pFlags.stun
+    }));
+
+    this.joinPhoneCall(
+      connections,
+      !!call.pFlags.video,
+      !!call.pFlags.p2p_allowed
+    ).catch((err) => {
+      this.log.error('joinPhoneCall error', err);
+      this.hangUp('phoneCallDiscardReasonDisconnect');
+    });
+
+    // clear the EXCHANGING_KEYS override → connectionState now follows the p2p engine
+    this.overrideConnectionState();
+
+    this.processDecryptQueue();
+  }
+
+  public async sendCallSignalingData(data: P2PMessage) {
+    const json = JSON.stringify(data);
+    // 13.0.0 (v3): gzip the JSON payload inside the encrypted packet.
+    const gzipped = gzipSync(new TextEncoder().encode(json));
+    const {bytes} = await this.encryptor.encryptRawPacket(gzipped);
+
+    this.log('sendCallSignalingData', this.id, json);
+
+    if(this.sctp) {
+      // wrap the encrypted blob in an SCTP DATA packet (or an INIT during handshake)
+      const packet = this.sctp.wrapPayload(ByteBuf.wrap(bytes));
+      if(packet) {
+        await this.sendSignalingRaw(packet);
+      }
+
+      await this.drainSctp();
+    } else {
+      await this.sendSignalingRaw(bytes);
+    }
+  }
+
+  private async sendSignalingRaw(packet: number[] | Uint8Array) {
+    await this.managers.apiManager.invokeApi('phone.sendSignalingData', {
+      peer: await this.managers.appCallsManager.getCallInput(this.id),
+      data: packet instanceof Uint8Array ? packet : new Uint8Array(packet)
+    });
+  }
+
+  // Flush SCTP control packets (INIT/COOKIE/SACK/heartbeat) produced as a side effect.
+  private async drainSctp() {
+    if(!this.sctp) {
+      return;
+    }
+
+    for(const packet of this.sctp.drainPackets()) {
+      await this.sendSignalingRaw(packet);
+    }
+  }
+
+  private getCustomParam(key: string) {
+    const customParameters = (this.call as PhoneCall.phoneCall)?.custom_parameters;
+    if(customParameters?._ !== 'dataJSON') {
+      return undefined;
+    }
+
+    try {
+      return JSON.parse(customParameters.data)?.[key];
+    } catch(err) {
+      return undefined;
+    }
+  }
+
+  private onUpdate(update: Update) {
+    switch(update['@type']) {
+      case 'updatePhoneCallConnectionState': {
+        this.p2pConnectionState = update.connectionState;
+        if(update.connectionState === 'connected' && this.connectedAt === undefined) {
+          this.connectedAt = Date.now();
+        }
+
+        // a live engine state supersedes the EXCHANGING_KEYS override
+        this._connectionState = undefined;
+        this.dispatchEvent('state', this.connectionState);
+
+        if(update.connectionState === 'failed') {
+          this.hangUp('phoneCallDiscardReasonDisconnect');
+        }
+        break;
+      }
+
+      case 'updatePhoneCallMediaState': {
+        this.setMediaState({
+          '@type': 'MediaState',
+          'type': 'output',
+          'muted': update.isMuted,
+          'lowBattery': update.isBatteryLow,
+          'screencastState': update.screencastState === 'active' ? 'active' : 'inactive',
+          'videoRotation': update.videoRotation || 0,
+          'videoState': update.videoState === 'active' ? 'active' : 'inactive'
+        });
+        break;
+      }
+    }
+  }
+
   public getEmojisFingerprint() {
     if(this.emojisFingerprint) return this.emojisFingerprint;
     if(this.getEmojisFingerprintPromise) return this.getEmojisFingerprintPromise;
-    return this.getEmojisFingerprintPromise = apiManagerProxy.invokeCrypto('get-emojis-fingerprint', this.encryptionKey, this.dh.g_a).then((codePoints) => {
+    return this.getEmojisFingerprintPromise = apiManagerProxy.invokeCrypto(
+      'get-emojis-fingerprint',
+      this.encryptionKey,
+      this.dh.g_a
+    ).then((codePoints) => {
       this.getEmojisFingerprintPromise = undefined;
-      return this.emojisFingerprint = codePoints.map((codePoints) => emojiFromCodePoints(codePoints)) as [string, string, string, string];
+      return this.emojisFingerprint = codePoints.map(
+        (codePoints) => emojiFromCodePoints(codePoints)
+      ) as [string, string, string, string];
     });
-  }
-
-  private unlockStreamManager() {
-    this.connectionInstance.streamManager.locked = false;
-    this.connectionInstance.appendStreamToConference();
-  }
-
-  private async doTheMagic() {
-    this.connectionInstance.appendStreamToConference();
-
-    const connection = this.connectionInstance.connection;
-
-    let answer = await connection.createAnswer();
-
-    this.log('[sdp] local', answer.type, answer.sdp);
-    await connection.setLocalDescription(answer);
-
-    connection.getTransceivers().filter((transceiver) => transceiver.direction === 'recvonly').forEach((transceiver) => {
-      const entry = this.connectionInstance.description.getEntryByMid(transceiver.mid);
-      entry.transceiver = entry.recvEntry.transceiver = transceiver;
-      transceiver.direction = 'sendrecv';
-    });
-
-    const isAnswer = false;
-
-    const description = this.description;
-    const bundle = description.entries.map((entry) => entry.mid);
-    const sdpDescription: RTCSessionDescriptionInit = {
-      type: isAnswer ? 'answer' : 'offer',
-      sdp: description.generateSdp({
-        bundle,
-        entries: description.entries.filter((entry) => bundle.includes(entry.mid)),
-        // isAnswer: isAnswer
-        isAnswer: !isAnswer
-      })
-    };
-
-    await connection.setRemoteDescription(sdpDescription);
-
-    answer = await connection.createAnswer();
-
-    await connection.setLocalDescription(answer);
-
-    const initialSetup = parseSignalingData(parseSdp(answer.sdp));
-    this.log('[InitialSetup] send 1');
-    this.sendCallSignalingData(initialSetup);
-
-    this.unlockStreamManager();
   }
 
   public overrideConnectionState(state?: CALL_STATE) {
@@ -589,46 +596,10 @@ export default class CallInstance extends CallInstanceBase<{
     return this.connectedAt !== undefined ? (Date.now() - this.connectedAt) / 1000 | 0 : 0;
   }
 
-  protected onInputStream(stream: MediaStream): void {
-    super.onInputStream(stream);
-
-    const videoTrack = stream.getVideoTracks()[0];
-    if(videoTrack) {
-      const state = this.getMediaState('input');
-
-      // handle starting camera
-      if(!this.wasStartingScreen && !this.wasStartingVideo) {
-        this.wasStartingVideo = true;
-      }
-
-      if(this.isSharingVideo) {
-        state.videoState = 'active';
-      } else if(this.isSharingScreen) {
-        state.screencastState = 'active';
-      }
-
-      videoTrack.addEventListener('ended', () => {
-        this.stopVideoSharing();
-      }, {once: true});
-    }
-
-    if(stream.getAudioTracks().length) {
-      this.onMutedChange();
-    }
-  }
-
-  private onMutedChange() {
-    const isMuted = this.isMuted;
-    this.dispatchEvent('muted', isMuted);
-
-    const state = this.getMediaState('input');
-    state.muted = isMuted;
-  }
-
   public toggleMuted(): Promise<void> {
-    return this.requestAudioSource(true).then(() => {
-      this.setMuted();
-      this.onMutedChange();
+    return this.toggleStream('audio').then(() => {
+      this.dispatchEvent('muted', this.isMuted);
+      this.dispatchEvent('mediaState', this.getMediaState('input'));
     });
   }
 
@@ -645,179 +616,19 @@ export default class CallInstance extends CallInstanceBase<{
 
     this.discardReason = discardReason;
     this.log('hangUp', discardReason);
+
+    const hasVideo = this.isSharingVideo || this.isSharingScreen;
+
     this.overrideConnectionState(CALL_STATE.CLOSED);
 
-    if(this.connectionInstance) {
-      this.connectionInstance.closeConnectionAndStream(true);
+    try {
+      this.stopPhoneCall();
+    } catch(err) {
+      this.log.error('stopPhoneCall error', err);
     }
 
     if(discardReason && !discardedByOtherParty) {
-      let hasVideo = false;
-      for(const type in this.mediaStates) {
-        const mediaState = this.mediaStates[type as 'input' | 'output'];
-        hasVideo = mediaState.videoState === 'active' || mediaState.screencastState === 'active' || hasVideo;
-      }
-
       await this.managers.appCallsManager.discardCall(this.id, this.duration, discardReason, hasVideo);
-    }
-  }
-
-  private performCodec(_codec: P2PAudioCodec | P2PVideoCodec) {
-    const payloadTypes: AudioCodec['payload-types'] = _codec.payloadTypes.map((payloadType) => {
-      return {
-        ...payloadType,
-        'rtcp-fbs': payloadType.feedbackTypes
-      }
-    });
-
-    const codec: AudioCodec = {
-      'rtp-hdrexts': _codec.rtpExtensions,
-      'payload-types': payloadTypes
-    };
-
-    return codec;
-  }
-
-  private setDataToDescription(data: CallSignalingData.initialSetup) {
-    this.description.setData({
-      transport: {
-        'pwd': data.pwd,
-        'ufrag': data.ufrag,
-        'fingerprints': data.fingerprints,
-        'rtcp-mux': true
-      },
-      audio: this.performCodec(data.audio),
-      video: data.video ? this.performCodec(data.video) as VideoCodec : undefined,
-      screencast: data.screencast ? this.performCodec(data.screencast) as VideoCodec : undefined
-    });
-  }
-
-  private filterNotVP8(initialSetup: CallSignalingData.initialSetup) {
-    if(!this.isOutgoing) { // only VP8 works now
-      [initialSetup.video, initialSetup.screencast].filter(Boolean).forEach((codec) => {
-        const payloadTypes = codec.payloadTypes;
-        const idx = payloadTypes.findIndex((payloadType) => payloadType.name === 'VP8');
-        const vp8PayloadType = payloadTypes[idx];
-        const rtxIdx = payloadTypes.findIndex((payloadType) => +payloadType.parameters?.apt === vp8PayloadType.id);
-        codec.payloadTypes = [payloadTypes[idx], payloadTypes[rtxIdx]];
-      });
-    }
-  }
-
-  public async applyCallSignalingData(data: CallSignalingData) {
-    this.log('applyCallSignalingData', this, data);
-
-    const {connection, description} = this.connectionInstance;
-
-    switch(data['@type']) {
-      case 'InitialSetup': {
-        this.log('[sdp] InitialSetup', data);
-
-        this.filterNotVP8(data);
-        this.setDataToDescription(data);
-
-        const performSsrcGroups = (ssrcGroups: P2PVideoCodec['ssrcGroups']): GroupCallParticipantVideoSourceGroup[] => {
-          return ssrcGroups.map((ssrcGroup) => {
-            return {
-              _: 'groupCallParticipantVideoSourceGroup',
-              semantics: ssrcGroup.semantics,
-              sources: ssrcGroup.ssrcs.map((source) => +source)
-            };
-          });
-        };
-
-        const ssrcs = [
-          generateSsrc('audio', +data.audio.ssrc),
-          data.video ? generateSsrc('video', performSsrcGroups(data.video.ssrcGroups)) : undefined,
-          data.screencast ? generateSsrc('screencast', performSsrcGroups(data.screencast.ssrcGroups)) : undefined
-        ].filter(Boolean);
-
-        ssrcs.forEach((ssrc) => {
-          let entry = description.getEntryBySource(ssrc.source);
-          if(entry) {
-            return;
-          }
-
-          const sendRecvEntry = description.findFreeSendRecvEntry(ssrc.type, false);
-          entry = new ConferenceEntry(sendRecvEntry.mid, ssrc.type);
-          entry.setDirection('sendrecv');
-          sendRecvEntry.recvEntry = entry;
-
-          description.setEntrySource(entry, ssrc.sourceGroups || ssrc.source);
-        });
-
-        this.createDataChannelEntry();
-
-        const isAnswer = this.offerSent;
-        this.offerSent = false;
-
-        const bundle = description.entries.map((entry) => entry.mid);
-        const sdpDescription: RTCSessionDescriptionInit = {
-          type: isAnswer ? 'answer' : 'offer',
-          sdp: description.generateSdp({
-            bundle,
-            entries: description.entries.filter((entry) => bundle.includes(entry.mid)),
-            // isAnswer: isAnswer
-            isAnswer: !isAnswer
-          })
-        };
-
-        this.log('[sdp] remote', sdpDescription.sdp);
-
-        await connection.setRemoteDescription(sdpDescription);
-
-        await this.tryToReleaseCandidates();
-
-        if(!isAnswer) {
-          await this.doTheMagic();
-        }
-
-        break;
-      }
-
-      case 'Candidates': {
-        for(const candidate of data.candidates) {
-          const init: RTCIceCandidateInit = P2PSdpBuilder.generateCandidate(candidate);
-          init.sdpMLineIndex = 0;
-          const iceCandidate = new RTCIceCandidate(init);
-          this.candidates.push(iceCandidate);
-        }
-
-        await this.tryToReleaseCandidates();
-        break;
-      }
-
-      default: {
-        this.log.error('unrecognized signaling data', data);
-      }
-    }
-  }
-
-  public async tryToReleaseCandidates() {
-    const {connectionInstance} = this;
-    if(!connectionInstance) {
-      return;
-    }
-
-    const {connection} = connectionInstance;
-    if(connection.remoteDescription) {
-      const promises: Promise<void>[] = this.candidates.map((candidate) => this.addIceCandidate(connection, candidate));
-      this.candidates.length = 0;
-
-      await Promise.all(promises);
-    } else {
-      this.log('[candidates] postpone');
-    }
-  }
-
-  private async addIceCandidate(connection: RTCPeerConnection, candidate: RTCIceCandidate) {
-    this.log('[candidate] start', candidate);
-    try {
-      // if(!candidate.address) return;
-      await connection.addIceCandidate(candidate);
-      this.log('[candidate] add', candidate);
-    } catch(e) {
-      this.log.error('[candidate] error', candidate, e);
     }
   }
 
@@ -837,28 +648,1342 @@ export default class CallInstance extends CallInstanceBase<{
     this.decryptQueue.length = 0;
 
     for(const data of queue) {
-      const decryptedData = await encryptor.decryptRawPacket(data);
-      if(!decryptedData) {
-        continue;
-      }
+      // a v3 packet may be SCTP-wrapped and carry several encrypted payloads
+      const incoming = ByteBuf.wrap(data);
+      const bodies = this.sctp && isSctpPacket(incoming) ? this.sctp.receive(incoming) : [incoming];
 
-      // this.log('[update] updateNewCallSignalingData', update, decryptedData);
+      for(const body of bodies) {
+        const decryptedData = await encryptor.decryptRawPacket(body);
+        if(!decryptedData) {
+          continue;
+        }
 
-      const str = new TextDecoder().decode(decryptedData);
-      try {
-        const signalingData: CallSignalingData = JSON.parse(str);
+        // 13.0.0 (v3): the payload is gzipped (magic 1f 8b); older protocols send it raw
+        const payload = decryptedData[0] === 0x1F && decryptedData[1] === 0x8B ?
+          gunzipSync(decryptedData) : decryptedData;
+        const str = new TextDecoder().decode(payload);
+        let signalingData: P2PMessage;
+        try {
+          signalingData = JSON.parse(str);
+        } catch(err) {
+          this.log.error('wrong signaling data', str);
+          this.hangUp('phoneCallDiscardReasonDisconnect');
+          callsController.dispatchEvent('incompatible', this.interlocutorUserId);
+          continue;
+        }
+
         this.log('[update] updateNewCallSignalingData', signalingData);
-        this.applyCallSignalingData(signalingData);
-      } catch(err) {
-        this.log.error('wrong signaling data', str);
-        this.hangUp('phoneCallDiscardReasonDisconnect');
-        callsController.dispatchEvent('incompatible', this.interlocutorUserId);
+        this.processSignalingMessage(signalingData);
       }
     }
+
+    // SCTP receive() may have produced SACK/ACK packets that must go back to the peer
+    await this.drainSctp();
   }
 
   public onUpdatePhoneCallSignalingData(data: Uint8Array) {
     this.decryptQueue.push(data);
     this.processDecryptQueue();
+  }
+
+  // ===== tgcalls v2 P2P engine =====
+  // Connection setup + signaling negotiation, folded in from the former
+  // p2P/p2pCall.ts module. The engine reads/writes `this.p2p`; signaling goes out
+  // through this.sendCallSignalingData and engine updates come back via this.onUpdate.
+
+  private getStreams() {
+    return this.p2p?.streams;
+  }
+
+  private updateStreams() {
+    if(!this.p2p) return;
+
+    this.onUpdate({
+      ...this.p2p.remoteMediaState,
+      '@type': 'updatePhoneCallMediaState'
+    });
+  }
+
+  private getSender(streamType: StreamType) {
+    if(!this.p2p) return undefined;
+
+    if(streamType === 'audio') return this.p2p.senders.audio;
+    if(streamType === 'video') return this.p2p.senders.video;
+    return this.p2p.senders.presentation;
+  }
+
+  private getTransceiver(streamType: StreamType) {
+    if(!this.p2p) return undefined;
+
+    if(streamType === 'audio') return this.p2p.transceivers.audio;
+    if(streamType === 'video') return this.p2p.transceivers.video;
+    return this.p2p.transceivers.presentation;
+  }
+
+  private setLocalVideoTransceiver(
+    streamType: Extract<StreamType, 'video' | 'presentation'>,
+    transceiver: RTCRtpTransceiver,
+  ) {
+    if(!this.p2p) return;
+
+    if(streamType === 'video') {
+      this.p2p.transceivers.video = transceiver;
+      this.p2p.senders.video = transceiver.sender;
+    } else {
+      this.p2p.transceivers.presentation = transceiver;
+      this.p2p.senders.presentation = transceiver.sender;
+    }
+  }
+
+  private setOwnStream(streamType: StreamType, stream: MediaStream) {
+    if(!this.p2p) return;
+
+    if(streamType === 'audio') {
+      this.p2p.streams.ownAudio = stream;
+    } else if(streamType === 'video') {
+      this.p2p.streams.ownVideo = stream;
+    } else {
+      this.p2p.streams.ownPresentation = stream;
+    }
+  }
+
+  private getOwnStream(streamType: StreamType) {
+    if(!this.p2p) return undefined;
+
+    if(streamType === 'audio') return this.p2p.streams.ownAudio;
+    if(streamType === 'video') return this.p2p.streams.ownVideo;
+    return this.p2p.streams.ownPresentation;
+  }
+
+  private getFallbackStream(streamType: StreamType) {
+    if(!this.p2p) return undefined;
+
+    if(streamType === 'audio') return this.p2p.silence;
+    if(streamType === 'video') return this.p2p.blackVideo;
+    return this.p2p.blackPresentation;
+  }
+
+  public async switchCameraInput() {
+    if(!this.p2p || !this.p2p.facingMode) {
+      return;
+    }
+
+    const sender = this.getSender('video');
+    if(!sender) {
+      this.log('switch camera skipped: missing sender');
+      return;
+    }
+
+    const nextFacingMode = this.p2p.facingMode === 'environment' ? 'user' : 'environment';
+
+    let newStream: MediaStream | undefined;
+    try {
+      newStream = await getUserStream('video', nextFacingMode);
+      const newTrack = getStreamTrack(newStream);
+      if(!newTrack) {
+        stopStream(newStream);
+        return;
+      }
+
+      const oldStream = this.p2p.streams.ownVideo;
+      await sender.replaceTrack(newTrack);
+      this.p2p.facingMode = nextFacingMode;
+      this.p2p.streams.ownVideo = newStream;
+      stopStream(oldStream, this.p2p.blackVideo);
+      this.updateStreams();
+      this.sendLocalMediaState();
+    } catch{
+      stopStream(newStream);
+      this.log('switch camera failed');
+      // Ignore camera switch failures; the previous track stays active.
+    }
+  }
+
+  private async toggleStream(streamType: StreamType, value: boolean | undefined = undefined) {
+    if(!this.p2p) return;
+
+    const stream = this.getOwnStream(streamType);
+    const track = getStreamTrack(stream);
+    const sender = this.getSender(streamType);
+
+    if(!track || (streamType === 'audio' && !sender)) {
+      this.log('toggle skipped: missing track or sender', {
+        streamType,
+        track: summarizeTrack(track),
+        hasSender: Boolean(sender)
+      });
+      return;
+    }
+
+    const shouldEnable = value === undefined ? !track.enabled : value;
+
+    try {
+      let hasChanged = false;
+      let shouldRenegotiate = false;
+      if(shouldEnable && !track.enabled) {
+        const facingMode = streamType === 'video' ? this.p2p.facingMode || 'user' : undefined;
+        const newStream = await getUserStream(streamType, facingMode);
+        const newTrack = getStreamTrack(newStream);
+        if(!newTrack) {
+          stopStream(newStream);
+          return;
+        }
+
+        try {
+          newTrack.onended = () => {
+            void this.toggleStream(streamType, false);
+          };
+
+          let transceiver = this.getTransceiver(streamType);
+          const shouldCreateVideoTransceiver = streamType !== 'audio' &&
+            (!sender || !transceiver || transceiver.currentDirection === 'stopped');
+          if(shouldCreateVideoTransceiver) {
+            transceiver = this.p2p.connection.addTransceiver(newTrack, {
+              direction: 'sendrecv',
+              streams: [newStream]
+            });
+            this.setLocalVideoTransceiver(streamType, transceiver);
+            shouldRenegotiate = true;
+          } else {
+            await sender!.replaceTrack(newTrack);
+          }
+          if(transceiver && streamType !== 'audio') {
+            shouldRenegotiate ||= !transceiver.mid || transceiver.currentDirection === 'inactive';
+            transceiver.direction = 'sendrecv';
+          }
+          this.setOwnStream(streamType, newStream);
+        } catch(err) {
+          stopStream(newStream);
+          throw err;
+        }
+        hasChanged = true;
+
+        if(streamType === 'video') {
+          this.p2p.facingMode = facingMode;
+          this.p2p.isUpdatingExclusiveVideo = true;
+          await this.toggleStream('presentation', false);
+          this.p2p.isUpdatingExclusiveVideo = false;
+        } else if(streamType === 'presentation') {
+          this.p2p.isUpdatingExclusiveVideo = true;
+          await this.toggleStream('video', false);
+          this.p2p.isUpdatingExclusiveVideo = false;
+        }
+      } else if(!shouldEnable && track.enabled) {
+        const fallback = this.getFallbackStream(streamType);
+        const fallbackTrack = getStreamTrack(fallback);
+        if(!fallback || !fallbackTrack) {
+          return;
+        }
+
+        if(!sender) {
+          return;
+        }
+
+        try {
+          await sender.replaceTrack(fallbackTrack);
+        } catch(err) {
+          this.log('toggle failed replacing stream with fallback', {
+            error: err instanceof Error ? err.message : String(err),
+            streamType
+          });
+          return;
+        }
+
+        stopStream(stream, fallback);
+        this.setOwnStream(streamType, fallback);
+        hasChanged = true;
+      }
+
+      if(!hasChanged) {
+        return;
+      }
+
+      this.updateStreams();
+      this.sendLocalMediaState();
+      shouldRenegotiate = shouldRenegotiate &&
+        !this.p2p.isStarting &&
+        !this.p2p.isUpdatingExclusiveVideo &&
+        (streamType === 'video' || streamType === 'presentation');
+      if(shouldRenegotiate) {
+        void this.sendOffer();
+      }
+    } catch(err) {
+      this.log('toggle failed', {
+        streamType,
+        shouldEnable,
+        error: err instanceof Error ? {
+          name: err.name,
+          message: err.message
+        } : String(err)
+      });
+      // Ignore media device failures; the current sender track stays active.
+    }
+  }
+
+  private async joinPhoneCall(
+    connections: Connection[],
+    shouldStartVideo: boolean,
+    isP2p: boolean,
+  ) {
+    const {isOutgoing} = this;
+    const conn = new RTCPeerConnection({
+      iceServers: buildIceServers(connections, isP2p),
+      iceTransportPolicy: isP2p ? 'all' : 'relay',
+      bundlePolicy: 'max-bundle',
+      rtcpMuxPolicy: 'require',
+      iceCandidatePoolSize: ICE_CANDIDATE_POOL_SIZE
+    });
+
+    const audioContext = new AudioContext();
+    const silentStream = silence(audioContext);
+    const blackVideo = black({width: 640, height: 480});
+    const blackPresentation = black({width: 640, height: 480});
+    const audioTrack = getStreamTrack(silentStream);
+
+    if(!audioTrack) {
+      throw Error('Failed creating phone call placeholder tracks');
+    }
+
+    const audioTransceiver = conn.addTransceiver(audioTrack, {
+      direction: 'sendrecv',
+      streams: [silentStream]
+    });
+
+    const dataChannel = isOutgoing ? conn.createDataChannel('data', {
+      id: DATA_CHANNEL_ID
+    }) : undefined;
+
+    const audio = new Audio();
+    audio.autoplay = true;
+    this.log('join', {
+      isOutgoing,
+      shouldStartVideo,
+      iceTransportPolicy: isP2p ? 'all' : 'relay',
+      iceServers: connections.map((connection) => {
+        return {
+          isTurn: connection.isTurn,
+          isStun: connection.isStun,
+          port: connection.port
+        };
+      })
+    });
+
+    this.p2p = {
+      audio,
+      audioContext,
+      connection: conn,
+      isStarting: true,
+      handledRemoteExchangeIds: new Set<string>(),
+      pendingCandidates: [],
+      appliedRemoteExchangeIds: new Set<string>(),
+      streams: {
+        ownVideo: blackVideo,
+        ownAudio: silentStream,
+        ownPresentation: blackPresentation
+      },
+      remoteMediaState: {
+        isBatteryLow: false,
+        screencastState: 'inactive',
+        videoState: 'inactive',
+        videoRotation: 0,
+        isMuted: true
+      },
+      blackVideo,
+      blackPresentation,
+      silence: silentStream,
+      dataChannel,
+      transceivers: {
+        audio: audioTransceiver
+      },
+      senders: {
+        audio: audioTransceiver.sender
+      },
+      exchangeId: Math.floor(Math.random() * 0xFFFFFFFF)
+    };
+
+    conn.onicecandidate = (event) => {
+      if(!event.candidate || !this.p2p) {
+        return;
+      }
+
+      const serializedCandidate = event.candidate.toJSON();
+      const sdpString = normalizeCandidateComponent(serializedCandidate.candidate);
+      if(!sdpString) {
+        return;
+      }
+
+      this.sendCallSignalingData({
+        '@type': 'Candidates',
+        'exchangeId': this.p2p.pendingLocalExchangeId || this.p2p.localCandidateExchangeId,
+        'ufrag': serializedCandidate.usernameFragment || undefined,
+        'candidates': [{
+          sdpString,
+          sdpMid: serializedCandidate.sdpMid || undefined,
+          sdpMLineIndex: serializedCandidate.sdpMLineIndex ?? undefined,
+          usernameFragment: serializedCandidate.usernameFragment || undefined
+        }]
+      });
+    };
+
+    conn.onconnectionstatechange = () => {
+      this.log('connection state changed', {
+        connectionState: conn.connectionState,
+        iceConnectionState: conn.iceConnectionState,
+        signalingState: conn.signalingState
+      });
+      this.onUpdate({
+        '@type': 'updatePhoneCallConnectionState',
+        'connectionState': conn.connectionState
+      });
+    };
+
+    conn.ontrack = (event) => {
+      if(!this.p2p) return;
+
+      if(conn.iceConnectionState === 'connected' || conn.iceConnectionState === 'completed') {
+        this.onUpdate({
+          '@type': 'updatePhoneCallConnectionState',
+          'connectionState': 'connected'
+        });
+      }
+
+      const stream = event.streams[0] || new MediaStream([event.track]);
+      if(event.track.kind === 'audio') {
+        if(event.transceiver !== this.p2p.transceivers.audio) {
+          this.p2p.transceivers.remoteAudio = event.transceiver;
+        }
+        this.p2p.audio.srcObject = stream;
+        this.p2p.audio.muted = false;
+        this.p2p.audio.setAttribute('playsinline', 'true');
+        this.p2p.audio.play().catch((err) => {
+          this.log('audio playback failed', {
+            error: err instanceof Error ? err.message : String(err)
+          });
+        });
+        event.track.onunmute = () => {
+          if(!this.p2p) return;
+
+          this.p2p.audio.srcObject = stream;
+          this.p2p.audio.play().catch((err) => {
+            this.log('audio playback after unmute failed', {
+              error: err instanceof Error ? err.message : String(err)
+            });
+          });
+        };
+        this.p2p.streams.audio = stream;
+      } else if(
+        event.transceiver === this.p2p.transceivers.remoteVideo || this.isRemoteContentTransceiver(event.transceiver, false)
+      ) {
+        this.p2p.transceivers.remoteVideo = event.transceiver;
+        this.p2p.remoteMediaState.videoState = 'active';
+        this.p2p.streams.video = stream;
+      } else if(
+        event.transceiver === this.p2p.transceivers.remotePresentation ||
+        this.isRemoteContentTransceiver(event.transceiver, true)
+      ) {
+        this.p2p.transceivers.remotePresentation = event.transceiver;
+        this.p2p.remoteMediaState.screencastState = 'active';
+        this.p2p.streams.presentation = stream;
+      } else {
+        this.log('remote video track ignored: unknown transceiver', {
+          track: summarizeTrack(event.track),
+          mid: event.transceiver.mid
+        });
+      }
+
+      this.updateStreams();
+    };
+
+    conn.oniceconnectionstatechange = () => {
+      if(conn.iceConnectionState === 'connected' || conn.iceConnectionState === 'completed') {
+        this.onUpdate({
+          '@type': 'updatePhoneCallConnectionState',
+          'connectionState': 'connected'
+        });
+      }
+      if(!this.p2p || !isOutgoing || conn.iceConnectionState !== 'failed') {
+        return;
+      }
+
+      this.log('ICE restart requested');
+      conn.restartIce();
+      void this.sendOffer();
+    };
+
+    conn.ondatachannel = (event) => {
+      if(event.channel.label === 'data') {
+        this.attachDataChannel(event.channel);
+      }
+    };
+
+    if(dataChannel) {
+      this.attachDataChannel(dataChannel);
+    }
+
+    await this.toggleStream('audio', true);
+
+    if(shouldStartVideo) {
+      await this.toggleStream('video', true);
+    }
+
+    if(this.p2p) {
+      this.p2p.isStarting = false;
+    }
+
+    if(isOutgoing) {
+      await this.sendOffer();
+    }
+  }
+
+  private stopPhoneCall() {
+    if(!this.p2p) return;
+
+    stopStream(this.p2p.streams.ownVideo);
+    stopStream(this.p2p.streams.ownPresentation);
+    stopStream(this.p2p.streams.ownAudio);
+    stopStream(this.p2p.blackVideo);
+    stopStream(this.p2p.blackPresentation);
+    stopStream(this.p2p.silence);
+    this.p2p.dataChannel?.close();
+    this.p2p.connection.close();
+    this.p2p.audio.srcObject = new MediaStream();
+    this.p2p.audioContext.close().catch(() => {});
+    this.p2p = undefined;
+  }
+
+  private isRemoteContentTransceiver(transceiver: RTCRtpTransceiver, isPresentation: boolean) {
+    if(!this.p2p || !transceiver.mid) {
+      return false;
+    }
+
+    const [, mainVideoContent, presentationContent] = orderMediaContents(this.p2p.pendingRemoteNegotiation?.contents || []);
+    const content = isPresentation ? presentationContent : mainVideoContent;
+    return Boolean(content && this.p2p.pendingRemoteContentMids?.[content.ssrc] === transceiver.mid);
+  }
+
+  private attachDataChannel(dataChannel: RTCDataChannel) {
+    if(!this.p2p) return;
+
+    this.p2p.dataChannel = dataChannel;
+    dataChannel.onopen = () => {
+      this.sendLocalMediaState();
+    };
+    dataChannel.onclose = () => undefined;
+    dataChannel.onerror = () => {
+      this.log('data channel error', {
+        id: dataChannel.id,
+        readyState: dataChannel.readyState
+      });
+    };
+    dataChannel.onmessage = (event) => {
+      if(typeof event.data !== 'string') {
+        this.log('data channel non-string message', {
+          dataType: typeof event.data
+        });
+        return;
+      }
+
+      let message: P2PMessage;
+      try {
+        message = JSON.parse(event.data);
+      } catch(err) {
+        this.log('data channel message parse failed', {
+          dataLength: event.data.length,
+          dataType: typeof event.data,
+          error: err instanceof Error ? err.message : String(err)
+        });
+        return;
+      }
+
+      this.enqueueDataChannelSignalingMessage(message).catch((err) => {
+        this.log('data channel signaling message failed', {
+          error: err instanceof Error ? err.message : String(err),
+          messageType: message['@type']
+        });
+      });
+    };
+  }
+
+  private enqueueDataChannelSignalingMessage(message: P2PMessage) {
+    this.dataChannelSignalingMessagePromise = this.dataChannelSignalingMessagePromise
+    .catch(() => {})
+    .then(() => this.processSignalingMessage(message));
+
+    return this.dataChannelSignalingMessagePromise;
+  }
+
+  private sendLocalMediaState() {
+    if(!this.p2p || this.p2p.dataChannel?.readyState !== 'open') return;
+
+    const ownAudioTrack = getStreamTrack(this.p2p.streams.ownAudio);
+    const ownVideoTrack = getStreamTrack(this.p2p.streams.ownVideo);
+    const ownPresentationTrack = getStreamTrack(this.p2p.streams.ownPresentation);
+
+    const message: CallMediaState = {
+      '@type': 'MediaState',
+      'videoRotation': 0,
+      'muted': !ownAudioTrack?.enabled,
+      'lowBattery': false,
+      'videoState': ownVideoTrack?.enabled ? 'active' : 'inactive',
+      'screencastState': ownPresentationTrack?.enabled ? 'active' : 'inactive'
+    };
+
+    this.p2p.dataChannel.send(JSON.stringify(message));
+  }
+
+  private getMediaMids(): MediaMids {
+    if(!this.p2p) {
+      return {
+        audio: DEFAULT_AUDIO_MID,
+        video: DEFAULT_VIDEO_MID,
+        presentation: DEFAULT_PRESENTATION_MID,
+        data: DEFAULT_DATA_MID
+      };
+    }
+
+    const localDescriptionSdp = this.p2p.connection.localDescription?.sdp;
+    const localDataMid = localDescriptionSdp ?
+      parseSdpSections(localDescriptionSdp).find((section) => section.kind === 'application')?.mid :
+      undefined;
+
+    return {
+      audio: this.p2p.transceivers.audio.mid || DEFAULT_AUDIO_MID,
+      video: this.p2p.transceivers.video?.mid || DEFAULT_VIDEO_MID,
+      presentation: this.p2p.transceivers.presentation?.mid || DEFAULT_PRESENTATION_MID,
+      data: localDataMid || DEFAULT_DATA_MID
+    };
+  }
+
+  private sendLocalDescription(
+    description: RTCSessionDescription | RTCSessionDescriptionInit | undefined, exchangeId?: string,
+  ) {
+    if(!this.p2p || !description?.sdp) return;
+
+    const contents = parseMediaContents(description.sdp, this.getMediaMids(), this.getActiveLocalMedia());
+    const localExchangeId = exchangeId || String(++this.p2p.exchangeId);
+
+    if(description.type === 'offer') {
+      this.p2p.pendingLocalContentMids = parseMediaContentMids(description.sdp, contents);
+    }
+    this.p2p.localCandidateExchangeId = localExchangeId;
+    this.log('send local negotiation', {
+      exchangeId: localExchangeId,
+      type: description.type,
+      signalingState: this.p2p.connection.signalingState,
+      contents: summarizeContents(contents),
+      contentMids: this.p2p.pendingLocalContentMids,
+      sdp: summarizeSdp(description.sdp),
+      transceivers: this.summarizeTransceivers()
+    });
+    this.sendLocalSetup(description);
+    this.p2p.pendingLocalExchangeId = localExchangeId;
+    this.sendCallSignalingData({
+      '@type': 'NegotiateChannels',
+      'exchangeId': localExchangeId,
+      contents
+    });
+  }
+
+  private sendLocalMediaOffer() {
+    if(!this.p2p?.connection.localDescription?.sdp) {
+      return;
+    }
+
+    const {localDescription} = this.p2p.connection;
+    const contents = parseMediaContents(localDescription.sdp, this.getMediaMids(), this.getActiveLocalMedia());
+    if(!contents.length) {
+      return;
+    }
+
+    const exchangeId = String(++this.p2p.exchangeId);
+    this.p2p.pendingLocalExchangeId = exchangeId;
+    this.p2p.localCandidateExchangeId = exchangeId;
+    this.p2p.pendingLocalContentMids = parseMediaContentMids(localDescription.sdp, contents);
+    this.log('send local media negotiation', {
+      exchangeId,
+      type: localDescription.type,
+      contents: summarizeContents(contents),
+      contentMids: this.p2p.pendingLocalContentMids,
+      sdp: summarizeSdp(localDescription.sdp),
+      transceivers: this.summarizeTransceivers()
+    });
+    this.sendCallSignalingData({
+      '@type': 'NegotiateChannels',
+      exchangeId,
+      contents
+    });
+  }
+
+  private async sendOffer() {
+    if(!this.p2p || this.p2p.isMakingOffer || this.p2p.connection.signalingState === 'closed') {
+      return;
+    }
+
+    const {connection} = this.p2p;
+    this.p2p.isMakingOffer = true;
+    this.log('create offer', {
+      signalingState: connection.signalingState,
+      transceivers: this.summarizeTransceivers()
+    });
+
+    try {
+      const offer = await connection.createOffer();
+      if(!this.p2p) {
+        return;
+      }
+
+      const exchangeId = String(++this.p2p.exchangeId);
+      this.p2p.localCandidateExchangeId = exchangeId;
+      await connection.setLocalDescription(offer);
+      this.sendLocalDescription(connection.localDescription || undefined, exchangeId);
+    } catch{
+      this.log('create offer failed', {
+        signalingState: connection.signalingState
+      });
+      // Negotiation errors are recovered by the next signaling exchange or hang-up.
+    } finally {
+      if(this.p2p) {
+        this.p2p.isMakingOffer = false;
+      }
+    }
+  }
+
+  private async applyRemoteNegotiation() {
+    if(!this.p2p || !this.p2p.remoteSetup || !this.p2p.pendingRemoteNegotiation?.contents.length) {
+      return;
+    }
+    if(this.p2p.isApplyingRemoteNegotiation) {
+      this.log('remote negotiation already applying', {
+        exchangeId: this.p2p.pendingRemoteNegotiation.exchangeId
+      });
+      return;
+    }
+
+    const {
+      connection, remoteSetup, pendingLocalExchangeId, pendingRemoteNegotiation
+    } = this.p2p;
+    const isAnswer = pendingRemoteNegotiation.exchangeId === pendingLocalExchangeId;
+    if(isAnswer && connection.signalingState !== 'have-local-offer') {
+      this.log('apply logical remote answer', {
+        exchangeId: pendingRemoteNegotiation.exchangeId,
+        signalingState: connection.signalingState,
+        contents: summarizeContents(pendingRemoteNegotiation.contents)
+      });
+      this.p2p.pendingLocalExchangeId = undefined;
+      this.p2p.pendingLocalContentMids = undefined;
+      this.p2p.handledRemoteExchangeIds.add(pendingRemoteNegotiation.exchangeId);
+      this.p2p.pendingRemoteNegotiation = undefined;
+      return;
+    }
+    if(!isAnswer) {
+      this.prepareTransceiversForRemoteOffer(pendingRemoteNegotiation.contents);
+      this.p2p.pendingRemoteContentMids = this.buildRemoteContentMids(pendingRemoteNegotiation.contents);
+    }
+    const sdp = this.buildRemoteSdp(remoteSetup, pendingRemoteNegotiation.contents, isAnswer);
+    this.log('apply remote negotiation', {
+      exchangeId: pendingRemoteNegotiation.exchangeId,
+      type: isAnswer ? 'answer' : 'offer',
+      signalingState: connection.signalingState,
+      contents: summarizeContents(pendingRemoteNegotiation.contents),
+      sdp: summarizeSdp(sdp),
+      transceivers: this.summarizeTransceivers()
+    });
+
+    this.p2p.isApplyingRemoteNegotiation = true;
+    try {
+      if(!isAnswer && connection.signalingState === 'have-local-offer' && !this.isOutgoing) {
+        this.log('rollback local offer for remote offer glare', {
+          exchangeId: pendingRemoteNegotiation.exchangeId
+        });
+        await connection.setLocalDescription({type: 'rollback'});
+        this.p2p.pendingLocalExchangeId = undefined;
+      }
+
+      if(isAnswer && connection.signalingState !== 'have-local-offer') {
+        this.log('ignore remote answer in wrong signaling state', {
+          exchangeId: pendingRemoteNegotiation.exchangeId,
+          signalingState: connection.signalingState
+        });
+        return;
+      }
+      if(!isAnswer && connection.signalingState !== 'stable') {
+        this.log('ignore remote offer in wrong signaling state', {
+          exchangeId: pendingRemoteNegotiation.exchangeId,
+          signalingState: connection.signalingState
+        });
+        return;
+      }
+
+      if(!isAnswer) {
+        this.log('prepared transceivers for remote offer', {
+          exchangeId: pendingRemoteNegotiation.exchangeId,
+          transceivers: this.summarizeTransceivers()
+        });
+      }
+
+      if(isAnswer) {
+        validateRemoteAnswerSdp(this.log, connection.localDescription?.sdp, sdp);
+      }
+
+      await connection.setRemoteDescription({type: isAnswer ? 'answer' : 'offer', sdp});
+      this.p2p.appliedRemoteExchangeId = pendingRemoteNegotiation.exchangeId;
+      this.p2p.appliedRemoteExchangeIds.add(pendingRemoteNegotiation.exchangeId);
+      this.p2p.appliedRemoteUfrag = remoteSetup.ufrag;
+      this.log('remote description applied', {
+        exchangeId: pendingRemoteNegotiation.exchangeId,
+        type: isAnswer ? 'answer' : 'offer',
+        ufrag: remoteSetup.ufrag,
+        signalingState: connection.signalingState,
+        transceivers: this.summarizeTransceivers()
+      });
+      if(!isAnswer) {
+        this.updateRemoteMediaStateFromOffer(pendingRemoteNegotiation.contents);
+        await this.bindLocalAudioToSharedRemoteOffer();
+      }
+      await this.commitPendingIceCandidates();
+
+      if(isAnswer) {
+        this.p2p.pendingLocalExchangeId = undefined;
+        this.p2p.pendingLocalContentMids = undefined;
+      } else {
+        const answer = await connection.createAnswer();
+        if(!this.p2p) {
+          return;
+        }
+
+        this.p2p.localCandidateExchangeId = pendingRemoteNegotiation.exchangeId;
+        await connection.setLocalDescription(answer);
+
+        const localDescription = connection.localDescription || undefined;
+        const contents = localDescription?.sdp ?
+          this.parseAnswerContents(localDescription.sdp, pendingRemoteNegotiation.contents, this.getMediaMids()) : [];
+
+        this.updateRemoteMediaStateFromOffer(contents);
+        this.log('send local answer negotiation', {
+          exchangeId: pendingRemoteNegotiation.exchangeId,
+          contents: summarizeContents(contents),
+          sdp: localDescription?.sdp ? summarizeSdp(localDescription.sdp) : undefined,
+          transceivers: this.summarizeTransceivers()
+        });
+        this.sendLocalSetup(localDescription);
+        this.sendCallSignalingData({
+          '@type': 'NegotiateChannels',
+          'exchangeId': pendingRemoteNegotiation.exchangeId,
+          contents
+        });
+
+        if(this.shouldSendLocalOfferAfterRemoteAnswer()) {
+          this.log('send local media offer after remote answer', {
+            exchangeId: pendingRemoteNegotiation.exchangeId,
+            transceivers: this.summarizeTransceivers()
+          });
+          this.sendLocalMediaOffer();
+        }
+      }
+
+      this.p2p.handledRemoteExchangeIds.add(pendingRemoteNegotiation.exchangeId);
+    } finally {
+      if(this.p2p) {
+        if(this.p2p.pendingRemoteNegotiation?.exchangeId === pendingRemoteNegotiation.exchangeId) {
+          this.p2p.pendingRemoteNegotiation = undefined;
+          this.p2p.pendingRemoteContentMids = undefined;
+        }
+        this.p2p.isApplyingRemoteNegotiation = false;
+        if(!this.p2p.pendingLocalExchangeId && !this.p2p.pendingRemoteNegotiation && this.p2p.queuedRemoteNegotiation) {
+          this.p2p.pendingRemoteNegotiation = this.p2p.queuedRemoteNegotiation;
+          this.p2p.queuedRemoteNegotiation = undefined;
+        }
+        if(this.p2p.pendingRemoteNegotiation) {
+          void this.applyRemoteNegotiation();
+        }
+      }
+    }
+  }
+
+  private sendLocalSetup(description: RTCSessionDescription | RTCSessionDescriptionInit | undefined) {
+    if(!this.p2p || !description?.sdp) return;
+
+    const setup = parseInitialSetup(description.sdp);
+    const setupKey = JSON.stringify(setup);
+    if(this.p2p.lastLocalSetupKey === setupKey) {
+      return;
+    }
+
+    this.p2p.lastLocalSetupKey = setupKey;
+    this.log('send initial setup', {
+      setup: {
+        ufrag: setup.ufrag,
+        fingerprintCount: setup.fingerprints.length,
+        renomination: setup.renomination
+      }
+    });
+    this.sendCallSignalingData(setup);
+  }
+
+  private getActiveLocalMedia(): ActiveLocalMedia {
+    return {
+      hasVideo: Boolean(getStreamTrack(this.p2p?.streams.ownVideo)?.enabled),
+      hasPresentation: Boolean(getStreamTrack(this.p2p?.streams.ownPresentation)?.enabled)
+    };
+  }
+
+  private prepareTransceiversForRemoteOffer(contents: P2PMediaContent[]) {
+    if(!this.p2p) {
+      return;
+    }
+
+    const hasRemoteAudio = contents.some((content) => content.type === 'audio');
+    const hasRemoteVideo = contents.filter((content) => content.type === 'video').length;
+    const shouldUseSharedAudioSection = hasRemoteAudio && !this.p2p.transceivers.audio.mid;
+    if(shouldUseSharedAudioSection) {
+      this.p2p.transceivers.audio.direction = 'sendrecv';
+    } else if(hasRemoteAudio && !this.setRemoteTransceiverDirection('remoteAudio', 'audio', 'recvonly')) {
+      this.p2p.transceivers.remoteAudio = this.p2p.connection.addTransceiver('audio', {direction: 'recvonly'});
+    }
+    if(hasRemoteVideo >= 1 && !this.setRemoteTransceiverDirection('remoteVideo', 'video', 'recvonly')) {
+      this.p2p.transceivers.remoteVideo = this.p2p.connection.addTransceiver('video', {direction: 'recvonly'});
+    }
+    if(hasRemoteVideo >= 2 && !this.setRemoteTransceiverDirection('remotePresentation', 'video', 'recvonly')) {
+      this.p2p.transceivers.remotePresentation = this.p2p.connection.addTransceiver('video', {direction: 'recvonly'});
+    }
+    if(!hasRemoteAudio || shouldUseSharedAudioSection) {
+      this.setRemoteTransceiverDirection('remoteAudio', 'audio', 'inactive');
+    }
+    if(hasRemoteVideo < 1) {
+      this.setRemoteTransceiverDirection('remoteVideo', 'video', 'inactive');
+    }
+    if(hasRemoteVideo < 2) {
+      this.setRemoteTransceiverDirection('remotePresentation', 'video', 'inactive');
+    }
+  }
+
+  private setRemoteTransceiverDirection(
+    name: 'remoteAudio' | 'remoteVideo' | 'remotePresentation',
+    kind: 'audio' | 'video',
+    direction: RTCRtpTransceiverDirection,
+  ) {
+    if(!this.p2p?.transceivers[name]) {
+      return false;
+    }
+
+    try {
+      const transceiver = this.p2p.transceivers[name];
+      if(transceiver.receiver.track.kind !== kind) {
+        return false;
+      }
+
+      transceiver.direction = direction;
+      return true;
+    } catch{
+      return false;
+    }
+  }
+
+  private buildRemoteContentMids(contents: P2PMediaContent[]) {
+    if(!this.p2p) {
+      return {};
+    }
+
+    const [audioContent, mainVideoContent, presentationContent] = orderMediaContents(contents);
+    const result: Record<string, string> = {};
+    if(audioContent) {
+      result[audioContent.ssrc] = this.p2p.transceivers.audio.mid ?
+        (this.p2p.transceivers.remoteAudio?.mid || audioContent.ssrc) : this.getMediaMids().audio;
+    }
+    if(mainVideoContent) {
+      result[mainVideoContent.ssrc] = this.p2p.transceivers.remoteVideo?.mid || mainVideoContent.ssrc;
+    }
+    if(presentationContent) {
+      result[presentationContent.ssrc] = this.p2p.transceivers.remotePresentation?.mid || presentationContent.ssrc;
+    }
+
+    return result;
+  }
+
+  private updateRemoteMediaStateFromOffer(contents: P2PMediaContent[]) {
+    if(!this.p2p) {
+      return;
+    }
+
+    const remoteVideoCount = contents.filter((content) => content.type === 'video').length;
+    this.p2p.remoteMediaState.videoState = remoteVideoCount >= 1 ? 'active' : 'inactive';
+    this.p2p.remoteMediaState.screencastState = remoteVideoCount >= 2 ? 'active' : 'inactive';
+    this.updateStreams();
+  }
+
+  private shouldSendLocalOfferAfterRemoteAnswer() {
+    if(!this.p2p || this.isOutgoing || this.p2p.pendingLocalExchangeId) {
+      return false;
+    }
+
+    return Boolean(getStreamTrack(this.p2p.streams.ownAudio)?.enabled ||
+      getStreamTrack(this.p2p.streams.ownVideo)?.enabled ||
+      getStreamTrack(this.p2p.streams.ownPresentation)?.enabled);
+  }
+
+  private async bindLocalAudioToSharedRemoteOffer() {
+    if(!this.p2p || this.p2p.transceivers.audio.mid) {
+      return;
+    }
+
+    const audioTrack = this.p2p.senders.audio.track;
+    if(!audioTrack?.enabled) {
+      return;
+    }
+
+    const audioMid = this.getMediaMids().audio;
+    const transceiver = this.p2p.connection.getTransceivers().find((item) => {
+      return item.mid === audioMid && item.receiver.track.kind === 'audio';
+    });
+    if(!transceiver || transceiver === this.p2p.transceivers.audio) {
+      return;
+    }
+
+    await transceiver.sender.replaceTrack(audioTrack);
+    transceiver.direction = 'sendrecv';
+    this.p2p.transceivers.audio = transceiver;
+    this.p2p.senders.audio = transceiver.sender;
+    this.p2p.transceivers.remoteAudio = undefined;
+    this.log('bound local audio to shared remote offer transceiver', {
+      mid: transceiver.mid,
+      track: summarizeTrack(audioTrack),
+      transceivers: this.summarizeTransceivers()
+    });
+  }
+
+  private buildRemoteSdp(
+    setup: Extract<P2PMessage, { '@type': 'InitialSetup' }>,
+    contents: P2PMediaContent[],
+    isAnswer: boolean,
+  ) {
+    const mids = this.getMediaMids();
+    const orderedContents = orderMediaContents(contents);
+    const [audioContent, mainVideoContent, presentationContent] = orderedContents;
+    const videoPayloadSource = mainVideoContent || presentationContent;
+    const localMediaParameters = this.getLocalMediaParameters(mids);
+    const remoteContentMids = this.p2p?.pendingRemoteContentMids || {};
+    const shouldUseSharedAudioSection = !isAnswer && Boolean(audioContent) && !this.p2p?.transceivers.audio.mid;
+    const remoteAudioMid = shouldUseSharedAudioSection || isAnswer ?
+      mids.audio : (audioContent ? remoteContentMids[audioContent.ssrc] : mids.audio);
+    const remoteVideoMid = isAnswer ?
+      mids.video : (mainVideoContent ? remoteContentMids[mainVideoContent.ssrc] : mids.video);
+    const remotePresentationMid = isAnswer ?
+      mids.presentation : (presentationContent ? remoteContentMids[presentationContent.ssrc] : mids.presentation);
+    const localOfferSdp = this.p2p?.connection.localDescription?.type === 'offer' ?
+      this.p2p.connection.localDescription.sdp : undefined;
+    const sharedAudioDirection: RTCRtpTransceiverDirection | undefined = shouldUseSharedAudioSection ?
+      'sendrecv' : undefined;
+    const entries: SsrcEntry[] = isAnswer ?
+      this.buildAnswerSsrcs(contents, mids) :
+      [
+        {
+          ...buildSsrc(audioContent, remoteAudioMid, false),
+          direction: sharedAudioDirection
+        },
+        buildSsrc(mainVideoContent, remoteVideoMid, true),
+        buildSsrc(presentationContent, remotePresentationMid, true, true)
+      ];
+    if(!isAnswer && this.shouldAddLocalAudioOfferSection(entries, mids)) {
+      entries.push({
+        ...buildSsrc(undefined, mids.audio, false),
+        isLocalOnly: true,
+        isRemoved: false
+      });
+    }
+
+    return SDPBuilder.fromP2p({
+      setup,
+      mids,
+      isAnswer,
+      entries,
+      audioPayloadTypes: audioContent?.payloadTypes?.map(payloadTypeToConference) ||
+        localMediaParameters.audioPayloadTypes,
+      audioExtensions: audioContent?.rtpExtensions || localMediaParameters.audioExtensions,
+      videoPayloadTypes: filterRemoteVideoPayloadTypes(videoPayloadSource)?.map(payloadTypeToConference) ||
+        localMediaParameters.videoPayloadTypes,
+      videoExtensions: videoPayloadSource?.rtpExtensions || localMediaParameters.videoExtensions,
+      sectionOrder: isAnswer ? this.getLocalOfferSections() : this.getEstablishedSections(),
+      bundleMids: isAnswer && localOfferSdp ? parseBundleMids(localOfferSdp) : undefined,
+      shouldKeepRemoteReceiveSection: (section) => this.shouldKeepRemoteReceiveSection(section)
+    });
+  }
+
+  private getLocalOfferSections() {
+    if(!this.p2p?.connection.localDescription?.sdp || this.p2p.connection.localDescription.type !== 'offer') {
+      return undefined;
+    }
+
+    return parseSdpSections(this.p2p.connection.localDescription.sdp).filter((section) => section.kind !== 'session');
+  }
+
+  private getEstablishedSections() {
+    const sdp = this.p2p?.connection.remoteDescription?.sdp || this.p2p?.connection.localDescription?.sdp;
+    if(!sdp) {
+      return undefined;
+    }
+
+    return parseSdpSections(sdp).filter((section) => section.kind !== 'session');
+  }
+
+  private getLocalMediaParameters(mids: MediaMids): LocalMediaParameters {
+    const sections = this.p2p?.connection.localDescription?.sdp ?
+      parseSdpSections(this.p2p.connection.localDescription.sdp) : [];
+    const audioSection = sections.find((section) => section.mid === mids.audio);
+    const videoSection = sections.find((section) => section.mid === mids.video) ||
+      sections.find((section) => section.mid === mids.presentation);
+
+    return {
+      audioPayloadTypes: audioSection?.kind === 'audio' ?
+        parsePayloadTypes(audioSection).map(payloadTypeToConference) : getDefaultAudioPayloadTypes(),
+      audioExtensions: audioSection?.kind === 'audio' ? parseExtmaps(audioSection) : [],
+      videoPayloadTypes: videoSection?.kind === 'video' ?
+        parsePayloadTypes(videoSection).map(payloadTypeToConference) : getDefaultVideoPayloadTypes(),
+      videoExtensions: videoSection?.kind === 'video' ? parseExtmaps(videoSection) : []
+    };
+  }
+
+  private shouldAddLocalAudioOfferSection(entries: SsrcEntry[], mids: MediaMids) {
+    const audioTrack = this.p2p?.transceivers.audio.sender.track;
+    const sections = this.getEstablishedSections() || [];
+    return Boolean(audioTrack?.enabled) &&
+      !entries.some((entry) => entry.mid === mids.audio && !entry.isRemoved) &&
+      !sections.some((section) => section.mid === mids.audio);
+  }
+
+  private buildAnswerSsrcs(contents: P2PMediaContent[], mids: MediaMids): SsrcEntry[] {
+    let videoIndex = 0;
+
+    return contents.map((content) => {
+      const mid = this.p2p?.pendingLocalContentMids?.[content.ssrc] ||
+        (content.type === 'audio' ? mids.audio : (videoIndex++ ? mids.presentation : mids.video));
+      return buildSsrc(content, mid, content.type === 'video', mid === mids.presentation);
+    });
+  }
+
+  private parseAnswerContents(sdp: string, offeredContents: P2PMediaContent[], mids: MediaMids) {
+    const sections = parseSdpSections(sdp);
+    const audioSection = sections.find((section) => section.mid === mids.audio);
+    const videoSections = [
+      sections.find((section) => section.mid === mids.video),
+      sections.find((section) => section.mid === mids.presentation)
+    ].filter(Boolean);
+    let videoIndex = 0;
+
+    return offeredContents.map((content) => {
+      const remoteMid = this.p2p?.pendingRemoteContentMids?.[content.ssrc];
+      const section = remoteMid ? sections.find((item) => item.mid === remoteMid) :
+        (content.type === 'audio' ? audioSection : videoSections[videoIndex++]);
+      if(!section || getSdpPort(section) === 0) {
+        return undefined;
+      }
+
+      const direction = getSdpDirection(section);
+      if(direction !== 'recvonly' && direction !== 'sendrecv') {
+        return undefined;
+      }
+
+      const acceptedContent = parseMediaContent(section, content.type, content);
+      if(!acceptedContent.payloadTypes?.length) {
+        return undefined;
+      }
+
+      return acceptedContent;
+    }).filter(Boolean);
+  }
+
+  private shouldKeepRemoteReceiveSection(section: SdpSection) {
+    if(!this.p2p || getSdpDirection(section) !== 'recvonly') {
+      return false;
+    }
+
+    const mid = section.mid;
+    if(section.kind === 'audio') {
+      return mid === this.p2p.transceivers.remoteAudio?.mid && hasLiveTrack(this.p2p.streams.audio);
+    }
+
+    if(section.kind === 'video') {
+      return (mid === this.p2p.transceivers.remoteVideo?.mid && hasLiveTrack(this.p2p.streams.video)) ||
+        (mid === this.p2p.transceivers.remotePresentation?.mid && hasLiveTrack(this.p2p.streams.presentation));
+    }
+
+    return false;
+  }
+
+  private summarizeTransceivers() {
+    if(!this.p2p) {
+      return [];
+    }
+
+    return [
+      {name: 'audio', transceiver: this.p2p.transceivers.audio},
+      {name: 'remoteAudio', transceiver: this.p2p.transceivers.remoteAudio},
+      {name: 'video', transceiver: this.p2p.transceivers.video},
+      {name: 'remoteVideo', transceiver: this.p2p.transceivers.remoteVideo},
+      {name: 'presentation', transceiver: this.p2p.transceivers.presentation},
+      {name: 'remotePresentation', transceiver: this.p2p.transceivers.remotePresentation}
+    ].map(({name, transceiver}) => {
+      if(!transceiver) {
+        return {
+          name
+        };
+      }
+
+      return {
+        name,
+        mid: transceiver.mid,
+        direction: transceiver.direction,
+        currentDirection: transceiver.currentDirection,
+        senderTrack: summarizeTrack(transceiver.sender.track || undefined),
+        receiverTrack: summarizeTrack(transceiver.receiver.track || undefined)
+      };
+    });
+  }
+
+  private async processSignalingMessage(message: P2PMessage) {
+    if(!this.p2p || !message) return;
+
+    switch(message['@type']) {
+      case 'MediaState': {
+        const videoState = message.videoState === 'inactive' && hasLiveTrack(this.p2p.streams.video) ?
+          'active' : message.videoState;
+        const screencastState = message.screencastState === 'inactive' && hasLiveTrack(this.p2p.streams.presentation) ?
+          'active' : message.screencastState;
+        this.p2p.remoteMediaState = {
+          isMuted: message.muted,
+          isBatteryLow: message.lowBattery,
+          videoState,
+          videoRotation: message.videoRotation,
+          screencastState
+        };
+        this.updateStreams();
+        break;
+      }
+      case 'Candidates': {
+        this.log('received ICE candidates', {
+          exchangeId: message.exchangeId,
+          ufrag: message.ufrag,
+          pendingRemoteExchangeId: this.p2p.pendingRemoteNegotiation?.exchangeId,
+          remoteDescriptionMids: getRemoteDescriptionMids(this.p2p.connection),
+          count: message.candidates.length
+        });
+        this.p2p.pendingCandidates.push(...message.candidates.map((candidate) => {
+          return {
+            ...candidate,
+            exchangeId: message.exchangeId,
+            ufrag: message.ufrag || candidate.usernameFragment
+          };
+        }));
+        await this.commitPendingIceCandidates();
+        break;
+      }
+      case 'InitialSetup': {
+        this.p2p.remoteSetup = message;
+        await this.applyRemoteNegotiation();
+        break;
+      }
+      case 'NegotiateChannels': {
+        if(this.p2p.handledRemoteExchangeIds.has(message.exchangeId)) {
+          this.log('ignore duplicate remote negotiation', {
+            exchangeId: message.exchangeId
+          });
+          return;
+        }
+        if(this.p2p.isApplyingRemoteNegotiation && this.p2p.pendingRemoteNegotiation?.exchangeId === message.exchangeId) {
+          this.log('ignore in-flight duplicate remote negotiation', {
+            exchangeId: message.exchangeId
+          });
+          return;
+        }
+        if(this.p2p.pendingLocalExchangeId && message.exchangeId !== this.p2p.pendingLocalExchangeId) {
+          if(this.isOutgoing) {
+            this.p2p.queuedRemoteNegotiation = message;
+            this.log('queue remote offer until local answer is applied', {
+              exchangeId: message.exchangeId,
+              pendingLocalExchangeId: this.p2p.pendingLocalExchangeId
+            });
+            return;
+          }
+
+          this.p2p.pendingLocalExchangeId = undefined;
+        }
+
+        this.p2p.pendingRemoteNegotiation = message;
+        await this.applyRemoteNegotiation();
+        break;
+      }
+    }
+  }
+
+  private async commitPendingIceCandidates() {
+    if(!this.p2p || !this.p2p.pendingCandidates.length) {
+      return;
+    }
+
+    const {connection, pendingCandidates} = this.p2p;
+    const candidatesToAdd: QueuedCandidate[] = [];
+    const queuedCandidates: QueuedCandidate[] = [];
+
+    pendingCandidates.forEach((candidate) => {
+      const decision = this.getCandidateCommitDecision(candidate);
+      this.log('ICE candidate routing', {
+        decision,
+        exchangeId: candidate.exchangeId,
+        ufrag: getCandidateUfrag(candidate),
+        pendingRemoteExchangeId: this.p2p?.pendingRemoteNegotiation?.exchangeId,
+        appliedRemoteExchangeId: this.p2p?.appliedRemoteExchangeId,
+        remoteDescriptionMids: getRemoteDescriptionMids(connection)
+      });
+
+      if(decision === 'add') {
+        candidatesToAdd.push(candidate);
+      } else if(decision === 'queue') {
+        queuedCandidates.push(candidate);
+      }
+    });
+
+    this.p2p.pendingCandidates = queuedCandidates;
+
+    await Promise.all(candidatesToAdd.map((candidate) => {
+      return tryAddCandidate(this.log, connection, candidate);
+    }));
+  }
+
+  private getCandidateCommitDecision(candidate: QueuedCandidate): 'add' | 'queue' | 'drop' {
+    if(!this.p2p?.connection.remoteDescription) {
+      return 'queue';
+    }
+
+    const candidateExchangeId = candidate.exchangeId;
+    const candidateUfrag = getCandidateUfrag(candidate);
+    const remoteUfrags = getRemoteDescriptionUfrags(this.p2p.connection);
+    const isCurrentUfrag = !candidateUfrag ||
+      remoteUfrags.has(candidateUfrag) ||
+      candidateUfrag === this.p2p.appliedRemoteUfrag;
+
+    if(candidateExchangeId) {
+      if(this.p2p.appliedRemoteExchangeIds.has(candidateExchangeId)) {
+        return isCurrentUfrag ? 'add' : 'drop';
+      }
+
+      if(
+        candidateExchangeId === this.p2p.pendingLocalExchangeId ||
+        candidateExchangeId === this.p2p.pendingRemoteNegotiation?.exchangeId ||
+        candidateExchangeId === this.p2p.queuedRemoteNegotiation?.exchangeId
+      ) {
+        return 'queue';
+      }
+
+      if(this.p2p.handledRemoteExchangeIds.has(candidateExchangeId)) {
+        return 'drop';
+      }
+
+      return 'queue';
+    }
+
+    if(isCurrentUfrag) {
+      return 'add';
+    }
+
+    return 'queue';
   }
 }

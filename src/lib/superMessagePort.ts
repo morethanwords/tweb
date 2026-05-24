@@ -91,6 +91,11 @@ type Listeners = Record<string, ListenerCallback>;
 const USE_LOCKS = true;
 const USE_BATCHING = true;
 
+// Stuck-invoke watchdog (DEBUG only).
+const STUCK_WATCHDOG_INTERVAL_MS = 2000;
+const STUCK_WARN_FIRST_MS = 5000;
+const STUCK_WARN_PERSIST_MS = 30000;
+
 // const PING_INTERVAL = DEBUG && false ? 0x7FFFFFFF : 5000;
 // const PING_TIMEOUT = DEBUG && false ? 0x7FFFFFFF : 10000;
 
@@ -112,9 +117,12 @@ class SuperMessagePort<
       resolve: any,
       reject: any,
       taskType: string,
-      port?: SendPort
+      port?: SendPort,
+      createdAt: number,
+      warned?: boolean
     }
   };
+  protected stuckWatchdogInterval?: ReturnType<typeof setInterval>;
   protected pending: Map<SendPort, Task[]>;
 
   protected log: ReturnType<typeof logger>;
@@ -154,7 +162,31 @@ class SuperMessagePort<
       lock: this.processLockTask,
       batch: this.processBatchTask
     };
+
+    // Watchdog: when a port-bridged invoke hangs (handler unregistered, port
+    // never started, peer crashed), the proxy quietly accumulates entries in
+    // `awaiting` forever and the UI just doesn't progress. Periodically log
+    // anything older than the threshold so the symptom surfaces immediately
+    // — particularly important in Modes.noWorker where there's no cross-thread
+    // boundary to blame.
+    if(DEBUG) {
+      this.stuckWatchdogInterval = ctx.setInterval(this.scanStuckAwaiting, STUCK_WATCHDOG_INTERVAL_MS) as any;
+    }
   }
+
+  protected scanStuckAwaiting = () => {
+    const now = Date.now();
+    for(const id in this.awaiting) {
+      const entry = this.awaiting[id];
+      const age = now - entry.createdAt;
+      if(!entry.warned && age >= STUCK_WARN_FIRST_MS) {
+        entry.warned = true;
+        this.log.warn(`[STUCK] ${entry.taskType} pending ${age}ms (id=${id})`);
+      } else if(entry.warned && age >= STUCK_WARN_PERSIST_MS && age % STUCK_WARN_PERSIST_MS < STUCK_WATCHDOG_INTERVAL_MS) {
+        this.log.error(`[STUCK] ${entry.taskType} still pending after ${age}ms (id=${id}) — likely no listener on peer or port not started`);
+      }
+    }
+  };
 
   public setOnPortDisconnect(callback: (source: MessageEventSource) => void) {
     this.onPortDisconnect = callback;
@@ -601,7 +633,7 @@ class SuperMessagePort<
     let task: InvokeTask;
     const promise = new Promise<Awaited<ReturnType<Send[T]>>>((resolve, reject) => {
       task = this.createInvokeTask(type as string, payload, withAck, undefined, transfer);
-      this.awaiting[task.id] = {resolve, reject, taskType: type as string, port};
+      this.awaiting[task.id] = {resolve, reject, taskType: type as string, port, createdAt: Date.now()};
       this.pushTask(task, port);
     });
 

@@ -210,7 +210,7 @@ export default class LocalStorageController<Storage extends Record<string, any>>
     ...args: Parameters<EncryptedStorageLayer<any>[T]>
   ): Promise<Awaited<ReturnType<EncryptedStorageLayer<any>[T]>>> {
     if(!IS_WORKER) {
-      const port = MTProtoMessagePort.getInstance<true>();
+      const port = MTProtoMessagePort.getMasterInstance();
       return port.invoke('localStorageEncryptedProxy', {type, args});
     }
 

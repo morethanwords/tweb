@@ -850,6 +850,15 @@ class ApiManagerProxy extends MTProtoMessagePort {
   }
 
   private async registerCryptoWorker() {
+    if(Modes.noWorker) {
+      // Import the registry side; it adds an `invoke` listener on the shared
+      // cryptoMessagePort singleton. CryptoMessagePort.invokeCryptoNew detects
+      // a same-realm listener and short-circuits directly into it, so no port
+      // bridge is needed.
+      await import('./crypto/crypto.worker');
+      return;
+    }
+
     await this.registerThreadedWorker({
       type: 'crypto',
       createWorker: () => {
@@ -864,6 +873,19 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
   private registerWorker() {
     if(import.meta.env.VITE_MTPROTO_SW) {
+      return;
+    }
+
+    if(Modes.noWorker) {
+      // Loop both ends of a MessageChannel back into the same realm so the
+      // worker module's listeners run in the main thread under the same call
+      // stack as the proxy. start-preview / dev only — multi-tab dedup is lost.
+      const channel = new MessageChannel();
+      this.attachPort(channel.port1);
+      this.closeMTProtoWorker = () => channel.port1.close();
+      import('./mainWorker/index.worker').then((mod) => {
+        mod.connectInProcessTab(channel.port2);
+      });
       return;
     }
 

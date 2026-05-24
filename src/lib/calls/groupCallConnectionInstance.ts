@@ -13,16 +13,35 @@ import SDP from '@lib/calls/sdp';
 import SDPMediaSection from '@lib/calls/sdp/mediaSection';
 import {WebRTCLineType} from '@lib/calls/sdpBuilder';
 import {UpdateGroupCallConnectionData} from '@lib/calls/types';
+import {InputGroupCall} from '@layer';
 
 export default class GroupCallConnectionInstance extends CallConnectionInstanceBase {
   private groupCall: GroupCallInstance;
   public updateConstraints?: boolean;
   private type: GroupCallConnectionType;
-  private options: {
+  public options: {
     type: Extract<GroupCallConnectionType, 'main'>,
     isMuted?: boolean,
     joinVideo?: boolean,
-    rejoin?: boolean
+    rejoin?: boolean,
+    // Conference (TdE2E) join: when set, passed to phone.joinGroupCall as
+    // the `public_key` + `block` fields. Server treats the join as a
+    // conference iff BOTH are present.
+    e2ePublicKey?: Uint8Array,
+    e2eBlock?: Uint8Array,
+    // Override the default `inputGroupCall(id, access_hash)` derived from the
+    // GroupCallInstance id. Needed for invite-link / invite-message joins
+    // where the joinee doesn't yet have a personal access_hash — they pass
+    // `inputGroupCallSlug` or `inputGroupCallInviteMessage` and the server
+    // echoes back the real id+access_hash in the join response.
+    e2eCallInput?: InputGroupCall,
+    // Called when `phone.joinGroupCall` fails with CONF_WRITE_CHAIN_INVALID
+    // (the chain advanced between our fetch + submit). Should re-fetch the
+    // chain head and return a freshly-built self-add block. WebRTC state
+    // (peer connection, SDP, mic) is preserved across the retry — only the
+    // e2e block and the resulting `phone.joinGroupCall` request change.
+    // Matches tdlib GroupCallManager.cpp:4565-4568 try_join_group_call.
+    e2eRebuildBlock?: () => Promise<Uint8Array>,
   } | {
     type: Extract<GroupCallConnectionType, 'presentation'>,
   };
@@ -96,8 +115,8 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
     return description;
   }
 
-  public appendStreamToConference() {
-    super.appendStreamToConference();/* .then(() => {
+  public appendStreamToConference(onSenderCreated?: (sender: RTCRtpSender) => void) {
+    super.appendStreamToConference(onSenderCreated);/* .then(() => {
       currentGroupCall.connections.main.negotiating = false;
       this.startNegotiation({
         type: type,
@@ -111,8 +130,11 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
     const {groupCall, description} = this;
     const groupCallId = groupCall.id;
 
+    // Conference (e2e) SFU expects the opposite DTLS role from the legacy
+    // voice-chat SFU — see processMediaSection comment.
+    const forE2eConference = options.type === 'main' && !!options.e2ePublicKey;
     const processedChannels = mainChannels.map((section) => {
-      const processed = processMediaSection(localSdp, section);
+      const processed = processMediaSection(localSdp, section, {forE2eConference});
 
       this.sources[processed.entry.type as 'video' | 'audio'] = processed.entry;
 
@@ -151,7 +173,50 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
       };
     }
 
-    const update = await this.managers.appGroupCallsManager.joinGroupCall(groupCallId, params, options);
+    // Conference + legacy both use phone.joinGroupCall — for conferences we
+    // additionally pass `public_key` + `block` via the options. Conference
+    // creation (the EMPTY phone.createConferenceCall(flags=0) call) is done
+    // by the caller (controller) BEFORE we get here.
+    //
+    // On CONF_WRITE_CHAIN_INVALID — the e2e chain advanced between our fetch
+    // and our submit (a concurrent join, key change, etc.). Refetch chain
+    // head + rebuild the self-add block + resubmit. WebRTC state stays —
+    // only the `block` field changes per attempt. Caps at 5 retries to bound
+    // pathological loops; tdlib doesn't cap but we're conservative.
+    // Strip the rebuild callback before forwarding — `this.managers` is a
+    // worker proxy and `postMessage`'s structured clone refuses functions
+    // (silently hanging the call on some browsers). Keep the callback in
+    // the closure so the retry loop can still invoke it locally.
+    const rebuildBlock = options.type === 'main' ? options.e2eRebuildBlock : undefined;
+    const stripCallback = (o: typeof options): typeof options =>
+      o.type === 'main' ? {...o, e2eRebuildBlock: undefined} : o;
+    const maxRetries = 5;
+    let update: Awaited<ReturnType<typeof this.managers.appGroupCallsManager.joinGroupCall>>;
+    let activeOptions = options;
+    for(let attempt = 0; ; attempt++) {
+      try {
+        update = await this.managers.appGroupCallsManager.joinGroupCall(groupCallId, params, stripCallback(activeOptions));
+        break;
+      } catch(err) {
+        const msg = (err as {type?: string} | Error & {type?: string})?.type ??
+          (err instanceof Error ? err.message : String(err));
+        const isChainRace = typeof msg === 'string' && msg.startsWith('CONF_WRITE_CHAIN_INVALID');
+        if(!isChainRace || attempt >= maxRetries - 1) throw err;
+        if(!rebuildBlock) throw err;
+        const newBlock = await rebuildBlock();
+        // Build a fresh options bag with the new block — keep WebRTC state.
+        activeOptions = {...activeOptions, e2eBlock: newBlock} as typeof activeOptions;
+      }
+    }
+
+    // Invitee paths (slug / inviteMessage) join under a placeholder instance
+    // id. The server hands back the real id+access_hash in updateGroupCall —
+    // joinGroupCall stitches them onto `update`. Promote them onto the
+    // instance so downstream code (polling, hangUp, leave) works.
+    const extras = update as typeof update & {resolvedCallId?: string; resolvedAccessHash?: string};
+    if(extras.resolvedCallId && extras.resolvedCallId !== this.groupCall.id) {
+      this.groupCall.id = extras.resolvedCallId;
+    }
 
     const data: UpdateGroupCallConnectionData = JSON.parse(update.params.data);
 
@@ -218,7 +283,12 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
     const bundle = localSdp.bundle;
     forEachReverse(bundle, (mid, idx, arr) => {
       const entry = description.getEntryByMid(mid);
-      if(entry.shouldBeSkipped(isAnswer)) {
+      // Entry may be undefined for mids we addTransceiver'd outside of
+      // the LocalConferenceDescription (e.g. the conference-path's
+      // pre-added recvonly transceivers for receive-side e2e transform
+      // attachment). Leave such mids in the bundle as-is; Chrome's
+      // generated SDP for them is already valid.
+      if(entry && entry.shouldBeSkipped(isAnswer)) {
         arr.splice(idx, 1);
         entriesToDelete.push(entry);
       }
@@ -270,6 +340,13 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
     }
 
     promise = super.negotiate();
+
+    // NB: don't try to attach e2e transforms here. Chrome rejects
+    // `RTCRtpScriptTransform` assignments after the codec has produced its
+    // first frame ("Too late to create encoded streams" in the parallel
+    // createEncodedStreams API). Senders get their transforms pre-negotiate
+    // in groupCallsController.joinConferenceCommon; receivers get them in
+    // the `track` event handler, also before the first frame.
 
     if(this.updateConstraints) {
       promise.then(() => {

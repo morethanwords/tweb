@@ -1,0 +1,6 @@
+# git ls-tree of this file:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+# Or GitHub will auto-respect it.
+
+# chore: strip per-file copyright headers
+57ef3edec3c124efa98a40dba29f3138eef187fc

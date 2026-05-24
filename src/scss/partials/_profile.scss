@@ -986,7 +986,7 @@
     align-items: center;
     justify-content: center;
     padding: 2rem 0;
-    height: calc(var(--100vh) - 96px);
+    height: calc(var(--100vh-inset) - 96px);
     position: relative;
 
     .title {

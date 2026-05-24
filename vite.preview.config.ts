@@ -29,12 +29,24 @@ const cacheKey = basename(seedPath).replace(/\.json$/, '');
 // every value is JSON.stringify'd, exactly as LocalStorageController writes it.
 const seedScript = `(function(){
   try {
+    var s = ${JSON.stringify(seed)};
+    var dc = s.dcId;
+    var fingerprint = s.authKeys[dc].key.slice(0, 8);
     if(localStorage.getItem('account1')) {
       console.log('[preview-auth] account1 already present — keeping existing session');
       return;
     }
-    var s = ${JSON.stringify(seed)};
-    var dc = s.dcId;
+    // Seed each minted authorization only ONCE per preview tab. A tweb logout
+    // clears localStorage; re-seeding the same keys would just get logged out
+    // again — an endless reload loop. The marker lives in window.sessionStorage
+    // (NOT localStorage) so a tweb logout cannot wipe it; it still resets when
+    // the tab is closed. The fingerprint means a fresh --remint (new keys)
+    // re-seeds, but a logout within the same tab does not.
+    if(window.sessionStorage.getItem('preview_auth_seeded') === fingerprint) {
+      console.log('[preview-auth] session was cleared (logged out?) — not re-seeding the same authorization');
+      return;
+    }
+    window.sessionStorage.setItem('preview_auth_seeded', fingerprint);
     var account = {userId: s.userId, dcId: dc};
     Object.keys(s.authKeys).forEach(function(id){
       var e = s.authKeys[id];
@@ -43,7 +55,6 @@ const seedScript = `(function(){
       localStorage.setItem('dc' + id + '_auth_key', JSON.stringify(e.key));
       localStorage.setItem('dc' + id + '_server_salt', JSON.stringify(e.salt));
     });
-    var fingerprint = s.authKeys[dc].key.slice(0, 8);
     account.auth_key_fingerprint = fingerprint;
     localStorage.setItem('account1', JSON.stringify(account));
     localStorage.setItem('dc', JSON.stringify(dc));
@@ -58,10 +69,23 @@ const seedScript = `(function(){
 
 export default mergeConfig(baseConfig as any, {
   cacheDir: `node_modules/.vite-preview-${cacheKey}`,
+  // Expose the preview flag to the app bundle. src/config/debug.ts reads it as
+  // IS_PREVIEW and uses it to switch off boot-blocking behaviour a non-painting
+  // preview tab can't satisfy: the rAF-gated fade-in and the cross-tab dynamic
+  // import wait. See src/helpers/dom/previewRaf.ts.
+  // VITE_NO_WORKER is set by start-preview.sh --no-worker; Modes.noWorker reads
+  // it so the debug launch entry doesn't need ?noWorker=1 in the URL.
+  define: {
+    'import.meta.env.VITE_PREVIEW': JSON.stringify(true),
+    'import.meta.env.VITE_NO_WORKER': JSON.stringify(process.env.TWEB_NO_WORKER === '1')
+  },
   // the project's public/ holds stale build chunks with unresolved git merge
   // markers; vite would otherwise crawl public/index.html etc. as dep-scan
-  // entries and choke — restrict the scan to the real app entry
-  optimizeDeps: {entries: ['index.html']},
+  // entries and choke — scope the scan to the real app entry. The worker
+  // entries are listed explicitly too: their deps (@cryptography/aes, fflate,
+  // js-md5, …) are reached only through workers, and if the scan misses them
+  // vite re-optimizes + full-reloads mid-boot.
+  optimizeDeps: {entries: ['index.html', 'src/**/*.worker.{ts,js}']},
   plugins: [{
     name: 'preview-auth-seed',
     transformIndexHtml(html: string) {

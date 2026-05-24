@@ -2,7 +2,7 @@
 
 .search-super {
   --super-offset: 1rem;
-  --super-height: calc(var(--100vh) - var(--super-offset));
+  --super-height: calc(var(--100vh-inset) - var(--super-offset));
   $menu-offset: $menu-height + $section-rounded-padding;
   width: 100%;
   max-width: 100%;
