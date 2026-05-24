@@ -6,14 +6,16 @@
 
 import {AppManager} from '@appManagers/manager';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
-import type {AttachedMedia, CreatePollPayload} from '@components/popups/createPoll/storeContext';
+import type {AttachedMedia, AttachedPhoto, AttachedSticker, CreatePollPayload} from '@components/popups/createPoll/storeContext';
 import assumeType from '@helpers/assumeType';
+import deferredPromise from '@helpers/cancellablePromise';
 import copy from '@helpers/object/copy';
 import {randomLong} from '@helpers/random';
 import {InputMedia, Message, MessageEntity, MessageMedia, Poll, PollAnswer, PollResults, TextWithEntities} from '@layer';
 import {LogTypes} from '@lib/logger';
 import parseMarkdown from '@lib/richTextProcessor/parseMarkdown';
 import {MessageSendingParams} from './appMessagesManager';
+import getDocumentInput from './utils/docs/getDocumentInput';
 import getPhotoInput from './utils/photos/getPhotoInput';
 import {oneHourInSeconds} from '@lib/constants';
 
@@ -263,39 +265,6 @@ export class AppPollsManager extends AppManager {
 
     const uploadingMedia = media ? this.uploadPollMedia(peerId, media) : undefined;
 
-    // const currentPollData = structuredClone(this.getPoll(message.media.poll.id));
-
-    // const optionNumber = pollAnswerOptionOffset + currentPollData.poll.answers.length;
-
-    // const updatedPoll: Poll.poll = {
-    //   ...currentPollData.poll,
-    //   answers: [
-    //     ...currentPollData.poll.answers,
-    //     {
-    //       _: 'pollAnswer',
-    //       text: text,
-    //       media: uploadingMedia?.messageMedia,
-    //       option: new Uint8Array([optionNumber])
-    //     }
-    //   ]
-    // };
-
-    // const updatedResults: PollResults = {
-    //   ...currentPollData.results,
-    //   results: [
-    //     ...(currentPollData.results?.results ?? []),
-    //     {
-    //       _: 'pollAnswerVoters',
-    //       option: new Uint8Array([optionNumber]),
-    //       voters: 0,
-    //       recent_voters: [],
-    //       pFlags: {}
-    //     }
-    //   ]
-    // };
-
-    // this.saveAndDispatchPoll(updatedPoll, updatedResults);
-
     const inputPeer = this.appPeersManager.getInputPeerById(peerId);
 
     const updates = await this.apiManager.invokeApi('messages.addPollAnswer', {
@@ -374,9 +343,17 @@ export class AppPollsManager extends AppManager {
   }
 
   private uploadPollMedia(peerId: PeerId, media: AttachedMedia) {
+    if(media.type === 'sticker') {
+      return this.makeStickerPollMedia(media);
+    }
+
+    return this.uploadPhotoPollMedia(peerId, media);
+  }
+
+  private uploadPhotoPollMedia(peerId: PeerId, media: AttachedPhoto) {
     const mediaTempId = this.appMessagesManager.getMediaTempId();
 
-    const {photo, document} = this.appMessagesManager.makeDocumentAndMetaForSendingFile({
+    const {photo} = this.appMessagesManager.makeDocumentAndMetaForSendingFile({
       file: media.blob,
       objectURL: media.objectUrl,
       isDocument: false,
@@ -386,13 +363,14 @@ export class AppPollsManager extends AppManager {
       isMedia: true
     });
 
+    if(!photo) throw new Error('Expected a photo for poll media');
+
     const {deferred, uploadingFileName} = this.appMessagesManager.makeMediaUploadDeferred({file: media.blob});
 
     const messageMedia: MessageMedia = {
-      _: photo ? 'messageMediaPhoto' : 'messageMediaDocument',
+      _: 'messageMediaPhoto',
       pFlags: {},
-      photo,
-      document
+      photo
     };
 
     this.appMessagesManager.sendSmthLazyLoadQueue.push({
@@ -426,6 +404,31 @@ export class AppPollsManager extends AppManager {
 
     return {
       uploadingFileName,
+      deferred,
+      messageMedia
+    };
+  }
+
+  private makeStickerPollMedia(media: AttachedSticker) {
+    // Stickers are referenced by an existing server document, so there's nothing
+    // to upload. We resolve the deferred immediately with an inputMediaDocument.
+    const doc = this.appDocsManager.getDoc(media.docId);
+
+    const deferred = deferredPromise<InputMedia>();
+    deferred.resolve({
+      _: 'inputMediaDocument',
+      id: getDocumentInput(doc),
+      pFlags: {}
+    });
+
+    const messageMedia: MessageMedia = {
+      _: 'messageMediaDocument',
+      pFlags: {},
+      document: doc
+    };
+
+    return {
+      uploadingFileName: undefined as string | undefined,
       deferred,
       messageMedia
     };
