@@ -2,6 +2,7 @@ import {ButtonIconTsx} from '@components/buttonIconTsx';
 import type {ButtonMenuSync} from '@components/buttonMenu';
 import {EditingMediaState} from '@components/mediaEditor/context';
 import {MediaEditorFinalResult} from '@components/mediaEditor/finalRender/createFinalResult';
+import {StickerPreview} from '@components/stickerPreview';
 import {animateImageToTarget} from '@helpers/animateImageToTarget';
 import contextMenuController from '@helpers/contextMenuController';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
@@ -13,20 +14,19 @@ import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
 import {useIsCleaned} from '@hooks/useIsCleaned';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {createEffect, createSignal, on, onCleanup, Show} from 'solid-js';
-import {StickerPreview} from '@components/stickerPreview';
 import {useStickersDropdown} from './stickersDropdown';
-import {AttachedMedia} from './storeContext';
-import {useSupportsMedia} from './utils';
+import {AttachedMedia, SupportedMediaType} from './storeContext';
 
 
 export const MediaAttachment = (props: {
   imgClass?: string;
   btnClass?: string;
   attachedMedia?: AttachedMedia;
+  supportedMediaTypes?: SupportedMediaType[];
   onAttach?: (value: AttachedMedia | undefined) => void;
 }) => {
   const {getFileAndOpenEditor, rootScope} = useHotReloadGuard();
-  const supportsMedia = useSupportsMedia();
+  const supportsMedia = (media: SupportedMediaType) => props.supportedMediaTypes?.includes(media);
 
   const [img, setImg] = createSignal<HTMLImageElement>();
   const [stickerEl, setStickerEl] = createSignal<HTMLDivElement>();

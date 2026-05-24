@@ -228,6 +228,7 @@ export const PollSettingsSectionContent = () => {
                   withFixedIcon
                 >
                   <MediaAttachment
+                    supportedMediaTypes={['photo']}
                     imgClass={styles.mediaAttachmentImage}
                     attachedMedia={context.store.explanationAttachment}
                     onAttach={(value) => {

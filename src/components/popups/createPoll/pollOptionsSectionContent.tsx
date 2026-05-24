@@ -299,6 +299,10 @@ const PollOptionInputField = (props: {
           withFixedIcon
         >
           <MediaAttachment
+            supportedMediaTypes={[
+              ...(supportsMedia('photo') ? ['photo'] as const : []),
+              ...(supportsMedia('sticker') ? ['sticker'] as const : [])
+            ]}
             imgClass={styles.mediaAttachmentImage}
             attachedMedia={props.attachment}
             onAttach={(value) => {
