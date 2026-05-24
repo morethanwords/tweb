@@ -1,19 +1,16 @@
 import {AnimationItemGroup} from '@components/animationIntersector';
 import {AppMediaViewerStaticTargetType} from '@components/appMediaViewerStatic';
-import {AutoHeight} from '@components/autoHeight';
 import {ButtonIconTsx} from '@components/buttonIconTsx';
 import InputField from '@components/inputField';
 import type LazyLoadQueue from '@components/lazyLoadQueue';
 import {useCreatePollLimits} from '@components/popups/createPoll/useCreatePollLimits';
 import {RemainingTime} from '@components/remainingTime';
 import ripple from '@components/ripple';
-import Space from '@components/space';
 import PhotoTsx from '@components/wrappers/photoTsx';
 import {setCaretAtEnd} from '@helpers/dom/setCaretAt';
 import {keepMe} from '@helpers/keepMe';
 import {attachHotClassName} from '@helpers/solid/classname';
 import createMiddleware from '@helpers/solid/createMiddleware';
-import {HeightTransition} from '@helpers/solid/heightTransition';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
@@ -69,8 +66,7 @@ export const PollMessageContent = defineSolidElement({
     attachHotClassName(props.element, styles.container);
 
     // ----- Setup / external dependencies -----
-    const {rootScope, useAppSettings, AppMediaViewerStatic, appSidebarRight, AppPollResultsTab, TranslatableMessageTsx} = useHotReloadGuard();
-    const [appSettings] = useAppSettings();
+    const {rootScope, AppMediaViewerStatic, appSidebarRight, AppPollResultsTab, TranslatableMessageTsx} = useHotReloadGuard();
     const {maxOptionLength} = useCreatePollLimits();
     const middleware = createMiddleware().get();
 
@@ -106,7 +102,7 @@ export const PollMessageContent = defineSolidElement({
       closesAtTimestamp,
       votersCount,
       recentVoters,
-      hasPhotoInOptions,
+      hasMediaInOptions,
       hasExplanation,
       hasSelectedSomething,
       isShowingResult,
@@ -120,7 +116,8 @@ export const PollMessageContent = defineSolidElement({
       getOverridenMessage,
       initialIdxFromShuffledIdx,
       getResultForOption,
-      getPhotoForOption
+      getPhotoForOption,
+      getStickerForOption
     } = usePollDerivedProps({
       props,
       pollOptions,
@@ -328,8 +325,9 @@ export const PollMessageContent = defineSolidElement({
               return (
                 <PollOption
                   text={option.text}
-                  withImage={hasPhotoInOptions()}
+                  withMedia={hasMediaInOptions()}
                   photo={getPhotoForOption(initialIdx())}
+                  sticker={getStickerForOption(initialIdx())}
                   allowMultipleAnswers={allowMultipleAnswers()}
                   hasCorrectAnswer={hasCorrectAnswer()}
                   checked={isChecked(index())}

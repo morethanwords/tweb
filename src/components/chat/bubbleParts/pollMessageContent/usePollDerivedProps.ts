@@ -1,6 +1,6 @@
 import {useCreatePollLimits} from '@components/popups/createPoll/useCreatePollLimits';
 import compareUint8Arrays from '@helpers/bytes/compareUint8Arrays';
-import {InputMedia, Message, MessageMedia, Photo, PollAnswer} from '@layer';
+import {Document, InputMedia, Message, MessageMedia, Photo, PollAnswer} from '@layer';
 import getPeerId from '@lib/appManagers/utils/peers/getPeerId';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {Accessor, createMemo, createResource} from 'solid-js';
@@ -9,6 +9,7 @@ import {PollMessageContentProps} from './PollMessageContent';
 import {getRoundedPercentsFromResults} from './roundPercents';
 import {shouldShufflePollOptions} from './shuffle';
 import {PollOptionResult} from './utils';
+
 
 type UsePollDerivedPropsArgs = {
   props: PollMessageContentProps;
@@ -19,6 +20,17 @@ type UsePollDerivedPropsArgs = {
 
 const getPhoto = (media: MessageMedia | InputMedia | undefined): Photo.photo | undefined => {
   return media?._ === 'messageMediaPhoto' && media.photo?._ === 'photo' ? unwrap(media.photo) : undefined;
+};
+
+export type GetStickerMediaResult = {
+  media: MessageMedia.messageMediaDocument | undefined;
+  document: Document.document | undefined;
+};
+
+const getStickerMedia = (media: MessageMedia | InputMedia | undefined): GetStickerMediaResult => {
+  if(media?._ === 'messageMediaDocument' && media.document?._ === 'document' && media.document.sticker) {
+    return {media: unwrap(media), document: unwrap(media.document)};
+  }
 };
 
 /**
@@ -49,8 +61,8 @@ export function usePollDerivedProps({props, pollOptions, chosenIndexes, newOptio
 
   const roundedPercents = createMemo(() => getRoundedPercentsFromResults(props.results));
 
-  const hasPhotoInOptions = createMemo(() =>
-    props.poll.answers.some(a => a.media?._ === 'messageMediaPhoto' && a.media.photo?._ === 'photo')
+  const hasMediaInOptions = createMemo(() =>
+    props.poll.answers.some(a => !!getPhoto(a.media) || !!getStickerMedia(a.media))
   );
 
   const hasExplanation = createMemo(() => !!props.results.solution || !!props.results.solution_media);
@@ -107,6 +119,9 @@ export function usePollDerivedProps({props, pollOptions, chosenIndexes, newOptio
   const getPhotoForOption = (initialIdx: number): Photo.photo | undefined =>
     getPhoto(props.poll.answers[initialIdx]?.media);
 
+  const getStickerForOption = (initialIdx: number): GetStickerMediaResult | undefined =>
+    getStickerMedia(props.poll.answers[initialIdx]?.media);
+
   return {
     question,
     descriptionText,
@@ -122,7 +137,7 @@ export function usePollDerivedProps({props, pollOptions, chosenIndexes, newOptio
     votersCount,
     recentVoters,
     roundedPercents,
-    hasPhotoInOptions,
+    hasMediaInOptions,
     hasExplanation,
     hasSelectedSomething,
     isShowingResult,
@@ -137,6 +152,7 @@ export function usePollDerivedProps({props, pollOptions, chosenIndexes, newOptio
     getOverridenMessage,
     initialIdxFromShuffledIdx,
     getResultForOption,
-    getPhotoForOption
+    getPhotoForOption,
+    getStickerForOption
   };
 }

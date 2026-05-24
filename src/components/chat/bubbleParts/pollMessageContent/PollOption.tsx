@@ -1,6 +1,7 @@
 import ripple from '@components/ripple';
 import {Spinner} from '@components/spinner';
 import StaticRadio from '@components/staticRadio';
+import {StickerPreview} from '@components/stickerPreview';
 import PhotoTsx from '@components/wrappers/photoTsx';
 import {animateValue} from '@helpers/animateValue';
 import {keepMe} from '@helpers/keepMe';
@@ -20,6 +21,7 @@ import {usePollMessageContentProps} from './context';
 import {AvatarGroup} from './parts';
 import PathDot from './PathDot';
 import styles from './styles.module.scss';
+import {GetStickerMediaResult} from './usePollDerivedProps';
 import {dataPollViewerIdx, DataPollViewerIdxDirectivePayload, LocalTextWithEntities, PollOptionResult, spinnerThickness} from './utils';
 
 
@@ -29,8 +31,9 @@ keepMe(dataPollViewerIdx);
 const progressTransitionTimeBase = 600; // ms
 
 export const PollOption = (props: {
-  withImage?: boolean;
+  withMedia?: boolean;
   photo?: Photo.photo;
+  sticker?: GetStickerMediaResult;
   clickable?: boolean;
   text: LocalTextWithEntities;
   checked: boolean;
@@ -84,7 +87,7 @@ export const PollOption = (props: {
   });
 
   return (
-    <div class={styles.pollOption} classList={{[styles.hasMedia]: props.withImage}} data-poll-option-idx={props.initialIdx}>
+    <div class={styles.pollOption} classList={{[styles.hasMedia]: props.withMedia}} data-poll-option-idx={props.initialIdx}>
       <Show when={!isShowingResult()}>
         <div class={styles.clickableArea} classList={{[styles.outgoing]: contextProps.isOutgoing}} use:ripple onClick={props.onToggle} />
       </Show>
@@ -184,20 +187,34 @@ export const PollOption = (props: {
           </Show>
         </Transition>
       </div>
-      <Show when={props.withImage}>
+      <Show when={props.withMedia}>
         <div class={styles.pollOptionSpacerLast}></div>
         <div
           class={classNames(styles.pollOptionMedia, styles.stripped)}
-          classList={{[styles.clickable]: !!props.photo}}
+          classList={{[styles.clickable]: !!props.photo || !!props.sticker}}
           use:dataPollViewerIdx={props.pollViewerPayload}
         >
           <Show when={props.photo}>
             <PhotoTsx
               photo={props.photo}
-              boxWidth={36}
-              boxHeight={36}
+              boxWidth={32}
+              boxHeight={32}
               loadPromises={contextProps.loadPromises}
               autoDownloadSize={contextProps.autoDownload?.photo}
+            />
+          </Show>
+          <Show when={!props.photo && props.sticker}>
+            <StickerPreview
+              class='poll-option-sticker'
+              doc={props.sticker.document}
+              animationGroup={contextProps.animationGroup}
+              width={32}
+              height={32}
+              stickerOptions={{
+                liteModeKey: 'stickers_chat',
+                withThumb: true,
+                noPremium: props.sticker.media.pFlags.nopremium
+              }}
             />
           </Show>
         </div>

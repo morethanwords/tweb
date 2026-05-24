@@ -5275,7 +5275,7 @@ export class AppMessagesManager extends AppManager {
     reply_media?: MessageMedia,
     peerId?: PeerId,
     mid?: number
-  }, mediaContext: ReferenceContext, isScheduled?: boolean) {
+  }, mediaContext?: ReferenceContext, isScheduled?: boolean) {
     const key = 'media' in message ? 'media' : 'reply_media';
     const media = message[key];
     if(!media) {

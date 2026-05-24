@@ -8,12 +8,12 @@ import blurActiveElement from '@helpers/dom/blurActiveElement';
 import noop from '@helpers/noop';
 import {positionFloatingMenu} from '@helpers/positionMenu';
 import pause from '@helpers/schedulers/pause';
-import createMiddleware from '@helpers/solid/createMiddleware';
 import {requestRAF} from '@helpers/solid/requestRAF';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
 import {useIsCleaned} from '@hooks/useIsCleaned';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {createEffect, createSignal, on, onCleanup, onMount, Show} from 'solid-js';
+import {createEffect, createSignal, on, onCleanup, Show} from 'solid-js';
+import {StickerPreview} from '@components/stickerPreview';
 import {useStickersDropdown} from './stickersDropdown';
 import {AttachedMedia} from './storeContext';
 import {useSupportsMedia} from './utils';
@@ -25,7 +25,7 @@ export const MediaAttachment = (props: {
   attachedMedia?: AttachedMedia;
   onAttach?: (value: AttachedMedia | undefined) => void;
 }) => {
-  const {getFileAndOpenEditor, rootScope, wrapSticker} = useHotReloadGuard();
+  const {getFileAndOpenEditor, rootScope} = useHotReloadGuard();
   const supportsMedia = useSupportsMedia();
 
   const [img, setImg] = createSignal<HTMLImageElement>();
@@ -204,8 +204,6 @@ export const MediaAttachment = (props: {
         {(sticker) => (
           <StickerPreview
             docId={sticker.docId}
-            wrapSticker={wrapSticker}
-            getDoc={(docId) => rootScope.managers.appDocsManager.getDoc(docId)}
             class={props.imgClass}
             ref={setStickerEl}
             onClick={() => setIsStickerMenuOpen(true)}
@@ -213,49 +211,6 @@ export const MediaAttachment = (props: {
         )}
       </Show>
     </>
-  );
-};
-
-const StickerPreview = (props: {
-  docId: DocId;
-  wrapSticker: ReturnType<typeof useHotReloadGuard>['wrapSticker'];
-  getDoc: (docId: DocId) => Promise<any>;
-  class?: string;
-  ref?: (el: HTMLDivElement) => void;
-  onClick?: () => void;
-}) => {
-  let container: HTMLDivElement;
-
-  onMount(() => {
-    const middleware = createMiddleware();
-
-    (async() => {
-      const doc = await props.getDoc(props.docId);
-      if(!middleware.get()()) return;
-
-      props.wrapSticker({
-        div: container,
-        doc,
-        group: 'none',
-        width: 40,
-        height: 40,
-        play: true,
-        loop: true,
-        withThumb: false,
-        middleware: middleware.get()
-      });
-    })();
-  });
-
-  return (
-    <div
-      ref={(el) => {
-        container = el;
-        props.ref?.(el);
-      }}
-      class={props.class}
-      onClick={props.onClick}
-    />
   );
 };
 
