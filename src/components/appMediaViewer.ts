@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {MyDocument} from '@appManagers/appDocsManager';
 import MEDIA_MIME_TYPES_SUPPORTED from '@environment/mediaMimeTypesSupport';
 import cancelEvent from '@helpers/dom/cancelEvent';

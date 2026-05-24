@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import classNames from '@helpers/string/classNames';
 import PopupElement, {addCancelButton} from '@components/popups';
 import PopupPeer, {PopupPeerCheckboxOptions, PopupPeerOptions} from '@components/popups/peer';

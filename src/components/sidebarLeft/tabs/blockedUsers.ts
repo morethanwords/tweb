@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {SliderSuperTab} from '@components/slider';
 import {ButtonMenuSync} from '@components/buttonMenu';
 import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG} from '@lib/appDialogsManager';

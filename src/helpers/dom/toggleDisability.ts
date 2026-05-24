@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import toArray from '@helpers/array/toArray';
 
 export default function toggleDisability(elements: HTMLElement | HTMLElement[], disable: boolean): () => void {

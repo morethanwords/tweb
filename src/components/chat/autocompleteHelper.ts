@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import attachListNavigation, {ListNavigationOptions} from '@helpers/dom/attachListNavigation';
 import EventListenerBase from '@helpers/eventListenerBase';
 import {IS_MOBILE} from '@environment/userAgent';

@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {Accessor, createEffect, createMemo, createResource, createSignal, JSX} from 'solid-js';
 import Animated from '@helpers/solid/animations';
 import createMiddleware from '@helpers/solid/createMiddleware';

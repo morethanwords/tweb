@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import styles from '@components/codeInputField.module.scss';
 import classNames from '@helpers/string/classNames';
 import {children, createRoot, createSignal, Index, Ref, Show, Signal} from 'solid-js';

@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {MyMessage} from '@appManagers/appMessagesManager';
 import getMessageSenderPeerIdOrName from '@appManagers/utils/messages/getMessageSenderPeerIdOrName';
 import {i18n} from '@lib/langPack';

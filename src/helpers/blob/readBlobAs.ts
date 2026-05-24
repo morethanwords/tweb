@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 // import { IS_WEB_WORKER } from "@helpers/context";
 
 // const id = IS_WEB_WORKER ? Math.random() * 0x1000 | 0 : 0;

@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import forEachReverse from '@helpers/array/forEachReverse';
 import throttle from '@helpers/schedulers/throttle';
 import {GroupCallConnectionType, JoinGroupCallJsonPayload} from '@appManagers/appGroupCallsManager';

@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type ChatTopbar from '@components/chat/topbar';
 import Chat from '@components/chat/chat';
 import {LangPackKey, i18n} from '@lib/langPack';

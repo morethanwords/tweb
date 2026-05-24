@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import safePlay from '@helpers/dom/safePlay';
 import deepEqual from '@helpers/object/deepEqual';
 import tsNow from '@helpers/tsNow';

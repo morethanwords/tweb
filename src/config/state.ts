@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {LiteModeKey} from '@helpers/liteMode';
 import type {AppMediaPlaybackController} from '@components/appMediaPlaybackController';
 import type {TopPeerType, MyTopPeer} from '@appManagers/appUsersManager';

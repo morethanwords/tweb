@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 // OGG container muxer for Opus packets, per RFC 7845 (Opus-in-Ogg) and RFC 3533 (Ogg).
 // Used to wrap raw Opus packets emitted by WebCodecs AudioEncoder into the
 // `audio/ogg;codecs=opus` container that Telegram expects for voice messages.

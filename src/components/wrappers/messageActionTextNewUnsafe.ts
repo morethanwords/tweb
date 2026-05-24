@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import {formatTime, ONE_DAY} from '@helpers/date';
 import htmlToSpan from '@helpers/dom/htmlToSpan';

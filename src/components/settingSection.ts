@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {LangPackKey, FormatterArguments, i18n_} from '@lib/langPack';
 import {generateDelimiter} from '@components/generateDelimiter';
 import Scrollable from '@components/scrollable';

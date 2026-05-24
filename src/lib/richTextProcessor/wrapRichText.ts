@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {EMOJI_VERSION} from '@environment/emojiVersionsSupport';
 import {SITE_HASHTAGS} from '.';
 import {EmojiVersions} from '@config/emoji';

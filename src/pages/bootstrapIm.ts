@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import blurActiveElement from '@helpers/dom/blurActiveElement';
 import loadFonts from '@helpers/dom/loadFonts';
 import {doubleRaf} from '@helpers/schedulers';

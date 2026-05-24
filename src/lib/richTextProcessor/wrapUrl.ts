@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type addAnchorListener from '@helpers/addAnchorListener';
 import {PHONE_NUMBER_REG_EXP} from '.';
 import {MOUNT_CLASS_TO} from '@config/debug';

@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {MyDocument} from '@appManagers/appDocsManager';
 import getDocumentInput from '@appManagers/utils/docs/getDocumentInput';
 import type {MyDraftMessage} from '@appManagers/appDraftsManager';

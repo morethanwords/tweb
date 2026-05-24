@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {createSignal, Show} from 'solid-js';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import classNames from '@helpers/string/classNames';

@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type RLottiePlayer from '@lib/rlottie/rlottiePlayer';
 import type {ThumbCache} from '@lib/storages/thumbs';
 import type {MyDocument} from '@appManagers/appDocsManager';

@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import {i18n, i18n_} from '@lib/langPack';
 import lottieLoader, {LottieLoader} from '@lib/rlottie/lottieLoader';

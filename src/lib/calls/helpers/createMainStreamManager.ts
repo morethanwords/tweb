@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {GROUP_CALL_AMPLITUDE_ANALYSE_INTERVAL_MS} from '@lib/calls/constants';
 import StreamManager from '@lib/calls/streamManager';
 import getAudioConstraints from '@lib/calls/helpers/getAudioConstraints';

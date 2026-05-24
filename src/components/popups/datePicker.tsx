@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import PopupElement, {createPopup} from '@components/popups/indexTsx';
 import {batch, createEffect, createMemo, createSignal, For, JSX, onCleanup, onMount, Show} from 'solid-js';
 import classNames from '@helpers/string/classNames';

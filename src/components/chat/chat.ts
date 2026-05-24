@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {AdminLog, ChatRights} from '@appManagers/appChatsManager';
 import type {RequestWebViewOptions} from '@appManagers/appAttachMenuBotsManager';
 import type {HistoryStorageKey, MessageSendingParams, MessagesStorageKey, MyMessage, RequestHistoryOptions} from '@appManagers/appMessagesManager';

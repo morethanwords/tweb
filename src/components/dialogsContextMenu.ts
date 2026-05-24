@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {Dialog} from '@appManagers/appMessagesManager';
 import type {ForumTopic} from '@layer';
 import type {AnyDialog} from '@lib/storages/dialogs';

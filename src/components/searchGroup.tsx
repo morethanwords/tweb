@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import appDialogsManager, {AppDialogsManager} from '@lib/appDialogsManager';
 import {i18n, LangPackKey} from '@lib/langPack';
 import Section from '@components/section';

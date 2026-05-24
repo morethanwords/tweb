@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {Portal} from 'solid-js/web';
 import {batch, createContext, createEffect, createRoot, For, onCleanup, onMount, useContext, JSX, createMemo, createSignal, Accessor, untrack, createResource, Resource, on, createReaction, Show, createRenderEffect, createComputed, Setter} from 'solid-js';
 import styles from '@components/browser.module.scss';

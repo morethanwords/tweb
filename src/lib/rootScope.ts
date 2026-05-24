@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, ReactionCount, MessagePeerReaction, PhoneCall, Config, Reaction, AttachMenuBot, PeerSettings, StoryItem, PeerStories, SavedDialog, SavedReactionTag, InputSavedStarGift, LangPackDifference, StarsAmount, MessageEntity, HelpPromoData, StoriesStealthMode, StoryAlbum} from '@layer';
 import type {Dialog, ForumTopic, MessagesStorageKey, MyMessage} from '@appManagers/appMessagesManager';
 import type {MyDialogFilter} from '@lib/storages/filters';

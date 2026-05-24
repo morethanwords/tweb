@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {MessagesStorageKey} from '@appManagers/appMessagesManager';
 import type ChatBubbles from '@components/chat/bubbles';
 import type ChatInput from '@components/chat/input';

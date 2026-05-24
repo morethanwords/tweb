@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import CAN_USE_TRANSFERABLES from '@environment/canUseTransferables';
 import ctx from '@environment/ctx';
 import IS_IMAGE_BITMAP_SUPPORTED from '@environment/imageBitmapSupport';

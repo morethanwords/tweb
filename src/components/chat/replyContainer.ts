@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {Middleware} from '@helpers/middleware';
 import {Document, Message, MessageMedia, Photo, WebPage, VideoSize, StoryItem, MessageReplyHeader, MessageEntity} from '@layer';
 import choosePhotoSize from '@appManagers/utils/photos/choosePhotoSize';

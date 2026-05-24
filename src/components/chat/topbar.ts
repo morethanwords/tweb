@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {Channel} from '@appManagers/appChatsManager';
 import type {AppSidebarRight} from '@components/sidebarRight';
 import type Chat from '@components/chat/chat';

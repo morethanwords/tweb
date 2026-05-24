@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {AttributeMap} from '.';
 import {NoExtraProperties} from '@types';
 import SDPAttributes from '@lib/calls/sdp/attributes';

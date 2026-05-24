@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {Accessor, For, JSX, createEffect, createMemo, createRoot, createSignal, onCleanup, untrack} from 'solid-js';
 import {formatFullSentTime} from '@helpers/date';
 import anchorCallback from '@helpers/dom/anchorCallback';

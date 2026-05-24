@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type ChatInput from '@components/chat/input';
 import {appendEmoji as wrapAppEmoji, getEmojiFromElement} from '@components/emoticonsDropdown/tabs/emoji';
 import {ScrollableX} from '@components/scrollable';

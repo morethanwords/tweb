@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import readBlobAsUint8Array from '@helpers/blob/readBlobAsUint8Array';
 import bufferConcats from '@helpers/bytes/bufferConcats';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';

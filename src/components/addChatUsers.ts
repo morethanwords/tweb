@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import {MissingInvitee} from '@layer';
 import {FormatterArguments, LangPackKey, i18n, join} from '@lib/langPack';

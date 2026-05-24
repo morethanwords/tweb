@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {Accessor, createSignal, Show} from 'solid-js';
 import {hexToRgb, calculateLuminance, getTextColor, calculateOpacity, rgbaToRgb, rgbIntToHex, mixColors, rgbaToHexa} from '@helpers/color';
 import {attachClickEvent} from '@helpers/dom/clickEvent';

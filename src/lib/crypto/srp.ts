@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import cryptoWorker from '@lib/crypto/cryptoMessagePort';
 import {AccountPassword, InputCheckPasswordSRP, PasswordKdfAlgo} from '@layer';
 import addPadding from '@helpers/bytes/addPadding';

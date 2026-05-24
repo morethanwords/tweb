@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import {IS_APPLE} from '@environment/userAgent';
 import contextMenuController from '@helpers/contextMenuController';

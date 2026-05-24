@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {MediaSearchContext} from '@components/appMediaPlaybackController';
 import type {SearchSuperContext} from '@components/appSearchSuper';
 import type {Message} from '@layer';

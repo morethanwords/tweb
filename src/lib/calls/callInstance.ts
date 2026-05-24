@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import ctx from '@environment/ctx';
 import {IS_SAFARI} from '@environment/userAgent';
 import assumeType from '@helpers/assumeType';

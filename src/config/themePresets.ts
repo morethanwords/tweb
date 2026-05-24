@@ -1,8 +1,4 @@
 /*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- *
  * Accent-color presets ported from Telegram iOS' ThemeColorPresets.swift.
  * See submodules/SettingsUI/Sources/Themes/ThemeColorPresets.swift in TelegramMessenger/Telegram-iOS
  * for the upstream definitions; the index numbers are kept identical so a preset can be

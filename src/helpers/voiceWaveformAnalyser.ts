@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 // Live waveform extractor for voice messages.
 // Taps the same MediaStream the Opus encoder is reading from and computes peaks
 // from raw Float32 PCM, mirroring the algorithm used by iOS / Android / tdesktop:

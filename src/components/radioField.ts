@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import simulateEvent from '@helpers/dom/dispatchEvent';
 import getDeepProperty from '@helpers/object/getDeepProperty';
 import {LangPackKey, _i18n} from '@lib/langPack';

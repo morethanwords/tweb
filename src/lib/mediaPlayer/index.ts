@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import appMediaPlaybackController from '@components/appMediaPlaybackController';
 import {IS_APPLE_MOBILE, IS_MOBILE} from '@environment/userAgent';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';

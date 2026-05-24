@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import appDialogsManager, {AppDialogsManager} from '@lib/appDialogsManager';
 import Scrollable from '@components/scrollable';
 import InputSearch from '@components/inputSearch';

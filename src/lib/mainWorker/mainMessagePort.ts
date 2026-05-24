@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {MOUNT_CLASS_TO} from '@config/debug';
 import type {getEnvironment} from '@environment/utils';
 import type {LocalStorageEncryptedProxyTaskPayload, LocalStorageProxyTask} from '@lib/localStorage';

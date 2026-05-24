@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {getEnvironment} from '@environment/utils';
 import safeReplaceObject from '@helpers/object/safeReplaceObject';
 import {nextRandomUint} from '@helpers/random';

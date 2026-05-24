@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {copyTextToClipboard} from '@helpers/clipboard';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import htmlToDocumentFragment from '@helpers/dom/htmlToDocumentFragment';

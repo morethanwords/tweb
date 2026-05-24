@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import SliderSuperTab, {SliderSuperTabEventable} from '@components/sliderTab';
 import Row from '@components/row';
 import {AccountPassword, GlobalPrivacySettings, InputPrivacyKey, Passkey, WebAuthorization} from '@layer';

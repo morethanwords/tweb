@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import Icon from '@components/icon';
 import {animateValue} from '@helpers/animateValue';
 import type {CancellablePromise} from '@helpers/cancellablePromise';

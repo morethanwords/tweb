@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {AvailableReaction} from '@layer';
 import RadioField from '@components/radioField';
 import Row, {RadioFormFromRows} from '@components/row';

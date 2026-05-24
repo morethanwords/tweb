@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import appDialogsManager from '@lib/appDialogsManager';
 import {SliderSuperTab} from '@components/slider';
 import {FOLDER_ID_ARCHIVE, REAL_FOLDER_ID} from '@appManagers/constants';

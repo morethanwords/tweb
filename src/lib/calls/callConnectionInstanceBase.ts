@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import safeAssign from '@helpers/object/safeAssign';
 import {logger} from '@lib/logger';
 import createDataChannel from '@lib/calls/helpers/createDataChannel';

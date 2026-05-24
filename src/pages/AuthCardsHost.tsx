@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {JSX, Match, Show, Switch, children, createMemo, lazy, onMount} from 'solid-js';
 
 import Scrollable from '@components/scrollable2';

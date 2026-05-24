@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 export default function callbackifyAll<T extends readonly unknown[] | [], R extends any>(
   values: T,
   callback: (result: { -readonly [P in keyof T]: Awaited<T[P]> }) => R

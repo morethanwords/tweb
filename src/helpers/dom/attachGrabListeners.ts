@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 export type GrabEvent = {x: number, y: number, isTouch?: boolean, event: TouchEvent | MouseEvent};
 
 export default function attachGrabListeners(element: HTMLElement,

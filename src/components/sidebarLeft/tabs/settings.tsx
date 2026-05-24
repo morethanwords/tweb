@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {createSignal, For, onMount, Show} from 'solid-js';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import AppPrivacyAndSecurityTab from '@components/sidebarLeft/tabs/privacyAndSecurity';

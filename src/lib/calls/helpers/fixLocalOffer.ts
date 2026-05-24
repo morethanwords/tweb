@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import forEachReverse from '@helpers/array/forEachReverse';
 import copy from '@helpers/object/copy';
 import {ConferenceEntry} from '@lib/calls/localConferenceDescription';

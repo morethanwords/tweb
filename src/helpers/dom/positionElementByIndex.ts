@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import whichChild from '@helpers/dom/whichChild';
 
 export default function positionElementByIndex(element: HTMLElement, container: HTMLElement, pos: number, prevPos?: number) {

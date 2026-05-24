@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import App from '@config/app';
 import deferredPromise from '@helpers/cancellablePromise';
 import EventListenerBase from '@helpers/eventListenerBase';

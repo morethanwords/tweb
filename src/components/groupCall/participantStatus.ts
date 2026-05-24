@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import replaceContent from '@helpers/dom/replaceContent';
 import setInnerHTML from '@helpers/dom/setInnerHTML';
 import {GroupCallParticipant} from '@layer';

@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {PasswordManager} from '@appManagers/passwordManager';
 import {ReferencesStorage} from '@lib/storages/references';
 import DialogsStorage from '@lib/storages/dialogs';

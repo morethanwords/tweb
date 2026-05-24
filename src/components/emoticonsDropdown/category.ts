@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {makeMediaSize, MediaSize} from '@helpers/mediaSize';
 import mediaSizes from '@helpers/mediaSizes';
 import {MiddlewareHelper, Middleware, getMiddleware} from '@helpers/middleware';

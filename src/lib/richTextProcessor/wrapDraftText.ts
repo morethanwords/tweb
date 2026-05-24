@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {AnimationItemGroup} from '@components/animationIntersector';
 import rootScope from '@lib/rootScope';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';

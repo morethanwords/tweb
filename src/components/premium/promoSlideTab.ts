@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {LangPackKey, i18n} from '@lib/langPack';
 import Row from '@components/row';
 import {PREMIUM_FEATURES_COLORS, PremiumPromoFeature} from '@components/premium/featuresConfig';

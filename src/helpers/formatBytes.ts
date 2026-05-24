@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {i18n, LangPackKey} from '@lib/langPack';
 
 export default function formatBytes(bytes: number, decimals: number | 'auto' = 'auto') {

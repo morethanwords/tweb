@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type AppMediaViewerBase from '@components/appMediaViewerBase';
 import PopupElement from '@components/popups';
 import PopupSharedFolderInvite from '@components/popups/sharedFolderInvite';

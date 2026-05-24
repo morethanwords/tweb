@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {USING_BOMS} from '@helpers/dom/richInputHandler';
 import BOM from '@helpers/string/bom';
 import {_i18n} from '@lib/langPack';
