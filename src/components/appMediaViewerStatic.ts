@@ -10,6 +10,8 @@ import appSidebarRight from './sidebarRight';
 import AppSharedMediaTab from './sidebarRight/tabs/sharedMedia';
 import appDownloadManager from '@lib/appDownloadManager';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
+import showForwardPopup from './popups/forward';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
 
 
 export type AppMediaViewerStaticTargetType = {
@@ -48,6 +50,11 @@ export default class AppMediaViewerStatic extends AppMediaViewerBase<never, 'for
     this.setListeners();
   }
 
+  protected setListeners(): void {
+    super.setListeners();
+    attachClickEvent(this.buttons.forward, this.onForwardClick);
+  }
+
   onPrevClick = (target: AppMediaViewerStaticTargetType) => {
     this.openMedia({
       ...target,
@@ -63,15 +70,14 @@ export default class AppMediaViewerStatic extends AppMediaViewerBase<never, 'for
   };
 
   onForwardClick = () => {
-    // const target = this.target;
-    // if(target.mid) {
-    //   // appSidebarRight.forwardTab.open([target.mid]);
-    //   PopupElement.createPopup(PopupForward, {
-    //     [target.peerId]: [target.mid]
-    //   }, () => {
-    //     return this.close();
-    //   });
-    // }
+    const target = this.target;
+    if(target.mid) {
+      showForwardPopup({
+        [target.peerId]: [target.mid]
+      }, undefined, undefined, () => {
+        return this.close();
+      });
+    }
   };
 
   onAuthorClick = async(e: MouseEvent) => {

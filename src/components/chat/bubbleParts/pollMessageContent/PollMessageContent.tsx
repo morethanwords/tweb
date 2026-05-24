@@ -250,7 +250,8 @@ export const PollMessageContent = defineSolidElement({
         element: elementByIndexMap.get(idx)?.querySelector('.media-photo'),
         fromId: props.message.fromId,
         timestamp: props.message.date,
-        peerId: props.message.peerId
+        peerId: props.message.peerId,
+        mid: props.message.mid
       });
 
       new AppMediaViewerStatic().openMedia({
