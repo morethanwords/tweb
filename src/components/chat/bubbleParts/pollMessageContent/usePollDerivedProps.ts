@@ -33,6 +33,12 @@ const getStickerMedia = (media: MessageMedia | InputMedia | undefined): GetStick
   }
 };
 
+const getGeo = (media: MessageMedia | InputMedia | undefined): MessageMedia.messageMediaGeo | undefined => {
+  // Intentionally only handles plain `messageMediaGeo`. Venues and live
+  // locations are ignored here per the poll-option rendering requirements.
+  return media?._ === 'messageMediaGeo' ? unwrap(media) : undefined;
+};
+
 /**
  * Returns the various memos derived from the poll props plus helper
  * functions (`getOverridenMessage`, `getResultForOption`, ...).
@@ -62,7 +68,7 @@ export function usePollDerivedProps({props, pollOptions, chosenIndexes, newOptio
   const roundedPercents = createMemo(() => getRoundedPercentsFromResults(props.results));
 
   const hasMediaInOptions = createMemo(() =>
-    props.poll.answers.some(a => !!getPhoto(a.media) || !!getStickerMedia(a.media))
+    props.poll.answers.some(a => !!getPhoto(a.media) || !!getStickerMedia(a.media) || !!getGeo(a.media))
   );
 
   const hasExplanation = createMemo(() => !!props.results.solution || !!props.results.solution_media);
@@ -122,6 +128,9 @@ export function usePollDerivedProps({props, pollOptions, chosenIndexes, newOptio
   const getStickerForOption = (initialIdx: number): GetStickerMediaResult | undefined =>
     getStickerMedia(props.poll.answers[initialIdx]?.media);
 
+  const getGeoForOption = (initialIdx: number): MessageMedia.messageMediaGeo | undefined =>
+    getGeo(props.poll.answers[initialIdx]?.media);
+
   return {
     question,
     descriptionText,
@@ -153,6 +162,7 @@ export function usePollDerivedProps({props, pollOptions, chosenIndexes, newOptio
     initialIdxFromShuffledIdx,
     getResultForOption,
     getPhotoForOption,
-    getStickerForOption
+    getStickerForOption,
+    getGeoForOption
   };
 }

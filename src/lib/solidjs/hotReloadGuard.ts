@@ -64,6 +64,7 @@ import type {AppDialogsManager} from '@lib/appDialogsManager';
 import type {AppImManager} from '@lib/appImManager';
 import type I18n from '@lib/langPack';
 import type {i18n, join} from '@lib/langPack';
+import type wrapGeo from '@components/wrappers/geo';
 import type wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import type wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import type lottieLoader from '@lib/rlottie/lottieLoader';
@@ -109,6 +110,7 @@ export type SolidJSHotReloadGuardContextValue = {
   wrapPeerTitle: typeof wrapPeerTitle;
   wrapPhoto: typeof wrapPhoto;
   wrapEmojiText: typeof wrapEmojiText;
+  wrapGeo: typeof wrapGeo;
   wrapAdaptiveCustomEmoji: typeof wrapAdaptiveCustomEmoji;
   confirmationPopup: typeof confirmationPopup;
   PeerProfileAvatars: typeof PeerProfileAvatars;

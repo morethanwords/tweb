@@ -57,6 +57,7 @@ import apiManagerProxy from '@lib/apiManagerProxy';
 import appDialogsManager from '@lib/appDialogsManager';
 import appImManager from '@lib/appImManager';
 import I18n, {i18n, join} from '@lib/langPack';
+import wrapGeo from '@components/wrappers/geo';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import lottieLoader from '@lib/rlottie/lottieLoader';
@@ -103,6 +104,7 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       wrapPeerTitle,
       wrapPhoto,
       wrapEmojiText,
+      wrapGeo,
       wrapAdaptiveCustomEmoji,
       confirmationPopup,
       PeerProfileAvatars,

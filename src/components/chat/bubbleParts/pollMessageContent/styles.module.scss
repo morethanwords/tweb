@@ -453,3 +453,17 @@
 .explanation {
   cursor: unset;
 }
+
+.geo {
+  :global(.geo-container) {
+    position: absolute;
+    inset: 0;
+    height: unset;
+    width: unset;
+  }
+  :global(.geo-pin) {
+    margin-top: unset;
+    height: 1.25rem;
+    width: unset;
+  }
+}

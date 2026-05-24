@@ -11,7 +11,7 @@ import {createDelayed} from '@helpers/solid/createDelayed';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {requestRAF} from '@helpers/solid/requestRAF';
 import classNames from '@helpers/string/classNames';
-import {Photo} from '@layer';
+import {MessageMedia, Photo} from '@layer';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {Accessor, createEffect, createMemo, createSignal, JSX, Match, onCleanup, onMount, Show, splitProps, Switch} from 'solid-js';
 import {unwrap} from 'solid-js/store';
@@ -34,6 +34,7 @@ export const PollOption = (props: {
   withMedia?: boolean;
   photo?: Photo.photo;
   sticker?: GetStickerMediaResult;
+  geo?: MessageMedia.messageMediaGeo;
   clickable?: boolean;
   text: LocalTextWithEntities;
   checked: boolean;
@@ -47,7 +48,7 @@ export const PollOption = (props: {
 
   result?: PollOptionResult;
 }) => {
-  const {TranslatableMessageTsx} = useHotReloadGuard()
+  const {TranslatableMessageTsx, wrapGeo} = useHotReloadGuard()
   const contextProps = usePollMessageContentProps();
 
   const isShowingResult = createMemo(() => !!props.result);
@@ -191,7 +192,7 @@ export const PollOption = (props: {
         <div class={styles.pollOptionSpacerLast}></div>
         <div
           class={classNames(styles.pollOptionMedia, styles.stripped)}
-          classList={{[styles.clickable]: !!props.photo || !!props.sticker}}
+          classList={{[styles.clickable]: !!props.photo || !!props.sticker || !!props.geo}}
           use:dataPollViewerIdx={props.pollViewerPayload}
         >
           <Show when={props.photo}>
@@ -217,10 +218,41 @@ export const PollOption = (props: {
               }}
             />
           </Show>
+          <Show when={!props.photo && !props.sticker && props.geo}>
+            <GeoPreview geo={props.geo} wrapGeo={wrapGeo} />
+          </Show>
         </div>
       </Show>
     </div>
   );
+};
+
+const GeoPreview = (props: {
+  geo: MessageMedia.messageMediaGeo;
+  wrapGeo: ReturnType<typeof useHotReloadGuard>['wrapGeo'];
+}) => {
+  const contextProps = usePollMessageContentProps();
+
+  let attachmentDiv: HTMLDivElement;
+
+  onMount(() => {
+    const middleware = createMiddleware().get();
+
+    props.wrapGeo({
+      messageMedia: props.geo,
+      attachmentDiv,
+      wrapOptions: {
+        middleware,
+        lazyLoadQueue: contextProps.lazyLoadQueue || undefined,
+        animationGroup: contextProps.animationGroup
+      },
+      middleware,
+      loadPromises: contextProps.loadPromises ?? [],
+      date: contextProps.message.date
+    });
+  });
+
+  return <div ref={(el) => attachmentDiv = el} class={styles.geo} />;
 };
 
 const PollProgressLine = (inProps: JSX.HTMLAttributes<HTMLDivElement> & {

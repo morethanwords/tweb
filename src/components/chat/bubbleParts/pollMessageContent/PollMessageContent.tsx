@@ -117,7 +117,8 @@ export const PollMessageContent = defineSolidElement({
       initialIdxFromShuffledIdx,
       getResultForOption,
       getPhotoForOption,
-      getStickerForOption
+      getStickerForOption,
+      getGeoForOption
     } = usePollDerivedProps({
       props,
       pollOptions,
@@ -328,6 +329,7 @@ export const PollMessageContent = defineSolidElement({
                   withMedia={hasMediaInOptions()}
                   photo={getPhotoForOption(initialIdx())}
                   sticker={getStickerForOption(initialIdx())}
+                  geo={getGeoForOption(initialIdx())}
                   allowMultipleAnswers={allowMultipleAnswers()}
                   hasCorrectAnswer={hasCorrectAnswer()}
                   checked={isChecked(index())}
