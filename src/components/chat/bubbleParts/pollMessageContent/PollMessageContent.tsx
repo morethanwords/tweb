@@ -306,16 +306,12 @@ export const PollMessageContent = defineSolidElement({
             <DocumentTsx
               message={props.message}
               doc={descriptionDocument()}
+              slot={0.1}
               loadPromises={props.loadPromises}
               lazyLoadQueue={props.lazyLoadQueue || undefined}
               autoDownloadSize={props.autoDownload?.file}
               sizeType='documentName'
               canTranscribeVoice={false}
-              searchContext={{
-                useSearch: false,
-                peerId: props.peerId,
-                inputFilter: {_: 'inputMessagesFilterEmpty'}
-              }}
             />
           </div>
         </Show>

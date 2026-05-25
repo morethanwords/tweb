@@ -102,16 +102,12 @@ export const Explanation = (props: LocalTextWithEntities & {
             <DocumentTsx
               message={contextProps.message}
               doc={props.document}
+              slot={0.2}
               loadPromises={contextProps.loadPromises}
               lazyLoadQueue={contextProps.lazyLoadQueue || undefined}
               autoDownloadSize={contextProps.autoDownload?.file}
               sizeType='documentName'
-              canTranscribeVoice={true}
-              searchContext={{
-                useSearch: false,
-                peerId: contextProps.peerId,
-                inputFilter: {_: 'inputMessagesFilterEmpty'}
-              }}
+              canTranscribeVoice={false}
             />
           </div>
         </Show>

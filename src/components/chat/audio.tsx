@@ -217,7 +217,7 @@ export default function createChatAudio(
     repeatEl.classList.toggle('active', playbackParams.loop || playbackParams.round);
   };
 
-  const onMediaPlay = ({doc, message, media, playbackParams, isSavedMusic}: ReturnType<AppMediaPlaybackController['getPlayingDetails']>) => {
+  const onMediaPlay = ({doc, message, media, playbackParams, isSavedMusic, isSlotted}: ReturnType<AppMediaPlaybackController['getPlayingDetails']>) => {
     let titleVal: JSX.Element, subtitleVal: JSX.Element;
     const isMusic = doc.type !== 'voice' && doc.type !== 'round';
     if(!isMusic) {
@@ -229,13 +229,21 @@ export default function createChatAudio(
       subtitleVal = audioAttribute?.performer ? wrapEmojiText(audioAttribute.performer) : i18n('AudioUnknownArtist');
     }
 
-    repeatEl.classList.toggle('hide', !isMusic);
+    // Slotted media (e.g. poll description / explanation audio) is played in
+    // isolation — there's no next track to advance to, and looping/repeat
+    // doesn't make sense for a one-off attachment. `previous` stays enabled
+    // because `seekToStart` lets it act as a "restart" button.
+    repeatEl.classList.toggle('hide', !isMusic || isSlotted);
     onPlaybackParams(playbackParams);
     volumeSelector.setMaxVolume(isMusic ? 1 : 2);
     volumeSelector.setGlobalVolume();
 
     progressLine.setMedia({media, duration: duration = doc.duration});
     toggleDisability([prevEl, nextEl], !message.peerId);
+    // Visually mute the next button for slotted playback — there's no
+    // next track to advance to. The click handler is a safe no-op on the
+    // empty list loader, so we leave the button enabled.
+    nextEl.classList.toggle('active', !isSlotted);
 
     plate.container.dataset.peerId = '' + message.peerId;
     plate.container.dataset.mid = '' + message.mid;

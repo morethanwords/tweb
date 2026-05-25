@@ -30,6 +30,7 @@ import rootScope from '@lib/rootScope';
 import type {ThumbCache} from '@lib/storages/thumbs';
 import {MediaSearchContext} from '@components/appMediaPlaybackController';
 import AudioElement from '@components/audio';
+import {emptyMediaListLoaderFactory} from '@components/emptyMediaListLoader';
 import confirmationPopup from '@components/confirmationPopup';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import {MiddleEllipsisElement} from '@components/middleEllipsis';
@@ -70,7 +71,8 @@ export default async function wrapDocument({
   shouldWrapAsVoice,
   customAudioToTextButton,
   globalMedia,
-  doc: docOverride
+  doc: docOverride,
+  slot
 }: {
   message: Message.message,
   middleware: Middleware,
@@ -99,7 +101,13 @@ export default async function wrapDocument({
    * the document lives in a sibling field of the message (e.g. poll
    * `solution_media` / `attached_media`).
    */
-  doc?: MyDocument
+  doc?: MyDocument,
+  /**
+   * Optional storage-key disambiguator forwarded to the underlying
+   * AudioElement / `appMediaPlaybackController.addMedia`. See
+   * `AddMediaArgs.slot`.
+   */
+  slot?: number
 }): Promise<HTMLElement> {
   fontWeight ??= 500;
   sizeType ??= '' as any;
@@ -112,6 +120,14 @@ export default async function wrapDocument({
     const audioElement = new AudioElement();
     audioElement.withTime = withTime;
     audioElement.message = message;
+    if(docOverride) audioElement.doc = docOverride;
+    if(slot !== undefined) {
+      audioElement.mediaSlot = slot;
+      // Slotted audio (e.g. poll description / explanation) should not
+      // participate in any chat-wide playlist. Use an empty list loader
+      // so next/previous navigation is a no-op.
+      audioElement.listLoaderFactory = emptyMediaListLoaderFactory;
+    }
     audioElement.noAutoDownload = noAutoDownload;
     audioElement.lazyLoadQueue = lazyLoadQueue;
     audioElement.loadPromises = loadPromises;
