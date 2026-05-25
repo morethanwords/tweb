@@ -254,7 +254,13 @@ export default function createChatAudio(
     }
 
     setTitle(titleVal);
-    setSubtitle(subtitle instanceof DocumentFragment ? documentFragmentToNodes(subtitleVal as DocumentFragment) : subtitleVal);
+
+    // Solid is throwing an error when trying to set the subtitle as a fragment / array of nodes
+    const subtitleSpan = document.createElement('span');
+    subtitleSpan.append(subtitleVal);
+
+    setSubtitle(subtitleSpan);
+
     setPlayIcon(media.paused ? 'play' : 'pause');
     toggle(false);
   };
