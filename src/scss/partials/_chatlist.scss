@@ -275,7 +275,8 @@ ul.chatlist {
 
         .badge.unread,
         .mention,
-        .dialog-subtitle-badge-reaction {
+        .dialog-subtitle-badge-reaction,
+        .dialog-subtitle-badge-pollvote {
           background-color: #fff !important;
           color: var(--primary-color);
         }
@@ -377,12 +378,16 @@ ul.chatlist {
   }
 
   .unread,
-  .is-muted.backwards .unread {
+  .dialog-subtitle-badge-pollvote,
+  .is-muted.backwards .unread,
+  .is-muted.backwards .dialog-subtitle-badge-pollvote {
     background-color: var(--chatlist-status-color);
   }
 
   .is-muted .unread,
-  .no-unmuted-topic .unread {
+  .is-muted .dialog-subtitle-badge-pollvote,
+  .no-unmuted-topic .unread,
+  .no-unmuted-topic .dialog-subtitle-badge-pollvote {
     background-color: var(--secondary-color);
   }
 
@@ -538,12 +543,15 @@ ul.chatlist {
          }
       }
 
-      &-reaction {
+      &-reaction, &-pollvote {
         padding: 0;
-        background-color: var(--danger-color) !important;
         display: flex !important;
         align-items: center;
         justify-content: center;
+      }
+
+      &-reaction {
+        background-color: var(--danger-color) !important;
         order: 1;
       }
 
@@ -563,6 +571,10 @@ ul.chatlist {
         color: var(--chatlist-pinned-color);
         order: 4;
         z-index: 0;
+      }
+
+      &-pollvote {
+        order: 5;
       }
     }
 

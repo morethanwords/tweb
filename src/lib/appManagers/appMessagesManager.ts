@@ -331,7 +331,8 @@ export type SearchStorageFilterKey = string;
 type GetUnreadMentionsOptions = {
   peerId: PeerId,
   threadId?: number,
-  isReaction?: boolean
+  isReaction?: boolean,
+  isPollVote?: boolean
 };
 
 type UploadThumbAndCoverArgs = {
@@ -648,6 +649,8 @@ export class AppMessagesManager extends AppManager {
       updateEditChannelMessage: this.onUpdateEditMessage,
 
       updateMessageReactions: this.onUpdateMessageReactions,
+
+      updateMessagePollVote: this.onUpdateMessagePollVote,
 
       updateReadChannelDiscussionInbox: this.onUpdateReadHistory,
       updateReadChannelDiscussionOutbox: this.onUpdateReadHistory,
@@ -6441,17 +6444,23 @@ export class AppMessagesManager extends AppManager {
     }
   }
 
-  private getUnreadMentionsKey({peerId, threadId, isReaction}: GetUnreadMentionsOptions) {
-    return peerId + (threadId ? `_${threadId}` : '') + (isReaction ? '_reaction' : '');
+  private getUnreadMentionsKey({peerId, threadId, isReaction, isPollVote}: GetUnreadMentionsOptions) {
+    return peerId +
+      (threadId ? `_${threadId}` : '') +
+      (isReaction ? '_reaction' : '') +
+      (isPollVote ? '_pollvote' : '');
   }
 
-  private getDialogUnreadMentions(dialog: Dialog | ForumTopic, isReaction?: boolean) {
-    return dialog && (isReaction ? dialog.unread_reactions_count : dialog.unread_mentions_count);
+  private getDialogUnreadMentions(dialog: Dialog | ForumTopic, isReaction?: boolean, isPollVote?: boolean) {
+    if(!dialog) return undefined;
+    if(isPollVote) return dialog.unread_poll_votes_count;
+    if(isReaction) return dialog.unread_reactions_count;
+    return dialog.unread_mentions_count;
   }
 
-  private fixDialogUnreadMentionsIfNoMessage({peerId, threadId, isReaction, force}: GetUnreadMentionsOptions & {force?: boolean}) {
+  private fixDialogUnreadMentionsIfNoMessage({peerId, threadId, isReaction, isPollVote, force}: GetUnreadMentionsOptions & {force?: boolean}) {
     const dialog = this.dialogsStorage.getAnyDialog(peerId, threadId) as Dialog | ForumTopic;
-    if(force || this.getDialogUnreadMentions(dialog, isReaction)) {
+    if(force || this.getDialogUnreadMentions(dialog, isReaction, isPollVote)) {
       this.reloadConversationOrTopic(peerId);
     }
   }
@@ -6474,7 +6483,7 @@ export class AppMessagesManager extends AppManager {
     }
   }
 
-  private modifyCachedMentionsAndSave(options: GetUnreadMentionsOptions & {mid: number, addMention?: boolean | number, addReaction?: boolean | number}) {
+  private modifyCachedMentionsAndSave(options: GetUnreadMentionsOptions & {mid: number, addMention?: boolean | number, addReaction?: boolean | number, addPollVote?: boolean | number}) {
     const dialog = this.dialogsStorage.getAnyDialog(options.peerId, options.threadId) as Dialog | ForumTopic;
     if(!dialog) {
       return;
@@ -6482,9 +6491,10 @@ export class AppMessagesManager extends AppManager {
 
     const releaseUnreadCount = this.dialogsStorage.prepareDialogUnreadCountModifying(dialog);
 
-    const a: [boolean | number, 'unread_reactions_count' | 'unread_mentions_count'][] = [
+    const a: [boolean | number, 'unread_reactions_count' | 'unread_mentions_count' | 'unread_poll_votes_count'][] = [
       [options.addMention, 'unread_mentions_count'],
-      [options.addReaction, 'unread_reactions_count']
+      [options.addReaction, 'unread_reactions_count'],
+      [options.addPollVote, 'unread_poll_votes_count']
     ];
 
     a.forEach(([add, key]) => {
@@ -6498,6 +6508,7 @@ export class AppMessagesManager extends AppManager {
         ...options,
         threadId: isForumTopic(dialog) ? options.threadId : undefined,
         isReaction: key === 'unread_reactions_count',
+        isPollVote: key === 'unread_poll_votes_count',
         add: !!add
       });
     });
@@ -6508,9 +6519,9 @@ export class AppMessagesManager extends AppManager {
     this.dialogsStorage.setDialogToState(dialog);
   }
 
-  private fixUnreadMentionsCountIfNeeded({peerId, threadId, slicedArray, isReaction}: GetUnreadMentionsOptions & {slicedArray: SlicedArray<number>}) {
+  private fixUnreadMentionsCountIfNeeded({peerId, threadId, slicedArray, isReaction, isPollVote}: GetUnreadMentionsOptions & {slicedArray: SlicedArray<number>}) {
     const dialog = this.dialogsStorage.getAnyDialog(peerId, threadId) as Dialog | ForumTopic;
-    if(!slicedArray.length && this.getDialogUnreadMentions(dialog, isReaction)) {
+    if(!slicedArray.length && this.getDialogUnreadMentions(dialog, isReaction, isPollVote)) {
       this.reloadConversationOrTopic(peerId);
     }
   }
@@ -6582,7 +6593,8 @@ export class AppMessagesManager extends AppManager {
     maxId = 0,
     minId = 0,
     threadId,
-    isReaction
+    isReaction,
+    isPollVote
   }: GetUnreadMentionsOptions & {
     offsetId: number,
     addOffset: number,
@@ -6590,8 +6602,11 @@ export class AppMessagesManager extends AppManager {
     maxId?: number,
     minId?: number
   }) {
+    const method = isPollVote ?
+      'messages.getUnreadPollVotes' :
+      isReaction ? 'messages.getUnreadReactions' : 'messages.getUnreadMentions';
     return this.apiManager.invokeApiSingleProcess({
-      method: isReaction ? 'messages.getUnreadReactions' : 'messages.getUnreadMentions',
+      method,
       params: {
         peer: this.appPeersManager.getInputPeerById(peerId),
         offset_id: getServerMessageId(offsetId),
@@ -6692,12 +6707,15 @@ export class AppMessagesManager extends AppManager {
     return promise;
   }
 
-  public async readMentions(peerId: PeerId, threadId?: number, isReaction?: boolean): Promise<boolean> {
+  public async readMentions(peerId: PeerId, threadId?: number, isReaction?: boolean, isPollVote?: boolean): Promise<boolean> {
     if(DO_NOT_READ_HISTORY) {
       return;
     }
 
-    return this.apiManager.invokeApi(isReaction ? 'messages.readReactions' : 'messages.readMentions', {
+    const method = isPollVote ?
+      'messages.readPollVotes' :
+      isReaction ? 'messages.readReactions' : 'messages.readMentions';
+    return this.apiManager.invokeApi(method, {
       peer: this.appPeersManager.getInputPeerById(peerId),
       top_msg_id: threadId ? getServerMessageId(threadId) : undefined
     }).then((affectedHistory) => {
@@ -6709,16 +6727,19 @@ export class AppMessagesManager extends AppManager {
 
       if(!affectedHistory.offset) {
         const dialog = this.dialogsStorage.getAnyDialog(peerId, threadId) as Dialog | ForumTopic;
-        this.modifyCachedMentionsAndSave({
+        const modifyOptions: Parameters<AppMessagesManager['modifyCachedMentionsAndSave']>[0] = {
           peerId,
           threadId,
-          mid: undefined,
-          ...(isReaction ? {addReaction: -dialog.unread_reactions_count} : {addMention: -dialog.unread_mentions_count})
-        });
+          mid: undefined
+        };
+        if(isPollVote) modifyOptions.addPollVote = -dialog.unread_poll_votes_count;
+        else if(isReaction) modifyOptions.addReaction = -dialog.unread_reactions_count;
+        else modifyOptions.addMention = -dialog.unread_mentions_count;
+        this.modifyCachedMentionsAndSave(modifyOptions);
         return true;
       }
 
-      return this.readMentions(peerId, threadId, isReaction);
+      return this.readMentions(peerId, threadId, isReaction, isPollVote);
     });
   }
 
@@ -7628,6 +7649,60 @@ export class AppMessagesManager extends AppManager {
     }, undefined, update.local);
   };
 
+  private onUpdateMessagePollVote = (update: Update.updateMessagePollVote) => {
+    const {poll_id, peer: voterPeer} = update;
+
+    // updateMessagePollVote is delivered to the creator of a non-anonymous poll
+    // whenever someone votes. It carries the voter peer and the poll id, but no
+    // msg_id — we resolve the message(s) via appPollsManager.pollToMessages.
+    const pollMessageKeys = this.appPollsManager.pollToMessages[poll_id];
+    if(!pollMessageKeys?.size) {
+      return;
+    }
+
+    const voterPeerId = this.appPeersManager.getPeerId(voterPeer);
+
+    for(const key of pollMessageKeys) {
+      const [peerIdStr, midStr] = key.split('_');
+      const peerId = peerIdStr.toPeerId();
+      const mid = +midStr;
+
+      const message: MyMessage = this.getMessageByPeer(peerId, mid);
+      if(!message) {
+        this.fixDialogUnreadMentionsIfNoMessage({peerId, isPollVote: true, force: true});
+        continue;
+      }
+
+      // Only our own polls receive vote updates from the server; guard against
+      // stale local state where the same poll_id is also attached to incoming
+      // (forwarded) copies.
+      if(!message.pFlags.out) {
+        continue;
+      }
+
+      const threadId = getMessageThreadId(message, {
+        isForum: this.appPeersManager.isForum(peerId),
+        isBotforum: this.appPeersManager.isBotforum(peerId)
+      });
+
+      this.modifyCachedMentionsAndSave({
+        peerId,
+        mid: message.mid,
+        threadId,
+        addPollVote: true
+      });
+
+      // Surface a desktop notification when someone other than us voted on our
+      // poll, mirroring the reactions notification branch.
+      if(voterPeerId !== this.appPeersManager.peerId) {
+        this.getNotifyPeerSettings(peerId).then(({peerTypeNotifySettings}) => {
+          if(!peerTypeNotifySettings.show_previews) return;
+          this.notifyAboutMessage(message, {peerTypeNotifySettings});
+        });
+      }
+    }
+  };
+
   private onUpdateDialogUnreadMark = (update: Update.updateDialogUnreadMark) => {
     // this.log('updateDialogUnreadMark', update);
     const peerId = this.appPeersManager.getPeerId((update.peer as DialogPeer.dialogPeer).peer);
@@ -8038,6 +8113,7 @@ export class AppMessagesManager extends AppManager {
       } else {
         this.fixDialogUnreadMentionsIfNoMessage({peerId, threadId});
         this.fixDialogUnreadMentionsIfNoMessage({peerId, threadId, isReaction: true});
+        this.fixDialogUnreadMentionsIfNoMessage({peerId, threadId, isPollVote: true});
       }
     }
 
@@ -10204,6 +10280,7 @@ export class AppMessagesManager extends AppManager {
       if(!message) {
         this.fixDialogUnreadMentionsIfNoMessage({peerId});
         this.fixDialogUnreadMentionsIfNoMessage({peerId, isReaction: true});
+        this.fixDialogUnreadMentionsIfNoMessage({peerId, isPollVote: true});
         continue;
       }
 

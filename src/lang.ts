@@ -2806,6 +2806,7 @@ const lang = {
   'TranslateMessage': 'Translate',
   'ReadAllReactions': 'Read all reactions',
   'ReadAllMentions': 'Read all mentions',
+  'ReadAllPollVotes': 'Read all poll votes',
   'NoStickersFound': 'No stickers found',
   'NoGIFsFound': 'No GIFs found',
   'NoEmojiFound': 'No emoji found',

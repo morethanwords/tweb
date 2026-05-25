@@ -325,6 +325,8 @@ export default class ChatInput {
   private goMentionUnreadBadge: HTMLSpanElement;
   private goReactionBtn: HTMLButtonElement;
   private goReactionUnreadBadge: HTMLElement;
+  private goPollVoteBtn: HTMLButtonElement;
+  private goPollVoteUnreadBadge: HTMLElement;
   private btnScheduled: HTMLButtonElement;
 
   private btnPreloader: HTMLButtonElement;
@@ -777,8 +779,11 @@ export default class ChatInput {
     }
   }
 
-  private constructMentionButton(isReaction?: boolean) {
-    const btn = ButtonCorner({icon: isReaction ? 'reactions' : 'mention', className: 'bubbles-corner-button chat-secondary-button bubbles-go-mention bubbles-go-reaction'});
+  private constructMentionButton(kind: 'mention' | 'reaction' | 'pollVote' = 'mention') {
+    const isReaction = kind === 'reaction';
+    const isPollVote = kind === 'pollVote';
+    const icon: Icon = isPollVote ? 'poll' : (isReaction ? 'reactions' : 'mention');
+    const btn = ButtonCorner({icon, className: 'bubbles-corner-button chat-secondary-button bubbles-go-mention bubbles-go-reaction'});
     const badge = createBadge('span', 24, 'primary');
     btn.append(badge);
     this.inputContainer.append(btn);
@@ -786,7 +791,7 @@ export default class ChatInput {
     attachClickEvent(btn, (e) => {
       cancelEvent(e);
       const middleware = this.getMiddleware();
-      this.managers.appMessagesManager.goToNextMention({peerId: this.chat.peerId, threadId: this.chat.threadId, isReaction}).then((mid) => {
+      this.managers.appMessagesManager.goToNextMention({peerId: this.chat.peerId, threadId: this.chat.threadId, isReaction, isPollVote}).then((mid) => {
         if(!middleware()) {
           return;
         }
@@ -800,16 +805,19 @@ export default class ChatInput {
     createContextMenu({
       buttons: [{
         icon: 'readchats',
-        text: isReaction ? 'ReadAllReactions' : 'ReadAllMentions',
+        text: isPollVote ? 'ReadAllPollVotes' : (isReaction ? 'ReadAllReactions' : 'ReadAllMentions'),
         onClick: () => {
-          this.managers.appMessagesManager.readMentions(this.chat.peerId, this.chat.threadId, isReaction);
+          this.managers.appMessagesManager.readMentions(this.chat.peerId, this.chat.threadId, isReaction, isPollVote);
         }
       }],
       listenTo: btn,
       listenerSetter: this.listenerSetter
     });
 
-    if(isReaction) {
+    if(isPollVote) {
+      this.goPollVoteUnreadBadge = badge;
+      this.goPollVoteBtn = btn;
+    } else if(isReaction) {
       this.goReactionUnreadBadge = badge;
       this.goReactionBtn = btn;
     } else {
@@ -1054,7 +1062,8 @@ export default class ChatInput {
 
     if(!this.excludeParts.mentionButton) {
       this.constructMentionButton();
-      this.constructMentionButton(true);
+      this.constructMentionButton('reaction');
+      this.constructMentionButton('pollVote');
     }
 
     if(!this.excludeParts.scheduled) {
@@ -1914,6 +1923,7 @@ export default class ChatInput {
       | 'unread_count'
       | 'unread_mentions_count'
       | 'unread_reactions_count'
+      | 'unread_poll_votes_count'
     >>>(dialog);
 
     const count = dialog?.unread_count;
@@ -1935,6 +1945,12 @@ export default class ChatInput {
       const hasReactions = !!dialog?.unread_reactions_count;
       setBadgeContent(this.goReactionUnreadBadge, hasReactions ? '' + (dialog.unread_reactions_count) : '');
       this.goReactionBtn.classList.toggle('is-visible', hasReactions);
+    }
+
+    if(this.goPollVoteUnreadBadge && this.chat.type === ChatType.Chat) {
+      const hasPollVotes = !!dialog?.unread_poll_votes_count;
+      setBadgeContent(this.goPollVoteUnreadBadge, hasPollVotes ? '' + (dialog.unread_poll_votes_count) : '');
+      this.goPollVoteBtn.classList.toggle('is-visible', hasPollVotes);
     }
   }
 
