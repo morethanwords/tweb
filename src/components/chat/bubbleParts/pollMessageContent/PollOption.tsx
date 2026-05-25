@@ -3,6 +3,7 @@ import {Spinner} from '@components/spinner';
 import StaticRadio from '@components/staticRadio';
 import {StickerPreview} from '@components/stickerPreview';
 import PhotoTsx from '@components/wrappers/photoTsx';
+import VideoTsx from '@components/wrappers/videoTsx';
 import {animateValue} from '@helpers/animateValue';
 import {keepMe} from '@helpers/keepMe';
 import clamp from '@helpers/number/clamp';
@@ -11,7 +12,7 @@ import {createDelayed} from '@helpers/solid/createDelayed';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {requestRAF} from '@helpers/solid/requestRAF';
 import classNames from '@helpers/string/classNames';
-import {MessageMedia, Photo} from '@layer';
+import {Document, MessageMedia, Photo} from '@layer';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {Accessor, createEffect, createMemo, createSignal, JSX, Match, onCleanup, onMount, Show, splitProps, Switch} from 'solid-js';
 import {unwrap} from 'solid-js/store';
@@ -29,10 +30,12 @@ keepMe(ripple);
 keepMe(dataPollViewerIdx);
 
 const progressTransitionTimeBase = 600; // ms
+const boxSize = 32;
 
 export const PollOption = (props: {
   withMedia?: boolean;
   photo?: Photo.photo;
+  video?: Document.document;
   sticker?: GetStickerMediaResult;
   geo?: MessageMedia.messageMediaGeo;
   clickable?: boolean;
@@ -192,35 +195,52 @@ export const PollOption = (props: {
         <div class={styles.pollOptionSpacerLast}></div>
         <div
           class={classNames(styles.pollOptionMedia, styles.stripped)}
-          classList={{[styles.clickable]: !!props.photo || !!props.sticker || !!props.geo}}
+          classList={{[styles.clickable]: !!props.video || !!props.photo || !!props.sticker || !!props.geo}}
           use:dataPollViewerIdx={props.pollViewerPayload}
         >
-          <Show when={props.photo}>
-            <PhotoTsx
-              photo={props.photo}
-              boxWidth={32}
-              boxHeight={32}
-              loadPromises={contextProps.loadPromises}
-              autoDownloadSize={contextProps.autoDownload?.photo}
-            />
-          </Show>
-          <Show when={!props.photo && props.sticker}>
-            <StickerPreview
-              class='poll-option-sticker'
-              doc={props.sticker.document}
-              animationGroup={contextProps.animationGroup}
-              width={32}
-              height={32}
-              stickerOptions={{
-                liteModeKey: 'stickers_chat',
-                withThumb: true,
-                noPremium: props.sticker.media.pFlags.nopremium
-              }}
-            />
-          </Show>
-          <Show when={!props.photo && !props.sticker && props.geo}>
-            <GeoPreview geo={props.geo} wrapGeo={wrapGeo} />
-          </Show>
+          <Switch>
+            <Match when={props.photo}>
+              <PhotoTsx
+                photo={props.photo}
+                boxWidth={boxSize}
+                boxHeight={boxSize}
+                loadPromises={contextProps.loadPromises}
+                autoDownloadSize={contextProps.autoDownload?.photo}
+              />
+            </Match>
+            <Match when={props.sticker}>
+              <StickerPreview
+                class='poll-option-sticker'
+                doc={props.sticker.document}
+                animationGroup={contextProps.animationGroup}
+                width={boxSize}
+                height={boxSize}
+                stickerOptions={{
+                  liteModeKey: 'stickers_chat',
+                  withThumb: true,
+                  noPremium: props.sticker.media.pFlags.nopremium
+                }}
+              />
+            </Match>
+            <Match when={props.geo}>
+              <GeoPreview geo={props.geo} wrapGeo={wrapGeo} />
+            </Match>
+            <Match when={props.video}>
+              <VideoTsx
+                doc={props.video}
+                loadPromises={contextProps.loadPromises}
+                group={contextProps.animationGroup}
+                autoDownload={contextProps.autoDownload}
+                boxWidth={boxSize}
+                boxHeight={boxSize}
+                withPreview
+                noInfo
+                lazyLoadQueue={contextProps.lazyLoadQueue || undefined}
+                observer={contextProps.observer}
+              />
+            </Match>
+          </Switch>
+
         </div>
       </Show>
     </div>

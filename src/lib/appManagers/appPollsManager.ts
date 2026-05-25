@@ -110,8 +110,11 @@ export class AppPollsManager extends AppManager {
 
     poll.answers.forEach(answer => {
       if(answer._ !== 'pollAnswer' || !answer.media) return;
-      this.appMessagesManager.saveMessageMedia({media: answer.media}, undefined);
+      this.appMessagesManager.saveMessageMedia({media: answer.media});
     });
+    if(results?.solution_media) {
+      this.appMessagesManager.saveMessageMedia({media: results.solution_media});
+    }
 
     this.checkRefetchPollTimeout(poll);
 

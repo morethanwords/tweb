@@ -5299,6 +5299,9 @@ export class AppMessagesManager extends AppManager {
         const result = this.appPollsManager.savePoll(media.poll, media.results, message.peerId && message as Message.message);
         media.poll = result.poll;
         media.results = result.results;
+        if(media.attached_media) {
+          this.saveMessageMedia({media: media.attached_media}, mediaContext);
+        }
         break;
       }
 

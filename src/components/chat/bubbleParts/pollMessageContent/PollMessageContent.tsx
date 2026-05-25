@@ -7,15 +7,18 @@ import {useCreatePollLimits} from '@components/popups/createPoll/useCreatePollLi
 import {RemainingTime} from '@components/remainingTime';
 import ripple from '@components/ripple';
 import PhotoTsx from '@components/wrappers/photoTsx';
+import VideoTsx from '@components/wrappers/videoTsx';
 import {setCaretAtEnd} from '@helpers/dom/setCaretAt';
+import SuperIntersectionObserver from '@helpers/dom/superIntersectionObserver';
 import {keepMe} from '@helpers/keepMe';
+import mediaSizes from '@helpers/mediaSizes';
 import {attachHotClassName} from '@helpers/solid/classname';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
 import type {ChatAutoDownloadSettings} from '@hooks/useAutoDownloadSettings';
-import {Message, MessageMedia, Photo, Poll, PollResults} from '@layer';
+import {Document, Message, MessageMedia, Photo, Poll, PollResults} from '@layer';
 import {ChatRights} from '@lib/appManagers/appChatsManager';
 import {sliceTextWithEntities} from '@lib/richTextProcessor/sliceTextWithEntities';
 import wrapDraftText from '@lib/richTextProcessor/wrapDraftText';
@@ -48,6 +51,7 @@ export type PollMessageContentProps = {
   autoDownload?: ChatAutoDownloadSettings;
   lazyLoadQueue?: false | LazyLoadQueue;
   animationGroup?: AnimationItemGroup;
+  observer?: SuperIntersectionObserver;
   canSend: (rights: ChatRights) => Promise<boolean>;
   loadPromises: Promise<any>[];
 };
@@ -114,11 +118,16 @@ export const PollMessageContent = defineSolidElement({
       canShowViewResults,
       willFooterBeClickable,
       explanationPhoto,
+      explanationVideo,
+      explanationDocument,
       descriptionPhoto,
+      descriptionVideo,
+      descriptionDocument,
       getOverridenMessage,
       initialIdxFromShuffledIdx,
       getResultForOption,
       getPhotoForOption,
+      getVideoForOption,
       getStickerForOption,
       getGeoForOption
     } = usePollDerivedProps({
@@ -162,30 +171,31 @@ export const PollMessageContent = defineSolidElement({
     const mediaViewerPayload = createMemo(() => {
       let idxSeed = 0;
 
-      const photos: Photo.photo[] = [];
+      const media: (Photo.photo | Document.document)[] = [];
       const indexes: MediaViewerPayloadIndexes = {
         options: new Map()
       };
 
-      if(descriptionPhoto()) {
-        photos.push(descriptionPhoto());
+      if(descriptionPhoto() || descriptionVideo()) {
+        media.push(descriptionPhoto() || descriptionVideo());
         indexes.description = idxSeed++;
       }
 
-      if(explanationPhoto()) {
-        photos.push(explanationPhoto());
+      if(explanationPhoto() || explanationVideo()) {
+        media.push(explanationPhoto() || explanationVideo());
         indexes.explanation = idxSeed++;
       }
 
       props.poll.answers.forEach((option, idx) => {
         const photo = getPhotoForOption(idx);
-        if(photo) {
-          photos.push(photo);
+        const video = getVideoForOption(idx);
+        if(photo || video) {
+          media.push(photo || video);
           indexes.options.set(idx, idxSeed++);
         }
       });
 
-      return {photos, indexes};
+      return {media, indexes};
     });
 
     // ----- Event handlers -----
@@ -246,8 +256,8 @@ export const PollMessageContent = defineSolidElement({
     // ----- Imperative controls -----
     controls.openMediaViewer = (idx: number) => {
       const getTarget = (idx: number): AppMediaViewerStaticTargetType => ({
-        media: mediaViewerPayload().photos[idx],
-        element: elementByIndexMap.get(idx)?.querySelector('.media-photo'),
+        media: mediaViewerPayload().media[idx],
+        element: elementByIndexMap.get(idx)?.querySelector('.media-video, .media-photo'),
         fromId: props.message.fromId,
         timestamp: props.message.date,
         peerId: props.message.peerId,
@@ -255,7 +265,7 @@ export const PollMessageContent = defineSolidElement({
       });
 
       new AppMediaViewerStatic().openMedia({
-        allTargets: mediaViewerPayload().photos.map((_, idx) => getTarget(idx)),
+        allTargets: mediaViewerPayload().media.map((_, idx) => getTarget(idx)),
         index: idx,
         fromRight: 0,
         ...getTarget(idx)
@@ -264,15 +274,30 @@ export const PollMessageContent = defineSolidElement({
 
     return (
       <PollMessageContentPropsContext.Provider value={props}>
-        <Show when={descriptionPhoto()}>
+        <Show when={descriptionPhoto() || descriptionVideo()}>
           <div class={styles.pollImageWrapper}>
             <div class={styles.pollImage} use:dataPollViewerIdx={[mediaViewerPayload().indexes.description, elementByIndexMap]}>
-              <PhotoTsx
-                photo={descriptionPhoto()}
-                loadPromises={props.loadPromises}
-                autoDownloadSize={props.autoDownload?.photo}
-                lazyLoadQueue={props.lazyLoadQueue}
-              />
+              <Show when={descriptionPhoto()}>
+                <PhotoTsx
+                  photo={descriptionPhoto()}
+                  loadPromises={props.loadPromises}
+                  autoDownloadSize={props.autoDownload?.photo}
+                  lazyLoadQueue={props.lazyLoadQueue}
+                />
+              </Show>
+              <Show when={descriptionVideo() && !descriptionPhoto()}>
+                <VideoTsx
+                  doc={descriptionVideo()}
+                  loadPromises={props.loadPromises}
+                  group={props.animationGroup}
+                  autoDownload={props.autoDownload}
+                  boxWidth={mediaSizes.active.regular.width}
+                  boxHeight={mediaSizes.active.regular.height}
+                  withPreview
+                  lazyLoadQueue={props.lazyLoadQueue || undefined}
+                  observer={props.observer}
+                />
+              </Show>
             </div>
           </div>
         </Show>
@@ -315,6 +340,7 @@ export const PollMessageContent = defineSolidElement({
               text={props.results?.solution}
               entities={props.results?.solution_entities}
               photo={explanationPhoto()}
+              video={explanationVideo()}
               pollViewerPayload={[mediaViewerPayload().indexes.explanation, elementByIndexMap]}
             />
           </div>
@@ -330,6 +356,7 @@ export const PollMessageContent = defineSolidElement({
                   text={option.text}
                   withMedia={hasMediaInOptions()}
                   photo={getPhotoForOption(initialIdx())}
+                  video={getVideoForOption(initialIdx())}
                   sticker={getStickerForOption(initialIdx())}
                   geo={getGeoForOption(initialIdx())}
                   allowMultipleAnswers={allowMultipleAnswers()}

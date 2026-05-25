@@ -1,13 +1,14 @@
 import Space from '@components/space';
 import PhotoTsx from '@components/wrappers/photoTsx';
+import VideoTsx from '@components/wrappers/videoTsx';
 import {keepMe} from '@helpers/keepMe';
+import mediaSizes from '@helpers/mediaSizes';
 import formatNumber from '@helpers/number/formatNumber';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {I18nTsx} from '@helpers/solid/i18n';
 import classNames from '@helpers/string/classNames';
-import {Photo} from '@layer';
+import {Document, Photo} from '@layer';
 import {LangPackKey} from '@lib/langPack';
-import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {createMemo, For, Show} from 'solid-js';
 import {unwrap} from 'solid-js/store';
@@ -47,6 +48,7 @@ export const AvatarGroup = (props: {
 
 export const Explanation = (props: LocalTextWithEntities & {
   photo?: Photo.photo;
+  video?: Document.document;
   pollViewerPayload?: DataPollViewerIdxDirectivePayload;
 }) => {
   const {TranslatableMessageTsx} = useHotReloadGuard();
@@ -74,6 +76,21 @@ export const Explanation = (props: LocalTextWithEntities & {
           <div class={styles.explanationImage}>
             <PhotoTsx photo={props.photo} loadPromises={contextProps.loadPromises} autoDownloadSize={contextProps.autoDownload?.photo} />
           </div>
+        </Show>
+
+        <Show when={props.video && !props.photo}>
+          <Space amount='0.5rem' />
+          <VideoTsx
+            doc={props.video}
+            loadPromises={contextProps.loadPromises}
+            group={contextProps.animationGroup}
+            autoDownload={contextProps.autoDownload}
+            boxWidth={mediaSizes.active.regular.width}
+            boxHeight={mediaSizes.active.regular.height}
+            withPreview
+            lazyLoadQueue={contextProps.lazyLoadQueue || undefined}
+            observer={contextProps.observer}
+          />
         </Show>
       </div>
     </div>

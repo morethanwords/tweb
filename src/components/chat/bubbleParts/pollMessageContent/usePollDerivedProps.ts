@@ -22,6 +22,13 @@ const getPhoto = (media: MessageMedia | InputMedia | undefined): Photo.photo | u
   return media?._ === 'messageMediaPhoto' && media.photo?._ === 'photo' ? unwrap(media.photo) : undefined;
 };
 
+const getVideoDocument = (media: MessageMedia | InputMedia | undefined): Document.document | undefined => {
+  return media?._ === 'messageMediaDocument' &&
+    media.document?._ === 'document' && ['video', 'gif'].includes(media.document.type) ?
+      unwrap(media.document) :
+      undefined;
+};
+
 export type GetStickerMediaResult = {
   media: MessageMedia.messageMediaDocument | undefined;
   document: Document.document | undefined;
@@ -32,6 +39,11 @@ const getStickerMedia = (media: MessageMedia | InputMedia | undefined): GetStick
     return {media: unwrap(media), document: unwrap(media.document)};
   }
 };
+
+const getDocument = (media: MessageMedia | InputMedia | undefined): Document.document | undefined => {
+  return media?._ === 'messageMediaDocument' && media.document?._ === 'document' ? unwrap(media.document) : undefined;
+};
+
 
 const getGeo = (media: MessageMedia | InputMedia | undefined): MessageMedia.messageMediaGeo | undefined => {
   // Intentionally only handles plain `messageMediaGeo`. Venues and live
@@ -68,7 +80,7 @@ export function usePollDerivedProps({props, pollOptions, chosenIndexes, newOptio
   const roundedPercents = createMemo(() => getRoundedPercentsFromResults(props.results));
 
   const hasMediaInOptions = createMemo(() =>
-    props.poll.answers.some(a => !!getPhoto(a.media) || !!getStickerMedia(a.media) || !!getGeo(a.media))
+    props.poll.answers.some(a => !!getPhoto(a.media) || !!getStickerMedia(a.media) || !!getGeo(a.media) || !!getVideoDocument(a.media))
   );
 
   const hasExplanation = createMemo(() => !!props.results.solution || !!props.results.solution_media);
@@ -97,7 +109,13 @@ export function usePollDerivedProps({props, pollOptions, chosenIndexes, newOptio
   });
 
   const explanationPhoto = createMemo(() => getPhoto(props.results.solution_media));
+  const explanationVideo = createMemo(() => getVideoDocument(props.results.solution_media));
+  const explanationDocument = createMemo(() => !getVideoDocument(props.results.solution_media) ? getDocument(props.results.solution_media) : undefined);
+
   const descriptionPhoto = createMemo(() => getPhoto(props.media.attached_media));
+  const descriptionVideo = createMemo(() => getVideoDocument(props.media.attached_media));
+  const descriptionDocument = createMemo(() => !getVideoDocument(props.media.attached_media) ? getDocument(props.media.attached_media) : undefined);
+
 
   const initialIdxFromShuffledIdx = (idx: number) => {
     const shuffledOption = pollOptions[idx]?.option;
@@ -122,13 +140,16 @@ export function usePollDerivedProps({props, pollOptions, chosenIndexes, newOptio
     };
   };
 
-  const getPhotoForOption = (initialIdx: number): Photo.photo | undefined =>
+  const getPhotoForOption = (initialIdx: number) =>
     getPhoto(props.poll.answers[initialIdx]?.media);
 
-  const getStickerForOption = (initialIdx: number): GetStickerMediaResult | undefined =>
+  const getVideoForOption = (initialIdx: number) =>
+    getVideoDocument(props.poll.answers[initialIdx]?.media);
+
+  const getStickerForOption = (initialIdx: number) =>
     getStickerMedia(props.poll.answers[initialIdx]?.media);
 
-  const getGeoForOption = (initialIdx: number): MessageMedia.messageMediaGeo | undefined =>
+  const getGeoForOption = (initialIdx: number) =>
     getGeo(props.poll.answers[initialIdx]?.media);
 
   return {
@@ -156,12 +177,17 @@ export function usePollDerivedProps({props, pollOptions, chosenIndexes, newOptio
     canShowViewResults,
     willFooterBeClickable,
     explanationPhoto,
+    explanationVideo,
+    explanationDocument,
     descriptionPhoto,
+    descriptionVideo,
+    descriptionDocument,
     getPhoto,
     getOverridenMessage,
     initialIdxFromShuffledIdx,
     getResultForOption,
     getPhotoForOption,
+    getVideoForOption,
     getStickerForOption,
     getGeoForOption
   };

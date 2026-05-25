@@ -1,6 +1,6 @@
 import EmptyListLoader from '@helpers/emptyListLoader';
 import mediaSizes from '@helpers/mediaSizes';
-import {Photo} from '@layer';
+import {Photo, Document} from '@layer';
 import appImManager from '@lib/appImManager';
 import AppMediaViewerBase from './appMediaViewerBase';
 import {ButtonMenuItemOptionsVerifiable} from './buttonMenu';
@@ -15,7 +15,7 @@ import {attachClickEvent} from '@helpers/dom/clickEvent';
 
 
 export type AppMediaViewerStaticTargetType = {
-  media: Photo.photo;
+  media: Photo.photo | Document.document;
   element: HTMLElement;
   fromId: PeerId
   timestamp: number;
