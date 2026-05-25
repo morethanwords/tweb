@@ -7815,6 +7815,7 @@ export default class ChatBubbles {
               autoDownload: this.chat.autoDownload,
               lazyLoadQueue: this.lazyLoadQueue,
               animationGroup: this.chat.animationGroup,
+              canSend: (rights) => this.chat.canSend(rights),
               loadPromises
             });
 

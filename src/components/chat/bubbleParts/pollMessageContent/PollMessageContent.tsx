@@ -16,6 +16,7 @@ import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
 import type {ChatAutoDownloadSettings} from '@hooks/useAutoDownloadSettings';
 import {Message, MessageMedia, Photo, Poll, PollResults} from '@layer';
+import {ChatRights} from '@lib/appManagers/appChatsManager';
 import {sliceTextWithEntities} from '@lib/richTextProcessor/sliceTextWithEntities';
 import wrapDraftText from '@lib/richTextProcessor/wrapDraftText';
 import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
@@ -47,6 +48,7 @@ export type PollMessageContentProps = {
   autoDownload?: ChatAutoDownloadSettings;
   lazyLoadQueue?: false | LazyLoadQueue;
   animationGroup?: AnimationItemGroup;
+  canSend: (rights: ChatRights) => Promise<boolean>;
   loadPromises: Promise<any>[];
 };
 

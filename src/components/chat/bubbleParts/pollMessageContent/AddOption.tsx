@@ -11,11 +11,11 @@ import {keepMe} from '@helpers/keepMe';
 import {createDelayed} from '@helpers/solid/createDelayed';
 import {I18nTsx} from '@helpers/solid/i18n';
 import classNames from '@helpers/string/classNames';
-import {createEffect, Match, onCleanup, Show, Switch} from 'solid-js';
+import {createEffect, createMemo, Match, onCleanup, Show, Switch} from 'solid-js';
 import {Transition} from 'solid-transition-group';
 import {usePollMessageContentProps} from './context';
 import styles from './styles.module.scss';
-import {NewOptionValues, spinnerThickness} from './utils';
+import {NewOptionValues, spinnerThickness, useChatRights} from './utils';
 
 keepMe(ripple);
 
@@ -30,6 +30,19 @@ export const AddOption = (props: {
   isPending?: boolean;
 }) => {
   const contextProps = usePollMessageContentProps();
+
+  const chatRights = useChatRights({
+    peerId: () => contextProps.message.peerId,
+    rights: () => ['send_photos', 'send_stickers'],
+    getRight: (key) => contextProps.canSend(key)
+  })
+
+  const supportedMediaTypes = createMemo(() => {
+    return [
+      ...(chatRights.hasRight('send_photos') ? ['photo'] as const : []),
+      ...(chatRights.hasRight('send_stickers') ? ['sticker'] as const : [])
+    ];
+  });
 
   const active = () => props.active;
   const delayedIsPending = createDelayed(() => props.isPending, false, (value) => value ? 200 : -1);
@@ -149,8 +162,9 @@ export const AddOption = (props: {
           [styles.pointerDisabled]: props.isPending
         }}
       >
-        <Show when={active()}>
+        <Show when={active() && supportedMediaTypes().length > 0}>
           <MediaAttachment
+            supportedMediaTypes={supportedMediaTypes()}
             btnClass={styles.pollOptionMediaAttachBtn}
             imgClass={styles.pollOptionMediaAttachImg}
             attachedMedia={props.attachment}

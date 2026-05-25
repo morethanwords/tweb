@@ -95,7 +95,7 @@ import parseEntities from '@lib/richTextProcessor/parseEntities';
 import {concatTextsWithEntities} from '@lib/richTextProcessor/concatTextsWithEntities';
 import {shouldShufflePollOptions, shufflePollOptions} from './bubbleParts/pollMessageContent/shuffle';
 import {truncateTextWithEntities} from '@helpers/string/truncateTextWithEntities';
-import {pollOptionToLink} from './bubbleParts/pollMessageContent/utils';
+import {pollOptionToLink} from './bubbleParts/pollMessageContent/pollToOptionLink';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
