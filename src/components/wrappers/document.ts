@@ -69,7 +69,8 @@ export default async function wrapDocument({
   uploadingFileName,
   shouldWrapAsVoice,
   customAudioToTextButton,
-  globalMedia
+  globalMedia,
+  doc: docOverride
 }: {
   message: Message.message,
   middleware: Middleware,
@@ -91,14 +92,21 @@ export default async function wrapDocument({
   uploadingFileName?: string,
   customAudioToTextButton?: HTMLElement,
   shouldWrapAsVoice?: boolean,
-  globalMedia?: HTMLMediaElement
+  globalMedia?: HTMLMediaElement,
+  /**
+   * Optional pre-extracted document. When provided, it overrides the
+   * default extraction from `message.media` (or its webpage). Useful when
+   * the document lives in a sibling field of the message (e.g. poll
+   * `solution_media` / `attached_media`).
+   */
+  doc?: MyDocument
 }): Promise<HTMLElement> {
   fontWeight ??= 500;
   sizeType ??= '' as any;
   fontSize ??= 16;
   const noAutoDownload = autoDownloadSize === 0;
 
-  const doc = ((message.media as MessageMedia.messageMediaDocument).document || ((message.media as MessageMedia.messageMediaWebPage).webpage as WebPage.webPage).document) as MyDocument;
+  const doc = docOverride ?? (((message.media as MessageMedia.messageMediaDocument).document || ((message.media as MessageMedia.messageMediaWebPage).webpage as WebPage.webPage).document) as MyDocument);
   uploadingFileName ??= message?.uploadingFileName?.[0];
   if(doc.type === 'audio' || doc.type === 'voice' || doc.type === 'round') {
     const audioElement = new AudioElement();

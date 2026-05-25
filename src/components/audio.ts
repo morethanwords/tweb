@@ -357,7 +357,7 @@ async function wrapAudio(audioEl: AudioElement) {
   const descriptionEl = document.createElement('div');
   descriptionEl.classList.add('audio-description');
 
-  const audioAttribute = doc.attributes.find((attr) => attr._ === 'documentAttributeAudio') as DocumentAttribute.documentAttributeAudio;
+  const audioAttribute = doc.attributes?.find((attr) => attr._ === 'documentAttributeAudio') as DocumentAttribute.documentAttributeAudio;
 
   if(!isVoice) {
     const parts: (Node | string)[] = [];

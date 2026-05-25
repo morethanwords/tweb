@@ -10,7 +10,7 @@ import classNames from '@helpers/string/classNames';
 import {Document, Photo} from '@layer';
 import {LangPackKey} from '@lib/langPack';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {createMemo, For, Show} from 'solid-js';
+import {createMemo, For, Match, Show, Switch} from 'solid-js';
 import {unwrap} from 'solid-js/store';
 import {usePollMessageContentProps} from './context';
 import styles from './styles.module.scss';
@@ -49,15 +49,16 @@ export const AvatarGroup = (props: {
 export const Explanation = (props: LocalTextWithEntities & {
   photo?: Photo.photo;
   video?: Document.document;
+  document?: Document.document;
   pollViewerPayload?: DataPollViewerIdxDirectivePayload;
 }) => {
-  const {TranslatableMessageTsx} = useHotReloadGuard();
+  const {TranslatableMessageTsx, DocumentTsx} = useHotReloadGuard();
   const contextProps = usePollMessageContentProps();
 
   const middleware = createMiddleware().get();
 
   return (
-    <div class={'reply quote-like quote-like-border ' + styles.explanation} use:dataPollViewerIdx={props.pollViewerPayload}>
+    <div class={'reply quote-like quote-like-border ' + styles.explanation}>
       <div class='reply-content'>
         <div class='reply-title'>
           <I18nTsx key='Chat.Quiz.Explanation' />
@@ -71,26 +72,48 @@ export const Explanation = (props: LocalTextWithEntities & {
             />
           </div>
         </Show>
-        <Show when={props.photo}>
+        <Show when={props.photo || props.video}>
           <Space amount='0.5rem' />
-          <div class={styles.explanationImage}>
-            <PhotoTsx photo={props.photo} loadPromises={contextProps.loadPromises} autoDownloadSize={contextProps.autoDownload?.photo} />
+          <div class={styles.explanationMedia} use:dataPollViewerIdx={props.pollViewerPayload}>
+            <Switch>
+              <Match when={props.photo}>
+                <PhotoTsx photo={props.photo} loadPromises={contextProps.loadPromises} autoDownloadSize={contextProps.autoDownload?.photo} />
+              </Match>
+              <Match when={props.video}>
+                <VideoTsx
+                  doc={props.video}
+                  loadPromises={contextProps.loadPromises}
+                  group={contextProps.animationGroup}
+                  autoDownload={contextProps.autoDownload}
+                  boxWidth={mediaSizes.active.regular.width}
+                  boxHeight={mediaSizes.active.regular.height}
+                  withPreview
+                  lazyLoadQueue={contextProps.lazyLoadQueue || undefined}
+                  observer={contextProps.observer}
+                />
+              </Match>
+            </Switch>
           </div>
         </Show>
 
-        <Show when={props.video && !props.photo}>
+        <Show when={props.document && !props.photo && !props.video}>
           <Space amount='0.5rem' />
-          <VideoTsx
-            doc={props.video}
-            loadPromises={contextProps.loadPromises}
-            group={contextProps.animationGroup}
-            autoDownload={contextProps.autoDownload}
-            boxWidth={mediaSizes.active.regular.width}
-            boxHeight={mediaSizes.active.regular.height}
-            withPreview
-            lazyLoadQueue={contextProps.lazyLoadQueue || undefined}
-            observer={contextProps.observer}
-          />
+          <div class={styles.explanationDocument}>
+            <DocumentTsx
+              message={contextProps.message}
+              doc={props.document}
+              loadPromises={contextProps.loadPromises}
+              lazyLoadQueue={contextProps.lazyLoadQueue || undefined}
+              autoDownloadSize={contextProps.autoDownload?.file}
+              sizeType='documentName'
+              canTranscribeVoice={true}
+              searchContext={{
+                useSearch: false,
+                peerId: contextProps.peerId,
+                inputFilter: {_: 'inputMessagesFilterEmpty'}
+              }}
+            />
+          </div>
         </Show>
       </div>
     </div>

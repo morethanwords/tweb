@@ -72,7 +72,7 @@ export const PollMessageContent = defineSolidElement({
     attachHotClassName(props.element, styles.container);
 
     // ----- Setup / external dependencies -----
-    const {rootScope, AppMediaViewerStatic, appSidebarRight, AppPollResultsTab, TranslatableMessageTsx} = useHotReloadGuard();
+    const {rootScope, AppMediaViewerStatic, appSidebarRight, AppPollResultsTab, TranslatableMessageTsx, DocumentTsx} = useHotReloadGuard();
     const {maxOptionLength} = useCreatePollLimits();
     const middleware = createMiddleware().get();
 
@@ -301,6 +301,24 @@ export const PollMessageContent = defineSolidElement({
             </div>
           </div>
         </Show>
+        <Show when={descriptionDocument() && !descriptionPhoto() && !descriptionVideo()}>
+          <div class={styles.pollDocumentWrapper}>
+            <DocumentTsx
+              message={props.message}
+              doc={descriptionDocument()}
+              loadPromises={props.loadPromises}
+              lazyLoadQueue={props.lazyLoadQueue || undefined}
+              autoDownloadSize={props.autoDownload?.file}
+              sizeType='documentName'
+              canTranscribeVoice={false}
+              searchContext={{
+                useSearch: false,
+                peerId: props.peerId,
+                inputFilter: {_: 'inputMessagesFilterEmpty'}
+              }}
+            />
+          </div>
+        </Show>
         <Show when={descriptionText()}>
           <div ref={setDescriptionElement} class={styles.description}>
             <TranslatableMessageTsx
@@ -341,6 +359,7 @@ export const PollMessageContent = defineSolidElement({
               entities={props.results?.solution_entities}
               photo={explanationPhoto()}
               video={explanationVideo()}
+              document={explanationDocument()}
               pollViewerPayload={[mediaViewerPayload().indexes.explanation, elementByIndexMap]}
             />
           </div>

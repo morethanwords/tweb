@@ -3124,6 +3124,8 @@ export default class ChatBubbles {
       const pollMessageContent = pollViewerTarget.closest('poll-message-content') as InstanceType<typeof PollMessageContent>;
       pollMessageContent.controls?.openMediaViewer?.(+pollViewerTarget.dataset.pollViewerIdx);
       return true;
+    } else if(target.closest('poll-message-content')) {
+      return;
     }
 
     if(

@@ -380,11 +380,20 @@
 }
 
 .explanation {
+  cursor: unset;
+
+  &Document {
+    pointer-events: initial;
+    cursor: pointer;
+  }
+
   &Text {
     white-space: pre-wrap;
   }
 
-  &Image {
+  &Media {
+    pointer-events: initial;
+    cursor: pointer;
     border-radius: 4px;
     position: relative;
     overflow: hidden;
@@ -413,6 +422,10 @@
   &Wrapper {
     padding: 1px;
   }
+}
+
+.pollDocumentWrapper {
+  padding: 0.25rem;
 }
 
 .pathDot {
@@ -448,10 +461,6 @@
 
 .pointerDisabled {
   pointer-events: none;
-}
-
-.explanation {
-  cursor: unset;
 }
 
 .geo {
