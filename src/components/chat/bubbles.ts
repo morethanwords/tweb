@@ -6520,6 +6520,9 @@ export default class ChatBubbles {
       if(hasReactions && this.chat.type !== ChatType.Logs) {
         this.appendReactionsElementToBubble(bubble, message, reactionsMessage, undefined, loadPromises);
       }
+      if(this.observer && (unreadMention || unreadReactions)) {
+        this.setUnreadObserver('content', bubble, reactionsMessage.mid);
+      }
       return ret;
     }
 
