@@ -5300,10 +5300,10 @@ export class AppMessagesManager extends AppManager {
         break;
       }
 
-      /* case 'messageMediaGame':
-        AppGamesManager.saveGame(apiMessage.media.game, apiMessage.mid, mediaContext);
-        apiMessage.media.handleMessage = true;
-        break; */
+      case 'messageMediaGame': {
+        media.game = this.appGamesManager.saveGame(media.game, mediaContext);
+        break;
+      }
 
       case 'messageMediaInvoice': {
         media.photo = this.appWebDocsManager.saveWebDocument(media.photo);

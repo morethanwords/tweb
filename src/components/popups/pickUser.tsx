@@ -685,7 +685,12 @@ export async function showPickUser3Popup(
     throw undefined;
   }
 
-  return showPickUser2Popup({peerType, filterPeerTypeBy, chatRightsActions});
+  return showPickUser2Popup({
+    peerType,
+    filterPeerTypeBy,
+    chatRightsActions,
+    titleLangKey: 'ShareWith'
+  });
 }
 
 export function showSharingPickerPopup(options: {

@@ -1091,9 +1091,9 @@
 "ActionPinnedNoText" = "un1 pinned a message";
 "ActionMigrateFromGroup" = "This group was upgraded to a supergroup";
 "ActionYouScored" = "You scored %1$s";
-"ActionUserScored" = "un1 scored %1$s";
+"ActionUserScored" = "un1 scored %2$s";
 "ActionYouScoredInGame" = "You scored %1$s in un2";
-"ActionUserScoredInGame" = "un1 scored %1$s in un2";
+"ActionUserScoredInGame" = "un1 scored %2$s in un3";
 "ActionCreateDirectMessages" = "Direct Messages Opened";
 "AndOther_one" = "and %1$d other";
 "AndOther_other" = "and %1$d others";
@@ -1107,6 +1107,7 @@
 "AttachAudio" = "Voice message";
 "AttachRound" = "Video message";
 "AttachGame" = "Game";
+"Bot.Game.Play" = "PLAY";
 "Bot" = "bot";
 "ChannelMegaJoined" = "You joined this group";
 "EnterChannelName" = "Channel name";

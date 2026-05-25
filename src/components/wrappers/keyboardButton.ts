@@ -1,5 +1,6 @@
 import {copyTextToClipboard} from '@helpers/clipboard';
 import cancelEvent from '@helpers/dom/cancelEvent';
+import findUpClassName from '@helpers/dom/findUpClassName';
 import htmlToDocumentFragment from '@helpers/dom/htmlToDocumentFragment';
 import toggleDisability from '@helpers/dom/toggleDisability';
 import {KeyboardButton, Message, ReplyMarkup, InlineQueryPeerType, RequestPeerType, Chat as MTChat} from '@layer';
@@ -197,6 +198,26 @@ export function getKeyboardButtonHandler({
             toast(wrapRichText(callbackAnswer.message, {noLinks: true, noLinebreaks: true}));
           }
         });
+      };
+
+      break;
+    }
+
+    case 'keyboardButtonGame': {
+      classNamesArr.push('is-game');
+      icon = 'play';
+
+      onClick = () => {
+        if(!message) return;
+        // Inline-sent game messages are not re-rendered after the server confirms.
+        // The bubble's data-mid is patched in place — re-read it so we use the
+        // server mid instead of the captured temp one.
+        const bubble = findUpClassName(buttonEl, 'bubble');
+        const currentMid = bubble && +bubble.dataset.mid;
+        const target = (currentMid && currentMid !== message.mid ?
+          chat.getMessageByPeer(message.peerId, currentMid) as Message.message :
+          undefined) || message;
+        chat.appImManager.playGame(target);
       };
 
       break;

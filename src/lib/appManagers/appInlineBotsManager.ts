@@ -9,7 +9,7 @@ import type {MyDocument} from '@appManagers/appDocsManager';
 import type {MyPhoto} from '@appManagers/appPhotosManager';
 import type {MyTopPeer} from '@appManagers/appUsersManager';
 import type {AppMessagesManager} from '@appManagers/appMessagesManager';
-import {BotInlineResult, GeoPoint, InputGeoPoint, MessageMedia} from '@layer';
+import {BotInlineResult, Document, GeoPoint, InputGeoPoint, MessageMedia, Photo} from '@layer';
 import insertInDescendSortedArray from '@helpers/array/insertInDescendSortedArray';
 import {AppManager} from '@appManagers/manager';
 import getPhotoMediaInput from '@appManagers/utils/photos/getPhotoMediaInput';
@@ -222,31 +222,14 @@ export class AppInlineBotsManager extends AppManager {
     this.appDraftsManager.setDraft(peerId, threadId, message);
   }
 
-  public callbackButtonClick(peerId: PeerId, mid: number, button: any) {
+  public callbackButtonClick(peerId: PeerId, mid: number, button?: any, game?: boolean) {
     return this.apiManager.invokeApi('messages.getBotCallbackAnswer', {
       peer: this.appPeersManager.getInputPeerById(peerId),
       msg_id: getServerMessageId(mid),
-      data: button.data
+      data: button?.data,
+      game
     }, {/* timeout: 1,  */stopTime: -1, noErrorBox: true});
   }
-
-  /* function gameButtonClick (id) {
-    var message = AppMessagesManager.getMessage(id)
-    var peerId = AppMessagesManager.getMessagePeer(message)
-
-    return MtpApiManager.invokeApi('messages.getBotCallbackAnswer', {
-      peer: AppPeersManager.getInputPeerByID(peerId),
-      msg_id: AppMessagesIDsManager.getMessageLocalID(id)
-    }, {timeout: 1, stopTime: -1, noErrorBox: true}).then(function (callbackAnswer) {
-      if (typeof callbackAnswer.message === 'string' &&
-      callbackAnswer.message.length) {
-        showCallbackMessage(callbackAnswer.message, callbackAnswer.pFlags.alert)
-      }
-      else if (typeof callbackAnswer.url === 'string') {
-        AppGamesManager.openGame(message.media.game.id, id, callbackAnswer.url)
-      }
-    })
-  } */
 
   public sendInlineResult(
     peerId: PeerId,
@@ -286,6 +269,31 @@ export class AppInlineBotsManager extends AppManager {
       switch(sendMessage._) {
         case 'botInlineMessageMediaAuto': {
           caption = sendMessage.message;
+
+          if(inlineResult.type === 'game') {
+            let gamePhoto: Photo = {_: 'photoEmpty', id: 0};
+            let gameDocument: Document;
+
+            if(inlineResult._ === 'botInlineMediaResult') {
+              if(inlineResult.photo) gamePhoto = inlineResult.photo as Photo;
+              if(inlineResult.document) gameDocument = inlineResult.document as Document;
+            }
+
+            messageMedia = {
+              _: 'messageMediaGame',
+              game: {
+                _: 'game',
+                id: 0,
+                access_hash: 0,
+                short_name: inlineResult.id || '',
+                title: inlineResult.title || '',
+                description: inlineResult.description || '',
+                photo: gamePhoto,
+                document: gameDocument
+              }
+            };
+            break;
+          }
 
           if(inlineResult._ === 'botInlineMediaResult') {
             const {document, photo} = inlineResult;

@@ -347,6 +347,43 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         break;
       }
 
+      case 'messageActionGameScore': {
+        const fromMe = message.fromId === rootScope.myId;
+        args = [];
+        if(!fromMe) {
+          args.push(getNameDivHTML(message.fromId, plain));
+        }
+        args.push('' + action.score);
+
+        let gameTitle: string | undefined;
+        if(message.reply_to_mid) {
+          const gameMessage = await managers.appMessagesManager.getMessageByPeer(message.peerId, message.reply_to_mid);
+          const media = (gameMessage as Message.message)?.media;
+          if(media?._ === 'messageMediaGame' && media.game?._ === 'game') {
+            gameTitle = media.game.title;
+          } else if(!gameMessage) {
+            managers.appMessagesManager.fetchMessageReplyTo(message);
+          }
+        }
+
+        if(gameTitle) {
+          if(plain) {
+            args.push(wrapSomeText(gameTitle, plain));
+          } else {
+            const link = document.createElement('i');
+            link.classList.add('is-game-link');
+            link.dataset.savedFrom = message.peerId + '_' + message.reply_to_mid;
+            link.append(wrapSomeText(gameTitle, false));
+            setDirection(link);
+            args.push(link);
+          }
+          langPackKey = fromMe ? 'ActionYouScoredInGame' : 'ActionUserScoredInGame';
+        } else {
+          langPackKey = fromMe ? 'ActionYouScored' : 'ActionUserScored';
+        }
+        break;
+      }
+
       case 'messageActionPinMessage': {
         const peerId = message.peerId;
         const pinnedMessage = await managers.appMessagesManager.getMessageByPeer(peerId, message.reply_to_mid);
