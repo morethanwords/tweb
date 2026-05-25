@@ -83,10 +83,9 @@ export function usePollDerivedProps({props, pollOptions, chosenIndexes, newOptio
     props.poll.answers.some(a => !!getPhoto(a.media) || !!getStickerMedia(a.media) || !!getGeo(a.media) || !!getVideoDocument(a.media))
   );
 
-  const hasExplanation = createMemo(() => !!props.results.solution || !!props.results.solution_media);
-
-  const hasSelectedSomething = createMemo(() => chosenIndexes().length > 0);
   const isShowingResult = createMemo(() => !!props.poll.chosenIndexes?.length || props.poll.pFlags.closed);
+  const hasExplanation = createMemo(() => isShowingResult() && (!!props.results.solution || !!props.results.solution_media));
+  const hasSelectedSomething = createMemo(() => chosenIndexes().length > 0);
   const hasTypedNewOption = createMemo(() => newOptionText().length > 0);
   const canShowAddOption = createMemo(() => allowAddingOptions() && !isShowingResult() && pollOptions.length < maxOptions());
   const canShowCloseTimer = createMemo(() =>
