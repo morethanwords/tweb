@@ -6552,6 +6552,9 @@ export class AppMessagesManager extends AppManager {
     return this.goToNextMentionPromises[key] = loadNextPromise.then(() => {
       const last = slicedArray.last;
       const mid = last && last[last.length - 1];
+
+      const isTopEnd = slicedArray.first.isEnd(SliceEnd.Top);
+
       if(mid) {
         slicedArray.delete(mid);
 
