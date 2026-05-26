@@ -6,6 +6,8 @@
  */
 
 import {Logger} from '@lib/logger';
+import {appSettings} from '@stores/appSettings';
+import getStream from '@lib/calls/helpers/getStream';
 import {
   findSdpLineValue as findLineValue,
   getSdpDirection,
@@ -108,16 +110,34 @@ export function getUserStream(streamType: StreamType, facing: VideoFacingModeEnu
     });
   }
 
+  // Honour the device picked in the in-call settings popup / "Speakers and
+  // Camera" tab. Without this, toggling video off/on (or accepting an
+  // incoming call) re-grabs the OS-default camera regardless of what the
+  // user picked. Group calls already route their constraints through the
+  // shared get*Constraints helpers — do the same for P2P so the two paths
+  // stay in sync.
+  const audioId = appSettings.callDevices?.microphoneId;
   const audio = streamType === 'audio' ? {
     echoCancellation: IS_ECHO_CANCELLATION_SUPPORTED ? true : undefined,
-    noiseSuppression: IS_NOISE_SUPPRESSION_SUPPORTED ? true : undefined
+    noiseSuppression: IS_NOISE_SUPPRESSION_SUPPORTED ?
+      (appSettings.callDevices?.noiseSuppression ?? true) :
+      undefined,
+    deviceId: audioId ? {exact: audioId} : undefined
   } : false;
 
-  const video = streamType === 'video' ? {
-    facingMode: facing
-  } : false;
+  // `facingMode` only matters on mobile (front vs rear camera) — paired with
+  // an explicit `deviceId: {exact: ...}` it can produce OverconstrainedError
+  // on desktop where the chosen camera doesn't advertise a facingMode. Pick
+  // ONE: prefer the explicit deviceId, fall back to facingMode.
+  const videoId = appSettings.callDevices?.cameraId;
+  const video = streamType === 'video' ? (
+    videoId ?
+      {deviceId: {exact: videoId}} :
+      {facingMode: facing}
+  ) : false;
 
-  return navigator.mediaDevices.getUserMedia({audio, video});
+  // Stale-deviceId recovery and incremental retry live inside `getStream`.
+  return getStream({audio, video});
 }
 
 export function getStreamTrack(stream: MediaStream | undefined) {

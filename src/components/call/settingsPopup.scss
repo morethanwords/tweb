@@ -1,0 +1,42 @@
+@use "../../scss/variables" as *;
+
+.call-settings-popup {
+  --popup-width: 420px;
+}
+
+.call-settings-popup-meter-wrap,
+.speakers-and-camera-meter-wrap {
+  padding: 1rem;
+}
+
+.microphone-level-meter {
+  width: 100%;
+  background-color: var(--light-secondary-text-color);
+  border-radius: 4px;
+  overflow: hidden;
+  height: 8px;
+
+  &__fill {
+    height: 100%;
+    background-color: var(--primary-color);
+    border-radius: 4px;
+    transition: width 80ms linear;
+  }
+}
+
+.speakers-and-camera-preview {
+  display: flex;
+  justify-content: center;
+  margin-top: .5rem;
+  background-color: var(--surface-color);
+
+  &-video {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    aspect-ratio: 4 / 3;
+    background: black;
+    border-radius: $border-radius-medium;
+    object-fit: cover;
+  }
+}

@@ -32,7 +32,7 @@ export default class RadioField {
     input.type = 'radio';
     /* input.id =  */input.name = 'input-radio-' + options.name;
 
-    if(options.value) {
+    if(options.value !== undefined) {
       input.value = options.value;
 
       const getValueForState = () => 'valueForState' in options ? options.valueForState : options.value;

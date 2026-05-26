@@ -6,7 +6,6 @@ import toggleDisability from '@helpers/dom/toggleDisability';
 import ListenerSetter from '@helpers/listenerSetter';
 import {Chat, DialogFilter, ExportedChatlistInvite, User} from '@layer';
 import appDialogsManager, {DialogElement} from '@lib/appDialogsManager';
-import appImManager from '@lib/appImManager';
 import hasRights from '@appManagers/utils/chats/hasRights';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
@@ -20,9 +19,8 @@ import AppSelectPeers from '@components/appSelectPeers';
 import Button from '@components/button';
 import ButtonIcon from '@components/buttonIcon';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
-import type {ConfirmedPaymentResult} from '@components/chat/paidMessagesInterceptor';
 import confirmationPopup from '@components/confirmationPopup';
-import {showSharingPickerPopup} from '@components/popups/pickUser';
+import shareUrlToPeers from '@components/popups/shareUrl';
 import ripple from '@components/ripple';
 import SettingSection from '@components/settingSection';
 import {SliderSuperTabEventable} from '@components/sliderTab';
@@ -123,24 +121,7 @@ export class InviteLink {
   };
 
   public shareLink = (url: string = this.url) => {
-    showSharingPickerPopup({
-      onSelect: async(chosen) => {
-        const {peerId, monoforumThreadId} = chosen[0];
-        // Cannot use normal import here :(
-        const {default: PaidMessagesInterceptor, PAYMENT_REJECTED} = await import('../../chat/paidMessagesInterceptor');
-
-        const preparedPaymentResult = await PaidMessagesInterceptor.prepareStarsForPayment({messageCount: 1, peerId});
-        if(preparedPaymentResult === PAYMENT_REJECTED) throw new Error();
-
-        rootScope.managers.appMessagesManager.sendText({
-          peerId,
-          text: url,
-          replyToMonoforumPeerId: monoforumThreadId,
-          confirmedPaymentResult: preparedPaymentResult as ConfirmedPaymentResult
-        });
-        appImManager.setInnerPeer({peerId});
-      }
-    });
+    shareUrlToPeers({url, openAfter: true});
   };
 }
 

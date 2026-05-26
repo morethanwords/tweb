@@ -15,6 +15,7 @@ export type SectionOptions = {
   noDelimiter?: boolean,
   fakeGradientDelimiter?: boolean,
   noShadow?: boolean,
+  noMarginBottom?: boolean,
   class?: JSX.HTMLAttributes<HTMLDivElement>['class'],
   innerClass?: string,
   contentProps?: JSX.HTMLAttributes<HTMLDivElement>,
@@ -51,7 +52,8 @@ const Section: ParentComponent<SectionOptions & JSX.HTMLAttributes<HTMLDivElemen
           className,
           props.noShadow && 'no-shadow',
           props.fakeGradientDelimiter ? 'with-fake-delimiter' : props.noDelimiter && 'no-delimiter',
-          props.innerClass
+          props.innerClass,
+          props.noMarginBottom && 'no-margin-bottom'
         )}
       >
         {props.fakeGradientDelimiter ? generateDelimiter() : (!props.noDelimiter && <hr />)}

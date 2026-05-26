@@ -18,6 +18,8 @@ import type {AppManagers} from '@lib/managers';
 import {logger} from '@lib/logger';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import CallInstanceBase from '@lib/calls/callInstanceBase';
+import getStream from '@lib/calls/helpers/getStream';
+import shouldMirrorVideoTrack from '@lib/calls/helpers/shouldMirrorVideoTrack';
 import callsController from '@lib/calls/callsController';
 import CALL_STATE from '@lib/calls/callState';
 import {GROUP_CALL_AMPLITUDE_ANALYSE_INTERVAL_MS} from '@lib/calls/constants';
@@ -206,6 +208,154 @@ export default class CallInstance extends CallInstanceBase<{
   // Live tgcalls v2 P2P engine state; undefined until joinPhoneCall, cleared by
   // stopPhoneCall. `!this.p2p` means the engine is not running.
   private p2p: State;
+
+  // CallInstanceBase hook for mid-call device swap. We walk our single
+  // RTCPeerConnection's senders and rebind whichever is currently shipping
+  // the old track. Quietly no-ops if the engine isn't running.
+  protected replaceSenderTrack(
+    kind: 'audio' | 'video',
+    oldTrack: MediaStreamTrack,
+    newTrack: MediaStreamTrack
+  ): void {
+    const connection = this.p2p?.connection;
+    if(!connection) return;
+    for(const sender of connection.getSenders()) {
+      if(sender.track === oldTrack || (sender.track?.kind === kind && !sender.track)) {
+        sender.replaceTrack(newTrack).catch((err) => this.log?.warn?.('replaceSenderTrack', err));
+      }
+    }
+  }
+
+  // Override the base-class mid-call camera swap. The base impl mutates
+  // `streamManager.inputStream`, but for P2P calls `streamManager` is just a
+  // placeholder kept around for `CallInstanceBase.cleanup()` — the real
+  // media state lives on `this.p2p` (own streams, transceivers, senders).
+  // Without this override the picker call early-returns at `!oldTrack`
+  // because streamManager has no input tracks.
+  //
+  // The post-await `!this.p2p` check is critical for camera-release: the
+  // user can hang up during the (~200ms) `getUserMedia` window, after which
+  // `stopPhoneCall` nulls `this.p2p`. Without this guard the next line
+  // would dereference the cleared p2p, throw, and leave `newStream` LIVE —
+  // camera LED stays on after the call ends.
+  public async setInputVideoDeviceId(deviceId: string): Promise<void> {
+    if(!this.p2p || !this.isSharingVideo) return;
+    const sender = this.p2p.senders.video;
+    if(!sender) return;
+
+    let newStream: MediaStream;
+    try {
+      newStream = await getStream({
+        video: deviceId ? {deviceId: {exact: deviceId}} : true
+      });
+    } catch(err) {
+      this.log?.warn?.('setInputVideoDeviceId getUserMedia failed', err);
+      return;
+    }
+
+    if(!this.p2p || this.isClosing) {
+      newStream.getTracks().forEach((t) => t.stop());
+      return;
+    }
+
+    const newTrack = newStream.getVideoTracks()[0];
+    const oldStream = this.p2p.streams.ownVideo;
+    const oldTrack = oldStream?.getVideoTracks()[0];
+    if(!newTrack || !oldTrack) {
+      newStream.getTracks().forEach((t) => t.stop());
+      return;
+    }
+
+    try {
+      await sender.replaceTrack(newTrack);
+    } catch(err) {
+      this.log?.warn?.('setInputVideoDeviceId replaceTrack failed', err);
+      newStream.getTracks().forEach((t) => t.stop());
+      return;
+    }
+
+    // The `replaceTrack` itself was async — re-check after it resolves.
+    if(!this.p2p || this.isClosing) {
+      newStream.getTracks().forEach((t) => t.stop());
+      return;
+    }
+
+    // Stop the OLD getUserMedia stream so the camera light goes out — but
+    // not the reused black/silence fallbacks the engine keeps around.
+    if(oldStream && oldStream !== this.p2p.blackVideo && oldStream !== this.p2p.blackPresentation) {
+      oldStream.getTracks().forEach((t) => t.stop());
+    }
+
+    this.p2p.streams.ownVideo = newStream;
+
+    // Re-point the local <video> the popup is showing at the new stream so
+    // the user sees the swap immediately. getVideoElement('input') normally
+    // updates srcObject lazily on mediaState changes; doing it inline avoids
+    // the next render gap.
+    const inputEl = this.videoElements.get('input');
+    if(inputEl) {
+      inputEl.srcObject = newStream;
+    }
+
+    this.updateStreams();
+    this.sendLocalMediaState();
+  }
+
+  // Mirrors setInputVideoDeviceId for the microphone. The base impl uses
+  // streamManager.replaceInputAudio which the P2P engine ignores; we need
+  // to swap the real sender track and update `p2p.streams.ownAudio`. Same
+  // `!this.p2p` guard after each await — without it a hang-up during the
+  // device picker resolution leaks the just-acquired mic stream.
+  public async setInputAudioDeviceId(deviceId: string): Promise<void> {
+    if(!this.p2p || this.isMuted) return;
+    const sender = this.p2p.senders.audio;
+    if(!sender) return;
+
+    let newStream: MediaStream;
+    try {
+      newStream = await getStream({
+        audio: deviceId ? {deviceId: {exact: deviceId}} : true
+      });
+    } catch(err) {
+      this.log?.warn?.('setInputAudioDeviceId getUserMedia failed', err);
+      return;
+    }
+
+    if(!this.p2p || this.isClosing) {
+      newStream.getTracks().forEach((t) => t.stop());
+      return;
+    }
+
+    const newTrack = newStream.getAudioTracks()[0];
+    const oldStream = this.p2p.streams.ownAudio;
+    const oldTrack = oldStream?.getAudioTracks()[0];
+    if(!newTrack || !oldTrack) {
+      newStream.getTracks().forEach((t) => t.stop());
+      return;
+    }
+
+    try {
+      await sender.replaceTrack(newTrack);
+    } catch(err) {
+      this.log?.warn?.('setInputAudioDeviceId replaceTrack failed', err);
+      newStream.getTracks().forEach((t) => t.stop());
+      return;
+    }
+
+    if(!this.p2p || this.isClosing) {
+      newStream.getTracks().forEach((t) => t.stop());
+      return;
+    }
+
+    if(oldStream && oldStream !== this.p2p.silence) {
+      oldStream.getTracks().forEach((t) => t.stop());
+    }
+
+    this.p2p.streams.ownAudio = newStream;
+    this.updateStreams();
+    this.sendLocalMediaState();
+  }
+
   // Serializes data-channel signaling messages so they are processed in order.
   private dataChannelSignalingMessagePromise: Promise<void>;
 
@@ -294,6 +444,15 @@ export default class CallInstance extends CallInstanceBase<{
       element.autoplay = true;
       element.muted = true;
       element.setAttribute('playsinline', 'true');
+      // Mirror own + remote video to match the project-wide convention set
+      // by callInstanceBase.tryAddTrack — both halves of the P2P call read
+      // as "looking in a mirror" for visual consistency.
+      // Rear-facing camera (`facingMode === 'environment'`) stays un-mirrored;
+      // see the matching comment in callInstanceBase.tryAddTrack.
+      const track = stream.getVideoTracks()[0];
+      if(shouldMirrorVideoTrack(track)) {
+        element.classList.add('call-video-mirror');
+      }
       this.videoElements.set(type, element);
     }
 

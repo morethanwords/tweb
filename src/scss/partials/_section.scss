@@ -12,6 +12,10 @@
       box-shadow: none;
     }
 
+    &.no-margin-bottom {
+      margin-bottom: 0;
+    }
+
     &-content {
       margin: 0 var(--section-margin-inline);
 

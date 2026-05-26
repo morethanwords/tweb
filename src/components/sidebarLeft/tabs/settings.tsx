@@ -8,6 +8,7 @@ import {
   AppKeyboardShortcutsTab,
   AppLanguageTab,
   AppNotificationsTab,
+  AppSpeakersAndCameraTab,
   getEditProfileInitArgs
 } from '@components/solidJsTabs';
 import lottieLoader from '@lib/rlottie/lottieLoader';
@@ -121,7 +122,8 @@ const Settings = () => {
     makeSubTabConfig('lock', 'AccountSettings.PrivacyAndSecurity', AppPrivacyAndSecurityTab, tab),
     makeSubTabConfig('settings', 'Telegram.GeneralSettingsViewController', AppGeneralSettingsTab, tab),
     makeSubTabConfig('folder', 'AccountSettings.Filters', AppChatFoldersTab, tab),
-    makeSubTabConfig('stickers_face', 'StickersName', AppStickersAndEmojiTab, tab)
+    makeSubTabConfig('stickers_face', 'StickersName', AppStickersAndEmojiTab, tab),
+    makeSubTabConfig('videocamera', 'AccountSettings.SpeakersAndCamera', AppSpeakersAndCameraTab, tab)
   ];
 
   const onSubTabClick = (item: SubTabConfig) => async() => {

@@ -14,6 +14,7 @@ import {
   AppPrivacyMessagesTab,
   AppPasskeysTab,
   AppSettingsTab,
+  AppSpeakersAndCameraTab,
   getEditProfileInitArgs
 } from '@components/solidJsTabs/tabs';
 
@@ -37,5 +38,6 @@ export {
   AppPrivacyMessagesTab,
   AppPasskeysTab,
   AppSettingsTab,
+  AppSpeakersAndCameraTab,
   getEditProfileInitArgs
 };

@@ -30,6 +30,7 @@ import groupCallsController from '@lib/calls/groupCallsController';
 import {render} from 'solid-js/web';
 import {createSignal} from 'solid-js';
 import FingerprintBadge from '@components/conferenceCall/fingerprintBadge';
+import showCallSettingsPopup from '@components/call/settingsPopup';
 
 export enum GROUP_CALL_PARTICIPANT_MUTED_STATE {
   UNMUTED,
@@ -336,10 +337,13 @@ export default class PopupGroupCall extends PopupElement {
 
     const btnMore = _makeButton({
       // text: 'VoiceChat.Video.Stream.More'
-      icon: 'settings_filled'
+      icon: 'settings_filled',
+      callback: this.onMoreClick
     });
 
-    btnMore.classList.add('btn-disabled');
+    // Match the legacy positioning that used to hide btnMore behind the
+    // (also gated) screen-sharing toggle. Keeping the same gate avoids
+    // re-laying out the button row on platforms without screen capture.
     btnMore.classList.toggle('hide', !IS_SCREEN_SHARING_SUPPORTED);
 
     const btnLeave = _makeButton({
@@ -388,6 +392,11 @@ export default class PopupGroupCall extends PopupElement {
     } else {
       this.instance.toggleMuted();
     }
+  };
+
+  private onMoreClick = async() => {
+    const canManage = await this.managers.appChatsManager.hasRights(this.instance.chatId, 'manage_call');
+    showCallSettingsPopup({mode: 'groupCall', instance: this.instance, canManage});
   };
 
   private onLeaveClick = async() => {

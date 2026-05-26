@@ -598,6 +598,22 @@ export default class GroupCallInstance extends CallInstanceBase<{
     }
 
     stopTrack(track);
+    // `stopTrack` only flips `readyState` to "ended"; the StreamItem and the
+    // track stay in `streamManager` until the asynchronous `ended` event
+    // listener fires later. We do it synchronously here so that:
+    //   1. `isSharingVideo` (which reads streamManager.items) flips to
+    //      `false` immediately — without this, a fast follow-up
+    //      toggleVideoSharing() click reads stale `true` and ends up calling
+    //      stopVideoSharing() again instead of startVideoSharing(), and the
+    //      toggle "does nothing".
+    //   2. `appendToConference` below iterates `inputStream.getTracks()` to
+    //      pick a replacement; if the stopped track is still listed, it
+    //      replaces senders with the stopped track instead of `undefined`
+    //      (the "clear sender" comment) — and remote sees a frozen frame
+    //      until the next negotiation. Removing it makes `findIndex` return
+    //      -1, so `appendToConference` correctly clears the sender.
+    // The async `ended` listener still fires later; removeTrack is idempotent.
+    connectionInstance.streamManager.removeTrack(track);
     connectionInstance.streamManager.appendToConference(connectionInstance.description); // clear sender track
 
     await this.editParticipant(this.participant, {
@@ -612,6 +628,29 @@ export default class GroupCallInstance extends CallInstanceBase<{
       return this.startVideoSharing();
     }
   }
+
+  // CallInstanceBase hook for mid-call device swap. Walks every connection
+  // we own (main + presentation) so screen-sharing keeps working when the
+  // user picks a different camera while presenting. Quietly skips
+  // connections that aren't up yet — the next negotiation will pick up the
+  // new track from streamManager.appendToConference instead.
+  protected replaceSenderTrack(
+    kind: 'audio' | 'video',
+    oldTrack: MediaStreamTrack,
+    newTrack: MediaStreamTrack
+  ): void {
+    for(const type in this.connections) {
+      const connectionInstance = this.connections[type as GroupCallConnectionType];
+      const connection = connectionInstance?.connection;
+      if(!connection) continue;
+      for(const sender of connection.getSenders()) {
+        if(sender.track === oldTrack) {
+          sender.replaceTrack(newTrack).catch((err) => this.log?.warn?.('replaceSenderTrack', err));
+        }
+      }
+    }
+  }
+
 
   public async hangUp(discard = false, rejoin = false, isDiscarded = false) {
     for(const type in this.connections) {

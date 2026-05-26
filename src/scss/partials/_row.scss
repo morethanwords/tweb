@@ -208,7 +208,7 @@ $row-border-radius: $border-radius-medium;
 
   &-title-right,
   &-subtitle-right {
-    flex: 0 0 auto !important;
+    flex: 0 99999 auto !important;
     margin-inline-start: 1rem;
   }
 

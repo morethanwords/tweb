@@ -516,4 +516,35 @@ export class AppGroupCallsManager extends AppManager {
 
     this.apiUpdatesManager.processUpdateMessage(updates);
   }
+
+  // Wraps phone.toggleGroupCallSettings — used by the in-call settings popup
+  // to flip "Mute new participants" mid-call. Server returns an Updates set
+  // that contains an updateGroupCall with the new join_muted flag; pushing it
+  // through apiUpdatesManager lets every open UI (this popup, sidebars, etc.)
+  // see the change via the existing group_call_update event.
+  public async toggleGroupCallSettings(id: GroupCallId, options: {
+    joinMuted?: boolean,
+    resetInviteHash?: boolean
+  }) {
+    const updates = await this.apiManager.invokeApi('phone.toggleGroupCallSettings', {
+      call: this.getGroupCallInput(id),
+      join_muted: options.joinMuted,
+      reset_invite_hash: options.resetInviteHash
+    });
+
+    this.apiUpdatesManager.processUpdateMessage(updates);
+  }
+
+  // Wraps phone.exportGroupCallInvite. `can_self_unmute` mirrors the listener
+  // / speaker distinction tdesktop draws in lng_group_call_share — for now we
+  // expose only the speaker variant (canSelfUnmute = true) since the in-call
+  // settings popup has no separate listener-link affordance.
+  public async exportGroupCallInvite(id: GroupCallId, canSelfUnmute?: boolean) {
+    const result = await this.apiManager.invokeApiSingle('phone.exportGroupCallInvite', {
+      call: this.getGroupCallInput(id),
+      can_self_unmute: canSelfUnmute
+    });
+
+    return result.link;
+  }
 }

@@ -409,8 +409,7 @@ PopupElement.CloseButton = (props: {
 
 PopupElement.Body = (props: {
   children: JSX.Element,
-  class?: string,
-  scrollable?: boolean
+  class?: string
 }) => {
   return useContext(PopupContext).register('body', (
     <div class={classNames('popup-body', props.class)}>
@@ -455,6 +454,12 @@ PopupElement.Footer = (props: {
       {props.children}
     </div>
   ));
+};
+
+PopupElement.FooterPlaceholder = () => {
+  return (
+    <div class="popup-footer-placeholder" />
+  );
 };
 
 PopupElement.FooterButton = (

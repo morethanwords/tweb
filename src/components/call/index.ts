@@ -14,9 +14,11 @@ import CallInstance from '@lib/calls/callInstance';
 import CALL_STATE from '@lib/calls/callState';
 import I18n, {i18n} from '@lib/langPack';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import {animateValue} from '@helpers/animateValue';
 import animationIntersector from '@components/animationIntersector';
 import {avatarNew} from '@components/avatarNew';
 import ButtonIcon from '@components/buttonIcon';
+import ChatBackgroundGradientRenderer from '@components/chat/gradientRenderer';
 import GroupCallMicrophoneIconMini from '@components/groupCall/microphoneIconMini';
 import {MovableState} from '@components/movableElement';
 import PeerTitle from '@components/peerTitle';
@@ -25,6 +27,17 @@ import SetTransition from '@components/singleTransition';
 import makeButton from '@components/call/button';
 import CallDescriptionElement from '@components/call/description';
 import callVideoCanvasBlur from '@components/call/videoCanvasBlur';
+import showCallSettingsPopup from '@components/call/settingsPopup';
+
+// iOS PrivateCallScreen colour palettes (CallBackgroundLayer.swift).
+// 4 colours per state; ChatBackgroundGradientRenderer expects exactly 4 to
+// reproduce the Telegram "swirl" gradient.
+const GRADIENT_COLORS = {
+  connecting: '568fd6,626ed5,a667d5,7664da',
+  active:     'acbd65,459f8d,53a4d1,3e917a',
+  weak:       'c0508d,f09536,ce5081,fc7c4c'
+};
+type GradientStateKey = keyof typeof GRADIENT_COLORS;
 
 const className = 'call';
 
@@ -58,12 +71,24 @@ export default class PopupCall extends PopupElement {
   private btnVideo: HTMLElement;
   private btnScreen: HTMLElement;
   private btnMute: HTMLElement;
+  private btnSettings: HTMLButtonElement;
   private btnFullScreen: HTMLButtonElement;
   private btnExitFullScreen: HTMLButtonElement;
 
   private movablePanel: MovablePanel;
   private microphoneIcon: GroupCallMicrophoneIconMini;
   private muteI18nElement: I18n.IntlElement;
+
+  // One renderer per gradient state. All three drift continuously; only the
+  // canvas matching `gradientState` is opaque, the others sit at opacity 0
+  // and crossfade in/out on state change. Pre-warming all of them means the
+  // newly-revealed canvas already has a live, moving gradient — no "static
+  // until first tick" pop during the fade.
+  private gradientRenderers: Record<GradientStateKey, ChatBackgroundGradientRenderer>;
+  private gradientCanvases: Record<GradientStateKey, HTMLCanvasElement>;
+  private gradientCancels: Partial<Record<GradientStateKey, () => void>>;
+  private gradientState: GradientStateKey;
+  private gradientHideTimeout: number;
 
   private videoContainers: {
     input?: HTMLElement,
@@ -109,7 +134,54 @@ export default class PopupCall extends PopupElement {
     const emojisSubtitle = this.emojisSubtitle = document.createElement('div');
     emojisSubtitle.classList.add(className + '-emojis');
 
-    container.append(avatarContainer, title, subtitle);
+    // iOS-style gradient backdrop. Uses the same renderer as chat backgrounds
+    // (Telegram "swirl" gradient): 50×50 ImageData blended in JS, stretched
+    // via CSS to fill the popup. `toNextPosition(getProgress)` is the same
+    // pattern passcodeLockScreen.tsx uses — `animateValue` drives a 0→1
+    // progress value with LINEAR easing (constant speed; the renderer's
+    // default ease-in-out makes the swirl jerk between positions) and
+    // chains itself via `onEnd` so each tick fires the moment the previous
+    // one settles — continuous drift, no gap, no overlap.
+    //
+    // Pre-warm one canvas + renderer per state and stack them. State change
+    // is a CSS opacity crossfade between the layered canvases.
+    this.gradientState = 'connecting';
+    this.gradientRenderers = {} as Record<GradientStateKey, ChatBackgroundGradientRenderer>;
+    this.gradientCanvases = {} as Record<GradientStateKey, HTMLCanvasElement>;
+    this.gradientCancels = {};
+    for(const key of Object.keys(GRADIENT_COLORS) as GradientStateKey[]) {
+      const created = ChatBackgroundGradientRenderer.create(GRADIENT_COLORS[key]);
+      created.canvas.classList.add(className + '-gradient');
+      if(key !== this.gradientState) {
+        created.canvas.classList.add('is-hidden');
+      }
+      container.append(created.canvas);
+      this.gradientCanvases[key] = created.canvas;
+      this.gradientRenderers[key] = created.gradientRenderer;
+      this.tickGradient(key);
+    }
+
+    // Avatar / name / duration live in a centred column when there is no
+    // video. With video, the column slides to the top and shrinks. The
+    // wrapper makes that a single transform target instead of having to
+    // animate each element separately.
+    const info = document.createElement('div');
+    info.classList.add(className + '-info');
+    info.append(avatarContainer, title, subtitle);
+    container.append(info);
+
+    // Two right-side button groups in the header: a slot for the encryption
+    // emojis (center) and an action cluster (settings + fullscreen) so they
+    // stay glued together on the right edge regardless of how many of them
+    // are visible at a time.
+    const headerActions = document.createElement('div');
+    headerActions.classList.add(className + '-header-actions');
+
+    this.btnSettings = ButtonIcon('settings_filled');
+    attachClickEvent(this.btnSettings, () => {
+      showCallSettingsPopup({mode: 'p2p', instance: this.instance});
+    }, {listenerSetter});
+    headerActions.append(this.btnSettings);
 
     if(!IS_MOBILE) {
       this.btnFullScreen = ButtonIcon('fullscreen');
@@ -117,13 +189,13 @@ export default class PopupCall extends PopupElement {
       attachClickEvent(this.btnFullScreen, this.onFullScreenClick, {listenerSetter});
       attachClickEvent(this.btnExitFullScreen, () => cancelFullScreen(), {listenerSetter});
       addFullScreenListener(this.container, this.onFullScreenChange, listenerSetter);
-      this.header.prepend(this.btnExitFullScreen);
-      this.header.append(this.btnFullScreen);
-
-      container.append(emojisSubtitle);
-    } else {
-      this.header.append(emojisSubtitle);
+      headerActions.append(this.btnExitFullScreen, this.btnFullScreen);
     }
+
+    // Header layout: close (left, auto-added by PopupElement), emojis
+    // (center), action cluster (right).
+    this.header.append(emojisSubtitle);
+    this.header.append(headerActions);
 
     this.partyStates = document.createElement('div');
     this.partyStates.classList.add(className + '-party-states');
@@ -196,6 +268,22 @@ export default class PopupCall extends PopupElement {
 
       this.microphoneIcon.destroy();
 
+      // Stop every state's rAF loop and tear down the renderers. Nulling
+      // `gradientRenderers` first stops any late `tickGradient` from
+      // re-arming itself.
+      if(this.gradientHideTimeout !== undefined) {
+        clearTimeout(this.gradientHideTimeout);
+        this.gradientHideTimeout = undefined;
+      }
+      for(const key of Object.keys(this.gradientCancels) as GradientStateKey[]) {
+        this.gradientCancels[key]?.();
+      }
+      this.gradientCancels = {};
+      for(const renderer of Object.values(this.gradientRenderers || {})) {
+        renderer.cleanup();
+      }
+      this.gradientRenderers = undefined;
+
       movablePanel.destroy();
     });
 
@@ -205,6 +293,96 @@ export default class PopupCall extends PopupElement {
   public getCallInstance() {
     return this.instance;
   }
+
+  // Sequenced crossfade between pre-warmed gradient canvases:
+  //   1. Bump the new canvas's z-index so it stacks ABOVE the previous one
+  //      during the fade.
+  //   2. Reveal it (`is-hidden` → off) — opacity 0 → 1 over the CSS
+  //      transition. The previous canvas stays at opacity 1 underneath, so
+  //      the user always sees a fully-opaque gradient — no half-and-half
+  //      composite over the popup's dark background (that's what made the
+  //      old simultaneous-fade flash black mid-transition).
+  //   3. After the new canvas finishes fading in, hide the previous one. By
+  //      then it's fully covered, so its 1→0 fade-down is imperceptible.
+  //
+  // Uses z-index rather than `parentElement.append(node)` because moving the
+  // canvas in the DOM commits the previous opacity in the same paint as the
+  // class flip — the browser sees no "from" value to transition from and
+  // snaps the new canvas to opacity 1 in one frame. Z-index changes don't
+  // disturb the transition baseline.
+  //
+  // The hide timeout is tracked so a rapid follow-up state change cancels
+  // the pending hide of an intermediate state (and re-uses its canvas).
+  private setGradientState(next: GradientStateKey) {
+    if(next === this.gradientState) return;
+    const prev = this.gradientState;
+    this.gradientState = next;
+
+    const prevCanvas = this.gradientCanvases?.[prev];
+    const nextCanvas = this.gradientCanvases?.[next];
+    if(!prevCanvas || !nextCanvas) return;
+
+    // Layer the new canvas above the previous one for the duration of the
+    // fade. Both stay BELOW the video container (z -1) and the avatar /
+    // buttons / header (z 0+) — the SCSS default is z -3 so we promote to
+    // -2 for the next gradient and leave prev / others at -3.
+    for(const key of Object.keys(this.gradientCanvases) as GradientStateKey[]) {
+      const canvas = this.gradientCanvases[key];
+      canvas.style.zIndex = key === next ? '-2' : '';
+    }
+
+    // Force the browser to commit the current `is-hidden` state (opacity 0)
+    // as the transition baseline before we toggle it off. Without this read
+    // the next `is-hidden` removal and the toggle land in the same paint
+    // and the canvas snaps to opacity 1 with no fade.
+    void nextCanvas.offsetWidth;
+    nextCanvas.classList.remove('is-hidden');
+
+    // Cancel any pending hide from a prior transition — the canvas it was
+    // meant to hide may now be the active one.
+    if(this.gradientHideTimeout !== undefined) {
+      clearTimeout(this.gradientHideTimeout);
+      this.gradientHideTimeout = undefined;
+    }
+
+    const FADE_MS = 600;
+    this.gradientHideTimeout = window.setTimeout(() => {
+      this.gradientHideTimeout = undefined;
+      // Skip if the state has flipped back to `prev` since we scheduled
+      // (i.e. prev is now the active canvas).
+      if(this.gradientState === prev) return;
+      prevCanvas.classList.add('is-hidden');
+    }, FADE_MS + 50);
+  }
+
+  // Ambient gradient motion for one state's canvas. Chained — when one
+  // `toNextPosition` finishes (animateValue's `onEnd`) the next tick fires
+  // immediately, so the gradient drifts continuously without gaps or
+  // overlap. Each state has its own cancel handle so `close` can drop all
+  // three rAF loops independently.
+  //
+  // The progress value is pre-warped to undo the renderer's internal
+  // `easeOutQuadApply`. Without this, even with `animateValue`'s linear
+  // easing the gradient still slows at the end of each 2s tick and jumps
+  // back to full speed when the next tick starts — visible as a hitching
+  // motion. The renderer computes `transitionValue = 2v - v²`; setting
+  // `v = 1 - sqrt(1 - t)` makes `transitionValue ≡ t`, i.e. constant tail
+  // velocity, i.e. constant-speed drift.
+  private tickGradient = (state: GradientStateKey) => {
+    const renderer = this.gradientRenderers?.[state];
+    if(!renderer) return;
+    let progress = 0;
+    this.gradientCancels[state] = animateValue(0, 1, 2000, (t) => {
+      progress = 1 - Math.sqrt(1 - t);
+    }, {
+      easing: (p) => p,
+      onEnd: () => {
+        this.gradientCancels[state] = undefined;
+        this.tickGradient(state);
+      }
+    });
+    renderer.toNextPosition(() => progress);
+  };
 
   private constructFirstButtons() {
     const buttons = this.firstButtonsRow = document.createElement('div');
@@ -353,6 +531,13 @@ export default class PopupCall extends PopupElement {
       this.hide();
       return;
     }
+
+    // Drive the gradient palette — mirrors iOS PrivateCallScreen:
+    // - connecting (purple/blue) for any pre-connected state
+    // - active (green/teal) once both sides are talking
+    // The weak-signal palette (warm orange/pink) is defined in GRADIENT_COLORS
+    // for the day we surface a quality metric; not yet triggered.
+    this.setGradientState(connectionState === CALL_STATE.CONNECTED ? 'active' : 'connecting');
 
     const isPendingIncoming = !instance.isOutgoing && connectionState === CALL_STATE.PENDING;
     this.declineI18nElement.compareAndUpdate({

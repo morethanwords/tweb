@@ -141,6 +141,22 @@ export type StateSettings = {
     textStyle?: string;
     textFont?: FontKey;
   },
+  // Persisted device choices for the audio/video stack used by the
+  // SettingsCallsPanel ("Speakers and Camera" tab) and the per-call settings
+  // popup. Empty string = follow the OS default (no setSinkId / no deviceId
+  // constraint). `micVolume` is a 0..2 multiplier applied to the captured
+  // input via a GainNode in StreamManager; 1 = unity.
+  callDevices: {
+    speakerId: string,
+    microphoneId: string,
+    cameraId: string,
+    micVolume: number,
+    // Whether to apply the browser's `noiseSuppression` constraint when
+    // requesting a microphone stream. Skipped if the browser doesn't
+    // advertise support (`IS_NOISE_SUPPRESSION_SUPPORTED`). Default true
+    // matches tdesktop / the legacy behavior before this flag existed.
+    noiseSuppression: boolean
+  },
 };
 
 // (1 - use swatch, 2 - use picker color), (color from swatch), (color from picker)
@@ -501,6 +517,13 @@ export const SETTINGS_INIT: StateSettings = {
   showArchiveInChatList: true,
   mediaEditor: {
     colorByBrush: {}
+  },
+  callDevices: {
+    speakerId: '',
+    microphoneId: '',
+    cameraId: '',
+    micVolume: 1,
+    noiseSuppression: true
   }
 };
 
