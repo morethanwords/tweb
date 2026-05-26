@@ -130,10 +130,16 @@ export default class ChatTopbar {
     this.container.classList.add('sidebar-header', 'topbar', 'hide');
     this.container.dataset.floating = '0';
 
-    this.btnBack = ButtonIcon('left sidebar-close-button', {noRipple: true});
-    this.btnBackBadge = createBadge('span', 20, 'primary');
-    this.btnBackBadge.classList.add('back-unread-badge');
-    this.btnBack.append(this.btnBackBadge);
+    // Preview mode swaps the back arrow for a close icon — the popup wires this up to its
+    // own hide() via `chat.onPreviewClose`, and the folder back-unread badge is irrelevant
+    // here (there's no folder navigation behind a floating preview).
+    const backIcon = this.chat.isPreview ? 'close' : 'left';
+    this.btnBack = ButtonIcon(`${backIcon} sidebar-close-button`, {noRipple: true});
+    if(!this.chat.isPreview) {
+      this.btnBackBadge = createBadge('span', 20, 'primary');
+      this.btnBackBadge.classList.add('back-unread-badge');
+      this.btnBack.append(this.btnBackBadge);
+    }
 
     // * chat info section
     this.chatInfoContainer = document.createElement('div');
@@ -220,12 +226,18 @@ export default class ChatTopbar {
     this.pushButtonToVerify(this.btnGroupCall, this.verifyVideoChatButton.bind(this, 'nonadmin'));
     this.pushButtonToVerify(this.btnGroupCallMenu, this.verifyRtmpButton.bind(this));
 
-    this.chatInfoContainer.append(this.btnBack, this.chatInfo, this.chatUtils);
+    // Preview keeps only the basic header — avatar + title + subtitle. The chat-utils
+    // pane (search / menu buttons) and the floating-plates wrapper (call / pinned /
+    // translation / action bar) are built so the rest of the JS can call methods on
+    // them, but never attached to the live DOM tree. They sit detached, so nothing
+    // visible leaks into the popup.
+    this.chatInfoContainer.append(this.btnBack, this.chatInfo);
+    if(!this.chat.isPreview) this.chatInfoContainer.append(this.chatUtils);
     this.container.append(this.chatInfoContainer);
 
     this.floatingPlatesWrapper = document.createElement('div');
     this.floatingPlatesWrapper.classList.add('topbar-floating-plates', 'hide');
-    this.container.append(this.floatingPlatesWrapper);
+    if(!this.chat.isPreview) this.container.append(this.floatingPlatesWrapper);
 
     if(this.pinnedMessage) {
       this.appendPinnedMessage(this.pinnedMessage);
@@ -272,6 +284,11 @@ export default class ChatTopbar {
     const onBtnBackClick = (e?: Event) => {
       if(e) {
         cancelEvent(e);
+      }
+
+      if(this.chat.isPreview) {
+        this.chat.onPreviewClose?.();
+        return;
       }
 
       if(this.chat.type === ChatType.Search) {
@@ -978,7 +995,7 @@ export default class ChatTopbar {
     this.attachClickEvent(this.btnConference, this.onStartConferenceClick);
 
     this.listenerSetter.add(rootScope)('folder_unread', (folder) => {
-      if(folder.id !== FOLDER_ID_ALL) {
+      if(!this.btnBackBadge || folder.id !== FOLDER_ID_ALL) {
         return;
       }
 
@@ -1529,6 +1546,12 @@ export default class ChatTopbar {
   }
 
   public setFloating = () => {
+    // Preview omits `floatingPlatesWrapper` from the live DOM (see `construct`). The plate
+    // controllers still exist for the rest of the code, and a peer with a pinned message
+    // would mark the pinnedMessage plate visible — its hardcoded `height: 48` + TOPBAR_GAP
+    // would leak into `--pinned-floating-height` / `pinnedFloatingHeightPx` and inflate
+    // `bubbles-padding-top` from 56 to 112 above the first message. Bail early.
+    if(this.chat.isPreview) return;
     const containers = [
       this.pinnedMessage,
       ...(this.plates?.all || [])

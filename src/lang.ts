@@ -3478,6 +3478,7 @@ const lang = {
   'ChatList.Context.LeaveChannel': 'Leave Channel',
   'ChatList.Context.LeaveGroup': 'Leave Group',
   'ChatList.Context.LeaveMonoforum': 'Leave Conversation',
+  'ChatList.Context.Preview': 'Preview',
   'ChatList.Service.Call.incoming': 'Incoming Call (%@)',
   'ChatList.Service.Call.outgoing': 'Outgoing Call (%@)',
   'ChatList.Service.VideoCall.incoming': 'Incoming Video Call (%@)',

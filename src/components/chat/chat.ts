@@ -117,6 +117,20 @@ export default class Chat extends EventListenerBase<{
 
   public noForwards: boolean;
 
+  /**
+   * Preview mode (Shift+Click on a dialog). The chat renders messages and background
+   * but performs no side effects — no readHistory / readMessages / incrementMessageViews,
+   * and no global background swap (the preview popup paints its own).
+   */
+  public isPreview: boolean;
+
+  /**
+   * Set by the preview popup before `setPeer` so the topbar's close button (rendered with a
+   * `close` icon instead of `back` in preview mode) tears down the popup instead of running
+   * `chat.pop()` against `appImManager.chat`.
+   */
+  public onPreviewClose?: () => void;
+
   public inited: boolean;
 
   public isRestricted: boolean;
@@ -300,11 +314,16 @@ export default class Chat extends EventListenerBase<{
     // this.bubbles.animateSomethingWithScroll(promise, scrollSaver);
   }
 
-  private recomputePaddings() {
+  public recomputePaddings() {
     // const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
     const rem = 16;
-    const top = Math.round(4.5 * rem + this.pinnedFloatingHeightPx);
-    const bottom = Math.round(4 * rem + this.chatInputSurplusPx);
+    // Main chat reserves 4.5rem above + 4rem below for the floating topbar / pinned-plate
+    // buffer and the chat-input plate. The preview shows neither — only the basic 3rem
+    // topbar — so collapse to topbar-height + 0.5rem (page-chats-padding) on each side.
+    const topBase = this.isPreview ? 3.5 : 4.5;
+    const bottomBase = this.isPreview ? 3.5 : 4;
+    const top = Math.round(topBase * rem + this.pinnedFloatingHeightPx);
+    const bottom = Math.round(bottomBase * rem + this.chatInputSurplusPx);
     this.chatPaddingTop[1](top);
     this.chatPaddingBottom[1](bottom);
     if(this.bubbles?.paddingTop) this.bubbles.paddingTop.style.height = top + 'px';
@@ -525,7 +544,7 @@ export default class Chat extends EventListenerBase<{
   }
 
   private handleBackgrounds() {
-    if(this.type === ChatType.Stories) {
+    if(this.type === ChatType.Stories || this.isPreview) {
       return Promise.resolve(noop);
     }
 
@@ -582,17 +601,21 @@ export default class Chat extends EventListenerBase<{
       }
     });
 
-    this.bubbles.listenerSetter.add(rootScope)('dialog_drop', (dialog) => {
-      if(dialog.peerId === this.peerId && (isDialog(dialog) || this.threadId === getDialogKey(dialog))) {
-        this.appImManager.setPeer({isDeleting: true});
-      }
-    });
+    if(!this.isPreview) {
+      // Preview popup owns its own lifecycle — these callbacks talk to the main appImManager
+      // and would close the *real* chat behind the popup if the previewed dialog got dropped.
+      this.bubbles.listenerSetter.add(rootScope)('dialog_drop', (dialog) => {
+        if(dialog.peerId === this.peerId && (isDialog(dialog) || this.threadId === getDialogKey(dialog))) {
+          this.appImManager.setPeer({isDeleting: true});
+        }
+      });
 
-    this.bubbles.listenerSetter.add(rootScope)('monoforum_dialogs_drop', ({ids, parentPeerId}) => {
-      if(parentPeerId === this.peerId && ids.includes(this.monoforumThreadId)) {
-        this.appImManager.setPeer({isDeleting: true});
-      }
-    });
+      this.bubbles.listenerSetter.add(rootScope)('monoforum_dialogs_drop', ({ids, parentPeerId}) => {
+        if(parentPeerId === this.peerId && ids.includes(this.monoforumThreadId)) {
+          this.appImManager.setPeer({isDeleting: true});
+        }
+      });
+    }
 
     this.bubbles.listenerSetter.add(rootScope)('chat_update', async(chatId) => {
       const {peerId} = this;

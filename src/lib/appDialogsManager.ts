@@ -78,6 +78,7 @@ import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId'
 import AppChatFoldersTab from '@components/sidebarLeft/tabs/chatFolders';
 import eachTimeout from '@helpers/eachTimeout';
 import PopupSharedFolderInvite from '@components/popups/sharedFolderInvite';
+import showChatPreviewPopup, {chatPreviewAnchorFromDialogRow} from '@components/popups/chatPreview';
 import showLimitPopup from '@components/popups/limit';
 import StoriesList from '@components/stories/list';
 import {render} from 'solid-js/web';
@@ -1804,6 +1805,22 @@ export class AppDialogsManager {
       }
 
       if(onFound?.(elem) === false) {
+        return;
+      }
+
+      // Shift+click → floating chat preview (tdesktop-style). Bypasses chat selection and
+      // forum-tab toggling. Ctrl/Cmd (new-tab) takes precedence and is handled below.
+      // Snapshot the anchor *now* — virtual scroll reuses DOM nodes and may yank this
+      // element offscreen by the time the popup constructor runs.
+      if(e.shiftKey && !e.ctrlKey && !e.metaKey && !autonomous) {
+        showChatPreviewPopup({
+          peerId: monoforumParentPeerId || peerId,
+          monoforumThreadId: monoforumParentPeerId ? peerId : undefined,
+          threadId,
+          lastMsgId,
+          anchor: chatPreviewAnchorFromDialogRow(elem)
+        });
+        cancelEvent(e);
         return;
       }
 
