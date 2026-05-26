@@ -650,8 +650,6 @@ export class AppMessagesManager extends AppManager {
 
       updateMessageReactions: this.onUpdateMessageReactions,
 
-      updateMessagePollVote: this.onUpdateMessagePollVote,
-
       updateReadChannelDiscussionInbox: this.onUpdateReadHistory,
       updateReadChannelDiscussionOutbox: this.onUpdateReadHistory,
       updateReadHistoryInbox: this.onUpdateReadHistory,
@@ -6483,7 +6481,7 @@ export class AppMessagesManager extends AppManager {
     }
   }
 
-  private modifyCachedMentionsAndSave(options: GetUnreadMentionsOptions & {mid: number, addMention?: boolean | number, addReaction?: boolean | number, addPollVote?: boolean | number}) {
+  public modifyCachedMentionsAndSave(options: GetUnreadMentionsOptions & {mid: number, addMention?: boolean | number, addReaction?: boolean | number, addPollVote?: boolean | number}) {
     const dialog = this.dialogsStorage.getAnyDialog(options.peerId, options.threadId) as Dialog | ForumTopic;
     if(!dialog) {
       return;
@@ -7668,60 +7666,6 @@ export class AppMessagesManager extends AppManager {
     this.modifyMessage(message, (message) => {
       message.reactions = reactions;
     }, undefined, update.local);
-  };
-
-  private onUpdateMessagePollVote = (update: Update.updateMessagePollVote) => {
-    const {poll_id, peer: voterPeer} = update;
-
-    // updateMessagePollVote is delivered to the creator of a non-anonymous poll
-    // whenever someone votes. It carries the voter peer and the poll id, but no
-    // msg_id — we resolve the message(s) via appPollsManager.pollToMessages.
-    const pollMessageKeys = this.appPollsManager.pollToMessages[poll_id];
-    if(!pollMessageKeys?.size) {
-      return;
-    }
-
-    const voterPeerId = this.appPeersManager.getPeerId(voterPeer);
-
-    for(const key of pollMessageKeys) {
-      const [peerIdStr, midStr] = key.split('_');
-      const peerId = peerIdStr.toPeerId();
-      const mid = +midStr;
-
-      const message: MyMessage = this.getMessageByPeer(peerId, mid);
-      if(!message) {
-        this.fixDialogUnreadMentionsIfNoMessage({peerId, isPollVote: true, force: true});
-        continue;
-      }
-
-      // Only our own polls receive vote updates from the server; guard against
-      // stale local state where the same poll_id is also attached to incoming
-      // (forwarded) copies.
-      if(!message.pFlags.out) {
-        continue;
-      }
-
-      const threadId = getMessageThreadId(message, {
-        isForum: this.appPeersManager.isForum(peerId),
-        isBotforum: this.appPeersManager.isBotforum(peerId)
-      });
-
-      this.modifyCachedMentionsAndSave({
-        peerId,
-        mid: message.mid,
-        threadId,
-        addPollVote: true
-      });
-
-      // Surface a desktop notification when someone other than us voted on our
-      // poll, mirroring the reactions notification branch.
-      if(voterPeerId !== this.appPeersManager.peerId) {
-        this.getNotifyPeerSettings(peerId).then(({peerTypeNotifySettings}) => {
-          if(!peerTypeNotifySettings.show_previews) return;
-          this.notifyAboutMessage(message, {peerTypeNotifySettings});
-        });
-      }
-    }
   };
 
   private onUpdateDialogUnreadMark = (update: Update.updateDialogUnreadMark) => {

@@ -14,9 +14,10 @@ import {randomLong} from '@helpers/random';
 import {InputMedia, Message, MessageEntity, MessageMedia, Poll, PollAnswer, PollResults, TextWithEntities} from '@layer';
 import {LogTypes} from '@lib/logger';
 import parseMarkdown from '@lib/richTextProcessor/parseMarkdown';
-import {MessageSendingParams} from './appMessagesManager';
+import {MessageSendingParams, MyMessage} from './appMessagesManager';
 import getDocumentInput from './utils/docs/getDocumentInput';
 import getPhotoInput from './utils/photos/getPhotoInput';
+import getMessageThreadId from './utils/messages/getMessageThreadId';
 import {oneHourInSeconds} from '@lib/constants';
 
 type PollId = Poll['id'];
@@ -71,9 +72,63 @@ export class AppPollsManager extends AppManager {
         const results = update.results;
         if(!results) return;
 
+        const prev = this.getPoll(poll.id);
+        const wasUnread = prev?.results?.pFlags?.has_unread_votes;
+
         this.saveAndDispatchPoll(poll, results as any);
+
+        // When the server signals that the poll has unread votes, bump the
+        // dialog's `unread_poll_votes_count` so the badge appears. This is
+        // the poll-vote analogue of the unread-reactions tracking on
+        // `updateMessageReactions` in AppMessagesManager.
+        if(!results?.pFlags?.min && results.pFlags?.has_unread_votes && !wasUnread) {
+          this.bumpUnreadPollVotes(update, true);
+        }
+        if(!results?.pFlags?.min && !results.pFlags?.has_unread_votes && wasUnread) {
+          this.bumpUnreadPollVotes(update, false);
+        }
       }
     });
+  }
+
+  private bumpUnreadPollVotes(update: {poll_id: Poll['id'], peer?: Message.message['peer_id'], msg_id?: number, top_msg_id?: number}, add: boolean) {
+    // Resolve which message(s) the unread vote applies to. The update may
+    // carry the message context directly (peer + msg_id); otherwise we fall
+    // back to the local poll→messages map populated by `updatePollToMessage`.
+    const messageRefs: Array<{peerId: PeerId, mid: number}> = [];
+    if(update.peer && update.msg_id) {
+      const peerId = this.appPeersManager.getPeerId(update.peer);
+      const channelId = peerId.isAnyChat() ? peerId.toChatId() : 0;
+      const mid = this.appMessagesIdsManager.generateMessageId(update.msg_id, channelId);
+      messageRefs.push({peerId, mid});
+    } else {
+      const pollMessageKeys = this.pollToMessages[update.poll_id];
+      if(!pollMessageKeys?.size) return;
+      for(const key of pollMessageKeys) {
+        const [peerIdStr, midStr] = key.split('_');
+        messageRefs.push({peerId: peerIdStr.toPeerId(), mid: +midStr});
+      }
+    }
+
+    for(const {peerId, mid} of messageRefs) {
+      const message = this.appMessagesManager.getMessageByPeer(peerId, mid) as MyMessage;
+      // `has_unread_votes` is only meaningful on polls we own.
+      if(!message || !message.pFlags.out) {
+        continue;
+      }
+
+      const threadId = getMessageThreadId(message, {
+        isForum: this.appPeersManager.isForum(peerId),
+        isBotforum: this.appPeersManager.isBotforum(peerId)
+      });
+
+      this.appMessagesManager.modifyCachedMentionsAndSave({
+        peerId,
+        mid: message.mid,
+        threadId,
+        addPollVote: add
+      });
+    }
   }
 
   public clear = (init?: boolean) => {
