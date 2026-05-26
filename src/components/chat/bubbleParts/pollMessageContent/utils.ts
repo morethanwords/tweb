@@ -1,7 +1,7 @@
 import {createMessageSpoilerOverlay} from '@components/messageSpoilerOverlay';
 import {AttachedMedia} from '@components/popups/createPoll/storeContext';
 import {useIsCleaned} from '@hooks/useIsCleaned';
-import {TextWithEntities} from '@layer';
+import {Poll, TextWithEntities} from '@layer';
 import {ChatRights} from '@lib/appManagers/appChatsManager';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {Accessor, batch, createEffect, createSignal, onCleanup} from 'solid-js';
@@ -131,4 +131,10 @@ export const useChatRights = <T extends ChatRights = ChatRights>({peerId, rights
   };
 
   return {ready, hasRight};
+};
+
+export const hasSelectedCorrectAnswers = (poll: Poll.poll): boolean => {
+  if(poll.chosenIndexes?.length !== poll.correctIndexes?.length || !poll.chosenIndexes?.length) return false;
+  const set = new Set(poll.correctIndexes);
+  return poll.chosenIndexes?.every((i) => set.has(i)) ?? false;
 };

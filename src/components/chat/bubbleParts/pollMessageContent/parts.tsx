@@ -1,3 +1,4 @@
+import {ConfettiContainer, ConfettiRef} from '@components/confetti';
 import Space from '@components/space';
 import PhotoTsx from '@components/wrappers/photoTsx';
 import VideoTsx from '@components/wrappers/videoTsx';
@@ -10,7 +11,7 @@ import classNames from '@helpers/string/classNames';
 import {Document, Photo} from '@layer';
 import {LangPackKey} from '@lib/langPack';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {createMemo, For, Match, Show, Switch} from 'solid-js';
+import {createMemo, For, Match, onMount, Show, Switch} from 'solid-js';
 import {unwrap} from 'solid-js/store';
 import {usePollMessageContentProps} from './context';
 import styles from './styles.module.scss';
@@ -148,5 +149,22 @@ export const PollVotes = (props: CommonProps & { votersCount: number }) => {
 
   return (
     <I18nTsx key={key()} args={[formatNumber(props.votersCount, 1)]} />
+  );
+};
+
+export const AutoStartedConfetti = (props: { onEnd: () => void }) => {
+  let ref: ConfettiRef;
+
+  onMount(() => {
+    ref?.create({
+      mode: 'poppers',
+      size: 4,
+      speedScale: 0.6,
+      count: 50
+    });
+  });
+
+  return (
+    <ConfettiContainer onEnd={props.onEnd} ref={ref} />
   );
 };

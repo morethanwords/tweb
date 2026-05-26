@@ -30,13 +30,13 @@ import {createStore, reconcile, unwrap} from 'solid-js/store';
 import {Transition, TransitionGroup} from 'solid-transition-group';
 import {AddOption} from './AddOption';
 import {PollMessageContentPropsContext} from './context';
-import {AvatarGroup, Explanation, PollType, PollVotes} from './parts';
+import {AutoStartedConfetti, AvatarGroup, Explanation, PollType, PollVotes} from './parts';
 import {PollOption} from './PollOption';
 import styles from './styles.module.scss';
 import {usePollDerivedProps} from './usePollDerivedProps';
 import {usePollMutations} from './usePollMutations';
 import {usePollOptionsStore} from './usePollOptionsStore';
-import {attachSpoilerOverlay, dataPollViewerIdx, NewOptionValues} from './utils';
+import {attachSpoilerOverlay, dataPollViewerIdx, hasSelectedCorrectAnswers, NewOptionValues} from './utils';
 
 
 keepMe(ripple);
@@ -87,6 +87,7 @@ export const PollMessageContent = defineSolidElement({
       entities: []
     });
     const [descriptionElement, setDescriptionElement] = createSignal<HTMLDivElement>();
+    const [isConfettiActive, setIsConfettiActive] = createSignal(false);
 
     let inputField: InputField;
     const elementByIndexMap = new Map<number, HTMLElement>();
@@ -247,6 +248,10 @@ export const PollMessageContent = defineSolidElement({
 
       props.poll = poll;
       props.results = results;
+
+      if(poll.pFlags.quiz && hasSelectedCorrectAnswers(poll)) {
+        setIsConfettiActive(true);
+      }
     });
 
     createEffect(() => {
@@ -275,6 +280,9 @@ export const PollMessageContent = defineSolidElement({
 
     return (
       <PollMessageContentPropsContext.Provider value={props}>
+        <Show when={isConfettiActive()}>
+          <AutoStartedConfetti onEnd={() => setIsConfettiActive(false)} />
+        </Show>
         <Show when={descriptionPhoto() || descriptionVideo()}>
           <div class={styles.pollImageWrapper}>
             <div class={styles.pollImage} use:dataPollViewerIdx={[mediaViewerPayload().indexes.description, elementByIndexMap]}>
