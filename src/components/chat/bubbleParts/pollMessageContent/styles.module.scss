@@ -240,13 +240,13 @@
     background-color: var(--primary-color);
     border-radius: 50%;
 
-    /* &.correct {
+    &.correct {
       background-color: var(--gc-green-text-color);
     }
 
     &.wrong {
       background-color: var(--gc-red-text-color);
-    } */
+    }
   }
 }
 

@@ -146,7 +146,6 @@ export const PollOption = (props: {
               canAnimate={canAnimate()}
               hasCorrectAnswer={props.hasCorrectAnswer}
               correct={props.result.correct}
-              chosen={props.result.chosen}
             />
           </Show>
         </Transition>
@@ -165,7 +164,7 @@ export const PollOption = (props: {
           />
         </Show>
         <Transition name='fade-2'>
-          <Show when={canShowPercentageCheckbox() && props.hasCorrectAnswer && props.result.chosen && contextProps.isOutgoing && !props.hideResults}>
+          <Show when={canShowPercentageCheckbox() && props.hasCorrectAnswer && props.result.chosen && !props.hideResults}>
             <div
               class={styles.chosenCheckboxDot}
               classList={{
@@ -181,8 +180,8 @@ export const PollOption = (props: {
               round={!props.allowMultipleAnswers}
               class={styles.chosenCheckbox}
               classList={{
-                [styles.correct]: !contextProps.isOutgoing && props.hasCorrectAnswer && props.result.chosen && props.result.correct,
-                [styles.wrong]: !contextProps.isOutgoing && props.hasCorrectAnswer && props.result.chosen && !props.result.correct
+                [styles.correct]: !contextProps.isOutgoing && props.hasCorrectAnswer && props.result.correct,
+                [styles.wrong]: !contextProps.isOutgoing && props.hasCorrectAnswer && !props.result.correct
               }}
               checked
               cross={props.hasCorrectAnswer ? !props.result.correct : undefined}
@@ -280,11 +279,10 @@ const PollProgressLine = (inProps: JSX.HTMLAttributes<HTMLDivElement> & {
   canAnimate: boolean;
   hasCorrectAnswer?: boolean;
   correct?: boolean;
-  chosen?: boolean;
 }) => {
   const contextProps = usePollMessageContentProps();
 
-  const [props, restProps] = splitProps(inProps, ['class', 'classList', 'progress', 'canAnimate', 'hasCorrectAnswer', 'correct', 'chosen']);
+  const [props, restProps] = splitProps(inProps, ['class', 'classList', 'progress', 'canAnimate', 'hasCorrectAnswer', 'correct']);
 
   const animatedProgress = useAnimatedValueFromZero(
     () => props.progress,
@@ -296,8 +294,8 @@ const PollProgressLine = (inProps: JSX.HTMLAttributes<HTMLDivElement> & {
     <div
       class={classNames(styles.labelProgress, props.class)}
       classList={{
-        [styles.correct]: !contextProps.isOutgoing && props.hasCorrectAnswer && props.chosen && props.correct,
-        [styles.wrong]: !contextProps.isOutgoing && props.hasCorrectAnswer && props.chosen && !props.correct,
+        [styles.correct]: !contextProps.isOutgoing && props.hasCorrectAnswer && props.correct,
+        [styles.wrong]: !contextProps.isOutgoing && props.hasCorrectAnswer && !props.correct,
         ...props.classList
       }}
       {...restProps}>
