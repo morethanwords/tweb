@@ -6,6 +6,7 @@ import type LazyLoadQueue from '@components/lazyLoadQueue';
 import {useCreatePollLimits} from '@components/popups/createPoll/useCreatePollLimits';
 import {RemainingTime} from '@components/remainingTime';
 import ripple from '@components/ripple';
+import Space from '@components/space';
 import PhotoTsx from '@components/wrappers/photoTsx';
 import VideoTsx from '@components/wrappers/videoTsx';
 import {setCaretAtEnd} from '@helpers/dom/setCaretAt';
@@ -404,6 +405,7 @@ export const PollMessageContent = defineSolidElement({
           </div>
         </Show>
 
+        <Space amount='0.25rem' />
         <div
           class={styles.footer}
           classList={{

@@ -260,7 +260,15 @@
   user-select: none;
   text-align: center;
 
-  color: var(--secondary-text-color);
+  color: #939fa9;
+
+  &.outgoing {
+    color: var(--secondary-text-color);
+
+    :global(.night) & {
+      color: inherit;
+    }
+  }
 
   &.clickable {
     cursor: pointer;
