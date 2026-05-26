@@ -6540,6 +6540,7 @@ export class AppMessagesManager extends AppManager {
     const slicedArray = this.unreadMentions[key] ??= new SlicedArray();
     const length = slicedArray.length;
     const isTopEnd = slicedArray.first.isEnd(SliceEnd.Top);
+
     if(!length && isTopEnd) {
       this.fixUnreadMentionsCountIfNeeded({...options, slicedArray});
       return Promise.resolve();
@@ -6555,6 +6556,12 @@ export class AppMessagesManager extends AppManager {
       const mid = last && last[last.length - 1];
       if(mid) {
         slicedArray.delete(mid);
+
+        // Note that the isTopEnd gets reset when the slice becomes empty, so we're using the cached isTopEnd from above
+        if(options.isPollVote && isTopEnd && !slicedArray.length) {
+          this.onUnreadPollVotesTraversalEnd({...options, slicedArray});
+        }
+
         return mid;
       } else {
         this.fixUnreadMentionsCountIfNeeded({...options, slicedArray});
@@ -6562,6 +6569,20 @@ export class AppMessagesManager extends AppManager {
     }).finally(() => {
       delete this.goToNextMentionPromises[key];
     });
+  }
+
+  // When the user has navigated through every known unread item, decide how to
+  // reconcile a still-positive dialog counter:
+  //  - mentions/reactions: keep the legacy behavior of refetching the dialog,
+  //    since per-message reads (via `readMessages`) are the primary path that
+  //    drives the counter down — this is just a safety net for stale snapshots.
+  //  - poll votes: there is no per-message read flow, so the only way to clear
+  //    `unread_poll_votes_count` is to actively call `messages.readPollVotes`.
+  private onUnreadPollVotesTraversalEnd(options: GetUnreadMentionsOptions & {slicedArray: SlicedArray<number>}) {
+    const dialog = this.dialogsStorage.getAnyDialog(options.peerId, options.threadId) as Dialog | ForumTopic;
+    if(this.getDialogUnreadMentions(dialog, options.isReaction, options.isPollVote)) {
+      this.readMentions(options.peerId, options.threadId, options.isReaction, options.isPollVote).catch(noop);
+    }
   }
 
   private loadNextMentions(options: GetUnreadMentionsOptions) {
