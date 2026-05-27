@@ -48,6 +48,7 @@ export const PollOption = (props: {
   isPendingVote?: boolean;
   hideResults?: boolean;
   initialIdx?: number;
+  highlighted?: boolean;
 
   result?: PollOptionResult;
 }) => {
@@ -92,8 +93,16 @@ export const PollOption = (props: {
 
   return (
     <div class={styles.pollOption} classList={{[styles.hasMedia]: props.withMedia}} data-poll-option-idx={props.initialIdx}>
-      <Show when={!isShowingResult()}>
-        <div class={styles.clickableArea} classList={{[styles.outgoing]: contextProps.isOutgoing}} use:ripple onClick={props.onToggle} />
+      <Show when={!isShowingResult() || props.highlighted}>
+        <div
+          class={styles.clickableArea}
+          classList={{
+            [styles.outgoing]: contextProps.isOutgoing,
+            [styles.hovered]: props.highlighted
+          }}
+          use:ripple
+          onClick={props.onToggle}
+        />
       </Show>
       <div class={styles.checkContainer}>
         <Transition name='fade'>

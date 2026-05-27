@@ -60,6 +60,7 @@ export type PollMessageContentProps = {
 
 export type PollMessageContentControls = {
   openMediaViewer: (idx: number) => void;
+  highlightAnswer: (idx: number) => void;
 };
 
 type MediaViewerPayloadIndexes = {
@@ -88,6 +89,7 @@ export const PollMessageContent =
     });
     const [descriptionElement, setDescriptionElement] = createSignal<HTMLDivElement>();
     const [isConfettiActive, setIsConfettiActive] = createSignal(false);
+    const [highlightedIndexes, setHighlightedIndexes] = createSignal<number[]>([]);
 
     let inputField: InputField;
     const elementByIndexMap = new Map<number, HTMLElement>();
@@ -278,6 +280,14 @@ export const PollMessageContent =
       });
     };
 
+    props.controls.highlightAnswer = (idx?: number | null) => {
+      if(typeof idx === 'number') {
+        setHighlightedIndexes([idx]);
+      } else {
+        setHighlightedIndexes([]);
+      }
+    };
+
     return (
       <PollMessageContentPropsContext.Provider value={props}>
         <Show when={isConfettiActive()}>
@@ -390,6 +400,7 @@ export const PollMessageContent =
                   result={getResultForOption(initialIdx())}
                   isPendingVote={delayedSendVotePending()}
                   hideResults={hideResults()}
+                  highlighted={highlightedIndexes().includes(initialIdx())}
                 />
               );
             }}

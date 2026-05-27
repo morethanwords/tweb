@@ -623,7 +623,7 @@ export default class ChatBubbles {
 
   private logsBubbleByMid = new Map<number, {element: HTMLElement, priorityDate: number}>();
 
-  private contexts: Map<HTMLElement, BubbleContext> = new Map();
+  public contexts: Map<HTMLElement, BubbleContext> = new Map();
 
   private webPageClickCallbacks: WeakMap<HTMLElement, (e: MouseEvent) => any> = new WeakMap();
 

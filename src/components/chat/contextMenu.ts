@@ -208,7 +208,10 @@ export default class ChatContextMenu {
   private sponsoredMessage: SponsoredMessage;
   private noForwards: boolean;
   private checklistItem: {item: TodoItem, completion?: TodoCompletion};
-  private pollAnswer: PollAnswer.pollAnswer;
+  private pollAnswer: {
+    idx: number;
+    value: PollAnswer.pollAnswer;
+  };
 
   private reactionsMenu: ChatReactionsMenu;
   private listenerSetter: ListenerSetter;
@@ -230,6 +233,7 @@ export default class ChatContextMenu {
 
   private canViewReadTime: boolean;
   private messageLanguage: TranslatableLanguageISO;
+  private bubble?: HTMLElement;
 
   constructor(
     private chat: Chat,
@@ -435,6 +439,7 @@ export default class ChatContextMenu {
       this.linkToMessage = await this.getUrlToMessage();
       this.selectedMessagesText = await this.getSelectedMessagesText();
       this.messageLanguage = await this.getMessageLanguage();
+      this.bubble = findUpClassName(e.target, 'bubble');
 
       if(checklistItemId) {
         const media = (this.message as Message.message).media as MessageMedia.messageMediaToDo;
@@ -449,7 +454,7 @@ export default class ChatContextMenu {
       if(pollOptionIdx !== undefined) {
         const media = (this.message as Message.message).media as MessageMedia.messageMediaPoll;
         const answer = media?.poll?.answers?.[pollOptionIdx];
-        this.pollAnswer = answer?._ === 'pollAnswer' ? answer : undefined;
+        this.pollAnswer = answer?._ === 'pollAnswer' ? {idx: pollOptionIdx, value: answer} : undefined;
       } else {
         this.pollAnswer = undefined;
       }
@@ -490,6 +495,8 @@ export default class ChatContextMenu {
       // appImManager.log('contextmenu', e, bubble, side);
       positionMenu((e as TouchEvent).touches ? (e as TouchEvent).touches[0] : e as MouseEvent, element, side, menuPadding);
 
+      const cleanupHighlight = this.highlightPollAnswer();
+
       // if(reactionsMenu) {
       //   reactionsMenu.widthContainer.style.top = element.style.top;
       //   reactionsMenu.widthContainer.style.left = element.style.left;
@@ -500,6 +507,7 @@ export default class ChatContextMenu {
 
       contextMenuController.openBtnMenu(element, () => {
         reactionsCallbacks?.onClose();
+        cleanupHighlight?.();
 
         this.mid = 0;
         this.peerId = undefined;
@@ -518,6 +526,19 @@ export default class ChatContextMenu {
 
     openMenu();
   };
+
+  private highlightPollAnswer() {
+    if(!this.pollAnswer || !this.bubble) return;
+
+    const bubbleContext = this.chat.bubbles.contexts.get(this.bubble);
+    if(!bubbleContext?.pollMessageContentControls) return;
+
+    bubbleContext.pollMessageContentControls.highlightAnswer?.(this.pollAnswer.idx);
+
+    return () => {
+      bubbleContext.pollMessageContentControls.highlightAnswer?.(null);
+    }
+  }
 
   public cleanup() {
     this.listenerSetter.removeAll();
@@ -723,7 +744,7 @@ export default class ChatContextMenu {
         icon: 'more',
         get regularText() {
           if(!self.pollAnswer) return undefined;
-          const truncated = truncateTextWithEntities(self.pollAnswer.text.text, self.pollAnswer.text.entities, 24);
+          const truncated = truncateTextWithEntities(self.pollAnswer.value.text.text, self.pollAnswer.value.text.entities, 24);
           return wrapEmojiTextWithEntities({_: 'textWithEntities', ...truncated});
         },
         verify: () => this.pollAnswer !== undefined,
@@ -1199,7 +1220,7 @@ export default class ChatContextMenu {
   }
 
   private createPollAnswerSubmenu = async({middleware}: CreateSubmenuArgs) => {
-    const pollAnswer = this.pollAnswer;
+    const pollAnswer = this.pollAnswer?.value;
     const message = this.message as Message.message & {media: MessageMedia.messageMediaPoll};
     const canReply = !this.isLegacy &&
       !message.pFlags.is_outgoing &&
