@@ -227,7 +227,7 @@ import canSeeMessageMedia from '@lib/appManagers/utils/messages/canSeeMessageMed
 import {PollMessageContentProps, PollMessageContentControls} from './bubbleParts/pollMessageContent';
 import {createMutable} from 'solid-js/store';
 import compareUint8Arrays from '@helpers/bytes/compareUint8Arrays';
-import {pollOptionToLink} from './bubbleParts/pollMessageContent/pollToOptionLink';
+import {linkToPollOption} from './bubbleParts/pollMessageContent/pollToOptionLink';
 
 // TODO: fix new message won't be rendered if an old one is rendering in the moment
 
@@ -3079,7 +3079,7 @@ export default class ChatBubbles {
           ...additionalSetPeerProps,
           peerId: replyToPeerId,
           lastMsgId: replyToMid,
-          pollOptionBase64: pollOptionToLink(replyTo.poll_option),
+          pollOption: replyTo.poll_option,
           type: this.chat.type === ChatType.Logs ? undefined : this.chat.type,
           threadId: this.chat.threadId,
           monoforumThreadId: this.chat.monoforumThreadId
@@ -4466,7 +4466,7 @@ export default class ChatBubbles {
   }
 
   public async setPeer(options: ChatSetPeerOptions & {samePeer: boolean, sameSearch: boolean, forceIsFirstLoad?: boolean}): Promise<{cached?: boolean, promise: Chat['setPeerPromise']}> {
-    const {samePeer, sameSearch, peerId, stack, monoforumThreadId, forceIsFirstLoad, pollOptionBase64} = options;
+    const {samePeer, sameSearch, peerId, stack, monoforumThreadId, forceIsFirstLoad, pollOption} = options;
     let {lastMsgId, lastMsgPeerId, startParam} = options;
     const tempId = ++this.setPeerTempId;
 
@@ -4599,7 +4599,7 @@ export default class ChatBubbles {
         if(isTarget) {
           this.scrollToBubble(bubble, 'center');
           this.highlightBubble(bubble);
-          this.highlightBubblePollAnswer(bubble, lastMsgFullMid, pollOptionBase64);
+          this.highlightBubblePollAnswer(bubble, lastMsgFullMid, pollOption);
           this.chat.dispatchEvent('setPeer', lastMsgId, false);
         } else if(topMessageFullMid !== EMPTY_FULL_MID && !isJump) {
           // log('will scroll down', this.scroll.scrollTop, this.scroll.scrollHeight);
@@ -4902,7 +4902,7 @@ export default class ChatBubbles {
 
           if(!followingUnread && isTarget && foundTarget) {
             this.highlightBubble(bubble);
-            this.highlightBubblePollAnswer(bubble, lastMsgFullMid, pollOptionBase64);
+            this.highlightBubblePollAnswer(bubble, lastMsgFullMid, pollOption);
           }
         }
 
@@ -10791,21 +10791,20 @@ export default class ChatBubbles {
     return entry;
   }
 
-  private highlightBubblePollAnswer(bubble?: HTMLElement, lastMsgFullMid?: FullMid, pollOptionBase64?: string) {
-    if(!bubble || lastMsgFullMid === EMPTY_FULL_MID || !pollOptionBase64) return;
+  private highlightBubblePollAnswer(bubble?: HTMLElement, lastMsgFullMid?: FullMid, pollOption?: string | Uint8Array) {
+    if(!bubble || lastMsgFullMid === EMPTY_FULL_MID || !pollOption) return;
 
     const message = this.chat.getMessage(lastMsgFullMid);
     if(!message || message?._ !== 'message' || message?.media?._ !== 'messageMediaPoll') return;
 
-    const maxLength = 100;
-    if(pollOptionBase64.length > maxLength) return; // discard possibly malformed parameter
-
     let option: Uint8Array;
-    try {
-      const textEncoder = new TextEncoder();
-      option = textEncoder.encode(atob(pollOptionBase64));
-    } catch{
-      return;
+    if(pollOption instanceof Uint8Array) {
+      option = pollOption;
+    } else {
+      const maxLength = 100;
+      if(pollOption.length > maxLength) return; // discard possibly malformed parameter
+      option = linkToPollOption(pollOption);
+      if(!option) return;
     }
 
     const context = this.contexts.get(bubble);

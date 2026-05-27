@@ -762,7 +762,7 @@ export class InternalLinkProcessor {
     return appImManager.openUsername({
       userName: link.domain,
       lastMsgId: postId,
-      pollOptionBase64: link.option,
+      pollOption: link.option,
       commentId,
       startParam: link.start,
       stack: link.stack,
@@ -798,7 +798,7 @@ export class InternalLinkProcessor {
       peer: chat || user,
       lastMsgId: postId,
       threadId,
-      pollOptionBase64: link.option,
+      pollOption: link.option,
       stack: link.stack,
       mediaTimestamp: link.t && +link.t
     });
