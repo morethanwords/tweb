@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {render} from 'solid-js/web';
 import PopupElement from '.';
 import {PaymentsCheckedGiftCode} from '@layer';
@@ -17,7 +11,7 @@ import appImManager, {ChatSetPeerOptions} from '@lib/appImManager';
 import rootScope from '@lib/rootScope';
 import PeerTitle from '@components/peerTitle';
 import cancelEvent from '@helpers/dom/cancelEvent';
-import {showSharingPickerPopup} from '@components/popups/pickUser';
+import shareUrlToPeers from '@components/popups/shareUrl';
 import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
 import toggleDisability from '@helpers/dom/toggleDisability';
 import {toastNew} from '@components/toast';
@@ -25,11 +19,9 @@ import shouldDisplayGiftCodeAsGift from '@helpers/shouldDisplayGiftCodeAsGift';
 import PopupPremium from '@components/popups/premium';
 import confirmationPopup from '@components/confirmationPopup';
 import anchorCallback from '@helpers/dom/anchorCallback';
-import wrapPeerTitle from '@components/wrappers/peerTitle';
 import DotRenderer from '@components/dotRenderer';
 import themeController from '@helpers/themeController';
 import Table, {TablePeer} from '@components/table';
-import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
 
 export default class PopupGiftLink extends PopupElement {
   private isInChat: boolean;
@@ -217,30 +209,11 @@ export default class PopupGiftLink extends PopupElement {
   }
 
   public static shareGiftLink(url: string, openAfter?: boolean) {
-    showSharingPickerPopup({
-      onSelect: async([{peerId, threadId, monoforumThreadId}]) => {
-        const preparedPaymentResult = await PaidMessagesInterceptor.prepareStarsForPayment({messageCount: 1, peerId});
-        if(preparedPaymentResult === PAYMENT_REJECTED) throw new Error();
-
-        rootScope.managers.appMessagesManager.sendText({
-          peerId,
-          threadId,
-          text: url,
-          replyToMonoforumPeerId: monoforumThreadId,
-          confirmedPaymentResult: preparedPaymentResult
-        });
-
-        if(openAfter) {
-          appImManager.setInnerPeer({peerId});
-        } else {
-          toastNew({
-            langPackKey: rootScope.myId === peerId ?
-              'BoostingGiftLinkForwardedToSavedMsg' :
-              'BoostingGiftLinkForwardedTo',
-            langPackArguments: [await wrapPeerTitle({peerId})]
-          });
-        }
-      }
+    shareUrlToPeers({
+      url,
+      openAfter,
+      toastKey: 'BoostingGiftLinkForwardedTo',
+      toastKeyForSelf: 'BoostingGiftLinkForwardedToSavedMsg'
     });
   }
 

@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type Chat from '@components/chat/chat';
 import ListenerSetter from '@helpers/listenerSetter';
 import mediaSizes from '@helpers/mediaSizes';
@@ -63,7 +57,7 @@ export default class StickersHelper extends AutocompleteHelper {
   }
 
   public checkEmoticon(emoticon: string) {
-    const middleware = this.controller.getMiddleware();
+    const middleware = this.getMiddleware();
 
     preloadAnimatedEmojiSticker(emoticon);
     this.managers.appStickersManager.getStickersByEmoticon({

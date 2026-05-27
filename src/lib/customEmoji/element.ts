@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {CancellablePromise} from '@helpers/cancellablePromise';
 import animationIntersector from '@components/animationIntersector';
 import safePlay from '@helpers/dom/safePlay';

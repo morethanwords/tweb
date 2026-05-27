@@ -10,8 +10,6 @@ import {NewOptionValues} from './utils';
 type UsePollMutationsArgs = {
   getOverridenMessage: Accessor<Message.message>;
   isShowingResult: Accessor<boolean>;
-  hasSelectedSomething: Accessor<boolean>;
-  chosenIndexes: Accessor<number[]>;
   initialIdxFromShuffledIdx: (idx: number) => number;
   newOption: NewOptionValues;
   onSuccess: () => void;
@@ -23,23 +21,23 @@ type UsePollMutationsArgs = {
 export function usePollMutations({
   getOverridenMessage,
   isShowingResult,
-  hasSelectedSomething,
-  chosenIndexes,
   initialIdxFromShuffledIdx,
   newOption,
   onSuccess
 }: UsePollMutationsArgs) {
   const {rootScope} = useHotReloadGuard();
 
-  const sendVoteMutation = createMutation(async() => {
-    if(isShowingResult() || !hasSelectedSomething()) return;
+  const sendVoteMutation = createMutation(async(indexes: number[]) => {
+    if(isShowingResult() || !indexes.length) return;
 
-    const optionIndexes = chosenIndexes().map(initialIdxFromShuffledIdx).filter(idx => idx !== -1);
+    const optionIndexes = indexes.map(initialIdxFromShuffledIdx).filter(idx => idx !== -1);
 
     await rootScope.managers.appPollsManager.sendVote(getOverridenMessage(), optionIndexes);
 
     onSuccess();
   });
+
+  const wrappedSendVote = wrapAsyncClickHandler(sendVoteMutation.mutateAsync);
 
   // In case the vote is sent immediately, we delay the pending state to avoid showing the spinner too soon
   const delayedSendVotePending = createDelayed(sendVoteMutation.isPending, false, value => value ? 100 : -1);
@@ -65,6 +63,7 @@ export function usePollMutations({
 
   return {
     sendVoteMutation,
+    wrappedSendVote,
     delayedSendVotePending,
     addOptionMutation,
     wrappedAddOption

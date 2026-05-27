@@ -1,0 +1,152 @@
+@use "../../shared" as *;
+@use "../../variables" as *;
+
+.popup-chat-preview {
+  // Positioning is provided per-instance via inline CSS variables on .popup-container.
+  // We bypass the centered-modal flexbox layout that PopupElement uses by default so
+  // the preview can anchor next to the clicked dialog row, tdesktop-style.
+
+  // Re-declare handheld page padding for the whole preview subtree. `:root` carries the
+  // active value from `updateColumnWidths` (0 on desktop), but we always want the
+  // mobile-style breathing room around the topbar/input plates inside the popup.
+  --page-chats-padding: 8px;
+
+  .popup-container {
+    position: absolute;
+    top: var(--preview-top, 50%);
+    left: var(--preview-left, 50%);
+    width: 432px;
+    height: 540px;
+    padding: 0;
+    overflow: hidden;
+    border-radius: $border-radius-big;
+    background-color: transparent;
+    // The base `.popup-container` rule animates `transform: translate3d(0, 3rem, 0)` on
+    // show — that's the slide-up animation for centered modals. We're absolutely
+    // positioned next to the chatlist anchor, so any extra transform shifts us off-anchor.
+    // Lock to none with !important to outrank both base and `:not(.active)` siblings.
+    transform: none !important;
+    transition: opacity .12s ease-out;
+    will-change: opacity;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, .25);
+  }
+
+  &:not(.active) .popup-container,
+  &.hiding .popup-container {
+    opacity: 0;
+  }
+}
+
+.chat-preview-wrapper {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.chat-preview-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.chat.chat-preview {
+  position: absolute;
+  // Mirror `#column-center { inset: var(--page-chats-padding) }`. In the main chat that's
+  // what gives the floating topbar and input plates a uniform 8px breathing room around
+  // them on handheld — both are anchored `inset-inline: 0` inside the chat, so insetting
+  // the chat itself is what creates the visible gap.
+  inset: var(--page-chats-padding, 8px);
+  // The base `.chat` rule sets `width: 100%`, which would override the right-side `inset`
+  // value and leave the chat sticking out past the wrapper. Reset to auto so the absolute
+  // positioning's left+right insets actually resolve the width.
+  width: auto !important;
+  height: auto;
+  z-index: 1;
+  // The base `.chat` rule applies a translate3d on `:not(.active)`. We force `.active`
+  // when constructing the container so this is mostly inert, but normalize defensively.
+  opacity: 1;
+  transform: none;
+  // Mirror the handheld chat metrics from `base.scss` + `helpers/updateColumnWidths`:
+  //   --chat-bubbles-padding .5rem — horizontal breathing room around `.bubbles-inner`
+  // so the messages don't kiss the popup edges.
+  --chat-topbar-height: 3rem;
+  --chat-input-height-surplus: 0px;
+  --chat-bubbles-padding: .5rem;
+  // `--chat-width` is set on :root by updateColumnWidths for the main column and clamps
+  // `.bubbles-inner` / `.bubble` max-widths. Override locally so they size to the popup
+  // instead of inheriting a width meant for a 1000px+ middle column.
+  --chat-width: 100%;
+  --right-column-width: 0px;
+
+  // `.chat-input-plate-side` is the left/right icon slot in the control plate
+  // (direct-messages, gift, …) — the preview only exposes Mark Read/Unread in the
+  // centre slot, so the side slots have nothing to show. Drop them so the centre button
+  // spans the full plate. Every other "plate" (chat-utils, topbar-floating-plates,
+  // pinned-container, chat-action-bar, …) is skipped at construction time inside
+  // `ChatTopbar` when `chat.isPreview`, so there's no DOM left to hide.
+  .chat-input-plate-side {
+    display: none !important;
+  }
+
+  // Force the chat-input-control plate into its visible state and fade the typing UI out.
+  // The main chat normally triggers this swap from `ChatInput._center`, gated on peer
+  // state (channel-join, blocked user, …). In preview we always want the control plate
+  // up — instead of routing through the input state machine, set the same opacity /
+  // visibility that the active swap would land on. The chat-input itself stays mounted,
+  // so `.bubbles-go-down` and other absolute children inside it continue to position.
+  .rows-wrapper-wrapper {
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .chat-input-control {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  // Compact topbar — keep peer name + avatar, drop the action buttons.
+  // Pointer events are off across the entire topbar: clicking the avatar/title in the main
+  // app opens the profile sidebar, which doesn't make sense inside a floating preview.
+  .chat-topbar {
+    height: var(--chat-topbar-height);
+    min-height: var(--chat-topbar-height);
+    pointer-events: none;
+  }
+
+  // Main `.bubbles` is anchored with `inset-inline: -.5rem` so its width grows past the
+  // chat container. That looks fine when the chat fills a wide column but overflows our
+  // 360px preview popup — pin the bubbles to the container's horizontal edges instead.
+  // Leave `inset-block` as the base rule sets it (`calc(--page-chats-padding * -1)`) —
+  // that negative offset is what the `.is-date` sticky math expects when computing
+  // `top: calc(var(--chat-padding-top) + ...)`, so the date sticker lands right under
+  // the topbar.
+  .bubbles {
+    inset-inline: 0;
+    flex: 1 1 auto;
+  }
+
+  // Preview is purely visual — clicks on bubbles (open media, jump-to-reply, follow
+  // links, context menus) shouldn't fire. The early return in `bubbles.onBubblesClick`
+  // covers the click handler; pointer-events here neutralises hover styles and prevents
+  // text selection. The scrollable container itself keeps pointer events on so
+  // wheel/touch scrolling continues to work.
+  .bubble {
+    pointer-events: none;
+  }
+
+  // ── Mirror the main chat's handheld (small-screen) layout. The base SCSS gates
+  // these rules with a media query against the viewport, which never fires in our
+  // popup (the page is desktop-sized). Replicate them locally so a bubble inside
+  // the 360px preview wraps the same way it would on a phone.
+  .bubble:not(.service) {
+    --max-width: calc(100% - var(--message-handhelds-margin)) !important;
+  }
+
+  .bubbles-inner.is-chat .is-in .bubble {
+    --max-width: calc(100% - var(--message-handhelds-margin));
+  }
+}

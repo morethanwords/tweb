@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {TabState} from '@lib/apiManagerProxy';
 import {MOUNT_CLASS_TO} from '@config/debug';
 import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';

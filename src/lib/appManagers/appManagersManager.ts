@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import ServiceMessagePort from '@lib/serviceWorker/serviceMessagePort';
 import App from '@config/app';
 import {MOUNT_CLASS_TO} from '@config/debug';
@@ -171,7 +165,11 @@ export class AppManagersManager {
       await Promise.all([
         // new Promise(() => {}),
         appStoragesManager.loadStorages(),
-        this.threadedSharedWorkers.crypto.promise
+        // In Modes.noWorker the crypto worker is never spawned — the registry
+        // is imported into the main realm and cryptoMessagePort short-circuits
+        // same-realm callers via invokeCryptoNew's early-out. There's nothing
+        // to wait for and the threadedPort handshake never resolves, so skip.
+        Modes.noWorker ? Promise.resolve() : this.threadedSharedWorkers.crypto.promise
       ]);
 
       const managers = await createManagers(

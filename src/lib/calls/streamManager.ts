@@ -1,8 +1,4 @@
 /*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- *
  * Originally from:
  * https://github.com/evgeny-nadymov/telegram-react
  * Copyright (C) 2018 Evgeny Nadymov
@@ -261,7 +257,12 @@ export default class StreamManager {
     }
   } */
 
-  public appendToConference(conference: LocalConferenceDescription) {
+  // `onSenderCreated` fires the moment a new transceiver is born, BEFORE
+  // `replaceTrack` wires its first frame into the encoder. The conference
+  // path uses this to attach `RTCRtpScriptTransform` early enough that
+  // Chrome doesn't reject it as "Too late to create encoded streams" — see
+  // memory tde2e-port.md K-2 for the timing details.
+  public appendToConference(conference: LocalConferenceDescription, onSenderCreated?: (sender: RTCRtpSender) => void) {
     if(this.locked) {
       return;
     }
@@ -294,8 +295,10 @@ export default class StreamManager {
       } */
 
       let {transceiver} = entry;
+      let newlyCreated = false;
       if(!transceiver) {
         transceiver = entry.createTransceiver(conference.connection, transceiverInit);
+        newlyCreated = true;
 
         /* if(this.isScreenSharingManager) {
           transceiver.sender.setParameters({
@@ -313,6 +316,22 @@ export default class StreamManager {
       const trackIdx = tracks.findIndex((track) => track.kind === mediaTrackType);
       const track = trackIdx !== -1 ? tracks.splice(trackIdx, 1)[0] : undefined;
       const sender = transceiver.sender;
+
+      // Critical: attach the e2e script transform IN BETWEEN createTransceiver
+      // and replaceTrack — the only window Chrome's script-transform machinery
+      // accepts. Once `replaceTrack` wires a real track into the sender, the
+      // encoder produces its first frame and Chrome silently rejects any
+      // transform assigned after that (the parallel createEncodedStreams API
+      // surfaces this as an explicit "Too late to create encoded streams").
+      //
+      // Fire the hook BEFORE the `sender.track === track` skip below — when
+      // both sides are undefined (e.g. preview without mic / mic denied) the
+      // skip would otherwise hide the hook entirely, and no transform would
+      // ever attach.
+      if(newlyCreated && onSenderCreated) {
+        onSenderCreated(sender);
+      }
+
       if(sender.track === track) {
         continue;
       }

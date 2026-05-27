@@ -1,20 +1,17 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {AppManager} from '@appManagers/manager';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
-import type {AttachedMedia, CreatePollPayload} from '@components/popups/createPoll/storeContext';
+import type {AttachedMedia, AttachedPhoto, AttachedSticker, CreatePollPayload} from '@components/popups/createPoll/storeContext';
 import assumeType from '@helpers/assumeType';
+import deferredPromise from '@helpers/cancellablePromise';
 import copy from '@helpers/object/copy';
 import {randomLong} from '@helpers/random';
 import {InputMedia, Message, MessageEntity, MessageMedia, Poll, PollAnswer, PollResults, TextWithEntities} from '@layer';
 import {LogTypes} from '@lib/logger';
 import parseMarkdown from '@lib/richTextProcessor/parseMarkdown';
-import {MessageSendingParams} from './appMessagesManager';
+import {MessageSendingParams, MyMessage} from './appMessagesManager';
+import getDocumentInput from './utils/docs/getDocumentInput';
 import getPhotoInput from './utils/photos/getPhotoInput';
+import getMessageThreadId from './utils/messages/getMessageThreadId';
 import {oneHourInSeconds} from '@lib/constants';
 
 type PollId = Poll['id'];
@@ -40,8 +37,6 @@ type RefetchTimeoutPayload = {
   timerId: number;
   closeTimestamp: number;
 };
-
-const pollAnswerOptionOffset = 48;
 
 export class AppPollsManager extends AppManager {
   public polls: {[id: PollId]: Poll} = {};
@@ -69,9 +64,63 @@ export class AppPollsManager extends AppManager {
         const results = update.results;
         if(!results) return;
 
+        const prev = this.getPoll(poll.id);
+        const wasUnread = prev?.results?.pFlags?.has_unread_votes;
+
         this.saveAndDispatchPoll(poll, results as any);
+
+        // When the server signals that the poll has unread votes, bump the
+        // dialog's `unread_poll_votes_count` so the badge appears. This is
+        // the poll-vote analogue of the unread-reactions tracking on
+        // `updateMessageReactions` in AppMessagesManager.
+        if(!results?.pFlags?.min && results.pFlags?.has_unread_votes && !wasUnread) {
+          this.bumpUnreadPollVotes(update, true);
+        }
+        if(!results?.pFlags?.min && !results.pFlags?.has_unread_votes && wasUnread) {
+          this.bumpUnreadPollVotes(update, false);
+        }
       }
     });
+  }
+
+  private bumpUnreadPollVotes(update: {poll_id: Poll['id'], peer?: Message.message['peer_id'], msg_id?: number, top_msg_id?: number}, add: boolean) {
+    // Resolve which message(s) the unread vote applies to. The update may
+    // carry the message context directly (peer + msg_id); otherwise we fall
+    // back to the local poll→messages map populated by `updatePollToMessage`.
+    const messageRefs: Array<{peerId: PeerId, mid: number}> = [];
+    if(update.peer && update.msg_id) {
+      const peerId = this.appPeersManager.getPeerId(update.peer);
+      const channelId = peerId.isAnyChat() ? peerId.toChatId() : 0;
+      const mid = this.appMessagesIdsManager.generateMessageId(update.msg_id, channelId);
+      messageRefs.push({peerId, mid});
+    } else {
+      const pollMessageKeys = this.pollToMessages[update.poll_id];
+      if(!pollMessageKeys?.size) return;
+      for(const key of pollMessageKeys) {
+        const [peerIdStr, midStr] = key.split('_');
+        messageRefs.push({peerId: peerIdStr.toPeerId(), mid: +midStr});
+      }
+    }
+
+    for(const {peerId, mid} of messageRefs) {
+      const message = this.appMessagesManager.getMessageByPeer(peerId, mid) as MyMessage;
+      // `has_unread_votes` is only meaningful on polls we own.
+      if(!message || !message.pFlags.out) {
+        continue;
+      }
+
+      const threadId = getMessageThreadId(message, {
+        isForum: this.appPeersManager.isForum(peerId),
+        isBotforum: this.appPeersManager.isBotforum(peerId)
+      });
+
+      this.appMessagesManager.modifyCachedMentionsAndSave({
+        peerId,
+        mid: message.mid,
+        threadId,
+        addPollVote: add
+      });
+    }
   }
 
   public clear = (init?: boolean) => {
@@ -104,6 +153,14 @@ export class AppPollsManager extends AppManager {
       poll.chosenIndexes = [];
       poll.correctIndexes = [];
       results = this.saveResults(poll, results);
+    }
+
+    poll.answers.forEach(answer => {
+      if(answer._ !== 'pollAnswer' || !answer.media) return;
+      this.appMessagesManager.saveMessageMedia({media: answer.media});
+    });
+    if(results?.solution_media) {
+      this.appMessagesManager.saveMessageMedia({media: results.solution_media});
     }
 
     this.checkRefetchPollTimeout(poll);
@@ -145,7 +202,17 @@ export class AppPollsManager extends AppManager {
 
   public saveResults(poll: Poll, results: PollResults) {
     if(this.results[poll.id]) {
-      results = Object.assign(this.results[poll.id], results);
+      const existingResults = this.results[poll.id];
+
+      // in some cases, results are returned without results or pFlags.min, so we need to clear chosen indexes
+      // for example when retracting vote from a poll with close_date and hide_results_until_close
+      if(!results.pFlags.min && !results.results) {
+        existingResults.results?.forEach(result => {
+          delete result.pFlags.chosen;
+        });
+      }
+
+      results = Object.assign(existingResults, results);
     } else {
       this.results[poll.id] = results;
     }
@@ -253,39 +320,6 @@ export class AppPollsManager extends AppManager {
 
     const uploadingMedia = media ? this.uploadPollMedia(peerId, media) : undefined;
 
-    // const currentPollData = structuredClone(this.getPoll(message.media.poll.id));
-
-    // const optionNumber = pollAnswerOptionOffset + currentPollData.poll.answers.length;
-
-    // const updatedPoll: Poll.poll = {
-    //   ...currentPollData.poll,
-    //   answers: [
-    //     ...currentPollData.poll.answers,
-    //     {
-    //       _: 'pollAnswer',
-    //       text: text,
-    //       media: uploadingMedia?.messageMedia,
-    //       option: new Uint8Array([optionNumber])
-    //     }
-    //   ]
-    // };
-
-    // const updatedResults: PollResults = {
-    //   ...currentPollData.results,
-    //   results: [
-    //     ...(currentPollData.results?.results ?? []),
-    //     {
-    //       _: 'pollAnswerVoters',
-    //       option: new Uint8Array([optionNumber]),
-    //       voters: 0,
-    //       recent_voters: [],
-    //       pFlags: {}
-    //     }
-    //   ]
-    // };
-
-    // this.saveAndDispatchPoll(updatedPoll, updatedResults);
-
     const inputPeer = this.appPeersManager.getInputPeerById(peerId);
 
     const updates = await this.apiManager.invokeApi('messages.addPollAnswer', {
@@ -364,9 +398,17 @@ export class AppPollsManager extends AppManager {
   }
 
   private uploadPollMedia(peerId: PeerId, media: AttachedMedia) {
+    if(media.type === 'sticker') {
+      return this.makeStickerPollMedia(media);
+    }
+
+    return this.uploadPhotoPollMedia(peerId, media);
+  }
+
+  private uploadPhotoPollMedia(peerId: PeerId, media: AttachedPhoto) {
     const mediaTempId = this.appMessagesManager.getMediaTempId();
 
-    const {photo, document} = this.appMessagesManager.makeDocumentAndMetaForSendingFile({
+    const {photo} = this.appMessagesManager.makeDocumentAndMetaForSendingFile({
       file: media.blob,
       objectURL: media.objectUrl,
       isDocument: false,
@@ -376,13 +418,14 @@ export class AppPollsManager extends AppManager {
       isMedia: true
     });
 
+    if(!photo) throw new Error('Expected a photo for poll media');
+
     const {deferred, uploadingFileName} = this.appMessagesManager.makeMediaUploadDeferred({file: media.blob});
 
     const messageMedia: MessageMedia = {
-      _: photo ? 'messageMediaPhoto' : 'messageMediaDocument',
+      _: 'messageMediaPhoto',
       pFlags: {},
-      photo,
-      document
+      photo
     };
 
     this.appMessagesManager.sendSmthLazyLoadQueue.push({
@@ -416,6 +459,31 @@ export class AppPollsManager extends AppManager {
 
     return {
       uploadingFileName,
+      deferred,
+      messageMedia
+    };
+  }
+
+  private makeStickerPollMedia(media: AttachedSticker) {
+    // Stickers are referenced by an existing server document, so there's nothing
+    // to upload. We resolve the deferred immediately with an inputMediaDocument.
+    const doc = this.appDocsManager.getDoc(media.docId);
+
+    const deferred = deferredPromise<InputMedia>();
+    deferred.resolve({
+      _: 'inputMediaDocument',
+      id: getDocumentInput(doc),
+      pFlags: {}
+    });
+
+    const messageMedia: MessageMedia = {
+      _: 'messageMediaDocument',
+      pFlags: {},
+      document: doc
+    };
+
+    return {
+      uploadingFileName: undefined as string | undefined,
       deferred,
       messageMedia
     };
@@ -491,7 +559,7 @@ export class AppPollsManager extends AppManager {
         _: 'textWithEntities',
         ...parsedPayload.pollOptions[index]
       },
-      option: new Uint8Array([pollAnswerOptionOffset + index]),
+      option: new Uint8Array(Array.from(index.toString()).map((c) => c.charCodeAt(0))),
       added_by: this.appPeersManager.getOutputPeer(peerId),
       media: uploadingMedia.pollOptions.get(index)?.messageMedia
     }));

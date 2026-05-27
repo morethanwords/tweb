@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 // Native voice recorder built on the standard web platform — no WASM:
 //   getUserMedia → AudioContext(48k) → AudioWorklet (PCM tap) →
 //     WebCodecs AudioEncoder (opus) → OGG/Opus muxer.

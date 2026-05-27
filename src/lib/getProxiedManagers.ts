@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type createManagers from '@appManagers/createManagers';
 import type {AckedResult} from '@lib/superMessagePort';
 import {ModifyFunctionsToAsync} from '@types';

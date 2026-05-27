@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 // https://github.com/telegramdesktop/tdesktop/blob/97d8ee75d51874fcb74a9bfadc79f835c82be54a/Telegram/SourceFiles/chat_helpers/stickers_emoji_pack.cpp#L46
 const COLORREPLACEMENTS = [
   [

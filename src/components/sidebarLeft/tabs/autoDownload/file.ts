@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import formatBytes from '@helpers/formatBytes';
 import debounce from '@helpers/schedulers/debounce';
 import I18n, {LangPackKey, _i18n} from '@lib/langPack';

@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 // export function findUpClassName<T>(el: any, className: string): T;
 export default function findUpClassName(el: EventTarget | {closest: (selector: string) => any}, className: string): HTMLElement {
   return (el as any).closest('.' + className);

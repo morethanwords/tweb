@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {AppImManager, ChatSavedPosition, ChatSetInnerPeerOptions, ChatSetPeerOptions} from '@lib/appImManager';
 import type {HistoryResult, MyMessage} from '@appManagers/appMessagesManager';
 import type {MyDocument} from '@appManagers/appDocsManager';
@@ -28,7 +22,7 @@ import LazyLoadQueue from '@components/lazyLoadQueue';
 import ListenerSetter from '@helpers/listenerSetter';
 import {setQuizHint} from '@components/quizHint';
 import AudioElement from '@components/audio';
-import {ChannelParticipant, Chat as MTChat, ChatParticipant, Document, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, SponsoredMessage, User, UserFull, WebPage, WebPageAttribute, Reaction, DocumentAttribute, InputStickerSet, TextWithEntities, FactCheck, WebDocument, MessageExtendedMedia, PeerSettings, LangPackString, ForumTopic, MessageAction} from '@layer';
+import {ChannelParticipant, Chat as MTChat, ChatParticipant, Document, Game, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, SponsoredMessage, User, UserFull, WebPage, WebPageAttribute, Reaction, DocumentAttribute, InputStickerSet, TextWithEntities, FactCheck, WebDocument, MessageExtendedMedia, PeerSettings, LangPackString, ForumTopic, MessageAction} from '@layer';
 import {BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID, SEND_WHEN_ONLINE_TIMESTAMP, STARS_CURRENCY} from '@appManagers/constants';
 import {FocusDirection, ScrollStartCallbackDimensions} from '@helpers/fastSmoothScroll';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation} from '@hooks/useHeavyAnimationCheck';
@@ -130,7 +124,7 @@ import SwipeHandler from '@components/swipeHandler';
 import getSelectedText from '@helpers/dom/getSelectedText';
 import {createStoriesViewerWithPeer} from '@components/stories/viewer';
 import {render} from 'solid-js/web';
-import {createRoot, createEffect, createSignal, Signal, onCleanup} from 'solid-js';
+import {createRoot, createEffect, createSignal, Signal, onCleanup, batch} from 'solid-js';
 import {StoryPreview, wrapStoryMedia} from '@components/stories/preview';
 import wrapReply from '@components/wrappers/reply';
 import {modifyAckedPromise} from '@helpers/modifyAckedResult';
@@ -224,7 +218,10 @@ import {NoForwardsRequestContent, NoForwardsRequestReplyMarkup} from '@component
 import tsNow from '@helpers/tsNow';
 import wrapMessageForReply from '@components/wrappers/messageForReply';
 import canSeeMessageMedia from '@lib/appManagers/utils/messages/canSeeMessageMedia';
-import type {PollMessageContent} from './bubbleParts/pollMessageContent';
+import {PollMessageContentProps, PollMessageContentControls} from './bubbleParts/pollMessageContent';
+import {createMutable} from 'solid-js/store';
+import compareUint8Arrays from '@helpers/bytes/compareUint8Arrays';
+import {linkToPollOption} from './bubbleParts/pollMessageContent/pollToOptionLink';
 
 // TODO: fix new message won't be rendered if an old one is rendering in the moment
 
@@ -243,6 +240,7 @@ export type BubbleContext = {
   canHaveTail: boolean,
   isStandaloneMedia: boolean,
   mediaRequiresMessageDiv: boolean,
+  pollMessageContentControls?: Partial<PollMessageContentControls>,
 
   // * something extra
   releaseDice?: (value: number) => void
@@ -621,7 +619,7 @@ export default class ChatBubbles {
 
   private logsBubbleByMid = new Map<number, {element: HTMLElement, priorityDate: number}>();
 
-  private contexts: Map<HTMLElement, BubbleContext> = new Map();
+  public contexts: Map<HTMLElement, BubbleContext> = new Map();
 
   private webPageClickCallbacks: WeakMap<HTMLElement, (e: MouseEvent) => any> = new WeakMap();
 
@@ -1224,7 +1222,7 @@ export default class ChatBubbles {
       listenerSetter: this.listenerSetter,
       findTarget: (e) => {
         const target = e.target as HTMLElement;
-        const found = target.closest('.attachment.media-sticker-wrapper, .attachment.media-gif-wrapper') || (findUpClassName(target, 'attachment') && target.closest('.custom-emoji'));
+        const found = target.closest('.attachment.media-sticker-wrapper, .attachment.media-gif-wrapper, .poll-option-sticker.media-sticker-wrapper') || (findUpClassName(target, 'attachment') && target.closest('.custom-emoji'));
         return found as HTMLElement;
       }
     });
@@ -1362,6 +1360,21 @@ export default class ChatBubbles {
   public attachContainerListeners() {
     const container = this.container;
 
+    if(this.chat.isPreview) {
+      // Belt-and-suspenders: every other isPreview short-circuit in this file gates a
+      // specific delegate (`onBubblesClick`, `readMessages`, …). Sponsored / menu / close
+      // buttons inside bubbles bind their own listeners directly on their DOM and skip
+      // those delegates — a capture-phase swallow on the bubbles container kills them all
+      // before anything can run, complementing the `.bubble { pointer-events: none }`
+      // CSS that handles regular bubble children. Context menu / selection / dblclick
+      // listeners are skipped entirely (preview is read-only).
+      this.listenerSetter.add(container)('click', (e) => {
+        e.stopImmediatePropagation();
+        e.preventDefault();
+      }, {capture: true});
+      return;
+    }
+
     this.chat.contextMenu.attachTo(container);
     this.chat.selection.attachListeners(container, new ListenerSetter());
 
@@ -1400,7 +1413,8 @@ export default class ChatBubbles {
           findUpClassName(e.target, 'time') ||
           findUpClassName(e.target, 'code-header-button') ||
           findUpClassName(e.target, 'reaction') ||
-          findUpClassName(e.target, 'bubble-beside-button')
+          findUpClassName(e.target, 'bubble-beside-button') ||
+          findUpClassName(e.target, 'poll-message-content')
         ) {
           return;
         }
@@ -1953,6 +1967,8 @@ export default class ChatBubbles {
       const fullMid = getBubbleFullMid(entry.target as HTMLElement);
       this.observer.unobserve(entry.target, this.viewsObserverCallback);
 
+      if(this.chat.isPreview) return;
+
       if(fullMid) {
         if(this.sponsoredMessagesMids.includes(fullMid)) {
           const {mid} = splitFullMid(fullMid);
@@ -2410,6 +2426,7 @@ export default class ChatBubbles {
   }
 
   private readUnreaded(type: 'history' | 'content') {
+    if(this.chat.isPreview) return;
     const readPromiseKey = type === 'history' ? 'readPromise' : 'readContentPromise';
     if(this[readPromiseKey]) return;
 
@@ -2481,6 +2498,10 @@ export default class ChatBubbles {
   }
 
   public onBubblesClick = async(e: Event) => {
+    // Previews are read-only — no media open, no jump-to-reply, no link follow, no
+    // context menu. Belt-and-suspenders to the CSS `pointer-events: none` we put on
+    // `.bubble` for preview mode.
+    if(this.chat.isPreview) return;
     let target = e.target as HTMLElement;
     let bubble: HTMLElement = null, bubbleFullMid: FullMid;
     try {
@@ -2847,6 +2868,11 @@ export default class ChatBubbles {
                 isReceipt: true
               });
             }
+          } else if(target.classList.contains('is-game-link')) {
+            const gameMessage = await this.managers.appMessagesManager.getMessageByPeer(peerId.toPeerId(), +mid);
+            if(gameMessage?._ === 'message') {
+              this.chat.appImManager.playGame(gameMessage as Message.message);
+            }
           } else {
             this.chat.appImManager.setInnerPeer({
               ...additionalSetPeerProps,
@@ -2901,6 +2927,20 @@ export default class ChatBubbles {
       }
 
       return;
+    }
+
+    let pollOptionEl: HTMLElement;
+    if(target.closest('.poll-option-sticker') && (pollOptionEl = target.closest('[data-poll-option-idx]'))) {
+      const message = this.chat.getMessage(bubbleFullMid);
+      const idx = +(pollOptionEl.dataset.pollOptionIdx ?? 0);
+
+      if(idx !== undefined && message?._ === 'message' && message.media?._ === 'messageMediaPoll') {
+        const {poll} = await this.managers.appPollsManager.getPoll(message.media.poll.id);
+        const answer = poll?.answers?.[idx];
+        if(answer.media?._ === 'messageMediaDocument' && answer.media.document?._ === 'document' && answer.media.document?.stickerSetInput) {
+          showStickersPopup(answer.media.document.stickerSetInput, undefined, this.chat.input);
+        }
+      }
     }
 
     const videoMini = findUpClassName(target, 'media-video-mini');
@@ -3060,6 +3100,7 @@ export default class ChatBubbles {
           ...additionalSetPeerProps,
           peerId: replyToPeerId,
           lastMsgId: replyToMid,
+          pollOption: replyTo.poll_option,
           type: this.chat.type === ChatType.Logs ? undefined : this.chat.type,
           threadId: this.chat.threadId,
           monoforumThreadId: this.chat.monoforumThreadId
@@ -3106,9 +3147,11 @@ export default class ChatBubbles {
         return;
       }
 
-      const pollMessageContent = pollViewerTarget.closest('poll-message-content') as InstanceType<typeof PollMessageContent>;
-      pollMessageContent.controls?.openMediaViewer?.(+pollViewerTarget.dataset.pollViewerIdx);
+      const bubbleContext = this.contexts.get(bubble);
+      bubbleContext?.pollMessageContentControls?.openMediaViewer?.(+pollViewerTarget.dataset.pollViewerIdx);
       return true;
+    } else if(target.closest('.poll-message-content')) {
+      return;
     }
 
     if(
@@ -4444,7 +4487,7 @@ export default class ChatBubbles {
   }
 
   public async setPeer(options: ChatSetPeerOptions & {samePeer: boolean, sameSearch: boolean, forceIsFirstLoad?: boolean}): Promise<{cached?: boolean, promise: Chat['setPeerPromise']}> {
-    const {samePeer, sameSearch, peerId, stack, monoforumThreadId, forceIsFirstLoad} = options;
+    const {samePeer, sameSearch, peerId, stack, monoforumThreadId, forceIsFirstLoad, pollOption} = options;
     let {lastMsgId, lastMsgPeerId, startParam} = options;
     const tempId = ++this.setPeerTempId;
 
@@ -4577,6 +4620,7 @@ export default class ChatBubbles {
         if(isTarget) {
           this.scrollToBubble(bubble, 'center');
           this.highlightBubble(bubble);
+          this.highlightBubblePollAnswer(bubble, lastMsgFullMid, pollOption);
           this.chat.dispatchEvent('setPeer', lastMsgId, false);
         } else if(topMessageFullMid !== EMPTY_FULL_MID && !isJump) {
           // log('will scroll down', this.scroll.scrollTop, this.scroll.scrollHeight);
@@ -4879,6 +4923,7 @@ export default class ChatBubbles {
 
           if(!followingUnread && isTarget && foundTarget) {
             this.highlightBubble(bubble);
+            this.highlightBubblePollAnswer(bubble, lastMsgFullMid, pollOption);
           }
         }
 
@@ -5152,6 +5197,7 @@ export default class ChatBubbles {
   }
 
   public onScrolledAllDown() {
+    if(this.chat.isPreview) return;
     if(this.chat.type === ChatType.Chat || this.chat.type === ChatType.Discussion) {
       const {peerId, threadId, monoforumThreadId} = this.chat;
       const historyMaxId = this.chat.getHistoryMaxId();
@@ -5742,6 +5788,7 @@ export default class ChatBubbles {
   }
 
   private setUnreadObserver(type: 'history' | 'content', bubble: HTMLElement, mid?: number, element: HTMLElement = bubble) {
+    if(this.chat.isPreview) return;
     mid ??= (bubble as any).maxBubbleMid;
     // this.log('not our message', message, message.pFlags.unread);
     this.observer.observe(element, type === 'history' ? this.unreadedObserverCallback : this.unreadedContentObserverCallback);
@@ -6534,6 +6581,9 @@ export default class ChatBubbles {
       setUnreadObserver?.();
       if(hasReactions && this.chat.type !== ChatType.Logs) {
         this.appendReactionsElementToBubble(bubble, message, reactionsMessage, undefined, loadPromises);
+      }
+      if(this.observer && (unreadMention || unreadReactions)) {
+        this.setUnreadObserver('content', bubble, reactionsMessage.mid);
       }
       return ret;
     }
@@ -7539,6 +7589,133 @@ export default class ChatBubbles {
           break;
         }
 
+        case 'messageMediaGame': {
+          noAttachmentDivNeeded = true;
+          context.attachmentDiv = undefined;
+
+          const game = (context.messageMedia as MessageMedia.messageMediaGame).game as Game.game;
+          if(!game || game._ !== 'game') {
+            break;
+          }
+
+          processedWebPage = true;
+          context.mediaRequiresMessageDiv = true;
+          bubble.classList.add('has-webpage', 'game');
+
+          const photo = game.photo?._ === 'photo' ? game.photo as Photo.photo : undefined;
+          const doc = game.document as MyDocument;
+          const props: Parameters<typeof WebPageBox>[0] = {};
+
+          let preview: HTMLDivElement;
+          if(photo || doc) {
+            preview = document.createElement('div');
+            props.media = {
+              content: preview,
+              position: 'top'
+            };
+          }
+
+          if(doc) {
+            if(doc.type === 'gif' || doc.type === 'video') {
+              bubble.classList.add('video');
+              wrapVideo({
+                doc,
+                container: preview,
+                message: message as Message.message,
+                boxWidth: mediaSizes.active.webpage.width,
+                boxHeight: mediaSizes.active.webpage.height,
+                lazyLoadQueue: this.lazyLoadQueue,
+                middleware,
+                isOut,
+                group: this.chat.animationGroup,
+                loadPromises,
+                autoDownload: this.chat.autoDownload,
+                noInfo: true,
+                observer: this.observer,
+                onLoad: this.onVideoLoad,
+                setShowControlsOn: bubble
+              });
+            } else {
+              const docDiv = await wrapDocument({
+                message: message as Message.message,
+                middleware: bubble.middlewareHelper.get(),
+                autoDownloadSize: this.chat.autoDownload.file,
+                lazyLoadQueue: this.lazyLoadQueue,
+                loadPromises,
+                sizeType: 'documentName',
+                searchContext: {
+                  useSearch: false,
+                  peerId: this.peerId,
+                  inputFilter: {_: 'inputMessagesFilterEmpty'}
+                },
+                fontSize: this.chat.appSettings.messagesTextSize
+              });
+              preview.append(docDiv);
+              props.media.hasDocument = true;
+            }
+          } else if(photo) {
+            bubble.classList.add('photo');
+            wrapPhoto({
+              photo,
+              message,
+              container: preview,
+              boxWidth: mediaSizes.active.webpage.width,
+              boxHeight: mediaSizes.active.webpage.height,
+              isOut,
+              lazyLoadQueue: this.lazyLoadQueue,
+              middleware,
+              loadPromises,
+              autoDownloadSize: this.chat.autoDownload.photo
+            });
+          }
+
+          props.name = {
+            content: i18n('AttachGame')
+          };
+
+          if(game.title) {
+            props.title = wrapRichText(game.title, {noLinks: true, noLinebreaks: true});
+          }
+
+          if(game.description) {
+            props.text = wrapRichText(game.description, {noLinks: true});
+          }
+
+          props.footer = {
+            content: i18n('Bot.Game.Play')
+          };
+
+          createRoot((dispose) => {
+            middleware.onDestroy(dispose);
+            WebPageBox({
+              ...props,
+              ref: (box) => {
+                this.webPageClickCallbacks.set(box, (e) => {
+                  cancelEvent(e);
+                  // After an inline send confirms, the bubble's data-mid is
+                  // patched in place but the closure's `message` still has the
+                  // temp mid — re-read from the DOM so we hit the server mid.
+                  const currentMid = +bubble.dataset.mid;
+                  const captured = message as Message.message;
+                  const target = (currentMid && currentMid !== captured.mid ?
+                    this.chat.getMessageByPeer(captured.peerId, currentMid) as Message.message :
+                    undefined) || captured;
+                  this.chat.appImManager.playGame(target);
+                });
+
+                if(timeSpan) {
+                  timeSpan.before(box);
+                } else {
+                  messageDiv.append(box);
+                }
+              },
+              clickable: true
+            });
+          });
+
+          break;
+        }
+
         case 'messageMediaDocument': {
           const doc = context.messageMedia.document as MyDocument;
 
@@ -7788,9 +7965,12 @@ export default class ChatBubbles {
             context.messageMessage = totalEntities = undefined;
 
             const {PollMessageContent} = await import('./bubbleParts/pollMessageContent');
-            const pollMessageContent = new PollMessageContent();
-            pollMessageContent.HotReloadGuard = SolidJSHotReloadGuardProvider;
-            pollMessageContent.feedProps({
+
+            const container = document.createElement('div');
+            container.classList.add('poll-message-content');
+
+            const propsMutable = createMutable<PollMessageContentProps>({
+              element: container,
               isOutgoing: isOut,
               message,
               peerId: this.peerId,
@@ -7800,23 +7980,37 @@ export default class ChatBubbles {
               autoDownload: this.chat.autoDownload,
               lazyLoadQueue: this.lazyLoadQueue,
               animationGroup: this.chat.animationGroup,
-              loadPromises
+              canSend: (rights) => this.chat.canSend(rights),
+              loadPromises,
+              controls: context.pollMessageContentControls = {}
+            });
+
+            renderComponent({
+              element: container,
+              Component: PollMessageContent,
+              props: propsMutable,
+              middleware,
+              HotReloadGuard: SolidJSHotReloadGuardProvider
             });
 
             this.updateLocalOnEdit.set(bubble, msg => {
-              if(msg.media?._ !== 'messageMediaPoll') return;
-              pollMessageContent.feedProps<false>({
-                message: msg,
-                poll: msg.media.poll,
-                results: msg.media.results,
-                media: msg.media
+              batch(() => {
+                if(msg.media?._ !== 'messageMediaPoll') return;
+
+                Object.assign(propsMutable, {
+                  message: msg,
+                  poll: msg.media.poll,
+                  results: msg.media.results,
+                  media: msg.media
+                });
               });
             });
-            middleware.onClean(() => {
+
+            middleware.onDestroy(() => {
               this.updateLocalOnEdit.delete(bubble);
             });
 
-            messageDiv.prepend(pollMessageContent);
+            messageDiv.prepend(container);
             bubble.classList.add('poll-message');
 
             break;
@@ -8054,18 +8248,53 @@ export default class ChatBubbles {
         case 'messageMediaGeoLive':
         case 'messageMediaVenue':
         case 'messageMediaGeo': {
+          bubble.classList.add('photo');
+
+          const geoMessage = message as Message.message;
+
           const result = wrapGeo({
             attachmentDiv: context.attachmentDiv,
-            bubble,
             loadPromises,
-            message: message as Message.message,
-            messageDiv,
             messageMedia: context.messageMedia,
             middleware,
-            timeSpan,
-            updateLocationOnEdit: this.updateLocalOnEdit,
-            wrapOptions
+            wrapOptions,
+            peerId: geoMessage.fromId,
+            date: geoMessage.date,
+            editDate: geoMessage.edit_date,
+            onLiveExpire: (footer) => {
+              bubble.classList.add('is-message-empty');
+              timeSpan.classList.remove('hide');
+              footer.replaceWith(timeSpan);
+              this.updateLocalOnEdit.delete(bubble);
+            }
           });
+
+          if(result.footer) {
+            bubble.classList.remove('is-message-empty');
+            messageDiv.append(result.footer);
+          }
+
+          if(result.isLive && !result.isLiveExpired) {
+            timeSpan.classList.add('hide');
+          }
+
+          if(result.address) {
+            result.address.append(timeSpan);
+          }
+
+          if(result.update) {
+            const updateGeo = result.update;
+            this.updateLocalOnEdit.set(bubble, (newMessage) => {
+              updateGeo({
+                messageMedia: newMessage.media as MessageMedia.messageMediaGeoLive,
+                date: newMessage.date,
+                editDate: newMessage.edit_date
+              });
+            });
+            middleware.onClean(() => {
+              this.updateLocalOnEdit.delete(bubble);
+            });
+          }
 
           context.canHaveTail = result.canHaveTail ?? context.canHaveTail;
           context.mediaRequiresMessageDiv = result.mediaRequiresMessageDiv ?? context.mediaRequiresMessageDiv;
@@ -10713,5 +10942,30 @@ export default class ChatBubbles {
     });
 
     return entry;
+  }
+
+  private highlightBubblePollAnswer(bubble?: HTMLElement, lastMsgFullMid?: FullMid, pollOption?: string | Uint8Array) {
+    if(!bubble || lastMsgFullMid === EMPTY_FULL_MID || !pollOption) return;
+
+    const message = this.chat.getMessage(lastMsgFullMid);
+    if(!message || message?._ !== 'message' || message?.media?._ !== 'messageMediaPoll') return;
+
+    let option: Uint8Array;
+    if(pollOption instanceof Uint8Array) {
+      option = pollOption;
+    } else {
+      const maxLength = 100;
+      if(pollOption.length > maxLength) return; // discard possibly malformed parameter
+      option = linkToPollOption(pollOption);
+      if(!option) return;
+    }
+
+    const context = this.contexts.get(bubble);
+    if(!context) return;
+
+    const pollOptionIndex = message.media.poll.answers.findIndex((answer) => answer._ === 'pollAnswer' && compareUint8Arrays(answer.option, option));
+    if(pollOptionIndex === -1) return;
+
+    context.pollMessageContentControls?.highlightAnswerWithTimeout?.(pollOptionIndex, 3000);
   }
 }

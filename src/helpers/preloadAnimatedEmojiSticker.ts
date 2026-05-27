@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import appDownloadManager from '@lib/appDownloadManager';
 import lottieLoader from '@lib/rlottie/lottieLoader';
 import rootScope from '@lib/rootScope';

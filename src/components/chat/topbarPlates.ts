@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 /**
  * Single place where every topbar floating plate (except the per-peer
  * `pinnedMessage` plate) is constructed, mounted, and torn down. Topbar

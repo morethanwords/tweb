@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {PasswordManager} from '@appManagers/passwordManager';
 import {ReferencesStorage} from '@lib/storages/references';
 import DialogsStorage from '@lib/storages/dialogs';
@@ -61,6 +55,7 @@ import AppGifsManager from '@appManagers/appGifsManager';
 import {ActiveAccountNumber} from '@lib/accounts/types';
 import {AppManager} from '@appManagers/manager';
 import AppGiftsManager from '@appManagers/appGiftsManager';
+import AppGamesManager from '@appManagers/appGamesManager';
 import MonoforumDialogsStorage from '@lib/storages/monoforumDialogs';
 import AppPromoManager from '@appManagers/appPromoManager';
 import AppAccountManager from '@appManagers/appAccountManager';
@@ -125,6 +120,7 @@ export default function createManagers(
     appTranslationsManager: new AppTranslationsManager,
     appGifsManager: new AppGifsManager,
     appGiftsManager: new AppGiftsManager,
+    appGamesManager: new AppGamesManager,
     monoforumDialogsStorage: new MonoforumDialogsStorage,
     appPromoManager: new AppPromoManager,
     appAccountManager: new AppAccountManager

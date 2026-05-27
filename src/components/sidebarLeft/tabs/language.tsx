@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {createMemo, onMount} from 'solid-js';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import {randomLong} from '@helpers/random';

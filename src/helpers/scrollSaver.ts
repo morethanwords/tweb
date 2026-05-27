@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type Scrollable from '@components/scrollable';
 import type {ScrollableContextValue} from '@components/scrollable2';
 import {MOUNT_CLASS_TO} from '@config/debug';

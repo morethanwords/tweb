@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import wrapTopicThreadAnchor from '@lib/richTextProcessor/wrapTopicThreadAnchor';
 import {avatarNew} from '@components/avatarNew';
 import Icon from '@components/icon';

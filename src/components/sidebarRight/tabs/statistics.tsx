@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type TChart from '@lib/tchart/chart';
 import type {TChartData, TChatOriginalData} from '@lib/tchart/types';
 import {Message, MessagesMessages, PostInteractionCounters, PublicForward, StatsAbsValueAndPrev, StatsBroadcastStats, StatsGraph, StatsGroupTopAdmin, StatsGroupTopInviter, StatsGroupTopPoster, StatsMegagroupStats, StatsMessageStats, StatsPercentValue, StatsPublicForwards, StatsStoryStats, StoryItem} from '@layer';

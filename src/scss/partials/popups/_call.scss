@@ -1,10 +1,14 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 @use "../../shared" as *;
+
+/*
+ * P2P call popup — iOS-style layout backed by the shared
+ * ChatBackgroundGradientRenderer (canvas) instead of CSS blobs, so the
+ * "Telegram swirl" gradient stays consistent with chat backgrounds.
+ *
+ * Layout switches on `.no-video`:
+ *   - no-video: avatar / name / duration centred as a column over the gradient
+ *   - with video: column shrinks and pins to the top; video tiles cover
+ */
 
 .popup-call {
   $parent: ".popup";
@@ -12,11 +16,14 @@
   #{$parent} {
     &-header {
       width: 100%;
+      align-items: center;
+      // Three slots — close (left, auto-added by PopupElement), emojis
+      // (center), action cluster (right). The emoji slot is absolute-centred
+      // (see `.call-emojis` below) so it stays in the geometric middle of
+      // the header even when the close and action clusters have different
+      // widths.
       justify-content: space-between;
-    }
-
-    &-title {
-      flex: 1 1 auto;
+      padding: .25rem .5rem;
     }
   }
 }
@@ -26,6 +33,8 @@
   height: 100%;
   color: #fff;
   align-items: center;
+  position: relative;
+  overflow: hidden;
 
   &.is-full-screen,
   html.is-mobile & {
@@ -40,6 +49,7 @@
   &.no-video {
     .call-title,
     .call-subtitle,
+    .call-avatar,
     .popup-header,
     .call-button,
     .call-button-text,
@@ -59,51 +69,207 @@
     }
   }
 
+  // ===== Gradient canvases (ChatBackgroundGradientRenderer × 3) =====
+  //
+  // One canvas per state is mounted at popup creation; the JS keeps all
+  // three drifting via `toNextPosition`. State change bumps the next
+  // canvas's z-index above the prev one and flips `is-hidden` on each — the
+  // opacity transition here handles the crossfade.
+  //
+  // z-index sits at -3 by default so it stays BELOW the video container
+  // (-1) and the avatar / buttons / header above. During a state swap the
+  // JS bumps the next canvas to -2 (still below the video) so it stacks
+  // above the prev gradient but never covers the call video.
+
+  &-gradient {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -3;
+    border-radius: inherit;
+    pointer-events: none;
+    image-rendering: auto;
+    opacity: 1;
+
+    @include animation-level(2) {
+      transition: opacity .6s ease;
+    }
+
+    &.is-hidden {
+      opacity: 0;
+    }
+  }
+
+  // ===== Header layout =====
+
   .popup-header {
+    z-index: 2;
+    flex: 0 0 auto;
+    position: relative; // anchor for absolute-positioned emoji slot
+
     .btn-icon {
       color: #fff;
     }
+  }
 
-    .call-emojis {
-      transform: scale(1.3125);
-      margin-right: 1rem;
+  &-header-actions {
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+    margin-inline-start: auto;
+  }
+
+  // Absolute-centre the emoji slot so unequal close/action cluster widths
+  // don't push the emojis off-axis. The translate keeps the slot anchored to
+  // its midpoint while leaving it out of the flex flow.
+  &-emojis {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(1.3125);
+    transform-origin: center;
+    pointer-events: none;
+    white-space: nowrap;
+
+    .emoji {
+      margin: 0 .125rem;
+    }
+  }
+
+  // ===== Avatar / name / duration column =====
+
+  // Absolute-positioned with top + translateY anchoring so the entire column
+  // can slide smoothly between centred (no-video) and pinned-to-top (video)
+  // via two transitionable properties. Inner elements (avatar / title /
+  // subtitle) also transition their sizes with the same timing so the
+  // slide and shrink land in lockstep.
+  //
+  // - no-video: top: 50%, transform: translateY(-50%)  →  centred
+  // - video:    top: 3.5rem, transform: translateY(0)  →  pinned below header
+  &-info {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 1rem;
+    z-index: 0;
+
+    @include animation-level(2) {
+      transition: top var(--transition-standard-in), transform var(--transition-standard-in);
+    }
+  }
+
+  // With video on, the info column slides below the header (~3rem tall)
+  // and shrinks. Real size changes (width / height / font-size / margin)
+  // animate alongside the position shift with the same timing so the whole
+  // group glides as one — the earlier transform-scale approach left full-
+  // size layout boxes behind and the negative-margin compensation
+  // overlapped the avatar with the emojis above.
+  &:not(.no-video) {
+    .call-info {
+      top: 3.5rem;
+      transform: translateY(0);
+    }
+
+    .call-avatar {
+      width: 2.5rem;
+      height: 2.5rem;
+      margin-bottom: .375rem;
+
+      .avatar-full {
+        font-size: 1rem;
+      }
+    }
+
+    .call-title {
+      font-size: 1rem;
+    }
+
+    .call-subtitle {
+      font-size: .75rem;
     }
   }
 
   &-avatar {
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    z-index: -1;
-    opacity: .7;
-    border-radius: inherit;
-    
+    position: relative;
+    width: 8.5rem;
+    height: 8.5rem;
+    border-radius: 50%;
+    overflow: hidden;
+    flex: 0 0 auto;
+    margin-bottom: 1.5rem;
+    background: rgba(255, 255, 255, .1);
+    opacity: 0;
+    z-index: 0;
+
+    @include animation-level(2) {
+      transition: opacity var(--transition-standard-in), width var(--transition-standard-in), height var(--transition-standard-in), margin-bottom var(--transition-standard-in);
+    }
+
     .avatar-full {
-      font-size: 6rem;
+      font-size: 3.5rem;
+      width: 100%;
+      height: 100%;
+
+      @include animation-level(2) {
+        transition: font-size var(--transition-standard-in);
+      }
     }
   }
 
   &-title {
     font-weight: var(--font-weight-bold);
-    font-size: 1.25rem;
+    font-size: 1.75rem;
+    margin-bottom: .0625rem;
+    text-align: center;
+    opacity: 0;
   }
 
   &-subtitle {
     font-size: 1rem;
+    opacity: 0;
+    text-align: center;
   }
 
-  &-title,
-  &-subtitle,
+  // Opacity defaults to 0 here so the controls-hover fade-out can pull them
+  // out of view; the `&.show-controls, &.no-video` rule near the top brings
+  // them back to opacity 1. Subtitle's "muted" 0.8-opacity look from the
+  // pre-redesign code is folded into the show-controls rule below.
+  // Transitions cover both the size change (video↔no-video) and the
+  // opacity change (controls visibility).
+  &-title {
+    @include animation-level(2) {
+      transition: opacity var(--transition-standard-in), font-size var(--transition-standard-in);
+    }
+  }
+
+  &-subtitle {
+    @include animation-level(2) {
+      transition: opacity var(--transition-standard-in), font-size var(--transition-standard-in);
+    }
+  }
+
   &-emojis,
   .popup-header {
     opacity: 0;
-    
+
     @include animation-level(2) {
       transition: opacity var(--transition-standard-in);
     }
   }
+
+  // ===== Bottom button row =====
+  //
+  // Positional rules preserved verbatim from the pre-redesign layout — they
+  // assume four .call-button-container children in `.is-first` (the now-gone
+  // settings button was the fourth) and translate the row to keep the visible
+  // three centred. Stripping the translates broke that alignment, so keep
+  // them; only colour rules changed below.
 
   &-buttons {
     display: flex;
@@ -123,11 +289,11 @@
         &.hide-me {
           --scale: 0 !important;
           transform: scale(var(--scale));
-    
+
           @include animation-level(2) {
             transition: transform var(--transition-standard-in);
           }
-    
+
           .call-button,
           .call-button-text { // ! fix backdrop-filter transition
             opacity: 0;
@@ -144,7 +310,6 @@
         }
       }
     }
-      
 
     &.is-first {
       .call-button { // ! fix backdrop-filter transition
@@ -174,7 +339,7 @@
   }
 
   &-button {
-    background-color: rgba(255, 255, 255, .1);
+    background-color: rgba(255, 255, 255, .15);
 
     &-red {
       background-color: var(--danger-color) !important;
@@ -186,9 +351,28 @@
 
     &.active {
       background-color: #fff !important;
+      // Recolour the icon to near-black when the button is active so it
+      // doesn't disappear against the white background. The original rule
+      // targeted `:before`, which works for icon-font glyphs rendered as the
+      // button's own pseudo-element — but the buttons in this popup use
+      // the shared `Icon()` helper, which builds a child <span> with the
+      // glyph as textContent. Targeting both the button's own colour AND
+      // the descendant icon span covers both styles.
+      color: #000;
 
-      &:before {
-        color: #9e9e9e;
+      &:before,
+      > .tgico {
+        color: #000;
+      }
+
+      // Lottie icons (e.g. mute) are rendered into a <canvas> with colours
+      // baked in by `getColor`. CSS `color` doesn't reach them, but
+      // `filter: brightness(0)` clamps every non-transparent pixel to black
+      // — matches the icon-font glyphs above without needing to touch the
+      // Lottie palette logic in microphoneIconMini.
+      .rlottie,
+      .rlottie-icon {
+        filter: brightness(0);
       }
     }
 
@@ -197,6 +381,8 @@
       opacity: 0;
     }
   }
+
+  // ===== Video tiles =====
 
   &-video {
     width: 100%;
@@ -244,21 +430,7 @@
     }
   }
 
-  // html.emoji-supported & {
-    .call-emojis {
-      transform: scale(1.125);
-
-      .emoji {
-        margin: 0 .125rem;
-      }
-    }
-  // }
-
-  // html:not(.emoji-supported) & {
-  //   .emoji {
-
-  //   }
-  // }
+  // ===== Status pill (e.g. "Peer's microphone is off") =====
 
   &-party-states {
     display: flex;
@@ -305,10 +477,6 @@
       &.forwards {
         transform: scale(1) translateY(0);
       }
-
-      // &.backwards {
-      //   opacity: 0 !important;
-      // }
     }
   }
 
@@ -339,4 +507,16 @@
       }
     }
   }
+}
+
+/* Mirror every <video> in call / group-call / livestream contexts —
+ * both own camera and remote feeds. Set as a separate top-level rule (not
+ * scoped under `.popup-call`) so it applies to:
+ *   - the P2P call popup video containers,
+ *   - cloned group-call participant tiles (cloneNode preserves classList),
+ *   - the Speakers-and-Camera self preview in app settings.
+ * Class is applied at element-creation time by callInstance.getVideoElement,
+ * callInstanceBase.tryAddTrack, and the settings tab JSX. */
+.call-video-mirror {
+  transform: scaleX(-1);
 }

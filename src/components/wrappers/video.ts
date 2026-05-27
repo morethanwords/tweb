@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {IS_SAFARI} from '@environment/userAgent';
 import {IS_H265_SUPPORTED} from '@environment/videoSupport';
 import {animateSingle} from '@helpers/animation';
@@ -263,7 +257,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
 
     const onLoad = () => {
       const message: Message.message = (divRound as any).message;
-      const globalVideo = appMediaPlaybackController.addMedia(message, !noAutoDownload) as HTMLVideoElement;
+      const globalVideo = appMediaPlaybackController.addMedia({message, autoload: !noAutoDownload}) as HTMLVideoElement;
       onGlobalMedia?.(globalVideo);
       const clear = () => {
         (appImManager.chat.setPeerPromise || Promise.resolve()).finally(() => {

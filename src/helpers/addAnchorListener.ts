@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {T_ME_PREFIXES} from '@appManagers/constants';
 import wrapUrl from '@lib/richTextProcessor/wrapUrl';
 import cancelEvent from '@helpers/dom/cancelEvent';
@@ -12,7 +6,7 @@ import parseUriParams from '@helpers/string/parseUriParams';
 // * https://core.telegram.org/api/links
 
 type InternalLinkAnchorType = 'showMaskedAlert' | 'execBotCommand' | 'searchByHashtag' | 'addstickers' | 'im' |
-  'resolve' | 'privatepost' | 'addstickers' | 'voicechat' | 'joinchat' | 'join' | 'invoice' |
+  'resolve' | 'privatepost' | 'addstickers' | 'voicechat' | 'call' | 'joinchat' | 'join' | 'invoice' |
   'addemoji' | 'setMediaTimestamp' | 'addlist' | 'boost' | 'premium_offer' | 'giftcode' |
   'm' | 'message' | 'stars_topup' | 'share' | 'msg_url' | 'nft' | 'iv' | 'new' | 'settings' | 'contacts';
 

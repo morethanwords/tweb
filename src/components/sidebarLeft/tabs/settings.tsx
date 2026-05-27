@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {createSignal, For, onMount, Show} from 'solid-js';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import AppPrivacyAndSecurityTab from '@components/sidebarLeft/tabs/privacyAndSecurity';
@@ -14,6 +8,7 @@ import {
   AppKeyboardShortcutsTab,
   AppLanguageTab,
   AppNotificationsTab,
+  AppSpeakersAndCameraTab,
   getEditProfileInitArgs
 } from '@components/solidJsTabs';
 import lottieLoader from '@lib/rlottie/lottieLoader';
@@ -127,7 +122,8 @@ const Settings = () => {
     makeSubTabConfig('lock', 'AccountSettings.PrivacyAndSecurity', AppPrivacyAndSecurityTab, tab),
     makeSubTabConfig('settings', 'Telegram.GeneralSettingsViewController', AppGeneralSettingsTab, tab),
     makeSubTabConfig('folder', 'AccountSettings.Filters', AppChatFoldersTab, tab),
-    makeSubTabConfig('stickers_face', 'StickersName', AppStickersAndEmojiTab, tab)
+    makeSubTabConfig('stickers_face', 'StickersName', AppStickersAndEmojiTab, tab),
+    makeSubTabConfig('videocamera', 'AccountSettings.SpeakersAndCamera', AppSpeakersAndCameraTab, tab)
   ];
 
   const onSubTabClick = (item: SubTabConfig) => async() => {

@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import PopupElement from '.';
 import Currencies from '@config/currencies';
 import {FontFamily, FontFull, FontSize} from '@config/font';

@@ -8,7 +8,7 @@ import apiManagerProxy from '@lib/apiManagerProxy';
 import {getRtmpShareUrl, getRtmpStreamUrl} from '@lib/rtmp/url';
 import AppMediaViewerBase from '@components/appMediaViewerBase';
 import {RtmpStartStreamPopup} from '@components/rtmp/adminPopup';
-import {OutputDevicePopup} from '@components/rtmp/outputDevicePopup';
+import showOutputDevicePopup from '@components/rtmp/outputDevicePopup';
 import {RtmpRecordPopup} from '@components/rtmp/recordPopup';
 import PopupElement from '@components/popups';
 import SetTransition from '@components/singleTransition';
@@ -22,9 +22,7 @@ import RTMP_STATE from '@lib/calls/rtmpState';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import {ExportedChatInvite} from '@layer';
 import rootScope from '@lib/rootScope';
-import {showSharingPickerPopup} from '@components/popups/pickUser';
-import wrapPeerTitle from '@components/wrappers/peerTitle';
-import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
+import shareUrlToPeers from '@components/popups/shareUrl';
 
 const REJOIN_INTERVAL = 15000;
 
@@ -89,24 +87,11 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
   }
 
   private onForward = async() => {
-    showSharingPickerPopup({
-      onSelect: async(chosen) => {
-        const {peerId, monoforumThreadId} = chosen[0];
-        const preparedPaymentResult = await PaidMessagesInterceptor.prepareStarsForPayment({messageCount: 1, peerId});
-        if(preparedPaymentResult === PAYMENT_REJECTED) throw new Error();
-
-        rootScope.managers.appMessagesManager.sendText({
-          peerId,
-          replyToMonoforumPeerId: monoforumThreadId,
-          text: this.shareUrl,
-          confirmedPaymentResult: preparedPaymentResult
-        });
-
-        toastNew({
-          langPackKey: 'InviteLinkSentSingle',
-          langPackArguments: [await wrapPeerTitle({peerId, dialog: true})]
-        });
-      }
+    shareUrlToPeers({
+      url: this.shareUrl,
+      multiSelect: true,
+      toastKey: 'InviteLinkSentSingle',
+      toastKeyForMany: 'InviteLinkSentMany'
     });
   };
 
@@ -150,7 +135,12 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
           player.setupLiveMenu([{
             icon: 'volume_up',
             text: 'Rtmp.MediaViewer.Menu.OutputDevice',
-            onClick: () => PopupElement.createPopup(OutputDevicePopup, player.video).show(),
+            onClick: () => showOutputDevicePopup({
+              kind: 'audiooutput',
+              currentId: player.video.sinkId || '',
+              titleLangKey: 'Rtmp.OutputPopup.Title',
+              onPick: (deviceId) => player.video.setSinkId(deviceId)
+            }),
             verify: () => typeof(navigator.mediaDevices?.enumerateDevices) === 'function' && !IS_SAFARI
           }, {
             icon: 'radioon',

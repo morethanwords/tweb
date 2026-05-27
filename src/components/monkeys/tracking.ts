@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import InputField from '@components/inputField';
 import lottieLoader from '@lib/rlottie/lottieLoader';
 import RLottiePlayer from '@lib/rlottie/rlottiePlayer';

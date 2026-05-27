@@ -1,8 +1,4 @@
 /*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- *
  * Originally from:
  * https://github.com/evgeny-nadymov/telegram-react
  * Copyright (C) 2018 Evgeny Nadymov
@@ -364,7 +360,13 @@ export class AppGroupCallsManager extends AppManager {
   }
 
   public async joinGroupCall(groupCallId: GroupCallId, params: DataJSON, options: GroupCallConnectionInstance['options']) {
-    const groupCallInput = this.getGroupCallInput(groupCallId);
+    // Conference invitees may not have a cached id+access_hash yet — they pass
+    // `inputGroupCallSlug` or `inputGroupCallInviteMessage` instead. Honour
+    // the override when set; the join response carries the real
+    // updateGroupCall(id, access_hash) which the rest of the app picks up.
+    const groupCallInput = (options.type === 'main' && options.e2eCallInput) ?
+      options.e2eCallInput :
+      this.getGroupCallInput(groupCallId);
     let promise: Promise<Updates>;
     if(options.type === 'main') {
       const request: PhoneJoinGroupCall = {
@@ -374,6 +376,12 @@ export class AppGroupCallsManager extends AppManager {
         muted: options.isMuted,
         video_stopped: !options.joinVideo
       };
+
+      // Conference (TdE2E) extras — only set when the caller drove the join
+      // through the e2e path. Server distinguishes a conference join by the
+      // presence of both fields.
+      if(options.e2ePublicKey) request.public_key = options.e2ePublicKey;
+      if(options.e2eBlock) request.block = options.e2eBlock;
 
       promise = this.apiManager.invokeApi('phone.joinGroupCall', request);
       this.log(`[api] joinGroupCall id=${groupCallId}`, request);
@@ -391,6 +399,15 @@ export class AppGroupCallsManager extends AppManager {
     this.apiUpdatesManager.processUpdateMessage(updates);
 
     const update = (updates as Updates.updates).updates.find((update) => update._ === 'updateGroupCallConnection') as Update.updateGroupCallConnection;
+    // Attach the resolved call ref so invitee paths (slug / inviteMessage)
+    // can rewrite their placeholder instance.id without a separate lookup.
+    // For id-form joins this is the same call we already knew about.
+    const groupCallUpdate = (updates as Updates.updates).updates.find((u) => u._ === 'updateGroupCall') as Update.updateGroupCall | undefined;
+    if(groupCallUpdate && groupCallUpdate.call._ !== 'groupCallDiscarded') {
+      const extended = update as Update.updateGroupCallConnection & {resolvedCallId?: string; resolvedAccessHash?: string};
+      extended.resolvedCallId = String(groupCallUpdate.call.id);
+      extended.resolvedAccessHash = String(groupCallUpdate.call.access_hash);
+    }
     return update;
   }
 
@@ -498,5 +515,36 @@ export class AppGroupCallsManager extends AppManager {
     });
 
     this.apiUpdatesManager.processUpdateMessage(updates);
+  }
+
+  // Wraps phone.toggleGroupCallSettings — used by the in-call settings popup
+  // to flip "Mute new participants" mid-call. Server returns an Updates set
+  // that contains an updateGroupCall with the new join_muted flag; pushing it
+  // through apiUpdatesManager lets every open UI (this popup, sidebars, etc.)
+  // see the change via the existing group_call_update event.
+  public async toggleGroupCallSettings(id: GroupCallId, options: {
+    joinMuted?: boolean,
+    resetInviteHash?: boolean
+  }) {
+    const updates = await this.apiManager.invokeApi('phone.toggleGroupCallSettings', {
+      call: this.getGroupCallInput(id),
+      join_muted: options.joinMuted,
+      reset_invite_hash: options.resetInviteHash
+    });
+
+    this.apiUpdatesManager.processUpdateMessage(updates);
+  }
+
+  // Wraps phone.exportGroupCallInvite. `can_self_unmute` mirrors the listener
+  // / speaker distinction tdesktop draws in lng_group_call_share — for now we
+  // expose only the speaker variant (canSelfUnmute = true) since the in-call
+  // settings popup has no separate listener-link affordance.
+  public async exportGroupCallInvite(id: GroupCallId, canSelfUnmute?: boolean) {
+    const result = await this.apiManager.invokeApiSingle('phone.exportGroupCallInvite', {
+      call: this.getGroupCallInput(id),
+      can_self_unmute: canSelfUnmute
+    });
+
+    return result.link;
   }
 }

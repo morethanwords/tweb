@@ -178,6 +178,7 @@ const QuestionAndDescription = () => {
             withFixedIcon
           >
             <MediaAttachment
+              supportedMediaTypes={['photo']}
               imgClass={styles.mediaAttachmentImage}
               attachedMedia={context.store.descriptionAttachment}
               onAttach={(value) => {

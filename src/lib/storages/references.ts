@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {Photo, StoryItem, WallPaper} from '@layer';
 import bytesToHex from '@helpers/bytes/bytesToHex';
 import deepEqual from '@helpers/object/deepEqual';

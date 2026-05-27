@@ -1,16 +1,9 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {Channel} from '@appManagers/appChatsManager';
 import type {AppSidebarRight} from '@components/sidebarRight';
 import type Chat from '@components/chat/chat';
 import {RIGHT_COLUMN_ACTIVE_CLASSNAME} from '@components/sidebarRight';
 import mediaSizes, {ScreenSize} from '@helpers/mediaSizes';
 import rootScope, {BroadcastEvents} from '@lib/rootScope';
-import Button, {replaceButtonIcon} from '@components/button';
 import ButtonIcon from '@components/buttonIcon';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import createChatPinnedMessage, {ChatPinnedMessageController} from '@components/chat/pinnedMessage';
@@ -80,6 +73,7 @@ import {createAutoDeleteIcon} from '@components/autoDeleteIcon';
 import PopupBoost from '@components/popups/boost';
 import PopupPremium from '@components/popups/premium';
 import showNoForwardsPopup from '@components/popups/noForwards';
+import IS_CONFERENCE_CALL_SUPPORTED from '@environment/conferenceCallSupport';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -94,15 +88,13 @@ export default class ChatTopbar {
   private title: HTMLDivElement;
   private subtitle: HTMLDivElement;
   private chatUtils: HTMLDivElement;
-  private btnJoin: HTMLButtonElement;
   private btnCall: HTMLButtonElement;
+  private btnConference: HTMLButtonElement;
   private btnGroupCall: HTMLButtonElement;
   private btnGroupCallMenu: HTMLElement;
-  private btnMute: HTMLButtonElement;
   private btnSearch: HTMLButtonElement;
   private btnLogFilters: HTMLButtonElement;
   private btnMore: HTMLElement;
-  private btnDirectMessages: HTMLElement;
 
   private autoDeleteBtnMenuOptions: ButtonMenuItemOptionsVerifiable;
 
@@ -138,10 +130,16 @@ export default class ChatTopbar {
     this.container.classList.add('sidebar-header', 'topbar', 'hide');
     this.container.dataset.floating = '0';
 
-    this.btnBack = ButtonIcon('left sidebar-close-button', {noRipple: true});
-    this.btnBackBadge = createBadge('span', 20, 'primary');
-    this.btnBackBadge.classList.add('back-unread-badge');
-    this.btnBack.append(this.btnBackBadge);
+    // Preview mode swaps the back arrow for a close icon — the popup wires this up to its
+    // own hide() via `chat.onPreviewClose`, and the folder back-unread badge is irrelevant
+    // here (there's no folder navigation behind a floating preview).
+    const backIcon = this.chat.isPreview ? 'close' : 'left';
+    this.btnBack = ButtonIcon(`${backIcon} sidebar-close-button`, {noRipple: true});
+    if(!this.chat.isPreview) {
+      this.btnBackBadge = createBadge('span', 20, 'primary');
+      this.btnBackBadge.classList.add('back-unread-badge');
+      this.btnBack.append(this.btnBackBadge);
+    }
 
     // * chat info section
     this.chatInfoContainer = document.createElement('div');
@@ -213,28 +211,33 @@ export default class ChatTopbar {
     this.chatUtils.append(...[
       // this.chatAudio ? this.chatAudio.divAndCaption.container : null,
       // this.pinnedMessage ? this.pinnedMessage.pinnedMessageContainer.divAndCaption.container : null,
-      this.btnJoin,
-      this.btnDirectMessages,
+      // btnJoin / btnMute / btnDirectMessages moved into the chat-input control plate (see input.ts).
       this.btnCall,
+      this.btnConference,
       this.btnGroupCall,
       this.btnGroupCallMenu,
-      this.btnMute,
       this.btnSearch,
       this.btnLogFilters,
       this.btnMore
     ].filter(Boolean));
 
     this.pushButtonToVerify(this.btnCall, this.verifyCallButton.bind(this, 'voice'));
+    this.pushButtonToVerify(this.btnConference, this.verifyConferenceButton.bind(this));
     this.pushButtonToVerify(this.btnGroupCall, this.verifyVideoChatButton.bind(this, 'nonadmin'));
     this.pushButtonToVerify(this.btnGroupCallMenu, this.verifyRtmpButton.bind(this));
-    this.pushButtonToVerify(this.btnDirectMessages, this.verifyDirectMessagesButton.bind(this));
 
-    this.chatInfoContainer.append(this.btnBack, this.chatInfo, this.chatUtils);
+    // Preview keeps only the basic header — avatar + title + subtitle. The chat-utils
+    // pane (search / menu buttons) and the floating-plates wrapper (call / pinned /
+    // translation / action bar) are built so the rest of the JS can call methods on
+    // them, but never attached to the live DOM tree. They sit detached, so nothing
+    // visible leaks into the popup.
+    this.chatInfoContainer.append(this.btnBack, this.chatInfo);
+    if(!this.chat.isPreview) this.chatInfoContainer.append(this.chatUtils);
     this.container.append(this.chatInfoContainer);
 
     this.floatingPlatesWrapper = document.createElement('div');
     this.floatingPlatesWrapper.classList.add('topbar-floating-plates', 'hide');
-    this.container.append(this.floatingPlatesWrapper);
+    if(!this.chat.isPreview) this.container.append(this.floatingPlatesWrapper);
 
     if(this.pinnedMessage) {
       this.appendPinnedMessage(this.pinnedMessage);
@@ -281,6 +284,11 @@ export default class ChatTopbar {
     const onBtnBackClick = (e?: Event) => {
       if(e) {
         cancelEvent(e);
+      }
+
+      if(this.chat.isPreview) {
+        this.chat.onPreviewClose?.();
+        return;
       }
 
       if(this.chat.type === ChatType.Search) {
@@ -397,14 +405,6 @@ export default class ChatTopbar {
     const userFull = await this.managers.appProfileManager.getCachedFullUser(userId);
 
     return !!userFull && !!(type === 'voice' ? userFull.pFlags.phone_calls_available : userFull.pFlags.video_calls_available);
-  };
-
-  private verifyDirectMessagesButton = async() => {
-    if(!this.peerId.isAnyChat()) return false;
-    const chat = this.chat.peer;
-    if(chat._ !== 'channel') return false;
-
-    return !!(!chat.admin_rights && !chat.pFlags.monoforum && chat.linked_monoforum_id);
   };
 
   private verifyIfCanDeleteChat = async() => {
@@ -898,6 +898,50 @@ export default class ChatTopbar {
     this.chat.appImManager.joinGroupCall(this.peerId);
   };
 
+  private verifyConferenceButton = async(): Promise<boolean> => {
+    // Gated off until the SFU exposes a multi-mid layout to browser clients
+    // (Chrome RTCRtpScriptTransform recv-side bypass — see
+    // docs/conf-call-browser-recv-blocker.md). All the underlying e2e + SFU
+    // wiring is in place; flip IS_CONFERENCE_CALL_SUPPORTED to re-enable.
+    if(!IS_CONFERENCE_CALL_SUPPORTED) return false;
+    // Show in 1-on-1 chats with another user. Conference call permission
+    // checks happen server-side at phone.createConferenceCall time.
+    if(!IS_CALL_SUPPORTED || !this.peerId.isUser() || this.chat.type !== ChatType.Chat) return false;
+    return true;
+  };
+
+  // Start a TdE2E-encrypted conference call with the current chat peer.
+  // Bootstrap flow:
+  //   1. controller.startConference() → generates seed, mints zero block,
+  //      calls phone.createConferenceCall(join: true), spins up the SFU
+  //      connection through joinConferenceCommon.
+  //   2. After the conference is live, invite the chat peer via
+  //      phone.inviteConferenceCallParticipant — they get a service message
+  //      with messageActionInviteToGroupCall in this chat (Phase D-4 surfaces
+  //      a Join button on that message).
+  private onStartConferenceClick = wrapAsyncClickHandler(async() => {
+    const peerUserId = this.peerId.toUserId();
+    const selfId = BigInt(rootScope.myId);
+
+    let instance;
+    try {
+      instance = await groupCallsController.startConference({selfUserId: selfId, muted: true});
+    } catch(err) {
+      toastNew({langPackKey: 'Error.AnError' as LangPackKey});
+      throw err;
+    }
+
+    const input = instance.toInputGroupCall();
+    if(input?._ === 'inputGroupCall') {
+      try {
+        await this.managers.appCallsManager.inviteConferenceCallParticipant(input, peerUserId);
+      } catch(err) {
+        // Surface but don't fail — the conference exists; user can invite manually.
+        console.error('inviteConferenceCallParticipant failed', err);
+      }
+    }
+  });
+
   private onFilterActionsClick = wrapAsyncClickHandler(async() => {
     const {default: LogFiltersPopup} = await import('./logFiltersPopup');
 
@@ -922,8 +966,6 @@ export default class ChatTopbar {
 
     this.pinnedMessage = createChatPinnedMessage(this, this.chat, this.managers);
 
-    this.btnJoin = Button('btn-primary btn-color-primary chat-join hide');
-    this.btnDirectMessages = ButtonIcon('message force-show-on-mobile');
     this.btnCall = ButtonIcon('phone');
     this.btnGroupCall = ButtonIcon('videochat');
     this.btnGroupCallMenu = ButtonMenuToggle({
@@ -943,26 +985,17 @@ export default class ChatTopbar {
       }],
       icon: 'videochat'
     });
-    this.btnMute = ButtonIcon('mute');
-
     this.attachClickEvent(this.btnCall, this.onCallClick.bind(this, 'voice'));
     this.attachClickEvent(this.btnGroupCall, this.onJoinGroupCallClick);
 
-    this.attachClickEvent(this.btnMute, () => {
-      const muted = !!+this.btnMute.dataset.muted;
-      if(muted) {
-        this.onUnmuteClick();
-      } else {
-        this.onMuteClick();
-      }
-    });
-
-    this.attachClickEvent(this.btnJoin, this.onJoinClick.bind(this, this.btnJoin));
-
-    this.attachClickEvent(this.btnDirectMessages, this.onDirectMessagesClick.bind(this));
+    // TdE2E encrypted conference call — only shown in 1-on-1 chats with another
+    // user (we invite them after creating the conference). Verification in
+    // verifyButtons() further restricts to peers that support conferences.
+    this.btnConference = ButtonIcon('videocamera');
+    this.attachClickEvent(this.btnConference, this.onStartConferenceClick);
 
     this.listenerSetter.add(rootScope)('folder_unread', (folder) => {
-      if(folder.id !== FOLDER_ID_ALL) {
+      if(!this.btnBackBadge || folder.id !== FOLDER_ID_ALL) {
         return;
       }
 
@@ -979,14 +1012,7 @@ export default class ChatTopbar {
           return;
         }
 
-        this.btnJoin.classList.toggle('hide', !(chat as Channel)?.pFlags?.left);
         this.verifyButtons();
-      }
-    });
-
-    this.listenerSetter.add(rootScope)('dialog_notify_settings', (dialog) => {
-      if(dialog.peerId === this.peerId) {
-        this.setMutedState();
       }
     });
 
@@ -1349,16 +1375,6 @@ export default class ChatTopbar {
       const canHaveSomeButtons = !(this.chat.type === ChatType.Pinned || this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Static || this.chat.type === ChatType.Logs);
       const canHaveSearch = canHaveSomeButtons || this.chat.type === ChatType.Logs;
 
-      this.btnMute && this.btnMute.classList.toggle('hide', !isBroadcast || !canHaveSomeButtons);
-      if(this.btnJoin) {
-        if(isBroadcast && !this.chat.isRestricted && canHaveSomeButtons) {
-          replaceContent(this.btnJoin, i18n(isBroadcast ? 'Chat.Subscribe' : 'ChannelJoin'));
-          this.btnJoin.classList.toggle('hide', !(chat as MTChat.chat)?.pFlags?.left);
-        } else {
-          this.btnJoin.classList.add('hide');
-        }
-      }
-
       if(this.btnSearch) {
         this.btnSearch.classList.toggle('hide', !canHaveSearch);
       }
@@ -1399,7 +1415,6 @@ export default class ChatTopbar {
       setStatusCallback?.();
 
       this.subtitle.classList.toggle('hide', !setStatusCallback);
-      this.setMutedState();
 
       this.container.classList.remove('hide');
 
@@ -1530,21 +1545,13 @@ export default class ChatTopbar {
     this.setTitleManual(count).then((setTitleCallback) => setTitleCallback());
   }
 
-  public async setMutedState() {
-    if(!this.btnMute) return;
-
-    const peerId = this.peerId;
-    const muted = await this.managers.appNotificationsManager.isPeerLocalMuted({peerId, respectType: false, threadId: this.chat.threadId});
-    const isBroadcast = await this.managers.appPeersManager.isBroadcast(peerId);
-    if(isBroadcast) {
-      replaceButtonIcon(this.btnMute, muted ? 'unmute' : 'mute');
-      this.btnMute.dataset.muted = '' + +muted;
-    }
-
-    this.btnMute.style.display = isBroadcast ? '' : 'none';
-  }
-
   public setFloating = () => {
+    // Preview omits `floatingPlatesWrapper` from the live DOM (see `construct`). The plate
+    // controllers still exist for the rest of the code, and a peer with a pinned message
+    // would mark the pinnedMessage plate visible — its hardcoded `height: 48` + TOPBAR_GAP
+    // would leak into `--pinned-floating-height` / `pinnedFloatingHeightPx` and inflate
+    // `bubbles-padding-top` from 56 to 112 above the first message. Bail early.
+    if(this.chat.isPreview) return;
     const containers = [
       this.pinnedMessage,
       ...(this.plates?.all || [])

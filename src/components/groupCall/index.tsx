@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import PopupElement from '@components/popups';
 import {hexToRgb} from '@helpers/color';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
@@ -33,6 +27,10 @@ import findUpClassName from '@helpers/dom/findUpClassName';
 import toggleClassName from '@helpers/toggleClassName';
 import themeController from '@helpers/themeController';
 import groupCallsController from '@lib/calls/groupCallsController';
+import {render} from 'solid-js/web';
+import {createSignal} from 'solid-js';
+import FingerprintBadge from '@components/conferenceCall/fingerprintBadge';
+import showCallSettingsPopup from '@components/call/settingsPopup';
 
 export enum GROUP_CALL_PARTICIPANT_MUTED_STATE {
   UNMUTED,
@@ -274,7 +272,38 @@ export default class PopupGroupCall extends PopupElement {
     this.toggleRightColumn();
     this.onFullScreenChange();
 
+    this.mountFingerprintBadgeIfConference();
+
     this.updateInstance();
+  }
+
+  // When this popup is hosting a TdE2E conference (instance.e2e is set),
+  // append a fingerprint badge to the header so users can visually verify
+  // the call is encrypted to the same key on every participant's device.
+  // No-op for legacy voice chats.
+  private mountFingerprintBadgeIfConference(): void {
+    const {instance} = this;
+    if(!instance?.e2e) return;
+
+    const [hash, setHash] = createSignal<Uint8Array | undefined>(
+      instance.e2eStatus?.verification?.emojiHash
+    );
+    this.listenerSetter.add(instance)('e2eStatus', (status) => {
+      setHash(status.verification?.emojiHash);
+    });
+
+    const mount = document.createElement('span');
+    mount.classList.add(className + '-header-fingerprint');
+    this.header.append(mount);
+
+    const dispose = render(() => (
+      <FingerprintBadge emojiHash={hash()} />
+    ), mount);
+
+    this.addEventListener('close', () => {
+      dispose();
+      mount.remove();
+    });
   }
 
   private constructButtons() {
@@ -308,10 +337,13 @@ export default class PopupGroupCall extends PopupElement {
 
     const btnMore = _makeButton({
       // text: 'VoiceChat.Video.Stream.More'
-      icon: 'settings_filled'
+      icon: 'settings_filled',
+      callback: this.onMoreClick
     });
 
-    btnMore.classList.add('btn-disabled');
+    // Match the legacy positioning that used to hide btnMore behind the
+    // (also gated) screen-sharing toggle. Keeping the same gate avoids
+    // re-laying out the button row on platforms without screen capture.
     btnMore.classList.toggle('hide', !IS_SCREEN_SHARING_SUPPORTED);
 
     const btnLeave = _makeButton({
@@ -360,6 +392,11 @@ export default class PopupGroupCall extends PopupElement {
     } else {
       this.instance.toggleMuted();
     }
+  };
+
+  private onMoreClick = async() => {
+    const canManage = await this.managers.appChatsManager.hasRights(this.instance.chatId, 'manage_call');
+    showCallSettingsPopup({mode: 'groupCall', instance: this.instance, canManage});
   };
 
   private onLeaveClick = async() => {

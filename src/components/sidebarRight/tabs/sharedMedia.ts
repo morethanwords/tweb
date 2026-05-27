@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import rootScope, {BroadcastEvents} from '@lib/rootScope';
 import AppSearchSuper, {SearchSuperMediaTab, SearchSuperMediaType, SearchSuperType} from '@components/appSearchSuper';
 import SidebarSlider, {SliderSuperTab} from '@components/slider';

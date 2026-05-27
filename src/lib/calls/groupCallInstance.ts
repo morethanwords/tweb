@@ -1,15 +1,9 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {AppGroupCallsManager, GroupCallConnectionType, GroupCallId, GroupCallOutputSource} from '@appManagers/appGroupCallsManager';
 import {IS_SAFARI} from '@environment/userAgent';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import safeAssign from '@helpers/object/safeAssign';
 import throttle from '@helpers/schedulers/throttle';
-import {GroupCall, GroupCallParticipant} from '@layer';
+import {GroupCall, GroupCallParticipant, InputGroupCall} from '@layer';
 import {logger} from '@lib/logger';
 import {NULL_PEER_ID} from '@appManagers/constants';
 import rootScope from '@lib/rootScope';
@@ -28,10 +22,16 @@ import {Ssrc} from '@lib/calls/types';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {AppManagers} from '@lib/managers';
 import {generateSelfVideo, makeSsrcFromParticipant, makeSsrcsFromParticipant} from '@lib/calls/groupCallsController';
+import type {EncryptWorkerHost} from '@lib/calls/e2e/encryptWorkerHost';
+import type {CallStatusSnapshot} from '@lib/calls/e2e/encryptWorkerProtocol';
 
 export default class GroupCallInstance extends CallInstanceBase<{
   state: (state: GROUP_CALL_STATE) => void,
   pinned: (source?: GroupCallOutputSource) => void,
+  // Fired whenever the e2e worker reports a new snapshot — UI listens for
+  // verification phase + emoji fingerprint changes. Only fires when this
+  // instance is a conference (i.e. `e2e` is set).
+  e2eStatus: (status: CallStatusSnapshot) => void,
 }> {
   public id: GroupCallId;
   public chatId: ChatId;
@@ -41,6 +41,19 @@ export default class GroupCallInstance extends CallInstanceBase<{
   public connections: {[k in GroupCallConnectionType]?: GroupCallConnectionInstance};
   public groupCall: GroupCall;
   public participant: GroupCallParticipant;
+
+  // ===== E2E (conference) mode =====
+  // When set, this instance is a TdE2E-encrypted conference call rather than
+  // a legacy voice chat. The worker owns the private key + per-frame crypto;
+  // the SFU plumbing below stays identical. `selfUserId` identifies us in the
+  // e2e group_state (matches our PrivateKey's publicKey).
+  public e2e?: EncryptWorkerHost;
+  public selfUserId?: bigint;
+  // Latest snapshot from the worker (height, group state, emoji fingerprint).
+  public e2eStatus?: CallStatusSnapshot;
+  // ssrc → e2e user_id mapping. Populated from SFU signaling so the recv
+  // RTCRtpScriptTransform knows who sent each frame for Ed25519 verify.
+  public e2eUserBySsrc: Map<number, bigint> = new Map();
 
   // will be set with negotiation
   public joined: boolean;
@@ -91,6 +104,271 @@ export default class GroupCallInstance extends CallInstanceBase<{
     });
   }
 
+  public cleanup(): void {
+    this.stopE2eChainPolling();
+    // Terminate the e2e worker so its Web Worker thread exits. Best-effort —
+    // the controller may have already done so via its own state listener,
+    // but a double-terminate is harmless (encryptWorkerHost guards).
+    if(this.e2e) {
+      void this.e2e.terminate().catch((): undefined => undefined);
+      this.e2e = undefined;
+    }
+    super.cleanup();
+  }
+
+  // ===== E2E (conference) hookup =====
+  //
+  // Called by GroupCallsController.startConference / joinConference after
+  // the worker has been initialised. The instance subscribes to worker
+  // status events + relays inbound chain blocks from rootScope, and
+  // automatically flushes outbound emoji broadcasts via the conference
+  // MTProto channel.
+  public attachE2e(worker: EncryptWorkerHost, selfUserId: bigint): void {
+    this.e2e = worker;
+    this.selfUserId = selfUserId;
+
+    worker.addEventListener('status', (ev) => {
+      this.e2eStatus = ev.status;
+      this.dispatchEvent('e2eStatus', ev.status);
+    });
+    worker.addEventListener('pendingOutbound', () => {
+      void this.flushE2eOutbound();
+    });
+    worker.addEventListener('callFailed', () => {
+      this.log.error('e2e: callFailed — hanging up');
+      this.hangUp(true);
+    });
+
+    // Inbound chain delivery — sub_chain_id 0 is the block chain, 1 is the
+    // verification broadcast channel. The server pushes these updates when it
+    // can, but we also poll because conference push delivery is best-effort
+    // (tdlib: TdE2E::Call::joined → shortPoll(0); shortPoll(1)).
+    rootScope.addEventListener('group_call_chain_blocks', ({callId, subChainId, blocks}) => {
+      if(callId !== String(this.id) || !this.e2e) return;
+      void this.deliverE2eChainBlocks(subChainId, blocks);
+    });
+
+    this.startE2eChainPolling();
+  }
+
+  // ===== TdE2E chain polling =====
+  //
+  // Mirrors tdlib's per-subchain polling (TdE2E::Call::shortPoll). Both
+  // subchains advance independently; we keep the next-offset cursor per
+  // subchain and re-issue `phone.getGroupCallChainBlocks` on a slow tick.
+  // The push from `updateGroupCallChainBlocks` advances the cursor too.
+  private e2eChainPollInterval: ReturnType<typeof setInterval> | undefined;
+  private e2eChainOffsets: {0: number; 1: number} = {0: 0, 1: 0};
+
+  private startE2eChainPolling(): void {
+    if(this.e2eChainPollInterval) return;
+    const tick = (): void => { void this.pollE2eChain(); };
+    // Immediate kick — tdlib does this in `joined()`.
+    tick();
+    // Steady-state interval: 1500ms is a balance between latency for emoji
+    // verification (commit/reveal needs both peers' broadcasts) and load.
+    this.e2eChainPollInterval = setInterval(tick, 1500);
+  }
+
+  private stopE2eChainPolling(): void {
+    if(this.e2eChainPollInterval) {
+      clearInterval(this.e2eChainPollInterval);
+      this.e2eChainPollInterval = undefined;
+    }
+  }
+
+  private async pollE2eChain(): Promise<void> {
+    if(!this.e2e) return;
+    // Lazy-hydrate `groupCall` for invitee paths (slug / inviteMessage join):
+    // the join response carries `updateGroupCall` with the real id+access_hash
+    // and the manager caches it, but the instance's own `groupCall` reference
+    // wasn't set during joinConferenceCommon (we didn't have the id yet).
+    // Pull from the cache here once it lands.
+    if(!this.groupCall) {
+      const cached = await this.managers.appGroupCallsManager
+      .getGroupCall(this.id)
+      .catch((): undefined => undefined);
+      if(cached && cached._ === 'groupCall') {
+        this.groupCall = cached;
+      }
+    }
+    const input = this.toInputGroupCall();
+    if(!input) return;
+
+    // Poll both subchains in parallel. Each returns the slice from
+    // `offset` onward; we advance `offset` by the number of blocks returned.
+    await Promise.all([0, 1].map(async(sub) => {
+      const subChainId = sub as 0 | 1;
+      try {
+        const updates = await this.managers.appCallsManager.getGroupCallChainBlocks(
+          input,
+          subChainId,
+          this.e2eChainOffsets[subChainId],
+          // limit must be > 0 — server doesn't auto-pick a default. Pull a
+          // generous window so we catch any backlog from a brief disconnect
+          // but small enough to stay cheap.
+          16
+        );
+        if(updates._ !== 'updates' && updates._ !== 'updatesCombined') return;
+        for(const u of (updates as any).updates) {
+          if(u._ !== 'updateGroupCallChainBlocks') continue;
+          if(u.sub_chain_id !== subChainId) continue;
+          if(u.blocks?.length) {
+            await this.deliverE2eChainBlocks(subChainId, u.blocks);
+          }
+          if(typeof u.next_offset === 'number') {
+            this.e2eChainOffsets[subChainId] = u.next_offset;
+          }
+        }
+      } catch(err) {
+        // Transient errors are expected (network blips, brief auth churn).
+        // Log and let the next tick retry.
+        this.log.warn('pollE2eChain: subchain', subChainId, err);
+      }
+    }));
+  }
+
+  private async flushE2eOutbound(): Promise<void> {
+    if(!this.e2e) return;
+    const input = this.toInputGroupCall();
+    if(!input) return;
+    let messages: Uint8Array[];
+    try {
+      messages = await this.e2e.pullOutbound();
+    } catch(err) {
+      this.log.error('flushE2eOutbound: pullOutbound failed', err);
+      return;
+    }
+    for(const bytes of messages) {
+      try {
+        await this.managers.appCallsManager.sendConferenceCallBroadcast(input, bytes);
+      } catch(err) {
+        this.log.error('flushE2eOutbound: sendConferenceCallBroadcast failed', err);
+      }
+    }
+  }
+
+  private async deliverE2eChainBlocks(subChainId: number, blocks: Uint8Array[]): Promise<void> {
+    if(!this.e2e) return;
+    if(subChainId === 0) {
+      for(const block of blocks) {
+        try {
+          await this.e2e.applyBlock({serverBlock: block});
+        } catch(err) {
+          this.log.error('deliverE2eChainBlocks: applyBlock failed', err);
+        }
+      }
+    } else if(subChainId === 1) {
+      for(const b of blocks) {
+        try {
+          await this.e2e.receiveInbound({serverMessage: b});
+        } catch(err) {
+          this.log.error('deliverE2eChainBlocks: receiveInbound failed', err);
+        }
+      }
+    } else {
+      this.log.warn('deliverE2eChainBlocks: unknown sub_chain_id', subChainId);
+    }
+  }
+
+  // Walk an RTCPeerConnection's senders + receivers and attach e2e script
+  // transforms. Called after each (re)negotiation. Idempotent — re-attaching
+  // to a sender that already has a transform is a no-op browser-side.
+  public attachE2eTransforms(connection: RTCPeerConnection, channelId = 0): void {
+    if(!this.e2e) return;
+    const e2e = this.e2e;
+
+    for(const sender of connection.getSenders()) {
+      if(!sender.track || (sender as any).transform) continue;
+      try {
+        const kind = sender.track.kind === 'video' ? 'video' : 'audio';
+        sender.transform = e2e.newRtcScriptTransform({direction: 'send', channelId, kind});
+      } catch(err) {
+        this.log.error('attachE2eTransforms: send', err);
+      }
+    }
+
+    // Telegram's SFU multiplexes ALL participants over a single inbound
+    // m-line (one mid per media kind, recvonly). A single receiver delivers
+    // frames from many SSRCs; the worker dispatches per-frame via the
+    // SSRC → user_id map. So attach the recv transform eagerly to every
+    // receiver — no per-receiver `fromUserId`, no waiting for the first
+    // frame to learn the SSRC.
+    for(const receiver of connection.getReceivers()) {
+      if(!receiver.track || (receiver as any).transform) continue;
+      try {
+        const kind = receiver.track.kind === 'video' ? 'video' : 'audio';
+        receiver.transform = e2e.newRtcScriptTransform({direction: 'recv', channelId, kind});
+      } catch(err) {
+        this.log.error('attachE2eTransforms: recv', err);
+      }
+    }
+  }
+
+  // Attach a recv transform to ONE receiver. Used by the pre-emptive
+  // `addTransceiver` path in groupCallsController — receivers must have
+  // their transform attached BEFORE the codec produces a frame, or Chrome
+  // silently bypasses them (the parallel createEncodedStreams API throws
+  // "Too late to create encoded streams" for the same condition).
+  public attachE2eRecvTransform(
+    receiver: RTCRtpReceiver,
+    kind: 'audio' | 'video',
+    channelId = 0
+  ): void {
+    if(!this.e2e || (receiver as any).transform) return;
+    try {
+      receiver.transform = this.e2e.newRtcScriptTransform({direction: 'recv', channelId, kind});
+    } catch(err) {
+      this.log.error('attachE2eRecvTransform', err);
+    }
+  }
+
+  // Attach a send transform to ONE sender. Called from the streamManager's
+  // `onSenderCreated` hook so we slot the transform between addTransceiver
+  // and replaceTrack — the only window where Chrome will accept it without
+  // silently dropping frames.
+  public attachE2eSendTransform(
+    sender: RTCRtpSender,
+    kind: 'audio' | 'video',
+    channelId = 0
+  ): void {
+    if(!this.e2e || (sender as any).transform) return;
+    try {
+      sender.transform = this.e2e.newRtcScriptTransform({direction: 'send', channelId, kind});
+    } catch(err) {
+      this.log.error('attachE2eSendTransform', err);
+    }
+  }
+
+  // ssrc ↔ user_id mapping is populated externally as the SFU signals
+  // participants. Push the full table to the worker so its recv transform
+  // can dispatch each frame by `frame.getMetadata().synchronizationSource`.
+  public registerE2eUserSsrc(userId: bigint, ssrc: number): void {
+    const normalized = ssrc >>> 0;
+    if(this.e2eUserBySsrc.get(normalized) === userId) return;
+    this.e2eUserBySsrc.set(normalized, userId);
+    this.syncSsrcMapToWorker();
+  }
+
+  // Replace the SSRC table on the worker side. Cheap enough on every
+  // change — the table is small (one entry per active participant).
+  private syncSsrcMapToWorker(): void {
+    if(!this.e2e) return;
+    const entries: Array<[number, bigint]> = [];
+    for(const [ssrc, userId] of this.e2eUserBySsrc) entries.push([ssrc, userId]);
+    void this.e2e.setSsrcUsers(entries).catch((err) => {
+      this.log.warn('syncSsrcMapToWorker failed', err);
+    });
+  }
+
+  // Convenience: build an InputGroupCall from our cached groupCall payload.
+  // Returns undefined for discarded calls (no access_hash).
+  public toInputGroupCall(): InputGroupCall | undefined {
+    const c = this.groupCall;
+    if(!c || c._ === 'groupCallDiscarded') return undefined;
+    return {_: 'inputGroupCall', id: c.id, access_hash: c.access_hash};
+  }
+
   get connectionState() {
     return this.connections.main.connection.iceConnectionState;
   }
@@ -103,6 +381,15 @@ export default class GroupCallInstance extends CallInstanceBase<{
       return GROUP_CALL_STATE.CONNECTING;
     } else {
       const {participant} = this;
+      // Conference invitee paths may reach `connected` before the server
+      // sends our self-participant update (the SFU lists us in the next
+      // `phone.getGroupCallParticipants` reply, which lands after the SDP
+      // exchange completes). Treat "connected but no self yet" as MUTED —
+      // we asked to join muted, and waiting for the participant payload
+      // is purely informational.
+      if(!participant) {
+        return GROUP_CALL_STATE.MUTED;
+      }
       if(!participant.pFlags.can_self_unmute) {
         return GROUP_CALL_STATE.MUTED_BY_ADMIN;
       } else if(participant.pFlags.muted) {
@@ -311,6 +598,22 @@ export default class GroupCallInstance extends CallInstanceBase<{
     }
 
     stopTrack(track);
+    // `stopTrack` only flips `readyState` to "ended"; the StreamItem and the
+    // track stay in `streamManager` until the asynchronous `ended` event
+    // listener fires later. We do it synchronously here so that:
+    //   1. `isSharingVideo` (which reads streamManager.items) flips to
+    //      `false` immediately — without this, a fast follow-up
+    //      toggleVideoSharing() click reads stale `true` and ends up calling
+    //      stopVideoSharing() again instead of startVideoSharing(), and the
+    //      toggle "does nothing".
+    //   2. `appendToConference` below iterates `inputStream.getTracks()` to
+    //      pick a replacement; if the stopped track is still listed, it
+    //      replaces senders with the stopped track instead of `undefined`
+    //      (the "clear sender" comment) — and remote sees a frozen frame
+    //      until the next negotiation. Removing it makes `findIndex` return
+    //      -1, so `appendToConference` correctly clears the sender.
+    // The async `ended` listener still fires later; removeTrack is idempotent.
+    connectionInstance.streamManager.removeTrack(track);
     connectionInstance.streamManager.appendToConference(connectionInstance.description); // clear sender track
 
     await this.editParticipant(this.participant, {
@@ -325,6 +628,29 @@ export default class GroupCallInstance extends CallInstanceBase<{
       return this.startVideoSharing();
     }
   }
+
+  // CallInstanceBase hook for mid-call device swap. Walks every connection
+  // we own (main + presentation) so screen-sharing keeps working when the
+  // user picks a different camera while presenting. Quietly skips
+  // connections that aren't up yet — the next negotiation will pick up the
+  // new track from streamManager.appendToConference instead.
+  protected replaceSenderTrack(
+    kind: 'audio' | 'video',
+    oldTrack: MediaStreamTrack,
+    newTrack: MediaStreamTrack
+  ): void {
+    for(const type in this.connections) {
+      const connectionInstance = this.connections[type as GroupCallConnectionType];
+      const connection = connectionInstance?.connection;
+      if(!connection) continue;
+      for(const sender of connection.getSenders()) {
+        if(sender.track === oldTrack) {
+          sender.replaceTrack(newTrack).catch((err) => this.log?.warn?.('replaceSenderTrack', err));
+        }
+      }
+    }
+  }
+
 
   public async hangUp(discard = false, rejoin = false, isDiscarded = false) {
     for(const type in this.connections) {
@@ -516,6 +842,25 @@ export default class GroupCallInstance extends CallInstanceBase<{
       this.participantsSsrcs.set(peerId, ssrcs);
     } else {
       this.participantsSsrcs.delete(peerId);
+    }
+
+    // For e2e conferences: map every SFU SSRC for this participant to their
+    // Telegram user_id so recv RTCRtpScriptTransform handlers can look up
+    // the correct Ed25519 public key for signature verification. The
+    // TdE2E "user_id" IS the Telegram user_id — same value namespace.
+    if(this.e2e && participant.peer?._ === 'peerUser') {
+      const userId = BigInt(participant.peer.user_id);
+      if(hasLeft) {
+        let changed = false;
+        for(const ssrc of oldSsrcs) {
+          if(ssrc.source && this.e2eUserBySsrc.delete(ssrc.source >>> 0)) changed = true;
+        }
+        if(changed) this.syncSsrcMapToWorker();
+      } else {
+        for(const ssrc of ssrcs) {
+          if(ssrc.source) this.registerE2eUserSsrc(userId, ssrc.source);
+        }
+      }
     }
 
     // const TEST_OLD = false;

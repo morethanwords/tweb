@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {JSX, createSignal, For, createEffect, Accessor, onMount, createMemo, splitProps, on, Show, onCleanup} from 'solid-js';
 import Scrollable from '@components/scrollable2';
 import {createStoriesViewer} from '@components/stories/viewer';

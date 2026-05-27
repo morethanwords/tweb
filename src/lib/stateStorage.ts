@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {ChatSavedPosition} from '@lib/appImManager';
 import type {AppDraftsManager} from '@appManagers/appDraftsManager';
 import type {State} from '@config/state';

@@ -11,18 +11,18 @@ import {keepMe} from '@helpers/keepMe';
 import {createDelayed} from '@helpers/solid/createDelayed';
 import {I18nTsx} from '@helpers/solid/i18n';
 import classNames from '@helpers/string/classNames';
-import {createEffect, Match, onCleanup, Show, Switch} from 'solid-js';
+import {createEffect, createMemo, Match, onCleanup, Show, Switch} from 'solid-js';
 import {Transition} from 'solid-transition-group';
 import {usePollMessageContentProps} from './context';
 import styles from './styles.module.scss';
-import {NewOptionValues, spinnerThickness} from './utils';
+import {NewOptionValues, spinnerThickness, useChatRights} from './utils';
 
 keepMe(ripple);
 
 export const AddOption = (props: {
   inputFieldRef: (value: InputField) => void;
-  visible: boolean;
-  onVisibleChange: (visible: boolean) => void;
+  active: boolean;
+  onActiveChange: (visible: boolean) => void;
   value: string;
   attachment?: AttachedMedia;
   onPartialChange: (text: Partial<NewOptionValues>) => void;
@@ -31,8 +31,22 @@ export const AddOption = (props: {
 }) => {
   const contextProps = usePollMessageContentProps();
 
-  const visible = () => props.visible;
+  const chatRights = useChatRights({
+    peerId: () => contextProps.message.peerId,
+    rights: () => ['send_photos', 'send_stickers'],
+    getRight: (key) => contextProps.canSend(key)
+  })
+
+  const supportedMediaTypes = createMemo(() => {
+    return [
+      ...(chatRights.hasRight('send_photos') ? ['photo'] as const : []),
+      ...(chatRights.hasRight('send_stickers') ? ['sticker'] as const : [])
+    ];
+  });
+
+  const active = () => props.active;
   const delayedIsPending = createDelayed(() => props.isPending, false, (value) => value ? 200 : -1);
+  const delayedIsClickable = createDelayed(() => !active(), !active(), (value) => value ? -1 : 400);
 
   const inputField = new InputField({
     placeholder: 'NewPoll.Option',
@@ -53,19 +67,24 @@ export const AddOption = (props: {
 
     if(e.key === 'Backspace' && props.value === '') {
       e.preventDefault();
-      props.onVisibleChange(false);
+      props.onActiveChange(false);
     }
   });
 
   props.inputFieldRef(inputField);
 
   createEffect(() => {
-    if(!visible()) return;
+    if(!active()) return;
 
     const navigationItem: NavigationItem = {
       type: 'inline-message-input',
-      onPop: () => void props.onVisibleChange(false)
+      onPop: () => void props.onActiveChange(false)
     };
+
+    const existing = appNavigationController.findItemByType('inline-message-input');
+    if(existing) {
+      appNavigationController.backByItem(existing.item);
+    }
 
     appNavigationController.pushItem(navigationItem);
 
@@ -85,21 +104,29 @@ export const AddOption = (props: {
   });
 
   const onAfterEnter = () => {
-    if(visible()) {
+    if(active()) {
       inputField.input.focus();
     }
   };
 
   return (
-    <div class={classNames(styles.pollOption, styles.hasMedia)}>
-      <Show when={!visible()}>
-        <div class={styles.clickableArea} classList={{[styles.outgoing]: contextProps.isOutgoing}} use:ripple={!visible()} onClick={() => props.onVisibleChange(!visible())} />
-      </Show>
+    <div
+      class={classNames(styles.pollOption, styles.hasMedia, styles.isAddOption)}
+      classList={{
+        [styles.isOutgoing]: contextProps.isOutgoing,
+        [styles.isIncoming]: !contextProps.isOutgoing
+      }}
+    >
+      <Transition name='fade-4' mode='outin' duration={400}>
+        <Show when={delayedIsClickable()}>
+          <div class={styles.clickableArea} classList={{[styles.outgoing]: contextProps.isOutgoing}} use:ripple={delayedIsClickable()} onClick={() => props.onActiveChange(!active())} />
+        </Show>
+      </Transition>
 
       <div class={styles.checkContainer}>
         <Transition name='fade' mode='outin'>
           <Switch>
-            <Match when={!visible()}>
+            <Match when={!active()}>
               <IconTsx icon='add' class={styles.addOptionPlus} />
             </Match>
             <Match when={delayedIsPending()}>
@@ -107,16 +134,17 @@ export const AddOption = (props: {
                 <Spinner thickness={spinnerThickness} />
               </div>
             </Match>
-            <Match when={visible()}>
+            <Match when={active()}>
               <EmojiDropdownButton class={classNames(styles.emojiDropdownButton, props.isPending && styles.pointerDisabled)} inputField={inputField} />
             </Match>
           </Switch>
         </Transition>
       </div>
+      <div class={styles.pollOptionSpacerFirst}></div>
       <div class={styles.labelRow}>
         <div class={styles.labelText}>
           <Transition name='fade' mode='outin' onAfterEnter={onAfterEnter}>
-            <Show when={visible()} fallback={<I18nTsx key='Chat.Poll.AddAnOption' />}>
+            <Show when={active()} fallback={<I18nTsx key='Chat.Poll.AddAnOption' />}>
               <div class={styles.inputFieldInternals}>
                 {inputField.input}
                 {inputField.placeholder}
@@ -125,6 +153,7 @@ export const AddOption = (props: {
           </Transition>
         </div>
       </div>
+      <div class={styles.pollOptionSpacerLast}></div>
       <div
         class={styles.pollOptionMedia}
         classList={{
@@ -133,8 +162,9 @@ export const AddOption = (props: {
           [styles.pointerDisabled]: props.isPending
         }}
       >
-        <Show when={visible()}>
+        <Show when={active() && supportedMediaTypes().length > 0}>
           <MediaAttachment
+            supportedMediaTypes={supportedMediaTypes()}
             btnClass={styles.pollOptionMediaAttachBtn}
             imgClass={styles.pollOptionMediaAttachImg}
             attachedMedia={props.attachment}

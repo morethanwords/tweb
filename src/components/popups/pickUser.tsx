@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import AppSelectPeers, {SelectSearchPeerType} from '@components/appSelectPeers';
 import PopupElement, {createPopup, PopupContext, PopupContextValue} from '@components/popups/indexTsx';
@@ -691,7 +685,12 @@ export async function showPickUser3Popup(
     throw undefined;
   }
 
-  return showPickUser2Popup({peerType, filterPeerTypeBy, chatRightsActions});
+  return showPickUser2Popup({
+    peerType,
+    filterPeerTypeBy,
+    chatRightsActions,
+    titleLangKey: 'ShareWith'
+  });
 }
 
 export function showSharingPickerPopup(options: {
@@ -701,6 +700,10 @@ export function showSharingPickerPopup(options: {
   excludeBotforums?: PopupPickUserOptions['excludeBotforums'],
   placeholder?: LangPackKey,
   selfPresence?: LangPackKey,
+  // Multi-select toggle for the picker. `true` ⇒ checkboxes, user confirms a
+  // batch; `false` (default) ⇒ pick-and-send immediately. Pass-through to
+  // AppSelectPeers' own `multiSelect` enum if a non-boolean is needed.
+  multiSelect?: PopupPickUserOptions['multiSelect'],
   onCloseAfterTimeout?: () => void,
   onClose?: () => void
 }) {
@@ -710,6 +713,10 @@ export function showSharingPickerPopup(options: {
   return showPickUserPopup({
     titleLangKey: 'ShareWith',
     showTopPeers: true,
+    // Default the floating footer button's label to "Send" — without this the
+    // PopupElement.FooterButton renders as an empty purple bar in multi-select
+    // mode (single-select callers complete via row click and never see it).
+    footerButtonProps: {langKey: 'Send'},
     ...options,
     peerType: ['dialogs', 'contacts']
   });

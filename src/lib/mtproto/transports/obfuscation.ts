@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 // import aesjs from 'aes-js';
 import randomize from '@helpers/array/randomize';
 import cryptoMessagePort from '@lib/crypto/cryptoMessagePort';

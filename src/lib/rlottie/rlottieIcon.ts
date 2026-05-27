@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import liteMode from '@helpers/liteMode';
 import noop from '@helpers/noop';
 import safeAssign from '@helpers/object/safeAssign';

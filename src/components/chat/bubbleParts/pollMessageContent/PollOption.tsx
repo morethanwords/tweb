@@ -1,7 +1,8 @@
 import ripple from '@components/ripple';
 import {Spinner} from '@components/spinner';
-import StaticRadio from '@components/staticRadio';
+import {StickerPreview} from '@components/stickerPreview';
 import PhotoTsx from '@components/wrappers/photoTsx';
+import VideoTsx from '@components/wrappers/videoTsx';
 import {animateValue} from '@helpers/animateValue';
 import {keepMe} from '@helpers/keepMe';
 import clamp from '@helpers/number/clamp';
@@ -10,7 +11,7 @@ import {createDelayed} from '@helpers/solid/createDelayed';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {requestRAF} from '@helpers/solid/requestRAF';
 import classNames from '@helpers/string/classNames';
-import {Photo} from '@layer';
+import {Document, MessageMedia, Photo} from '@layer';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {Accessor, createEffect, createMemo, createSignal, JSX, Match, onCleanup, onMount, Show, splitProps, Switch} from 'solid-js';
 import {unwrap} from 'solid-js/store';
@@ -20,6 +21,7 @@ import {usePollMessageContentProps} from './context';
 import {AvatarGroup} from './parts';
 import PathDot from './PathDot';
 import styles from './styles.module.scss';
+import {GetStickerMediaResult} from './usePollDerivedProps';
 import {dataPollViewerIdx, DataPollViewerIdxDirectivePayload, LocalTextWithEntities, PollOptionResult, spinnerThickness} from './utils';
 
 
@@ -27,10 +29,14 @@ keepMe(ripple);
 keepMe(dataPollViewerIdx);
 
 const progressTransitionTimeBase = 600; // ms
+const boxSize = 32;
 
 export const PollOption = (props: {
-  withImage?: boolean;
+  withMedia?: boolean;
   photo?: Photo.photo;
+  video?: Document.document;
+  sticker?: GetStickerMediaResult;
+  geo?: MessageMedia.messageMediaGeo;
   clickable?: boolean;
   text: LocalTextWithEntities;
   checked: boolean;
@@ -39,11 +45,17 @@ export const PollOption = (props: {
   hasCorrectAnswer: boolean;
   pollViewerPayload?: DataPollViewerIdxDirectivePayload;
   isPendingVote?: boolean;
+  hideResults?: boolean;
+  initialIdx?: number;
+  highlighted?: boolean;
+  slowHighlighted?: boolean;
 
   result?: PollOptionResult;
 }) => {
-  const {TranslatableMessageTsx} = useHotReloadGuard()
+  const {TranslatableMessageTsx, wrapGeo} = useHotReloadGuard()
   const contextProps = usePollMessageContentProps();
+
+  let clickableAreaElement: HTMLDivElement;
 
   const isShowingResult = createMemo(() => !!props.result);
 
@@ -64,6 +76,8 @@ export const PollOption = (props: {
   // So it waits a little bit for the spinner to disappear
   const delayedIsPendingVote = createDelayed(() => props.isPendingVote ?? false, false, (value) => value ? -1 : 100);
 
+  const showPathDot = createMemo(() => canAnimate() && isShowingResult() && !canShowPercentage() && !delayedIsPendingVote() && !props.hideResults);
+
   onMount(() => {
     requestRAF(() => {
       setCanAnimate(true);
@@ -79,11 +93,35 @@ export const PollOption = (props: {
     }
   });
 
+  createEffect(() => {
+    if(!props.slowHighlighted || !clickableAreaElement) return;
+
+    requestRAF(() => {
+      clickableAreaElement.classList.add(styles.hoveredTransition, styles.hovered);
+    });
+
+    onCleanup(() => {
+      clickableAreaElement.classList.remove(styles.hovered);
+
+      requestRAF(() => {
+        clickableAreaElement.classList.remove(styles.hoveredTransition);
+      });
+    });
+  });
+
   return (
-    <div class={styles.pollOption} classList={{[styles.hasMedia]: props.withImage}}>
-      <Show when={!isShowingResult()}>
-        <div class={styles.clickableArea} classList={{[styles.outgoing]: contextProps.isOutgoing}} use:ripple onClick={props.onToggle} />
-      </Show>
+    <div class={styles.pollOption} classList={{[styles.hasMedia]: props.withMedia}} data-poll-option-idx={props.initialIdx}>
+      <div
+        ref={clickableAreaElement}
+        class={styles.clickableArea}
+        classList={{
+          [styles.pointerDisabled]: isShowingResult(),
+          [styles.outgoing]: contextProps.isOutgoing,
+          [styles.hovered]: props.highlighted && !props.slowHighlighted
+        }}
+        use:ripple
+        onClick={props.onToggle}
+      />
       <div class={styles.checkContainer}>
         <Transition name='fade'>
           <Switch>
@@ -92,13 +130,13 @@ export const PollOption = (props: {
                 <Spinner thickness={spinnerThickness} />
               </div>
             </Match>
-            <Match when={!isShowingResult()}>
-              <Show
-                when={props.allowMultipleAnswers}
-                fallback={<StaticRadio class={styles.checkbox} checked={props.checked} />}
-              >
-                <InMessageCheckbox class={styles.checkbox} checked={props.checked} isOutgoing={contextProps.isOutgoing} />
-              </Show>
+            <Match when={!isShowingResult() || props.hideResults}>
+              <InMessageCheckbox
+                class={styles.checkbox}
+                checked={isShowingResult() ? props.result?.chosen : props.checked}
+                isOutgoing={contextProps.isOutgoing}
+                round={!props.allowMultipleAnswers}
+              />
             </Match>
             <Match when={canShowPercentage()}>
               <div class={styles.percent}>
@@ -108,12 +146,13 @@ export const PollOption = (props: {
           </Switch>
         </Transition>
       </div>
+      <div class={styles.pollOptionSpacerFirst}></div>
       <div class={styles.labelRow}>
         <div class={styles.labelText}>
           <TranslatableMessageTsx
             peerId={contextProps.peerId}
             textWithEntities={{_: 'textWithEntities', text: props.text.text, entities: unwrap(props.text.entities)}}
-            richTextOptions={{middleware: createMiddleware().get(), loadPromises: contextProps.loadPromises}}
+            richTextOptions={{middleware: createMiddleware().get(), loadPromises: unwrap(contextProps.loadPromises)}}
           />
         </div>
         <Show when={isShowingResult() && props.result.voters}>
@@ -128,7 +167,7 @@ export const PollOption = (props: {
         </Show>
 
         <Transition name='fade-2'>
-          <Show when={isShowingResult() && canShowPercentage()}>
+          <Show when={isShowingResult() && canShowPercentage() && !props.hideResults}>
             <PollProgressLine
               progress={(props.result.percent || 0) / 100}
               canAnimate={canAnimate()}
@@ -137,24 +176,22 @@ export const PollOption = (props: {
             />
           </Show>
         </Transition>
+        <Show when={showPathDot()}>
+          <PathDot
+            class={styles.pathDot}
+            dotColor='var(--primary-color)'
+            width={48}
+            height={24}
+            dotThickness={4}
+            dotLength={3.6}
+            radius={8}
+            padding={0}
+            duration={0.4}
+            onAnimationEnd={() => void setCanShowPercentage(true)}
+          />
+        </Show>
         <Transition name='fade-2'>
-          <Show when={canAnimate() && isShowingResult() && !canShowPercentage() && !delayedIsPendingVote()}>
-            <PathDot
-              class={styles.pathDot}
-              dotColor='var(--primary-color)'
-              width={34}
-              height={24}
-              dotThickness={4}
-              dotLength={3.6}
-              radius={8}
-              padding={0}
-              duration={0.4}
-              onAnimationEnd={() => void setCanShowPercentage(true)}
-            />
-          </Show>
-        </Transition>
-        <Transition name='fade-2'>
-          <Show when={canShowPercentageCheckbox() && props.hasCorrectAnswer && props.result.chosen}>
+          <Show when={canShowPercentageCheckbox() && props.hasCorrectAnswer && props.result.chosen && !props.hideResults}>
             <div
               class={styles.chosenCheckboxDot}
               classList={{
@@ -165,12 +202,11 @@ export const PollOption = (props: {
           </Show>
         </Transition>
         <Transition name='fade-2'>
-          <Show when={canShowPercentageCheckbox()}>
+          <Show when={canShowPercentageCheckbox() && !props.hideResults}>
             <InMessageCheckbox
               round={!props.allowMultipleAnswers}
               class={styles.chosenCheckbox}
               classList={{
-                // Let it be white when the poll is sent by us
                 [styles.correct]: !contextProps.isOutgoing && props.hasCorrectAnswer && props.result.correct,
                 [styles.wrong]: !contextProps.isOutgoing && props.hasCorrectAnswer && !props.result.correct
               }}
@@ -181,25 +217,88 @@ export const PollOption = (props: {
           </Show>
         </Transition>
       </div>
-      <Show when={props.withImage}>
+      <Show when={props.withMedia}>
+        <div class={styles.pollOptionSpacerLast}></div>
         <div
           class={classNames(styles.pollOptionMedia, styles.stripped)}
-          classList={{[styles.clickable]: !!props.photo}}
+          classList={{[styles.clickable]: !!props.video || !!props.photo || !!props.sticker || !!props.geo}}
           use:dataPollViewerIdx={props.pollViewerPayload}
         >
-          <Show when={props.photo}>
-            <PhotoTsx
-              photo={props.photo}
-              boxWidth={36}
-              boxHeight={36}
-              loadPromises={contextProps.loadPromises}
-              autoDownloadSize={contextProps.autoDownload?.photo}
-            />
-          </Show>
+          <Switch>
+            <Match when={props.photo}>
+              <PhotoTsx
+                photo={props.photo}
+                boxWidth={boxSize}
+                boxHeight={boxSize}
+                loadPromises={unwrap(contextProps.loadPromises)}
+                autoDownloadSize={contextProps.autoDownload?.photo}
+              />
+            </Match>
+            <Match when={props.sticker}>
+              <StickerPreview
+                class='poll-option-sticker'
+                doc={props.sticker.document}
+                animationGroup={contextProps.animationGroup}
+                width={boxSize}
+                height={boxSize}
+                stickerOptions={{
+                  liteModeKey: 'stickers_chat',
+                  withThumb: true,
+                  noPremium: props.sticker.media.pFlags.nopremium
+                }}
+              />
+            </Match>
+            <Match when={props.geo}>
+              <GeoPreview geo={props.geo} wrapGeo={wrapGeo} />
+            </Match>
+            <Match when={props.video}>
+              <VideoTsx
+                doc={props.video}
+                loadPromises={unwrap(contextProps.loadPromises)}
+                group={contextProps.animationGroup}
+                autoDownload={unwrap(contextProps.autoDownload)}
+                boxWidth={boxSize}
+                boxHeight={boxSize}
+                withPreview
+                noInfo
+                lazyLoadQueue={unwrap(contextProps.lazyLoadQueue) || undefined}
+                observer={unwrap(contextProps.observer)}
+              />
+            </Match>
+          </Switch>
+
         </div>
       </Show>
     </div>
   );
+};
+
+const GeoPreview = (props: {
+  geo: MessageMedia.messageMediaGeo;
+  wrapGeo: ReturnType<typeof useHotReloadGuard>['wrapGeo'];
+}) => {
+  const contextProps = usePollMessageContentProps();
+
+  let attachmentDiv: HTMLDivElement;
+
+  onMount(() => {
+    const middleware = createMiddleware().get();
+
+    props.wrapGeo({
+      messageMedia: props.geo,
+      attachmentDiv,
+      wrapOptions: {
+        middleware,
+        lazyLoadQueue: unwrap(contextProps.lazyLoadQueue) || undefined,
+        animationGroup: contextProps.animationGroup
+      },
+      middleware,
+      loadPromises: unwrap(contextProps.loadPromises) ?? [],
+      date: contextProps.message.date
+    });
+  });
+
+  return <div ref={(el) => attachmentDiv = el} class={styles.geo} />;
 };
 
 const PollProgressLine = (inProps: JSX.HTMLAttributes<HTMLDivElement> & {

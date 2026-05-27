@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import DEBUG from '@config/debug';
 import {IS_FIREFOX, IS_SAFARI} from '@environment/userAgent';
 import {IS_SERVICE_WORKER, IS_WEB_WORKER} from '@helpers/context';

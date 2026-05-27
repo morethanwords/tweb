@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import bigInt from 'big-integer';
 import {InputSavedStarGift, Message, MessageAction, PremiumGiftCodeOption, SavedStarGift, StarGift, StarGiftAttribute, StarGiftAttributeId, StarGiftCollection, StarGiftUpgradePrice, StarsAmount, WebPageAttribute} from '@layer';
 import {STARS_CURRENCY} from '@appManagers/constants';

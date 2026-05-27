@@ -1,8 +1,4 @@
 /*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- *
  * Originally from:
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
@@ -19,6 +15,7 @@ import MTTransport from '@lib/mtproto/transports/transport';
 import {nextRandomUint, randomBytes, randomLong} from '@helpers/random';
 import Modes from '@config/modes';
 import noop from '@helpers/noop';
+import {IS_WORKER} from '@helpers/context';
 import HTTP from '@lib/mtproto/transports/http';
 import type TcpObfuscated from '@lib/mtproto/transports/tcpObfuscated';
 import bigInt from 'big-integer';
@@ -840,7 +837,10 @@ export default class MTPNetworker {
         this.checkConnectionTimeout = ctx.setTimeout(() => this.checkConnection('from toggleOffline'), delay);
         this.checkConnectionPeriod = Math.min(CHECK_CONNECTION_MAX_PERIOD, (1 + this.checkConnectionPeriod) * 1.5);
 
-        if(!import.meta.env.VITE_MTPROTO_WORKER) {
+        // Attach when running in the main realm (legacy main-thread MTProto OR
+        // Modes.noWorker). The build-time VITE_MTPROTO_WORKER flag is unset only
+        // in the legacy case; IS_WORKER covers both at runtime.
+        if(!IS_WORKER) {
           document.body.addEventListener('online', this.checkConnection, false);
           document.body.addEventListener('focus', this.checkConnection, false);
         }
@@ -848,7 +848,7 @@ export default class MTPNetworker {
         this.onTransportOpen();
         this.checkLongPoll();
 
-        if(!import.meta.env.VITE_MTPROTO_WORKER) {
+        if(!IS_WORKER) {
           document.body.removeEventListener('online', this.checkConnection);
           document.body.removeEventListener('focus', this.checkConnection);
         }

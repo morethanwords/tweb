@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {ReactionsContext} from '@appManagers/appReactionsManager';
 import type {RequestHistoryOptions} from '@appManagers/appMessagesManager';
 import {createEffect, createSignal, onCleanup, JSX, createMemo, onMount, on, untrack, batch, Accessor} from 'solid-js';

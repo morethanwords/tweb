@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {PASS_CONFLICTING_ENTITIES, PASS_SINGLE_CONFLICTING_ENTITIES, PASS_SINGLE_CONFLICTING_ENTITIES_WITH_QUOTE, SINGLE_ENTITIES} from '.';
 import {MessageEntity} from '@layer';
 import isEntityIntersecting from '@lib/richTextProcessor/isEntityIntersecting';

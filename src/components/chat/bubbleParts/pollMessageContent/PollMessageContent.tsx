@@ -1,6 +1,5 @@
 import {AnimationItemGroup} from '@components/animationIntersector';
 import {AppMediaViewerStaticTargetType} from '@components/appMediaViewerStatic';
-import {AutoHeight} from '@components/autoHeight';
 import {ButtonIconTsx} from '@components/buttonIconTsx';
 import InputField from '@components/inputField';
 import type LazyLoadQueue from '@components/lazyLoadQueue';
@@ -9,38 +8,41 @@ import {RemainingTime} from '@components/remainingTime';
 import ripple from '@components/ripple';
 import Space from '@components/space';
 import PhotoTsx from '@components/wrappers/photoTsx';
+import VideoTsx from '@components/wrappers/videoTsx';
 import {setCaretAtEnd} from '@helpers/dom/setCaretAt';
+import SuperIntersectionObserver from '@helpers/dom/superIntersectionObserver';
 import {keepMe} from '@helpers/keepMe';
+import mediaSizes from '@helpers/mediaSizes';
 import {attachHotClassName} from '@helpers/solid/classname';
 import createMiddleware from '@helpers/solid/createMiddleware';
-import {HeightTransition} from '@helpers/solid/heightTransition';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
 import type {ChatAutoDownloadSettings} from '@hooks/useAutoDownloadSettings';
-import {Message, MessageMedia, Photo, Poll, PollResults} from '@layer';
+import {Document, Message, MessageMedia, Photo, Poll, PollResults} from '@layer';
+import {ChatRights} from '@lib/appManagers/appChatsManager';
 import {sliceTextWithEntities} from '@lib/richTextProcessor/sliceTextWithEntities';
 import wrapDraftText from '@lib/richTextProcessor/wrapDraftText';
-import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {batch, createEffect, createMemo, createSelector, createSignal, For, Match, Show, Switch} from 'solid-js';
 import {createStore, reconcile, unwrap} from 'solid-js/store';
 import {Transition, TransitionGroup} from 'solid-transition-group';
 import {AddOption} from './AddOption';
 import {PollMessageContentPropsContext} from './context';
-import {AvatarGroup, Explanation, PollType, PollVotes} from './parts';
+import {AutoStartedConfetti, AvatarGroup, Explanation, PollType, PollVotes} from './parts';
 import {PollOption} from './PollOption';
 import styles from './styles.module.scss';
 import {usePollDerivedProps} from './usePollDerivedProps';
 import {usePollMutations} from './usePollMutations';
 import {usePollOptionsStore} from './usePollOptionsStore';
-import {attachSpoilerOverlay, dataPollViewerIdx, NewOptionValues} from './utils';
+import {attachSpoilerOverlay, dataPollViewerIdx, hasSelectedCorrectAnswers, NewOptionValues} from './utils';
 
 
 keepMe(ripple);
 keepMe(dataPollViewerIdx);
 
 export type PollMessageContentProps = {
+  element: HTMLElement;
   isOutgoing?: boolean;
   poll: Poll;
   peerId: PeerId;
@@ -50,11 +52,16 @@ export type PollMessageContentProps = {
   autoDownload?: ChatAutoDownloadSettings;
   lazyLoadQueue?: false | LazyLoadQueue;
   animationGroup?: AnimationItemGroup;
+  observer?: SuperIntersectionObserver;
+  canSend: (rights: ChatRights) => Promise<boolean>;
   loadPromises: Promise<any>[];
+  controls: Partial<PollMessageContentControls>;
 };
 
-type Controls = {
+export type PollMessageContentControls = {
   openMediaViewer: (idx: number) => void;
+  highlightAnswer: (idx: number) => void;
+  highlightAnswerWithTimeout: (idx: number, timeout: number) => void;
 };
 
 type MediaViewerPayloadIndexes = {
@@ -63,14 +70,12 @@ type MediaViewerPayloadIndexes = {
   options: Map<number, number>;
 };
 
-export const PollMessageContent = defineSolidElement({
-  name: 'poll-message-content',
-  component: (props: PassedProps<PollMessageContentProps>, _, controls: Controls) => {
+export const PollMessageContent =
+  (props: PollMessageContentProps) => {
     attachHotClassName(props.element, styles.container);
 
     // ----- Setup / external dependencies -----
-    const {rootScope, useAppSettings, AppMediaViewerStatic, appSidebarRight, AppPollResultsTab, TranslatableMessageTsx} = useHotReloadGuard();
-    const [appSettings] = useAppSettings();
+    const {rootScope, AppMediaViewerStatic, appSidebarRight, AppPollResultsTab, TranslatableMessageTsx, DocumentTsx} = useHotReloadGuard();
     const {maxOptionLength} = useCreatePollLimits();
     const middleware = createMiddleware().get();
 
@@ -78,12 +83,15 @@ export const PollMessageContent = defineSolidElement({
     const [explanationToggled, setExplanationToggled] = createSignal(false);
     const [chosenIndexes, setChosenIndexes] = createSignal<number[]>([]);
     const [canFooterBeClickable, setCanFooterBeClickable] = createSignal(false);
-    const [isAddingNewOptionVisible, setIsAddingNewOptionVisible] = createSignal(false);
+    const [isAddingNewOptionActive, setIsAddingNewOptionActive] = createSignal(false);
     const [newOption, setNewOption] = createStore<NewOptionValues>({
       text: '',
       entities: []
     });
     const [descriptionElement, setDescriptionElement] = createSignal<HTMLDivElement>();
+    const [isConfettiActive, setIsConfettiActive] = createSignal(false);
+    const [highlightedIndexes, setHighlightedIndexes] = createSignal<number[]>([]);
+    const [slowHighlightedIndexes, setSlowHighlightedIndexes] = createSignal<number[]>([]);
 
     let inputField: InputField;
     const elementByIndexMap = new Map<number, HTMLElement>();
@@ -91,7 +99,7 @@ export const PollMessageContent = defineSolidElement({
     // ----- Poll options store & derived props -----
     const [pollOptions] = usePollOptionsStore({
       props,
-      userRandomSeed: appSettings.userRandomSeed
+      userId: rootScope.myId
     });
 
     const {
@@ -102,10 +110,11 @@ export const PollMessageContent = defineSolidElement({
       hasCorrectAnswer,
       showWhoVoted,
       closed,
+      hideResults,
       closesAtTimestamp,
       votersCount,
       recentVoters,
-      hasPhotoInOptions,
+      hasMediaInOptions,
       hasExplanation,
       hasSelectedSomething,
       isShowingResult,
@@ -115,11 +124,18 @@ export const PollMessageContent = defineSolidElement({
       canShowViewResults,
       willFooterBeClickable,
       explanationPhoto,
+      explanationVideo,
+      explanationDocument,
       descriptionPhoto,
+      descriptionVideo,
+      descriptionDocument,
       getOverridenMessage,
       initialIdxFromShuffledIdx,
       getResultForOption,
-      getPhotoForOption
+      getPhotoForOption,
+      getVideoForOption,
+      getStickerForOption,
+      getGeoForOption
     } = usePollDerivedProps({
       props,
       pollOptions,
@@ -134,21 +150,20 @@ export const PollMessageContent = defineSolidElement({
     // ----- Mutations -----
     const resetInteractiveState = () => batch(() => {
       setChosenIndexes([]);
-      setIsAddingNewOptionVisible(false);
+      setIsAddingNewOptionActive(false);
       setNewOption(reconcile({text: '', entities: []}));
       inputField?.setValueSilently('');
     });
 
     const {
       sendVoteMutation,
+      wrappedSendVote,
       delayedSendVotePending,
       addOptionMutation,
       wrappedAddOption
     } = usePollMutations({
       getOverridenMessage,
       isShowingResult,
-      hasSelectedSomething,
-      chosenIndexes,
       initialIdxFromShuffledIdx,
       newOption,
       onSuccess: resetInteractiveState
@@ -161,38 +176,42 @@ export const PollMessageContent = defineSolidElement({
     const mediaViewerPayload = createMemo(() => {
       let idxSeed = 0;
 
-      const photos: Photo.photo[] = [];
+      const media: (Photo.photo | Document.document)[] = [];
       const indexes: MediaViewerPayloadIndexes = {
         options: new Map()
       };
 
-      if(descriptionPhoto()) {
-        photos.push(descriptionPhoto());
+      if(descriptionPhoto() || descriptionVideo()) {
+        media.push(descriptionPhoto() || descriptionVideo());
         indexes.description = idxSeed++;
       }
 
-      if(explanationPhoto()) {
-        photos.push(explanationPhoto());
+      if(explanationPhoto() || explanationVideo()) {
+        media.push(explanationPhoto() || explanationVideo());
         indexes.explanation = idxSeed++;
       }
 
       props.poll.answers.forEach((option, idx) => {
         const photo = getPhotoForOption(idx);
-        if(photo) {
-          photos.push(photo);
+        const video = getVideoForOption(idx);
+        if(photo || video) {
+          media.push(photo || video);
           indexes.options.set(idx, idxSeed++);
         }
       });
 
-      return {photos, indexes};
+      return {media, indexes};
     });
 
     // ----- Event handlers -----
     const handleToggle = (index: number) => {
+      if(!allowMultipleAnswers()) {
+        wrappedSendVote([index]);
+        return;
+      }
+
       setChosenIndexes(prev => {
-        if(!allowMultipleAnswers()) {
-          return prev.includes(index) ? [] : [index];
-        } else if(prev.includes(index)) {
+        if(prev.includes(index)) {
           return prev.filter(i => i !== index);
         } else {
           return [...prev, index];
@@ -225,7 +244,7 @@ export const PollMessageContent = defineSolidElement({
 
     const onFooterClick = wrapAsyncClickHandler(async() => {
       if(canShowViewResults()) openViewResults();
-      else if(hasSelectedSomething()) await sendVoteMutation.mutateAsync();
+      else if(hasSelectedSomething()) await sendVoteMutation.mutateAsync(chosenIndexes());
       else if(hasTypedNewOption()) await wrappedAddOption();
     });
 
@@ -235,6 +254,10 @@ export const PollMessageContent = defineSolidElement({
 
       props.poll = poll;
       props.results = results;
+
+      if(poll.pFlags.quiz && hasSelectedCorrectAnswers(poll)) {
+        setIsConfettiActive(true);
+      }
     });
 
     createEffect(() => {
@@ -243,35 +266,86 @@ export const PollMessageContent = defineSolidElement({
     });
 
     // ----- Imperative controls -----
-    controls.openMediaViewer = (idx: number) => {
+    props.controls.openMediaViewer = (idx: number) => {
       const getTarget = (idx: number): AppMediaViewerStaticTargetType => ({
-        media: mediaViewerPayload().photos[idx],
-        element: elementByIndexMap.get(idx),
+        media: mediaViewerPayload().media[idx],
+        element: elementByIndexMap.get(idx)?.querySelector('.media-video, .media-photo'),
         fromId: props.message.fromId,
         timestamp: props.message.date,
-        peerId: props.message.peerId
+        peerId: props.message.peerId,
+        mid: props.message.mid
       });
 
       new AppMediaViewerStatic().openMedia({
-        allTargets: mediaViewerPayload().photos.map((_, idx) => getTarget(idx)),
+        allTargets: mediaViewerPayload().media.map((_, idx) => getTarget(idx)),
         index: idx,
         fromRight: 0,
         ...getTarget(idx)
       });
     };
 
+    let highlightedTimeout: number;
+
+    props.controls.highlightAnswer = (idx?: number | null) => {
+      self.clearTimeout(highlightedTimeout);
+
+      if(typeof idx === 'number') {
+        setHighlightedIndexes([idx]);
+      } else {
+        setHighlightedIndexes([]);
+      }
+    };
+
+    props.controls.highlightAnswerWithTimeout = (idx: number, timeout: number) => {
+      self.clearTimeout(highlightedTimeout);
+      setSlowHighlightedIndexes([idx]);
+      highlightedTimeout = self.setTimeout(() => setSlowHighlightedIndexes([]), timeout);
+    };
+
     return (
       <PollMessageContentPropsContext.Provider value={props}>
-        <Show when={descriptionPhoto()}>
+        <Show when={isConfettiActive()}>
+          <AutoStartedConfetti onEnd={() => setIsConfettiActive(false)} />
+        </Show>
+        <Show when={descriptionPhoto() || descriptionVideo()}>
           <div class={styles.pollImageWrapper}>
             <div class={styles.pollImage} use:dataPollViewerIdx={[mediaViewerPayload().indexes.description, elementByIndexMap]}>
-              <PhotoTsx
-                photo={descriptionPhoto()}
-                loadPromises={props.loadPromises}
-                autoDownloadSize={props.autoDownload?.photo}
-                lazyLoadQueue={props.lazyLoadQueue}
-              />
+              <Show when={descriptionPhoto()}>
+                <PhotoTsx
+                  photo={descriptionPhoto()}
+                  loadPromises={unwrap(props.loadPromises)}
+                  autoDownloadSize={props.autoDownload?.photo}
+                  lazyLoadQueue={unwrap(props.lazyLoadQueue)}
+                />
+              </Show>
+              <Show when={descriptionVideo() && !descriptionPhoto()}>
+                <VideoTsx
+                  doc={descriptionVideo()}
+                  loadPromises={unwrap(props.loadPromises)}
+                  group={props.animationGroup}
+                  autoDownload={unwrap(props.autoDownload)}
+                  boxWidth={mediaSizes.active.regular.width}
+                  boxHeight={mediaSizes.active.regular.height}
+                  withPreview
+                  lazyLoadQueue={unwrap(props.lazyLoadQueue) || undefined}
+                  observer={unwrap(props.observer)}
+                />
+              </Show>
             </div>
+          </div>
+        </Show>
+        <Show when={descriptionDocument() && !descriptionPhoto() && !descriptionVideo()}>
+          <div class={styles.pollDocumentWrapper}>
+            <DocumentTsx
+              message={props.message}
+              doc={descriptionDocument()}
+              slot={0.1}
+              loadPromises={unwrap(props.loadPromises)}
+              lazyLoadQueue={unwrap(props.lazyLoadQueue) || undefined}
+              autoDownloadSize={props.autoDownload?.file}
+              sizeType='documentName'
+              canTranscribeVoice={false}
+            />
           </div>
         </Show>
         <Show when={descriptionText()}>
@@ -279,7 +353,7 @@ export const PollMessageContent = defineSolidElement({
             <TranslatableMessageTsx
               peerId={props.peerId}
               textWithEntities={{_: 'textWithEntities', text: descriptionText(), entities: unwrap(descriptionEntities())}}
-              richTextOptions={{middleware: createMiddleware().get(), loadPromises: props.loadPromises}}
+              richTextOptions={{middleware: createMiddleware().get(), loadPromises: unwrap(props.loadPromises)}}
             />
           </div>
         </Show>
@@ -289,7 +363,7 @@ export const PollMessageContent = defineSolidElement({
               <TranslatableMessageTsx
                 peerId={props.peerId}
                 textWithEntities={unwrap(question())}
-                richTextOptions={{middleware, loadPromises: props.loadPromises}}
+                richTextOptions={{middleware, loadPromises: unwrap(props.loadPromises)}}
               />
             </div>
             <div class={styles.headerSubtitle}>
@@ -307,115 +381,115 @@ export const PollMessageContent = defineSolidElement({
           </Show>
         </div>
 
-        <HeightTransition scale>
-          <Show when={explanationToggled()}>
-            <div style={{overflow: 'hidden'}}>
-              <Explanation
-                text={props.results?.solution}
-                entities={props.results?.solution_entities}
-                photo={explanationPhoto()}
-                pollViewerPayload={[mediaViewerPayload().indexes.explanation, elementByIndexMap]}
-              />
-            </div>
-          </Show>
-        </HeightTransition>
+        <Show when={explanationToggled()}>
+          <Explanation
+            text={props.results?.solution}
+            entities={props.results?.solution_entities}
+            photo={explanationPhoto()}
+            video={explanationVideo()}
+            document={explanationDocument()}
+            pollViewerPayload={[mediaViewerPayload().indexes.explanation, elementByIndexMap]}
+          />
+        </Show>
 
-        <AutoHeight>
-          <TransitionGroup name='fade-2' moveClass='t-move'>
-            <For each={pollOptions}>
-              {(option, index) => {
-                const initialIdx = createMemo(() => initialIdxFromShuffledIdx(index()));
+        <TransitionGroup name='fade-2' moveClass='t-move'>
+          <For each={pollOptions}>
+            {(option, index) => {
+              const initialIdx = createMemo(() => initialIdxFromShuffledIdx(index()));
 
-                return (
-                  <PollOption
-                    text={option.text}
-                    withImage={hasPhotoInOptions()}
-                    photo={getPhotoForOption(initialIdx())}
-                    allowMultipleAnswers={allowMultipleAnswers()}
-                    hasCorrectAnswer={hasCorrectAnswer()}
-                    checked={isChecked(index())}
-                    onToggle={() => handleToggle(index())}
-                    pollViewerPayload={[mediaViewerPayload().indexes.options.get(initialIdx()), elementByIndexMap]}
-                    result={getResultForOption(initialIdx())}
-                    isPendingVote={delayedSendVotePending()}
-                  />
-                );
-              }}
-            </For>
-          </TransitionGroup>
-        </AutoHeight>
-
-        <HeightTransition>
-          <Show when={canShowAddOption()}>
-            <div style={{overflow: 'hidden'}}>
-              <AddOption
-                inputFieldRef={(value: InputField) => void (inputField = value)}
-                value={newOption.text}
-                attachment={newOption.attachment}
-                onPartialChange={handleNewOptionChanged}
-                onEnter={wrappedAddOption}
-                visible={isAddingNewOptionVisible()}
-                onVisibleChange={setIsAddingNewOptionVisible}
-                isPending={addOptionMutation.isPending()}
-              />
-            </div>
-          </Show>
-        </HeightTransition>
-
-        <div
-          class={styles.footer}
-          classList={{
-            [styles.clickable]: isFooterClickable(),
-            [styles.outgoing]: props.isOutgoing
-          }}
-          use:ripple={isFooterClickable()}
-          onClick={onFooterClick}
-        >
-          <Transition
-            name='fade-2'
-            mode='outin'
-            onAfterExit={() => {
-              setCanFooterBeClickable(willFooterBeClickable());
-            }}
-          >
-            <Switch>
-              <Match when={canShowViewResults()}>
-                <I18nTsx key='Chat.Poll.ViewResults' />
-              </Match>
-              <Match when={hasSelectedSomething()}>
-                <I18nTsx key='Chat.Poll.SubmitVote' />
-              </Match>
-              <Match when={hasTypedNewOption() && !isShowingResult()}>
-                <I18nTsx key='Save' />
-              </Match>
-              <Match when={isShowingResult()}>
-                <PollVotes
-                  votersCount={votersCount()}
-                  closed={closed()}
+              return (
+                <PollOption
+                  text={option.text}
+                  withMedia={hasMediaInOptions()}
+                  photo={getPhotoForOption(initialIdx())}
+                  video={getVideoForOption(initialIdx())}
+                  sticker={getStickerForOption(initialIdx())}
+                  geo={getGeoForOption(initialIdx())}
+                  allowMultipleAnswers={allowMultipleAnswers()}
                   hasCorrectAnswer={hasCorrectAnswer()}
-                  showWhoVoted={showWhoVoted()}
+                  checked={isChecked(index())}
+                  onToggle={() => handleToggle(index())}
+                  pollViewerPayload={[mediaViewerPayload().indexes.options.get(initialIdx()), elementByIndexMap]}
+                  initialIdx={initialIdx()}
+                  result={getResultForOption(initialIdx())}
+                  isPendingVote={delayedSendVotePending()}
+                  hideResults={hideResults()}
+                  highlighted={highlightedIndexes().includes(initialIdx())}
+                  slowHighlighted={slowHighlightedIndexes().includes(initialIdx())}
                 />
-              </Match>
-              <Match when>
-                <I18nTsx key='Chat.Poll.SelectAnOption' />
-              </Match>
-            </Switch>
-          </Transition>
+              );
+            }}
+          </For>
+        </TransitionGroup>
+
+        <Show when={canShowAddOption()}>
+          <div style={{overflow: 'hidden'}}>
+            <AddOption
+              inputFieldRef={(value: InputField) => void (inputField = value)}
+              value={newOption.text}
+              attachment={newOption.attachment}
+              onPartialChange={handleNewOptionChanged}
+              onEnter={wrappedAddOption}
+              active={isAddingNewOptionActive()}
+              onActiveChange={setIsAddingNewOptionActive}
+              isPending={addOptionMutation.isPending()}
+            />
+          </div>
+        </Show>
+
+        <Space amount='0.25rem' />
+        <div class={styles.footer}>
+          <div
+            class={styles.footerButton}
+            classList={{
+              [styles.clickable]: isFooterClickable(),
+              [styles.outgoing]: props.isOutgoing
+            }}
+            use:ripple={isFooterClickable()}
+            onClick={onFooterClick}
+          >
+            <Transition
+              name='fade-2'
+              mode='outin'
+              onAfterExit={() => {
+                setCanFooterBeClickable(willFooterBeClickable());
+              }}
+            >
+              <Switch>
+                <Match when={canShowViewResults()}>
+                  <I18nTsx key='Chat.Poll.ViewVotes' args={votersCount()?.toString()} />
+                </Match>
+                <Match when={hasSelectedSomething()}>
+                  <I18nTsx key='Chat.Poll.SubmitVote' />
+                </Match>
+                <Match when={hasTypedNewOption() && !isShowingResult()}>
+                  <I18nTsx key='Save' />
+                </Match>
+                <Match when={isShowingResult()}>
+                  <PollVotes
+                    votersCount={votersCount()}
+                    closed={closed()}
+                    hasCorrectAnswer={hasCorrectAnswer()}
+                    showWhoVoted={showWhoVoted()}
+                  />
+                </Match>
+                <Match when>
+                  <I18nTsx key='Chat.Poll.SelectAnOption' />
+                </Match>
+              </Switch>
+            </Transition>
+          </div>
         </div>
 
         <Show when={canShowCloseTimer()}>
           <div class={styles.timer}>
-            <div class={styles.timerContent}>
-              <RemainingTime finishTimestamp={closesAtTimestamp()}>
-                {(time) => <I18nTsx key='Chat.Poll.EndsIn' args={[time()]} />}
-              </RemainingTime>
-            </div>
+            <RemainingTime finishTimestamp={closesAtTimestamp()}>
+              {(time) => <I18nTsx key='Chat.Poll.EndsIn' args={[time()]} />}
+            </RemainingTime>
           </div>
         </Show>
 
-        {/* some space for the time span */}
-        <Space amount='0.75rem' />
+        <Space amount='1rem' />
       </PollMessageContentPropsContext.Provider>
     );
-  }
-});
+  };

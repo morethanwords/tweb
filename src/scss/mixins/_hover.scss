@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 @mixin hover($color: null, $property: null, $use-transition: false) {
   @if $color {
     @if $color == filled-gray {
@@ -23,16 +17,16 @@
       @if $use-transition {
         transition: .2s #{$property};
       }
-      
+
       #{$property}: $color;
     }
-    
+
 
     @content;
   }
 }
 
-@mixin hover-global($color: null, $property: null, $use-transition: false) {
+@mixin hover-global($color: null, $property: null, $use-transition: false, $night: false) {
   @if $color {
     @if $color == filled-gray {
       $color: var(--light-filled-secondary-text-color);
@@ -45,18 +39,36 @@
     }
   }
 
-  :global(html.no-touch) &:hover,
-  :global(html.no-touch) &:active {
-    @if $property != null {
-      @if $use-transition {
-        transition: .2s #{$property};
-      }
-      
-      #{$property}: $color;
-    }
-    
+  @if $night {
+    :global(html.no-touch.night) &:hover,
+    :global(html.no-touch.night) &:active,
+    :global(html.no-touch) :global(.night) &:hover,
+    :global(html.no-touch) :global(.night) &:active {
+      @if $property != null {
+        @if $use-transition {
+          transition: .2s #{$property};
+        }
 
-    @content;
+        #{$property}: $color;
+      }
+
+
+      @content;
+    }
+  } @else {
+    :global(html.no-touch) &:hover,
+    :global(html.no-touch) &:active {
+      @if $property != null {
+        @if $use-transition {
+          transition: .2s #{$property};
+        }
+
+        #{$property}: $color;
+      }
+
+
+      @content;
+    }
   }
 }
 
@@ -74,13 +86,13 @@
 
 @mixin btn-hoverable {
   @include hover-background-effect();
-  
-  &.primary, 
-  &.blue, 
+
+  &.primary,
+  &.blue,
   &.active {
     @include hover-background-effect(primary);
   }
-  
+
   &.danger {
     @include hover-background-effect(red);
   }

@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import getGroupCallAudioAsset from '@components/groupCall/getAudioAsset';
 import {MOUNT_CLASS_TO} from '@config/debug';
 import EventListenerBase from '@helpers/eventListenerBase';
@@ -19,6 +13,12 @@ import {generateSsrc} from '@lib/calls/localConferenceDescription';
 import {WebRTCLineType} from '@lib/calls/sdpBuilder';
 import StreamManager from '@lib/calls/streamManager';
 import {Ssrc} from '@lib/calls/types';
+import {EncryptWorkerHost} from '@lib/calls/e2e/encryptWorkerHost';
+import {randomBytes} from '@lib/calls/e2e/crypto';
+import {PrivateKey} from '@lib/calls/e2e/keys';
+import type {GroupParticipant} from '@lib/calls/e2e/tlTypes';
+import type {InputGroupCall, Update, Updates} from '@layer';
+import {NULL_PEER_ID} from '@appManagers/constants';
 
 const IS_MUTED = true;
 
@@ -246,6 +246,334 @@ export class GroupCallsController extends EventListenerBase<{
 
       return connectionInstance.negotiate();
     }
+  }
+
+  // ===== TdE2E conference call entry points =====
+  //
+  // Both initiator and joinee follow tdlib's canonical flow
+  // (GroupCallManager.cpp:4445 try_join_group_call → do_join_group_call):
+  //   1. ALWAYS poll subchain 0 (`phone.getGroupCallChainBlocks`, offset=-1,
+  //      limit=1) to find the chain head.
+  //   2. If empty → build a zero block (height 0). Otherwise → build a
+  //      self-add block referencing the head.
+  //   3. Submit via `phone.joinGroupCall(call, public_key, block, params)`.
+  //
+  // For `startConference` we first call `phone.createConferenceCall(flags=0)`
+  // to mint the empty call (tdesktop: calls_group_common.cpp:483
+  // `MakeConferenceCall`; iOS: TelegramEngine/Calls/GroupCalls.swift:3348
+  // `_internal_createConferenceCall`) and then delegate to `joinConference`.
+  //
+  // We deliberately do NOT use the single-call `createConferenceCall(
+  // flags=join|public_key|block|params)` shortcut that tdesktop's
+  // `GroupCall::startConference` uses (calls_group_call.cpp:1730) — that
+  // path is for migrating from an existing 1-on-1 / scheduled call, where
+  // there's no separate "empty create" step.
+  public async startConference(opts: {
+    chatId?: ChatId;
+    selfUserId: bigint;
+    muted?: boolean;
+    joinVideo?: boolean;
+  }): Promise<GroupCallInstance> {
+    // Step 1: create empty conference (flags=0). Returns updates carrying the
+    // new inputGroupCall.
+    const emptyUpdates = await this.managers.appCallsManager.createEmptyConferenceCall();
+    this.managers.apiUpdatesManager.processUpdateMessage(emptyUpdates);
+    const input = this.findInputGroupCallFromUpdates(emptyUpdates);
+    if(!input || input._ !== 'inputGroupCall') {
+      throw new Error('startConference: no inputGroupCall in createConferenceCall(flags=0) response');
+    }
+
+    // Step 2: join via the canonical flow. tdlib does NOT special-case
+    // "just created my own conference" — it always polls the chain first
+    // and decides zero-vs-self-add based on what comes back. This matters
+    // because empty-create may leave the chain in a server-specific state
+    // (e.g. an implicit chain head) that we discover via the poll.
+    return this.joinConference({
+      input,
+      selfUserId: opts.selfUserId,
+      chatId: opts.chatId,
+      muted: opts.muted,
+      joinVideo: opts.joinVideo
+    });
+  }
+
+  // Drive an incoming conference (we've been invited or have the invite link).
+  // Fetches the latest block from the server, builds our self-add block,
+  // then joins the SFU.
+  public async joinConference(opts: {
+    input: InputGroupCall;
+    selfUserId: bigint;
+    chatId?: ChatId;
+    muted?: boolean;
+    joinVideo?: boolean;
+  }): Promise<GroupCallInstance> {
+    // All three `InputGroupCall` variants are accepted by
+    // `phone.getGroupCallChainBlocks` + `phone.joinGroupCall` server-side:
+    //   - inputGroupCall(id, access_hash) — the canonical form we already have
+    //   - inputGroupCallSlug(slug)        — invite-link join (no msg)
+    //   - inputGroupCallInviteMessage(msg_id) — invite-message join
+    // The latter two return the real id+access_hash inside the join response.
+    // tdesktop: calls_group_call.cpp:4251 `inputCallSafe`.
+    if(opts.input._ !== 'inputGroupCall' &&
+       opts.input._ !== 'inputGroupCallSlug' &&
+       opts.input._ !== 'inputGroupCallInviteMessage') {
+      throw new Error(`joinConference: unsupported call ref kind ${(opts.input as any)._}`);
+    }
+    const seed = randomBytes(32);
+    const tempSk = PrivateKey.fromSeed(seed);
+    const publicKey = new Uint8Array(tempSk.publicKeyBytes);
+    tempSk.destroy();
+
+    // Same tdlib conventions as zero-block: version=0, perms = 3 (Add|Remove).
+    const selfParticipant: GroupParticipant = {
+      userId: opts.selfUserId,
+      publicKey,
+      canAddUsers: true,
+      canRemoveUsers: true,
+      version: 0
+    };
+
+    const worker = new EncryptWorkerHost();
+    // Build (or rebuild) the join block by polling the chain head and either
+    // making a self-add block on top of it OR a zero block if the chain is
+    // empty. Used both for the initial submit AND for CONF_WRITE_CHAIN_INVALID
+    // retries (where the chain may have advanced).
+    const buildJoinBlock = async(): Promise<Uint8Array> => {
+      const lastBlock = await this.fetchLastConferenceBlock(opts.input);
+      return lastBlock ?
+        worker.createSelfAddBlock({
+          privateSeed: seed,
+          previousBlockServer: lastBlock,
+          self: selfParticipant
+        }) :
+        worker.createZeroBlock({
+          privateSeed: seed,
+          groupState: {participants: [selfParticipant], externalPermissions: 3}
+        });
+    };
+
+    try {
+      // Always poll the chain head first. tdlib does this for both "create"
+      // and "join" — see GroupCallManager.cpp:4445 try_join_group_call.
+      const joinBlock = await buildJoinBlock();
+
+      return await this.joinConferenceCommon({
+        input: opts.input,
+        worker,
+        seed,
+        publicKey,
+        selfUserId: opts.selfUserId,
+        lastBlockServer: joinBlock,
+        rebuildBlock: buildJoinBlock,
+        chatId: opts.chatId,
+        muted: opts.muted,
+        joinVideo: opts.joinVideo
+      });
+    } catch(e) {
+      await worker.terminate().catch((): undefined => undefined);
+      throw e;
+    }
+  }
+
+  // Shared tail of both startConference and joinConference: spin up the
+  // GroupCallInstance, attach the worker, drive joinGroupCallInternal with
+  // the e2e extras (public_key + block).
+  private async joinConferenceCommon(opts: {
+    // Reference to the conference. `inputGroupCall` (id+access_hash) for the
+    // creator and previously-resolved joinees; `inputGroupCallSlug` for fresh
+    // invite-link joins (the actual id+access_hash come back in the join
+    // response). `undefined` only in the legacy create-mode path.
+    input?: InputGroupCall;
+    worker: EncryptWorkerHost;
+    seed: Uint8Array;
+    publicKey: Uint8Array;
+    selfUserId: bigint;
+    lastBlockServer: Uint8Array;
+    chatId?: ChatId;
+    muted?: boolean;
+    joinVideo?: boolean;
+    // Optional rebuild callback — invoked by the connection layer when the
+    // server returns CONF_WRITE_CHAIN_INVALID (chain advanced mid-flight).
+    // Should refetch chain head + return a freshly-built block.
+    rebuildBlock?: () => Promise<Uint8Array>;
+  }): Promise<GroupCallInstance> {
+    this.audioAsset.createAudio();
+    const streamManager = await createMainStreamManager(opts.muted ?? true, opts.joinVideo);
+
+    // Pick a stable placeholder id for the instance until the real id arrives
+    // in the join response. For id-form input we already know it; for slug or
+    // create modes we use a synthetic id and let the join flow rewrite it.
+    const placeholderId = (opts.input && opts.input._ === 'inputGroupCall') ?
+      String(opts.input.id) :
+      `pending-conf-${Date.now()}`;
+    const instance = new GroupCallInstance({
+      chatId: opts.chatId ?? NULL_PEER_ID,
+      id: placeholderId,
+      managers: this.managers
+    });
+    instance.fixSafariAudio();
+    instance.attachE2e(opts.worker, opts.selfUserId);
+
+    // Hydrate the worker against the block we built/fetched.
+    await opts.worker.init({
+      userId: opts.selfUserId,
+      privateSeed: opts.seed,
+      lastBlockServer: opts.lastBlockServer
+    });
+
+    instance.addEventListener('state', (state) => {
+      if(this.currentGroupCall === instance && state === GROUP_CALL_STATE.CLOSED) {
+        this.setCurrentGroupCall(null);
+        this.stopConnectingSound();
+        this.audioAsset.play({name: 'end'});
+        void opts.worker.terminate().catch((): undefined => undefined);
+      }
+    });
+
+    // For id-form input we can hydrate the full call now. For slug-form input
+    // the access_hash is still unknown — we hydrate after joinGroupCall echoes
+    // back the real updateGroupCall with id+access_hash.
+    if(opts.input && opts.input._ === 'inputGroupCall') {
+      instance.groupCall = await this.managers.appGroupCallsManager
+      .getGroupCallFull(String(opts.input.id))
+      .catch((): GroupCallInstance['groupCall'] => undefined);
+    }
+
+    const connectionInstance = instance.createConnectionInstance({
+      streamManager,
+      type: 'main',
+      options: {
+        type: 'main',
+        isMuted: opts.muted ?? true,
+        joinVideo: opts.joinVideo,
+        rejoin: false,
+        e2ePublicKey: opts.publicKey,
+        e2eBlock: opts.lastBlockServer,
+        // Pass non-id-form input straight through. The default codepath
+        // (getGroupCallInput) would synthesise id+access_hash from our
+        // placeholder id, which the server rejects for invitees.
+        e2eCallInput: (opts.input && opts.input._ !== 'inputGroupCall') ? opts.input : undefined,
+        // Wire rebuild callback so the connection layer can recover from
+        // CONF_WRITE_CHAIN_INVALID without tearing down the WebRTC stack.
+        e2eRebuildBlock: opts.rebuildBlock
+      }
+    });
+
+    const connection = connectionInstance.createPeerConnection();
+    connection.addEventListener('negotiationneeded', () => connectionInstance.negotiate());
+    connection.addEventListener('track', (event) => instance.onTrack(event));
+    connection.addEventListener('iceconnectionstatechange', () => {
+      instance.dispatchEvent('state', instance.state);
+      // Mirror the legacy joinGroupCallInternal path (line ~192): bracket the
+      // looping `connect` tone around the pre-connected ICE states. Without
+      // this the tone plays forever even after we're fully joined — the UI
+      // reports CONNECTED but the audio asset never stops.
+      const {iceConnectionState} = connection;
+      if(iceConnectionState === 'disconnected' || iceConnectionState === 'checking' || iceConnectionState === 'new') {
+        this.startConnectingSound();
+      } else {
+        this.stopConnectingSound();
+      }
+      // On first transition to connected: fetch participants. The legacy
+      // joinGroupCall path does this (line ~217) — without it the SFU
+      // never sends us our own participant entry, leaving
+      // `instance.participant` undefined and the UI in a half-broken
+      // "no self info" state. Also play the join-success chime so the
+      // user has audible feedback that media is live.
+      if(iceConnectionState === 'connected' && !instance.joined) {
+        instance.joined = true;
+        this.audioAsset.play({name: 'start'});
+        void this.managers.appGroupCallsManager.getGroupCallParticipants(instance.id)
+        .catch((err) => this.log.warn('getGroupCallParticipants on connect failed', err));
+      }
+    });
+
+    connectionInstance.createDescription();
+    connectionInstance.createDataChannel();
+
+    // Senders: attach transform between createTransceiver and replaceTrack
+    // — the only window Chrome's script-transform machinery accepts. The
+    // streamManager hook fires synchronously in that gap; LocalConferenceDescription
+    // iterates audio first so the kind sequence matches `types`.
+    connectionInstance.appendStreamToConference((sender) => {
+      // Track isn't bound to the sender yet; infer kind from the transceiver
+      // we just created (its media kind comes from the LocalConferenceDescription).
+      const tr = connection.getTransceivers().find((t) => t.sender === sender);
+      const kind = tr?.receiver?.track?.kind === 'video' ? 'video' :
+        (tr?.sender as any)?._kindHint === 'video' ? 'video' : 'audio';
+      instance.attachE2eSendTransform(sender, kind);
+    });
+
+    // K-2 (recv side): pre-add recvonly entries through the LocalConference
+    // description so their transforms are attached BEFORE the SFU's m-line
+    // appears. Without pre-add the recv transform attaches only on the
+    // `track` event (after the decoder is bound) and Chrome 146 silently
+    // bypasses it. With pre-add Chrome at least pumps 5-9 warmup frames
+    // through the transform before bypassing — still not enough for usable
+    // audio but it's the best we get from the API today.
+    //
+    // Empirically the SFU does NOT redirect its sendonly audio onto our
+    // pre-add recvonly mids (it adds an extra mid like mid:5). The pre-add
+    // is therefore mostly diagnostic; the actual `track` event listener
+    // below catches the real receiver. We keep both because removing
+    // pre-add drops `recv.seen` from ~6 to 0 (entry-side pumping helps).
+    const desc = connectionInstance.description;
+    const audioRecvEntry = desc.createEntry('audio');
+    audioRecvEntry.setDirection('recvonly');
+    audioRecvEntry.createTransceiver(connection, {direction: 'recvonly'});
+    instance.attachE2eRecvTransform(audioRecvEntry.transceiver.receiver, 'audio');
+    const videoRecvEntry = desc.createEntry('video');
+    videoRecvEntry.setDirection('recvonly');
+    videoRecvEntry.createTransceiver(connection, {direction: 'recvonly'});
+    instance.attachE2eRecvTransform(videoRecvEntry.transceiver.receiver, 'video');
+
+    connection.addEventListener('track', (event) => {
+      const kind = event.track.kind === 'video' ? 'video' : 'audio';
+      instance.attachE2eRecvTransform(event.receiver, kind);
+    });
+
+    this.setCurrentGroupCall(instance);
+    this.startConnectingSound();
+    await connectionInstance.negotiate();
+    return instance;
+  }
+
+  // Fetch the tip of subchain 0. Returns `undefined` if the chain is empty
+  // (server returned zero blocks) — caller should build a zero block in that
+  // case. Mirrors tdlib's `GetGroupCallLastBlockQuery` → `do_join_group_call`
+  // (GroupCallManager.cpp:4513): empty → zero block, otherwise → self-add.
+  // Accepts either `inputGroupCall` or `inputGroupCallSlug`.
+  private async fetchLastConferenceBlock(input: InputGroupCall): Promise<Uint8Array | undefined> {
+    // sub_chain_id 0 is the block chain. offset=-1, limit=1 fetches the tip
+    // (see schema: phone.getGroupCallChainBlocks → Updates).
+    const updates = await this.managers.appCallsManager.getGroupCallChainBlocks(input, 0, -1, 1);
+    // Surface the embedded updates through the normal pipeline so any side
+    // effects (e.g. updateGroupCall) are applied to local state.
+    this.managers.apiUpdatesManager.processUpdateMessage(updates);
+    const blocks = this.extractBlocksFromUpdates(updates);
+    if(blocks.length === 0) return undefined;
+    return blocks[blocks.length - 1];
+  }
+
+  // Extract chain blocks from an Updates wrapper. Per schema, phone.getGroupCallChainBlocks
+  // returns Updates whose body contains an updateGroupCallChainBlocks with
+  // `.blocks: Uint8Array[]`.
+  private extractBlocksFromUpdates(updates: Updates): Uint8Array[] {
+    if(updates._ !== 'updates' && updates._ !== 'updatesCombined') return [];
+    for(const u of (updates as Updates.updates).updates) {
+      if(u._ === 'updateGroupCallChainBlocks') return u.blocks;
+    }
+    return [];
+  }
+
+  private findInputGroupCallFromUpdates(updates: Updates): InputGroupCall | undefined {
+    if(updates._ !== 'updates' && updates._ !== 'updatesCombined') return undefined;
+    for(const u of (updates as Updates.updates).updates) {
+      if(u._ === 'updateGroupCall' && u.call._ !== 'groupCallDiscarded') {
+        return {_: 'inputGroupCall', id: u.call.id, access_hash: u.call.access_hash};
+      }
+    }
+    return undefined;
   }
 }
 

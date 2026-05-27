@@ -1,13 +1,17 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {getEnvironment} from '@environment/utils';
 import safeReplaceObject from '@helpers/object/safeReplaceObject';
 import {nextRandomUint} from '@helpers/random';
-import {InputPhoneCall, MessagesDhConfig, PhoneCall, PhoneCallDiscardReason, PhoneCallProtocol, PhonePhoneCall} from '@layer';
+import {
+  DataJSON,
+  InputGroupCall,
+  InputPhoneCall,
+  MessagesDhConfig,
+  PhoneCall,
+  PhoneCallDiscardReason,
+  PhoneCallProtocol,
+  PhonePhoneCall,
+  Updates
+} from '@layer';
 import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
 import appTabsManager from '@appManagers/appTabsManager';
 import {AppManager} from '@appManagers/manager';
@@ -33,6 +37,19 @@ export class AppCallsManager extends AppManager {
 
       updatePhoneCallSignalingData: (update) => {
         this.rootScope.dispatchEvent('call_signaling', {callId: update.phone_call_id, data: update.data});
+      },
+
+      // Conference call chain delivery — both new blocks and emoji broadcasts
+      // flow through `updateGroupCallChainBlocks`. The `sub_chain_id`
+      // distinguishes the main chain (blocks) from the broadcast channel.
+      updateGroupCallChainBlocks: (update) => {
+        if(update.call._ !== 'inputGroupCall') return;
+        this.rootScope.dispatchEvent('group_call_chain_blocks', {
+          callId: String(update.call.id),
+          subChainId: update.sub_chain_id,
+          blocks: update.blocks,
+          nextOffset: update.next_offset
+        });
       }
     });
   }
@@ -147,5 +164,114 @@ export class AppCallsManager extends AppManager {
     });
 
     this.apiUpdatesManager.processUpdateMessage(updates);
+  }
+
+  // ===== TdE2E conference call MTProto methods =====
+  //
+  // Thin wrappers over the phone.* conference methods. They live here (vs. a
+  // dedicated ConferenceCallsManager) because the wire is shared with the
+  // 1-on-1 layer — the SAME `phone.discardCall` with `phoneCallDiscardReasonMigrateConferenceCall`
+  // is the migration trigger, and conference state piggy-backs on existing
+  // `updatePhoneCall` flows.
+
+  // Create an EMPTY conference call (flags=0, no e2e fields). Returns Updates
+  // containing the new `updateGroupCall`. Used as step 1 of the
+  // create-then-join flow (matches tdesktop's `MakeConferenceCall` +
+  // iOS's `_internal_createConferenceCall`).
+  public createEmptyConferenceCall(): Promise<Updates> {
+    return this.apiManager.invokeApi('phone.createConferenceCall', {
+      random_id: nextRandomUint(32)
+    });
+  }
+
+  // Single-call create+join variant (flags=join|public_key|block|params).
+  // Used by tdesktop's `GroupCall::startConference` ONLY for migration from
+  // an existing 1-on-1 / scheduled call. Server returns `CONF_WRITE_CHAIN_INVALID`
+  // when called outside that context — use `createEmptyConferenceCall` +
+  // `joinGroupCall` for fresh conferences instead.
+  public async createAndJoinConferenceCall(opts: {
+    publicKey: Uint8Array;
+    block: Uint8Array;
+    params: DataJSON;
+    muted?: boolean;
+    videoStopped?: boolean;
+  }): Promise<Updates> {
+    return this.apiManager.invokeApi('phone.createConferenceCall', {
+      muted: opts.muted,
+      video_stopped: opts.videoStopped,
+      join: true,
+      random_id: nextRandomUint(32),
+      public_key: opts.publicKey,
+      block: opts.block,
+      params: opts.params
+    });
+  }
+
+  // Invite a user to a conference. Returns Updates which include the user-side
+  // `updatePhoneCallRequested` for the invitee.
+  public async inviteConferenceCallParticipant(
+    call: InputGroupCall,
+    userId: UserId,
+    video?: boolean
+  ): Promise<Updates> {
+    return this.apiManager.invokeApi('phone.inviteConferenceCallParticipant', {
+      video,
+      call,
+      user_id: this.appUsersManager.getUserInput(userId)
+    });
+  }
+
+  // Decline an invitation we received. msgId is the service message id that
+  // carried the invite.
+  public declineConferenceCallInvite(msgId: number): Promise<Updates> {
+    return this.apiManager.invokeApi('phone.declineConferenceCallInvite', {
+      msg_id: msgId
+    });
+  }
+
+  // Remove participants from a conference. `block` is a server-format change-
+  // state block (built by the caller via `E2eCall.buildChangeStateBlock`).
+  public deleteConferenceCallParticipants(opts: {
+    call: InputGroupCall;
+    ids: Array<string | number>;
+    block: Uint8Array;
+    onlyLeft?: boolean;
+    kick?: boolean;
+  }): Promise<Updates> {
+    return this.apiManager.invokeApi('phone.deleteConferenceCallParticipants', {
+      only_left: opts.onlyLeft,
+      kick: opts.kick,
+      call: opts.call,
+      ids: opts.ids,
+      block: opts.block
+    });
+  }
+
+  // Broadcast a serialized GroupBroadcast (emoji commit/reveal) to every
+  // participant. The server echoes back via `updateGroupCallChainBlocks`.
+  public sendConferenceCallBroadcast(
+    call: InputGroupCall,
+    block: Uint8Array
+  ): Promise<Updates> {
+    return this.apiManager.invokeApi('phone.sendConferenceCallBroadcast', {
+      call,
+      block
+    });
+  }
+
+  // Fetch a window of historical blocks from the conference chain — used on
+  // late join (after a reconnect) or when a block update is missed.
+  public getGroupCallChainBlocks(
+    call: InputGroupCall,
+    subChainId: number,
+    offset: number,
+    limit: number
+  ) {
+    return this.apiManager.invokeApi('phone.getGroupCallChainBlocks', {
+      call,
+      sub_chain_id: subChainId,
+      offset,
+      limit
+    });
   }
 }

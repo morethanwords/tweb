@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {GroupCallId, MyGroupCall} from '@appManagers/appGroupCallsManager';
 import type GroupCallInstance from '@lib/calls/groupCallInstance';
 import type CallInstance from '@lib/calls/callInstance';
@@ -26,7 +20,7 @@ import {MOUNT_CLASS_TO} from '@config/debug';
 import appNavigationController, {USE_NAVIGATION_API} from '@components/appNavigationController';
 import AppPrivateSearchTab from '@components/sidebarRight/tabs/search';
 import I18n, {i18n, join, LangPackKey} from '@lib/langPack';
-import {ChatFull, ChatParticipants, Message, MessageAction, MessageMedia, SendMessageAction, User, Chat as MTChat, UrlAuthResult, WallPaper, Config, AttachMenuBot, Peer, InputChannel, HelpPeerColors, Reaction, Document, MessageEntity, PeerColor, SponsoredMessage, InputGroupCall, WebPage} from '@layer';
+import {ChatFull, ChatParticipants, Game, Message, MessageAction, MessageMedia, SendMessageAction, User, Chat as MTChat, UrlAuthResult, WallPaper, Config, AttachMenuBot, Peer, InputChannel, HelpPeerColors, Reaction, Document, MessageEntity, PeerColor, SponsoredMessage, InputGroupCall, WebPage} from '@layer';
 import PeerTitle from '@components/peerTitle';
 import {PopupPeerCheckboxOptions} from '@components/popups/peer';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
@@ -123,7 +117,7 @@ import {setQuizHint} from '@components/quizHint';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import PopupPremium from '@components/popups/premium';
 import safeWindowOpen from '@helpers/dom/safeWindowOpen';
-import {openWebAppInAppBrowser} from '@components/browser';
+import {openWebAppInAppBrowser, openGameInAppBrowser} from '@components/browser';
 import {createProxiedManagersForAccount} from '@lib/getProxiedManagers';
 import ChatBackgroundStore from '@lib/chatBackgroundStore';
 import useLockScreenShortcut from '@appManagers/utils/useLockScreenShortcut';
@@ -166,6 +160,7 @@ export type ChatSavedPosition = {
 export type ChatSetPeerOptions = {
   peerId: PeerId,
   lastMsgId?: number,
+  pollOption?: string | Uint8Array,
   lastMsgPeerId?: PeerId,
   threadId?: number,
   monoforumThreadId?: PeerId,
@@ -1026,6 +1021,31 @@ export class AppImManager extends EventListenerBase<{
         });
       }
     }
+  }
+
+  public async playGame(message: Message.message) {
+    const media = message.media as MessageMedia.messageMediaGame;
+    const game = media?.game as Game.game;
+    if(game?._ !== 'game') {
+      return;
+    }
+
+    try {
+      const callbackAnswer = await this.managers.appInlineBotsManager.callbackButtonClick(
+        message.peerId,
+        message.mid,
+        undefined,
+        true
+      );
+      if(!callbackAnswer?.url) {
+        return;
+      }
+      openGameInAppBrowser({
+        game,
+        message,
+        url: callbackAnswer.url
+      });
+    } catch(err) {}
   }
 
   public handleUrlAuth(options: {

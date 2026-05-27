@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {DownloadMediaOptions, DownloadOptions} from '@appManagers/apiFileManager';
 import type {AppMessagesManager} from '@appManagers/appMessagesManager';
 import type {MyDocument} from '@appManagers/appDocsManager';

@@ -62,6 +62,23 @@ export default class AppAccountManager extends AppManager {
     return this.apiManager.invokeApi('account.resetAuthorization', {hash});
   }
 
+  // Wraps account.changeAuthorizationSettings. Used by the Speakers-and-Camera
+  // settings tab to flip the "Accept calls on this device" switch — which the
+  // server stores as the inverted `call_requests_disabled` flag on the
+  // session's Authorization. `hash` is the session id from getAuthorizations().
+  public changeAuthorizationSettings(hash: string | number, options: {
+    callRequestsDisabled?: boolean,
+    encryptedRequestsDisabled?: boolean,
+    confirmed?: boolean
+  }) {
+    return this.apiManager.invokeApi('account.changeAuthorizationSettings', {
+      hash,
+      call_requests_disabled: options.callRequestsDisabled,
+      encrypted_requests_disabled: options.encryptedRequestsDisabled,
+      confirmed: options.confirmed
+    });
+  }
+
   public deleteAccount(reason: string) {
     return this.apiManager.invokeApi('account.deleteAccount', {reason});
   }

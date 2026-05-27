@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {Dialog} from '@appManagers/appMessagesManager';
 import type {ForumTopic} from '@layer';
 import type {AnyDialog} from '@lib/storages/dialogs';
@@ -20,6 +14,7 @@ import {CAN_HIDE_TOPIC, FOLDER_ID_ARCHIVE, GENERAL_TOPIC_ID, REAL_FOLDER_ID, REA
 import showLimitPopup from '@components/popups/limit';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import PopupElement from '@components/popups';
+import showChatPreviewPopup, {chatPreviewAnchorFromDialogRow} from '@components/popups/chatPreview';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import IS_SHARED_WORKER_SUPPORTED from '@environment/sharedWorkerSupport';
 import appImManager from '@lib/appImManager';
@@ -107,6 +102,11 @@ export default class DialogsContextMenu {
         cancelEvent(e);
       },
       verify: () => IS_SHARED_WORKER_SUPPORTED && !this.monoforumParentPeerId
+    }, {
+      icon: 'eye',
+      text: 'ChatList.Context.Preview',
+      onClick: this.onPreviewClick,
+      verify: () => true
     }, {
       icon: 'topics',
       text: 'TopicViewAsTopics',
@@ -359,6 +359,15 @@ export default class DialogsContextMenu {
 
   private onMuteClick = () => {
     PopupElement.createPopup(PopupMute, this.peerId, this.threadId);
+  };
+
+  private onPreviewClick = () => {
+    showChatPreviewPopup({
+      peerId: this.monoforumParentPeerId || this.peerId,
+      monoforumThreadId: this.monoforumParentPeerId ? this.peerId : undefined,
+      threadId: this.threadId,
+      anchor: chatPreviewAnchorFromDialogRow(this.li)
+    });
   };
 
   private onUnreadClick = async() => {

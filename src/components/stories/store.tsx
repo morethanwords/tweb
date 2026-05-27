@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {StoriesListPosition, StoriesListType} from '@appManagers/appStoriesManager';
 import {untrack, createEffect, on, createMemo, batch, onCleanup, createContext, ParentComponent, splitProps, useContext, getOwner, runWithOwner} from 'solid-js';
 import {createStore, reconcile} from 'solid-js/store';

@@ -116,6 +116,7 @@
 }
 
 .draggableSideContent {
+  position: relative;
   display: flex;
   align-items: center;
 
@@ -126,6 +127,21 @@
   cursor: grab;
   touch-action: none;
   user-select: none;
+
+  &.disabled {
+    cursor: default;
+  }
+}
+
+.draggableIconScaffold {
+  opacity: 0;
+}
+
+.draggableIconFloating {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
 .sectionWrapper {
@@ -159,6 +175,8 @@
   border-radius: 8px;
 
   cursor: pointer;
+
+  position: relative;
 }
 
 .pollDuration{
@@ -175,6 +193,11 @@
     align-items: center;
     padding-left: 0.375rem;
     padding-right: 0.125rem;
+
+    &.disabled {
+      opacity: 0;
+      pointer-events: none;
+    }
   }
 
   &InputField {

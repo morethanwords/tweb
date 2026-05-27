@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import ButtonIcon from '@components/buttonIcon';
 import {replaceButtonIcon} from '@components/button';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';

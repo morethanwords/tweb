@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type AppGifsManager from '@appManagers/appGifsManager';
 import GifsMasonry from '@components/gifsMasonry';
 import {putPreloader} from '@components/putPreloader';

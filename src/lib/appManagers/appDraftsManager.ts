@@ -1,8 +1,4 @@
 /*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- *
  * Originally from:
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
@@ -252,7 +248,8 @@ export class AppDraftsManager extends AppManager {
       if(replyTo) {
         params.reply_to = {
           _: 'inputReplyToMessage',
-          reply_to_msg_id: getServerMessageId(replyTo.reply_to_msg_id)
+          reply_to_msg_id: getServerMessageId(replyTo.reply_to_msg_id),
+          poll_option: replyTo.poll_option
         };
 
         if(replyTo.reply_to_peer_id && !isObject(replyTo.reply_to_peer_id)) {

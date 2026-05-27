@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {ScrollableBase} from '@components/scrollable';
 import SwipeHandler from '@components/swipeHandler';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';

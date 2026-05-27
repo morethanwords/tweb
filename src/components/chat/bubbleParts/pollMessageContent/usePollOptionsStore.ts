@@ -7,22 +7,21 @@ import {shouldShufflePollOptions, shufflePollOptions} from './shuffle';
 
 type UsePollOptionsStoreArgs = {
   props: PollMessageContentProps;
-  userRandomSeed: number;
+  userId: PeerId;
 };
 
 /**
  * Stores poll options in a reactive store, applying shuffling on init
  * and reconciling new/removed options as the poll updates.
  */
-export function usePollOptionsStore({props, userRandomSeed}: UsePollOptionsStoreArgs) {
+export function usePollOptionsStore({props, userId}: UsePollOptionsStoreArgs) {
   let initialOptions = props.poll.answers.filter(answer => answer._ === 'pollAnswer');
 
   if(shouldShufflePollOptions(props.poll)) {
     initialOptions = shufflePollOptions({
-      initialOptions,
-      seed: userRandomSeed,
-      mid: props.message.mid,
-      peerId: props.message.peerId
+      options: initialOptions,
+      userId,
+      pollId: props.poll.id
     });
   }
 

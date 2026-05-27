@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import appImManager, {APP_TABS} from '@lib/appImManager';
 import SidebarSlider from '@components/slider';
 import mediaSizes, {ScreenSize} from '@helpers/mediaSizes';

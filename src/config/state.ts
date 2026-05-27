@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {LiteModeKey} from '@helpers/liteMode';
 import type {AppMediaPlaybackController} from '@components/appMediaPlaybackController';
 import type {TopPeerType, MyTopPeer} from '@appManagers/appUsersManager';
@@ -18,7 +12,6 @@ import App from '@config/app';
 import {getAccentPresetsForBase} from '@config/themePresets';
 import {ColoredBrushType} from '@components/mediaEditor/context';
 import {FontKey} from '@components/mediaEditor/types';
-import {randomUint32Fast} from '@helpers/random';
 
 // Factory tinted ("Dark") collapses onto the first base-color preset (blue) so the accent picker
 // can omit a separate "default" swatch — resetting to factory now reaches the same state the user
@@ -148,7 +141,22 @@ export type StateSettings = {
     textStyle?: string;
     textFont?: FontKey;
   },
-  userRandomSeed: number,
+  // Persisted device choices for the audio/video stack used by the
+  // SettingsCallsPanel ("Speakers and Camera" tab) and the per-call settings
+  // popup. Empty string = follow the OS default (no setSinkId / no deviceId
+  // constraint). `micVolume` is a 0..2 multiplier applied to the captured
+  // input via a GainNode in StreamManager; 1 = unity.
+  callDevices: {
+    speakerId: string,
+    microphoneId: string,
+    cameraId: string,
+    micVolume: number,
+    // Whether to apply the browser's `noiseSuppression` constraint when
+    // requesting a microphone stream. Skipped if the browser doesn't
+    // advertise support (`IS_NOISE_SUPPRESSION_SUPPORTED`). Default true
+    // matches tdesktop / the legacy behavior before this flag existed.
+    noiseSuppression: boolean
+  },
 };
 
 // (1 - use swatch, 2 - use picker color), (color from swatch), (color from picker)
@@ -510,7 +518,13 @@ export const SETTINGS_INIT: StateSettings = {
   mediaEditor: {
     colorByBrush: {}
   },
-  userRandomSeed: randomUint32Fast()
+  callDevices: {
+    speakerId: '',
+    microphoneId: '',
+    cameraId: '',
+    micVolume: 1,
+    noiseSuppression: true
+  }
 };
 
 export const STATE_INIT: State = {

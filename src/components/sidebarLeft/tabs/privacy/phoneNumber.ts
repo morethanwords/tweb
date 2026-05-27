@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {SliderSuperTabEventable} from '@components/sliderTab';
 import PrivacySection from '@components/privacySection';
 import {i18n, LangPackKey} from '@lib/langPack';

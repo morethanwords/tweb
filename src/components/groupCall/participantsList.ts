@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import positionElementByIndex from '@helpers/dom/positionElementByIndex';
 import replaceContent from '@helpers/dom/replaceContent';
 import {fastRaf} from '@helpers/schedulers';

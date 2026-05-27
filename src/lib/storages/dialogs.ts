@@ -1,8 +1,4 @@
 /*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- *
  * Originally from:
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
@@ -1453,6 +1449,7 @@ export default class DialogsStorage extends AppManager {
         const wasUnread = (wasDialogBefore as typeof dialog).unread_count;
         const wasUnreadMentions = (wasDialogBefore as typeof dialog).unread_mentions_count;
         const wasUnreadReactions = (wasDialogBefore as typeof dialog).unread_reactions_count;
+        const wasUnreadPollVotes = (wasDialogBefore as typeof dialog).unread_poll_votes_count;
 
         if(wasReadInbox > dialog.read_inbox_max_id) {
           dialog.read_inbox_max_id = wasReadInbox;
@@ -1464,6 +1461,9 @@ export default class DialogsStorage extends AppManager {
           }
           if(typeof wasUnreadReactions === 'number') {
             dialog.unread_reactions_count = Math.min(dialog.unread_reactions_count, wasUnreadReactions);
+          }
+          if(typeof wasUnreadPollVotes === 'number') {
+            dialog.unread_poll_votes_count = Math.min(dialog.unread_poll_votes_count, wasUnreadPollVotes);
           }
         }
 

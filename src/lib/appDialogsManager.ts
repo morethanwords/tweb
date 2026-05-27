@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {MyDialogFilter} from '@lib/storages/filters';
 import type {Dialog, ForumTopic, MyMessage, RequestHistoryOptions, SavedDialog} from '@appManagers/appMessagesManager';
 import type {MyDocument} from '@appManagers/appDocsManager';
@@ -84,6 +78,7 @@ import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId'
 import AppChatFoldersTab from '@components/sidebarLeft/tabs/chatFolders';
 import eachTimeout from '@helpers/eachTimeout';
 import PopupSharedFolderInvite from '@components/popups/sharedFolderInvite';
+import showChatPreviewPopup, {chatPreviewAnchorFromDialogRow} from '@components/popups/chatPreview';
 import showLimitPopup from '@components/popups/limit';
 import StoriesList from '@components/stories/list';
 import {render} from 'solid-js/web';
@@ -133,6 +128,7 @@ export type DialogDom = {
   callIcon?: ReturnType<typeof groupCallActiveIcon>,
   mentionsBadge?: HTMLElement,
   reactionsBadge?: HTMLElement,
+  pollVotesBadge?: HTMLElement,
   lastMessageSpan: HTMLSpanElement,
   containerEl: HTMLElement,
   listEl: HTMLElement,
@@ -204,7 +200,6 @@ type DialogElementOptions = {
 };
 
 export class DialogElement extends Row {
-  private static BADGE_ORDER: Parameters<DialogElement['toggleBadgeByKey']>[0][] = ['reactionsBadge', 'mentionsBadge', 'unreadBadge', 'pinnedBadge'];
   public dom: DialogDom;
   public middlewareHelper: MiddlewareHelper;
 
@@ -443,8 +438,16 @@ export class DialogElement extends Row {
     this.dom.subtitleEl.append(badge);
   }
 
+  public createPollVotesBadge() {
+    if(this.dom.pollVotesBadge) return;
+    const badge = this.dom.pollVotesBadge = document.createElement('div');
+    badge.className = `dialog-subtitle-badge badge badge-${BADGE_SIZE} poll-vote-badge dialog-subtitle-badge-pollvote`;
+    badge.append(Icon('poll'));
+    this.dom.subtitleEl.append(badge);
+  }
+
   public toggleBadgeByKey(
-    key: Extract<keyof DialogDom, 'unreadBadge' | 'unreadAvatarBadge' | 'mentionsBadge' | 'reactionsBadge' | 'pinnedBadge'>,
+    key: Extract<keyof DialogDom, 'unreadBadge' | 'unreadAvatarBadge' | 'mentionsBadge' | 'reactionsBadge' | 'pollVotesBadge' | 'pinnedBadge'>,
     hasBadge: boolean,
     justCreated: boolean,
     batch?: boolean
@@ -1813,6 +1816,22 @@ export class AppDialogsManager {
         return;
       }
 
+      // Shift+click → floating chat preview (tdesktop-style). Bypasses chat selection and
+      // forum-tab toggling. Ctrl/Cmd (new-tab) takes precedence and is handled below.
+      // Snapshot the anchor *now* — virtual scroll reuses DOM nodes and may yank this
+      // element offscreen by the time the popup constructor runs.
+      if(e.shiftKey && !e.ctrlKey && !e.metaKey && !autonomous) {
+        showChatPreviewPopup({
+          peerId: monoforumParentPeerId || peerId,
+          monoforumThreadId: monoforumParentPeerId ? peerId : undefined,
+          threadId,
+          lastMsgId,
+          anchor: chatPreviewAnchorFromDialogRow(elem)
+        });
+        cancelEvent(e);
+        return;
+      }
+
       const peer = apiManagerProxy.getPeer(peerId);
 
       const linkedChat = peer?._ === 'channel' && peer?.pFlags?.monoforum && peer?.linked_monoforum_id ?
@@ -2338,7 +2357,13 @@ export class AppDialogsManager {
       dialogElement.createReactionsBadge();
     }
 
-    const badgesLength = [hasPinnedBadge, hasUnreadBadge, hasMentionsBadge, hasReactionsBadge].filter(Boolean).length;
+    const hasPollVotesBadge = isSaved || isMonoforumThread ? false : !!(dialog as Dialog | ForumTopic).unread_poll_votes_count;
+    const isPollVotesBadgeMounted = !!dom.pollVotesBadge;
+    if(hasPollVotesBadge) {
+      dialogElement.createPollVotesBadge();
+    }
+
+    const badgesLength = [hasPinnedBadge, hasUnreadBadge, hasMentionsBadge, hasReactionsBadge, hasPollVotesBadge].filter(Boolean).length;
     SetTransition({
       element: dialogElement.subtitleRow,
       className: 'has-only-pinned-badge',
@@ -2351,7 +2376,8 @@ export class AppDialogsManager {
       ['unreadBadge', hasUnreadBadge, isUnreadBadgeMounted],
       ['unreadAvatarBadge', hasUnreadAvatarBadge, isUnreadAvatarBadgeMounted],
       ['mentionsBadge', hasMentionsBadge, isMentionsBadgeMounted],
-      ['reactionsBadge', hasReactionsBadge, isReactionsBadgeMounted]
+      ['reactionsBadge', hasReactionsBadge, isReactionsBadgeMounted],
+      ['pollVotesBadge', hasPollVotesBadge, isPollVotesBadgeMounted]
     ];
 
     a.forEach(([key, hasBadge, isBadgeMounted]) => {

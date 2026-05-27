@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {CryptoMessagePort} from '@lib/crypto/cryptoMessagePort';
 import type {ApiFileManager} from '@appManagers/apiFileManager';
 import type {ApiManager} from '@appManagers/apiManager';
@@ -58,6 +52,7 @@ import type AppTranslationsManager from '@appManagers/appTranslationsManager';
 import type {AppManagers} from '@lib/managers';
 import type AppGifsManager from '@appManagers/appGifsManager';
 import type AppGiftsManager from '@appManagers/appGiftsManager';
+import type AppGamesManager from '@appManagers/appGamesManager';
 import type {AppLangPackManager} from '@appManagers/appLangPackManager';
 import type {ActiveAccountNumber} from '@lib/accounts/types';
 import type AppPromoManager from '@appManagers/appPromoManager';
@@ -121,6 +116,7 @@ export class AppManager {
   protected appTranslationsManager: AppTranslationsManager;
   protected appGifsManager: AppGifsManager;
   protected appGiftsManager: AppGiftsManager;
+  protected appGamesManager: AppGamesManager;
   protected monoforumDialogsStorage: MonoforumDialogsStorage;
   protected appPromoManager: AppPromoManager;
   protected appAccountManager: AppAccountManager;

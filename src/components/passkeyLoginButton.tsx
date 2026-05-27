@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {createSignal, JSX, onMount} from 'solid-js';
 
 import IS_WEB_AUTHN_SUPPORTED from '@environment/webAuthn';

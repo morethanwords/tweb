@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {EmoticonsTab, EmoticonsDropdown, EMOTICONSSTICKERGROUP, EMOJI_TEXT_COLOR} from '.';
 import createStickersContextMenu from '@helpers/dom/createStickersContextMenu';
 import customProperties from '@helpers/dom/customProperties';

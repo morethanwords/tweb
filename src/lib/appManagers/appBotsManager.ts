@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {AccountDatabase, getDatabaseState} from '@config/databases/state';
 import {TelegramWebViewSendEventMap} from '@types';
 import AppStorage from '@lib/storage';

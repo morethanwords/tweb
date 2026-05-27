@@ -1,7 +1,5 @@
 /*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko, Artem Kolnogorov and unknown creator of the script taken from http://useless.altervista.org/gradient.html
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ * Copyright (C) 2019-2021 Artem Kolnogorov and unknown creator of the script taken from http://useless.altervista.org/gradient.html
  */
 
 import {animateSingle} from '@helpers/animation';

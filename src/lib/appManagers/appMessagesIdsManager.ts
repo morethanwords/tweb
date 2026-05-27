@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {MESSAGE_ID_OFFSET} from '@appManagers/constants';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
 import isLegacyMessageId from '@appManagers/utils/messageId/isLegacyMessageId';

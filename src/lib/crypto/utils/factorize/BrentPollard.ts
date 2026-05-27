@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 // Thanks to https://xn--2-umb.com/09/12/brent-pollard-rho-factorisation/
 
 import bigInt from 'big-integer';

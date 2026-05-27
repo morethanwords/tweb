@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 @use "shared" as *;
 
 @use "base";
@@ -89,11 +83,11 @@
 @use "partials/popups/peer";
 @use "partials/popups/stickers";
 @use "partials/popups/datePicker";
-@use "partials/popups/createPoll";
 @use "partials/popups/forward";
 @use "partials/popups/instanceDeactivated";
 @use "partials/popups/joinChatInvite";
 @use "partials/popups/call";
+@use "partials/popups/conferenceCall";
 @use "partials/popups/groupCall";
 @use "partials/popups/sponsored";
 @use "partials/popups/mute";
@@ -123,6 +117,7 @@
 @use "partials/popups/accountsLimit";
 @use "partials/popups/starGiftInfo";
 @use "partials/popups/starGiftUpgrade";
+@use "partials/popups/chatPreview";
 
 @use "partials/pages/pages";
 @use "partials/pages/chats";

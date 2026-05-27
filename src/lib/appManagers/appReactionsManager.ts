@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {MessagesReactions, type AvailableReaction, type Message, type MessagePeerReaction, type MessagesAvailableReactions, type Reaction, type ReactionCount, type Update, type Updates, ChatReactions, Peer, Document, MessagesSavedReactionTags, SavedReactionTag, AvailableEffect, MessagesAvailableEffects, MessageReactions, PaidReactionPrivacy} from '@layer';
 import findAndSplice from '@helpers/array/findAndSplice';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';

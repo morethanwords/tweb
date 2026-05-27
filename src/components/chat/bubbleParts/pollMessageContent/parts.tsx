@@ -1,15 +1,17 @@
+import {ConfettiContainer, ConfettiRef} from '@components/confetti';
 import Space from '@components/space';
 import PhotoTsx from '@components/wrappers/photoTsx';
+import VideoTsx from '@components/wrappers/videoTsx';
 import {keepMe} from '@helpers/keepMe';
+import mediaSizes from '@helpers/mediaSizes';
 import formatNumber from '@helpers/number/formatNumber';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {I18nTsx} from '@helpers/solid/i18n';
 import classNames from '@helpers/string/classNames';
-import {Photo} from '@layer';
+import {Document, Photo} from '@layer';
 import {LangPackKey} from '@lib/langPack';
-import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {createMemo, For, Show} from 'solid-js';
+import {createMemo, For, Match, onMount, Show, Switch} from 'solid-js';
 import {unwrap} from 'solid-js/store';
 import {usePollMessageContentProps} from './context';
 import styles from './styles.module.scss';
@@ -36,7 +38,7 @@ export const AvatarGroup = (props: {
             }}
           >
             <div class={styles.avatarGroupItemWrapper}>
-              <AvatarNewTsx class={styles.avatarGroupItemAvatar} size={24} peerId={peerId} />
+              <AvatarNewTsx class={styles.avatarGroupItemAvatar} size={22} peerId={peerId} />
             </div>
           </div>
         )}
@@ -47,33 +49,67 @@ export const AvatarGroup = (props: {
 
 export const Explanation = (props: LocalTextWithEntities & {
   photo?: Photo.photo;
+  video?: Document.document;
+  document?: Document.document;
   pollViewerPayload?: DataPollViewerIdxDirectivePayload;
 }) => {
-  const {TranslatableMessageTsx} = useHotReloadGuard();
+  const {TranslatableMessageTsx, DocumentTsx} = useHotReloadGuard();
   const contextProps = usePollMessageContentProps();
 
   const middleware = createMiddleware().get();
 
   return (
-    <div class='reply quote-like quote-like-border' use:dataPollViewerIdx={props.pollViewerPayload}>
+    <div class={'reply quote-like quote-like-border ' + styles.explanation}>
       <div class='reply-content'>
         <div class='reply-title'>
           <I18nTsx key='Chat.Quiz.Explanation' />
         </div>
         <Show when={props.text}>
           <div class={classNames(styles.explanationText, 'reply-subtitle')}>
-            {wrapRichText(props.text, {entities: props.entities, middleware})}
             <TranslatableMessageTsx
               peerId={contextProps.peerId}
               textWithEntities={{_: 'textWithEntities', text: props.text, entities: unwrap(props.entities)}}
-              richTextOptions={{middleware, loadPromises: contextProps.loadPromises}}
+              richTextOptions={{middleware, loadPromises: unwrap(contextProps.loadPromises)}}
             />
           </div>
         </Show>
-        <Show when={props.photo}>
+        <Show when={props.photo || props.video}>
           <Space amount='0.5rem' />
-          <div class={styles.explanationImage}>
-            <PhotoTsx photo={props.photo} loadPromises={contextProps.loadPromises} autoDownloadSize={contextProps.autoDownload?.photo} />
+          <div class={styles.explanationMedia} use:dataPollViewerIdx={props.pollViewerPayload}>
+            <Switch>
+              <Match when={props.photo}>
+                <PhotoTsx photo={props.photo} loadPromises={unwrap(contextProps.loadPromises)} autoDownloadSize={contextProps.autoDownload?.photo} />
+              </Match>
+              <Match when={props.video}>
+                <VideoTsx
+                  doc={props.video}
+                  loadPromises={unwrap(contextProps.loadPromises)}
+                  group={contextProps.animationGroup}
+                  autoDownload={unwrap(contextProps.autoDownload)}
+                  boxWidth={mediaSizes.active.regular.width}
+                  boxHeight={mediaSizes.active.regular.height}
+                  withPreview
+                  lazyLoadQueue={unwrap(contextProps.lazyLoadQueue) || undefined}
+                  observer={unwrap(contextProps.observer)}
+                />
+              </Match>
+            </Switch>
+          </div>
+        </Show>
+
+        <Show when={props.document && !props.photo && !props.video}>
+          <Space amount='0.5rem' />
+          <div class={styles.explanationDocument}>
+            <DocumentTsx
+              message={contextProps.message}
+              doc={props.document}
+              slot={0.2}
+              loadPromises={unwrap(contextProps.loadPromises)}
+              lazyLoadQueue={unwrap(contextProps.lazyLoadQueue) || undefined}
+              autoDownloadSize={contextProps.autoDownload?.file}
+              sizeType='documentName'
+              canTranscribeVoice={false}
+            />
           </div>
         </Show>
       </div>
@@ -113,5 +149,22 @@ export const PollVotes = (props: CommonProps & { votersCount: number }) => {
 
   return (
     <I18nTsx key={key()} args={[formatNumber(props.votersCount, 1)]} />
+  );
+};
+
+export const AutoStartedConfetti = (props: { onEnd: () => void }) => {
+  let ref: ConfettiRef;
+
+  onMount(() => {
+    ref?.create({
+      mode: 'poppers',
+      size: 4,
+      speedScale: 0.6,
+      count: 50
+    });
+  });
+
+  return (
+    <ConfettiContainer onEnd={props.onEnd} ref={ref} />
   );
 };

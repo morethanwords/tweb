@@ -1,6 +1,6 @@
 import {useCreatePollLimits} from '@components/popups/createPoll/useCreatePollLimits';
 import compareUint8Arrays from '@helpers/bytes/compareUint8Arrays';
-import {InputMedia, Message, MessageMedia, Photo, PollAnswer} from '@layer';
+import {Document, InputMedia, Message, MessageMedia, Photo, PollAnswer} from '@layer';
 import getPeerId from '@lib/appManagers/utils/peers/getPeerId';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {Accessor, createMemo, createResource} from 'solid-js';
@@ -9,6 +9,7 @@ import {PollMessageContentProps} from './PollMessageContent';
 import {getRoundedPercentsFromResults} from './roundPercents';
 import {shouldShufflePollOptions} from './shuffle';
 import {PollOptionResult} from './utils';
+
 
 type UsePollDerivedPropsArgs = {
   props: PollMessageContentProps;
@@ -19,6 +20,35 @@ type UsePollDerivedPropsArgs = {
 
 const getPhoto = (media: MessageMedia | InputMedia | undefined): Photo.photo | undefined => {
   return media?._ === 'messageMediaPhoto' && media.photo?._ === 'photo' ? unwrap(media.photo) : undefined;
+};
+
+const getVideoDocument = (media: MessageMedia | InputMedia | undefined): Document.document | undefined => {
+  return media?._ === 'messageMediaDocument' &&
+    media.document?._ === 'document' && ['video', 'gif'].includes(media.document.type) ?
+      unwrap(media.document) :
+      undefined;
+};
+
+export type GetStickerMediaResult = {
+  media: MessageMedia.messageMediaDocument | undefined;
+  document: Document.document | undefined;
+};
+
+const getStickerMedia = (media: MessageMedia | InputMedia | undefined): GetStickerMediaResult => {
+  if(media?._ === 'messageMediaDocument' && media.document?._ === 'document' && media.document.sticker) {
+    return {media: unwrap(media), document: unwrap(media.document)};
+  }
+};
+
+const getDocument = (media: MessageMedia | InputMedia | undefined): Document.document | undefined => {
+  return media?._ === 'messageMediaDocument' && media.document?._ === 'document' ? unwrap(media.document) : undefined;
+};
+
+
+const getGeo = (media: MessageMedia | InputMedia | undefined): MessageMedia.messageMediaGeo | undefined => {
+  // Intentionally only handles plain `messageMediaGeo`. Venues and live
+  // locations are ignored here per the poll-option rendering requirements.
+  return media?._ === 'messageMediaGeo' ? unwrap(media) : undefined;
 };
 
 /**
@@ -41,6 +71,7 @@ export function usePollDerivedProps({props, pollOptions, chosenIndexes, newOptio
   const shuffleOptions = createMemo(() => shouldShufflePollOptions(props.poll));
   const showWhoVoted = createMemo(() => !!props.poll.pFlags.public_voters);
   const closed = createMemo(() => !!props.poll.pFlags.closed);
+  const hideResults = createMemo(() => !!props.poll.pFlags.hide_results_until_close && !closed() && !props.poll.pFlags.creator);
   const closesAtTimestamp = createMemo(() => timeOffset.state === 'ready' ? props.poll.close_date - timeOffset() : 0);
 
   const votersCount = createMemo(() => props.results?.total_voters ?? 0);
@@ -48,20 +79,19 @@ export function usePollDerivedProps({props, pollOptions, chosenIndexes, newOptio
 
   const roundedPercents = createMemo(() => getRoundedPercentsFromResults(props.results));
 
-  const hasPhotoInOptions = createMemo(() =>
-    props.poll.answers.some(a => a.media?._ === 'messageMediaPhoto' && a.media.photo?._ === 'photo')
+  const hasMediaInOptions = createMemo(() =>
+    props.poll.answers.some(a => !!getPhoto(a.media) || !!getStickerMedia(a.media) || !!getGeo(a.media) || !!getVideoDocument(a.media))
   );
 
-  const hasExplanation = createMemo(() => !!props.results.solution || !!props.results.solution_media);
-
-  const hasSelectedSomething = createMemo(() => chosenIndexes().length > 0);
   const isShowingResult = createMemo(() => !!props.poll.chosenIndexes?.length || props.poll.pFlags.closed);
+  const hasExplanation = createMemo(() => isShowingResult() && (!!props.results.solution || !!props.results.solution_media));
+  const hasSelectedSomething = createMemo(() => chosenIndexes().length > 0);
   const hasTypedNewOption = createMemo(() => newOptionText().length > 0);
   const canShowAddOption = createMemo(() => allowAddingOptions() && !isShowingResult() && pollOptions.length < maxOptions());
   const canShowCloseTimer = createMemo(() =>
     !props.poll.pFlags.closed && !!closesAtTimestamp() && closesAtTimestamp() > new Date().getTime() / 1000
   );
-  const canShowViewResults = createMemo(() => showWhoVoted() && !!props.results.total_voters && isShowingResult());
+  const canShowViewResults = createMemo(() => showWhoVoted() && !!props.results.results?.some(r => !!r.voters) && isShowingResult());
 
   // The footer will have the clickable classname added/removed only after the out animation has finished
   const willFooterBeClickable = createMemo(() => canShowViewResults() || hasSelectedSomething() || hasTypedNewOption());
@@ -78,7 +108,13 @@ export function usePollDerivedProps({props, pollOptions, chosenIndexes, newOptio
   });
 
   const explanationPhoto = createMemo(() => getPhoto(props.results.solution_media));
+  const explanationVideo = createMemo(() => getVideoDocument(props.results.solution_media));
+  const explanationDocument = createMemo(() => !getVideoDocument(props.results.solution_media) ? getDocument(props.results.solution_media) : undefined);
+
   const descriptionPhoto = createMemo(() => getPhoto(props.media.attached_media));
+  const descriptionVideo = createMemo(() => getVideoDocument(props.media.attached_media));
+  const descriptionDocument = createMemo(() => !getVideoDocument(props.media.attached_media) ? getDocument(props.media.attached_media) : undefined);
+
 
   const initialIdxFromShuffledIdx = (idx: number) => {
     const shuffledOption = pollOptions[idx]?.option;
@@ -103,8 +139,17 @@ export function usePollDerivedProps({props, pollOptions, chosenIndexes, newOptio
     };
   };
 
-  const getPhotoForOption = (initialIdx: number): Photo.photo | undefined =>
+  const getPhotoForOption = (initialIdx: number) =>
     getPhoto(props.poll.answers[initialIdx]?.media);
+
+  const getVideoForOption = (initialIdx: number) =>
+    getVideoDocument(props.poll.answers[initialIdx]?.media);
+
+  const getStickerForOption = (initialIdx: number) =>
+    getStickerMedia(props.poll.answers[initialIdx]?.media);
+
+  const getGeoForOption = (initialIdx: number) =>
+    getGeo(props.poll.answers[initialIdx]?.media);
 
   return {
     question,
@@ -116,11 +161,12 @@ export function usePollDerivedProps({props, pollOptions, chosenIndexes, newOptio
     shuffleOptions,
     showWhoVoted,
     closed,
+    hideResults,
     closesAtTimestamp,
     votersCount,
     recentVoters,
     roundedPercents,
-    hasPhotoInOptions,
+    hasMediaInOptions,
     hasExplanation,
     hasSelectedSomething,
     isShowingResult,
@@ -130,11 +176,18 @@ export function usePollDerivedProps({props, pollOptions, chosenIndexes, newOptio
     canShowViewResults,
     willFooterBeClickable,
     explanationPhoto,
+    explanationVideo,
+    explanationDocument,
     descriptionPhoto,
+    descriptionVideo,
+    descriptionDocument,
     getPhoto,
     getOverridenMessage,
     initialIdxFromShuffledIdx,
     getResultForOption,
-    getPhotoForOption
+    getPhotoForOption,
+    getVideoForOption,
+    getStickerForOption,
+    getGeoForOption
   };
 }
