@@ -93,14 +93,26 @@
 }
 
 @mixin hoverable {
-  @include hover-global(rgba(0, 0, 0, 0.05), background-color, true);
+  --hover-bg-color: rgba(0, 0, 0, 0.05);
 
-  @include hover-global(rgba(255, 255, 255, 0.075), background-color, true, true);
+  @include hover-global(var(--hover-bg-color), background-color, true);
+
+  :global(.night) & {
+    --hover-bg-color: rgba(255, 255, 255, 0.075);
+  }
 
   &.outgoing {
-    @include hover-global(rgba(0, 0, 0, 0.05), background-color, true);
+    --hover-bg-color: hsla(from var(--message-primary-color) h s l / 0.075);
+    --ripple-color: hsla(from var(--message-primary-color) h s l / 0.125);
 
-    @include hover-global(rgba(255, 255, 255, 0.1), background-color, true, true);
+    :global(.night) & {
+      --hover-bg-color: rgba(255, 255, 255, 0.1);
+      --ripple-color: rgba(255, 255, 255, 0.175);
+    }
+  }
+
+  &.hovered {
+    background-color: var(--hover-bg-color);
   }
 }
 
@@ -234,7 +246,7 @@
     position: absolute;
     bottom: 0;
     left: 0;
-    transform: translate(-40px, 15px);
+    transform: translate(-41px, 15px);
 
     width: 0.5rem;
     height: 0.5rem;
