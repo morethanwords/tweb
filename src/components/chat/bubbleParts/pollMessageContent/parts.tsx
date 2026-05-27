@@ -69,7 +69,7 @@ export const Explanation = (props: LocalTextWithEntities & {
             <TranslatableMessageTsx
               peerId={contextProps.peerId}
               textWithEntities={{_: 'textWithEntities', text: props.text, entities: unwrap(props.entities)}}
-              richTextOptions={{middleware, loadPromises: contextProps.loadPromises}}
+              richTextOptions={{middleware, loadPromises: unwrap(contextProps.loadPromises)}}
             />
           </div>
         </Show>
@@ -78,19 +78,19 @@ export const Explanation = (props: LocalTextWithEntities & {
           <div class={styles.explanationMedia} use:dataPollViewerIdx={props.pollViewerPayload}>
             <Switch>
               <Match when={props.photo}>
-                <PhotoTsx photo={props.photo} loadPromises={contextProps.loadPromises} autoDownloadSize={contextProps.autoDownload?.photo} />
+                <PhotoTsx photo={props.photo} loadPromises={unwrap(contextProps.loadPromises)} autoDownloadSize={contextProps.autoDownload?.photo} />
               </Match>
               <Match when={props.video}>
                 <VideoTsx
                   doc={props.video}
-                  loadPromises={contextProps.loadPromises}
+                  loadPromises={unwrap(contextProps.loadPromises)}
                   group={contextProps.animationGroup}
-                  autoDownload={contextProps.autoDownload}
+                  autoDownload={unwrap(contextProps.autoDownload)}
                   boxWidth={mediaSizes.active.regular.width}
                   boxHeight={mediaSizes.active.regular.height}
                   withPreview
-                  lazyLoadQueue={contextProps.lazyLoadQueue || undefined}
-                  observer={contextProps.observer}
+                  lazyLoadQueue={unwrap(contextProps.lazyLoadQueue) || undefined}
+                  observer={unwrap(contextProps.observer)}
                 />
               </Match>
             </Switch>
@@ -104,8 +104,8 @@ export const Explanation = (props: LocalTextWithEntities & {
               message={contextProps.message}
               doc={props.document}
               slot={0.2}
-              loadPromises={contextProps.loadPromises}
-              lazyLoadQueue={contextProps.lazyLoadQueue || undefined}
+              loadPromises={unwrap(contextProps.loadPromises)}
+              lazyLoadQueue={unwrap(contextProps.lazyLoadQueue) || undefined}
               autoDownloadSize={contextProps.autoDownload?.file}
               sizeType='documentName'
               canTranscribeVoice={false}

@@ -125,7 +125,7 @@ export const PollOption = (props: {
           <TranslatableMessageTsx
             peerId={contextProps.peerId}
             textWithEntities={{_: 'textWithEntities', text: props.text.text, entities: unwrap(props.text.entities)}}
-            richTextOptions={{middleware: createMiddleware().get(), loadPromises: contextProps.loadPromises}}
+            richTextOptions={{middleware: createMiddleware().get(), loadPromises: unwrap(contextProps.loadPromises)}}
           />
         </div>
         <Show when={isShowingResult() && props.result.voters}>
@@ -203,7 +203,7 @@ export const PollOption = (props: {
                 photo={props.photo}
                 boxWidth={boxSize}
                 boxHeight={boxSize}
-                loadPromises={contextProps.loadPromises}
+                loadPromises={unwrap(contextProps.loadPromises)}
                 autoDownloadSize={contextProps.autoDownload?.photo}
               />
             </Match>
@@ -227,15 +227,15 @@ export const PollOption = (props: {
             <Match when={props.video}>
               <VideoTsx
                 doc={props.video}
-                loadPromises={contextProps.loadPromises}
+                loadPromises={unwrap(contextProps.loadPromises)}
                 group={contextProps.animationGroup}
-                autoDownload={contextProps.autoDownload}
+                autoDownload={unwrap(contextProps.autoDownload)}
                 boxWidth={boxSize}
                 boxHeight={boxSize}
                 withPreview
                 noInfo
-                lazyLoadQueue={contextProps.lazyLoadQueue || undefined}
-                observer={contextProps.observer}
+                lazyLoadQueue={unwrap(contextProps.lazyLoadQueue) || undefined}
+                observer={unwrap(contextProps.observer)}
               />
             </Match>
           </Switch>
@@ -262,11 +262,11 @@ const GeoPreview = (props: {
       attachmentDiv,
       wrapOptions: {
         middleware,
-        lazyLoadQueue: contextProps.lazyLoadQueue || undefined,
+        lazyLoadQueue: unwrap(contextProps.lazyLoadQueue) || undefined,
         animationGroup: contextProps.animationGroup
       },
       middleware,
-      loadPromises: contextProps.loadPromises ?? [],
+      loadPromises: unwrap(contextProps.loadPromises) ?? [],
       date: contextProps.message.date
     });
   });

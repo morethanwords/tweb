@@ -1,12 +1,14 @@
 import {createMessageSpoilerOverlay} from '@components/messageSpoilerOverlay';
 import {AttachedMedia} from '@components/popups/createPoll/storeContext';
+import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {useIsCleaned} from '@hooks/useIsCleaned';
 import {Poll, TextWithEntities} from '@layer';
 import {ChatRights} from '@lib/appManagers/appChatsManager';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {Accessor, batch, createEffect, createSignal, onCleanup} from 'solid-js';
+import {unwrap} from 'solid-js/store';
 import {PollMessageContentProps} from './PollMessageContent';
-import {subscribeOn} from '@helpers/solid/subscribeOn';
+
 
 export type PollOptionResult = {
   voters: number;
@@ -58,7 +60,7 @@ export const attachSpoilerOverlay = (descriptionElement: HTMLDivElement, props: 
   });
 
   (async() => {
-    await Promise.all(props.loadPromises || []); // TranslatableMessage delays the moment when content appears in the DOM
+    await Promise.all(unwrap(props.loadPromises) || []); // TranslatableMessage delays the moment when content appears in the DOM
 
     if(isCleaned() || !descriptionElement.querySelector('.spoiler-text')) return;
 

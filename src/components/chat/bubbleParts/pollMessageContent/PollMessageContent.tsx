@@ -23,7 +23,6 @@ import {Document, Message, MessageMedia, Photo, Poll, PollResults} from '@layer'
 import {ChatRights} from '@lib/appManagers/appChatsManager';
 import {sliceTextWithEntities} from '@lib/richTextProcessor/sliceTextWithEntities';
 import wrapDraftText from '@lib/richTextProcessor/wrapDraftText';
-import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {batch, createEffect, createMemo, createSelector, createSignal, For, Match, Show, Switch} from 'solid-js';
 import {createStore, reconcile, unwrap} from 'solid-js/store';
@@ -43,6 +42,7 @@ keepMe(ripple);
 keepMe(dataPollViewerIdx);
 
 export type PollMessageContentProps = {
+  element: HTMLElement;
   isOutgoing?: boolean;
   poll: Poll;
   peerId: PeerId;
@@ -55,9 +55,10 @@ export type PollMessageContentProps = {
   observer?: SuperIntersectionObserver;
   canSend: (rights: ChatRights) => Promise<boolean>;
   loadPromises: Promise<any>[];
+  controls: Partial<PollMessageContentControls>;
 };
 
-type Controls = {
+export type PollMessageContentControls = {
   openMediaViewer: (idx: number) => void;
 };
 
@@ -67,9 +68,8 @@ type MediaViewerPayloadIndexes = {
   options: Map<number, number>;
 };
 
-export const PollMessageContent = defineSolidElement({
-  name: 'poll-message-content',
-  component: (props: PassedProps<PollMessageContentProps>, _, controls: Controls) => {
+export const PollMessageContent =
+  (props: PollMessageContentProps) => {
     attachHotClassName(props.element, styles.container);
 
     // ----- Setup / external dependencies -----
@@ -260,7 +260,7 @@ export const PollMessageContent = defineSolidElement({
     });
 
     // ----- Imperative controls -----
-    controls.openMediaViewer = (idx: number) => {
+    props.controls.openMediaViewer = (idx: number) => {
       const getTarget = (idx: number): AppMediaViewerStaticTargetType => ({
         media: mediaViewerPayload().media[idx],
         element: elementByIndexMap.get(idx)?.querySelector('.media-video, .media-photo'),
@@ -289,22 +289,22 @@ export const PollMessageContent = defineSolidElement({
               <Show when={descriptionPhoto()}>
                 <PhotoTsx
                   photo={descriptionPhoto()}
-                  loadPromises={props.loadPromises}
+                  loadPromises={unwrap(props.loadPromises)}
                   autoDownloadSize={props.autoDownload?.photo}
-                  lazyLoadQueue={props.lazyLoadQueue}
+                  lazyLoadQueue={unwrap(props.lazyLoadQueue)}
                 />
               </Show>
               <Show when={descriptionVideo() && !descriptionPhoto()}>
                 <VideoTsx
                   doc={descriptionVideo()}
-                  loadPromises={props.loadPromises}
+                  loadPromises={unwrap(props.loadPromises)}
                   group={props.animationGroup}
-                  autoDownload={props.autoDownload}
+                  autoDownload={unwrap(props.autoDownload)}
                   boxWidth={mediaSizes.active.regular.width}
                   boxHeight={mediaSizes.active.regular.height}
                   withPreview
-                  lazyLoadQueue={props.lazyLoadQueue || undefined}
-                  observer={props.observer}
+                  lazyLoadQueue={unwrap(props.lazyLoadQueue) || undefined}
+                  observer={unwrap(props.observer)}
                 />
               </Show>
             </div>
@@ -316,8 +316,8 @@ export const PollMessageContent = defineSolidElement({
               message={props.message}
               doc={descriptionDocument()}
               slot={0.1}
-              loadPromises={props.loadPromises}
-              lazyLoadQueue={props.lazyLoadQueue || undefined}
+              loadPromises={unwrap(props.loadPromises)}
+              lazyLoadQueue={unwrap(props.lazyLoadQueue) || undefined}
               autoDownloadSize={props.autoDownload?.file}
               sizeType='documentName'
               canTranscribeVoice={false}
@@ -329,7 +329,7 @@ export const PollMessageContent = defineSolidElement({
             <TranslatableMessageTsx
               peerId={props.peerId}
               textWithEntities={{_: 'textWithEntities', text: descriptionText(), entities: unwrap(descriptionEntities())}}
-              richTextOptions={{middleware: createMiddleware().get(), loadPromises: props.loadPromises}}
+              richTextOptions={{middleware: createMiddleware().get(), loadPromises: unwrap(props.loadPromises)}}
             />
           </div>
         </Show>
@@ -339,7 +339,7 @@ export const PollMessageContent = defineSolidElement({
               <TranslatableMessageTsx
                 peerId={props.peerId}
                 textWithEntities={unwrap(question())}
-                richTextOptions={{middleware, loadPromises: props.loadPromises}}
+                richTextOptions={{middleware, loadPromises: unwrap(props.loadPromises)}}
               />
             </div>
             <div class={styles.headerSubtitle}>
@@ -465,5 +465,4 @@ export const PollMessageContent = defineSolidElement({
         </Show>
       </PollMessageContentPropsContext.Provider>
     );
-  }
-});
+  };

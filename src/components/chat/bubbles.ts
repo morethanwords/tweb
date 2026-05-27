@@ -130,7 +130,7 @@ import SwipeHandler from '@components/swipeHandler';
 import getSelectedText from '@helpers/dom/getSelectedText';
 import {createStoriesViewerWithPeer} from '@components/stories/viewer';
 import {render} from 'solid-js/web';
-import {createRoot, createEffect, createSignal, Signal, onCleanup} from 'solid-js';
+import {createRoot, createEffect, createSignal, Signal, onCleanup, batch} from 'solid-js';
 import {StoryPreview, wrapStoryMedia} from '@components/stories/preview';
 import wrapReply from '@components/wrappers/reply';
 import {modifyAckedPromise} from '@helpers/modifyAckedResult';
@@ -224,7 +224,8 @@ import {NoForwardsRequestContent, NoForwardsRequestReplyMarkup} from '@component
 import tsNow from '@helpers/tsNow';
 import wrapMessageForReply from '@components/wrappers/messageForReply';
 import canSeeMessageMedia from '@lib/appManagers/utils/messages/canSeeMessageMedia';
-import type {PollMessageContent} from './bubbleParts/pollMessageContent';
+import {PollMessageContentProps, PollMessageContentControls} from './bubbleParts/pollMessageContent';
+import {createMutable} from 'solid-js/store';
 
 // TODO: fix new message won't be rendered if an old one is rendering in the moment
 
@@ -243,6 +244,7 @@ export type BubbleContext = {
   canHaveTail: boolean,
   isStandaloneMedia: boolean,
   mediaRequiresMessageDiv: boolean,
+  pollMessageContentControls?: Partial<PollMessageContentControls>,
 
   // * something extra
   releaseDice?: (value: number) => void
@@ -1401,7 +1403,7 @@ export default class ChatBubbles {
           findUpClassName(e.target, 'code-header-button') ||
           findUpClassName(e.target, 'reaction') ||
           findUpClassName(e.target, 'bubble-beside-button') ||
-          (e.target as HTMLElement)?.closest?.('poll-message-content')
+          findUpClassName(e.target, 'poll-message-content')
         ) {
           return;
         }
@@ -3121,10 +3123,10 @@ export default class ChatBubbles {
         return;
       }
 
-      const pollMessageContent = pollViewerTarget.closest('poll-message-content') as InstanceType<typeof PollMessageContent>;
-      pollMessageContent.controls?.openMediaViewer?.(+pollViewerTarget.dataset.pollViewerIdx);
+      const bubbleContext = this.contexts.get(bubble);
+      bubbleContext?.pollMessageContentControls?.openMediaViewer?.(+pollViewerTarget.dataset.pollViewerIdx);
       return true;
-    } else if(target.closest('poll-message-content')) {
+    } else if(target.closest('.poll-message-content')) {
       return;
     }
 
@@ -7805,9 +7807,12 @@ export default class ChatBubbles {
             context.messageMessage = totalEntities = undefined;
 
             const {PollMessageContent} = await import('./bubbleParts/pollMessageContent');
-            const pollMessageContent = new PollMessageContent();
-            pollMessageContent.HotReloadGuard = SolidJSHotReloadGuardProvider;
-            pollMessageContent.feedProps({
+
+            const container = document.createElement('div');
+            container.classList.add('poll-message-content');
+
+            const propsMutable = createMutable<PollMessageContentProps>({
+              element: container,
               isOutgoing: isOut,
               message,
               peerId: this.peerId,
@@ -7818,23 +7823,36 @@ export default class ChatBubbles {
               lazyLoadQueue: this.lazyLoadQueue,
               animationGroup: this.chat.animationGroup,
               canSend: (rights) => this.chat.canSend(rights),
-              loadPromises
+              loadPromises,
+              controls: context.pollMessageContentControls = {}
+            });
+
+            renderComponent({
+              element: container,
+              Component: PollMessageContent,
+              props: propsMutable,
+              middleware,
+              HotReloadGuard: SolidJSHotReloadGuardProvider
             });
 
             this.updateLocalOnEdit.set(bubble, msg => {
-              if(msg.media?._ !== 'messageMediaPoll') return;
-              pollMessageContent.feedProps<false>({
-                message: msg,
-                poll: msg.media.poll,
-                results: msg.media.results,
-                media: msg.media
+              batch(() => {
+                if(msg.media?._ !== 'messageMediaPoll') return;
+
+                Object.assign(propsMutable, {
+                  message: msg,
+                  poll: msg.media.poll,
+                  results: msg.media.results,
+                  media: msg.media
+                });
               });
             });
-            middleware.onClean(() => {
+
+            middleware.onDestroy(() => {
               this.updateLocalOnEdit.delete(bubble);
             });
 
-            messageDiv.prepend(pollMessageContent);
+            messageDiv.prepend(container);
             bubble.classList.add('poll-message');
 
             break;
