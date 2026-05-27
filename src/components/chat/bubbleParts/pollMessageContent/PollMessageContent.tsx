@@ -438,57 +438,58 @@ export const PollMessageContent =
         </Show>
 
         <Space amount='0.25rem' />
-        <div
-          class={styles.footer}
-          classList={{
-            [styles.clickable]: isFooterClickable(),
-            [styles.outgoing]: props.isOutgoing,
-            [styles.withTime]: canShowCloseTimer()
-          }}
-          use:ripple={isFooterClickable()}
-          onClick={onFooterClick}
-        >
-          <Transition
-            name='fade-2'
-            mode='outin'
-            onAfterExit={() => {
-              setCanFooterBeClickable(willFooterBeClickable());
+        <div class={styles.footer}>
+          <div
+            class={styles.footerButton}
+            classList={{
+              [styles.clickable]: isFooterClickable(),
+              [styles.outgoing]: props.isOutgoing
             }}
+            use:ripple={isFooterClickable()}
+            onClick={onFooterClick}
           >
-            <Switch>
-              <Match when={canShowViewResults()}>
-                <I18nTsx key='Chat.Poll.ViewVotes' args={votersCount()?.toString()} />
-              </Match>
-              <Match when={hasSelectedSomething()}>
-                <I18nTsx key='Chat.Poll.SubmitVote' />
-              </Match>
-              <Match when={hasTypedNewOption() && !isShowingResult()}>
-                <I18nTsx key='Save' />
-              </Match>
-              <Match when={isShowingResult()}>
-                <PollVotes
-                  votersCount={votersCount()}
-                  closed={closed()}
-                  hasCorrectAnswer={hasCorrectAnswer()}
-                  showWhoVoted={showWhoVoted()}
-                />
-              </Match>
-              <Match when>
-                <I18nTsx key='Chat.Poll.SelectAnOption' />
-              </Match>
-            </Switch>
-          </Transition>
+            <Transition
+              name='fade-2'
+              mode='outin'
+              onAfterExit={() => {
+                setCanFooterBeClickable(willFooterBeClickable());
+              }}
+            >
+              <Switch>
+                <Match when={canShowViewResults()}>
+                  <I18nTsx key='Chat.Poll.ViewVotes' args={votersCount()?.toString()} />
+                </Match>
+                <Match when={hasSelectedSomething()}>
+                  <I18nTsx key='Chat.Poll.SubmitVote' />
+                </Match>
+                <Match when={hasTypedNewOption() && !isShowingResult()}>
+                  <I18nTsx key='Save' />
+                </Match>
+                <Match when={isShowingResult()}>
+                  <PollVotes
+                    votersCount={votersCount()}
+                    closed={closed()}
+                    hasCorrectAnswer={hasCorrectAnswer()}
+                    showWhoVoted={showWhoVoted()}
+                  />
+                </Match>
+                <Match when>
+                  <I18nTsx key='Chat.Poll.SelectAnOption' />
+                </Match>
+              </Switch>
+            </Transition>
+          </div>
         </div>
 
         <Show when={canShowCloseTimer()}>
           <div class={styles.timer}>
-            <div class={styles.timerContent}>
-              <RemainingTime finishTimestamp={closesAtTimestamp()}>
-                {(time) => <I18nTsx key='Chat.Poll.EndsIn' args={[time()]} />}
-              </RemainingTime>
-            </div>
+            <RemainingTime finishTimestamp={closesAtTimestamp()}>
+              {(time) => <I18nTsx key='Chat.Poll.EndsIn' args={[time()]} />}
+            </RemainingTime>
           </div>
         </Show>
+
+        <Space amount='1rem' />
       </PollMessageContentPropsContext.Provider>
     );
   };

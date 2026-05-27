@@ -268,12 +268,22 @@
 }
 
 .footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+}
+
+.footerButton {
   position: relative;
   overflow: hidden;
   display: flex;
   justify-content: center;
-  padding: 0.75rem 1.5rem 1.25rem;
+
+  padding: 0.5rem 1rem;
+  border-radius: 16px;
   font-size: 0.875rem;
+
   user-select: none;
   text-align: center;
 
@@ -294,13 +304,6 @@
 
     @include hoverable;
   }
-
-  &.withTime {
-    padding-bottom: 2rem;
-  }
-
-  border-end-end-radius: var(--border-end-end-radius);
-  border-end-start-radius: var(--border-end-start-radius);
 }
 
 .header {
@@ -464,17 +467,14 @@
 
 .timer {
   position: relative;
-  height: 0;
-  pointer-events: none;
+  text-align: center;
 
-  &Content {
-    position: absolute;
-    bottom: 0;
-    left: 50%;
-    transform: translate(-50%, -1rem);
-    font-size: 0.75rem;
-    color: var(--secondary-text-color);
-  }
+  transform: translateY(-2px);
+  line-height: 1;
+  padding: 0 1.5rem;
+  font-size: 0.75rem;
+
+  color: var(--secondary-text-color);
 }
 
 .spinnerContainer {
