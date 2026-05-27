@@ -44,8 +44,6 @@ type RefetchTimeoutPayload = {
   closeTimestamp: number;
 };
 
-const pollAnswerOptionOffset = 48;
-
 export class AppPollsManager extends AppManager {
   public polls: {[id: PollId]: Poll} = {};
   public results: {[id: PollId]: PollResults} = {};
@@ -567,7 +565,7 @@ export class AppPollsManager extends AppManager {
         _: 'textWithEntities',
         ...parsedPayload.pollOptions[index]
       },
-      option: new Uint8Array([pollAnswerOptionOffset + index]),
+      option: new Uint8Array(Array.from(index.toString()).map((c) => c.charCodeAt(0))),
       added_by: this.appPeersManager.getOutputPeer(peerId),
       media: uploadingMedia.pollOptions.get(index)?.messageMedia
     }));
