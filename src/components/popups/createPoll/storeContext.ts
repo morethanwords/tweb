@@ -1,7 +1,11 @@
+import lastItem from '@helpers/array/lastItem';
+import track from '@helpers/solid/track';
 import {MessageEntity} from '@layer';
 import {oneDayInSeconds} from '@lib/constants';
 import {Accessor, createComputed, createContext, untrack, useContext} from 'solid-js';
 import {createStore, SetStoreFunction, Store} from 'solid-js/store';
+import {useCreatePollLimits} from './useCreatePollLimits';
+import {checkOptionHasValue} from './utils';
 
 export type CreatePollPayload = CreatePollStore;
 
@@ -103,6 +107,8 @@ export const createPollStoreContextValue = (extra: CreatePollContextExtra): Crea
     hideResults: false
   });
 
+  const {maxOptions} = useCreatePollLimits();
+
   createComputed(() => {
     if(store.allowMultipleAnswers) return;
 
@@ -113,6 +119,36 @@ export const createPollStoreContextValue = (extra: CreatePollContextExtra): Crea
     if(firstChecked !== -1) {
       setStore('pollOptions', firstChecked, 'checked', true);
     }
+  });
+
+  // Remove empty options from end of the list or add when the last item has a value
+  createComputed(() => {
+    // track options and their texts
+    for(const option of store.pollOptions) {
+      track(() => option.text);
+    }
+
+    if(store.pollOptions.length < maxOptions() && lastItem(store.pollOptions)?.text) {
+      setStore('pollOptions', store.pollOptions.length, {
+        text: '',
+        entities: []
+      });
+      return;
+    }
+
+    let keepTo = store.pollOptions.length - 1;
+    for(; keepTo >= 0; keepTo--) {
+      if(checkOptionHasValue(store.pollOptions[keepTo])) {
+        break;
+      } else {
+        setStore('pollOptions', keepTo, {checked: false}); // we're doing +1 later so unset the last one to not be checked
+      }
+    }
+
+    keepTo += 1;
+    if(keepTo >= store.pollOptions.length - 1) return;
+
+    setStore('pollOptions', (prev) => prev.filter((_, i) => i <= keepTo)) // keep one more empty
   });
 
   return {

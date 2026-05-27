@@ -14,7 +14,7 @@ import {createSortableList} from '@helpers/solid/createSortableList';
 import {HeightTransition} from '@helpers/solid/heightTransition';
 import {I18nTsx} from '@helpers/solid/i18n';
 import classNames from '@helpers/string/classNames';
-import {batch, children, createMemo, For, JSX, mapArray, onMount, Ref, Show} from 'solid-js';
+import {batch, children, createEffect, createMemo, createSignal, For, JSX, mapArray, onMount, Ref, Show} from 'solid-js';
 import {Transition, TransitionGroup} from 'solid-transition-group';
 import {EmojiButtonWithOpacity as EmojiDropdownButton} from './emojiButtonWithOpacity';
 import {useSupportsMedia} from './utils';
@@ -25,10 +25,10 @@ import {useCreatePollLimits} from './useCreatePollLimits';
 
 
 type MappedItem = {
+  type: 'mappedItem',
   id: number;
   option: StorePollOption;
   inputField?: InputField;
-  isNew: boolean;
 };
 
 export const PollOptionsSectionContent = (props: {
@@ -37,22 +37,21 @@ export const PollOptionsSectionContent = (props: {
   const {maxOptions} = useCreatePollLimits();
 
   let idSeed = 0;
-  let isNew = false;
 
   const context = useCreatePollContext();
 
   const rawMappedItems = mapArray(() => context.store.pollOptions, (option): MappedItem => ({
+    type: 'mappedItem',
     id: idSeed++,
-    option,
-    isNew
+    option
   }));
-
-  isNew = true;
 
   const mappedItems = createMemo(rawMappedItems);
 
   const optionsLeft = createMemo(() => Math.max(0, maxOptions() - mappedItems().length));
-  const canShowAddOption = createMemo(() => optionsLeft() > 0);
+  /* Prevent flickering to 1 when being removed and do not include the unfilled last option */
+  const visibleOptionsLeft = createMemo(() => Math.max(2, optionsLeft() + 1));
+  const canShowOptionLeft = createMemo(() => optionsLeft() > 0);
 
   const sortable = createSortableList({
     container: () => props.scrollable,
@@ -65,16 +64,7 @@ export const PollOptionsSectionContent = (props: {
 
   const isDragging = createDelayed(sortable.isDragging, false, (value) => value ? -1 : 100);
 
-  const delayedCanShowAddOption = createDelayed(canShowAddOption, canShowAddOption(), value => value ? 200 : -1);
-
-  const onAdd = () => {
-    if(optionsLeft() === 0) return;
-    blurActiveElement();
-    context.setStore('pollOptions', context.store.pollOptions.length, {
-      text: '',
-      entities: []
-    });
-  };
+  const delayedCanShowOptionLeft = createDelayed(canShowOptionLeft, canShowOptionLeft(), value => value ? 200 : 0);
 
   const TransitionGroupWhenNotDragging = (props: { children: JSX.Element }) => {
     const resolved = children(() => props.children);
@@ -87,44 +77,52 @@ export const PollOptionsSectionContent = (props: {
     );
   };
 
+  type MappedItemOrOptionsLeft = MappedItem | {
+    type: 'optionsLeft';
+  };
+
+  const optionsLeftItem: MappedItemOrOptionsLeft = {
+    type: 'optionsLeft'
+  };
+
+  const items = createMemo(() => {
+    const result: MappedItemOrOptionsLeft[] = [...mappedItems()];
+
+    if(delayedCanShowOptionLeft()) {
+      result.push(optionsLeftItem);
+    }
+
+    return result;
+  });
+
   return (
-    <>
-      <AutoHeight>
-        <TransitionGroupWhenNotDragging>
-          <For each={mappedItems()}>
-            {(item, index) => (
-              <>
+    <AutoHeight>
+      <TransitionGroupWhenNotDragging>
+        <For each={items()}>
+          {(item, index) => (
+            <Show when={item.type === 'mappedItem' && item} keyed fallback={
+              <div style={{height: !canShowOptionLeft() ? '0' : undefined}}>
+                <Space amount='0.5rem' />
+                <div class={styles.caption} style={{overflow: 'hidden'}}>
+                  <I18nTsx key='NewPoll.OptionsLeft' args={visibleOptionsLeft().toString()} />
+                </div>
+              </div>
+            }>
+              {item => <>
                 {index() > 0 && <Space amount='0.75rem' />}
                 <PollOptionFullField
                   index={index()}
                   mappedItem={item}
                   mappedItems={mappedItems()}
                   sortable={sortable}
-                  onAdd={onAdd}
+                  optionsLeft={optionsLeft()}
                 />
-              </>
-            )}
-          </For>
-        </TransitionGroupWhenNotDragging>
-      </AutoHeight>
-
-      <Space amount='0.5rem' />
-
-      {/* Note: Adding the below inside TransitionGroup behaves weirdly (probably due to the fact how the order of memos update) */}
-      <HeightTransition>
-        <Show when={delayedCanShowAddOption()}>
-          <div style={{overflow: 'hidden'}}>
-            <div class={styles.caption}>
-              <I18nTsx key='NewPoll.OptionsLeft' args={optionsLeft().toString()} />
-            </div>
-            <Button class={styles.addOptionButton} primary onClick={onAdd}>
-              <IconTsx class={styles.addOptionButtonIcon} icon='plus' />
-              <I18nTsx key='NewPoll.OptionsAddOption' />
-            </Button>
-          </div>
-        </Show>
-      </HeightTransition>
-    </>
+              </>}
+            </Show>
+          )}
+        </For>
+      </TransitionGroupWhenNotDragging>
+    </AutoHeight>
   );
 };
 
@@ -133,10 +131,11 @@ const PollOptionFullField = (props: {
   mappedItem: MappedItem;
   mappedItems: MappedItem[];
   sortable: ReturnType<typeof createSortableList>;
-  onAdd: () => void;
+  optionsLeft: number;
 }) => {
   const {store, setStore} = useCreatePollContext();
 
+  const [container, setContainer] = createSignal<HTMLElement>();
   const value = () => props.mappedItem.option.text;
 
   const isDuplicate = createMemo(() => {
@@ -145,14 +144,13 @@ const PollOptionFullField = (props: {
     return store.pollOptions.filter((option) => option.text === text).length > 1;
   });
 
-  onMount(() => {
-    if(!props.mappedItem.isNew) return;
+  const canBeReordered = createMemo(() => props.index < store.pollOptions.length - 1 || !!props.mappedItem.option.text);
 
-    setTimeout(() => {
-      focusInput(props.mappedItem.inputField?.input);
-    }, 100);
+  createEffect(() => {
+    if(!container() || !canBeReordered()) return;
+
+    props.sortable.itemRef(props.mappedItem.id)(container());
   });
-
 
   const onRadioClick = () => {
     batch(() => {
@@ -163,12 +161,12 @@ const PollOptionFullField = (props: {
 
   return (
     <div
-      ref={props.sortable.itemRef(props.mappedItem.id)}
+      ref={setContainer}
       class={styles.pollOptionRow}
       style={props.sortable.itemStyle(props.mappedItem.id)}
     >
       <Show when={store.hasCorrectAnswer}>
-        <div class={styles.pollOptionCheckWrapper}>
+        <div class={styles.pollOptionCheckWrapper} classList={{[styles.disabled]: !canBeReordered()}}>
           <Transition name='fade-2' duration={200} mode='outin'>
             <Show when={!store.allowMultipleAnswers}>
               <div class={styles.checkButtonWrapper} onClick={onRadioClick}>
@@ -187,7 +185,9 @@ const PollOptionFullField = (props: {
         value={value()}
         attachment={props.mappedItem.option.attachment}
         isError={isDuplicate()}
+        canBeReordered={canBeReordered()}
         onPointerDown={(e) => {
+          if(!canBeReordered()) return;
           blurActiveElement();
           props.sortable.dragHandleProps(props.mappedItem.id).onPointerDown(e);
         }}
@@ -205,12 +205,14 @@ const PollOptionFullField = (props: {
               return;
             }
           }
-          if(props.mappedItem.inputField?.value) props.onAdd();
         }}
         onEmptyBackspace={() => {
           if(props.mappedItems.length === 1) return;
 
-          setStore('pollOptions', prev => prev.filter((_, i) => i !== props.index));
+          if(props.index < props.mappedItems.length - 1) {
+            setStore('pollOptions', prev => prev.filter((_, i) => i !== props.index));
+          }
+
           focusInput(props.mappedItems[Math.max(0, props.index - 1)]?.inputField?.input);
         }}
       />
@@ -227,6 +229,7 @@ const PollOptionInputField = (props: {
   isError?: boolean;
   attachment?: AttachedMedia;
   style?: JSX.CSSProperties;
+  canBeReordered?: boolean;
 
   onChange: (option: Partial<StorePollOption>) => void;
   onEnter?: () => void;
@@ -278,11 +281,19 @@ const PollOptionInputField = (props: {
     >
       <SimpleFormField.SideContent
         class={styles.draggableSideContent}
+        classList={{
+          [styles.disabled]: !props.canBeReordered
+        }}
         first
         last
         onPointerDown={props.onPointerDown}
       >
-        <IconTsx icon='menu' />
+        <IconTsx class={styles.draggableIconScaffold} icon='menu' />
+        <Transition name='fade'>
+          <Show when={props.canBeReordered} fallback={<IconTsx class={styles.draggableIconFloating} icon='plusround' />}>
+            <IconTsx class={styles.draggableIconFloating} icon='menu' />
+          </Show>
+        </Transition>
       </SimpleFormField.SideContent>
       <SimpleFormField.InputStub>
         {inputField.input}

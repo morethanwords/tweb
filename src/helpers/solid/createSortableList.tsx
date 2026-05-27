@@ -159,8 +159,24 @@ const useCalculateShift = <T, >(context: DragContext<T>) => {
   return (id: Id) => {
     let shift = dragState.deltaY + scrollAdjustment();
     const rect = rects.get(id);
-    const firstRect = getRectAtIndex(0);
-    const lastRect = getRectAtIndex(items().length - 1);
+
+    let firstRect: DOMRectEditable;
+    for(let i = 0; i < items().length; i++) {
+      const rect = getRectAtIndex(i);
+      if(rect) {
+        firstRect = rect;
+        break;
+      }
+    }
+
+    let lastRect: DOMRectEditable;
+    for(let i = items().length - 1; i >= 0; i--) {
+      const rect = getRectAtIndex(i);
+      if(rect) {
+        lastRect = rect;
+        break;
+      }
+    }
 
     if(rect && firstRect && lastRect) {
       shift = Math.max(shift, firstRect.top - rect.top);
