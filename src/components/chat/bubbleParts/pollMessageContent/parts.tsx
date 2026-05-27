@@ -38,7 +38,7 @@ export const AvatarGroup = (props: {
             }}
           >
             <div class={styles.avatarGroupItemWrapper}>
-              <AvatarNewTsx class={styles.avatarGroupItemAvatar} size={24} peerId={peerId} />
+              <AvatarNewTsx class={styles.avatarGroupItemAvatar} size={22} peerId={peerId} />
             </div>
           </div>
         )}
