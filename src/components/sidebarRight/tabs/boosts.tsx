@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {Boost, PremiumBoostsStatus, PrepaidGiveaway} from '@layer';
 import {LangPackKey, i18n, joinElementsWith} from '@lib/langPack';
 import Section from '@components/section';

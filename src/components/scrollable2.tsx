@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {children, createContext, createEffect, createMemo, createSignal, JSX, on, onCleanup, Ref, untrack} from 'solid-js';
 import {IS_OVERLAY_SCROLL_SUPPORTED} from '@environment/overlayScrollSupport';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';

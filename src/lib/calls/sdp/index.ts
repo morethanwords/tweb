@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import SDPMediaSection from '@lib/calls/sdp/mediaSection';
 import SDPSessionSection from '@lib/calls/sdp/sessionSection';
 

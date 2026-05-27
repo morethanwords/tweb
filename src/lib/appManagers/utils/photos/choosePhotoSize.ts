@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {MyDocument} from '@appManagers/appDocsManager';
 import type {MyPhoto} from '@appManagers/appPhotosManager';
 import type {PhotoSize, VideoSize, WebDocument} from '@layer';

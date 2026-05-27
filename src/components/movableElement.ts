@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import findUpClassName from '@helpers/dom/findUpClassName';
 import EventListenerBase from '@helpers/eventListenerBase';
 import mediaSizes from '@helpers/mediaSizes';

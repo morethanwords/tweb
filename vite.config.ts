@@ -108,7 +108,7 @@ export default defineConfig({
     //   /* features options - all disabled by default */
     //   autoname: true // e.g. enable autoname
     // }),
-    process.env.VITEST ? undefined : checker({
+    process.env.VITEST || process.env.TWEB_PREVIEW ? undefined : checker({
       typescript: true,
       eslint: {
         // for example, lint .ts and .tsx
@@ -129,6 +129,9 @@ export default defineConfig({
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
+      // git worktrees live here with their own copies of every test file —
+      // without this, `pnpm test <pattern>` runs each match N+1 times at once
+      '**/.claude/**',
       '**/cypress/**',
       '**/.{idea,git,cache,output,temp}/**',
       '**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build}.config.*',

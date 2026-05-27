@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {createSignal, createEffect, on, JSX, onCleanup, catchError} from 'solid-js';
 import {unwrap} from 'solid-js/store';
 import rootScope from '@lib/rootScope';

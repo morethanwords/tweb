@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import findAndSpliceAll from '@helpers/array/findAndSpliceAll';
 import LazyLoadQueueIntersector, {LazyLoadElement} from '@components/lazyLoadQueueIntersector';
 import VisibilityIntersector, {OnVisibilityChange} from '@components/visibilityIntersector';

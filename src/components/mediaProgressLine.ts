@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import createElementFromMarkup from '@helpers/createElementFromMarkup';
 import {GrabEvent} from '@helpers/dom/attachGrabListeners';
 import safePlay from '@helpers/dom/safePlay';

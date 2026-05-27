@@ -1,8 +1,4 @@
 /*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- *
  * Originally from:
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
@@ -20,6 +16,13 @@ const Modes = {
   transport: 'websocket' as TransportType,
   noSharedWorker: location.search.indexOf('noSharedWorker=1') > 0,
   noServiceWorker: location.search.indexOf('noServiceWorker=1') > 0,
+  // Run MTProto + crypto entirely in the main thread (debug only). Loops the
+  // worker entries back through a MessageChannel in the same realm so
+  // breakpoints / call stacks span the whole pipeline. Multi-tab features
+  // (SharedWorker dedup, auto-lock cross-tab) silently degrade.
+  // Triggers: ?noWorker=1 in the URL, or VITE_NO_WORKER injected at build time
+  // by `bash scripts/start-preview.sh --no-worker`.
+  noWorker: location.search.indexOf('noWorker=1') > 0 || !!import.meta.env.VITE_NO_WORKER,
   multipleTransports: !!(import.meta.env.VITE_MTPROTO_AUTO && import.meta.env.VITE_MTPROTO_HAS_HTTP && import.meta.env.VITE_MTPROTO_HAS_WS) && location.search.indexOf('noMultipleTransports=1') === -1,
   noPfs: true || location.search.indexOf('noPfs=1') > 0
 };

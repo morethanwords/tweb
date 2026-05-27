@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {webp2png} from '@lib/webp/webp';
 import type {ConvertWebPTask} from '@lib/webp/webpWorkerController';
 

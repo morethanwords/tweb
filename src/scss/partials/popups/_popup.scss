@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 @use "sass:string";
 @use "../../shared" as *;
 @use "popupVariables" as *;
@@ -14,7 +8,7 @@
   --popup-min-width: var(--popup-width);
   --popup-max-width: var(--popup-width);
   --popup-min-height: var(--popup-height);
-  --popup-max-height: var(--popup-height);
+  --popup-max-height: 100%;
 
   // --popup-footer-padding: #{$popup-footer-padding};
   // --popup-footer-button-height: #{$popup-footer-button-size};
@@ -216,6 +210,10 @@
     flex: 0 0 auto;
     padding: var(--popup-footer-padding);
     min-height: var(--popup-footer-height);
+
+    &-placeholder {
+      height: var(--popup-footer-height);
+    }
 
     &-button.btn-primary {
       display: block;

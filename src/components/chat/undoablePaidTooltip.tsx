@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {Accessor, createEffect, createRoot, createSignal, onCleanup} from 'solid-js';
 
 import {SEND_PAID_WITH_STARS_DELAY} from '@appManagers/constants';

@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import {dispatchHeavyAnimationEvent} from '@hooks/useHeavyAnimationCheck';
 import whichChild from '@helpers/dom/whichChild';

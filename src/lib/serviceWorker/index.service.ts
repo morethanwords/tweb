@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {logger, LogTypes} from '@lib/logger';
 import {CACHE_ASSETS_NAME, requestCache} from '@lib/serviceWorker/cache';
 import onStreamFetch, {toggleStreamInUse} from '@lib/serviceWorker/stream';

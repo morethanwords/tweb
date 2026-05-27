@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import AudioAssetPlayer from '@helpers/audioAssetPlayer';
 
 let audioAsset: AudioAssetPlayer<Record<'connect' | 'end' | 'start' | 'allowtalk', string>>;

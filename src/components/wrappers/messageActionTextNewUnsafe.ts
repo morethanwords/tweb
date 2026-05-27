@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import {formatTime, ONE_DAY} from '@helpers/date';
 import htmlToSpan from '@helpers/dom/htmlToSpan';
@@ -288,6 +282,31 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         break;
       }
 
+      case 'messageActionConferenceCall': {
+        // tdesktop renders this as a media bubble (MediaCall) with state
+        // Invitation / Active / Missed / Hangup. We render service text +
+        // a Join anchor while the call is still joinable. The Join anchor
+        // resolves the conference via inputGroupCallInviteMessage(msg_id).
+        const isMissed = !!action.pFlags.missed;
+        const hasDuration = action.duration !== undefined;
+        const isJoinable = !isMissed && !hasDuration;
+        const isOut = !!message.pFlags.out;
+
+        if(isMissed) {
+          langPackKey = 'Chat.Service.ConferenceCall.Missed';
+          args = [];
+        } else if(hasDuration) {
+          langPackKey = 'Chat.Service.ConferenceCall.Ended';
+          args = [wrapCallDuration(action.duration, plain)];
+        } else {
+          langPackKey = isOut ?
+            'Chat.Service.ConferenceCall.Outgoing' :
+            'Chat.Service.ConferenceCall.Incoming';
+          args = [noLinks || !isJoinable ? '' : wrapJoinVoiceChatAnchor(message as any)];
+        }
+        break;
+      }
+
       case 'messageActionGroupCallScheduled': {
         const today = new Date();
         const date = new Date(action.schedule_date * 1000);
@@ -338,6 +357,43 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
           args = [getNameDivHTML(message.fromId, plain)];
         }
 
+        break;
+      }
+
+      case 'messageActionGameScore': {
+        const fromMe = message.fromId === rootScope.myId;
+        args = [];
+        if(!fromMe) {
+          args.push(getNameDivHTML(message.fromId, plain));
+        }
+        args.push('' + action.score);
+
+        let gameTitle: string | undefined;
+        if(message.reply_to_mid) {
+          const gameMessage = await managers.appMessagesManager.getMessageByPeer(message.peerId, message.reply_to_mid);
+          const media = (gameMessage as Message.message)?.media;
+          if(media?._ === 'messageMediaGame' && media.game?._ === 'game') {
+            gameTitle = media.game.title;
+          } else if(!gameMessage) {
+            managers.appMessagesManager.fetchMessageReplyTo(message);
+          }
+        }
+
+        if(gameTitle) {
+          if(plain) {
+            args.push(wrapSomeText(gameTitle, plain));
+          } else {
+            const link = document.createElement('i');
+            link.classList.add('is-game-link');
+            link.dataset.savedFrom = message.peerId + '_' + message.reply_to_mid;
+            link.append(wrapSomeText(gameTitle, false));
+            setDirection(link);
+            args.push(link);
+          }
+          langPackKey = fromMe ? 'ActionYouScoredInGame' : 'ActionUserScoredInGame';
+        } else {
+          langPackKey = fromMe ? 'ActionYouScored' : 'ActionUserScored';
+        }
         break;
       }
 

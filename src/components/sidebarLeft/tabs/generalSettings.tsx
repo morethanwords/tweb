@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {createEffect, createResource, createSignal, For, on, onCleanup, onMount, Show} from 'solid-js';
 import {GrowHeightReveal} from '@helpers/solid/animations';
 import Section from '@components/section';

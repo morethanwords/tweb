@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {AnimationItemGroup, AnimationItemWrapper} from '@components/animationIntersector';
 import type {Middleware} from '@helpers/middleware';
 import type {LiteModeKey} from '@helpers/liteMode';

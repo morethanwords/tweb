@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {GroupCall} from '@layer';
 import GroupCallInstance from '@lib/calls/groupCallInstance';
 import GROUP_CALL_STATE from '@lib/calls/groupCallState';
@@ -26,13 +20,14 @@ export default class GroupCallDescriptionElement {
 
   public update(instance: GroupCallInstance) {
     const {state} = instance;
+    const groupCall = instance.groupCall as GroupCall.groupCall | undefined;
 
     let key: LangPackKey, args: FormatterArguments;
     if(state === GROUP_CALL_STATE.CONNECTING) {
       key = 'VoiceChat.Status.Connecting';
     } else {
       key = 'VoiceChat.Status.Members';
-      args = [(instance.groupCall as GroupCall.groupCall).participants_count];
+      args = [groupCall?.participants_count ?? 1];
     }
 
     const {descriptionIntl} = this;

@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {AppImManager, ChatSavedPosition, ChatSetInnerPeerOptions, ChatSetPeerOptions} from '@lib/appImManager';
 import type {HistoryResult, MyMessage} from '@appManagers/appMessagesManager';
 import type {MyDocument} from '@appManagers/appDocsManager';
@@ -28,7 +22,7 @@ import LazyLoadQueue from '@components/lazyLoadQueue';
 import ListenerSetter from '@helpers/listenerSetter';
 import {setQuizHint} from '@components/quizHint';
 import AudioElement from '@components/audio';
-import {ChannelParticipant, Chat as MTChat, ChatParticipant, Document, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, SponsoredMessage, User, UserFull, WebPage, WebPageAttribute, Reaction, DocumentAttribute, InputStickerSet, TextWithEntities, FactCheck, WebDocument, MessageExtendedMedia, PeerSettings, LangPackString, ForumTopic, MessageAction} from '@layer';
+import {ChannelParticipant, Chat as MTChat, ChatParticipant, Document, Game, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, SponsoredMessage, User, UserFull, WebPage, WebPageAttribute, Reaction, DocumentAttribute, InputStickerSet, TextWithEntities, FactCheck, WebDocument, MessageExtendedMedia, PeerSettings, LangPackString, ForumTopic, MessageAction} from '@layer';
 import {BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID, SEND_WHEN_ONLINE_TIMESTAMP, STARS_CURRENCY} from '@appManagers/constants';
 import {FocusDirection, ScrollStartCallbackDimensions} from '@helpers/fastSmoothScroll';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation} from '@hooks/useHeavyAnimationCheck';
@@ -1366,6 +1360,21 @@ export default class ChatBubbles {
   public attachContainerListeners() {
     const container = this.container;
 
+    if(this.chat.isPreview) {
+      // Belt-and-suspenders: every other isPreview short-circuit in this file gates a
+      // specific delegate (`onBubblesClick`, `readMessages`, …). Sponsored / menu / close
+      // buttons inside bubbles bind their own listeners directly on their DOM and skip
+      // those delegates — a capture-phase swallow on the bubbles container kills them all
+      // before anything can run, complementing the `.bubble { pointer-events: none }`
+      // CSS that handles regular bubble children. Context menu / selection / dblclick
+      // listeners are skipped entirely (preview is read-only).
+      this.listenerSetter.add(container)('click', (e) => {
+        e.stopImmediatePropagation();
+        e.preventDefault();
+      }, {capture: true});
+      return;
+    }
+
     this.chat.contextMenu.attachTo(container);
     this.chat.selection.attachListeners(container, new ListenerSetter());
 
@@ -1958,6 +1967,8 @@ export default class ChatBubbles {
       const fullMid = getBubbleFullMid(entry.target as HTMLElement);
       this.observer.unobserve(entry.target, this.viewsObserverCallback);
 
+      if(this.chat.isPreview) return;
+
       if(fullMid) {
         if(this.sponsoredMessagesMids.includes(fullMid)) {
           const {mid} = splitFullMid(fullMid);
@@ -2415,6 +2426,7 @@ export default class ChatBubbles {
   }
 
   private readUnreaded(type: 'history' | 'content') {
+    if(this.chat.isPreview) return;
     const readPromiseKey = type === 'history' ? 'readPromise' : 'readContentPromise';
     if(this[readPromiseKey]) return;
 
@@ -2486,6 +2498,10 @@ export default class ChatBubbles {
   }
 
   public onBubblesClick = async(e: Event) => {
+    // Previews are read-only — no media open, no jump-to-reply, no link follow, no
+    // context menu. Belt-and-suspenders to the CSS `pointer-events: none` we put on
+    // `.bubble` for preview mode.
+    if(this.chat.isPreview) return;
     let target = e.target as HTMLElement;
     let bubble: HTMLElement = null, bubbleFullMid: FullMid;
     try {
@@ -2851,6 +2867,11 @@ export default class ChatBubbles {
                 inputInvoice,
                 isReceipt: true
               });
+            }
+          } else if(target.classList.contains('is-game-link')) {
+            const gameMessage = await this.managers.appMessagesManager.getMessageByPeer(peerId.toPeerId(), +mid);
+            if(gameMessage?._ === 'message') {
+              this.chat.appImManager.playGame(gameMessage as Message.message);
             }
           } else {
             this.chat.appImManager.setInnerPeer({
@@ -5176,6 +5197,7 @@ export default class ChatBubbles {
   }
 
   public onScrolledAllDown() {
+    if(this.chat.isPreview) return;
     if(this.chat.type === ChatType.Chat || this.chat.type === ChatType.Discussion) {
       const {peerId, threadId, monoforumThreadId} = this.chat;
       const historyMaxId = this.chat.getHistoryMaxId();
@@ -5766,6 +5788,7 @@ export default class ChatBubbles {
   }
 
   private setUnreadObserver(type: 'history' | 'content', bubble: HTMLElement, mid?: number, element: HTMLElement = bubble) {
+    if(this.chat.isPreview) return;
     mid ??= (bubble as any).maxBubbleMid;
     // this.log('not our message', message, message.pFlags.unread);
     this.observer.observe(element, type === 'history' ? this.unreadedObserverCallback : this.unreadedContentObserverCallback);
@@ -6558,6 +6581,9 @@ export default class ChatBubbles {
       setUnreadObserver?.();
       if(hasReactions && this.chat.type !== ChatType.Logs) {
         this.appendReactionsElementToBubble(bubble, message, reactionsMessage, undefined, loadPromises);
+      }
+      if(this.observer && (unreadMention || unreadReactions)) {
+        this.setUnreadObserver('content', bubble, reactionsMessage.mid);
       }
       return ret;
     }
@@ -7552,6 +7578,133 @@ export default class ChatBubbles {
                     timeSpan.parentElement.prepend(box);
                     box.parentElement.classList.add('mt-bigger');
                   } else timeSpan.before(box);
+                } else {
+                  messageDiv.append(box);
+                }
+              },
+              clickable: true
+            });
+          });
+
+          break;
+        }
+
+        case 'messageMediaGame': {
+          noAttachmentDivNeeded = true;
+          context.attachmentDiv = undefined;
+
+          const game = (context.messageMedia as MessageMedia.messageMediaGame).game as Game.game;
+          if(!game || game._ !== 'game') {
+            break;
+          }
+
+          processedWebPage = true;
+          context.mediaRequiresMessageDiv = true;
+          bubble.classList.add('has-webpage', 'game');
+
+          const photo = game.photo?._ === 'photo' ? game.photo as Photo.photo : undefined;
+          const doc = game.document as MyDocument;
+          const props: Parameters<typeof WebPageBox>[0] = {};
+
+          let preview: HTMLDivElement;
+          if(photo || doc) {
+            preview = document.createElement('div');
+            props.media = {
+              content: preview,
+              position: 'top'
+            };
+          }
+
+          if(doc) {
+            if(doc.type === 'gif' || doc.type === 'video') {
+              bubble.classList.add('video');
+              wrapVideo({
+                doc,
+                container: preview,
+                message: message as Message.message,
+                boxWidth: mediaSizes.active.webpage.width,
+                boxHeight: mediaSizes.active.webpage.height,
+                lazyLoadQueue: this.lazyLoadQueue,
+                middleware,
+                isOut,
+                group: this.chat.animationGroup,
+                loadPromises,
+                autoDownload: this.chat.autoDownload,
+                noInfo: true,
+                observer: this.observer,
+                onLoad: this.onVideoLoad,
+                setShowControlsOn: bubble
+              });
+            } else {
+              const docDiv = await wrapDocument({
+                message: message as Message.message,
+                middleware: bubble.middlewareHelper.get(),
+                autoDownloadSize: this.chat.autoDownload.file,
+                lazyLoadQueue: this.lazyLoadQueue,
+                loadPromises,
+                sizeType: 'documentName',
+                searchContext: {
+                  useSearch: false,
+                  peerId: this.peerId,
+                  inputFilter: {_: 'inputMessagesFilterEmpty'}
+                },
+                fontSize: this.chat.appSettings.messagesTextSize
+              });
+              preview.append(docDiv);
+              props.media.hasDocument = true;
+            }
+          } else if(photo) {
+            bubble.classList.add('photo');
+            wrapPhoto({
+              photo,
+              message,
+              container: preview,
+              boxWidth: mediaSizes.active.webpage.width,
+              boxHeight: mediaSizes.active.webpage.height,
+              isOut,
+              lazyLoadQueue: this.lazyLoadQueue,
+              middleware,
+              loadPromises,
+              autoDownloadSize: this.chat.autoDownload.photo
+            });
+          }
+
+          props.name = {
+            content: i18n('AttachGame')
+          };
+
+          if(game.title) {
+            props.title = wrapRichText(game.title, {noLinks: true, noLinebreaks: true});
+          }
+
+          if(game.description) {
+            props.text = wrapRichText(game.description, {noLinks: true});
+          }
+
+          props.footer = {
+            content: i18n('Bot.Game.Play')
+          };
+
+          createRoot((dispose) => {
+            middleware.onDestroy(dispose);
+            WebPageBox({
+              ...props,
+              ref: (box) => {
+                this.webPageClickCallbacks.set(box, (e) => {
+                  cancelEvent(e);
+                  // After an inline send confirms, the bubble's data-mid is
+                  // patched in place but the closure's `message` still has the
+                  // temp mid — re-read from the DOM so we hit the server mid.
+                  const currentMid = +bubble.dataset.mid;
+                  const captured = message as Message.message;
+                  const target = (currentMid && currentMid !== captured.mid ?
+                    this.chat.getMessageByPeer(captured.peerId, currentMid) as Message.message :
+                    undefined) || captured;
+                  this.chat.appImManager.playGame(target);
+                });
+
+                if(timeSpan) {
+                  timeSpan.before(box);
                 } else {
                   messageDiv.append(box);
                 }

@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {Message, MessageAction, MessageMedia, MessageReplyHeader, Peer, WebPage, WebPageAttribute} from '@layer';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 

@@ -79,7 +79,7 @@ export type UpdateGroupCallConnectionData = {
 
 export type UpgradeGroupCallConnectionPresentationData = Omit<UpdateGroupCallConnectionData, 'audio'>;
 
-// * Peer-to-Peer
+// * Peer-to-Peer — tgcalls v2 signaling protocol (NegotiateChannels)
 export type P2PPayloadType = {
   id: number,
   name: string,
@@ -91,33 +91,58 @@ export type P2PPayloadType = {
   },
 };
 
-export type P2PAudioCodec = {
-  payloadTypes: Array<P2PPayloadType>,
-  rtpExtensions: Array<RtpHdrexts>,
+export type P2PSsrcGroup = {
+  semantics: string,
+  // strings on the wire per tgcalls; tolerate numbers too (telegram-tt emits numbers)
+  ssrcs: (string | number)[]
+};
+
+export type P2PFingerprint = {
+  hash: string,
+  setup: string,
+  fingerprint: string
+};
+
+// A single negotiated media channel (audio / camera video / screencast video).
+export type P2PMediaContent = {
+  type: 'audio' | 'video',
   ssrc: string,
+  ssrcGroups?: P2PSsrcGroup[],
+  payloadTypes?: P2PPayloadType[],
+  rtpExtensions?: RtpHdrexts[]
 };
 
-export type P2PVideoCodec = P2PAudioCodec & {
-  ssrcGroups: {semantics: string, ssrcs: string[]}[]
-};
-
-export type CallSignalingData = CallSignalingData.candidates | CallSignalingData.initialSetup;
+export type CallSignalingData =
+  CallSignalingData.candidates |
+  CallSignalingData.initialSetup |
+  CallSignalingData.negotiateChannels;
 export namespace CallSignalingData {
+  export type candidate = {
+    sdpString: string,
+    sdpMid?: string,
+    sdpMLineIndex?: number,
+    usernameFragment?: string
+  };
+
   export type candidates = {
     '@type': 'Candidates',
-    candidates: {
-      sdpString: string
-    }[]
+    candidates: candidate[],
+    exchangeId?: string,
+    ufrag?: string
   };
 
   export type initialSetup = {
     '@type': 'InitialSetup',
-    audio: P2PAudioCodec,
-    fingerprints: GroupCallConnectionTransport['fingerprints'],
-    pwd: string,
     ufrag: string,
-    video: P2PVideoCodec,
-    screencast?: P2PVideoCodec
+    pwd: string,
+    renomination: boolean,
+    fingerprints: P2PFingerprint[]
+  };
+
+  export type negotiateChannels = {
+    '@type': 'NegotiateChannels',
+    exchangeId: string,
+    contents: P2PMediaContent[]
   };
 }
 
@@ -130,6 +155,10 @@ export type CallMediaState = {
   videoRotation: number,
   videoState: CallMediaState['screencastState']
 };
+
+// Any message exchanged over the P2P call: signaling messages travel encrypted
+// through phone.sendSignalingData, MediaState travels over the WebRTC data channel.
+export type P2PMessage = CallSignalingData | CallMediaState;
 
 export type DiffieHellmanInfo = DiffieHellmanInfo.a | DiffieHellmanInfo.b;
 

@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {SliderSuperTab} from '@components/slider';
 import type {SliderSuperTabEventable, SliderSuperTabEventableConstructable} from '@components/sliderTab';
 import CheckboxField, {CheckboxFieldOptions} from '@components/checkboxField';

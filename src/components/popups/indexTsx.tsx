@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {createContext, useContext, createSignal, onCleanup, JSX, Show, createRoot, Accessor, createEffect, untrack, on, Ref, Setter, onMount} from 'solid-js';
 import {createStore} from 'solid-js/store';
 import {Portal} from 'solid-js/web';
@@ -439,8 +433,7 @@ PopupElement.CloseButton = (props: {
 
 PopupElement.Body = (props: {
   children: JSX.Element,
-  class?: string,
-  scrollable?: boolean
+  class?: string
 }) => {
   return useContext(PopupContext).register('body', (
     <div class={classNames('popup-body', props.class)}>
@@ -485,6 +478,12 @@ PopupElement.Footer = (props: {
       {props.children}
     </div>
   ));
+};
+
+PopupElement.FooterPlaceholder = () => {
+  return (
+    <div class="popup-footer-placeholder" />
+  );
 };
 
 PopupElement.FooterButton = (

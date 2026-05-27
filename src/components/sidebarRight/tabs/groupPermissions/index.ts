@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {ChatRights} from '@appManagers/appChatsManager';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import findUpTag from '@helpers/dom/findUpTag';

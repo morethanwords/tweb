@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import Modes from '@config/modes';
 import {ChatInvite, InputUser, StarsSubscriptionPricing, Updates} from '@layer';
 import {AppManager} from '@appManagers/manager';

@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {AppTheme, AppThemeSettings} from '@config/state';
 import type {AccentPreset} from '@config/themePresets';
 import type {BaseTheme, Theme, ThemeSettings} from '@layer';

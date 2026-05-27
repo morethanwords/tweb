@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {JSX, ParentComponent, Ref, splitProps} from 'solid-js';
 import {LangPackKey, FormatterArguments, i18n} from '@lib/langPack';
 import {generateDelimiter} from '@components/generateDelimiter';
@@ -21,6 +15,7 @@ export type SectionOptions = {
   noDelimiter?: boolean,
   fakeGradientDelimiter?: boolean,
   noShadow?: boolean,
+  noMarginBottom?: boolean,
   class?: JSX.HTMLAttributes<HTMLDivElement>['class'],
   innerClass?: string,
   contentProps?: JSX.HTMLAttributes<HTMLDivElement>,
@@ -57,7 +52,8 @@ const Section: ParentComponent<SectionOptions & JSX.HTMLAttributes<HTMLDivElemen
           className,
           props.noShadow && 'no-shadow',
           props.fakeGradientDelimiter ? 'with-fake-delimiter' : props.noDelimiter && 'no-delimiter',
-          props.innerClass
+          props.innerClass,
+          props.noMarginBottom && 'no-margin-bottom'
         )}
       >
         {props.fakeGradientDelimiter ? generateDelimiter() : (!props.noDelimiter && <hr />)}

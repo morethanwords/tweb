@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {StateSettings} from '@config/state';
 import flatten from '@helpers/array/flatten';
 import {attachClickEvent} from '@helpers/dom/clickEvent';

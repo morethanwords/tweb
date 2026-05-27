@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {nextRandomUint, randomBytes} from '@helpers/random';
 import {IntermediatePacketCodec} from '@lib/mtproto/transports/intermediate';
 /*  Data packets are aligned to 4bytes. This codec adds random bytes of size

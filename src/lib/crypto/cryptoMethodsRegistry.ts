@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import bytesModPow from '@helpers/bytes/bytesModPow';
 import gzipUncompress from '@helpers/gzipUncompress';
 import getEmojisFingerprint from '@lib/calls/helpers/getEmojisFingerprint';

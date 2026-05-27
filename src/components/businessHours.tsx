@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {createEffect, createSignal, For, on, untrack, JSX, onCleanup, getOwner, runWithOwner} from 'solid-js';
 import {Portal} from 'solid-js/web';
 import OpeningHours from '@helpers/openingHours';

@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import forEachReverse from '@helpers/array/forEachReverse';
 import SDPMediaSection from '@lib/calls/sdp/mediaSection';
 import {UpdateGroupCallConnectionData, Codec} from '@lib/calls/types';

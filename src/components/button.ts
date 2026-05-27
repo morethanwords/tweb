@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {FormatterArguments, i18n, LangPackKey} from '@lib/langPack';
 import Icon from '@components/icon';
 import ripple from '@components/ripple';

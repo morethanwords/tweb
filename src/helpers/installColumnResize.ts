@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import SwipeHandler, {getEvent} from '@components/swipeHandler';
 import {toastNew} from '@components/toast';
 import rootScope from '@lib/rootScope';

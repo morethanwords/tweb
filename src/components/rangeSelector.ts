@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import attachGrabListeners, {GrabEvent} from '@helpers/dom/attachGrabListeners';
 import clamp from '@helpers/number/clamp';
 import safeAssign from '@helpers/object/safeAssign';

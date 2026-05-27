@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import assumeType from '@helpers/assumeType';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import positionElementByIndex from '@helpers/dom/positionElementByIndex';

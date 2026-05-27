@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {MessageSendingParams} from '@appManagers/appMessagesManager';
 import {AppManager} from '@appManagers/manager';
 import {AttachMenuBots, AttachMenuBot, Update, DataJSON, BotApp} from '@layer';

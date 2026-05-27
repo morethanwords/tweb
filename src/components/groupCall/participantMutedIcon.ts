@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import RLottieIcon from '@lib/rlottie/rlottieIcon';
 import {GROUP_CALL_PARTICIPANT_CLEARED_MUTED_STATE, GROUP_CALL_PARTICIPANT_MUTED_STATE, getColorByMutedState, clearMutedStateModifier} from '.';
 import {SuperRLottieIcon} from '@components/superIcon';

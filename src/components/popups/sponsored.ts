@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import safeWindowOpen from '@helpers/dom/safeWindowOpen';
 import I18n, {i18n} from '@lib/langPack';
 import PopupPeer from '@components/popups/peer';

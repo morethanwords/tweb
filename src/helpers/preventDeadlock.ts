@@ -1,4 +1,5 @@
 import {fastRafPromise} from './schedulers';
+import {IS_PREVIEW} from '@config/debug';
 
 /**
   * There is a edge-case bug that occurs when:
@@ -15,5 +16,9 @@ import {fastRafPromise} from './schedulers';
   * delaying it until the user focuses the tab — and prevents this freeze.
   */
 export async function preventCrossTabDynamicImportDeadlock() {
+  // The preview always runs in a single, freshly minted tab, so the cross-tab
+  // module deadlock cannot arise. Skip the rAF wait so the dynamic imports
+  // proceed immediately instead of blocking the first paint.
+  if(IS_PREVIEW) return;
   await fastRafPromise();
 }

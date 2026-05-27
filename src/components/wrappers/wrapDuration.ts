@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import I18n, {LangPackKey, i18n, join} from '@lib/langPack';
 import formatDuration, {DurationType} from '@helpers/formatDuration';
 import toHHMMSS from '@helpers/string/toHHMMSS';

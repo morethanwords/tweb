@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import InputField from '@components/inputField';
 import {SliderSuperTab} from '@components/slider';
 import EditPeer from '@components/editPeer';

@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 @use "../scss/mixins" as *;
 @use "../scss/variables" as *;
 
@@ -289,6 +283,24 @@ $transition: .2s var(--transition-standard-easing);
         height: 100%;
       }
     }
+  }
+
+  &GameBody {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    background-color: var(--surface-color);
+  }
+
+  &GameIframe {
+    flex: 1 1 auto;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: transparent;
+    transition: opacity $transition;
   }
 
   &.noMovable {

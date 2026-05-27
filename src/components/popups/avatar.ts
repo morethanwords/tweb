@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import type {AppDownloadManager} from '@lib/appDownloadManager';
 import resizeableImage from '@lib/cropper';
 import PopupElement from '.';

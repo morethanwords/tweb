@@ -58,7 +58,7 @@ export async function createTestClient(opts: CreateTestClientOpts) {
   step('init MTProtoMessagePort singleton');
   const MTProtoMessagePort = (await import('@lib/mainWorker/mainMessagePort')).default;
 
-  new MTProtoMessagePort<false>();
+  new MTProtoMessagePort<false>(false);
 
   step('import managers');
   const AppStateManager = (await import('@appManagers/appStateManager')).default;

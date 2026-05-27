@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {USING_BOMS} from '@helpers/dom/richInputHandler';
 import BOM from '@helpers/string/bom';
 import {_i18n} from '@lib/langPack';
@@ -15,6 +9,11 @@ const USELESS_REG_EXP = new RegExp(`(<span>${BOM}</span>)|(<br\/?>)`, 'g');
 export default class InputFieldAnimated extends InputField {
   public inputFake: HTMLElement;
   public onChangeHeight: (height: number) => void;
+  // Owned by the consumer via setMaxHeight(). Single source of truth: the
+  // same number drives both `input.style.maxHeight` and the scrollHeight
+  // clamp in onFakeInput(), so the height we report upstream (e.g. via
+  // `--chat-input-height-surplus`) matches the visible input.
+  private maxHeight: number | undefined;
 
   // public onLengthChange: (length: number, isOverflow: boolean) => void;
   // protected wasInputFakeClientHeight: number;
@@ -42,12 +41,16 @@ export default class InputFieldAnimated extends InputField {
     this.inputFake.className = this.input.className + ' input-field-input-fake';
   }
 
+  public setMaxHeight(value: number | undefined) {
+    if(this.maxHeight === value) return;
+    this.maxHeight = value;
+    this.input.style.maxHeight = value !== undefined ? value + 'px' : '';
+    this.onFakeInput();
+  }
+
   public onFakeInput(setHeight = true, noAnimation?: boolean) {
-    const {scrollHeight: newHeight/* , clientHeight */} = this.inputFake;
-    /* if(this.wasInputFakeClientHeight && this.wasInputFakeClientHeight !== clientHeight) {
-      this.input.classList.add('no-scrollbar'); // ! в сафари может вообще не появиться скролл после анимации, так как ему нужен полный reflow блока с overflow.
-      this.showScrollDebounced();
-    } */
+    const {scrollHeight} = this.inputFake;
+    const newHeight = this.maxHeight !== undefined ? Math.min(scrollHeight, this.maxHeight) : scrollHeight;
 
     noAnimation ??= !this.input.isContentEditable;
 

@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import PopupElement from '@components/popups/index';
 import PromoSlideTab, {getGiftDetails} from '@components/premium/promoSlideTab';
 import TransitionSlider from '@components/transition';

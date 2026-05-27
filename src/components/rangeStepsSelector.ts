@@ -1,9 +1,3 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
-
 import {Middleware} from '@helpers/middleware';
 import safeAssign from '@helpers/object/safeAssign';
 import RangeSelector from '@components/rangeSelector';
