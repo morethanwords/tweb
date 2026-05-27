@@ -166,6 +166,7 @@ export type ChatSavedPosition = {
 export type ChatSetPeerOptions = {
   peerId: PeerId,
   lastMsgId?: number,
+  pollOptionBase64?: string,
   lastMsgPeerId?: PeerId,
   threadId?: number,
   monoforumThreadId?: PeerId,

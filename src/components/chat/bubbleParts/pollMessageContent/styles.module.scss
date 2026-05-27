@@ -110,10 +110,6 @@
       --ripple-color: rgba(255, 255, 255, 0.175);
     }
   }
-
-  &.hovered {
-    background-color: var(--hover-bg-color);
-  }
 }
 
 .clickableArea {
@@ -127,6 +123,14 @@
   cursor: pointer;
 
   @include hoverable;
+
+  &.hoveredTransition {
+    transition: background-color 0.4s ease-in-out;
+  }
+
+  &.hovered {
+    background-color: var(--hover-bg-color);
+  }
 }
 
 .label {

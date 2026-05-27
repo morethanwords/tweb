@@ -4463,7 +4463,7 @@ export default class ChatBubbles {
   }
 
   public async setPeer(options: ChatSetPeerOptions & {samePeer: boolean, sameSearch: boolean, forceIsFirstLoad?: boolean}): Promise<{cached?: boolean, promise: Chat['setPeerPromise']}> {
-    const {samePeer, sameSearch, peerId, stack, monoforumThreadId, forceIsFirstLoad} = options;
+    const {samePeer, sameSearch, peerId, stack, monoforumThreadId, forceIsFirstLoad, pollOptionBase64} = options;
     let {lastMsgId, lastMsgPeerId, startParam} = options;
     const tempId = ++this.setPeerTempId;
 
@@ -4596,6 +4596,7 @@ export default class ChatBubbles {
         if(isTarget) {
           this.scrollToBubble(bubble, 'center');
           this.highlightBubble(bubble);
+          this.highlightBubblePollAnswer(bubble, lastMsgFullMid, pollOptionBase64);
           this.chat.dispatchEvent('setPeer', lastMsgId, false);
         } else if(topMessageFullMid !== EMPTY_FULL_MID && !isJump) {
           // log('will scroll down', this.scroll.scrollTop, this.scroll.scrollHeight);
@@ -4898,6 +4899,7 @@ export default class ChatBubbles {
 
           if(!followingUnread && isTarget && foundTarget) {
             this.highlightBubble(bubble);
+            this.highlightBubblePollAnswer(bubble, lastMsgFullMid, pollOptionBase64);
           }
         }
 
@@ -10784,5 +10786,23 @@ export default class ChatBubbles {
     });
 
     return entry;
+  }
+
+  private highlightBubblePollAnswer(bubble?: HTMLElement, lastMsgFullMid?: FullMid, pollOption?: string) {
+    if(!bubble || lastMsgFullMid === EMPTY_FULL_MID || !pollOption) return;
+
+    const message = this.chat.getMessage(lastMsgFullMid);
+    if(!message || message?._ !== 'message' || message?.media?._ !== 'messageMediaPoll') return;
+
+    const maxLength = 4; // btoa('12')
+    if(pollOption.length > maxLength) return; // discard possibly malformed parameter
+
+    const pollOptionIndex = parseInt(atob(pollOption), 10);
+    if(isNaN(pollOptionIndex)) return; // discard possibly malformed parameter
+
+    const context = this.contexts.get(bubble);
+    if(!context) return;
+
+    context.pollMessageContentControls?.highlightAnswerWithTimeout?.(pollOptionIndex, 3000);
   }
 }

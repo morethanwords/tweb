@@ -71,6 +71,7 @@ export namespace InternalLink {
     comment?: string,
     thread?: string,
     start?: string,
+    option?: string,
     t?: string, // media timestamp
     single?: string,
     text?: string,
@@ -83,6 +84,7 @@ export namespace InternalLink {
     post: string,
     thread?: string,
     comment?: string,
+    option?: string,
     t?: string // media timestamp
     stack?: ChatSetPeerOptions['stack'] // local
   }

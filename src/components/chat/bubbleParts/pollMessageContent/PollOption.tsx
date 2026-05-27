@@ -49,11 +49,14 @@ export const PollOption = (props: {
   hideResults?: boolean;
   initialIdx?: number;
   highlighted?: boolean;
+  slowHighlighted?: boolean;
 
   result?: PollOptionResult;
 }) => {
   const {TranslatableMessageTsx, wrapGeo} = useHotReloadGuard()
   const contextProps = usePollMessageContentProps();
+
+  let clickableAreaElement: HTMLDivElement;
 
   const isShowingResult = createMemo(() => !!props.result);
 
@@ -91,19 +94,35 @@ export const PollOption = (props: {
     }
   });
 
+  createEffect(() => {
+    if(!props.slowHighlighted || !clickableAreaElement) return;
+
+    requestRAF(() => {
+      clickableAreaElement.classList.add(styles.hoveredTransition, styles.hovered);
+    });
+
+    onCleanup(() => {
+      clickableAreaElement.classList.remove(styles.hovered);
+
+      requestRAF(() => {
+        clickableAreaElement.classList.remove(styles.hoveredTransition);
+      });
+    });
+  });
+
   return (
     <div class={styles.pollOption} classList={{[styles.hasMedia]: props.withMedia}} data-poll-option-idx={props.initialIdx}>
-      <Show when={!isShowingResult() || props.highlighted}>
-        <div
-          class={styles.clickableArea}
-          classList={{
-            [styles.outgoing]: contextProps.isOutgoing,
-            [styles.hovered]: props.highlighted
-          }}
-          use:ripple
-          onClick={props.onToggle}
-        />
-      </Show>
+      <div
+        ref={clickableAreaElement}
+        class={styles.clickableArea}
+        classList={{
+          [styles.pointerDisabled]: isShowingResult(),
+          [styles.outgoing]: contextProps.isOutgoing,
+          [styles.hovered]: props.highlighted && !props.slowHighlighted
+        }}
+        use:ripple
+        onClick={props.onToggle}
+      />
       <div class={styles.checkContainer}>
         <Transition name='fade'>
           <Switch>

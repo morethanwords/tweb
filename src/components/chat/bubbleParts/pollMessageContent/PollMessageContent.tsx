@@ -61,6 +61,7 @@ export type PollMessageContentProps = {
 export type PollMessageContentControls = {
   openMediaViewer: (idx: number) => void;
   highlightAnswer: (idx: number) => void;
+  highlightAnswerWithTimeout: (idx: number, timeout: number) => void;
 };
 
 type MediaViewerPayloadIndexes = {
@@ -90,6 +91,7 @@ export const PollMessageContent =
     const [descriptionElement, setDescriptionElement] = createSignal<HTMLDivElement>();
     const [isConfettiActive, setIsConfettiActive] = createSignal(false);
     const [highlightedIndexes, setHighlightedIndexes] = createSignal<number[]>([]);
+    const [slowHighlightedIndexes, setSlowHighlightedIndexes] = createSignal<number[]>([]);
 
     let inputField: InputField;
     const elementByIndexMap = new Map<number, HTMLElement>();
@@ -280,12 +282,22 @@ export const PollMessageContent =
       });
     };
 
+    let highlightedTimeout: number;
+
     props.controls.highlightAnswer = (idx?: number | null) => {
+      self.clearTimeout(highlightedTimeout);
+
       if(typeof idx === 'number') {
         setHighlightedIndexes([idx]);
       } else {
         setHighlightedIndexes([]);
       }
+    };
+
+    props.controls.highlightAnswerWithTimeout = (idx: number, timeout: number) => {
+      self.clearTimeout(highlightedTimeout);
+      setSlowHighlightedIndexes([idx]);
+      highlightedTimeout = self.setTimeout(() => setSlowHighlightedIndexes([]), timeout);
     };
 
     return (
@@ -401,6 +413,7 @@ export const PollMessageContent =
                   isPendingVote={delayedSendVotePending()}
                   hideResults={hideResults()}
                   highlighted={highlightedIndexes().includes(initialIdx())}
+                  slowHighlighted={slowHighlightedIndexes().includes(initialIdx())}
                 />
               );
             }}
