@@ -102,8 +102,8 @@
   }
 
   &.outgoing {
-    --hover-bg-color: hsla(from var(--message-primary-color) h s l / 0.075);
-    --ripple-color: hsla(from var(--message-primary-color) h s l / 0.125);
+    --hover-bg-color: hsla(from var(--message-primary-color) h s l / 0.08);
+    --ripple-color: hsla(from var(--message-primary-color) h s l / 0.15);
 
     :global(.night) & {
       --hover-bg-color: rgba(255, 255, 255, 0.1);
