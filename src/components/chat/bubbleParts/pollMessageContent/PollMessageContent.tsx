@@ -157,14 +157,13 @@ export const PollMessageContent =
 
     const {
       sendVoteMutation,
+      wrappedSendVote,
       delayedSendVotePending,
       addOptionMutation,
       wrappedAddOption
     } = usePollMutations({
       getOverridenMessage,
       isShowingResult,
-      hasSelectedSomething,
-      chosenIndexes,
       initialIdxFromShuffledIdx,
       newOption,
       onSuccess: resetInteractiveState
@@ -206,10 +205,13 @@ export const PollMessageContent =
 
     // ----- Event handlers -----
     const handleToggle = (index: number) => {
+      if(!allowMultipleAnswers()) {
+        wrappedSendVote([index]);
+        return;
+      }
+
       setChosenIndexes(prev => {
-        if(!allowMultipleAnswers()) {
-          return prev.includes(index) ? [] : [index];
-        } else if(prev.includes(index)) {
+        if(prev.includes(index)) {
           return prev.filter(i => i !== index);
         } else {
           return [...prev, index];
@@ -242,7 +244,7 @@ export const PollMessageContent =
 
     const onFooterClick = wrapAsyncClickHandler(async() => {
       if(canShowViewResults()) openViewResults();
-      else if(hasSelectedSomething()) await sendVoteMutation.mutateAsync();
+      else if(hasSelectedSomething()) await sendVoteMutation.mutateAsync(chosenIndexes());
       else if(hasTypedNewOption()) await wrappedAddOption();
     });
 

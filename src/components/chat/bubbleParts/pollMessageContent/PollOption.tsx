@@ -1,6 +1,5 @@
 import ripple from '@components/ripple';
 import {Spinner} from '@components/spinner';
-import StaticRadio from '@components/staticRadio';
 import {StickerPreview} from '@components/stickerPreview';
 import PhotoTsx from '@components/wrappers/photoTsx';
 import VideoTsx from '@components/wrappers/videoTsx';
@@ -132,12 +131,12 @@ export const PollOption = (props: {
               </div>
             </Match>
             <Match when={!isShowingResult() || props.hideResults}>
-              <Show
-                when={props.allowMultipleAnswers}
-                fallback={<StaticRadio class={styles.checkbox} checked={isShowingResult() ? props.result?.chosen : props.checked} />}
-              >
-                <InMessageCheckbox class={styles.checkbox} checked={isShowingResult() ? props.result?.chosen : props.checked} isOutgoing={contextProps.isOutgoing} />
-              </Show>
+              <InMessageCheckbox
+                class={styles.checkbox}
+                checked={isShowingResult() ? props.result?.chosen : props.checked}
+                isOutgoing={contextProps.isOutgoing}
+                round={!props.allowMultipleAnswers}
+              />
             </Match>
             <Match when={canShowPercentage()}>
               <div class={styles.percent}>
