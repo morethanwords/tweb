@@ -226,6 +226,8 @@ import wrapMessageForReply from '@components/wrappers/messageForReply';
 import canSeeMessageMedia from '@lib/appManagers/utils/messages/canSeeMessageMedia';
 import {PollMessageContentProps, PollMessageContentControls} from './bubbleParts/pollMessageContent';
 import {createMutable} from 'solid-js/store';
+import compareUint8Arrays from '@helpers/bytes/compareUint8Arrays';
+import {pollOptionToLink} from './bubbleParts/pollMessageContent/pollToOptionLink';
 
 // TODO: fix new message won't be rendered if an old one is rendering in the moment
 
@@ -3077,6 +3079,7 @@ export default class ChatBubbles {
           ...additionalSetPeerProps,
           peerId: replyToPeerId,
           lastMsgId: replyToMid,
+          pollOptionBase64: pollOptionToLink(replyTo.poll_option),
           type: this.chat.type === ChatType.Logs ? undefined : this.chat.type,
           threadId: this.chat.threadId,
           monoforumThreadId: this.chat.monoforumThreadId
@@ -10788,20 +10791,28 @@ export default class ChatBubbles {
     return entry;
   }
 
-  private highlightBubblePollAnswer(bubble?: HTMLElement, lastMsgFullMid?: FullMid, pollOption?: string) {
-    if(!bubble || lastMsgFullMid === EMPTY_FULL_MID || !pollOption) return;
+  private highlightBubblePollAnswer(bubble?: HTMLElement, lastMsgFullMid?: FullMid, pollOptionBase64?: string) {
+    if(!bubble || lastMsgFullMid === EMPTY_FULL_MID || !pollOptionBase64) return;
 
     const message = this.chat.getMessage(lastMsgFullMid);
     if(!message || message?._ !== 'message' || message?.media?._ !== 'messageMediaPoll') return;
 
-    const maxLength = 4; // btoa('12')
-    if(pollOption.length > maxLength) return; // discard possibly malformed parameter
+    const maxLength = 100;
+    if(pollOptionBase64.length > maxLength) return; // discard possibly malformed parameter
 
-    const pollOptionIndex = parseInt(atob(pollOption), 10);
-    if(isNaN(pollOptionIndex)) return; // discard possibly malformed parameter
+    let option: Uint8Array;
+    try {
+      const textEncoder = new TextEncoder();
+      option = textEncoder.encode(atob(pollOptionBase64));
+    } catch{
+      return;
+    }
 
     const context = this.contexts.get(bubble);
     if(!context) return;
+
+    const pollOptionIndex = message.media.poll.answers.findIndex((answer) => answer._ === 'pollAnswer' && compareUint8Arrays(answer.option, option));
+    if(pollOptionIndex === -1) return;
 
     context.pollMessageContentControls?.highlightAnswerWithTimeout?.(pollOptionIndex, 3000);
   }

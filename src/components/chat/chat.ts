@@ -1080,6 +1080,7 @@ export default class Chat extends EventListenerBase<{
     lastMsgId: number,
     lastMsgPeerId: PeerId,
     mediaTimestamp: number,
+    pollOptionBase64?: string,
     type: ChatType
   } & ChatSearchKeys> = {}) {
     return this.setPeer({

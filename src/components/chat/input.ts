@@ -165,6 +165,7 @@ import {createAutoDeleteIcon} from '@components/autoDeleteIcon';
 import compareUint8Arrays from '@helpers/bytes/compareUint8Arrays';
 import {LocalTextWithOptionalEntities} from './bubbleParts/pollMessageContent/utils';
 import {SupportedMediaType} from '@components/popups/createPoll/storeContext';
+import {pollOptionToLink} from './bubbleParts/pollMessageContent/pollToOptionLink';
 
 // console.log('Recorder', Recorder);
 
@@ -3624,7 +3625,7 @@ export default class ChatInput {
     if(this.helperType === 'forward') {
       possibleBtnMenuContainer = this.forwardElements?.container;
     } else if(this.helperType === 'reply') {
-      this.chat.setMessageId({lastMsgId: this.replyToMsgId});
+      this.chat.setMessageId({lastMsgId: this.replyToMsgId, pollOptionBase64: pollOptionToLink(this.replyToPollOption)});
       possibleBtnMenuContainer = this.replyElements?.menuContainer;
     } else if(this.helperType === 'edit') {
       this.chat.setMessageId({lastMsgId: this.editMsgId});
