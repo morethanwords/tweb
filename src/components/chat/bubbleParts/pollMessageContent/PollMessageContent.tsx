@@ -358,16 +358,14 @@ export const PollMessageContent = defineSolidElement({
         </div>
 
         <Show when={explanationToggled()}>
-          <div style={{overflow: 'hidden'}}>
-            <Explanation
-              text={props.results?.solution}
-              entities={props.results?.solution_entities}
-              photo={explanationPhoto()}
-              video={explanationVideo()}
-              document={explanationDocument()}
-              pollViewerPayload={[mediaViewerPayload().indexes.explanation, elementByIndexMap]}
-            />
-          </div>
+          <Explanation
+            text={props.results?.solution}
+            entities={props.results?.solution_entities}
+            photo={explanationPhoto()}
+            video={explanationVideo()}
+            document={explanationDocument()}
+            pollViewerPayload={[mediaViewerPayload().indexes.explanation, elementByIndexMap]}
+          />
         </Show>
 
         <TransitionGroup name='fade-2' moveClass='t-move'>
