@@ -406,6 +406,8 @@
 
 .explanation {
   cursor: unset;
+  margin-bottom: 0.125rem !important;
+  margin-top: 0.75rem !important;
 
   &Document {
     pointer-events: initial;
