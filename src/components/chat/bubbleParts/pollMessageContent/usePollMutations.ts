@@ -44,7 +44,7 @@ export function usePollMutations({
 
   const addOptionMutation = createMutation(async() => {
     const {text, entities, attachment} = unwrap(newOption);
-    if(isShowingResult() || !text) return;
+    if(isShowingResult() || !text || attachment?.type === 'pending') return;
 
     await rootScope.managers.appPollsManager.addPollAnswer(
       getOverridenMessage(),

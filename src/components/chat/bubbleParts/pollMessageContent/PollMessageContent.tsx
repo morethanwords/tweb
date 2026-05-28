@@ -172,7 +172,7 @@ export const PollMessageContent =
     });
 
     // Make the footer unclickable immediately when there are pending requests
-    const isFooterClickable = createMemo(() => canFooterBeClickable() && !sendVoteMutation.isPending() && !addOptionMutation.isPending());
+    const isFooterClickable = createMemo(() => canFooterBeClickable() && !sendVoteMutation.isPending() && !addOptionMutation.isPending() && newOption.attachment?.type !== 'pending');
 
     // ----- Media viewer payload -----
     const mediaViewerPayload = createMemo(() => {

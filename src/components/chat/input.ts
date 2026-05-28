@@ -1138,13 +1138,8 @@ export default class ChatInput {
       text: 'Poll',
       onClick: async() => {
         const pollsAction: ChatRights = 'send_polls';
-        const photosAction: ChatRights = 'send_photos';
-        const stickersAction: ChatRights = 'send_stickers';
-        const canSendPolls = () => this.chat.canSend(pollsAction);
-        const canSendPhotos = () => this.chat.canSend(photosAction);
-        const canSendStickers = () => this.chat.canSend(stickersAction);
 
-        if(!(await canSendPolls())) {
+        if(!(await this.chat.canSend(pollsAction))) {
           toastNew({langPackKey: POSTING_NOT_ALLOWED_MAP[pollsAction]});
           return;
         }
@@ -1153,8 +1148,16 @@ export default class ChatInput {
 
         const supportedMediaTypes: SupportedMediaType[] = [];
 
-        if(await canSendPhotos()) supportedMediaTypes.push('photo');
-        if(await canSendStickers()) supportedMediaTypes.push('sticker');
+        const supportedPromises: [Promise<boolean>, SupportedMediaType][] = [
+          [this.chat.canSend('send_photos'), 'photo'],
+          [this.chat.canSend('send_stickers'), 'sticker'],
+          [this.chat.canSend('send_videos'), 'video'],
+          [this.chat.canSend('send_gifs'), 'gif']
+        ];
+
+        for(const [canSendPromise, type] of supportedPromises) {
+          if(await canSendPromise) supportedMediaTypes.push(type);
+        }
 
         openCreatePollPopup({
           isBroadcast: this.chat.isBroadcast,

@@ -337,7 +337,7 @@ const PollOptionInputField = (props: {
       <SimpleFormField.SideContent withFixedIcon first last>
         <EmojiDropdownButton inputField={inputField} />
       </SimpleFormField.SideContent>
-      <Show when={supportsMedia('photo') || supportsMedia('sticker')}>
+      <Show when={supportsMedia('photo') || supportsMedia('video') || supportsMedia('sticker')}>
         <SimpleFormField.WithAutoLengthCounter
           maxLength={maxOptionLength()}
           first={!props.attachment}
@@ -347,6 +347,8 @@ const PollOptionInputField = (props: {
           <MediaAttachment
             supportedMediaTypes={[
               ...(supportsMedia('photo') ? ['photo'] as const : []),
+              ...(supportsMedia('video') ? ['video'] as const : []),
+              ...(supportsMedia('gif') ? ['gif'] as const : []), // GIF is additional to photo
               ...(supportsMedia('sticker') ? ['sticker'] as const : [])
             ]}
             imgClass={styles.mediaAttachmentImage}

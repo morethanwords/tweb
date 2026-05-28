@@ -3,20 +3,6 @@ import {ProgressCircleSVG} from '@components/progressCircleSVG';
 
 export default function RenderProgressCircle(props: {creationProgress: StandaloneSignal<number>}) {
   const [progress] = props.creationProgress.signal;
-  // const [progress, setProgress] = createSignal(0); // Progress signal from 0 to 100
-
-  const radius = 52;
-  const strokeWidth = 6;
-  const circumference = 2 * Math.PI * radius;
-
-  const strokeDashoffset = () => circumference - progress() * circumference;
-
-  // createEffect(() => {
-  //   const interval = setInterval(() => {
-  //     setProgress((prev) => (prev < 100 ? prev + Math.floor(Math.random() * 10) : 0));
-  //   }, 120);
-  //   return () => clearInterval(interval);
-  // });
 
   return (
     <div

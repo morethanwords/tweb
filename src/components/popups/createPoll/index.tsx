@@ -170,7 +170,7 @@ const QuestionAndDescription = () => {
         <SimpleFormField.SideContent withFixedIcon first last>
           <EmojiDropdownButton inputField={descriptionInput} />
         </SimpleFormField.SideContent>
-        <Show when={supportsMedia('photo')}>
+        <Show when={supportsMedia('photo') || supportsMedia('video')}>
           <SimpleFormField.WithAutoLengthCounter
             maxLength={maxDescriptionLength()}
             first={!context.store.descriptionAttachment}
@@ -178,7 +178,11 @@ const QuestionAndDescription = () => {
             withFixedIcon
           >
             <MediaAttachment
-              supportedMediaTypes={['photo']}
+              supportedMediaTypes={[
+                ...(supportsMedia('photo') ? ['photo'] as const : []),
+                ...(supportsMedia('video') ? ['video'] as const : []),
+                ...(supportsMedia('gif') ? ['gif'] as const : []) // GIF is additional to photo
+              ]}
               imgClass={styles.mediaAttachmentImage}
               attachedMedia={context.store.descriptionAttachment}
               onAttach={(value) => {

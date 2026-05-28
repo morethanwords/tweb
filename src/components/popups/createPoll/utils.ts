@@ -1,7 +1,7 @@
 import lastItem from '@helpers/array/lastItem';
 import {createMemo} from 'solid-js';
 import {unwrap} from 'solid-js/store';
-import {CreatePollContextValue, CreatePollStore, StorePollOption, SupportedMediaType, useCreatePollContext} from './storeContext';
+import {AttachedMedia, CreatePollContextValue, CreatePollPayload, CreatePollStore, FinalizedAttachedMedia, StorePollOption, SupportedMediaType, useCreatePollContext} from './storeContext';
 import {useCreatePollLimits} from './useCreatePollLimits';
 
 
@@ -19,6 +19,9 @@ export const useCanSubmit = () => {
 
     if(trimmedOptions.length < 2) return false;
     if(trimmedOptions.some((option) => !option.text)) return false;
+    if(store.pollOptions.some((option) => option.attachment?.type === 'pending')) return false;
+    if(store.descriptionAttachment?.type === 'pending') return false;
+    if(store.explanationAttachment?.type === 'pending') return false;
 
     if(store.pollOptions.length > maxOptions()) return false;
     if(store.pollOptions.some((option) => option.text.length > maxOptionLength())) return false;
@@ -30,7 +33,11 @@ export const useCanSubmit = () => {
   });
 };
 
-export const getFinalPayload = (context: CreatePollContextValue) => {
+const finalizeAttachment = (attachment: AttachedMedia | undefined): FinalizedAttachedMedia | undefined => {
+  if(!attachment || attachment.type === 'pending') return undefined;
+  return attachment;
+};
+export const getFinalPayload = (context: CreatePollContextValue): CreatePollPayload => {
   const {store, isBroadcast} = context;
 
   const cloned = structuredClone(unwrap(store));
@@ -48,12 +55,21 @@ export const getFinalPayload = (context: CreatePollContextValue) => {
     cloned.timeLimit = undefined;
   }
 
-  // Don't care about the attachment (just in case)
-  if(!lastItem(cloned.pollOptions)?.text) {
+  if(cloned.pollOptions.length && !checkOptionHasValue(lastItem(cloned.pollOptions))) {
     cloned.pollOptions.pop();
   }
 
-  return cloned;
+  const {descriptionAttachment, explanationAttachment, pollOptions, ...rest} = cloned;
+
+  return {
+    ...rest,
+    descriptionAttachment: finalizeAttachment(descriptionAttachment),
+    explanationAttachment: finalizeAttachment(explanationAttachment),
+    pollOptions: pollOptions.map(({attachment, ...option}) => ({
+      ...option,
+      attachment: finalizeAttachment(attachment)
+    }))
+  };
 };
 
 export const hasMeaningfulChanges = (store: CreatePollStore) => {

@@ -4610,6 +4610,7 @@ const lang = {
   'EditThisPhoto': 'Edit this photo',
   'EditThisVideo': 'Edit this video',
   'ReplacePhoto': 'Replace photo',
+  'ReplaceVideo': 'Replace video',
 
   'ArchiveSettings': 'Archive Settings',
   'ArchiveSettings.UnmutedChats.Title': 'Unmuted Chats',

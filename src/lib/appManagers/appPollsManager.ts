@@ -1,6 +1,6 @@
 import {AppManager} from '@appManagers/manager';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
-import type {AttachedMedia, AttachedPhoto, AttachedSticker, CreatePollPayload} from '@components/popups/createPoll/storeContext';
+import type {AttachedPhoto, AttachedSticker, AttachedVideo, CreatePollPayload, FinalizedAttachedMedia} from '@components/popups/createPoll/storeContext';
 import assumeType from '@helpers/assumeType';
 import deferredPromise from '@helpers/cancellablePromise';
 import copy from '@helpers/object/copy';
@@ -313,7 +313,7 @@ export class AppPollsManager extends AppManager {
     this.apiUpdatesManager.processUpdateMessage(updates);
   }
 
-  public async addPollAnswer(message: Message.message, text: TextWithEntities, media?: AttachedMedia) {
+  public async addPollAnswer(message: Message.message, text: TextWithEntities, media?: FinalizedAttachedMedia) {
     if(message.media?._ !== 'messageMediaPoll') return;
 
     const peerId = this.appPeersManager.getPeerMigratedTo(message.peerId) || message.peerId;
@@ -397,12 +397,97 @@ export class AppPollsManager extends AppManager {
     });
   }
 
-  private uploadPollMedia(peerId: PeerId, media: AttachedMedia) {
+  private uploadPollMedia(peerId: PeerId, media: FinalizedAttachedMedia) {
     if(media.type === 'sticker') {
       return this.makeStickerPollMedia(media);
     }
 
+    if(media.type === 'video') {
+      return this.uploadVideoPollMedia(peerId, media);
+    }
+
     return this.uploadPhotoPollMedia(peerId, media);
+  }
+
+  private uploadVideoPollMedia(peerId: PeerId, media: AttachedVideo) {
+    const mediaTempId = this.appMessagesManager.getMediaTempId();
+
+    const {document, fileType, apiFileName, attachType, attributes, actionName} =
+      this.appMessagesManager.makeDocumentAndMetaForSendingFile({
+        file: media.blob,
+        objectURL: media.objectUrl,
+        isDocument: false,
+        mediaTempId,
+        width: media.width,
+        height: media.height,
+        duration: media.duration,
+        isAnimated: media.isAnimated,
+        thumb: media.thumb,
+        isMedia: true
+      });
+
+    if(!document) throw new Error('Expected a document for poll video media');
+
+    const {deferred, uploadingFileName} = this.appMessagesManager.makeMediaUploadDeferred({file: media.blob});
+
+    const messageMedia: MessageMedia = {
+      _: 'messageMediaDocument',
+      pFlags: {},
+      document
+    };
+
+    let uploadFileDeferred: ReturnType<typeof this.apiFileManager.upload>;
+
+    this.appMessagesManager.sendSmthLazyLoadQueue.push({
+      load: () => {
+        const inputMediaPromise = this.appMessagesManager.uploadMediaFile({
+          peerId,
+          file: media.blob,
+          uploadingFileName,
+          fileType,
+          apiFileName,
+          attachType,
+          attributes,
+          actionName,
+          objectURL: media.objectUrl,
+          thumb: media.thumb,
+          onUploadDeferred: (promise) => {
+            uploadFileDeferred = promise;
+            this.appMessagesManager.syncSentAndUploadPromises({
+              sentDeferred: deferred,
+              uploadFileDeferred: promise,
+              file: media.blob
+            });
+          }
+        });
+
+        inputMediaPromise.then(async(inputMedia) => {
+          const uploaded = await this.apiManager.invokeApi('messages.uploadMedia', {
+            media: inputMedia,
+            peer: this.appPeersManager.getInputPeerById(peerId)
+          });
+
+          if(uploaded._ !== 'messageMediaDocument') throw new Error('Unexpected media type');
+          if(uploaded.document._ !== 'document') throw new Error('Unexpected document type');
+
+          const doc = this.appDocsManager.saveDoc(uploaded.document);
+
+          deferred.resolve({
+            _: 'inputMediaDocument',
+            id: getDocumentInput(doc),
+            pFlags: {}
+          });
+        }).catch((e) => deferred.reject(e));
+
+        return uploadFileDeferred;
+      }
+    });
+
+    return {
+      uploadingFileName,
+      deferred,
+      messageMedia
+    };
   }
 
   private uploadPhotoPollMedia(peerId: PeerId, media: AttachedPhoto) {

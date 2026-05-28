@@ -231,7 +231,7 @@ export const PollSettingsSectionContent = () => {
               <SimpleFormField.SideContent withFixedIcon first last>
                 <EmojiDropdownButton inputField={explanationInput} />
               </SimpleFormField.SideContent>
-              <Show when={supportsMedia('photo')}>
+              <Show when={supportsMedia('photo') || supportsMedia('video')}>
                 <SimpleFormField.WithAutoLengthCounter
                   maxLength={maxExplanationLength()}
                   first={!context.store.explanationAttachment}
@@ -239,7 +239,11 @@ export const PollSettingsSectionContent = () => {
                   withFixedIcon
                 >
                   <MediaAttachment
-                    supportedMediaTypes={['photo']}
+                    supportedMediaTypes={[
+                      ...(supportsMedia('photo') ? ['photo'] as const : []),
+                      ...(supportsMedia('video') ? ['video'] as const : []),
+                      ...(supportsMedia('gif') ? ['gif'] as const : []) // GIF is additional to photo
+                    ]}
                     imgClass={styles.mediaAttachmentImage}
                     attachedMedia={context.store.explanationAttachment}
                     onAttach={(value) => {
