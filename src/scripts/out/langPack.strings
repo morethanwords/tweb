@@ -4044,6 +4044,7 @@
 "NewPoll.ShuffleOptionsSubtitle" = "Answers appear in random order for each voter";
 "NewPoll.SetCorrectAnswer" = "Set Correct Answer";
 "NewPoll.SetCorrectAnswerSubtitle" = "Mark one option as the correct answer";
+"NewPoll.SetMultipleCorrectAnswerSubtitle" = "Mark one or more options as the correct answer";
 "NewPoll.LimitDuration" = "Limit Duration";
 "NewPoll.LimitDurationSubtitle" = "Automatically close the poll after a certain time";
 "NewPoll.PollDuration" = "Poll Duration";

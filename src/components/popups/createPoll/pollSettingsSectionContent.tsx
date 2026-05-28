@@ -144,7 +144,7 @@ export const PollSettingsSectionContent = () => {
       />
       <SettingsOption
         title='NewPoll.SetCorrectAnswer'
-        subtitle='NewPoll.SetCorrectAnswerSubtitle'
+        subtitle={context.store.allowMultipleAnswers ? 'NewPoll.SetMultipleCorrectAnswerSubtitle' : 'NewPoll.SetCorrectAnswerSubtitle'}
         mediaStyle={getGradientStyle(5)}
         icon='checklist_done'
         checked={context.store.hasCorrectAnswer}
