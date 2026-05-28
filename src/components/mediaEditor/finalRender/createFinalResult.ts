@@ -1,4 +1,4 @@
-import {getOwner, runWithOwner} from 'solid-js';
+import {getOwner, runWithOwner, Signal} from 'solid-js';
 import {unwrap} from 'solid-js/store';
 import {MediaSize} from '@helpers/mediaSize';
 import noop from '@helpers/noop';
@@ -7,7 +7,7 @@ import {adjustmentsConfig, AdjustmentsConfig} from '@components/mediaEditor/adju
 import BrushPainter from '@components/mediaEditor/canvas/brushPainter';
 import {useCropOffset} from '@components/mediaEditor/canvas/useCropOffset';
 import {EditingMediaState, useMediaEditorContext} from '@components/mediaEditor/context';
-import {NumberPair, StandaloneSignal} from '@components/mediaEditor/types';
+import {NumberPair} from '@components/mediaEditor/types';
 import {checkIfHasAnimatedStickers, cleanupWebGl, snapToAvailableQuality} from '@components/mediaEditor/utils';
 import {draw} from '@components/mediaEditor/webgl/draw';
 import {initWebGL} from '@components/mediaEditor/webgl/initWebGL';
@@ -40,7 +40,7 @@ export type MediaEditorFinalResult = {
   originalSize?: NumberPair;
   editingMediaState: EditingMediaState;
   animatedPreview?: HTMLImageElement;
-  creationProgress?: StandaloneSignal<number>;
+  creationProgress?: Signal<number>;
 };
 
 const log = logger('MediaEditor.createFinalResult');

@@ -1,4 +1,4 @@
-import {createRoot, createSignal, getOwner, runWithOwner} from 'solid-js';
+import {createSignal, getOwner, runWithOwner} from 'solid-js';
 
 import deferredPromise from '@helpers/cancellablePromise';
 import noop from '@helpers/noop';
@@ -43,12 +43,8 @@ export default async function renderToVideoGIF({
 
   const {editorState: {pixelRatio}, dontCreatePreview} = context;
 
-  const creationProgress = createRoot(dispose => {
-    const signal = createSignal(0);
-    return {signal, dispose};
-  });
-
-  const [, setProgress] = creationProgress.signal;
+  const creationProgress = createSignal(0);
+  const [, setProgress] = creationProgress;
 
   const renderers = new Map<number, StickerFrameByFrameRenderer>();
 

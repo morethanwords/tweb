@@ -1,8 +1,8 @@
-import {StandaloneSignal} from '@components/mediaEditor/types';
+import {Signal} from 'solid-js';
 import {ProgressCircleSVG} from '@components/progressCircleSVG';
 
-export default function RenderProgressCircle(props: {creationProgress: StandaloneSignal<number>}) {
-  const [progress] = props.creationProgress.signal;
+export default function RenderProgressCircle(props: {creationProgress: Signal<number>}) {
+  const [progress] = props.creationProgress;
 
   return (
     <div

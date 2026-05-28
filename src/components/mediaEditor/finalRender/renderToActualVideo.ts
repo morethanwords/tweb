@@ -1,4 +1,4 @@
-import {createRoot, createSignal, getOwner, runWithOwner} from 'solid-js';
+import {createSignal, getOwner, runWithOwner} from 'solid-js';
 import {animate} from '@helpers/animation';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import ListenerSetter from '@helpers/listenerSetter';
@@ -75,12 +75,8 @@ export default async function renderToActualVideo({
   const startTime = video.duration * videoCropStart;
   const endTime = video.duration * (videoCropStart + videoCropLength);
 
-  const creationProgress = createRoot(dispose => {
-    const signal = createSignal(0);
-    return {signal, dispose};
-  });
-
-  const [progress, setProgress] = creationProgress.signal;
+  const creationProgress = createSignal(0);
+  const [progress, setProgress] = creationProgress;
 
   const renderers = new Map<number, StickerFrameByFrameRenderer>();
 

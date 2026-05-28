@@ -176,7 +176,7 @@ export const MediaAttachment = (props: {
     };
 
     const previewObjectUrl = URL.createObjectURL(editorResult.preview);
-    const [progress] = editorResult.creationProgress?.signal ?? [() => 0];
+    const [progress] = editorResult.creationProgress ?? [() => 0];
 
     setCreatingVideoState({
       previewObjectUrl,
@@ -217,14 +217,11 @@ export const MediaAttachment = (props: {
       // Cancelled or failed: revert to nothing attached.
       URL.revokeObjectURL(previewObjectUrl);
       setCreatingVideoState(undefined);
-      editorResult.creationProgress?.dispose();
       props.onAttach?.(undefined);
       persistingState = undefined;
       editorResult.animatedPreview.remove();
       return;
     }
-
-    editorResult.creationProgress?.dispose();
 
     if(isCleaned()) {
       URL.revokeObjectURL(previewObjectUrl);
