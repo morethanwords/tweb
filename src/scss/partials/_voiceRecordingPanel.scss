@@ -1,0 +1,186 @@
+@use "../shared" as *;
+@use "../variables" as *;
+@use "chatVariables" as *;
+
+.voice-recording {
+  &-panel {
+    position: absolute;
+    inset: 0;
+    inset-inline-end: calc(var(--chat-input-height) + #{$btn-send-margin});
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+    padding: 0;
+    padding-inline-start: inherit;
+    padding-inline-end: 0;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity .15s ease, visibility 0s linear .15s;
+    background-color: var(--surface-color);
+    border-radius: inherit;
+    z-index: 2;
+
+    &--paused {
+      .voice-recording-dot {
+        display: none;
+      }
+      .voice-recording-play {
+        display: flex;
+      }
+      .voice-recording-pause-icon--pause {
+        display: none;
+      }
+      .voice-recording-pause-icon--mic {
+        display: inline-flex;
+      }
+    }
+
+    &--playing {
+      .voice-recording-play-icon--play {
+        display: none;
+      }
+      .voice-recording-play-icon--pause {
+        display: inline-flex;
+      }
+    }
+  }
+
+  &-cancel {
+    flex: 0 0 auto;
+    font-size: 1.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  // Tinted pill that visually groups the recording indicator / play button with
+  // the waveform and the timer — gives the input a clear "recording chip"
+  // affordance.
+  &-pill {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background-color: var(--light-primary-color);
+    border-radius: $border-radius-big;
+    padding-block: 6px;
+    padding-inline-start: .5rem;
+    padding-inline-end: .75rem;
+  }
+
+  // Slot that holds either the recording dot or the play button. No styling
+  // of its own — the children dictate their own look.
+  &-lead {
+    flex: 0 0 auto;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  // Original recording indicator — small red blink dot, not touched by the
+  // pill restyle.
+  &-dot {
+    width: 10px;
+    height: 10px;
+    background-color: var(--danger-color);
+    border-radius: 50%;
+    margin-inline: .4375rem; // * to match the button size
+
+    @include animation-level(2) {
+      animation: recordBlink 1.25s infinite;
+    }
+  }
+
+  &-play {
+    width: 24px !important;
+    height: 24px !important;
+    border-radius: 50%;
+    background-color: var(--primary-color);
+    color: #fff !important;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem !important;
+    padding: 0;
+
+    // Match .btn-primary's hover: smooth swap to the darker shade of primary
+    // (the default .btn-icon hover overlays a light-gray bg which clashes
+    // with our primary fill).
+    @include hover() {
+      background-color: var(--dark-primary-color);
+    }
+
+    &-icon {
+      line-height: 1;
+
+      &--pause {
+        display: none;
+      }
+    }
+  }
+
+  &-waveform {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 1.75rem;
+    display: block;
+  }
+
+  &-timer {
+    flex: 0 0 auto;
+    font-variant-numeric: tabular-nums;
+    color: var(--primary-text-color);
+    font-size: .875rem;
+    line-height: 1;
+    min-width: 3rem;
+    text-align: end;
+    user-select: none;
+  }
+
+  &-pause {
+    &-toggle {
+      flex: 0 0 auto;
+      font-size: 1.5rem;
+      width: 2.5rem;
+      height: 2.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    &-icon {
+      line-height: 1;
+
+      &--mic {
+        display: none;
+      }
+    }
+  }
+}
+
+.chat-input.is-recording {
+  .voice-recording {
+    &-panel {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transition: opacity .15s ease, visibility 0s linear 0s;
+    }
+
+    // The chat input adds .is-locked while recording (originally to block
+    // the message field), which dims every .btn-icon and disables pointer
+    // events on the whole row. Force the panel's buttons back to interactive.
+    &-cancel,
+    &-play,
+    &-pause-toggle {
+      opacity: 1 !important;
+      pointer-events: auto;
+    }
+  }
+}
