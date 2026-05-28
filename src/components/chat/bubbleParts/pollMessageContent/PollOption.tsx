@@ -23,6 +23,7 @@ import PathDot from './PathDot';
 import styles from './styles.module.scss';
 import {GetStickerMediaResult} from './usePollDerivedProps';
 import {dataPollViewerIdx, DataPollViewerIdxDirectivePayload, LocalTextWithEntities, PollOptionResult, spinnerThickness} from './utils';
+import {IconTsx} from '@components/iconTsx';
 
 
 keepMe(ripple);
@@ -261,9 +262,14 @@ export const PollOption = (props: {
                 boxHeight={boxSize}
                 withPreview
                 noInfo
+                noPlayButton
+                noAutoplayAttribute
                 lazyLoadQueue={unwrap(contextProps.lazyLoadQueue) || undefined}
                 observer={unwrap(contextProps.observer)}
               />
+              <div class={styles.pollOptionMediaPlay}>
+                <IconTsx icon='play' />
+              </div>
             </Match>
           </Switch>
 
