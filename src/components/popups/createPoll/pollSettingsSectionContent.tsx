@@ -93,7 +93,18 @@ export const PollSettingsSectionContent = () => {
           mediaStyle={getGradientStyle(0)}
           icon='eye1'
           checked={context.store.showWhoVoted}
-          onClick={handleSettingsFlag('showWhoVoted')}
+          onClick={() => {
+            if(context.store.showWhoVoted) {
+              context.setStore({
+                allowAddingOptions: false,
+                showWhoVoted: false
+              });
+            } else {
+              context.setStore({
+                showWhoVoted: true
+              });
+            }
+          }}
         />
       </Show>
       <SettingsOption
@@ -111,7 +122,7 @@ export const PollSettingsSectionContent = () => {
           mediaStyle={getGradientStyle(2)}
           icon='checklist_add'
           checked={context.store.allowAddingOptions}
-          disabled={context.store.hasCorrectAnswer}
+          disabled={context.store.hasCorrectAnswer || !context.store.showWhoVoted}
           onClick={handleSettingsFlag('allowAddingOptions')}
         />
       </Show>

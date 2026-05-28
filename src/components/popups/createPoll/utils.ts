@@ -40,7 +40,7 @@ export const getFinalPayload = (context: CreatePollContextValue) => {
     cloned.showWhoVoted = false;
   }
 
-  if(cloned.hasCorrectAnswer) {
+  if(cloned.hasCorrectAnswer || !cloned.showWhoVoted) {
     cloned.allowAddingOptions = false;
   }
 
