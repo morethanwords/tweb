@@ -18,7 +18,7 @@ import {unwrap} from 'solid-js/store';
 import {Transition} from 'solid-transition-group';
 import {InMessageCheckbox} from '../inMessageCheckbox';
 import {usePollMessageContentProps} from './context';
-import {AvatarGroup} from './parts';
+import {AvatarGroup, GeoPreview} from './parts';
 import PathDot from './PathDot';
 import styles from './styles.module.scss';
 import {GetStickerMediaResult} from './usePollDerivedProps';
@@ -52,7 +52,7 @@ export const PollOption = (props: {
 
   result?: PollOptionResult;
 }) => {
-  const {TranslatableMessageTsx, wrapGeo} = useHotReloadGuard()
+  const {TranslatableMessageTsx} = useHotReloadGuard()
   const contextProps = usePollMessageContentProps();
 
   let clickableAreaElement: HTMLDivElement;
@@ -249,7 +249,7 @@ export const PollOption = (props: {
               />
             </Match>
             <Match when={props.geo}>
-              <GeoPreview geo={props.geo} wrapGeo={wrapGeo} />
+              <GeoPreview class={styles.pollOptionGeo} geo={props.geo} />
             </Match>
             <Match when={props.video}>
               <VideoTsx
@@ -271,34 +271,6 @@ export const PollOption = (props: {
       </Show>
     </div>
   );
-};
-
-const GeoPreview = (props: {
-  geo: MessageMedia.messageMediaGeo;
-  wrapGeo: ReturnType<typeof useHotReloadGuard>['wrapGeo'];
-}) => {
-  const contextProps = usePollMessageContentProps();
-
-  let attachmentDiv: HTMLDivElement;
-
-  onMount(() => {
-    const middleware = createMiddleware().get();
-
-    props.wrapGeo({
-      messageMedia: props.geo,
-      attachmentDiv,
-      wrapOptions: {
-        middleware,
-        lazyLoadQueue: unwrap(contextProps.lazyLoadQueue) || undefined,
-        animationGroup: contextProps.animationGroup
-      },
-      middleware,
-      loadPromises: unwrap(contextProps.loadPromises) ?? [],
-      date: contextProps.message.date
-    });
-  });
-
-  return <div ref={(el) => attachmentDiv = el} class={styles.geo} />;
 };
 
 const PollProgressLine = (inProps: JSX.HTMLAttributes<HTMLDivElement> & {

@@ -29,7 +29,7 @@ import {createStore, reconcile, unwrap} from 'solid-js/store';
 import {Transition, TransitionGroup} from 'solid-transition-group';
 import {AddOption} from './AddOption';
 import {PollMessageContentPropsContext} from './context';
-import {AutoStartedConfetti, AvatarGroup, Explanation, PollType, PollVotes} from './parts';
+import {AutoStartedConfetti, AvatarGroup, Explanation, GeoPreview, PollType, PollVotes} from './parts';
 import {PollOption} from './PollOption';
 import styles from './styles.module.scss';
 import {usePollDerivedProps} from './usePollDerivedProps';
@@ -126,9 +126,11 @@ export const PollMessageContent =
       explanationPhoto,
       explanationVideo,
       explanationDocument,
+      explanationGeo,
       descriptionPhoto,
       descriptionVideo,
       descriptionDocument,
+      descriptionGeo,
       getOverridenMessage,
       initialIdxFromShuffledIdx,
       getResultForOption,
@@ -288,6 +290,7 @@ export const PollMessageContent =
 
     props.controls.highlightAnswer = (idx?: number | null) => {
       self.clearTimeout(highlightedTimeout);
+      setSlowHighlightedIndexes([]);
 
       if(typeof idx === 'number') {
         setHighlightedIndexes([idx]);
@@ -307,30 +310,38 @@ export const PollMessageContent =
         <Show when={isConfettiActive()}>
           <AutoStartedConfetti onEnd={() => setIsConfettiActive(false)} />
         </Show>
-        <Show when={descriptionPhoto() || descriptionVideo()}>
-          <div class={styles.pollImageWrapper}>
-            <div class={styles.pollImage} use:dataPollViewerIdx={[mediaViewerPayload().indexes.description, elementByIndexMap]}>
-              <Show when={descriptionPhoto()}>
-                <PhotoTsx
-                  photo={descriptionPhoto()}
-                  loadPromises={unwrap(props.loadPromises)}
-                  autoDownloadSize={props.autoDownload?.photo}
-                  lazyLoadQueue={unwrap(props.lazyLoadQueue)}
-                />
-              </Show>
-              <Show when={descriptionVideo() && !descriptionPhoto()}>
-                <VideoTsx
-                  doc={descriptionVideo()}
-                  loadPromises={unwrap(props.loadPromises)}
-                  group={props.animationGroup}
-                  autoDownload={unwrap(props.autoDownload)}
-                  boxWidth={mediaSizes.active.regular.width}
-                  boxHeight={mediaSizes.active.regular.height}
-                  withPreview
-                  lazyLoadQueue={unwrap(props.lazyLoadQueue) || undefined}
-                  observer={unwrap(props.observer)}
-                />
-              </Show>
+        <Show when={descriptionPhoto() || descriptionVideo() || descriptionGeo()}>
+          <div class={styles.pollDescriptionMediaWrapper}>
+            <div class={styles.pollDescriptionMedia} use:dataPollViewerIdx={[mediaViewerPayload().indexes.description, elementByIndexMap]}>
+              <Switch>
+                <Match when={descriptionPhoto()}>
+                  <PhotoTsx
+                    photo={descriptionPhoto()}
+                    loadPromises={unwrap(props.loadPromises)}
+                    autoDownloadSize={props.autoDownload?.photo}
+                    lazyLoadQueue={unwrap(props.lazyLoadQueue)}
+                  />
+                </Match>
+                <Match when={descriptionVideo()}>
+                  <VideoTsx
+                    doc={descriptionVideo()}
+                    loadPromises={unwrap(props.loadPromises)}
+                    group={props.animationGroup}
+                    autoDownload={unwrap(props.autoDownload)}
+                    boxWidth={mediaSizes.active.regular.width}
+                    boxHeight={mediaSizes.active.regular.height}
+                    withPreview
+                    lazyLoadQueue={unwrap(props.lazyLoadQueue) || undefined}
+                    observer={unwrap(props.observer)}
+                  />
+                </Match>
+                <Match when={descriptionGeo()}>
+                  <GeoPreview
+                    class={styles.geo}
+                    geo={descriptionGeo()}
+                  />
+                </Match>
+              </Switch>
             </div>
           </div>
         </Show>
@@ -388,6 +399,7 @@ export const PollMessageContent =
             photo={explanationPhoto()}
             video={explanationVideo()}
             document={explanationDocument()}
+            geo={explanationGeo()}
             pollViewerPayload={[mediaViewerPayload().indexes.explanation, elementByIndexMap]}
           />
         </Show>

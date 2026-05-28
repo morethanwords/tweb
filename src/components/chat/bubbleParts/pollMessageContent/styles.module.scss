@@ -69,6 +69,20 @@
     }
   }
 
+  &Geo {
+    :global(.geo-container) {
+      position: absolute;
+      inset: 0;
+      height: unset;
+      width: unset;
+    }
+    :global(.geo-pin) {
+      margin-top: unset;
+      height: 1.25rem;
+      width: unset;
+    }
+  }
+
   &SpacerFirst {
     flex-shrink: 0;
     width: 1.5rem;
@@ -439,7 +453,7 @@
   }
 }
 
-.pollImage {
+.pollDescriptionMedia {
   position: relative;
   overflow: hidden;
 
@@ -492,14 +506,9 @@
 
 .geo {
   :global(.geo-container) {
-    position: absolute;
-    inset: 0;
-    height: unset;
-    width: unset;
+    display: block;
   }
   :global(.geo-pin) {
     margin-top: unset;
-    height: 1.25rem;
-    width: unset;
   }
 }
