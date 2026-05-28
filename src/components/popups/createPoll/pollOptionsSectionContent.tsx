@@ -6,22 +6,24 @@ import SimpleFormField from '@components/simpleFormField';
 import Space from '@components/space';
 import {StaticCheckbox} from '@components/staticCheckbox';
 import StaticRadio from '@components/staticRadio';
+import lastItem from '@helpers/array/lastItem';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
 import focusInput from '@helpers/dom/focusInput';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import {createDelayed} from '@helpers/solid/createDelayed';
+import createMiddleware from '@helpers/solid/createMiddleware';
 import {createSortableList} from '@helpers/solid/createSortableList';
-import {HeightTransition} from '@helpers/solid/heightTransition';
 import {I18nTsx} from '@helpers/solid/i18n';
 import classNames from '@helpers/string/classNames';
-import {batch, children, createEffect, createMemo, createSignal, For, JSX, mapArray, onMount, Ref, Show} from 'solid-js';
+import wrapDraftText from '@lib/richTextProcessor/wrapDraftText';
+import {batch, children, createEffect, createMemo, createSignal, For, JSX, mapArray, Match, Ref, Show, Switch} from 'solid-js';
 import {Transition, TransitionGroup} from 'solid-transition-group';
 import {EmojiButtonWithOpacity as EmojiDropdownButton} from './emojiButtonWithOpacity';
-import {useSupportsMedia} from './utils';
 import {MediaAttachment} from './mediaAttachment';
 import {AttachedMedia, StorePollOption, useCreatePollContext} from './storeContext';
 import styles from './styles.module.scss';
 import {useCreatePollLimits} from './useCreatePollLimits';
+import {checkOptionHasValue, useSupportsMedia} from './utils';
 
 
 type MappedItem = {
@@ -49,9 +51,13 @@ export const PollOptionsSectionContent = (props: {
   const mappedItems = createMemo(rawMappedItems);
 
   const optionsLeft = createMemo(() => Math.max(0, maxOptions() - mappedItems().length));
-  /* Prevent flickering to 1 when being removed and do not include the unfilled last option */
-  const visibleOptionsLeft = createMemo(() => Math.max(2, optionsLeft() + 1));
-  const canShowOptionLeft = createMemo(() => optionsLeft() > 0);
+  const visibleOptionsLeft = createMemo(() =>
+    optionsLeft() +
+    (
+      context.store.pollOptions.length && checkOptionHasValue(lastItem(context.store.pollOptions)) ? 0 : 1
+    ));
+
+  const canShowAddOption = createMemo(() => optionsLeft() > 0);
 
   const sortable = createSortableList({
     container: () => props.scrollable,
@@ -64,7 +70,7 @@ export const PollOptionsSectionContent = (props: {
 
   const isDragging = createDelayed(sortable.isDragging, false, (value) => value ? -1 : 100);
 
-  const delayedCanShowOptionLeft = createDelayed(canShowOptionLeft, canShowOptionLeft(), value => value ? 200 : 0);
+  const delayedCanShowAddOption = createDelayed(canShowAddOption, canShowAddOption(), value => value ? 200 : 0);
 
   const TransitionGroupWhenNotDragging = (props: { children: JSX.Element }) => {
     const resolved = children(() => props.children);
@@ -79,46 +85,74 @@ export const PollOptionsSectionContent = (props: {
 
   type MappedItemOrOptionsLeft = MappedItem | {
     type: 'optionsLeft';
+  } | {
+    type: 'addOption'
   };
 
   const optionsLeftItem: MappedItemOrOptionsLeft = {
     type: 'optionsLeft'
   };
+  const addOptionItem: MappedItemOrOptionsLeft = {
+    type: 'addOption'
+  };
+
 
   const items = createMemo(() => {
-    const result: MappedItemOrOptionsLeft[] = [...mappedItems()];
+    const result: MappedItemOrOptionsLeft[] = [...mappedItems(), optionsLeftItem];
 
-    if(delayedCanShowOptionLeft()) {
-      result.push(optionsLeftItem);
+    if(delayedCanShowAddOption()) {
+      result.push(addOptionItem);
     }
 
     return result;
   });
+
+  const onAdd = () => {
+    if(optionsLeft() === 0) return;
+    blurActiveElement();
+    context.setStore('pollOptions', context.store.pollOptions.length, {
+      text: '',
+      entities: []
+    });
+  };
 
   return (
     <AutoHeight>
       <TransitionGroupWhenNotDragging>
         <For each={items()}>
           {(item, index) => (
-            <Show when={item.type === 'mappedItem' && item} keyed fallback={
-              <div style={{height: !canShowOptionLeft() ? '0' : undefined}}>
-                <Space amount='0.5rem' />
-                <div class={styles.caption} style={{overflow: 'hidden'}}>
-                  <I18nTsx key='NewPoll.OptionsLeft' args={visibleOptionsLeft().toString()} />
+            <Switch>
+              <Match when={item.type === 'mappedItem' && item} keyed>
+                {item => (
+                  <>
+                    {index() > 0 && <Space amount='0.75rem' />}
+                    <PollOptionFullField
+                      index={index()}
+                      mappedItem={item}
+                      mappedItems={mappedItems()}
+                      sortable={sortable}
+                      optionsLeft={optionsLeft()}
+                    />
+                  </>
+                )}
+              </Match>
+              <Match when={item.type === 'optionsLeft'}>
+                <div class={styles.caption}>
+                  <Space amount='0.5rem' />
+                  <Show when={visibleOptionsLeft() > 0} fallback={<I18nTsx key='NewPoll.MaxOptions' />}>
+                    <I18nTsx key='NewPoll.OptionsLeft' args={visibleOptionsLeft().toString()} />
+                  </Show>
                 </div>
-              </div>
-            }>
-              {item => <>
-                {index() > 0 && <Space amount='0.75rem' />}
-                <PollOptionFullField
-                  index={index()}
-                  mappedItem={item}
-                  mappedItems={mappedItems()}
-                  sortable={sortable}
-                  optionsLeft={optionsLeft()}
-                />
-              </>}
-            </Show>
+              </Match>
+              <Match when={item.type === 'addOption'}>
+                <div style={{height: !canShowAddOption() ? '0' : undefined}}>
+                  <Button class={styles.addOptionButton} primary onClick={onAdd}>
+                    <IconTsx class={styles.addOptionButtonIcon} icon='plus' />
+                    <I18nTsx key='NewPoll.OptionsAddOption' />
+                  </Button>
+                </div>
+              </Match>
+            </Switch>
           )}
         </For>
       </TransitionGroupWhenNotDragging>
@@ -134,6 +168,7 @@ const PollOptionFullField = (props: {
   optionsLeft: number;
 }) => {
   const {store, setStore} = useCreatePollContext();
+  const middleware = createMiddleware().get();
 
   const [container, setContainer] = createSignal<HTMLElement>();
   const value = () => props.mappedItem.option.text;
@@ -145,6 +180,8 @@ const PollOptionFullField = (props: {
   });
 
   const canBeReordered = createMemo(() => props.index < store.pollOptions.length - 1 || !!props.mappedItem.option.text);
+
+  const onPointerDown = createMemo(() => props.sortable.dragHandleProps(props.mappedItem.id).onPointerDown);
 
   createEffect(() => {
     if(!container() || !canBeReordered()) return;
@@ -189,11 +226,14 @@ const PollOptionFullField = (props: {
         onPointerDown={(e) => {
           if(!canBeReordered()) return;
           blurActiveElement();
-          props.sortable.dragHandleProps(props.mappedItem.id).onPointerDown(e);
+          onPointerDown()(e);
         }}
         hoverDisabled={props.sortable.draggingId() !== null}
         inputFieldRef={(inputField) => {
           props.mappedItem.inputField = inputField;
+          if(import.meta.hot) {
+            inputField.setValueSilently(wrapDraftText(value(), {entities: props.mappedItem.option.entities, middleware}));
+          }
         }}
         onChange={(option) => {
           setStore('pollOptions', props.index, option);
@@ -288,12 +328,7 @@ const PollOptionInputField = (props: {
         last
         onPointerDown={props.onPointerDown}
       >
-        <IconTsx class={styles.draggableIconScaffold} icon='menu' />
-        <Transition name='fade'>
-          <Show when={props.canBeReordered} fallback={<IconTsx class={styles.draggableIconFloating} icon='plusround' />}>
-            <IconTsx class={styles.draggableIconFloating} icon='menu' />
-          </Show>
-        </Transition>
+        <IconTsx icon='menu' />
       </SimpleFormField.SideContent>
       <SimpleFormField.InputStub>
         {inputField.input}

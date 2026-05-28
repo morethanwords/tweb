@@ -128,20 +128,12 @@
   touch-action: none;
   user-select: none;
 
+  transition: opacity 0.2s;
+
   &.disabled {
     cursor: default;
+    opacity: 0;
   }
-}
-
-.draggableIconScaffold {
-  opacity: 0;
-}
-
-.draggableIconFloating {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
 }
 
 .sectionWrapper {

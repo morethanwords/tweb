@@ -4055,6 +4055,7 @@
 "NewPoll.EndDate" = "End on %@ at %@";
 "NewPoll.OptionsLeft_one" = "You can add %d more option";
 "NewPoll.OptionsLeft_other" = "You can add %d more options";
+"NewPoll.MaxOptions" = "You have added the maximum amount of options";
 "NewPoll.CouldNotCreate" = "Could not create poll";
 "ReplaceSticker" = "Replace Sticker";
 "Login.Title" = "Sign in to Telegram";

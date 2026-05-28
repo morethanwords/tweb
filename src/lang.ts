@@ -4662,6 +4662,7 @@ const lang = {
     'one_value': 'You can add %d more option',
     'other_value': 'You can add %d more options'
   },
+  'NewPoll.MaxOptions': 'You have added the maximum amount of options',
   'NewPoll.CouldNotCreate': 'Could not create poll',
 
   'ReplaceSticker': 'Replace Sticker'

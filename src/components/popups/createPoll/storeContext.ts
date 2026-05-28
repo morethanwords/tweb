@@ -128,27 +128,13 @@ export const createPollStoreContextValue = (extra: CreatePollContextExtra): Crea
       track(() => option.text);
     }
 
-    if(store.pollOptions.length < maxOptions() && lastItem(store.pollOptions)?.text) {
+    if(store.pollOptions.length && store.pollOptions.length < maxOptions() && checkOptionHasValue(lastItem(store.pollOptions))) {
       setStore('pollOptions', store.pollOptions.length, {
         text: '',
         entities: []
       });
       return;
     }
-
-    let keepTo = store.pollOptions.length - 1;
-    for(; keepTo >= 0; keepTo--) {
-      if(checkOptionHasValue(store.pollOptions[keepTo])) {
-        break;
-      } else {
-        setStore('pollOptions', keepTo, {checked: false}); // we're doing +1 later so unset the last one to not be checked
-      }
-    }
-
-    keepTo += 1;
-    if(keepTo >= store.pollOptions.length - 1) return;
-
-    setStore('pollOptions', (prev) => prev.filter((_, i) => i <= keepTo)) // keep one more empty
   });
 
   return {
