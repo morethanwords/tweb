@@ -4666,7 +4666,9 @@ const lang = {
   'NewPoll.MaxOptions': 'You have added the maximum amount of options',
   'NewPoll.CouldNotCreate': 'Could not create poll',
 
-  'ReplaceSticker': 'Replace Sticker'
+  'ReplaceSticker': 'Replace Sticker',
+  'EditThisGIF': 'Edit this GIF',
+  'ReplaceGIF': 'Replace GIF'
 };
 
 export default lang;

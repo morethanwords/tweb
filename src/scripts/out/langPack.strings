@@ -4059,6 +4059,8 @@
 "NewPoll.MaxOptions" = "You have added the maximum amount of options";
 "NewPoll.CouldNotCreate" = "Could not create poll";
 "ReplaceSticker" = "Replace Sticker";
+"EditThisGIF" = "Edit this GIF";
+"ReplaceGIF" = "Replace GIF";
 "Login.Title" = "Sign in to Telegram";
 "Login.PhoneLabel" = "Phone Number";
 "Login.PhoneLabelInvalid" = "Phone Number Invalid";

@@ -21,6 +21,7 @@ import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
 import {useIsCleaned} from '@hooks/useIsCleaned';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {createEffect, createSignal, Match, on, onCleanup, Switch} from 'solid-js';
+import styles from './mediaAttachment.module.scss';
 import {useStickersDropdown} from './stickersDropdown';
 import {AttachedMedia, AttachedVideo, SupportedMediaType} from './storeContext';
 
@@ -70,6 +71,8 @@ export const MediaAttachment = (props: {
 
   const isCleaned = useIsCleaned();
 
+  const isAttachedGIF = () => props.attachedMedia?.type === 'video' && props.attachedMedia.isAnimated;
+
   const acceptMediaTypes = (): Array<'photo' | 'video'> => {
     const types: Array<'photo' | 'video'> = [];
     if(supportsMedia('photo')) types.push('photo');
@@ -98,12 +101,13 @@ export const MediaAttachment = (props: {
     if(!props.attachedMedia || !persistingState) return;
     if(props.attachedMedia.type !== 'photo' && props.attachedMedia.type !== 'video') return;
 
-    const isVideoEdit = persistingState.isVideo;
-    const sourceEl = isVideoEdit ? videoEl() : img();
+    const willAnimateFromVideo = props.attachedMedia.type === 'video';
+    const wasInitiallyVideo = persistingState.isVideo;
+    const sourceEl = willAnimateFromVideo ? videoEl() : img();
     if(!sourceEl) return;
 
-    const sourceWidth = isVideoEdit ? (sourceEl as HTMLVideoElement).videoWidth : (sourceEl as HTMLImageElement).naturalWidth;
-    const sourceHeight = isVideoEdit ? (sourceEl as HTMLVideoElement).videoHeight : (sourceEl as HTMLImageElement).naturalHeight;
+    const sourceWidth = willAnimateFromVideo ? (sourceEl as HTMLVideoElement).videoWidth : (sourceEl as HTMLImageElement).naturalWidth;
+    const sourceHeight = willAnimateFromVideo ? (sourceEl as HTMLVideoElement).videoHeight : (sourceEl as HTMLImageElement).naturalHeight;
 
     const {openMediaEditorFromMedia} = await import('@components/mediaEditor');
 
@@ -111,14 +115,14 @@ export const MediaAttachment = (props: {
       source: sourceEl,
       rect: sourceEl.getBoundingClientRect(),
       animatedCanvasSize: [sourceWidth, sourceHeight],
-      mediaType: isVideoEdit ? 'video' : 'image',
+      mediaType: wasInitiallyVideo ? 'video' : 'image',
       mediaSrc: persistingState.initialObjectUrl,
       getMediaBlob: async() => persistingState.initialFile,
       managers: rootScope.managers,
       onEditFinish: handleFinish,
       editingMediaState: persistingState.editingState,
       onClose: noop,
-      canImageResultInGIF: false
+      canImageResultInGIF: supportsMedia('gif')
     });
   });
 
@@ -167,12 +171,13 @@ export const MediaAttachment = (props: {
 
   const handleVideoFinish = async(editorResult: MediaEditorFinalResult, initialFile?: File) => {
     initialFile ??= persistingState?.initialFile;
+    const isVideo = persistingState?.isVideo ?? initialFile?.type.startsWith('video/')
 
     persistingState = {
       editingState: editorResult.editingMediaState,
       initialObjectUrl: editorResult.originalSrc,
       initialFile,
-      isVideo: true
+      isVideo
     };
 
     const previewObjectUrl = URL.createObjectURL(editorResult.preview);
@@ -335,12 +340,16 @@ export const MediaAttachment = (props: {
     buttons: [
       {
         icon: 'brush',
-        text: 'EditThisVideo',
+        get text() {
+          return isAttachedGIF() ? 'EditThisGIF' : 'EditThisVideo';
+        },
         onClick: onEdit
       },
       {
         icon: 'replace',
-        text: 'ReplaceVideo',
+        get text() {
+          return isAttachedGIF() ? 'ReplaceGIF' : 'ReplaceVideo';
+        },
         onClick: onChoose
       },
       {
@@ -388,47 +397,23 @@ export const MediaAttachment = (props: {
     <Switch>
       <Match when={creatingVideoState()} keyed>
         {(state) => (
-          <div class={props.imgClass} style={{position: 'relative', overflow: 'hidden'}}>
+          <div class={`${props.imgClass} ${styles.videoCreatingWrapper}`}>
             <img
               ref={setVideoPreviewImg}
               src={state.previewObjectUrl}
               alt=''
-              style={{'width': '100%', 'height': '100%', 'object-fit': 'cover', 'display': 'block'}}
+              class={styles.videoCreatingPreview}
             />
-            <div
-              style={{
-                'position': 'absolute',
-                'inset': '0',
-                'display': 'flex',
-                'align-items': 'center',
-                'justify-content': 'center',
-                'background-color': 'rgba(0, 0, 0, 0.35)'
-              }}
-            >
-              <div style={{position: 'absolute', inset: '0'}}>
+            <div class={styles.videoCreatingOverlay}>
+              <div class={styles.videoCreatingProgress}>
                 <ProgressCircleSVG
                   progress={state.progress()}
                   strokeThickness={1 / 8}
                   stroke='white'
                 />
               </div>
-              <div
-                role='button'
-                on:click={onCancelCreation}
-                style={{
-                  'position': 'relative',
-                  'width': '20px',
-                  'height': '20px',
-                  'border-radius': '50%',
-                  'background-color': 'rgba(0, 0, 0, 0.6)',
-                  'display': 'flex',
-                  'align-items': 'center',
-                  'justify-content': 'center',
-                  'cursor': 'pointer',
-                  'color': 'white'
-                }}
-              >
-                <IconTsx icon='close' style={{'font-size': '14px'}} />
+              <div role='button' on:click={onCancelCreation} class={styles.videoCreatingCancel}>
+                <IconTsx icon='close' class={styles.videoCreatingCancelIcon} />
               </div>
             </div>
           </div>
@@ -441,14 +426,24 @@ export const MediaAttachment = (props: {
       </Match>
       <Match when={props.attachedMedia?.type === 'video' && props.attachedMedia} keyed>
         {(attachedMedia) => (
-          <video
-            ref={setVideoEl}
-            class={props.imgClass}
-            src={attachedMedia.objectUrl}
-            muted
-            playsinline
+          <div
+            class={`${props.imgClass} ${styles.videoAttachmentWrapper}`}
             on:click={() => setIsVideoMenuOpen(true)}
-          />
+          >
+            <video
+              ref={setVideoEl}
+              class={styles.videoAttachmentVideo}
+              src={attachedMedia.objectUrl}
+              muted
+              playsinline
+            />
+            <div class={styles.videoAttachmentDim} />
+            <div class={styles.videoAttachmentBadge}>
+              {attachedMedia.isAnimated ?
+                'GIF' :
+                <IconTsx icon='play' class={styles.videoAttachmentBadgeIcon} />}
+            </div>
+          </div>
         )}
       </Match>
       <Match when={props.attachedMedia?.type === 'sticker' && props.attachedMedia} keyed>
