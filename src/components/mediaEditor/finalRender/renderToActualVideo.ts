@@ -100,6 +100,18 @@ export default async function renderToActualVideo({
     progressRAF = 0
   ;
 
+  const canceledDeferred = deferredPromise<never>();
+  // swallow the rejection so it never becomes an unhandled rejection if nothing races it
+  canceledDeferred.catch(noop);
+
+  function throwIfCanceled() {
+    if(canceled) throw ThrowReason.Canceled;
+  }
+
+  function raceCancel<T>(p: Promise<T>): Promise<T> {
+    return Promise.race([p, canceledDeferred]) as Promise<T>;
+  }
+
   const listenerSetter = new ListenerSetter;
 
   listenerSetter.add(window)('focus', () => {
@@ -178,7 +190,8 @@ export default async function renderToActualVideo({
 
   enum ThrowReason {
     EncodingPaused,
-    TimeLoopback
+    TimeLoopback,
+    Canceled
   };
 
   async function prepareAndRenderFrame(encoder: VideoEncoder, frameNo: number) {
@@ -202,6 +215,7 @@ export default async function renderToActualVideo({
       mediaTime = await currentVideoFrameDeferred;
     } catch(e: unknown) {
       video.pause();
+      if(e === ThrowReason.Canceled || canceled) throw ThrowReason.Canceled;
       if(e === ThrowReason.EncodingPaused && encodingPausedDeferred) {
         await encodingPausedDeferred;
         log('paused case was playing', lastTime + startTime);
@@ -316,113 +330,139 @@ export default async function renderToActualVideo({
   const preview = dontCreatePreview ? undefined : await runWithOwner(owner, () => generateVideoPreview({scaledWidth, scaledHeight}));
 
   const resultPromise = new Promise<MediaEditorFinalResultPayload>(async(resolve, reject) => {
-    const firstFrameSeekDeferred = deferredPromise<void>();
-    video.currentTime = video.duration * videoCropStart;
-    video.addEventListener('seeked', () => void firstFrameSeekDeferred.resolve(), {once: true});
+    let encoder: VideoEncoder | undefined;
 
-    const [{muxer, encoder, audioBuffer}] = await Promise.all([
-      initMuxerAndEncoder(),
-      delay(200),
-      firstFrameSeekDeferred,
-      initStickerRenderers()
-    ]);
-
-    let frameNo = 0;
-
-    let done = false;
-
-    animate(() => {
-      if(encodingPausedDeferred) return true;
-
-      if(video.currentTime >= endTime - VIDEO_COMPARISON_ERROR) {
-        done = true;
-        currentVideoFrameDeferred.resolve(endTime);
-      }
-      return !done;
-    });
-
-    // let avg = 0, cnt = 0;
-
-    // const startrendering = performance.now();
-
-    while(video.currentTime < endTime - VIDEO_COMPARISON_ERROR) {
-      if(canceled) {
-        reject();
-
-        done = true;
+    const finishCanceled = () => {
+      try {
+        video.cancelVideoFrameCallback?.(frameCallbackId);
+      } catch{}
+      try {
         video.pause();
+      } catch{}
+      if(encoder) {
+        try {
+          cleanup(encoder);
+        } catch{}
+      } else {
+        Array.from(renderers.values()).forEach((renderer) => {
+          try { renderer.destroy(); } catch{}
+        });
+        listenerSetter.removeAll();
+        cancelAnimationFrame(progressRAF);
+      }
+      reject(ThrowReason.Canceled);
+    };
 
-        cleanup(encoder);
+    try {
+      const firstFrameSeekDeferred = deferredPromise<void>();
+      video.currentTime = video.duration * videoCropStart;
+      video.addEventListener('seeked', () => void firstFrameSeekDeferred.resolve(), {once: true});
+
+      const initResults = await raceCancel(Promise.all([
+        initMuxerAndEncoder(),
+        delay(200),
+        firstFrameSeekDeferred,
+        initStickerRenderers()
+      ]));
+      const {muxer, encoder: createdEncoder, audioBuffer} = initResults[0];
+      encoder = createdEncoder;
+      throwIfCanceled();
+
+      let frameNo = 0;
+
+      let done = false;
+
+      animate(() => {
+        if(encodingPausedDeferred) return true;
+        if(canceled) {
+          done = true;
+          return false;
+        }
+
+        if(video.currentTime >= endTime - VIDEO_COMPARISON_ERROR) {
+          done = true;
+          currentVideoFrameDeferred?.resolve(endTime);
+        }
+        return !done;
+      });
+
+      while(video.currentTime < endTime - VIDEO_COMPARISON_ERROR) {
+        throwIfCanceled();
+
+        try {
+          log('prepareAndRenderFrame', frameNo);
+          if(encodingPausedDeferred) {
+            log('paused case was paused', lastTime + startTime);
+            await raceCancel(encodingPausedDeferred);
+          }
+          await prepareAndRenderFrame(encoder, frameNo);
+        } catch(e: unknown) {
+          if(e === ThrowReason.Canceled || canceled) throw ThrowReason.Canceled;
+          if(typeof e !== 'number') break;
+
+          if(e === ThrowReason.EncodingPaused) await raceCancel(encodingPausedDeferred);
+          else if(e === ThrowReason.TimeLoopback) break;
+        }
+
+        updateProgress(clamp((video.currentTime - startTime) / (endTime - startTime), 0, 1));
+        frameNo++;
+      }
+
+      done = true;
+      video.cancelVideoFrameCallback(frameCallbackId);
+      video.pause();
+      throwIfCanceled();
+
+      // const endrendering = performance.now();
+
+      if(!drewThumbnail) {
+        const deferred = deferredPromise<void>();
+
+        video.addEventListener('seeked', () => {
+          deferred.resolve();
+        }, {once: true});
+        video.currentTime = thumbnailTime;
+
+        await raceCancel(Promise.race([deferred, delay(2_000)])); // just in case you know
+        throwIfCanceled();
+
+        drawToTexture();
+        await renderFrame({frameNo: 0, timestamp: 0, appendToMuxer: false, encoder});
+
+        thumbnailCtx.drawImage(resultCanvas, 0, 0, thumbnailCanvas.width, thumbnailCanvas.height);
+      }
+
+      if(audioBuffer) await raceCancel(encodeAndMuxAudio(audioBuffer, (chunk) => muxer.addAudioChunk(chunk)));
+      throwIfCanceled();
+
+      await raceCancel(encoder.flush());
+      throwIfCanceled();
+
+      muxer.finalize();
+
+      cleanup(encoder);
+
+      const {buffer} = muxer.target;
+
+      setProgress(1);
+
+      const thumbBlob = await new Promise<Blob>(resolve => thumbnailCanvas.toBlob(resolve));
+
+      resolve({
+        blob: new Blob([buffer], {type: 'video/mp4'}),
+        hasSound: !!audioBuffer,
+        thumb: {
+          blob: thumbBlob,
+          size: new MediaSize(thumbnailCanvas.width, thumbnailCanvas.height)
+        }
+      });
+    } catch(e: unknown) {
+      if(e === ThrowReason.Canceled || canceled) {
+        finishCanceled();
         return;
       }
-
-      try {
-        // const start = performance.now();
-        log('prepareAndRenderFrame', frameNo);
-        if(encodingPausedDeferred) {
-          log('paused case was paused', lastTime + startTime);
-          await encodingPausedDeferred;
-        }
-        await prepareAndRenderFrame(encoder, frameNo);
-        // const end = performance.now();
-        // const time = end - start;
-        // cnt++;
-        // avg += (time - avg) / cnt;
-      } catch(e: unknown) {
-        if(typeof e !== 'number') break;
-
-        if(e === ThrowReason.EncodingPaused) await encodingPausedDeferred;
-        else if(e === ThrowReason.TimeLoopback) break;
-      }
-
-      updateProgress(clamp((video.currentTime - startTime) / (endTime - startTime), 0, 1));
-      frameNo++;
+      reject(e);
     }
-
-    done = true;
-    video.cancelVideoFrameCallback(frameCallbackId);
-    video.pause();
-
-    // const endrendering = performance.now();
-
-    if(!drewThumbnail) {
-      const deferred = deferredPromise<void>();
-
-      video.addEventListener('seeked', () => {
-        deferred.resolve();
-      }, {once: true});
-      video.currentTime = thumbnailTime;
-
-      await Promise.race([deferred, delay(2_000)]); // just in case you know
-
-      drawToTexture();
-      await renderFrame({frameNo: 0, timestamp: 0, appendToMuxer: false, encoder});
-
-      thumbnailCtx.drawImage(resultCanvas, 0, 0, thumbnailCanvas.width, thumbnailCanvas.height);
-    }
-
-    if(audioBuffer) await encodeAndMuxAudio(audioBuffer, (chunk) => muxer.addAudioChunk(chunk));
-
-    await encoder.flush();
-
-    muxer.finalize();
-
-    cleanup(encoder);
-
-    const {buffer} = muxer.target;
-
-    setProgress(1);
-
-    const thumbBlob = await new Promise<Blob>(resolve => thumbnailCanvas.toBlob(resolve));
-
-    resolve({
-      blob: new Blob([buffer], {type: 'video/mp4'}),
-      hasSound: !!audioBuffer,
-      thumb: {
-        blob: thumbBlob,
-        size: new MediaSize(thumbnailCanvas.width, thumbnailCanvas.height)
-      }
-    });
 
     // alert(JSON.stringify({
     //   avg,
@@ -443,7 +483,12 @@ export default async function renderToActualVideo({
       return result ?? resultPromise;
     },
     cancel: () => {
+      if(canceled) return;
       canceled = true;
+      // unblock anything awaiting these so the pipeline aborts immediately
+      canceledDeferred.reject(ThrowReason.Canceled);
+      currentVideoFrameDeferred?.reject(ThrowReason.Canceled);
+      encodingPausedDeferred?.resolve?.();
     },
     creationProgress
   };
