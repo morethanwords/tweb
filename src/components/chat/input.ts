@@ -2515,6 +2515,7 @@ export default class ChatInput {
 
     const [
       isBroadcast,
+      isBroadcastGroup,
       canPinMessage,
       isBot,
       canSend,
@@ -2531,6 +2532,7 @@ export default class ChatInput {
       peerMuted
     ] = await Promise.all([
       this.managers.appPeersManager.isBroadcast(peerId),
+      this.managers.appPeersManager.isBroadcastGroup(peerId),
       this.managers.appPeersManager.canPinMessage(peerId),
       this.managers.appPeersManager.isBot(peerId),
       this.chat?.canSend('send_messages') || true,
@@ -2618,20 +2620,20 @@ export default class ChatInput {
         const type = this.getJoinButtonType();
         const channel = this.chat.peer as MTChat.channel;
 
-        // A broadcast channel the user can't post in: not subscribed -> Subscribe
-        // (primary filled), subscribed -> Mute (transparent). Megagroups keep
-        // using getJoinButtonType().
-        const cantPostBroadcast = isBroadcast && !canSend &&
+        // A broadcast channel OR gigagroup the user can't post in: not subscribed
+        // -> Subscribe/Join (primary filled), subscribed -> Mute (transparent).
+        // Regular megagroups keep using getJoinButtonType().
+        const cantPost = (isBroadcast || isBroadcastGroup) && !canSend &&
           this.chat.type === ChatType.Chat && !peerId.isUser() && !this.chat.isMonoforum;
-        const showJoin = !!type || (cantPostBroadcast && !!channel?.pFlags?.left);
-        const showMute = cantPostBroadcast && !channel?.pFlags?.left;
+        const showJoin = !!type || (cantPost && !!channel?.pFlags?.left);
+        const showMute = cantPost && !channel?.pFlags?.left;
         const good = !haveSomethingInControl && (showJoin || showMute);
         haveSomethingInControl ||= good;
 
         this.joinBtn.classList.toggle('hide', !(good && showJoin));
         if(good && showJoin) {
           // "Subscribe" for a broadcast channel; "Join" for a group you must
-          // join before you can post.
+          // join before you can post (regular group OR gigagroup).
           const joinKey: LangPackKey = isBroadcast ?
             'Chat.Subscribe' :
             type === 'request' ? 'ChannelJoinRequest' : 'ChannelJoin';
@@ -2647,7 +2649,8 @@ export default class ChatInput {
 
         // Channel "can't write" plate: write-in-direct (only when the channel
         // has a linked direct-messages chat) on the left, gift on the right.
-        // Both are channel-only — a megagroup join just shows the centre button.
+        // Both are channel-only — a gigagroup or megagroup join just shows the
+        // centre button.
         this.directControlBtn.classList.toggle('hide', !(good && channel?.linked_monoforum_id));
         this.giftControlBtn.classList.toggle('hide', !(good && isBroadcast));
       }
@@ -2840,7 +2843,10 @@ export default class ChatInput {
       key = 'Channel.Persmission.MessageBlock';
     } else if(threadId && !isForum && !peerId.isUser()) {
       key = 'Comment';
-    } else if(await this.managers.appPeersManager.isBroadcast(peerId)) {
+    } else if(
+      await this.managers.appPeersManager.isBroadcast(peerId) ||
+      await this.managers.appPeersManager.isBroadcastGroup(peerId)
+    ) {
       key = 'ChannelBroadcast';
     } else if(this.chat.isMonoforum && this.chat.canManageDirectMessages) {
       key = this.directMessagesHandler.store.isSuggestingUneditablePostChange ?

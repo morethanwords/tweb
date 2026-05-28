@@ -318,6 +318,11 @@ export class AppChatsManager extends AppManager {
     return this.isChannel(id) && !this.isMegagroup(id);
   }
 
+  public isBroadcastGroup(id: ChatId) {
+    const chat: Chat = this.chats[id];
+    return !!(chat as Chat.channel)?.pFlags?.gigagroup;
+  }
+
   public isMonoforum(id: ChatId) {
     const chat: Chat = this.chats[id];
     return !!(chat?._ === 'channel' && chat?.pFlags?.monoforum);
@@ -567,6 +572,12 @@ export class AppChatsManager extends AppManager {
       chat_id: id
     });
     // });
+  }
+
+  public convertToGigagroup(id: ChatId) {
+    return this.apiManager.invokeApi('channels.convertToGigagroup', {
+      channel: this.getChannelInput(id)
+    }).then(this.onChatUpdated.bind(this, id));
   }
 
   public async migrateChat(id: ChatId): Promise<ChatId> {

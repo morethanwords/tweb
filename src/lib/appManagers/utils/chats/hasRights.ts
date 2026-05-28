@@ -79,7 +79,7 @@ export default function hasRights(
       }
 
       if(chat._ === 'channel') {
-        if(!chat.pFlags.megagroup && !myFlags.post_messages) {
+        if((!chat.pFlags.megagroup || chat.pFlags.gigagroup) && !myFlags.post_messages) {
           return false;
         }
       }

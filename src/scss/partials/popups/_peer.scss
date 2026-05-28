@@ -58,4 +58,18 @@
       left: auto;
     }
   }
+
+  .popup-description-features {
+    margin: 0;
+    padding-inline-start: 1.25rem;
+
+    li {
+      margin-bottom: .25rem;
+      list-style: disc;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+  }
 }
