@@ -1163,6 +1163,31 @@ export default class ChatInput {
           isBroadcast: this.chat.isBroadcast,
           supportedMediaTypes: supportedMediaTypes,
           onSubmit: async(payload) => {
+            const attachments = [
+              payload.descriptionAttachment,
+              payload.explanationAttachment,
+              ...payload.pollOptions.map((option) => option.attachment)
+            ];
+
+            const requiredRights = new Set<ChatRights>();
+            for(const attachment of attachments) {
+              if(!attachment) continue;
+              switch(attachment.type) {
+                case 'photo': requiredRights.add('send_photos'); break;
+                case 'sticker': requiredRights.add('send_stickers'); break;
+                case 'video':
+                  requiredRights.add(attachment.isAnimated ? 'send_gifs' : 'send_videos');
+                  break;
+              }
+            }
+
+            for(const right of requiredRights) {
+              if(!(await this.chat.canSend(right))) {
+                toastNew({langPackKey: POSTING_NOT_ALLOWED_MAP[right]});
+                return;
+              }
+            }
+
             const sendingParams = this.chat.getMessageSendingParams();
 
             const preparedPaymentResult = await this.chat.input.paidMessageInterceptor.prepareStarsForPayment(1);
