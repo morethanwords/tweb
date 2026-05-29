@@ -204,7 +204,7 @@ export default class AppSelectPeers {
     }
 
     this.listenerSetter ??= new ListenerSetter();
-    this.checkboxSide ??= 'left';
+    this.checkboxSide ??= 'right';
     this.exceptSelf ??= false;
     this.meAsSaved ??= !(this.peerType.length === 1 && this.peerType[0] === 'channelParticipants');
     this.headerSearch = /* this.multiSelect !== 'disabled' &&  */!this.noSearch;
