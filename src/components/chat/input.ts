@@ -7,13 +7,15 @@ import {AppImManager, APP_TABS} from '@lib/appImManager';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import opusDecodeController from '@lib/opusDecodeController';
 import VoiceWaveformAnalyser from '@helpers/voiceWaveformAnalyser';
+import LiveWaveformAnalyser from '@helpers/voiceRecorder/liveWaveformAnalyser';
 import NativeVoiceRecorder, {isNativeVoiceRecorderSupported} from '@helpers/voiceRecorder/nativeVoiceRecorder';
+import VoiceRecordingPanel from '@components/chat/voiceRecording/voiceRecordingPanel';
 import {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable, ButtonMenuSync} from '@components/buttonMenu';
 import emoticonsDropdown, {EmoticonsDropdown} from '@components/emoticonsDropdown';
 import showForwardPopup from '@components/popups/forward';
 import PopupNewMedia, {getCurrentNewMediaPopup} from '@components/popups/newMedia';
 import {toast, toastNew} from '@components/toast';
-import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageMedia, InputReplyTo, Chat as MTChat, User, ChatFull, Dialog, PhotoSize, Photo, Document, TextWithEntities} from '@layer';
+import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageMedia, InputReplyTo, Chat as MTChat, User, ChatFull, Dialog, PhotoSize, Photo, Document, TextWithEntities, GlobalPrivacySettings} from '@layer';
 import StickersHelper from '@components/chat/stickersHelper';
 import ChatInputPlate from '@components/chat/controlPlate';
 import PopupSendGift from '@components/popups/sendGift';
@@ -57,7 +59,7 @@ import PopupDeleteMessages from '@components/popups/deleteMessages';
 import fixSafariStickyInputFocusing, {IS_STICKY_INPUT_BUGGED} from '@helpers/dom/fixSafariStickyInputFocusing';
 import PopupPeer from '@components/popups/peer';
 import appMediaPlaybackController from '@components/appMediaPlaybackController';
-import {BOT_START_PARAM, GENERAL_TOPIC_ID, NULL_PEER_ID, SEND_PAID_WITH_STARS_DELAY, SEND_WHEN_ONLINE_TIMESTAMP} from '@appManagers/constants';
+import {BOT_START_PARAM, GENERAL_TOPIC_ID, HIDDEN_PEER_ID, NULL_PEER_ID, REPLIES_PEER_ID, SEND_PAID_WITH_STARS_DELAY, SEND_WHEN_ONLINE_TIMESTAMP, SERVICE_PEER_ID} from '@appManagers/constants';
 import setCaretAt from '@helpers/dom/setCaretAt';
 import DropdownHover from '@helpers/dropdownHover';
 import {positionMenuTrigger} from '@helpers/positionMenu';
@@ -134,7 +136,7 @@ import splitStringByLength from '@helpers/string/splitStringByLength';
 import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
 import asyncThrottle from '@helpers/schedulers/asyncThrottle';
 import focusInput from '@helpers/dom/focusInput';
-import {PopupChecklist} from '@components/popups/checklist';
+import showChecklistPopup from '@components/popups/checklist';
 import assumeType from '@helpers/assumeType';
 import {formatFullSentTime} from '@helpers/date';
 import useStars from '@stores/stars';
@@ -226,6 +228,7 @@ export default class ChatInput {
   public btnSuggestPost: HTMLElement;
 
   private btnAutoDeletePeriod: HTMLElement;
+  private btnSendGift: HTMLButtonElement;
 
   private sendMenu: SendMenu;
 
@@ -286,12 +289,20 @@ export default class ChatInput {
 
   private recorder: any;
   private waveformAnalyser: VoiceWaveformAnalyser;
+  private liveWaveformAnalyser: LiveWaveformAnalyser;
   public recording = false;
+  private recordPaused = false;
   private recordCanceled = false;
-  private recordTimeEl: HTMLElement;
   private recordStartTime = 0;
+  private recordPausedAt = 0;
+  private recordAccumulatedMs = 0;
   private recordingOverlayListener: Listener;
   private recordingNavigationItem: NavigationItem;
+  private voiceRecordingPanel: VoiceRecordingPanel;
+  private playbackAudio: HTMLAudioElement;
+  private playbackObjectUrl: string;
+  private playbackRafId: number;
+  private voiceMenuClickGuard: (e: MouseEvent) => void;
 
   // private scrollTop = 0;
   // private scrollOffsetTop = 0;
@@ -986,6 +997,11 @@ export default class ChatInput {
         this.waveformAnalyser.finish();
         this.waveformAnalyser = undefined;
       }
+      this.teardownLiveWaveform();
+      this.stopPlayback();
+      // Any menu-open click guard from the SendMenu is now meaningless —
+      // recording is over.
+      this.setVoiceRecordingMenuGuard(false);
     };
 
     this.recorder.ondataavailable = async(typedArray: Uint8Array) => {
@@ -1018,7 +1034,7 @@ export default class ChatInput {
 
       sendingParams.confirmedPaymentResult = preparedPaymentResult;
 
-      const duration = (Date.now() - this.recordStartTime) / 1000 | 0;
+      const duration = this.getRecordingElapsedMs() / 1000 | 0;
       const dataBlob = new Blob([typedArray as BlobPart], {type: 'audio/ogg'});
       opusDecodeController.decode(typedArray, false).then((result) => {
         opusDecodeController.setKeepAlive(false);
@@ -1060,6 +1076,11 @@ export default class ChatInput {
     }
 
     if(!this.excludeParts.emoticons) this.btnToggleEmoticons = this.createButtonIcon('smile toggle-emoticons', {noRipple: true});
+
+    this.btnSendGift = this.createButtonIcon('gift toggle-send-gift float hide', {noRipple: true});
+    attachClickEvent(this.btnSendGift, () => {
+      PopupElement.createPopup(PopupSendGift, {peerId: this.chat.peerId});
+    }, {listenerSetter: this.listenerSetter});
 
     this.inputMessageContainer = document.createElement('div');
     this.inputMessageContainer.classList.add('input-message-container');
@@ -1222,7 +1243,7 @@ export default class ChatInput {
           return;
         }
 
-        PopupElement.createPopup(PopupChecklist, {chat: this.chat}).show();
+        showChecklistPopup({chat: this.chat});
       },
       verify: () => !this.editMsgId && !this.chat.isMonoforum
     }];
@@ -1300,9 +1321,6 @@ export default class ChatInput {
       await this.chat.openAutoDeleteMessagesCustomTimePopup();
     }));
 
-    this.recordTimeEl = document.createElement('div');
-    this.recordTimeEl.classList.add('record-time');
-
     this.fileInput = document.createElement('input');
     this.fileInput.type = 'file';
     this.fileInput.multiple = true;
@@ -1316,8 +1334,8 @@ export default class ChatInput {
       this.btnToggleReplyMarkup,
       this.btnSuggestPost,
       this.btnAutoDeletePeriod,
+      this.btnSendGift,
       this.btnToggleEmoticons,
-      this.recordTimeEl,
       this.fileInput
     ].filter(Boolean));
 
@@ -1365,25 +1383,36 @@ export default class ChatInput {
     this.sendMenu = new SendMenu({
       onSilentClick: () => {
         this.sendSilent = true;
-        this.sendMessage();
+        if(this.recording) this.finishVoiceFromMenu();
+        else this.sendMessage();
       },
       onScheduleClick: () => {
-        this.scheduleSending(undefined);
+        if(this.recording) this.scheduleSending(() => this.finishVoiceFromMenu());
+        else this.scheduleSending(undefined);
       },
       onSendWhenOnlineClick: () => {
-        this.setScheduleTimestamp(SEND_WHEN_ONLINE_TIMESTAMP, this.sendMessage.bind(this, true));
+        if(this.recording) this.setScheduleTimestamp(SEND_WHEN_ONLINE_TIMESTAMP, () => this.finishVoiceFromMenu());
+        else this.setScheduleTimestamp(SEND_WHEN_ONLINE_TIMESTAMP, this.sendMessage.bind(this, true));
       },
       middleware: this.chat.destroyMiddlewareHelper.get(),
       openSide: 'top-left',
       onContextElement: this.btnSend,
       onOpen: () => {
-        const good = this.chat.type !== ChatType.Scheduled && (!this.isInputEmpty() || !!Object.keys(this.forwarding).length) && !this.editMsgId;
+        const good = this.chat.type !== ChatType.Scheduled && (this.recording || !this.isInputEmpty() || !!Object.keys(this.forwarding).length) && !this.editMsgId;
         if(good) {
           this.emoticonsDropdown?.toggle(false);
         }
 
         return good;
       },
+      // While recording, the send button is the only visible original control —
+      // the trash / pause-toggle / play buttons of the recording panel are also
+      // live. Without this guard, a left-click on any of them while the
+      // schedule/silent menu is open would close the menu AND trigger that
+      // button's action (cancel recording, pause, etc.). Capturing clicks at
+      // the document level keeps the behaviour consistent: any click anywhere
+      // outside the menu just dismisses the menu, no action fires.
+      onToggle: (open) => this.setVoiceRecordingMenuGuard(open),
       canSendWhenOnline: this.canSendWhenOnline,
       onRef: (element) => {
         this.btnSendContainer.append(element);
@@ -1397,6 +1426,17 @@ export default class ChatInput {
     // btnCancelRecord is built above but intentionally not appended to the DOM.
     this.newMessageWrapper.append(this.btnSendContainer);
     this.inputContainer.append(...[this.btnReaction].filter(Boolean));
+
+    this.voiceRecordingPanel = new VoiceRecordingPanel({
+      onCancel: () => this.onCancelRecordClick(),
+      onPauseToggle: () => this.onPauseToggleClick(),
+      onPlayToggle: () => this.onPlayToggleClick(),
+      onSeek: (progress) => this.onPlaybackSeek(progress)
+    });
+    // The panel is an absolutely-positioned overlay inside the input row.
+    // It sits *under* btnSendContainer in DOM order so the send button stays
+    // on top while everything else (attach, input, emoji) is hidden via CSS.
+    this.newMessageWrapper.insertBefore(this.voiceRecordingPanel.element, this.btnSendContainer);
 
     if(this.btnToggleEmoticons) {
       this.emoticonsDropdown.attachButtonListener(this.btnToggleEmoticons, this.listenerSetter);
@@ -1571,6 +1611,16 @@ export default class ChatInput {
   }
 
   private setChatListeners() {
+    this.listenerSetter.add(rootScope)('global_privacy_update', () => {
+      this.updateGiftButtonVisibility();
+    });
+
+    this.listenerSetter.add(rootScope)('peer_full_update', (peerId) => {
+      if(peerId === this.chat?.peerId) {
+        this.updateGiftButtonVisibility();
+      }
+    });
+
     this.listenerSetter.add(rootScope)('draft_updated', ({peerId, threadId, monoforumThreadId, draft, force}) => {
       // We don't have draft functionality when in the global monoforum chat, but we still need to clear the input right after sending the message
       if(!draft && force && this.chat.peerId === peerId && this.chat.isMonoforum) {
@@ -1928,9 +1978,244 @@ export default class ChatInput {
     }
 
     this.recordCanceled = true;
+    this.stopPlayback();
     this.recorder.stop();
     opusDecodeController.setKeepAlive(false);
   };
+
+  private getRecordingElapsedMs() {
+    if(this.recordPaused) return this.recordAccumulatedMs;
+    return this.recordAccumulatedMs + (Date.now() - this.recordStartTime);
+  }
+
+  private teardownLiveWaveform() {
+    if(this.liveWaveformAnalyser) {
+      this.liveWaveformAnalyser.destroy();
+      this.liveWaveformAnalyser = undefined;
+    }
+  }
+
+  private onPauseToggleClick = () => {
+    if(!this.recording || !this.recorder) return;
+
+    if(this.recordPaused) {
+      // Resume recording from paused state. Keep the existing waveform —
+      // new live bars will push in from the right, gradually shifting the
+      // snapshot off to the left rather than starting from scratch.
+      this.stopPlayback();
+      if(typeof this.recorder.resume === 'function') {
+        this.recorder.resume();
+      }
+      this.recordPaused = false;
+      this.recordStartTime = Date.now();
+      this.voiceRecordingPanel?.setMode('recording');
+      this.voiceRecordingPanel?.setSeekable(false);
+      this.liveWaveformAnalyser?.setPaused(false);
+      this.waveformAnalyser?.setPaused(false);
+      this.startRecordingTimerLoop();
+    } else {
+      // Pause active recording. Replace the rolling live waveform with the
+      // full compressed peaks the analyser has accumulated so playback
+      // progress maps to the whole recording duration, not just the bars
+      // that happened to fit in the live window.
+      if(typeof this.recorder.pause !== 'function') return;
+      this.recordAccumulatedMs += Date.now() - this.recordStartTime;
+      this.recordPaused = true;
+      this.liveWaveformAnalyser?.setPaused(true);
+      this.waveformAnalyser?.setPaused(true);
+      const fullPeaks = this.waveformAnalyser?.getCurrentPeaks();
+      if(fullPeaks && fullPeaks.length) {
+        this.voiceRecordingPanel?.setPeaks(fullPeaks);
+      }
+      this.voiceRecordingPanel?.setMode('paused');
+      this.voiceRecordingPanel?.setPlaybackProgress(undefined);
+      this.voiceRecordingPanel?.setSeekable(true);
+      Promise.resolve(this.recorder.pause()).catch(() => {});
+    }
+  };
+
+  private onPlayToggleClick = () => {
+    if(!this.recording || !this.recordPaused) return;
+    if(this.playbackAudio && !this.playbackAudio.paused) {
+      this.playbackAudio.pause();
+      return;
+    }
+    if(this.playbackAudio && this.playbackAudio.currentTime > 0 && this.playbackAudio.currentTime < this.playbackAudio.duration) {
+      this.playbackAudio.play().catch(() => {});
+      return;
+    }
+    this.startPlaybackFromSnapshot();
+  };
+
+  // Install / remove the document-level click guard that closes the SendMenu
+  // on the first click anywhere outside the menu while a voice recording is
+  // active. Without this guard, a left-click would close the menu and also
+  // hit the underlying button (cancel/pause/send) on the way through — every
+  // visible button while recording is its own action target. Capture phase so
+  // we beat the buttons' own bubble-phase click listeners.
+  private setVoiceRecordingMenuGuard(active: boolean) {
+    if(this.voiceMenuClickGuard) {
+      document.removeEventListener('click', this.voiceMenuClickGuard, {capture: true});
+      this.voiceMenuClickGuard = undefined;
+    }
+    if(!active || !this.recording) return;
+
+    this.voiceMenuClickGuard = (e: MouseEvent) => {
+      // Let clicks inside the menu through so menu items still work.
+      if(findUpClassName(e.target as HTMLElement, 'btn-menu')) return;
+      cancelEvent(e);
+      if(contextMenuController.isOpened()) contextMenuController.close();
+    };
+    document.addEventListener('click', this.voiceMenuClickGuard, {capture: true});
+  }
+
+  // Stop the recorder so its ondataavailable handler sends the voice file.
+  // Used by the send context menu (Silent / Schedule / SendWhenOnline) while
+  // recording — the menu just sets the relevant flag on the ChatInput and
+  // delegates to this helper to commit the recording. The actual silent /
+  // scheduleDate flags are read back from this.input by getMessageSendingParams.
+  private finishVoiceFromMenu() {
+    if(!this.recording || !this.recorder) return;
+    this.stopPlayback();
+    this.recorder.stop();
+  }
+
+  // Click-to-seek from the waveform. progress is 0..1 along the bars.
+  // If audio hasn't been decoded yet we kick playback off at that offset.
+  private onPlaybackSeek(progress: number) {
+    if(!this.recordPaused) return;
+    if(this.playbackAudio && this.playbackAudio.duration && !isNaN(this.playbackAudio.duration)) {
+      const target = Math.max(0, Math.min(this.playbackAudio.duration, progress * this.playbackAudio.duration));
+      this.playbackAudio.currentTime = target;
+      this.voiceRecordingPanel?.setPlaybackProgress(progress);
+      if(this.playbackAudio.paused) this.playbackAudio.play().catch(() => {});
+      return;
+    }
+    // No audio yet — start playback and seek once metadata is available.
+    this.startPlaybackFromSnapshot(progress);
+  }
+
+  private async startPlaybackFromSnapshot(seekProgress?: number) {
+    if(!this.recorder || typeof this.recorder.getSnapshot !== 'function') return;
+    const snapshot: Uint8Array = this.recorder.getSnapshot();
+    if(!snapshot || !snapshot.length) return;
+
+    // Tear down any prior playback before decoding the fresh snapshot.
+    this.stopPlayback();
+
+    try {
+      const {url} = await opusDecodeController.decode(snapshot, false);
+      this.playbackObjectUrl = url;
+    } catch(err) {
+      console.error('[ChatInput] voice playback decode error:', err);
+      return;
+    }
+    if(!this.recordPaused) {
+      // Recording was resumed while we were decoding — drop the result.
+      this.playbackObjectUrl && URL.revokeObjectURL(this.playbackObjectUrl);
+      this.playbackObjectUrl = undefined;
+      return;
+    }
+
+    const audio = this.playbackAudio = new Audio(this.playbackObjectUrl);
+    audio.preload = 'auto';
+
+    const onTick = () => {
+      if(this.playbackAudio !== audio) return;
+      if(!audio.duration || isNaN(audio.duration)) {
+        this.playbackRafId = requestAnimationFrame(onTick);
+        return;
+      }
+      const progress = audio.currentTime / audio.duration;
+      this.voiceRecordingPanel?.setPlaybackProgress(progress);
+
+      const playedMs = audio.currentTime * 1000;
+      const playedSec = playedMs / 1000;
+      const ms = playedMs % 1000;
+      this.voiceRecordingPanel?.setTimer(toHHMMSS(playedSec) + ',' + ('00' + Math.round(ms / 10)).slice(-2));
+
+      this.playbackRafId = requestAnimationFrame(onTick);
+    };
+
+    audio.addEventListener('play', () => {
+      this.voiceRecordingPanel?.setPlaying(true);
+      cancelAnimationFrame(this.playbackRafId);
+      this.playbackRafId = requestAnimationFrame(onTick);
+    });
+    audio.addEventListener('pause', () => {
+      this.voiceRecordingPanel?.setPlaying(false);
+      cancelAnimationFrame(this.playbackRafId);
+    });
+    audio.addEventListener('ended', () => {
+      this.voiceRecordingPanel?.setPlaying(false);
+      // Clear the progress overlay so all bars return to the active primary
+      // colour after playback — same look as the just-paused state.
+      this.voiceRecordingPanel?.setPlaybackProgress(undefined);
+      this.voiceRecordingPanel?.setTimer(this.formatRecordingTimer(this.recordAccumulatedMs));
+      cancelAnimationFrame(this.playbackRafId);
+    });
+
+    if(seekProgress != null) {
+      const seek = () => {
+        if(audio.duration && !isNaN(audio.duration)) {
+          audio.currentTime = Math.max(0, Math.min(audio.duration, seekProgress * audio.duration));
+          this.voiceRecordingPanel?.setPlaybackProgress(seekProgress);
+          audio.removeEventListener('loadedmetadata', seek);
+        }
+      };
+      audio.addEventListener('loadedmetadata', seek);
+      seek();
+    }
+
+    audio.play().catch((err) => {
+      console.error('[ChatInput] voice playback play() error:', err);
+      this.stopPlayback();
+    });
+  }
+
+  private formatRecordingTimer(totalMs: number) {
+    const seconds = totalMs / 1000;
+    const ms = totalMs % 1000;
+    return toHHMMSS(seconds) + ',' + ('00' + Math.round(ms / 10)).slice(-2);
+  }
+
+  // The loop pauses (returns without re-scheduling) when recording is paused
+  // so we don't burn ~60 rAFs per second writing the same string to the DOM —
+  // resume() restarts it from onPauseToggleClick.
+  private startRecordingTimerLoop() {
+    const r = () => {
+      if(!this.recording || this.recordPaused) return;
+      const elapsed = this.getRecordingElapsedMs();
+      const formatted = this.formatRecordingTimer(elapsed);
+      if(!this.voiceRecordingPanel?.getIsPlaying()) {
+        this.voiceRecordingPanel?.setTimer(formatted);
+      }
+      fastRaf(r);
+    };
+    r();
+  }
+
+  private stopPlayback() {
+    if(this.playbackRafId) {
+      cancelAnimationFrame(this.playbackRafId);
+      this.playbackRafId = undefined;
+    }
+    if(this.playbackAudio) {
+      try {
+        this.playbackAudio.pause();
+      } catch(e) {}
+      this.playbackAudio.src = '';
+      this.playbackAudio = undefined;
+    }
+    if(this.playbackObjectUrl) {
+      try {
+        URL.revokeObjectURL(this.playbackObjectUrl);
+      } catch(e) {}
+      this.playbackObjectUrl = undefined;
+    }
+    this.voiceRecordingPanel?.setPlaying(false);
+    this.voiceRecordingPanel?.setPlaybackProgress(undefined);
+  }
 
   private onEmoticonsToggle = (open: boolean) => {
     if(!this.btnToggleEmoticons) {
@@ -2332,6 +2617,7 @@ export default class ChatInput {
 
     const [
       isBroadcast,
+      isBroadcastGroup,
       canPinMessage,
       isBot,
       canSend,
@@ -2345,9 +2631,11 @@ export default class ChatInput {
       appConfig,
       autoDeletePeriod,
       canManageAutoDelete,
-      peerMuted
+      peerMuted,
+      ackedGlobalPrivacy
     ] = await Promise.all([
       this.managers.appPeersManager.isBroadcast(peerId),
+      this.managers.appPeersManager.isBroadcastGroup(peerId),
       this.managers.appPeersManager.canPinMessage(peerId),
       this.managers.appPeersManager.isBot(peerId),
       this.chat?.canSend('send_messages') || true,
@@ -2361,7 +2649,10 @@ export default class ChatInput {
       apiManagerProxy.getAppConfig(),
       modifyAckedPromise(this.chat.getAutoDeletePeriod()),
       this.chat.canManageAutoDelete(),
-      this.managers.appNotificationsManager.isPeerLocalMuted({peerId, respectType: false})
+      this.managers.appNotificationsManager.isPeerLocalMuted({peerId, respectType: false}),
+      this.btnSendGift ?
+        modifyAckedPromise(this.managers.acknowledged.appPrivacyManager.getGlobalPrivacySettings()) :
+        undefined
     ]);
 
     const placeholderParams = this.messageInput ? await this.getPlaceholderParams(canSendPlain) : undefined;
@@ -2435,20 +2726,20 @@ export default class ChatInput {
         const type = this.getJoinButtonType();
         const channel = this.chat.peer as MTChat.channel;
 
-        // A broadcast channel the user can't post in: not subscribed -> Subscribe
-        // (primary filled), subscribed -> Mute (transparent). Megagroups keep
-        // using getJoinButtonType().
-        const cantPostBroadcast = isBroadcast && !canSend &&
+        // A broadcast channel OR gigagroup the user can't post in: not subscribed
+        // -> Subscribe/Join (primary filled), subscribed -> Mute (transparent).
+        // Regular megagroups keep using getJoinButtonType().
+        const cantPost = (isBroadcast || isBroadcastGroup) && !canSend &&
           this.chat.type === ChatType.Chat && !peerId.isUser() && !this.chat.isMonoforum;
-        const showJoin = !!type || (cantPostBroadcast && !!channel?.pFlags?.left);
-        const showMute = cantPostBroadcast && !channel?.pFlags?.left;
+        const showJoin = !!type || (cantPost && !!channel?.pFlags?.left);
+        const showMute = cantPost && !channel?.pFlags?.left;
         const good = !haveSomethingInControl && (showJoin || showMute);
         haveSomethingInControl ||= good;
 
         this.joinBtn.classList.toggle('hide', !(good && showJoin));
         if(good && showJoin) {
           // "Subscribe" for a broadcast channel; "Join" for a group you must
-          // join before you can post.
+          // join before you can post (regular group OR gigagroup).
           const joinKey: LangPackKey = isBroadcast ?
             'Chat.Subscribe' :
             type === 'request' ? 'ChannelJoinRequest' : 'ChannelJoin';
@@ -2464,7 +2755,8 @@ export default class ChatInput {
 
         // Channel "can't write" plate: write-in-direct (only when the channel
         // has a linked direct-messages chat) on the left, gift on the right.
-        // Both are channel-only — a megagroup join just shows the centre button.
+        // Both are channel-only — a gigagroup or megagroup join just shows the
+        // centre button.
         this.directControlBtn.classList.toggle('hide', !(good && channel?.linked_monoforum_id));
         this.giftControlBtn.classList.toggle('hide', !(good && isBroadcast));
       }
@@ -2519,6 +2811,24 @@ export default class ChatInput {
           if(canManageAutoDelete && period) this.btnAutoDeletePeriod.replaceChildren(createAutoDeleteIcon(period));
           this.btnAutoDeletePeriod.classList.toggle('hide', !(canManageAutoDelete && period));
         });
+      }
+
+      if(this.btnSendGift) {
+        // Default to hidden so the previous chat's state never leaks.
+        // Cached acked.result → callbackify fires synchronously inside
+        // this render closure (same tick as the hide above → no visible
+        // flicker, button settles into the correct state immediately).
+        // Cold first-load → async toggle once both fetches resolve.
+        this.btnSendGift.classList.add('hide');
+        if(this.giftButtonBasePeerEligible(peerId) && !isBot) {
+          callbackify(ackedPeerFull.result, (peerFull) => {
+            if(!middleware()) return;
+            callbackify(ackedGlobalPrivacy.result, (globalPrivacy) => {
+              if(!middleware()) return;
+              this.btnSendGift.classList.toggle('hide', !this.shouldShowGiftButton(peerFull as UserFull.userFull, globalPrivacy));
+            });
+          });
+        }
       }
 
       haveSomethingInControl ||= this.chat.isBotforum && this.chat.canManageBotforumTopics;
@@ -2602,6 +2912,46 @@ export default class ChatInput {
     });
   }
 
+  private giftButtonBasePeerEligible(peerId: PeerId | undefined) {
+    return !!peerId &&
+      peerId.isUser() &&
+      peerId !== rootScope.myId &&
+      peerId !== SERVICE_PEER_ID &&
+      peerId !== REPLIES_PEER_ID &&
+      peerId !== HIDDEN_PEER_ID &&
+      this.chat?.type === ChatType.Chat;
+  }
+
+  private shouldShowGiftButton(userFull: UserFull.userFull, globalPrivacy?: GlobalPrivacySettings) {
+    if(!userFull) return false;
+    const disallowed = userFull.disallowed_gifts?.pFlags;
+    const allDisallowed = !!disallowed && !!disallowed.disallow_unlimited_stargifts &&
+      !!disallowed.disallow_limited_stargifts &&
+      !!disallowed.disallow_unique_stargifts &&
+      !!disallowed.disallow_premium_gifts &&
+      !!disallowed.disallow_stargifts_from_channels;
+    if(allDisallowed) return false;
+    const ownDisplay = !!globalPrivacy?.pFlags.display_gifts_button;
+    const peerDisplay = !!userFull.pFlags.display_gifts_button;
+    return ownDisplay || peerDisplay;
+  }
+
+  private async updateGiftButtonVisibility() {
+    if(!this.btnSendGift || !this.chat) return;
+    const peerId = this.chat.peerId;
+    if(!this.giftButtonBasePeerEligible(peerId)) {
+      this.btnSendGift.classList.add('hide');
+      return;
+    }
+    const [isBot, userFull, globalPrivacy] = await Promise.all([
+      this.managers.appPeersManager.isBot(peerId),
+      this.managers.appProfileManager.getProfile(peerId.toUserId()),
+      this.managers.appPrivacyManager.getGlobalPrivacySettings()
+    ]);
+    if(this.chat?.peerId !== peerId) return;
+    this.btnSendGift.classList.toggle('hide', isBot || !this.shouldShowGiftButton(userFull, globalPrivacy));
+  }
+
   private updateBotCommands(userFull: UserFull.userFull, skipAnimation?: boolean) {
     const botInfo = userFull.bot_info;
     const menuButton = botInfo?.menu_button;
@@ -2657,7 +3007,10 @@ export default class ChatInput {
       key = 'Channel.Persmission.MessageBlock';
     } else if(threadId && !isForum && !peerId.isUser()) {
       key = 'Comment';
-    } else if(await this.managers.appPeersManager.isBroadcast(peerId)) {
+    } else if(
+      await this.managers.appPeersManager.isBroadcast(peerId) ||
+      await this.managers.appPeersManager.isBroadcastGroup(peerId)
+    ) {
       key = 'ChannelBroadcast';
     } else if(this.chat.isMonoforum && this.chat.canManageDirectMessages) {
       key = this.directMessagesHandler.store.isSuggestingUneditablePostChange ?
@@ -3624,9 +3977,10 @@ export default class ChatInput {
       return;
     } else if(!this.recorder || this.recording || !isInputEmpty || this.forwarding || this.editMsgId || this.suggestedPost?.hasMedia) {
       if(this.recording) {
-        if((Date.now() - this.recordStartTime) < RECORD_MIN_TIME) {
+        if(this.getRecordingElapsedMs() < RECORD_MIN_TIME) {
           this.onCancelRecordClick();
         } else {
+          this.stopPlayback();
           this.recorder.stop();
         }
       } else {
@@ -3667,8 +4021,12 @@ export default class ChatInput {
       this.recorder.start().then(() => {
         this.releaseMediaPlayback = appMediaPlaybackController.setSingleMedia();
         this.recordCanceled = false;
+        this.recordPaused = false;
+        this.recordAccumulatedMs = 0;
 
         this.setRecording(true);
+        this.voiceRecordingPanel?.setMode('recording');
+        this.voiceRecordingPanel?.clearPeaks();
         opusDecodeController.setKeepAlive(true);
 
         const showDiscardPopup = () => {
@@ -3709,21 +4067,12 @@ export default class ChatInput {
 
         const sourceNode: MediaStreamAudioSourceNode = this.recorder.sourceNode;
         this.waveformAnalyser = new VoiceWaveformAnalyser(sourceNode);
-
-        const r = () => {
-          if(!this.recording) return;
-
-          const diff = Date.now() - this.recordStartTime;
-          const ms = diff % 1000;
-
-          const formatted = toHHMMSS(diff / 1000) + ',' + ('00' + Math.round(ms / 10)).slice(-2);
-
-          this.recordTimeEl.textContent = formatted;
-
-          fastRaf(r);
+        this.liveWaveformAnalyser = new LiveWaveformAnalyser(sourceNode);
+        this.liveWaveformAnalyser.onpeak = (peak) => {
+          this.voiceRecordingPanel?.pushPeak(peak);
         };
 
-        r();
+        this.startRecordingTimerLoop();
       }).catch((e: Error) => {
         switch(e.name as string) {
           case 'NotAllowedError': {
@@ -4000,6 +4349,10 @@ export default class ChatInput {
 
     if(this.btnToggleReplyMarkup) {
       this.btnToggleReplyMarkup.classList.toggle('show', isInputEmpty && this.chat.type !== ChatType.Scheduled);
+    }
+
+    if(this.btnSendGift) {
+      this.btnSendGift.classList.toggle('show', isInputEmpty);
     }
 
     this.onUpdateSendBtn?.(icon);

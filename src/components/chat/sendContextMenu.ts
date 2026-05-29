@@ -24,6 +24,7 @@ export default class SendMenu {
     openSide: string,
     onContextElement: HTMLElement,
     onOpen?: () => boolean,
+    onToggle?: (open: boolean) => void,
     canSendWhenOnline?: () => boolean | Promise<boolean>,
     withEffects?: () => boolean,
     effect?: () => DocId,
@@ -134,7 +135,9 @@ export default class SendMenu {
 
         const reactionsCallbacks = reactionsMenu && ChatContextMenu.appendReactionsMenu({element: element, reactionsMenu, reactionsMenuPosition});
 
+        this.options.onToggle?.(true);
         contextMenuController.openBtnMenu(element, () => {
+          this.options.onToggle?.(false);
           reactionsCallbacks?.onClose();
           middlewareHelper.destroy();
           this.createMenu();

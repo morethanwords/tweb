@@ -42,7 +42,7 @@ Legend:
 | Contacts (vCard) | ✅ | |
 | Polls (regular & quiz) | ✅ | `appPollsManager` |
 | Dice / animated random | ✅ | All dice emoji types |
-| Games (HTML5 inline) | ❌ | |
+| Games (HTML5 inline) | ✅ | |
 | Invoices / payment requests | ✅ | |
 | Web page previews | ✅ | Large/small media toggle |
 | Venue (location + place info) | ✅ | |
@@ -63,7 +63,7 @@ Legend:
 | Join by link / request / invite | ✅ | |
 | Pin/unpin message | ✅ | |
 | History cleared | ✅ | |
-| Game score | ❌ | |
+| Game score | ✅ | |
 | Payment sent/received/refunded | ✅ | |
 | Phone call | ✅ | |
 | Screenshot taken | ❌ | |
@@ -91,7 +91,7 @@ Legend:
 | Delete messages (self & all) | ✅ | |
 | Pin messages | ✅ | |
 | Scheduled messages | ✅ | Send at date/time |
-| Repeated messages | ❌ | |
+| Repeated messages | ✅ | |
 | Sending status (sent/delivered/read) | ✅ | |
 | Message effects | ✅ | Animated effects |
 | Read receipts (who read) | ✅ | |
@@ -154,7 +154,7 @@ Legend:
 | Private chats (1-on-1) | ✅ | |
 | Basic groups | ✅ | |
 | Supergroups (up to 200k) | ✅ | |
-| Gigagroups | ❌ | |
+| Gigagroups | ✅ | |
 | Channels | ✅ | |
 | Saved Messages | ✅ | |
 
@@ -379,7 +379,7 @@ Legend:
 | Video calls | ✅ | |
 | Call privacy settings | ✅ | |
 | P2P call privacy | ✅ | |
-| Settings | ❌ | |
+| Settings | ✅ | |
 
 ### 7.2 Group Calls (Voice Chats)
 
@@ -390,7 +390,7 @@ Legend:
 | Participant management | ✅ | Mute, volume, etc. |
 | Screen sharing | ✅ | |
 | Group call scheduling | ✅ | |
-| Settings | ❌ | |
+| Settings | ✅ | |
 
 ### 7.3 Conference Calls
 
@@ -639,7 +639,7 @@ Legend:
 | Sparkles effects | ✅ | `sparkles.ts` |
 | Connection status indicator | ✅ | `connectionStatus.ts` |
 | Birthday display/suggestion | ✅ | `suggestBirthday.tsx` |
-| Personal channel on profile | ⚠️ | View-only |
+| Personal channel on profile | ✅ | |
 | Notes on user profiles | ✅ | `editContact.ts` |
 | Emoji game outcomes | ❌ | |
 | Virtual/lazy lists | ✅ | |
@@ -650,7 +650,7 @@ Legend:
 | Video storyboards | ✅ | |
 | Sponsored in Video player | ❌ | |
 | Download manager | ❌ | |
-| Delete by Date | ❌ | |
+| Delete by Date | ✅ | |
 | Upgraded Device Management | ❌ | |
 | QR code invite links | ❌ | |
-| Chat Preview | ❌ | |
+| Chat Preview | ✅ | |

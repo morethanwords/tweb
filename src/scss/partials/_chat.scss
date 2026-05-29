@@ -193,27 +193,6 @@
 		line-height: 1.5rem;
 	}
 
-	.record-time {
-    color: var(--primary-text-color);
-		line-height: 1;
-    align-self: center;
-		display: none;
-
-		&:after {
-			content: " ";
-			width: 10px;
-			height: 10px;
-			background-color: var(--danger-color);
-			border-radius: 50%;
-			margin-inline: 9px;
-			display: inline-block;
-
-			@include animation-level(2) {
-				animation: recordBlink 1.25s infinite;
-			}
-		}
-	}
-
 	&.is-locked {
 		pointer-events: none;
 
@@ -255,10 +234,6 @@
       .attach-file {
         opacity: 0;
         pointer-events: none;
-      }
-
-      .record-time {
-        display: block;
       }
     }
 	}

@@ -23,6 +23,7 @@ export default class VoiceWaveformAnalyser {
   private currentPeakCount: number;
   private peakCompressionFactor: number;
   private finished: boolean;
+  private paused: boolean;
 
   constructor(sourceNode: AudioNode) {
     this.sourceNode = sourceNode;
@@ -31,6 +32,7 @@ export default class VoiceWaveformAnalyser {
     this.currentPeakCount = 0;
     this.peakCompressionFactor = 1;
     this.finished = false;
+    this.paused = false;
 
     const context = sourceNode.context;
     this.scriptProcessor = context.createScriptProcessor(SCRIPT_PROCESSOR_BUFFER_LENGTH, 1, 1);
@@ -41,8 +43,19 @@ export default class VoiceWaveformAnalyser {
     this.scriptProcessor.connect(context.destination);
   }
 
+  public setPaused(paused: boolean) {
+    this.paused = paused;
+  }
+
+  // Snapshot of the current per-bucket peaks (raw int amplitudes ~0..32767).
+  // Used by the recording UI to show the full waveform during pause/playback
+  // — the visualizer reads this and normalizes it for canvas rendering.
+  public getCurrentPeaks(): number[] {
+    return this.peaks.slice();
+  }
+
   private onAudioProcess = (e: AudioProcessingEvent) => {
-    if(this.finished) return;
+    if(this.finished || this.paused) return;
 
     const channel = e.inputBuffer.getChannelData(0);
     const len = channel.length;

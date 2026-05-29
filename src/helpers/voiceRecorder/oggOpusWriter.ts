@@ -145,6 +145,11 @@ export default class OggOpusWriter {
   }
 
   private emitPage(packets: Uint8Array[], granulePos: number, headerType: number) {
+    const page = this.buildPage(packets, granulePos, headerType, this.pageSequence++);
+    this.chunks.push(page);
+  }
+
+  private buildPage(packets: Uint8Array[], granulePos: number, headerType: number, pageSequence: number): Uint8Array {
     const segments: number[] = [];
     let payloadLen = 0;
     for(let i = 0; i < packets.length; ++i) {
@@ -165,7 +170,7 @@ export default class OggOpusWriter {
     view.setUint32(6, (granulePos >>> 0), true);
     view.setUint32(10, (Math.floor(granulePos / 0x100000000) >>> 0), true);
     view.setUint32(14, this.serial, true);
-    view.setUint32(18, this.pageSequence++, true);
+    view.setUint32(18, pageSequence, true);
     view.setUint32(22, 0, true);
     page[26] = segCount;
     for(let i = 0; i < segCount; ++i) page[27 + i] = segments[i];
@@ -177,7 +182,7 @@ export default class OggOpusWriter {
     }
 
     view.setUint32(22, oggCrc(page), true);
-    this.chunks.push(page);
+    return page;
   }
 
   public finalize(): Uint8Array {
@@ -186,6 +191,28 @@ export default class OggOpusWriter {
     this.flushDataPage(true);
     this.finalized = true;
     return this.concat();
+  }
+
+  // Build a playable OGG snapshot of everything written so far without mutating
+  // internal state. The snapshot always closes with an EOS page (carrying any
+  // pending packets) so decoders read the correct duration; the live writer
+  // keeps its state and continues from where it left off on the next packet.
+  public snapshot(): Uint8Array {
+    if(!this.headersWritten) return new Uint8Array(0);
+
+    const extraPage = this.buildPage(this.pageBuffer, this.granulePosition, OGG_HEADER_TYPE_EOS, this.pageSequence);
+
+    let total = extraPage.length;
+    for(let i = 0; i < this.chunks.length; ++i) total += this.chunks[i].length;
+
+    const out = new Uint8Array(total);
+    let off = 0;
+    for(let i = 0; i < this.chunks.length; ++i) {
+      out.set(this.chunks[i], off);
+      off += this.chunks[i].length;
+    }
+    out.set(extraPage, off);
+    return out;
   }
 
   private concat(): Uint8Array {

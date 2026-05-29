@@ -1,31 +1,35 @@
 @use "../../scss/variables.scss" as *;
 
 .popup {
+  --popup-width: 26.25rem;
+  --popup-border-radius: 1rem;
+  overflow: visible;
+
   :global {
     .popup-container {
-      width: 26.25rem;
-      background: var(--light-filled-secondary-text-color);
       margin-top: 3.625rem;
       height: calc(var(--100vh) - 6.5rem);
       transition: var(--transition-standard-out);
       transition-property: height, margin-top, max-height;
       padding: 0;
       overflow: visible;
-      border-radius: 14px;
       max-height: 100%;
     }
 
-    .tabs-container, .tabs-tab {
+    .tabs-container,
+    .tabs-tab {
       height: 100%;
       overflow: hidden;
-      border-radius: 14px;
+      border-radius: var(--popup-border-radius);
+    }
+
+    .scrollable-y {
+      position: relative;
     }
   }
-
-  overflow: visible;
 }
 
-:global(.popup-container).isChosenGift  {
+:global(.popup-container).isChosenGift {
   margin-top: 0rem;
   height: calc(var(--100vh) - 2.875rem);
   max-height: 800px;
@@ -36,7 +40,7 @@
   flex-direction: column;
   align-items: center;
   transition: opacity var(--transition-standard-in), transform var(--transition-standard-in);
-  border-radius: 14px;
+  border-radius: var(--popup-border-radius);
 }
 
 .mainHeader {
@@ -49,8 +53,8 @@
   border-bottom: 1px solid transparent;
   display: flex;
   align-items: center;
-  border-top-left-radius: 14px;
-  border-top-right-radius: 14px;
+  border-top-left-radius: var(--popup-border-radius);
+  border-top-right-radius: var(--popup-border-radius);
   
   :global(.popup-title) {
     margin-left: 1.5rem;
@@ -209,6 +213,7 @@
   transition-property: background-color, border-bottom-color;
   border-bottom-color: transparent;
   z-index: 3;
+  margin-bottom: 1rem;
 
   &Pinned {
     background: var(--surface-color);
@@ -254,8 +259,8 @@
   padding-right: 0.75rem;
   align-items: center;
   gap: 1.5rem;
-  border-top-right-radius: 14px;
-  border-top-left-radius: 14px;
+  border-top-right-radius: var(--popup-border-radius);
+  border-top-left-radius: var(--popup-border-radius);
   background: var(--surface-color);
 }
 
@@ -375,8 +380,8 @@
   padding-right: 0.75rem;
   align-items: center;
   gap: 1.5rem;
-  border-top-right-radius: 14px;
-  border-top-left-radius: 14px;
+  border-top-right-radius: var(--popup-border-radius);
+  border-top-left-radius: var(--popup-border-radius);
 }
 
 .resaleTitle {
@@ -387,7 +392,7 @@
 .resaleSubtitle {
   font-size: var(--font-size-14);
   line-height: 20px;
-  font-weight: 400;
+  font-weight: var(--font-weight-normal);
   color: var(--secondary-text-color);
 }
 

@@ -1,16 +1,13 @@
 @use "../../shared" as *;
 .popup-star-gift-info {
   $parent: ".popup";
+  --popup-width: 26.25rem;
+  --popup-border-radius: 14px;
 
   #{$parent} {
     &-container {
-      width: 26.25rem;
-      border-radius: 14px;
       overflow: visible;
-    }
-
-    &-header {
-      margin: 0;
+      padding: 1rem;
     }
 
     &-body {
@@ -18,8 +15,7 @@
     }
 
     &-footer {
-      padding: 0;
-      margin-top: 2rem;
+      margin: 1rem -1rem -1rem;
 
       .btn-primary {
         display: flex;

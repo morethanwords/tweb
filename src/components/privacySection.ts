@@ -37,6 +37,10 @@ export default class PrivacySection {
     disallow?: PeerId[],
     allow?: PeerId[]
   };
+  public extras: {
+    disallow?: Set<string>,
+    allow?: Set<string>
+  } = {};
   public type: PrivacyType;
 
   constructor(public options: {
@@ -54,7 +58,8 @@ export default class PrivacySection {
     premiumCaption?: PrivacySectionStr,
     premiumError?: LangPackKey,
     myContactsAndPremium?: boolean,
-    privacyType?: PrivacyType
+    privacyType?: PrivacyType,
+    allowMiniApps?: boolean
   }) {
     if(options.captions) {
       options.captions.reverse();
@@ -152,18 +157,30 @@ export default class PrivacySection {
         attachClickEvent(exception.row.container, () => {
           promise.then(() => {
             const _peerIds = this.peerIds[exception.key];
+            const _extras = this.extras[exception.key] ?? (this.extras[exception.key] = new Set());
             options.tab.slider.createTab(AppAddMembersTab).open({
               type: 'privacy',
               skippable: true,
               title: exception.titleLangKey,
               placeholder: 'PrivacyModal.Search.Placeholder',
-              takeOut: (newPeerIds) => {
+              takeOut: (newPeerIds, newExtras) => {
                 _peerIds.length = 0;
                 _peerIds.push(...newPeerIds);
-                exception.row.subtitle.replaceChildren(...this.generateStr(this.splitPeersByType(newPeerIds)));
+                _extras.clear();
+                if(newExtras) for(const e of newExtras) _extras.add(e);
+                exception.row.subtitle.replaceChildren(
+                  ...this.generateStr(this.splitPeersByType(newPeerIds), _extras)
+                );
                 this.onRadioChange(this.type);
               },
-              selectedPeerIds: _peerIds
+              selectedPeerIds: _peerIds,
+              selectedExtras: new Set(_extras),
+              extraCategories: options.allowMiniApps ? [{
+                key: 'miniapps',
+                icon: 'bot_filled',
+                text: 'PrivacyMiniApps',
+                statusLangKey: 'PrivacyMiniAppsStatus'
+              }] : undefined
             });
           });
         }, {listenerSetter: options.tab.listenerSetter});
@@ -186,15 +203,20 @@ export default class PrivacySection {
 
       if(this.exceptions) {
         this.peerIds = {};
+        this.extras = {};
         ['allow' as const, 'disallow' as const].forEach((k) => {
           const arr = [];
           const from = k === 'allow' ? details.allowPeers : details.disallowPeers;
           arr.push(...from.users.map((id) => id.toPeerId()));
           arr.push(...from.chats.map((id) => id.toPeerId(true)));
           this.peerIds[k] = arr;
+          const extras = this.extras[k] = new Set<string>();
+          if(options.allowMiniApps && (k === 'allow' ? details.allowMiniApps : details.disallowMiniApps)) {
+            extras.add('miniapps');
+          }
           const s = this.exceptions.get(k).row.subtitle;
           s.replaceChildren();
-          s.append(...this.generateStr(from));
+          s.append(...this.generateStr(from, extras));
         });
       }
 
@@ -254,14 +276,15 @@ export default class PrivacySection {
 
     if(this.exceptions) {
       const a = ([
-        ['allow',     'inputPrivacyValueAllowChatParticipants',     'inputPrivacyValueAllowUsers'],
-        ['disallow',  'inputPrivacyValueDisallowChatParticipants',  'inputPrivacyValueDisallowUsers']
+        ['allow',     'inputPrivacyValueAllowChatParticipants',     'inputPrivacyValueAllowUsers',     'inputPrivacyValueAllowBots'],
+        ['disallow',  'inputPrivacyValueDisallowChatParticipants',  'inputPrivacyValueDisallowUsers',  'inputPrivacyValueDisallowBots']
       ] as Array<[
         'allow' | 'disallow',
         'inputPrivacyValueAllowChatParticipants' | 'inputPrivacyValueDisallowChatParticipants',
-        'inputPrivacyValueAllowUsers' | 'inputPrivacyValueDisallowUsers'
+        'inputPrivacyValueAllowUsers' | 'inputPrivacyValueDisallowUsers',
+        'inputPrivacyValueAllowBots' | 'inputPrivacyValueDisallowBots'
       ]>);
-      for(const [k, chatKey, usersKey] of a) {
+      for(const [k, chatKey, usersKey, botsKey] of a) {
         if(this.exceptions.get(k).row.container.classList.contains('hide')) {
           continue;
         }
@@ -281,6 +304,10 @@ export default class PrivacySection {
             _: usersKey,
             users: await Promise.all(splitted.users.map((id) => rootScope.managers.appUsersManager.getUserInput(id)))
           });
+        }
+
+        if(this.options.allowMiniApps && this.extras[k]?.has('miniapps')) {
+          rules.push({_: botsKey});
         }
       }
     }
@@ -329,14 +356,16 @@ export default class PrivacySection {
     return peers;
   }
 
-  private generateStr(peers: {users: UserId[], chats: ChatId[]}) {
-    if(!peers.users.length && !peers.chats.length) {
+  private generateStr(peers: {users: UserId[], chats: ChatId[]}, extras?: Set<string>) {
+    const hasMiniApps = extras?.has('miniapps');
+    if(!peers.users.length && !peers.chats.length && !hasMiniApps) {
       return [i18n('PrivacySettingsController.AddUsers')];
     }
 
     return join([
       peers.users.length ? i18n('Users', [peers.users.length]) : null,
-      peers.chats.length ? i18n('Chats', [peers.chats.length]) : null
+      peers.chats.length ? i18n('Chats', [peers.chats.length]) : null,
+      hasMiniApps ? i18n('PrivacyMiniApps') : null
     ].filter(Boolean), false);
   }
 }
