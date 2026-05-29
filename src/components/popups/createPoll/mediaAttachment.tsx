@@ -61,6 +61,19 @@ export const MediaAttachment = (props: {
 
   const [creatingVideoState, setCreatingVideoState] = createSignal<CreatingVideoState>();
 
+  let cancelAnimation: (reject?: boolean) => void;
+
+  onCleanup(() => {
+    cancelAnimation?.(true);
+
+    const state = creatingVideoState();
+    if(!state) return;
+    // Abort any in-flight video render and free its preview URL.
+    state.editorResult.cancel?.();
+    state.editorResult.animatedPreview?.remove();
+    URL.revokeObjectURL(state.previewObjectUrl);
+  });
+
   const setStickersDropdownPivot = useStickersDropdown({
     onStickerClick: ({docId}) => {
       props.onAttach?.({type: 'sticker', docId});
@@ -132,8 +145,6 @@ export const MediaAttachment = (props: {
       return;
     }
 
-    if(!editorResult.animatedPreview) return;
-
     const result = await editorResult.getResult();
     const url = URL.createObjectURL(result.blob);
 
@@ -154,16 +165,21 @@ export const MediaAttachment = (props: {
       height: editorResult.height
     });
 
+    if(!editorResult.animatedPreview) return;
+
     requestRAF(async() => {
       if(!img() || isCleaned()) {
         editorResult.animatedPreview.remove();
         return;
       }
 
-      await animateImageToTarget({
+      const {promise, cancel} = animateImageToTarget({
         animatedImg: editorResult.animatedPreview,
         target: img()
       });
+      cancelAnimation = cancel;
+
+      await promise.catch(noop);
 
       editorResult.animatedPreview.remove();
     });
@@ -209,10 +225,13 @@ export const MediaAttachment = (props: {
           return;
         }
 
-        await animateImageToTarget({
+        const {promise, cancel} = animateImageToTarget({
           animatedImg: editorResult.animatedPreview,
           target: videoPreviewImg()
-        }).catch(() => animateDeferred.reject());
+        });
+        cancelAnimation = cancel;
+
+        await promise.catch(() => animateDeferred.reject());
 
         editorResult.animatedPreview.remove();
         animateDeferred.resolve();
@@ -356,10 +375,13 @@ export const MediaAttachment = (props: {
         return;
       }
 
-      await animateImageToTarget({
+      const {promise, cancel} = animateImageToTarget({
         animatedImg: editorResult.animatedPreview,
         target
-      }).catch(noop);
+      });
+
+      cancelAnimation = cancel;
+      await promise.catch(noop);
 
       editorResult.animatedPreview.remove();
     });
