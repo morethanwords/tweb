@@ -155,7 +155,7 @@ export const createPollStoreContextValue = (extra: CreatePollContextExtra): Crea
     }
   });
 
-  // Remove empty options from end of the list or add when the last item has a value
+  // Add an option to the end of the list when the last item has a value
   createComputed(() => {
     // track options and their texts
     for(const option of store.pollOptions) {

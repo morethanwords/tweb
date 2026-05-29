@@ -37,7 +37,7 @@ export const PollOption = (props: {
   photo?: Photo.photo;
   video?: Document.document;
   sticker?: GetStickerMediaResult;
-  geo?: MessageMedia.messageMediaGeo;
+  geo?: MessageMedia.messageMediaGeo | MessageMedia.messageMediaVenue;
   clickable?: boolean;
   text: LocalTextWithEntities;
   checked: boolean;

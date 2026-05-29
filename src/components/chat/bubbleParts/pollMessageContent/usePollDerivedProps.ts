@@ -45,10 +45,8 @@ const getDocument = (media: MessageMedia | InputMedia | undefined): Document.doc
 };
 
 
-const getGeo = (media: MessageMedia | InputMedia | undefined): MessageMedia.messageMediaGeo | undefined => {
-  // Intentionally only handles plain `messageMediaGeo`. Venues and live
-  // locations are ignored here per the poll-option rendering requirements.
-  return media?._ === 'messageMediaGeo' ? unwrap(media) : undefined;
+const getGeo = (media: MessageMedia | InputMedia | undefined): MessageMedia.messageMediaGeo | MessageMedia.messageMediaVenue | undefined => {
+  return media?._ === 'messageMediaGeo' || media?._ === 'messageMediaVenue' ? unwrap(media) : undefined;
 };
 
 /**

@@ -182,7 +182,7 @@ export const AutoStartedConfetti = (props: { onEnd: () => void }) => {
 
 export const GeoPreview = (props: {
   class?: string;
-  geo: MessageMedia.messageMediaGeo;
+  geo: MessageMedia.messageMediaGeo | MessageMedia.messageMediaVenue;
 }) => {
   const {wrapGeo} = useHotReloadGuard();
   const contextProps = usePollMessageContentProps();
