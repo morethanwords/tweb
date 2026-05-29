@@ -204,7 +204,7 @@ export default class AppSelectPeers {
     }
 
     this.listenerSetter ??= new ListenerSetter();
-    this.checkboxSide ??= 'right';
+    this.checkboxSide ??= 'left';
     this.exceptSelf ??= false;
     this.meAsSaved ??= !(this.peerType.length === 1 && this.peerType[0] === 'channelParticipants');
     this.headerSearch = /* this.multiSelect !== 'disabled' &&  */!this.noSearch;
@@ -1131,7 +1131,12 @@ export default class AppSelectPeers {
 
       if(this.multiSelect !== 'disabled') {
         const selected = this.selected.has(key);
-        dom.containerEl.prepend(this.checkbox(selected));
+        const checkbox = this.checkbox(selected);
+        if(this.checkboxSide === 'right') {
+          dom.containerEl.append(checkbox);
+        } else {
+          dom.containerEl.prepend(checkbox);
+        }
       }
 
       let subtitleEl: HTMLElement | DocumentFragment;

@@ -1,4 +1,4 @@
-import type {Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, ReactionCount, MessagePeerReaction, PhoneCall, Config, Reaction, AttachMenuBot, PeerSettings, StoryItem, PeerStories, SavedDialog, SavedReactionTag, InputSavedStarGift, LangPackDifference, StarsAmount, MessageEntity, HelpPromoData, StoriesStealthMode, StoryAlbum} from '@layer';
+import type {Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, ReactionCount, MessagePeerReaction, PhoneCall, Config, Reaction, AttachMenuBot, PeerSettings, StoryItem, PeerStories, SavedDialog, SavedReactionTag, InputSavedStarGift, LangPackDifference, StarsAmount, MessageEntity, HelpPromoData, StoriesStealthMode, StoryAlbum, GlobalPrivacySettings} from '@layer';
 import type {Dialog, ForumTopic, MessagesStorageKey, MyMessage} from '@appManagers/appMessagesManager';
 import type {MyDialogFilter} from '@lib/storages/filters';
 import type {AnyDialog, Folder} from '@lib/storages/dialogs';
@@ -144,6 +144,7 @@ export type BroadcastEvents = {
   'background_change': void,
 
   'privacy_update': Update.updatePrivacy,
+  'global_privacy_update': GlobalPrivacySettings,
 
   'notify_settings': Update.updateNotifySettings,
   'notify_peer_type_settings': {key: Exclude<NotifyPeer['_'], 'notifyPeer'>, settings: PeerNotifySettings},

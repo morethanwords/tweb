@@ -165,13 +165,23 @@ export const AppSettingsTab =
   });
 
 
+export type AppAddMembersExtraCategory = {
+  key: string;
+  icon: Icon;
+  text: LangPackKey;
+  statusLangKey?: LangPackKey;
+};
+
 type AppAddMembersTabPayload = {
   title: LangPackKey;
   placeholder: LangPackKey;
   type: 'channel' | 'chat' | 'privacy';
-  takeOut?: (peerIds: PeerId[]) => Promise<any> | false | void;
+  takeOut?: (peerIds: PeerId[], extras?: Set<string>) => Promise<any> | false | void;
   skippable: boolean;
   selectedPeerIds?: PeerId[];
+  selectedExtras?: Set<string>;
+  extraCategories?: ReadonlyArray<AppAddMembersExtraCategory>;
+  extraCategoriesSectionLangKey?: LangPackKey;
   attachToPromise?: (promise: Promise<any>) => void;
 };
 
