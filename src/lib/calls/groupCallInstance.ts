@@ -271,40 +271,6 @@ export default class GroupCallInstance extends CallInstanceBase<{
     }
   }
 
-  // Walk an RTCPeerConnection's senders + receivers and attach e2e script
-  // transforms. Called after each (re)negotiation. Idempotent — re-attaching
-  // to a sender that already has a transform is a no-op browser-side.
-  public attachE2eTransforms(connection: RTCPeerConnection, channelId = 0): void {
-    if(!this.e2e) return;
-    const e2e = this.e2e;
-
-    for(const sender of connection.getSenders()) {
-      if(!sender.track || (sender as any).transform) continue;
-      try {
-        const kind = sender.track.kind === 'video' ? 'video' : 'audio';
-        sender.transform = e2e.newRtcScriptTransform({direction: 'send', channelId, kind});
-      } catch(err) {
-        this.log.error('attachE2eTransforms: send', err);
-      }
-    }
-
-    // Telegram's SFU multiplexes ALL participants over a single inbound
-    // m-line (one mid per media kind, recvonly). A single receiver delivers
-    // frames from many SSRCs; the worker dispatches per-frame via the
-    // SSRC → user_id map. So attach the recv transform eagerly to every
-    // receiver — no per-receiver `fromUserId`, no waiting for the first
-    // frame to learn the SSRC.
-    for(const receiver of connection.getReceivers()) {
-      if(!receiver.track || (receiver as any).transform) continue;
-      try {
-        const kind = receiver.track.kind === 'video' ? 'video' : 'audio';
-        receiver.transform = e2e.newRtcScriptTransform({direction: 'recv', channelId, kind});
-      } catch(err) {
-        this.log.error('attachE2eTransforms: recv', err);
-      }
-    }
-  }
-
   // Attach a recv transform to ONE receiver. Used by the pre-emptive
   // `addTransceiver` path in groupCallsController — receivers must have
   // their transform attached BEFORE the codec produces a frame, or Chrome
@@ -901,6 +867,20 @@ export default class GroupCallInstance extends CallInstanceBase<{
       // } else {
       ssrc.type === 'video' && entry.setEndpoint(ssrc.endpoint);
       entry.createTransceiver(connection, {direction: 'recvonly'});
+
+      // Conference (e2e) only: attach the receive-side RTCRtpScriptTransform
+      // RIGHT NOW — in the gap between createTransceiver and the next
+      // negotiate() that binds the decoder. This is the only window Chrome
+      // accepts a recv transform, mirroring the sender-side constraint.
+      // Attaching it later (in the connection's `track` event, after the
+      // decoder has produced its first frame) makes Chrome silently bypass it
+      // — frames reach the decoder still encrypted and the peer hears noise
+      // (the long-standing "recv pumps ~5 frames then halts" symptom). One
+      // transceiver per SSRC (this loop) ⇒ one decoder + one transform per
+      // remote stream, exactly like the legacy SFU path: the server signals
+      // only SSRCs, we mint the m-lines. No-op for legacy voice chats —
+      // attachE2eRecvTransform returns early unless `this.e2e` is set.
+      this.attachE2eRecvTransform(entry.transceiver.receiver, entry.type === 'video' ? 'video' : 'audio');
       // }
 
       modifiedTypes.add(entry.type);

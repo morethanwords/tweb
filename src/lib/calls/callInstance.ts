@@ -444,13 +444,15 @@ export default class CallInstance extends CallInstanceBase<{
       element.autoplay = true;
       element.muted = true;
       element.setAttribute('playsinline', 'true');
-      // Mirror own + remote video to match the project-wide convention set
-      // by callInstanceBase.tryAddTrack — both halves of the P2P call read
-      // as "looking in a mirror" for visual consistency.
-      // Rear-facing camera (`facingMode === 'environment'`) stays un-mirrored;
-      // see the matching comment in callInstanceBase.tryAddTrack.
+      // Mirror ONLY our own self-view (`type === 'input'`), never the remote
+      // peer's video — same rule as callInstanceBase.tryAddTrack and every
+      // other client (iOS/tgcalls, FaceTime, …). The flip is a local "looking
+      // in a mirror" convenience; the wire carries un-mirrored frames, so the
+      // peer sees us as in real life. Mirroring their feed would invert any
+      // text they hold up. Rear-facing own camera (`facingMode === 'environment'`)
+      // stays un-mirrored — handled by shouldMirrorVideoTrack.
       const track = stream.getVideoTracks()[0];
-      if(shouldMirrorVideoTrack(track)) {
+      if(type === 'input' && shouldMirrorVideoTrack(track)) {
         element.classList.add('call-video-mirror');
       }
       this.videoElements.set(type, element);

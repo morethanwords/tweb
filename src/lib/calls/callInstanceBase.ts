@@ -198,18 +198,22 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
       } else {
         element.setAttribute('playsinline', 'true');
         element.muted = true;
-        // Mirror every <video> we create here. Self camera (`type === 'input'`)
-        // is the obvious case — users expect the left/right flip so they can
-        // pat their own hair on the correct side. We also mirror remote video
-        // (`type === 'output'`) per project preference: the call popup keeps a
-        // consistent "everyone is mirrored" feel across own / interlocutor /
-        // participant tiles.
+        // Mirror ONLY our own self-view (`type === 'input'`), never the remote
+        // participant's video (`type === 'output'`). This matches every video
+        // client (iOS/tgcalls, FaceTime, Zoom, …): the left/right flip is a
+        // local presentation convenience so you see yourself as in a mirror
+        // (pat your hair on the correct side). It is NOT a property of the
+        // stream — the pixels on the wire are always un-mirrored, so the other
+        // side sees us as in real life (text/gestures un-inverted). Mirroring
+        // their incoming feed too would flip any text they hold up and reverse
+        // their gestures relative to reality. tgcalls enforces this by only
+        // flipping frames from the local camera buffer (TGRTCCVPixelBuffer);
+        // decoded remote frames are never flipped.
         //
-        // Exception: a rear-facing camera (`facingMode === 'environment'`)
+        // Exception: our own rear-facing camera (`facingMode === 'environment'`)
         // stays un-mirrored — flipping it would invert any text or sign the
-        // user is pointing the camera at, defeating the purpose of showing
-        // the rear feed in the first place.
-        if(shouldMirrorVideoTrack(track)) {
+        // user is pointing the camera at. shouldMirrorVideoTrack handles that.
+        if(type === 'input' && shouldMirrorVideoTrack(track)) {
           element.classList.add('call-video-mirror');
         }
       }

@@ -101,6 +101,19 @@ export interface ActiveEpoch {
 // and our private key + user id, decrypt the per-participant header and
 // extract the raw shared key. v1+ then mixes in the block hash via HMAC.
 
+// Mirror tdlib GroupState::version() (Blockchain.cpp:42-51): the minimum of
+// all participants' versions, clamped to [0,255]; an empty group is version 0.
+// This gates the v1+ group-shared-key HMAC mixing below so we match every
+// other client. NB: this is the GROUP-STATE version, NOT the per-frame packet
+// `version` field in decryptPacket — they are unrelated.
+export function groupStateVersion(groupState: GroupState): number {
+  const {participants} = groupState;
+  if(!participants.length) return 0;
+  let version = participants[0].version;
+  for(const p of participants) version = Math.min(version, p.version);
+  return Math.max(0, Math.min(255, version));
+}
+
 export async function deriveGroupSharedKey(
   ourUserId: bigint,
   ourPrivateKey: PrivateKey,
@@ -572,12 +585,21 @@ export class E2eCall {
       }
     }
 
+    // Gate the v1+ HMAC mixing on the group-state version, exactly like tdlib
+    // (Call.cpp:727 `if (group_state->version() >= 1)`). Every real call runs
+    // at group-state version 0 — official clients build participants with
+    // version 0 (e2e_api.cpp), and so do we (groupCallsController) — so the mix
+    // must be SKIPPED or our epoch secret diverges from the other clients' and
+    // every inbound frame fails its MAC. Hardcoding `true` here was the bug: it
+    // was self-consistent for tweb↔tweb (both mixed) but incompatible with the
+    // official iOS/Desktop/Android clients (which don't mix at version 0).
+    const v1OrLater = groupStateVersion(this.state.groupState) >= 1;
     const groupSharedKey = await deriveGroupSharedKey(
       this.userId,
       this.privateKey,
       this.state.sharedKey,
       this.state.lastBlockHash,
-      true
+      v1OrLater
     );
 
     const participantKeys = new Map<string, PublicKey>();

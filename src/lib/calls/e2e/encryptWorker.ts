@@ -133,6 +133,20 @@ async function handle(req: HostRequest): Promise<unknown> {
     }
 
     case 'getDebug': {
+      // Gated: in production (E2E_DEBUG=false) never expose the ssrc→user_id
+      // map, per-frame counters, or loop state — return an empty snapshot.
+      if(!E2E_DEBUG) {
+        return {
+          recv: {seen: 0, noMeta: 0, noSsrc: 0, unmapped: 0, decryptOk: 0, decryptErr: 0, lastSsrc: 0, lastErr: ''},
+          send: {seen: 0, ok: 0, err: 0, lastErr: ''},
+          mapSize: 0,
+          mapEntries: [],
+          rtcInstalledAt: undefined,
+          rtcTransformEvents: 0,
+          hasOnRtcTransform: typeof (self as unknown as {onrtctransform: unknown}).onrtctransform === 'function',
+          loops: {}
+        };
+      }
       const w = self as unknown as {
         __rtcInstalled?: number;
         __rtcEvents?: number;
@@ -229,17 +243,37 @@ function toFreshArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   return buf;
 }
 
+// VP8 plaintext prefix — port of libtgcalls calculateVp8FramePlaintextHeaderSize
+// (GroupInstanceCustomImpl.cpp). The SFU and the receiving decoder must see the
+// VP8 payload header in the clear: a key frame (P bit == 0) keeps 10 bytes (the
+// full uncompressed VP8 header incl. dimensions), a delta frame keeps 1 byte.
+// Telegram conferences negotiate VP8 only (verified live against an iOS peer);
+// H264's NAL-start-code-rewrite path is not implemented here.
+function vp8PlaintextPrefixLength(frame: Uint8Array): number {
+  if(frame.length === 0) return 0;
+  const isKeyFrame = (frame[0] & 0x01) === 0; // VP8 payload header P bit: 0 = key frame
+  return Math.min(isKeyFrame ? 10 : 1, frame.length);
+}
+
 async function processSend(opts: TransformOptions, frame: RTCEncodedFrameLike): Promise<RTCEncodedFrameLike | undefined> {
   __sendDebug.seen++;
   if(!call) return undefined;
   try {
     const input = new Uint8Array(frame.data);
     const kind = opts.kind ?? 'audio';
+    // Audio: append the 2-byte level/flag trailer to the plaintext before
+    // encryption. Video (VP8): leave the codec header unencrypted via a
+    // per-frame plaintext prefix so the SFU + peer decoder can parse the frame.
+    // Encrypting the whole video frame (prefix 0) was exactly why outbound
+    // video was undecodable at the peer while audio + inbound video worked.
     const plain = kind === 'audio' ? appendAudioTrailer(input) : input;
+    const unencryptedPrefixLength = kind === 'audio' ?
+      (opts.unencryptedPrefixLength ?? 0) :
+      vp8PlaintextPrefixLength(input);
     const encrypted = await call.encrypt(
       opts.channelId,
       plain,
-      opts.unencryptedPrefixLength ?? 0
+      unencryptedPrefixLength
     );
     frame.data = toFreshArrayBuffer(encrypted);
     __sendDebug.ok++;
@@ -251,10 +285,18 @@ async function processSend(opts: TransformOptions, frame: RTCEncodedFrameLike): 
   }
 }
 
-// Temporary debug counters — strip after J-2 verification.
+// E2E frame-pipeline bring-up diagnostics, gated by E2E_DEBUG. In production
+// (false) the worker exposes NOTHING about the call: the getDebug RPC returns
+// empties and self.__e2eDebug — a live handle onto the ssrc→user_id map — is
+// not installed. Flip to true to surface counters + the map while diagnosing.
+// The per-frame counters below are negligible integer bookkeeping and simply
+// go unread when diagnostics are off.
+const E2E_DEBUG = false;
 const __recvDebug = {seen: 0, noMeta: 0, noSsrc: 0, unmapped: 0, decryptOk: 0, decryptErr: 0, lastSsrc: 0, lastErr: ''};
 const __sendDebug = {seen: 0, ok: 0, err: 0, lastErr: ''};
-(self as unknown as {__e2eDebug?: unknown}).__e2eDebug = {recv: __recvDebug, send: __sendDebug, mapSize: () => ssrcToUser.size};
+if(E2E_DEBUG) {
+  (self as unknown as {__e2eDebug?: unknown}).__e2eDebug = {recv: __recvDebug, send: __sendDebug, mapSize: () => ssrcToUser.size};
+}
 
 async function processRecv(opts: TransformOptions, frame: RTCEncodedFrameLike): Promise<RTCEncodedFrameLike | undefined> {
   __recvDebug.seen++;

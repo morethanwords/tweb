@@ -356,6 +356,19 @@ export class AppGroupCallsManager extends AppManager {
 
     return promise.then((updates) => {
       this.apiUpdatesManager.processUpdateMessage(updates);
+
+      // Re-join hygiene: forget this call's participant-fetch state on leave.
+      // `nextOffsets[id]` is set to '' once we've paginated participants to the
+      // end; if it survives, a later re-join's getGroupCallParticipants sees
+      // nextOffset==='' and SKIPS the fetch entirely — so neither our fresh
+      // self source nor the peers' sources are re-dispatched. The call popup
+      // then renders empty (updateInstance bails while `participant` is unset →
+      // no header, no mic button) and no recvonly transceivers get created for
+      // peers (no inbound video). Clearing the cursor + the cached map forces a
+      // full re-fetch + re-dispatch on the next join. (A full discard already
+      // clears `participants` via the groupCallDiscarded update handler.)
+      this.nextOffsets.delete(id);
+      this.participants.delete(id);
     });
   }
 
@@ -407,6 +420,23 @@ export class AppGroupCallsManager extends AppManager {
       const extended = update as Update.updateGroupCallConnection & {resolvedCallId?: string; resolvedAccessHash?: string};
       extended.resolvedCallId = String(groupCallUpdate.call.id);
       extended.resolvedAccessHash = String(groupCallUpdate.call.access_hash);
+    }
+
+    // Re-join hygiene — covers reloads, not just clean leaves. hangUp() resets
+    // the participant-pagination cursor on a deliberate leave, but a page
+    // reload keeps the SharedWorker (and this manager's nextOffsets) alive
+    // while destroying the connection, so hangUp never runs. Reset the cursor
+    // for the resolved call id on every main (re)join so the post-join
+    // getGroupCallParticipants always does a full fetch + re-dispatch — without
+    // it, rejoining after a reload sees nextOffset==='' and skips the fetch,
+    // leaving an empty call popup and no inbound video. Only the cursor is
+    // cleared here (not the cached participant map) so we don't wipe a
+    // participant the join updates may have just added.
+    if(options.type === 'main') {
+      const resolvedId = (groupCallUpdate && groupCallUpdate.call._ !== 'groupCallDiscarded') ?
+        String(groupCallUpdate.call.id) :
+        groupCallId;
+      this.nextOffsets.delete(resolvedId);
     }
     return update;
   }

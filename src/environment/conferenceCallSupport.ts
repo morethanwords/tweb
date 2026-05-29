@@ -1,15 +1,20 @@
 // TdE2E-encrypted conference calls. The full client-side port lives under
-// src/lib/calls/e2e/ and is byte-compatible with tdlib's reference, but the
-// UI entry points are GATED off because of a Chrome `RTCRtpScriptTransform`
-// recv-side bypass that only fires for Telegram's single-mid SFU layout —
-// see docs/conf-call-browser-recv-blocker.md for the full writeup,
-// reproduction, and the proposed server-side fix.
+// src/lib/calls/e2e/ and is byte-compatible with tdlib's reference.
 //
-// Flip this to `true` to re-enable the UI once the SFU exposes a multi-mid
-// layout to browser clients (or once the Chromium bug is fixed). All the
-// backend (crypto, blockchain, worker, transform attach, audio trailer,
-// SDP munging) is already wired up — only the user-facing entry points
-// are gated.
-const IS_CONFERENCE_CALL_SUPPORTED = false;
+// Previously GATED off because of an apparent Chrome `RTCRtpScriptTransform`
+// recv-side bypass ("~5 frames then halt"). That was re-diagnosed as a
+// MODEL + TIMING bug, not a Chromium limitation: the recv path had been
+// built around a single multiplexed recvonly m-line and attached the recv
+// transform in the `track` event (after the decoder binds — too late, so
+// Chrome silently bypasses it). It now mints one recvonly m-line per remote
+// SSRC (like legacy voice chats — the SFU signals only SSRCs) and attaches
+// the recv transform at createTransceiver time, before the decoder binds —
+// the exact mirror of the proven send-side fix. See onParticipantUpdate in
+// groupCallInstance.ts + joinConferenceCommon in groupCallsController.ts.
+//
+// Enabled so the fix can be verified end-to-end on a live 2-party
+// conference. If recv frames still don't pump through the transform, gate
+// this back to `false` while investigating.
+const IS_CONFERENCE_CALL_SUPPORTED = true;
 
 export default IS_CONFERENCE_CALL_SUPPORTED;
