@@ -470,11 +470,12 @@ export const MediaAttachment = (props: {
     state?.editorResult.cancel?.();
   };
 
+  // Note: on img and video elements or their parents, keep on:click, as it is not canceled when this is rendered inside message bubbles
   return (
     <Switch>
       <Match when={creatingVideoState()} keyed>
         {(state) => (
-          <div class={`${props.imgClass} ${styles.videoCreatingWrapper}`}>
+          <div class={`${props.imgClass} ${styles.videoCreatingWrapper}`} on:click={onCancelCreation}>
             <img
               ref={setVideoPreviewImg}
               src={state.previewObjectUrl}
@@ -489,7 +490,7 @@ export const MediaAttachment = (props: {
                   stroke='white'
                 />
               </div>
-              <div role='button' on:click={onCancelCreation} class={styles.videoCreatingCancel}>
+              <div role='button' class={styles.videoCreatingCancel}>
                 <IconTsx icon='close' class={styles.videoCreatingCancelIcon} />
               </div>
             </div>
