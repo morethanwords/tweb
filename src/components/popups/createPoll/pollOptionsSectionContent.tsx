@@ -179,7 +179,7 @@ const PollOptionFullField = (props: {
     return store.pollOptions.filter((option) => option.text === text).length > 1;
   });
 
-  const canBeReordered = createMemo(() => props.index < store.pollOptions.length - 1 || !!props.mappedItem.option.text);
+  const canBeReordered = createMemo(() => props.index === 0 || props.index < store.pollOptions.length - 1 || !!props.mappedItem.option.text);
 
   const onPointerDown = createMemo(() => props.sortable.dragHandleProps(props.mappedItem.id).onPointerDown);
 
