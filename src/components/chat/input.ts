@@ -1537,6 +1537,9 @@ export default class ChatInput {
 
       if(this.chat.threadId !== threadId || this.chat.monoforumThreadId !== monoforumThreadId || this.chat.peerId !== peerId || PEER_EXCEPTIONS.has(this.chat.type)) return;
       if(!draft) {
+        // a pending local save means the user is actively typing newer content —
+        // let it win and sync normally instead of clobbering it with the remote clear
+        if(this.saveDraftDebounced.isDebounced()) return;
         this.saveDraftDebounced.clearTimeout();
       }
       this.setDraft(draft, true, force);
