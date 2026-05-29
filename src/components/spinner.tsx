@@ -6,6 +6,7 @@ import styles from './spinner.module.scss';
 type SpinnerProps = {
   /** (0-1] */
   thickness?: number;
+  stroke?: string;
 };
 
 const size = 24;
@@ -25,7 +26,7 @@ export const Spinner = (inProps: SpinnerProps) => {
         cy={radius}
         r={radius - strokeWidth() - 0.5}
         fill="none"
-        stroke="white"
+        stroke={props.stroke ?? 'white'}
         stroke-width={strokeWidth()}
         stroke-linecap="round"
         stroke-dashoffset="0"

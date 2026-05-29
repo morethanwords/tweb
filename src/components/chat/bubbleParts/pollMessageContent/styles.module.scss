@@ -521,6 +521,19 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+
+  & circle {
+    stroke: var(--secondary-text-color);
+  }
+
+  .outgoing & circle {
+    stroke: var(--primary-color);
+  }
+
+  :global(.night) & circle,
+  :global(.night) .outgoing & circle {
+    stroke: white;
+  }
 }
 
 .pointerDisabled {
