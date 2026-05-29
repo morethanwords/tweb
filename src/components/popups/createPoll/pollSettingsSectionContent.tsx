@@ -1,6 +1,7 @@
 import {createAutoDeleteIcon} from '@components/autoDeleteIcon';
 import {IconTsx} from '@components/iconTsx';
 import InputField from '@components/inputField';
+import showDatePickerPopup from '@components/popups/datePicker';
 import SimpleFormField from '@components/simpleFormField';
 import Space from '@components/space';
 import StaticSwitch from '@components/staticSwitch';
@@ -23,12 +24,11 @@ import {FilterBooleanKeys} from '@types';
 import {Accessor, createEffect, createSignal, JSX, on, onCleanup, Show} from 'solid-js';
 import {supportedDescriptionFormattingTypes} from './config';
 import {EmojiButtonWithOpacity as EmojiDropdownButton} from './emojiButtonWithOpacity';
-import {useSupportsMedia} from './utils';
 import {MediaAttachment} from './mediaAttachment';
 import {CreatePollStore, useCreatePollContext} from './storeContext';
 import styles from './styles.module.scss';
 import {useCreatePollLimits} from './useCreatePollLimits';
-import showDatePickerPopup from '@components/popups/datePicker';
+import {createFormFieldClickHandler, interactableClass, useSupportsMedia} from './utils';
 
 type BooleanSettingKey = FilterBooleanKeys<CreatePollStore>;
 
@@ -223,13 +223,14 @@ export const PollSettingsSectionContent = () => {
               withEndButtonIcon
               withMinHeight
               isMarkupTooltipHost
+              onClick={createFormFieldClickHandler(explanationInput)}
             >
               <SimpleFormField.InputStub>
                 {explanationInput.input}
               </SimpleFormField.InputStub>
               <SimpleFormField.Label><I18nTsx key='NewPoll.Explanation.Placeholder' /></SimpleFormField.Label>
               <SimpleFormField.SideContent withFixedIcon first last>
-                <EmojiDropdownButton inputField={explanationInput} />
+                <EmojiDropdownButton class={interactableClass} inputField={explanationInput} />
               </SimpleFormField.SideContent>
               <Show when={supportsMedia('photo') || supportsMedia('video')}>
                 <SimpleFormField.WithAutoLengthCounter
@@ -239,6 +240,7 @@ export const PollSettingsSectionContent = () => {
                   withFixedIcon
                 >
                   <MediaAttachment
+                    btnClass={interactableClass}
                     supportedMediaTypes={[
                       ...(supportsMedia('photo') ? ['photo'] as const : []),
                       ...(supportsMedia('video') ? ['video'] as const : []),

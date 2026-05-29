@@ -131,7 +131,7 @@
   transition: opacity 0.2s;
 
   &.disabled {
-    cursor: default;
+    cursor: inherit;
     opacity: 0;
   }
 }

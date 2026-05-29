@@ -1,3 +1,4 @@
+import type InputField from '@components/inputField';
 import lastItem from '@helpers/array/lastItem';
 import {createMemo} from 'solid-js';
 import {unwrap} from 'solid-js/store';
@@ -37,6 +38,7 @@ const finalizeAttachment = (attachment: AttachedMedia | undefined): FinalizedAtt
   if(!attachment || attachment.type === 'pending') return undefined;
   return attachment;
 };
+
 export const getFinalPayload = (context: CreatePollContextValue): CreatePollPayload => {
   const {store, isBroadcast} = context;
 
@@ -87,4 +89,14 @@ export const useSupportsMedia = () => {
 
 export const checkOptionHasValue = (option: StorePollOption) => {
   return !!option.text || !!option.attachment;
+};
+
+export const interactableClass = 'form-field-clickable';
+
+export const createFormFieldClickHandler = (inputField: InputField) => (e: MouseEvent) => {
+  const target = e.target;
+
+  if(target instanceof HTMLElement && !target.closest(`.${interactableClass}`)) {
+    inputField.input.focus();
+  }
 };

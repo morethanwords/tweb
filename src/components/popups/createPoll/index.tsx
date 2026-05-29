@@ -13,13 +13,13 @@ import {createSignal, Show} from 'solid-js';
 import PopupElement, {createPopup, useSnitchedPopupContext} from '../indexTsx';
 import {supportedDescriptionFormattingTypes} from './config';
 import {EmojiButtonWithOpacity as EmojiDropdownButton} from './emojiButtonWithOpacity';
-import {getFinalPayload, hasMeaningfulChanges, useCanSubmit, useSupportsMedia} from './utils';
 import {MediaAttachment} from './mediaAttachment';
 import {PollOptionsSectionContent} from './pollOptionsSectionContent';
 import {PollSettingsSectionContent} from './pollSettingsSectionContent';
 import {CreatePollContext, CreatePollPayload, createPollStoreContextValue, SupportedMediaType, useCreatePollContext} from './storeContext';
 import styles from './styles.module.scss';
 import {useCreatePollLimits} from './useCreatePollLimits';
+import {createFormFieldClickHandler, getFinalPayload, hasMeaningfulChanges, interactableClass, useCanSubmit, useSupportsMedia} from './utils';
 
 
 type CreatePollPopupProps = {
@@ -138,6 +138,7 @@ const QuestionAndDescription = () => {
         withEndButtonIcon
         withMinHeight
         isError={questionError.hasError()}
+        onClick={createFormFieldClickHandler(questionInput)}
       >
         <SimpleFormField.InputStub>
           {questionInput.input}
@@ -150,7 +151,7 @@ const QuestionAndDescription = () => {
         </SimpleFormField.Label>
 
         <SimpleFormField.SideContent withFixedIcon first last>
-          <EmojiDropdownButton inputField={questionInput} />
+          <EmojiDropdownButton class={interactableClass} inputField={questionInput} />
         </SimpleFormField.SideContent>
       </SimpleFormField>
 
@@ -162,13 +163,14 @@ const QuestionAndDescription = () => {
         withEndButtonIcon
         withMinHeight
         isMarkupTooltipHost
+        onClick={createFormFieldClickHandler(descriptionInput)}
       >
         <SimpleFormField.InputStub>
           {descriptionInput.input}
         </SimpleFormField.InputStub>
         <SimpleFormField.Label><I18nTsx key='DescriptionOptionalPlaceholder' /></SimpleFormField.Label>
         <SimpleFormField.SideContent withFixedIcon first last>
-          <EmojiDropdownButton inputField={descriptionInput} />
+          <EmojiDropdownButton class={interactableClass} inputField={descriptionInput} />
         </SimpleFormField.SideContent>
         <Show when={supportsMedia('photo') || supportsMedia('video')}>
           <SimpleFormField.WithAutoLengthCounter
@@ -178,6 +180,7 @@ const QuestionAndDescription = () => {
             withFixedIcon
           >
             <MediaAttachment
+              btnClass={interactableClass}
               supportedMediaTypes={[
                 ...(supportsMedia('photo') ? ['photo'] as const : []),
                 ...(supportsMedia('video') ? ['video'] as const : []),

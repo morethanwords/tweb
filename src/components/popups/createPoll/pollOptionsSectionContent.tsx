@@ -23,7 +23,7 @@ import {MediaAttachment} from './mediaAttachment';
 import {AttachedMedia, StorePollOption, useCreatePollContext} from './storeContext';
 import styles from './styles.module.scss';
 import {useCreatePollLimits} from './useCreatePollLimits';
-import {checkOptionHasValue, useSupportsMedia} from './utils';
+import {checkOptionHasValue, createFormFieldClickHandler, interactableClass, useSupportsMedia} from './utils';
 
 
 type MappedItem = {
@@ -179,7 +179,7 @@ const PollOptionFullField = (props: {
     return store.pollOptions.filter((option) => option.text === text).length > 1;
   });
 
-  const canBeReordered = createMemo(() => props.index === 0 || props.index < store.pollOptions.length - 1 || !!props.mappedItem.option.text);
+  const canBeReordered = createMemo(() => props.index < store.pollOptions.length - 1 || !!props.mappedItem.option.text);
 
   const onPointerDown = createMemo(() => props.sortable.dragHandleProps(props.mappedItem.id).onPointerDown);
 
@@ -318,10 +318,12 @@ const PollOptionInputField = (props: {
       hoverDisabled={props.hoverDisabled}
       isError={props.isError}
       style={props.style}
+      onClick={createFormFieldClickHandler(inputField)}
     >
       <SimpleFormField.SideContent
         class={styles.draggableSideContent}
         classList={{
+          [interactableClass]: props.canBeReordered,
           [styles.disabled]: !props.canBeReordered
         }}
         first
@@ -335,7 +337,7 @@ const PollOptionInputField = (props: {
         {inputField.placeholder}
       </SimpleFormField.InputStub>
       <SimpleFormField.SideContent withFixedIcon first last>
-        <EmojiDropdownButton inputField={inputField} />
+        <EmojiDropdownButton class={interactableClass} inputField={inputField} />
       </SimpleFormField.SideContent>
       <Show when={supportsMedia('photo') || supportsMedia('video') || supportsMedia('sticker')}>
         <SimpleFormField.WithAutoLengthCounter
@@ -345,6 +347,7 @@ const PollOptionInputField = (props: {
           withFixedIcon
         >
           <MediaAttachment
+            btnClass={interactableClass}
             supportedMediaTypes={[
               ...(supportsMedia('photo') ? ['photo'] as const : []),
               ...(supportsMedia('video') ? ['video'] as const : []),
