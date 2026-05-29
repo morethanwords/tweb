@@ -55,7 +55,7 @@ export interface NativeVoiceRecorderConfig {
   mediaTrackConstraints?: boolean | MediaTrackConstraints;
 }
 
-type State = 'inactive' | 'recording';
+type State = 'inactive' | 'recording' | 'paused';
 
 export default class NativeVoiceRecorder {
   public sourceNode: MediaStreamAudioSourceNode;
@@ -63,6 +63,8 @@ export default class NativeVoiceRecorder {
 
   public onstart: () => void = () => {};
   public onstop: () => void = () => {};
+  public onpause: () => void = () => {};
+  public onresume: () => void = () => {};
   public ondataavailable: (data: Uint8Array) => void = () => {};
 
   private config: Required<Pick<NativeVoiceRecorderConfig, 'encoderSampleRate' | 'numberOfChannels' | 'encoderBitRate'>> & {
@@ -77,6 +79,7 @@ export default class NativeVoiceRecorder {
   private workletUrl: string;
   private encoderTimestampUs = 0;
   private opusHeadCaptured = false;
+  public notifySamples: (samples: Float32Array) => void;
 
   static isSupported = isNativeVoiceRecorderSupported;
 
@@ -140,6 +143,7 @@ export default class NativeVoiceRecorder {
 
   private onWorkletMessage(samples: Float32Array) {
     if(this.state !== 'recording') return;
+    if(this.notifySamples) this.notifySamples(samples);
     const numberOfFrames = samples.length / this.config.numberOfChannels;
     const audioData = new AudioData({
       format: 'f32-planar',
@@ -180,8 +184,33 @@ export default class NativeVoiceRecorder {
     this.writer.writePacket(data, durationSamples);
   }
 
-  public async stop(): Promise<void> {
+  // Pause keeps the worklet → encoder pipeline wired up but ignores incoming
+  // PCM samples. The encoder is flushed so the OGG snapshot is playable.
+  public async pause(): Promise<void> {
     if(this.state !== 'recording') return;
+    this.state = 'paused';
+    if(this.encoder && this.encoder.state !== 'closed') {
+      try {
+        await this.encoder.flush();
+      } catch(e) {}
+    }
+    this.onpause();
+  }
+
+  public resume(): void {
+    if(this.state !== 'paused') return;
+    this.state = 'recording';
+    this.onresume();
+  }
+
+  // Build a playable OGG of everything captured so far without ending the
+  // recording. Used to preview the in-progress voice message during pause.
+  public getSnapshot(): Uint8Array {
+    return this.writer ? this.writer.snapshot() : new Uint8Array(0);
+  }
+
+  public async stop(): Promise<void> {
+    if(this.state === 'inactive') return;
     this.state = 'inactive';
 
     try {

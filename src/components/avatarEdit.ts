@@ -72,7 +72,7 @@ async function finishFromResult({result: editorResult, canvas, onChange}: Finish
   const img = imgResult.img;
 
   const animatedImg = editorResult.animatedPreview;
-  await animateImageToTarget({animatedImg, target: canvas, targetIsRound: true});
+  await animateImageToTarget({animatedImg, target: canvas, targetIsRound: true}).promise;
 
   const [width, height] = snapToViewport(1, editorResult.width, editorResult.height);
 

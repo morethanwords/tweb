@@ -87,8 +87,10 @@ const MOVE_TRANSITION_TIME = 350;
 // padding / .media-viewer-mover.center positioning are derived from these.
 const RESERVE_TOP_DESKTOP = 80;
 const RESERVE_BOTTOM_DESKTOP = 110;
-const RESERVE_TOP_MOBILE_OR_LIVE = 120;
-const RESERVE_BOTTOM_MOBILE_OR_LIVE = 0;
+// Split evenly so the media stays geometrically centered (top/bottom chrome
+// floats over it rather than reserving asymmetric space — see .center math).
+const RESERVE_TOP_MOBILE_OR_LIVE = 60;
+const RESERVE_BOTTOM_MOBILE_OR_LIVE = 60;
 
 // Min displayed width for videos that get a player UI.
 const VIDEO_MIN_WIDTH = 420;

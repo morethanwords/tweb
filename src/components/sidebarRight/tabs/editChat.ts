@@ -69,6 +69,7 @@ export default class AppEditChatTab extends SliderSuperTab {
       canPostMessages,
       canManageInviteLinks,
       canInviteUsers,
+      isBroadcastGroup,
       appConfig,
       availableReactions
     } = await namedPromises({
@@ -76,6 +77,7 @@ export default class AppEditChatTab extends SliderSuperTab {
       chat: this.managers.appChatsManager.getChat(this.chatId) as Promise<Chat.chat | Chat.channel>,
       isBroadcast: this.managers.appChatsManager.isBroadcast(this.chatId),
       isChannel: this.managers.appChatsManager.isChannel(this.chatId),
+      isBroadcastGroup: this.managers.appChatsManager.isBroadcastGroup(this.chatId),
       canChangeType: this.managers.appChatsManager.hasRights(this.chatId, 'change_type'),
       canChangePermissions: this.managers.appChatsManager.hasRights(this.chatId, 'change_permissions'),
       canToggleForum: this.managers.appChatsManager.hasRights(this.chatId, 'toggle_forum'),
@@ -317,7 +319,7 @@ export default class AppEditChatTab extends SliderSuperTab {
         section.content.append(directMessagesRow.container);
       }
 
-      if(canChangePermissions && !isBroadcast) {
+      if(canChangePermissions && !isBroadcast && !isBroadcastGroup) {
         const flags = [
           'send_stickers',
           'send_polls',

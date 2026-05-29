@@ -3,7 +3,7 @@
 
 .grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   padding: 0 1rem 1rem;
   gap: 0.625rem;
   flex: 1 0 auto;
@@ -171,13 +171,16 @@
 
 .itemSticker {
   position: relative;
-  width: 90px;
-  height: 90px;
+  width: 100%;
+  max-width: 90px;
+  aspect-ratio: 1;
   z-index: 1;
 
   @include respond-to(handhelds) {
     width: 72px;
     height: 72px;
+    max-width: none;
+    aspect-ratio: auto;
   }
 }
 

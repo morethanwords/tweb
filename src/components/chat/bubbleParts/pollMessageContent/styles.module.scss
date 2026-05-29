@@ -1,6 +1,25 @@
 @use "../../../../scss/variables" as *;
 @use "../../../../scss/mixins" as *;
 
+@mixin hoverable {
+  --hover-bg-color: rgba(0, 0, 0, 0.05);
+
+  @include hover-global(var(--hover-bg-color), background-color, true);
+
+  :global(.night) & {
+    --hover-bg-color: rgba(255, 255, 255, 0.075);
+  }
+
+  .outgoing & {
+    --hover-bg-color: hsla(from var(--message-primary-color) h s l / 0.08);
+    --ripple-color: hsla(from var(--message-primary-color) h s l / 0.15);
+
+    :global(.night) & {
+      --hover-bg-color: rgba(255, 255, 255, 0.1);
+      --ripple-color: rgba(255, 255, 255, 0.175);
+    }
+  }
+}
 
 .container {
   display: block;
@@ -30,6 +49,7 @@
     align-items: center;
     justify-content: center;
 
+    user-select: none;
     width: 2rem;
     height: 2rem;
 
@@ -56,6 +76,33 @@
       left: 50%;
       transform: translate(-50%, -50%);
       color: inherit;
+
+      @include hoverable;
+    }
+
+    &Dim {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      background-color: rgba(0, 0, 0, 0.25);
+    }
+
+    &Play {
+      display: flex;
+      font-size: 1.25rem;
+      color: white;
+    }
+
+    &GifLabel {
+      display: flex;
+      font-size: 0.75rem;
+      font-weight: var(--font-weight-bold);
+      color: white;
     }
 
     :global(.preloader-container) {
@@ -66,6 +113,20 @@
         width: 20px;
         height: 20px;
       }
+    }
+  }
+
+  &Geo {
+    :global(.geo-container) {
+      position: absolute;
+      inset: 0;
+      height: unset;
+      width: unset;
+    }
+    :global(.geo-pin) {
+      margin-top: unset;
+      height: 1.25rem;
+      width: unset;
     }
   }
 
@@ -88,26 +149,6 @@
 
     :global(.night) & {
       color: inherit;
-    }
-  }
-}
-
-@mixin hoverable {
-  --hover-bg-color: rgba(0, 0, 0, 0.05);
-
-  @include hover-global(var(--hover-bg-color), background-color, true);
-
-  :global(.night) & {
-    --hover-bg-color: rgba(255, 255, 255, 0.075);
-  }
-
-  &.outgoing {
-    --hover-bg-color: hsla(from var(--message-primary-color) h s l / 0.08);
-    --ripple-color: hsla(from var(--message-primary-color) h s l / 0.15);
-
-    :global(.night) & {
-      --hover-bg-color: rgba(255, 255, 255, 0.1);
-      --ripple-color: rgba(255, 255, 255, 0.175);
     }
   }
 }
@@ -379,11 +420,7 @@
   padding: 0.25rem;
   color: inherit;
 
-  // The emoji is off center a little bit
-  /* :global(.tgico) {
-    position: relative;
-    transform: translateX(0.5px);
-  } */
+  @include hoverable;
 }
 
 .inputField {
@@ -439,7 +476,7 @@
   }
 }
 
-.pollImage {
+.pollDescriptionMedia {
   position: relative;
   overflow: hidden;
 
@@ -484,6 +521,19 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+
+  & circle {
+    stroke: var(--secondary-text-color);
+  }
+
+  .outgoing & circle {
+    stroke: var(--primary-color);
+  }
+
+  :global(.night) & circle,
+  :global(.night) .outgoing & circle {
+    stroke: white;
+  }
 }
 
 .pointerDisabled {
@@ -492,14 +542,9 @@
 
 .geo {
   :global(.geo-container) {
-    position: absolute;
-    inset: 0;
-    height: unset;
-    width: unset;
+    display: block;
   }
   :global(.geo-pin) {
     margin-top: unset;
-    height: 1.25rem;
-    width: unset;
   }
 }

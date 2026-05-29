@@ -135,6 +135,10 @@ export class AppPeersManager extends AppManager {
     return this.isChannel(peerId) && !this.isMegagroup(peerId);
   }
 
+  public isBroadcastGroup(peerId: PeerId): boolean {
+    return !peerId.isUser() && this.appChatsManager.isBroadcastGroup(peerId.toChatId());
+  }
+
   public isBot(peerId: PeerId): boolean {
     return peerId.isUser() && this.appUsersManager.isBot(peerId.toUserId());
   }

@@ -1,6 +1,7 @@
 import {createAutoDeleteIcon} from '@components/autoDeleteIcon';
 import {IconTsx} from '@components/iconTsx';
 import InputField from '@components/inputField';
+import showDatePickerPopup from '@components/popups/datePicker';
 import SimpleFormField from '@components/simpleFormField';
 import Space from '@components/space';
 import StaticSwitch from '@components/staticSwitch';
@@ -23,12 +24,11 @@ import {FilterBooleanKeys} from '@types';
 import {Accessor, createEffect, createSignal, JSX, on, onCleanup, Show} from 'solid-js';
 import {supportedDescriptionFormattingTypes} from './config';
 import {EmojiButtonWithOpacity as EmojiDropdownButton} from './emojiButtonWithOpacity';
-import {useSupportsMedia} from './utils';
 import {MediaAttachment} from './mediaAttachment';
 import {CreatePollStore, useCreatePollContext} from './storeContext';
 import styles from './styles.module.scss';
 import {useCreatePollLimits} from './useCreatePollLimits';
-import showDatePickerPopup from '@components/popups/datePicker';
+import {createFormFieldClickHandler, interactableClass, useSupportsMedia} from './utils';
 
 type BooleanSettingKey = FilterBooleanKeys<CreatePollStore>;
 
@@ -93,7 +93,18 @@ export const PollSettingsSectionContent = () => {
           mediaStyle={getGradientStyle(0)}
           icon='eye1'
           checked={context.store.showWhoVoted}
-          onClick={handleSettingsFlag('showWhoVoted')}
+          onClick={() => {
+            if(context.store.showWhoVoted) {
+              context.setStore({
+                allowAddingOptions: false,
+                showWhoVoted: false
+              });
+            } else {
+              context.setStore({
+                showWhoVoted: true
+              });
+            }
+          }}
         />
       </Show>
       <SettingsOption
@@ -111,7 +122,7 @@ export const PollSettingsSectionContent = () => {
           mediaStyle={getGradientStyle(2)}
           icon='checklist_add'
           checked={context.store.allowAddingOptions}
-          disabled={context.store.hasCorrectAnswer}
+          disabled={context.store.hasCorrectAnswer || !context.store.showWhoVoted}
           onClick={handleSettingsFlag('allowAddingOptions')}
         />
       </Show>
@@ -133,7 +144,7 @@ export const PollSettingsSectionContent = () => {
       />
       <SettingsOption
         title='NewPoll.SetCorrectAnswer'
-        subtitle='NewPoll.SetCorrectAnswerSubtitle'
+        subtitle={context.store.allowMultipleAnswers ? 'NewPoll.SetMultipleCorrectAnswerSubtitle' : 'NewPoll.SetCorrectAnswerSubtitle'}
         mediaStyle={getGradientStyle(5)}
         icon='checklist_done'
         checked={context.store.hasCorrectAnswer}
@@ -212,15 +223,16 @@ export const PollSettingsSectionContent = () => {
               withEndButtonIcon
               withMinHeight
               isMarkupTooltipHost
+              onClick={createFormFieldClickHandler(explanationInput)}
             >
               <SimpleFormField.InputStub>
                 {explanationInput.input}
               </SimpleFormField.InputStub>
               <SimpleFormField.Label><I18nTsx key='NewPoll.Explanation.Placeholder' /></SimpleFormField.Label>
               <SimpleFormField.SideContent withFixedIcon first last>
-                <EmojiDropdownButton inputField={explanationInput} />
+                <EmojiDropdownButton class={interactableClass} inputField={explanationInput} />
               </SimpleFormField.SideContent>
-              <Show when={supportsMedia('photo')}>
+              <Show when={supportsMedia('photo') || supportsMedia('video')}>
                 <SimpleFormField.WithAutoLengthCounter
                   maxLength={maxExplanationLength()}
                   first={!context.store.explanationAttachment}
@@ -228,7 +240,12 @@ export const PollSettingsSectionContent = () => {
                   withFixedIcon
                 >
                   <MediaAttachment
-                    supportedMediaTypes={['photo']}
+                    btnClass={interactableClass}
+                    supportedMediaTypes={[
+                      ...(supportsMedia('photo') ? ['photo'] as const : []),
+                      ...(supportsMedia('video') ? ['video'] as const : []),
+                      ...(supportsMedia('gif') ? ['gif'] as const : []) // GIF is additional to photo
+                    ]}
                     imgClass={styles.mediaAttachmentImage}
                     attachedMedia={context.store.explanationAttachment}
                     onAttach={(value) => {

@@ -1,5 +1,3 @@
-import {Signal} from 'solid-js';
-
 import {Document} from '@layer';
 
 export type NumberPair = [number, number];
@@ -56,9 +54,4 @@ export type FontInfo = {
   fontFamily: string;
   fontWeight: number;
   baseline: number;
-};
-
-export type StandaloneSignal<T> = {
-  dispose: () => void;
-  signal: Signal<T>;
 };

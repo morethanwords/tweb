@@ -1131,7 +1131,12 @@ export default class AppSelectPeers {
 
       if(this.multiSelect !== 'disabled') {
         const selected = this.selected.has(key);
-        dom.containerEl.prepend(this.checkbox(selected));
+        const checkbox = this.checkbox(selected);
+        if(this.checkboxSide === 'right') {
+          dom.containerEl.append(checkbox);
+        } else {
+          dom.containerEl.prepend(checkbox);
+        }
       }
 
       let subtitleEl: HTMLElement | DocumentFragment;

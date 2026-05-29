@@ -1,5 +1,6 @@
 import {MediaEditorFinalResult} from '@components/mediaEditor/finalRender/createFinalResult';
 import IMAGE_MIME_TYPES_SUPPORTED from '@environment/imageMimeTypesSupport';
+import VIDEO_MIME_TYPES_SUPPORTED from '@environment/videoMimeTypesSupport';
 import {createImageAndURLFromBlob} from '@helpers/createImageAndURLFromBlob';
 import rootScope from '@lib/rootScope';
 
@@ -13,11 +14,23 @@ type GetFileAndOpenEditorArgs = {
   dontCreatePreview?: boolean;
   isEditingForAvatar?: boolean;
   isEditingForumAvatar?: boolean;
+  canImageResultInGIF?: boolean;
+  /**
+   * Allowed media types in the file picker. Defaults to images only.
+   */
+  acceptMediaTypes?: Array<'photo' | 'video'>;
   onFinish: (args: OnFinishArgs) => void;
 };
 
-export async function getFileAndOpenEditor({onFinish, dontCreatePreview, isEditingForAvatar, isEditingForumAvatar}: GetFileAndOpenEditorArgs) {
-  const input = createHiddenFileInput();
+export async function getFileAndOpenEditor({
+  onFinish,
+  dontCreatePreview,
+  isEditingForAvatar,
+  isEditingForumAvatar,
+  canImageResultInGIF = false,
+  acceptMediaTypes = ['photo']
+}: GetFileAndOpenEditorArgs) {
+  const input = createHiddenFileInput(acceptMediaTypes);
   document.body.append(input);
 
   const file = await getFileFromInput(input).finally(() => {
@@ -26,9 +39,16 @@ export async function getFileAndOpenEditor({onFinish, dontCreatePreview, isEditi
 
   if(!file) return;
 
+  const isVideo = file.type.startsWith('video/');
 
-  const imgResult = await createImageAndURLFromBlob(file); // make sure to render the image to know if it's valid
-  if(!imgResult.ok) return;
+  let mediaSrc: string;
+  if(isVideo) {
+    mediaSrc = URL.createObjectURL(file);
+  } else {
+    const imgResult = await createImageAndURLFromBlob(file); // make sure to render the image to know if it's valid
+    if(!imgResult.ok) return;
+    mediaSrc = imgResult.url;
+  }
 
   const {openMediaEditorFromMediaRaw} = await import('@components/mediaEditor');
 
@@ -36,11 +56,11 @@ export async function getFileAndOpenEditor({onFinish, dontCreatePreview, isEditi
     isEditingForAvatar,
     isEditingForumAvatar,
     canFinishWithoutChanges: true,
-    canImageResultInGIF: false,
+    canImageResultInGIF,
     getMediaBlob: async() => file,
     managers: rootScope.managers,
-    mediaSrc: imgResult.url,
-    mediaType: 'image',
+    mediaSrc,
+    mediaType: isVideo ? 'video' : 'image',
     initialTab: 'crop',
     onEditFinish: (editorResult) => onFinish({editorResult, originalFile: file}),
     dontCreatePreview,
@@ -48,11 +68,15 @@ export async function getFileAndOpenEditor({onFinish, dontCreatePreview, isEditi
   });
 }
 
-function createHiddenFileInput(): HTMLInputElement {
+function createHiddenFileInput(acceptMediaTypes: Array<'photo' | 'video'>): HTMLInputElement {
   const input = document.createElement('input');
   input.type = 'file';
   input.style.display = 'none';
-  input.accept = [...IMAGE_MIME_TYPES_SUPPORTED].join(',');
+
+  const mimeTypes: string[] = [];
+  if(acceptMediaTypes.includes('photo')) mimeTypes.push(...IMAGE_MIME_TYPES_SUPPORTED);
+  if(acceptMediaTypes.includes('video')) mimeTypes.push(...VIDEO_MIME_TYPES_SUPPORTED);
+  input.accept = mimeTypes.join(',');
 
   return input;
 }

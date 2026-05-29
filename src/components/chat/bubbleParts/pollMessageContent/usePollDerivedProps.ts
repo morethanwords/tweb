@@ -45,10 +45,8 @@ const getDocument = (media: MessageMedia | InputMedia | undefined): Document.doc
 };
 
 
-const getGeo = (media: MessageMedia | InputMedia | undefined): MessageMedia.messageMediaGeo | undefined => {
-  // Intentionally only handles plain `messageMediaGeo`. Venues and live
-  // locations are ignored here per the poll-option rendering requirements.
-  return media?._ === 'messageMediaGeo' ? unwrap(media) : undefined;
+const getGeo = (media: MessageMedia | InputMedia | undefined): MessageMedia.messageMediaGeo | MessageMedia.messageMediaVenue | undefined => {
+  return media?._ === 'messageMediaGeo' || media?._ === 'messageMediaVenue' ? unwrap(media) : undefined;
 };
 
 /**
@@ -110,10 +108,12 @@ export function usePollDerivedProps({props, pollOptions, chosenIndexes, newOptio
   const explanationPhoto = createMemo(() => getPhoto(props.results.solution_media));
   const explanationVideo = createMemo(() => getVideoDocument(props.results.solution_media));
   const explanationDocument = createMemo(() => !getVideoDocument(props.results.solution_media) ? getDocument(props.results.solution_media) : undefined);
+  const explanationGeo = createMemo(() => getGeo(props.results.solution_media));
 
   const descriptionPhoto = createMemo(() => getPhoto(props.media.attached_media));
   const descriptionVideo = createMemo(() => getVideoDocument(props.media.attached_media));
   const descriptionDocument = createMemo(() => !getVideoDocument(props.media.attached_media) ? getDocument(props.media.attached_media) : undefined);
+  const descriptionGeo = createMemo(() => getGeo(props.media.attached_media));
 
 
   const initialIdxFromShuffledIdx = (idx: number) => {
@@ -178,9 +178,11 @@ export function usePollDerivedProps({props, pollOptions, chosenIndexes, newOptio
     explanationPhoto,
     explanationVideo,
     explanationDocument,
+    explanationGeo,
     descriptionPhoto,
     descriptionVideo,
     descriptionDocument,
+    descriptionGeo,
     getPhoto,
     getOverridenMessage,
     initialIdxFromShuffledIdx,

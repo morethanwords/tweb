@@ -18,11 +18,12 @@ import {unwrap} from 'solid-js/store';
 import {Transition} from 'solid-transition-group';
 import {InMessageCheckbox} from '../inMessageCheckbox';
 import {usePollMessageContentProps} from './context';
-import {AvatarGroup} from './parts';
+import {AvatarGroup, GeoPreview} from './parts';
 import PathDot from './PathDot';
 import styles from './styles.module.scss';
 import {GetStickerMediaResult} from './usePollDerivedProps';
 import {dataPollViewerIdx, DataPollViewerIdxDirectivePayload, LocalTextWithEntities, PollOptionResult, spinnerThickness} from './utils';
+import {IconTsx} from '@components/iconTsx';
 
 
 keepMe(ripple);
@@ -36,7 +37,7 @@ export const PollOption = (props: {
   photo?: Photo.photo;
   video?: Document.document;
   sticker?: GetStickerMediaResult;
-  geo?: MessageMedia.messageMediaGeo;
+  geo?: MessageMedia.messageMediaGeo | MessageMedia.messageMediaVenue;
   clickable?: boolean;
   text: LocalTextWithEntities;
   checked: boolean;
@@ -49,10 +50,11 @@ export const PollOption = (props: {
   initialIdx?: number;
   highlighted?: boolean;
   slowHighlighted?: boolean;
+  uploadingFileName?: string;
 
   result?: PollOptionResult;
 }) => {
-  const {TranslatableMessageTsx, wrapGeo} = useHotReloadGuard()
+  const {TranslatableMessageTsx} = useHotReloadGuard()
   const contextProps = usePollMessageContentProps();
 
   let clickableAreaElement: HTMLDivElement;
@@ -232,6 +234,7 @@ export const PollOption = (props: {
                 boxHeight={boxSize}
                 loadPromises={unwrap(contextProps.loadPromises)}
                 autoDownloadSize={contextProps.autoDownload?.photo}
+                uploadingFileName={props.uploadingFileName}
               />
             </Match>
             <Match when={props.sticker}>
@@ -249,7 +252,7 @@ export const PollOption = (props: {
               />
             </Match>
             <Match when={props.geo}>
-              <GeoPreview geo={props.geo} wrapGeo={wrapGeo} />
+              <GeoPreview class={styles.pollOptionGeo} geo={props.geo} />
             </Match>
             <Match when={props.video}>
               <VideoTsx
@@ -261,9 +264,23 @@ export const PollOption = (props: {
                 boxHeight={boxSize}
                 withPreview
                 noInfo
+                noPlayButton
+                noAutoplayAttribute
                 lazyLoadQueue={unwrap(contextProps.lazyLoadQueue) || undefined}
                 observer={unwrap(contextProps.observer)}
+                uploadingFileName={props.uploadingFileName}
               />
+              <div class={styles.pollOptionMediaDim}>
+                <Show when={props.video.type === 'gif'} fallback={
+                  <div class={styles.pollOptionMediaPlay}>
+                    <IconTsx icon='play' />
+                  </div>
+                }>
+                  <div class={styles.pollOptionMediaGifLabel}>
+                      GIF
+                  </div>
+                </Show>
+              </div>
             </Match>
           </Switch>
 
@@ -271,34 +288,6 @@ export const PollOption = (props: {
       </Show>
     </div>
   );
-};
-
-const GeoPreview = (props: {
-  geo: MessageMedia.messageMediaGeo;
-  wrapGeo: ReturnType<typeof useHotReloadGuard>['wrapGeo'];
-}) => {
-  const contextProps = usePollMessageContentProps();
-
-  let attachmentDiv: HTMLDivElement;
-
-  onMount(() => {
-    const middleware = createMiddleware().get();
-
-    props.wrapGeo({
-      messageMedia: props.geo,
-      attachmentDiv,
-      wrapOptions: {
-        middleware,
-        lazyLoadQueue: unwrap(contextProps.lazyLoadQueue) || undefined,
-        animationGroup: contextProps.animationGroup
-      },
-      middleware,
-      loadPromises: unwrap(contextProps.loadPromises) ?? [],
-      date: contextProps.message.date
-    });
-  });
-
-  return <div ref={(el) => attachmentDiv = el} class={styles.geo} />;
 };
 
 const PollProgressLine = (inProps: JSX.HTMLAttributes<HTMLDivElement> & {

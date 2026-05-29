@@ -21,15 +21,16 @@ import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
 import type {ChatAutoDownloadSettings} from '@hooks/useAutoDownloadSettings';
 import {Document, Message, MessageMedia, Photo, Poll, PollResults} from '@layer';
 import {ChatRights} from '@lib/appManagers/appChatsManager';
+import {PollUploadingFileNames} from '@lib/appManagers/appPollsManager';
 import {sliceTextWithEntities} from '@lib/richTextProcessor/sliceTextWithEntities';
 import wrapDraftText from '@lib/richTextProcessor/wrapDraftText';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {batch, createEffect, createMemo, createSelector, createSignal, For, Match, Show, Switch} from 'solid-js';
+import {batch, createEffect, createMemo, createSelector, createSignal, For, Match, onCleanup, Show, Switch} from 'solid-js';
 import {createStore, reconcile, unwrap} from 'solid-js/store';
 import {Transition, TransitionGroup} from 'solid-transition-group';
 import {AddOption} from './AddOption';
 import {PollMessageContentPropsContext} from './context';
-import {AutoStartedConfetti, AvatarGroup, Explanation, PollType, PollVotes} from './parts';
+import {AutoStartedConfetti, AvatarGroup, Explanation, GeoPreview, PollType, PollVotes} from './parts';
 import {PollOption} from './PollOption';
 import styles from './styles.module.scss';
 import {usePollDerivedProps} from './usePollDerivedProps';
@@ -56,6 +57,7 @@ export type PollMessageContentProps = {
   canSend: (rights: ChatRights) => Promise<boolean>;
   loadPromises: Promise<any>[];
   controls: Partial<PollMessageContentControls>;
+  uploadingFileNames?: PollUploadingFileNames;
 };
 
 export type PollMessageContentControls = {
@@ -73,6 +75,15 @@ type MediaViewerPayloadIndexes = {
 export const PollMessageContent =
   (props: PollMessageContentProps) => {
     attachHotClassName(props.element, styles.container);
+
+    createEffect(() => {
+      if(props.isOutgoing) {
+        props.element.classList.add(styles.outgoing);
+        onCleanup(() => {
+          props.element.classList.remove(styles.outgoing);
+        });
+      }
+    });
 
     // ----- Setup / external dependencies -----
     const {rootScope, AppMediaViewerStatic, appSidebarRight, AppPollResultsTab, TranslatableMessageTsx, DocumentTsx} = useHotReloadGuard();
@@ -126,9 +137,11 @@ export const PollMessageContent =
       explanationPhoto,
       explanationVideo,
       explanationDocument,
+      explanationGeo,
       descriptionPhoto,
       descriptionVideo,
       descriptionDocument,
+      descriptionGeo,
       getOverridenMessage,
       initialIdxFromShuffledIdx,
       getResultForOption,
@@ -170,7 +183,7 @@ export const PollMessageContent =
     });
 
     // Make the footer unclickable immediately when there are pending requests
-    const isFooterClickable = createMemo(() => canFooterBeClickable() && !sendVoteMutation.isPending() && !addOptionMutation.isPending());
+    const isFooterClickable = createMemo(() => canFooterBeClickable() && !sendVoteMutation.isPending() && !addOptionMutation.isPending() && newOption.attachment?.type !== 'pending');
 
     // ----- Media viewer payload -----
     const mediaViewerPayload = createMemo(() => {
@@ -288,6 +301,7 @@ export const PollMessageContent =
 
     props.controls.highlightAnswer = (idx?: number | null) => {
       self.clearTimeout(highlightedTimeout);
+      setSlowHighlightedIndexes([]);
 
       if(typeof idx === 'number') {
         setHighlightedIndexes([idx]);
@@ -307,30 +321,40 @@ export const PollMessageContent =
         <Show when={isConfettiActive()}>
           <AutoStartedConfetti onEnd={() => setIsConfettiActive(false)} />
         </Show>
-        <Show when={descriptionPhoto() || descriptionVideo()}>
-          <div class={styles.pollImageWrapper}>
-            <div class={styles.pollImage} use:dataPollViewerIdx={[mediaViewerPayload().indexes.description, elementByIndexMap]}>
-              <Show when={descriptionPhoto()}>
-                <PhotoTsx
-                  photo={descriptionPhoto()}
-                  loadPromises={unwrap(props.loadPromises)}
-                  autoDownloadSize={props.autoDownload?.photo}
-                  lazyLoadQueue={unwrap(props.lazyLoadQueue)}
-                />
-              </Show>
-              <Show when={descriptionVideo() && !descriptionPhoto()}>
-                <VideoTsx
-                  doc={descriptionVideo()}
-                  loadPromises={unwrap(props.loadPromises)}
-                  group={props.animationGroup}
-                  autoDownload={unwrap(props.autoDownload)}
-                  boxWidth={mediaSizes.active.regular.width}
-                  boxHeight={mediaSizes.active.regular.height}
-                  withPreview
-                  lazyLoadQueue={unwrap(props.lazyLoadQueue) || undefined}
-                  observer={unwrap(props.observer)}
-                />
-              </Show>
+        <Show when={descriptionPhoto() || descriptionVideo() || descriptionGeo()}>
+          <div class={styles.pollDescriptionMediaWrapper}>
+            <div class={styles.pollDescriptionMedia} use:dataPollViewerIdx={[mediaViewerPayload().indexes.description, elementByIndexMap]}>
+              <Switch>
+                <Match when={descriptionPhoto()}>
+                  <PhotoTsx
+                    photo={descriptionPhoto()}
+                    loadPromises={unwrap(props.loadPromises)}
+                    autoDownloadSize={props.autoDownload?.photo}
+                    lazyLoadQueue={unwrap(props.lazyLoadQueue)}
+                    uploadingFileName={props.uploadingFileNames?.description}
+                  />
+                </Match>
+                <Match when={descriptionVideo()}>
+                  <VideoTsx
+                    doc={descriptionVideo()}
+                    loadPromises={unwrap(props.loadPromises)}
+                    group={props.animationGroup}
+                    autoDownload={unwrap(props.autoDownload)}
+                    boxWidth={mediaSizes.active.regular.width}
+                    boxHeight={mediaSizes.active.regular.height}
+                    withPreview
+                    lazyLoadQueue={unwrap(props.lazyLoadQueue) || undefined}
+                    observer={unwrap(props.observer)}
+                    uploadingFileName={props.uploadingFileNames?.description}
+                  />
+                </Match>
+                <Match when={descriptionGeo()}>
+                  <GeoPreview
+                    class={styles.geo}
+                    geo={descriptionGeo()}
+                  />
+                </Match>
+              </Switch>
             </div>
           </div>
         </Show>
@@ -345,6 +369,7 @@ export const PollMessageContent =
               autoDownloadSize={props.autoDownload?.file}
               sizeType='documentName'
               canTranscribeVoice={false}
+              uploadingFileName={props.uploadingFileNames?.description}
             />
           </div>
         </Show>
@@ -388,6 +413,7 @@ export const PollMessageContent =
             photo={explanationPhoto()}
             video={explanationVideo()}
             document={explanationDocument()}
+            geo={explanationGeo()}
             pollViewerPayload={[mediaViewerPayload().indexes.explanation, elementByIndexMap]}
           />
         </Show>
@@ -416,6 +442,7 @@ export const PollMessageContent =
                   hideResults={hideResults()}
                   highlighted={highlightedIndexes().includes(initialIdx())}
                   slowHighlighted={slowHighlightedIndexes().includes(initialIdx())}
+                  uploadingFileName={props.uploadingFileNames?.answers?.[initialIdx()]}
                 />
               );
             }}

@@ -646,6 +646,24 @@ const lang = {
   'Privacy.SavedMusicRow': 'Who can see my saved music?',
   'Privacy.SavedMusic': 'Who can see my saved music',
   'Privacy.SavedMusicCaption': 'You can restrict who can see your saved music with granular precision.',
+  'PrivacyGifts': 'Gifts',
+  'Privacy.GiftsRow': 'Who can send me gifts?',
+  'Privacy.Gifts': 'Who can display gifts on my profile',
+  'Privacy.GiftsCaption': 'You can restrict who can display gifts on your profile with granular precision.',
+  'Privacy.GiftsAcceptedTypes': 'Accepted Gift Types',
+  'Privacy.GiftsAcceptedTypesInfo': 'Choose the types of gifts that you accept.',
+  'Privacy.GiftsTypeLimited': 'Limited-Edition',
+  'Privacy.GiftsTypeUnlimited': 'Unlimited',
+  'Privacy.GiftsTypeUnique': 'Unique',
+  'Privacy.GiftsTypeChannel': 'From Channels',
+  'Privacy.GiftsTypePremium': 'Premium Subscriptions',
+  'Privacy.GiftsShowIcon': 'Show Gift Icon in Chats',
+  'Privacy.GiftsShowIconInfo': 'Display the gift icon in the message input field for both participants in all chats.',
+  'Privacy.GiftsPremiumError': 'Subscribe to [Telegram Premium]() to restrict who can send you gifts.',
+  'PrivacyMiniApps': 'Mini Apps',
+  'PrivacyMiniAppsStatus': 'web mini apps that you use',
+  'PrivacyNoMiniApps': 'Not Mini Apps',
+  'PrivacyContactsAndMiniApps': 'Contacts and Mini Apps',
   'PrivacySettings.Messages.PremiumError': 'Only subscribers of [Telegram Premium]() can restrict receiving messages.',
   'Chat.PremiumRequired': 'Subscribe to **Premium** to message **%s**.',
   'Chat.PremiumRequiredButton': 'Get Premium',
@@ -1710,6 +1728,20 @@ const lang = {
   'SendContactToGroupText': 'Do you want to send this contact to **%1$s**?',
   'ChannelBroadcast': 'Broadcast',
   'ChannelSilentBroadcast': 'Silent Broadcast',
+  'BroadcastGroup': 'Broadcast Group',
+  'BroadcastGroupConvert': 'Convert to Broadcast Group',
+  'BroadcastGroupConvertInfo': 'Broadcast groups can have over 200,000 members, but only admins can send messages in them.',
+  'BroadcastGroupConvertTitle': 'Broadcast Groups',
+  'BroadcastGroupConvertFeature1': 'No limit on the number of members.',
+  'BroadcastGroupConvertFeature2': 'Only admins can send messages.',
+  'BroadcastGroupConvertFeature3': 'Can\'t be turned back into a regular group.',
+  'BroadcastGroupConvertAction': 'Convert',
+  'BroadcastGroupConvertWarningTitle': 'Are you sure?',
+  'BroadcastGroupConvertWarning': 'Regular members of the group (non-admins) will **permanently** lose their right to send messages in the group.\n\nThis action **can\'t** be undone.',
+  'BroadcastGroupConvertDone': {
+    'one_value': 'Your group can now have more than %1$d member.',
+    'other_value': 'Your group can now have more than %1$d members.'
+  },
   'Comment': 'Comment',
   'SendAnonymously': 'Send anonymously',
   'DiscardVoiceMessageTitle': 'Discard Voice Message',
@@ -4610,6 +4642,7 @@ const lang = {
   'EditThisPhoto': 'Edit this photo',
   'EditThisVideo': 'Edit this video',
   'ReplacePhoto': 'Replace photo',
+  'ReplaceVideo': 'Replace video',
 
   'ArchiveSettings': 'Archive Settings',
   'ArchiveSettings.UnmutedChats.Title': 'Unmuted Chats',
@@ -4649,6 +4682,7 @@ const lang = {
   'NewPoll.ShuffleOptionsSubtitle': 'Answers appear in random order for each voter',
   'NewPoll.SetCorrectAnswer': 'Set Correct Answer',
   'NewPoll.SetCorrectAnswerSubtitle': 'Mark one option as the correct answer',
+  'NewPoll.SetMultipleCorrectAnswerSubtitle': 'Mark one or more options as the correct answer',
   'NewPoll.LimitDuration': 'Limit Duration',
   'NewPoll.LimitDurationSubtitle': 'Automatically close the poll after a certain time',
   'NewPoll.PollDuration': 'Poll Duration',
@@ -4661,6 +4695,7 @@ const lang = {
     'one_value': 'You can add %d more option',
     'other_value': 'You can add %d more options'
   },
+  'NewPoll.MaxOptions': 'You have added the maximum amount of options',
   'NewPoll.CouldNotCreate': 'Could not create poll',
 
   'CreateBot.Title': 'Create Bot',
@@ -4683,8 +4718,9 @@ const lang = {
   'CreateBot.BotWasCreated': 'The bot **%s** was created',
   'CreateBot.TooManyBotsCreated': 'You have created too many bots. Please wait %s before creating a new one.',
   'CreateBot.FailedToCreate': 'Failed to create the bot.',
-
-  'ReplaceSticker': 'Replace Sticker'
+  'ReplaceSticker': 'Replace Sticker',
+  'EditThisGIF': 'Edit this GIF',
+  'ReplaceGIF': 'Replace GIF'
 };
 
 export default lang;

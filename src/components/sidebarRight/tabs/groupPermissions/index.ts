@@ -39,6 +39,7 @@ import {isParticipantCreator} from '@lib/appManagers/utils/chats/isParticipantAd
 import {CHAT_LEGACY_ADMIN_RIGHTS} from '@lib/appManagers/utils/chats/constants';
 import {BANNED_RIGHTS_UNTIL_FOREVER} from '@lib/appManagers/constants';
 import createDoNotRestrictBoostersSection from '@components/sidebarRight/tabs/groupPermissions/doNotRestrictBoostersSection';
+import showConvertToGigagroupPopup from '@components/popups/convertToGigagroup';
 
 type PermissionsCheckboxFieldsField = CheckboxFieldsField & {
   flags: ChatRights[],
@@ -620,6 +621,34 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
           boostsUnrestrict
         );
       });
+    }
+
+    if(isChannel) {
+      const channel = chat as Chat.channel;
+      const flags = channel.pFlags;
+      if(flags.creator && flags.megagroup && !flags.gigagroup) {
+        const config = await this.managers.apiManager.getConfig();
+        const participantsCount = (chatFull as ChatFull.channelFull).participants_count ||
+          channel.participants_count || 0;
+        if(participantsCount >= config.megagroup_size_max - 1000) {
+          const section = new SettingSection({
+            name: 'BroadcastGroup',
+            caption: 'BroadcastGroupConvertInfo'
+          });
+
+          const convertRow = new Row({
+            titleLangKey: 'BroadcastGroupConvert',
+            icon: 'newgroup_filled',
+            clickable: () => {
+              showConvertToGigagroupPopup(this.chatId);
+            },
+            listenerSetter: this.listenerSetter
+          });
+
+          section.content.append(convertRow.container);
+          this.scrollable.append(section.container);
+        }
+      }
     }
 
     {
