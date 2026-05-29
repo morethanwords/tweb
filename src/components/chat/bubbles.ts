@@ -37,7 +37,7 @@ import findUpTag from '@helpers/dom/findUpTag';
 import {hideToast, toastNew} from '@components/toast';
 import {getMiddleware, Middleware} from '@helpers/middleware';
 import cancelEvent from '@helpers/dom/cancelEvent';
-import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
+import {attachClickEvent, CLICK_EVENT_NAME, simulateClickEvent} from '@helpers/dom/clickEvent';
 import htmlToDocumentFragment from '@helpers/dom/htmlToDocumentFragment';
 import reflowScrollableElement from '@helpers/dom/reflowScrollableElement';
 import setInnerHTML, {setDirection} from '@helpers/dom/setInnerHTML';
@@ -222,6 +222,7 @@ import {PollMessageContentProps, PollMessageContentControls} from './bubbleParts
 import {createMutable} from 'solid-js/store';
 import compareUint8Arrays from '@helpers/bytes/compareUint8Arrays';
 import {linkToPollOption} from './bubbleParts/pollMessageContent/pollToOptionLink';
+import {getSimulatedEvent} from '@helpers/dom/dispatchEvent';
 
 // TODO: fix new message won't be rendered if an old one is rendering in the moment
 
@@ -427,6 +428,8 @@ export function splitFullMid(fullMid: FullMid) {
 }
 
 const EMPTY_FULL_MID = makeFullMid(NULL_PEER_ID, 0);
+
+const SimulatedClickSymbol = Symbol('simulatedClick');
 
 function appendBubbleTime(bubble: HTMLElement, element: HTMLElement, callback: () => void) {
   (bubble.timeAppenders ??= []).unshift({element, callback});
@@ -3137,6 +3140,16 @@ export default class ChatBubbles {
     const documentDiv = findUpClassName(target, 'document-with-thumb');
 
     if(this.chat.type === ChatType.Logs) return;
+
+    // Prevent recursive click event simulation
+
+    if((e as any)[SimulatedClickSymbol]) return;
+
+    const simulateClickEvent = (target: HTMLElement) => {
+      const event = getSimulatedEvent(CLICK_EVENT_NAME);
+      (event as any)[SimulatedClickSymbol] = true;
+      target.dispatchEvent(event);
+    };
 
     let pollViewerTarget: HTMLElement | null
     if(pollViewerTarget = target.closest('[data-poll-viewer-idx]')) {
