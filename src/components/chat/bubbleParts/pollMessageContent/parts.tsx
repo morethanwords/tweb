@@ -51,7 +51,7 @@ export const Explanation = (props: LocalTextWithEntities & {
   photo?: Photo.photo;
   video?: Document.document;
   document?: Document.document;
-  geo?: MessageMedia.messageMediaGeo;
+  geo?: MessageMedia.messageMediaGeo | MessageMedia.messageMediaVenue;
   pollViewerPayload?: DataPollViewerIdxDirectivePayload;
 }) => {
   const {TranslatableMessageTsx, DocumentTsx} = useHotReloadGuard();
