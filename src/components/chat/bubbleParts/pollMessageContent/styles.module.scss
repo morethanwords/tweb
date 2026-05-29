@@ -59,7 +59,7 @@
       color: inherit;
     }
 
-    &Play {
+    &Dim {
       position: absolute;
       inset: 0;
       z-index: 1;
@@ -69,7 +69,18 @@
       justify-content: center;
 
       background-color: rgba(0, 0, 0, 0.25);
+    }
+
+    &Play {
+      display: flex;
       font-size: 1.25rem;
+      color: white;
+    }
+
+    &GifLabel {
+      display: flex;
+      font-size: 0.75rem;
+      font-weight: var(--font-weight-bold);
       color: white;
     }
 

@@ -267,8 +267,16 @@ export const PollOption = (props: {
                 lazyLoadQueue={unwrap(contextProps.lazyLoadQueue) || undefined}
                 observer={unwrap(contextProps.observer)}
               />
-              <div class={styles.pollOptionMediaPlay}>
-                <IconTsx icon='play' />
+              <div class={styles.pollOptionMediaDim}>
+                <Show when={props.video.type === 'gif'} fallback={
+                  <div class={styles.pollOptionMediaPlay}>
+                    <IconTsx icon='play' />
+                  </div>
+                }>
+                  <div class={styles.pollOptionMediaGifLabel}>
+                      GIF
+                  </div>
+                </Show>
               </div>
             </Match>
           </Switch>
