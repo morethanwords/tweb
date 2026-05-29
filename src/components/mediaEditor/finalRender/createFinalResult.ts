@@ -1,7 +1,9 @@
 import {getOwner, runWithOwner, Signal} from 'solid-js';
 import {unwrap} from 'solid-js/store';
+import {createPosterFromMedia} from '@helpers/createPoster';
 import {MediaSize} from '@helpers/mediaSize';
 import noop from '@helpers/noop';
+import detectVideoHasSound from '@helpers/video/detectVideoHasSound';
 import {logger} from '@lib/logger';
 import {adjustmentsConfig, AdjustmentsConfig} from '@components/mediaEditor/adjustments';
 import BrushPainter from '@components/mediaEditor/canvas/brushPainter';
@@ -90,6 +92,42 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
   });
 
   const payload = await initWebGL({gl, mediaSrc, mediaType, videoTime: mediaState.videoCropStart, waitToSeek: false});
+
+  // No modifications to a video: return the original blob and skip the render pipeline.
+  // The animated preview is still produced so the caller can animate it into the target slot.
+  if(mediaType === 'video' && !context.hasModifications()) {
+    const originalBlob = await context.getMediaBlob();
+    if(!originalBlob) throw new Error('Failed to get original media blob');
+
+    const videoEl = payload.media.video;
+    const poster = await createPosterFromMedia(videoEl);
+    const hasSound = await detectVideoHasSound(videoEl);
+
+    const previewWidth = videoEl.videoWidth;
+    const previewHeight = videoEl.videoHeight;
+
+    const animatedPreview = await spawnAnimatedPreview({
+      context,
+      cropOffset,
+      scaledWidth: previewWidth,
+      scaledHeight: previewHeight,
+      previewBlob: poster.blob
+    });
+
+    cleanupWebGl(gl);
+
+    return {
+      preview: poster.blob,
+      getResult: () => ({blob: originalBlob, hasSound, thumb: poster}),
+      isVideo: true,
+      width: previewWidth,
+      height: previewHeight,
+      originalSrc: context.mediaSrc,
+      originalSize: [previewWidth, previewHeight],
+      editingMediaState: structuredClone(unwrap(mediaState)),
+      animatedPreview
+    };
+  }
 
   const finalTransform = getResultTransform({
     context,

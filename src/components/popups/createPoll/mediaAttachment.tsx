@@ -180,8 +180,15 @@ export const MediaAttachment = (props: {
       isVideo
     };
 
+    // No-changes path: behave like the photo flow — no creation overlay or progress,
+    // animate the preview into the attached <video> slot.
+    if(!editorResult.creationProgress) {
+      await handleUnchangedVideoFinish(editorResult);
+      return;
+    }
+
     const previewObjectUrl = URL.createObjectURL(editorResult.preview);
-    const [progress] = editorResult.creationProgress ?? [() => 0];
+    const [progress] = editorResult.creationProgress;
 
     setCreatingVideoState({
       previewObjectUrl,
@@ -286,6 +293,76 @@ export const MediaAttachment = (props: {
     URL.revokeObjectURL(previewObjectUrl);
     setCreatingVideoState(undefined);
     props.onAttach?.(attachedVideo);
+  };
+
+  const handleUnchangedVideoFinish = async(editorResult: MediaEditorFinalResult) => {
+    const resultPayload = await editorResult.getResult();
+
+    if(isCleaned()) {
+      editorResult.animatedPreview?.remove();
+      return;
+    }
+
+    const videoObjectUrl = URL.createObjectURL(resultPayload.blob);
+
+    // Probe to get duration; dimensions come from the editor result.
+    const probeVideo = createVideo({});
+    probeVideo.src = videoObjectUrl;
+    probeVideo.muted = true;
+    probeVideo.preload = 'metadata';
+    try {
+      await onMediaLoad(probeVideo as HTMLMediaElement);
+    } catch(err) {
+      URL.revokeObjectURL(videoObjectUrl);
+      editorResult.animatedPreview?.remove();
+      persistingState = undefined;
+      return;
+    }
+
+    const isAnimated = supportsMedia('gif') && canVideoBeAnimated({
+      noSound: !resultPayload.hasSound,
+      size: resultPayload.blob.size,
+      isEditingMediaFromAlbum: false
+    });
+
+    const thumb = resultPayload.thumb || await createPosterFromVideo(probeVideo);
+    const thumbUrl = URL.createObjectURL(thumb.blob);
+
+    const attachedVideo: AttachedVideo = {
+      type: 'video',
+      objectUrl: videoObjectUrl,
+      blob: resultPayload.blob,
+      width: editorResult.width,
+      height: editorResult.height,
+      duration: probeVideo.duration,
+      isAnimated,
+      hasSound: resultPayload.hasSound,
+      thumb: {
+        url: thumbUrl,
+        blob: thumb.blob,
+        size: thumb.size,
+        isCover: !isAnimated && !!resultPayload.thumb
+      }
+    };
+
+    props.onAttach?.(attachedVideo);
+
+    if(!editorResult.animatedPreview) return;
+
+    requestRAF(async() => {
+      const target = videoEl();
+      if(!target || isCleaned()) {
+        editorResult.animatedPreview.remove();
+        return;
+      }
+
+      await animateImageToTarget({
+        animatedImg: editorResult.animatedPreview,
+        target
+      }).catch(noop);
+
+      editorResult.animatedPreview.remove();
+    });
   };
 
   const removeAttached = () => {
