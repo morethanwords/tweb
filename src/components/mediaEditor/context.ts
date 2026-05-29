@@ -182,6 +182,7 @@ export type MediaEditorContextValue = {
   actions: EditorOverridableGlobalActions;
 
   canFinish: Accessor<boolean>;
+  hasModifications: Accessor<boolean>;
 
   resizableLayersSeed: number;
 };
@@ -258,7 +259,8 @@ export function createContextValue(props: MediaEditorProps): MediaEditorContextV
     editorState,
     actions,
 
-    canFinish: createMemo(() => props.isEditingForAvatar || hasModifications()),
+    canFinish: createMemo(() => props.canFinishWithoutChanges || hasModifications()),
+    hasModifications,
 
     // [0-1] make sure it's different even after reopening the editor, note that there might be some items in history!
     resizableLayersSeed: Math.random()

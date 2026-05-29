@@ -4,18 +4,10 @@ import StickerType from '@config/stickerType';
 import {IS_FIREFOX} from '@environment/userAgent';
 import {hexaToHsla} from '@helpers/color';
 import {logger} from '@lib/logger';
-import {getOwner, runWithOwner} from 'solid-js';
 
 export const log = logger('Media editor');
 
 export const delay = (timeout: number) => new Promise((resolve) => setTimeout(resolve, timeout));
-
-export function withCurrentOwner<Args extends Array<unknown>, Result>(fn: (...args: Args) => Result) {
-  const owner = getOwner();
-  return (...args: Args) => {
-    return runWithOwner(owner, () => fn(...args));
-  };
-}
 
 export function distance(p1: NumberPair, p2: NumberPair) {
   return Math.hypot(p1[0] - p2[0], p1[1] - p2[1]);

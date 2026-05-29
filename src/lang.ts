@@ -2840,6 +2840,7 @@ const lang = {
   'TranslateMessage': 'Translate',
   'ReadAllReactions': 'Read all reactions',
   'ReadAllMentions': 'Read all mentions',
+  'ReadAllPollVotes': 'Read all poll votes',
   'NoStickersFound': 'No stickers found',
   'NoGIFsFound': 'No GIFs found',
   'NoEmojiFound': 'No emoji found',
@@ -3439,27 +3440,38 @@ const lang = {
   'ChatService.UserJoinedChannelByRequest': '%@ joined the channel by request',
   'ChatList.Service.VoiceChatScheduled': '%1$@ scheduled a video chat for %2$@',
   'ChatList.Service.VoiceChatScheduledYou': 'You scheduled a video chat for %2$@',
+  'Chat.Poll.AddAnOption': 'Add an Option',
   'Chat.Poll.Unvote': 'Retract Vote',
   'Chat.Poll.Stop': 'Stop Poll',
-  'Chat.Poll.ViewResults': 'View Results',
+  'Chat.Poll.ViewVotes': 'View Votes (%s)',
   'Chat.Poll.SubmitVote': 'Vote',
   'Chat.Poll.Type.Anonymous': 'Anonymous Poll',
   'Chat.Poll.Type.Public': 'Poll',
   'Chat.Poll.Type.AnonymousQuiz': 'Anonymous Quiz',
   'Chat.Poll.Type.Quiz': 'Quiz',
   'Chat.Poll.Type.Closed': 'Final Results',
-  'Chat.Poll.TotalVotes1': {
-    'one_value': '%d vote',
-    'other_value': '%d votes'
+  'Chat.Poll.MembersVoted': {
+    'one_value': '%d member voted',
+    'other_value': '%d members voted'
   },
-  'Chat.Quiz.TotalVotes': {
-    'one_value': '%d answer',
-    'other_value': '%d answers'
+  'Chat.Poll.SelectAnOption': 'Select an option',
+  'Chat.Poll.EndsIn': 'ends in %s',
+  'Chat.Poll.OptionAdded': '%s added **%s** to the poll',
+  'Chat.Poll.OptionAddedMe': 'You added **%s** to the poll',
+  'Chat.Poll.OptionDeleted': '%s deleted **%s** from the poll',
+  'Chat.Poll.OptionDeletedMe': 'You deleted **%s** from the poll',
+  'Chat.Poll.ReplyToOption': 'Reply to Poll Option',
+  'Chat.Poll.CopyOption': 'Copy Option',
+  'Chat.Poll.CopyOptionLink': 'Copy Option Link',
+  'Chat.Quiz.MembersAnswered': {
+    'one_value': '%d member answered',
+    'other_value': '%d members answered'
   },
   'Chat.Poll.TotalVotesEmpty': 'No votes yet',
   'Chat.Poll.TotalVotesResultEmpty': 'No votes',
   'Chat.Quiz.TotalVotesEmpty': 'No answers yet',
   'Chat.Quiz.TotalVotesResultEmpty': 'No answers',
+  'Chat.Quiz.Explanation': 'Explanation',
   // "Chat.Poll.Stop.Confirm.Header": "Stop Poll?",
   // "Chat.Poll.Stop.Confirm.Text": "If you stop this poll now, nobody will be able to vote in it anymore. This action cannot be undone.",
   // "Chat.Pinned.UnpinAll": {
@@ -3635,6 +3647,7 @@ const lang = {
   'NewPoll.Anonymous': 'Anonymous Voting',
   'NewPoll.Explanation.Placeholder': 'Add an Explanation (Optional)',
   'NewPoll.OptionsAddOption': 'Add an Option',
+  'NewPoll.Option': 'Option',
   'NewPoll.MultipleChoice': 'Multiple Answers',
   'NewPoll.Quiz': 'Quiz Mode',
   'Notification.Contact.Reacted': '%1$@ to your "%2$@"',
@@ -4628,6 +4641,8 @@ const lang = {
 
   'EditThisPhoto': 'Edit this photo',
   'EditThisVideo': 'Edit this video',
+  'ReplacePhoto': 'Replace photo',
+  'ReplaceVideo': 'Replace video',
 
   'ArchiveSettings': 'Archive Settings',
   'ArchiveSettings.UnmutedChats.Title': 'Unmuted Chats',
@@ -4653,7 +4668,39 @@ const lang = {
   'ArchiveFeatureDetails.Hide.Subtitle': 'Right-click on the Archive and choose **%s**. You can always access it from the main menu.',
   'ArchiveFeatureDetails.Stories.Title': 'Stories',
   'ArchiveFeatureDetails.Stories.Subtitle': 'Archive Stories from your contacts separately from chats with them.',
-  'ArchiveFeatureDetails.Button': 'Got it'
+  'ArchiveFeatureDetails.Button': 'Got it',
+
+  'NewPoll.ShowWhoVoted': 'Show Who Voted',
+  'NewPoll.ShowWhoVotedSubtitle': 'Display who voted for each option',
+  'NewPoll.AllowMultipleAnswers': 'Allow Multiple Answers',
+  'NewPoll.AllowMultipleAnswersSubtitle': 'Voters can select more than one option',
+  'NewPoll.AllowAddingOptions': 'Allow Adding Options',
+  'NewPoll.AllowAddingOptionsSubtitle': 'Participants can suggest new options',
+  'NewPoll.AllowRevoting': 'Allow Revoting',
+  'NewPoll.AllowRevotingSubtitle': 'Voters can change their answers',
+  'NewPoll.ShuffleOptions': 'Shuffle Options',
+  'NewPoll.ShuffleOptionsSubtitle': 'Answers appear in random order for each voter',
+  'NewPoll.SetCorrectAnswer': 'Set Correct Answer',
+  'NewPoll.SetCorrectAnswerSubtitle': 'Mark one option as the correct answer',
+  'NewPoll.SetMultipleCorrectAnswerSubtitle': 'Mark one or more options as the correct answer',
+  'NewPoll.LimitDuration': 'Limit Duration',
+  'NewPoll.LimitDurationSubtitle': 'Automatically close the poll after a certain time',
+  'NewPoll.PollDuration': 'Poll Duration',
+  'NewPoll.HideResults': 'Hide Results',
+  'NewPoll.HideResultsSubtitle': 'Results will not be visible until the polls ends',
+  'NewPoll.MinEndTime': 'Minimum End Time: %s',
+  'NewPoll.EndToday': 'End today at %@',
+  'NewPoll.EndDate': 'End on %@ at %@',
+  'NewPoll.OptionsLeft': {
+    'one_value': 'You can add %d more option',
+    'other_value': 'You can add %d more options'
+  },
+  'NewPoll.MaxOptions': 'You have added the maximum amount of options',
+  'NewPoll.CouldNotCreate': 'Could not create poll',
+
+  'ReplaceSticker': 'Replace Sticker',
+  'EditThisGIF': 'Edit this GIF',
+  'ReplaceGIF': 'Replace GIF'
 };
 
 export default lang;

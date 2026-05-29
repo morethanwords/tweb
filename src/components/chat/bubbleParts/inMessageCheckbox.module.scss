@@ -1,0 +1,9 @@
+.isOutgoing {
+  --checkbox-check-color: var(--message-out-background-color);
+
+  --checkbox-border-color: var(--primary-color);
+
+  :global(.night) & {
+    --checkbox-border-color: white;
+  }
+}

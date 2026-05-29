@@ -1,5 +1,6 @@
-import {createRoot, createSignal, getOwner, runWithOwner} from 'solid-js';
+import {createSignal, getOwner, runWithOwner} from 'solid-js';
 
+import deferredPromise from '@helpers/cancellablePromise';
 import noop from '@helpers/noop';
 
 import {useMediaEditorContext} from '@components/mediaEditor/context';
@@ -42,16 +43,24 @@ export default async function renderToVideoGIF({
 
   const {editorState: {pixelRatio}, dontCreatePreview} = context;
 
-  const creationProgress = createRoot(dispose => {
-    const signal = createSignal(0);
-    return {signal, dispose};
-  });
-
-  const [, setProgress] = creationProgress.signal;
+  const creationProgress = createSignal(0);
+  const [, setProgress] = creationProgress;
 
   const renderers = new Map<number, StickerFrameByFrameRenderer>();
 
   let canceled = false;
+
+  const CANCELED = Symbol('canceled');
+  const canceledDeferred = deferredPromise<never>();
+  canceledDeferred.catch(noop);
+
+  function throwIfCanceled() {
+    if(canceled) throw CANCELED;
+  }
+
+  function raceCancel<T>(p: Promise<T>): Promise<T> {
+    return Promise.race([p, canceledDeferred]) as Promise<T>;
+  }
 
   async function renderFrame(encoder: VideoEncoder, frameNo: number) {
     const promises = Array.from(renderers.values()).map((renderer) =>
@@ -85,70 +94,90 @@ export default async function renderToVideoGIF({
   }
 
   const resultPromise = new Promise<MediaEditorFinalResultPayload>(async(resolve, reject) => {
-    let maxFrames = 0;
+    let encoder: VideoEncoder | undefined;
 
-    const [{ArrayBufferTarget, Muxer}] = await Promise.all([
-      import('mp4-muxer'),
-      ...scaledLayers.map(async(layer) => {
-        if(!layer.sticker) return;
+    const finishCanceled = () => {
+      if(encoder) {
+        try { cleanup(encoder); } catch{}
+      } else {
+        Array.from(renderers.values()).forEach((renderer) => {
+          try { renderer.destroy(); } catch{}
+        });
+      }
+      reject(CANCELED);
+    };
 
-        const stickerType = layer.sticker?.sticker;
-        let renderer: StickerFrameByFrameRenderer;
+    try {
+      let maxFrames = 0;
 
-        if(stickerType === StickerType.Static) renderer = new ImageStickerFrameByFrameRenderer();
-        if(stickerType === StickerType.Lottie) renderer = new LottieStickerFrameByFrameRenderer();
-        if(stickerType === StickerType.WebM) renderer = new VideoStickerFrameByFrameRenderer();
-        if(!renderer) return;
+      const [{ArrayBufferTarget, Muxer}] = await raceCancel(Promise.all([
+        import('mp4-muxer'),
+        ...scaledLayers.map(async(layer) => {
+          if(!layer.sticker) return;
 
-        renderers.set(layer.id, renderer);
-        await renderer.init(layer.sticker!, STICKER_SIZE * layer.scale * pixelRatio);
-        maxFrames = Math.max(maxFrames, renderer.getTotalFrames());
-      }),
-      delay(200)
-    ]);
+          const stickerType = layer.sticker?.sticker;
+          let renderer: StickerFrameByFrameRenderer;
 
-    const muxer = new Muxer({
-      target: new ArrayBufferTarget(),
-      video: {
-        codec: 'avc',
+          if(stickerType === StickerType.Static) renderer = new ImageStickerFrameByFrameRenderer();
+          if(stickerType === StickerType.Lottie) renderer = new LottieStickerFrameByFrameRenderer();
+          if(stickerType === StickerType.WebM) renderer = new VideoStickerFrameByFrameRenderer();
+          if(!renderer) return;
+
+          renderers.set(layer.id, renderer);
+          await renderer.init(layer.sticker!, STICKER_SIZE * layer.scale * pixelRatio);
+          maxFrames = Math.max(maxFrames, renderer.getTotalFrames());
+        }),
+        delay(200)
+      ]));
+      throwIfCanceled();
+
+      const muxer = new Muxer({
+        target: new ArrayBufferTarget(),
+        video: {
+          codec: 'avc',
+          width: scaledWidth,
+          height: scaledHeight,
+          frameRate: FRAMES_PER_SECOND
+        },
+        fastStart: 'in-memory'
+      });
+
+      encoder = new VideoEncoder({
+        output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+        error: (e) => console.error(e)
+      });
+
+      encoder.configure({
         width: scaledWidth,
         height: scaledHeight,
-        frameRate: FRAMES_PER_SECOND
-      },
-      fastStart: 'in-memory'
-    });
+        ...calcCodecAndBitrate(scaledWidth, scaledHeight, BITRATE_TARGET_FPS)
+      });
 
-    const encoder = new VideoEncoder({
-      output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-      error: (e) => console.error(e)
-    });
+      for(let frameNo = 0; frameNo <= maxFrames; frameNo++) {
+        throwIfCanceled();
 
-    encoder.configure({
-      width: scaledWidth,
-      height: scaledHeight,
-      ...calcCodecAndBitrate(scaledWidth, scaledHeight, BITRATE_TARGET_FPS)
-    });
-
-    for(let frameNo = 0; frameNo <= maxFrames; frameNo++) {
-      if(canceled) {
-        reject();
-        cleanup(encoder);
+        await raceCancel(renderFrame(encoder, frameNo));
+        setProgress(frameNo / maxFrames);
       }
 
-      await renderFrame(encoder, frameNo);
-      setProgress(frameNo / maxFrames);
+      await raceCancel(encoder.flush());
+      throwIfCanceled();
+      muxer.finalize();
+
+      cleanup(encoder);
+
+      const {buffer} = muxer.target;
+      resolve({
+        blob: new Blob([buffer], {type: 'video/mp4'}),
+        hasSound: false
+      });
+    } catch(e) {
+      if(e === CANCELED || canceled) {
+        finishCanceled();
+        return;
+      }
+      reject(e);
     }
-
-    await encoder.flush();
-    muxer.finalize();
-
-    cleanup(encoder);
-
-    const {buffer} = muxer.target;
-    resolve({
-      blob: new Blob([buffer], {type: 'video/mp4'}),
-      hasSound: false
-    });
   });
 
   let result: MediaEditorFinalResultPayload;
@@ -162,23 +191,10 @@ export default async function renderToVideoGIF({
       return result ?? resultPromise;
     },
     cancel: () => {
+      if(canceled) return;
       canceled = true;
+      canceledDeferred.reject(CANCELED);
     },
     creationProgress
   };
-
-  // const div = document.createElement('div')
-  // div.style.position = 'fixed';
-  // div.style.zIndex = '1000';
-  // div.style.top = '50%';
-  // div.style.left = '50%';
-  // div.style.transform = 'translate(-50%, -50%)';
-  // const img = document.createElement('video')
-  // img.src = URL.createObjectURL(blob)
-  // img.controls = true
-  // img.autoplay = true
-  // img.loop = true
-  // img.style.maxWidth = '450px'
-  // div.append(img)
-  // document.body.append(div)
 }

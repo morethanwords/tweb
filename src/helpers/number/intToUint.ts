@@ -1,4 +1,7 @@
+/**
+ * Converts a number to uint32 using bitwise operations.
+ * Note: This wraps values rather than clamping them.
+ */
 export default function intToUint(val: number) {
-  // return val < 0 ? val + 4294967296 : val; // 0 <= val <= Infinity
-  return val >>> 0; // (4294967296 >>> 0) === 0; 0 <= val <= 4294967295
+  return val >>> 0;
 }

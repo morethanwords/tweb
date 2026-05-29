@@ -1,18 +1,18 @@
-import {Component, splitProps, JSX} from 'solid-js';
-
 import styles from '@components/staticRadio.module.scss';
+import classNames from '@helpers/string/classNames';
+import {JSX, splitProps} from 'solid-js';
 
-const StaticRadio: Component<{
-  checked: boolean;
+
+const StaticRadio = (inProps: {
+  checked?: boolean;
   floating?: boolean;
   class?: string;
-} & JSX.HTMLAttributes<HTMLSpanElement>> = (inProps) => {
+} & JSX.HTMLAttributes<HTMLSpanElement>) => {
   const [props, spanProps] = splitProps(inProps, ['checked', 'floating', 'class', 'classList']);
 
   return <span
-    class={styles.Radio}
+    class={classNames(styles.Radio, props.class)}
     classList={{
-      [props.class]: !!props.class,
       [styles.checked]: props.checked,
       [styles.floating]: props.floating,
       'offset-left': props.floating,

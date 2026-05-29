@@ -113,7 +113,7 @@ import useProfileColors from '@hooks/useProfileColors';
 import {wrapSlowModeLeftDuration} from '@components/wrappers/wrapDuration';
 import {splitFullMid} from '@components/chat/bubbles';
 import getSelectedNodes from '@helpers/dom/getSelectedNodes';
-import {setQuizHint} from '@components/poll';
+import {setQuizHint} from '@components/quizHint';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import PopupPremium from '@components/popups/premium';
 import safeWindowOpen from '@helpers/dom/safeWindowOpen';
@@ -160,6 +160,7 @@ export type ChatSavedPosition = {
 export type ChatSetPeerOptions = {
   peerId: PeerId,
   lastMsgId?: number,
+  pollOption?: string | Uint8Array,
   lastMsgPeerId?: PeerId,
   threadId?: number,
   monoforumThreadId?: PeerId,

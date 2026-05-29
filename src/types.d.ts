@@ -120,6 +120,10 @@ type PartialByKeys<T, K extends keyof T = never> =
   Omit<T, K> &
   Partial<Pick<T, K>>;
 
+  type FilterBooleanKeys<T> = {
+    [K in keyof T]: T[K] extends boolean ? K : never
+  }[keyof T];
+
 
 export type AuthState = AuthState.signIn | AuthState.signQr | AuthState.authCode | AuthState.password | AuthState.signUp | AuthState.signedIn | AuthState.signImport;
 export namespace AuthState {

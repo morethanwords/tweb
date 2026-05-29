@@ -1,14 +1,11 @@
-import {formatFullSentTimeRaw, formatTime} from '@helpers/date';
-import {DurationType} from '@helpers/formatDuration';
-import {Document, Message} from '@layer';
 import {AdminLog} from '@appManagers/appChatsManager';
 import {MyMessage} from '@appManagers/appMessagesManager';
-import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {VERIFICATION_CODES_BOT_ID} from '@appManagers/constants';
-import Icon, {OverlayedIcon} from '@components/icon';
-import {findMatchingCustomOption} from '@components/sidebarLeft/tabs/autoDeleteMessages/options';
+import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {wrapSlowModeLeftDuration} from '@components/wrappers/wrapDuration';
+import {formatFullSentTimeRaw, formatTime} from '@helpers/date';
 import eachSecond from '@helpers/eachSecond';
+import {Document, Message} from '@layer';
 
 
 export function isMessageForVerificationBot(message: MyMessage) {
@@ -68,53 +65,6 @@ export function linkColor(el: string | Node) {
   return el;
 }
 
-const shiftedIcons = [DurationType.Days, DurationType.Years]
-
-const typeToIcon: Partial<Record<DurationType, Icon>> = {
-  [DurationType.Days]: 'auto_delete_circle_days',
-  [DurationType.Weeks]: 'auto_delete_circle_weeks',
-  [DurationType.Months]: 'auto_delete_circle_months',
-  [DurationType.Years]: 'auto_delete_circle_years'
-};
-
-const durationToIcon: Partial<Record<number, Icon>> = {
-  1: 'auto_delete_circle_1',
-  2: 'auto_delete_circle_2',
-  3: 'auto_delete_circle_3',
-  4: 'auto_delete_circle_4',
-  5: 'auto_delete_circle_5',
-  6: 'auto_delete_circle_6'
-};
-
-export function createAutoDeleteIcon(period?: number) {
-  const defaultResult = () => Icon('auto_delete_circle_clock');
-
-  if(!period) return defaultResult();
-
-  const option = findMatchingCustomOption(period);
-  if(!option) return defaultResult();
-
-  const durationIcon = durationToIcon[option.duration];
-  const typeIcon = typeToIcon[option.type];
-
-  if(!durationIcon || !typeIcon) return defaultResult();
-
-  const isShifted = shiftedIcons.includes(option.type);
-
-  return OverlayedIcon(
-    [
-      'auto_delete_circle_empty',
-      {
-        icon: durationIcon,
-        className: isShifted ? 'auto-delete-icon--shifted' : undefined
-      },
-      {
-        icon: typeIcon,
-        className: isShifted ? 'auto-delete-icon--shifted' : undefined
-      }
-    ],
-  );
-}
 
 export type AttachedMediaType = 'document' | 'media';
 

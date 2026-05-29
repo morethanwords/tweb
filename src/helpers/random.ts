@@ -18,3 +18,8 @@ export function randomLong() {
 export function randomBytes(length: number) {
   return randomize(new Uint8Array(length));
 }
+
+/** Non-crypto fallback using Math.random. */
+export function randomUint32Fast(): number {
+  return (Math.random() * 0x100000000) >>> 0;
+}

@@ -57,6 +57,9 @@ export type PopupContextValue = {
   buttons: PopupButton[],
   shown: () => boolean,
   show: () => void,
+  /**
+   * Note: Will trigger isConfirmationNeededOnClose if was set
+   */
   hide: () => void,
   destroy: () => void,
   destroyed: boolean,
@@ -92,6 +95,18 @@ const onFullScreenChange = () => {
 };
 
 addFullScreenListener(DEFAULT_APPEND_TO, onFullScreenChange);
+
+export const useSnitchedPopupContext = () => {
+  let context: PopupContextValue;
+
+  return {
+    SnitchPopupContext: () => {
+      context = useContext(PopupContext);
+      return <></>;
+    },
+    popupContext: () => context
+  }
+};
 
 const PopupElement = (props: {
   class?: string,
@@ -295,6 +310,8 @@ const PopupElement = (props: {
     }, 0);
   }
 
+  let mouseDownTarget: Element;
+
   return (
     <PopupContext.Provider value={value}>
       <Portal mount={appendPopupTo()}>
@@ -309,6 +326,9 @@ const PopupElement = (props: {
             hiding() && 'hiding',
             props.old && 'old'
           )}
+          onMouseDown={(e) => {
+            mouseDownTarget = e.target;
+          }}
           onClick={/* store.closeButton &&  */((e) => {
             if(
               findUpClassName(e.target, 'popup-container') ||
@@ -320,6 +340,10 @@ const PopupElement = (props: {
             if(props.closable === false) {
               return;
             }
+
+            // Prevent hiding the popup when the click started inside the popup and ended outside
+            if(mouseDownTarget && mouseDownTarget !== e.target) return;
+            mouseDownTarget = undefined;
 
             hide();
           })}

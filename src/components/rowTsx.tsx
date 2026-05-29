@@ -1,4 +1,4 @@
-import {children, createMemo, JSX, onCleanup, Ref, Show, useContext} from 'solid-js';
+import {children, createMemo, JSX, onCleanup, Ref, Show, splitProps, useContext} from 'solid-js';
 import classNames from '@helpers/string/classNames';
 import {IconTsx} from '@components/iconTsx';
 import RippleElement from '@components/rippleElement';
@@ -222,11 +222,10 @@ Row.Icon = (props: {
   ));
 };
 
-Row.RightContent = (props: {
-  children: JSX.Element
-}) => {
+Row.RightContent = (inProps: JSX.HTMLAttributes<HTMLDivElement>) => {
+  const [props, restProps] = splitProps(inProps, ['class']);
   return useContext(RowContext).register('rightContent', (
-    <div class="row-right">{props.children}</div>
+    <div class={classNames('row-right', props.class)} {...restProps} />
   ));
 };
 
@@ -248,12 +247,13 @@ Row.CheckboxFieldToggle = (props: {
   return useContext(RowContext).register('checkboxFieldToggle', props.children);
 };
 
-Row.Media = (props: {
+Row.Media = (inProps: JSX.HTMLAttributes<HTMLDivElement> & {
   children?: JSX.Element,
   size: RowMediaSizeType,
-  ref?: Ref<HTMLDivElement>,
   class?: string
 }) => {
+  const [props, restProps] = splitProps(inProps, ['children', 'size', 'class']);
+
   return useContext(RowContext).register('media', (
     <div
       class={classNames(
@@ -261,7 +261,7 @@ Row.Media = (props: {
         props.size && `row-media-${props.size}`,
         props.class
       )}
-      ref={props.ref}
+      {...restProps}
     >
       {props.children}
     </div>

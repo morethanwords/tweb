@@ -248,8 +248,8 @@ export class InternalLinkProcessor {
       });
     }
 
-    type K1 = {thread?: string, comment?: string, t?: string};
-    type K2 = {thread?: string, comment?: string, start?: string, t?: string, text?: string};
+    type K1 = {thread?: string, comment?: string, t?: string, option?: string};
+    type K2 = {thread?: string, comment?: string, start?: string, t?: string, text?: string, option?: string};
     type K3 = {startattach?: string, attach?: string, choose?: TelegramChoosePeerType};
     type K4 = {startapp?: string, mode?: 'compact' | 'fullscreen'};
     type K5 = {story?: string};
@@ -317,6 +317,7 @@ export class InternalLinkProcessor {
             post: pathnameParams[2] || pathnameParams[1],
             thread,
             comment: uriParams.comment,
+            option: 'option' in uriParams ? uriParams.option : undefined,
             stack: appImManager.getStackFromElement(element),
             t: uriParams.t
           };
@@ -340,6 +341,7 @@ export class InternalLinkProcessor {
             thread,
             comment: uriParams.comment,
             start: 'start' in uriParams ? uriParams.start : undefined,
+            option: 'option' in uriParams ? uriParams.option : undefined,
             stack: appImManager.getStackFromElement(element),
             t: uriParams.t,
             text: uriParams.text
@@ -784,6 +786,7 @@ export class InternalLinkProcessor {
     return appImManager.openUsername({
       userName: link.domain,
       lastMsgId: postId,
+      pollOption: link.option,
       commentId,
       startParam: link.start,
       stack: link.stack,
@@ -819,6 +822,7 @@ export class InternalLinkProcessor {
       peer: chat || user,
       lastMsgId: postId,
       threadId,
+      pollOption: link.option,
       stack: link.stack,
       mediaTimestamp: link.t && +link.t
     });

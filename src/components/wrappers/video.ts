@@ -257,7 +257,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
 
     const onLoad = () => {
       const message: Message.message = (divRound as any).message;
-      const globalVideo = appMediaPlaybackController.addMedia(message, !noAutoDownload) as HTMLVideoElement;
+      const globalVideo = appMediaPlaybackController.addMedia({message, autoload: !noAutoDownload}) as HTMLVideoElement;
       onGlobalMedia?.(globalVideo);
       const clear = () => {
         (appImManager.chat.setPeerPromise || Promise.resolve()).finally(() => {
@@ -696,7 +696,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
   if(doc.type === 'gif' && !canAutoplay) {
     attachClickEvent(container, (e) => {
       cancelEvent(e);
-      spanPlay.remove();
+      spanPlay?.remove();
       load();
     }, {capture: true, once: true});
   } else {

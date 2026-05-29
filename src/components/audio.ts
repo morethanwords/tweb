@@ -152,7 +152,7 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
   audioEl.classList.add('is-voice');
 
   const message = audioEl.message;
-  const doc = getMediaFromMessage(message) as MyDocument;
+  const doc = audioEl.doc ?? (getMediaFromMessage(message) as MyDocument);
 
   if(message.pFlags.out) {
     audioEl.classList.add('is-out');
@@ -345,13 +345,13 @@ async function wrapAudio(audioEl: AudioElement) {
   const withTime = audioEl.withTime;
 
   const message = audioEl.message;
-  const doc = getMediaFromMessage(message) as MyDocument;
+  const doc = audioEl.doc ?? (getMediaFromMessage(message) as MyDocument);
 
   const isVoice = doc.type === 'voice' || doc.type === 'round';
   const descriptionEl = document.createElement('div');
   descriptionEl.classList.add('audio-description');
 
-  const audioAttribute = doc.attributes.find((attr) => attr._ === 'documentAttributeAudio') as DocumentAttribute.documentAttributeAudio;
+  const audioAttribute = doc.attributes?.find((attr) => attr._ === 'documentAttributeAudio') as DocumentAttribute.documentAttributeAudio;
 
   if(!isVoice) {
     const parts: (Node | string)[] = [];
@@ -503,6 +503,21 @@ export default class AudioElement extends HTMLElement {
   public audio: HTMLMediaElement;
   public preloader: ProgressivePreloader;
   public message: Message.message;
+  /**
+   * Optional pre-extracted document. When set, it overrides extraction
+   * from `message.media`. Useful when the audio document lives in a
+   * sibling field of the message (e.g. poll `solution_media`).
+   */
+  public doc?: MyDocument;
+  /**
+   * Optional storage-key disambiguator. See `AddMediaArgs.slot`.
+   * Required when two AudioElements share the same `(peerId, mid)` but
+   * render different documents (e.g. poll description + explanation).
+   *
+   * NOTE: cannot be named `slot` because `HTMLElement.slot` already exists
+   * and is typed as `string`.
+   */
+  public mediaSlot?: number;
   public withTime = false;
   public voiceAsMusic = false;
   public searchContext: MediaSearchContext;
@@ -531,7 +546,7 @@ export default class AudioElement extends HTMLElement {
     this.dataset.mid = '' + this.message.mid;
     this.dataset.peerId = '' + this.message.peerId;
 
-    const doc = getMediaFromMessage(this.message) as MyDocument;
+    const doc = this.doc ?? (getMediaFromMessage(this.message) as MyDocument);
     const isRealVoice = doc.type === 'voice';
     const isVoice = !this.voiceAsMusic && isRealVoice;
     const isOutgoing = this.message.pFlags.is_outgoing;
@@ -575,7 +590,12 @@ export default class AudioElement extends HTMLElement {
     const onLoad = this.onLoad = (autoload: boolean) => {
       this.onLoad = undefined;
 
-      const audio = this.audio ??= appMediaPlaybackController.addMedia(this.message, autoload) as HTMLMediaElement;
+      const audio = this.audio ??= appMediaPlaybackController.addMedia({
+        message: this.message,
+        autoload,
+        doc: this.doc,
+        slot: this.mediaSlot
+      }) as HTMLMediaElement;
 
       const readyPromise = this.readyPromise = deferredPromise<void>();
       if(this.audio.readyState >= this.audio.HAVE_CURRENT_DATA) readyPromise.resolve();
@@ -653,7 +673,7 @@ export default class AudioElement extends HTMLElement {
           return;
         }
 
-        appMediaPlaybackController.resolveWaitingForLoadMedia(this.message.peerId, this.message.mid, this.message.pFlags.is_scheduled);
+        appMediaPlaybackController.resolveWaitingForLoadMedia(this.message.peerId, this.message.mid, this.message.pFlags.is_scheduled, this.mediaSlot);
 
         this.onDownloadInit(shouldPlay);
 

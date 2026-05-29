@@ -15,8 +15,6 @@ import getPeerId from '@appManagers/utils/peers/getPeerId';
 import formatUserPhone from '@components/wrappers/formatUserPhone';
 import SettingSection from '@components/settingSection';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
-import {wrapEmojiTextWithEntities} from '@lib/richTextProcessor/wrapEmojiText';
-import EditFolderInput from '@components/sidebarLeft/tabs/editFolderInput';
 import {InputFieldEmoji} from '@components/inputFieldEmoji';
 import {toastNew} from '@components/toast';
 import showBirthdayPopup, {suggestUserBirthday} from '@components/popups/birthday';

@@ -1,6 +1,7 @@
 import type {ButtonMenuDirection} from '@components/buttonMenuToggle';
-import I18n from '@lib/langPack';
 import mediaSizes from '@helpers/mediaSizes';
+import I18n from '@lib/langPack';
+import clamp from './number/clamp';
 
 export type MenuPositionPadding = {
   top?: number,
@@ -15,7 +16,131 @@ const PADDING_LEFT = 8;
 const PADDING_RIGHT = PADDING_LEFT;
 
 export const DEFAULT_MENU_WINDOW_MARGIN = 16;
+
 export type MenuHorizontalDirection = 'left' | 'right';
+
+export type FloatingMenuSide = 'top' | 'left' | 'right' | 'bottom';
+export type FloatingMenuAlignment = 'start' | 'center' | 'end';
+export type FloatingMenuDirection = `${FloatingMenuSide}-${FloatingMenuAlignment}`;
+
+const OPPOSITE_SIDE: Record<FloatingMenuSide, FloatingMenuSide> = {
+  top: 'bottom',
+  bottom: 'top',
+  left: 'right',
+  right: 'left'
+};
+
+function canFitSide(
+  triggerBcr: DOMRect,
+  menu: HTMLElement,
+  side: FloatingMenuSide,
+  mainOffset: number
+) {
+  const margin = DEFAULT_MENU_WINDOW_MARGIN;
+  switch(side) {
+    case 'right':
+      return triggerBcr.right + mainOffset + menu.clientWidth + margin <= window.innerWidth;
+    case 'left':
+      return triggerBcr.left - mainOffset - menu.clientWidth - margin >= 0;
+    case 'bottom':
+      return triggerBcr.bottom + mainOffset + menu.clientHeight + margin <= window.innerHeight;
+    case 'top':
+      return triggerBcr.top - mainOffset - menu.clientHeight - margin >= 0;
+  }
+}
+
+/**
+ * Positions a floating menu next to a trigger element.
+ * - `side` is the side of the trigger the menu opens on.
+ * - `alignment` aligns the menu along the perpendicular axis.
+ * - `offset` is `[x, y]`. The component along the main axis acts as a gap from the trigger,
+ *   the perpendicular component nudges along the alignment axis.
+ *
+ * Sets `left`, `top`, and `transformOrigin` on `menu`. Returns the actually used direction
+ * (the side may flip to the opposite if the menu doesn't fit).
+ */
+export function positionFloatingMenu(
+  triggerBcr: DOMRect,
+  menu: HTMLElement,
+  direction: FloatingMenuDirection,
+  offset: [number, number] = [0, 0]
+): FloatingMenuDirection {
+  const [requestedSide, alignment] = direction.split('-') as [FloatingMenuSide, FloatingMenuAlignment];
+
+  const isHorizontalSide = requestedSide === 'left' || requestedSide === 'right';
+  const mainOffset = isHorizontalSide ? offset[0] : offset[1];
+  const crossOffset = isHorizontalSide ? offset[1] : offset[0];
+
+  // Flip side if it doesn't fit and the opposite does (mirrors the original right/left logic).
+  const opposite = OPPOSITE_SIDE[requestedSide];
+  const side: FloatingMenuSide = canFitSide(triggerBcr, menu, requestedSide, mainOffset) ||
+      !canFitSide(triggerBcr, menu, opposite, mainOffset) ?
+    requestedSide :
+    opposite;
+
+  const margin = DEFAULT_MENU_WINDOW_MARGIN;
+  const menuW = menu.clientWidth;
+  const menuH = menu.clientHeight;
+
+  // Main-axis position.
+  let left: number;
+  let top: number;
+
+  if(side === 'right' || side === 'left') {
+    if(side === 'right') {
+      left = triggerBcr.right + mainOffset;
+    } else {
+      left = triggerBcr.left - mainOffset - menuW;
+    }
+    left = clamp(left, margin, window.innerWidth - menuW - margin);
+
+    // Cross axis: vertical.
+    if(alignment === 'start') {
+      top = triggerBcr.top + crossOffset;
+    } else if(alignment === 'center') {
+      top = triggerBcr.top + triggerBcr.height / 2 - menuH / 2 + crossOffset;
+    } else {
+      top = triggerBcr.bottom - menuH - crossOffset;
+    }
+    top = clamp(top, margin, window.innerHeight - menuH - margin);
+  } else {
+    if(side === 'bottom') {
+      top = triggerBcr.bottom + mainOffset;
+    } else {
+      top = triggerBcr.top - mainOffset - menuH;
+    }
+    top = clamp(top, margin, window.innerHeight - menuH - margin);
+
+    // Cross axis: horizontal.
+    if(alignment === 'start') {
+      left = triggerBcr.left + crossOffset;
+    } else if(alignment === 'center') {
+      left = triggerBcr.left + triggerBcr.width / 2 - menuW / 2 + crossOffset;
+    } else {
+      left = triggerBcr.right - menuW - crossOffset;
+    }
+    left = clamp(left, margin, window.innerWidth - menuW - margin);
+  }
+
+  // Transform origin: corner/edge closest to the trigger.
+  let originX: string;
+  let originY: string;
+  const alignmentToPercent = alignment === 'start' ? '0' : alignment === 'center' ? '50%' : '100%';
+
+  if(side === 'right' || side === 'left') {
+    originX = side === 'right' ? '0' : '100%';
+    originY = alignmentToPercent;
+  } else {
+    originY = side === 'bottom' ? '0' : '100%';
+    originX = alignmentToPercent;
+  }
+
+  menu.style.left = left + 'px';
+  menu.style.top = top + 'px';
+  menu.style.transformOrigin = `${originX} ${originY}`;
+
+  return `${side}-${alignment}` as FloatingMenuDirection;
+}
 
 export function getMenuTopPositionForStartDirection(triggerBcr: DOMRect, menu: HTMLElement, offset: [number, number]) {
   let top = triggerBcr.top + offset[1];

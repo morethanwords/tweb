@@ -20,9 +20,9 @@ import I18n, {FormatterArguments, i18n, langPack, LangPackKey, UNSUPPORTED_LANG_
 import {fireMessageEffectByBubble, MessageRender} from '@components/chat/messageRender';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import ListenerSetter from '@helpers/listenerSetter';
-import PollElement, {setQuizHint} from '@components/poll';
+import {setQuizHint} from '@components/quizHint';
 import AudioElement from '@components/audio';
-import {ChannelParticipant, Chat as MTChat, ChatParticipant, Document, Game, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, SponsoredMessage, User, UserFull, WebPage, WebPageAttribute, Reaction, DocumentAttribute, InputStickerSet, TextWithEntities, FactCheck, WebDocument, MessageExtendedMedia, PeerSettings, LangPackString, ForumTopic} from '@layer';
+import {ChannelParticipant, Chat as MTChat, ChatParticipant, Document, Game, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, SponsoredMessage, User, UserFull, WebPage, WebPageAttribute, Reaction, DocumentAttribute, InputStickerSet, TextWithEntities, FactCheck, WebDocument, MessageExtendedMedia, PeerSettings, LangPackString, ForumTopic, MessageAction} from '@layer';
 import {BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID, SEND_WHEN_ONLINE_TIMESTAMP, STARS_CURRENCY} from '@appManagers/constants';
 import {FocusDirection, ScrollStartCallbackDimensions} from '@helpers/fastSmoothScroll';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation} from '@hooks/useHeavyAnimationCheck';
@@ -37,7 +37,7 @@ import findUpTag from '@helpers/dom/findUpTag';
 import {hideToast, toastNew} from '@components/toast';
 import {getMiddleware, Middleware} from '@helpers/middleware';
 import cancelEvent from '@helpers/dom/cancelEvent';
-import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
+import {attachClickEvent, CLICK_EVENT_NAME, simulateClickEvent} from '@helpers/dom/clickEvent';
 import htmlToDocumentFragment from '@helpers/dom/htmlToDocumentFragment';
 import reflowScrollableElement from '@helpers/dom/reflowScrollableElement';
 import setInnerHTML, {setDirection} from '@helpers/dom/setInnerHTML';
@@ -102,7 +102,6 @@ import wrapAlbum from '@components/wrappers/album';
 import wrapDocument from '@components/wrappers/document';
 import wrapGroupedDocuments from '@components/wrappers/groupedDocuments';
 import wrapPhoto from '@components/wrappers/photo';
-import wrapPoll from '@components/wrappers/poll';
 import wrapVideo, {USE_VIDEO_OBSERVER} from '@components/wrappers/video';
 import isRTL, {endsWithRTL} from '@helpers/string/isRTL';
 import NBSP from '@helpers/string/nbsp';
@@ -125,7 +124,7 @@ import SwipeHandler from '@components/swipeHandler';
 import getSelectedText from '@helpers/dom/getSelectedText';
 import {createStoriesViewerWithPeer} from '@components/stories/viewer';
 import {render} from 'solid-js/web';
-import {createRoot, createEffect, createSignal, Signal, onCleanup} from 'solid-js';
+import {createRoot, createEffect, createSignal, Signal, onCleanup, batch} from 'solid-js';
 import {StoryPreview, wrapStoryMedia} from '@components/stories/preview';
 import wrapReply from '@components/wrappers/reply';
 import {modifyAckedPromise} from '@helpers/modifyAckedResult';
@@ -219,6 +218,11 @@ import {NoForwardsRequestContent, NoForwardsRequestReplyMarkup} from '@component
 import tsNow from '@helpers/tsNow';
 import wrapMessageForReply from '@components/wrappers/messageForReply';
 import canSeeMessageMedia from '@lib/appManagers/utils/messages/canSeeMessageMedia';
+import {PollMessageContentProps, PollMessageContentControls} from './bubbleParts/pollMessageContent';
+import {createMutable} from 'solid-js/store';
+import compareUint8Arrays from '@helpers/bytes/compareUint8Arrays';
+import {linkToPollOption} from './bubbleParts/pollMessageContent/pollToOptionLink';
+import {getSimulatedEvent} from '@helpers/dom/dispatchEvent';
 
 // TODO: fix new message won't be rendered if an old one is rendering in the moment
 
@@ -237,6 +241,7 @@ export type BubbleContext = {
   canHaveTail: boolean,
   isStandaloneMedia: boolean,
   mediaRequiresMessageDiv: boolean,
+  pollMessageContentControls?: Partial<PollMessageContentControls>,
 
   // * something extra
   releaseDice?: (value: number) => void
@@ -315,6 +320,13 @@ const webPageTypes: {[type in WebPage.webPage['type']]?: LangPackKey} = {
   telegram_megagroup_request: 'Chat.Message.RequestToJoin',
   telegram_stickerset: 'OpenStickers'
 };
+
+const serviceMessageActionsWithReply: (MessageAction['_'])[] = [
+  'messageActionTodoAppendTasks',
+  'messageActionTodoCompletions',
+  'messageActionPollAppendAnswer',
+  'messageActionPollDeleteAnswer'
+];
 
 const webPageTypesSiteNames: {[type in WebPage.webPage['type']]?: LangPackKey} = {
   telegram_livestream: 'PeerInfo.Action.LiveStream'
@@ -416,6 +428,8 @@ export function splitFullMid(fullMid: FullMid) {
 }
 
 const EMPTY_FULL_MID = makeFullMid(NULL_PEER_ID, 0);
+
+const SimulatedClickSymbol = Symbol('simulatedClick');
 
 function appendBubbleTime(bubble: HTMLElement, element: HTMLElement, callback: () => void) {
   (bubble.timeAppenders ??= []).unshift({element, callback});
@@ -608,7 +622,7 @@ export default class ChatBubbles {
 
   private logsBubbleByMid = new Map<number, {element: HTMLElement, priorityDate: number}>();
 
-  private contexts: Map<HTMLElement, BubbleContext> = new Map();
+  public contexts: Map<HTMLElement, BubbleContext> = new Map();
 
   private webPageClickCallbacks: WeakMap<HTMLElement, (e: MouseEvent) => any> = new WeakMap();
 
@@ -929,13 +943,6 @@ export default class ChatBubbles {
               (element as any).doc = doc;
             }
           }
-        } else if(poll) {
-          const pollElement = bubble.querySelector('poll-element') as PollElement;
-          if(pollElement) {
-            pollElement.message = message;
-            pollElement.setAttribute('poll-id', '' + poll.id);
-            pollElement.setAttribute('message-id', '' + mid);
-          }
         } else if(webPage?._ === 'webPage' && !bubble.querySelector('.web')) {
           const isLast = this.getLastBubble() === bubble;
           onMessageEdit(message, true).then(async(result) => {
@@ -1218,7 +1225,7 @@ export default class ChatBubbles {
       listenerSetter: this.listenerSetter,
       findTarget: (e) => {
         const target = e.target as HTMLElement;
-        const found = target.closest('.attachment.media-sticker-wrapper, .attachment.media-gif-wrapper') || (findUpClassName(target, 'attachment') && target.closest('.custom-emoji'));
+        const found = target.closest('.attachment.media-sticker-wrapper, .attachment.media-gif-wrapper, .poll-option-sticker.media-sticker-wrapper') || (findUpClassName(target, 'attachment') && target.closest('.custom-emoji'));
         return found as HTMLElement;
       }
     });
@@ -1409,7 +1416,8 @@ export default class ChatBubbles {
           findUpClassName(e.target, 'time') ||
           findUpClassName(e.target, 'code-header-button') ||
           findUpClassName(e.target, 'reaction') ||
-          findUpClassName(e.target, 'bubble-beside-button')
+          findUpClassName(e.target, 'bubble-beside-button') ||
+          findUpClassName(e.target, 'poll-message-content')
         ) {
           return;
         }
@@ -2924,6 +2932,20 @@ export default class ChatBubbles {
       return;
     }
 
+    let pollOptionEl: HTMLElement;
+    if(target.closest('.poll-option-sticker') && (pollOptionEl = target.closest('[data-poll-option-idx]'))) {
+      const message = this.chat.getMessage(bubbleFullMid);
+      const idx = +(pollOptionEl.dataset.pollOptionIdx ?? 0);
+
+      if(idx !== undefined && message?._ === 'message' && message.media?._ === 'messageMediaPoll') {
+        const {poll} = await this.managers.appPollsManager.getPoll(message.media.poll.id);
+        const answer = poll?.answers?.[idx];
+        if(answer.media?._ === 'messageMediaDocument' && answer.media.document?._ === 'document' && answer.media.document?.stickerSetInput) {
+          showStickersPopup(answer.media.document.stickerSetInput, undefined, this.chat.input);
+        }
+      }
+    }
+
     const videoMini = findUpClassName(target, 'media-video-mini');
     if(videoMini && false) {
       if(findUpClassName(target, 'video-to-viewer')) {
@@ -3081,6 +3103,7 @@ export default class ChatBubbles {
           ...additionalSetPeerProps,
           peerId: replyToPeerId,
           lastMsgId: replyToMid,
+          pollOption: replyTo.poll_option,
           type: this.chat.type === ChatType.Logs ? undefined : this.chat.type,
           threadId: this.chat.threadId,
           monoforumThreadId: this.chat.monoforumThreadId
@@ -3117,6 +3140,32 @@ export default class ChatBubbles {
     const documentDiv = findUpClassName(target, 'document-with-thumb');
 
     if(this.chat.type === ChatType.Logs) return;
+
+    // Prevent recursive click event simulation
+
+    if((e as any)[SimulatedClickSymbol]) return;
+
+    const simulateClickEvent = (target: HTMLElement) => {
+      const event = getSimulatedEvent(CLICK_EVENT_NAME);
+      (event as any)[SimulatedClickSymbol] = true;
+      target.dispatchEvent(event);
+    };
+
+    let pollViewerTarget: HTMLElement | null
+    if(pollViewerTarget = target.closest('[data-poll-viewer-idx]')) {
+      const preloader = pollViewerTarget.querySelector<HTMLElement>('.preloader-container');
+      if(preloader && e) {
+        simulateClickEvent(preloader);
+        cancelEvent(e);
+        return;
+      }
+
+      const bubbleContext = this.contexts.get(bubble);
+      bubbleContext?.pollMessageContentControls?.openMediaViewer?.(+pollViewerTarget.dataset.pollViewerIdx);
+      return true;
+    } else if(target.closest('.poll-message-content')) {
+      return;
+    }
 
     if(
       (target.tagName === 'IMG' && !target.classList.contains('emoji') && !target.classList.contains('document-thumb')) ||
@@ -4451,7 +4500,7 @@ export default class ChatBubbles {
   }
 
   public async setPeer(options: ChatSetPeerOptions & {samePeer: boolean, sameSearch: boolean, forceIsFirstLoad?: boolean}): Promise<{cached?: boolean, promise: Chat['setPeerPromise']}> {
-    const {samePeer, sameSearch, peerId, stack, monoforumThreadId, forceIsFirstLoad} = options;
+    const {samePeer, sameSearch, peerId, stack, monoforumThreadId, forceIsFirstLoad, pollOption} = options;
     let {lastMsgId, lastMsgPeerId, startParam} = options;
     const tempId = ++this.setPeerTempId;
 
@@ -4584,6 +4633,7 @@ export default class ChatBubbles {
         if(isTarget) {
           this.scrollToBubble(bubble, 'center');
           this.highlightBubble(bubble);
+          this.highlightBubblePollAnswer(bubble, lastMsgFullMid, pollOption);
           this.chat.dispatchEvent('setPeer', lastMsgId, false);
         } else if(topMessageFullMid !== EMPTY_FULL_MID && !isJump) {
           // log('will scroll down', this.scroll.scrollTop, this.scroll.scrollHeight);
@@ -4886,6 +4936,7 @@ export default class ChatBubbles {
 
           if(!followingUnread && isTarget && foundTarget) {
             this.highlightBubble(bubble);
+            this.highlightBubblePollAnswer(bubble, lastMsgFullMid, pollOption);
           }
         }
 
@@ -6406,7 +6457,7 @@ export default class ChatBubbles {
               }
             }
           }), container, middleware)
-        } else if(action._ === 'messageActionTodoAppendTasks' || action._ === 'messageActionTodoCompletions') {
+        } else if(serviceMessageActionsWithReply.includes(action._)) {
           bubble.classList.add('is-reply')
         }
 
@@ -6586,6 +6637,10 @@ export default class ChatBubbles {
         } else if(!['video', 'gif'].includes(document.type)) {
           needToSetHTML = false;
         }
+      }
+
+      if(context.messageMedia?._ === 'messageMediaPoll') {
+        context.messageMessage = totalEntities = undefined;
       }
     } else {
       if(message.action._ === 'messageActionPhoneCall') {
@@ -7088,6 +7143,7 @@ export default class ChatBubbles {
     if(context.messageMedia) {
       context.attachmentDiv = document.createElement('div');
       context.attachmentDiv.classList.add('attachment');
+
 
       switch(context.messageMedia._) {
         case 'messageMediaPhotoExternal':
@@ -7917,19 +7973,63 @@ export default class ChatBubbles {
         }
 
         case 'messageMediaPoll': {
-          context.mediaRequiresMessageDiv = true;
+          if(message._ === 'message') {
+            context.mediaRequiresMessageDiv = true;
+            context.messageMessage = totalEntities = undefined;
 
-          const pollElement = wrapPoll({
-            message: message as Message.message,
-            managers: this.managers,
-            middleware,
-            translatableParams,
-            richTextOptions: getRichTextOptions()
-          });
-          messageDiv.prepend(pollElement);
-          bubble.classList.add('poll-message');
+            const {PollMessageContent} = await import('./bubbleParts/pollMessageContent');
 
-          break;
+            const container = document.createElement('div');
+            container.classList.add('poll-message-content');
+
+            const propsMutable = createMutable<PollMessageContentProps>({
+              element: container,
+              isOutgoing: isOut,
+              message,
+              peerId: this.peerId,
+              poll: context.messageMedia.poll,
+              results: context.messageMedia.results,
+              media: context.messageMedia,
+              autoDownload: this.chat.autoDownload,
+              lazyLoadQueue: this.lazyLoadQueue,
+              animationGroup: this.chat.animationGroup,
+              canSend: (rights) => this.chat.canSend(rights),
+              loadPromises,
+              controls: context.pollMessageContentControls = {},
+              uploadingFileNames: await this.managers.appPollsManager.getUploadingFileNamesForPoll(context.messageMedia.poll.id)
+            });
+
+            renderComponent({
+              element: container,
+              Component: PollMessageContent,
+              props: propsMutable,
+              middleware,
+              HotReloadGuard: SolidJSHotReloadGuardProvider
+            });
+
+            this.updateLocalOnEdit.set(bubble, msg => {
+              batch(() => {
+                if(msg.media?._ !== 'messageMediaPoll') return;
+
+                Object.assign(propsMutable, {
+                  message: msg,
+                  poll: msg.media.poll,
+                  results: msg.media.results,
+                  media: msg.media
+                });
+              });
+            });
+
+            middleware.onDestroy(() => {
+              this.updateLocalOnEdit.delete(bubble);
+            });
+
+            messageDiv.prepend(container);
+            bubble.classList.add('poll-message');
+
+            break;
+          }
+          // const messageSignal = createSignal(message);
         }
         case 'messageMediaToDo': {
           context.mediaRequiresMessageDiv = true;
@@ -8162,18 +8262,53 @@ export default class ChatBubbles {
         case 'messageMediaGeoLive':
         case 'messageMediaVenue':
         case 'messageMediaGeo': {
+          bubble.classList.add('photo');
+
+          const geoMessage = message as Message.message;
+
           const result = wrapGeo({
             attachmentDiv: context.attachmentDiv,
-            bubble,
             loadPromises,
-            message: message as Message.message,
-            messageDiv,
             messageMedia: context.messageMedia,
             middleware,
-            timeSpan,
-            updateLocationOnEdit: this.updateLocalOnEdit,
-            wrapOptions
+            wrapOptions,
+            peerId: geoMessage.fromId,
+            date: geoMessage.date,
+            editDate: geoMessage.edit_date,
+            onLiveExpire: (footer) => {
+              bubble.classList.add('is-message-empty');
+              timeSpan.classList.remove('hide');
+              footer.replaceWith(timeSpan);
+              this.updateLocalOnEdit.delete(bubble);
+            }
           });
+
+          if(result.footer) {
+            bubble.classList.remove('is-message-empty');
+            messageDiv.append(result.footer);
+          }
+
+          if(result.isLive && !result.isLiveExpired) {
+            timeSpan.classList.add('hide');
+          }
+
+          if(result.address) {
+            result.address.append(timeSpan);
+          }
+
+          if(result.update) {
+            const updateGeo = result.update;
+            this.updateLocalOnEdit.set(bubble, (newMessage) => {
+              updateGeo({
+                messageMedia: newMessage.media as MessageMedia.messageMediaGeoLive,
+                date: newMessage.date,
+                editDate: newMessage.edit_date
+              });
+            });
+            middleware.onClean(() => {
+              this.updateLocalOnEdit.delete(bubble);
+            });
+          }
 
           context.canHaveTail = result.canHaveTail ?? context.canHaveTail;
           context.mediaRequiresMessageDiv = result.mediaRequiresMessageDiv ?? context.mediaRequiresMessageDiv;
@@ -10821,5 +10956,30 @@ export default class ChatBubbles {
     });
 
     return entry;
+  }
+
+  private highlightBubblePollAnswer(bubble?: HTMLElement, lastMsgFullMid?: FullMid, pollOption?: string | Uint8Array) {
+    if(!bubble || lastMsgFullMid === EMPTY_FULL_MID || !pollOption) return;
+
+    const message = this.chat.getMessage(lastMsgFullMid);
+    if(!message || message?._ !== 'message' || message?.media?._ !== 'messageMediaPoll') return;
+
+    let option: Uint8Array;
+    if(pollOption instanceof Uint8Array) {
+      option = pollOption;
+    } else {
+      const maxLength = 100;
+      if(pollOption.length > maxLength) return; // discard possibly malformed parameter
+      option = linkToPollOption(pollOption);
+      if(!option) return;
+    }
+
+    const context = this.contexts.get(bubble);
+    if(!context) return;
+
+    const pollOptionIndex = message.media.poll.answers.findIndex((answer) => answer._ === 'pollAnswer' && compareUint8Arrays(answer.option, option));
+    if(pollOptionIndex === -1) return;
+
+    context.pollMessageContentControls?.highlightAnswerWithTimeout?.(pollOptionIndex, 3000);
   }
 }

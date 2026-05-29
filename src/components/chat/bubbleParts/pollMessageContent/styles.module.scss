@@ -1,0 +1,550 @@
+@use "../../../../scss/variables" as *;
+@use "../../../../scss/mixins" as *;
+
+@mixin hoverable {
+  --hover-bg-color: rgba(0, 0, 0, 0.05);
+
+  @include hover-global(var(--hover-bg-color), background-color, true);
+
+  :global(.night) & {
+    --hover-bg-color: rgba(255, 255, 255, 0.075);
+  }
+
+  .outgoing & {
+    --hover-bg-color: hsla(from var(--message-primary-color) h s l / 0.08);
+    --ripple-color: hsla(from var(--message-primary-color) h s l / 0.15);
+
+    :global(.night) & {
+      --hover-bg-color: rgba(255, 255, 255, 0.1);
+      --ripple-color: rgba(255, 255, 255, 0.175);
+    }
+  }
+}
+
+.container {
+  display: block;
+  position: relative;
+  /* width: min-content; */
+  /* min-width: 300px; */
+}
+
+.pollOption {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+
+  --vertical-padding: 0.75rem;
+  padding: var(--vertical-padding) 0.75rem var(--vertical-padding) 0.625rem;
+
+  min-width: 260px;
+
+  &.hasMedia {
+    --vertical-padding: 0.5rem;
+  }
+
+  &Media {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    user-select: none;
+    width: 2rem;
+    height: 2rem;
+
+    &.stripped {
+      overflow: hidden;
+      border-radius: 6px;
+    }
+
+    &.clickable {
+      cursor: pointer;
+      z-index: 1;
+    }
+
+    &AttachImg {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: inherit;
+    }
+
+    &AttachBtn {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: inherit;
+
+      @include hoverable;
+    }
+
+    &Dim {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      background-color: rgba(0, 0, 0, 0.25);
+    }
+
+    &Play {
+      display: flex;
+      font-size: 1.25rem;
+      color: white;
+    }
+
+    &GifLabel {
+      display: flex;
+      font-size: 0.75rem;
+      font-weight: var(--font-weight-bold);
+      color: white;
+    }
+
+    :global(.preloader-container) {
+      height: 30px;
+      width: 30px;
+
+      :global(.preloader-download), :global(.preloader-close) {
+        width: 20px;
+        height: 20px;
+      }
+    }
+  }
+
+  &Geo {
+    :global(.geo-container) {
+      position: absolute;
+      inset: 0;
+      height: unset;
+      width: unset;
+    }
+    :global(.geo-pin) {
+      margin-top: unset;
+      height: 1.25rem;
+      width: unset;
+    }
+  }
+
+  &SpacerFirst {
+    flex-shrink: 0;
+    width: 1.5rem;
+  }
+
+  &SpacerLast {
+    flex-shrink: 0;
+    width: 0.5rem;
+  }
+
+  &.isAddOption.isIncoming {
+    color: #939fa9;
+  }
+
+  &.isAddOption.isOutgoing {
+    color: var(--secondary-text-color);
+
+    :global(.night) & {
+      color: inherit;
+    }
+  }
+}
+
+.clickableArea {
+  position: absolute;
+  overflow: hidden;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  cursor: pointer;
+
+  @include hoverable;
+
+  &.hoveredTransition {
+    transition: background-color 0.4s ease-in-out;
+  }
+
+  &.hovered {
+    background-color: var(--hover-bg-color);
+  }
+}
+
+.label {
+  &Row {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1.5rem;
+    flex: 1;
+  }
+
+  &Text {
+    flex: 1;
+  }
+
+  &Stats {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    user-select: none;
+  }
+
+  &Number {
+    color: var(--secondary-text-color);
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-size: 0.75rem;
+  }
+
+  &Progress {
+    position: absolute;
+
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 0.25rem;
+    border-radius: 0.25rem;
+    transform: translateY(13px);
+
+    --opacity: 0.15;
+    background-color: rgba(0, 0, 0, var(--opacity));
+
+    :global(.night) & {
+      background-color: rgba(255, 255, 255, var(--opacity));
+    }
+
+    &Fill {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      --zero-offset: 5px;
+      width: calc(var(--zero-offset) + var(--progress, 0) * (100% - var(--zero-offset)));
+
+      border-radius: inherit;
+      background-color: var(--primary-color);
+
+      transition: width var(--transition-time) linear;
+    }
+
+    &.correct &Fill {
+      background-color: var(--gc-green-text-color);
+    }
+
+    &.wrong &Fill {
+      background-color: var(--gc-red-text-color);
+    }
+  }
+}
+
+.checkContainer {
+  position: relative;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.checkbox {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.percent {
+  font-size: 0.75rem;
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translate(0.5rem, -50%);
+  white-space: nowrap;
+  font-weight: var(--font-weight-bold);
+  user-select: none;
+}
+
+.chosenCheckbox {
+  // For some reason those styles do not take priority over the default ones, so doubling the specificity here
+  &#{&} {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    transform: translate(-1.875rem, 18px);
+
+    --checkbox-size: 0.875rem;
+    --checkbox-scale: 1.25;
+  }
+
+  &.correct {
+    --checkbox-background-color: var(--gc-green-text-color);
+  }
+
+  &.wrong {
+    --checkbox-background-color: var(--gc-red-text-color);
+  }
+
+  &Dot {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    transform: translate(-41px, 15px);
+
+    width: 0.5rem;
+    height: 0.5rem;
+    background-color: var(--primary-color);
+    border-radius: 50%;
+
+    &.correct {
+      background-color: var(--gc-green-text-color);
+    }
+
+    &.wrong {
+      background-color: var(--gc-red-text-color);
+    }
+  }
+}
+
+.footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+}
+
+.footerButton {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+
+  padding: 0.5rem 1rem;
+  border-radius: 16px;
+  font-size: 0.875rem;
+
+  user-select: none;
+  text-align: center;
+
+  color: #939fa9;
+
+  &.outgoing {
+    color: var(--secondary-text-color);
+
+    :global(.night) & {
+      color: inherit;
+    }
+  }
+
+  &.clickable {
+    cursor: pointer;
+    color: var(--primary-color);
+    font-weight: var(--font-weight-bold);
+
+    @include hoverable;
+  }
+}
+
+.header {
+  display: flex;
+  gap: 1rem;
+  padding: 0.25rem 0.625rem 0.25rem 0.5rem;
+  align-items: center;
+
+  &TitleContainer {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  &Title {
+    font-weight: var(--font-weight-bold);
+  }
+
+  &Subtitle {
+    color: var(--secondary-text-color);
+    font-size: 0.875rem;
+
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+
+    user-select: none;
+  }
+}
+
+.avatarGroup {
+  display: flex;
+  flex-direction: row-reverse;
+  /* height: 28px; */
+  height: 1em;
+  align-items: center;
+}
+
+.avatarGroupItem {
+  position: relative;
+  cursor: pointer;
+
+  &.pushOverNext {
+    width: 0.625rem;
+  }
+
+  &Wrapper {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px solid var(--surface-color);
+  }
+
+  &.outgoing &Wrapper {
+    border-color: var(--message-out-background-color);
+  }
+}
+
+.addOptionPlus {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.5rem;
+}
+
+.emojiDropdownButton {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 0.25rem;
+  color: inherit;
+
+  @include hoverable;
+}
+
+.inputField {
+  &Internals {
+    position: relative;
+    width: 100%;
+    pointer-events: initial;
+  }
+
+  &Input {
+    background-color: unset;
+    // prevent the input collapsing when removing contenteditable
+    min-height: calc(1em * var(--line-height));
+  }
+
+  &Placeholder {
+    left: 0;
+    top: 0;
+
+    color: inherit;
+  }
+}
+
+.explanation {
+  cursor: unset;
+  margin-bottom: 0.125rem !important;
+  margin-top: 0.75rem !important;
+
+  &Document {
+    pointer-events: initial;
+    cursor: pointer;
+  }
+
+  &Text {
+    white-space: pre-wrap;
+  }
+
+  &Media {
+    pointer-events: initial;
+    cursor: pointer;
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+  }
+}
+
+.description {
+  padding: 0.5rem 0.5rem 0.25rem;
+  text-wrap: balance;
+
+  &:global(.is-hovering-spoiler) {
+    cursor: pointer;
+  }
+}
+
+.pollDescriptionMedia {
+  position: relative;
+  overflow: hidden;
+
+  border-radius: 4px;
+  border-start-start-radius: calc(var(--border-start-start-radius) - 1px);
+  border-start-end-radius: calc(var(--border-start-end-radius) - 1px);
+
+  cursor: pointer;
+
+  &Wrapper {
+    padding: 1px;
+  }
+}
+
+.pollDocumentWrapper {
+  padding: 0.5rem;
+}
+
+.pathDot {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  transform: translate(-33px, 9px);
+}
+
+.timer {
+  position: relative;
+  text-align: center;
+
+  transform: translateY(-2px);
+  line-height: 1;
+  padding: 0 1.5rem;
+  font-size: 0.75rem;
+
+  color: var(--secondary-text-color);
+}
+
+.spinnerContainer {
+  position: absolute;
+  width: 1.25rem;
+  height: 1.25rem;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
+  & circle {
+    stroke: var(--secondary-text-color);
+  }
+
+  .outgoing & circle {
+    stroke: var(--primary-color);
+  }
+
+  :global(.night) & circle,
+  :global(.night) .outgoing & circle {
+    stroke: white;
+  }
+}
+
+.pointerDisabled {
+  pointer-events: none;
+}
+
+.geo {
+  :global(.geo-container) {
+    display: block;
+  }
+  :global(.geo-pin) {
+    margin-top: unset;
+  }
+}

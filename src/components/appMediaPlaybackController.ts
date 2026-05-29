@@ -48,6 +48,11 @@ export type MediaSearchContext = SearchSuperContext & Partial<{
 type MediaDetails = {
   peerId: PeerId,
   mid: number,
+  /**
+   * Effective key under which the media is stored in `this.media` / `this.scheduled`.
+   * Equals `mid + (slot ?? 0)` — see `AddMediaArgs.slot`.
+   */
+  storageKey: number,
   docId: DocId,
   doc: MyDocument,
   message: Message.message,
@@ -70,6 +75,31 @@ export type MediaListLoaderOptions = Omit<ListLoaderOptions<MediaItem, Message.m
 export type MediaListLoaderFactory = (options: MediaListLoaderOptions) => MediaListLoader;
 
 export type PlaybackMediaType = 'voice' | 'video' | 'audio';
+
+export type AddMediaArgs = {
+  message: Message.message;
+  autoload: boolean;
+  clean?: boolean;
+  /**
+   * Optional pre-extracted document. When provided, it overrides the default
+   * extraction from `message.media`. Useful when the document lives in a
+   * sibling field of the message (e.g. poll `solution_media`).
+   */
+  doc?: MyDocument;
+  /**
+   * Optional disambiguator added to `mid` when forming the storage key, so
+   * multiple media elements can coexist under the same `(peerId, mid)` pair.
+   * Used for sibling-media-on-the-same-message scenarios (e.g. poll
+   * description vs. explanation documents).
+   *
+   * Use small fractional values (e.g. `0.1`, `0.2`); `0` / undefined means
+   * the standard storage key equal to `mid`.
+   *
+   * Note: slotted entries are intentionally not reachable via `getMedia` /
+   * `playItem` (the playlist flow), since they're not part of a playlist.
+   */
+  slot?: number;
+};
 
 export class AppMediaPlaybackController extends EventListenerBase<{
   play: (details: ReturnType<AppMediaPlaybackController['getPlayingDetails']>) => void,
@@ -323,8 +353,10 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     }
   };
 
-  public addMedia(message: Message.message, autoload: boolean, clean?: boolean): HTMLMediaElement {
+  public addMedia(args: AddMediaArgs): HTMLMediaElement {
+    const {message, autoload, clean, doc: docOverride, slot} = args;
     const {peerId, mid} = message;
+    const storageKey = mid + (slot ?? 0);
 
     const isScheduled = !!message.pFlags.is_scheduled;
     const s = isScheduled ? this.scheduled : this.media;
@@ -333,13 +365,13 @@ export class AppMediaPlaybackController extends EventListenerBase<{
       s.set(message.peerId, storage = new Map());
     }
 
-    let media = storage.get(mid);
+    let media = storage.get(storageKey);
     if(media) {
       return media;
     }
 
-    const doc = getMediaFromMessage(message, true) as Document.document;
-    storage.set(mid, media = document.createElement(doc.type === 'round' || doc.type === 'video' ? 'video' : 'audio'));
+    const doc = docOverride ?? (getMediaFromMessage(message, true) as Document.document);
+    storage.set(storageKey, media = document.createElement(doc.type === 'round' || doc.type === 'video' ? 'video' : 'audio'));
     // const source = document.createElement('source');
     // source.type = doc.type === 'voice' && !opusDecodeController.isPlaySupported() ? 'audio/wav' : doc.mime_type;
 
@@ -351,6 +383,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     const details: MediaDetails = {
       peerId,
       mid,
+      storageKey,
       docId: doc.id,
       doc,
       message,
@@ -400,7 +433,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
         w.set(peerId, waitingStorage = new Map());
       }
 
-      waitingStorage.set(mid, deferred);
+      waitingStorage.set(storageKey, deferred);
     }
 
     deferred.then(() => {
@@ -486,17 +519,18 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     }/* , {once: true} */);
   }
 
-  public resolveWaitingForLoadMedia(peerId: PeerId, mid: number, isScheduled?: boolean) {
+  public resolveWaitingForLoadMedia(peerId: PeerId, mid: number, isScheduled?: boolean, slot?: number) {
     const w = isScheduled ? this.waitingScheduledMediaForLoad : this.waitingMediaForLoad;
     const storage = w.get(peerId);
     if(!storage) {
       return;
     }
 
-    const promise = storage.get(mid);
+    const storageKey = mid + (slot ?? 0);
+    const promise = storage.get(storageKey);
     if(promise) {
       promise.resolve();
-      storage.delete(mid);
+      storage.delete(storageKey);
 
       if(!storage.size) {
         w.delete(peerId);
@@ -651,11 +685,20 @@ export class AppMediaPlaybackController extends EventListenerBase<{
       return;
     }
 
+    const details = this.mediaDetails.get(playingMedia);
+
     return {
-      doc: getMediaFromMessage(message, true) as MyDocument,
+      doc: details?.doc || getMediaFromMessage(message, true) as MyDocument,
       message,
       media: playingMedia,
       isSavedMusic: Boolean(message.pFlags.fakeForSavedMusic),
+      /**
+       * True when the media was added with a non-zero `slot` (e.g. poll
+       * description / explanation audio). Such media is played in isolation:
+       * its list loader is empty, so next/previous navigation and looping
+       * are not meaningful.
+       */
+      isSlotted: !!details && details.storageKey !== details.mid,
       playbackParams: this.getPlaybackParams()
     };
   }
@@ -822,7 +865,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
         const s = details.isScheduled ? this.scheduled : this.media;
         const storage = s.get(peerId);
         if(storage) {
-          storage.delete(details.mid);
+          storage.delete(details.storageKey);
 
           if(!storage.size) {
             s.delete(peerId);
@@ -950,7 +993,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
         loadCount: 10,
         loadWhenLeft: 5,
         processItem: (message: Message.message) => {
-          this.addMedia(message, false);
+          this.addMedia({message, autoload: false});
           return {peerId: message.peerId, mid: message.mid};
         },
         onJump: (item, older) => {

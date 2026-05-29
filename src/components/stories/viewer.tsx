@@ -72,7 +72,7 @@ import reactionsEqual from '@appManagers/utils/reactions/reactionsEqual';
 import wrapSticker from '@components/wrappers/sticker';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import isTargetAnInput from '@helpers/dom/isTargetAnInput';
-import {setQuizHint} from '@components/poll';
+import {setQuizHint} from '@components/quizHint';
 import {doubleRaf} from '@helpers/schedulers';
 import {resolveFirst} from '@solid-primitives/refs';
 import {IS_MOBILE} from '@environment/userAgent';

@@ -12,11 +12,10 @@ import NativeVoiceRecorder, {isNativeVoiceRecorderSupported} from '@helpers/voic
 import VoiceRecordingPanel from '@components/chat/voiceRecording/voiceRecordingPanel';
 import {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable, ButtonMenuSync} from '@components/buttonMenu';
 import emoticonsDropdown, {EmoticonsDropdown} from '@components/emoticonsDropdown';
-import PopupCreatePoll from '@components/popups/createPoll';
 import showForwardPopup from '@components/popups/forward';
 import PopupNewMedia, {getCurrentNewMediaPopup} from '@components/popups/newMedia';
 import {toast, toastNew} from '@components/toast';
-import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageMedia, InputReplyTo, Chat as MTChat, User, ChatFull, Dialog, PhotoSize, Photo, Document, GlobalPrivacySettings} from '@layer';
+import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageMedia, InputReplyTo, Chat as MTChat, User, ChatFull, Dialog, PhotoSize, Photo, Document, TextWithEntities, GlobalPrivacySettings} from '@layer';
 import StickersHelper from '@components/chat/stickersHelper';
 import ChatInputPlate from '@components/chat/controlPlate';
 import PopupSendGift from '@components/popups/sendGift';
@@ -32,7 +31,7 @@ import tsNow from '@helpers/tsNow';
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
 import {IS_MOBILE, IS_MOBILE_SAFARI} from '@environment/userAgent';
 import I18n, {FormatterArguments, i18n, join, LangPackKey} from '@lib/langPack';
-import {AttachedMediaType, canUploadAsWhenEditing, createAutoDeleteIcon, generateTail, getMediaTypeForMessage, slowModeTimer} from '@components/chat/utils';
+import {AttachedMediaType, canUploadAsWhenEditing, generateTail, getMediaTypeForMessage, slowModeTimer} from '@components/chat/utils';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import ButtonCorner from '@components/buttonCorner';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
@@ -161,6 +160,11 @@ import getDocumentDownloadOptions from '@lib/appManagers/utils/docs/getDocumentD
 import getPhotoDownloadOptions from '@lib/appManagers/utils/photos/getPhotoDownloadOptions';
 import {getFileNameByLocation} from '@helpers/fileName';
 import {Middleware, getMiddleware, MiddlewareHelper} from '@helpers/middleware';
+import {createAutoDeleteIcon} from '@components/autoDeleteIcon';
+import compareUint8Arrays from '@helpers/bytes/compareUint8Arrays';
+import {LocalTextWithOptionalEntities} from './bubbleParts/pollMessageContent/utils';
+import {SupportedMediaType} from '@components/popups/createPoll/storeContext';
+
 
 // console.log('Recorder', Recorder);
 
@@ -179,7 +183,7 @@ export const POSTING_NOT_ALLOWED_MAP: {[action in ChatRights]?: LangPackKey} = {
 
 type ChatInputHelperType = 'edit' | 'webpage' | 'forward' | 'reply' | 'suggested';
 type ChatSendBtnIcon = 'send' | 'record' | 'edit' | 'schedule' | 'forward';
-export type ChatInputReplyTo = Pick<MessageSendingParams, 'replyToMsgId' | 'replyToQuote' | 'replyToStoryId' | 'replyToPeerId' | 'replyToMonoforumPeerId'>;
+export type ChatInputReplyTo = Pick<MessageSendingParams, 'replyToMsgId' | 'replyToQuote' | 'replyToPollOption' | 'replyToStoryId' | 'replyToPeerId' | 'replyToMonoforumPeerId'>;
 
 
 const CLASS_NAME = 'chat-input';
@@ -268,6 +272,7 @@ export default class ChatInput {
   public replyToMsgId: MessageSendingParams['replyToMsgId'];
   public replyToStoryId: MessageSendingParams['replyToStoryId'];
   public replyToQuote: MessageSendingParams['replyToQuote'];
+  public replyToPollOption: MessageSendingParams['replyToPollOption'];
   public replyToPeerId: MessageSendingParams['replyToPeerId'];
   public replyToMonoforumPeerId: MessageSendingParams['replyToMonoforumPeerId'];
   public editMsgId: number;
@@ -329,6 +334,8 @@ export default class ChatInput {
   private goMentionUnreadBadge: HTMLSpanElement;
   private goReactionBtn: HTMLButtonElement;
   private goReactionUnreadBadge: HTMLElement;
+  private goPollVoteBtn: HTMLButtonElement;
+  private goPollVoteUnreadBadge: HTMLElement;
   private btnScheduled: HTMLButtonElement;
 
   private btnPreloader: HTMLButtonElement;
@@ -418,6 +425,12 @@ export default class ChatInput {
   public suggestedPost: SuggestedPostPayload;
   private inputHelperNavigationItem: NavigationItem;
   private placeholderParamsMiddlewareHelper: MiddlewareHelper;
+
+  private savedReplyToPollOption?: {
+    msgId: number;
+    option: Uint8Array;
+    text: TextWithEntities;
+  };
 
   constructor(
     public chat: Chat,
@@ -786,8 +799,11 @@ export default class ChatInput {
     }
   }
 
-  private constructMentionButton(isReaction?: boolean) {
-    const btn = ButtonCorner({icon: isReaction ? 'reactions' : 'mention', className: 'bubbles-corner-button chat-secondary-button bubbles-go-mention bubbles-go-reaction'});
+  private constructMentionButton(kind: 'mention' | 'reaction' | 'pollVote' = 'mention') {
+    const isReaction = kind === 'reaction';
+    const isPollVote = kind === 'pollVote';
+    const icon: Icon = isPollVote ? 'poll' : (isReaction ? 'reactions' : 'mention');
+    const btn = ButtonCorner({icon, className: 'bubbles-corner-button chat-secondary-button bubbles-go-mention bubbles-go-reaction'});
     const badge = createBadge('span', 24, 'primary');
     btn.append(badge);
     this.inputContainer.append(btn);
@@ -795,7 +811,7 @@ export default class ChatInput {
     attachClickEvent(btn, (e) => {
       cancelEvent(e);
       const middleware = this.getMiddleware();
-      this.managers.appMessagesManager.goToNextMention({peerId: this.chat.peerId, threadId: this.chat.threadId, isReaction}).then((mid) => {
+      this.managers.appMessagesManager.goToNextMention({peerId: this.chat.peerId, threadId: this.chat.threadId, isReaction, isPollVote}).then((mid) => {
         if(!middleware()) {
           return;
         }
@@ -809,16 +825,19 @@ export default class ChatInput {
     createContextMenu({
       buttons: [{
         icon: 'readchats',
-        text: isReaction ? 'ReadAllReactions' : 'ReadAllMentions',
+        text: isPollVote ? 'ReadAllPollVotes' : (isReaction ? 'ReadAllReactions' : 'ReadAllMentions'),
         onClick: () => {
-          this.managers.appMessagesManager.readMentions(this.chat.peerId, this.chat.threadId, isReaction);
+          this.managers.appMessagesManager.readMentions(this.chat.peerId, this.chat.threadId, isReaction, isPollVote);
         }
       }],
       listenTo: btn,
       listenerSetter: this.listenerSetter
     });
 
-    if(isReaction) {
+    if(isPollVote) {
+      this.goPollVoteUnreadBadge = badge;
+      this.goPollVoteBtn = btn;
+    } else if(isReaction) {
       this.goReactionUnreadBadge = badge;
       this.goReactionBtn = btn;
     } else {
@@ -1073,7 +1092,8 @@ export default class ChatInput {
 
     if(!this.excludeParts.mentionButton) {
       this.constructMentionButton();
-      this.constructMentionButton(true);
+      this.constructMentionButton('reaction');
+      this.constructMentionButton('pollVote');
     }
 
     if(!this.excludeParts.scheduled) {
@@ -1138,13 +1158,69 @@ export default class ChatInput {
       icon: 'poll',
       text: 'Poll',
       onClick: async() => {
-        const action: ChatRights = 'send_polls';
-        if(!(await this.chat.canSend(action))) {
-          toastNew({langPackKey: POSTING_NOT_ALLOWED_MAP[action]});
+        const pollsAction: ChatRights = 'send_polls';
+
+        if(!(await this.chat.canSend(pollsAction))) {
+          toastNew({langPackKey: POSTING_NOT_ALLOWED_MAP[pollsAction]});
           return;
         }
 
-        PopupElement.createPopup(PopupCreatePoll, this.chat).show();
+        const {openCreatePollPopup} = await import('@components/popups/createPoll');
+
+        const supportedMediaTypes: SupportedMediaType[] = [];
+
+        const supportedPromises: [Promise<boolean>, SupportedMediaType][] = [
+          [this.chat.canSend('send_photos'), 'photo'],
+          [this.chat.canSend('send_stickers'), 'sticker'],
+          [this.chat.canSend('send_videos'), 'video'],
+          [this.chat.canSend('send_gifs'), 'gif']
+        ];
+
+        for(const [canSendPromise, type] of supportedPromises) {
+          if(await canSendPromise) supportedMediaTypes.push(type);
+        }
+
+        openCreatePollPopup({
+          isBroadcast: this.chat.isBroadcast,
+          supportedMediaTypes: supportedMediaTypes,
+          onSubmit: async(payload) => {
+            const attachments = [
+              payload.descriptionAttachment,
+              payload.explanationAttachment,
+              ...payload.pollOptions.map((option) => option.attachment)
+            ];
+
+            const requiredRights = new Set<ChatRights>();
+            for(const attachment of attachments) {
+              if(!attachment) continue;
+              switch(attachment.type) {
+                case 'photo': requiredRights.add('send_photos'); break;
+                case 'sticker': requiredRights.add('send_stickers'); break;
+                case 'video':
+                  requiredRights.add(attachment.isAnimated ? 'send_gifs' : 'send_videos');
+                  break;
+              }
+            }
+
+            for(const right of requiredRights) {
+              if(!(await this.chat.canSend(right))) {
+                toastNew({langPackKey: POSTING_NOT_ALLOWED_MAP[right]});
+                return;
+              }
+            }
+
+            const sendingParams = this.chat.getMessageSendingParams();
+
+            const preparedPaymentResult = await this.chat.input.paidMessageInterceptor.prepareStarsForPayment(1);
+            if(preparedPaymentResult === PAYMENT_REJECTED) return;
+
+            sendingParams.confirmedPaymentResult = preparedPaymentResult;
+
+            this.managers.appPollsManager.sendPollMessage(sendingParams, payload);
+          }
+        }, SolidJSHotReloadGuardProvider);
+
+        // PopupElement.createPopup(PopupCreatePoll, this.chat).show();
       },
       verify: () => {
         if(this.editMsgId) return;
@@ -2251,6 +2327,7 @@ export default class ChatInput {
       | 'unread_count'
       | 'unread_mentions_count'
       | 'unread_reactions_count'
+      | 'unread_poll_votes_count'
     >>>(dialog);
 
     const count = dialog?.unread_count;
@@ -2272,6 +2349,12 @@ export default class ChatInput {
       const hasReactions = !!dialog?.unread_reactions_count;
       setBadgeContent(this.goReactionUnreadBadge, hasReactions ? '' + (dialog.unread_reactions_count) : '');
       this.goReactionBtn.classList.toggle('is-visible', hasReactions);
+    }
+
+    if(this.goPollVoteUnreadBadge && this.chat.type === ChatType.Chat) {
+      const hasPollVotes = !!dialog?.unread_poll_votes_count;
+      setBadgeContent(this.goPollVoteUnreadBadge, hasPollVotes ? '' + (dialog.unread_poll_votes_count) : '');
+      this.goPollVoteBtn.classList.toggle('is-visible', hasPollVotes);
     }
   }
 
@@ -2300,6 +2383,7 @@ export default class ChatInput {
           top_msg_id: this.chat.threadId,
           reply_to_peer_id: replyTo.replyToPeerId,
           monoforum_peer_id: replyTo.replyToMonoforumPeerId,
+          poll_option: replyTo.replyToPollOption,
           ...(replyTo.replyToQuote && {
             quote_text: replyTo.replyToQuote.text,
             quote_entities: replyTo.replyToQuote.entities,
@@ -2465,6 +2549,7 @@ export default class ChatInput {
           entities: replyTo.quote_entities,
           offset: replyTo.quote_offset
         },
+        replyToPollOption: replyTo.poll_option,
         replyToMonoforumPeerId: replyTo.monoforum_peer_id && getPeerId(replyTo.monoforum_peer_id)
       });
     }
@@ -4123,7 +4208,7 @@ export default class ChatInput {
     if(this.helperType === 'forward') {
       possibleBtnMenuContainer = this.forwardElements?.container;
     } else if(this.helperType === 'reply') {
-      this.chat.setMessageId({lastMsgId: this.replyToMsgId});
+      this.chat.setMessageId({lastMsgId: this.replyToMsgId, pollOption: this.replyToPollOption});
       possibleBtnMenuContainer = this.replyElements?.menuContainer;
     } else if(this.helperType === 'edit') {
       this.chat.setMessageId({lastMsgId: this.editMsgId});
@@ -4198,8 +4283,8 @@ export default class ChatInput {
       return;
     }
 
-    const {replyToMsgId, replyToStoryId, replyToQuote, replyToPeerId, replyToMonoforumPeerId} = this;
-    return {replyToMsgId, replyToStoryId, replyToQuote, replyToPeerId, replyToMonoforumPeerId};
+    const {replyToMsgId, replyToStoryId, replyToQuote, replyToPollOption, replyToPeerId, replyToMonoforumPeerId} = this;
+    return {replyToMsgId, replyToStoryId, replyToQuote, replyToPollOption, replyToPeerId, replyToMonoforumPeerId};
   }
 
   public async clearInput(canSetDraft = true, fireEvent = true, clearValue = '') {
@@ -4973,13 +5058,16 @@ export default class ChatInput {
       return;
     }
 
-    let {replyToMsgId, replyToQuote, replyToPeerId} = replyTo;
+    let {replyToMsgId, replyToQuote, replyToPeerId, replyToPollOption} = replyTo;
     replyToPeerId ??= this.chat.peerId;
     let message = await (
       replyToPeerId ?
         this.managers.appMessagesManager.getMessageByPeer(replyToPeerId, replyToMsgId) :
         this.chat.getMessage(replyToMsgId)
     );
+
+    this.setSavedReplyToPollOption(replyToMsgId, replyToPollOption, message);
+
     const f = () => {
       let title: HTMLElement, subtitle: string | HTMLElement;
       if(!message) { // load missing replying message
@@ -4991,12 +5079,17 @@ export default class ChatInput {
           }
 
           message = _message;
+
           if(!message) {
             this.clearHelper('reply');
           } else {
+            this.setSavedReplyToPollOption(replyToMsgId, replyToPollOption, message);
+
             f();
           }
         });
+      } else if(replyToPollOption && this.savedReplyToPollOption) {
+        title = i18n('Chat.Poll.ReplyToOption');
       } else {
         const peerId = message.fromId;
         title = new PeerTitle({
@@ -5008,6 +5101,14 @@ export default class ChatInput {
         title = i18n(replyToQuote ? 'ReplyToQuote' : 'ReplyTo', [title]);
       }
 
+      let quote: LocalTextWithOptionalEntities;
+
+      if(replyToPollOption && this.savedReplyToPollOption) {
+        quote = this.savedReplyToPollOption.text;
+      } else if(message) {
+        quote = replyToQuote;
+      }
+
       const newReply = this.setTopInfo({
         type: 'reply',
         callerFunc: f,
@@ -5015,7 +5116,7 @@ export default class ChatInput {
         subtitle,
         message,
         setColorPeerId: message?.fromId,
-        quote: message ? replyToQuote : undefined
+        quote
       });
       this.setReplyTo(replyTo);
 
@@ -5025,6 +5126,22 @@ export default class ChatInput {
       this.setCurrentHover(this.replyHover, newReply);
     };
     f();
+  }
+
+  private async setSavedReplyToPollOption(msgId?: number, option?: Uint8Array, message?: Message) {
+    if(!msgId || !option || message?._ !== 'message' || message?.media?._ !== 'messageMediaPoll') {
+      this.savedReplyToPollOption = undefined;
+      return;
+    }
+
+    const pollOption = message.media.poll.answers.find(answer => answer._ === 'pollAnswer' && compareUint8Arrays(option, answer.option));
+
+    if(!pollOption) {
+      this.savedReplyToPollOption = undefined;
+      return;
+    }
+
+    this.savedReplyToPollOption = {msgId, option, text: pollOption.text};
   }
 
   private setCurrentHover(dropdownHover?: DropdownHover, newReply?: HTMLElement) {
@@ -5073,10 +5190,11 @@ export default class ChatInput {
   }
 
   public setReplyTo(replyTo: ChatInputReplyTo) {
-    const {replyToMsgId, replyToQuote, replyToPeerId, replyToStoryId, replyToMonoforumPeerId} = replyTo || {};
+    const {replyToMsgId, replyToQuote, replyToPollOption, replyToPeerId, replyToStoryId, replyToMonoforumPeerId} = replyTo || {};
     this.replyToMsgId = replyToMsgId;
     this.replyToStoryId = replyToStoryId;
     this.replyToQuote = replyToQuote;
+    this.replyToPollOption = replyToPollOption;
     this.replyToPeerId = replyToPeerId;
     this.replyToMonoforumPeerId = replyToMonoforumPeerId;
     this.center(true);
