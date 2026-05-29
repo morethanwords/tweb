@@ -1,6 +1,25 @@
 @use "../../../../scss/variables" as *;
 @use "../../../../scss/mixins" as *;
 
+@mixin hoverable {
+  --hover-bg-color: rgba(0, 0, 0, 0.05);
+
+  @include hover-global(var(--hover-bg-color), background-color, true);
+
+  :global(.night) & {
+    --hover-bg-color: rgba(255, 255, 255, 0.075);
+  }
+
+  .outgoing & {
+    --hover-bg-color: hsla(from var(--message-primary-color) h s l / 0.08);
+    --ripple-color: hsla(from var(--message-primary-color) h s l / 0.15);
+
+    :global(.night) & {
+      --hover-bg-color: rgba(255, 255, 255, 0.1);
+      --ripple-color: rgba(255, 255, 255, 0.175);
+    }
+  }
+}
 
 .container {
   display: block;
@@ -57,6 +76,8 @@
       left: 50%;
       transform: translate(-50%, -50%);
       color: inherit;
+
+      @include hoverable;
     }
 
     &Dim {
@@ -128,26 +149,6 @@
 
     :global(.night) & {
       color: inherit;
-    }
-  }
-}
-
-@mixin hoverable {
-  --hover-bg-color: rgba(0, 0, 0, 0.05);
-
-  @include hover-global(var(--hover-bg-color), background-color, true);
-
-  :global(.night) & {
-    --hover-bg-color: rgba(255, 255, 255, 0.075);
-  }
-
-  &.outgoing {
-    --hover-bg-color: hsla(from var(--message-primary-color) h s l / 0.08);
-    --ripple-color: hsla(from var(--message-primary-color) h s l / 0.15);
-
-    :global(.night) & {
-      --hover-bg-color: rgba(255, 255, 255, 0.1);
-      --ripple-color: rgba(255, 255, 255, 0.175);
     }
   }
 }
@@ -419,11 +420,7 @@
   padding: 0.25rem;
   color: inherit;
 
-  // The emoji is off center a little bit
-  /* :global(.tgico) {
-    position: relative;
-    transform: translateX(0.5px);
-  } */
+  @include hoverable;
 }
 
 .inputField {

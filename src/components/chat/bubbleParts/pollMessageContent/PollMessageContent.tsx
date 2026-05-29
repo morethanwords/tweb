@@ -24,7 +24,7 @@ import {ChatRights} from '@lib/appManagers/appChatsManager';
 import {sliceTextWithEntities} from '@lib/richTextProcessor/sliceTextWithEntities';
 import wrapDraftText from '@lib/richTextProcessor/wrapDraftText';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {batch, createEffect, createMemo, createSelector, createSignal, For, Match, Show, Switch} from 'solid-js';
+import {batch, createEffect, createMemo, createSelector, createSignal, For, Match, onCleanup, Show, Switch} from 'solid-js';
 import {createStore, reconcile, unwrap} from 'solid-js/store';
 import {Transition, TransitionGroup} from 'solid-transition-group';
 import {AddOption} from './AddOption';
@@ -73,6 +73,15 @@ type MediaViewerPayloadIndexes = {
 export const PollMessageContent =
   (props: PollMessageContentProps) => {
     attachHotClassName(props.element, styles.container);
+
+    createEffect(() => {
+      if(props.isOutgoing) {
+        props.element.classList.add(styles.outgoing);
+        onCleanup(() => {
+          props.element.classList.remove(styles.outgoing);
+        });
+      }
+    });
 
     // ----- Setup / external dependencies -----
     const {rootScope, AppMediaViewerStatic, appSidebarRight, AppPollResultsTab, TranslatableMessageTsx, DocumentTsx} = useHotReloadGuard();
