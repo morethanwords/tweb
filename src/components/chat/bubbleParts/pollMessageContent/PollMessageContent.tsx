@@ -21,6 +21,7 @@ import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
 import type {ChatAutoDownloadSettings} from '@hooks/useAutoDownloadSettings';
 import {Document, Message, MessageMedia, Photo, Poll, PollResults} from '@layer';
 import {ChatRights} from '@lib/appManagers/appChatsManager';
+import {PollUploadingFileNames} from '@lib/appManagers/appPollsManager';
 import {sliceTextWithEntities} from '@lib/richTextProcessor/sliceTextWithEntities';
 import wrapDraftText from '@lib/richTextProcessor/wrapDraftText';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
@@ -56,6 +57,7 @@ export type PollMessageContentProps = {
   canSend: (rights: ChatRights) => Promise<boolean>;
   loadPromises: Promise<any>[];
   controls: Partial<PollMessageContentControls>;
+  uploadingFileNames?: PollUploadingFileNames;
 };
 
 export type PollMessageContentControls = {
@@ -329,6 +331,7 @@ export const PollMessageContent =
                     loadPromises={unwrap(props.loadPromises)}
                     autoDownloadSize={props.autoDownload?.photo}
                     lazyLoadQueue={unwrap(props.lazyLoadQueue)}
+                    uploadingFileName={props.uploadingFileNames?.description}
                   />
                 </Match>
                 <Match when={descriptionVideo()}>
@@ -342,6 +345,7 @@ export const PollMessageContent =
                     withPreview
                     lazyLoadQueue={unwrap(props.lazyLoadQueue) || undefined}
                     observer={unwrap(props.observer)}
+                    uploadingFileName={props.uploadingFileNames?.description}
                   />
                 </Match>
                 <Match when={descriptionGeo()}>
@@ -365,6 +369,7 @@ export const PollMessageContent =
               autoDownloadSize={props.autoDownload?.file}
               sizeType='documentName'
               canTranscribeVoice={false}
+              uploadingFileName={props.uploadingFileNames?.description}
             />
           </div>
         </Show>
@@ -437,6 +442,7 @@ export const PollMessageContent =
                   hideResults={hideResults()}
                   highlighted={highlightedIndexes().includes(initialIdx())}
                   slowHighlighted={slowHighlightedIndexes().includes(initialIdx())}
+                  uploadingFileName={props.uploadingFileNames?.answers?.[initialIdx()]}
                 />
               );
             }}

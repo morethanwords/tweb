@@ -79,7 +79,12 @@ export const Explanation = (props: LocalTextWithEntities & {
           <div class={styles.explanationMedia} use:dataPollViewerIdx={props.pollViewerPayload}>
             <Switch>
               <Match when={props.photo}>
-                <PhotoTsx photo={props.photo} loadPromises={unwrap(contextProps.loadPromises)} autoDownloadSize={contextProps.autoDownload?.photo} />
+                <PhotoTsx
+                  photo={props.photo}
+                  loadPromises={unwrap(contextProps.loadPromises)}
+                  autoDownloadSize={contextProps.autoDownload?.photo}
+                  uploadingFileName={contextProps.uploadingFileNames?.explanation}
+                />
               </Match>
               <Match when={props.video}>
                 <VideoTsx
@@ -92,6 +97,7 @@ export const Explanation = (props: LocalTextWithEntities & {
                   withPreview
                   lazyLoadQueue={unwrap(contextProps.lazyLoadQueue) || undefined}
                   observer={unwrap(contextProps.observer)}
+                  uploadingFileName={contextProps.uploadingFileNames?.explanation}
                 />
               </Match>
               <Match when={props.geo}>
@@ -113,6 +119,7 @@ export const Explanation = (props: LocalTextWithEntities & {
               autoDownloadSize={contextProps.autoDownload?.file}
               sizeType='documentName'
               canTranscribeVoice={false}
+              uploadingFileName={contextProps.uploadingFileNames?.explanation}
             />
           </div>
         </Show>

@@ -38,12 +38,19 @@ type RefetchTimeoutPayload = {
   closeTimestamp: number;
 };
 
+export type PollUploadingFileNames = {
+  description?: string;
+  answers?: (string | undefined)[];
+  explanation?: string;
+};
+
 export class AppPollsManager extends AppManager {
   public polls: {[id: PollId]: Poll} = {};
   public results: {[id: PollId]: PollResults} = {};
   public pollToMessages: {[id: PollId]: Set<string>} = {};
   private refetchResultsTimeouts: {[id: PollId]: RefetchTimeoutPayload} = {};
   private createdPollIds: Set<string> = new Set();
+  private uploadingFileNamesByPollId: {[id: PollId]: PollUploadingFileNames} = {};
 
   constructor() {
     super();
@@ -754,6 +761,12 @@ export class AppPollsManager extends AppManager {
 
     const {pollWithoutAnswers, messageMedia} = this.makePollMedia({peerId, payload, parsedPayload, uploadingMedia});
 
+    this.uploadingFileNamesByPollId[messageMedia.poll.id] = {
+      description: uploadingMedia.description?.uploadingFileName,
+      explanation: uploadingMedia.explanation?.uploadingFileName,
+      answers: payload.pollOptions.map((_, i) => uploadingMedia.pollOptions.get(i)?.uploadingFileName)
+    };
+
     message.media = messageMedia;
     message.message = parsedPayload.description.text;
     message.entities = parsedPayload.description.entities;
@@ -795,5 +808,13 @@ export class AppPollsManager extends AppManager {
       isScheduled: !!params.scheduleDate || undefined,
       threadId: params.threadId
     });
+  }
+
+  public getUploadingFileNamesForPoll(pollId: PollId): PollUploadingFileNames {
+    return this.uploadingFileNamesByPollId[pollId];
+  }
+
+  public deleteUploadingFileNamesForPoll(pollId: PollId) {
+    delete this.uploadingFileNamesByPollId[pollId];
   }
 }

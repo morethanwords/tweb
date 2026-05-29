@@ -50,6 +50,7 @@ export const PollOption = (props: {
   initialIdx?: number;
   highlighted?: boolean;
   slowHighlighted?: boolean;
+  uploadingFileName?: string;
 
   result?: PollOptionResult;
 }) => {
@@ -233,6 +234,7 @@ export const PollOption = (props: {
                 boxHeight={boxSize}
                 loadPromises={unwrap(contextProps.loadPromises)}
                 autoDownloadSize={contextProps.autoDownload?.photo}
+                uploadingFileName={props.uploadingFileName}
               />
             </Match>
             <Match when={props.sticker}>
@@ -266,6 +268,7 @@ export const PollOption = (props: {
                 noAutoplayAttribute
                 lazyLoadQueue={unwrap(contextProps.lazyLoadQueue) || undefined}
                 observer={unwrap(contextProps.observer)}
+                uploadingFileName={props.uploadingFileName}
               />
               <div class={styles.pollOptionMediaDim}>
                 <Show when={props.video.type === 'gif'} fallback={

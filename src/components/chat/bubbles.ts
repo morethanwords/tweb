@@ -7995,7 +7995,8 @@ export default class ChatBubbles {
               animationGroup: this.chat.animationGroup,
               canSend: (rights) => this.chat.canSend(rights),
               loadPromises,
-              controls: context.pollMessageContentControls = {}
+              controls: context.pollMessageContentControls = {},
+              uploadingFileNames: await this.managers.appPollsManager.getUploadingFileNamesForPoll(context.messageMedia.poll.id)
             });
 
             renderComponent({

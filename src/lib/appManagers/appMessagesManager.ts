@@ -8753,6 +8753,8 @@ export class AppMessagesManager extends AppManager {
       delete this.tempFinalizeCallbacks[tempId];
     }
 
+    const tempMessage = this.getMessageFromStorage(storage, tempId);
+
     // set cached url to media
     if((message as Message.message).media) {
       assumeType<Message.message>(message);
@@ -8775,10 +8777,29 @@ export class AppMessagesManager extends AppManager {
           if(photo) this.updatePhoto(photo as Photo.photo, id);
           else if(document) this.updateDocument(document as Document.document, id);
         });
+      } else if(message.media._ === 'messageMediaPoll' && tempMessage._ === 'message' && tempMessage.media._ === 'messageMediaPoll') {
+        const updateMedia = (prevMedia: MessageMedia | InputMedia, newMedia: MessageMedia | InputMedia) => {
+          if(prevMedia?._ === 'messageMediaPhoto' && newMedia?._ === 'messageMediaPhoto' && newMedia.photo?._ === 'photo') {
+            this.updatePhoto(newMedia.photo, '' + prevMedia.photo.id)
+          }
+          if(prevMedia?._ === 'messageMediaDocument' && newMedia?._ === 'messageMediaDocument' && newMedia.document?._ === 'document') {
+            this.updateDocument(newMedia.document, '' + prevMedia.document.id)
+          }
+        }
+
+        this.appPollsManager.deleteUploadingFileNamesForPoll(tempMessage.media.poll.id);
+
+        updateMedia(tempMessage.media.attached_media, message.media.attached_media);
+        updateMedia(tempMessage.media.results?.solution_media, message.media.results?.solution_media);
+        const prevAnswers = tempMessage.media.poll.answers ?? [];
+        const newAnswers = message.media.poll.answers ?? [];
+        for(let i = 0; i < prevAnswers.length; i++) {
+          if(prevAnswers[i]?._ !== 'pollAnswer' || newAnswers[i]?._ !== 'pollAnswer') continue;
+          updateMedia(prevAnswers[i].media, newAnswers[i]?.media);
+        }
       }
     }
 
-    const tempMessage = this.getMessageFromStorage(storage, tempId);
     this.deleteMessageFromStorage(storage, tempId);
 
     if(!(tempMessage as Message.message).reply_markup && (message as Message.message).reply_markup) {
