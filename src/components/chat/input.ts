@@ -1058,7 +1058,7 @@ export default class ChatInput {
 
     if(!this.excludeParts.emoticons) this.btnToggleEmoticons = this.createButtonIcon('smile toggle-emoticons', {noRipple: true});
 
-    this.btnSendGift = this.createButtonIcon('gift toggle-send-gift hide', {noRipple: true});
+    this.btnSendGift = this.createButtonIcon('gift toggle-send-gift float hide', {noRipple: true});
     attachClickEvent(this.btnSendGift, () => {
       PopupElement.createPopup(PopupSendGift, {peerId: this.chat.peerId});
     }, {listenerSetter: this.listenerSetter});
@@ -4264,6 +4264,10 @@ export default class ChatInput {
 
     if(this.btnToggleReplyMarkup) {
       this.btnToggleReplyMarkup.classList.toggle('show', isInputEmpty && this.chat.type !== ChatType.Scheduled);
+    }
+
+    if(this.btnSendGift) {
+      this.btnSendGift.classList.toggle('show', isInputEmpty);
     }
 
     this.onUpdateSendBtn?.(icon);
