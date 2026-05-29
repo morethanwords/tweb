@@ -8765,9 +8765,6 @@ export class AppMessagesManager extends AppManager {
         this.updatePhoto(newPhoto, '' + tempId);
       } else if(newDoc) {
         this.updateDocument(newDoc, '' + tempId);
-      } else if((message.media as MessageMedia.messageMediaPoll).poll) {
-        delete this.appPollsManager.polls[tempId];
-        delete this.appPollsManager.results[tempId];
       } else if(newExtendedMedia) {
         const mediaTempId = this.mediaTempMap[tempId];
         newExtendedMedia.forEach((extendedMedia, idx) => {
@@ -8787,12 +8784,17 @@ export class AppMessagesManager extends AppManager {
           }
         }
 
-        this.appPollsManager.deleteUploadingFileNamesForPoll(tempMessage.media.poll.id);
+        const prevPollId = tempMessage.media.poll.id;
+        this.appPollsManager.deleteUploadingFileNamesForPoll(prevPollId);
+        delete this.appPollsManager.polls[prevPollId];
+        delete this.appPollsManager.results[prevPollId];
 
         updateMedia(tempMessage.media.attached_media, message.media.attached_media);
         updateMedia(tempMessage.media.results?.solution_media, message.media.results?.solution_media);
+
         const prevAnswers = tempMessage.media.poll.answers ?? [];
         const newAnswers = message.media.poll.answers ?? [];
+
         for(let i = 0; i < prevAnswers.length; i++) {
           if(prevAnswers[i]?._ !== 'pollAnswer' || newAnswers[i]?._ !== 'pollAnswer') continue;
           updateMedia(prevAnswers[i].media, newAnswers[i]?.media);
