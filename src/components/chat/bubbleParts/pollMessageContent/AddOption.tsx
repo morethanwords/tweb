@@ -3,7 +3,7 @@ import {IconTsx} from '@components/iconTsx';
 import InputField from '@components/inputField';
 import {EmojiDropdownButton} from '@components/popups/createPoll/emojiDropdownButton';
 import {MediaAttachment} from '@components/popups/createPoll/mediaAttachment';
-import {AttachedMedia} from '@components/popups/createPoll/storeContext';
+import {AttachedMedia, SupportedMediaType} from '@components/popups/createPoll/storeContext';
 import ripple from '@components/ripple';
 import {Spinner} from '@components/spinner';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
@@ -33,14 +33,16 @@ export const AddOption = (props: {
 
   const chatRights = useChatRights({
     peerId: () => contextProps.message.peerId,
-    rights: () => ['send_photos', 'send_stickers'],
+    rights: () => ['send_photos', 'send_stickers', 'send_gifs', 'send_videos'],
     getRight: (key) => contextProps.canSend(key)
   })
 
-  const supportedMediaTypes = createMemo(() => {
+  const supportedMediaTypes = createMemo((): SupportedMediaType[] => {
     return [
       ...(chatRights.hasRight('send_photos') ? ['photo'] as const : []),
-      ...(chatRights.hasRight('send_stickers') ? ['sticker'] as const : [])
+      ...(chatRights.hasRight('send_stickers') ? ['sticker'] as const : []),
+      ...(chatRights.hasRight('send_gifs') ? ['gif'] as const : []),
+      ...(chatRights.hasRight('send_videos') ? ['video'] as const : [])
     ];
   });
 
@@ -162,7 +164,7 @@ export const AddOption = (props: {
           [styles.pointerDisabled]: props.isPending
         }}
       >
-        <Show when={active() && supportedMediaTypes().length > 0}>
+        <Show when={active() && supportedMediaTypes().filter(t => t !== 'gif').length > 0}>
           <MediaAttachment
             supportedMediaTypes={supportedMediaTypes()}
             btnClass={styles.pollOptionMediaAttachBtn}
