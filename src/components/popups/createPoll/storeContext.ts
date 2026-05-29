@@ -124,10 +124,16 @@ export const createPollStoreContextValue = (extra: CreatePollContextExtra): Crea
     questionEntities: [],
     description: '',
     descriptionEntities: [],
-    pollOptions: [{
-      text: '',
-      entities: []
-    }],
+    pollOptions: [
+      {
+        text: '',
+        entities: []
+      },
+      {
+        text: '',
+        entities: []
+      }
+    ],
     showWhoVoted: true,
     allowMultipleAnswers: true,
     allowAddingOptions: true,
