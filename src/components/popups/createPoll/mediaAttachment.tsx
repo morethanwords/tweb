@@ -396,7 +396,7 @@ export const MediaAttachment = (props: {
   if(supportsMedia('photo') || supportsMedia('video')) {
     mainMenuButtons.push({
       icon: 'image',
-      text: 'Chat.Input.Attach.PhotoOrVideo',
+      text: !supportsMedia('video') ? 'AttachPhoto' : !supportsMedia('photo') ? 'AttachVideo' : 'Chat.Input.Attach.PhotoOrVideo',
       onClick: onChoose
     });
   }
