@@ -1,6 +1,5 @@
 import {createSignal, Show} from 'solid-js';
 import cancelEvent from '@helpers/dom/cancelEvent';
-import classNames from '@helpers/string/classNames';
 import ListenerSetter from '@helpers/listenerSetter';
 import replaceContent from '@helpers/dom/replaceContent';
 import throttle from '@helpers/schedulers/throttle';
@@ -13,7 +12,6 @@ import groupCallsController from '@lib/calls/groupCallsController';
 import rtmpCallsController, {RtmpCallInstance} from '@lib/calls/rtmpCallsController';
 import GroupCallInstance from '@lib/calls/groupCallInstance';
 import CallInstance from '@lib/calls/callInstance';
-// import StreamManager from '@lib/calls/streamManager';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {AppManagers} from '@lib/managers';
 import SetTransition from '@components/singleTransition';
@@ -25,11 +23,11 @@ import GroupCallTitleElement from '@components/groupCall/title';
 import GroupCallDescriptionElement from '@components/groupCall/description';
 import CallDescriptionElement from '@components/call/description';
 import RtmpDescriptionElement from '@components/rtmp/description';
-import GroupCallMicrophoneIconMini from '@components/groupCall/microphoneIconMini';
 import {AppMediaViewerRtmp} from '@components/appMediaViewerRtmp';
 import Button from '@components/buttonTsx';
+import {IconTsx} from '@components/iconTsx';
 import TopbarPlate, {createTopbarPlate} from '@components/chat/topbarPlate';
-// import TopbarWeave from '@components/topbarWeave';
+import {StackedAvatarsTsx} from '@components/stackedAvatars';
 
 function convertCallStateToGroupState(state: CALL_STATE, isMuted: boolean) {
   switch(state) {
@@ -65,6 +63,13 @@ const KIND_CLASSES: Array<[name: string, ctor: new(...args: any[]) => AnyInstanc
   ['rtmp', RtmpCallInstance]
 ];
 
+const STATE_CLASSES: Array<[name: string, state: GROUP_CALL_STATE]> = [
+  ['unmuted', GROUP_CALL_STATE.UNMUTED],
+  ['muted', GROUP_CALL_STATE.MUTED],
+  ['muted-by-admin', GROUP_CALL_STATE.MUTED_BY_ADMIN],
+  ['connecting', GROUP_CALL_STATE.CONNECTING]
+];
+
 export type TopbarCallController = {
   container: HTMLElement,
   destroy: () => void
@@ -81,10 +86,12 @@ export default function createTopbarCall(managers: AppManagers): TopbarCallContr
   // Tracked solely for `toggleUninteruptableActivity` calls.
   let currentActivityName: string | undefined;
 
-  const micIcon = new GroupCallMicrophoneIconMini();
+  const [avatarPeers, setAvatarPeers] = createSignal<PeerId[]>([]);
 
-  let leftEl!: HTMLDivElement;
   let centerEl!: HTMLDivElement;
+  let titleEl!: HTMLDivElement;
+  let statusEl!: HTMLDivElement;
+  let extraEl!: HTMLDivElement;
 
   // Imperative widgets — one per kind, created on first use.
   let groupCallTitle: GroupCallTitleElement | undefined;
@@ -95,15 +102,21 @@ export default function createTopbarCall(managers: AppManagers): TopbarCallContr
 
   const ensureWidgets = () => {
     if(groupCallTitle) return;
-    groupCallTitle = new GroupCallTitleElement(centerEl);
-    groupCallDescription = new GroupCallDescriptionElement(leftEl);
-    callDescription = new CallDescriptionElement(leftEl);
-    rtmpDescription = new RtmpDescriptionElement(centerEl, leftEl);
+    groupCallTitle = new GroupCallTitleElement(titleEl);
+    groupCallDescription = new GroupCallDescriptionElement(statusEl, true);
+    callDescription = new CallDescriptionElement(statusEl);
+    rtmpDescription = new RtmpDescriptionElement(statusEl, extraEl);
   };
 
   const setKindClasses = (inst: AnyInstance | undefined) => {
     for(const [name, ctor] of KIND_CLASSES) {
       plate.container.classList.toggle(`is-${name}`, !!inst && inst instanceof ctor);
+    }
+  };
+
+  const setStateClass = (state: GROUP_CALL_STATE | undefined) => {
+    for(const [name, s] of STATE_CLASSES) {
+      plate.container.classList.toggle(`is-${name}`, state === s);
     }
   };
 
@@ -117,17 +130,35 @@ export default function createTopbarCall(managers: AppManagers): TopbarCallContr
 
   const setTitle = (inst: AnyInstance) => {
     if(inst instanceof RtmpCallInstance) {
-      replaceContent(centerEl, new PeerTitle({peerId: inst.peerId}).element);
+      replaceContent(titleEl, new PeerTitle({peerId: inst.peerId}).element);
     } else if(inst instanceof GroupCallInstance) {
       groupCallTitle!.update(inst);
     } else {
-      replaceContent(centerEl, new PeerTitle({peerId: inst.interlocutorUserId.toPeerId()}).element);
+      replaceContent(titleEl, new PeerTitle({peerId: inst.interlocutorUserId.toPeerId()}).element);
     }
   };
 
-  const clearCurrentInstance = () => {
+  // Detach listeners + drop instance references — no DOM mutation. Used to
+  // close out a finished call without disturbing the panel's visible state.
+  const detachInstance = () => {
     if(!instance()) return;
-    centerEl?.replaceChildren();
+    setInstance(undefined);
+    instanceListenerSetter?.removeAll();
+    instanceListenerSetter = undefined;
+    // Keep `currentDescription`: its mounted element stays in `statusEl` /
+    // `extraEl`. `clearCurrentInstance` (called for the *next* incoming
+    // call) wipes it; until then the panel keeps its last visible state.
+  };
+
+  // Full reset — wipes DOM content and per-instance signals. Run when a new
+  // instance is about to take over (so the user never sees the empty frame
+  // between calls), NOT mid-hide-animation.
+  const clearCurrentInstance = () => {
+    if(!instance() && !currentDescription) return;
+    titleEl?.replaceChildren();
+    statusEl?.replaceChildren();
+    extraEl?.replaceChildren();
+    setAvatarPeers([]);
 
     if(currentDescription) {
       currentDescription.detach();
@@ -136,6 +167,9 @@ export default function createTopbarCall(managers: AppManagers): TopbarCallContr
 
     setInstance(undefined);
     setKindClasses(undefined);
+    setStateClass(undefined);
+    setIsMuted(undefined);
+    setIsRtmp(false);
 
     instanceListenerSetter?.removeAll();
     instanceListenerSetter = undefined;
@@ -180,48 +214,42 @@ export default function createTopbarCall(managers: AppManagers): TopbarCallContr
     else if(inst instanceof RtmpCallInstance) state = convertRtmpStateToGroupState(inst.state);
     else state = convertCallStateToGroupState(inst.connectionState, muted);
 
-    // TopbarWeave is commented out — visual gradient/amplitude feedback is disabled.
-    // const {weave} = this;
-    // weave.componentDidMount();
-
     const isClosed = state === GROUP_CALL_STATE.CLOSED;
     if((!document.body.classList.contains('is-calling') || isChangingInstance) || isClosed) {
-      // if(isClosed) weave.setAmplitude(0);
-
       SetTransition({
         element: document.body,
         className: 'is-calling',
         forwards: !isClosed,
         duration: 250,
-        onTransitionEnd: isClosed ? () => {
-          // weave.componentWillUnmount();
-          clearCurrentInstance();
-        } : undefined
+        // Only detach listeners + drop the instance reference at the end of
+        // the hide. Don't touch the panel's DOM (title, status, avatars,
+        // mic, classes) — that would leave a one-frame "empty panel" visible
+        // if the CSS transition trails the JS timer by even a millisecond.
+        // The DOM is wiped on the next incoming call by `clearCurrentInstance`
+        // (inside the `isChangingInstance` branch), which fires while the
+        // panel is still off-screen.
+        onTransitionEnd: isClosed ? detachInstance : undefined
       });
     }
 
     if(isClosed) {
       toggleActivity(false);
-      setIsMuted(undefined);
-      setIsRtmp(false);
       return;
     }
 
     currentActivityName = (inst as Object)?.constructor?.name;
     toggleActivity(true);
 
-    // weave.setCurrentState(
-    //   inst instanceof RtmpCallInstance ? 'rtmp' : 'group',
-    //   inst instanceof RtmpCallInstance ? inst.state : state,
-    //   true
-    // );
-
+    setStateClass(state);
     setTitle(inst);
-    currentDescription?.update(inst as any);
-
-    if(muted !== undefined) {
-      micIcon.setState(!muted);
+    if(inst instanceof GroupCallInstance) {
+      setAvatarPeers([inst.chatId.toPeerId(true)]);
+    } else if(inst instanceof CallInstance) {
+      setAvatarPeers([inst.interlocutorUserId.toPeerId()]);
+    } else if(inst instanceof RtmpCallInstance) {
+      setAvatarPeers([inst.peerId]);
     }
+    currentDescription?.update(inst as any);
 
     setIsMuted(muted);
     setIsRtmp(inst instanceof RtmpCallInstance);
@@ -255,18 +283,6 @@ export default function createTopbarCall(managers: AppManagers): TopbarCallContr
   listenerSetter.add(rtmpCallsController)('currentCallChanged', (call) => {
     updateInstance(call);
   });
-
-  // Amplitude → weave (commented out).
-  // listenerSetter.add(StreamManager.ANALYSER_LISTENER)('amplitude', ({amplitudes, type}) => {
-  //   const {weave} = this;
-  //   if(!amplitudes.length || !weave) return;
-  //   let max = 0;
-  //   for(let i = 0; i < amplitudes.length; ++i) {
-  //     const {type, value} = amplitudes[i];
-  //     max = value > max ? value : max;
-  //   }
-  //   weave.setAmplitude(max);
-  // });
 
   // ───────────────────────── Click handlers ─────────────────────────
 
@@ -311,25 +327,30 @@ export default function createTopbarCall(managers: AppManagers): TopbarCallContr
     height: 24,
     initiallyHidden: false,
     render: () => (
-      <TopbarPlate.Body onClick={onPlateClick}>
-        <div class={`${CLASS_NAME}-left`} ref={leftEl}>
-          <Show when={isMuted() !== undefined}>
-            <Button
-              class="btn-icon"
-              onClick={(e) => { cancelEvent(e); throttledMuteClick(); }}
-            >
-              {micIcon.container}
-            </Button>
-          </Show>
+      <TopbarPlate.Body onClick={onPlateClick} noRipple>
+        <Show when={!isRtmp() && isMuted() !== undefined}>
+          <Button
+            class={`${CLASS_NAME}-side-btn ${CLASS_NAME}-mic-btn`}
+            onClick={(e) => { cancelEvent(e); throttledMuteClick(); }}
+            noRipple
+          >
+            <IconTsx icon={isMuted() ? 'microphone_crossed_filled' : 'microphone_filled'} />
+          </Button>
+        </Show>
+        <div class={`${CLASS_NAME}-center`} ref={centerEl}>
+          <StackedAvatarsTsx peerIds={avatarPeers()} avatarSize={16} />
+          <div class={`${CLASS_NAME}-text`}>
+            <div class={`${CLASS_NAME}-title`} ref={titleEl} />
+            <div class={`${CLASS_NAME}-status`} ref={statusEl} />
+          </div>
+          <div class={`${CLASS_NAME}-extra`} ref={extraEl} />
         </div>
-        <div class={`${CLASS_NAME}-center`} ref={centerEl} />
-        <div class={`${CLASS_NAME}-right`}>
-          <Button.Icon
-            icon="endcall_filled"
-            class={classNames(isRtmp() && 'hide')}
-            onClick={(e) => { cancelEvent(e); onHangUp(); }}
-          />
-        </div>
+        <Button.Icon
+          icon={isRtmp() ? 'close' : 'endcall_filled'}
+          class={`${CLASS_NAME}-side-btn ${CLASS_NAME}-end-btn ${!isRtmp() && 'endcall'}`}
+          onClick={(e) => { cancelEvent(e); onHangUp(); }}
+          noRipple
+        />
       </TopbarPlate.Body>
     )
   });

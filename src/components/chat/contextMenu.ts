@@ -73,7 +73,7 @@ import getPeerTitle from '@components/wrappers/getPeerTitle';
 import {getFullDate} from '@helpers/date/getFullDate';
 import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
 import {MySponsoredPeer} from '@appManagers/appChatsManager';
-import {PopupChecklist} from '@components/popups/checklist';
+import showChecklistPopup from '@components/popups/checklist';
 import createSubmenuTrigger, {CreateSubmenuArgs} from '@components/createSubmenuTrigger';
 import noop from '@helpers/noop';
 import {isSensitive} from '@helpers/restrictions';
@@ -1113,11 +1113,11 @@ export default class ChatContextMenu {
         text: 'ChecklistEditItem',
         verify: () => canEdit,
         onClick: () => {
-          PopupElement.createPopup(PopupChecklist, {
+          showChecklistPopup({
             chat: this.chat,
             editMessage: message,
             focusItemId: item.id
-          }).show();
+          });
         }
       },
       {
@@ -1602,10 +1602,10 @@ export default class ChatContextMenu {
   private onEditClick = () => {
     const message = this.getMessageWithText();
     if(message._ === 'message' && message.media?._ === 'messageMediaToDo') {
-      PopupElement.createPopup(PopupChecklist, {
+      showChecklistPopup({
         chat: this.chat,
         editMessage: message as any
-      }).show();
+      });
       return;
     }
 
@@ -1717,11 +1717,11 @@ export default class ChatContextMenu {
       return;
     }
 
-    PopupElement.createPopup(PopupChecklist, {
+    showChecklistPopup({
       chat: this.chat,
       editMessage: this.message as any,
       appending: true
-    }).show();
+    });
   };
 
   private onForwardClick = async() => {

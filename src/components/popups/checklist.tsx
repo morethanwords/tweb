@@ -1,176 +1,149 @@
-import PopupElement from '.';
+import {createSignal, For, onCleanup, onMount, Show, untrack, useContext} from 'solid-js';
+import PopupElement, {createPopup, PopupContext} from '@components/popups/indexTsx';
 
 import Chat from '@components/chat/chat';
-import {I18nTsx} from '@helpers/solid/i18n';
-
-import css from '@components/popups/checklist.module.scss';
-import {createEffect, createSignal, For, on} from 'solid-js';
+import Button from '@components/buttonTsx';
+import CheckboxFieldTsx from '@components/checkboxFieldTsx';
+import {ButtonIconTsx} from '@components/buttonIconTsx';
 import InputField from '@components/inputField';
 import Row from '@components/rowTsx';
-import CheckboxFieldTsx from '@components/checkboxFieldTsx';
+import Section from '@components/section';
+import {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
+import {toastNew} from '@components/toast';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
-import {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
-import {InputMedia, Message, MessageMedia, TodoItem} from '@layer';
-import safeAssign from '@helpers/object/safeAssign';
-import {wrapEmojiTextWithEntities} from '@lib/richTextProcessor/wrapEmojiText';
-import {ButtonIconTsx} from '@components/buttonIconTsx';
-import Scrollable from '@components/scrollable2';
-import Button from '@components/buttonTsx';
-import classNames from '@helpers/string/classNames';
 import {fastRaf} from '@helpers/schedulers';
-import {toastNew} from '@components/toast';
+import ListenerSetter from '@helpers/listenerSetter';
+import {I18nTsx} from '@helpers/solid/i18n';
+import classNames from '@helpers/string/classNames';
+import {InputMedia, Message, MessageMedia, TodoItem} from '@layer';
+import {i18n, LangPackKey} from '@lib/langPack';
+import {wrapEmojiTextWithEntities} from '@lib/richTextProcessor/wrapEmojiText';
 
-export class PopupChecklist extends PopupElement {
-  private chat: Chat;
-  private editMessage?: Message.message & {media: MessageMedia.messageMediaToDo};
-  private focusItemId?: number;
-  private appending?: boolean;
+import css from '@components/popups/checklist.module.scss';
 
-  constructor(options: {
-    chat: Chat,
-    editMessage?: Message.message & {media: MessageMedia.messageMediaToDo}
-    appending?: boolean
-  }) {
-    super(`${css.popup} popup-new-media`, {
-      overlayClosable: true,
-      body: true,
-      withConfirm: options.editMessage ? 'Save' : 'Create',
-      title: options.appending ? 'ChecklistAddTasks' : options.editMessage ? 'EditChecklist' : 'NewChecklist'
-    });
+export type ChecklistPopupOptions = {
+  chat: Chat,
+  editMessage?: Message.message & {media: MessageMedia.messageMediaToDo},
+  focusItemId?: number,
+  appending?: boolean
+};
 
-    safeAssign(this, options);
+export default function showChecklistPopup(options: ChecklistPopupOptions): void {
+  const {chat, editMessage, focusItemId, appending} = options;
 
-    this.construct();
-  }
+  const titleKey: LangPackKey = appending ? 'ChecklistAddTasks' :
+    editMessage ? 'EditChecklist' : 'NewChecklist';
+  const confirmKey: LangPackKey = editMessage ? 'Save' : 'Create';
 
-  private async construct() {
-    const appConfig = await this.managers.apiManager.getAppConfig();
-    this.appendSolidBody(() => this._construct({appConfig}));
-  }
+  type Item = {id: number, existing: boolean, field: InputField};
 
-  protected _construct(props: {appConfig: MTAppConfig}) {
-    const maxItems = props.appConfig.todo_items_max ?? 10;
-    const titleInput = new InputField({
-      placeholder: 'NewChecklist.TitlePlaceholder',
-      name: 'title',
-      canBeEdited: !this.appending
-    });
+  function Inner() {
+    const context = useContext(PopupContext);
+    const middleware = untrack(() => context.middlewareHelper).get();
+    const managers = untrack(() => context.managers);
+    const listenerSetter = new ListenerSetter();
 
+    onCleanup(() => listenerSetter.removeAll());
+
+    const [items, setItems] = createSignal<Item[]>([]);
+    const [valid, setValid] = createSignal(false);
     const [pending, setPending] = createSignal(false);
-    const [items, setItems] = createSignal<{id: number, existing: boolean, field: InputField}[]>([]);
-    const [allowOthersToMarkAsDone, setAllowOthersToMarkAsDone] = createSignal(this.editMessage?.media.todo.pFlags.others_can_complete ?? false);
-    const [allowOthersToAddTasks, setAllowOthersToAddTasks] = createSignal(this.editMessage?.media.todo.pFlags.others_can_append ?? false);
+    const [titleInput, setTitleInput] = createSignal<InputField>();
+    const [maxItems, setMaxItems] = createSignal(10);
+    const [allowOthersToMarkAsDone, setAllowOthersToMarkAsDone] = createSignal(
+      editMessage?.media.todo.pFlags.others_can_complete ?? false
+    );
+    const [allowOthersToAddTasks, setAllowOthersToAddTasks] = createSignal(
+      editMessage?.media.todo.pFlags.others_can_append ?? false
+    );
 
-    const updateConfirmButton = () => {
-      const valid = (() => {
-        if(!titleInput.value) return false;
-        let items$ = items();
-        if(this.appending) {
-          items$ = items$.filter(v => !v.existing);
-        }
+    let addItem: ((existing?: TodoItem) => void) | undefined;
+    let removeItem: ((id: number) => void) | undefined;
+    let handleConfirm: (() => Promise<void>) | undefined;
 
-        if(items$.length === 0) return false;
-        return items$.every(v => {
-          const val = v.field.value.trim();
-          return val.length > 0 && val.length <= props.appConfig.todo_item_length_max;
-        });
-      })();
+    let btnConfirmEl!: HTMLButtonElement;
 
-      this.btnConfirm.disabled = !valid;
-    };
+    managers.apiManager.getAppConfig().then((appConfig) => {
+      if(!middleware()) return;
 
-    this.listenerSetter.add(titleInput.input)('input', updateConfirmButton);
+      const itemLengthMax = appConfig.todo_item_length_max ?? 255;
+      setMaxItems(appConfig.todo_items_max ?? 10);
 
-    const addItem = (existing?: TodoItem) => {
-      if(items().length >= maxItems) return;
-
-      const field = new InputField({
-        placeholder: 'NewChecklist.TaskPlaceholder',
-        name: 'item',
-        maxLength: props.appConfig.todo_item_length_max ?? 255,
-        canBeEdited: !(existing && this.appending)
-      })
-      if(existing) {
-        field.setValueSilently(wrapEmojiTextWithEntities(existing.title), true);
-      }
-      this.listenerSetter.add(field.input)('input', updateConfirmButton);
-      setItems(v => {
-        let id
-        if(existing) id = existing.id
-        else if(v.length > 0) id = v[v.length - 1].id + 1
-        else id = 0
-
-        return [...v, {id, existing: !!existing, field}];
+      const _titleInput = new InputField({
+        placeholder: 'NewChecklist.TitlePlaceholder',
+        name: 'title',
+        canBeEdited: !appending
       });
-      updateConfirmButton();
-      if(!existing || existing.id === this.focusItemId) {
-        fastRaf(() => {
-          field.input.focus();
+
+      const updateConfirmButton = () => {
+        const ok = (() => {
+          if(!_titleInput.value) return false;
+          let items$ = items();
+          if(appending) {
+            items$ = items$.filter((v) => !v.existing);
+          }
+
+          if(items$.length === 0) return false;
+          return items$.every((v) => {
+            const val = v.field.value.trim();
+            return val.length > 0 && val.length <= itemLengthMax;
+          });
+        })();
+
+        setValid(ok);
+      };
+
+      listenerSetter.add(_titleInput.input)('input', updateConfirmButton);
+
+      addItem = (existing?: TodoItem) => {
+        if(items().length >= maxItems()) return;
+
+        const field = new InputField({
+          placeholder: 'NewChecklist.TaskPlaceholder',
+          name: 'item',
+          maxLength: itemLengthMax,
+          canBeEdited: !(existing && appending)
         });
-      }
-    }
-
-    const removeItem = (id: number) => {
-      setItems(v => v.filter(v => v.id !== id));
-      updateConfirmButton();
-    };
-
-    if(this.editMessage) {
-      titleInput.setValueSilently(wrapEmojiTextWithEntities(this.editMessage.media.todo.title), true);
-      for(const item of this.editMessage.media.todo.list) {
-        addItem(item);
-      }
-      if(this.appending) addItem();
-    } else {
-      addItem();
-    }
-
-    const handleConfirm = async() => {
-      let promise: Promise<any>;
-      if(this.appending) {
-        const maxId = this.editMessage?.media.todo.list.reduce((max, item) => Math.max(max, item.id), 0) ?? 0;
-        const newItems = items().filter(v => !v.existing);
-
-        promise = this.managers.appMessagesManager.appendTodo({
-          peerId: this.chat.peerId,
-          mid: this.editMessage.mid,
-          tasks: newItems.map((v, idx) => {
-            const richValue = getRichValueWithCaret(v.field.input, true, false);
-            return {
-              _: 'todoItem',
-              // ids must be consecutive when creating
-              id: maxId + idx + 1,
-              title: {
-                _: 'textWithEntities',
-                text: richValue.value,
-                entities: richValue.entities
-              }
-            };
-          })
+        if(existing) {
+          field.setValueSilently(wrapEmojiTextWithEntities(existing.title), true);
+        }
+        listenerSetter.add(field.input)('input', updateConfirmButton);
+        setItems((v) => {
+          let id: number;
+          if(existing) id = existing.id;
+          else if(v.length > 0) id = v[v.length - 1].id + 1;
+          else id = 0;
+          return [...v, {id, existing: !!existing, field}];
         });
-      } else {
-        const title = getRichValueWithCaret(titleInput.input, true, false);
+        updateConfirmButton();
+        if(!existing || existing.id === focusItemId) {
+          fastRaf(() => {
+            field.input.focus();
+          });
+        }
+      };
 
-        const inputMedia: InputMedia = {
-          _: 'inputMediaTodo',
-          todo: {
-            _: 'todoList',
-            pFlags: {
-              others_can_append: allowOthersToAddTasks() ? true : undefined,
-              others_can_complete: allowOthersToMarkAsDone() ? true : undefined
-            },
-            title: {
-              _: 'textWithEntities',
-              text: title.value,
-              entities: title.entities
-            },
-            list: items().map((v, idx) => {
+      removeItem = (id: number) => {
+        setItems((v) => v.filter((it) => it.id !== id));
+        updateConfirmButton();
+      };
+
+      handleConfirm = async() => {
+        let promise: Promise<any>;
+        if(appending) {
+          const maxId = editMessage?.media.todo.list.reduce((max, item) => Math.max(max, item.id), 0) ?? 0;
+          const newItems = items().filter((v) => !v.existing);
+
+          promise = managers.appMessagesManager.appendTodo({
+            peerId: chat.peerId,
+            mid: editMessage.mid,
+            tasks: newItems.map((v, idx) => {
               const richValue = getRichValueWithCaret(v.field.input, true, false);
               return {
                 _: 'todoItem',
                 // ids must be consecutive when creating
-                id: this.editMessage ? v.id : idx + 1,
+                id: maxId + idx + 1,
                 title: {
                   _: 'textWithEntities',
                   text: richValue.value,
@@ -178,120 +151,180 @@ export class PopupChecklist extends PopupElement {
                 }
               };
             })
-          }
-        }
-
-        if(this.editMessage) {
-          promise = this.managers.appMessagesManager.editMessage(this.editMessage, this.editMessage.message, {
-            newMedia: inputMedia
           });
         } else {
-          const sendingParams = this.chat.getMessageSendingParams();
+          const title = getRichValueWithCaret(_titleInput.input, true, false);
 
-          const preparedPaymentResult = await this.chat.input.paidMessageInterceptor.prepareStarsForPayment(1);
-          if(preparedPaymentResult === PAYMENT_REJECTED) return;
+          const inputMedia: InputMedia = {
+            _: 'inputMediaTodo',
+            todo: {
+              _: 'todoList',
+              pFlags: {
+                others_can_append: allowOthersToAddTasks() ? true : undefined,
+                others_can_complete: allowOthersToMarkAsDone() ? true : undefined
+              },
+              title: {
+                _: 'textWithEntities',
+                text: title.value,
+                entities: title.entities
+              },
+              list: items().map((v, idx) => {
+                const richValue = getRichValueWithCaret(v.field.input, true, false);
+                return {
+                  _: 'todoItem',
+                  // ids must be consecutive when creating
+                  id: editMessage ? v.id : idx + 1,
+                  title: {
+                    _: 'textWithEntities',
+                    text: richValue.value,
+                    entities: richValue.entities
+                  }
+                };
+              })
+            }
+          };
 
-          sendingParams.confirmedPaymentResult = preparedPaymentResult;
+          if(editMessage) {
+            promise = managers.appMessagesManager.editMessage(editMessage, editMessage.message, {
+              newMedia: inputMedia
+            });
+          } else {
+            const sendingParams = chat.getMessageSendingParams();
 
-          this.hide();
+            const preparedPaymentResult = await chat.input.paidMessageInterceptor.prepareStarsForPayment(1);
+            if(preparedPaymentResult === PAYMENT_REJECTED) return;
 
-          this.managers.appMessagesManager.sendOther({
-            ...sendingParams,
-            inputMedia
-          });
+            sendingParams.confirmedPaymentResult = preparedPaymentResult;
 
-          if(this.chat.input.helperType === 'reply') {
-            this.chat.input.clearHelper();
+            context.hide();
+
+            managers.appMessagesManager.sendOther({
+              ...sendingParams,
+              inputMedia
+            });
+
+            if(chat.input.helperType === 'reply') {
+              chat.input.clearHelper();
+            }
+
+            chat.input.onMessageSent(false, false);
           }
-
-          this.chat.input.onMessageSent(false, false);
         }
+
+        if(promise) {
+          setPending(true);
+          promise.then(() => {
+            setPending(false);
+            context.hide();
+          }).catch(() => {
+            setPending(false);
+            toastNew({langPackKey: 'Error.AnError'});
+          });
+        }
+      };
+
+      if(editMessage) {
+        _titleInput.setValueSilently(wrapEmojiTextWithEntities(editMessage.media.todo.title), true);
+        for(const item of editMessage.media.todo.list) {
+          addItem(item);
+        }
+        if(appending) addItem();
+      } else {
+        addItem();
       }
 
-      if(promise) {
-        setPending(true);
-        promise.then(() => {
-          setPending(false);
-          this.hide();
-        }).catch(() => {
-          setPending(false);
-          toastNew({langPackKey: 'Error.AnError'});
-        });
-      }
-    }
+      setTitleInput(_titleInput);
+    });
 
-    attachClickEvent(this.btnConfirm, handleConfirm, {listenerSetter: this.listenerSetter});
-
-    createEffect(on(pending, (pending) => {
-      this.btnConfirm.disabled = pending;
-    }));
+    onMount(() => {
+      attachClickEvent(btnConfirmEl, () => {
+        handleConfirm?.();
+      }, {listenerSetter});
+      context.setBtnConfirmOnEnter(btnConfirmEl);
+    });
 
     return (
       <>
-        <div class={css.header}>
-          {titleInput.container}
-        </div>
+        <PopupElement.Header>
+          <PopupElement.CloseButton />
+          <PopupElement.Title title={titleKey} />
+          <button
+            ref={btnConfirmEl}
+            class="btn-primary btn-color-primary"
+            disabled={!valid() || pending() || !titleInput()}
+          >
+            {i18n(confirmKey)}
+          </button>
+        </PopupElement.Header>
+        <PopupElement.Scrollable>
+          <Show when={titleInput()}>
+            <Section class={css.titleSection} noShadow noDelimiter>
+              {titleInput().container}
+            </Section>
+            <Section name="Checklist">
+              <For each={items()}>
+                {(item, idx) => (
+                  <div
+                    class={classNames(
+                      css.item,
+                      idx() === 0 && css.itemFirst,
+                      idx() === items().length - 1 && css.itemLast
+                    )}
+                  >
+                    {item.field.container}
+                    {!(item.existing && appending) && (
+                      <ButtonIconTsx
+                        class={css.itemRemoveButton}
+                        icon="close"
+                        onClick={() => removeItem?.(item.id)}
+                      />
+                    )}
+                  </div>
+                )}
+              </For>
+              <Show when={items().length < maxItems()}>
+                <Button
+                  class={`btn-transparent ${css.addTaskButton}`}
+                  icon="add"
+                  onClick={() => addItem?.()}
+                  text="ChecklistAddTask"
+                />
+              </Show>
+            </Section>
 
-        <Scrollable class={css.body}>
-          <div class={css.checklist}>
-            <I18nTsx class={css.groupTitle} key="Checklist" />
-            <For each={items()}>
-              {(item, idx) => (
-                <div
-                  class={classNames(
-                    css.item,
-                    idx() === 0 && css.itemFirst,
-                    idx() === items().length - 1 && css.itemLast
-                  )}
-                >
-                  {item.field.container}
-                  {!(item.existing && this.appending) && (
-                    <ButtonIconTsx
-                      class={css.itemRemoveButton}
-                      icon="close"
-                      onClick={() => removeItem(item.id)}
+            <Show when={!appending}>
+              <Section name="ChecklistOptions">
+                <Row>
+                  <Row.CheckboxFieldToggle>
+                    <CheckboxFieldTsx
+                      checked={allowOthersToMarkAsDone()}
+                      toggle
+                      onChange={setAllowOthersToMarkAsDone}
                     />
-                  )}
-                </div>
-              )}
-            </For>
-            {items().length < maxItems && (
-              <Button
-                class={`btn-transparent ${css.addTaskButton}`}
-                icon="add"
-                onClick={() => addItem()}
-                text="ChecklistAddTask"
-              />
-            )}
-          </div>
-
-          {!this.appending && (
-            <div class={css.options}>
-              <I18nTsx class={css.groupTitle} key="ChecklistOptions" />
-              <Row>
-                <Row.CheckboxFieldToggle>
-                  <CheckboxFieldTsx
-                    checked={allowOthersToMarkAsDone()}
-                    toggle
-                    onChange={setAllowOthersToMarkAsDone}
-                  />
-                </Row.CheckboxFieldToggle>
-                <Row.Title><I18nTsx key="ChecklistAllowOthersDone" /></Row.Title>
-              </Row>
-              <Row>
-                <Row.CheckboxFieldToggle>
-                  <CheckboxFieldTsx
-                    checked={allowOthersToAddTasks()}
-                    toggle
-                    onChange={setAllowOthersToAddTasks}
-                  />
-                </Row.CheckboxFieldToggle>
-                <Row.Title><I18nTsx key="ChecklistAllowOthersAdd" /></Row.Title>
-              </Row>
-            </div>
-          )}
-        </Scrollable>
+                  </Row.CheckboxFieldToggle>
+                  <Row.Title><I18nTsx key="ChecklistAllowOthersDone" /></Row.Title>
+                </Row>
+                <Row>
+                  <Row.CheckboxFieldToggle>
+                    <CheckboxFieldTsx
+                      checked={allowOthersToAddTasks()}
+                      toggle
+                      onChange={setAllowOthersToAddTasks}
+                    />
+                  </Row.CheckboxFieldToggle>
+                  <Row.Title><I18nTsx key="ChecklistAllowOthersAdd" /></Row.Title>
+                </Row>
+              </Section>
+            </Show>
+          </Show>
+        </PopupElement.Scrollable>
       </>
     );
   }
+
+  createPopup(() => (
+    <PopupElement class={`${css.popup} popup-new-media`}>
+      <Inner />
+    </PopupElement>
+  ));
 }

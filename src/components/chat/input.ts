@@ -137,7 +137,7 @@ import splitStringByLength from '@helpers/string/splitStringByLength';
 import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
 import asyncThrottle from '@helpers/schedulers/asyncThrottle';
 import focusInput from '@helpers/dom/focusInput';
-import {PopupChecklist} from '@components/popups/checklist';
+import showChecklistPopup from '@components/popups/checklist';
 import assumeType from '@helpers/assumeType';
 import {formatFullSentTime} from '@helpers/date';
 import useStars from '@stores/stars';
@@ -1161,7 +1161,7 @@ export default class ChatInput {
           return;
         }
 
-        PopupElement.createPopup(PopupChecklist, {chat: this.chat}).show();
+        showChecklistPopup({chat: this.chat});
       },
       verify: () => !this.editMsgId && !this.chat.isMonoforum
     }];

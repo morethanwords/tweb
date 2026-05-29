@@ -1177,8 +1177,6 @@
 }
 
 .my-stories-container {
-  background-color: var(--surface-color) !important;
-
   .my-stories-placeholder {
     position: absolute;
     top: 50%;
@@ -1270,6 +1268,16 @@
     display: none;
   }
 
+  // Right column stays resizable on non-touch devices even when the left
+  // sidebar is floating (601–925px). Handhelds (≤600px) keep it hidden:
+  // the right column is full-width there and html.no-touch usually isn't
+  // set anyway.
+  html.no-touch &-right {
+    @include respond-to(floating-left-sidebar) {
+      display: block;
+    }
+  }
+
   &:hover,
   &.is-active {
     opacity: 1;
@@ -1348,4 +1356,9 @@
   html.no-touch &:hover {
     background: rgba(var(--primary-color-rgb), 0.15);
   }
+}
+
+#contacts-container,
+#chats-archived-container {
+  background-color: var(--surface-color);
 }
