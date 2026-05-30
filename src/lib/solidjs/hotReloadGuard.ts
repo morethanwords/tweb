@@ -27,6 +27,7 @@ import type PopupElement from '@components/popups';
 import type showBirthdayPopup from '@components/popups/birthday';
 import type {saveMyBirthday} from '@components/popups/birthday';
 import type showLimitPopup from '@components/popups/limit';
+import type showMyQrCodePopup from '@components/popups/myQrCode';
 import type PopupPremium from '@components/popups/premium';
 import type PopupSendGift from '@components/popups/sendGift';
 import type showStarsRatingPopup from '@components/popups/starsRating';
@@ -124,6 +125,7 @@ export type SolidJSHotReloadGuardContextValue = {
   PopupSendGift: typeof PopupSendGift;
   showBirthdayPopup: typeof showBirthdayPopup;
   saveMyBirthday: typeof saveMyBirthday;
+  showMyQrCodePopup: typeof showMyQrCodePopup;
   Row: typeof Row;
   useAppSettings: typeof useAppSettings;
   ChatType: typeof ChatType;

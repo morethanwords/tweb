@@ -157,6 +157,14 @@ export type StateSettings = {
     // matches tdesktop / the legacy behavior before this flag existed.
     noiseSuppression: boolean
   },
+  // My QR-code popup: remembers the user's last picked chat-theme + brightness
+  // so reopens land back where they left off. `nightMode` falls back to the
+  // global theme's brightness when unset; `selectedThemeId` empty = the
+  // DEFAULT_THEME sentinel (i.e. "use the current chat theme").
+  qrCode: {
+    nightMode?: boolean,
+    selectedThemeId: string
+  },
 };
 
 // (1 - use swatch, 2 - use picker color), (color from swatch), (color from picker)
@@ -524,6 +532,9 @@ export const SETTINGS_INIT: StateSettings = {
     cameraId: '',
     micVolume: 1,
     noiseSuppression: true
+  },
+  qrCode: {
+    selectedThemeId: ''
   }
 };
 

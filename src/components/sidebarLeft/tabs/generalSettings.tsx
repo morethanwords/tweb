@@ -1,4 +1,4 @@
-import {createEffect, createResource, createSignal, For, on, onCleanup, onMount, Show} from 'solid-js';
+import {createSignal, For, onCleanup, onMount, Show} from 'solid-js';
 import {GrowHeightReveal} from '@helpers/solid/animations';
 import Section from '@components/section';
 import Row from '@components/rowTsx';
@@ -12,26 +12,18 @@ import {useAppSettings} from '@stores/appSettings';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import IS_GEOLOCATION_SUPPORTED from '@environment/geolocationSupport';
-import {DEFAULT_THEME, StateSettings} from '@config/state';
-import {AccentPreset, blendWallpaperForTinted, getAccentPresetsForBase, presetThemeId} from '@config/themePresets';
-import {BaseTheme, Theme} from '@layer';
-import {IS_SAFARI} from '@environment/userAgent';
-import {ScrollableX} from '@components/scrollable';
+import {StateSettings} from '@config/state';
+import {AccentPreset, getAccentPresetsForBase, presetThemeId} from '@config/themePresets';
+import {BaseTheme} from '@layer';
 import Scrollable from '@components/scrollable2';
-import wrapStickerEmoji from '@components/wrappers/stickerEmoji';
-import findUpClassName from '@helpers/dom/findUpClassName';
-import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
 import themeController from '@helpers/themeController';
 import liteMode from '@helpers/liteMode';
 import {joinDeepPath} from '@helpers/object/setDeepProperty';
 import eachMinute from '@helpers/eachMinute';
-import {AppBackgroundTab} from '@components/sidebarLeft/tabs/background';
 import {AppChatBackgroundTab} from '@components/solidJsTabs/tabs';
 import AppPowerSavingTab from '@components/sidebarLeft/tabs/powerSaving';
-import {attachClickEvent} from '@helpers/dom/clickEvent';
-import ListenerSetter from '@helpers/listenerSetter';
-import createMiddleware from '@helpers/solid/createMiddleware';
 import fastSmoothScroll from '@helpers/fastSmoothScroll';
+import ChatThemesPicker from '@components/chatThemesPicker';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Section 1 — text size, chat background, animations toggle, lite mode entry
@@ -102,20 +94,6 @@ const SettingsSection = () => {
 // Section 2 — color theme picker (horizontal scroller + variant radios)
 // ─────────────────────────────────────────────────────────────────────────────
 
-type ThemeItem = {
-  container: HTMLElement,
-  theme: Theme,
-  player?: RLottiePlayer,
-  wallPaperContainers: {[key in BaseTheme['_']]?: HTMLElement}
-};
-
-const AVAILABLE_BASE_THEMES: Set<BaseTheme['_']> = new Set([
-  'baseThemeClassic',
-  'baseThemeNight',
-  'baseThemeDay',
-  'baseThemeTinted'
-]);
-
 const THEME_VARIANTS: [StateSettings['theme'], LangPackKey][] = [
   ['day', 'ThemeDay'],
   ['night', 'ThemeNight'],
@@ -125,185 +103,26 @@ const THEME_VARIANTS: [StateSettings['theme'], LangPackKey][] = [
 ];
 
 const ThemeSection = () => {
-  const middleware = createMiddleware().get();
   const stateKey = joinDeepPath('settings', 'theme');
 
-  const themesMap = new Map<HTMLElement, ThemeItem>();
-  // Each theme thumbnail mounts a `<ChatBackground>` Solid root via AppBackgroundTab.addWallPaper.
-  // Track the dispose handles so we tear them down (and their gradient/pattern renderers) on unmount.
-  const solidRoots: (() => void)[] = [];
-  let currentTheme = themeController.getTheme();
-  let isNight = themeController.isNight();
-  let currentThemeName = currentTheme.name;
-  let lastOnFrameNo: ((frameNo: number) => void) | undefined;
-
-  const getCurrentBaseTheme = (): BaseTheme['_'] => themeController.getBaseThemeForName(currentThemeName);
-
-  const applyThemeOnItem = (item: ThemeItem) => {
-    themeController.applyTheme(item.theme, item.container);
-
-    const previous = item.container.querySelector('.background-item');
-    previous?.remove();
-
-    const baseTheme = getCurrentBaseTheme();
-    const wallPaperContainer = item.wallPaperContainers[baseTheme] ??
-      item.wallPaperContainers[isNight ? 'baseThemeNight' : 'baseThemeClassic'];
-    if(wallPaperContainer) {
-      item.container.prepend(wallPaperContainer);
-    }
+  // Live (id, name) of the global theme. `id` drives the shared picker's
+  // selection ring (empty string = the DEFAULT_THEME tile; 'preset:N' from the
+  // accent picker matches no tile, so the ring clears — same as the legacy tab);
+  // `name` drives the brightness its thumbnails render at (via base theme).
+  // Tracked as primitives with a custom equality so we only re-notify the picker
+  // when a relevant field actually changes. Every theme apply (tile pick, radio,
+  // accent preset, auto-night) dispatches `theme_changed`.
+  const readThemeState = () => {
+    const theme = themeController.getTheme();
+    return {id: String(theme.id ?? ''), name: theme.name};
   };
+  const [themeState, setThemeState] = createSignal(readThemeState(), {
+    equals: (a, b) => a.id === b.id && a.name === b.name
+  });
+  subscribeOn(rootScope)('theme_changed', () => setThemeState(readThemeState()));
 
-  // Theme list is fetched in the background — the tab opens immediately and
-  // thumbnails fill in once the request resolves. Layout is preserved by the
-  // fixed `height: 6.5rem` on `.themes-container` (see _themes.scss).
-  const [themesPromise] = createResource(() => rootScope.managers.appThemesManager.getThemes());
-
-  // Build the scrollable themes list. Wrapped in `ScrollableX` (imperative) and
-  // mounted once on first render.
-  const scrollable = new ScrollableX(null);
-  scrollable.container.classList.add('themes-container');
-
-  const buildThemes = async() => {
-    const themes = themesPromise();
-    if(!themes) return;
-
-    const defaultThemes = themes.filter((theme) => theme.pFlags.default);
-    defaultThemes.unshift(DEFAULT_THEME);
-
-    const containers = await Promise.all(defaultThemes.map(async(theme) => {
-      const container = document.createElement('div');
-      const k: ThemeItem = {container, theme, wallPaperContainers: {}};
-
-      // Mirror themeController.applyNewTheme's `isCurated` check: cloud themes (numeric id) get
-      // their wallpaper navy-blended for the tinted thumbnail; DEFAULT_THEME (id='') and accent
-      // presets ('preset:N') skip the blend so their curated dark gradients land verbatim.
-      const themeId = String(theme.id ?? '');
-      const isCurated = themeId === '' || themeId.startsWith('preset:');
-
-      const results = theme.settings
-      .filter((themeSettings) => AVAILABLE_BASE_THEMES.has(themeSettings.base_theme._))
-      .map((themeSettings) => {
-        // Pre-blend the wallpaper for the tinted preview when the theme isn't curated, matching
-        // applyNewTheme. Non-tinted entries pass through verbatim.
-        const shouldBlend = themeSettings.base_theme._ === 'baseThemeTinted' && !isCurated && themeSettings.wallpaper;
-        const wp = shouldBlend ? blendWallpaperForTinted(themeSettings.wallpaper, themeSettings.accent_color) : themeSettings.wallpaper;
-        const result = AppBackgroundTab.addWallPaper(wp, undefined, themeSettings.base_theme._);
-        k.wallPaperContainers[themeSettings.base_theme._] = result.container;
-        solidRoots.push(result.dispose);
-        return result;
-      });
-
-      // Themes that ship only baseThemeClassic / baseThemeNight entries fall back to night when
-      // displayed on tinted. Synthesize a blended tinted container from the night entry so the
-      // tinted-display preview matches what applyNewTheme produces (which also blends on
-      // fallback). Skip curated themes — applyNewTheme skips the blend for them.
-      if(!k.wallPaperContainers['baseThemeTinted'] && !isCurated) {
-        const nightEntry = theme.settings.find((s) => s.base_theme._ === 'baseThemeNight');
-        if(nightEntry?.wallpaper) {
-          const blendedWp = blendWallpaperForTinted(nightEntry.wallpaper, nightEntry.accent_color);
-          const result = AppBackgroundTab.addWallPaper(blendedWp, undefined, 'baseThemeTinted');
-          if(result) {
-            k.wallPaperContainers['baseThemeTinted'] = result.container;
-            solidRoots.push(result.dispose);
-            results.push(result);
-          }
-        }
-      }
-
-      themesMap.set(container, k);
-      applyThemeOnItem(k);
-
-      if(theme.id === currentTheme.id) {
-        container.classList.add('active');
-      }
-
-      const loadPromises: Promise<any>[] = [];
-      let emoticonContainer: HTMLElement;
-      if(theme.emoticon) {
-        emoticonContainer = document.createElement('div');
-        emoticonContainer.classList.add('theme-emoticon');
-        const size = 28 * 1.75;
-        wrapStickerEmoji({
-          div: emoticonContainer,
-          width: size,
-          height: size,
-          emoji: theme.emoticon,
-          managers: rootScope.managers,
-          loadPromises,
-          middleware,
-          play: false,
-          group: 'none'
-        }).then(({render}) => render).then((player) => {
-          k.player = player as RLottiePlayer;
-        });
-      }
-
-      const bubble = document.createElement('div');
-      bubble.classList.add('theme-bubble');
-      const bubbleIn = bubble.cloneNode() as HTMLElement;
-      bubbleIn.classList.add('is-in');
-      bubble.classList.add('is-out');
-
-      loadPromises.push(...results.map((result) => result.loadPromise));
-      container.classList.add('theme-container');
-
-      await Promise.all(loadPromises);
-
-      if(emoticonContainer) container.append(emoticonContainer);
-      container.append(bubbleIn, bubble);
-
-      return container;
-    }));
-
-    if(!middleware()) return;
-    scrollable.append(...containers);
-  };
-
-  createEffect(on(themesPromise, (themes) => {
-    if(themes) {
-      buildThemes();
-    }
-  }));
-
-  // Click-to-select on themes container (delegated).
-  const listenerSetter = new ListenerSetter();
-  attachClickEvent(scrollable.container, async(e) => {
-    const container = findUpClassName(e.target, 'theme-container');
-    if(!container) return;
-
-    const lastActive = scrollable.container.querySelector('.active');
-    lastActive?.classList.remove('active');
-
-    const item = themesMap.get(container);
-    container.classList.add('active');
-
-    await themeController.applyNewTheme(item.theme);
-    lastOnFrameNo?.(-1);
-
-    if(!item.player || !liteMode.isAvailable('animations')) return;
-
-    if(IS_SAFARI) {
-      if(item.player.paused) item.player.restart();
-      return;
-    }
-
-    if(item.player.paused) item.player.stop(true);
-    item.player.el[0].style.transform = 'scale(2)';
-
-    const onFrameNo = lastOnFrameNo = (frameNo) => {
-      if(item.player.maxFrame === frameNo || frameNo === -1) {
-        item.player.el[0].style.transform = '';
-        item.player.removeEventListener('enterFrame', onFrameNo);
-        if(lastOnFrameNo === onFrameNo) lastOnFrameNo = undefined;
-      }
-    };
-
-    setTimeout(() => {
-      if(lastOnFrameNo !== onFrameNo) return;
-      item.player.play();
-      item.player.addEventListener('enterFrame', onFrameNo);
-    }, 250);
-  }, {listenerSetter});
+  const selectedThemeId = () => themeState().id;
+  const pickerBaseTheme = (): BaseTheme['_'] => themeController.getBaseThemeForName(themeState().name);
 
   // Theme variant changes flow through the radio's `stateKey`. Bridge the
   // resulting `settings_updated` to a `theme_change` dispatch (preserved from
@@ -312,47 +131,6 @@ const ThemeSection = () => {
     if(key === stateKey) {
       rootScope.dispatchEvent('theme_change');
     }
-  });
-
-  // Re-style the theme thumbnails when the active theme changes elsewhere
-  // (e.g. via auto-night) and scroll the active one into view.
-  subscribeOn(rootScope)('theme_changed', () => {
-    currentTheme = themeController.getTheme();
-    const newIsNight = themeController.isNight();
-    const newThemeName = currentTheme.name;
-    const variantChanged = currentThemeName !== newThemeName;
-
-    isNight = newIsNight;
-    currentThemeName = newThemeName;
-
-    // Active marker always tracks the live theme.id — when the user picks an accent preset the
-    // variant name stays the same but theme.id flips to 'preset:N', which no thumbnail matches,
-    // so the previously-active thumbnail must clear (theme-container and accent-circle are
-    // mutually exclusive selection surfaces).
-    const lastActive = scrollable.container.querySelector('.active');
-    lastActive?.classList.remove('active');
-
-    let active: HTMLElement | undefined;
-    themesMap.forEach((item) => {
-      if(variantChanged) applyThemeOnItem(item);
-      if(item.theme.id === currentTheme.id) {
-        item.container.classList.add('active');
-        active = item.container;
-      }
-    });
-
-    if(active && variantChanged) {
-      scrollable.scrollIntoViewNew({
-        element: active,
-        position: 'center',
-        axis: 'x'
-      });
-    }
-  });
-
-  onCleanup(() => {
-    listenerSetter.removeAll();
-    solidRoots.forEach((d) => d());
   });
 
   // Theme variant rows (day / night / light / tinted / system) — imperative
@@ -371,7 +149,16 @@ const ThemeSection = () => {
 
   return (
     <Section name="ColorTheme">
-      <div ref={(el) => el.append(scrollable.container)} />
+      {/* Shared with the My QR popup (chatThemesPicker.tsx). Pure-UI: selection
+          state is owned here. onSelect → applyNewTheme themes the whole app and
+          dispatches theme_changed, which feeds selectedThemeId back to re-stripe
+          the active tile. baseTheme repaints thumbnails on day/night/tinted switch. */}
+      <ChatThemesPicker
+        selectedId={selectedThemeId}
+        baseTheme={pickerBaseTheme}
+        onSelect={(theme) => themeController.applyNewTheme(theme)}
+        recenterOnBaseChange
+      />
       <form style={{'margin-top': '.5rem'}}>
         {radios.map((radio) => (
           <Row>

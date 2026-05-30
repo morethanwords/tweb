@@ -381,7 +381,8 @@ PopupElement.Header = (props: {
 
 PopupElement.Title = (props: {
   children?: JSX.Element,
-  title?: boolean | LangPackKey | DocumentFragment | HTMLElement
+  title?: boolean | LangPackKey | DocumentFragment | HTMLElement,
+  class?: string
 }) => {
   const context = useContext(PopupContext);
   const titleContent = () => {
@@ -397,7 +398,7 @@ PopupElement.Title = (props: {
 
   return context.register('title', (
     <Show when={titleContent()}>
-      <div class="popup-title" dir="auto">
+      <div class={classNames('popup-title', props.class)} dir="auto">
         {titleContent()}
       </div>
     </Show>

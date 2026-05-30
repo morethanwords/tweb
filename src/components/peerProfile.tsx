@@ -53,6 +53,7 @@ import {keepMe} from '@helpers/keepMe';
 import choosePhotoSize from '@appManagers/utils/photos/choosePhotoSize';
 import wrapPhoto from './wrappers/photo';
 import {unwrap} from 'solid-js/store';
+import Button from '@components/buttonTsx';
 
 keepMe(ripple);
 
@@ -719,7 +720,7 @@ PeerProfile.Phone = () => {
 
 PeerProfile.Username = () => {
   const context = useContext(PeerProfileContext);
-  const {I18n, i18n, toast} = useHotReloadGuard();
+  const {I18n, i18n, toast, showMyQrCodePopup, rootScope} = useHotReloadGuard();
   const usernames = createMemo(() => {
     if(!context.peerId.isUser() || !context.canBeDetailed()) {
       return;
@@ -752,7 +753,23 @@ PeerProfile.Username = () => {
         <Row.Subtitle>{
           getUsernamesAlso(usernames()) || i18n('Username')
         }</Row.Subtitle>
+        <PeerProfile.QrButton />
       </Row>
+    </Show>
+  );
+};
+
+PeerProfile.QrButton = () => {
+  const context = useContext(PeerProfileContext);
+  const {showMyQrCodePopup, rootScope} = useHotReloadGuard();
+  return (
+    <Show when={context.peerId !== rootScope.myId}>
+      <Row.RightContent>
+        <Button.Icon icon="qr" onClick={(e) => {
+          cancelEvent(e);
+          showMyQrCodePopup(context.peerId);
+        }} />
+      </Row.RightContent>
     </Show>
   );
 };
@@ -975,7 +992,7 @@ PeerProfile.Bio = () => {
 
 PeerProfile.Link = () => {
   const context = useContext(PeerProfileContext);
-  const {i18n, I18n, toast} = useHotReloadGuard();
+  const {i18n, I18n, toast, showMyQrCodePopup} = useHotReloadGuard();
 
   const toFill = createMemo<Partial<{url: string, also: JSX.Element}>>(() => {
     if(context.peerId.isUser()) {
@@ -1036,6 +1053,7 @@ PeerProfile.Link = () => {
         <Row.Icon icon="link" />
         <Row.Title>{toFill().url}</Row.Title>
         <Row.Subtitle>{toFill().also || i18n('SetUrlPlaceholder')}</Row.Subtitle>
+        <PeerProfile.QrButton />
       </Row>
     </Show>
   );

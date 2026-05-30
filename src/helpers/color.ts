@@ -262,13 +262,25 @@ export function getRgbColorFromTelegramColor(color: number) {
   return hexToRgb(getHexColorFromTelegramColor(color));
 }
 
-export function getColorsFromWallPaper(wallPaper: WallPaper) {
-  return wallPaper.settings ? [
+// Keep every PRESENT stop, including an explicit 0 (#000000 black). Telegram
+// sends the four gradient stops as flagged optional ints: absent ⇒ undefined,
+// present ⇒ the value (which may be 0). A `.filter(Boolean)` would wrongly drop
+// a present black stop — e.g. cloud *day* themes ship a white→black gradient
+// (background_color 0xffffff, second_background_color 0) — so filter on
+// null/undefined only. Mirrors Telegram-iOS, which appends each stop via an
+// `if let` presence binding regardless of value (TelegramCore
+// ApiUtils/Wallpaper.swift).
+export function getWallPaperColors(wallPaper: WallPaper): string[] {
+  return wallPaper?.settings ? [
     wallPaper.settings.background_color,
     wallPaper.settings.second_background_color,
     wallPaper.settings.third_background_color,
     wallPaper.settings.fourth_background_color
-  ].filter(Boolean).map(getHexColorFromTelegramColor).join(',') : '';
+  ].filter((color): color is number => color != null).map(getHexColorFromTelegramColor) : [];
+}
+
+export function getColorsFromWallPaper(wallPaper: WallPaper) {
+  return getWallPaperColors(wallPaper).join(',');
 }
 
 export function rgbaToRgb(rgba: ColorRgba, bg: ColorRgb): ColorRgb {
@@ -282,6 +294,41 @@ export function calculateLuminance(rgb: ColorRgb) {
   const [r, g, b] = rgb;
   const luminance = (0.2126 * r / 255 + 0.7152 * g / 255 + 0.0722 * b / 255);
   return luminance;
+}
+
+/**
+ * WCAG relative luminance — sRGB-gamma–linearized, unlike the cheaper non-linear
+ * `calculateLuminance` / `computePerceivedBrightness`. Use this when you need
+ * real contrast math (e.g. clamping a colour to a contrast ratio against white).
+ * @param rgb r, g, b in [0, 255]
+ */
+export function relativeLuminance(rgb: ColorRgb): number {
+  const lin = (c: number) => {
+    c /= 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * lin(rgb[0]) + 0.7152 * lin(rgb[1]) + 0.0722 * lin(rgb[2]);
+}
+
+/**
+ * Scales a `#rrggbb` colour toward black until its WCAG relative luminance is
+ * ≤ `maxL`, preserving hue (the r:g:b ratios). Colours already at/below `maxL`
+ * pass through unchanged; non-`#rrggbb` input is returned untouched.
+ */
+export function darkenToMaxLuminance(hex: string, maxL: number): string {
+  if(!/^#[0-9a-f]{6}$/i.test(hex)) return hex;
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  if(relativeLuminance([r, g, b]) <= maxL) return hex;
+  let lo = 0, hi = 1;
+  for(let i = 0; i < 20; i++) {
+    const f = (lo + hi) / 2;
+    if(relativeLuminance([r * f, g * f, b * f]) > maxL) hi = f;
+    else lo = f;
+  }
+  const c = (v: number) => Math.round(v * lo).toString(16).padStart(2, '0');
+  return '#' + c(r) + c(g) + c(b);
 }
 
 export function getTextColor(luminance: number): ColorRgb {

@@ -378,6 +378,12 @@ export class AppUsersManager extends AppManager {
     });
   }
 
+  // One-time `t.me/contact/<token>` link to add the current user as a contact —
+  // used by the My QR popup when you have no username (mirrors iOS).
+  public exportContactToken() {
+    return this.apiManager.invokeApiSingle('contacts.exportContactToken', {});
+  }
+
   private pushContact(id: UserId) {
     this.contactsList.add(id);
     this.contactsIndex.indexObject(id, this.getUserSearchText(id));

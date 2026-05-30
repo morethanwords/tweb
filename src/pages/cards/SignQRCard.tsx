@@ -9,7 +9,7 @@ import bytesCmp from '@helpers/bytes/bytesCmp';
 import bytesToBase64 from '@helpers/bytes/bytesToBase64';
 import fixBase64String from '@helpers/fixBase64String';
 import pause from '@helpers/schedulers/pause';
-import textToSvgURL from '@helpers/textToSvgURL';
+import {paintQrCode} from '@helpers/qrCode/paintQrCode';
 import type {DcId} from '@types';
 import {AuthAuthorization, AuthLoginToken} from '@layer';
 import App from '@config/app';
@@ -87,61 +87,33 @@ export default function SignQRCard(_props: {spec: Spec}) {
     const textColor = style.getPropertyValue('--primary-text-color').trim();
     const primaryColor = style.getPropertyValue('--primary-color').trim();
 
-    const logoUrl = await fetch('assets/img/logo_padded.svg')
-    .then((res) => res.text())
-    .then((text) => {
-      text = text.replace(/(fill:).+?(;)/, `$1${primaryColor}$2`);
-      return textToSvgURL(text);
-    });
-
-    const qrCode = new QRCodeStylingCtor({
-      width: QR_SIZE * window.devicePixelRatio,
-      height: QR_SIZE * window.devicePixelRatio,
+    const {canvas} = await paintQrCode({
       data: url,
-      image: logoUrl,
-      dotsOptions: {color: textColor, type: 'rounded'},
-      cornersSquareOptions: {type: 'extra-rounded'},
-      imageOptions: {imageSize: 1, margin: 0},
-      backgroundOptions: {color: surfaceColor},
-      qrOptions: {errorCorrectionLevel: 'L'}
+      size: QR_SIZE,
+      host: stickerHost,
+      background: surfaceColor,
+      foreground: textColor,
+      logoColor: primaryColor,
+      canvasClass: styles.qrCanvas,
+      QRCodeStylingCtor
     });
-
-    qrCode.append(stickerHost);
-    (stickerHost.lastChild as HTMLCanvasElement).classList.add(styles.qrCanvas);
-
-    let promise: Promise<void>;
-    if(qrCode._drawingPromise) {
-      promise = qrCode._drawingPromise;
-    } else {
-      promise = Promise.race([
-        pause(1000),
-        new Promise<void>((resolve) => {
-          qrCode._canvas._image.addEventListener('load', () => {
-            window.requestAnimationFrame(() => resolve());
-          }, {once: true});
-        })
-      ]);
-    }
 
     // ! costyl, but the library doesn't expose any events
-    await promise.then(() => {
-      if(preloader) {
-        preloader.style.animation = 'hide-icon .4s forwards';
+    if(preloader) {
+      preloader.style.animation = 'hide-icon .4s forwards';
 
-        const c = stickerHost.children[1] as HTMLElement;
-        c.style.display = 'none';
-        c.style.animation = 'grow-icon .4s forwards';
-        setTimeout(() => {
-          c.style.display = '';
-        }, 150);
-        setTimeout(() => {
-          c.style.animation = '';
-        }, 500);
-        preloader = undefined;
-      } else {
-        Array.from(stickerHost.children).slice(0, -1).forEach((el) => el.remove());
-      }
-    });
+      canvas.style.display = 'none';
+      canvas.style.animation = 'grow-icon .4s forwards';
+      setTimeout(() => {
+        canvas.style.display = '';
+      }, 150);
+      setTimeout(() => {
+        canvas.style.animation = '';
+      }, 500);
+      preloader = undefined;
+    } else {
+      Array.from(stickerHost.children).slice(0, -1).forEach((el) => el.remove());
+    }
 
     lastDrawnToken = token;
   }

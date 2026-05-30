@@ -31,6 +31,7 @@ import PopupStars from '@components/popups/stars';
 import {renderPeerProfile} from '@components/peerProfile';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import showPickUserPopup from '@components/popups/pickUser';
+import showMyQrCodePopup from '@components/popups/myQrCode';
 import PopupSendGift from '@components/popups/sendGift';
 import {formatNanoton} from '@helpers/paymentsWrapCurrencyAmount';
 import showLogOutPopup from '@components/popups/logOut';
@@ -82,7 +83,8 @@ const Settings = () => {
   const promiseCollector = usePromiseCollector();
   const [tab] = useSuperTab();
 
-  // ── Header (edit + overflow menu)
+  // ── Header (qr + edit + overflow menu)
+  const qrBtn = ButtonIcon('qr');
   const editBtn = ButtonIcon('edit');
   const btnMenu = ButtonMenuToggle({
     listenerSetter: tab.listenerSetter,
@@ -96,8 +98,12 @@ const Settings = () => {
 
   onMount(() => {
     tab.container.classList.add('settings-container');
-    tab.header.append(editBtn, btnMenu);
+    tab.header.append(qrBtn, editBtn, btnMenu);
   });
+
+  attachClickEvent(qrBtn, () => {
+    showMyQrCodePopup();
+  }, {listenerSetter: tab.listenerSetter});
 
   // ── Edit profile click — prefetch args, refresh on user_update.
   let editProfileArgs: ReturnType<typeof getEditProfileInitArgs>;

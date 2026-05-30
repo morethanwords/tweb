@@ -21,6 +21,7 @@ import {PeerTitleTsx} from '@components/peerTitleTsx';
 import PopupElement from '@components/popups';
 import showBirthdayPopup, {saveMyBirthday} from '@components/popups/birthday';
 import showLimitPopup from '@components/popups/limit';
+import showMyQrCodePopup from '@components/popups/myQrCode';
 import PopupPremium from '@components/popups/premium';
 import PopupSendGift from '@components/popups/sendGift';
 import showStarsRatingPopup from '@components/popups/starsRating';
@@ -117,6 +118,7 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       PopupSendGift,
       showBirthdayPopup,
       saveMyBirthday,
+      showMyQrCodePopup,
       useAppSettings,
       ChatType,
       wrapReply,
