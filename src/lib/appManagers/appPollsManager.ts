@@ -2,17 +2,17 @@ import {AppManager} from '@appManagers/manager';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
 import type {AttachedPhoto, AttachedSticker, AttachedVideo, CreatePollPayload, FinalizedAttachedMedia} from '@components/popups/createPoll/storeContext';
 import assumeType from '@helpers/assumeType';
-import deferredPromise from '@helpers/cancellablePromise';
+import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import copy from '@helpers/object/copy';
 import {randomLong} from '@helpers/random';
-import {InputMedia, Message, MessageEntity, MessageMedia, Poll, PollAnswer, PollResults, TextWithEntities} from '@layer';
+import {InputFile, InputMedia, Message, MessageEntity, MessageMedia, Poll, PollAnswer, PollResults, TextWithEntities} from '@layer';
+import {oneHourInSeconds} from '@lib/constants';
 import {LogTypes} from '@lib/logger';
 import parseMarkdown from '@lib/richTextProcessor/parseMarkdown';
 import {MessageSendingParams, MyMessage} from './appMessagesManager';
 import getDocumentInput from './utils/docs/getDocumentInput';
-import getPhotoInput from './utils/photos/getPhotoInput';
 import getMessageThreadId from './utils/messages/getMessageThreadId';
-import {oneHourInSeconds} from '@lib/constants';
+import getPhotoInput from './utils/photos/getPhotoInput';
 
 type PollId = Poll['id'];
 
@@ -38,6 +38,13 @@ type RefetchTimeoutPayload = {
   closeTimestamp: number;
 };
 
+type UploadPollMediaResult = {
+  uploadingFileName?: string;
+  deferred: CancellablePromise<InputMedia>;
+  messageMedia: MessageMedia;
+  cancel?: () => void;
+};
+
 export type PollUploadingFileNames = {
   description?: string;
   answers?: (string | undefined)[];
@@ -48,9 +55,12 @@ export class AppPollsManager extends AppManager {
   public polls: {[id: PollId]: Poll} = {};
   public results: {[id: PollId]: PollResults} = {};
   public pollToMessages: {[id: PollId]: Set<string>} = {};
+
   private refetchResultsTimeouts: {[id: PollId]: RefetchTimeoutPayload} = {};
   private createdPollIds: Set<string> = new Set();
-  private uploadingFileNamesByPollId: {[id: PollId]: PollUploadingFileNames} = {};
+  private uploadingFileNamesByPollId: Map<PollId, PollUploadingFileNames> = new Map();
+  private uploadingCancelCallbacks: Map<PollId, Array<() => void>> = new Map();
+  private tempMessageByPollId: Map<PollId, Message.message> = new Map();
 
   constructor() {
     super();
@@ -404,7 +414,7 @@ export class AppPollsManager extends AppManager {
     });
   }
 
-  private uploadPollMedia(peerId: PeerId, media: FinalizedAttachedMedia) {
+  private uploadPollMedia(peerId: PeerId, media: FinalizedAttachedMedia): UploadPollMediaResult {
     if(media.type === 'sticker') {
       return this.makeStickerPollMedia(media);
     }
@@ -416,7 +426,7 @@ export class AppPollsManager extends AppManager {
     return this.uploadPhotoPollMedia(peerId, media);
   }
 
-  private uploadVideoPollMedia(peerId: PeerId, media: AttachedVideo) {
+  private uploadVideoPollMedia(peerId: PeerId, media: AttachedVideo): UploadPollMediaResult {
     const mediaTempId = this.appMessagesManager.getMediaTempId();
 
     const {document, fileType, apiFileName, attachType, attributes, actionName} =
@@ -443,7 +453,8 @@ export class AppPollsManager extends AppManager {
       document
     };
 
-    let uploadFileDeferred: ReturnType<typeof this.apiFileManager.upload>;
+    let uploadFileDeferred: CancellablePromise<InputFile>,
+      uploadThumbnailDeferred: CancellablePromise<InputFile>;
 
     this.appMessagesManager.sendSmthLazyLoadQueue.push({
       load: () => {
@@ -465,6 +476,9 @@ export class AppPollsManager extends AppManager {
               uploadFileDeferred: promise,
               file: media.blob
             });
+          },
+          onThumbnailUploadDeferred: (promise) => {
+            uploadThumbnailDeferred = promise;
           }
         });
 
@@ -493,11 +507,15 @@ export class AppPollsManager extends AppManager {
     return {
       uploadingFileName,
       deferred,
-      messageMedia
+      messageMedia,
+      cancel: () => {
+        uploadFileDeferred?.cancel();
+        uploadThumbnailDeferred?.cancel();
+      }
     };
   }
 
-  private uploadPhotoPollMedia(peerId: PeerId, media: AttachedPhoto) {
+  private uploadPhotoPollMedia(peerId: PeerId, media: AttachedPhoto): UploadPollMediaResult {
     const mediaTempId = this.appMessagesManager.getMediaTempId();
 
     const {photo} = this.appMessagesManager.makeDocumentAndMetaForSendingFile({
@@ -520,9 +538,12 @@ export class AppPollsManager extends AppManager {
       photo
     };
 
+    let uploadFileDeferred: CancellablePromise<InputFile>;
+
     this.appMessagesManager.sendSmthLazyLoadQueue.push({
       load: () => {
-        const uploadFileDeferred = this.apiFileManager.upload({file: media.blob, fileName: uploadingFileName});
+        uploadFileDeferred = this.apiFileManager.upload({file: media.blob, fileName: uploadingFileName});
+
         this.appMessagesManager.syncSentAndUploadPromises({sentDeferred: deferred, uploadFileDeferred, file: media.blob});
 
         uploadFileDeferred.then(async(inputFile) => {
@@ -552,11 +573,12 @@ export class AppPollsManager extends AppManager {
     return {
       uploadingFileName,
       deferred,
-      messageMedia
+      messageMedia,
+      cancel: () => uploadFileDeferred.cancel()
     };
   }
 
-  private makeStickerPollMedia(media: AttachedSticker) {
+  private makeStickerPollMedia(media: AttachedSticker): UploadPollMediaResult {
     // Stickers are referenced by an existing server document, so there's nothing
     // to upload. We resolve the deferred immediately with an inputMediaDocument.
     const doc = this.appDocsManager.getDoc(media.docId);
@@ -761,11 +783,38 @@ export class AppPollsManager extends AppManager {
 
     const {pollWithoutAnswers, messageMedia} = this.makePollMedia({peerId, payload, parsedPayload, uploadingMedia});
 
-    this.uploadingFileNamesByPollId[messageMedia.poll.id] = {
+    const pollId = messageMedia.poll.id;
+
+    this.tempMessageByPollId.set(pollId, message);
+
+    this.uploadingFileNamesByPollId.set(pollId, {
       description: uploadingMedia.description?.uploadingFileName,
       explanation: uploadingMedia.explanation?.uploadingFileName,
       answers: payload.pollOptions.map((_, i) => uploadingMedia.pollOptions.get(i)?.uploadingFileName)
-    };
+    });
+
+    const cancelCallbacks: Array<() => void> = [
+      uploadingMedia.description?.cancel,
+      uploadingMedia.explanation?.cancel,
+      ...Array.from(uploadingMedia.pollOptions.values()).map(option => option.cancel)
+    ].filter(Boolean);
+
+    this.uploadingCancelCallbacks.set(pollId, cancelCallbacks);
+
+    Promise.all([
+      uploadingMedia.description?.deferred,
+      uploadingMedia.explanation?.deferred,
+      ...Array.from(uploadingMedia.pollOptions.values()).map(option => option.deferred)
+    ]).catch(() => {
+      // Run canceling for others in case one fails
+      this.runUploadingCancelCallbacksForPoll(pollId);
+    }).finally(() => {
+      this.uploadingCancelCallbacks.delete(pollId);
+      this.uploadingFileNamesByPollId.delete(pollId);
+
+      // Was needed for canceling the uploads, get rid of it now
+      this.tempMessageByPollId.delete(pollId);
+    });
 
     message.media = messageMedia;
     message.message = parsedPayload.description.text;
@@ -811,10 +860,27 @@ export class AppPollsManager extends AppManager {
   }
 
   public getUploadingFileNamesForPoll(pollId: PollId): PollUploadingFileNames {
-    return this.uploadingFileNamesByPollId[pollId];
+    return this.uploadingFileNamesByPollId.get(pollId);
   }
 
-  public deleteUploadingFileNamesForPoll(pollId: PollId) {
-    delete this.uploadingFileNamesByPollId[pollId];
+  public runUploadingCancelCallbacksForPoll(pollId: PollId) {
+    const callbacks = this.uploadingCancelCallbacks.get(pollId);
+    callbacks?.forEach(callback => {
+      try { callback?.(); } catch{}
+    });
+
+    this.uploadingCancelCallbacks.delete(pollId);
+  }
+
+  public getRandomIdByUploadingFileName(filename: string) {
+    let pollId: PollId | undefined;
+
+    for(const [id, uploadingFileNames] of this.uploadingFileNamesByPollId.entries()) {
+      if(uploadingFileNames.description === filename) pollId = id;
+      if(uploadingFileNames.answers?.includes(filename)) pollId = id;
+      if(uploadingFileNames.explanation === filename) pollId = id;
+    }
+
+    return pollId ? this.tempMessageByPollId.get(pollId)?.random_id : undefined;
   }
 }
