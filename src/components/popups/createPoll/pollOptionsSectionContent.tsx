@@ -189,8 +189,11 @@ const PollOptionFullField = (props: {
   });
 
   const noIcon = createMemo(() => store.pollOptions.length === 2 && !props.mappedItem.option.text && props.index === 0);
-  const canBeReordered = createMemo(() => !noIcon() && (props.index < store.pollOptions.length - 1 || checkOptionHasValue(props.mappedItem.option)));
   const isAdd = createMemo(() => props.index === store.pollOptions.length - 1 && !checkOptionHasValue(lastItem(store.pollOptions)));
+  const canBeReordered = createMemo(() => !noIcon() && !isAdd());
+
+  const noEmojiPicker = createMemo(() => isAdd() && !checkOptionHasValue(props.mappedItems[0].option));
+  const noAttachment = createMemo(() => noEmojiPicker() || noIcon() || isAdd());
 
   const onPointerDown = createMemo(() => props.sortable.dragHandleProps(props.mappedItem.id).onPointerDown);
 
@@ -208,11 +211,10 @@ const PollOptionFullField = (props: {
   };
 
 
-  const focusToEmptyInput = createMemo(() => {
+  const focusToEmptyInputCallback = createMemo(() => {
     if(!isAdd() || store.pollOptions.length !== 2 || checkOptionHasValue(store.pollOptions[0])) return;
 
     return () => {
-      console.log('my-debug callback called');
       props.mappedItems[0]?.inputField?.input.focus();
     };
   });
@@ -225,7 +227,7 @@ const PollOptionFullField = (props: {
     >
       <Show when={store.hasCorrectAnswer}>
         <div class={styles.pollOptionCheckWrapper} classList={{[styles.disabled]: !canBeReordered()}}>
-          <Transition name='fade-2' duration={200} mode='outin'>
+          <Transition name='t-zoom' duration={200} mode='outin'>
             <Show when={!store.allowMultipleAnswers}>
               <div class={styles.checkButtonWrapper} onClick={onRadioClick}>
                 <StaticRadio checked={props.mappedItem.option.checked} />
@@ -246,7 +248,8 @@ const PollOptionFullField = (props: {
         canBeReordered={canBeReordered()}
         noIcon={noIcon()}
         isAdd={isAdd()}
-        noAttachment={isAdd() && !checkOptionHasValue(props.mappedItems[0].option)}
+        noEmojiPicker={noEmojiPicker()}
+        noAttachment={noAttachment()}
         onPointerDown={(e) => {
           if(!canBeReordered()) return;
           blurActiveElement();
@@ -280,8 +283,8 @@ const PollOptionFullField = (props: {
 
           focusInput(props.mappedItems[Math.max(0, props.index - 1)]?.inputField?.input);
         }}
-        onClickOverride={focusToEmptyInput()}
-        onFocus={focusToEmptyInput()}
+        onClickOverride={focusToEmptyInputCallback()}
+        onFocus={focusToEmptyInputCallback()}
       />
     </div>
   );
@@ -299,6 +302,7 @@ const PollOptionInputField = (props: {
   canBeReordered?: boolean;
   isAdd?: boolean;
   noIcon?: boolean;
+  noEmojiPicker?: boolean;
   noAttachment?: boolean;
 
   onChange: (option: Partial<StorePollOption>) => void;
@@ -346,7 +350,6 @@ const PollOptionInputField = (props: {
 
   createEffect(() => {
     if(!props.onFocus) return;
-    console.log('my-debug', props.onFocus)
     subscribeOn(inputField.input)('focus', props.onFocus);
   });
 
@@ -396,12 +399,13 @@ const PollOptionInputField = (props: {
         {inputField.input}
         {inputField.placeholder}
       </SimpleFormField.InputStub>
-      <Show when={!props.noAttachment}>
-        <SimpleFormField.SideContent withFixedIcon first last>
-          <EmojiDropdownButton class={interactableClass} inputField={inputField} />
-        </SimpleFormField.SideContent>
-      </Show>
-      <Transition name='t-zoom'>
+
+      <TransitionGroup name='t-zoom' moveClass='t-move'>
+        <Show when={!props.noEmojiPicker}>
+          <SimpleFormField.SideContent withFixedIcon first last>
+            <EmojiDropdownButton class={interactableClass} inputField={inputField} />
+          </SimpleFormField.SideContent>
+        </Show>
         <Show when={!props.noAttachment && (supportsMedia('photo') || supportsMedia('video') || supportsMedia('sticker'))}>
           <SimpleFormField.WithAutoLengthCounter
             maxLength={maxOptionLength()}
@@ -425,7 +429,7 @@ const PollOptionInputField = (props: {
             />
           </SimpleFormField.WithAutoLengthCounter>
         </Show>
-      </Transition>
+      </TransitionGroup>
     </SimpleFormField>
   );
 };
