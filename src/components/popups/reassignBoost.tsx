@@ -21,7 +21,7 @@ import {hideToast, toastNew} from '@components/toast';
 import tsNow from '@helpers/tsNow';
 import {wrapLeftDuration} from '@components/wrappers/wrapDuration';
 import {IconTsx} from '@components/iconTsx';
-import {createListTransition} from '@helpers/solid/createListTransition';
+import {createListTransition} from '@vendor/createListTransition';
 
 const className = 'popup-boost';
 

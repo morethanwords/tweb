@@ -2,11 +2,12 @@ import _getConvenientPositioning from '@components/mediaEditor/canvas/getConveni
 import {useCropOffset} from '@components/mediaEditor/canvas/useCropOffset';
 import {useMediaEditorContext} from '@components/mediaEditor/context';
 import {NumberPair} from '@components/mediaEditor/types';
-import {snapToViewport, withCurrentOwner} from '@components/mediaEditor/utils';
+import {snapToViewport} from '@components/mediaEditor/utils';
 import SwipeHandler from '@components/swipeHandler';
 import {animateValue} from '@helpers/animateValue';
 import {lerp, lerpArray} from '@helpers/lerp';
 import throttle from '@helpers/schedulers/throttle';
+import {withCurrentOwner} from '@helpers/solid/withCurrentOwner';
 import {batch, createEffect, createMemo, createSignal, on, onCleanup, onMount} from 'solid-js';
 import {modifyMutable, produce} from 'solid-js/store';
 

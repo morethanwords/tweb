@@ -12,6 +12,10 @@ type Props = {
    */
   strokeThickness: number;
   withText?: boolean;
+  /**
+   * Font size in SVG units (the viewBox is 120x120). Defaults to 30.
+   */
+  textSize?: number;
   animate?: boolean;
 };
 
@@ -54,7 +58,7 @@ export const ProgressCircleSVG = (props: Props) => {
           dy=".3em"
           text-anchor="middle"
           style={{
-            'font-size': '30px',
+            'font-size': `${props.textSize ?? 30}px`,
             'font-weight': 'bolder',
             'fill': 'white'
           }}

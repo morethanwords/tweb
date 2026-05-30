@@ -13,5 +13,22 @@
     {
       "code_action": "source.fixAll.eslint"
     }
+  ],
+  "file_scan_exclusions": [
+    "**/node_modules",
+    "**/dist",
+    "rlottie_with_printf",
+    "public",
+    "snapshot-server/snapshots",
+    // Default values:
+    "**/.svn",
+    "**/.hg",
+    "**/.jj",
+    "**/CVS",
+    "**/.DS_Store",
+    "**/Thumbs.db",
+    "**/.classpath",
+    "**/.settings",
+    "**/.git"
   ]
 }

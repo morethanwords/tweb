@@ -1015,7 +1015,6 @@ export default class PopupNewMedia extends PopupElement {
 
           this.hideActiveActionsMenu();
         }).finally(() => {
-          editResult.creationProgress?.dispose();
           div?.remove();
           dispose();
           (this.btnConfirmOnEnter as HTMLButtonElement).disabled = false;
@@ -1274,7 +1273,6 @@ export default class PopupNewMedia extends PopupElement {
     if(idx < 0) return;
     this.hideActiveActionsMenu();
     this.files.splice(idx, 1);
-    params.editResult?.creationProgress?.dispose();
     this.files.length ? this.attachFiles() : this.destroy();
   }
 

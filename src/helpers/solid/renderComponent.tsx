@@ -24,5 +24,6 @@ export const renderComponent = <T extends object>({
   const dispose = element ?
     render(() => <ToRender />, element) :
     createRoot((dispose) => {<ToRender />; return dispose});
+
   middleware.onDestroy(() => dispose());
 };

@@ -1,0 +1,66 @@
+.popup {
+  --popup-width: 23.5rem;
+  --popup-min-width: 22rem;
+  --popup-max-width: 26rem;
+  --popup-border-radius: 1.25rem;
+
+  :global(.themes-container) {
+    padding-inline: .5rem;
+  }
+}
+
+.popupContainer {
+  // Surface bg lives here so the lower panel (body header + picker + footer)
+  // reads as one continuous panel below the captureArea. The captureArea has
+  // its own ChatBackground inside so its wallpaper paints over this surface
+  // for the upper half — net result: wallpaper on top, surface on bottom.
+  background: var(--surface-color);
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// TopSection canvas — the whole hero area (wallpaper + card + avatar + QR +
+// username) lives on a single canvas painted from JS. SCSS just supplies the
+// CSS-px width/height (the canvas itself runs at 2× backing for retina) and
+// the off-DOM hosts that feed it.
+// ────────────────────────────────────────────────────────────────────────────
+
+.captureCanvas {
+  display: block;
+  flex: 0 0 auto;
+}
+
+// Off-DOM mount point for `<ChatBackgroundLayer>` and `<AvatarNewTsx>` — we
+// only need their internal canvas / img to be painted/loaded so we can sample
+// them; they never appear on screen themselves.
+.hiddenHost {
+  position: absolute;
+  left: -99999px;
+  top: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.title {
+  flex: 1 1 auto;
+  text-align: center;
+  margin: 0 .5rem;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Theme picker strip — fully delegated to `<ChatThemesPicker>`. We don't
+// override `.themes-container` / `.theme-container` / `.theme-bubble` sizes
+// here so the picker reads identical to the one in generalSettings. The only
+// local tweak is a negative-margin pair to absorb the section's 1rem horizontal
+// padding (otherwise the section-edge-extension `width: calc(100% + 1rem)`
+// would still leave .5rem white gutters on both sides of the strip).
+// ────────────────────────────────────────────────────────────────────────────
+
+.themePicker {
+  margin: 0 -1rem;
+}
+
+.copyBtn {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+}

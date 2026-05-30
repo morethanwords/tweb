@@ -38,6 +38,7 @@ import {clearSensitiveSpoilers} from '@components/wrappers/mediaSpoiler';
 import useContentSettings from '@stores/contentSettings';
 import AppPrivacyBirthdayTab from '@components/sidebarLeft/tabs/privacy/birthday';
 import AppPrivacySavedMusicTab from '@components/sidebarLeft/tabs/privacy/savedMusic';
+import AppPrivacyGiftsTab from '@components/sidebarLeft/tabs/privacy/gifts';
 import ChangeLoginEmailTab from '@components/sidebarLeft/tabs/changeLoginEmail';
 import {wrapEmailPattern} from '@components/popups/emailSetup';
 import IS_WEB_AUTHN_SUPPORTED from '@environment/webAuthn';
@@ -409,6 +410,15 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         listenerSetter: this.listenerSetter
       });
 
+      const giftsRow = rowsByKeys['inputPrivacyKeyStarGiftsAutoSave'] = new Row({
+        titleLangKey: 'Privacy.GiftsRow',
+        subtitleLangKey: SUBTITLE,
+        clickable: () => {
+          openTabWithGlobalPrivacy(AppPrivacyGiftsTab, 'inputPrivacyKeyStarGiftsAutoSave');
+        },
+        listenerSetter: this.listenerSetter
+      });
+
       const createPremiumTitle = (langKey: LangPackKey) => {
         const fragment = document.createDocumentFragment();
         const icon = Icon('star', 'privacy-premium-icon');
@@ -478,7 +488,14 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
 
         this.managers.appPrivacyManager.getPrivacy(key as InputPrivacyKey['_']).then((rules) => {
           const details = getPrivacyRulesDetails(rules);
-          const langKey = map[details.type];
+          let langKey = map[details.type];
+          if(details.type === PrivacyType.Nobody && details.allowMiniApps) {
+            langKey = 'PrivacyMiniApps';
+          } else if(details.type === PrivacyType.Everybody && details.disallowMiniApps) {
+            langKey = 'PrivacyNoMiniApps';
+          } else if(details.type === PrivacyType.Contacts && details.allowMiniApps) {
+            langKey = 'PrivacyContactsAndMiniApps';
+          }
           const disallowLength = details.disallowPeers.users.length + details.disallowPeers.chats.length;
           const allowLength = details.allowPeers.users.length + details.allowPeers.chats.length;
 
@@ -501,6 +518,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         voicesRow,
         messagesRow,
         birthdayRow,
+        giftsRow,
         savedMusicRow
       ].filter(Boolean).map((row) => row.container));
       this.scrollable.append(section.container);

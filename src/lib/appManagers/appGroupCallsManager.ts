@@ -52,6 +52,39 @@ export interface CallRecordParams {
   videoHorizontal: boolean;
 }
 
+/**
+ * Group-call ids are `string | number` (see layer.d.ts): the MTProto layer
+ * keeps ids that fit in a JS safe integer as numbers and larger ones as
+ * strings, while the call stack — GroupCallInstance.id, the join response's
+ * resolvedCallId, the e2e chain polling — consistently holds the String() form.
+ * A plain Map keyed by the raw id therefore files a small-id call under a
+ * numeric key that a later string lookup never finds (Map.get is type-strict):
+ * getGroupCallInput then throws "Group call <id> not found" on connect and the
+ * conference popup renders empty. Normalising every key to its string form makes
+ * lookups type-agnostic no matter how the caller holds the id.
+ */
+class GroupCallIdMap<V> extends Map<GroupCallId, V> {
+  private static normalize(id: GroupCallId): GroupCallId {
+    return id == null ? id : '' + id;
+  }
+
+  get(id: GroupCallId) {
+    return super.get(GroupCallIdMap.normalize(id));
+  }
+
+  set(id: GroupCallId, value: V) {
+    return super.set(GroupCallIdMap.normalize(id), value);
+  }
+
+  has(id: GroupCallId) {
+    return super.has(GroupCallIdMap.normalize(id));
+  }
+
+  delete(id: GroupCallId) {
+    return super.delete(GroupCallIdMap.normalize(id));
+  }
+}
+
 export class AppGroupCallsManager extends AppManager {
   private groupCalls: Map<GroupCallId, MyGroupCall>;
   private participants: Map<GroupCallId, Map<PeerId, GroupCallParticipant>>;
@@ -64,9 +97,9 @@ export class AppGroupCallsManager extends AppManager {
   protected after() {
     this.name = 'GROUP-CALLS';
 
-    this.groupCalls = new Map();
-    this.participants = new Map();
-    this.nextOffsets = new Map();
+    this.groupCalls = new GroupCallIdMap<MyGroupCall>();
+    this.participants = new GroupCallIdMap<Map<PeerId, GroupCallParticipant>>();
+    this.nextOffsets = new GroupCallIdMap<string>();
 
     this.cachedStreamChannels = new Map();
 
@@ -356,6 +389,19 @@ export class AppGroupCallsManager extends AppManager {
 
     return promise.then((updates) => {
       this.apiUpdatesManager.processUpdateMessage(updates);
+
+      // Re-join hygiene: forget this call's participant-fetch state on leave.
+      // `nextOffsets[id]` is set to '' once we've paginated participants to the
+      // end; if it survives, a later re-join's getGroupCallParticipants sees
+      // nextOffset==='' and SKIPS the fetch entirely — so neither our fresh
+      // self source nor the peers' sources are re-dispatched. The call popup
+      // then renders empty (updateInstance bails while `participant` is unset →
+      // no header, no mic button) and no recvonly transceivers get created for
+      // peers (no inbound video). Clearing the cursor + the cached map forces a
+      // full re-fetch + re-dispatch on the next join. (A full discard already
+      // clears `participants` via the groupCallDiscarded update handler.)
+      this.nextOffsets.delete(id);
+      this.participants.delete(id);
     });
   }
 
@@ -407,6 +453,23 @@ export class AppGroupCallsManager extends AppManager {
       const extended = update as Update.updateGroupCallConnection & {resolvedCallId?: string; resolvedAccessHash?: string};
       extended.resolvedCallId = String(groupCallUpdate.call.id);
       extended.resolvedAccessHash = String(groupCallUpdate.call.access_hash);
+    }
+
+    // Re-join hygiene — covers reloads, not just clean leaves. hangUp() resets
+    // the participant-pagination cursor on a deliberate leave, but a page
+    // reload keeps the SharedWorker (and this manager's nextOffsets) alive
+    // while destroying the connection, so hangUp never runs. Reset the cursor
+    // for the resolved call id on every main (re)join so the post-join
+    // getGroupCallParticipants always does a full fetch + re-dispatch — without
+    // it, rejoining after a reload sees nextOffset==='' and skips the fetch,
+    // leaving an empty call popup and no inbound video. Only the cursor is
+    // cleared here (not the cached participant map) so we don't wipe a
+    // participant the join updates may have just added.
+    if(options.type === 'main') {
+      const resolvedId = (groupCallUpdate && groupCallUpdate.call._ !== 'groupCallDiscarded') ?
+        String(groupCallUpdate.call.id) :
+        groupCallId;
+      this.nextOffsets.delete(resolvedId);
     }
     return update;
   }

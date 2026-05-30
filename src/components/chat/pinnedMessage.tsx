@@ -6,7 +6,7 @@ import rootScope from '@lib/rootScope';
 import Chat from '@components/chat/chat';
 import ListenerSetter from '@helpers/listenerSetter';
 import {getHeavyAnimationPromise} from '@hooks/useHeavyAnimationCheck';
-import {i18n} from '@lib/langPack';
+import {i18n, I18n} from '@lib/langPack';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import handleScrollSideEvent from '@helpers/dom/handleScrollSideEvent';
@@ -28,6 +28,7 @@ import {KeyboardButton, Message} from '@layer';
 import TopbarPlate, {createTopbarPlate, TopbarPlateController} from '@components/chat/topbarPlate';
 import {createSignal, JSX} from 'solid-js';
 import classNames from '@helpers/string/classNames';
+import getWebPageActionOnClick from '@components/chat/getWebPageActionOnClick';
 
 /**
  * Top-level body component so solid-refresh can swap it on HMR. All
@@ -597,8 +598,6 @@ export default function createChatPinnedMessage(
   }
 
   function updateActionButton(message?: Message.message) {
-    const button = getSingleInlineButton(message);
-
     const oldBtn = actionContainer.querySelector(
       '.pinned-container-action-button:not(.is-leaving)'
     ) as HTMLElement | null;
@@ -606,29 +605,48 @@ export default function createChatPinnedMessage(
     customButtonMiddleware = undefined;
 
     let newBtn: HTMLElement | undefined;
+    let buttonText: string | undefined;
 
-    if(button) {
-      const middleware = getMiddleware();
-      const handler = getKeyboardButtonHandler({
-        button,
-        chat,
-        message,
-        wrapOptions: {
-          middleware: middleware.get(),
-          textColor: 'white'
-        }
+    // Join-call button: when the pinned message is a `telegram_call` web-page
+    // preview, reuse the exact onclick the bubble web-page renderer attaches
+    // (wrapUrl → internal-link dispatch), gated to that single type so no other
+    // preview type produces an action here. Labelled `PinnedJoinCall`.
+    const media = message?.media;
+    const webPage = media?._ === 'messageMediaWebPage' ? media.webpage : undefined;
+    const onCallClick = webPage && getWebPageActionOnClick(webPage, ['telegram_call']);
+
+    if(onCallClick) {
+      buttonText = I18n.format('PinnedJoinCall', true);
+      newBtn = createCustomActionButton({
+        text: i18n('PinnedJoinCall'),
+        onClick: onCallClick
       });
-
-      if(handler) {
-        newBtn = createCustomActionButton({
-          text: handler.text,
-          onClick: handler.onClick,
-          as: handler.as
+    } else {
+      const button = getSingleInlineButton(message);
+      if(button) {
+        const middleware = getMiddleware();
+        const handler = getKeyboardButtonHandler({
+          button,
+          chat,
+          message,
+          wrapOptions: {
+            middleware: middleware.get(),
+            textColor: 'white'
+          }
         });
-        handler.refCallbacks.forEach((cb) => cb(newBtn));
-        customButtonMiddleware = middleware;
-      } else {
-        middleware.destroy();
+
+        if(handler) {
+          buttonText = button.text;
+          newBtn = createCustomActionButton({
+            text: handler.text,
+            onClick: handler.onClick,
+            as: handler.as
+          });
+          handler.refCallbacks.forEach((cb) => cb(newBtn));
+          customButtonMiddleware = middleware;
+        } else {
+          middleware.destroy();
+        }
       }
     }
 
@@ -641,7 +659,7 @@ export default function createChatPinnedMessage(
       const BUTTON_PADDING_X = 32;
       const BUTTON_MAX_WIDTH = 160;
       const TEXT_TO_BUTTON_GAP = 8;
-      const textWidth = getTextWidth(button.text, FontFullBold);
+      const textWidth = getTextWidth(buttonText, FontFullBold);
       const buttonWidth = Math.min(Math.ceil(textWidth) + BUTTON_PADDING_X, BUTTON_MAX_WIDTH) - 48;
       plate.container.style.setProperty('--action-button-width', `${buttonWidth + TEXT_TO_BUTTON_GAP}px`);
     }

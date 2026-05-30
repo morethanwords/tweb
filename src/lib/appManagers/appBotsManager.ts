@@ -2,10 +2,30 @@ import {AccountDatabase, getDatabaseState} from '@config/databases/state';
 import {TelegramWebViewSendEventMap} from '@types';
 import AppStorage from '@lib/storage';
 import {AppManager} from '@appManagers/manager';
+import {User} from '@layer';
+import {getFloodWaitTime} from './utils/getFloodWaitTime';
 
 type InternalWebAppStorageKey = 'locationPermission' | 'deviceStorageUsed' | 'deviceStorageUsedKeys';
 const DEVICE_STORAGE_QUOTA_SIZE = 5 * 1024 * 1024; // 5 MB
 const DEVICE_STORAGE_QUOTA_KEYS = 10;
+
+type CreateManagedBotArgs = {
+  managerId: PeerId;
+  botName: string;
+  username: string;
+};
+
+type CheckUsernameResult = 'available' | 'taken' | 'invalid' | 'error';
+
+type CreateManagedBotResult = {
+  status: 'created';
+  user: User.user;
+} | {
+  status: 'wait';
+  waitTime: number;
+} | {
+  status: 'error';
+};
 
 export default class AppBotsManager extends AppManager {
   private webAppStorage: AppStorage<Record<string, string>, AccountDatabase>;
@@ -139,5 +159,44 @@ export default class AppBotsManager extends AppManager {
     }
 
     return res;
+  }
+
+  public async createManagedBot({managerId, botName, username}: CreateManagedBotArgs): Promise<CreateManagedBotResult> {
+    try {
+      const user = await this.apiManager.invokeApi('bots.createBot', {
+        manager_id: this.appUsersManager.getUserInput(managerId.toUserId()),
+        name: botName,
+        username: username
+      });
+
+      if(user._ === 'userEmpty') return {status: 'error'};
+
+      this.appUsersManager.saveApiUser(user);
+
+      return {status: 'created', user};
+    } catch(e) {
+      const error = e as ApiError;
+
+      const waitTimeResult = getFloodWaitTime(error);
+
+      if(waitTimeResult.hasWaitTime) {
+        return {status: 'wait', waitTime: waitTimeResult.waitTime};
+      }
+
+      return {status: 'error'};
+    }
+  }
+
+  public async checkUsername(username: string): Promise<CheckUsernameResult> {
+    try {
+      const isAvailable = await this.apiManager.invokeApi('bots.checkUsername', {username});
+      return isAvailable ? 'available' : 'taken';
+    } catch(e) {
+      const error = e as ApiError;
+      if(error.type === 'USERNAME_OCCUPIED') return 'taken';
+      if(error.type === 'USERNAME_INVALID') return 'invalid';
+
+      return 'error';
+    }
   }
 }

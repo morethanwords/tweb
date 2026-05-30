@@ -6,8 +6,8 @@ import RangeInput from '@components/mediaEditor/rangeInput';
 import StepInput, {StepInputStep} from '@components/mediaEditor/stepInput';
 import useIsMobile from '@components/mediaEditor/useIsMobile';
 import {availableQualityHeights, checkIfHasAnimatedStickers, snapToAvailableQuality} from '@components/mediaEditor/utils';
-import {HeightTransition} from '@components/sidebarRight/tabs/adminRecentActions/heightTransition';
 import Space from '@components/space';
+import {HeightTransition} from '@helpers/solid/heightTransition';
 import {i18n} from '@lib/langPack';
 import {createEffect, createMemo, createSignal, on, onCleanup, Show} from 'solid-js';
 

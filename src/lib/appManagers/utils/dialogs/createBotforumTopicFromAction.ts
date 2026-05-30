@@ -24,7 +24,8 @@ export function createBotforumTopicFromAction({message, action}: CreateTopicFrom
     read_outbox_max_id: 0,
     unread_count: 1,
     unread_mentions_count: 0,
-    unread_reactions_count: 0
+    unread_reactions_count: 0,
+    unread_poll_votes_count: 0
   };
 
   return newTopic;

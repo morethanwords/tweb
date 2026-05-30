@@ -6,6 +6,8 @@ export default function getPrivacyRulesDetails(rules: PrivacyRule[]) {
 
   type peers = {users: UserId[], chats: ChatId[]};
   const allowPeers: peers = {users: [], chats: []}, disallowPeers: peers = {users: [], chats: []};
+  let allowMiniApps = false;
+  let disallowMiniApps = false;
   rules.forEach((rule) => {
     switch(rule._) {
       case 'privacyValueAllowAll':
@@ -32,8 +34,14 @@ export default function getPrivacyRulesDetails(rules: PrivacyRule[]) {
       case 'privacyValueDisallowUsers':
         disallowPeers.users.push(...rule.users);
         break;
+      case 'privacyValueAllowBots':
+        allowMiniApps = true;
+        break;
+      case 'privacyValueDisallowBots':
+        disallowMiniApps = true;
+        break;
     }
   });
 
-  return {type: types[0], disallowPeers, allowPeers};
+  return {type: types[0], disallowPeers, allowPeers, allowMiniApps, disallowMiniApps};
 }

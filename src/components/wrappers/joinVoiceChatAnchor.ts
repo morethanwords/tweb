@@ -1,10 +1,8 @@
 import {InputGroupCall, Message, MessageAction} from '@layer';
 import wrapUrl from '@lib/richTextProcessor/wrapUrl';
-import rootScope from '@lib/rootScope';
-import groupCallsController from '@lib/calls/groupCallsController';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
-import IS_CONFERENCE_CALL_SUPPORTED from '@environment/conferenceCallSupport';
+import noop from '@helpers/noop';
 
 export default function wrapJoinVoiceChatAnchor(message: Message.messageService) {
   const action = message.action as
@@ -13,18 +11,13 @@ export default function wrapJoinVoiceChatAnchor(message: Message.messageService)
     | MessageAction.messageActionGroupCall;
 
   // 1-on-1 chats with a User peer mean this is a TdE2E conference invite —
-  // legacy voice chats only live in chats/channels. Bypass the URL handler
-  // (which assumes peerId.toChatId() is valid) and call into the conference
-  // controller directly via `inputGroupCallInviteMessage`, which is the
-  // canonical form for joining from a service message (see tdesktop
+  // legacy voice chats only live in chats/channels. Route the invite straight
+  // into `appImManager.joinConference` — the single conference-join policy entry
+  // point, which owns the support gate, the leave-current-call confirmation and
+  // the dead-link error UX — via `inputGroupCallInviteMessage`, the canonical
+  // form for joining from a service message (see tdesktop
   // window_session_controller.cpp:993 and calls_group_call.cpp:4254).
-  //
-  // Gated until the SFU exposes a multi-mid layout to browser clients — see
-  // docs/conf-call-browser-recv-blocker.md.
   if(message.peerId.isUser()) {
-    if(!IS_CONFERENCE_CALL_SUPPORTED) {
-      return document.createElement('span');
-    }
     const inviteInput: InputGroupCall.inputGroupCallInviteMessage = {
       _: 'inputGroupCallInviteMessage',
       msg_id: getServerMessageId(message.mid)
@@ -32,16 +25,15 @@ export default function wrapJoinVoiceChatAnchor(message: Message.messageService)
 
     const a = document.createElement('a');
     a.classList.add('anchor-join-conference');
-    attachClickEvent(a, async() => {
-      try {
-        await groupCallsController.joinConference({
-          input: inviteInput,
-          selfUserId: BigInt(rootScope.myId),
-          muted: true
-        });
-      } catch(err) {
-        console.error('joinConference failed', err);
-      }
+    // Lazy import — keep it dynamic. `joinVoiceChatAnchor` sits on the message-
+    // render path, which is itself inside `appImManager`'s static import graph;
+    // a top-level `import appImManager` here closes a cycle that crashes page
+    // load with a `Row` TDZ ("Cannot access 'Row' before initialization").
+    // Resolving it at click-time (appImManager is long loaded by then) keeps the
+    // single conference-join entry point without the cycle. `.catch(noop)` drops
+    // the benign leave-current-call cancel — every join error is toasted inside.
+    attachClickEvent(a, () => {
+      import('@lib/appImManager').then(({default: appImManager}) => appImManager.joinConference(inviteInput)).catch(noop);
     });
     return a;
   }

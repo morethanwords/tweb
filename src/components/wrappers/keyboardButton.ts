@@ -20,6 +20,10 @@ import wrapCustomEmoji from '@components/wrappers/customEmoji';
 import {makeMediaSize} from '@helpers/mediaSize';
 import ReplyMarkupLayout from '@components/chat/bubbleParts/replyMarkupLayout';
 import classNames from '@helpers/string/classNames';
+import showCreateBotPopup from '@components/popups/createBot';
+import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import {wrapFormattedDuration} from './wrapDuration';
+import formatDuration from '@helpers/formatDuration';
 
 export type KeyboardButtonHandler = {
   text: DocumentFragment | HTMLElement,
@@ -225,13 +229,62 @@ export function getKeyboardButtonHandler({
 
     case 'keyboardButtonRequestPeer': {
       onClick = async() => {
-        let filterPeerTypeBy: AppSelectPeers['filterPeerTypeBy'];
         const peerType = button.peer_type;
 
         const isRequestingUser = peerType._ === 'requestPeerTypeUser';
         const isRequestingChannel = peerType._ === 'requestPeerTypeBroadcast';
         const isRequestingGroup = peerType._ === 'requestPeerTypeChat';
+        const isRequestingBotCreation = peerType._ === 'requestPeerTypeCreateBot';
 
+        if(isRequestingBotCreation) {
+          showCreateBotPopup({
+            requestingPeerId: peerId,
+            suggestedBotName: peerType.suggested_name,
+            suggestedUsername: peerType.suggested_username,
+            onCreate: async({name, username}) => {
+              try {
+                const createBotResult = await rootScope.managers.appBotsManager.createManagedBot({
+                  managerId: peerId,
+                  botName: name,
+                  username: username
+                });
+
+                if(createBotResult.status === 'wait') {
+                  toastNew({
+                    langPackKey: 'CreateBot.TooManyBotsCreated',
+                    langPackArguments: [wrapFormattedDuration(formatDuration(createBotResult.waitTime))]
+                  });
+                  return true; // Close it, wait time is long
+                }
+
+                if(createBotResult.status === 'error') {
+                  toastNew({
+                    langPackKey: 'CreateBot.FailedToCreate',
+                    langPackArguments: []
+                  });
+                  return false;
+                }
+
+                const user = createBotResult.user;
+
+                await rootScope.managers.appMessagesManager.sendBotRequestedPeer(
+                  peerId,
+                  messageMid,
+                  button.button_id,
+                  [user.id.toPeerId()]
+                );
+
+                return true;
+              } catch{
+                return false;
+              }
+            },
+            HotReloadGuard: SolidJSHotReloadGuardProvider
+          });
+          return;
+        }
+
+        let filterPeerTypeBy: AppSelectPeers['filterPeerTypeBy'];
         const _peerType: SelectSearchPeerType[] = ['dialogs'];
         if(isRequestingUser) {
           filterPeerTypeBy = (peer) => {

@@ -1,8 +1,10 @@
-import type {ListTransitionOptions} from '@solid-primitives/transition-group';
-import {Modify} from '@types';
-import {createSignal, useTransition, $TRACK, createMemo, Accessor, untrack} from 'solid-js';
-import {isServer} from 'solid-js/web';
-import noop from '@helpers/noop';
+import type { ListTransitionOptions } from '@solid-primitives/transition-group';
+import { $TRACK, Accessor, createMemo, createSignal, untrack, useTransition } from 'solid-js';
+import { isServer } from 'solid-js/web';
+
+type Modify<T, R> = Omit<T, keyof R> & R;
+
+const noop = () => {};
 
 export function createListTransition<T extends object>(
   source: Accessor<readonly T[]>,

@@ -8,6 +8,8 @@ import GroupCallInstance from '@lib/calls/groupCallInstance';
 import filterServerCodecs from '@lib/calls/helpers/filterServerCodecs';
 import fixLocalOffer from '@lib/calls/helpers/fixLocalOffer';
 import processMediaSection from '@lib/calls/helpers/processMediaSection';
+import senderKind from '@lib/calls/helpers/senderKind';
+import {E2E_MAIN_CHANNEL_ID, E2E_SCREENCAST_CHANNEL_ID} from '@lib/calls/constants';
 import {ConferenceEntry} from '@lib/calls/localConferenceDescription';
 import SDP from '@lib/calls/sdp';
 import SDPMediaSection from '@lib/calls/sdp/mediaSection';
@@ -130,11 +132,10 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
     const {groupCall, description} = this;
     const groupCallId = groupCall.id;
 
-    // Conference (e2e) SFU expects the opposite DTLS role from the legacy
-    // voice-chat SFU — see processMediaSection comment.
-    const forE2eConference = options.type === 'main' && !!options.e2ePublicKey;
+    // DTLS role (client = passive, SFU = active) is the same for legacy and
+    // conference calls — see processMediaSection comment.
     const processedChannels = mainChannels.map((section) => {
-      const processed = processMediaSection(localSdp, section, {forE2eConference});
+      const processed = processMediaSection(localSdp, section);
 
       this.sources[processed.entry.type as 'video' | 'audio'] = processed.entry;
 
@@ -426,6 +427,25 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
     // }
 
     this.streamManager.addStream(stream, 'input');
-    this.appendStreamToConference(); // replace sender track
+    // Attach the e2e send transform to any sender created here, in the
+    // createTransceiver→replaceTrack gap (the only window Chrome accepts it).
+    // The MAIN connection's senders are already wired at join
+    // (joinConferenceCommon's onSenderCreated hook), so for that connection the
+    // video transceiver already exists and this hook does not re-fire. It DOES
+    // fire for the PRESENTATION (screen-share) connection, which is created
+    // later with no such wiring — without it, screen-share video would go out
+    // UNENCRYPTED and the SFU/peer couldn't decrypt it. attachE2eSendTransform
+    // no-ops for legacy (non-e2e) calls and for already-transformed senders.
+    this.appendStreamToConference((sender) => {
+      const kind = senderKind(this.connection, sender);
+      // Screencast video uses its own e2e channel so its per-(sender, channel)
+      // replay window doesn't contend with the main camera/audio. tde2e keys
+      // replay by channel_id; the id value itself isn't validated by the peer
+      // (the mismatch check is disabled), only its distinctness matters.
+      const channelId = this.type === 'presentation' && kind === 'video' ?
+        E2E_SCREENCAST_CHANNEL_ID :
+        E2E_MAIN_CHANNEL_ID;
+      this.groupCall.attachE2eSendTransform(sender, kind, channelId);
+    }); // replace sender track
   }
 }

@@ -14,7 +14,7 @@ import LazyLoadQueueBase from '@components/lazyLoadQueueBase';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import tsNow from '@helpers/tsNow';
 import {nextRandomUint, randomLong} from '@helpers/random';
-import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, UrlAuthResult, MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, InputUser, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities, ChannelsSearchPosts, FactCheck, MessageExtendedMedia, SponsoredMessage, MessagesSponsoredMessages, InputGroupCall, TodoItem, TodoCompletion, SearchPostsFlood, UserFull, MessagesDeleteSavedHistory, ChannelsDeleteParticipantHistory, MessagesDeleteHistory, MessagesDeleteTopicHistory} from '@layer';
+import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap,  PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, WebPage, GeoPoint, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory,  MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities, ChannelsSearchPosts, FactCheck, MessageExtendedMedia, SponsoredMessage, MessagesSponsoredMessages, InputGroupCall, TodoItem, TodoCompletion, SearchPostsFlood,  MessagesDeleteSavedHistory, ChannelsDeleteParticipantHistory, MessagesDeleteHistory, MessagesDeleteTopicHistory} from '@layer';
 import {ArgumentTypes, InvokeApiOptions, Modify} from '@types';
 import {logger, LogTypes} from '@lib/logger';
 import {ReferenceContext} from '@lib/storages/references';
@@ -93,6 +93,7 @@ import pickKeys from '@helpers/object/pickKeys';
 import namedPromises from '@helpers/namedPromises';
 import callbackifyAll from '@helpers/callbackifyAll';
 import {createBotforumTopicFromAction} from './utils/dialogs/createBotforumTopicFromAction';
+import {AttachedMedia, CreatePollPayload} from '@components/popups/createPoll/storeContext';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -259,6 +260,7 @@ export type MessageSendingParams = Partial<{
   replyToMsgId: number,
   replyToStoryId: number,
   replyToQuote: {text: string, entities?: MessageEntity[], offset?: number},
+  replyToPollOption: Uint8Array,
   replyToPeerId: PeerId,
   replyTo: InputReplyTo,
   replyToMonoforumPeerId: PeerId,
@@ -325,7 +327,8 @@ export type SearchStorageFilterKey = string;
 type GetUnreadMentionsOptions = {
   peerId: PeerId,
   threadId?: number,
-  isReaction?: boolean
+  isReaction?: boolean,
+  isPollVote?: boolean
 };
 
 type UploadThumbAndCoverArgs = {
@@ -466,6 +469,27 @@ type EditMessageMediaArgs = {
   }> & Partial<Pick<Parameters<AppMessagesManager['sendText']>[0], 'webPage' | 'webPageOptions' | 'noWebPage' | 'invertMedia'>>
 };
 
+type MakeMediaUploadDeferredArgs = Pick<SendFileDetails, 'file'>;
+
+type SyncSentAndUploadPromisesArgs = {
+  sentDeferred: CancellablePromise<any>;
+  uploadFileDeferred: CancellablePromise<any>;
+  file: File | Blob;
+};
+
+type UploadMediaFileArgs =
+  Pick<SendFileDetails, 'objectURL' | 'thumb' | 'spoiler'>
+  &
+  Pick<ReturnType<AppMessagesManager['makeDocumentAndMetaForSendingFile']>, 'fileType' | 'apiFileName' | 'attachType' | 'attributes' | 'actionName'>
+  &
+  {
+    peerId: PeerId;
+    uploadingFileName: string;
+    file: File | Blob;
+
+    onUploadDeferred?: (deferred: CancellablePromise<any>) => void;
+  };
+
 type InvokeEditMessageMediaArgs = {
   message: Message.message;
   inputMedia: InputMedia;
@@ -527,7 +551,7 @@ export class AppMessagesManager extends AppManager {
     messageSendCallbacks: Array<() => void>;
   }> = {};
 
-  private sendSmthLazyLoadQueue = new LazyLoadQueueBase(10);
+  public sendSmthLazyLoadQueue = new LazyLoadQueueBase(10);
 
   private needSingleMessages: Map<PeerId, Map<number, CancellablePromise<Message.message | Message.messageService>>> = new Map();
   private fetchSingleMessagesPromise: Promise<void>;
@@ -585,7 +609,7 @@ export class AppMessagesManager extends AppManager {
   private waitingTranscriptions: Map<string, CancellablePromise<MessagesTranscribedAudio>>;
   private paidMessagesQueue = new PaidMessagesQueue;
 
-  private repayRequestHandler: RepayRequestHandler;
+  public repayRequestHandler: RepayRequestHandler;
 
   private typingBotforumMessages: Map<PeerId, Set<string>> = new Map();
 
@@ -968,12 +992,7 @@ export class AppMessagesManager extends AppManager {
       ])
     });
 
-    const sentDeferred = deferredPromise<InputMedia>();
-
-    const uploadingFileName = !isDocument ? getFileNameForUpload(file as File | Blob) : undefined;
-    if(uploadingFileName) {
-      this.uploadFilePromises[uploadingFileName] = sentDeferred;
-    }
+    const {deferred: sentDeferred, uploadingFileName} = this.makeMediaUploadDeferred({file});
 
     const media: MessageMedia = isDocument ? undefined : {
       _: photo ? 'messageMediaPhoto' : 'messageMediaDocument',
@@ -997,11 +1016,6 @@ export class AppMessagesManager extends AppManager {
     } as MessageMedia.messageMediaDocument : media;
     message.uploadingFileName = [uploadingFileName];
 
-    let
-      uploaded = false,
-      uploadPromise: ReturnType<ApiFileManager['upload']> = null
-    ;
-
     const upload = () => {
       if(isDocument) {
         const inputMedia: InputMedia = {
@@ -1012,114 +1026,26 @@ export class AppMessagesManager extends AppManager {
 
         sentDeferred.resolve(inputMedia);
       } else if(file instanceof File || file instanceof Blob) {
-        const load = () => {
-          if(!uploaded || message?.error) {
-            uploaded = false;
-
-            uploadPromise = this.apiFileManager.upload({file, fileName: uploadingFileName});
-            uploadPromise.catch((err) => {
-              if(uploaded) {
-                return;
-              }
-
-              this.log('cancelling upload', media);
-
-              // this.setTyping(peerId, {_: 'sendMessageCancelAction'}, undefined, options.threadId);
-              sentDeferred.reject(err);
-            });
-
-            uploadPromise.addNotifyListener((progress: Progress) => {
-              /* if(DEBUG) {
-                this.log('upload progress', progress);
-              } */
-
-              const percents = Math.max(1, Math.floor(100 * progress.done / progress.total));
-              // if(actionName) {
-              //   this.setTyping(peerId, {_: actionName, progress: percents | 0}, undefined, options.threadId);
-              // }
-              sentDeferred.notifyAll(progress);
-            });
-
-            sentDeferred.notifyAll({done: 0, total: file.size});
-          }
-
-          let thumbUploadPromise: ReturnType<typeof this.uploadThumbAndCover>;
-          if(attachType === 'video' && sendFileDetails.objectURL && sendFileDetails.thumb?.blob) {
-            thumbUploadPromise = this.uploadThumbAndCover({
-              blob: sendFileDetails.thumb.blob,
-              isCover: !!sendFileDetails.thumb.isCover,
-              peer: this.appPeersManager.getInputPeerById(peerId)
-            });
-          }
-
-          uploadPromise && uploadPromise.then(async(inputFile) => {
-            /* if(DEBUG) {
-              this.log('appMessagesManager: sendFile uploaded:', inputFile);
-            } */
-
-            (inputFile as InputFile.inputFile).name = apiFileName;
-            uploaded = true;
-            let inputMedia: InputMedia;
-            switch(attachType) {
-              case 'photo':
-                inputMedia = {
-                  _: 'inputMediaUploadedPhoto',
-                  file: inputFile,
-                  pFlags: {
-                    spoiler: sendFileDetails.spoiler || undefined
-                  }
-                };
-                break;
-
-              default:
-                inputMedia = {
-                  _: 'inputMediaUploadedDocument',
-                  file: inputFile,
-                  mime_type: fileType,
-                  pFlags: {
-                    force_file: actionName === 'sendMessageUploadDocumentAction' || undefined,
-                    spoiler: sendFileDetails.spoiler || undefined
-                    // nosound_video: options.noSound ? true : undefined
-                  },
-                  attributes
-                };
+        try {
+          const uploadMediaPromise = this.uploadMediaFile({
+            peerId,
+            ...pickKeys(sendFileDetails, ['objectURL', 'thumb', 'spoiler']),
+            file,
+            uploadingFileName,
+            fileType,
+            apiFileName,
+            attachType,
+            attributes,
+            actionName,
+            onUploadDeferred: (uploadFileDeferred) => {
+              this.syncSentAndUploadPromises({sentDeferred, uploadFileDeferred, file});
             }
-
-            // if(options.stars && !options.isGroupedItem) {
-            //   inputMedia = {
-            //     _: 'inputMediaPaidMedia',
-            //     extended_media: [inputMedia],
-            //     stars_amount: '' + options.stars
-            //   };
-            // }
-
-            if(thumbUploadPromise) {
-              try {
-                const thumbUploadResult = await thumbUploadPromise;
-                assumeType<InputMedia.inputMediaUploadedDocument>(inputMedia);
-
-                inputMedia.thumb = thumbUploadResult.file;
-                inputMedia.video_cover = thumbUploadResult.coverPhoto;
-              } catch(err) {
-                this.log.error('sendFile thumb upload error:', err);
-              }
-            }
-
-            sentDeferred.resolve(inputMedia);
-          }, (error: ApiError) => {
-            this.revertMessageEdit(message.mid);
           });
 
-          return sentDeferred;
-        };
-
-        load();
-        // if(options.isGroupedItem) {
-        // } else {
-        //   this.sendSmthLazyLoadQueue.push({
-        //     load
-        //   });
-        // }
+          uploadMediaPromise.then((inputMedia) => sentDeferred.resolve(inputMedia), (e) => sentDeferred.reject(e));
+        } catch{
+          this.revertMessageEdit(message.mid);
+        }
       }
 
       return sentDeferred;
@@ -1136,6 +1062,7 @@ export class AppMessagesManager extends AppManager {
     });
 
     const inputMedia = await sentDeferred;
+    MTProtoMessagePort.getInstance<false>().invoke('log', {m: 'my-debug', inputMedia});
 
     const callInvoke = (message: Message.message) => this.invokeEditMessageMedia({
       message,
@@ -1153,6 +1080,84 @@ export class AppMessagesManager extends AppManager {
       if(message?._ !== 'message') return;
       return callInvoke(message);
     });
+  }
+
+  public makeMediaUploadDeferred({file}: MakeMediaUploadDeferredArgs) {
+    const deferred = deferredPromise<InputMedia>();
+
+    const uploadingFileName = file instanceof Blob ? getFileNameForUpload(file) : undefined;
+    if(uploadingFileName) {
+      this.uploadFilePromises[uploadingFileName] = deferred;
+    }
+
+    return {deferred, uploadingFileName};
+  }
+
+  public syncSentAndUploadPromises({sentDeferred, uploadFileDeferred, file}: SyncSentAndUploadPromisesArgs) {
+    uploadFileDeferred.addNotifyListener((progress: Progress) => {
+      sentDeferred.notifyAll(progress);
+    });
+
+    sentDeferred.notifyAll({done: 0, total: file.size});
+  }
+
+  public async uploadMediaFile({peerId, file, uploadingFileName, fileType, apiFileName, attachType, attributes, objectURL, thumb, spoiler, actionName, onUploadDeferred}: UploadMediaFileArgs) {
+    const uploadPromise = this.apiFileManager.upload({file, fileName: uploadingFileName});
+    onUploadDeferred?.(uploadPromise);
+
+    let thumbUploadPromise: ReturnType<typeof this.uploadThumbAndCover>;
+    if(attachType === 'video' && objectURL && thumb?.blob) {
+      thumbUploadPromise = this.uploadThumbAndCover({
+        blob: thumb.blob,
+        isCover: !!thumb.isCover,
+        peer: this.appPeersManager.getInputPeerById(peerId)
+      });
+    }
+
+    const inputFile = await uploadPromise;
+
+    (inputFile as InputFile.inputFile).name = apiFileName;
+
+    let inputMedia: InputMedia;
+
+    switch(attachType) {
+      case 'photo':
+        inputMedia = {
+          _: 'inputMediaUploadedPhoto',
+          file: inputFile,
+          pFlags: {
+            spoiler: spoiler || undefined
+          }
+        };
+        break;
+
+      default:
+        inputMedia = {
+          _: 'inputMediaUploadedDocument',
+          file: inputFile,
+          mime_type: fileType,
+          pFlags: {
+            force_file: actionName === 'sendMessageUploadDocumentAction' || undefined,
+            spoiler: spoiler || undefined
+            // nosound_video: options.noSound ? true : undefined
+          },
+          attributes
+        };
+    }
+
+    if(thumbUploadPromise) {
+      try {
+        const thumbUploadResult = await thumbUploadPromise;
+        assumeType<InputMedia.inputMediaUploadedDocument>(inputMedia);
+
+        inputMedia.thumb = thumbUploadResult.file;
+        inputMedia.video_cover = thumbUploadResult.coverPhoto;
+      } catch(err) {
+        this.log.error('sendFile thumb upload error:', err);
+      }
+    }
+
+    return inputMedia;
   }
 
   private runTempUpdateForMessageEdit(message: Message.message) {
@@ -1872,7 +1877,7 @@ export class AppMessagesManager extends AppManager {
     return ret;
   }
 
-  private makeDocumentAndMetaForSendingFile(args: MakeDocumentAndMetaForSendingFileArgs) {
+  public makeDocumentAndMetaForSendingFile(args: MakeDocumentAndMetaForSendingFileArgs) {
     const {file, isDocument, mediaTempId} = args;
 
     let attachType: 'document' | 'audio' | 'video' | 'voice' | 'photo', apiFileName: string;
@@ -2621,6 +2626,15 @@ export class AppMessagesManager extends AppManager {
     return promise;
   }
 
+  public getMediaTempId() {
+    return this.mediaTempId++;
+  }
+
+  public toggleError(message: Message.message, error?: ApiError, repayRequest?: RepayRequest) {
+    this.onMessagesSendError([message], error, repayRequest);
+    this.rootScope.dispatchEvent('messages_pending');
+  };
+
   public getMonoforumThreadId(peerId: PeerId, savedPeerId: Peer) {
     return savedPeerId && this.appPeersManager.isMonoforum(peerId) ? this.appPeersManager.getPeerId(savedPeerId) : undefined;
   }
@@ -2641,6 +2655,7 @@ export class AppMessagesManager extends AppManager {
         reply_to_msg_id: getServerMessageId(options.replyToMsgId),
         reply_to_peer_id: options.replyToPeerId && this.appPeersManager.getInputPeerById(options.replyToPeerId),
         top_msg_id: options.threadId ? getServerMessageId(options.threadId) : undefined,
+        poll_option: options.replyToPollOption,
         ...(options.replyToQuote && {
           quote_text: options.replyToQuote.text,
           quote_entities: options.replyToQuote.entities,
@@ -2655,7 +2670,7 @@ export class AppMessagesManager extends AppManager {
     }
   }
 
-  private checkSendOptions(options: MessageSendingParams & Partial<{ text: string }>) {
+  public checkSendOptions(options: MessageSendingParams & Partial<{ text: string }>) {
     const {peerId} = options;
     if(
       this.appPeersManager.isBotforum(peerId) &&
@@ -2691,7 +2706,7 @@ export class AppMessagesManager extends AppManager {
     return this.getCommonThingsForSending();
   }
 
-  private beforeMessageSending(message: Message.message, options: Pick<MessageSendingParams, 'threadId' | 'savedReaction' | 'confirmedPaymentResult'> & Partial<{
+  public beforeMessageSending(message: Message.message, options: Pick<MessageSendingParams, 'threadId' | 'savedReaction' | 'confirmedPaymentResult'> & Partial<{
     isGroupedItem: boolean,
     isScheduled: boolean,
     clearDraft: boolean,
@@ -2991,7 +3006,8 @@ export class AppMessagesManager extends AppManager {
     const header: MessageReplyHeader = {
       _: 'messageReplyHeader',
       pFlags: {},
-      reply_to_msg_id: replyToMsgId || replyToTopId
+      reply_to_msg_id: replyToMsgId || replyToTopId,
+      poll_option: replyTo.poll_option
     };
 
     if(replyToTopId && ((isForum && GENERAL_TOPIC_ID !== replyToTopId) || isBotforum)) {
@@ -5256,7 +5272,7 @@ export class AppMessagesManager extends AppManager {
     reply_media?: MessageMedia,
     peerId?: PeerId,
     mid?: number
-  }, mediaContext: ReferenceContext, isScheduled?: boolean) {
+  }, mediaContext?: ReferenceContext, isScheduled?: boolean) {
     const key = 'media' in message ? 'media' : 'reply_media';
     const media = message[key];
     if(!media) {
@@ -5280,6 +5296,9 @@ export class AppMessagesManager extends AppManager {
         const result = this.appPollsManager.savePoll(media.poll, media.results, message.peerId && message as Message.message);
         media.poll = result.poll;
         media.results = result.results;
+        if(media.attached_media) {
+          this.saveMessageMedia({media: media.attached_media}, mediaContext);
+        }
         break;
       }
 
@@ -6419,17 +6438,23 @@ export class AppMessagesManager extends AppManager {
     }
   }
 
-  private getUnreadMentionsKey({peerId, threadId, isReaction}: GetUnreadMentionsOptions) {
-    return peerId + (threadId ? `_${threadId}` : '') + (isReaction ? '_reaction' : '');
+  private getUnreadMentionsKey({peerId, threadId, isReaction, isPollVote}: GetUnreadMentionsOptions) {
+    return peerId +
+      (threadId ? `_${threadId}` : '') +
+      (isReaction ? '_reaction' : '') +
+      (isPollVote ? '_pollvote' : '');
   }
 
-  private getDialogUnreadMentions(dialog: Dialog | ForumTopic, isReaction?: boolean) {
-    return dialog && (isReaction ? dialog.unread_reactions_count : dialog.unread_mentions_count);
+  private getDialogUnreadMentions(dialog: Dialog | ForumTopic, isReaction?: boolean, isPollVote?: boolean) {
+    if(!dialog) return undefined;
+    if(isPollVote) return dialog.unread_poll_votes_count;
+    if(isReaction) return dialog.unread_reactions_count;
+    return dialog.unread_mentions_count;
   }
 
-  private fixDialogUnreadMentionsIfNoMessage({peerId, threadId, isReaction, force}: GetUnreadMentionsOptions & {force?: boolean}) {
+  private fixDialogUnreadMentionsIfNoMessage({peerId, threadId, isReaction, isPollVote, force}: GetUnreadMentionsOptions & {force?: boolean}) {
     const dialog = this.dialogsStorage.getAnyDialog(peerId, threadId) as Dialog | ForumTopic;
-    if(force || this.getDialogUnreadMentions(dialog, isReaction)) {
+    if(force || this.getDialogUnreadMentions(dialog, isReaction, isPollVote)) {
       this.reloadConversationOrTopic(peerId);
     }
   }
@@ -6452,7 +6477,7 @@ export class AppMessagesManager extends AppManager {
     }
   }
 
-  private modifyCachedMentionsAndSave(options: GetUnreadMentionsOptions & {mid: number, addMention?: boolean | number, addReaction?: boolean | number}) {
+  public modifyCachedMentionsAndSave(options: GetUnreadMentionsOptions & {mid: number, addMention?: boolean | number, addReaction?: boolean | number, addPollVote?: boolean | number}) {
     const dialog = this.dialogsStorage.getAnyDialog(options.peerId, options.threadId) as Dialog | ForumTopic;
     if(!dialog) {
       return;
@@ -6460,9 +6485,10 @@ export class AppMessagesManager extends AppManager {
 
     const releaseUnreadCount = this.dialogsStorage.prepareDialogUnreadCountModifying(dialog);
 
-    const a: [boolean | number, 'unread_reactions_count' | 'unread_mentions_count'][] = [
+    const a: [boolean | number, 'unread_reactions_count' | 'unread_mentions_count' | 'unread_poll_votes_count'][] = [
       [options.addMention, 'unread_mentions_count'],
-      [options.addReaction, 'unread_reactions_count']
+      [options.addReaction, 'unread_reactions_count'],
+      [options.addPollVote, 'unread_poll_votes_count']
     ];
 
     a.forEach(([add, key]) => {
@@ -6476,6 +6502,7 @@ export class AppMessagesManager extends AppManager {
         ...options,
         threadId: isForumTopic(dialog) ? options.threadId : undefined,
         isReaction: key === 'unread_reactions_count',
+        isPollVote: key === 'unread_poll_votes_count',
         add: !!add
       });
     });
@@ -6486,9 +6513,9 @@ export class AppMessagesManager extends AppManager {
     this.dialogsStorage.setDialogToState(dialog);
   }
 
-  private fixUnreadMentionsCountIfNeeded({peerId, threadId, slicedArray, isReaction}: GetUnreadMentionsOptions & {slicedArray: SlicedArray<number>}) {
+  private fixUnreadMentionsCountIfNeeded({peerId, threadId, slicedArray, isReaction, isPollVote}: GetUnreadMentionsOptions & {slicedArray: SlicedArray<number>}) {
     const dialog = this.dialogsStorage.getAnyDialog(peerId, threadId) as Dialog | ForumTopic;
-    if(!slicedArray.length && this.getDialogUnreadMentions(dialog, isReaction)) {
+    if(!slicedArray.length && this.getDialogUnreadMentions(dialog, isReaction, isPollVote)) {
       this.reloadConversationOrTopic(peerId);
     }
   }
@@ -6507,6 +6534,7 @@ export class AppMessagesManager extends AppManager {
     const slicedArray = this.unreadMentions[key] ??= new SlicedArray();
     const length = slicedArray.length;
     const isTopEnd = slicedArray.first.isEnd(SliceEnd.Top);
+
     if(!length && isTopEnd) {
       this.fixUnreadMentionsCountIfNeeded({...options, slicedArray});
       return Promise.resolve();
@@ -6520,8 +6548,17 @@ export class AppMessagesManager extends AppManager {
     return this.goToNextMentionPromises[key] = loadNextPromise.then(() => {
       const last = slicedArray.last;
       const mid = last && last[last.length - 1];
+
+      const isTopEnd = slicedArray.first.isEnd(SliceEnd.Top);
+
       if(mid) {
         slicedArray.delete(mid);
+
+        // Note that the isTopEnd gets reset when the slice becomes empty, so we're using the cached isTopEnd from above
+        if(options.isPollVote && isTopEnd && !slicedArray.length) {
+          this.onUnreadPollVotesTraversalEnd({...options, slicedArray});
+        }
+
         return mid;
       } else {
         this.fixUnreadMentionsCountIfNeeded({...options, slicedArray});
@@ -6529,6 +6566,20 @@ export class AppMessagesManager extends AppManager {
     }).finally(() => {
       delete this.goToNextMentionPromises[key];
     });
+  }
+
+  // When the user has navigated through every known unread item, decide how to
+  // reconcile a still-positive dialog counter:
+  //  - mentions/reactions: keep the legacy behavior of refetching the dialog,
+  //    since per-message reads (via `readMessages`) are the primary path that
+  //    drives the counter down — this is just a safety net for stale snapshots.
+  //  - poll votes: there is no per-message read flow, so the only way to clear
+  //    `unread_poll_votes_count` is to actively call `messages.readPollVotes`.
+  private onUnreadPollVotesTraversalEnd(options: GetUnreadMentionsOptions & {slicedArray: SlicedArray<number>}) {
+    const dialog = this.dialogsStorage.getAnyDialog(options.peerId, options.threadId) as Dialog | ForumTopic;
+    if(this.getDialogUnreadMentions(dialog, options.isReaction, options.isPollVote)) {
+      this.readMentions(options.peerId, options.threadId, options.isReaction, options.isPollVote).catch(noop);
+    }
   }
 
   private loadNextMentions(options: GetUnreadMentionsOptions) {
@@ -6560,7 +6611,8 @@ export class AppMessagesManager extends AppManager {
     maxId = 0,
     minId = 0,
     threadId,
-    isReaction
+    isReaction,
+    isPollVote
   }: GetUnreadMentionsOptions & {
     offsetId: number,
     addOffset: number,
@@ -6568,8 +6620,11 @@ export class AppMessagesManager extends AppManager {
     maxId?: number,
     minId?: number
   }) {
+    const method = isPollVote ?
+      'messages.getUnreadPollVotes' :
+      isReaction ? 'messages.getUnreadReactions' : 'messages.getUnreadMentions';
     return this.apiManager.invokeApiSingleProcess({
-      method: isReaction ? 'messages.getUnreadReactions' : 'messages.getUnreadMentions',
+      method,
       params: {
         peer: this.appPeersManager.getInputPeerById(peerId),
         offset_id: getServerMessageId(offsetId),
@@ -6670,12 +6725,15 @@ export class AppMessagesManager extends AppManager {
     return promise;
   }
 
-  public async readMentions(peerId: PeerId, threadId?: number, isReaction?: boolean): Promise<boolean> {
+  public async readMentions(peerId: PeerId, threadId?: number, isReaction?: boolean, isPollVote?: boolean): Promise<boolean> {
     if(DO_NOT_READ_HISTORY) {
       return;
     }
 
-    return this.apiManager.invokeApi(isReaction ? 'messages.readReactions' : 'messages.readMentions', {
+    const method = isPollVote ?
+      'messages.readPollVotes' :
+      isReaction ? 'messages.readReactions' : 'messages.readMentions';
+    return this.apiManager.invokeApi(method, {
       peer: this.appPeersManager.getInputPeerById(peerId),
       top_msg_id: threadId ? getServerMessageId(threadId) : undefined
     }).then((affectedHistory) => {
@@ -6687,16 +6745,19 @@ export class AppMessagesManager extends AppManager {
 
       if(!affectedHistory.offset) {
         const dialog = this.dialogsStorage.getAnyDialog(peerId, threadId) as Dialog | ForumTopic;
-        this.modifyCachedMentionsAndSave({
+        const modifyOptions: Parameters<AppMessagesManager['modifyCachedMentionsAndSave']>[0] = {
           peerId,
           threadId,
-          mid: undefined,
-          ...(isReaction ? {addReaction: -dialog.unread_reactions_count} : {addMention: -dialog.unread_mentions_count})
-        });
+          mid: undefined
+        };
+        if(isPollVote) modifyOptions.addPollVote = -dialog.unread_poll_votes_count;
+        else if(isReaction) modifyOptions.addReaction = -dialog.unread_reactions_count;
+        else modifyOptions.addMention = -dialog.unread_mentions_count;
+        this.modifyCachedMentionsAndSave(modifyOptions);
         return true;
       }
 
-      return this.readMentions(peerId, threadId, isReaction);
+      return this.readMentions(peerId, threadId, isReaction, isPollVote);
     });
   }
 
@@ -7224,6 +7285,7 @@ export class AppMessagesManager extends AppManager {
       unread_count: 0,
       unread_mentions_count: 0,
       unread_reactions_count: 0,
+      unread_poll_votes_count: 0,
       notify_settings: {_: 'peerNotifySettings'},
       pFlags: {
         title_missing: true
@@ -8015,6 +8077,7 @@ export class AppMessagesManager extends AppManager {
       } else {
         this.fixDialogUnreadMentionsIfNoMessage({peerId, threadId});
         this.fixDialogUnreadMentionsIfNoMessage({peerId, threadId, isReaction: true});
+        this.fixDialogUnreadMentionsIfNoMessage({peerId, threadId, isPollVote: true});
       }
     }
 
@@ -8690,6 +8753,8 @@ export class AppMessagesManager extends AppManager {
       delete this.tempFinalizeCallbacks[tempId];
     }
 
+    const tempMessage = this.getMessageFromStorage(storage, tempId);
+
     // set cached url to media
     if((message as Message.message).media) {
       assumeType<Message.message>(message);
@@ -8700,9 +8765,6 @@ export class AppMessagesManager extends AppManager {
         this.updatePhoto(newPhoto, '' + tempId);
       } else if(newDoc) {
         this.updateDocument(newDoc, '' + tempId);
-      } else if((message.media as MessageMedia.messageMediaPoll).poll) {
-        delete this.appPollsManager.polls[tempId];
-        delete this.appPollsManager.results[tempId];
       } else if(newExtendedMedia) {
         const mediaTempId = this.mediaTempMap[tempId];
         newExtendedMedia.forEach((extendedMedia, idx) => {
@@ -8712,10 +8774,34 @@ export class AppMessagesManager extends AppManager {
           if(photo) this.updatePhoto(photo as Photo.photo, id);
           else if(document) this.updateDocument(document as Document.document, id);
         });
+      } else if(message.media._ === 'messageMediaPoll' && tempMessage._ === 'message' && tempMessage.media._ === 'messageMediaPoll') {
+        const updateMedia = (prevMedia: MessageMedia | InputMedia, newMedia: MessageMedia | InputMedia) => {
+          if(prevMedia?._ === 'messageMediaPhoto' && newMedia?._ === 'messageMediaPhoto' && newMedia.photo?._ === 'photo') {
+            this.updatePhoto(newMedia.photo, '' + prevMedia.photo.id)
+          }
+          if(prevMedia?._ === 'messageMediaDocument' && newMedia?._ === 'messageMediaDocument' && newMedia.document?._ === 'document') {
+            this.updateDocument(newMedia.document, '' + prevMedia.document.id)
+          }
+        }
+
+        const prevPollId = tempMessage.media.poll.id;
+        this.appPollsManager.deleteUploadingFileNamesForPoll(prevPollId);
+        delete this.appPollsManager.polls[prevPollId];
+        delete this.appPollsManager.results[prevPollId];
+
+        updateMedia(tempMessage.media.attached_media, message.media.attached_media);
+        updateMedia(tempMessage.media.results?.solution_media, message.media.results?.solution_media);
+
+        const prevAnswers = tempMessage.media.poll.answers ?? [];
+        const newAnswers = message.media.poll.answers ?? [];
+
+        for(let i = 0; i < prevAnswers.length; i++) {
+          if(prevAnswers[i]?._ !== 'pollAnswer' || newAnswers[i]?._ !== 'pollAnswer') continue;
+          updateMedia(prevAnswers[i].media, newAnswers[i]?.media);
+        }
       }
     }
 
-    const tempMessage = this.getMessageFromStorage(storage, tempId);
     this.deleteMessageFromStorage(storage, tempId);
 
     if(!(tempMessage as Message.message).reply_markup && (message as Message.message).reply_markup) {
@@ -10181,6 +10267,7 @@ export class AppMessagesManager extends AppManager {
       if(!message) {
         this.fixDialogUnreadMentionsIfNoMessage({peerId});
         this.fixDialogUnreadMentionsIfNoMessage({peerId, isReaction: true});
+        this.fixDialogUnreadMentionsIfNoMessage({peerId, isPollVote: true});
         continue;
       }
 

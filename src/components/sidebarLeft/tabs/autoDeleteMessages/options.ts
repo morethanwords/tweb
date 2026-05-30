@@ -1,6 +1,6 @@
 import formatDuration, {DurationType} from '@helpers/formatDuration';
 import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
-import {oneDayInSeconds, oneMonthInSeconds, oneWeekInSeconds, oneYearInSeconds} from '@lib/constants';
+import {oneDayInSeconds, oneHourInSeconds, oneMonthInSeconds, oneWeekInSeconds, oneYearInSeconds} from '@lib/constants';
 
 
 export type Option = {
@@ -53,6 +53,17 @@ export const customTimeOptions: DetailedOption[] = [
   makeOption(oneYearInSeconds, 1, DurationType.Years)
 ];
 
+export const allTimeOptionsForAutoDeleteIcon = [
+  makeOption(oneHourInSeconds, 1, DurationType.Hours),
+  makeOption(oneHourInSeconds * 2, 2, DurationType.Hours),
+  makeOption(oneHourInSeconds * 3, 3, DurationType.Hours),
+  makeOption(oneHourInSeconds * 4, 4, DurationType.Hours),
+  makeOption(oneHourInSeconds * 5, 5, DurationType.Hours),
+  makeOption(oneHourInSeconds * 6, 6, DurationType.Hours),
+  makeOption(oneHourInSeconds * 7, 7, DurationType.Hours),
+  makeOption(oneHourInSeconds * 8, 8, DurationType.Hours),
+  ...customTimeOptions
+];
 
 export function findBestMatchingOption<T extends Option>(period: number, options: T[]) {
   const threshold = 0.1;
@@ -67,6 +78,10 @@ export function findBestMatchingOption<T extends Option>(period: number, options
 
 export function findMatchingCustomOption(period: number) {
   return findBestMatchingOption(period, customTimeOptions);
+}
+
+export function findMatchingAutoDeleteIconOption(period: number) {
+  return findBestMatchingOption(period, allTimeOptionsForAutoDeleteIcon);
 }
 
 export function findExistingOrCreateCustomOption(period: number): Option {

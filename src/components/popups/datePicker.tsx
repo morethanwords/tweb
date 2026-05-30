@@ -80,6 +80,9 @@ export type DatePickerPopupOptions = {
   addMinutes?: boolean,
   btnConfirmLangKey?: LangPackKey,
   btnDangerLangKey?: LangPackKey,
+  sendTodayLangKey?: LangPackKey,
+  sendDateLangKey?: LangPackKey,
+  minSendDateLangKey?: LangPackKey,
   // suggest-post extra
   minTimeDate?: Date,
   // Slot for caller-provided extras inside the popup body, rendered AFTER the
@@ -521,9 +524,9 @@ export default function showDatePickerPopup(opts: DatePickerPopupOptions): void 
       sendDate.setHours(+hoursValue() || 0, +minutesValue() || 0);
 
       if(selectedDate().getTime() === today.getTime()) {
-        key = 'Schedule.SendToday';
+        key = opts.sendTodayLangKey ?? 'Schedule.SendToday';
       } else {
-        key = 'Schedule.SendDate';
+        key = opts.sendDateLangKey ?? 'Schedule.SendDate';
         const dateOptions: Intl.DateTimeFormatOptions = {month: 'short', day: 'numeric'};
         if(sendDate.getFullYear() !== today.getFullYear()) {
           dateOptions.year = 'numeric';
@@ -856,7 +859,7 @@ export default function showDatePickerPopup(opts: DatePickerPopupOptions): void 
             suggestPostStyles.center,
             !isMinTimeCaptionVisible() && 'hide'
           )}>
-            {i18n('SuggestedPosts.PublishingTime.MinSendTime', [formatTime(opts.minTimeDate)])}
+            {i18n(opts.minSendDateLangKey ?? 'SuggestedPosts.PublishingTime.MinSendTime', [formatTime(opts.minTimeDate)])}
           </div>
         </Show>
 

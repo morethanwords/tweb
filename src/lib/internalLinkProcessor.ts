@@ -11,7 +11,6 @@ import {MOUNT_CLASS_TO} from '@config/debug';
 import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
 import addAnchorListener from '@helpers/addAnchorListener';
 import assumeType from '@helpers/assumeType';
-import groupCallsController from '@lib/calls/groupCallsController';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import {User, AttachMenuPeerType, MessagesBotApp, BotApp, ChatlistsChatlistInvite, Chat, InputInvoice} from '@layer';
 import {i18n, LangPackKey, _i18n} from '@lib/langPack';
@@ -49,7 +48,6 @@ import showBirthdayPopup, {saveMyBirthday} from '@components/popups/birthday';
 import showLogOutPopup from '@components/popups/logOut';
 import {getStickerSetInputByShortName} from '@lib/appManagers/utils/stickers/getStickerSetInput';
 import AppMyStoriesTab from '@components/sidebarLeft/tabs/myStories';
-import IS_CONFERENCE_CALL_SUPPORTED from '@environment/conferenceCallSupport';
 
 export class InternalLinkProcessor {
   protected managers: AppManagers;
@@ -248,8 +246,8 @@ export class InternalLinkProcessor {
       });
     }
 
-    type K1 = {thread?: string, comment?: string, t?: string};
-    type K2 = {thread?: string, comment?: string, start?: string, t?: string, text?: string};
+    type K1 = {thread?: string, comment?: string, t?: string, option?: string};
+    type K2 = {thread?: string, comment?: string, start?: string, t?: string, text?: string, option?: string};
     type K3 = {startattach?: string, attach?: string, choose?: TelegramChoosePeerType};
     type K4 = {startapp?: string, mode?: 'compact' | 'fullscreen'};
     type K5 = {story?: string};
@@ -317,6 +315,7 @@ export class InternalLinkProcessor {
             post: pathnameParams[2] || pathnameParams[1],
             thread,
             comment: uriParams.comment,
+            option: 'option' in uriParams ? uriParams.option : undefined,
             stack: appImManager.getStackFromElement(element),
             t: uriParams.t
           };
@@ -340,6 +339,7 @@ export class InternalLinkProcessor {
             thread,
             comment: uriParams.comment,
             start: 'start' in uriParams ? uriParams.start : undefined,
+            option: 'option' in uriParams ? uriParams.option : undefined,
             stack: appImManager.getStackFromElement(element),
             t: uriParams.t,
             text: uriParams.text
@@ -784,6 +784,7 @@ export class InternalLinkProcessor {
     return appImManager.openUsername({
       userName: link.domain,
       lastMsgId: postId,
+      pollOption: link.option,
       commentId,
       startParam: link.start,
       stack: link.stack,
@@ -819,6 +820,7 @@ export class InternalLinkProcessor {
       peer: chat || user,
       lastMsgId: postId,
       threadId,
+      pollOption: link.option,
       stack: link.stack,
       mediaTimestamp: link.t && +link.t
     });
@@ -892,46 +894,13 @@ export class InternalLinkProcessor {
     }
   };
 
-  // t.me/call/<slug> handler. The controller's joinConference accepts an
-  // `inputGroupCallSlug` directly — it does the chain-head poll, builds the
-  // self-add block, and submits `phone.joinGroupCall` itself, so this thin
-  // wrapper just hands the slug over and surfaces errors as a toast.
-  // tdesktop equivalent: SessionNavigation::resolveConferenceCall (then
-  // startOrJoinConferenceCall). We skip the intermediate `phone.getGroupCall`
-  // round-trip because joinConference's first server call (the chain poll)
-  // already returns the call's `id`+`access_hash` through the updates pipe.
-  public processConferenceCallLink = async(link: InternalLink.InternalLinkConferenceCall) => {
-    if(!IS_GROUP_CALL_SUPPORTED) return;
-    // Gated until the SFU exposes a multi-mid layout to browser clients —
-    // see docs/conf-call-browser-recv-blocker.md. Without it the call
-    // connects but inbound audio decryption never runs (Chrome bypass).
-    if(!IS_CONFERENCE_CALL_SUPPORTED) {
-      toastNew({langPackKey: 'LinkNotFound'});
-      return;
-    }
-
-    try {
-      await groupCallsController.joinConference({
-        input: {_: 'inputGroupCallSlug', slug: link.slug},
-        selfUserId: BigInt(rootScope.myId),
-        muted: true,
-        joinVideo: false
-      });
-    } catch(err) {
-      const type = (err as ApiError)?.type as string | undefined;
-      // Server's "this invite link is dead / call ended" responses. Match
-      // tdesktop's `lng_confcall_link_inactive` UX (window_session_controller.cpp:1052).
-      if(type === 'GROUPCALL_INVALID' || type === 'GROUPCALL_FORBIDDEN' ||
-         type === 'INVITE_HASH_EXPIRED' || type === 'INVITE_SLUG_EXPIRED' ||
-         type === 'GROUPCALL_SSRC_DUPLICATE_MUCH') {
-        toastNew({langPackKey: 'LinkNotFound'});
-      } else {
-        // Fallback for transport / chain / unknown failures (e.g.
-        // CONF_WRITE_CHAIN_INVALID, network, etc.).
-        toastNew({langPackKey: 'Error.AnError'});
-      }
-      console.error('joinConference via t.me/call slug failed', err);
-    }
+  // t.me/call/<slug> handler. Hand the slug to `appImManager.joinConference`,
+  // the single conference-join policy entry point — it owns the support gate,
+  // the "already in a call" guard and the dead-link error UX (so re-clicking
+  // the link while already in the call doesn't rejoin). tdesktop equivalent:
+  // SessionNavigation::resolveConferenceCall → startOrJoinConferenceCall.
+  public processConferenceCallLink = (link: InternalLink.InternalLinkConferenceCall) => {
+    return appImManager.joinConference({_: 'inputGroupCallSlug', slug: link.slug});
   };
 
   public processUserPhoneNumberLink = (link: InternalLink.InternalLinkUserPhoneNumber) => {

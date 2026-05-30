@@ -103,6 +103,7 @@ export interface ConfettiRef {
 export function ConfettiContainer(props: {
   ref: Ref<ConfettiRef>;
   class?: string;
+  onEnd?: () => void;
 }) {
   let canvas!: HTMLCanvasElement;
   let ctx: CanvasRenderingContext2D;
@@ -154,6 +155,7 @@ export function ConfettiContainer(props: {
     if(particles.length > 0) {
       animationId = requestAnimationFrame(animate);
     } else {
+      props.onEnd?.();
       animationId = null;
     }
   };

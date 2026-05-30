@@ -18,9 +18,12 @@ export class AppPrivacyManager extends AppManager {
       }
     });
 
-    // * preload content settings
+    // * preload content settings and global privacy so the chat-open
+    // * gift-button visibility check can resolve synchronously via the
+    // * acknowledged pattern (avoids a render flicker).
     this.rootScope.addEventListener('user_auth', () => {
       this.getContentSettings();
+      this.getGlobalPrivacySettings();
     });
   }
 
@@ -74,12 +77,29 @@ export class AppPrivacyManager extends AppManager {
     });
   }
 
+  private globalPrivacy: GlobalPrivacySettings | Promise<GlobalPrivacySettings>;
+
   public getGlobalPrivacySettings() {
-    return this.apiManager.invokeApi('account.getGlobalPrivacySettings');
+    // Return the resolved value SYNCHRONOUSLY when cached, so that
+    // managers.acknowledged.appPrivacyManager.getGlobalPrivacySettings()
+    // reports cached:true and `result` is a value (not a Promise). The
+    // chat-input gift-button visibility check relies on this to apply
+    // during the render closure without flicker.
+    if(this.globalPrivacy && !(this.globalPrivacy instanceof Promise)) {
+      return this.globalPrivacy;
+    }
+    if(this.globalPrivacy) return this.globalPrivacy;
+    return this.globalPrivacy = this.apiManager.invokeApi('account.getGlobalPrivacySettings').then((settings) => {
+      return this.globalPrivacy = settings;
+    });
   }
 
   public setGlobalPrivacySettings(settings: GlobalPrivacySettings) {
-    return this.apiManager.invokeApi('account.setGlobalPrivacySettings', {settings});
+    return this.apiManager.invokeApi('account.setGlobalPrivacySettings', {settings}).then((updated) => {
+      this.globalPrivacy = updated;
+      this.rootScope.dispatchEvent('global_privacy_update', updated);
+      return updated;
+    });
   }
 
   public getContentSettings(overwrite?: boolean) {

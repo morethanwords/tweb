@@ -79,6 +79,10 @@ function makeManager(opts: {
     apiManager: apiManagerMock,
     apiUpdatesManager: apiUpdatesManagerMock,
     appPeersManager: appPeersManagerMock,
+    // construct() isn't run here; mirror the per-call participant-state maps it
+    // initialises, since joinGroupCall (and hangUp) reset them for re-join hygiene.
+    nextOffsets: new Map(),
+    participants: new Map(),
     log: Object.assign(() => {}, {
       warn: () => {},
       error: () => {},
@@ -174,6 +178,9 @@ describe('AppGroupCallsManager.joinGroupCall — resolvedCallId / resolvedAccess
       },
       apiUpdatesManager: {processUpdateMessage: () => {}},
       appPeersManager: {getInputPeerSelf: () => ({_: 'inputPeerSelf'})},
+      // construct() isn't run here; mirror the maps joinGroupCall resets.
+      nextOffsets: new Map(),
+      participants: new Map(),
       log: Object.assign(() => {}, {warn: () => {}, error: () => {}, info: () => {}, debug: () => {}})
     });
 

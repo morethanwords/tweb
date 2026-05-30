@@ -128,6 +128,7 @@ export type DialogDom = {
   callIcon?: ReturnType<typeof groupCallActiveIcon>,
   mentionsBadge?: HTMLElement,
   reactionsBadge?: HTMLElement,
+  pollVotesBadge?: HTMLElement,
   lastMessageSpan: HTMLSpanElement,
   containerEl: HTMLElement,
   listEl: HTMLElement,
@@ -199,7 +200,6 @@ type DialogElementOptions = {
 };
 
 export class DialogElement extends Row {
-  private static BADGE_ORDER: Parameters<DialogElement['toggleBadgeByKey']>[0][] = ['reactionsBadge', 'mentionsBadge', 'unreadBadge', 'pinnedBadge'];
   public dom: DialogDom;
   public middlewareHelper: MiddlewareHelper;
 
@@ -438,8 +438,16 @@ export class DialogElement extends Row {
     this.dom.subtitleEl.append(badge);
   }
 
+  public createPollVotesBadge() {
+    if(this.dom.pollVotesBadge) return;
+    const badge = this.dom.pollVotesBadge = document.createElement('div');
+    badge.className = `dialog-subtitle-badge badge badge-${BADGE_SIZE} poll-vote-badge dialog-subtitle-badge-pollvote`;
+    badge.append(Icon('poll'));
+    this.dom.subtitleEl.append(badge);
+  }
+
   public toggleBadgeByKey(
-    key: Extract<keyof DialogDom, 'unreadBadge' | 'unreadAvatarBadge' | 'mentionsBadge' | 'reactionsBadge' | 'pinnedBadge'>,
+    key: Extract<keyof DialogDom, 'unreadBadge' | 'unreadAvatarBadge' | 'mentionsBadge' | 'reactionsBadge' | 'pollVotesBadge' | 'pinnedBadge'>,
     hasBadge: boolean,
     justCreated: boolean,
     batch?: boolean
@@ -2349,7 +2357,13 @@ export class AppDialogsManager {
       dialogElement.createReactionsBadge();
     }
 
-    const badgesLength = [hasPinnedBadge, hasUnreadBadge, hasMentionsBadge, hasReactionsBadge].filter(Boolean).length;
+    const hasPollVotesBadge = isSaved || isMonoforumThread ? false : !!(dialog as Dialog | ForumTopic).unread_poll_votes_count;
+    const isPollVotesBadgeMounted = !!dom.pollVotesBadge;
+    if(hasPollVotesBadge) {
+      dialogElement.createPollVotesBadge();
+    }
+
+    const badgesLength = [hasPinnedBadge, hasUnreadBadge, hasMentionsBadge, hasReactionsBadge, hasPollVotesBadge].filter(Boolean).length;
     SetTransition({
       element: dialogElement.subtitleRow,
       className: 'has-only-pinned-badge',
@@ -2362,7 +2376,8 @@ export class AppDialogsManager {
       ['unreadBadge', hasUnreadBadge, isUnreadBadgeMounted],
       ['unreadAvatarBadge', hasUnreadAvatarBadge, isUnreadAvatarBadgeMounted],
       ['mentionsBadge', hasMentionsBadge, isMentionsBadgeMounted],
-      ['reactionsBadge', hasReactionsBadge, isReactionsBadgeMounted]
+      ['reactionsBadge', hasReactionsBadge, isReactionsBadgeMounted],
+      ['pollVotesBadge', hasPollVotesBadge, isPollVotesBadgeMounted]
     ];
 
     a.forEach(([key, hasBadge, isBadgeMounted]) => {

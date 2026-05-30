@@ -8,11 +8,10 @@ import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import ChatRecording from '@components/chat/recording/chatRecording';
 import {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable, ButtonMenuSync} from '@components/buttonMenu';
 import emoticonsDropdown, {EmoticonsDropdown} from '@components/emoticonsDropdown';
-import PopupCreatePoll from '@components/popups/createPoll';
 import showForwardPopup from '@components/popups/forward';
 import PopupNewMedia, {getCurrentNewMediaPopup} from '@components/popups/newMedia';
 import {toast, toastNew} from '@components/toast';
-import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageMedia, InputReplyTo, Chat as MTChat, User, ChatFull, Dialog, PhotoSize, Photo, Document} from '@layer';
+import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageMedia, InputReplyTo, Chat as MTChat, User, ChatFull, Dialog, PhotoSize, Photo, Document, TextWithEntities, GlobalPrivacySettings} from '@layer';
 import StickersHelper from '@components/chat/stickersHelper';
 import ChatInputPlate from '@components/chat/controlPlate';
 import PopupSendGift from '@components/popups/sendGift';
@@ -28,7 +27,7 @@ import tsNow from '@helpers/tsNow';
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
 import {IS_MOBILE, IS_MOBILE_SAFARI} from '@environment/userAgent';
 import I18n, {FormatterArguments, i18n, join, LangPackKey} from '@lib/langPack';
-import {AttachedMediaType, canUploadAsWhenEditing, createAutoDeleteIcon, generateTail, getMediaTypeForMessage, slowModeTimer} from '@components/chat/utils';
+import {AttachedMediaType, canUploadAsWhenEditing, generateTail, getMediaTypeForMessage, slowModeTimer} from '@components/chat/utils';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import ButtonCorner from '@components/buttonCorner';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
@@ -47,7 +46,7 @@ import MentionsHelper from '@components/chat/mentionsHelper';
 import fixSafariStickyInput from '@helpers/dom/fixSafariStickyInput';
 import ReplyKeyboard from '@components/chat/replyKeyboard';
 import InlineHelper from '@components/chat/inlineHelper';
-import debounce from '@helpers/schedulers/debounce';
+import debounce, {DebounceReturnType} from '@helpers/schedulers/debounce';
 import {putPreloader} from '@components/putPreloader';
 import SetTransition from '@components/singleTransition';
 import PeerTitle from '@components/peerTitle';
@@ -55,7 +54,8 @@ import {fastRaf} from '@helpers/schedulers';
 import PopupDeleteMessages from '@components/popups/deleteMessages';
 import fixSafariStickyInputFocusing, {IS_STICKY_INPUT_BUGGED} from '@helpers/dom/fixSafariStickyInputFocusing';
 import PopupPeer from '@components/popups/peer';
-import {BOT_START_PARAM, GENERAL_TOPIC_ID, NULL_PEER_ID, SEND_PAID_WITH_STARS_DELAY, SEND_WHEN_ONLINE_TIMESTAMP} from '@appManagers/constants';
+import appMediaPlaybackController from '@components/appMediaPlaybackController';
+import {BOT_START_PARAM, GENERAL_TOPIC_ID, HIDDEN_PEER_ID, NULL_PEER_ID, REPLIES_PEER_ID, SEND_PAID_WITH_STARS_DELAY, SEND_WHEN_ONLINE_TIMESTAMP, SERVICE_PEER_ID} from '@appManagers/constants';
 import setCaretAt from '@helpers/dom/setCaretAt';
 import DropdownHover from '@helpers/dropdownHover';
 import {positionMenuTrigger} from '@helpers/positionMenu';
@@ -131,7 +131,7 @@ import splitStringByLength from '@helpers/string/splitStringByLength';
 import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
 import asyncThrottle from '@helpers/schedulers/asyncThrottle';
 import focusInput from '@helpers/dom/focusInput';
-import {PopupChecklist} from '@components/popups/checklist';
+import showChecklistPopup from '@components/popups/checklist';
 import assumeType from '@helpers/assumeType';
 import {formatFullSentTime} from '@helpers/date';
 import useStars from '@stores/stars';
@@ -155,6 +155,11 @@ import getDocumentDownloadOptions from '@lib/appManagers/utils/docs/getDocumentD
 import getPhotoDownloadOptions from '@lib/appManagers/utils/photos/getPhotoDownloadOptions';
 import {getFileNameByLocation} from '@helpers/fileName';
 import {Middleware, getMiddleware, MiddlewareHelper} from '@helpers/middleware';
+import {createAutoDeleteIcon} from '@components/autoDeleteIcon';
+import compareUint8Arrays from '@helpers/bytes/compareUint8Arrays';
+import {LocalTextWithOptionalEntities} from './bubbleParts/pollMessageContent/utils';
+import {SupportedMediaType} from '@components/popups/createPoll/storeContext';
+
 
 const REPLY_IN_TOPIC = false;
 
@@ -169,9 +174,9 @@ export const POSTING_NOT_ALLOWED_MAP: {[action in ChatRights]?: LangPackKey} = {
 };
 
 type ChatInputHelperType = 'edit' | 'webpage' | 'forward' | 'reply' | 'suggested';
-type ChatSendBtnIcon = 'send' | 'record' | 'record-video' | 'edit' | 'schedule' | 'forward';
-export type ChatInputReplyTo = Pick<MessageSendingParams, 'replyToMsgId' | 'replyToQuote' | 'replyToStoryId' | 'replyToPeerId' | 'replyToMonoforumPeerId'>;
 
+type ChatSendBtnIcon = 'send' | 'record' | 'record-video' | 'edit' | 'schedule' | 'forward';
+export type ChatInputReplyTo = Pick<MessageSendingParams, 'replyToMsgId' | 'replyToQuote' | 'replyToPollOption' | 'replyToStoryId' | 'replyToPeerId' | 'replyToMonoforumPeerId'>;
 
 const CLASS_NAME = 'chat-input';
 const PEER_EXCEPTIONS = new Set<ChatType>([ChatType.Scheduled, ChatType.Stories, ChatType.Saved]);
@@ -217,6 +222,7 @@ export default class ChatInput {
   public btnSuggestPost: HTMLElement;
 
   private btnAutoDeletePeriod: HTMLElement;
+  private btnSendGift: HTMLButtonElement;
 
   private sendMenu: SendMenu;
 
@@ -261,6 +267,7 @@ export default class ChatInput {
   public replyToMsgId: MessageSendingParams['replyToMsgId'];
   public replyToStoryId: MessageSendingParams['replyToStoryId'];
   public replyToQuote: MessageSendingParams['replyToQuote'];
+  public replyToPollOption: MessageSendingParams['replyToPollOption'];
   public replyToPeerId: MessageSendingParams['replyToPeerId'];
   public replyToMonoforumPeerId: MessageSendingParams['replyToMonoforumPeerId'];
   public editMsgId: number;
@@ -311,11 +318,13 @@ export default class ChatInput {
   private goMentionUnreadBadge: HTMLSpanElement;
   private goReactionBtn: HTMLButtonElement;
   private goReactionUnreadBadge: HTMLElement;
+  private goPollVoteBtn: HTMLButtonElement;
+  private goPollVoteUnreadBadge: HTMLElement;
   private btnScheduled: HTMLButtonElement;
 
   private btnPreloader: HTMLButtonElement;
 
-  private saveDraftDebounced: () => void;
+  private saveDraftDebounced: DebounceReturnType<() => void>;
 
   private fakeRowsWrapper: HTMLDivElement;
 
@@ -401,6 +410,12 @@ export default class ChatInput {
   public suggestedPost: SuggestedPostPayload;
   private inputHelperNavigationItem: NavigationItem;
   private placeholderParamsMiddlewareHelper: MiddlewareHelper;
+
+  private savedReplyToPollOption?: {
+    msgId: number;
+    option: Uint8Array;
+    text: TextWithEntities;
+  };
 
   constructor(
     public chat: Chat,
@@ -775,8 +790,11 @@ export default class ChatInput {
     }
   }
 
-  private constructMentionButton(isReaction?: boolean) {
-    const btn = ButtonCorner({icon: isReaction ? 'reactions' : 'mention', className: 'bubbles-corner-button chat-secondary-button bubbles-go-mention bubbles-go-reaction'});
+  private constructMentionButton(kind: 'mention' | 'reaction' | 'pollVote' = 'mention') {
+    const isReaction = kind === 'reaction';
+    const isPollVote = kind === 'pollVote';
+    const icon: Icon = isPollVote ? 'poll' : (isReaction ? 'reactions' : 'mention');
+    const btn = ButtonCorner({icon, className: 'bubbles-corner-button chat-secondary-button bubbles-go-mention bubbles-go-reaction'});
     const badge = createBadge('span', 24, 'primary');
     btn.append(badge);
     this.inputContainer.append(btn);
@@ -784,7 +802,7 @@ export default class ChatInput {
     attachClickEvent(btn, (e) => {
       cancelEvent(e);
       const middleware = this.getMiddleware();
-      this.managers.appMessagesManager.goToNextMention({peerId: this.chat.peerId, threadId: this.chat.threadId, isReaction}).then((mid) => {
+      this.managers.appMessagesManager.goToNextMention({peerId: this.chat.peerId, threadId: this.chat.threadId, isReaction, isPollVote}).then((mid) => {
         if(!middleware()) {
           return;
         }
@@ -798,16 +816,19 @@ export default class ChatInput {
     createContextMenu({
       buttons: [{
         icon: 'readchats',
-        text: isReaction ? 'ReadAllReactions' : 'ReadAllMentions',
+        text: isPollVote ? 'ReadAllPollVotes' : (isReaction ? 'ReadAllReactions' : 'ReadAllMentions'),
         onClick: () => {
-          this.managers.appMessagesManager.readMentions(this.chat.peerId, this.chat.threadId, isReaction);
+          this.managers.appMessagesManager.readMentions(this.chat.peerId, this.chat.threadId, isReaction, isPollVote);
         }
       }],
       listenTo: btn,
       listenerSetter: this.listenerSetter
     });
 
-    if(isReaction) {
+    if(isPollVote) {
+      this.goPollVoteUnreadBadge = badge;
+      this.goPollVoteBtn = btn;
+    } else if(isReaction) {
       this.goReactionUnreadBadge = badge;
       this.goReactionBtn = btn;
     } else {
@@ -953,6 +974,11 @@ export default class ChatInput {
 
     if(!this.excludeParts.emoticons) this.btnToggleEmoticons = this.createButtonIcon('smile toggle-emoticons', {noRipple: true});
 
+    this.btnSendGift = this.createButtonIcon('gift toggle-send-gift float hide', {noRipple: true});
+    attachClickEvent(this.btnSendGift, () => {
+      PopupElement.createPopup(PopupSendGift, {peerId: this.chat.peerId});
+    }, {listenerSetter: this.listenerSetter});
+
     this.inputMessageContainer = document.createElement('div');
     this.inputMessageContainer.classList.add('input-message-container');
 
@@ -963,7 +989,8 @@ export default class ChatInput {
 
     if(!this.excludeParts.mentionButton) {
       this.constructMentionButton();
-      this.constructMentionButton(true);
+      this.constructMentionButton('reaction');
+      this.constructMentionButton('pollVote');
     }
 
     if(!this.excludeParts.scheduled) {
@@ -1028,13 +1055,69 @@ export default class ChatInput {
       icon: 'poll',
       text: 'Poll',
       onClick: async() => {
-        const action: ChatRights = 'send_polls';
-        if(!(await this.chat.canSend(action))) {
-          toastNew({langPackKey: POSTING_NOT_ALLOWED_MAP[action]});
+        const pollsAction: ChatRights = 'send_polls';
+
+        if(!(await this.chat.canSend(pollsAction))) {
+          toastNew({langPackKey: POSTING_NOT_ALLOWED_MAP[pollsAction]});
           return;
         }
 
-        PopupElement.createPopup(PopupCreatePoll, this.chat).show();
+        const {openCreatePollPopup} = await import('@components/popups/createPoll');
+
+        const supportedMediaTypes: SupportedMediaType[] = [];
+
+        const supportedPromises: [Promise<boolean>, SupportedMediaType][] = [
+          [this.chat.canSend('send_photos'), 'photo'],
+          [this.chat.canSend('send_stickers'), 'sticker'],
+          [this.chat.canSend('send_videos'), 'video'],
+          [this.chat.canSend('send_gifs'), 'gif']
+        ];
+
+        for(const [canSendPromise, type] of supportedPromises) {
+          if(await canSendPromise) supportedMediaTypes.push(type);
+        }
+
+        openCreatePollPopup({
+          isBroadcast: this.chat.isBroadcast,
+          supportedMediaTypes: supportedMediaTypes,
+          onSubmit: async(payload) => {
+            const attachments = [
+              payload.descriptionAttachment,
+              payload.explanationAttachment,
+              ...payload.pollOptions.map((option) => option.attachment)
+            ];
+
+            const requiredRights = new Set<ChatRights>();
+            for(const attachment of attachments) {
+              if(!attachment) continue;
+              switch(attachment.type) {
+                case 'photo': requiredRights.add('send_photos'); break;
+                case 'sticker': requiredRights.add('send_stickers'); break;
+                case 'video':
+                  requiredRights.add(attachment.isAnimated ? 'send_gifs' : 'send_videos');
+                  break;
+              }
+            }
+
+            for(const right of requiredRights) {
+              if(!(await this.chat.canSend(right))) {
+                toastNew({langPackKey: POSTING_NOT_ALLOWED_MAP[right]});
+                return;
+              }
+            }
+
+            const sendingParams = this.chat.getMessageSendingParams();
+
+            const preparedPaymentResult = await this.chat.input.paidMessageInterceptor.prepareStarsForPayment(1);
+            if(preparedPaymentResult === PAYMENT_REJECTED) return;
+
+            sendingParams.confirmedPaymentResult = preparedPaymentResult;
+
+            this.managers.appPollsManager.sendPollMessage(sendingParams, payload);
+          }
+        }, SolidJSHotReloadGuardProvider);
+
+        // PopupElement.createPopup(PopupCreatePoll, this.chat).show();
       },
       verify: () => {
         if(this.editMsgId) return;
@@ -1057,7 +1140,7 @@ export default class ChatInput {
           return;
         }
 
-        PopupElement.createPopup(PopupChecklist, {chat: this.chat}).show();
+        showChecklistPopup({chat: this.chat});
       },
       verify: () => !this.editMsgId && !this.chat.isMonoforum
     }, {
@@ -1161,6 +1244,7 @@ export default class ChatInput {
       this.btnToggleReplyMarkup,
       this.btnSuggestPost,
       this.btnAutoDeletePeriod,
+      this.btnSendGift,
       this.btnToggleEmoticons,
       this.fileInput
     ].filter(Boolean));
@@ -1434,6 +1518,16 @@ export default class ChatInput {
   }
 
   private setChatListeners() {
+    this.listenerSetter.add(rootScope)('global_privacy_update', () => {
+      this.updateGiftButtonVisibility();
+    });
+
+    this.listenerSetter.add(rootScope)('peer_full_update', (peerId) => {
+      if(peerId === this.chat?.peerId) {
+        this.updateGiftButtonVisibility();
+      }
+    });
+
     this.listenerSetter.add(rootScope)('draft_updated', ({peerId, threadId, monoforumThreadId, draft, force}) => {
       // We don't have draft functionality when in the global monoforum chat, but we still need to clear the input right after sending the message
       if(!draft && force && this.chat.peerId === peerId && this.chat.isMonoforum) {
@@ -1442,6 +1536,12 @@ export default class ChatInput {
       }
 
       if(this.chat.threadId !== threadId || this.chat.monoforumThreadId !== monoforumThreadId || this.chat.peerId !== peerId || PEER_EXCEPTIONS.has(this.chat.type)) return;
+      if(!draft) {
+        // a pending local save means the user is actively typing newer content —
+        // let it win and sync normally instead of clobbering it with the remote clear
+        if(this.saveDraftDebounced.isDebounced()) return;
+        this.saveDraftDebounced.clearTimeout();
+      }
       this.setDraft(draft, true, force);
     });
 
@@ -1895,6 +1995,7 @@ export default class ChatInput {
       | 'unread_count'
       | 'unread_mentions_count'
       | 'unread_reactions_count'
+      | 'unread_poll_votes_count'
     >>>(dialog);
 
     const count = dialog?.unread_count;
@@ -1916,6 +2017,12 @@ export default class ChatInput {
       const hasReactions = !!dialog?.unread_reactions_count;
       setBadgeContent(this.goReactionUnreadBadge, hasReactions ? '' + (dialog.unread_reactions_count) : '');
       this.goReactionBtn.classList.toggle('is-visible', hasReactions);
+    }
+
+    if(this.goPollVoteUnreadBadge && this.chat.type === ChatType.Chat) {
+      const hasPollVotes = !!dialog?.unread_poll_votes_count;
+      setBadgeContent(this.goPollVoteUnreadBadge, hasPollVotes ? '' + (dialog.unread_poll_votes_count) : '');
+      this.goPollVoteBtn.classList.toggle('is-visible', hasPollVotes);
     }
   }
 
@@ -1944,6 +2051,7 @@ export default class ChatInput {
           top_msg_id: this.chat.threadId,
           reply_to_peer_id: replyTo.replyToPeerId,
           monoforum_peer_id: replyTo.replyToMonoforumPeerId,
+          poll_option: replyTo.replyToPollOption,
           ...(replyTo.replyToQuote && {
             quote_text: replyTo.replyToQuote.text,
             quote_entities: replyTo.replyToQuote.entities,
@@ -2054,7 +2162,7 @@ export default class ChatInput {
 
   public async setDraft(draft?: MyDraftMessage, fromUpdate = true, force = false) {
     if(
-      (!force && !isInputEmpty(this.messageInput)) ||
+      (!force && draft && !isInputEmpty(this.messageInput)) ||
       PEER_EXCEPTIONS.has(this.chat.type)
     ) {
       return false;
@@ -2084,9 +2192,12 @@ export default class ChatInput {
               this.onMessageSent();
             });
           });
+        } else if(fromUpdate && !this.saveDraftDebounced.isDebounced()) {
+          this.clearInput();
+          this.clearHelper();
         }
 
-        return false;
+        return fromUpdate;
       }
     }
 
@@ -2113,6 +2224,7 @@ export default class ChatInput {
           entities: replyTo.quote_entities,
           offset: replyTo.quote_offset
         },
+        replyToPollOption: replyTo.poll_option,
         replyToMonoforumPeerId: replyTo.monoforum_peer_id && getPeerId(replyTo.monoforum_peer_id)
       });
     }
@@ -2194,7 +2306,8 @@ export default class ChatInput {
       appConfig,
       autoDeletePeriod,
       canManageAutoDelete,
-      peerMuted
+      peerMuted,
+      ackedGlobalPrivacy
     ] = await Promise.all([
       this.managers.appPeersManager.isBroadcast(peerId),
       this.managers.appPeersManager.isBroadcastGroup(peerId),
@@ -2211,7 +2324,10 @@ export default class ChatInput {
       apiManagerProxy.getAppConfig(),
       modifyAckedPromise(this.chat.getAutoDeletePeriod()),
       this.chat.canManageAutoDelete(),
-      this.managers.appNotificationsManager.isPeerLocalMuted({peerId, respectType: false})
+      this.managers.appNotificationsManager.isPeerLocalMuted({peerId, respectType: false}),
+      this.btnSendGift ?
+        modifyAckedPromise(this.managers.acknowledged.appPrivacyManager.getGlobalPrivacySettings()) :
+        undefined
     ]);
 
     const placeholderParams = this.messageInput ? await this.getPlaceholderParams(canSendPlain) : undefined;
@@ -2372,6 +2488,24 @@ export default class ChatInput {
         });
       }
 
+      if(this.btnSendGift) {
+        // Default to hidden so the previous chat's state never leaks.
+        // Cached acked.result → callbackify fires synchronously inside
+        // this render closure (same tick as the hide above → no visible
+        // flicker, button settles into the correct state immediately).
+        // Cold first-load → async toggle once both fetches resolve.
+        this.btnSendGift.classList.add('hide');
+        if(this.giftButtonBasePeerEligible(peerId) && !isBot) {
+          callbackify(ackedPeerFull.result, (peerFull) => {
+            if(!middleware()) return;
+            callbackify(ackedGlobalPrivacy.result, (globalPrivacy) => {
+              if(!middleware()) return;
+              this.btnSendGift.classList.toggle('hide', !this.shouldShowGiftButton(peerFull as UserFull.userFull, globalPrivacy));
+            });
+          });
+        }
+      }
+
       haveSomethingInControl ||= this.chat.isBotforum && this.chat.canManageBotforumTopics;
 
       this.botStartBtn.classList.toggle('hide', haveSomethingInControl);
@@ -2451,6 +2585,46 @@ export default class ChatInput {
       duration: skipAnimation ? 0 : 300,
       useRafs
     });
+  }
+
+  private giftButtonBasePeerEligible(peerId: PeerId | undefined) {
+    return !!peerId &&
+      peerId.isUser() &&
+      peerId !== rootScope.myId &&
+      peerId !== SERVICE_PEER_ID &&
+      peerId !== REPLIES_PEER_ID &&
+      peerId !== HIDDEN_PEER_ID &&
+      this.chat?.type === ChatType.Chat;
+  }
+
+  private shouldShowGiftButton(userFull: UserFull.userFull, globalPrivacy?: GlobalPrivacySettings) {
+    if(!userFull) return false;
+    const disallowed = userFull.disallowed_gifts?.pFlags;
+    const allDisallowed = !!disallowed && !!disallowed.disallow_unlimited_stargifts &&
+      !!disallowed.disallow_limited_stargifts &&
+      !!disallowed.disallow_unique_stargifts &&
+      !!disallowed.disallow_premium_gifts &&
+      !!disallowed.disallow_stargifts_from_channels;
+    if(allDisallowed) return false;
+    const ownDisplay = !!globalPrivacy?.pFlags.display_gifts_button;
+    const peerDisplay = !!userFull.pFlags.display_gifts_button;
+    return ownDisplay || peerDisplay;
+  }
+
+  private async updateGiftButtonVisibility() {
+    if(!this.btnSendGift || !this.chat) return;
+    const peerId = this.chat.peerId;
+    if(!this.giftButtonBasePeerEligible(peerId)) {
+      this.btnSendGift.classList.add('hide');
+      return;
+    }
+    const [isBot, userFull, globalPrivacy] = await Promise.all([
+      this.managers.appPeersManager.isBot(peerId),
+      this.managers.appProfileManager.getProfile(peerId.toUserId()),
+      this.managers.appPrivacyManager.getGlobalPrivacySettings()
+    ]);
+    if(this.chat?.peerId !== peerId) return;
+    this.btnSendGift.classList.toggle('hide', isBot || !this.shouldShowGiftButton(userFull, globalPrivacy));
   }
 
   private updateBotCommands(userFull: UserFull.userFull, skipAnimation?: boolean) {
@@ -3596,7 +3770,7 @@ export default class ChatInput {
     if(this.helperType === 'forward') {
       possibleBtnMenuContainer = this.forwardElements?.container;
     } else if(this.helperType === 'reply') {
-      this.chat.setMessageId({lastMsgId: this.replyToMsgId});
+      this.chat.setMessageId({lastMsgId: this.replyToMsgId, pollOption: this.replyToPollOption});
       possibleBtnMenuContainer = this.replyElements?.menuContainer;
     } else if(this.helperType === 'edit') {
       this.chat.setMessageId({lastMsgId: this.editMsgId});
@@ -3671,8 +3845,8 @@ export default class ChatInput {
       return;
     }
 
-    const {replyToMsgId, replyToStoryId, replyToQuote, replyToPeerId, replyToMonoforumPeerId} = this;
-    return {replyToMsgId, replyToStoryId, replyToQuote, replyToPeerId, replyToMonoforumPeerId};
+    const {replyToMsgId, replyToStoryId, replyToQuote, replyToPollOption, replyToPeerId, replyToMonoforumPeerId} = this;
+    return {replyToMsgId, replyToStoryId, replyToQuote, replyToPollOption, replyToPeerId, replyToMonoforumPeerId};
   }
 
   public async clearInput(canSetDraft = true, fireEvent = true, clearValue = '') {
@@ -3737,6 +3911,10 @@ export default class ChatInput {
 
     if(this.btnToggleReplyMarkup) {
       this.btnToggleReplyMarkup.classList.toggle('show', isInputEmpty && this.chat.type !== ChatType.Scheduled);
+    }
+
+    if(this.btnSendGift) {
+      this.btnSendGift.classList.toggle('show', isInputEmpty);
     }
 
     // External listeners (e.g. star badge animation) want the icon family, not
@@ -4445,13 +4623,16 @@ export default class ChatInput {
       return;
     }
 
-    let {replyToMsgId, replyToQuote, replyToPeerId} = replyTo;
+    let {replyToMsgId, replyToQuote, replyToPeerId, replyToPollOption} = replyTo;
     replyToPeerId ??= this.chat.peerId;
     let message = await (
       replyToPeerId ?
         this.managers.appMessagesManager.getMessageByPeer(replyToPeerId, replyToMsgId) :
         this.chat.getMessage(replyToMsgId)
     );
+
+    this.setSavedReplyToPollOption(replyToMsgId, replyToPollOption, message);
+
     const f = () => {
       let title: HTMLElement, subtitle: string | HTMLElement;
       if(!message) { // load missing replying message
@@ -4463,12 +4644,17 @@ export default class ChatInput {
           }
 
           message = _message;
+
           if(!message) {
             this.clearHelper('reply');
           } else {
+            this.setSavedReplyToPollOption(replyToMsgId, replyToPollOption, message);
+
             f();
           }
         });
+      } else if(replyToPollOption && this.savedReplyToPollOption) {
+        title = i18n('Chat.Poll.ReplyToOption');
       } else {
         const peerId = message.fromId;
         title = new PeerTitle({
@@ -4480,6 +4666,14 @@ export default class ChatInput {
         title = i18n(replyToQuote ? 'ReplyToQuote' : 'ReplyTo', [title]);
       }
 
+      let quote: LocalTextWithOptionalEntities;
+
+      if(replyToPollOption && this.savedReplyToPollOption) {
+        quote = this.savedReplyToPollOption.text;
+      } else if(message) {
+        quote = replyToQuote;
+      }
+
       const newReply = this.setTopInfo({
         type: 'reply',
         callerFunc: f,
@@ -4487,7 +4681,7 @@ export default class ChatInput {
         subtitle,
         message,
         setColorPeerId: message?.fromId,
-        quote: message ? replyToQuote : undefined
+        quote
       });
       this.setReplyTo(replyTo);
 
@@ -4497,6 +4691,22 @@ export default class ChatInput {
       this.setCurrentHover(this.replyHover, newReply);
     };
     f();
+  }
+
+  private async setSavedReplyToPollOption(msgId?: number, option?: Uint8Array, message?: Message) {
+    if(!msgId || !option || message?._ !== 'message' || message?.media?._ !== 'messageMediaPoll') {
+      this.savedReplyToPollOption = undefined;
+      return;
+    }
+
+    const pollOption = message.media.poll.answers.find(answer => answer._ === 'pollAnswer' && compareUint8Arrays(option, answer.option));
+
+    if(!pollOption) {
+      this.savedReplyToPollOption = undefined;
+      return;
+    }
+
+    this.savedReplyToPollOption = {msgId, option, text: pollOption.text};
   }
 
   private setCurrentHover(dropdownHover?: DropdownHover, newReply?: HTMLElement) {
@@ -4545,10 +4755,11 @@ export default class ChatInput {
   }
 
   public setReplyTo(replyTo: ChatInputReplyTo) {
-    const {replyToMsgId, replyToQuote, replyToPeerId, replyToStoryId, replyToMonoforumPeerId} = replyTo || {};
+    const {replyToMsgId, replyToQuote, replyToPollOption, replyToPeerId, replyToStoryId, replyToMonoforumPeerId} = replyTo || {};
     this.replyToMsgId = replyToMsgId;
     this.replyToStoryId = replyToStoryId;
     this.replyToQuote = replyToQuote;
+    this.replyToPollOption = replyToPollOption;
     this.replyToPeerId = replyToPeerId;
     this.replyToMonoforumPeerId = replyToMonoforumPeerId;
     this.center(true);

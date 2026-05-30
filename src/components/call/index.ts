@@ -204,7 +204,7 @@ export default class PopupCall extends PopupElement {
     this.partyMutedState.classList.add(className + '-party-state');
     const stateText = i18n('VoipUserMicrophoneIsOff', [new PeerTitle({peerId, onlyFirstName: true, limitSymbols: 18}).element]);
     stateText.classList.add(className + '-party-state-text');
-    const mutedIcon = new GroupCallMicrophoneIconMini(false, true);
+    const mutedIcon = new GroupCallMicrophoneIconMini(false, true, 36);
     mutedIcon.setState(false, false);
     this.partyMutedState.append(
       mutedIcon.container,
@@ -423,7 +423,7 @@ export default class PopupCall extends PopupElement {
       }
     });
 
-    const microphoneIcon = this.microphoneIcon = new GroupCallMicrophoneIconMini(true, true);
+    const microphoneIcon = this.microphoneIcon = new GroupCallMicrophoneIconMini(true, true, 36);
     btnMute.firstElementChild.append(microphoneIcon.container);
 
     // btnVideo.classList.add('disabled');

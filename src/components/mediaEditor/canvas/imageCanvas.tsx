@@ -1,10 +1,11 @@
 import {adjustmentsConfig, AdjustmentsConfig} from '@components/mediaEditor/adjustments';
 import initVideoPlayback from '@components/mediaEditor/canvas/initVideoPlayback';
 import {useMediaEditorContext} from '@components/mediaEditor/context';
-import {cleanupWebGl, snapToAvailableQuality, snapToViewport, withCurrentOwner} from '@components/mediaEditor/utils';
+import {cleanupWebGl, snapToAvailableQuality, snapToViewport} from '@components/mediaEditor/utils';
 import {draw} from '@components/mediaEditor/webgl/draw';
 import {initWebGL} from '@components/mediaEditor/webgl/initWebGL';
 import createMiddleware from '@helpers/solid/createMiddleware';
+import {withCurrentOwner} from '@helpers/solid/withCurrentOwner';
 import {batch, createEffect, createReaction, onCleanup, onMount} from 'solid-js';
 import {useCropOffset} from './useCropOffset';
 

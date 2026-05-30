@@ -25,7 +25,7 @@
       height: var(--height);
       overflow: hidden;
 
-      &:before, 
+      &:before,
       &:after {
         position: absolute;
         left: 0;
@@ -91,7 +91,7 @@
     }
 
     body:not(.animation-level-0) & {
-      &-wrapper, 
+      &-wrapper,
       &-mark {
         transition: transform .25s ease-in-out;
       }
@@ -103,7 +103,7 @@
   }
 }
 
-.pinned-message, 
+.pinned-message,
 .reply {
   --font-size: var(--font-size-14);
   --custom-emoji-size: calc(var(--font-size) + 4px);
@@ -128,14 +128,20 @@
   &-title {
     color: var(--primary-color);
   }
-  
-  &-title, 
+
+  &-title,
   &-subtitle {
     font-size: var(--font-size);
     line-height: var(--line-height);
     position: relative; // ! WARNING (for custom emoji)
 
     @include text-overflow();
+  }
+
+  &-subtitle.with-icon {
+    display: flex;
+    align-items: center;
+    gap: 2px;
   }
 
   &-media {
@@ -407,7 +413,7 @@
     transform: scale(0);
   }
 
-  &-title, 
+  &-title,
   &-subtitle {
     position: relative;
     height: var(--pm-row-height);
@@ -465,9 +471,9 @@
     --translateY: var(--pm-item-height);
   }
 
-  &.hide ~ .chat-pinlist, 
+  &.hide ~ .chat-pinlist,
   &:not(.is-many) ~ .chat-pinlist {
-    display: none; 
+    display: none;
   }
 
   &.is-many {
@@ -537,7 +543,7 @@
     color: var(--secondary-text-color);
   }
 
-  &-title, 
+  &-title,
   &-subtitle {
     font-size: var(--font-size-14);
     line-height: var(--line-height-14);
@@ -760,8 +766,33 @@
   }
 }
 
+// Animatable color slots for the call panel's center gradient.
+// Registering them via @property lets the browser interpolate the colors,
+// which means switching state classes cross-fades the gradient (the old
+// TopbarWeave used to animate this over ~250ms).
+@property --pc-c1 {
+  syntax: '<color>';
+  inherits: false;
+  initial-value: #0976E3;
+}
+
+@property --pc-c2 {
+  syntax: '<color>';
+  inherits: false;
+  initial-value: #2BCEFF;
+}
+
+@property --pc-c3 {
+  syntax: '<color>';
+  inherits: false;
+  initial-value: #2BCEFF;
+}
+
 .pinned-call {
   --container-height: var(--topbar-call-height);
+  --pinned-call-side-btn-width: 44px;
+  --pinned-call-item-radius: 28px;
+  --pc-transition: 250ms ease;
   height: var(--container-height) !important;
   max-height: var(--container-height) !important;
   position: absolute;
@@ -774,7 +805,8 @@
   cursor: pointer !important;
   padding: 0 !important;
   font-size: var(--font-size-12);
-  background: linear-gradient(90deg, #0976E3, #2BCEFF) !important;
+  background-color: var(--surface-color) !important;
+  border-radius: 12px;
   overflow: hidden;
 
   transform: translateY(calc(-1 * (var(--topbar-call-height) + var(--page-chats-padding))));
@@ -783,48 +815,168 @@
     transform: translateY(0);
   }
 
-  &.is-group-call {
-    background: linear-gradient(90deg, #52CE5D, #00B1C0) !important;
-  }
-
-  &.is-rtmp {
-    background: linear-gradient(90deg, #4588E3, #976FFF, #E46ACE) !important;
-    font-weight: var(--font-weight-bold);
-  }
-
   &-wrapper {
-    padding: 0 .25rem !important;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px !important;
+    width: 100%;
+    height: 100%;
     overflow: hidden;
   }
 
-  &-left,
-  &-right {
+  .topbar-call {
+    &-side-btn {
+      flex: 0 0 auto;
+      width: var(--pinned-call-side-btn-width) !important;
+      height: 100% !important;
+      padding: 0 !important;
+      margin: 0;
+      border-radius: var(--pinned-call-item-radius) !important;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.125rem;
+      line-height: 1;
+      overflow: hidden;
+      cursor: pointer;
+    }
+
+    &-mic-btn {
+      // Default (muted / connecting / etc.) — primary blue.
+      // Overridden to green on `.is-unmuted` below.
+      background-color: var(--primary-color);
+      transition: background-color var(--pc-transition);
+
+      @include hover() {
+        background-color: var(--dark-primary-color) !important;
+      }
+    }
+
+    &-end-btn {
+      background-color: var(--danger-color);
+      transition: background-color var(--pc-transition);
+
+      &.btn-icon {
+        color: #fff;
+      }
+
+      @include hover() {
+        background-color: var(--dark-danger-color) !important;
+      }
+
+      &.endcall {
+        font-size: 1.5rem;
+      }
+    }
+
+    &-center {
+      flex: 1 1 auto;
+      min-width: 0;
+      height: 100%;
+      border-radius: var(--pinned-call-item-radius);
+      overflow: hidden;
+      font-weight: var(--font-weight-bold);
+      line-height: 1;
+      color: #fff;
+
+      display: flex;
+      align-items: center;
+      padding-inline-start: 2px;
+      padding-inline-end: .5rem;
+
+      // Default (no state class yet) — blue, same as `.is-muted`.
+      --pc-c1: #0976E3;
+      --pc-c2: #2BCEFF;
+      --pc-c3: #2BCEFF;
+      background: linear-gradient(90deg, var(--pc-c1), var(--pc-c2), var(--pc-c3));
+      transition:
+        --pc-c1 var(--pc-transition),
+        --pc-c2 var(--pc-transition),
+        --pc-c3 var(--pc-transition);
+    }
+
+    &-text {
+      flex: 1 1 auto;
+      min-width: 0;
+      margin-inline-start: .25rem;
+      display: flex;
+      align-items: baseline;
+      gap: .25rem;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    &-title,
+    &-status {
+      @include text-overflow();
+      min-width: 0;
+    }
+
+    &-status {
+      opacity: .8;
+      font-weight: var(--font-weight-normal);
+    }
+
+    &-extra {
+      flex: 0 0 auto;
+      margin-inline-start: .25rem;
+      display: flex;
+      align-items: center;
+      font-weight: var(--font-weight-bold);
+    }
+  }
+
+  // Avatar stack inside the gradient bar — borderless so the gradient shows through.
+  .stacked-avatars {
+    --border-color: transparent;
+    --avatar-size: 16px;
     flex: 0 0 auto;
-    display: flex;
-    align-items: center;
-    gap: .25rem;
   }
 
-  &-right {
-    justify-content: flex-end;
+  // State-driven gradient colors on the center bar — colors from the old
+  // TopbarWeave. We swap individual color slots (registered via @property
+  // above) so the browser cross-fades between gradients instead of cutting.
+  // Order matters: `.is-rtmp` overrides muted/unmuted; `.is-connecting`
+  // overrides everything.
+  &.is-unmuted .topbar-call-center {
+    --pc-c1: #52CE5D;
+    --pc-c2: #00B1C0;
+    --pc-c3: #00B1C0;
   }
 
-  &-center {
-    @include text-overflow();
-    flex: 1 1 auto;
-    text-align: center;
-    margin: 0 .5rem;
-    font-weight: var(--font-weight-bold);
-    line-height: 1;
+  &.is-muted .topbar-call-center {
+    --pc-c1: #0976E3;
+    --pc-c2: #2BCEFF;
+    --pc-c3: #2BCEFF;
   }
 
-  .btn-icon {
-    color: inherit;
-    width: 1.25rem;
-    height: 1.25rem;
-    padding: 0;
-    font-size: 1rem;
-    flex: 0 0 auto;
+  &.is-muted-by-admin .topbar-call-center {
+    --pc-c1: #F05459;
+    --pc-c2: #766EE9;
+    --pc-c3: #57A4FE;
+  }
+
+  &.is-rtmp .topbar-call-center {
+    --pc-c1: #4588E3;
+    --pc-c2: #976FFF;
+    --pc-c3: #E46ACE;
+  }
+
+  &.is-connecting .topbar-call-center {
+    --pc-c1: #8599aa;
+    --pc-c2: #8599aa;
+    --pc-c3: #8599aa;
+  }
+
+  // Mic button color: green when actively unmuted, primary otherwise.
+  &.is-unmuted .topbar-call-mic-btn {
+    background-color: #54B655;
+
+    @include hover() {
+      background-color: #4D9F4C !important;
+    }
   }
 
   .peer-title {
@@ -836,10 +988,12 @@
   .rtmp-description {
     white-space: nowrap;
     opacity: .8;
+    font-weight: var(--font-weight-normal);
   }
 
   .call-description-duration {
     font-weight: var(--font-weight-bold);
+    opacity: 1;
   }
 }
 
@@ -859,6 +1013,5 @@
     justify-content: flex-end;
     width: 100%;
     height: 100%;
-    padding-block: 0.25rem;
   }
 }

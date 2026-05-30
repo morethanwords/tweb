@@ -9,6 +9,7 @@ import rootScope from '@lib/rootScope';
 import GroupCallInstance from '@lib/calls/groupCallInstance';
 import GROUP_CALL_STATE from '@lib/calls/groupCallState';
 import createMainStreamManager from '@lib/calls/helpers/createMainStreamManager';
+import senderKind from '@lib/calls/helpers/senderKind';
 import {generateSsrc} from '@lib/calls/localConferenceDescription';
 import {WebRTCLineType} from '@lib/calls/sdpBuilder';
 import StreamManager from '@lib/calls/streamManager';
@@ -496,37 +497,26 @@ export class GroupCallsController extends EventListenerBase<{
     // streamManager hook fires synchronously in that gap; LocalConferenceDescription
     // iterates audio first so the kind sequence matches `types`.
     connectionInstance.appendStreamToConference((sender) => {
-      // Track isn't bound to the sender yet; infer kind from the transceiver
-      // we just created (its media kind comes from the LocalConferenceDescription).
-      const tr = connection.getTransceivers().find((t) => t.sender === sender);
-      const kind = tr?.receiver?.track?.kind === 'video' ? 'video' :
-        (tr?.sender as any)?._kindHint === 'video' ? 'video' : 'audio';
-      instance.attachE2eSendTransform(sender, kind);
+      // sender.track isn't bound yet; infer kind from the transceiver's
+      // receiver track (see senderKind). Main connection → default channel 0.
+      instance.attachE2eSendTransform(sender, senderKind(connection, sender));
     });
 
-    // K-2 (recv side): pre-add recvonly entries through the LocalConference
-    // description so their transforms are attached BEFORE the SFU's m-line
-    // appears. Without pre-add the recv transform attaches only on the
-    // `track` event (after the decoder is bound) and Chrome 146 silently
-    // bypasses it. With pre-add Chrome at least pumps 5-9 warmup frames
-    // through the transform before bypassing — still not enough for usable
-    // audio but it's the best we get from the API today.
+    // Receive-side e2e transforms are attached PER REMOTE SSRC in
+    // GroupCallInstance.onParticipantUpdate, right after each recvonly
+    // transceiver is created and BEFORE its decoder binds — the only window
+    // Chrome accepts a recv transform. The SFU exposes no m-lines, only SSRCs
+    // (one per remote stream); we mint one recvonly m-line per SSRC exactly
+    // like a legacy voice chat. The previous model — pre-adding a single
+    // multiplexed recvonly audio + video m-line here and hoping every
+    // participant funnelled through it — was wrong: the SFU never reused
+    // those mids, and a lone receiver fed many SSRCs is what made Chrome pump
+    // ~5 frames then bypass the transform.
     //
-    // Empirically the SFU does NOT redirect its sendonly audio onto our
-    // pre-add recvonly mids (it adds an extra mid like mid:5). The pre-add
-    // is therefore mostly diagnostic; the actual `track` event listener
-    // below catches the real receiver. We keep both because removing
-    // pre-add drops `recv.seen` from ~6 to 0 (entry-side pumping helps).
-    const desc = connectionInstance.description;
-    const audioRecvEntry = desc.createEntry('audio');
-    audioRecvEntry.setDirection('recvonly');
-    audioRecvEntry.createTransceiver(connection, {direction: 'recvonly'});
-    instance.attachE2eRecvTransform(audioRecvEntry.transceiver.receiver, 'audio');
-    const videoRecvEntry = desc.createEntry('video');
-    videoRecvEntry.setDirection('recvonly');
-    videoRecvEntry.createTransceiver(connection, {direction: 'recvonly'});
-    instance.attachE2eRecvTransform(videoRecvEntry.transceiver.receiver, 'video');
-
+    // This `track` listener is a defensive fallback only: attachE2eRecvTransform
+    // is idempotent (no-ops when the receiver already carries a transform), so
+    // it fires meaningfully only for a receiver that somehow wasn't attached at
+    // creation time.
     connection.addEventListener('track', (event) => {
       const kind = event.track.kind === 'video' ? 'video' : 'audio';
       instance.attachE2eRecvTransform(event.receiver, kind);

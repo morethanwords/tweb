@@ -12,10 +12,21 @@
   align-items: center;
   padding: 0 var(--padding-horizontal);
 
-  height: var(--height);
   border-radius: var(--border-radius);
 
   cursor: text;
+
+  &.fixedHeight {
+    height: var(--height);
+  }
+
+  &.minHeight {
+    min-height: var(--height);
+  }
+
+  &.solidBackground {
+    background-color: var(--surface-color);
+  }
 
   &.clickable {
     cursor: pointer;
@@ -25,15 +36,19 @@
     padding-right: calc(var(--padding-horizontal) - 0.5rem);
   }
 
-  &:hover .BorderThin {
+  &.withStartButtonIcon {
+    padding-left: calc(var(--padding-horizontal) - 0.5rem);
+  }
+
+  &.hoverEnabled:hover:not(.error) .BorderThin {
     border-color: var(--primary-color);
   }
 
-  &:focus-within .BorderThick {
+  &:focus-within .BorderThick, &.forceFocused .BorderThick {
     opacity: 1;
   }
 
-  &:focus-within .Label, .Label.active {
+  &:focus-within .Label, &.forceFocused .Label, .Label.active {
     --cover-padding: 0.25rem;
     font-size: 0.8rem;
     top: 0;
@@ -42,12 +57,12 @@
     background-color: var(--surface-color);
   }
 
-  &:focus-within .Label {
+  &:focus-within .Label, &.forceFocused .Label {
     color: var(--primary-color);
     font-weight: bold;
   }
 
-  &:hover .Label {
+  &.hoverEnabled:hover:not(.error) .Label {
     color: var(--primary-color);
   }
 
@@ -132,6 +147,7 @@
   top: 50%;
   transform: translateY(-50%);
   font-size: 1rem;
+  line-height: 1;
   color: $placeholder-color;
   pointer-events: none;
 
@@ -153,5 +169,22 @@
   }
   &.last {
     margin-right: 0;
+  }
+
+  // Keep the icon closer to top when the text wraps multiple lines
+  &.withFixedIcon {
+    align-self: stretch;
+    padding-top: calc((var(--height) - 40px) / 2);
+  }
+
+  .lengthLeft {
+    padding-bottom: 0.375rem;
+  }
+
+  &.withLimit {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
   }
 }

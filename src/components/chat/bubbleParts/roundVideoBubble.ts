@@ -12,6 +12,7 @@ import Icon from '@components/icon';
 import PopupPremium from '@components/popups/premium';
 import {hideToast, toastNew} from '@components/toast';
 import wrapDocument from '@components/wrappers/document';
+import {SpinnerElement} from '@components/spinner';
 
 
 type WrapRoundVideoBubbleOptions = {
@@ -216,7 +217,7 @@ export function wrapRoundVideoBubble({
 
     if(!hasAddedTranscription) {
       hasAddedTranscription = true;
-      const spinner = createSpinner();
+      const spinner = new SpinnerElement();
       transcribe.append(spinner);
       const transcribedText = document.createElement('div');
       transcribedText.classList.add('video-transcribed-text');
@@ -406,19 +407,4 @@ export function wrapRoundVideoBubble({
     audioMessageContainer.append(audioElement);
     // audioContainer.append(transcribedText);
   })();
-}
-
-function createSpinner() {
-  return createElementFromMarkup(`<svg class="transcribe-button-spinner-svg" viewBox="0 0 24 24" width="100" height="100">
-    <circle
-      cx="12"
-      cy="12"
-      r="10.5"
-      fill="none"
-      stroke="white"
-      stroke-width="1"
-      stroke-linecap="round"
-      stroke-dashoffset="0"
-    ></circle>
-  </svg>`);
 }

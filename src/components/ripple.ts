@@ -206,7 +206,10 @@ function _ripple(
 
     attachListenerTo.addEventListener('touchstart', onTouchStart, {passive: true});
     return {
-      dispose: () => attachListenerTo.removeEventListener('touchstart', onTouchStart),
+      dispose: () => {
+        attachListenerTo.removeEventListener('touchstart', onTouchStart);
+        r.remove();
+      },
       element: r
     };
   } else {
@@ -235,7 +238,10 @@ function _ripple(
 
     attachListenerTo.addEventListener('mousedown', onMouseDown, {passive: true});
     return {
-      dispose: () => attachListenerTo.removeEventListener('mousedown', onMouseDown),
+      dispose: () => {
+        attachListenerTo.removeEventListener('mousedown', onMouseDown);
+        r.remove();
+      },
       element: r
     };
   }

@@ -44,7 +44,6 @@
 
   .input-field {
     width: 100%;
-    margin-top: 25px;
     flex: 0 0 auto;
 
     &-input {
@@ -276,13 +275,6 @@
     left: 0;
     top: 50%;
     transform: translateY(-50%);
-  }
-}
-
-.popup-create-poll {
-  .popup-close {
-    margin-top: -1px;
-    margin-inline-start: -4px;
   }
 }
 
