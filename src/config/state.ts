@@ -157,6 +157,12 @@ export type StateSettings = {
     // matches tdesktop / the legacy behavior before this flag existed.
     noiseSuppression: boolean
   },
+  // What the composer's recording button captures when the input is empty.
+  // 'voice' shows a microphone icon and records OGG/Opus; 'video' shows a
+  // videocamera icon and records a round 360x360 video note. Toggled by
+  // clicking the button itself (when input is empty), matches the per-client
+  // toggle in tdesktop / iOS / Android.
+  recordingMediaType: 'voice' | 'video',
 };
 
 // (1 - use swatch, 2 - use picker color), (color from swatch), (color from picker)
@@ -524,7 +530,8 @@ export const SETTINGS_INIT: StateSettings = {
     cameraId: '',
     micVolume: 1,
     noiseSuppression: true
-  }
+  },
+  recordingMediaType: 'voice'
 };
 
 export const STATE_INIT: State = {

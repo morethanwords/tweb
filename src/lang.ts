@@ -78,6 +78,9 @@ const lang = {
   'Chat.Input.UnpinAll': 'Unpin All Messages',
   'Chat.Input.Attach.PhotoOrVideo': 'Photo or Video',
   'Chat.Input.Attach.Document': 'Document',
+  'Chat.Input.Record.Voice': 'Voice Message',
+  'Chat.Input.Record.Video': 'Video Message',
+  'Chat.Input.Record.VideoLimitReached': 'Maximum video message length reached',
   'Chat.Subscribe': 'SUBSCRIBE',
   'Chat.Selection.LimitToast': 'Max selection count reached.',
   'Chat.Search.MessagesFound': {

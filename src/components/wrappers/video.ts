@@ -35,6 +35,7 @@ import appMediaPlaybackController, {AppMediaPlaybackController, MediaSearchConte
 import AudioElement, {findMediaTargets} from '@components/audio';
 import Button from '@components/button';
 import Icon from '@components/icon';
+import {createProgressRing, getProgressRingRadius} from '@components/progressRing';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import ProgressivePreloader from '@components/preloader';
 import wrapPhoto from '@components/wrappers/photo';
@@ -55,7 +56,7 @@ mediaSizes.addEventListener('changeScreen', (from, to) => {
     const elements = Array.from(document.querySelectorAll('.media-round .progress-ring')) as SVGSVGElement[];
     const width = mediaSizes.active.round.width;
     const halfSize = width / 2;
-    const radius = halfSize - 7;
+    const radius = getProgressRingRadius(width);
     roundVideoCircumference = 2 * Math.PI * radius;
     elements.forEach((element) => {
       element.setAttributeNS(null, 'width', '' + width);
@@ -223,17 +224,20 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
     (divRound as any).message = message;
 
     const size = mediaSizes.active.round;
-    const halfSize = size.width / 2;
     const strokeWidth = 3.5;
-    const radius = halfSize - (strokeWidth * 2);
-    divRound.innerHTML = `<svg class="progress-ring" width="${size.width}" height="${size.width}" style="transform: rotate(-90deg);">
-      <circle class="progress-ring__circle" stroke="white" stroke-opacity="0.3" stroke-width="${strokeWidth}" cx="${halfSize}" cy="${halfSize}" r="${radius}" fill="transparent"/>
-    </svg>`;
-
-    const circle = divRound.firstElementChild.firstElementChild as SVGCircleElement;
+    const radius = getProgressRingRadius(size.width, strokeWidth);
     if(!roundVideoCircumference) {
       roundVideoCircumference = 2 * Math.PI * radius;
     }
+
+    // Shared round progress-ring component (also used by the video-note
+    // recorder). We drive it imperatively below (and the global changeScreen
+    // resize handler mutates it too), so progress stays a plain DOM write.
+    const ring = createProgressRing({size: size.width, strokeWidth, strokeOpacity: 0.3});
+    middleware.onClean(() => ring.destroy());
+    divRound.append(ring.element);
+
+    const circle = ring.circle;
     circle.style.strokeDasharray = roundVideoCircumference + ' ' + roundVideoCircumference;
     circle.style.strokeDashoffset = '' + roundVideoCircumference;
 

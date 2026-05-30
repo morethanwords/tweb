@@ -217,6 +217,25 @@ rootScope.managers.appChatsManager.getChat(chatId);
 
 IMPORTANT: `rootScope.managers.*` are asynchronous proxies to a shared worker. Every manager method returns a `Promise`, even if the manager's own methods seem synchronous.
 
+### Media devices (camera / microphone)
+
+**Strict rule — never call `navigator.mediaDevices.getUserMedia` directly when you need a camera or microphone. Use `getStream` from `@lib/calls/helpers/getStream`.** It is the single chokepoint for every `getUserMedia` in the app (calls, voice notes, round-video notes), so two things happen for free:
+
+- It honours the device the user picked in **Settings → Speakers and Camera** (`appSettings.callDevices.cameraId` / `microphoneId`).
+- It self-heals a stale selection: if the saved device is gone it strips the `deviceId`, clears the now-dead `callDevices.*` entry, and retries on the OS default — incrementally, so a still-valid device survives when only the other one is stale.
+
+```typescript
+import getStream from '@lib/calls/helpers/getStream';
+
+// ❌ wrong — ignores the chosen device, no fallback
+const stream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
+
+// ✅ right — selected device + self-healing fallback
+const stream = await getStream({video, audio});
+```
+
+For the standard call-tuned video/audio constraints (which already inject the selected device), build them with `getVideoConstraints()` / `getAudioConstraints()` from the same folder; otherwise pass your own constraints and `getStream` handles acquisition + device fallback.
+
 ### Imports from `@layer`
 
 All MTProto types come from `@layer`:
@@ -249,8 +268,9 @@ import {Message, Chat, User, InputPeer} from '@layer';
 
 ## What NOT to Do
 
-(Style rules are in "Code Style"; the import-alias and `invokeApi`-from-UI rules
-are in "Path Aliases" and "App Managers" — not repeated here.)
+(Style rules are in "Code Style"; the import-alias, `invokeApi`-from-UI, and
+`getUserMedia`-via-`getStream` rules are in "Path Aliases", "App Managers", and
+"Key Patterns → Media devices" — not repeated here.)
 
 - Do not add `eslint-disable` without a reason
 - Do not import from `react` or use React patterns — this is Solid.js

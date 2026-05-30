@@ -1,0 +1,63 @@
+@use "../shared" as *;
+@use "../variables" as *;
+@use "chatVariables" as *;
+
+// Screen-centered, transparent stage mounted on <body>. No dim layer — the only
+// thing visible is the round preview, lifted off the chat with a drop shadow.
+// pointer-events:none so it never intercepts clicks (the recording controls
+// live in the chat input, exactly like voice). Shown only while a --recording /
+// --paused mode class is present.
+.video-recording-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .2s ease, visibility 0s linear .2s;
+
+  &--recording,
+  &--paused {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity .2s ease, visibility 0s linear 0s;
+  }
+}
+
+.video-recording-circle {
+  position: relative;
+  border-radius: 50%;
+  overflow: hidden;
+  background-color: #000;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, .6), 0 0 0 1px rgba(255, 255, 255, .04);
+  max-width: 90vw;
+  max-height: 70vh;
+  // The stage is pointer-events:none (click-through); re-enable on the circle
+  // so clicking the preview is caught by the recording dismiss-guard and does
+  // NOT trigger the discard confirmation (the rest of the screen still does).
+  pointer-events: auto;
+}
+
+.video-recording-preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  // Front camera mirrored to feel natural (recorded file is not mirrored).
+  transform: scaleX(-1);
+}
+
+.video-recording-stage--playing .video-recording-preview {
+  // Preview playback shows the clip as captured (un-mirrored).
+  transform: none;
+}
+
+.video-recording-progress-ring {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
