@@ -41,6 +41,7 @@ import {formatDate, ONE_DAY} from '@helpers/date';
 import createTopbarCall, {TopbarCallController} from '@components/topbarCall';
 import confirmationPopup from '@components/confirmationPopup';
 import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
+import IS_CONFERENCE_CALL_SUPPORTED from '@environment/conferenceCallSupport';
 import IS_CALL_SUPPORTED from '@environment/callSupport';
 import type {CallType} from '@lib/calls/types';
 import {Modify, SendMessageEmojiInteractionData} from '@types';
@@ -70,6 +71,7 @@ import idleController from '@helpers/idleController';
 import EventListenerBase from '@helpers/eventListenerBase';
 import {AckedResult} from '@lib/superMessagePort';
 import groupCallsController from '@lib/calls/groupCallsController';
+import GROUP_CALL_STATE from '@lib/calls/groupCallState';
 import callsController from '@lib/calls/callsController';
 import getFilesFromEvent from '@helpers/files/getFilesFromEvent';
 import apiManagerProxy from '@lib/apiManagerProxy';
@@ -1779,7 +1781,7 @@ export class AppImManager extends EventListenerBase<{
     callsController.startCallInternal(userId, type === 'video');
   }
 
-  private discardCurrentCall(toPeerId: PeerId, toType: 'Live' | 'Voice' | 'Call', ignoreGroupCall?: GroupCallInstance, ignoreCall?: CallInstance, ignoreLive?: RtmpCallInstance): Promise<void> {
+  private discardCurrentCall(toPeerId: PeerId, toType: 'Live' | 'Voice' | 'Call' | 'Conference', ignoreGroupCall?: GroupCallInstance, ignoreCall?: CallInstance, ignoreLive?: RtmpCallInstance): Promise<void> {
     if(groupCallsController.groupCall && groupCallsController.groupCall !== ignoreGroupCall) return this.discardGroupCallConfirmation(toPeerId, toType);
     else if(callsController.currentCall && callsController.currentCall !== ignoreCall) return this.discardCallConfirmation(toPeerId, toType);
     else if(rtmpCallsController.currentCall && rtmpCallsController.currentCall !== ignoreLive) return this.discardLiveConfirmation(toPeerId, toType);
@@ -1805,7 +1807,12 @@ export class AppImManager extends EventListenerBase<{
   private async discardGroupCallConfirmation(toPeerId: PeerId, toType: Parameters<AppImManager['discardCurrentCall']>[1]) {
     const currentCall = groupCallsController.groupCall;
     if(currentCall) {
-      await this.discardAnyCallConfirmation(currentCall.chatId.toPeerId(true), toPeerId, 'Voice', toType);
+      // A GroupCallInstance carrying an e2e worker is a TdE2E conference — it has
+      // no backing chat (chatId is NULL_PEER_ID), so render it as `Conference`
+      // (its strings omit the peer) instead of an empty `video chat in ""`.
+      // Legacy SFU voice chats keep `Voice`.
+      const fromType = currentCall.e2e ? 'Conference' : 'Voice';
+      await this.discardAnyCallConfirmation(currentCall.chatId.toPeerId(true), toPeerId, fromType, toType);
 
       if(groupCallsController.groupCall === currentCall) {
         await currentCall.hangUp();
@@ -1877,6 +1884,72 @@ export class AppImManager extends EventListenerBase<{
     await this.discardCurrentCall(peerId, 'Voice');
 
     next();
+  }
+
+  /**
+   * Join (or surface) a TdE2E conference call from any of its references — an
+   * invite-link slug (`t.me/call/…`: the pinned-bar Join button & the web-page
+   * preview), an `inputGroupCall(id, access_hash)`, or an invite service
+   * message. The conference-call counterpart of `joinGroupCall`, and the single
+   * policy entry point: it owns the support gate, the leave-current-call
+   * confirmation, the same-call short-circuit and the dead-link error UX, so the
+   * link/anchor sites stay dumb.
+   */
+  public async joinConference(input: InputGroupCall) {
+    if(!IS_GROUP_CALL_SUPPORTED) return;
+    // Gated until the SFU exposes a multi-mid layout to browser clients — see
+    // docs/conf-call-browser-recv-blocker.md. Without it the call connects but
+    // inbound audio decryption never runs (Chrome bypass).
+    if(!IS_CONFERENCE_CALL_SUPPORTED) {
+      toastNew({langPackKey: 'LinkNotFound'});
+      return;
+    }
+
+    // Don't rejoin a call we're already in. The conference Join affordances
+    // (pinned bar, web-page preview, invite service message) stay visible while
+    // you're in the call, so a second click would otherwise tear down the live
+    // GroupCallInstance and re-run the whole join. `inputGroupCall` lets us
+    // confirm it's the same call; slug / invite-message can't be matched before
+    // the join response, but you can be in only one call at a time and the
+    // dominant case is re-clicking the same call — so surface the live one.
+    const currentCall = groupCallsController.groupCall;
+    if(currentCall && currentCall.state !== GROUP_CALL_STATE.CLOSED &&
+      (input._ !== 'inputGroupCall' || String(input.id) === String(currentCall.id))) {
+      return;
+    }
+
+    // Joining a DIFFERENT call — leave whatever we're currently in first
+    // (1-on-1, live stream, legacy voice chat or another conference) behind the
+    // standard "leave current call?" confirmation, exactly like `joinGroupCall`
+    // / `joinLiveStream`. The same-call short-circuit above already ruled out
+    // the conference we're (re)joining, so this can only target some other call;
+    // without it a conference join would silently leave a live 1-on-1 / RTMP
+    // call running. Conferences have no backing peer (NULL_PEER_ID), so the
+    // `Conference` toType keys the prompt off the call being left, never a peer.
+    await this.discardCurrentCall(NULL_PEER_ID, 'Conference');
+
+    try {
+      await groupCallsController.joinConference({
+        input,
+        selfUserId: BigInt(rootScope.myId),
+        muted: true,
+        joinVideo: false
+      });
+    } catch(err) {
+      const type = (err as ApiError)?.type as string | undefined;
+      // Server's "this invite link is dead / call ended" responses. Match
+      // tdesktop's `lng_confcall_link_inactive` UX (window_session_controller.cpp:1052).
+      if(type === 'GROUPCALL_INVALID' || type === 'GROUPCALL_FORBIDDEN' ||
+         type === 'INVITE_HASH_EXPIRED' || type === 'INVITE_SLUG_EXPIRED' ||
+         type === 'GROUPCALL_SSRC_DUPLICATE_MUCH') {
+        toastNew({langPackKey: 'LinkNotFound'});
+      } else {
+        // Fallback for transport / chain / unknown failures (e.g.
+        // CONF_WRITE_CHAIN_INVALID, network, etc.).
+        toastNew({langPackKey: 'Error.AnError'});
+      }
+      console.error('joinConference failed', err);
+    }
   }
 
   public async joinLiveStream(peerId: PeerId) {

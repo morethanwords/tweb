@@ -294,7 +294,13 @@ export default class PopupGroupCall extends PopupElement {
 
     const mount = document.createElement('span');
     mount.classList.add(className + '-header-fingerprint');
-    this.header.append(mount);
+    // Place the fingerprint to the LEFT of the fullscreen button. A plain
+    // append() lands it at the very end of the header (right of fullscreen).
+    if(this.btnFullScreen) {
+      this.header.insertBefore(mount, this.btnFullScreen);
+    } else {
+      this.header.append(mount);
+    }
 
     const dispose = render(() => (
       <FingerprintBadge emojiHash={hash()} />

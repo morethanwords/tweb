@@ -52,6 +52,39 @@ export interface CallRecordParams {
   videoHorizontal: boolean;
 }
 
+/**
+ * Group-call ids are `string | number` (see layer.d.ts): the MTProto layer
+ * keeps ids that fit in a JS safe integer as numbers and larger ones as
+ * strings, while the call stack — GroupCallInstance.id, the join response's
+ * resolvedCallId, the e2e chain polling — consistently holds the String() form.
+ * A plain Map keyed by the raw id therefore files a small-id call under a
+ * numeric key that a later string lookup never finds (Map.get is type-strict):
+ * getGroupCallInput then throws "Group call <id> not found" on connect and the
+ * conference popup renders empty. Normalising every key to its string form makes
+ * lookups type-agnostic no matter how the caller holds the id.
+ */
+class GroupCallIdMap<V> extends Map<GroupCallId, V> {
+  private static normalize(id: GroupCallId): GroupCallId {
+    return id == null ? id : '' + id;
+  }
+
+  get(id: GroupCallId) {
+    return super.get(GroupCallIdMap.normalize(id));
+  }
+
+  set(id: GroupCallId, value: V) {
+    return super.set(GroupCallIdMap.normalize(id), value);
+  }
+
+  has(id: GroupCallId) {
+    return super.has(GroupCallIdMap.normalize(id));
+  }
+
+  delete(id: GroupCallId) {
+    return super.delete(GroupCallIdMap.normalize(id));
+  }
+}
+
 export class AppGroupCallsManager extends AppManager {
   private groupCalls: Map<GroupCallId, MyGroupCall>;
   private participants: Map<GroupCallId, Map<PeerId, GroupCallParticipant>>;
@@ -64,9 +97,9 @@ export class AppGroupCallsManager extends AppManager {
   protected after() {
     this.name = 'GROUP-CALLS';
 
-    this.groupCalls = new Map();
-    this.participants = new Map();
-    this.nextOffsets = new Map();
+    this.groupCalls = new GroupCallIdMap<MyGroupCall>();
+    this.participants = new GroupCallIdMap<Map<PeerId, GroupCallParticipant>>();
+    this.nextOffsets = new GroupCallIdMap<string>();
 
     this.cachedStreamChannels = new Map();
 

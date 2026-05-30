@@ -134,8 +134,8 @@ export default class GroupCallInstance extends CallInstanceBase<{
     worker.addEventListener('pendingOutbound', () => {
       void this.flushE2eOutbound();
     });
-    worker.addEventListener('callFailed', () => {
-      this.log.error('e2e: callFailed — hanging up');
+    worker.addEventListener('callFailed', (ev) => {
+      this.log.error('e2e: callFailed — hanging up; reason:', ev?.message);
       this.hangUp(true);
     });
 
@@ -190,6 +190,12 @@ export default class GroupCallInstance extends CallInstanceBase<{
       .catch((): undefined => undefined);
       if(cached && cached._ === 'groupCall') {
         this.groupCall = cached;
+        // For invitee/slug joins the real groupCall (with participants_count,
+        // title, …) only lands here, AFTER the topbar/popup first rendered off
+        // an undefined ref (showing the "1" fallback count). The hydration
+        // itself fires no event, so nudge a re-render — otherwise the count
+        // stays frozen at 1 until the next unrelated state/participant change.
+        this.dispatchEvent('state', this.state);
       }
     }
     const input = this.toInputGroupCall();

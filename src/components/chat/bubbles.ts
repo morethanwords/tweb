@@ -318,7 +318,8 @@ const webPageTypes: {[type in WebPage.webPage['type']]?: LangPackKey} = {
   telegram_collection: 'StarGiftCollectionLinkButton',
   telegram_story_album: 'ViewStoryAlbum',
   telegram_megagroup_request: 'Chat.Message.RequestToJoin',
-  telegram_stickerset: 'OpenStickers'
+  telegram_stickerset: 'OpenStickers',
+  telegram_call: 'JoinCall'
 };
 
 const serviceMessageActionsWithReply: (MessageAction['_'])[] = [

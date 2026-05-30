@@ -175,6 +175,17 @@ export default function createTopbarCall(managers: AppManagers): TopbarCallContr
     instanceListenerSetter = undefined;
   };
 
+  // Conference calls have no chat peer, so there's no single group avatar to
+  // show. Pull the (cached) participant peers and stack their avatars instead,
+  // filtering out NULL_PEER_ID / invalid entries so we never render a lone blank
+  // circle — better no avatars than one empty one.
+  const refreshConferenceAvatars = (inst: GroupCallInstance) => {
+    void inst.participants.then((participants) => {
+      if(instance() !== inst) return; // instance changed while the fetch was in flight
+      setAvatarPeers(Array.from(participants.keys()).filter(Boolean));
+    }).catch(() => {});
+  };
+
   const onState = () => updateInstance(instance());
 
   const updateInstance = (newInstance: AnyInstance | undefined) => {
@@ -243,7 +254,13 @@ export default function createTopbarCall(managers: AppManagers): TopbarCallContr
     setStateClass(state);
     setTitle(inst);
     if(inst instanceof GroupCallInstance) {
-      setAvatarPeers([inst.chatId.toPeerId(true)]);
+      if(inst.chatId) {
+        // Legacy voice chat bound to a chat — show the chat's avatar.
+        setAvatarPeers([inst.chatId.toPeerId(true)]);
+      } else {
+        // Conference (chatId is NULL_PEER_ID) — stack participant avatars.
+        refreshConferenceAvatars(inst);
+      }
     } else if(inst instanceof CallInstance) {
       setAvatarPeers([inst.interlocutorUserId.toPeerId()]);
     } else if(inst instanceof RtmpCallInstance) {
@@ -275,8 +292,20 @@ export default function createTopbarCall(managers: AppManagers): TopbarCallContr
 
   listenerSetter.add(rootScope)('group_call_update', (groupCall) => {
     const i = groupCallsController.groupCall;
-    if(i?.id === groupCall.id) {
+    // Compare as strings: instance.id is always stringified, but the dispatched
+    // GroupCall.id is `string | number` and comes back as a number for ids that
+    // fit a JS safe integer — a strict `===` here silently misses every update,
+    // freezing the topbar's participant count at its connect-time value.
+    if(i && String(i.id) === String(groupCall.id)) {
       updateInstance(i);
+    }
+  });
+
+  // Keep the conference avatar stack fresh as participants join/leave.
+  listenerSetter.add(rootScope)('group_call_participant', ({groupCallId}) => {
+    const i = instance();
+    if(i instanceof GroupCallInstance && !i.chatId && String(i.id) === String(groupCallId)) {
+      refreshConferenceAvatars(i);
     }
   });
 

@@ -1807,6 +1807,8 @@
 "OpenMessage" = "VIEW MESSAGE";
 "OpenGroup" = "VIEW GROUP";
 "OpenStickers" = "VIEW STICKERS";
+"JoinCall" = "JOIN CALL";
+"PinnedJoinCall" = "Join Call";
 "CloseTopic" = "Close topic";
 "RestartTopic" = "Reopen topic";
 "LimitReachedPinnedTopics" = "Sorry, you can't pin more than %d topics to the top.";
@@ -2841,6 +2843,10 @@
 "AccountSettings.PrivacyAndSecurity" = "Privacy and Security";
 "AccountSettings.Language" = "Language";
 "AccountSettings.SpeakersAndCamera" = "Speakers and Camera";
+"QRCode.Title" = "QR Code";
+"QRCode.Copy" = "Copy QR Code";
+"QRCode.Copied" = "QR Code copied to clipboard";
+"QRCode.CopiedLink" = "Profile link copied to clipboard";
 "Alert.UserDoesntExists" = "Sorry, this user doesn't seem to exist.";
 "Alert.Confirm.Discard" = "Discard";
 "Appearance.Reset" = "Reset to Defaults";
@@ -2861,6 +2867,14 @@
 "Call.Confirm.Discard.Call.Header" = "Call in Progress";
 "Call.Confirm.Discard.Call.ToVoice.Text" = "End call with \"%1$@\" and start a video chat in \"%2$@\"?";
 "Call.Confirm.Discard.Call.ToCall.Text" = "End call with \"%1$@\" and start a video chat in \"%2$@\"?";
+"Call.Confirm.Discard.Conference.Header" = "Conference Call in Progress";
+"Call.Confirm.Discard.Conference.ToVoice.Text" = "Leave the conference call and start a video chat in \"%2$@\"?";
+"Call.Confirm.Discard.Conference.ToCall.Text" = "Leave the conference call and start a call with \"%2$@\"?";
+"Call.Confirm.Discard.Conference.ToLive.Text" = "Leave the conference call and start a live stream in \"%2$@\"?";
+"Call.Confirm.Discard.Conference.ToConference.Text" = "Leave the current conference call and join a new one?";
+"Call.Confirm.Discard.Voice.ToConference.Text" = "Leave video chat in \"%1$@\" and join a conference call?";
+"Call.Confirm.Discard.Call.ToConference.Text" = "End call with \"%1$@\" and join a conference call?";
+"Call.Confirm.Discard.Live.ToConference.Text" = "Leave live stream in \"%1$@\" and join a conference call?";
 "Call.PrivacyErrorMessage" = "Sorry, you cannot call %@ because of their privacy settings.";
 "Call.StatusRequesting" = "Contacting...";
 "Call.StatusRinging" = "Ringing...";
