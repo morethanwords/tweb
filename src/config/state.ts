@@ -157,6 +157,12 @@ export type StateSettings = {
     // matches tdesktop / the legacy behavior before this flag existed.
     noiseSuppression: boolean
   },
+  // What the composer's recording button captures when the input is empty.
+  // 'voice' shows a microphone icon and records OGG/Opus; 'video' shows a
+  // videocamera icon and records a round 360x360 video note. Toggled by
+  // clicking the button itself (when input is empty), matches the per-client
+  // toggle in tdesktop / iOS / Android.
+  recordingMediaType: 'voice' | 'video',
   // My QR-code popup: remembers the user's last picked chat-theme + brightness
   // so reopens land back where they left off. `nightMode` falls back to the
   // global theme's brightness when unset; `selectedThemeId` empty = the
@@ -533,6 +539,7 @@ export const SETTINGS_INIT: StateSettings = {
     micVolume: 1,
     noiseSuppression: true
   },
+  recordingMediaType: 'voice',
   qrCode: {
     selectedThemeId: ''
   }

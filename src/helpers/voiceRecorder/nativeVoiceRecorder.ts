@@ -7,6 +7,7 @@
 
 import OggOpusWriter from './oggOpusWriter';
 import isNativeVoiceRecorderSupported from './isNativeSupported';
+import getStream from '@lib/calls/helpers/getStream';
 
 export {isNativeVoiceRecorderSupported};
 
@@ -92,10 +93,21 @@ export default class NativeVoiceRecorder {
     };
   }
 
+  // Choose the microphone to record with (empty/undefined = OS default). The
+  // caller passes the user's pick from Settings → Speakers and Camera
+  // (appSettings.callDevices.microphoneId), same source as calls. Applied on the
+  // next start().
+  public setMicrophoneId(microphoneId?: string) {
+    this.config.mediaTrackConstraints = microphoneId ? {deviceId: {exact: microphoneId}} : true;
+  }
+
   public async start(): Promise<void> {
     if(this.state !== 'inactive') return;
 
-    this.stream = await navigator.mediaDevices.getUserMedia({audio: this.config.mediaTrackConstraints});
+    // Reuse the call stack's getUserMedia chokepoint: if the selected mic is
+    // gone it strips the deviceId, clears the stale appSettings.callDevices.
+    // microphoneId and retries on the OS default — same self-healing as calls.
+    this.stream = await getStream({audio: this.config.mediaTrackConstraints});
 
     this.audioContext = new AudioContext({sampleRate: this.config.encoderSampleRate});
     this.sourceNode = this.audioContext.createMediaStreamSource(this.stream);

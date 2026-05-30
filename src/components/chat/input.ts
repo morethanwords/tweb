@@ -5,11 +5,7 @@ import type {AppMessagesManager, MessageSendingParams, MyMessage, SuggestedPostP
 import type Chat from '@components/chat/chat';
 import {AppImManager, APP_TABS} from '@lib/appImManager';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
-import opusDecodeController from '@lib/opusDecodeController';
-import VoiceWaveformAnalyser from '@helpers/voiceWaveformAnalyser';
-import LiveWaveformAnalyser from '@helpers/voiceRecorder/liveWaveformAnalyser';
-import NativeVoiceRecorder, {isNativeVoiceRecorderSupported} from '@helpers/voiceRecorder/nativeVoiceRecorder';
-import VoiceRecordingPanel from '@components/chat/voiceRecording/voiceRecordingPanel';
+import ChatRecording from '@components/chat/recording/chatRecording';
 import {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable, ButtonMenuSync} from '@components/buttonMenu';
 import emoticonsDropdown, {EmoticonsDropdown} from '@components/emoticonsDropdown';
 import showForwardPopup from '@components/popups/forward';
@@ -21,7 +17,7 @@ import ChatInputPlate from '@components/chat/controlPlate';
 import PopupSendGift from '@components/popups/sendGift';
 import ButtonIcon from '@components/buttonIcon';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
-import ListenerSetter, {Listener} from '@helpers/listenerSetter';
+import ListenerSetter from '@helpers/listenerSetter';
 import Button, {replaceButtonIcon} from '@components/button';
 import showScheduleSendingPopup from '@components/popups/scheduleSendingPopup';
 import SendMenu from '@components/chat/sendContextMenu';
@@ -37,7 +33,7 @@ import ButtonCorner from '@components/buttonCorner';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import cancelSelection from '@helpers/dom/cancelSelection';
-import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
+import {attachClickEvent} from '@helpers/dom/clickEvent';
 import isInputEmpty from '@helpers/dom/isInputEmpty';
 import isSendShortcutPressed from '@helpers/dom/isSendShortcutPressed';
 import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
@@ -68,7 +64,6 @@ import toggleDisability from '@helpers/dom/toggleDisability';
 import callbackify from '@helpers/callbackify';
 import ChatBotCommands from '@components/chat/botCommands';
 import copy from '@helpers/object/copy';
-import toHHMMSS from '@helpers/string/toHHMMSS';
 import documentFragmentToHTML from '@helpers/dom/documentFragmentToHTML';
 import PopupElement from '@components/popups';
 import getEmojiEntityFromEmoji from '@lib/richTextProcessor/getEmojiEntityFromEmoji';
@@ -166,9 +161,6 @@ import {LocalTextWithOptionalEntities} from './bubbleParts/pollMessageContent/ut
 import {SupportedMediaType} from '@components/popups/createPoll/storeContext';
 
 
-// console.log('Recorder', Recorder);
-
-const RECORD_MIN_TIME = 500;
 const REPLY_IN_TOPIC = false;
 
 export const POSTING_NOT_ALLOWED_MAP: {[action in ChatRights]?: LangPackKey} = {
@@ -182,9 +174,9 @@ export const POSTING_NOT_ALLOWED_MAP: {[action in ChatRights]?: LangPackKey} = {
 };
 
 type ChatInputHelperType = 'edit' | 'webpage' | 'forward' | 'reply' | 'suggested';
-type ChatSendBtnIcon = 'send' | 'record' | 'edit' | 'schedule' | 'forward';
-export type ChatInputReplyTo = Pick<MessageSendingParams, 'replyToMsgId' | 'replyToQuote' | 'replyToPollOption' | 'replyToStoryId' | 'replyToPeerId' | 'replyToMonoforumPeerId'>;
 
+type ChatSendBtnIcon = 'send' | 'record' | 'record-video' | 'edit' | 'schedule' | 'forward';
+export type ChatInputReplyTo = Pick<MessageSendingParams, 'replyToMsgId' | 'replyToQuote' | 'replyToPollOption' | 'replyToStoryId' | 'replyToPeerId' | 'replyToMonoforumPeerId'>;
 
 const CLASS_NAME = 'chat-input';
 const PEER_EXCEPTIONS = new Set<ChatType>([ChatType.Scheduled, ChatType.Stories, ChatType.Saved]);
@@ -205,7 +197,8 @@ export default class ChatInput {
   private helperVisible = false;
   private fileInput: HTMLInputElement;
   private inputMessageContainer: HTMLDivElement;
-  private btnSend: HTMLButtonElement;
+  /** @internal — used by ChatRecording */
+  public btnSend: HTMLButtonElement;
   public btnCancelRecord: HTMLButtonElement;
   public btnReaction: HTMLButtonElement;
   public lastUrl = '';
@@ -215,7 +208,8 @@ export default class ChatInput {
   public chatInput: HTMLElement;
   public inputContainer: HTMLElement;
   public rowsWrapper: HTMLDivElement;
-  private newMessageWrapper: HTMLDivElement;
+  /** @internal — used by ChatRecording */
+  public newMessageWrapper: HTMLDivElement;
   private btnToggleEmoticons: HTMLButtonElement;
   private btnToggleReplyMarkup: HTMLButtonElement;
   public btnSendContainer: HTMLDivElement;
@@ -268,7 +262,8 @@ export default class ChatInput {
   private getWebPagePromise: Promise<void>;
   public willSendWebPage: WebPage = null;
   public webPageOptions: Parameters<AppMessagesManager['sendText']>[0]['webPageOptions'] = {};
-  private forwarding: {[fromPeerId: PeerId]: number[]};
+  /** @internal — used by ChatRecording */
+  public forwarding: {[fromPeerId: PeerId]: number[]};
   public replyToMsgId: MessageSendingParams['replyToMsgId'];
   public replyToStoryId: MessageSendingParams['replyToStoryId'];
   public replyToQuote: MessageSendingParams['replyToQuote'];
@@ -287,22 +282,10 @@ export default class ChatInput {
 
   public setEffect: Setter<DocId>;
 
-  private recorder: any;
-  private waveformAnalyser: VoiceWaveformAnalyser;
-  private liveWaveformAnalyser: LiveWaveformAnalyser;
-  public recording = false;
-  private recordPaused = false;
-  private recordCanceled = false;
-  private recordStartTime = 0;
-  private recordPausedAt = 0;
-  private recordAccumulatedMs = 0;
-  private recordingOverlayListener: Listener;
-  private recordingNavigationItem: NavigationItem;
-  private voiceRecordingPanel: VoiceRecordingPanel;
-  private playbackAudio: HTMLAudioElement;
-  private playbackObjectUrl: string;
-  private playbackRafId: number;
-  private voiceMenuClickGuard: (e: MouseEvent) => void;
+  // All voice + round-video recording state and behaviour lives in this
+  // collaborator (extracted from ChatInput). The `recording` getter below
+  // forwards to it.
+  private recordingController: ChatRecording;
 
   // private scrollTop = 0;
   // private scrollOffsetTop = 0;
@@ -321,7 +304,8 @@ export default class ChatInput {
   private commandsHelper: CommandsHelper;
   private mentionsHelper: MentionsHelper;
   private inlineHelper: InlineHelper;
-  private listenerSetter: ListenerSetter;
+  /** @internal — used by ChatRecording */
+  public listenerSetter: ListenerSetter;
   private middlewareHelper: MiddlewareHelper;
   private hoverListenerSetter: ListenerSetter;
 
@@ -419,7 +403,8 @@ export default class ChatInput {
   public paidMessageInterceptor: PaidMessagesInterceptor;
 
   private fileInputState: ReturnType<ChatInput['createFileInputState']>;
-  private starsState: ReturnType<ChatInput['createStarsState']>;
+  /** @internal — used by ChatRecording */
+  public starsState: ReturnType<ChatInput['createStarsState']>;
   private directMessagesHandler: ReturnType<ChatInput['createDirectMessagesHandler']>;
 
   public suggestedPost: SuggestedPostPayload;
@@ -435,7 +420,8 @@ export default class ChatInput {
   constructor(
     public chat: Chat,
     private appImManager: AppImManager,
-    private managers: AppManagers,
+    /** @internal — used by ChatRecording */
+    public managers: AppManagers,
     private className: string
   ) {
     this.listenerSetter = new ListenerSetter();
@@ -444,6 +430,11 @@ export default class ChatInput {
     this.excludeParts = {};
     this.isFocused = false;
     this.emoticonsDropdown = emoticonsDropdown;
+  }
+
+  // Public because selection.ts and appImManager.ts read `chat.input.recording`.
+  public get recording() {
+    return this.recordingController?.active ?? false;
   }
 
   public construct() {
@@ -956,104 +947,10 @@ export default class ChatInput {
   }
 
   private constructRecorder() {
-    const config = {
-      // encoderBitRate: 32,
-      // encoderPath: "../dist/encoderWorker.min.js",
-      encoderSampleRate: 48000,
-      monitorGain: 0,
-      numberOfChannels: 1,
-      recordingGain: 1,
-      reuseWorker: true
-    };
-
-    if(isNativeVoiceRecorderSupported()) {
-      try {
-        this.recorder = new NativeVoiceRecorder(config);
-      } catch(err) {
-        console.error('NativeVoiceRecorder constructor error:', err);
-      }
-    }
-
-    if(!this.recorder) {
-      const Recorder = (window as any).Recorder;
-      if(Recorder) try {
-        this.recorder = new Recorder(config);
-      } catch(err) {
-        console.error('Recorder constructor error:', err);
-      }
-    }
-
-    if(!this.recorder) {
-      return;
-    }
-
-    attachClickEvent(this.btnCancelRecord, this.onCancelRecordClick, {listenerSetter: this.listenerSetter});
-
-    this.recorder.onstop = () => {
-      this.setRecording(false);
-      this.chatInput.classList.remove('is-locked');
-
-      if(this.waveformAnalyser) {
-        this.waveformAnalyser.finish();
-        this.waveformAnalyser = undefined;
-      }
-      this.teardownLiveWaveform();
-      this.stopPlayback();
-      // Any menu-open click guard from the SendMenu is now meaningless —
-      // recording is over.
-      this.setVoiceRecordingMenuGuard(false);
-    };
-
-    this.recorder.ondataavailable = async(typedArray: Uint8Array) => {
-      if(this.releaseMediaPlayback) {
-        this.releaseMediaPlayback();
-        this.releaseMediaPlayback = undefined;
-      }
-
-      if(this.recordingOverlayListener) {
-        this.listenerSetter.remove(this.recordingOverlayListener);
-        this.recordingOverlayListener = undefined;
-      }
-
-      if(this.recordingNavigationItem) {
-        appNavigationController.removeItem(this.recordingNavigationItem);
-        this.recordingNavigationItem = undefined;
-      }
-
-      const waveform = this.waveformAnalyser?.finish();
-      this.waveformAnalyser = undefined;
-
-      if(this.recordCanceled) {
-        return;
-      }
-
-      const sendingParams = this.chat.getMessageSendingParams();
-
-      const preparedPaymentResult = await this.paidMessageInterceptor.prepareStarsForPayment(1);
-      if(preparedPaymentResult === PAYMENT_REJECTED) return;
-
-      sendingParams.confirmedPaymentResult = preparedPaymentResult;
-
-      const duration = this.getRecordingElapsedMs() / 1000 | 0;
-      const dataBlob = new Blob([typedArray as BlobPart], {type: 'audio/ogg'});
-      opusDecodeController.decode(typedArray, false).then((result) => {
-        opusDecodeController.setKeepAlive(false);
-
-        // тут objectURL ставится уже с audio/wav
-        this.managers.appMessagesManager.sendFile({
-          ...sendingParams,
-          file: dataBlob,
-          isVoiceMessage: true,
-          isMedia: true,
-          duration,
-          waveform,
-          objectURL: result.url,
-          clearDraft: true
-        });
-
-        this.onMessageSent(false, true);
-      });
-    };
+    // All recording state + behaviour lives in ChatRecording now; constructing
+    // it wires the recorders, mounts the voice + video panels, and installs the
+    // record-mode switch menu (the same work this method used to do inline).
+    this.recordingController = new ChatRecording(this);
   }
 
   public constructPeerHelpers() {
@@ -1246,6 +1143,19 @@ export default class ChatInput {
         showChecklistPopup({chat: this.chat});
       },
       verify: () => !this.editMsgId && !this.chat.isMonoforum
+    }, {
+      // Discoverable voice ↔ video switch, shown only in the idle record state
+      // (empty field). Mirrors the record-button context menu: only the option
+      // you're NOT currently in is shown.
+      icon: 'videocamera_filled',
+      text: 'Chat.Input.Record.Video',
+      onClick: () => this.recordingController.setRecordingMediaType('video'),
+      verify: () => this.recordingController.canSwitchRecordingMode() && this.recordingController.getActiveRecordingMediaType() !== 'video'
+    }, {
+      icon: 'microphone_filled',
+      text: 'Chat.Input.Record.Voice',
+      onClick: () => this.recordingController.setRecordingMediaType('voice'),
+      verify: () => this.recordingController.canSwitchRecordingMode() && this.recordingController.getActiveRecordingMediaType() !== 'voice'
     }];
 
     const attachMenuButtons = this.attachMenuButtons.slice();
@@ -1364,6 +1274,7 @@ export default class ChatInput {
       ['schedule', 'schedule'],
       ['check', 'edit'],
       ['microphone_filled', 'record'],
+      ['videocamera_filled', 'record-video'],
       ['forward_filled', 'forward']
     ];
     this.btnSend.append(...icons.map(([name, type]) => Icon(name, 'animated-button-icon-icon', 'btn-send-icon-' + type)));
@@ -1383,22 +1294,22 @@ export default class ChatInput {
     this.sendMenu = new SendMenu({
       onSilentClick: () => {
         this.sendSilent = true;
-        if(this.recording) this.finishVoiceFromMenu();
+        if(this.recording) this.recordingController.finishRecordingFromMenu();
         else this.sendMessage();
       },
       onScheduleClick: () => {
-        if(this.recording) this.scheduleSending(() => this.finishVoiceFromMenu());
+        if(this.recording) this.scheduleSending(() => this.recordingController.finishRecordingFromMenu());
         else this.scheduleSending(undefined);
       },
       onSendWhenOnlineClick: () => {
-        if(this.recording) this.setScheduleTimestamp(SEND_WHEN_ONLINE_TIMESTAMP, () => this.finishVoiceFromMenu());
+        if(this.recording) this.setScheduleTimestamp(SEND_WHEN_ONLINE_TIMESTAMP, () => this.recordingController.finishRecordingFromMenu());
         else this.setScheduleTimestamp(SEND_WHEN_ONLINE_TIMESTAMP, this.sendMessage.bind(this, true));
       },
       middleware: this.chat.destroyMiddlewareHelper.get(),
       openSide: 'top-left',
       onContextElement: this.btnSend,
       onOpen: () => {
-        const good = this.chat.type !== ChatType.Scheduled && (this.recording || !this.isInputEmpty() || !!Object.keys(this.forwarding).length) && !this.editMsgId;
+        const good = this.chat.type !== ChatType.Scheduled && (this.recording || !this.isInputEmpty() || !!(this.forwarding && Object.keys(this.forwarding).length)) && !this.editMsgId;
         if(good) {
           this.emoticonsDropdown?.toggle(false);
         }
@@ -1412,7 +1323,7 @@ export default class ChatInput {
       // button's action (cancel recording, pause, etc.). Capturing clicks at
       // the document level keeps the behaviour consistent: any click anywhere
       // outside the menu just dismisses the menu, no action fires.
-      onToggle: (open) => this.setVoiceRecordingMenuGuard(open),
+      onToggle: (open) => this.recordingController.setVoiceRecordingMenuGuard(open),
       canSendWhenOnline: this.canSendWhenOnline,
       onRef: (element) => {
         this.btnSendContainer.append(element);
@@ -1427,16 +1338,10 @@ export default class ChatInput {
     this.newMessageWrapper.append(this.btnSendContainer);
     this.inputContainer.append(...[this.btnReaction].filter(Boolean));
 
-    this.voiceRecordingPanel = new VoiceRecordingPanel({
-      onCancel: () => this.onCancelRecordClick(),
-      onPauseToggle: () => this.onPauseToggleClick(),
-      onPlayToggle: () => this.onPlayToggleClick(),
-      onSeek: (progress) => this.onPlaybackSeek(progress)
-    });
-    // The panel is an absolutely-positioned overlay inside the input row.
-    // It sits *under* btnSendContainer in DOM order so the send button stays
-    // on top while everything else (attach, input, emoji) is hidden via CSS.
-    this.newMessageWrapper.insertBefore(this.voiceRecordingPanel.element, this.btnSendContainer);
+    // The voice + round-video recording panels are constructed and mounted by
+    // ChatRecording (built in constructRecorder below): the voice panel is
+    // inserted into newMessageWrapper before btnSendContainer, the round-video
+    // preview overlay onto <body>.
 
     if(this.btnToggleEmoticons) {
       this.emoticonsDropdown.attachButtonListener(this.btnToggleEmoticons, this.listenerSetter);
@@ -1484,6 +1389,8 @@ export default class ChatInput {
       this.setChatListeners();
     }
 
+    // Builds the ChatRecording controller, which wires the recorders, mounts the
+    // voice + round-video panels, and installs the record-mode switch menu.
     this.constructRecorder();
 
     this.updateSendBtn();
@@ -1978,251 +1885,6 @@ export default class ChatInput {
 
   // }
 
-  private onCancelRecordClick = (e?: Event) => {
-    if(e) {
-      cancelEvent(e);
-    }
-
-    this.recordCanceled = true;
-    this.stopPlayback();
-    this.recorder.stop();
-    opusDecodeController.setKeepAlive(false);
-  };
-
-  private getRecordingElapsedMs() {
-    if(this.recordPaused) return this.recordAccumulatedMs;
-    return this.recordAccumulatedMs + (Date.now() - this.recordStartTime);
-  }
-
-  private teardownLiveWaveform() {
-    if(this.liveWaveformAnalyser) {
-      this.liveWaveformAnalyser.destroy();
-      this.liveWaveformAnalyser = undefined;
-    }
-  }
-
-  private onPauseToggleClick = () => {
-    if(!this.recording || !this.recorder) return;
-
-    if(this.recordPaused) {
-      // Resume recording from paused state. Keep the existing waveform —
-      // new live bars will push in from the right, gradually shifting the
-      // snapshot off to the left rather than starting from scratch.
-      this.stopPlayback();
-      if(typeof this.recorder.resume === 'function') {
-        this.recorder.resume();
-      }
-      this.recordPaused = false;
-      this.recordStartTime = Date.now();
-      this.voiceRecordingPanel?.setMode('recording');
-      this.voiceRecordingPanel?.setSeekable(false);
-      this.liveWaveformAnalyser?.setPaused(false);
-      this.waveformAnalyser?.setPaused(false);
-      this.startRecordingTimerLoop();
-    } else {
-      // Pause active recording. Replace the rolling live waveform with the
-      // full compressed peaks the analyser has accumulated so playback
-      // progress maps to the whole recording duration, not just the bars
-      // that happened to fit in the live window.
-      if(typeof this.recorder.pause !== 'function') return;
-      this.recordAccumulatedMs += Date.now() - this.recordStartTime;
-      this.recordPaused = true;
-      this.liveWaveformAnalyser?.setPaused(true);
-      this.waveformAnalyser?.setPaused(true);
-      const fullPeaks = this.waveformAnalyser?.getCurrentPeaks();
-      if(fullPeaks && fullPeaks.length) {
-        this.voiceRecordingPanel?.setPeaks(fullPeaks);
-      }
-      this.voiceRecordingPanel?.setMode('paused');
-      this.voiceRecordingPanel?.setPlaybackProgress(undefined);
-      this.voiceRecordingPanel?.setSeekable(true);
-      Promise.resolve(this.recorder.pause()).catch(() => {});
-    }
-  };
-
-  private onPlayToggleClick = () => {
-    if(!this.recording || !this.recordPaused) return;
-    if(this.playbackAudio && !this.playbackAudio.paused) {
-      this.playbackAudio.pause();
-      return;
-    }
-    if(this.playbackAudio && this.playbackAudio.currentTime > 0 && this.playbackAudio.currentTime < this.playbackAudio.duration) {
-      this.playbackAudio.play().catch(() => {});
-      return;
-    }
-    this.startPlaybackFromSnapshot();
-  };
-
-  // Install / remove the document-level click guard that closes the SendMenu
-  // on the first click anywhere outside the menu while a voice recording is
-  // active. Without this guard, a left-click would close the menu and also
-  // hit the underlying button (cancel/pause/send) on the way through — every
-  // visible button while recording is its own action target. Capture phase so
-  // we beat the buttons' own bubble-phase click listeners.
-  private setVoiceRecordingMenuGuard(active: boolean) {
-    if(this.voiceMenuClickGuard) {
-      document.removeEventListener('click', this.voiceMenuClickGuard, {capture: true});
-      this.voiceMenuClickGuard = undefined;
-    }
-    if(!active || !this.recording) return;
-
-    this.voiceMenuClickGuard = (e: MouseEvent) => {
-      // Let clicks inside the menu through so menu items still work.
-      if(findUpClassName(e.target as HTMLElement, 'btn-menu')) return;
-      cancelEvent(e);
-      if(contextMenuController.isOpened()) contextMenuController.close();
-    };
-    document.addEventListener('click', this.voiceMenuClickGuard, {capture: true});
-  }
-
-  // Stop the recorder so its ondataavailable handler sends the voice file.
-  // Used by the send context menu (Silent / Schedule / SendWhenOnline) while
-  // recording — the menu just sets the relevant flag on the ChatInput and
-  // delegates to this helper to commit the recording. The actual silent /
-  // scheduleDate flags are read back from this.input by getMessageSendingParams.
-  private finishVoiceFromMenu() {
-    if(!this.recording || !this.recorder) return;
-    this.stopPlayback();
-    this.recorder.stop();
-  }
-
-  // Click-to-seek from the waveform. progress is 0..1 along the bars.
-  // If audio hasn't been decoded yet we kick playback off at that offset.
-  private onPlaybackSeek(progress: number) {
-    if(!this.recordPaused) return;
-    if(this.playbackAudio && this.playbackAudio.duration && !isNaN(this.playbackAudio.duration)) {
-      const target = Math.max(0, Math.min(this.playbackAudio.duration, progress * this.playbackAudio.duration));
-      this.playbackAudio.currentTime = target;
-      this.voiceRecordingPanel?.setPlaybackProgress(progress);
-      if(this.playbackAudio.paused) this.playbackAudio.play().catch(() => {});
-      return;
-    }
-    // No audio yet — start playback and seek once metadata is available.
-    this.startPlaybackFromSnapshot(progress);
-  }
-
-  private async startPlaybackFromSnapshot(seekProgress?: number) {
-    if(!this.recorder || typeof this.recorder.getSnapshot !== 'function') return;
-    const snapshot: Uint8Array = this.recorder.getSnapshot();
-    if(!snapshot || !snapshot.length) return;
-
-    // Tear down any prior playback before decoding the fresh snapshot.
-    this.stopPlayback();
-
-    try {
-      const {url} = await opusDecodeController.decode(snapshot, false);
-      this.playbackObjectUrl = url;
-    } catch(err) {
-      console.error('[ChatInput] voice playback decode error:', err);
-      return;
-    }
-    if(!this.recordPaused) {
-      // Recording was resumed while we were decoding — drop the result.
-      this.playbackObjectUrl && URL.revokeObjectURL(this.playbackObjectUrl);
-      this.playbackObjectUrl = undefined;
-      return;
-    }
-
-    const audio = this.playbackAudio = new Audio(this.playbackObjectUrl);
-    audio.preload = 'auto';
-
-    const onTick = () => {
-      if(this.playbackAudio !== audio) return;
-      if(!audio.duration || isNaN(audio.duration)) {
-        this.playbackRafId = requestAnimationFrame(onTick);
-        return;
-      }
-      const progress = audio.currentTime / audio.duration;
-      this.voiceRecordingPanel?.setPlaybackProgress(progress);
-
-      const playedMs = audio.currentTime * 1000;
-      const playedSec = playedMs / 1000;
-      const ms = playedMs % 1000;
-      this.voiceRecordingPanel?.setTimer(toHHMMSS(playedSec) + ',' + ('00' + Math.round(ms / 10)).slice(-2));
-
-      this.playbackRafId = requestAnimationFrame(onTick);
-    };
-
-    audio.addEventListener('play', () => {
-      this.voiceRecordingPanel?.setPlaying(true);
-      cancelAnimationFrame(this.playbackRafId);
-      this.playbackRafId = requestAnimationFrame(onTick);
-    });
-    audio.addEventListener('pause', () => {
-      this.voiceRecordingPanel?.setPlaying(false);
-      cancelAnimationFrame(this.playbackRafId);
-    });
-    audio.addEventListener('ended', () => {
-      this.voiceRecordingPanel?.setPlaying(false);
-      // Clear the progress overlay so all bars return to the active primary
-      // colour after playback — same look as the just-paused state.
-      this.voiceRecordingPanel?.setPlaybackProgress(undefined);
-      this.voiceRecordingPanel?.setTimer(this.formatRecordingTimer(this.recordAccumulatedMs));
-      cancelAnimationFrame(this.playbackRafId);
-    });
-
-    if(seekProgress != null) {
-      const seek = () => {
-        if(audio.duration && !isNaN(audio.duration)) {
-          audio.currentTime = Math.max(0, Math.min(audio.duration, seekProgress * audio.duration));
-          this.voiceRecordingPanel?.setPlaybackProgress(seekProgress);
-          audio.removeEventListener('loadedmetadata', seek);
-        }
-      };
-      audio.addEventListener('loadedmetadata', seek);
-      seek();
-    }
-
-    audio.play().catch((err) => {
-      console.error('[ChatInput] voice playback play() error:', err);
-      this.stopPlayback();
-    });
-  }
-
-  private formatRecordingTimer(totalMs: number) {
-    const seconds = totalMs / 1000;
-    const ms = totalMs % 1000;
-    return toHHMMSS(seconds) + ',' + ('00' + Math.round(ms / 10)).slice(-2);
-  }
-
-  // The loop pauses (returns without re-scheduling) when recording is paused
-  // so we don't burn ~60 rAFs per second writing the same string to the DOM —
-  // resume() restarts it from onPauseToggleClick.
-  private startRecordingTimerLoop() {
-    const r = () => {
-      if(!this.recording || this.recordPaused) return;
-      const elapsed = this.getRecordingElapsedMs();
-      const formatted = this.formatRecordingTimer(elapsed);
-      if(!this.voiceRecordingPanel?.getIsPlaying()) {
-        this.voiceRecordingPanel?.setTimer(formatted);
-      }
-      fastRaf(r);
-    };
-    r();
-  }
-
-  private stopPlayback() {
-    if(this.playbackRafId) {
-      cancelAnimationFrame(this.playbackRafId);
-      this.playbackRafId = undefined;
-    }
-    if(this.playbackAudio) {
-      try {
-        this.playbackAudio.pause();
-      } catch(e) {}
-      this.playbackAudio.src = '';
-      this.playbackAudio = undefined;
-    }
-    if(this.playbackObjectUrl) {
-      try {
-        URL.revokeObjectURL(this.playbackObjectUrl);
-      } catch(e) {}
-      this.playbackObjectUrl = undefined;
-    }
-    this.voiceRecordingPanel?.setPlaying(false);
-    this.voiceRecordingPanel?.setPlaybackProgress(undefined);
-  }
-
   private onEmoticonsToggle = (open: boolean) => {
     if(!this.btnToggleEmoticons) {
       return;
@@ -2461,6 +2123,10 @@ export default class ChatInput {
     appNavigationController.removeItem(this.inputHelperNavigationItem);
     this.listenerSetter.removeAll();
     this.middlewareHelper.destroy();
+    // Tears down the round-video waveform/playback, releases the camera, drops
+    // any in-flight recording navigation item, and removes the body-mounted
+    // round-preview element.
+    this.recordingController?.destroy();
     this.setCurrentHover();
 
     [
@@ -3867,18 +3533,6 @@ export default class ChatInput {
     return foundHelper;
   }
 
-  private setRecording(value: boolean) {
-    if(this.recording === value) {
-      return;
-    }
-
-    this.recording = value;
-    this.starsState.set({isRecording: value});
-    this.setShrinking(this.recording, ['is-recording']);
-    this.updateSendBtn();
-    this.onRecording?.(value);
-  }
-
   public setShrinking(value?: boolean, classNames?: string[]) {
     value ||= this.recording;
     SetTransition({
@@ -3980,129 +3634,28 @@ export default class ChatInput {
   private onBtnSendClick = async(e: Event) => {
     cancelEvent(e);
 
+    // This click is the release of a long-press that already opened the
+    // record-mode menu — swallow it so it doesn't also start a recording.
+    if(this.recordingController.consumeLongPressSuppression()) {
+      return;
+    }
+
     const isInputEmpty = this.isInputEmpty();
+    const hasAnyRecorder = this.recordingController.hasAnyRecorder();
     if(this.chat.type === ChatType.Stories && isInputEmpty && !this.freezedFocused && this.canForwardStory) {
       this.forwardStoryCallback?.(e as MouseEvent);
       return;
-    } else if(!this.recorder || this.recording || !isInputEmpty || this.forwarding || this.editMsgId || this.suggestedPost?.hasMedia) {
+    } else if(!hasAnyRecorder || this.recording || !isInputEmpty || this.forwarding || this.editMsgId || this.suggestedPost?.hasMedia) {
       if(this.recording) {
-        if(this.getRecordingElapsedMs() < RECORD_MIN_TIME) {
-          this.onCancelRecordClick();
-        } else {
-          this.stopPlayback();
-          this.recorder.stop();
-        }
+        this.recordingController.handleSendButtonClick();
       } else {
         this.sendMessage();
       }
     } else {
-      const isAnyChat = this.chat.peerId.isAnyChat();
-      const flag: ChatRights = 'send_voices';
-      if(isAnyChat && !(await this.chat.canSend(flag))) {
-        toastNew({langPackKey: POSTING_NOT_ALLOWED_MAP[flag]});
-        return;
-      }
-
-      if(await this.showSlowModeTooltipIfNeeded()) {
-        return;
-      }
-
-      this.chatInput.classList.add('is-locked');
-      blurActiveElement();
-
-      let restricted = false;
-      if(!isAnyChat) {
-        const userFull = await this.managers.appProfileManager.getProfile(this.chat.peerId.toUserId());
-        if(userFull?.pFlags.voice_messages_forbidden) {
-          toastNew({
-            langPackKey: 'Chat.SendVoice.PrivacyError',
-            langPackArguments: [await wrapPeerTitle({peerId: this.chat.peerId})]
-          });
-          restricted = true;
-        }
-      }
-
-      if(restricted) {
-        this.chatInput.classList.remove('is-locked');
-        return;
-      }
-
-      this.recorder.start().then(() => {
-        this.releaseMediaPlayback = appMediaPlaybackController.setSingleMedia();
-        this.recordCanceled = false;
-        this.recordPaused = false;
-        this.recordAccumulatedMs = 0;
-
-        this.setRecording(true);
-        this.voiceRecordingPanel?.setMode('recording');
-        this.voiceRecordingPanel?.clearPeaks();
-        opusDecodeController.setKeepAlive(true);
-
-        const showDiscardPopup = () => {
-          PopupElement.createPopup(PopupPeer, 'popup-cancel-record', {
-            titleLangKey: 'DiscardVoiceMessageTitle',
-            descriptionLangKey: 'DiscardVoiceMessageDescription',
-            buttons: [{
-              langKey: 'DiscardVoiceMessageAction',
-              callback: () => {
-                simulateClickEvent(this.btnCancelRecord);
-              }
-            }, {
-              langKey: 'Continue',
-              isCancel: true
-            }]
-          }).show();
-        };
-
-        this.recordingOverlayListener = this.listenerSetter.add(document.body)('mousedown', (e) => {
-          if(!findUpClassName(e.target, CLASS_NAME) && !findUpClassName(e.target, 'popup-cancel-record')) {
-            cancelEvent(e);
-            showDiscardPopup();
-          }
-        }, {capture: true, passive: false}) as any;
-
-        appNavigationController.pushItem(this.recordingNavigationItem = {
-          type: 'voice',
-          onPop: () => {
-            setTimeout(() => {
-              showDiscardPopup();
-            }, 0);
-
-            return false;
-          }
-        });
-
-        this.recordStartTime = Date.now();
-
-        const sourceNode: MediaStreamAudioSourceNode = this.recorder.sourceNode;
-        this.waveformAnalyser = new VoiceWaveformAnalyser(sourceNode);
-        this.liveWaveformAnalyser = new LiveWaveformAnalyser(sourceNode);
-        this.liveWaveformAnalyser.onpeak = (peak) => {
-          this.voiceRecordingPanel?.pushPeak(peak);
-        };
-
-        this.startRecordingTimerLoop();
-      }).catch((e: Error) => {
-        switch(e.name as string) {
-          case 'NotAllowedError': {
-            toastNew({langPackKey: 'NoMicrophoneAccess'});
-            break;
-          }
-
-          case 'NotReadableError': {
-            toast(e.message);
-            break;
-          }
-
-          default:
-            console.error('Recorder start error:', e, e.name, e.message);
-            toast(e.message);
-            break;
-        }
-
-        this.setRecording(false);
-        this.chatInput.classList.remove('is-locked');
-      });
+      // Empty input + not recording: LMB starts recording in the active media
+      // type. Switching voice ↔ video is done via the button's context menu
+      // (right-click / long-press), not by clicking.
+      this.recordingController.startActive();
     }
   };
 
@@ -4340,10 +3893,10 @@ export default class ChatInput {
 
     if(this.chat.type === ChatType.Stories && isInputEmpty && !this.freezedFocused && this.canForwardStory) icon = 'forward';
     else if(this.editMsgId) icon = 'edit';
-    else if(!this.recorder || this.recording || !isInputEmpty || this.forwarding || this.suggestedPost?.hasMedia) icon = this.chat.type === ChatType.Scheduled ? 'schedule' : 'send';
-    else icon = 'record';
+    else if(!this.recordingController?.hasVoiceRecorder() || this.recording || !isInputEmpty || this.forwarding || this.suggestedPost?.hasMedia) icon = this.chat.type === ChatType.Scheduled ? 'schedule' : 'send';
+    else icon = this.recordingController.getActiveRecordingMediaType() === 'video' ? 'record-video' : 'record';
 
-    ['send', 'record', 'edit', 'schedule', 'forward'].forEach((i) => {
+    ['send', 'record', 'record-video', 'edit', 'schedule', 'forward'].forEach((i) => {
       this.btnSend.classList.toggle(i, icon === i);
     });
 
@@ -4364,7 +3917,10 @@ export default class ChatInput {
       this.btnSendGift.classList.toggle('show', isInputEmpty);
     }
 
-    this.onUpdateSendBtn?.(icon);
+    // External listeners (e.g. star badge animation) want the icon family, not
+    // the audio/video sub-mode — collapse to 'record' so they don't need to
+    // learn the new variant.
+    this.onUpdateSendBtn?.(icon === 'record-video' ? 'record' : icon);
   }
 
   private async addStarsBadge() {
