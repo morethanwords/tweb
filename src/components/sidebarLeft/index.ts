@@ -10,7 +10,7 @@ import AppSearchSuper, {SearchSuperMediaType} from '@components/appSearchSuper';
 import {DateData, fillTipDates} from '@helpers/date';
 import {MOUNT_CLASS_TO} from '@config/debug';
 import {AppSettingsTab} from '@components/solidJsTabs';
-import AppNewChannelTab from '@components/sidebarLeft/tabs/newChannel';
+import {AppNewChannelTab} from '@components/solidJsTabs/tabs';
 import AppContactsTab from '@components/sidebarLeft/tabs/contacts';
 import AppArchivedTab from '@components/sidebarLeft/tabs/archivedTab';
 import createNewGroupTab from '@components/sidebarLeft/tabs/createNewGroupTab';

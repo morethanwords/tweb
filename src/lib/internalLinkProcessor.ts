@@ -40,7 +40,7 @@ import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import appSidebarLeft from '@components/sidebarLeft';
 import AppContactsTab from '@components/sidebarLeft/tabs/contacts';
-import AppNewChannelTab from '@components/sidebarLeft/tabs/newChannel';
+import {AppNewChannelTab} from '@components/solidJsTabs/tabs';
 import showCreateContactPopup from '@components/popups/createContact';
 import createNewGroupTab from '@components/sidebarLeft/tabs/createNewGroupTab';
 import {AppEditProfileTab, AppSettingsTab, getEditProfileInitArgs} from '@components/solidJsTabs';

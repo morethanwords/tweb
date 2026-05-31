@@ -18,7 +18,7 @@ import Row from '@components/rowTsx';
 import Button from '@components/buttonTsx';
 import CheckboxField from '@components/checkboxField';
 import ProgressivePreloader from '@components/preloader';
-import AppBackgroundColorTab from '@components/sidebarLeft/tabs/backgroundColor';
+import {AppBackgroundColorTab} from '@components/solidJsTabs/tabs';
 import {AppTheme, AppThemeSettings, SETTINGS_INIT} from '@config/state';
 import {blendWallpaperForTinted} from '@config/themePresets';
 import themeController from '@helpers/themeController';

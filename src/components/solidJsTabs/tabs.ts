@@ -193,6 +193,21 @@ export const AppBlockedUsersTab =
   });
 
 
+export const AppNewChannelTab =
+  scaffoldSolidJSTab({
+    title: 'NewChannel',
+    getComponentModule: () => import('../sidebarLeft/tabs/newChannel')
+  });
+(AppNewChannelTab as any).noSame = true;
+
+
+export const AppBackgroundColorTab =
+  scaffoldSolidJSTab({
+    title: 'SetColor',
+    getComponentModule: () => import('../sidebarLeft/tabs/backgroundColor')
+  });
+
+
 export type AppAddMembersExtraCategory = {
   key: string;
   icon: Icon;
