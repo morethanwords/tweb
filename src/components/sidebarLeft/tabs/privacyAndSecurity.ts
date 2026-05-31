@@ -6,11 +6,17 @@ import AppTwoStepVerificationTab from '@components/sidebarLeft/tabs/2fa';
 import AppTwoStepVerificationEnterPasswordTab from '@components/sidebarLeft/tabs/2fa/enterPassword';
 import AppTwoStepVerificationEmailConfirmationTab from '@components/sidebarLeft/tabs/2fa/emailConfirmation';
 import AppPrivacyLastSeenTab from '@components/sidebarLeft/tabs/privacy/lastSeen';
-import AppPrivacyProfilePhotoTab from '@components/sidebarLeft/tabs/privacy/profilePhoto';
-import AppPrivacyForwardMessagesTab from '@components/sidebarLeft/tabs/privacy/forwardMessages';
-import AppPrivacyAddToGroupsTab from '@components/sidebarLeft/tabs/privacy/addToGroups';
-import AppPrivacyCallsTab from '@components/sidebarLeft/tabs/privacy/calls';
-import {AppBlockedUsersTab} from '@components/solidJsTabs/tabs';
+import {
+  AppBlockedUsersTab,
+  AppPrivacyAboutTab,
+  AppPrivacyAddToGroupsTab,
+  AppPrivacyBirthdayTab,
+  AppPrivacyCallsTab,
+  AppPrivacyForwardMessagesTab,
+  AppPrivacyProfilePhotoTab,
+  AppPrivacySavedMusicTab,
+  AppPrivacyVoicesTab
+} from '@components/solidJsTabs/tabs';
 import rootScope from '@lib/rootScope';
 import {i18n, LangPackKey, _i18n} from '@lib/langPack';
 import replaceContent from '@helpers/dom/replaceContent';
@@ -24,11 +30,9 @@ import PrivacyType from '@appManagers/utils/privacy/privacyType';
 import confirmationPopup, {PopupConfirmationOptions} from '@components/confirmationPopup';
 import noop from '@helpers/noop';
 import {toastNew} from '@components/toast';
-import AppPrivacyVoicesTab from '@components/sidebarLeft/tabs/privacy/voices';
 import SettingSection from '@components/settingSection';
 import AppActiveWebSessionsTab from '@components/sidebarLeft/tabs/activeWebSessions';
 import PopupElement from '@components/popups';
-import AppPrivacyAboutTab from '@components/sidebarLeft/tabs/privacy/about';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import Icon from '@components/icon';
 import {AppPasscodeEnterPasswordTab, AppPasscodeLockTab, AppPasskeysTab, AppPrivacyMessagesTab} from '@components/solidJsTabs/tabs';
@@ -36,8 +40,6 @@ import {joinDeepPath} from '@helpers/object/setDeepProperty';
 import {AgeVerificationPopup} from '@components/popups/ageVerification';
 import {clearSensitiveSpoilers} from '@components/wrappers/mediaSpoiler';
 import useContentSettings from '@stores/contentSettings';
-import AppPrivacyBirthdayTab from '@components/sidebarLeft/tabs/privacy/birthday';
-import AppPrivacySavedMusicTab from '@components/sidebarLeft/tabs/privacy/savedMusic';
 import AppPrivacyGiftsTab from '@components/sidebarLeft/tabs/privacy/gifts';
 import ChangeLoginEmailTab from '@components/sidebarLeft/tabs/changeLoginEmail';
 import {wrapEmailPattern} from '@components/popups/emailSetup';

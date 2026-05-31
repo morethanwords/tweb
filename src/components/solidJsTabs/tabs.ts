@@ -4,7 +4,7 @@ import {LangPackKey} from '@lib/langPack';
 import type {PasscodeActions} from '@lib/passcode/actions';
 import {InstanceOf} from '@types';
 import {SetStoreFunction} from 'solid-js/store';
-import {scaffoldSolidJSTab} from '@components/solidJsTabs/scaffoldSolidJSTab';
+import {scaffoldSolidJSTab, scaffoldSolidJSTabEventable} from '@components/solidJsTabs/scaffoldSolidJSTab';
 import {SuperTabProvider} from '@components/solidJsTabs/superTabProvider';
 import rootScope from '@lib/rootScope';
 import type {EditProfileTabPayload} from '@components/sidebarLeft/tabs/editProfile';
@@ -205,6 +205,57 @@ export const AppBackgroundColorTab =
   scaffoldSolidJSTab({
     title: 'SetColor',
     getComponentModule: () => import('../sidebarLeft/tabs/backgroundColor')
+  });
+
+
+// ─── Privacy sub-tabs (eventable: PrivacySection saves on the tab's destroy event) ───
+
+export const AppPrivacyAboutTab =
+  scaffoldSolidJSTabEventable({
+    title: 'UserBio',
+    getComponentModule: () => import('../sidebarLeft/tabs/privacy/about')
+  });
+
+export const AppPrivacyCallsTab =
+  scaffoldSolidJSTabEventable({
+    title: 'PrivacySettings.VoiceCalls',
+    getComponentModule: () => import('../sidebarLeft/tabs/privacy/calls')
+  });
+
+export const AppPrivacyVoicesTab =
+  scaffoldSolidJSTabEventable({
+    title: 'PrivacyVoiceMessages',
+    getComponentModule: () => import('../sidebarLeft/tabs/privacy/voices')
+  });
+
+export const AppPrivacyAddToGroupsTab =
+  scaffoldSolidJSTabEventable({
+    title: 'PrivacySettings.Groups',
+    getComponentModule: () => import('../sidebarLeft/tabs/privacy/addToGroups')
+  });
+
+export const AppPrivacyBirthdayTab =
+  scaffoldSolidJSTabEventable({
+    title: 'Birthday',
+    getComponentModule: () => import('../sidebarLeft/tabs/privacy/birthday')
+  });
+
+export const AppPrivacyForwardMessagesTab =
+  scaffoldSolidJSTabEventable({
+    title: 'PrivacySettings.Forwards',
+    getComponentModule: () => import('../sidebarLeft/tabs/privacy/forwardMessages')
+  });
+
+export const AppPrivacyProfilePhotoTab =
+  scaffoldSolidJSTabEventable({
+    title: 'PrivacyProfilePhoto',
+    getComponentModule: () => import('../sidebarLeft/tabs/privacy/profilePhoto')
+  });
+
+export const AppPrivacySavedMusicTab =
+  scaffoldSolidJSTabEventable({
+    title: 'PrivacySavedMusic',
+    getComponentModule: () => import('../sidebarLeft/tabs/privacy/savedMusic')
   });
 
 
