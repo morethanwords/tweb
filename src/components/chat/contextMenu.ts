@@ -62,7 +62,7 @@ import detectLanguageForTranslation from '@helpers/detectLanguageForTranslation'
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import documentFragmentToHTML from '@helpers/dom/documentFragmentToHTML';
 import {showAdReport, showMessageReport} from '@components/popups/reportAd';
-import PopupAboutAd from '@components/popups/aboutAd';
+import showAboutAdPopup from '@components/popups/aboutAd';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import deepEqual from '@helpers/object/deepEqual';
 import wrapDraftText from '@lib/richTextProcessor/wrapDraftText';
@@ -128,7 +128,7 @@ export function getSponsoredMessageButtons(options: {
       icon: 'info',
       text: 'AboutRevenueSharingAds',
       onClick: () => {
-        PopupElement.createPopup(PopupAboutAd);
+        showAboutAdPopup();
       },
       verify: () => extraVerify() && !!canReport,
       isSponsored: true

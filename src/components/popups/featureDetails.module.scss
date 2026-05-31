@@ -1,3 +1,5 @@
+@use "../../scss/variables.scss" as *;
+
 .popup {
   --popup-min-width: 26.25rem;
   --popup-max-width: 26.25rem;
@@ -37,5 +39,24 @@
     font-size: var(--font-size-16) !important;
     line-height: var(--line-height-16);
     margin-top: .0625rem !important;
+  }
+}
+
+.caption {
+  background-color: var(--light-filled-secondary-text-color);
+  border-radius: $border-radius-big;
+  padding: .625rem 1.25rem;
+  text-align: center;
+  line-height: var(--line-height-16);
+  margin-top: 1rem;
+
+  &Title {
+    font-weight: var(--font-weight-bold);
+    margin-bottom: .125rem;
+  }
+
+  &Subtitle {
+    font-size: var(--font-size-14);
+    line-height: var(--line-height-14);
   }
 }

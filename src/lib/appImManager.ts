@@ -792,7 +792,7 @@ export class AppImManager extends EventListenerBase<{
     //   openInstantViewInAppBrowser(((message as Message.message).media as MessageMedia.messageMediaWebPage).webpage as WebPage.webPage);
     // }, 100);
 
-    // PopupElement.createPopup(PopupAboutAd);
+    // showAboutAdPopup();
 
     // PopupElement.createPopup(PopupBoostsViaGifts, -5000866300);
 

@@ -25,6 +25,10 @@ type FeatureDetailsPopupProps = {
   subtitle?: JSX.Element,
   subtitleSecondary?: boolean,
   rows: FeatureDetailsRow[],
+  caption?: {
+    title?: JSX.Element,
+    subtitle?: JSX.Element
+  },
   buttons: FeatureDetailsButton[],
   onClose?: () => void
 };
@@ -61,6 +65,16 @@ export default function showFeatureDetailsPopup(props: FeatureDetailsPopupProps)
             <Row.Subtitle class={styles.rowSubtitle}>{subtitle}</Row.Subtitle>
           </Row>
         )}</For>
+        <Show when={props.caption}>
+          <div class={styles.caption}>
+            <Show when={props.caption.title}>
+              <div class={styles.captionTitle}>{props.caption.title}</div>
+            </Show>
+            <Show when={props.caption.subtitle}>
+              <div class={styles.captionSubtitle}>{props.caption.subtitle}</div>
+            </Show>
+          </div>
+        </Show>
       </PopupElement.Body>
       <PopupElement.Footer class={styles.popupFooter}>
         <For each={props.buttons}>{(button) => (

@@ -158,7 +158,7 @@ import TranslatableMessage from '@components/translatableMessage';
 import getUnreadReactions from '@appManagers/utils/messages/getUnreadReactions';
 import {setPeerLanguageLoaded} from '@stores/peerLanguage';
 import ButtonIcon from '@components/buttonIcon';
-import PopupAboutAd from '@components/popups/aboutAd';
+import showAboutAdPopup from '@components/popups/aboutAd';
 import numberThousandSplitter, {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
 import wrapGeo from '@components/wrappers/geo';
 import safePlay from '@helpers/dom/safePlay';
@@ -7443,7 +7443,7 @@ export default class ChatBubbles {
                 content: i18n('SponsoredMessageAdWhatIsThis'),
                 onClick: (e) => {
                   cancelEvent(e);
-                  PopupElement.createPopup(PopupAboutAd);
+                  showAboutAdPopup();
                 }
               }
             };
