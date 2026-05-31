@@ -8,10 +8,12 @@ $hover-alpha: .08;
 //$small-screen: 720px;
 $small-screen: 600px;
 //$small-screen: 900px;
-$medium-screen: 1275px;
 $large-screen: 1680px;
 //$large-screen: 16800px;
 
+// The floating↔docked boundary — also the medium↔large line (ScreenSize): at/
+// below it the left sidebar floats as a drawer (medium); above it docks and the
+// chat sits beside it, clamped to the leftover width (updateColumnWidths.ts).
 $floating-left-sidebar: 925px;
 // Standard sidebar width — kept in sync with DEFAULT_COLUMN_WIDTH in
 // helpers/updateColumnWidths.ts (single source of truth for runtime widths).

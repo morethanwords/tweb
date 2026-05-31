@@ -22,6 +22,8 @@
 
   color: var(--folders-sidebar-item-color);
 
+  z-index: 1;
+
   @include respond-to(until-floating-left-sidebar) {
     display: none;
   }

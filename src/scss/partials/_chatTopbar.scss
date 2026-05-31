@@ -22,12 +22,6 @@ body.is-pinned-audio-shown, body.is-calling.forwards {
   }
 }
 
-body.is-right-column-shown {
-  @include respond-to(medium-screens) {
-    --topbar-floating-scaleX: calc(1 - var(--right-column-proportion));
-  }
-}
-
 .topbar {
   --topbar-avatar-active-size: 0px;
   --topbar-close-active-size: 2.5rem;

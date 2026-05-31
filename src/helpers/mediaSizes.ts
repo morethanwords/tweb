@@ -31,8 +31,11 @@ export enum ScreenSize {
 }
 
 const MOBILE_SIZE = 600;
+// The medium↔large boundary IS the floating↔docked line: at/below this width the
+// left sidebar floats as a drawer (ScreenSize.medium); above it it docks
+// side-by-side and the chat sits beside it (ScreenSize.large), clamped to the
+// leftover width (updateColumnWidths.ts). No separate narrow-docked tier.
 const FLOATING_LEFT_SIDEBAR_SIZE = 925;
-const MEDIUM_SIZE = 1275;
 const LARGE_SIZE = 1680;
 
 const CUSTOM_EMOJI_SIZE = makeMediaSize(20, 20);
@@ -53,7 +56,7 @@ class MediaSizes extends EventListenerBase<{
 }> {
   private screenSizes: {key: ScreenSize, value: number}[] = [
     {key: ScreenSize.mobile, value: MOBILE_SIZE},
-    {key: ScreenSize.medium, value: MEDIUM_SIZE},
+    {key: ScreenSize.medium, value: FLOATING_LEFT_SIDEBAR_SIZE},
     {key: ScreenSize.large, value: LARGE_SIZE}
   ];
 

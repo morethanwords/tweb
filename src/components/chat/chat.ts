@@ -335,8 +335,13 @@ export default class Chat extends EventListenerBase<{
     // Main chat reserves 4.5rem above + 4rem below for the floating topbar / pinned-plate
     // buffer and the chat-input plate. The preview shows neither — only the basic 3rem
     // topbar — so collapse to topbar-height + 0.5rem (page-chats-padding) on each side.
-    const topBase = this.isPreview ? 3.5 : 4.5;
-    const bottomBase = this.isPreview ? 3.5 : 4;
+    // Handhelds drop those buffers too: the page inset shrinks to 8px so each floating
+    // plate's inner edge sits at 56px (3rem + 0.5rem). Collapse both spacers to sit flush
+    // (= --chat-padding-top / --chat-padding-bottom) instead of the wider desktop gap. Kept
+    // in sync across mobile<->desktop transitions by the 'changeScreen' listener in init().
+    const collapse = this.isPreview || mediaSizes.isMobile;
+    const topBase = collapse ? 3.5 : 4.5;
+    const bottomBase = collapse ? 3.5 : 4;
     const top = Math.round(topBase * rem + this.pinnedFloatingHeightPx);
     const bottom = Math.round(bottomBase * rem + this.chatInputSurplusPx);
     this.chatPaddingTop[1](top);
@@ -614,6 +619,12 @@ export default class Chat extends EventListenerBase<{
       if(this.peerId === migrateFrom) {
         this.setPeer({peerId: migrateTo});
       }
+    });
+
+    // Spacer heights depend on the screen (desktop reserves a wider floating-plate buffer
+    // than handheld), so recompute them when crossing the mobile boundary. See recomputePaddings().
+    this.bubbles.listenerSetter.add(mediaSizes)('changeScreen', () => {
+      this.recomputePaddings();
     });
 
     if(!this.isPreview) {

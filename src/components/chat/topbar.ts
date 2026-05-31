@@ -451,7 +451,7 @@ export default class ChatTopbar {
       onClick: () => {
         this.onFilterActionsClick();
       },
-      verify: () => mediaSizes.isMobile
+      verify: () => mediaSizes.isMobile && this.chat.type === ChatType.Logs
     }, /* {
       icon: 'pinlist',
       text: 'Pinned Messages',

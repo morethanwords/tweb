@@ -271,7 +271,7 @@
     }
   }
 
-  @include respond-to(before-medium-screens) {
+  @include respond-to(until-floating-left-sidebar) {
     flex: var(--left-column-visual-width) 2 auto;
   }
 

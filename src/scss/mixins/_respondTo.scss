@@ -6,14 +6,6 @@
     //@media only screen and (orientation: landscape) and (max-device-width: 896px) { @content; } // iPhone 11 Pro Max
   } @else if $media == small-screens {
     @media only screen and (min-width: $small-screen + 1) { @content; }
-  } @else if $media == only-small-screens {
-    @media only screen and (min-width: $small-screen + 1) and (max-width: $medium-screen) { @content; }
-  } @else if $media == medium-screens {
-    @media only screen and (min-width: $medium-screen + 1) { @content; }
-  } @else if $media == only-medium-screens {
-    @media only screen and (min-width: $medium-screen + 1) and (max-width: $large-screen) { @content; }
-  } @else if $media == before-medium-screens {
-    @media only screen and (max-width: $medium-screen) { @content; }
   } @else if $media == large-screens {
     @media only screen and (min-width: $large-screen + 1) { @content; }
   } @else if $media == not-handhelds {

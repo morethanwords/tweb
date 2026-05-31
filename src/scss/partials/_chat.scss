@@ -374,17 +374,21 @@
 	// the handheld value (8px) already gives the chat its breathing room
 	// without a SCSS @media override here.
 
-	// Only shift the chat off the left bar once the viewport is wide enough that the
-	// chat content (--chat-width) plus the left bar + gap + outer paddings
-	// actually fit — otherwise the shift just pushes chat content past the right edge.
-	// --folders-sidebar-offset (0 normally, ~5.5rem when folders panel is shown) is
+	// Centre the chat in the space to the right of the docked left bar — at every
+	// width above the floating-drawer range. #column-center is inset by
+	// --page-chats-padding on its right edge, which alone would centre the chat in
+	// [bar, viewport − inset] and leave the right gap a padding wider than the
+	// left; the extra + --page-chats-padding in the shift compensates so the chat
+	// sits symmetrically between the bar and the viewport edge. JS clamps
+	// --chat-width to the same space so it never spills past the edge.
+	// --folders-sidebar-offset (0 normally, 80px when folders panel is shown) is
 	// folded into the left side so chat content stays centered past the panel too.
-	@include respond-to(medium-screens) {
-		transform: translateX(calc((var(--folders-sidebar-offset) + var(--left-column-width)) / 2 * var(--reflect)));
+	@include respond-to(no-floating-left-sidebar) {
+		transform: translateX(calc((var(--folders-sidebar-offset) + var(--left-column-width) + var(--page-chats-padding)) / 2 * var(--reflect)));
 		transition: transform var(--transition-standard-out);
 	}
 
-	@include respond-to(medium-screens) {
+	@include respond-to(no-floating-left-sidebar) {
 		body.is-right-column-shown:not(.right-column-floats) & {
 			transform: translateX(calc((var(--folders-sidebar-offset) + var(--left-column-width) - var(--right-column-width)) / 2 * var(--reflect)));
 			transition: transform var(--transition-standard-in);

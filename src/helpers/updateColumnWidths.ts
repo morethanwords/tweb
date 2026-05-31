@@ -279,12 +279,21 @@ export default function updateColumnWidths(): void {
   // collapsing the messages column to 0 / a tiny centered strip.
   const floats = isMobile || vw < rightColumnFits;
   const middleWidth = isMobile ? vw : vw - PAGE_CHATS_PADDING * 2;
-  // Chat content max width — fills the viewport on handheld (single-
-  // column slider) and caps at CHAT_WIDTH_MAX otherwise. On narrower
-  // desktop viewports where the middle column is tighter than the cap,
-  // shrink to match so SCSS `max-width: var(--chat-width)` rules don't
-  // overshoot the available space.
-  const chatWidth = isMobile ? vw : Math.min(middleWidth, CHAT_WIDTH_MAX);
+  // Chat content max width — fills the viewport on handheld (single-column
+  // slider) and caps at CHAT_WIDTH_MAX otherwise. It also never exceeds the
+  // space actually free beside the left column: in the docked-left range
+  // (>925px) the left column + folders panel sit in-flow and the chat is
+  // centred in the gap to their right (see #column-center translateX in
+  // _chat.scss). Subtract them plus 3 paddings — the page's left inset and the
+  // two 16px gutters that flank the chat once it's clamped — so the chat keeps
+  // a symmetric gap on both sides and a wide/resized left column reclaims width
+  // from it. In the floating-drawer range (601-925) and on mobile the left
+  // column overlays the chat, which keeps full width.
+  const isFloatingLeft = mediaSizes.isLessThanFloatingLeftSidebar && !isMobile;
+  const chatAvailableWidth = (isMobile || isFloatingLeft) ?
+    middleWidth :
+    vw - foldersOffset - layoutLeftWidth - PAGE_CHATS_PADDING * 3;
+  const chatWidth = isMobile ? vw : Math.min(chatAvailableWidth, CHAT_WIDTH_MAX);
   // Viewport threshold at which the right column can dock at default size
   // without overlapping a CHAT_WIDTH_MAX chat. Exposed for any caller that
   // wants to read the same number JS uses for `body.right-column-floats`.
