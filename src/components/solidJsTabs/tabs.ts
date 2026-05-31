@@ -654,6 +654,22 @@ export const AppMyStoriesTab = Object.assign(
 );
 
 
+export const AppArchivedTab =
+  scaffoldSolidJSTab({
+    title: 'ArchivedChats',
+    getComponentModule: () => import('../sidebarLeft/tabs/archivedTab'),
+    onOpenAfterTimeout: function() {
+      (this as any)._onOpenAfterTimeout?.();
+    },
+    onClose: function() {
+      (this as any)._onClose?.();
+    },
+    onCloseAfterTimeout: function() {
+      (this as any)._onCloseAfterTimeout?.();
+    }
+  });
+
+
 export type AppAddMembersExtraCategory = {
   key: string;
   icon: Icon;

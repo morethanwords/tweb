@@ -12,7 +12,7 @@ import {MOUNT_CLASS_TO} from '@config/debug';
 import {AppSettingsTab} from '@components/solidJsTabs';
 import {AppNewChannelTab} from '@components/solidJsTabs/tabs';
 import {AppContactsTab} from '@components/solidJsTabs/tabs';
-import AppArchivedTab from '@components/sidebarLeft/tabs/archivedTab';
+import {AppArchivedTab} from '@components/solidJsTabs/tabs';
 import createNewGroupTab from '@components/sidebarLeft/tabs/createNewGroupTab';
 import I18n, {i18n} from '@lib/langPack';
 import ButtonMenu, {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';

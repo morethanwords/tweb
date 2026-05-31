@@ -14,6 +14,8 @@ type ScaffoldSolidJSTabArgs<Payload> = {
   title: LangPackKey;
   getComponentModule: () => Promise<{default: Component}>;
   onOpenAfterTimeout?: (this: InstanceOf<ScaffoledClass<Payload>>) => void;
+  onClose?: (this: InstanceOf<ScaffoledClass<Payload>>) => void;
+  onCloseAfterTimeout?: (this: InstanceOf<ScaffoledClass<Payload>>) => void;
 };
 
 type ScaffoledClass<Payload = void> = new (...args: ConstructorParameters<typeof SliderSuperTab>) => SliderSuperTab & {
@@ -24,7 +26,9 @@ type ScaffoledClass<Payload = void> = new (...args: ConstructorParameters<typeof
 export function scaffoldSolidJSTab<Payload = void>({
   title,
   getComponentModule,
-  onOpenAfterTimeout
+  onOpenAfterTimeout,
+  onClose,
+  onCloseAfterTimeout
 }: ScaffoldSolidJSTabArgs<Payload>): ScaffoledClass<Payload> {
   return class extends SliderSuperTab {
     public payload: Payload;
@@ -56,7 +60,12 @@ export function scaffoldSolidJSTab<Payload = void>({
       await promiseCollectorHelper.await();
     }
 
+    protected onClose() {
+      onClose?.call?.(this);
+    }
+
     protected onCloseAfterTimeout() {
+      onCloseAfterTimeout?.call?.(this);
       this.dispose?.();
       super.onCloseAfterTimeout();
     }
