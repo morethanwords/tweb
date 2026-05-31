@@ -11,7 +11,7 @@ import showPickUserPopup from '@components/popups/pickUser';
 import Row from '@components/row';
 import SettingSection from '@components/settingSection';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
-import AppUserPermissionsTab from '@components/sidebarRight/tabs/userPermissions';
+import {openUserPermissionsTab} from '@components/solidJsTabs/tabs';
 import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
 import {isParticipantAdmin} from '@lib/appManagers/utils/chats/isParticipantAdmin';
 import {createSelectorForParticipants} from './participantsSelector';
@@ -42,7 +42,7 @@ const ChatAdministrators: Component = () => {
     if(canAddAdmins) tab.content.append(addBtn);
 
     const openPermissions = async(participant: ChatParticipant | ChannelParticipant) => {
-      AppUserPermissionsTab.openTab(tab.slider, chatId, participant, true);
+      openUserPermissionsTab(tab.slider, chatId, participant, true);
     };
 
     attachClickEvent(addBtn, () => {

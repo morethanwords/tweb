@@ -17,7 +17,7 @@ import showPickUserPopup from '@components/popups/pickUser';
 import Row from '@components/row';
 import SettingSection from '@components/settingSection';
 import SliderSuperTab, {SliderSuperTabEventable} from '@components/sliderTab';
-import AppUserPermissionsTab from '@components/sidebarRight/tabs/userPermissions';
+import {openUserPermissionsTab} from '@components/solidJsTabs/tabs';
 import CheckboxFields, {CheckboxFieldsField} from '@components/checkboxFields';
 import PopupElement from '@components/popups';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
@@ -687,11 +687,7 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
           }
         }
 
-        const tab = this.slider.createTab(AppUserPermissionsTab);
-        tab.participant = participant;
-        tab.chatId = this.chatId;
-        tab.userId = peerId;
-        tab.open();
+        openUserPermissionsTab(this.slider, this.chatId, participant);
       };
 
       section.content.append(addExceptionRow.container);

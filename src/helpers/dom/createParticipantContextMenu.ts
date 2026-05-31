@@ -5,7 +5,7 @@ import SidebarSlider from '@components/slider';
 import rootScope from '@lib/rootScope';
 import appImManager from '@lib/appImManager';
 import canEditAdmin from '@appManagers/utils/chats/canEditAdmin';
-import AppUserPermissionsTab from '@components/sidebarRight/tabs/userPermissions';
+import {openUserPermissionsTab} from '@components/solidJsTabs/tabs';
 import {Middleware} from '@helpers/middleware';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import {handleMissingInvitees} from '@components/addChatUsers';
@@ -34,7 +34,7 @@ export default function createParticipantContextMenu(options: {
     canManageAdmins: boolean;
 
   const openPermissions = (isAdmin?: boolean) => {
-    AppUserPermissionsTab.openTab(slider, chatId, participant, isAdmin);
+    openUserPermissionsTab(slider, chatId, participant, isAdmin);
   };
 
   function getButtons(): ButtonMenuItemOptionsVerifiable[] {

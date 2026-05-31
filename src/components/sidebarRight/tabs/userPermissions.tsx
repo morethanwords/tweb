@@ -1,6 +1,6 @@
+import {Component, createEffect, createRoot} from 'solid-js';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import toggleDisability from '@helpers/dom/toggleDisability';
-import deepEqual from '@helpers/object/deepEqual';
 import {ChannelParticipant, Chat, ChatAdminRights, ChatBannedRights, ChatParticipant} from '@layer';
 import appDialogsManager from '@lib/appDialogsManager';
 import canEditAdmin from '@appManagers/utils/chats/canEditAdmin';
@@ -11,8 +11,6 @@ import Button from '@components/button';
 import confirmationPopup from '@components/confirmationPopup';
 import InputField from '@components/inputField';
 import SettingSection from '@components/settingSection';
-import SidebarSlider from '@components/slider';
-import {SliderSuperTabEventable} from '@components/sliderTab';
 import getUserStatusString from '@components/wrappers/getUserStatusString';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {ChatAdministratorRights, ChatPermissions, createSolidTabState} from '@components/sidebarRight/tabs/groupPermissions';
@@ -26,60 +24,46 @@ import {ButtonMenuItemOptions} from '@components/buttonMenu';
 import {BANNED_RIGHTS_UNTIL_FOREVER} from '@lib/appManagers/constants';
 import tsNow from '@helpers/tsNow';
 import showDatePickerPopup from '@components/popups/datePicker';
-import PopupElement from '@components/popups';
 import {formatDate, formatFullSentTime} from '@helpers/date';
-import {createEffect, createRoot} from 'solid-js';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import appImManager from '@lib/appImManager';
+import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
+import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
+import type {AppUserPermissionsTab} from '@components/solidJsTabs/tabs';
 
-export default class AppUserPermissionsTab extends SliderSuperTabEventable {
-  public participant: ChannelParticipant | ChatParticipant;
-  public chatId: ChatId;
-  public userId: UserId;
-  public editingAdmin: boolean;
+const UserPermissions: Component = () => {
+  const [tab] = useSuperTab<typeof AppUserPermissionsTab>();
+  const promiseCollector = usePromiseCollector();
+  const {participant, chatId, userId, editingAdmin} = tab.payload;
 
-  private saveCallback: () => Promise<any>;
-  private solidState = createSolidTabState<{
+  let saveCallback: () => Promise<any>;
+  const solidState = createSolidTabState<{
     rights: ChatAdminRights | ChatBannedRights,
     rank: string
   }>({
-    tab: this,
-    save: () => handleChannelsTooMuch(this.saveCallback),
+    tab,
+    save: () => handleChannelsTooMuch(saveCallback),
     unsavedConfirmationProps: {}
   });
 
-  public static openTab = (
-    slider: SidebarSlider,
-    chatId: ChatId,
-    participant: ChatParticipant | ChannelParticipant,
-    isAdmin?: boolean
-  ) => {
-    const tab = slider.createTab(AppUserPermissionsTab);
-    tab.participant = participant;
-    tab.chatId = chatId;
-    tab.userId = getParticipantPeerId(participant).toUserId();
-    tab.editingAdmin = isAdmin;
-    tab.open();
-  };
+  tab.header.append(solidState.saveIcon());
+  tab.title.replaceChildren(i18n(editingAdmin ? 'EditAdmin' : 'UserRestrictions'));
 
-  public async init() {
-    this.container.classList.add('edit-peer-container', 'user-permissions-container');
-    this.setTitle(this.editingAdmin ? 'EditAdmin' : 'UserRestrictions');
-
-    this.header.append(this.solidState.saveIcon());
+  promiseCollector.collect((async() => {
+    tab.container.classList.add('edit-peer-container', 'user-permissions-container');
 
     const [chat, isChannel, isGroup, user] = await Promise.all([
-      this.managers.appChatsManager.getChat(this.chatId) as Promise<Chat.chat | Chat.channel>,
-      this.managers.appChatsManager.isChannel(this.chatId),
-      this.managers.appPeersManager.isAnyGroup(this.chatId.toPeerId(true)),
-      this.managers.appUsersManager.getUser(this.userId)
+      tab.managers.appChatsManager.getChat(chatId) as Promise<Chat.chat | Chat.channel>,
+      tab.managers.appChatsManager.isChannel(chatId),
+      tab.managers.appPeersManager.isAnyGroup(chatId.toPeerId(true)),
+      tab.managers.appUsersManager.getUser(userId)
     ]);
-    const isCreator = isParticipantCreator(this.participant);
-    const isAdmin = isParticipantAdmin(this.participant);
-    const _canEditAdmin = canEditAdmin(chat, this.participant as ChannelParticipant, rootScope.myId);
+    const isCreator = isParticipantCreator(participant);
+    const isAdmin = isParticipantAdmin(participant);
+    const _canEditAdmin = canEditAdmin(chat, participant as ChannelParticipant, rootScope.myId);
 
     let goodTypes: (ChannelParticipant | ChatParticipant)['_'][];
-    if(this.editingAdmin) {
+    if(editingAdmin) {
       goodTypes = [...participantAdminPredicates];
     } else {
       goodTypes = [
@@ -90,8 +74,8 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
     let chatPermissions: ChatPermissions;
     {
       const section = new SettingSection({
-        name: this.editingAdmin ? 'EditAdminWhatCanDo' : 'UserRestrictionsCanDo',
-        caption: this.editingAdmin ? true : undefined
+        name: editingAdmin ? 'EditAdminWhatCanDo' : 'UserRestrictionsCanDo',
+        caption: editingAdmin ? true : undefined
       });
 
       const div = document.createElement('div');
@@ -102,39 +86,39 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
       div.append(list);
 
       const {dom} = appDialogsManager.addDialogNew({
-        peerId: this.userId.toPeerId(false),
+        peerId: userId.toPeerId(false),
         container: list,
         rippleEnabled: true,
         avatarSize: 'abitbigger',
         meAsSaved: false,
         wrapOptions: {
-          middleware: this.middlewareHelper.get()
+          middleware: tab.middlewareHelper.get()
         }
       });
 
       dom.lastMessageSpan.append(getUserStatusString(user));
 
-      const participantRights = goodTypes.includes(this.participant._) ?
-        (this.editingAdmin ?
-          (this.participant as ChannelParticipant.channelParticipantAdmin).admin_rights :
-          (this.participant as ChannelParticipant.channelParticipantBanned).banned_rights
+      const participantRights = goodTypes.includes(participant._) ?
+        (editingAdmin ?
+          (participant as ChannelParticipant.channelParticipantAdmin).admin_rights :
+          (participant as ChannelParticipant.channelParticipantBanned).banned_rights
         ) :
         undefined;
 
       const options: ConstructorParameters<typeof ChatAdministratorRights | typeof ChatPermissions>[0] = {
-        chatId: this.chatId,
-        listenerSetter: this.listenerSetter,
+        chatId,
+        listenerSetter: tab.listenerSetter,
         appendTo: section.content,
-        participant: goodTypes.includes(this.participant._) ? this.participant as any : undefined,
+        participant: goodTypes.includes(participant._) ? participant as any : undefined,
         chat,
         canEdit: _canEditAdmin
       };
 
-      if(this.editingAdmin) {
-        options.onSomethingChanged = () => this.solidState.set({rights: p.takeOut()});
+      if(editingAdmin) {
+        options.onSomethingChanged = () => solidState.set({rights: p.takeOut()});
         const p = new ChatAdministratorRights(options);
         if(isAdmin) {
-          this.solidState.setInitial({
+          solidState.setInitial({
             rights: copy(isChannel ? participantRights : p.takeOut())
           });
         }
@@ -152,44 +136,44 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
         };
 
         onChange();
-        this.listenerSetter.add(field.checkboxField.input)('change', onChange);
+        tab.listenerSetter.add(field.checkboxField.input)('change', onChange);
 
-        this.saveCallback = () => {
+        saveCallback = () => {
           if(!_canEditAdmin) {
             return;
           }
 
           const rights = p.takeOut();
-          return this.managers.appChatsManager.editAdmin(
-            this.chatId,
-            this.participant,
+          return tab.managers.appChatsManager.editAdmin(
+            chatId,
+            participant,
             rights,
             rankInputField?.value
           );
         };
       } else {
-        options.onSomethingChanged = () => this.solidState.set({rights: p.takeOut()});
-        const p = chatPermissions = new ChatPermissions(options as any, this.managers);
-        this.solidState.setInitial({rights: p.takeOut()});
+        options.onSomethingChanged = () => solidState.set({rights: p.takeOut()});
+        const p = chatPermissions = new ChatPermissions(options as any, tab.managers);
+        solidState.setInitial({rights: p.takeOut()});
 
         options.onSomethingChanged();
 
-        this.saveCallback = () => {
+        saveCallback = () => {
           const rights = p.takeOut();
-          return this.managers.appChatsManager.editBanned(
-            this.chatId,
-            this.participant,
+          return tab.managers.appChatsManager.editBanned(
+            chatId,
+            participant,
             rights
           );
         };
       }
 
-      this.scrollable.append(section.container);
+      tab.scrollable.append(section.container);
     }
 
     let rankInputField: InputField;
-    if(this.editingAdmin && isGroup) {
-      const rankKey: LangPackKey = isParticipantCreator(this.participant) ? 'Chat.OwnerBadge' : 'ChatAdmin';
+    if(editingAdmin && isGroup) {
+      const rankKey: LangPackKey = isParticipantCreator(participant) ? 'Chat.OwnerBadge' : 'ChatAdmin';
       const section = new SettingSection({
         name: 'EditAdminRank',
         caption: 'EditAdminRankInfo',
@@ -207,65 +191,65 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
         label: 'Rank.Label'
       });
 
-      const customRank = (this.participant as ChannelParticipant.channelParticipantAdmin).rank;
+      const customRank = (participant as ChannelParticipant.channelParticipantAdmin).rank;
       if(customRank) {
         inputField.setOriginalValue(customRank, true);
-        this.solidState.setInitial({rank: customRank});
+        solidState.setInitial({rank: customRank});
       }
 
-      this.listenerSetter.add(inputField.input)('input', () => {
-        this.solidState.set({rank: inputField.value || undefined});
-        this.solidState.setValid(inputField.isValid());
+      tab.listenerSetter.add(inputField.input)('input', () => {
+        solidState.set({rank: inputField.value || undefined});
+        solidState.setValid(inputField.isValid());
       });
 
       inputWrapper.append(inputField.container);
       section.content.append(inputWrapper);
-      this.scrollable.append(section.container);
+      tab.scrollable.append(section.container);
     }
 
     const saveSomethingDifferent = async(btn: HTMLElement, _callback: () => Promise<any>) => {
-      if(this.solidState.saving()) {
+      if(solidState.saving()) {
         return;
       }
 
       const toggle = toggleDisability([btn], true);
-      const callback = this.saveCallback;
+      const callback = saveCallback;
       try {
-        this.saveCallback = _callback;
-        await this.solidState.save();
+        saveCallback = _callback;
+        await solidState.save();
       } catch(err) {
-        this.saveCallback = callback;
+        saveCallback = callback;
         toggle();
         throw err;
       }
     };
 
-    if(this.editingAdmin) {
+    if(editingAdmin) {
       const section = new SettingSection({});
 
       if(
         !isCreator &&
         _canEditAdmin &&
         isAdmin &&
-        getParticipantPeerId(this.participant) !== rootScope.myId
+        getParticipantPeerId(participant) !== rootScope.myId
       ) {
         const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'deleteuser', text: 'Channel.Admin.Dismiss'});
 
-        const removeAdmin = () => this.managers.appChatsManager.editAdmin(
-          this.chatId,
-          this.participant,
+        const removeAdmin = () => tab.managers.appChatsManager.editAdmin(
+          chatId,
+          participant,
           {_: 'chatAdminRights', pFlags: {}},
           ''
         );
 
         attachClickEvent(btnDelete, () => {
           saveSomethingDifferent(btnDelete, removeAdmin);
-        }, {listenerSetter: this.listenerSetter});
+        }, {listenerSetter: tab.listenerSetter});
         section.content.append(btnDelete);
       }
 
       if(section.content.childElementCount) {
-        this.scrollable.append(section.container);
+        tab.scrollable.append(section.container);
       }
     } else {
       const sectionDuration = new SettingSection({});
@@ -310,7 +294,7 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
             }
           }]
         },
-        listenerSetter: this.listenerSetter
+        listenerSetter: tab.listenerSetter
       });
 
       sectionDuration.content.append(rowDuration.container);
@@ -324,14 +308,14 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
       };
 
       createRoot((dispose) => {
-        this.middlewareHelper.get().onDestroy(dispose);
+        tab.middlewareHelper.get().onDestroy(dispose);
 
         createEffect(() => {
-          updateDurationSubtitle((this.solidState.store.rights as ChatBannedRights).until_date);
+          updateDurationSubtitle((solidState.store.rights as ChatBannedRights).until_date);
         });
       });
 
-      const restrictedByPeerId = (this.participant as ChannelParticipant.channelParticipantBanned)?.kicked_by?.toPeerId(false);
+      const restrictedByPeerId = (participant as ChannelParticipant.channelParticipantBanned)?.kicked_by?.toPeerId(false);
       const anchor = restrictedByPeerId ? anchorCallback(() => {
         appImManager.setInnerPeer({peerId: restrictedByPeerId});
       }) : undefined;
@@ -341,24 +325,24 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
           caption: 'UserPermissions.RestrictedBy',
           captionArgs: [
             anchor,
-            formatFullSentTime((this.participant as ChannelParticipant.channelParticipantBanned).date)
+            formatFullSentTime((participant as ChannelParticipant.channelParticipantBanned).date)
           ]
         } : {})
       });
 
-      if(this.participant._ === 'channelParticipantBanned') {
+      if(participant._ === 'channelParticipantBanned') {
         const btnDeleteException = Button('btn-primary btn-transparent danger', {icon: 'delete', text: 'GroupPermission.Delete'});
 
         const clearChannelParticipantBannedRights = () => {
-          return this.managers.appChatsManager.clearChannelParticipantBannedRights(
-            this.chatId,
-            this.participant as ChannelParticipant.channelParticipantBanned
+          return tab.managers.appChatsManager.clearChannelParticipantBannedRights(
+            chatId,
+            participant as ChannelParticipant.channelParticipantBanned
           );
         };
 
         attachClickEvent(btnDeleteException, () => {
           saveSomethingDifferent(btnDeleteException, clearChannelParticipantBannedRights);
-        }, {listenerSetter: this.listenerSetter});
+        }, {listenerSetter: tab.listenerSetter});
 
         section.content.append(btnDeleteException);
       }
@@ -366,9 +350,9 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
       const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'deleteuser', text: 'UserRestrictionsBlock'});
 
       const kickFromChat = async() => {
-        const peerId = this.userId.toPeerId();
+        const peerId = userId.toPeerId();
         await confirmationPopup({
-          peerId: this.chatId.toPeerId(true),
+          peerId: chatId.toPeerId(true),
           descriptionLangKey: 'Permissions.RemoveFromGroup',
           descriptionLangArgs: [await wrapPeerTitle({peerId: peerId})],
           titleLangKey: 'ChannelBlockUser',
@@ -378,16 +362,20 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
           }
         });
 
-        await this.managers.appChatsManager.kickFromChat(this.chatId, this.participant);
+        await tab.managers.appChatsManager.kickFromChat(chatId, participant);
       };
 
       attachClickEvent(btnDelete, async() => {
         saveSomethingDifferent(btnDelete, kickFromChat);
-      }, {listenerSetter: this.listenerSetter});
+      }, {listenerSetter: tab.listenerSetter});
 
       section.content.append(btnDelete);
 
-      this.scrollable.append(sectionDuration.container, section.container);
+      tab.scrollable.append(sectionDuration.container, section.container);
     }
-  }
-}
+  })());
+
+  return null;
+};
+
+export default UserPermissions;

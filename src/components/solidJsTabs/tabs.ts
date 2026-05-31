@@ -1,5 +1,7 @@
 import {CancellablePromise} from '@helpers/cancellablePromise';
-import {AccountPasskeys, Authorization, Chat, ChatFull, GlobalPrivacySettings, Passkey, WebAuthorization} from '@layer';
+import {AccountPasskeys, Authorization, ChannelParticipant, Chat, ChatFull, ChatParticipant, GlobalPrivacySettings, Passkey, WebAuthorization} from '@layer';
+import type SidebarSlider from '@components/slider';
+import getParticipantPeerId from '@appManagers/utils/chats/getParticipantPeerId';
 import {LangPackKey} from '@lib/langPack';
 import type {PasscodeActions} from '@lib/passcode/actions';
 import {InstanceOf} from '@types';
@@ -433,6 +435,34 @@ export const AppChatTypeTab =
     title: 'ChannelType',
     getComponentModule: () => import('../sidebarRight/tabs/chatType')
   });
+
+type AppUserPermissionsTabPayload = {
+  participant: ChannelParticipant | ChatParticipant,
+  chatId: ChatId,
+  userId: UserId,
+  editingAdmin?: boolean
+};
+
+export const AppUserPermissionsTab =
+  scaffoldSolidJSTabEventable<AppUserPermissionsTabPayload>({
+    title: 'UserRestrictions',
+    getComponentModule: () => import('../sidebarRight/tabs/userPermissions')
+  });
+
+// Replaces the legacy AppUserPermissionsTab.openTab static.
+export function openUserPermissionsTab(
+  slider: SidebarSlider,
+  chatId: ChatId,
+  participant: ChatParticipant | ChannelParticipant,
+  isAdmin?: boolean
+) {
+  slider.createTab(AppUserPermissionsTab).open({
+    participant,
+    chatId,
+    userId: getParticipantPeerId(participant).toUserId(),
+    editingAdmin: isAdmin
+  });
+}
 
 
 export type AppAddMembersExtraCategory = {
