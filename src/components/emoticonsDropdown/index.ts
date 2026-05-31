@@ -13,7 +13,7 @@ import GifsTab from '@components/emoticonsDropdown/tabs/gifs';
 import StickersTab from '@components/emoticonsDropdown/tabs/stickers';
 import {MOUNT_CLASS_TO} from '@config/debug';
 import {AppGifsTab} from '@components/solidJsTabs/tabs';
-import AppStickersTab from '@components/sidebarRight/tabs/stickers';
+import {AppStickersTab} from '@components/solidJsTabs/tabs';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import findUpTag from '@helpers/dom/findUpTag';
 import blurActiveElement from '@helpers/dom/blurActiveElement';

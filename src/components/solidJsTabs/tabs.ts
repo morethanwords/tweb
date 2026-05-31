@@ -416,6 +416,12 @@ export const AppEditTopicTab =
     getComponentModule: () => import('../sidebarRight/tabs/editTopic')
   });
 
+export const AppStickersTab =
+  scaffoldSolidJSTab({
+    title: 'StickersName',
+    getComponentModule: () => import('../sidebarRight/tabs/stickers')
+  });
+
 
 export type AppAddMembersExtraCategory = {
   key: string;
