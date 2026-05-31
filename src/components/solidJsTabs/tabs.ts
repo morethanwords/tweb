@@ -179,6 +179,17 @@ export const AppStickersAndEmojiTab =
   });
 
 
+export const AppContactsTab =
+  scaffoldSolidJSTab({
+    title: 'Contacts',
+    getComponentModule: () => import('../sidebarLeft/tabs/contacts'),
+    onOpenAfterTimeout: function() {
+      (this as any)._focusOnOpen?.();
+    }
+  });
+(AppContactsTab as any).noSame = true;
+
+
 export const AppPowerSavingTab =
   scaffoldSolidJSTab({
     title: 'LiteMode.Title',

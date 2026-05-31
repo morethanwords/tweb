@@ -39,7 +39,7 @@ import {openInstantViewInAppBrowser} from '@components/browser';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import appSidebarLeft from '@components/sidebarLeft';
-import AppContactsTab from '@components/sidebarLeft/tabs/contacts';
+import {AppContactsTab} from '@components/solidJsTabs/tabs';
 import {AppNewChannelTab} from '@components/solidJsTabs/tabs';
 import showCreateContactPopup from '@components/popups/createContact';
 import createNewGroupTab from '@components/sidebarLeft/tabs/createNewGroupTab';
@@ -759,8 +759,7 @@ export class InternalLinkProcessor {
             return showCreateContactPopup();
           case 'search':
           case '':
-            const tab = appSidebarLeft.createTab(AppContactsTab);
-            return tab.open().then(() => tab.focus());
+            return appSidebarLeft.createTab(AppContactsTab).open();
           // case 'invite':
           // case 'manage':
           // case 'sort':
