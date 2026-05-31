@@ -4,6 +4,7 @@ import type Chat from '@components/chat/chat';
 import {RIGHT_COLUMN_ACTIVE_CLASSNAME} from '@components/sidebarRight';
 import mediaSizes, {ScreenSize} from '@helpers/mediaSizes';
 import rootScope, {BroadcastEvents} from '@lib/rootScope';
+import {isElectron, isChatWindowMode, openChatInWindow} from '@lib/mtproto/electronRenderer';
 import ButtonIcon from '@components/buttonIcon';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import createChatPinnedMessage, {ChatPinnedMessageController} from '@components/chat/pinnedMessage';
@@ -445,6 +446,13 @@ export default class ChatTopbar {
         this.chat.initSearch();
       },
       verify: () => mediaSizes.isMobile
+    }, {
+      icon: 'newtab',
+      text: 'OpenInNewWindow',
+      onClick: () => {
+        openChatInWindow({peerId: this.peerId, threadId: this.chat.threadId});
+      },
+      verify: () => isElectron() && !isChatWindowMode() && !!this.peerId && this.chat.type === ChatType.Chat
     }, {
       icon: 'filter',
       text: 'FilterActions',

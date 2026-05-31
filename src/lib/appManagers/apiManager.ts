@@ -210,6 +210,22 @@ export class ApiManager extends ApiManagerMethods {
     });
   }
 
+  /**
+   * Rebuild every active networker's transport using the current network config. Used to
+   * apply an Electron raw-TCP / SOCKS5 / MTProxy switch live, without restarting the worker
+   * (which is shared across windows and survives renderer reloads). Mirrors changeTransportType.
+   */
+  public reapplyTransports() {
+    this.log('reapplying transports for updated network config');
+    // Drop cached transports so chooseServer builds fresh ones reading the new config.
+    this.dcConfigurator.chosenServers = {} as any;
+    this.iterateNetworkers((info) => {
+      const transportType = this.getTransportType(info.connectionType);
+      const transport = this.chooseServer(info.dcId, info.connectionType, transportType);
+      this.changeNetworkerTransport(info.networker, transport);
+    });
+  }
+
   public async getBaseDcId() {
     if(this.baseDcId) {
       return this.baseDcId as TrueDcId;

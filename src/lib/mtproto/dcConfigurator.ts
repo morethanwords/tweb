@@ -16,6 +16,8 @@ import {IS_WEB_WORKER} from '@helpers/context';
 import {DcId} from '@types';
 import {getEnvironment} from '@environment/utils';
 import SocketProxied from '@lib/mtproto/transports/socketProxied';
+import {TcpObfuscatedOptions} from '@lib/mtproto/transports/tcpObfuscated';
+import {getElectronProxyConfig, parseMtprotoSecret, shouldUseBridge} from '@lib/mtproto/electronProxyConfig';
 
 export type TransportType = 'websocket' | 'https' | 'http';
 export type ConnectionType = 'client' | 'download' | 'upload';
@@ -34,6 +36,31 @@ const RETRY_TIMEOUT_DOWNLOAD = 3000;
 
 export function getTelegramConnectionSuffix(connectionType: ConnectionType) {
   return connectionType === 'client' ? '' : '-1';
+}
+
+/**
+ * Build the local-bridge WebSocket URL and per-connection obfuscation options for a DC.
+ * The bridge resolves dc/test/type into a raw TCP target (optionally via SOCKS5/MTProxy);
+ * the worker still owns all obfuscation, including MTProxy's secret-keyed handshake.
+ */
+function buildBridgeTransport(dcId: DcId, connectionType: ConnectionType): {url: string, options: TcpObfuscatedOptions} {
+  const config = getElectronProxyConfig();
+  const test = Modes.test ? 1 : 0;
+  const url = `ws://127.0.0.1:${config.bridgePort}/apiws?dc=${dcId}&test=${test}&type=${connectionType}`;
+
+  const options: TcpObfuscatedOptions = {streamFramed: true};
+
+  if(config.connection === 'mtproxy') {
+    const secret = parseMtprotoSecret(config.mtproxy?.secret);
+    if(secret) {
+      // Embed the target DC id (test-shifted, negated for the media cluster) like tdesktop.
+      let protocolDcId = (Modes.test ? 10000 : 0) + dcId;
+      if(connectionType !== 'client') protocolDcId = -protocolDcId;
+      options.mtproto = {secret: secret.bytes, dcId: protocolDcId, padded: secret.padded};
+    }
+  }
+
+  return {url, options};
 }
 
 export function constructTelegramWebSocketUrl(dcId: DcId, connectionType: ConnectionType, premium?: boolean) {
@@ -72,10 +99,17 @@ export class DcConfigurator {
       return;
     }
 
-    const chosenServer = constructTelegramWebSocketUrl(dcId, connectionType, premium);
     const logSuffix = connectionType === 'upload' ? '-U' : connectionType === 'download' ? '-D' : '';
-
     const retryTimeout = connectionType === 'client' ? RETRY_TIMEOUT_CLIENT : RETRY_TIMEOUT_DOWNLOAD;
+
+    // Electron raw-TCP / SOCKS5 / MTProxy: route through the local WebSocket->TCP bridge.
+    // The browser WebSocket still does the IPC; the bridge turns it into raw obfuscated TCP.
+    if(shouldUseBridge()) {
+      const {url, options} = buildBridgeTransport(dcId, connectionType);
+      return new TcpObfuscated(Socket, dcId, url, logSuffix, retryTimeout, options);
+    }
+
+    const chosenServer = constructTelegramWebSocketUrl(dcId, connectionType, premium);
 
     let oooohLetMeLive: MTConnectionConstructable;
     if(import.meta.env.VITE_MTPROTO_SW || !import.meta.env.VITE_SAFARI_PROXY_WEBSOCKET) {

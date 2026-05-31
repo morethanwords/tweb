@@ -26,6 +26,7 @@ import {useAutoLock} from '@lib/mainWorker/useAutoLock';
 import pushSingleManager from '@appManagers/pushSingleManager';
 import {createBroadcastChannelWrapper} from '@lib/broadcastChannelWrapper';
 import {MainBroadcastChannelEvents, unversionedMainBroadcastChannelName} from '@config/broadcastChannel';
+import {setElectronProxyConfig} from '@lib/mtproto/electronProxyConfig';
 
 
 const log = logger('MTPROTO');
@@ -51,6 +52,10 @@ port.addMultipleEventsListeners({
     if(import.meta.env.VITE_MTPROTO_AUTO && Modes.multipleTransports) {
       transportController.waitForWebSocket();
     }
+  },
+
+  setElectronConfig: (config) => {
+    setElectronProxyConfig(config);
   },
 
   crypto: ({method, args}) => {

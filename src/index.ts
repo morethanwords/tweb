@@ -20,6 +20,7 @@ import I18n, {checkLangPackForUpdates, i18n, LangPackKey} from '@lib/langPack';
 import '@helpers/peerIdPolyfill';
 import '@lib/polyfill';
 import apiManagerProxy from '@lib/apiManagerProxy';
+import {applyChatWindowMode} from '@lib/mtproto/electronRenderer';
 import getProxiedManagers from '@lib/getProxiedManagers';
 import themeController from '@helpers/themeController';
 import overlayCounter from '@helpers/overlayCounter';
@@ -67,6 +68,9 @@ import appChatBackground from '@components/chat/bubbles/chatBackground';
 //   })();
 // }
 
+
+// Electron: a detached single-chat window collapses the UI before anything renders.
+applyChatWindowMode();
 
 IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
   mimeTypes.forEach((mimeType) => {

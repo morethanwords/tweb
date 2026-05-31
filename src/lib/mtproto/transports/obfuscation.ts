@@ -23,7 +23,7 @@ export default class Obfuscation {
 
   // private decIvCounter: Counter;
 
-  public async init(codec: Codec) {
+  public async init(codec: Codec, opts?: {secret?: Uint8Array, dcId?: number}) {
     if(this.idPromise !== undefined) {
       this.release();
     }
@@ -54,10 +54,17 @@ export default class Obfuscation {
 
     const reversedPayload = initPayload.slice().reverse();
 
-    const encKey = initPayload.slice(8, 40);
+    let encKey: Uint8Array = initPayload.slice(8, 40);
     const encIv = /* this.encIv =  */initPayload.slice(40, 56);
-    const decKey = reversedPayload.slice(8, 40);
+    let decKey: Uint8Array = reversedPayload.slice(8, 40);
     const decIv = /* this.decIv =  */reversedPayload.slice(40, 56);
+
+    // MTProxy: derive the obfuscation keys from the 16-byte proxy secret
+    // (key = SHA256(source ++ secret)). See tdesktop TcpConnection::Protocol::Version1.
+    if(opts?.secret) {
+      encKey = await cryptoMessagePort.invokeCrypto('sha256', encKey.concat(opts.secret)) as Uint8Array;
+      decKey = await cryptoMessagePort.invokeCrypto('sha256', decKey.concat(opts.secret)) as Uint8Array;
+    }
 
     /* this.enc = new aesjs.ModeOfOperation.ctr(encKey, new aesjs.Counter(encIv as any));
     this.dec = new aesjs.ModeOfOperation.ctr(decKey, new aesjs.Counter(decIv as any)); */
@@ -107,6 +114,13 @@ export default class Obfuscation {
     // );
 
     initPayload.set(codec.obfuscateTag, 56);
+
+    // MTProxy: embed the target DC id (int16 LE) so the proxy knows where to route.
+    if(opts?.dcId !== undefined) {
+      initPayload[60] = opts.dcId & 0xff;
+      initPayload[61] = (opts.dcId >> 8) & 0xff;
+    }
+
     const encrypted = await this.encode(initPayload.slice());
 
     // console.log('encrypted', encrypted);

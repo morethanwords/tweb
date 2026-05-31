@@ -16,6 +16,7 @@
 @use "partials/checkbox";
 @use "partials/chatlist";
 @use "partials/chat";
+@use "partials/chatWindow";
 @use "partials/chatTopbar";
 @use "partials/chatBubble";
 @use "partials/chatPinned";
@@ -82,6 +83,7 @@
 @use "partials/popups/popup";
 @use "partials/popups/editAvatar";
 @use "partials/popups/mediaAttacher";
+@use "partials/popups/connectionSettings";
 @use "partials/popups/createContact";
 @use "partials/popups/peer";
 @use "partials/popups/stickers";

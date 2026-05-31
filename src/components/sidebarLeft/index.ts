@@ -1,5 +1,7 @@
 import {createEffect, createRoot} from 'solid-js';
 import appImManager from '@lib/appImManager';
+import {isElectron} from '@lib/mtproto/electronRenderer';
+import showConnectionSettingsPopup from '@components/popups/connectionSettings';
 import rootScope from '@lib/rootScope';
 import {createSearchGroup, SearchGroup} from '@components/searchGroup';
 import Scrollable, {ScrollableX} from '@components/scrollable';
@@ -702,6 +704,13 @@ export class AppSidebarLeft extends SidebarSlider {
           this.createTab(AppSettingsTab).open();
         });
       }
+    }, {
+      icon: 'data',
+      text: 'ConnectionSettings.Title',
+      onClick: () => {
+        showConnectionSettingsPopup();
+      },
+      verify: () => isElectron()
     }, moreSubmenu];
 
     const filteredButtons = menuButtons.filter(Boolean);

@@ -15,6 +15,7 @@ import webPushApiManager from '@lib/webPushApiManager';
 import telegramMeWebManager from '@lib/telegramMeWebManager';
 import pause from '@helpers/schedulers/pause';
 import ENVIRONMENT from '@environment/index';
+import {initElectronConfig, buildElectronProxyConfig} from '@lib/mtproto/electronRenderer';
 import loadStateForAllAccountsOnce from '@appManagers/utils/state/loadState';
 import opusDecodeController from '@lib/opusDecodeController';
 import MTProtoMessagePort, {ThreadedWorkerEvents} from '@lib/mainWorker/mainMessagePort';
@@ -587,6 +588,14 @@ class ApiManagerProxy extends MTProtoMessagePort {
   public sendEnvironment() {
     this.log('Passing environment:', ENVIRONMENT);
     this.invoke('environment', ENVIRONMENT);
+    // Electron: push the raw-TCP / proxy config into the worker before it connects,
+    // and keep it in sync when the user changes proxy settings.
+    initElectronConfig((config) => this.invoke('setElectronConfig', config));
+  }
+
+  /** Electron: re-push the current network config into the (shared) worker after a settings change. */
+  public pushElectronConfig() {
+    this.invoke('setElectronConfig', buildElectronProxyConfig());
   }
 
   public pingServiceWorkerWithIframe() {

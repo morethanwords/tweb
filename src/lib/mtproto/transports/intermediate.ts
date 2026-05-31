@@ -23,6 +23,12 @@ export class IntermediatePacketCodec implements Codec {
 
     return data.slice(4, 4 + length);
   }
+
+  public readPacketLength(data: Uint8Array) {
+    if(data.length < 4) return -1;
+    const length = (data[0] | (data[1] << 8) | (data[2] << 16) | (data[3] << 24)) >>> 0;
+    return 4 + length;
+  }
 }
 
 export default new IntermediatePacketCodec();

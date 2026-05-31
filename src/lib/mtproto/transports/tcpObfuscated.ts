@@ -5,17 +5,38 @@ import Obfuscation from '@lib/mtproto/transports/obfuscation';
 import MTTransport, {MTConnection, MTConnectionConstructable} from '@lib/mtproto/transports/transport';
 // import intermediatePacketCodec from '@lib/mtproto/transports/intermediate';
 import abridgedPacketCodec from '@lib/mtproto/transports/abridged';
-// import paddedIntermediatePacketCodec from '@lib/mtproto/transports/padded';
+import paddedIntermediatePacketCodec from '@lib/mtproto/transports/padded';
 import {ConnectionStatus} from '@lib/mtproto/connectionStatus';
 import transportController from '@lib/mtproto/transports/controller';
 import bytesToHex from '@helpers/bytes/bytesToHex';
 // import networkStats from '@lib/mtproto/networkStats';
 import ctx from '@environment/ctx';
 
+/** Extra behaviour for the Electron raw-TCP bridge: stream reframing + MTProxy obfuscation. */
+export type TcpObfuscatedOptions = {
+  /**
+   * Reframe the incoming byte stream into discrete MTProto packets. Required for raw TCP
+   * (chunk boundaries are arbitrary); a no-op for Telegram's WebSocket where each message
+   * is already exactly one packet.
+   */
+  streamFramed?: boolean;
+  /** MTProxy obfuscation: secret-keyed AES + embedded target DC id + padded framing flag. */
+  mtproto?: {
+    secret: Uint8Array,
+    dcId: number,
+    padded: boolean
+  };
+};
+
 export default class TcpObfuscated implements MTTransport {
   private codec = abridgedPacketCodec;
   private obfuscation = new Obfuscation();
   public networker: MTPNetworker;
+
+  private streamFramed: boolean;
+  private mtproto: TcpObfuscatedOptions['mtproto'];
+  private recvBuffer: Uint8Array;
+  private recvChain: Promise<void>;
 
   private pending: Array<Partial<{
     resolve: any,
@@ -42,8 +63,15 @@ export default class TcpObfuscated implements MTTransport {
     private dcId: number,
     private url: string,
     private logSuffix: string,
-    private retryTimeout: number
+    private retryTimeout: number,
+    options?: TcpObfuscatedOptions
   ) {
+    this.streamFramed = !!options?.streamFramed;
+    this.mtproto = options?.mtproto;
+    if(this.mtproto?.padded) {
+      this.codec = paddedIntermediatePacketCodec;
+    }
+
     let logTypes = LogTypes.Error | LogTypes.Log;
     if(this.debug) logTypes |= LogTypes.Debug;
     this.log = logger(`TCP-${dcId}` + logSuffix, logTypes);
@@ -59,7 +87,10 @@ export default class TcpObfuscated implements MTTransport {
       transportController.setTransportOpened('websocket');
     }
 
-    const initPayload = await this.obfuscation.init(this.codec);
+    const initPayload = await this.obfuscation.init(
+      this.codec,
+      this.mtproto ? {secret: this.mtproto.secret, dcId: this.mtproto.dcId} : undefined
+    );
     if(!this.connected) {
       return;
     }
@@ -82,19 +113,51 @@ export default class TcpObfuscated implements MTTransport {
     }, 0);
   };
 
-  private onMessage = async(buffer: ArrayBuffer) => {
+  private onMessage = (buffer: ArrayBuffer) => {
+    if(this.streamFramed) {
+      // Raw TCP: chunk boundaries are arbitrary, so serialize decoding (CTR state is
+      // order-sensitive) and reframe the decrypted stream into MTProto packets.
+      this.recvChain = (this.recvChain || Promise.resolve()).then(() => this.handleStreamChunk(buffer));
+      return;
+    }
+
+    return this.handleMessage(buffer);
+  };
+
+  private async handleMessage(buffer: ArrayBuffer) {
     // networkStats.addReceived(this.dcId, buffer.byteLength);
 
     const time = Date.now();
     let data = await this.obfuscation.decode(new Uint8Array(buffer));
     data = this.codec.readPacket(data);
 
+    this.dispatchPacket(data, time);
+  }
+
+  private async handleStreamChunk(buffer: ArrayBuffer) {
+    const time = Date.now();
+    const decoded = await this.obfuscation.decode(new Uint8Array(buffer));
+
+    this.recvBuffer = this.recvBuffer?.length ? this.recvBuffer.concat(decoded) : decoded;
+
+    const readPacketLength = this.codec.readPacketLength.bind(this.codec);
+    while(this.recvBuffer.length) {
+      const total = readPacketLength(this.recvBuffer);
+      if(total < 0 || this.recvBuffer.length < total) {
+        break;
+      }
+
+      const packet = this.recvBuffer.subarray(0, total);
+      const data = this.codec.readPacket(packet);
+      this.recvBuffer = this.recvBuffer.slice(total);
+
+      this.dispatchPacket(data, time);
+    }
+  }
+
+  private dispatchPacket(data: Uint8Array, time: number) {
     if(this.networker) { // authenticated!
-      // this.pending = this.pending.filter((p) => p.body); // clear pending
-
       this.networker.onTransportData(data, time);
-
-      // this.dd();
       return;
     }
 
@@ -106,7 +169,7 @@ export default class TcpObfuscated implements MTTransport {
     }
 
     pending.resolve(data);
-  };
+  }
 
   private onClose = () => {
     this.clear();
@@ -140,6 +203,10 @@ export default class TcpObfuscated implements MTTransport {
     }
 
     this.connected = false;
+
+    // Drop any half-assembled stream so a reconnect re-frames from scratch.
+    this.recvBuffer = undefined;
+    this.recvChain = undefined;
 
     if(this.connection) {
       this.connection.removeEventListener('open', this.onOpen);

@@ -7,6 +7,7 @@ import type {ActiveAccountNumber} from '@lib/accounts/types';
 import type {LoadStateResult} from '@appManagers/utils/state/loadState';
 import type {PasscodeStorageValue} from '@lib/commonStateStorage';
 import type {ThreadedWorkerType} from '@lib/appManagers/appManagersManager';
+import type {ElectronProxyConfig} from '@lib/mtproto/electronProxyConfig';
 import SuperMessagePort from '@lib/superMessagePort';
 import {CacheStorageDbName} from '@lib/files/cacheStorage';
 
@@ -34,6 +35,7 @@ export type ThreadedWorkerEvents = {
 
 export default class MTProtoMessagePort<Master extends boolean = true> extends SuperMessagePort<{
   environment: (environment: ReturnType<typeof getEnvironment>) => void,
+  setElectronConfig: (config: Partial<ElectronProxyConfig>) => void,
   crypto: (payload: {method: string, args: any[]}) => Promise<any>,
   state: (payload: {accountNumber: ActiveAccountNumber} & LoadStateResult) => void,
   manager: (payload: MTProtoManagerTaskPayload) => any,

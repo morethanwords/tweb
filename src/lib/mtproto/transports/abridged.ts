@@ -29,6 +29,15 @@ class AbridgedPacketCodec implements Codec {
 
     return data.slice(1, length << 2 + 1); // need +1
   }
+
+  public readPacketLength(data: Uint8Array) {
+    if(data.length < 1) return -1;
+    const first = data[0];
+    if(first < 127) return 1 + (first << 2);
+    if(data.length < 4) return -1;
+    const words = data[1] | (data[2] << 8) | (data[3] << 16);
+    return 4 + (words << 2);
+  }
 }
 
 export default new AbridgedPacketCodec();

@@ -11,7 +11,6 @@ class PaddedIntermediatePacketCodec extends IntermediatePacketCodec {
     const len = data.byteLength + padding.byteLength;
 
     const header = new Uint8Array(new Uint32Array([len]).buffer);
-    console.log('encodePacket', padding, len, data, header);
 
     return header.concat(data, padding);
   }

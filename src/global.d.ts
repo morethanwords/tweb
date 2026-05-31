@@ -195,6 +195,31 @@ declare global {
     openExternal(url): void;
   } | undefined;
 
+  type ElectronNetworkConfig = {
+    connection: 'websocket' | 'tcp' | 'socks5' | 'mtproxy',
+    socks5: {host: string, port: number, username?: string, password?: string},
+    mtproxy: {host: string, port: number, secret: string}
+  };
+
+  interface Window {
+    electronApp?: {
+      isElectron: true,
+      platform?: string,
+      version?: string,
+      bridgePort?: number,
+      origin?: string,
+      networkConfig?: ElectronNetworkConfig,
+      openExternal(url: string): void,
+      getNetworkConfig(): Promise<ElectronNetworkConfig>,
+      setNetworkConfig(config: ElectronNetworkConfig): Promise<ElectronNetworkConfig>,
+      onNetworkConfig(cb: (config: ElectronNetworkConfig) => void): () => void,
+      openChatWindow(opts: {peerId: string | number, threadId?: number, title?: string}): void,
+      minimize(): void,
+      toggleMaximize(): void,
+      close(): void
+    };
+  }
+
   type DOMRectMinified = {top: number, right: number, bottom: number, left: number};
   type DOMRectEditable = DOMRectMinified & {width: number, height: number};
   type MaybePromise<T> = Promise<T> | T;

@@ -1,0 +1,60 @@
+.popup-connection-settings {
+  .popup-container {
+    width: 24rem;
+    max-width: 100%;
+  }
+
+  // The header's primary action sits compact on the trailing edge, not stretched
+  // across the title (btn-primary is full-width by default).
+  .popup-header {
+    .popup-title {
+      flex: 1 1 auto;
+    }
+
+    .btn-primary {
+      width: auto;
+      flex: 0 0 auto;
+      margin-inline-start: auto;
+      padding: 0 1rem;
+    }
+  }
+
+  .connection-settings-body {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: .5rem;
+  }
+
+  .connection-settings-section-title {
+    color: var(--secondary-text-color);
+    font-weight: var(--font-weight-bold);
+    font-size: var(--font-size-14);
+    margin-bottom: .5rem;
+  }
+
+  .connection-settings-radios {
+    display: flex;
+    flex-direction: column;
+
+    .radio-field {
+      margin: 0;
+      padding: .5rem 0;
+    }
+  }
+
+  .connection-settings-hint {
+    color: var(--secondary-text-color);
+    font-size: var(--font-size-14);
+    margin: .5rem 0 .25rem;
+  }
+
+  .connection-settings-fields {
+    display: flex;
+    flex-direction: column;
+    margin-top: 1rem;
+
+    .input-field {
+      margin-bottom: 1rem;
+    }
+  }
+}

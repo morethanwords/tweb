@@ -1,0 +1,27 @@
+@use "../shared" as *;
+
+/*
+ * Detached single-chat window (Electron "Open in new window").
+ *
+ * The renderer boots with ?mode=chat and adds `.is-chat-window` to <html>. We hide the
+ * chat list, folders rail and right column, then let the centre column fill the window.
+ * The elements stay in the DOM (JS logic is untouched) — they're just visually removed.
+ */
+html.is-chat-window {
+  #column-left,
+  #column-right,
+  .folders-sidebar,
+  .sidebar-left-overlay {
+    display: none !important;
+  }
+
+  // Cancel the offsets the centre column normally leaves for the left/folders rails.
+  --folders-sidebar-offset: 0px;
+  --left-column-width: 0px;
+  --left-column-visual-width: 0px;
+
+  #column-center {
+    inset: 0;
+    transform: none !important;
+  }
+}

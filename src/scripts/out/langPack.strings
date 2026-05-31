@@ -305,6 +305,16 @@
 "OpenChatlist" = "VIEW CHAT LIST";
 "RemoveSharedFolder" = "Are you sure you want to delete this folder? This will also deactivate all the invite links created to share this folder.";
 "OpenInNewTab" = "Open in new tab";
+"OpenInNewWindow" = "Open in new window";
+"ConnectionSettings.Title" = "Connection";
+"ConnectionSettings.Type" = "Connection type";
+"ConnectionSettings.TypeWebSocket" = "WebSocket (default)";
+"ConnectionSettings.TypeTCP" = "TCP (direct)";
+"ConnectionSettings.TypeSocks5" = "SOCKS5 proxy";
+"ConnectionSettings.TypeMtproxy" = "MTProto proxy";
+"ConnectionSettings.Hint" = "TCP and proxy connections are routed over a raw obfuscated socket, like the desktop app. Changes apply immediately.";
+"ConnectionSettings.Saved" = "Connection settings applied";
+"ConnectionSettings.Invalid" = "Please fill in the proxy server and port";
 "Story" = "Story";
 "Stories" = "Stories";
 "StoriesCount_one" = "%1$d story";
