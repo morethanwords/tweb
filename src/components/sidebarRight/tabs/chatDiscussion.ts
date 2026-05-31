@@ -13,7 +13,7 @@ import rootScope from '@lib/rootScope';
 import Button from '@components/button';
 import confirmationPopup from '@components/confirmationPopup';
 import SettingSection from '@components/settingSection';
-import AppNewGroupTab from '@components/sidebarLeft/tabs/newGroup';
+import {AppNewGroupTab} from '@components/solidJsTabs/tabs';
 import {SliderSuperTabEventable} from '@components/sliderTab';
 import {toastNew} from '@components/toast';
 import getPeerTitle from '@components/wrappers/getPeerTitle';

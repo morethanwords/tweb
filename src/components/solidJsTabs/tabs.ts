@@ -208,6 +208,23 @@ export const AppBackgroundColorTab =
   });
 
 
+type AppNewGroupTabPayload = {
+  peerIds: PeerId[],
+  isGeoChat?: boolean,
+  onCreate?: (chatId: ChatId) => void,
+  openAfter?: boolean,
+  title?: string,
+  asChannel?: boolean
+};
+
+export const AppNewGroupTab =
+  scaffoldSolidJSTab<AppNewGroupTabPayload>({
+    title: 'NewGroup',
+    getComponentModule: () => import('../sidebarLeft/tabs/newGroup')
+  });
+(AppNewGroupTab as any).noSame = true;
+
+
 // ─── Privacy sub-tabs (eventable: PrivacySection saves on the tab's destroy event) ───
 
 export const AppPrivacyAboutTab =
