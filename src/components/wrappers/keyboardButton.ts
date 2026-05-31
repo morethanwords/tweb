@@ -16,6 +16,7 @@ import {makeMediaSize} from '@helpers/mediaSize';
 import ReplyMarkupLayout from '@components/chat/bubbleParts/replyMarkupLayout';
 import classNames from '@helpers/string/classNames';
 import showCreateBotPopup from '@components/popups/createBot';
+import confirmationPopup from '@components/confirmationPopup';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import {wrapFormattedDuration} from './wrapDuration';
 import formatDuration from '@helpers/formatDuration';
@@ -194,7 +195,16 @@ export function getKeyboardButtonHandler({
         rootScope.managers.appInlineBotsManager.callbackButtonClick(peerId, messageMid, button)
         .then((callbackAnswer) => {
           if(typeof callbackAnswer.message === 'string' && callbackAnswer.message.length) {
-            toast(wrapRichText(callbackAnswer.message, {noLinks: true, noLinebreaks: true}));
+            if(callbackAnswer.pFlags.alert) {
+              confirmationPopup({
+                description: wrapRichText(callbackAnswer.message, {noLinks: true}),
+                button: {langKey: 'OK', isCancel: true}
+              }).catch(() => {});
+            } else {
+              toast(wrapRichText(callbackAnswer.message, {noLinks: true, noLinebreaks: true}));
+            }
+          } else if(typeof callbackAnswer.url === 'string' && callbackAnswer.url.length) {
+            chat.appImManager.openUrl(callbackAnswer.url, true);
           }
         });
       };
