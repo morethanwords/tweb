@@ -24,7 +24,7 @@ import I18n, {FormatterArguments, i18n, LangPackKey, _i18n} from '@lib/langPack'
 import findUpTag from '@helpers/dom/findUpTag';
 import lottieLoader from '@rlottie/lottieLoader';
 import wrapPhoto from '@components/wrappers/photo';
-import AppEditFolderTab from '@components/sidebarLeft/tabs/editFolder';
+import {AppEditFolderTab} from '@components/solidJsTabs/tabs';
 import appSidebarLeft from '@components/sidebarLeft';
 import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
 import positionElementByIndex from '@helpers/dom/positionElementByIndex';
@@ -1397,9 +1397,8 @@ export class AppDialogsManager {
       });
 
       attachClickEvent(button, async() => {
-        const tab = appSidebarLeft.createTab(AppEditFolderTab);
-        tab.setInitFilter(await this.managers.filtersStorage.getFilter(this.filterId));
-        tab.open();
+        const filter = await this.managers.filtersStorage.getFilter(this.filterId);
+        appSidebarLeft.createTab(AppEditFolderTab).open({...AppEditFolderTab.getInitArgs(), initFilter: filter});
       });
 
       placeholderContainer.append(button);

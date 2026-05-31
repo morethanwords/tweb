@@ -31,7 +31,7 @@ import {setQuizHint} from '@components/quizHint';
 import Row from '@components/rowTsx';
 import appSidebarLeft from '@components/sidebarLeft';
 import {AppChatFoldersTab} from '@components/solidJsTabs/tabs';
-import AppEditFolderTab from '@components/sidebarLeft/tabs/editFolder';
+import {AppEditFolderTab} from '@components/solidJsTabs/tabs';
 import appSidebarRight from '@components/sidebarRight';
 import AppPollResultsTab from '@components/sidebarRight/tabs/pollResults';
 import Slideshow from '@components/slideshow'; // Added import

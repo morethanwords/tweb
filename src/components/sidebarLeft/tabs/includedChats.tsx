@@ -4,7 +4,6 @@ import AppSelectPeers from '@components/appSelectPeers';
 import appDialogsManager from '@lib/appDialogsManager';
 import ButtonIcon from '@components/buttonIcon';
 import Button from '@components/button';
-import type AppEditFolderTab from '@components/sidebarLeft/tabs/editFolder';
 import {i18n, LangPackKey, join} from '@lib/langPack';
 import copy from '@helpers/object/copy';
 import forEachReverse from '@helpers/array/forEachReverse';
@@ -23,7 +22,7 @@ const IncludedChats: Component = () => {
   const [tab] = useSuperTab<typeof AppIncludedChatsTab>();
   const promiseCollector = usePromiseCollector();
 
-  const {type, editFolderTab} = tab.payload;
+  const {type, onSetFilter} = tab.payload;
   const originalFilter = tab.payload.filter;
   const filter = copy(originalFilter);
 
@@ -233,7 +232,7 @@ const IncludedChats: Component = () => {
       (filter as DialogFilter.dialogFilter)[type === 'included' ? 'includePeerIds' : 'excludePeerIds'] = peerIds;
       (filter as DialogFilter.dialogFilter)[type === 'included' ? 'include_peers' : 'exclude_peers'] = await Promise.all(peerIds.map((peerId) => tab.managers.appPeersManager.getInputPeerById(peerId)));
 
-      editFolderTab.setFilter(filter, false);
+      onSetFilter(filter);
       tab.close();
     }, {listenerSetter: tab.listenerSetter});
 

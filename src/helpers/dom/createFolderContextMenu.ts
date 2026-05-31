@@ -1,6 +1,6 @@
 import type {AppManagers} from '@lib/managers';
 import type {AppChatFoldersTab} from '@components/solidJsTabs/tabs';
-import type AppEditFolderTab from '@components/sidebarLeft/tabs/editFolder';
+import type {AppEditFolderTab} from '@components/solidJsTabs/tabs';
 import type {AppSidebarLeft} from '@components/sidebarLeft';
 import {FOLDER_ID_ALL, REAL_FOLDERS} from '@appManagers/constants';
 import createContextMenu from '@helpers/dom/createContextMenu';
@@ -26,9 +26,7 @@ export default function createFolderContextMenu({
     const filter = await managers.filtersStorage.getFilter(filterId);
 
     appSidebarLeft.closeTabsBefore(() => {
-      const tab = appSidebarLeft.createTab(_AppEditFolderTab);
-      tab.setInitFilter(filter);
-      tab.open();
+      appSidebarLeft.createTab(_AppEditFolderTab).open({..._AppEditFolderTab.getInitArgs(), initFilter: filter});
     });
   }
 

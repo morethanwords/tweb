@@ -111,9 +111,7 @@ const ChatFolders: Component = () => {
           const initArgs = AppEditFolderTab.getInitArgs();
           attachClickEvent(row.container, async() => {
             const filter = await tab.managers.filtersStorage.getFilter(filterId);
-            const editTab = tab.slider.createTab(AppEditFolderTab);
-            editTab.setInitFilter(filter);
-            editTab.open(initArgs);
+            tab.slider.createTab(AppEditFolderTab).open({...initArgs, initFilter: filter});
           }, {listenerSetter: tab.listenerSetter});
         }
 
@@ -286,7 +284,7 @@ const ChatFolders: Component = () => {
     if(!(await canCreateFolder())) {
       showLimitPopup('folders');
     } else {
-      tab.slider.createTab(AppEditFolderTab).open();
+      tab.slider.createTab(AppEditFolderTab).open(AppEditFolderTab.getInitArgs());
     }
   }, {listenerSetter: tab.listenerSetter});
 

@@ -4,7 +4,6 @@ import type SidebarSlider from '@components/slider';
 import type {SliderSuperTab} from '@components/slider';
 import getParticipantPeerId from '@appManagers/utils/chats/getParticipantPeerId';
 import type {MyDialogFilter} from '@lib/storages/filters';
-import type AppEditFolderTab from '@components/sidebarLeft/tabs/editFolder';
 import {LangPackKey} from '@lib/langPack';
 import type {PasscodeActions} from '@lib/passcode/actions';
 import {InstanceOf} from '@types';
@@ -16,6 +15,7 @@ import type {EditProfileTabPayload} from '@components/sidebarLeft/tabs/editProfi
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import {ChatInvite, ChatInviteActions, getChatInviteLinksInitArgs} from '@components/sidebarRight/tabs/chatInviteLinkShared';
 import lottieLoader from '@lib/rlottie/lottieLoader';
+import {deleteFolder as deleteEditFolder, getEditFolderInitArgs} from '@components/sidebarLeft/tabs/editFolderShared';
 
 
 export const AppPasscodeLockTab =
@@ -474,7 +474,7 @@ export function openUserPermissionsTab(
 type AppIncludedChatsTabPayload = {
   filter: MyDialogFilter,
   type: 'included' | 'excluded',
-  editFolderTab: AppEditFolderTab
+  onSetFilter: (filter: MyDialogFilter) => void
 };
 
 export const AppIncludedChatsTab =
@@ -609,6 +609,27 @@ export const AppChatFoldersTab = Object.assign(
     }
   }),
   {getInitArgs: getChatFoldersInitArgs}
+);
+
+
+type AppEditFolderTabPayload = ReturnType<typeof getEditFolderInitArgs> & {
+  initFilter?: MyDialogFilter
+};
+
+// getInitArgs (preload) + deleteFolder (called from createFolderContextMenu and
+// chatFolders via the hot-reload guard) are exposed on the constructor.
+export const AppEditFolderTab = Object.assign(
+  scaffoldSolidJSTab<AppEditFolderTabPayload>({
+    title: 'FilterHeaderEdit',
+    getComponentModule: () => import('../sidebarLeft/tabs/editFolder'),
+    onOpenAfterTimeout: function() {
+      (this as any)._onOpenAfterTimeout?.();
+    }
+  }),
+  {
+    getInitArgs: getEditFolderInitArgs,
+    deleteFolder: deleteEditFolder
+  }
 );
 
 
