@@ -9,7 +9,7 @@ import ButtonCorner from '@components/buttonCorner';
 import showPickUserPopup from '@components/popups/pickUser';
 import SettingSection from '@components/settingSection';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
-import {createSelectorForParticipants} from '@components/sidebarRight/tabs/chatMembers';
+import {createSelectorForParticipants} from '@components/sidebarRight/tabs/participantsSelector';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import type {AppRemovedUsersTab} from '@components/solidJsTabs/tabs';

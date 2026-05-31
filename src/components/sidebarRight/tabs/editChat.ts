@@ -21,7 +21,7 @@ import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUserna
 import PopupElement from '@components/popups';
 import AppChatAdministratorsTab from '@components/sidebarRight/tabs/chatAdministrators';
 import numberThousandSplitter, {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
-import AppChatMembersTab from '@components/sidebarRight/tabs/chatMembers';
+import {AppChatMembersTab} from '@components/solidJsTabs/tabs';
 import {AppRemovedUsersTab} from '@components/solidJsTabs/tabs';
 import AppChatDiscussionTab from '@components/sidebarRight/tabs/chatDiscussion';
 import wrapPeerTitle from '@components/wrappers/peerTitle';

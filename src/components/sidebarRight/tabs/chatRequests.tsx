@@ -1,6 +1,6 @@
 import {Component} from 'solid-js';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
-import {createSelectorForTab} from '@components/sidebarRight/tabs/chatMembers';
+import {createSelectorForTab} from '@components/sidebarRight/tabs/participantsSelector';
 import {getImportersLoader} from '@components/sidebarRight/tabs/chatInviteLink';
 import {formatFullSentTime} from '@helpers/date';
 import Button from '@components/button';
