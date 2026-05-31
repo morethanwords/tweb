@@ -1202,7 +1202,7 @@ export default class PopupNewMedia extends PopupElement {
                 if(!hasGif)
                   (this.btnConfirmOnEnter as HTMLButtonElement).disabled = false;
               },
-              canImageResultInGIF: !this.isEditingMediaFromAlbum()
+              canImageResultInGIF: !this.isEditingMediaFromAlbum() && canEditVideo
             });
           });
         }

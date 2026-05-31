@@ -4,6 +4,7 @@ import type {ButtonMenuSync} from '@components/buttonMenu';
 import {IconTsx} from '@components/iconTsx';
 import {EditingMediaState} from '@components/mediaEditor/context';
 import {MediaEditorFinalResult} from '@components/mediaEditor/finalRender/createFinalResult';
+import {MAX_EDITABLE_VIDEO_SIZE, supportsVideoEncoding} from '@components/mediaEditor/support';
 import {ProgressCircleSVG} from '@components/progressCircleSVG';
 import {StickerPreview} from '@components/stickerPreview';
 import {animateImageToTarget} from '@helpers/animateImageToTarget';
@@ -14,13 +15,14 @@ import blurActiveElement from '@helpers/dom/blurActiveElement';
 import createVideo from '@helpers/dom/createVideo';
 import noop from '@helpers/noop';
 import onMediaLoad from '@helpers/onMediaLoad';
+import detectVideoHasSound from '@helpers/video/detectVideoHasSound';
 import {positionFloatingMenu} from '@helpers/positionMenu';
 import pause from '@helpers/schedulers/pause';
 import {requestRAF} from '@helpers/solid/requestRAF';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
 import {useIsCleaned} from '@hooks/useIsCleaned';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {createEffect, createSignal, Match, on, onCleanup, Switch} from 'solid-js';
+import {createEffect, createMemo, createResource, createSignal, Match, on, onCleanup, Switch} from 'solid-js';
 import styles from './mediaAttachment.module.scss';
 import {useStickersDropdown} from './stickersDropdown';
 import {AttachedMedia, AttachedVideo, SupportedMediaType} from './storeContext';
@@ -100,9 +102,66 @@ export const MediaAttachment = (props: {
     await getFileAndOpenEditor({
       canImageResultInGIF: supportsMedia('gif'),
       acceptMediaTypes: acceptMediaTypes(),
+      // Videos above the editable size limit are attached directly without going through the editor.
+      shouldOpenEditor: (file) => !(file.type.startsWith('video/') && file.size > MAX_EDITABLE_VIDEO_SIZE),
+      onSkipEditor: (file) => void attachVideoDirectly(file),
       onFinish: (args) => handleFinish(args.editorResult, args.originalFile)
     });
   });
+
+  const attachVideoDirectly = async(file: File) => {
+    // No editor involved — wipe any prior "edit" state.
+    persistingState = undefined;
+
+    const videoObjectUrl = URL.createObjectURL(file);
+    const probeVideo = createVideo({});
+    probeVideo.src = videoObjectUrl;
+    probeVideo.muted = true;
+    probeVideo.preload = 'metadata';
+
+    try {
+      await onMediaLoad(probeVideo as HTMLMediaElement);
+    } catch(err) {
+      URL.revokeObjectURL(videoObjectUrl);
+      return;
+    }
+
+    const hasSound = await detectVideoHasSound(probeVideo).catch(() => true);
+
+    const isAnimated = supportsMedia('gif') && canVideoBeAnimated({
+      noSound: !hasSound,
+      size: file.size,
+      isEditingMediaFromAlbum: false
+    });
+
+    const poster = await createPosterFromVideo(probeVideo);
+    const thumbUrl = URL.createObjectURL(poster.blob);
+
+    if(isCleaned()) {
+      URL.revokeObjectURL(videoObjectUrl);
+      URL.revokeObjectURL(thumbUrl);
+      return;
+    }
+
+    const attachedVideo: AttachedVideo = {
+      type: 'video',
+      objectUrl: videoObjectUrl,
+      blob: file,
+      width: probeVideo.videoWidth,
+      height: probeVideo.videoHeight,
+      duration: probeVideo.duration,
+      isAnimated,
+      hasSound,
+      thumb: {
+        url: thumbUrl,
+        blob: poster.blob,
+        size: poster.size,
+        isCover: !isAnimated
+      }
+    };
+
+    props.onAttach?.(attachedVideo);
+  };
 
   const onChooseSticker = (pivot: HTMLElement | undefined) => {
     if(!pivot) return;
@@ -392,21 +451,27 @@ export const MediaAttachment = (props: {
     persistingState = undefined;
   };
 
-  const mainMenuButtons: MenuButtons = [];
-  if(supportsMedia('photo') || supportsMedia('video')) {
-    mainMenuButtons.push({
-      icon: 'image',
-      text: !supportsMedia('video') ? 'AttachPhoto' : !supportsMedia('photo') ? 'AttachVideo' : 'Chat.Input.Attach.PhotoOrVideo',
-      onClick: onChoose
-    });
-  }
-  if(supportsMedia('sticker')) {
-    mainMenuButtons.push({
-      icon: 'stickers_face',
-      text: 'AttachSticker',
-      onClick: () => onChooseSticker(btn())
-    });
-  }
+  const mainMenuButtons = createMemo(() => {
+    const result: MenuButtons = [];
+
+    if(supportsMedia('photo') || supportsMedia('video')) {
+      result.push({
+        icon: 'image',
+        text: !supportsMedia('video') ? 'AttachPhoto' : !supportsMedia('photo') ? 'AttachVideo' : 'Chat.Input.Attach.PhotoOrVideo',
+        onClick: onChoose
+      });
+    }
+
+    if(supportsMedia('sticker')) {
+      result.push({
+        icon: 'stickers_face',
+        text: 'AttachSticker',
+        onClick: () => onChooseSticker(btn())
+      });
+    }
+
+    return result;
+  });
 
   const setMainMenuOpen = useMenu({
     pivot: btn,
@@ -415,7 +480,7 @@ export const MediaAttachment = (props: {
 
   const setIsPhotoMenuOpen = useMenu({
     pivot: img,
-    buttons: [
+    buttons: () => [
       {
         icon: 'brush',
         text: 'EditThisPhoto',
@@ -436,14 +501,14 @@ export const MediaAttachment = (props: {
 
   const setIsVideoMenuOpen = useMenu({
     pivot: videoEl,
-    buttons: [
-      {
+    buttons: () => [
+      ...(persistingState ? [{
         icon: 'brush',
         get text() {
           return isAttachedGIF() ? 'EditThisGIF' : 'EditThisVideo';
         },
         onClick: onEdit
-      },
+      }] as MenuButtons : []),
       {
         icon: 'replace',
         get text() {
@@ -461,7 +526,7 @@ export const MediaAttachment = (props: {
 
   const setIsStickerMenuOpen = useMenu({
     pivot: stickerEl,
-    buttons: [
+    buttons: () => [
       {
         icon: 'replace',
         text: 'ReplaceSticker',
@@ -478,9 +543,9 @@ export const MediaAttachment = (props: {
   });
 
   const onMainButtonClick = (e: MouseEvent) => {
-    if(mainMenuButtons.length === 0) return;
-    if(mainMenuButtons.length === 1) {
-      mainMenuButtons[0].onClick(e);
+    if(mainMenuButtons().length === 0) return;
+    if(mainMenuButtons().length === 1) {
+      mainMenuButtons()[0].onClick(e);
       return;
     }
     setMainMenuOpen(true);
@@ -565,8 +630,8 @@ export const MediaAttachment = (props: {
 
 type MenuButtons = Parameters<typeof ButtonMenuSync>[0]['buttons'];
 
-function useMenu(params: {
-  buttons: MenuButtons;
+function useMenu(args: {
+  buttons: () => MenuButtons;
   pivot: () => HTMLElement;
 }) {
   const {ButtonMenuSync} = useHotReloadGuard();
@@ -577,7 +642,7 @@ function useMenu(params: {
 
     const isCleaned = useIsCleaned();
 
-    const buttonMenu = ButtonMenuSync({buttons: params.buttons});
+    const buttonMenu = ButtonMenuSync({buttons: args.buttons()});
 
     buttonMenu.style.position = 'fixed';
     buttonMenu.style.top = 'unset';
@@ -587,7 +652,7 @@ function useMenu(params: {
     requestRAF(() => {
       if(isCleaned()) return;
 
-      positionFloatingMenu(params.pivot().getBoundingClientRect(), buttonMenu, 'right-center', [12, 0]);
+      positionFloatingMenu(args.pivot().getBoundingClientRect(), buttonMenu, 'right-center', [12, 0]);
       contextMenuController.openBtnMenu(buttonMenu, async() => {
         await pause(400);
         setIsMenuOpen(false);

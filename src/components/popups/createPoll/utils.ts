@@ -83,8 +83,13 @@ export const hasMeaningfulChanges = (store: CreatePollStore) => {
 };
 
 export const useSupportsMedia = () => {
-  const {supportedMediaTypes} = useCreatePollContext();
-  return (mediaType: SupportedMediaType) => supportedMediaTypes().includes(mediaType);
+  const {supportedMediaTypes, canEncodeVideo} = useCreatePollContext();
+  return (mediaType: SupportedMediaType) => {
+    if(!supportedMediaTypes().includes(mediaType)) return false;
+    // GIFs and videos also requires the editor's encoder to be supported by the browser.
+    if(mediaType === 'video' || mediaType === 'gif') return canEncodeVideo();
+    return true;
+  };
 };
 
 export const checkOptionHasValue = (option: StorePollOption) => {
