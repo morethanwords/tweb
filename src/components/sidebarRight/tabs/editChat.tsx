@@ -1,4 +1,4 @@
-import {SliderSuperTab} from '@components/slider'
+import {Component} from 'solid-js';
 import InputField from '@components/inputField';
 import EditPeer from '@components/editPeer';
 import Row, {CreateRowFromCheckboxField} from '@components/row';
@@ -41,19 +41,23 @@ import {ChatType} from '@components/chat/chatType';
 import {appSettings} from '@stores/appSettings';
 import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
 import {isParticipantAdmin} from '@lib/appManagers/utils/chats/isParticipantAdmin';
+import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
+import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
+import type {AppEditChatTab} from '@components/solidJsTabs/tabs';
 
-export default class AppEditChatTab extends SliderSuperTab {
-  private chatNameInputField: InputField;
-  private descriptionInputField: InputField;
-  private editPeer: EditPeer;
-  public chatId: ChatId;
+const EditChat: Component = () => {
+  const [tab] = useSuperTab<typeof AppEditChatTab>();
+  const promiseCollector = usePromiseCollector();
+  let chatId = tab.payload.chatId;
 
-  protected async _init() {
+  const _init = async() => {
     // * cleanup prev
-    this.listenerSetter.removeAll();
+    tab.listenerSetter.removeAll();
 
-    this.container.classList.add('edit-peer-container', 'edit-group-container');
-    this.setTitle('Edit');
+    tab.container.classList.add('edit-peer-container', 'edit-group-container');
+    tab.title.replaceChildren(i18n('Edit'));
+
+    let chatNameInputField: InputField, descriptionInputField: InputField, editPeer: EditPeer;
 
     let {
       chatFull,
@@ -73,46 +77,46 @@ export default class AppEditChatTab extends SliderSuperTab {
       appConfig,
       availableReactions
     } = await namedPromises({
-      chatFull: this.managers.appProfileManager.getChatFull(this.chatId, true),
-      chat: this.managers.appChatsManager.getChat(this.chatId) as Promise<Chat.chat | Chat.channel>,
-      isBroadcast: this.managers.appChatsManager.isBroadcast(this.chatId),
-      isChannel: this.managers.appChatsManager.isChannel(this.chatId),
-      isBroadcastGroup: this.managers.appChatsManager.isBroadcastGroup(this.chatId),
-      canChangeType: this.managers.appChatsManager.hasRights(this.chatId, 'change_type'),
-      canChangePermissions: this.managers.appChatsManager.hasRights(this.chatId, 'change_permissions'),
-      canToggleForum: this.managers.appChatsManager.hasRights(this.chatId, 'toggle_forum'),
-      canManageAdmins: this.managers.appChatsManager.hasRights(this.chatId, 'change_permissions'),
-      canChangeInfo: this.managers.appChatsManager.hasRights(this.chatId, 'change_info'),
-      canDeleteChat: this.managers.appChatsManager.hasRights(this.chatId, 'delete_chat'),
-      canPostMessages: this.managers.appChatsManager.hasRights(this.chatId, 'post_messages'),
-      canManageInviteLinks: this.managers.appChatsManager.hasRights(this.chatId, 'invite_links'),
-      canInviteUsers: this.managers.appChatsManager.hasRights(this.chatId, 'invite_users'),
-      appConfig: this.managers.apiManager.getAppConfig(),
-      availableReactions: this.managers.appReactionsManager.getAvailableReactions()
+      chatFull: tab.managers.appProfileManager.getChatFull(chatId, true),
+      chat: tab.managers.appChatsManager.getChat(chatId) as Promise<Chat.chat | Chat.channel>,
+      isBroadcast: tab.managers.appChatsManager.isBroadcast(chatId),
+      isChannel: tab.managers.appChatsManager.isChannel(chatId),
+      isBroadcastGroup: tab.managers.appChatsManager.isBroadcastGroup(chatId),
+      canChangeType: tab.managers.appChatsManager.hasRights(chatId, 'change_type'),
+      canChangePermissions: tab.managers.appChatsManager.hasRights(chatId, 'change_permissions'),
+      canToggleForum: tab.managers.appChatsManager.hasRights(chatId, 'toggle_forum'),
+      canManageAdmins: tab.managers.appChatsManager.hasRights(chatId, 'change_permissions'),
+      canChangeInfo: tab.managers.appChatsManager.hasRights(chatId, 'change_info'),
+      canDeleteChat: tab.managers.appChatsManager.hasRights(chatId, 'delete_chat'),
+      canPostMessages: tab.managers.appChatsManager.hasRights(chatId, 'post_messages'),
+      canManageInviteLinks: tab.managers.appChatsManager.hasRights(chatId, 'invite_links'),
+      canInviteUsers: tab.managers.appChatsManager.hasRights(chatId, 'invite_users'),
+      appConfig: tab.managers.apiManager.getAppConfig(),
+      availableReactions: tab.managers.appReactionsManager.getAvailableReactions()
     });
 
-    this.scrollable.replaceChildren();
+    tab.scrollable.replaceChildren();
 
     const chatUpdateListeners: {[type in 'full' | 'basic']: (() => void)[]} = {full: [], basic: []};
     const addChatUpdateListener = (callback: () => void, type: 'full' | 'basic' = 'basic') => {
       chatUpdateListeners[type].push(callback);
     };
 
-    this.listenerSetter.add(rootScope)('chat_update', async(chatId) => {
-      if(this.chatId === chatId) {
-        chat = await this.managers.appChatsManager.getChat(this.chatId) as typeof chat;
+    tab.listenerSetter.add(rootScope)('chat_update', async(updatedChatId) => {
+      if(chatId === updatedChatId) {
+        chat = await tab.managers.appChatsManager.getChat(chatId) as typeof chat;
         chatUpdateListeners['basic'].forEach((callback) => callback());
       }
     });
 
-    this.listenerSetter.add(rootScope)('chat_full_update', async(chatId) => {
-      if(this.chatId === chatId) {
-        chatFull = await this.managers.appProfileManager.getChatFull(chatId);
+    tab.listenerSetter.add(rootScope)('chat_full_update', async(updatedChatId) => {
+      if(chatId === updatedChatId) {
+        chatFull = await tab.managers.appProfileManager.getChatFull(updatedChatId);
         chatUpdateListeners['full'].forEach((callback) => callback());
       }
     });
 
-    const peerId = this.chatId.toPeerId(true);
+    const peerId = chatId.toPeerId(true);
     const isAdmin = hasRights(chat, 'just_admin');
 
     {
@@ -122,14 +126,14 @@ export default class AppEditChatTab extends SliderSuperTab {
       const inputWrapper = document.createElement('div');
       inputWrapper.classList.add('input-wrapper');
 
-      this.chatNameInputField = new InputField({
+      chatNameInputField = new InputField({
         label: isBroadcast ? 'EnterChannelName' : 'CreateGroup.NameHolder',
         name: 'chat-name',
         maxLength: 255,
         required: true,
         canBeEdited: canChangeInfo
       });
-      this.descriptionInputField = new InputField({
+      descriptionInputField = new InputField({
         label: 'DescriptionPlaceholder',
         name: 'chat-description',
         maxLength: 255,
@@ -137,30 +141,30 @@ export default class AppEditChatTab extends SliderSuperTab {
         canBeEdited: canChangeInfo
       });
 
-      this.chatNameInputField.setOriginalValue(chat.title);
-      this.descriptionInputField.setOriginalValue(chatFull.about);
+      chatNameInputField.setOriginalValue(chat.title);
+      descriptionInputField.setOriginalValue(chatFull.about);
 
-      inputWrapper.append(this.chatNameInputField.container, this.descriptionInputField.container);
+      inputWrapper.append(chatNameInputField.container, descriptionInputField.container);
 
-      inputFields.push(this.chatNameInputField, this.descriptionInputField);
+      inputFields.push(chatNameInputField, descriptionInputField);
 
-      this.editPeer = new EditPeer({
+      editPeer = new EditPeer({
         peerId,
         inputFields,
-        listenerSetter: this.listenerSetter,
+        listenerSetter: tab.listenerSetter,
         popupOptions: {isForum: (chat as Chat.channel).pFlags.forum},
-        middleware: this.middlewareHelper.get()
+        middleware: tab.middlewareHelper.get()
       });
-      this.content.append(this.editPeer.nextBtn);
+      tab.content.append(editPeer.nextBtn);
 
       if(!canChangeInfo) {
-        this.editPeer.avatarElem.node.classList.remove('avatar-placeholder');
-        this.editPeer.avatarEdit.container.replaceChildren(this.editPeer.avatarElem.node);
-        this.editPeer.avatarEdit.container.classList.add('disable-hover');
+        editPeer.avatarElem.node.classList.remove('avatar-placeholder');
+        editPeer.avatarEdit.container.replaceChildren(editPeer.avatarElem.node);
+        editPeer.avatarEdit.container.classList.add('disable-hover');
       }
 
       section.content.append(inputWrapper);
-      this.scrollable.append(this.editPeer.avatarEdit.container, section.container);
+      tab.scrollable.append(editPeer.avatarEdit.container, section.container);
     }
 
     {
@@ -170,10 +174,10 @@ export default class AppEditChatTab extends SliderSuperTab {
         const chatTypeRow = new Row({
           titleLangKey: isBroadcast ? 'ChannelType' : 'GroupType',
           clickable: () => {
-            this.slider.createTab(AppChatTypeTab).open({chatId: this.chatId, chatFull});
+            tab.slider.createTab(AppChatTypeTab).open({chatId: chatId, chatFull});
           },
           icon: 'lock',
-          listenerSetter: this.listenerSetter
+          listenerSetter: tab.listenerSetter
         });
 
         const setChatTypeSubtitle = () => {
@@ -198,14 +202,14 @@ export default class AppEditChatTab extends SliderSuperTab {
           titleLangKey: 'InviteLinks',
           navigationTab: {
             constructor: AppChatInviteLinksTab,
-            slider: this.slider,
+            slider: tab.slider,
             getInitArgs: () => ({
-              chatId: this.chatId,
-              p: AppChatInviteLinksTab.getInitArgs(this.chatId)
+              chatId: chatId,
+              p: AppChatInviteLinksTab.getInitArgs(chatId)
             })
           },
           icon: 'link',
-          listenerSetter: this.listenerSetter,
+          listenerSetter: tab.listenerSetter,
           subtitle: true
         });
 
@@ -224,11 +228,11 @@ export default class AppEditChatTab extends SliderSuperTab {
           titleLangKey: isBroadcast ? 'SubscribeRequests' : 'MemberRequests',
           navigationTab: {
             constructor: AppChatRequestsTab,
-            getInitArgs: () => this.chatId,
-            slider: this.slider
+            getInitArgs: () => chatId,
+            slider: tab.slider
           },
           icon: 'adduser',
-          listenerSetter: this.listenerSetter,
+          listenerSetter: tab.listenerSetter,
           subtitle: true
         });
 
@@ -251,12 +255,12 @@ export default class AppEditChatTab extends SliderSuperTab {
           icon: 'reactions',
           navigationTab: {
             constructor: AppChatReactionsTab,
-            slider: this.slider,
+            slider: tab.slider,
             getInitArgs: () => ({
-              chatId: this.chatId
+              chatId: chatId
             })
           },
-          listenerSetter: this.listenerSetter
+          listenerSetter: tab.listenerSetter
         });
 
         const availableReactionsLength = availableReactions.filter((availableReaction) => !availableReaction.pFlags.inactive).length;
@@ -285,9 +289,9 @@ export default class AppEditChatTab extends SliderSuperTab {
           icon: 'messageunread',
           clickable: () => {
             if(chat._ !== 'channel') return;
-            this.slider.createTab(AppDirectMessagesTab).open({chat});
+            tab.slider.createTab(AppDirectMessagesTab).open({chat});
           },
-          listenerSetter: this.listenerSetter
+          listenerSetter: tab.listenerSetter
         });
 
         const setEnabledStatus = () => {
@@ -335,11 +339,11 @@ export default class AppEditChatTab extends SliderSuperTab {
         const permissionsRow = new Row({
           titleLangKey: 'ChannelPermissions',
           clickable: () => {
-            const tab = this.slider.createTab(AppGroupPermissionsTab);
-            tab.open({chatId: this.chatId});
+            const permsTab = tab.slider.createTab(AppGroupPermissionsTab);
+            permsTab.open({chatId: chatId});
           },
           icon: 'permissions',
-          listenerSetter: this.listenerSetter
+          listenerSetter: tab.listenerSetter
         });
 
         const setPermissionsLength = () => {
@@ -362,12 +366,12 @@ export default class AppEditChatTab extends SliderSuperTab {
           navigationTab: {
             constructor: AppChatDiscussionTab,
             getInitArgs: () => ({
-              chatId: this.chatId,
+              chatId: chatId,
               linkedChatId: (chatFull as ChatFull.channelFull).linked_chat_id
             }),
-            slider: this.slider
+            slider: tab.slider
           },
-          listenerSetter: this.listenerSetter
+          listenerSetter: tab.listenerSetter
         });
 
         const setSubtitle = async() => {
@@ -399,15 +403,15 @@ export default class AppEditChatTab extends SliderSuperTab {
           titleLangKey: 'RecentActions',
           clickable: () => {
             if(appSettings.logsDiffView) {
-              this.slider.createTab(AppAdminRecentActionsTab).open({channelId: this.chatId, isBroadcast});
+              tab.slider.createTab(AppAdminRecentActionsTab).open({channelId: chatId, isBroadcast});
             } else {
               appImManager.setInnerPeer({
-                peerId: this.chatId.toPeerId(true),
+                peerId: chatId.toPeerId(true),
                 type: ChatType.Logs
               });
             }
           },
-          listenerSetter: this.listenerSetter
+          listenerSetter: tab.listenerSetter
         });
 
         section.content.append(recentActionsRow.container);
@@ -429,25 +433,25 @@ export default class AppEditChatTab extends SliderSuperTab {
             }
           },
           icon: 'topics',
-          listenerSetter: this.listenerSetter
+          listenerSetter: tab.listenerSetter
         });
 
         const setTopics = () => {
           const isForum = !!(chat as Chat.channel).pFlags.forum;
-          this.editPeer.avatarElem.node.parentElement.classList.toggle('is-forum', isForum);
+          editPeer.avatarElem.node.parentElement.classList.toggle('is-forum', isForum);
           topicsRow.checkboxField.setValueSilently(isForum);
 
           // const linkedChatId = (chatFull as ChatFull.channelFull).linked_chat_id;
           // topicsRow.toggleDisability(!!linkedChatId);
         };
 
-        this.listenerSetter.add(topicsRow.checkboxField.input)('change', (e) => {
+        tab.listenerSetter.add(topicsRow.checkboxField.input)('change', (e) => {
           if(!e.isTrusted) {
             return;
           }
 
           const value = topicsRow.checkboxField.checked;
-          const promise = handleChannelsTooMuch(() => this.managers.appChatsManager.toggleForum(this.chatId, value));
+          const promise = handleChannelsTooMuch(() => tab.managers.appChatsManager.toggleForum(chatId, value));
           topicsRow.disableWithPromise(promise);
         });
 
@@ -461,33 +465,33 @@ export default class AppEditChatTab extends SliderSuperTab {
 
       section.caption.classList.toggle('hide', !section.caption.childElementCount);
 
-      if(section.content.childElementCount) this.scrollable.append(section.container);
+      if(section.content.childElementCount) tab.scrollable.append(section.container);
 
-      attachClickEvent(this.editPeer.nextBtn, () => {
-        this.editPeer.nextBtn.disabled = true;
+      attachClickEvent(editPeer.nextBtn, () => {
+        editPeer.nextBtn.disabled = true;
 
         const promises: Promise<any>[] = [];
 
-        const id = this.chatId;
-        if(this.chatNameInputField.isValidToChange()) {
-          promises.push(this.managers.appChatsManager.editTitle(id, this.chatNameInputField.value));
+        const id = chatId;
+        if(chatNameInputField.isValidToChange()) {
+          promises.push(tab.managers.appChatsManager.editTitle(id, chatNameInputField.value));
         }
 
-        if(this.descriptionInputField.isValidToChange()) {
-          promises.push(this.managers.appChatsManager.editAbout(id, this.descriptionInputField.value));
+        if(descriptionInputField.isValidToChange()) {
+          promises.push(tab.managers.appChatsManager.editAbout(id, descriptionInputField.value));
         }
 
-        if(this.editPeer.uploadAvatar) {
-          promises.push(this.editPeer.uploadAvatar().then((inputFile) => {
-            return this.managers.appChatsManager.editPhoto(id, inputFile);
+        if(editPeer.uploadAvatar) {
+          promises.push(editPeer.uploadAvatar().then((inputFile) => {
+            return tab.managers.appChatsManager.editPhoto(id, inputFile);
           }));
         }
 
         Promise.race(promises).finally(() => {
-          this.editPeer.nextBtn.removeAttribute('disabled');
-          this.close();
+          editPeer.nextBtn.removeAttribute('disabled');
+          tab.close();
         });
-      }, {listenerSetter: this.listenerSetter});
+      }, {listenerSetter: tab.listenerSetter});
     }
 
     {
@@ -500,12 +504,12 @@ export default class AppEditChatTab extends SliderSuperTab {
           icon: 'admin',
           navigationTab: {
             constructor: AppChatAdministratorsTab,
-            slider: this.slider,
+            slider: tab.slider,
             getInitArgs: () => ({
-              chatId: this.chatId
+              chatId: chatId
             })
           },
-          listenerSetter: this.listenerSetter
+          listenerSetter: tab.listenerSetter
         });
 
         const setAdministratorsLength = () => {
@@ -532,9 +536,9 @@ export default class AppEditChatTab extends SliderSuperTab {
           titleLangKey: isBroadcast ? 'PeerInfo.Subscribers' : 'GroupMembers',
           icon: 'newgroup',
           clickable: () => {
-            this.slider.createTab(AppChatMembersTab).open(this.chatId);
+            tab.slider.createTab(AppChatMembersTab).open(chatId);
           },
-          listenerSetter: this.listenerSetter,
+          listenerSetter: tab.listenerSetter,
           subtitle: true
         });
 
@@ -562,10 +566,10 @@ export default class AppEditChatTab extends SliderSuperTab {
           subtitle: true,
           icon: 'deleteuser',
           clickable: () => {
-            const tab = this.slider.createTab(AppRemovedUsersTab);
-            tab.open(this.chatId);
+            const removedTab = tab.slider.createTab(AppRemovedUsersTab);
+            removedTab.open(chatId);
           },
-          listenerSetter: this.listenerSetter
+          listenerSetter: tab.listenerSetter
         });
 
         const setRemovedUsersLength = () => {
@@ -584,7 +588,7 @@ export default class AppEditChatTab extends SliderSuperTab {
         section.content.append(removedUsersRow.container);
       }
 
-      this.scrollable.append(section.container);
+      tab.scrollable.append(section.container);
     }
 
     if(isBroadcast && canChangeInfo) {
@@ -613,9 +617,9 @@ export default class AppEditChatTab extends SliderSuperTab {
         }
       });
 
-      this.listenerSetter.add(r.checkboxField.input)('change', () => {
+      tab.listenerSetter.add(r.checkboxField.input)('change', () => {
         const toggle = r.toggleDisability(true);
-        this.managers.appChatsManager.toggleAutotranslation(this.chatId, r.checkboxField.checked)
+        tab.managers.appChatsManager.toggleAutotranslation(chatId, r.checkboxField.checked)
         .catch(() => {
           r.checkboxField.setValueSilently(false);
         }).finally(toggle);
@@ -630,7 +634,7 @@ export default class AppEditChatTab extends SliderSuperTab {
 
       section.content.append(r.container);
 
-      this.scrollable.append(section.container);
+      tab.scrollable.append(section.container);
     }
 
     if(isBroadcast && canPostMessages) {
@@ -643,16 +647,16 @@ export default class AppEditChatTab extends SliderSuperTab {
         text: 'ChannelSignMessagesWithProfile'
       });
 
-      this.listenerSetter.add(signMessagesCheckboxField.input)('change', () => {
+      tab.listenerSetter.add(signMessagesCheckboxField.input)('change', () => {
         const toggle = signMessagesCheckboxField.toggleDisability(true);
-        this.managers.appChatsManager.toggleSignatures(this.chatId, signMessagesCheckboxField.checked, signMessagesCheckboxField.checked && showProfilesCheckboxField.checked).then(() => {
+        tab.managers.appChatsManager.toggleSignatures(chatId, signMessagesCheckboxField.checked, signMessagesCheckboxField.checked && showProfilesCheckboxField.checked).then(() => {
           toggle();
         });
       });
 
-      this.listenerSetter.add(showProfilesCheckboxField.input)('change', () => {
+      tab.listenerSetter.add(showProfilesCheckboxField.input)('change', () => {
         const toggle = showProfilesCheckboxField.toggleDisability(true);
-        this.managers.appChatsManager.toggleSignatures(this.chatId, signMessagesCheckboxField.checked, showProfilesCheckboxField.checked).then(() => {
+        tab.managers.appChatsManager.toggleSignatures(chatId, signMessagesCheckboxField.checked, showProfilesCheckboxField.checked).then(() => {
           toggle();
         });
       });
@@ -670,7 +674,7 @@ export default class AppEditChatTab extends SliderSuperTab {
       addChatUpdateListener(update);
 
       section.content.append(CreateRowFromCheckboxField(signMessagesCheckboxField).container, row2.container);
-      this.scrollable.append(section.container);
+      tab.scrollable.append(section.container);
     }
 
     if(!isBroadcast) {
@@ -683,10 +687,10 @@ export default class AppEditChatTab extends SliderSuperTab {
           text: 'ChatHistory'
         });
 
-        this.listenerSetter.add(showChatHistoryCheckboxField.input)('change', () => {
+        tab.listenerSetter.add(showChatHistoryCheckboxField.input)('change', () => {
           const toggle = showChatHistoryCheckboxField.toggleDisability(true);
           const value = !showChatHistoryCheckboxField.checked;
-          handleChannelsTooMuch(() => this.managers.appChatsManager.togglePreHistoryHidden(this.chatId, value))
+          handleChannelsTooMuch(() => tab.managers.appChatsManager.togglePreHistoryHidden(chatId, value))
           .catch((err) => {
             console.error('togglePreHistoryHidden error:', err);
             showChatHistoryCheckboxField.setValueSilently(value);
@@ -704,7 +708,7 @@ export default class AppEditChatTab extends SliderSuperTab {
       }
 
       if(section.content.childElementCount) {
-        this.scrollable.append(section.container);
+        tab.scrollable.append(section.container);
       }
     }
 
@@ -717,30 +721,32 @@ export default class AppEditChatTab extends SliderSuperTab {
         PopupElement.createPopup(PopupDeleteDialog, peerId/* , 'delete' */, undefined, (promise) => {
           const toggle = toggleDisability([btnDelete], true);
           promise.then(() => {
-            this.close();
+            tab.close();
           }, () => {
             toggle();
           });
         });
-      }, {listenerSetter: this.listenerSetter});
+      }, {listenerSetter: tab.listenerSetter});
 
       section.content.append(btnDelete);
 
-      this.scrollable.append(section.container);
+      tab.scrollable.append(section.container);
     }
 
     if(!isChannel) {
       // ! this one will fire earlier than tab's closeAfterTimeout (destroy) event and listeners will be erased, so destroy won't fire
-      this.listenerSetter.add(rootScope)('dialog_migrate', ({migrateFrom, migrateTo}) => {
+      tab.listenerSetter.add(rootScope)('dialog_migrate', ({migrateFrom, migrateTo}) => {
         if(peerId === migrateFrom) {
-          this.chatId = migrateTo.toChatId();
-          this._init();
+          chatId = migrateTo.toChatId();
+          _init();
         }
       });
     }
-  }
+  };
 
-  public init() {
-    return this._init();
-  }
-}
+  promiseCollector.collect(_init());
+
+  return null;
+};
+
+export default EditChat;

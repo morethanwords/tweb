@@ -2,7 +2,7 @@ import rootScope, {BroadcastEvents} from '@lib/rootScope';
 import AppSearchSuper, {SearchSuperMediaTab, SearchSuperMediaType, SearchSuperType} from '@components/appSearchSuper';
 import SidebarSlider, {SliderSuperTab} from '@components/slider';
 import TransitionSlider from '@components/transition';
-import AppEditChatTab from '@components/sidebarRight/tabs/editChat';
+import {AppEditChatTab} from '@components/solidJsTabs/tabs';
 import {AppEditContactTab} from '@components/solidJsTabs/tabs';
 import Button from '@components/button';
 import ButtonIcon from '@components/buttonIcon';
@@ -268,7 +268,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     }, {listenerSetter: this.listenerSetter});
 
     attachClickEvent(this.editBtn, async() => {
-      let tab: AppEditChatTab | InstanceType<typeof AppEditContactTab> | InstanceType<typeof AppEditTopicTab> | InstanceType<typeof AppEditBotTab>;
+      let tab: InstanceType<typeof AppEditChatTab> | InstanceType<typeof AppEditContactTab> | InstanceType<typeof AppEditTopicTab> | InstanceType<typeof AppEditBotTab>;
       const {peerId, threadId} = this;
       if(threadId && await this.managers.appPeersManager.isForum(peerId)) {
         tab = this.slider.createTab(AppEditTopicTab)
@@ -291,12 +291,9 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       } else if(tab instanceof AppEditContactTab) {
         tab.open(peerId);
       } else {
-        // editBot/editContact (scaffolded tabs) are handled above; here tab is
-        // the remaining legacy AppEditChatTab — narrow past the structural
-        // scaffold types.
-        const editChatTab = tab as AppEditChatTab;
-        editChatTab.chatId = peerId.toChatId();
-        editChatTab.open();
+        // all four edit tabs are scaffolds now; their structural types don't
+        // subtract from the instanceof union, so cast to the editChat one.
+        (tab as InstanceType<typeof AppEditChatTab>).open({chatId: peerId.toChatId()});
       }
     }, {listenerSetter: this.listenerSetter});
 

@@ -577,6 +577,17 @@ export const AppChatInviteLinksTab = Object.assign(
 );
 
 
+type AppEditChatTabPayload = {
+  chatId: ChatId
+};
+
+export const AppEditChatTab =
+  scaffoldSolidJSTab<AppEditChatTabPayload>({
+    title: 'Edit',
+    getComponentModule: () => import('../sidebarRight/tabs/editChat')
+  });
+
+
 export type AppAddMembersExtraCategory = {
   key: string;
   icon: Icon;
