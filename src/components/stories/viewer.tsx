@@ -95,7 +95,7 @@ import createMiddleware from '@helpers/solid/createMiddleware';
 import showTooltip from '@components/tooltip';
 import safeWindowOpen from '@helpers/dom/safeWindowOpen';
 import wrapUrl from '@lib/richTextProcessor/wrapUrl';
-import PopupReportAd from '@components/popups/reportAd';
+import {showStoryReport} from '@components/popups/reportAd';
 import {useAppSettings} from '@stores/appSettings';
 import showStoriesStealthModePopup from '@components/popups/storiesStealthMode';
 import {useAppConfig} from '@stores/appState';
@@ -2239,7 +2239,7 @@ const Stories = (props: {
       onClick: () => {
         ignoreOnClose = true;
         const onAnyPopupClose = bindOnAnyPopupClose(wasPlaying);
-        PopupReportAd.createStoryReport(props.state.peerId, [currentStory().id], onAnyPopupClose);
+        showStoryReport(props.state.peerId, [currentStory().id], onAnyPopupClose);
       },
       verify: () => !(story as StoryItem.storyItem).pFlags?.out && props.state.peerId !== CHANGELOG_PEER_ID
       // separator: true

@@ -17,7 +17,7 @@ import PopupPremium from '@components/popups/premium';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import {getSponsoredMessageButtons} from '@components/chat/contextMenu';
-import PopupReportAd from '@components/popups/reportAd';
+import {showAdReport} from '@components/popups/reportAd';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import Button from '@components/buttonTsx';
 import RippleElement from '@components/rippleElement';
@@ -73,7 +73,7 @@ function SponsoredPlateBody(props: {
             buttons: getSponsoredMessageButtons({
               message: message(),
               handleReportAd: () => {
-                PopupReportAd.createAdReport(message(), () => props.setHidden(false));
+                showAdReport(message(), () => props.setHidden(false));
               },
               handleCopy: () => {
                 copyTextToClipboard(message().message);

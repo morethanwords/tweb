@@ -61,7 +61,7 @@ import getRichSelection from '@helpers/dom/getRichSelection';
 import detectLanguageForTranslation from '@helpers/detectLanguageForTranslation';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import documentFragmentToHTML from '@helpers/dom/documentFragmentToHTML';
-import PopupReportAd from '@components/popups/reportAd';
+import {showAdReport, showMessageReport} from '@components/popups/reportAd';
 import PopupAboutAd from '@components/popups/aboutAd';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import deepEqual from '@helpers/object/deepEqual';
@@ -1049,7 +1049,7 @@ export default class ChatContextMenu {
       icon: 'flag',
       text: 'ReportChat',
       onClick: () => {
-        PopupReportAd.createMessageReport(this.messagePeerId, [this.mid]);
+        showMessageReport(this.messagePeerId, [this.mid]);
       },
       verify: () => !this.message.pFlags.out &&
         this.message._ === 'message' &&
@@ -1122,7 +1122,7 @@ export default class ChatContextMenu {
       extraVerify: () => this.isSponsored,
       handleReportAd: () => {
         const {peerId, mid} = this.message;
-        PopupReportAd.createAdReport(this.sponsoredMessage, () => {
+        showAdReport(this.sponsoredMessage, () => {
           this.chat.bubbles.deleteMessagesByIds([makeFullMid(peerId, mid)], true)
         });
       },

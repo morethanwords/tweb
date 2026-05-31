@@ -28,7 +28,8 @@ export default class PopupBoost extends PopupPeer {
     super(className, {
       closable: true,
       overlayClosable: true,
-      description: true
+      description: true,
+      old: true
     });
 
     this.btnClose.remove();

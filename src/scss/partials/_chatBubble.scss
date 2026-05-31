@@ -3620,7 +3620,6 @@
     &-text {
       position: relative;
       pointer-events: none;
-      display: block;
     }
 
     &.anchor-url {
@@ -3655,7 +3654,8 @@
     }
 
     .custom-emoji {
-      vertical-align: bottom;
+      line-height: 1;
+      vertical-align: middle;
     }
   }
 

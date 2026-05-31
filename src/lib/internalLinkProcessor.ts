@@ -41,7 +41,7 @@ import cancelEvent from '@helpers/dom/cancelEvent';
 import appSidebarLeft from '@components/sidebarLeft';
 import AppContactsTab from '@components/sidebarLeft/tabs/contacts';
 import AppNewChannelTab from '@components/sidebarLeft/tabs/newChannel';
-import PopupCreateContact from '@components/popups/createContact';
+import showCreateContactPopup from '@components/popups/createContact';
 import createNewGroupTab from '@components/sidebarLeft/tabs/createNewGroupTab';
 import {AppEditProfileTab, AppSettingsTab, getEditProfileInitArgs} from '@components/solidJsTabs';
 import showBirthdayPopup, {saveMyBirthday} from '@components/popups/birthday';
@@ -691,7 +691,7 @@ export class InternalLinkProcessor {
         const [type] = pathnameParams;
         switch(type) {
           case 'contact':
-            return PopupElement.createPopup(PopupCreateContact);
+            return showCreateContactPopup();
           case 'channel':
             return appSidebarLeft.createTab(AppNewChannelTab).open();
           case 'group':
@@ -756,7 +756,7 @@ export class InternalLinkProcessor {
         const [type] = pathnameParams;
         switch(type) {
           case 'new':
-            return PopupElement.createPopup(PopupCreateContact);
+            return showCreateContactPopup();
           case 'search':
           case '':
             const tab = appSidebarLeft.createTab(AppContactsTab);

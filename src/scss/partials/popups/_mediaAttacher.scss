@@ -42,21 +42,6 @@
     position: relative;
   }
 
-  .input-field {
-    width: 100%;
-    flex: 0 0 auto;
-
-    &-input {
-      //height: 54px;
-      font-size: 1rem;
-      border-radius: $border-radius-medium;
-    }
-
-    label {
-      font-size: inherit;
-    }
-  }
-
   .btn-menu-overlay {
     z-index: 3;
   }
@@ -242,39 +227,6 @@
 .popup-send-photo {
   &-documents {
     --section-padding-bottom: 0;
-  }
-}
-
-.popup-create-contact {
-  .popup-container {
-    padding: 0 1rem 1rem !important;
-  }
-
-  .popup-header {
-    padding: 0 !important;
-  }
-
-  .btn-primary {
-    margin-bottom: 0 !important;
-  }
-
-  .input-field-name {
-    margin-top: 0;
-  }
-
-  .name-fields {
-    display: flex;
-    flex-direction: column;
-    position: relative;
-    padding-left: 116px;
-    margin-top: 1rem;
-  }
-
-  .avatar-placeholder {
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
   }
 }
 

@@ -1,5 +1,21 @@
+@use "../../scss/variables.scss" as *;
+
 .popup {
   --popup-width: 23rem;
+
+  :global(.input-field) {
+    width: 100%;
+    flex: 0 0 auto;
+
+    label {
+      font-size: inherit;
+    }
+  }
+
+  :global(.input-field-input) {
+    font-size: 1rem;
+    border-radius: $border-radius-medium;
+  }
 }
 
 .item {

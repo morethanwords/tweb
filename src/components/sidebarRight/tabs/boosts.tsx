@@ -121,7 +121,7 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
       PopupElement.createPopup(PopupBoostsViaGifts, this.peerId);
     }, {listenerSetter: this.listenerSetter});
 
-    const boostButton = Button('btn-primary btn-transparent primary', {icon: 'boost', text: this.isBroadcast ? 'BoostChannel' : 'BoostGroup'});
+    const boostButton = Button('btn-primary btn-transparent primary', {icon: 'addboost', text: this.isBroadcast ? 'BoostChannel' : 'BoostGroup'});
     attachClickEvent(boostButton, () => {
       PopupElement.createPopup(PopupBoost, this.peerId);
     }, {listenerSetter: this.listenerSetter});

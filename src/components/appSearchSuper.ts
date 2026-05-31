@@ -87,7 +87,7 @@ import {ALL_COLLECTIONS_ID, StarGiftsProfileActions, StarGiftsProfileStore} from
 import {getFirstChild} from '@solid-primitives/refs';
 import SortedDialogList from '@components/sortedDialogList';
 import Icon from '@components/icon';
-import PopupReportAd from '@components/popups/reportAd';
+import {showAdReport} from '@components/popups/reportAd';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import {isSensitive} from '@helpers/restrictions';
 import {isMessageSensitive} from '@appManagers/utils/messages/isMessageRestricted';
@@ -1393,7 +1393,7 @@ export default class AppSearchSuper {
               buttons: getSponsoredMessageButtons({
                 message: peer,
                 handleReportAd: () => {
-                  PopupReportAd.createAdReport(peer);
+                  showAdReport(peer);
                 }
               }),
               onOpen: (e, element) => {

@@ -26,7 +26,8 @@ export type PopupPeerOptions = Omit<PopupOptions, 'buttons' | 'title'> & Partial
   descriptionLangArgs: any[],
   buttons: Array<PopupPeerButton>,
   checkboxes: Array<PopupPeerCheckboxOptions>,
-  inputField: InputField
+  inputField: InputField,
+  old: boolean
 }>;
 export default class PopupPeer extends PopupElement {
   protected description: HTMLParagraphElement;

@@ -1,0 +1,42 @@
+@use "../../shared" as *;
+
+.popup-create-contact {
+  --popup-width: 26.25rem;
+  --popup-border-radius: 1.5rem;
+
+  .popup-container {
+    padding: 0 1rem 1rem !important;
+  }
+
+  .popup-header {
+    padding: 0 !important;
+
+    .btn-primary {
+      width: auto;
+      height: 2.5rem;
+      padding: 0 1.375rem;
+      border-radius: $border-radius-medium;
+      text-transform: uppercase;
+    }
+  }
+
+  .input-field {
+    width: 100%;
+    flex: 0 0 auto;
+    margin-top: 1rem;
+  }
+
+  .name-fields {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding-inline-start: 116px;
+  }
+
+  .avatar-placeholder {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+}

@@ -41,6 +41,7 @@ import bigInt from 'big-integer';
 import safeWindowOpen from '@helpers/dom/safeWindowOpen';
 import {IconTsx} from '@components/iconTsx';
 import Tabs from '@components/tabs';
+import {GrowHeightReveal} from '@helpers/solid/animations';
 
 export function StarsStrokeStar(props: {stroke?: boolean, style?: JSX.HTMLAttributes<HTMLDivElement>['style']}) {
   return (
@@ -565,10 +566,6 @@ export default class PopupStars extends PopupElement {
 
     const firstSection = (
       <Section caption="Stars.TOS">
-        {image}
-        {avatar}
-        <div class="popup-stars-title">{title}</div>
-        <div class="popup-stars-subtitle">{subtitle}</div>
         <div class="popup-stars-options" style={{height: (displayingRows() * 79 + (displayingRows() - 1) * 8) + 'px'}}>
           <Show when={this.ton}>
             <Button
@@ -659,12 +656,14 @@ export default class PopupStars extends PopupElement {
             );
           }}</For>
         </div>
-        <Button
-          class={classNames('btn-primary btn-transparent primary popup-stars-more', !extended() && 'is-visible')}
-          icon="down"
-          text="ShowMoreOptions"
-          onClick={() => setExtended((v) => !v)}
-        />
+        <GrowHeightReveal when={!extended()} appear={false}>
+          <Button
+            class="btn-primary btn-transparent primary popup-stars-more"
+            icon="down"
+            text="ShowMoreOptions"
+            onClick={() => setExtended((v) => !v)}
+          />
+        </GrowHeightReveal>
       </Section>
     );
 
@@ -804,6 +803,10 @@ export default class PopupStars extends PopupElement {
 
     return (
       <>
+        {image}
+        {avatar}
+        <div class="popup-stars-title">{title}</div>
+        <div class="popup-stars-subtitle">{subtitle}</div>
         {firstSection}
         {starsNeeded() === bigInt.zero && !this.giftPeerId && restSection}
       </>

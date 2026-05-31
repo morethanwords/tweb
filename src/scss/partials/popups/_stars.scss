@@ -57,6 +57,7 @@
   &-subtitle {
     line-height: 1.375rem;
     margin-top: .375rem;
+    margin-bottom: 1.5rem;
 
     &.mt {
       margin-top: .5rem;
@@ -64,18 +65,8 @@
   }
 
   &-options {
-    // display: grid;
-    // grid-template-columns: repeat(2, 1fr);
-    // gap: .5rem;
-    margin-top: 1.5rem;
-    margin: 1.5rem .5rem .5rem;
     overflow: hidden;
     position: relative;
-
-    @include respond-to(handhelds) {
-      margin-left: 0;
-      margin-right: 0;
-    }
 
     @include animation-level(2) {
       transition: height var(--transition-standard-in);
@@ -135,21 +126,8 @@
     font-weight: var(--font-weight-bold);
     justify-content: center;
     align-items: unset;
-    height: 0rem;
     line-height: 3rem;
-
-    &.is-visible {
-      height: 3rem;
-    }
-
-    @include animation-level(2) {
-      transition: height var(--transition-standard-in) !important;
-    }
-
-    @include respond-to(not-handhelds) {
-      margin: 0 .5rem !important;
-      width: calc(100% - 1rem) !important;
-    }
+    margin-top: .5rem !important;
 
     .button-icon {
       margin-inline: .25rem 0;

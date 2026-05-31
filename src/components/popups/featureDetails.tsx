@@ -39,6 +39,7 @@ export default function showFeatureDetailsPopup(props: FeatureDetailsPopupProps)
       containerClass={styles.popupContainer}
       show={show()}
       onClose={props.onClose}
+      old
     >
       <PopupElement.Header class={styles.popupHeader}>
         <PopupElement.CloseButton class={styles.popupCloseButton} />

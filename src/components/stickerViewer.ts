@@ -138,7 +138,7 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
       const transformX = rect.left - (windowSize.width - rect.width) / 2;
       const transformY = rect.top - (windowSize.height - rect.height) / 2;
       transformer.style.transform = `translate(${transformX}px, ${transformY}px) scale(${scaleX}, ${scaleY})`;
-      if(isSwitching) transformer.classList.add('is-switching');
+      if(isSwitching) transformer.classList.add('is-switching', 'forwards');
       transformer.append(stickerContainer, stickerEmoji);
       container.append(transformer);
 

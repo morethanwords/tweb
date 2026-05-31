@@ -6,12 +6,11 @@ import {canFocus} from '@helpers/dom/canFocus';
 import windowSize from '@helpers/windowSize';
 import ButtonCorner from '@components/buttonCorner';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
-import PopupCreateContact from '@components/popups/createContact';
+import showCreateContactPopup from '@components/popups/createContact';
 import SortedUserList from '@components/sortedUserList';
 import {getMiddleware} from '@helpers/middleware';
 import replaceContent from '@helpers/dom/replaceContent';
 import rootScope from '@lib/rootScope';
-import PopupElement from '@components/popups';
 
 // TODO: поиск по людям глобальный, если не нашло в контактах никого
 
@@ -31,7 +30,7 @@ export default class AppContactsTab extends SliderSuperTab {
     this.content.append(btnAdd);
 
     attachClickEvent(btnAdd, () => {
-      PopupElement.createPopup(PopupCreateContact);
+      showCreateContactPopup();
     }, {listenerSetter: this.listenerSetter});
 
     this.inputSearch = new InputSearch({
