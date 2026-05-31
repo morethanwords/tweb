@@ -787,6 +787,23 @@ export const AppTwoStepVerificationEmailConfirmationTab =
   });
 
 
+type AppPrivateSearchTabPayload = {
+  peerId: PeerId,
+  threadId?: number,
+  onDatePick?: (timestamp: number) => void,
+  query?: string
+};
+
+export const AppPrivateSearchTab =
+  scaffoldSolidJSTab<AppPrivateSearchTabPayload>({
+    title: 'Search',
+    getComponentModule: () => import('../sidebarRight/tabs/search'),
+    onOpenAfterTimeout: function() {
+      (this as any)._onOpenAfterTimeout?.();
+    }
+  });
+
+
 export type AppAddMembersExtraCategory = {
   key: string;
   icon: Icon;

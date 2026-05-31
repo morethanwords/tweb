@@ -18,7 +18,7 @@ import {doubleRaf} from '@helpers/schedulers';
 import useHeavyAnimationCheck, {dispatchHeavyAnimationEvent} from '@hooks/useHeavyAnimationCheck';
 import {MOUNT_CLASS_TO} from '@config/debug';
 import appNavigationController, {USE_NAVIGATION_API} from '@components/appNavigationController';
-import AppPrivateSearchTab from '@components/sidebarRight/tabs/search';
+import {AppPrivateSearchTab} from '@components/solidJsTabs/tabs';
 import I18n, {i18n, join, LangPackKey} from '@lib/langPack';
 import {ChatFull, ChatParticipants, Game, Message, MessageAction, MessageMedia, SendMessageAction, User, Chat as MTChat, UrlAuthResult, WallPaper, Config, AttachMenuBot, Peer, InputChannel, HelpPeerColors, Reaction, Document, MessageEntity, PeerColor, SponsoredMessage, InputGroupCall, WebPage} from '@layer';
 import PeerTitle from '@components/peerTitle';
