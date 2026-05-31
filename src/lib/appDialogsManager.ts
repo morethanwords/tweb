@@ -71,7 +71,7 @@ import Row, {RowMediaSizeType} from '@components/row'
 import SettingSection from '@components/settingSection';
 import getMessageThreadId from '@appManagers/utils/messages/getMessageThreadId';
 import formatNumber from '@helpers/number/formatNumber';
-import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMedia';
+import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMediaTab';
 import {dispatchHeavyAnimationEvent} from '@hooks/useHeavyAnimationCheck';
 import shake from '@helpers/dom/shake';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';

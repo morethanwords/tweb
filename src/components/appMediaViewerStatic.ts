@@ -7,7 +7,7 @@ import {ButtonMenuItemOptionsVerifiable} from './buttonMenu';
 import PopupElement from './popups';
 import PopupForward from './popups/forward';
 import appSidebarRight from './sidebarRight';
-import AppSharedMediaTab from './sidebarRight/tabs/sharedMedia';
+import AppSharedMediaTab from './sidebarRight/tabs/sharedMediaTab';
 import appDownloadManager from '@lib/appDownloadManager';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
 import showForwardPopup from './popups/forward';

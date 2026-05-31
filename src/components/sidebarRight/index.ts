@@ -1,7 +1,7 @@
 import appImManager, {APP_TABS} from '@lib/appImManager';
 import SidebarSlider from '@components/slider';
 import mediaSizes, {ScreenSize} from '@helpers/mediaSizes';
-import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMedia';
+import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMediaTab';
 import {MOUNT_CLASS_TO} from '@config/debug';
 import {AppManagers} from '@lib/managers';
 import appNavigationController from '@components/appNavigationController';

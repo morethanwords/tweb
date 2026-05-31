@@ -21,7 +21,7 @@ import {ChatBackgroundTransition} from '@components/chat/bubbles/chatBackground'
 import {AppManagers} from '@lib/managers';
 import SlicedArray from '@helpers/slicedArray';
 import themeController from '@helpers/themeController';
-import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMedia';
+import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMediaTab';
 import noop from '@helpers/noop';
 import middlewarePromise from '@helpers/middlewarePromise';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';

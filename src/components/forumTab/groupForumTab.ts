@@ -10,7 +10,7 @@ import PopupElement from '@components/popups';
 import PopupDeleteDialog from '@components/popups/deleteDialog';
 import appSidebarLeft from '@components/sidebarLeft';
 import {AppEditTopicTab} from '@components/solidJsTabs/tabs';
-import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMedia';
+import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMediaTab';
 import SortedDialogList from '@components/sortedDialogList';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {ForumTab} from '@components/forumTab/forumTab';
