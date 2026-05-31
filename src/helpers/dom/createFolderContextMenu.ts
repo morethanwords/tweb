@@ -1,5 +1,5 @@
 import type {AppManagers} from '@lib/managers';
-import type AppChatFoldersTab from '@components/sidebarLeft/tabs/chatFolders';
+import type {AppChatFoldersTab} from '@components/solidJsTabs/tabs';
 import type AppEditFolderTab from '@components/sidebarLeft/tabs/editFolder';
 import type {AppSidebarLeft} from '@components/sidebarLeft';
 import {FOLDER_ID_ALL, REAL_FOLDERS} from '@appManagers/constants';
@@ -46,7 +46,7 @@ export default function createFolderContextMenu({
       text: 'FilterEditAll',
       onClick: () => {
         appSidebarLeft.closeTabsBefore(() => {
-          appSidebarLeft.createTab(_AppChatFoldersTab).open();
+          appSidebarLeft.createTab(_AppChatFoldersTab).open(_AppChatFoldersTab.getInitArgs());
         });
       },
       verify: () => clickFilterId === FOLDER_ID_ALL

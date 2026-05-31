@@ -75,7 +75,7 @@ import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMedia';
 import {dispatchHeavyAnimationEvent} from '@hooks/useHeavyAnimationCheck';
 import shake from '@helpers/dom/shake';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
-import AppChatFoldersTab from '@components/sidebarLeft/tabs/chatFolders';
+import {AppChatFoldersTab} from '@components/solidJsTabs/tabs';
 import eachTimeout from '@helpers/eachTimeout';
 import PopupSharedFolderInvite from '@components/popups/sharedFolderInvite';
 import showChatPreviewPopup, {chatPreviewAnchorFromDialogRow} from '@components/popups/chatPreview';

@@ -30,7 +30,7 @@ import PopupTranslate from '@components/popups/translate';
 import {setQuizHint} from '@components/quizHint';
 import Row from '@components/rowTsx';
 import appSidebarLeft from '@components/sidebarLeft';
-import AppChatFoldersTab from '@components/sidebarLeft/tabs/chatFolders';
+import {AppChatFoldersTab} from '@components/solidJsTabs/tabs';
 import AppEditFolderTab from '@components/sidebarLeft/tabs/editFolder';
 import appSidebarRight from '@components/sidebarRight';
 import AppPollResultsTab from '@components/sidebarRight/tabs/pollResults';

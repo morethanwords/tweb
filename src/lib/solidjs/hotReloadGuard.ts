@@ -36,7 +36,7 @@ import type PopupTranslate from '@components/popups/translate';
 import type {setQuizHint} from '@components/quizHint';
 import type Row from '@components/rowTsx';
 import type {AppSidebarLeft} from '@components/sidebarLeft';
-import type AppChatFoldersTab from '@components/sidebarLeft/tabs/chatFolders';
+import type {AppChatFoldersTab} from '@components/solidJsTabs/tabs';
 import type AppEditFolderTab from '@components/sidebarLeft/tabs/editFolder';
 import type {AppSidebarRight} from '@components/sidebarRight';
 import AppPollResultsTab from '@components/sidebarRight/tabs/pollResults';

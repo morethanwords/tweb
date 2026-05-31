@@ -74,7 +74,7 @@ import {changeAccount} from '@lib/accounts/changeAccount';
 import uiNotificationsManager from '@lib/uiNotificationsManager';
 import {renderFoldersSidebarContent} from '@components/sidebarLeft/foldersSidebarContent';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
-import AppChatFoldersTab from '@components/sidebarLeft/tabs/chatFolders';
+import {AppChatFoldersTab} from '@components/solidJsTabs/tabs';
 import {SliderSuperTabConstructable} from '@components/sliderTab';
 import SettingsSliderPopup from '@components/sidebarLeft/settingsSliderPopup';
 import AppEditFolderTab from '@components/sidebarLeft/tabs/editFolder';

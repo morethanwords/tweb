@@ -15,6 +15,7 @@ import rootScope from '@lib/rootScope';
 import type {EditProfileTabPayload} from '@components/sidebarLeft/tabs/editProfile';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import {ChatInvite, ChatInviteActions, getChatInviteLinksInitArgs} from '@components/sidebarRight/tabs/chatInviteLinkShared';
+import lottieLoader from '@lib/rlottie/lottieLoader';
 
 
 export const AppPasscodeLockTab =
@@ -586,6 +587,29 @@ export const AppEditChatTab =
     title: 'Edit',
     getComponentModule: () => import('../sidebarRight/tabs/editChat')
   });
+
+
+function getChatFoldersInitArgs() {
+  return {
+    animationData: lottieLoader.loadAnimationFromURLManually('Folders_1'),
+    filters: rootScope.managers.filtersStorage.getDialogFilters()
+  };
+}
+
+type AppChatFoldersTabPayload = ReturnType<typeof getChatFoldersInitArgs>;
+
+// getInitArgs is read both via makeSubTabConfig (any-cast) and directly (typed)
+// by foldersSidebarContent, so expose it on the constructor via Object.assign.
+export const AppChatFoldersTab = Object.assign(
+  scaffoldSolidJSTab<AppChatFoldersTabPayload>({
+    title: 'ChatList.Filter.List.Title',
+    getComponentModule: () => import('../sidebarLeft/tabs/chatFolders'),
+    onOpenAfterTimeout: function() {
+      (this as any)._onOpenAfterTimeout?.();
+    }
+  }),
+  {getInitArgs: getChatFoldersInitArgs}
+);
 
 
 export type AppAddMembersExtraCategory = {

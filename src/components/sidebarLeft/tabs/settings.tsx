@@ -1,7 +1,7 @@
 import {createSignal, For, onMount, Show} from 'solid-js';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import {AppPrivacyAndSecurityTab} from '@components/solidJsTabs/tabs';
-import AppChatFoldersTab from '@components/sidebarLeft/tabs/chatFolders';
+import {AppChatFoldersTab} from '@components/solidJsTabs/tabs';
 import {
   AppEditProfileTab,
   AppGeneralSettingsTab,
