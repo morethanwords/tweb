@@ -1,10 +1,10 @@
 import {CancellablePromise} from '@helpers/cancellablePromise';
-import {AccountPasskeys, Authorization, ChannelParticipant, Chat, ChatFull, ChatParticipant, DialogFilter, ExportedChatlistInvite, GlobalPrivacySettings, Passkey, WebAuthorization} from '@layer';
+import {AccountPasskeys, AccountPassword, Authorization, ChannelParticipant, Chat, ChatFull, ChatParticipant, DialogFilter, ExportedChatlistInvite, GlobalPrivacySettings, Passkey, WebAuthorization} from '@layer';
 import type SidebarSlider from '@components/slider';
 import type {SliderSuperTab} from '@components/slider';
 import getParticipantPeerId from '@appManagers/utils/chats/getParticipantPeerId';
 import type {MyDialogFilter} from '@lib/storages/filters';
-import {LangPackKey} from '@lib/langPack';
+import {FormatterArgument, LangPackKey} from '@lib/langPack';
 import type {PasscodeActions} from '@lib/passcode/actions';
 import {InstanceOf} from '@types';
 import {SetStoreFunction} from 'solid-js/store';
@@ -663,6 +663,123 @@ export const AppArchivedTab =
     },
     onClose: function() {
       (this as any)._onClose?.();
+    },
+    onCloseAfterTimeout: function() {
+      (this as any)._onCloseAfterTimeout?.();
+    }
+  });
+
+
+// ── 2FA wizard ──────────────────────────────────────────────────────────────
+
+type AppTwoStepVerificationSetTabPayload = {
+  messageFor: 'password' | 'email'
+};
+
+export const AppTwoStepVerificationSetTab =
+  scaffoldSolidJSTab<AppTwoStepVerificationSetTabPayload>({
+    title: 'TwoStepVerificationPasswordSet',
+    getComponentModule: () => import('../sidebarLeft/tabs/2fa/passwordSet')
+  });
+
+
+type AppTwoStepVerificationTabPayload = {
+  state: AccountPassword,
+  plainPassword?: string
+};
+
+export const AppTwoStepVerificationTab =
+  scaffoldSolidJSTab<AppTwoStepVerificationTabPayload>({
+    title: 'TwoStepVerificationTitle',
+    getComponentModule: () => import('../sidebarLeft/tabs/2fa/index')
+  });
+
+
+type AppTwoStepVerificationEnterPasswordTabPayload = {
+  state: AccountPassword,
+  plainPassword?: string,
+  isFirst?: boolean
+};
+
+export const AppTwoStepVerificationEnterPasswordTab =
+  scaffoldSolidJSTab<AppTwoStepVerificationEnterPasswordTabPayload>({
+    title: 'PleaseEnterFirstPassword',
+    getComponentModule: () => import('../sidebarLeft/tabs/2fa/enterPassword'),
+    onOpenAfterTimeout: function() {
+      (this as any)._onOpenAfterTimeout?.();
+    },
+    onClose: function() {
+      (this as any)._onClose?.();
+    }
+  });
+
+
+type AppTwoStepVerificationReEnterPasswordTabPayload = {
+  state: AccountPassword,
+  plainPassword?: string,
+  newPassword?: string
+};
+
+export const AppTwoStepVerificationReEnterPasswordTab =
+  scaffoldSolidJSTab<AppTwoStepVerificationReEnterPasswordTabPayload>({
+    title: 'PleaseReEnterPassword',
+    getComponentModule: () => import('../sidebarLeft/tabs/2fa/reEnterPassword'),
+    onOpenAfterTimeout: function() {
+      (this as any)._onOpenAfterTimeout?.();
+    }
+  });
+
+
+type AppTwoStepVerificationHintTabPayload = {
+  state: AccountPassword,
+  plainPassword?: string,
+  newPassword?: string
+};
+
+export const AppTwoStepVerificationHintTab =
+  scaffoldSolidJSTab<AppTwoStepVerificationHintTabPayload>({
+    title: 'TwoStepAuth.SetupHintTitle',
+    getComponentModule: () => import('../sidebarLeft/tabs/2fa/hint'),
+    onOpenAfterTimeout: function() {
+      (this as any)._onOpenAfterTimeout?.();
+    }
+  });
+
+
+type AppTwoStepVerificationEmailTabPayload = {
+  state: AccountPassword,
+  plainPassword?: string,
+  newPassword?: string,
+  hint?: string,
+  isFirst?: boolean,
+  justSetPasssword?: boolean
+};
+
+export const AppTwoStepVerificationEmailTab =
+  scaffoldSolidJSTab<AppTwoStepVerificationEmailTabPayload>({
+    title: 'RecoveryEmailTitle',
+    getComponentModule: () => import('../sidebarLeft/tabs/2fa/email'),
+    onOpenAfterTimeout: function() {
+      (this as any)._onOpenAfterTimeout?.();
+    }
+  });
+
+
+type AppTwoStepVerificationEmailConfirmationTabPayload = {
+  state: AccountPassword,
+  email: FormatterArgument,
+  length: number,
+  isFirst?: boolean,
+  forPasswordReset?: boolean,
+  justSetPasssword?: boolean
+};
+
+export const AppTwoStepVerificationEmailConfirmationTab =
+  scaffoldSolidJSTab<AppTwoStepVerificationEmailConfirmationTabPayload>({
+    title: 'TwoStepAuth.RecoveryTitle',
+    getComponentModule: () => import('../sidebarLeft/tabs/2fa/emailConfirmation'),
+    onOpenAfterTimeout: function() {
+      (this as any)._onOpenAfterTimeout?.();
     },
     onCloseAfterTimeout: function() {
       (this as any)._onCloseAfterTimeout?.();

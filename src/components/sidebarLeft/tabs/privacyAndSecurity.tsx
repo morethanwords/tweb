@@ -2,9 +2,7 @@ import {Component, createEffect, createRoot} from 'solid-js';
 import {createStore, SetStoreFunction} from 'solid-js/store';
 import Row from '@components/row';
 import {AccountPassword, GlobalPrivacySettings, InputPrivacyKey, Passkey, WebAuthorization} from '@layer';
-import AppTwoStepVerificationTab from '@components/sidebarLeft/tabs/2fa';
-import AppTwoStepVerificationEnterPasswordTab from '@components/sidebarLeft/tabs/2fa/enterPassword';
-import AppTwoStepVerificationEmailConfirmationTab from '@components/sidebarLeft/tabs/2fa/emailConfirmation';
+import {AppTwoStepVerificationTab, AppTwoStepVerificationEnterPasswordTab, AppTwoStepVerificationEmailConfirmationTab} from '@components/solidJsTabs/tabs';
 import {
   AppActiveWebSessionsTab,
   AppBlockedUsersTab,
@@ -127,21 +125,19 @@ const PrivacyAndSecurity: Component = () => {
         titleLangKey: 'TwoStepVerification' as LangPackKey,
         subtitleLangKey: SUBTITLE,
         clickable: (e: Event) => {
-          let verificationTab: AppTwoStepVerificationTab | AppTwoStepVerificationEnterPasswordTab | AppTwoStepVerificationEmailConfirmationTab;
           if(passwordState.pFlags.has_password) {
-            verificationTab = tab.slider.createTab(AppTwoStepVerificationEnterPasswordTab);
+            tab.slider.createTab(AppTwoStepVerificationEnterPasswordTab).open({state: passwordState});
           } else if(passwordState.email_unconfirmed_pattern) {
-            verificationTab = tab.slider.createTab(AppTwoStepVerificationEmailConfirmationTab);
-            verificationTab.email = wrapEmailPattern(passwordState.email_unconfirmed_pattern);
-            verificationTab.length = 6;
-            verificationTab.isFirst = true;
             tab.managers.passwordManager.resendPasswordEmail();
+            tab.slider.createTab(AppTwoStepVerificationEmailConfirmationTab).open({
+              state: passwordState,
+              email: wrapEmailPattern(passwordState.email_unconfirmed_pattern),
+              length: 6,
+              isFirst: true
+            });
           } else {
-            verificationTab = tab.slider.createTab(AppTwoStepVerificationTab);
+            tab.slider.createTab(AppTwoStepVerificationTab).open({state: passwordState});
           }
-
-          verificationTab.state = passwordState;
-          verificationTab.open();
         },
         listenerSetter: tab.listenerSetter
       };
