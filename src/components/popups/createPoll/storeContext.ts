@@ -3,8 +3,9 @@ import track from '@helpers/solid/track';
 import {MediaSize} from '@helpers/mediaSize';
 import {MessageEntity} from '@layer';
 import {oneDayInSeconds} from '@lib/constants';
-import {Accessor, createComputed, createContext, untrack, useContext} from 'solid-js';
+import {Accessor, createComputed, createContext, createResource, untrack, useContext} from 'solid-js';
 import {createStore, SetStoreFunction, Store} from 'solid-js/store';
+import {supportsVideoEncoding} from '@components/mediaEditor/support';
 import {useCreatePollLimits} from './useCreatePollLimits';
 import {checkOptionHasValue} from './utils';
 
@@ -112,6 +113,11 @@ export type CreatePollContextExtra = {
 export type CreatePollContextValue = CreatePollContextExtra & {
   store: Store<CreatePollStore>;
   setStore: SetStoreFunction<CreatePollStore>;
+  /**
+   * Whether the browser supports the video encoder the media editor needs.
+   * Returns `false` until the underlying resource resolves.
+   */
+  canEncodeVideo: Accessor<boolean>;
 };
 
 export const CreatePollContext = createContext<CreatePollContextValue>();
@@ -177,9 +183,14 @@ export const createPollStoreContextValue = (extra: CreatePollContextExtra): Crea
     }
   });
 
+  const [canEncodeVideoResource] = createResource(() => supportsVideoEncoding());
+  const canEncodeVideo: Accessor<boolean> =
+    () => canEncodeVideoResource.state === 'ready' && !!canEncodeVideoResource();
+
   return {
     store,
     setStore,
+    canEncodeVideo,
     ...extra
   };
 };

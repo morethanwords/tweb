@@ -88,16 +88,10 @@ export const MediaAttachment = (props: {
 
   const isAttachedGIF = () => props.attachedMedia?.type === 'video' && props.attachedMedia.isAnimated;
 
-  // Cache the (async) video-encoding support flag. While it's loading we treat
-  // it as unsupported, so the picker won't accept videos that the editor cannot handle.
-  const [canEncodeVideo] = createResource(() => supportsVideoEncoding());
-
-  const canAcceptVideo = () => supportsMedia('video') && !!canEncodeVideo();
-
   const acceptMediaTypes = (): Array<'photo' | 'video'> => {
     const types: Array<'photo' | 'video'> = [];
     if(supportsMedia('photo')) types.push('photo');
-    if(canAcceptVideo()) types.push('video');
+    if(supportsMedia('video')) types.push('video');
     return types;
   };
 
@@ -460,10 +454,10 @@ export const MediaAttachment = (props: {
   const mainMenuButtons = createMemo(() => {
     const result: MenuButtons = [];
 
-    if(supportsMedia('photo') || canAcceptVideo()) {
+    if(supportsMedia('photo') || supportsMedia('video')) {
       result.push({
         icon: 'image',
-        text: !canAcceptVideo() ? 'AttachPhoto' : !supportsMedia('photo') ? 'AttachVideo' : 'Chat.Input.Attach.PhotoOrVideo',
+        text: !supportsMedia('video') ? 'AttachPhoto' : !supportsMedia('photo') ? 'AttachVideo' : 'Chat.Input.Attach.PhotoOrVideo',
         onClick: onChoose
       });
     }

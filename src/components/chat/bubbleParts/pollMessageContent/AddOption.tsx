@@ -11,7 +11,8 @@ import {keepMe} from '@helpers/keepMe';
 import {createDelayed} from '@helpers/solid/createDelayed';
 import {I18nTsx} from '@helpers/solid/i18n';
 import classNames from '@helpers/string/classNames';
-import {createEffect, createMemo, Match, onCleanup, Show, Switch} from 'solid-js';
+import {createEffect, createMemo, createResource, Match, onCleanup, Show, Switch} from 'solid-js';
+import {supportsVideoEncoding} from '@components/mediaEditor/support';
 import {Transition} from 'solid-transition-group';
 import {usePollMessageContentProps} from './context';
 import styles from './styles.module.scss';
@@ -37,12 +38,17 @@ export const AddOption = (props: {
     getRight: (key) => contextProps.canSend(key)
   })
 
+  const [canEncodeVideoResource] = createResource(() => supportsVideoEncoding());
+  const canEncodeVideo = () =>
+    canEncodeVideoResource.state === 'ready' && !!canEncodeVideoResource();
+
   const supportedMediaTypes = createMemo((): SupportedMediaType[] => {
     return [
       ...(chatRights.hasRight('send_photos') ? ['photo'] as const : []),
       ...(chatRights.hasRight('send_stickers') ? ['sticker'] as const : []),
-      ...(chatRights.hasRight('send_gifs') ? ['gif'] as const : []),
-      ...(chatRights.hasRight('send_videos') ? ['video'] as const : [])
+      // GIFs and videos also requires the editor's encoder to be supported by the browser.
+      ...(chatRights.hasRight('send_gifs') && canEncodeVideo() ? ['gif'] as const : []),
+      ...(chatRights.hasRight('send_videos') && canEncodeVideo() ? ['video'] as const : [])
     ];
   });
 
