@@ -1,26 +1,30 @@
 import {defaultCodec, highResCodec} from '@components/mediaEditor/finalRender/calcCodecAndBitrate';
 
 let
-  supportsVideo: boolean,
-  supportsAudio: boolean
+  supportsVideo: Promise<boolean>,
+  supportsAudio: Promise<boolean>
 ;
 
 export const MAX_EDITABLE_VIDEO_SIZE = 100 * 1024 * 1024; // 100 MB
 
-export const supportsVideoEncoding = () => supportsVideo ?? (async() => {
+export const supportsVideoEncoding = () => supportsVideo ??= (async() => {
   const configs: VideoEncoderConfig[] = [highResCodec, defaultCodec];
 
   let result = true;
 
   for(const config of configs) {
-    const support = await VideoEncoder.isConfigSupported(config);
-    if(!support.supported) result = false;
+    try {
+      const support = await VideoEncoder.isConfigSupported(config);
+      if(!support.supported) result = false;
+    } catch{
+      result = false;
+    }
   }
 
-  return supportsVideo = result;
+  return result;
 })();
 
-export const supportsAudioEncoding = () => supportsAudio ?? (async() => {
+export const supportsAudioEncoding = () => supportsAudio ??= (async() => {
   const config: AudioEncoderConfig = {
     codec: 'opus',
     sampleRate: 48000,
@@ -28,7 +32,10 @@ export const supportsAudioEncoding = () => supportsAudio ?? (async() => {
     bitrate: 128_000
   };
 
-  const support = await AudioEncoder.isConfigSupported(config);
-
-  return supportsAudio = !!support.supported;
+  try {
+    const support = await AudioEncoder.isConfigSupported(config);
+    return !!support.supported;
+  } catch{
+    return false;
+  }
 })();

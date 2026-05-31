@@ -19,6 +19,13 @@ type GetFileAndOpenEditorArgs = {
    * Allowed media types in the file picker. Defaults to images only.
    */
   acceptMediaTypes?: Array<'photo' | 'video'>;
+  /**
+   * Optional gate to decide whether the editor should be opened for the selected file.
+   * If it returns false, `onSkipEditor` is called with the file and the editor is not opened.
+   * Defaults to always opening the editor.
+   */
+  shouldOpenEditor?: (file: File) => boolean | Promise<boolean>;
+  onSkipEditor?: (file: File) => void;
   onFinish: (args: OnFinishArgs) => void;
 };
 
@@ -28,7 +35,9 @@ export async function getFileAndOpenEditor({
   isEditingForAvatar,
   isEditingForumAvatar,
   canImageResultInGIF = false,
-  acceptMediaTypes = ['photo']
+  acceptMediaTypes = ['photo'],
+  shouldOpenEditor,
+  onSkipEditor
 }: GetFileAndOpenEditorArgs) {
   const input = createHiddenFileInput(acceptMediaTypes);
   document.body.append(input);
@@ -38,6 +47,11 @@ export async function getFileAndOpenEditor({
   });
 
   if(!file) return;
+
+  if(shouldOpenEditor && !(await shouldOpenEditor(file))) {
+    onSkipEditor?.(file);
+    return;
+  }
 
   const isVideo = file.type.startsWith('video/');
 
