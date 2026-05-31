@@ -368,6 +368,12 @@ export const AppRemovedUsersTab =
     getComponentModule: () => import('../sidebarRight/tabs/removedUsers')
   });
 
+export const AppGifsTab =
+  scaffoldSolidJSTab({
+    title: 'SearchGifsTitle',
+    getComponentModule: () => import('../sidebarRight/tabs/gifs')
+  });
+
 
 export type AppAddMembersExtraCategory = {
   key: string;
