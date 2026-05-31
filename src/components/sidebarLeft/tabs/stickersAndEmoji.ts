@@ -15,7 +15,7 @@ import SettingSection from '@components/settingSection';
 import SliderSuperTab from '@components/sliderTab';
 import wrapStickerSetThumb from '@components/wrappers/stickerSetThumb';
 import wrapStickerToRow from '@components/wrappers/stickerToRow';
-import AppQuickReactionTab from '@components/sidebarLeft/tabs/quickReaction';
+import {AppQuickReactionTab} from '@components/solidJsTabs/tabs';
 import {useAppSettings} from '@stores/appSettings';
 import {getStickerSetInputById} from '@lib/appManagers/utils/stickers/getStickerSetInput';
 export default class AppStickersAndEmojiTab extends SliderSuperTab {

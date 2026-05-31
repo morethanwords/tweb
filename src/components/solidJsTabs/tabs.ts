@@ -165,6 +165,13 @@ export const AppSettingsTab =
   });
 
 
+export const AppQuickReactionTab =
+  scaffoldSolidJSTab({
+    title: 'DoubleTapSetting',
+    getComponentModule: () => import('../sidebarLeft/tabs/quickReaction')
+  });
+
+
 export type AppAddMembersExtraCategory = {
   key: string;
   icon: Icon;
