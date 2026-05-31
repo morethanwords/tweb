@@ -1,13 +1,11 @@
+import {Component} from 'solid-js';
 import {formatFullSentTime} from '@helpers/date';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import findUpAsChild from '@helpers/dom/findUpAsChild';
 import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
 import formatDuration from '@helpers/formatDuration';
-import {Middleware} from '@helpers/middleware';
 import clamp from '@helpers/number/clamp';
-import safeAssign from '@helpers/object/safeAssign';
 import tsNow from '@helpers/tsNow';
-import {ExportedChatInvite} from '@layer';
 import {i18n} from '@lib/langPack';
 import ButtonCorner from '@components/buttonCorner';
 import CheckboxField from '@components/checkboxField';
@@ -16,14 +14,14 @@ import {InputStarsField} from '@components/popups/makePaid';
 import {InputRightNumber} from '@components/popups/payment';
 import showDatePickerPopup from '@components/popups/datePicker';
 import {setButtonLoader} from '@components/putPreloader';
-import RangeSelector from '@components/rangeSelector';
 import RangeStepsSelector from '@components/rangeStepsSelector';
 import Row from '@components/row';
 import SettingSection from '@components/settingSection';
-import SliderSuperTab, {SliderSuperTabEventable} from '@components/sliderTab';
 import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
-
-type ChatInvite = ExportedChatInvite.chatInviteExported;
+import {ChatInvite} from './chatInviteLinkShared';
+import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
+import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
+import type {AppEditChatInviteLinkTab} from '@components/solidJsTabs/tabs';
 
 export function findClosestDifference(array: Array<number>, difference: number) {
   const differences = array.map((value, idx) => {
@@ -33,22 +31,19 @@ export function findClosestDifference(array: Array<number>, difference: number) 
   return differences.sort((a, b) => a.diff - b.diff)[0];
 }
 
-export default class AppEditChatInviteLink extends SliderSuperTabEventable<{
-  finish: (chatInvite: ChatInvite) => void
-}> {
-  private confirmBtn: HTMLButtonElement;
+const EditChatInviteLink: Component = () => {
+  const [tab] = useSuperTab<typeof AppEditChatInviteLinkTab>();
+  const promiseCollector = usePromiseCollector();
+  const {chatId, invite} = tab.payload;
 
-  public async init({chatId, invite}: {
-    chatId: ChatId,
-    invite?: ChatInvite
-  }) {
-    this.setTitle(invite ? 'InviteLinks.Edit' : 'NewLink');
+  promiseCollector.collect((async() => {
+    tab.title.replaceChildren(i18n(invite ? 'InviteLinks.Edit' : 'NewLink'));
 
-    this.confirmBtn = ButtonCorner({className: 'is-visible', icon: 'check'});
-    this.content.append(this.confirmBtn);
+    const confirmBtn = ButtonCorner({className: 'is-visible', icon: 'check'});
+    tab.content.append(confirmBtn);
 
-    attachClickEvent(this.confirmBtn, async() => {
-      const removeLoader = setButtonLoader(this.confirmBtn);
+    attachClickEvent(confirmBtn, async() => {
+      const removeLoader = setButtonLoader(confirmBtn);
       const expireDateValue = timePeriodSelector.value;
       const expireDate = expireDateValue instanceof Date ? expireDateValue.getTime() / 1000 | 0 : (expireDateValue ? tsNow(true) + expireDateValue : 0);
       const title = nameInputField.value;
@@ -57,7 +52,7 @@ export default class AppEditChatInviteLink extends SliderSuperTabEventable<{
 
       let chatInvite: ChatInvite;
       if(invite) {
-        const result = await this.managers.appChatInvitesManager.editExportedChatInvite({
+        const result = await tab.managers.appChatInvitesManager.editExportedChatInvite({
           chatId,
           link: invite.link,
           expireDate,
@@ -68,7 +63,7 @@ export default class AppEditChatInviteLink extends SliderSuperTabEventable<{
 
         chatInvite = result.invite as ChatInvite;
       } else {
-        chatInvite = await this.managers.appChatInvitesManager.exportChatInvite({
+        chatInvite = await tab.managers.appChatInvitesManager.exportChatInvite({
           chatId,
           title,
           requestNeeded,
@@ -78,10 +73,10 @@ export default class AppEditChatInviteLink extends SliderSuperTabEventable<{
         }) as ChatInvite;
       }
 
-      this.eventListener.dispatchEvent('finish', chatInvite);
-      this.close();
+      tab.eventListener.dispatchEvent('finish', chatInvite);
+      tab.close();
       // removeLoader();
-    }, {listenerSetter: this.listenerSetter});
+    }, {listenerSetter: tab.listenerSetter});
 
     let nameInputField: InputField;
     {
@@ -102,11 +97,11 @@ export default class AppEditChatInviteLink extends SliderSuperTabEventable<{
       inputWrapper.append(nameInputField.container);
       section.content.append(inputWrapper);
 
-      this.scrollable.append(section.container);
+      tab.scrollable.append(section.container);
     }
 
-    const isBroadcast = await this.managers.appChatsManager.isBroadcast(chatId);
-    const appConfig = await this.managers.apiManager.getAppConfig();
+    const isBroadcast = await tab.managers.appChatsManager.isBroadcast(chatId);
+    const appConfig = await tab.managers.apiManager.getAppConfig();
 
     let paidLinkCheckboxField: CheckboxField, paidLinkInputField: InputField;
     if(isBroadcast) {
@@ -117,7 +112,7 @@ export default class AppEditChatInviteLink extends SliderSuperTabEventable<{
         checkboxField: paidLinkCheckboxField = new CheckboxField({toggle: true})
       });
 
-      this.listenerSetter.add(paidLinkCheckboxField.input)('change', () => {
+      tab.listenerSetter.add(paidLinkCheckboxField.input)('change', () => {
         const checked = paidLinkCheckboxField.checked;
         approveNewMembersCheckboxField.toggleDisability(checked);
         approveNewMembersSection.caption.replaceChildren(i18n(checked ? 'ApproveNewMembersDescription' : 'InviteLink.AdminApproval.Disabled'));
@@ -129,7 +124,7 @@ export default class AppEditChatInviteLink extends SliderSuperTabEventable<{
       const inputField = paidLinkInputField = InputStarsField({
         label: 'InviteLink.Subscription.Placeholder',
         max: appConfig.stars_subscription_amount_max,
-        middleware: this.middlewareHelper.get(),
+        middleware: tab.middlewareHelper.get(),
         onValue: (stars) => {
           rightLabel.replaceChildren(...(stars ? [
             i18n('InviteLink.Subscription.Price', ['$' + (appConfig.stars_usd_sell_rate_x1000 / 1000 * stars / 100).toFixed(2)])
@@ -141,7 +136,7 @@ export default class AppEditChatInviteLink extends SliderSuperTabEventable<{
       rightLabel.classList.add('input-field-right-label');
       inputField.container.append(rightLabel);
 
-      this.listenerSetter.add(inputField.input)('input', () => {});
+      tab.listenerSetter.add(inputField.input)('input', () => {});
 
       wrapper.append(inputField.container);
 
@@ -149,7 +144,7 @@ export default class AppEditChatInviteLink extends SliderSuperTabEventable<{
 
       inputField.value = '' + 500;
 
-      this.scrollable.append(section.container);
+      tab.scrollable.append(section.container);
     }
 
     let approveNewMembersCheckboxField: CheckboxField, approveNewMembersSection: SettingSection;
@@ -163,7 +158,7 @@ export default class AppEditChatInviteLink extends SliderSuperTabEventable<{
 
       section.content.append(row.container);
 
-      this.scrollable.append(section.container);
+      tab.scrollable.append(section.container);
     }
 
     let timePeriodSelector: RangeStepsSelector<number | Date>;
@@ -196,7 +191,7 @@ export default class AppEditChatInviteLink extends SliderSuperTabEventable<{
             setExpiry(date.getTime() / 1000);
           }
         },
-        middleware: this.middlewareHelper.get()
+        middleware: tab.middlewareHelper.get()
       });
 
       const row = new Row({
@@ -219,7 +214,7 @@ export default class AppEditChatInviteLink extends SliderSuperTabEventable<{
             btnConfirmLangKey: 'Save'
           });
         },
-        listenerSetter: this.listenerSetter
+        listenerSetter: tab.listenerSetter
       });
 
       const setCustomTimestamp = (timestamp: number) => {
@@ -247,7 +242,7 @@ export default class AppEditChatInviteLink extends SliderSuperTabEventable<{
       }
 
       section.content.append(range.container, row.container);
-      this.scrollable.append(section.container);
+      tab.scrollable.append(section.container);
     }
 
     let usersLimitSelector: RangeStepsSelector<number>, usersLimitSection: SettingSection;
@@ -265,14 +260,14 @@ export default class AppEditChatInviteLink extends SliderSuperTabEventable<{
         onValue: (value) => {
           setNumber(value);
         },
-        middleware: this.middlewareHelper.get()
+        middleware: tab.middlewareHelper.get()
       });
 
       const row = new Row({
         titleLangKey: 'EditInvitation.NumberOfUsers',
         titleRightSecondary: true,
         clickable: true,
-        listenerSetter: this.listenerSetter,
+        listenerSetter: tab.listenerSetter,
         // asLabel: true,
         noRipple: true
       });
@@ -280,7 +275,7 @@ export default class AppEditChatInviteLink extends SliderSuperTabEventable<{
       const inputRightNumber = new InputRightNumber();
       const {input} = inputRightNumber;
 
-      this.listenerSetter.add(row.container)('mousedown', (e) => {
+      tab.listenerSetter.add(row.container)('mousedown', (e) => {
         if(!range.value) {
           setCustomNumber(stepValues[0]);
         }
@@ -301,7 +296,7 @@ export default class AppEditChatInviteLink extends SliderSuperTabEventable<{
         setCustomNumber(value);
       };
 
-      this.listenerSetter.add(input)('input', onInput);
+      tab.listenerSetter.add(input)('input', onInput);
 
       const setCustomNumber = (value: number) => {
         const closest = findClosestDifference(stepValues, value);
@@ -338,11 +333,11 @@ export default class AppEditChatInviteLink extends SliderSuperTabEventable<{
       }
 
       section.content.append(range.container, row.container);
-      this.scrollable.append(section.container);
+      tab.scrollable.append(section.container);
     }
 
     if(approveNewMembersCheckboxField) {
-      this.listenerSetter.add(approveNewMembersCheckboxField.input)('change', () => {
+      tab.listenerSetter.add(approveNewMembersCheckboxField.input)('change', () => {
         usersLimitSection.container.classList.toggle('hide', approveNewMembersCheckboxField.checked);
       });
 
@@ -366,5 +361,9 @@ export default class AppEditChatInviteLink extends SliderSuperTabEventable<{
         // paidLinkInputField.input.contentEditable = 'false';
       }
     }
-  }
-}
+  })());
+
+  return null;
+};
+
+export default EditChatInviteLink;

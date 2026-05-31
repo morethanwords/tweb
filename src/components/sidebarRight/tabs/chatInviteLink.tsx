@@ -1,95 +1,35 @@
+import {Component} from 'solid-js';
 import deferredPromise from '@helpers/cancellablePromise';
 import {formatFullSentTime} from '@helpers/date';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import tsNow from '@helpers/tsNow';
-import {ChatInviteImporter, ExportedChatInvite, MessagesExportedChatInvite, MessagesExportedChatInvites} from '@layer';
 import appDialogsManager, {DialogElement} from '@lib/appDialogsManager';
 import appImManager from '@lib/appImManager';
-import {AppManagers} from '@lib/managers';
 import {i18n} from '@lib/langPack';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import AppSelectPeers from '@components/appSelectPeers';
 import {StarsAmount} from '@components/popups/stars';
 import Row from '@components/row';
 import SettingSection from '@components/settingSection';
-import {SliderSuperTabEventable} from '@components/sliderTab';
 import {UsernameRow} from '@components/usernamesSection';
-import AppChatInviteLinksTab, {ChatInviteLink} from '@components/sidebarRight/tabs/chatInviteLinks';
+import {ChatInviteLink, getImportersLoader} from './chatInviteLinkShared';
+import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
+import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
+import type {AppChatInviteLinkTab} from '@components/solidJsTabs/tabs';
 
-type ChatInvite = ExportedChatInvite.chatInviteExported;
+const ChatInviteLinkTab: Component = () => {
+  const [tab] = useSuperTab<typeof AppChatInviteLinkTab>();
+  const promiseCollector = usePromiseCollector();
+  const {chatId, chatInvite, menuButtons, actions, onUpdate} = tab.payload;
 
-export function getImportersLoader({
-  chatId,
-  managers,
-  link,
-  requested
-}: {
-  chatId: ChatId,
-  managers: AppManagers,
-  link?: string,
-  requested?: boolean
-}) {
-  const importers: ChatInviteImporter[] = [];
-  const importersMap: Map<PeerId, ChatInviteImporter> = new Map();
-  let lastQuery = '';
-  const load: AppSelectPeers['getMoreCustom'] = async(q) => {
-    if(lastQuery !== q) {
-      importers.length = 0;
-      importersMap.clear();
-      lastQuery = q;
-    }
-
-    const limit = 50;
-    const lastImporter = importers[importers.length - 1];
-    const result = await managers.appChatInvitesManager.getChatInviteImporters({
-      chatId,
-      limit,
-      link,
-      requested,
-      offsetDate: lastImporter?.date,
-      offsetUserId: lastImporter?.user_id,
-      q
-    });
-
-    importers.push(...result.importers);
-
-    return {
-      result: result.importers.map((importer) => {
-        const peerId = importer.user_id.toPeerId(false);
-        importersMap.set(peerId, importer);
-        return peerId;
-      }),
-      isEnd: result.importers.length < limit
-    };
-  };
-
-  const deleteImporter = (peerId: PeerId) => {
-    importers.splice(importers.findIndex((importer) => importer.user_id.toPeerId(false) === peerId), 1);
-    importersMap.delete(peerId);
-  };
-
-  return {
-    importers,
-    importersMap,
-    load,
-    deleteImporter
-  };
-}
-
-export default class AppChatInviteLinkTab extends SliderSuperTabEventable {
-  public async init(
-    chatId: ChatId,
-    chatInvite: ChatInvite,
-    chatInviteLinksTab: AppChatInviteLinksTab,
-    onUpdate?: (chatInvite: ChatInvite) => void
-  ) {
-    const isBroadcast = await this.managers.appChatsManager.isBroadcast(chatId);
+  promiseCollector.collect((async() => {
+    const isBroadcast = await tab.managers.appChatsManager.isBroadcast(chatId);
     if(chatInvite.title) {
-      this.title.replaceChildren(wrapEmojiText(chatInvite.title));
+      tab.title.replaceChildren(wrapEmojiText(chatInvite.title));
     } else {
-      this.setTitle('InviteLink');
+      tab.title.replaceChildren(i18n('InviteLink'));
     }
 
     {
@@ -102,16 +42,16 @@ export default class AppChatInviteLinkTab extends SliderSuperTabEventable {
       });
 
       const inviteLink = new ChatInviteLink({
-        buttons: chatInviteLinksTab.menuButtons,
-        listenerSetter: this.listenerSetter,
+        buttons: menuButtons,
+        listenerSetter: tab.listenerSetter,
         url: chatInvite.link,
-        actions: chatInviteLinksTab.actions
+        actions
       });
 
       inviteLink.setChatInvite(chatInvite);
 
       section.content.append(inviteLink.container);
-      this.scrollable.append(section.container);
+      tab.scrollable.append(section.container);
     }
 
     {
@@ -132,17 +72,17 @@ export default class AppChatInviteLinkTab extends SliderSuperTabEventable {
         avatarSize: 'abitbigger',
         meAsSaved: false,
         wrapOptions: {
-          middleware: this.middlewareHelper.get()
+          middleware: tab.middlewareHelper.get()
         }
       });
 
       dom.titleSpan.classList.add('text-bold');
       attachClickEvent(dom.listEl, () => {
         appImManager.setInnerPeer({peerId});
-      }, {listenerSetter: this.listenerSetter});
+      }, {listenerSetter: tab.listenerSetter});
 
       dom.lastMessageSpan.append(formatFullSentTime(chatInvite.date));
-      this.scrollable.append(section.container);
+      tab.scrollable.append(section.container);
     }
 
     if(chatInvite.subscription_pricing) {
@@ -159,7 +99,7 @@ export default class AppChatInviteLinkTab extends SliderSuperTabEventable {
 
       section.content.append(row.container);
 
-      this.scrollable.append(section.container);
+      tab.scrollable.append(section.container);
     }
 
     if(chatInvite.usage_limit && !chatInvite.usage && (!chatInvite.expire_date || chatInvite.expire_date > tsNow(true))) {
@@ -168,7 +108,7 @@ export default class AppChatInviteLinkTab extends SliderSuperTabEventable {
         title: i18n('PeopleCanJoinViaLinkCount', [chatInvite.usage_limit])
       });
       section.content.append(row.container);
-      this.scrollable.append(section.container);
+      tab.scrollable.append(section.container);
     }
 
     const promises: Promise<any>[] = [];
@@ -199,7 +139,7 @@ export default class AppChatInviteLinkTab extends SliderSuperTabEventable {
       // section.content.append(row.container);
       const {importersMap, load} = getImportersLoader({
         chatId,
-        managers: this.managers,
+        managers: tab.managers,
         link: chatInvite.link,
         requested: true
       });
@@ -216,7 +156,7 @@ export default class AppChatInviteLinkTab extends SliderSuperTabEventable {
             append: true,
             loadPromises,
             wrapOptions: {
-              middleware: this.middlewareHelper.get()
+              middleware: tab.middlewareHelper.get()
             }
           });
 
@@ -229,7 +169,7 @@ export default class AppChatInviteLinkTab extends SliderSuperTabEventable {
 
       const chatlist = appDialogsManager.createChatList();
       section.content.append(chatlist);
-      this.scrollable.append(section.container);
+      tab.scrollable.append(section.container);
 
       let target: HTMLElement;
       const toggleRequest = async(add: boolean) => {
@@ -237,7 +177,7 @@ export default class AppChatInviteLinkTab extends SliderSuperTabEventable {
         const dialogElement = dialogElements.get(peerId);
         const toggle = dialogElement.toggleDisability(true);
         try {
-          await this.managers.appChatsManager.hideChatJoinRequest(chatId, peerId, add);
+          await tab.managers.appChatsManager.hideChatJoinRequest(chatId, peerId, add);
           dialogElement.remove();
           dialogElements.delete(peerId);
 
@@ -267,8 +207,8 @@ export default class AppChatInviteLinkTab extends SliderSuperTabEventable {
           onClick: () => toggleRequest(false)
         }],
         listenTo: chatlist,
-        listenerSetter: this.listenerSetter,
-        middleware: this.middlewareHelper.get(),
+        listenerSetter: tab.listenerSetter,
+        middleware: tab.middlewareHelper.get(),
         findElement: (e) => target = findUpClassName(e.target, 'chatlist-chat')
       });
 
@@ -278,15 +218,15 @@ export default class AppChatInviteLinkTab extends SliderSuperTabEventable {
     if(chatInvite.usage) {
       const {importersMap, load} = getImportersLoader({
         chatId,
-        managers: this.managers,
+        managers: tab.managers,
         link: chatInvite.link,
         requested: false
       });
 
       const deferred = deferredPromise<void>();
       const selector = new AppSelectPeers({
-        middleware: this.middlewareHelper.get(),
-        appendTo: this.container,
+        middleware: tab.middlewareHelper.get(),
+        appendTo: tab.container,
         onSelect: (peerId) => {
           appImManager.setInnerPeer({peerId});
         },
@@ -298,14 +238,14 @@ export default class AppChatInviteLinkTab extends SliderSuperTabEventable {
         onFirstRender: () => {
           deferred.resolve();
         },
-        managers: this.managers,
+        managers: tab.managers,
         noSearch: true,
         multiSelect: false
       });
 
-      this.content.remove();
-      selector.scrollable.attachBorderListeners(this.container);
-      selector.scrollable.prepend(...Array.from(this.scrollable.container.children));
+      tab.content.remove();
+      selector.scrollable.attachBorderListeners(tab.container);
+      selector.scrollable.prepend(...Array.from(tab.scrollable.container.children));
 
       if(chatInvite.usage_limit) {
         const i = i18n('PeopleJoinedRemaining', [chatInvite.usage_limit - chatInvite.usage]);
@@ -316,6 +256,10 @@ export default class AppChatInviteLinkTab extends SliderSuperTabEventable {
       promises.push(deferred);
     }
 
-    return Promise.all(promises);
-  }
-}
+    await Promise.all(promises);
+  })());
+
+  return null;
+};
+
+export default ChatInviteLinkTab;

@@ -13,6 +13,8 @@ import {scaffoldSolidJSTab, scaffoldSolidJSTabEventable} from '@components/solid
 import {SuperTabProvider} from '@components/solidJsTabs/superTabProvider';
 import rootScope from '@lib/rootScope';
 import type {EditProfileTabPayload} from '@components/sidebarLeft/tabs/editProfile';
+import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
+import {ChatInvite, ChatInviteActions, getChatInviteLinksInitArgs} from '@components/sidebarRight/tabs/chatInviteLinkShared';
 
 
 export const AppPasscodeLockTab =
@@ -527,6 +529,52 @@ export const AppPrivacyAndSecurityTab =
 // Preload (appConfig / globalPrivacy / webAuthorizations) read off the constructor
 // by settings.tsx's makeSubTabConfig, matching the old static getInitArgs.
 (AppPrivacyAndSecurityTab as any).getInitArgs = getPrivacyAndSecurityInitArgs;
+
+
+type AppEditChatInviteLinkTabPayload = {
+  chatId: ChatId,
+  invite?: ChatInvite
+};
+
+export const AppEditChatInviteLinkTab =
+  scaffoldSolidJSTabEventable<AppEditChatInviteLinkTabPayload, {
+    finish: (chatInvite: ChatInvite) => void
+  }>({
+    title: 'NewLink',
+    getComponentModule: () => import('../sidebarRight/tabs/editChatInviteLink')
+  });
+
+
+type AppChatInviteLinkTabPayload = {
+  chatId: ChatId,
+  chatInvite: ChatInvite,
+  menuButtons: ButtonMenuItemOptionsVerifiable[],
+  actions: ChatInviteActions,
+  onUpdate?: (chatInvite: ChatInvite) => void
+};
+
+export const AppChatInviteLinkTab =
+  scaffoldSolidJSTabEventable<AppChatInviteLinkTabPayload>({
+    title: 'InviteLink',
+    getComponentModule: () => import('../sidebarRight/tabs/chatInviteLink')
+  });
+
+
+type AppChatInviteLinksTabPayload = {
+  chatId: ChatId,
+  adminId?: UserId,
+  p?: ReturnType<typeof getChatInviteLinksInitArgs>
+};
+
+// getInitArgs is read directly (typed) by editChat's navigationTab, so expose it
+// on the constructor via Object.assign rather than an untyped property poke.
+export const AppChatInviteLinksTab = Object.assign(
+  scaffoldSolidJSTabEventable<AppChatInviteLinksTabPayload>({
+    title: 'InviteLinks',
+    getComponentModule: () => import('../sidebarRight/tabs/chatInviteLinks')
+  }),
+  {getInitArgs: getChatInviteLinksInitArgs}
+);
 
 
 export type AppAddMembersExtraCategory = {

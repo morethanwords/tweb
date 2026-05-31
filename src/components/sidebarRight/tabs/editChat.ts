@@ -27,7 +27,7 @@ import {AppChatDiscussionTab} from '@components/solidJsTabs/tabs';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {hideToast, toastNew} from '@components/toast';
-import AppChatInviteLinksTab from '@components/sidebarRight/tabs/chatInviteLinks';
+import {AppChatInviteLinksTab} from '@components/solidJsTabs/tabs';
 import {AppChatRequestsTab} from '@components/solidJsTabs/tabs';
 import getParticipantsCount from '@appManagers/utils/chats/getParticipantsCount';
 import anchorCallback from '@helpers/dom/anchorCallback';
