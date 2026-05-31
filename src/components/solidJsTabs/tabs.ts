@@ -172,6 +172,27 @@ export const AppQuickReactionTab =
   });
 
 
+export const AppPowerSavingTab =
+  scaffoldSolidJSTab({
+    title: 'LiteMode.Title',
+    getComponentModule: () => import('../sidebarLeft/tabs/powerSaving')
+  });
+
+
+type AppBlockedUsersTabPayload = {
+  peerIds: PeerId[];
+};
+
+export const AppBlockedUsersTab =
+  scaffoldSolidJSTab<AppBlockedUsersTabPayload>({
+    title: 'BlockedUsers',
+    getComponentModule: () => import('../sidebarLeft/tabs/blockedUsers'),
+    onOpenAfterTimeout: function() {
+      this.scrollable.onScroll();
+    }
+  });
+
+
 export type AppAddMembersExtraCategory = {
   key: string;
   icon: Icon;

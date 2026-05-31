@@ -20,8 +20,7 @@ import themeController from '@helpers/themeController';
 import liteMode from '@helpers/liteMode';
 import {joinDeepPath} from '@helpers/object/setDeepProperty';
 import eachMinute from '@helpers/eachMinute';
-import {AppChatBackgroundTab} from '@components/solidJsTabs/tabs';
-import AppPowerSavingTab from '@components/sidebarLeft/tabs/powerSaving';
+import {AppChatBackgroundTab, AppPowerSavingTab} from '@components/solidJsTabs/tabs';
 import fastSmoothScroll from '@helpers/fastSmoothScroll';
 import ChatThemesPicker from '@components/chatThemesPicker';
 

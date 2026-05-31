@@ -10,7 +10,7 @@ import AppPrivacyProfilePhotoTab from '@components/sidebarLeft/tabs/privacy/prof
 import AppPrivacyForwardMessagesTab from '@components/sidebarLeft/tabs/privacy/forwardMessages';
 import AppPrivacyAddToGroupsTab from '@components/sidebarLeft/tabs/privacy/addToGroups';
 import AppPrivacyCallsTab from '@components/sidebarLeft/tabs/privacy/calls';
-import AppBlockedUsersTab from '@components/sidebarLeft/tabs/blockedUsers';
+import {AppBlockedUsersTab} from '@components/solidJsTabs/tabs';
 import rootScope from '@lib/rootScope';
 import {i18n, LangPackKey, _i18n} from '@lib/langPack';
 import replaceContent from '@helpers/dom/replaceContent';
@@ -81,9 +81,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         titleLangKey: 'BlockedUsers',
         subtitleLangKey: SUBTITLE,
         clickable: () => {
-          const tab = this.slider.createTab(AppBlockedUsersTab);
-          tab.peerIds = blockedPeerIds;
-          tab.open();
+          this.slider.createTab(AppBlockedUsersTab).open({peerIds: blockedPeerIds});
         },
         listenerSetter: this.listenerSetter
       });

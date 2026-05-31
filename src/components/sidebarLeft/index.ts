@@ -44,7 +44,7 @@ import installColumnResize from '@helpers/installColumnResize';
 import {doubleRaf, fastRaf} from '@helpers/schedulers';
 import {getInstallPrompt} from '@helpers/dom/installPrompt';
 import liteMode from '@helpers/liteMode';
-import AppPowerSavingTab from '@components/sidebarLeft/tabs/powerSaving';
+import {AppPowerSavingTab} from '@components/solidJsTabs/tabs';
 import AppMyStoriesTab from '@components/sidebarLeft/tabs/myStories';
 import Icon from '@components/icon';
 import AppSelectPeers from '@components/appSelectPeers';
