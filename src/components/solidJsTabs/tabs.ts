@@ -633,6 +633,27 @@ export const AppEditFolderTab = Object.assign(
 );
 
 
+function getMyStoriesInitArgs() {
+  return {
+    animationData: lottieLoader.loadAnimationFromURLManually('UtyanStories')
+  };
+}
+
+type AppMyStoriesTabPayload = ReturnType<typeof getMyStoriesInitArgs> & {
+  isArchive?: boolean,
+  chatId?: ChatId,
+  initialAlbumId?: number
+};
+
+export const AppMyStoriesTab = Object.assign(
+  scaffoldSolidJSTab<AppMyStoriesTabPayload>({
+    title: 'MyStories.Title',
+    getComponentModule: () => import('../sidebarLeft/tabs/myStories')
+  }),
+  {getInitArgs: getMyStoriesInitArgs}
+);
+
+
 export type AppAddMembersExtraCategory = {
   key: string;
   icon: Icon;

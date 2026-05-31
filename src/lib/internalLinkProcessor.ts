@@ -47,7 +47,7 @@ import {AppEditProfileTab, AppSettingsTab, getEditProfileInitArgs} from '@compon
 import showBirthdayPopup, {saveMyBirthday} from '@components/popups/birthday';
 import showLogOutPopup from '@components/popups/logOut';
 import {getStickerSetInputByShortName} from '@lib/appManagers/utils/stickers/getStickerSetInput';
-import AppMyStoriesTab from '@components/sidebarLeft/tabs/myStories';
+import {AppMyStoriesTab} from '@components/solidJsTabs/tabs';
 
 export class InternalLinkProcessor {
   protected managers: AppManagers;
@@ -1223,13 +1223,11 @@ export class InternalLinkProcessor {
     if(peerId === rootScope.myId) {
       const existing = appSidebarRight.getTab(AppMyStoriesTab);
       if(existing) {
-        existing.setAlbum(albumId);
+        (existing as any).setAlbum(albumId);
         return;
       }
 
-      const tab = appSidebarRight.createTab(AppMyStoriesTab);
-      tab.initialAlbumId = albumId;
-      await tab.open();
+      await appSidebarRight.createTab(AppMyStoriesTab).open({...AppMyStoriesTab.getInitArgs(), initialAlbumId: albumId});
       appSidebarRight.toggleSidebar(true, true);
     } else {
       if(appImManager.chat.peerId !== peerId) {

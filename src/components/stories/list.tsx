@@ -13,7 +13,7 @@ import findUpClassName from '@helpers/dom/findUpClassName';
 import {StoriesProvider, useStories} from '@components/stories/store';
 import appImManager from '@lib/appImManager';
 import appSidebarLeft from '@components/sidebarLeft';
-import AppMyStoriesTab from '@components/sidebarLeft/tabs/myStories';
+import {AppMyStoriesTab} from '@components/solidJsTabs/tabs';
 import {toastNew} from '@components/toast';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {ChatType} from '@components/chat/chatType';
@@ -353,16 +353,14 @@ function _StoriesList(props: {
         icon: 'stories',
         text: 'SavedStories',
         onClick: () => {
-          appSidebarLeft.createTab(AppMyStoriesTab).open();
+          appSidebarLeft.createTab(AppMyStoriesTab).open(AppMyStoriesTab.getInitArgs());
         },
         verify: () => isSelf
       }, {
         icon: 'archive',
         text: 'ArchivedStories',
         onClick: () => {
-          const tab = appSidebarLeft.createTab(AppMyStoriesTab);
-          tab.isArchive = true;
-          tab.open();
+          appSidebarLeft.createTab(AppMyStoriesTab).open({...AppMyStoriesTab.getInitArgs(), isArchive: true});
         },
         verify: () => isSelf
       }, {

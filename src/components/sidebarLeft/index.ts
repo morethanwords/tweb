@@ -45,7 +45,7 @@ import {doubleRaf, fastRaf} from '@helpers/schedulers';
 import {getInstallPrompt} from '@helpers/dom/installPrompt';
 import liteMode from '@helpers/liteMode';
 import {AppPowerSavingTab} from '@components/solidJsTabs/tabs';
-import AppMyStoriesTab from '@components/sidebarLeft/tabs/myStories';
+import {AppMyStoriesTab} from '@components/solidJsTabs/tabs';
 import Icon from '@components/icon';
 import AppSelectPeers from '@components/appSelectPeers';
 import setBadgeContent from '@helpers/setBadgeContent';
@@ -684,7 +684,7 @@ export class AppSidebarLeft extends SidebarSlider {
       text: 'MyStories.Title',
       onClick: () => {
         closeTabsBefore(() => {
-          this.createTab(AppMyStoriesTab).open();
+          this.createTab(AppMyStoriesTab).open(AppMyStoriesTab.getInitArgs());
         });
       },
       verify: () => !TEST_NO_STORIES
