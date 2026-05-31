@@ -29,6 +29,15 @@ function openExternal(url) {
   }
 }
 
+// Buffer tg:// links delivered by the OS until the renderer subscribes, so a link that
+// arrives during boot (cold launch) isn't lost before onOpenTgLink is wired up.
+const tgLinkBuffer = [];
+let tgLinkCb = null;
+ipcRenderer.on('tg-link', (_event, url) => {
+  if(tgLinkCb) tgLinkCb(url);
+  else tgLinkBuffer.push(url);
+});
+
 const api = {
   isElectron: true,
   platform: config.platform,
@@ -51,6 +60,13 @@ const api = {
 
   // Open a chat in its own window.
   openChatWindow: (opts) => ipcRenderer.send('window:open-chat', opts),
+
+  // tg:// deep links from the OS. Replays anything buffered before subscription.
+  onOpenTgLink: (cb) => {
+    tgLinkCb = cb;
+    tgLinkBuffer.splice(0).forEach((url) => cb(url));
+    return () => { tgLinkCb = null; };
+  },
 
   // Window controls (used by a custom titlebar if desired).
   minimize: () => ipcRenderer.send('window:minimize'),

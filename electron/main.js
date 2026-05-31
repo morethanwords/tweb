@@ -12,7 +12,7 @@ const fs = require('fs');
 const {app, BrowserWindow, ipcMain, shell, Menu} = require('electron');
 const {StaticServer} = require('./staticServer');
 const {WsTcpBridge} = require('./wsTcpBridge');
-const {createMainWindow, createChatWindow, broadcast, allWindows} = require('./windows');
+const {createMainWindow, createChatWindow, broadcast} = require('./windows');
 const {DEFAULT_NETWORK_CONFIG} = require('./config');
 
 const DIST_DIR = path.join(__dirname, '..', 'dist');
@@ -25,6 +25,11 @@ let staticServer = null;
 let bridge = null;
 let networkConfig = loadNetworkConfig();
 let appOrigin = '';
+
+// tg:// deep links — routed to the renderer (appImManager.openUrl) once a window is ready.
+let mainWindow = null;
+let mainWindowReady = false;
+const pendingTgLinks = [];
 
 // ---------- network config persistence ----------
 
@@ -84,7 +89,53 @@ async function boot() {
   global.__twebCtx = ctx;
 
   setupMenu();
-  createMainWindow(ctx);
+  openMainWindow();
+}
+
+// ---------- tg:// deep links ----------
+
+function isTgLink(arg) {
+  return typeof arg === 'string' && /^tg:\/\//i.test(arg);
+}
+
+function firstTgLink(argv) {
+  return (argv || []).find(isTgLink);
+}
+
+function openMainWindow() {
+  mainWindowReady = false;
+  mainWindow = createMainWindow(global.__twebCtx);
+  mainWindow.webContents.on('did-finish-load', () => {
+    mainWindowReady = true;
+    flushTgLinks();
+  });
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+    mainWindowReady = false;
+  });
+  return mainWindow;
+}
+
+/** Queue a tg:// link and deliver it to the renderer (creating/raising the window). */
+function handleTgLink(url) {
+  if(!isTgLink(url)) return;
+  pendingTgLinks.push(url);
+
+  if(!app.isReady()) return; // boot() will create the window and flush
+  if(!mainWindow || mainWindow.isDestroyed()) {
+    openMainWindow();
+    return;
+  }
+  if(mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.focus();
+  flushTgLinks();
+}
+
+function flushTgLinks() {
+  if(!mainWindow || mainWindow.isDestroyed() || !mainWindowReady) return;
+  while(pendingTgLinks.length) {
+    mainWindow.webContents.send('tg-link', pendingTgLinks.shift());
+  }
 }
 
 // ---------- IPC ----------
@@ -135,26 +186,48 @@ function setupMenu() {
 
 // ---------- lifecycle ----------
 
+// Register as the OS handler for tg:// links. In dev (`electron electron/main.js`) the
+// launcher path + script must be passed so the registration points back at this app.
+if(process.defaultApp && process.argv.length >= 2) {
+  app.setAsDefaultProtocolClient('tg', process.execPath, [path.resolve(process.argv[1])]);
+} else {
+  app.setAsDefaultProtocolClient('tg');
+}
+
+// macOS delivers tg:// links here (can fire before `ready` on cold launch).
+app.on('open-url', (event, url) => {
+  event.preventDefault();
+  handleTgLink(url);
+});
+
 const gotLock = app.requestSingleInstanceLock();
 if(!gotLock) {
   app.quit();
 } else {
-  app.on('second-instance', () => {
-    const win = allWindows.values().next().value;
-    if(win) {
-      if(win.isMinimized()) win.restore();
-      win.focus();
+  app.on('second-instance', (_event, argv) => {
+    // Windows/Linux deliver the tg:// link as a command-line arg to the running instance.
+    const link = firstTgLink(argv);
+    if(link) {
+      handleTgLink(link);
+    } else if(mainWindow && !mainWindow.isDestroyed()) {
+      if(mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
     }
   });
 
-  app.whenReady().then(boot).catch((err) => {
+  app.whenReady().then(() => {
+    // Windows/Linux cold launch via a tg:// link: it's in our own argv.
+    const link = firstTgLink(process.argv);
+    if(link) pendingTgLinks.push(link);
+    return boot();
+  }).catch((err) => {
     log('boot failed:', err);
     app.quit();
   });
 
   app.on('activate', () => {
     if(BrowserWindow.getAllWindows().length === 0 && global.__twebCtx) {
-      createMainWindow(global.__twebCtx);
+      openMainWindow();
     }
   });
 }

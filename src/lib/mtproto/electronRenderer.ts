@@ -33,6 +33,26 @@ export function applyChatWindowMode() {
   }
 }
 
+let tgLinkSubscribed = false;
+
+/**
+ * Subscribe to tg:// deep links delivered by the OS (Electron only) and route each to the
+ * given handler (typically appImManager.openUrl). Buffered links replay immediately.
+ */
+export function initTgLinks(handler: (url: string) => void) {
+  const app = getElectronApp();
+  if(!app?.isElectron || tgLinkSubscribed || !app.onOpenTgLink) {
+    return;
+  }
+
+  tgLinkSubscribed = true;
+  app.onOpenTgLink((url) => {
+    try {
+      handler(url);
+    } catch(e) {}
+  });
+}
+
 /** Open a chat in its own OS window (Electron only); resolves to false when unavailable. */
 export function openChatInWindow(opts: {peerId: PeerId, threadId?: number, title?: string}) {
   const app = getElectronApp();

@@ -64,6 +64,16 @@ Implemented in `socks5.js` (RFC 1928 + 1929 username/password auth). It tunnels 
 TCP connection to the DC; obfuscation is unchanged. SOCKS5 and MTProxy are mutually
 exclusive, mirroring the official clients.
 
+## tg:// deep links
+
+The app registers as the OS handler for the `tg://` scheme (`app.setAsDefaultProtocolClient`
++ electron-builder `protocols`). A `tg://` link opened anywhere — browser, another app —
+launches/raises the app and routes the URL to `appImManager.openUrl()`, the same internal
+handler tweb already uses for `tg://`/`t.me` links inside messages (resolve, join,
+privatepost, addstickers, …). Cold-launch links are buffered (macOS `open-url`, Windows/Linux
+argv) until the renderer is ready. Links *inside* messages stay fully in-app and never round-trip
+through the OS.
+
 ## Configuring the connection
 
 In-app: hamburger menu → **Connection** (visible only under Electron). Choose WebSocket

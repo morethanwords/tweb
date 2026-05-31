@@ -20,7 +20,7 @@ import I18n, {checkLangPackForUpdates, i18n, LangPackKey} from '@lib/langPack';
 import '@helpers/peerIdPolyfill';
 import '@lib/polyfill';
 import apiManagerProxy from '@lib/apiManagerProxy';
-import {applyChatWindowMode} from '@lib/mtproto/electronRenderer';
+import {applyChatWindowMode, initTgLinks} from '@lib/mtproto/electronRenderer';
 import getProxiedManagers from '@lib/getProxiedManagers';
 import themeController from '@helpers/themeController';
 import overlayCounter from '@helpers/overlayCounter';
@@ -627,5 +627,11 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
     } else {
       await bootstrapIm();
     }
+
+    // Electron: route tg:// deep links delivered by the OS into the app.
+    // Dynamic import — appImManager must not be statically imported here (TDZ crash).
+    import('@lib/appImManager').then(({default: appImManager}) => {
+      initTgLinks((url) => appImManager.openUrl(url));
+    });
   }
 });

@@ -214,6 +214,7 @@ declare global {
       setNetworkConfig(config: ElectronNetworkConfig): Promise<ElectronNetworkConfig>,
       onNetworkConfig(cb: (config: ElectronNetworkConfig) => void): () => void,
       openChatWindow(opts: {peerId: string | number, threadId?: number, title?: string}): void,
+      onOpenTgLink(cb: (url: string) => void): () => void,
       minimize(): void,
       toggleMaximize(): void,
       close(): void

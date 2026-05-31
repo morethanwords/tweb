@@ -45,6 +45,12 @@
     "directories": {
       "output": "dist-electron"
     },
+    "protocols": [
+      {
+        "name": "Telegram Link",
+        "schemes": ["tg"]
+      }
+    ],
     "asar": true,
     "mac": {
       "category": "public.app-category.social-networking",
