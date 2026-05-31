@@ -1,75 +1,64 @@
+import {Component} from 'solid-js';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import shake from '@helpers/dom/shake';
 import toggleDisability from '@helpers/dom/toggleDisability';
 import {Chat} from '@layer';
 import appDialogsManager from '@lib/appDialogsManager';
-import appImManager from '@lib/appImManager';
 import hasRights from '@appManagers/utils/chats/hasRights';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
-import {i18n, i18n_} from '@lib/langPack';
-import lottieLoader from '@lib/rlottie/lottieLoader';
+import {i18n} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
 import Button from '@components/button';
 import confirmationPopup from '@components/confirmationPopup';
 import SettingSection from '@components/settingSection';
 import {AppNewGroupTab} from '@components/solidJsTabs/tabs';
-import {SliderSuperTabEventable} from '@components/sliderTab';
 import {toastNew} from '@components/toast';
 import getPeerTitle from '@components/wrappers/getPeerTitle';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
+import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
+import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import type {AppChatDiscussionTab} from '@components/solidJsTabs/tabs';
 
-export default class AppChatDiscussionTab extends SliderSuperTabEventable {
-  public chatId: ChatId;
-  public linkedChatId: ChatId;
+const ChatDiscussion: Component = () => {
+  const [tab] = useSuperTab<typeof AppChatDiscussionTab>();
+  const promiseCollector = usePromiseCollector();
+  const {appImManager, lottieLoader} = useHotReloadGuard();
+  const {chatId} = tab.payload;
 
-  private caption: HTMLElement;
-  private isBroadcast: boolean;
+  let linkedChatId = tab.payload.linkedChatId;
 
-  public static getInitArgs() {
-    return {
+  promiseCollector.collect((async() => {
+    const p = {
       animationData: lottieLoader.loadAnimationFromURLManually('UtyanDiscussion'),
-      chats: rootScope.managers.appChatsManager.getGroupsForDiscussion()
+      chats: tab.managers.appChatsManager.getGroupsForDiscussion()
     };
-  }
-
-  private async setCaption() {
-    this.caption.replaceChildren(i18n(
-      this.linkedChatId ? (this.isBroadcast ? 'DiscussionChannelGroupSetHelp2' : 'DiscussionGroupHelp') : 'DiscussionChannelHelp3',
-      this.linkedChatId ? [await wrapPeerTitle({peerId: this.linkedChatId.toPeerId(true)})] : undefined
-    ));
-  }
-
-  public async init({
-    chatId,
-    linkedChatId,
-    p = AppChatDiscussionTab.getInitArgs()
-  }: {
-    chatId: ChatId,
-    linkedChatId: ChatId,
-    p?: ReturnType<typeof AppChatDiscussionTab['getInitArgs']>
-  }) {
-    this.chatId = chatId;
-    this.linkedChatId = linkedChatId;
 
     const [isBroadcast, chat, linkedChat] = await Promise.all([
-      this.managers.appChatsManager.isBroadcast(this.chatId),
-      this.managers.appChatsManager.getChat(this.chatId) as Promise<Chat.channel | Chat.chat>,
-      this.linkedChatId && this.managers.appChatsManager.getChat(this.linkedChatId) as Promise<Chat.channel | Chat.chat>
+      tab.managers.appChatsManager.isBroadcast(chatId),
+      tab.managers.appChatsManager.getChat(chatId) as Promise<Chat.channel | Chat.chat>,
+      linkedChatId && tab.managers.appChatsManager.getChat(linkedChatId) as Promise<Chat.channel | Chat.chat>
     ]);
 
     const canChangeInfo = hasRights(chat, 'change_info');
-    this.isBroadcast = isBroadcast;
 
-    this.setTitle(isBroadcast ? 'DiscussionController.Channel.Title' : 'DiscussionController.Group.Title');
-    this.container.classList.add('chat-folders-container', 'chat-discussion-container');
+    tab.title.replaceChildren(i18n(isBroadcast ? 'DiscussionController.Channel.Title' : 'DiscussionController.Group.Title'));
+    tab.container.classList.add('chat-folders-container', 'chat-discussion-container');
 
     const stickerContainer = document.createElement('div');
     stickerContainer.classList.add('sticker-container');
 
-    const caption = this.caption = document.createElement('div');
+    const caption = document.createElement('div');
     caption.classList.add('caption');
+
+    const setCaption = async() => {
+      caption.replaceChildren(i18n(
+        linkedChatId ? (isBroadcast ? 'DiscussionChannelGroupSetHelp2' : 'DiscussionGroupHelp') : 'DiscussionChannelHelp3',
+        linkedChatId ? [await wrapPeerTitle({peerId: linkedChatId.toPeerId(true)})] : undefined
+      ));
+    };
 
     const section = new SettingSection({
       caption: isBroadcast ? 'DiscussionChannelHelp2' : 'DiscussionGroupHelp2'
@@ -80,7 +69,7 @@ export default class AppChatDiscussionTab extends SliderSuperTabEventable {
 
     const setDiscussionGroup = async(id: ChatId, groupId: ChatId) => {
       return handleChannelsTooMuch(() => {
-        return this.managers.appChatsManager.setDiscussionGroup(id, groupId);
+        return tab.managers.appChatsManager.setDiscussionGroup(id, groupId);
       });
     };
 
@@ -93,7 +82,7 @@ export default class AppChatDiscussionTab extends SliderSuperTabEventable {
 
       const peerId = el.dataset.peerId.toPeerId();
 
-      if(this.linkedChatId) {
+      if(linkedChatId) {
         appImManager.setInnerPeer({peerId});
         return;
       }
@@ -102,7 +91,7 @@ export default class AppChatDiscussionTab extends SliderSuperTabEventable {
         return;
       }
 
-      if(await this.managers.appPeersManager.isForum(peerId)) {
+      if(await tab.managers.appPeersManager.isForum(peerId)) {
         toastNew({langPackKey: 'ChannelTopicsDiscussionForbidden'});
         shake(el);
         return;
@@ -112,14 +101,14 @@ export default class AppChatDiscussionTab extends SliderSuperTabEventable {
       d.append(
         i18n('Discussion.Set.Modal.Text.PublicChannelPublicGroup', [
           await wrapPeerTitle({peerId}),
-          await wrapPeerTitle({peerId: this.chatId.toPeerId(true)})
+          await wrapPeerTitle({peerId: chatId.toPeerId(true)})
         ])
       );
 
       const [isPublicGroup, isPublicChannel, groupChatFull] = await Promise.all([
-        this.managers.appChatsManager.isPublic(peerId.toChatId()),
-        this.managers.appChatsManager.isPublic(this.chatId),
-        this.managers.appProfileManager.getChatFull(peerId.toChatId())
+        tab.managers.appChatsManager.isPublic(peerId.toChatId()),
+        tab.managers.appChatsManager.isPublic(chatId),
+        tab.managers.appProfileManager.getChatFull(peerId.toChatId())
       ]);
 
       const br = document.createElement('br');
@@ -136,7 +125,7 @@ export default class AppChatDiscussionTab extends SliderSuperTabEventable {
       }
 
       await confirmationPopup({
-        peerId: this.chatId.toPeerId(true),
+        peerId: chatId.toPeerId(true),
         description: d,
         button: {
           langKey: 'DiscussionLinkGroup'
@@ -145,32 +134,32 @@ export default class AppChatDiscussionTab extends SliderSuperTabEventable {
 
       busy = true;
       try {
-        await setDiscussionGroup(this.chatId, peerId.toChatId());
+        await setDiscussionGroup(chatId, peerId.toChatId());
       } catch(err) {
         console.error('setDiscussionGroup error', err);
       }
       busy = false;
-    }, {listenerSetter: this.listenerSetter});
+    }, {listenerSetter: tab.listenerSetter});
 
     let createGroupBtn: HTMLElement;
     if(isBroadcast) {
       createGroupBtn = Button('btn-primary btn-transparent primary', {icon: 'newgroup', text: 'DiscussionCreateGroup'});
       attachClickEvent(createGroupBtn, async() => {
-        let title = await getPeerTitle({peerId: this.chatId.toPeerId(true), plainText: true});
+        let title = await getPeerTitle({peerId: chatId.toPeerId(true), plainText: true});
         title += ' Chat';
 
-        const tab = this.slider.createTab(AppNewGroupTab);
-        tab.open({
+        const subTab = tab.slider.createTab(AppNewGroupTab);
+        subTab.open({
           peerIds: [],
-          onCreate: (chatId) => {
-            this.slider.removeTabFromHistory(this);
-            setDiscussionGroup(this.chatId, chatId);
+          onCreate: (newChatId) => {
+            tab.slider.removeTabFromHistory(tab);
+            setDiscussionGroup(chatId, newChatId);
           },
           openAfter: false,
           title,
           asChannel: true
         });
-      }, {listenerSetter: this.listenerSetter});
+      }, {listenerSetter: tab.listenerSetter});
 
       section.content.append(createGroupBtn);
     }
@@ -182,10 +171,10 @@ export default class AppChatDiscussionTab extends SliderSuperTabEventable {
     unlinkSection.content.append(btnUnlink);
 
     attachClickEvent(btnUnlink, async() => {
-      const linkedChatId = this.linkedChatId;
+      const _linkedChatId = linkedChatId;
       await confirmationPopup({
         descriptionLangKey: isBroadcast ? 'DiscussionUnlinkChannelAlert' : 'DiscussionUnlinkGroupAlert',
-        descriptionLangArgs: [await wrapPeerTitle({peerId: linkedChatId.toPeerId(true)})],
+        descriptionLangArgs: [await wrapPeerTitle({peerId: _linkedChatId.toPeerId(true)})],
         button: {
           langKey: 'DiscussionUnlink'
         }
@@ -193,20 +182,20 @@ export default class AppChatDiscussionTab extends SliderSuperTabEventable {
 
       const toggle = toggleDisability([btnUnlink], true);
       try {
-        await setDiscussionGroup(isBroadcast ? this.chatId : linkedChatId, undefined);
+        await setDiscussionGroup(isBroadcast ? chatId : _linkedChatId, undefined);
       } catch(err) {
 
       }
 
       if(!isBroadcast) {
-        this.close();
+        tab.close();
         return;
       }
 
       toggle();
-    }, {listenerSetter: this.listenerSetter});
+    }, {listenerSetter: tab.listenerSetter});
 
-    this.scrollable.append(
+    tab.scrollable.append(
       stickerContainer,
       caption,
       section.container,
@@ -232,7 +221,7 @@ export default class AppChatDiscussionTab extends SliderSuperTabEventable {
         p.chats :
         Promise.resolve([])
     ).then((chats) => {
-      if(this.linkedChatId && !chats.some((chat) => chat.id === this.linkedChatId)) {
+      if(linkedChatId && !chats.some((chat) => chat.id === linkedChatId)) {
         chats.push(linkedChat);
       }
 
@@ -245,7 +234,7 @@ export default class AppChatDiscussionTab extends SliderSuperTabEventable {
           avatarSize: 'abitbigger',
           loadPromises,
           wrapOptions: {
-            middleware: this.middlewareHelper.get()
+            middleware: tab.middlewareHelper.get()
           }
         });
 
@@ -264,41 +253,44 @@ export default class AppChatDiscussionTab extends SliderSuperTabEventable {
     });
 
     const update = async() => {
-      await this.setCaption();
+      await setCaption();
 
       if(!isBroadcast) {
         return;
       }
 
       (Array.from(chatlist.children) as HTMLElement[]).forEach((el) => {
-        const chatId = el.dataset.peerId.toChatId();
-        el.classList.toggle('hide', this.linkedChatId ? this.linkedChatId !== chatId : false);
+        const _chatId = el.dataset.peerId.toChatId();
+        el.classList.toggle('hide', linkedChatId ? linkedChatId !== _chatId : false);
       });
-      unlinkSection.container.classList.toggle('hide', !this.linkedChatId || !canChangeInfo);
-      createGroupBtn.classList.toggle('hide', !!this.linkedChatId || !canChangeInfo);
+      unlinkSection.container.classList.toggle('hide', !linkedChatId || !canChangeInfo);
+      createGroupBtn.classList.toggle('hide', !!linkedChatId || !canChangeInfo);
     };
 
-    this.listenerSetter.add(rootScope)('dialog_migrate', ({migrateFrom, migrateTo}) => {
+    tab.listenerSetter.add(rootScope)('dialog_migrate', ({migrateFrom, migrateTo}) => {
       const el = chatlist.querySelector(`[data-peer-id="${migrateFrom}"]`) as HTMLElement;
       if(el) {
         el.dataset.peerId = '' + migrateTo;
       }
     });
 
-    this.listenerSetter.add(rootScope)('chat_full_update', async(chatId) => {
-      if(this.chatId !== chatId) {
+    tab.listenerSetter.add(rootScope)('chat_full_update', async(updatedChatId) => {
+      if(chatId !== updatedChatId) {
         return;
       }
 
-      const channelFull = await this.managers.appProfileManager.getChannelFull(chatId);
-      this.linkedChatId = channelFull.linked_chat_id;
+      const channelFull = await tab.managers.appProfileManager.getChannelFull(updatedChatId);
+      linkedChatId = channelFull.linked_chat_id;
       update();
     });
 
     loadPromises.push(loadAnimationPromise, loadChatsPromise);
 
-    return Promise.all(loadPromises).then(() => {
-      return update();
-    });
-  }
-}
+    await Promise.all(loadPromises);
+    await update();
+  })());
+
+  return null;
+};
+
+export default ChatDiscussion;

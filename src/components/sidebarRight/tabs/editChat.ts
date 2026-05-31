@@ -23,7 +23,7 @@ import {AppChatAdministratorsTab} from '@components/solidJsTabs/tabs';
 import numberThousandSplitter, {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
 import {AppChatMembersTab} from '@components/solidJsTabs/tabs';
 import {AppRemovedUsersTab} from '@components/solidJsTabs/tabs';
-import AppChatDiscussionTab from '@components/sidebarRight/tabs/chatDiscussion';
+import {AppChatDiscussionTab} from '@components/solidJsTabs/tabs';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {hideToast, toastNew} from '@components/toast';
@@ -367,8 +367,7 @@ export default class AppEditChatTab extends SliderSuperTab {
             constructor: AppChatDiscussionTab,
             getInitArgs: () => ({
               chatId: this.chatId,
-              linkedChatId: (chatFull as ChatFull.channelFull).linked_chat_id,
-              p: AppChatDiscussionTab.getInitArgs()
+              linkedChatId: (chatFull as ChatFull.channelFull).linked_chat_id
             }),
             slider: this.slider
           },

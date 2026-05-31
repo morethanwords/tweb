@@ -422,6 +422,12 @@ export const AppStickersTab =
     getComponentModule: () => import('../sidebarRight/tabs/stickers')
   });
 
+export const AppChatDiscussionTab =
+  scaffoldSolidJSTabEventable<{chatId: ChatId, linkedChatId: ChatId}>({
+    title: 'DiscussionController.Channel.Title',
+    getComponentModule: () => import('../sidebarRight/tabs/chatDiscussion')
+  });
+
 
 export type AppAddMembersExtraCategory = {
   key: string;
