@@ -1,72 +1,75 @@
+import {Component} from 'solid-js';
 import InputField from '@components/inputField';
-import {SliderSuperTab} from '@components/slider';
 import EditPeer from '@components/editPeer';
 import {UsernameInputField} from '@components/usernameInputField';
-import {i18n, i18n_, LangPackKey} from '@lib/langPack';
+import {i18n} from '@lib/langPack';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
-import rootScope from '@lib/rootScope';
-import setBlankToAnchor from '@lib/richTextProcessor/setBlankToAnchor';
 import getPeerEditableUsername from '@appManagers/utils/peers/getPeerEditableUsername';
 import SettingSection, {generateSection} from '@components/settingSection';
 import UsernamesSection from '@components/usernamesSection';
 import {purchaseUsernameCaption} from '@components/sidebarLeft/tabs/purchaseUsernameCaption';
 import Button from '@components/button';
 import wrapUrl from '@lib/richTextProcessor/wrapUrl';
+import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
+import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
+import type {AppEditBotTab} from '@components/solidJsTabs/tabs';
 
-export default class AppEditBotTab extends SliderSuperTab {
-  private firstNameInputField: InputField;
-  private aboutInputField: InputField;
-  private usernameInputField: UsernameInputField;
+const EditBot: Component = () => {
+  const [tab] = useSuperTab<typeof AppEditBotTab>();
+  const promiseCollector = usePromiseCollector();
+  const peerId = tab.payload;
 
-  private editPeer: EditPeer;
-
-  public async init(peerId: PeerId) {
+  promiseCollector.collect((async() => {
     const botId = peerId.toUserId();
-    this.container.classList.add('edit-profile-container');
-    this.setTitle('EditBot.Title');
+    tab.container.classList.add('edit-profile-container');
 
     const inputFields: InputField[] = [];
 
     const [bioMaxLength, user, botInfo] = await Promise.all([
-      this.managers.apiManager.getLimit('bio'),
-      this.managers.appUsersManager.getUser(botId),
-      this.managers.appProfileManager.getBotInfo(botId)
+      tab.managers.apiManager.getLimit('bio'),
+      tab.managers.appUsersManager.getUser(botId),
+      tab.managers.appProfileManager.getBotInfo(botId)
     ]);
 
+    let firstNameInputField: InputField;
+    let aboutInputField: InputField;
+    let usernameInputField: UsernameInputField;
+    let editPeer: EditPeer;
+
     {
-      const section = generateSection(this.scrollable, undefined);
+      const section = generateSection(tab.scrollable, undefined);
       const inputWrapper = document.createElement('div');
       inputWrapper.classList.add('input-wrapper');
 
-      this.firstNameInputField = new InputField({
+      firstNameInputField = new InputField({
         label: 'EditProfile.FirstNameLabel',
         name: 'first-name',
         maxLength: 70
       });
-      this.aboutInputField = new InputField({
+      aboutInputField = new InputField({
         label: 'DescriptionPlaceholder',
         name: 'bio',
         maxLength: bioMaxLength
       });
 
-      inputWrapper.append(this.firstNameInputField.container, this.aboutInputField.container);
+      inputWrapper.append(firstNameInputField.container, aboutInputField.container);
 
-      inputFields.push(this.firstNameInputField, this.aboutInputField);
+      inputFields.push(firstNameInputField, aboutInputField);
 
-      this.editPeer = new EditPeer({
+      editPeer = new EditPeer({
         peerId,
         inputFields,
-        listenerSetter: this.listenerSetter,
-        middleware: this.middlewareHelper.get()
+        listenerSetter: tab.listenerSetter,
+        middleware: tab.middlewareHelper.get()
       });
 
-      this.content.append(this.editPeer.nextBtn);
+      tab.content.append(editPeer.nextBtn);
 
-      section.append(this.editPeer.avatarEdit.container, inputWrapper);
+      section.append(editPeer.avatarEdit.container, inputWrapper);
     }
 
     {
-      const section = generateSection(this.scrollable, undefined, 'EditBot.Buttons.Caption');
+      const section = generateSection(tab.scrollable, undefined, 'EditBot.Buttons.Caption');
 
       const btnIntro = Button('btn-primary btn-transparent', {icon: 'info', text: 'EditBot.Buttons.Intro', asLink: true});
       const btnCommands = Button('btn-primary btn-transparent', {icon: 'botcom', text: 'EditBot.Buttons.Commands', asLink: true});
@@ -97,24 +100,24 @@ export default class AppEditBotTab extends SliderSuperTab {
       const inputWrapper = document.createElement('div');
       inputWrapper.classList.add('input-wrapper');
 
-      this.usernameInputField = new UsernameInputField({
+      usernameInputField = new UsernameInputField({
         label: 'Username',
         name: 'username',
         plainText: true,
-        listenerSetter: this.listenerSetter,
+        listenerSetter: tab.listenerSetter,
         onChange: () => {
-          this.editPeer.handleChange();
+          editPeer.handleChange();
 
-          const {error} = this.usernameInputField;
+          const {error} = usernameInputField;
           const isPurchase = error?.type === 'USERNAME_PURCHASE_AVAILABLE';
-          setUsername(isPurchase ? this.usernameInputField.value : undefined);
+          setUsername(isPurchase ? usernameInputField.value : undefined);
         },
         availableText: 'EditProfile.Username.Available',
         takenText: 'EditProfile.Username.Taken',
         invalidText: 'EditProfile.Username.Invalid'
-      }, this.managers);
+      }, tab.managers);
 
-      inputWrapper.append(this.usernameInputField.container);
+      inputWrapper.append(usernameInputField.container);
 
       const caption = section.caption;
 
@@ -125,58 +128,62 @@ export default class AppEditBotTab extends SliderSuperTab {
         p
       );
 
-      inputFields.push(this.usernameInputField);
+      inputFields.push(usernameInputField);
       section.content.append(inputWrapper);
-      this.scrollable.append(section.container);
+      tab.scrollable.append(section.container);
     }
 
     {
       const section = new UsernamesSection({
         peerId,
         peer: user,
-        listenerSetter: this.listenerSetter,
-        usernameInputField: this.usernameInputField,
-        middleware: this.middlewareHelper.get()
+        listenerSetter: tab.listenerSetter,
+        usernameInputField,
+        middleware: tab.middlewareHelper.get()
       });
 
-      this.scrollable.append(section.container);
+      tab.scrollable.append(section.container);
     }
 
-    attachClickEvent(this.editPeer.nextBtn, () => {
-      this.editPeer.nextBtn.disabled = true;
+    attachClickEvent(editPeer.nextBtn, () => {
+      editPeer.nextBtn.disabled = true;
 
       const promises: Promise<any>[] = [];
 
-      const profilePromise = this.managers.appProfileManager.setBotInfo(
+      const profilePromise = tab.managers.appProfileManager.setBotInfo(
         botId,
-        this.firstNameInputField.value,
-        this.aboutInputField.value
+        firstNameInputField.value,
+        aboutInputField.value
       );
       promises.push(profilePromise.then(() => {
-        this.close();
+        tab.close();
       }, (err) => {
         console.error('updateProfile error:', err);
       }));
 
-      if(this.editPeer.uploadAvatar) {
-        promises.push(this.editPeer.uploadAvatar().then((inputFile) => {
-          return this.managers.appProfileManager.uploadProfilePhoto(inputFile, botId);
+      if(editPeer.uploadAvatar) {
+        promises.push(editPeer.uploadAvatar().then((inputFile) => {
+          return tab.managers.appProfileManager.uploadProfilePhoto(inputFile, botId);
         }));
       }
 
-      if(this.usernameInputField.isValidToChange()) {
-        promises.push(this.managers.appUsersManager.updateUsername(this.usernameInputField.value));
+      if(usernameInputField.isValidToChange()) {
+        promises.push(tab.managers.appUsersManager.updateUsername(usernameInputField.value));
       }
 
       Promise.race(promises).finally(() => {
-        this.editPeer.nextBtn.removeAttribute('disabled');
+        editPeer.nextBtn.removeAttribute('disabled');
       });
-    }, {listenerSetter: this.listenerSetter});
+    }, {listenerSetter: tab.listenerSetter});
 
-    this.firstNameInputField.setOriginalValue(user.first_name, true);
-    this.aboutInputField.setOriginalValue(botInfo.about, true);
-    this.usernameInputField.setOriginalValue(getPeerEditableUsername(user), true);
+    firstNameInputField.setOriginalValue(user.first_name, true);
+    aboutInputField.setOriginalValue(botInfo.about, true);
+    usernameInputField.setOriginalValue(getPeerEditableUsername(user), true);
 
-    this.editPeer.handleChange();
-  }
-}
+    editPeer.handleChange();
+  })());
+
+  return null;
+};
+
+export default EditBot;

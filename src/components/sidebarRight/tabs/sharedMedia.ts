@@ -14,7 +14,7 @@ import {Chat, Message} from '@layer';
 import getMessageThreadId from '@appManagers/utils/messages/getMessageThreadId';
 import AppEditTopicTab from '@components/sidebarRight/tabs/editTopic';
 import liteMode from '@helpers/liteMode';
-import AppEditBotTab from '@components/sidebarRight/tabs/editBot';
+import {AppEditBotTab} from '@components/solidJsTabs/tabs';
 import addChatUsers from '@components/addChatUsers';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
@@ -268,7 +268,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     }, {listenerSetter: this.listenerSetter});
 
     attachClickEvent(this.editBtn, async() => {
-      let tab: AppEditChatTab | AppEditContactTab | AppEditTopicTab | AppEditBotTab;
+      let tab: AppEditChatTab | AppEditContactTab | AppEditTopicTab | InstanceType<typeof AppEditBotTab>;
       const {peerId, threadId} = this;
       if(threadId && await this.managers.appPeersManager.isForum(peerId)) {
         tab = this.slider.createTab(AppEditTopicTab)
@@ -289,13 +289,16 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       } else if(tab instanceof AppEditBotTab) {
         tab.open(peerId);
       } else {
-        if(tab instanceof AppEditChatTab) {
-          tab.chatId = peerId.toChatId();
+        // editBot (a scaffolded tab) is handled above; here tab is one of the
+        // two remaining legacy classes — narrow past the structural scaffold type.
+        const editTab = tab as AppEditChatTab | AppEditContactTab;
+        if(editTab instanceof AppEditChatTab) {
+          editTab.chatId = peerId.toChatId();
         } else {
-          tab.peerId = peerId;
+          editTab.peerId = peerId;
         }
 
-        tab.open();
+        editTab.open();
       }
     }, {listenerSetter: this.listenerSetter});
 
