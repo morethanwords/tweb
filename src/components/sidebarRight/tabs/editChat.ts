@@ -19,7 +19,7 @@ import replaceContent from '@helpers/dom/replaceContent';
 import SettingSection from '@components/settingSection';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import PopupElement from '@components/popups';
-import AppChatAdministratorsTab from '@components/sidebarRight/tabs/chatAdministrators';
+import {AppChatAdministratorsTab} from '@components/solidJsTabs/tabs';
 import numberThousandSplitter, {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
 import {AppChatMembersTab} from '@components/solidJsTabs/tabs';
 import {AppRemovedUsersTab} from '@components/solidJsTabs/tabs';
@@ -507,8 +507,7 @@ export default class AppEditChatTab extends SliderSuperTab {
             constructor: AppChatAdministratorsTab,
             slider: this.slider,
             getInitArgs: () => ({
-              chatId: this.chatId,
-              p: AppChatAdministratorsTab.getInitArgs(this.chatId)
+              chatId: this.chatId
             })
           },
           listenerSetter: this.listenerSetter

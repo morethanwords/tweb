@@ -392,6 +392,12 @@ export const AppChatMembersTab =
     getComponentModule: () => import('../sidebarRight/tabs/chatMembers')
   });
 
+export const AppChatAdministratorsTab =
+  scaffoldSolidJSTabEventable<{chatId: ChatId}>({
+    title: 'PeerInfo.Administrators',
+    getComponentModule: () => import('../sidebarRight/tabs/chatAdministrators')
+  });
+
 
 export type AppAddMembersExtraCategory = {
   key: string;

@@ -1,74 +1,51 @@
-import deferredPromise from '@helpers/cancellablePromise';
+import {Component} from 'solid-js';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import createParticipantContextMenu from '@helpers/dom/createParticipantContextMenu';
 import {ChannelParticipant, Chat, ChatFull, ChatParticipant} from '@layer';
 import hasRights from '@appManagers/utils/chats/hasRights';
 import {i18n} from '@lib/langPack';
-import rootScope from '@lib/rootScope';
 import AppSelectPeers from '@components/appSelectPeers';
 import ButtonCorner from '@components/buttonCorner';
 import CheckboxField from '@components/checkboxField';
-import PopupElement from '@components/popups';
 import showPickUserPopup from '@components/popups/pickUser';
 import Row from '@components/row';
 import SettingSection from '@components/settingSection';
-import {SliderSuperTabEventable} from '@components/sliderTab';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import AppUserPermissionsTab from '@components/sidebarRight/tabs/userPermissions';
 import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
 import {isParticipantAdmin} from '@lib/appManagers/utils/chats/isParticipantAdmin';
+import {createSelectorForParticipants} from './participantsSelector';
+import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
+import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
+import type {AppChatAdministratorsTab} from '@components/solidJsTabs/tabs';
 
-export function createSelectorForParticipants(options: ConstructorParameters<typeof AppSelectPeers>[0]) {
-  const deferred = deferredPromise<void>();
-  const selector = new AppSelectPeers({
-    ...options,
-    peerType: ['channelParticipants'],
-    multiSelect: false,
-    headerSearch: true,
-    placeholder: 'SearchPlaceholder',
-    meAsSaved: false,
-    onFirstRender: () => {
-      deferred.resolve();
-    }
-  });
+const ChatAdministrators: Component = () => {
+  const [tab] = useSuperTab<typeof AppChatAdministratorsTab>();
+  const promiseCollector = usePromiseCollector();
+  const {chatId} = tab.payload;
 
-  return {selector, loadPromise: deferred};
-}
+  let selector: AppSelectPeers;
 
-export default class AppChatAdministratorsTab extends SliderSuperTabEventable {
-  private addBtn: HTMLButtonElement;
-  private selector: AppSelectPeers;
-
-  public static getInitArgs(chatId: ChatId) {
-    return {
-      chatFull: rootScope.managers.appProfileManager.getChatFull(chatId),
-      appConfig: rootScope.managers.apiManager.getAppConfig()
-    };
-  }
-
-  public async init({
-    chatId,
-    p = AppChatAdministratorsTab.getInitArgs(chatId)
-  }: {
-    chatId: ChatId,
-    p: ReturnType<typeof AppChatAdministratorsTab['getInitArgs']>
-  }) {
+  promiseCollector.collect((async() => {
     const peerId = chatId.toPeerId(true);
-    this.container.classList.add('edit-peer-container', 'chat-administrators-container');
-    this.setTitle('PeerInfo.Administrators');
+    tab.container.classList.add('edit-peer-container', 'chat-administrators-container');
 
     const [chat, isBroadcast, chatFull, appConfig] = await Promise.all([
-      this.managers.appChatsManager.getChat(chatId),
-      this.managers.appChatsManager.isBroadcast(chatId),
-      p.chatFull,
-      p.appConfig
+      tab.managers.appChatsManager.getChat(chatId),
+      tab.managers.appChatsManager.isBroadcast(chatId),
+      tab.managers.appProfileManager.getChatFull(chatId),
+      tab.managers.apiManager.getAppConfig()
     ]);
 
     const canAddAdmins = hasRights(chat, 'add_admins');
-    this.addBtn = ButtonCorner({icon: 'addmember_filled', className: 'is-visible'});
-    if(canAddAdmins) this.content.append(this.addBtn);
+    const addBtn = ButtonCorner({icon: 'addmember_filled', className: 'is-visible'});
+    if(canAddAdmins) tab.content.append(addBtn);
 
-    attachClickEvent(this.addBtn, () => {
+    const openPermissions = async(participant: ChatParticipant | ChannelParticipant) => {
+      AppUserPermissionsTab.openTab(tab.slider, chatId, participant, true);
+    };
+
+    attachClickEvent(addBtn, () => {
       const popup = showPickUserPopup({
         titleLangKey: 'Administrators',
         peerType: ['channelParticipants'],
@@ -79,25 +56,21 @@ export default class AppChatAdministratorsTab extends SliderSuperTabEventable {
         },
         placeholder: 'SearchPlaceholder'
       });
-    }, {listenerSetter: this.listenerSetter});
-
-    const openPermissions = async(participant: ChatParticipant | ChannelParticipant) => {
-      AppUserPermissionsTab.openTab(this.slider, chatId, participant, true);
-    };
+    }, {listenerSetter: tab.listenerSetter});
 
     const canSeeAntiSpam = !isBroadcast &&
       (chat as Chat.chat | Chat.channel).participants_count >= appConfig.telegram_antispam_group_size_min;
 
-    const {selector, loadPromise} = createSelectorForParticipants({
-      appendTo: this.content,
-      managers: this.managers,
-      middleware: this.middlewareHelper.get(),
+    const {selector: _selector, loadPromise} = createSelectorForParticipants({
+      appendTo: tab.content,
+      managers: tab.managers,
+      middleware: tab.middlewareHelper.get(),
       peerId,
       channelParticipantsFilter: (q) => {
         return {_: 'channelParticipantsAdmins', q};
       },
       getSubtitleForElement: async(peerId) => {
-        const participant = this.selector.participants.get(peerId);
+        const participant = selector.participants.get(peerId);
         if(participant._ === 'channelParticipantCreator' || participant._ === 'chatParticipantCreator') {
           return i18n('ChannelCreator');
         }
@@ -109,14 +82,13 @@ export default class AppChatAdministratorsTab extends SliderSuperTabEventable {
         return i18n('EditAdminPromotedBy', [await wrapPeerTitle({peerId: promotedBy})]);
       },
       onSelect: (peerId) => {
-        const participant = this.selector.participants.get(peerId);
+        const participant = selector.participants.get(peerId);
         openPermissions(participant);
       },
       channelParticipantsUpdateFilter: isParticipantAdmin
-      // noDelimiter: canToggleAntiSpam
     });
 
-    this.selector = selector;
+    selector = _selector;
 
     if(canSeeAntiSpam) {
       const section = new SettingSection({
@@ -129,26 +101,25 @@ export default class AppChatAdministratorsTab extends SliderSuperTabEventable {
       const checked = !!(chatFull as ChatFull.channelFull)?.pFlags?.antispam;
       const row = new Row({
         titleLangKey: 'ChannelAntiSpam',
-        // icon: 'hide',
         checkboxField: new CheckboxField({
           name: 'agg',
           toggle: true,
-          listenerSetter: this.listenerSetter,
+          listenerSetter: tab.listenerSetter,
           checked,
           disabled: !canToggleAntiSpam
         }),
-        listenerSetter: this.listenerSetter
+        listenerSetter: tab.listenerSetter
       });
 
       if(!canToggleAntiSpam) row.toggleDisability(canToggleAntiSpam);
 
-      this.listenerSetter.add(row.checkboxField.input)('change', () => {
+      tab.listenerSetter.add(row.checkboxField.input)('change', () => {
         const _checked = row.checkboxField.checked;
         if(_checked === checked) {
           return;
         }
 
-        const promise = handleChannelsTooMuch(() => this.managers.appChatsManager.toggleAntiSpam(chatId, _checked))
+        const promise = handleChannelsTooMuch(() => tab.managers.appChatsManager.toggleAntiSpam(chatId, _checked))
         .catch((err) => {
           console.error('toggleAntiSpam error', err);
           row.checkboxField.setValueSilently(!_checked);
@@ -158,17 +129,21 @@ export default class AppChatAdministratorsTab extends SliderSuperTabEventable {
 
       section.content.append(row.container);
 
-      this.selector.scrollable.append(section.container, this.selector.scrollable.container.lastElementChild);
+      selector.scrollable.append(section.container, selector.scrollable.container.lastElementChild);
     }
 
     createParticipantContextMenu({
       chatId,
-      listenTo: this.selector.scrollable.container,
-      participants: this.selector.participants,
-      slider: this.slider,
-      middleware: this.middlewareHelper.get()
+      listenTo: selector.scrollable.container,
+      participants: selector.participants,
+      slider: tab.slider,
+      middleware: tab.middlewareHelper.get()
     });
 
-    return loadPromise;
-  }
-}
+    await loadPromise;
+  })());
+
+  return null;
+};
+
+export default ChatAdministrators;
