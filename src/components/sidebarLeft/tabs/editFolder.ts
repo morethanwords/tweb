@@ -8,7 +8,7 @@ import ButtonIcon from '@components/buttonIcon';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import {ButtonMenuItemOptions} from '@components/buttonMenu';
 import Button from '@components/button';
-import AppIncludedChatsTab from '@components/sidebarLeft/tabs/includedChats';
+import {AppIncludedChatsTab} from '@components/solidJsTabs/tabs';
 import {i18n, LangPackKey} from '@lib/langPack';
 import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
 import copy from '@helpers/object/copy';
@@ -25,7 +25,7 @@ import createContextMenu from '@helpers/dom/createContextMenu';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
-import AppSharedFolderTab from '@components/sidebarLeft/tabs/sharedFolder';
+import {AppSharedFolderTab} from '@components/solidJsTabs/tabs';
 import showLimitPopup from '@components/popups/limit';
 import toggleDisability from '@helpers/dom/toggleDisability';
 import PopupSharedFolderInvite from '@components/popups/sharedFolderInvite';
@@ -264,11 +264,11 @@ export default class AppEditFolderTab extends SliderSuperTab {
     this.inviteLinksCreate = this.inviteLinks.container.querySelector('.btn') as HTMLElement;
 
     attachClickEvent(includedFlagsContainer.querySelector('.btn') as HTMLElement, () => {
-      this.slider.createTab(AppIncludedChatsTab).open(this.filter, 'included', this);
+      this.slider.createTab(AppIncludedChatsTab).open({filter: this.filter, type: 'included', editFolderTab: this});
     }, {listenerSetter: this.listenerSetter});
 
     attachClickEvent(excludedFlagsContainer.querySelector('.btn') as HTMLElement, () => {
-      this.slider.createTab(AppIncludedChatsTab).open(this.filter, 'excluded', this);
+      this.slider.createTab(AppIncludedChatsTab).open({filter: this.filter, type: 'excluded', editFolderTab: this});
     }, {listenerSetter: this.listenerSetter});
 
     const confirmEditing = (closeAfter?: boolean) => {
@@ -531,8 +531,6 @@ export default class AppEditFolderTab extends SliderSuperTab {
         const openChatlistInvite = (chatlistInvite?: ExportedChatlistInvite) => {
           const row = invitesMap.get(chatlistInvite?.url);
           const tab = this.slider.createTab(AppSharedFolderTab);
-          tab.filter = this.filter as DialogFilter.dialogFilterChatlist;
-          tab.chatlistInvite = chatlistInvite;
           tab.eventListener.addEventListener('delete', () => {
             onLinkDeletion(chatlistInvite);
           });
@@ -541,7 +539,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
             updateLink(row, chatlistInvite);
           });
 
-          return tab.open();
+          return tab.open({filter: this.filter as DialogFilter.dialogFilterChatlist, chatlistInvite});
         };
 
         attachClickEvent(content, (e) => {

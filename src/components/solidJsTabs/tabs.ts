@@ -1,7 +1,9 @@
 import {CancellablePromise} from '@helpers/cancellablePromise';
-import {AccountPasskeys, Authorization, ChannelParticipant, Chat, ChatFull, ChatParticipant, GlobalPrivacySettings, Passkey, WebAuthorization} from '@layer';
+import {AccountPasskeys, Authorization, ChannelParticipant, Chat, ChatFull, ChatParticipant, DialogFilter, ExportedChatlistInvite, GlobalPrivacySettings, Passkey, WebAuthorization} from '@layer';
 import type SidebarSlider from '@components/slider';
 import getParticipantPeerId from '@appManagers/utils/chats/getParticipantPeerId';
+import type {MyDialogFilter} from '@lib/storages/filters';
+import type AppEditFolderTab from '@components/sidebarLeft/tabs/editFolder';
 import {LangPackKey} from '@lib/langPack';
 import type {PasscodeActions} from '@lib/passcode/actions';
 import {InstanceOf} from '@types';
@@ -463,6 +465,36 @@ export function openUserPermissionsTab(
     editingAdmin: isAdmin
   });
 }
+
+
+type AppIncludedChatsTabPayload = {
+  filter: MyDialogFilter,
+  type: 'included' | 'excluded',
+  editFolderTab: AppEditFolderTab
+};
+
+export const AppIncludedChatsTab =
+  scaffoldSolidJSTab<AppIncludedChatsTabPayload>({
+    title: 'FilterAlwaysShow',
+    getComponentModule: () => import('../sidebarLeft/tabs/includedChats')
+  });
+
+type AppSharedFolderTabPayload = {
+  filter: DialogFilter.dialogFilterChatlist,
+  chatlistInvite: ExportedChatlistInvite
+};
+
+export const AppSharedFolderTab =
+  scaffoldSolidJSTabEventable<AppSharedFolderTabPayload, {
+    delete: () => void,
+    edit: (chatlistInvite: ExportedChatlistInvite) => void
+  }>({
+    title: 'SharedFolder.Edit.Title',
+    getComponentModule: () => import('../sidebarLeft/tabs/sharedFolder'),
+    onOpenAfterTimeout: function() {
+      (this as any)._onOpenAfterTimeout?.();
+    }
+  });
 
 
 export type AppAddMembersExtraCategory = {

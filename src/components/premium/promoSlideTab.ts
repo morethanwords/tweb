@@ -15,7 +15,7 @@ import wrapPeerTitle from '@components/wrappers/peerTitle';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import rootScope from '@lib/rootScope';
 import {PeerTitleOptions} from '@components/peerTitle';
-import {InviteLink} from '@components/sidebarLeft/tabs/sharedFolder';
+import {InviteLink} from '@components/sidebarLeft/tabs/inviteLink';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import PopupGiftLink from '@components/popups/giftLink';
 import lastItem from '@helpers/array/lastItem';

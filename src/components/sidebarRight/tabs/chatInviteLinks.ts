@@ -19,7 +19,7 @@ import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import confirmationPopup from '@components/confirmationPopup';
 import {StarsAmount, StarsChange} from '@components/popups/stars';
 import SettingSection from '@components/settingSection';
-import {InviteLink} from '@components/sidebarLeft/tabs/sharedFolder';
+import {InviteLink} from '@components/sidebarLeft/tabs/inviteLink';
 import {SliderSuperTabEventable} from '@components/sliderTab';
 import {UsernameRow} from '@components/usernamesSection';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
