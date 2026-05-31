@@ -1,34 +1,40 @@
+import {Component} from 'solid-js';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
-import {SliderSuperTabEventable} from '@components/sliderTab';
 import {createSelectorForTab} from '@components/sidebarRight/tabs/chatMembers';
 import {getImportersLoader} from '@components/sidebarRight/tabs/chatInviteLink';
 import {formatFullSentTime} from '@helpers/date';
 import Button from '@components/button';
 import {i18n} from '@lib/langPack';
 import findUpClassName from '@helpers/dom/findUpClassName';
-import appImManager from '@lib/appImManager';
 import {DialogElement} from '@lib/appDialogsManager';
+import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
+import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import type {AppChatRequestsTab} from '@components/solidJsTabs/tabs';
 
-export default class AppChatRequestsTab extends SliderSuperTabEventable<{
-  finish: (changedLength: number) => void
-}> {
-  public async init(chatId: ChatId, link?: string) {
-    const isBroadcast = await this.managers.appChatsManager.isBroadcast(chatId);
-    this.container.classList.add('edit-peer-container', 'chat-members-container', 'chat-requests-container');
-    this.setTitle(isBroadcast ? 'SubscribeRequests' : 'MemberRequests');
+const ChatRequests: Component = () => {
+  const [tab] = useSuperTab<typeof AppChatRequestsTab>();
+  const promiseCollector = usePromiseCollector();
+  const {appImManager} = useHotReloadGuard();
+  const chatId = tab.payload;
+
+  promiseCollector.collect((async() => {
+    const isBroadcast = await tab.managers.appChatsManager.isBroadcast(chatId);
+    tab.container.classList.add('edit-peer-container', 'chat-members-container', 'chat-requests-container');
+    tab.title.replaceChildren(i18n(isBroadcast ? 'SubscribeRequests' : 'MemberRequests'));
 
     const {importersMap, deleteImporter, load} = getImportersLoader({
       chatId,
-      managers: this.managers,
+      managers: tab.managers,
       requested: true,
-      link
+      link: undefined
     });
 
     const dialogElements: Map<PeerId, DialogElement> = new Map();
     const {selector, loadPromise} = createSelectorForTab({
-      appendTo: this.content,
-      managers: this.managers,
-      middleware: this.middlewareHelper.get(),
+      appendTo: tab.content,
+      managers: tab.managers,
+      middleware: tab.middlewareHelper.get(),
       peerId: chatId.toPeerId(true),
       peerType: ['custom'],
       getMoreCustom: load,
@@ -66,7 +72,7 @@ export default class AppChatRequestsTab extends SliderSuperTabEventable<{
 
       const toggle = dialogElement.toggleDisability(true);
       try {
-        await this.managers.appChatsManager.hideChatJoinRequest(chatId, peerId, add);
+        await tab.managers.appChatsManager.hideChatJoinRequest(chatId, peerId, add);
         ++changedLength;
         selector.deletePeerId(peerId);
         dialogElements.delete(peerId);
@@ -74,12 +80,16 @@ export default class AppChatRequestsTab extends SliderSuperTabEventable<{
       } catch(err) {
         toggle();
       }
-    }, {listenerSetter: this.listenerSetter});
+    }, {listenerSetter: tab.listenerSetter});
 
-    this.eventListener.addEventListener('close', () => {
-      this.eventListener.dispatchEvent('finish', changedLength);
+    tab.eventListener.addEventListener('close', () => {
+      tab.eventListener.dispatchEvent('finish', changedLength);
     });
 
-    return loadPromise;
-  }
-}
+    await loadPromise;
+  })());
+
+  return null;
+};
+
+export default ChatRequests;

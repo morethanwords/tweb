@@ -374,6 +374,12 @@ export const AppGifsTab =
     getComponentModule: () => import('../sidebarRight/tabs/gifs')
   });
 
+export const AppChatRequestsTab =
+  scaffoldSolidJSTabEventable<ChatId, {finish: (changedLength: number) => void}>({
+    title: 'MemberRequests',
+    getComponentModule: () => import('../sidebarRight/tabs/chatRequests')
+  });
+
 
 export type AppAddMembersExtraCategory = {
   key: string;

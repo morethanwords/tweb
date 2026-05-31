@@ -5,7 +5,7 @@ import {ChatFull} from '@layer';
 import {AppManagers} from '@lib/managers';
 import StackedAvatars from '@components/stackedAvatars';
 import appSidebarRight from '@components/sidebarRight';
-import AppChatRequestsTab from '@components/sidebarRight/tabs/chatRequests';
+import {AppChatRequestsTab} from '@components/solidJsTabs/tabs';
 import callbackify from '@helpers/callbackify';
 import {ONE_DAY} from '@helpers/date';
 import {MiddlewareHelper, getMiddleware} from '@helpers/middleware';
