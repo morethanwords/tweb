@@ -1,4 +1,4 @@
-import {SliderSuperTabEventable} from '@components/sliderTab';
+import {Component, onMount} from 'solid-js';
 import PrivacySection from '@components/privacySection';
 import {LangPackKey, i18n} from '@lib/langPack';
 import Row from '@components/row';
@@ -8,15 +8,16 @@ import Button from '@components/button';
 import rootScope from '@lib/rootScope';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import PopupPremium from '@components/popups/premium';
-import {GlobalPrivacySettings} from '@layer';
 import PrivacyType from '@appManagers/utils/privacy/privacyType';
+import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
+import type {AppPrivacyLastSeenTab} from '@components/solidJsTabs/tabs';
 
-export default class AppPrivacyLastSeenTab extends SliderSuperTabEventable<{
-  privacy: (globalPrivacy: Promise<GlobalPrivacySettings>) => void
-}> {
-  public init(globalPrivacy: GlobalPrivacySettings) {
-    this.container.classList.add('privacy-tab', 'privacy-last-seen');
-    this.setTitle('PrivacyLastSeen');
+const PrivacyLastSeen: Component = () => {
+  const [tab] = useSuperTab<typeof AppPrivacyLastSeenTab>();
+  const globalPrivacy = tab.payload;
+
+  onMount(() => {
+    tab.container.classList.add('privacy-tab', 'privacy-last-seen');
 
     const canHideReadTime = () => {
       return privacySection.type !== PrivacyType.Everybody || !!privacySection.peerIds.disallow.length;
@@ -24,18 +25,18 @@ export default class AppPrivacyLastSeenTab extends SliderSuperTabEventable<{
 
     const caption: LangPackKey = 'PrivacySettingsController.LastSeenDescription';
     const privacySection = new PrivacySection({
-      tab: this,
+      tab,
       title: 'LastSeenTitle',
       inputKey: 'inputPrivacyKeyStatusTimestamp',
       captions: [caption, caption, caption],
       exceptionTexts: ['PrivacySettingsController.NeverShare', 'PrivacySettingsController.AlwaysShare'],
-      appendTo: this.scrollable,
+      appendTo: tab.scrollable,
       onRadioChange: () => {
         [hideReadTimeSection, premiumSection].forEach((section) => {
           section.container.classList.toggle('hide', !canHideReadTime());
         });
       },
-      managers: this.managers
+      managers: tab.managers
     });
 
     let hideReadTimeSection: SettingSection;
@@ -47,28 +48,28 @@ export default class AppPrivacyLastSeenTab extends SliderSuperTabEventable<{
       const row = new Row({
         titleLangKey: 'HideReadTime',
         checkboxField: new CheckboxField({toggle: true, checked: !!globalPrivacy.pFlags.hide_read_marks}),
-        listenerSetter: this.listenerSetter
+        listenerSetter: tab.listenerSetter
       });
 
-      this.eventListener.addEventListener('destroy', () => {
+      tab.eventListener.addEventListener('destroy', () => {
         const hide = row.checkboxField.checked && canHideReadTime();
         if(!!globalPrivacy.pFlags.hide_read_marks === hide) {
           return;
         }
 
-        const promise = this.managers.appPrivacyManager.setGlobalPrivacySettings({
+        const promise = tab.managers.appPrivacyManager.setGlobalPrivacySettings({
           _: 'globalPrivacySettings',
           pFlags: {
             ...globalPrivacy.pFlags,
             hide_read_marks: hide || undefined
           }
         });
-        this.eventListener.dispatchEvent('privacy', promise);
+        tab.eventListener.dispatchEvent('privacy', promise);
         return promise;
       });
 
       section.content.append(row.container);
-      this.scrollable.append(section.container);
+      tab.scrollable.append(section.container);
     }
 
     let premiumSection: SettingSection;
@@ -84,7 +85,7 @@ export default class AppPrivacyLastSeenTab extends SliderSuperTabEventable<{
 
         attachClickEvent(btn, () => {
           PopupPremium.show();
-        }, {listenerSetter: this.listenerSetter});
+        }, {listenerSetter: tab.listenerSetter});
 
         return btn;
       };
@@ -95,9 +96,13 @@ export default class AppPrivacyLastSeenTab extends SliderSuperTabEventable<{
       };
 
       onPremium();
-      this.listenerSetter.add(rootScope)('premium_toggle', onPremium);
+      tab.listenerSetter.add(rootScope)('premium_toggle', onPremium);
 
-      this.scrollable.append(section.container);
+      tab.scrollable.append(section.container);
     }
-  }
-}
+  });
+
+  return null;
+};
+
+export default PrivacyLastSeen;

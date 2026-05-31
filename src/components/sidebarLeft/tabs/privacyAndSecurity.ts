@@ -1,11 +1,9 @@
 import SliderSuperTab, {SliderSuperTabEventable} from '@components/sliderTab';
 import Row from '@components/row';
 import {AccountPassword, GlobalPrivacySettings, InputPrivacyKey, Passkey, WebAuthorization} from '@layer';
-import AppPrivacyPhoneNumberTab from '@components/sidebarLeft/tabs/privacy/phoneNumber';
 import AppTwoStepVerificationTab from '@components/sidebarLeft/tabs/2fa';
 import AppTwoStepVerificationEnterPasswordTab from '@components/sidebarLeft/tabs/2fa/enterPassword';
 import AppTwoStepVerificationEmailConfirmationTab from '@components/sidebarLeft/tabs/2fa/emailConfirmation';
-import AppPrivacyLastSeenTab from '@components/sidebarLeft/tabs/privacy/lastSeen';
 import {
   AppBlockedUsersTab,
   AppPrivacyAboutTab,
@@ -13,6 +11,9 @@ import {
   AppPrivacyBirthdayTab,
   AppPrivacyCallsTab,
   AppPrivacyForwardMessagesTab,
+  AppPrivacyGiftsTab,
+  AppPrivacyLastSeenTab,
+  AppPrivacyPhoneNumberTab,
   AppPrivacyProfilePhotoTab,
   AppPrivacySavedMusicTab,
   AppPrivacyVoicesTab
@@ -40,7 +41,6 @@ import {joinDeepPath} from '@helpers/object/setDeepProperty';
 import {AgeVerificationPopup} from '@components/popups/ageVerification';
 import {clearSensitiveSpoilers} from '@components/wrappers/mediaSpoiler';
 import useContentSettings from '@stores/contentSettings';
-import AppPrivacyGiftsTab from '@components/sidebarLeft/tabs/privacy/gifts';
 import ChangeLoginEmailTab from '@components/sidebarLeft/tabs/changeLoginEmail';
 import {wrapEmailPattern} from '@components/popups/emailSetup';
 import IS_WEB_AUTHN_SUPPORTED from '@environment/webAuthn';

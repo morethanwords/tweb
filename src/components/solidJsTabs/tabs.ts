@@ -258,6 +258,28 @@ export const AppPrivacySavedMusicTab =
     getComponentModule: () => import('../sidebarLeft/tabs/privacy/savedMusic')
   });
 
+export const AppPrivacyPhoneNumberTab =
+  scaffoldSolidJSTabEventable({
+    title: 'PrivacyPhone',
+    getComponentModule: () => import('../sidebarLeft/tabs/privacy/phoneNumber')
+  });
+
+type AppPrivacyGlobalTabEvents = {
+  privacy: (globalPrivacy: Promise<GlobalPrivacySettings>) => void
+};
+
+export const AppPrivacyLastSeenTab =
+  scaffoldSolidJSTabEventable<GlobalPrivacySettings, AppPrivacyGlobalTabEvents>({
+    title: 'PrivacyLastSeen',
+    getComponentModule: () => import('../sidebarLeft/tabs/privacy/lastSeen')
+  });
+
+export const AppPrivacyGiftsTab =
+  scaffoldSolidJSTabEventable<GlobalPrivacySettings, AppPrivacyGlobalTabEvents>({
+    title: 'PrivacyGifts',
+    getComponentModule: () => import('../sidebarLeft/tabs/privacy/gifts')
+  });
+
 
 export type AppAddMembersExtraCategory = {
   key: string;

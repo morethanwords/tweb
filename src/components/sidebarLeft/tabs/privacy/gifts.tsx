@@ -1,4 +1,4 @@
-import {SliderSuperTabEventable} from '@components/sliderTab';
+import {Component, onMount} from 'solid-js';
 import PrivacySection from '@components/privacySection';
 import {LangPackKey} from '@lib/langPack';
 import Row from '@components/row';
@@ -11,6 +11,8 @@ import {attachClickEvent} from '@helpers/dom/clickEvent';
 import {hideToast, toastNew} from '@components/toast';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import cancelEvent from '@helpers/dom/cancelEvent';
+import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
+import type {AppPrivacyGiftsTab} from '@components/solidJsTabs/tabs';
 
 type GiftTypeFlag = keyof DisallowedGiftsSettings.disallowedGiftsSettings['pFlags'];
 
@@ -22,22 +24,22 @@ const GIFT_TYPE_TOGGLES: Array<{flag: GiftTypeFlag, langKey: LangPackKey}> = [
   {flag: 'disallow_premium_gifts', langKey: 'Privacy.GiftsTypePremium'}
 ];
 
-export default class AppPrivacyGiftsTab extends SliderSuperTabEventable<{
-  privacy: (globalPrivacy: Promise<GlobalPrivacySettings>) => void
-}> {
-  public init(globalPrivacy: GlobalPrivacySettings) {
-    this.container.classList.add('privacy-tab', 'privacy-gifts');
-    this.setTitle('PrivacyGifts');
+const PrivacyGifts: Component = () => {
+  const [tab] = useSuperTab<typeof AppPrivacyGiftsTab>();
+  const globalPrivacy = tab.payload;
+
+  onMount(() => {
+    tab.container.classList.add('privacy-tab', 'privacy-gifts');
 
     const caption: LangPackKey = 'Privacy.GiftsCaption';
     new PrivacySection({
-      tab: this,
+      tab,
       title: 'Privacy.Gifts',
       inputKey: 'inputPrivacyKeyStarGiftsAutoSave',
       captions: [caption, caption, caption],
       exceptionTexts: ['PrivacySettingsController.NeverAllow', 'PrivacySettingsController.AlwaysAllow'],
-      appendTo: this.scrollable,
-      managers: this.managers,
+      appendTo: tab.scrollable,
+      managers: tab.managers,
       allowMiniApps: true
     });
 
@@ -56,7 +58,7 @@ export default class AppPrivacyGiftsTab extends SliderSuperTabEventable<{
 
     const gatePremiumToggle = (row: Row) => {
       const input = row.checkboxField.input;
-      this.listenerSetter.add(input)('change', () => {
+      tab.listenerSetter.add(input)('change', () => {
         if(rootScope.premium) return;
         input.checked = !input.checked;
         showPremiumToast();
@@ -75,14 +77,14 @@ export default class AppPrivacyGiftsTab extends SliderSuperTabEventable<{
           toggle: true,
           checked: !globalPrivacy.disallowed_gifts?.pFlags[flag]
         }),
-        listenerSetter: this.listenerSetter
+        listenerSetter: tab.listenerSetter
       });
       gatePremiumToggle(row);
       typesSection.content.append(row.container);
       return {flag, row};
     });
 
-    this.scrollable.append(typesSection.container);
+    tab.scrollable.append(typesSection.container);
 
     const showIconSection = new SettingSection({
       caption: 'Privacy.GiftsShowIconInfo'
@@ -94,14 +96,14 @@ export default class AppPrivacyGiftsTab extends SliderSuperTabEventable<{
         toggle: true,
         checked: !!globalPrivacy.pFlags.display_gifts_button
       }),
-      listenerSetter: this.listenerSetter
+      listenerSetter: tab.listenerSetter
     });
     gatePremiumToggle(showIconRow);
 
     showIconSection.content.append(showIconRow.container);
-    this.scrollable.append(showIconSection.container);
+    tab.scrollable.append(showIconSection.container);
 
-    this.eventListener.addEventListener('destroy', () => {
+    tab.eventListener.addEventListener('destroy', () => {
       if(!rootScope.premium) return;
 
       const newDisallowedPFlags: DisallowedGiftsSettings.disallowedGiftsSettings['pFlags'] = {};
@@ -137,9 +139,13 @@ export default class AppPrivacyGiftsTab extends SliderSuperTabEventable<{
         } : undefined
       };
 
-      const promise = this.managers.appPrivacyManager.setGlobalPrivacySettings(settings);
-      this.eventListener.dispatchEvent('privacy', promise);
+      const promise = tab.managers.appPrivacyManager.setGlobalPrivacySettings(settings);
+      tab.eventListener.dispatchEvent('privacy', promise);
       return promise;
     });
-  }
-}
+  });
+
+  return null;
+};
+
+export default PrivacyGifts;

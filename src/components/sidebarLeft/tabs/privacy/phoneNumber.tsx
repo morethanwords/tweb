@@ -1,15 +1,22 @@
-import {SliderSuperTabEventable} from '@components/sliderTab';
+import {Component, onMount} from 'solid-js';
 import PrivacySection from '@components/privacySection';
 import {i18n, LangPackKey} from '@lib/langPack';
 import anchorCopy from '@helpers/dom/anchorCopy';
 import PrivacyType from '@appManagers/utils/privacy/privacyType';
+import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
+import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
+import type {AppPrivacyPhoneNumberTab} from '@components/solidJsTabs/tabs';
 
-export default class AppPrivacyPhoneNumberTab extends SliderSuperTabEventable {
-  public async init() {
-    this.container.classList.add('privacy-tab', 'privacy-phone-number');
-    this.setTitle('PrivacyPhone');
+const PrivacyPhoneNumber: Component = () => {
+  const [tab] = useSuperTab<typeof AppPrivacyPhoneNumberTab>();
+  const promiseCollector = usePromiseCollector();
 
-    const formatted = '+' + (await this.managers.appUsersManager.getSelf()).phone;
+  onMount(() => {
+    tab.container.classList.add('privacy-tab', 'privacy-phone-number');
+  });
+
+  promiseCollector.collect((async() => {
+    const formatted = '+' + (await tab.managers.appUsersManager.getSelf()).phone;
     const captionEl = document.createElement('div');
     captionEl.append(
       i18n('PrivacyPhoneInfo'),
@@ -23,30 +30,34 @@ export default class AppPrivacyPhoneNumberTab extends SliderSuperTabEventable {
     );
 
     const phoneSection = new PrivacySection({
-      tab: this,
+      tab,
       title: 'PrivacyPhoneTitle',
       inputKey: 'inputPrivacyKeyPhoneNumber',
       captions: [captionEl, captionEl, ''],
       exceptionTexts: ['PrivacySettingsController.NeverShare', 'PrivacySettingsController.AlwaysShare'],
-      appendTo: this.scrollable,
+      appendTo: tab.scrollable,
       onRadioChange: (type) => {
         s.setRadio(PrivacyType.Everybody);
         s.radioSection.container.classList.toggle('hide', type !== PrivacyType.Nobody);
       },
-      managers: this.managers
+      managers: tab.managers
     });
 
     const sCaption: LangPackKey = 'PrivacyPhoneInfo3';
     const s = new PrivacySection({
-      tab: this,
+      tab,
       title: 'PrivacyPhoneTitle2',
       inputKey: 'inputPrivacyKeyAddedByPhone',
       captions: [sCaption, sCaption, ''],
       noExceptions: true,
       skipTypes: [PrivacyType.Nobody],
-      managers: this.managers
+      managers: tab.managers
     });
 
-    this.scrollable.container.insertBefore(s.radioSection.container, phoneSection.radioSection.container.nextSibling);
-  }
-}
+    tab.scrollable.container.insertBefore(s.radioSection.container, phoneSection.radioSection.container.nextSibling);
+  })());
+
+  return null;
+};
+
+export default PrivacyPhoneNumber;
