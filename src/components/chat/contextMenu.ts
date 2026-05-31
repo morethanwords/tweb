@@ -1653,7 +1653,9 @@ export default class ChatContextMenu {
       rawMessages = fullMids.map((fullMid) => this.chat.getMessage(fullMid) as Message.message);
     }
 
-    const messages = rawMessages.filter((message) => message?.message) as Message.message[];
+    // sort by send time so the copied text follows the chronological order, not the selection order (#357)
+    const messages = (rawMessages.filter((message) => message?.message) as Message.message[])
+    .sort((a, b) => a.date - b.date || a.mid - b.mid);
     const meta = messages.length > 1 ? await Promise.all(messages.map(async(message) => {
       const peerTitle = await getPeerTitle({
         peerId: message.fromId,
