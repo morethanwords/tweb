@@ -3,7 +3,7 @@ import AppSearchSuper, {SearchSuperMediaTab, SearchSuperMediaType, SearchSuperTy
 import SidebarSlider, {SliderSuperTab} from '@components/slider';
 import TransitionSlider from '@components/transition';
 import AppEditChatTab from '@components/sidebarRight/tabs/editChat';
-import AppEditContactTab from '@components/sidebarRight/tabs/editContact';
+import {AppEditContactTab} from '@components/solidJsTabs/tabs';
 import Button from '@components/button';
 import ButtonIcon from '@components/buttonIcon';
 import I18n, {LangPackKey, i18n} from '@lib/langPack';
@@ -268,7 +268,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     }, {listenerSetter: this.listenerSetter});
 
     attachClickEvent(this.editBtn, async() => {
-      let tab: AppEditChatTab | AppEditContactTab | AppEditTopicTab | InstanceType<typeof AppEditBotTab>;
+      let tab: AppEditChatTab | InstanceType<typeof AppEditContactTab> | AppEditTopicTab | InstanceType<typeof AppEditBotTab>;
       const {peerId, threadId} = this;
       if(threadId && await this.managers.appPeersManager.isForum(peerId)) {
         tab = this.slider.createTab(AppEditTopicTab)
@@ -288,17 +288,15 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         tab.open(peerId, this.threadId);
       } else if(tab instanceof AppEditBotTab) {
         tab.open(peerId);
+      } else if(tab instanceof AppEditContactTab) {
+        tab.open(peerId);
       } else {
-        // editBot (a scaffolded tab) is handled above; here tab is one of the
-        // two remaining legacy classes — narrow past the structural scaffold type.
-        const editTab = tab as AppEditChatTab | AppEditContactTab;
-        if(editTab instanceof AppEditChatTab) {
-          editTab.chatId = peerId.toChatId();
-        } else {
-          editTab.peerId = peerId;
-        }
-
-        editTab.open();
+        // editBot/editContact (scaffolded tabs) are handled above; here tab is
+        // the remaining legacy AppEditChatTab — narrow past the structural
+        // scaffold types.
+        const editChatTab = tab as AppEditChatTab;
+        editChatTab.chatId = peerId.toChatId();
+        editChatTab.open();
       }
     }, {listenerSetter: this.listenerSetter});
 

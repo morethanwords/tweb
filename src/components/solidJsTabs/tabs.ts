@@ -404,6 +404,12 @@ export const AppEditBotTab =
     getComponentModule: () => import('../sidebarRight/tabs/editBot')
   });
 
+export const AppEditContactTab =
+  scaffoldSolidJSTab<PeerId>({
+    title: 'Edit',
+    getComponentModule: () => import('../sidebarRight/tabs/editContact')
+  });
+
 
 export type AppAddMembersExtraCategory = {
   key: string;

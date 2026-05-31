@@ -1,4 +1,4 @@
-import {SliderSuperTab} from '@components/slider'
+import {Component} from 'solid-js';
 import InputField from '@components/inputField';
 import EditPeer from '@components/editPeer';
 import Row, {CreateRowFromCheckboxField} from '@components/row';
@@ -18,25 +18,30 @@ import wrapPeerTitle from '@components/wrappers/peerTitle';
 import {InputFieldEmoji} from '@components/inputFieldEmoji';
 import {toastNew} from '@components/toast';
 import showBirthdayPopup, {suggestUserBirthday} from '@components/popups/birthday';
+import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
+import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
+import type {AppEditContactTab} from '@components/solidJsTabs/tabs';
 
-export default class AppEditContactTab extends SliderSuperTab {
-  private nameInputField: InputField;
-  private lastNameInputField: InputField;
-  private noteInputField: InputFieldEmoji;
-  private editPeer: EditPeer;
-  private sharePhoneCheckboxField: CheckboxField;
-  public peerId: PeerId;
+const EditContact: Component = () => {
+  const [tab] = useSuperTab<typeof AppEditContactTab>();
+  const promiseCollector = usePromiseCollector();
+  const peerId = tab.payload;
 
-  public async init() {
-    const {peerId} = this;
+  promiseCollector.collect((async() => {
     const userId = peerId.toUserId();
-    this.container.classList.add('edit-peer-container', 'edit-contact-container');
+    tab.container.classList.add('edit-peer-container', 'edit-contact-container');
     const [isContact, privacy] = await Promise.all([
-      this.managers.appUsersManager.isContact(userId),
-      this.managers.appPrivacyManager.getPrivacy('inputPrivacyKeyPhoneNumber')
+      tab.managers.appUsersManager.isContact(userId),
+      tab.managers.appPrivacyManager.getPrivacy('inputPrivacyKeyPhoneNumber')
     ]);
     const isNew = !isContact;
-    this.setTitle(isNew ? 'AddContactTitle' : 'Edit');
+    tab.title.replaceChildren(i18n(isNew ? 'AddContactTitle' : 'Edit'));
+
+    let nameInputField: InputField;
+    let lastNameInputField: InputField;
+    let noteInputField: InputFieldEmoji;
+    let editPeer: EditPeer;
+    let sharePhoneCheckboxField: CheckboxField;
 
     let suggestBirthdayRow: Row | undefined;
 
@@ -47,46 +52,46 @@ export default class AppEditContactTab extends SliderSuperTab {
       const inputWrapper = document.createElement('div');
       inputWrapper.classList.add('input-wrapper');
 
-      this.nameInputField = new InputField({
+      nameInputField = new InputField({
         label: 'FirstName',
         name: 'contact-name',
         maxLength: 70,
         required: true
       });
-      this.lastNameInputField = new InputField({
+      lastNameInputField = new InputField({
         label: 'LastName',
         name: 'contact-lastname',
         maxLength: 70
       });
 
       if(userId) {
-        const user = await this.managers.appUsersManager.getUser(userId);
+        const user = await tab.managers.appUsersManager.getUser(userId);
 
         if(isNew) {
-          this.nameInputField.setDraftValue(user.first_name);
-          this.lastNameInputField.setDraftValue(user.last_name);
+          nameInputField.setDraftValue(user.first_name);
+          lastNameInputField.setDraftValue(user.last_name);
         } else {
-          this.nameInputField.setOriginalValue(user.first_name);
-          this.lastNameInputField.setOriginalValue(user.last_name);
+          nameInputField.setOriginalValue(user.first_name);
+          lastNameInputField.setOriginalValue(user.last_name);
         }
       }
 
-      inputWrapper.append(this.nameInputField.container, this.lastNameInputField.container);
-      inputFields.push(this.nameInputField, this.lastNameInputField);
+      inputWrapper.append(nameInputField.container, lastNameInputField.container);
+      inputFields.push(nameInputField, lastNameInputField);
 
       if(userId) {
-        const fullUser = await this.managers.appProfileManager.getCachedFullUser(userId);
-        this.noteInputField = new InputFieldEmoji({
+        const fullUser = await tab.managers.appProfileManager.getCachedFullUser(userId);
+        noteInputField = new InputFieldEmoji({
           label: 'ContactNoteRow',
           name: 'contact-note',
           maxLength: 128,
           withLinebreaks: true
         });
         if(fullUser.note) {
-          this.noteInputField.setRichOriginalValue(fullUser.note);
+          noteInputField.setRichOriginalValue(fullUser.note);
         }
-        inputFields.push(this.noteInputField);
-        inputWrapper.append(this.noteInputField.container);
+        inputFields.push(noteInputField);
+        inputWrapper.append(noteInputField.container);
 
         if(!fullUser.birthday) {
           suggestBirthdayRow = new Row({
@@ -95,26 +100,26 @@ export default class AppEditContactTab extends SliderSuperTab {
             clickable: () => {
               showBirthdayPopup({
                 suggestForPeer: peerId,
-                onSave: it => suggestUserBirthday(userId, it)
-              })
+                onSave: (it) => suggestUserBirthday(userId, it)
+              });
             }
-          })
+          });
         }
       }
 
-      this.editPeer = new EditPeer({
+      editPeer = new EditPeer({
         peerId: peerId,
         inputFields,
-        listenerSetter: this.listenerSetter,
+        listenerSetter: tab.listenerSetter,
         doNotEditAvatar: true,
-        middleware: this.middlewareHelper.get()
+        middleware: tab.middlewareHelper.get()
       });
-      this.content.append(this.editPeer.nextBtn);
+      tab.content.append(editPeer.nextBtn);
 
       if(peerId) {
         const div = document.createElement('div');
         div.classList.add('avatar-edit');
-        div.append(this.editPeer.avatarElem.node);
+        div.append(editPeer.avatarElem.node);
 
         const notificationsCheckboxField = new CheckboxField({
           text: 'Notifications'
@@ -125,14 +130,14 @@ export default class AppEditContactTab extends SliderSuperTab {
             return;
           }
 
-          this.managers.appMessagesManager.togglePeerMute({peerId});
+          tab.managers.appMessagesManager.togglePeerMute({peerId});
         });
 
-        this.listenerSetter.add(rootScope)('notify_settings', async(update) => {
+        tab.listenerSetter.add(rootScope)('notify_settings', async(update) => {
           if(update.peer._ !== 'notifyPeer') return;
           const peerId = getPeerId(update.peer.peer);
           if(peerId === peerId) {
-            const enabled = !(await this.managers.appNotificationsManager.isMuted(update.notify_settings));
+            const enabled = !(await tab.managers.appNotificationsManager.isMuted(update.notify_settings));
             if(enabled !== notificationsCheckboxField.checked) {
               notificationsCheckboxField.checked = enabled;
             }
@@ -149,17 +154,17 @@ export default class AppEditContactTab extends SliderSuperTab {
         profileSubtitleDiv.classList.add('profile-subtitle');
         profileSubtitleDiv.append(i18n('EditContact.OriginalName'));
 
-        this.scrollable.append(div, profileNameDiv, profileSubtitleDiv);
+        tab.scrollable.append(div, profileNameDiv, profileSubtitleDiv);
         section.content.append(inputWrapper);
 
         if(!isNew) {
           const notificationsRow = new Row({
             checkboxField: notificationsCheckboxField,
             withCheckboxSubtitle: true,
-            listenerSetter: this.listenerSetter
+            listenerSetter: tab.listenerSetter
           });
 
-          const enabled = !(await this.managers.appNotificationsManager.isPeerLocalMuted({peerId, respectType: false}));
+          const enabled = !(await tab.managers.appNotificationsManager.isPeerLocalMuted({peerId, respectType: false}));
           notificationsCheckboxField.checked = enabled;
 
           section.content.append(notificationsRow.container);
@@ -168,12 +173,12 @@ export default class AppEditContactTab extends SliderSuperTab {
             section.content.append(suggestBirthdayRow.container);
           }
         } else {
-          const user = await this.managers.appUsersManager.getUser(userId);
+          const user = await tab.managers.appUsersManager.getUser(userId);
 
           const phoneRow = new Row({
             icon: 'phone',
             titleLangKey: user.phone ? undefined : 'MobileHidden',
-            title: user.phone ? formatUserPhone(user.phone)  : undefined,
+            title: user.phone ? formatUserPhone(user.phone) : undefined,
             subtitleLangKey: user.phone ? 'Phone' : 'MobileHiddenExceptionInfo',
             subtitleLangArgs: user.phone ? undefined : [new PeerTitle({peerId: peerId}).element]
           });
@@ -184,7 +189,7 @@ export default class AppEditContactTab extends SliderSuperTab {
         section.content.append(inputWrapper);
       }
 
-      this.scrollable.append(section.container);
+      tab.scrollable.append(section.container);
     }
 
     if(!isNew) {
@@ -202,8 +207,8 @@ export default class AppEditContactTab extends SliderSuperTab {
             callback: () => {
               const toggle = toggleDisability([btnDelete], true);
 
-              this.managers.appUsersManager.deleteContacts([userId]).then(() => {
-                this.close();
+              tab.managers.appUsersManager.deleteContacts([userId]).then(() => {
+                tab.close();
               }, () => {
                 toggle();
               });
@@ -211,20 +216,20 @@ export default class AppEditContactTab extends SliderSuperTab {
             isDanger: true
           }])
         }).show();
-      }, {listenerSetter: this.listenerSetter});
+      }, {listenerSetter: tab.listenerSetter});
 
       section.content.append(btnDelete);
 
-      this.scrollable.append(section.container);
+      tab.scrollable.append(section.container);
     } else if(
       privacy.some((privacyRule) => privacyRule._ === 'privacyValueDisallowAll') &&
       !privacy.some((privacyRule) => privacyRule._ === 'privacyValueAllowUsers' && privacyRule.users.includes(userId))
     ) {
       const section = new SettingSection({
         caption: 'NewContact.Exception.ShareMyPhoneNumber.Desc',
-        captionArgs: [await wrapPeerTitle({peerId: this.peerId})]
+        captionArgs: [await wrapPeerTitle({peerId})]
       });
-      const checkboxField = this.sharePhoneCheckboxField = new CheckboxField({
+      const checkboxField = sharePhoneCheckboxField = new CheckboxField({
         text: 'NewContact.Exception.ShareMyPhoneNumber',
         checked: true
       });
@@ -232,32 +237,36 @@ export default class AppEditContactTab extends SliderSuperTab {
 
       section.content.append(row.container);
 
-      this.scrollable.append(section.container);
+      tab.scrollable.append(section.container);
     }
 
-    attachClickEvent(this.editPeer.nextBtn, async() => {
-      this.editPeer.nextBtn.disabled = true;
+    attachClickEvent(editPeer.nextBtn, async() => {
+      editPeer.nextBtn.disabled = true;
 
       try {
-        await this.managers.appUsersManager.addContact(
+        await tab.managers.appUsersManager.addContact(
           userId,
-          this.nameInputField.value,
-          this.lastNameInputField.value,
-          (await this.managers.appUsersManager.getUser(userId)).phone,
-          this.sharePhoneCheckboxField?.checked
-        )
+          nameInputField.value,
+          lastNameInputField.value,
+          (await tab.managers.appUsersManager.getUser(userId)).phone,
+          sharePhoneCheckboxField?.checked
+        );
 
-        if(this.noteInputField.isChanged()) {
-          await this.managers.appProfileManager.updateUserNote(userId, this.noteInputField.richValue);
+        if(noteInputField.isChanged()) {
+          await tab.managers.appProfileManager.updateUserNote(userId, noteInputField.richValue);
         }
       } catch(error) {
-        console.error(error)
+        console.error(error);
         toastNew({langPackKey: 'Error.AnError'});
-        return
+        return;
       }
 
-      this.editPeer.nextBtn.removeAttribute('disabled');
-      this.close();
-    }, {listenerSetter: this.listenerSetter});
-  }
-}
+      editPeer.nextBtn.removeAttribute('disabled');
+      tab.close();
+    }, {listenerSetter: tab.listenerSetter});
+  })());
+
+  return null;
+};
+
+export default EditContact;
