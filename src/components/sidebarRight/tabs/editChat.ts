@@ -7,7 +7,7 @@ import {ChatRights} from '@appManagers/appChatsManager';
 import {Chat, ChatFull, ChatParticipants} from '@layer';
 import {AppChatTypeTab} from '@components/solidJsTabs/tabs';
 import rootScope from '@lib/rootScope';
-import AppGroupPermissionsTab from '@components/sidebarRight/tabs/groupPermissions';
+import {AppGroupPermissionsTab} from '@components/solidJsTabs/tabs';
 import I18n, {i18n, join, LangPackKey} from '@lib/langPack';
 import PopupDeleteDialog from '@components/popups/deleteDialog';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
@@ -336,8 +336,7 @@ export default class AppEditChatTab extends SliderSuperTab {
           titleLangKey: 'ChannelPermissions',
           clickable: () => {
             const tab = this.slider.createTab(AppGroupPermissionsTab);
-            tab.chatId = this.chatId;
-            tab.open();
+            tab.open({chatId: this.chatId});
           },
           icon: 'permissions',
           listenerSetter: this.listenerSetter

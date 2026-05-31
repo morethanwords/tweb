@@ -496,6 +496,19 @@ export const AppSharedFolderTab =
     }
   });
 
+type AppGroupPermissionsTabPayload = {
+  chatId: ChatId
+};
+
+export const AppGroupPermissionsTab =
+  scaffoldSolidJSTab<AppGroupPermissionsTabPayload>({
+    title: 'ChannelPermissions',
+    getComponentModule: () => import('../sidebarRight/tabs/groupPermissions/groupPermissions'),
+    onOpenAfterTimeout: function() {
+      this.scrollable.onScroll();
+    }
+  });
+
 
 export type AppAddMembersExtraCategory = {
   key: string;

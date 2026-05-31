@@ -13,7 +13,7 @@ import InputField from '@components/inputField';
 import SettingSection from '@components/settingSection';
 import getUserStatusString from '@components/wrappers/getUserStatusString';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
-import {ChatAdministratorRights, ChatPermissions, createSolidTabState} from '@components/sidebarRight/tabs/groupPermissions';
+import {ChatAdministratorRights, ChatPermissions, createSolidTabState} from '@components/sidebarRight/tabs/groupPermissions/sharedPermissions';
 import {isParticipantAdmin, isParticipantCreator, participantAdminPredicates} from '@lib/appManagers/utils/chats/isParticipantAdmin';
 import copy from '@helpers/object/copy';
 import {handleChannelsTooMuch} from '@components/popups/channelsTooMuch';
