@@ -92,8 +92,21 @@
     // "experimentalDecorators": true,        /* Enables experimental support for ES7 decorators. */
     // "emitDecoratorMetadata": true,         /* Enables experimental support for emitting type metadata for decorators. */
   },
+  /* tsc --watch (run by vite-plugin-checker in dev) must NOT recurse the .claude
+     git worktrees or node_modules. With no "include", tsc sets up a recursive
+     watcher on the project root; descending into .claude (40k+ dirs across ~18
+     worktrees, each with its own node_modules) opens enough fs.watch handles to
+     crash the dev server with "EMFILE: too many open files, watch" on macOS.
+     excludeDirectories prunes those subtrees from the watcher entirely. */
+  "watchOptions": {
+    "watchFile": "useFsEvents",
+    "watchDirectory": "useFsEvents",
+    "fallbackPolling": "dynamicPriority",
+    "excludeDirectories": ["**/node_modules", "**/.claude", "dist", "public", "coverage"]
+  },
   "exclude": [
     "node_modules",
+    ".claude",
     "public",
     "dist",
     "coverage",

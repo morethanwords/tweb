@@ -9,7 +9,7 @@ import checker from 'vite-plugin-checker';
 // import devtools from 'solid-devtools/vite'
 import autoprefixer from 'autoprefixer';
 import {resolve} from 'path';
-import {existsSync, copyFileSync} from 'fs';
+import {existsSync, copyFileSync, readFileSync} from 'fs';
 import {ServerOptions} from 'vite';
 import {watchLangFile} from './watch-lang.js';
 import path from 'path';
@@ -51,9 +51,30 @@ const USE_SELF_SIGNED_CERTS = USE_SSL && false;
 // * nano /etc/hosts
 // * 127.0.0.1 web.telegram.org
 const host = USE_SSL ? 'web.telegram.org' : 'localhost';
+
+// HTTP/2 for `pnpm start`. Vite serves dev modules unbundled — one request per module —
+// and over http/1.1 the browser's ~6-connections-per-origin cap serialises the hundreds
+// of module requests into a slow waterfall (lots of "pending"). Enabling https flips the
+// dev server to HTTP/2, which multiplexes them all over one connection and kills the
+// waterfall. Use mkcert, NOT a self-signed cert: tweb's ServiceWorker refuses to register
+// on an untrusted cert. One-time setup:  mkcert -install && (cd certs && mkcert localhost)
+// Auto-enabled once the cert exists; off under TWEB_PREVIEW (the merged preview config
+// must stay on http for its tooling) and off until the cert is present (no cert → today's
+// plain-http dev, unchanged).
+const DEV_HTTP2_KEY = path.join(certsDir, 'localhost-key.pem');
+const DEV_HTTP2_CERT = path.join(certsDir, 'localhost.pem');
+const USE_DEV_HTTP2 = !USE_SSL && !process.env.TWEB_PREVIEW && !process.env.VITEST &&
+  existsSync(DEV_HTTP2_KEY) && existsSync(DEV_HTTP2_CERT);
+
 const serverOptions: ServerOptions = {
   host,
   port: USE_SSL ? 443 : 8080,
+  watch: {
+    // git worktrees (and their nested node_modules) live under .claude — watching
+    // them recursively blows past the macOS open-files limit (EMFILE on `watch`).
+    // node_modules/.git are covered by Vite's defaults; .claude is not, so add it.
+    ignored: ['**/.claude/**']
+  },
   sourcemapIgnoreList(sourcePath, sourcemapPath) {
     return sourcePath.includes('node_modules') ||
       sourcePath.includes('logger') ||
@@ -62,6 +83,9 @@ const serverOptions: ServerOptions = {
   https: USE_SIGNED_CERTS ? {
     key: path.join(certsDir, host + '-key.pem'),
     cert: path.join(certsDir, host + '.pem')
+  } : USE_DEV_HTTP2 ? {
+    key: readFileSync(DEV_HTTP2_KEY),
+    cert: readFileSync(DEV_HTTP2_CERT)
   } : undefined
 };
 
@@ -113,16 +137,24 @@ export default defineConfig({
       eslint: {
         // for example, lint .ts and .tsx
         lintCommand: 'eslint "./src/**/*.{ts,tsx}" --ignore-pattern "/src/solid/*"',
-        useFlatConfig: true
+        useFlatConfig: true,
+        // Only watch src/ for re-lint. The checker's default watchTarget is the project
+        // ROOT, and its ignore filter skips files but never directories — so chokidar
+        // descends into the .claude git worktrees (~40k dirs) and crashes the dev server
+        // with "EMFILE: too many open files, watch" on macOS. The lint glob is src-only.
+        watchPath: 'src'
       }
     }),
     solidPlugin(),
     handlebarsPlugin as any,
     USE_SELF_SIGNED_CERTS ? basicSsl(BASIC_SSL_CONFIG) : undefined,
-    visualizer({
+    // Only emit the bundle treemap (stats.html) when explicitly analyzing (ANALYZE=1):
+    // it adds build time and writes a ~1.3MB file that otherwise gets globbed into the
+    // dep scan. Run `ANALYZE=1 pnpm build` to generate it.
+    process.env.ANALYZE ? visualizer({
       gzipSize: true,
       template: 'treemap'
-    })
+    }) : undefined
   ].filter(Boolean),
   test: {
     // include: ['**/*.{test,spec}.?(c|m)[jt]s?(x)'],
@@ -152,6 +184,14 @@ export default defineConfig({
   },
   server: serverOptions,
   base: '',
+  // Pin the dep-optimizer's scan to the real entry (index.html → src/index.ts).
+  // Otherwise Vite auto-globs every *.html (stats.html, public/*.html, the icomoon
+  // demo.html) as scan entries, and a parse error in any of them (e.g. the stale
+  // public/*.js build artifacts with merge-conflict markers) aborts the whole scan
+  // and disables dependency pre-bundling — making cold dev loads slow and reload-prone.
+  optimizeDeps: {
+    entries: ['index.html']
+  },
   build: {
     target: 'es2020',
     sourcemap: true,
