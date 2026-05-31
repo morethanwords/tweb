@@ -26,7 +26,7 @@ import formatStarsAmount from '@appManagers/utils/payments/formatStarsAmount';
 import {getPriceChangedActionMessageLangParams} from '@lib/lang';
 import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
 import {getCollectibleName} from '@appManagers/utils/gifts/getCollectibleName';
-import {truncateTextWithEntities} from '@helpers/string/truncateTextWithEntities';
+import {truncateTextWithEntities} from '@lib/richTextProcessor/truncateTextWithEntities';
 
 async function wrapLinkToMessage(options: WrapMessageForReplyOptions) {
   const wrapped = await wrapMessageForReply(options);

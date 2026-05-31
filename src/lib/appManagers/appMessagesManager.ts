@@ -335,6 +335,7 @@ type UploadThumbAndCoverArgs = {
   peer: InputPeer,
   blob: Blob,
   isCover: boolean
+  onUploadPromise?: (promise: CancellablePromise<InputFile>) => void
 };
 
 type UploadVideoCoverArgs = {
@@ -488,6 +489,7 @@ type UploadMediaFileArgs =
     file: File | Blob;
 
     onUploadDeferred?: (deferred: CancellablePromise<any>) => void;
+    onThumbnailUploadDeferred?: (deferred: CancellablePromise<any>) => void;
   };
 
 type InvokeEditMessageMediaArgs = {
@@ -1101,7 +1103,7 @@ export class AppMessagesManager extends AppManager {
     sentDeferred.notifyAll({done: 0, total: file.size});
   }
 
-  public async uploadMediaFile({peerId, file, uploadingFileName, fileType, apiFileName, attachType, attributes, objectURL, thumb, spoiler, actionName, onUploadDeferred}: UploadMediaFileArgs) {
+  public async uploadMediaFile({peerId, file, uploadingFileName, fileType, apiFileName, attachType, attributes, objectURL, thumb, spoiler, actionName, onUploadDeferred, onThumbnailUploadDeferred}: UploadMediaFileArgs) {
     const uploadPromise = this.apiFileManager.upload({file, fileName: uploadingFileName});
     onUploadDeferred?.(uploadPromise);
 
@@ -1110,7 +1112,8 @@ export class AppMessagesManager extends AppManager {
       thumbUploadPromise = this.uploadThumbAndCover({
         blob: thumb.blob,
         isCover: !!thumb.isCover,
-        peer: this.appPeersManager.getInputPeerById(peerId)
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        onUploadPromise: onThumbnailUploadDeferred
       });
     }
 
@@ -2083,8 +2086,11 @@ export class AppMessagesManager extends AppManager {
     };
   }
 
-  private async uploadThumbAndCover({blob, isCover, peer}: UploadThumbAndCoverArgs) {
-    const file = await this.apiFileManager.upload({file: blob});
+  private async uploadThumbAndCover({blob, isCover, peer, onUploadPromise}: UploadThumbAndCoverArgs) {
+    const promise = this.apiFileManager.upload({file: blob});
+    onUploadPromise?.(promise);
+
+    const file = await promise;
 
     if(!isCover) return {file};
 
@@ -3300,6 +3306,13 @@ export class AppMessagesManager extends AppManager {
     if(pendingData) {
       const {peerId, tempId, storage} = pendingData;
       const historyStorage = this.getHistoryStorage(peerId);
+
+      const tempMessage = this.getMessageFromStorage(storage, tempId);
+
+      if(tempMessage?._ === 'message' && tempMessage?.media?._ === 'messageMediaPoll') {
+        const pollId = tempMessage.media.poll.id;
+        this.appPollsManager.runUploadingCancelCallbacksForPoll(pollId);
+      }
 
       if(this.appPeersManager.isChannel(peerId)) {
         this.apiUpdatesManager.processLocalUpdate({
@@ -8785,7 +8798,6 @@ export class AppMessagesManager extends AppManager {
         }
 
         const prevPollId = tempMessage.media.poll.id;
-        this.appPollsManager.deleteUploadingFileNamesForPoll(prevPollId);
         delete this.appPollsManager.polls[prevPollId];
         delete this.appPollsManager.results[prevPollId];
 

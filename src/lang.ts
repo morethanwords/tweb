@@ -4737,7 +4737,12 @@ const lang = {
   'CreateBot.FailedToCreate': 'Failed to create the bot.',
   'ReplaceSticker': 'Replace Sticker',
   'EditThisGIF': 'Edit this GIF',
-  'ReplaceGIF': 'Replace GIF'
+  'ReplaceGIF': 'Replace GIF',
+
+  'CancelPollConfirm.Title': 'Cancel Sending Poll',
+  'CancelPollConfirm.Description': 'Are you sure you want to cancel sending the poll?',
+  'CancelPollConfirm.Button': 'Cancel Sending',
+  'CancelPollConfirm.Timeout': 'The poll was already sent, you can delete the message instead.'
 };
 
 export default lang;

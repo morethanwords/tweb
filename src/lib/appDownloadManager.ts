@@ -45,6 +45,9 @@ export class AppDownloadManager {
   // private progressCallbacks: {[fileName: string]: Array<ProgressCallback>} = {};
   private managers: AppManagers;
 
+  // To be assigned elsewhere in the app, importing confirmationPopup here will result in an importing error
+  public showPollCancelConfirmation: (randomId: string) => void;
+
   public construct(managers: AppManagers) {
     this.managers = managers;
     rootScope.addEventListener('download_progress', (details) => {
@@ -70,13 +73,19 @@ export class AppDownloadManager {
         main: deferred as any
       };
 
-      deferred.cancel = () => {
+      const runCancel = async() => {
+        if(await this.confirmBeforeCancelingPollUpload(fileName)) return;
+
         const error = makeError('DOWNLOAD_CANCELED');
 
         this.managers.apiFileManager.cancelDownload(fileName);
 
         deferred.reject(error);
         deferred.cancel = noop;
+      };
+
+      deferred.cancel = () => {
+        runCancel();
       };
 
       deferred.catch(() => {
@@ -105,6 +114,15 @@ export class AppDownloadManager {
     }
 
     return download[type] = deferred as any;
+  }
+
+  private async confirmBeforeCancelingPollUpload(fileName: string) {
+    const randomId = await this.managers.appPollsManager.getRandomIdByUploadingFileName(fileName);
+    if(!randomId || !this.showPollCancelConfirmation) return false;
+
+    this.showPollCancelConfirmation(randomId);
+
+    return true;
   }
 
   public getNewDeferredForUpload<T extends Promise<any>>(fileName: string, promise: T) {

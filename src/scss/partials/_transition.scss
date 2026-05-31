@@ -189,6 +189,23 @@
   transition: transform 0.2s ease-out;
 }
 
+.t-zoom-enter-active,
+.t-zoom-exit-active,
+.t-var-zoom-enter-active,
+.t-var-zoom-exit-active {
+  transition: transform 0.12s ease-out;
+}
+
+.t-zoom-enter,
+.t-zoom-exit-to {
+  transform: scale(0);
+}
+
+.t-var-zoom-enter,
+.t-var-zoom-exit-to {
+  --t-zoom-scale: 0;
+}
+
 /*
  * zoom-fade
  */

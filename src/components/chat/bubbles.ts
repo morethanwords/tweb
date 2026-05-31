@@ -1017,7 +1017,7 @@ export default class ChatBubbles {
       this.setBubbleSendingStatus(bubble, 'error');
 
       const message = apiManagerProxy.getMessageById(+bubble.dataset.mid);
-      if(!('repayRequest' in message) || !message.repayRequest) return;
+      if(!message || !('repayRequest' in message) || !message.repayRequest) return;
 
       const serviceMsgText = bubble.querySelector('.service-msg-i18n-element');
       if(!serviceMsgText) return;

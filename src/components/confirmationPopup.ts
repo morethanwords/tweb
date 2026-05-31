@@ -11,6 +11,7 @@ export type PopupConfirmationOptions = PopupPeerOptions & {
   inputField?: PopupPeerOptions['inputField'],
   rejectWithReason?: boolean,
   className?: string;
+  onPopup?: (popup: PopupPeer) => void;
 };
 
 export default function confirmationPopup<T extends PopupConfirmationOptions>(
@@ -36,6 +37,9 @@ export default function confirmationPopup<T extends PopupConfirmationOptions>(
     options.checkboxes ??= checkbox && [checkbox];
 
     const popup = PopupElement.createPopup(PopupPeer, classNames('popup-confirmation', options.className), options);
+
+    options.onPopup?.(popup);
+
     popup.addEventListener('closeAfterTimeout', () => {
       reject(rejectWithReason ? 'closed' : undefined);
     });

@@ -110,6 +110,10 @@ import {children, createRoot, untrack} from 'solid-js';
 import useFolders from '@stores/folders';
 import FoldersTabs from '@components/foldersTabs';
 import clamp from '@helpers/number/clamp';
+import confirmationPopup from '@components/confirmationPopup';
+import ListenerSetter from '@helpers/listenerSetter';
+import type PopupPeer from '@components/popups/peer';
+import {toastNew} from '@components/toast';
 
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
@@ -696,6 +700,7 @@ export class AppDialogsManager {
 
     PopupElement.MANAGERS = PopupElementTsx.MANAGERS = rootScope.managers = managers;
     appDownloadManager.construct(managers);
+    appDownloadManager.showPollCancelConfirmation = (randomId: string) => this.showPollCancelConfirmation(randomId);
     appSidebarLeft.construct(managers);
     appSidebarRight.construct(managers);
     groupCallsController.construct(managers);
@@ -2620,6 +2625,43 @@ export class AppDialogsManager {
 
     return d;
     // return this.addDialog(options.peerId, options.container, options.rippleEnabled, options.onlyFirstName, options.meAsSaved, options.append, options.avatarSize, options.autonomous, options.lazyLoadQueue, options.loadPromises, options.fromName, options.noIcons);
+  }
+
+  private showPollCancelConfirmation(randomId: string) {
+    const listenerSetter = new ListenerSetter;
+    let popup: PopupPeer;
+
+    const onSent = () => {
+      toastNew({
+        langPackKey: 'CancelPollConfirm.Timeout'
+      });
+    }
+
+    listenerSetter.add(rootScope)('message_sent', ({tempMessage}) => {
+      if(tempMessage?.random_id === randomId) {
+        popup?.hide();
+        onSent();
+      }
+    });
+
+    confirmationPopup({
+      titleLangKey: 'CancelPollConfirm.Title',
+      descriptionLangKey: 'CancelPollConfirm.Description',
+      button: {
+        langKey: 'CancelPollConfirm.Button'
+      },
+      onPopup: (p) => {
+        popup = p;
+      }
+    }).then(() => {
+      this.managers.appMessagesManager.cancelPendingMessage(randomId).then((wasCanceled) => {
+        if(!wasCanceled) {
+          onSent();
+        }
+      });
+    }, noop).finally(() => {
+      listenerSetter.removeAll();
+    });
   }
 }
 

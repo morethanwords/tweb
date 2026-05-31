@@ -132,7 +132,6 @@
 
   &.disabled {
     cursor: inherit;
-    opacity: 0;
   }
 }
 
@@ -194,6 +193,21 @@
 
   &InputField {
     flex: 1;
+  }
+
+  &Icon {
+    &Container {
+      position: relative;
+      width: 1em;
+      height: 1em;
+    }
+
+    &Floating {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(var(--t-zoom-scale, 1));
+    }
   }
 }
 
