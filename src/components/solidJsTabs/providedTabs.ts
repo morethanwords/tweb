@@ -1,6 +1,5 @@
 import type {AppNewGroupTab} from '@components/solidJsTabs/tabs';
-import AppPrivacyAndSecurityTab from '@components/sidebarLeft/tabs/privacyAndSecurity';
-import {AppAddMembersTab, AppNotificationsTab, AppPasscodeEnterPasswordTab, AppPasscodeLockTab, AppUserPermissionsTab} from '@components/solidJsTabs/tabs';
+import {AppAddMembersTab, AppNotificationsTab, AppPasscodeEnterPasswordTab, AppPasscodeLockTab, AppPrivacyAndSecurityTab, AppUserPermissionsTab} from '@components/solidJsTabs/tabs';
 
 
 export type ProvidedTabs = {

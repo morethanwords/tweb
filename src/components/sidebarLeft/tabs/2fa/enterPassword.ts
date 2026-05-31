@@ -27,7 +27,7 @@ import ctx from '@environment/ctx';
 import SliderSuperTab from '@components/sliderTab';
 import AppTwoStepVerificationEmailConfirmationTab from '@components/sidebarLeft/tabs/2fa/emailConfirmation';
 import {wrapEmailPattern} from '@components/popups/emailSetup';
-import AppPrivacyAndSecurityTab from '@components/sidebarLeft/tabs/privacyAndSecurity';
+import {AppPrivacyAndSecurityTab} from '@components/solidJsTabs/tabs';
 
 export class ForgotPasswordLink {
   private state: AccountPassword;

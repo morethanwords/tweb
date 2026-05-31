@@ -1,6 +1,7 @@
 import {CancellablePromise} from '@helpers/cancellablePromise';
 import {AccountPasskeys, Authorization, ChannelParticipant, Chat, ChatFull, ChatParticipant, DialogFilter, ExportedChatlistInvite, GlobalPrivacySettings, Passkey, WebAuthorization} from '@layer';
 import type SidebarSlider from '@components/slider';
+import type {SliderSuperTab} from '@components/slider';
 import getParticipantPeerId from '@appManagers/utils/chats/getParticipantPeerId';
 import type {MyDialogFilter} from '@lib/storages/filters';
 import type AppEditFolderTab from '@components/sidebarLeft/tabs/editFolder';
@@ -508,6 +509,24 @@ export const AppGroupPermissionsTab =
       this.scrollable.onScroll();
     }
   });
+
+const getPrivacyAndSecurityInitArgs = (fromTab: SliderSuperTab) => ({
+  appConfig: fromTab.managers.apiManager.getAppConfig(),
+  globalPrivacy: fromTab.managers.appPrivacyManager.getGlobalPrivacySettings(),
+  webAuthorizations: fromTab.managers.appSeamlessLoginManager.getWebAuthorizations()
+});
+
+type AppPrivacyAndSecurityTabPayload = ReturnType<typeof getPrivacyAndSecurityInitArgs>;
+
+export const AppPrivacyAndSecurityTab =
+  scaffoldSolidJSTabEventable<AppPrivacyAndSecurityTabPayload>({
+    title: 'PrivacySettings',
+    getComponentModule: () => import('../sidebarLeft/tabs/privacyAndSecurity')
+  });
+
+// Preload (appConfig / globalPrivacy / webAuthorizations) read off the constructor
+// by settings.tsx's makeSubTabConfig, matching the old static getInitArgs.
+(AppPrivacyAndSecurityTab as any).getInitArgs = getPrivacyAndSecurityInitArgs;
 
 
 export type AppAddMembersExtraCategory = {
