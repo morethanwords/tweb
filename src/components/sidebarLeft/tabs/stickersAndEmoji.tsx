@@ -1,3 +1,4 @@
+import {Component, onMount} from 'solid-js';
 import assumeType from '@helpers/assumeType';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import positionElementByIndex from '@helpers/dom/positionElementByIndex';
@@ -12,24 +13,26 @@ import LazyLoadQueue from '@components/lazyLoadQueue';
 import showStickersPopup from '@components/popups/stickers';
 import Row from '@components/row';
 import SettingSection from '@components/settingSection';
-import SliderSuperTab from '@components/sliderTab';
 import wrapStickerSetThumb from '@components/wrappers/stickerSetThumb';
 import wrapStickerToRow from '@components/wrappers/stickerToRow';
 import {AppQuickReactionTab} from '@components/solidJsTabs/tabs';
 import {useAppSettings} from '@stores/appSettings';
 import {getStickerSetInputById} from '@lib/appManagers/utils/stickers/getStickerSetInput';
-export default class AppStickersAndEmojiTab extends SliderSuperTab {
-  public static getInitArgs() {
-    return {
-      allStickers: rootScope.managers.appStickersManager.getAllStickers(),
-      quickReaction: rootScope.managers.appReactionsManager.getQuickReaction()
-    };
-  }
+import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
+import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 
-  public init(p: ReturnType<typeof AppStickersAndEmojiTab['getInitArgs']>) {
-    this.container.classList.add('stickers-emoji-container');
-    this.setTitle('StickersName');
-    const [appSettings, setAppSettings] = useAppSettings();
+const StickersAndEmoji: Component = () => {
+  const [tab] = useSuperTab();
+  const [appSettings, setAppSettings] = useAppSettings();
+  const promiseCollector = usePromiseCollector();
+
+  onMount(() => {
+    tab.container.classList.add('stickers-emoji-container');
+
+    let p = {
+      allStickers: tab.managers.appStickersManager.getAllStickers(),
+      quickReaction: tab.managers.appReactionsManager.getQuickReaction()
+    };
 
     const promises: Promise<any>[] = [];
 
@@ -40,7 +43,7 @@ export default class AppStickersAndEmojiTab extends SliderSuperTab {
         icon: 'lamp',
         titleLangKey: 'Stickers.SuggestStickers',
         clickable: true,
-        listenerSetter: this.listenerSetter,
+        listenerSetter: tab.listenerSetter,
         titleRightSecondary: true
       });
 
@@ -66,18 +69,18 @@ export default class AppStickersAndEmojiTab extends SliderSuperTab {
         buttons: [{
           icon: 'stickers_face',
           text: 'SuggestStickersAll',
-          onClick: setStickersSuggest.bind(this, 'all')
+          onClick: setStickersSuggest.bind(null, 'all')
         }, {
           icon: 'newprivate',
           text: 'SuggestStickersInstalled',
-          onClick: setStickersSuggest.bind(this, 'installed')
+          onClick: setStickersSuggest.bind(null, 'installed')
         }, {
           icon: 'stop',
           text: 'SuggestStickersNone',
-          onClick: setStickersSuggest.bind(this, 'none')
+          onClick: setStickersSuggest.bind(null, 'none')
         }],
         listenTo: suggestStickersRow.container,
-        middleware: this.middlewareHelper.get(),
+        middleware: tab.middlewareHelper.get(),
         listenForClick: true
       });
 
@@ -85,9 +88,9 @@ export default class AppStickersAndEmojiTab extends SliderSuperTab {
         titleLangKey: 'DoubleTapSetting',
         havePadding: true,
         clickable: () => {
-          this.slider.createTab(AppQuickReactionTab).open();
+          tab.slider.createTab(AppQuickReactionTab).open();
         },
-        listenerSetter: this.listenerSetter
+        listenerSetter: tab.listenerSetter
       });
 
       const renderQuickReaction = () => {
@@ -95,7 +98,7 @@ export default class AppStickersAndEmojiTab extends SliderSuperTab {
           if(reaction._ === 'availableReaction') {
             return reaction.static_icon;
           } else {
-            return this.managers.appEmojiManager.getCustomEmojiDocument(reaction.document_id);
+            return tab.managers.appEmojiManager.getCustomEmojiDocument(reaction.document_id);
           }
         }).then((doc) => {
           wrapStickerToRow({
@@ -108,8 +111,11 @@ export default class AppStickersAndEmojiTab extends SliderSuperTab {
 
       renderQuickReaction();
 
-      this.listenerSetter.add(rootScope)('quick_reaction', () => {
-        p = AppStickersAndEmojiTab.getInitArgs();
+      tab.listenerSetter.add(rootScope)('quick_reaction', () => {
+        p = {
+          allStickers: tab.managers.appStickersManager.getAllStickers(),
+          quickReaction: tab.managers.appReactionsManager.getQuickReaction()
+        };
         renderQuickReaction();
       });
 
@@ -119,10 +125,10 @@ export default class AppStickersAndEmojiTab extends SliderSuperTab {
         checkboxField: new CheckboxField({
           name: 'loop',
           stateKey: joinDeepPath('settings', 'stickers', 'loop'),
-          listenerSetter: this.listenerSetter,
+          listenerSetter: tab.listenerSetter,
           toggle: true
         }),
-        listenerSetter: this.listenerSetter
+        listenerSetter: tab.listenerSetter
       });
 
       section.content.append(
@@ -131,7 +137,7 @@ export default class AppStickersAndEmojiTab extends SliderSuperTab {
         loopStickersRow.container
       );
 
-      this.scrollable.append(section.container);
+      tab.scrollable.append(section.container);
     }
 
     {
@@ -143,10 +149,10 @@ export default class AppStickersAndEmojiTab extends SliderSuperTab {
         checkboxField: new CheckboxField({
           name: 'suggest-emoji',
           stateKey: joinDeepPath('settings', 'emoji', 'suggest'),
-          listenerSetter: this.listenerSetter,
+          listenerSetter: tab.listenerSetter,
           toggle: true
         }),
-        listenerSetter: this.listenerSetter
+        listenerSetter: tab.listenerSetter
       });
       const bigEmojiRow = new Row({
         icon: 'smile',
@@ -154,10 +160,10 @@ export default class AppStickersAndEmojiTab extends SliderSuperTab {
         checkboxField: new CheckboxField({
           name: 'emoji-big',
           stateKey: joinDeepPath('settings', 'emoji', 'big'),
-          listenerSetter: this.listenerSetter,
+          listenerSetter: tab.listenerSetter,
           toggle: true
         }),
-        listenerSetter: this.listenerSetter
+        listenerSetter: tab.listenerSetter
       });
 
       section.content.append(
@@ -165,7 +171,7 @@ export default class AppStickersAndEmojiTab extends SliderSuperTab {
         bigEmojiRow.container
       );
 
-      this.scrollable.append(section.container);
+      tab.scrollable.append(section.container);
     }
 
     {
@@ -177,17 +183,17 @@ export default class AppStickersAndEmojiTab extends SliderSuperTab {
         checkboxField: new CheckboxField({
           name: 'dynamic-pack-order',
           stateKey: joinDeepPath('settings', 'stickers', 'dynamicPackOrder'),
-          listenerSetter: this.listenerSetter,
+          listenerSetter: tab.listenerSetter,
           toggle: true
         }),
-        listenerSetter: this.listenerSetter
+        listenerSetter: tab.listenerSetter
       });
 
       section.content.append(
         dynamicPackOrderRow.container
       );
 
-      this.scrollable.append(section.container);
+      tab.scrollable.append(section.container);
     }
 
     {
@@ -207,7 +213,7 @@ export default class AppStickersAndEmojiTab extends SliderSuperTab {
           clickable: () => {
             showStickersPopup(getStickerSetInputById(stickerSet));
           },
-          listenerSetter: this.listenerSetter
+          listenerSetter: tab.listenerSetter
         });
 
         row.container.dataset.id = '' + stickerSet.id;
@@ -227,7 +233,7 @@ export default class AppStickersAndEmojiTab extends SliderSuperTab {
           width: 36,
           height: 36,
           autoplay: true,
-          middleware: this.middlewareHelper.get()
+          middleware: tab.middlewareHelper.get()
         });
 
         row.container.append(div);
@@ -243,20 +249,20 @@ export default class AppStickersAndEmojiTab extends SliderSuperTab {
 
       promises.push(promise);
 
-      this.listenerSetter.add(rootScope)('stickers_installed', (set) => {
+      tab.listenerSetter.add(rootScope)('stickers_installed', (set) => {
         if(!stickerSets[set.id]) {
           renderStickerSet(set, 'prepend');
         }
       });
 
-      this.listenerSetter.add(rootScope)('stickers_deleted', (set) => {
+      tab.listenerSetter.add(rootScope)('stickers_deleted', (set) => {
         if(stickerSets[set.id]) {
           stickerSets[set.id].container.remove();
           delete stickerSets[set.id];
         }
       });
 
-      this.listenerSetter.add(rootScope)('stickers_order', ({type, order}) => {
+      tab.listenerSetter.add(rootScope)('stickers_order', ({type, order}) => {
         if(type !== 'stickers') {
           return;
         }
@@ -267,11 +273,11 @@ export default class AppStickersAndEmojiTab extends SliderSuperTab {
             return;
           }
 
-          positionElementByIndex(row.container, stickersContent, idx)
+          positionElementByIndex(row.container, stickersContent, idx);
         });
       });
 
-      this.listenerSetter.add(rootScope)('stickers_top', (id) => {
+      tab.listenerSetter.add(rootScope)('stickers_top', (id) => {
         const row = stickerSets[id];
         if(!row) {
           return;
@@ -282,16 +288,20 @@ export default class AppStickersAndEmojiTab extends SliderSuperTab {
 
       new Sortable({
         list: stickersContent,
-        middleware: this.middlewareHelper.get(),
+        middleware: tab.middlewareHelper.get(),
         onSort: (idx, newIdx) => {
           const order = Array.from(stickersContent.children).map((el) => (el as HTMLElement).dataset.id);
-          this.managers.appStickersManager.reorderStickerSets(order);
+          tab.managers.appStickersManager.reorderStickerSets(order);
         }
       });
 
-      this.scrollable.append(section.container);
+      tab.scrollable.append(section.container);
     }
 
-    return Promise.all(promises);
-  }
-}
+    promiseCollector.collect(Promise.all(promises));
+  });
+
+  return null;
+};
+
+export default StickersAndEmoji;

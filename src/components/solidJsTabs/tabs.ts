@@ -172,6 +172,13 @@ export const AppQuickReactionTab =
   });
 
 
+export const AppStickersAndEmojiTab =
+  scaffoldSolidJSTab({
+    title: 'StickersName',
+    getComponentModule: () => import('../sidebarLeft/tabs/stickersAndEmoji')
+  });
+
+
 export const AppPowerSavingTab =
   scaffoldSolidJSTab({
     title: 'LiteMode.Title',
