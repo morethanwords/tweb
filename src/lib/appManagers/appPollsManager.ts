@@ -14,8 +14,8 @@ import getDocumentInput from './utils/docs/getDocumentInput';
 import getMessageThreadId from './utils/messages/getMessageThreadId';
 import getPhotoInput from './utils/photos/getPhotoInput';
 
-type PollId = Poll['id'];
 
+type PollId = Poll['id'];
 
 type MakePollMediaArgs = {
   peerId: PeerId;
@@ -334,8 +334,22 @@ export class AppPollsManager extends AppManager {
     if(message.media?._ !== 'messageMediaPoll') return;
 
     const peerId = this.appPeersManager.getPeerMigratedTo(message.peerId) || message.peerId;
+    const messageId = message.mid;
 
     const uploadingMedia = media ? this.uploadPollMedia(peerId, media) : undefined;
+
+    if(message.pFlags.is_outgoing) {
+      return this.appMessagesManager.invokeAfterMessageIsSent(messageId, 'addPollAnswer', (message) => {
+        if(message?._ !== 'message') return;
+        return this.finalizeAddingPollAnswer(message, text, uploadingMedia);
+      });
+    }
+
+    return this.finalizeAddingPollAnswer(message, text, uploadingMedia);
+  }
+
+  private async finalizeAddingPollAnswer(message: Message.message, text: TextWithEntities, uploadingMedia?: UploadPollMediaResult) {
+    const peerId = this.appPeersManager.getPeerMigratedTo(message.peerId) || message.peerId;
 
     const inputPeer = this.appPeersManager.getInputPeerById(peerId);
 
@@ -826,6 +840,7 @@ export class AppPollsManager extends AppManager {
     ].filter(Boolean);
 
     message.send = async() => {
+      // await pause(12_000);
       try {
         await this.invokeSendPoll({
           peerId,
