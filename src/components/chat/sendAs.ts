@@ -118,7 +118,7 @@ export default class ChatSendAs {
       onOpen: (e, btnMenu) => {
         sendAsButtons[0].element.classList.add('btn-menu-item-header');
         this.btnMenu = btnMenu as any;
-        this.btnMenu.classList.add('scrollable', 'scrollable-y');
+        this.btnMenu.classList.add('scrollable', 'scrollable-y', 'new-message-send-as-menu');
         this.btnMenu.append(...this.buttons.map((button) => button.element));
       },
       onClose: () => {
@@ -234,7 +234,7 @@ export default class ChatSendAs {
     const duration = skipAnimation ? 0 : SEND_AS_ANIMATION_DURATION;
     const avatar = this.avatar = avatarNew({
       middleware: this.middlewareHelper.get(),
-      size: 30,
+      size: 40,
       isDialog: false,
       peerId: sendAsPeerId
     });

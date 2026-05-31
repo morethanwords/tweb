@@ -810,9 +810,9 @@
   }
 
 	.new-message-wrapper {
-    --send-as-size: 1.875rem;
-    --send-as-margin-left: .25rem;
-    --send-as-margin-right: .375rem;
+    --send-as-size: 2.5rem;
+    --send-as-margin-left: 0rem;
+    --send-as-margin-right: .25rem;
     --send-as-total-size: calc(var(--send-as-size) + var(--send-as-margin-left) + var(--send-as-margin-right));
     --commands-size: 2.375rem;
     --commands-margin-left: 0rem;
@@ -890,43 +890,6 @@
         // margin: 0 0.375rem .4375rem var(--send-as-margin-left);
         margin-inline-start: var(--send-as-margin-left);
         background: none !important;
-
-        .btn-menu {
-          max-height: 20rem;
-          max-width: 20rem;
-          top: auto;
-          inset-inline-end: auto;
-          inset-inline-start: calc(var(--padding-horizontal) * -1 - .25rem) !important;
-          width: auto;
-          height: auto;
-          // transform: scale3d(1, 1, 1);
-
-          &-item {
-            height: 2.25rem;
-
-            &-header {
-              height: 1.875rem;
-            }
-
-            &-icon {
-              margin-inline-end: calc(var(--icon-margin) - .5rem);
-            }
-
-            &-text {
-              @include text-overflow();
-              // font-size: .875rem !important;
-              line-height: 1 !important;
-              display: flex;
-              flex-direction: column;
-              justify-content: center;
-            }
-
-            &-subtitle {
-              font-size: .8125rem;
-              font-weight: 400;
-            }
-          }
-        }
       }
 
       &-avatar {
@@ -1471,4 +1434,42 @@
   position: absolute;
   inset-inline-end: 4px;
   top: 4px;
+}
+
+.new-message-send-as {
+  &-menu {
+    max-height: 20rem !important;
+    max-width: 20rem !important;
+    width: auto !important;
+    height: auto !important;
+
+    $parent: ".btn-menu";
+    #{$parent} {
+      &-item {
+        height: 2.25rem;
+
+        &-header {
+          height: 1.875rem;
+        }
+
+        &-icon {
+          margin-inline-end: calc(var(--icon-margin) - .5rem);
+        }
+
+        &-text {
+          @include text-overflow();
+          // font-size: .875rem !important;
+          line-height: 1 !important;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+        }
+
+        &-subtitle {
+          font-size: .8125rem;
+          font-weight: 400;
+        }
+      }
+    }
+  }
 }
