@@ -380,6 +380,12 @@ export const AppChatRequestsTab =
     getComponentModule: () => import('../sidebarRight/tabs/chatRequests')
   });
 
+export const AppChatReactionsTab =
+  scaffoldSolidJSTabEventable<{chatId: ChatId}>({
+    title: 'Reactions',
+    getComponentModule: () => import('../sidebarRight/tabs/chatReactions')
+  });
+
 
 export type AppAddMembersExtraCategory = {
   key: string;

@@ -13,7 +13,7 @@ import PopupDeleteDialog from '@components/popups/deleteDialog';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import toggleDisability from '@helpers/dom/toggleDisability';
 import CheckboxField from '@components/checkboxField';
-import AppChatReactionsTab from '@components/sidebarRight/tabs/chatReactions';
+import {AppChatReactionsTab} from '@components/solidJsTabs/tabs';
 import hasRights from '@appManagers/utils/chats/hasRights';
 import replaceContent from '@helpers/dom/replaceContent';
 import SettingSection from '@components/settingSection';
@@ -256,8 +256,7 @@ export default class AppEditChatTab extends SliderSuperTab {
             constructor: AppChatReactionsTab,
             slider: this.slider,
             getInitArgs: () => ({
-              chatId: this.chatId,
-              p: AppChatReactionsTab.getInitArgs(this.chatId)
+              chatId: this.chatId
             })
           },
           listenerSetter: this.listenerSetter

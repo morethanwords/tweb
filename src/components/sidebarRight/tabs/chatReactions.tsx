@@ -1,37 +1,27 @@
+import {Component} from 'solid-js';
 import replaceContent from '@helpers/dom/replaceContent';
 import debounce from '@helpers/schedulers/debounce';
 import {ChatReactions, Reaction} from '@layer';
 import {i18n, LangPackKey} from '@lib/langPack';
-import rootScope from '@lib/rootScope';
 import CheckboxField from '@components/checkboxField';
 import Row, {RadioFormFromValues} from '@components/row';
 import SettingSection from '@components/settingSection';
-import {SliderSuperTabEventable} from '@components/sliderTab';
 import wrapStickerToRow from '@components/wrappers/stickerToRow';
+import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
+import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
+import type {AppChatReactionsTab} from '@components/solidJsTabs/tabs';
 
-export default class AppChatReactionsTab extends SliderSuperTabEventable {
-  public chatId: ChatId;
+const ChatReactionsTab: Component = () => {
+  const [tab] = useSuperTab<typeof AppChatReactionsTab>();
+  const promiseCollector = usePromiseCollector();
+  const {chatId} = tab.payload;
 
-  public static getInitArgs(chatId: ChatId) {
-    return {
-      availableReactions: rootScope.managers.appReactionsManager.getActiveAvailableReactions(),
-      chatFull: rootScope.managers.appProfileManager.getChatFull(chatId)
-    };
-  }
-
-  public async init({
-    chatId,
-    p = AppChatReactionsTab.getInitArgs(chatId)
-  }: {
-    chatId: ChatId,
-    p?: ReturnType<typeof AppChatReactionsTab['getInitArgs']>
-  }) {
-    this.setTitle('Reactions');
-
-    this.chatId = chatId;
-
-    const [availableReactions, chatFull] = await Promise.all([p.availableReactions, p.chatFull]);
-    const isBroadcast = await this.managers.appChatsManager.isBroadcast(this.chatId);
+  promiseCollector.collect((async() => {
+    const [availableReactions, chatFull] = await Promise.all([
+      tab.managers.appReactionsManager.getActiveAvailableReactions(),
+      tab.managers.appProfileManager.getChatFull(chatId)
+    ]);
+    const isBroadcast = await tab.managers.appChatsManager.isBroadcast(chatId);
 
     let _chatReactions = chatFull.available_reactions ?? {_: 'chatReactionsNone'};
     let chatReactions = _chatReactions;
@@ -70,12 +60,12 @@ export default class AppChatReactionsTab extends SliderSuperTabEventable {
       const toggleRow = new Row({
         checkboxField: toggleCheckboxField,
         titleLangKey: 'EnableReactions',
-        listenerSetter: this.listenerSetter
+        listenerSetter: tab.listenerSetter
       });
 
       toggleSection.content.append(toggleRow.container);
 
-      this.listenerSetter.add(toggleCheckboxField.input)('change', () => {
+      tab.listenerSetter.add(toggleCheckboxField.input)('change', () => {
         let save = true;
         if(!toggleCheckboxField.checked) {
           chatReactions = {_: 'chatReactionsNone'};
@@ -103,7 +93,6 @@ export default class AppChatReactionsTab extends SliderSuperTabEventable {
         reactionsSection.container.classList.toggle('hide', chatReactions._ !== 'chatReactionsSome');
       };
 
-      let value = _chatReactions._;
       const form = RadioFormFromValues(a.map(([value, langPackKey]) => {
         return {
           langPackKey,
@@ -111,7 +100,7 @@ export default class AppChatReactionsTab extends SliderSuperTabEventable {
           checked: _chatReactions._ === value
         };
       }), (_value) => {
-        value = _value as any;
+        const value = _value as any;
 
         if(value === 'chatReactionsAll') {
           chatReactions = {
@@ -151,7 +140,7 @@ export default class AppChatReactionsTab extends SliderSuperTabEventable {
 
       checkboxFieldsByEmoticon.set(emoticon, checkboxField);
 
-      this.listenerSetter.add(checkboxField.input)('change', () => {
+      tab.listenerSetter.add(checkboxField.input)('change', () => {
         if(checkboxField.checked) {
           emoticons.add(emoticon);
 
@@ -173,7 +162,7 @@ export default class AppChatReactionsTab extends SliderSuperTabEventable {
         checkboxField,
         title: availableReaction.title,
         havePadding: true,
-        listenerSetter: this.listenerSetter
+        listenerSetter: tab.listenerSetter
       });
 
       wrapStickerToRow({
@@ -189,10 +178,6 @@ export default class AppChatReactionsTab extends SliderSuperTabEventable {
 
     const saveReactions = async() => {
       saveReactionsDebounced.clearTimeout();
-      // const newReactions = Array.from(enabledReactions);
-      // if([...newReactions].sort().join() === [...originalReactions].sort().join()) {
-      //   return;
-      // }
 
       if(chatReactions._ === 'chatReactionsSome') {
         chatReactions.reactions = makeReactionFromEmoticons(Array.from(emoticons));
@@ -201,23 +186,22 @@ export default class AppChatReactionsTab extends SliderSuperTabEventable {
         }
       }
 
-      // const r = (chatReactions as ChatReactions.chatReactionsSome).reactions;
-      // if(r?.length === availableReactions.length) {
-      //   chatReactions = {_: 'chatReactionsAll'};
-      // }
-
-      this.managers.appChatsManager.setChatAvailableReactions(this.chatId, chatReactions);
+      tab.managers.appChatsManager.setChatAvailableReactions(chatId, chatReactions);
       _chatReactions = chatReactions;
     };
 
     const saveReactionsDebounced = debounce(saveReactions, 3000, false, true);
 
-    this.eventListener.addEventListener('destroy', () => {
+    tab.eventListener.addEventListener('destroy', () => {
       if(saveReactionsDebounced.isDebounced()) {
         saveReactions();
       }
     }, {once: true});
 
-    this.scrollable.append(toggleSection.container, reactionsSection.container);
-  }
-}
+    tab.scrollable.append(toggleSection.container, reactionsSection.container);
+  })());
+
+  return null;
+};
+
+export default ChatReactionsTab;
