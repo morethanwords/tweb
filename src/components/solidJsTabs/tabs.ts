@@ -360,6 +360,15 @@ export const AppDataAndStorageTab =
   });
 
 
+// ─── Right sidebar ───
+
+export const AppRemovedUsersTab =
+  scaffoldSolidJSTabEventable<ChatId>({
+    title: 'ChannelBlacklist',
+    getComponentModule: () => import('../sidebarRight/tabs/removedUsers')
+  });
+
+
 export type AppAddMembersExtraCategory = {
   key: string;
   icon: Icon;
