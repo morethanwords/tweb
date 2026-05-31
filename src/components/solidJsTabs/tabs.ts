@@ -315,6 +315,33 @@ export const AppActiveWebSessionsTab =
   });
 
 
+// ─── Data and storage + its auto-download sub-tabs (all eventable) ───
+
+export const AppAutoDownloadPhotoTab =
+  scaffoldSolidJSTabEventable({
+    title: 'AutoDownloadPhotos',
+    getComponentModule: () => import('../sidebarLeft/tabs/autoDownload/photo')
+  });
+
+export const AppAutoDownloadVideoTab =
+  scaffoldSolidJSTabEventable({
+    title: 'AutoDownloadVideos',
+    getComponentModule: () => import('../sidebarLeft/tabs/autoDownload/video')
+  });
+
+export const AppAutoDownloadFileTab =
+  scaffoldSolidJSTabEventable({
+    title: 'AutoDownloadFiles',
+    getComponentModule: () => import('../sidebarLeft/tabs/autoDownload/file')
+  });
+
+export const AppDataAndStorageTab =
+  scaffoldSolidJSTabEventable({
+    title: 'DataSettings',
+    getComponentModule: () => import('../sidebarLeft/tabs/dataAndStorage')
+  });
+
+
 export type AppAddMembersExtraCategory = {
   key: string;
   icon: Icon;

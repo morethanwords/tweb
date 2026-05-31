@@ -1,8 +1,7 @@
 import type ListenerSetter from '@helpers/listenerSetter';
 import {LangPackKey} from '@lib/langPack';
 import CheckboxField from '@components/checkboxField';
-import {SliderSuperTabEventable} from '@components/sliderTab';
-import Row, {CreateRowFromCheckboxField} from '@components/row';
+import {CreateRowFromCheckboxField} from '@components/row';
 import SettingSection from '@components/settingSection';
 import {joinDeepPath} from '@helpers/object/setDeepProperty';
 
@@ -43,13 +42,4 @@ export function autoDownloadPeerTypeSection(type: 'photo' | 'video' | 'file', ti
   );
 
   return section;
-}
-
-export default class AppAutoDownloadPhotoTab extends SliderSuperTabEventable {
-  public init() {
-    this.setTitle('AutoDownloadPhotos');
-
-    const section = autoDownloadPeerTypeSection('photo', 'AutoDownloadPhotosTitle', this.listenerSetter);
-    this.scrollable.append(section.container);
-  }
 }

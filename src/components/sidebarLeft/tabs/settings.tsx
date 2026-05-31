@@ -12,7 +12,7 @@ import {
   getEditProfileInitArgs
 } from '@components/solidJsTabs';
 import lottieLoader from '@lib/rlottie/lottieLoader';
-import AppDataAndStorageTab from '@components/sidebarLeft/tabs/dataAndStorage';
+import {AppDataAndStorageTab} from '@components/solidJsTabs/tabs';
 import ButtonIcon from '@components/buttonIcon';
 import rootScope from '@lib/rootScope';
 import Row from '@components/rowTsx';
