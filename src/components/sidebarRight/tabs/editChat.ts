@@ -5,7 +5,7 @@ import Row, {CreateRowFromCheckboxField} from '@components/row';
 import Button from '@components/button';
 import {ChatRights} from '@appManagers/appChatsManager';
 import {Chat, ChatFull, ChatParticipants} from '@layer';
-import AppChatTypeTab from '@components/sidebarRight/tabs/chatType';
+import {AppChatTypeTab} from '@components/solidJsTabs/tabs';
 import rootScope from '@lib/rootScope';
 import AppGroupPermissionsTab from '@components/sidebarRight/tabs/groupPermissions';
 import I18n, {i18n, join, LangPackKey} from '@lib/langPack';
@@ -170,10 +170,7 @@ export default class AppEditChatTab extends SliderSuperTab {
         const chatTypeRow = new Row({
           titleLangKey: isBroadcast ? 'ChannelType' : 'GroupType',
           clickable: () => {
-            const tab = this.slider.createTab(AppChatTypeTab);
-            tab.chatId = this.chatId;
-            tab.chatFull = chatFull;
-            tab.open();
+            this.slider.createTab(AppChatTypeTab).open({chatId: this.chatId, chatFull});
           },
           icon: 'lock',
           listenerSetter: this.listenerSetter

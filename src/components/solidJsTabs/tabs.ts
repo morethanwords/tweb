@@ -1,5 +1,5 @@
 import {CancellablePromise} from '@helpers/cancellablePromise';
-import {AccountPasskeys, Authorization, Chat, GlobalPrivacySettings, Passkey, WebAuthorization} from '@layer';
+import {AccountPasskeys, Authorization, Chat, ChatFull, GlobalPrivacySettings, Passkey, WebAuthorization} from '@layer';
 import {LangPackKey} from '@lib/langPack';
 import type {PasscodeActions} from '@lib/passcode/actions';
 import {InstanceOf} from '@types';
@@ -426,6 +426,12 @@ export const AppChatDiscussionTab =
   scaffoldSolidJSTabEventable<{chatId: ChatId, linkedChatId: ChatId}>({
     title: 'DiscussionController.Channel.Title',
     getComponentModule: () => import('../sidebarRight/tabs/chatDiscussion')
+  });
+
+export const AppChatTypeTab =
+  scaffoldSolidJSTabEventable<{chatId: ChatId, chatFull: ChatFull}>({
+    title: 'ChannelType',
+    getComponentModule: () => import('../sidebarRight/tabs/chatType')
   });
 
 
