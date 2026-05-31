@@ -1,14 +1,13 @@
+import {Component, onCleanup, onMount} from 'solid-js';
 import Button from '@components/button';
 import Row from '@components/row';
 import {Authorization} from '@layer';
 import {formatDateAccordingToTodayNew} from '@helpers/date';
 import {ButtonMenuSync} from '@components/buttonMenu';
-import I18n from '@lib/langPack';
 import PopupPeer from '@components/popups/peer';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import toggleDisability from '@helpers/dom/toggleDisability';
-import {SliderSuperTabEventable} from '@components/sliderTab';
 import findAndSplice from '@helpers/array/findAndSplice';
 import {attachContextMenuListener} from '@helpers/dom/attachContextMenuListener';
 import positionMenu from '@helpers/positionMenu';
@@ -16,14 +15,16 @@ import contextMenuController from '@helpers/contextMenuController';
 import SettingSection from '@components/settingSection';
 import PopupElement from '@components/popups';
 import {toastNew} from '@components/toast';
+import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
+import type {AppActiveSessionsTab} from '@components/solidJsTabs/tabs';
 
-export default class AppActiveSessionsTab extends SliderSuperTabEventable {
-  public authorizations: Authorization.authorization[];
-  private menuElement: HTMLElement;
+const ActiveSessions: Component = () => {
+  const [tab] = useSuperTab<typeof AppActiveSessionsTab>();
 
-  public init() {
-    this.container.classList.add('active-sessions-container');
-    this.setTitle('SessionsTitle');
+  let menuElement: HTMLElement;
+
+  onMount(() => {
+    tab.container.classList.add('active-sessions-container');
 
     const Session = (auth: Authorization.authorization) => {
       const row = new Row({
@@ -40,7 +41,15 @@ export default class AppActiveSessionsTab extends SliderSuperTabEventable {
       return row;
     };
 
-    const authorizations = this.authorizations.slice();
+    const authorizations = tab.payload.authorizations.slice();
+
+    const onError = (err: ApiError) => {
+      if(err.type === 'FRESH_RESET_AUTHORISATION_FORBIDDEN') {
+        toastNew({langPackKey: 'RecentSessions.Error.FreshReset'});
+      }
+    };
+
+    let otherSection: SettingSection;
 
     {
       const section = new SettingSection({
@@ -62,8 +71,7 @@ export default class AppActiveSessionsTab extends SliderSuperTabEventable {
               isDanger: true,
               callback: () => {
                 const toggle = toggleDisability([btnTerminate], true);
-                this.managers.apiManager.invokeApi('auth.resetAuthorizations').then((value) => {
-                  // toggleDisability([btnTerminate], false);
+                tab.managers.apiManager.invokeApi('auth.resetAuthorizations').then((value) => {
                   btnTerminate.remove();
                   otherSection.container.remove();
                 }, onError).finally(() => {
@@ -74,19 +82,19 @@ export default class AppActiveSessionsTab extends SliderSuperTabEventable {
             titleLangKey: 'AreYouSureSessionsTitle',
             descriptionLangKey: 'AreYouSureSessions'
           }).show();
-        }, {listenerSetter: this.listenerSetter});
+        }, {listenerSetter: tab.listenerSetter});
 
         section.content.append(btnTerminate);
       }
 
-      this.scrollable.append(section.container);
+      tab.scrollable.append(section.container);
     }
 
     if(!authorizations.length) {
       return;
     }
 
-    const otherSection = new SettingSection({
+    otherSection = new SettingSection({
       name: 'OtherSessions',
       caption: 'SessionsListInfo'
     });
@@ -95,13 +103,7 @@ export default class AppActiveSessionsTab extends SliderSuperTabEventable {
       otherSection.content.append(Session(auth).container);
     });
 
-    this.scrollable.append(otherSection.container);
-
-    const onError = (err: ApiError) => {
-      if(err.type === 'FRESH_RESET_AUTHORISATION_FORBIDDEN') {
-        toastNew({langPackKey: 'RecentSessions.Error.FreshReset'});
-      }
-    };
+    tab.scrollable.append(otherSection.container);
 
     let target: HTMLElement;
     const onTerminateClick = () => {
@@ -112,7 +114,7 @@ export default class AppActiveSessionsTab extends SliderSuperTabEventable {
           langKey: 'Terminate',
           isDanger: true,
           callback: () => {
-            this.managers.appAccountManager.resetAuthorization(hash)
+            tab.managers.appAccountManager.resetAuthorization(hash)
             .then((value) => {
               if(value) {
                 target.remove();
@@ -125,7 +127,7 @@ export default class AppActiveSessionsTab extends SliderSuperTabEventable {
       }).show();
     };
 
-    const element = this.menuElement = ButtonMenuSync({
+    const element = menuElement = ButtonMenuSync({
       buttons: [{
         icon: 'stop',
         text: 'Terminate',
@@ -138,7 +140,7 @@ export default class AppActiveSessionsTab extends SliderSuperTabEventable {
     document.body.append(element);
 
     attachContextMenuListener({
-      element: this.scrollable.container,
+      element: tab.scrollable.container,
       callback: (e) => {
         target = findUpClassName(e.target, 'row');
         if(!target || target.dataset.hash === '0') {
@@ -146,27 +148,29 @@ export default class AppActiveSessionsTab extends SliderSuperTabEventable {
         }
 
         if(e instanceof MouseEvent) e.preventDefault();
-        // smth
         if(e instanceof MouseEvent) e.cancelBubble = true;
 
         positionMenu(e, element);
         contextMenuController.openBtnMenu(element);
       },
-      listenerSetter: this.listenerSetter
+      listenerSetter: tab.listenerSetter
     });
 
-    attachClickEvent(this.scrollable.container, (e) => {
+    attachClickEvent(tab.scrollable.container, (e) => {
       target = findUpClassName(e.target, 'row');
       if(!target || target.dataset.hash === '0') {
         return;
       }
 
       onTerminateClick();
-    }, {listenerSetter: this.listenerSetter});
-  }
+    }, {listenerSetter: tab.listenerSetter});
+  });
 
-  onCloseAfterTimeout() {
-    this.menuElement?.remove();
-    return super.onCloseAfterTimeout();
-  }
-}
+  onCleanup(() => {
+    menuElement?.remove();
+  });
+
+  return null;
+};
+
+export default ActiveSessions;

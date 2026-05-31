@@ -16,7 +16,7 @@ import AppDataAndStorageTab from '@components/sidebarLeft/tabs/dataAndStorage';
 import ButtonIcon from '@components/buttonIcon';
 import rootScope from '@lib/rootScope';
 import Row from '@components/rowTsx';
-import AppActiveSessionsTab from '@components/sidebarLeft/tabs/activeSessions';
+import {AppActiveSessionsTab} from '@components/solidJsTabs/tabs';
 import {i18n, LangPackKey} from '@lib/langPack';
 import {SliderSuperTabConstructable, SliderSuperTabEventable} from '@components/sliderTab';
 import {AccountAuthorizations, Authorization} from '@layer';
@@ -181,12 +181,11 @@ const Settings = () => {
     }
 
     const subTab = tab.slider.createTab(AppActiveSessionsTab);
-    subTab.authorizations = authorizations;
     subTab.eventListener.addEventListener('destroy', () => {
       authorizations = undefined;
       updateActiveSessions(true);
     }, {once: true});
-    subTab.open();
+    subTab.open({authorizations});
   };
 
   // ── Premium section. Signal-backed so `<Show>` re-evaluates when the

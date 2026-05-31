@@ -32,7 +32,7 @@ import confirmationPopup, {PopupConfirmationOptions} from '@components/confirmat
 import noop from '@helpers/noop';
 import {toastNew} from '@components/toast';
 import SettingSection from '@components/settingSection';
-import AppActiveWebSessionsTab from '@components/sidebarLeft/tabs/activeWebSessions';
+import {AppActiveWebSessionsTab} from '@components/solidJsTabs/tabs';
 import PopupElement from '@components/popups';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import Icon from '@components/icon';

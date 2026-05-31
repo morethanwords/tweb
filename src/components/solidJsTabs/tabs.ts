@@ -1,5 +1,5 @@
 import {CancellablePromise} from '@helpers/cancellablePromise';
-import {AccountPasskeys, Chat, GlobalPrivacySettings, Passkey} from '@layer';
+import {AccountPasskeys, Authorization, Chat, GlobalPrivacySettings, Passkey, WebAuthorization} from '@layer';
 import {LangPackKey} from '@lib/langPack';
 import type {PasscodeActions} from '@lib/passcode/actions';
 import {InstanceOf} from '@types';
@@ -278,6 +278,23 @@ export const AppPrivacyGiftsTab =
   scaffoldSolidJSTabEventable<GlobalPrivacySettings, AppPrivacyGlobalTabEvents>({
     title: 'PrivacyGifts',
     getComponentModule: () => import('../sidebarLeft/tabs/privacy/gifts')
+  });
+
+
+type AppActiveSessionsTabPayload = {
+  authorizations: Authorization.authorization[];
+};
+
+export const AppActiveSessionsTab =
+  scaffoldSolidJSTabEventable<AppActiveSessionsTabPayload>({
+    title: 'SessionsTitle',
+    getComponentModule: () => import('../sidebarLeft/tabs/activeSessions')
+  });
+
+export const AppActiveWebSessionsTab =
+  scaffoldSolidJSTabEventable<WebAuthorization[]>({
+    title: 'WebSessionsTitle',
+    getComponentModule: () => import('../sidebarLeft/tabs/activeWebSessions')
   });
 
 
