@@ -49,6 +49,17 @@ export type ChatBackgroundTheme = AppTheme | Theme;
  */
 export type ChatBackgroundTransition = 'auto' | 'instant' | 'fade' | 'crossfade-forwards' | 'crossfade-backwards';
 
+/** Metadata about the active background's compositing, surfaced to mirror consumers (folders sidebar). */
+export type ActiveBackgroundMeta = {
+  /**
+   * The wallpaper is a dark pattern rendered via the black *mask* path (e.g. the `night` theme): the
+   * visible chat is heavily darkened by the mask, but the raw gradient — what mirror consumers copy —
+   * stays at full brightness. Consumers should darken their mirror to match the chat (otherwise the
+   * folders sidebar shows the full-brightness gradient, e.g. a bright purple bar in `night`).
+   */
+  isDarkMaskPattern: boolean;
+};
+
 export type ChatBackgroundProps = {
   theme?: ChatBackgroundTheme;
   wallPaper?: WallPaper;
@@ -68,7 +79,7 @@ export type ChatBackgroundProps = {
    */
   width?: number;
   height?: number;
-  gradientRendererRef?: (value: ChatBackgroundGradientRenderer | undefined) => void;
+  gradientRendererRef?: (value: ChatBackgroundGradientRenderer | undefined, meta?: ActiveBackgroundMeta) => void;
   onHighlightColor?: (hsla: string) => void;
   onCachedStatus?: (cached: boolean) => void;
   onReady?: () => void;
@@ -505,7 +516,12 @@ export const ChatBackground: Component<ChatBackgroundProps> = (props) => {
       // sidebar repaints to the new gradient while the chat still shows the old wallpaper.
       const reveal = () => {
         presentStagingSlot(transition);
-        props.gradientRendererRef?.(built.gradientRenderer);
+        // `isDarkMaskPattern`: dark pattern via the mask path (night) — gradient stays bright while
+        // the visible chat is darkened by the mask. Tinted (overlay) and light renders show the
+        // gradient directly, so their mirror needs no extra darkening.
+        props.gradientRendererRef?.(built.gradientRenderer, {
+          isDarkMaskPattern: built.isDarkPattern && !built.isTinted
+        });
       };
       if(props.deferReveal) {
         props.deferReveal(reveal);
@@ -538,7 +554,8 @@ const appChatBackground = (() => {
   const [props, setProps] = createSignal<ChatBackgroundProps>({});
 
   let activeGradientRenderer: ChatBackgroundGradientRenderer | undefined;
-  const gradientRendererListeners = new Set<(r: ChatBackgroundGradientRenderer | undefined) => void>();
+  let activeGradientMeta: ActiveBackgroundMeta | undefined;
+  const gradientRendererListeners = new Set<(r: ChatBackgroundGradientRenderer | undefined, meta?: ActiveBackgroundMeta) => void>();
   let mounted = false;
 
   // `pendingResolve` resolves the promise returned from the in-flight setBackground call.
@@ -566,9 +583,10 @@ const appChatBackground = (() => {
         theme={props().theme}
         wallPaper={props().wallPaper}
         transition={props().transition}
-        gradientRendererRef={(r) => {
+        gradientRendererRef={(r, meta) => {
           activeGradientRenderer = r;
-          for(const listener of gradientRendererListeners) listener(r);
+          activeGradientMeta = meta;
+          for(const listener of gradientRendererListeners) listener(r, meta);
         }}
         onHighlightColor={(hsla) => {
           lastHighlightHsla = hsla;
@@ -665,9 +683,11 @@ const appChatBackground = (() => {
      * Listener is called with the current renderer immediately on subscribe. Returns an
      * unsubscribe function.
      */
-    onActiveGradientRendererChange: (listener: (r: ChatBackgroundGradientRenderer | undefined) => void) => {
+    onActiveGradientRendererChange: (
+      listener: (r: ChatBackgroundGradientRenderer | undefined, meta?: ActiveBackgroundMeta) => void
+    ) => {
       gradientRendererListeners.add(listener);
-      listener(activeGradientRenderer);
+      listener(activeGradientRenderer, activeGradientMeta);
       return () => {
         gradientRendererListeners.delete(listener);
       };

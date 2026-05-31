@@ -4075,6 +4075,16 @@ export default class ChatBubbles {
     const middleware = this.getMiddleware();
     const {isPaddingNeeded, unsetPadding} = this.setTopPadding(middleware);
 
+    if(scrolledDown) {
+      // A forward/reply send collapses the input helper, kicking off
+      // chat.preservePaddingScroll() — a 250ms loop pinning the view to the absolute
+      // bottom every frame. That pin would follow the new bubble down instantly,
+      // leaving the animated scrollToEnd() below with nothing to animate (no reveal,
+      // most visibly when forwarding a tall message). Cancel it before the new bubble
+      // inflates scrollHeight so the reveal animation owns the scroll.
+      this.chat.cancelPreservePaddingScroll();
+    }
+
     const promise = this.performHistoryResult({history: [message]}, false);
     if(scrolledDown) {
       promise.then(() => {

@@ -3,19 +3,14 @@ import cancelEvent from '@helpers/dom/cancelEvent';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import htmlToDocumentFragment from '@helpers/dom/htmlToDocumentFragment';
 import toggleDisability from '@helpers/dom/toggleDisability';
-import {KeyboardButton, Message, ReplyMarkup, InlineQueryPeerType, RequestPeerType, Chat as MTChat} from '@layer';
-import {ChatRights} from '@appManagers/appChatsManager';
-import hasRights from '@appManagers/utils/chats/hasRights';
-import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
-import {i18n, join} from '@lib/langPack';
+import {KeyboardButton, Message, ReplyMarkup, InlineQueryPeerType} from '@layer';
+import {i18n} from '@lib/langPack';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import rootScope from '@lib/rootScope';
-import AppSelectPeers, {SelectSearchPeerType} from '@components/appSelectPeers';
 import Chat from '@components/chat/chat';
-import confirmationPopup from '@components/confirmationPopup';
-import {showPickUser3Popup, showPickUser2Popup} from '@components/popups/pickUser';
+import {showPickUser3Popup} from '@components/popups/pickUser';
+import selectRequestPeers from '@components/popups/requestPeer';
 import {toast, toastNew} from '@components/toast';
-import wrapPeerTitle from '@components/wrappers/peerTitle';
 import wrapCustomEmoji from '@components/wrappers/customEmoji';
 import {makeMediaSize} from '@helpers/mediaSize';
 import ReplyMarkupLayout from '@components/chat/bubbleParts/replyMarkupLayout';
@@ -231,12 +226,7 @@ export function getKeyboardButtonHandler({
       onClick = async() => {
         const peerType = button.peer_type;
 
-        const isRequestingUser = peerType._ === 'requestPeerTypeUser';
-        const isRequestingChannel = peerType._ === 'requestPeerTypeBroadcast';
-        const isRequestingGroup = peerType._ === 'requestPeerTypeChat';
-        const isRequestingBotCreation = peerType._ === 'requestPeerTypeCreateBot';
-
-        if(isRequestingBotCreation) {
+        if(peerType._ === 'requestPeerTypeCreateBot') {
           showCreateBotPopup({
             requestingPeerId: peerId,
             suggestedBotName: peerType.suggested_name,
@@ -269,9 +259,9 @@ export function getKeyboardButtonHandler({
 
                 await rootScope.managers.appMessagesManager.sendBotRequestedPeer(
                   peerId,
-                  messageMid,
                   button.button_id,
-                  [user.id.toPeerId()]
+                  [user.id.toPeerId()],
+                  {mid: messageMid}
                 );
 
                 return true;
@@ -284,146 +274,22 @@ export function getKeyboardButtonHandler({
           return;
         }
 
-        let filterPeerTypeBy: AppSelectPeers['filterPeerTypeBy'];
-        const _peerType: SelectSearchPeerType[] = ['dialogs'];
-        if(isRequestingUser) {
-          filterPeerTypeBy = (peer) => {
-            if(peer._ !== 'user') {
-              return false;
-            }
-
-            if(peerType.bot !== undefined && peerType.bot !== !!peer.pFlags.bot) {
-              return false;
-            }
-
-            if(peerType.premium !== undefined && peerType.premium !== !!peer.pFlags.premium) {
-              return false;
-            }
-
-            return true;
-          };
-
-          _peerType.push('contacts');
-        } else {
-          let commonChatIds: ChatId[];
-          if(isRequestingGroup) {
-            const messagesChats = await rootScope.managers.appUsersManager.getCommonChats(peerId, 100);
-            commonChatIds = messagesChats.chats.map((chat) => chat.id);
-          }
-
-          filterPeerTypeBy = (peer) => {
-            if(peer._ !== 'channel' && (isRequestingChannel ? true : peer._ !== 'chat')) {
-              return false;
-            }
-
-            if(!!(peer as MTChat.channel).pFlags.broadcast !== isRequestingChannel) {
-              return false;
-            }
-
-            if(peerType.pFlags.creator && !(peer as MTChat.chat).pFlags.creator) {
-              return false;
-            }
-
-            if(peerType.has_username !== undefined && !!getPeerActiveUsernames(peer)[0] !== !!peerType.has_username) {
-              return false;
-            }
-
-            if((peerType as RequestPeerType.requestPeerTypeChat).forum !== undefined &&
-              (peerType as RequestPeerType.requestPeerTypeChat).forum !== !!(peer as MTChat.channel).pFlags.forum) {
-              return false;
-            }
-
-            if(peerType.user_admin_rights) {
-              for(const action in peerType.user_admin_rights.pFlags) {
-                if(!hasRights(peer as MTChat.channel, action as ChatRights)) {
-                  return false;
-                }
-              }
-            }
-
-            if((peerType as RequestPeerType.requestPeerTypeChat).pFlags.bot_participant) {
-              if(!commonChatIds.includes(peer.id) && !hasRights(peer as MTChat.chat, 'invite_users')) {
-                return false;
-              }
-            }
-
-            // don't have bot's rights in particular channel
-            // const botAdminRights = peerType.bot_admin_rights;
-            // if(botAdminRights) {
-            //   for(const action in botAdminRights.pFlags) {
-            //     if(!hasRights(peer, action as ChatRights, botAdminRights)) {
-            //       return false;
-            //     }
-            //   }
-            // }
-
-            return true;
-          };
-        }
-
-        const requestedPeerIds = await showPickUser2Popup({
-          peerType: _peerType,
-          filterPeerTypeBy,
-          multiSelect: true,
-          limit: button.max_quantity,
-          limitCallback: () => {
-            toastNew({
-              langPackKey: 'RequestPeer.MultipleLimit',
-              langPackArguments: [
-                i18n(
-                  isRequestingUser ? 'RequestPeer.MultipleLimit.Users' : (isRequestingChannel ? 'RequestPeer.MultipleLimit.Channels' : 'RequestPeer.MultipleLimit.Groups'),
-                  [button.max_quantity]
-                )
-              ]
-            });
-          },
-          titleLangKey: isRequestingUser ? 'RequestPeer.Title.Users' : (isRequestingChannel ? 'RequestPeer.Title.Channels' : 'RequestPeer.Title.Groups')
-        });
-
-        if(!isRequestingUser) {
-          type P = Parameters<typeof confirmationPopup>[0];
-          const requestedPeerTitles = await Promise.all(requestedPeerIds.map((peerId) => wrapPeerTitle({peerId})));
-          const joinedTitles = join(requestedPeerTitles, false);
-          let joinedTitlesElement: HTMLElement;
-          if(joinedTitles.length === 1) {
-            joinedTitlesElement = joinedTitles[0] as HTMLElement;
-          } else {
-            joinedTitlesElement = document.createElement('span');
-            joinedTitlesElement.append(...joinedTitles);
-          }
-          const descriptionLangArgs: P['descriptionLangArgs'] = [
-            joinedTitlesElement,
-            await wrapPeerTitle({peerId})
-          ];
-
-          const descriptionLangKey: P['descriptionLangKey'] = 'Chat.Service.PeerRequest.Confirm.Plain';
-
-          // if(peerType.bot_admin_rights) {
-          //   descriptionLangKey = 'Chat.Service.PeerRequest.Confirm.Permission';
-          //   descriptionLangArgs.push(
-          //     await wrapPeerTitle({peerId}),
-          //     await wrapPeerTitle({peerId: requestedPeerId})
-          //   );
-          // }
-
-          await confirmationPopup({
-            descriptionLangKey,
-            descriptionLangArgs,
-            button: {
-              langKey: 'Chat.Service.PeerRequest.Confirm.Ok'
-            }
-          });
+        let requestedPeerIds: PeerId[];
+        try {
+          requestedPeerIds = await selectRequestPeers({button, requestingPeerId: peerId});
+        } catch{
+          return;
         }
 
         rootScope.managers.appMessagesManager.sendBotRequestedPeer(
           peerId,
-          messageMid,
           button.button_id,
-          requestedPeerIds
+          requestedPeerIds,
+          {mid: messageMid}
         ).catch((err: ApiError) => {
           if(err.type === 'CHAT_ADMIN_INVITE_REQUIRED') {
             toastNew({
-              langPackKey: isRequestingChannel ? 'Error.RequestPeer.NoRights.Channel' : 'Error.RequestPeer.NoRights.Group'
+              langPackKey: peerType._ === 'requestPeerTypeBroadcast' ? 'Error.RequestPeer.NoRights.Channel' : 'Error.RequestPeer.NoRights.Group'
             });
           }
         });

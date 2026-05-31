@@ -264,6 +264,7 @@ export default class Chat extends EventListenerBase<{
 
   private chatInputSurplusPx = 0;
   private pinnedFloatingHeightPx = 0;
+  private preservePaddingScrollAbort?: () => void;
 
   public updateChatInputHeight(surplus: number) {
     if(this.chatInputSurplusPx === surplus) return;
@@ -295,10 +296,16 @@ export default class Chat extends EventListenerBase<{
       !this.bubbles.scrollable.isScrolledToEnd/*  ||
       true */
     ) return;
+    this.preservePaddingScrollAbort?.();
     let finished = false;
-    setTimeout(() => {
+    const timeout = setTimeout(() => {
       finished = true;
     }, 250);
+    this.preservePaddingScrollAbort = () => {
+      finished = true;
+      clearTimeout(timeout);
+      this.preservePaddingScrollAbort = undefined;
+    };
     animateSingle(() => {
       if(finished) {
         return false;
@@ -312,6 +319,14 @@ export default class Chat extends EventListenerBase<{
     // scrollSaver.save();
     // const promise = new Promise<void>((resolve) => setTimeout(resolve, 250));
     // this.bubbles.animateSomethingWithScroll(promise, scrollSaver);
+  }
+
+  // Hands scroll control to an imminent new-message reveal (renderNewMessage →
+  // scrollToEnd). Otherwise the pin above slams to the absolute bottom every frame
+  // and swallows the reveal animation — most visibly when forwarding a tall message,
+  // where the input helper collapse that triggers the pin coincides with the new bubble.
+  public cancelPreservePaddingScroll() {
+    this.preservePaddingScrollAbort?.();
   }
 
   public recomputePaddings() {

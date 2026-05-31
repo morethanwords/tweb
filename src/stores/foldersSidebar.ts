@@ -1,27 +1,44 @@
-import {createEffect, createRoot, createSignal} from 'solid-js';
+import {createEffect, createMemo, createRoot, createSignal} from 'solid-js';
 import {ScreenSize, useMediaSizes} from '@helpers/mediaSizes';
 import {setFoldersSidebarShown} from '@helpers/updateColumnWidths';
 
+// RAW user preference (mirrors settings.tabsInSidebar): whether the user has
+// the folders sidebar turned ON. Independent of viewport — it stays true even
+// when the panel is hidden because the window is too narrow. This is NOT "is
+// the panel on screen right now"; for that use useFoldersSidebarShown(), which
+// gates this by width. Reach for the RAW value only when you genuinely mean the
+// preference (e.g. a setting toggle), not the on-screen state.
 const hasFoldersSidebarSignal = createRoot(() => {
   const [hasFoldersSidebar, setHasFoldersSidebar] = createSignal(false);
-  const mediaSizes = useMediaSizes();
-
-  // Signal carries the user preference; the body class reflects ACTUAL
-  // visibility (preference AND viewport wide enough — folders sidebar is
-  // hidden by SCSS at <=925px regardless of preference). updateColumnWidths
-  // also gets notified so it can account for the panel's reserved space.
-  createEffect(() => {
-    const visible = hasFoldersSidebar() && !mediaSizes.isLessThanFloatingLeftSidebar;
-    document.body.classList.toggle('has-folders-sidebar', visible);
-    setFoldersSidebarShown(visible);
-  });
-
   return [hasFoldersSidebar, setHasFoldersSidebar] as const;
 });
 
 export default function useHasFoldersSidebar() {
   return hasFoldersSidebarSignal;
 };
+
+// Derived: whether the folders sidebar is ACTUALLY visible — the RAW preference
+// AND a viewport wide enough to fit it (the panel is hidden by SCSS at <=925px).
+// This is what UI should key off of when it cares about the on-screen panel.
+// Also the single source for the `body.has-folders-sidebar` class and
+// updateColumnWidths' reserved-space math, so all three stay in sync.
+const foldersSidebarShownSignal = createRoot(() => {
+  const [hasFoldersSidebar] = hasFoldersSidebarSignal;
+  const mediaSizes = useMediaSizes();
+  const shown = createMemo(() => hasFoldersSidebar() && !mediaSizes.isLessThanFloatingLeftSidebar);
+
+  createEffect(() => {
+    const visible = shown();
+    document.body.classList.toggle('has-folders-sidebar', visible);
+    setFoldersSidebarShown(visible);
+  });
+
+  return [shown] as const;
+});
+
+export function useFoldersSidebarShown() {
+  return foldersSidebarShownSignal;
+}
 
 const hasFoldersSignal = createRoot(() => {
   const [hasFolders, setHasFolders] = createSignal(false);
@@ -72,13 +89,16 @@ export function useIsLeftSearchActive() {
 
 createRoot(() => {
   const [hasFolders] = hasFoldersSignal;
-  const [hasFoldersSidebar] = hasFoldersSidebarSignal;
+  const [foldersSidebarShown] = foldersSidebarShownSignal;
   const [isSidebarCollapsed] = isSidebarCollapsedSignal;
   const mediaSizes = useMediaSizes();
   createEffect(() => {
     const hasFolders$ = hasFolders();
+    // Folders render as horizontal tabs unless the vertical panel is actually
+    // shown — `!foldersSidebarShown()` is exactly the old
+    // `!hasFoldersSidebar() || isLessThanFloatingLeftSidebar`.
     const hasHorizontal = (!isSidebarCollapsed() || mediaSizes.activeScreen < ScreenSize.medium) &&
-      (!hasFoldersSidebar() || mediaSizes.isLessThanFloatingLeftSidebar);
+      !foldersSidebarShown();
     const hasVertical = !hasHorizontal;
     document.body.classList.toggle(
       'has-horizontal-folders',

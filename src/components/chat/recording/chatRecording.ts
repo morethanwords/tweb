@@ -853,12 +853,12 @@ export default class ChatRecording {
 
     const contextMenu = createContextMenu({
       buttons: [{
-        icon: 'microphone_filled',
+        icon: 'microphone',
         text: 'Chat.Input.Record.Voice',
         onClick: () => this.setRecordingMediaType('voice'),
         verify: () => this.canSwitchRecordingMode() && this.getActiveRecordingMediaType() !== 'voice'
       }, {
-        icon: 'videocamera_filled',
+        icon: 'recordround',
         text: 'Chat.Input.Record.Video',
         onClick: () => this.setRecordingMediaType('video'),
         verify: () => this.canSwitchRecordingMode() && this.getActiveRecordingMediaType() !== 'video'

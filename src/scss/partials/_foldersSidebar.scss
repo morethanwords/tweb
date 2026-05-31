@@ -71,6 +71,15 @@
     &--no-gradient &-tint {
       backdrop-filter: blur(40px);
     }
+
+    // Night-style dark pattern (e.g. the `night` theme): the chat darkens its bright gradient with a
+    // black pattern mask, but the bar only mirrors the raw gradient. Without this the sidebar shows
+    // the full-brightness gradient (a bright purple bar) over a dark chat. A much stronger dark tint
+    // approximates the mask's darkening so the bar reads as dark — matching `tinted`. Set on the
+    // modifier element so it cascades to `&-tint` and overrides the `.night` value below.
+    &--dark-pattern {
+      --folders-sidebar-background: rgba(0, 0, 0, .8);
+    }
   }
 
   &__scrollable {

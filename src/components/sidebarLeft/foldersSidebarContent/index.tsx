@@ -54,6 +54,9 @@ export function FoldersSidebarContent(props: {
   // Tracks whether a gradient renderer is currently active. When false (image-only wallpapers)
   // we fall back to backdrop-filter via a CSS class so the bar still has some translucency.
   const [hasGradient, setHasGradient] = createSignal(false);
+  // Night-style dark patterns darken the visible chat via a black mask, but the mirror copies only
+  // the (bright) raw gradient — so the bar needs an extra-dark tint to match. Tinted/light don't.
+  const [isDarkPattern, setIsDarkPattern] = createSignal(false);
   let backgroundCanvas: HTMLCanvasElement;
 
   let folderItemsContainer: HTMLDivElement;
@@ -95,7 +98,7 @@ export function FoldersSidebarContent(props: {
     // (the high-frequency pattern blurs to a near-constant tint that we approximate via the
     // dark overlay). Falls back to backdrop-filter when no gradient is active.
     let detachMirror: (() => void) | undefined;
-    const unsubscribeRenderer = appChatBackground.onActiveGradientRendererChange((renderer) => {
+    const unsubscribeRenderer = appChatBackground.onActiveGradientRendererChange((renderer, meta) => {
       detachMirror?.();
       detachMirror = undefined;
       if(renderer && backgroundCanvas) {
@@ -104,6 +107,7 @@ export function FoldersSidebarContent(props: {
       } else {
         setHasGradient(false);
       }
+      setIsDarkPattern(!!meta?.isDarkMaskPattern);
     });
 
     onCleanup(() => {
@@ -130,7 +134,11 @@ export function FoldersSidebarContent(props: {
   let openingChatFolders = false;
   return (
     <>
-      <div class={classNames('folders-sidebar__background', !hasGradient() && 'folders-sidebar__background--no-gradient')}>
+      <div class={classNames(
+        'folders-sidebar__background',
+        !hasGradient() && 'folders-sidebar__background--no-gradient',
+        isDarkPattern() && 'folders-sidebar__background--dark-pattern'
+      )}>
         <canvas ref={backgroundCanvas} class="folders-sidebar__background-gradient" />
         <div class="folders-sidebar__background-tint" />
       </div>

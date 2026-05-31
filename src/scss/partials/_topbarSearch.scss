@@ -8,7 +8,7 @@
     inset-block: 0;
     // inset-inline-start: 7.3125rem;
     inset-inline-start: calc(var(--topbar-close-active-size) + var(--topbar-avatar-active-size) + var(--topbar-avatar-close-gap) + 1rem);
-    inset-inline-end: 1rem;
+    inset-inline-end: .25rem;
     gap: .5rem;
     z-index: 1;
 
@@ -188,10 +188,11 @@
       position: relative;
       z-index: 1;
       flex: 0 0 auto;
+      gap: .25rem;
     }
 
     &-filter {
-      width: 3rem;
+      width: 2.5rem;
       height: 2.5rem;
       opacity: 1;
       position: relative;
@@ -205,11 +206,6 @@
         width: 0;
         opacity: 0;
         pointer-events: none;
-      }
-
-      &-button {
-        position: absolute;
-        inset-inline-end: .5rem;
       }
     }
   }

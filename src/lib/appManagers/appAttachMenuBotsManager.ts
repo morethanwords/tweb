@@ -327,4 +327,11 @@ export default class AppAttachMenuBotsManager extends AppManager {
       }
     });
   }
+
+  public getRequestedWebViewButton(botId: BotId, webappReqId: string) {
+    return this.apiManager.invokeApi('bots.getRequestedWebViewButton', {
+      bot: this.appUsersManager.getUserInput(botId),
+      webapp_req_id: webappReqId
+    });
+  }
 }

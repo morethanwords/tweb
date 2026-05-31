@@ -351,6 +351,7 @@ export type TelegramWebViewEventMap = {
   }
   web_app_share_to_story: unknown,
   web_app_send_prepared_message: {id: string},
+  web_app_request_chat: {req_id: string},
   web_app_request_fullscreen: void,
   web_app_exit_fullscreen: void,
   web_app_verify_age: {
@@ -495,6 +496,8 @@ export type TelegramWebViewSendEventMap = {
     bottom: number,
   },
   prepared_message_failed: {error: string},
+  requested_chat_sent: {req_id: string},
+  requested_chat_failed: {req_id: string, error?: string},
   gyroscope_failed: {error: string},
   device_orientation_failed: {error: string},
   accelerometer_failed: {error: string},

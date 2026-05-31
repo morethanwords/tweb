@@ -91,7 +91,8 @@ import EmptySearchPlaceholder from '@components/emptySearchPlaceholder';
 import useHasFoldersSidebar, {
   useIsSidebarCollapsed,
   useHasOpenLeftTabs,
-  useIsLeftSearchActive
+  useIsLeftSearchActive,
+  useFoldersSidebarShown
 } from '@stores/foldersSidebar';
 import isObject from '@helpers/object/isObject';
 import {useAppSettings} from '@stores/appSettings';
@@ -393,18 +394,20 @@ export class AppSidebarLeft extends SidebarSlider {
     // icon's `.state-back` (which shape it renders as). They all flow from
     // the same condition, so a single Solid effect owns the truth:
     //
-    //   showBack = useHasFoldersSidebar OR useIsLeftSearchActive
+    //   showBack = useFoldersSidebarShown OR useIsLeftSearchActive
     //
-    // When the folders panel is shown it has its own menu trigger, so the
-    // in-sidebar burger never serves as a menu — it stays in back state
-    // regardless of search activity. Without folders sidebar, back state
-    // follows the search-active signal.
+    // When the folders panel is actually shown it has its own menu trigger, so
+    // the in-sidebar burger never serves as a menu — it stays in back state
+    // regardless of search activity. NOTE: gate on the viewport-aware *shown*
+    // value, not the raw useHasFoldersSidebar preference — below 925px the panel
+    // is hidden (its menu trigger with it), so the burger MUST fall back to the
+    // menu icon. Without the panel shown, back state follows search activity.
     createRoot(() => {
-      const [hasFoldersSidebar] = useHasFoldersSidebar();
+      const [foldersSidebarShown] = useFoldersSidebarShown();
       const [isLeftSearchActive] = useIsLeftSearchActive();
       const animatedMenuIcon = this.buttonsContainer.firstElementChild as HTMLElement;
       createEffect(() => {
-        const showBack = hasFoldersSidebar() || isLeftSearchActive();
+        const showBack = foldersSidebarShown() || isLeftSearchActive();
         this.toolsBtn.classList.toggle('is-visible', !showBack);
         this.backBtn.classList.toggle('is-visible', showBack);
         animatedMenuIcon.classList.toggle('state-back', showBack);

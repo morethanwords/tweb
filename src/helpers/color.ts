@@ -262,21 +262,26 @@ export function getRgbColorFromTelegramColor(color: number) {
   return hexToRgb(getHexColorFromTelegramColor(color));
 }
 
-// Keep every PRESENT stop, including an explicit 0 (#000000 black). Telegram
-// sends the four gradient stops as flagged optional ints: absent ⇒ undefined,
-// present ⇒ the value (which may be 0). A `.filter(Boolean)` would wrongly drop
-// a present black stop — e.g. cloud *day* themes ship a white→black gradient
-// (background_color 0xffffff, second_background_color 0) — so filter on
-// null/undefined only. Mirrors Telegram-iOS, which appends each stop via an
-// `if let` presence binding regardless of value (TelegramCore
-// ApiUtils/Wallpaper.swift).
+// Telegram sends 1–4 gradient stops as flagged optional ints (absent ⇒ the field
+// is omitted ⇒ undefined; present ⇒ the value, which may be 0). The first stop,
+// background_color, is the base fill and is kept whenever present — even a pure
+// black 0 (so a solid-black wallpaper survives). A 0 in any LATER slot is a "no
+// further colour" sentinel, NOT a real black stop: every cloud *day* theme ships
+// its solid-white wallpaper as background_color 0xffffff + second_background_color
+// 0 (verified against the live default themes — their baseThemeDay entries carry
+// no pattern and no intensity). Keeping that trailing 0 paints a white→black
+// gradient instead of the intended flat white, so later zero stops are dropped.
 export function getWallPaperColors(wallPaper: WallPaper): string[] {
-  return wallPaper?.settings ? [
-    wallPaper.settings.background_color,
-    wallPaper.settings.second_background_color,
-    wallPaper.settings.third_background_color,
-    wallPaper.settings.fourth_background_color
-  ].filter((color): color is number => color != null).map(getHexColorFromTelegramColor) : [];
+  const settings = wallPaper?.settings;
+  if(!settings) return [];
+  return [
+    settings.background_color,
+    settings.second_background_color,
+    settings.third_background_color,
+    settings.fourth_background_color
+  ]
+  .filter((color, index): color is number => color != null && (index === 0 || color !== 0))
+  .map(getHexColorFromTelegramColor);
 }
 
 export function getColorsFromWallPaper(wallPaper: WallPaper) {

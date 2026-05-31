@@ -10543,10 +10543,16 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  public sendBotRequestedPeer(peerId: PeerId, mid: number, buttonId: number, requestedPeerIds: PeerId[]) {
+  public sendBotRequestedPeer(
+    peerId: PeerId,
+    buttonId: number,
+    requestedPeerIds: PeerId[],
+    source: {mid: number} | {webappReqId: string}
+  ) {
     return this.apiManager.invokeApi('messages.sendBotRequestedPeer', {
       peer: this.appPeersManager.getInputPeerById(peerId),
-      msg_id: getServerMessageId(mid),
+      msg_id: 'mid' in source ? getServerMessageId(source.mid) : undefined,
+      webapp_req_id: 'webappReqId' in source ? source.webappReqId : undefined,
       button_id: buttonId,
       requested_peers: requestedPeerIds.map((peerId) => this.appPeersManager.getInputPeerById(peerId))
     }).then((updates) => {

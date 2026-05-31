@@ -21,6 +21,7 @@ import confirmationPopup from '@components/confirmationPopup';
 import PopupElement from '@components/popups';
 import PopupPeer, {PopupPeerOptions} from '@components/popups/peer';
 import {showPickUser3Popup} from '@components/popups/pickUser';
+import selectRequestPeers from '@components/popups/requestPeer';
 import TelegramWebView from '@components/telegramWebView';
 import wrapAttachBotIcon from '@components/wrappers/attachBotIcon';
 import getPeerTitle from '@components/wrappers/getPeerTitle';
@@ -1059,6 +1060,29 @@ export default class WebApp {
 
         telegramWebView.dispatchWebViewEvent('phone_requested', status);
       }, 'phone_requested', {status: 'cancelled'}),
+      web_app_request_chat: this.debouncePopupMethod(async({req_id}: TelegramWebViewEventMap['web_app_request_chat']) => {
+        const botId = this.webViewOptions.botId;
+        let sent = false;
+        try {
+          const button = await this.managers.appAttachMenuBotsManager.getRequestedWebViewButton(botId, req_id);
+          if(button?._ !== 'keyboardButtonRequestPeer' || button.peer_type._ === 'requestPeerTypeCreateBot') {
+            throw new Error('REQUEST_CHAT_UNSUPPORTED');
+          }
+
+          const requestingPeerId = botId.toPeerId(false);
+          const requestedPeerIds = await selectRequestPeers({button, requestingPeerId});
+          await this.managers.appMessagesManager.sendBotRequestedPeer(
+            requestingPeerId,
+            button.button_id,
+            requestedPeerIds,
+            {webappReqId: req_id}
+          );
+
+          sent = true;
+        } catch{}
+
+        telegramWebView.dispatchWebViewEvent(sent ? 'requested_chat_sent' : 'requested_chat_failed', {req_id});
+      }, 'requested_chat_failed', {req_id: ''}),
       web_app_invoke_custom_method: async({req_id, method, params}) => {
         let result: DataJSON.dataJSON, error: ApiError;
         try {

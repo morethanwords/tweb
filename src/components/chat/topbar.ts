@@ -73,7 +73,6 @@ import {createAutoDeleteIcon} from '@components/autoDeleteIcon';
 import PopupBoost from '@components/popups/boost';
 import PopupPremium from '@components/popups/premium';
 import showNoForwardsPopup from '@components/popups/noForwards';
-import IS_CONFERENCE_CALL_SUPPORTED from '@environment/conferenceCallSupport';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -89,7 +88,6 @@ export default class ChatTopbar {
   private subtitle: HTMLDivElement;
   private chatUtils: HTMLDivElement;
   private btnCall: HTMLButtonElement;
-  private btnConference: HTMLButtonElement;
   private btnGroupCall: HTMLButtonElement;
   private btnGroupCallMenu: HTMLElement;
   private btnSearch: HTMLButtonElement;
@@ -213,7 +211,6 @@ export default class ChatTopbar {
       // this.pinnedMessage ? this.pinnedMessage.pinnedMessageContainer.divAndCaption.container : null,
       // btnJoin / btnMute / btnDirectMessages moved into the chat-input control plate (see input.ts).
       this.btnCall,
-      this.btnConference,
       this.btnGroupCall,
       this.btnGroupCallMenu,
       this.btnSearch,
@@ -222,7 +219,6 @@ export default class ChatTopbar {
     ].filter(Boolean));
 
     this.pushButtonToVerify(this.btnCall, this.verifyCallButton.bind(this, 'voice'));
-    this.pushButtonToVerify(this.btnConference, this.verifyConferenceButton.bind(this));
     this.pushButtonToVerify(this.btnGroupCall, this.verifyVideoChatButton.bind(this, 'nonadmin'));
     this.pushButtonToVerify(this.btnGroupCallMenu, this.verifyRtmpButton.bind(this));
 
@@ -898,50 +894,6 @@ export default class ChatTopbar {
     this.chat.appImManager.joinGroupCall(this.peerId);
   };
 
-  private verifyConferenceButton = async(): Promise<boolean> => {
-    // Gated off until the SFU exposes a multi-mid layout to browser clients
-    // (Chrome RTCRtpScriptTransform recv-side bypass — see
-    // docs/conf-call-browser-recv-blocker.md). All the underlying e2e + SFU
-    // wiring is in place; flip IS_CONFERENCE_CALL_SUPPORTED to re-enable.
-    if(!IS_CONFERENCE_CALL_SUPPORTED) return false;
-    // Show in 1-on-1 chats with another user. Conference call permission
-    // checks happen server-side at phone.createConferenceCall time.
-    if(!IS_CALL_SUPPORTED || !this.peerId.isUser() || this.chat.type !== ChatType.Chat) return false;
-    return true;
-  };
-
-  // Start a TdE2E-encrypted conference call with the current chat peer.
-  // Bootstrap flow:
-  //   1. controller.startConference() → generates seed, mints zero block,
-  //      calls phone.createConferenceCall(join: true), spins up the SFU
-  //      connection through joinConferenceCommon.
-  //   2. After the conference is live, invite the chat peer via
-  //      phone.inviteConferenceCallParticipant — they get a service message
-  //      with messageActionInviteToGroupCall in this chat (Phase D-4 surfaces
-  //      a Join button on that message).
-  private onStartConferenceClick = wrapAsyncClickHandler(async() => {
-    const peerUserId = this.peerId.toUserId();
-    const selfId = BigInt(rootScope.myId);
-
-    let instance;
-    try {
-      instance = await groupCallsController.startConference({selfUserId: selfId, muted: true});
-    } catch(err) {
-      toastNew({langPackKey: 'Error.AnError' as LangPackKey});
-      throw err;
-    }
-
-    const input = instance.toInputGroupCall();
-    if(input?._ === 'inputGroupCall') {
-      try {
-        await this.managers.appCallsManager.inviteConferenceCallParticipant(input, peerUserId);
-      } catch(err) {
-        // Surface but don't fail — the conference exists; user can invite manually.
-        console.error('inviteConferenceCallParticipant failed', err);
-      }
-    }
-  });
-
   private onFilterActionsClick = wrapAsyncClickHandler(async() => {
     const {default: LogFiltersPopup} = await import('./logFiltersPopup');
 
@@ -987,12 +939,6 @@ export default class ChatTopbar {
     });
     this.attachClickEvent(this.btnCall, this.onCallClick.bind(this, 'voice'));
     this.attachClickEvent(this.btnGroupCall, this.onJoinGroupCallClick);
-
-    // TdE2E encrypted conference call — only shown in 1-on-1 chats with another
-    // user (we invite them after creating the conference). Verification in
-    // verifyButtons() further restricts to peers that support conferences.
-    this.btnConference = ButtonIcon('videocamera');
-    this.attachClickEvent(this.btnConference, this.onStartConferenceClick);
 
     this.listenerSetter.add(rootScope)('folder_unread', (folder) => {
       if(!this.btnBackBadge || folder.id !== FOLDER_ID_ALL) {
