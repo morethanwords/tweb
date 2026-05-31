@@ -9,7 +9,7 @@ import {ChatType} from '@components/chat/chatType';
 import PopupElement from '@components/popups';
 import PopupDeleteDialog from '@components/popups/deleteDialog';
 import appSidebarLeft from '@components/sidebarLeft';
-import AppEditTopicTab from '@components/sidebarRight/tabs/editTopic';
+import {AppEditTopicTab} from '@components/solidJsTabs/tabs';
 import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMedia';
 import SortedDialogList from '@components/sortedDialogList';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
@@ -49,7 +49,7 @@ export class GroupForumTab extends ForumTab {
         icon: 'add',
         text: 'ForumTopic.Context.New',
         onClick: () => {
-          appSidebarLeft.createTab(AppEditTopicTab).open(this.peerId);
+          appSidebarLeft.createTab(AppEditTopicTab).open({peerId: this.peerId});
         },
         separatorDown: true,
         verify: () => this.managers.appChatsManager.hasRights(this.peerId.toChatId(), 'manage_topics')

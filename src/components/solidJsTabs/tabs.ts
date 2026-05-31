@@ -410,6 +410,12 @@ export const AppEditContactTab =
     getComponentModule: () => import('../sidebarRight/tabs/editContact')
   });
 
+export const AppEditTopicTab =
+  scaffoldSolidJSTab<{peerId: PeerId, threadId?: number}>({
+    title: 'NewTopic',
+    getComponentModule: () => import('../sidebarRight/tabs/editTopic')
+  });
+
 
 export type AppAddMembersExtraCategory = {
   key: string;

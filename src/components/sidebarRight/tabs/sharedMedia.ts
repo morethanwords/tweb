@@ -12,7 +12,7 @@ import {attachClickEvent} from '@helpers/dom/clickEvent';
 import {renderPeerProfile} from '@components/peerProfile';
 import {Chat, Message} from '@layer';
 import getMessageThreadId from '@appManagers/utils/messages/getMessageThreadId';
-import AppEditTopicTab from '@components/sidebarRight/tabs/editTopic';
+import {AppEditTopicTab} from '@components/solidJsTabs/tabs';
 import liteMode from '@helpers/liteMode';
 import {AppEditBotTab} from '@components/solidJsTabs/tabs';
 import addChatUsers from '@components/addChatUsers';
@@ -268,7 +268,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     }, {listenerSetter: this.listenerSetter});
 
     attachClickEvent(this.editBtn, async() => {
-      let tab: AppEditChatTab | InstanceType<typeof AppEditContactTab> | AppEditTopicTab | InstanceType<typeof AppEditBotTab>;
+      let tab: AppEditChatTab | InstanceType<typeof AppEditContactTab> | InstanceType<typeof AppEditTopicTab> | InstanceType<typeof AppEditBotTab>;
       const {peerId, threadId} = this;
       if(threadId && await this.managers.appPeersManager.isForum(peerId)) {
         tab = this.slider.createTab(AppEditTopicTab)
@@ -285,7 +285,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       }
 
       if(tab instanceof AppEditTopicTab) {
-        tab.open(peerId, this.threadId);
+        tab.open({peerId, threadId: this.threadId});
       } else if(tab instanceof AppEditBotTab) {
         tab.open(peerId);
       } else if(tab instanceof AppEditContactTab) {
