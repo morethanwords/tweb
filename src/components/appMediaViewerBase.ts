@@ -87,10 +87,16 @@ const MOVE_TRANSITION_TIME = 350;
 // padding / .media-viewer-mover.center positioning are derived from these.
 const RESERVE_TOP_DESKTOP = 80;
 const RESERVE_BOTTOM_DESKTOP = 110;
-// Split evenly so the media stays geometrically centered (top/bottom chrome
-// floats over it rather than reserving asymmetric space — see .center math).
-const RESERVE_TOP_MOBILE_OR_LIVE = 60;
-const RESERVE_BOTTOM_MOBILE_OR_LIVE = 60;
+// Live streams stay vertically centered — top/bottom chrome floats over the
+// media rather than reserving asymmetric space (split evenly, see .center math).
+const RESERVE_TOP_LIVE = 60;
+const RESERVE_BOTTOM_LIVE = 60;
+// On mobile the video player fills the whole viewport (no reserve), so the media
+// stays vertically centered (symmetric → .center keeps top: 50%) while the player
+// controls are anchored to its bottom = the very bottom of the screen (see .center
+// handhelds in _mediaViewer.scss). The topbar/controls float over the media.
+const RESERVE_TOP_MOBILE = 0;
+const RESERVE_BOTTOM_MOBILE = 0;
 
 // Min displayed width for videos that get a player UI.
 const VIDEO_MIN_WIDTH = 420;
@@ -936,6 +942,15 @@ export default class AppMediaViewerBase<
       cancelEvent(e);
     }
 
+    // On mobile, media without player controls (photo/GIF) has no controls-toggle,
+    // so a tap on it toggles the chrome (topbar + caption) itself — mirroring the
+    // video controls toggle — instead of closing the viewer. Taps on the chrome /
+    // menus keep their own handlers; drags are already filtered via ignoreNextClick.
+    if(mediaSizes.isMobile && !this.videoPlayer && !findUpClassName(target, 'media-viewer-topbar') && !findUpClassName(target, 'media-viewer-caption') && !findUpClassName(target, 'btn-menu')) {
+      this.wholeDiv.classList.toggle('chrome-hidden');
+      return;
+    }
+
     if(IS_TOUCH_SUPPORTED) {
       if(this.highlightSwitchersTimeout) {
         clearTimeout(this.highlightSwitchersTimeout);
@@ -1148,11 +1163,19 @@ export default class AppMediaViewerBase<
       const visibleRect = overflowElement && getVisibleRect(realParent, overflowElement, true, undefined, overflowRect);
 
       if(closing && overflowElement && (!visibleRect || visibleRect.overflow.vertical === 2 || visibleRect.overflow.horizontal === 2)) {
+        // On close, retarget to the centered media instead of flying toward an
+        // off-screen / larger-than-viewport source. Retargeting keeps the mover where
+        // it already is, so when the source is fully off-screen there's no motion — and
+        // since there's nothing to animate to, fade it out via opacity (movement zero,
+        // opacity only).
         target = this.content.media;
         realParent = target.parentElement as HTMLElement;
         rect = target.getBoundingClientRect();
+        if(!visibleRect) {
+          needOpacity = true;
+        }
       } else if(overflowElement && !visibleRect) {
-        // Target fully outside the visible bubble area — fall back to opacity fade.
+        // Opening from a source that's off-screen — fade in via opacity.
         needOpacity = true;
       } else if(visibleRect && (visibleRect.overflow.vertical || visibleRect.overflow.horizontal)) {
         // Target partially overlapped (e.g. clipped behind topbar / chat-input) —
@@ -1846,11 +1869,15 @@ export default class AppMediaViewerBase<
   }
 
   protected getLayoutReserves(): {top: number, bottom: number} {
-    const compact = mediaSizes.isMobile || this.live;
-    return {
-      top: compact ? RESERVE_TOP_MOBILE_OR_LIVE : RESERVE_TOP_DESKTOP,
-      bottom: compact ? RESERVE_BOTTOM_MOBILE_OR_LIVE : RESERVE_BOTTOM_DESKTOP
-    };
+    if(this.live) {
+      return {top: RESERVE_TOP_LIVE, bottom: RESERVE_BOTTOM_LIVE};
+    }
+
+    if(mediaSizes.isMobile) {
+      return {top: RESERVE_TOP_MOBILE, bottom: RESERVE_BOTTOM_MOBILE};
+    }
+
+    return {top: RESERVE_TOP_DESKTOP, bottom: RESERVE_BOTTOM_DESKTOP};
   }
 
   // Floating overlays on the source/target bubble (e.g. .video-time, .time.is-floating) should
@@ -2293,8 +2320,15 @@ export default class AppMediaViewerBase<
             live: isLiveStream,
             width: mediaSize?.width,
             height: mediaSize?.height,
-            onPlaybackRateMenuToggle: (open) => {
+            onMenuToggle: (open) => {
+              // Any player menu (playback rate / quality) overlaps the caption, so
+              // hide it while a menu is open.
               this.wholeDiv.classList.toggle('hide-caption', !!open);
+            },
+            onTimePreviewToggle: (visible) => {
+              // The seek-bar time preview sits where the caption is, so hide the
+              // caption while it's shown (mobile: .hide-caption fades it out).
+              this.wholeDiv.classList.toggle('hide-caption', visible);
             },
             onPip: (pip) => {
               const otherMediaViewer = (window as any).appMediaViewer;
@@ -2340,12 +2374,17 @@ export default class AppMediaViewerBase<
           });
           this.videoPlayer?.loadQualityLevels();
 
+          // Mark that a video player is present (vs a photo) and assume its controls
+          // start shown — they do on open. has-video-controls then tracks the
+          // controls' show/hide; on mobile the caption fades together with them.
+          this.wholeDiv.classList.add('has-video', 'has-video-controls');
+
           player.addEventListener('toggleControls', (show) => {
             this.wholeDiv.classList.toggle('has-video-controls', show);
           });
 
           this.addEventListener('setMoverBefore', () => {
-            this.wholeDiv.classList.remove('has-video-controls');
+            this.wholeDiv.classList.remove('has-video', 'has-video-controls');
             this.videoPlayer.cleanup();
             this.videoPlayer = undefined;
           }, {once: true});

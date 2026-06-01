@@ -1121,7 +1121,7 @@ export default class ChatInput {
       },
       verify: () => {
         if(this.editMsgId) return;
-        return (!this.chat.isMonoforum && this.chat.peerId.isAnyChat()) || this.chat.isBot;
+        return (!this.chat.isMonoforum && this.chat.peerId.isAnyChat()) || this.chat.isBot || this.chat.peerId === rootScope.myId;
       }
     }, {
       icon: 'checkround',
@@ -3067,7 +3067,10 @@ export default class ChatInput {
       // * so have to reset formatting
       if(document.activeElement === this.messageInput && !IS_MOBILE) {
         setTimeout(() => {
-          if(document.activeElement === this.messageInput) {
+          // * re-check emptiness: a replace-style IME (e.g. Vietnamese Telex 'dd' -> 'đ') emits the
+          // * delete (empty input) and the insert in the same task, so the input is filled again by
+          // * the time this fires. wiping it here would eat the just-composed character
+          if(document.activeElement === this.messageInput && this.isInputEmpty()) {
             this.messageInput.textContent = '1';
             placeCaretAtEnd(this.messageInput);
             this.messageInput.textContent = '';
@@ -4133,7 +4136,7 @@ export default class ChatInput {
     paidMessageInterceptor
   }: {
     sendingParams: MessageSendingParams,
-    inputField: InputFieldAnimated,
+    inputField?: InputFieldAnimated,
     chatType?: ChatType,
     forwarding?: ChatInput['forwarding'],
     sendTextParams?: Parameters<AppMessagesManager['sendText']>[0],
@@ -4141,7 +4144,9 @@ export default class ChatInput {
     slowModeParams: Pick<Parameters<typeof ChatInput['showSlowModeTooltipIfNeeded']>[0], 'peerId' | 'managers' | 'element'>,
     paidMessageInterceptor?: PaidMessagesInterceptor
   }) {
-    const {value, entities} = getRichValueWithCaret(inputField.input, true, false);
+    const {value, entities} = inputField ?
+      getRichValueWithCaret(inputField.input, true, false) :
+      {value: '', entities: [] as MessageEntity[]};
     const trimmedValue = value.trim();
 
     let messageCount = 0;

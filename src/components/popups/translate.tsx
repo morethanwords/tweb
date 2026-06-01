@@ -1,6 +1,5 @@
-import {createEffect, createSignal, JSX, onMount, Show} from 'solid-js';
-import {render} from 'solid-js/web';
-import PopupElement from '.';
+import PopupElement, {createPopup, PopupContext} from '@components/popups/indexTsx';
+import {createEffect, createSignal, JSX, onCleanup, Show, untrack, useContext} from 'solid-js';
 import documentFragmentToNodes from '@helpers/dom/documentFragmentToNodes';
 import classNames from '@helpers/string/classNames';
 import usePeerTranslation from '@hooks/usePeerTranslation';
@@ -12,60 +11,37 @@ import {pickLanguage} from '@components/chat/translation';
 import {putPreloader} from '@components/putPreloader';
 import Section from '@components/section';
 import {TranslatableMessageTsx} from '@components/translatableMessage';
+import Scrollable, {ScrollableContextValue} from '@components/scrollable2';
 
-export default class PopupTranslate extends PopupElement {
-  private peerTranslation: ReturnType<typeof usePeerTranslation>;
+export default function showTranslatePopup(options: {
+  peerId: PeerId,
+  message?: Message.message,
+  textWithEntities?: TextWithEntities,
+  detectedLanguage: TranslatableLanguageISO
+}): void {
+  // Collected from media-caption clicks (the old `hideWithCallback`); drained
+  // after the close animation via `onCloseAfterTimeout`.
+  const deferredCloseCallbacks: (() => void)[] = [];
 
-  constructor(private options: {
-    peerId: PeerId,
-    message?: Message.message,
-    textWithEntities?: TextWithEntities,
-    detectedLanguage: TranslatableLanguageISO
-  }) {
-    super('popup-translate', {
-      buttons: [{
-        langKey: 'OK',
-        isCancel: true
-      }, {
-        langKey: 'Telegram.LanguageViewController',
-        callback: () => {
-          pickLanguage(false).then((language) => {
-            this.peerTranslation.setLanguage(language);
-          });
-          return false;
-        }
-      }],
-      scrollable: true,
-      body: true,
-      overlayClosable: true
-    });
+  function Inner() {
+    const context = useContext(PopupContext);
+    const middleware = untrack(() => context.middlewareHelper).get();
 
-    this.header.remove();
+    let scrollableContext: ScrollableContextValue;
 
-    const dispose = render(() => this.d(), this.scrollable.container);
-    this.addEventListener('closeAfterTimeout', dispose);
-  }
+    const peerTranslation = usePeerTranslation(options.peerId);
 
-  private d() {
-    onMount(() => {
-      setTimeout(() => {
-        this.show();
-      }, 0);
-    });
-
-    this.peerTranslation = usePeerTranslation(this.options.peerId);
-
-    let originalTextWithEntities: TextWithEntities = this.options.textWithEntities;
-    if(this.options.message) {
+    let originalTextWithEntities: TextWithEntities = options.textWithEntities;
+    if(options.message) {
       originalTextWithEntities = {
         _: 'textWithEntities',
-        text: this.options.message.message,
-        entities: this.options.message.totalEntities
+        text: options.message.message,
+        entities: options.message.totalEntities
       };
     }
 
     const richTextOptions: WrapRichTextOptions = {
-      middleware: this.middlewareHelper.get(),
+      middleware,
       textColor: 'primary-text-color'
     };
 
@@ -88,10 +64,12 @@ export default class PopupTranslate extends PopupElement {
         }
 
         div.removeEventListener('click', onClick, {capture: true});
-        this.hideWithCallback(callback);
+        deferredCloseCallbacks.push(callback);
+        context.hide();
       };
 
       div.addEventListener('click', onClick, {capture: true});
+      onCleanup(() => div.removeEventListener('click', onClick, {capture: true}));
       return ret;
     };
 
@@ -122,7 +100,7 @@ export default class PopupTranslate extends PopupElement {
               onClick={() => {
                 setLimiting(false);
                 setTimeout(() => {
-                  this.scrollable.onScroll();
+                  scrollableContext?.onSizeChange();
                 }, 0);
               }}
             >
@@ -139,36 +117,79 @@ export default class PopupTranslate extends PopupElement {
     const loadPromises: Promise<void>[] = [];
     const translatable = (
       <TranslatableMessageTsx
-        peerId={this.options.peerId}
-        message={this.options.message}
-        textWithEntities={this.options.textWithEntities}
+        peerId={options.peerId}
+        message={options.message}
+        textWithEntities={options.textWithEntities}
         richTextOptions={{...richTextOptions, loadPromises}}
         enabled
       />
     );
 
     Promise.all(loadPromises).then(() => {
+      if(!middleware()) {
+        return;
+      }
+
       setLoading(false);
       setTimeout(() => {
-        this.scrollable.onScroll();
+        scrollableContext?.onSizeChange();
       }, 0);
     });
 
     return (
       <>
-        <Section noShadow name={`Language.${this.options.detectedLanguage}`}>
-          {wrap(originalTextWithEntities, 120)}
-        </Section>
-        <Section noShadow name={`Language.${this.peerTranslation.language()}`} fakeGradientDelimiter>
-          <Show when={!loading()} fallback={(
-            <div class="popup-translate-preloader">
-              {preloader}
-            </div>
-          )}>
-            <WrappedMessage>{translatable}</WrappedMessage>
-          </Show>
-        </Section>
+        <PopupElement.Header>
+          <PopupElement.CloseButton />
+          <PopupElement.Title>{i18n('Translation')}</PopupElement.Title>
+        </PopupElement.Header>
+        <PopupElement.Body>
+          <Scrollable
+            withBorders="both"
+            contextRef={(ctx) => scrollableContext = ctx}
+          >
+            <Section noShadow name={`Language.${options.detectedLanguage}`}>
+              {wrap(originalTextWithEntities, 120)}
+            </Section>
+            <Section noShadow name={`Language.${peerTranslation.language()}`}>
+              <Show
+                when={!loading()}
+                fallback={(
+                  <div class="popup-translate-preloader">
+                    {preloader}
+                  </div>
+                )}
+              >
+                <WrappedMessage>{translatable}</WrappedMessage>
+              </Show>
+            </Section>
+          </Scrollable>
+        </PopupElement.Body>
+        <PopupElement.Buttons>
+          <PopupElement.Button langKey="OK" />
+          <PopupElement.Button
+            langKey="Telegram.LanguageViewController"
+            confirm
+            callback={() => {
+              pickLanguage(false).then((language) => {
+                peerTranslation.setLanguage(language);
+              });
+              return false;
+            }}
+          />
+        </PopupElement.Buttons>
       </>
     );
   }
+
+  createPopup(() => (
+    <PopupElement
+      class="popup-translate"
+      closable
+      onCloseAfterTimeout={() => {
+        deferredCloseCallbacks.splice(0).forEach((cb) => cb());
+      }}
+    >
+      <Inner />
+    </PopupElement>
+  ));
 }

@@ -696,7 +696,7 @@ const lang = {
   },
   'Rtmp.Topbar.Title': 'Live Stream',
   'Rtmp.Topbar.NoViewers': 'No viewers',
-  'Rtmp.Topbar.Join': 'JOIN',
+  'Rtmp.Topbar.Join': 'Join',
   'Rtmp.Topbar.StreamWith': 'Stream With...',
   'Rtmp.Topbar.StartVideoChat': 'Start Video Chat',
   'Rtmp.MediaViewer.Live': 'LIVE',
@@ -1202,6 +1202,7 @@ const lang = {
   'RemovedUsers': 'Removed Users',
   'StoryViewers': 'Story Viewers',
   'PinnedMessages': 'Pinned Messages',
+  'Translation': 'Translation',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -1265,9 +1266,9 @@ const lang = {
   'ActionPinnedNoText': 'un1 pinned a message',
   'ActionMigrateFromGroup': 'This group was upgraded to a supergroup',
   'ActionYouScored': 'You scored %1$s',
-  'ActionUserScored': 'un1 scored %1$s',
+  'ActionUserScored': 'un1 scored %2$s',
   'ActionYouScoredInGame': 'You scored %1$s in un2',
-  'ActionUserScoredInGame': 'un1 scored %1$s in un2',
+  'ActionUserScoredInGame': 'un1 scored %2$s in un3',
   'ActionCreateDirectMessages' : 'Direct Messages Opened',
   'AndOther': {
     'one_value': 'and %1$d other',
@@ -1445,7 +1446,7 @@ const lang = {
   'JumpToDate': 'Jump to Date',
   'Caption': 'Caption',
   'Message': 'Message',
-  'OffThreadMessage': 'Off-Thread Message',
+  'OffThreadMessage': 'Off-Topic Message',
   'Poll': 'Poll',
   'SharedFilesTab2': 'Files',
   'SharedMediaTab2': 'Media',
@@ -2110,7 +2111,7 @@ const lang = {
   'ChatThemeChangedTo': '%1$s changed the chat theme to %2$s',
   'ChatThemeDisabled': '%1$s disabled the chat theme',
   'ChatThemeDisabledYou': 'You disabled the chat theme',
-  'ThemeDay': 'Day',
+  'ThemeDay': 'Classic',
   'ThemeNight': 'Night',
   'ThemeLight': 'Day',
   'ThemeTinted': 'Dark',
@@ -2785,7 +2786,9 @@ const lang = {
   'CreateTopicsPermission': 'Create topics',
   'VoipChannelJoinVoiceChatUrl': 'Join Live Stream',
   'InviteLinkSentSingle': 'Invite link sent to **%s**.',
-  'InviteLinkSentMany': 'Invite link sent to **%d chats**.',
+  'InviteLinkSentMany': {
+    'other_value': 'Invite link sent to **%d chats**.'
+  },
   'ActionSetWallpaperForThisChatSelf': 'You set a new wallpaper for this chat',
   'ActionSetWallpaperForThisChannel': 'Channel set a new wallpaper',
   'ActionSetWallpaperForThisGroup': 'Group set a new wallpaper',

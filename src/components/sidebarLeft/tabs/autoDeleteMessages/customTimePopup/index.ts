@@ -34,7 +34,8 @@ export default class AutoDeleteMessagesCustomTimePopup extends PopupElement {
           langKey: 'Cancel',
           isCancel: true
         }
-      ]
+      ],
+      old: true
     });
 
     this.period = period;

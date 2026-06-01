@@ -32,7 +32,7 @@ import type PopupPremium from '@components/popups/premium';
 import type PopupSendGift from '@components/popups/sendGift';
 import type showStarsRatingPopup from '@components/popups/starsRating';
 import type PopupToggleReadDate from '@components/popups/toggleReadDate';
-import type PopupTranslate from '@components/popups/translate';
+import type showTranslatePopup from '@components/popups/translate';
 import type {setQuizHint} from '@components/quizHint';
 import type Row from '@components/rowTsx';
 import type {AppSidebarLeft} from '@components/sidebarLeft';
@@ -102,7 +102,7 @@ export type SolidJSHotReloadGuardContextValue = {
   i18n: typeof i18n;
   join: typeof join;
   PopupElement: typeof PopupElement;
-  PopupTranslate: typeof PopupTranslate;
+  showTranslatePopup: typeof showTranslatePopup;
   PopupToggleReadDate: typeof PopupToggleReadDate;
   wrapSticker: typeof wrapSticker;
   wrapTopicNameButton: typeof wrapTopicNameButton;

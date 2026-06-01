@@ -169,23 +169,28 @@ $inactive-opacity: .4;
       transform: translateZ(0);
       text-align: unset;
       bottom: 1.0625rem;
-
+      background-color: var(--mv-panel-background-handhelds);
+      opacity: 1 !important;
+      padding-bottom: .75rem;
+      
       .scrollable {
         padding: 0 .5rem;
         height: auto;
+        $shadow-size: 1rem;
+        -webkit-mask-image: linear-gradient(
+          to bottom,
+          rgba(0, 0, 0, 255) 0%,
+          rgba(0, 0, 0, 255) calc(100% - #{$shadow-size}),
+          rgba(0, 0, 0, 0) 100%
+        );
       }
 
       .media-viewer-whole.has-video-controls & {
-        transform: translate3d(0, -69px, 0);
+        transform: translate3d(0, -45px, 0);
       }
 
       .media-viewer-whole.backwards & {
         visibility: hidden;
-      }
-
-      @include hover() {
-        background-color: #000;
-        opacity: 1 !important;
       }
     }
 
@@ -234,7 +239,7 @@ $inactive-opacity: .4;
     }
 
     @include respond-to(handhelds) {
-      width: 4rem;
+      display: none !important;
     }
 
     &-right {
@@ -423,9 +428,25 @@ $inactive-opacity: .4;
         } */
 
         .ckin__player:not(.ckin__fullscreen) {
+          // Live stays vertically centered (60/60), so its controls drop into the
+          // bottom reserve to reach the screen edge.
           .default__controls/* ,
           .default__gradient-bottom */ {
             bottom: -62px;
+          }
+
+          // A regular mobile video fills the viewport down to the bottom edge, so
+          // anchor the controls (and reveal their gradient scrim, hidden by default
+          // on handhelds) to the player's bottom — the very bottom of the screen.
+          &:not(.default-live) {
+            .default__controls {
+              background-color: var(--mv-panel-background-handhelds);
+              bottom: 0;
+            }
+
+            .default__gradient-bottom {
+              display: none;
+            }
           }
         }
       }
@@ -508,12 +529,20 @@ $inactive-opacity: .4;
 
     @include respond-to(handhelds) {
       padding: 0 .5rem;
-      // transform: translateY(-3.5rem);
-      // background: rgba(0, 0, 0, .2);
+      background: var(--mv-panel-background-handhelds);
+      transform: translateY(0);
 
-      /* @include animation-level(2) {
-        transition: transform var(--open-duration) ease-in-out;
-      } */
+      @include animation-level(2) {
+        transition: opacity var(--open-duration) ease-in-out, transform var(--open-duration) ease-in-out !important;
+      }
+
+      // Touch has no hover to reveal the chrome, so show it at full opacity (it
+      // floats over the media now); the gradient scrim above carries legibility.
+      // (The ⋮ menu's gray→white is handled with the other menu toggles below.)
+      .btn-icon,
+      .media-viewer-author {
+        opacity: 1;
+      }
     }
   }
 
@@ -537,6 +566,7 @@ $inactive-opacity: .4;
   }
 
   &-whole {
+    --mv-panel-background-handhelds: rgba(0, 0, 0, 0.5);
     --open-duration: .2s;
     --move-duration: .35s;
     // --padding-vertical-top / --padding-vertical-bottom are set by JS
@@ -575,20 +605,14 @@ $inactive-opacity: .4;
     }
 
     @include respond-to(handhelds) {
-      /* > .btn-icon {
-        top: 8px;
-        position: fixed;
-        z-index: 5;
-        opacity: 0;
-        transition: opacity var(--open-duration) 0s, visibility 0s var(--open-duration);
-      } */
-
+      // Menu toggles (topbar ⋮, player speed & quality) default to an inactive
+      // gray that only goes white on hover/open. Touch has no hover, so keep them
+      // white to match the other white chrome (close button, play, fullscreen…).
       .btn-menu-toggle:not(.playback-rate) {
-        color: rgba(255, 255, 255, $inactive-opacity);
+        color: #fff;
         opacity: 1;
 
         &.menu-open {
-          color: #fff;
           background-color: rgba(112, 117, 121, .2) !important;
         }
       }
@@ -596,6 +620,24 @@ $inactive-opacity: .4;
       &.hide-caption {
         .media-viewer-caption {
           opacity: 0 !important;
+          pointer-events: none;
+        }
+      }
+
+      // The caption & topbar are chrome too: hide them together with the player
+      // controls when they auto-hide (video, has-video + lost has-video-controls),
+      // or on a tap toggle for media that has no player controls (photo/GIF →
+      // chrome-hidden, set in onClick).
+      &.has-video:not(.has-video-controls),
+      &.chrome-hidden {
+        .media-viewer-caption {
+          opacity: 0 !important;
+          pointer-events: none;
+        }
+
+        .media-viewer-topbar {
+          opacity: 0;
+          transform: translateY(-100%);
           pointer-events: none;
         }
       }

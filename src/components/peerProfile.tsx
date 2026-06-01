@@ -919,7 +919,7 @@ PeerProfile.Location = () => {
 
 PeerProfile.Bio = () => {
   const context = useContext(PeerProfileContext);
-  const {i18n, PopupPremium, PopupElement, PopupTranslate, I18n, wrapRichText, toast} = useHotReloadGuard();
+  const {i18n, PopupPremium, showTranslatePopup, I18n, wrapRichText, toast} = useHotReloadGuard();
   const appConfig = useAppConfig();
   const peerTranslation = usePeerTranslation(context.peerId);
 
@@ -967,7 +967,7 @@ PeerProfile.Bio = () => {
               if(!peerTranslation.canTranslate(true)) {
                 PopupPremium.show({feature: 'translations'});
               } else {
-                PopupElement.createPopup(PopupTranslate, {
+                showTranslatePopup({
                   peerId: context.peerId,
                   textWithEntities: {
                     _: 'textWithEntities',

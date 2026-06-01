@@ -586,7 +586,7 @@
 "Rtmp.Watching_other" = "%s watching";
 "Rtmp.Topbar.Title" = "Live Stream";
 "Rtmp.Topbar.NoViewers" = "No viewers";
-"Rtmp.Topbar.Join" = "JOIN";
+"Rtmp.Topbar.Join" = "Join";
 "Rtmp.Topbar.StreamWith" = "Stream With...";
 "Rtmp.Topbar.StartVideoChat" = "Start Video Chat";
 "Rtmp.MediaViewer.Live" = "LIVE";
@@ -1051,6 +1051,7 @@
 "RemovedUsers" = "Removed Users";
 "StoryViewers" = "Story Viewers";
 "PinnedMessages" = "Pinned Messages";
+"Translation" = "Translation";
 "GroupsAndChannelsLimitTitle" = "Groups and Channels";
 "GroupsAndChannelsLimitSubtitle" = "Join up to %d channels and large groups";
 "PinChatsLimitTitle" = "Pinned Chats";
@@ -1112,9 +1113,9 @@
 "ActionPinnedNoText" = "un1 pinned a message";
 "ActionMigrateFromGroup" = "This group was upgraded to a supergroup";
 "ActionYouScored" = "You scored %1$s";
-"ActionUserScored" = "un1 scored %1$s";
+"ActionUserScored" = "un1 scored %2$s";
 "ActionYouScoredInGame" = "You scored %1$s in un2";
-"ActionUserScoredInGame" = "un1 scored %1$s in un2";
+"ActionUserScoredInGame" = "un1 scored %2$s in un3";
 "ActionCreateDirectMessages" = "Direct Messages Opened";
 "AndOther_one" = "and %1$d other";
 "AndOther_other" = "and %1$d others";
@@ -1266,7 +1267,7 @@
 "JumpToDate" = "Jump to Date";
 "Caption" = "Caption";
 "Message" = "Message";
-"OffThreadMessage" = "Off-Thread Message";
+"OffThreadMessage" = "Off-Topic Message";
 "Poll" = "Poll";
 "SharedFilesTab2" = "Files";
 "SharedMediaTab2" = "Media";
@@ -1855,7 +1856,7 @@
 "ChatThemeChangedTo" = "%1$s changed the chat theme to %2$s";
 "ChatThemeDisabled" = "%1$s disabled the chat theme";
 "ChatThemeDisabledYou" = "You disabled the chat theme";
-"ThemeDay" = "Day";
+"ThemeDay" = "Classic";
 "ThemeNight" = "Night";
 "ThemeLight" = "Day";
 "ThemeTinted" = "Dark";
@@ -2410,7 +2411,7 @@
 "CreateTopicsPermission" = "Create topics";
 "VoipChannelJoinVoiceChatUrl" = "Join Live Stream";
 "InviteLinkSentSingle" = "Invite link sent to **%s**.";
-"InviteLinkSentMany" = "Invite link sent to **%d chats**.";
+"InviteLinkSentMany_other" = "Invite link sent to **%d chats**.";
 "ActionSetWallpaperForThisChatSelf" = "You set a new wallpaper for this chat";
 "ActionSetWallpaperForThisChannel" = "Channel set a new wallpaper";
 "ActionSetWallpaperForThisGroup" = "Group set a new wallpaper";
@@ -4164,7 +4165,7 @@
 "Login.ResetEmail.PleaseWait" = "Resetting email, please wait...";
 "Login.ResetEmail.NeedPremium" = "Telegram Premium Required";
 "Login.ResetEmail.NeedPremiumText" = "Due to the high cost of SMS in your country, you need a **Telegram Premium** account to immediately reset this email via an SMS code.\n\nYou can ask a friend to gift a Premium subscription for your account";
-"Login.Passkey" = "Log in by passkey";
+"Login.Passkey" = "Log in by passkey >";
 "Login.Passkey.Error" = "Something went wrong";
 "Login.Passkey.Error.NotFound" = "Used passkey is not tied to any account";
 "Code" = "Code";
@@ -4177,12 +4178,12 @@
 "Contacts.PhoneNumber.Placeholder" = "Phone Number";
 "Login.Next" = "Next";
 "Login.ContinueOnLanguage" = "Continue in English";
-"Login.QR.Title" = "Log in to Telegram by QR Code";
+"Login.QR.Title" = "Log in by QR Code";
 "Login.QR.Help1" = "Open Telegram on your phone";
 "Login.QR.Help2" = "Go to **Settings** > **Devices** > **Link Desktop Device**";
 "Login.QR.Help3" = "Point your phone at this screen to confirm login";
-"Login.QR.Cancel" = "Log in by phone number";
-"Login.QR.Login" = "Log in by QR Code";
+"Login.QR.Cancel" = "Log in by phone number >";
+"Login.QR.Login" = "Log in by QR Code >";
 "Login.QR.Subtitle" = "Scan with Telegram app on your phone";
 "PhoneNumber.Code.Fragment.Info" = "Get the code in the Numbers section on [Fragment](%1$@)";
 "PHONE_CODE_INVALID" = "Invalid code";

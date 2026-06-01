@@ -56,7 +56,7 @@ import rootScope from '@lib/rootScope';
 import ReactionElement from '@components/chat/reaction';
 import InputField from '@components/inputField';
 import getMainGroupedMessage from '@appManagers/utils/messages/getMainGroupedMessage';
-import PopupTranslate from '@components/popups/translate';
+import showTranslatePopup from '@components/popups/translate';
 import getRichSelection from '@helpers/dom/getRichSelection';
 import detectLanguageForTranslation from '@helpers/detectLanguageForTranslation';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
@@ -954,7 +954,7 @@ export default class ChatContextMenu {
             textWithEntities = await this.getPollTextWithEntities(message);
           }
 
-          PopupElement.createPopup(PopupTranslate, {
+          showTranslatePopup({
             peerId: textWithEntities ? peerId : message.peerId,
             textWithEntities,
             message: textWithEntities ? undefined : message as Message.message,
