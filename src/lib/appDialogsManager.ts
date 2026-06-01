@@ -727,7 +727,7 @@ export class AppDialogsManager {
 
     const {setSelectedFolderId, onClick, setOnClick, folderItems} = useFolders();
     const selectFolderByIndex = async(index: number) => {
-      const id = folderItems[index].filter.id;
+      const id = folderItems[index]?.filter.id ?? FOLDER_ID_ALL;
       const wasFilterId = this.filterId;
 
       const available = wasFilterId === -1 ||

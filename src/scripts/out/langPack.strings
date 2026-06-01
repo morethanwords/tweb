@@ -586,7 +586,7 @@
 "Rtmp.Watching_other" = "%s watching";
 "Rtmp.Topbar.Title" = "Live Stream";
 "Rtmp.Topbar.NoViewers" = "No viewers";
-"Rtmp.Topbar.Join" = "Join";
+"Rtmp.Topbar.Join" = "JOIN";
 "Rtmp.Topbar.StreamWith" = "Stream With...";
 "Rtmp.Topbar.StartVideoChat" = "Start Video Chat";
 "Rtmp.MediaViewer.Live" = "LIVE";
@@ -1112,9 +1112,9 @@
 "ActionPinnedNoText" = "un1 pinned a message";
 "ActionMigrateFromGroup" = "This group was upgraded to a supergroup";
 "ActionYouScored" = "You scored %1$s";
-"ActionUserScored" = "un1 scored %2$s";
+"ActionUserScored" = "un1 scored %1$s";
 "ActionYouScoredInGame" = "You scored %1$s in un2";
-"ActionUserScoredInGame" = "un1 scored %2$s in un3";
+"ActionUserScoredInGame" = "un1 scored %1$s in un2";
 "ActionCreateDirectMessages" = "Direct Messages Opened";
 "AndOther_one" = "and %1$d other";
 "AndOther_other" = "and %1$d others";
@@ -1855,7 +1855,7 @@
 "ChatThemeChangedTo" = "%1$s changed the chat theme to %2$s";
 "ChatThemeDisabled" = "%1$s disabled the chat theme";
 "ChatThemeDisabledYou" = "You disabled the chat theme";
-"ThemeDay" = "Classic";
+"ThemeDay" = "Day";
 "ThemeNight" = "Night";
 "ThemeLight" = "Day";
 "ThemeTinted" = "Dark";
@@ -4164,7 +4164,7 @@
 "Login.ResetEmail.PleaseWait" = "Resetting email, please wait...";
 "Login.ResetEmail.NeedPremium" = "Telegram Premium Required";
 "Login.ResetEmail.NeedPremiumText" = "Due to the high cost of SMS in your country, you need a **Telegram Premium** account to immediately reset this email via an SMS code.\n\nYou can ask a friend to gift a Premium subscription for your account";
-"Login.Passkey" = "Log in by passkey >";
+"Login.Passkey" = "Log in by passkey";
 "Login.Passkey.Error" = "Something went wrong";
 "Login.Passkey.Error.NotFound" = "Used passkey is not tied to any account";
 "Code" = "Code";
@@ -4177,12 +4177,12 @@
 "Contacts.PhoneNumber.Placeholder" = "Phone Number";
 "Login.Next" = "Next";
 "Login.ContinueOnLanguage" = "Continue in English";
-"Login.QR.Title" = "Log in by QR Code";
+"Login.QR.Title" = "Log in to Telegram by QR Code";
 "Login.QR.Help1" = "Open Telegram on your phone";
 "Login.QR.Help2" = "Go to **Settings** > **Devices** > **Link Desktop Device**";
 "Login.QR.Help3" = "Point your phone at this screen to confirm login";
-"Login.QR.Cancel" = "Log in by phone number >";
-"Login.QR.Login" = "Log in by QR Code >";
+"Login.QR.Cancel" = "Log in by phone number";
+"Login.QR.Login" = "Log in by QR Code";
 "Login.QR.Subtitle" = "Scan with Telegram app on your phone";
 "PhoneNumber.Code.Fragment.Info" = "Get the code in the Numbers section on [Fragment](%1$@)";
 "PHONE_CODE_INVALID" = "Invalid code";
