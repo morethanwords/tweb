@@ -47,7 +47,7 @@ const UserPermissions: Component = () => {
   });
 
   tab.header.append(solidState.saveIcon());
-  tab.title.replaceChildren(i18n(editingAdmin ? 'EditAdmin' : 'UserRestrictions'));
+  // title is set by the scaffold (function of editingAdmin)
 
   promiseCollector.collect((async() => {
     tab.container.classList.add('edit-peer-container', 'user-permissions-container');

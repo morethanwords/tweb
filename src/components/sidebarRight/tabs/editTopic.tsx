@@ -7,7 +7,6 @@ import deepEqual from '@helpers/object/deepEqual';
 import {ForumTopic} from '@layer';
 import {GENERAL_TOPIC_ID, TOPIC_COLORS} from '@appManagers/constants';
 import getAbbreviation from '@lib/richTextProcessor/getAbbreviation';
-import {i18n} from '@lib/langPack';
 import ButtonIcon from '@components/buttonIcon';
 import CheckboxField from '@components/checkboxField';
 import EmojiTab from '@components/emoticonsDropdown/tabs/emoji';
@@ -134,7 +133,7 @@ const EditTopic: Component = () => {
     const isNew = !threadId;
     const isGeneral = threadId === GENERAL_TOPIC_ID;
     tab.container.classList.add('edit-topic-container');
-    tab.title.replaceChildren(i18n(isNew ? 'NewTopic' : 'ForumTopic.Title.Edit'));
+    // title is set by the scaffold (function of threadId)
 
     if(threadId) {
       topic = originalTopic = copy(await tab.managers.dialogsStorage.getForumTopic(peerId, threadId));

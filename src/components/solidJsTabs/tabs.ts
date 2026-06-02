@@ -420,7 +420,7 @@ export const AppEditContactTab =
 
 export const AppEditTopicTab =
   scaffoldSolidJSTab<{peerId: PeerId, threadId?: number}>({
-    title: 'NewTopic',
+    title: (p) => p.threadId ? 'ForumTopic.Title.Edit' : 'NewTopic',
     getComponentModule: () => import('../sidebarRight/tabs/editTopic')
   });
 
@@ -451,7 +451,7 @@ type AppUserPermissionsTabPayload = {
 
 export const AppUserPermissionsTab =
   scaffoldSolidJSTabEventable<AppUserPermissionsTabPayload>({
-    title: 'UserRestrictions',
+    title: (p) => p.editingAdmin ? 'EditAdmin' : 'UserRestrictions',
     getComponentModule: () => import('../sidebarRight/tabs/userPermissions')
   });
 
