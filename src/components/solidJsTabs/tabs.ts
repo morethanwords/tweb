@@ -647,7 +647,7 @@ type AppMyStoriesTabPayload = ReturnType<typeof getMyStoriesInitArgs> & {
 
 export const AppMyStoriesTab = Object.assign(
   scaffoldSolidJSTab<AppMyStoriesTabPayload>({
-    title: 'MyStories.Title',
+    title: (p) => p.isArchive ? 'MyStories.Archive' : 'MyStories.Title',
     getComponentModule: () => import('../sidebarLeft/tabs/myStories')
   }),
   {getInitArgs: getMyStoriesInitArgs}
