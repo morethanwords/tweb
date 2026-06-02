@@ -40,6 +40,8 @@
     "files": [
       "electron/**/*",
       "dist/**/*",
+      "public/assets/**/*",
+      "public/changelogs/**/*",
       "package.json"
     ],
     "directories": {

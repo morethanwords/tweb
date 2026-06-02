@@ -16,6 +16,9 @@ const {createMainWindow, createChatWindow, broadcast} = require('./windows');
 const {DEFAULT_NETWORK_CONFIG} = require('./config');
 
 const DIST_DIR = path.join(__dirname, '..', 'dist');
+// Static assets Vite doesn't bundle (fonts, images, audio under assets/) live in public/
+// and are served at the web root in dev — serve them as a fallback root behind dist/.
+const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 const DEV_URL = process.env.TWEB_DEV_URL || ''; // e.g. http://localhost:8080
 const VERSION = readVersion();
 
@@ -81,7 +84,7 @@ async function boot() {
     appOrigin = DEV_URL;
     log('using dev renderer at', appOrigin);
   } else {
-    staticServer = new StaticServer(DIST_DIR, log);
+    staticServer = new StaticServer([DIST_DIR, PUBLIC_DIR], log);
     appOrigin = await staticServer.start();
   }
 

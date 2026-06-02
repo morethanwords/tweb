@@ -41,9 +41,14 @@ function contentType(file) {
 }
 
 class StaticServer {
-  /** @param {string} root absolute path to the built app (dist/) */
-  constructor(root, log) {
-    this.root = root;
+  /**
+   * @param {string|string[]} roots one or more absolute roots, tried in order. The built
+   *   app (dist/) comes first; public/ follows so static assets that Vite doesn't bundle
+   *   (fonts, images, audio under assets/, served at the web root in dev) are found too.
+   */
+  constructor(roots, log) {
+    this.roots = (Array.isArray(roots) ? roots : [roots]).map((r) => path.resolve(r));
+    this.root = this.roots[0]; // index.html / SPA fallback lives here
     this.log = log || (() => {});
     this.port = 0;
     this.origin = '';
@@ -57,7 +62,7 @@ class StaticServer {
       server.listen(0, '127.0.0.1', () => {
         this.port = server.address().port;
         this.origin = 'http://127.0.0.1:' + this.port;
-        this.log('static server:', this.origin, '->', this.root);
+        this.log('static server:', this.origin, '->', this.roots.join(', '));
         resolve(this.origin);
       });
     });
@@ -69,34 +74,40 @@ class StaticServer {
     } catch(e) {}
   }
 
-  _resolve(urlPath) {
-    // Strip query/hash, decode, and prevent path traversal.
+  // One candidate absolute path per root (query/hash stripped, traversal-guarded).
+  _candidates(urlPath) {
     let p = decodeURIComponent(urlPath.split('?')[0].split('#')[0]);
     if(p === '/' || p === '') p = '/index.html';
-    const resolved = path.normalize(path.join(this.root, p));
-    if(!resolved.startsWith(this.root)) return null;
-    return resolved;
+    const out = [];
+    for(const root of this.roots) {
+      const resolved = path.normalize(path.join(root, p));
+      if(resolved.startsWith(root)) out.push(resolved);
+    }
+    return out;
   }
 
   _handle(req, res) {
-    let file = this._resolve(req.url);
-    const sendIndex = () => this._sendFile(req, res, path.join(this.root, 'index.html'));
-
-    if(!file) {
+    const candidates = this._candidates(req.url);
+    if(!candidates.length) {
       res.writeHead(403);
       return res.end('Forbidden');
     }
 
-    fs.stat(file, (err, stat) => {
-      if(err || !stat.isFile()) {
+    // Try each root in order (dist before public); serve the first existing file.
+    const tryNext = (i) => {
+      if(i >= candidates.length) {
         // SPA fallback for navigation requests; everything else is a real 404.
         const accept = req.headers['accept'] || '';
-        if(accept.includes('text/html')) return sendIndex();
+        if(accept.includes('text/html')) return this._sendFile(req, res, path.join(this.root, 'index.html'));
         res.writeHead(404);
         return res.end('Not found');
       }
-      this._sendFile(req, res, file, stat);
-    });
+      fs.stat(candidates[i], (err, stat) => {
+        if(err || !stat.isFile()) return tryNext(i + 1);
+        this._sendFile(req, res, candidates[i], stat);
+      });
+    };
+    tryNext(0);
   }
 
   _sendFile(req, res, file, stat) {
