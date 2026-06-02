@@ -1,4 +1,4 @@
-import {Component} from 'solid-js';
+import {Component, createSignal, onMount, Show} from 'solid-js';
 import {formatFullSentTime} from '@helpers/date';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import findUpAsChild from '@helpers/dom/findUpAsChild';
@@ -6,17 +6,18 @@ import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
 import formatDuration from '@helpers/formatDuration';
 import clamp from '@helpers/number/clamp';
 import tsNow from '@helpers/tsNow';
-import {i18n} from '@lib/langPack';
+import {i18n, LangPackKey} from '@lib/langPack';
 import ButtonCorner from '@components/buttonCorner';
 import CheckboxField from '@components/checkboxField';
 import InputField from '@components/inputField';
+import {InputFieldTsx} from '@components/inputFieldTsx';
 import {InputStarsField} from '@components/popups/makePaid';
 import {InputRightNumber} from '@components/popups/payment';
 import showDatePickerPopup from '@components/popups/datePicker';
 import {setButtonLoader} from '@components/putPreloader';
 import RangeStepsSelector from '@components/rangeStepsSelector';
 import Row from '@components/row';
-import SettingSection from '@components/settingSection';
+import Section from '@components/section';
 import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
 import {ChatInvite} from './chatInviteLinkShared';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
@@ -36,14 +37,27 @@ const EditChatInviteLink: Component = () => {
   const promiseCollector = usePromiseCollector();
   const {chatId, invite} = tab.payload;
 
-  promiseCollector.collect((async() => {
-    tab.title.replaceChildren(i18n(invite ? 'InviteLinks.Edit' : 'NewLink'));
+  let nameInputField!: InputField;
+  let timePeriodSelector: RangeStepsSelector<number | Date>;
+  let usersLimitSelector: RangeStepsSelector<number>;
+  let paidLinkCheckboxField: CheckboxField, paidLinkInputField: InputField;
+  let approveNewMembersCheckboxField: CheckboxField;
 
+  let timePeriodContent!: HTMLDivElement;
+  let usersLimitContent!: HTMLDivElement;
+  const [isBroadcast, setIsBroadcast] = createSignal(false);
+  const [paidRow, setPaidRow] = createSignal<HTMLElement>();
+  const [paidWrapper, setPaidWrapper] = createSignal<HTMLElement>();
+  const [approveContent, setApproveContent] = createSignal<HTMLElement>();
+  const [approveCaption, setApproveCaption] = createSignal<HTMLElement>();
+  const [usersLimitHidden, setUsersLimitHidden] = createSignal(false);
+
+  const build = async() => {
     const confirmBtn = ButtonCorner({className: 'is-visible', icon: 'check'});
     tab.content.append(confirmBtn);
 
     attachClickEvent(confirmBtn, async() => {
-      const removeLoader = setButtonLoader(confirmBtn);
+      setButtonLoader(confirmBtn);
       const expireDateValue = timePeriodSelector.value;
       const expireDate = expireDateValue instanceof Date ? expireDateValue.getTime() / 1000 | 0 : (expireDateValue ? tsNow(true) + expireDateValue : 0);
       const title = nameInputField.value;
@@ -75,38 +89,16 @@ const EditChatInviteLink: Component = () => {
 
       tab.eventListener.dispatchEvent('finish', chatInvite);
       tab.close();
-      // removeLoader();
     }, {listenerSetter: tab.listenerSetter});
 
-    let nameInputField: InputField;
-    {
-      const section = new SettingSection({caption: 'LinkNameHelp'});
-
-      const inputWrapper = document.createElement('div');
-      inputWrapper.classList.add('input-wrapper');
-
-      nameInputField = new InputField({
-        label: 'LinkNameHint',
-        maxLength: 32
-      });
-
-      if(invite?.title) {
-        nameInputField.setOriginalValue(invite.title);
-      }
-
-      inputWrapper.append(nameInputField.container);
-      section.content.append(inputWrapper);
-
-      tab.scrollable.append(section.container);
+    if(invite?.title) {
+      nameInputField.setOriginalValue(invite.title);
     }
 
-    const isBroadcast = await tab.managers.appChatsManager.isBroadcast(chatId);
+    const isBroadcastChat = await tab.managers.appChatsManager.isBroadcast(chatId);
     const appConfig = await tab.managers.apiManager.getAppConfig();
 
-    let paidLinkCheckboxField: CheckboxField, paidLinkInputField: InputField;
-    if(isBroadcast) {
-      const section = new SettingSection({caption: invite ? 'InviteLink.Subscription.Edit' : 'InviteLink.Subscription.Caption'});
-
+    if(isBroadcastChat) {
       const row = new Row({
         titleLangKey: 'InviteLink.Subscription.Title',
         checkboxField: paidLinkCheckboxField = new CheckboxField({toggle: true})
@@ -115,7 +107,7 @@ const EditChatInviteLink: Component = () => {
       tab.listenerSetter.add(paidLinkCheckboxField.input)('change', () => {
         const checked = paidLinkCheckboxField.checked;
         approveNewMembersCheckboxField.toggleDisability(checked);
-        approveNewMembersSection.caption.replaceChildren(i18n(checked ? 'ApproveNewMembersDescription' : 'InviteLink.AdminApproval.Disabled'));
+        setApproveCaption(i18n(checked ? 'ApproveNewMembersDescription' : 'InviteLink.AdminApproval.Disabled'));
         wrapper.classList.toggle('hide', !checked);
       });
 
@@ -136,35 +128,22 @@ const EditChatInviteLink: Component = () => {
       rightLabel.classList.add('input-field-right-label');
       inputField.container.append(rightLabel);
 
-      tab.listenerSetter.add(inputField.input)('input', () => {});
-
       wrapper.append(inputField.container);
-
-      section.content.append(row.container, wrapper);
-
       inputField.value = '' + 500;
 
-      tab.scrollable.append(section.container);
-    }
+      setPaidRow(row.container);
+      setPaidWrapper(wrapper);
 
-    let approveNewMembersCheckboxField: CheckboxField, approveNewMembersSection: SettingSection;
-    if(isBroadcast) {
-      const section = approveNewMembersSection = new SettingSection({caption: true});
-
-      const row = new Row({
+      const approveRow = new Row({
         titleLangKey: 'ApproveNewMembers',
         checkboxField: approveNewMembersCheckboxField = new CheckboxField({toggle: true})
       });
+      setApproveContent(approveRow.container);
 
-      section.content.append(row.container);
-
-      tab.scrollable.append(section.container);
+      setIsBroadcast(true);
     }
 
-    let timePeriodSelector: RangeStepsSelector<number | Date>;
     {
-      const section = new SettingSection({name: 'LimitByPeriod', caption: 'TimeLimitHelp'});
-
       const range: typeof timePeriodSelector = timePeriodSelector = new RangeStepsSelector({
         generateStep: (value) => {
           const formatted = formatDuration(value instanceof Date ? (value.getTime() / 1000 | 0) - tsNow(true) : value, 1);
@@ -241,14 +220,10 @@ const EditChatInviteLink: Component = () => {
         setCustomTimestamp(invite.expire_date);
       }
 
-      section.content.append(range.container, row.container);
-      tab.scrollable.append(section.container);
+      timePeriodContent.append(range.container, row.container);
     }
 
-    let usersLimitSelector: RangeStepsSelector<number>, usersLimitSection: SettingSection;
     {
-      const section = usersLimitSection = new SettingSection({name: 'LimitNumberOfUses', caption: 'UsesLimitHelp'});
-
       const range: typeof usersLimitSelector = usersLimitSelector = new RangeStepsSelector({
         generateStep: (value) => ['' + value, value],
         generateSteps: (values) => {
@@ -268,7 +243,6 @@ const EditChatInviteLink: Component = () => {
         titleRightSecondary: true,
         clickable: true,
         listenerSetter: tab.listenerSetter,
-        // asLabel: true,
         noRipple: true
       });
 
@@ -328,17 +302,14 @@ const EditChatInviteLink: Component = () => {
         const value = Math.max(stepValues[0], invite.usage_limit - (invite.usage || 0));
         setNumber(value);
         setCustomNumber(value);
-        // inputRightNumber.value = '' + value;
-        // onInput();
       }
 
-      section.content.append(range.container, row.container);
-      tab.scrollable.append(section.container);
+      usersLimitContent.append(range.container, row.container);
     }
 
     if(approveNewMembersCheckboxField) {
       tab.listenerSetter.add(approveNewMembersCheckboxField.input)('change', () => {
-        usersLimitSection.container.classList.toggle('hide', approveNewMembersCheckboxField.checked);
+        setUsersLimitHidden(approveNewMembersCheckboxField.checked);
       });
 
       if(invite) {
@@ -358,12 +329,42 @@ const EditChatInviteLink: Component = () => {
       if(invite) {
         paidLinkCheckboxField.toggleDisability(true);
         paidLinkInputField.container.classList.add('disable-hover');
-        // paidLinkInputField.input.contentEditable = 'false';
       }
     }
-  })());
+  };
 
-  return null;
+  onMount(() => {
+    promiseCollector.collect(build());
+  });
+
+  return (
+    <>
+      <Section caption="LinkNameHelp">
+        <div class="input-wrapper">
+          <InputFieldTsx
+            label="LinkNameHint"
+            maxLength={32}
+            instanceRef={(ref) => nameInputField = ref}
+          />
+        </div>
+      </Section>
+      <Show when={isBroadcast()}>
+        <Section caption={invite ? 'InviteLink.Subscription.Edit' : 'InviteLink.Subscription.Caption'}>
+          {paidRow()}
+          {paidWrapper()}
+        </Section>
+        <Section caption={approveCaption()}>
+          {approveContent()}
+        </Section>
+      </Show>
+      <Section name="LimitByPeriod" caption="TimeLimitHelp">
+        <div ref={timePeriodContent} />
+      </Section>
+      <Section name="LimitNumberOfUses" caption="UsesLimitHelp" classList={{hide: usersLimitHidden()}}>
+        <div ref={usersLimitContent} />
+      </Section>
+    </>
+  );
 };
 
 export default EditChatInviteLink;

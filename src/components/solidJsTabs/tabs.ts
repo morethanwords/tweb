@@ -541,7 +541,7 @@ export const AppEditChatInviteLinkTab =
   scaffoldSolidJSTabEventable<AppEditChatInviteLinkTabPayload, {
     finish: (chatInvite: ChatInvite) => void
   }>({
-    title: 'NewLink',
+    title: (p) => p.invite ? 'InviteLinks.Edit' : 'NewLink',
     getComponentModule: () => import('../sidebarRight/tabs/editChatInviteLink')
   });
 
