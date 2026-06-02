@@ -732,7 +732,7 @@ export class AppDialogsManager {
 
       const available = wasFilterId === -1 ||
         REAL_FOLDERS.has(id) ||
-        await rootScope.managers.filtersStorage.isFilterIdAvailable(id);
+        (await rootScope.managers.filtersStorage.isFilterIdAvailable(id) ?? true);
       if(!available) {
         showLimitPopup('folders');
         return false;

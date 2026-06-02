@@ -12,6 +12,7 @@ import SearchListLoader from '@helpers/searchListLoader';
 import copy from '@helpers/object/copy';
 import deepEqual from '@helpers/object/deepEqual';
 import ListenerSetter from '@helpers/listenerSetter';
+import MusicListenTracker from '@helpers/musicListenTracker';
 import {AppManagers} from '@lib/managers';
 import getMediaFromMessage from '@appManagers/utils/messages/getMediaFromMessage';
 import getPeerTitle from '@components/wrappers/getPeerTitle';
@@ -150,8 +151,16 @@ export class AppMediaPlaybackController extends EventListenerBase<{
   private gainAudioContext: AudioContext;
   private mediaGainMap: WeakMap<HTMLMediaElement, {source: MediaElementAudioSourceNode, gain: GainNode, limiter: DynamicsCompressorNode}> = new WeakMap();
 
+  // Music-listen reporting (messages.reportMusicListen) — owned by MusicListenTracker; the
+  // controller just forwards the play/stop events below.
+  private musicListenTracker: MusicListenTracker;
+
   construct(managers: AppManagers) {
     this.managers = managers;
+    this.musicListenTracker = new MusicListenTracker((inputDoc, listenedDuration) => {
+      // Fire-and-forget analytics — swallow errors (e.g. a stale file_reference) so they don't surface.
+      this.managers.appMessagesManager.reportMusicListen(inputDoc, listenedDuration).catch(() => {});
+    });
     this.container = document.createElement('div');
     // this.container.style.cssText = 'position: absolute; top: -10000px; left: -10000px;';
     this.container.style.cssText = 'display: none;';
@@ -236,14 +245,20 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     });
     Object.defineProperties(this, properties);
 
-    this.addEventListener('play', ({doc}) => {
-      if(doc.type === 'round') {
+    this.addEventListener('play', (details) => {
+      if(details.doc.type === 'round') {
         animationIntersector.toggleMediaPause(false);
       }
+
+      this.musicListenTracker.onPlay(details);
     });
 
     this.addEventListener('pause', () => {
       animationIntersector.toggleMediaPause(true);
+    });
+
+    this.addEventListener('stop', () => {
+      this.musicListenTracker.finish();
     });
   }
 

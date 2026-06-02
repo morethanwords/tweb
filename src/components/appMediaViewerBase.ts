@@ -5,6 +5,7 @@ import type {MyDocument} from '@appManagers/appDocsManager';
 import type {MyPhoto} from '@appManagers/appPhotosManager';
 import deferredPromise from '@helpers/cancellablePromise';
 import mediaSizes from '@helpers/mediaSizes';
+import calcImageInBox from '@helpers/calcImageInBox';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import {IS_MOBILE, IS_MOBILE_SAFARI, IS_SAFARI} from '@environment/userAgent';
 import {logger} from '@lib/logger';
@@ -83,18 +84,13 @@ const OPEN_TRANSITION_TIME = 200;
 const MOVE_TRANSITION_TIME = 350;
 
 // Vertical reserves around the media (px). Single source of truth for layout —
-// both mediaBoxSize math and the CSS variables driving .media-viewer-content
-// padding / .media-viewer-mover.center positioning are derived from these.
+// mediaBoxSize math and the inline positioning applied by applyCenterStyles /
+// applyLayoutVariables are derived from these. Same reserves apply to live
+// streams and regular videos — chrome (topbar / controls) behaves identically.
 const RESERVE_TOP_DESKTOP = 80;
 const RESERVE_BOTTOM_DESKTOP = 110;
-// Live streams stay vertically centered — top/bottom chrome floats over the
-// media rather than reserving asymmetric space (split evenly, see .center math).
-const RESERVE_TOP_LIVE = 60;
-const RESERVE_BOTTOM_LIVE = 60;
-// On mobile the video player fills the whole viewport (no reserve), so the media
-// stays vertically centered (symmetric → .center keeps top: 50%) while the player
-// controls are anchored to its bottom = the very bottom of the screen (see .center
-// handhelds in _mediaViewer.scss). The topbar/controls float over the media.
+// On mobile the player fills the whole viewport (no reserve); topbar/controls
+// float over the media and auto-hide together.
 const RESERVE_TOP_MOBILE = 0;
 const RESERVE_BOTTOM_MOBILE = 0;
 
@@ -971,13 +967,23 @@ export default class AppMediaViewerBase<
     }
 
     const isZooming = this.isZooming && false;
-    const classNames = ['admin-popup-container', 'ckin__player', 'media-viewer-buttons', 'media-viewer-author', 'media-viewer-caption', 'zoom-container'];
+    // Regions that count as "clicked a control", so the click is NOT treated as a
+    // background tap (which closes, or for a live stream goes to PiP — see below).
+    // 'media-viewer-topbar' covers the whole top bar incl. the handheld close
+    // button, which lives in .media-viewer-topbar-left (not .media-viewer-buttons)
+    // and would otherwise be misread as a background tap → PiP on a live stream.
+    const classNames = ['admin-popup-container', 'ckin__player', 'media-viewer-buttons', 'media-viewer-author', 'media-viewer-caption', 'zoom-container', 'media-viewer-topbar'];
     if(isZooming) {
       classNames.push('media-viewer-movers');
     }
 
     const hasClickedSomething = classNames.some((s) => !!findUpClassName(target, s));
-    if(!hasClickedSomething && this.live && document.pictureInPictureEnabled) {
+    // Big-screen only: clicking the popup's empty overlay (outside the video zone,
+    // controls and chrome) on a live stream minimises it to PiP instead of closing
+    // — the same action as the dedicated PiP button, which the player only renders
+    // on desktop (mediaPlayer: !IS_MOBILE). On handhelds there's no roomy backdrop
+    // and no PiP button, so a background tap falls through to close() below.
+    if(!hasClickedSomething && this.live && !mediaSizes.isMobile && document.pictureInPictureEnabled) {
       this.videoPlayer.requestPictureInPicture();
       return;
     }
@@ -1076,18 +1082,32 @@ export default class AppMediaViewerBase<
       const visualY = zoom * baseRect.top + panY;
 
       this.moversContainer.classList.add('no-transition');
-      // mover still has .no-transition from the open path, so setting its
-      // transform here doesn't animate. Apply mover transform, drop .center
-      // (which would override via !important), and reset the container —
-      // all in the same frame so the visual position stays unchanged.
+      // Suppress mover's transition inline for this frame so the transform jump
+      // (.center anchor → zoomed visual position) doesn't animate. Apply the
+      // mover transform, drop .center, clear its inline positioning, and reset
+      // the container — all in the same frame so the visual position stays
+      // unchanged.
+      mover.style.transition = 'none';
       mover.style.transform = `translate3d(${visualX}px, ${visualY}px, 0) scale3d(${zoom}, ${zoom}, 1)`;
       mover.classList.remove('center');
+      this.clearCenterStyles(mover);
       this.moversContainer.style.transform = '';
       void mover.offsetLeft; // reflow to commit the no-transition reset
-      mover.classList.remove('no-transition');
+      mover.style.transition = '';
       this.moversContainer.classList.remove('no-transition');
     } else {
       this.removeCenterFromMover(mover);
+      if(closing) {
+        // removeCenterFromMover dropped .center but left applyCenterStyles' mobile
+        // width/height: 100% on the mover (the full-viewport rest state). Pin it to
+        // the media's real rect now, so it doesn't paint at full-viewport size for
+        // the two frames of the doubleRaf below — a visible flash — before
+        // setMoverToTarget assigns containerRect. Desktop already carries px
+        // width/height here, so this matches the value it would get anyway.
+        const mediaRect = this.content.media.getBoundingClientRect();
+        mover.style.width = `${mediaRect.width}px`;
+        mover.style.height = `${mediaRect.height}px`;
+      }
     }
     if(closing) {
       void mover.offsetLeft; // reflow
@@ -1588,11 +1608,15 @@ export default class AppMediaViewerBase<
         // aspecter.classList.remove('disable-hover');
       }
 
-      // эти строки нужны для установки центральной позиции, в случае ресайза это будет нужно
-      mover.classList.add('center', 'no-transition');
-      /* mover.style.left = mover.style.top = '50%';
-      mover.style.transform = 'translate(-50%, -50%)';
-      void mover.offsetLeft; // reflow */
+      // Установка центральной позиции (важно для ресайза). Снимаем transition
+      // инлайн на одну реflow-точку, чтобы переход из open-transform в
+      // .center-transform не анимировался; затем чистим инлайн — будущие
+      // изменения (PiP opacity, close transform) пойдут через .active-правило.
+      mover.classList.add('center');
+      mover.style.transition = 'none';
+      this.applyCenterStyles(mover);
+      void mover.offsetLeft; // reflow — commits center transform without anim
+      mover.style.transition = '';
 
       // это уже нужно для будущих анимаций
       mover.classList.add('active');
@@ -1677,10 +1701,15 @@ export default class AppMediaViewerBase<
     if(mover.classList.contains('center')) {
       // const rect = mover.getBoundingClientRect();
       const rect = this.content.media.getBoundingClientRect();
+      // Suppress the transform jump from .center anchor to target rect: set
+      // transition inline for this reflow, then clear so the subsequent close
+      // animation (scaled transform in setMoverToTarget) animates normally.
+      mover.style.transition = 'none';
       mover.style.transform = `translate3d(${rect.left}px,${rect.top}px,0)`;
       mover.classList.remove('center');
+      this.clearCenterStyles(mover);
       void mover.offsetLeft; // reflow
-      mover.classList.remove('no-transition');
+      mover.style.transition = '';
     }
   }
 
@@ -1869,10 +1898,6 @@ export default class AppMediaViewerBase<
   }
 
   protected getLayoutReserves(): {top: number, bottom: number} {
-    if(this.live) {
-      return {top: RESERVE_TOP_LIVE, bottom: RESERVE_BOTTOM_LIVE};
-    }
-
     if(mediaSizes.isMobile) {
       return {top: RESERVE_TOP_MOBILE, bottom: RESERVE_BOTTOM_MOBILE};
     }
@@ -1949,12 +1974,77 @@ export default class AppMediaViewerBase<
     }, OPEN_TRANSITION_TIME);
   }
 
+  // Resize listener: viewport changed → re-fit content.media + mover, then
+  // re-apply center positioning. Open-path callers should use applyLayoutPadding
+  // instead — the open flow does its own sizing right after.
   protected applyLayoutVariables = () => {
-    const {top, bottom} = this.getLayoutReserves();
-    const {style} = this.wholeDiv;
-    style.setProperty('--padding-vertical-top', `${top}px`);
-    style.setProperty('--padding-vertical-bottom', `${bottom}px`);
+    this.applyLayoutPadding();
+    const mover = this.content.mover;
+    if(mover && mover.classList.contains('center')) {
+      this.refitMediaToViewport();
+      this.applyCenterStyles(mover);
+    }
   };
+
+  protected applyLayoutPadding() {
+    const {top, bottom} = this.getLayoutReserves();
+    const cs = this.content.main.style;
+    cs.paddingTop = `${top}px`;
+    cs.paddingBottom = `${bottom}px`;
+  }
+
+  // Re-fits content.media (the hidden target) and the mover to the new
+  // mediaBoxSize while preserving the source media's aspect ratio (derived from
+  // content.media's current inline px, which was an aspect-fit for the previous
+  // viewport). Keeps containerRect in sync across resizes so close-transition
+  // scale math stays correct.
+  protected refitMediaToViewport() {
+    const media = this.content.media;
+    const w = parseFloat(media.style.width);
+    const h = parseFloat(media.style.height);
+    if(!w || !h) return;
+    const {width: boxW, height: boxH} = this.mediaBoxSize;
+    const noZoom = !mediaSizes.isMobile;
+    const fit = calcImageInBox(w, h, boxW, boxH, noZoom);
+    media.style.width = `${fit.width}px`;
+    media.style.height = `${fit.height}px`;
+    const mover = this.content.mover;
+    if(mover) {
+      mover.style.width = `${fit.width}px`;
+      mover.style.height = `${fit.height}px`;
+    }
+  }
+
+  protected applyCenterStyles(mover: HTMLElement) {
+    const {top, bottom} = this.getLayoutReserves();
+    const s = mover.style;
+    s.left = '50%';
+    s.top = `calc(50% + ${(top - bottom) / 2}px)`;
+    s.transform = 'translate3d(-50%, -50%, 0)';
+    s.maxWidth = '100vw';
+    s.maxHeight = `calc(100vh - ${top + bottom}px)`;
+    // On handhelds, force the mover to fill the viewport (overrides the px
+    // width/height assigned by openMedia / refit). On desktop, leave width/
+    // height alone — they're set in px by openMedia at open time and kept in
+    // sync with viewport changes by refitMediaToViewport.
+    if(mediaSizes.isMobile) {
+      s.width = '100%';
+      s.height = '100%';
+    }
+  }
+
+  // Clears positioning props applyCenterStyles set, EXCEPT transform and
+  // width/height. Transform is owned by the caller (close target / pan offset).
+  // Width/height get rewritten by setMoverToTarget to the fresh containerRect
+  // immediately after — clearing them here would add a redundant layout pass
+  // (auto → flex shrink → re-set in px) in the same synchronous frame.
+  protected clearCenterStyles(mover: HTMLElement) {
+    const s = mover.style;
+    s.left = '';
+    s.top = '';
+    s.maxWidth = '';
+    s.maxHeight = '';
+  }
 
   protected get mediaBoxSize(): MediaSize {
     const {width, height} = windowSize;
@@ -2055,7 +2145,10 @@ export default class AppMediaViewerBase<
     this.log('openMedia', media, fromId, prevTargets, nextTargets, isLiveStream, isDocument, isVideo);
 
     this.live = isLiveStream;
-    this.applyLayoutVariables();
+    // Open-path: only update padding so mediaBoxSize reads the right reserves.
+    // The current mover (if any) is about to be replaced via setNewMover (or is
+    // hidden post-close); skip the refit + recenter that the resize handler does.
+    this.applyLayoutPadding();
 
     if(this.isFirstOpen) {
       // this.targetContainer = targetContainer;
@@ -2339,7 +2432,10 @@ export default class AppMediaViewerBase<
               }
 
               const mover = this.moversContainer.lastElementChild as HTMLElement;
-              mover.classList.toggle('in-pip', pip);
+              // PiP fade: mover at rest has .active (transitions opacity via
+              // the .active CSS rule) and no transition-blocking class, so
+              // setting opacity inline animates over --open-duration.
+              mover.style.opacity = pip ? '0' : '';
               this.toggleWholeActive(!pip);
               this.toggleOverlay(!pip);
               this.toggleGlobalListeners(!pip);
@@ -2392,7 +2488,13 @@ export default class AppMediaViewerBase<
           if(this.isZooming) {
             this.videoPlayer.lockControls(false);
           } else if(isLiveStream) {
-            this.videoPlayer.lockControls(true);
+            // Lock hidden (not shown) during the open animation. Otherwise the
+            // controls render inside the still-animating aspecter (containerRect-
+            // sized, scaled by setFullAspect) and then jump to the viewport
+            // bottom when the aspecter resets at anim end. The canplay handler
+            // unlocks them via onAnimationEnd, at which point they appear
+            // already at their final position.
+            this.videoPlayer.lockControls(false);
           }
 
           setupPlayer?.(this.videoPlayer, readyPromise);
@@ -2435,7 +2537,15 @@ export default class AppMediaViewerBase<
               video.parentElement.classList.remove('is-buffering');
 
               if(!this.isZooming) {
-                this.videoPlayer?.lockControls(undefined);
+                // Defer unlocking until the open animation settles. For live
+                // streams canplay can fire mid-animation; unlocking right away
+                // would show controls inside the still-animating aspecter/mover
+                // layout and they'd snap to their final position when it ends.
+                onAnimationEnd.then(() => {
+                  if(this.tempId === tempId) {
+                    this.videoPlayer?.lockControls(undefined);
+                  }
+                });
               }
             }, {once: true});
           };

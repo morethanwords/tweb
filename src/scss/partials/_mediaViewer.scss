@@ -83,8 +83,6 @@ $inactive-opacity: .4;
     max-height: 100%;
     max-width: 100%;
     overflow: hidden;
-    padding-top: var(--padding-vertical-top);
-    padding-bottom: var(--padding-vertical-bottom);
     box-sizing: border-box;
   }
 
@@ -390,16 +388,11 @@ $inactive-opacity: .4;
       transition: none !important;
     } */
 
-    &.no-transition {
-      transition: none !important;
-    }
-
     &.center {
-      left: 50% !important;
-      top: calc(50% + (var(--padding-vertical-top) - var(--padding-vertical-bottom)) / 2) !important;
-      transform: translate3d(-50%, -50%, 0) !important;
-      max-width: 100vw;
-      max-height: calc(100vh - var(--padding-vertical-top) - var(--padding-vertical-bottom));
+      // Position (left/top/transform/max-width/max-height, and width/height on
+      // handhelds) is applied inline by AppMediaViewerBase.applyCenterStyles —
+      // single source of truth in JS. This class only carries visual rules.
+      //
       // Static fully-open state: border-radius is 0, the mover-wrapper's
       // clip-path is inset(0), so the mover itself has nothing to clip. Letting
       // overflow be visible here keeps narrow portrait videos from chopping off
@@ -410,43 +403,17 @@ $inactive-opacity: .4;
       overflow: visible;
 
       @include respond-to(handhelds) {
-        width: 100% !important;
-        height: 100% !important;
-        max-width: 100vw !important;
-        // max-height: 100vh !important;
-        // TODO: max-height: calc((var(--vh, 1vh) * 100));
-        //height: calc(100% - 100px) !important;
-        /* height: calc(100% - 50px) !important;
-        top: calc(50% + 25px) !important;
-        
-        img, video {
-          margin-top: -25px;
-        } */
-
-        /* img, video {
-          max-height: calc(100% - 100px);
-        } */
-
+        // Mobile player (live or regular video) fills the viewport down to the
+        // bottom edge, so anchor the controls to the player's bottom — the very
+        // bottom of the screen — and hide their default gradient scrim.
         .ckin__player:not(.ckin__fullscreen) {
-          // Live stays vertically centered (60/60), so its controls drop into the
-          // bottom reserve to reach the screen edge.
-          .default__controls/* ,
-          .default__gradient-bottom */ {
-            bottom: -62px;
+          .default__controls {
+            background-color: var(--mv-panel-background-handhelds);
+            bottom: 0;
           }
 
-          // A regular mobile video fills the viewport down to the bottom edge, so
-          // anchor the controls (and reveal their gradient scrim, hidden by default
-          // on handhelds) to the player's bottom — the very bottom of the screen.
-          &:not(.default-live) {
-            .default__controls {
-              background-color: var(--mv-panel-background-handhelds);
-              bottom: 0;
-            }
-
-            .default__gradient-bottom {
-              display: none;
-            }
+          .default__gradient-bottom {
+            display: none;
           }
         }
       }
@@ -461,7 +428,7 @@ $inactive-opacity: .4;
         }
       } */
 
-      img:not(.thumbnail), 
+      img:not(.thumbnail),
       video,
       .canvas-thumbnail {
         /* height: auto;
@@ -474,15 +441,6 @@ $inactive-opacity: .4;
         width: auto;
         object-fit: contain;
         //height: auto;
-      }
-    }
-
-    &.in-pip {
-      img,
-      video,
-      .canvas-thumbnail,
-      .thumbnail-avatar {
-        opacity: 0;
       }
     }
   }
@@ -569,8 +527,6 @@ $inactive-opacity: .4;
     --mv-panel-background-handhelds: rgba(0, 0, 0, 0.5);
     --open-duration: .2s;
     --move-duration: .35s;
-    // --padding-vertical-top / --padding-vertical-bottom are set by JS
-    // (AppMediaViewerBase.applyLayoutVariables) — single source of truth.
     inset: 0;
     position: fixed!important;
     display: block;
@@ -831,6 +787,12 @@ $inactive-opacity: .4;
     padding: .5rem;
   }
 
+  // The loading thumb (1:1 streamer avatar on first open, blurred 16:9 stream
+  // snapshot on reopen) must end up PIXEL-IDENTICAL in size to the video that
+  // replaces it, so there's no resize jump when the first frame arrives. The
+  // video aspect-fits the stream's rectangle (MediaSize 1080×608 in openMedia),
+  // so the thumb covers that same rectangle — see the handhelds override below
+  // for the mobile case where the rectangle is smaller than the mover.
   .thumbnail-avatar {
     width: 100%;
     height: 100%;
@@ -848,6 +810,50 @@ $inactive-opacity: .4;
     position: relative;
     border-radius: inherit;
     pointer-events: none;
+  }
+
+  // On handhelds the mover fills the whole viewport (so the player controls
+  // reach the screen edge), but the stream is a 1080×608 rectangle that
+  // aspect-fits to a centered horizontal strip — exactly where the <video>
+  // lands via object-fit: contain. Pin the thumb to that SAME strip
+  // (aspect-ratio + width: 100% sizes it identically; max-height guards
+  // landscape) and cover-fill it, so a square avatar or an off-ratio snapshot
+  // occupies the video's rectangle rather than the tall viewport. Keep
+  // 1080/608 in sync with the MediaSize in AppMediaViewerBase.openMedia.
+  @include respond-to(handhelds) {
+    .media-viewer-mover.center {
+      .canvas-thumbnail,
+      img.thumbnail,
+      .thumbnail-avatar {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1080 / 608;
+        max-height: 100%;
+        object-fit: cover;
+      }
+
+      .thumbnail-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      // The buffering preloader (the "running" shimmer + bezel + blur scrim) is
+      // position: absolute / inset: 0, so by default it spans the whole
+      // viewport-sized player. Confine it to the same 16:9 stream strip as the
+      // thumb/video, so the running animation sits over the stream rectangle
+      // rather than the black bars around it.
+      .preloader-template {
+        inset: auto;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1080 / 608;
+        max-height: 100%;
+      }
+    }
   }
 }
 

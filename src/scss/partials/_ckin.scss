@@ -531,6 +531,7 @@ input[type=range] {
     transition: filter var(--transition-standard-in);
     margin: 8px;
     filter: grayscale(1);
+    line-height: 14px;
 
     &.is-not-buffering {
       filter: none;
