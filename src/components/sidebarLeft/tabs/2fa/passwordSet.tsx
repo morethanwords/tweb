@@ -1,8 +1,6 @@
-import {Component} from 'solid-js';
-import {attachClickEvent} from '@helpers/dom/clickEvent';
-import {i18n} from '@lib/langPack';
-import Button from '@components/button';
-import SettingSection from '@components/settingSection';
+import {Component, onMount} from 'solid-js';
+import Button from '@components/buttonTsx';
+import Section from '@components/section';
 import wrapStickerEmoji from '@components/wrappers/stickerEmoji';
 import {AppSettingsTab} from '@components/solidJsTabs';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
@@ -12,46 +10,35 @@ const TwoStepVerificationSet: Component = () => {
   const [tab] = useSuperTab<typeof AppTwoStepVerificationSetTab>();
   const {messageFor} = tab.payload;
 
-  tab.container.classList.add('two-step-verification', 'two-step-verification-set');
-  tab.title.replaceChildren(i18n(messageFor === 'password' ? 'TwoStepVerificationPasswordSet' : 'TwoStepVerificationEmailSet'));
-
-  const section = new SettingSection({
-    captionOld: messageFor === 'password' ? 'TwoStepVerificationPasswordSetInfo' : 'TwoStepVerificationEmailSetInfo',
-    noDelimiter: true
-  });
-
-  const emoji = '🥳';
   const stickerContainer = document.createElement('div');
-
   wrapStickerEmoji({
-    emoji,
+    emoji: '🥳',
     div: stickerContainer,
     width: 160,
     height: 160
   });
 
-  section.content.append(stickerContainer);
-
-  const inputContent = section.generateContentElement();
-
-  const inputWrapper = document.createElement('div');
-  inputWrapper.classList.add('input-wrapper');
-
-  const btnReturn = Button('btn-primary btn-color-primary', {text: 'TwoStepVerificationPasswordReturnSettings'});
-
-  attachClickEvent(btnReturn, (e) => {
-    tab.close();
+  onMount(() => {
+    tab.container.classList.add('two-step-verification', 'two-step-verification-set');
+    tab.slider.sliceTabsUntilTab(AppSettingsTab, tab);
   });
 
-  tab.slider.sliceTabsUntilTab(AppSettingsTab, tab);
-
-  inputWrapper.append(btnReturn);
-
-  inputContent.append(inputWrapper);
-
-  tab.scrollable.append(section.container);
-
-  return null;
+  return (
+    <Section
+      caption={messageFor === 'password' ? 'TwoStepVerificationPasswordSetInfo' : 'TwoStepVerificationEmailSetInfo'}
+      captionOld
+      noDelimiter
+    >
+      {stickerContainer}
+      <div class="input-wrapper">
+        <Button
+          primaryFilled
+          text="TwoStepVerificationPasswordReturnSettings"
+          onClick={() => tab.close()}
+        />
+      </div>
+    </Section>
+  );
 };
 
 export default TwoStepVerificationSet;

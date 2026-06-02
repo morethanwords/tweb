@@ -1,18 +1,17 @@
-import {Component} from 'solid-js';
+import {Component, onMount} from 'solid-js';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {canFocus} from '@helpers/dom/canFocus';
-import {attachClickEvent} from '@helpers/dom/clickEvent';
 import replaceContent from '@helpers/dom/replaceContent';
 import setInnerHTML from '@helpers/dom/setInnerHTML';
 import {AccountPassword} from '@layer';
 import I18n, {i18n} from '@lib/langPack';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
-import Button from '@components/button';
+import Button from '@components/buttonTsx';
 import {putPreloader} from '@components/putPreloader';
 import PasswordMonkey from '@components/monkeys/password';
 import PasswordInputField from '@components/passwordInputField';
 import {AppTwoStepVerificationReEnterPasswordTab, AppTwoStepVerificationTab} from '@components/solidJsTabs/tabs';
-import SettingSection from '@components/settingSection';
+import Section from '@components/section';
 import {ForgotPasswordLink} from '@components/sidebarLeft/tabs/2fa/forgotPasswordLink';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
@@ -25,18 +24,7 @@ const TwoStepVerificationEnterPassword: Component = () => {
   const plainPassword = tab.payload.plainPassword;
   const isFirst = tab.payload.isFirst ?? true;
 
-  let forgotLink: ForgotPasswordLink;
-
   const isNew = !state.pFlags.has_password || plainPassword;
-  tab.container.classList.add('two-step-verification', 'two-step-verification-enter-password');
-  tab.title.replaceChildren(i18n(isNew ? 'PleaseEnterFirstPassword' : 'PleaseEnterCurrentPassword'));
-
-  const section = new SettingSection({
-    noDelimiter: true
-  });
-
-  const inputWrapper = document.createElement('div');
-  inputWrapper.classList.add('input-wrapper');
 
   const passwordInputField = new PasswordInputField({
     name: 'enter-password',
@@ -46,41 +34,15 @@ const TwoStepVerificationEnterPassword: Component = () => {
 
   const monkey = new PasswordMonkey(passwordInputField, 157);
 
-  if(!isNew) {
-    forgotLink = new ForgotPasswordLink({
-      state: state,
-      managers: tab.managers,
-      tab: tab,
-      allowReset: true,
-      forEmail: false
-    });
-  }
+  const forgotLink = !isNew ? new ForgotPasswordLink({
+    state: state,
+    managers: tab.managers,
+    tab: tab,
+    allowReset: true,
+    forEmail: false
+  }) : undefined;
 
-  const btnContinue = Button('btn-primary btn-color-primary');
   const textEl = new I18n.IntlElement({key: 'Continue'});
-
-  btnContinue.append(textEl.element);
-
-  inputWrapper.append(passwordInputField.container);
-  if(forgotLink) {
-    inputWrapper.append(forgotLink.container);
-  }
-  inputWrapper.append(btnContinue);
-  section.content.append(monkey.container, inputWrapper);
-
-  tab.scrollable.append(section.container);
-
-  passwordInputField.input.addEventListener('keypress', (e) => {
-    if(passwordInputField.input.classList.contains('error')) {
-      passwordInputField.input.classList.remove('error');
-      textEl.key = 'Continue';
-      textEl.update();
-    }
-
-    if(e.key === 'Enter') {
-      return onContinueClick();
-    }
-  });
 
   const verifyInput = () => {
     if(!passwordInputField.value.length) {
@@ -140,7 +102,6 @@ const TwoStepVerificationEnterPassword: Component = () => {
 
         switch(err.type) {
           default:
-            // btnContinue.innerText = err.type;
             textEl.key = 'PASSWORD_HASH_INVALID';
             textEl.update();
             preloader.remove();
@@ -171,7 +132,23 @@ const TwoStepVerificationEnterPassword: Component = () => {
     };
   }
 
-  attachClickEvent(btnContinue, onContinueClick);
+  let btnContinue!: HTMLElement;
+
+  onMount(() => {
+    tab.container.classList.add('two-step-verification', 'two-step-verification-enter-password');
+
+    passwordInputField.input.addEventListener('keypress', (e) => {
+      if(passwordInputField.input.classList.contains('error')) {
+        passwordInputField.input.classList.remove('error');
+        textEl.key = 'Continue';
+        textEl.update();
+      }
+
+      if(e.key === 'Enter') {
+        return onContinueClick();
+      }
+    });
+  });
 
   (tab as any)._onOpenAfterTimeout = () => {
     if(!canFocus(isFirst)) return;
@@ -184,7 +161,18 @@ const TwoStepVerificationEnterPassword: Component = () => {
 
   promiseCollector.collect(monkey.load());
 
-  return null;
+  return (
+    <Section noDelimiter>
+      {monkey.container}
+      <div class="input-wrapper">
+        {passwordInputField.container}
+        {forgotLink?.container}
+        <Button ref={btnContinue} primaryFilled onClick={onContinueClick}>
+          {textEl.element}
+        </Button>
+      </div>
+    </Section>
+  );
 };
 
 export default TwoStepVerificationEnterPassword;

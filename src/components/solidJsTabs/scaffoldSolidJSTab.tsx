@@ -11,7 +11,7 @@ import {SuperTabProvider} from '@components/solidJsTabs/superTabProvider';
 
 
 type ScaffoldSolidJSTabArgs<Payload> = {
-  title: LangPackKey;
+  title: LangPackKey | ((payload: Payload) => LangPackKey);
   getComponentModule: () => Promise<{default: Component}>;
   onOpenAfterTimeout?: (this: InstanceOf<ScaffoledClass<Payload>>) => void;
   onClose?: (this: InstanceOf<ScaffoledClass<Payload>>) => void;
@@ -36,7 +36,7 @@ export function scaffoldSolidJSTab<Payload = void>({
     private dispose?: () => void;
 
     public async init(payload: Payload, overrideTitle?: LangPackKey) {
-      this.setTitle(overrideTitle || title);
+      this.setTitle(overrideTitle || (typeof title === 'function' ? title(payload) : title));
       this.payload = payload;
 
       const div = document.createElement('div');
@@ -78,7 +78,7 @@ export function scaffoldSolidJSTab<Payload = void>({
 
 
 type ScaffoldSolidJSTabEventableArgs<Payload> = {
-  title: LangPackKey;
+  title: LangPackKey | ((payload: Payload) => LangPackKey);
   getComponentModule: () => Promise<{default: Component}>;
   onOpenAfterTimeout?: (this: InstanceOf<ScaffoledEventableClass<Payload>>) => void;
 };
@@ -106,7 +106,7 @@ export function scaffoldSolidJSTabEventable<Payload = void, Events extends Event
     private dispose?: () => void;
 
     public async init(payload: Payload, overrideTitle?: LangPackKey) {
-      this.setTitle(overrideTitle || title);
+      this.setTitle(overrideTitle || (typeof title === 'function' ? title(payload) : title));
       this.payload = payload;
 
       const div = document.createElement('div');

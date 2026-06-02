@@ -678,7 +678,7 @@ type AppTwoStepVerificationSetTabPayload = {
 
 export const AppTwoStepVerificationSetTab =
   scaffoldSolidJSTab<AppTwoStepVerificationSetTabPayload>({
-    title: 'TwoStepVerificationPasswordSet',
+    title: (p) => p.messageFor === 'password' ? 'TwoStepVerificationPasswordSet' : 'TwoStepVerificationEmailSet',
     getComponentModule: () => import('../sidebarLeft/tabs/2fa/passwordSet')
   });
 
@@ -703,7 +703,7 @@ type AppTwoStepVerificationEnterPasswordTabPayload = {
 
 export const AppTwoStepVerificationEnterPasswordTab =
   scaffoldSolidJSTab<AppTwoStepVerificationEnterPasswordTabPayload>({
-    title: 'PleaseEnterFirstPassword',
+    title: (p) => (!p.state.pFlags.has_password || p.plainPassword) ? 'PleaseEnterFirstPassword' : 'PleaseEnterCurrentPassword',
     getComponentModule: () => import('../sidebarLeft/tabs/2fa/enterPassword'),
     onOpenAfterTimeout: function() {
       (this as any)._onOpenAfterTimeout?.();

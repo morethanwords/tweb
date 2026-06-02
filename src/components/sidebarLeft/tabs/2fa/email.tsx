@@ -1,15 +1,14 @@
-import {Component} from 'solid-js';
-import Button from '@components/button';
+import {Component, onMount} from 'solid-js';
+import Button from '@components/buttonTsx';
 import InputField from '@components/inputField';
+import {InputFieldTsx} from '@components/inputFieldTsx';
 import {putPreloader} from '@components/putPreloader';
 import {AppTwoStepVerificationEmailConfirmationTab, AppTwoStepVerificationSetTab} from '@components/solidJsTabs/tabs';
 import PopupPeer from '@components/popups/peer';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {canFocus} from '@helpers/dom/canFocus';
-import {attachClickEvent} from '@helpers/dom/clickEvent';
 import matchEmail from '@lib/richTextProcessor/matchEmail';
-import {i18n} from '@lib/langPack';
-import SettingSection from '@components/settingSection';
+import Section from '@components/section';
 import PopupElement from '@components/popups';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
@@ -22,13 +21,9 @@ const TwoStepVerificationEmail: Component = () => {
   const isFirst = tab.payload.isFirst ?? false;
   const justSetPasssword = tab.payload.justSetPasssword ?? false;
 
-  tab.container.classList.add('two-step-verification', 'two-step-verification-email');
-  tab.title.replaceChildren(i18n('RecoveryEmailTitle'));
-
-  const section = new SettingSection({
-    captionOld: true,
-    noDelimiter: true
-  });
+  let inputField!: InputField;
+  let btnContinue!: HTMLButtonElement;
+  let btnSkip!: HTMLButtonElement;
 
   const stickerContainer = document.createElement('div');
   stickerContainer.classList.add('media-sticker-wrapper');
@@ -41,32 +36,15 @@ const TwoStepVerificationEmail: Component = () => {
     autoplay: true
   }, 'LoveLetter');
 
-  section.content.append(stickerContainer);
-
-  const inputContent = section.generateContentElement();
-
-  const inputWrapper = document.createElement('div');
-  inputWrapper.classList.add('input-wrapper');
-
-  const inputField = new InputField({
-    name: 'recovery-email',
-    label: 'RecoveryEmail',
-    plainText: true
-  });
-
-  inputField.input.addEventListener('keypress', (e) => {
-    if(e.key === 'Enter') {
-      cancelEvent(e);
-      return onContinueClick();
+  const toggleButtons = (freeze: boolean) => {
+    if(freeze) {
+      btnContinue.setAttribute('disabled', 'true');
+      btnSkip.setAttribute('disabled', 'true');
+    } else {
+      btnContinue.removeAttribute('disabled');
+      btnSkip.removeAttribute('disabled');
     }
-  });
-
-  inputField.input.addEventListener('input', (e) => {
-    inputField.input.classList.remove('error');
-  });
-
-  const btnContinue = Button('btn-primary btn-color-primary', {text: 'Continue'});
-  const btnSkip = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'YourEmailSkip'});
+  };
 
   const goNext = () => {
     tab.slider.createTab(AppTwoStepVerificationSetTab).open({messageFor: justSetPasssword ? 'password' : 'email'});
@@ -108,19 +86,8 @@ const TwoStepVerificationEmail: Component = () => {
       d.remove();
     });
   };
-  attachClickEvent(btnContinue, onContinueClick);
 
-  const toggleButtons = (freeze: boolean) => {
-    if(freeze) {
-      btnContinue.setAttribute('disabled', 'true');
-      btnSkip.setAttribute('disabled', 'true');
-    } else {
-      btnContinue.removeAttribute('disabled');
-      btnSkip.removeAttribute('disabled');
-    }
-  };
-
-  attachClickEvent(btnSkip, (e) => {
+  const onSkipClick = () => {
     const popup = PopupElement.createPopup(PopupPeer, 'popup-skip-email', {
       buttons: [{
         langKey: 'Cancel',
@@ -128,7 +95,6 @@ const TwoStepVerificationEmail: Component = () => {
       }, {
         langKey: 'YourEmailSkip',
         callback: () => {
-          // inputContent.classList.add('sidebar-left-section-disabled');
           toggleButtons(true);
           putPreloader(btnSkip);
           tab.managers.passwordManager.updateSettings({
@@ -149,20 +115,40 @@ const TwoStepVerificationEmail: Component = () => {
     });
 
     popup.show();
+  };
+
+  onMount(() => {
+    tab.container.classList.add('two-step-verification', 'two-step-verification-email');
+
+    inputField.input.addEventListener('keypress', (e) => {
+      if(e.key === 'Enter') {
+        cancelEvent(e);
+        return onContinueClick();
+      }
+    });
   });
-
-  inputWrapper.append(inputField.container, btnContinue, btnSkip);
-
-  inputContent.append(inputWrapper);
-
-  tab.scrollable.append(section.container);
 
   (tab as any)._onOpenAfterTimeout = () => {
     if(!canFocus(isFirst)) return;
     inputField.input.focus();
   };
 
-  return null;
+  return (
+    <Section captionOld noDelimiter>
+      {stickerContainer}
+      <div class="input-wrapper">
+        <InputFieldTsx
+          name="recovery-email"
+          label="RecoveryEmail"
+          plainText
+          instanceRef={(ref) => inputField = ref}
+          onRawInput={() => inputField.input.classList.remove('error')}
+        />
+        <Button ref={btnContinue} primaryFilled text="Continue" onClick={onContinueClick} />
+        <Button ref={btnSkip} class="btn-primary btn-secondary btn-primary-transparent primary" text="YourEmailSkip" onClick={onSkipClick} />
+      </div>
+    </Section>
+  );
 };
 
 export default TwoStepVerificationEmail;

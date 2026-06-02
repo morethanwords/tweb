@@ -1,13 +1,12 @@
-import {Component} from 'solid-js';
-import Button from '@components/button';
+import {Component, onMount, Show} from 'solid-js';
+import Button from '@components/buttonTsx';
 import CodeInputFieldCompat from '@components/codeInputField';
 import {putPreloader} from '@components/putPreloader';
-import {i18n, _i18n} from '@lib/langPack';
+import {i18n} from '@lib/langPack';
 import {canFocus} from '@helpers/dom/canFocus';
-import {attachClickEvent} from '@helpers/dom/clickEvent';
 import replaceContent from '@helpers/dom/replaceContent';
 import toggleDisability from '@helpers/dom/toggleDisability';
-import SettingSection from '@components/settingSection';
+import Section from '@components/section';
 import {AppSettingsTab} from '@components/solidJsTabs';
 import {AppTwoStepVerificationEmailTab, AppTwoStepVerificationSetTab} from '@components/solidJsTabs/tabs';
 import {toastNew} from '@components/toast';
@@ -24,17 +23,9 @@ const TwoStepVerificationEmailConfirmation: Component = () => {
   const forPasswordReset = tab.payload.forPasswordReset ?? false;
   const justSetPasssword = tab.payload.justSetPasssword ?? false;
 
-  let resetLink: ForgotPasswordLink;
-
-  tab.container.classList.add('two-step-verification', 'two-step-verification-email-confirmation');
-  tab.title.replaceChildren(i18n('TwoStepAuth.RecoveryTitle'));
-
-  const section = new SettingSection({
-    captionOld: true,
-    noDelimiter: true
-  });
-
-  _i18n(section.caption, 'TwoStepAuth.ConfirmEmailCodeDesc', [email]);
+  let errorLabel!: HTMLDivElement;
+  let btnChange: HTMLElement;
+  let btnResend!: HTMLElement;
 
   const stickerContainer = document.createElement('div');
   stickerContainer.classList.add('media-sticker-wrapper');
@@ -47,20 +38,25 @@ const TwoStepVerificationEmailConfirmation: Component = () => {
     autoplay: true
   }, 'Mailbox');
 
-  section.content.append(stickerContainer);
+  const goNext = () => {
+    if(forPasswordReset) {
+      toastNew({langPackKey: 'PasswordDeactivated'});
+      tab.slider.sliceTabsUntilTab(AppSettingsTab, tab);
+      tab.close();
+    } else {
+      tab.slider.createTab(AppTwoStepVerificationSetTab).open({messageFor: justSetPasssword ? 'password' : 'email'});
+    }
+  };
 
-  const inputContent = section.generateContentElement();
+  const freeze = (disable: boolean) => {
+    toggleDisability([btnChange, btnResend].filter(Boolean), disable);
+    codeInputField.disabled = disable;
+  };
 
-  const inputWrapper = document.createElement('div');
-  inputWrapper.classList.add('input-wrapper');
-
-  const errorLabel = document.createElement('div');
-  errorLabel.classList.add('error-label', 'hidden');
-
-  const inputField = new CodeInputFieldCompat({
+  const codeInputField = new CodeInputFieldCompat({
     length: length,
     onChange: (code) => {
-      inputField.error = false;
+      codeInputField.error = false;
       errorLabel.classList.add('hidden');
     },
     onFill: (code) => {
@@ -76,15 +72,15 @@ const TwoStepVerificationEmailConfirmation: Component = () => {
       .catch((err) => {
         switch(err.type) {
           case 'CODE_INVALID':
-            inputField.error = true;
-            inputField.value = ''
+            codeInputField.error = true;
+            codeInputField.value = ''
             errorLabel.classList.remove('hidden');
             replaceContent(errorLabel, i18n('TwoStepAuth.RecoveryCodeInvalid'));
             break;
 
           case 'EMAIL_HASH_EXPIRED':
-            inputField.error = true;
-            inputField.value = ''
+            codeInputField.error = true;
+            codeInputField.value = ''
             errorLabel.classList.remove('hidden');
             replaceContent(errorLabel, i18n('TwoStepAuth.RecoveryCodeExpired'));
             break;
@@ -99,47 +95,25 @@ const TwoStepVerificationEmailConfirmation: Component = () => {
     }
   });
 
-  const btnChange = forPasswordReset ? null : Button('btn-primary btn-primary-transparent primary', {text: 'TwoStepAuth.EmailCodeChangeEmail'});
-  const btnResend = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'ResendCode'});
+  const resetLink = forPasswordReset ? new ForgotPasswordLink({
+    state: state,
+    managers: tab.managers,
+    tab: tab,
+    allowReset: true,
+    forEmail: true
+  }) : undefined;
 
-  if(forPasswordReset) {
-    resetLink = new ForgotPasswordLink({
-      state: state,
-      managers: tab.managers,
-      tab: tab,
-      allowReset: true,
-      forEmail: true
-    });
-  }
-
-  const goNext = () => {
-    if(forPasswordReset) {
-      toastNew({langPackKey: 'PasswordDeactivated'});
-      tab.slider.sliceTabsUntilTab(AppSettingsTab, tab);
+  const onChangeClick = () => {
+    freeze(true);
+    tab.managers.passwordManager.cancelPasswordEmail().then((value) => {
+      tab.slider.sliceTabsUntilTab(AppTwoStepVerificationEmailTab, tab);
       tab.close();
-    } else {
-      tab.slider.createTab(AppTwoStepVerificationSetTab).open({messageFor: justSetPasssword ? 'password' : 'email'});
-    }
-  };
-
-  const freeze = (disable: boolean) => {
-    toggleDisability([btnChange, btnResend].filter(Boolean), disable);
-    inputField.disabled = disable;
-  };
-
-  if(btnChange) {
-    attachClickEvent(btnChange, (e) => {
-      freeze(true);
-      tab.managers.passwordManager.cancelPasswordEmail().then((value) => {
-        tab.slider.sliceTabsUntilTab(AppTwoStepVerificationEmailTab, tab);
-        tab.close();
-      }, () => {
-        freeze(false);
-      });
+    }, () => {
+      freeze(false);
     });
-  }
+  };
 
-  attachClickEvent(btnResend, (e) => {
+  const onResendClick = () => {
     freeze(true);
     const d = putPreloader(btnResend);
     const promise = forPasswordReset ?
@@ -153,28 +127,36 @@ const TwoStepVerificationEmailConfirmation: Component = () => {
       d.remove();
       freeze(false);
     });
+  };
+
+  onMount(() => {
+    tab.container.classList.add('two-step-verification', 'two-step-verification-email-confirmation');
   });
-
-  inputWrapper.append(inputField.container, errorLabel);
-  if(btnChange) inputWrapper.append(btnChange);
-  inputWrapper.append(btnResend);
-  if(resetLink) inputWrapper.append(resetLink.container);
-
-  inputContent.append(inputWrapper);
-
-  tab.scrollable.append(section.container);
 
   (tab as any)._onOpenAfterTimeout = () => {
     if(!canFocus(isFirst)) return;
-    inputField.input.focus();
+    codeInputField.input.focus();
   };
 
   (tab as any)._onCloseAfterTimeout = () => {
-    inputField.cleanup();
+    codeInputField.cleanup();
     resetLink?.cleanup();
   };
 
-  return null;
+  return (
+    <Section caption="TwoStepAuth.ConfirmEmailCodeDesc" captionArgs={[email]} captionOld noDelimiter>
+      {stickerContainer}
+      <div class="input-wrapper">
+        {codeInputField.container}
+        <div ref={errorLabel} class="error-label hidden" />
+        <Show when={!forPasswordReset}>
+          <Button ref={btnChange} class="btn-primary btn-primary-transparent primary" text="TwoStepAuth.EmailCodeChangeEmail" onClick={onChangeClick} />
+        </Show>
+        <Button ref={btnResend} class="btn-primary btn-secondary btn-primary-transparent primary" text="ResendCode" onClick={onResendClick} />
+        {resetLink?.container}
+      </div>
+    </Section>
+  );
 };
 
 export default TwoStepVerificationEmailConfirmation;

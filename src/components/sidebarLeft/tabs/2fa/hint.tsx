@@ -1,12 +1,11 @@
-import {Component} from 'solid-js';
-import Button from '@components/button';
+import {Component, onMount} from 'solid-js';
+import Button from '@components/buttonTsx';
 import InputField from '@components/inputField';
+import {InputFieldTsx} from '@components/inputFieldTsx';
 import {AppTwoStepVerificationEmailTab} from '@components/solidJsTabs/tabs';
-import {i18n} from '@lib/langPack';
 import cancelEvent from '@helpers/dom/cancelEvent';
-import {attachClickEvent} from '@helpers/dom/clickEvent';
 import wrapStickerEmoji from '@components/wrappers/stickerEmoji';
-import SettingSection from '@components/settingSection';
+import Section from '@components/section';
 import {toastNew} from '@components/toast';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import type {AppTwoStepVerificationHintTab} from '@components/solidJsTabs/tabs';
@@ -15,37 +14,14 @@ const TwoStepVerificationHint: Component = () => {
   const [tab] = useSuperTab<typeof AppTwoStepVerificationHintTab>();
   const {state, plainPassword, newPassword} = tab.payload;
 
-  tab.container.classList.add('two-step-verification', 'two-step-verification-hint');
-  tab.title.replaceChildren(i18n('TwoStepAuth.SetupHintTitle'));
+  let inputField!: InputField;
 
-  const section = new SettingSection({
-    noDelimiter: true
-  });
-
-  const emoji = '💡';
   const stickerContainer = document.createElement('div');
   wrapStickerEmoji({
     div: stickerContainer,
     width: 160,
     height: 160,
-    emoji
-  });
-
-  section.content.append(stickerContainer);
-
-  const inputWrapper = document.createElement('div');
-  inputWrapper.classList.add('input-wrapper');
-
-  const inputField = new InputField({
-    name: 'hint',
-    label: 'TwoStepAuth.SetupHintPlaceholder'
-  });
-
-  inputField.input.addEventListener('keypress', (e) => {
-    if(e.key === 'Enter') {
-      cancelEvent(e);
-      return inputField.value ? onContinueClick() : onSkipClick();
-    }
+    emoji: '💡'
   });
 
   const goNext = (e?: Event, saveHint?: boolean) => {
@@ -68,25 +44,42 @@ const TwoStepVerificationHint: Component = () => {
     });
   };
 
-  const btnContinue = Button('btn-primary btn-color-primary', {text: 'Continue'});
-  const btnSkip = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'YourEmailSkip'});
-
   const onContinueClick = (e?: Event) => goNext(e, true);
   const onSkipClick = (e?: Event) => goNext(e, false);
-  attachClickEvent(btnContinue, onContinueClick);
-  attachClickEvent(btnSkip, onSkipClick);
 
-  inputWrapper.append(inputField.container, btnContinue, btnSkip);
+  onMount(() => {
+    tab.container.classList.add('two-step-verification', 'two-step-verification-hint');
 
-  section.content.append(inputWrapper);
-
-  tab.scrollable.append(section.container);
+    inputField.input.addEventListener('keypress', (e) => {
+      if(e.key === 'Enter') {
+        cancelEvent(e);
+        return inputField.value ? onContinueClick() : onSkipClick();
+      }
+    });
+  });
 
   (tab as any)._onOpenAfterTimeout = () => {
     inputField.input.focus();
   };
 
-  return null;
+  return (
+    <Section noDelimiter>
+      {stickerContainer}
+      <div class="input-wrapper">
+        <InputFieldTsx
+          name="hint"
+          label="TwoStepAuth.SetupHintPlaceholder"
+          instanceRef={(ref) => inputField = ref}
+        />
+        <Button primaryFilled text="Continue" onClick={onContinueClick} />
+        <Button
+          class="btn-primary btn-secondary btn-primary-transparent primary"
+          text="YourEmailSkip"
+          onClick={onSkipClick}
+        />
+      </div>
+    </Section>
+  );
 };
 
 export default TwoStepVerificationHint;
