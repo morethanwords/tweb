@@ -1,4 +1,4 @@
-import {Component} from 'solid-js';
+import {Component, createSignal, onMount, Show} from 'solid-js';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import findUpTag from '@helpers/dom/findUpTag';
 import replaceContent from '@helpers/dom/replaceContent';
@@ -10,7 +10,7 @@ import {i18n, join, LangPackKey} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
 import showPickUserPopup from '@components/popups/pickUser';
 import Row from '@components/row';
-import SettingSection from '@components/settingSection';
+import Section from '@components/section';
 import {openUserPermissionsTab} from '@components/solidJsTabs/tabs';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import apiManagerProxy from '@lib/apiManagerProxy';
@@ -53,38 +53,34 @@ const GroupPermissions: Component = () => {
     }
   });
 
-  tab.container.classList.add('edit-peer-container', 'group-permissions-container');
-  tab.title.replaceChildren(i18n('ChannelPermissions'));
-  tab.header.append(solidState.saveIcon());
+  let permissionsContent!: HTMLDivElement;
+  let slowmodeContent!: HTMLDivElement;
+  let exceptionsAdd!: HTMLDivElement;
+  let exceptionsList!: HTMLDivElement;
+  const [chargeElement, setChargeElement] = createSignal<HTMLElement>();
+  const [boostersElement, setBoostersElement] = createSignal<HTMLElement>();
+  const [convertRow, setConvertRow] = createSignal<HTMLElement>();
+  const [slowmodeCaption, setSlowmodeCaption] = createSignal<HTMLElement>();
 
-  promiseCollector.collect((async() => {
+  const build = async() => {
     const chat = apiManagerProxy.getChat(chatId);
     const isChannel = chat._ === 'channel';
 
-    let chatPermissions: ChatPermissions;
-    {
-      const section = new SettingSection({
-        name: 'ChannelPermissionsHeader'
-      });
+    const chatPermissions = new ChatPermissions({
+      chatId: chatId,
+      listenerSetter: tab.listenerSetter,
+      appendTo: permissionsContent,
+      forChat: true,
+      onSomethingChanged: () => {
+        solidState.set({rights: chatPermissions.takeOut()});
+      }
+    }, tab.managers);
 
-      chatPermissions = new ChatPermissions({
-        chatId: chatId,
-        listenerSetter: tab.listenerSetter,
-        appendTo: section.content,
-        forChat: true,
-        onSomethingChanged: () => {
-          solidState.set({rights: chatPermissions.takeOut()});
-        }
-      }, tab.managers);
+    solidState.setInitial({rights: chatPermissions.takeOut()});
 
-      solidState.setInitial({rights: chatPermissions.takeOut()});
-
-      saveCallbacks.push(() => {
-        return tab.managers.appChatsManager.editChatDefaultBannedRights(chatId, chatPermissions.takeOut());
-      });
-
-      tab.scrollable.append(section.container);
-    }
+    saveCallbacks.push(() => {
+      return tab.managers.appChatsManager.editChatDefaultBannedRights(chatId, chatPermissions.takeOut());
+    });
 
     if(isChannel) {
       const {default: createChargeForMessagesSection} = await import('./chargeForMessasgesSection');
@@ -102,7 +98,7 @@ const GroupPermissions: Component = () => {
 
       await promise;
 
-      tab.scrollable.append(element);
+      setChargeElement(element);
 
       tab.middlewareHelper.get().onDestroy(() => void dispose());
 
@@ -117,11 +113,6 @@ const GroupPermissions: Component = () => {
     const chatFull = await tab.managers.appProfileManager.getChatFull(chatId);
 
     {
-      const section = new SettingSection({
-        name: 'Slowmode',
-        caption: true
-      });
-
       let lastValue: number;
       const range: RangeStepsSelector<number> = new RangeStepsSelector({
         generateStep: (value) => {
@@ -151,11 +142,9 @@ const GroupPermissions: Component = () => {
           solidState.set({slowModeSeconds: value});
 
           lastValue = value;
-          if(value) {
-            section.caption.replaceChildren(i18n('SlowmodeInfoSelected', [wrapFormattedDuration(formatDuration(value, 1))]));
-          } else {
-            section.caption.replaceChildren(i18n('SlowmodeInfoOff'));
-          }
+          setSlowmodeCaption(value ?
+            i18n('SlowmodeInfoSelected', [wrapFormattedDuration(formatDuration(value, 1))]) :
+            i18n('SlowmodeInfoOff'));
         },
         middleware: tab.middlewareHelper.get()
       });
@@ -167,8 +156,7 @@ const GroupPermissions: Component = () => {
       solidState.setInitial({slowModeSeconds: initialValue});
       range.setSteps(steps, values.indexOf(initialValue));
 
-
-      section.content.append(range.container);
+      slowmodeContent.append(range.container);
 
       saveCallbacks.push(() => {
         const {value} = range;
@@ -178,8 +166,6 @@ const GroupPermissions: Component = () => {
           });
         }
       });
-
-      tab.scrollable.append(section.container);
     }
 
     if(isChannel) {
@@ -193,7 +179,7 @@ const GroupPermissions: Component = () => {
       });
       solidState.setInitial({boostsUnrestrict: initialBoosts});
       tab.middlewareHelper.get().onDestroy(dispose);
-      tab.scrollable.append(element);
+      setBoostersElement(element);
 
       saveCallbacks.push(() => {
         const {boostsUnrestrict} = solidState.store;
@@ -216,12 +202,7 @@ const GroupPermissions: Component = () => {
         const participantsCount = (chatFull as ChatFull.channelFull).participants_count ||
           channel.participants_count || 0;
         if(participantsCount >= config.megagroup_size_max - 1000) {
-          const section = new SettingSection({
-            name: 'BroadcastGroup',
-            caption: 'BroadcastGroupConvertInfo'
-          });
-
-          const convertRow = new Row({
+          const row = new Row({
             titleLangKey: 'BroadcastGroupConvert',
             icon: 'newgroup_filled',
             clickable: () => {
@@ -230,17 +211,12 @@ const GroupPermissions: Component = () => {
             listenerSetter: tab.listenerSetter
           });
 
-          section.content.append(convertRow.container);
-          tab.scrollable.append(section.container);
+          setConvertRow(row.container);
         }
       }
     }
 
     {
-      const section = new SettingSection({
-        name: 'PrivacyExceptions'
-      });
-
       const addExceptionRow = new Row({
         titleLangKey: 'ChannelAddException',
         subtitleLangKey: 'Loading',
@@ -275,13 +251,10 @@ const GroupPermissions: Component = () => {
         openUserPermissionsTab(tab.slider, chatId, participant);
       };
 
-      section.content.append(addExceptionRow.container);
-
-      const c = section.generateContentElement();
-      c.classList.add('chatlist-container');
+      exceptionsAdd.append(addExceptionRow.container);
 
       const list = appDialogsManager.createChatList({new: true});
-      c.append(list);
+      exceptionsList.append(list);
 
       attachClickEvent(list, (e) => {
         const target = findUpTag(e.target, DIALOG_LIST_ELEMENT_TAG);
@@ -292,20 +265,17 @@ const GroupPermissions: Component = () => {
       }, {listenerSetter: tab.listenerSetter});
 
       const setSubtitle = async(dom: DialogDom, participant: ChannelParticipant.channelParticipantBanned) => {
-        const bannedRights = participant.banned_rights;// appChatsManager.combineParticipantBannedRights(this.chatId, participant.banned_rights);
+        const bannedRights = participant.banned_rights;
         const defaultBannedRights = ((await tab.managers.appChatsManager.getChat(chatId)) as Chat.channel).default_banned_rights;
-        // const combinedRights = appChatsManager.combineParticipantBannedRights(this.chatId, bannedRights);
 
-        const cantWhat: LangPackKey[] = []/* , canWhat: LangPackKey[] = [] */;
+        const cantWhat: LangPackKey[] = [];
         chatPermissions.fields.forEach((info) => {
           const mainFlag = info.flags[0];
           // @ts-ignore
           if(bannedRights.pFlags[mainFlag] && !defaultBannedRights.pFlags[mainFlag]) {
             cantWhat.push(info.exceptionText);
           // @ts-ignore
-          }/*  else if(!combinedRights.pFlags[mainFlag]) {
-            canWhat.push(info.exceptionText);
-          } */
+          }
         });
 
         const el = dom.lastMessageSpan as HTMLElement;
@@ -316,9 +286,7 @@ const GroupPermissions: Component = () => {
         } else {
           el.replaceChildren(i18n('UserRestrictionsBy', [await wrapPeerTitle({peerId: participant.kicked_by.toPeerId(false)})]));
           el.classList.remove('hide');
-        }/*  else if(canWhat.length) {
-          str = 'Can ' + canWhat.join(canWhat.length === 2 ? ' and ' : ', ');
-        } */
+        }
       };
 
       const add = (participant: ChannelParticipant.channelParticipantBanned, append: boolean) => {
@@ -411,8 +379,6 @@ const GroupPermissions: Component = () => {
         return loader.load();
       };
 
-      tab.scrollable.append(section.container);
-
       if(await tab.managers.appChatsManager.isChannel(chatId)) {
         await setLoader();
       } else {
@@ -426,9 +392,35 @@ const GroupPermissions: Component = () => {
         });
       }
     }
-  })());
+  };
 
-  return null;
+  onMount(() => {
+    tab.container.classList.add('edit-peer-container', 'group-permissions-container');
+    tab.header.append(solidState.saveIcon());
+    promiseCollector.collect(build());
+  });
+
+  return (
+    <>
+      <Section name="ChannelPermissionsHeader">
+        <div ref={permissionsContent} />
+      </Section>
+      {chargeElement()}
+      <Section name="Slowmode" caption={slowmodeCaption()}>
+        <div ref={slowmodeContent} />
+      </Section>
+      {boostersElement()}
+      <Show when={convertRow()}>
+        <Section name="BroadcastGroup" caption="BroadcastGroupConvertInfo">
+          {convertRow()}
+        </Section>
+      </Show>
+      <Section name="PrivacyExceptions">
+        <div ref={exceptionsAdd} />
+        <div ref={exceptionsList} class="chatlist-container" />
+      </Section>
+    </>
+  );
 };
 
 export default GroupPermissions;
