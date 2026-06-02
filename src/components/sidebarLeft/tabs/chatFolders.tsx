@@ -1,18 +1,18 @@
-import {Component} from 'solid-js';
+import {Component, createSignal, onMount} from 'solid-js';
 import type {MyDialogFilter} from '@lib/storages/filters';
 import type {DialogFilter, DialogFilterSuggested} from '@layer';
 import {LottieLoader} from '@lib/rlottie/lottieLoader';
-import Button from '@components/button';
+import Button from '@components/buttonTsx';
 import rootScope from '@lib/rootScope';
 import Row from '@components/row';
-import {i18n, i18n_, LangPackKey, join} from '@lib/langPack';
+import Section from '@components/section';
+import {i18n, LangPackKey, join} from '@lib/langPack';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import positionElementByIndex from '@helpers/dom/positionElementByIndex';
 import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
 import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '@appManagers/constants';
 import replaceContent from '@helpers/dom/replaceContent';
-import SettingSection from '@components/settingSection';
 import Sortable from '@helpers/dom/sortable';
 import whichChild from '@helpers/dom/whichChild';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
@@ -36,12 +36,11 @@ const ChatFolders: Component = () => {
   let animation: RLottiePlayer;
   let loadAnimationPromise: ReturnType<LottieLoader['waitForFirstFrame']>;
 
-  let createFolderBtn: HTMLElement;
-  let foldersSection: SettingSection;
-  let suggestedSection: SettingSection;
-  let viewSection: SettingSection;
-  let stickerContainer: HTMLElement;
-  let list: HTMLElement;
+  let stickerContainer!: HTMLDivElement;
+  let list!: HTMLDivElement;
+  let suggestedContent!: HTMLElement;
+  const [foldersHidden, setFoldersHidden] = createSignal(true);
+  const [suggestedHidden, setSuggestedHidden] = createSignal(true);
 
   const renderFolder = async(
     dialogFilter: DialogFilterSuggested | MyDialogFilter,
@@ -60,9 +59,6 @@ const ChatFolders: Component = () => {
 
       const pFlags = (filter as DialogFilter.dialogFilter).pFlags || {};
       const enabledFilters = Object.keys(pFlags).length;
-      /* (['include_peers', 'exclude_peers'] as ['include_peers', 'exclude_peers']).forEach((key) => {
-        enabledFilters += +!!filter[key].length;
-      }); */
 
       if(enabledFilters === 1) {
         let k: LangPackKey;
@@ -160,12 +156,12 @@ const ChatFolders: Component = () => {
 
   const getSuggestedFilters = () => {
     return tab.managers.filtersStorage.getSuggestedDialogsFilters().then(async(suggestedFilters) => {
-      suggestedSection.container.classList.toggle('hide', !suggestedFilters.length);
-      Array.from(suggestedSection.content.children).slice(1).forEach((el) => el.remove());
+      setSuggestedHidden(!suggestedFilters.length);
+      Array.from(suggestedContent.children).slice(1).forEach((el) => el.remove());
 
       for(const filter of suggestedFilters) {
         const row = await renderFolder(filter);
-        suggestedSection.content.append(row.container);
+        suggestedContent.append(row.container);
 
         const button = row.buttonRight;
         attachClickEvent(button, async(e) => {
@@ -185,13 +181,17 @@ const ChatFolders: Component = () => {
 
           tab.managers.filtersStorage.createDialogFilter(f, true).then(() => {
             row.container.remove();
-            suggestedSection.container.classList.toggle('hide', suggestedSection.content.childElementCount === 1);
+            setSuggestedHidden(suggestedContent.childElementCount === 1);
           }).finally(() => {
             button.removeAttribute('disabled');
           });
         }, {listenerSetter: tab.listenerSetter});
       }
     });
+  };
+
+  const onFiltersContainerUpdate = () => {
+    setFoldersHidden(!Object.keys(filtersRendered).length);
   };
 
   (tab as any)._onOpenAfterTimeout = () => {
@@ -201,199 +201,156 @@ const ChatFolders: Component = () => {
     });
   };
 
-  tab.container.classList.add('chat-folders-container');
-
-  tab.scrollable.container.classList.add('chat-folders');
-
-  stickerContainer = document.createElement('div');
-  stickerContainer.classList.add('sticker-container');
-
-  const caption = document.createElement('div');
-  caption.classList.add('caption');
-  i18n_({element: caption, key: 'ChatList.Filter.Header'});
-
-  createFolderBtn = Button('btn-primary btn-color-primary btn-control', {
-    text: 'ChatList.Filter.NewTitle',
-    icon: 'add'
-  });
-
-  foldersSection = new SettingSection({
-    name: 'Filters'
-  });
-  foldersSection.container.classList.add('hide');
-
-  list = document.createElement('div');
-  foldersSection.content.append(list);
-
-  suggestedSection = new SettingSection({
-    name: 'FilterRecommended'
-  });
-  suggestedSection.container.classList.add('hide');
-
-  viewSection = new SettingSection({
-    name: 'FiltersView'
-  });
-
-  const form = document.createElement('form');
-
   const name = 'theme';
   const stateKey = joinDeepPath('settings', 'tabsInSidebar');
 
   const onLeftRow = new Row({
-    radioField: new RadioField({
-      langKey: 'FiltersOnLeft',
-      name,
-      value: 'true',
-      valueForState: true,
-      stateKey
-    })
+    radioField: new RadioField({langKey: 'FiltersOnLeft', name, value: 'true', valueForState: true, stateKey})
   });
 
   const nonTopRow = new Row({
-    radioField: new RadioField({
-      langKey: 'FiltersOnTop',
-      name,
-      value: 'false',
-      valueForState: false,
-      stateKey
-    })
+    radioField: new RadioField({langKey: 'FiltersOnTop', name, value: 'false', valueForState: false, stateKey})
   });
 
-  tab.listenerSetter.add(rootScope)('settings_updated', ({key, value}) => {
-    if(key === stateKey) {
-      const [, setHasFoldersSidebar] = useHasFoldersSidebar();
-      setHasFoldersSidebar(!!value);
-      appImManager.adjustChatPatternBackground();
-      if(!value) appSidebarLeft.showCtrlFTip();
-    }
-  });
+  onMount(() => {
+    tab.container.classList.add('chat-folders-container');
+    tab.scrollable.container.classList.add('chat-folders');
 
-  form.append(onLeftRow.container, nonTopRow.container);
-  viewSection.content.append(form);
+    tab.listenerSetter.add(rootScope)('settings_updated', ({key, value}) => {
+      if(key === stateKey) {
+        const [, setHasFoldersSidebar] = useHasFoldersSidebar();
+        setHasFoldersSidebar(!!value);
+        appImManager.adjustChatPatternBackground();
+        if(!value) appSidebarLeft.showCtrlFTip();
+      }
+    });
 
-  tab.scrollable.append(
-    stickerContainer,
-    caption,
-    createFolderBtn,
-    foldersSection.container,
-    suggestedSection.container,
-    viewSection.container
-  );
+    const loadPromises: Promise<any>[] = [];
+    const renderFiltersPromise = p.filters.then(async(filters) => {
+      for(const filter of filters) {
+        if(filter.id === FOLDER_ID_ARCHIVE) {
+          continue;
+        }
 
-  attachClickEvent(createFolderBtn, async() => {
-    if(!(await canCreateFolder())) {
-      showLimitPopup('folders');
-    } else {
-      tab.slider.createTab(AppEditFolderTab).open(AppEditFolderTab.getInitArgs());
-    }
-  }, {listenerSetter: tab.listenerSetter});
-
-  const onFiltersContainerUpdate = () => {
-    foldersSection.container.classList.toggle('hide', !Object.keys(filtersRendered).length);
-  };
-
-  const loadPromises: Promise<any>[] = [];
-  const renderFiltersPromise = p.filters.then(async(filters) => {
-    for(const filter of filters) {
-      if(filter.id === FOLDER_ID_ARCHIVE) {
-        continue;
+        await renderFolder(filter, list, undefined, true);
       }
 
-      await renderFolder(filter, list, undefined, true);
-    }
+      toggleAllChats();
+      onFiltersContainerUpdate();
+    });
 
-    toggleAllChats();
+    loadPromises.push(renderFiltersPromise);
 
-    onFiltersContainerUpdate();
-  });
+    tab.listenerSetter.add(rootScope)('filter_update', async(filter) => {
+      const filterRendered = filtersRendered[filter.id];
+      if(filterRendered) {
+        await renderFolder(filter, null, filterRendered);
+      } else if(filter.id !== FOLDER_ID_ARCHIVE) {
+        await renderFolder(filter, list, undefined, true);
+      }
 
-  loadPromises.push(renderFiltersPromise);
+      onFiltersContainerUpdate();
+      getSuggestedFilters();
+    });
 
-  tab.listenerSetter.add(rootScope)('filter_update', async(filter) => {
-    const filterRendered = filtersRendered[filter.id];
-    if(filterRendered) {
-      await renderFolder(filter, null, filterRendered);
-    } else if(filter.id !== FOLDER_ID_ARCHIVE) {
-      await renderFolder(filter, list, undefined, true);
-    }
+    tab.listenerSetter.add(rootScope)('filter_delete', (filter) => {
+      const filterRendered = filtersRendered[filter.id];
+      if(filterRendered) {
+        getSuggestedFilters();
 
-    onFiltersContainerUpdate();
+        filterRendered.container.remove();
+        delete filtersRendered[filter.id];
+      }
+
+      onFiltersContainerUpdate();
+    });
+
+    tab.listenerSetter.add(rootScope)('filter_order', (order) => {
+      order.filter((filterId) => !!filtersRendered[filterId]).forEach((filterId, idx) => {
+        const filterRendered = filtersRendered[filterId];
+        const container = filterRendered.container;
+        positionElementByIndex(container, container.parentElement, idx + 1); // ! + 1 due to header
+      });
+    });
+
+    tab.listenerSetter.add(rootScope)('premium_toggle', () => {
+      toggleAllChats();
+    });
+
+    loadAnimationPromise = p.animationData.then(async(cb) => {
+      const player = await cb({
+        container: stickerContainer,
+        loop: false,
+        autoplay: false,
+        width: 86,
+        height: 86
+      });
+
+      animation = player;
+
+      return lottieLoader.waitForFirstFrame(player);
+    });
+
+    loadPromises.push(loadAnimationPromise);
+
+    new Sortable({
+      list: list,
+      middleware: tab.middlewareHelper.get(),
+      onSort: (prevIdx, newIdx) => {
+        let order: number[] = [];
+        for(const filterId in filtersRendered) {
+          const row = filtersRendered[filterId];
+          const idx = whichChild(row.container);
+          order[idx] = +filterId;
+        }
+
+        order = order.filter((filterId) => filterId !== undefined);
+        if(!rootScope.premium) {
+          indexOfAndSplice(order, FOLDER_ID_ALL);
+        }
+
+        tab.managers.filtersStorage.updateDialogFiltersOrder(order);
+      },
+      scrollable: tab.scrollable
+    });
 
     getSuggestedFilters();
+
+    promiseCollector.collect(Promise.all(loadPromises));
   });
 
-  tab.listenerSetter.add(rootScope)('filter_delete', (filter) => {
-    const filterRendered = filtersRendered[filter.id];
-    if(filterRendered) {
-      /* for(const suggested of this.suggestedFilters) {
-        if(deepEqual(suggested.filter, filter)) {
-
-        }
-      } */
-      getSuggestedFilters();
-
-      filterRendered.container.remove();
-      delete filtersRendered[filter.id];
-    }
-
-    onFiltersContainerUpdate();
-  });
-
-  tab.listenerSetter.add(rootScope)('filter_order', (order) => {
-    order.filter((filterId) => !!filtersRendered[filterId]).forEach((filterId, idx) => {
-      const filterRendered = filtersRendered[filterId];
-      const container = filterRendered.container;
-      positionElementByIndex(container, container.parentElement, idx + 1); // ! + 1 due to header
-    });
-  });
-
-  tab.listenerSetter.add(rootScope)('premium_toggle', () => {
-    toggleAllChats();
-  });
-
-  loadAnimationPromise = p.animationData.then(async(cb) => {
-    const player = await cb({
-      container: stickerContainer,
-      loop: false,
-      autoplay: false,
-      width: 86,
-      height: 86
-    });
-
-    animation = player;
-
-    return lottieLoader.waitForFirstFrame(player);
-  });
-
-  loadPromises.push(loadAnimationPromise);
-
-  new Sortable({
-    list: list,
-    middleware: tab.middlewareHelper.get(),
-    onSort: (prevIdx, newIdx) => {
-      let order: number[] = [];
-      for(const filterId in filtersRendered) {
-        const row = filtersRendered[filterId];
-        const idx = whichChild(row.container);
-        order[idx] = +filterId;
-      }
-
-      order = order.filter((filterId) => filterId !== undefined);
-      if(!rootScope.premium) {
-        indexOfAndSplice(order, FOLDER_ID_ALL);
-        // order.unshift(FOLDER_ID_ALL);
-      }
-
-      tab.managers.filtersStorage.updateDialogFiltersOrder(order);
-    },
-    scrollable: tab.scrollable
-  });
-
-  getSuggestedFilters();
-
-  promiseCollector.collect(Promise.all(loadPromises));
-
-  return null;
+  return (
+    <>
+      <div ref={stickerContainer} class="sticker-container" />
+      <div class="caption">{i18n('ChatList.Filter.Header')}</div>
+      <Button
+        class="btn-primary btn-color-primary btn-control"
+        icon="add"
+        text="ChatList.Filter.NewTitle"
+        onClick={async() => {
+          if(!(await canCreateFolder())) {
+            showLimitPopup('folders');
+          } else {
+            tab.slider.createTab(AppEditFolderTab).open(AppEditFolderTab.getInitArgs());
+          }
+        }}
+      />
+      <Section name="Filters" classList={{hide: foldersHidden()}}>
+        <div ref={list} />
+      </Section>
+      <Section
+        name="FilterRecommended"
+        classList={{hide: suggestedHidden()}}
+        contentProps={{ref: (el) => suggestedContent = el}}
+      />
+      <Section name="FiltersView">
+        <form>
+          {onLeftRow.container}
+          {nonTopRow.container}
+        </form>
+      </Section>
+    </>
+  );
 };
 
 export default ChatFolders;
