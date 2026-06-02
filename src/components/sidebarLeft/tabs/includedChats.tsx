@@ -78,7 +78,7 @@ const IncludedChats: Component = () => {
 
   const buildSelector = () => {
     confirmBtn.style.display = type === 'excluded' ? '' : 'none';
-    tab.title.replaceChildren(i18n(type === 'included' ? 'FilterAlwaysShow' : 'FilterNeverShow'));
+    // title is set by the scaffold (function of payload.type)
 
     const categoriesSection = new SettingSection({
       noDelimiter: true,

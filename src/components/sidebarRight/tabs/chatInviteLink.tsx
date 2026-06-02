@@ -26,10 +26,9 @@ const ChatInviteLinkTab: Component = () => {
 
   promiseCollector.collect((async() => {
     const isBroadcast = await tab.managers.appChatsManager.isBroadcast(chatId);
+    // default title 'InviteLink' is set by the scaffold; override only for a custom invite title
     if(chatInvite.title) {
       tab.title.replaceChildren(wrapEmojiText(chatInvite.title));
-    } else {
-      tab.title.replaceChildren(i18n('InviteLink'));
     }
 
     {

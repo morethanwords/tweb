@@ -479,7 +479,7 @@ type AppIncludedChatsTabPayload = {
 
 export const AppIncludedChatsTab =
   scaffoldSolidJSTab<AppIncludedChatsTabPayload>({
-    title: 'FilterAlwaysShow',
+    title: (p) => p.type === 'included' ? 'FilterAlwaysShow' : 'FilterNeverShow',
     getComponentModule: () => import('../sidebarLeft/tabs/includedChats')
   });
 

@@ -46,7 +46,7 @@ const ChatInviteLinks: Component = () => {
 
     const usernames = getPeerActiveUsernames(chat);
 
-    tab.title.replaceChildren(i18n('InviteLinks'));
+    // title is set by the scaffold (title: 'InviteLinks')
     tab.container.classList.add('chat-folders-container', 'chat-discussion-container');
 
     let stickerContainer: HTMLElement, caption: HTMLElement;
