@@ -55,7 +55,7 @@ const EditChat: Component = () => {
     tab.listenerSetter.removeAll();
 
     tab.container.classList.add('edit-peer-container', 'edit-group-container');
-    tab.title.replaceChildren(i18n('Edit'));
+    // title is set by the scaffold (title: 'Edit')
 
     let chatNameInputField: InputField, descriptionInputField: InputField, editPeer: EditPeer;
 

@@ -1,11 +1,10 @@
-import {Component} from 'solid-js';
-import replaceContent from '@helpers/dom/replaceContent';
+import {Component, createSignal, onMount} from 'solid-js';
 import debounce from '@helpers/schedulers/debounce';
 import {ChatReactions, Reaction} from '@layer';
-import {i18n, LangPackKey} from '@lib/langPack';
+import {LangPackKey} from '@lib/langPack';
 import CheckboxField from '@components/checkboxField';
 import Row, {RadioFormFromValues} from '@components/row';
-import SettingSection from '@components/settingSection';
+import Section from '@components/section';
 import wrapStickerToRow from '@components/wrappers/stickerToRow';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
@@ -16,192 +15,205 @@ const ChatReactionsTab: Component = () => {
   const promiseCollector = usePromiseCollector();
   const {chatId} = tab.payload;
 
-  promiseCollector.collect((async() => {
-    const [availableReactions, chatFull] = await Promise.all([
-      tab.managers.appReactionsManager.getActiveAvailableReactions(),
-      tab.managers.appProfileManager.getChatFull(chatId)
-    ]);
-    const isBroadcast = await tab.managers.appChatsManager.isBroadcast(chatId);
+  let toggleContent!: HTMLElement;
+  let reactionsContent!: HTMLElement;
+  const [toggleName, setToggleName] = createSignal<LangPackKey>();
+  const [toggleCaption, setToggleCaption] = createSignal<LangPackKey>();
+  const [reactionsHidden, setReactionsHidden] = createSignal(false);
 
-    let _chatReactions = chatFull.available_reactions ?? {_: 'chatReactionsNone'};
-    let chatReactions = _chatReactions;
-    let emoticons = new Set(_chatReactions._ === 'chatReactionsSome' ? _chatReactions.reactions.map((reaction) => (reaction as Reaction.reactionEmoji).emoticon) : []);
+  onMount(() => {
+    promiseCollector.collect((async() => {
+      const [availableReactions, chatFull] = await Promise.all([
+        tab.managers.appReactionsManager.getActiveAvailableReactions(),
+        tab.managers.appProfileManager.getChatFull(chatId)
+      ]);
+      const isBroadcast = await tab.managers.appChatsManager.isBroadcast(chatId);
 
-    const makeReactionFromEmoticons = (emoticons: Array<string>): Reaction[] => emoticons.map((emoticon) => ({_: 'reactionEmoji', emoticon}));
+      let _chatReactions = chatFull.available_reactions ?? {_: 'chatReactionsNone'};
+      let chatReactions = _chatReactions;
+      let emoticons = new Set(_chatReactions._ === 'chatReactionsSome' ? _chatReactions.reactions.map((reaction) => (reaction as Reaction.reactionEmoji).emoticon) : []);
 
-    const getCaptionLangPackKey = (): LangPackKey => {
-      if(isBroadcast) {
-        return 'EnableReactionsChannelInfo';
-      }
+      const makeReactionFromEmoticons = (emoticons: Array<string>): Reaction[] => emoticons.map((emoticon) => ({_: 'reactionEmoji', emoticon}));
 
-      return chatReactions._ === 'chatReactionsAll' ? 'EnableAllReactionsInfo' : (chatReactions._ === 'chatReactionsNone' ? 'DisableReactionsInfo' : 'EnableSomeReactionsInfo');
-    };
-
-    const toggleSection = new SettingSection({
-      name: isBroadcast ? undefined : 'AvailableReactions',
-      caption: getCaptionLangPackKey()
-    });
-
-    const reactionsSection = new SettingSection({
-      name: 'OnlyAllowThisReactions'
-    });
-
-    const toggleCheckboxFieldsByEmoticons = () => {
-      const r: Reaction.reactionEmoji[] = (chatReactions as ChatReactions.chatReactionsSome).reactions as any ?? [];
-      emoticons = new Set(r.map(({emoticon}) => emoticon));
-      checkboxFieldsByEmoticon.forEach((checkboxField, emoticon) => {
-        checkboxField.setValueSilently(emoticons.has(emoticon));
-      });
-    };
-
-    let toggleCheckboxField: CheckboxField;
-    if(isBroadcast) {
-      toggleCheckboxField = new CheckboxField({toggle: true, checked: _chatReactions._ === 'chatReactionsSome'});
-      const toggleRow = new Row({
-        checkboxField: toggleCheckboxField,
-        titleLangKey: 'EnableReactions',
-        listenerSetter: tab.listenerSetter
-      });
-
-      toggleSection.content.append(toggleRow.container);
-
-      tab.listenerSetter.add(toggleCheckboxField.input)('change', () => {
-        let save = true;
-        if(!toggleCheckboxField.checked) {
-          chatReactions = {_: 'chatReactionsNone'};
-        } else if(checkboxFields.every((checkboxField) => !checkboxField.checked)) {
-          chatReactions = {_: 'chatReactionsSome', reactions: makeReactionFromEmoticons(availableReactions.map(({reaction}) => reaction))};
-        } else if(chatReactions._ !== 'chatReactionsSome') {
-          chatReactions = {_: 'chatReactionsSome', reactions: makeReactionFromEmoticons(Array.from(emoticons))};
-        } else {
-          save = false;
+      const getCaptionLangPackKey = (): LangPackKey => {
+        if(isBroadcast) {
+          return 'EnableReactionsChannelInfo';
         }
 
-        if(save) {
-          toggleCheckboxFieldsByEmoticons();
-          saveReactionsDebounced();
-        }
-      });
-    } else {
-      const a: [ChatReactions['_'], LangPackKey][] = [
-        ['chatReactionsAll', 'AllReactions'],
-        ['chatReactionsSome', 'SomeReactions'],
-        ['chatReactionsNone', 'NoReactions']
-      ];
-
-      const onChange = () => {
-        reactionsSection.container.classList.toggle('hide', chatReactions._ !== 'chatReactionsSome');
+        return chatReactions._ === 'chatReactionsAll' ? 'EnableAllReactionsInfo' : (chatReactions._ === 'chatReactionsNone' ? 'DisableReactionsInfo' : 'EnableSomeReactionsInfo');
       };
 
-      const form = RadioFormFromValues(a.map(([value, langPackKey]) => {
-        return {
-          langPackKey,
-          value,
-          checked: _chatReactions._ === value
+      setToggleName(isBroadcast ? undefined : 'AvailableReactions');
+      setToggleCaption(getCaptionLangPackKey());
+
+      const toggleCheckboxFieldsByEmoticons = () => {
+        const r: Reaction.reactionEmoji[] = (chatReactions as ChatReactions.chatReactionsSome).reactions as any ?? [];
+        emoticons = new Set(r.map(({emoticon}) => emoticon));
+        checkboxFieldsByEmoticon.forEach((checkboxField, emoticon) => {
+          checkboxField.setValueSilently(emoticons.has(emoticon));
+        });
+      };
+
+      let toggleCheckboxField: CheckboxField;
+      if(isBroadcast) {
+        toggleCheckboxField = new CheckboxField({toggle: true, checked: _chatReactions._ === 'chatReactionsSome'});
+        const toggleRow = new Row({
+          checkboxField: toggleCheckboxField,
+          titleLangKey: 'EnableReactions',
+          listenerSetter: tab.listenerSetter
+        });
+
+        toggleContent.append(toggleRow.container);
+
+        tab.listenerSetter.add(toggleCheckboxField.input)('change', () => {
+          let save = true;
+          if(!toggleCheckboxField.checked) {
+            chatReactions = {_: 'chatReactionsNone'};
+          } else if(checkboxFields.every((checkboxField) => !checkboxField.checked)) {
+            chatReactions = {_: 'chatReactionsSome', reactions: makeReactionFromEmoticons(availableReactions.map(({reaction}) => reaction))};
+          } else if(chatReactions._ !== 'chatReactionsSome') {
+            chatReactions = {_: 'chatReactionsSome', reactions: makeReactionFromEmoticons(Array.from(emoticons))};
+          } else {
+            save = false;
+          }
+
+          if(save) {
+            toggleCheckboxFieldsByEmoticons();
+            saveReactionsDebounced();
+          }
+        });
+      } else {
+        const a: [ChatReactions['_'], LangPackKey][] = [
+          ['chatReactionsAll', 'AllReactions'],
+          ['chatReactionsSome', 'SomeReactions'],
+          ['chatReactionsNone', 'NoReactions']
+        ];
+
+        const onChange = () => {
+          setReactionsHidden(chatReactions._ !== 'chatReactionsSome');
         };
-      }), (_value) => {
-        const value = _value as any;
 
-        if(value === 'chatReactionsAll') {
-          chatReactions = {
-            _: value,
-            pFlags: {
-              allow_custom: true
-            }
+        const form = RadioFormFromValues(a.map(([value, langPackKey]) => {
+          return {
+            langPackKey,
+            value,
+            checked: _chatReactions._ === value
           };
-        } else if(value === 'chatReactionsNone') {
-          chatReactions = {
-            _: value
-          };
-        } else {
-          chatReactions = {
-            _: value,
-            reactions: makeReactionFromEmoticons(['👍', '👎'])
-          };
-        }
+        }), (_value) => {
+          const value = _value as any;
 
-        replaceContent(toggleSection.caption, i18n(getCaptionLangPackKey()));
-        toggleCheckboxFieldsByEmoticons();
-        saveReactionsDebounced();
+          if(value === 'chatReactionsAll') {
+            chatReactions = {
+              _: value,
+              pFlags: {
+                allow_custom: true
+              }
+            };
+          } else if(value === 'chatReactionsNone') {
+            chatReactions = {
+              _: value
+            };
+          } else {
+            chatReactions = {
+              _: value,
+              reactions: makeReactionFromEmoticons(['👍', '👎'])
+            };
+          }
+
+          setToggleCaption(getCaptionLangPackKey());
+          toggleCheckboxFieldsByEmoticons();
+          saveReactionsDebounced();
+          onChange();
+        });
+
+        toggleContent.append(form);
         onChange();
-      });
+      }
 
-      toggleSection.content.append(form);
-      onChange();
-    }
+      const checkboxFieldsByEmoticon: Map<string, CheckboxField> = new Map();
+      const checkboxFields = availableReactions.map((availableReaction) => {
+        const emoticon = availableReaction.reaction;
+        const checkboxField = new CheckboxField({
+          toggle: true,
+          checked: emoticons.has(emoticon)
+        });
 
-    const checkboxFieldsByEmoticon: Map<string, CheckboxField> = new Map();
-    const checkboxFields = availableReactions.map((availableReaction) => {
-      const emoticon = availableReaction.reaction;
-      const checkboxField = new CheckboxField({
-        toggle: true,
-        checked: emoticons.has(emoticon)
-      });
+        checkboxFieldsByEmoticon.set(emoticon, checkboxField);
 
-      checkboxFieldsByEmoticon.set(emoticon, checkboxField);
+        tab.listenerSetter.add(checkboxField.input)('change', () => {
+          if(checkboxField.checked) {
+            emoticons.add(emoticon);
 
-      tab.listenerSetter.add(checkboxField.input)('change', () => {
-        if(checkboxField.checked) {
-          emoticons.add(emoticon);
+            if(toggleCheckboxField && !toggleCheckboxField.checked) {
+              toggleCheckboxField.checked = true;
+            }
+          } else {
+            emoticons.delete(emoticon);
 
-          if(toggleCheckboxField && !toggleCheckboxField.checked) {
-            toggleCheckboxField.checked = true;
+            if(toggleCheckboxField?.checked && !emoticons.size) {
+              toggleCheckboxField.checked = false;
+            }
           }
-        } else {
-          emoticons.delete(emoticon);
 
-          if(toggleCheckboxField?.checked && !emoticons.size) {
-            toggleCheckboxField.checked = false;
+          saveReactionsDebounced();
+        });
+
+        const row = new Row({
+          checkboxField,
+          title: availableReaction.title,
+          havePadding: true,
+          listenerSetter: tab.listenerSetter
+        });
+
+        wrapStickerToRow({
+          row,
+          doc: availableReaction.static_icon,
+          size: 'small'
+        });
+
+        reactionsContent.append(row.container);
+
+        return checkboxField;
+      });
+
+      const saveReactions = async() => {
+        saveReactionsDebounced.clearTimeout();
+
+        if(chatReactions._ === 'chatReactionsSome') {
+          chatReactions.reactions = makeReactionFromEmoticons(Array.from(emoticons));
+          if(!chatReactions.reactions.length) {
+            chatReactions = {_: 'chatReactionsNone'};
           }
         }
 
-        saveReactionsDebounced();
-      });
+        tab.managers.appChatsManager.setChatAvailableReactions(chatId, chatReactions);
+        _chatReactions = chatReactions;
+      };
 
-      const row = new Row({
-        checkboxField,
-        title: availableReaction.title,
-        havePadding: true,
-        listenerSetter: tab.listenerSetter
-      });
+      const saveReactionsDebounced = debounce(saveReactions, 3000, false, true);
 
-      wrapStickerToRow({
-        row,
-        doc: availableReaction.static_icon,
-        size: 'small'
-      });
-
-      reactionsSection.content.append(row.container);
-
-      return checkboxField;
-    });
-
-    const saveReactions = async() => {
-      saveReactionsDebounced.clearTimeout();
-
-      if(chatReactions._ === 'chatReactionsSome') {
-        chatReactions.reactions = makeReactionFromEmoticons(Array.from(emoticons));
-        if(!chatReactions.reactions.length) {
-          chatReactions = {_: 'chatReactionsNone'};
+      tab.eventListener.addEventListener('destroy', () => {
+        if(saveReactionsDebounced.isDebounced()) {
+          saveReactions();
         }
-      }
+      }, {once: true});
+    })());
+  });
 
-      tab.managers.appChatsManager.setChatAvailableReactions(chatId, chatReactions);
-      _chatReactions = chatReactions;
-    };
-
-    const saveReactionsDebounced = debounce(saveReactions, 3000, false, true);
-
-    tab.eventListener.addEventListener('destroy', () => {
-      if(saveReactionsDebounced.isDebounced()) {
-        saveReactions();
-      }
-    }, {once: true});
-
-    tab.scrollable.append(toggleSection.container, reactionsSection.container);
-  })());
-
-  return null;
+  return (
+    <>
+      <Section
+        name={toggleName()}
+        caption={toggleCaption()}
+        contentProps={{ref: (el) => toggleContent = el}}
+      />
+      <Section
+        name="OnlyAllowThisReactions"
+        classList={{hide: reactionsHidden()}}
+        contentProps={{ref: (el) => reactionsContent = el}}
+      />
+    </>
+  );
 };
 
 export default ChatReactionsTab;
