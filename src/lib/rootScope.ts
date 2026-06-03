@@ -249,7 +249,6 @@ export type BroadcastEventsListeners = {
 export class RootScope extends EventListenerBase<BroadcastEventsListeners> {
   public myId: PeerId;
   private connectionStatus: {[name: string]: ConnectionStatusChange};
-  public settings: StateSettings;
   public managers: AppManagers;
   public premium: boolean;
 

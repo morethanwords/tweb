@@ -3,6 +3,7 @@ import type {ForumTopic} from '@layer';
 import type {AnyDialog} from '@lib/storages/dialogs';
 import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG} from '@lib/appDialogsManager';
 import rootScope from '@lib/rootScope';
+import {useAppSettings} from '@stores/appSettings';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import PopupDeleteDialog from '@components/popups/deleteDialog';
 import {i18n, LangPackKey, _i18n} from '@lib/langPack';
@@ -94,6 +95,7 @@ export default class DialogsContextMenu {
   }
 
   private getButtons() {
+    const [appSettings] = useAppSettings();
     this.buttons ??= [{
       icon: 'newtab',
       text: 'OpenInNewTab',
@@ -120,14 +122,14 @@ export default class DialogsContextMenu {
       onClick: () => {
         appImManager.toggleViewAsMessages(this.peerId, false);
       },
-      verify: () => this.peerId === rootScope.myId && !rootScope.settings.savedAsForum && !this.threadId
+      verify: () => this.peerId === rootScope.myId && !appSettings.savedAsForum && !this.threadId
     }, {
       icon: 'message',
       text: 'SavedViewAsMessages',
       onClick: () => {
         appImManager.toggleViewAsMessages(this.peerId, true);
       },
-      verify: () => this.peerId === rootScope.myId && rootScope.settings.savedAsForum && !this.threadId
+      verify: () => this.peerId === rootScope.myId && appSettings.savedAsForum && !this.threadId
     }, {
       icon: 'unread',
       text: 'MarkAsUnread',

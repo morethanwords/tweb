@@ -13,6 +13,8 @@ import {MyDocument} from '@appManagers/appDocsManager';
 import appDownloadManager, {AppDownloadManager} from '@lib/appDownloadManager';
 import appImManager from '@lib/appImManager';
 import rootScope from '@lib/rootScope';
+import {useAppSettings} from '@stores/appSettings';
+import {unwrap} from 'solid-js/store';
 import Section from '@components/section';
 import Row from '@components/rowTsx';
 import Button from '@components/buttonTsx';
@@ -168,7 +170,8 @@ export class AppBackgroundTab {
           themeSettings.highlightingColor = hsla;
 
           if(!hadSettings) {
-            rootScope.managers.appStateManager.pushToState('settings', rootScope.settings);
+            const [appSettings] = useAppSettings();
+            rootScope.managers.appStateManager.pushToState('settings', unwrap(appSettings));
           }
 
           appImManager.applyCurrentTheme({
@@ -236,7 +239,8 @@ const ChatBackground = () => {
 
   const changeWallPaperBlur = async(wallPaper: WallPaper, blur: boolean) => {
     (wallPaper.settings ??= {_: 'wallPaperSettings', pFlags: {}}).pFlags.blur = blur || undefined;
-    await rootScope.managers.appStateManager.pushToState('settings', rootScope.settings);
+    const [appSettings] = useAppSettings();
+    await rootScope.managers.appStateManager.pushToState('settings', unwrap(appSettings));
   };
 
   const setBackgroundDocument = async(
@@ -358,7 +362,8 @@ const ChatBackground = () => {
     if(defaultTheme) {
       ++AppBackgroundTab.tempId;
       theme.settings = copy(defaultTheme.settings);
-      rootScope.managers.appStateManager.pushToState('settings', rootScope.settings);
+      const [appSettings] = useAppSettings();
+      rootScope.managers.appStateManager.pushToState('settings', unwrap(appSettings));
       appImManager.applyCurrentTheme({
         broadcastEvent: true
       });

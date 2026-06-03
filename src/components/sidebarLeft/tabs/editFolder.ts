@@ -19,6 +19,7 @@ import {attachClickEvent} from '@helpers/dom/clickEvent';
 import SettingSection from '@components/settingSection';
 import {DialogFilter, ExportedChatlistInvite} from '@layer';
 import rootScope from '@lib/rootScope';
+import {useAppSettings} from '@stores/appSettings';
 import confirmationPopup from '@components/confirmationPopup';
 import Row from '@components/row';
 import createContextMenu from '@helpers/dom/createContextMenu';
@@ -146,7 +147,8 @@ export default class AppEditFolderTab extends SliderSuperTab {
 
     this.header.append(this.confirmBtn, this.menuBtn);
 
-    const hasFoldersSidebar = rootScope.settings.tabsInSidebar;
+    const [appSettings] = useAppSettings();
+    const hasFoldersSidebar = appSettings.tabsInSidebar;
     const inputSection = new SettingSection({
       caption: hasFoldersSidebar ? 'EditFolder.EmojiAsIconTip' : undefined
     });

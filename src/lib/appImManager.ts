@@ -127,6 +127,7 @@ import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '@components/chat/paidMe
 import IS_WEB_APP_BROWSER_SUPPORTED from '@environment/webAppBrowserSupport';
 import createChatAudio, {ChatAudioController} from '@components/chat/audio';
 import AudioAssetPlayer from '@helpers/audioAssetPlayer';
+import {useAppSettings} from '@stores/appSettings';
 import {MyMessage} from '@appManagers/appMessagesManager';
 import {canUploadAsWhenEditing} from '@components/chat/utils';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
@@ -687,7 +688,8 @@ export class AppImManager extends EventListenerBase<{
     });
 
     rootScope.addEventListener('message_sent', () => {
-      if(!rootScope.settings.notifications.sentMessageSound) {
+      const [appSettings] = useAppSettings();
+      if(!appSettings.notifications.sentMessageSound) {
         return;
       }
 
@@ -2084,7 +2086,8 @@ export class AppImManager extends EventListenerBase<{
   }
 
   private setSettings = () => {
-    const {messagesTextSize} = rootScope.settings;
+    const [appSettings] = useAppSettings();
+    const {messagesTextSize} = appSettings;
 
     this.customEmojiSize = makeMediaSize(messagesTextSize + 4, messagesTextSize + 4);
     document.documentElement.style.setProperty('--messages-text-size', messagesTextSize + 'px');
@@ -2120,13 +2123,13 @@ export class AppImManager extends EventListenerBase<{
     }, liteMode.isAvailable('animations') ? 250 : 0, false, true);
 
     const c: LiteModeKey[] = ['stickers_chat', 'stickers_panel'];
-    const changedLoop = animationIntersector.setLoop(rootScope.settings.stickers.loop);
+    const changedLoop = animationIntersector.setLoop(appSettings.stickers.loop);
     const changedAutoplay = !!c.filter((key) => animationIntersector.setAutoplay(liteMode.isAvailable(key), key)).length;
     if(changedLoop || changedAutoplay) {
       animationIntersector.checkAnimations2(false);
     }
 
-    I18n.setTimeFormat(rootScope.settings.timeFormat);
+    I18n.setTimeFormat(appSettings.timeFormat);
 
     this.toggleChatGradientAnimation(this.chat);
   };

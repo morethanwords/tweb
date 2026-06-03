@@ -46,8 +46,7 @@ import getPeerTitle from '@components/wrappers/getPeerTitle';
 import I18n from '@lib/langPack';
 import {NOTIFICATION_BADGE_PATH} from '@config/notifications';
 import {createAppURLForAccount} from '@lib/accounts/createAppURLForAccount';
-import {appSettings, setAppSettingsSilent} from '@stores/appSettings';
-import {produce, unwrap} from 'solid-js/store';
+import {setAppSettingsSilent} from '@stores/appSettings';
 import {batch} from 'solid-js';
 import createNotificationImage from '@helpers/createNotificationImage';
 import PasscodeLockScreenController from '@components/passcodeLock/passcodeLockScreenController';
@@ -937,18 +936,11 @@ class ApiManagerProxy extends MTProtoMessagePort {
     this.dispatchUserAuth();
 
     const stateForThisAccount = loadedStates[getCurrentAccount()];
-    rootScope.settings = stateForThisAccount.common.settings;
     this.newVersion = stateForThisAccount.newVersion;
     this.oldVersion = stateForThisAccount.oldVersion;
     this.mirrors['state'] = stateForThisAccount.state;
     setAppStateSilent(stateForThisAccount.state);
     setAppSettingsSilent(stateForThisAccount.common.settings);
-
-    Object.defineProperty(rootScope, 'settings', {
-      get: () => {
-        return unwrap(appSettings);
-      }
-    });
 
     return loadedStates;
   }

@@ -7,7 +7,8 @@ import highlightingColor from '@helpers/highlightingColor';
 import throttle from '@helpers/schedulers/throttle';
 import themeController from '@helpers/themeController';
 import appImManager from '@lib/appImManager';
-import rootScope from '@lib/rootScope';
+import {useAppSettings} from '@stores/appSettings';
+import {unwrap} from 'solid-js/store';
 import ColorPicker, {ColorPickerColor} from '@components/colorPicker';
 import SettingSection from '@components/settingSection';
 import {SliderSuperTab} from '@components/slider';
@@ -136,7 +137,8 @@ export default class AppBackgroundColorTab extends SliderSuperTab {
       settings.wallpaper = wallPaper;
       settings.highlightingColor = hsla;
 
-      this.managers.appStateManager.pushToState('settings', rootScope.settings);
+      const [appSettings] = useAppSettings();
+      this.managers.appStateManager.pushToState('settings', unwrap(appSettings));
 
       appImManager.applyCurrentTheme({
         broadcastEvent: true

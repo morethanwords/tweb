@@ -4,6 +4,7 @@ import {StateSettings} from '@config/state';
 import rootScope from '@lib/rootScope';
 import {joinDeepPath} from '@helpers/object/setDeepProperty';
 import getDeepProperty from '@helpers/object/getDeepProperty';
+import {MOUNT_CLASS_TO} from '@config/debug';
 
 const [appSettings, _setAppSettings] = createRoot(() => createStore<StateSettings>({} as any));
 
@@ -42,3 +43,5 @@ export {
   setAppSettings,
   setAppSettingsSilent
 };
+
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.useAppSettings = useAppSettings);

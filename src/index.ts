@@ -49,6 +49,7 @@ import PopupElement from '@components/popups';
 import PasscodeLockScreenController from '@components/passcodeLock/passcodeLockScreenController'; PasscodeLockScreenController;
 import type {LangPackDifference} from '@layer';
 import commonStateStorage from '@lib/commonStateStorage';
+import {useAppSettings, setAppSettingsSilent} from '@stores/appSettings';
 import {isUserCollapsedLeft} from '@helpers/updateColumnWidths';
 import {useMediaSizes} from '@helpers/mediaSizes';
 import useHasFoldersSidebar, {useIsSidebarCollapsed} from '@stores/foldersSidebar';
@@ -413,7 +414,8 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
   await preventCrossTabDynamicImportDeadlock();
 
   await PasscodeLockScreenController.waitForUnlock(async() => {
-    rootScope.settings = await commonStateStorage.get('settings');
+    const settings = await commonStateStorage.get('settings');
+    settings && setAppSettingsSilent(settings);
     themeController.setThemeListener();
 
     appChatBackground.attach();
@@ -470,7 +472,8 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
 
   const langPack = await I18n.getCacheLangPackAndApply();
   console.timeLog(TIME_LABEL, 'await I18n.getCacheLangPack()');
-  I18n.setTimeFormat(rootScope.settings.timeFormat);
+  const [appSettings] = useAppSettings();
+  I18n.setTimeFormat(appSettings.timeFormat);
   onLanguageApply();
   rootScope.addEventListener('language_apply', onLanguageApply);
 
@@ -485,7 +488,7 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
   console.timeLog(TIME_LABEL, 'sent all states (2)');
 
   const [, setHasFoldersSidebar] = useHasFoldersSidebar();
-  setHasFoldersSidebar(!!rootScope.settings.tabsInSidebar);
+  setHasFoldersSidebar(!!appSettings.tabsInSidebar);
 
   rootScope.managers.rootScope.getPremium().then((isPremium) => {
     rootScope.premium = isPremium;
