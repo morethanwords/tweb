@@ -1,9 +1,12 @@
 import {createRoot} from 'solid-js';
-import {createStore} from 'solid-js/store';
+import {createStore, SetStoreFunction} from 'solid-js/store';
 import type ChatInput from '../input';
-import useStarsState from './useStarsState';
-import useFileInput from './useFileInput';
+import {useAiEditorButton} from './useAiEditorButton';
 import useDirectMessages from './useDirectMessages';
+import useFileInput from './useFileInput';
+import {useInputMessageContainerHeight} from './useInputMessageContainerHeight';
+import useStarsState from './useStarsState';
+
 
 export interface ChatInputStateStore {
   // * stars
@@ -23,9 +26,18 @@ export interface ChatInputStateStore {
   isMonoforumAllChats: boolean;
   isReplying: boolean;
   isSuggestingUneditablePostChange: boolean;
+
+  inputMessageContainerInited: boolean;
+  inputMessageContainerHeight: number;
 }
 
 export type ChatInputState = ReturnType<typeof createChatInputState>;
+
+export type ChatInputStateContext = {
+  instance: ChatInput;
+  store: ChatInputStateStore;
+  setStore: SetStoreFunction<ChatInputStateStore>;
+};
 
 const DEFAULT_STORE: ChatInputStateStore = {
   starsBadgeInited: false,
@@ -41,7 +53,10 @@ const DEFAULT_STORE: ChatInputStateStore = {
 
   isMonoforumAllChats: false,
   isReplying: false,
-  isSuggestingUneditablePostChange: false
+  isSuggestingUneditablePostChange: false,
+
+  inputMessageContainerInited: false,
+  inputMessageContainerHeight: 0
 };
 
 export default function createChatInputState(instance: ChatInput, initial: ChatInputStateStore = DEFAULT_STORE) {
@@ -50,9 +65,13 @@ export default function createChatInputState(instance: ChatInput, initial: ChatI
 
     const [store, set] = createStore<ChatInputStateStore>({...initial});
 
-    useStarsState(instance, store);
-    useFileInput(instance, store);
-    const {canPaste} = useDirectMessages(instance, store);
+    const context: ChatInputStateContext = {instance, store, setStore: set};
+
+    useStarsState(context);
+    useFileInput(context);
+    useInputMessageContainerHeight(context);
+    const {canPaste} = useDirectMessages(context);
+    useAiEditorButton(context);
 
     return {store, set, canPaste, dispose};
   });

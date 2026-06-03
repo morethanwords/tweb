@@ -1,8 +1,8 @@
 import {createEffect, onCleanup} from 'solid-js';
-import type ChatInput from '../input';
-import type {ChatInputStateStore} from './index';
+import type {ChatInputStateContext} from './index';
 
-export default function useDirectMessages(instance: ChatInput, store: ChatInputStateStore) {
+
+export default function useDirectMessages({instance, store}: ChatInputStateContext) {
   createEffect(() => {
     if(!store.isMonoforumAllChats) return;
 

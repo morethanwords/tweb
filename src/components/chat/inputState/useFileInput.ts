@@ -1,9 +1,8 @@
 import {createEffect, createMemo, on} from 'solid-js';
-import type ChatInput from '../input';
-import type {ChatInputStateStore} from './index';
+import type {ChatInputStateContext} from './index';
 
 
-export default function useFileInput(instance: ChatInput, store: ChatInputStateStore) {
+export default function useFileInput({instance, store}: ChatInputStateContext) {
   const isMultiple = createMemo(() => !store.isEditing && !store.isSuggesting);
 
   createEffect(() => {

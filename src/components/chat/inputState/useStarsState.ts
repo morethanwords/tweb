@@ -1,10 +1,9 @@
 import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
 import {createEffect, createMemo} from 'solid-js';
-import type ChatInput from '../input';
-import type {ChatInputStateStore} from './index';
+import type {ChatInputStateContext} from './index';
 
 
-export default function useStarsState(instance: ChatInput, store: ChatInputStateStore) {
+export default function useStarsState({instance, store}: ChatInputStateContext) {
   const canSend = createMemo(() => store.hasSendButton && !!store.starsAmount);
   const hasSomethingToSend = createMemo(() => !!store.messageCount || !!store.forwarding || store.isRecording);
 

@@ -208,7 +208,8 @@ export default class ChatInput {
   private helperVisible = false;
   /** @internal — used by ChatInput input state */
   public fileInput: HTMLInputElement;
-  private inputMessageContainer: HTMLDivElement;
+  /** @internal — used by ChatInput input state */
+  public inputMessageContainer: HTMLDivElement;
   /** @internal — used by ChatRecording */
   public btnSend: HTMLButtonElement;
   public btnCancelRecord: HTMLButtonElement;
@@ -1004,6 +1005,7 @@ export default class ChatInput {
 
     this.inputMessageContainer = document.createElement('div');
     this.inputMessageContainer.classList.add('input-message-container');
+    this.inputState.set({inputMessageContainerInited: true});
 
     if(this.goDownBtn) {
       this.goDownUnreadBadge = createBadge('span', 24, 'primary');
