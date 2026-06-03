@@ -465,13 +465,7 @@ export default class ChatInput {
     const fakeSelectionWrapper = this.fakeSelectionWrapper = document.createElement('div');
     fakeSelectionWrapper.classList.add('fake-wrapper', 'fake-selection-wrapper');
 
-    // Shared rounded surface behind every plate (input row / control / selection).
-    // Plates are transparent and cross-fade their content on top of it, so the
-    // background never disappears mid-transition.
-    const background = document.createElement('div');
-    background.classList.add('chat-input-background');
-
-    this.inputContainer.append(background, this.rowsWrapperWrapper, fakeRowsWrapper, fakeSelectionWrapper);
+    this.inputContainer.append(this.rowsWrapperWrapper, fakeRowsWrapper, fakeSelectionWrapper);
     this.chatInput.append(this.inputContainer);
 
     if(!this.excludeParts.downButton) {

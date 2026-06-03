@@ -130,6 +130,21 @@ export default class GroupCallInstance extends CallInstanceBase<{
     worker.addEventListener('status', (ev) => {
       this.e2eStatus = ev.status;
       this.dispatchEvent('e2eStatus', ev.status);
+
+      // Conference membership lives on the e2e blockchain — the SFU doesn't push
+      // `updateGroupCallParticipants` for conferences the way it does for legacy
+      // voice chats. Every applied chain block re-emits this status, so when the
+      // group_state member set changes (someone joined/left), re-sync the SFU
+      // participant roster + count off it. Cheap string-key diff avoids
+      // re-polling on unrelated status churn (e.g. emoji verification phases).
+      const members = (ev.status?.groupState?.participants || [])
+      .map((p) => p.userId.toString())
+      .sort()
+      .join(',');
+      if(members !== this.prevConferenceMembers) {
+        this.prevConferenceMembers = members;
+        void this.refreshConferenceParticipants();
+      }
     });
     worker.addEventListener('pendingOutbound', () => {
       void this.flushE2eOutbound();
@@ -144,7 +159,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
     // can, but we also poll because conference push delivery is best-effort
     // (tdlib: TdE2E::Call::joined → shortPoll(0); shortPoll(1)).
     rootScope.addEventListener('group_call_chain_blocks', ({callId, subChainId, blocks}) => {
-      if(callId !== String(this.id) || !this.e2e) return;
+      if(callId !== this.id || !this.e2e) return;
       void this.deliverE2eChainBlocks(subChainId, blocks);
     });
 
@@ -160,6 +175,15 @@ export default class GroupCallInstance extends CallInstanceBase<{
   private e2eChainPollInterval: ReturnType<typeof setInterval> | undefined;
   private e2eChainOffsets: {0: number; 1: number} = {0: 0, 1: 0};
 
+  // Conference participant reconciliation (see refreshConferenceParticipants).
+  // `prevConferenceMembers` is the last e2e group_state member set we synced;
+  // the periodic timer is a backstop for changes the blockchain doesn't surface
+  // promptly (e.g. an ungraceful disconnect that the SFU drops before a removal
+  // block lands). `refreshingConferenceParticipants` de-dupes overlapping runs.
+  private prevConferenceMembers = '';
+  private conferenceParticipantsInterval: ReturnType<typeof setInterval> | undefined;
+  private refreshingConferenceParticipants = false;
+
   private startE2eChainPolling(): void {
     if(this.e2eChainPollInterval) return;
     const tick = (): void => { void this.pollE2eChain(); };
@@ -168,12 +192,43 @@ export default class GroupCallInstance extends CallInstanceBase<{
     // Steady-state interval: 1500ms is a balance between latency for emoji
     // verification (commit/reveal needs both peers' broadcasts) and load.
     this.e2eChainPollInterval = setInterval(tick, 1500);
+
+    // Backstop SFU participant poll. The blockchain-change trigger (in the
+    // worker `status` handler) covers the common join/leave case; this catches
+    // anything that changes the SFU roster without a chain delta. 5s matches
+    // the official Android conference poll cadence.
+    if(!this.conferenceParticipantsInterval) {
+      this.conferenceParticipantsInterval = setInterval(() => {
+        void this.refreshConferenceParticipants();
+      }, 5000);
+    }
   }
 
   private stopE2eChainPolling(): void {
     if(this.e2eChainPollInterval) {
       clearInterval(this.e2eChainPollInterval);
       this.e2eChainPollInterval = undefined;
+    }
+    if(this.conferenceParticipantsInterval) {
+      clearInterval(this.conferenceParticipantsInterval);
+      this.conferenceParticipantsInterval = undefined;
+    }
+  }
+
+  // Reconcile the SFU participant roster + count for a conference. No-op for
+  // legacy voice chats (gated on `this.e2e`) and while closed. The heavy
+  // lifting (fresh fetch, leave reconciliation, count) lives in the manager;
+  // here we just guard against overlapping runs and a torn-down call.
+  private async refreshConferenceParticipants(): Promise<void> {
+    if(!this.e2e || this.refreshingConferenceParticipants) return;
+    if(this.connectionState === 'closed') return;
+    this.refreshingConferenceParticipants = true;
+    try {
+      await this.managers.appGroupCallsManager.refreshConferenceParticipants(this.id);
+    } catch(err) {
+      this.log.warn('refreshConferenceParticipants', err);
+    } finally {
+      this.refreshingConferenceParticipants = false;
     }
   }
 

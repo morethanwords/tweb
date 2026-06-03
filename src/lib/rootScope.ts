@@ -178,7 +178,7 @@ export type BroadcastEvents = {
 
   'call_update': PhoneCall,
   'call_signaling': {callId: CallId, data: Uint8Array},
-  'group_call_chain_blocks': {callId: string, subChainId: number, blocks: Uint8Array[], nextOffset: number},
+  'group_call_chain_blocks': {callId: GroupCallId, subChainId: number, blocks: Uint8Array[], nextOffset: number},
 
   'rtmp_call_update': RtmpCallInstance,
 

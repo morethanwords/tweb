@@ -684,6 +684,10 @@ export class AppDialogsManager {
     const [appSettings, setAppSettings] = useAppSettings();
     // * it should've had a better place :(
     appMediaPlaybackController.setPlaybackParams(unwrap(appSettings.playbackParams));
+    // Persist the normalized params back once — `setPlaybackParams` clamps a stale >1
+    // `volume` to [0, 1] and migrates the excess into the voice-only `boost`, so this
+    // rewrites a corrupted stored value (e.g. volume: 1.04) instead of waiting for a change.
+    setAppSettings('playbackParams', appMediaPlaybackController.getPlaybackParams());
     appMediaPlaybackController.addEventListener('playbackParams', (params) => {
       setAppSettings('playbackParams', params);
     });

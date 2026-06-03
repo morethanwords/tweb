@@ -439,6 +439,7 @@
   --pinned-floating-height: 0px;
   --chat-padding-top: calc(var(--chat-topbar-height) + var(--page-chats-padding) + var(--pinned-floating-height));
   --chat-padding-bottom: calc(var(--chat-input-height) + var(--page-chats-padding) + var(--chat-input-height-surplus));
+  --chat-input-background: var(--surface-color);
 	display: flex !important;
 	width: 100%;
 	align-items: center;
@@ -501,27 +502,14 @@
 	width: 100%;
 	max-width: 100%;
 	justify-content: center;
+  background: var(--chat-input-background);
 	border-radius: var(--chat-input-border-radius);
 	min-height: var(--chat-input-height);
 	max-height: 30rem;
 	flex: 0 0 auto;
 	position: relative;
 	z-index: 3;
-}
-
-// Shared rounded surface that sits behind every footer plate (input row,
-// control container, selection). Plates themselves are transparent and only
-// cross-fade their content, so they never fade into emptiness.
-.chat-input-background {
-  position: absolute;
-  inset-inline: 0;
-  top: 0;
-  bottom: 0;
-  border-radius: var(--chat-input-border-radius);
-  background-color: var(--surface-color);
   box-shadow: $chat-input-box-shadow;
-  z-index: 2;
-  pointer-events: none;
 }
 
 .chat-input-control {

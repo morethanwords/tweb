@@ -2553,7 +2553,9 @@ export class AppImManager extends EventListenerBase<{
   private spliceChats(fromIndex: number, justReturn = true, animate?: boolean, spliced?: Chat[]) {
     if(fromIndex >= this.chats.length) return;
 
-    const chatFrom = this.chat;
+    // When `spliced` is passed in, the caller already trimmed the stack (so `this.chat` is
+    // already the destination); the chat we're actually leaving is the top of `spliced`.
+    const chatFrom = spliced?.length ? spliced[spliced.length - 1] : this.chat;
     if(this.chats.length > 1 && justReturn) {
       this.dispatchEvent('peer_changing', this.chat);
     }
@@ -2579,7 +2581,10 @@ export class AppImManager extends EventListenerBase<{
 
     this.chatsSelectTab(chatTo, animate);
 
-    if(chatTo !== chatFrom && chatTo.peerId) {
+    // Re-publish the destination's background when returning to it — the chat we left may have
+    // applied its own theme/wallpaper to the global background. Skip when `justReturn` is false:
+    // the caller is rebuilding the stack and its recursive `setPeer` publishes the new background.
+    if(justReturn && chatTo !== chatFrom && chatTo.peerId) {
       chatTo.publishBackground(animate === false ? 'auto' : 'crossfade-backwards');
     }
 

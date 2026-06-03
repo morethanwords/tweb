@@ -897,7 +897,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
       }
 
       video.muted = appMediaPlaybackController.muted;
-      video.volume = appMediaPlaybackController.volume;
+      video.volume = Math.min(appMediaPlaybackController.volume, 1);
     };
 
     const onSingleMedia = (media: HTMLMediaElement) => {
@@ -917,7 +917,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
 
       video.muted = turnedObserverOn ? params.muted : true;
       video.playbackRate = params.playbackRate;
-      video.volume = params.volume;
+      video.volume = Math.min(params.volume, 1);
     };
 
     appMediaPlaybackController.addEventListener('toggleVideoAutoplaySound', onAutoplaySound);
