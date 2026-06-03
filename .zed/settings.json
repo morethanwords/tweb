@@ -20,6 +20,9 @@
     "rlottie_with_printf",
     "public",
     "snapshot-server/snapshots",
+    "src/scripts/in/schema.json",
+    "src/scripts/out/schema.json",
+    "src/lib/mtproto/schema.ts",
     // Default values:
     "**/.svn",
     "**/.hg",
@@ -29,6 +32,6 @@
     "**/Thumbs.db",
     "**/.classpath",
     "**/.settings",
-    "**/.git"
+    "**/.git",
   ]
 }
