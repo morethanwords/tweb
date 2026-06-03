@@ -158,6 +158,7 @@ import {Middleware, getMiddleware, MiddlewareHelper} from '@helpers/middleware';
 import {createAutoDeleteIcon} from '@components/autoDeleteIcon';
 import compareUint8Arrays from '@helpers/bytes/compareUint8Arrays';
 import {LocalTextWithOptionalEntities} from './bubbleParts/pollMessageContent/utils';
+import createChatInputState, {ChatInputState} from './inputState';
 import {SupportedMediaType} from '@components/popups/createPoll/storeContext';
 
 
@@ -195,7 +196,8 @@ export default class ChatInput {
   public messageInputField: InputFieldAnimated;
   private inputHeightDelta = 0;
   private helperVisible = false;
-  private fileInput: HTMLInputElement;
+  /** @internal — used by ChatInput input state */
+  public fileInput: HTMLInputElement;
   private inputMessageContainer: HTMLDivElement;
   /** @internal — used by ChatRecording */
   public btnSend: HTMLButtonElement;
@@ -210,7 +212,8 @@ export default class ChatInput {
   public rowsWrapper: HTMLDivElement;
   /** @internal — used by ChatRecording */
   public newMessageWrapper: HTMLDivElement;
-  private btnToggleEmoticons: HTMLButtonElement;
+  /** @internal — used by ChatInput input state */
+  public btnToggleEmoticons: HTMLButtonElement;
   private btnToggleReplyMarkup: HTMLButtonElement;
   public btnSendContainer: HTMLDivElement;
 
@@ -298,7 +301,8 @@ export default class ChatInput {
 
   public willAttachType: AttachedMediaType;
 
-  private autocompleteHelperController: AutocompleteHelperController;
+  /** @internal — used by ChatInput input state */
+  public autocompleteHelperController: AutocompleteHelperController;
   private stickersHelper: StickersHelper;
   private emojiHelper: EmojiHelper;
   private commandsHelper: CommandsHelper;
@@ -344,8 +348,10 @@ export default class ChatInput {
   private rowsWrapperWrapper: HTMLDivElement;
   private controlContainer: HTMLElement;
   private fakeSelectionWrapper: HTMLDivElement;
-  private starsBadge: HTMLElement;
-  private starsBadgeStars: HTMLElement;
+  /** @internal — used by ChatInput input state */
+  public starsBadge: HTMLElement;
+  /** @internal — used by ChatInput input state */
+  public starsBadgeStars: HTMLElement;
 
   private fakeWrapperTo: HTMLElement;
   private toggleControlButtonDisability: () => void;
@@ -402,10 +408,7 @@ export default class ChatInput {
 
   public paidMessageInterceptor: PaidMessagesInterceptor;
 
-  private fileInputState: ReturnType<ChatInput['createFileInputState']>;
-  /** @internal — used by ChatRecording */
-  public starsState: ReturnType<ChatInput['createStarsState']>;
-  private directMessagesHandler: ReturnType<ChatInput['createDirectMessagesHandler']>;
+  public inputState: ChatInputState;
 
   public suggestedPost: SuggestedPostPayload;
   private inputHelperNavigationItem: NavigationItem;
@@ -556,9 +559,7 @@ export default class ChatInput {
       this.paidMessageInterceptor.dispose();
     });
 
-    this.fileInputState = this.createFileInputState();
-    this.starsState = this.createStarsState();
-    this.directMessagesHandler = this.createDirectMessagesHandler();
+    this.inputState = createChatInputState(this);
   }
 
   public freezeFocused(focused: boolean) {
@@ -2532,7 +2533,7 @@ export default class ChatInput {
 
       this.setStarsAmount(this.chat?.starsAmount); // should reset when undefined
 
-      this.directMessagesHandler.set({
+      this.inputState.set({
         isMonoforumAllChats: isMonoforum && canManageDirectMessages && !monoforumThreadId,
         isReplying: !!this.helperType
       });
@@ -2677,9 +2678,9 @@ export default class ChatInput {
     ) {
       key = 'ChannelBroadcast';
     } else if(this.chat.isMonoforum && this.chat.canManageDirectMessages) {
-      key = this.directMessagesHandler.store.isSuggestingUneditablePostChange ?
+      key = this.inputState.store.isSuggestingUneditablePostChange ?
         'ChannelDirectMessages.CantChangeSuggestedPostMessage' :
-        this.chat.monoforumThreadId || this.directMessagesHandler.store.isReplying ?
+        this.chat.monoforumThreadId || this.inputState.store.isReplying ?
           'Message' :
           'ChannelDirectMessages.ChooseMessage';
     } else if(this.chat.isBotforum && !this.chat.canManageBotforumTopics && !this.chat.threadId) {
@@ -2740,7 +2741,7 @@ export default class ChatInput {
     const oldKey = i.key;
     const oldArgs = i.args;
     i.compareAndUpdateBool({key, args}) &&
-    this.starsState.set({inputStarsCountEl});
+    this.inputState.set({inputStarsCountEl});
 
     return {oldKey, oldArgs};
   }
@@ -3892,7 +3893,7 @@ export default class ChatInput {
       this.btnSend.classList.toggle(i, icon === i);
     });
 
-    this.starsState.set({
+    this.inputState.set({
       hasSendButton: icon === 'send',
       forwarding: accumulate(Object.values(this.forwarding || {}).map(messages => messages.length), 0)
     });
@@ -3928,150 +3929,27 @@ export default class ChatInput {
 
     this.btnSendContainer.append(starsBadge);
 
-    this.starsState.set({inited: true});
+    this.inputState.set({starsBadgeInited: true});
   }
 
   public async setStarsAmount(starsAmount: number | undefined) {
-    this.starsState.set({starsAmount});
+    this.inputState.set({starsAmount});
 
     // TODO: review this `|| true` WTF?
     const params = await this.getPlaceholderParams(await this.chat?.canSend('send_plain') || true);
     this.updateMessageInputPlaceholder(params);
   }
 
-  private createStarsState = () => createRoot((dispose) => {
-    this.getMiddleware()?.onDestroy(() => void dispose());
-
-    const [store, set] = createStore({
-      inited: false,
-      inputStarsCountEl: null as null | HTMLElement,
-
-      hasSendButton: false,
-      isRecording: false,
-      messageCount: 0,
-      forwarding: 0,
-      starsAmount: 0
-    });
-
-    const canSend = createMemo(() => store.hasSendButton && !!store.starsAmount);
-    const hasSomethingToSend = createMemo(() => !!store.messageCount || !!store.forwarding || store.isRecording);
-
-    const isVisible = createMemo(() => canSend() && hasSomethingToSend());
-
-    const totalStarsAmount = createMemo(() => store.starsAmount * Math.max(1, store.forwarding + store.messageCount));
-    const forwardedMessagesStarsAmount = createMemo(() => store.starsAmount /* * Math.max(1, store.forwarding) */);
-
-    createEffect(() => {
-      if(!store.inited) return;
-      this.starsBadge.classList.toggle('btn-send-stars-badge--active', isVisible());
-    });
-
-    createEffect(() => {
-      if(!store.inited) return;
-      this.starsBadgeStars.innerText = numberThousandSplitterForStars(totalStarsAmount());
-    });
-
-    createEffect(() => {
-      if(!store.inited || !store.inputStarsCountEl || !forwardedMessagesStarsAmount()) return;
-
-      store.inputStarsCountEl.textContent = numberThousandSplitterForStars(forwardedMessagesStarsAmount());
-    });
-
-    return {store, set};
-  });
-
-  private createFileInputState = () => createRoot((dispose) => {
-    this.getMiddleware()?.onDestroy(() => void dispose());
-
-    const [store, set] = createStore({
-      isEditing: false,
-      isSuggesting: false
-    });
-
-    const isMultiple = createMemo(() => !store.isEditing && !store.isSuggesting);
-
-    createEffect(() => {
-      if(!this.fileInput) return;
-      this.fileInput.multiple = isMultiple();
-    });
-
-    createEffect(on(() => store.isEditing, (isEditing) => {
-      this.attachMenu.feedProps({
-        isEditing: isEditing
-      });
-    }, {
-      defer: true
-    }));
-
-    return {store, set};
-  });
-
-  private createDirectMessagesHandler = () => createRoot((dispose) => {
-    this.getMiddleware()?.onDestroy(() => void dispose());
-
-    const [store, set] = createStore({
-      isMonoforumAllChats: false,
-      isReplying: false,
-      isSuggestingUneditablePostChange: false
-    });
-
-    createEffect(() => {
-      if(!store.isMonoforumAllChats) return;
-
-      this.getPlaceholderParams().then((params) => this.updateMessageInputPlaceholder(params));
-
-      if(store.isReplying) return;
-
-      this.messageInputField?.input?.classList.add('hide');
-      this.attachMenu?.classList.add('hide');
-      this.messageInputField?.setHidden(true);
-      this.btnToggleEmoticons?.setAttribute('disabled', '');
-      this.autocompleteHelperController.hideOtherHelpers();
-      this.btnSend?.setAttribute('disabled', '');
-      this.btnSend?.classList.add('disabled');
-
-      onCleanup(() => {
-        this.messageInputField?.input?.classList.remove('hide');
-        this.attachMenu?.classList.remove('hide');
-        this.messageInputField?.setHidden(false);
-        this.btnToggleEmoticons?.removeAttribute('disabled');
-        this.btnSend?.removeAttribute('disabled');
-        this.btnSend?.classList.remove('disabled');
-      });
-    });
-
-    createEffect(() => {
-      this.getPlaceholderParams().then((params) => this.updateMessageInputPlaceholder(params));
-
-      if(!store.isSuggestingUneditablePostChange) return;
-
-      this.messageInputField?.input?.classList.add('hide');
-      this.messageInputField?.setHidden(true);
-      this.btnToggleEmoticons?.setAttribute('disabled', '');
-      this.autocompleteHelperController.hideOtherHelpers();
-
-      onCleanup(() => {
-        this.messageInputField?.input?.classList.remove('hide');
-        this.messageInputField?.setHidden(false);
-        this.btnToggleEmoticons?.removeAttribute('disabled');
-      });
-    });
-
-    const canPaste = () => !store.isMonoforumAllChats || store.isReplying;
-
-    return {store, set, canPaste};
-  });
-
   private throttledSetMessageCountToBadgeState = asyncThrottle(async(value: string) => {
     if(!value?.trim()) {
-      this.starsState.set({messageCount: 0});
+      this.inputState.set({messageCount: 0});
       return;
     }
 
     const config = await this.managers.apiManager.getConfig();
     const splitted = splitStringByLength(value, config.message_length_max);
 
-    this.starsState.set({messageCount: splitted.length});
+    this.inputState.set({messageCount: splitted.length});
   }, 120);
 
   private getValueAndEntities(input: HTMLElement) {
@@ -4083,7 +3961,7 @@ export default class ChatInput {
   }
 
   public canPaste() {
-    return this.directMessagesHandler.canPaste();
+    return this.inputState.canPaste();
   }
 
   public onMessageSent(clearInput = true, clearReply?: boolean) {
@@ -4470,7 +4348,7 @@ export default class ChatInput {
     this.suggestedPost = payload;
 
     const isSuggestingUneditablePostChange = !!(message.media?._ === 'messageMediaDocument' && message.media.document?._ === 'document' && message.media.document.sticker);
-    this.directMessagesHandler.set({isSuggestingUneditablePostChange});
+    this.inputState.set({isSuggestingUneditablePostChange});
     if(isSuggestingUneditablePostChange) {
       this.openSuggestPostPopup(payload);
     }
@@ -4778,10 +4656,10 @@ export default class ChatInput {
     if(type !== 'suggested') {
       this.suggestedPost = undefined;
       this.btnSuggestPost.classList.toggle('hide', !this.canShowSuggestPostButton(false))
-      this.directMessagesHandler.set({isSuggestingUneditablePostChange: false});
+      this.inputState.set({isSuggestingUneditablePostChange: false});
     }
 
-    this.fileInputState.set({
+    this.inputState.set({
       isEditing: false,
       isSuggesting: false
     });
@@ -4808,7 +4686,7 @@ export default class ChatInput {
       this.t();
     }
 
-    if(!type) this.directMessagesHandler.set({isReplying: false});
+    if(!type) this.inputState.set({isReplying: false});
   }
 
   private t() {
@@ -4870,7 +4748,7 @@ export default class ChatInput {
       this.helperFunc = callerFunc;
     }
 
-    this.fileInputState.set({
+    this.inputState.set({
       isEditing: type === 'edit',
       isSuggesting: type === 'suggested'
     });
@@ -4925,7 +4803,7 @@ export default class ChatInput {
       this.updateSendBtn();
     }, 0);
 
-    this.directMessagesHandler.set({isReplying: true});
+    this.inputState.set({isReplying: true});
 
     return container;
   }
@@ -4960,7 +4838,7 @@ export default class ChatInput {
         ...payload
       };
 
-      if(this.directMessagesHandler.store.isSuggestingUneditablePostChange) {
+      if(this.inputState.store.isSuggestingUneditablePostChange) {
         this.sendMessage();
       }
     }}).show();
