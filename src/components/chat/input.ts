@@ -161,6 +161,16 @@ import {LocalTextWithOptionalEntities} from './bubbleParts/pollMessageContent/ut
 import createChatInputState, {ChatInputState} from './inputState';
 import {SupportedMediaType} from '@components/popups/createPoll/storeContext';
 
+const HOT_CHAT_INPUTS = import.meta.hot ? new Set<ChatInput>() : null;
+
+if(import.meta.hot) {
+  import.meta.hot.accept('./inputState', (newModule) => {
+    if(!newModule) return;
+    const create = (newModule as unknown as typeof import('./inputState')).default;
+    HOT_CHAT_INPUTS!.forEach((input) => input.reloadInputState(create));
+  });
+}
+
 
 const REPLY_IN_TOPIC = false;
 
@@ -560,6 +570,18 @@ export default class ChatInput {
     });
 
     this.inputState = createChatInputState(this);
+
+    if(HOT_CHAT_INPUTS) {
+      HOT_CHAT_INPUTS.add(this);
+      this.getMiddleware()?.onDestroy(() => HOT_CHAT_INPUTS.delete(this));
+    }
+  }
+
+  /** @internal — used to hot-reload the input state with freshly evaluated code */
+  public reloadInputState(create: typeof createChatInputState) {
+    const carried = {...this.inputState.store};
+    this.inputState.dispose();
+    this.inputState = create(this, carried);
   }
 
   public freezeFocused(focused: boolean) {

@@ -1,9 +1,9 @@
 import {createRoot} from 'solid-js';
 import {createStore} from 'solid-js/store';
 import type ChatInput from '../input';
-import useDirectMessages from './useDirectMessages';
-import useFileInput from './useFileInput';
 import useStarsState from './useStarsState';
+import useFileInput from './useFileInput';
+import useDirectMessages from './useDirectMessages';
 
 export interface ChatInputStateStore {
   // * stars
@@ -27,31 +27,33 @@ export interface ChatInputStateStore {
 
 export type ChatInputState = ReturnType<typeof createChatInputState>;
 
-export default function createChatInputState(instance: ChatInput) {
+const DEFAULT_STORE: ChatInputStateStore = {
+  starsBadgeInited: false,
+  inputStarsCountEl: null,
+  hasSendButton: false,
+  isRecording: false,
+  messageCount: 0,
+  forwarding: 0,
+  starsAmount: 0,
+
+  isEditing: false,
+  isSuggesting: false,
+
+  isMonoforumAllChats: false,
+  isReplying: false,
+  isSuggestingUneditablePostChange: false
+};
+
+export default function createChatInputState(instance: ChatInput, initial: ChatInputStateStore = DEFAULT_STORE) {
   return createRoot((dispose) => {
     instance.getMiddleware()?.onDestroy(() => void dispose());
 
-    const [store, set] = createStore<ChatInputStateStore>({
-      starsBadgeInited: false,
-      inputStarsCountEl: null,
-      hasSendButton: false,
-      isRecording: false,
-      messageCount: 0,
-      forwarding: 0,
-      starsAmount: 0,
-
-      isEditing: false,
-      isSuggesting: false,
-
-      isMonoforumAllChats: false,
-      isReplying: false,
-      isSuggestingUneditablePostChange: false
-    });
+    const [store, set] = createStore<ChatInputStateStore>({...initial});
 
     useStarsState(instance, store);
     useFileInput(instance, store);
     const {canPaste} = useDirectMessages(instance, store);
 
-    return {store, set, canPaste};
+    return {store, set, canPaste, dispose};
   });
 }
