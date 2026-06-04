@@ -970,6 +970,11 @@ export default class Chat extends EventListenerBase<{
       this.selection.isScheduled = type === ChatType.Scheduled;
     }
 
+    // NB: ChatType.Logs also has its own per-peer box (`${peerId}_logs`, via saveLogsMessage), but it's
+    // intentionally NOT mapped here — it stays `_history`. The logs view works through other paths (bubbles
+    // hold the message objects directly, and getMessageByPeer falls back to `… || _logs`), so wiring it to
+    // `_logs` here would need the whole admin-log read path re-verified. If that's ever done, the scheduled
+    // chokepoint in getMessage() can generalize to "own-peer non-history box".
     this.messagesStorageKey = `${this.peerId}_${this.type === ChatType.Scheduled ? 'scheduled' : 'history'}`;
 
     // this.container && this.container.classList.toggle('no-forwards', this.noForwards);
@@ -1223,6 +1228,13 @@ export default class Chat extends EventListenerBase<{
   public getMessage(mid: number | FullMid) {
     if(typeof(mid) === 'string') {
       const {peerId, mid: _mid} = splitFullMid(mid);
+      // scheduled messages live in a separate per-peer storage; resolving a bare id via
+      // getMessageByPeer would hit history/global and return another chat's message, so for
+      // our own scheduled peer read from this chat's (scheduled) storage instead
+      if(this.type === ChatType.Scheduled && peerId === this.peerId) {
+        return apiManagerProxy.getMessageFromStorage(this.messagesStorageKey, _mid);
+      }
+
       return apiManagerProxy.getMessageByPeer(peerId, _mid);
     }
 

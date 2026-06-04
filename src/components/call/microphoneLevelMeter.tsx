@@ -1,6 +1,6 @@
 import {createEffect, createSignal, on, onCleanup, onMount} from 'solid-js';
 import getAudioConstraints from '@lib/calls/helpers/getAudioConstraints';
-import getStream from '@lib/calls/helpers/getStream';
+import acquireStream, {StreamAcquisition} from '@lib/calls/helpers/acquireStream';
 
 // A live microphone level meter. Acquires its own MediaStream so the user
 // can confirm "is my mic actually working" outside an active call — the bar
@@ -29,7 +29,10 @@ export default function MicrophoneLevelMeter(props: MicrophoneLevelMeterProps) {
   let analyser: AnalyserNode | undefined;
   let stream: MediaStream | undefined;
   let buffer: Uint8Array | undefined;
-  let canceled = false;
+  // Holds the in-flight / active mic acquire so teardown can dispose() it —
+  // getUserMedia can't be cancelled, so a stream resolving after unmount / mic
+  // switch is stopped instead of leaking. See acquireStream.
+  let acquisition: StreamAcquisition | undefined;
 
   const teardown = () => {
     if(raf !== undefined) {
@@ -44,10 +47,10 @@ export default function MicrophoneLevelMeter(props: MicrophoneLevelMeterProps) {
       try { analyser.disconnect(); } catch(_) {}
       analyser = undefined;
     }
-    if(stream) {
-      stream.getTracks().forEach((t) => t.stop());
-      stream = undefined;
-    }
+    // dispose() owns the mic stream's tracks (stops the in-flight one too).
+    acquisition?.dispose();
+    acquisition = undefined;
+    stream = undefined;
     if(context) {
       // suspend instead of close — closing makes follow-up re-acquires racy
       // because creating a new AudioContext requires user gesture on some
@@ -60,25 +63,28 @@ export default function MicrophoneLevelMeter(props: MicrophoneLevelMeterProps) {
 
   const start = async() => {
     teardown();
-    canceled = false;
     setError(undefined);
 
+    // `getStream` self-heals a stale persisted mic id (clears appSettings,
+    // retries with the default) so the meter doesn't lock on an error.
+    const current = acquisition = acquireStream({
+      audio: getAudioConstraints(props.deviceId)
+    });
+    let acquired: MediaStream;
     try {
-      // `getStream` self-heals a stale persisted mic id (clears appSettings,
-      // retries with the default) so the meter doesn't lock on an error.
-      stream = await getStream({
-        audio: getAudioConstraints(props.deviceId)
-      });
+      acquired = await current.promise;
     } catch(err) {
+      // A disposed acquire resolves undefined, so only a real, still-wanted
+      // error reaches here.
       const msg = err instanceof Error ? err.message : String(err);
       setError(msg);
       return;
     }
 
-    if(canceled) {
-      stream.getTracks().forEach((t) => t.stop());
-      return;
-    }
+    // Disposed (unmount / mic switch) while getUserMedia resolved — dispose()
+    // already stopped the orphaned stream.
+    if(!acquired) return;
+    stream = acquired;
 
     const Ctor = window.AudioContext || (window as any).webkitAudioContext;
     context = new Ctor();
@@ -115,7 +121,6 @@ export default function MicrophoneLevelMeter(props: MicrophoneLevelMeterProps) {
   onMount(() => {
     start();
     onCleanup(() => {
-      canceled = true;
       teardown();
     });
   });
