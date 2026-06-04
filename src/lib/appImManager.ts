@@ -127,6 +127,7 @@ import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '@components/chat/paidMe
 import IS_WEB_APP_BROWSER_SUPPORTED from '@environment/webAppBrowserSupport';
 import createChatAudio, {ChatAudioController} from '@components/chat/audio';
 import AudioAssetPlayer from '@helpers/audioAssetPlayer';
+import {useAppSettings} from '@stores/appSettings';
 import {MyMessage} from '@appManagers/appMessagesManager';
 import {canUploadAsWhenEditing} from '@components/chat/utils';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
@@ -687,7 +688,8 @@ export class AppImManager extends EventListenerBase<{
     });
 
     rootScope.addEventListener('message_sent', () => {
-      if(!rootScope.settings.notifications.sentMessageSound) {
+      const [appSettings] = useAppSettings();
+      if(!appSettings.notifications.sentMessageSound) {
         return;
       }
 
@@ -2084,7 +2086,8 @@ export class AppImManager extends EventListenerBase<{
   }
 
   private setSettings = () => {
-    const {messagesTextSize} = rootScope.settings;
+    const [appSettings] = useAppSettings();
+    const {messagesTextSize} = appSettings;
 
     this.customEmojiSize = makeMediaSize(messagesTextSize + 4, messagesTextSize + 4);
     document.documentElement.style.setProperty('--messages-text-size', messagesTextSize + 'px');
@@ -2120,13 +2123,13 @@ export class AppImManager extends EventListenerBase<{
     }, liteMode.isAvailable('animations') ? 250 : 0, false, true);
 
     const c: LiteModeKey[] = ['stickers_chat', 'stickers_panel'];
-    const changedLoop = animationIntersector.setLoop(rootScope.settings.stickers.loop);
+    const changedLoop = animationIntersector.setLoop(appSettings.stickers.loop);
     const changedAutoplay = !!c.filter((key) => animationIntersector.setAutoplay(liteMode.isAvailable(key), key)).length;
     if(changedLoop || changedAutoplay) {
       animationIntersector.checkAnimations2(false);
     }
 
-    I18n.setTimeFormat(rootScope.settings.timeFormat);
+    I18n.setTimeFormat(appSettings.timeFormat);
 
     this.toggleChatGradientAnimation(this.chat);
   };
@@ -2553,7 +2556,9 @@ export class AppImManager extends EventListenerBase<{
   private spliceChats(fromIndex: number, justReturn = true, animate?: boolean, spliced?: Chat[]) {
     if(fromIndex >= this.chats.length) return;
 
-    const chatFrom = this.chat;
+    // When `spliced` is passed in, the caller already trimmed the stack (so `this.chat` is
+    // already the destination); the chat we're actually leaving is the top of `spliced`.
+    const chatFrom = spliced?.length ? spliced[spliced.length - 1] : this.chat;
     if(this.chats.length > 1 && justReturn) {
       this.dispatchEvent('peer_changing', this.chat);
     }
@@ -2579,7 +2584,10 @@ export class AppImManager extends EventListenerBase<{
 
     this.chatsSelectTab(chatTo, animate);
 
-    if(chatTo !== chatFrom && chatTo.peerId) {
+    // Re-publish the destination's background when returning to it — the chat we left may have
+    // applied its own theme/wallpaper to the global background. Skip when `justReturn` is false:
+    // the caller is rebuilding the stack and its recursive `setPeer` publishes the new background.
+    if(justReturn && chatTo !== chatFrom && chatTo.peerId) {
       chatTo.publishBackground(animate === false ? 'auto' : 'crossfade-backwards');
     }
 

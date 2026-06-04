@@ -11,12 +11,20 @@
   // mobile-style breathing room around the topbar/input plates inside the popup.
   --page-chats-padding: 8px;
 
+  // The base `.popup` carries `padding: 1.875rem` (zeroed by `.no-overlay`). On handhelds we
+  // drop `withoutOverlay` to show the dimmed backdrop, which re-introduces that padding — pin
+  // it back to 0 so the absolutely-positioned `.popup-container` keeps its JS-set viewport
+  // coordinates and the overlay's `overflow: auto` can't spawn a stray scrollbar.
+  padding: 0;
+
   .popup-container {
     position: absolute;
     top: var(--preview-top, 50%);
     left: var(--preview-left, 50%);
-    width: 432px;
-    height: 540px;
+    // Default to the fixed 432×540; `positionFromAnchor` overrides both with a viewport-fitted
+    // size on handhelds so the popup never overflows a small screen.
+    width: var(--preview-width, 432px);
+    height: var(--preview-height, 540px);
     padding: 0;
     overflow: hidden;
     border-radius: $border-radius-big;
@@ -115,6 +123,10 @@
     height: var(--chat-topbar-height);
     min-height: var(--chat-topbar-height);
     pointer-events: none;
+  }
+
+  .topbar {
+    transform: none !important;
   }
 
   // Main `.bubbles` is anchored with `inset-inline: -.5rem` so its width grows past the

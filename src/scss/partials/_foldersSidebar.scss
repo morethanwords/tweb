@@ -162,10 +162,11 @@
       // box-shadow: 0 0 0 1px var(--folders-sidebar-background-hover);
       transition: none !important;
       pointer-events: none;
-      background-color: var(--white);
-      color: rgba(0, 0, 0, .5);
+      background-color: var(--primary-color);
+      color: var(--white);
 
       &.badge-gray {
+        color: rgba(0, 0, 0, 0.5);
         background-color: var(--white);
       }
     }

@@ -7,6 +7,7 @@ import {ChatBackground, ChatBackgroundTheme} from '@components/chat/bubbles/chat
 import {ChatType} from '@components/chat/chatType';
 import {NULL_PEER_ID} from '@appManagers/constants';
 import themeController from '@helpers/themeController';
+import mediaSizes from '@helpers/mediaSizes';
 import appImManager from '@lib/appImManager';
 import rootScope from '@lib/rootScope';
 import {i18n, LangPackKey} from '@lib/langPack';
@@ -163,22 +164,44 @@ export default function showChatPreviewPopup(options: ChatPreviewOptions): void 
         rectLeft = anchor.x;
       }
 
-      let left = ax + MARGIN;
-      let top = ay - PREVIEW_H / 2;
-
-      // Headless/zero-size measurements should fall through to the natural anchor offset
-      // instead of collapsing the popup to a negative coordinate. Clamp only when the
-      // viewport is large enough to actually contain the popup.
       const vw = window.innerWidth || document.documentElement.clientWidth;
       const vh = window.innerHeight || document.documentElement.clientHeight;
-      const maxLeft = vw > PREVIEW_W + MARGIN * 2 ? vw - PREVIEW_W - MARGIN : Infinity;
-      const maxTop = vh > PREVIEW_H + MARGIN * 2 ? vh - PREVIEW_H - MARGIN : Infinity;
-      if(left > maxLeft) {
-        const fromLeft = rectLeft - PREVIEW_W - MARGIN;
-        left = Math.max(MARGIN, fromLeft);
+
+      // The popup defaults to a fixed 432×540, but on a handheld viewport that's wider
+      // and/or taller than the screen. Shrink it to fit (leaving a MARGIN gutter on each
+      // side) and expose the result as CSS vars the stylesheet reads. A non-positive
+      // measurement (headless/jsdom) keeps the natural size — `vw - MARGIN * 2` would go
+      // negative and collapse the popup.
+      const width = vw > MARGIN * 2 ? Math.min(PREVIEW_W, vw - MARGIN * 2) : PREVIEW_W;
+      const height = vh > MARGIN * 2 ? Math.min(PREVIEW_H, vh - MARGIN * 2) : PREVIEW_H;
+      containerEl.style.setProperty('--preview-width', width + 'px');
+      containerEl.style.setProperty('--preview-height', height + 'px');
+
+      let left: number, top: number;
+      if(mediaSizes.isMobile) {
+        // On a handheld the left column — and thus the anchor — spans the full width, so
+        // there's nowhere to sit the popup beside the row. Centre it in the viewport on
+        // both axes rather than tracking the anchor (which would leave it floating at a
+        // different height for every row). `width`/`height` are already fitted, so the
+        // gutters come out symmetric; `Math.max` pins it at MARGIN if it can't fit.
+        left = Math.max(MARGIN, (vw - width) / 2);
+        top = Math.max(MARGIN, (vh - height) / 2);
+      } else {
+        left = ax + MARGIN;
+        top = ay - height / 2;
+
+        // Keep the popup fully on-screen, clamping against the *fitted* size. Headless/
+        // zero-size measurements fall through to the natural anchor offset instead of
+        // collapsing to a negative coordinate.
+        const maxLeft = vw > MARGIN * 2 ? vw - width - MARGIN : Infinity;
+        const maxTop = vh > MARGIN * 2 ? vh - height - MARGIN : Infinity;
+        if(left > maxLeft) {
+          const fromLeft = rectLeft - width - MARGIN;
+          left = Math.max(MARGIN, fromLeft);
+        }
+        if(top < MARGIN) top = MARGIN;
+        if(top > maxTop) top = maxTop;
       }
-      if(top < MARGIN) top = MARGIN;
-      if(top > maxTop) top = maxTop;
 
       containerEl.style.setProperty('--preview-left', left + 'px');
       containerEl.style.setProperty('--preview-top', top + 'px');
@@ -291,10 +314,14 @@ export default function showChatPreviewPopup(options: ChatPreviewOptions): void 
     );
   }
 
+  // On desktop the preview is a tdesktop-style peek anchored next to the chatlist, so it
+  // deliberately skips the dimmed overlay. On a handheld it's a centred modal instead —
+  // bring the standard overlay back, otherwise the popup floats over the chat list with no
+  // backdrop and reads as misplaced.
   createPopup(() => (
     <PopupElement
       class="popup-chat-preview"
-      withoutOverlay
+      withoutOverlay={!mediaSizes.isMobile}
       show={show()}
       kind={CHAT_PREVIEW_POPUP_KIND}
       containerProps={{ref: (el: HTMLDivElement) => containerEl = el}}

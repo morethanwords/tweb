@@ -52,39 +52,6 @@ export interface CallRecordParams {
   videoHorizontal: boolean;
 }
 
-/**
- * Group-call ids are `string | number` (see layer.d.ts): the MTProto layer
- * keeps ids that fit in a JS safe integer as numbers and larger ones as
- * strings, while the call stack — GroupCallInstance.id, the join response's
- * resolvedCallId, the e2e chain polling — consistently holds the String() form.
- * A plain Map keyed by the raw id therefore files a small-id call under a
- * numeric key that a later string lookup never finds (Map.get is type-strict):
- * getGroupCallInput then throws "Group call <id> not found" on connect and the
- * conference popup renders empty. Normalising every key to its string form makes
- * lookups type-agnostic no matter how the caller holds the id.
- */
-class GroupCallIdMap<V> extends Map<GroupCallId, V> {
-  private static normalize(id: GroupCallId): GroupCallId {
-    return id == null ? id : '' + id;
-  }
-
-  get(id: GroupCallId) {
-    return super.get(GroupCallIdMap.normalize(id));
-  }
-
-  set(id: GroupCallId, value: V) {
-    return super.set(GroupCallIdMap.normalize(id), value);
-  }
-
-  has(id: GroupCallId) {
-    return super.has(GroupCallIdMap.normalize(id));
-  }
-
-  delete(id: GroupCallId) {
-    return super.delete(GroupCallIdMap.normalize(id));
-  }
-}
-
 export class AppGroupCallsManager extends AppManager {
   private groupCalls: Map<GroupCallId, MyGroupCall>;
   private participants: Map<GroupCallId, Map<PeerId, GroupCallParticipant>>;
@@ -97,9 +64,9 @@ export class AppGroupCallsManager extends AppManager {
   protected after() {
     this.name = 'GROUP-CALLS';
 
-    this.groupCalls = new GroupCallIdMap<MyGroupCall>();
-    this.participants = new GroupCallIdMap<Map<PeerId, GroupCallParticipant>>();
-    this.nextOffsets = new GroupCallIdMap<string>();
+    this.groupCalls = new Map<GroupCallId, MyGroupCall>();
+    this.participants = new Map<GroupCallId, Map<PeerId, GroupCallParticipant>>();
+    this.nextOffsets = new Map<GroupCallId, string>();
 
     this.cachedStreamChannels = new Map();
 
@@ -362,6 +329,86 @@ export class AppGroupCallsManager extends AppManager {
     };
   }
 
+  /**
+   * Re-fetch the full SFU participant list and reconcile it against our cache.
+   *
+   * Conferences (TdE2E) don't get reliable `updateGroupCallParticipants` pushes
+   * the way legacy voice chats do — the official clients drive conference
+   * membership off the e2e blockchain and poll the SFU for the matching
+   * participant objects (tdesktop `trackParticipantsWithAccess`, Android
+   * `ConferenceCall.checkParticipants`). Without an equivalent here the count +
+   * roster freeze at their connect-time snapshot. `GroupCallInstance` calls this
+   * on a timer and whenever the e2e group_state changes.
+   *
+   * Unlike `getGroupCallParticipants`, this always does a fresh fetch (it
+   * ignores the pagination cursor) and additionally marks cached participants
+   * that are no longer present as `left`, so leaves propagate too.
+   */
+  public refreshConferenceParticipants(id: GroupCallId) {
+    const groupCall = this.getGroupCall(id);
+    if(!groupCall || groupCall._ !== 'groupCall') {
+      return Promise.resolve();
+    }
+
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'phone.getGroupParticipants',
+      params: {
+        call: this.getGroupCallInput(id),
+        ids: [],
+        sources: [],
+        offset: '',
+        limit: GET_PARTICIPANTS_LIMIT
+      },
+      processResult: (result) => {
+        this.appChatsManager.saveApiChats(result.chats);
+        this.appUsersManager.saveApiUsers(result.users);
+
+        const cached = this.getCachedParticipants(id);
+        const freshPeerIds = new Set(result.participants.map((p) => getPeerId(p.peer)));
+
+        // Reconcile leaves: a cached participant absent from the fresh list has
+        // left. Only safe when we fetched the WHOLE list in one page — with a
+        // truncated page we'd wrongly evict everyone past the first 100.
+        const gotFullList = result.participants.length >= result.count ||
+          result.participants.length < GET_PARTICIPANTS_LIMIT;
+        if(gotFullList) {
+          // Snapshot the entries first — saveApiParticipant mutates the map.
+          for(const [peerId, participant] of [...cached]) {
+            if(participant.pFlags.self || freshPeerIds.has(peerId)) {
+              continue;
+            }
+
+            // Mirror the shape a server `left` update would carry. This drives
+            // group_call_participant (roster removal) + the count decrement.
+            this.saveApiParticipant(id, {
+              ...participant,
+              pFlags: {...participant.pFlags, left: true}
+            });
+          }
+        }
+
+        // Apply the fresh list — adds late joiners (and their SSRCs, so the
+        // conference recv transceivers get created) and refreshes muted/video
+        // state. A fresh array isn't flagged `saved`, so it isn't skipped.
+        //
+        // Skip our own participant: re-dispatching it would run the controller's
+        // onParticipantUpdate(self) on every poll, whose `source !== participant.source`
+        // guard tears the whole call down (hangUp) if the server's snapshot of our
+        // source ever lags the live connection — surfacing as "I get dropped when
+        // someone joins". Self is added once on connect and managed locally; the
+        // count below still comes from the server total (which includes self).
+        this.saveApiParticipants(id, result.participants.filter((p) => !p.pFlags.self));
+
+        // Server count is authoritative — the per-participant +/- bookkeeping in
+        // saveApiParticipant can't see joins (no `just_joined` on a poll).
+        if(groupCall.participants_count !== result.count) {
+          groupCall.participants_count = result.count;
+          this.rootScope.dispatchEvent('group_call_update', groupCall);
+        }
+      }
+    });
+  }
+
   public hangUp(id: GroupCallId, discard?: boolean | number) {
     const groupCallInput = this.getGroupCallInput(id);
     let promise: Promise<Updates>;
@@ -450,9 +497,10 @@ export class AppGroupCallsManager extends AppManager {
     // For id-form joins this is the same call we already knew about.
     const groupCallUpdate = (updates as Updates.updates).updates.find((u) => u._ === 'updateGroupCall') as Update.updateGroupCall | undefined;
     if(groupCallUpdate && groupCallUpdate.call._ !== 'groupCallDiscarded') {
-      const extended = update as Update.updateGroupCallConnection & {resolvedCallId?: string; resolvedAccessHash?: string};
-      extended.resolvedCallId = String(groupCallUpdate.call.id);
-      extended.resolvedAccessHash = String(groupCallUpdate.call.access_hash);
+      // Keep the id in its native (fetchLong) form — number for small ids,
+      // string for large — so it stays === the manager's cache key.
+      const extended = update as Update.updateGroupCallConnection & {resolvedCallId?: GroupCallId};
+      extended.resolvedCallId = groupCallUpdate.call.id;
     }
 
     // Re-join hygiene — covers reloads, not just clean leaves. hangUp() resets
@@ -467,7 +515,7 @@ export class AppGroupCallsManager extends AppManager {
     // participant the join updates may have just added.
     if(options.type === 'main') {
       const resolvedId = (groupCallUpdate && groupCallUpdate.call._ !== 'groupCallDiscarded') ?
-        String(groupCallUpdate.call.id) :
+        groupCallUpdate.call.id :
         groupCallId;
       this.nextOffsets.delete(resolvedId);
     }

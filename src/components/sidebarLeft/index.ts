@@ -328,7 +328,8 @@ export class AppSidebarLeft extends SidebarSlider {
       toggleRightButtons(rootScope.premium, isUsingPasscode);
     });
 
-    toggleRightButtons(rootScope.premium, rootScope.settings?.passcode?.enabled);
+    const [appSettings] = useAppSettings();
+    toggleRightButtons(rootScope.premium, appSettings.passcode?.enabled);
 
     this.managers.appUsersManager.getTopPeers('correspondents');
 
@@ -936,7 +937,8 @@ export class AppSidebarLeft extends SidebarSlider {
 
 
     async function hasAnimations() {
-      return !rootScope.settings.liteMode.animations;
+      const [appSettings] = useAppSettings();
+      return !appSettings.liteMode.animations;
     }
 
     async function initAnimationsToggleIcon() {

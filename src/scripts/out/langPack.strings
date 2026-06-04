@@ -1051,6 +1051,7 @@
 "RemovedUsers" = "Removed Users";
 "StoryViewers" = "Story Viewers";
 "PinnedMessages" = "Pinned Messages";
+"Translation" = "Translation";
 "GroupsAndChannelsLimitTitle" = "Groups and Channels";
 "GroupsAndChannelsLimitSubtitle" = "Join up to %d channels and large groups";
 "PinChatsLimitTitle" = "Pinned Chats";
@@ -1266,7 +1267,7 @@
 "JumpToDate" = "Jump to Date";
 "Caption" = "Caption";
 "Message" = "Message";
-"OffThreadMessage" = "Off-Thread Message";
+"OffThreadMessage" = "Off-Topic Message";
 "Poll" = "Poll";
 "SharedFilesTab2" = "Files";
 "SharedMediaTab2" = "Media";
@@ -2410,7 +2411,7 @@
 "CreateTopicsPermission" = "Create topics";
 "VoipChannelJoinVoiceChatUrl" = "Join Live Stream";
 "InviteLinkSentSingle" = "Invite link sent to **%s**.";
-"InviteLinkSentMany" = "Invite link sent to **%d chats**.";
+"InviteLinkSentMany_other" = "Invite link sent to **%d chats**.";
 "ActionSetWallpaperForThisChatSelf" = "You set a new wallpaper for this chat";
 "ActionSetWallpaperForThisChannel" = "Channel set a new wallpaper";
 "ActionSetWallpaperForThisGroup" = "Group set a new wallpaper";

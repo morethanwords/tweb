@@ -18,6 +18,7 @@ import {attachClickEvent} from '@helpers/dom/clickEvent';
 import SettingSection from '@components/settingSection';
 import {DialogFilter, ExportedChatlistInvite} from '@layer';
 import rootScope from '@lib/rootScope';
+import {useAppSettings} from '@stores/appSettings';
 import Row from '@components/row';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import findUpClassName from '@helpers/dom/findUpClassName';
@@ -306,7 +307,8 @@ const EditFolder: Component = () => {
 
   tab.header.append(confirmBtn, menuBtn);
 
-  const hasFoldersSidebar = rootScope.settings.tabsInSidebar;
+  const [appSettings] = useAppSettings();
+  const hasFoldersSidebar = appSettings.tabsInSidebar;
   const inputSection = new SettingSection({
     caption: hasFoldersSidebar ? 'EditFolder.EmojiAsIconTip' : undefined
   });

@@ -39,7 +39,17 @@
     inset-inline-end: var(--page-chats-padding);
     inset-block: var(--page-chats-padding);
     z-index: 3;
-    transform: translate3d(calc((var(--right-column-width) + var(--page-chats-padding)) * var(--reflect)), 0, 0);
+    // Closed: slide the card fully past the viewport's inline-end edge.
+    // --page-chats-padding closes the resting gap from `inset-inline-end` and
+    // carries the card's own width off; --safe-area-inset-inline-end then covers
+    // the iOS safe-area gap between #main-columns' edge (inside html's safe-area
+    // padding — see base.scss) and the real screen edge, which #main-columns
+    // (overflow: visible) doesn't clip — otherwise the card and its box-shadow
+    // peek through that strip on landscape iPhones. The inset is 0 on desktop,
+    // so the closed offset is unchanged there. Both terms are inside the
+    // magnitude (before `* var(--reflect)`), and the var resolves to the
+    // inline-end inset, so it stays correct in RTL.
+    transform: translate3d(calc((var(--right-column-width) + var(--page-chats-padding) + var(--safe-area-inset-inline-end)) * var(--reflect)), 0, 0);
     //transform: translate3d(calc(var(--right-column-width) + 1px), 0, 0);
 
     .sidebar-content {

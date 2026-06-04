@@ -493,6 +493,7 @@ export const SETTINGS_INIT: StateSettings = {
   tabsInSidebar: false,
   playbackParams: {
     volume: 1,
+    boost: 0,
     muted: false,
     playbackRate: 1,
     playbackRates: {

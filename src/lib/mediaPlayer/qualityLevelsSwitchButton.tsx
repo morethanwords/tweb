@@ -15,6 +15,7 @@ import {i18n, LangPackKey} from '@lib/langPack';
 type QualityLevelsSwitchButtonProps = {
   video: HTMLVideoElement;
   skin: string;
+  onMenuToggle?: (open: boolean) => void;
 };
 
 type InternalQualityLevelsSwitchButtonProps = QualityLevelsSwitchButtonProps & {
@@ -66,7 +67,13 @@ function QualityLevelsSwitchButton(props: InternalQualityLevelsSwitchButtonProps
   const qualityLevelsButton = createMemo(() => ButtonMenuToggle({
     icon: `settings ${props.skin}__button checkable-button-menu quality-levels-switch-button`,
     buttons: qualityLevelsMenuButtons(),
-    direction: 'top-left'
+    direction: 'top-left',
+    onOpen: () => {
+      props.onMenuToggle?.(true);
+    },
+    onClose: () => {
+      props.onMenuToggle?.(false);
+    }
   }));
 
   createEffect(() => {

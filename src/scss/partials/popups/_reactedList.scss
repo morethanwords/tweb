@@ -1,31 +1,26 @@
 @use "../../shared" as *;
 
 .popup-reacted-list {
+  --popup-width: 25rem;
+  --popup-height: 600px;
   --size: 1.5rem;
   --custom-emoji-size: var(--size);
   --message-primary-color: var(--primary-color);
   $parent: ".popup";
 
   #{$parent} {
-    &-container {
-      width: 25rem;
-      height: 600px;
-      max-height: 600px;
-      padding: 0;
-    }
-
     &-header {
       min-height: 3.5625rem;
       margin: 0;
       padding: .25rem .75rem .5rem;
       border-bottom: 1px solid var(--border-color);
       background: var(--surface-color);
+      height: auto;
     }
 
     &-close {
       margin-top: .375rem;
       margin-inline-end: .5rem;
-      height: 40px;
       order: -1;
     }
   }

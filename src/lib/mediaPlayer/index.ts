@@ -59,7 +59,10 @@ export default class VideoPlayer extends ControlsHover {
   /* protected videoParent: HTMLElement;
   protected videoWhichChild: number; */
 
-  protected onPlaybackRateMenuToggle?: (open: boolean) => void;
+  protected onMenuToggle?: (open: boolean) => void;
+  // Fired while the seek-bar time preview (.media-progress-line__current-time-info)
+  // is shown/hidden, so the host can hide chrome that would stack with it (caption).
+  protected onTimePreviewToggle?: (visible: boolean) => void;
   protected onPip?: (pip: boolean) => void;
   protected onPipClose?: () => void;
   protected onVolumeChange: VolumeSelector['onVolumeChange'];
@@ -102,7 +105,8 @@ export default class VideoPlayer extends ControlsHover {
     width,
     height,
     videoTimestamps,
-    onPlaybackRateMenuToggle,
+    onMenuToggle,
+    onTimePreviewToggle,
     onPip,
     onPipClose,
     listenKeyboardEvents,
@@ -122,7 +126,8 @@ export default class VideoPlayer extends ControlsHover {
     width?: number,
     height?: number,
     videoTimestamps?: VideoTimestamp[],
-    onPlaybackRateMenuToggle?: VideoPlayer['onPlaybackRateMenuToggle'],
+    onMenuToggle?: VideoPlayer['onMenuToggle'],
+    onTimePreviewToggle?: VideoPlayer['onTimePreviewToggle'],
     onPip?: VideoPlayer['onPip'],
     onPipClose?: VideoPlayer['onPipClose'],
     listenKeyboardEvents?: VideoPlayer['listenKeyboardEvents'],
@@ -145,7 +150,8 @@ export default class VideoPlayer extends ControlsHover {
     this._width = width;
     this._height = height;
 
-    this.onPlaybackRateMenuToggle = onPlaybackRateMenuToggle;
+    this.onMenuToggle = onMenuToggle;
+    this.onTimePreviewToggle = onTimePreviewToggle;
     this.onPip = onPip;
     this.onPipClose = onPipClose;
     this.onVolumeChange = onVolumeChange;
@@ -185,7 +191,7 @@ export default class VideoPlayer extends ControlsHover {
         if(this.speedDragHandler?.controls.isChangingSpeed()) return false;
         return true;
       },
-      showOnLeaveToClassName: 'media-viewer-caption',
+      showOnLeaveToClassName: ['media-viewer-caption', 'media-viewer-topbar'],
       ignoreClickClassName: 'ckin__controls'
     });
 
@@ -222,13 +228,19 @@ export default class VideoPlayer extends ControlsHover {
         onSeekEnd: () => {
           this.wrapper.classList.remove('is-seeking');
         },
-        onHover: this.previewParams ? (value) => {
-          this.previewSetTime(value * this.video.duration);
-          this.previewSetVisible(true);
-        } : undefined,
-        onPointerOut: this.previewParams ? () => {
-          this.previewSetVisible(false);
-        } : undefined
+        onHover: (value) => {
+          if(this.previewParams) {
+            this.previewSetTime(value * this.video.duration);
+            this.previewSetVisible(true);
+          }
+          this.onTimePreviewToggle?.(true);
+        },
+        onPointerOut: () => {
+          if(this.previewParams) {
+            this.previewSetVisible(false);
+          }
+          this.onTimePreviewToggle?.(false);
+        }
       });
       this.progress.setMedia({
         media: video,
@@ -308,7 +320,7 @@ export default class VideoPlayer extends ControlsHover {
 
       const rightControls = wrapper.querySelector('.right-controls') as HTMLElement;
       if(!live) {
-        this.playbackRateButton = createPlaybackRateButton({skin: this.skin, onMenuToggle: this.onPlaybackRateMenuToggle});
+        this.playbackRateButton = createPlaybackRateButton({skin: this.skin, onMenuToggle: this.onMenuToggle});
       }
       if(!IS_MOBILE && document.pictureInPictureEnabled) {
         this.pipButton = ButtonIcon(`pip ${skin}__button`, {noRipple: true});
@@ -497,7 +509,7 @@ export default class VideoPlayer extends ControlsHover {
   }
 
   private createQualityLevelsButton() {
-    this.qualityLevelsButton = createQualityLevelsSwitchButton({skin: this.skin, video: this.video});
+    this.qualityLevelsButton = createQualityLevelsSwitchButton({skin: this.skin, video: this.video, onMenuToggle: this.onMenuToggle});
 
     return this.qualityLevelsButton.element;
   }
@@ -702,7 +714,8 @@ export default class VideoPlayer extends ControlsHover {
     this.playbackRateButton?.dispose();
     this.speedDragHandler?.dispose();
     this.preview?.dispose();
-    this.onPlaybackRateMenuToggle =
+    this.onMenuToggle =
+      this.onTimePreviewToggle =
       this.onPip =
       this.onVolumeChange =
       this.onFullScreen =

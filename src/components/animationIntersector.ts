@@ -1,6 +1,6 @@
 import type {LiteModeKey} from '@helpers/liteMode';
 import type RLottiePlayer from '@lib/rlottie/rlottiePlayer';
-import rootScope from '@lib/rootScope';
+import {useAppSettings} from '@stores/appSettings';
 import {MOUNT_CLASS_TO} from '@config/debug';
 import isInDOM from '@helpers/dom/isInDOM';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
@@ -208,8 +208,9 @@ export class AnimationIntersector {
     }
 
     if(item.type === 'lottie') {
-      if(!rootScope.settings.stickers.loop && animation.loop) {
-        animation.loop = rootScope.settings.stickers.loop;
+      const [appSettings] = useAppSettings();
+      if(!appSettings.stickers.loop && animation.loop) {
+        animation.loop = appSettings.stickers.loop;
       }
     }
 
@@ -335,12 +336,13 @@ export class AnimationIntersector {
   }
 
   public setAutoplay(play: boolean, liteModeKey: LiteModeKey) {
+    const [appSettings] = useAppSettings();
     let changed = false;
     this.byPlayer.forEach((animationItem, animation) => {
       if(animationItem.liteModeKey === liteModeKey) {
         changed = true;
         animation.autoplay = play ? animation._autoplay : false;
-        animation.loop = play ? rootScope.settings.stickers.loop && animation._loop : false;
+        animation.loop = play ? appSettings.stickers.loop && animation._loop : false;
       }
     });
 

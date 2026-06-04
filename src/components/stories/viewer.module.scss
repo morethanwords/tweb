@@ -76,7 +76,7 @@ $color-inactive: rgba(255, 255, 255, .5);
     }
 
     :global(.stories-input) {
-      --chat-input-background-color: #212121;
+      --chat-input-background: #212121;
       --chat-input-focus-offset: 0px;
       --backdrop-filter: unset;
     }
@@ -740,7 +740,7 @@ $color-inactive: rgba(255, 255, 255, .5);
       --secondary-text-color: #707579;
       --primary-text-color: #fff;
       --focus-translateX: 0px;
-      --chat-input-background-color: rgba(0, 0, 0, .5);
+      --chat-input-background: rgba(0, 0, 0, .5);
       --backdrop-filter: var(--blur-off, blur(25px));
       position: absolute;
       bottom: 0;
@@ -868,12 +868,12 @@ $color-inactive: rgba(255, 255, 255, .5);
       .btn-reaction {
         --color: var(--secondary-text-color);
         color: var(--color);
-        background-color: var(--chat-input-background-color) !important;
+        background: var(--chat-input-background) !important;
 
         @include hover-global() {
           --color: var(--primary-text-color);
           color: var(--color) !important;
-          background-color: var(--chat-input-background-color) !important;
+          background: var(--chat-input-background) !important;
         }
       }
 
@@ -885,7 +885,7 @@ $color-inactive: rgba(255, 255, 255, .5);
         }
 
         @include animation-level-global(2) {
-          transition: .2s color, .2s background-color;
+          transition: .2s color, .2s background;
 
           .btn-send-icon-forward {
             transition: .2s color;
@@ -911,7 +911,7 @@ $color-inactive: rgba(255, 255, 255, .5);
       .bubble-tail,
       .chat-input-secondary-button,
       .emoji-dropdown {
-        background-color: var(--chat-input-background-color) !important;
+        background-color: var(--chat-input-background) !important;
         backdrop-filter: var(--backdrop-filter);
       }
 
@@ -957,7 +957,7 @@ $color-inactive: rgba(255, 255, 255, .5);
     }
 
     .autocomplete-helper {
-      background-color: var(--chat-input-background-color) !important;
+      background-color: var(--chat-input-background) !important;
       backdrop-filter: var(--backdrop-filter);
     }
 

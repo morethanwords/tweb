@@ -492,13 +492,13 @@ export const AppSharedFolderTab =
   scaffoldSolidJSTabEventable<AppSharedFolderTabPayload, {
     delete: () => void,
     edit: (chatlistInvite: ExportedChatlistInvite) => void
-  }>({
-    title: 'SharedFolder.Edit.Title',
-    getComponentModule: () => import('../sidebarLeft/tabs/sharedFolder'),
-    onOpenAfterTimeout: function() {
-      (this as any)._onOpenAfterTimeout?.();
-    }
-  });
+      }>({
+        title: 'SharedFolder.Edit.Title',
+        getComponentModule: () => import('../sidebarLeft/tabs/sharedFolder'),
+        onOpenAfterTimeout: function() {
+          (this as any)._onOpenAfterTimeout?.();
+        }
+      });
 
 type AppGroupPermissionsTabPayload = {
   chatId: ChatId
@@ -540,10 +540,10 @@ type AppEditChatInviteLinkTabPayload = {
 export const AppEditChatInviteLinkTab =
   scaffoldSolidJSTabEventable<AppEditChatInviteLinkTabPayload, {
     finish: (chatInvite: ChatInvite) => void
-  }>({
-    title: (p) => p.invite ? 'InviteLinks.Edit' : 'NewLink',
-    getComponentModule: () => import('../sidebarRight/tabs/editChatInviteLink')
-  });
+      }>({
+        title: (p) => p.invite ? 'InviteLinks.Edit' : 'NewLink',
+        getComponentModule: () => import('../sidebarRight/tabs/editChatInviteLink')
+      });
 
 
 type AppChatInviteLinkTabPayload = {

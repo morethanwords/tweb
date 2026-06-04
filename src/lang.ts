@@ -1202,6 +1202,7 @@ const lang = {
   'RemovedUsers': 'Removed Users',
   'StoryViewers': 'Story Viewers',
   'PinnedMessages': 'Pinned Messages',
+  'Translation': 'Translation',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -1445,7 +1446,7 @@ const lang = {
   'JumpToDate': 'Jump to Date',
   'Caption': 'Caption',
   'Message': 'Message',
-  'OffThreadMessage': 'Off-Thread Message',
+  'OffThreadMessage': 'Off-Topic Message',
   'Poll': 'Poll',
   'SharedFilesTab2': 'Files',
   'SharedMediaTab2': 'Media',
@@ -2785,7 +2786,9 @@ const lang = {
   'CreateTopicsPermission': 'Create topics',
   'VoipChannelJoinVoiceChatUrl': 'Join Live Stream',
   'InviteLinkSentSingle': 'Invite link sent to **%s**.',
-  'InviteLinkSentMany': 'Invite link sent to **%d chats**.',
+  'InviteLinkSentMany': {
+    'other_value': 'Invite link sent to **%d chats**.'
+  },
   'ActionSetWallpaperForThisChatSelf': 'You set a new wallpaper for this chat',
   'ActionSetWallpaperForThisChannel': 'Channel set a new wallpaper',
   'ActionSetWallpaperForThisGroup': 'Group set a new wallpaper',

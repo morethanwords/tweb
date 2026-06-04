@@ -45,7 +45,7 @@ export class AppCallsManager extends AppManager {
       updateGroupCallChainBlocks: (update) => {
         if(update.call._ !== 'inputGroupCall') return;
         this.rootScope.dispatchEvent('group_call_chain_blocks', {
-          callId: String(update.call.id),
+          callId: update.call.id,
           subChainId: update.sub_chain_id,
           blocks: update.blocks,
           nextOffset: update.next_offset

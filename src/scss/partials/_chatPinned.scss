@@ -510,7 +510,12 @@
   }
 
   position: absolute;
-  width: var(--chat-width);
+  // No explicit `width` — inherit `.pinned-container`'s `width: auto` so the
+  // plate fills the inset #column-center, capped + centred by max-width +
+  // margin-inline:auto (mirrors `.topbar`). An explicit `width: var(--chat-width)`
+  // overflows on handhelds, where --chat-width is the full vw but #column-center
+  // is inset by --page-chats-padding (8px) each side, so the plate would be 16px
+  // too wide and spill past the screen edge.
   max-width: var(--chat-width);
   margin-inline: auto !important;
   border-radius: $border-radius-big;
@@ -797,7 +802,10 @@
   max-height: var(--container-height) !important;
   position: absolute;
   top: 0 !important;
-  width: var(--chat-width);
+  // No explicit `width` — see `.pinned-audio`: inherit `.pinned-container`'s
+  // `width: auto` so the plate fills the inset #column-center (capped + centred
+  // by max-width + margin-inline:auto, like `.topbar`). An explicit width spills
+  // past the screen edge on handhelds.
   max-width: var(--chat-width);
   margin-inline: auto !important;
   z-index: 3;

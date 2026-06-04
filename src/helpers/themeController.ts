@@ -412,17 +412,17 @@ export class ThemeController {
     name?: AppTheme['name'],
     coordinates?: {x: number, y: number}
   ) {
+    const [appSettings, setAppSettings] = useAppSettings();
     if(name === undefined) {
       // Burger-menu Dark-Mode toggle. Resolve to the user's last explicitly-picked variant on the
       // opposite side so e.g. tinted → classic instead of tinted → day, and back tinted again
-      // instead of falling to night. Defensive: rootScope.settings can be missing during early
-      // bootstrap; fall back to the legacy night/day pair in that case.
-      const last = rootScope.settings?.lastThemeNames;
+      // instead of falling to night. Defensive: appSettings.lastThemeNames can be missing during
+      // early bootstrap; fall back to the legacy night/day pair in that case.
+      const last = appSettings.lastThemeNames;
       name = this.isNight() ?
         (last?.light ?? 'day') :
         (last?.dark ?? 'night');
     }
-    const [, setAppSettings] = useAppSettings();
     await setAppSettings('theme', name);
     rootScope.dispatchEvent('theme_change', coordinates);
   }
@@ -436,12 +436,14 @@ export class ThemeController {
   }
 
   public getResolvedThemeName(): AppTheme['name'] {
-    const setting = rootScope.settings.theme;
+    const [appSettings] = useAppSettings();
+    const setting = appSettings.theme;
     return setting === 'system' ? this.systemTheme : setting;
   }
 
   public getTheme(name: AppTheme['name'] = this.getResolvedThemeName()) {
-    return rootScope.settings.themes.find((t) => t.name === name) ??
+    const [appSettings] = useAppSettings();
+    return appSettings.themes.find((t) => t.name === name) ??
       SETTINGS_INIT.themes.find((t) => t.name === name);
   }
 
@@ -582,7 +584,8 @@ export class ThemeController {
     const themeName = currentTheme.name;
     const isNight = this.isNightThemeName(themeName);
     const baseTheme = this.getBaseThemeForName(themeName);
-    const themes = rootScope.settings.themes.slice();
+    const [appSettings] = useAppSettings();
+    const themes = appSettings.themes.slice();
     const themeSettings = theme.settings.find((s) => s.base_theme._ === baseTheme) ??
       theme.settings.find((s) => s.base_theme._ === (isNight ? 'baseThemeNight' : 'baseThemeClassic'));
     // Wallpaper handling on tinted (Dark Blue):

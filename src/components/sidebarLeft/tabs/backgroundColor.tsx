@@ -5,7 +5,8 @@ import {attachClickEvent} from '@helpers/dom/clickEvent';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import highlightingColor from '@helpers/highlightingColor';
 import throttle from '@helpers/schedulers/throttle';
-import rootScope from '@lib/rootScope';
+import {useAppSettings} from '@stores/appSettings';
+import {unwrap} from 'solid-js/store';
 import ColorPicker, {ColorPickerColor} from '@components/colorPicker';
 import Section from '@components/section';
 import {WallPaper} from '@layer';
@@ -84,7 +85,8 @@ const BackgroundColor = () => {
       settings.wallpaper = wallPaper;
       settings.highlightingColor = hsla;
 
-      tab.managers.appStateManager.pushToState('settings', rootScope.settings);
+      const [appSettings] = useAppSettings();
+      tab.managers.appStateManager.pushToState('settings', unwrap(appSettings));
 
       appImManager.applyCurrentTheme({
         broadcastEvent: true

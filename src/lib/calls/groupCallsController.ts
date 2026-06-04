@@ -404,8 +404,11 @@ export class GroupCallsController extends EventListenerBase<{
     // Pick a stable placeholder id for the instance until the real id arrives
     // in the join response. For id-form input we already know it; for slug or
     // create modes we use a synthetic id and let the join flow rewrite it.
+    // For id-form input keep the id in its native (fetchLong) form so it stays
+    // === the manager's cache key; slug/create modes get a synthetic sentinel
+    // that the join response rewrites to the real id.
     const placeholderId = (opts.input && opts.input._ === 'inputGroupCall') ?
-      String(opts.input.id) :
+      opts.input.id :
       `pending-conf-${Date.now()}`;
     const instance = new GroupCallInstance({
       chatId: opts.chatId ?? NULL_PEER_ID,
@@ -436,7 +439,7 @@ export class GroupCallsController extends EventListenerBase<{
     // back the real updateGroupCall with id+access_hash.
     if(opts.input && opts.input._ === 'inputGroupCall') {
       instance.groupCall = await this.managers.appGroupCallsManager
-      .getGroupCallFull(String(opts.input.id))
+      .getGroupCallFull(opts.input.id)
       .catch((): GroupCallInstance['groupCall'] => undefined);
     }
 
