@@ -33,7 +33,11 @@ export default class PopupDeleteMessages {
     const {peerTitleElement, isBot, messages} = await namedPromises({
       peerTitleElement: wrapPeerTitle({peerId, threadId, onlyFirstName: true}),
       isBot: managers.appPeersManager.isBot(peerId),
-      messages: Promise.all(mids.map((mid) => managers.appMessagesManager.getMessageByPeer(peerId, mid)))
+      // scheduled mids belong to a separate storage; getMessageByPeer would read history and
+      // return undefined / another chat's message (breaking the megagroup-admin & giveaway checks)
+      messages: Promise.all(mids.map((mid) => type === ChatType.Scheduled ?
+        managers.appMessagesManager.getScheduledMessageByPeer(peerId, mid) :
+        managers.appMessagesManager.getMessageByPeer(peerId, mid)))
     });
 
     const isMegagroup = await managers.appPeersManager.isMegagroup(peerId);
