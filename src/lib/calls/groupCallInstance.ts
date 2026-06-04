@@ -534,6 +534,14 @@ export default class GroupCallInstance extends CallInstanceBase<{
       const type: GroupCallConnectionType = 'presentation';
 
       const stream = await getScreenStream(getScreenConstraints());
+      // The screen-picker can stay open for seconds; the user can hang up
+      // before it resolves. hangUp() already walked this.connections and never
+      // saw the presentation connection (it didn't exist yet), so building it
+      // now would leave the screen capture live forever — release and bail.
+      if(this.isClosing) {
+        stream.getTracks().forEach((t) => stopTrack(t));
+        return;
+      }
       const streamManager = new StreamManager();
 
       const connectionInstance = this.createConnectionInstance({
@@ -599,6 +607,13 @@ export default class GroupCallInstance extends CallInstanceBase<{
 
     try {
       const stream = await getStream(constraints, false);
+      // The call can be hung up during the `getUserMedia` window. After that
+      // cleanup() has already run streamManager.stop(), so adding this stream
+      // would leak the camera (LED stuck on) — release it instead.
+      if(this.isClosing) {
+        stream.getTracks().forEach((t) => stopTrack(t));
+        return;
+      }
       const connectionInstance = this.connections.main;
       connectionInstance.addInputVideoStream(stream);
 

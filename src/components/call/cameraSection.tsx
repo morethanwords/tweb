@@ -6,7 +6,7 @@ import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import {useAppSettings} from '@stores/appSettings';
 import showOutputDevicePopup from '@components/rtmp/outputDevicePopup';
 import applyDeviceToActiveCall from '@lib/calls/applyDeviceToActiveCall';
-import getStream from '@lib/calls/helpers/getStream';
+import acquireStream, {StreamAcquisition} from '@lib/calls/helpers/acquireStream';
 import shouldMirrorVideoTrack from '@lib/calls/helpers/shouldMirrorVideoTrack';
 import classNames from '@helpers/string/classNames';
 
@@ -27,15 +27,21 @@ export default function CallCameraSection() {
 
   let videoEl: HTMLVideoElement | undefined;
 
+  // Holds the in-flight / active camera acquire so we can dispose() it — that
+  // stops the stream even if getUserMedia resolves AFTER the popup closes or the
+  // camera is switched (getUserMedia can't be cancelled, so without this the
+  // camera light would stay on forever). See acquireStream.
+  let acquisition: StreamAcquisition | undefined;
+
   const refreshDevices = () => {
     navigator.mediaDevices.enumerateDevices().then(setDevices).catch(() => setDevices([]));
   };
 
   const stopPreview = () => {
-    const stream = previewStream();
-    if(stream) {
-      stream.getTracks().forEach((t) => t.stop());
-    }
+    // dispose() owns the stream's tracks (stops the in-flight one too); clear the
+    // signal so the <video> detaches.
+    acquisition?.dispose();
+    acquisition = undefined;
     setPreviewStream(undefined);
   };
 
@@ -46,14 +52,20 @@ export default function CallCameraSection() {
   // recovery lives inside `getStream`.
   const startPreview = async() => {
     stopPreview();
+    const id = appSettings.callDevices?.cameraId;
+    const current = acquisition = acquireStream({
+      video: id ? {deviceId: {exact: id}} : true
+    });
     try {
-      const id = appSettings.callDevices?.cameraId;
-      const stream = await getStream({
-        video: id ? {deviceId: {exact: id}} : true
-      });
+      const stream = await current.promise;
+      // Disposed (popup closed / camera switched) while getUserMedia resolved —
+      // dispose() already stopped the orphaned stream; nothing to show.
+      if(!stream) return;
       setPreviewStream(stream);
       setPreviewError(undefined);
     } catch(err) {
+      // A disposed acquire resolves undefined, so only a real, still-wanted
+      // error reaches here.
       const msg = err instanceof Error ? err.message : String(err);
       setPreviewError(msg);
     }
@@ -65,6 +77,8 @@ export default function CallCameraSection() {
     startPreview();
     onCleanup(() => {
       navigator.mediaDevices.removeEventListener?.('devicechange', refreshDevices);
+      // Disposes a startPreview() still awaiting getUserMedia so its stream is
+      // stopped when it resolves, rather than leaking it past unmount.
       stopPreview();
     });
   });
