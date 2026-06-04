@@ -3408,7 +3408,7 @@ export default class ChatInput {
         this.stickersHelper &&
         this.chat.appSettings.stickers.suggest !== 'none' &&
         await this.chat.canSend('send_stickers') &&
-        entity?._ === 'messageEntityEmoji' &&
+        (entity?._ === 'messageEntityEmoji' || entity?._ === 'messageEntityCustomEmoji') &&
         entity.length === value.length &&
         !entity.offset
       ) {
