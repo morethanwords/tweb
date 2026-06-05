@@ -3,6 +3,9 @@ import StreamManager from '@lib/calls/streamManager';
 import getAudioConstraints from '@lib/calls/helpers/getAudioConstraints';
 import getStream from '@lib/calls/helpers/getStream';
 import getVideoConstraints from '@lib/calls/helpers/getVideoConstraints';
+import {logger} from '@lib/logger';
+
+const log = logger('GROUP-CALL');
 
 export default async function createMainStreamManager(muted?: boolean, joinVideo?: boolean) {
   const constraints: MediaStreamConstraints = {
@@ -16,7 +19,7 @@ export default async function createMainStreamManager(muted?: boolean, joinVideo
     const stream = await getStream(constraints, muted);
     streamManager.addStream(stream, 'input');
   } catch(err) {
-    console.error('joinGroupCall getStream error', err, constraints);
+    log.error('joinGroupCall getStream error', err, constraints);
     streamManager.inputStream = new MediaStream();
   }
 

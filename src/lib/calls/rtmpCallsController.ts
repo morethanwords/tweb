@@ -8,6 +8,9 @@ import apiManagerProxy from '@lib/apiManagerProxy';
 import rootScope from '@lib/rootScope';
 import {RTMP_UNIFIED_CHANNEL_ID, RTMP_UNIFIED_QUALITY} from '@lib/calls/constants';
 import RTMP_STATE from '@lib/calls/rtmpState';
+import {logger} from '@lib/logger';
+
+const log = logger('RTMP');
 
 export class RtmpCallInstance extends EventListenerBase<{
   state: (state: RTMP_STATE) => void
@@ -199,7 +202,9 @@ export class RtmpCallsController extends EventListenerBase<{
         try {
           await this.rejoinCall();
           return this.isCurrentCallDead(true, true);
-        } catch(e) {}
+        } catch(err) {
+          log.error('rejoinCall failed during dead-call check', err);
+        }
       }
     }
 

@@ -7,6 +7,7 @@ import type {ActiveAccountNumber} from '@lib/accounts/types';
 import type {LoadStateResult} from '@appManagers/utils/state/loadState';
 import type {PasscodeStorageValue} from '@lib/commonStateStorage';
 import type {ThreadedWorkerType} from '@lib/appManagers/appManagersManager';
+import type {LogEntry} from '@lib/debug/logsBuffer';
 import SuperMessagePort from '@lib/superMessagePort';
 import {CacheStorageDbName} from '@lib/files/cacheStorage';
 
@@ -60,7 +61,12 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   toggleUninteruptableActivity: (payload: { activity: string, active: boolean }, source: MessageEventSource) => void,
   disableCacheStoragesByNames: (names: CacheStorageDbName[]) => void,
   enableCacheStoragesByNames: (names: CacheStorageDbName[]) => void,
-  resetOpenCacheStoragesByNames: (names: CacheStorageDbName[]) => void
+  resetOpenCacheStoragesByNames: (names: CacheStorageDbName[]) => void,
+  // Debug log buffer (see @lib/debug/logsBuffer): the master pulls the worker's
+  // ring buffer on export, and propagates the enabled flag (prod ?debug=1 isn't
+  // visible to the worker's own location.search).
+  getLogs: (payload: void) => LogEntry[],
+  setLogBufferEnabled: (enabled: boolean) => void
 } & MTProtoBroadcastEvent, {
   convertWebp: (payload: {fileName: string, bytes: Uint8Array}) => Promise<Uint8Array>,
   convertOpus: (payload: {fileName: string, bytes: Uint8Array}) => Promise<Uint8Array>,

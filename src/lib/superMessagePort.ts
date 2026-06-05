@@ -147,7 +147,7 @@ class SuperMessagePort<
     this.awaiting = {};
     this.pending = new Map();
     this.log = logger('MP' + (logSuffix ? '-' + logSuffix : ''));
-    this.debug = DEBUG;
+    this.debug = DEBUG && false;
     this.heldLocks = new Map();
     this.requestedLocks = new Map();
 

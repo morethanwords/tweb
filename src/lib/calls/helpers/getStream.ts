@@ -1,4 +1,7 @@
 import {appSettings, setAppSettings} from '@stores/appSettings';
+import {logger} from '@lib/logger';
+
+const log = logger('getStream');
 
 // The single chokepoint for call-related `getUserMedia` calls. Every call
 // path (P2P + group + previews) goes through here, so the stale-device-id
@@ -65,6 +68,8 @@ export default async function getStream(
     // persisted choice).
     if(!audio.stripped && !video.stripped) throw err;
 
+    log.warn('saved device id is stale, attempting fallback', {audioHadDeviceId: audio.stripped, videoHadDeviceId: video.stripped, error: (err as {name?: string})?.name});
+
     // Both had deviceId — try keeping audio first; if that succeeds, the
     // camera was the only stale device and the mic preference survives.
     if(audio.stripped && video.stripped) {
@@ -76,6 +81,7 @@ export default async function getStream(
         if(appSettings.callDevices?.cameraId) {
           setAppSettings('callDevices', 'cameraId', '');
         }
+        log('camera device was stale; kept microphone, cleared cameraId');
         return applyMuted(stream, muted);
       } catch(err2) {
         if(!isMissingDeviceError(err2)) throw err2;
@@ -89,6 +95,8 @@ export default async function getStream(
     if(video.stripped && appSettings.callDevices?.cameraId) {
       setAppSettings('callDevices', 'cameraId', '');
     }
+
+    log.warn('clearing stale device id(s), retrying on OS defaults', {clearedMicrophone: audio.stripped, clearedCamera: video.stripped});
 
     return applyMuted(await navigator.mediaDevices.getUserMedia({
       audio: audio.value,

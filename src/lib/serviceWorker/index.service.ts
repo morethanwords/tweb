@@ -5,6 +5,7 @@ import {closeAllNotifications, fillPushObject, onPing, onShownNotification, rese
 import CacheStorageController from '@lib/files/cacheStorage';
 import {IS_SAFARI} from '@environment/userAgent';
 import ServiceMessagePort from '@lib/serviceWorker/serviceMessagePort';
+import {getLogEntries, setLogBufferEnabled} from '@lib/debug/logsBuffer';
 import listenMessagePort from '@helpers/listenMessagePort';
 import {getWindowClients} from '@helpers/context';
 import {MessageSendPort} from '@lib/superMessagePort';
@@ -115,6 +116,10 @@ serviceMessagePort.addMultipleEventsListeners({
   environment: (environment) => {
     setEnvironment(environment);
   },
+
+  getLogs: () => getLogEntries(),
+
+  setLogBufferEnabled: (enabled) => setLogBufferEnabled(enabled),
 
   notificationsClear: closeAllNotifications,
 

@@ -586,6 +586,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
   public sendEnvironment() {
     this.log('Passing environment:', ENVIRONMENT);
     this.invoke('environment', ENVIRONMENT);
+    // The worker's own location.search has no ?debug=1, so DEBUG is false there
+    // in production. Mirror the page's debug state so the worker records logs
+    // too. Fire-and-forget; re-applied on every (re)connect.
+    this.invokeVoid('setLogBufferEnabled', DEBUG);
   }
 
   public pingServiceWorkerWithIframe() {
@@ -633,6 +637,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
     this.serviceMessagePort.attachSendPort(this.lastServiceWorker = serviceWorker);
     this.serviceMessagePort.invokeVoid('hello', undefined);
     this.serviceMessagePort.invokeVoid('environment', ENVIRONMENT);
+    this.serviceMessagePort.invokeVoid('setLogBufferEnabled', DEBUG);
 
     DeferredIsUsingPasscode.isUsingPasscode().then((value) => {
       this.serviceMessagePort.invokeVoid('toggleUsingPasscode', {type: 'init', isUsingPasscode: value});
