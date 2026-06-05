@@ -2323,6 +2323,7 @@ export class AppImManager extends EventListenerBase<{
         });
       } else {
         counter = 0;
+        clearTimeout(dragTimeout);
         clearLastDialogElement();
       }
 
@@ -2335,6 +2336,7 @@ export class AppImManager extends EventListenerBase<{
     }); */
 
     let counter = 0;
+    let dragTimeout: number;
     document.body.addEventListener('dragenter', (e) => {
       debug && log('dragenter', e, counter);
       ++counter;
@@ -2344,6 +2346,18 @@ export class AppImManager extends EventListenerBase<{
       debug && log('dragover', e/* , e.dataTransfer.types[0] */);
       toggle(e, true);
       cancelEvent(e);
+
+      // 'dragover' keeps firing (at least every ~350ms) while a drag is held over the
+      // page, and stops the instant the drag leaves the window or is released outside it.
+      // For an external file drag there is no in-document source, so neither 'drop' nor
+      // 'dragend' fires in that case — without this watchdog the overlay (and the
+      // body.is-dragging pointer-events lock) would stay stuck over the chat. Re-arm on
+      // every 'dragover' so a lapse force-hides it; a still-active drag re-shows it at once.
+      clearTimeout(dragTimeout);
+      dragTimeout = window.setTimeout(() => {
+        counter = 0;
+        toggle(e, false);
+      }, 500);
 
       const target = e.target as HTMLElement;
       const dialogElement = findUpClassName(target, 'chatlist-chat');
