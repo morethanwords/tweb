@@ -1,13 +1,16 @@
+import Button from '@components/buttonTsx';
+import {OverlayedIcon} from '@components/icon';
+import {openAiEditorPopup} from '@components/popups/aiEditorPopup/aiEditorPopup';
+import classNames from '@helpers/string/classNames';
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import {resolveFirst} from '@solid-primitives/refs';
 import {createEffect, createMemo, onCleanup} from 'solid-js';
 import type {ChatInputStateContext} from '.';
-import {OverlayedIcon} from '@components/icon';
-import Button from '@components/buttonTsx';
-import classNames from '@helpers/string/classNames';
-import {resolveFirst} from '@solid-primitives/refs';
 
 const shouldShowFromHeight = 72;
 
 export function useAiEditorButton({instance, store}: ChatInputStateContext) {
+  const {HotReloadGuard} = useHotReloadGuard();
   const canShowButton = createMemo(() => store.inputMessageContainerHeight >= shouldShowFromHeight)
 
   createEffect(() => {
@@ -22,7 +25,9 @@ export function useAiEditorButton({instance, store}: ChatInputStateContext) {
     const button = Button({
       class: classNames('chat-input-ai-editor-button', 'btn-icon'),
       children: icon,
-      onClick: () => {}
+      onClick: () => {
+        openAiEditorPopup({}, HotReloadGuard);
+      }
     });
 
     const child = resolveFirst(() => button);

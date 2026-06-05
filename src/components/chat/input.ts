@@ -160,6 +160,7 @@ import compareUint8Arrays from '@helpers/bytes/compareUint8Arrays';
 import {LocalTextWithOptionalEntities} from './bubbleParts/pollMessageContent/utils';
 import createChatInputState, {ChatInputState} from './inputState';
 import {SupportedMediaType} from '@components/popups/createPoll/storeContext';
+import {runWithHotReloadGuard} from '@lib/solidjs/runWithHotReloadGuard';
 
 const HOT_CHAT_INPUTS = import.meta.hot ? new Set<ChatInput>() : null;
 
@@ -570,7 +571,7 @@ export default class ChatInput {
       this.paidMessageInterceptor.dispose();
     });
 
-    this.inputState = createChatInputState(this);
+    this.inputState = runWithHotReloadGuard(() => createChatInputState(this));
 
     if(HOT_CHAT_INPUTS) {
       HOT_CHAT_INPUTS.add(this);

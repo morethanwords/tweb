@@ -1,0 +1,224 @@
+@use "../../../scss/variables" as *;
+@use "../../../scss/mixins" as *;
+
+.bodyContent {
+  padding: 0 var(--section-padding-inline) 1rem;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.25rem;
+  border-radius: 200px;
+  background-color: var(--surface-color);
+}
+
+.tab {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+
+  flex: 1;
+  padding: 0.5rem 0.25rem 0.25rem;
+  border-radius: 100px;
+
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  --hover-color: var(--light-filled-secondary-text-color);
+  @include hover-global(var(--hover-color), background-color, true);
+
+  &.active {
+    cursor: default;
+
+    color: var(--primary-color);
+    background-color: hsla(from var(--primary-color) h s l / 0.12);
+    --hover-color: hsla(from var(--primary-color) h s l / 0.2);
+    --ripple-color: hsla(from var(--primary-color) h s l / 0.1);
+
+    :global(.night) & {
+      background-color: hsla(from var(--primary-color) h s l / 0.08);
+      --hover-color: hsla(from var(--primary-color) h s l / 0.16);
+      --ripple-color: hsla(from var(--primary-color) h s l / 0.2);
+    }
+  }
+
+  &Icon {
+    font-size: 1.5rem;
+  }
+
+  &Label {
+    font-size: 0.875rem;
+    font-weight: var(--font-weight-bold);
+  }
+}
+
+.tabContent {
+  background-color: var(--surface-color);
+  border-radius: 24px;
+
+  --content-padding-y: 0.5rem;
+  --content-padding-x: 1rem;
+}
+
+.originalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+
+  font-weight: var(--font-weight-bold);
+  --padding-top: 0.75rem;
+  padding: var(--padding-top) var(--content-padding-x) 0.5rem;
+  /* height: 40px; */
+
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+
+  &.clickable {
+    --hover-color: hsla(from var(--primary-color) h s l / 0.1);
+    --ripple-color: hsla(from var(--primary-color) h s l / 0.075);
+
+    cursor: pointer;
+    @include hover-global(var(--hover-color), background-color, true);
+
+    :global(.night) & {
+      --hover-color: var(--light-secondary-text-color);
+      --ripple-color: var(--original-ripple-color);
+    }
+  }
+
+}
+
+.originalArrow {
+  position: absolute;
+  right: var(--content-padding-x);
+  top: calc(var(--padding-top) + 0.75rem);
+  transform: translateY(-50%) rotate(180deg);
+
+  color: var(--primary-color);
+  transition: transform 0.2s ease-in-out;
+
+  &.toggled {
+    transform: translateY(-50%) rotate(0deg);
+  }
+}
+
+.originalCheckbox {
+  position: absolute !important;
+  right: var(--content-padding-x);
+  top: calc(var(--padding-top) + 0.75rem);
+  transform: translateY(-50%);
+}
+
+.originalContent {
+  --padding-block: 0.25rem;
+  --extra-height: 1.25rem;
+  padding: 0 var(--content-padding-x) 0.75rem;
+
+  position: relative;
+
+  height: var(--initial-height, auto);
+  overflow: hidden;
+
+  transition: height 0.2s ease-in-out;
+
+  &.collapsed {
+    height: calc(1lh + var(--extra-height));
+
+    &::before {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: var(--extra-height);
+      background: linear-gradient(
+        to top,
+        var(--surface-color) 20%,
+        hsla(from var(--surface-color) h s l / 0.95) 60%,
+        hsla(from var(--surface-color) h s l / 0.9) 80%,
+        transparent
+      );
+    }
+  }
+}
+
+.divider {
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+
+  :global(.night) & {
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+}
+
+.resultHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  font-weight: var(--font-weight-bold);
+  padding: var(--content-padding-y) var(--content-padding-x) 0;
+
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+}
+
+.resultTitleWrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.resultTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+}
+
+.resultLanguage {
+  position: relative;
+  overflow: hidden;
+  padding: 0.125rem 0.25rem;
+  color: var(--primary-color);
+
+  cursor: pointer;
+  border-radius: 0.5rem;
+
+  @include hover-global(blue, background-color, true);
+  --ripple-color: hsla(from var(--primary-color) h s l / 0.1);
+}
+
+.resultContent {
+  padding: 0.25rem var(--content-padding-x) var(--content-padding-y);
+}
+
+.emojifyCheckbox {
+  position: relative;
+  overflow: hidden;
+  padding: 0.25rem 0.5rem 0.25rem 0.25rem;
+  color: var(--secondary-text-color);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 13px;
+
+  cursor: pointer;
+  border-radius: 0.5rem;
+
+  @include hover-global(gray, background-color, true);
+
+  * {
+    pointer-events: none;
+  }
+}
+
+.copyButton {
+  font-size: 1.25rem;
+  width: 32px;
+  height: 32px;
+}

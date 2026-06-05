@@ -242,7 +242,8 @@
   --chatlist-status-color: var(--avatar-online-color);
   --chatlist-pinned-color: #a2abb2;
   --badge-text-color: #fff;
-  --ripple-color: rgba(0, 0, 0, #{$hover-alpha});
+  --original-ripple-color: rgba(0, 0, 0, #{$hover-alpha});
+  --ripple-color: var(--original-ripple-color);
   --skeleton-color: rgba(0, 0, 0, .12);
   --poll-circle-color: var(--border-color);
   --spoiler-background-color: #e3e5e8;
@@ -294,7 +295,8 @@
   --chatlist-status-color: var(--primary-color);
   --chatlist-pinned-color: var(--secondary-color);
   --badge-text-color: #fff;
-  --ripple-color: rgba(255, 255, 255, #{$hover-alpha});
+  --original-ripple-color: rgba(255, 255, 255, #{$hover-alpha});
+  --ripple-color: var(--original-ripple-color);
   --skeleton-color: rgba(255, 255, 255, .12);
   --poll-circle-color: #fff;
   --spoiler-background-color: #373e4e;

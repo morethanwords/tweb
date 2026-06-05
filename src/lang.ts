@@ -4435,7 +4435,6 @@ const lang = {
   'AdminRecentActionsFilters.GroupSettings': 'Group Settings',
   'AdminRecentActionsFilters.Messages': 'Messages',
 
-  'AdminRecentActionsFilters.ApplyFilters': 'Apply',
   'AdminRecentActionsFilters.ResetFilters': 'Reset',
   'AdminRecentActionsFilters.ByType': 'Filter by type',
   'AdminRecentActionsFilters.ByAdmin': 'Filter by admin',
@@ -4745,7 +4744,17 @@ const lang = {
   'CancelPollConfirm.Title': 'Cancel Sending Poll',
   'CancelPollConfirm.Description': 'Are you sure you want to cancel sending the poll?',
   'CancelPollConfirm.Button': 'Cancel Sending',
-  'CancelPollConfirm.Timeout': 'The poll was already sent, you can delete the message instead.'
+  'CancelPollConfirm.Timeout': 'The poll was already sent, you can delete the message instead.',
+
+  'AiEditor.Title': 'AI Editor',
+  'AiEditor.Style': 'Style',
+  'AiEditor.Fix': 'Fix',
+  'AiEditor.Original': 'Original',
+  'AiEditor.Emojify': 'Emojify',
+  'AiEditor.Result': 'Result',
+  'AiEditor.TranslateTo': 'To %s',
+
+  'Apply': 'Apply'
 };
 
 export default lang;
