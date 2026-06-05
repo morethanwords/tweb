@@ -435,18 +435,28 @@ export class E2eCall {
 
   // Apply an incoming block (server-format). On failure, fails the call.
   //
-  // Idempotency: the server echoes back blocks WE submitted (the chain-update
-  // stream is the canonical event source — we initialise from our submitted
-  // block to spin up encryption, then the server tells us "here's that block"
-  // shortly after). Skip blocks whose hash matches our current chain tip
-  // instead of treating the height mismatch as a failure.
+  // Idempotency: both delivery paths (the chain poll and the server push of
+  // `updateGroupCallChainBlocks`) feed this method, and the server echoes back
+  // blocks WE submitted — so already-applied blocks routinely arrive again,
+  // sometimes as a BATCH (a burst of pushes advances the chain while the poll
+  // cursor lags, then one poll response replays several blocks we already
+  // integrated). We skip anything below our height (already applied) and the
+  // exact chain tip (hash match), instead of letting `applyBlock` reject them
+  // as a fatal HEIGHT_MISMATCH that would drop us from the call. A genuine
+  // forward gap (height > our height + 1) still fails the call.
   public async applyBlockBytes(serverBlock: Uint8Array): Promise<void> {
     this.checkStatus();
     try {
       const block = decodeBlock(new TLReader(serverToLocal(serverBlock)));
+      // Strictly below our tip → already applied. This is the case the
+      // tip-only hash check below misses for the OLDER blocks of a replayed
+      // batch (only the newest block of the batch is the chain tip).
+      if(block.height < this.state.height) {
+        return;
+      }
       const blockHash = await computeBlockHash(block);
       if(constantTimeEqual(blockHash, this.state.lastBlockHash)) {
-        // We've already integrated this block (it's our chain tip). No-op.
+        // Re-delivery of our current chain tip (height === ours). No-op.
         return;
       }
       this.state = await applyBlock(this.state, block);

@@ -158,9 +158,18 @@ export default class GroupCallInstance extends CallInstanceBase<{
     // verification broadcast channel. The server pushes these updates when it
     // can, but we also poll because conference push delivery is best-effort
     // (tdlib: TdE2E::Call::joined → shortPoll(0); shortPoll(1)).
-    rootScope.addEventListener('group_call_chain_blocks', ({callId, subChainId, blocks}) => {
+    rootScope.addEventListener('group_call_chain_blocks', ({callId, subChainId, blocks, nextOffset}) => {
       if(callId !== this.id || !this.e2e) return;
       void this.deliverE2eChainBlocks(subChainId, blocks);
+      // Advance the poll cursor past what this push delivered. The cursor
+      // otherwise only moves on poll responses (pollE2eChain), so a burst of
+      // pushes leaves it stale and the next poll re-fetches — and re-delivers —
+      // blocks the push already applied. deliverE2eChainBlocks is idempotent
+      // now, so this just shrinks the redundant-fetch window; Math.max guards
+      // against out-of-order pushes (the broadcast subchain delivers unordered).
+      if(typeof nextOffset === 'number' && (subChainId === 0 || subChainId === 1)) {
+        this.e2eChainOffsets[subChainId] = Math.max(this.e2eChainOffsets[subChainId], nextOffset);
+      }
     });
 
     this.startE2eChainPolling();
