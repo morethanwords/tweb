@@ -62,6 +62,13 @@
 
   --content-padding-y: 0.5rem;
   --content-padding-x: 1rem;
+
+  &.exit {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+  }
 }
 
 .originalHeader {
@@ -125,7 +132,9 @@
   height: var(--initial-height, auto);
   overflow: hidden;
 
-  transition: height 0.2s ease-in-out;
+  &.collapsible {
+    transition: height 0.2s ease-in-out;
+  }
 
   &.collapsed {
     height: calc(1lh + var(--extra-height));
@@ -221,4 +230,8 @@
   font-size: 1.25rem;
   width: 32px;
   height: 32px;
+}
+
+.autoHeight {
+  position: relative;
 }

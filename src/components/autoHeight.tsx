@@ -1,11 +1,18 @@
-import {batch, createSignal, JSX, onCleanup, onMount} from 'solid-js';
+import classNames from '@helpers/string/classNames';
+import {batch, createSignal, JSX, mergeProps, onCleanup, onMount} from 'solid-js';
+import styles from './autoHeight.module.scss';
 
-export const AutoHeight = (props: {
+
+export const AutoHeight = (inProps: {
   children: JSX.Element;
   duration?: number;
   overflowHidden?: boolean;
   easing?: JSX.CSSProperties['transition-property'];
+  outerClass?: string;
+  hasTransition?: boolean;
 }) => {
+  const props = mergeProps({hasTransition: true}, inProps);
+
   let containerRef!: HTMLDivElement;
   let contentRef!: HTMLDivElement;
 
@@ -28,10 +35,13 @@ export const AutoHeight = (props: {
   return (
     <div
       ref={containerRef}
+      class={classNames(props.outerClass, styles.outer)}
+      classList={{
+        [styles.overflowHidden]: props.overflowHidden,
+        [styles.hasTransition]: canHaveHeight() && props.hasTransition
+      }}
       style={{
-        height: canHaveHeight() ? `${height()}px` : 'auto',
-        overflow: props.overflowHidden ? 'hidden' : undefined,
-        transition: canHaveHeight() ? `height ${props.duration ?? 200}ms ${props.easing ?? 'ease'}` : 'none'
+        '--auto-height': canHaveHeight() ? `${height()}px` : undefined
       }}
     >
       <div ref={contentRef}>{props.children}</div>

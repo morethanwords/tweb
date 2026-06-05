@@ -1,17 +1,20 @@
+import {AutoHeight} from '@components/autoHeight';
+import {ButtonIconTsx} from '@components/buttonIconTsx';
 import {IconTsx} from '@components/iconTsx';
+import {observeResize} from '@components/resizeObserver';
 import ripple from '@components/ripple';
 import Space from '@components/space';
-import {keepMe} from '@helpers/keepMe';
-import {I18nTsx} from '@helpers/solid/i18n';
-import {LangPackKey} from '@lib/langPack';
-import {createMemo, createSignal, For, JSX, Match, onMount, Show, Switch} from 'solid-js';
-import styles from './bodyContent.module.scss';
-import Button from '@components/buttonTsx';
 import {StaticCheckbox} from '@components/staticCheckbox';
-import {ButtonIconTsx} from '@components/buttonIconTsx';
-import {Transition} from 'solid-transition-group';
-import classNames from '@helpers/string/classNames';
+import {keepMe} from '@helpers/keepMe';
 import {HeightTransition} from '@helpers/solid/heightTransition';
+import {I18nTsx} from '@helpers/solid/i18n';
+import {requestRAF} from '@helpers/solid/requestRAF';
+import classNames from '@helpers/string/classNames';
+import {useIsCleaned} from '@hooks/useIsCleaned';
+import {LangPackKey} from '@lib/langPack';
+import {createComputed, createMemo, createSignal, For, JSX, Match, onCleanup, onMount, Show, Switch} from 'solid-js';
+import {Transition} from 'solid-transition-group';
+import styles from './bodyContent.module.scss';
 
 keepMe(ripple);
 
@@ -23,6 +26,8 @@ enum TabKey {
 
 export const AiEditorPopupBodyContent = () => {
   const [activeTab, setActiveTab] = createSignal<TabKey>(TabKey.Style);
+
+  const [hasTransition, setHasTransition] = createSignal(false);
 
   return (
     <div class={styles.bodyContent}>
@@ -36,9 +41,30 @@ export const AiEditorPopupBodyContent = () => {
         onTabChange={setActiveTab}
       />
       <Space amount='1rem' />
-      <div class={styles.tabContent}>
-        <TranslateTab />
-      </div>
+      <AutoHeight hasTransition={hasTransition()} outerClass={styles.autoHeight}>
+        <Transition
+          name='fade-2'
+          onBeforeExit={(el) => {
+            el.classList.add(styles.exit);
+            setHasTransition(true);
+          }}
+          onAfterExit={() => setHasTransition(false)}
+          onBeforeEnter={() => setHasTransition(true)}
+          onAfterEnter={() => setHasTransition(false)}
+        >
+          <Switch>
+            <Match when={activeTab() === TabKey.Translate}>
+              <TranslateTab />
+            </Match>
+            <Match when={activeTab() === TabKey.Style}>
+              <StyleTab />
+            </Match>
+            <Match when={activeTab() === TabKey.Fix}>
+              <FixTab />
+            </Match>
+          </Switch>
+        </Transition>
+      </AutoHeight>
     </div>
   );
 };
@@ -74,13 +100,11 @@ const Tabs = <T, >(props: TabsProps<T>) => {
 };
 
 
-const collapsibleFrom = 60;
-
 const TranslateTab = () => {
   const [emojify, setEmojify] = createSignal(false);
 
   return (
-    <>
+    <div class={styles.tabContent}>
       <Original />
       <Divider />
       <Result
@@ -94,7 +118,7 @@ const TranslateTab = () => {
         emojify={emojify()}
         onEmojify={() => setEmojify(!emojify())}
       />
-    </>
+    </div>
   );
 };
 
@@ -102,7 +126,7 @@ const StyleTab = () => {
   const [emojify, setEmojify] = createSignal(false);
 
   return (
-    <>
+    <div class={styles.tabContent}>
       <Original onEmojify={!emojify() ? () => setEmojify(true) : undefined} />
       <HeightTransition>
         <Show when={emojify()}>
@@ -122,54 +146,96 @@ const StyleTab = () => {
           </div>
         </Show>
       </HeightTransition>
-    </>
+    </div>
   );
 };
 
 const FixTab = () => {
   return (
-    <div>
-
+    <div class={styles.tabContent}>
+      <Original />
+      <Divider />
+      <Result />
     </div>
   );
 };
+
+const shouldBeCollapsibleFrom = 60;
 
 const Original = (props: {
   onEmojify?: () => void
 }) => {
   const [collapsed, setCollapsed] = createSignal(false);
   const [originalContentHeight, setOriginalContentHeight] = createSignal<number>();
-  const [isCollapsible, setIsCollapsible] = createSignal(false);
+  const [raffedHasOnEmojify, setRaffedHasOnEmojify] = createSignal(!!props.onEmojify);
+
+  const isCollapsible = createMemo(() => originalContentHeight() > shouldBeCollapsibleFrom && !raffedHasOnEmojify());
 
   const actuallyCollapsed = createMemo(() => collapsed() && !props.onEmojify);
-  const actuallyCollapsible = createMemo(() => isCollapsible() && !props.onEmojify);
 
   let originalContentRef: HTMLDivElement;
 
   onMount(() => {
     if(!originalContentRef) return;
-    const height = originalContentRef.scrollHeight;
 
-    setOriginalContentHeight(height);
-    setIsCollapsible(height > collapsibleFrom);
-    setCollapsed(height > collapsibleFrom);
+    let isFirst = true;
+
+    const unobserve = observeResize(originalContentRef, (entry) => {
+      setOriginalContentHeight(originalContentRef.scrollHeight);
+      if(isFirst) {
+        setCollapsed(isCollapsible());
+        isFirst = false;
+      }
+    });
+
+    onCleanup(() => unobserve());
+  });
+
+  createComputed(() => {
+    if(!props.onEmojify) {
+      setRaffedHasOnEmojify(false);
+      return
+    }
+
+    const isCleaned = useIsCleaned();
+
+    requestRAF(() => {
+      if(isCleaned()) return;
+      setRaffedHasOnEmojify(true);
+      requestRAF(() => {
+        setTimeout(() => {
+        }, 400);
+      });
+    });
   });
 
   return (
     <>
       <div
         class={styles.originalHeader}
-        classList={{[styles.clickable]: actuallyCollapsible()}}
-        use:ripple={actuallyCollapsible()}
-        onClick={() => actuallyCollapsible() && setCollapsed(p => !p)}
+        classList={{
+          [styles.clickable]: isCollapsible()
+        }}
+        use:ripple={isCollapsible()}
+        // #click1
+        onClick={() => isCollapsible() && setCollapsed(p => !p)}
       >
         <I18nTsx key='AiEditor.Original' />
         <Transition name='fade-2'>
           <Switch>
             <Match when={props.onEmojify}>
-              <EmojifyCheckbox class={styles.originalCheckbox} checked={false} onClick={props.onEmojify} />
+              <EmojifyCheckbox
+                class={styles.originalCheckbox}
+                checked={false}
+                onClick={() => {
+                  // we want this to trigger after the outer click handler #click1
+                  requestRAF(() => {
+                    props.onEmojify?.();
+                  });
+                }}
+              />
             </Match>
-            <Match when={actuallyCollapsible()}>
+            <Match when={isCollapsible()}>
               <IconTsx icon='arrowhead' class={styles.originalArrow} classList={{[styles.toggled]: actuallyCollapsed()}} />
             </Match>
           </Switch>
@@ -178,7 +244,10 @@ const Original = (props: {
       <div
         ref={originalContentRef}
         class={styles.originalContent}
-        classList={{[styles.collapsed]: actuallyCollapsed()}}
+        classList={{
+          [styles.collapsed]: actuallyCollapsed(),
+          [styles.collapsible]: isCollapsible()
+        }}
         style={{'--initial-height': originalContentHeight() + 'px'}}
       >
         <div>{text}</div>
