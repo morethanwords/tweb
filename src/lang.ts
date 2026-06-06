@@ -4750,7 +4750,7 @@ const lang = {
   'AiEditor.Style': 'Style',
   'AiEditor.Fix': 'Fix',
   'AiEditor.Original': 'Original',
-  'AiEditor.Emojify': 'Emojify',
+  'AiEditor.Emojify': 'emojify',
   'AiEditor.Result': 'Result',
   'AiEditor.TranslateTo': 'To %s',
 

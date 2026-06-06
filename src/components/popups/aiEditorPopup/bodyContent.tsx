@@ -1,17 +1,21 @@
 import {AutoHeight} from '@components/autoHeight';
 import {ButtonIconTsx} from '@components/buttonIconTsx';
+import EmojiDocumentIcon from '@components/emojiDocumentIcon';
 import {IconTsx} from '@components/iconTsx';
 import {observeResize} from '@components/resizeObserver';
 import ripple from '@components/ripple';
+import Scrollable from '@components/scrollable2';
 import Space from '@components/space';
 import {StaticCheckbox} from '@components/staticCheckbox';
 import {keepMe} from '@helpers/keepMe';
 import {HeightTransition} from '@helpers/solid/heightTransition';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {requestRAF} from '@helpers/solid/requestRAF';
+import {useEdgeAutoScroll} from '@helpers/solid/useEdgeAutoScroll';
 import classNames from '@helpers/string/classNames';
 import {useIsCleaned} from '@hooks/useIsCleaned';
 import {LangPackKey} from '@lib/langPack';
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {createComputed, createMemo, createSignal, For, JSX, Match, onCleanup, onMount, Show, Switch} from 'solid-js';
 import {Transition} from 'solid-transition-group';
 import styles from './bodyContent.module.scss';
@@ -125,27 +129,44 @@ const TranslateTab = () => {
 const StyleTab = () => {
   const [emojify, setEmojify] = createSignal(false);
 
+  const [tonesListEl, setTonesListEl] = createSignal<HTMLDivElement>();
+
+  useEdgeAutoScroll({
+    axis: () => 'horizontal',
+    container: tonesListEl,
+    innerThreshold: () => 32,
+    outerThreshold: () => 16,
+    interval: () => 320,
+    startInterval: () => 800,
+    startDelay: () => 200,
+    padding: () => 4,
+    rampFactor: () => 0.75
+  });
+
   return (
-    <div class={styles.tabContent}>
-      <Original onEmojify={!emojify() ? () => setEmojify(true) : undefined} />
-      <HeightTransition>
-        <Show when={emojify()}>
-          <div style={{overflow: 'hidden'}}>
-            <Divider />
-            <Result
-              overrideTitle={
-                <I18nTsx
-                  class={styles.resultTitle}
-                  key='AiEditor.TranslateTo'
-                  args={[<span class={styles.resultLanguage} use:ripple>Spanish</span>]}
-                />
-              }
-              emojify={emojify()}
-              onEmojify={() => setEmojify(!emojify())}
-            />
-          </div>
-        </Show>
-      </HeightTransition>
+    <div>
+      <div class={styles.section}>
+        <Scrollable class={styles.tonesList} ref={setTonesListEl} axis='x' relative>
+          <For each={new Array(10).map((_, i) => i)}>
+            {() => <Tone />}
+          </For>
+        </Scrollable>
+      </div>
+      <Space amount='1rem' />
+      <div class={styles.tabContent}>
+        <Original onEmojify={!emojify() ? () => setEmojify(true) : undefined} />
+        <HeightTransition>
+          <Show when={emojify()}>
+            <div style={{overflow: 'hidden'}}>
+              <Divider />
+              <Result
+                emojify={emojify()}
+                onEmojify={() => setEmojify(!emojify())}
+              />
+            </div>
+          </Show>
+        </HeightTransition>
+      </div>
     </div>
   );
 };
@@ -165,27 +186,24 @@ const shouldBeCollapsibleFrom = 60;
 const Original = (props: {
   onEmojify?: () => void
 }) => {
-  const [collapsed, setCollapsed] = createSignal(false);
+  const [isCollapsed, setIsCollapsed] = createSignal(false);
   const [originalContentHeight, setOriginalContentHeight] = createSignal<number>();
-  const [raffedHasOnEmojify, setRaffedHasOnEmojify] = createSignal(!!props.onEmojify);
+  const [hasOnEmojifyRaffed, setHasOnEmojifyRaffed] = createSignal(!!props.onEmojify);
 
-  const isCollapsible = createMemo(() => originalContentHeight() > shouldBeCollapsibleFrom && !raffedHasOnEmojify());
+  const isCollapsible = createMemo(() => originalContentHeight() > shouldBeCollapsibleFrom);
+  const isActuallyCollapsible = createMemo(() => isCollapsible() && !hasOnEmojifyRaffed());
 
-  const actuallyCollapsed = createMemo(() => collapsed() && !props.onEmojify);
+  const isActuallyCollapsed = createMemo(() => isCollapsed() && !props.onEmojify);
 
   let originalContentRef: HTMLDivElement;
 
   onMount(() => {
     if(!originalContentRef) return;
 
-    let isFirst = true;
-
-    const unobserve = observeResize(originalContentRef, (entry) => {
+    const unobserve = observeResize(originalContentRef, () => {
       setOriginalContentHeight(originalContentRef.scrollHeight);
-      if(isFirst) {
-        setCollapsed(isCollapsible());
-        isFirst = false;
-      }
+      setIsCollapsed(isCollapsible());
+      unobserve();
     });
 
     onCleanup(() => unobserve());
@@ -193,7 +211,7 @@ const Original = (props: {
 
   createComputed(() => {
     if(!props.onEmojify) {
-      setRaffedHasOnEmojify(false);
+      setHasOnEmojifyRaffed(false);
       return
     }
 
@@ -201,11 +219,7 @@ const Original = (props: {
 
     requestRAF(() => {
       if(isCleaned()) return;
-      setRaffedHasOnEmojify(true);
-      requestRAF(() => {
-        setTimeout(() => {
-        }, 400);
-      });
+      setHasOnEmojifyRaffed(true);
     });
   });
 
@@ -214,11 +228,11 @@ const Original = (props: {
       <div
         class={styles.originalHeader}
         classList={{
-          [styles.clickable]: isCollapsible()
+          [styles.clickable]: isActuallyCollapsible()
         }}
-        use:ripple={isCollapsible()}
+        use:ripple={isActuallyCollapsible()}
         // #click1
-        onClick={() => isCollapsible() && setCollapsed(p => !p)}
+        onClick={() => isActuallyCollapsible() && setIsCollapsed(p => !p)}
       >
         <I18nTsx key='AiEditor.Original' />
         <Transition name='fade-2'>
@@ -235,8 +249,8 @@ const Original = (props: {
                 }}
               />
             </Match>
-            <Match when={isCollapsible()}>
-              <IconTsx icon='arrowhead' class={styles.originalArrow} classList={{[styles.toggled]: actuallyCollapsed()}} />
+            <Match when={isActuallyCollapsible()}>
+              <IconTsx icon='arrowhead' class={styles.originalArrow} classList={{[styles.toggled]: isActuallyCollapsed()}} />
             </Match>
           </Switch>
         </Transition>
@@ -245,8 +259,8 @@ const Original = (props: {
         ref={originalContentRef}
         class={styles.originalContent}
         classList={{
-          [styles.collapsed]: actuallyCollapsed(),
-          [styles.collapsible]: isCollapsible()
+          [styles.collapsed]: isActuallyCollapsed(),
+          [styles.collapsible]: isActuallyCollapsible()
         }}
         style={{'--initial-height': originalContentHeight() + 'px'}}
       >
@@ -298,7 +312,20 @@ const EmojifyCheckbox = (props: {
   );
 };
 
+const Tone = () => {
+  const {rootScope} = useHotReloadGuard();
+
+  return (
+    <div class={styles.tone} use:ripple>
+      <EmojiDocumentIcon docId={docId} color='primary-text-color' size={42} class={styles.toneIcon} managers={rootScope.managers} />
+      <div class={styles.toneName}>Tone Name</div>
+    </div>
+  );
+};
+
 const texte = 'hi there'
 const text = `Animi voluptas blanditiis blanditiis corporis accusantium libero eum necessitatibus. Laboriosam in ullam commodi excepturi dolor eveniet nihil dignissimos. Ipsa qui quia rem praesentium repudiandae voluptatem facere ratione.`;
 
 const text2 = `Nisi voluptas et fuga. Dolorum accusamus maxime magnam hic qui quis ad. Totam aut illo enim dicta aut recusandae hic. Quia placeat sint placeat vel ipsam. Sit nobis nisi cumque labore iusto repellendus.`;
+
+const docId = '5345804987123378599';

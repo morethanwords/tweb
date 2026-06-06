@@ -1,6 +1,24 @@
 @use "../../../scss/variables" as *;
 @use "../../../scss/mixins" as *;
 
+@mixin hoverable {
+  --hover-color: var(--light-filled-secondary-text-color);
+  @include hover-global(var(--hover-color), background-color, true);
+
+  &.active {
+    color: var(--primary-color);
+    background-color: hsla(from var(--primary-color) h s l / 0.12);
+    --hover-color: hsla(from var(--primary-color) h s l / 0.2);
+    --ripple-color: hsla(from var(--primary-color) h s l / 0.1);
+
+    :global(.night) & {
+      background-color: hsla(from var(--primary-color) h s l / 0.08);
+      --hover-color: hsla(from var(--primary-color) h s l / 0.16);
+      --ripple-color: hsla(from var(--primary-color) h s l / 0.2);
+    }
+  }
+}
+
 .bodyContent {
   padding: 0 var(--section-padding-inline) 1rem;
 }
@@ -28,23 +46,7 @@
   cursor: pointer;
   transition: background-color 0.2s;
 
-  --hover-color: var(--light-filled-secondary-text-color);
-  @include hover-global(var(--hover-color), background-color, true);
-
-  &.active {
-    cursor: default;
-
-    color: var(--primary-color);
-    background-color: hsla(from var(--primary-color) h s l / 0.12);
-    --hover-color: hsla(from var(--primary-color) h s l / 0.2);
-    --ripple-color: hsla(from var(--primary-color) h s l / 0.1);
-
-    :global(.night) & {
-      background-color: hsla(from var(--primary-color) h s l / 0.08);
-      --hover-color: hsla(from var(--primary-color) h s l / 0.16);
-      --ripple-color: hsla(from var(--primary-color) h s l / 0.2);
-    }
-  }
+  @include hoverable;
 
   &Icon {
     font-size: 1.5rem;
@@ -56,19 +58,22 @@
   }
 }
 
-.tabContent {
+.tabContent, .section {
   background-color: var(--surface-color);
   border-radius: 24px;
+  overflow: hidden;
+}
 
+.tabContent {
   --content-padding-y: 0.5rem;
   --content-padding-x: 1rem;
+}
 
-  &.exit {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-  }
+.exit {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
 }
 
 .originalHeader {
@@ -209,15 +214,16 @@
 .emojifyCheckbox {
   position: relative;
   overflow: hidden;
-  padding: 0.25rem 0.5rem 0.25rem 0.25rem;
+  --padding: 6px;
+  padding: var(--padding) 12px var(--padding) var(--padding);
   color: var(--secondary-text-color);
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--padding);
   font-size: 13px;
 
   cursor: pointer;
-  border-radius: 0.5rem;
+  border-radius: 100px;
 
   @include hover-global(gray, background-color, true);
 
@@ -234,4 +240,42 @@
 
 .autoHeight {
   position: relative;
+}
+
+.tonesList {
+  display: flex;
+  gap: 2px;
+  padding: 0.25rem;
+}
+
+.tone {
+  position: relative;
+  overflow: hidden;
+
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  flex-shrink: 0;
+
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 20px;
+
+  cursor: pointer;
+
+  @include hoverable;
+
+  &Name {
+    font-size: 0.75rem;
+    font-weight: var(--font-weight-bold);
+    white-space: nowrap;
+  }
+
+  &Icon {
+    --size: 42px;
+    position: relative;
+    width: var(--size);
+    height: var(--size);
+    pointer-events: none;
+  }
 }
