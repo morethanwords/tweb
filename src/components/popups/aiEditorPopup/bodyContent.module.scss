@@ -269,6 +269,10 @@
     font-size: 0.75rem;
     font-weight: var(--font-weight-bold);
     white-space: nowrap;
+    width: 64px;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   &Icon {
@@ -276,6 +280,7 @@
     position: relative;
     width: var(--size);
     height: var(--size);
+    font-size: var(--size);
     pointer-events: none;
   }
 }

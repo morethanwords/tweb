@@ -38,8 +38,8 @@ export const AiEditorPopupBodyContent = () => {
       <Tabs
         items={[
           {label: 'Translate', icon: 'premium_translate', key: TabKey.Translate},
-          {label: 'AiEditor.Style', icon: 'ai_style_tone', key: TabKey.Style},
-          {label: 'AiEditor.Fix', icon: 'search', key: TabKey.Fix}
+          {label: 'AiEditor.Style', icon: 'edit_stars', key: TabKey.Style},
+          {label: 'AiEditor.Fix', icon: 'search_check', key: TabKey.Fix}
         ]}
         activeKey={activeTab()}
         onTabChange={setActiveTab}
@@ -147,6 +147,7 @@ const StyleTab = () => {
     <div>
       <div class={styles.section}>
         <Scrollable class={styles.tonesList} ref={setTonesListEl} axis='x' relative>
+          <CreateTone />
           <For each={new Array(10).map((_, i) => i)}>
             {() => <Tone />}
           </For>
@@ -319,6 +320,17 @@ const Tone = () => {
     <div class={styles.tone} use:ripple>
       <EmojiDocumentIcon docId={docId} color='primary-text-color' size={42} class={styles.toneIcon} managers={rootScope.managers} />
       <div class={styles.toneName}>Tone Name</div>
+    </div>
+  );
+};
+
+const CreateTone = () => {
+  return (
+    <div class={styles.tone} use:ripple>
+      <IconTsx class={styles.toneIcon} icon='edit_stars_add' />
+      <div class={styles.toneName}>
+        <I18nTsx key='Create' />
+      </div>
     </div>
   );
 };
