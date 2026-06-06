@@ -151,11 +151,14 @@ SimpleFormField.InputStub = (props: ParentProps<{
 SimpleFormField.Label = (props: ParentProps<{
   active?: boolean;
   forceOffset?: number;
+  maxLength?: number;
 }>) => {
   const context = useSimpleFormFieldContext();
 
   const [offset, setOffset] = createSignal(0);
   const [noTransition, setNoTransition] = createSignal(true);
+
+  const {shouldShowLengthLeft, lengthLeft, hasError} = useMaxLengthError(context.value, () => props.maxLength);
 
   onMount(() => {
     if(props.forceOffset || !context.offsetElement()) return;
@@ -173,6 +176,11 @@ SimpleFormField.Label = (props: ParentProps<{
     });
   });
 
+  const setForceError = context.useSetForceError();
+  createEffect(() => {
+    setForceError(hasError());
+  });
+
   return (
     <div
       class={styles.Label}
@@ -185,6 +193,9 @@ SimpleFormField.Label = (props: ParentProps<{
       }}
     >
       {props.children}
+      <Show when={shouldShowLengthLeft()}>
+        {' '}({lengthLeft()})
+      </Show>
     </div>
   );
 };
@@ -259,6 +270,22 @@ SimpleFormField.WithAutoLengthCounter = (inProps: WithAutoLengthCounterProps) =>
       lengthLeft={lengthLeft()}
       {...restProps}
     />
+  );
+};
+
+SimpleFormField.Section = (inProps: JSX.HTMLAttributes<HTMLDivElement>) => {
+  const [props, restProps] = splitProps(inProps, ['class']);
+
+  return (
+    <div class={classNames(styles.section, props.class)} {...restProps} />
+  );
+};
+
+SimpleFormField.Caption = (inProps: JSX.HTMLAttributes<HTMLDivElement>) => {
+  const [props, restProps] = splitProps(inProps, ['class']);
+
+  return (
+    <div class={classNames(styles.caption, props.class)} {...restProps} />
   );
 };
 

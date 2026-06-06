@@ -100,8 +100,6 @@ const QuestionAndDescription = () => {
   const {maxQuestionLength, maxDescriptionLength} = useCreatePollLimits();
   const supportsMedia = useSupportsMedia();
 
-  const questionError = useMaxLengthError(() => context.store.question, maxQuestionLength);
-
   const questionInput = new InputField({
     canWrapCustomEmojis: true,
     onRawInput: () => {
@@ -137,17 +135,13 @@ const QuestionAndDescription = () => {
         class={classNames(styles.flexFull, styles.formField)}
         withEndButtonIcon
         withMinHeight
-        isError={questionError.hasError()}
         onClick={createFormFieldClickHandler(questionInput)}
       >
         <SimpleFormField.InputStub>
           {questionInput.input}
         </SimpleFormField.InputStub>
-        <SimpleFormField.Label>
+        <SimpleFormField.Label maxLength={maxQuestionLength()}>
           <I18nTsx key='AskAQuestion' />
-          <Show when={questionError.shouldShowLengthLeft()}>
-            {' '}({questionError.lengthLeft()})
-          </Show>
         </SimpleFormField.Label>
 
         <SimpleFormField.SideContent withFixedIcon first last>

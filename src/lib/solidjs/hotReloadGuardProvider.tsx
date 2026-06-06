@@ -8,7 +8,7 @@ import BusinessHours from '@components/businessHours';
 import ButtonMenu, {ButtonMenuSync} from '@components/buttonMenu';
 import {ChatType} from '@components/chat/chatType';
 import confirmationPopup from '@components/confirmationPopup';
-import createEmojiDropdownButton from '@components/emojiDropdownButton';
+import createEmojiDropdownButton, {useEmojiDropdown} from '@components/emojiDropdownButton';
 import {useStickersDropdown} from '@components/popups/createPoll/stickersDropdown';
 import {EmoticonsDropdown} from '@components/emoticonsDropdown';
 import EmoticonsSearch from '@components/emoticonsDropdown/search';
@@ -66,6 +66,8 @@ import rootScope from '@lib/rootScope';
 import {SolidJSHotReloadGuardContext} from '@lib/solidjs/hotReloadGuard';
 import uiNotificationsManager from '@lib/uiNotificationsManager';
 import {useAppSettings} from '@stores/appSettings';
+import {useAppConfig} from '@stores/appState';
+import usePremium from '@stores/premium';
 
 export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
   return (
@@ -139,12 +141,15 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       StoriesSegments,
       appSidebarRight,
       createEmojiDropdownButton,
+      useEmojiDropdown,
       useStickersDropdown,
       getFileAndOpenEditor,
       AvatarNewTsx,
       AppMediaViewerStatic,
       AppPollResultsTab,
-      TranslatableMessageTsx
+      TranslatableMessageTsx,
+      useAppConfig,
+      usePremium
     }}>
       {props.children}
     </SolidJSHotReloadGuardContext.Provider>

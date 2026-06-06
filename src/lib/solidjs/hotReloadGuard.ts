@@ -5,7 +5,7 @@ import {createContext, useContext} from 'solid-js';
  */
 
 import type AppMediaViewer from '@components/appMediaViewer';
-import AppMediaViewerStatic from '@components/appMediaViewerStatic';
+import type AppMediaViewerStatic from '@components/appMediaViewerStatic';
 import type {AutonomousMonoforumThreadList} from '@components/autonomousDialogList/monoforumThreads';
 import type {avatarNew, AvatarNewTsx, StoriesSegments} from '@components/avatarNew';
 import type BusinessHours from '@components/businessHours';
@@ -13,11 +13,10 @@ import type ButtonMenu from '@components/buttonMenu';
 import type {ButtonMenuSync} from '@components/buttonMenu';
 import type {ChatType} from '@components/chat/chatType';
 import type confirmationPopup from '@components/confirmationPopup';
+import type {default as createEmojiDropdownButton, useEmojiDropdown} from '@components/emojiDropdownButton';
 import type {EmoticonsDropdown} from '@components/emoticonsDropdown';
 import type EmoticonsSearch from '@components/emoticonsDropdown/search';
 import type EmojiTab from '@components/emoticonsDropdown/tabs/emoji';
-import type createEmojiDropdownButton from '@components/emojiDropdownButton';
-import type {useStickersDropdown} from '@components/popups/createPoll/stickersDropdown';
 import type {InputFieldTsx} from '@components/inputFieldTsx';
 import type PasswordMonkey from '@components/monkeys/password';
 import type PasswordInputField from '@components/passwordInputField';
@@ -26,6 +25,7 @@ import type {PeerTitleTsx} from '@components/peerTitleTsx';
 import type PopupElement from '@components/popups';
 import type showBirthdayPopup from '@components/popups/birthday';
 import type {saveMyBirthday} from '@components/popups/birthday';
+import type {useStickersDropdown} from '@components/popups/createPoll/stickersDropdown';
 import type showLimitPopup from '@components/popups/limit';
 import type showMyQrCodePopup from '@components/popups/myQrCode';
 import type PopupPremium from '@components/popups/premium';
@@ -39,14 +39,15 @@ import type {AppSidebarLeft} from '@components/sidebarLeft';
 import type AppChatFoldersTab from '@components/sidebarLeft/tabs/chatFolders';
 import type AppEditFolderTab from '@components/sidebarLeft/tabs/editFolder';
 import type {AppSidebarRight} from '@components/sidebarRight';
-import AppPollResultsTab from '@components/sidebarRight/tabs/pollResults';
+import type AppPollResultsTab from '@components/sidebarRight/tabs/pollResults';
 import type Slideshow from '@components/slideshow';
 import type {StoriesProvider, useStories} from '@components/stories/store';
 import type {hideToast, toast, toastNew} from '@components/toast';
-import {TranslatableMessageTsx} from '@components/translatableMessage';
+import type {TranslatableMessageTsx} from '@components/translatableMessage';
 import type {wrapAdaptiveCustomEmoji} from '@components/wrappers/customEmojiSimple';
 import type DocumentTsx from '@components/wrappers/documentTsx';
 import type wrapFolderTitle from '@components/wrappers/folderTitle';
+import type wrapGeo from '@components/wrappers/geo';
 import type getPeerTitle from '@components/wrappers/getPeerTitle';
 import type {wrapTopicIcon} from '@components/wrappers/messageActionTextNewUnsafe';
 import type wrapPeerTitle from '@components/wrappers/peerTitle';
@@ -65,7 +66,6 @@ import type {AppDialogsManager} from '@lib/appDialogsManager';
 import type {AppImManager} from '@lib/appImManager';
 import type I18n from '@lib/langPack';
 import type {i18n, join} from '@lib/langPack';
-import type wrapGeo from '@components/wrappers/geo';
 import type wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import type wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import type lottieLoader from '@lib/rlottie/lottieLoader';
@@ -73,6 +73,8 @@ import type {RootScope} from '@lib/rootScope';
 import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import type uiNotificationsManager from '@lib/uiNotificationsManager';
 import type {useAppSettings} from '@stores/appSettings';
+import type {useAppConfig} from '@stores/appState';
+import type usePremium from '@stores/premium';
 
 
 export type SolidJSHotReloadGuardContextValue = {
@@ -145,12 +147,15 @@ export type SolidJSHotReloadGuardContextValue = {
   StoriesSegments: typeof StoriesSegments;
   appSidebarRight: AppSidebarRight;
   createEmojiDropdownButton: typeof createEmojiDropdownButton;
+  useEmojiDropdown: typeof useEmojiDropdown;
   useStickersDropdown: typeof useStickersDropdown;
   getFileAndOpenEditor: typeof getFileAndOpenEditor;
   AvatarNewTsx: typeof AvatarNewTsx;
   AppMediaViewerStatic: typeof AppMediaViewerStatic;
   AppPollResultsTab: typeof AppPollResultsTab;
   TranslatableMessageTsx: typeof TranslatableMessageTsx;
+  useAppConfig: typeof useAppConfig;
+  usePremium: typeof usePremium;
 };
 
 export type LockScreenHotReloadGuardContextValue = Pick<

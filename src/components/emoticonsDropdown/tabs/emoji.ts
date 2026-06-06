@@ -963,7 +963,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
     if(!category) { // possibly sticker
       const sticker = findUpClassName(target, 'super-sticker');
       if(sticker) {
-        this.onClick({
+        this.onClick?.({
           emoji: '',
           docId: sticker.dataset.docId,
           element: sticker

@@ -4139,6 +4139,8 @@
 "AiEditor.Emojify" = "emojify";
 "AiEditor.Result" = "Result";
 "AiEditor.TranslateTo" = "To %s";
+"AiEditor.NewStyle.StyleName" = "Style Name (for example, \"Pirate\")";
+"AiEditor.NewStyle.Instructions" = "Instructions ";
 "Apply" = "Apply";
 "Login.Title" = "Sign in to Telegram";
 "Login.PhoneLabel" = "Phone Number";
