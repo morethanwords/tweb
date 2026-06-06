@@ -1323,7 +1323,7 @@ export class AppImManager extends EventListenerBase<{
   }
 
   private attachKeydownListener() {
-    const IGNORE_KEYS = new Set(['PageUp', 'PageDown', 'Meta', 'Control']);
+    const IGNORE_KEYS = new Set(['Meta', 'Control']);
     const onKeyDown = async(e: KeyboardEvent) => {
       const key = e.key;
       const isSelectionCollapsed = document.getSelection().isCollapsed;
@@ -1343,11 +1343,27 @@ export class AppImManager extends EventListenerBase<{
 
       const chat = this.chat;
 
+      // Hand keyboard focus to the bubbles scroll container so the browser scrolls it natively.
+      // (overflow:auto + outline:none → focus is invisible.)
+      const handoffScroll = () => {
+        const container = chat?.bubbles?.scrollable?.container;
+        if(container && document.activeElement !== container) {
+          container.focus({preventScroll: true});
+        }
+      };
+
       if(this.isShiftLockShortcut && e.shiftKey) return;
 
       if((key.startsWith('Arrow') || (e.shiftKey && key === 'Shift')) && !isSelectionCollapsed) {
         return;
       } else if(e.code === 'KeyC' && (e.ctrlKey || e.metaKey) && !isTargetAnInput) {
+        return;
+      } else if(
+        (key === 'PageUp' || key === 'PageDown') &&
+        !isTargetAnInput &&
+        !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey
+      ) {
+        handoffScroll();
         return;
       } else if(e.altKey && (key === 'ArrowUp' || key === 'ArrowDown')) {
         cancelEvent(e);
@@ -1362,6 +1378,13 @@ export class AppImManager extends EventListenerBase<{
         });
         return;
       } else if((key === 'ArrowUp' || key === 'ArrowDown') && this.chat?.type !== ChatType.Scheduled) {
+        // In chats/channels where the user can't post (read-only broadcasts, restricted groups,
+        // unjoined chats), there's no message to edit, so let ArrowUp/Down scroll the chat instead.
+        if(chat?.input && !chat.input.canSendPlain()) {
+          handoffScroll();
+          return;
+        }
+
         if(
           !appDialogsManager.contextMenu?.hasAddToFolderOpen() &&
           !chat?.input?.editMsgId
