@@ -42,7 +42,7 @@ function _ripple(
     elem[prepend ? 'prepend' : 'append'](r);
   }
 
-  let handler: () => void;
+  let handler: () => void, lastHandler: typeof handler;
   // let animationEndPromise: Promise<number>;
   const drawRipple = (clientX: number, clientY: number) => {
     const startTime = Date.now();
@@ -57,7 +57,7 @@ function _ripple(
     const duration = (auto ? .3 : +window.getComputedStyle(r).getPropertyValue('--ripple-duration').replace('s', '')) * 1000;
     // console.log('ripple duration', duration);
 
-    const _handler = handler = () => {
+    const _handler = handler = lastHandler = () => {
     // handler = () => animationEndPromise.then((duration) => {
       // console.log('ripple animation was:', duration);
 
@@ -108,7 +108,7 @@ function _ripple(
       } */
 
     fastRaf(() => {
-      if(_handler !== handler) {
+      if(lastHandler !== _handler) {
         return;
       }
 
@@ -153,7 +153,7 @@ function _ripple(
 
       if(auto) {
         // window.addEventListener('mousemove', handler, {once: true, passive: true});
-        handler();
+        _handler();
       }
 
       // r.classList.add('active');
