@@ -367,6 +367,10 @@ export class AppImManager extends EventListenerBase<{
     }, {once: true});
 
     rootScope.addEventListener('theme_changed', () => {
+      // When the active chat pins its own per-chat theme/wallpaper it re-publishes its own
+      // day/night variant via Chat._handleBackgrounds. `applyCurrentTheme` re-applies the *global*
+      // background, which would race and clobber the per-chat one — so defer to the chat here.
+      if(this.chat?.currentTheme || this.chat?.currentWallPaper) return;
       this.applyCurrentTheme({
         broadcastEvent: true,
         noSetTheme: true,
