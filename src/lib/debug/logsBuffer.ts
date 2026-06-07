@@ -229,10 +229,9 @@ export function isLogBufferEnabled(): boolean {
 if(MOUNT_CLASS_TO) {
   MOUNT_CLASS_TO.setLogBufferEnabled = setLogBufferEnabled;
   MOUNT_CLASS_TO.clearLogBuffer = clearLogBuffer;
-
-  // Export helpers only make sense (and only import safely) on the main thread.
-  if(SRC === 'main') {
-    MOUNT_CLASS_TO.downloadLogs = (filename?: string) => import('./exportLogs').then((m) => m.downloadLogs(filename));
-    MOUNT_CLASS_TO.collectLogs = () => import('./exportLogs').then((m) => m.collectLogs());
-  }
+  // NB: the export helpers (window.downloadLogs / collectLogs) are wired from
+  // @lib/debug/mountLogExport (imported by src/index.ts), NOT here. This module
+  // is a leaf reached by the universal logger() in every worker bundle; pulling
+  // exportLogs -> apiManagerProxy in (even behind a literal dynamic import,
+  // which Rollup still keeps in the graph) creates a circular worker import.
 }
