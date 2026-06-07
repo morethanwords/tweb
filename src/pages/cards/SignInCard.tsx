@@ -50,13 +50,17 @@ export default function SignInCard(_props: {spec: Spec}) {
 
   let lastCountrySelected: HelpCountry | undefined;
   let lastCountryCodeSelected: HelpCountryCode | undefined;
+  // True while we're mirroring a phone-driven country detection into the country
+  // selector. In that case the phone field is the source of truth and must NOT be
+  // reset to the bare '+code' (that would wipe a just-typed/pasted national number).
+  let overriding = false;
 
   const countryInputField = new CountryInputField({
     onCountryChange: (country, code) => {
       lastCountrySelected = country;
       lastCountryCodeSelected = code;
 
-      if(!code) return;
+      if(!code || overriding) return;
 
       telInputField.value = telInputField.lastValue = '+' + code.country_code;
       setTimeout(() => {
@@ -80,7 +84,9 @@ export default function SignInCard(_props: {spec: Spec}) {
             lastCountryCodeSelected.country_code !== code.country_code
         )
       )) {
+        overriding = true;
         countryInputField.override(country, code, countryName);
+        overriding = false;
       }
 
       setHasValidInput(!!(country || (telInputField.value.length - 1) > 1));
