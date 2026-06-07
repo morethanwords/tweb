@@ -583,6 +583,7 @@ export namespace User {
       bot_forum_view?: true,
       bot_forum_can_manage_topics?: true,
       bot_can_manage_bots?: true,
+      bot_guestchat?: true,
     }>,
     flags2?: number,
     id: string | number,
@@ -1025,6 +1026,7 @@ export namespace Message {
     fwd_from?: MessageFwdHeader,
     via_bot_id?: string | number,
     via_business_bot_id?: string | number,
+    guestchat_via_from?: Peer,
     reply_to?: MessageReplyHeader,
     date: number,
     message: string,
@@ -2117,6 +2119,7 @@ export namespace AuthSentCode {
     phone_code_hash: string,
     support_email_address: string,
     support_email_subject: string,
+    premium_days: number,
     currency: string,
     amount: string | number
   };
@@ -2727,7 +2730,7 @@ export namespace MessagesFilter {
 /**
  * @link https://core.telegram.org/type/Update
  */
-export type Update = Update.updateNewMessage | Update.updateMessageID | Update.updateDeleteMessages | Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChatParticipants | Update.updateUserStatus | Update.updateUserName | Update.updateNewAuthorization | Update.updateNewEncryptedMessage | Update.updateEncryptedChatTyping | Update.updateEncryption | Update.updateEncryptedMessagesRead | Update.updateChatParticipantAdd | Update.updateChatParticipantDelete | Update.updateDcOptions | Update.updateNotifySettings | Update.updateServiceNotification | Update.updatePrivacy | Update.updateUserPhone | Update.updateReadHistoryInbox | Update.updateReadHistoryOutbox | Update.updateWebPage | Update.updateReadMessagesContents | Update.updateChannelTooLong | Update.updateChannel | Update.updateNewChannelMessage | Update.updateReadChannelInbox | Update.updateDeleteChannelMessages | Update.updateChannelMessageViews | Update.updateChatParticipantAdmin | Update.updateNewStickerSet | Update.updateStickerSetsOrder | Update.updateStickerSets | Update.updateSavedGifs | Update.updateBotInlineQuery | Update.updateBotInlineSend | Update.updateEditChannelMessage | Update.updateBotCallbackQuery | Update.updateEditMessage | Update.updateInlineBotCallbackQuery | Update.updateReadChannelOutbox | Update.updateDraftMessage | Update.updateReadFeaturedStickers | Update.updateRecentStickers | Update.updateConfig | Update.updatePtsChanged | Update.updateChannelWebPage | Update.updateDialogPinned | Update.updatePinnedDialogs | Update.updateBotWebhookJSON | Update.updateBotWebhookJSONQuery | Update.updateBotShippingQuery | Update.updateBotPrecheckoutQuery | Update.updatePhoneCall | Update.updateLangPackTooLong | Update.updateLangPack | Update.updateFavedStickers | Update.updateChannelReadMessagesContents | Update.updateContactsReset | Update.updateChannelAvailableMessages | Update.updateDialogUnreadMark | Update.updateMessagePoll | Update.updateChatDefaultBannedRights | Update.updateFolderPeers | Update.updatePeerSettings | Update.updatePeerLocated | Update.updateNewScheduledMessage | Update.updateDeleteScheduledMessages | Update.updateTheme | Update.updateGeoLiveViewed | Update.updateLoginToken | Update.updateMessagePollVote | Update.updateDialogFilter | Update.updateDialogFilterOrder | Update.updateDialogFilters | Update.updatePhoneCallSignalingData | Update.updateChannelMessageForwards | Update.updateReadChannelDiscussionInbox | Update.updateReadChannelDiscussionOutbox | Update.updatePeerBlocked | Update.updateChannelUserTyping | Update.updatePinnedMessages | Update.updatePinnedChannelMessages | Update.updateChat | Update.updateGroupCallParticipants | Update.updateGroupCall | Update.updatePeerHistoryTTL | Update.updateChatParticipant | Update.updateChannelParticipant | Update.updateBotStopped | Update.updateGroupCallConnection | Update.updateBotCommands | Update.updatePendingJoinRequests | Update.updateBotChatInviteRequester | Update.updateMessageReactions | Update.updateAttachMenuBots | Update.updateWebViewResultSent | Update.updateBotMenuButton | Update.updateSavedRingtones | Update.updateTranscribedAudio | Update.updateReadFeaturedEmojiStickers | Update.updateUserEmojiStatus | Update.updateRecentEmojiStatuses | Update.updateRecentReactions | Update.updateMoveStickerSetToTop | Update.updateMessageExtendedMedia | Update.updateUser | Update.updateAutoSaveSettings | Update.updateStory | Update.updateReadStories | Update.updateStoryID | Update.updateStoriesStealthMode | Update.updateSentStoryReaction | Update.updateBotChatBoost | Update.updateChannelViewForumAsMessages | Update.updatePeerWallpaper | Update.updateBotMessageReaction | Update.updateBotMessageReactions | Update.updateSavedDialogPinned | Update.updatePinnedSavedDialogs | Update.updateSavedReactionTags | Update.updateSmsJob | Update.updateQuickReplies | Update.updateNewQuickReply | Update.updateDeleteQuickReply | Update.updateQuickReplyMessage | Update.updateDeleteQuickReplyMessages | Update.updateBotBusinessConnect | Update.updateBotNewBusinessMessage | Update.updateBotEditBusinessMessage | Update.updateBotDeleteBusinessMessage | Update.updateNewStoryReaction | Update.updateStarsBalance | Update.updateBusinessBotCallbackQuery | Update.updateStarsRevenueStatus | Update.updateBotPurchasedPaidMedia | Update.updatePaidReactionPrivacy | Update.updateSentPhoneCode | Update.updateGroupCallChainBlocks | Update.updateReadMonoForumInbox | Update.updateReadMonoForumOutbox | Update.updateMonoForumNoPaidException | Update.updateGroupCallMessage | Update.updateGroupCallEncryptedMessage | Update.updatePinnedForumTopic | Update.updatePinnedForumTopics | Update.updateDeleteGroupCallMessages | Update.updateStarGiftAuctionState | Update.updateStarGiftAuctionUserState | Update.updateEmojiGameInfo | Update.updateStarGiftCraftFail | Update.updateChatParticipantRank | Update.updateManagedBot | Update.updateNewDiscussionMessage | Update.updateDeleteDiscussionMessages | Update.updateChannelReload | Update.updatePts;
+export type Update = Update.updateNewMessage | Update.updateMessageID | Update.updateDeleteMessages | Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChatParticipants | Update.updateUserStatus | Update.updateUserName | Update.updateNewAuthorization | Update.updateNewEncryptedMessage | Update.updateEncryptedChatTyping | Update.updateEncryption | Update.updateEncryptedMessagesRead | Update.updateChatParticipantAdd | Update.updateChatParticipantDelete | Update.updateDcOptions | Update.updateNotifySettings | Update.updateServiceNotification | Update.updatePrivacy | Update.updateUserPhone | Update.updateReadHistoryInbox | Update.updateReadHistoryOutbox | Update.updateWebPage | Update.updateReadMessagesContents | Update.updateChannelTooLong | Update.updateChannel | Update.updateNewChannelMessage | Update.updateReadChannelInbox | Update.updateDeleteChannelMessages | Update.updateChannelMessageViews | Update.updateChatParticipantAdmin | Update.updateNewStickerSet | Update.updateStickerSetsOrder | Update.updateStickerSets | Update.updateSavedGifs | Update.updateBotInlineQuery | Update.updateBotInlineSend | Update.updateEditChannelMessage | Update.updateBotCallbackQuery | Update.updateEditMessage | Update.updateInlineBotCallbackQuery | Update.updateReadChannelOutbox | Update.updateDraftMessage | Update.updateReadFeaturedStickers | Update.updateRecentStickers | Update.updateConfig | Update.updatePtsChanged | Update.updateChannelWebPage | Update.updateDialogPinned | Update.updatePinnedDialogs | Update.updateBotWebhookJSON | Update.updateBotWebhookJSONQuery | Update.updateBotShippingQuery | Update.updateBotPrecheckoutQuery | Update.updatePhoneCall | Update.updateLangPackTooLong | Update.updateLangPack | Update.updateFavedStickers | Update.updateChannelReadMessagesContents | Update.updateContactsReset | Update.updateChannelAvailableMessages | Update.updateDialogUnreadMark | Update.updateMessagePoll | Update.updateChatDefaultBannedRights | Update.updateFolderPeers | Update.updatePeerSettings | Update.updatePeerLocated | Update.updateNewScheduledMessage | Update.updateDeleteScheduledMessages | Update.updateTheme | Update.updateGeoLiveViewed | Update.updateLoginToken | Update.updateMessagePollVote | Update.updateDialogFilter | Update.updateDialogFilterOrder | Update.updateDialogFilters | Update.updatePhoneCallSignalingData | Update.updateChannelMessageForwards | Update.updateReadChannelDiscussionInbox | Update.updateReadChannelDiscussionOutbox | Update.updatePeerBlocked | Update.updateChannelUserTyping | Update.updatePinnedMessages | Update.updatePinnedChannelMessages | Update.updateChat | Update.updateGroupCallParticipants | Update.updateGroupCall | Update.updatePeerHistoryTTL | Update.updateChatParticipant | Update.updateChannelParticipant | Update.updateBotStopped | Update.updateGroupCallConnection | Update.updateBotCommands | Update.updatePendingJoinRequests | Update.updateBotChatInviteRequester | Update.updateMessageReactions | Update.updateAttachMenuBots | Update.updateWebViewResultSent | Update.updateBotMenuButton | Update.updateSavedRingtones | Update.updateTranscribedAudio | Update.updateReadFeaturedEmojiStickers | Update.updateUserEmojiStatus | Update.updateRecentEmojiStatuses | Update.updateRecentReactions | Update.updateMoveStickerSetToTop | Update.updateMessageExtendedMedia | Update.updateUser | Update.updateAutoSaveSettings | Update.updateStory | Update.updateReadStories | Update.updateStoryID | Update.updateStoriesStealthMode | Update.updateSentStoryReaction | Update.updateBotChatBoost | Update.updateChannelViewForumAsMessages | Update.updatePeerWallpaper | Update.updateBotMessageReaction | Update.updateBotMessageReactions | Update.updateSavedDialogPinned | Update.updatePinnedSavedDialogs | Update.updateSavedReactionTags | Update.updateSmsJob | Update.updateQuickReplies | Update.updateNewQuickReply | Update.updateDeleteQuickReply | Update.updateQuickReplyMessage | Update.updateDeleteQuickReplyMessages | Update.updateBotBusinessConnect | Update.updateBotNewBusinessMessage | Update.updateBotEditBusinessMessage | Update.updateBotDeleteBusinessMessage | Update.updateNewStoryReaction | Update.updateStarsBalance | Update.updateBusinessBotCallbackQuery | Update.updateStarsRevenueStatus | Update.updateBotPurchasedPaidMedia | Update.updatePaidReactionPrivacy | Update.updateSentPhoneCode | Update.updateGroupCallChainBlocks | Update.updateReadMonoForumInbox | Update.updateReadMonoForumOutbox | Update.updateMonoForumNoPaidException | Update.updateGroupCallMessage | Update.updateGroupCallEncryptedMessage | Update.updatePinnedForumTopic | Update.updatePinnedForumTopics | Update.updateDeleteGroupCallMessages | Update.updateStarGiftAuctionState | Update.updateStarGiftAuctionUserState | Update.updateEmojiGameInfo | Update.updateStarGiftCraftFail | Update.updateChatParticipantRank | Update.updateManagedBot | Update.updateBotGuestChatQuery | Update.updateAiComposeTones | Update.updateNewDiscussionMessage | Update.updateDeleteDiscussionMessages | Update.updateChannelReload | Update.updatePts;
 
 export namespace Update {
   export type updateNewMessage = {
@@ -3840,6 +3843,19 @@ export namespace Update {
     user_id: string | number,
     bot_id: string | number,
     qts: number
+  };
+
+  export type updateBotGuestChatQuery = {
+    _: 'updateBotGuestChatQuery',
+    flags?: number,
+    query_id: string | number,
+    message: Message,
+    reference_messages?: Array<Message>,
+    qts: number
+  };
+
+  export type updateAiComposeTones = {
+    _: 'updateAiComposeTones'
   };
 
   export type updateNewDiscussionMessage = {
@@ -6729,7 +6745,7 @@ export namespace TopPeer {
 /**
  * @link https://core.telegram.org/type/TopPeerCategory
  */
-export type TopPeerCategory = TopPeerCategory.topPeerCategoryBotsPM | TopPeerCategory.topPeerCategoryBotsInline | TopPeerCategory.topPeerCategoryCorrespondents | TopPeerCategory.topPeerCategoryGroups | TopPeerCategory.topPeerCategoryChannels | TopPeerCategory.topPeerCategoryPhoneCalls | TopPeerCategory.topPeerCategoryForwardUsers | TopPeerCategory.topPeerCategoryForwardChats | TopPeerCategory.topPeerCategoryBotsApp;
+export type TopPeerCategory = TopPeerCategory.topPeerCategoryBotsPM | TopPeerCategory.topPeerCategoryBotsInline | TopPeerCategory.topPeerCategoryCorrespondents | TopPeerCategory.topPeerCategoryGroups | TopPeerCategory.topPeerCategoryChannels | TopPeerCategory.topPeerCategoryPhoneCalls | TopPeerCategory.topPeerCategoryForwardUsers | TopPeerCategory.topPeerCategoryForwardChats | TopPeerCategory.topPeerCategoryBotsApp | TopPeerCategory.topPeerCategoryBotsGuestChat;
 
 export namespace TopPeerCategory {
   export type topPeerCategoryBotsPM = {
@@ -6766,6 +6782,10 @@ export namespace TopPeerCategory {
 
   export type topPeerCategoryBotsApp = {
     _: 'topPeerCategoryBotsApp'
+  };
+
+  export type topPeerCategoryBotsGuestChat = {
+    _: 'topPeerCategoryBotsGuestChat'
   };
 }
 
@@ -9396,11 +9416,13 @@ export namespace Poll {
       shuffle_answers?: true,
       hide_results_until_close?: true,
       creator?: true,
+      subscribers_only?: true,
     }>,
     question: TextWithEntities,
     answers: Array<PollAnswer>,
     close_period?: number,
     close_date?: number,
+    countries_iso2?: Array<string>,
     hash: string | number,
     chosenIndexes?: number[],
     correctIndexes?: number[]
@@ -9438,6 +9460,7 @@ export namespace PollResults {
     pFlags: Partial<{
       min?: true,
       has_unread_votes?: true,
+      can_view_stats?: true,
     }>,
     results?: Array<PollAnswerVoters>,
     total_voters?: number,
@@ -9534,6 +9557,7 @@ export namespace ChatBannedRights {
       send_docs?: true,
       send_plain?: true,
       edit_rank?: true,
+      send_reactions?: true,
     }>,
     until_date: number
   };
@@ -10057,7 +10081,7 @@ export namespace ThemeSettings {
 /**
  * @link https://core.telegram.org/type/WebPageAttribute
  */
-export type WebPageAttribute = WebPageAttribute.webPageAttributeTheme | WebPageAttribute.webPageAttributeStory | WebPageAttribute.webPageAttributeStickerSet | WebPageAttribute.webPageAttributeUniqueStarGift | WebPageAttribute.webPageAttributeStarGiftCollection | WebPageAttribute.webPageAttributeStarGiftAuction;
+export type WebPageAttribute = WebPageAttribute.webPageAttributeTheme | WebPageAttribute.webPageAttributeStory | WebPageAttribute.webPageAttributeStickerSet | WebPageAttribute.webPageAttributeUniqueStarGift | WebPageAttribute.webPageAttributeStarGiftCollection | WebPageAttribute.webPageAttributeStarGiftAuction | WebPageAttribute.webPageAttributeAiComposeTone;
 
 export namespace WebPageAttribute {
   export type webPageAttributeTheme = {
@@ -10099,6 +10123,11 @@ export namespace WebPageAttribute {
     _: 'webPageAttributeStarGiftAuction',
     gift: StarGift,
     end_date: number
+  };
+
+  export type webPageAttributeAiComposeTone = {
+    _: 'webPageAttributeAiComposeTone',
+    emoji_id: string | number
   };
 }
 
@@ -10577,6 +10606,7 @@ export namespace MessageReplyHeader {
       reply_to_scheduled?: true,
       forum_topic?: true,
       quote?: true,
+      reply_to_ephemeral?: true,
     }>,
     reply_to_msg_id?: number,
     reply_to_peer_id?: Peer,
@@ -11937,6 +11967,7 @@ export namespace InputStorePaymentPurpose {
     }>,
     phone_number: string,
     phone_code_hash: string,
+    premium_days: number,
     currency: string,
     amount: string | number
   };
@@ -16407,6 +16438,119 @@ export namespace MessagesComposedMessageWithAI {
   };
 }
 
+/**
+ * @link https://core.telegram.org/type/stats.PollStats
+ */
+export type StatsPollStats = StatsPollStats.statsPollStats;
+
+export namespace StatsPollStats {
+  export type statsPollStats = {
+    _: 'stats.pollStats',
+    votes_graph: StatsGraph
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/InputAiComposeTone
+ */
+export type InputAiComposeTone = InputAiComposeTone.inputAiComposeToneDefault | InputAiComposeTone.inputAiComposeToneID | InputAiComposeTone.inputAiComposeToneSlug;
+
+export namespace InputAiComposeTone {
+  export type inputAiComposeToneDefault = {
+    _: 'inputAiComposeToneDefault',
+    tone: string
+  };
+
+  export type inputAiComposeToneID = {
+    _: 'inputAiComposeToneID',
+    id: string | number,
+    access_hash: string | number
+  };
+
+  export type inputAiComposeToneSlug = {
+    _: 'inputAiComposeToneSlug',
+    slug: string
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/AiComposeTone
+ */
+export type AiComposeTone = AiComposeTone.aiComposeTone | AiComposeTone.aiComposeToneDefault;
+
+export namespace AiComposeTone {
+  export type aiComposeTone = {
+    _: 'aiComposeTone',
+    flags?: number,
+    pFlags: Partial<{
+      creator?: true,
+    }>,
+    id: string | number,
+    access_hash: string | number,
+    slug: string,
+    title: string,
+    emoji_id?: string | number,
+    prompt?: string,
+    installs_count?: number,
+    author_id?: string | number,
+    example_english?: AiComposeToneExample
+  };
+
+  export type aiComposeToneDefault = {
+    _: 'aiComposeToneDefault',
+    tone: string,
+    emoji_id: string | number,
+    title: string
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/aicompose.Tones
+ */
+export type AicomposeTones = AicomposeTones.aicomposeTonesNotModified | AicomposeTones.aicomposeTones;
+
+export namespace AicomposeTones {
+  export type aicomposeTonesNotModified = {
+    _: 'aicompose.tonesNotModified'
+  };
+
+  export type aicomposeTones = {
+    _: 'aicompose.tones',
+    hash: string | number,
+    tones: Array<AiComposeTone>,
+    users: Array<User>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/AiComposeToneExample
+ */
+export type AiComposeToneExample = AiComposeToneExample.aiComposeToneExample;
+
+export namespace AiComposeToneExample {
+  export type aiComposeToneExample = {
+    _: 'aiComposeToneExample',
+    from: TextWithEntities,
+    to: TextWithEntities
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/bots.AccessSettings
+ */
+export type BotsAccessSettings = BotsAccessSettings.botsAccessSettings;
+
+export namespace BotsAccessSettings {
+  export type botsAccessSettings = {
+    _: 'bots.accessSettings',
+    flags?: number,
+    pFlags: Partial<{
+      restricted?: true,
+    }>,
+    add_users?: Array<User>
+  };
+}
+
 export interface ConstructorDeclMap {
   'error': Error.error,
   'inputPeerEmpty': InputPeer.inputPeerEmpty,
@@ -17963,6 +18107,20 @@ export interface ConstructorDeclMap {
   'messageEntityDiffReplace': MessageEntity.messageEntityDiffReplace,
   'messageEntityDiffDelete': MessageEntity.messageEntityDiffDelete,
   'messages.composedMessageWithAI': MessagesComposedMessageWithAI.messagesComposedMessageWithAI,
+  'stats.pollStats': StatsPollStats.statsPollStats,
+  'updateBotGuestChatQuery': Update.updateBotGuestChatQuery,
+  'topPeerCategoryBotsGuestChat': TopPeerCategory.topPeerCategoryBotsGuestChat,
+  'inputAiComposeToneDefault': InputAiComposeTone.inputAiComposeToneDefault,
+  'inputAiComposeToneID': InputAiComposeTone.inputAiComposeToneID,
+  'inputAiComposeToneSlug': InputAiComposeTone.inputAiComposeToneSlug,
+  'aiComposeTone': AiComposeTone.aiComposeTone,
+  'aiComposeToneDefault': AiComposeTone.aiComposeToneDefault,
+  'aicompose.tonesNotModified': AicomposeTones.aicomposeTonesNotModified,
+  'aicompose.tones': AicomposeTones.aicomposeTones,
+  'aiComposeToneExample': AiComposeToneExample.aiComposeToneExample,
+  'updateAiComposeTones': Update.updateAiComposeTones,
+  'webPageAttributeAiComposeTone': WebPageAttribute.webPageAttributeAiComposeTone,
+  'bots.accessSettings': BotsAccessSettings.botsAccessSettings,
   'messageEntityEmoji': MessageEntity.messageEntityEmoji,
   'messageEntityHighlight': MessageEntity.messageEntityHighlight,
   'messageEntityLinebreak': MessageEntity.messageEntityLinebreak,
@@ -18975,6 +19133,7 @@ export type ContactsGetTopPeers = {
   groups?: boolean,
   channels?: boolean,
   bots_app?: boolean,
+  bots_guestchat?: boolean,
   offset: number,
   limit: number,
   hash: string | number
@@ -22483,7 +22642,7 @@ export type MessagesComposeMessageWithAI = {
   emojify?: boolean,
   text: TextWithEntities,
   translate_to_lang?: string,
-  change_tone?: string
+  tone?: InputAiComposeTone
 };
 
 export type MessagesReportReadMetrics = {
@@ -22550,6 +22709,87 @@ export type BotsRequestWebViewButton = {
 export type BotsGetRequestedWebViewButton = {
   bot: InputUser,
   webapp_req_id: string
+};
+
+export type StatsGetPollStats = {
+  flags?: number,
+  dark?: boolean,
+  peer: InputPeer,
+  msg_id: number
+};
+
+export type MessagesSetBotGuestChatResult = {
+  query_id: string | number,
+  result: InputBotInlineResult
+};
+
+export type AicomposeCreateTone = {
+  flags?: number,
+  display_author?: boolean,
+  emoji_id: string | number,
+  title: string,
+  prompt: string
+};
+
+export type AicomposeUpdateTone = {
+  flags?: number,
+  tone: InputAiComposeTone,
+  display_author?: boolean,
+  emoji_id?: string | number,
+  title?: string,
+  prompt?: string
+};
+
+export type AicomposeSaveTone = {
+  tone: InputAiComposeTone,
+  unsave: boolean
+};
+
+export type AicomposeDeleteTone = {
+  tone: InputAiComposeTone
+};
+
+export type AicomposeGetTone = {
+  tone: InputAiComposeTone
+};
+
+export type AicomposeGetTones = {
+  hash: string | number
+};
+
+export type AicomposeGetToneExample = {
+  tone: InputAiComposeTone,
+  num: number
+};
+
+export type BotsGetAccessSettings = {
+  bot: InputUser
+};
+
+export type BotsEditAccessSettings = {
+  flags?: number,
+  restricted?: boolean,
+  bot: InputUser,
+  add_users?: Array<InputUser>
+};
+
+export type MessagesDeleteParticipantReactions = {
+  peer: InputPeer,
+  participant: InputPeer
+};
+
+export type MessagesDeleteParticipantReaction = {
+  peer: InputPeer,
+  msg_id: number,
+  participant: InputPeer
+};
+
+export type MessagesGetPersonalChannelHistory = {
+  user_id: InputUser,
+  limit: number,
+  max_id: number,
+  min_id: number,
+  hash: string | number
 };
 
 export interface MethodDeclMap {
@@ -23322,5 +23562,19 @@ export interface MethodDeclMap {
   'messages.readPollVotes': {req: MessagesReadPollVotes, res: MessagesAffectedHistory},
   'bots.requestWebViewButton': {req: BotsRequestWebViewButton, res: BotsRequestedButton},
   'bots.getRequestedWebViewButton': {req: BotsGetRequestedWebViewButton, res: KeyboardButton},
+  'stats.getPollStats': {req: StatsGetPollStats, res: StatsPollStats},
+  'messages.setBotGuestChatResult': {req: MessagesSetBotGuestChatResult, res: InputBotInlineMessageID},
+  'aicompose.createTone': {req: AicomposeCreateTone, res: AiComposeTone},
+  'aicompose.updateTone': {req: AicomposeUpdateTone, res: AiComposeTone},
+  'aicompose.saveTone': {req: AicomposeSaveTone, res: boolean},
+  'aicompose.deleteTone': {req: AicomposeDeleteTone, res: boolean},
+  'aicompose.getTone': {req: AicomposeGetTone, res: AicomposeTones},
+  'aicompose.getTones': {req: AicomposeGetTones, res: AicomposeTones},
+  'aicompose.getToneExample': {req: AicomposeGetToneExample, res: AiComposeToneExample},
+  'bots.getAccessSettings': {req: BotsGetAccessSettings, res: BotsAccessSettings},
+  'bots.editAccessSettings': {req: BotsEditAccessSettings, res: boolean},
+  'messages.deleteParticipantReactions': {req: MessagesDeleteParticipantReactions, res: boolean},
+  'messages.deleteParticipantReaction': {req: MessagesDeleteParticipantReaction, res: Updates},
+  'messages.getPersonalChannelHistory': {req: MessagesGetPersonalChannelHistory, res: MessagesMessages},
 }
 
