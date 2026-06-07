@@ -2262,7 +2262,11 @@ export default class AppMediaViewerBase<
       let img: HTMLImageElement | HTMLCanvasElement;
       if(cacheContext.downloaded) {
         img = new Image();
-        img.src = cacheContext.url;
+        // Await decode: setMoverToTarget draws this thumbnail onto a canvas via
+        // drawImage, which yields a BLANK canvas for a not-yet-decoded image —
+        // so without this the (container-target) slide would be empty until it
+        // ends. Mirrors the stripped-thumb branch below, which already awaits.
+        thumbPromise = renderImageFromUrlPromise(img, cacheContext.url, false).catch(() => {});
       } else {
         const gotThumb = getMediaThumbIfNeeded({
           photo: media,

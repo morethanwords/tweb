@@ -1272,6 +1272,7 @@ export default class ChatTopbar {
           threadId: useThreadId,
           wrapOptions: {customEmojiSize: makeMediaSize(30, 30)},
           withStories: true,
+          withVideoAvatar: true,
           meAsNotes: isSaved
         });
         newAvatar.node.classList.add('person-avatar');

@@ -2427,6 +2427,37 @@
     }
   }
 
+  // Generic "media + caption + button" service bubble (e.g. suggested profile
+  // photo). Centered round media, modeled on the story-mention bubble above.
+  &-service-media {
+    &-wrapper {
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      width: 184px;
+      padding: 1.125rem 1rem .625rem !important;
+    }
+
+    &-avatar-container {
+      position: relative;
+      width: 100px;
+      height: 100px;
+      display: flex;
+
+      &.is-clickable {
+        cursor: pointer;
+      }
+    }
+
+    &-text {
+      margin-top: .75rem;
+    }
+
+    &-button {
+      margin-top: .625rem;
+    }
+  }
+
   &.is-giveaway &-content {
     max-width: 20rem;
   }

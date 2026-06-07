@@ -1,5 +1,5 @@
 import isObject from '@helpers/object/isObject';
-import {Photo, MessageAction, Message} from '@layer';
+import {Photo, MessageAction, Message, UserFull} from '@layer';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import rootScope from '@lib/rootScope';
 import AppMediaViewer from '@components/appMediaViewer';
@@ -80,12 +80,23 @@ export default async function openAvatarViewer(
       photo = await rootScope.managers.appPhotosManager.getPhoto(message);
     }
 
+    // The public (fallback) photo is shown as the LAST item on the user's own
+    // profile; pass its id so the viewer's loader keeps it last and never paginates
+    // from it. Self only — fallback_photo isn't sent for other users.
+    let fallbackPhotoId: Photo.photo['id'];
+    if(peerId === rootScope.myId) {
+      const userFull = await rootScope.managers.appProfileManager.getProfile(peerId.toUserId());
+      const fallback = (userFull as UserFull.userFull)?.fallback_photo as Photo.photo;
+      if(fallback?._ === 'photo') fallbackPhotoId = fallback.id;
+      if(!middleware()) return;
+    }
+
     const f = (arr: typeof prevTargets) => arr.map((el) => ({
       element: el.element,
       photoId: el.item as string
     }));
 
-    new AppMediaViewerAvatar(peerId).openMedia({
+    new AppMediaViewerAvatar(peerId, fallbackPhotoId).openMedia({
       photoId: photo.id,
       target: getTarget(),
       prevTargets: prevTargets ? f(prevTargets) : undefined,

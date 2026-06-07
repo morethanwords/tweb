@@ -71,9 +71,18 @@ export default async function renderToActualVideo({
 
   const owner = getOwner();
 
+  // Profile video avatars must stay within the server's spec — ≤30fps and ≤10s
+  // (official clients cap there). Without this a high-res 60fps source produces
+  // a 60fps file the server rejects, and a >10s source an over-long one. These
+  // back up the trim UI's reactive clamp so the produced clip is always valid.
+  const AVATAR_MAX_FPS = 30;
+  const AVATAR_MAX_DURATION = 10;
+  const minEncodeInterval = context.isVideoAvatarMode ? 1 / AVATAR_MAX_FPS : 0;
+
   video.muted = true;
   const startTime = video.duration * videoCropStart;
-  const endTime = video.duration * (videoCropStart + videoCropLength);
+  const rawEndTime = video.duration * (videoCropStart + videoCropLength);
+  const endTime = context.isVideoAvatarMode ? Math.min(rawEndTime, startTime + AVATAR_MAX_DURATION) : rawEndTime;
 
   const creationProgress = createSignal(0);
   const [progress, setProgress] = creationProgress;
@@ -85,11 +94,16 @@ export default async function renderToActualVideo({
   const thumbnailCtx = thumbnailCanvas.getContext('2d');
 
   const thumbnailTime = videoThumbnailPosition * video.duration;
+  // The encode loop tracks clip-relative time (mediaTime - startTime), so the
+  // in-loop cover capture must compare against the clip-relative cover time;
+  // the out-of-loop fallback seeks the source video to `thumbnailTime` directly.
+  const thumbnailTimeInClip = thumbnailTime - startTime;
 
   let
     currentVideoFrameDeferred: CancellablePromise<number>,
     encodingPausedDeferred: CancellablePromise<void>,
     lastTime = 0,
+    lastEncodedTime = -Infinity,
     frameCallbackId: number,
     drewThumbnail = false,
     canceled = false,
@@ -151,10 +165,19 @@ export default async function renderToActualVideo({
       error: (e) => console.error(e)
     });
 
+    const codecAndBitrate = calcCodecAndBitrate(scaledWidth, scaledHeight, BITRATE_TARGET_FPS);
+    // Profile video avatars: clamp the bitrate so a ~10s clip stays under the
+    // server's profile-video size limit (~2MB). The generic editor bitrate
+    // (6-20 Mbps) would produce multi-MB files the server rejects/re-encodes.
+    if(context.isVideoAvatarMode) {
+      const AVATAR_MAX_BITRATE = 1.5e6;
+      codecAndBitrate.bitrate = Math.min(codecAndBitrate.bitrate, AVATAR_MAX_BITRATE);
+    }
+
     encoder.configure({
       width: scaledWidth,
       height: scaledHeight,
-      ...calcCodecAndBitrate(scaledWidth, scaledHeight, BITRATE_TARGET_FPS)
+      ...codecAndBitrate
     });
 
     return {muxer, encoder, audioBuffer};
@@ -246,6 +269,13 @@ export default async function renderToActualVideo({
 
     lastTime = currentTime;
 
+    // Avatar fps cap: skip encoding frames that fall within the same 1/30s slot
+    // as the previously encoded one (still advances the source frame-by-frame).
+    if(frameNo !== 0 && currentTime - lastEncodedTime < minEncodeInterval - VIDEO_COMPARISON_ERROR) {
+      return;
+    }
+    lastEncodedTime = currentTime;
+
     await renderFrame({
       frameNo: currentTime * FRAMES_PER_SECOND | 0,
       timestamp: currentTime * 1e6 | 0,
@@ -254,7 +284,7 @@ export default async function renderToActualVideo({
     });
 
     // Save the thumbnail if it's more or less in the same frame as the current time
-    if(!drewThumbnail && thumbnailTime - 0.5 / EXPECTED_FPS <= currentTime && currentTime <= thumbnailTime + 0.5 / EXPECTED_FPS) {
+    if(!drewThumbnail && thumbnailTimeInClip - 0.5 / EXPECTED_FPS <= currentTime && currentTime <= thumbnailTimeInClip + 0.5 / EXPECTED_FPS) {
       drewThumbnail = true;
       thumbnailCtx.drawImage(resultCanvas, 0, 0, thumbnailCanvas.width, thumbnailCanvas.height);
     }
@@ -475,6 +505,7 @@ export default async function renderToActualVideo({
   return {
     preview,
     isVideo: true,
+    videoDuration: video.duration,
     getResult: () => {
       return result ?? resultPromise;
     },
