@@ -86,21 +86,19 @@
   font-weight: var(--font-weight-bold);
   --padding-top: 0.75rem;
   padding: var(--padding-top) var(--content-padding-x) 0.5rem;
-  /* height: 40px; */
 
   border-top-left-radius: inherit;
   border-top-right-radius: inherit;
 
   &.clickable {
-    --hover-color: hsla(from var(--primary-color) h s l / 0.1);
-    --ripple-color: hsla(from var(--primary-color) h s l / 0.075);
-
     cursor: pointer;
-    @include hover-global(var(--hover-color), background-color, true);
+
+    --hover-color: rgba(0, 0, 0, 0.07);
+
+    @include hover-global(var(--hover-color), --arrow-bg, false);
 
     :global(.night) & {
-      --hover-color: var(--light-secondary-text-color);
-      --ripple-color: var(--original-ripple-color);
+      --hover-color: rgba(255, 255, 255, 0.07);
     }
   }
 
@@ -113,7 +111,12 @@
   transform: translateY(-50%) rotate(180deg);
 
   color: var(--primary-color);
-  transition: transform 0.2s ease-in-out;
+  transition: transform 0.2s, background-color 0.2s;
+
+  padding: 0.25rem;
+  border-radius: 50%;
+
+  background-color: var(--arrow-bg);
 
   &.toggled {
     transform: translateY(-50%) rotate(0deg);
