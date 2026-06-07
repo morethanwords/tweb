@@ -36,6 +36,7 @@ export class AppCallsManager extends AppManager {
       },
 
       updatePhoneCallSignalingData: (update) => {
+        this.log('signaling data', update.phone_call_id, update.data?.length);
         this.rootScope.dispatchEvent('call_signaling', {callId: update.phone_call_id, data: update.data});
       },
 
@@ -44,8 +45,9 @@ export class AppCallsManager extends AppManager {
       // distinguishes the main chain (blocks) from the broadcast channel.
       updateGroupCallChainBlocks: (update) => {
         if(update.call._ !== 'inputGroupCall') return;
+        this.log('chain blocks', update.call.id, {subChainId: update.sub_chain_id, blocks: update.blocks?.length, nextOffset: update.next_offset});
         this.rootScope.dispatchEvent('group_call_chain_blocks', {
-          callId: String(update.call.id),
+          callId: update.call.id,
           subChainId: update.sub_chain_id,
           blocks: update.blocks,
           nextOffset: update.next_offset
@@ -55,11 +57,13 @@ export class AppCallsManager extends AppManager {
   }
 
   public computeKey(g_b: Uint8Array, a: Uint8Array, p: Uint8Array) {
+    this.log('computeKey (DH)');
     return this.cryptoWorker.invokeCrypto('compute-dh-key', g_b, a, p);
   }
 
   public saveCall(call: PhoneCall) {
     const isDiscarded = call._ === 'phoneCallDiscarded';
+    this.log('saveCall', call.id, call._, isDiscarded ? (call as PhoneCall.phoneCallDiscarded).reason?._ : undefined);
     const oldCall = this.calls.get(call.id);
     if(oldCall) {
       // if(shouldUpdate) {
@@ -117,6 +121,7 @@ export class AppCallsManager extends AppManager {
   }
 
   public generateDh() {
+    this.log('generateDh');
     return this.apiManager.invokeApi('messages.getDhConfig', {
       version: 0,
       random_length: 256
@@ -134,6 +139,7 @@ export class AppCallsManager extends AppManager {
   // }
 
   public async requestCall(userId: UserId, protocol: PhoneCallProtocol, g_a_hash: Uint8Array, video?: boolean) {
+    this.log('requestCall', userId, {video});
     const phonePhoneCall = await this.apiManager.invokeApi('phone.requestCall', {
       user_id: this.appUsersManager.getUserInput(userId),
       protocol: protocol,
@@ -151,7 +157,9 @@ export class AppCallsManager extends AppManager {
     reason: PhoneCallDiscardReason,
     video?: boolean
   ) {
+    this.log('discardCall', callId, {duration, reason: reason?._, video});
     if(!this.getCall(callId)) {
+      this.log.warn('discardCall: unknown call', callId);
       return;
     }
 
@@ -179,6 +187,7 @@ export class AppCallsManager extends AppManager {
   // create-then-join flow (matches tdesktop's `MakeConferenceCall` +
   // iOS's `_internal_createConferenceCall`).
   public createEmptyConferenceCall(): Promise<Updates> {
+    this.log('createEmptyConferenceCall');
     return this.apiManager.invokeApi('phone.createConferenceCall', {
       random_id: nextRandomUint(32)
     });
@@ -196,6 +205,7 @@ export class AppCallsManager extends AppManager {
     muted?: boolean;
     videoStopped?: boolean;
   }): Promise<Updates> {
+    this.log('createAndJoinConferenceCall', {muted: opts.muted, videoStopped: opts.videoStopped});
     return this.apiManager.invokeApi('phone.createConferenceCall', {
       muted: opts.muted,
       video_stopped: opts.videoStopped,
@@ -214,6 +224,7 @@ export class AppCallsManager extends AppManager {
     userId: UserId,
     video?: boolean
   ): Promise<Updates> {
+    this.log('inviteConferenceCallParticipant', 'id' in call ? call.id : call._, userId, {video});
     return this.apiManager.invokeApi('phone.inviteConferenceCallParticipant', {
       video,
       call,
@@ -224,6 +235,7 @@ export class AppCallsManager extends AppManager {
   // Decline an invitation we received. msgId is the service message id that
   // carried the invite.
   public declineConferenceCallInvite(msgId: number): Promise<Updates> {
+    this.log('declineConferenceCallInvite', msgId);
     return this.apiManager.invokeApi('phone.declineConferenceCallInvite', {
       msg_id: msgId
     });
@@ -238,6 +250,7 @@ export class AppCallsManager extends AppManager {
     onlyLeft?: boolean;
     kick?: boolean;
   }): Promise<Updates> {
+    this.log('deleteConferenceCallParticipants', 'id' in opts.call ? opts.call.id : opts.call._, {ids: opts.ids, kick: opts.kick, onlyLeft: opts.onlyLeft});
     return this.apiManager.invokeApi('phone.deleteConferenceCallParticipants', {
       only_left: opts.onlyLeft,
       kick: opts.kick,
@@ -253,6 +266,7 @@ export class AppCallsManager extends AppManager {
     call: InputGroupCall,
     block: Uint8Array
   ): Promise<Updates> {
+    this.log('sendConferenceCallBroadcast', 'id' in call ? call.id : call._, {bytes: block?.length});
     return this.apiManager.invokeApi('phone.sendConferenceCallBroadcast', {
       call,
       block
@@ -267,6 +281,7 @@ export class AppCallsManager extends AppManager {
     offset: number,
     limit: number
   ) {
+    this.log('getGroupCallChainBlocks', 'id' in call ? call.id : call._, {subChainId, offset, limit});
     return this.apiManager.invokeApi('phone.getGroupCallChainBlocks', {
       call,
       sub_chain_id: subChainId,

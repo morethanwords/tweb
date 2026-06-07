@@ -11,7 +11,9 @@ import I18n from '@lib/langPack';
 import SearchListLoader from '@helpers/searchListLoader';
 import copy from '@helpers/object/copy';
 import deepEqual from '@helpers/object/deepEqual';
+import clamp from '@helpers/number/clamp';
 import ListenerSetter from '@helpers/listenerSetter';
+import MusicListenTracker from '@helpers/musicListenTracker';
 import {AppManagers} from '@lib/managers';
 import getMediaFromMessage from '@appManagers/utils/messages/getMediaFromMessage';
 import getPeerTitle from '@components/wrappers/getPeerTitle';
@@ -127,11 +129,20 @@ export class AppMediaPlaybackController extends EventListenerBase<{
   private listLoaderFactory: MediaListLoaderFactory;
 
   public volume: number;
+  /**
+   * Voice/round-only boost added on top of the shared `volume` (WebAudio gain, see
+   * {@link applyVolumeToMedia}). The 0–100% slider range maps to the shared `volume`
+   * (common with video/music); the 100–200% range maps to this boost, so amplifying a
+   * voice never bleeds into video/music. Both `volume` and `boost` are clamped to [0, 1];
+   * effective voice volume = `volume + boost` ∈ [0, 2].
+   */
+  public boost: number;
   public muted: boolean;
   public playbackRate: number;
   public loop: boolean;
   public round: boolean;
   private _volume: number;
+  private _boost: number;
   private _muted: boolean;
   private _playbackRate: number;
   private _loop: boolean;
@@ -150,8 +161,16 @@ export class AppMediaPlaybackController extends EventListenerBase<{
   private gainAudioContext: AudioContext;
   private mediaGainMap: WeakMap<HTMLMediaElement, {source: MediaElementAudioSourceNode, gain: GainNode, limiter: DynamicsCompressorNode}> = new WeakMap();
 
+  // Music-listen reporting (messages.reportMusicListen) — owned by MusicListenTracker; the
+  // controller just forwards the play/stop events below.
+  private musicListenTracker: MusicListenTracker;
+
   construct(managers: AppManagers) {
     this.managers = managers;
+    this.musicListenTracker = new MusicListenTracker((inputDoc, listenedDuration) => {
+      // Fire-and-forget analytics — swallow errors (e.g. a stale file_reference) so they don't surface.
+      this.managers.appMessagesManager.reportMusicListen(inputDoc, listenedDuration).catch(() => {});
+    });
     this.container = document.createElement('div');
     // this.container.style.cssText = 'position: absolute; top: -10000px; left: -10000px;';
     this.container.style.cssText = 'display: none;';
@@ -201,6 +220,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     const properties: {[key: PropertyKey]: PropertyDescriptor} = {};
     const keys = [
       'volume' as const,
+      'boost' as const,
       'muted' as const,
       'playbackRate' as const,
       'loop' as const,
@@ -211,6 +231,12 @@ export class AppMediaPlaybackController extends EventListenerBase<{
       properties[key] = {
         get: () => this[_key],
         set: (value: number | boolean) => {
+          // Shared master volume and the voice-only boost both stay in [0, 1]; their sum
+          // (effective voice volume) tops out at 200%, the boost never touches video/music.
+          if(key === 'volume' || key === 'boost') {
+            value = clamp(value as number, 0, 1);
+          }
+
           if(this[_key] === value) {
             return;
           }
@@ -218,8 +244,8 @@ export class AppMediaPlaybackController extends EventListenerBase<{
           // @ts-ignore
           this[_key] = value;
           if(this.playingMedia && (key !== 'loop' || this.playingMediaType === 'audio') && key !== 'round') {
-            if(key === 'volume' || key === 'muted') {
-              this.applyVolumeToMedia(this.playingMedia, this.volume, this.muted, this.playingMediaType);
+            if(key === 'volume' || key === 'muted' || key === 'boost') {
+              this.applyVolumeToMedia(this.playingMedia, this.getVolumeForType(this.playingMediaType), this.muted, this.playingMediaType);
             } else {
               // @ts-ignore
               this.playingMedia[key] = value;
@@ -236,14 +262,20 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     });
     Object.defineProperties(this, properties);
 
-    this.addEventListener('play', ({doc}) => {
-      if(doc.type === 'round') {
+    this.addEventListener('play', (details) => {
+      if(details.doc.type === 'round') {
         animationIntersector.toggleMediaPause(false);
       }
+
+      this.musicListenTracker.onPlay(details);
     });
 
     this.addEventListener('pause', () => {
       animationIntersector.toggleMediaPause(true);
+    });
+
+    this.addEventListener('stop', () => {
+      this.musicListenTracker.finish();
     });
   }
 
@@ -285,6 +317,14 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     }
   }
 
+  /**
+   * Volume to feed playback for a given media type: voice/round add their boost on top of
+   * the shared master, everything else uses the shared master alone.
+   */
+  private getVolumeForType(mediaType: PlaybackMediaType) {
+    return mediaType === 'voice' ? clamp(this._volume + this._boost, 0, 2) : this._volume;
+  }
+
   private applyVolumeToMedia(
     media: HTMLMediaElement,
     volume: number,
@@ -315,9 +355,10 @@ export class AppMediaPlaybackController extends EventListenerBase<{
   }
 
   public getPlaybackParams() {
-    const {volume, muted, playbackRate, playbackRates, loop, round} = this;
+    const {volume, boost, muted, playbackRate, playbackRates, loop, round} = this;
     return {
       volume,
+      boost,
       muted,
       playbackRate,
       playbackRates,
@@ -328,7 +369,11 @@ export class AppMediaPlaybackController extends EventListenerBase<{
 
   public setPlaybackParams(params: ReturnType<AppMediaPlaybackController['getPlaybackParams']>) {
     this.playbackRates = params.playbackRates;
-    this._volume = params.volume;
+    this._volume = clamp(params.volume ?? 1, 0, 1);
+    // Older states (and the buggy >100% writes this fixes) stored the voice boost inside
+    // `volume`, so when `boost` is absent recover it from the part of `volume` above 100%.
+    // `volume` itself stays clamped to the [0, 1] media range.
+    this._boost = clamp(params.boost ?? Math.max((params.volume ?? 1) - 1, 0), 0, 1);
     this._muted = params.muted;
     this._playbackRate = params.playbackRate;
     this._loop = params.loop;
@@ -837,6 +882,29 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     return this.playingMedia;
   }
 
+  /**
+   * Slider value for the global-only selector (pinned audio plate) bound to whatever is
+   * playing: voice shows `volume + boost` (its 0–200% range), everything else the shared
+   * master `volume`.
+   */
+  public getGlobalSliderVolume() {
+    return this.getVolumeForType(this.playingMediaType);
+  }
+
+  /**
+   * Apply a global-only selector value. For voice the 0–100% part sets the shared master
+   * (common with video/music) and the 100–200% part sets the voice-only boost, so the
+   * boost stays out of `volume`. For everything else it just sets the shared master.
+   */
+  public setGlobalSliderVolume(value: number) {
+    if(this.playingMediaType === 'voice') {
+      this.boost = Math.max(value - 1, 0);
+      this.volume = Math.min(value, 1);
+    } else {
+      this.volume = value;
+    }
+  }
+
   public play = () => {
     return this.toggle(true);
   };
@@ -1048,7 +1116,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     this.playingMedia = media;
     this.playingMediaType = mediaType;
     if(!standalone) {
-      this.applyVolumeToMedia(this.playingMedia, this.volume, this.muted, mediaType);
+      this.applyVolumeToMedia(this.playingMedia, this.getVolumeForType(mediaType), this.muted, mediaType);
       this.playingMedia.playbackRate = this.playbackRate;
       if(mediaType === 'audio') {
         this.playingMedia.loop = this.loop;

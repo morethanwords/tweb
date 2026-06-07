@@ -195,7 +195,7 @@ export function FoldersSidebarContent(props: {
           openingChatFolders = true;
           appSidebarLeft.closeTabsBefore(() => {
             const tab = appSidebarLeft.createTab(AppChatFoldersTab);
-            tab.open().finally(() => {
+            tab.open(AppChatFoldersTab.getInitArgs()).finally(() => {
               openingChatFolders = false;
             });
           });

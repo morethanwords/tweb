@@ -1,6 +1,6 @@
 import forEachReverse from '@helpers/array/forEachReverse';
 import throttle from '@helpers/schedulers/throttle';
-import {GroupCallConnectionType, JoinGroupCallJsonPayload} from '@appManagers/appGroupCallsManager';
+import {GroupCallConnectionType, GroupCallId, JoinGroupCallJsonPayload} from '@appManagers/appGroupCallsManager';
 import {AppManagers} from '@lib/managers';
 import rootScope from '@lib/rootScope';
 import CallConnectionInstanceBase, {CallConnectionInstanceOptions} from '@lib/calls/callConnectionInstanceBase';
@@ -214,8 +214,8 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
     // id. The server hands back the real id+access_hash in updateGroupCall —
     // joinGroupCall stitches them onto `update`. Promote them onto the
     // instance so downstream code (polling, hangUp, leave) works.
-    const extras = update as typeof update & {resolvedCallId?: string; resolvedAccessHash?: string};
-    if(extras.resolvedCallId && extras.resolvedCallId !== this.groupCall.id) {
+    const extras = update as typeof update & {resolvedCallId?: GroupCallId};
+    if(extras.resolvedCallId != null && extras.resolvedCallId !== this.groupCall.id) {
       this.groupCall.id = extras.resolvedCallId;
     }
 

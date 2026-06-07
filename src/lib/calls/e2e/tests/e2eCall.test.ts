@@ -383,3 +383,76 @@ describe('E2eCall — applyBlockBytes dedup by hash', () => {
     expect(call.getStatus()).not.toBeNull();
   });
 });
+
+describe('E2eCall — applyBlockBytes re-delivery of older blocks', () => {
+  // Regression for the conference-drop bug: the poll + push delivery paths can
+  // re-deliver a BATCH of already-applied blocks when the poll cursor lagged
+  // behind a burst of pushes (cursor only advanced on poll responses, so two
+  // pushes left it two behind; the next poll then returned [h_n, h_{n+1}] that
+  // were already applied). The OLDER block in such a batch is below the chain
+  // tip, so the tip-only hash dedup missed it and `applyBlock` rejected it as a
+  // fatal HEIGHT_MISMATCH — the worker raised `callFailed` and we hung up.
+
+  it('re-applying a block BELOW the tip (not the tip itself) is a no-op', async() => {
+    const alice = PrivateKey.fromSeed(new Uint8Array(32).fill(140));
+    const bob = PrivateKey.fromSeed(new Uint8Array(32).fill(150));
+    const aliceId = BigInt(1400);
+    const bobId = BigInt(1500);
+
+    const zero = await E2eCall.createZeroBlock(alice, {
+      participants: [participantFor(aliceId, alice)],
+      externalPermissions: PERM_ADD_USERS | PERM_REMOVE_USERS
+    });
+    const call = await E2eCall.create(aliceId, alice, zero);
+
+    // Advance the chain to height 1 — Bob self-adds. Now `zero` (height 0) is
+    // strictly below our tip.
+    const bobSelfAdd = await E2eCall.createSelfAddBlock(bob, zero, participantFor(bobId, bob));
+    await call.applyBlockBytes(bobSelfAdd);
+    expect(call.getHeight()).toBe(1);
+    const tipHash = call.getLastBlockHash();
+
+    // The server re-delivers the height-0 zero block (below our tip). With the
+    // old tip-only dedup this threw HEIGHT_MISMATCH (0 != expected 2); now it's
+    // a clean no-op that leaves the call healthy.
+    await call.applyBlockBytes(zero);
+    expect(call.getStatus()).toBeNull();
+    expect(call.getHeight()).toBe(1);
+    expect(Array.from(call.getLastBlockHash())).toEqual(Array.from(tipHash));
+  });
+
+  it('replaying the whole applied chain as one batch keeps the call healthy', async() => {
+    const alice = PrivateKey.fromSeed(new Uint8Array(32).fill(160));
+    const bob = PrivateKey.fromSeed(new Uint8Array(32).fill(170));
+    const aliceId = BigInt(1600);
+    const bobId = BigInt(1700);
+
+    const zero = await E2eCall.createZeroBlock(alice, {
+      participants: [participantFor(aliceId, alice)],
+      externalPermissions: PERM_ADD_USERS | PERM_REMOVE_USERS
+    });
+    const call = await E2eCall.create(aliceId, alice, zero);
+    const bobSelfAdd = await E2eCall.createSelfAddBlock(bob, zero, participantFor(bobId, bob));
+    await call.applyBlockBytes(bobSelfAdd);
+    const tipHash = call.getLastBlockHash();
+
+    // The exact failing shape: a poll returns [zero(h0), bobSelfAdd(h1)] in
+    // order, both already applied. h0 skipped by height, h1 skipped by hash.
+    await call.applyBlockBytes(zero);
+    await call.applyBlockBytes(bobSelfAdd);
+    expect(call.getStatus()).toBeNull();
+    expect(call.getHeight()).toBe(1);
+    expect(Array.from(call.getLastBlockHash())).toEqual(Array.from(tipHash));
+
+    // The chain is still live: a genuine next block (height 2) still applies.
+    const carol = PrivateKey.fromSeed(new Uint8Array(32).fill(180));
+    const carolSelfAdd = await E2eCall.createSelfAddBlock(
+      carol,
+      bobSelfAdd,
+      participantFor(BigInt(1800), carol)
+    );
+    await call.applyBlockBytes(carolSelfAdd);
+    expect(call.getStatus()).toBeNull();
+    expect(call.getHeight()).toBe(2);
+  });
+});

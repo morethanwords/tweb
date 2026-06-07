@@ -541,9 +541,14 @@ export default class FiltersStorage extends AppManager {
     }
   }
 
-  public async isFilterIdAvailable(filterId: number) {
+  public async isFilterIdAvailable(filterId: number): Promise<boolean | undefined> {
     if(REAL_FOLDERS.has(filterId)) {
       return true;
+    }
+
+    await this.getDialogFilters();
+    if(!this.filtersArr.some((filter) => filter.id === filterId)) {
+      return;
     }
 
     const limit = await this.apiManager.getLimit('folders');

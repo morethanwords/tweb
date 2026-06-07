@@ -3,7 +3,7 @@ import PopupElement from '.';
 import {PaymentsCheckedGiftCode} from '@layer';
 import renderImageFromUrl from '@helpers/dom/renderImageFromUrl';
 import {LangPackKey, i18n} from '@lib/langPack';
-import {InviteLink} from '@components/sidebarLeft/tabs/sharedFolder';
+import {InviteLink} from '@components/sidebarLeft/tabs/inviteLink';
 import {JSX} from 'solid-js';
 import {formatDaysDuration, formatFullSentTime} from '@helpers/date';
 import getPeerId from '@appManagers/utils/peers/getPeerId';

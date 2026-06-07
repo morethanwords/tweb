@@ -108,7 +108,7 @@ body.is-pinned-audio-shown, body.is-calling.forwards {
 	.user-title {
 		font-size: 1rem;
 		line-height: 1.5rem;
-		max-width: calc(100% - 1.5rem);
+		max-width: calc(100% - 0.5rem);
 		display: flex;
 		align-items: center;
     font-weight: var(--font-weight-bold);
@@ -120,10 +120,10 @@ body.is-pinned-audio-shown, body.is-calling.forwards {
 
 	.peer-title,
 	.info {
-		white-space: nowrap;
-		text-overflow: ellipsis;
+    @include text-overflow();
 		min-width: 0;
 		line-height: var(--line-height);
+    max-width: 100%;
 	}
 
 	.btn-menu-toggle {
@@ -135,6 +135,7 @@ body.is-pinned-audio-shown, body.is-calling.forwards {
 	.chat-info {
 		flex: 1 1 auto;
 		padding-inline-start: 49px;
+    width: 1px; // * fix width
 
     &-container {
       display: flex;

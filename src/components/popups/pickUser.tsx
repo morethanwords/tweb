@@ -369,7 +369,7 @@ export default function showPickUserPopup(options: PopupPickUserOptions) {
         onClick: async() => {
           const filterId = +(target.dataset.filterId || 0);
           const available = REAL_FOLDERS.has(filterId) ||
-            await rootScope.managers.filtersStorage.isFilterIdAvailable(filterId);
+            (await rootScope.managers.filtersStorage.isFilterIdAvailable(filterId) ?? true);
           if(!available) {
             showLimitPopup('folders');
             return false;

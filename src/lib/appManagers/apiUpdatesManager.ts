@@ -138,7 +138,7 @@ class ApiUpdatesManager {
       return false;
     }
 
-    this.log.debug('pop pending pts updates', goodPts, curState.pendingPtsUpdates.slice(0, goodIndex + 1));
+    this.log('pop pending pts updates', goodPts, curState.pendingPtsUpdates.slice(0, goodIndex + 1));
 
     curState.pts = goodPts;
     for(let i = 0; i <= goodIndex; ++i) {
@@ -191,7 +191,7 @@ class ApiUpdatesManager {
       local: options.local
     };
 
-    log.debug('processUpdateMessage', updateMessage, options);
+    log('processUpdateMessage', updateMessage, options);
 
     switch(updateMessage._) {
       case 'updatesTooLong':
@@ -206,7 +206,7 @@ class ApiUpdatesManager {
       case 'updateShortMessage':
       case 'updateShortChatMessage': {
         assumeType<Updates.updateShortChatMessage | Updates.updateShortMessage>(updateMessage);
-        log.debug('updateShortMessage | updateShortChatMessage', {...updateMessage});
+        log('updateShortMessage | updateShortChatMessage', {...updateMessage});
         const isOut = updateMessage.pFlags.out;
         const fromId = (updateMessage as Updates.updateShortChatMessage).from_id || (isOut ? this.appPeersManager.peerId : (updateMessage as Updates.updateShortMessage).user_id);
         const toId = (updateMessage as Updates.updateShortChatMessage).chat_id ?
@@ -664,7 +664,7 @@ class ApiUpdatesManager {
   }
 
   public saveUpdate(update: Update) {
-    this.log.debug('update', update);
+    this.log('saveUpdate', update);
     this.dispatchEvent(update._, update as any);
   }
 

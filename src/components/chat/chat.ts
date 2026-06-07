@@ -12,7 +12,7 @@ import ChatInput from '@components/chat/input';
 import ChatSelection from '@components/chat/selection';
 import ChatTopbar from '@components/chat/topbar';
 import {HIDDEN_PEER_ID, NULL_PEER_ID, REPLIES_HIDDEN_CHANNEL_ID, REPLIES_PEER_ID, SEND_PAID_WITH_STARS_DELAY, SERVICE_PEER_ID, VERIFICATION_CODES_BOT_ID} from '@appManagers/constants';
-import AppPrivateSearchTab from '@components/sidebarRight/tabs/search';
+import {AppPrivateSearchTab} from '@components/solidJsTabs/tabs';
 import mediaSizes, {ScreenSize} from '@helpers/mediaSizes';
 import ChatSearch from '@components/chat/search';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
@@ -21,7 +21,7 @@ import {ChatBackgroundTransition} from '@components/chat/bubbles/chatBackground'
 import {AppManagers} from '@lib/managers';
 import SlicedArray from '@helpers/slicedArray';
 import themeController from '@helpers/themeController';
-import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMedia';
+import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMediaTab';
 import noop from '@helpers/noop';
 import middlewarePromise from '@helpers/middlewarePromise';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
@@ -198,6 +198,15 @@ export default class Chat extends EventListenerBase<{
    */
   private bubblesRevealCalled: boolean;
 
+  /**
+   * True while this chat is off-screen on mobile (the chat list or profile tab is shown instead
+   * of the chat). A theme/wallpaper that finishes loading in this window must NOT drive the
+   * global background — otherwise opening a chat, then backing out before its theme loads, still
+   * flips the background once the slow load lands. Reset on peer change, re-asserted when the
+   * chat returns on screen (see `setBackgroundHidden`). Driven by the `tab_changing` listener.
+   */
+  private backgroundHidden = false;
+
   public ignoreSearchCleaning: boolean;
 
   public stars: Accessor<Long>;
@@ -362,7 +371,7 @@ export default class Chat extends EventListenerBase<{
     onCachedStatus?: (cached: boolean) => void,
     deferReveal?: (reveal: () => void) => void
   ): Promise<void> {
-    if(this !== this.appImManager.chat) {
+    if(this !== this.appImManager.chat || this.backgroundHidden) {
       onCachedStatus?.(true);
       deferReveal?.(noop);
       return Promise.resolve();
@@ -408,6 +417,20 @@ export default class Chat extends EventListenerBase<{
         });
       } : undefined
     });
+  }
+
+  private setBackgroundHidden(hidden: boolean) {
+    if(this.backgroundHidden === hidden) {
+      return;
+    }
+
+    this.backgroundHidden = hidden;
+    // Coming back on screen: re-assert our background. A theme that finished loading while we
+    // were off-screen had its publish suppressed by `publishBackground`'s guard; surface it now.
+    // `setBackground` short-circuits when the background is already current, so this is cheap.
+    if(!hidden && this === this.appImManager.chat && this.peerId) {
+      this.publishBackground('auto');
+    }
   }
 
   private _handleBackgrounds() {
@@ -700,7 +723,9 @@ export default class Chat extends EventListenerBase<{
     });
 
     this.bubbles.listenerSetter.add(this.appImManager)('tab_changing', (tabId) => {
-      freezeObservers(this.appImManager.chat !== this || (tabId !== APP_TABS.CHAT && mediaSizes.activeScreen === ScreenSize.mobile));
+      const offScreenOnMobile = tabId !== APP_TABS.CHAT && mediaSizes.activeScreen === ScreenSize.mobile;
+      freezeObservers(this.appImManager.chat !== this || offScreenOnMobile);
+      this.setBackgroundHidden(offScreenOnMobile);
     });
 
     const setInChatQueryDebounced = debounce((query: string) => {
@@ -945,6 +970,11 @@ export default class Chat extends EventListenerBase<{
       this.selection.isScheduled = type === ChatType.Scheduled;
     }
 
+    // NB: ChatType.Logs also has its own per-peer box (`${peerId}_logs`, via saveLogsMessage), but it's
+    // intentionally NOT mapped here — it stays `_history`. The logs view works through other paths (bubbles
+    // hold the message objects directly, and getMessageByPeer falls back to `… || _logs`), so wiring it to
+    // `_logs` here would need the whole admin-log read path re-verified. If that's ever done, the scheduled
+    // chokepoint in getMessage() can generalize to "own-peer non-history box".
     this.messagesStorageKey = `${this.peerId}_${this.type === ChatType.Scheduled ? 'scheduled' : 'history'}`;
 
     // this.container && this.container.classList.toggle('no-forwards', this.noForwards);
@@ -1003,6 +1033,9 @@ export default class Chat extends EventListenerBase<{
       this.isTemporaryThread = isTempId(threadId);
       this.noInput = [ChatType.Static, ChatType.Logs].includes(type);
       this.middlewareHelper.clean();
+      // A fresh peer change always shows the chat next, so its background must publish normally;
+      // the off-screen suppression only guards a stale load from a peer we've already left.
+      this.backgroundHidden = false;
 
       createRoot((dispose) => {
         this.middlewareHelper.get().onClean(dispose);
@@ -1195,6 +1228,13 @@ export default class Chat extends EventListenerBase<{
   public getMessage(mid: number | FullMid) {
     if(typeof(mid) === 'string') {
       const {peerId, mid: _mid} = splitFullMid(mid);
+      // scheduled messages live in a separate per-peer storage; resolving a bare id via
+      // getMessageByPeer would hit history/global and return another chat's message, so for
+      // our own scheduled peer read from this chat's (scheduled) storage instead
+      if(this.type === ChatType.Scheduled && peerId === this.peerId) {
+        return apiManagerProxy.getMessageFromStorage(this.messagesStorageKey, _mid);
+      }
+
       return apiManagerProxy.getMessageByPeer(peerId, _mid);
     }
 

@@ -27,6 +27,9 @@ export default function createPeerConnection(config: RTCConfiguration, log?: Log
   connection.addEventListener('iceconnectionstatechange', () => {
     log('oniceconnectionstatechange', connection.iceConnectionState);
   });
+  connection.addEventListener('icegatheringstatechange', () => {
+    log('onicegatheringstatechange', connection.iceGatheringState);
+  });
   connection.addEventListener('datachannel', () => {
     log('ondatachannel');
   });

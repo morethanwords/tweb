@@ -87,6 +87,14 @@
         pointer-events: none;
         white-space: nowrap;
         z-index: 2;
+
+        .text-super {
+          flex: 0 0 auto;
+        }
+
+        .emoji-image {
+          vertical-align: sub;
+        }
       }
 
       &-background {

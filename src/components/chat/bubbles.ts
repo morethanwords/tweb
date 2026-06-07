@@ -84,6 +84,7 @@ import getPeerId from '@appManagers/utils/peers/getPeerId';
 import {AppManagers} from '@lib/managers';
 import idleController from '@helpers/idleController';
 import overlayCounter from '@helpers/overlayCounter';
+import ReadMetricsTracker from '@helpers/readMetricsTracker';
 import {cancelContextMenuOpening} from '@helpers/dom/attachContextMenuListener';
 import contextMenuController from '@helpers/contextMenuController';
 import {AckedResult} from '@lib/superMessagePort';
@@ -560,6 +561,14 @@ export default class ChatBubbles {
 
   private viewsMids: Set<FullMid> = new Set();
   private sendViewCountersDebounced: () => Promise<void>;
+
+  // Post engagement metrics (messages.reportReadMetrics). `readMetricsBubbles` maps each tracked
+  // channel-post bubble currently overlapping the viewport to its mid; the tracker is driven with
+  // a fresh visibility batch on scroll/resize/intersection changes.
+  private readMetricsTracker: ReadMetricsTracker;
+  private readMetricsBubbles: Map<HTMLElement, number> = new Map();
+  private updateReadMetricsBatchScheduled: boolean;
+  private lastReadMetricsActivity = 0;
 
   private isTopPaddingSet = false;
 
@@ -1849,6 +1858,8 @@ export default class ChatBubbles {
       });
     }, 1000, false, true);
 
+    this.setupReadMetrics();
+
     // * pinned part start
     this.listenerSetter.add(rootScope)('peer_pinned_messages', ({peerId, mids, pinned}) => {
       if(this.chat.type !== ChatType.Pinned || peerId !== this.peerId) {
@@ -1991,6 +2002,98 @@ export default class ChatBubbles {
     }
   };
 
+  private setupReadMetrics() {
+    this.readMetricsTracker = new ReadMetricsTracker(({peerId, metric}) => {
+      this.managers.appMessagesManager.reportReadMetrics(peerId, metric);
+    });
+
+    const updateScreenActive = () => {
+      // Paused while another chat is pushed on top of this one, or a dark overlay (media viewer) covers it.
+      this.readMetricsTracker.setScreenActive(this.chat.appImManager.chat === this.chat && !overlayCounter.isOverlayActive);
+    };
+    updateScreenActive();
+
+    const updateAppActive = () => {
+      // Foreground = tab visible and window focused.
+      this.readMetricsTracker.setAppActive(!document.hidden && document.hasFocus());
+    };
+    updateAppActive();
+
+    this.listenerSetter.add(document)('visibilitychange', updateAppActive);
+    this.listenerSetter.add(window)('blur', updateAppActive);
+    this.listenerSetter.add(window)('focus', updateAppActive);
+    this.listenerSetter.add(this.chat.appImManager)('chat_changing', updateScreenActive);
+    this.listenerSetter.add(overlayCounter)('change', updateScreenActive);
+
+    const activityEvents: (keyof HTMLElementEventMap)[] = ['pointermove', 'pointerdown', 'touchstart', 'touchmove', 'wheel', 'keydown'];
+    activityEvents.forEach((event) => {
+      this.listenerSetter.add(this.chat.container)(event, this.registerReadMetricsActivity, {passive: true});
+    });
+  }
+
+  private registerReadMetricsActivity = () => {
+    const now = Date.now();
+    if(now - this.lastReadMetricsActivity < 1000) { // throttle: the activity window is 15s, so 1s granularity is plenty
+      return;
+    }
+
+    this.lastReadMetricsActivity = now;
+    this.readMetricsTracker?.registerActivity();
+  };
+
+  private readMetricsObserverCallback = (entry: IntersectionObserverEntry) => {
+    const bubble = entry.target as HTMLElement;
+    if(entry.isIntersecting) {
+      if(!this.readMetricsBubbles.has(bubble)) {
+        const fullMid = getBubbleFullMid(bubble);
+        if(!fullMid) {
+          return;
+        }
+
+        this.readMetricsBubbles.set(bubble, splitFullMid(fullMid).mid);
+      }
+    } else {
+      this.readMetricsBubbles.delete(bubble);
+    }
+
+    this.scheduleReadMetricsBatch();
+  };
+
+  private scheduleReadMetricsBatch() {
+    if(this.updateReadMetricsBatchScheduled || !this.readMetricsTracker) {
+      return;
+    }
+
+    this.updateReadMetricsBatchScheduled = true;
+    fastRaf(() => {
+      this.updateReadMetricsBatchScheduled = false;
+      this.updateReadMetricsBatch();
+    });
+  }
+
+  private updateReadMetricsBatch() {
+    const tracker = this.readMetricsTracker;
+    if(!tracker || !this.scrollable) {
+      return;
+    }
+
+    const rect = this.scrollable.container.getBoundingClientRect();
+    tracker.startBatch(this.peerId, rect.top, rect.bottom);
+    this.readMetricsBubbles.forEach((mid, bubble) => {
+      if(!bubble.isConnected) {
+        return;
+      }
+
+      const bubbleRect = bubble.getBoundingClientRect();
+      if(bubbleRect.bottom <= rect.top || bubbleRect.top >= rect.bottom) { // no overlap (observer lagged a fast scroll)
+        return;
+      }
+
+      tracker.push(mid, bubbleRect.top, bubbleRect.height);
+    });
+    tracker.endBatch();
+  }
+
   private _stickerEffectObserverCallback = (entry: IntersectionObserverEntry, callback: IntersectionCallback, selector: string) => {
     if(entry.isIntersecting) {
       this.observer.unobserve(entry.target, callback);
@@ -2047,6 +2150,8 @@ export default class ChatBubbles {
       part = 0;
       resizing = false;
       skip = false;
+
+      this.scheduleReadMetricsBatch(); // viewport height changed -> recompute height ratios / visibility
     };
 
     const setEndRAF = (single: boolean) => {
@@ -3589,6 +3694,10 @@ export default class ChatBubbles {
     this.updateGoDownVisibility();
 
     this.checkIntersectingVideos();
+
+    // Recompute visible ranges (also on programmatic scroll); user-activity is fed only by real
+    // input events, so the scroll handler intentionally does NOT register activity here.
+    this.scheduleReadMetricsBatch();
   };
 
   private checkIntersectingVideos() {
@@ -3811,6 +3920,9 @@ export default class ChatBubbles {
 
       this.observer.unobserve(bubble, this.viewsObserverCallback);
       this.viewsMids.delete(fullMid);
+
+      this.observer.unobserve(bubble, this.readMetricsObserverCallback);
+      this.readMetricsBubbles.delete(bubble);
 
       this.observer.unobserve(bubble, this.stickerEffectObserverCallback);
       this.observer.unobserve(bubble, this.messageEffectObserverCallback);
@@ -4367,6 +4479,8 @@ export default class ChatBubbles {
   public destroy() {
     // this.chat.log.error('Bubbles destroying');
 
+    this.readMetricsTracker?.finalizeAll();
+
     this.destroyScrollable();
 
     this.listenerSetter.removeAll();
@@ -4395,6 +4509,10 @@ export default class ChatBubbles {
 
   public cleanup(bubblesToo = false) {
     this.log('cleanup');
+
+    // Content is about to be wiped (peer switch / screen teardown) — end every read-metrics phase.
+    this.readMetricsTracker?.finalizeAll();
+    this.readMetricsBubbles.clear();
 
     this.bubbles = {}; // clean it before so sponsored message won't be deleted faster on peer changing
     // //console.time('appImManager cleanup');
@@ -6974,6 +7092,11 @@ export default class ChatBubbles {
 
       if(!message.pFlags.is_outgoing && this.observer) {
         this.observer.observe(bubble, this.viewsObserverCallback);
+
+        // Engagement metrics only for the main channel feed (not preview/pinned/search/scheduled views).
+        if(this.chat.type === ChatType.Chat && !this.chat.isPreview) {
+          this.observer.observe(bubble, this.readMetricsObserverCallback);
+        }
       }
     }
 

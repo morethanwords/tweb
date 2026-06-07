@@ -13,7 +13,7 @@ import PeerTitle from '@components/peerTitle';
 import Row from '@components/rowTsx';
 import {IconTsx} from '@components/iconTsx';
 import classNames from '@helpers/string/classNames';
-import {ChatPermissions} from '@components/sidebarRight/tabs/groupPermissions';
+import {ChatPermissions} from '@components/sidebarRight/tabs/groupPermissions/sharedPermissions';
 import {animate} from '@helpers/animation';
 
 const className = 'popup-delete-megagroup-messages';

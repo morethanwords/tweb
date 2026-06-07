@@ -11,12 +11,15 @@ import StringFromLineBuilder from '@lib/calls/stringFromLineBuilder';
 import {CallSignalingData, GroupCallConnectionTransport, PayloadType, RtpHdrexts, UpdateGroupCallConnectionData} from '@lib/calls/types';
 import {fromTelegramSource} from '@lib/calls/utils';
 import {getSdpDirection, getSdpPort, SdpSection} from '@lib/calls/p2P/sdpCommon';
+import {logger} from '@lib/logger';
 
 // screencast is for Peer-to-Peer only
 export type WebRTCLineTypeTrue = 'video' | 'audio' | 'application';
 export type WebRTCLineType = WebRTCLineTypeTrue | 'screencast';
 
 export const WEBRTC_MEDIA_PORT = '9';
+
+const log = logger('SDP-BUILDER');
 
 export function fixMediaLineType(mediaType: WebRTCLineType) {
   return mediaType === 'screencast' ? 'video' : mediaType;
@@ -220,7 +223,7 @@ export class SDPBuilder extends StringFromLineBuilder {
         const parameters = type.parameters;
         if(Array.isArray(parameters)) {
           if(parameters.length) {
-            console.error('parameters is array???', parameters);
+            log.error('parameters is array???', parameters);
           }
         } else if(parameters && Object.keys(parameters).length) {
           const p: string[] = [];

@@ -26,7 +26,7 @@
 // onstart/onstop/onpause/onresume/ondataavailable, getSnapshot).
 
 import {IS_APPLE_MOBILE, IS_SAFARI} from '@environment/userAgent';
-import getStream from '@lib/calls/helpers/getStream';
+import acquireStream, {StreamAcquisition} from '@lib/calls/helpers/acquireStream';
 
 export interface NativeVideoRecorderConfig {
   // Square output dimensions written to the encoded file. 400 = the larger of
@@ -139,6 +139,12 @@ export default class NativeVideoRecorder {
   private canvasCtx: CanvasRenderingContext2D;
   private canvasStream: MediaStream;       // canvas.captureStream() — video only
   private drawing = false;
+  // Holds the in-flight / active camera+mic acquire. dispose() (called from
+  // releaseStream()) stops its tracks even if getUserMedia resolves DURING the
+  // up-to-1.5s warm-up, after a cancel / ChatRecording.destroy() — getUserMedia
+  // can't be cancelled, so without this the camera LED would stay on forever.
+  // See acquireStream.
+  private acquisition: StreamAcquisition | undefined;
 
   static isSupported = isNativeVideoRecorderSupported;
 
@@ -198,7 +204,13 @@ export default class NativeVideoRecorder {
     // gone it strips the deviceId, clears the stale appSettings.callDevices.*
     // entry and retries on the OS default — round notes get the exact same
     // self-healing device fallback as calls.
-    this.stream = await getStream({video, audio: Object.keys(audio).length ? audio : true});
+    const acquisition = this.acquisition = acquireStream({video, audio: Object.keys(audio).length ? audio : true});
+    const stream = await acquisition.promise;
+    // Released (cancel / ChatRecording.destroy()) while getUserMedia was
+    // resolving — dispose() already stopped the orphaned stream; bail so the
+    // camera doesn't go live with no owner.
+    if(!stream) return;
+    this.stream = stream;
 
     // Off-DOM <video> that decodes the raw camera feed for the canvas.
     this.drawVideo = document.createElement('video');
@@ -456,6 +468,10 @@ export default class NativeVideoRecorder {
   // Idempotent.
   public releaseStream() {
     this.drawing = false;
+    // Stops the camera+mic stream — including one still awaiting getUserMedia
+    // (see start()), which dispose() stops the instant it resolves.
+    this.acquisition?.dispose();
+    this.acquisition = undefined;
 
     if(this.previewRecorder) {
       try {
@@ -497,13 +513,8 @@ export default class NativeVideoRecorder {
     this.canvas = undefined;
     this.canvasCtx = undefined;
 
-    if(this.stream) {
-      this.stream.getTracks().forEach((t) => {
-        try {
-          t.stop();
-        } catch(e) {}
-      });
-      this.stream = undefined;
-    }
+    // `this.stream` is the acquisition's stream; dispose() above stopped its
+    // tracks.
+    this.stream = undefined;
   }
 }

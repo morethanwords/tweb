@@ -46,8 +46,7 @@ import getPeerTitle from '@components/wrappers/getPeerTitle';
 import I18n from '@lib/langPack';
 import {NOTIFICATION_BADGE_PATH} from '@config/notifications';
 import {createAppURLForAccount} from '@lib/accounts/createAppURLForAccount';
-import {appSettings, setAppSettingsSilent} from '@stores/appSettings';
-import {produce, unwrap} from 'solid-js/store';
+import {setAppSettingsSilent} from '@stores/appSettings';
 import {batch} from 'solid-js';
 import createNotificationImage from '@helpers/createNotificationImage';
 import PasscodeLockScreenController from '@components/passcodeLock/passcodeLockScreenController';
@@ -587,6 +586,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
   public sendEnvironment() {
     this.log('Passing environment:', ENVIRONMENT);
     this.invoke('environment', ENVIRONMENT);
+    // The worker's own location.search has no ?debug=1, so DEBUG is false there
+    // in production. Mirror the page's debug state so the worker records logs
+    // too. Fire-and-forget; re-applied on every (re)connect.
+    this.invokeVoid('setLogBufferEnabled', DEBUG);
   }
 
   public pingServiceWorkerWithIframe() {
@@ -634,6 +637,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
     this.serviceMessagePort.attachSendPort(this.lastServiceWorker = serviceWorker);
     this.serviceMessagePort.invokeVoid('hello', undefined);
     this.serviceMessagePort.invokeVoid('environment', ENVIRONMENT);
+    this.serviceMessagePort.invokeVoid('setLogBufferEnabled', DEBUG);
 
     DeferredIsUsingPasscode.isUsingPasscode().then((value) => {
       this.serviceMessagePort.invokeVoid('toggleUsingPasscode', {type: 'init', isUsingPasscode: value});
@@ -937,18 +941,11 @@ class ApiManagerProxy extends MTProtoMessagePort {
     this.dispatchUserAuth();
 
     const stateForThisAccount = loadedStates[getCurrentAccount()];
-    rootScope.settings = stateForThisAccount.common.settings;
     this.newVersion = stateForThisAccount.newVersion;
     this.oldVersion = stateForThisAccount.oldVersion;
     this.mirrors['state'] = stateForThisAccount.state;
     setAppStateSilent(stateForThisAccount.state);
     setAppSettingsSilent(stateForThisAccount.common.settings);
-
-    Object.defineProperty(rootScope, 'settings', {
-      get: () => {
-        return unwrap(appSettings);
-      }
-    });
 
     return loadedStates;
   }

@@ -46,7 +46,7 @@ export default class VolumeSelector extends RangeSelector {
         if(this.useGlobalVolume) {
           this.modifyGlobal(() => {
             appMediaPlaybackController.muted = false;
-            appMediaPlaybackController.volume = value;
+            this.writeGlobalVolume(value);
           });
         }
 
@@ -75,11 +75,11 @@ export default class VolumeSelector extends RangeSelector {
           return;
         }
 
-        this.setVolume({...params, eventType: 'global'});
+        this.setVolume({volume: this.readGlobalVolume(), muted: params.muted, eventType: 'global'});
       });
 
       if(this.useGlobalVolume === 'no-init') {
-        this.setVolume({volume: appMediaPlaybackController.volume, muted: this.media.muted});
+        this.setVolume({volume: this.readGlobalVolume(), muted: this.media.muted});
       } else {
         this.setGlobalVolume();
       }
@@ -114,10 +114,33 @@ export default class VolumeSelector extends RangeSelector {
     }
 
     this.setVolume({
-      volume: volume ?? appMediaPlaybackController.volume,
+      volume: volume ?? this.readGlobalVolume(),
       muted: !(muted ?? globalMuted),
       eventType: 'click'
     });
+  }
+
+  /**
+   * Read the global volume this selector tracks. A selector bound to a concrete media
+   * element (the video player) always follows the shared master `volume`. The global-only
+   * selector (pinned audio plate) follows the playing media: for voice that's `volume +
+   * boost` (its 0–200% range), so the boost shows on the slider without leaking elsewhere.
+   */
+  protected readGlobalVolume() {
+    return this.media ? appMediaPlaybackController.volume : appMediaPlaybackController.getGlobalSliderVolume();
+  }
+
+  /**
+   * Write a slider value back to the controller. With a local media element it sets the
+   * shared master directly; the global-only selector routes through the controller, which
+   * splits a voice value into shared master (0–100%) + voice-only boost (100–200%).
+   */
+  protected writeGlobalVolume(value: number) {
+    if(this.media) {
+      appMediaPlaybackController.volume = value;
+    } else {
+      appMediaPlaybackController.setGlobalSliderVolume(value);
+    }
   }
 
   public setVolume = ({volume, muted, eventType}: {volume: number, muted: boolean, eventType?: 'global' | 'click'}) => {
@@ -136,7 +159,9 @@ export default class VolumeSelector extends RangeSelector {
     newIcon.classList.add(className + '__icon');
 
     if(this.media) {
-      this.media.volume = volume;
+      // HTMLMediaElement only accepts [0, 1]; the master volume is already clamped, but a
+      // boosted voice value (or a stale persisted >1) must never reach the element directly.
+      this.media.volume = Math.min(volume, 1);
       this.media.muted = muted;
     }
 
@@ -148,7 +173,8 @@ export default class VolumeSelector extends RangeSelector {
   };
 
   public setGlobalVolume = (eventType?: Parameters<VolumeSelector['setVolume']>[0]['eventType']) => {
-    const {volume, muted} = appMediaPlaybackController;
+    const volume = this.readGlobalVolume();
+    const muted = appMediaPlaybackController.muted;
     return this.setVolume({volume, muted, eventType});
   };
 

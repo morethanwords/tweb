@@ -12,7 +12,7 @@ import PopupBoostsViaGifts, {BoostsBadge} from '@components/popups/boostsViaGift
 import Button from '@components/button';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import PopupElement from '@components/popups';
-import {InviteLink} from '@components/sidebarLeft/tabs/sharedFolder';
+import {InviteLink} from '@components/sidebarLeft/tabs/inviteLink';
 import {horizontalMenu} from '@components/horizontalMenu';
 import classNames from '@helpers/string/classNames';
 import {formatFullSentTime} from '@helpers/date';

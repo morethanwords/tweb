@@ -10,9 +10,9 @@ import AppSearchSuper, {SearchSuperMediaType} from '@components/appSearchSuper';
 import {DateData, fillTipDates} from '@helpers/date';
 import {MOUNT_CLASS_TO} from '@config/debug';
 import {AppSettingsTab} from '@components/solidJsTabs';
-import AppNewChannelTab from '@components/sidebarLeft/tabs/newChannel';
-import AppContactsTab from '@components/sidebarLeft/tabs/contacts';
-import AppArchivedTab from '@components/sidebarLeft/tabs/archivedTab';
+import {AppNewChannelTab} from '@components/solidJsTabs/tabs';
+import {AppContactsTab} from '@components/solidJsTabs/tabs';
+import {AppArchivedTab} from '@components/solidJsTabs/tabs';
 import createNewGroupTab from '@components/sidebarLeft/tabs/createNewGroupTab';
 import I18n, {i18n} from '@lib/langPack';
 import ButtonMenu, {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
@@ -44,8 +44,8 @@ import installColumnResize from '@helpers/installColumnResize';
 import {doubleRaf, fastRaf} from '@helpers/schedulers';
 import {getInstallPrompt} from '@helpers/dom/installPrompt';
 import liteMode from '@helpers/liteMode';
-import AppPowerSavingTab from '@components/sidebarLeft/tabs/powerSaving';
-import AppMyStoriesTab from '@components/sidebarLeft/tabs/myStories';
+import {AppPowerSavingTab} from '@components/solidJsTabs/tabs';
+import {AppMyStoriesTab} from '@components/solidJsTabs/tabs';
 import Icon from '@components/icon';
 import AppSelectPeers from '@components/appSelectPeers';
 import setBadgeContent from '@helpers/setBadgeContent';
@@ -74,10 +74,10 @@ import {changeAccount} from '@lib/accounts/changeAccount';
 import uiNotificationsManager from '@lib/uiNotificationsManager';
 import {renderFoldersSidebarContent} from '@components/sidebarLeft/foldersSidebarContent';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
-import AppChatFoldersTab from '@components/sidebarLeft/tabs/chatFolders';
+import {AppChatFoldersTab} from '@components/solidJsTabs/tabs';
 import {SliderSuperTabConstructable} from '@components/sliderTab';
 import SettingsSliderPopup from '@components/sidebarLeft/settingsSliderPopup';
-import AppEditFolderTab from '@components/sidebarLeft/tabs/editFolder';
+import {AppEditFolderTab} from '@components/solidJsTabs/tabs';
 import {addShortcutListener} from '@helpers/shortcutListener';
 import tsNow from '@helpers/tsNow';
 import {toastNew} from '@components/toast';
@@ -328,7 +328,8 @@ export class AppSidebarLeft extends SidebarSlider {
       toggleRightButtons(rootScope.premium, isUsingPasscode);
     });
 
-    toggleRightButtons(rootScope.premium, rootScope.settings?.passcode?.enabled);
+    const [appSettings] = useAppSettings();
+    toggleRightButtons(rootScope.premium, appSettings.passcode?.enabled);
 
     this.managers.appUsersManager.getTopPeers('correspondents');
 
@@ -684,7 +685,7 @@ export class AppSidebarLeft extends SidebarSlider {
       text: 'MyStories.Title',
       onClick: () => {
         closeTabsBefore(() => {
-          this.createTab(AppMyStoriesTab).open();
+          this.createTab(AppMyStoriesTab).open(AppMyStoriesTab.getInitArgs());
         });
       },
       verify: () => !TEST_NO_STORIES
@@ -936,7 +937,8 @@ export class AppSidebarLeft extends SidebarSlider {
 
 
     async function hasAnimations() {
-      return !rootScope.settings.liteMode.animations;
+      const [appSettings] = useAppSettings();
+      return !appSettings.liteMode.animations;
     }
 
     async function initAnimationsToggleIcon() {

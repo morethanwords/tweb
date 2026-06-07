@@ -18,7 +18,7 @@ import {MyPhoto} from '@appManagers/appPhotosManager';
 import wrapSticker from '@components/wrappers/sticker';
 import wrapVideo from '@components/wrappers/video';
 import wrapDocument from '@components/wrappers/document';
-import rootScope from '@lib/rootScope';
+import {useAppSettings} from '@stores/appSettings';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import {showPickUser2Popup} from '@components/popups/pickUser';
 import appImManager from '@lib/appImManager';
@@ -209,6 +209,7 @@ export default class PopupWebAppPreparedMessage extends PopupElement<{
           container.append(wrapper);
           contentDiv = container
 
+          const [appSettings] = useAppSettings();
           wrapDocument({
             message: {
               _: 'message',
@@ -220,7 +221,7 @@ export default class PopupWebAppPreparedMessage extends PopupElement<{
             } as Message.message,
             middleware: this.middlewareHelper.get(),
             sizeType: 'documentName',
-            fontSize: rootScope.settings.messagesTextSize,
+            fontSize: appSettings.messagesTextSize,
             canTranscribeVoice: false,
             isOut: true
           }).then((div) => {

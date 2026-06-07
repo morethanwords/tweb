@@ -130,6 +130,21 @@ export default class GroupCallInstance extends CallInstanceBase<{
     worker.addEventListener('status', (ev) => {
       this.e2eStatus = ev.status;
       this.dispatchEvent('e2eStatus', ev.status);
+
+      // Conference membership lives on the e2e blockchain — the SFU doesn't push
+      // `updateGroupCallParticipants` for conferences the way it does for legacy
+      // voice chats. Every applied chain block re-emits this status, so when the
+      // group_state member set changes (someone joined/left), re-sync the SFU
+      // participant roster + count off it. Cheap string-key diff avoids
+      // re-polling on unrelated status churn (e.g. emoji verification phases).
+      const members = (ev.status?.groupState?.participants || [])
+      .map((p) => p.userId.toString())
+      .sort()
+      .join(',');
+      if(members !== this.prevConferenceMembers) {
+        this.prevConferenceMembers = members;
+        void this.refreshConferenceParticipants();
+      }
     });
     worker.addEventListener('pendingOutbound', () => {
       void this.flushE2eOutbound();
@@ -143,9 +158,18 @@ export default class GroupCallInstance extends CallInstanceBase<{
     // verification broadcast channel. The server pushes these updates when it
     // can, but we also poll because conference push delivery is best-effort
     // (tdlib: TdE2E::Call::joined → shortPoll(0); shortPoll(1)).
-    rootScope.addEventListener('group_call_chain_blocks', ({callId, subChainId, blocks}) => {
-      if(callId !== String(this.id) || !this.e2e) return;
+    rootScope.addEventListener('group_call_chain_blocks', ({callId, subChainId, blocks, nextOffset}) => {
+      if(callId !== this.id || !this.e2e) return;
       void this.deliverE2eChainBlocks(subChainId, blocks);
+      // Advance the poll cursor past what this push delivered. The cursor
+      // otherwise only moves on poll responses (pollE2eChain), so a burst of
+      // pushes leaves it stale and the next poll re-fetches — and re-delivers —
+      // blocks the push already applied. deliverE2eChainBlocks is idempotent
+      // now, so this just shrinks the redundant-fetch window; Math.max guards
+      // against out-of-order pushes (the broadcast subchain delivers unordered).
+      if(typeof nextOffset === 'number' && (subChainId === 0 || subChainId === 1)) {
+        this.e2eChainOffsets[subChainId] = Math.max(this.e2eChainOffsets[subChainId], nextOffset);
+      }
     });
 
     this.startE2eChainPolling();
@@ -160,6 +184,15 @@ export default class GroupCallInstance extends CallInstanceBase<{
   private e2eChainPollInterval: ReturnType<typeof setInterval> | undefined;
   private e2eChainOffsets: {0: number; 1: number} = {0: 0, 1: 0};
 
+  // Conference participant reconciliation (see refreshConferenceParticipants).
+  // `prevConferenceMembers` is the last e2e group_state member set we synced;
+  // the periodic timer is a backstop for changes the blockchain doesn't surface
+  // promptly (e.g. an ungraceful disconnect that the SFU drops before a removal
+  // block lands). `refreshingConferenceParticipants` de-dupes overlapping runs.
+  private prevConferenceMembers = '';
+  private conferenceParticipantsInterval: ReturnType<typeof setInterval> | undefined;
+  private refreshingConferenceParticipants = false;
+
   private startE2eChainPolling(): void {
     if(this.e2eChainPollInterval) return;
     const tick = (): void => { void this.pollE2eChain(); };
@@ -168,12 +201,43 @@ export default class GroupCallInstance extends CallInstanceBase<{
     // Steady-state interval: 1500ms is a balance between latency for emoji
     // verification (commit/reveal needs both peers' broadcasts) and load.
     this.e2eChainPollInterval = setInterval(tick, 1500);
+
+    // Backstop SFU participant poll. The blockchain-change trigger (in the
+    // worker `status` handler) covers the common join/leave case; this catches
+    // anything that changes the SFU roster without a chain delta. 5s matches
+    // the official Android conference poll cadence.
+    if(!this.conferenceParticipantsInterval) {
+      this.conferenceParticipantsInterval = setInterval(() => {
+        void this.refreshConferenceParticipants();
+      }, 5000);
+    }
   }
 
   private stopE2eChainPolling(): void {
     if(this.e2eChainPollInterval) {
       clearInterval(this.e2eChainPollInterval);
       this.e2eChainPollInterval = undefined;
+    }
+    if(this.conferenceParticipantsInterval) {
+      clearInterval(this.conferenceParticipantsInterval);
+      this.conferenceParticipantsInterval = undefined;
+    }
+  }
+
+  // Reconcile the SFU participant roster + count for a conference. No-op for
+  // legacy voice chats (gated on `this.e2e`) and while closed. The heavy
+  // lifting (fresh fetch, leave reconciliation, count) lives in the manager;
+  // here we just guard against overlapping runs and a torn-down call.
+  private async refreshConferenceParticipants(): Promise<void> {
+    if(!this.e2e || this.refreshingConferenceParticipants) return;
+    if(this.connectionState === 'closed') return;
+    this.refreshingConferenceParticipants = true;
+    try {
+      await this.managers.appGroupCallsManager.refreshConferenceParticipants(this.id);
+    } catch(err) {
+      this.log.warn('refreshConferenceParticipants', err);
+    } finally {
+      this.refreshingConferenceParticipants = false;
     }
   }
 
@@ -479,6 +543,14 @@ export default class GroupCallInstance extends CallInstanceBase<{
       const type: GroupCallConnectionType = 'presentation';
 
       const stream = await getScreenStream(getScreenConstraints());
+      // The screen-picker can stay open for seconds; the user can hang up
+      // before it resolves. hangUp() already walked this.connections and never
+      // saw the presentation connection (it didn't exist yet), so building it
+      // now would leave the screen capture live forever — release and bail.
+      if(this.isClosing) {
+        stream.getTracks().forEach((t) => stopTrack(t));
+        return;
+      }
       const streamManager = new StreamManager();
 
       const connectionInstance = this.createConnectionInstance({
@@ -544,6 +616,13 @@ export default class GroupCallInstance extends CallInstanceBase<{
 
     try {
       const stream = await getStream(constraints, false);
+      // The call can be hung up during the `getUserMedia` window. After that
+      // cleanup() has already run streamManager.stop(), so adding this stream
+      // would leak the camera (LED stuck on) — release it instead.
+      if(this.isClosing) {
+        stream.getTracks().forEach((t) => stopTrack(t));
+        return;
+      }
       const connectionInstance = this.connections.main;
       connectionInstance.addInputVideoStream(stream);
 

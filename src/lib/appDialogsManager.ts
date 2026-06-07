@@ -24,7 +24,7 @@ import I18n, {FormatterArguments, i18n, LangPackKey, _i18n} from '@lib/langPack'
 import findUpTag from '@helpers/dom/findUpTag';
 import lottieLoader from '@rlottie/lottieLoader';
 import wrapPhoto from '@components/wrappers/photo';
-import AppEditFolderTab from '@components/sidebarLeft/tabs/editFolder';
+import {AppEditFolderTab} from '@components/solidJsTabs/tabs';
 import appSidebarLeft from '@components/sidebarLeft';
 import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
 import positionElementByIndex from '@helpers/dom/positionElementByIndex';
@@ -71,11 +71,11 @@ import Row, {RowMediaSizeType} from '@components/row'
 import SettingSection from '@components/settingSection';
 import getMessageThreadId from '@appManagers/utils/messages/getMessageThreadId';
 import formatNumber from '@helpers/number/formatNumber';
-import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMedia';
+import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMediaTab';
 import {dispatchHeavyAnimationEvent} from '@hooks/useHeavyAnimationCheck';
 import shake from '@helpers/dom/shake';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
-import AppChatFoldersTab from '@components/sidebarLeft/tabs/chatFolders';
+import {AppChatFoldersTab} from '@components/solidJsTabs/tabs';
 import eachTimeout from '@helpers/eachTimeout';
 import PopupSharedFolderInvite from '@components/popups/sharedFolderInvite';
 import showChatPreviewPopup, {chatPreviewAnchorFromDialogRow} from '@components/popups/chatPreview';
@@ -684,6 +684,10 @@ export class AppDialogsManager {
     const [appSettings, setAppSettings] = useAppSettings();
     // * it should've had a better place :(
     appMediaPlaybackController.setPlaybackParams(unwrap(appSettings.playbackParams));
+    // Persist the normalized params back once — `setPlaybackParams` clamps a stale >1
+    // `volume` to [0, 1] and migrates the excess into the voice-only `boost`, so this
+    // rewrites a corrupted stored value (e.g. volume: 1.04) instead of waiting for a change.
+    setAppSettings('playbackParams', appMediaPlaybackController.getPlaybackParams());
     appMediaPlaybackController.addEventListener('playbackParams', (params) => {
       setAppSettings('playbackParams', params);
     });
@@ -732,7 +736,7 @@ export class AppDialogsManager {
 
       const available = wasFilterId === -1 ||
         REAL_FOLDERS.has(id) ||
-        await rootScope.managers.filtersStorage.isFilterIdAvailable(id);
+        (await rootScope.managers.filtersStorage.isFilterIdAvailable(id) ?? true);
       if(!available) {
         showLimitPopup('folders');
         return false;
@@ -1397,9 +1401,8 @@ export class AppDialogsManager {
       });
 
       attachClickEvent(button, async() => {
-        const tab = appSidebarLeft.createTab(AppEditFolderTab);
-        tab.setInitFilter(await this.managers.filtersStorage.getFilter(this.filterId));
-        tab.open();
+        const filter = await this.managers.filtersStorage.getFilter(this.filterId);
+        appSidebarLeft.createTab(AppEditFolderTab).open({...AppEditFolderTab.getInitArgs(), initFilter: filter});
       });
 
       placeholderContainer.append(button);

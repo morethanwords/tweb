@@ -1,6 +1,9 @@
 import forEachReverse from '@helpers/array/forEachReverse';
 import SDPMediaSection from '@lib/calls/sdp/mediaSection';
 import {UpdateGroupCallConnectionData, Codec} from '@lib/calls/types';
+import {logger} from '@lib/logger';
+
+const log = logger('SDP');
 
 export default function filterServerCodecs(mainChannels: SDPMediaSection[], data: UpdateGroupCallConnectionData) {
   // ! Need to filter server's extmap for Firefox
@@ -29,7 +32,7 @@ export default function filterServerCodecs(mainChannels: SDPMediaSection[], data
     forEachReverse(codec['rtp-hdrexts'], (value, index, arr) => {
       if(extmap[value.id] !== value.uri) {
         arr.splice(index, 1);
-        console.log(`[sdp] filtered extmap:`, value, index, type);
+        log('filtered extmap', value, index, type);
       }
     });
   });

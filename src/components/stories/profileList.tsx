@@ -28,7 +28,7 @@ import ListenerSetter from '@helpers/listenerSetter';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import cancelClickOrNextIfNotClick from '@helpers/dom/cancelClickOrNextIfNotClick';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
-import AppMyStoriesTab from '../sidebarLeft/tabs/myStories';
+import {AppMyStoriesTab} from '@components/solidJsTabs/tabs';
 import SidebarSlider from '../slider';
 import InputField from '@components/inputField';
 import confirmationPopup from '@components/confirmationPopup';
@@ -786,12 +786,11 @@ export function profileStoriesButtonMenu(props: {
     icon: 'archive',
     text: 'MyStories.ShowArchive',
     onClick: () => {
-      const tab = props.slider.createTab(AppMyStoriesTab);
-      tab.isArchive = true;
-      if(props.peerId.isAnyChat()) {
-        tab.chatId = props.peerId.toChatId();
-      }
-      tab.open();
+      props.slider.createTab(AppMyStoriesTab).open({
+        ...AppMyStoriesTab.getInitArgs(),
+        isArchive: true,
+        chatId: props.peerId.isAnyChat() ? props.peerId.toChatId() : undefined
+      });
     },
     verify: () => Promise.resolve(props.canEdit?.() ?? true).then((canEdit) => (
       props.verify() &&

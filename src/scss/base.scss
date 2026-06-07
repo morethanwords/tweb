@@ -30,6 +30,11 @@
   --z-below: -1;
   --hover-alpha: #{$hover-alpha};
   --reflect: 1;
+  // Safe-area inset on the inline-end side (the side `inset-inline-end` /
+  // `* var(--reflect)` act on). Real value is set in the @supports block by
+  // the html safe-area padding below; 0 here is the no-env() fallback so
+  // calc() consumers never see an undefined var.
+  --safe-area-inset-inline-end: 0px;
 
   --transition-standard-easing: cubic-bezier(.4, .0, .2, 1);
   --transition-standard-in-time: .3s;
@@ -400,6 +405,21 @@ html.no-backdrop {
 @supports(padding: string.unquote('max(0px)')) {
   html {
     padding: 0 string.unquote('min(16px, env(safe-area-inset-right))') 0 string.unquote('min(16px, env(safe-area-inset-left))');
+  }
+
+  // Mirror the inline-end padding above into a var so layout math can slide a
+  // column past the *real* screen edge, not just past html's content box.
+  // On `:root` (not `html`) to match --reflect's specificity, so the .is-rtl
+  // override wins; for RTL the inline-end side is physical-left. The value must
+  // go through `#{}` interpolation — Sass passes custom-property values through
+  // literally and would otherwise emit the `min(...)` text unevaluated, making
+  // the var (and any calc() consuming it) invalid.
+  :root {
+    --safe-area-inset-inline-end: #{'min(16px, env(safe-area-inset-right))'};
+  }
+
+  :root.is-rtl {
+    --safe-area-inset-inline-end: #{'min(16px, env(safe-area-inset-left))'};
   }
 }
 

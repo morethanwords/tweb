@@ -39,15 +39,15 @@ import {openInstantViewInAppBrowser} from '@components/browser';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import appSidebarLeft from '@components/sidebarLeft';
-import AppContactsTab from '@components/sidebarLeft/tabs/contacts';
-import AppNewChannelTab from '@components/sidebarLeft/tabs/newChannel';
+import {AppContactsTab} from '@components/solidJsTabs/tabs';
+import {AppNewChannelTab} from '@components/solidJsTabs/tabs';
 import showCreateContactPopup from '@components/popups/createContact';
 import createNewGroupTab from '@components/sidebarLeft/tabs/createNewGroupTab';
 import {AppEditProfileTab, AppSettingsTab, getEditProfileInitArgs} from '@components/solidJsTabs';
 import showBirthdayPopup, {saveMyBirthday} from '@components/popups/birthday';
 import showLogOutPopup from '@components/popups/logOut';
 import {getStickerSetInputByShortName} from '@lib/appManagers/utils/stickers/getStickerSetInput';
-import AppMyStoriesTab from '@components/sidebarLeft/tabs/myStories';
+import {AppMyStoriesTab} from '@components/solidJsTabs/tabs';
 
 export class InternalLinkProcessor {
   protected managers: AppManagers;
@@ -759,8 +759,7 @@ export class InternalLinkProcessor {
             return showCreateContactPopup();
           case 'search':
           case '':
-            const tab = appSidebarLeft.createTab(AppContactsTab);
-            return tab.open().then(() => tab.focus());
+            return appSidebarLeft.createTab(AppContactsTab).open();
           // case 'invite':
           // case 'manage':
           // case 'sort':
@@ -1224,13 +1223,11 @@ export class InternalLinkProcessor {
     if(peerId === rootScope.myId) {
       const existing = appSidebarRight.getTab(AppMyStoriesTab);
       if(existing) {
-        existing.setAlbum(albumId);
+        (existing as any).setAlbum(albumId);
         return;
       }
 
-      const tab = appSidebarRight.createTab(AppMyStoriesTab);
-      tab.initialAlbumId = albumId;
-      await tab.open();
+      await appSidebarRight.createTab(AppMyStoriesTab).open({...AppMyStoriesTab.getInitArgs(), initialAlbumId: albumId});
       appSidebarRight.toggleSidebar(true, true);
     } else {
       if(appImManager.chat.peerId !== peerId) {

@@ -4,7 +4,7 @@ import {Message} from '@layer';
 import {isParticipantAdmin} from '@appManagers/utils/chats/isParticipantAdmin';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
-import {AppAdminRecentActionsTab} from '@components/solidJsTabs/tabs';
+import {AppAdminRecentActionsTab, openUserPermissionsTab} from '@components/solidJsTabs/tabs';
 import {toastNew} from '@components/toast';
 
 
@@ -50,7 +50,7 @@ export function useParticipantClickHandler(peerId: PeerId) {
     try {
       const participant = await rootScope.managers.appProfileManager.getParticipant(tab.payload.channelId, peerId);
 
-      allTabs.AppUserPermissionsTab.openTab(
+      openUserPermissionsTab(
         tab.slider,
         tab.payload.channelId, participant, isParticipantAdmin(participant)
       );

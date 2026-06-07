@@ -12,7 +12,7 @@ import {IconTsx} from '@components/iconTsx';
 
 import styles from '@components/popups/birthday.module.scss';
 import appSidebarLeft from '@components/sidebarLeft';
-import AppPrivacyBirthdayTab from '@components/sidebarLeft/tabs/privacy/birthday';
+import {AppPrivacyBirthdayTab} from '@components/solidJsTabs/tabs';
 import rootScope from '@lib/rootScope';
 import {doubleRaf} from '@helpers/schedulers';
 import {toastNew} from '@components/toast';

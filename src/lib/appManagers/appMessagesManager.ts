@@ -14,7 +14,7 @@ import LazyLoadQueueBase from '@components/lazyLoadQueueBase';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import tsNow from '@helpers/tsNow';
 import {nextRandomUint, randomLong} from '@helpers/random';
-import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap,  PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, WebPage, GeoPoint, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory,  MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities, ChannelsSearchPosts, FactCheck, MessageExtendedMedia, SponsoredMessage, MessagesSponsoredMessages, InputGroupCall, TodoItem, TodoCompletion, SearchPostsFlood,  MessagesDeleteSavedHistory, ChannelsDeleteParticipantHistory, MessagesDeleteHistory, MessagesDeleteTopicHistory} from '@layer';
+import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputMessageReadMetric, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap,  PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, WebPage, GeoPoint, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory,  MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities, ChannelsSearchPosts, FactCheck, MessageExtendedMedia, SponsoredMessage, MessagesSponsoredMessages, InputGroupCall, TodoItem, TodoCompletion, SearchPostsFlood,  MessagesDeleteSavedHistory, ChannelsDeleteParticipantHistory, MessagesDeleteHistory, MessagesDeleteTopicHistory} from '@layer';
 import {ArgumentTypes, InvokeApiOptions, Modify} from '@types';
 import {logger, LogTypes} from '@lib/logger';
 import {ReferenceContext} from '@lib/storages/references';
@@ -4779,6 +4779,7 @@ export class AppMessagesManager extends AppManager {
     ])
     .then(([state, pinned]) => {
       state.hiddenPinnedMessages[peerId] = pinned.maxId;
+      this.appStateManager.pushToState('hiddenPinnedMessages', state.hiddenPinnedMessages);
       this.rootScope.dispatchEvent('peer_pinned_hidden', {peerId, maxId: pinned.maxId});
     });
   }
@@ -10478,6 +10479,7 @@ export class AppMessagesManager extends AppManager {
     }
     this.appStateManager.getState().then((state) => {
       delete state.hiddenPinnedMessages[peerId];
+      this.appStateManager.pushToState('hiddenPinnedMessages', state.hiddenPinnedMessages);
       this.rootScope.dispatchEvent('peer_pinned_messages', {peerId, mids, pinned});
     });
   }
@@ -10577,6 +10579,48 @@ export class AppMessagesManager extends AppManager {
       peer: this.appPeersManager.getInputPeerById(peerId)
     });
   }
+
+  public reportMusicListen(id: InputDocument, listenedDuration: number) {
+    return this.apiManager.invokeApi('messages.reportMusicListen', {
+      id,
+      listened_duration: listenedDuration
+    });
+  }
+
+  private readMetricsPending: Map<PeerId, Omit<InputMessageReadMetric.inputMessageReadMetric, '_'>[]> = new Map();
+  private readMetricsFlushTimeout: number;
+
+  // Enqueues a finalized post-engagement metric (msg_id is a local mid, converted on flush) and
+  // batches per-peer sends of messages.reportReadMetrics, mirroring tdesktop's 5s flush window.
+  public reportReadMetrics(peerId: PeerId, metric: Omit<InputMessageReadMetric.inputMessageReadMetric, '_'>) {
+    let metrics = this.readMetricsPending.get(peerId);
+    if(!metrics) {
+      this.readMetricsPending.set(peerId, metrics = []);
+    }
+
+    metrics.push(metric);
+
+    if(this.readMetricsFlushTimeout === undefined) {
+      this.readMetricsFlushTimeout = ctx.setTimeout(this.flushReadMetrics, 5000);
+    }
+  }
+
+  private flushReadMetrics = () => {
+    this.readMetricsFlushTimeout = undefined;
+    const pending = this.readMetricsPending;
+    this.readMetricsPending = new Map();
+
+    pending.forEach((metrics, peerId) => {
+      this.apiManager.invokeApi('messages.reportReadMetrics', {
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        metrics: metrics.map((metric) => ({
+          ...metric,
+          _: 'inputMessageReadMetric',
+          msg_id: getServerMessageId(metric.msg_id)
+        })) as InputMessageReadMetric[]
+      }).catch(() => {});
+    });
+  };
 
   private processFactCheckBatch = async(batch: AppMessagesManager['factCheckBatcher']['batchMap']) => {
     for(const [peerId, midsMap] of batch) {

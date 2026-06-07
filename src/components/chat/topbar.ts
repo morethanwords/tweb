@@ -22,7 +22,7 @@ import replaceContent from '@helpers/dom/replaceContent';
 import {ChatFull, Chat as MTChat, GroupCall, Dialog, InputGroupCall, UserFull} from '@layer';
 import {showSharingPickerPopup} from '@components/popups/pickUser';
 import PopupPeer, {PopupPeerCheckboxOptions} from '@components/popups/peer';
-import AppEditContactTab from '@components/sidebarRight/tabs/editContact';
+import {AppEditContactTab} from '@components/solidJsTabs/tabs';
 import IS_GROUP_CALL_SUPPORTED from '@environment/groupCallSupport';
 import IS_CALL_SUPPORTED from '@environment/callSupport';
 import {CallType} from '@lib/calls/types';
@@ -807,9 +807,7 @@ export default class ChatTopbar {
 
   public addContact() {
     if(!this.appSidebarRight.isTabExists(AppEditContactTab)) {
-      const tab = this.appSidebarRight.createTab(AppEditContactTab);
-      tab.peerId = this.peerId;
-      tab.open();
+      this.appSidebarRight.createTab(AppEditContactTab).open(this.peerId);
 
       this.appSidebarRight.toggleSidebar(true);
     }

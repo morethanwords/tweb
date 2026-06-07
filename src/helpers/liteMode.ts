@@ -1,5 +1,5 @@
 import {MOUNT_CLASS_TO} from '@config/debug';
-import rootScope from '@lib/rootScope';
+import {useAppSettings} from '@stores/appSettings';
 
 export type LiteModeKey = 'all' | 'gif' | 'video' |
   'emoji' | 'emoji_panel' | 'emoji_messages' | 'emoji_appear' |
@@ -9,11 +9,13 @@ export type LiteModeKey = 'all' | 'gif' | 'video' |
 
 export class LiteMode {
   public isEnabled() {
-    return !!(rootScope.settings && rootScope.settings.liteMode.all);
+    const [appSettings] = useAppSettings();
+    return !!appSettings.liteMode?.all;
   }
 
   public isAvailable(key: LiteModeKey) {
-    return !!(rootScope.settings && !rootScope.settings.liteMode.all && !rootScope.settings.liteMode[key]);
+    const [appSettings] = useAppSettings();
+    return !!(appSettings.liteMode && !appSettings.liteMode.all && !appSettings.liteMode[key]);
   }
 }
 

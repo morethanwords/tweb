@@ -123,12 +123,20 @@ export default class AutocompleteHelper extends EventListenerBase<{
   }
 
   public toggle(hide?: boolean, fromController = false, skipAnimation?: boolean) {
-    if(this.init) {
-      return;
-    }
-
     if(hide === undefined) {
       hide = this.container.classList.contains('is-visible') && !this.container.classList.contains('backwards');
+    }
+
+    // * Cancel any in-flight suggestion load whenever we're hiding — including the
+    // * early-return paths below (not yet initialized, or already hidden). Otherwise a
+    // * slow request resolves later and shows the panel for input that was already
+    // * cleared, since both of those paths used to skip middlewareHelper.clean().
+    if(hide) {
+      this.middlewareHelper.clean();
+    }
+
+    if(this.init) {
+      return;
     }
 
     if(this.hidden === hide) {
@@ -159,7 +167,6 @@ export default class AutocompleteHelper extends EventListenerBase<{
         this.controller.hideOtherHelpers();
       }
 
-      this.middlewareHelper.clean();
       this.detach?.(); // force detach here
     }
 

@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tweb logs viewer</title>
+<!--
+  Standalone viewer for the NDJSON dumps produced by the in-app log buffer
+  (@lib/debug/exportLogs -> window.downloadLogs()). No build, no server: open
+  this file directly (file://), drop the .ndjson in. Optionally drop the build's
+  .js.map files too and stacks are symbolicated in-browser (same VLQ decoder as
+  src/scripts/symbolicate-logs.js).
+
+  The list is virtualized (fixed row height, only the visible window is in the
+  DOM), so it scrolls smoothly through arbitrarily large dumps. Clicking a row
+  shows its full args + stack in the bottom detail panel.
+-->
+<style>
+  :root {
+    --bg: #1b1b1f; --panel: #25252b; --panel2: #2d2d34; --line: #3a3a42;
+    --fg: #d6d6db; --dim: #8a8a93; --accent: #4a9eff;
+    --error: #f24b4b; --warn: #e0a52b; --log: #cfcfd6; --debug: #7c7c86;
+    --src-main: #4a9eff; --src-mtproto: #b07cff; --src-sw: #ff9d4a;
+    --row-h: 24px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg); color: var(--fg);
+    font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+  }
+  header {
+    padding: 8px 12px; background: var(--panel); border-bottom: 1px solid var(--line);
+    display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; flex: none;
+  }
+  header .title { font-weight: 700; color: #fff; letter-spacing: .3px; }
+  header .meta { color: var(--dim); font-size: 11px; }
+  header .meta b { color: var(--fg); font-weight: 600; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+  label.btn {
+    display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+    background: var(--panel2); border: 1px solid var(--line); border-radius: 6px;
+    padding: 4px 9px; color: var(--fg); user-select: none;
+  }
+  label.btn:hover { border-color: var(--accent); }
+  input[type=file] { display: none; }
+  input[type=search] {
+    background: var(--panel2); border: 1px solid var(--line); border-radius: 6px;
+    color: var(--fg); padding: 5px 9px; min-width: 240px; font: inherit;
+  }
+  input[type=search]:focus { outline: none; border-color: var(--accent); }
+  .toggles { display: inline-flex; gap: 4px; }
+  .toggle {
+    cursor: pointer; user-select: none; padding: 3px 8px; border-radius: 5px;
+    border: 1px solid var(--line); background: transparent; color: var(--dim); font: inherit;
+  }
+  .toggle.on { color: #fff; }
+  .toggle[data-k="1"].on { border-color: var(--error); background: color-mix(in srgb, var(--error) 18%, transparent); color: var(--error); }
+  .toggle[data-k="2"].on { border-color: var(--warn);  background: color-mix(in srgb, var(--warn) 18%, transparent);  color: var(--warn); }
+  .toggle[data-k="4"].on { border-color: var(--log);   background: color-mix(in srgb, var(--log) 14%, transparent);   color: var(--log); }
+  .toggle[data-k="8"].on { border-color: var(--debug); background: color-mix(in srgb, var(--debug) 22%, transparent); color: #aeaeb8; }
+  .toggle.src.on { color: #fff; border-color: currentColor; }
+  .stat { color: var(--dim); margin-left: auto; font-size: 11px; white-space: nowrap; }
+
+  #drop {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    color: var(--dim); text-align: center; padding: 40px; flex-direction: column; gap: 8px;
+  }
+  #drop.hide { display: none; }
+  #drop .big { font-size: 15px; color: var(--fg); }
+  body.dragover { outline: 2px dashed var(--accent); outline-offset: -6px; }
+
+  /* virtualized list */
+  #list { flex: 1; overflow: auto; position: relative; }
+  #list.hide { display: none; }
+  #viewport { position: relative; width: 100%; }
+  #rows { position: absolute; top: 0; left: 0; right: 0; will-change: transform; }
+  .row {
+    display: grid; grid-template-columns: 96px 64px 72px 56px minmax(120px, 22%) 1fr;
+    gap: 8px; padding: 0 12px; height: var(--row-h); line-height: var(--row-h);
+    border-bottom: 1px solid #232329; cursor: pointer; white-space: nowrap;
+    contain: strict;
+  }
+  .row:hover { background: var(--panel); }
+  .row.sel { background: color-mix(in srgb, var(--accent) 20%, transparent); }
+  .row > span { overflow: hidden; text-overflow: ellipsis; }
+  .c-time { color: var(--dim); }
+  .c-delta { color: var(--dim); text-align: right; }
+  .c-delta.gap { color: var(--warn); }
+  .badge { display: inline-block; padding: 0 6px; border-radius: 4px; font-size: 10.5px; line-height: 16px; }
+  .b1 { background: color-mix(in srgb, var(--error) 22%, transparent); color: var(--error); }
+  .b2 { background: color-mix(in srgb, var(--warn) 22%, transparent); color: var(--warn); }
+  .b4 { background: #34343c; color: var(--log); }
+  .b8 { background: #2a2a31; color: var(--debug); }
+  .src { font-weight: 600; }
+  .src-main { color: var(--src-main); } .src-mtproto { color: var(--src-mtproto); } .src-sw { color: var(--src-sw); }
+  .c-prefix { color: var(--accent); }
+  .c-msg { color: var(--fg); }
+  .row.lvl-8 .c-msg, .row.lvl-8 .c-prefix { color: var(--debug); }
+  .row.lvl-1 .c-msg { color: #ffb3b3; }
+
+  /* detail panel */
+  #detail { flex: none; height: 38vh; border-top: 1px solid var(--line); background: #1f1f24; display: none; flex-direction: column; }
+  #detail.show { display: flex; }
+  .dhead { display: flex; align-items: center; gap: 12px; padding: 6px 12px; border-bottom: 1px solid var(--line); color: var(--dim); flex: none; }
+  .dhead .x { margin-left: auto; cursor: pointer; padding: 2px 8px; border: 1px solid var(--line); border-radius: 5px; color: var(--dim); }
+  .dhead .x:hover { border-color: var(--accent); color: var(--fg); }
+  .dbody { overflow: auto; padding: 8px 12px 14px; }
+  .dbody h4 { margin: 8px 0 3px; font-size: 11px; color: var(--dim); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+  .dbody pre { margin: 0; white-space: pre-wrap; word-break: break-word; color: #c8c8d0; }
+  .dbody .arg { border-left: 2px solid var(--line); padding-left: 8px; margin: 3px 0; }
+  .dbody .frame .orig { color: #7ee787; }
+  .dbody .frame.unres .nomap { color: var(--warn); }
+</style>
+</head>
+<body>
+<header>
+  <span class="title">tweb logs</span>
+  <span class="meta" id="meta">no file loaded</span>
+  <div class="controls">
+    <label class="btn">📄 logs<input type="file" id="fileLogs" accept=".ndjson,.json,.log,.txt"></label>
+    <label class="btn">🗺 maps<input type="file" id="fileMaps" accept=".map" multiple></label>
+    <div class="toggles" id="lvlToggles">
+      <button class="toggle on" data-k="1">error</button>
+      <button class="toggle on" data-k="2">warn</button>
+      <button class="toggle on" data-k="4">log</button>
+      <button class="toggle on" data-k="8">debug</button>
+    </div>
+    <div class="toggles" id="srcToggles"></div>
+    <input type="search" id="search" placeholder="filter prefix / args…">
+    <span class="stat" id="stat"></span>
+  </div>
+</header>
+
+<div id="drop">
+  <div class="big">Drop a <b>.ndjson</b> log dump here</div>
+  <div>…and optionally the build's <b>.js.map</b> files to symbolicate stacks in-browser.</div>
+  <div>(or use the buttons above)</div>
+</div>
+
+<div id="list" class="hide">
+  <div id="viewport"><div id="rows"></div></div>
+</div>
+
+<div id="detail">
+  <div class="dhead"><span id="dtitle"></span><span class="x" id="dclose">close ✕</span></div>
+  <div class="dbody" id="dbody"></div>
+</div>
+
+<script>
+'use strict';
+
+const ROW_H = 24;       // must match --row-h
+const OVERSCAN = 10;    // rows rendered above/below the viewport
+
+const state = {
+  meta: null,
+  entries: [],          // {t, src, level, prefix, args, stack?}
+  maps: new Map(),      // basename(foo.js) -> parsed source map
+  levels: new Set([1, 2, 4, 8]),
+  enabledSrcs: null,    // Set of enabled srcs
+  srcs: new Set(),      // all srcs seen
+  query: '',
+  filtered: [],         // original indices passing the filter
+  selectedIdx: -1       // original index of the selected entry
+};
+const LEVEL_NAME = {1: 'ERROR', 2: 'WARN', 4: 'LOG', 8: 'DEBUG'};
+
+// ---------------------------------------------------------------------------
+// VLQ source-map decoder (mirror of src/scripts/symbolicate-logs.js)
+// ---------------------------------------------------------------------------
+const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+const CHAR_TO_INT = {};
+for (let i = 0; i < B64.length; ++i) CHAR_TO_INT[B64[i]] = i;
+
+function decodeVLQs(segment) {
+  const result = [];
+  let shift = 0, value = 0;
+  for (const c of segment) {
+    const integer = CHAR_TO_INT[c];
+    if (integer === undefined) throw new Error('invalid VLQ char: ' + c);
+    const hasContinuation = integer & 32;
+    value += (integer & 31) * Math.pow(2, shift);
+    if (hasContinuation) { shift += 5; }
+    else {
+      const negate = value % 2 === 1;
+      value = Math.floor(value / 2);
+      result.push(negate ? (value === 0 ? -0x7fffffff : -value) : value);
+      value = 0; shift = 0;
+    }
+  }
+  return result;
+}
+
+function parseSourceMap(raw) {
+  const map = JSON.parse(raw);
+  const sources = (map.sources || []).map((s) => {
+    if (map.sourceRoot && !/^(\.|\/|[a-z]+:)/i.test(s)) return map.sourceRoot.replace(/\/?$/, '/') + s;
+    return s;
+  });
+  const names = map.names || [];
+  const lines = [];
+  let srcIdx = 0, origLine = 0, origCol = 0, nameIdx = 0;
+  (map.mappings || '').split(';').forEach((lineStr) => {
+    const segments = [];
+    let genCol = 0;
+    if (lineStr) {
+      for (const segStr of lineStr.split(',')) {
+        if (!segStr) continue;
+        const f = decodeVLQs(segStr);
+        genCol += f[0];
+        const seg = {genCol};
+        if (f.length >= 4) {
+          srcIdx += f[1]; origLine += f[2]; origCol += f[3];
+          seg.srcIdx = srcIdx; seg.origLine = origLine; seg.origCol = origCol;
+          if (f.length >= 5) { nameIdx += f[4]; seg.nameIdx = nameIdx; }
+        }
+        segments.push(seg);
+      }
+    }
+    lines.push(segments);
+  });
+  return {sources, names, lines};
+}
+
+function originalPositionFor(parsed, genLine, genCol) {
+  const segments = parsed.lines[genLine - 1];
+  if (!segments || !segments.length) return null;
+  const col0 = genCol - 1;
+  let lo = 0, hi = segments.length - 1, found = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (segments[mid].genCol <= col0) { found = mid; lo = mid + 1; }
+    else hi = mid - 1;
+  }
+  if (found < 0) return null;
+  const seg = segments[found];
+  if (seg.srcIdx === undefined) return null;
+  return {
+    source: parsed.sources[seg.srcIdx],
+    line: seg.origLine + 1,
+    column: seg.origCol + 1,
+    name: seg.nameIdx !== undefined ? parsed.names[seg.nameIdx] : undefined
+  };
+}
+
+const FRAME_RE = /([^\s()@/\\]+\.m?js):(\d+):(\d+)/g;
+function resolveFrame(line) {
+  let last = null, m;
+  FRAME_RE.lastIndex = 0;
+  while ((m = FRAME_RE.exec(line))) last = m;
+  if (!last) return null;
+  const [, base, ln, col] = last;
+  const parsed = state.maps.get(base);
+  if (!parsed) return {missing: base};
+  const pos = originalPositionFor(parsed, +ln, +col);
+  if (!pos) return null;
+  return {orig: `${pos.source}:${pos.line}:${pos.column}${pos.name ? ' (' + pos.name + ')' : ''}`};
+}
+
+// ---------------------------------------------------------------------------
+// loading
+// ---------------------------------------------------------------------------
+function loadLogsText(text) {
+  const out = [];
+  let meta = null;
+  for (const raw of text.split('\n')) {
+    const s = raw.trim();
+    if (!s) continue;
+    let o; try { o = JSON.parse(s); } catch (e) { continue; }
+    if (o && o.__meta) meta = o; else if (o) out.push(o);
+  }
+  state.meta = meta;
+  state.entries = out;
+  state.srcs = new Set(out.map((e) => e.src || '?'));
+  state.selectedIdx = -1;
+  closeDetail();
+  buildSrcToggles();
+  renderMeta();
+  document.getElementById('drop').classList.toggle('hide', out.length > 0);
+  document.getElementById('list').classList.toggle('hide', out.length === 0);
+  applyFilter();
+}
+
+function addMapText(filename, text) {
+  const base = filename.replace(/\.map$/, '');            // foo.js.map -> foo.js
+  try { state.maps.set(base, parseSourceMap(text)); }
+  catch (e) { console.error('bad map', filename, e); }
+  renderMeta();
+  if (state.selectedIdx >= 0) renderDetail(state.entries[state.selectedIdx]); // refresh frames
+}
+
+// ---------------------------------------------------------------------------
+// filtering + virtualized rendering
+// ---------------------------------------------------------------------------
+function passes(e) {
+  if (!state.levels.has(e.level)) return false;
+  if (state.enabledSrcs && !state.enabledSrcs.has(e.src || '?')) return false;
+  if (state.query) {
+    const hay = ((e.prefix || '') + ' ' + argsToText(e.args)).toLowerCase();
+    if (!hay.includes(state.query)) return false;
+  }
+  return true;
+}
+
+function applyFilter() {
+  const f = [];
+  for (let i = 0; i < state.entries.length; ++i) if (passes(state.entries[i])) f.push(i);
+  state.filtered = f;
+  document.getElementById('viewport').style.height = (f.length * ROW_H) + 'px';
+  document.getElementById('list').scrollTop = 0;
+  document.getElementById('stat').textContent = `showing ${f.length} of ${state.entries.length}`;
+  renderWindow();
+  // Re-measure once layout has settled (e.g. right after un-hiding the list).
+  requestAnimationFrame(renderWindow);
+}
+
+function renderWindow() {
+  const list = document.getElementById('list');
+  const total = state.filtered.length;
+  // Fallback height for degenerate cases where the container reports 0 (not yet
+  // laid out / detached / headless metrics); a real browser reports the real
+  // height and this never triggers.
+  const vh = list.clientHeight || 800;
+  const start = Math.max(0, Math.floor(list.scrollTop / ROW_H) - OVERSCAN);
+  const end = Math.min(total, Math.ceil((list.scrollTop + vh) / ROW_H) + OVERSCAN);
+
+  const rows = document.getElementById('rows');
+  rows.style.transform = `translateY(${start * ROW_H}px)`;
+
+  const frag = document.createDocumentFragment();
+  for (let i = start; i < end; ++i) {
+    const idx = state.filtered[i];
+    const e = state.entries[idx];
+    const delta = i > 0 ? (e.t - state.entries[state.filtered[i - 1]].t) : '';
+    frag.appendChild(rowEl(e, idx, delta));
+  }
+  rows.replaceChildren(frag);
+}
+
+function rowEl(e, idx, delta) {
+  const row = document.createElement('div');
+  row.className = 'row lvl-' + e.level + (idx === state.selectedIdx ? ' sel' : '');
+  row.dataset.idx = idx;
+  const gap = typeof delta === 'number' && delta >= 500;
+  row.innerHTML =
+    `<span class="c-time">${esc(fmtTime(e.t))}</span>` +
+    `<span class="c-delta${gap ? ' gap' : ''}">${delta === '' ? '' : '+' + fmtDelta(delta)}</span>` +
+    `<span class="src src-${esc(e.src)}">${esc(e.src || '?')}</span>` +
+    `<span><span class="badge b${e.level}">${LEVEL_NAME[e.level] || e.level}</span></span>` +
+    `<span class="c-prefix">${esc(e.prefix || '')}</span>` +
+    `<span class="c-msg">${esc(argsToText(e.args))}</span>`;
+  return row;
+}
+
+// ---------------------------------------------------------------------------
+// detail panel
+// ---------------------------------------------------------------------------
+function selectRow(idx) {
+  state.selectedIdx = idx;
+  renderDetail(state.entries[idx]);
+  document.getElementById('detail').classList.add('show');
+  renderWindow();
+}
+
+function closeDetail() {
+  state.selectedIdx = -1;
+  document.getElementById('detail').classList.remove('show');
+  renderWindow();
+}
+
+function renderDetail(e) {
+  document.getElementById('dtitle').innerHTML =
+    `<span class="src src-${esc(e.src)}">${esc(e.src)}</span> · ` +
+    `<span class="badge b${e.level}">${LEVEL_NAME[e.level] || e.level}</span> · ` +
+    `<span class="c-prefix">${esc(e.prefix || '')}</span> · <span style="color:var(--dim)">${esc(fmtTime(e.t))}</span>`;
+
+  let html = '<h4>args</h4>';
+  (e.args || []).forEach((a) => {
+    const txt = typeof a === 'string' ? a : JSON.stringify(a, null, 2);
+    html += `<div class="arg"><pre>${esc(txt)}</pre></div>`;
+  });
+  if (e.stack) {
+    html += '<h4>stack</h4><pre>';
+    for (const line of e.stack.split('\n')) {
+      const r = resolveFrame(line);
+      if (r && r.orig) html += `<span class="frame">${esc(line)}   <span class="orig">→ ${esc(r.orig)}</span></span>\n`;
+      else if (r && r.missing) html += `<span class="frame unres">${esc(line)}   <span class="nomap">(no map: ${esc(r.missing)})</span></span>\n`;
+      else html += `<span class="frame">${esc(line)}</span>\n`;
+    }
+    html += '</pre>';
+  }
+  document.getElementById('dbody').innerHTML = html;
+}
+
+// ---------------------------------------------------------------------------
+// header / toggles
+// ---------------------------------------------------------------------------
+function renderMeta() {
+  const m = state.meta;
+  const mapInfo = state.maps.size ? ` · <b>${state.maps.size}</b> maps` : '';
+  document.getElementById('meta').innerHTML = m
+    ? `version <b>${esc(m.versionFull || m.version)}</b> · mode ${esc(m.mode)} · ${esc(m.count)} entries · ${esc((m.exportedAt || '').replace('T', ' ').replace(/\..+/, ''))}${mapInfo}`
+    : `${state.entries.length} entries${mapInfo}`;
+}
+
+function buildSrcToggles() {
+  const box = document.getElementById('srcToggles');
+  box.innerHTML = '';
+  state.enabledSrcs = new Set(state.srcs);
+  for (const s of [...state.srcs].sort()) {
+    const b = document.createElement('button');
+    b.className = 'toggle src on src-' + s;
+    b.dataset.src = s;
+    b.textContent = s;
+    b.onclick = () => {
+      b.classList.toggle('on');
+      toggleSet(state.enabledSrcs, s, b.classList.contains('on'));
+      applyFilter();
+    };
+    box.appendChild(b);
+  }
+}
+function toggleSet(set, v, on) { on ? set.add(v) : set.delete(v); }
+
+// ---------------------------------------------------------------------------
+// helpers
+// ---------------------------------------------------------------------------
+function fmtTime(t) {
+  const d = new Date(t);
+  const p = (n, w = 2) => String(n).padStart(w, '0');
+  return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}.${p(d.getMilliseconds(), 3)}`;
+}
+function fmtDelta(ms) { return ms >= 1000 ? (ms / 1000).toFixed(2) + 's' : ms + 'ms'; }
+function argsToText(args) {
+  if (!args) return '';
+  return args.map((a) => typeof a === 'string' ? a : JSON.stringify(a)).join(' ');
+}
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;'}[c]));
+}
+
+// ---------------------------------------------------------------------------
+// events
+// ---------------------------------------------------------------------------
+const list = document.getElementById('list');
+let scrollScheduled = false;
+list.addEventListener('scroll', () => {
+  if (scrollScheduled) return;
+  scrollScheduled = true;
+  requestAnimationFrame(() => { scrollScheduled = false; renderWindow(); });
+});
+window.addEventListener('resize', renderWindow);
+
+list.addEventListener('click', (ev) => {
+  const row = ev.target.closest('.row');
+  if (!row) return;
+  const idx = +row.dataset.idx;
+  if (idx === state.selectedIdx) closeDetail(); else selectRow(idx);
+});
+document.getElementById('dclose').addEventListener('click', closeDetail);
+
+document.getElementById('lvlToggles').addEventListener('click', (ev) => {
+  const b = ev.target.closest('.toggle'); if (!b) return;
+  b.classList.toggle('on');
+  toggleSet(state.levels, +b.dataset.k, b.classList.contains('on'));
+  applyFilter();
+});
+
+let searchTimer;
+document.getElementById('search').addEventListener('input', (ev) => {
+  clearTimeout(searchTimer);
+  const v = ev.target.value.trim().toLowerCase();
+  searchTimer = setTimeout(() => { state.query = v; applyFilter(); }, 130);
+});
+
+document.getElementById('fileLogs').addEventListener('change', (ev) => {
+  const f = ev.target.files[0]; if (!f) return;
+  f.text().then(loadLogsText);
+});
+document.getElementById('fileMaps').addEventListener('change', (ev) => {
+  for (const f of ev.target.files) f.text().then((t) => addMapText(f.name, t));
+});
+
+['dragenter', 'dragover'].forEach((t) => document.body.addEventListener(t, (e) => {
+  e.preventDefault(); document.body.classList.add('dragover');
+}));
+['dragleave', 'drop'].forEach((t) => document.body.addEventListener(t, (e) => {
+  if (t === 'dragleave' && e.relatedTarget) return;
+  document.body.classList.remove('dragover');
+}));
+document.body.addEventListener('drop', (e) => {
+  e.preventDefault();
+  for (const f of e.dataTransfer.files) {
+    if (f.name.endsWith('.map')) f.text().then((t) => addMapText(f.name, t));
+    else f.text().then(loadLogsText);
+  }
+});
+
+// test/automation hook
+window.LogsViewer = {state, load: loadLogsText, addMap: addMapText, renderWindow, selectRow};
+</script>
+</body>
+</html>

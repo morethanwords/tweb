@@ -487,6 +487,20 @@
   }
 
   &.two-button-rows {
+    // Incoming call adds a second button row and lifts the first row up into
+    // the vertically-centred avatar / name / status column, so the subtitle
+    // ends up sitting under the buttons. Raise the column to re-centre it in
+    // the space between the header and the (now two) button rows. 5rem lands
+    // it dead-centre at the popup's minimum height (the only height where it's
+    // tight — it just gains clearance if resized larger). Safe to push high:
+    // the header centre is empty while ringing (encryption emojis only appear
+    // after the key exchange). Only the centred no-video layout is affected —
+    // once the call connects `.two-button-rows` is gone and `:not(.no-video)`
+    // pins the column to the top instead.
+    .call-info {
+      transform: translateY(calc(-50% - 5rem));
+    }
+
     .call-buttons {
       &.is-first {
         .call-button { // ! fix backdrop-filter transition

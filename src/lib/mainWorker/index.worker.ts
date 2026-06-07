@@ -9,6 +9,7 @@ import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
 import appManagersManager from '@appManagers/appManagersManager';
 import listenMessagePort from '@helpers/listenMessagePort';
 import {logger} from '@lib/logger';
+import {getLogEntries, setLogBufferEnabled} from '@lib/debug/logsBuffer';
 import toggleStorages from '@helpers/toggleStorages';
 import appTabsManager from '@appManagers/appTabsManager';
 import callbackify from '@helpers/callbackify';
@@ -56,6 +57,10 @@ port.addMultipleEventsListeners({
   crypto: ({method, args}) => {
     return cryptoWorker.invokeCrypto(method as any, ...args as any);
   },
+
+  getLogs: () => getLogEntries(),
+
+  setLogBufferEnabled: (enabled) => setLogBufferEnabled(enabled),
 
   state: ({state, resetStorages, pushedKeys, newVersion, oldVersion, userId, accountNumber, common, refetchStorages}) => {
     // if(haveState) {

@@ -70,10 +70,11 @@ const serverOptions: ServerOptions = {
   host,
   port: USE_SSL ? 443 : 8080,
   watch: {
-    // git worktrees (and their nested node_modules) live under .claude — watching
-    // them recursively blows past the macOS open-files limit (EMFILE on `watch`).
-    // node_modules/.git are covered by Vite's defaults; .claude is not, so add it.
-    ignored: ['**/.claude/**']
+    // NB: anchor on rootDir. A worktree checkout's own path contains
+    // ".claude/worktrees/<name>/", so a bare '**/.claude/**' glob would also match
+    // the worktree's OWN src and silently disable all HMR there. Anchoring ignores
+    // only this checkout's .claude (and, from the main repo, the worktrees inside it).
+    ignored: [resolve(rootDir, '.claude') + '/**']
   },
   sourcemapIgnoreList(sourcePath, sourcemapPath) {
     return sourcePath.includes('node_modules') ||

@@ -93,7 +93,7 @@ export default function FolderItem(props: FolderItemProps) {
         <Badge
           class="folders-sidebar__folder-item-badge"
           tag="div"
-          color={props.notifications.muted && !props.selected ? 'gray' : 'primary'}
+          color={props.notifications.muted/*  && !props.selected */ ? 'gray' : 'primary'}
           size={18}
         >
           {'' + props.notifications.count}

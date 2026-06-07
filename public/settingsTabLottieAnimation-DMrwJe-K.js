@@ -1,2 +1,0 @@
-import{eK as r,b as a,m as n,p as i}from"./index-UMz6Wi05.js";import{L as m}from"./mediaHeader-BR9SPDDM.js";import{ao as c}from"./appDialogsManager-Bo5NcxF5.js";const l="_Container_xlod8_1",C={Container:l},L=o=>{const{lottieLoader:t}=r(),e=c();return a(m,n({lottieLoader:t,onPromise:s=>e.collect(s),restartOnClick:!0,get class(){return i(o.class,C.Container)}},o))};export{L as S};
-//# sourceMappingURL=settingsTabLottieAnimation-DMrwJe-K.js.map

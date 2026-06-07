@@ -1,7 +1,7 @@
 import {createSignal, For, onMount, Show} from 'solid-js';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
-import AppPrivacyAndSecurityTab from '@components/sidebarLeft/tabs/privacyAndSecurity';
-import AppChatFoldersTab from '@components/sidebarLeft/tabs/chatFolders';
+import {AppPrivacyAndSecurityTab} from '@components/solidJsTabs/tabs';
+import {AppChatFoldersTab} from '@components/solidJsTabs/tabs';
 import {
   AppEditProfileTab,
   AppGeneralSettingsTab,
@@ -12,18 +12,18 @@ import {
   getEditProfileInitArgs
 } from '@components/solidJsTabs';
 import lottieLoader from '@lib/rlottie/lottieLoader';
-import AppDataAndStorageTab from '@components/sidebarLeft/tabs/dataAndStorage';
+import {AppDataAndStorageTab} from '@components/solidJsTabs/tabs';
 import ButtonIcon from '@components/buttonIcon';
 import rootScope from '@lib/rootScope';
 import Row from '@components/rowTsx';
-import AppActiveSessionsTab from '@components/sidebarLeft/tabs/activeSessions';
+import {AppActiveSessionsTab} from '@components/solidJsTabs/tabs';
 import {i18n, LangPackKey} from '@lib/langPack';
 import {SliderSuperTabConstructable, SliderSuperTabEventable} from '@components/sliderTab';
 import {AccountAuthorizations, Authorization} from '@layer';
 import PopupElement from '@components/popups';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import Section from '@components/section';
-import AppStickersAndEmojiTab from '@components/sidebarLeft/tabs/stickersAndEmoji';
+import {AppStickersAndEmojiTab} from '@components/solidJsTabs/tabs';
 import PopupPremium from '@components/popups/premium';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import useStars from '@stores/stars';
@@ -181,12 +181,11 @@ const Settings = () => {
     }
 
     const subTab = tab.slider.createTab(AppActiveSessionsTab);
-    subTab.authorizations = authorizations;
     subTab.eventListener.addEventListener('destroy', () => {
       authorizations = undefined;
       updateActiveSessions(true);
     }, {once: true});
-    subTab.open();
+    subTab.open({authorizations});
   };
 
   // ── Premium section. Signal-backed so `<Show>` re-evaluates when the
