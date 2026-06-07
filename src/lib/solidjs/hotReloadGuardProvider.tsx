@@ -9,7 +9,6 @@ import ButtonMenu, {ButtonMenuSync} from '@components/buttonMenu';
 import {ChatType} from '@components/chat/chatType';
 import confirmationPopup from '@components/confirmationPopup';
 import createEmojiDropdownButton, {useEmojiDropdown} from '@components/emojiDropdownButton';
-import {useStickersDropdown} from '@components/popups/createPoll/stickersDropdown';
 import {EmoticonsDropdown} from '@components/emoticonsDropdown';
 import EmoticonsSearch from '@components/emoticonsDropdown/search';
 import EmojiTab from '@components/emoticonsDropdown/tabs/emoji';
@@ -20,6 +19,7 @@ import PeerProfileAvatars from '@components/peerProfileAvatars';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
 import PopupElement from '@components/popups';
 import showBirthdayPopup, {saveMyBirthday} from '@components/popups/birthday';
+import {useStickersDropdown} from '@components/popups/createPoll/stickersDropdown';
 import showLimitPopup from '@components/popups/limit';
 import showMyQrCodePopup from '@components/popups/myQrCode';
 import PopupPremium from '@components/popups/premium';
@@ -30,17 +30,17 @@ import showTranslatePopup from '@components/popups/translate';
 import {setQuizHint} from '@components/quizHint';
 import Row from '@components/rowTsx';
 import appSidebarLeft from '@components/sidebarLeft';
-import {AppChatFoldersTab} from '@components/solidJsTabs/tabs';
-import {AppEditFolderTab} from '@components/solidJsTabs/tabs';
 import appSidebarRight from '@components/sidebarRight';
 import AppPollResultsTab from '@components/sidebarRight/tabs/pollResults';
-import Slideshow from '@components/slideshow'; // Added import
+import Slideshow from '@components/slideshow';
+import {AppChatFoldersTab, AppEditFolderTab} from '@components/solidJsTabs/tabs';
 import {StoriesProvider, useStories} from '@components/stories/store';
 import {hideToast, toast, toastNew} from '@components/toast';
 import {TranslatableMessageTsx} from '@components/translatableMessage';
 import {wrapAdaptiveCustomEmoji} from '@components/wrappers/customEmojiSimple';
 import DocumentTsx from '@components/wrappers/documentTsx';
 import wrapFolderTitle from '@components/wrappers/folderTitle';
+import wrapGeo from '@components/wrappers/geo';
 import getPeerTitle from '@components/wrappers/getPeerTitle';
 import {wrapTopicIcon} from '@components/wrappers/messageActionTextNewUnsafe';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
@@ -58,7 +58,6 @@ import apiManagerProxy from '@lib/apiManagerProxy';
 import appDialogsManager from '@lib/appDialogsManager';
 import appImManager from '@lib/appImManager';
 import I18n, {i18n, join} from '@lib/langPack';
-import wrapGeo from '@components/wrappers/geo';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import lottieLoader from '@lib/rlottie/lottieLoader';
@@ -68,6 +67,7 @@ import uiNotificationsManager from '@lib/uiNotificationsManager';
 import {useAppSettings} from '@stores/appSettings';
 import {useAppConfig} from '@stores/appState';
 import usePremium from '@stores/premium';
+
 
 export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
   return (
