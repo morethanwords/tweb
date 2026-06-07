@@ -48,6 +48,43 @@
           margin-top: -6px;
         }
       }
+
+      // While a new profile photo is uploading, the header is locked collapsed
+      // and shows a cancellable progress ring centered on the avatar.
+      &.is-avatar-uploading {
+        cursor: default;
+
+        .profile-avatars-avatar-fake {
+          visibility: visible;
+        }
+
+        // Avoid double avatar (the scaled carousel item) — show only the fake.
+        .profile-avatars-avatar.active {
+          opacity: 0;
+        }
+
+        .profile-avatars-avatar-fake {
+          &:after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background-color: rgba(0, 0, 0, .45);
+            z-index: 2;
+            pointer-events: none;
+          }
+
+          .preloader-container {
+            position: absolute;
+            inset: 0;
+            margin: auto;
+            width: 2.5rem;
+            height: 2.5rem;
+            z-index: 3;
+            pointer-events: all;
+          }
+        }
+      }
     }
 
     &-avatars {
@@ -246,9 +283,28 @@
       transition: opacity .2s ease-in-out;
       //min-width: 1.6875rem;
       height: inherit;
+      position: relative;
+      overflow: hidden;
 
       &.active {
         opacity: .6;
+      }
+
+      // While a video avatar plays, the active tab fills like a stories
+      // progress bar (dim base + bright fill driven by --progress).
+      &.is-playing {
+        opacity: 1;
+        background-color: rgba(255, 255, 255, .3);
+
+        &:before {
+          content: " ";
+          position: absolute;
+          inset-block: 0;
+          inset-inline-start: 0;
+          width: var(--progress, 0%);
+          border-radius: inherit;
+          background-color: #fff;
+        }
       }
     }
 

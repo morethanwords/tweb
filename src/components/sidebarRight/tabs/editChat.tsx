@@ -482,7 +482,7 @@ const EditChat: Component = () => {
         }
 
         if(editPeer.uploadAvatar) {
-          promises.push(editPeer.uploadAvatar().then((inputFile) => {
+          promises.push(editPeer.uploadAvatar.file().then((inputFile) => {
             return tab.managers.appChatsManager.editPhoto(id, inputFile);
           }));
         }

@@ -18,6 +18,7 @@ import getMediaFromMessage from '@appManagers/utils/messages/getMediaFromMessage
 import wrapRichText from '@richTextProcessor/wrapRichText';
 import {MediaSearchContext} from '@components/appMediaPlaybackController';
 import AppMediaViewerBase, {MEDIA_VIEWER_CLASSNAME} from '@components/appMediaViewerBase';
+import overlayAvatarVideoOnMover from '@components/appMediaViewerAvatarVideo';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import PopupDeleteMessages from '@components/popups/deleteMessages';
 import showForwardPopup from '@components/popups/forward';
@@ -77,6 +78,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
   protected btnMenuDownload: ButtonMenuItemOptionsVerifiable;
   protected btnMenuDelete: ButtonMenuItemOptionsVerifiable;
   private deleteAsChatPhoto = false;
+  private videoAvatarCleanup?: () => void;
 
   get searchContext() {
     return this.listLoader.searchContext;
@@ -471,7 +473,26 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     this.target.message = message;
     this.target.index = index;
 
+    // Animated avatar (a profile/chat photo with video_sizes — e.g. a group /
+    // channel avatar-change service message): overlay the looping video on the
+    // still image once the open/move animation settles, like the avatar viewer.
+    this.videoAvatarCleanup?.();
+    this.videoAvatarCleanup = undefined;
+    if((media as MyPhoto)?._ === 'photo' && (media as MyPhoto).video_sizes?.length) {
+      const photo = media as MyPhoto;
+      Promise.resolve(promise).then(() => {
+        if(this.target?.message !== message || !this.content.mover) return;
+        this.videoAvatarCleanup = overlayAvatarVideoOnMover(this.content.mover, photo);
+      });
+    }
+
     return promise;
+  }
+
+  public close(e?: MouseEvent) {
+    this.videoAvatarCleanup?.();
+    this.videoAvatarCleanup = undefined;
+    return super.close(e);
   }
 
   public static isMediaCompatibleForDocumentViewer(media: MyPhoto | MyDocument) {

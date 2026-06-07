@@ -75,7 +75,10 @@ export async function getFileAndOpenEditor({
     managers: rootScope.managers,
     mediaSrc,
     mediaType: isVideo ? 'video' : 'image',
-    initialTab: 'crop',
+    // Editing an avatar with a video → avatar-video mode (≤10s trim, forced mute,
+    // cover-frame picker). Non-avatar callers are unaffected.
+    isVideoAvatarMode: isEditingForAvatar && isVideo,
+    initialTab: isVideo ? 'adjustments' : 'crop',
     onEditFinish: (editorResult) => onFinish({editorResult, originalFile: file}),
     dontCreatePreview,
     onClose: () => { }

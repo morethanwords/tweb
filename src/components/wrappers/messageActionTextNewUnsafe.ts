@@ -456,6 +456,15 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         break;
       }
 
+      case 'messageActionSuggestProfilePhoto': {
+        const isOutgoing = message.fromId === rootScope.myId;
+        langPackKey = isOutgoing ?
+          'Action.YouSuggestedProfilePhoto' :
+          'Action.SuggestedProfilePhoto';
+        args = isOutgoing ? [getNameDivHTML(message.peerId, plain)] : [getNameDivHTML(message.fromId, plain)];
+        break;
+      }
+
       case 'messageActionChannelEditTitle':
       case 'messageActionChatEditTitle': {
         args = [];
