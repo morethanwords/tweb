@@ -1,7 +1,7 @@
 @use "../shared" as *;
 
 .folders-sidebar {
-  --folders-sidebar-item-color: rgba(255, 255, 255, .7);
+  --folders-sidebar-item-color: rgba(255, 255, 255, .5);
   --folders-sidebar-item-selected-color: rgba(255, 255, 255, 1);
   --folders-sidebar-background: rgba(0, 0, 0, .2);
   --folders-sidebar-background-hover: rgba(255, 255, 255, #{$hover-alpha});
@@ -156,18 +156,18 @@
     &-badge {
       position: absolute;
       top: 6px;
-      right: 19px;
+      right: 10px;
       font-size: var(--font-size-12);
       line-height: 18px !important;
       // box-shadow: 0 0 0 1px var(--folders-sidebar-background-hover);
       transition: none !important;
       pointer-events: none;
-      background-color: var(--primary-color);
-      color: var(--white);
+      background-color: var(--white);
+      color: rgba(0, 0, 0, 0.5);
 
       &.badge-gray {
         color: rgba(0, 0, 0, 0.5);
-        background-color: var(--white);
+        background-color: rgba(255, 255, 255, 0.5);
       }
     }
 

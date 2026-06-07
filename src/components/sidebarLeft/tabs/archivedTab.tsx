@@ -19,7 +19,6 @@ const ArchivedTab: Component = () => {
   const filterId: REAL_FOLDER_ID = FOLDER_ID_ARCHIVE;
   const wasFilterId = appDialogsManager.filterId;
 
-  let storiesListContainer: HTMLDivElement;
   let disposeStories: () => void;
   let resizeStoriesContainer: () => void;
   let autonomousDialogList: AutonomousDialogList;
@@ -94,7 +93,7 @@ const ArchivedTab: Component = () => {
 
   autonomousDialogList = appDialogsManager.xds[filterId];
 
-  storiesListContainer = document.createElement('div');
+  const storiesListContainer = document.createElement('div');
   storiesListContainer.classList.add('stories-list');
 
   tab.header.after(storiesListContainer);

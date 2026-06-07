@@ -19,7 +19,6 @@ const PrivateSearch: Component = () => {
   let _threadId = 0;
   let _query = '';
   let _onDatePick: (timestamp: number) => void;
-  let appSearch: AppSearch;
 
   tab.container.id = 'search-private-container';
   tab.container.classList.add('chatlist-container');
@@ -32,7 +31,7 @@ const PrivateSearch: Component = () => {
   const c = document.createElement('div');
   c.classList.add('chatlist-container');
   tab.scrollable.container.replaceWith(c);
-  appSearch = new AppSearch(
+  const appSearch = new AppSearch(
     c,
     inputSearch,
     {

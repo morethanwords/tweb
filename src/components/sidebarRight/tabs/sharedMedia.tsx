@@ -40,11 +40,6 @@ const SharedMedia: Component = () => {
   const [tab] = useSuperTab<typeof AppSharedMediaTab>();
   const {HotReloadGuard, apiManagerProxy, appImManager} = useHotReloadGuard();
 
-  let editBtn: HTMLElement;
-  let titleI18n: I18n.IntlElement;
-  let sharedMediaTitle: HTMLElement;
-  let btnMenu: HTMLElement;
-
   const getHistoryStorage = (peerId: PeerId, threadId?: number) => {
     return (historiesStorage[peerId] ??= {})[threadId] ??= {};
   };
@@ -392,9 +387,9 @@ const SharedMedia: Component = () => {
     return {element, title, subtitle};
   };
 
-  titleI18n = new I18n.IntlElement();
+  const titleI18n = new I18n.IntlElement();
   const transitionFirstItem = makeTransitionItem(titleI18n.element, true, tab.title);
-  editBtn = ButtonIcon('edit');
+  const editBtn = ButtonIcon('edit');
 
   let lastMediaTabType: SearchSuperMediaTab['type'];
   const btnMenuButtons: ButtonMenuItemOptionsVerifiable[] = [
@@ -425,7 +420,7 @@ const SharedMedia: Component = () => {
       peerId: tab.peerId
     })
   ];
-  btnMenu = ButtonMenuToggle({
+  const btnMenu = ButtonMenuToggle({
     listenerSetter: tab.listenerSetter,
     direction: 'bottom-left',
     buttons: btnMenuButtons
@@ -439,7 +434,7 @@ const SharedMedia: Component = () => {
   };
 
   const transitionSharedMedia = makeTransitionItem(i18n('PeerInfo.SharedMedia'));
-  sharedMediaTitle = transitionSharedMedia.title;
+  const sharedMediaTitle = transitionSharedMedia.title;
 
   const sharedMediaTransitionContainer = createTransitionContainer();
   transitionSharedMedia.subtitle.append(sharedMediaTransitionContainer);

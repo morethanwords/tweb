@@ -49,8 +49,6 @@ const ActiveSessions: Component = () => {
       }
     };
 
-    let otherSection: SettingSection;
-
     {
       const section = new SettingSection({
         name: 'CurrentSession',
@@ -94,7 +92,7 @@ const ActiveSessions: Component = () => {
       return;
     }
 
-    otherSection = new SettingSection({
+    const otherSection = new SettingSection({
       name: 'OtherSessions',
       caption: 'SessionsListInfo'
     });

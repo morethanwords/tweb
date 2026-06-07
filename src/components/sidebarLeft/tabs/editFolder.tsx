@@ -52,18 +52,9 @@ const EditFolder: Component = () => {
   const {HotReloadGuard, lottieLoader} = useHotReloadGuard();
   const p = tab.payload;
 
-  let caption: HTMLElement;
-  let stickerContainer: HTMLElement;
-  let confirmBtn: HTMLElement;
-  let menuBtn: HTMLElement;
-  let nameInputField: InstanceType<typeof EditFolderInput>;
-  let includePeerIds: SettingSection;
-  let excludePeerIds: SettingSection;
-  let inviteLinks: SettingSection;
   const flags: EditFolderFlags = {} as any;
   let includePeerIdsButtons: EditFolderButton[];
   let excludePeerIdsButtons: EditFolderButton[];
-  let inviteLinksCreate: HTMLElement;
   let animation: RLottiePlayer;
   let filter: MyDialogFilter;
   let originalFilter: MyDialogFilter;
@@ -271,16 +262,16 @@ const EditFolder: Component = () => {
   }
 
   tab.container.classList.add('edit-folder-container');
-  caption = document.createElement('div');
+  const caption = document.createElement('div');
   caption.classList.add('caption');
   caption.append(i18n('FilterIncludeExcludeInfo'));
-  stickerContainer = document.createElement('div');
+  const stickerContainer = document.createElement('div');
   stickerContainer.classList.add('sticker-container');
 
   tempId = 0;
   showMoreClicked = {};
 
-  confirmBtn = ButtonIcon('check btn-confirm hide blue');
+  const confirmBtn = ButtonIcon('check btn-confirm hide blue');
   let deleting = false;
   const deleteFolderButton: ButtonMenuItemOptions = {
     icon: 'delete',
@@ -298,7 +289,7 @@ const EditFolder: Component = () => {
       });
     }
   };
-  menuBtn = ButtonMenuToggle({
+  const menuBtn = ButtonMenuToggle({
     listenerSetter: tab.listenerSetter,
     direction: 'bottom-left',
     buttons: [deleteFolderButton]
@@ -313,7 +304,7 @@ const EditFolder: Component = () => {
     caption: hasFoldersSidebar ? 'EditFolder.EmojiAsIconTip' : undefined
   });
 
-  nameInputField = new EditFolderInput;
+  const nameInputField = new EditFolderInput;
   nameInputField.HotReloadGuard = HotReloadGuard;
   nameInputField.classList.add('input-wrapper');
   nameInputField.feedProps({
@@ -361,7 +352,7 @@ const EditFolder: Component = () => {
     return section;
   };
 
-  includePeerIds = generateList('folder-list-included', 'FilterInclude', includePeerIdsButtons = [{
+  const includePeerIds = generateList('folder-list-included', 'FilterInclude', includePeerIdsButtons = [{
     icon: 'add',
     text: 'ChatList.Filter.Include.AddChat',
     withRipple: true
@@ -387,7 +378,7 @@ const EditFolder: Component = () => {
     name: 'bots'
   }], flags, 'FilterIncludeInfo');
 
-  excludePeerIds = generateList('folder-list-excluded', 'FilterExclude', excludePeerIdsButtons = [{
+  const excludePeerIds = generateList('folder-list-excluded', 'FilterExclude', excludePeerIdsButtons = [{
     icon: 'minus',
     text: 'FilterRemoveChats',
     withRipple: true
@@ -405,7 +396,7 @@ const EditFolder: Component = () => {
     name: 'exclude_read'
   }], flags, 'FilterExcludeInfo');
 
-  inviteLinks = generateList('folder-list-links', 'InviteLinks', [{
+  const inviteLinks = generateList('folder-list-links', 'InviteLinks', [{
     icon: 'add',
     text: 'SharedFolder.CreateLink',
     withRipple: true
@@ -423,7 +414,7 @@ const EditFolder: Component = () => {
   toggleExcludedPeers();
   const includedFlagsContainer = includePeerIds.container.querySelector('.folder-categories');
   const excludedFlagsContainer = excludePeerIds.container.querySelector('.folder-categories');
-  inviteLinksCreate = inviteLinks.container.querySelector('.btn') as HTMLElement;
+  const inviteLinksCreate = inviteLinks.container.querySelector('.btn') as HTMLElement;
 
   attachClickEvent(includedFlagsContainer.querySelector('.btn') as HTMLElement, () => {
     tab.slider.createTab(AppIncludedChatsTab).open({filter, type: 'included', onSetFilter: (f) => setFilter(f, false)});
