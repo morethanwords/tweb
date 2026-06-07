@@ -3,6 +3,7 @@ import type {AccentPreset} from '@config/themePresets';
 import type {BaseTheme, Theme, ThemeSettings} from '@layer';
 import {blendWallpaperForTinted, presetThemeId, presetToThemeSettings} from '@config/themePresets';
 import type {AppBackgroundTab} from '@components/sidebarLeft/tabs/background';
+import type {AppChatBackground} from '@components/chat/bubbles/chatBackground';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import rootScope from '@lib/rootScope';
 import {changeColorAccent, ColorRgb, getAccentColor, getAverageColor, getRgbColorFromTelegramColor, hexToRgb, hslaStringToHex, hslaStringToRgba, hslaToRgba, hsvToRgb, mixColors, rgbaToHexa, rgbaToHsla, rgbToHsv} from '@helpers/color';
@@ -17,6 +18,13 @@ import {joinDeepPath} from '@helpers/object/setDeepProperty';
 import {logger} from '@lib/logger';
 import pause from '@helpers/schedulers/pause';
 import Transitions, {getTransition} from '@config/transitions';
+import {dispatchHeavyAnimationEvent} from '@hooks/useHeavyAnimationCheck';
+import noop from '@helpers/noop';
+
+// Hard cap for the theme-switch view transition: how long heavy rendering (videos/stickers/
+// lottie) stays paused, and the deadline after which a stalled transition is force-finished so
+// the app can't stay frozen. Comfortably above the normal cost (≤500ms bg wait + ~600ms reveal).
+const THEME_TRANSITION_TIMEOUT = 2000;
 
 export type AppColorName = 'primary-color' | 'message-out-primary-color' |
   'surface-color' | 'danger-color' | 'primary-text-color' |
@@ -197,6 +205,9 @@ export class ThemeController {
   private systemTheme: AppTheme['name'];
   private styleElement: HTMLStyleElement;
   public AppBackgroundTab: typeof AppBackgroundTab;
+  // Injected by appImManager (avoids an import cycle, mirrors AppBackgroundTab). Used to await
+  // the wallpaper re-render inside the theme-switch view transition so it's captured in sync.
+  public appChatBackground: AppChatBackground;
   private applied: boolean;
 
   constructor() {
@@ -365,10 +376,34 @@ export class ThemeController {
       void document.documentElement.offsetLeft; // reflow
     }
 
-    const transition = document.startViewTransition(() => {
+    const transition = document.startViewTransition(async() => {
       _log('view transition started');
-      return this._setTheme();
+      this._setTheme();
+      // `_setTheme` dispatched 'theme_changed', whose listeners re-render the chat wallpaper
+      // asynchronously (image decode) and `instant`. Wait for that to land BEFORE the view
+      // transition snapshots the new state, so the new wallpaper is captured and revealed
+      // together with the new colors. Without this a slow wallpaper — notably a static image —
+      // swaps in AFTER the circular reveal, visibly desynced. Capped so a slow/uncached image
+      // can't freeze the whole theme switch (it just falls back to the old pop-in for that case).
+      const bg = this.appChatBackground;
+      if(bg) await Promise.race([bg.getReadyPromise(), pause(500)]);
     });
+
+    // Pause heavy rendering (videos, stickers, lottie) while the reveal plays so it stays
+    // smooth; the timeout guarantees rendering resumes even if the transition never settles.
+    // `.catch(noop)` so a rejected `finished` (thrown callback) can't deadlock the heavy-anim
+    // race before the timeout — it would otherwise leave rendering paused forever.
+    dispatchHeavyAnimationEvent(transition.finished.catch(noop), THEME_TRANSITION_TIMEOUT);
+
+    // Safety net for a hard freeze: the View Transitions API can occasionally get stuck (a
+    // stalled update callback, an overlapping transition, a browser hiccup), leaving the page
+    // locked on the frozen snapshot. Force-finish it after the same cap so the app always
+    // recovers — `skipTransition()` is a no-op once the transition has already settled.
+    const safetyTimeout = setTimeout(() => {
+      _log('view transition safety timeout — forcing skip');
+      transition.skipTransition?.();
+    }, THEME_TRANSITION_TIMEOUT);
+    transition.finished.catch(noop).then(() => clearTimeout(safetyTimeout));
 
     if(!coordinates) {
       _log('view transition is not needed');
@@ -400,9 +435,9 @@ export class ThemeController {
         pseudoElement: `::view-transition-${reverse ? 'old' : 'new'}(root)`,
         fill: 'forwards' // * without this rule animation will flick at the end
       });
-    });
+    }).catch(noop); // `ready` rejects when the transition is skipped (safety timeout / overlap / hidden tab)
 
-    transition.finished.finally(() => {
+    transition.finished.catch(noop).finally(() => {
       _log('view transition end');
       document.documentElement.classList.remove('no-view-transition', 'reverse');
     });
@@ -658,6 +693,39 @@ export class ThemeController {
     const baseTheme = this.getBaseThemeForName(themeName);
     return theme.settings.find((s) => s.base_theme._ === baseTheme) ??
       theme.settings.find((s) => s.base_theme._ === ((isNight ?? this.isNightThemeName(themeName)) ? 'baseThemeNight' : 'baseThemeClassic'));
+  }
+
+  // Persist a wallpaper pick (Chat Wallpaper tab grid click / upload) onto the *current*
+  // AppTheme's matching base-theme settings entry. Must go through the appSettings store
+  // setter: the object returned by getThemeSettings() is a readonly Solid store node, so a
+  // direct `themeSettings.wallpaper = ...` assignment is silently dropped ("Cannot mutate a
+  // Store directly") — which is why tab picks weren't applying. Mirrors applyNewTheme's
+  // persistence (slice themes, rebuild the entry as plain objects, setAppSettings('themes')).
+  // Updates the store synchronously, so a getThemeSettings() read right after sees the pick.
+  public setWallpaperForCurrentTheme(wallpaper: AppThemeSettings['wallpaper'], highlightingColor: string) {
+    const theme = this.getTheme();
+    const [appSettings, setAppSettings] = useAppSettings();
+    const themes = appSettings.themes.slice();
+    let idx = themes.indexOf(theme);
+    if(idx < 0) idx = themes.findIndex((t) => t.name === theme.name);
+    if(idx < 0) return Promise.resolve();
+
+    const t = themes[idx];
+    let settings: AppTheme['settings'];
+    if(Array.isArray(t.settings)) {
+      const themeName = this.getThemeName(t);
+      const baseTheme = this.getBaseThemeForName(themeName);
+      let sIdx = t.settings.findIndex((s) => s.base_theme._ === baseTheme);
+      if(sIdx < 0) sIdx = t.settings.findIndex((s) => s.base_theme._ === (this.isNightThemeName(themeName) ? 'baseThemeNight' : 'baseThemeClassic'));
+      if(sIdx < 0) sIdx = 0;
+      settings = t.settings.map((s, i) => i === sIdx ? {...s, wallpaper, highlightingColor} : s);
+    } else {
+      // Legacy single-object settings: keep the single-object shape (getThemeSettings reads it
+      // directly via `as any` — line ~656 — and would mismatch if migrated to an array).
+      settings = {...(t.settings as any), wallpaper, highlightingColor} as any;
+    }
+    themes[idx] = {...t, settings};
+    return setAppSettings('themes', themes);
   }
 
   public applyTheme(theme: Theme | AppTheme, element = document.documentElement, saveToCache?: boolean) {

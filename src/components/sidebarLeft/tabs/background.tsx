@@ -1,11 +1,11 @@
-import {createEffect, createResource, on, onCleanup, onMount} from 'solid-js';
+import {createEffect, createResource, createSignal, on, onCleanup, onMount, Show} from 'solid-js';
 import {render} from 'solid-js/web';
 import {averageColor, averageColorFromCanvas} from '@helpers/averageColor';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import findUpClassName from '@helpers/dom/findUpClassName';
+import markGridCornerItem, {GRID_CORNER_CLASSES} from '@helpers/dom/markGridCornerItem';
 import highlightingColor from '@helpers/highlightingColor';
-import copy from '@helpers/object/copy';
 import ChatBackgroundGradientRenderer from '@components/chat/gradientRenderer';
 import {ChatBackground as ChatBackgroundLayer} from '@components/chat/bubbles/chatBackground';
 import {BaseTheme, Document, WallPaper, WebDocument} from '@layer';
@@ -21,7 +21,7 @@ import Button from '@components/buttonTsx';
 import CheckboxField from '@components/checkboxField';
 import ProgressivePreloader from '@components/preloader';
 import {AppBackgroundColorTab} from '@components/solidJsTabs/tabs';
-import {AppTheme, AppThemeSettings, SETTINGS_INIT} from '@config/state';
+import {AppTheme, AppThemeSettings} from '@config/state';
 import {blendWallpaperForTinted} from '@config/themePresets';
 import themeController from '@helpers/themeController';
 import requestFile from '@helpers/files/requestFile';
@@ -31,6 +31,7 @@ import {MediaSize} from '@helpers/mediaSize';
 import {getColorsFromWallPaper} from '@helpers/color';
 import ChatBackgroundStore from '@lib/chatBackgroundStore';
 import ListenerSetter from '@helpers/listenerSetter';
+import LazyLoadQueue from '@components/lazyLoadQueue';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 
@@ -61,11 +62,20 @@ export class AppBackgroundTab {
   // to the actual .background-item tile (72×96 in the theme-picker / wallpaper-grid),
   // which is ~250× smaller than the default windowSize-sized canvas — same visual
   // result via object-fit: cover, but no wasted bitmap memory.
+  //
+  // The tile DOM (sized by a padding-bottom square, independent of content) is created
+  // synchronously so the grid lays out in full at once. The `<ChatBackground>` mount — which is
+  // what downloads the wallpaper file and rasterizes the gradient/pattern/image — is the expensive
+  // part. When `lazyLoadQueue` is passed (the wallpaper grid), that mount is deferred into the
+  // queue so only tiles actually scrolled into view ever download + render; opening the tab no
+  // longer pays for ~70 downloads + rasters up front. Omitted by callers that show a handful of
+  // tiles (theme picker), which mount immediately.
   public static addWallPaper(
     wallPaper: WallPaper,
     container = document.createElement('div'),
     forBaseTheme?: BaseTheme['_'],
-    size: {width: number, height: number} = {width: 72, height: 96}
+    size: {width: number, height: number} = {width: 72, height: 96},
+    lazyLoadQueue?: LazyLoadQueue
   ) {
     const colors = getColorsFromWallPaper(wallPaper);
     const hasFile = wallPaper._ === 'wallPaper';
@@ -79,6 +89,14 @@ export class AppBackgroundTab {
 
     const media = document.createElement('div');
     media.classList.add('background-item-media');
+    // Skeleton: paint the tile with its own wallpaper colours synchronously (cheap CSS — no file
+    // download, no canvas) so the grid is never empty, not even mid-open-animation before the lazy
+    // build runs. The real <ChatBackground> canvas paints opaquely over this when the tile mounts.
+    // Image-only wallpapers carry no colours, so they fall back to a neutral dark fill.
+    const skeletonStops = colors ? colors.split(',') : undefined;
+    media.style.background = skeletonStops ?
+      (skeletonStops.length > 1 ? `linear-gradient(135deg, ${skeletonStops.join(', ')})` : skeletonStops[0]) :
+      '#000';
     container.append(media);
 
     const themeName: AppTheme['name'] =
@@ -88,16 +106,34 @@ export class AppBackgroundTab {
     const theme = {name: themeName} as AppTheme;
 
     const deferred = deferredPromise<void>();
-    const dispose = render(() => (
-      <ChatBackgroundLayer
-        theme={theme}
-        wallPaper={wallPaper}
-        transition="instant"
-        width={size.width}
-        height={size.height}
-        onReady={() => deferred.resolve()}
-      />
-    ), media);
+    let disposeRoot: (() => void) | undefined;
+    let disposed = false;
+    // Mounting the component is what triggers the wallpaper download + raster, so it's the unit of
+    // work we gate on visibility.
+    const mount = () => {
+      if(disposed) return deferred;
+      disposeRoot = render(() => (
+        <ChatBackgroundLayer
+          theme={theme}
+          wallPaper={wallPaper}
+          transition="instant"
+          width={size.width}
+          height={size.height}
+          onReady={() => deferred.resolve()}
+        />
+      ), media);
+      return deferred;
+    };
+    const dispose = () => {
+      disposed = true;
+      disposeRoot?.();
+    };
+
+    if(lazyLoadQueue) {
+      lazyLoadQueue.push({div: container, load: () => mount()});
+    } else {
+      mount();
+    }
 
     return {
       container,
@@ -166,12 +202,18 @@ export class AppBackgroundTab {
 
           const hsla = highlightingColor(Array.from(pixel) as any);
 
-          themeSettings.wallpaper = wallPaper;
-          themeSettings.highlightingColor = hsla;
-
-          if(!hadSettings) {
-            const [appSettings] = useAppSettings();
-            rootScope.managers.appStateManager.pushToState('settings', unwrap(appSettings));
+          if(hadSettings) {
+            // applyNewTheme handed us a plain, mutable settings object (part of the themes
+            // array it persists itself right after) — mutate it in place.
+            themeSettings.wallpaper = wallPaper;
+            themeSettings.highlightingColor = hsla;
+          } else {
+            // Chat Wallpaper tab (grid click / upload): there's no pre-built settings object, so
+            // `themeSettings` is a readonly Solid store node and assigning to it is silently
+            // dropped. Persist the pick through the store setter instead — it updates the store
+            // synchronously (so the applyCurrentTheme read below resolves the new wallpaper) and
+            // saves it to state.
+            themeController.setWallpaperForCurrentTheme(wallPaper, hsla);
           }
 
           appImManager.applyCurrentTheme({
@@ -209,8 +251,8 @@ export class AppBackgroundTab {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Tab UI — Solid component. Opens immediately; the wallpaper grid fills in
-// as `getWallPapers()` resolves and each thumb finishes loading.
+// Tab UI — Solid component. The buttons open immediately; the wallpaper grid is
+// revealed only after every thumbnail has loaded (built off-DOM meanwhile).
 // ─────────────────────────────────────────────────────────────────────────────
 
 const ChatBackground = () => {
@@ -222,7 +264,14 @@ const ChatBackground = () => {
 
   const getTheme = () => themeController.getTheme();
 
-  let grid!: HTMLDivElement;
+  // True once every wallpaper thumbnail has finished loading — gates the grid section's reveal.
+  const [loaded, setLoaded] = createSignal(false);
+
+  // Built off-DOM and mounted (via <Show> below) only once `loaded()` flips, so the section never
+  // appears empty or half-rendered. Reuses Shared Media → Media's grid look (3 cols, 1px gap,
+  // rounded + clipped): `.search-super-content-media-grid`.
+  const grid = document.createElement('div');
+  grid.classList.add('search-super-content-media-grid');
 
   const getActiveThemeSettings = () => themeController.getThemeSettings(getTheme());
 
@@ -261,8 +310,11 @@ const ChatBackground = () => {
 
     toggleBlurCheckbox();
 
-    active?.classList.remove('active');
-    target?.classList.add('active');
+    active?.classList.remove('active', ...GRID_CORNER_CLASSES);
+    if(target) {
+      target.classList.add('active');
+      markGridCornerItem(grid, target);
+    }
   };
 
   // Each thumbnail mounts its own `<ChatBackground>` Solid root inside `media`.
@@ -270,8 +322,14 @@ const ChatBackground = () => {
   // renderers) when the picker tab closes.
   const solidRoots: (() => void)[] = [];
 
+  // Downloading + rasterizing a thumbnail is the expensive part (a file fetch + a full-scale SVG
+  // raster, ~57ms). Feeding each tile's build to a LazyLoadQueue means only the thumbnails actually
+  // scrolled into view ever download + render — opening the tab no longer pays for all ~70 tiles up
+  // front, which is what made it slow regardless of how the reveal was gated.
+  const lazyLoadQueue = new LazyLoadQueue();
+
   const addWallPaper = (wallPaper: WallPaper, append = true) => {
-    const result = AppBackgroundTab.addWallPaper(wallPaper);
+    const result = AppBackgroundTab.addWallPaper(wallPaper, undefined, undefined, undefined, lazyLoadQueue);
     if(result) {
       const {container, media, dispose} = result;
       container.classList.add('grid-item');
@@ -289,13 +347,16 @@ const ChatBackground = () => {
       grid[append ? 'append' : 'prepend'](container);
     }
 
-    return result && result.loadPromise.then(() => result);
+    // Return the tile synchronously — callers (the upload flow) only need its container; the actual
+    // build runs later, lazily, when the tile is visible, so there's nothing to await here.
+    return result;
   };
 
   const listenerSetter = new ListenerSetter();
   onCleanup(() => {
     listenerSetter.removeAll();
     solidRoots.forEach((d) => d());
+    lazyLoadQueue.clear();
   });
 
   const onUploadClick = () => {
@@ -357,18 +418,13 @@ const ChatBackground = () => {
   };
 
   const onResetClick = () => {
-    const theme = getTheme();
-    const defaultTheme = SETTINGS_INIT.themes.find((t) => t.name === theme.name);
-    if(defaultTheme) {
-      ++AppBackgroundTab.tempId;
-      theme.settings = copy(defaultTheme.settings);
-      const [appSettings] = useAppSettings();
-      rootScope.managers.appStateManager.pushToState('settings', unwrap(appSettings));
-      appImManager.applyCurrentTheme({
-        broadcastEvent: true
-      });
-      blurCheckboxField.setValueSilently(needBlur(themeController.getThemeSettings(theme)?.wallpaper, false));
-    }
+    // `theme.settings = copy(...)` was a direct write to a readonly Solid store node (dropped).
+    // resetActiveTheme() rebuilds the active theme from SETTINGS_INIT through the store setter
+    // and re-applies the background itself (applyNewTheme → setBackgroundDocument →
+    // applyCurrentTheme), so we just refresh the blur checkbox once it settles.
+    themeController.resetActiveTheme().then(() => {
+      blurCheckboxField.setValueSilently(needBlur(getActiveThemeSettings()?.wallpaper, false));
+    });
   };
 
   const onGridClick = (e: MouseEvent | TouchEvent) => {
@@ -413,17 +469,38 @@ const ChatBackground = () => {
     load();
   };
 
-  // Wallpapers are fetched in the background. The buttons + blur row appear
-  // immediately; the grid section sits empty (no jump in surrounding layout)
-  // and items stream in as `getWallPapers()` and each photo wrap resolve.
+  // Lay out every tile's placeholder at once (tiles are sized by CSS, not content) and reveal the
+  // grid. Each tile downloads + renders its content lazily as it scrolls into view (the LazyLoadQueue
+  // above), so this never waits on ~70 downloads + rasters — only on having the wallpaper list.
+  const buildGrid = (wallPapers: WallPaper[]) => {
+    wallPapers.forEach((wallPaper) => addWallPaper(wallPaper));
+    // Tiles exist now; resolve the initially-active item's corner rounding.
+    markGridCornerItem(grid, grid.querySelector('.active'));
+    setLoaded(true);
+  };
+
+  // Build synchronously from the cached list (warmed by the General Settings preload, or a prior
+  // open) so the grid + its skeleton tiles are present in the very first frame of the tab-open
+  // slide, instead of popping in when the async getWallPapers resolves (around when the slide ends).
+  if(ChatBackgroundStore.cachedWallPapers) {
+    buildGrid(ChatBackgroundStore.cachedWallPapers);
+  }
+
+  // Always refresh from the server: keep the cache warm for the next open, and build now if the
+  // cache wasn't there yet (first-ever open, before any preload). The list is stable within a
+  // session, so when we already built from cache we keep that grid rather than rebuilding.
   const [wallPapersResource] = createResource(() => rootScope.managers.appThemesManager.getWallPapers());
 
   createEffect(on(wallPapersResource, (wallPapers) => {
-    if(!wallPapers || !grid) return;
-    wallPapers.forEach((wallPaper) => addWallPaper(wallPaper));
+    if(!wallPapers) return;
+    ChatBackgroundStore.cachedWallPapers = wallPapers;
+    if(!loaded()) {
+      buildGrid(wallPapers);
+    }
   }));
 
   onMount(() => {
+    attachClickEvent(grid, onGridClick, {listenerSetter});
     toggleBlurCheckbox();
     tab.container.classList.add('background-container', 'background-image-container');
 
@@ -472,15 +549,11 @@ const ChatBackground = () => {
           <Row.CheckboxField>{blurCheckboxField.label}</Row.CheckboxField>
         </Row>
       </Section>
-      <Section>
-        <div
-          class="grid"
-          ref={(el) => {
-            grid = el;
-            attachClickEvent(el, onGridClick, {listenerSetter});
-          }}
-        />
-      </Section>
+      <Show when={loaded()}>
+        <div>
+          {grid}
+        </div>
+      </Show>
     </>
   );
 };

@@ -622,10 +622,22 @@ const appChatBackground = (() => {
     latestReady = new Promise<void>((r) => resolve = r);
     pendingResolve = resolve;
 
+    // Resolve undefined theme/wallPaper to the *current global* theme + wallpaper up front.
+    // Most callers (initial load, `appImManager.setBackground`, a chat with no per-peer
+    // wallpaper) pass neither and lean on the inner `<ChatBackground>` resolving from the
+    // global theme controller. But the short-circuit below keys off these references: the
+    // Chat Wallpaper tab mutates the global `themeSettings.wallpaper` and then calls us with
+    // no opts, so without resolving here `opts.wallPaper` stays `undefined`, matches the
+    // previous `undefined` lastApplied, and we wrongly skip the re-render — the picked
+    // wallpaper never shows. Resolving makes the comparison reflect the real background
+    // identity (and hands the inner effect a fresh wallPaper reference so it re-fires).
+    const {theme: resolvedTheme, wallPaper: resolvedWallPaper} =
+      resolveBackgroundSync({theme: opts.theme, wallPaper: opts.wallPaper}, themeControllerSingleton);
+
     // The component's effect runs via `on([theme, wallPaper, peerId])` (referential equality).
     // If theme & wallPaper are unchanged the effect won't fire — onReady would never be called
     // and awaiters (e.g. `Chat.finishPeerChange`) would hang. Short-circuit in that case.
-    if(hasSettled && lastAppliedTheme === opts.theme && lastAppliedWallPaper === opts.wallPaper) {
+    if(hasSettled && lastAppliedTheme === resolvedTheme && lastAppliedWallPaper === resolvedWallPaper) {
       opts.onCachedStatus?.(true);
       // Replay the cached hsla so a returning chat (publishBackground hits the
       // short-circuit) still applies its highlighting color to its container.
@@ -641,16 +653,16 @@ const appChatBackground = (() => {
     }
 
     setProps({
-      theme: opts.theme,
-      wallPaper: opts.wallPaper,
+      theme: resolvedTheme,
+      wallPaper: resolvedWallPaper,
       transition: opts.transition,
       onCachedStatus: opts.onCachedStatus,
       onHighlightColor: opts.onHighlightColor,
       deferReveal: opts.deferReveal,
       onReady: () => {
         hasSettled = true;
-        lastAppliedTheme = opts.theme;
-        lastAppliedWallPaper = opts.wallPaper;
+        lastAppliedTheme = resolvedTheme;
+        lastAppliedWallPaper = resolvedWallPaper;
         resolve();
         if(pendingResolve === resolve) pendingResolve = undefined;
       }
@@ -665,11 +677,16 @@ const appChatBackground = (() => {
   // own theme_changed handler) calls setBackground without an explicit theme, so
   // none of the deps change. We pass the resolved theme so the wrapper's
   // lastAppliedTheme check sees a fresh reference and lets the effect re-fire.
+  //
+  // `instant`, not `fade`: theme switches animate via themeController's view transition (a
+  // circular color reveal). It awaits this re-render (themeController.getReadyPromise) before
+  // snapshotting the new state, so the wallpaper must be fully on-screen — not mid-fade — when
+  // captured. A self-fade here would both desync from the reveal and be caught half-done.
   rootScope.addEventListener('theme_changed', () => {
     if(!hasSettled) return;
     setBackground({
       theme: themeControllerSingleton.getTheme(),
-      transition: 'fade'
+      transition: 'instant'
     });
   });
 

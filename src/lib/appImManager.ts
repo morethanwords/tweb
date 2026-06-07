@@ -318,6 +318,7 @@ export class AppImManager extends EventListenerBase<{
     });
 
     themeController.AppBackgroundTab = AppBackgroundTab;
+    themeController.appChatBackground = appChatBackground;
 
     if(IS_FIREFOX && apiManagerProxy.oldVersion && compareVersion(apiManagerProxy.oldVersion, '1.4.3') === -1) {
       this.deleteFilesIterative((response) => {

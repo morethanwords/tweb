@@ -3,10 +3,9 @@ import {blendWallpaperForTinted} from '@config/themePresets';
 import {hexaToRgba} from '@helpers/color';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import findUpClassName from '@helpers/dom/findUpClassName';
+import markGridCornerItem, {GRID_CORNER_CLASSES} from '@helpers/dom/markGridCornerItem';
 import highlightingColor from '@helpers/highlightingColor';
 import throttle from '@helpers/schedulers/throttle';
-import {useAppSettings} from '@stores/appSettings';
-import {unwrap} from 'solid-js/store';
 import ColorPicker, {ColorPickerColor} from '@components/colorPicker';
 import Section from '@components/section';
 import {WallPaper} from '@layer';
@@ -41,19 +40,19 @@ const BackgroundColor = () => {
   const setActive = () => {
     const active = grid.querySelector('.active');
     const background = themeController.getThemeSettings(theme);
-    const wallPaper = background.wallpaper;
-    const color = wallPaper.settings.background_color;
-    const target = color ? grid.querySelector(`.grid-item[data-color="${color}"]`) : null;
+    const wallPaper = background?.wallpaper;
+    const color = wallPaper?.settings?.background_color;
+    // `background_color` is a number; swatches store data-color as "#rrggbb", so format + pad it
+    // (leading-zero colors like #008dd0 must still match).
+    const target = color ? grid.querySelector(`.grid-item[data-color="#${color.toString(16).padStart(6, '0')}"]`) : null;
     if(active === target) {
       return;
     }
 
-    if(active) {
-      active.classList.remove('active');
-    }
-
+    active?.classList.remove('active', ...GRID_CORNER_CLASSES);
     if(target) {
       target.classList.add('active');
+      markGridCornerItem(grid, target);
     }
   };
 
@@ -82,11 +81,9 @@ const BackgroundColor = () => {
         wallPaper = blendWallpaperForTinted(wallPaper, settings.accent_color);
       }
 
-      settings.wallpaper = wallPaper;
-      settings.highlightingColor = hsla;
-
-      const [appSettings] = useAppSettings();
-      tab.managers.appStateManager.pushToState('settings', unwrap(appSettings));
+      // `settings` is a readonly Solid store node — assigning to it is silently dropped (the same
+      // bug that broke the Chat Wallpaper tab). Persist through the store setter instead.
+      themeController.setWallpaperForCurrentTheme(wallPaper, hsla);
 
       appImManager.applyCurrentTheme({
         broadcastEvent: true
@@ -150,17 +147,20 @@ const BackgroundColor = () => {
       <Section>
         {colorPicker.container}
       </Section>
-      <Section>
-        <div class="grid" ref={grid}>
+      {/* Same grid as Chat Wallpaper — Shared-Media look, full-bleed, no Section card. The colors
+          are static so there's nothing to wait on; the grid shows immediately. `background-item`
+          opts each swatch into the shared selection styling (ring + corner rounding). */}
+      <div>
+        <div class="search-super-content-media-grid" ref={grid}>
           <For each={COLORS}>
             {(color) => (
-              <div class="grid-item" data-color={color.toLowerCase()}>
+              <div class="grid-item background-item" data-color={color.toLowerCase()}>
                 <div class="grid-item-media" style={{'background-color': color}} />
               </div>
             )}
           </For>
         </div>
-      </Section>
+      </div>
     </>
   );
 };

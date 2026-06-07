@@ -23,6 +23,8 @@ import eachMinute from '@helpers/eachMinute';
 import {AppChatBackgroundTab, AppPowerSavingTab} from '@components/solidJsTabs/tabs';
 import fastSmoothScroll from '@helpers/fastSmoothScroll';
 import ChatThemesPicker from '@components/chatThemesPicker';
+import ChatBackgroundStore from '@lib/chatBackgroundStore';
+import appDownloadManager from '@lib/appDownloadManager';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Section 1 — text size, chat background, animations toggle, lite mode entry
@@ -41,7 +43,12 @@ const SettingsSection = () => {
     liteModeStatusEl.compareAndUpdate({key: liteModeStatus()});
   };
 
-  onMount(onUpdate);
+  onMount(() => {
+    onUpdate();
+    // Warm the Chat Wallpaper picker (one tap away via the button below) so it opens instantly
+    // instead of fetching the list + downloading thumbnails only once it's already on screen.
+    ChatBackgroundStore.preloadWallPapers(rootScope.managers, appDownloadManager);
+  });
   subscribeOn(rootScope)('settings_updated', onUpdate);
 
   return (
