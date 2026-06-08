@@ -607,9 +607,21 @@ export const AvatarNew = (props: {
     // NOT in message bubbles. Gated by lite-mode video so power-saving disables
     // it everywhere. The final loaded size is photo_big for big avatars and
     // photo_small otherwise — guard on it so we trigger exactly once.
-    const wantsVideo = (props.isBig || props.withVideoAvatar) && liteMode.isAvailable('video');
+    //
+    // In the small surfaces (chat list / topbar) a video avatar animates ONLY for a
+    // Premium USER — matching Telegram Android exactly. ImageReceiver.setForUserOrChat
+    // sets a videoLocation only when isPremiumUser(user) && has_video; its chat branch
+    // sets no video at all. So in the list/topbar non-Premium users, bots (bots can't
+    // hold Premium) and groups/channels are all STATIC — only Premium users animate.
+    // The big profile (isBig) and the avatar viewer are separate, ungated paths and
+    // animate for everyone. Owner Premium is read synchronously from the cached peers
+    // mirror, so this adds no request to the avatar-render path.
     const finalSize: PeerPhotoSize = props.isBig ? 'photo_big' : 'photo_small';
     const photoHasVideo = (photo._ === 'userProfilePhoto' || photo._ === 'chatPhoto') && photo.pFlags?.has_video;
+    const ownerIsPremiumUser = photo._ === 'userProfilePhoto' && !!peerId &&
+      !!apiManagerProxy.getUser(peerId.toUserId())?.pFlags?.premium;
+    const wantsVideo = (props.isBig || (props.withVideoAvatar && ownerIsPremiumUser)) &&
+      liteMode.isAvailable('video');
     if(wantsVideo && photoHasVideo && size === finalSize) {
       Promise.resolve(renderPromise).then(() => {
         if(!middleware()) return;
