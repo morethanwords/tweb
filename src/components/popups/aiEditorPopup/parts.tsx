@@ -171,7 +171,8 @@ export const Result = (props: {
   }
 
   const [composedMessage] = createResource(() => props.composeMessageWithAiArgs, async(args) => {
-    await Promise.all([pause(20), appearDeferred])
+    // return rootScope.managers.aiTonesManager.composeMessageWithAi(args);
+    await Promise.all([pause(20 + Math.floor(Math.random() * 1000)), appearDeferred])
     return {
       resultText: {
         _: 'textWithEntities',
@@ -179,7 +180,6 @@ export const Result = (props: {
         entities: context.text.entities
       }
     };
-    // return rootScope.managers.aiTonesManager.composeMessageWithAi(args);
   });
 
   const [hasTransition, setHasTransition] = createSignal(false);
@@ -197,7 +197,11 @@ export const Result = (props: {
           <Show when={props.overrideTitle} fallback={<I18nTsx key='AiEditor.Result' class={styles.resultTitle} />}>
             {props.overrideTitle}
           </Show>
-          <ButtonIconTsx class={styles.copyButton} icon='copy' />
+          <Transition name='fade-2'>
+            <Show when={composedMessage.state === 'ready'}>
+              <ButtonIconTsx class={styles.copyButton} icon='copy' />
+            </Show>
+          </Transition>
         </div>
         <Show when={props.onEmojify}>
           <EmojifyCheckbox checked={props.emojify} onClick={props.onEmojify} />

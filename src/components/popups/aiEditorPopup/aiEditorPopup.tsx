@@ -8,6 +8,7 @@ import {AiEditorPopupContext} from './context';
 
 
 type AiEditorPopupProps = {
+  peerId: PeerId;
   text: TextWithEntities.textWithEntities;
 };
 
@@ -25,7 +26,7 @@ const AiEditorPopup = (props: AiEditorPopupProps) => {
         </PopupElement.Title>
       </PopupElement.Header>
       <PopupElement.Body>
-        <AiEditorPopupContext.Provider value={{text: props.text}}>
+        <AiEditorPopupContext.Provider value={{text: props.text, peerId: props.peerId}}>
           <AiEditorPopupBodyContent />
         </AiEditorPopupContext.Provider>
       </PopupElement.Body>

@@ -11,7 +11,10 @@ export const FixTab = (props: {isAppearing: boolean}) => {
     <div class={styles.tabContent}>
       <Original text={originalText} />
       <Divider />
-      <Result isAppearing={props.isAppearing} />
+      <Result
+        isAppearing={props.isAppearing}
+        composeMessageWithAiArgs={{text: originalText, proofRead: true}}
+      />
     </div>
   );
 };

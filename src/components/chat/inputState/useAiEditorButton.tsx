@@ -29,6 +29,7 @@ export function useAiEditorButton({instance, store}: ChatInputStateContext) {
       onClick: () => {
         const {value, entities} = getRichValueWithCaret(instance.messageInputField.input, true, false);
         openAiEditorPopup({
+          peerId: instance.chat.peerId,
           text: {
             _: 'textWithEntities',
             text: value,

@@ -55,6 +55,7 @@ import VideoTsx from '@components/wrappers/videoTsx';
 import {formatDate} from '@helpers/date';
 import {getFileAndOpenEditor} from '@helpers/getFileAndOpenEditor';
 import themeController from '@helpers/themeController';
+import usePeerTranslation from '@hooks/usePeerTranslation';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import appDialogsManager from '@lib/appDialogsManager';
 import appImManager from '@lib/appImManager';
@@ -151,7 +152,8 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       TranslatableMessageTsx,
       useAppConfig,
       usePremium,
-      pickLanguage
+      pickLanguage,
+      usePeerTranslation
     }}>
       {props.children}
     </SolidJSHotReloadGuardContext.Provider>

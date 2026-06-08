@@ -55,6 +55,7 @@ import VideoTsx from '@components/wrappers/videoTsx';
 import {formatDate} from '@helpers/date';
 import {getFileAndOpenEditor} from '@helpers/getFileAndOpenEditor';
 import {ThemeController} from '@helpers/themeController';
+import usePeerTranslation from '@hooks/usePeerTranslation';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {AppDialogsManager} from '@lib/appDialogsManager';
 import {AppImManager} from '@lib/appImManager';
@@ -150,6 +151,7 @@ export type SolidJSHotReloadGuardContextValue = {
   useAppConfig: typeof useAppConfig;
   usePremium: typeof usePremium;
   pickLanguage: typeof pickLanguage;
+  usePeerTranslation: typeof usePeerTranslation;
 };
 
 export type LockScreenHotReloadGuardContextValue = Pick<
