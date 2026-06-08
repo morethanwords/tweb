@@ -2346,6 +2346,8 @@ const lang = {
     'one_value': '%1$s view',
     'other_value': '%1$s views'
   },
+  'ViewsTooltip': 'Views: %1$s',
+  'SharesTooltip': 'Shares: %1$s',
   'NobodyViews': 'No views yet',
   'NobodyViewsArchived': 'No views available',
   'NotificationsStoryMute2': 'Do Not Notify\nAbout Stories',
