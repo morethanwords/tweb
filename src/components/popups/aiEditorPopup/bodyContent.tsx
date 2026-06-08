@@ -390,9 +390,9 @@ const Result = (props: {
           <Transition name='fade-2' mode='outin'>
             <Show when={composedMessage.state === 'ready' && composedMessage()} keyed fallback={<ResultSkeleton />}>
               {(message) => (
-                <div>
+                <Scrollable relative class={styles.resultScrollable}>
                   {wrapRichText(message.resultText.text, {entities: message.resultText.entities, middleware: createMiddleware().get()})}
-                </div>
+                </Scrollable>
               )}
             </Show>
           </Transition>

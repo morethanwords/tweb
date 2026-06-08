@@ -214,6 +214,10 @@
   padding: 0.25rem var(--content-padding-x) var(--content-padding-y);
 }
 
+.resultScrollable {
+  max-height: 200px;
+}
+
 .emojifyCheckbox {
   position: relative;
   overflow: hidden;
