@@ -1,11 +1,14 @@
 import {I18nTsx} from '@helpers/solid/i18n';
+import {TextWithEntities} from '@layer';
 import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import PopupElement, {createPopup} from '../indexTsx';
 import styles from './aiEditorPopup.module.scss';
 import {AiEditorPopupBodyContent} from './bodyContent';
+import {AiEditorPopupContext} from './context';
 
 
 type AiEditorPopupProps = {
+  text: TextWithEntities.textWithEntities;
 };
 
 const AiEditorPopup = (props: AiEditorPopupProps) => {
@@ -22,7 +25,9 @@ const AiEditorPopup = (props: AiEditorPopupProps) => {
         </PopupElement.Title>
       </PopupElement.Header>
       <PopupElement.Body>
-        <AiEditorPopupBodyContent />
+        <AiEditorPopupContext.Provider value={{text: props.text}}>
+          <AiEditorPopupBodyContent />
+        </AiEditorPopupContext.Provider>
       </PopupElement.Body>
     </PopupElement>
   );

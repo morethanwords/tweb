@@ -1,5 +1,5 @@
 import classNames from '@helpers/string/classNames';
-import {batch, createSignal, JSX, mergeProps, onCleanup, onMount} from 'solid-js';
+import {batch, createMemo, createSignal, JSX, mergeProps, onCleanup, onMount} from 'solid-js';
 import styles from './autoHeight.module.scss';
 
 
@@ -18,6 +18,8 @@ export const AutoHeight = (inProps: {
 
   const [canHaveHeight, setCanHaveHeight] = createSignal(false);
   const [height, setHeight] = createSignal(0);
+
+  const canHaveHeightAndTransition = createMemo(() => canHaveHeight() && props.hasTransition);
 
   onMount(() => {
     const observer = new ResizeObserver(() => {
@@ -38,10 +40,10 @@ export const AutoHeight = (inProps: {
       class={classNames(props.outerClass, styles.outer)}
       classList={{
         [styles.overflowHidden]: props.overflowHidden,
-        [styles.hasTransition]: canHaveHeight() && props.hasTransition
+        [styles.hasTransition]: canHaveHeightAndTransition()
       }}
       style={{
-        '--auto-height': canHaveHeight() ? `${height()}px` : undefined
+        '--auto-height': canHaveHeightAndTransition() ? `${height()}px` : undefined
       }}
     >
       <div ref={contentRef}>{props.children}</div>

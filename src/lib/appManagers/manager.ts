@@ -57,6 +57,7 @@ import type {AppLangPackManager} from '@appManagers/appLangPackManager';
 import type {ActiveAccountNumber} from '@lib/accounts/types';
 import type AppPromoManager from '@appManagers/appPromoManager';
 import type AppAccountManager from '@appManagers/appAccountManager';
+import type {AiTonesManager} from '@lib/appManagers/aiTonesManager';
 import {logger, LogTypes} from '@lib/logger';
 
 export class AppManager {
@@ -120,6 +121,7 @@ export class AppManager {
   protected monoforumDialogsStorage: MonoforumDialogsStorage;
   protected appPromoManager: AppPromoManager;
   protected appAccountManager: AppAccountManager;
+  protected aiTonesManager: AiTonesManager;
 
   protected name: string;
   public log: ReturnType<typeof logger>;

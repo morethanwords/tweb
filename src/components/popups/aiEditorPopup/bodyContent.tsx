@@ -5,21 +5,29 @@ import {IconTsx} from '@components/iconTsx';
 import {observeResize} from '@components/resizeObserver';
 import ripple from '@components/ripple';
 import Scrollable from '@components/scrollable2';
+import {Skeleton} from '@components/skeleton';
 import Space from '@components/space';
 import {StaticCheckbox} from '@components/staticCheckbox';
+import deferredPromise from '@helpers/cancellablePromise';
 import {keepMe} from '@helpers/keepMe';
+import pause from '@helpers/schedulers/pause';
+import createMiddleware from '@helpers/solid/createMiddleware';
 import {HeightTransition} from '@helpers/solid/heightTransition';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {requestRAF} from '@helpers/solid/requestRAF';
 import {useEdgeAutoScroll} from '@helpers/solid/useEdgeAutoScroll';
 import classNames from '@helpers/string/classNames';
 import {useIsCleaned} from '@hooks/useIsCleaned';
+import {AiComposeTone, TextWithEntities} from '@layer';
+import {ComposeMessageWithAiArgs} from '@lib/appManagers/aiTonesManager';
 import {LangPackKey} from '@lib/langPack';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {createComputed, createMemo, createSignal, For, JSX, Match, onCleanup, onMount, Show, Switch} from 'solid-js';
+import {createComputed, createMemo, createReaction, createResource, createSignal, For, JSX, Match, onCleanup, onMount, Show, Switch, useContext} from 'solid-js';
 import {Transition} from 'solid-transition-group';
 import styles from './bodyContent.module.scss';
+import {AiEditorPopupContext, useAiEditorPopupContext} from './context';
 import showCreateTonePopup from './createTonePopup';
+
 
 keepMe(ripple);
 
@@ -108,9 +116,11 @@ const Tabs = <T, >(props: TabsProps<T>) => {
 const TranslateTab = () => {
   const [emojify, setEmojify] = createSignal(false);
 
+  const {text: originalText} = useContext(AiEditorPopupContext);
+
   return (
     <div class={styles.tabContent}>
-      <Original />
+      <Original text={originalText} />
       <Divider />
       <Result
         overrideTitle={
@@ -128,9 +138,16 @@ const TranslateTab = () => {
 };
 
 const StyleTab = () => {
+  const {rootScope} = useHotReloadGuard();
   const [emojify, setEmojify] = createSignal(false);
-
   const [tonesListEl, setTonesListEl] = createSignal<HTMLDivElement>();
+  const [selectedTone, setSelectedTone] = createSignal<AiComposeTone>();
+  const [runningAnimations, setRunningAnimations] = createSignal(0);
+
+  const {text: originalText} = useContext(AiEditorPopupContext);
+
+  // TODO: Handle errors
+  const [tones] = createResource(() => rootScope.managers.aiTonesManager.getTones());
 
   useEdgeAutoScroll({
     axis: () => 'horizontal',
@@ -144,28 +161,66 @@ const StyleTab = () => {
     rampFactor: () => 0.75
   });
 
+  const onSelectTone = (tone: AiComposeTone) => {
+    if(tone === selectedTone()) setSelectedTone()
+    else setSelectedTone(tone);
+  };
+
+  const selectedToneSlugOrId = () => {
+    const localSelectedTone = selectedTone();
+    if(!localSelectedTone) return undefined;
+    if(localSelectedTone._ === 'aiComposeTone') return localSelectedTone.id.toString();
+    return localSelectedTone.tone;
+  };
+
   return (
     <div>
       <div class={styles.section}>
         <Scrollable class={styles.tonesList} ref={setTonesListEl} axis='x' relative>
           <CreateTone />
-          <For each={new Array(10).map((_, i) => i)}>
-            {() => <Tone />}
+          <For each={tones()}>
+            {(tone) => (
+              <Tone
+                docId={tone.emoji_id}
+                name={tone.title}
+                selected={tone === selectedTone()}
+                onClick={[onSelectTone, tone]}
+              />
+            )}
           </For>
         </Scrollable>
       </div>
       <Space amount='1rem' />
       <div class={styles.tabContent}>
-        <Original onEmojify={!emojify() ? () => setEmojify(true) : undefined} />
-        <HeightTransition>
-          <Show when={emojify()}>
-            <div style={{overflow: 'hidden'}}>
-              <Divider />
-              <Result
-                emojify={emojify()}
-                onEmojify={() => setEmojify(!emojify())}
-              />
-            </div>
+        <Original text={originalText} onEmojify={!emojify() && !selectedTone() ? () => setEmojify(true) : undefined} />
+        <HeightTransition onRunningAnimations={setRunningAnimations}>
+          <Show when={emojify() || selectedTone()}>
+            {(_) => {
+              const [isAppearing, setIsAppearing] = createSignal(true);
+
+              const track = createReaction(() => setIsAppearing(false));
+              const finishedAnimation = createMemo(() => runningAnimations() === 0);
+
+              requestRAF(() => {
+                track(finishedAnimation);
+              });
+
+              return (
+                <div style={{overflow: 'hidden'}}>
+                  <Divider />
+                  <Result
+                    isAppearing={isAppearing()}
+                    emojify={emojify()}
+                    onEmojify={() => setEmojify(!emojify())}
+                    composeMessageWithAiArgs={{
+                      text: originalText,
+                      toneNameOrId: selectedToneSlugOrId(),
+                      emojify: emojify()
+                    }}
+                  />
+                </div>
+              );
+            }}
           </Show>
         </HeightTransition>
       </div>
@@ -174,9 +229,11 @@ const StyleTab = () => {
 };
 
 const FixTab = () => {
+  const {text: originalText} = useContext(AiEditorPopupContext);
+
   return (
     <div class={styles.tabContent}>
-      <Original />
+      <Original text={originalText} />
       <Divider />
       <Result />
     </div>
@@ -186,8 +243,11 @@ const FixTab = () => {
 const shouldBeCollapsibleFrom = 60;
 
 const Original = (props: {
+  text: TextWithEntities.textWithEntities;
   onEmojify?: () => void
 }) => {
+  const {wrapRichText} = useHotReloadGuard();
+
   const [isCollapsed, setIsCollapsed] = createSignal(false);
   const [originalContentHeight, setOriginalContentHeight] = createSignal<number>();
   const [hasOnEmojifyRaffed, setHasOnEmojifyRaffed] = createSignal(!!props.onEmojify);
@@ -266,7 +326,7 @@ const Original = (props: {
         }}
         style={{'--initial-height': originalContentHeight() + 'px'}}
       >
-        <div>{text}</div>
+        <div>{wrapRichText(props.text.text, {entities: props.text.entities, middleware: createMiddleware().get()})}</div>
       </div>
     </>
   );
@@ -276,7 +336,42 @@ const Result = (props: {
   overrideTitle?: JSX.Element;
   emojify?: boolean;
   onEmojify?: () => void;
+  isAppearing?: boolean;
+  composeMessageWithAiArgs?: ComposeMessageWithAiArgs;
 }) => {
+  const {rootScope, wrapRichText} = useHotReloadGuard();
+  const context = useAiEditorPopupContext();
+
+  let appearDeferred = props.isAppearing ? deferredPromise<void>() : undefined;
+
+  if(appearDeferred) {
+    const track = createReaction(() => {
+      appearDeferred?.resolve?.();
+      appearDeferred = undefined;
+    });
+    track(() => props.isAppearing);
+  }
+
+  const [composedMessage] = createResource(() => props.composeMessageWithAiArgs, async(args) => {
+    await Promise.all([pause(20), appearDeferred])
+    return {
+      resultText: {
+        _: 'textWithEntities',
+        text: context.text.text + '\n' + [...Array(10 + Math.floor(Math.random() * 40))].map(() => 'hello').join(' '),
+        entities: context.text.entities
+      }
+    };
+    // return rootScope.managers.aiTonesManager.composeMessageWithAi(args);
+  });
+
+  const [hasTransition, setHasTransition] = createSignal(false);
+
+  onMount(() => {
+    requestRAF(() => {
+      setHasTransition(true);
+    });
+  });
+
   return (
     <>
       <div class={styles.resultHeader}>
@@ -291,9 +386,31 @@ const Result = (props: {
         </Show>
       </div>
       <div class={styles.resultContent}>
-        {text2}
+        <AutoHeight hasTransition={hasTransition()}>
+          <Transition name='fade-2' mode='outin'>
+            <Show when={composedMessage.state === 'ready' && composedMessage()} keyed fallback={<ResultSkeleton />}>
+              {(message) => (
+                <div>
+                  {wrapRichText(message.resultText.text, {entities: message.resultText.entities, middleware: createMiddleware().get()})}
+                </div>
+              )}
+            </Show>
+          </Transition>
+        </AutoHeight>
       </div>
     </>
+  );
+};
+
+const ResultSkeleton = () => {
+  return (
+    <div>
+      <Skeleton secondary loading />
+      <Skeleton secondary loading />
+      <Skeleton secondary loading />
+      <Skeleton secondary loading />
+      <Skeleton secondary loading />
+    </div>
   );
 };
 
@@ -314,13 +431,25 @@ const EmojifyCheckbox = (props: {
   );
 };
 
-const Tone = () => {
+const Tone = (props: {
+  docId: DocId;
+  name: string;
+  selected: boolean;
+  onClick: JSX.EventHandlerUnion<HTMLDivElement, MouseEvent>;
+}) => {
   const {rootScope} = useHotReloadGuard();
 
   return (
-    <div class={styles.tone} use:ripple>
-      <EmojiDocumentIcon docId={docId} color='primary-text-color' size={42} class={styles.toneIcon} managers={rootScope.managers} />
-      <div class={styles.toneName}>Tone Name</div>
+    <div
+      class={styles.tone}
+      classList={{
+        [styles.active]: props.selected
+      }}
+      use:ripple
+      onClick={props.onClick}
+    >
+      <EmojiDocumentIcon docId={props.docId} color='primary-text-color' size={42} class={styles.toneIcon} managers={rootScope.managers} />
+      <div class={styles.toneName}>{props.name}</div>
     </div>
   );
 };

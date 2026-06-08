@@ -6,6 +6,7 @@ import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {resolveFirst} from '@solid-primitives/refs';
 import {createEffect, createMemo, onCleanup} from 'solid-js';
 import type {ChatInputStateContext} from '.';
+import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 
 const shouldShowFromHeight = 72;
 
@@ -26,7 +27,14 @@ export function useAiEditorButton({instance, store}: ChatInputStateContext) {
       class: classNames('chat-input-ai-editor-button', 'btn-icon'),
       children: icon,
       onClick: () => {
-        openAiEditorPopup({}, HotReloadGuard);
+        const {value, entities} = getRichValueWithCaret(instance.messageInputField.input, true, false);
+        openAiEditorPopup({
+          text: {
+            _: 'textWithEntities',
+            text: value,
+            entities: entities
+          }
+        }, HotReloadGuard);
       }
     });
 

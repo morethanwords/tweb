@@ -1,10 +1,12 @@
 import {JSX, Show} from 'solid-js';
 import {Transition} from 'solid-transition-group';
+import classNames from '@helpers/string/classNames';
 
 import '@components/skeleton/skeleton.scss';
 
 export interface SkeletonProps {
   loading: boolean | (() => boolean);
+  secondary?: boolean;
   class?: string;
   children?: JSX.Element | (() => JSX.Element);
 }
@@ -16,7 +18,7 @@ export const Skeleton = (props: SkeletonProps) => {
     <Show when={loading()} fallback={children() && (
       <div class="skeleton-child">{children()}</div>
     )}>
-      <div class={`skeleton ${props.class ?? ''}`} />
+      <div class={classNames('skeleton', props.secondary && 'skeleton--secondary', props.class)} />
     </Show>
   );
 

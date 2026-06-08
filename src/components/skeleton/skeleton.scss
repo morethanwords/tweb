@@ -8,13 +8,20 @@
   position: relative;
   overflow: hidden;
 
+  --gradient-color: rgba(255, 255, 255, 0.5);
+
+  &--secondary {
+    background: var(--light-secondary-text-color);
+    --gradient-color: rgba(255, 255, 255, 0.12);
+  }
+
   &:before {
     content: "";
     display: block;
     position: absolute;
     inset: 0;
 
-    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.5) 50%, transparent 100%);
+    background: linear-gradient(90deg, transparent 0%, var(--gradient-color) 50%, transparent 100%);
     animation: skeleton-animation 2s infinite cubic-bezier(0.4, 0, 0.2, 1);
   }
 }

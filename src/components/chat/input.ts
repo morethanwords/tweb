@@ -575,9 +575,10 @@ export default class ChatInput {
 
   /** @internal — used to hot-reload the input state with freshly evaluated code */
   public reloadInputState(create: typeof createChatInputState) {
+    if(!this.inputState) return;
     const carried = {...this.inputState.store};
     this.inputState.dispose();
-    this.inputState = create(this, carried);
+    this.inputState = runWithHotReloadGuard(() => create(this, carried));
   }
 
   public freezeFocused(focused: boolean) {
