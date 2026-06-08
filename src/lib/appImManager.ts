@@ -1,4 +1,5 @@
 import type {GroupCallId, MyGroupCall} from '@appManagers/appGroupCallsManager';
+import type {ApiLimitType} from '@appManagers/apiManagerMethods';
 import type GroupCallInstance from '@lib/calls/groupCallInstance';
 import type CallInstance from '@lib/calls/callInstance';
 import animationIntersector from '@components/animationIntersector';
@@ -30,7 +31,7 @@ import replaceContent from '@helpers/dom/replaceContent';
 import whichChild from '@helpers/dom/whichChild';
 import PopupElement from '@components/popups';
 import singleInstance from '@lib/singleInstance';
-import {toastNew} from '@components/toast';
+import {hideToast, toastNew} from '@components/toast';
 import debounce from '@helpers/schedulers/debounce';
 import pause from '@helpers/schedulers/pause';
 import MEDIA_MIME_TYPES_SUPPORTED from '@environment/mediaMimeTypesSupport';
@@ -239,6 +240,26 @@ export class AppImManager extends EventListenerBase<{
 
   get chat(): Chat {
     return this.chats[this.chats.length - 1];
+  }
+
+  private showLimitReplacedToast(limitType: ApiLimitType, subtitleKey: LangPackKey, subtitlePremiumKey: LangPackKey) {
+    if(rootScope.premium) {
+      toastNew({langPackKey: subtitlePremiumKey});
+      return;
+    }
+
+    this.managers.apiManager.getLimit(limitType, true).then((limitPremium) => {
+      toastNew({
+        langPackKey: subtitleKey,
+        langPackArguments: [
+          anchorCallback(() => {
+            hideToast();
+            PopupPremium.show({feature: 'double_limits'});
+          }),
+          limitPremium
+        ]
+      });
+    });
   }
 
   public construct(managers: AppManagers) {
@@ -633,8 +654,13 @@ export class AppImManager extends EventListenerBase<{
       });
     });
 
-    rootScope.addEventListener('sticker_updated', ({type, faved}) => {
+    rootScope.addEventListener('sticker_updated', ({type, faved, limitReached}) => {
       if(type === 'faved') {
+        if(faved && limitReached) {
+          this.showLimitReplacedToast('favedStickers', 'LimitReachedFavoriteStickersSubtitle', 'LimitReachedFavoriteStickersSubtitlePremium');
+          return;
+        }
+
         toastNew({
           langPackKey: faved ? 'AddedToFavorites' : 'RemovedFromFavorites'
         });
@@ -645,7 +671,12 @@ export class AppImManager extends EventListenerBase<{
       }
     });
 
-    rootScope.addEventListener('gif_updated', ({saved}) => {
+    rootScope.addEventListener('gif_updated', ({saved, limitReached}) => {
+      if(saved && limitReached) {
+        this.showLimitReplacedToast('gifs', 'LimitReachedFavoriteGifsSubtitle', 'LimitReachedFavoriteGifsSubtitlePremium');
+        return;
+      }
+
       toastNew({langPackKey: saved ? 'GifSavedHint' : 'RemovedGIFFromFavorites'});
     });
 
