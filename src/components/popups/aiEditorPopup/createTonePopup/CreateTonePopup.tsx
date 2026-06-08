@@ -1,6 +1,8 @@
 import EmojiDocumentIcon from '@components/emojiDocumentIcon';
 import {IconTsx} from '@components/iconTsx';
+import InputField from '@components/inputField';
 import PopupElement from '@components/popups/indexTsx';
+import Scrollable from '@components/scrollable2';
 import SimpleFormField from '@components/simpleFormField';
 import Space from '@components/space';
 import cloneDOMRect from '@helpers/dom/cloneDOMRect';
@@ -9,8 +11,6 @@ import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {createEffect, createMemo, createSignal, Show} from 'solid-js';
 import {useCreateToneLimits} from './limits';
 import styles from './styles.module.scss';
-import InputField from '@components/inputField';
-import Scrollable from '@components/scrollable2';
 
 
 export type CreateTonePopupProps = {

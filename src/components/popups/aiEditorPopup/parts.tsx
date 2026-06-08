@@ -148,7 +148,7 @@ export const Original = (props: {
         }}
         style={{'--initial-height': originalContentHeight() + 'px'}}
       >
-        <div>{wrapRichText(props.text.text, {entities: props.text.entities, middleware: createMiddleware().get()})}</div>
+        <div class={styles.richText}>{wrapRichText(props.text.text, {entities: props.text.entities, middleware: createMiddleware().get()})}</div>
       </div>
     </>
   );
@@ -269,7 +269,7 @@ export const Result = (props: {
           <Transition name='fade-2' mode='outin'>
             <Show when={composedMessage.state === 'ready' && composedMessage()} keyed fallback={<ResultSkeleton />}>
               {(message) => (
-                <Scrollable relative class={styles.resultScrollable}>
+                <Scrollable relative class={classNames(styles.resultScrollable, styles.richText)}>
                   {wrapRichText(message.resultText.text, {entities: message.resultText.entities, middleware: createMiddleware().get()})}
                 </Scrollable>
               )}

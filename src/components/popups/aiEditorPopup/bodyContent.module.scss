@@ -310,6 +310,10 @@
   }
 }
 
+.richText {
+  white-space: pre-wrap;
+}
+
 .footerButtons {
   display: flex;
   gap: 0.5rem;
