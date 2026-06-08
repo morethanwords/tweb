@@ -1,7 +1,6 @@
 import privacyTab from './privacyTab';
 import PrivacySection from '@components/privacySection';
 import {i18n, LangPackKey} from '@lib/langPack';
-import PrivacyType from '@appManagers/utils/privacy/privacyType';
 import {SliderSuperTabEventable} from '@components/sliderTab';
 import SettingSection from '@components/settingSection';
 import Row from '@components/row';
@@ -158,7 +157,6 @@ export default privacyTab('privacy-profile-photo', (tab) => {
     captions: [caption, caption, caption],
     exceptionTexts: ['PrivacySettingsController.NeverShare', 'PrivacySettingsController.AlwaysShare'],
     appendTo: tab.scrollable,
-    skipTypes: [PrivacyType.Nobody],
     managers: tab.managers
   });
 
