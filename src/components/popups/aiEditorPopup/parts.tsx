@@ -132,7 +132,9 @@ export const Original = (props: {
               />
             </Match>
             <Match when={isActuallyCollapsible()}>
-              <IconTsx icon='arrowhead' class={styles.originalArrow} classList={{[styles.toggled]: isActuallyCollapsed()}} />
+              <div class={styles.originalArrow} classList={{[styles.toggled]: isActuallyCollapsed()}}>
+                <IconTsx icon='arrowhead' class={styles.originalArrowIcon} />
+              </div>
             </Match>
           </Switch>
         </Transition>
@@ -175,7 +177,7 @@ export const Result = (props: {
   composeMessageWithAiArgs?: ComposeMessageWithAiArgs;
 }) => {
   const {rootScope, wrapRichText, toastNew} = useHotReloadGuard();
-  const context = useAiEditorPopupContext();
+  const {text: originalText, resultTextSignal: [, setResultText]} = useAiEditorPopupContext();
 
   let appearDeferred = props.isAppearing ? deferredPromise<void>() : undefined;
 
@@ -203,8 +205,8 @@ export const Result = (props: {
       const result = {
         resultText: {
           _: 'textWithEntities',
-          text: context.text.text + '\n' + [...Array(10 + Math.floor(Math.random() * 40))].map(() => 'hello').join(' '),
-          entities: context.text.entities
+          text: originalText.text + '\n' + [...Array(10 + Math.floor(Math.random() * 40))].map(() => 'hello').join(' '),
+          entities: originalText.entities
         } as TextWithEntities
       };
       cachedComposedMessages.set(getCachedComposedMessageKey(args), result);
@@ -220,6 +222,11 @@ export const Result = (props: {
     requestRAF(() => {
       setHasTransition(true);
     });
+  });
+
+  createComputed(() => {
+    if(composedMessage.state !== 'ready') setResultText();
+    else setResultText(composedMessage().resultText);
   });
 
   const onCopyClick = async() => {

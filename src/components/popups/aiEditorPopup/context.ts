@@ -1,9 +1,9 @@
+import {Accessor, createContext, Setter, useContext} from 'solid-js';
+import {AiEditorPopupProps} from './aiEditorPopup';
 import {TextWithEntities} from '@layer';
-import {createContext, useContext} from 'solid-js';
 
-export interface AiEditorPopupContextValue {
-  text: TextWithEntities.textWithEntities;
-  peerId: PeerId;
+export type AiEditorPopupContextValue = AiEditorPopupProps & {
+  resultTextSignal: [Accessor<TextWithEntities>, Setter<TextWithEntities>];
 };
 
 export const AiEditorPopupContext = createContext<AiEditorPopupContextValue>();

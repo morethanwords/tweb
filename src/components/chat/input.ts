@@ -157,7 +157,7 @@ import {getFileNameByLocation} from '@helpers/fileName';
 import {Middleware, getMiddleware, MiddlewareHelper} from '@helpers/middleware';
 import {createAutoDeleteIcon} from '@components/autoDeleteIcon';
 import compareUint8Arrays from '@helpers/bytes/compareUint8Arrays';
-import {LocalTextWithOptionalEntities} from './bubbleParts/pollMessageContent/utils';
+import {LocalTextWithOptionalEntities} from '@types';
 import createChatInputState, {ChatInputState} from './inputState';
 import {SupportedMediaType} from '@components/popups/createPoll/storeContext';
 import {runWithHotReloadGuard} from '@lib/solidjs/runWithHotReloadGuard';

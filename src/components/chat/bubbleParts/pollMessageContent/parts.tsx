@@ -11,11 +11,12 @@ import classNames from '@helpers/string/classNames';
 import {Document, MessageMedia, Photo} from '@layer';
 import {LangPackKey} from '@lib/langPack';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import {LocalTextWithEntities} from '@types';
 import {createMemo, For, Match, onMount, Show, Switch} from 'solid-js';
 import {unwrap} from 'solid-js/store';
 import {usePollMessageContentProps} from './context';
 import styles from './styles.module.scss';
-import {dataPollViewerIdx, DataPollViewerIdxDirectivePayload, LocalTextWithEntities} from './utils';
+import {dataPollViewerIdx, DataPollViewerIdxDirectivePayload} from './utils';
 
 
 keepMe(dataPollViewerIdx);

@@ -7,6 +7,7 @@ import {resolveFirst} from '@solid-primitives/refs';
 import {createEffect, createMemo, onCleanup} from 'solid-js';
 import type {ChatInputStateContext} from '.';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
+import wrapDraftText from '@lib/richTextProcessor/wrapDraftText';
 
 const shouldShowFromHeight = 72;
 
@@ -34,6 +35,17 @@ export function useAiEditorButton({instance, store}: ChatInputStateContext) {
             _: 'textWithEntities',
             text: value,
             entities: entities
+          },
+          onApply: (text) => {
+            const node = wrapDraftText(text.text, {
+              entities: text.entities,
+              middleware: instance.getMiddleware(),
+              wrappingForPeerId: instance.chat.peerId
+            });
+            instance.setInputValue(node, false, true);
+          },
+          onSend: (text) => {
+
           }
         }, HotReloadGuard);
       }

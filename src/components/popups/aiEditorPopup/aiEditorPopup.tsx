@@ -1,21 +1,40 @@
 import {I18nTsx} from '@helpers/solid/i18n';
 import {TextWithEntities} from '@layer';
 import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import {LocalTextWithEntities} from '@types';
+import {createSignal} from 'solid-js';
 import PopupElement, {createPopup} from '../indexTsx';
 import styles from './aiEditorPopup.module.scss';
 import {AiEditorPopupBodyContent} from './bodyContent';
-import {AiEditorPopupContext} from './context';
+import {AiEditorPopupContext, AiEditorPopupContextValue} from './context';
 
 
-type AiEditorPopupProps = {
+export type AiEditorPopupProps = {
   peerId: PeerId;
   text: TextWithEntities.textWithEntities;
+  onApply: (text: LocalTextWithEntities) => void;
+  onSend?: (text: LocalTextWithEntities) => void;
 };
 
 const AiEditorPopup = (props: AiEditorPopupProps) => {
+  const [show, setShow] = createSignal(true);
+
+  const contextValue: AiEditorPopupContextValue = {
+    ...props,
+    onApply: (...args) => {
+      props.onApply(...args);
+      setShow(false);
+    },
+    onSend: props.onSend ? (...args) => {
+      props.onSend(...args);
+      setShow(false);
+    } : undefined,
+    resultTextSignal: createSignal<TextWithEntities>()
+  };
+
   return (
     <PopupElement
-      show
+      show={show()}
       class={styles.popup}
       containerClass={styles.container}
     >
@@ -26,7 +45,7 @@ const AiEditorPopup = (props: AiEditorPopupProps) => {
         </PopupElement.Title>
       </PopupElement.Header>
       <PopupElement.Body>
-        <AiEditorPopupContext.Provider value={{text: props.text, peerId: props.peerId}}>
+        <AiEditorPopupContext.Provider value={contextValue}>
           <AiEditorPopupBodyContent />
         </AiEditorPopupContext.Provider>
       </PopupElement.Body>

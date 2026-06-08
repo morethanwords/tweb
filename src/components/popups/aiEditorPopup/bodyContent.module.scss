@@ -115,11 +115,22 @@
 
   padding: 0.25rem;
   border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
   background-color: var(--arrow-bg);
 
+  &Icon {
+    transform: translateY(0px);
+  }
+
   &.toggled {
     transform: translateY(-50%) rotate(0deg);
+  }
+
+  &.toggled &Icon {
+    transform: translateY(1px);
   }
 }
 
@@ -296,5 +307,27 @@
     height: var(--size);
     font-size: var(--size);
     pointer-events: none;
+  }
+}
+
+.footerButtons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.applyButton {
+  flex: 1;
+  border-radius: 100px;
+}
+
+.sendButton {
+  flex: 64px 0;
+  border-radius: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &Icon {
+    font-size: 1.5rem;
   }
 }

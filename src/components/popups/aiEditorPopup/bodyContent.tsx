@@ -1,8 +1,12 @@
 import {AutoHeight} from '@components/autoHeight';
+import Button from '@components/buttonTsx';
+import {IconTsx} from '@components/iconTsx';
 import Space from '@components/space';
-import {createSignal, Match, Switch} from 'solid-js';
+import {I18nTsx} from '@helpers/solid/i18n';
+import {createSignal, Match, Show, Switch} from 'solid-js';
 import {Transition} from 'solid-transition-group';
 import styles from './bodyContent.module.scss';
+import {useAiEditorPopupContext} from './context';
 import {FixTab} from './fixTab';
 import {Tabs, useIsAppearing} from './parts';
 import {StyleTab} from './styleTab';
@@ -16,8 +20,9 @@ enum TabKey {
 };
 
 export const AiEditorPopupBodyContent = () => {
-  const [activeTab, setActiveTab] = createSignal<TabKey>(TabKey.Style);
+  const {onApply, onSend, resultTextSignal: [resultText]} = useAiEditorPopupContext();
 
+  const [activeTab, setActiveTab] = createSignal<TabKey>(TabKey.Style);
   const [hasTransition, setHasTransition] = createSignal(false);
 
   return (
@@ -32,7 +37,7 @@ export const AiEditorPopupBodyContent = () => {
         onTabChange={setActiveTab}
       />
       <Space amount='1rem' />
-      <AutoHeight hasTransition={hasTransition()} outerClass={styles.autoHeight}>
+      <AutoHeight hasTransition={hasTransition()} overflowHidden outerClass={styles.autoHeight}>
         <Transition
           name='fade-2'
           onBeforeExit={(el) => {
@@ -62,6 +67,35 @@ export const AiEditorPopupBodyContent = () => {
           </Switch>
         </Transition>
       </AutoHeight>
+      <Space amount='1rem' />
+      <div class={styles.footerButtons}>
+        <Button
+          class={styles.applyButton}
+          primaryFilled
+          disabled={!resultText()}
+          onClick={() => {
+            if(!resultText()) return;
+            onApply(resultText());
+          }}
+        >
+          <I18nTsx key='Apply' />
+        </Button>
+        <Show when={onSend} keyed>
+          {(send) => (
+            <Button
+              class={styles.sendButton}
+              primaryFilled
+              disabled={!resultText()}
+              onClick={() => {
+                if(!resultText()) return;
+                send(resultText());
+              }}
+            >
+              <IconTsx class={styles.sendButtonIcon} icon='logo' />
+            </Button>
+          )}
+        </Show>
+      </div>
     </div>
   );
 };
