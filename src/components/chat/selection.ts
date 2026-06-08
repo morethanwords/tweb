@@ -381,8 +381,8 @@ export class AppSelection extends EventListenerBase<{
     for(const [peerId, mids] of this.selectedMids) {
       const storageKey = this.getStorageKey(peerId);
       const r = await this.managers.appMessagesManager.cantForwardDeleteMids(storageKey, Array.from(mids));
-      cantForward = r.cantForward;
-      cantDelete = r.cantDelete;
+      cantForward ||= r.cantForward;
+      cantDelete ||= r.cantDelete;
 
       if(cantForward && cantDelete) break;
     }
