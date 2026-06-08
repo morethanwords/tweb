@@ -1938,11 +1938,18 @@ export default class AppMediaViewerBase<
     if(!target) return;
     const context = AppMediaViewerBase.FLOATING_CONTEXTS.find(({trigger}) => findUpClassName(target, trigger));
     if(!context) return;
+    // In an album each item carries its own floating overlays (.video-time, .video-play),
+    // but the container query spans the whole bubble. Only the clicked item's mover
+    // animates, so skip overlays that belong to a sibling album item. Bubble-level
+    // floatings (e.g. .time.is-floating, which has no .album-item ancestor) are still hidden.
+    const targetAlbumItem = findUpClassName(target, 'album-item');
     for(const {containerClass, selectors} of context.layers) {
       const container = findUpClassName(target, containerClass);
       if(!container) continue;
       container.querySelectorAll<HTMLElement>(selectors).forEach((el) => {
         if(this.hiddenFloatings.has(el)) return;
+        const albumItem = findUpClassName(el, 'album-item');
+        if(albumItem && albumItem !== targetAlbumItem) return;
         el.style.transition = 'none';
         el.style.opacity = '0';
         this.hiddenFloatings.add(el);
