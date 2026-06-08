@@ -67,13 +67,19 @@ export const AiEditorPopupBodyContent = () => {
         >
           <Switch>
             <Match when={activeTab() === TabKey.Translate}>
-              <TranslateTab />
+              {(_) => {
+                const isAppearing = useIsAppearing(hasTransition);
+                return <TranslateTab isAppearing={isAppearing()} />
+              }}
             </Match>
             <Match when={activeTab() === TabKey.Style}>
               <StyleTab />
             </Match>
             <Match when={activeTab() === TabKey.Fix}>
-              <FixTab />
+              {(_) => {
+                const isAppearing = useIsAppearing(hasTransition);
+                return <FixTab isAppearing={isAppearing()} />
+              }}
             </Match>
           </Switch>
         </Transition>
@@ -113,7 +119,9 @@ const Tabs = <T, >(props: TabsProps<T>) => {
 };
 
 
-const TranslateTab = () => {
+const TranslateTab = (props: {
+  isAppearing: boolean;
+}) => {
   const [emojify, setEmojify] = createSignal(false);
 
   const {text: originalText} = useContext(AiEditorPopupContext);
@@ -123,6 +131,7 @@ const TranslateTab = () => {
       <Original text={originalText} />
       <Divider />
       <Result
+        isAppearing={props.isAppearing}
         overrideTitle={
           <I18nTsx
             class={styles.resultTitle}
@@ -196,14 +205,7 @@ const StyleTab = () => {
         <HeightTransition onRunningAnimations={setRunningAnimations}>
           <Show when={emojify() || selectedTone()}>
             {(_) => {
-              const [isAppearing, setIsAppearing] = createSignal(true);
-
-              const track = createReaction(() => setIsAppearing(false));
-              const finishedAnimation = createMemo(() => runningAnimations() === 0);
-
-              requestRAF(() => {
-                track(finishedAnimation);
-              });
+              const isAppearing = useIsAppearing(() => runningAnimations() > 0);
 
               return (
                 <div style={{overflow: 'hidden'}}>
@@ -228,14 +230,14 @@ const StyleTab = () => {
   );
 };
 
-const FixTab = () => {
+const FixTab = (props: {isAppearing: boolean}) => {
   const {text: originalText} = useContext(AiEditorPopupContext);
 
   return (
     <div class={styles.tabContent}>
       <Original text={originalText} />
       <Divider />
-      <Result />
+      <Result isAppearing={props.isAppearing} />
     </div>
   );
 };
@@ -377,7 +379,7 @@ const Result = (props: {
       <div class={styles.resultHeader}>
         <div class={styles.resultTitleWrapper}>
           <Show when={props.overrideTitle} fallback={<I18nTsx key='AiEditor.Result' class={styles.resultTitle} />}>
-            {(title) => <>{title()}</>}
+            {props.overrideTitle}
           </Show>
           <ButtonIconTsx class={styles.copyButton} icon='copy' />
         </div>
@@ -404,12 +406,13 @@ const Result = (props: {
 
 const ResultSkeleton = () => {
   return (
+    // Necessary wrapper for transition
     <div>
-      <Skeleton secondary loading />
-      <Skeleton secondary loading />
-      <Skeleton secondary loading />
-      <Skeleton secondary loading />
-      <Skeleton secondary loading />
+      <Skeleton.Div secondary />
+      <Skeleton.Div secondary />
+      <Skeleton.Div secondary />
+      <Skeleton.Div secondary />
+      <Skeleton.Div secondary />
     </div>
   );
 };
@@ -468,6 +471,19 @@ const CreateTone = () => {
       </div>
     </div>
   );
+};
+
+const useIsAppearing = (hasAnimation: () => boolean) => {
+  const [isAppearing, setIsAppearing] = createSignal(true);
+
+  const track = createReaction(() => setIsAppearing(false));
+  const finishedAnimation = createMemo(() => !hasAnimation());
+
+  requestRAF(() => {
+    track(finishedAnimation);
+  });
+
+  return isAppearing;
 };
 
 const texte = 'hi there'

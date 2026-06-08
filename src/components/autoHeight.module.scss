@@ -1,6 +1,4 @@
 .outer {
-  height: var(--auto-height, auto);
-
   &.hasTransition {
     transition: height 0.2s;
   }

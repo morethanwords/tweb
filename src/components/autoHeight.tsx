@@ -13,7 +13,6 @@ export const AutoHeight = (inProps: {
 }) => {
   const props = mergeProps({hasTransition: true}, inProps);
 
-  let containerRef!: HTMLDivElement;
   let contentRef!: HTMLDivElement;
 
   const [canHaveHeight, setCanHaveHeight] = createSignal(false);
@@ -36,14 +35,13 @@ export const AutoHeight = (inProps: {
 
   return (
     <div
-      ref={containerRef}
       class={classNames(props.outerClass, styles.outer)}
       classList={{
         [styles.overflowHidden]: props.overflowHidden,
         [styles.hasTransition]: canHaveHeightAndTransition()
       }}
       style={{
-        '--auto-height': canHaveHeightAndTransition() ? `${height()}px` : undefined
+        'height': canHaveHeightAndTransition() ? `${height()}px` : undefined
       }}
     >
       <div ref={contentRef}>{props.children}</div>

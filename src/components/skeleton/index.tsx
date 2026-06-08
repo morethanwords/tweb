@@ -1,4 +1,4 @@
-import {JSX, Show} from 'solid-js';
+import {JSX, Show, splitProps} from 'solid-js';
 import {Transition} from 'solid-transition-group';
 import classNames from '@helpers/string/classNames';
 
@@ -18,7 +18,7 @@ export const Skeleton = (props: SkeletonProps) => {
     <Show when={loading()} fallback={children() && (
       <div class="skeleton-child">{children()}</div>
     )}>
-      <div class={classNames('skeleton', props.secondary && 'skeleton--secondary', props.class)} />
+      <Skeleton.Div secondary={props.secondary} class={props.class} />
     </Show>
   );
 
@@ -26,5 +26,12 @@ export const Skeleton = (props: SkeletonProps) => {
     <Transition name="fade" mode="outin" duration={100}>
       {inner}
     </Transition>
+  );
+};
+
+Skeleton.Div = (inProps: JSX.HTMLAttributes<HTMLDivElement> & { secondary?: boolean; }) => {
+  const [props, restProps] = splitProps(inProps, ['secondary', 'class']);
+  return (
+    <div class={classNames('skeleton', props.secondary && 'skeleton--secondary', props.class)} {...restProps} />
   );
 };
