@@ -11,6 +11,11 @@ export type ComposeMessageWithAiArgs = {
   emojify?: boolean;
 };
 
+export type ComposeMessageWithAiResult = {
+  resultText: TextWithEntities;
+  diffText?: TextWithEntities;
+};
+
 export class AiTonesManager extends AppManager {
   private tones: Tone[] = [];
   /**
@@ -24,6 +29,12 @@ export class AiTonesManager extends AppManager {
     super();
     this.name = 'AiTonesManager';
   }
+
+  public clear: (init?: boolean) => void = () => {
+    this.tonesMap.clear();
+    this.tonesHash = 0;
+    this.isStale = true;
+  };
 
   protected after() {
     this.apiUpdatesManager.addMultipleEventsListeners({

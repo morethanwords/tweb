@@ -16,7 +16,7 @@ import {requestRAF} from '@helpers/solid/requestRAF';
 import classNames from '@helpers/string/classNames';
 import {useIsCleaned} from '@hooks/useIsCleaned';
 import {TextWithEntities} from '@layer';
-import {ComposeMessageWithAiArgs} from '@lib/appManagers/aiTonesManager';
+import {ComposeMessageWithAiArgs, ComposeMessageWithAiResult} from '@lib/appManagers/aiTonesManager';
 import {LangPackKey} from '@lib/langPack';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {createComputed, createMemo, createReaction, createResource, createSignal, For, JSX, Match, onCleanup, onMount, Show, Switch} from 'solid-js';
@@ -150,6 +150,21 @@ export const Original = (props: {
   );
 };
 
+const cachedComposedMessages: Map<string, ComposeMessageWithAiResult> = new Map();
+
+const getCachedComposedMessageKey = (args: ComposeMessageWithAiArgs): string => {
+  try {
+    return JSON.stringify(args);
+  } catch{
+    return undefined;
+  }
+};
+
+const getCachedComposedMessage = (args: ComposeMessageWithAiArgs): ComposeMessageWithAiResult | undefined => {
+  const key = getCachedComposedMessageKey(args);
+  return key ? cachedComposedMessages.get(key) : undefined;
+};
+
 export const Result = (props: {
   overrideTitle?: JSX.Element;
   emojify?: boolean;
@@ -170,16 +185,31 @@ export const Result = (props: {
     track(() => props.isAppearing);
   }
 
-  const [composedMessage] = createResource(() => props.composeMessageWithAiArgs, async(args) => {
-    // return rootScope.managers.aiTonesManager.composeMessageWithAi(args);
-    await Promise.all([pause(20 + Math.floor(Math.random() * 1000)), appearDeferred])
-    return {
-      resultText: {
-        _: 'textWithEntities',
-        text: context.text.text + '\n' + [...Array(10 + Math.floor(Math.random() * 40))].map(() => 'hello').join(' '),
-        entities: context.text.entities
-      }
-    };
+  const [composedMessage] = createResource(() => props.composeMessageWithAiArgs, (args) => {
+    const cached = getCachedComposedMessage(args);
+    if(cached) return cached;
+
+    // return (async () => {
+    //   const result = await rootScope.managers.aiTonesManager.composeMessageWithAi(args);
+    //   const key = getCachedComposedMessageKey(args);
+    //   if (key) cachedComposedMessages.set(key, result);
+    //   return result;
+    // })();
+
+    return (async() => {
+      await Promise.all([pause(20 + Math.floor(Math.random() * 1000)), appearDeferred]);
+      const result = {
+        resultText: {
+          _: 'textWithEntities',
+          text: context.text.text + '\n' + [...Array(10 + Math.floor(Math.random() * 40))].map(() => 'hello').join(' '),
+          entities: context.text.entities
+        } as TextWithEntities
+      };
+      cachedComposedMessages.set(getCachedComposedMessageKey(args), result);
+      return result;
+    })();
+  }, {
+    initialValue: getCachedComposedMessage(props.composeMessageWithAiArgs)
   });
 
   const [hasTransition, setHasTransition] = createSignal(false);
