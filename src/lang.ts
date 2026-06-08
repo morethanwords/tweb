@@ -1877,6 +1877,7 @@ const lang = {
   'ScamMessage': 'SCAM',
   'FakeMessage': 'FAKE',
   'TextCopied': 'Text copied to clipboard',
+  'TextCopyFailed': 'Failed to copy text to clipboard',
   'FormattedDate.CopyDate': 'Copy Date',
   'FormattedDate.DateCopied': 'Date copied to clipboard',
   'FormattedDate.JustNow': 'just now',

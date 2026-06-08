@@ -8,7 +8,9 @@ import Scrollable from '@components/scrollable2';
 import {Skeleton} from '@components/skeleton';
 import {StaticCheckbox} from '@components/staticCheckbox';
 import deferredPromise from '@helpers/cancellablePromise';
+import {copyTextToClipboard} from '@helpers/clipboard';
 import {keepMe} from '@helpers/keepMe';
+import prepareTextWithEntitiesForCopying from '@helpers/prepareTextWithEntitiesForCopying';
 import pause from '@helpers/schedulers/pause';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {I18nTsx} from '@helpers/solid/i18n';
@@ -172,7 +174,7 @@ export const Result = (props: {
   isAppearing?: boolean;
   composeMessageWithAiArgs?: ComposeMessageWithAiArgs;
 }) => {
-  const {rootScope, wrapRichText} = useHotReloadGuard();
+  const {rootScope, wrapRichText, toastNew} = useHotReloadGuard();
   const context = useAiEditorPopupContext();
 
   let appearDeferred = props.isAppearing ? deferredPromise<void>() : undefined;
@@ -189,10 +191,10 @@ export const Result = (props: {
     const cached = getCachedComposedMessage(args);
     if(cached) return cached;
 
-    // return (async () => {
+    // return (async() => {
     //   const result = await rootScope.managers.aiTonesManager.composeMessageWithAi(args);
     //   const key = getCachedComposedMessageKey(args);
-    //   if (key) cachedComposedMessages.set(key, result);
+    //   if(key) cachedComposedMessages.set(key, result);
     //   return result;
     // })();
 
@@ -220,6 +222,21 @@ export const Result = (props: {
     });
   });
 
+  const onCopyClick = async() => {
+    if(composedMessage.state !== 'ready') return;
+    const {text, html} = prepareTextWithEntitiesForCopying(composedMessage().resultText);
+    try {
+      await copyTextToClipboard(text, html);
+      toastNew({
+        langPackKey: 'TextCopied'
+      });
+    } catch(e) {
+      toastNew({
+        langPackKey: 'TextCopyFailed'
+      });
+    }
+  };
+
   return (
     <>
       <div class={styles.resultHeader}>
@@ -227,11 +244,14 @@ export const Result = (props: {
           <Show when={props.overrideTitle} fallback={<I18nTsx key='AiEditor.Result' class={styles.resultTitle} />}>
             {props.overrideTitle}
           </Show>
-          <Transition name='fade-2'>
-            <Show when={composedMessage.state === 'ready'}>
-              <ButtonIconTsx class={styles.copyButton} icon='copy' />
-            </Show>
-          </Transition>
+          <ButtonIconTsx
+            class={styles.copyButton}
+            classList={{
+              [styles.hidden]: composedMessage.state !== 'ready'
+            }}
+            icon='copy'
+            onClick={onCopyClick}
+          />
         </div>
         <Show when={props.onEmojify}>
           <EmojifyCheckbox checked={props.emojify} onClick={props.onEmojify} />

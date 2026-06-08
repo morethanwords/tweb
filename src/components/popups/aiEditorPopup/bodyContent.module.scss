@@ -243,6 +243,13 @@
   font-size: 1.25rem;
   width: 32px;
   height: 32px;
+
+  transition: opacity 0.2s;
+
+  &.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
 }
 
 .autoHeight {
