@@ -177,6 +177,8 @@ export type MediaEditorContextValue = {
   isEditingForumAvatar: boolean;
   isVideoAvatarMode: boolean;
   dontCreatePreview: boolean;
+  imageType?: 'image/jpeg' | 'image/png';
+  imageQuality?: number;
 
   mediaState: Store<EditingMediaState>;
   editorState: Store<MediaEditorState>;
@@ -261,6 +263,8 @@ export function createContextValue(props: MediaEditorProps): MediaEditorContextV
     isEditingForumAvatar: props.isEditingForumAvatar || false,
     isVideoAvatarMode: props.isVideoAvatarMode || false,
     dontCreatePreview: props.dontCreatePreview || false,
+    imageType: props.imageType,
+    imageQuality: props.imageQuality,
 
     mediaState,
     editorState,

@@ -35,6 +35,11 @@ export type MediaEditorProps = {
   canImageResultInGIF?: boolean;
   dontCreatePreview?: boolean;
   initialTab?: string;
+  // Output encoding for a still-image result. Caller-controlled so the editor
+  // isn't locked to one format/quality (e.g. newMedia compresses heavy photos,
+  // avatars stay near-lossless). Defaults to JPEG at the browser's default quality.
+  imageType?: 'image/jpeg' | 'image/png';
+  imageQuality?: number;
 };
 
 export function MediaEditor(props: MediaEditorProps) {

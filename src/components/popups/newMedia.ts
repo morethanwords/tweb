@@ -99,6 +99,13 @@ let currentPopup: PopupNewMedia;
 
 const MAX_WIDTH = 400 - 16;
 
+// A "compressed photo" heavier than this is re-encoded to JPEG at PHOTO_COMPRESSED_QUALITY,
+// otherwise the server rejects it with PHOTO_SAVE_FILE_INVALID (a detailed 2560px PNG is
+// ~10MB). Used for both the direct send (scaleImageForTelegram) and the edited result
+// (passed into the media editor), so the policy lives in one place.
+const PHOTO_HEAVY_BYTES = 2 * 1024 * 1024;
+const PHOTO_COMPRESSED_QUALITY = 0.9;
+
 export function getCurrentNewMediaPopup() {
   return currentPopup;
 }
@@ -935,18 +942,33 @@ export default class PopupNewMedia extends PopupElement {
     return SERVER_IMAGE_MIME_TYPES.has(mimeType) ? 'image/jpeg' : mimeType;
   }
 
-  private async scaleImageForTelegram(image: HTMLImageElement, mimeType: MTMimeType, convertIncompatible?: boolean) {
+  private async scaleImageForTelegram(image: HTMLImageElement, mimeType: MTMimeType, fileSize: number, convertIncompatible?: boolean) {
     const PHOTO_SIDE_LIMIT = 2560;
+    // PNG/BMP are lossless and can be huge even when ≤2560px (a detailed 2560px
+    // screenshot/map is ~10MB), which the server rejects as a compressed photo with
+    // PHOTO_SAVE_FILE_INVALID. Re-encode such HEAVY lossless images to JPEG — but
+    // only when they're actually heavy, so a normal small PNG keeps its original
+    // quality and isn't touched at all.
+    const isHeavyLossless = (mimeType === 'image/png' || mimeType === 'image/bmp') && fileSize > PHOTO_HEAVY_BYTES;
+    const needsResize = Math.max(image.naturalWidth, image.naturalHeight) > PHOTO_SIDE_LIMIT;
     let url = image.src, scaledBlob: Blob;
     if(
       mimeType !== 'image/gif' &&
-      (Math.max(image.naturalWidth, image.naturalHeight) > PHOTO_SIDE_LIMIT || (convertIncompatible && !SERVER_IMAGE_MIME_TYPES.has(mimeType)))
+      (needsResize || isHeavyLossless || (convertIncompatible && !SERVER_IMAGE_MIME_TYPES.has(mimeType)))
     ) {
       const {blob} = await scaleMediaElement({
         media: image,
-        boxSize: makeMediaSize(PHOTO_SIDE_LIMIT, PHOTO_SIDE_LIMIT),
+        // Cap each side at PHOTO_SIDE_LIMIT, but never upscale a smaller image
+        // (aspectFitted would otherwise blow a small PNG up to 2560px).
+        boxSize: makeMediaSize(
+          Math.min(image.naturalWidth, PHOTO_SIDE_LIMIT),
+          Math.min(image.naturalHeight, PHOTO_SIDE_LIMIT)
+        ),
         mediaSize: makeMediaSize(image.naturalWidth, image.naturalHeight),
-        mimeType: this.modifyMimeTypeForTelegram(mimeType) as any
+        mimeType: this.modifyMimeTypeForTelegram(mimeType) as any,
+        // Only drop quality when compressing a heavy image; a plain >2560 resize or
+        // a format conversion keeps the default (near-lossless) quality.
+        quality: isHeavyLossless ? PHOTO_COMPRESSED_QUALITY : undefined
       });
 
       scaledBlob = blob;
@@ -1124,7 +1146,7 @@ export default class PopupNewMedia extends PopupElement {
       await renderImageFromUrlPromise(img, url);
 
       const mimeType = getFileMimeType(params.file) as MTMimeType;
-      const scaled = await this.scaleImageForTelegram(img, mimeType, true);
+      const scaled = await this.scaleImageForTelegram(img, mimeType, file.size, true);
       if(scaled) {
         params.objectURL = scaled.url;
         params.scaledBlob = scaled.blob;
@@ -1192,6 +1214,11 @@ export default class PopupNewMedia extends PopupElement {
               mediaSrc: params.editResult?.originalSrc || params.objectURL,
               getMediaBlob: async() => file,
               managers: this.managers,
+              // Compressed-photo output: JPEG, and only drop quality for a heavy
+              // source (same policy/threshold as the direct send) — a small edit
+              // stays near-lossless. (Ignored for the video path.)
+              imageType: 'image/jpeg',
+              imageQuality: file.size > PHOTO_HEAVY_BYTES ? PHOTO_COMPRESSED_QUALITY : undefined,
               onEditFinish: (result) => {
                 params.editResult = result;
                 this.attachFiles();
@@ -1336,7 +1363,7 @@ export default class PopupNewMedia extends PopupElement {
     if(isPhoto && params.objectURL) {
       img = new Image();
       await renderImageFromUrlPromise(img, params.objectURL);
-      const scaled = await this.scaleImageForTelegram(img, file.type as MTMimeType);
+      const scaled = await this.scaleImageForTelegram(img, file.type as MTMimeType, file.size);
       if(scaled) {
         params.objectURL = scaled.url;
       }
