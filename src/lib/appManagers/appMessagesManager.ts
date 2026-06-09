@@ -1575,7 +1575,7 @@ export class AppMessagesManager extends AppManager {
       attributes
     } = documentAndMeta;
 
-    let {
+    const {
       attachType
     } = documentAndMeta;
 
@@ -1817,10 +1817,14 @@ export class AppMessagesManager extends AppManager {
             if(attachType === 'photo' &&
               (error.type === 'PHOTO_INVALID_DIMENSIONS' ||
               error.type === 'PHOTO_SAVE_FILE_INVALID')) {
+              // The server rejected the photo (e.g. oversized after editing). The
+              // photo->document auto-fallback that used to live here never actually
+              // re-sent — by this point the upload deferred is already settled and
+              // send() isn't re-invoked — so the message was left silently stuck
+              // with no error. Surface the error on the bubble instead.
               error.handled = true;
-              attachType = 'document';
-              message.send();
-              return;
+              toggleError(error);
+              throw error;
             }
 
             const repayRequest = this.repayRequestHandler.tryRegisterRequest({
