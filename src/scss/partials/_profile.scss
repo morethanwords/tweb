@@ -908,6 +908,21 @@
     }
   }
 
+  &-unofficial-warning {
+    .row-title {
+      font-size: var(--font-size-14);
+      line-height: var(--line-height-14);
+      color: var(--secondary-text-color);
+      overflow: unset;
+    }
+
+    .profile-unofficial-warning-icon {
+      color: var(--danger-color);
+      margin-inline-start: -.25rem;
+      font-size: 1.125rem;
+    }
+  }
+
   &-notes {
     .row-title {
       white-space: pre-wrap;

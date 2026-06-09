@@ -1048,6 +1048,7 @@ const lang = {
   'Verified.Bot': 'This bot is verified as official by the representatives of Telegram.',
   'Verified.Channel': 'This channel was verified by Telegram.',
   'Verified.Group': 'This group was verified by Telegram.',
+  'ProfileUnofficialSecurityRisk': '%1$s uses an unofficial Telegram client — messages to this user may be less secure.',
   // 'SavedMessages.Count': {
   //   'one_value': '%d saved message',
   //   'other_value': '%d saved messages'
