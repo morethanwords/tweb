@@ -170,7 +170,8 @@
       z-index: 2;
 
       .currency-star-icon {
-        transform: translateX(1px);
+        width: var(--reaction-size);
+        height: var(--reaction-size);
       }
 
       .reaction-sticker {

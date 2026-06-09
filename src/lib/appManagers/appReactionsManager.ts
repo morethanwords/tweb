@@ -261,6 +261,19 @@ export class AppReactionsManager extends AppManager {
     });
   }
 
+  // Whether channel/group posts in this peer may carry a paid (star ⭐) reaction —
+  // server-driven via channelFull.paid_reactions_available. Used to render an empty
+  // paid-reaction button on posts that already have reactions but no paid one yet.
+  public isPaidReactionAvailable(peerId: PeerId): MaybePromise<boolean> {
+    if(peerId.isUser() || !this.appChatsManager.isChannel(peerId.toChatId())) {
+      return false;
+    }
+
+    return callbackify(this.appProfileManager.getChannelFull(peerId.toChatId()), (channelFull) => {
+      return !!channelFull?.pFlags?.paid_reactions_available;
+    });
+  }
+
   public getReactions(type: 'recent' | 'top' | 'tags') {
     if(this.reactions[type]) {
       return this.reactions[type];

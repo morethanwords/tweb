@@ -433,6 +433,16 @@ export default class ReactionElement extends HTMLElement {
     if(displayOn === undefined && !force && !title && !this.hasTitle) return;
     const reactionCount = this.reactionCount;
 
+    // Empty paid (star) reaction button — show just the star, never a "0" count.
+    if(reactionCount.reaction._ === 'reactionPaid' && !reactionCount.count) {
+      if(this.counter?.parentElement) {
+        this.counter.remove();
+        this.counter = undefined;
+      }
+      this.hasTitle = false;
+      return;
+    }
+
     let setTitle = false;
     if(force || title || reactionCount.count >= displayOn || (this.type === ReactionLayoutType.Block && !this.canRenderAvatars)) {
       if(!this.counter) {
