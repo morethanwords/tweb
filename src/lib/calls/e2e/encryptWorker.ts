@@ -129,6 +129,13 @@ async function handle(req: HostRequest): Promise<unknown> {
       for(const [ssrc, userId] of req.args.entries) {
         ssrcToUser.set(ssrc >>> 0, userId);
       }
+      // Re-arm recv diagnostics: drop now-mapped SSRCs from the unmapped
+      // counter (so a future un-mapping reports again) and reset decrypt-error
+      // counters for the new key epoch.
+      for(const ssrc of [...unmappedFrames.keys()]) {
+        if(ssrcToUser.has(ssrc)) unmappedFrames.delete(ssrc);
+      }
+      decryptErrFrames.clear();
       return undefined;
     }
 
@@ -178,6 +185,18 @@ async function handle(req: HostRequest): Promise<unknown> {
 // the host via `setSsrcUsers` RPC every time the SFU signals participant
 // changes. Empty by default — a recv frame with an unknown SSRC is dropped.
 const ssrcToUser = new Map<number, bigint>();
+
+// Per-SSRC counts of frames we couldn't turn into plaintext, driving the
+// `recvDiag` breadcrumb (see WorkerEvent): emit once on first sighting, then
+// once more with `sustained:true` after RECV_DIAG_SUSTAINED_FRAMES — so a
+// transient at-join blip (frames arriving a beat before setSsrcUsers) is
+// distinguishable from a stuck stream (the "seen but not heard" bug). Re-armed
+// in setSsrcUsers when an SSRC becomes mapped / on a successful decrypt. Cheap:
+// only touched on the (rare in a healthy call) failure branches.
+// 150 frames ≈ 3s of 50fps Opus / ~5s of 30fps VP8 — comfortably past transient.
+const RECV_DIAG_SUSTAINED_FRAMES = 150;
+const unmappedFrames = new Map<number, number>();
+const decryptErrFrames = new Map<number, number>();
 
 self.addEventListener('message', (ev: MessageEvent<HostRequest>) => {
   const req = ev.data;
@@ -307,7 +326,15 @@ async function processRecv(opts: TransformOptions, frame: RTCEncodedFrameLike): 
   if(ssrc === undefined) { __recvDebug.noSsrc++; return frame; }
   __recvDebug.lastSsrc = ssrc >>> 0;
   const fromUserId = ssrcToUser.get(ssrc >>> 0);
-  if(fromUserId === undefined) { __recvDebug.unmapped++; return frame; }
+  if(fromUserId === undefined) {
+    __recvDebug.unmapped++;
+    const key = ssrc >>> 0;
+    const n = (unmappedFrames.get(key) || 0) + 1;
+    unmappedFrames.set(key, n);
+    if(n === 1) emit({kind: 'recvDiag', ssrc: key, reason: 'unmapped'});
+    else if(n === RECV_DIAG_SUSTAINED_FRAMES) emit({kind: 'recvDiag', ssrc: key, reason: 'unmapped', sustained: true});
+    return frame;
+  }
   try {
     const encrypted = new Uint8Array(frame.data);
     let decrypted = await call.decrypt(fromUserId, opts.channelId, encrypted);
@@ -317,10 +344,17 @@ async function processRecv(opts: TransformOptions, frame: RTCEncodedFrameLike): 
     }
     frame.data = toFreshArrayBuffer(decrypted);
     __recvDebug.decryptOk++;
+    // Recovered — let a later error on this SSRC report afresh.
+    if(decryptErrFrames.size) decryptErrFrames.delete(ssrc >>> 0);
     return frame;
   } catch(err) {
     __recvDebug.decryptErr++;
     __recvDebug.lastErr = (err as Error)?.message?.slice(0, 80) || '';
+    const key = ssrc >>> 0;
+    const n = (decryptErrFrames.get(key) || 0) + 1;
+    decryptErrFrames.set(key, n);
+    if(n === 1) emit({kind: 'recvDiag', ssrc: key, reason: 'decryptErr', message: __recvDebug.lastErr});
+    else if(n === RECV_DIAG_SUSTAINED_FRAMES) emit({kind: 'recvDiag', ssrc: key, reason: 'decryptErr', sustained: true, message: __recvDebug.lastErr});
     return frame;
   }
 }
