@@ -745,9 +745,8 @@ export default class AppMediaViewerBase<
       this.zoomElements.rangeSelector.setProgress(zoomValue);
     }
 
-    if(this.videoPlayer) {
-      this.videoPlayer.lockControls(enable ? false : undefined);
-    }
+    // Keep the controls hidden if still rotated even when zoom turns off.
+    this.updateVideoControlsLock();
   }
 
   protected addZoomStep(add: boolean) {
@@ -941,6 +940,25 @@ export default class AppMediaViewerBase<
 
     this.rotation -= 90; // counterclockwise, matching Telegram Desktop
     this.applyMoversTransform();
+    this.updateVideoControlsLock();
+  }
+
+  // True when the media is visually turned (any non-360° multiple). −360° reads as
+  // upright, so compare the normalized angle, not the raw accumulator.
+  protected isRotated() {
+    return (((this.rotation % 360) + 360) % 360) !== 0;
+  }
+
+  // A video's player chrome lives inside moversContainer, so it would scale/turn with
+  // the frame. Mirror what zoom already does — lock the controls hidden while zoomed
+  // OR rotated, restore auto-hide otherwise. (Keyboard controls keep working via the
+  // player's `listenKeyboardEvents: 'always'`, so playback is still controllable.)
+  protected updateVideoControlsLock() {
+    if(!this.videoPlayer) {
+      return;
+    }
+
+    this.videoPlayer.lockControls(this.isZooming || this.isRotated() ? false : undefined);
   }
 
   protected setBtnMenuToggle(buttons: ButtonMenuItemOptionsVerifiable[]) {
@@ -2329,9 +2347,11 @@ export default class AppMediaViewerBase<
     this.buttons.prev.classList.toggle('hide', !this.listLoader.previous.length);
     this.buttons.next.classList.toggle('hide', !this.listLoader.next.length);
 
-    // Rotation is offered for still images only — a turned video would also turn its
-    // player chrome (controls/seekbar), which isn't handled here.
-    this.buttons.rotate.classList.toggle('hide', isVideo || isLiveStream);
+    // Rotation is offered for photos, GIFs and videos. A turned video would also turn
+    // its player chrome, so the controls bar is hidden while rotated (see
+    // updateVideoControlsLock) — same as zoom. Live streams are excluded (they're
+    // full-bleed / PiP and have no still frame to straighten).
+    this.buttons.rotate.classList.toggle('hide', isLiveStream);
 
     const container = this.content.media;
     const useContainerAsTarget = !target || target === container;
@@ -2662,7 +2682,7 @@ export default class AppMediaViewerBase<
             this.videoPlayer = undefined;
           }, {once: true});
 
-          if(this.isZooming) {
+          if(this.isZooming || this.isRotated()) {
             this.videoPlayer.lockControls(false);
           } else if(isLiveStream) {
             // Lock hidden (not shown) during the open animation. Otherwise the
