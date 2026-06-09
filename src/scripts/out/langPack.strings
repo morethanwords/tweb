@@ -1660,6 +1660,7 @@
 "ScamMessage" = "SCAM";
 "FakeMessage" = "FAKE";
 "TextCopied" = "Text copied to clipboard";
+"TextCopyFailed" = "Failed to copy text to clipboard";
 "FormattedDate.CopyDate" = "Copy Date";
 "FormattedDate.DateCopied" = "Date copied to clipboard";
 "FormattedDate.JustNow" = "just now";
@@ -4139,8 +4140,13 @@
 "AiEditor.Emojify" = "emojify";
 "AiEditor.Result" = "Result";
 "AiEditor.TranslateTo" = "To %s";
-"AiEditor.NewStyle.StyleName" = "Style Name (for example, \"Pirate\")";
-"AiEditor.NewStyle.Instructions" = "Instructions ";
+"AiEditor.NewStyle.Title" = "New Style";
+"AiEditor.NewStyle.StyleName" = "Style Name";
+"AiEditor.NewStyle.StyleNameDescription" = "Style name (for example, \"Pirate\")";
+"AiEditor.NewStyle.Instructions" = "Instructions";
+"AiEditor.NewStyle.InstructionsDescription" = "Instructions (for example \"write in bold, nautical tone, light slang (aye, matey), vivid sea imagery, playful swagger, rhythmic phrasing, and adventurous mood\")";
+"AiEditor.NewStyle.AddLink" = "Add a link to my account";
+"AiEditor.NewStyle.EmojiUnsupported" = "Sorry, this emoji is unsupported, please choose an animated emoji instead.";
 "Apply" = "Apply";
 "Login.Title" = "Sign in to Telegram";
 "Login.PhoneLabel" = "Phone Number";

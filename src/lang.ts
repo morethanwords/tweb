@@ -4759,7 +4759,7 @@ const lang = {
   'AiEditor.NewStyle.StyleName': 'Style Name',
   'AiEditor.NewStyle.StyleNameDescription': 'Style name (for example, "Pirate")',
   'AiEditor.NewStyle.Instructions': 'Instructions',
-  'AiEditor.NewStyle.InstructionsDescription': 'Instructions (for example \"write in bold, nautical tone, light slang (aye, matey), vivid sea imagery, playful swagger, rhythmic phrasing, and adventurous mood\")',
+  'AiEditor.NewStyle.InstructionsDescription': 'Instructions (for example "write in bold, nautical tone, light slang (aye, matey), vivid sea imagery, playful swagger, rhythmic phrasing, and adventurous mood")',
   'AiEditor.NewStyle.AddLink': 'Add a link to my account',
   'AiEditor.NewStyle.EmojiUnsupported': 'Sorry, this emoji is unsupported, please choose an animated emoji instead.',
 
