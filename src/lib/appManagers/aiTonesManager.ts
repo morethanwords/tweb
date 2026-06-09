@@ -23,6 +23,10 @@ export type CreateToneArgs = {
   prompt: string;
 };
 
+export type EditToneArgs = Partial<CreateToneArgs> & {
+  toneId: number | string;
+};
+
 export class AiTonesManager extends AppManager {
   private tones: Tone[] = [];
   /**
@@ -101,6 +105,26 @@ export class AiTonesManager extends AppManager {
     if(createdTone._ === 'aiComposeTone') this.tonesMap.set(createdTone.id.toString(), createdTone);
 
     return createdTone;
+  }
+
+  async editTone({toneId, displayAuthor, emojiId, title, prompt}: EditToneArgs) {
+    const tone = this.tonesMap.get(toneId.toString());
+    if(tone?._ !== 'aiComposeTone') return;
+
+    const updatedTone = await this.apiManager.invokeApi('aicompose.updateTone', {
+      tone: this.getToneInput(tone),
+      display_author: displayAuthor,
+      emoji_id: emojiId,
+      title,
+      prompt
+    });
+
+    this.isStale = true;
+    if(updatedTone._ === 'aiComposeTone') this.tonesMap.set(updatedTone.id.toString(), updatedTone);
+    const index = this.tones.findIndex(t => t._ === 'aiComposeTone' && t.id.toString() === toneId.toString());
+    if(index !== -1) this.tones[index] = updatedTone;
+
+    return updatedTone;
   }
 
   async composeMessageWithAi({text, toneNameOrId, proofRead, translateTo, emojify}: ComposeMessageWithAiArgs) {

@@ -10,8 +10,9 @@ import {createMutation} from '@helpers/solid/createMutation';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
 import {CreateToneArgs} from '@lib/appManagers/aiTonesManager';
+import {LangPackKey} from '@lib/langPack';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {createEffect, createMemo, createSignal, Show} from 'solid-js';
+import {createEffect, createMemo, createSignal, mergeProps, Show} from 'solid-js';
 import {useCreateToneLimits} from './limits';
 import styles from './styles.module.scss';
 
@@ -19,15 +20,23 @@ import styles from './styles.module.scss';
 type SubmitPayload = CreateToneArgs;
 
 export type CreateTonePopupProps = {
+  titleLangKey?: LangPackKey;
+  submitLangKey?: LangPackKey;
+  initialValues?: Partial<SubmitPayload>;
   onSubmit: (payload: SubmitPayload) => Promise<void>;
 };
 
-const CreateTonePopup = (props: CreateTonePopupProps) => {
+const CreateTonePopup = (inProps: CreateTonePopupProps) => {
+  const props = mergeProps({
+    titleLangKey: 'AiEditor.NewStyle.Title',
+    submitLangKey: 'Create'
+  }, inProps);
+
   const {useEmojiDropdown, rootScope, toastNew} = useHotReloadGuard();
 
-  const [styleName, setStyleName] = createSignal('');
-  const [instructions, setInstructions] = createSignal('');
-  const [docId, setDocId] = createSignal<DocId>();
+  const [styleName, setStyleName] = createSignal(props.initialValues?.title ?? '');
+  const [instructions, setInstructions] = createSignal(props.initialValues?.prompt ?? '');
+  const [docId, setDocId] = createSignal<DocId>(props.initialValues?.emojiId);
 
   const [emojiButton, setEmojiButton] = createSignal<HTMLElement>();
 
@@ -78,11 +87,13 @@ const CreateTonePopup = (props: CreateTonePopupProps) => {
 
   instructionsInputField.input.classList.replace('input-field-input', styles.inputField);
 
+  instructionsInputField.setValueSilently(props.initialValues?.prompt ?? '');
+
   return (
     <PopupElement class={styles.popup} containerClass={styles.popupContainer}>
       <PopupElement.Header class={styles.popupHeader}>
         <PopupElement.CloseButton class={styles.popupCloseButton} />
-        <PopupElement.Title title='AiEditor.NewStyle.Title' />
+        <PopupElement.Title title={props.titleLangKey} />
       </PopupElement.Header>
       <PopupElement.Body class={styles.popupBody}>
         <div class={styles.header}>
@@ -145,7 +156,7 @@ const CreateTonePopup = (props: CreateTonePopupProps) => {
       <PopupElement.Footer class={styles.popupFooter}>
         <PopupElement.FooterButton
           disabled={!canSubmit() || submitMutation.isPending()}
-          langKey="Create"
+          langKey={props.submitLangKey}
           callback={wrapAsyncClickHandler(() => submitMutation.mutateAsync({
             displayAuthor: false,
             emojiId: docId(),

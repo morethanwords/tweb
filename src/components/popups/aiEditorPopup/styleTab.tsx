@@ -4,15 +4,18 @@ import {HeightTransition} from '@helpers/solid/heightTransition';
 import {useEdgeAutoScroll} from '@helpers/solid/useEdgeAutoScroll';
 import {AiComposeTone} from '@layer';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {createResource, createSignal, For, Show, useContext} from 'solid-js';
+import {batch, createComputed, createResource, createSignal, For, Show, useContext} from 'solid-js';
+import {createStore, reconcile} from 'solid-js/store';
+import {TransitionGroup} from 'solid-transition-group';
 import styles from './bodyContent.module.scss';
 import {AiEditorPopupContext} from './context';
+import showCreateTonePopup from './createTonePopup';
 import {CreateTone, Divider, Original, Result, Tone, useIsAppearing} from './parts';
-import {TransitionGroup} from 'solid-transition-group';
 
 
 export const StyleTab = () => {
-  const {rootScope} = useHotReloadGuard();
+  const {rootScope, HotReloadGuard} = useHotReloadGuard();
+
   const [emojify, setEmojify] = createSignal(false);
   const [tonesListEl, setTonesListEl] = createSignal<HTMLDivElement>();
   const [selectedTone, setSelectedTone] = createSignal<AiComposeTone>();
@@ -21,7 +24,16 @@ export const StyleTab = () => {
   const {text: originalText} = useContext(AiEditorPopupContext);
 
   // TODO: Handle errors
-  const [tones, {mutate: mutateTones}] = createResource(() => rootScope.managers.aiTonesManager.getTones());
+  const [tonesResource] = createResource(
+    () => rootScope.managers.aiTonesManager.getTones()
+  );
+
+  const [tones, setTones] = createStore<AiComposeTone[]>([]);
+
+  createComputed(() => {
+    if(tonesResource.state !== 'ready') return;
+    setTones(tonesResource());
+  });
 
   useEdgeAutoScroll({
     axis: () => 'horizontal',
@@ -50,9 +62,31 @@ export const StyleTab = () => {
   const getToneContextMenu = (tone: AiComposeTone) => {
     if(tone._ !== 'aiComposeTone') return undefined;
     return {
-      onDelete: () => {},
+      onEdit: () => {
+        showCreateTonePopup({
+          HotReloadGuard,
+          initialValues: {
+            title: tone.title,
+            emojiId: tone.emoji_id,
+            prompt: tone.prompt
+          },
+          titleLangKey: 'AiEditor.NewStyle.TitleEdit',
+          submitLangKey: 'Save',
+          onSubmit: async(payload) => {
+            const updatedTone = await rootScope.managers.aiTonesManager.editTone({toneId: tone.id.toString(), ...payload});
+            const prevTone = tones.find(t => t._ === 'aiComposeTone' && t.id.toString() === tone.id.toString());
+            batch(() => {
+              setTones(prev => [
+                prevTone,
+                ...prev.filter(t => t._ !== 'aiComposeTone' || t.id.toString() !== tone.id.toString())
+              ]);
+              setTones(0, reconcile(updatedTone));
+            });
+          }
+        })
+      },
       onShare: () => {},
-      onEdit: () => {}
+      onDelete: () => {}
     };
   };
 
@@ -61,10 +95,10 @@ export const StyleTab = () => {
       <div class={styles.section}>
         <Scrollable class={styles.tonesList} ref={setTonesListEl} axis='x' relative>
           <CreateTone onCreate={(createdTone) => {
-            mutateTones([createdTone, ...tones()]);
+            setTones(prev => [createdTone, ...prev]);
           }} />
           <TransitionGroup name='fade-2' moveClass='t-move'>
-            <For each={tones()}>
+            <For each={tones}>
               {(tone) => (
                 <Tone
                   docId={tone.emoji_id}

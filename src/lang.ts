@@ -4757,6 +4757,7 @@ const lang = {
   'AiEditor.TranslateTo': 'To %s',
 
   'AiEditor.NewStyle.Title': 'New Style',
+  'AiEditor.NewStyle.TitleEdit': 'Edit Style',
   'AiEditor.NewStyle.StyleName': 'Style Name',
   'AiEditor.NewStyle.StyleNameDescription': 'Style name (for example, "Pirate")',
   'AiEditor.NewStyle.Instructions': 'Instructions',
