@@ -78,9 +78,14 @@ export default function showUndoablePaidTooltip(props: {
     createEffect(() => countdown.setCount(secondsLeft()));
 
     const {close} = showTooltip({
-      element: appImManager.chat.bubbles.container,
-      container: appImManager.chat.bubbles.container,
-      mountOn: appImManager.chat.bubbles.container,
+      // Mount on the .chat element (sibling to .topbar / .bubbles), NOT inside
+      // .bubbles: .bubbles is position:absolute; z-index:1 with a transform, so it
+      // forms a stacking context that would trap this position:fixed; z-index:5
+      // tooltip below the topbar (z-index:2) and chat input. At the .chat level the
+      // tooltip's z-index competes directly and renders above the chat chrome.
+      element: appImManager.chat.container,
+      container: appImManager.chat.container,
+      mountOn: appImManager.chat.container,
       relative: true,
       vertical: 'top',
       class: classNames('paid-reaction-tooltip', props.wider && 'paid-reaction-tooltip--a-little-wider'),
