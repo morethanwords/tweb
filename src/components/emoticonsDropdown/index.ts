@@ -127,7 +127,8 @@ export class EmoticonsDropdown extends DropdownHover {
     getOpenPosition?: () => DOMRectEditable,
     tabsToRender?: EmoticonsTab[],
     customOnSelect?: (emoji: {element: HTMLElement} & ReturnType<typeof getEmojiFromElement>) => void,
-    animationGroup?: AnimationItemGroup
+    animationGroup?: AnimationItemGroup,
+    suppressOutClick?: boolean
   } = {}) {
     super({
       element: renderEmojiDropdownElement(),
