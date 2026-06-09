@@ -187,7 +187,8 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
         onValue: setQuery,
         onFocusChange: setFocused,
         onGroup: this.groupFetcher ? setGroup : undefined,
-        categoryColor: this.textColor
+        // categoryColor: this.textColor
+        categoryColor: 'primary-text-color'
       });
     }, searchContainer);
   }

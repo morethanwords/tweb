@@ -226,7 +226,7 @@
 
     &-body {
       background-color: var(--surface-color);
-      margin: -3.5rem 0 1rem;
+      margin: -3.5rem 0 0;
 
       &.is-receipt {
         margin-bottom: 0;
@@ -255,7 +255,6 @@
 
     &-footer {
       .button-icon {
-        font-size: 18.5px;
         vertical-align: bottom;
         line-height: inherit;
         margin-inline-start: .25rem;

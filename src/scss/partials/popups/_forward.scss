@@ -5,7 +5,7 @@
 .popup-forward {
   $parent: ".popup";
   --popup-width: 420px;
-  --popup-height: 40.625rem;
+  --popup-height: 80%;
 
   #{$parent} {
     &-footer-button.btn-primary {

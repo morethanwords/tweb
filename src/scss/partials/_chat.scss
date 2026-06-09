@@ -1095,16 +1095,35 @@
   &-scrollable {
     height: auto;
     display: block;
-    --bubbles-scrollable-fade-top: calc(3rem + var(--page-chats-padding));
+    // End the fade at the bottom of the lowest topbar plate (pinned message, etc.) + 0.5rem.
+    // --chat-padding-top is already topbar-height + page padding + every plate's floating height,
+    // i.e. exactly where content starts, so the fade reaches each plate and grows with extra ones.
+    // No plate → chat-padding-top == 3rem + page padding, so this stays 3.5rem + padding.
+    --bubbles-scrollable-fade-top: calc(var(--chat-padding-top) + 0.5rem);
     --bubbles-scrollable-fade-top-add: var(--pinned-floating-height);
-    --bubbles-scrollable-fade-bottom: calc(3rem + var(--page-chats-padding));
-    --bubbles-scrollable-fade-color: rgba(255, 255, 255, 0.5);
+    --bubbles-scrollable-fade-bottom: calc(3.5rem + var(--page-chats-padding));
+    --bubbles-scrollable-fade-color: rgba(255, 255, 255, 0.24);
+    --bubbles-scrollable-fade-top-ramp: calc(var(--bubbles-scrollable-fade-top) - var(--bubbles-scrollable-fade-top-add));
+    // Ease the fade along a cubic-bezier(.42, 0, .58, 1) curve (iOS-style ease-in-out)
+    // sampled at 0/.2/.4/.6/.8/1 instead of a hard 2-stop linear ramp — kills the visible
+    // "edge" where the mask snaps to full opacity. --bubbles-scrollable-fade-color stays the
+    // single tunable knob (fade floor); color-mix interpolates each stop's alpha off it.
+    // The flat floor holds at --fade-color from the top down past every plate (--fade-top-add),
+    // so content stays hidden in the topbar↔plate gap; the eased ramp runs only below that.
     mask-image: linear-gradient(
       to bottom,
       var(--bubbles-scrollable-fade-color) 0,
       var(--bubbles-scrollable-fade-color) var(--bubbles-scrollable-fade-top-add),
+      color-mix(in srgb, #000 8.6%, var(--bubbles-scrollable-fade-color)) calc(var(--bubbles-scrollable-fade-top-add) + var(--bubbles-scrollable-fade-top-ramp) * 0.2),
+      color-mix(in srgb, #000 33.4%, var(--bubbles-scrollable-fade-color)) calc(var(--bubbles-scrollable-fade-top-add) + var(--bubbles-scrollable-fade-top-ramp) * 0.4),
+      color-mix(in srgb, #000 66.6%, var(--bubbles-scrollable-fade-color)) calc(var(--bubbles-scrollable-fade-top-add) + var(--bubbles-scrollable-fade-top-ramp) * 0.6),
+      color-mix(in srgb, #000 91.4%, var(--bubbles-scrollable-fade-color)) calc(var(--bubbles-scrollable-fade-top-add) + var(--bubbles-scrollable-fade-top-ramp) * 0.8),
       #000 var(--bubbles-scrollable-fade-top),
       #000 calc(100% - var(--bubbles-scrollable-fade-bottom)),
+      color-mix(in srgb, #000 91.4%, var(--bubbles-scrollable-fade-color)) calc(100% - var(--bubbles-scrollable-fade-bottom) * 0.8),
+      color-mix(in srgb, #000 66.6%, var(--bubbles-scrollable-fade-color)) calc(100% - var(--bubbles-scrollable-fade-bottom) * 0.6),
+      color-mix(in srgb, #000 33.4%, var(--bubbles-scrollable-fade-color)) calc(100% - var(--bubbles-scrollable-fade-bottom) * 0.4),
+      color-mix(in srgb, #000 8.6%, var(--bubbles-scrollable-fade-color)) calc(100% - var(--bubbles-scrollable-fade-bottom) * 0.2),
       var(--bubbles-scrollable-fade-color) 100%
     );
   }
