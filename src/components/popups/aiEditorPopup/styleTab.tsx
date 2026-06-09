@@ -47,6 +47,15 @@ export const StyleTab = () => {
     return localSelectedTone.tone;
   };
 
+  const getToneContextMenu = (tone: AiComposeTone) => {
+    if(tone._ !== 'aiComposeTone') return undefined;
+    return {
+      onDelete: () => {},
+      onShare: () => {},
+      onEdit: () => {}
+    };
+  };
+
   return (
     <div>
       <div class={styles.section}>
@@ -62,6 +71,7 @@ export const StyleTab = () => {
                   name={tone.title}
                   selected={tone === selectedTone()}
                   onClick={[onSelectTone, tone]}
+                  withContextMenu={getToneContextMenu(tone)}
                 />
               )}
             </For>

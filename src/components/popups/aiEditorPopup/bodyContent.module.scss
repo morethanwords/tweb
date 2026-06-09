@@ -308,6 +308,26 @@
     font-size: var(--size);
     pointer-events: none;
   }
+
+  &ContextMenuIcon {
+    position: absolute;
+    right: 0.5rem;
+    top: 0.5rem;
+    font-size: 0.75rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+    color: var(--secondary-text-color);
+  }
+
+  &.active &ContextMenuIcon {
+    color: var(--primary-color);
+  }
+
+  @include hover-global {
+    .toneContextMenuIcon {
+      opacity: 1;
+    }
+  }
 }
 
 .richText {

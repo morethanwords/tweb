@@ -21,11 +21,12 @@ import {AiComposeTone, TextWithEntities} from '@layer';
 import {ComposeMessageWithAiArgs, ComposeMessageWithAiResult} from '@lib/appManagers/aiTonesManager';
 import {LangPackKey} from '@lib/langPack';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {createComputed, createMemo, createReaction, createResource, createSignal, For, JSX, Match, onCleanup, onMount, Show, Switch} from 'solid-js';
+import {createComputed, createEffect, createMemo, createReaction, createResource, createSignal, For, JSX, Match, onCleanup, onMount, Show, Switch} from 'solid-js';
 import {Transition} from 'solid-transition-group';
 import styles from './bodyContent.module.scss';
 import {useAiEditorPopupContext} from './context';
 import showCreateTonePopup from './createTonePopup';
+import createContextMenu from '@helpers/dom/createContextMenu';
 
 
 keepMe(ripple);
@@ -320,12 +321,48 @@ export const Tone = (props: {
   docId: DocId;
   name: string;
   selected: boolean;
+  withContextMenu?: {
+    onDelete: () => void;
+    onShare: () => void;
+    onEdit: () => void;
+  };
   onClick: JSX.EventHandlerUnion<HTMLDivElement, MouseEvent>;
 }) => {
   const {rootScope} = useHotReloadGuard();
 
+  let div: HTMLDivElement;
+
+  createEffect(() => {
+    if(!props.withContextMenu) return;
+
+    const {destroy, open} = createContextMenu({
+      buttons: [
+        {
+          icon: 'edit',
+          text: 'Edit',
+          onClick: props.withContextMenu.onEdit
+        },
+        {
+          icon: 'forward',
+          text: 'Share',
+          onClick: props.withContextMenu.onShare
+        },
+        {
+          icon: 'delete',
+          text: 'Delete',
+          danger: true,
+          onClick: props.withContextMenu.onDelete
+        }
+      ],
+      listenTo: div
+    });
+
+    onCleanup(() => destroy());
+  });
+
   return (
     <div
+      ref={div}
       class={styles.tone}
       classList={{
         [styles.active]: props.selected
@@ -335,6 +372,9 @@ export const Tone = (props: {
     >
       <EmojiDocumentIcon docId={props.docId} color='primary-text-color' size={42} class={styles.toneIcon} managers={rootScope.managers} />
       <div class={styles.toneName}>{props.name}</div>
+      <Show when={props.withContextMenu}>
+        <IconTsx icon='more' class={styles.toneContextMenuIcon} />
+      </Show>
     </div>
   );
 };

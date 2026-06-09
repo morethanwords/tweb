@@ -2299,6 +2299,7 @@ const lang = {
   'LinksCreatedByThisAdmin': 'Invite links created by this admin',
   'DeleteThisChat': 'Delete this chat',
   'ShareFile': 'Share',
+  'Share': 'Share',
   'StoryPinnedToProfile': 'Story posted to your profile.',
   'StoryPinnedToGroup': 'Story posted to the group profile.',
   'StoryPinnedToChannel': 'Story posted to the channel profile.',
