@@ -17,7 +17,7 @@ import {I18nTsx} from '@helpers/solid/i18n';
 import {requestRAF} from '@helpers/solid/requestRAF';
 import classNames from '@helpers/string/classNames';
 import {useIsCleaned} from '@hooks/useIsCleaned';
-import {TextWithEntities} from '@layer';
+import {AiComposeTone, TextWithEntities} from '@layer';
 import {ComposeMessageWithAiArgs, ComposeMessageWithAiResult} from '@lib/appManagers/aiTonesManager';
 import {LangPackKey} from '@lib/langPack';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
@@ -225,8 +225,13 @@ export const Result = (props: {
   });
 
   createComputed(() => {
-    if(composedMessage.state !== 'ready') setResultText();
-    else setResultText(composedMessage().resultText);
+    if(composedMessage.state !== 'ready') return;
+
+    setResultText(composedMessage().resultText);
+
+    onCleanup(() => {
+      setResultText();
+    });
   });
 
   const onCopyClick = async() => {
@@ -334,11 +339,19 @@ export const Tone = (props: {
   );
 };
 
-export const CreateTone = () => {
-  const {HotReloadGuard} = useHotReloadGuard();
+type CreateToneProps = {
+  onCreate: (tone: AiComposeTone) => void;
+};
+
+export const CreateTone = (props: CreateToneProps) => {
+  const {HotReloadGuard, rootScope} = useHotReloadGuard();
   return (
     <div class={styles.tone} use:ripple onClick={() => {
       showCreateTonePopup({
+        onSubmit: async(args) => {
+          const createdTone = await rootScope.managers.aiTonesManager.createTone(args);
+          props.onCreate(createdTone);
+        },
         HotReloadGuard
       });
     }}>

@@ -16,6 +16,13 @@ export type ComposeMessageWithAiResult = {
   diffText?: TextWithEntities;
 };
 
+export type CreateToneArgs = {
+  displayAuthor?: boolean;
+  emojiId: string | number;
+  title: string;
+  prompt: string;
+};
+
 export class AiTonesManager extends AppManager {
   private tones: Tone[] = [];
   /**
@@ -79,6 +86,21 @@ export class AiTonesManager extends AppManager {
     if(tone._ === 'aiComposeToneDefault') return {_: 'inputAiComposeToneDefault', tone: tone.tone};
     if(tone._ === 'aiComposeTone') return {_: 'inputAiComposeToneID', id: tone.id, access_hash: tone.access_hash};
     return undefined;
+  }
+
+  async createTone({displayAuthor, emojiId, title, prompt}: CreateToneArgs): Promise<Tone> {
+    const createdTone = await this.apiManager.invokeApi('aicompose.createTone', {
+      display_author: displayAuthor,
+      emoji_id: emojiId,
+      title,
+      prompt
+    });
+
+    this.isStale = true;
+    this.tones.unshift(createdTone);
+    if(createdTone._ === 'aiComposeTone') this.tonesMap.set(createdTone.id.toString(), createdTone);
+
+    return createdTone;
   }
 
   async composeMessageWithAi({text, toneNameOrId, proofRead, translateTo, emojify}: ComposeMessageWithAiArgs) {

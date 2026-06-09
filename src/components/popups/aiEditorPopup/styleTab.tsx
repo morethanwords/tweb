@@ -8,6 +8,7 @@ import {createResource, createSignal, For, Show, useContext} from 'solid-js';
 import styles from './bodyContent.module.scss';
 import {AiEditorPopupContext} from './context';
 import {CreateTone, Divider, Original, Result, Tone, useIsAppearing} from './parts';
+import {TransitionGroup} from 'solid-transition-group';
 
 
 export const StyleTab = () => {
@@ -20,7 +21,7 @@ export const StyleTab = () => {
   const {text: originalText} = useContext(AiEditorPopupContext);
 
   // TODO: Handle errors
-  const [tones] = createResource(() => rootScope.managers.aiTonesManager.getTones());
+  const [tones, {mutate: mutateTones}] = createResource(() => rootScope.managers.aiTonesManager.getTones());
 
   useEdgeAutoScroll({
     axis: () => 'horizontal',
@@ -50,17 +51,21 @@ export const StyleTab = () => {
     <div>
       <div class={styles.section}>
         <Scrollable class={styles.tonesList} ref={setTonesListEl} axis='x' relative>
-          <CreateTone />
-          <For each={tones()}>
-            {(tone) => (
-              <Tone
-                docId={tone.emoji_id}
-                name={tone.title}
-                selected={tone === selectedTone()}
-                onClick={[onSelectTone, tone]}
-              />
-            )}
-          </For>
+          <CreateTone onCreate={(createdTone) => {
+            mutateTones([createdTone, ...tones()]);
+          }} />
+          <TransitionGroup name='fade-2' moveClass='t-move'>
+            <For each={tones()}>
+              {(tone) => (
+                <Tone
+                  docId={tone.emoji_id}
+                  name={tone.title}
+                  selected={tone === selectedTone()}
+                  onClick={[onSelectTone, tone]}
+                />
+              )}
+            </For>
+          </TransitionGroup>
         </Scrollable>
       </div>
       <Space amount='1rem' />

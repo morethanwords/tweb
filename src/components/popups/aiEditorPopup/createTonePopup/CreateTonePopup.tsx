@@ -6,16 +6,21 @@ import Scrollable from '@components/scrollable2';
 import SimpleFormField from '@components/simpleFormField';
 import Space from '@components/space';
 import cloneDOMRect from '@helpers/dom/cloneDOMRect';
+import {createMutation} from '@helpers/solid/createMutation';
 import {I18nTsx} from '@helpers/solid/i18n';
+import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
+import {CreateToneArgs} from '@lib/appManagers/aiTonesManager';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {createEffect, createMemo, createSignal, Show} from 'solid-js';
 import {useCreateToneLimits} from './limits';
 import styles from './styles.module.scss';
 
 
-export type CreateTonePopupProps = {
+type SubmitPayload = CreateToneArgs;
 
-}
+export type CreateTonePopupProps = {
+  onSubmit: (payload: SubmitPayload) => Promise<void>;
+};
 
 const CreateTonePopup = (props: CreateTonePopupProps) => {
   const {useEmojiDropdown, rootScope, toastNew} = useHotReloadGuard();
@@ -29,11 +34,13 @@ const CreateTonePopup = (props: CreateTonePopupProps) => {
   const {maxTitleLength, maxInstructionsLength} = useCreateToneLimits();
 
   const canSubmit = createMemo(() => {
-    if(styleName().length > maxTitleLength()) return;
-    if(instructions().length > maxInstructionsLength()) return;
+    if(!styleName().length || styleName().length > maxTitleLength()) return;
+    if(!instructions().length || instructions().length > maxInstructionsLength()) return;
     if(!docId()) return;
     return true;
   });
+
+  const submitMutation = createMutation(props.onSubmit);
 
   createEffect(() => {
     const {emoticonsDropdown} = useEmojiDropdown({
@@ -137,9 +144,14 @@ const CreateTonePopup = (props: CreateTonePopupProps) => {
       </PopupElement.Body>
       <PopupElement.Footer class={styles.popupFooter}>
         <PopupElement.FooterButton
-          disabled={!canSubmit()}
+          disabled={!canSubmit() || submitMutation.isPending()}
           langKey="Create"
-          // callback={() => submitMutation.mutateAsync()}
+          callback={wrapAsyncClickHandler(() => submitMutation.mutateAsync({
+            displayAuthor: false,
+            emojiId: docId(),
+            title: styleName(),
+            prompt: instructions()
+          }))}
         />
       </PopupElement.Footer>
     </PopupElement>
