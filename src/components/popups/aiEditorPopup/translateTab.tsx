@@ -3,9 +3,9 @@ import ripple from '@components/ripple';
 import {keepMe} from '@helpers/keepMe';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {createSignal, useContext} from 'solid-js';
+import {createSignal} from 'solid-js';
 import styles from './bodyContent.module.scss';
-import {AiEditorPopupContext, useAiEditorPopupContext} from './context';
+import {useAiEditorPopupContext} from './context';
 import {Divider, Original, Result, useTransitionGroupWhenMeasured} from './parts';
 
 
@@ -15,14 +15,12 @@ export const TranslateTab = (props: {
   isAppearing: boolean;
 }) => {
   const {usePeerTranslation, pickLanguage} = useHotReloadGuard();
-  const context = useAiEditorPopupContext();
+  const {peerId, text: originalText} = useAiEditorPopupContext();
 
-  const peerTranslation = usePeerTranslation(context.peerId);
+  const peerTranslation = usePeerTranslation(peerId);
 
   const [emojify, setEmojify] = createSignal(false);
   const [language, setLanguage] = createSignal<TranslatableLanguageISO>(peerTranslation.language());
-
-  const {text: originalText} = useContext(AiEditorPopupContext);
 
   const {Wrapper, onMeasured} = useTransitionGroupWhenMeasured();
 

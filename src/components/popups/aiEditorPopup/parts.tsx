@@ -273,7 +273,7 @@ export const Result = (props: {
       toastNew({
         langPackKey: 'TextCopied'
       });
-    } catch(e) {
+    } catch{
       toastNew({
         langPackKey: 'TextCopyFailed'
       });

@@ -185,6 +185,7 @@ const useEditTone = ({
       onSubmit: async(payload) => {
         const updatedTone = await rootScope.managers.aiTonesManager.editTone({toneId: tone.id.toString(), ...payload});
         const prevTone = tones.find(t => t._ === 'aiComposeTone' && t.id.toString() === tone.id.toString());
+        if(!prevTone) return;
         batch(() => {
           setTones(prev => [
             prevTone,
