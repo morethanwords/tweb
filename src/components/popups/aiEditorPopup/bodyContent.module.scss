@@ -260,6 +260,11 @@
   max-height: 160px;
 }
 
+.resultSkeleton {
+  height: 102px;
+  border-radius: 10px;
+}
+
 .emojifyCheckbox {
   position: relative;
   overflow: hidden;

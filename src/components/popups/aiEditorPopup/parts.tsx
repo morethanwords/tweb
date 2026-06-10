@@ -247,6 +247,15 @@ export const Result = (props: {
     initialValue: getCachedComposedMessage(props.composeMessageWithAiArgs)
   });
 
+  let scrollableRef: HTMLDivElement;
+  const [skeletonHeight, setSkeletonHeight] = createSignal<number>();
+
+  createEffect(() => {
+    if(composedMessage.state !== 'ready' && scrollableRef?.isConnected) {
+      setSkeletonHeight(scrollableRef.clientHeight);
+    }
+  });
+
   createComputed(() => {
     if(composedMessage.state !== 'ready') return;
 
@@ -294,9 +303,9 @@ export const Result = (props: {
       </div>
       <div class={styles.resultContent}>
         <Transition name='fade-2' mode='outin'>
-          <Show when={composedMessage.state === 'ready' && composedMessage()} keyed fallback={<ResultSkeleton />}>
+          <Show when={composedMessage.state === 'ready' && composedMessage()} keyed fallback={<ResultSkeleton height={skeletonHeight()} />}>
             {(message) => (
-              <Scrollable relative class={classNames(styles.resultScrollable, styles.richText)}>
+              <Scrollable ref={scrollableRef} relative class={classNames(styles.resultScrollable, styles.richText)}>
                 {wrapRichText(message.resultText.text, {entities: message.resultText.entities, middleware: createMiddleware().get()})}
               </Scrollable>
             )}
@@ -307,16 +316,13 @@ export const Result = (props: {
   );
 };
 
-const ResultSkeleton = () => {
+const ResultSkeleton = (props: {height?: number}) => {
   return (
-    // Necessary wrapper for transition
-    <div>
-      <Skeleton.Div textLine secondary />
-      <Skeleton.Div textLine secondary />
-      <Skeleton.Div textLine secondary />
-      <Skeleton.Div textLine secondary />
-      <Skeleton.Div textLine secondary />
-    </div>
+    <Skeleton.Div
+      class={styles.resultSkeleton}
+      secondary
+      style={props.height ? {height: props.height + 'px'} : undefined}
+    />
   );
 };
 
