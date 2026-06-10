@@ -127,7 +127,7 @@ export class AiTonesManager extends AppManager {
     return updatedTone;
   }
 
-  async saveTone(toneSlug: string, unsave: boolean) {
+  async saveToneBySlug(toneSlug: string, unsave: boolean) {
     await this.apiManager.invokeApi('aicompose.saveTone', {
       tone: {
         _: 'inputAiComposeToneSlug',
@@ -139,8 +139,43 @@ export class AiTonesManager extends AppManager {
     this.isStale = true;
   }
 
+  async saveToneById(toneId: string | number, unsave: boolean) {
+    const tone = this.tonesMap.get(toneId.toString());
+    if(tone?._ !== 'aiComposeTone') return;
+
+    await this.apiManager.invokeApi('aicompose.saveTone', {
+      tone: this.getToneInput(tone),
+      unsave
+    });
+
+    if(unsave) {
+      this.tones = this.tones.filter(tone => tone._ !== 'aiComposeTone' || tone.id.toString() !== toneId.toString());
+      this.tonesMap.delete(toneId.toString());
+    }
+
+    this.isStale = true;
+  }
+
+  async deleteTone(toneId: string | number) {
+    const tone = this.tonesMap.get(toneId.toString());
+    if(tone?._ !== 'aiComposeTone') return;
+
+    await this.apiManager.invokeApi('aicompose.deleteTone', {
+      tone: this.getToneInput(tone)
+    });
+
+    this.tones = this.tones.filter(tone => tone._ !== 'aiComposeTone' || tone.id.toString() !== toneId.toString());
+    this.tonesMap.delete(toneId.toString());
+
+    this.isStale = true;
+  }
+
   async addTone(toneSlug: string) {
-    await this.saveTone(toneSlug, false);
+    await this.saveToneBySlug(toneSlug, false);
+  }
+
+  async removeSavedTone(toneId: string | number) {
+    await this.saveToneById(toneId, true);
   }
 
   async composeMessageWithAi({text, toneNameOrId, proofRead, translateTo, emojify}: ComposeMessageWithAiArgs) {

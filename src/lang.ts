@@ -4769,6 +4769,11 @@ const lang = {
   'AiEditor.StyleAdded': 'Style was added',
   'AiEditor.StyleAddError': 'Could not add style',
 
+  'AiEditor.DeleteStyle.Title': 'Delete Style',
+  'AiEditor.DeleteStyle.Description': 'Are you sure you want to delete this style? It will be removed for anyone who saved it.',
+
+  'AiEditor.DeleteStyle.Failed': 'Failed to remove style',
+
   'Apply': 'Apply'
 };
 

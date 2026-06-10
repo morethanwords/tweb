@@ -14,7 +14,7 @@ import {CreateTone, Divider, Original, Result, Tone, useIsAppearing} from './par
 
 
 export const StyleTab = () => {
-  const {rootScope, HotReloadGuard, showSharingPickerPopup} = useHotReloadGuard();
+  const {rootScope, HotReloadGuard, showSharingPickerPopup, toastNew, confirmationPopup} = useHotReloadGuard();
 
   const [emojify, setEmojify] = createSignal(false);
   const [tonesListEl, setTonesListEl] = createSignal<HTMLDivElement>();
@@ -61,7 +61,11 @@ export const StyleTab = () => {
 
   const getToneContextMenu = (tone: AiComposeTone) => {
     if(tone._ !== 'aiComposeTone') return undefined;
+
+    const isSaved = !tone.pFlags.creator;
+
     return {
+      isSaved,
       onEdit: () => {
         showCreateTonePopup({
           HotReloadGuard,
@@ -99,7 +103,30 @@ export const StyleTab = () => {
           }
         });
       },
-      onDelete: () => {}
+      onDelete: async() => {
+        try {
+          if(isSaved) {
+            await rootScope.managers.aiTonesManager.removeSavedTone(tone.id);
+          } else {
+            try {
+              await confirmationPopup({
+                titleLangKey: 'AiEditor.DeleteStyle.Title',
+                descriptionLangKey: 'AiEditor.DeleteStyle.Description',
+                button: {langKey: 'Delete', isDanger: true}
+              });
+            } catch{
+              return;
+            }
+            await rootScope.managers.aiTonesManager.deleteTone(tone.id.toString());
+          }
+
+          setTones(prev => prev.filter(t => t._ !== 'aiComposeTone' || t.id !== tone.id))
+        } catch{
+          toastNew({
+            langPackKey: 'AiEditor.DeleteStyle.Failed'
+          });
+        }
+      }
     };
   };
 

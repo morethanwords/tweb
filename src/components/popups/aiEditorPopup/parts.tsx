@@ -322,6 +322,7 @@ export const Tone = (props: {
   name: string;
   selected: boolean;
   withContextMenu?: {
+    isSaved: boolean;
     onDelete: () => void;
     onShare: () => void;
     onEdit: () => void;
@@ -349,7 +350,7 @@ export const Tone = (props: {
         },
         {
           icon: 'delete',
-          text: 'Delete',
+          text: props.withContextMenu.isSaved ? 'Remove' : 'Delete',
           danger: true,
           onClick: props.withContextMenu.onDelete
         }
