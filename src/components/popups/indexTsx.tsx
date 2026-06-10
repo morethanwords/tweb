@@ -9,7 +9,7 @@ import overlayCounter from '@helpers/overlayCounter';
 import {getMiddleware, MiddlewareHelper} from '@helpers/middleware';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
-import animationIntersector from '@components/animationIntersector';
+import animationIntersector, {AnimationItemGroup} from '@components/animationIntersector';
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
 import {addFullScreenListener, getFullScreenElement} from '@helpers/dom/fullScreen';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
@@ -115,7 +115,8 @@ const PopupElement = (props: {
   managers?: AppManagers,
   children: JSX.Element,
   show?: boolean,
-  kind?: symbol
+  kind?: symbol,
+  animationGroup?: AnimationItemGroup // the popup's OWN content group - excluded from the on-show pause sweep
 } & PopupOptions) => {
   const [shown, setShown] = createSignal(false);
   const [store, setStore] = createStore<PopupContextValue['store']>({});
@@ -169,7 +170,10 @@ const PopupElement = (props: {
 
     if(!withoutOverlay) {
       overlayCounter.isOverlayActive = true;
-      animationIntersector.checkAnimations2(true);
+      // except the popup's own content: with the offscreen worker frame cache its
+      // stickers can load and start playing BEFORE this sweep runs - pausing them
+      // here would freeze them forever (nothing re-plays until popup close)
+      animationIntersector.checkAnimations2(true, props.animationGroup);
     }
 
     // Add keyboard event listener

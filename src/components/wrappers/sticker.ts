@@ -266,10 +266,20 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
 
     // console.log('wrap sticker', thumb, div);
 
+    // an svg placeholder may be upgraded to the real thumb image, but never over the canvas
+    const getReplaceableSvg = (div: HTMLElement) => {
+      const element = getThumbFromContainer(div);
+      return element?.tagName === 'svg' && !div.querySelector('canvas') ? element : undefined;
+    };
+
     const afterRender = (div: HTMLElement, thumbImage: HTMLElement) => {
-      if(isEmptyContainer(div)) {
+      if(isEmptyContainer(div) || getReplaceableSvg(div)) {
         sequentialDom.mutateElement(div, () => {
-          if(isEmptyContainer(div)) {
+          const svg = getReplaceableSvg(div);
+          if(svg) {
+            thumbImage.classList.add('media-sticker', 'thumbnail');
+            svg.replaceWith(thumbImage);
+          } else if(isEmptyContainer(div)) {
             thumbImage.classList.add('media-sticker', 'thumbnail');
             div.append(thumbImage);
           }
@@ -283,10 +293,24 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
 
     if('url' in thumb) {
       haveThumbCached = true;
+      // the cached preview IMAGE loads asynchronously and can lose the race against a
+      // warm render - the cell would stay empty until the first frame pops in from
+      // nothing. Show the instant vector silhouette meanwhile; the image upgrades it.
+      const pathThumb = doc.thumbs?.find((t) => t._ === 'photoPathSize' && (t as PhotoSize.photoPathSize).bytes?.length) as PhotoSize.photoPathSize;
       div.forEach((div) => {
+        if(pathThumb && isEmptyContainer(div)) {
+          const {svg} = createSvgFromBytes(pathThumb.bytes, doc.w, doc.h);
+          svg.classList.add('rlottie-vector', 'media-sticker', 'thumbnail');
+          div.append(svg);
+        }
+
         const thumbImage = new Image();
         renderImageFromUrl(thumbImage, (thumb as any).url, () => afterRender(div, thumbImage));
       });
+
+      if(pathThumb) {
+        loadThumbPromise.resolve();
+      }
     } else if('bytes' in thumb) {
       if(thumb._ === 'photoPathSize') {
         if(!thumb.bytes.length) {
@@ -504,22 +528,54 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
           }
         };
 
+        // offscreen: a worker commit made while the canvas was detached can be lost -
+        // re-present AFTER the DOM append (acked) and only then drop the underlay
+        const dropUnderlay = (run: () => void) => {
+          if(animation.offscreen) {
+            animation.ensurePresented().then(() => {
+              requestAnimationFrame(() => requestAnimationFrame(run));
+            });
+          } else {
+            run();
+          }
+        };
+
         if(!needFadeIn) {
           if(element) {
-            sequentialDom.mutate(cb);
+            dropUnderlay(() => sequentialDom.mutate(cb));
           }
         } else {
+          // offscreen: the canvas already carries a committed frame and onLoad appends
+          // it right after this dispatch - without the class it would paint one frame
+          // at full opacity (flash), then drop to 0 when the rAF batch adds the class
+          if(animation.offscreen && canvas) {
+            canvas.classList.add('fade-in');
+          }
+
           sequentialDom.mutate(() => {
             canvas && canvas.classList.add('fade-in');
-            if(element) {
+            // offscreen: the canvas may still be transparent for a frame or two (the
+            // worker commit lands asynchronously) and the parallel cross-fade dips
+            // through the background = visible blink. Keep the underlay at full
+            // opacity beneath the fading-in canvas; it is removed under a fully
+            // opaque canvas afterwards.
+            if(element && !animation.offscreen) {
               element.classList.add('fade-out');
             }
 
             onAnimationEnd(canvas || element, () => {
-              sequentialDom.mutate(() => {
+              dropUnderlay(() => sequentialDom.mutate(() => {
                 canvas && canvas.classList.remove('fade-in');
-                cb();
-              });
+                // the sticker does not fully cover the silhouette (transparent
+                // background/holes) - removing the underlay instantly pops the
+                // peeking gray ghost out of existence; fade it away instead
+                if(animation.offscreen && element && element !== canvas && element.tagName !== 'DIV') {
+                  element.classList.add('fade-out');
+                  onAnimationEnd(element, () => sequentialDom.mutate(cb), 400);
+                } else {
+                  cb();
+                }
+              }));
             }, 400);
           });
         }

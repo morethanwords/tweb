@@ -72,6 +72,10 @@ export class LottieLoader {
         this.players[reqId].applyColorForAllContexts();
       }
     });
+
+    rlottieMessagePort.addEventListener('freeRunStopped', ({reqId, curFrame, error}) => {
+      this.players[reqId]?.onFreeRunStopped(curFrame, error);
+    });
   }
 
   public getAnimation(element: HTMLElement) {

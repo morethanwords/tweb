@@ -98,5 +98,6 @@ export async function saveLottiePreviewFromPlayer(doc: MyDocument, player: RLott
     frame.close?.();
   } catch(err) {
     // degrade to no persisted thumb - same as today's pre-firstFrame state
+    console.error('saveLottiePreviewFromPlayer: exportFrame failed', err, player);
   }
 }

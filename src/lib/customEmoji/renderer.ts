@@ -17,7 +17,7 @@ import {DocumentAttribute} from '@layer';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import RLottiePlayer, {applyColorOnContext, getLottiePixelRatio} from '@lib/rlottie/rlottiePlayer';
 import SHOULD_RENDER_OFFSCREEN from '@lib/rlottie/shouldRenderOffscreen';
-import compositorMessagePort from '@lib/customEmoji/compositorMessagePort';
+import compositorMessagePort, {EmojiCompositorMethods} from '@lib/customEmoji/compositorMessagePort';
 import {ensureCompositor} from '@lib/customEmoji/compositorChannels';
 import rootScope from '@lib/rootScope';
 import CustomEmojiElement, {CustomEmojiElements} from '@lib/customEmoji/element';
@@ -97,6 +97,14 @@ export class CustomEmojiRendererElement extends HTMLElement {
     return this._context ??= this.canvas.getContext('2d');
   }
 
+  public sendCompositor<T extends keyof EmojiCompositorMethods>(
+    method: T,
+    payload?: Omit<Parameters<EmojiCompositorMethods[T]>[0], 'rendererId'>,
+    transfer?: Transferable[]
+  ) {
+    compositorMessagePort.invokeCompositorVoid(method, {...payload, rendererId: this.rendererId} as any, transfer);
+  }
+
   private onResizeEntry = (entry: ResizeObserverEntry) => {
     this.setDimensionsFromRect(entry.contentRect);
   };
@@ -144,7 +152,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
     });
 
     if(this.offscreen) {
-      compositorMessagePort.invokeCompositorVoid('detachRenderer', {rendererId: this.rendererId});
+      this.sendCompositor('detachRenderer');
       offscreenRenderers.delete(this.rendererId);
     }
 
@@ -219,29 +227,18 @@ export class CustomEmojiRendererElement extends HTMLElement {
   public diffOffsets(offsetsMap: ReturnType<CustomEmojiRendererElement['getOffsets']>) {
     const groups: {groupId: DocId, offsets: number[]}[] = [];
 
-    for(const [elements, offsets] of offsetsMap) {
-      let groupId: DocId;
-      for(const [docId, _elements] of this.customEmojis) { // same lookup render()'s restore loop does
-        if(_elements === elements) {
-          groupId = docId;
-          break;
-        }
-      }
-
-      if(groupId === undefined) {
+    for(const [groupId, elements] of this.customEmojis) {
+      const offsets = offsetsMap.get(elements);
+      if(!offsets) {
         continue;
       }
 
-      const flat: number[] = [];
-      for(const {top, left, width} of offsets) {
-        flat.push(top, left, width);
-      }
-
       const last = this.lastSentOffsets.get(groupId);
-      let changed = !last || last.length !== flat.length;
+      let changed = !last || last.length !== offsets.length * 3;
       if(!changed) {
-        for(let i = 0; i < flat.length; ++i) {
-          if(last[i] !== flat[i]) {
+        for(let i = 0; i < offsets.length; ++i) {
+          const {top, left, width} = offsets[i];
+          if(last[i * 3] !== top || last[i * 3 + 1] !== left || last[i * 3 + 2] !== width) {
             changed = true;
             break;
           }
@@ -249,12 +246,17 @@ export class CustomEmojiRendererElement extends HTMLElement {
       }
 
       if(changed) {
+        const flat: number[] = [];
+        for(const {top, left, width} of offsets) {
+          flat.push(top, left, width);
+        }
+
         this.lastSentOffsets.set(groupId, flat);
         groups.push({groupId, offsets: flat});
       }
     }
 
-    for(const groupId of [...this.lastSentOffsets.keys()]) {
+    for(const groupId of this.lastSentOffsets.keys()) { // Map iterators tolerate delete-during-for-of
       const elements = this.customEmojis.get(groupId);
       if(elements && offsetsMap.has(elements)) {
         continue;
@@ -267,15 +269,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
     // mirror render()'s viewport-exit placeholder restoration, re-checked EVERY tick like
     // legacy does - at the exit transition itself IntersectionObserver usually hasn't
     // flagged the element invisible yet, so a one-shot check would skip the restore forever
-    for(const elements of this.customEmojis.values()) {
-      if(
-        !offsetsMap.has(elements) &&
-        this.clearedElements.has(elements) &&
-        !isAnyElementVisible(elements)
-      ) {
-        this.restorePlaceholders(elements);
-      }
-    }
+    this.restoreAllPlaceholders(offsetsMap);
 
     return groups;
   }
@@ -366,14 +360,11 @@ export class CustomEmojiRendererElement extends HTMLElement {
             element.lastChildWas ??= element.lastChild;
             replaceContent(element, element.firstChild);
           });
-        } else {
-          elements.forEach((element) => {
-            element.savedChildren ??= Array.from(element.childNodes);
-            element.replaceChildren();
-          });
-        }
 
-        this.clearedElements.add(elements);
+          this.clearedElements.add(elements);
+        } else {
+          this.clearPlaceholders(elements);
+        }
       }
 
       if(applyFade) {
@@ -419,6 +410,15 @@ export class CustomEmojiRendererElement extends HTMLElement {
     }
   }
 
+  public clearPlaceholders(elements: CustomEmojiElements) {
+    elements.forEach((element) => {
+      element.savedChildren ??= Array.from(element.childNodes);
+      element.replaceChildren();
+    });
+
+    this.clearedElements.add(elements);
+  }
+
   public restorePlaceholders(elements: CustomEmojiElements) {
     if(this.isSelectable) {
       return;
@@ -427,7 +427,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
     if(this.offscreen) { // re-arm the compositor fade so the group fades again on viewport re-entry
       const docId = elements.values().next().value?.docId;
       if(docId !== undefined) {
-        compositorMessagePort.invokeCompositorVoid('resetFade', {rendererId: this.rendererId, groupId: docId});
+        this.sendCompositor('resetFade', {groupId: docId});
       }
     }
 
@@ -442,17 +442,23 @@ export class CustomEmojiRendererElement extends HTMLElement {
     elementsFadeInStartTimes.delete(elements);
   }
 
-  public restoreAllPlaceholders() {
+  public restoreAllPlaceholders(except?: ReturnType<CustomEmojiRendererElement['getOffsets']>) {
     for(const elements of this.customEmojis.values()) {
-      if(this.clearedElements.has(elements) && !isAnyElementVisible(elements)) {
+      if(!except?.has(elements) && this.clearedElements.has(elements) && !isAnyElementVisible(elements)) {
         this.restorePlaceholders(elements);
       }
     }
   }
 
   public checkForAnyFrame() {
-    if(this.offscreen) { // frames never land UI-side - the flag is set on the player's first ack
-      return [...this.playersSynced.values()].some((player) => player instanceof RLottiePlayer && offscreenPlayersWithFrames.has(player));
+    if(this.offscreen) { // frames never land UI-side - the player tracks its first ack
+      for(const player of this.playersSynced.values()) {
+        if(player instanceof RLottiePlayer && player.offscreen === 'emoji' && player.hasRenderedFirstFrame) {
+          return true;
+        }
+      }
+
+      return false;
     }
 
     for(const player of this.playersSynced.values()) {
@@ -506,7 +512,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
       }
 
       this.lastSentSize = {width: newWidth, height: newHeight};
-      compositorMessagePort.invokeCompositorVoid('resizeRenderer', {rendererId: this.rendererId, width: newWidth, height: newHeight});
+      this.sendCompositor('resizeRenderer', {width: newWidth, height: newHeight});
     } else {
       if(canvas.width === newWidth && canvas.height === newHeight) {
         return;
@@ -537,7 +543,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
 
     if(!renderEmojis(new Set([this]))) {
       if(this.offscreen) {
-        compositorMessagePort.invokeCompositorVoid('clearRenderer', {rendererId: this.rendererId});
+        this.sendCompositor('clearRenderer');
       } else {
         this.clearCanvas();
       }
@@ -564,8 +570,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
       syncedPlayersFrames.delete(syncedPlayer.player);
       if(syncedPlayer.player instanceof RLottiePlayer) {
         if(this.offscreen) {
-          compositorMessagePort.invokeCompositorVoid('detachGroup', {rendererId: this.rendererId, groupId: element.docId});
-          offscreenPlayersWithFrames.delete(syncedPlayer.player);
+          this.sendCompositor('detachGroup', {groupId: element.docId});
         }
 
         syncedPlayer.player.overrideRender = noop;
@@ -790,21 +795,12 @@ export class CustomEmojiRendererElement extends HTMLElement {
           player.group = renderer.animationGroup;
 
           if(renderer.offscreen && player.offscreen === 'emoji') {
-            // 'firstFrame', NOT 'enterFrame': fires at the same moment, replays via the
-            // EventListenerBase memoization for a second renderer attaching to an
-            // already-running sync player, and keeps 'emoji' players free of external
-            // enterFrame listeners (free-run eligibility)
-            player.addEventListener('firstFrame', () => {
-              offscreenPlayersWithFrames.add(player);
-            }, {once: true});
-
             // force an offsets resend on the next tick: a re-attach for an already-known docId
             // (reactions re-render, instantView shared renderer) re-arms the compositor group,
             // and stale identical triples in lastSentOffsets would otherwise suppress the send
             renderer.lastSentOffsets.delete(docId);
 
-            compositorMessagePort.invokeCompositorVoid('attachGroup', {
-              rendererId: renderer.rendererId,
+            renderer.sendCompositor('attachGroup', {
               groupId: docId,
               playerReqId: player.reqId,
               textColored: renderer.textColored.has(customEmojis),
@@ -1075,8 +1071,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
       ensureCompositor();
       renderer.canvas.dataset.offscreen = '1';
       const offscreenCanvas = renderer.canvas.transferControlToOffscreen();
-      compositorMessagePort.invokeCompositorVoid('attachRenderer', {
-        rendererId: renderer.rendererId,
+      renderer.sendCompositor('attachRenderer', {
         canvas: offscreenCanvas,
         dpr,
         fadeEnabled: liteMode.isAvailable('emoji_appear')
@@ -1108,8 +1103,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
       if(renderer.offscreen) {
         createEffect(() => {
           const property = renderer.textColor();
-          compositorMessagePort.invokeCompositorVoid('configRenderer', {
-            rendererId: renderer.rendererId,
+          renderer.sendCompositor('configRenderer', {
             color: property ? customProperties.getProperty(property) : undefined,
             fadeEnabled: liteMode.isAvailable('emoji_appear') // reads the reactive appSettings store - re-runs on lite-mode change
           });
@@ -1167,7 +1161,6 @@ const elementsFadeInStartTimes: WeakMap<CustomEmojiElements, number> = new WeakM
 
 let nextRendererId = 0;
 const offscreenRenderers: Map<number, CustomEmojiRendererElement> = new Map();
-const offscreenPlayersWithFrames: Set<RLottiePlayer> = new Set();
 
 // Placeholder-clear parity with the legacy render() path: clear the layout
 // children once the compositor reports the group's first paint (after the fade).
@@ -1180,11 +1173,7 @@ compositorMessagePort.addEventListener('groupPainted', ({rendererId, groupId}) =
 
   setTimeout(() => {
     if(!renderer.isConnected || renderer.clearedElements.has(elements)) return;
-    elements.forEach((element) => {
-      element.savedChildren ??= Array.from(element.childNodes);
-      element.replaceChildren();
-    });
-    renderer.clearedElements.add(elements);
+    renderer.clearPlaceholders(elements);
   }, liteMode.isAvailable('emoji_appear') ? CUSTOM_EMOJI_FADE_IN_DURATION : 0);
 });
 
@@ -1196,8 +1185,7 @@ rootScope.addEventListener('theme_changed', () => {
       continue;
     }
 
-    compositorMessagePort.invokeCompositorVoid('configRenderer', {
-      rendererId: renderer.rendererId,
+    renderer.sendCompositor('configRenderer', {
       color: customProperties.getProperty(property)
     });
   }
@@ -1220,14 +1208,9 @@ export const renderEmojis = (renderers = emojiRenderers) => {
 
     const offsets = renderer.getOffsets(); // the layout reads stay UI-side
     if(renderer.offscreen) {
-      const groups = renderer.diffOffsets(offsets);
+      const groups = renderer.diffOffsets(offsets); // also restores placeholders for non-visible groups
       if(groups.length) {
         batch.push({rendererId: renderer.rendererId, groups});
-      }
-      if(!offsets.size) {
-        // No visible groups in this renderer — restore any cleared placeholders
-        // so they fade-in fresh when scrolled back into view.
-        renderer.restoreAllPlaceholders();
       }
     } else if(offsets.size) {
       legacy.push([renderer, offsets]);

@@ -224,7 +224,8 @@ export class AnimationIntersector {
     blurred?: boolean,
     group?: AnimationItemGroup,
     destroy?: boolean,
-    imitateIntersection?: boolean
+    imitateIntersection?: boolean,
+    exceptGroup?: AnimationItemGroup
   ) {
     // if(rootScope.idle.isIDLE) return;
 
@@ -236,6 +237,10 @@ export class AnimationIntersector {
     const groups = group !== undefined /* && false */ ? [group] : Object.keys(this.byGroups) as AnimationItemGroup[];
 
     for(const group of groups) {
+      if(group === exceptGroup) {
+        continue;
+      }
+
       if(imitateIntersection && this.intersectionLockedGroups[group]) {
         continue;
       }
@@ -248,8 +253,8 @@ export class AnimationIntersector {
     }
   }
 
-  public checkAnimations2(blurred?: boolean) {
-    this.checkAnimations(blurred, undefined, undefined, true);
+  public checkAnimations2(blurred?: boolean, exceptGroup?: AnimationItemGroup) {
+    this.checkAnimations(blurred, undefined, undefined, true, exceptGroup);
   }
 
   public checkAnimation(player: AnimationItem, blurred?: boolean, destroy?: boolean) {

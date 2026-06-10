@@ -12,16 +12,29 @@ const decodePorts: Map<number, MessagePort> = new Map(); // rlottie workerId -> 
 
 let flushTimeout: number;
 
-const isPlayerReferenced = (playerReqId: number) => {
+const withRenderer = (rendererId: number, callback: (renderer: CompositorRenderer) => void) => {
+  const renderer = renderers.get(rendererId);
+  if(renderer) callback(renderer);
+};
+
+const forEachRendererReferencing = (playerReqId: number, callback: (renderer: CompositorRenderer) => void) => {
   for(const renderer of renderers.values()) {
     for(const group of renderer.groups.values()) {
       if(group.playerReqId === playerReqId) {
-        return true;
+        callback(renderer);
+        break;
       }
     }
   }
+};
 
-  return false;
+const isPlayerReferenced = (playerReqId: number) => {
+  let referenced = false;
+  forEachRendererReferencing(playerReqId, () => {
+    referenced = true;
+  });
+
+  return referenced;
 };
 
 // without this, dead players' last bitmaps accumulate for the tab's lifetime
@@ -136,14 +149,9 @@ const onDecodedFrame = ({data}: MessageEvent<{reqId: number, frame: ImageBitmap}
   latestFrames.get(data.reqId)?.close?.();
 
   let dirty = false;
-  for(const renderer of renderers.values()) {
-    for(const group of renderer.groups.values()) {
-      if(group.playerReqId === data.reqId) {
-        renderer.dirty = dirty = true;
-        break;
-      }
-    }
-  }
+  forEachRendererReferencing(data.reqId, (renderer) => {
+    renderer.dirty = dirty = true;
+  });
 
   if(!dirty) {
     // no group references the player: either a trailing in-flight frame racing a detach
@@ -171,49 +179,29 @@ compositorMessagePort.addMultipleEventsListeners({
     });
   },
 
-  detachRenderer: ({rendererId}) => {
-    const renderer = renderers.get(rendererId);
-    if(!renderer) {
-      return;
-    }
-
+  detachRenderer: ({rendererId}) => withRenderer(rendererId, (renderer) => {
     renderers.delete(rendererId);
     for(const group of renderer.groups.values()) {
       releasePlayerFrameIfOrphan(group.playerReqId);
     }
-  },
+  }),
 
-  resizeRenderer: ({rendererId, width, height}) => {
-    const renderer = renderers.get(rendererId);
-    if(!renderer) {
-      return;
-    }
-
+  resizeRenderer: ({rendererId, width, height}) => withRenderer(rendererId, (renderer) => {
     renderer.canvas.width = width; // resizing clears the canvas
     renderer.canvas.height = height;
     renderer.dirty = true;
     scheduleFlush();
-  },
+  }),
 
-  configRenderer: (payload) => {
-    const renderer = renderers.get(payload.rendererId);
-    if(!renderer) {
-      return;
-    }
-
+  configRenderer: (payload) => withRenderer(payload.rendererId, (renderer) => {
     if('color' in payload) renderer.color = payload.color;
     if('fadeEnabled' in payload) renderer.fadeEnabled = payload.fadeEnabled;
     if('dpr' in payload) renderer.dpr = payload.dpr;
     renderer.dirty = true;
     scheduleFlush();
-  },
+  }),
 
-  attachGroup: ({rendererId, groupId, playerReqId, textColored, skipFade}) => {
-    const renderer = renderers.get(rendererId);
-    if(!renderer) {
-      return;
-    }
-
+  attachGroup: ({rendererId, groupId, playerReqId, textColored, skipFade}) => withRenderer(rendererId, (renderer) => {
     const existing = renderer.groups.get(groupId);
     if(existing) {
       // re-attach (reactions re-render, instantView shared renderer): preserve offsets and
@@ -238,7 +226,7 @@ compositorMessagePort.addMultipleEventsListeners({
       fadeStartTime: 0,
       painted: false
     });
-  },
+  }),
 
   detachGroup: ({rendererId, groupId}) => {
     const renderer = renderers.get(rendererId);
@@ -296,15 +284,10 @@ compositorMessagePort.addMultipleEventsListeners({
     scheduleFlush();
   },
 
-  clearRenderer: ({rendererId}) => {
-    const renderer = renderers.get(rendererId);
-    if(!renderer) {
-      return;
-    }
-
+  clearRenderer: ({rendererId}) => withRenderer(rendererId, (renderer) => {
     renderer.context.clearRect(0, 0, renderer.canvas.width, renderer.canvas.height);
     renderer.dirty = false;
-  },
+  }),
 
   decodePort: ({workerId}, _, event) => {
     const port = event.ports[0];

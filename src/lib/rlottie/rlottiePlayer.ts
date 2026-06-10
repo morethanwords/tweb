@@ -12,7 +12,7 @@ import IS_IMAGE_BITMAP_SUPPORTED from '@environment/imageBitmapSupport';
 import framesCache, {FramesCache, FramesCacheItem} from '@helpers/framesCache';
 import customProperties from '@helpers/dom/customProperties';
 import readValue from '@helpers/solid/readValue';
-import applyColorOnContext, {RLottieColor} from '@helpers/canvas/applyColorOnContext';
+import applyColorOnContext, {RLottieColor, rlottieColorToString} from '@helpers/canvas/applyColorOnContext';
 import {ensureDecodeChannel} from '@lib/customEmoji/compositorChannels';
 
 export type RLottieOptions = {
@@ -71,7 +71,6 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
 
   public reqId: number;
   public offscreen: 'canvas' | 'emoji' | false = false;
-  public delivery: {compositor?: boolean, ui?: boolean};
   public workerId: number;
   private _curFrame: number;
   private frameCount: number;
@@ -137,6 +136,7 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
   private pixelRatio: number;
 
   private freeRunning: boolean;
+  private freeRunBarred: boolean;
   private freeRunEpoch: {frame: number, time: number};
 
   constructor({el, options}: {
@@ -360,9 +360,24 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
     }
   }
 
+  // a commit made while the placeholder canvas was DETACHED can be lost - after the
+  // canvas enters the DOM, re-present with an ack so the underlay is only dropped
+  // once pixels are guaranteed to reach the compositor (works for paused players too)
+  public ensurePresented(): Promise<void> {
+    if(this.offscreen !== 'canvas' || !this.renderedFirstFrame || this.destroyed) {
+      return Promise.resolve();
+    }
+
+    return this.sendQuery('presentFrame', {frameNo: this._curFrame}).then(() => {}, () => {});
+  }
+
+  public get hasRenderedFirstFrame() {
+    return this.renderedFirstFrame;
+  }
+
   private getResolvedColor(): string {
     if(this.color) {
-      return `rgb(${this.color[0]}, ${this.color[1]}, ${this.color[2]})`;
+      return rlottieColorToString(this.color);
     }
 
     if(this.textColor) {
@@ -370,14 +385,12 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
     }
   }
 
-  public setDelivery(delivery: RLottiePlayer['delivery']) {
-    this.delivery = delivery;
-    this.sendQueryVoid('setDelivery', delivery);
+  private sendColorToWorker(reTint: boolean) {
+    this.sendQueryVoid('setColor', {color: this.getResolvedColor(), reTint});
   }
 
   public loadFromData(data: RLottieOptions['animationData']) {
     if(this.offscreen === 'emoji') {
-      this.delivery = {compositor: true};
       // FIFO: the compositor port rides the same UI->worker port as this loadFromData,
       // so the worker holds it before this item's first frame
       ensureDecodeChannel(this.workerId);
@@ -388,7 +401,7 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
       cacheName: this.cacheName,
       cachingDelta: this.cachingDelta, // Apple heuristics ship unchanged
       color: this.getResolvedColor(),
-      delivery: this.delivery
+      compositorDelivery: this.offscreen === 'emoji' || undefined
     } : undefined;
     const transfer = offscreen?.canvases.length ? offscreen.canvases.slice() : undefined;
     this.offscreenCanvases = undefined;
@@ -464,10 +477,27 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
 
   private canFreeRun() {
     return !!this.offscreen &&
+      !this.freeRunBarred &&
       this.loop === true && // strictly-infinite loops only - onLap semantics never move
       this.renderedFirstFrame &&
-      !this.hasExternalEnterFrameListeners() &&
-      !this.delivery?.ui; // no worker->UI push event exists
+      !this.hasExternalEnterFrameListeners();
+  }
+
+  // the worker clock died on an error - downgrade to command mode (fully functional,
+  // one void postMessage per frame) and never re-engage this player
+  public onFreeRunStopped(curFrame: number, error: string) {
+    if(!this.freeRunning || this.destroyed) {
+      return;
+    }
+
+    console.error('RLottie free-run stopped, falling back to command mode:', error, this);
+    this.freeRunBarred = true;
+    this.freeRunning = false;
+    this.freeRunEpoch = undefined;
+    this._curFrame = curFrame;
+    if(!this.paused) {
+      this.setMainLoop();
+    }
   }
 
   private estimateFreeRunFrame() {
@@ -495,6 +525,7 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
     const offset = ((ticks - ticksToWrap) % lapTicks) * skipDelta;
     return forwards ? minFrame + offset : maxFrame - offset;
   }
+
 
   private engageFreeRun() {
     const frame = this._curFrame = this.curFrame; // collapses the estimate when re-engaging
@@ -673,7 +704,7 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
     }
 
     if(this.offscreen) {
-      this.sendQueryVoid('setColor', {color: this.getResolvedColor(), reTint: true});
+      this.sendColorToWorker(true);
       return;
     }
 
@@ -687,10 +718,6 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
     return; */
 
     if(this.offscreen === 'emoji') {
-      if(frame && this.overrideRender && this.renderedFirstFrame) {
-        this.overrideRender(frame as ImageBitmap); // dormant delivery.ui mixed-sink path
-      }
-
       this.renderedFirstFrame = true;
       this.dispatchEvent('enterFrame', frameNo);
       return;
@@ -988,7 +1015,7 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
     }
 
     if(this.offscreen) { // a playing player picks the new color up at the next present; a paused one re-tints
-      this.sendQueryVoid('setColor', {color: this.getResolvedColor(), reTint: renderIfPaused && this.paused});
+      this.sendColorToWorker(renderIfPaused && this.paused);
       return;
     }
 
@@ -1052,6 +1079,7 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
 
       if(this.canvas[0] && !this.canvas[0].parentNode && this.el?.[0] && !this.overrideRender) {
         this.el.forEach((container, idx) => container.append(this.canvas[idx]));
+        this.nudgePresent(); // the pre-append commit can be lost - re-present now that the placeholder is in the DOM
       }
 
       // console.log('enterFrame firstFrame');

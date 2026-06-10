@@ -18,12 +18,8 @@ export type EmojiCompositorEvents = {
   groupPainted: (p: {rendererId: number, groupId: DocId}) => void
 };
 
-// Generics MUST mirror rlottieMessagePort's verified shape: SuperMessagePort<Workers, Masters, IsMaster>
-// resolves Receive = Workers and Send = Masters when IsMaster = false (superMessagePort.ts:103-109), and BOTH
-// bundles (UI + worker) share the one <false> instance below. So Workers = methods & events (everything either
-// side listens to: the worker registers the methods, the UI registers groupPainted) and Masters = events (what
-// the worker originates). UI→worker method sends would NOT typecheck against Send — they go through a typed
-// helper with @ts-ignore, exactly like RLottieMessagePort.invokeRLottie (rlottieMessagePort.ts:28-42).
+// Workers = methods & events (everything either side listens to), Masters = events (what the worker
+// originates); UI→worker method sends go through SuperMessagePort's typed invokeVoidAs helper.
 type EmojiCompositorWorkerEvents = EmojiCompositorMethods & EmojiCompositorEvents;
 type EmojiCompositorMasterEvents = EmojiCompositorEvents;
 
@@ -37,13 +33,7 @@ export class EmojiCompositorMessagePort<Master extends boolean = true> extends S
     payload: Parameters<EmojiCompositorMethods[T]>[0],
     transfer?: Transferable[]
   ) {
-    this.invokeVoid(
-      // @ts-ignore
-      method,
-      payload,
-      undefined,
-      transfer
-    );
+    this.invokeVoidAs<EmojiCompositorMethods, T>(method, payload, undefined, transfer);
   }
 }
 
