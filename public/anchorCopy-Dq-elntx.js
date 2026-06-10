@@ -1,0 +1,2 @@
+import{t as o}from"./toast-Bb__lSlt.js";import{aw as m}from"./appDialogsManager-Cy5bHA_2.js";import{cb as s,W as h}from"./index-BwIBo_Hm.js";const n="https://t.me/";function l(a={}){const e=document.createElement("a");e.classList.add("anchor-copy");let r,c="LinkCopied";if(a.mePath){const t=n+a.mePath;r=e.href=e.innerText=t}if(a.username){const t=n+a.username;e.href=t,r=e.innerText="@"+a.username,c="UsernameCopied"}return s(e,t=>{h(t),m(r??e.href),o({langPackKey:c})}),e}export{l as a};
+//# sourceMappingURL=anchorCopy-Dq-elntx.js.map
