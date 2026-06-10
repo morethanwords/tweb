@@ -21,7 +21,7 @@ import {AiComposeTone, TextWithEntities} from '@layer';
 import {ComposeMessageWithAiArgs, ComposeMessageWithAiResult} from '@lib/appManagers/aiTonesManager';
 import {LangPackKey} from '@lib/langPack';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {children, createComputed, createEffect, createMemo, createReaction, createResource, createSignal, For, JSX, Match, onCleanup, onMount, ParentProps, Show, Switch} from 'solid-js';
+import {batch, children, createComputed, createEffect, createMemo, createReaction, createResource, createSignal, For, JSX, Match, onCleanup, onMount, ParentProps, Show, Switch} from 'solid-js';
 import {Transition, TransitionGroup} from 'solid-transition-group';
 import styles from './bodyContent.module.scss';
 import {useAiEditorPopupContext} from './context';
@@ -63,6 +63,7 @@ export const Tabs = <T, >(props: TabsProps<T>) => {
 const shouldBeCollapsibleFrom = 60;
 
 export const Original = (props: {
+  isAppearing: boolean;
   text: TextWithEntities.textWithEntities;
   onEmojify?: () => void
   onMeasured?: () => void
@@ -84,10 +85,15 @@ export const Original = (props: {
   onMount(() => {
     if(!originalContentRef) return;
 
+    // Note that the tab is in a <Transition mode='outin'>, which means the content is rendered, and then after some time is added into the DOM
+    // So we need to wait for a resize event to get the proper scrollHeight
     const unobserve = observeResize(originalContentRef, () => {
-      setOriginalContentHeight(originalContentRef.scrollHeight);
-      setIsCollapsed(isCollapsible());
-      props.onMeasured?.();
+      batch(() => {
+        setOriginalContentHeight(originalContentRef.scrollHeight);
+        setIsCollapsed(isCollapsible());
+        props.onMeasured?.();
+      });
+
       unobserve();
     });
 
@@ -161,7 +167,12 @@ export const Original = (props: {
             {wrapRichText(props.text.text, {entities: props.text.entities, middleware: createMiddleware().get()})}
           </Scrollable>
         </div>
-        <div class={styles.originalOverlay} />
+        <div
+          class={styles.originalOverlay}
+          classList={{
+            [styles.hasTransition]: !props.isAppearing
+          }}
+        />
       </div>
       <Show when={isCollapsible() && !isActuallyCollapsed()}>
         <div
@@ -438,7 +449,7 @@ export const useTransitionGroupWhenMeasured = () => {
           moveClass='t-move-std'
           onBeforeExit={el => {
             if(!(el instanceof HTMLElement)) return;
-            el.style.display = 'none';
+            el.classList.add(styles.exit);
           }}
         >
           {resolved()}

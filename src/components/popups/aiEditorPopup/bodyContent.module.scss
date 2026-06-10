@@ -81,7 +81,8 @@
 }
 
 .exit {
-  position: absolute;
+  // Need to override as TransitionGroup adds its own position
+  position: absolute !important;
   top: 0;
   left: 0;
   right: 0;
@@ -188,8 +189,11 @@
   );
 
   opacity: 0;
-  transition: opacity 0.2s ease-out;
   pointer-events: none;
+
+  &.hasTransition {
+    transition: opacity 0.2s ease-out;
+  }
 }
 
 .originalFakeHeight {

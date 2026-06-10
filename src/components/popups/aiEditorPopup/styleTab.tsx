@@ -136,10 +136,11 @@ export const StyleTab = () => {
           moveClass='t-move-std'
           onBeforeExit={el => {
             if(!(el instanceof HTMLElement) || !autoHeightRef) return;
-            el.style.display = 'none';
+            el.classList.add(styles.exit);
           }}
         >
-          <Original text={originalText} onEmojify={!emojify() && !selectedTone() ? () => setEmojify(true) : undefined} />
+          {/* Don't care about isAppearing here, original content is always initially uncollapsed */}
+          <Original isAppearing={false} text={originalText} onEmojify={!emojify() && !selectedTone() ? () => setEmojify(true) : undefined} />
           <Show when={emojify() || selectedTone()}>
             <Divider />
             <Result

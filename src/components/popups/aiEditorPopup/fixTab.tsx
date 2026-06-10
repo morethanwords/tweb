@@ -14,7 +14,7 @@ export const FixTab = (props: {isAppearing: boolean}) => {
   return (
     <AutoHeight outerClass={styles.tabContent}>
       <Wrapper>
-        <Original text={originalText} onMeasured={onMeasured} />
+        <Original isAppearing={props.isAppearing} text={originalText} onMeasured={onMeasured} />
         <Divider />
         <Result
           isAppearing={props.isAppearing}
