@@ -4765,6 +4765,10 @@ const lang = {
   'AiEditor.NewStyle.AddLink': 'Add a link to my account',
   'AiEditor.NewStyle.EmojiUnsupported': 'Sorry, this emoji is unsupported, please choose an animated emoji instead.',
 
+  'AiEditor.Chat.ViewStyle': 'View Style',
+  'AiEditor.StyleAdded': 'Style was added',
+  'AiEditor.StyleAddError': 'Could not add style',
+
   'Apply': 'Apply'
 };
 

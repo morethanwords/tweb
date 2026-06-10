@@ -23,6 +23,7 @@ import showBirthdayPopup, {saveMyBirthday} from '@components/popups/birthday';
 import {useStickersDropdown} from '@components/popups/createPoll/stickersDropdown';
 import showLimitPopup from '@components/popups/limit';
 import showMyQrCodePopup from '@components/popups/myQrCode';
+import {showSharingPickerPopup} from '@components/popups/pickUser';
 import PopupPremium from '@components/popups/premium';
 import PopupSendGift from '@components/popups/sendGift';
 import showStarsRatingPopup from '@components/popups/starsRating';
@@ -152,7 +153,9 @@ export type SolidJSHotReloadGuardContextValue = {
   usePremium: typeof usePremium;
   pickLanguage: typeof pickLanguage;
   usePeerTranslation: typeof usePeerTranslation;
+  showSharingPickerPopup: typeof showSharingPickerPopup;
 };
+
 
 export type LockScreenHotReloadGuardContextValue = Pick<
   SolidJSHotReloadGuardContextValue,

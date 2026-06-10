@@ -4149,6 +4149,9 @@
 "AiEditor.NewStyle.InstructionsDescription" = "Instructions (for example \"write in bold, nautical tone, light slang (aye, matey), vivid sea imagery, playful swagger, rhythmic phrasing, and adventurous mood\")";
 "AiEditor.NewStyle.AddLink" = "Add a link to my account";
 "AiEditor.NewStyle.EmojiUnsupported" = "Sorry, this emoji is unsupported, please choose an animated emoji instead.";
+"AiEditor.Chat.ViewStyle" = "View Style";
+"AiEditor.StyleAdded" = "Style was added";
+"AiEditor.StyleAddError" = "Could not add style";
 "Apply" = "Apply";
 "Login.Title" = "Sign in to Telegram";
 "Login.PhoneLabel" = "Phone Number";

@@ -151,6 +151,22 @@ export class InternalLinkProcessor {
         }
       });
 
+      addAnchorListener<{pathnameParams: [typeof name, string]}>({
+        name: 'addstyle',
+        callback: ({pathnameParams}) => {
+          if(!pathnameParams[1]) {
+            return;
+          }
+
+          const link: InternalLink = {
+            _: INTERNAL_LINK_TYPE.ADD_AI_STYLE,
+            slug: pathnameParams[1]
+          };
+
+          return this.processInternalLink(link);
+        }
+      });
+
       addAnchorListener<{
         uriParams: {
           set: string
@@ -902,6 +918,14 @@ export class InternalLinkProcessor {
     return appImManager.joinConference({_: 'inputGroupCallSlug', slug: link.slug});
   };
 
+  public processAddAiStyleLink = (link: InternalLink.InternalLinkAddAiStyle) => {
+    return this.managers.aiTonesManager.addTone(link.slug).then(() => {
+      toastNew({langPackKey: 'AiEditor.StyleAdded'});
+    }).catch(() => {
+      toastNew({langPackKey: 'AiEditor.StyleAddError'});
+    });
+  };
+
   public processUserPhoneNumberLink = (link: InternalLink.InternalLinkUserPhoneNumber) => {
     return this.managers.appUsersManager.resolvePhone(link.phone).then((user) => {
       return appImManager.setInnerPeer({
@@ -1273,7 +1297,8 @@ export class InternalLinkProcessor {
       [INTERNAL_LINK_TYPE.STAR_GIFT_COLLECTION]: this.processStarGiftCollectionLink,
       [INTERNAL_LINK_TYPE.STORY_ALBUM]: this.processStoryAlbumLink,
       [INTERNAL_LINK_TYPE.INSTANT_VIEW]: this.processInstantViewLink,
-      [INTERNAL_LINK_TYPE.CONFERENCE_CALL]: this.processConferenceCallLink
+      [INTERNAL_LINK_TYPE.CONFERENCE_CALL]: this.processConferenceCallLink,
+      [INTERNAL_LINK_TYPE.ADD_AI_STYLE]: this.processAddAiStyleLink
     };
 
     const processor = map[link._];

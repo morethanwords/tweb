@@ -14,7 +14,7 @@ import {CreateTone, Divider, Original, Result, Tone, useIsAppearing} from './par
 
 
 export const StyleTab = () => {
-  const {rootScope, HotReloadGuard} = useHotReloadGuard();
+  const {rootScope, HotReloadGuard, showSharingPickerPopup} = useHotReloadGuard();
 
   const [emojify, setEmojify] = createSignal(false);
   const [tonesListEl, setTonesListEl] = createSignal<HTMLDivElement>();
@@ -85,7 +85,20 @@ export const StyleTab = () => {
           }
         })
       },
-      onShare: () => {},
+      onShare: () => {
+        showSharingPickerPopup({
+          onSelect: ([peer]) => {
+            if(!peer) return;
+            const link = 'https://t.me/addstyle/' + tone.slug;
+            rootScope.managers.appMessagesManager.sendText({
+              peerId: peer.peerId,
+              threadId: peer.threadId,
+              replyToMonoforumPeerId: peer.monoforumThreadId,
+              text: link
+            });
+          }
+        });
+      },
       onDelete: () => {}
     };
   };

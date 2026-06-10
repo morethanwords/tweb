@@ -127,6 +127,22 @@ export class AiTonesManager extends AppManager {
     return updatedTone;
   }
 
+  async saveTone(toneSlug: string, unsave: boolean) {
+    await this.apiManager.invokeApi('aicompose.saveTone', {
+      tone: {
+        _: 'inputAiComposeToneSlug',
+        slug: toneSlug
+      },
+      unsave
+    });
+
+    this.isStale = true;
+  }
+
+  async addTone(toneSlug: string) {
+    await this.saveTone(toneSlug, false);
+  }
+
   async composeMessageWithAi({text, toneNameOrId, proofRead, translateTo, emojify}: ComposeMessageWithAiArgs) {
     const tone = toneNameOrId ? this.tonesMap.get(toneNameOrId) : undefined;
 
