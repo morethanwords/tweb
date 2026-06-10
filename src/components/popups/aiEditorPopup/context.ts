@@ -1,6 +1,6 @@
+import {TextWithEntities} from '@layer';
 import {Accessor, createContext, Setter, useContext} from 'solid-js';
 import {AiEditorPopupProps} from './aiEditorPopup';
-import {TextWithEntities} from '@layer';
 
 export type AiEditorPopupContextValue = AiEditorPopupProps & {
   resultTextSignal: [Accessor<TextWithEntities>, Setter<TextWithEntities>];

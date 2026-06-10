@@ -224,8 +224,7 @@ export const Result = (props: {
     if(cached) return cached;
 
     // return (async() => {
-    // Don't forget about appearDeferred
-    //   const result = await rootScope.managers.aiTonesManager.composeMessageWithAi(args);
+    //   const [result] = await Promise.all([rootScope.managers.aiTonesManager.composeMessageWithAi(args), appearDeferred]);
     //   const key = getCachedComposedMessageKey(args);
     //   if(key) cachedComposedMessages.set(key, result);
     //   return result;
@@ -362,7 +361,7 @@ export const Tone = (props: {
   createEffect(() => {
     if(!props.withContextMenu) return;
 
-    const {destroy, open} = createContextMenu({
+    const {destroy} = createContextMenu({
       buttons: [
         {
           icon: 'edit',

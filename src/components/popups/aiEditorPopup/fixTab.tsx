@@ -10,7 +10,6 @@ export const FixTab = (props: {isAppearing: boolean}) => {
 
   const {Wrapper, onMeasured} = useTransitionGroupWhenMeasured();
 
-
   return (
     <AutoHeight outerClass={styles.tabContent}>
       <Wrapper>

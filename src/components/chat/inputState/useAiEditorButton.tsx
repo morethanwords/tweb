@@ -1,6 +1,6 @@
 import Button from '@components/buttonTsx';
 import {OverlayedIcon} from '@components/icon';
-import {openAiEditorPopup} from '@components/popups/aiEditorPopup/aiEditorPopup';
+import {openAiEditorPopup} from '@components/popups/aiEditorPopup';
 import classNames from '@helpers/string/classNames';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {resolveFirst} from '@solid-primitives/refs';
