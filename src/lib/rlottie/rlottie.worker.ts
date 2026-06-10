@@ -1,4 +1,3 @@
-import CAN_USE_TRANSFERABLES from '@environment/canUseTransferables';
 import ctx from '@environment/ctx';
 import IS_IMAGE_BITMAP_SUPPORTED from '@environment/imageBitmapSupport';
 import readBlobAsText from '@helpers/blob/readBlobAsText';
@@ -155,11 +154,7 @@ export class RLottieItem {
             throw makeError('ITEM_DESTROYED');
           }
 
-          if(CAN_USE_TRANSFERABLES) {
-            return new SuperMessagePort.TransferableResult({frameNo, frame: imageBitmap}, [imageBitmap]);
-          }
-
-          return {frameNo, frame: imageBitmap};
+          return new SuperMessagePort.TransferableResult({frameNo, frame: imageBitmap}, [imageBitmap]);
         });
       } else {
         if(!clamped) {
@@ -170,11 +165,7 @@ export class RLottieItem {
 
         // this.context.putImageData(new ImageData(clamped, this.width, this.height), 0, 0);
 
-        if(CAN_USE_TRANSFERABLES) {
-          return new SuperMessagePort.TransferableResult({frameNo, frame: clamped}, [clamped.buffer]);
-        }
-
-        return {frameNo, frame: clamped};
+        return new SuperMessagePort.TransferableResult({frameNo, frame: clamped}, [clamped.buffer]);
       }
     } catch(e) {
       console.error('Render error:', e);
@@ -259,11 +250,7 @@ export class RLottieItem {
     }
 
     if(uiFrame) {
-      if(CAN_USE_TRANSFERABLES) {
-        return new SuperMessagePort.TransferableResult({frameNo, frame: uiFrame}, [uiFrame]);
-      }
-
-      return {frameNo, frame: uiFrame};
+      return new SuperMessagePort.TransferableResult({frameNo, frame: uiFrame}, [uiFrame]);
     }
 
     return {frameNo};
@@ -330,11 +317,7 @@ export class RLottieItem {
     }
 
     const frame = canvas.transferToImageBitmap();
-    if(CAN_USE_TRANSFERABLES) {
-      return new SuperMessagePort.TransferableResult({frameNo, frame}, [frame]);
-    }
-
-    return {frameNo, frame};
+    return new SuperMessagePort.TransferableResult({frameNo, frame}, [frame]);
   }
 
   public clearFramesCache() {

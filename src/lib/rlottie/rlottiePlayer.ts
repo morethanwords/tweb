@@ -1,7 +1,6 @@
 import type {AnimationItemGroup, AnimationItemWrapper} from '@components/animationIntersector';
 import type {Middleware} from '@helpers/middleware';
 import type {LiteModeKey} from '@helpers/liteMode';
-import CAN_USE_TRANSFERABLES from '@environment/canUseTransferables';
 import IS_APPLE_MX from '@environment/appleMx';
 import {IS_ANDROID, IS_APPLE_MOBILE, IS_APPLE, IS_SAFARI} from '@environment/userAgent';
 import EventListenerBase from '@helpers/eventListenerBase';
@@ -270,10 +269,7 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
 
     if(!IS_IMAGE_BITMAP_SUPPORTED || this.raw) {
       this.imageData = new ImageData(this.width, this.height);
-
-      if(CAN_USE_TRANSFERABLES) {
-        this.clamped = new Uint8ClampedArray(this.width * this.height * 4);
-      }
+      this.clamped = new Uint8ClampedArray(this.width * this.height * 4);
     }
 
     if(this.name) {

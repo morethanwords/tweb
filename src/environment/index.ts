@@ -1,5 +1,4 @@
 import IS_CALL_SUPPORTED from '@environment/callSupport';
-import CAN_USE_TRANSFERABLES from '@environment/canUseTransferables';
 import IS_CANVAS_FILTER_SUPPORTED from '@environment/canvasFilterSupport';
 import IS_EMOJI_SUPPORTED from '@environment/emojiSupport';
 import IS_GEOLOCATION_SUPPORTED from '@environment/geolocationSupport';
@@ -21,7 +20,6 @@ import IS_LIVE_STREAM_SUPPORTED from '@environment/liveStreamSupport';
 import * as IS_VIDEO_SUPPORTED from '@environment/videoSupport';
 
 const ENVIRONMENT = {
-  CAN_USE_TRANSFERABLES,
   IS_APPLE_MX,
   IS_CALL_SUPPORTED,
   IS_CANVAS_FILTER_SUPPORTED,
