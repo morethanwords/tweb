@@ -5,7 +5,7 @@ import {useEdgeAutoScroll} from '@helpers/solid/useEdgeAutoScroll';
 import {AiComposeTone} from '@layer';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {batch, createComputed, createResource, createSignal, For, Show, useContext} from 'solid-js';
-import {createStore, reconcile} from 'solid-js/store';
+import {createStore, reconcile, SetStoreFunction} from 'solid-js/store';
 import {TransitionGroup} from 'solid-transition-group';
 import styles from './bodyContent.module.scss';
 import {AiEditorPopupContext} from './context';
@@ -14,7 +14,7 @@ import {CreateTone, Divider, Original, Result, Tone, useIsAppearing} from './par
 
 
 export const StyleTab = () => {
-  const {rootScope, HotReloadGuard, showSharingPickerPopup, toastNew, confirmationPopup} = useHotReloadGuard();
+  const {rootScope} = useHotReloadGuard();
 
   const [emojify, setEmojify] = createSignal(false);
   const [tonesListEl, setTonesListEl] = createSignal<HTMLDivElement>();
@@ -64,69 +64,15 @@ export const StyleTab = () => {
 
     const isSaved = !tone.pFlags.creator;
 
+    const onEdit = useEditTone({tone, tones, setTones});
+    const onShare = useShareTone({tone});
+    const onDelete = useDeleteTone({tone, isSaved, setTones});
+
     return {
       isSaved,
-      onEdit: () => {
-        showCreateTonePopup({
-          HotReloadGuard,
-          initialValues: {
-            title: tone.title,
-            emojiId: tone.emoji_id,
-            prompt: tone.prompt
-          },
-          titleLangKey: 'AiEditor.NewStyle.TitleEdit',
-          submitLangKey: 'Save',
-          onSubmit: async(payload) => {
-            const updatedTone = await rootScope.managers.aiTonesManager.editTone({toneId: tone.id.toString(), ...payload});
-            const prevTone = tones.find(t => t._ === 'aiComposeTone' && t.id.toString() === tone.id.toString());
-            batch(() => {
-              setTones(prev => [
-                prevTone,
-                ...prev.filter(t => t._ !== 'aiComposeTone' || t.id.toString() !== tone.id.toString())
-              ]);
-              setTones(0, reconcile(updatedTone));
-            });
-          }
-        })
-      },
-      onShare: () => {
-        showSharingPickerPopup({
-          onSelect: ([peer]) => {
-            if(!peer) return;
-            const link = 'https://t.me/addstyle/' + tone.slug;
-            rootScope.managers.appMessagesManager.sendText({
-              peerId: peer.peerId,
-              threadId: peer.threadId,
-              replyToMonoforumPeerId: peer.monoforumThreadId,
-              text: link
-            });
-          }
-        });
-      },
-      onDelete: async() => {
-        try {
-          if(isSaved) {
-            await rootScope.managers.aiTonesManager.removeSavedTone(tone.id);
-          } else {
-            try {
-              await confirmationPopup({
-                titleLangKey: 'AiEditor.DeleteStyle.Title',
-                descriptionLangKey: 'AiEditor.DeleteStyle.Description',
-                button: {langKey: 'Delete', isDanger: true}
-              });
-            } catch{
-              return;
-            }
-            await rootScope.managers.aiTonesManager.deleteTone(tone.id.toString());
-          }
-
-          setTones(prev => prev.filter(t => t._ !== 'aiComposeTone' || t.id !== tone.id))
-        } catch{
-          toastNew({
-            langPackKey: 'AiEditor.DeleteStyle.Failed'
-          });
-        }
-      }
+      onEdit,
+      onShare,
+      onDelete
     };
   };
 
@@ -181,4 +127,104 @@ export const StyleTab = () => {
       </div>
     </div>
   );
+};
+
+type UseEditToneArgs = {
+  tone: AiComposeTone.aiComposeTone;
+  tones: AiComposeTone[];
+  setTones: SetStoreFunction<AiComposeTone[]>;
+};
+
+const useEditTone = ({
+  tone,
+  tones,
+  setTones
+}: UseEditToneArgs) => {
+  const {rootScope, HotReloadGuard} = useHotReloadGuard();
+
+  return () => {
+    showCreateTonePopup({
+      HotReloadGuard,
+      initialValues: {
+        title: tone.title,
+        emojiId: tone.emoji_id,
+        prompt: tone.prompt
+      },
+      titleLangKey: 'AiEditor.NewStyle.TitleEdit',
+      submitLangKey: 'Save',
+      onSubmit: async(payload) => {
+        const updatedTone = await rootScope.managers.aiTonesManager.editTone({toneId: tone.id.toString(), ...payload});
+        const prevTone = tones.find(t => t._ === 'aiComposeTone' && t.id.toString() === tone.id.toString());
+        batch(() => {
+          setTones(prev => [
+            prevTone,
+            ...prev.filter(t => t._ !== 'aiComposeTone' || t.id.toString() !== tone.id.toString())
+          ]);
+          setTones(0, reconcile(updatedTone));
+        });
+      }
+    })
+  };
+};
+
+type UseShareToneArgs = {
+  tone: AiComposeTone.aiComposeTone;
+};
+
+const useShareTone = ({tone}: UseShareToneArgs) => {
+  const {rootScope, showSharingPickerPopup} = useHotReloadGuard();
+
+  return () => {
+    showSharingPickerPopup({
+      onSelect: ([peer]) => {
+        if(!peer) return;
+        const link = 'https://t.me/addstyle/' + tone.slug;
+        rootScope.managers.appMessagesManager.sendText({
+          peerId: peer.peerId,
+          threadId: peer.threadId,
+          replyToMonoforumPeerId: peer.monoforumThreadId,
+          text: link
+        });
+      }
+    });
+  };
+};
+
+type UseDeleteToneArgs = {
+  tone: AiComposeTone.aiComposeTone;
+  isSaved: boolean;
+  setTones: SetStoreFunction<AiComposeTone[]>;
+};
+
+const useDeleteTone = ({
+  tone,
+  isSaved,
+  setTones
+}: UseDeleteToneArgs) => {
+  const {rootScope, toastNew, confirmationPopup} = useHotReloadGuard();
+
+  return async() => {
+    try {
+      if(isSaved) {
+        await rootScope.managers.aiTonesManager.removeSavedTone(tone.id);
+      } else {
+        try {
+          await confirmationPopup({
+            titleLangKey: 'AiEditor.DeleteStyle.Title',
+            descriptionLangKey: 'AiEditor.DeleteStyle.Description',
+            button: {langKey: 'Delete', isDanger: true}
+          });
+        } catch{
+          return;
+        }
+        await rootScope.managers.aiTonesManager.deleteTone(tone.id.toString());
+      }
+
+      setTones(prev => prev.filter(t => t._ !== 'aiComposeTone' || t.id !== tone.id))
+    } catch{
+      toastNew({
+        langPackKey: 'AiEditor.DeleteStyle.Failed'
+      });
+    }
+  };
 };
