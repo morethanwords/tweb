@@ -1,8 +1,9 @@
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import EventListenerBase from '@helpers/eventListenerBase';
+import {IS_PREVIEW} from '@config/debug';
 
 const FOCUS_EVENT_NAME = IS_TOUCH_SUPPORTED ? 'touchstart' : 'mousemove';
-const DO_NOT_IDLE = false;
+const DO_NOT_IDLE = IS_PREVIEW; // the preview window is never focused — don't let it look idle
 
 export class IdleController extends EventListenerBase<{
   change: (idle: boolean) => void
@@ -15,7 +16,7 @@ export class IdleController extends EventListenerBase<{
   constructor() {
     super();
 
-    this._isIdle = true;
+    this._isIdle = !DO_NOT_IDLE;
     this.focusPromise = Promise.resolve();
     this.focusResolve = () => {};
 
