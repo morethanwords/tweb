@@ -24,16 +24,6 @@
     transform: translate3d(0, calc(100% + var(--push-quiz, 10px)), 0);
   }
 
-  // Chat-level hint, mounted on .chat by setChatQuizHint. Docks just below the
-  // topbar: --chat-padding-top already covers the header + page padding +
-  // floating pinned plates. z-index 1 matches .bubbles, so the hint paints above
-  // the messages (later sibling) but slides in from behind the topbar (z-index 2)
-  // instead of over it.
-  &.in-chat {
-    top: var(--chat-padding-top);
-    z-index: 1;
-  }
-
 	&.active {
 		transform: translate3d(0, 0, 0);
 	}

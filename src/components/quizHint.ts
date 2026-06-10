@@ -104,16 +104,3 @@ export const setQuizHint = (options: {
 
   return {hide};
 };
-
-export const setChatQuizHint = (options: Omit<Parameters<typeof setQuizHint>[0], 'appendTo' | 'from' | 'class'>) => {
-  return setQuizHint({
-    ...options,
-    // Mount on .chat (sibling to .topbar/.bubbles), NOT inside .bubbles: .bubbles
-    // is a transformed z-index:1 stacking context that traps the hint below the
-    // topbar (z-index:2). The in-chat class docks the hint just below the topbar
-    // at --chat-padding-top (see _quizHint.scss).
-    appendTo: appImManager.chat.container,
-    from: 'top',
-    class: 'in-chat'
-  });
-};

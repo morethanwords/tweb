@@ -50,36 +50,8 @@
   }
 }
 
-// todo: we should probably refactor this into a "tooltip at the top of the chat" component and also use it instead of setQuizHint
+// docking/animation comes from .chat-toast (_chatToast.scss)
 .paid-reaction-tooltip {
-  // Dock just below the topbar instead of floating over it. --chat-padding-top
-  // already accounts for the topbar header + page padding + floating pinned
-  // plates, so the toast lands at the top of the message area with a gap and
-  // never overlaps the header/pinned bars.
-  top: var(--chat-padding-top);
-  left: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: max-content;
-  max-width: calc(100% - 1rem);
-
-  .tooltip-notch { display: none; }
-
-  &.tooltip {
-    // position:absolute (not the .tooltip default of fixed) anchors to
-    // #column-center — the same containing block as .topbar — so the gap above
-    // is consistent across breakpoints.
-    position: absolute;
-    transform: translate(-50%, 0);
-    &.is-visible.forwards {
-      transform: translate(-50%, 0);
-    }
-    &.mounted {
-      transform: translate(-50%, -1rem);
-    }
-  }
-
   &--a-little-wider {
     min-width: 300px;
   }

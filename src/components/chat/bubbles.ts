@@ -20,7 +20,7 @@ import I18n, {FormatterArguments, i18n, langPack, LangPackKey, UNSUPPORTED_LANG_
 import {fireMessageEffectByBubble, MessageRender} from '@components/chat/messageRender';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import ListenerSetter from '@helpers/listenerSetter';
-import {setChatQuizHint} from '@components/quizHint';
+import showChatToast from '@components/chat/chatToast';
 import AudioElement from '@components/audio';
 import {ChannelParticipant, Chat as MTChat, ChatParticipant, Document, Game, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, SponsoredMessage, User, UserFull, WebPage, WebPageAttribute, Reaction, DocumentAttribute, InputStickerSet, TextWithEntities, FactCheck, WebDocument, MessageExtendedMedia, PeerSettings, LangPackString, ForumTopic, MessageAction} from '@layer';
 import {BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID, SEND_WHEN_ONLINE_TIMESTAMP, STARS_CURRENCY} from '@appManagers/constants';
@@ -2831,7 +2831,7 @@ export default class ChatBubbles {
       if(paidMedia) {
         popup.addEventListener('finish', async(result) => {
           if(result === 'paid') {
-            setChatQuizHint({
+            showChatToast({
               icon: 'cash_circle',
               title: i18n('StarsMediaPurchaseCompleted'),
               textElement: i18n('StarsMediaPurchaseCompletedInfo', [
@@ -6967,7 +6967,7 @@ export default class ChatBubbles {
       },
       onError: (error) => {
         if(error.type === 'SUMMARY_FLOOD_PREMIUM') {
-          const {hide} = setChatQuizHint({
+          const {hide} = showChatToast({
             icon: 'premium_speed',
             title: i18n('Summary.Limited'),
             textElement: i18n('Summary.Limited.Text', [
