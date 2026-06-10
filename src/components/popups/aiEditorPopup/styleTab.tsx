@@ -1,17 +1,22 @@
 import Scrollable from '@components/scrollable2';
+import {Skeleton} from '@components/skeleton';
 import Space from '@components/space';
+import DEBUG from '@config/debug';
 import {HeightTransition} from '@helpers/solid/heightTransition';
 import {useEdgeAutoScroll} from '@helpers/solid/useEdgeAutoScroll';
 import {AiComposeTone} from '@layer';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {batch, createComputed, createResource, createSignal, For, Show, useContext} from 'solid-js';
 import {createStore, reconcile, SetStoreFunction} from 'solid-js/store';
-import {TransitionGroup} from 'solid-transition-group';
+import {Transition, TransitionGroup} from 'solid-transition-group';
 import styles from './bodyContent.module.scss';
 import {AiEditorPopupContext} from './context';
 import showCreateTonePopup from './createTonePopup';
 import {CreateTone, Divider, Original, Result, Tone, useIsAppearing} from './parts';
 
+
+const simulateDelay = DEBUG ? 400 : 0;
+const simulateRandomDelay = DEBUG ? () => Math.floor(Math.random() * 1000) : 0;
 
 export const StyleTab = () => {
   const {rootScope} = useHotReloadGuard();
@@ -21,11 +26,17 @@ export const StyleTab = () => {
   const [selectedTone, setSelectedTone] = createSignal<AiComposeTone>();
   const [runningAnimations, setRunningAnimations] = createSignal(0);
 
-  const {text: originalText} = useContext(AiEditorPopupContext);
+  const {text: originalText, initialTones} = useContext(AiEditorPopupContext);
 
   // TODO: Handle errors
   const [tonesResource] = createResource(
-    () => rootScope.managers.aiTonesManager.getTones()
+    () => initialTones ? undefined : true,
+    () => {
+      // if(simulateDelay) return pause(simulateDelay).then(() => rootScope.managers.aiTonesManager.getTones())
+      // if(simulateRandomDelay) return pause(simulateRandomDelay()).then(() => rootScope.managers.aiTonesManager.getTones())
+      return rootScope.managers.aiTonesManager.getTones();
+    },
+    initialTones ? {initialValue: initialTones} as {} : undefined,
   );
 
   const [tones, setTones] = createStore<AiComposeTone[]>([]);
@@ -79,24 +90,41 @@ export const StyleTab = () => {
   return (
     <div>
       <div class={styles.section}>
-        <Scrollable class={styles.tonesList} ref={setTonesListEl} axis='x' relative>
-          <CreateTone onCreate={(createdTone) => {
-            setTones(prev => [createdTone, ...prev]);
-          }} />
-          <TransitionGroup name='fade-2' moveClass='t-move'>
-            <For each={tones}>
-              {(tone) => (
-                <Tone
-                  docId={tone.emoji_id}
-                  name={tone.title}
-                  selected={tone === selectedTone()}
-                  onClick={[onSelectTone, tone]}
-                  withContextMenu={getToneContextMenu(tone)}
-                />
-              )}
-            </For>
-          </TransitionGroup>
-        </Scrollable>
+        <Transition name='fade-2' mode='outin'>
+          <Show when={tonesResource.state === 'ready'} fallback={
+            <Scrollable class={styles.tonesList} ref={setTonesListEl} axis='x' relative>
+              <Show when={tonesResource.state === 'pending'} fallback={<div class={styles.tonesList}>{/* height placeholder */}</div>}>
+                {[1, 2, 3, 4].map(() => (
+                  <div class={styles.toneSkeleton}>
+                    <Skeleton.Div class={styles.toneSkeletonIcon} secondary></Skeleton.Div>
+                    <Skeleton.Div class={styles.toneSkeletonText} textLine secondary></Skeleton.Div>
+                  </div>
+                ))}
+              </Show>
+            </Scrollable>
+          }>
+            <Scrollable class={styles.tonesList} ref={setTonesListEl} axis='x' relative>
+              <CreateTone
+                onCreate={(createdTone) => {
+                  setTones(prev => [createdTone, ...prev]);
+                }}
+              />
+              <TransitionGroup name='fade-2' moveClass='t-move'>
+                <For each={tones}>
+                  {(tone) => (
+                    <Tone
+                      docId={tone.emoji_id}
+                      name={tone.title}
+                      selected={tone === selectedTone()}
+                      onClick={[onSelectTone, tone]}
+                      withContextMenu={getToneContextMenu(tone)}
+                    />
+                  )}
+                </For>
+              </TransitionGroup>
+            </Scrollable>
+          </Show>
+        </Transition>
       </div>
       <Space amount='1rem' />
       <div class={styles.tabContent}>

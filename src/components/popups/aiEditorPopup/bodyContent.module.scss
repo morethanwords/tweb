@@ -21,6 +21,11 @@
 
 .bodyContent {
   padding: 0 var(--section-padding-inline) 1rem;
+
+  --tone-height: 80px;
+  --tone-width: 88px;
+  --tone-border-radius: 20px;
+  --tone-icon-size: 42px;
 }
 
 .tabs {
@@ -270,7 +275,9 @@
 .tonesList {
   display: flex;
   gap: 2px;
-  padding: 0.25rem;
+  --padding: 0.25rem;
+  padding: var(--padding);
+  height: calc(var(--tone-height) + var(--padding) * 2);
 }
 
 .tone {
@@ -280,11 +287,13 @@
   display: flex;
   align-items: center;
   flex-direction: column;
+  justify-content: center;
   flex-shrink: 0;
 
+  height: var(--tone-height);
+  width: var(--tone-width);
+  border-radius: var(--tone-border-radius);
   gap: 0.25rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 20px;
 
   cursor: pointer;
 
@@ -301,7 +310,7 @@
   }
 
   &Icon {
-    --size: 42px;
+    --size: var(--tone-icon-size);
     position: relative;
     width: var(--size);
     height: var(--size);
@@ -326,6 +335,28 @@
   @include hover-global {
     .toneContextMenuIcon {
       opacity: 1;
+    }
+  }
+
+  &Skeleton {
+    width: var(--tone-width);
+    height: var(--tone-height);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 0.25rem;
+
+    &Icon {
+      --size: var(--tone-icon-size);
+      width: var(--size);
+      height: var(--size);
+      border-radius: 12px;
+    }
+
+    &Text {
+      width: calc(var(--tone-width) - 2.5rem);
     }
   }
 }

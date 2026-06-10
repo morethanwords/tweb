@@ -12,7 +12,7 @@ import wrapDraftText from '@lib/richTextProcessor/wrapDraftText';
 const shouldShowFromHeight = 72;
 
 export function useAiEditorButton({instance, store}: ChatInputStateContext) {
-  const {HotReloadGuard} = useHotReloadGuard();
+  const {HotReloadGuard, rootScope} = useHotReloadGuard();
   const canShowButton = createMemo(() => store.inputMessageContainerHeight >= shouldShowFromHeight)
 
   createEffect(() => {
@@ -27,8 +27,12 @@ export function useAiEditorButton({instance, store}: ChatInputStateContext) {
     const button = Button({
       class: classNames('chat-input-ai-editor-button', 'btn-icon'),
       children: icon,
-      onClick: () => {
+      onClick: async() => {
         const {value, entities} = getRichValueWithCaret(instance.messageInputField.input, true, false);
+
+        const ackedTones = await rootScope.managers.acknowledged.aiTonesManager.getTones();
+        const initialTones = ackedTones.cached ? await ackedTones.result : undefined;
+
         openAiEditorPopup({
           peerId: instance.chat.peerId,
           text: {
@@ -46,7 +50,8 @@ export function useAiEditorButton({instance, store}: ChatInputStateContext) {
           },
           onSend: (text) => {
 
-          }
+          },
+          initialTones
         }, HotReloadGuard);
       }
     });

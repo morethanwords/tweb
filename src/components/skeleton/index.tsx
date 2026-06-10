@@ -18,7 +18,7 @@ export const Skeleton = (props: SkeletonProps) => {
     <Show when={loading()} fallback={children() && (
       <div class="skeleton-child">{children()}</div>
     )}>
-      <Skeleton.Div secondary={props.secondary} class={props.class} />
+      <Skeleton.Div textLine secondary={props.secondary} class={props.class} />
     </Show>
   );
 
@@ -29,9 +29,12 @@ export const Skeleton = (props: SkeletonProps) => {
   );
 };
 
-Skeleton.Div = (inProps: JSX.HTMLAttributes<HTMLDivElement> & { secondary?: boolean; }) => {
-  const [props, restProps] = splitProps(inProps, ['secondary', 'class']);
+Skeleton.Div = (inProps: JSX.HTMLAttributes<HTMLDivElement> & {
+  textLine?: boolean;
+  secondary?: boolean;
+}) => {
+  const [props, restProps] = splitProps(inProps, ['textLine', 'secondary', 'class']);
   return (
-    <div class={classNames('skeleton', props.secondary && 'skeleton--secondary', props.class)} {...restProps} />
+    <div class={classNames('skeleton-base', props.textLine && 'skeleton', props.secondary && 'skeleton-base--secondary', props.class)} {...restProps} />
   );
 };

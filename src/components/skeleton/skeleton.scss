@@ -1,10 +1,13 @@
 .skeleton {
-  background: var(--light-primary-color);
   height: 1em;
   min-height: 10px;
   margin: 2px 0;
-  display: block;
   border-radius: 4px;
+}
+
+.skeleton-base {
+  background: var(--light-primary-color);
+  display: block;
   position: relative;
   overflow: hidden;
 

@@ -1,5 +1,5 @@
 import {I18nTsx} from '@helpers/solid/i18n';
-import {TextWithEntities} from '@layer';
+import {AiComposeTone, TextWithEntities} from '@layer';
 import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import {LocalTextWithEntities} from '@types';
 import {createSignal} from 'solid-js';
@@ -12,6 +12,7 @@ import {AiEditorPopupContext, AiEditorPopupContextValue} from './context';
 export type AiEditorPopupProps = {
   peerId: PeerId;
   text: TextWithEntities.textWithEntities;
+  initialTones?: AiComposeTone[];
   onApply: (text: LocalTextWithEntities) => void;
   onSend?: (text: LocalTextWithEntities) => void;
 };

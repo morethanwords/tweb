@@ -291,11 +291,11 @@ const ResultSkeleton = () => {
   return (
     // Necessary wrapper for transition
     <div>
-      <Skeleton.Div secondary />
-      <Skeleton.Div secondary />
-      <Skeleton.Div secondary />
-      <Skeleton.Div secondary />
-      <Skeleton.Div secondary />
+      <Skeleton.Div textLine secondary />
+      <Skeleton.Div textLine secondary />
+      <Skeleton.Div textLine secondary />
+      <Skeleton.Div textLine secondary />
+      <Skeleton.Div textLine secondary />
     </div>
   );
 };

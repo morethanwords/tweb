@@ -36,6 +36,8 @@ export class AiTonesManager extends AppManager {
   private tonesHash: number | string = 0;
   private isStale = true;
 
+  private fetchingTonesPromise: Promise<Tone[]>;
+
   constructor() {
     super();
     this.name = 'AiTonesManager';
@@ -55,26 +57,29 @@ export class AiTonesManager extends AppManager {
     });
   }
 
-  async getTones(forceFetch = false) {
+  getTones(forceFetch = false) {
     if(!this.isStale && !forceFetch && this.tones.length) return this.tones;
 
-    const fetchedResult = await this.fetchTones(this.tonesHash);
-    if(!fetchedResult) return this.tones; // not modified
+    if(this.fetchingTonesPromise) return this.fetchingTonesPromise;
 
-    this.tonesHash = fetchedResult.hash;
-    this.isStale = false;
+    return this.fetchingTonesPromise = (async() => {
+      const fetchedResult = await this.fetchTones(this.tonesHash);
+      if(!fetchedResult) return this.tones; // not modified
 
-    this.tonesMap.clear();
-    for(const tone of fetchedResult.tones) {
-      if(tone._ === 'aiComposeToneDefault') this.tonesMap.set(tone.tone, tone);
-      else if(tone._ === 'aiComposeTone') this.tonesMap.set(tone.id.toString(), tone);
-    }
+      this.tonesHash = fetchedResult.hash;
+      this.isStale = false;
 
-    return this.tones = fetchedResult.tones;
+      this.tonesMap.clear();
+      for(const tone of fetchedResult.tones) {
+        if(tone._ === 'aiComposeToneDefault') this.tonesMap.set(tone.tone, tone);
+        else if(tone._ === 'aiComposeTone') this.tonesMap.set(tone.id.toString(), tone);
+      }
+
+      return this.tones = fetchedResult.tones;
+    })();
   }
 
   protected async fetchTones(hash: number | string) {
-    // TODO: handle multiple requests at once
     const result = await this.apiManager.invokeApi('aicompose.getTones', {hash});
     if(result._ === 'aicompose.tonesNotModified') return;
 
