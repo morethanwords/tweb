@@ -1520,6 +1520,12 @@ export class AppMessagesManager extends AppManager {
   }
 
   public async sendFile(options: SendFileArgs) {
+    if(options.stars && options.isAnimated) {
+      // * paid media can only contain photos and plain videos, the server rejects
+      // * animated documents with EXTENDED_MEDIA_TYPE_INVALID — send the GIF as a silent video
+      options = {...options, isAnimated: false};
+    }
+
     let file = options.file;
     let {peerId} = options;
     peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
@@ -1619,7 +1625,7 @@ export class AppMessagesManager extends AppManager {
       message.media = media;
       message.uploadingFileName = uploadingFileName ? [uploadingFileName] : undefined;
 
-      if(options.stars) {
+      if(options.stars && !options.isGroupedItem) {
         message.media = this.generateOutgoingPaidMedia([message], options.stars);
       }
     }
@@ -1634,11 +1640,19 @@ export class AppMessagesManager extends AppManager {
 
     const upload = () => {
       if(isDocument) {
-        const inputMedia: InputMedia = {
+        let inputMedia: InputMedia = {
           _: 'inputMediaDocument',
           id: getDocumentInput(file as MyDocument),
           pFlags: pickKeys((media as MessageMedia.messageMediaDocument).pFlags, ['spoiler'])
         };
+
+        if(options.stars && !options.isGroupedItem) {
+          inputMedia = {
+            _: 'inputMediaPaidMedia',
+            extended_media: [inputMedia],
+            stars_amount: '' + options.stars
+          };
+        }
 
         sentDeferred.resolve(inputMedia);
       } else if(file instanceof File || file instanceof Blob) {
@@ -1709,7 +1723,10 @@ export class AppMessagesManager extends AppManager {
                   mime_type: fileType,
                   pFlags: {
                     force_file: actionName === 'sendMessageUploadDocumentAction' || undefined,
-                    spoiler: options.spoiler || undefined
+                    spoiler: options.spoiler || undefined,
+                    // * the server rejects a silent paid video without this flag
+                    // * (it classifies it as a GIF): EXTENDED_MEDIA_TYPE_INVALID
+                    nosound_video: (options.stars && attachType === 'video') || undefined
                     // nosound_video: options.noSound ? true : undefined
                   },
                   attributes
@@ -2177,6 +2194,7 @@ export class AppMessagesManager extends AppManager {
         useTempMediaId: isSingleMessageForAlbum,
         groupedMessage: isSingleMessageForAlbum && firstMessage,
         groupId,
+        stars: options.stars,
         processAfter,
         ...details
       };

@@ -16,7 +16,7 @@ import ImageStickerFrameByFrameRenderer from '@components/mediaEditor/finalRende
 import LottieStickerFrameByFrameRenderer from '@components/mediaEditor/finalRender/lottieStickerFrameByFrameRenderer';
 import {StickerFrameByFrameRenderer} from '@components/mediaEditor/finalRender/types';
 import VideoStickerFrameByFrameRenderer from '@components/mediaEditor/finalRender/videoStickerFrameByFrameRenderer';
-import calcCodecAndBitrate, {BITRATE_TARGET_FPS} from '@components/mediaEditor/finalRender/calcCodecAndBitrate';
+import createMp4VideoEncoder from '@components/mediaEditor/finalRender/createMp4VideoEncoder';
 import StickerType from '@config/stickerType';
 
 type Args = {
@@ -110,8 +110,8 @@ export default async function renderToVideoGIF({
     try {
       let maxFrames = 0;
 
-      const [{ArrayBufferTarget, Muxer}] = await raceCancel(Promise.all([
-        import('mp4-muxer'),
+      const [mp4Encoder] = await raceCancel(Promise.all([
+        createMp4VideoEncoder({width: scaledWidth, height: scaledHeight, frameRate: FRAMES_PER_SECOND}),
         ...scaledLayers.map(async(layer) => {
           if(!layer.sticker) return;
 
@@ -131,27 +131,7 @@ export default async function renderToVideoGIF({
       ]));
       throwIfCanceled();
 
-      const muxer = new Muxer({
-        target: new ArrayBufferTarget(),
-        video: {
-          codec: 'avc',
-          width: scaledWidth,
-          height: scaledHeight,
-          frameRate: FRAMES_PER_SECOND
-        },
-        fastStart: 'in-memory'
-      });
-
-      encoder = new VideoEncoder({
-        output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-        error: (e) => console.error(e)
-      });
-
-      encoder.configure({
-        width: scaledWidth,
-        height: scaledHeight,
-        ...calcCodecAndBitrate(scaledWidth, scaledHeight, BITRATE_TARGET_FPS)
-      });
+      encoder = mp4Encoder.encoder;
 
       for(let frameNo = 0; frameNo <= maxFrames; frameNo++) {
         throwIfCanceled();
@@ -162,13 +142,12 @@ export default async function renderToVideoGIF({
 
       await raceCancel(encoder.flush());
       throwIfCanceled();
-      muxer.finalize();
+      const blob = mp4Encoder.finalize();
 
       cleanup(encoder);
 
-      const {buffer} = muxer.target;
       resolve({
-        blob: new Blob([buffer], {type: 'video/mp4'}),
+        blob,
         hasSound: false
       });
     } catch(e) {

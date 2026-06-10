@@ -15,6 +15,8 @@ import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import MEDIA_MIME_TYPES_SUPPORTED from '@environment/mediaMimeTypesSupport';
 import getGifDuration from '@helpers/getGifDuration';
+import gifToVideo, {canConvertGifToVideo, canConvertGifToVideoSync} from '@helpers/gifToVideo';
+import noop from '@helpers/noop';
 import toHHMMSS from '@helpers/string/toHHMMSS';
 import replaceContent from '@helpers/dom/replaceContent';
 import createVideo from '@helpers/dom/createVideo';
@@ -50,7 +52,7 @@ import wrapDraft from '@components/wrappers/draft';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import {ChatType} from '@components/chat/chatType';
 import pause from '@helpers/schedulers/pause';
-import {Accessor, createMemo, createRoot, createSignal, Setter} from 'solid-js';
+import {Accessor, createMemo, createRoot, createSignal, Setter, Signal} from 'solid-js';
 import SelectedEffect from '@components/chat/selectedEffect';
 import PopupMakePaid from '@components/popups/makePaid';
 import paymentsWrapCurrencyAmount from '@helpers/paymentsWrapCurrencyAmount';
@@ -142,6 +144,9 @@ export default class PopupNewMedia extends PopupElement {
   private files: File[] = [];
   private gifDocument: MyDocument;
   private pendingEditResults = new WeakMap<File, MediaEditorFinalResult>;
+  private convertedGifs = new WeakMap<File, {file: File, width: number, height: number, duration: number}>;
+  private failedGifConversions = new WeakSet<File>;
+  private gifConversions = new Map<File, {promise: Promise<void>, progress: Signal<number>}>;
 
   constructor(
     private chat: Chat,
@@ -169,6 +174,7 @@ export default class PopupNewMedia extends PopupElement {
 
     this.animationGroup = 'NEW-MEDIA';
     this.gifDocument = gifDocument;
+    canConvertGifToVideo(); // warm up the memo for the sync reads
     // this.updateConfirmBtnContent(0);
     this.construct(willAttachType);
   }
@@ -464,8 +470,24 @@ export default class PopupNewMedia extends PopupElement {
     currentPopup = this;
   }
 
+  private canConvertGif(file: File) {
+    return canConvertGifToVideoSync() &&
+      file.size <= MAX_EDITABLE_VIDEO_SIZE &&
+      !this.failedGifConversions.has(file);
+  }
+
+  // * the server only allows photos and plain videos in paid media, so GIF files
+  // * are sent converted to silent videos — an unconvertible GIF can't be paid
+  private hasUnpayableGif() {
+    return !!this.gifDocument || this.files.some((file) => {
+      return getFileMimeType(file) === 'image/gif' &&
+        !this.convertedGifs.has(file) &&
+        !this.canConvertGif(file);
+    });
+  }
+
   private async canSendPaidMedia() {
-    if(this.isEditing()) return false;
+    if(this.isEditing() || this.hasUnpayableGif()) return false;
     return await this.managers.appPeersManager.isBroadcast(this.chat.peerId) &&
       !!(await this.managers.appProfileManager.getChannelFull(this.chat.peerId.toChatId())).pFlags.paid_media_allowed;
   }
@@ -473,6 +495,7 @@ export default class PopupNewMedia extends PopupElement {
   public willSendPaidMedia() {
     return this.willAttach.stars &&
       this.willAttach.type === 'media' &&
+      !this.hasUnpayableGif() &&
       this.willAttach.sendFileDetails.length <= 10;
   }
 
@@ -745,8 +768,14 @@ export default class PopupNewMedia extends PopupElement {
     if(toPush.length) {
       this.files.push(...toPush);
 
-      if(this.willSendPaidMedia() && this.files.length > 10) {
-        this.changeSpoilers(false);
+      if(this.willAttach.stars) {
+        if(this.hasUnpayableGif()) {
+          // * an unpayable GIF was added — drop the price visibly instead of
+          // * silently posting the priced media for free at send time
+          this.setPaidMedia(undefined);
+        } else if(this.files.length > 10) {
+          this.changeSpoilers(false);
+        }
       }
 
       this.attachFiles();
@@ -774,6 +803,10 @@ export default class PopupNewMedia extends PopupElement {
   }
 
   private async send(force = false) {
+    if(this.gifConversions.size) { // * the file to send doesn't exist yet
+      return;
+    }
+
     let {value: caption, entities} = getRichValueWithCaret(this.messageInputField.input, true, false);
     if(caption.length > this.captionLengthMax) {
       toastNew({langPackKey: 'Error.PreviewSender.CaptionTooLong'});
@@ -882,7 +915,7 @@ export default class PopupNewMedia extends PopupElement {
       const d: SendFileDetails[] = sendFileParams.map((params) => {
         return {
           ...params,
-          file: this.prepareEditedFileForSending(params) || params.scaledBlob || params.file,
+          file: this.prepareEditedFileForSending(params) || this.convertedGifs.get(params.file as File)?.file || params.scaledBlob || params.file,
           width: params.editResult?.width || params.width,
           height: params.editResult?.height || params.height,
           spoiler: willSendPaidMedia ? undefined : !!params.mediaSpoiler,
@@ -980,11 +1013,101 @@ export default class PopupNewMedia extends PopupElement {
     return scaledBlob && {url, blob: scaledBlob};
   }
 
+  // * the confirm button is locked while anything is still producing the file
+  // * to send — gif conversions and media-editor renders share it
+  private updateConfirmLock() {
+    const pendingEdit = this.willAttach.sendFileDetails.some((params) => params.editResult?.getResult() instanceof Promise);
+    (this.btnConfirmOnEnter as HTMLButtonElement).disabled = this.isMediaEditorOpen ||
+      pendingEdit ||
+      this.gifConversions.size > 0;
+  }
+
+  private mountItemProgress(itemDiv: HTMLElement, creationProgress: Signal<number>, promise: Promise<any>) {
+    const div = document.createElement('div');
+    const dispose = render(() => RenderProgressCircle({creationProgress}), div);
+    itemDiv.append(div);
+
+    promise.finally(() => {
+      div.remove();
+      dispose();
+    }).catch(noop);
+  }
+
+  private getGifConversion(file: File) {
+    let conversion = this.gifConversions.get(file);
+    if(!conversion) {
+      const progress = createSignal(0);
+      const promise = gifToVideo(file, progress[1]).then((converted) => {
+        this.convertedGifs.set(file, {
+          file: this.wrapMediaEditorBlobInFile(file, converted.blob, true),
+          width: converted.width,
+          height: converted.height,
+          duration: Math.ceil(converted.duration)
+        });
+      }, (err) => {
+        console.error('gif to video conversion error', err);
+        this.failedGifConversions.add(file);
+
+        if(!this.destroyed) {
+          toastNew({langPackKey: 'Error.AnError'});
+          if(this.willAttach.stars && this.hasUnpayableGif()) {
+            this.setPaidMedia(undefined);
+          }
+        }
+      }).finally(() => {
+        this.gifConversions.delete(file);
+
+        if(!this.destroyed) {
+          this.updateConfirmLock();
+          pause(0).then(() => this.attachFiles());
+        }
+      });
+
+      this.gifConversions.set(file, conversion = {promise, progress});
+      this.updateConfirmLock();
+    }
+
+    return conversion;
+  }
+
+  private async convertGifMedia(params: SendFileParams) {
+    const {itemDiv} = params;
+    const file = params.file as File;
+
+    const img = new Image();
+    itemDiv.append(img);
+    const url = params.objectURL = await apiManagerProxy.invoke('createObjectURL', file);
+    await renderImageFromUrlPromise(img, url);
+    params.width = img.naturalWidth;
+    params.height = img.naturalHeight;
+
+    const conversion = this.getGifConversion(file);
+    this.mountItemProgress(itemDiv, conversion.progress, conversion.promise);
+  }
+
   private async attachMedia(params: SendFileParams) {
     const {itemDiv} = params;
     itemDiv.classList.add('popup-item-media');
 
-    const file = params.file as File;
+    let file = params.file as File;
+
+    // * GIFs are converted to silent videos right away, so they can be edited and
+    // * priced (the server rejects animated documents in paid media). params.file
+    // * KEEPS the original — this.files lookups rely on its identity; the converted
+    // * file is rendered here and substituted at send time
+    if(getFileMimeType(file) === 'image/gif' && file.size <= MAX_EDITABLE_VIDEO_SIZE && !this.failedGifConversions.has(file)) {
+      const converted = this.convertedGifs.get(file);
+      if(converted) {
+        file = converted.file;
+        params.width = converted.width;
+        params.height = converted.height;
+        params.duration = converted.duration;
+        params.isAnimated = true;
+      } else if(await canConvertGifToVideo()) {
+        return this.convertGifMedia(params);
+      }
+    }
+
     const isVideo = getFileMimeType(file).startsWith('video/');
 
     const editResult = params.editResult;
@@ -1001,15 +1124,15 @@ export default class PopupNewMedia extends PopupElement {
       itemDiv.append(videoTime);
     }
 
+    function addGifLabel() {
+      if(!params.isAnimated) return;
+      const gifLabel = i18n('AttachGif');
+      gifLabel.classList.add('video-time');
+      itemDiv.append(gifLabel);
+    }
+
     if(editResult) {
       const result = editResult.getResult();
-
-      function addGifLabel() {
-        if(!params.isAnimated) return;
-        const gifLabel = i18n('AttachGif');
-        gifLabel.classList.add('video-time');
-        itemDiv.append(gifLabel);
-      }
 
       if(!(result instanceof Promise)) {
         if(editResult.isVideo) {
@@ -1023,11 +1146,8 @@ export default class PopupNewMedia extends PopupElement {
       } else {
         await putEditedImage(editResult.preview);
 
-        const div = document.createElement('div');
-        const dispose = render(() => RenderProgressCircle({creationProgress: editResult.creationProgress}), div);
-        itemDiv.append(div);
-
-        (this.btnConfirmOnEnter as HTMLButtonElement).disabled = true;
+        this.mountItemProgress(itemDiv, editResult.creationProgress, result);
+        this.updateConfirmLock();
 
         result.then(() => {
           pause(0).then(() => this.attachFiles());
@@ -1037,10 +1157,7 @@ export default class PopupNewMedia extends PopupElement {
 
           this.hideActiveActionsMenu();
         }).finally(() => {
-          div?.remove();
-          dispose();
-          (this.btnConfirmOnEnter as HTMLButtonElement).disabled = false;
-
+          this.updateConfirmLock();
           this.hideActiveActionsMenu();
         });
       }
@@ -1122,7 +1239,7 @@ export default class PopupNewMedia extends PopupElement {
       }
 
       const audioDecodedByteCount = (video as any).webkitAudioDecodedByteCount;
-      if(audioDecodedByteCount !== undefined) {
+      if(audioDecodedByteCount !== undefined && !params.isAnimated) {
         const noSound = !audioDecodedByteCount;
         params.isAnimated = canVideoBeAnimated({
           noSound,
@@ -1137,6 +1254,7 @@ export default class PopupNewMedia extends PopupElement {
         ...thumb
       };
 
+      addGifLabel();
       addVideoTime();
     } else {
       const img = new Image();
@@ -1226,8 +1344,7 @@ export default class PopupNewMedia extends PopupElement {
               editingMediaState: params.editResult?.editingMediaState,
               onClose: (hasGif) => {
                 this.isMediaEditorOpen = false;
-                if(!hasGif)
-                  (this.btnConfirmOnEnter as HTMLButtonElement).disabled = false;
+                if(!hasGif) this.updateConfirmLock();
               },
               canImageResultInGIF: !this.isEditingMediaFromAlbum() && canEditVideo
             });
@@ -1573,7 +1690,8 @@ export default class PopupNewMedia extends PopupElement {
     } else {
       let foundPhotos = 0, foundVideos = 0, foundFiles = 0;
       files.forEach((file) => {
-        if(file.type.startsWith('image/')) ++foundPhotos;
+        if(file.type === 'image/gif') ++foundVideos; // gifs are sent converted to videos
+        else if(file.type.startsWith('image/')) ++foundPhotos;
         else if(file.type.startsWith('video/')) ++foundVideos;
         else ++foundFiles;
       });
@@ -1642,7 +1760,8 @@ export default class PopupNewMedia extends PopupElement {
   private iterate(cb: (sendFileDetails: SendFileParams[]) => void) {
     const {sendFileDetails} = this.willAttach;
 
-    if(!this.willAttach.group || this.hasGif()) {
+    // * paid GIFs go out as plain videos, so they don't break the single paid album
+    if(!this.willAttach.group || (this.hasGif() && !this.willSendPaidMedia())) {
       sendFileDetails.forEach((p) => cb([p]));
       return;
     }
