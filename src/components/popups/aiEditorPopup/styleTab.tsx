@@ -26,7 +26,8 @@ export const StyleTab = () => {
   const [selectedTone, setSelectedTone] = createSignal<AiComposeTone>();
   const [runningAnimations, setRunningAnimations] = createSignal(0);
 
-  const {text: originalText, initialTones} = useContext(AiEditorPopupContext);
+  const context = useContext(AiEditorPopupContext);
+  const {text: originalText, initialTones} = context;
 
   // TODO: Handle errors
   const [tonesResource] = createResource(
@@ -44,6 +45,7 @@ export const StyleTab = () => {
   createComputed(() => {
     if(tonesResource.state !== 'ready') return;
     setTones(tonesResource());
+    context.initialTones = tonesResource();
   });
 
   useEdgeAutoScroll({

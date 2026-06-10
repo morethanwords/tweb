@@ -22,6 +22,8 @@ const AiEditorPopup = (props: AiEditorPopupProps) => {
 
   const contextValue: AiEditorPopupContextValue = {
     ...props,
+    /** Will get overriden if undefined once the tones are fetched */
+    initialTones: props.initialTones,
     onApply: (...args) => {
       props.onApply(...args);
       setShow(false);
