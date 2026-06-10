@@ -793,7 +793,15 @@ export class AppImManager extends EventListenerBase<{
 
       const canvases = Array.from(document.querySelectorAll('canvas')) as HTMLCanvasElement[];
       canvases.forEach((canvas) => {
-        const context = canvas.getContext('2d');
+        if(canvas.dataset.offscreen) { // control transferred to a worker - getContext would throw
+          return;
+        }
+
+        let context: CanvasRenderingContext2D;
+        try {
+          context = canvas.getContext('2d');
+        } catch(err) {}
+
         if(!context) {
           return;
         }
@@ -803,6 +811,8 @@ export class AppImManager extends EventListenerBase<{
         context.fillRect(0, 0, 1, 1);
         context.fillStyle = oldFillStyle;
       });
+
+      lottieLoader.nudgeOffscreenPlayers(); // same stale-composite insurance for worker-rendered canvases
     });
 
     setInterval(setAuthorized, ONE_DAY);

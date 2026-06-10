@@ -35,6 +35,7 @@ export interface AnimationItemWrapper {
   _autoplay?: boolean;
   loop: boolean | number;
   _loop?: boolean | number;
+  onPlaybackParamsMutated?: () => void;
   // onVisibilityChange?: (visible: boolean) => boolean;
 };
 
@@ -343,6 +344,7 @@ export class AnimationIntersector {
         changed = true;
         animation.autoplay = play ? animation._autoplay : false;
         animation.loop = play ? appSettings.stickers.loop && animation._loop : false;
+        animation.onPlaybackParamsMutated?.();
       }
     });
 
@@ -363,6 +365,7 @@ export class AnimationIntersector {
         // if(animation._autoplay && animation.autoplay !== animation._autoplay) {
         animation.autoplay = animation._autoplay;
         // }
+        animation.onPlaybackParamsMutated?.();
       }
     });
 

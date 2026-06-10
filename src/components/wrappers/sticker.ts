@@ -15,7 +15,7 @@ import makeError from '@helpers/makeError';
 import {makeMediaSize} from '@helpers/mediaSize';
 import mediaSizes from '@helpers/mediaSizes';
 import {Middleware} from '@helpers/middleware';
-import {isSavingLottiePreview, saveLottiePreview} from '@helpers/saveLottiePreview';
+import {isSavingLottiePreview, saveLottiePreview, saveLottiePreviewFromPlayer} from '@helpers/saveLottiePreview';
 import sequentialDom from '@helpers/sequentialDom';
 import {DocumentAttribute, PhotoSize, VideoSize} from '@layer';
 import appDownloadManager from '@lib/appDownloadManager';
@@ -78,7 +78,7 @@ const getThumbFromContainer = (container: HTMLElement) => {
   return element;
 };
 
-export default async function wrapSticker({doc, div, middleware, loadStickerMiddleware, lazyLoadQueue, exportLoad, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises, needFadeIn, needUpscale, skipRatio, static: asStatic, managers = rootScope.managers, fullThumb, isOut, noPremium, withLock, relativeEffect, loopEffect, isCustomEmoji, syncedVideo, liteModeKey, isEffect, textColor, scrollable, showPremiumInfo, useCache, initFrame, keepThumb}: {
+export default async function wrapSticker({doc, div, middleware, loadStickerMiddleware, lazyLoadQueue, exportLoad, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises, needFadeIn, needUpscale, skipRatio, static: asStatic, managers = rootScope.managers, fullThumb, isOut, noPremium, withLock, relativeEffect, loopEffect, isCustomEmoji, syncedVideo, liteModeKey, isEffect, textColor, scrollable, showPremiumInfo, useCache, initFrame, keepThumb, noOffscreen, compositorDelivery}: {
   doc: MyDocument,
   div: HTMLElement | HTMLElement[],
   middleware?: Middleware,
@@ -117,7 +117,9 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
   // Caller-managed thumb lifecycle: when true, wrapSticker doesn't auto-remove
   // the thumb after the media is appended, so the caller can keep it visible
   // underneath during a custom fade-in and remove it when finished.
-  keepThumb?: boolean
+  keepThumb?: boolean,
+  noOffscreen?: boolean,
+  compositorDelivery?: boolean
 }) {
   const options = arguments[0];
   div = toArray(div);
@@ -447,7 +449,9 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
         group,
         liteModeKey: liteModeKey || undefined,
         textColor: !isCustomEmoji ? readValue(textColor) : undefined,
-        initFrame
+        initFrame,
+        noOffscreen,
+        compositorDelivery
       });
 
       if(typeof(textColor) === 'function') {
@@ -469,8 +473,18 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
       // const deferred = deferredPromise<void>();
 
       const setLockColor = willHaveLock ? () => {
-        const lockUrl = locksUrls[doc.id] ??= computeLockColor(animation.canvas[0]);
-        (div as HTMLElement[]).forEach((div) => div.style.setProperty('--lock-url', `url(${lockUrl})`));
+        const apply = (lockUrl: string) => (div as HTMLElement[]).forEach((div) => div.style.setProperty('--lock-url', `url(${lockUrl})`));
+        const cached = locksUrls[doc.id];
+        if(cached) {
+          apply(cached);
+        } else if(animation.offscreen) {
+          animation.exportFrame().then(({frame}) => {
+            apply(locksUrls[doc.id] ??= computeLockColor(frame, animation.canvas[0]?.dpr));
+            frame.close?.();
+          }).catch(noop);
+        } else {
+          apply(locksUrls[doc.id] ??= computeLockColor(animation.canvas[0]));
+        }
       } : undefined;
 
       const onFirstFrame = (container: HTMLElement, canvas: HTMLCanvasElement) => {
@@ -512,9 +526,8 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
       };
 
       animation.addEventListener('firstFrame', () => {
-        const canvas = animation.canvas[0];
         if(withThumb !== false || isCustomEmoji) {
-          saveLottiePreview(doc, canvas, lottieCachedThumbToneIndex);
+          saveLottiePreviewFromPlayer(doc, animation, lottieCachedThumbToneIndex);
         }
 
         if(willHaveLock) {

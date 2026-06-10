@@ -1,20 +1,37 @@
 let outCanvas: HTMLCanvasElement,
-  outContext: CanvasRenderingContext2D;
+  outContext: CanvasRenderingContext2D,
+  srcCanvas: HTMLCanvasElement,
+  srcContext: CanvasRenderingContext2D;
 
 // https://github.com/telegramdesktop/tdesktop/blob/543bfab24a76402992421063f1e6444f347d31fe/Telegram/SourceFiles/boxes/sticker_set_box.cpp#L75
-export default function computeLockColor(canvas: HTMLCanvasElement) {
+export default function computeLockColor(source: HTMLCanvasElement | ImageBitmap, dpr?: number) {
   if(!outCanvas) {
     outCanvas = document.createElement('canvas');
     outContext = outCanvas.getContext('2d');
   }
 
-  const context = canvas.getContext('2d');
-  const size = 20 * (canvas.dpr ?? 1);
+  let context: CanvasRenderingContext2D;
+  if(source instanceof HTMLCanvasElement) {
+    context = source.getContext('2d');
+  } else {
+    if(!srcCanvas) {
+      srcCanvas = document.createElement('canvas');
+      srcContext = srcCanvas.getContext('2d');
+    }
+
+    srcCanvas.width = source.width;
+    srcCanvas.height = source.height;
+    srcContext.drawImage(source, 0, 0);
+    context = srcContext;
+  }
+
+  const effectiveDpr = dpr ?? (source as HTMLCanvasElement).dpr ?? 1;
+  const size = 20 * effectiveDpr;
   const width = size;
   const height = size;
-  const skipx = (canvas.width - width) / 2;
+  const skipx = (source.width - width) / 2;
   const margin = 0/*  * (canvas.dpr ?? 1) */;
-  const skipy = canvas.height - height - margin;
+  const skipy = source.height - height - margin;
   const imageData = context.getImageData(skipx, skipy, width, height).data;
   let sr = 0, sg = 0, sb = 0, sa = 0;
   for(let i = 0; i < imageData.length; i += 4) {

@@ -10,6 +10,7 @@ import makeError from '@helpers/makeError';
 import rootScope from '@lib/rootScope';
 import toArray from '@helpers/array/toArray';
 import rlottieMessagePort from '@lib/rlottie/rlottieMessagePort';
+import SHOULD_RENDER_OFFSCREEN from '@lib/rlottie/shouldRenderOffscreen';
 
 export type LottieAssetName =
   | 'EmptyFolder'
@@ -83,6 +84,12 @@ export class LottieLoader {
     return null;
   }
 
+  public nudgeOffscreenPlayers() {
+    for(const reqId in this.players) {
+      this.players[reqId].nudgePresent();
+    }
+  }
+
   public loadLottieWorkers() {
     if(this.loadPromise) {
       return this.loadPromise;
@@ -102,6 +109,13 @@ export class LottieLoader {
       },
       superMessagePort: rlottieMessagePort
     });
+
+    if(SHOULD_RENDER_OFFSCREEN) {
+      // hidden-tab belt: SharedWorker timers are NOT tab-throttled - fully pause free-run clocks while hidden
+      document.addEventListener('visibilitychange', () => {
+        rlottieMessagePort.suspendAllTabPlayers(document.hidden);
+      });
+    }
   }
 
   public makeAssetUrl(name: LottieAssetName) {
@@ -194,7 +208,15 @@ export class LottieLoader {
       );
       const players = this.playersByCacheName[cacheName];
       if(players?.size) {
-        return Promise.resolve(players.entries().next().value[0]);
+        for(const player of players) {
+          // a compositorDelivery request must match an 'emoji' player exactly, and a legacy sync
+          // consumer must never adopt an offscreen 'canvas' player (its renderFrame2 never feeds
+          // overrideRender - the consumer would stay permanently blank)
+          if(params.compositorDelivery ? player.offscreen === 'emoji' : !player.offscreen) {
+            return Promise.resolve(player);
+          }
+        }
+        // delivery-mismatched players only - fall through and create a matching one
       }
     }
 

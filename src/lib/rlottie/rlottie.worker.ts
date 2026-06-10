@@ -2,10 +2,11 @@ import CAN_USE_TRANSFERABLES from '@environment/canUseTransferables';
 import ctx from '@environment/ctx';
 import IS_IMAGE_BITMAP_SUPPORTED from '@environment/imageBitmapSupport';
 import readBlobAsText from '@helpers/blob/readBlobAsText';
+import applyColorOnContext from '@helpers/canvas/applyColorOnContext';
 import listenMessagePort from '@helpers/listenMessagePort';
 import makeError from '@helpers/makeError';
 import applyReplacements from '@lib/rlottie/applyReplacements';
-import rlottieMessagePort from '@lib/rlottie/rlottieMessagePort';
+import rlottieMessagePort, {RLottieOffscreenInit} from '@lib/rlottie/rlottieMessagePort';
 import SuperMessagePort from '@lib/superMessagePort';
 
 // * commented "module["exports"]=Module" because Firefox doesn't support modules in workers
@@ -15,6 +16,15 @@ var Module=typeof Module!=="undefined"?Module:{};var moduleOverrides={};var key;
 const DEFAULT_FPS = 60;
 
 type LottieHandlePointer = number;
+
+type WorkerFramesCacheEntry = {frames: Map<number, ImageBitmap>, refs: Set<number>};
+const framesCacheByName: Map<string, WorkerFramesCacheEntry> = new Map();
+
+const compositorPorts: Map<MessageEventSource, MessagePort> = new Map(); // tab source port -> compositor decode port
+
+const suspendedPorts: Set<MessageEventSource> = new Set(); // tabs that are hidden - their free-run clocks are stopped
+
+type RenderOffscreenResult = {frameNo: number, frame?: ImageBitmap} | SuperMessagePort.TransferableResult<{frameNo: number, frame?: ImageBitmap}>;
 
 export class RLottieItem {
   private stringOnWasmHeap: number;
@@ -27,6 +37,30 @@ export class RLottieItem {
 
   private imageData: ImageData;
 
+  public port: MessageEventSource;
+  public offscreen: boolean;
+  private canvases: OffscreenCanvas[];
+  private contexts: OffscreenCanvasRenderingContext2D[];
+  private cacheName: string;
+  private cachingDelta: number;
+  private color: string;
+  private delivery: {compositor?: boolean, ui?: boolean}; // used from the compositor phase
+  private stagedFrame: ImageBitmap;
+  private stagedFrameNo: number;
+  private stagedFrameInCache: boolean;
+
+  private freeRun: {
+    timeout: ReturnType<typeof setTimeout>,
+    frThen: number,
+    curFrame: number,
+    frInterval: number,
+    skipDelta: number,
+    direction: number,
+    minFrame: number,
+    maxFrame: number
+  };
+  private freeRunSuspended: boolean;
+
   constructor(
     private reqId: number,
     private width: number,
@@ -34,6 +68,28 @@ export class RLottieItem {
     private raw?: boolean/* ,
     private canvas: OffscreenCanvas */
   ) {
+  }
+
+  public initOffscreen(offscreen: RLottieOffscreenInit) {
+    this.offscreen = true;
+    this.canvases = offscreen.canvases;
+    // the UI cacheName is generated from pre-pixelRatio dimensions while this item renders at the
+    // scaled size; the cache is shared across tabs (SharedWorker pool) and tabs can differ in
+    // effective dpr - key by the scaled dimensions so a hit never serves a wrong-size bitmap
+    this.cacheName = offscreen.cacheName && `${offscreen.cacheName}-${this.width}x${this.height}`;
+    this.cachingDelta = offscreen.cachingDelta;
+    this.color = offscreen.color;
+    this.delivery = offscreen.delivery;
+    this.contexts = offscreen.canvases.map((canvas) => canvas.getContext('2d'));
+
+    if(this.cacheName) {
+      let entry = framesCacheByName.get(this.cacheName);
+      if(!entry) {
+        framesCacheByName.set(this.cacheName, entry = {frames: new Map(), refs: new Set()});
+      }
+
+      entry.refs.add(this.reqId);
+    }
   }
 
   public init(json: string, fps: number) {
@@ -127,11 +183,325 @@ export class RLottieItem {
     }
   }
 
+  public renderOffscreen(frameNo: number, withDelivery = true): RenderOffscreenResult | Promise<RenderOffscreenResult> {
+    if(this.dead || this.handle === undefined) {
+      throw makeError('ITEM_DESTROYED');
+    }
+
+    if(this.frameCount < frameNo || frameNo < 0) {
+      throw makeError('FRAME_OUT_OF_RANGE');
+    }
+
+    const entry = this.cacheName ? framesCacheByName.get(this.cacheName) : undefined;
+    const cachedBitmap = entry?.frames.get(frameNo);
+    if(cachedBitmap) {
+      this.stage(cachedBitmap, frameNo, true);
+      return withDelivery && this.delivery ? this.deliver(frameNo) : {frameNo};
+    }
+
+    try {
+      worker.Api.render(this.handle, frameNo);
+
+      const bufferPointer = worker.Api.buffer(this.handle);
+
+      const data = Module.HEAPU8.subarray(bufferPointer, bufferPointer + (this.width * this.height * 4));
+
+      this.imageData.data.set(data);
+      return createImageBitmap(this.imageData).then((bitmap) => {
+        if(this.dead) {
+          throw makeError('ITEM_DESTROYED');
+        }
+
+        let inCache = false;
+        if(entry && this.cachingDelta && (frameNo % this.cachingDelta || !frameNo)) { // today's exact UI cache write rule
+          entry.frames.set(frameNo, bitmap);
+          inCache = true;
+        }
+
+        this.stage(bitmap, frameNo, inCache);
+        return withDelivery && this.delivery ? this.deliver(frameNo) : {frameNo};
+      });
+    } catch(e) {
+      console.error('Render error:', e);
+      this.dead = true;
+      throw e;
+    }
+  }
+
+  // transfer-vs-cache rule: a cached bitmap must NEVER be transferred (it would detach
+  // for every other item sharing the cache) - ship a copy; an uncached staged bitmap
+  // transfers directly (emoji items have no canvases, nothing presents it)
+  private async deliver(frameNo: number): Promise<RenderOffscreenResult> {
+    const delivery = this.delivery;
+    const staged = this.stagedFrame;
+    const wantsCompositor = !!delivery?.compositor;
+    const wantsUi = !!delivery?.ui;
+    if((!wantsCompositor && !wantsUi) || !staged) {
+      return {frameNo};
+    }
+
+    const takeStaged = () => {
+      this.stagedFrame = undefined; // stagedFrameNo stays tracked (it is exportFrame's default)
+      return staged;
+    };
+
+    let uiFrame: ImageBitmap;
+    if(wantsUi) {
+      uiFrame = !this.stagedFrameInCache && !wantsCompositor ? takeStaged() : await createImageBitmap(staged);
+    }
+
+    if(wantsCompositor) {
+      const port = compositorPorts.get(this.port);
+      if(port) { // skip silently when the port is missing
+        const frame = !this.stagedFrameInCache && this.stagedFrame === staged ? takeStaged() : await createImageBitmap(staged);
+        port.postMessage({reqId: this.reqId, frame}, [frame]);
+      }
+    }
+
+    if(uiFrame) {
+      if(CAN_USE_TRANSFERABLES) {
+        return new SuperMessagePort.TransferableResult({frameNo, frame: uiFrame}, [uiFrame]);
+      }
+
+      return {frameNo, frame: uiFrame};
+    }
+
+    return {frameNo};
+  }
+
+  public setDelivery(delivery: {compositor?: boolean, ui?: boolean}) {
+    this.delivery = delivery;
+  }
+
+  private stage(bitmap: ImageBitmap, frameNo: number, inCache: boolean) {
+    const previous = this.stagedFrame;
+    if(previous && !this.stagedFrameInCache && previous !== bitmap) {
+      previous.close?.();
+    }
+
+    this.stagedFrame = bitmap;
+    this.stagedFrameNo = frameNo;
+    this.stagedFrameInCache = inCache;
+  }
+
+  public presentFrame() {
+    if(!this.stagedFrame) {
+      return;
+    }
+
+    this.contexts.forEach((context) => {
+      context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+      context.drawImage(this.stagedFrame, 0, 0);
+      if(this.color) {
+        applyColorOnContext(context, this.color, 0, 0, context.canvas.width, context.canvas.height);
+      }
+    });
+  }
+
+  public resizeCanvases(width: number, height: number) {
+    this.canvases.forEach((canvas) => {
+      canvas.width = width;
+      canvas.height = height;
+    });
+  }
+
+  public setColor(color: string, reTint: boolean) {
+    this.color = color;
+
+    if(reTint && color) {
+      this.contexts.forEach((context) => {
+        applyColorOnContext(context, color, 0, 0, context.canvas.width, context.canvas.height);
+      });
+    }
+  }
+
+  public async exportFrame(frameNo?: number) {
+    frameNo ??= this.stagedFrameNo ?? 0;
+
+    if(this.stagedFrameNo !== frameNo || !this.stagedFrame) {
+      await this.renderOffscreen(frameNo, false); // no delivery - the staged bitmap must survive for the export
+    }
+
+    const canvas = new OffscreenCanvas(this.width, this.height);
+    const context = canvas.getContext('2d');
+    context.drawImage(this.stagedFrame, 0, 0);
+    if(this.color) {
+      applyColorOnContext(context, this.color, 0, 0, canvas.width, canvas.height);
+    }
+
+    const frame = canvas.transferToImageBitmap();
+    if(CAN_USE_TRANSFERABLES) {
+      return new SuperMessagePort.TransferableResult({frameNo, frame}, [frame]);
+    }
+
+    return {frameNo, frame};
+  }
+
+  public clearFramesCache() {
+    if(this.cachingDelta === Infinity) {
+      return;
+    }
+
+    const entry = this.cacheName ? framesCacheByName.get(this.cacheName) : undefined;
+    if(!entry || entry.refs.size > 1) {
+      return;
+    }
+
+    for(const bitmap of entry.frames.values()) {
+      if(bitmap === this.stagedFrame) {
+        this.stagedFrameInCache = false; // closed on the next stage() replace
+        continue;
+      }
+
+      bitmap.close?.();
+    }
+
+    entry.frames.clear();
+  }
+
+  public playFreeRun(params: {curFrame: number, frInterval: number, skipDelta: number, direction: number, minFrame: number, maxFrame: number}) {
+    this.stopFreeRun();
+    this.freeRun = {...params, timeout: undefined, frThen: Date.now()};
+
+    if(suspendedPorts.has(this.port)) {
+      this.freeRunSuspended = true; // starts on resumeTab
+      return;
+    }
+
+    this.armFreeRun();
+  }
+
+  public pauseFreeRun() {
+    const curFrame = this.freeRun ? this.freeRun.curFrame : this.stagedFrameNo;
+    this.stopFreeRun();
+    return {curFrame};
+  }
+
+  public updateFreeRun(params: Partial<{frInterval: number, direction: number, minFrame: number, maxFrame: number}>) {
+    const freeRun = this.freeRun;
+    if(!freeRun) {
+      return;
+    }
+
+    for(const i in params) {
+      // @ts-ignore
+      if(params[i] !== undefined) {
+        // @ts-ignore
+        freeRun[i] = params[i];
+      }
+    }
+  }
+
+  public suspendFreeRun() {
+    const freeRun = this.freeRun;
+    if(!freeRun) {
+      return;
+    }
+
+    if(freeRun.timeout !== undefined) {
+      clearTimeout(freeRun.timeout);
+      freeRun.timeout = undefined;
+    }
+
+    this.freeRunSuspended = true;
+  }
+
+  public resumeFreeRun() {
+    const freeRun = this.freeRun;
+    if(!freeRun || !this.freeRunSuspended) {
+      return;
+    }
+
+    this.freeRunSuspended = false;
+    freeRun.frThen = Date.now(); // resnap the deadline past the suspension gap
+    this.armFreeRun();
+  }
+
+  public stopFreeRun() {
+    const freeRun = this.freeRun;
+    if(!freeRun) {
+      return;
+    }
+
+    if(freeRun.timeout !== undefined) {
+      clearTimeout(freeRun.timeout);
+    }
+
+    this.freeRun = undefined;
+    this.freeRunSuspended = false;
+  }
+
+  private armFreeRun() {
+    const freeRun = this.freeRun;
+    if(!freeRun || freeRun.timeout !== undefined) {
+      return;
+    }
+
+    const now = Date.now();
+    freeRun.frThen = Math.max(now, freeRun.frThen + freeRun.frInterval); // deadline-corrected cadence
+    freeRun.timeout = setTimeout(this.freeRunTick, freeRun.frThen - now);
+  }
+
+  private freeRunTick = async() => {
+    const freeRun = this.freeRun;
+    if(!freeRun || this.dead) {
+      return;
+    }
+
+    freeRun.timeout = undefined;
+
+    // mirrors mainLoopForwards/mainLoopBackwards with loop === true (only such players free-run)
+    const {curFrame, skipDelta, direction, minFrame, maxFrame} = freeRun;
+    const frame = direction === 1 ?
+      ((curFrame + skipDelta) > maxFrame ? minFrame : curFrame + skipDelta) :
+      ((curFrame - skipDelta) < minFrame ? maxFrame : curFrame - skipDelta);
+    freeRun.curFrame = frame;
+
+    try {
+      await this.renderOffscreen(frame); // posts to the compositor itself when delivery.compositor
+    } catch(err) {
+      this.stopFreeRun(); // render error - the item is dead
+      return;
+    }
+
+    if(this.dead || this.freeRun !== freeRun || this.freeRunSuspended) {
+      return;
+    }
+
+    this.presentFrame(); // no-op for emoji items (zero contexts) and when the staged frame was transferred
+    this.armFreeRun();
+  };
+
   public destroy() {
     this.dead = true;
+    this.stopFreeRun();
 
     if(this.handle !== undefined) {
       worker.Api.destroy(this.handle);
+    }
+
+    if(this.offscreen) {
+      if(this.cacheName) {
+        const entry = framesCacheByName.get(this.cacheName);
+        if(entry) {
+          entry.refs.delete(this.reqId);
+          if(!entry.refs.size) {
+            for(const bitmap of entry.frames.values()) {
+              bitmap.close?.();
+            }
+
+            entry.frames.clear();
+            framesCacheByName.delete(this.cacheName);
+          }
+        }
+      }
+
+      if(this.stagedFrame && !this.stagedFrameInCache) {
+        this.stagedFrame.close?.();
+      }
+
+      this.stagedFrame = undefined;
+      this.canvases = this.contexts = undefined;
     }
   }
 }
@@ -169,6 +539,16 @@ let readyPromise = new Promise<void>((resolve) => resolveReady = resolve);
 
 const items: {[reqId: string]: RLottieItem} = {};
 
+const destroyItem = (reqId: number | string) => {
+  const item = items[reqId];
+  if(!item) {
+    return;
+  }
+
+  item.destroy();
+  delete items[reqId];
+};
+
 rlottieMessagePort.addMultipleEventsListeners({
   terminate: () => {
     ctx.close();
@@ -178,8 +558,13 @@ rlottieMessagePort.addMultipleEventsListeners({
     rlottieMessagePort.attachPort(event.ports[0]);
   },
 
-  loadFromData: async({reqId, blob, width, height, toneIndex, raw}) => {
+  loadFromData: async({reqId, blob, width, height, toneIndex, raw, offscreen}, source) => {
     const item = items[reqId] = new RLottieItem(reqId, width, height, raw/* , canvas */);
+    item.port = source;
+    if(offscreen) {
+      item.initOffscreen(offscreen);
+    }
+
     let json = await readBlobAsText(blob);
 
     if(readyPromise) {
@@ -218,17 +603,118 @@ rlottieMessagePort.addMultipleEventsListeners({
   },
 
   destroy: ({reqId}) => {
+    destroyItem(reqId);
+  },
+
+  renderFrame: ({reqId, frameNo, clamped}) => {
+    const item = items[reqId];
+    return (item.offscreen ? item.renderOffscreen(frameNo) : item.render(frameNo, clamped)) as any;
+  },
+
+  presentFrame: async({reqId, frameNo}) => {
     const item = items[reqId];
     if(!item) {
       return;
     }
 
-    item.destroy();
-    delete items[reqId];
+    item.presentFrame();
+    return {frameNo};
   },
 
-  renderFrame: ({reqId, frameNo, clamped}) => {
-    return items[reqId].render(frameNo, clamped) as any;
+  resizeCanvases: ({reqId, width, height}) => {
+    const item = items[reqId];
+    if(!item) {
+      return;
+    }
+
+    item.resizeCanvases(width, height);
+  },
+
+  setColor: ({reqId, color, reTint}) => {
+    const item = items[reqId];
+    if(!item) {
+      return;
+    }
+
+    item.setColor(color, reTint);
+  },
+
+  exportFrame: ({reqId, frameNo}) => {
+    const item = items[reqId];
+    if(!item) {
+      return;
+    }
+
+    return item.exportFrame(frameNo) as any;
+  },
+
+  clearFramesCache: ({reqId}) => {
+    const item = items[reqId];
+    if(!item) {
+      return;
+    }
+
+    item.clearFramesCache();
+  },
+
+  setDelivery: ({reqId, compositor, ui}) => {
+    const item = items[reqId];
+    if(!item) {
+      return;
+    }
+
+    item.setDelivery({compositor, ui});
+  },
+
+  compositorPort: (_, source, event) => {
+    compositorPorts.set(source, event.ports[0]);
+  },
+
+  playFreeRun: ({reqId, curFrame, frInterval, skipDelta, direction, minFrame, maxFrame}) => {
+    const item = items[reqId];
+    if(!item) {
+      return;
+    }
+
+    item.playFreeRun({curFrame, frInterval, skipDelta, direction, minFrame, maxFrame});
+  },
+
+  pauseFreeRun: async({reqId}) => {
+    const item = items[reqId];
+    if(!item) {
+      return;
+    }
+
+    return item.pauseFreeRun();
+  },
+
+  updateFreeRun: ({reqId, ...params}) => {
+    const item = items[reqId];
+    if(!item) {
+      return;
+    }
+
+    item.updateFreeRun(params);
+  },
+
+  suspendTab: (_, source) => {
+    suspendedPorts.add(source);
+    for(const reqId in items) {
+      const item = items[reqId];
+      if(item.port === source) {
+        item.suspendFreeRun();
+      }
+    }
+  },
+
+  resumeTab: (_, source) => {
+    suspendedPorts.delete(source);
+    for(const reqId in items) {
+      const item = items[reqId];
+      if(item.port === source) {
+        item.resumeFreeRun();
+      }
+    }
   }
 });
 
@@ -236,4 +722,19 @@ if(typeof(MessageChannel) !== 'undefined') listenMessagePort(rlottieMessagePort,
   const channel = new MessageChannel();
   rlottieMessagePort.attachPort(channel.port1);
   rlottieMessagePort.invokeVoid('port', undefined, source, [channel.port2]);
+}, (source) => {
+  for(const reqId in items) {
+    const item = items[reqId];
+    if(item.port === source) {
+      destroyItem(reqId);
+    }
+  }
+
+  const compositorPort = compositorPorts.get(source);
+  if(compositorPort) {
+    compositorPort.close();
+    compositorPorts.delete(source);
+  }
+
+  suspendedPorts.delete(source);
 });
