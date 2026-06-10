@@ -72,6 +72,12 @@
 .tabContent {
   --content-padding-y: 0.5rem;
   --content-padding-x: 1rem;
+
+  --original-extra-height: 1.25rem;
+  --original-padding-bottom: 0.75rem;
+  --original-collapsed-height: calc(1lh + var(--original-extra-height));
+
+  position: relative;
 }
 
 .exit {
@@ -147,41 +153,52 @@
 }
 
 .originalContent {
-  --padding-block: 0.25rem;
-  --extra-height: 1.25rem;
-  padding: 0 var(--content-padding-x) 0.75rem;
+  padding: 0 var(--content-padding-x) var(--original-padding-bottom);
 
   position: relative;
 
-  height: var(--initial-height, auto);
-  overflow: hidden;
-
+  // The height never animates - when collapsible, the box always keeps the collapsed
+  // height, the rest of the layout space is given by .originalFakeHeight, and the
+  // overflowing text gets covered by the overlay (opacity only)
   &.collapsible {
-    transition: height 0.2s ease-in-out;
+    height: var(--original-collapsed-height);
   }
 
   &.collapsed {
-    height: calc(1lh + var(--extra-height));
+    pointer-events: none;
+  }
 
-    &::before {
-      content: "";
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: var(--extra-height);
-      background: linear-gradient(
-        to top,
-        var(--surface-color) 20%,
-        hsla(from var(--surface-color) h s l / 0.95) 60%,
-        hsla(from var(--surface-color) h s l / 0.9) 80%,
-        transparent
-      );
-    }
+  &.collapsed .originalOverlay {
+    opacity: 1;
   }
 }
 
+.originalOverlay {
+  position: absolute;
+  top: 1lh;
+  left: 0;
+  right: 0;
+  height: calc(var(--original-content-height, 0px) - 1lh + var(--original-padding-bottom));
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    hsla(from var(--surface-color) h s l / 0.9) calc(var(--original-extra-height) * 0.2),
+    hsla(from var(--surface-color) h s l / 0.95) calc(var(--original-extra-height) * 0.4),
+    var(--surface-color) var(--original-extra-height)
+  );
+
+  opacity: 0;
+  transition: opacity 0.2s ease-out;
+  pointer-events: none;
+}
+
+.originalFakeHeight {
+  height: calc(var(--original-content-height, 0px) + var(--original-padding-bottom) - var(--original-collapsed-height));
+}
+
 .divider {
+  position: relative;
+  background-color: var(--surface-color);
   border-top: 1px solid rgba(0, 0, 0, 0.1);
 
   :global(.night) & {
@@ -190,6 +207,9 @@
 }
 
 .resultHeader {
+  position: relative;
+  background-color: var(--surface-color);
+
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -227,11 +247,13 @@
 }
 
 .resultContent {
+  position: relative;
+  background-color: var(--surface-color);
   padding: 0.25rem var(--content-padding-x) var(--content-padding-y);
 }
 
-.resultScrollable {
-  max-height: 200px;
+.resultScrollable, .originalScrollable {
+  max-height: 160px;
 }
 
 .emojifyCheckbox {

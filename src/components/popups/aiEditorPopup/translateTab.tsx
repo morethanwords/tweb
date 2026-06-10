@@ -1,3 +1,4 @@
+import {AutoHeight} from '@components/autoHeight';
 import ripple from '@components/ripple';
 import {keepMe} from '@helpers/keepMe';
 import {I18nTsx} from '@helpers/solid/i18n';
@@ -5,7 +6,7 @@ import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {createSignal, useContext} from 'solid-js';
 import styles from './bodyContent.module.scss';
 import {AiEditorPopupContext, useAiEditorPopupContext} from './context';
-import {Divider, Original, Result} from './parts';
+import {Divider, Original, Result, useTransitionGroupWhenMeasured} from './parts';
 
 
 keepMe(ripple);
@@ -23,6 +24,8 @@ export const TranslateTab = (props: {
 
   const {text: originalText} = useContext(AiEditorPopupContext);
 
+  const {Wrapper, onMeasured} = useTransitionGroupWhenMeasured();
+
   const onLanguageClick = async() => {
     const lang = await pickLanguage(false);
     setLanguage(lang);
@@ -30,30 +33,32 @@ export const TranslateTab = (props: {
   };
 
   return (
-    <div class={styles.tabContent}>
-      <Original text={originalText} />
-      <Divider />
-      <Result
-        isAppearing={props.isAppearing}
-        overrideTitle={
-          <I18nTsx
-            class={styles.resultTitle}
-            key='AiEditor.TranslateTo'
-            args={[
-              <span class={styles.resultLanguage} use:ripple onClick={onLanguageClick}>
-                <I18nTsx key={`Language.${language()}`} />
-              </span>
-            ]}
-          />
-        }
-        emojify={emojify()}
-        onEmojify={() => setEmojify(!emojify())}
-        composeMessageWithAiArgs={{
-          text: originalText,
-          translateTo: language(),
-          emojify: emojify()
-        }}
-      />
-    </div>
+    <AutoHeight outerClass={styles.tabContent}>
+      <Wrapper>
+        <Original text={originalText} onMeasured={onMeasured} />
+        <Divider />
+        <Result
+          isAppearing={props.isAppearing}
+          overrideTitle={
+            <I18nTsx
+              class={styles.resultTitle}
+              key='AiEditor.TranslateTo'
+              args={[
+                <span class={styles.resultLanguage} use:ripple onClick={onLanguageClick}>
+                  <I18nTsx key={`Language.${language()}`} />
+                </span>
+              ]}
+            />
+          }
+          emojify={emojify()}
+          onEmojify={() => setEmojify(!emojify())}
+          composeMessageWithAiArgs={{
+            text: originalText,
+            translateTo: language(),
+            emojify: emojify()
+          }}
+        />
+      </Wrapper>
+    </AutoHeight>
   );
 };

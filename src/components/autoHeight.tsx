@@ -1,9 +1,10 @@
 import classNames from '@helpers/string/classNames';
-import {batch, createMemo, createSignal, JSX, mergeProps, onCleanup, onMount} from 'solid-js';
+import {batch, createMemo, createSignal, JSX, mergeProps, onCleanup, onMount, Ref} from 'solid-js';
 import styles from './autoHeight.module.scss';
 
 
 export const AutoHeight = (inProps: {
+  ref?: Ref<HTMLDivElement>;
   children: JSX.Element;
   duration?: number;
   overflowHidden?: boolean;
@@ -35,6 +36,7 @@ export const AutoHeight = (inProps: {
 
   return (
     <div
+      ref={props.ref}
       class={classNames(props.outerClass, styles.outer)}
       classList={{
         [styles.overflowHidden]: props.overflowHidden,

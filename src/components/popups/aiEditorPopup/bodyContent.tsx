@@ -52,16 +52,16 @@ export const AiEditorPopupBodyContent = () => {
             <Match when={activeTab() === TabKey.Translate}>
               {(_) => {
                 const isAppearing = useIsAppearing(hasTransition);
-                return <TranslateTab isAppearing={isAppearing()} />
+                return <div><TranslateTab isAppearing={isAppearing()} /></div>
               }}
             </Match>
             <Match when={activeTab() === TabKey.Style}>
-              <StyleTab />
+              <div><StyleTab /></div>
             </Match>
             <Match when={activeTab() === TabKey.Fix}>
               {(_) => {
                 const isAppearing = useIsAppearing(hasTransition);
-                return <FixTab isAppearing={isAppearing()} />
+                return <div><FixTab isAppearing={isAppearing()} /></div>
               }}
             </Match>
           </Switch>

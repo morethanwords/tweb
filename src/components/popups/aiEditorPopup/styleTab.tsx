@@ -1,8 +1,8 @@
+import {AutoHeight} from '@components/autoHeight';
 import Scrollable from '@components/scrollable2';
 import {Skeleton} from '@components/skeleton';
 import Space from '@components/space';
 import DEBUG from '@config/debug';
-import {HeightTransition} from '@helpers/solid/heightTransition';
 import {useEdgeAutoScroll} from '@helpers/solid/useEdgeAutoScroll';
 import {AiComposeTone} from '@layer';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
@@ -12,7 +12,7 @@ import {Transition, TransitionGroup} from 'solid-transition-group';
 import styles from './bodyContent.module.scss';
 import {AiEditorPopupContext} from './context';
 import showCreateTonePopup from './createTonePopup';
-import {CreateTone, Divider, Original, Result, Tone, useIsAppearing} from './parts';
+import {CreateTone, Divider, Original, Result, Tone} from './parts';
 
 
 const simulateDelay = DEBUG ? 400 : 0;
@@ -21,10 +21,11 @@ const simulateRandomDelay = DEBUG ? () => Math.floor(Math.random() * 1000) : 0;
 export const StyleTab = () => {
   const {rootScope} = useHotReloadGuard();
 
+  let autoHeightRef: HTMLDivElement;
+
   const [emojify, setEmojify] = createSignal(false);
   const [tonesListEl, setTonesListEl] = createSignal<HTMLDivElement>();
   const [selectedTone, setSelectedTone] = createSignal<AiComposeTone>();
-  const [runningAnimations, setRunningAnimations] = createSignal(0);
 
   const context = useContext(AiEditorPopupContext);
   const {text: originalText, initialTones} = context;
@@ -129,32 +130,30 @@ export const StyleTab = () => {
         </Transition>
       </div>
       <Space amount='1rem' />
-      <div class={styles.tabContent}>
-        <Original text={originalText} onEmojify={!emojify() && !selectedTone() ? () => setEmojify(true) : undefined} />
-        <HeightTransition onRunningAnimations={setRunningAnimations}>
+      <AutoHeight ref={autoHeightRef} outerClass={styles.tabContent}>
+        <TransitionGroup
+          name='fade-2'
+          moveClass='t-move-std'
+          onBeforeExit={el => {
+            if(!(el instanceof HTMLElement) || !autoHeightRef) return;
+            el.style.display = 'none';
+          }}
+        >
+          <Original text={originalText} onEmojify={!emojify() && !selectedTone() ? () => setEmojify(true) : undefined} />
           <Show when={emojify() || selectedTone()}>
-            {(_) => {
-              const isAppearing = useIsAppearing(() => runningAnimations() > 0);
-
-              return (
-                <div style={{overflow: 'hidden'}}>
-                  <Divider />
-                  <Result
-                    isAppearing={isAppearing()}
-                    emojify={emojify()}
-                    onEmojify={() => setEmojify(!emojify())}
-                    composeMessageWithAiArgs={{
-                      text: originalText,
-                      toneNameOrId: selectedToneSlugOrId(),
-                      emojify: emojify()
-                    }}
-                  />
-                </div>
-              );
-            }}
+            <Divider />
+            <Result
+              emojify={emojify()}
+              onEmojify={() => setEmojify(!emojify())}
+              composeMessageWithAiArgs={{
+                text: originalText,
+                toneNameOrId: selectedToneSlugOrId(),
+                emojify: emojify()
+              }}
+            />
           </Show>
-        </HeightTransition>
-      </div>
+        </TransitionGroup>
+      </AutoHeight>
     </div>
   );
 };

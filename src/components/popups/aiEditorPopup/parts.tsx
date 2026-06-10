@@ -1,4 +1,3 @@
-import {AutoHeight} from '@components/autoHeight';
 import {ButtonIconTsx} from '@components/buttonIconTsx';
 import EmojiDocumentIcon from '@components/emojiDocumentIcon';
 import {IconTsx} from '@components/iconTsx';
@@ -9,6 +8,7 @@ import {Skeleton} from '@components/skeleton';
 import {StaticCheckbox} from '@components/staticCheckbox';
 import deferredPromise from '@helpers/cancellablePromise';
 import {copyTextToClipboard} from '@helpers/clipboard';
+import createContextMenu from '@helpers/dom/createContextMenu';
 import {keepMe} from '@helpers/keepMe';
 import prepareTextWithEntitiesForCopying from '@helpers/prepareTextWithEntitiesForCopying';
 import pause from '@helpers/schedulers/pause';
@@ -21,12 +21,11 @@ import {AiComposeTone, TextWithEntities} from '@layer';
 import {ComposeMessageWithAiArgs, ComposeMessageWithAiResult} from '@lib/appManagers/aiTonesManager';
 import {LangPackKey} from '@lib/langPack';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {createComputed, createEffect, createMemo, createReaction, createResource, createSignal, For, JSX, Match, onCleanup, onMount, Show, Switch} from 'solid-js';
-import {Transition} from 'solid-transition-group';
+import {children, createComputed, createEffect, createMemo, createReaction, createResource, createSignal, For, JSX, Match, onCleanup, onMount, ParentProps, Show, Switch} from 'solid-js';
+import {Transition, TransitionGroup} from 'solid-transition-group';
 import styles from './bodyContent.module.scss';
 import {useAiEditorPopupContext} from './context';
 import showCreateTonePopup from './createTonePopup';
-import createContextMenu from '@helpers/dom/createContextMenu';
 
 
 keepMe(ripple);
@@ -66,6 +65,7 @@ const shouldBeCollapsibleFrom = 60;
 export const Original = (props: {
   text: TextWithEntities.textWithEntities;
   onEmojify?: () => void
+  onMeasured?: () => void
 }) => {
   const {wrapRichText} = useHotReloadGuard();
 
@@ -79,6 +79,7 @@ export const Original = (props: {
   const isActuallyCollapsed = createMemo(() => isCollapsed() && !props.onEmojify);
 
   let originalContentRef: HTMLDivElement;
+  let originalScrollableRef: HTMLDivElement;
 
   onMount(() => {
     if(!originalContentRef) return;
@@ -86,6 +87,7 @@ export const Original = (props: {
     const unobserve = observeResize(originalContentRef, () => {
       setOriginalContentHeight(originalContentRef.scrollHeight);
       setIsCollapsed(isCollapsible());
+      props.onMeasured?.();
       unobserve();
     });
 
@@ -104,6 +106,12 @@ export const Original = (props: {
       if(isCleaned()) return;
       setHasOnEmojifyRaffed(true);
     });
+  });
+
+  createEffect(() => {
+    if(!originalScrollableRef) return;
+    if(!isActuallyCollapsed()) return;
+    originalScrollableRef.scrollTo({top: 0});
   });
 
   return (
@@ -141,16 +149,26 @@ export const Original = (props: {
         </Transition>
       </div>
       <div
-        ref={originalContentRef}
         class={styles.originalContent}
         classList={{
-          [styles.collapsed]: isActuallyCollapsed(),
-          [styles.collapsible]: isActuallyCollapsible()
+          [styles.collapsible]: isCollapsible(),
+          [styles.collapsed]: isActuallyCollapsed()
         }}
-        style={{'--initial-height': originalContentHeight() + 'px'}}
+        style={{'--original-content-height': originalContentHeight() + 'px'}}
       >
-        <div class={styles.richText}>{wrapRichText(props.text.text, {entities: props.text.entities, middleware: createMiddleware().get()})}</div>
+        <div ref={originalContentRef} class={styles.richText}>
+          <Scrollable ref={originalScrollableRef} class={styles.originalScrollable} relative>
+            {wrapRichText(props.text.text, {entities: props.text.entities, middleware: createMiddleware().get()})}
+          </Scrollable>
+        </div>
+        <div class={styles.originalOverlay} />
       </div>
+      <Show when={isCollapsible() && !isActuallyCollapsed()}>
+        <div
+          class={styles.originalFakeHeight}
+          style={{'--original-content-height': originalContentHeight() + 'px'}}
+        />
+      </Show>
     </>
   );
 };
@@ -195,6 +213,7 @@ export const Result = (props: {
     if(cached) return cached;
 
     // return (async() => {
+    // Don't forget about appearDeferred
     //   const result = await rootScope.managers.aiTonesManager.composeMessageWithAi(args);
     //   const key = getCachedComposedMessageKey(args);
     //   if(key) cachedComposedMessages.set(key, result);
@@ -215,14 +234,6 @@ export const Result = (props: {
     })();
   }, {
     initialValue: getCachedComposedMessage(props.composeMessageWithAiArgs)
-  });
-
-  const [hasTransition, setHasTransition] = createSignal(false);
-
-  onMount(() => {
-    requestRAF(() => {
-      setHasTransition(true);
-    });
   });
 
   createComputed(() => {
@@ -271,17 +282,15 @@ export const Result = (props: {
         </Show>
       </div>
       <div class={styles.resultContent}>
-        <AutoHeight hasTransition={hasTransition()}>
-          <Transition name='fade-2' mode='outin'>
-            <Show when={composedMessage.state === 'ready' && composedMessage()} keyed fallback={<ResultSkeleton />}>
-              {(message) => (
-                <Scrollable relative class={classNames(styles.resultScrollable, styles.richText)}>
-                  {wrapRichText(message.resultText.text, {entities: message.resultText.entities, middleware: createMiddleware().get()})}
-                </Scrollable>
-              )}
-            </Show>
-          </Transition>
-        </AutoHeight>
+        <Transition name='fade-2' mode='outin'>
+          <Show when={composedMessage.state === 'ready' && composedMessage()} keyed fallback={<ResultSkeleton />}>
+            {(message) => (
+              <Scrollable relative class={classNames(styles.resultScrollable, styles.richText)}>
+                {wrapRichText(message.resultText.text, {entities: message.resultText.entities, middleware: createMiddleware().get()})}
+              </Scrollable>
+            )}
+          </Show>
+        </Transition>
       </div>
     </>
   );
@@ -415,4 +424,31 @@ export const useIsAppearing = (hasAnimation: () => boolean) => {
   });
 
   return isAppearing;
+};
+
+export const useTransitionGroupWhenMeasured = () => {
+  const [measured, setMeasured] = createSignal(false);
+
+  const Wrapper = (props: ParentProps) => {
+    const resolved = children(() => props.children);
+    return (
+      <Show when={measured()} fallback={resolved()}>
+        <TransitionGroup
+          name='fade-2'
+          moveClass='t-move-std'
+          onBeforeExit={el => {
+            if(!(el instanceof HTMLElement)) return;
+            el.style.display = 'none';
+          }}
+        >
+          {resolved()}
+        </TransitionGroup>
+      </Show>
+    );
+  };
+
+  return {
+    Wrapper,
+    onMeasured: () => setMeasured(true)
+  }
 };
