@@ -202,7 +202,8 @@ export default class PeerTitle {
           ...this.options as Required<PeerTitleOptions>,
           peerId,
           threadId,
-          plainText: true
+          plainText: true,
+          limitSymbols: undefined
         })
       ]);
 
