@@ -14,7 +14,7 @@ import {AppNewChannelTab} from '@components/solidJsTabs/tabs';
 import {AppContactsTab} from '@components/solidJsTabs/tabs';
 import {AppArchivedTab} from '@components/solidJsTabs/tabs';
 import createNewGroupTab from '@components/sidebarLeft/tabs/createNewGroupTab';
-import I18n, {i18n} from '@lib/langPack';
+import I18n, {i18n, joinElementsWith} from '@lib/langPack';
 import ButtonMenu, {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import {IS_APPLE, IS_MOBILE_SAFARI} from '@environment/userAgent';
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
@@ -31,6 +31,7 @@ import noop from '@helpers/noop';
 import ripple from '@components/ripple';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import ListenerSetter from '@helpers/listenerSetter';
+import {formatPhoneNumber} from '@helpers/formatPhoneNumber';
 import formatNumber from '@helpers/number/formatNumber';
 import replaceContent from '@helpers/dom/replaceContent';
 import {AppManagers} from '@lib/managers';
@@ -177,12 +178,21 @@ export class AppSidebarLeft extends SidebarSlider {
       onUpdate: async(element) => {
         const user = await this.managers.appUsersManager.getUser(element.id);
         const status = getUserStatusString(user);
-        replaceContent(element.dom.lastMessageSpan, status);
+        
+        const content: (string | Node)[] = [];
         if (user.phone) {
-          element.dom.lastMessageSpan.setAttribute('data-phone', '+' + user.phone);
-        } else {
-          element.dom.lastMessageSpan.removeAttribute('data-phone');
+          const phoneSpan = document.createElement('div');
+          phoneSpan.className = 'wartelpas-phone';
+          phoneSpan.innerText = '+' + formatPhoneNumber(user.phone).formatted;
+          content.push(phoneSpan);
         }
+        
+        const statusSpan = document.createElement('div');
+        statusSpan.className = 'wartelpas-status';
+        statusSpan.append(status);
+        content.push(statusSpan);
+
+        element.dom.lastMessageSpan.replaceChildren(...content);
       }
     });
     this.contactsList.list.classList.add('wartelpas-contacts');

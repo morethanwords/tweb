@@ -154,8 +154,8 @@
 
   .chatlist, .wartelpas-contacts {
     display: grid !important;
-    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-    gap: 3rem;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
     padding: 0 4rem 8rem !important;
     background: transparent !important;
     margin: 0 auto !important;
@@ -171,14 +171,15 @@
         display: none !important;
       }
       background-color: #161616 !important;
-      border-radius: 60px !important;
-      padding: 2.5rem !important;
-      height: 280px !important;
+      border-radius: 20px !important;
+      padding: 1.5rem !important;
+      height: auto !important; /* Allow height to grow based on content */
+      min-height: 180px !important;
       display: flex !important;
       flex-direction: column !important;
       align-items: center !important;
       justify-content: center !important;
-      border: 2px solid #222 !important;
+      border: 1px solid #333 !important;
       transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
       position: relative;
       margin: 0 !important;
@@ -186,45 +187,47 @@
       cursor: pointer;
 
       &:hover {
-        transform: translateY(-12px) scale(1.03);
+        transform: translateY(-8px) scale(1.02);
         background-color: #1c1c1c !important;
         border-color: #9d8aff !important;
-        box-shadow: 0 30px 70px rgba(0,0,0,0.7), 0 0 30px rgba(157, 138, 255, 0.2) !important;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.6), 0 0 20px rgba(157, 138, 255, 0.15) !important;
       }
 
       .row-row {
+        display: flex !important;
         flex-direction: column !important;
         width: 100%;
-        height: 100%;
+        height: auto;
         padding: 0 !important;
         align-items: center !important;
         justify-content: center !important;
+        gap: 0.8rem !important;
       }
 
       .dialog-avatar {
-        margin: 0 0 2rem 0 !important;
-        width: 120px !important;
-        height: 120px !important;
+        margin: 0 0 0.5rem 0 !important;
+        width: 80px !important;
+        height: 80px !important;
         flex: 0 0 auto !important;
 
         .avatar-element {
-          width: 120px !important;
-          height: 120px !important;
+          width: 80px !important;
+          height: 80px !important;
           border-radius: 50% !important;
-          box-shadow: 0 8px 20px rgba(0,0,0,0.5) !important;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
         }
 
         canvas, img {
-          width: 120px !important;
-          height: 120px !important;
+          width: 80px !important;
+          height: 80px !important;
         }
 
         &.is-online:after {
-          width: 24px !important;
-          height: 24px !important;
-          bottom: 4px !important;
-          right: 4px !important;
-          border-width: 4px !important;
+          width: 16px !important;
+          height: 16px !important;
+          bottom: 2px !important;
+          right: 2px !important;
+          border-width: 3px !important;
           border-color: #161616 !important;
         }
       }
@@ -237,26 +240,34 @@
 
         .user-title {
           justify-content: center !important;
-          font-size: 1.8rem !important;
+          font-size: 1.4rem !important;
           font-weight: 700 !important;
           color: #fff !important;
-          // Font based on the gothic look in user screenshot
           font-family: "Lucida Handwriting", "Courier New", cursive, serif;
           letter-spacing: 1px;
         }
       }
 
       .dialog-subtitle {
-        margin-top: 1rem !important;
+        margin: 0 !important;
         text-align: center !important;
         width: 100% !important;
+        display: flex !important;
+        justify-content: center !important;
         
         .user-last-message {
-          color: #777 !important;
-          font-size: 1.1rem !important;
+          color: #999 !important;
+          font-size: 0.95rem !important;
           justify-content: center !important;
+          align-items: center !important;
           display: flex !important;
+          flex-direction: column !important;
+          gap: 0.3rem !important;
           font-family: sans-serif !important;
+          white-space: normal !important; /* Allow wrapping */
+          overflow: visible !important;
+          text-overflow: clip !important;
+          line-height: 1.4;
         }
       }
 

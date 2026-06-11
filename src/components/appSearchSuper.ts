@@ -9,7 +9,7 @@ import {putPreloader} from '@components/putPreloader';
 import ripple from '@components/ripple';
 import Scrollable, {ScrollableX} from '@components/scrollable';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise} from '@hooks/useHeavyAnimationCheck';
-import I18n, {LangPackKey, i18n, join} from '@lib/langPack';
+import I18n, {LangPackKey, i18n, join, joinElementsWith} from '@lib/langPack';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import {getMiddleware, Middleware, MiddlewareHelper} from '@helpers/middleware';
 import {BotMenuButton, ChannelParticipant, Chat, ChatFull, ChatParticipant, ChatParticipants, Document, Message, MessageMedia, MessagesChats, MessagesFilter, Peer, Photo, StoryItem, Update, User, UserFull, WebPage} from '@layer';
@@ -1298,29 +1298,27 @@ export default class AppSearchSuper {
           dom.lastMessageSpan.append(i18n('Presence.YourChat'));
         } else {
           let username = await this.managers.appPeersManager.getPeerUsername(peerId);
-          if(!username) {
-            const user = await this.managers.appUsersManager.getUser(peerId);
-            if(user?.phone) {
-              username = '+' + formatPhoneNumber(user.phone).formatted;
-            }
-          } else {
+          let phoneNumber = '';
+          
+          const user = peerId.isUser() ? await this.managers.appUsersManager.getUser(peerId.toUserId()) : undefined;
+          if(user?.phone) {
+            phoneNumber = '+' + formatPhoneNumber(user.phone).formatted;
+          }
+
+          if(username) {
             username = '@' + username;
           }
 
-          // if(query) {
-          //   const regExp = new RegExp(`(${escapeRegExp(query)}|${escapeRegExp(cleanSearchText(query))})`, 'gi');
-          //   dom.titleSpan.innerHTML = dom.titleSpan.innerHTML.replace(regExp, '<i>$1</i>');
-          // }
-
           const toJoin: (Node | string)[] = [
-            username
+            username,
+            phoneNumber
           ];
 
-          if(/* showMembersCount &&  */((peer as Chat.channel).participants_count || (peer as any).participants)) {
+          if(((peer as Chat.channel).participants_count || (peer as any).participants)) {
             toJoin.push(await getChatMembersString(peerId.toChatId()));
           }
 
-          dom.lastMessageSpan.append(...join(toJoin.filter(Boolean), false));
+          dom.lastMessageSpan.append(...joinElementsWith(toJoin.filter(Boolean), ' • '));
         }
       }
 
@@ -1335,7 +1333,7 @@ export default class AppSearchSuper {
           const {dom} = appDialogsManager.addDialogNew({
             peerId: peerId,
             container: group.list,
-            avatarSize: 'abitbigger',
+            avatarSize: 'bigger',
             autonomous: group.autonomous,
             wrapOptions: {
               middleware
@@ -1378,7 +1376,7 @@ export default class AppSearchSuper {
               peerId: peer.peer,
               container: this.searchGroups.globalContacts.list,
               append: false,
-              avatarSize: 'abitbigger',
+              avatarSize: 'bigger',
               autonomous: this.searchGroups.globalContacts.autonomous,
               wrapOptions: {
                 middleware
@@ -1465,7 +1463,7 @@ export default class AppSearchSuper {
                 peerId: peerId,
                 container: false,
                 meAsSaved: true,
-                avatarSize: 'abitbigger',
+                avatarSize: 'bigger',
                 autonomous: true,
                 wrapOptions: {
                   middleware: middlewareHelper.get()
@@ -1810,7 +1808,7 @@ export default class AppSearchSuper {
         const {dom} = appDialogsManager.addDialogNew({
           peerId: chat.id.toPeerId(true),
           container: chatlist,
-          avatarSize: 'abitbigger',
+          avatarSize: 'bigger',
           autonomous: false,
           wrapOptions: {
             middleware
@@ -1945,7 +1943,7 @@ export default class AppSearchSuper {
       const {dom} = appDialogsManager.addDialogNew({
         peerId,
         container: group.list,
-        avatarSize: 'abitbigger',
+        avatarSize: 'bigger',
         wrapOptions: {
           middleware
         }

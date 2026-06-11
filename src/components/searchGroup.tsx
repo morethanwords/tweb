@@ -93,7 +93,7 @@ export function createSearchGroup(options: {
         scrollableX && 'search-group-with-scroll'
       )}
       ref={(ref) => container = ref}
-      innerClass="search-group-inner"
+      innerClass="search-group-inner pt-10"
       contentProps={{
         class: 'search-group-content'
       }}
