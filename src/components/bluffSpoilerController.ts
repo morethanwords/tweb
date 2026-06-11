@@ -2,6 +2,7 @@ import {MOUNT_CLASS_TO} from '@config/debug';
 import {logger} from '@lib/logger';
 
 import animationIntersector from '@components/animationIntersector';
+import type {BluffSpoilerSimInitMessage} from '@components/bluffSpoilerMask.worker';
 
 export default class BluffSpoilerController {
   private static log = logger('bluff-spoiler');
@@ -14,6 +15,10 @@ export default class BluffSpoilerController {
   private static lastDrawTime: number = 0;
   private static DRAW_INTERVAL = 4 * (1000 / 60); // Once in 4 frames (considering 60fps) to avoid performance issues
 
+  private static workerSimSupported: boolean;
+  private static workerSimInited = false;
+  private static activeElements = new Set<HTMLElement>();
+
   private static reconnectIntervalId: number;
   private static allWeakRefs: WeakRef<HTMLElement>[] = [];
   private static reconnectCallbacks = new WeakMap<HTMLElement, (el: HTMLElement) => void>();
@@ -23,15 +28,50 @@ export default class BluffSpoilerController {
 
   public static draw(element: HTMLElement, canvas: HTMLCanvasElement) {
     this.encodeMaskFrame(canvas);
+    this.applyMask(element);
+  }
 
-    // The mask is a group effect masking the whole subtree, so one inline update on
-    // the wrapper is enough — the style invalidation is scoped to this very element
-    // (a global rule update would make the browser walk the whole document on every frame)
+  /**
+   * The mask is a group effect masking the whole subtree, so one inline update on
+   * the wrapper is enough — the style invalidation is scoped to this very element
+   * (a global rule update would make the browser walk the whole document on every frame)
+   */
+  private static applyMask(element: HTMLElement) {
     const url = this.latestMaskURL;
     if(url && this.appliedMaskURLs.get(element) !== url) {
       this.appliedMaskURLs.set(element, url);
       element.style.setProperty(this.maskProperty, `url(${url})`);
       element.classList.add('is-visible');
+    }
+  }
+
+  public static isWorkerSimSupported() {
+    return this.workerSimSupported ??= typeof(OffscreenCanvas) !== 'undefined' && !!new OffscreenCanvas(1, 1).getContext('webgl2');
+  }
+
+  public static setupWorkerSim(options: Omit<BluffSpoilerSimInitMessage, 'type'>) {
+    if(this.workerSimInited) return;
+    this.workerSimInited = true;
+
+    this.log('Initializing the worker simulation');
+    const worker = this.getEncoderWorker();
+    if(worker) worker.postMessage({type: 'init', ...options});
+  }
+
+  public static activate(element: HTMLElement) {
+    this.activeElements.add(element);
+    this.applyMask(element);
+
+    const worker = this.getEncoderWorker();
+    if(worker) worker.postMessage({type: 'play'});
+  }
+
+  public static deactivate(element: HTMLElement) {
+    this.activeElements.delete(element);
+
+    if(!this.activeElements.size) {
+      const worker = this.getEncoderWorker();
+      if(worker) worker.postMessage({type: 'pause'});
     }
   }
 
@@ -81,6 +121,7 @@ export default class BluffSpoilerController {
     if(!maskURL || !this.instancesCount) return;
 
     this.latestMaskURL = maskURL;
+    this.activeElements.forEach((element) => this.applyMask(element));
   }
 
   /**
@@ -127,6 +168,8 @@ export default class BluffSpoilerController {
 
   public static destroy() {
     this.latestMaskURL = undefined;
+    this.activeElements.clear();
+    this.workerSimInited = false;
 
     if(this.encoderWorker) {
       this.encoderWorker.terminate();
