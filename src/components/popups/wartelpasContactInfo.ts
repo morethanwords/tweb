@@ -5,6 +5,7 @@ import apiManagerProxy from '@lib/apiManagerProxy';
 import getUserStatusString from '@components/wrappers/getUserStatusString';
 import rootScope from '@lib/rootScope';
 import getPeerTitle from '@components/wrappers/getPeerTitle';
+import {formatPhoneNumber} from '@helpers/formatPhoneNumber';
 
 export default class WartelpasContactInfo extends PopupPeer {
   constructor(peerId: PeerId) {
@@ -30,13 +31,6 @@ export default class WartelpasContactInfo extends PopupPeer {
           callback: () => {
             appImManager.callUser(userId, 'video');
           }
-        },
-        {
-          langKey: 'OpenChat',
-          iconLeft: 'comments',
-          callback: () => {
-            appImManager.setPeer({peerId});
-          }
         }
       ]
     });
@@ -48,7 +42,7 @@ export default class WartelpasContactInfo extends PopupPeer {
     if (user.phone) {
       const phoneEl = document.createElement('div');
       phoneEl.className = 'popup-contact-phone';
-      phoneEl.innerText = '+' + user.phone;
+      phoneEl.innerText = '+' + formatPhoneNumber(user.phone).formatted;
       this.description.after(phoneEl);
     }
   }

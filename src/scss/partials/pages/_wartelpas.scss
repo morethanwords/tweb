@@ -172,74 +172,85 @@
       }
       background-color: #161616 !important;
       border-radius: 20px !important;
-      padding: 1.5rem !important;
-      height: auto !important; /* Allow height to grow based on content */
-      min-height: 180px !important;
+      padding: 0 !important; /* Full bleed for avatar */
+      height: 120px !important;
+      min-height: 120px !important;
       display: flex !important;
-      flex-direction: column !important;
+      flex-direction: row !important;
       align-items: center !important;
-      justify-content: center !important;
       border: 1px solid #333 !important;
       transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
       position: relative;
       margin: 0 !important;
       box-shadow: 0 10px 30px rgba(0,0,0,0.3) !important;
       cursor: pointer;
+      overflow: hidden !important; /* For full-height avatar corner rounding */
 
       &:hover {
-        transform: translateY(-8px) scale(1.02);
+        transform: translateY(-4px) scale(1.02);
         background-color: #1c1c1c !important;
         border-color: #9d8aff !important;
         box-shadow: 0 20px 50px rgba(0,0,0,0.6), 0 0 20px rgba(157, 138, 255, 0.15) !important;
       }
 
-      .row-row {
-        display: flex !important;
-        flex-direction: column !important;
-        width: 100%;
-        height: auto;
-        padding: 0 !important;
-        align-items: center !important;
-        justify-content: center !important;
-        gap: 0.8rem !important;
-      }
-
       .dialog-avatar {
-        margin: 0 0 0.5rem 0 !important;
-        width: 80px !important;
-        height: 80px !important;
+        margin: 0 !important;
+        width: 120px !important;
+        height: 100% !important;
         flex: 0 0 auto !important;
+        border-radius: 0 !important; /* Force square for the container */
 
-        .avatar-element {
-          width: 80px !important;
-          height: 80px !important;
-          border-radius: 50% !important;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
+        &.avatar-element, .avatar-element {
+          width: 100% !important;
+          height: 100% !important;
+          border-radius: 0 !important;
+          box-shadow: none !important;
         }
 
         canvas, img {
-          width: 80px !important;
-          height: 80px !important;
+          width: 100% !important;
+          height: 100% !important;
+          border-radius: 0 !important;
+          object-fit: cover !important;
         }
 
         &.is-online:after {
-          width: 16px !important;
-          height: 16px !important;
-          bottom: 2px !important;
-          right: 2px !important;
-          border-width: 3px !important;
+          width: 14px !important;
+          height: 14px !important;
+          bottom: 8px !important;
+          right: 8px !important;
+          border-width: 2px !important;
           border-color: #161616 !important;
+          z-index: 2;
         }
+      }
+
+      .row-row, .dialog-title-details {
+         display: none !important;
+      }
+
+      .row-title-row {
+         position: absolute;
+         left: 140px; /* 120px avatar + 20px gap */
+         top: 25px;
+         right: 15px;
+      }
+
+      .row-subtitle-row {
+         position: absolute;
+         left: 140px;
+         top: 60px;
+         right: 15px;
       }
 
       .dialog-title {
         margin: 0 !important;
         padding: 0 !important;
-        text-align: center !important;
+        text-align: left !important;
         width: 100% !important;
 
         .user-title {
-          justify-content: center !important;
+          justify-content: flex-start !important;
           font-size: 1.4rem !important;
           font-weight: 700 !important;
           color: #fff !important;
@@ -250,21 +261,22 @@
 
       .dialog-subtitle {
         margin: 0 !important;
-        text-align: center !important;
+        padding: 0 !important;
+        text-align: left !important;
         width: 100% !important;
         display: flex !important;
-        justify-content: center !important;
+        justify-content: flex-start !important;
         
         .user-last-message {
           color: #999 !important;
           font-size: 0.95rem !important;
-          justify-content: center !important;
-          align-items: center !important;
+          justify-content: flex-start !important;
+          align-items: flex-start !important;
           display: flex !important;
           flex-direction: column !important;
           gap: 0.3rem !important;
           font-family: sans-serif !important;
-          white-space: normal !important; /* Allow wrapping */
+          white-space: normal !important;
           overflow: visible !important;
           text-overflow: clip !important;
           line-height: 1.4;
@@ -272,7 +284,6 @@
       }
 
       // Hide all standard Telegram elements
-      .dialog-title-details, 
       .message-time, 
       .message-status, 
       .dialog-subtitle-badge,
@@ -307,21 +318,27 @@
   .popup-container {
     width: 100%;
     max-width: 440px;
-    border-radius: 40px !important;
-    background-color: #1a1a1a !important;
-    padding: 2rem !important;
+    border-radius: 32px !important;
+    background: rgba(22, 22, 22, 0.85) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    padding: 2.5rem 2rem !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
   }
 
   .popup-header {
     flex-direction: column !important;
     align-items: center !important;
-    padding: 1rem 0 !important;
+    padding: 0 0 1rem 0 !important;
     
     .avatar-element {
-      width: 120px !important;
-      height: 120px !important;
+      width: 110px !important;
+      height: 110px !important;
       margin-bottom: 1.5rem !important;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important;
+      border-radius: 50% !important;
+      border: 3px solid rgba(157, 138, 255, 0.3) !important;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4), 0 0 20px rgba(157, 138, 255, 0.15) !important;
     }
 
     .popup-title {
@@ -330,48 +347,64 @@
       color: #fff !important;
       text-align: center !important;
       font-family: "Lucida Handwriting", "Courier New", cursive, serif !important;
+      margin-bottom: 0.2rem !important;
     }
   }
 
   .popup-description {
     text-align: center !important;
     color: #9d8aff !important;
-    font-size: 1.1rem !important;
+    font-size: 1.05rem !important;
     margin-bottom: 0.5rem !important;
     font-weight: 500 !important;
   }
 
   .popup-contact-phone {
     text-align: center;
-    color: #777;
-    font-size: 1.2rem;
-    margin-bottom: 2rem;
+    color: #a3a3a3;
+    font-size: 1.15rem;
+    margin-bottom: 2.5rem;
     font-family: monospace;
     letter-spacing: 1px;
   }
 
   .popup-buttons {
     flex-direction: column !important;
-    gap: 1rem !important;
+    gap: 0.8rem !important;
     padding: 0 !important;
 
     .popup-button {
       width: 100% !important;
       height: 56px !important;
-      border-radius: 28px !important;
+      min-height: 56px !important; /* Touch target size > 44px */
+      border-radius: 18px !important;
       font-size: 1.1rem !important;
       font-weight: 600 !important;
       justify-content: center !important;
       text-transform: none !important;
+      cursor: pointer !important;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
       
       &.primary {
-        background-color: #222 !important;
+        background-color: #2a2a2a !important;
         color: #fff !important;
-        border: 1px solid #333 !important;
+        border: 1px solid rgba(255,255,255,0.05) !important;
         
         &:hover {
-          background-color: #2a2a2a !important;
-          border-color: #9d8aff !important;
+          background-color: #333 !important;
+          border-color: rgba(157, 138, 255, 0.4) !important;
+          transform: translateY(-2px) !important;
+          box-shadow: 0 8px 20px rgba(0,0,0,0.3), 0 0 15px rgba(157, 138, 255, 0.1) !important;
+        }
+
+        &:active {
+          transform: translateY(0) !important;
+          background-color: #222 !important;
+        }
+
+        &:focus-visible {
+          outline: 2px solid #9d8aff !important;
+          outline-offset: 2px !important;
         }
 
         .popup-button-icon {
