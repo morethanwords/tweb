@@ -56,7 +56,9 @@ import wrapStickerEmoji from '@components/wrappers/stickerEmoji';
 import getProxiedManagers from '@lib/getProxiedManagers';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
+import getPeerTitle from '@components/wrappers/getPeerTitle';
 import middlewarePromise from '@helpers/middlewarePromise';
+import showTooltip from '@components/tooltip';
 import appDownloadManager from '@lib/appDownloadManager';
 import groupCallsController from '@lib/calls/groupCallsController';
 import callsController from '@lib/calls/callsController';
@@ -348,6 +350,51 @@ export class DialogElement extends Row {
     }
 
     li.dataset.peerId = '' + peerId;
+
+    let plainTitleStr = fromName;
+    let tooltipClose: (() => void) | undefined;
+
+    const hideCustomTooltip = () => {
+      if (tooltipClose) {
+        tooltipClose();
+        tooltipClose = undefined;
+      }
+    };
+
+    const showCustomTooltip = () => {
+      if (!plainTitleStr) return;
+      hideCustomTooltip();
+      
+      const textSpan = document.createElement('span');
+      textSpan.textContent = plainTitleStr;
+      textSpan.style.fontSize = '15px';
+      textSpan.style.fontWeight = '500';
+
+      const {close} = showTooltip({
+        element: li,
+        vertical: 'top',
+        textElement: textSpan,
+        useOverlay: false
+      });
+      tooltipClose = close;
+    };
+
+    li.addEventListener('mouseenter', showCustomTooltip);
+    li.addEventListener('mouseleave', hideCustomTooltip);
+    
+    if (this.middlewareHelper) {
+      this.middlewareHelper.onDestroy(hideCustomTooltip);
+    }
+
+    if (fromName === undefined) {
+      getPeerTitle({
+        peerId: usePeerId,
+        plainText: true,
+        limitSymbols: undefined
+      }).then((plainTitle) => {
+        plainTitleStr = plainTitle as string;
+      });
+    }
 
     if(threadId) li.dataset.threadId = '' + threadId;
     if(monoforumParentPeerId) li.dataset.monoforumParentPeerId = '' + monoforumParentPeerId;
