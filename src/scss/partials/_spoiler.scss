@@ -106,12 +106,13 @@
   --index: 0;
   width: var(--width);
 
+  // Both variables are set inline on the parent element by BluffSpoilerController
+  mask-image: var(--bluff-spoiler-mask, none);
   mask-size: 240px 120px;
   mask-repeat: repeat;
   mask-position: calc(var(--index) * var(--width) * -1) 0px;
-  // mask-image: none !important;
 
-  opacity: 0;
+  opacity: var(--bluff-spoiler-visible, 0);
   transition: opacity 0.2s;
   // transition-delay: 0.2s;
 

@@ -747,7 +747,7 @@ export default class DotRenderer implements AnimationItemWrapper {
 
     const animation = new AnimationItemNested({
       onPlay: () => {
-        instance.drawCallbacks.set(element, () => BluffSpoilerController.draw(instance.canvas));
+        instance.drawCallbacks.set(element, () => BluffSpoilerController.draw(element, instance.canvas));
         instance.play();
       },
       onPause: () => {

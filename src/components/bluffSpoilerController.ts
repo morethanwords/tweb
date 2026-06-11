@@ -6,7 +6,11 @@ import animationIntersector from '@components/animationIntersector';
 export default class BluffSpoilerController {
   private static log = logger('bluff-spoiler');
 
-  private static style: HTMLStyleElement;
+  private static latestMaskURL: string;
+  private static maskImageURLs: string[] = [];
+  private static appliedMaskURLs = new WeakMap<HTMLElement, string>();
+  private static encoderWorker: Worker | false; // false = unsupported, encode on the main thread
+  private static encoding = false;
   private static lastDrawTime: number = 0;
   private static DRAW_INTERVAL = 4 * (1000 / 60); // Once in 4 frames (considering 60fps) to avoid performance issues
 
@@ -17,30 +21,96 @@ export default class BluffSpoilerController {
 
   public static instancesCount = 0;
 
-  private static getStyleSheet() {
-    if(this.style) return this.style;
+  public static draw(element: HTMLElement, canvas: HTMLCanvasElement) {
+    this.encodeMaskFrame(canvas);
 
-    this.log('Creating style element');
-
-    this.style = document.createElement('style');
-    document.head.appendChild(this.style);
-
-    return this.style;
+    // The custom properties are inherited by the characters' spans, so the style
+    // invalidation is scoped to this element's subtree (a global rule update would
+    // make the browser walk the whole document on every frame)
+    const url = this.latestMaskURL;
+    if(url && this.appliedMaskURLs.get(element) !== url) {
+      this.appliedMaskURLs.set(element, url);
+      element.style.setProperty('--bluff-spoiler-mask', `url(${url})`);
+      element.style.setProperty('--bluff-spoiler-visible', '1');
+    }
   }
 
-  public static draw(canvas: HTMLCanvasElement) {
-    if(this.lastDrawTime + this.DRAW_INTERVAL > performance.now()) return;
+  private static getEncoderWorker() {
+    if(this.encoderWorker !== undefined) return this.encoderWorker;
+
+    if(typeof(OffscreenCanvas) === 'undefined' || typeof(createImageBitmap) !== 'function') {
+      return this.encoderWorker = false;
+    }
+
+    this.log('Creating encoder worker');
+
+    const worker = new Worker(new URL('./bluffSpoilerMask.worker.ts', import.meta.url), {type: 'module'});
+    worker.addEventListener('message', (event: MessageEvent<Blob>) => {
+      this.applyNewMask(event.data);
+    });
+    worker.addEventListener('error', (error) => {
+      this.log.error('Encoder worker failed, falling back to the main thread', error);
+      worker.terminate();
+      this.encoderWorker = false;
+      this.encoding = false;
+    });
+
+    return this.encoderWorker = worker;
+  }
+
+  private static encodeMaskFrame(canvas: HTMLCanvasElement) {
+    if(this.encoding || this.lastDrawTime + this.DRAW_INTERVAL > performance.now()) return;
     this.lastDrawTime = performance.now();
+    this.encoding = true;
 
-    const style = this.getStyleSheet();
-    const imageURL = canvas.toDataURL();
+    const worker = this.getEncoderWorker();
+    if(worker) {
+      // createImageBitmap is a GPU-side copy, the readback + PNG encoding happen in the worker
+      createImageBitmap(canvas).then((bitmap) => {
+        worker.postMessage(bitmap, [bitmap]);
+      }, () => {
+        this.encoding = false;
+      });
+    } else {
+      // toBlob still encodes asynchronously off the main thread, unlike toDataURL
+      canvas.toBlob((blob) => this.applyNewMask(blob));
+    }
+  }
 
-    style.textContent = `
-      .bluff-spoiler {
-        mask-image: url(${imageURL});
-        opacity: 1;
+  private static applyNewMask(blob: Blob) {
+    this.encoding = false;
+    if(!blob || !this.instancesCount) return;
+
+    const url = URL.createObjectURL(blob);
+    this.latestMaskURL = url;
+    this.maskImageURLs.push(url);
+    this.pruneMaskURLs();
+  }
+
+  /**
+   * Revokes old mask URLs, except the ones still applied on a connected element
+   * (its animation might be paused while others keep producing new masks — revoking
+   * its mask would blank it on the next repaint)
+   */
+  private static pruneMaskURLs() {
+    const KEEP_TAIL = 3; // recent masks might still be loading for an in-flight paint
+    if(this.maskImageURLs.length <= KEEP_TAIL) return;
+
+    const pinned = new Set<string>();
+    for(const weakRef of this.allWeakRefs) {
+      const el = weakRef.deref();
+      if(el?.isConnected) {
+        const applied = this.appliedMaskURLs.get(el);
+        if(applied) pinned.add(applied);
       }
-    `;
+    }
+
+    const keepFrom = this.maskImageURLs.length - KEEP_TAIL;
+    this.maskImageURLs = this.maskImageURLs.filter((url, i) => {
+      if(i >= keepFrom || pinned.has(url)) return true;
+      URL.revokeObjectURL(url);
+      return false;
+    });
   }
 
   /**
@@ -86,10 +156,18 @@ export default class BluffSpoilerController {
   }
 
   public static destroy() {
-    this.style?.remove();
-    this.style = undefined;
+    this.latestMaskURL = undefined;
 
-    this.log('Destroying style element');
+    this.maskImageURLs.forEach((url) => URL.revokeObjectURL(url));
+    this.maskImageURLs.length = 0;
+
+    if(this.encoderWorker) {
+      this.encoderWorker.terminate();
+      this.encoderWorker = undefined;
+    }
+    this.encoding = false;
+
+    this.log('Destroying mask resources');
   }
 }
 
