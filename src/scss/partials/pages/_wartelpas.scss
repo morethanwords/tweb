@@ -50,7 +50,7 @@
     display: flex !important;
     width: 100% !important;
 
-    .sidebar-tools-button, .sidebar-back-button, .sidebar-emoji-status, .sidebar-header-search-trigger {
+    .sidebar-tools-button, .sidebar-back-button, .sidebar-emoji-status, .sidebar-header-search-trigger, .animated-menu-icon {
       display: none !important;
     }
   }
@@ -77,11 +77,12 @@
     box-shadow: 0 20px 60px rgba(0,0,0,0.6) !important;
     margin: 0 auto 5rem !important;
     position: relative !important;
+    --padding-horizontal: 5.5rem !important;
 
     .input-search-input {
       height: 100% !important;
       font-size: 1.5rem !important;
-      padding-left: 5rem !important;
+      padding-left: 5.5rem !important;
       color: #fff !important;
       background: transparent !important;
       

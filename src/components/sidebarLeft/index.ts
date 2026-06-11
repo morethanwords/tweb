@@ -1327,6 +1327,7 @@ export class AppSidebarLeft extends SidebarSlider {
         chatTypeMenu.props.selected = 'all';
       }
       updateSearchQuery({search: value, chatType: chatTypeMenu.props.selected});
+      this.filterContacts(value);
     };
 
     this.inputSearch.onEnter = (value) => {
@@ -1474,7 +1475,7 @@ export class AppSidebarLeft extends SidebarSlider {
       // below propagates to all three classes.
       this.newBtnMenu.classList.add('is-hidden');
       this.updateBtn.classList.add('is-hidden');
-      this.contactsList.list.classList.add('hide');
+      // this.contactsList.list.classList.add('hide');
 
       const navigationType: NavigationItem['type'] = 'global-search';
       if(!IS_MOBILE_SAFARI && !appNavigationController.findItemByType(navigationType)) {
@@ -1518,7 +1519,7 @@ export class AppSidebarLeft extends SidebarSlider {
       this.buttonsContainer.classList.remove('is-visible');
       this.isSearchActive = false;
       this.onSomethingOpenInsideChange();
-      this.contactsList.list.classList.remove('hide');
+      // this.contactsList.list.classList.remove('hide');
 
       chatTypeMenu.props.selected = 'all';
     }, {listenerSetter: searchListenerSetter});
@@ -1573,6 +1574,17 @@ export class AppSidebarLeft extends SidebarSlider {
         close();
       }
     };
+  }
+
+  private filterContacts(query: string) {
+    const lowerQuery = query.toLowerCase().trim();
+    this.contactsList.getAll().forEach((element) => {
+      const user = apiManagerProxy.getUser(element.id.toUserId());
+      if (!user) return;
+      const name = ((user.first_name || '') + (user.last_name ? ' ' + user.last_name : '')).toLowerCase();
+      const visible = !lowerQuery || name.includes(lowerQuery);
+      element.dom.listEl.classList.toggle('hide', !visible);
+    });
   }
 
   private async watchChannelsTabVisibility(listenerSetter: ListenerSetter) {
