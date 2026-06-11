@@ -9,8 +9,9 @@ import getUnsafeRandomInt from '@helpers/number/getUnsafeRandomInt';
 import {applyColorOnContext} from '@lib/rlottie/rlottiePlayer';
 import animationIntersector, {AnimationItemGroup, AnimationItemWrapper} from '@components/animationIntersector';
 import BluffSpoilerController from '@components/bluffSpoilerController';
-import DotRendererCore, {buildDotRendererConfig, getDefaultParticlesCount, DotRendererConfig, DotRendererShaderURLs} from '@components/dotRendererCore';
+import DotRendererCore, {buildDotRendererConfig, drawClippingCircle, getDefaultParticlesCount, DotRendererConfig, DotRendererShaderURLs} from '@components/dotRendererCore';
 import {animateValue, simpleEasing} from '@helpers/animateValue';
+import {CancellablePromise} from '@helpers/cancellablePromise';
 
 const SHADER_URLS: DotRendererShaderURLs = {
   vertex: 'assets/img/spoiler_vertex.glsl',
@@ -19,6 +20,7 @@ const SHADER_URLS: DotRendererShaderURLs = {
 
 const TEXT_SPOILER_WIDTH = 240;
 const TEXT_SPOILER_HEIGHT = 120;
+const IMAGE_SPOILER_SIZE = 480;
 
 const getTextSpoilerConfig = (dpr: number): Partial<DotRendererConfig> => ({
   particlesCount: 4 * getDefaultParticlesCount(TEXT_SPOILER_WIDTH, TEXT_SPOILER_HEIGHT),
@@ -166,14 +168,7 @@ export default class DotRenderer implements AnimationItemWrapper {
     this.core.destroy();
   }
 
-  public static create({
-    width,
-    height,
-    middleware,
-    animationGroup,
-    multiply,
-    config
-  }: {
+  public static create(options: {
     width?: number,
     height?: number,
     middleware: Middleware,
@@ -181,6 +176,11 @@ export default class DotRenderer implements AnimationItemWrapper {
     multiply?: number,
     config?: Partial<DotRendererConfig>
   }) {
+    if(BluffSpoilerController.isWorkerSimSupported()) {
+      return this.createWithWorker(options);
+    }
+
+    const {width, height, middleware, animationGroup, config} = options;
     const index = ++this.createdIndex;
     let {imageSpoilerInstance: instance} = this;
     if(!instance) {
@@ -224,19 +224,6 @@ export default class DotRenderer implements AnimationItemWrapper {
     const x = getUnsafeRandomInt(0, instance.canvas.width - canvas.width);
     const y = getUnsafeRandomInt(0, instance.canvas.height - canvas.height);
 
-    function drawClippingCircle(ctx: CanvasRenderingContext2D, progress: number, coords: {x: number, y: number}, maxDist: number) {
-      ctx.save();
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.fillStyle = 'white';
-      ctx.shadowBlur = maxDist / 3.5 * instance.dpr * progress;
-      ctx.shadowColor = 'white';
-      ctx.beginPath();
-      ctx.arc(coords.x, coords.y, maxDist * progress, 0, 2 * Math.PI);
-      ctx.fill();
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.restore();
-    }
-
     const draw = () => {
       const {width, height} = canvas;
       const isRevealed = revealAnimation?.progress >= 1;
@@ -265,8 +252,8 @@ export default class DotRenderer implements AnimationItemWrapper {
         );
 
         // Draw a clipping circle growing from where the user clicked
-        drawClippingCircle(context, progress, transformedCoords, maxDist);
-        drawClippingCircle(underLyingCtx, progress, underlyingCanvasClickCoords, maxDistUnderlyingCanvas);
+        drawClippingCircle(context, progress, transformedCoords, maxDist, instance.dpr);
+        drawClippingCircle(underLyingCtx, progress, underlyingCanvasClickCoords, maxDistUnderlyingCanvas, instance.dpr);
       }
 
       if(config?.color) {
@@ -359,6 +346,174 @@ export default class DotRenderer implements AnimationItemWrapper {
     const result = {
       canvas,
       readyResult: width && (/* dotRenderer.resize(width, height, multiply, config),  */instance.init()),
+      revealWithAnimation
+    };
+
+    this.createdImageSpoilers.set(canvas, result);
+
+    return result;
+  }
+
+  private static mediaWorker: Worker;
+  private static mediaWorkerReady: CancellablePromise<void>;
+  private static mediaTargetsCount = 0;
+
+  private static getMediaWorker() {
+    if(this.mediaWorker) return this.mediaWorker;
+
+    const worker = this.mediaWorker = new Worker(new URL('./mediaSpoilerDots.worker.ts', import.meta.url), {type: 'module'});
+    const ready = this.mediaWorkerReady = deferredPromise<void>();
+    worker.addEventListener('message', () => ready.resolve()); // the only message is 'inited'
+
+    const dpr = window.devicePixelRatio;
+    worker.postMessage({
+      type: 'init',
+      width: IMAGE_SPOILER_SIZE,
+      height: IMAGE_SPOILER_SIZE,
+      dpr,
+      config: buildDotRendererConfig(IMAGE_SPOILER_SIZE, IMAGE_SPOILER_SIZE, dpr),
+      vertexURL: new URL(SHADER_URLS.vertex, window.location.href).href,
+      fragmentURL: new URL(SHADER_URLS.fragment, window.location.href).href
+    });
+
+    return worker;
+  }
+
+  private static destroyMediaWorker() {
+    this.mediaWorker?.terminate();
+    this.mediaWorker = undefined;
+    this.mediaWorkerReady = undefined;
+  }
+
+  /**
+   * Same as the legacy path below, but the simulation, the per-target drawing and
+   * the reveal effect all run inside a worker on transferred OffscreenCanvases —
+   * the main thread only forwards play/pause/reveal events. Only the clipping hole
+   * on the underlying thumbnail stays here, that canvas is owned by the media code.
+   */
+  private static createWithWorker({
+    width,
+    height,
+    middleware,
+    animationGroup,
+    config
+  }: Parameters<(typeof DotRenderer)['create']>[0]) {
+    const index = ++this.createdIndex;
+    const id = index;
+    const worker = this.getMediaWorker();
+
+    const canvas = document.createElement('canvas');
+    canvas.classList.add('canvas-thumbnail', 'canvas-dots');
+    const dpr = window.devicePixelRatio;
+    if(width) {
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+    }
+
+    const rotate = (index % 4) === 1;
+    const flipX = (index % 4) === 2;
+    const flipY = (index % 4) === 3;
+
+    const transforms: string[] = [
+      rotate && 'rotate(180deg)',
+      flipX && 'scaleX(-1)',
+      flipY && 'scaleY(-1)'
+    ].filter(Boolean);
+    if(transforms.length) {
+      canvas.style.transform = transforms.join(' ');
+    }
+
+    const simSize = IMAGE_SPOILER_SIZE * dpr;
+    const x = getUnsafeRandomInt(0, simSize - canvas.width);
+    const y = getUnsafeRandomInt(0, simSize - canvas.height);
+
+    ++this.mediaTargetsCount;
+    const offscreen = canvas.transferControlToOffscreen();
+    worker.postMessage({
+      type: 'attach',
+      id,
+      canvas: offscreen,
+      x,
+      y,
+      color: config?.color ? '#' + config.color.toString(16) : undefined
+    }, [offscreen]);
+
+    const animation = new AnimationItemNested({
+      onPlay: () => this.mediaWorker?.postMessage({type: 'play', id}),
+      onPause: () => this.mediaWorker?.postMessage({type: 'pause', id}),
+      onDestroy: () => {
+        this.mediaWorker?.postMessage({type: 'detach', id});
+        if(!--this.mediaTargetsCount) {
+          this.destroyMediaWorker();
+        }
+      }
+    });
+
+    animationIntersector.addAnimation({
+      animation,
+      group: animationGroup,
+      observeElement: canvas,
+      controlled: middleware,
+      type: 'dots'
+    });
+
+    const revealWithAnimation = (event: Event, underLyingCanvas: HTMLCanvasElement) => {
+      if(!('clientX' in event && 'clientY' in event)) return false;
+      const bcr = canvas.getBoundingClientRect();
+
+      const rectX = event.clientX as number - bcr.left;
+      const rectY = event.clientY as number - bcr.top;
+      let transX = rectX, transY = rectY;
+
+      if(Number(rotate) + Number(flipX) === 1) {
+        transX = bcr.width - rectX;
+      }
+      if(Number(rotate) + Number(flipY) === 1) {
+        transY = bcr.height - rectY;
+      }
+
+      const distToMargin = Math.max(
+        Math.hypot(rectX, rectY),
+        Math.hypot(bcr.width - rectX, rectY),
+        Math.hypot(rectX, bcr.height - rectY),
+        Math.hypot(bcr.width - rectX, bcr.height - rectY)
+      );
+      const maxDist = distToMargin * dpr + 50;
+      const duration = 800 + (400/* px/ms */ - distToMargin);
+
+      this.mediaWorker?.postMessage({
+        type: 'reveal',
+        id,
+        coords: {x: transX * dpr, y: transY * dpr},
+        maxDist,
+        duration
+      });
+
+      const underLyingCtx = underLyingCanvas.getContext('2d');
+      const underlyingCanvasClickCoords = {
+        x: rectX * underLyingCanvas.width / bcr.width,
+        y: rectY * underLyingCanvas.height / bcr.height
+      };
+      const maxDistUnderlyingCanvas = maxDist / canvas.width * underLyingCanvas.width;
+
+      const deferred = deferredPromise<void>();
+
+      animateValue(0, 1, duration,
+        (v) => {
+          drawClippingCircle(underLyingCtx, v, underlyingCanvasClickCoords, maxDistUnderlyingCanvas, dpr);
+        },
+        {
+          onEnd: () => void deferred.resolve(),
+          easing: simpleEasing
+        }
+      );
+
+      return deferred;
+    };
+
+    const result = {
+      canvas,
+      readyResult: width && this.mediaWorkerReady,
       revealWithAnimation
     };
 

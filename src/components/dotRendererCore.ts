@@ -49,6 +49,25 @@ export function buildDotRendererConfig(width: number, height: number, dpr: numbe
   };
 }
 
+export function drawClippingCircle(
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  progress: number,
+  coords: {x: number, y: number},
+  maxDist: number,
+  dpr: number
+) {
+  ctx.save();
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.fillStyle = 'white';
+  ctx.shadowBlur = maxDist / 3.5 * dpr * progress;
+  ctx.shadowColor = 'white';
+  ctx.beginPath();
+  ctx.arc(coords.x, coords.y, maxDist * progress, 0, 2 * Math.PI);
+  ctx.fill();
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.restore();
+}
+
 /**
  * The WebGL particles simulation, decoupled from the DOM — works both on the main
  * thread (HTMLCanvasElement) and inside a worker (OffscreenCanvas)
