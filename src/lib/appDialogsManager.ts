@@ -306,6 +306,7 @@ export class DialogElement extends Row {
       dialog: meAsSaved,
       onlyFirstName,
       withIcons: !noIcons,
+      limitSymbols: 15,
       threadId: isSavedDialog ? undefined : threadId,
       wrapOptions: titleWrapOptions = {
         textColor: appDialogsManager.getTextColor(isActive),
