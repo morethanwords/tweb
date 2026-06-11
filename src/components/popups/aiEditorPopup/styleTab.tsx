@@ -255,7 +255,7 @@ const useDeleteTone = ({
       setTones(prev => prev.filter(t => t._ !== 'aiComposeTone' || t.id !== tone.id))
     } catch{
       toastNew({
-        langPackKey: 'AiEditor.DeleteStyle.Failed'
+        langPackKey: 'AiEditor.StyleRemoveError'
       });
     }
   };
