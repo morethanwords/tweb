@@ -73,11 +73,16 @@
     height: 72px !important;
     background-color: #161616 !important;
     border-radius: 24px !important;
-    border: none !important;
+    border: 2px solid transparent !important;
     box-shadow: 0 20px 60px rgba(0,0,0,0.6) !important;
     margin: 0 auto 5rem !important;
     position: relative !important;
     --padding-horizontal: 5.5rem !important;
+    transition: border-color 0.2s ease !important;
+
+    &:focus-within {
+      border-color: #9d8aff !important;
+    }
 
     .input-search-input {
       height: 100% !important;
@@ -85,29 +90,65 @@
       padding-left: 5.5rem !important;
       color: #fff !important;
       background: transparent !important;
-      
-      &::placeholder {
-        color: #555 !important;
+      border: none !important;
+      outline: none !important;
+      box-shadow: none !important;
+
+      &:not(:placeholder-shown) ~ .input-search-placeholder {
+        display: none !important;
       }
     }
 
+    .input-search-placeholder {
+      left: 5.5rem !important;
+      font-size: 1.5rem !important;
+      color: #555 !important;
+      display: flex !important;
+      align-items: center !important;
+      height: 100% !important;
+      top: 0 !important;
+      transform: none !important;
+      pointer-events: none !important;
+    }
+
     .input-search-icon {
-      left: 1.8rem !important;
+      left: 2rem !important;
       width: 2.5rem !important;
-      height: 2.5rem !important;
+      height: 100% !important; // change to 100% for better centering
       color: #9d8aff !important;
       display: flex !important;
-      align-items: center;
-      justify-content: center;
-      
-      .tgico {
-        font-size: 2.5rem !important;
+      align-items: center !important;
+      justify-content: center !important;
+      top: 0 !important; // reset top
+      transform: none !important; // reset transform
+
+      svg, .tgico {
+        width: 1.8rem !important;
+        height: 1.8rem !important;
+        font-size: 1.8rem !important;
       }
     }
 
     .input-search-clear {
       right: 1.5rem !important;
       color: #555 !important;
+      top: 50% !important;
+      transform: translateY(-50%) !important;
+    }
+  }
+
+  #search-container {
+    display: none !important;
+  }
+
+  .item-main {
+    &.is-search-active {
+       .sidebar-content, .wartelpas-contacts {
+         display: grid !important; // keep grid layout
+         opacity: 1 !important;
+         visibility: visible !important;
+         transform: none !important;
+       }
     }
   }
 
@@ -126,6 +167,9 @@
     }
 
     &-chat, .chatlist-chat {
+      &.hide {
+        display: none !important;
+      }
       background-color: #161616 !important;
       border-radius: 60px !important;
       padding: 2.5rem !important;

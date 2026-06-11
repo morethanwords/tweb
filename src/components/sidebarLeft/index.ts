@@ -154,7 +154,13 @@ export class AppSidebarLeft extends SidebarSlider {
     this.listenerSetter = new ListenerSetter();
 
     this.chatListContainer = document.getElementById('chatlist-container');
-    this.inputSearch = new InputSearch({oldStyle: true, placeholder: 'Wartelpas.SearchPlaceholder'});
+    this.inputSearch = new InputSearch({
+      oldStyle: true,
+      noBorder: true,
+      noFocusEffect: true,
+      placeholder: 'Wartelpas.SearchPlaceholder',
+      debounceTime: 50
+    });
     const sidebarHeader = this.sidebarEl.querySelector('.item-main .sidebar-header');
 
     const wartelpasTitle = document.createElement('div');
@@ -1488,7 +1494,8 @@ export class AppSidebarLeft extends SidebarSlider {
         });
       }
 
-      transition(1);
+      // transition(1);
+      this.filterContacts(this.inputSearch.value);
 
       // Decide whether the burger should grow/shrink with a transition.
       // Only set it on the first focus of this open cycle — re-focusing the
@@ -1578,11 +1585,19 @@ export class AppSidebarLeft extends SidebarSlider {
 
   private filterContacts(query: string) {
     const lowerQuery = query.toLowerCase().trim();
-    this.contactsList.getAll().forEach((element) => {
+    const contacts = this.contactsList.getAll();
+    console.log(`[DEBUG] filterContacts query: "${lowerQuery}", count: ${contacts.size}`);
+    
+    contacts.forEach((element) => {
       const user = apiManagerProxy.getUser(element.id.toUserId());
-      if (!user) return;
+      if (!user) {
+        console.log(`[DEBUG] User not found for peerId: ${element.id}`);
+        return;
+      }
       const name = ((user.first_name || '') + (user.last_name ? ' ' + user.last_name : '')).toLowerCase();
       const visible = !lowerQuery || name.includes(lowerQuery);
+      
+      console.log(`[DEBUG] Contact: "${name}", visible: ${visible}`);
       element.dom.listEl.classList.toggle('hide', !visible);
     });
   }
