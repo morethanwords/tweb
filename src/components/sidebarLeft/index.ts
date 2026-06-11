@@ -32,6 +32,7 @@ import ripple from '@components/ripple';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import ListenerSetter from '@helpers/listenerSetter';
 import formatNumber from '@helpers/number/formatNumber';
+import replaceContent from '@helpers/dom/replaceContent';
 import {AppManagers} from '@lib/managers';
 import themeController from '@helpers/themeController';
 import contextMenuController from '@helpers/contextMenuController';
@@ -88,6 +89,9 @@ import createSubmenuTrigger, {CreateSubmenuArgs} from '@components/createSubmenu
 import ChatTypeMenu from '@components/chatTypeMenu';
 import {RequestHistoryOptions} from '@appManagers/appMessagesManager';
 import EmptySearchPlaceholder from '@components/emptySearchPlaceholder';
+import SortedUserList from '@components/sortedUserList';
+import WartelpasContactInfo from '@components/popups/wartelpasContactInfo';
+import getUserStatusString from '@components/wrappers/getUserStatusString';
 import useHasFoldersSidebar, {
   useIsSidebarCollapsed,
   useHasOpenLeftTabs,
@@ -108,6 +112,8 @@ type SearchInitResult = {
 
 export class AppSidebarLeft extends SidebarSlider {
   private chatListContainer: HTMLElement;
+  private contactsList: SortedUserList;
+  public listenerSetter: ListenerSetter;
   private buttonsContainer: HTMLElement;
   private toolsBtn: HTMLElement;
   private backBtn: HTMLButtonElement;
@@ -145,12 +151,57 @@ export class AppSidebarLeft extends SidebarSlider {
 
   construct(managers: AppManagers) {
     this.managers = managers;
+    this.listenerSetter = new ListenerSetter();
 
     this.chatListContainer = document.getElementById('chatlist-container');
-    this.inputSearch = new InputSearch({oldStyle: true});
-    (this.inputSearch.input as HTMLInputElement).placeholder = ' ';
+    this.inputSearch = new InputSearch({oldStyle: true, placeholder: 'Wartelpas.SearchPlaceholder'});
     const sidebarHeader = this.sidebarEl.querySelector('.item-main .sidebar-header');
+
+    const wartelpasTitle = document.createElement('div');
+    wartelpasTitle.className = 'wartelpas-title';
+    wartelpasTitle.innerText = 'WARTELPAS';
+    sidebarHeader.prepend(wartelpasTitle);
+
     sidebarHeader.append(this.inputSearch.container);
+
+    this.contactsList = new SortedUserList({
+      managers: this.managers,
+      middleware: this.getMiddleware(),
+      avatarSize: 'bigger',
+      onUpdate: async(element) => {
+        const user = await this.managers.appUsersManager.getUser(element.id);
+        const status = getUserStatusString(user);
+        replaceContent(element.dom.lastMessageSpan, status);
+        if (user.phone) {
+          element.dom.lastMessageSpan.setAttribute('data-phone', '+' + user.phone);
+        } else {
+          element.dom.lastMessageSpan.removeAttribute('data-phone');
+        }
+      }
+    });
+    this.contactsList.list.classList.add('wartelpas-contacts');
+    sidebarHeader.append(this.contactsList.list);
+
+    this.managers.appUsersManager.getContactsPeerIds().then((peerIds) => {
+      peerIds.forEach(peerId => this.contactsList.add(peerId));
+    });
+
+    this.listenerSetter.add(rootScope)('contacts_update', async(userId) => {
+      const isContact = await this.managers.appUsersManager.isContact(userId);
+      const peerId = userId.toPeerId();
+      if(isContact) this.contactsList.add(peerId);
+      else this.contactsList.delete(peerId);
+    });
+
+    this.contactsList.list.addEventListener('mousedown', (e) => {
+      const target = e.target as HTMLElement;
+      const elem = target.closest('.chatlist-chat') as HTMLElement;
+      if (elem && elem.dataset.peerId) {
+        const peerId = elem.dataset.peerId.toPeerId();
+        this.openContactInfo(peerId);
+        e.stopImmediatePropagation();
+      }
+    }, {capture: true});
 
     this.backBtn = this.sidebarEl.querySelector('.sidebar-back-button') as HTMLButtonElement;
 
@@ -437,6 +488,10 @@ export class AppSidebarLeft extends SidebarSlider {
         peerId: appImManager.myId
       });
     });
+  }
+
+  private openContactInfo(peerId: PeerId) {
+    WartelpasContactInfo.show(peerId);
   }
 
   /**
@@ -1419,6 +1474,7 @@ export class AppSidebarLeft extends SidebarSlider {
       // below propagates to all three classes.
       this.newBtnMenu.classList.add('is-hidden');
       this.updateBtn.classList.add('is-hidden');
+      this.contactsList.list.classList.add('hide');
 
       const navigationType: NavigationItem['type'] = 'global-search';
       if(!IS_MOBILE_SAFARI && !appNavigationController.findItemByType(navigationType)) {
@@ -1462,6 +1518,7 @@ export class AppSidebarLeft extends SidebarSlider {
       this.buttonsContainer.classList.remove('is-visible');
       this.isSearchActive = false;
       this.onSomethingOpenInsideChange();
+      this.contactsList.list.classList.remove('hide');
 
       chatTypeMenu.props.selected = 'all';
     }, {listenerSetter: searchListenerSetter});

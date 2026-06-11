@@ -1,0 +1,345 @@
+@use "../../shared" as *;
+
+.page-chats:not(.has-chat) {
+  background-color: #0f0f0f !important;
+
+  #main-columns {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 5vh;
+    height: 100%;
+    overflow-y: auto;
+  }
+
+  #column-left {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: visible !important;
+  }
+
+  .sidebar-slider, .sidebar-slider-item, .sidebar-content {
+    width: 100% !important;
+    background: transparent !important;
+    overflow: visible !important;
+  }
+
+  #chatlist-container {
+    background: transparent !important;
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    overflow: visible !important;
+  }
+
+  .sidebar-header {
+    flex-direction: column;
+    height: auto !important;
+    padding: 2rem 0 !important;
+    margin-bottom: 0;
+    background: transparent !important;
+    border: none !important;
+    align-items: center !important;
+    display: flex !important;
+    width: 100% !important;
+
+    .sidebar-tools-button, .sidebar-back-button, .sidebar-emoji-status, .sidebar-header-search-trigger {
+      display: none !important;
+    }
+  }
+
+  .wartelpas-title {
+    display: block !important;
+    font-size: 4rem;
+    font-weight: 900;
+    color: #9d8aff;
+    text-transform: uppercase;
+    margin-bottom: 2.5rem;
+    letter-spacing: 6px;
+    text-shadow: 0 0 20px rgba(157, 138, 255, 0.4);
+    font-family: 'Inter', sans-serif;
+  }
+
+  .input-search {
+    width: 90%;
+    max-width: 800px;
+    height: 72px !important;
+    background-color: #161616 !important;
+    border-radius: 24px !important;
+    border: none !important;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6) !important;
+    margin: 0 auto 5rem !important;
+    position: relative !important;
+
+    .input-search-input {
+      height: 100% !important;
+      font-size: 1.5rem !important;
+      padding-left: 5rem !important;
+      color: #fff !important;
+      background: transparent !important;
+      
+      &::placeholder {
+        color: #555 !important;
+      }
+    }
+
+    .input-search-icon {
+      left: 1.8rem !important;
+      width: 2.5rem !important;
+      height: 2.5rem !important;
+      color: #9d8aff !important;
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+      
+      .tgico {
+        font-size: 2.5rem !important;
+      }
+    }
+
+    .input-search-clear {
+      right: 1.5rem !important;
+      color: #555 !important;
+    }
+  }
+
+  .chatlist, .wartelpas-contacts {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 3rem;
+    padding: 0 4rem 8rem !important;
+    background: transparent !important;
+    margin: 0 auto !important;
+    width: 100% !important;
+    list-style: none;
+
+    &.hide {
+      display: none !important;
+    }
+
+    &-chat, .chatlist-chat {
+      background-color: #161616 !important;
+      border-radius: 60px !important;
+      padding: 2.5rem !important;
+      height: 280px !important;
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      justify-content: center !important;
+      border: 2px solid #222 !important;
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+      position: relative;
+      margin: 0 !important;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3) !important;
+      cursor: pointer;
+
+      &:hover {
+        transform: translateY(-12px) scale(1.03);
+        background-color: #1c1c1c !important;
+        border-color: #9d8aff !important;
+        box-shadow: 0 30px 70px rgba(0,0,0,0.7), 0 0 30px rgba(157, 138, 255, 0.2) !important;
+      }
+
+      .row-row {
+        flex-direction: column !important;
+        width: 100%;
+        height: 100%;
+        padding: 0 !important;
+        align-items: center !important;
+        justify-content: center !important;
+      }
+
+      .dialog-avatar {
+        margin: 0 0 2rem 0 !important;
+        width: 120px !important;
+        height: 120px !important;
+        flex: 0 0 auto !important;
+
+        .avatar-element {
+          width: 120px !important;
+          height: 120px !important;
+          border-radius: 50% !important;
+          box-shadow: 0 8px 20px rgba(0,0,0,0.5) !important;
+        }
+
+        canvas, img {
+          width: 120px !important;
+          height: 120px !important;
+        }
+
+        &.is-online:after {
+          width: 24px !important;
+          height: 24px !important;
+          bottom: 4px !important;
+          right: 4px !important;
+          border-width: 4px !important;
+          border-color: #161616 !important;
+        }
+      }
+
+      .dialog-title {
+        margin: 0 !important;
+        padding: 0 !important;
+        text-align: center !important;
+        width: 100% !important;
+
+        .user-title {
+          justify-content: center !important;
+          font-size: 1.8rem !important;
+          font-weight: 700 !important;
+          color: #fff !important;
+          // Font based on the gothic look in user screenshot
+          font-family: "Lucida Handwriting", "Courier New", cursive, serif;
+          letter-spacing: 1px;
+        }
+      }
+
+      .dialog-subtitle {
+        margin-top: 1rem !important;
+        text-align: center !important;
+        width: 100% !important;
+        
+        .user-last-message {
+          color: #777 !important;
+          font-size: 1.1rem !important;
+          justify-content: center !important;
+          display: flex !important;
+          font-family: sans-serif !important;
+        }
+      }
+
+      // Hide all standard Telegram elements
+      .dialog-title-details, 
+      .message-time, 
+      .message-status, 
+      .dialog-subtitle-badge,
+      .badge,
+      .dialog-muted-icon {
+        display: none !important;
+      }
+    }
+  }
+
+  // Hide UI elements that shouldn't be on the custom home
+  .sidebar-slider-item:not(.active),
+  #column-center,
+  #column-right,
+  .folders-tabs-scrollable,
+  .folders-tabs-gradient,
+  .chatlist-overlay,
+  .stories-list,
+  .btn-corner,
+  #folders-sidebar,
+  #chatlist-container {
+    display: none !important;
+  }
+}
+
+// Ensure the title is hidden when a chat is open
+.page-chats.has-chat .wartelpas-title {
+  display: none !important;
+}
+
+.popup-wartelpas-contact-popup {
+  .popup-container {
+    width: 100%;
+    max-width: 440px;
+    border-radius: 40px !important;
+    background-color: #1a1a1a !important;
+    padding: 2rem !important;
+  }
+
+  .popup-header {
+    flex-direction: column !important;
+    align-items: center !important;
+    padding: 1rem 0 !important;
+    
+    .avatar-element {
+      width: 120px !important;
+      height: 120px !important;
+      margin-bottom: 1.5rem !important;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important;
+    }
+
+    .popup-title {
+      font-size: 2rem !important;
+      font-weight: 800 !important;
+      color: #fff !important;
+      text-align: center !important;
+      font-family: "Lucida Handwriting", "Courier New", cursive, serif !important;
+    }
+  }
+
+  .popup-description {
+    text-align: center !important;
+    color: #9d8aff !important;
+    font-size: 1.1rem !important;
+    margin-bottom: 0.5rem !important;
+    font-weight: 500 !important;
+  }
+
+  .popup-contact-phone {
+    text-align: center;
+    color: #777;
+    font-size: 1.2rem;
+    margin-bottom: 2rem;
+    font-family: monospace;
+    letter-spacing: 1px;
+  }
+
+  .popup-buttons {
+    flex-direction: column !important;
+    gap: 1rem !important;
+    padding: 0 !important;
+
+    .popup-button {
+      width: 100% !important;
+      height: 56px !important;
+      border-radius: 28px !important;
+      font-size: 1.1rem !important;
+      font-weight: 600 !important;
+      justify-content: center !important;
+      text-transform: none !important;
+      
+      &.primary {
+        background-color: #222 !important;
+        color: #fff !important;
+        border: 1px solid #333 !important;
+        
+        &:hover {
+          background-color: #2a2a2a !important;
+          border-color: #9d8aff !important;
+        }
+
+        .popup-button-icon {
+          color: #9d8aff !important;
+          font-size: 1.5rem !important;
+        }
+      }
+    }
+  }
+}
+
+// Global scrollbar for dark theme
+.page-chats:not(.has-chat) {
+  ::-webkit-scrollbar {
+    width: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #0f0f0f;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #222;
+    border-radius: 5px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #333;
+  }
+}

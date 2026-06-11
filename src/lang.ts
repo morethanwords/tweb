@@ -98,6 +98,7 @@ const lang = {
     'other_value': '%d new chats'
   },
   'ChatList.Main.EmptyPlaceholder.Title': 'Your chats will appear here',
+  'Wartelpas.SearchPlaceholder': 'Cari Nama Kontak...',
   'ChatList.Main.EmptyPlaceholder.Subtitle': 'You have %s on Telegram',
   'ChatList.Main.EmptyPlaceholder.SubtitleNoContacts': 'Use Telegram app on your [Android](https://telegram.org/android) or [iOS](https://telegram.org/dl/ios) device to sync your contacts',
   // "ChatList.Menu.Archived": "Archived",
