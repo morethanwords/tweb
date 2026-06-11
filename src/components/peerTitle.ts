@@ -107,6 +107,8 @@ export default class PeerTitle {
 
     let fromName = this.options.fromName;
     if(fromName !== undefined) {
+      this.element.title = fromName;
+
       if(this.options.limitSymbols !== undefined) {
         fromName = limitSymbols(fromName, this.options.limitSymbols, this.options.limitSymbols);
       }
@@ -187,7 +189,7 @@ export default class PeerTitle {
         rootScope.managers.dialogsStorage.getForumTopic(peerId, threadId).then((topic) => wrapTopicIcon({...(this.options.wrapOptions ?? {}), topic})) :
         undefined;
 
-      const [title, icons, topicIcon] = await Promise.all([
+      const [title, icons, topicIcon, plainTitle] = await Promise.all([
         getPeerTitle({
           ...this.options as Required<PeerTitleOptions>,
           peerId,
@@ -195,8 +197,16 @@ export default class PeerTitle {
         }),
         (this.options.withIcons && generateTitleIcons({peerId, clickableEmojiStatus: this.options.clickableEmojiStatus, wrapOptions: {...this.options.wrapOptions, textColor: this.options.iconsColor || this.options.wrapOptions?.textColor}})) ||
           (this.options.withPremiumIcon && generateTitleIcons({peerId, wrapOptions: {...this.options.wrapOptions, textColor: this.options.iconsColor || this.options.wrapOptions?.textColor}, noVerifiedIcon: true, noFakeIcon: true})),
-        getTopicIconPromise
+        getTopicIconPromise,
+        getPeerTitle({
+          ...this.options as Required<PeerTitleOptions>,
+          peerId,
+          threadId,
+          plainText: true
+        })
       ]);
+
+      this.element.title = plainTitle as string;
 
       const createInnerTitleSpan = () => {
         const inner = document.createElement('span');
