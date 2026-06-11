@@ -2,10 +2,13 @@ import EmojiDocumentIcon from '@components/emojiDocumentIcon';
 import {IconTsx} from '@components/iconTsx';
 import InputField from '@components/inputField';
 import PopupElement from '@components/popups/indexTsx';
+import ripple from '@components/ripple';
 import Scrollable from '@components/scrollable2';
 import SimpleFormField from '@components/simpleFormField';
 import Space from '@components/space';
+import {StaticCheckbox} from '@components/staticCheckbox';
 import cloneDOMRect from '@helpers/dom/cloneDOMRect';
+import {keepMe} from '@helpers/keepMe';
 import {createMutation} from '@helpers/solid/createMutation';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
@@ -15,6 +18,8 @@ import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {createEffect, createMemo, createSignal, mergeProps, Show} from 'solid-js';
 import {useCreateToneLimits} from './limits';
 import styles from './styles.module.scss';
+
+keepMe(ripple);
 
 
 type SubmitPayload = CreateToneArgs;
@@ -37,6 +42,7 @@ const CreateTonePopup = (inProps: CreateTonePopupProps) => {
   const [styleName, setStyleName] = createSignal(props.initialValues?.title ?? '');
   const [instructions, setInstructions] = createSignal(props.initialValues?.prompt ?? '');
   const [docId, setDocId] = createSignal<DocId>(props.initialValues?.emojiId);
+  const [displayAuthor, setDisplayAuthor] = createSignal(props.initialValues?.displayAuthor ?? false);
 
   const [emojiButton, setEmojiButton] = createSignal<HTMLElement>();
 
@@ -152,16 +158,26 @@ const CreateTonePopup = (inProps: CreateTonePopupProps) => {
         <SimpleFormField.Caption>
           <I18nTsx key="AiEditor.NewStyle.InstructionsDescription" />
         </SimpleFormField.Caption>
+
+        <Space amount='1rem' />
+
+        <div class={styles.checkboxContainer} onClick={() => setDisplayAuthor(p => !p)} use:ripple>
+          <StaticCheckbox round checked={displayAuthor()} />
+          <div class={styles.checkboxText}>
+            <I18nTsx key="AiEditor.NewStyle.AddLink" />
+          </div>
+        </div>
+
       </PopupElement.Body>
       <PopupElement.Footer class={styles.popupFooter}>
         <PopupElement.FooterButton
           disabled={!canSubmit() || submitMutation.isPending()}
           langKey={props.submitLangKey}
           callback={wrapAsyncClickHandler(() => submitMutation.mutateAsync({
-            displayAuthor: false,
             emojiId: docId(),
             title: styleName(),
-            prompt: instructions()
+            prompt: instructions(),
+            displayAuthor: displayAuthor()
           }))}
         />
       </PopupElement.Footer>

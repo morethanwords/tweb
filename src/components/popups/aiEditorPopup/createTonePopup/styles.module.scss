@@ -79,3 +79,32 @@
   max-height: 240px;
   margin: 6px 0;
 }
+
+.checkboxContainer {
+  position: relative;
+  overflow: hidden;
+
+  display: flex;
+  align-items: center;
+
+  gap: 0.5rem;
+  margin: 0 auto;
+  --padding: 6px;
+  padding: var(--padding) 12px var(--padding) var(--padding);
+  color: var(--secondary-text-color);
+  gap: var(--padding);
+
+  cursor: pointer;
+  border-radius: 24px;
+
+  @include hover-global(gray, background-color, true);
+
+  * {
+    pointer-events: none;
+  }
+}
+
+.checkboxText {
+  text-align: left;
+  max-width: 240px;
+}

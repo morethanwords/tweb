@@ -178,7 +178,8 @@ const useEditTone = ({
       initialValues: {
         title: tone.title,
         emojiId: tone.emoji_id,
-        prompt: tone.prompt
+        prompt: tone.prompt,
+        displayAuthor: !!tone.author_id
       },
       titleLangKey: 'AiEditor.NewStyle.TitleEdit',
       submitLangKey: 'Save',
