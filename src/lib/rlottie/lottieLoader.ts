@@ -94,6 +94,17 @@ export class LottieLoader {
     }
   }
 
+  // a transferred placeholder canvas loses its displayed frame on a DOM move
+  // (detach+reattach) - re-present every offscreen player inside the moved root
+  public nudgePresentWithin(root: HTMLElement) {
+    for(const reqId in this.players) {
+      const player = this.players[reqId];
+      if(player.el?.some((el) => el && root.contains(el))) {
+        player.nudgePresent();
+      }
+    }
+  }
+
   public loadLottieWorkers() {
     if(this.loadPromise) {
       return this.loadPromise;

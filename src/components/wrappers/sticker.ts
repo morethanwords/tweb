@@ -29,6 +29,7 @@ import {getEmojiToneIndex} from '@vendor/emoji';
 import animationIntersector, {AnimationItemGroup} from '@components/animationIntersector';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import wrapStickerAnimation from '@components/wrappers/stickerAnimation';
+import createStickerAppearance, {onAnimationEnd} from '@components/wrappers/stickerAppearance';
 import framesCache from '@helpers/framesCache';
 import liteMode, {LiteModeKey} from '@helpers/liteMode';
 import Scrollable from '@components/scrollable';
@@ -51,23 +52,6 @@ const UNMOUNT_THUMBS = true;
 const locksUrls: {[docId: string]: string} = {};
 
 export const videosCache: {[key: string]: Promise<any>} = {};
-
-const onAnimationEnd = (element: HTMLElement, onAnimationEnd: () => void, timeout: number) => {
-  const onEnd = () => {
-    element.removeEventListener('animationend', onEnd);
-    onAnimationEnd();
-    clearTimeout(_timeout);
-  };
-  element.addEventListener('animationend', onEnd);
-  const _timeout = setTimeout(onEnd, timeout);
-};
-
-const isEmptyContainer = (container: HTMLElement) => {
-  const childElementCount = container.childElementCount;
-  if(!childElementCount) return true;
-  const child = container.firstElementChild as HTMLElement;
-  return child.classList.contains('premium-sticker-lock') && childElementCount === 1;
-};
 
 const getThumbFromContainer = (container: HTMLElement) => {
   let element = container.firstElementChild as HTMLElement;
@@ -249,6 +233,17 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
   };
   let loadThumbPromise = deferredPromise<void>();
   let haveThumbCached = false;
+  // per-container appearance controller - the single owner of the thumb/underlay/
+  // canvas layering; adopts a previous generation's media as the bottom layer
+  // (replacing the old isEmptyContainer occupancy gate) and retires it only under
+  // a provably presented upper layer
+  const thumbKey = doc.id + '-' + lottieCachedThumbToneIndex;
+  const appearances = (div as HTMLElement[]).map((container) => createStickerAppearance({
+    container,
+    thumbKey,
+    middleware,
+    replacePreviousMedia: !!onlyThumb
+  }));
   if(
     (
       doc.thumbs?.length ||
@@ -259,37 +254,11 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
       isThumbNeededForType ||
       onlyThumb
     ) &&
-    withThumb !== false &&
-    isEmptyContainer(div[0])/*  && doc.thumbs[0]._ !== 'photoSizeEmpty' */
+    withThumb !== false/*  && doc.thumbs[0]._ !== 'photoSizeEmpty' */
   ) {
     let thumb = lottieCachedThumb || doc.thumbs[0];
 
     // console.log('wrap sticker', thumb, div);
-
-    // an svg placeholder may be upgraded to the real thumb image, but never over the canvas
-    const getReplaceableSvg = (div: HTMLElement) => {
-      const element = getThumbFromContainer(div);
-      return element?.tagName === 'svg' && !div.querySelector('canvas') ? element : undefined;
-    };
-
-    const afterRender = (div: HTMLElement, thumbImage: HTMLElement) => {
-      if(isEmptyContainer(div) || getReplaceableSvg(div)) {
-        sequentialDom.mutateElement(div, () => {
-          const svg = getReplaceableSvg(div);
-          if(svg) {
-            thumbImage.classList.add('media-sticker', 'thumbnail');
-            svg.replaceWith(thumbImage);
-          } else if(isEmptyContainer(div)) {
-            thumbImage.classList.add('media-sticker', 'thumbnail');
-            div.append(thumbImage);
-          }
-
-          loadThumbPromise.resolve();
-        });
-      } else {
-        loadThumbPromise.resolve();
-      }
-    };
 
     if('url' in thumb) {
       haveThumbCached = true;
@@ -297,15 +266,14 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
       // warm render - the cell would stay empty until the first frame pops in from
       // nothing. Show the instant vector silhouette meanwhile; the image upgrades it.
       const pathThumb = doc.thumbs?.find((t) => t._ === 'photoPathSize' && (t as PhotoSize.photoPathSize).bytes?.length) as PhotoSize.photoPathSize;
-      div.forEach((div) => {
-        if(pathThumb && isEmptyContainer(div)) {
+      div.forEach((div, idx) => {
+        if(pathThumb && appearances[idx].canBuildSilhouette()) {
           const {svg} = createSvgFromBytes(pathThumb.bytes, doc.w, doc.h);
-          svg.classList.add('rlottie-vector', 'media-sticker', 'thumbnail');
-          div.append(svg);
+          appearances[idx].setSilhouette(svg);
         }
 
         const thumbImage = new Image();
-        renderImageFromUrl(thumbImage, (thumb as any).url, () => afterRender(div, thumbImage));
+        renderImageFromUrl(thumbImage, (thumb as any).url, () => appearances[idx].upgradeToImage(thumbImage, () => loadThumbPromise.resolve()));
       });
 
       if(pathThumb) {
@@ -318,7 +286,6 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
         }
 
         const {svg} = createSvgFromBytes((thumb as PhotoSize.photoStrippedSize).bytes, doc.w, doc.h);
-        svg.classList.add('rlottie-vector', 'media-sticker', 'thumbnail');
 
         // const defs = document.createElementNS(ns, 'defs');
         // const linearGradient = document.createElementNS(ns, 'linearGradient');
@@ -355,15 +322,15 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
         // svg.append(defs);
 
         // if(liteMode.isAvailable('animations') && !isCustomEmoji) path.setAttributeNS(null, 'fill', 'url(#g)');
-        div.forEach((div, idx) => div.append(idx > 0 ? svg.cloneNode(true) : svg));
+        div.forEach((div, idx) => appearances[idx].setSilhouette(idx > 0 ? svg.cloneNode(true) as SVGSVGElement : svg));
         haveThumbCached = true;
         loadThumbPromise.resolve();
       } else if(toneIndex <= 0) {
         const r = () => {
-          (div as HTMLElement[]).forEach((div) => {
+          (div as HTMLElement[]).forEach((div, idx) => {
             const thumbImage = new Image();
             const url = getPreviewURLFromThumb(doc, thumb as PhotoSize.photoStrippedSize, true);
-            renderImageFromUrl(thumbImage, url, () => afterRender(div, thumbImage), useCache);
+            renderImageFromUrl(thumbImage, url, () => appearances[idx].upgradeToImage(thumbImage, () => loadThumbPromise.resolve()), useCache);
           });
         };
 
@@ -377,7 +344,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
             (thumb as PhotoSize.photoStrippedSize).bytes = bytes;
             doc.pFlags.stickerThumbConverted = true;
 
-            if((middleware && !middleware()) || !isEmptyContainer((div as HTMLElement[])[0])) {
+            if((middleware && !middleware()) || !appearances[0].canBuildImage()) {
               loadThumbPromise.resolve();
               return;
             }
@@ -388,28 +355,29 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
       }
     } else if(((stickerType === StickerType.Lottie && toneIndex <= 0) || stickerType === StickerType.WebM) && (withThumb || onlyThumb)) {
       const load = async() => {
-        if(!isEmptyContainer((div as HTMLElement[])[0]) || (middleware && !middleware())) {
+        if(!appearances[0].canBuildImage() || (middleware && !middleware())) {
           loadThumbPromise.resolve();
           return;
         }
 
-        const r = (div: HTMLElement, thumbImage: HTMLElement, url: string) => {
-          if(!isEmptyContainer(div) || (middleware && !middleware())) {
+        const r = (thumbImage: HTMLElement, url: string, idx: number) => {
+          if(!appearances[idx].canBuildImage() || (middleware && !middleware())) {
             loadThumbPromise.resolve();
             return;
           }
 
-          if(!url) afterRender(div, thumbImage);
-          else renderImageFromUrl(thumbImage, url, () => afterRender(div, thumbImage), useCache);
+          const upgrade = () => appearances[idx].upgradeToImage(thumbImage as HTMLImageElement, () => loadThumbPromise.resolve());
+          if(!url) upgrade();
+          else renderImageFromUrl(thumbImage, url, upgrade, useCache);
         };
 
         getCacheContext();
-        (div as HTMLElement[]).forEach((div) => {
+        (div as HTMLElement[]).forEach((div, idx) => {
           if(cacheContext.url) {
-            r(div, new Image(), cacheContext.url);
+            r(new Image(), cacheContext.url, idx);
           } else if('bytes' in thumb) {
             const res = getImageFromStrippedThumb(doc, thumb as PhotoSize.photoStrippedSize, true);
-            res.loadPromise.then(() => r(div, res.image, ''));
+            res.loadPromise.then(() => r(res.image, '', idx));
 
             // return managers.appDocsManager.getThumbURL(doc, thumb as PhotoSize.photoStrippedSize).promise.then(r);
           } else {
@@ -417,7 +385,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
               media: doc,
               thumb: thumb as PhotoSize
             }).then(async(url) => {
-              return r(div, new Image(), url);
+              return r(new Image(), url, idx);
             });
           }
         });
@@ -511,76 +479,6 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
         }
       } : undefined;
 
-      const onFirstFrame = (container: HTMLElement, canvas: HTMLCanvasElement) => {
-        let element = getThumbFromContainer(container);
-        element = element !== canvas && element as HTMLElement;
-        if(needFadeIn !== false) {
-          needFadeIn = (needFadeIn || !element || element.tagName === 'svg') && liteMode.isAvailable('animations');
-        }
-
-        const cb = () => {
-          if(
-            element &&
-            element !== canvas &&
-            element.tagName !== 'DIV'
-          ) {
-            element.remove();
-          }
-        };
-
-        // offscreen: a worker commit made while the canvas was detached can be lost -
-        // re-present AFTER the DOM append (acked) and only then drop the underlay
-        const dropUnderlay = (run: () => void) => {
-          if(animation.offscreen) {
-            animation.ensurePresented().then(() => {
-              requestAnimationFrame(() => requestAnimationFrame(run));
-            });
-          } else {
-            run();
-          }
-        };
-
-        if(!needFadeIn) {
-          if(element) {
-            dropUnderlay(() => sequentialDom.mutate(cb));
-          }
-        } else {
-          // offscreen: the canvas already carries a committed frame and onLoad appends
-          // it right after this dispatch - without the class it would paint one frame
-          // at full opacity (flash), then drop to 0 when the rAF batch adds the class
-          if(animation.offscreen && canvas) {
-            canvas.classList.add('fade-in');
-          }
-
-          sequentialDom.mutate(() => {
-            canvas && canvas.classList.add('fade-in');
-            // offscreen: the canvas may still be transparent for a frame or two (the
-            // worker commit lands asynchronously) and the parallel cross-fade dips
-            // through the background = visible blink. Keep the underlay at full
-            // opacity beneath the fading-in canvas; it is removed under a fully
-            // opaque canvas afterwards.
-            if(element && !animation.offscreen) {
-              element.classList.add('fade-out');
-            }
-
-            onAnimationEnd(canvas || element, () => {
-              dropUnderlay(() => sequentialDom.mutate(() => {
-                canvas && canvas.classList.remove('fade-in');
-                // the sticker does not fully cover the silhouette (transparent
-                // background/holes) - removing the underlay instantly pops the
-                // peeking gray ghost out of existence; fade it away instead
-                if(animation.offscreen && element && element !== canvas && element.tagName !== 'DIV') {
-                  element.classList.add('fade-out');
-                  onAnimationEnd(element, () => sequentialDom.mutate(cb), 400);
-                } else {
-                  cb();
-                }
-              }));
-            }, 400);
-          });
-        }
-      };
-
       animation.addEventListener('firstFrame', () => {
         if(withThumb !== false || isCustomEmoji) {
           saveLottiePreviewFromPlayer(doc, animation, lottieCachedThumbToneIndex);
@@ -591,8 +489,11 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
         }
 
         if(!isCustomEmoji) {
-          (div as HTMLElement[]).forEach((container, idx) => {
-            onFirstFrame(container, animation.canvas[idx]);
+          // animation.canvas/animation.offscreen must be read HERE, at dispatch time:
+          // a failed offscreen load recreates the canvases and flips offscreen=false
+          // (the legacy retry belt) before firstFrame can fire
+          appearances.forEach((appearance, idx) => {
+            appearance.onMediaFirstFrame({animation, canvas: animation.canvas[idx], needFadeIn});
           });
         }
       }, {once: true});
@@ -949,6 +850,14 @@ export function StickerTsx(props: {
     await lastRender;
     if(doc !== props.sticker) return
 
+    // each generation dies with its middleware: the previous player is removed
+    // (lottieLoader's onClean) and its appearance controller disposed; the new
+    // wrap adopts the leftover DOM as its bottom layer
+    middleware.clean();
+
+    // the clean above makes a superseded in-flight generation's load() throw
+    // MIDDLEWARE - catch so the rejection cannot kill the serialized chain
+    // (the next run awaits lastRender)
     lastRender = wrapSticker({
       middleware: middleware.get(),
       ...props.extraOptions,
@@ -958,7 +867,7 @@ export function StickerTsx(props: {
       doc
     }).then(res => res.render).then(it => {
       it && props.onRender?.(it);
-    })
+    }).catch(noop)
   }))
 
   onCleanup(() => middleware.destroy())

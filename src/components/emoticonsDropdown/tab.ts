@@ -10,6 +10,7 @@ import Animated from '@helpers/solid/animations';
 import windowSize from '@helpers/windowSize';
 import {EmojiGroup, StickerSet} from '@layer';
 import {AppManagers} from '@lib/managers';
+import lottieLoader from '@lib/rlottie/lottieLoader';
 import {LangPackKey, i18n} from '@lib/langPack';
 import {AnyFunction} from '@types';
 import {createSignal, createMemo, createResource, createEffect, untrack} from 'solid-js';
@@ -280,6 +281,8 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
     }).length : 0xFFFF;
     positionElementByIndex(container, this.categoriesContainer, posItems);
     positionElementByIndex(menuTab, this.menu, posMenu);
+    // the DOM move blanks transferred placeholder canvases inside - re-present
+    lottieLoader.nudgePresentWithin(container);
   }
 
   public isCategoryVisible(category: Category) {
