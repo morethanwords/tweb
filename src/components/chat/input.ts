@@ -1816,6 +1816,12 @@ export default class ChatInput {
     return !(await this.chat.canSend('send_messages'));
   }
 
+  // Nobody can write to the Replies chat — official clients replace the
+  // composer with the same Mute/Unmute plate as for channels.
+  private isRepliesChat(peerId = this.chat.peerId) {
+    return peerId === REPLIES_PEER_ID && this.chat.type === ChatType.Chat;
+  }
+
   // Keeps the channel "can't write" plate's centre button labelled Mute/Unmute.
   private updateChannelMuteButton() {
     if(!this.channelMuteBtn) {
@@ -1845,6 +1851,7 @@ export default class ChatInput {
       (this.chat.peerId.isUser() && (this.chat.isUserBlocked || this.chat.isPremiumRequired)) ||
       this.getJoinButtonType() ||
       await this.isChannelControlNeeded() ||
+      this.isRepliesChat() ||
       (this.frozenBtn && this.chat.appConfig.freeze_since_date && !(await this.chat.canSend()))
     ) {
       return this.controlContainer;
@@ -2386,11 +2393,12 @@ export default class ChatInput {
 
         // A broadcast channel OR gigagroup the user can't post in: not subscribed
         // -> Subscribe/Join (primary filled), subscribed -> Mute (transparent).
-        // Regular megagroups keep using getJoinButtonType().
+        // Regular megagroups keep using getJoinButtonType(). The Replies chat
+        // always gets Mute.
         const cantPost = (isBroadcast || isBroadcastGroup) && !canSend &&
           this.chat.type === ChatType.Chat && !peerId.isUser() && !this.chat.isMonoforum;
         const showJoin = !!type || (cantPost && !!channel?.pFlags?.left);
-        const showMute = cantPost && !channel?.pFlags?.left;
+        const showMute = (cantPost && !channel?.pFlags?.left) || this.isRepliesChat(peerId);
         const good = !haveSomethingInControl && (showJoin || showMute);
         haveSomethingInControl ||= good;
 
