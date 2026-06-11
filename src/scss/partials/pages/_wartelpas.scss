@@ -199,12 +199,17 @@
         height: 100% !important;
         flex: 0 0 auto !important;
         border-radius: 0 !important; /* Force square for the container */
+        position: relative !important;
+        inset: auto !important;
 
         &.avatar-element, .avatar-element {
           width: 100% !important;
           height: 100% !important;
           border-radius: 0 !important;
           box-shadow: none !important;
+          position: absolute !important;
+          top: 0 !important;
+          left: 0 !important;
         }
 
         canvas, img {
@@ -225,65 +230,51 @@
         }
       }
 
-      .row-row, .dialog-title-details {
-         display: none !important;
-      }
-
-      .row-title-row {
-         position: absolute;
-         left: 140px; /* 120px avatar + 20px gap */
-         top: 25px;
-         right: 15px;
-      }
-
-      .row-subtitle-row {
-         position: absolute;
-         left: 140px;
-         top: 60px;
-         right: 15px;
+      .row-row {
+         display: flex !important;
+         flex-direction: column !important;
+         justify-content: center !important;
+         align-items: center !important; /* Center horizontally */
+         height: 100% !important;
+         padding: 0 15px !important; /* Adjust padding */
+         flex: 1 1 auto !important;
+         gap: 0 !important;
       }
 
       .dialog-title {
         margin: 0 !important;
         padding: 0 !important;
-        text-align: left !important;
+        text-align: center !important; /* Center text */
         width: 100% !important;
+        position: relative !important;
+        top: auto !important;
+        left: auto !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
 
         .user-title {
-          justify-content: flex-start !important;
-          font-size: 1.4rem !important;
+          width: 100% !important;
+          justify-content: center !important; /* Center flex items */
+          text-align: center !important;
+          font-size: 1.6rem !important; /* Slightly larger */
           font-weight: 700 !important;
           color: #fff !important;
           font-family: "Lucida Handwriting", "Courier New", cursive, serif;
           letter-spacing: 1px;
+
+          .peer-title, .peer-title-inner {
+            width: 100% !important;
+            text-align: center !important;
+            justify-content: center !important;
+          }
         }
       }
 
-      .dialog-subtitle {
-        margin: 0 !important;
-        padding: 0 !important;
-        text-align: left !important;
-        width: 100% !important;
-        display: flex !important;
-        justify-content: flex-start !important;
-        
-        .user-last-message {
-          color: #999 !important;
-          font-size: 0.95rem !important;
-          justify-content: flex-start !important;
-          align-items: flex-start !important;
-          display: flex !important;
-          flex-direction: column !important;
-          gap: 0.3rem !important;
-          font-family: sans-serif !important;
-          white-space: normal !important;
-          overflow: visible !important;
-          text-overflow: clip !important;
-          line-height: 1.4;
-        }
-      }
-
-      // Hide all standard Telegram elements
+      // Hide all standard Telegram elements and subtitle
+      .dialog-subtitle,
+      .row-subtitle-row,
+      .dialog-title-details,
       .message-time, 
       .message-status, 
       .dialog-subtitle-badge,
