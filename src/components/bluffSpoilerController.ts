@@ -8,6 +8,7 @@ export default class BluffSpoilerController {
 
   private static latestMaskURL: string;
   private static maskImageURLs: string[] = [];
+  private static maskImagePins = new Map<string, HTMLImageElement>(); // keeps the decoded images cached
   private static appliedMaskURLs = new WeakMap<HTMLElement, string>();
   private static encoderWorker: Worker | false; // false = unsupported, encode on the main thread
   private static encoding = false;
@@ -24,14 +25,15 @@ export default class BluffSpoilerController {
   public static draw(element: HTMLElement, canvas: HTMLCanvasElement) {
     this.encodeMaskFrame(canvas);
 
-    // The custom properties are inherited by the characters' spans, so the style
-    // invalidation is scoped to this element's subtree (a global rule update would
-    // make the browser walk the whole document on every frame)
+    // The mask is a group effect masking the whole subtree, so one inline update on
+    // the wrapper is enough — the style invalidation is scoped to this very element
+    // (a global rule update would make the browser walk the whole document on every frame)
     const url = this.latestMaskURL;
     if(url && this.appliedMaskURLs.get(element) !== url) {
       this.appliedMaskURLs.set(element, url);
-      element.style.setProperty('--bluff-spoiler-mask', `url(${url})`);
-      element.style.setProperty('--bluff-spoiler-visible', '1');
+      element.style.setProperty('mask-image', `url(${url})`);
+      element.style.setProperty('-webkit-mask-image', `url(${url})`);
+      element.classList.add('is-visible');
     }
   }
 
@@ -82,9 +84,24 @@ export default class BluffSpoilerController {
     if(!blob || !this.instancesCount) return;
 
     const url = URL.createObjectURL(blob);
-    this.latestMaskURL = url;
-    this.maskImageURLs.push(url);
-    this.pruneMaskURLs();
+
+    // Publish the URL only once the image is decoded and cached, otherwise the next
+    // paint can happen before the blob loads and the mask flickers to transparent
+    const image = new Image();
+    image.src = url;
+    image.decode().then(() => {
+      if(!this.instancesCount) {
+        URL.revokeObjectURL(url);
+        return;
+      }
+
+      this.latestMaskURL = url;
+      this.maskImageURLs.push(url);
+      this.maskImagePins.set(url, image);
+      this.pruneMaskURLs();
+    }, () => {
+      URL.revokeObjectURL(url);
+    });
   }
 
   /**
@@ -109,6 +126,7 @@ export default class BluffSpoilerController {
     this.maskImageURLs = this.maskImageURLs.filter((url, i) => {
       if(i >= keepFrom || pinned.has(url)) return true;
       URL.revokeObjectURL(url);
+      this.maskImagePins.delete(url);
       return false;
     });
   }
@@ -160,6 +178,7 @@ export default class BluffSpoilerController {
 
     this.maskImageURLs.forEach((url) => URL.revokeObjectURL(url));
     this.maskImageURLs.length = 0;
+    this.maskImagePins.clear();
 
     if(this.encoderWorker) {
       this.encoderWorker.terminate();

@@ -99,28 +99,26 @@
 }
 
 .bluff-spoiler {
-  position: relative;
-  display: inline-block;
-
-  --width: 0.75em;
-  --index: 0;
-  width: var(--width);
-
-  // Both variables are set inline on the parent element by BluffSpoilerController
-  mask-image: var(--bluff-spoiler-mask, none);
+  // The mask is a group effect: applied here once, it masks all the letters' boxes.
+  // mask-image is set inline by BluffSpoilerController
   mask-size: 240px 120px;
   mask-repeat: repeat;
-  mask-position: calc(var(--index) * var(--width) * -1) 0px;
 
-  opacity: var(--bluff-spoiler-visible, 0);
+  opacity: 0;
   transition: opacity 0.2s;
-  // transition-delay: 0.2s;
 
-  white-space: pre;
-
-  background-color: currentColor;
+  &.is-visible {
+    opacity: 1;
+  }
 
   .tabs-container.animating & {
     opacity: 0;
+  }
+
+  &-letter {
+    display: inline-block;
+    width: 0.75em;
+    white-space: pre;
+    background-color: currentColor;
   }
 }
