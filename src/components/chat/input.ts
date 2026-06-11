@@ -162,7 +162,7 @@ import createChatInputState, {ChatInputState} from './inputState';
 import {SupportedMediaType} from '@components/popups/createPoll/storeContext';
 import {runWithHotReloadGuard} from '@lib/solidjs/runWithHotReloadGuard';
 
-const HOT_CHAT_INPUTS = import.meta.hot ? new Set<ChatInput>() : null;
+const HOT_CHAT_INPUTS = import.meta.hot ? [] as ChatInput[] : null;
 
 if(import.meta.hot) {
   import.meta.hot.accept('./inputState', (newModule) => {
@@ -201,6 +201,7 @@ type WatchDownloadProgressArgs<T> = {
 };
 
 export default class ChatInput {
+  readonly Class = ChatInput;
   // private static AUTO_COMPLETE_REG_EXP = /(\s|^)((?::|.)(?!.*[:@]).*|(?:[@\/]\S*))$/;
   private static AUTO_COMPLETE_REG_EXP = /(\s|^)((?:(?:@|^\/)\S*)|(?::|^[^:@\/])(?!.*[:@\/]).*)$/;
   public messageInput: HTMLElement;
@@ -568,8 +569,11 @@ export default class ChatInput {
     this.inputState = runWithHotReloadGuard(() => createChatInputState(this));
 
     if(HOT_CHAT_INPUTS) {
-      HOT_CHAT_INPUTS.add(this);
-      this.getMiddleware()?.onDestroy(() => HOT_CHAT_INPUTS.delete(this));
+      HOT_CHAT_INPUTS.push(this);
+      this.getMiddleware()?.onDestroy(() => {
+        const idx = HOT_CHAT_INPUTS.indexOf(this);
+        if(idx !== -1) HOT_CHAT_INPUTS.splice(idx, 1);
+      });
     }
   }
 
@@ -4031,7 +4035,8 @@ export default class ChatInput {
     sendTextParams = {},
     forwardParams = {},
     slowModeParams,
-    paidMessageInterceptor
+    paidMessageInterceptor,
+    text
   }: {
     sendingParams: MessageSendingParams,
     inputField?: InputFieldAnimated,
@@ -4040,11 +4045,15 @@ export default class ChatInput {
     sendTextParams?: Parameters<AppMessagesManager['sendText']>[0],
     forwardParams?: Pick<Parameters<AppMessagesManager['forwardMessages']>[0], 'dropAuthor' | 'dropCaptions'>,
     slowModeParams: Pick<Parameters<typeof ChatInput['showSlowModeTooltipIfNeeded']>[0], 'peerId' | 'managers' | 'element'>,
-    paidMessageInterceptor?: PaidMessagesInterceptor
+    paidMessageInterceptor?: PaidMessagesInterceptor,
+    text?: LocalTextWithOptionalEntities
   }) {
     const {value, entities} = inputField ?
       getRichValueWithCaret(inputField.input, true, false) :
-      {value: '', entities: [] as MessageEntity[]};
+      text ?
+        {value: text.text, entities: text.entities || []} :
+        {value: '', entities: [] as MessageEntity[]};
+
     const trimmedValue = value.trim();
 
     let messageCount = 0;
@@ -4205,7 +4214,6 @@ export default class ChatInput {
       return;
     }
   }
-
 
   public async sendMessageWithDocument({
     document,

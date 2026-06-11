@@ -352,7 +352,8 @@ export default class PopupNewMedia extends PopupElement {
         ref: (inputField) => {
           this.messageInputField = inputField;
         },
-        btnConfirm: this.btnConfirm
+        btnConfirm: this.btnConfirm,
+        chatInput: this.chat.input
       });
 
       Portal({
