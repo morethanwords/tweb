@@ -1,28 +1,21 @@
+import {AutoHeight} from '@components/autoHeight';
 import EmojiDocumentIcon from '@components/emojiDocumentIcon';
 import {IconTsx} from '@components/iconTsx';
-import InputField from '@components/inputField';
 import PopupElement from '@components/popups/indexTsx';
 import ripple from '@components/ripple';
 import Scrollable from '@components/scrollable2';
-import SimpleFormField from '@components/simpleFormField';
+import {Skeleton} from '@components/skeleton';
 import Space from '@components/space';
-import {StaticCheckbox} from '@components/staticCheckbox';
-import cloneDOMRect from '@helpers/dom/cloneDOMRect';
 import {keepMe} from '@helpers/keepMe';
+import createMiddleware from '@helpers/solid/createMiddleware';
 import {createMutation} from '@helpers/solid/createMutation';
 import {I18nTsx} from '@helpers/solid/i18n';
-import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
 import {AiComposeTone} from '@layer';
-import {CreateToneArgs} from '@lib/appManagers/aiTonesManager';
-import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {createEffect, createMemo, createSignal, Match, mergeProps, ParentProps, Show, Switch} from 'solid-js';
-import {useCreateToneLimits} from './limits';
-import styles from './styles.module.scss';
-import Button from '@components/buttonTsx';
-import {Transition} from 'solid-transition-group';
 import {LangPackKey} from '@lib/langPack';
-import {AutoHeight} from '@components/autoHeight';
-import {Skeleton} from '@components/skeleton';
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import {batch, createResource, createSignal, Match, Show, Switch} from 'solid-js';
+import {Transition} from 'solid-transition-group';
+import styles from './styles.module.scss';
 
 keepMe(ripple);
 
@@ -33,10 +26,22 @@ export type ViewTonePopupProps = {
 };
 
 const ViewTonePopup = (props: ViewTonePopupProps) => {
-  const {rootScope, toastNew, confirmationPopup} = useHotReloadGuard();
+  const {rootScope, toastNew, confirmationPopup, wrapRichText, useAppConfig, PeerTitleTsx, appImManager} = useHotReloadGuard();
+
+  const appConfig = useAppConfig();
+  const maxNum = appConfig.aicompose_tone_examples_num || 3;
+
+  const [show, setShow] = createSignal(true);
 
   const [docId, setDocId] = createSignal(props.tone.emoji_id);
-  const [exampleNum, setExampleNum] = createSignal(1);
+  const [exampleNum, setExampleNum] = createSignal(props.tone.example_english ? 1 : 0);
+  const [canFetch, setCanFetch] = createSignal(exampleNum() === 0);
+
+  const [example] = createResource(
+    () => canFetch() ? exampleNum() : undefined,
+    (num) => rootScope.managers.aiTonesManager.fetchExample(props.tone, num),
+    {initialValue: props.tone.example_english} as {}
+  );
 
   const isCreator = () => props.tone.pFlags.creator;
 
@@ -52,13 +57,21 @@ const ViewTonePopup = (props: ViewTonePopupProps) => {
 
   const mutation = createMutation(() => {
     if(isCreator()) return rootScope.managers.aiTonesManager.deleteTone(props.tone.id);
-    return rootScope.managers.aiTonesManager.saveToneById(props.tone.id, props.isSaved);
+    return rootScope.managers.aiTonesManager.saveTone(props.tone, props.isSaved);
   }, {
     onError: () => toastNew({langPackKey: getErrorLangKey()}),
     onSuccess: () => toastNew({langPackKey: getSuccessLangKey()})
   });
 
-  const onSubmit = wrapAsyncClickHandler(async() => {
+  const onAnotherExample = () => {
+    if(exampleNum() >= maxNum) return;
+    batch(() => {
+      setExampleNum(exampleNum() + 1);
+      setCanFetch(true);
+    });
+  };
+
+  const onSubmit = async() => {
     if(isCreator()) {
       try {
         await confirmationPopup({
@@ -67,28 +80,51 @@ const ViewTonePopup = (props: ViewTonePopupProps) => {
           button: {langKey: 'Delete', isDanger: true}
         });
       } catch{
-        return;
+        return false;
       }
     }
     await mutation.mutateAsync();
-  });
+    return true;
+  };
 
-  const Content = (props: ParentProps) => {
+  const Content = (props: { final?: boolean }) => {
     return (
       <AutoHeight>
-        <Transition name='fade-2'>
-          <Show when={true} fallback={<Skeleton.Div class={styles.comparisonContentSkeleton} />}>
-            <Scrollable relative class={styles.comparisonContent}>
-              {props.children}
-            </Scrollable>
+        <Transition name='fade-2' mode='outin'>
+          <Show
+            when={example.state === 'ready' && (props.final ? example().to : example().from)}
+            fallback={
+              <div class={styles.comparisonContentSkeletonWrapper}>
+                <Skeleton.Div secondary class={styles.comparisonContentSkeleton} />
+              </div>
+            }
+            keyed
+          >
+            {(content) => (
+              <Scrollable relative class={styles.comparisonContent}>
+                {wrapRichText(content.text, {
+                  entities: content.entities,
+                  middleware: createMiddleware().get()
+                })}
+              </Scrollable>
+            )}
           </Show>
         </Transition>
       </AutoHeight>
     );
   };
 
+  const CreatorLink = (props: { peerId: number }) => (
+    <span class={styles.creatorLink} use:ripple onClick={() => {
+      appImManager.setInnerPeer({peerId: props.peerId});
+      setShow(false);
+    }}>
+      <PeerTitleTsx peerId={props.peerId} limitSymbols={32} />
+    </span>
+  );
+
   return (
-    <PopupElement class={styles.popup} containerClass={styles.popupContainer}>
+    <PopupElement class={styles.popup} containerClass={styles.popupContainer} show={show()}>
       <PopupElement.Header class={styles.popupHeader}>
         <PopupElement.CloseButton class={styles.popupCloseButton} />
       </PopupElement.Header>
@@ -111,6 +147,9 @@ const ViewTonePopup = (props: ViewTonePopupProps) => {
           )}
         </Show>
 
+        <div class={styles.title}>
+          {props.tone.title}
+        </div>
         <div class={styles.description}>
           <I18nTsx key="AiEditor.ViewStyle.Description" />
         </div>
@@ -120,24 +159,49 @@ const ViewTonePopup = (props: ViewTonePopupProps) => {
         <div class={styles.comparison}>
           <div class={styles.comparisonHeader}>
             <I18nTsx key="AiEditor.ViewStyle.Before" />
-            <Button class={styles.rotateButton} primaryTransparent>
-              <IconTsx icon="rotate" />
-              <I18nTsx key="AiEditor.ViewStyle.AnotherExample" />
-            </Button>
+            <Transition name='fade-2'>
+              <Show when={exampleNum() < maxNum}>
+                <div class={styles.anotherExampleButton} onClick={onAnotherExample} use:ripple>
+                  <IconTsx icon="flip" />
+                  <I18nTsx key="AiEditor.ViewStyle.AnotherExample" />
+                </div>
+              </Show>
+            </Transition>
           </div>
-          <Content>...</Content>
+          <Content />
           <div class={styles.comparisonDivider} />
           <div class={styles.comparisonHeader}>
             <I18nTsx key="AiEditor.ViewStyle.After" />
           </div>
-          <Content>...</Content>
+          <Content final />
         </div>
 
+        <Space amount='0.75rem' />
+
+        <Switch>
+          <Match when={!isCreator() && props.tone.author_id} keyed>
+            {(authorId) => (
+              <div class={styles.creatorRow}>
+                <I18nTsx key="AiEditor.ViewStyle.CreatedBy" args={[<CreatorLink peerId={authorId.toPeerId()} />]} />
+              </div>
+            )}
+          </Match>
+          <Match when={isCreator() && props.tone.installs_count} keyed>
+            {(installsCount) => (
+              <div class={styles.creatorRow}>
+                <I18nTsx
+                  key="AiEditor.ViewStyle.InstallsCount"
+                  args={[installsCount.toString()]}
+                />
+              </div>
+            )}
+          </Match>
+        </Switch>
       </PopupElement.Body>
       <PopupElement.Footer class={styles.popupFooter}>
         <PopupElement.FooterButton
           disabled={mutation.isPending()}
-          color='danger'
+          color={isCreator() || props.isSaved ? 'danger' : 'primary'}
           callback={onSubmit}
         >
           <Switch>

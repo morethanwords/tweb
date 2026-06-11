@@ -48,6 +48,7 @@ import showBirthdayPopup, {saveMyBirthday} from '@components/popups/birthday';
 import showLogOutPopup from '@components/popups/logOut';
 import {getStickerSetInputByShortName} from '@lib/appManagers/utils/stickers/getStickerSetInput';
 import {AppMyStoriesTab} from '@components/solidJsTabs/tabs';
+import showViewTonePopup from '@components/popups/aiEditorPopup/viewTonePopup';
 
 export class InternalLinkProcessor {
   protected managers: AppManagers;
@@ -782,6 +783,19 @@ export class InternalLinkProcessor {
         }
       }
     });
+
+    // t.me/addstyle/<slug>
+    addAnchorListener<{ pathnameParams: ['addstyle', string] }>({
+      name: 'addstyle',
+      callback: ({pathnameParams}) => {
+        const link: InternalLink = {
+          _: INTERNAL_LINK_TYPE.ADD_AI_STYLE,
+          slug: pathnameParams[1]
+        };
+
+        return this.processInternalLink(link);
+      }
+    });
   }
 
   private makeLink<T extends INTERNAL_LINK_TYPE>(type: T, uriParams: Omit<InternalLinkTypeMap[T], '_'>) {
@@ -918,12 +932,26 @@ export class InternalLinkProcessor {
     return appImManager.joinConference({_: 'inputGroupCallSlug', slug: link.slug});
   };
 
-  public processAddAiStyleLink = (link: InternalLink.InternalLinkAddAiStyle) => {
-    return this.managers.aiTonesManager.addTone(link.slug).then(() => {
-      toastNew({langPackKey: 'AiEditor.StyleAdded'});
-    }).catch(() => {
-      toastNew({langPackKey: 'AiEditor.StyleAddError'});
-    });
+  public processAddAiStyleLink = async(link: InternalLink.InternalLinkAddAiStyle) => {
+    try {
+      const {tone, tones} = await namedPromises({
+        tone: this.managers.aiTonesManager.getToneBySlug(link.slug),
+        tones: this.managers.aiTonesManager.getTones()
+      });
+      if(!tone) throw new Error();
+
+      const isSaved = !tone.pFlags.creator && tones.some((t) => t._ === 'aiComposeTone' && t.id.toString() === tone.id.toString());
+
+      showViewTonePopup({
+        tone,
+        isSaved,
+        HotReloadGuard: SolidJSHotReloadGuardProvider
+      });
+    } catch{
+      toastNew({
+        langPackKey: 'AiEditor.StyleNotFound'
+      });
+    }
   };
 
   public processUserPhoneNumberLink = (link: InternalLink.InternalLinkUserPhoneNumber) => {

@@ -1269,7 +1269,7 @@ const lang = {
   'ActionUserScored': 'un1 scored %2$s',
   'ActionYouScoredInGame': 'You scored %1$s in un2',
   'ActionUserScoredInGame': 'un1 scored %2$s in un3',
-  'ActionCreateDirectMessages' : 'Direct Messages Opened',
+  'ActionCreateDirectMessages': 'Direct Messages Opened',
   'AndOther': {
     'one_value': 'and %1$d other',
     'other_value': 'and %1$d others'
@@ -4767,6 +4767,7 @@ const lang = {
 
   'AiEditor.Chat.ViewStyle': 'View Style',
 
+  'AiEditor.StyleNotFound': 'Style not found, it was probably deleted',
   'AiEditor.StyleAdded': 'Style was added',
   'AiEditor.StyleAddError': 'Failed to add style',
   'AiEditor.StyleRemoved': 'Style was removed',
@@ -4779,7 +4780,10 @@ const lang = {
   'AiEditor.ViewStyle.AnotherExample': 'Another Example',
   'AiEditor.ViewStyle.Before': 'Before',
   'AiEditor.ViewStyle.After': 'After',
-  'AiEditor.ViewStyle.InstallsCount': 'Used by %s. Created by %s',
+  'AiEditor.ViewStyle.InstallsCount': {
+    'one_value': 'Used by %d person.',
+    'other_value': 'Used by %d persons.'
+  },
   'AiEditor.ViewStyle.CreatedBy': 'Created by %s',
   'AiEditor.ViewStyle.SaveStyle': 'Save Style',
   'AiEditor.ViewStyle.RemoveStyle': 'Remove Style',

@@ -4150,6 +4150,7 @@
 "AiEditor.NewStyle.AddLink" = "Add a link to my account";
 "AiEditor.NewStyle.EmojiUnsupported" = "Sorry, this emoji is unsupported, please choose an animated emoji instead.";
 "AiEditor.Chat.ViewStyle" = "View Style";
+"AiEditor.StyleNotFound" = "Style not found, it was probably deleted";
 "AiEditor.StyleAdded" = "Style was added";
 "AiEditor.StyleAddError" = "Failed to add style";
 "AiEditor.StyleRemoved" = "Style was removed";
@@ -4160,7 +4161,8 @@
 "AiEditor.ViewStyle.AnotherExample" = "Another Example";
 "AiEditor.ViewStyle.Before" = "Before";
 "AiEditor.ViewStyle.After" = "After";
-"AiEditor.ViewStyle.InstallsCount" = "Used by %s. Created by %s";
+"AiEditor.ViewStyle.InstallsCount_one" = "Used by %d person.";
+"AiEditor.ViewStyle.InstallsCount_other" = "Used by %d persons.";
 "AiEditor.ViewStyle.CreatedBy" = "Created by %s";
 "AiEditor.ViewStyle.SaveStyle" = "Save Style";
 "AiEditor.ViewStyle.RemoveStyle" = "Remove Style";

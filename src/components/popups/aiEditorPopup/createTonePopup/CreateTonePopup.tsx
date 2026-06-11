@@ -73,6 +73,7 @@ const CreateTonePopup = (inProps: CreateTonePopupProps) => {
       noRegularEmoji: true,
       noPacks: false,
       noSearchGroups: false,
+      canUsePremiumEmojiAlways: true,
       customParentElement: document.body,
       getOpenPosition: () => {
         const rect = emojiButton().getBoundingClientRect();

@@ -47,6 +47,7 @@ export class AiTonesManager extends AppManager {
     this.tonesMap.clear();
     this.tonesHash = 0;
     this.isStale = true;
+    this.fetchingTonesPromise = undefined;
   };
 
   protected after() {
@@ -64,7 +65,11 @@ export class AiTonesManager extends AppManager {
 
     return this.fetchingTonesPromise = (async() => {
       const fetchedResult = await this.fetchTones(this.tonesHash);
-      if(!fetchedResult) return this.tones; // not modified
+
+      if(!fetchedResult) {
+        this.isStale = false;
+        return this.tones; // not modified
+      }
 
       this.tonesHash = fetchedResult.hash;
       this.isStale = false;
@@ -76,7 +81,9 @@ export class AiTonesManager extends AppManager {
       }
 
       return this.tones = fetchedResult.tones;
-    })();
+    })().finally(() => {
+      this.fetchingTonesPromise = undefined;
+    });
   }
 
   protected async fetchTones(hash: number | string) {
@@ -146,7 +153,11 @@ export class AiTonesManager extends AppManager {
 
   async saveToneById(toneId: string | number, unsave: boolean) {
     const tone = this.tonesMap.get(toneId.toString());
-    if(tone?._ !== 'aiComposeTone') return;
+    await this.saveTone(tone, unsave);
+  }
+
+  async saveTone(tone: Tone, unsave: boolean) {
+    if(tone._ !== 'aiComposeTone') return;
 
     await this.apiManager.invokeApi('aicompose.saveTone', {
       tone: this.getToneInput(tone),
@@ -154,8 +165,8 @@ export class AiTonesManager extends AppManager {
     });
 
     if(unsave) {
-      this.tones = this.tones.filter(tone => tone._ !== 'aiComposeTone' || tone.id.toString() !== toneId.toString());
-      this.tonesMap.delete(toneId.toString());
+      this.tones = this.tones.filter(t => t._ !== 'aiComposeTone' || t.id.toString() !== tone.id.toString());
+      this.tonesMap.delete(tone.id.toString());
     }
 
     this.isStale = true;
@@ -198,5 +209,37 @@ export class AiTonesManager extends AppManager {
       resultText: result.result_text,
       diffText: result.diff_text
     };
+  }
+
+  async getToneBySlug(toneSlug: string) {
+    if(!this.isStale) {
+      const tone = this.tones.find(tone => tone._ === 'aiComposeTone' && tone.slug === toneSlug);
+      if(tone?._ === 'aiComposeTone') return tone;
+    }
+
+    const result = await this.apiManager.invokeApi('aicompose.getTone', {
+      tone: {
+        _: 'inputAiComposeToneSlug',
+        slug: toneSlug
+      }
+    });
+
+    if(result._ === 'aicompose.tonesNotModified' || !result.tones.length) return;
+
+    const tone = result.tones[0];
+    if(tone._ !== 'aiComposeTone') return;
+
+    return tone;
+  }
+
+  fetchExample(tone: AiComposeTone.aiComposeTone, exampleNum: number) {
+    return this.apiManager.invokeApi('aicompose.getToneExample', {
+      tone: {
+        _: 'inputAiComposeToneID',
+        id: tone.id,
+        access_hash: tone.access_hash
+      },
+      num: exampleNum
+    });
   }
 }

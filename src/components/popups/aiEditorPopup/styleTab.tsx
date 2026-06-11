@@ -172,6 +172,8 @@ const useEditTone = ({
 }: UseEditToneArgs) => {
   const {rootScope, HotReloadGuard} = useHotReloadGuard();
 
+  if(!tone.pFlags.creator) return;
+
   return () => {
     showCreateTonePopup({
       HotReloadGuard,

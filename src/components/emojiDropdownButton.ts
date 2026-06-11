@@ -17,7 +17,7 @@ type CreateEmojiDropdownButtonArgs = {
   onClick?: OnClick;
 }
   & Pick<ConstructorParameters<typeof EmoticonsDropdown>[0], 'customParentElement' | 'getOpenPosition' | 'animationGroup'>
-  & Pick<ConstructorParameters<typeof EmojiTab>[0], 'noPacks' | 'noSearchGroups' | 'noRegularEmoji'>;
+  & Pick<ConstructorParameters<typeof EmojiTab>[0], 'noPacks' | 'noSearchGroups' | 'noRegularEmoji' | 'canUsePremiumEmojiAlways'>;
 
 type OnClick = ConstructorParameters<typeof EmojiTab>[0]['onClick'];
 
@@ -55,6 +55,7 @@ export const useEmojiDropdown = ({
   noPacks,
   noSearchGroups,
   noRegularEmoji,
+  canUsePremiumEmojiAlways,
   ...rest
 }: UseEmojiDropdownArgs) => {
   const emojiTab = new EmojiTab({
@@ -63,7 +64,8 @@ export const useEmojiDropdown = ({
     noPacks: noPacks ?? !rootScope.premium,
     noSearchGroups: noSearchGroups ?? !rootScope.premium,
     noRegularEmoji,
-    onClick: onClick
+    onClick: onClick,
+    canUsePremiumEmojiAlways
   });
 
   const emoticonsDropdown = new EmoticonsDropdown({

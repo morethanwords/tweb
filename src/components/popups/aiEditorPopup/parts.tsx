@@ -26,6 +26,7 @@ import {Transition, TransitionGroup} from 'solid-transition-group';
 import styles from './bodyContent.module.scss';
 import {useAiEditorPopupContext} from './context';
 import showCreateTonePopup from './createTonePopup';
+import {ButtonMenuItemOptions} from '@components/buttonMenu';
 
 
 keepMe(ripple);
@@ -350,7 +351,7 @@ export const Tone = (props: {
     isSaved: boolean;
     onDelete: () => void;
     onShare: () => void;
-    onEdit: () => void;
+    onEdit?: () => void;
   };
   onClick: JSX.EventHandlerUnion<HTMLDivElement, MouseEvent>;
 }) => {
@@ -363,11 +364,13 @@ export const Tone = (props: {
 
     const {destroy} = createContextMenu({
       buttons: [
-        {
-          icon: 'edit',
-          text: 'Edit',
-          onClick: props.withContextMenu.onEdit
-        },
+        ...(props.withContextMenu.onEdit ? [
+          {
+            icon: 'edit',
+            text: 'Edit',
+            onClick: props.withContextMenu.onEdit
+          }
+        ] as ButtonMenuItemOptions[] : []),
         {
           icon: 'forward',
           text: 'Share',

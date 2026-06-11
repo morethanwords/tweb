@@ -210,6 +210,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
   private stickerRenderer: SuperStickerRenderer;
   private showLocks: boolean;
   private nativeEmojiFadeReady: boolean;
+  private canUsePremiumEmojiAlways?: boolean;
   public initPromise: Promise<void>;
 
   constructor(options: {
@@ -230,6 +231,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
     onReady?: EmojiTab['onReady'],
     searchFetcher?: EmojiTab['searchFetcher'],
     groupFetcher?: EmojiTab['groupFetcher'],
+    canUsePremiumEmojiAlways?: boolean,
     showLocks?: boolean
   }) {
     super({
@@ -932,7 +934,8 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
       emoji.docId &&
       !rootScope.premium && (
         this.isStandalone && category ? category.id !== CUSTOM_EMOJI_RECENT_ID : this.peerId !== rootScope.myId
-      ) && !this.freeCustomEmoji.has(emoji.docId)
+      ) && !this.freeCustomEmoji.has(emoji.docId) &&
+      !this.canUsePremiumEmojiAlways
     ) {
       if(showToast) {
         const a = anchorCallback(() => {
