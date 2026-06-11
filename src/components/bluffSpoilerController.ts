@@ -6,9 +6,8 @@ import animationIntersector from '@components/animationIntersector';
 export default class BluffSpoilerController {
   private static log = logger('bluff-spoiler');
 
-  private static latestMaskURL: string;
-  private static maskImageURLs: string[] = [];
-  private static maskImagePins = new Map<string, HTMLImageElement>(); // keeps the decoded images cached
+  private static latestMaskURL: string; // a data: URL — self-contained, no revocation lifecycle
+  private static maskProperty = CSS.supports('mask-image', 'none') ? 'mask-image' : '-webkit-mask-image';
   private static appliedMaskURLs = new WeakMap<HTMLElement, string>();
   private static encoderWorker: Worker | false; // false = unsupported, encode on the main thread
   private static encoding = false;
@@ -31,8 +30,7 @@ export default class BluffSpoilerController {
     const url = this.latestMaskURL;
     if(url && this.appliedMaskURLs.get(element) !== url) {
       this.appliedMaskURLs.set(element, url);
-      element.style.setProperty('mask-image', `url(${url})`);
-      element.style.setProperty('-webkit-mask-image', `url(${url})`);
+      element.style.setProperty(this.maskProperty, `url(${url})`);
       element.classList.add('is-visible');
     }
   }
@@ -47,7 +45,7 @@ export default class BluffSpoilerController {
     this.log('Creating encoder worker');
 
     const worker = new Worker(new URL('./bluffSpoilerMask.worker.ts', import.meta.url), {type: 'module'});
-    worker.addEventListener('message', (event: MessageEvent<Blob>) => {
+    worker.addEventListener('message', (event: MessageEvent<string>) => {
       this.applyNewMask(event.data);
     });
     worker.addEventListener('error', (error) => {
@@ -74,61 +72,15 @@ export default class BluffSpoilerController {
         this.encoding = false;
       });
     } else {
-      // toBlob still encodes asynchronously off the main thread, unlike toDataURL
-      canvas.toBlob((blob) => this.applyNewMask(blob));
+      this.applyNewMask(canvas.toDataURL()); // legacy fallback, encodes on the main thread
     }
   }
 
-  private static applyNewMask(blob: Blob) {
+  private static applyNewMask(maskURL: string) {
     this.encoding = false;
-    if(!blob || !this.instancesCount) return;
+    if(!maskURL || !this.instancesCount) return;
 
-    const url = URL.createObjectURL(blob);
-
-    // Publish the URL only once the image is decoded and cached, otherwise the next
-    // paint can happen before the blob loads and the mask flickers to transparent
-    const image = new Image();
-    image.src = url;
-    image.decode().then(() => {
-      if(!this.instancesCount) {
-        URL.revokeObjectURL(url);
-        return;
-      }
-
-      this.latestMaskURL = url;
-      this.maskImageURLs.push(url);
-      this.maskImagePins.set(url, image);
-      this.pruneMaskURLs();
-    }, () => {
-      URL.revokeObjectURL(url);
-    });
-  }
-
-  /**
-   * Revokes old mask URLs, except the ones still applied on a connected element
-   * (its animation might be paused while others keep producing new masks — revoking
-   * its mask would blank it on the next repaint)
-   */
-  private static pruneMaskURLs() {
-    const KEEP_TAIL = 3; // recent masks might still be loading for an in-flight paint
-    if(this.maskImageURLs.length <= KEEP_TAIL) return;
-
-    const pinned = new Set<string>();
-    for(const weakRef of this.allWeakRefs) {
-      const el = weakRef.deref();
-      if(el?.isConnected) {
-        const applied = this.appliedMaskURLs.get(el);
-        if(applied) pinned.add(applied);
-      }
-    }
-
-    const keepFrom = this.maskImageURLs.length - KEEP_TAIL;
-    this.maskImageURLs = this.maskImageURLs.filter((url, i) => {
-      if(i >= keepFrom || pinned.has(url)) return true;
-      URL.revokeObjectURL(url);
-      this.maskImagePins.delete(url);
-      return false;
-    });
+    this.latestMaskURL = maskURL;
   }
 
   /**
@@ -175,10 +127,6 @@ export default class BluffSpoilerController {
 
   public static destroy() {
     this.latestMaskURL = undefined;
-
-    this.maskImageURLs.forEach((url) => URL.revokeObjectURL(url));
-    this.maskImageURLs.length = 0;
-    this.maskImagePins.clear();
 
     if(this.encoderWorker) {
       this.encoderWorker.terminate();

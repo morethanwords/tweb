@@ -2,6 +2,7 @@ const ctx = self as any as DedicatedWorkerGlobalScope;
 
 let canvas: OffscreenCanvas;
 let context: ImageBitmapRenderingContext;
+let reader: FileReaderSync;
 
 ctx.addEventListener('message', async(event: MessageEvent<ImageBitmap>) => {
   const bitmap = event.data;
@@ -11,6 +12,12 @@ ctx.addEventListener('message', async(event: MessageEvent<ImageBitmap>) => {
   }
 
   context.transferFromImageBitmap(bitmap);
-  const blob = await canvas.convertToBlob();
-  ctx.postMessage(blob); // the object URL is minted by the main thread, it owns the revocation
+  // webp is pixel-identical here at less than half the png size; unsupporting
+  // browsers (Safari) silently encode png instead
+  const blob = await canvas.convertToBlob({type: 'image/webp', quality: 1});
+
+  // data: URLs resolve synchronously when referenced from CSS; blob: URLs load
+  // asynchronously on every swap (even when predecoded) and flicker the mask
+  reader ??= new FileReaderSync();
+  ctx.postMessage(reader.readAsDataURL(blob));
 });
