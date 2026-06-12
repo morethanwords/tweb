@@ -422,3 +422,40 @@
     font-size: 1.5rem;
   }
 }
+
+.sectionWrapper {
+  position: relative;
+
+  :global(html.no-touch) &:hover {
+    .sectionArrow:not(.hidden) {
+      opacity: 1;
+    }
+  }
+}
+
+.sectionArrow {
+  position: absolute;
+  top: 50%;
+  font-size: 0.75rem;
+  display: flex;
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition: opacity 0.2s;
+  border-radius: 4px;
+
+  opacity: 0;
+
+  &Left {
+    left: 2px;
+    transform: translateY(-50%) rotate(90deg);
+  }
+
+  &Right {
+    right: 2px;
+    transform: translateY(-50%) rotate(-90deg);
+  }
+
+  &.hidden {
+    opacity: 0;
+  }
+}
