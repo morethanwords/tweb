@@ -158,8 +158,6 @@ SimpleFormField.Label = (props: ParentProps<{
   const [offset, setOffset] = createSignal(0);
   const [noTransition, setNoTransition] = createSignal(true);
 
-  const {shouldShowLengthLeft, lengthLeft, hasError} = useMaxLengthError(context.value, () => props.maxLength);
-
   onMount(() => {
     if(props.forceOffset || !context.offsetElement()) return;
     const parentElement = context.offsetElement().parentElement;
@@ -176,11 +174,6 @@ SimpleFormField.Label = (props: ParentProps<{
     });
   });
 
-  const setForceError = context.useSetForceError();
-  createEffect(() => {
-    setForceError(hasError());
-  });
-
   return (
     <div
       class={styles.Label}
@@ -193,10 +186,27 @@ SimpleFormField.Label = (props: ParentProps<{
       }}
     >
       {props.children}
-      <Show when={shouldShowLengthLeft()}>
-        {' '}({lengthLeft()})
+      <Show when={props.maxLength}>
+        <LabelMaxLength maxLength={props.maxLength} />
       </Show>
     </div>
+  );
+};
+
+const LabelMaxLength = (props: { maxLength: number }) => {
+  const context = useSimpleFormFieldContext();
+
+  const {shouldShowLengthLeft, lengthLeft, hasError} = useMaxLengthError(context.value, () => props.maxLength);
+
+  const setForceError = context.useSetForceError();
+  createEffect(() => {
+    setForceError(hasError());
+  });
+
+  return (
+    <Show when={shouldShowLengthLeft()}>
+      {' '}({lengthLeft()})
+    </Show>
   );
 };
 
