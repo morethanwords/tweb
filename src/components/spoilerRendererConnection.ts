@@ -1,28 +1,46 @@
 import IS_SHARED_WORKER_SUPPORTED from '@environment/sharedWorkerSupport';
+import {logger} from '@lib/logger';
 import type {SpoilerRendererInMessage, SpoilerRendererOutMessage} from '@components/spoilerRenderer.worker';
 
-export type SpoilerRendererPort = {
-  postMessage: (message: SpoilerRendererInMessage | ImageBitmap, transfer?: Transferable[]) => void
+export type SpoilerRendererConnection = {
+  postMessage: (message: SpoilerRendererInMessage | ImageBitmap, transfer?: Transferable[]) => void,
+  release: () => void
 };
 
 /**
  * One spoiler-rendering worker for the whole app — a SharedWorker when available,
  * so every tab feeds from the same simulations, with a dedicated worker fallback.
- * The connection is refcounted by its consumers (bluff spoilers, media spoilers).
+ *
+ * Consumers (bluff spoilers, media spoilers) hold a refcounted handle that owns
+ * their message listener; the underlying connection and the per-tab 'bye' are
+ * managed here only.
  */
 
-const messageListeners = new Set<(message: SpoilerRendererOutMessage) => void>();
-let connection: {port: SpoilerRendererPort, dispose: () => void};
-let users = 0;
+const log = logger('spoiler-renderer');
 
-export function addSpoilerRendererListener(listener: (message: SpoilerRendererOutMessage) => void) {
-  messageListeners.add(listener);
+type Underlying = {port: MessagePort | Worker, dispose: () => void};
+
+const messageListeners = new Set<(message: SpoilerRendererOutMessage) => void>();
+let connection: Underlying;
+let users = 0;
+let failed = false;
+let pagehideListenerAdded = false;
+
+export function hasSpoilerRendererFailed() {
+  return failed;
 }
 
-function connect() {
+function onError(error: ErrorEvent) {
+  log.error('the worker failed, new spoilers will fall back to the main thread', error);
+  failed = true;
+  messageListeners.forEach((listener) => listener({type: 'connection-error'}));
+}
+
+function connect(): Underlying {
   let port: MessagePort | Worker, dispose: () => void;
   if(IS_SHARED_WORKER_SUPPORTED) {
     const sharedWorker = new SharedWorker(new URL('./spoilerRenderer.worker.ts', import.meta.url), {type: 'module'});
+    sharedWorker.addEventListener('error', onError);
     port = sharedWorker.port;
     dispose = () => {
       (port as MessagePort).postMessage({type: 'bye'});
@@ -30,11 +48,15 @@ function connect() {
     };
 
     // tell the worker to drop this tab's state when the tab goes away
-    window.addEventListener('pagehide', () => {
-      if(connection?.port === port) port.postMessage({type: 'bye'});
-    });
+    if(!pagehideListenerAdded) {
+      pagehideListenerAdded = true;
+      window.addEventListener('pagehide', () => {
+        connection?.port.postMessage({type: 'bye'});
+      });
+    }
   } else {
     const worker = new Worker(new URL('./spoilerRenderer.worker.ts', import.meta.url), {type: 'module'});
+    worker.addEventListener('error', onError);
     port = worker;
     dispose = () => worker.terminate();
   }
@@ -46,15 +68,25 @@ function connect() {
   return {port, dispose};
 }
 
-export function retainSpoilerRenderer(): SpoilerRendererPort {
+export function retainSpoilerRenderer(onMessage?: (message: SpoilerRendererOutMessage) => void): SpoilerRendererConnection {
   ++users;
   connection ??= connect();
-  return connection.port;
-}
+  if(onMessage) messageListeners.add(onMessage);
 
-export function releaseSpoilerRenderer() {
-  if(--users || !connection) return;
+  let released = false;
+  return {
+    postMessage: (message, transfer) => {
+      if(!released) connection?.port.postMessage(message, transfer);
+    },
+    release: () => {
+      if(released) return;
+      released = true;
 
-  connection.dispose();
-  connection = undefined;
+      if(onMessage) messageListeners.delete(onMessage);
+      if(!--users && connection) {
+        connection.dispose();
+        connection = undefined;
+      }
+    }
+  };
 }

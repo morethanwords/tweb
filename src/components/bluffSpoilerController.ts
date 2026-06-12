@@ -2,7 +2,7 @@ import {MOUNT_CLASS_TO} from '@config/debug';
 import {logger} from '@lib/logger';
 
 import animationIntersector from '@components/animationIntersector';
-import {addSpoilerRendererListener, retainSpoilerRenderer, releaseSpoilerRenderer, SpoilerRendererPort} from '@components/spoilerRendererConnection';
+import {hasSpoilerRendererFailed, retainSpoilerRenderer, SpoilerRendererConnection} from '@components/spoilerRendererConnection';
 import type {SpoilerRendererSimInit} from '@components/spoilerRenderer.worker';
 
 export default class BluffSpoilerController {
@@ -11,7 +11,7 @@ export default class BluffSpoilerController {
   private static latestMaskURL: string; // a data: URL — self-contained, no revocation lifecycle
   private static maskProperty = CSS.supports('mask-image', 'none') ? 'mask-image' : '-webkit-mask-image';
   private static appliedMaskURLs = new WeakMap<HTMLElement, string>();
-  private static port: SpoilerRendererPort;
+  private static connection: SpoilerRendererConnection;
   private static encoding = false;
   private static lastDrawTime: number = 0;
   private static DRAW_INTERVAL = 4 * (1000 / 60); // Once in 4 frames (considering 60fps) to avoid performance issues
@@ -47,6 +47,7 @@ export default class BluffSpoilerController {
   }
 
   public static isWorkerSimSupported() {
+    if(hasSpoilerRendererFailed()) return false;
     return this.workerSimSupported ??= typeof(OffscreenCanvas) !== 'undefined' && !!new OffscreenCanvas(1, 1).getContext('webgl2');
   }
 
@@ -55,41 +56,32 @@ export default class BluffSpoilerController {
     this.workerSimInited = true;
 
     this.log('Initializing the worker simulation');
-    this.getPort().postMessage({type: 'bluff-init', ...options});
+    this.getConnection().postMessage({type: 'bluff-init', ...options});
   }
 
   public static activate(element: HTMLElement) {
     this.activeElements.add(element);
     this.applyMask(element);
 
-    this.getPort().postMessage({type: 'bluff-play'});
+    this.getConnection().postMessage({type: 'bluff-play'});
   }
 
   public static deactivate(element: HTMLElement) {
     this.activeElements.delete(element);
 
     if(!this.activeElements.size) {
-      this.getPort().postMessage({type: 'bluff-pause'});
+      this.getConnection().postMessage({type: 'bluff-pause'});
     }
   }
 
-  private static listenerAdded = false;
-
-  private static getPort() {
-    if(!this.port) {
-      this.port = retainSpoilerRenderer();
-
-      if(!this.listenerAdded) {
-        this.listenerAdded = true;
-        addSpoilerRendererListener((message) => {
-          if(message.type === 'bluff-mask') {
-            this.applyNewMask(message.url);
-          }
-        });
+  private static getConnection() {
+    return this.connection ??= retainSpoilerRenderer((message) => {
+      if(message.type === 'bluff-mask') {
+        this.applyNewMask(message.url);
+      } else if(message.type === 'connection-error') {
+        this.encoding = false; // an in-flight encode will never reply
       }
-    }
-
-    return this.port;
+    });
   }
 
   private static encodeMaskFrame(canvas: HTMLCanvasElement) {
@@ -97,10 +89,10 @@ export default class BluffSpoilerController {
     this.lastDrawTime = performance.now();
     this.encoding = true;
 
-    if(typeof(OffscreenCanvas) !== 'undefined' && typeof(createImageBitmap) === 'function') {
+    if(typeof(OffscreenCanvas) !== 'undefined' && typeof(createImageBitmap) === 'function' && !hasSpoilerRendererFailed()) {
       // createImageBitmap is a GPU-side copy, the readback + encoding happen in the worker
       createImageBitmap(canvas).then((bitmap) => {
-        this.getPort().postMessage(bitmap, [bitmap]);
+        this.getConnection().postMessage(bitmap, [bitmap]);
       }, () => {
         this.encoding = false;
       });
@@ -164,10 +156,10 @@ export default class BluffSpoilerController {
     this.activeElements.clear();
     this.workerSimInited = false;
 
-    if(this.port) {
-      this.port.postMessage({type: 'bluff-pause'}); // 'bye' would also drop this tab's media targets
-      this.port = undefined;
-      releaseSpoilerRenderer();
+    if(this.connection) {
+      this.connection.postMessage({type: 'bluff-pause'});
+      this.connection.release();
+      this.connection = undefined;
     }
     this.encoding = false;
 

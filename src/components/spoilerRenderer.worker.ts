@@ -1,5 +1,6 @@
-import BezierEasing from '@vendor/bezierEasing';
 import callbackify from '@helpers/callbackify';
+import applyColorOnContext from '@helpers/canvas/applyColorOnContext';
+import {simpleEasing} from '@helpers/simpleEasing';
 import DotRendererCore, {drawClippingCircle, DotRendererConfig} from '@components/dotRendererCore';
 
 export type SpoilerRendererSimInit = {
@@ -23,13 +24,13 @@ export type SpoilerRendererInMessage =
 
 export type SpoilerRendererOutMessage =
   {type: 'bluff-mask', url: string} |
-  {type: 'media-inited'};
+  {type: 'media-inited'} |
+  {type: 'connection-error'}; // synthesized by spoilerRendererConnection, never sent from here
 
 const ctx = self as any;
 
 const FRAME_INTERVAL = 1000 / 60;
 const ENCODE_INTERVAL = 4 * (1000 / 60); // Once in 4 frames (considering 60fps) to avoid performance issues
-const simpleEasing = BezierEasing(0.25, 0.1, 0.25, 1); // mirrors simpleEasing from @helpers/animateValue
 
 let reader: FileReaderSync;
 
@@ -124,10 +125,7 @@ const drawMediaTarget = (sim: Sim, target: MediaTarget, dpr: number) => {
   }
 
   if(target.color) {
-    context.globalCompositeOperation = 'source-atop';
-    context.fillStyle = target.color;
-    context.fillRect(0, 0, width, height);
-    context.globalCompositeOperation = 'source-over';
+    applyColorOnContext(context, target.color, 0, 0, width, height);
   }
 };
 
@@ -196,15 +194,35 @@ const ensureLoop = () => {
   frame();
 };
 
+/**
+ * Frees the GL resources of the simulations no connected tab uses anymore
+ * (the last tab left, or a tab re-inited with another device pixel ratio)
+ */
+const pruneSims = () => {
+  const bluffDprs = new Set<number>();
+  const mediaDprs = new Set<number>();
+  ports.forEach((state) => {
+    if(state.bluffDpr !== undefined) bluffDprs.add(state.bluffDpr);
+    if(state.mediaDpr !== undefined) mediaDprs.add(state.mediaDpr);
+  });
+
+  bluffSims.forEach(({core}, dpr) => {
+    if(!bluffDprs.has(dpr)) {
+      core.destroy();
+      bluffSims.delete(dpr);
+    }
+  });
+  mediaSims.forEach(({core}, dpr) => {
+    if(!mediaDprs.has(dpr)) {
+      core.destroy();
+      mediaSims.delete(dpr);
+    }
+  });
+};
+
 const removePort = (state: PortState) => {
   if(!ports.delete(state)) return;
-
-  if(!ports.size) { // free the GL resources, the worker scope itself stays
-    bluffSims.forEach(({core}) => core.destroy());
-    mediaSims.forEach(({core}) => core.destroy());
-    bluffSims.clear();
-    mediaSims.clear();
-  }
+  pruneSims();
 };
 
 // legacy mode for browsers without WebGL in OffscreenCanvas: the simulation runs
@@ -236,6 +254,7 @@ const handleMessage = (state: PortState, message: SpoilerRendererInMessage | Ima
       if(!bluffSims.has(message.dpr)) {
         bluffSims.set(message.dpr, {...createSim(message), lastEncodeTime: 0});
       }
+      pruneSims();
       break;
     }
 
@@ -254,6 +273,7 @@ const handleMessage = (state: PortState, message: SpoilerRendererInMessage | Ima
       state.mediaDpr = message.dpr;
       let sim = mediaSims.get(message.dpr);
       if(!sim) mediaSims.set(message.dpr, sim = createSim(message));
+      pruneSims();
       callbackify(sim.core.init(), () => state.port.postMessage({type: 'media-inited'}));
       break;
     }

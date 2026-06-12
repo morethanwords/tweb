@@ -10,7 +10,7 @@ import {applyColorOnContext} from '@lib/rlottie/rlottiePlayer';
 import animationIntersector, {AnimationItemGroup, AnimationItemWrapper} from '@components/animationIntersector';
 import BluffSpoilerController from '@components/bluffSpoilerController';
 import DotRendererCore, {buildDotRendererConfig, drawClippingCircle, getDefaultParticlesCount, DotRendererConfig, DotRendererShaderURLs} from '@components/dotRendererCore';
-import {addSpoilerRendererListener, retainSpoilerRenderer, releaseSpoilerRenderer, SpoilerRendererPort} from '@components/spoilerRendererConnection';
+import {retainSpoilerRenderer, SpoilerRendererConnection} from '@components/spoilerRendererConnection';
 import {animateValue, simpleEasing} from '@helpers/animateValue';
 import {CancellablePromise} from '@helpers/cancellablePromise';
 
@@ -182,36 +182,17 @@ export default class DotRenderer implements AnimationItemWrapper {
     }
 
     const {width, height, middleware, animationGroup, config} = options;
-    const index = ++this.createdIndex;
     let {imageSpoilerInstance: instance} = this;
     if(!instance) {
       instance = this.imageSpoilerInstance = new DotRenderer();
-      instance.resize(480, 480);
+      instance.resize(IMAGE_SPOILER_SIZE, IMAGE_SPOILER_SIZE);
       (window as any).dotRenderer = instance;
     }
     // dotRenderer.renderFirstFrame();
 
-    const canvas = document.createElement('canvas');
-    canvas.classList.add('canvas-thumbnail', 'canvas-dots');
     const dpr = window.devicePixelRatio;
-    if(width) {
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-    }
+    const {canvas, rotate, flipX, flipY} = this.createTargetCanvas(width, height, dpr);
     const context = canvas.getContext('2d');
-
-    const rotate = (index % 4) === 1;
-    const flipX = (index % 4) === 2;
-    const flipY = (index % 4) === 3;
-
-    const transforms: string[] = [
-      rotate && 'rotate(180deg)',
-      flipX && 'scaleX(-1)',
-      flipY && 'scaleY(-1)'
-    ].filter(Boolean);
-    if(transforms.length) {
-      canvas.style.transform = transforms.join(' ');
-    }
 
     let revealAnimation: {
       underlyingCanvasClickCoords: {x: number, y: number},
@@ -355,28 +336,22 @@ export default class DotRenderer implements AnimationItemWrapper {
     return result;
   }
 
-  private static mediaPort: SpoilerRendererPort;
+  private static mediaConnection: SpoilerRendererConnection;
   private static mediaWorkerReady: CancellablePromise<void>;
   private static mediaTargetsCount = 0;
-  private static mediaListenerAdded = false;
 
-  private static getMediaPort() {
-    if(this.mediaPort) return this.mediaPort;
+  private static getMediaConnection() {
+    if(this.mediaConnection) return this.mediaConnection;
 
-    const port = this.mediaPort = retainSpoilerRenderer();
-    const ready = this.mediaWorkerReady = deferredPromise<void>();
-
-    if(!this.mediaListenerAdded) {
-      this.mediaListenerAdded = true;
-      addSpoilerRendererListener((message) => {
-        if(message.type === 'media-inited') {
-          this.mediaWorkerReady?.resolve();
-        }
-      });
-    }
+    this.mediaWorkerReady = deferredPromise<void>();
+    const connection = this.mediaConnection = retainSpoilerRenderer((message) => {
+      if(message.type === 'media-inited') {
+        this.mediaWorkerReady?.resolve();
+      }
+    });
 
     const dpr = window.devicePixelRatio;
-    port.postMessage({
+    connection.postMessage({
       type: 'media-init',
       width: IMAGE_SPOILER_SIZE,
       height: IMAGE_SPOILER_SIZE,
@@ -386,36 +361,26 @@ export default class DotRenderer implements AnimationItemWrapper {
       fragmentURL: new URL(SHADER_URLS.fragment, window.location.href).href
     });
 
-    return port;
+    return connection;
   }
 
   private static destroyMediaWorker() {
-    if(!this.mediaPort) return;
-    this.mediaPort = undefined;
+    if(!this.mediaConnection) return;
+    this.mediaConnection.release();
+    this.mediaConnection = undefined;
     this.mediaWorkerReady = undefined;
-    releaseSpoilerRenderer();
   }
 
   /**
-   * Same as the legacy path below, but the simulation, the per-target drawing and
-   * the reveal effect all run inside a worker on transferred OffscreenCanvases —
-   * the main thread only forwards play/pause/reveal events. Only the clipping hole
-   * on the underlying thumbnail stays here, that canvas is owned by the media code.
+   * Shared between the worker and the legacy paths: the target canvas with the
+   * per-instance rotation/flip disguising that all the spoilers sample the same
+   * simulation
    */
-  private static createWithWorker({
-    width,
-    height,
-    middleware,
-    animationGroup,
-    config
-  }: Parameters<(typeof DotRenderer)['create']>[0]) {
+  private static createTargetCanvas(width: number, height: number, dpr: number) {
     const index = ++this.createdIndex;
-    const id = index;
-    const port = this.getMediaPort();
 
     const canvas = document.createElement('canvas');
     canvas.classList.add('canvas-thumbnail', 'canvas-dots');
-    const dpr = window.devicePixelRatio;
     if(width) {
       canvas.width = width * dpr;
       canvas.height = height * dpr;
@@ -434,13 +399,34 @@ export default class DotRenderer implements AnimationItemWrapper {
       canvas.style.transform = transforms.join(' ');
     }
 
+    return {canvas, rotate, flipX, flipY};
+  }
+
+  /**
+   * Same as the legacy path below, but the simulation, the per-target drawing and
+   * the reveal effect all run inside a worker on transferred OffscreenCanvases —
+   * the main thread only forwards play/pause/reveal events. Only the clipping hole
+   * on the underlying thumbnail stays here, that canvas is owned by the media code.
+   */
+  private static createWithWorker({
+    width,
+    height,
+    middleware,
+    animationGroup,
+    config
+  }: Parameters<(typeof DotRenderer)['create']>[0]) {
+    const connection = this.getMediaConnection();
+    const dpr = window.devicePixelRatio;
+    const {canvas, rotate, flipX, flipY} = this.createTargetCanvas(width, height, dpr);
+    const id = this.createdIndex;
+
     const simSize = IMAGE_SPOILER_SIZE * dpr;
     const x = getUnsafeRandomInt(0, simSize - canvas.width);
     const y = getUnsafeRandomInt(0, simSize - canvas.height);
 
     ++this.mediaTargetsCount;
     const offscreen = canvas.transferControlToOffscreen();
-    port.postMessage({
+    connection.postMessage({
       type: 'media-attach',
       id,
       canvas: offscreen,
@@ -450,10 +436,10 @@ export default class DotRenderer implements AnimationItemWrapper {
     }, [offscreen]);
 
     const animation = new AnimationItemNested({
-      onPlay: () => this.mediaPort?.postMessage({type: 'media-play', id}),
-      onPause: () => this.mediaPort?.postMessage({type: 'media-pause', id}),
+      onPlay: () => this.mediaConnection?.postMessage({type: 'media-play', id}),
+      onPause: () => this.mediaConnection?.postMessage({type: 'media-pause', id}),
       onDestroy: () => {
-        this.mediaPort?.postMessage({type: 'media-detach', id});
+        this.mediaConnection?.postMessage({type: 'media-detach', id});
         if(!--this.mediaTargetsCount) {
           this.destroyMediaWorker();
         }
@@ -492,7 +478,7 @@ export default class DotRenderer implements AnimationItemWrapper {
       const maxDist = distToMargin * dpr + 50;
       const duration = 800 + (400/* px/ms */ - distToMargin);
 
-      this.mediaPort?.postMessage({
+      this.mediaConnection?.postMessage({
         type: 'media-reveal',
         id,
         coords: {x: transX * dpr, y: transY * dpr},

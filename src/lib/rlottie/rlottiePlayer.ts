@@ -12,6 +12,7 @@ import IS_IMAGE_BITMAP_SUPPORTED from '@environment/imageBitmapSupport';
 import framesCache, {FramesCache, FramesCacheItem} from '@helpers/framesCache';
 import customProperties from '@helpers/dom/customProperties';
 import readValue from '@helpers/solid/readValue';
+import applyColorOnContext, {RLottieColor} from '@helpers/canvas/applyColorOnContext';
 
 export type RLottieOptions = {
   container: HTMLElement | HTMLElement[],
@@ -36,7 +37,8 @@ export type RLottieOptions = {
   liteModeKey?: LiteModeKey
 };
 
-export type RLottieColor = [number, number, number];
+export {applyColorOnContext};
+export type {RLottieColor};
 
 export function getLottiePixelRatio(width: number, height: number, needUpscale?: boolean) {
   let pixelRatio = clamp(window.devicePixelRatio, 1, 2);
@@ -53,19 +55,6 @@ export function getLottiePixelRatio(width: number, height: number, needUpscale?:
   return pixelRatio;
 }
 
-export function applyColorOnContext(
-  context: CanvasRenderingContext2D,
-  color: RLottieColor | string,
-  x: number,
-  y: number,
-  width: number,
-  height: number
-) {
-  context.globalCompositeOperation = 'source-atop';
-  context.fillStyle = typeof(color) === 'string' ? color : `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
-  context.fillRect(x, y, width, height);
-  context.globalCompositeOperation = 'source-over';
-}
 
 export default class RLottiePlayer extends EventListenerBase<{
   enterFrame: (frameNo: number) => void,
