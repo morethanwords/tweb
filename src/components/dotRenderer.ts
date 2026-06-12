@@ -11,6 +11,7 @@ import animationIntersector, {AnimationItemGroup, AnimationItemWrapper} from '@c
 import BluffSpoilerController from '@components/bluffSpoilerController';
 import DotRendererCore, {buildDotRendererConfig, drawClippingCircle, getDefaultParticlesCount, DotRendererConfig, DotRendererShaderURLs} from '@components/dotRendererCore';
 import {retainSpoilerRenderer, SpoilerRendererConnection} from '@components/spoilerRendererConnection';
+import type {SpoilerOverlayUpdate} from '@components/spoilerRenderer.worker';
 import {animateValue, simpleEasing} from '@helpers/animateValue';
 import {CancellablePromise} from '@helpers/cancellablePromise';
 
@@ -336,39 +337,70 @@ export default class DotRenderer implements AnimationItemWrapper {
     return result;
   }
 
-  private static mediaConnection: SpoilerRendererConnection;
+  private static connection: SpoilerRendererConnection;
+  private static connectionUsers = 0; // media targets + overlay targets
+  private static mediaInited = false;
+  private static textInited = false;
   private static mediaWorkerReady: CancellablePromise<void>;
-  private static mediaTargetsCount = 0;
+  private static textWorkerReady: CancellablePromise<void>;
 
-  private static getMediaConnection() {
-    if(this.mediaConnection) return this.mediaConnection;
+  private static getShaderURLs() {
+    return {
+      vertexURL: new URL(SHADER_URLS.vertex, window.location.href).href,
+      fragmentURL: new URL(SHADER_URLS.fragment, window.location.href).href
+    };
+  }
 
-    this.mediaWorkerReady = deferredPromise<void>();
-    const connection = this.mediaConnection = retainSpoilerRenderer((message) => {
+  private static retainConnection() {
+    ++this.connectionUsers;
+    return this.connection ??= retainSpoilerRenderer((message) => {
       if(message.type === 'media-inited') {
         this.mediaWorkerReady?.resolve();
+      } else if(message.type === 'text-inited') {
+        this.textWorkerReady?.resolve();
       }
     });
+  }
 
+  private static releaseConnection() {
+    if(--this.connectionUsers || !this.connection) return;
+
+    this.connection.release();
+    this.connection = undefined;
+    this.mediaInited = this.textInited = false;
+    this.mediaWorkerReady = this.textWorkerReady = undefined;
+  }
+
+  private static initMediaSim() {
+    if(this.mediaInited) return;
+    this.mediaInited = true;
+
+    this.mediaWorkerReady = deferredPromise<void>();
     const dpr = window.devicePixelRatio;
-    connection.postMessage({
+    this.connection.postMessage({
       type: 'media-init',
       width: IMAGE_SPOILER_SIZE,
       height: IMAGE_SPOILER_SIZE,
       dpr,
       config: buildDotRendererConfig(IMAGE_SPOILER_SIZE, IMAGE_SPOILER_SIZE, dpr),
-      vertexURL: new URL(SHADER_URLS.vertex, window.location.href).href,
-      fragmentURL: new URL(SHADER_URLS.fragment, window.location.href).href
+      ...this.getShaderURLs()
     });
-
-    return connection;
   }
 
-  private static destroyMediaWorker() {
-    if(!this.mediaConnection) return;
-    this.mediaConnection.release();
-    this.mediaConnection = undefined;
-    this.mediaWorkerReady = undefined;
+  private static initTextSim() {
+    if(this.textInited) return;
+    this.textInited = true;
+
+    this.textWorkerReady = deferredPromise<void>();
+    const dpr = Math.min(2, window.devicePixelRatio);
+    this.connection.postMessage({
+      type: 'text-init',
+      width: TEXT_SPOILER_WIDTH,
+      height: TEXT_SPOILER_HEIGHT,
+      dpr,
+      config: buildDotRendererConfig(TEXT_SPOILER_WIDTH, TEXT_SPOILER_HEIGHT, dpr, getTextSpoilerConfig(dpr)),
+      ...this.getShaderURLs()
+    });
   }
 
   /**
@@ -415,7 +447,8 @@ export default class DotRenderer implements AnimationItemWrapper {
     animationGroup,
     config
   }: Parameters<(typeof DotRenderer)['create']>[0]) {
-    const connection = this.getMediaConnection();
+    const connection = this.retainConnection();
+    this.initMediaSim();
     const dpr = window.devicePixelRatio;
     const {canvas, rotate, flipX, flipY} = this.createTargetCanvas(width, height, dpr);
     const id = this.createdIndex;
@@ -424,7 +457,6 @@ export default class DotRenderer implements AnimationItemWrapper {
     const x = getUnsafeRandomInt(0, simSize - canvas.width);
     const y = getUnsafeRandomInt(0, simSize - canvas.height);
 
-    ++this.mediaTargetsCount;
     const offscreen = canvas.transferControlToOffscreen();
     connection.postMessage({
       type: 'media-attach',
@@ -436,13 +468,11 @@ export default class DotRenderer implements AnimationItemWrapper {
     }, [offscreen]);
 
     const animation = new AnimationItemNested({
-      onPlay: () => this.mediaConnection?.postMessage({type: 'media-play', id}),
-      onPause: () => this.mediaConnection?.postMessage({type: 'media-pause', id}),
+      onPlay: () => this.connection?.postMessage({type: 'media-play', id}),
+      onPause: () => this.connection?.postMessage({type: 'media-pause', id}),
       onDestroy: () => {
-        this.mediaConnection?.postMessage({type: 'media-detach', id});
-        if(!--this.mediaTargetsCount) {
-          this.destroyMediaWorker();
-        }
+        this.connection?.postMessage({type: 'media-detach', id});
+        this.releaseConnection();
       }
     });
 
@@ -478,7 +508,7 @@ export default class DotRenderer implements AnimationItemWrapper {
       const maxDist = distToMargin * dpr + 50;
       const duration = 800 + (400/* px/ms */ - distToMargin);
 
-      this.mediaConnection?.postMessage({
+      this.connection?.postMessage({
         type: 'media-reveal',
         id,
         coords: {x: transX * dpr, y: transY * dpr},
@@ -590,6 +620,59 @@ export default class DotRenderer implements AnimationItemWrapper {
     };
   }
 
+  /**
+   * The worker counterpart of attachTextSpoilerTarget: the overlay canvas is
+   * transferred to the worker, which draws and animates it from pushed geometry —
+   * the DOM measurements stay on the main thread (see MessageSpoilerOverlay)
+   */
+  public static attachTextSpoilerOverlay({
+    canvas,
+    middleware,
+    animationGroup
+  }: {
+    canvas: HTMLCanvasElement,
+    middleware: Middleware,
+    animationGroup: AnimationItemGroup
+  }) {
+    const connection = this.retainConnection();
+    this.initTextSim();
+
+    const id = ++this.createdIndex;
+    const dpr = Math.min(2, window.devicePixelRatio);
+    const offscreen = canvas.transferControlToOffscreen();
+    connection.postMessage({type: 'overlay-attach', id, canvas: offscreen, dpr}, [offscreen]);
+
+    const animation = new AnimationItemNested({
+      onPlay: () => this.connection?.postMessage({type: 'overlay-play', id}),
+      onPause: () => this.connection?.postMessage({type: 'overlay-pause', id}),
+      onDestroy: () => {
+        this.connection?.postMessage({type: 'overlay-detach', id});
+        this.releaseConnection();
+      }
+    });
+
+    animationIntersector.addAnimation({
+      animation,
+      group: animationGroup,
+      observeElement: canvas,
+      controlled: middleware,
+      type: 'dots'
+    });
+
+    return {
+      animation,
+      dpr,
+      readyResult: this.textWorkerReady,
+      overlay: {
+        update: (payload: Omit<SpoilerOverlayUpdate, 'type' | 'id'>) => this.connection?.postMessage({type: 'overlay-update', id, ...payload}),
+        unwrap: (coords: [number, number], maxDist: number, duration: number) => this.connection?.postMessage({type: 'overlay-unwrap', id, coords, maxDist, duration}),
+        wrap: (duration: number) => this.connection?.postMessage({type: 'overlay-wrap', id, duration}),
+        reset: () => this.connection?.postMessage({type: 'overlay-reset', id}),
+        clear: () => this.connection?.postMessage({type: 'overlay-clear', id})
+      }
+    };
+  }
+
   public static attachBluffTextSpoilerTarget(element: HTMLElement) {
     BluffSpoilerController.observeReconnection(element, (el) => this.attachBluffTextSpoilerTarget(el));
 
@@ -666,3 +749,5 @@ export default class DotRenderer implements AnimationItemWrapper {
     instance.init();
   }
 }
+
+MOUNT_CLASS_TO['DotRenderer'] = DotRenderer;

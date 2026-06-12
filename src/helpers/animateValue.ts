@@ -1,4 +1,4 @@
-import BezierEasing from '@vendor/bezierEasing';
+import {defaultEasing} from '@helpers/easings';
 import {lerp} from '@helpers/lerp';
 import {requestRAF} from '@helpers/solid/requestRAF';
 
@@ -8,8 +8,7 @@ type AnimateValueOptions = {
   onEnd?: () => void;
 };
 
-const defaultEasing = BezierEasing(0.42, 0.0, 0.58, 1.0);
-export {simpleEasing} from '@helpers/simpleEasing';
+export {simpleEasing} from '@helpers/easings';
 
 export function animateValue<T extends number | number[]>(
   start: T,

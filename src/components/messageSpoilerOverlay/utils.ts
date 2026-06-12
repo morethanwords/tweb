@@ -1,10 +1,10 @@
 import {animate} from '@helpers/animation';
 import deferredPromise from '@helpers/cancellablePromise';
+import {unwrapEasing} from '@helpers/easings';
 import themeController from '@helpers/themeController';
 import {logger} from '@lib/logger';
-import BezierEasing from '@vendor/bezierEasing';
 
-export const UnwrapEasing = BezierEasing(0.45, 0.37, 0.29, 1);
+export const UnwrapEasing = unwrapEasing;
 
 const MAX_SPACE_BETWEEN_SPOILER_LINES = 2;
 const RESIZE_PAINT_CHECK_ATTEMPTS = 100;

@@ -56,7 +56,7 @@ export default class BluffSpoilerController {
     this.workerSimInited = true;
 
     this.log('Initializing the worker simulation');
-    this.getConnection().postMessage({type: 'bluff-init', ...options});
+    this.getConnection().postMessage({type: 'text-init', ...options});
   }
 
   public static activate(element: HTMLElement) {
