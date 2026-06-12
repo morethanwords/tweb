@@ -52,6 +52,7 @@ import showViewTonePopup from '@components/popups/aiEditorPopup/viewTonePopup';
 
 export class InternalLinkProcessor {
   protected managers: AppManagers;
+  private processingAddAiStyleSlugs: Set<string> = new Set();
 
   public construct(managers: AppManagers) {
     this.managers = managers;
@@ -933,6 +934,9 @@ export class InternalLinkProcessor {
   };
 
   public processAddAiStyleLink = async(link: InternalLink.InternalLinkAddAiStyle) => {
+    if(this.processingAddAiStyleSlugs.has(link.slug)) return;
+    this.processingAddAiStyleSlugs.add(link.slug);
+
     try {
       const {tone, tones} = await namedPromises({
         tone: this.managers.aiTonesManager.getToneBySlug(link.slug),
@@ -951,6 +955,8 @@ export class InternalLinkProcessor {
       toastNew({
         langPackKey: 'AiEditor.StyleNotFound'
       });
+    } finally {
+      this.processingAddAiStyleSlugs.delete(link.slug);
     }
   };
 
