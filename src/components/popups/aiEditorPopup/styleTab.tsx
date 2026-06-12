@@ -18,6 +18,7 @@ import {usePopupContext} from '../indexTsx';
 import styles from './bodyContent.module.scss';
 import {AiEditorPopupContext} from './context';
 import showCreateTonePopup from './createTonePopup';
+import {useMaxSavedTones} from './limits';
 import {CreateTone, Divider, Original, Result, Tone} from './parts';
 
 
@@ -37,6 +38,8 @@ export const StyleTab = () => {
   const [emojify, setEmojify] = createSignal(false);
   const [tonesListEl, setTonesListEl] = createSignal<HTMLDivElement>();
   const [selectedTone, setSelectedTone] = createSignal<AiComposeTone>();
+
+  const maxSavedTones = useMaxSavedTones();
 
   const scrollableSize = hasArrows ? useElementSize(tonesListEl) : {width: 0, height: 0};
   const scrollLeft = hasArrows ? useScrollPosition(tonesListEl, 'x') : () => 0;
@@ -61,6 +64,8 @@ export const StyleTab = () => {
     setTones(tonesResource());
     context.initialTones = tonesResource();
   });
+
+  const savedTones = () => tones.filter(tone => tone._ === 'aiComposeTone').length;
 
   if(hasArrows) {
     useEdgeAutoScroll({
@@ -124,12 +129,14 @@ export const StyleTab = () => {
               </Scrollable>
             }>
               <Scrollable class={styles.tonesList} ref={setTonesListEl} axis='x' relative>
-                <CreateTone
-                  onCreate={(createdTone) => {
-                    setTones(prev => [createdTone, ...prev]);
-                  }}
-                />
-                <TransitionGroup name='fade-2' moveClass='t-move'>
+                <TransitionGroup name='fade-2' moveClass='t-move' onBeforeExit={(el) => el.classList.add(styles.exit)}>
+                  <Show when={savedTones() < maxSavedTones()}>
+                    <CreateTone
+                      onCreate={(createdTone) => {
+                        setTones(prev => [createdTone, ...prev]);
+                      }}
+                    />
+                  </Show>
                   <For each={tones}>
                     {(tone) => (
                       <Tone

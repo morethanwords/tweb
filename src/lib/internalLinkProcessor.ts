@@ -944,11 +944,13 @@ export class InternalLinkProcessor {
       });
       if(!tone) throw new Error();
 
+      const savedTones = tones.filter((t) => t._ === 'aiComposeTone').length;
       const isSaved = !tone.pFlags.creator && tones.some((t) => t._ === 'aiComposeTone' && t.id.toString() === tone.id.toString());
 
       showViewTonePopup({
         tone,
         isSaved,
+        savedTones,
         HotReloadGuard: SolidJSHotReloadGuardProvider
       });
     } catch{

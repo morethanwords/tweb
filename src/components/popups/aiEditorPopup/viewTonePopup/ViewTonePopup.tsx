@@ -13,9 +13,10 @@ import {I18nTsx} from '@helpers/solid/i18n';
 import {AiComposeTone} from '@layer';
 import {LangPackKey} from '@lib/langPack';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {batch, createResource, createSignal, Match, Show, Switch} from 'solid-js';
+import {batch, createMemo, createResource, createSignal, Match, Show, Switch} from 'solid-js';
 import {Transition} from 'solid-transition-group';
 import styles from './styles.module.scss';
+import {useMaxSavedTones} from '../limits';
 
 keepMe(ripple);
 
@@ -23,6 +24,7 @@ keepMe(ripple);
 export type ViewTonePopupProps = {
   tone: AiComposeTone.aiComposeTone;
   isSaved: boolean;
+  savedTones: number;
 };
 
 const ViewTonePopup = (props: ViewTonePopupProps) => {
@@ -30,6 +32,7 @@ const ViewTonePopup = (props: ViewTonePopupProps) => {
 
   const appConfig = useAppConfig();
   const maxNum = appConfig.aicompose_tone_examples_num || 3;
+  const maxSavedTones = useMaxSavedTones();
 
   const [show, setShow] = createSignal(true);
 
@@ -44,6 +47,9 @@ const ViewTonePopup = (props: ViewTonePopupProps) => {
   );
 
   const isCreator = () => props.tone.pFlags.creator;
+  const canHaveMoreTones = () => props.savedTones < maxSavedTones();
+
+  const hasFooterButton = createMemo(() => props.isSaved || isCreator() || canHaveMoreTones());
 
   const getErrorLangKey = (): LangPackKey => {
     if(isCreator() || props.isSaved) return 'AiEditor.StyleRemoveError';
@@ -57,7 +63,8 @@ const ViewTonePopup = (props: ViewTonePopupProps) => {
 
   const mutation = createMutation(() => {
     if(isCreator()) return rootScope.managers.aiTonesManager.deleteTone(props.tone.id);
-    return rootScope.managers.aiTonesManager.saveTone(props.tone, props.isSaved);
+    if(canHaveMoreTones()) return rootScope.managers.aiTonesManager.saveTone(props.tone, props.isSaved);
+    return Promise.reject();
   }, {
     onError: () => toastNew({langPackKey: getErrorLangKey()}),
     onSuccess: () => toastNew({langPackKey: getSuccessLangKey()})
@@ -181,14 +188,14 @@ const ViewTonePopup = (props: ViewTonePopupProps) => {
         <Switch>
           <Match when={!isCreator() && props.tone.author_id} keyed>
             {(authorId) => (
-              <div class={styles.creatorRow}>
+              <div class={styles.note}>
                 <I18nTsx key="AiEditor.ViewStyle.CreatedBy" args={[<CreatorLink peerId={authorId.toPeerId()} />]} />
               </div>
             )}
           </Match>
           <Match when={isCreator() && props.tone.installs_count} keyed>
             {(installsCount) => (
-              <div class={styles.creatorRow}>
+              <div class={styles.note}>
                 <I18nTsx
                   key="AiEditor.ViewStyle.InstallsCount"
                   args={[installsCount.toString()]}
@@ -197,26 +204,35 @@ const ViewTonePopup = (props: ViewTonePopupProps) => {
             )}
           </Match>
         </Switch>
+
+        <Show when={!hasFooterButton()}>
+          <Space amount='1rem' />
+          <div class={styles.note}>
+            <I18nTsx key="AiEditor.ViewStyle.MaxSavedTones" />
+          </div>
+        </Show>
       </PopupElement.Body>
-      <PopupElement.Footer class={styles.popupFooter}>
-        <PopupElement.FooterButton
-          disabled={mutation.isPending()}
-          color={isCreator() || props.isSaved ? 'danger' : 'primary'}
-          callback={onSubmit}
-        >
-          <Switch>
-            <Match when={props.isSaved}>
-              <I18nTsx key="AiEditor.ViewStyle.RemoveStyle" />
-            </Match>
-            <Match when={isCreator()}>
-              <I18nTsx key="AiEditor.ViewStyle.DeleteStyle" />
-            </Match>
-            <Match when>
-              <I18nTsx key="AiEditor.ViewStyle.SaveStyle" />
-            </Match>
-          </Switch>
-        </PopupElement.FooterButton>
-      </PopupElement.Footer>
+      <Show when={hasFooterButton()}>
+        <PopupElement.Footer class={styles.popupFooter}>
+          <PopupElement.FooterButton
+            disabled={mutation.isPending()}
+            color={isCreator() || props.isSaved ? 'danger' : 'primary'}
+            callback={onSubmit}
+          >
+            <Switch>
+              <Match when={props.isSaved}>
+                <I18nTsx key="AiEditor.ViewStyle.RemoveStyle" />
+              </Match>
+              <Match when={isCreator()}>
+                <I18nTsx key="AiEditor.ViewStyle.DeleteStyle" />
+              </Match>
+              <Match when={canHaveMoreTones()}>
+                <I18nTsx key="AiEditor.ViewStyle.SaveStyle" />
+              </Match>
+            </Switch>
+          </PopupElement.FooterButton>
+        </PopupElement.Footer>
+      </Show>
     </PopupElement>
   );
 };
