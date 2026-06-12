@@ -10,6 +10,7 @@ import {applyColorOnContext} from '@lib/rlottie/rlottiePlayer';
 import animationIntersector, {AnimationItemGroup, AnimationItemWrapper} from '@components/animationIntersector';
 import BluffSpoilerController from '@components/bluffSpoilerController';
 import DotRendererCore, {buildDotRendererConfig, drawClippingCircle, getDefaultParticlesCount, DotRendererConfig, DotRendererShaderURLs} from '@components/dotRendererCore';
+import {addSpoilerRendererListener, retainSpoilerRenderer, releaseSpoilerRenderer, SpoilerRendererPort} from '@components/spoilerRendererConnection';
 import {animateValue, simpleEasing} from '@helpers/animateValue';
 import {CancellablePromise} from '@helpers/cancellablePromise';
 
@@ -354,20 +355,29 @@ export default class DotRenderer implements AnimationItemWrapper {
     return result;
   }
 
-  private static mediaWorker: Worker;
+  private static mediaPort: SpoilerRendererPort;
   private static mediaWorkerReady: CancellablePromise<void>;
   private static mediaTargetsCount = 0;
+  private static mediaListenerAdded = false;
 
-  private static getMediaWorker() {
-    if(this.mediaWorker) return this.mediaWorker;
+  private static getMediaPort() {
+    if(this.mediaPort) return this.mediaPort;
 
-    const worker = this.mediaWorker = new Worker(new URL('./mediaSpoilerDots.worker.ts', import.meta.url), {type: 'module'});
+    const port = this.mediaPort = retainSpoilerRenderer();
     const ready = this.mediaWorkerReady = deferredPromise<void>();
-    worker.addEventListener('message', () => ready.resolve()); // the only message is 'inited'
+
+    if(!this.mediaListenerAdded) {
+      this.mediaListenerAdded = true;
+      addSpoilerRendererListener((message) => {
+        if(message.type === 'media-inited') {
+          this.mediaWorkerReady?.resolve();
+        }
+      });
+    }
 
     const dpr = window.devicePixelRatio;
-    worker.postMessage({
-      type: 'init',
+    port.postMessage({
+      type: 'media-init',
       width: IMAGE_SPOILER_SIZE,
       height: IMAGE_SPOILER_SIZE,
       dpr,
@@ -376,13 +386,14 @@ export default class DotRenderer implements AnimationItemWrapper {
       fragmentURL: new URL(SHADER_URLS.fragment, window.location.href).href
     });
 
-    return worker;
+    return port;
   }
 
   private static destroyMediaWorker() {
-    this.mediaWorker?.terminate();
-    this.mediaWorker = undefined;
+    if(!this.mediaPort) return;
+    this.mediaPort = undefined;
     this.mediaWorkerReady = undefined;
+    releaseSpoilerRenderer();
   }
 
   /**
@@ -400,7 +411,7 @@ export default class DotRenderer implements AnimationItemWrapper {
   }: Parameters<(typeof DotRenderer)['create']>[0]) {
     const index = ++this.createdIndex;
     const id = index;
-    const worker = this.getMediaWorker();
+    const port = this.getMediaPort();
 
     const canvas = document.createElement('canvas');
     canvas.classList.add('canvas-thumbnail', 'canvas-dots');
@@ -429,8 +440,8 @@ export default class DotRenderer implements AnimationItemWrapper {
 
     ++this.mediaTargetsCount;
     const offscreen = canvas.transferControlToOffscreen();
-    worker.postMessage({
-      type: 'attach',
+    port.postMessage({
+      type: 'media-attach',
       id,
       canvas: offscreen,
       x,
@@ -439,10 +450,10 @@ export default class DotRenderer implements AnimationItemWrapper {
     }, [offscreen]);
 
     const animation = new AnimationItemNested({
-      onPlay: () => this.mediaWorker?.postMessage({type: 'play', id}),
-      onPause: () => this.mediaWorker?.postMessage({type: 'pause', id}),
+      onPlay: () => this.mediaPort?.postMessage({type: 'media-play', id}),
+      onPause: () => this.mediaPort?.postMessage({type: 'media-pause', id}),
       onDestroy: () => {
-        this.mediaWorker?.postMessage({type: 'detach', id});
+        this.mediaPort?.postMessage({type: 'media-detach', id});
         if(!--this.mediaTargetsCount) {
           this.destroyMediaWorker();
         }
@@ -481,8 +492,8 @@ export default class DotRenderer implements AnimationItemWrapper {
       const maxDist = distToMargin * dpr + 50;
       const duration = 800 + (400/* px/ms */ - distToMargin);
 
-      this.mediaWorker?.postMessage({
-        type: 'reveal',
+      this.mediaPort?.postMessage({
+        type: 'media-reveal',
         id,
         coords: {x: transX * dpr, y: transY * dpr},
         maxDist,

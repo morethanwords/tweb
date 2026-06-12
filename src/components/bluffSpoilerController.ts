@@ -2,7 +2,8 @@ import {MOUNT_CLASS_TO} from '@config/debug';
 import {logger} from '@lib/logger';
 
 import animationIntersector from '@components/animationIntersector';
-import type {BluffSpoilerSimInitMessage} from '@components/bluffSpoilerMask.worker';
+import {addSpoilerRendererListener, retainSpoilerRenderer, releaseSpoilerRenderer, SpoilerRendererPort} from '@components/spoilerRendererConnection';
+import type {SpoilerRendererSimInit} from '@components/spoilerRenderer.worker';
 
 export default class BluffSpoilerController {
   private static log = logger('bluff-spoiler');
@@ -10,7 +11,7 @@ export default class BluffSpoilerController {
   private static latestMaskURL: string; // a data: URL — self-contained, no revocation lifecycle
   private static maskProperty = CSS.supports('mask-image', 'none') ? 'mask-image' : '-webkit-mask-image';
   private static appliedMaskURLs = new WeakMap<HTMLElement, string>();
-  private static encoderWorker: Worker | false; // false = unsupported, encode on the main thread
+  private static port: SpoilerRendererPort;
   private static encoding = false;
   private static lastDrawTime: number = 0;
   private static DRAW_INTERVAL = 4 * (1000 / 60); // Once in 4 frames (considering 60fps) to avoid performance issues
@@ -49,53 +50,46 @@ export default class BluffSpoilerController {
     return this.workerSimSupported ??= typeof(OffscreenCanvas) !== 'undefined' && !!new OffscreenCanvas(1, 1).getContext('webgl2');
   }
 
-  public static setupWorkerSim(options: Omit<BluffSpoilerSimInitMessage, 'type'>) {
+  public static setupWorkerSim(options: SpoilerRendererSimInit) {
     if(this.workerSimInited) return;
     this.workerSimInited = true;
 
     this.log('Initializing the worker simulation');
-    const worker = this.getEncoderWorker();
-    if(worker) worker.postMessage({type: 'init', ...options});
+    this.getPort().postMessage({type: 'bluff-init', ...options});
   }
 
   public static activate(element: HTMLElement) {
     this.activeElements.add(element);
     this.applyMask(element);
 
-    const worker = this.getEncoderWorker();
-    if(worker) worker.postMessage({type: 'play'});
+    this.getPort().postMessage({type: 'bluff-play'});
   }
 
   public static deactivate(element: HTMLElement) {
     this.activeElements.delete(element);
 
     if(!this.activeElements.size) {
-      const worker = this.getEncoderWorker();
-      if(worker) worker.postMessage({type: 'pause'});
+      this.getPort().postMessage({type: 'bluff-pause'});
     }
   }
 
-  private static getEncoderWorker() {
-    if(this.encoderWorker !== undefined) return this.encoderWorker;
+  private static listenerAdded = false;
 
-    if(typeof(OffscreenCanvas) === 'undefined' || typeof(createImageBitmap) !== 'function') {
-      return this.encoderWorker = false;
+  private static getPort() {
+    if(!this.port) {
+      this.port = retainSpoilerRenderer();
+
+      if(!this.listenerAdded) {
+        this.listenerAdded = true;
+        addSpoilerRendererListener((message) => {
+          if(message.type === 'bluff-mask') {
+            this.applyNewMask(message.url);
+          }
+        });
+      }
     }
 
-    this.log('Creating encoder worker');
-
-    const worker = new Worker(new URL('./bluffSpoilerMask.worker.ts', import.meta.url), {type: 'module'});
-    worker.addEventListener('message', (event: MessageEvent<string>) => {
-      this.applyNewMask(event.data);
-    });
-    worker.addEventListener('error', (error) => {
-      this.log.error('Encoder worker failed, falling back to the main thread', error);
-      worker.terminate();
-      this.encoderWorker = false;
-      this.encoding = false;
-    });
-
-    return this.encoderWorker = worker;
+    return this.port;
   }
 
   private static encodeMaskFrame(canvas: HTMLCanvasElement) {
@@ -103,11 +97,10 @@ export default class BluffSpoilerController {
     this.lastDrawTime = performance.now();
     this.encoding = true;
 
-    const worker = this.getEncoderWorker();
-    if(worker) {
-      // createImageBitmap is a GPU-side copy, the readback + PNG encoding happen in the worker
+    if(typeof(OffscreenCanvas) !== 'undefined' && typeof(createImageBitmap) === 'function') {
+      // createImageBitmap is a GPU-side copy, the readback + encoding happen in the worker
       createImageBitmap(canvas).then((bitmap) => {
-        worker.postMessage(bitmap, [bitmap]);
+        this.getPort().postMessage(bitmap, [bitmap]);
       }, () => {
         this.encoding = false;
       });
@@ -171,9 +164,10 @@ export default class BluffSpoilerController {
     this.activeElements.clear();
     this.workerSimInited = false;
 
-    if(this.encoderWorker) {
-      this.encoderWorker.terminate();
-      this.encoderWorker = undefined;
+    if(this.port) {
+      this.port.postMessage({type: 'bluff-pause'}); // 'bye' would also drop this tab's media targets
+      this.port = undefined;
+      releaseSpoilerRenderer();
     }
     this.encoding = false;
 
