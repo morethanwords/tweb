@@ -629,3 +629,115 @@ function setDocumentLangPackProperties(langPack: LangPackDifference.langPackDiff
     }
   }
 });
+
+/* ---------- Wartel Kiosk Timer Integration ---------- */
+interface WartelTimerData {
+  remainingSeconds: number;
+  inCall: boolean;
+}
+
+function initWartelTimer() {
+  if(typeof window === 'undefined' || !(window as any).WartelAPI) {
+    return;
+  }
+  if(!document.body) {
+    setTimeout(initWartelTimer, 50);
+    return;
+  }
+
+  const api = (window as any).WartelAPI;
+  if(!api.onUpdateTimer) {
+    return;
+  }
+
+  let container = document.getElementById('wartel-timer-overlay');
+  if(!container) {
+    container = document.createElement('div');
+    container.id = 'wartel-timer-overlay';
+
+    // Apply styling
+    Object.assign(container.style, {
+      position: 'fixed',
+      top: '20px',
+      right: '20px',
+      zIndex: '999999',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      background: 'rgba(15, 23, 42, 0.85)',
+      backdropFilter: 'blur(12px)',
+      webkitBackdropFilter: 'blur(12px)',
+      border: '1px solid rgba(255, 255, 255, 0.12)',
+      padding: '10px 16px',
+      borderRadius: '16px',
+      color: '#f8fafc',
+      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.1)',
+      width: '200px',
+      boxSizing: 'border-box',
+      pointerEvents: 'none',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Oxygen, Ubuntu, Cantarell, \'Open Sans\', \'Helvetica Neue\', sans-serif'
+    });
+
+    container.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div id="wartel-dot" style="width: 8px; height: 8px; border-radius: 50%; background-color: #f59e0b; box-shadow: 0 0 8px #f59e0b; transition: all 0.3s ease;"></div>
+        <div id="wartel-label" style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; transition: color 0.3s ease;">Sisa Waktu</div>
+      </div>
+      <div id="wartel-time" style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; color: #3b82f6; text-shadow: 0 0 6px rgba(59, 130, 246, 0.3); transition: all 0.3s ease;">00:00</div>
+    `;
+    document.body.appendChild(container);
+  }
+
+  const dot = document.getElementById('wartel-dot');
+  const label = document.getElementById('wartel-label');
+  const time = document.getElementById('wartel-time');
+
+  // Hide initially until we receive the first tick
+  container.style.display = 'none';
+
+  api.onUpdateTimer((data: WartelTimerData) => {
+    const {remainingSeconds, inCall} = data;
+
+    // Show only when timer is running/active
+    if(remainingSeconds > 0) {
+      container!.style.display = 'flex';
+    } else {
+      container!.style.display = 'none';
+    }
+
+    const mins = Math.floor(remainingSeconds / 60);
+    const secs = remainingSeconds % 60;
+    if(time) time.textContent = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+
+    if(inCall) {
+      if(dot) {
+        dot.style.backgroundColor = '#10b981';
+        dot.style.boxShadow = '0 0 12px #10b981';
+      }
+      if(label) {
+        label.textContent = 'Bicara';
+        label.style.color = '#10b981';
+      }
+      if(time) {
+        time.style.color = '#10b981';
+        time.style.textShadow = '0 0 8px rgba(16, 185, 129, 0.4)';
+      }
+    } else {
+      if(dot) {
+        dot.style.backgroundColor = '#f59e0b';
+        dot.style.boxShadow = '0 0 8px #f59e0b';
+      }
+      if(label) {
+        label.textContent = 'Sisa Waktu';
+        label.style.color = '#94a3b8';
+      }
+      if(time) {
+        time.style.color = '#3b82f6';
+        time.style.textShadow = '0 0 6px rgba(59, 130, 246, 0.3)';
+      }
+    }
+  });
+}
+
+initWartelTimer();
+
