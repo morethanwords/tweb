@@ -190,6 +190,7 @@
 
   opacity: 0;
   pointer-events: none;
+  z-index: 1;
 
   &.hasTransition {
     transition: opacity 0.2s ease-out;
@@ -204,6 +205,7 @@
   position: relative;
   background-color: var(--surface-color);
   border-top: 1px solid rgba(0, 0, 0, 0.1);
+  z-index: 1;
 
   :global(.night) & {
     border-color: rgba(255, 255, 255, 0.1);
@@ -223,6 +225,8 @@
 
   border-top-left-radius: inherit;
   border-top-right-radius: inherit;
+
+  z-index: 1;
 }
 
 .resultTitleWrapper {
@@ -254,6 +258,7 @@
   position: relative;
   background-color: var(--surface-color);
   padding: 0.25rem var(--content-padding-x) var(--content-padding-y);
+  z-index: 1;
 }
 
 .resultScrollable, .originalScrollable {

@@ -1,4 +1,5 @@
 import {ButtonIconTsx} from '@components/buttonIconTsx';
+import {ButtonMenuItemOptions} from '@components/buttonMenu';
 import EmojiDocumentIcon from '@components/emojiDocumentIcon';
 import {IconTsx} from '@components/iconTsx';
 import {observeResize} from '@components/resizeObserver';
@@ -11,13 +12,12 @@ import {copyTextToClipboard} from '@helpers/clipboard';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import {keepMe} from '@helpers/keepMe';
 import prepareTextWithEntitiesForCopying from '@helpers/prepareTextWithEntitiesForCopying';
-import pause from '@helpers/schedulers/pause';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {requestRAF} from '@helpers/solid/requestRAF';
 import classNames from '@helpers/string/classNames';
 import {useIsCleaned} from '@hooks/useIsCleaned';
-import {AiComposeTone, TextWithEntities} from '@layer';
+import {AiComposeTone, MessageEntity, TextWithEntities} from '@layer';
 import {ComposeMessageWithAiArgs, ComposeMessageWithAiResult} from '@lib/appManagers/aiTonesManager';
 import {LangPackKey} from '@lib/langPack';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
@@ -26,7 +26,6 @@ import {Transition, TransitionGroup} from 'solid-transition-group';
 import styles from './bodyContent.module.scss';
 import {useAiEditorPopupContext} from './context';
 import showCreateTonePopup from './createTonePopup';
-import {ButtonMenuItemOptions} from '@components/buttonMenu';
 
 
 keepMe(ripple);
@@ -165,7 +164,7 @@ export const Original = (props: {
       >
         <div ref={originalContentRef} class={styles.richText}>
           <Scrollable ref={originalScrollableRef} class={styles.originalScrollable} relative>
-            {wrapRichText(props.text.text, {entities: props.text.entities, middleware: createMiddleware().get()})}
+            {wrapRichText(props.text.text, {entities: filterEntities(props.text.entities), middleware: createMiddleware().get()})}
           </Scrollable>
         </div>
         <div
@@ -207,7 +206,7 @@ export const Result = (props: {
   isAppearing?: boolean;
   composeMessageWithAiArgs?: ComposeMessageWithAiArgs;
 }) => {
-  const {rootScope, wrapRichText, toastNew} = useHotReloadGuard();
+  const {rootScope, toastNew, wrapRichText} = useHotReloadGuard();
   const {text: originalText, resultTextSignal: [, setResultText]} = useAiEditorPopupContext();
 
   let appearDeferred = props.isAppearing ? deferredPromise<void>() : undefined;
@@ -224,25 +223,26 @@ export const Result = (props: {
     const cached = getCachedComposedMessage(args);
     if(cached) return cached;
 
-    // return (async() => {
-    //   const [result] = await Promise.all([rootScope.managers.aiTonesManager.composeMessageWithAi(args), appearDeferred]);
-    //   const key = getCachedComposedMessageKey(args);
-    //   if(key) cachedComposedMessages.set(key, result);
-    //   return result;
-    // })();
-
     return (async() => {
-      await Promise.all([pause(20 + Math.floor(Math.random() * 1000)), appearDeferred]);
-      const result = {
-        resultText: {
-          _: 'textWithEntities',
-          text: originalText.text + '\n' + [...Array(10 + Math.floor(Math.random() * 40))].map(() => 'hello').join(' '),
-          entities: originalText.entities
-        } as TextWithEntities
-      };
-      cachedComposedMessages.set(getCachedComposedMessageKey(args), result);
+      const [result] = await Promise.all([rootScope.managers.aiTonesManager.composeMessageWithAi(args), appearDeferred]);
+      const key = getCachedComposedMessageKey(args);
+      if(key) cachedComposedMessages.set(key, result);
       return result;
     })();
+
+    // Test without API calls
+    // return (async() => {
+    //   await Promise.all([pause(20 + Math.floor(Math.random() * 1000)), appearDeferred]);
+    //   const result = {
+    //     resultText: {
+    //       _: 'textWithEntities',
+    //       text: originalText.text + '\n' + [...Array(10 + Math.floor(Math.random() * 40))].map(() => 'hello').join(' '),
+    //       entities: originalText.entities
+    //     } as TextWithEntities
+    //   };
+    //   cachedComposedMessages.set(getCachedComposedMessageKey(args), result);
+    //   return result;
+    // })();
   }, {
     initialValue: getCachedComposedMessage(props.composeMessageWithAiArgs)
   });
@@ -306,7 +306,7 @@ export const Result = (props: {
           <Show when={composedMessage.state === 'ready' && composedMessage()} keyed fallback={<ResultSkeleton height={skeletonHeight()} />}>
             {(message) => (
               <Scrollable ref={scrollableRef} relative class={classNames(styles.resultScrollable, styles.richText)}>
-                {wrapRichText(message.resultText.text, {entities: message.resultText.entities, middleware: createMiddleware().get()})}
+                {wrapRichText(message.resultText.text, {entities: filterEntities(message.resultText.entities), middleware: createMiddleware().get()})}
               </Scrollable>
             )}
           </Show>
@@ -470,4 +470,22 @@ export const useTransitionGroupWhenMeasured = () => {
     Wrapper,
     onMeasured: () => setMeasured(true)
   }
+};
+
+/** Do not render possibly dangerous URLs, hashtags, make quotes uncollapsible */
+const filterEntities = (entities: MessageEntity[]) => {
+  return entities
+  .filter(entity =>
+    entity._ !== 'messageEntityUrl' &&
+    entity._ !== 'messageEntityTextUrl' &&
+    entity._ !== 'messageEntityAnchor' &&
+    entity._ !== 'messageEntityMention' &&
+    entity._ !== 'messageEntityMentionName' &&
+    entity._ !== 'messageEntityHashtag' &&
+    entity._ !== 'messageEntityCashtag'
+  )
+  .map(entity => entity._ === 'messageEntityBlockquote' ? ({
+    ...entity,
+    pFlags: {...entity.pFlags, collapsed: undefined as undefined}
+  }) : entity);
 };
