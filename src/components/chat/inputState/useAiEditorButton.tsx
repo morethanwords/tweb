@@ -6,6 +6,7 @@ import {observeResize} from '@components/resizeObserver';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import track from '@helpers/solid/track';
 import classNames from '@helpers/string/classNames';
+import trimRichText from '@lib/richTextProcessor/trimRichText';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {resolveFirst} from '@solid-primitives/refs';
 import {LocalTextWithEntities} from '@types';
@@ -78,8 +79,7 @@ const createAiEditorButton = ({instance, inputField, appendTo, onApply, class: c
         peerId: instance.chat.peerId,
         text: {
           _: 'textWithEntities',
-          text: value,
-          entities: entities
+          ...trimRichText(value, entities)
         },
         onApply,
         onSend: !instance.chat.starsAmount && canSend ? async(text) => {
