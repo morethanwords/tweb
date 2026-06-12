@@ -1629,10 +1629,11 @@ export default class ChatInput {
       this.fileInput.removeAttribute('accept');
       this.willAttachType = 'document';
     } else {
-      const accept = [
+      const accept = [...new Set([
         ...(photos ? IMAGE_MIME_TYPES_SUPPORTED : []),
-        ...(videos ? VIDEO_MIME_TYPES_SUPPORTED : [])
-      ].join(', ');
+        // * .mov is selectable even when not natively playable — the send popup converts it to mp4
+        ...(videos ? [...VIDEO_MIME_TYPES_SUPPORTED, 'video/quicktime'] : [])
+      ])].join(', ');
 
       this.fileInput.setAttribute('accept', accept || '*/*');
       this.willAttachType = 'media';
