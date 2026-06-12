@@ -177,6 +177,13 @@ export default function SignQRCard(_props: {spec: Spec}) {
           break;
         case 'AUTH_TOKEN_EXPIRED':
           console.warn('SignQRCard: AUTH_TOKEN_EXPIRED');
+          prevToken = undefined;
+          lastDrawnToken = undefined;
+          if(stickerHost) {
+            Array.from(stickerHost.children).forEach((el) => el.remove());
+            preloader = putPreloader(stickerHost, true);
+          }
+          await pause(1000 * FETCH_INTERVAL);
           return false;
         default:
           console.error('SignQRCard: default error:', err);

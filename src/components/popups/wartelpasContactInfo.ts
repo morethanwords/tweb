@@ -12,7 +12,7 @@ export default class WartelpasContactInfo extends PopupPeer {
     const userId = peerId.toUserId();
     const user = apiManagerProxy.getUser(userId);
     const statusString = getUserStatusString(user).innerText;
-    
+
     super('wartelpas-contact-popup', {
       peerId,
       title: '', // Will be updated async
@@ -39,7 +39,7 @@ export default class WartelpasContactInfo extends PopupPeer {
       this.title.innerText = title;
     });
 
-    if (user.phone) {
+    if(user.phone) {
       const phoneEl = document.createElement('div');
       phoneEl.className = 'popup-contact-phone';
       phoneEl.innerText = '+' + formatPhoneNumber(user.phone).formatted;

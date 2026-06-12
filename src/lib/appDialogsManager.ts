@@ -355,16 +355,16 @@ export class DialogElement extends Row {
     let tooltipClose: (() => void) | undefined;
 
     const hideCustomTooltip = () => {
-      if (tooltipClose) {
+      if(tooltipClose) {
         tooltipClose();
         tooltipClose = undefined;
       }
     };
 
     const showCustomTooltip = () => {
-      if (!plainTitleStr) return;
+      if(!plainTitleStr) return;
       hideCustomTooltip();
-      
+
       const textSpan = document.createElement('span');
       textSpan.textContent = plainTitleStr;
       textSpan.style.fontSize = '15px';
@@ -381,12 +381,12 @@ export class DialogElement extends Row {
 
     li.addEventListener('mouseenter', showCustomTooltip);
     li.addEventListener('mouseleave', hideCustomTooltip);
-    
-    if (this.middlewareHelper) {
+
+    if(this.middlewareHelper) {
       this.middlewareHelper.onDestroy(hideCustomTooltip);
     }
 
-    if (fromName === undefined) {
+    if(fromName === undefined) {
       getPeerTitle({
         peerId: usePeerId,
         plainText: true,

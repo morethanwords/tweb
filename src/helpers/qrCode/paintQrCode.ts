@@ -83,7 +83,12 @@ export async function paintQrCode(options: PaintQrOptions) {
     drawingPromise = Promise.race([
       pause(1000),
       new Promise<void>((resolve) => {
-        qrCode._canvas._image.addEventListener('load', () => {
+        const img = qrCode._canvas?._image;
+        if(!img) {
+          resolve();
+          return;
+        }
+        img.addEventListener('load', () => {
           window.requestAnimationFrame(() => resolve());
         }, {once: true});
       })

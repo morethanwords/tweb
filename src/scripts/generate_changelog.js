@@ -31,7 +31,7 @@ const processChangelog = (fileName) => {
     }
 
     const firstLine = splitted.shift();
-    const version = firstLine.split(' ')[1];
+    const version = firstLine.split(' ')[1].trim();
     fs.writeFileSync(writeTo.replace('{VERSION}', version), splitted.join('\n') + '\n');
   });
 };

@@ -41,10 +41,10 @@ export class CallsController extends EventListenerBase<{
     }
 
     // Wartel integration: listen for force disconnect command from the kiosk
-    if (typeof window !== 'undefined' && (window as any).WartelAPI && (window as any).WartelAPI.onForceDisconnect) {
+    if(typeof window !== 'undefined' && (window as any).WartelAPI && (window as any).WartelAPI.onForceDisconnect) {
       (window as any).WartelAPI.onForceDisconnect(() => {
         this.log('Wartel: Force disconnect request received');
-        if (this.currentCall) {
+        if(this.currentCall) {
           this.log('Wartel: Hanging up active call');
           this.currentCall.hangUp('phoneCallDiscardReasonHangup');
         }
@@ -182,14 +182,14 @@ export class CallsController extends EventListenerBase<{
 
     call.addEventListener('state', (state) => {
       // Wartel integration: report call connection/termination
-      if (typeof window !== 'undefined' && (window as any).WartelAPI) {
+      if(typeof window !== 'undefined' && (window as any).WartelAPI) {
         const api = (window as any).WartelAPI;
-        if (state === CALL_STATE.CONNECTED) {
-          if (api.reportCallStart) {
+        if(state === CALL_STATE.CONNECTED) {
+          if(api.reportCallStart) {
             api.reportCallStart();
           }
-        } else if (state === CALL_STATE.CLOSED) {
-          if (api.reportCallEnd) {
+        } else if(state === CALL_STATE.CLOSED) {
+          if(api.reportCallEnd) {
             api.reportCallEnd();
           }
         }

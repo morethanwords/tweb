@@ -1299,7 +1299,7 @@ export default class AppSearchSuper {
         } else {
           let username = await this.managers.appPeersManager.getPeerUsername(peerId);
           let phoneNumber = '';
-          
+
           const user = peerId.isUser() ? await this.managers.appUsersManager.getUser(peerId.toUserId()) : undefined;
           if(user?.phone) {
             phoneNumber = '+' + formatPhoneNumber(user.phone).formatted;

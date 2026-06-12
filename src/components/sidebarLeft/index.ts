@@ -178,15 +178,15 @@ export class AppSidebarLeft extends SidebarSlider {
       onUpdate: async(element) => {
         const user = await this.managers.appUsersManager.getUser(element.id);
         const status = getUserStatusString(user);
-        
+
         const content: (string | Node)[] = [];
-        if (user.phone) {
+        if(user.phone) {
           const phoneSpan = document.createElement('div');
           phoneSpan.className = 'wartelpas-phone';
           phoneSpan.innerText = '+' + formatPhoneNumber(user.phone).formatted;
           content.push(phoneSpan);
         }
-        
+
         const statusSpan = document.createElement('div');
         statusSpan.className = 'wartelpas-status';
         statusSpan.append(status);
@@ -212,7 +212,7 @@ export class AppSidebarLeft extends SidebarSlider {
     this.contactsList.list.addEventListener('mousedown', (e) => {
       const target = e.target as HTMLElement;
       const elem = target.closest('.chatlist-chat') as HTMLElement;
-      if (elem && elem.dataset.peerId) {
+      if(elem && elem.dataset.peerId) {
         const peerId = elem.dataset.peerId.toPeerId();
         this.openContactInfo(peerId);
         e.stopImmediatePropagation();
@@ -1597,16 +1597,16 @@ export class AppSidebarLeft extends SidebarSlider {
     const lowerQuery = query.toLowerCase().trim();
     const contacts = this.contactsList.getAll();
     console.log(`[DEBUG] filterContacts query: "${lowerQuery}", count: ${contacts.size}`);
-    
+
     contacts.forEach((element) => {
       const user = apiManagerProxy.getUser(element.id.toUserId());
-      if (!user) {
+      if(!user) {
         console.log(`[DEBUG] User not found for peerId: ${element.id}`);
         return;
       }
       const name = ((user.first_name || '') + (user.last_name ? ' ' + user.last_name : '')).toLowerCase();
       const visible = !lowerQuery || name.includes(lowerQuery);
-      
+
       console.log(`[DEBUG] Contact: "${name}", visible: ${visible}`);
       element.dom.listEl.classList.toggle('hide', !visible);
     });

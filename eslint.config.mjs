@@ -75,7 +75,7 @@ export default [{
       }
     }],
 
-    'linebreak-style': ['error', 'unix'],
+    'linebreak-style': 'off',
     'eol-last': 'error',
 
     'indent': ['error', 2, {
