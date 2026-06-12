@@ -118,6 +118,7 @@ export const StyleTab = () => {
           <Transition name='fade-2' mode='outin'>
             <Show when={tonesResource.state === 'ready'} fallback={
               <Scrollable class={styles.tonesList} ref={setTonesListEl} axis='x' relative>
+                {/* WTF is with this fallback={...} */}
                 <Show when={tonesResource.state === 'pending'} fallback={<div class={styles.tonesList}>{/* height placeholder */}</div>}>
                   {[1, 2, 3, 4].map(() => (
                     <div class={styles.toneSkeleton}>

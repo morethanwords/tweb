@@ -190,7 +190,7 @@
 }
 
 .t-move-std {
-  // Do not change the easing function on this one
+  // Do not change easing function here, some places need synced easings for animations to not be jerky
   transition: transform 0.2s;
 }
 

@@ -1,5 +1,6 @@
 .outer {
   &.hasTransition {
+    // Do not change easing function here, some places need synced easings for animations to not be jerky
     transition: height 0.2s;
   }
 
