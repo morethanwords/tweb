@@ -142,7 +142,8 @@ export default async function renderToVideoGIF({
 
       await raceCancel(encoder.flush());
       throwIfCanceled();
-      const blob = mp4Encoder.finalize();
+      const blob = await raceCancel(mp4Encoder.finalize());
+      throwIfCanceled();
 
       cleanup(encoder);
 

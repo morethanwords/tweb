@@ -137,7 +137,7 @@ export default async function renderToActualVideo({
   });
 
   async function initMuxerAndEncoder() {
-    const {Muxer, ArrayBufferTarget} = await import('mp4-muxer');
+    const {BufferTarget, EncodedAudioPacketSource, EncodedPacket, EncodedVideoPacketSource, Mp4OutputFormat, Output} = await import('mediabunny');
 
     let audioBuffer: AudioBuffer, mediaBlob: Blob;
 
@@ -145,23 +145,27 @@ export default async function renderToActualVideo({
       audioBuffer = await extractAudioFragment(mediaBlob, startTime, endTime);
     } catch{}
 
-    const muxer = new Muxer({
-      target: new ArrayBufferTarget(),
-      video: {
-        codec: 'avc',
-        width: scaledWidth,
-        height: scaledHeight
-      },
-      audio: audioBuffer ? {
-        codec: 'opus',
-        sampleRate: audioBuffer.sampleRate,
-        numberOfChannels: audioBuffer.numberOfChannels
-      } : undefined,
-      fastStart: 'in-memory'
+    const output = new Output({
+      format: new Mp4OutputFormat({fastStart: 'in-memory'}),
+      target: new BufferTarget()
     });
 
+    const videoSource = new EncodedVideoPacketSource('avc');
+    output.addVideoTrack(videoSource);
+
+    const audioSource = audioBuffer ? new EncodedAudioPacketSource('opus') : undefined;
+    if(audioSource) output.addAudioTrack(audioSource);
+
+    await output.start();
+
+    // packets must be added sequentially (decode order + backpressure), but the encoder callback is sync
+    let videoAddChain: Promise<unknown> = Promise.resolve();
+
     const encoder = new VideoEncoder({
-      output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+      output: (chunk, meta) => {
+        videoAddChain = videoAddChain.then(() => videoSource.add(EncodedPacket.fromEncodedChunk(chunk), meta));
+        videoAddChain.catch(noop); // the rejection still surfaces when the chain is awaited before finalize
+      },
       error: (e) => console.error(e)
     });
 
@@ -180,7 +184,14 @@ export default async function renderToActualVideo({
       ...codecAndBitrate
     });
 
-    return {muxer, encoder, audioBuffer};
+    return {
+      output,
+      encoder,
+      audioBuffer,
+      addAudioChunk: (chunk: EncodedAudioChunk, meta?: EncodedAudioChunkMetadata) =>
+        audioSource.add(EncodedPacket.fromEncodedChunk(chunk), meta),
+      waitForVideoPackets: () => videoAddChain
+    };
   }
 
   function drawToTexture() {
@@ -390,7 +401,7 @@ export default async function renderToActualVideo({
         firstFrameSeekDeferred,
         initStickerRenderers()
       ]));
-      const {muxer, encoder: createdEncoder, audioBuffer} = initResults[0];
+      const {output, encoder: createdEncoder, audioBuffer, addAudioChunk, waitForVideoPackets} = initResults[0];
       encoder = createdEncoder;
       throwIfCanceled();
 
@@ -458,17 +469,21 @@ export default async function renderToActualVideo({
         thumbnailCtx.drawImage(resultCanvas, 0, 0, thumbnailCanvas.width, thumbnailCanvas.height);
       }
 
-      if(audioBuffer) await raceCancel(encodeAndMuxAudio(audioBuffer, (chunk) => muxer.addAudioChunk(chunk)));
+      if(audioBuffer) await raceCancel(encodeAndMuxAudio(audioBuffer, addAudioChunk));
       throwIfCanceled();
 
       await raceCancel(encoder.flush());
       throwIfCanceled();
 
-      muxer.finalize();
+      await raceCancel(waitForVideoPackets());
+      throwIfCanceled();
+
+      await raceCancel(output.finalize());
+      throwIfCanceled();
 
       cleanup(encoder);
 
-      const {buffer} = muxer.target;
+      const {buffer} = output.target;
 
       setProgress(1);
 
@@ -558,7 +573,7 @@ async function extractAudioFragment(blob: Blob, startTime: number, endTime: numb
   return fragmentBuffer;
 }
 
-async function encodeAndMuxAudio(audioBuffer: AudioBuffer, onChunk: (ch: EncodedAudioChunk) => void) {
+async function encodeAndMuxAudio(audioBuffer: AudioBuffer, onChunk: (chunk: EncodedAudioChunk, meta?: EncodedAudioChunkMetadata) => Promise<void>) {
   const sampleRate = audioBuffer.sampleRate;
   const numChannels = audioBuffer.numberOfChannels;
   const totalFrames = audioBuffer.length;
@@ -573,8 +588,14 @@ async function encodeAndMuxAudio(audioBuffer: AudioBuffer, onChunk: (ch: Encoded
     }
   }
 
+  // packets must be added sequentially (decode order + backpressure), but the encoder callback is sync
+  let addChain: Promise<unknown> = Promise.resolve();
+
   const encoder = new AudioEncoder({
-    output: onChunk,
+    output: (chunk, meta) => {
+      addChain = addChain.then(() => onChunk(chunk, meta));
+      addChain.catch(noop); // the rejection still surfaces when the chain is awaited below
+    },
     error: (e) => console.error('AudioEncoder error:', e)
   });
 
@@ -599,4 +620,5 @@ async function encodeAndMuxAudio(audioBuffer: AudioBuffer, onChunk: (ch: Encoded
 
   await encoder.flush();
   encoder.close();
+  await addChain;
 }

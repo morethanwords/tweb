@@ -66,7 +66,7 @@ export default async function gifToVideo(blob: Blob, onProgress?: (progress: num
   }
 
   return {
-    blob: finalize(),
+    blob: await finalize(),
     width,
     height,
     duration: duration / 1e6
