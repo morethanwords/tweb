@@ -434,7 +434,13 @@ export const Tone = (props: {
       use:ripple
       onClick={props.onClick}
     >
-      <EmojiDocumentIcon docId={props.docId} color='primary-text-color' size={42} class={styles.toneIcon} managers={rootScope.managers} />
+      <EmojiDocumentIcon
+        docId={props.docId}
+        color={props.selected ? 'primary-color' : 'primary-text-color'}
+        size={42}
+        class={styles.toneIcon}
+        managers={rootScope.managers}
+      />
       <div class={styles.toneName}>{props.name}</div>
       <Show when={props.withContextMenu}>
         <IconTsx icon='more' class={styles.toneContextMenuIcon} />
