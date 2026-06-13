@@ -82,7 +82,7 @@ const createAiEditorButton = ({instance, inputField, appendTo, onApply, class: c
           ...trimRichText(value, entities)
         },
         onApply,
-        onSend: !instance.chat.starsAmount && canSend ? async(text) => {
+        onSend: !instance.chat.starsAmount && !instance.editMsgId && canSend ? async(text) => {
           const sendingParams = instance.chat.getMessageSendingParams();
 
           const result = await instance.Class.sendMessageWithForward({
