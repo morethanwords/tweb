@@ -1,75 +1,186 @@
-## Telegram Web K
-Based on Webogram, patched and improved. Available for everyone here: https://web.telegram.org/k/
-
-
-### Developing
-Install dependencies with:
-```lang=bash
-pnpm install
+### 服务端
 ```
-This will install all the needed dependencies.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tg-proxy-nginx-conf
+  namespace: default
+data:
+  default.conf: |
+    log_format wsdebug '$remote_addr "$request" status=$status '
+                       'upstream_status=$upstream_status '
+                       'host=$host upstream=$tg_host '
+                       'upgrade=$http_upgrade '
+                       'ws_proto=$http_sec_websocket_protocol '
+                       'uri=$uri args=$args';
 
+    map $http_upgrade $connection_upgrade {
+      default upgrade;
+      '' close;
+    }
 
-#### Running web-server
-Just run `pnpm start` to start the web server and the livereload task.
-Open http://localhost:8080/ in your browser.
+    server {
+      listen 80;
+      resolver 192.168.4.1 valid=300s ipv6=off;
 
+      access_log /var/log/nginx/access.log wsdebug;
 
-#### Running in production
+      proxy_http_version 1.1;
+      proxy_ssl_server_name on;
 
-Run `node build` to build the minimized production version of the app. Copy `public` folder contents to your web server.
+      proxy_connect_timeout 10s;
+      proxy_send_timeout 3600s;
+      proxy_read_timeout 3600s;
 
-### Running in docker
+      proxy_buffering off;
+      proxy_request_buffering off;
 
-#### Developing: 
-* Install dependencies `docker-compose up tweb.dependencies`.
-* Run develop container `docker-compose up tweb.develop `.
-* Open http://localhost:8080/ in your browser. 
+      proxy_set_header X-Real-IP $remote_addr;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header X-Forwarded-Proto $scheme;
 
-#### Production:
-* Run `docker-compose up tweb.production -d` nginx image and container to serve the build
-* Open http://localhost:80/ in your browser.
+      location /healthz {
+        return 200 "ok\n";
+      }
 
-You can use `docker build -f ./.docker/Dockerfile_production -t {dockerhub-username}/{imageName}:{latest} .` to build your production ready image.
+      location ~ ^/(pluto|venus|aurora|vesta|flora|pluto-1|venus-1|aurora-1|vesta-1|flora-1)/(.*)$ {
+        set $tg_host $1.web.telegram.org;
+        set $tg_path $2;
 
-### Dependencies
-* [BigInteger.js](https://github.com/peterolson/BigInteger.js) ([Unlicense](https://github.com/peterolson/BigInteger.js/blob/master/LICENSE))
-* [fflate](https://github.com/101arrowz/fflate) ([MIT License](https://github.com/101arrowz/fflate/blob/master/LICENSE))
-* [cryptography](https://github.com/spalt08/cryptography) ([Apache License 2.0](https://github.com/spalt08/cryptography/blob/master/LICENSE))
-* [emoji-data](https://github.com/iamcal/emoji-data) ([MIT License](https://github.com/iamcal/emoji-data/blob/master/LICENSE))
-* [emoji-test-regex-pattern](https://github.com/mathiasbynens/emoji-test-regex-pattern) ([MIT License](https://github.com/mathiasbynens/emoji-test-regex-pattern/blob/main/LICENSE))
-* [rlottie](https://github.com/rlottie/rlottie.github.io) ([MIT License](https://github.com/Samsung/rlottie/blob/master/licenses/COPYING.MIT))
-* [fast-png](https://github.com/image-js/fast-png) ([MIT License](https://github.com/image-js/fast-png/blob/master/LICENSE))
-* [opus-recorder](https://github.com/chris-rudmin/opus-recorder) ([BSD License](https://github.com/chris-rudmin/opus-recorder/blob/master/LICENSE.md))
-* [Prism](https://github.com/PrismJS/prism) ([MIT License](https://github.com/PrismJS/prism/blob/master/LICENSE))
-* [Solid](https://github.com/solidjs/solid) ([MIT License](https://github.com/solidjs/solid/blob/main/LICENSE))
-* [TinyLD](https://github.com/komodojp/tinyld) ([MIT License](https://github.com/komodojp/tinyld/blob/develop/license))
-* [libwebp.js](https://libwebpjs.appspot.com/)
-* fastBlur
-* [mp4-muxer](https://github.com/Vanilagy/mp4-muxer) ([MIT License](https://github.com/Vanilagy/mp4-muxer/blob/main/LICENSE))
+        proxy_ssl_name $tg_host;
 
-### Debugging
-You are welcome in helping to minimize the impact of bugs. There are classes, binded to global context. Look through the code for certain one and just get it by its name in developer tools.
-Source maps are included in production build for your convenience.
+        proxy_set_header Host $tg_host;
+        proxy_set_header Origin https://web.telegram.org;
+        proxy_set_header Referer https://web.telegram.org/k/;
+        proxy_set_header User-Agent "Mozilla/5.0";
 
-#### Additional query parameters
-* **test=1**: to use test DCs
-* **debug=1**: to enable additional logging
-* **noSharedWorker=1**: to disable Shared Worker, can be useful for debugging
-* **http=1**: to force the use of HTTPS transport when connecting to Telegram servers
+        proxy_pass https://$tg_host/$tg_path$is_args$args;
+      }
 
-Should be applied like that: http://localhost:8080/?test=1
+      location ~ ^/(kws1|kws2|kws3|kws4|kws5|kws1-1|kws2-1|kws3-1|kws4-1|kws5-1)/(apiws|apiws_premium)$ {
+        set $tg_host $1.web.telegram.org;
+        set $tg_path $2;
 
-#### Taking local storage snapshots
-You can also take and load snapshots of the local storage and indexed DB using the `./snapshot-server` [mini-app](/snapshot-server/README.md). Check the `README.md` under this folder for more details.
+        proxy_http_version 1.1;
+        proxy_ssl_server_name on;
+        proxy_ssl_name $tg_host;
 
-#### Preview all icons
-You can see all the available svg icons by calling the `showIconLibrary()` global function in the browser's console.
+        proxy_set_header Host $tg_host;
+        proxy_set_header Origin https://web.telegram.org;
+        proxy_set_header Referer https://web.telegram.org/k/;
+        proxy_set_header User-Agent "Mozilla/5.0";
 
-### Troubleshooting & Suggesting
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
+        proxy_set_header Sec-WebSocket-Protocol $http_sec_websocket_protocol;
+        proxy_set_header Sec-WebSocket-Key $http_sec_websocket_key;
+        proxy_set_header Sec-WebSocket-Version $http_sec_websocket_version;
+        proxy_set_header Sec-WebSocket-Extensions $http_sec_websocket_extensions;
 
-If you find an issue with this app or wish something to be added, let Telegram know using the [Suggestions Platform](https://bugs.telegram.org/c/4002).
+        proxy_pass https://$tg_host/$tg_path;
+      }
 
-### Licensing
-
-The source code is licensed under GPL v3. License is available [here](/LICENSE).
+      location / {
+        return 404;
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tg-reverse-proxy
+  namespace: default
+  labels:
+    app: tg-reverse-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tg-reverse-proxy
+  template:
+    metadata:
+      labels:
+        app: tg-reverse-proxy
+    spec:
+      nodeSelector:
+        node-id: master01
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+              name: http
+          volumeMounts:
+            - name: nginx-conf
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: default.conf
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 20
+      volumes:
+        - name: nginx-conf
+          configMap:
+            name: tg-proxy-nginx-conf
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tg-reverse-proxy-service
+  namespace: default
+spec:
+  selector:
+    app: tg-reverse-proxy
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+      nodePort: 30303
+      protocol: TCP
+  type: NodePort
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tg-reverse-proxy-ingress
+  namespace: default
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - api.888888.org
+      secretName: api-888888-org-tls
+  rules:
+    - host: api.888888.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: tg-reverse-proxy-service
+                port:
+                  number: 80
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: api-888888-org-cert
+  namespace: default
+spec:
+  secretName: api-888888-org-tls
+  dnsNames:
+    - api.888888.org
+  issuerRef:
+    name: selfsigned-issuer
+    kind: ClusterIssuer
+```
