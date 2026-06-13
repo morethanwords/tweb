@@ -1,3 +1,5 @@
+import editableFieldStyles from '@/scss/modulePartials/editableFieldContent.module.scss';
+import tonePopupShellStyles from '@/scss/modulePartials/tonePopupShell.module.scss';
 import EmojiDocumentIcon from '@components/emojiDocumentIcon';
 import {IconTsx} from '@components/iconTsx';
 import InputField from '@components/inputField';
@@ -11,7 +13,6 @@ import cloneDOMRect from '@helpers/dom/cloneDOMRect';
 import {keepMe} from '@helpers/keepMe';
 import {createMutation} from '@helpers/solid/createMutation';
 import {I18nTsx} from '@helpers/solid/i18n';
-import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
 import {CreateToneArgs} from '@lib/appManagers/aiTonesManager';
 import {LangPackKey} from '@lib/langPack';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
@@ -106,14 +107,14 @@ const CreateTonePopup = (inProps: CreateTonePopupProps) => {
     }
   });
 
-  instructionsInputField.input.classList.replace('input-field-input', styles.inputField);
+  instructionsInputField.input.classList.replace('input-field-input', editableFieldStyles.editableFieldContent);
 
   instructionsInputField.setValueSilently(props.initialValues?.prompt ?? '');
 
   return (
-    <PopupElement class={styles.popup} containerClass={styles.popupContainer}>
-      <PopupElement.Header class={styles.popupHeader}>
-        <PopupElement.CloseButton class={styles.popupCloseButton} />
+    <PopupElement class={tonePopupShellStyles.popup} containerClass={tonePopupShellStyles.popupContainer}>
+      <PopupElement.Header class={tonePopupShellStyles.popupHeader}>
+        <PopupElement.CloseButton class={tonePopupShellStyles.popupCloseButton} />
         <PopupElement.Title title={props.titleLangKey} />
       </PopupElement.Header>
       <PopupElement.Body class={styles.popupBody}>
@@ -184,7 +185,7 @@ const CreateTonePopup = (inProps: CreateTonePopupProps) => {
         </div>
 
       </PopupElement.Body>
-      <PopupElement.Footer class={styles.popupFooter}>
+      <PopupElement.Footer class={tonePopupShellStyles.popupFooter}>
         <PopupElement.FooterButton
           disabled={!canSubmit() || submitMutation.isPending()}
           langKey={props.submitLangKey}

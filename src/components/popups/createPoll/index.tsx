@@ -1,3 +1,4 @@
+import editableFieldStyles from '@/scss/modulePartials/editableFieldContent.module.scss';
 import Button from '@components/buttonTsx';
 import InputField from '@components/inputField';
 import Scrollable from '@components/scrollable2';
@@ -5,7 +6,6 @@ import SimpleFormField from '@components/simpleFormField';
 import Space from '@components/space';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import {I18nTsx} from '@helpers/solid/i18n';
-import {useMaxLengthError} from '@helpers/solid/useMaxLengthError';
 import classNames from '@helpers/string/classNames';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
@@ -111,7 +111,7 @@ const QuestionAndDescription = () => {
     }
   });
 
-  questionInput.input.classList.replace('input-field-input', styles.inputField);
+  questionInput.input.classList.replace('input-field-input', editableFieldStyles.editableFieldContent);
 
   const descriptionInput = new InputField({
     canHaveFormatting: supportedDescriptionFormattingTypes,
@@ -126,7 +126,7 @@ const QuestionAndDescription = () => {
     }
   });
 
-  descriptionInput.input.classList.replace('input-field-input', styles.inputField);
+  descriptionInput.input.classList.replace('input-field-input', editableFieldStyles.editableFieldContent);
 
   return (
     <>
@@ -201,15 +201,15 @@ const BodyContent = () => {
       <Space amount='1rem' />
 
       <div class={styles.sectionWrapper}>
-        <div class={styles.section}>
+        <SimpleFormField.Section>
           <QuestionAndDescription />
-        </div>
+        </SimpleFormField.Section>
       </div>
 
       <Space amount='1rem' />
 
       <div class={styles.sectionWrapper}>
-        <div class={styles.section}>
+        <SimpleFormField.Section>
           <div class={styles.sectionTitle}>
             <I18nTsx key='PollOptions' />
           </div>
@@ -217,13 +217,13 @@ const BodyContent = () => {
           <Space amount='0.5rem' />
 
           <PollOptionsSectionContent scrollable={scrollable()} />
-        </div>
+        </SimpleFormField.Section>
       </div>
 
       <Space amount='1rem' />
 
       <div class={styles.sectionWrapper}>
-        <div class={styles.section}>
+        <SimpleFormField.Section>
           <div class={styles.sectionTitle}>
             <I18nTsx key='Settings' />
           </div>
@@ -231,7 +231,7 @@ const BodyContent = () => {
           <Space amount='0.5rem' />
 
           <PollSettingsSectionContent />
-        </div>
+        </SimpleFormField.Section>
       </div>
 
       <Space amount='1.5rem' />

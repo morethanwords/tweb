@@ -1,3 +1,4 @@
+import fieldSectionStyles from '@/scss/modulePartials/fieldSectionPanel.module.scss';
 import styles from '@components/simpleFormField/styles.module.scss';
 import {requestRAF} from '@helpers/solid/requestRAF';
 import {useMaxLengthError} from '@helpers/solid/useMaxLengthError';
@@ -287,7 +288,7 @@ SimpleFormField.Section = (inProps: JSX.HTMLAttributes<HTMLDivElement>) => {
   const [props, restProps] = splitProps(inProps, ['class']);
 
   return (
-    <div class={classNames(styles.section, props.class)} {...restProps} />
+    <div class={classNames(fieldSectionStyles.fieldSectionPanel, props.class)} {...restProps} />
   );
 };
 
@@ -295,7 +296,7 @@ SimpleFormField.Caption = (inProps: JSX.HTMLAttributes<HTMLDivElement>) => {
   const [props, restProps] = splitProps(inProps, ['class']);
 
   return (
-    <div class={classNames(styles.caption, props.class)} {...restProps} />
+    <div class={classNames(fieldSectionStyles.fieldSectionCaption, props.class)} {...restProps} />
   );
 };
 

@@ -1,3 +1,4 @@
+import tonePopupShellStyles from '@/scss/modulePartials/tonePopupShell.module.scss';
 import {AutoHeight} from '@components/autoHeight';
 import EmojiDocumentIcon from '@components/emojiDocumentIcon';
 import {IconTsx} from '@components/iconTsx';
@@ -15,8 +16,8 @@ import {LangPackKey} from '@lib/langPack';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {batch, createMemo, createResource, createSignal, Match, Show, Switch} from 'solid-js';
 import {Transition} from 'solid-transition-group';
-import styles from './styles.module.scss';
 import {useMaxSavedTones} from '../limits';
+import styles from './styles.module.scss';
 
 keepMe(ripple);
 
@@ -131,9 +132,9 @@ const ViewTonePopup = (props: ViewTonePopupProps) => {
   );
 
   return (
-    <PopupElement class={styles.popup} containerClass={styles.popupContainer} show={show()}>
-      <PopupElement.Header class={styles.popupHeader}>
-        <PopupElement.CloseButton class={styles.popupCloseButton} />
+    <PopupElement class={tonePopupShellStyles.popup} containerClass={tonePopupShellStyles.popupContainer} show={show()}>
+      <PopupElement.Header class={tonePopupShellStyles.popupHeader}>
+        <PopupElement.CloseButton class={tonePopupShellStyles.popupCloseButton} />
       </PopupElement.Header>
       <PopupElement.Body class={styles.popupBody}>
         <Show when={docId()} keyed>
@@ -213,7 +214,7 @@ const ViewTonePopup = (props: ViewTonePopupProps) => {
         </Show>
       </PopupElement.Body>
       <Show when={hasFooterButton()}>
-        <PopupElement.Footer class={styles.popupFooter}>
+        <PopupElement.Footer class={tonePopupShellStyles.popupFooter}>
           <PopupElement.FooterButton
             disabled={mutation.isPending()}
             color={isCreator() || props.isSaved ? 'danger' : 'primary'}

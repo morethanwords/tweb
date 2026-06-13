@@ -1,41 +1,7 @@
 @use "../../../../scss/variables" as *;
 @use "../../../../scss/mixins" as *;
 
-.popup {
-  --popup-min-width: 26.25rem;
-  --popup-max-width: 26.25rem;
 
-  &Container {
-    padding: 1rem;
-    border-radius: 2rem;
-  }
-
-  &Header {
-    position: absolute;
-    margin: 0;
-    top: .625rem;
-    inset-inline-start: .625rem;
-  }
-
-  &CloseButton {
-    width: 2.25rem;
-    height: 2.25rem;
-  }
-
-  &Footer {
-    display: flex;
-    flex-direction: row;
-    gap: 0.5rem;
-    padding: 1.25rem 0 0;
-    min-height: unset;
-
-    :global(.popup-footer-button) {
-      border-radius: 100px;
-      flex: 1;
-      margin: 0;
-    }
-  }
-}
 
 .header {
   padding-block: 3.5rem 1rem;
@@ -67,16 +33,8 @@
   @include hover-global(gray, background-color, true);
 }
 
-.inputField {
-  word-break: break-word;
-  padding: 0.5rem 0; // Push a little bit from the top and bottom border when the text wraps multiple lines
-  min-height: 1em;
-  width: 100%;
-  font-size: inherit;
-}
-
 .inputFieldScrollable {
-  max-height: 240px;
+  max-height: 200px;
   margin: 6px 0;
 }
 

@@ -1,3 +1,4 @@
+import editableFieldStyles from '@/scss/modulePartials/editableFieldContent.module.scss';
 import {createAutoDeleteIcon} from '@components/autoDeleteIcon';
 import {IconTsx} from '@components/iconTsx';
 import InputField from '@components/inputField';
@@ -59,7 +60,7 @@ export const PollSettingsSectionContent = () => {
     }
   });
 
-  explanationInput.input.classList.replace('input-field-input', styles.inputField);
+  explanationInput.input.classList.replace('input-field-input', editableFieldStyles.editableFieldContent);
 
   const formatTimeInSpan = (timestamp: number) => {
     // Without the span, solid will throw an error when the state is updated
@@ -256,9 +257,9 @@ export const PollSettingsSectionContent = () => {
               </Show>
             </SimpleFormField>
 
-            <div class={styles.caption}>
+            <SimpleFormField.Caption class={styles.captionOverride}>
               <I18nTsx key='AddAnExplanationInfo' />
-            </div>
+            </SimpleFormField.Caption>
           </div>
         </Show>
       </HeightTransition>
