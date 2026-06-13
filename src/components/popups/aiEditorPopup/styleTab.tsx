@@ -250,18 +250,27 @@ type UseShareToneArgs = {
 };
 
 const useShareTone = ({tone}: UseShareToneArgs) => {
-  const {rootScope, showSharingPickerPopup} = useHotReloadGuard();
+  const {rootScope, showSharingPickerPopup, PaidMessagesInterceptor} = useHotReloadGuard();
 
   return () => {
     showSharingPickerPopup({
-      onSelect: ([peer]) => {
+      onSelect: async([peer]) => {
         if(!peer) return;
+
+        const preparedPaymentResult = await PaidMessagesInterceptor.prepareStarsForPayment({
+          peerId: peer.peerId,
+          messageCount: 1
+        });
+
+        if(preparedPaymentResult === PaidMessagesInterceptor.PaymentRejectedSymbol) throw new Error();
+
         const link = 'https://t.me/addstyle/' + tone.slug;
         rootScope.managers.appMessagesManager.sendText({
           peerId: peer.peerId,
           threadId: peer.threadId,
           replyToMonoforumPeerId: peer.monoforumThreadId,
-          text: link
+          text: link,
+          confirmedPaymentResult: preparedPaymentResult
         });
       }
     });

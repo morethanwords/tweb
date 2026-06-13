@@ -7,6 +7,7 @@ import {avatarNew, AvatarNewTsx, StoriesSegments} from '@components/avatarNew';
 import BusinessHours from '@components/businessHours';
 import ButtonMenu, {ButtonMenuSync} from '@components/buttonMenu';
 import {ChatType} from '@components/chat/chatType';
+import PaidMessagesInterceptor from '@components/chat/paidMessagesInterceptor';
 import {pickLanguage} from '@components/chat/translation';
 import confirmationPopup from '@components/confirmationPopup';
 import {default as createEmojiDropdownButton, useEmojiDropdown} from '@components/emojiDropdownButton';
@@ -154,6 +155,7 @@ export type SolidJSHotReloadGuardContextValue = {
   pickLanguage: typeof pickLanguage;
   usePeerTranslation: typeof usePeerTranslation;
   showSharingPickerPopup: typeof showSharingPickerPopup;
+  PaidMessagesInterceptor: typeof PaidMessagesInterceptor;
 };
 
 
