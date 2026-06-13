@@ -819,6 +819,31 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
         processingBlockElement = true;
         break;
       }
+
+      case 'messageEntityDiffInsert':
+        element = document.createElement('span');
+        element.classList.add('markup-diff-insert');
+        break;
+
+      case 'messageEntityDiffDelete':
+        element = document.createElement('span');
+        element.classList.add('markup-diff-delete');
+        break;
+
+      case 'messageEntityDiffReplace':
+        const container = document.createElement('span');
+        fragment.appendChild(container);
+
+        const deleted = document.createElement('span');
+        deleted.classList.add('markup-diff-delete');
+        deleted.textContent = entity.old_text;
+
+        const inserted = document.createElement('span');
+        inserted.classList.add('markup-diff-insert');
+
+        container.append(deleted, inserted);
+        element = inserted;
+        break;
     }
 
     if(processingBlockElement) {

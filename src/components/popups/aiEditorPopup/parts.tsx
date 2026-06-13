@@ -213,6 +213,7 @@ export const Result = (props: {
   emojify?: boolean;
   onEmojify?: () => void;
   isAppearing?: boolean;
+  useDiffText?: boolean;
   composeMessageWithAiArgs?: ComposeMessageWithAiArgs;
 }) => {
   const {rootScope, toastNew, wrapRichText, PopupPremium} = useHotReloadGuard();
@@ -263,6 +264,13 @@ export const Result = (props: {
   const [skeletonHeight, setSkeletonHeight] = createSignal<number>();
 
   const isPremiumFloodError = createMemo(() => composedMessage.error instanceof ComposeError && composedMessage.error.isPremiumFlood);
+
+  const textToRender = createMemo(() => {
+    if(composedMessage.state !== 'ready') return;
+    const localComposedMessage = composedMessage();
+    if(props.useDiffText) return localComposedMessage.diffText || localComposedMessage.resultText;
+    return localComposedMessage.resultText;
+  });
 
   createComputed(() => {
     if(composedMessage.state !== 'ready') return;
@@ -319,10 +327,10 @@ export const Result = (props: {
       <div class={styles.resultContent}>
         <Transition name='fade-2' mode='outin'>
           <Switch>
-            <Match when={composedMessage.state === 'ready' && composedMessage()} keyed>
-              {(message) => (
+            <Match when={textToRender()} keyed>
+              {(text) => (
                 <Scrollable ref={scrollableRef} relative class={classNames(styles.resultScrollable, styles.richText)}>
-                  {wrapRichText(message.resultText.text, {entities: filterEntities(message.resultText.entities), middleware: createMiddleware().get()})}
+                  {wrapRichText(text.text, {entities: filterEntities(text.entities), middleware: createMiddleware().get()})}
                 </Scrollable>
               )}
             </Match>

@@ -16,6 +16,7 @@ export const FixTab = (props: {isAppearing: boolean}) => {
         <Original isAppearing={props.isAppearing} text={originalText} onMeasured={onMeasured} />
         <Divider />
         <Result
+          useDiffText
           isAppearing={props.isAppearing}
           composeMessageWithAiArgs={{text: originalText, proofRead: true}}
         />
