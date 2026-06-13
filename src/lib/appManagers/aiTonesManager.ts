@@ -11,9 +11,17 @@ export type ComposeMessageWithAiArgs = {
   emojify?: boolean;
 };
 
-export type ComposeMessageWithAiResult = {
+export type ComposeMessageWithAiOkResultData = {
   resultText: TextWithEntities;
   diffText?: TextWithEntities;
+};
+
+export type ComposeMessageWithAiResult = {
+  ok: false;
+  isPremiumFlood: boolean;
+} | {
+  ok: true;
+  data: ComposeMessageWithAiOkResultData;
 };
 
 export type CreateToneArgs = {
@@ -194,21 +202,32 @@ export class AiTonesManager extends AppManager {
     await this.saveToneById(toneId, true);
   }
 
-  async composeMessageWithAi({text, toneNameOrId, proofRead, translateTo, emojify}: ComposeMessageWithAiArgs) {
+  async composeMessageWithAi({text, toneNameOrId, proofRead, translateTo, emojify}: ComposeMessageWithAiArgs): Promise<ComposeMessageWithAiResult> {
     const tone = toneNameOrId ? this.tonesMap.get(toneNameOrId) : undefined;
 
-    const result = await this.apiManager.invokeApi('messages.composeMessageWithAI', {
-      text,
-      emojify,
-      translate_to_lang: translateTo,
-      tone: tone ? this.getToneInput(tone) : undefined,
-      proofread: proofRead
-    });
+    try {
+      const result = await this.apiManager.invokeApi('messages.composeMessageWithAI', {
+        text,
+        emojify,
+        translate_to_lang: translateTo,
+        tone: tone ? this.getToneInput(tone) : undefined,
+        proofread: proofRead
+      });
 
-    return {
-      resultText: result.result_text,
-      diffText: result.diff_text
-    };
+      return {
+        ok: true,
+        data: {
+          resultText: result.result_text,
+          diffText: result.diff_text
+        }
+      };
+    } catch(e) {
+      const error = e as ApiError;
+      return {
+        ok: false,
+        isPremiumFlood: error?.type === 'AICOMPOSE_FLOOD_PREMIUM'
+      };
+    }
   }
 
   async getToneBySlug(toneSlug: string) {

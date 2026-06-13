@@ -19,7 +19,7 @@ import {requestRAF} from '@helpers/solid/requestRAF';
 import classNames from '@helpers/string/classNames';
 import {useIsCleaned} from '@hooks/useIsCleaned';
 import {AiComposeTone, MessageEntity, TextWithEntities} from '@layer';
-import {ComposeMessageWithAiArgs, ComposeMessageWithAiResult} from '@lib/appManagers/aiTonesManager';
+import {ComposeMessageWithAiArgs, ComposeMessageWithAiOkResultData} from '@lib/appManagers/aiTonesManager';
 import {LangPackKey} from '@lib/langPack';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {batch, children, createComputed, createEffect, createMemo, createReaction, createResource, createSignal, For, JSX, Match, onCleanup, onMount, ParentProps, Show, Switch} from 'solid-js';
@@ -186,7 +186,7 @@ export const Original = (props: {
   );
 };
 
-const cachedComposedMessages: Map<string, ComposeMessageWithAiResult> = new Map();
+const cachedComposedMessages: Map<string, ComposeMessageWithAiOkResultData> = new Map();
 
 const getCachedComposedMessageKey = (args: ComposeMessageWithAiArgs): string => {
   try {
@@ -196,10 +196,17 @@ const getCachedComposedMessageKey = (args: ComposeMessageWithAiArgs): string => 
   }
 };
 
-const getCachedComposedMessage = (args: ComposeMessageWithAiArgs): ComposeMessageWithAiResult | undefined => {
+const getCachedComposedMessage = (args: ComposeMessageWithAiArgs): ComposeMessageWithAiOkResultData | undefined => {
   const key = getCachedComposedMessageKey(args);
   return key ? cachedComposedMessages.get(key) : undefined;
 };
+
+class ComposeError extends Error {
+  constructor(public isPremiumFlood: boolean) {
+    super();
+    this.name = 'ComposeError';
+  }
+}
 
 export const Result = (props: {
   overrideTitle?: JSX.Element;
@@ -228,9 +235,11 @@ export const Result = (props: {
 
     return (async() => {
       const [result] = await Promise.all([rootScope.managers.aiTonesManager.composeMessageWithAi(args), appearDeferred]);
+      if(result.ok === false) throw new ComposeError(result.isPremiumFlood);
+
       const key = getCachedComposedMessageKey(args);
-      if(key) cachedComposedMessages.set(key, result);
-      return result;
+      if(key) cachedComposedMessages.set(key, result.data);
+      return result.data;
     })();
 
     // Test without API calls
@@ -253,7 +262,7 @@ export const Result = (props: {
   let scrollableRef: HTMLDivElement;
   const [skeletonHeight, setSkeletonHeight] = createSignal<number>();
 
-  const isPremiumFloodError = createMemo(() => composedMessage.error?.type === 'AICOMPOSE_FLOOD_PREMIUM');
+  const isPremiumFloodError = createMemo(() => composedMessage.error instanceof ComposeError && composedMessage.error.isPremiumFlood);
 
   createComputed(() => {
     if(composedMessage.state !== 'ready') return;
