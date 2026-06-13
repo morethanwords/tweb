@@ -184,7 +184,7 @@ declare global {
 
   type ApiError = {
     type: ErrorType,
-    stack: string,
+    stack?: string,
     message?: string,
     code?: number,
     handled?: boolean,
