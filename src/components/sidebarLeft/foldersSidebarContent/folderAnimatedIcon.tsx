@@ -14,12 +14,15 @@ export default function FolderAnimatedIcon(props: {
   onFail?: () => void;
   dontAnimate?: boolean;
 }) {
+  const Fallback = () => {
+    onMount(() => props.onFail?.());
+    // Keep the div for maintaining the layout
+    return <div class={props.class}></div>;
+  };
+
   return (
     <Switch
-      fallback={((): null => {
-        onMount(() => props.onFail?.());
-        return null;
-      })()}
+      fallback={<Fallback />}
     >
       <Match when={props.docId} keyed>
         {(docId) => (
