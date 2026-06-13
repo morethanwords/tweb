@@ -1,7 +1,6 @@
 import Button from '@components/buttonTsx';
 import {OverlayedIcon} from '@components/icon';
 import type InputField from '@components/inputField';
-import {openAiEditorPopup} from '@components/popups/aiEditorPopup';
 import {observeResize} from '@components/resizeObserver';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import track from '@helpers/solid/track';
@@ -12,6 +11,7 @@ import {resolveFirst} from '@solid-primitives/refs';
 import {LocalTextWithEntities} from '@types';
 import {Accessor, createEffect, createMemo, createSignal, onCleanup} from 'solid-js';
 import type ChatInput from '../input';
+import namedPromises from '@helpers/namedPromises';
 
 export const defaultShouldShowFromHeight = 72;
 
@@ -66,14 +66,21 @@ const createAiEditorButton = ({instance, inputField, appendTo, onApply, class: c
     {icon: 'ai_star2', className: 'chat-input-ai-editor-button__star-2'}
   ], 'chat-input-ai-editor-button__icon');
 
+  const getInitialTones = async() => {
+    const ackedTones = await rootScope.managers.acknowledged.aiTonesManager.getTones();
+    return ackedTones.cached ? ackedTones.result : undefined;
+  };
+
   const button = Button({
     class: classNames('chat-input-ai-editor-button', className, 'btn-icon'),
     children: icon,
     onClick: async() => {
       const {value, entities} = getRichValueWithCaret(inputField.input, true, false);
 
-      const ackedTones = await rootScope.managers.acknowledged.aiTonesManager.getTones();
-      const initialTones = ackedTones.cached ? await ackedTones.result : undefined;
+      const {module: {openAiEditorPopup}, initialTones} = await namedPromises({
+        module: import('@components/popups/aiEditorPopup'),
+        initialTones: getInitialTones()
+      });
 
       openAiEditorPopup({
         peerId: instance.chat.peerId,

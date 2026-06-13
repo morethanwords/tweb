@@ -48,7 +48,6 @@ import showBirthdayPopup, {saveMyBirthday} from '@components/popups/birthday';
 import showLogOutPopup from '@components/popups/logOut';
 import {getStickerSetInputByShortName} from '@lib/appManagers/utils/stickers/getStickerSetInput';
 import {AppMyStoriesTab} from '@components/solidJsTabs/tabs';
-import showViewTonePopup from '@components/popups/aiEditorPopup/viewTonePopup';
 
 export class InternalLinkProcessor {
   protected managers: AppManagers;
@@ -938,7 +937,8 @@ export class InternalLinkProcessor {
     this.processingAddAiStyleSlugs.add(link.slug);
 
     try {
-      const {tone, tones} = await namedPromises({
+      const {module: {default: showViewTonePopup}, tone, tones} = await namedPromises({
+        module: import('@components/popups/aiEditorPopup/viewTonePopup'),
         tone: this.managers.aiTonesManager.getToneBySlug(link.slug),
         tones: this.managers.aiTonesManager.getTones()
       });
