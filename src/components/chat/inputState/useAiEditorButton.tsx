@@ -24,11 +24,22 @@ type UseAiEditorButtonArgs = {
   onApply: (text: LocalTextWithEntities) => void;
   canSend: boolean;
   shouldShowFromHeight?: Accessor<number>;
+  forceHidden?: Accessor<boolean>;
 };
 
-export function useAiEditorButton({instance, inputField, onApply, class: className, container, appendTo, canSend, shouldShowFromHeight = () => defaultShouldShowFromHeight}: UseAiEditorButtonArgs) {
+export function useAiEditorButton({
+  instance,
+  inputField,
+  onApply,
+  class: className,
+  container,
+  appendTo,
+  canSend,
+  shouldShowFromHeight = () => defaultShouldShowFromHeight,
+  forceHidden = () => false
+}: UseAiEditorButtonArgs) {
   const [containerHeight, setContainerHeight] = createSignal(0);
-  const canShowButton = createMemo(() => containerHeight() >= shouldShowFromHeight())
+  const canShowButton = createMemo(() => containerHeight() >= shouldShowFromHeight() && !forceHidden());
 
   createEffect(() => {
     if(!container()) return;

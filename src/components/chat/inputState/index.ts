@@ -71,6 +71,7 @@ export default function createChatInputState(instance: ChatInput, initial: ChatI
     const {canPaste} = useDirectMessages(context);
 
     useAiEditorButton({
+      forceHidden: () => store.messageCount !== 1,
       instance,
       container: () => {
         if(store.inputMessageContainerInited) return instance.inputMessageContainer;
