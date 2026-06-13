@@ -147,20 +147,9 @@ export class AiTonesManager extends AppManager {
     return updatedTone;
   }
 
-  async saveToneBySlug(toneSlug: string, unsave: boolean) {
-    await this.apiManager.invokeApi('aicompose.saveTone', {
-      tone: {
-        _: 'inputAiComposeToneSlug',
-        slug: toneSlug
-      },
-      unsave
-    });
-
-    this.isStale = true;
-  }
-
   async saveToneById(toneId: string | number, unsave: boolean) {
     const tone = this.tonesMap.get(toneId.toString());
+    if(!tone) return;
     await this.saveTone(tone, unsave);
   }
 
@@ -192,10 +181,6 @@ export class AiTonesManager extends AppManager {
     this.tonesMap.delete(toneId.toString());
 
     this.isStale = true;
-  }
-
-  async addTone(toneSlug: string) {
-    await this.saveToneBySlug(toneSlug, false);
   }
 
   async removeSavedTone(toneId: string | number) {

@@ -33,7 +33,7 @@ const ViewTonePopup = (props: ViewTonePopupProps) => {
   const {rootScope, toastNew, confirmationPopup, wrapRichText, useAppConfig, PeerTitleTsx, appImManager} = useHotReloadGuard();
 
   const appConfig = useAppConfig();
-  const maxNum = appConfig.aicompose_tone_examples_num || 3;
+  const maxNum = () => appConfig.aicompose_tone_examples_num || 3;
   const maxSavedTones = useMaxSavedTones();
 
   const [show, setShow] = createSignal(true);
@@ -73,7 +73,7 @@ const ViewTonePopup = (props: ViewTonePopupProps) => {
   });
 
   const onAnotherExample = () => {
-    if(exampleNum() >= maxNum) return;
+    if(exampleNum() >= maxNum()) return;
     batch(() => {
       setExampleNum(exampleNum() + 1);
       setCanFetch(true);
@@ -160,7 +160,7 @@ const ViewTonePopup = (props: ViewTonePopupProps) => {
           <div class={styles.comparisonHeader}>
             <I18nTsx key="AiEditor.ViewStyle.Before" />
             <Transition name='fade-2'>
-              <Show when={exampleNum() < maxNum}>
+              <Show when={exampleNum() < maxNum()}>
                 <div class={styles.anotherExampleButton} onClick={onAnotherExample} use:ripple>
                   <IconTsx icon="flip" />
                   <I18nTsx key="AiEditor.ViewStyle.AnotherExample" />

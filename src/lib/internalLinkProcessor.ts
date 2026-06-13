@@ -152,22 +152,6 @@ export class InternalLinkProcessor {
         }
       });
 
-      addAnchorListener<{pathnameParams: [typeof name, string]}>({
-        name: 'addstyle',
-        callback: ({pathnameParams}) => {
-          if(!pathnameParams[1]) {
-            return;
-          }
-
-          const link: InternalLink = {
-            _: INTERNAL_LINK_TYPE.ADD_AI_STYLE,
-            slug: pathnameParams[1]
-          };
-
-          return this.processInternalLink(link);
-        }
-      });
-
       addAnchorListener<{
         uriParams: {
           set: string
@@ -788,6 +772,10 @@ export class InternalLinkProcessor {
     addAnchorListener<{ pathnameParams: ['addstyle', string] }>({
       name: 'addstyle',
       callback: ({pathnameParams}) => {
+        if(!pathnameParams[1]) {
+          return;
+        }
+
         const link: InternalLink = {
           _: INTERNAL_LINK_TYPE.ADD_AI_STYLE,
           slug: pathnameParams[1]
