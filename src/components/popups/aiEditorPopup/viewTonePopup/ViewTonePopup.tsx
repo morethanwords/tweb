@@ -16,6 +16,7 @@ import {LangPackKey} from '@lib/langPack';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {batch, createMemo, createResource, createSignal, Match, Show, Switch} from 'solid-js';
 import {Transition} from 'solid-transition-group';
+import {CreatorLink} from '../creatorLink';
 import {useMaxSavedTones} from '../limits';
 import styles from './styles.module.scss';
 
@@ -122,15 +123,6 @@ const ViewTonePopup = (props: ViewTonePopupProps) => {
     );
   };
 
-  const CreatorLink = (props: { peerId: number }) => (
-    <span class={styles.creatorLink} use:ripple onClick={() => {
-      appImManager.setInnerPeer({peerId: props.peerId});
-      setShow(false);
-    }}>
-      <PeerTitleTsx peerId={props.peerId} limitSymbols={32} />
-    </span>
-  );
-
   return (
     <PopupElement class={tonePopupShellStyles.popup} containerClass={tonePopupShellStyles.popupContainer} show={show()}>
       <PopupElement.Header class={tonePopupShellStyles.popupHeader}>
@@ -190,7 +182,7 @@ const ViewTonePopup = (props: ViewTonePopupProps) => {
           <Match when={!isCreator() && props.tone.author_id} keyed>
             {(authorId) => (
               <div class={styles.note}>
-                <I18nTsx key="AiEditor.ViewStyle.CreatedBy" args={[<CreatorLink peerId={authorId.toPeerId()} />]} />
+                <I18nTsx key="AiEditor.ViewStyle.CreatedBy" args={[<CreatorLink peerId={authorId.toPeerId()} onClick={() => setShow(false)} />]} />
               </div>
             )}
           </Match>

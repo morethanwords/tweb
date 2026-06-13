@@ -4755,6 +4755,7 @@ const lang = {
   'AiEditor.Emojify': 'emojify',
   'AiEditor.Result': 'Result',
   'AiEditor.TranslateTo': 'To %s',
+  'AiEditor.StyleBy': 'Style by %s',
   'AiEditor.PremiumFlood': 'You have hit the limit for now. Subscribe to [Telegram Premium]() to increase the limit by 50 times or try again later.',
   'AiEditor.ComposeError': 'Something went wrong while trying to compose the message.',
 

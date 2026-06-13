@@ -1,8 +1,6 @@
 @use "../../../../scss/variables" as *;
 @use "../../../../scss/mixins" as *;
 
-
-
 .header {
   padding-block: 2.5rem 1rem;
   display: flex;
@@ -101,18 +99,6 @@
   gap: 0.25rem;
   flex-grow: 0;
 
-  @include hover-global(blue, background-color, true);
-  --ripple-color: hsla(from var(--primary-color) h s l / 0.1);
-}
-
-.creatorLink {
-  position: relative;
-  overflow: hidden;
-  display: inline-flex;
-  padding: 0 4px;
-  border-radius: 8px;
-  color: var(--primary-color);
-  cursor: pointer;
   @include hover-global(blue, background-color, true);
   --ripple-color: hsla(from var(--primary-color) h s l / 0.1);
 }

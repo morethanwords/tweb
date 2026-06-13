@@ -1,3 +1,4 @@
+import fieldSectionStyles from '@/scss/modulePartials/fieldSectionPanel.module.scss';
 import {AutoHeight} from '@components/autoHeight';
 import {IconTsx} from '@components/iconTsx';
 import Scrollable from '@components/scrollable2';
@@ -5,19 +6,22 @@ import {Skeleton} from '@components/skeleton';
 import Space from '@components/space';
 import DEBUG from '@config/debug';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
+import {HeightTransition} from '@helpers/solid/heightTransition';
+import {I18nTsx} from '@helpers/solid/i18n';
 import {useEdgeAutoScroll} from '@helpers/solid/useEdgeAutoScroll';
 import classNames from '@helpers/string/classNames';
 import useElementSize from '@hooks/useElementSize';
 import {useScrollPosition} from '@hooks/useScrollPosition';
 import {AiComposeTone} from '@layer';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {batch, createComputed, createResource, createSignal, For, Show, useContext} from 'solid-js';
+import {batch, createComputed, createMemo, createResource, createSignal, For, Show, useContext} from 'solid-js';
 import {createStore, reconcile, SetStoreFunction} from 'solid-js/store';
 import {Transition, TransitionGroup} from 'solid-transition-group';
 import {usePopupContext} from '../indexTsx';
 import styles from './bodyContent.module.scss';
 import {AiEditorPopupContext} from './context';
 import showCreateTonePopup from './createTonePopup';
+import {CreatorLink} from './creatorLink';
 import {useMaxSavedTones} from './limits';
 import {CreateTone, Divider, Original, Result, Tone} from './parts';
 
@@ -45,6 +49,12 @@ export const StyleTab = () => {
   const scrollLeft = hasArrows ? useScrollPosition(tonesListEl, 'x') : () => 0;
   const isScrolledLeft = () => scrollLeft() <= 1;
   const isScrolledRight = () => !tonesListEl() || tonesListEl().scrollWidth - scrollLeft() - scrollableSize.width <= 1;
+
+  const selectedToneAuthorId = createMemo(() => {
+    const tone = selectedTone();
+    const peerId = tone?._ === 'aiComposeTone' ? tone.author_id?.toPeerId() : undefined;
+    return peerId !== rootScope.myId ? peerId : undefined;
+  });
 
   const [tonesResource] = createResource(
     () => initialTones ? undefined : true,
@@ -198,6 +208,22 @@ export const StyleTab = () => {
           </Show>
         </TransitionGroup>
       </AutoHeight>
+      <HeightTransition>
+        <Show when={selectedToneAuthorId()}>
+          {(authorId) => (
+            <div style={{overflow: 'hidden'}}>
+              <div class={fieldSectionStyles.fieldSectionCaption}>
+                <I18nTsx
+                  key='AiEditor.StyleBy'
+                  args={[
+                    <CreatorLink peerId={authorId()} onClick={() => popupContext.hide()} />
+                  ]}
+                />
+              </div>
+            </div>
+          )}
+        </Show>
+      </HeightTransition>
     </div>
   );
 };
