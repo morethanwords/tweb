@@ -11,6 +11,8 @@ export type EmojiCompositorMethods = {
   resetFade: (p: {rendererId: number, groupId: DocId}) => void,
   setOffsets: (p: {batch: {rendererId: number, groups: {groupId: DocId, offsets: number[]}[]}[]}) => void, // [top,left,width] triples, pre-dpr
   clearRenderer: (p: {rendererId: number}) => void,
+  suspendRenderer: (p: {rendererId: number, suspended: boolean}) => void, // freeze last pixels while every element is paused but on-screen
+
   decodePort: (p: {workerId: number}, source: MessageEventSource, event: MessageEvent) => void // MessagePort arrives in event.ports[0]
 };
 

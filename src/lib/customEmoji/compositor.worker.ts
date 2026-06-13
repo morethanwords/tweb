@@ -4,7 +4,7 @@ import compositorMessagePort from '@lib/customEmoji/compositorMessagePort';
 import {CUSTOM_EMOJI_FADE_IN_DURATION, CUSTOM_EMOJI_FRAME_INTERVAL} from '@lib/customEmoji/constants';
 
 type CompositorGroup = {playerReqId: number, textColored: boolean, skipFade: boolean, offsets: number[], fadeStartTime: number, painted: boolean};
-type CompositorRenderer = {canvas: OffscreenCanvas, context: OffscreenCanvasRenderingContext2D, dpr: number, color: string, fadeEnabled: boolean, groups: Map<DocId, CompositorGroup>, dirty: boolean};
+type CompositorRenderer = {canvas: OffscreenCanvas, context: OffscreenCanvasRenderingContext2D, dpr: number, color: string, fadeEnabled: boolean, groups: Map<DocId, CompositorGroup>, dirty: boolean, suspended: boolean};
 
 const renderers: Map<number, CompositorRenderer> = new Map();
 const latestFrames: Map<number, ImageBitmap> = new Map(); // playerReqId -> latest frame
@@ -122,7 +122,7 @@ const flush = () => {
 
   let anyFading = false;
   for(const [rendererId, renderer] of renderers) {
-    if(!renderer.dirty) {
+    if(!renderer.dirty || renderer.suspended) {
       continue;
     }
 
@@ -175,7 +175,8 @@ compositorMessagePort.addMultipleEventsListeners({
       color: undefined,
       fadeEnabled,
       groups: new Map(),
-      dirty: false
+      dirty: false,
+      suspended: false
     });
   },
 
@@ -287,6 +288,16 @@ compositorMessagePort.addMultipleEventsListeners({
   clearRenderer: ({rendererId}) => withRenderer(rendererId, (renderer) => {
     renderer.context.clearRect(0, 0, renderer.canvas.width, renderer.canvas.height);
     renderer.dirty = false;
+  }),
+
+  // legacy freeze parity for "every element paused but still on-screen" (groups keep their
+  // offsets): a synced player shared with a playing surface (emoji-set popup over the panel)
+  // keeps delivering frames - hold the last painted pixels and defer repaints until resume
+  suspendRenderer: ({rendererId, suspended}) => withRenderer(rendererId, (renderer) => {
+    renderer.suspended = suspended;
+    if(!suspended && renderer.dirty) { // catch up to the frames that arrived while frozen
+      scheduleFlush();
+    }
   }),
 
   decodePort: ({workerId}, _, event) => {

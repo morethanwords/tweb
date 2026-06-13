@@ -42,6 +42,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
   public rendererId: number;
   public lastSentOffsets: Map<DocId, number[]>;
   private lastSentSize: {width: number, height: number};
+  private lastSentSuspended: boolean;
 
   public playersSynced: Map<CustomEmojiElements, RLottiePlayer | HTMLVideoElement>;
   public textColored: Set<CustomEmojiElements>;
@@ -82,6 +83,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
     this.append(this.canvas);
 
     this.lastSentOffsets = new Map();
+    this.lastSentSuspended = false;
     this.playersSynced = new Map();
     this.textColored = new Set();
     this.clearedElements = new WeakSet();
@@ -262,6 +264,14 @@ export class CustomEmojiRendererElement extends HTMLElement {
         continue;
       }
 
+      // getOffsets also filters out merely-PAUSED elements (popup pause sweep while a shared
+      // synced player keeps playing for the popup's own copies) - legacy keeps such a group's
+      // pixels frozen, so only a real viewport exit may clear it; placeholders are restored
+      // under the same gate below, anything else would leave visibly empty cells
+      if(elements && isAnyElementVisible(elements)) {
+        continue;
+      }
+
       this.lastSentOffsets.delete(groupId);
       groups.push({groupId, offsets: []});
     }
@@ -272,6 +282,33 @@ export class CustomEmojiRendererElement extends HTMLElement {
     this.restoreAllPlaceholders(offsetsMap);
 
     return groups;
+  }
+
+  // legacy "paused but still on-screen" freeze (popup pause sweep, idle): the legacy tick
+  // simply stops repainting the UI canvas, but the compositor repaints on every frame a
+  // SHARED synced player keeps delivering (the emoji-set popup playing the panel's players) -
+  // mirror the freeze by suspending the renderer worker-side while every element is paused
+  public updateSuspended() {
+    let suspended = false;
+    for(const elements of this.playersSynced.keys()) {
+      for(const element of elements) {
+        if(!element.paused) {
+          this.setSuspended(false);
+          return;
+        }
+
+        suspended = true; // at least one (paused) element - not a vacuously-empty renderer
+      }
+    }
+
+    this.setSuspended(suspended);
+  }
+
+  private setSuspended(suspended: boolean) {
+    if(this.lastSentSuspended !== suspended) {
+      this.lastSentSuspended = suspended;
+      this.sendCompositor('suspendRenderer', {suspended});
+    }
   }
 
   public clearCanvas() {
@@ -1201,6 +1238,10 @@ export const renderEmojis = (renderers = emojiRenderers) => {
   const legacy: [CustomEmojiRendererElement, ReturnType<CustomEmojiRendererElement['getOffsets']>][] = [];
   const batch: {rendererId: number, groups: {groupId: DocId, offsets: number[]}[]}[] = [];
   for(const renderer of t) {
+    if(renderer.offscreen) {
+      renderer.updateSuspended();
+    }
+
     const paused = [...renderer.playersSynced.values()].reduce((acc, v) => acc + +!!v.paused, 0);
     if(renderer.playersSynced.size === paused) {
       continue; // all paused: no offsets sent, no arrivals, pixels frozen - matches today
