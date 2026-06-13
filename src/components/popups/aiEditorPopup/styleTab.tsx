@@ -46,7 +46,6 @@ export const StyleTab = () => {
   const isScrolledLeft = () => scrollLeft() <= 1;
   const isScrolledRight = () => !tonesListEl() || tonesListEl().scrollWidth - scrollLeft() - scrollableSize.width <= 1;
 
-  // TODO: Handle errors
   const [tonesResource] = createResource(
     () => initialTones ? undefined : true,
     () => {
@@ -119,7 +118,7 @@ export const StyleTab = () => {
             <Show when={tonesResource.state === 'ready'} fallback={
               <Scrollable class={styles.tonesList} ref={setTonesListEl} axis='x' relative>
                 {/* WTF is with this fallback={...} */}
-                <Show when={tonesResource.state === 'pending'} fallback={<div class={styles.tonesList}>{/* height placeholder */}</div>}>
+                <Show when={tonesResource.state === 'pending'}>
                   {[1, 2, 3, 4].map(() => (
                     <div class={styles.toneSkeleton}>
                       <Skeleton.Div class={styles.toneSkeletonIcon} secondary></Skeleton.Div>
@@ -229,6 +228,7 @@ const useEditTone = ({
       },
       titleLangKey: 'AiEditor.NewStyle.TitleEdit',
       submitLangKey: 'Save',
+      errorLangKey: 'AiEditor.NewStyle.ErrorEdit',
       onSubmit: async(payload) => {
         const updatedTone = await rootScope.managers.aiTonesManager.editTone({toneId: tone.id.toString(), ...payload});
         const prevTone = tones.find(t => t._ === 'aiComposeTone' && t.id.toString() === tone.id.toString());

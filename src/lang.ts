@@ -4755,6 +4755,8 @@ const lang = {
   'AiEditor.Emojify': 'emojify',
   'AiEditor.Result': 'Result',
   'AiEditor.TranslateTo': 'To %s',
+  'AiEditor.PremiumFlood': 'You have hit the limit for now. Subscribe to [Telegram Premium]() to increase the limit by 50 times or try again later.',
+  'AiEditor.ComposeError': 'Something went wrong while trying to compose the message.',
 
   'AiEditor.NewStyle.Title': 'New Style',
   'AiEditor.NewStyle.TitleEdit': 'Edit Style',
@@ -4764,6 +4766,8 @@ const lang = {
   'AiEditor.NewStyle.InstructionsDescription': 'Instructions (for example "write in bold, nautical tone, light slang (aye, matey), vivid sea imagery, playful swagger, rhythmic phrasing, and adventurous mood")',
   'AiEditor.NewStyle.AddLink': 'Add a link to my account',
   'AiEditor.NewStyle.EmojiUnsupported': 'Sorry, this emoji is unsupported, please choose an animated emoji instead.',
+  'AiEditor.NewStyle.Error': 'Failed to create new style',
+  'AiEditor.NewStyle.ErrorEdit': 'Failed to save the style',
 
   'AiEditor.Chat.ViewStyle': 'View Style',
 

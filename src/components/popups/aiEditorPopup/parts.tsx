@@ -9,6 +9,7 @@ import {Skeleton} from '@components/skeleton';
 import {StaticCheckbox} from '@components/staticCheckbox';
 import deferredPromise from '@helpers/cancellablePromise';
 import {copyTextToClipboard} from '@helpers/clipboard';
+import anchorCallback from '@helpers/dom/anchorCallback';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import {keepMe} from '@helpers/keepMe';
 import prepareTextWithEntitiesForCopying from '@helpers/prepareTextWithEntitiesForCopying';
@@ -23,6 +24,7 @@ import {LangPackKey} from '@lib/langPack';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {batch, children, createComputed, createEffect, createMemo, createReaction, createResource, createSignal, For, JSX, Match, onCleanup, onMount, ParentProps, Show, Switch} from 'solid-js';
 import {Transition, TransitionGroup} from 'solid-transition-group';
+import {usePopupContext} from '../indexTsx';
 import styles from './bodyContent.module.scss';
 import {useAiEditorPopupContext} from './context';
 import showCreateTonePopup from './createTonePopup';
@@ -206,8 +208,9 @@ export const Result = (props: {
   isAppearing?: boolean;
   composeMessageWithAiArgs?: ComposeMessageWithAiArgs;
 }) => {
-  const {rootScope, toastNew, wrapRichText} = useHotReloadGuard();
-  const {text: originalText, resultTextSignal: [, setResultText]} = useAiEditorPopupContext();
+  const {rootScope, toastNew, wrapRichText, PopupPremium} = useHotReloadGuard();
+  const {resultTextSignal: [, setResultText]} = useAiEditorPopupContext();
+  const popupContext = usePopupContext();
 
   let appearDeferred = props.isAppearing ? deferredPromise<void>() : undefined;
 
@@ -245,25 +248,28 @@ export const Result = (props: {
     // })();
   }, {
     initialValue: getCachedComposedMessage(props.composeMessageWithAiArgs)
-  });
+  } as {} /* Note that we need the 'pending' state when the initialValue is undefined - solved by `as {}` */);
 
   let scrollableRef: HTMLDivElement;
   const [skeletonHeight, setSkeletonHeight] = createSignal<number>();
 
-  createEffect(() => {
-    if(composedMessage.state !== 'ready' && scrollableRef?.isConnected) {
-      setSkeletonHeight(scrollableRef.clientHeight);
-    }
-  });
+  const isPremiumFloodError = createMemo(() => composedMessage.error?.type === 'AICOMPOSE_FLOOD_PREMIUM');
 
   createComputed(() => {
     if(composedMessage.state !== 'ready') return;
 
     setResultText(composedMessage().resultText);
 
+    // Note that it needs to be cleared when switching to another tab
     onCleanup(() => {
       setResultText();
     });
+  });
+
+  createEffect(() => {
+    if(composedMessage.state !== 'ready' && scrollableRef?.isConnected) {
+      setSkeletonHeight(scrollableRef.clientHeight);
+    }
   });
 
   const onCopyClick = async() => {
@@ -303,13 +309,33 @@ export const Result = (props: {
       </div>
       <div class={styles.resultContent}>
         <Transition name='fade-2' mode='outin'>
-          <Show when={composedMessage.state === 'ready' && composedMessage()} keyed fallback={<ResultSkeleton height={skeletonHeight()} />}>
-            {(message) => (
-              <Scrollable ref={scrollableRef} relative class={classNames(styles.resultScrollable, styles.richText)}>
-                {wrapRichText(message.resultText.text, {entities: filterEntities(message.resultText.entities), middleware: createMiddleware().get()})}
-              </Scrollable>
-            )}
-          </Show>
+          <Switch>
+            <Match when={composedMessage.state === 'ready' && composedMessage()} keyed>
+              {(message) => (
+                <Scrollable ref={scrollableRef} relative class={classNames(styles.resultScrollable, styles.richText)}>
+                  {wrapRichText(message.resultText.text, {entities: filterEntities(message.resultText.entities), middleware: createMiddleware().get()})}
+                </Scrollable>
+              )}
+            </Match>
+            <Match when={composedMessage.state === 'pending' || composedMessage.state === 'refreshing'}>
+              <ResultSkeleton height={skeletonHeight()} />
+            </Match>
+            <Match when>
+              <div class={styles.error}>
+                <Show when={isPremiumFloodError()} fallback={<I18nTsx key='AiEditor.ComposeError' />}>
+                  <I18nTsx
+                    key='AiEditor.PremiumFlood'
+                    args={[
+                      anchorCallback(() => {
+                        popupContext.hide();
+                        new PopupPremium().show();
+                      })
+                    ]}
+                  />
+                </Show>
+              </div>
+            </Match>
+          </Switch>
         </Transition>
       </div>
     </>

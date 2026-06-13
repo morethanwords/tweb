@@ -27,6 +27,7 @@ type SubmitPayload = CreateToneArgs;
 export type CreateTonePopupProps = {
   titleLangKey?: LangPackKey;
   submitLangKey?: LangPackKey;
+  errorLangKey?: LangPackKey;
   initialValues?: Partial<SubmitPayload>;
   onSubmit: (payload: SubmitPayload) => Promise<void>;
 };
@@ -34,7 +35,8 @@ export type CreateTonePopupProps = {
 const CreateTonePopup = (inProps: CreateTonePopupProps) => {
   const props = mergeProps({
     titleLangKey: 'AiEditor.NewStyle.Title',
-    submitLangKey: 'Create'
+    submitLangKey: 'Create',
+    errorLangKey: 'AiEditor.NewStyle.Error'
   }, inProps);
 
   const {useEmojiDropdown, rootScope, toastNew} = useHotReloadGuard();
@@ -49,13 +51,25 @@ const CreateTonePopup = (inProps: CreateTonePopupProps) => {
   const {maxTitleLength, maxInstructionsLength} = useCreateToneLimits();
 
   const canSubmit = createMemo(() => {
-    if(!styleName().length || styleName().length > maxTitleLength()) return;
-    if(!instructions().length || instructions().length > maxInstructionsLength()) return;
-    if(!docId()) return;
+    if(!styleName().length || styleName().length > maxTitleLength()) return false;
+    if(!instructions().length || instructions().length > maxInstructionsLength()) return false;
+    if(!docId()) return false;
+
+    if(props.initialValues &&
+      props.initialValues.title === styleName() &&
+      props.initialValues.emojiId === docId() &&
+      props.initialValues.displayAuthor === displayAuthor() &&
+      props.initialValues.prompt === instructions()
+    ) return false;
+
     return true;
   });
 
-  const submitMutation = createMutation(props.onSubmit);
+  const submitMutation = createMutation(props.onSubmit, {
+    onError: () => toastNew({
+      langPackKey: props.errorLangKey
+    })
+  });
 
   createEffect(() => {
     const {emoticonsDropdown} = useEmojiDropdown({
@@ -174,12 +188,12 @@ const CreateTonePopup = (inProps: CreateTonePopupProps) => {
         <PopupElement.FooterButton
           disabled={!canSubmit() || submitMutation.isPending()}
           langKey={props.submitLangKey}
-          callback={wrapAsyncClickHandler(() => submitMutation.mutateAsync({
+          callback={() => submitMutation.mutateAsync({
             emojiId: docId(),
             title: styleName(),
             prompt: instructions(),
             displayAuthor: displayAuthor()
-          }))}
+          })}
         />
       </PopupElement.Footer>
     </PopupElement>
