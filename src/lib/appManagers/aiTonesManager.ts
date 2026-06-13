@@ -44,6 +44,7 @@ export class AiTonesManager extends AppManager {
   }
 
   public clear: (init?: boolean) => void = () => {
+    this.tones = [];
     this.tonesMap.clear();
     this.tonesHash = 0;
     this.isStale = true;
@@ -65,16 +66,15 @@ export class AiTonesManager extends AppManager {
 
     return this.fetchingTonesPromise = (async() => {
       const fetchedResult = await this.fetchTones(this.tonesHash);
+      this.isStale = false;
 
       if(!fetchedResult) {
-        this.isStale = false;
         return this.tones; // not modified
       }
 
       this.tonesHash = fetchedResult.hash;
-      this.isStale = false;
-
       this.tonesMap.clear();
+
       for(const tone of fetchedResult.tones) {
         if(tone._ === 'aiComposeToneDefault') this.tonesMap.set(tone.tone, tone);
         else if(tone._ === 'aiComposeTone') this.tonesMap.set(tone.id.toString(), tone);
