@@ -15,7 +15,7 @@ import {useScrollPosition} from '@hooks/useScrollPosition';
 import {AiComposeTone} from '@layer';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {batch, createComputed, createMemo, createResource, createSignal, For, Show, useContext} from 'solid-js';
-import {createStore, reconcile, SetStoreFunction} from 'solid-js/store';
+import {createStore, reconcile, SetStoreFunction, unwrap} from 'solid-js/store';
 import {Transition, TransitionGroup} from 'solid-transition-group';
 import {usePopupContext} from '../indexTsx';
 import styles from './bodyContent.module.scss';
@@ -71,7 +71,9 @@ export const StyleTab = () => {
   createComputed(() => {
     if(tonesResource.state !== 'ready') return;
     setTones(tonesResource());
-    context.initialTones = tonesResource();
+
+    // keeps the original reference to the mutable tones, will basically keep the same data when switching between tabs
+    context.initialTones = unwrap(tones);
   });
 
   const savedTones = () => tones.filter(tone => tone._ === 'aiComposeTone').length;
