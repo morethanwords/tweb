@@ -72,6 +72,7 @@
   &Content {
     max-height: 200px;
     white-space: pre-wrap;
+    word-wrap: break-word;
     padding: 0 1rem 1rem;
 
     &SkeletonWrapper {
