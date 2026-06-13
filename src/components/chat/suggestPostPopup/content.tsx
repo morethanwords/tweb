@@ -1,21 +1,22 @@
-import {createSignal, Show} from 'solid-js';
+import commonStyles from '@components/chat/suggestPostPopup/commonStyles.module.scss';
+import PublishTimeField from '@components/chat/suggestPostPopup/publishTimeField';
+import styles from '@components/chat/suggestPostPopup/styles.module.scss';
+import currencyStarIcon from '@components/currencyStarIcon';
+import ripple from '@components/ripple';
+import useStarsCommissionAndWithdrawalPrice from '@components/sidebarLeft/tabs/privacy/messages/useStarsCommissionAndWithdrawalPrice';
+import SimpleFormField from '@components/simpleFormField';
+import Space from '@components/space';
+import {keepMe} from '@helpers/keepMe';
 import numberThousandSplitter from '@helpers/number/numberThousandSplitter';
 import {attachHotClassName} from '@helpers/solid/classname';
 import {I18nTsx} from '@helpers/solid/i18n';
 import defineSolidElement, {PassedProps} from '@lib/solidjs/defineSolidElement';
-import currencyStarIcon from '@components/currencyStarIcon';
-import ripple from '@components/ripple';
-import useAppConfig from '@components/sidebarLeft/tabs/privacy/messages/useAppConfig';
-import useStarsCommissionAndWithdrawalPrice from '@components/sidebarLeft/tabs/privacy/messages/useStarsCommissionAndWithdrawalPrice';
-import SimpleFormField from '@components/simpleFormField';
-import Space from '@components/space';
-import commonStyles from '@components/chat/suggestPostPopup/commonStyles.module.scss';
-import PublishTimeField from '@components/chat/suggestPostPopup/publishTimeField';
-import styles from '@components/chat/suggestPostPopup/styles.module.scss';
-ripple;
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import {createSignal, Show} from 'solid-js';
+
+keepMe(ripple);
 
 if(import.meta.hot) import.meta.hot.accept();
-
 
 export type SuggestPostPopupContentProps = {
   initialStars?: number;
@@ -38,6 +39,8 @@ const SuggestPostPopupContent = defineSolidElement({
   component: (props: PassedProps<SuggestPostPopupContentProps>) => {
     attachHotClassName(props.element, styles.Container);
 
+    const {useAppConfig} = useHotReloadGuard();
+
     const [stars, setStars] = createSignal(props.initialStars ? props.initialStars + '' : '');
     const [publishingTimestamp, setPublishingTimestamp] = createSignal<number>(
       props.initialTimestamp && props.initialTimestamp * 1000 > Date.now() + SUGGEST_CHANGE_MIN_DELAY_MINUTES * 60 * 1000 ?
@@ -45,14 +48,14 @@ const SuggestPostPopupContent = defineSolidElement({
         undefined
     );
 
-    const [appConfig] = useAppConfig();
+    const appConfig = useAppConfig();
 
     const {willReceiveDollars} = useStarsCommissionAndWithdrawalPrice(() => +stars() || 0, {
       commissionKey: 'stars_suggested_post_commission_permille'
     });
 
-    const minStars = () => appConfig()?.stars_suggested_post_amount_min || MIN_STARS;
-    const maxStars = () => appConfig()?.stars_suggested_post_amount_max || MAX_STARS;
+    const minStars = () => appConfig.stars_suggested_post_amount_min || MIN_STARS;
+    const maxStars = () => appConfig.stars_suggested_post_amount_max || MAX_STARS;
 
     const isBadPrice = () => +stars() && +stars() < minStars();
 

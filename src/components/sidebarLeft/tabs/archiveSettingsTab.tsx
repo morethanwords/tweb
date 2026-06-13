@@ -13,12 +13,11 @@ import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {createComputed, createMemo, createResource, Show} from 'solid-js';
 import {createStore} from 'solid-js/store';
 import {Portal} from 'solid-js/web';
-import useIsPremium from './privacy/messages/useIsPremium';
 
 
 export default function ArchiveSettingsTab() {
   const [tab] = useSuperTab();
-  const {Row, rootScope} = useHotReloadGuard();
+  const {Row, rootScope, usePremium} = useHotReloadGuard();
 
   const promiseCollector = usePromiseCollector();
 
@@ -28,7 +27,7 @@ export default function ArchiveSettingsTab() {
     return promise;
   });
 
-  const isPremium = useIsPremium();
+  const isPremium = usePremium();
 
   const isReady = createMemo(() => globalPrivacy.state === 'ready');
 
