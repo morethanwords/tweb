@@ -99,30 +99,3 @@ export const AiEditorPopupBodyContent = () => {
     </div>
   );
 };
-
-const texte = 'hi there'
-const text = `Animi voluptas blanditiis blanditiis corporis accusantium libero eum necessitatibus. Laboriosam in ullam commodi excepturi dolor eveniet nihil dignissimos. Ipsa qui quia rem praesentium repudiandae voluptatem facere ratione.`;
-
-const text2 = `Nisi voluptas et fuga. Dolorum accusamus maxime magnam hic qui quis ad. Totam aut illo enim dicta aut recusandae hic. Quia placeat sint placeat vel ipsam. Sit nobis nisi cumque labore iusto repellendus.`;
-
-const docId = '5345804987123378599';
-
-//  int PremiumLimits::aiComposeSavedTonesDefault() const {
-// return appConfigLimit("aicompose_tone_saved_limit_default", 5);
-//  }
-//  int PremiumLimits::aiComposeSavedTonesPremium() const {
-// return appConfigLimit("aicompose_tone_saved_limit_premium", 20);
-//  }
-
-/*
-const auto maxExamples = session->appConfig().get<int>(
-u"aicompose_tone_examples_num"_q,
-3);
-
-AICOMPOSE_TONE_SLUG_INVALID
-AICOMPOSE_FLOOD_PREMIUM
-if (type == u"AICOMPOSE_TONE_SLUG_INVALID"_q
-|| type == u"AICOMPOSE_TONE_INVALID"_q
-|| type == u"TONE_NOT_FOUND"_q) {
-
-*/
