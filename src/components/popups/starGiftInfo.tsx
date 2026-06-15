@@ -230,6 +230,7 @@ function UpgradeAnimation(props: {
   const totalSections = backdrops.length + 2;
   const sectionSize = 100 / totalSections;
   const colors = backdrops.map((b) => rgbIntToHex(b.edge_color));
+  const lastColor = colors[colors.length - 1];
   const gradientStopsStr = [
     // initial padding
     `${colors[0]} 0%`, `${colors[0]} ${sectionSize}%`,
@@ -239,7 +240,7 @@ function UpgradeAnimation(props: {
       return [`${color} ${base + sectionSize * 0.33}%`, `${color} ${base + sectionSize * 0.67}%`];
     }),
     // final padding
-    `${colors.at(-1)} ${(totalSections - 1) * sectionSize}%`, `${colors.at(-1)} 100%`
+    `${lastColor} ${(totalSections - 1) * sectionSize}%`, `${lastColor} 100%`
   ].join(', ');
 
   let modelsContainer!: HTMLDivElement;
