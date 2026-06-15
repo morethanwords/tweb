@@ -1237,8 +1237,16 @@ export default class WebApp {
       web_app_verify_age: async({passed, age}) => {
         if(!passed) return;
         const config = await this.managers.apiManager.getAppConfig();
-        const minAge = config.verify_age_min ?? 18;
 
+        // * only the configured age-verification bot may attest age — otherwise any
+        // * third-party Mini App could self-enable sensitive content
+        const verifyAgeBotUsername = (config.verify_age_bot_username ?? 'TelegramAge').toLowerCase();
+        const usernames = await this.managers.appPeersManager.getPeerActiveUsernames(this.getPeerId());
+        if(!usernames.some((username) => username.toLowerCase() === verifyAgeBotUsername)) {
+          return;
+        }
+
+        const minAge = config.verify_age_min ?? 18;
         if(age < minAge) {
           toastNew({langPackKey: 'AgeVerification.Failed'});
           return;
