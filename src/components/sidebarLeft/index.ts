@@ -119,6 +119,9 @@ export class AppSidebarLeft extends SidebarSlider {
   private toolsBtn: HTMLElement;
   private backBtn: HTMLButtonElement;
   public inputSearch: InputSearch;
+  private tabCallBtn: HTMLButtonElement;
+  private tabContactsBtn: HTMLButtonElement;
+  private callContainer: HTMLElement;
 
   public archivedCount: HTMLSpanElement;
   private totalNotificationsCount: HTMLSpanElement;
@@ -169,6 +172,87 @@ export class AppSidebarLeft extends SidebarSlider {
     wartelpasTitle.innerText = 'WARTELPAS';
     sidebarHeader.prepend(wartelpasTitle);
 
+    // Create Wartelpas Tab Selector
+    const tabSelector = document.createElement('div');
+    tabSelector.className = 'wartelpas-tab-selector';
+
+    this.tabCallBtn = document.createElement('button');
+    this.tabCallBtn.type = 'button';
+    this.tabCallBtn.className = 'wartelpas-tab-btn active';
+    this.tabCallBtn.innerText = I18n.format('Wartelpas.CallTab', true);
+
+    this.tabContactsBtn = document.createElement('button');
+    this.tabContactsBtn.type = 'button';
+    this.tabContactsBtn.className = 'wartelpas-tab-btn';
+    this.tabContactsBtn.innerText = I18n.format('Wartelpas.ContactsTab', true);
+
+    tabSelector.append(this.tabCallBtn, this.tabContactsBtn);
+    sidebarHeader.append(tabSelector);
+
+    // Create Wartelpas Call Container (Tab 1 Content)
+    this.callContainer = document.createElement('div');
+    this.callContainer.className = 'wartelpas-call-container';
+
+    const phoneInputWrapper = document.createElement('div');
+    phoneInputWrapper.className = 'wartelpas-phone-input-wrapper';
+
+    const inputPhone = document.createElement('input');
+    inputPhone.type = 'text';
+    inputPhone.className = 'wartelpas-phone-input';
+    inputPhone.placeholder = I18n.format('Wartelpas.PhoneInputPlaceholder', true);
+    inputPhone.autocomplete = 'off';
+
+    const backspaceBtn = document.createElement('button');
+    backspaceBtn.type = 'button';
+    backspaceBtn.className = 'wartelpas-backspace-btn';
+    backspaceBtn.append(Icon('deleteleft'));
+
+    phoneInputWrapper.append(inputPhone, backspaceBtn);
+
+    // Dial pad
+    const dialPad = document.createElement('div');
+    dialPad.className = 'wartelpas-dialpad';
+
+    const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'];
+    keys.forEach((key) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'wartelpas-dial-btn';
+
+      const mainText = document.createElement('div');
+      mainText.className = 'wartelpas-dial-key';
+      mainText.innerText = key;
+      btn.append(mainText);
+
+      const subTexts: Record<string, string> = {
+        '2': 'ABC', '3': 'DEF', '4': 'GHI', '5': 'JKL', '6': 'MNO',
+        '7': 'PQRS', '8': 'TUV', '9': 'WXYZ', '0': '+'
+      };
+      const subText = document.createElement('div');
+      subText.className = 'wartelpas-dial-sub' + (!subTexts[key] ? ' empty' : '');
+      subText.innerText = subTexts[key] || ' ';
+      btn.append(subText);
+
+      btn.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        inputPhone.value += key;
+        inputPhone.dispatchEvent(new Event('input', {bubbles: true}));
+        inputPhone.focus();
+      });
+
+      dialPad.append(btn);
+    });
+
+    const callActionBtn = document.createElement('button');
+    callActionBtn.type = 'button';
+    callActionBtn.className = 'wartelpas-call-action-btn';
+    callActionBtn.append(Icon('phone'), ' ' + I18n.format('Wartelpas.CallButton', true));
+
+    this.callContainer.append(phoneInputWrapper, dialPad, callActionBtn);
+    sidebarHeader.append(this.callContainer);
+
+    // Hide contacts list and search input initially (Option 1 is default)
+    this.inputSearch.container.classList.add('hide');
     sidebarHeader.append(this.inputSearch.container);
 
     this.contactsList = new SortedUserList({
@@ -195,8 +279,81 @@ export class AppSidebarLeft extends SidebarSlider {
         element.dom.lastMessageSpan.replaceChildren(...content);
       }
     });
-    this.contactsList.list.classList.add('wartelpas-contacts');
+    this.contactsList.list.classList.add('wartelpas-contacts', 'hide');
     sidebarHeader.append(this.contactsList.list);
+
+    // Event handlers for Tabs
+    this.tabCallBtn.addEventListener('click', () => {
+      if(this.tabCallBtn.classList.contains('active')) return;
+      this.tabCallBtn.classList.add('active');
+      this.tabContactsBtn.classList.remove('active');
+
+      this.callContainer.classList.remove('hide');
+      this.inputSearch.container.classList.add('hide');
+      this.contactsList.list.classList.add('hide');
+
+      this.inputSearch.value = '';
+      this.inputSearch.onChange?.('');
+    });
+
+    this.tabContactsBtn.addEventListener('click', () => {
+      if(this.tabContactsBtn.classList.contains('active')) return;
+      this.tabContactsBtn.classList.add('active');
+      this.tabCallBtn.classList.remove('active');
+
+      this.callContainer.classList.add('hide');
+      this.inputSearch.container.classList.remove('hide');
+      this.contactsList.list.classList.remove('hide');
+    });
+
+    // Backspace button logic
+    backspaceBtn.addEventListener('click', () => {
+      inputPhone.value = inputPhone.value.slice(0, -1);
+      inputPhone.dispatchEvent(new Event('input', {bubbles: true}));
+      inputPhone.focus();
+    });
+
+    // Keyboard support
+    inputPhone.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter') {
+        callActionBtn.click();
+      }
+    });
+
+    // Call Action Logic
+    callActionBtn.addEventListener('click', async() => {
+      const phone = inputPhone.value.trim();
+      if(!phone) {
+        toastNew({langPackKey: 'Wartelpas.InputRequired'});
+        return;
+      }
+
+      // Remove non-numeric (except +, *, #)
+      const cleanPhone = phone.replace(/[^\d+*#]/g, '');
+
+      callActionBtn.classList.add('loading');
+      callActionBtn.disabled = true;
+
+      try {
+        // Import contact (creates or finds Telegram user for this phone number)
+        const userId = await this.managers.appUsersManager.importContact(cleanPhone, '', cleanPhone);
+
+        // Initiate the call
+        await appImManager.callUser(userId, 'voice');
+      } catch(err: any) {
+        console.error('Call failed:', err);
+        if(err && err.type === 'NO_USER') {
+          toastNew({langPackKey: 'Wartelpas.UserNotFound'});
+        } else {
+          toastNew({
+            langPackKey: 'Wartelpas.CallFailed'
+          });
+        }
+      } finally {
+        callActionBtn.classList.remove('loading');
+        callActionBtn.disabled = false;
+      }
+    });
 
     this.managers.appUsersManager.getContactsPeerIds().then((peerIds) => {
       peerIds.forEach(peerId => this.contactsList.add(peerId));
@@ -1564,10 +1721,16 @@ export class AppSidebarLeft extends SidebarSlider {
 
     return this.searchInitResult = {
       open: (focus = true) => {
+        if(this.tabContactsBtn && !this.tabContactsBtn.classList.contains('active')) {
+          this.tabContactsBtn.click();
+        }
         onFocus();
         if(focus) focusInput();
       },
       openWithPeerId: (peerId: PeerId) => {
+        if(this.tabContactsBtn && !this.tabContactsBtn.classList.contains('active')) {
+          this.tabContactsBtn.click();
+        }
         onFocus();
         focusInput();
 

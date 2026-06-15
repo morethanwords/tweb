@@ -407,6 +407,228 @@
   }
 }
 
+.page-chats:not(.has-chat) {
+  /* Wartelpas Tab Selector */
+  .wartelpas-tab-selector {
+    display: flex !important;
+    width: 90% !important;
+    max-width: 300px !important;
+    margin: 0 auto 1.5rem !important;
+    background-color: #161616 !important;
+    padding: 4px !important;
+    border-radius: 16px !important;
+    border: 1px solid #333 !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  .wartelpas-tab-btn {
+    flex: 1 !important;
+    border: none !important;
+    background: transparent !important;
+    color: #888 !important;
+    padding: 10px 16px !important;
+    border-radius: 12px !important;
+    cursor: pointer !important;
+    font-size: 0.95rem !important;
+    font-weight: 700 !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    font-family: 'Inter', sans-serif !important;
+
+    &:hover:not(.active) {
+      color: #fff !important;
+    }
+
+    &.active {
+      background-color: #9d8aff !important;
+      color: #161616 !important;
+      box-shadow: 0 4px 15px rgba(157, 138, 255, 0.4) !important;
+    }
+  }
+
+  /* Wartelpas Call Container */
+  .wartelpas-call-container {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 1rem !important;
+    width: 90% !important;
+    max-width: 300px !important;
+    margin: 0 auto 2.5rem !important;
+    animation: fadeIn 0.3s ease !important;
+
+    &.hide {
+      display: none !important;
+    }
+  }
+
+  /* Phone Input Wrapper */
+  .wartelpas-phone-input-wrapper {
+    display: flex !important;
+    width: 100% !important;
+    background-color: #161616 !important;
+    border-radius: 16px !important;
+    border: 2px solid transparent !important;
+    box-shadow: 0 15px 45px rgba(0, 0, 0, 0.4) !important;
+    transition: border-color 0.25s ease !important;
+    align-items: center !important;
+
+    &:focus-within {
+      border-color: #9d8aff !important;
+    }
+  }
+
+  .wartelpas-phone-input {
+    flex: 1 !important;
+    height: 48px !important;
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    padding: 0 0 0 16px !important;
+    color: #fff !important;
+    font-size: 1.35rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 1px !important;
+    text-align: center !important;
+    font-family: 'Inter', sans-serif !important;
+
+    &::placeholder {
+      color: #555 !important;
+      font-size: 1.05rem !important;
+      letter-spacing: 0px !important;
+    }
+  }
+
+  .wartelpas-backspace-btn {
+    width: 48px !important;
+    height: 48px !important;
+    background: transparent !important;
+    border: none !important;
+    color: #555 !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: color 0.25s ease !important;
+
+    &:hover {
+      color: #ff5252 !important;
+    }
+
+    .tgico {
+      font-size: 1.25rem !important;
+    }
+  }
+
+  /* Dial Pad */
+  .wartelpas-dialpad {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 0.75rem !important;
+    width: 100% !important;
+  }
+
+  .wartelpas-dial-btn {
+    aspect-ratio: 1 / 1 !important;
+    border-radius: 50% !important;
+    background-color: #161616 !important;
+    border: 1px solid #333 !important;
+    color: #fff !important;
+    cursor: pointer !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.2s ease !important;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3) !important;
+
+    &:hover {
+      background-color: #1c1c1c !important;
+      border-color: #9d8aff !important;
+      transform: scale(1.04) !important;
+      box-shadow: 0 12px 30px rgba(157, 138, 255, 0.15) !important;
+    }
+
+    &:active {
+      transform: scale(0.95) !important;
+      background-color: #222 !important;
+    }
+  }
+
+  .wartelpas-dial-key {
+    font-size: 1.4rem !important;
+    font-weight: 800 !important;
+    color: #fff !important;
+    font-family: 'Inter', sans-serif !important;
+  }
+
+  .wartelpas-dial-sub {
+    font-size: 0.65rem !important;
+    color: #555 !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.5px !important;
+    margin-top: 1px !important;
+
+    &.empty {
+      height: 10px !important;
+    }
+  }
+
+  /* Call Action Button */
+  .wartelpas-call-action-btn {
+    width: 100% !important;
+    height: 48px !important;
+    border-radius: 16px !important;
+    background-color: #10b981 !important;
+    color: #fff !important;
+    border: none !important;
+    font-size: 1.1rem !important;
+    font-weight: 800 !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 0 8px 20px rgba(16, 185, 129, 0.25) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+    font-family: 'Inter', sans-serif !important;
+
+    &:hover {
+      background-color: #059669 !important;
+      box-shadow: 0 12px 30px rgba(16, 185, 129, 0.4) !important;
+      transform: translateY(-2px) !important;
+    }
+
+    &:active {
+      transform: translateY(0) !important;
+    }
+
+    &.loading {
+      background-color: #047857 !important;
+      cursor: not-allowed !important;
+      opacity: 0.8 !important;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    .tgico {
+      font-size: 1.25rem !important;
+    }
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
 // Global scrollbar for dark theme
 .page-chats:not(.has-chat) {
   ::-webkit-scrollbar {
