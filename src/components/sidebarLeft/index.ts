@@ -320,6 +320,16 @@ export class AppSidebarLeft extends SidebarSlider {
       }
     });
 
+    if(typeof window !== 'undefined') {
+      window.addEventListener('wartel-clear-input', () => {
+        inputPhone.value = '';
+        inputPhone.dispatchEvent(new Event('input', {bubbles: true}));
+        if(this.tabCallBtn && !this.tabCallBtn.classList.contains('active')) {
+          this.tabCallBtn.click();
+        }
+      });
+    }
+
     // Call Action Logic
     callActionBtn.addEventListener('click', async() => {
       const phone = inputPhone.value.trim();
