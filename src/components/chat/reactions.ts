@@ -41,6 +41,31 @@ export function getPendingPaidReactionKey(message: ReactionsContext) {
   return message.peerId + '_' + message.mid;
 }
 
+// Cache of "may this peer's posts show a paid (star) reaction" so we don't make a
+// worker round-trip per bubble. Resolves to a boolean once known; cleared when the
+// peer's full info changes (an admin may toggle paid reactions on/off).
+const PAID_REACTION_AVAILABLE: Map<PeerId, MaybePromise<boolean>> = new Map();
+
+function getPaidReactionAvailable(managers: AppManagers, peerId: PeerId): MaybePromise<boolean> {
+  let value = PAID_REACTION_AVAILABLE.get(peerId);
+  if(value === undefined) {
+    value = managers.appReactionsManager.isPaidReactionAvailable(peerId);
+    PAID_REACTION_AVAILABLE.set(peerId, value);
+    if(value instanceof Promise) {
+      value.then(
+        (resolved) => PAID_REACTION_AVAILABLE.set(peerId, resolved),
+        () => PAID_REACTION_AVAILABLE.delete(peerId)
+      );
+    }
+  }
+
+  return value;
+}
+
+rootScope.addEventListener('chat_full_update', (chatId) => {
+  PAID_REACTION_AVAILABLE.delete(chatId.toPeerId(true));
+});
+
 export const savedReactionTags: SavedReactionTag[] = [];
 rootScope.addEventListener('saved_tags', ({savedPeerId, tags}) => {
   if(savedPeerId) {
@@ -206,6 +231,31 @@ export default class ReactionsElement extends HTMLElement {
     this.render(changedResults, waitPromise);
   }
 
+  private shouldAddEmptyPaidReaction(counts: ReactionCount[]) {
+    if(
+      this.type !== ReactionLayoutType.Block ||
+      this.context.peerId.isUser() ||
+      !counts.length ||
+      counts.some((reactionCount) => reactionCount.reaction._ === 'reactionPaid')
+    ) {
+      return false;
+    }
+
+    const available = getPaidReactionAvailable(this.managers, this.context.peerId);
+    if(available instanceof Promise) {
+      // Availability isn't known yet — re-render once it resolves (if still mounted).
+      // Swallow rejections (e.g. CHANNEL_PRIVATE): a failed lookup just means no button.
+      available.then((value) => {
+        if(value && this.middleware?.()) {
+          this.render();
+        }
+      }, () => {});
+      return false;
+    }
+
+    return available;
+  }
+
   public render(changedResults?: ReactionCount[], waitPromise?: Promise<any>) {
     const reactions = this.context.reactions;
     const hasReactions = !!(reactions && reactions.results.length);
@@ -214,7 +264,7 @@ export default class ReactionsElement extends HTMLElement {
 
     // const availableReactionsResult = this.managers.appReactionsManager.getAvailableReactions();
     // callbackify(availableReactionsResult, () => {
-    const counts = hasReactions ? (
+    let counts = hasReactions ? (
       reactions.results
         // availableReactionsResult instanceof Promise ?
         //   reactions.results :
@@ -222,6 +272,13 @@ export default class ReactionsElement extends HTMLElement {
         //     return this.managers.appReactionsManager.isReactionActive(reactionCount.reaction);
         //   })
       ) : [];
+
+    // Like the official clients: on channel/group posts that already have reactions
+    // but no paid one, prepend an empty (count 0) paid star reaction button so users
+    // can send stars. A fresh array — never mutate the message's own results.
+    if(this.shouldAddEmptyPaidReaction(counts)) {
+      counts = [{_: 'reactionCount', reaction: {_: 'reactionPaid'}, count: 0}, ...counts];
+    }
 
     // counts = counts.filter((count) => count.reaction._ !== 'reactionPaid');
 
@@ -284,7 +341,7 @@ export default class ReactionsElement extends HTMLElement {
       reactionElement.isUnread = isUnread;
       reactionElement.setIsChosen(
         isPaidReaction ?
-          !!pending || reactions.top_reactors.some((reactor) => reactor.pFlags.my && reactor.count) :
+          !!pending || !!reactions.top_reactors?.some((reactor) => reactor.pFlags.my && reactor.count) :
           undefined
       );
 

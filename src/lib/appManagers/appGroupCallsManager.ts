@@ -344,10 +344,13 @@ export class AppGroupCallsManager extends AppManager {
    * ignores the pagination cursor) and additionally marks cached participants
    * that are no longer present as `left`, so leaves propagate too.
    */
-  public refreshConferenceParticipants(id: GroupCallId) {
+  public refreshConferenceParticipants(id: GroupCallId): Promise<boolean> {
     const groupCall = this.getGroupCall(id);
     if(!groupCall || groupCall._ !== 'groupCall') {
-      return Promise.resolve();
+      // No cached call → can't build the input (getGroupCallInput throws), so
+      // there's nothing to fetch. Report `false` so the instance's watchdog
+      // sees the roster sync isn't actually running and can re-hydrate.
+      return Promise.resolve(false);
     }
 
     return this.apiManager.invokeApiSingleProcess({
@@ -406,7 +409,7 @@ export class AppGroupCallsManager extends AppManager {
           this.rootScope.dispatchEvent('group_call_update', groupCall);
         }
       }
-    });
+    }).then(() => true);
   }
 
   public hangUp(id: GroupCallId, discard?: boolean | number) {

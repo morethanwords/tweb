@@ -13,14 +13,6 @@
     &-container {
       max-height: calc(var(--100vh) - 5rem);
     }
-
-    &-footer {
-      padding: .5rem;
-
-      @include respond-to(handhelds) {
-        padding-inline: 0;
-      }
-    }
   }
 
   &-star {

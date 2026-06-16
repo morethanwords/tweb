@@ -79,7 +79,17 @@ export interface CallStatusSnapshot {
 export type WorkerEvent =
   | {kind: 'status'; status: CallStatusSnapshot}
   | {kind: 'pendingOutbound'} // hint: call pullOutbound()
-  | {kind: 'callFailed'; message: string};
+  | {kind: 'callFailed'; message: string}
+  // Recv-transform breadcrumb. Emitted (deduped, at most once per ssrc+reason)
+  // when an inbound frame can't be turned into plaintext: either its SSRC has
+  // no user mapping (`unmapped` — the sender's audio/video SSRC never made it
+  // into setSsrcUsers, so the frame passes through still-encrypted → "seen but
+  // not heard") or decryption threw (`decryptErr` — usually a stale group key).
+  // Unlike the E2E_DEBUG counters this stays on in production so the failure
+  // leaves a trace in exported logs. `sustained` is set on the re-emit once the
+  // condition has persisted for many frames (not a transient at-join blip) —
+  // the host escalates that to a user-facing breadcrumb.
+  | {kind: 'recvDiag'; ssrc: number; reason: 'unmapped' | 'decryptErr'; message?: string; sustained?: boolean};
 
 export type HostResponse =
   | {kind: 'ok'; id: number; result: unknown}

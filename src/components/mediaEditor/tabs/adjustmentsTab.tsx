@@ -15,7 +15,7 @@ import {createEffect, createMemo, createSignal, on, onCleanup, Show} from 'solid
 const ADJUST_TIMEOUT = 800;
 
 export default function AdjustmentsTab() {
-  const {editorState, mediaState, actions, mediaType, canImageResultInGIF} = useMediaEditorContext();
+  const {editorState, mediaState, actions, mediaType, canImageResultInGIF, isVideoAvatarMode} = useMediaEditorContext();
 
   const isMobile = useIsMobile();
   const cropOffset = useCropOffset();
@@ -58,7 +58,9 @@ export default function AdjustmentsTab() {
     return false;
   });
 
-  const canShowQualityInput = createMemo(() => willResultInVideo() && steps().length > 1);
+  // Profile video avatars are encoded at a fixed quality (800px / 30fps /
+  // 1.5Mbps), so the Quality picker would be a no-op — hide it there.
+  const canShowQualityInput = createMemo(() => !isVideoAvatarMode && willResultInVideo() && steps().length > 1);
 
   return (
     <>

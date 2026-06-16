@@ -205,7 +205,7 @@ export default class AppMediaViewerBase<
     date: HTMLElement
   } = {} as any;
   protected content: {[k in 'main' | 'container' | 'media' | 'mover' | ContentAdditionType]: HTMLElement} = {} as any;
-  protected buttons: {[k in 'download' | 'close' | 'prev' | 'next' | 'mobile-close' | 'zoomin' | ButtonsAdditionType]: HTMLElement} = {} as any;
+  protected buttons: {[k in 'download' | 'close' | 'prev' | 'next' | 'mobile-close' | 'zoomin' | 'rotate' | ButtonsAdditionType]: HTMLElement} = {} as any;
   protected topbar: HTMLElement;
   protected moversContainer: HTMLElement;
 
@@ -249,6 +249,9 @@ export default class AppMediaViewerBase<
     rangeSelector: RangeSelector
   } = {} as any;
   protected transform: Transform = {x: 0, y: 0, scale: ZOOM_INITIAL_VALUE};
+  // Accumulated rotation in degrees (multiples of 90, counterclockwise = negative).
+  // Lives on moversContainer alongside the zoom/pan transform; reset per media.
+  protected rotation: number = 0;
   protected isZooming: boolean;
   protected isGesturingNow: boolean;
   protected isZoomingNow: boolean;
@@ -344,8 +347,12 @@ export default class AppMediaViewerBase<
     const buttonsDiv = document.createElement('div');
     buttonsDiv.classList.add(MEDIA_VIEWER_CLASSNAME + '-buttons');
 
-    topButtons.concat(['download', 'zoomin', 'close']).forEach((name) => {
-      const button = ButtonIcon(name as Icon, {noRipple: true});
+    topButtons.concat(['download', 'rotate', 'zoomin', 'close']).forEach((name) => {
+      // The rotate button turns the image counterclockwise (matching Telegram
+      // Desktop), so it carries the left-pointing glyph while keeping the plain
+      // `rotate` key in this.buttons.
+      const icon: Icon = name === 'rotate' ? 'rotate_left' : name as Icon;
+      const button = ButtonIcon(icon, {noRipple: true});
       this.buttons[name] = button;
       buttonsDiv.append(button);
     });
@@ -463,6 +470,8 @@ export default class AppMediaViewerBase<
         this.addZoomStep(true);
       }
     });
+
+    attachClickEvent(this.buttons.rotate, () => this.rotateMedia());
 
     // ! cannot use the function because it'll cancel slide event on touch devices
     // attachClickEvent(this.wholeDiv, this.onClick);
@@ -736,9 +745,8 @@ export default class AppMediaViewerBase<
       this.zoomElements.rangeSelector.setProgress(zoomValue);
     }
 
-    if(this.videoPlayer) {
-      this.videoPlayer.lockControls(enable ? false : undefined);
-    }
+    // Keep the controls hidden if still rotated even when zoom turns off.
+    this.updateVideoControlsLock();
   }
 
   protected addZoomStep(add: boolean) {
@@ -806,13 +814,14 @@ export default class AppMediaViewerBase<
     const centerX = (windowSize.width - windowSize.width * scale) / 2;
     const centerY = (windowSize.height - windowSize.height * scale) / 2;
 
-    // If content is outside window we calculate offset boundaries
-    // based on initial content rect and current scale
-    const minX = Math.max(-this.initialContentRect.left * scale, centerX);
-    const maxX = windowSize.width - this.initialContentRect.right * scale;
+    // Pan/zoom act on the rotated+refit box in screen space, so the boundaries are
+    // computed from that box (= initialContentRect when unrotated).
+    const rect = this.getDisplayRect();
+    const minX = Math.max(-rect.left * scale, centerX);
+    const maxX = windowSize.width - rect.right * scale;
 
-    const minY = Math.max(-this.initialContentRect.top * scale + offsetTop, centerY);
-    const maxY = windowSize.height - this.initialContentRect.bottom * scale;
+    const minY = Math.max(-rect.top * scale + offsetTop, centerY);
+    const maxY = windowSize.height - rect.bottom * scale;
 
     return {minX, maxX, minY, maxY};
   }
@@ -826,13 +835,131 @@ export default class AppMediaViewerBase<
       this.transform.y = 0;
     }
 
-    this.moversContainer.style.transform = `translate3d(${this.transform.x.toFixed(3)}px, ${this.transform.y.toFixed(3)}px, 0px) scale(${value.toFixed(3)})`;
+    this.applyMoversTransform(value);
 
     this.zoomElements.btnOut.classList.toggle('inactive', value <= ZOOM_MIN_VALUE);
     this.zoomElements.btnIn.classList.toggle('inactive', value >= ZOOM_MAX_VALUE);
 
     this.toggleZoom(value !== ZOOM_INITIAL_VALUE);
   };
+
+  protected applyMoversTransform(scaleValue = this.transform.scale) {
+    this.moversContainer.style.transform = this.buildMoversTransform(scaleValue);
+  }
+
+  // Composes the moversContainer transform. Order matters: zoom/pan (origin 0 0)
+  // are the OUTER (screen-space) transforms and the rotate+orientation-refit is the
+  // INNER one, applied to the media around its own center. Keeping pan/zoom in
+  // screen space means a drag maps straight to the on-screen axes even when rotated
+  // (so a sideways→horizontal photo pans left-right, not up-down) and the boundary
+  // math only needs the rotated bounding box (getDisplayRect). The rotate wrapper is
+  // ALWAYS emitted (identity when rotation is 0 — the translate(C)…translate(-C)
+  // pair cancels through it at every interpolation step, so a zoom is animated and
+  // rendered exactly as before) so that the FIRST turn interpolates the transform
+  // function-by-function instead of matrix-decomposing from a bare zoom (which slid
+  // the image off before settling).
+  protected buildMoversTransform(scaleValue = this.transform.scale) {
+    const {x, y} = this.transform;
+    const fit = this.getRotationFitScale();
+    const {x: cx, y: cy} = this.getMediaCenter();
+    return `translate3d(${x.toFixed(3)}px, ${y.toFixed(3)}px, 0px) scale(${scaleValue.toFixed(3)}) ` +
+      `translate(${cx.toFixed(3)}px, ${cy.toFixed(3)}px) rotate(${this.rotation}deg) scale(${fit.toFixed(5)}) translate(${(-cx).toFixed(3)}px, ${(-cy).toFixed(3)}px)`;
+  }
+
+  // The media's center on screen at rest (pre zoom/pan). With the rotation applied
+  // as the inner transform, this is the pivot the media turns around — constant, not
+  // dependent on the current zoom/pan.
+  protected getMediaCenter() {
+    const rect = this.initialContentRect ?? this.content.media.getBoundingClientRect();
+    return {
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2
+    };
+  }
+
+  // After a 90°/270° turn the media's bounding box has width/height swapped; scale
+  // it so the rotated box fits (and fills) the available viewport in the new
+  // orientation — same behaviour as Telegram Desktop. 0°/180° keep the box, so fit
+  // is 1. Independent of zoom (zoom multiplies on top in screen space).
+  protected getRotationFitScale(rotation = this.rotation) {
+    const normalized = ((rotation % 360) + 360) % 360;
+    if(normalized !== 90 && normalized !== 270) {
+      return 1;
+    }
+
+    const rect = this.initialContentRect ?? this.content.media.getBoundingClientRect();
+    const {width, height} = rect;
+    if(!width || !height) {
+      return 1;
+    }
+
+    const box = this.mediaBoxSize;
+    return Math.min(box.width / height, box.height / width);
+  }
+
+  // The media's on-screen bounding box AFTER rotation + orientation-refit (still in
+  // the pre-zoom frame). Pan/zoom apply to THIS box in screen space, so the zoom
+  // boundaries derive from it directly. Unrotated → just initialContentRect.
+  protected getDisplayRect(): DOMRectMinified & {width: number, height: number} {
+    const rect = this.initialContentRect ?? this.content.media.getBoundingClientRect();
+    if(!this.rotation) {
+      return rect;
+    }
+
+    const normalized = ((this.rotation % 360) + 360) % 360;
+    const swap = normalized === 90 || normalized === 270;
+    const fit = this.getRotationFitScale();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const width = (swap ? rect.height : rect.width) * fit;
+    const height = (swap ? rect.width : rect.height) * fit;
+    return {
+      left: cx - width / 2,
+      right: cx + width / 2,
+      top: cy - height / 2,
+      bottom: cy + height / 2,
+      width,
+      height
+    };
+  }
+
+  protected rotateMedia() {
+    // Prime the transition ONLY on the first transform application (moversContainer
+    // still on its CSS default, no inline transform): commit an identity-structured
+    // transform so the first turn interpolates rotate/scale function-by-function
+    // instead of matrix-decomposing from the bare default (which slid the image off
+    // before settling). Once an inline transform exists (after any zoom/rotate) it's
+    // already in that form — re-priming here would add `no-transition` mid-flight and
+    // snap a still-animating turn to its target.
+    if(!this.moversContainer.style.transform) {
+      this.moversContainer.classList.add('no-transition');
+      this.applyMoversTransform();
+      void this.moversContainer.offsetLeft; // reflow to commit the primed state
+      this.moversContainer.classList.remove('no-transition');
+    }
+
+    this.rotation -= 90; // counterclockwise, matching Telegram Desktop
+    this.applyMoversTransform();
+    this.updateVideoControlsLock();
+  }
+
+  // True when the media is visually turned (any non-360° multiple). −360° reads as
+  // upright, so compare the normalized angle, not the raw accumulator.
+  protected isRotated() {
+    return (((this.rotation % 360) + 360) % 360) !== 0;
+  }
+
+  // A video's player chrome lives inside moversContainer, so it would scale/turn with
+  // the frame. Mirror what zoom already does — lock the controls hidden while zoomed
+  // OR rotated, restore auto-hide otherwise. (Keyboard controls keep working via the
+  // player's `listenKeyboardEvents: 'always'`, so playback is still controllable.)
+  protected updateVideoControlsLock() {
+    if(!this.videoPlayer) {
+      return;
+    }
+
+    this.videoPlayer.lockControls(this.isZooming || this.isRotated() ? false : undefined);
+  }
 
   protected setBtnMenuToggle(buttons: ButtonMenuItemOptionsVerifiable[]) {
     const btnMenuToggle = ButtonMenuToggle({buttonOptions: {onlyMobile: true}, direction: 'bottom-left', buttons});
@@ -1059,38 +1186,68 @@ export default class AppMediaViewerBase<
 
     const zoomValue = this.isZooming && closing ? this.transform.scale : ZOOM_INITIAL_VALUE;
     const zoomedClose = closing && zoomValue !== 1;
-    if(zoomedClose) {
-      // Closing while zoomed. We can't animate moversContainer's transform from the
-      // current zoom to a target matrix: the mover's wrapper carries the close
-      // clip-path (in wrapper-local coords), and if moversContainer is non-identity
-      // the clip values get visually scaled+translated with it — at end of the
-      // animation the visible clip ends up as a tiny rectangle far from where the
-      // mover lands, and the user sees a crushed/displaced thumbnail.
+    // Closing while rotated needs the same moversContainer→mover transform transfer
+    // as a zoomed close (below): moversContainer must end at identity for the
+    // wrapper clip-path and the thumb-rect math to be in plain viewport coords.
+    const closeRotation = closing ? this.rotation : 0;
+    const rotatedClose = closeRotation !== 0;
+    // Rotation pivot in the mover's OWN coords (its content center) — captured during
+    // the transfer so the close animation can unwind the turn around the same point
+    // further below. Mover-local because the rotate wrapper is the inner transform.
+    let closeRotationPivotX = 0;
+    let closeRotationPivotY = 0;
+    if(zoomedClose || rotatedClose) {
+      // Closing while zoomed/rotated. We can't animate moversContainer's transform
+      // from the current state to a target matrix: the mover's wrapper carries the
+      // close clip-path (in wrapper-local coords), and if moversContainer is
+      // non-identity the clip values get visually scaled/rotated/translated with it
+      // — at the end of the animation the visible clip ends up as a tiny rectangle
+      // far from where the mover lands, and the user sees a crushed/displaced thumb.
       //
-      // Instead, transfer the zoom transform from moversContainer to the mover
+      // Instead, transfer the live transform from moversContainer to the mover
       // synchronously (no visible jump — same frame, no transition), reset
       // moversContainer to identity, and let the standard close path animate the
-      // mover from its current zoomed-view position to the target thumb rect.
+      // mover from its current on-screen position to the target thumb rect.
       // initialContentRect is the pre-zoom media bbox (captured by setZoomValue
       // before the first zoom is applied), so multiplying by `zoom` and adding
       // the pan offset reproduces the user's current viewport position exactly.
       const zoom = this.transform.scale;
       const panX = this.transform.x;
       const panY = this.transform.y;
-      const baseRect = this.initialContentRect ?? this.content.media.getBoundingClientRect();
+      const baseRect = (zoomedClose && this.initialContentRect) || this.content.media.getBoundingClientRect();
       const visualX = zoom * baseRect.left + panX;
       const visualY = zoom * baseRect.top + panY;
 
+      let startTransform = `translate3d(${visualX}px, ${visualY}px, 0) scale3d(${zoom}, ${zoom}, 1)`;
+      if(rotatedClose) {
+        // Same rotate+refit wrapper buildMoversTransform emits, kept as the INNER
+        // transform (after the zoom/pan transfer) and pivoted on the mover's own
+        // content center — mirroring the screen-space order so the visual position
+        // is reproduced exactly. transform-origin: top left (0,0) makes the explicit
+        // translate(C)…translate(-C) origin-independent.
+        closeRotationPivotX = baseRect.width / 2;
+        closeRotationPivotY = baseRect.height / 2;
+        const fit = this.getRotationFitScale(closeRotation);
+        startTransform += ` translate(${closeRotationPivotX}px, ${closeRotationPivotY}px) rotate(${closeRotation}deg) scale(${fit.toFixed(5)}) translate(${-closeRotationPivotX}px, ${-closeRotationPivotY}px)`;
+      }
+
       this.moversContainer.classList.add('no-transition');
       // Suppress mover's transition inline for this frame so the transform jump
-      // (.center anchor → zoomed visual position) doesn't animate. Apply the
+      // (.center anchor → current visual position) doesn't animate. Apply the
       // mover transform, drop .center, clear its inline positioning, and reset
       // the container — all in the same frame so the visual position stays
       // unchanged.
       mover.style.transition = 'none';
-      mover.style.transform = `translate3d(${visualX}px, ${visualY}px, 0) scale3d(${zoom}, ${zoom}, 1)`;
+      mover.style.transform = startTransform;
       mover.classList.remove('center');
       this.clearCenterStyles(mover);
+      if(!zoomedClose) {
+        // Rotated-but-not-zoomed: pin the mover to the media's real rect (same as the
+        // non-transfer close branch) so it doesn't paint at mobile full-viewport size
+        // for the doubleRaf frames before setMoverToTarget assigns containerRect.
+        mover.style.width = `${baseRect.width}px`;
+        mover.style.height = `${baseRect.height}px`;
+      }
       this.moversContainer.style.transform = '';
       void mover.offsetLeft; // reflow to commit the no-transition reset
       mover.style.transition = '';
@@ -1303,6 +1460,18 @@ export default class AppMediaViewerBase<
     // the underlying full-size mover.
     const borderRadius = `${xRadii.map((v) => v + 'px').join(' ')} / ${yRadii.map((v) => v + 'px').join(' ')}`;
     // let borderRadius = '0px 0px 0px 0px';
+
+    if(rotatedClose) {
+      // Unwind the turn to the nearest upright (a multiple of 360 ≡ 0° visually,
+      // matching the still-upright thumbnail) and undo the orientation refit, around
+      // the same mover-local pivot the transfer used, kept as the INNER transform.
+      // Same function structure as the transferred start transform, so CSS
+      // interpolates rotate→upright / scale→1 in lockstep with the translate/scale
+      // toward the thumb — the image rotates straight back as it shrinks, taking the
+      // short path (|delta| ≤ 180°).
+      const upright = Math.round(closeRotation / 360) * 360;
+      transform += `translate(${closeRotationPivotX}px, ${closeRotationPivotY}px) rotate(${upright}deg) scale(1) translate(${-closeRotationPivotX}px, ${-closeRotationPivotY}px)`;
+    }
 
     mover.style.transform = transform;
 
@@ -1938,11 +2107,18 @@ export default class AppMediaViewerBase<
     if(!target) return;
     const context = AppMediaViewerBase.FLOATING_CONTEXTS.find(({trigger}) => findUpClassName(target, trigger));
     if(!context) return;
+    // In an album each item carries its own floating overlays (.video-time, .video-play),
+    // but the container query spans the whole bubble. Only the clicked item's mover
+    // animates, so skip overlays that belong to a sibling album item. Bubble-level
+    // floatings (e.g. .time.is-floating, which has no .album-item ancestor) are still hidden.
+    const targetAlbumItem = findUpClassName(target, 'album-item');
     for(const {containerClass, selectors} of context.layers) {
       const container = findUpClassName(target, containerClass);
       if(!container) continue;
       container.querySelectorAll<HTMLElement>(selectors).forEach((el) => {
         if(this.hiddenFloatings.has(el)) return;
+        const albumItem = findUpClassName(el, 'album-item');
+        if(albumItem && albumItem !== targetAlbumItem) return;
         el.style.transition = 'none';
         el.style.opacity = '0';
         this.hiddenFloatings.add(el);
@@ -2171,6 +2347,12 @@ export default class AppMediaViewerBase<
     this.buttons.prev.classList.toggle('hide', !this.listLoader.previous.length);
     this.buttons.next.classList.toggle('hide', !this.listLoader.next.length);
 
+    // Rotation is offered for photos, GIFs and videos. A turned video would also turn
+    // its player chrome, so the controls bar is hidden while rotated (see
+    // updateVideoControlsLock) — same as zoom. Live streams are excluded (they're
+    // full-bleed / PiP and have no still frame to straighten).
+    this.buttons.rotate.classList.toggle('hide', isLiveStream);
+
     const container = this.content.media;
     const useContainerAsTarget = !target || target === container;
     if(useContainerAsTarget) target = container;
@@ -2187,6 +2369,17 @@ export default class AppMediaViewerBase<
       changeQualityOptionsPromise = this.loadQualityLevelsDownloadOptions(media);
     else
       changeQualityOptionsPromise = Promise.resolve(this.removeQualityOptions());
+
+    // Rotation is per-media. Clear any leftover turn from the previous image and snap
+    // moversContainer back to identity instantly (no-transition) — so neither the
+    // outgoing nav slide nor the incoming open animates a stray spin.
+    if(this.rotation) {
+      this.rotation = 0;
+      this.moversContainer.classList.add('no-transition');
+      this.applyMoversTransform();
+      void this.moversContainer.offsetLeft; // reflow to commit before the slide/open
+      this.moversContainer.classList.remove('no-transition');
+    }
 
     const wasActive = fromRight !== 0;
     if(wasActive) {
@@ -2262,7 +2455,11 @@ export default class AppMediaViewerBase<
       let img: HTMLImageElement | HTMLCanvasElement;
       if(cacheContext.downloaded) {
         img = new Image();
-        img.src = cacheContext.url;
+        // Await decode: setMoverToTarget draws this thumbnail onto a canvas via
+        // drawImage, which yields a BLANK canvas for a not-yet-decoded image —
+        // so without this the (container-target) slide would be empty until it
+        // ends. Mirrors the stripped-thumb branch below, which already awaits.
+        thumbPromise = renderImageFromUrlPromise(img, cacheContext.url, false).catch(() => {});
       } else {
         const gotThumb = getMediaThumbIfNeeded({
           photo: media,
@@ -2485,7 +2682,7 @@ export default class AppMediaViewerBase<
             this.videoPlayer = undefined;
           }, {once: true});
 
-          if(this.isZooming) {
+          if(this.isZooming || this.isRotated()) {
             this.videoPlayer.lockControls(false);
           } else if(isLiveStream) {
             // Lock hidden (not shown) during the open animation. Otherwise the

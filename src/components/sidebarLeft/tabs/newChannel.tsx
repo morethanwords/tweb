@@ -1,8 +1,7 @@
 import {onCleanup, onMount} from 'solid-js';
-import {InputFile} from '@layer';
 import InputField from '@components/inputField';
 import {InputFieldTsx} from '@components/inputFieldTsx';
-import AvatarEdit from '@components/avatarEdit';
+import AvatarEdit, {AvatarEditPayload} from '@components/avatarEdit';
 import ButtonCorner from '@components/buttonCorner';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import Section from '@components/section';
@@ -17,7 +16,7 @@ const NewChannel = () => {
   const [tab] = useSuperTab();
   const {appImManager, appSidebarLeft} = useHotReloadGuard();
 
-  let uploadAvatar: () => Promise<InputFile> = null;
+  let uploadAvatar: AvatarEditPayload | null = null;
   let nameField!: InputField;
   let descField!: InputField;
   let nextBtn: HTMLButtonElement;
@@ -51,7 +50,7 @@ const NewChannel = () => {
       handleChannelsTooMuch(() => tab.managers.appChatsManager.createChannel(options))
       .then((channelId) => {
         if(uploadAvatar) {
-          uploadAvatar().then((inputFile) => {
+          uploadAvatar.file().then((inputFile) => {
             tab.managers.appChatsManager.editPhoto(channelId, inputFile);
           });
         }

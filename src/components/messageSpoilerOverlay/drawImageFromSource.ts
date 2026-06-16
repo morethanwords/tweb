@@ -1,8 +1,8 @@
 import nMap from '@helpers/number/nMap';
 
 export function drawImageFromSource(
-  ctx: CanvasRenderingContext2D,
-  sourceCanvas: HTMLCanvasElement,
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  sourceCanvas: HTMLCanvasElement | OffscreenCanvas,
   sx: number,
   sy: number,
   sw: number,

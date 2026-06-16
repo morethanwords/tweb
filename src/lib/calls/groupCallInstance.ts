@@ -25,6 +25,13 @@ import {generateSelfVideo, makeSsrcFromParticipant, makeSsrcsFromParticipant} fr
 import type {EncryptWorkerHost} from '@lib/calls/e2e/encryptWorkerHost';
 import type {CallStatusSnapshot} from '@lib/calls/e2e/encryptWorkerProtocol';
 
+// If a conference poller hasn't reached the server in this long while the call
+// is alive, the watchdog forces recovery. Comfortably past the poll cadences
+// (chain 1.5s, participants 5s) so transient network hiccups don't trip it.
+const E2E_SYNC_STALL_MS = 15000;
+// How often the watchdog checks for the stall above.
+const E2E_WATCHDOG_INTERVAL_MS = 5000;
+
 export default class GroupCallInstance extends CallInstanceBase<{
   state: (state: GROUP_CALL_STATE) => void,
   pinned: (source?: GroupCallOutputSource) => void,
@@ -154,6 +161,35 @@ export default class GroupCallInstance extends CallInstanceBase<{
       this.hangUp(true);
     });
 
+    // Recv-transform breadcrumb (deduped worker-side). A sustained `unmapped`
+    // is the "seen but not heard" failure: an inbound SSRC the e2e map never
+    // learned, so its frames stay encrypted → silence. `mappedUser` shows what
+    // WE pushed for that SSRC — '(none)' means the participant update that
+    // should have registered it never ran (the conference-sync stall above).
+    worker.addEventListener('recvDiag', (ev) => {
+      const mappedUser = this.e2eUserBySsrc.get(ev.ssrc >>> 0);
+      this.log.warn(
+        'e2e recv diagnostic:', ev.reason, ev.sustained ? '(SUSTAINED)' : '',
+        'ssrc', ev.ssrc >>> 0,
+        'mappedUser', mappedUser !== undefined ? mappedUser.toString() : '(none)',
+        ev.message || ''
+      );
+      // Sustained ⇒ a real stuck stream (not a transient at-join blip): the
+      // "seen but not heard" symptom. Surface it to the user.
+      if(ev.sustained) {
+        this.reportConferenceBug(
+          ev.reason === 'unmapped' ?
+            'inbound media undecryptable — unmapped SSRC (participant seen but not heard)' :
+            'inbound media failed to decrypt (stale key?)',
+          {
+            ssrc: ev.ssrc >>> 0,
+            mappedUser: mappedUser !== undefined ? mappedUser.toString() : null,
+            message: ev.message
+          }
+        );
+      }
+    });
+
     // Inbound chain delivery — sub_chain_id 0 is the block chain, 1 is the
     // verification broadcast channel. The server pushes these updates when it
     // can, but we also poll because conference push delivery is best-effort
@@ -193,8 +229,31 @@ export default class GroupCallInstance extends CallInstanceBase<{
   private conferenceParticipantsInterval: ReturnType<typeof setInterval> | undefined;
   private refreshingConferenceParticipants = false;
 
+  // ===== Conference-sync watchdog =====
+  //
+  // Both conference pollers (pollE2eChain, refreshConferenceParticipants) bail
+  // SILENTLY when our cached `groupCall` is missing/discarded — getGroupCallInput
+  // throws without it. If that state persists, media keeps flowing but the call
+  // stops learning about unmutes/joins: a participant who unmutes is seen (SFU
+  // speaking signal is plaintext) but not heard — their audio SSRC never enters
+  // the e2e recv map, so frames pass through still-encrypted (silence). Observed
+  // live: a ~19-minute stall that only cleared on a manual re-join. These track
+  // when each poller last actually REACHED the server; the watchdog re-hydrates
+  // `groupCall` and re-kicks the pollers when either goes stale.
+  private lastChainPollAt = 0;
+  private lastParticipantsRefreshAt = 0;
+  private lastPollBailReason = '';
+  private e2eWatchdogInterval: ReturnType<typeof setInterval> | undefined;
+  private recoveringConferenceSync = false;
+  // Cooldown (per reason) for the user-facing bug breadcrumb — see reportConferenceBug.
+  private reportedBugAt: Map<string, number> = new Map();
+
   private startE2eChainPolling(): void {
     if(this.e2eChainPollInterval) return;
+    // Seed the watchdog clocks so it grants a full stall window before the
+    // first successful poll lands (invitee/slug joins hydrate `groupCall`
+    // lazily — see pollE2eChain).
+    this.lastChainPollAt = this.lastParticipantsRefreshAt = Date.now();
     const tick = (): void => { void this.pollE2eChain(); };
     // Immediate kick — tdlib does this in `joined()`.
     tick();
@@ -211,6 +270,13 @@ export default class GroupCallInstance extends CallInstanceBase<{
         void this.refreshConferenceParticipants();
       }, 5000);
     }
+
+    // Watchdog: detect + self-heal a silent poller stall (see field comment).
+    if(!this.e2eWatchdogInterval) {
+      this.e2eWatchdogInterval = setInterval(() => {
+        this.e2eWatchdogTick();
+      }, E2E_WATCHDOG_INTERVAL_MS);
+    }
   }
 
   private stopE2eChainPolling(): void {
@@ -221,6 +287,10 @@ export default class GroupCallInstance extends CallInstanceBase<{
     if(this.conferenceParticipantsInterval) {
       clearInterval(this.conferenceParticipantsInterval);
       this.conferenceParticipantsInterval = undefined;
+    }
+    if(this.e2eWatchdogInterval) {
+      clearInterval(this.e2eWatchdogInterval);
+      this.e2eWatchdogInterval = undefined;
     }
   }
 
@@ -233,7 +303,12 @@ export default class GroupCallInstance extends CallInstanceBase<{
     if(this.connectionState === 'closed') return;
     this.refreshingConferenceParticipants = true;
     try {
-      await this.managers.appGroupCallsManager.refreshConferenceParticipants(this.id);
+      // `false` => the manager bailed (no cached groupCall), so the roster sync
+      // isn't actually running. Only stamp the watchdog clock on a real fetch.
+      const fetched = await this.managers.appGroupCallsManager.refreshConferenceParticipants(this.id);
+      if(fetched) {
+        this.lastParticipantsRefreshAt = Date.now();
+      }
     } catch(err) {
       this.log.warn('refreshConferenceParticipants', err);
     } finally {
@@ -263,7 +338,15 @@ export default class GroupCallInstance extends CallInstanceBase<{
       }
     }
     const input = this.toInputGroupCall();
-    if(!input) return;
+    if(!input) {
+      // The silent stall the watchdog exists for. Trace it on transition.
+      this.notePollBail(this.groupCall ? 'groupCall discarded' : 'groupCall missing');
+      return;
+    }
+    this.notePollBail('');
+    // We've reached the polling stage — stamp the watchdog clock at issue time
+    // (not completion) so a slow response doesn't look like a stall.
+    this.lastChainPollAt = Date.now();
 
     // Poll both subchains in parallel. Each returns the slice from
     // `offset` onward; we advance `offset` by the number of blocks returned.
@@ -296,6 +379,94 @@ export default class GroupCallInstance extends CallInstanceBase<{
         this.log.warn('pollE2eChain: subchain', subChainId, err);
       }
     }));
+  }
+
+  // Transition-logged bail tracing for pollE2eChain — logs once when the chain
+  // poll starts (or stops) being unable to reach the server, not every tick.
+  private notePollBail(reason: string): void {
+    if(reason === this.lastPollBailReason) return;
+    const wasBailing = !!this.lastPollBailReason;
+    this.lastPollBailReason = reason;
+    if(reason) this.log.warn('pollE2eChain: not polling —', reason);
+    else if(wasBailing) this.log('pollE2eChain: reached server, resuming');
+  }
+
+  // Runs on E2E_WATCHDOG_INTERVAL_MS. If either conference poller hasn't reached
+  // the server within E2E_SYNC_STALL_MS while the call is alive, force recovery.
+  private e2eWatchdogTick(): void {
+    if(!this.e2e || this.connectionState === 'closed' || this.recoveringConferenceSync) return;
+    const now = Date.now();
+    const chainStall = now - this.lastChainPollAt;
+    const participantsStall = now - this.lastParticipantsRefreshAt;
+    if(chainStall < E2E_SYNC_STALL_MS && participantsStall < E2E_SYNC_STALL_MS) return;
+
+    this.log.warn(
+      'conference sync stalled — chainPoll', Math.round(chainStall / 1000) + 's ago,',
+      'participants', Math.round(participantsStall / 1000) + 's ago;',
+      'lastBail:', this.lastPollBailReason || '(none)', '— forcing recovery'
+    );
+    this.reportConferenceBug('conference sync stalled (pollers not reaching the server)', {
+      chainStallSec: Math.round(chainStall / 1000),
+      participantsStallSec: Math.round(participantsStall / 1000),
+      lastBail: this.lastPollBailReason || '(none)'
+    });
+    void this.recoverConferenceSync();
+  }
+
+  // User-facing breadcrumb for the "I can't hear someone / had to re-join" class
+  // of conference bug. Goes STRAIGHT to console (survives prod minify; not behind
+  // the DEBUG-gated logger) plus a `window.__conferenceBug(s)` marker the user can
+  // inspect any time — so they know to run downloadLogs() and send the file.
+  // Also logged to the ring buffer (this.log.error) so it lands in that export.
+  // Deduped per reason with a 1-minute cooldown so a persistent stall can't spam.
+  private reportConferenceBug(reason: string, details: Record<string, unknown>): void {
+    const now = Date.now();
+    if(now - (this.reportedBugAt.get(reason) || 0) < 60000) return;
+    this.reportedBugAt.set(reason, now);
+
+    const payload = {reason, at: new Date(now).toISOString(), callId: String(this.id), ...details};
+    this.log.error('CONFERENCE BUG —', reason, payload);
+    try {
+      console.warn(
+        '%c⚠ TELEGRAM CONFERENCE BUG',
+        'background:#c0392b;color:#fff;font-weight:bold;padding:2px 6px;border-radius:3px',
+        `\n${reason}\n→ run downloadLogs() and send the file`,
+        payload
+      );
+      const g = self as any;
+      (g.__conferenceBugs ??= []).push(payload);
+      g.__conferenceBug = payload;
+    } catch{}
+  }
+
+  // Re-hydrate `groupCall` (the dependency both pollers silently bail on) and
+  // re-kick them. Re-seeds the manager cache from our own copy first, because
+  // once the manager loses the call `getGroupCallInput` throws and getGroupCallFull
+  // can't bootstrap. Guarded against overlapping runs.
+  private async recoverConferenceSync(): Promise<void> {
+    if(this.recoveringConferenceSync) return;
+    this.recoveringConferenceSync = true;
+    try {
+      if(this.groupCall && this.groupCall._ === 'groupCall') {
+        await this.managers.appGroupCallsManager.saveGroupCall(this.groupCall)
+        .catch((err) => this.log.warn('recoverConferenceSync: saveGroupCall', err));
+      }
+
+      const fresh = await this.managers.appGroupCallsManager.getGroupCallFull(this.id, true)
+      .catch((err): undefined => {
+        this.log.warn('recoverConferenceSync: getGroupCallFull failed', err);
+        return undefined;
+      });
+      if(fresh && fresh._ === 'groupCall') {
+        this.groupCall = fresh;
+      }
+
+      // Re-kick both pollers now that the cache should be warm. They stamp the
+      // watchdog clocks themselves on success, quieting the next tick.
+      await Promise.all([this.pollE2eChain(), this.refreshConferenceParticipants()]);
+    } finally {
+      this.recoveringConferenceSync = false;
+    }
   }
 
   private async flushE2eOutbound(): Promise<void> {

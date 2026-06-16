@@ -206,6 +206,7 @@ const PeerProfile = (props: {
           <PeerProfile.AutoAvatar />
         </Show>
         <div class="profile-content-delimiter"></div>
+        <PeerProfile.UnofficialWarning />
         <PeerProfile.PersonalChannel />
         <PeerProfile.MainSection />
         <PeerProfile.BotVerification />
@@ -1233,6 +1234,30 @@ PeerProfile.BotVerification = () => {
           {content().text}
         </div>
       </div>
+    </Show>
+  );
+};
+
+PeerProfile.UnofficialWarning = () => {
+  const context = useContext(PeerProfileContext);
+  const {i18n, wrapEmojiText} = useHotReloadGuard();
+
+  const show = createMemo(() => {
+    const user = context.peer as User.user;
+    const fullPeer = context.fullPeer as UserFull;
+    return !!(context.peerId.isUser() && user && !user.pFlags.bot && fullPeer?.pFlags?.unofficial_security_risk);
+  });
+
+  return (
+    <Show when={show()}>
+      <Section>
+        <Row class="profile-unofficial-warning">
+          <Row.Title class="pre-wrap">
+            <IconTsx icon="sendingerror" class="inline-icon inline-icon-left profile-unofficial-warning-icon" />
+            {i18n('ProfileUnofficialSecurityRisk', [wrapEmojiText((context.peer as User.user).first_name)])}
+          </Row.Title>
+        </Row>
+      </Section>
     </Show>
   );
 };

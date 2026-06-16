@@ -266,6 +266,9 @@ export class DialogElement extends Row {
       peerId: fromName ? NULL_PEER_ID : usePeerId,
       peerTitle: fromName,
       withStories,
+      // Animate video avatars only in the primary chat list (withStories), not
+      // in compact pickers / search rows.
+      withVideoAvatar: withStories,
       wrapOptions: newWrapOptions,
       meAsNotes: isSavedDialog,
       asAllChats: asAllChats === 'monoforum',

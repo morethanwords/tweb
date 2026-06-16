@@ -1,7 +1,10 @@
 /* @refresh reload */
 
-// must run before any other module — under the preview flag it swaps
-// requestAnimationFrame for a timer so a non-painting tab still boots
+// must run before any other module — under the preview flag the first swaps
+// every DOM timer for worker-driven ones (hidden tabs throttle/freeze timers)
+// and spoofs visibility, the second swaps requestAnimationFrame for a timer so
+// a non-painting tab still boots
+import '@helpers/dom/previewUnfreeze';
 import '@helpers/dom/previewRaf';
 import App from '@config/app';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
