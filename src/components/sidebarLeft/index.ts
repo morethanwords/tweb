@@ -172,10 +172,7 @@ export class AppSidebarLeft extends SidebarSlider {
     wartelpasTitle.innerText = 'WARTELPAS';
     sidebarHeader.prepend(wartelpasTitle);
 
-    // Create Wartelpas Tab Selector
-    const tabSelector = document.createElement('div');
-    tabSelector.className = 'wartelpas-tab-selector';
-
+    // Create Wartelpas Tab Selector (instantiated to avoid compiler errors, but not added to DOM)
     this.tabCallBtn = document.createElement('button');
     this.tabCallBtn.type = 'button';
     this.tabCallBtn.className = 'wartelpas-tab-btn active';
@@ -185,9 +182,6 @@ export class AppSidebarLeft extends SidebarSlider {
     this.tabContactsBtn.type = 'button';
     this.tabContactsBtn.className = 'wartelpas-tab-btn';
     this.tabContactsBtn.innerText = I18n.format('Wartelpas.ContactsTab', true);
-
-    tabSelector.append(this.tabCallBtn, this.tabContactsBtn);
-    sidebarHeader.append(tabSelector);
 
     // Create Wartelpas Call Container (Tab 1 Content)
     this.callContainer = document.createElement('div');
@@ -251,9 +245,8 @@ export class AppSidebarLeft extends SidebarSlider {
     this.callContainer.append(phoneInputWrapper, dialPad, callActionBtn);
     sidebarHeader.append(this.callContainer);
 
-    // Hide contacts list and search input initially (Option 1 is default)
+    // Initialize components but do not show them (Search/Contacts tab is removed)
     this.inputSearch.container.classList.add('hide');
-    sidebarHeader.append(this.inputSearch.container);
 
     this.contactsList = new SortedUserList({
       managers: this.managers,
@@ -280,31 +273,6 @@ export class AppSidebarLeft extends SidebarSlider {
       }
     });
     this.contactsList.list.classList.add('wartelpas-contacts', 'hide');
-    sidebarHeader.append(this.contactsList.list);
-
-    // Event handlers for Tabs
-    this.tabCallBtn.addEventListener('click', () => {
-      if(this.tabCallBtn.classList.contains('active')) return;
-      this.tabCallBtn.classList.add('active');
-      this.tabContactsBtn.classList.remove('active');
-
-      this.callContainer.classList.remove('hide');
-      this.inputSearch.container.classList.add('hide');
-      this.contactsList.list.classList.add('hide');
-
-      this.inputSearch.value = '';
-      this.inputSearch.onChange?.('');
-    });
-
-    this.tabContactsBtn.addEventListener('click', () => {
-      if(this.tabContactsBtn.classList.contains('active')) return;
-      this.tabContactsBtn.classList.add('active');
-      this.tabCallBtn.classList.remove('active');
-
-      this.callContainer.classList.add('hide');
-      this.inputSearch.container.classList.remove('hide');
-      this.contactsList.list.classList.remove('hide');
-    });
 
     // Backspace button logic
     backspaceBtn.addEventListener('click', () => {

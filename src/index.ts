@@ -688,6 +688,62 @@ function initWartelTimer() {
     document.body.appendChild(container);
   }
 
+  let exitBtn = document.getElementById('wartel-exit-button') as HTMLButtonElement | null;
+  if(!exitBtn) {
+    exitBtn = document.createElement('button');
+    exitBtn.id = 'wartel-exit-button';
+    exitBtn.type = 'button';
+    exitBtn.innerText = 'Keluar Sesi';
+
+    // Apply styling for beautiful floating button in bottom right
+    Object.assign(exitBtn.style, {
+      position: 'fixed',
+      bottom: '24px',
+      right: '24px',
+      zIndex: '999999',
+      display: 'none', // hidden by default, shown when remainingSeconds > 0
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'rgba(239, 68, 68, 0.85)', // red-500 equivalent
+      backdropFilter: 'blur(12px)',
+      webkitBackdropFilter: 'blur(12px)',
+      border: '1px solid rgba(255, 255, 255, 0.15)',
+      padding: '12px 24px',
+      borderRadius: '16px',
+      color: '#ffffff',
+      fontWeight: '700',
+      fontSize: '14px',
+      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.1)',
+      cursor: 'pointer',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Oxygen, Ubuntu, Cantarell, \'Open Sans\', \'Helvetica Neue\', sans-serif',
+      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+      outline: 'none',
+      userSelect: 'none'
+    });
+
+    exitBtn.addEventListener('mouseenter', () => {
+      exitBtn.style.background = 'rgba(220, 38, 38, 0.95)'; // red-600
+      exitBtn.style.transform = 'translateY(-2px) scale(1.03)';
+      exitBtn.style.boxShadow = '0 12px 28px -4px rgba(239, 68, 68, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.5)';
+    });
+
+    exitBtn.addEventListener('mouseleave', () => {
+      exitBtn.style.background = 'rgba(239, 68, 68, 0.85)';
+      exitBtn.style.transform = 'translateY(0) scale(1)';
+      exitBtn.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5)';
+    });
+
+    exitBtn.addEventListener('click', () => {
+      if(api.keluarSesi) {
+        api.keluarSesi();
+      } else {
+        console.error('WartelAPI.keluarSesi is not defined!');
+      }
+    });
+
+    document.body.appendChild(exitBtn);
+  }
+
   const dot = document.getElementById('wartel-dot');
   const label = document.getElementById('wartel-label');
   const time = document.getElementById('wartel-time');
@@ -701,8 +757,10 @@ function initWartelTimer() {
     // Show only when timer is running/active
     if(remainingSeconds > 0) {
       container!.style.display = 'flex';
+      if(exitBtn) exitBtn.style.display = 'flex';
     } else {
       container!.style.display = 'none';
+      if(exitBtn) exitBtn.style.display = 'none';
     }
 
     const mins = Math.floor(remainingSeconds / 60);
