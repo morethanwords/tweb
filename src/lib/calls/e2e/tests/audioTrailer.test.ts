@@ -12,7 +12,7 @@ import {appendAudioTrailer, stripAudioTrailer} from '../audioTrailer';
 import {E2eCall} from '../call';
 import {bytesToHex, ensureCryptoReady} from '../crypto';
 import {PrivateKey} from '../keys';
-import {GroupParticipant, GroupState, PERM_ADD_USERS} from '../tlTypes';
+import {GroupParticipant, GroupState, PERM_ADD_USERS, PERM_REMOVE_USERS} from '../tlTypes';
 
 beforeAll(() => ensureCryptoReady());
 
@@ -108,7 +108,7 @@ describe('audioTrailer — E2eCall encrypt/decrypt round-trip', () => {
 
     const groupState: GroupState = {
       participants: [participantFor(aliceId, alice)],
-      externalPermissions: PERM_ADD_USERS
+      externalPermissions: PERM_ADD_USERS | PERM_REMOVE_USERS
     };
     const zero = await E2eCall.createZeroBlock(alice, groupState);
     const aliceCall = await E2eCall.create(aliceId, alice, zero);

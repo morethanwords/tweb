@@ -119,7 +119,14 @@ export class CallsController extends EventListenerBase<{
             break;
           }
 
-          const {key, key_fingerprint} = await this.managers.appCallsManager.computeKey(g_a, dh.b, dh.p);
+          let key: Uint8Array, key_fingerprint: string;
+          try {
+            ({key, key_fingerprint} = await this.managers.appCallsManager.computeKey(g_a, dh.b, dh.p));
+          } catch(err) {
+            this.log.error('computeKey failed (invalid DH public value)', err, g_a, dh);
+            instance.hangUp('phoneCallDiscardReasonDisconnect');
+            break;
+          }
           if(call.key_fingerprint !== key_fingerprint) {
             this.log.error('Incorrect key fingerprint', call.key_fingerprint, key_fingerprint, g_a, dh);
             instance.hangUp('phoneCallDiscardReasonDisconnect');
@@ -264,6 +271,9 @@ export class CallsController extends EventListenerBase<{
       call.overrideConnectionState(CALL_STATE.PENDING);
       call.setPhoneCall(phoneCall);
       call.setHangUpTimeout(CALL_REQUEST_TIMEOUT, 'phoneCallDiscardReasonHangup');
+    }).catch((err) => {
+      this.log.error('outgoing call DH/setup error', err);
+      call.hangUp('phoneCallDiscardReasonHangup');
     });
   }
 
