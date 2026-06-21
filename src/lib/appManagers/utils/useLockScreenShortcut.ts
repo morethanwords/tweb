@@ -2,6 +2,7 @@ import PasscodeLockScreenController from '@components/passcodeLock/passcodeLockS
 import ListenerSetter from '@helpers/listenerSetter';
 import {joinDeepPath} from '@helpers/object/setDeepProperty';
 import {addShortcutListener} from '@helpers/shortcutListener';
+import {getAppWindow} from '@helpers/appWindow';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import appImManager from '@lib/appImManager';
 import rootScope from '@lib/rootScope';
@@ -56,7 +57,7 @@ const _useLockScreenShortcut = () => {
     appImManager.isShiftLockShortcut = isShiftLockShortcut;
 
     const removeListener = addShortcutListener([combo], (_, event) => {
-      const activeElement = document.activeElement as HTMLElement;
+      const activeElement = getAppWindow().document.activeElement as HTMLElement;
 
       if(
         isShiftLockShortcut &&

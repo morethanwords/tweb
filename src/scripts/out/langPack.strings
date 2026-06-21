@@ -99,6 +99,9 @@
 "ChatList.Menu.SwitchTo.A" = "Switch to A version";
 "ChatList.SharedFolder.Title" = "**You can join %s**";
 "ChatList.SharedFolder.Subtitle" = "Click here to view them";
+"ClientPip.PlaceholderTitle" = "Telegram is in Picture-in-Picture";
+"ClientPip.PlaceholderDescription" = "Switch back to this tab to bring it here, or use the button below.";
+"ClientPip.ReturnToTab" = "Return to tab";
 "ChatMigration.From" = "Migrated from %s";
 "ChatMigration.To" = "Migrated to %s";
 "ConnectionStatus.ForceReconnect" = "reconnect now";

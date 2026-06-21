@@ -63,6 +63,7 @@ import type ReactionElement from '@components/chat/reaction';
 import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
 import pause from '@helpers/schedulers/pause';
 import ScrollSaver from '@helpers/scrollSaver';
+import {getAppWindow, onAppWindowChange, onBeforeAppWindowChange} from '@helpers/appWindow';
 import getObjectKeysAndSort from '@helpers/object/getObjectKeysAndSort';
 import forEachReverse from '@helpers/array/forEachReverse';
 import formatNumber from '@helpers/number/formatNumber';
@@ -601,6 +602,17 @@ export default class ChatBubbles {
   private willScrollOnLoad: boolean;
   public observer: SuperIntersectionObserver;
 
+  // Preserve the chat's scroll position across reflows that rewrap the bubbles — a window/PiP-window
+  // resize or a PiP pop-in/out (full width ↔ ~430px). The anchor is captured before the change (kept
+  // fresh on scroll, default "at bottom") and re-pinned after the reflow settles. Stored CONTAINER-
+  // relative (offset of the top visible bubble from the container's top), not viewport-relative, so it
+  // survives the cross-window move into the PiP — the viewport origin differs between the two windows.
+  private reflowAnchor: {element: HTMLElement, offset: number};
+  private reflowWasAtEnd = true;
+  private reflowWasWidth: number;
+  private saveReflowScrollDebounced: DebounceReturnType<ChatBubbles['saveReflowScroll']>;
+  private appWindowUnsubs: (() => void)[] = [];
+
   private renderingMessages: Set<FullMid> = new Set();
   private setPeerCached: boolean;
   private attachPlaceholderOnRender: () => void;
@@ -662,6 +674,30 @@ export default class ChatBubbles {
     // this.chat.log.error('Bubbles construction');
 
     this.listenerSetter = new ListenerSetter();
+
+    // --- scroll preservation across viewport reflows (window/PiP-window resize, PiP pop-in/out) ---
+    this.saveReflowScrollDebounced = debounce(this.saveReflowScroll, 200, false, true);
+    // PiP pop-in/out: snapshot the scroll BEFORE the window flips (DOM still at the old size, nothing
+    // reflowed), then re-pin once the moved DOM has settled in the new window (rAF; two frames safe).
+    this.appWindowUnsubs.push(onBeforeAppWindowChange(this.saveReflowScroll));
+    this.appWindowUnsubs.push(onAppWindowChange(() => {
+      const win = getAppWindow();
+      win.requestAnimationFrame(() => win.requestAnimationFrame(() => {
+        this.restoreReflowScroll();
+        this.reflowWasWidth = this.scrollable?.container.offsetWidth;
+      }));
+    }));
+    // Window / PiP-window resize: mediaSizes fires on the active window's resize. Re-pin only when the
+    // bubbles container actually changed width — a width change is what rewraps them; pure-height
+    // changes (e.g. the keyboard) are already handled by the height-tracking ResizeObserver.
+    this.listenerSetter.add(mediaSizes)('resize', () => {
+      const width = this.scrollable?.container.offsetWidth;
+      if(!width) return;
+      if(this.reflowWasWidth !== undefined && width !== this.reflowWasWidth) {
+        this.restoreReflowScroll();
+      }
+      this.reflowWasWidth = width;
+    });
 
     this.constructBubbles();
 
@@ -1979,6 +2015,43 @@ export default class ChatBubbles {
     return scrollSaver;
   }
 
+  // Snapshot the scroll position (the top visible bubble + its offset from the container top) so it can
+  // be re-pinned after a reflow rewraps the bubbles. Container-relative on purpose — see reflowAnchor.
+  private saveReflowScroll = () => {
+    const scrollable = this.scrollable;
+    if(!scrollable) return;
+    this.reflowWasAtEnd = scrollable.isScrolledToEnd;
+    this.reflowAnchor = undefined;
+    if(this.reflowWasAtEnd) return; // bottom-stick needs no anchor
+    const container = scrollable.container;
+    const cTop = container.getBoundingClientRect().top;
+    const bubbles = container.querySelectorAll<HTMLElement>('.bubble:not(.is-date):not(.is-sponsored):not(.botforum-new-topic-bubble)');
+    for(const bubble of bubbles) {
+      const rect = bubble.getBoundingClientRect();
+      if(rect.bottom > cTop + 1) { // first bubble reaching into the viewport from the top
+        this.reflowAnchor = {element: bubble, offset: rect.top - cTop};
+        break;
+      }
+    }
+  };
+
+  private restoreReflowScroll = () => {
+    const scrollable = this.scrollable;
+    if(!scrollable) return;
+    if(this.reflowWasAtEnd) {
+      scrollable.setScrollPositionSilently(scrollable.scrollSize); // keep the chat pinned to the bottom
+      return;
+    }
+    const anchor = this.reflowAnchor;
+    if(!anchor?.element.isConnected) return;
+    const cTop = scrollable.container.getBoundingClientRect().top;
+    const currentOffset = anchor.element.getBoundingClientRect().top - cTop;
+    const delta = currentOffset - anchor.offset;
+    if(Math.abs(delta) > 0.5) {
+      scrollable.setScrollPositionSilently(scrollable.scrollPosition + delta);
+    }
+  };
+
   private unreadedObserverCallback = (entry: IntersectionObserverEntry) => {
     if(entry.isIntersecting) {
       const target = entry.target as HTMLElement;
@@ -2033,7 +2106,7 @@ export default class ChatBubbles {
 
     const updateAppActive = () => {
       // Foreground = tab visible and window focused.
-      this.readMetricsTracker.setAppActive(!document.hidden && document.hasFocus());
+      this.readMetricsTracker.setAppActive(!getAppWindow().document.hidden && getAppWindow().document.hasFocus());
     };
     updateAppActive();
 
@@ -3819,6 +3892,9 @@ export default class ChatBubbles {
     this.scrollable.onAdditionalScroll = this.onScroll;
     this.scrollable.onScrolledTop = () => this.loadMoreHistory(true);
     this.scrollable.onScrolledBottom = () => this.loadMoreHistory(false);
+    // Keep the reflow anchor fresh so a window/PiP-window resize re-pins the user's real scroll
+    // position. Dedicated listener (not via onScroll) so it fires reliably on every scroll.
+    this.listenerSetter.add(this.scrollable.container)('scroll', this.saveReflowScrollDebounced, {passive: true});
     // this.scrollable.attachSentinels(undefined, 300);
 
     if(IS_TOUCH_SUPPORTED && false) {
@@ -4500,6 +4576,8 @@ export default class ChatBubbles {
     this.destroyScrollable();
 
     this.listenerSetter.removeAll();
+    this.appWindowUnsubs.forEach((unsub) => unsub());
+    this.saveReflowScrollDebounced?.clearTimeout();
 
     this.lazyLoadQueue.clear();
     this.observer && this.observer.disconnect();
@@ -5403,6 +5481,9 @@ export default class ChatBubbles {
       });
 
       this.createResizeObserver();
+      // Baseline the container width now (the chat is laid out) so the very first window resize
+      // already detects the width change and re-pins scroll, instead of just setting the baseline.
+      this.reflowWasWidth = this.scrollable.container.offsetWidth || this.reflowWasWidth;
     };
   }
 

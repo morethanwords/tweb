@@ -1,5 +1,6 @@
 import animationIntersector from '@components/animationIntersector';
 import {MOUNT_CLASS_TO} from '@config/debug';
+import {bindActiveWindowListener, getAppWindow} from '@helpers/appWindow';
 import pause from '@helpers/schedulers/pause';
 import {logger, LogTypes} from '@lib/logger';
 import RLottiePlayer, {RLottieOptions} from '@lib/rlottie/rlottiePlayer';
@@ -126,9 +127,11 @@ export class LottieLoader {
     });
 
     if(SHOULD_RENDER_OFFSCREEN) {
-      // hidden-tab belt: SharedWorker timers are NOT tab-throttled - fully pause free-run clocks while hidden
-      document.addEventListener('visibilitychange', () => {
-        rlottieMessagePort.suspendAllTabPlayers(document.hidden);
+      // hidden-tab belt: SharedWorker timers are NOT tab-throttled - fully pause free-run clocks while
+      // hidden. Follow the active window: while popped out into a Document PiP window the PiP stays
+      // visible, so the players must keep running even though the tab we left is hidden.
+      bindActiveWindowListener((w) => w.document, 'visibilitychange', () => {
+        rlottieMessagePort.suspendAllTabPlayers(getAppWindow().document.hidden);
       });
     }
   }

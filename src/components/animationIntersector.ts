@@ -9,6 +9,7 @@ import idleController from '@helpers/idleController';
 import {fastRaf} from '@helpers/schedulers';
 import {Middleware} from '@helpers/middleware';
 import safePlay from '@helpers/dom/safePlay';
+import {getAppWindow, onAppWindowChange} from '@helpers/appWindow';
 
 export type AnimationItemGroup = '' | 'none' | 'chat' | 'lock' |
   'STICKERS-POPUP' | 'emoticons-dropdown' | 'STICKERS-SEARCH' | 'GIFS-SEARCH' |
@@ -41,6 +42,7 @@ export interface AnimationItemWrapper {
 
 export class AnimationIntersector {
   private observer: IntersectionObserver;
+  private onObserve: (entries: IntersectionObserverEntry[]) => void;
   private visible: Set<AnimationItem>;
 
   private overrideIdleGroups: Set<string>;
@@ -53,7 +55,7 @@ export class AnimationIntersector {
   private videosLocked: boolean;
 
   constructor() {
-    this.observer = new IntersectionObserver((entries) => {
+    this.onObserve = (entries) => {
       // if(rootScope.idle.isIDLE) return;
 
       for(const entry of entries) {
@@ -99,7 +101,9 @@ export class AnimationIntersector {
           break;
         }
       }
-    });
+    };
+
+    this.createObserver();
 
     this.visible = new Set();
 
@@ -112,9 +116,31 @@ export class AnimationIntersector {
     this.intersectionLockedGroups = {};
     this.videosLocked = false;
 
+    // An IntersectionObserver's implicit root is the viewport of the realm that constructed it. When
+    // the client pops into a Document PiP window the whole app DOM (incl. every observed sticker / gif
+    // / media-spoiler canvas) moves there, so a main-realm observer reports them all as off-screen and
+    // pauses them — most visibly, media spoilers (worker-rendered) freeze blank because they never get
+    // a `play`. Rebuild the observer against the active window and re-observe everything on every
+    // pop-in/out. When the app window never changes (no PiP) this never fires.
+    onAppWindowChange(() => {
+      this.observer.disconnect();
+      this.createObserver();
+      for(const group in this.byGroups) {
+        for(const item of this.byGroups[group as AnimationItemGroup]) {
+          this.observer.observe(item.el);
+        }
+      }
+    });
+
     idleController.addEventListener('change', (idle) => {
       this.checkAnimations2(idle);
     });
+  }
+
+  private createObserver() {
+    // Active window's constructor → its viewport is the observer's implicit root (see onAppWindowChange).
+    const IO = (getAppWindow() as Window & typeof globalThis).IntersectionObserver;
+    this.observer = new IO(this.onObserve);
   }
 
   public toggleMediaPause(paused: boolean) {

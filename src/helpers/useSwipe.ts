@@ -46,7 +46,7 @@ export default function swipe(element: HTMLElement, args: Accessor<SwipeDirectiv
     onStart?.(e);
 
     if(globalCursor) {
-      document.body.style.setProperty('cursor', globalCursor(), 'important');
+      element.ownerDocument.body.style.setProperty('cursor', globalCursor(), 'important');
       element.style.setProperty('cursor', globalCursor(), 'important');
     }
   }
@@ -79,7 +79,7 @@ export default function swipe(element: HTMLElement, args: Accessor<SwipeDirectiv
     const {onEnd, globalCursor} = args();
     onEnd?.(...diff, e);
     if(globalCursor) {
-      document.body.style.removeProperty('cursor');
+      element.ownerDocument.body.style.removeProperty('cursor');
       element.style.removeProperty('cursor');
     }
 

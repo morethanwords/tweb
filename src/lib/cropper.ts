@@ -30,11 +30,11 @@ function resizeableImage(originalImage: HTMLImageElement, canvas?: HTMLCanvasEle
     container.removeEventListener('touchstart', startMoving);
     container.removeEventListener('wheel', resizing);
 
-    document.removeEventListener('mouseup', endMoving);
-    document.removeEventListener('touchend', endMoving);
-    document.removeEventListener('mousemove', moving);
-    document.removeEventListener('touchmove', moving);
-    document.removeEventListener('keypress', keyHandler);
+    container.ownerDocument.removeEventListener('mouseup', endMoving);
+    container.ownerDocument.removeEventListener('touchend', endMoving);
+    container.ownerDocument.removeEventListener('mousemove', moving);
+    container.ownerDocument.removeEventListener('touchmove', moving);
+    container.ownerDocument.removeEventListener('keypress', keyHandler);
 
     cropComponent.remove();
     container.remove();
@@ -46,7 +46,7 @@ function resizeableImage(originalImage: HTMLImageElement, canvas?: HTMLCanvasEle
     container.addEventListener('touchstart', startMoving, false);
     container.addEventListener('wheel', resizing, false);
 
-    document.addEventListener('keypress', keyHandler, false);
+    container.ownerDocument.addEventListener('keypress', keyHandler, false);
     // document.querySelector('.btn-crop').addEventListener('click', openCropCanvasImg);
   }
 
@@ -183,19 +183,19 @@ function resizeableImage(originalImage: HTMLImageElement, canvas?: HTMLCanvasEle
 
     saveEventState(e);
 
-    document.addEventListener('mousemove', moving);
-    document.addEventListener('touchmove', moving);
-    document.addEventListener('mouseup', endMoving);
-    document.addEventListener('touchend', endMoving);
+    container.ownerDocument.addEventListener('mousemove', moving);
+    container.ownerDocument.addEventListener('touchmove', moving);
+    container.ownerDocument.addEventListener('mouseup', endMoving);
+    container.ownerDocument.addEventListener('touchend', endMoving);
   }
 
   function endMoving(e: MouseEvent | TouchEvent) {
     e.preventDefault();
 
-    document.removeEventListener('mouseup', endMoving);
-    document.removeEventListener('touchend', endMoving);
-    document.removeEventListener('mousemove', moving);
-    document.removeEventListener('touchmove', moving);
+    container.ownerDocument.removeEventListener('mouseup', endMoving);
+    container.ownerDocument.removeEventListener('touchend', endMoving);
+    container.ownerDocument.removeEventListener('mousemove', moving);
+    container.ownerDocument.removeEventListener('touchmove', moving);
   }
 
   function moving(e: any) {

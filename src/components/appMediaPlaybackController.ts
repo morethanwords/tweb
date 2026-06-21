@@ -4,6 +4,7 @@ import rootScope from '@lib/rootScope';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import {IS_APPLE, IS_SAFARI} from '@environment/userAgent';
 import {MOUNT_CLASS_TO} from '@config/debug';
+import {getAppWindow} from '@helpers/appWindow';
 import simulateEvent from '@helpers/dom/dispatchEvent';
 import {Document, DocumentAttribute, Message, PhotoSize} from '@layer';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
@@ -597,7 +598,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
   }
 
   private async setNewMediadata(message: Message.message, playingMedia = this.playingMedia) {
-    if(document.pictureInPictureElement) {
+    if(getAppWindow().document.pictureInPictureElement) {
       return;
     }
 

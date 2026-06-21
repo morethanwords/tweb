@@ -75,7 +75,7 @@ export function useCollapsable(props: {
 
   const onMove = (delta: number, e?: WheelEvent | TouchEvent) => {
     const scrollTop = props.scrollable().scrollTop;
-    const isWheel = e instanceof WheelEvent;
+    const isWheel = !!e && 'deltaY' in e; // cross-realm-safe `instanceof WheelEvent` (Document PiP window)
     if(isWheel || true) {
       if(scrollTop && progress() !== STATE_FOLDED) {
         setProgress(STATE_FOLDED);

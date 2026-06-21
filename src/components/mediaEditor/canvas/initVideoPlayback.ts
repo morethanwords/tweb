@@ -53,11 +53,12 @@ export default function initVideoPlayback({gl, drawAdjustedImage}: Args) {
       }
     };
 
-    document.addEventListener('keydown', listener);
+    // The video's own document so Space-to-play/pause works in a Document PiP window too.
+    video.ownerDocument.addEventListener('keydown', listener);
 
     onCleanup(() => {
       editorState.isPlaying = false;
-      document.removeEventListener('keydown', listener);
+      video.ownerDocument.removeEventListener('keydown', listener);
     });
   });
 

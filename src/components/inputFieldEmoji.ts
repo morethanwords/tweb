@@ -7,6 +7,7 @@ import createEmojiDropdownButton from '@components/emojiDropdownButton';
 import classNames from '@helpers/string/classNames';
 import styles from '@components/inputFieldEmoji.module.scss';
 import cloneDOMRect from '@helpers/dom/cloneDOMRect';
+import {getAppWindow, getOverlayRoot} from '@helpers/appWindow';
 
 export class InputFieldEmoji extends InputField {
   private richOriginalValue: TextWithEntities;
@@ -24,13 +25,13 @@ export class InputFieldEmoji extends InputField {
         styles.EmojiButton,
         this.options.withLinebreaks && styles.multiline
       ),
-      customParentElement: document.body,
+      customParentElement: getOverlayRoot,
       getOpenPosition: () => {
         if(this.options.withLinebreaks) {
           const rect = this.input.getBoundingClientRect();
           const cloned = cloneDOMRect(rect);
           cloned.top += rect.height;
-          if(cloned.top + 420 > window.innerHeight) {
+          if(cloned.top + 420 > getAppWindow().innerHeight) {
             cloned.top = rect.top - 428;
           }
 

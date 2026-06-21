@@ -28,6 +28,7 @@ import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import useIsNightTheme from '@hooks/useIsNightTheme';
 import customProperties from '@helpers/dom/customProperties';
 import findUpClassName from '@helpers/dom/findUpClassName';
+import {getOverlayRoot} from '@helpers/appWindow';
 import {changeTitleEmojiColor} from '@components/peerTitle';
 import ProgressivePreloader from '@components/preloader';
 import {avatarUploads} from '@stores/avatarUpload';
@@ -217,7 +218,7 @@ export default class PeerProfileAvatars {
 
     const cancelNextClick = () => {
       cancel = true;
-      document.body.addEventListener(IS_TOUCH_SUPPORTED ? 'touchend' : 'click', (e) => {
+      getOverlayRoot().addEventListener(IS_TOUCH_SUPPORTED ? 'touchend' : 'click', (e) => {
         cancel = false;
       }, {once: true});
     };

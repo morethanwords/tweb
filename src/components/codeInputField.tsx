@@ -105,7 +105,7 @@ export function CodeInputField(props: {
   const onSelectionChange = (inputType?: string) => {
     if(
       !isFocused ||
-      document.activeElement !== inputRef ||
+      inputRef.ownerDocument.activeElement !== inputRef ||
       inputRef.selectionStart === null ||
       inputRef.selectionEnd === null
     ) {

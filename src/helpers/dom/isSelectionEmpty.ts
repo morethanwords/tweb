@@ -1,4 +1,6 @@
-export default function isSelectionEmpty(selection = window.getSelection()) {
+import {getAppWindow} from '@helpers/appWindow';
+
+export default function isSelectionEmpty(selection = getAppWindow().getSelection()) {
   if(!selection?.rangeCount) {
     return true;
   }

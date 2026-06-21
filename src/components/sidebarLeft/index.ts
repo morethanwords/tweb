@@ -43,6 +43,8 @@ import updateColumnWidths, {setOpenTabsLeftSidebar} from '@helpers/updateColumnW
 import installColumnResize from '@helpers/installColumnResize';
 import {doubleRaf, fastRaf} from '@helpers/schedulers';
 import {getInstallPrompt} from '@helpers/dom/installPrompt';
+import DOCUMENT_PICTURE_IN_PICTURE_SUPPORTED from '@environment/documentPictureInPictureSupport';
+import openClientPip, {closeClientPip, isClientPipOpen} from '@components/clientPip';
 import liteMode from '@helpers/liteMode';
 import {AppPowerSavingTab} from '@components/solidJsTabs/tabs';
 import {AppMyStoriesTab} from '@components/solidJsTabs/tabs';
@@ -933,6 +935,22 @@ export class AppSidebarLeft extends SidebarSlider {
         installPrompt?.();
       },
       verify: () => !!getInstallPrompt()
+    }, {
+      icon: 'pip',
+      // The More submenu is rebuilt on every open (createMoreSubmenu runs per open), so reading the live
+      // pip state here keeps the label in sync: while popped out the entry flips to "Exit". The whole app
+      // — including this menu — lives in the pip window when active, so that's where the user sees it.
+      text: isClientPipOpen() ? 'ClientPip.Exit' : 'PictureInPicture',
+      onClick: () => {
+        // The click is the user gesture `requestWindow` needs; closing the menu doesn't consume it.
+        if(isClientPipOpen()) {
+          closeClientPip();
+        } else {
+          openClientPip();
+        }
+      },
+      // Document Picture-in-Picture is Chromium-only — gate the entry on actual support.
+      verify: () => DOCUMENT_PICTURE_IN_PICTURE_SUPPORTED
     }];
 
 

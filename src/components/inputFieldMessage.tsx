@@ -16,6 +16,7 @@ import Button from '@components/buttonTsx';
 import Animated from '@helpers/solid/animations';
 import {getTransition} from '@config/transitions';
 import liteMode from '@helpers/liteMode';
+import {getOverlayRoot} from '@helpers/appWindow';
 
 type InputFieldMessageProps = {
   placeholder?: LangPackKey,
@@ -156,7 +157,7 @@ const InputFieldMessage = (props: InputFieldMessageProps) => {
     inputField,
     class: additionalClass + '-emoji',
     animationGroup: props.animationGroup,
-    customParentElement: document.body,
+    customParentElement: getOverlayRoot,
     onEmoticonsDropdown: (dropdown) => {
       emoticonsDropdown = dropdown;
       emoticonsDropdown.getElement().style.transformOrigin = '0 100%';

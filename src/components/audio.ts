@@ -310,7 +310,7 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
 
       function scrub(e: MouseEvent | TouchEvent) {
         let offsetX: number;
-        if(e instanceof MouseEvent) {
+        if(!('touches' in e)) { // cross-realm-safe mouse check (works in the Document PiP window)
           offsetX = e.offsetX;
         } else { // touch
           const rect = (e.target as HTMLElement).getBoundingClientRect();

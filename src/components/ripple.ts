@@ -54,7 +54,7 @@ function _ripple(
 
     // const auto = elem.classList.contains('row-sortable') && !elem.classList.contains('cant-sort');
     const auto = false;
-    const duration = (auto ? .3 : +window.getComputedStyle(r).getPropertyValue('--ripple-duration').replace('s', '')) * 1000;
+    const duration = (auto ? .3 : +(r.ownerDocument.defaultView || window).getComputedStyle(r).getPropertyValue('--ripple-duration').replace('s', '')) * 1000;
     // console.log('ripple duration', duration);
 
     const _handler = handler = lastHandler = () => {
@@ -83,8 +83,11 @@ function _ripple(
       }
 
       if(!IS_TOUCH_SUPPORTED) {
-        window.removeEventListener('contextmenu', handler);
-        window.removeEventListener('mousemove', handler);
+        // Same window the listeners were attached to (the element's own — the Document PiP window
+        // when the client is popped out), not the main `window`.
+        const win = r.ownerDocument.defaultView || window;
+        win.removeEventListener('contextmenu', handler);
+        win.removeEventListener('mousemove', handler);
       }
 
       handler = null;
@@ -232,8 +235,11 @@ function _ripple(
 
       const {clientX, clientY} = e;
       drawRipple(clientX, clientY);
-      window.addEventListener('mouseup', handler, {once: true, passive: true});
-      window.addEventListener('contextmenu', handler, {once: true, passive: true});
+      // Attach the ripple-end listeners to the element's OWN window — in a Document PiP window the
+      // mouseup fires there, not on the main `window`, so binding to main left the ripple stuck.
+      const win = attachListenerTo.ownerDocument.defaultView || window;
+      win.addEventListener('mouseup', handler, {once: true, passive: true});
+      win.addEventListener('contextmenu', handler, {once: true, passive: true});
     };
 
     attachListenerTo.addEventListener('mousedown', onMouseDown, {passive: true});

@@ -59,6 +59,7 @@ import {BOT_START_PARAM, GENERAL_TOPIC_ID, HIDDEN_PEER_ID, NULL_PEER_ID, REPLIES
 import setCaretAt from '@helpers/dom/setCaretAt';
 import DropdownHover from '@helpers/dropdownHover';
 import {positionMenuTrigger} from '@helpers/positionMenu';
+import {getAppWindow, getOverlayRoot} from '@helpers/appWindow';
 import findUpTag from '@helpers/dom/findUpTag';
 import toggleDisability from '@helpers/dom/toggleDisability';
 import callbackify from '@helpers/callbackify';
@@ -2125,7 +2126,9 @@ export default class ChatInput {
       this.forwardElements?.container,
       this.webPageElements?.container
     ].forEach((menu) => {
-      if(menu?.parentElement === document.body) menu.remove();
+      // matches('body') instead of `=== document.body` so a menu floated into the Document PiP
+      // window's body (getOverlayRoot) is still torn down — its parent is the PiP body, not the tab's.
+      if(menu?.parentElement?.matches('body')) menu.remove();
     });
   }
 
@@ -2878,7 +2881,7 @@ export default class ChatInput {
     if(!isSendShortcutPressed(e)) return void focusInput(this.messageInput, e);
 
     this.sendMessage();
-    document.addEventListener('keyup', () => {
+    getAppWindow().document.addEventListener('keyup', () => {
       focusInput(this.messageInput);
     }, {once: true});
   }
@@ -4721,7 +4724,7 @@ export default class ChatInput {
 
     hover.addEventListener('open', () => {
       if(!menu.parentElement) {
-        document.body.append(menu);
+        getOverlayRoot().append(menu);
       }
       this.positionReplyLineMenu(menu);
     });
@@ -4741,7 +4744,7 @@ export default class ChatInput {
 
   private openReplyLineMenuTouch(menu: HTMLElement) {
     if(!menu.parentElement) {
-      document.body.append(menu);
+      getOverlayRoot().append(menu);
     }
     this.positionReplyLineMenu(menu);
     contextMenuController.openBtnMenu(menu, () => {

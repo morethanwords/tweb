@@ -1,3 +1,4 @@
+import {getOverlayRoot} from '@helpers/appWindow';
 import createElementFromMarkup from '@helpers/createElementFromMarkup';
 import {GrabEvent} from '@helpers/dom/attachGrabListeners';
 import safePlay from '@helpers/dom/safePlay';
@@ -278,7 +279,7 @@ export default class MediaProgressLine extends RangeSelector {
       </svg>
     `);
 
-    document.body.append(this.clipPathSvg);
+    getOverlayRoot().append(this.clipPathSvg);
 
     this.filledContainer.style.clipPath = `url(#${clipPathId})`;
   }

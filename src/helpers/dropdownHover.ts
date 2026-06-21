@@ -1,4 +1,5 @@
 import {attachClickEvent} from '@helpers/dom/clickEvent';
+import {getAppWindow} from '@helpers/appWindow';
 import findUpAsChild from '@helpers/dom/findUpAsChild';
 import EventListenerBase from '@helpers/eventListenerBase';
 import ListenerSetter from '@helpers/listenerSetter';
@@ -87,16 +88,20 @@ export default class DropdownHover extends EventListenerBase<{
     if(ignore && !this.ignoreMouseOut.size) {
       button && this.ignoreButtons.add(button);
       setTimeout(() => {
+        // Click-outside-to-close on the active window — the dropdown opens in whichever window the app
+        // is in (the tab, or the Document PiP window), so a main-`window` listener never sees the
+        // outside click there and the panel won't dismiss. Same `w` for add + detach so they match.
+        const w = getAppWindow();
         if(this.suppressOutClick) {
           const options: AddEventListenerOptions = {capture: true};
-          window.addEventListener('mousedown', this.onMouseDownOut, options);
-          window.addEventListener('click', this.onClickOut, options);
+          w.addEventListener('mousedown', this.onMouseDownOut, options);
+          w.addEventListener('click', this.onClickOut, options);
           this.detachClickEvent = () => {
-            window.removeEventListener('mousedown', this.onMouseDownOut, options);
-            window.removeEventListener('click', this.onClickOut, options);
+            w.removeEventListener('mousedown', this.onMouseDownOut, options);
+            w.removeEventListener('click', this.onClickOut, options);
           };
         } else {
-          this.detachClickEvent = attachClickEvent(window, this.onClickOut, {capture: true});
+          this.detachClickEvent = attachClickEvent(w, this.onClickOut, {capture: true});
         }
       }, 0);
     }

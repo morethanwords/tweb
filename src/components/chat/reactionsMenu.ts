@@ -8,6 +8,7 @@ import deferredPromise from '@helpers/cancellablePromise';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import findUpClassName from '@helpers/dom/findUpClassName';
+import {getOverlayRoot} from '@helpers/appWindow';
 import ListenerSetter from '@helpers/listenerSetter';
 import liteMode from '@helpers/liteMode';
 import {Middleware, getMiddleware} from '@helpers/middleware';
@@ -447,7 +448,10 @@ export class ChatReactionsMenu {
 
     const emoticonsDropdown = new EmoticonsDropdown({
       tabsToRender: [emojiTab],
-      customParentElement: document.body,
+      // Mount into the active app window's body (a function so it resolves lazily at open time):
+      // while the client is popped into a Document PiP window the reactions menu lives there, so a
+      // hardcoded main-`document.body` would render this emoji picker into the now-background tab.
+      customParentElement: getOverlayRoot,
       getOpenPosition: () => this.getOpenPosition(!this.noPacks)
     });
 

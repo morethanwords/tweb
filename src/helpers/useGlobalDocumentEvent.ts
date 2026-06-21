@@ -1,10 +1,12 @@
 import {onCleanup} from 'solid-js';
+import {bindActiveWindowListener} from '@helpers/appWindow';
 
 type PossibleEvent = DocumentEventMap[keyof DocumentEventMap];
 
 type EventsMapValue = {
   callbacks: Array<(e: PossibleEvent) => void>;
   listener: (e: PossibleEvent) => void;
+  dispose?: () => void;
 };
 
 const eventsMap = new Map<keyof DocumentEventMap, EventsMapValue>;
@@ -19,7 +21,9 @@ export function registerGlobalDocumentEvent<Key extends keyof DocumentEventMap>(
 
   if(!eventsMap.has(eventName)) {
     eventsMap.set(eventName, value);
-    document.addEventListener(eventName, value.listener);
+    // Re-bind to the active window's document on every PiP enter/exit so the swipe directive
+    // keeps receiving pointer/touch events when the client is popped into a Document PiP window.
+    value.dispose = bindActiveWindowListener((w) => w.document, eventName, value.listener);
   }
 
   value.callbacks.push(callback as (e: PossibleEvent) => void);
@@ -30,7 +34,7 @@ export function registerGlobalDocumentEvent<Key extends keyof DocumentEventMap>(
       if(value.callbacks.length) return;
 
       eventsMap.delete(eventName);
-      document.removeEventListener(eventName, value.listener);
+      value.dispose?.();
     }
   }
 }

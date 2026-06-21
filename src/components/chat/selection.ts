@@ -17,6 +17,7 @@ import {i18n, _i18n} from '@lib/langPack';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
 import cancelEvent from '@helpers/dom/cancelEvent';
+import {getAppWindow} from '@helpers/appWindow';
 import cancelSelection from '@helpers/dom/cancelSelection';
 import getSelectedText from '@helpers/dom/getSelectedText';
 import replaceContent from '@helpers/dom/replaceContent';
@@ -165,6 +166,12 @@ export class AppSelection extends EventListenerBase<{
       return;
     }
 
+    // The drag-end `mouseup` and the post-drag click-swallow must land on whichever window the app is
+    // in (the tab, or the Document PiP window) — otherwise a drag-select started in the PiP never ends
+    // (mouseup fires on the PiP window, not the main document) and the selection sticks.
+    const activeWindow = getAppWindow();
+    const activeDocument = activeWindow.document;
+
     const seen: AppSelection['selectedMids'] = new Map();
     let selecting: boolean;
 
@@ -267,7 +274,7 @@ export class AppSelection extends EventListenerBase<{
 
       if(this.verifyMouseMoveTarget && !this.verifyMouseMoveTarget(e, element, selecting)) {
         this.listenerSetter.removeManual(this.listenElement, 'mousemove', onMouseMove);
-        this.listenerSetter.removeManual(document, 'mouseup', onMouseUp, documentListenerOptions);
+        this.listenerSetter.removeManual(activeDocument, 'mouseup', onMouseUp, documentListenerOptions);
         return;
       }
 
@@ -278,7 +285,7 @@ export class AppSelection extends EventListenerBase<{
       document.body.classList.remove('no-select');
 
       if(seen.size) {
-        attachClickEvent(window, cancelEvent, {capture: true, once: true, passive: false});
+        attachClickEvent(activeWindow, cancelEvent, {capture: true, once: true, passive: false});
       }
 
       this.listenerSetter.removeManual(this.listenElement, 'mousemove', onMouseMove);
@@ -290,7 +297,7 @@ export class AppSelection extends EventListenerBase<{
 
     const documentListenerOptions = {once: true};
     this.listenerSetter.add(this.listenElement)('mousemove', onMouseMove);
-    this.listenerSetter.add(document)('mouseup', onMouseUp, documentListenerOptions);
+    this.listenerSetter.add(activeDocument)('mouseup', onMouseUp, documentListenerOptions);
   };
 
   private getElementsBetween = (first: HTMLElement, last: HTMLElement) => {

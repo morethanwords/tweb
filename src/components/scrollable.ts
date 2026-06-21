@@ -294,12 +294,15 @@ export class ScrollableBase {
     this.startScrollPosition = this.scrollPosition;
     this.thumb.classList.add('is-focused');
 
-    window.addEventListener('mousemove', this.onMouseMove);
-    window.addEventListener('mouseup', this.onMouseUp, {once: true});
+    // Track the drag on the thumb's own window (the Document PiP window while popped out), not the
+    // main `window` — else dragging the scrollbar in the PiP never gets a mousemove/up and sticks.
+    const w = this.thumb.ownerDocument.defaultView || window;
+    w.addEventListener('mousemove', this.onMouseMove);
+    w.addEventListener('mouseup', this.onMouseUp, {once: true});
   };
 
   protected onMouseUp = (e: MouseEvent) => {
-    window.removeEventListener('mousemove', this.onMouseMove);
+    (this.thumb.ownerDocument.defaultView || window).removeEventListener('mousemove', this.onMouseMove);
     this.thumb.classList.remove('is-focused');
   };
 

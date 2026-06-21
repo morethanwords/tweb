@@ -1,4 +1,5 @@
 import {render} from 'solid-js/web';
+import {getOverlayRoot} from '@helpers/appWindow';
 
 import appNavigationController from '@components/appNavigationController';
 import {MOUNT_CLASS_TO} from '@config/debug';
@@ -106,7 +107,7 @@ export default class PasscodeLockScreenController extends StaticUtilityClass {
     if(shouldAnimateIn) {
       this.mountedElement.classList.add('passcode-lock-screen--hidden');
     }
-    document.body.append(this.mountedElement);
+    getOverlayRoot().append(this.mountedElement);
 
     const {default: PasscodeLockScreen} = await importPasscodeLockScreen();
 

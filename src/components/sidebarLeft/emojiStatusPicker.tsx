@@ -6,6 +6,7 @@ import {AppManagers} from '@lib/managers';
 import {EmoticonsDropdown} from '@components/emoticonsDropdown';
 import EmojiTab from '@components/emoticonsDropdown/tabs/emoji';
 import Icon, {getIconContent} from '@components/icon';
+import {getOverlayRoot} from '@helpers/appWindow';
 
 const openPickers = new WeakMap<HTMLElement, EmoticonsDropdown>();
 
@@ -74,7 +75,7 @@ export function openEmojiStatusPicker(options: {
 
   const emoticonsDropdown = new EmoticonsDropdown({
     tabsToRender: [emojiTab],
-    customParentElement: document.body,
+    customParentElement: getOverlayRoot,
     suppressOutClick: true,
     getOpenPosition: () => {
       const rect = anchorElement.getBoundingClientRect();

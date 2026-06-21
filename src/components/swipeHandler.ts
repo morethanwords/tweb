@@ -44,8 +44,10 @@ function getTouchCenter(a: Touch, b: Touch) {
   };
 }
 
-const attachGlobalListenerTo = document;
-
+// The swipe move/end track on the swiped element's OWN document (`this.element.ownerDocument`) rather
+// than a fixed main-`document` ref: while the client is popped into a Document PiP window the element
+// (stories viewer, media-viewer pan, reorder, …) lives there, so a main-document listener never sees
+// the gesture and the swipe sticks. Equals `document` when not popped out, so behaviour is unchanged.
 let RESET_GLOBAL = false;
 contextMenuController.addEventListener('toggle', (visible) => {
   RESET_GLOBAL = visible;
@@ -154,7 +156,7 @@ export default class SwipeHandler {
     if(!IS_TOUCH_SUPPORTED) {
       // @ts-ignore
       this.listenerSetter.add(this.element)('mousedown', this.handleStart, this.listenerOptions);
-      this.listenerSetter.add(attachGlobalListenerTo)('mouseup', this.reset);
+      this.listenerSetter.add(this.element.ownerDocument)('mouseup', this.reset);
 
       if(this.onZoom || this.onDoubleClick) {
         this.listenerSetter.add(this.element)('wheel', this.handleWheel, WHEEL_OPTIONS);
@@ -182,7 +184,7 @@ export default class SwipeHandler {
         });
       }
 
-      this.listenerSetter.add(attachGlobalListenerTo)('touchend', this.reset);
+      this.listenerSetter.add(this.element.ownerDocument)('touchend', this.reset);
     }
   }
 
@@ -239,9 +241,9 @@ export default class SwipeHandler {
     } */
 
     if(IS_TOUCH_SUPPORTED) {
-      this.listenerSetter.removeManual(attachGlobalListenerTo, 'touchmove', this.handleMove, TOUCH_MOVE_OPTIONS);
+      this.listenerSetter.removeManual(this.element.ownerDocument, 'touchmove', this.handleMove, TOUCH_MOVE_OPTIONS);
     } else {
-      this.listenerSetter.removeManual(attachGlobalListenerTo, 'mousemove', this.handleMove, MOUSE_MOVE_OPTIONS);
+      this.listenerSetter.removeManual(this.element.ownerDocument, 'mousemove', this.handleMove, MOUSE_MOVE_OPTIONS);
       this.setCursorTo.style.cursor = '';
     }
 
@@ -324,7 +326,7 @@ export default class SwipeHandler {
       const options = {...MOUSE_MOVE_OPTIONS, once: true};
       const deferred = deferredPromise<void>();
       const cb = () => deferred.resolve();
-      const listener = this.listenerSetter.add(attachGlobalListenerTo)('mousemove', cb, options) as any as Listener;
+      const listener = this.listenerSetter.add(this.element.ownerDocument)('mousemove', cb, options) as any as Listener;
 
       await Promise.race([
         pause(300),
@@ -345,10 +347,10 @@ export default class SwipeHandler {
 
     if(IS_TOUCH_SUPPORTED) {
       // @ts-ignore
-      this.listenerSetter.add(attachGlobalListenerTo)('touchmove', this.handleMove, TOUCH_MOVE_OPTIONS);
+      this.listenerSetter.add(this.element.ownerDocument)('touchmove', this.handleMove, TOUCH_MOVE_OPTIONS);
     } else {
       // @ts-ignore
-      this.listenerSetter.add(attachGlobalListenerTo)('mousemove', this.handleMove, MOUSE_MOVE_OPTIONS);
+      this.listenerSetter.add(this.element.ownerDocument)('mousemove', this.handleMove, MOUSE_MOVE_OPTIONS);
     }
 
     if(this.onStart) {

@@ -38,6 +38,7 @@ import {useUser} from '@stores/peers';
 import {Game, Message, Page, User} from '@layer';
 import TelegramWebView from '@components/telegramWebView';
 import showForwardPopup from '@components/popups/forward';
+import {getOverlayRoot} from '@helpers/appWindow';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import internalLinkProcessor from '@lib/internalLinkProcessor';
 import {INTERNAL_LINK_TYPE} from '@lib/internalLink';
@@ -183,9 +184,9 @@ function BrowserHeader(props: {
       return;
     }
 
-    if(e instanceof MouseEvent) e.preventDefault();
+    if(!('touches' in e)) e.preventDefault(); // cross-realm-safe mouse check (Document PiP window)
     // smth
-    if(e instanceof MouseEvent) e.cancelBubble = true;
+    if(!('touches' in e)) e.cancelBubble = true;
 
     const page = state.pages.find((page) => tabMap.get(page.id) === target);
     if(!page?.menuButtons) {
@@ -204,7 +205,7 @@ function BrowserHeader(props: {
     });
     element.classList.add('contextmenu');
 
-    document.body.append(element);
+    getOverlayRoot().append(element);
 
     positionMenu(e, element);
     contextMenuController.openBtnMenu(element, () => {
