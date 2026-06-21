@@ -239,7 +239,10 @@ export class ChatReactionsMenu {
       }
 
       this.reactions = peerAvailableReactions.reactions;
-      this.noPacks = this.noSearch = peerAvailableReactions.type !== 'chatReactionsAll';
+      // At reactions_uniq_max the message can take no new distinct reaction, so hide the
+      // custom-emoji search/packs (like tdesktop/iOS/Android) — the grid is already narrowed
+      // to the present kinds; only piling onto those stays possible.
+      this.noPacks = this.noSearch = peerAvailableReactions.type !== 'chatReactionsAll' || !!peerAvailableReactions.atUniqCap;
       return this.renderReactions(peerAvailableReactions, availableReactions);
     });
 
