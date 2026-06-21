@@ -3638,6 +3638,8 @@ const lang = {
   'FileSize.KB': '%@ KB',
   'FileSize.MB': '%@ MB',
   'FileSize.GB': '%@ GB',
+  'FileSize.TB': '%@ TB',
+  'FileSize.PB': '%@ PB',
   'InstalledStickers.LoopAnimated': 'Loop Animated Stickers',
   'InviteLink.JoinedNew': {
     'other_value': '%d joined'
