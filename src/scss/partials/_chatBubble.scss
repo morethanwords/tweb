@@ -2687,6 +2687,13 @@
     float: unset;
   }
 
+  &-background-canvas {
+    position: absolute;
+    top: 0;
+    inset-inline-end: 0;
+    pointer-events: none;
+  }
+
   .audio-transcribed-text {
     margin-bottom: 0;
     order: 4;

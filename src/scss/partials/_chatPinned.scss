@@ -232,9 +232,9 @@
 
   &-background-canvas {
     position: absolute;
-    top: -6px;
-    bottom: -6px;
-    inset-inline-end: 9px;
+    top: 0;
+    inset-inline-end: 0;
+    pointer-events: none;
   }
 
   &.quote-like-icon &-title {

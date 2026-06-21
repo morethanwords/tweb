@@ -166,6 +166,7 @@ import wrapGeo from '@components/wrappers/geo';
 import safePlay from '@helpers/dom/safePlay';
 import flatten from '@helpers/array/flatten';
 import WebPageBox from '@components/wrappers/webPage';
+import wrapPeerColorPattern from '@components/wrappers/peerColorPattern';
 import showTooltip from '@components/tooltip';
 import wrapTextWithEntities from '@lib/richTextProcessor/wrapTextWithEntities';
 import clearfix from '@helpers/dom/clearfix';
@@ -7872,6 +7873,18 @@ export default class ChatBubbles {
                   } else timeSpan.before(box);
                 } else {
                   messageDiv.append(box);
+                }
+
+                // * peer-color background-emoji pattern behind the box (like replies/quotes).
+                // out-messages render with the out palette (no index pattern); sponsored carry their
+                // own color override that isn't on the cached peer, so skip them.
+                if(!isOut && !isSponsored) {
+                  wrapPeerColorPattern({
+                    peerId: (message as Message.message).fwdFromId || message.fromId,
+                    container: box,
+                    middleware,
+                    canvasClassName: 'webpage-background-canvas'
+                  });
                 }
               },
               clickable: true
