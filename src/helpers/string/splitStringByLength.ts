@@ -1,48 +1,45 @@
 export default function splitStringByLength(str: string, maxLength: number) {
   if(str.length <= maxLength) return [str];
-  let length = 0, lastSliceStartIndex = 0, arrayIndex = 0;
+
   const delimiter = ' ';// '\n';
   const out: string[] = [];
+  let current = '';
 
-  const cut = (end?: number) => {
-    let part = str.slice(lastSliceStartIndex, end);
-    const _arrayIndex = arrayIndex++;
-    if(part.length > maxLength) {
-      const overflowPart = part.slice(maxLength);
-      const splitted = splitStringByLength(overflowPart, maxLength);
-      splitted.forEach((part) => {
-        out[arrayIndex++] = part;
-      });
-
-      part = part.slice(0, maxLength);
+  const flush = () => {
+    if(current.length) {
+      out.push(current);
+      current = '';
     }
-
-    lastSliceStartIndex = end;
-    length = 0;
-    out[_arrayIndex] = (out[_arrayIndex] || '') + part;
   };
 
+  // each token keeps its trailing delimiter so the original string is reconstructed losslessly
   let lastIndex = 0;
   do {
     let index = str.indexOf(delimiter, lastIndex);
-    if(index === -1) {
-      if(lastSliceStartIndex < str.length) {
-        cut();
-      }
+    const isLast = index === -1;
+    if(isLast) index = str.length;
+    else index += delimiter.length;
 
-      break;
-    }
-
-    index += delimiter.length;
-
-    const partLength = index - lastIndex;
-    if((length + partLength) > maxLength) {
-      cut(lastSliceStartIndex + length);
-    }
-
+    let token = str.slice(lastIndex, index);
     lastIndex = index;
-    length += partLength;
-  } while(true);
+
+    // a single token longer than maxLength must be hard-cut into maxLength-sized pieces
+    if(token.length > maxLength) {
+      flush();
+      while(token.length > maxLength) {
+        out.push(token.slice(0, maxLength));
+        token = token.slice(maxLength);
+      }
+    }
+
+    if((current.length + token.length) > maxLength) {
+      flush();
+    }
+
+    current += token;
+  } while(lastIndex < str.length);
+
+  flush();
 
   return out;
 }
