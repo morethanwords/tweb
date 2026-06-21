@@ -624,6 +624,10 @@ export default class ChatBubbles {
   private setPeerCached: boolean;
   private attachPlaceholderOnRender: () => void;
 
+  // viewer's own country calling code (e.g. '7'), used to format a shared contact's
+  // phone that is stored without its country code (bugs.telegram.org #30681)
+  private myCountryCode: string;
+
   private bubblesToEject: Set<HTMLElement> = new Set();
   private bubblesToReplace: Map<HTMLElement, HTMLElement> = new Map(); // TO -> FROM
   private updatePlaceholderPosition: () => void;
@@ -705,6 +709,12 @@ export default class ChatBubbles {
       }
       this.reflowWasWidth = width;
     });
+
+    // cache the viewer's own country code (from the warm main-thread user cache), to
+    // format shared-contact phones that lack their country code without misreading the
+    // leading digits (#30681); the self user is always cached by chat-construction time
+    const myPhone = apiManagerProxy.getUser(rootScope.myId.toUserId())?.phone;
+    this.myCountryCode = myPhone ? formatPhoneNumber(myPhone).code?.country_code : undefined;
 
     this.constructBubbles();
 
@@ -8281,7 +8291,14 @@ export default class ChatBubbles {
 
           const contactNumberDiv = document.createElement('div');
           contactNumberDiv.className = 'contact-number';
-          contactNumberDiv.textContent = contact.phone_number ? '+' + formatPhoneNumber(contact.phone_number).formatted : 'Unknown phone number';
+          let contactNumberText = 'Unknown phone number';
+          if(contact.phone_number) {
+            // group the number under the viewer's country when it carries no explicit
+            // country code, prefixing '+' only when a country code is actually present
+            const {formatted, code} = formatPhoneNumber(contact.phone_number, {defaultCountryCode: this.myCountryCode});
+            contactNumberText = (code ? '+' : '') + formatted;
+          }
+          contactNumberDiv.textContent = contactNumberText;
 
           contactDiv.append(contactDetails);
           contactDetails.append(contactNameDiv, contactNumberDiv);
