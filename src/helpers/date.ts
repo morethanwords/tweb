@@ -62,7 +62,8 @@ export const getWeekNumber = (date: Date) => {
   const dayNum = d.getUTCDay() || 7;
   d.setUTCDate(d.getUTCDate() + 4 - dayNum);
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return Math.ceil((((d.getTime() - yearStart.getTime()) / ONE_DAY) + 1) / 7);
+  // getTime() deltas are in milliseconds, so divide by ms-per-day (ONE_DAY is in seconds)
+  return Math.ceil((((d.getTime() - yearStart.getTime()) / (ONE_DAY * 1000)) + 1) / 7);
 };
 
 
