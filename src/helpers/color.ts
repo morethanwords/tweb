@@ -291,7 +291,7 @@ export function getColorsFromWallPaper(wallPaper: WallPaper) {
 export function rgbaToRgb(rgba: ColorRgba, bg: ColorRgb): ColorRgb {
   const a = rgba[3];
   return rgba.slice(0, 3).map((color, idx) => {
-    return clamp(Math.round((a * (color / 255) + (a * (bg[idx] / 255))) * 255), 0, 255);
+    return clamp(Math.round((a * (color / 255) + ((1 - a) * (bg[idx] / 255))) * 255), 0, 255);
   }) as ColorRgb;
 }
 
