@@ -426,6 +426,7 @@ const lang = {
   'BoostsViaGifts.Duration': 'Duration of premium subscriptions',
   'BoostsViaGifts.DurationSubtitle': 'You can review the list of features and terms of use for Telegram Premium [here]().',
   'BoostsViaGifts.Start': 'START GIVEAWAY',
+  'BoostsViaGifts.InvalidEndDate': 'Please choose an end date within the allowed range.',
   'Boost.EnableStoriesFor': 'Enable Stories For',
   'Boost.DescriptionJustReachedLevel1': 'This channel reached **Level 1** and can now post stories.',
   'Boost.DescriptionJustReachedLevel': 'This channel reached **Level %1$d** and can now post %2$s per day.',
