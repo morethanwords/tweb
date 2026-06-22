@@ -98,6 +98,20 @@ export const AppKeyboardShortcutsTab =
   });
 
 
+export const AppAgentMetricsTab =
+  scaffoldSolidJSTab({
+    title: 'AgentMetrics.Title',
+    getComponentModule: () => import('../sidebarLeft/tabs/agentMetrics')
+  });
+
+
+export const AppQuickRepliesTab =
+  scaffoldSolidJSTab({
+    title: 'QuickReplies.Title',
+    getComponentModule: () => import('../sidebarLeft/tabs/quickReplies')
+  });
+
+
 type AppAdminRecentActionsTabPayload = {
   channelId: ChatId;
   isBroadcast: boolean;

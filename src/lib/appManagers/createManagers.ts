@@ -59,6 +59,9 @@ import AppGamesManager from '@appManagers/appGamesManager';
 import MonoforumDialogsStorage from '@lib/storages/monoforumDialogs';
 import AppPromoManager from '@appManagers/appPromoManager';
 import AppAccountManager from '@appManagers/appAccountManager';
+import AppSupportMetricsManager from '@appManagers/appSupportMetricsManager';
+import AppQuickRepliesManager from '@appManagers/appQuickRepliesManager';
+import AppCrmManager from '@appManagers/appCrmManager';
 
 export default function createManagers(
   appStoragesManager: AppStoragesManager,
@@ -123,7 +126,10 @@ export default function createManagers(
     appGamesManager: new AppGamesManager,
     monoforumDialogsStorage: new MonoforumDialogsStorage,
     appPromoManager: new AppPromoManager,
-    appAccountManager: new AppAccountManager
+    appAccountManager: new AppAccountManager,
+    appSupportMetricsManager: new AppSupportMetricsManager,
+    appQuickRepliesManager: new AppQuickRepliesManager,
+    appCrmManager: new AppCrmManager
   };
 
   managers.authorizer = new Authorizer({

@@ -132,6 +132,7 @@ import PaidMessagesInterceptor, {PAYMENT_REJECTED} from '@components/chat/paidMe
 import asyncThrottle from '@helpers/schedulers/asyncThrottle';
 import focusInput from '@helpers/dom/focusInput';
 import showChecklistPopup from '@components/popups/checklist';
+import showQuickRepliesPickerPopup from '@components/popups/quickRepliesPicker';
 import assumeType from '@helpers/assumeType';
 import {formatFullSentTime} from '@helpers/date';
 import useStars from '@stores/stars';
@@ -1137,6 +1138,15 @@ export default class ChatInput {
         showChecklistPopup({chat: this.chat});
       },
       verify: () => !this.editMsgId && !this.chat.isMonoforum
+    }, {
+      icon: 'list',
+      text: 'QuickReplies.AttachMenu',
+      onClick: () => {
+        showQuickRepliesPickerPopup({
+          onSelect: (reply) => this.insertAtCaret(reply.text, undefined, false)
+        });
+      },
+      verify: () => !this.editMsgId && this.canSendPlain()
     }];
 
     const attachMenuButtons = this.attachMenuButtons.slice();

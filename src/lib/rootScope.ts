@@ -206,6 +206,13 @@ export type BroadcastEvents = {
   'app_config': MTAppConfig,
   'managers_ready': void, // ! inner
 
+  'support_metrics_update': void,
+  'quick_replies_update': void,
+  'agent_identity_update': void,
+  'agent_message_tagged': {fullMid: string},
+  'crm_config_update': void,
+  'crm_ticket_update': {peerId: PeerId, ticket?: import('@lib/crm/types').CrmTicketRef},
+
   'account_logged_in': {accountNumber: ActiveAccountNumber, userId: UserId},
 
   'resizing_left_sidebar': void,

@@ -1025,3 +1025,44 @@
     height: 100%;
   }
 }
+
+.pinned-crm-ticket {
+  height: 3.25rem !important;
+
+  &-content {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    gap: .5rem;
+  }
+
+  &-info {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  &-title {
+    font-size: var(--font-size-14);
+    font-weight: var(--font-weight-medium);
+    color: var(--primary-color);
+    @include text-overflow();
+  }
+
+  &-subtitle {
+    font-size: var(--font-size-14);
+    color: var(--secondary-text-color);
+    @include text-overflow();
+
+    &.is-closed {
+      color: var(--danger-color);
+    }
+  }
+
+  &-primary-button {
+    flex: 0 0 auto;
+  }
+}

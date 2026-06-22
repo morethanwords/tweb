@@ -5,6 +5,7 @@ import type Chat from '@components/chat/chat';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import {logger} from '@lib/logger';
 import rootScope from '@lib/rootScope';
+import agentIdentity from '@lib/agentIdentity';
 import BubbleGroups from '@components/chat/bubbleGroups';
 import showDatePickerPopup from '@components/popups/datePicker';
 import confirmationPopup from '@components/confirmationPopup';
@@ -526,6 +527,12 @@ export default class ChatBubbles {
 
   private currentlyTypingMessages: {[mid: number | string]: ReturnType<typeof wrapContinuouslyTypingMessage>} = {};
 
+  // CRM ticket lifecycle dividers ("opened"/"closed"/"reopened") for the peer.
+  private crmTicket: import('@lib/crm/types').CrmTicketRef;
+  private crmMarkedBubbles: HTMLElement[] = []; // message bubbles carrying a ::before divider
+  private crmDividers: HTMLElement[] = []; // appended fallback dividers (closed-at-end)
+  private updateCrmTicketDividersDebounced: () => void;
+
   private scrolledDown = true;
   private isScrollingTimeout = 0;
 
@@ -1023,6 +1030,28 @@ export default class ChatBubbles {
         bubble
       });
     };
+
+    this.listenerSetter.add(rootScope)('agent_message_tagged', ({fullMid}) => {
+      const bubble = this.getBubble(fullMid);
+      if(!bubble) return;
+      const [peerIdStr, midStr] = fullMid.split('_');
+      this.setBubbleAgentTag(bubble, peerIdStr.toPeerId(), +midStr, bubble.classList.contains('is-out'));
+    });
+
+    this.listenerSetter.add(rootScope)('agent_identity_update', () => {
+      for(const fullMid in this.bubbles) {
+        const bubble = this.bubbles[fullMid];
+        const [peerIdStr, midStr] = fullMid.split('_');
+        this.setBubbleAgentTag(bubble, peerIdStr.toPeerId(), +midStr, bubble.classList.contains('is-out'));
+      }
+    });
+
+    this.updateCrmTicketDividersDebounced = debounce(() => this.updateCrmTicketDividers(), 150, false, true);
+    this.listenerSetter.add(rootScope)('crm_ticket_update', ({peerId, ticket}) => {
+      if(peerId !== this.peerId) return;
+      this.crmTicket = ticket;
+      this.updateCrmTicketDividers();
+    });
 
     this.listenerSetter.add(rootScope)('message_edit', ({storageKey, message}) => {
       if(storageKey !== this.chat.messagesStorageKey) return;
@@ -4427,6 +4456,77 @@ export default class ChatBubbles {
     return bubble;
   }
 
+  private createCrmDividerBubble(langKey: LangPackKey, ticketId: number) {
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble service is-crm-divider';
+    const bubbleContent = document.createElement('div');
+    bubbleContent.classList.add('bubble-content');
+    const serviceMsg = document.createElement('div');
+    serviceMsg.classList.add('service-msg');
+    serviceMsg.append(i18n(langKey, [ticketId]));
+    bubbleContent.append(serviceMsg);
+    bubble.append(bubbleContent);
+    return bubble;
+  }
+
+  // Precise lifecycle dividers. Each event is drawn as a full-width line above
+  // the first message at/after its timestamp, via a `::before` on that bubble
+  // (the same positioner-safe technique as the unread delimiter — no extra node
+  // is inserted into the index-positioned group/section tree). A 'closed' event
+  // with no following message (closed after the last reply) falls back to a
+  // service bubble appended at the very bottom.
+  private updateCrmTicketDividers = () => {
+    this.crmMarkedBubbles.forEach((bubble) => {
+      bubble.classList.remove('has-crm-divider');
+      bubble.style.removeProperty('--crm-divider-text');
+    });
+    this.crmMarkedBubbles.length = 0;
+    this.crmDividers.forEach((node) => node.remove());
+    this.crmDividers.length = 0;
+
+    const ticket = this.crmTicket;
+    if(!ticket?.events?.length || !this.peerId?.isUser()) return;
+
+    // Rendered messages of the current peer, sorted by date ascending.
+    const entries: {bubble: HTMLElement, date: number}[] = [];
+    for(const fullMid in this.bubbles) {
+      const bubble = this.bubbles[fullMid];
+      const message = apiManagerProxy.getMessageById(+bubble.dataset.mid);
+      const date = (message as MyMessage)?.date;
+      if(date) entries.push({bubble, date});
+    }
+    entries.sort((a, b) => a.date - b.date);
+
+    const markBubble = (bubble: HTMLElement, text: string) => {
+      const existing = bubble.style.getPropertyValue('--crm-divider-text');
+      const value = existing ? `${JSON.parse(existing)} · ${text}` : text;
+      bubble.style.setProperty('--crm-divider-text', JSON.stringify(value));
+      if(!bubble.classList.contains('has-crm-divider')) {
+        bubble.classList.add('has-crm-divider');
+        this.crmMarkedBubbles.push(bubble);
+      }
+    };
+
+    for(const event of ticket.events) {
+      const timestamp = Math.floor(new Date(event.at).getTime() / 1000);
+      if(!timestamp) continue;
+
+      const langKey: LangPackKey = event.type === 'closed' ?
+        'Crm.Ticket.Closed' :
+        event.type === 'reopened' ? 'Crm.Ticket.Reopened' : 'Crm.Ticket.Opened';
+      const text = I18n.format(langKey, true, [ticket.id]);
+
+      const following = entries.find((entry) => entry.date >= timestamp);
+      if(following) {
+        markBubble(following.bubble, text);
+      } else if(event.type === 'closed') {
+        const divider = this.createCrmDividerBubble(langKey, ticket.id);
+        this.chatInner.append(divider);
+        this.crmDividers.push(divider);
+      }
+    }
+  };
+
   public getDateForDateContainer(timestamp: number) {
     const date = new Date(timestamp * 1000);
     if(timestamp !== SEND_WHEN_ONLINE_TIMESTAMP) {
@@ -4547,6 +4647,11 @@ export default class ChatBubbles {
 
     this.skippedMids.clear();
     this.dateMessages = {};
+    // Bubbles/sections are wiped on peer switch; drop divider refs and the peer's
+    // ticket so a stale ticket can't render on the next peer.
+    this.crmMarkedBubbles.length = 0;
+    this.crmDividers.length = 0;
+    this.crmTicket = undefined;
     this.bubbleGroups?.cleanup();
     this.bubbleGroups = new BubbleGroups(this.chat);
     this.unreadOut.clear();
@@ -5781,6 +5886,24 @@ export default class ChatBubbles {
     }
 
     return this.bubbles[fullMid];
+  }
+
+  // Local-only agent label: shows which session (agent) sent an outgoing message.
+  // Nothing is added to the message itself — see @lib/agentIdentity.
+  private setBubbleAgentTag(bubble: HTMLElement, peerId: PeerId, mid: number, isOut: boolean) {
+    const content = bubble.querySelector<HTMLElement>('.bubble-content');
+    if(!content) return;
+
+    content.querySelector(':scope > .agent-tag')?.remove();
+
+    if(!isOut) return;
+    const name = agentIdentity.getName();
+    if(!name || !agentIdentity.wasSentByThisSession(peerId, mid)) return;
+
+    const tag = document.createElement('div');
+    tag.classList.add('agent-tag');
+    tag.textContent = name;
+    content.prepend(tag);
   }
 
   private async safeRenderMessage({
@@ -9051,6 +9174,11 @@ export default class ChatBubbles {
     }
 
     bubble.classList.add(isOut ? 'is-out' : 'is-in');
+
+    if(isMessage) {
+      this.setBubbleAgentTag(bubble, message.peerId, message.mid, isOut);
+      this.updateCrmTicketDividersDebounced?.();
+    }
 
     if(withReplies) {
       const isFooter = MessageRender.renderReplies({

@@ -1,0 +1,15 @@
+.popup {
+  --popup-width: 24rem;
+  --popup-border-radius: 1rem;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  padding: 0 1rem 1rem;
+}
+
+.field {
+  width: 100%;
+  margin-top: 1rem;
+}

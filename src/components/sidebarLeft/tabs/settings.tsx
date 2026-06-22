@@ -7,6 +7,8 @@ import {
   AppGeneralSettingsTab,
   AppKeyboardShortcutsTab,
   AppLanguageTab,
+  AppAgentMetricsTab,
+  AppQuickRepliesTab,
   AppNotificationsTab,
   AppSpeakersAndCameraTab,
   getEditProfileInitArgs
@@ -129,6 +131,8 @@ const Settings = () => {
     makeSubTabConfig('settings', 'Telegram.GeneralSettingsViewController', AppGeneralSettingsTab, tab),
     makeSubTabConfig('folder', 'AccountSettings.Filters', AppChatFoldersTab, tab),
     makeSubTabConfig('stickers_face', 'StickersName', AppStickersAndEmojiTab, tab),
+    makeSubTabConfig('statistics', 'AgentMetrics.Title', AppAgentMetricsTab, tab),
+    makeSubTabConfig('list', 'QuickReplies.Title', AppQuickRepliesTab, tab),
     makeSubTabConfig('videocamera', 'AccountSettings.SpeakersAndCamera', AppSpeakersAndCameraTab, tab)
   ];
 

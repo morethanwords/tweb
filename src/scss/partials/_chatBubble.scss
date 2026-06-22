@@ -1979,6 +1979,50 @@
     }
   }
 
+  .bubble-content > .agent-tag {
+    margin: $message-padding-top $message-padding-horizontal 0;
+    font-weight: var(--font-weight-medium);
+    font-size: var(--messages-secondary-text-size);
+    line-height: calc(var(--messages-secondary-text-size) + .25rem);
+    color: rgb(var(--peer-color-rgb, var(--primary-color-rgb)));
+    opacity: .85;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    user-select: none;
+  }
+
+  &.is-out .bubble-content > .agent-tag {
+    color: var(--message-out-primary-color);
+  }
+
+  // Precise inline lifecycle divider — full-width line above the bubble, same
+  // technique as `.is-first-unread::before`.
+  &.has-crm-divider::before {
+    content: var(--crm-divider-text);
+    height: 30px;
+    margin-bottom: $bubble-overflow-big;
+    margin-left: -50%;
+    margin-right: -50%;
+    width: 200vw;
+    text-align: center;
+    color: var(--primary-color);
+    line-height: 2.1;
+    font-weight: var(--font-weight-medium);
+    font-size: var(--font-size-14);
+    background-color: var(--surface-color);
+    z-index: 2;
+    position: relative;
+  }
+
+  // Bottom-fallback service bubble (ticket closed after the last message).
+  &.is-crm-divider .service-msg {
+    color: var(--primary-color);
+    background-color: var(--light-primary-color);
+    font-weight: var(--font-weight-medium);
+  }
+
   &-name-forwarded {
     font-weight: var(--font-weight-normal);
 

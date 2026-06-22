@@ -1,0 +1,49 @@
+.popup {
+  --popup-width: 24rem;
+  --popup-min-height: 24rem;
+  --popup-max-height: 36rem;
+  --popup-border-radius: 1rem;
+}
+
+.body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.search {
+  flex: 0 0 auto;
+  padding: 0 1rem .5rem;
+}
+
+.list {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.row {
+  cursor: pointer;
+}
+
+.badge {
+  margin-inline-start: .375rem;
+  padding: 0 .375rem;
+  border-radius: .5rem;
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-medium);
+  color: var(--primary-color);
+  background-color: var(--light-primary-color);
+  vertical-align: middle;
+}
+
+.empty {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 1rem;
+  text-align: center;
+  color: var(--secondary-text-color);
+  white-space: pre-line;
+}

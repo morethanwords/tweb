@@ -1221,6 +1221,9 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
   public updateTabStateIdle(idle: boolean) {
     this.updateTabState('idleStartTime', idle ? Date.now() : 0);
+    try {
+      rootScope.managers?.appSupportMetricsManager?.recordIdleChange(idle, Date.now());
+    } catch(err) {}
   }
 
   public getTabState() {
