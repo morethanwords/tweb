@@ -2727,7 +2727,40 @@
           float: inline-end;
           margin-inline-start: .625rem;
         }
+
+        // sticker-set / custom-emoji preview grid: box is sized inline (boxSize px),
+        // so let the square resizer size to the grid instead of the fixed 3rem.
+        &.webpage-stickerset-grid {
+          max-width: none;
+          max-height: none;
+        }
+
+        &-resizer:has(.webpage-stickerset-grid) {
+          width: auto;
+          height: auto;
+        }
       }
+    }
+  }
+
+  // square NxN grid of the set's preview stickers (side from ceil(sqrt(count)))
+  .webpage-stickerset-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--sticker-grid-side), 1fr);
+    gap: 1px;
+  }
+
+  .webpage-stickerset-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+
+    img,
+    canvas,
+    video {
+      max-width: 100%;
+      max-height: 100%;
     }
   }
 

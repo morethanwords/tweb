@@ -2070,6 +2070,7 @@ const lang = {
   'OpenMessage': 'VIEW MESSAGE',
   'OpenGroup': 'VIEW GROUP',
   'OpenStickers': 'VIEW STICKERS',
+  'OpenEmojiSet': 'VIEW EMOJI',
   'JoinCall': 'JOIN CALL',
   'PinnedJoinCall': 'Join Call',
   'CloseTopic': 'Close topic',
