@@ -262,7 +262,7 @@ export const DEFAULT_THEME: Theme = {
     _: 'themeSettings',
     pFlags: {},
     base_theme: {_: 'baseThemeClassic'},
-    accent_color: 0x3390ec,
+    accent_color: 0x420574, // Andropay purple
     message_colors: [0x5CA853],
     wallpaper: {
       _: 'wallPaper',
@@ -351,7 +351,7 @@ export const DEFAULT_THEME: Theme = {
     _: 'themeSettings',
     pFlags: {},
     base_theme: {_: 'baseThemeDay'},
-    accent_color: 0x2D7ED5,
+    accent_color: 0x420574, // Andropay purple
     message_colors: [0x2D7ED5],
     wallpaper: {
       _: 'wallPaper',

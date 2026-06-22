@@ -1,8 +1,8 @@
 {
-    "name": "Telegram Web",
-    "short_name": "Telegram Web",
+    "name": "Androgram Web",
+    "short_name": "Androgram",
     "start_url": "./",
-    "description": "Telegram is a cloud-based mobile and desktop messaging app with a focus on security and speed.",
+    "description": "Androgram Web — Andropay customer support workspace.",
     "icons": [
         {
             "src": "assets/img/android-chrome-36x36.png?v=jw3mK7G9Ry",

@@ -36,11 +36,11 @@ function installDomShims() {
 
   if(typeof target.location === 'undefined') {
     target.location = {
-      href: 'https://web.telegram.org/k/',
-      origin: 'https://web.telegram.org',
+      href: 'https://web.andropay.xyz/',
+      origin: 'https://web.andropay.xyz/',
       protocol: 'https:',
-      host: 'web.telegram.org',
-      hostname: 'web.telegram.org',
+      host: 'web.andropay.xyz',
+      hostname: 'web.andropay.xyz',
       port: '',
       pathname: '/k/',
       search: '',
