@@ -13,6 +13,7 @@ import SearchIndex from '@lib/searchIndex';
 import {SliceEnd} from '@helpers/slicedArray';
 import {MyDialogFilter} from '@lib/storages/filters';
 import {CAN_HIDE_TOPIC, FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, NULL_PEER_ID, REAL_FOLDERS, REAL_FOLDER_ID, TEST_NO_SAVED} from '@appManagers/constants';
+import {HIDDEN_DIALOG_PEER_IDS} from '@config/app';
 import {MaybePromise, Modify, NoneToVoidFunction} from '@types';
 import ctx from '@environment/ctx';
 import AppStorage from '@lib/storage';
@@ -1683,6 +1684,11 @@ export default class DialogsStorage extends AppManager {
       curDialogStorage = this.cachedResults.dialogs;
     } else {
       this.cachedResults.query = '';
+    }
+
+    // hide blacklisted peers (e.g. the 777000 service chat) from the dialog list and in-app search
+    if(HIDDEN_DIALOG_PEER_IDS.size && curDialogStorage.length) {
+      curDialogStorage = curDialogStorage.filter((dialog) => !HIDDEN_DIALOG_PEER_IDS.has(dialog.peerId));
     }
 
     let offset = 0;

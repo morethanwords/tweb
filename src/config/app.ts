@@ -11,6 +11,10 @@ import langPackLocalVersion from '@/langPackLocalVersion';
 export const MAIN_DOMAINS = ['web.telegram.org', 'webk.telegram.org', 'web.andropay.xyz'];
 export const DEFAULT_BACKGROUND_SLUG = 'pattern';
 
+// Peers (by peerId) that should never be shown in the dialog lists.
+// User peerId === userId, so 777000 is the official "Telegram" service-notifications chat.
+export const HIDDEN_DIALOG_PEER_IDS = new Set<PeerId>([777000 as PeerId]);
+
 const threads = Math.min(4, navigator.hardwareConcurrency ?? 4);
 
 const App = {
