@@ -4,7 +4,7 @@ import Row from '@components/rowTsx';
 import Button from '@components/buttonTsx';
 import {i18n, LangPackKey} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
-import {createEffect, createResource, createSignal, For, Show} from 'solid-js';
+import {createEffect, createResource, createSignal, For, onCleanup, Show} from 'solid-js';
 import {makeAbsStats, StatisticsOverviewItems} from '@components/sidebarRight/tabs/statistics';
 import {
   downloadSupportMetricsCsv,
@@ -70,7 +70,11 @@ const CrmSection = () => {
   const connect = async() => {
     setBusy(true);
     try {
-      await rootScope.managers.appCrmManager.verifyOtp(mobileField.value.trim(), codeField.value.trim());
+      const user = await rootScope.managers.appCrmManager.verifyOtp(mobileField.value.trim(), codeField.value.trim());
+      // Pick up the agent's identity from the logged-in CRM session so their
+      // sent messages are tagged with their real name without manual entry.
+      const crmName = user?.full_name || user?.display_name;
+      if(crmName) agentIdentity.setName(crmName);
       setOtpSent(false);
       refetch();
     } catch(err) {
@@ -135,6 +139,17 @@ const AgentIdentitySection = () => {
   });
   nameField.setValueSilently(agentIdentity.getName());
   nameField.input.addEventListener('input', () => agentIdentity.setName(nameField.value));
+
+  // Reflect a name picked up from the CRM session (set on connect) without
+  // clobbering what the user is actively typing.
+  const onIdentityUpdate = () => {
+    const name = agentIdentity.getName();
+    if(document.activeElement !== nameField.input && name !== nameField.value) {
+      nameField.setValueSilently(name);
+    }
+  };
+  rootScope.addEventListener('agent_identity_update', onIdentityUpdate);
+  onCleanup(() => rootScope.removeEventListener('agent_identity_update', onIdentityUpdate));
 
   return (
     <Section name="AgentMetrics.IdentitySection" caption="AgentMetrics.IdentityCaption">

@@ -6,6 +6,7 @@ import {isDialog, isForumTopic} from '@appManagers/utils/dialogs/isDialog';
 import ArchiveDialog, {createArchiveDialogState, DisposableArchiveDialogState} from '@components/archiveDialog';
 import {AutonomousDialogListBase, BaseConstructorArgs, LoadDialogsInnerArgs} from '@components/autonomousDialogList/base';
 import {BADGE_TRANSITION_TIME} from '@components/autonomousDialogList/constants';
+import {HIDDEN_DIALOG_PEER_IDS} from '@config/app';
 import groupCallActiveIcon from '@components/groupCallActiveIcon';
 import Scrollable from '@components/scrollable';
 import SetTransition from '@components/singleTransition';
@@ -238,6 +239,10 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
   }
 
   public testDialogForFilter(dialog: Dialog) {
+    if(HIDDEN_DIALOG_PEER_IDS.has(dialog.peerId)) {
+      return false;
+    }
+
     if(!REAL_FOLDERS.has(this.filterId) ? getDialogIndex(dialog, this.indexKey) === undefined : this.filterId !== dialog.folder_id) {
       return false;
     }

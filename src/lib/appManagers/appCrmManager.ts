@@ -33,6 +33,9 @@ export default class AppCrmManager extends AppManager {
     const stored = await this.storage.get(CRM_CONFIG_STORAGE_KEY);
     if(stored) {
       this.config = {...EMPTY_CRM_CONFIG, ...stored};
+      // An older stored config may carry an empty baseUrl; fall back to the
+      // production default so agents never face a blank field.
+      if(!this.config.baseUrl) this.config.baseUrl = EMPTY_CRM_CONFIG.baseUrl;
     }
   }
 
