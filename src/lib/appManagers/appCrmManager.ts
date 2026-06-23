@@ -200,6 +200,35 @@ export default class AppCrmManager extends AppManager {
     }
   }
 
+  // Claim the customer's latest open ticket for THIS agent. Agents share one
+  // department Telegram account, so the userbot can't tell them apart — but each
+  // agent has their own CRM token, and that token is what authenticates this call.
+  // The CRM binds the ticket to this agent (assigned_admin_id), which is what
+  // outbound-message attribution and per-agent reports key off. Fire-and-forget.
+  public async claimTicketByTelegram(chatId: string): Promise<void> {
+    if(!(await this.isConnected()) || !chatId) return;
+    try {
+      await this.request('POST', `${CRM_ENDPOINTS.tickets}/by-telegram/${encodeURIComponent(chatId)}/claim`);
+    } catch(err) {
+      this.log.error('claimTicketByTelegram failed', err);
+    }
+  }
+
+  // Stamp a single outbound message with THIS agent. The agent's CRM token (this
+  // request's auth) identifies them; the Telegram message id ties it to the message
+  // the CRM's userbot independently ingests — so attribution is exact per message,
+  // even when several agents share the department Telegram session. Fire-and-forget.
+  public async attributeOutboundMessage(chatId: string, messageId: number): Promise<void> {
+    if(!(await this.isConnected()) || !chatId || !messageId) return;
+    try {
+      await this.request('POST', `${CRM_ENDPOINTS.tickets}/by-telegram/${encodeURIComponent(chatId)}/attribute`, {
+        body: {message_id: messageId}
+      });
+    } catch(err) {
+      this.log.error('attributeOutboundMessage failed', err);
+    }
+  }
+
   // ── 4) Records: act on an existing ticket ─────────────────────────────────
   public async sendTicketMessage(ticketId: number, text: string) {
     return this.request('POST', `${CRM_ENDPOINTS.tickets}/${ticketId}/message`, {body: {text}});

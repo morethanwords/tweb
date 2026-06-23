@@ -1,5 +1,6 @@
 import {Accessor, createSignal, Show} from 'solid-js';
 import type {MyMessage} from '@appManagers/appMessagesManager';
+import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
 import {AppManagers} from '@lib/managers';
 import debounce from '@helpers/schedulers/debounce';
 import {i18n} from '@lib/langPack';
@@ -85,10 +86,42 @@ export default function createChatCrmTicketPlate(
     managers.appCrmManager.getTicketByTelegram('' + peerId.toUserId()).then((found) => apply(peerId, found));
   };
 
+  // The open ticket we've already claimed for this agent, so a burst of replies
+  // doesn't hammer the claim endpoint. Reset on peer change.
+  let claimedTicketId: number;
+
   const setPeerId = (peerId: PeerId) => {
     currentPeerId = peerId;
+    claimedTicketId = undefined;
     hide();
     load(peerId);
+  };
+
+  // The agent replied. Claim the customer's open ticket so it's bound to THIS
+  // agent in the CRM. Agents share one department Telegram account, so the userbot
+  // can't tell them apart — but the claim call is authenticated with the agent's
+  // own CRM token, which is what outbound attribution + per-agent reports key off.
+  // Claim by chat id (not the locally-known ticket id): the CRM resolves the latest
+  // OPEN ticket server-side, which also covers the case where the customer's last
+  // message opened a fresh ticket the bar hasn't picked up yet. Fire-and-forget.
+  const maybeClaim = (peerId: PeerId) => {
+    if(!peerId?.isUser()) return;
+    const current = ticket();
+    if(current && current.status === 'open' && current.id === claimedTicketId) return;
+    if(current?.id) claimedTicketId = current.id;
+    managers.appCrmManager.claimTicketByTelegram('' + peerId.toUserId());
+  };
+
+  // Per-message attribution: stamp the exact Telegram message id with this agent so
+  // the CRM credits the right human for every reply (claim only gives per-ticket
+  // ownership; this gives per-message precision across handoffs). The mid is already
+  // remapped to the real server id by the time 'message_sent' fires.
+  const attributeOutbound = (message: MyMessage) => {
+    const peerId = message.peerId;
+    if(!peerId?.isUser()) return;
+    const messageId = getServerMessageId(message.mid);
+    if(!messageId) return;
+    managers.appCrmManager.attributeOutboundMessage('' + peerId.toUserId(), messageId);
   };
 
   // A new message may have opened a fresh ticket on the CRM side (a customer
@@ -99,8 +132,18 @@ export default function createChatCrmTicketPlate(
     const message = (payload as {message: MyMessage})?.message ?? (payload as MyMessage);
     if(message?.peerId && message.peerId === currentPeerId) refresh();
   };
+
+  // ONLY this client's own sends — never history_multiappend, which also carries
+  // replies typed by other agents on the shared account (crediting them to this
+  // session would be wrong). claim + attribute are this-session-only signals.
+  const onMessageSent = ({message}: {message: MyMessage}) => {
+    if(message?._ !== 'message' || !message.pFlags?.out || message.peerId !== currentPeerId) return;
+    maybeClaim(message.peerId);
+    attributeOutbound(message);
+  };
   rootScope.addEventListener('history_multiappend', onChatMessage);
   rootScope.addEventListener('message_sent', onChatMessage);
+  rootScope.addEventListener('message_sent', onMessageSent);
 
   // The only lifecycle action from tweb is closing. Reopening is intentionally
   // not offered — a closed ticket stays closed; new messages create new tickets.
@@ -129,6 +172,7 @@ export default function createChatCrmTicketPlate(
     destroy: () => {
       rootScope.removeEventListener('history_multiappend', onChatMessage);
       rootScope.removeEventListener('message_sent', onChatMessage);
+      rootScope.removeEventListener('message_sent', onMessageSent);
       plate.destroy();
     }
   };
