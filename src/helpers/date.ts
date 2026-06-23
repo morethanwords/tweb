@@ -350,7 +350,7 @@ export function fillTipDates(query: string, dates: DateData[]) {
     const g1 = matches[1];
     const g2 = matches[3];
     const g3 = matches[5];
-    if(!matches[2] === matches[4]) {
+    if(matches[2] !== matches[4]) {
       return;
     }
 
