@@ -102,6 +102,8 @@
 "ClientPip.PlaceholderTitle" = "Telegram is in Picture-in-Picture";
 "ClientPip.PlaceholderDescription" = "Switch back to this tab to bring it here, or use the button below.";
 "ClientPip.ReturnToTab" = "Return to tab";
+"ClientPip.FullscreenHint" = "Return to the tab to enter fullscreen";
+"ClientPip.Exit" = "Exit Picture-in-Picture";
 "ChatMigration.From" = "Migrated from %s";
 "ChatMigration.To" = "Migrated to %s";
 "ConnectionStatus.ForceReconnect" = "reconnect now";
@@ -229,6 +231,7 @@
 "Permissions.ExceptionsCount_other" = "%d exceptions";
 "Permissions.RemoveFromGroup" = "Are you sure you want to remove **%s** from the group?";
 "PWA.Install" = "Install App";
+"PictureInPicture" = "Picture-in-Picture";
 "Link.Available" = "Link is available";
 "Link.Taken" = "Link is already taken";
 "Link.Invalid" = "Link is invalid";
@@ -383,6 +386,7 @@
 "BoostsViaGifts.Duration" = "Duration of premium subscriptions";
 "BoostsViaGifts.DurationSubtitle" = "You can review the list of features and terms of use for Telegram Premium [here]().";
 "BoostsViaGifts.Start" = "START GIVEAWAY";
+"BoostsViaGifts.InvalidEndDate" = "Please choose an end date within the allowed range.";
 "Boost.EnableStoriesFor" = "Enable Stories For";
 "Boost.DescriptionJustReachedLevel1" = "This channel reached **Level 1** and can now post stories.";
 "Boost.DescriptionJustReachedLevel" = "This channel reached **Level %1$d** and can now post %2$s per day.";
@@ -1816,6 +1820,7 @@
 "OpenMessage" = "VIEW MESSAGE";
 "OpenGroup" = "VIEW GROUP";
 "OpenStickers" = "VIEW STICKERS";
+"OpenEmojiSet" = "VIEW EMOJI";
 "JoinCall" = "JOIN CALL";
 "PinnedJoinCall" = "Join Call";
 "CloseTopic" = "Close topic";
@@ -3138,6 +3143,8 @@
 "FileSize.KB" = "%@ KB";
 "FileSize.MB" = "%@ MB";
 "FileSize.GB" = "%@ GB";
+"FileSize.TB" = "%@ TB";
+"FileSize.PB" = "%@ PB";
 "InstalledStickers.LoopAnimated" = "Loop Animated Stickers";
 "InviteLink.JoinedNew_other" = "%d joined";
 "InviteLink.JoinedRevoked" = "no one joined";
@@ -3614,6 +3621,10 @@
 "BotSetEmojiStatusTextFor" = "Do you want to set this emoji status suggested by **%s** for **%s**?";
 "BotSetEmojiStatusOffline" = "**%s** requests access to your **emoji status**. You can revoke this access anytime on the profile page of **%s**.";
 "BotLocationAccessText" = "**%s** requests access to your location. You can revoke this access anytime on the profile page of **%s**.";
+"BotPrivacyPolicy" = "Bot Privacy Policy";
+"BotProfileOpenApp" = "Open App";
+"PeerInfo.AppFooter" = "By launching this mini app, you agree to the [Terms of Service for Mini Apps](https://telegram.org/privacy).";
+"PeerInfo.AppFooterAdmin" = "By publishing this mini app, you agree to the [Telegram Terms of Service for Developers](https://telegram.org/privacy).";
 "BotAllowAccessTo" = "Allow access to";
 "BotAllowAccessToEmojiStatus" = "Emoji status";
 "BotAllowAccessToLocation" = "Geolocation";

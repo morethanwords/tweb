@@ -1750,8 +1750,9 @@ hr {
     }
 
     &[data-is-revealing] {
-      pointer-events: none;
-
+      // Keep the cover clickable while the reveal plays so a repeat click lands on the
+      // container (and is ignored by onMediaSpoilerClick) instead of falling through to the
+      // uncovered media.
       .sensitive-content-warning {
         opacity: 0;
       }

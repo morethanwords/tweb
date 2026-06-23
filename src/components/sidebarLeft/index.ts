@@ -1,4 +1,4 @@
-import {createEffect, createRoot} from 'solid-js';
+import {createEffect, createRoot, createSignal} from 'solid-js';
 import appImManager from '@lib/appImManager';
 import rootScope from '@lib/rootScope';
 import {createSearchGroup, SearchGroup} from '@components/searchGroup';
@@ -117,7 +117,6 @@ export class AppSidebarLeft extends SidebarSlider {
 
   public archivedCount: HTMLSpanElement;
   private totalNotificationsCount: HTMLSpanElement;
-  private totalNotificationsCountSidebar: HTMLSpanElement;
   public rect: DOMRect;
 
   private newBtnMenu: HTMLElement;
@@ -162,15 +161,15 @@ export class AppSidebarLeft extends SidebarSlider {
     this.toolsBtn.classList.add('sidebar-tools-button');
     this.totalNotificationsCount = createBadge('span', 20, 'primary');
     this.totalNotificationsCount.classList.add('sidebar-tools-button-notifications');
-    this.totalNotificationsCountSidebar = this.totalNotificationsCount.cloneNode(true) as HTMLElement;
     this.toolsBtn.append(this.totalNotificationsCount);
 
+    const [allNotificationsCount, setAllNotificationsCount] = createSignal(0);
     const mainMiddleware = this.middlewareHelper.get();
     // renderFoldersSidebarContent creates the #folders-sidebar element
     // itself and inserts it as the first child of #main-columns.
     renderFoldersSidebarContent(
       document.getElementById('main-columns'),
-      this.totalNotificationsCountSidebar,
+      allNotificationsCount,
       SolidJSHotReloadGuardProvider,
       mainMiddleware
     );
@@ -189,7 +188,8 @@ export class AppSidebarLeft extends SidebarSlider {
           (+accountNumber !== getCurrentAccount() ? count || 0 : 0)
         , 0);
 
-      [this.totalNotificationsCount, this.totalNotificationsCountSidebar].forEach((el) => {
+      setAllNotificationsCount(count);
+      [this.totalNotificationsCount].forEach((el) => {
         setBadgeContent(el, '' + (count || ''));
       });
     });
