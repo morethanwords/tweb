@@ -28,6 +28,7 @@ import {FocusDirection, ScrollStartCallbackDimensions} from '@helpers/fastSmooth
 import useHeavyAnimationCheck, {getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation} from '@hooks/useHeavyAnimationCheck';
 import {doubleRaf, fastRaf, fastRafPromise} from '@helpers/schedulers';
 import deferredPromise from '@helpers/cancellablePromise';
+import memoizeAsyncWithTTL from '@helpers/memoizeAsyncWithTTL';
 import RepliesElement from '@components/chat/replies';
 import DEBUG from '@config/debug';
 import {SliceEnd} from '@helpers/slicedArray';
@@ -642,6 +643,17 @@ export default class ChatBubbles {
   private pollExtendedMediaMessagesPromise: Promise<void>;
 
   private batchProcessor: BatchProcessor<Awaited<ReturnType<ChatBubbles['safeRenderMessage']>>>;
+
+  // Coalesces the per-bubble getReadMaxIdIfUnread cross-worker round-trip:
+  // every non-unread bubble in a group/channel render burst asks for the SAME
+  // peer/thread read cursor, so memoize the in-flight promise for the burst and
+  // reuse it. TTL 0 → the entry is dropped on the next macrotask after the fetch
+  // settles, so a later, distinct render pass re-reads a fresh value.
+  private getRenderReadMaxId = memoizeAsyncWithTTL(
+    (peerId: PeerId, threadId?: number) => this.managers.appMessagesManager.getReadMaxIdIfUnread(peerId, threadId),
+    ([peerId, threadId]) => peerId + '_' + (threadId || ''),
+    0
+  );
 
   private ranks: Map<PeerId, ReturnType<typeof getParticipantRank>>;
   private processRanks: Set<() => void>;
@@ -6264,7 +6276,7 @@ export default class ChatBubbles {
     const unreadReactions = getUnreadReactions(message);
 
     if(!context.isInUnread && this.chat.peerId.isAnyChat()) {
-      const readMaxId = await this.managers.appMessagesManager.getReadMaxIdIfUnread(this.chat.peerId, this.chat.threadId);
+      const readMaxId = await this.getRenderReadMaxId(this.chat.peerId, this.chat.threadId);
       if(readMaxId !== undefined && readMaxId < maxBubbleMid) {
         context.isInUnread = true;
       }
