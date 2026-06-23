@@ -48,6 +48,10 @@ export class AnimationIntersector {
   private overrideIdleGroups: Set<string>;
   private byGroups: {[group in AnimationItemGroup]?: AnimationItem[]};
   private byPlayer: Map<AnimationItem['animation'], AnimationItem>;
+  // Element → its AnimationItems, kept in lockstep with byGroups/byPlayer (see add/removeAnimation).
+  // The IntersectionObserver callback (onObserve) and getAnimations() resolve target → item via this
+  // O(1) lookup instead of an O(groups × items) nested scan on every scroll callback.
+  private byElement: Map<HTMLElement, AnimationItem[]>;
   private lockedGroups: {[group in AnimationItemGroup]?: true};
   private onlyOnePlayableGroup: AnimationItemGroup;
 
@@ -61,16 +65,15 @@ export class AnimationIntersector {
       for(const entry of entries) {
         const target = entry.target;
 
-        for(const group in this.byGroups) {
-          if(this.intersectionLockedGroups[group as AnimationItemGroup]) {
-            continue;
-          }
+        const items = this.byElement.get(target as HTMLElement);
+        if(!items) {
+          continue;
+        }
 
-          const animation = this.byGroups[group as AnimationItemGroup].find((p) => p.el === target);
-          if(!animation) {
-            continue;
-          }
-
+        // Same semantics as the previous byGroups scan: act on the first item whose group is not
+        // intersection-locked, then stop (the old loop `break`ed after the first match).
+        const animation = items.find((p) => !this.intersectionLockedGroups[p.group]);
+        if(animation) {
           if(entry.isIntersecting) {
             this.visible.add(animation);
             this.checkAnimation(animation, false);
@@ -97,8 +100,6 @@ export class AnimationIntersector {
               animation.load();
             } */
           }
-
-          break;
         }
       }
     };
@@ -110,6 +111,7 @@ export class AnimationIntersector {
     this.overrideIdleGroups = new Set();
     this.byGroups = {};
     this.byPlayer = new Map();
+    this.byElement = new Map();
     this.lockedGroups = {};
     this.onlyOnePlayableGroup = '';
 
@@ -161,16 +163,9 @@ export class AnimationIntersector {
   }
 
   public getAnimations(element: HTMLElement) {
-    const found: AnimationItem[] = [];
-    for(const group in this.byGroups) {
-      for(const player of this.byGroups[group as AnimationItemGroup]) {
-        if(player.el === element) {
-          found.push(player);
-        }
-      }
-    }
-
-    return found;
+    const items = this.byElement.get(element);
+    // Copy to preserve the previous contract (a fresh array each call, safe for callers to keep).
+    return items ? items.slice() : [];
   }
 
   public removeAnimation(player: AnimationItem) {
@@ -184,6 +179,14 @@ export class AnimationIntersector {
       indexOfAndSplice(group, player);
       if(!group.length) {
         delete this.byGroups[player.group];
+      }
+    }
+
+    const elementItems = this.byElement.get(el);
+    if(elementItems) {
+      indexOfAndSplice(elementItems, player);
+      if(!elementItems.length) {
+        this.byElement.delete(el);
       }
     }
 
@@ -242,6 +245,11 @@ export class AnimationIntersector {
     }
 
     (this.byGroups[group as AnimationItemGroup] ??= []).push(item);
+    let elementItems = this.byElement.get(item.el);
+    if(!elementItems) {
+      this.byElement.set(item.el, elementItems = []);
+    }
+    elementItems.push(item);
     this.observer.observe(item.el);
     this.byPlayer.set(animation, item);
   }
