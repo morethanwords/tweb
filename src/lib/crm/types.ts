@@ -18,9 +18,13 @@ export type CrmConfig = {
   user?: CrmUser
 };
 
+// Production CRM. Agents connect to this by default; the base-url field is
+// prefilled with it so they only need their mobile + OTP.
+export const DEFAULT_CRM_BASE_URL = 'https://andropay.xyz';
+
 export const EMPTY_CRM_CONFIG: CrmConfig = {
   enabled: false,
-  baseUrl: '',
+  baseUrl: DEFAULT_CRM_BASE_URL,
   token: ''
 };
 
