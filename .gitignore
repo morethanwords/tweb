@@ -27,3 +27,5 @@ ignore
 /test-results/
 /playwright-report/
 /blob-report/
+
+.claude/bugs-cache
