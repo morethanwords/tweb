@@ -31,22 +31,54 @@ export const EMPTY_CRM_CONFIG: CrmConfig = {
 // All endpoints live under {baseUrl}/api/mobile — see routes/api.php in the CRM.
 export const CRM_API_PREFIX = '/api/mobile';
 export const CRM_ENDPOINTS = {
+  config: '/config',
   sendOtp: '/auth/send-otp',
   verifyOtp: '/auth/verify-otp',
   logout: '/auth/logout',
   me: '/auth/me',
   templates: '/templates',
+  templateImages: (id: number) => '/templates/' + id + '/images',
   faqs: '/faqs',
   agents: '/agents',
   customersSearch: '/customers/search',
   tickets: '/tickets'
 };
 
+// GET /config -> {data: {... , reverb: CrmReverbConfig}}. The public Reverb
+// endpoint tweb opens a WebSocket to for realtime per-message attribution. The
+// app key is a public client credential.
+export type CrmReverbConfig = {
+  key: string,
+  host: string,
+  port: number,
+  scheme: string
+};
+
+// Everything the main-thread Reverb client needs: the public Reverb params plus
+// the agent's base url + bearer token (for the /broadcasting/auth handshake).
+export type CrmRealtimeConfig = {
+  baseUrl: string,
+  token: string,
+  reverb: CrmReverbConfig
+};
+
 // GET /templates -> {data: CrmTemplate[]}
 export type CrmTemplate = {
   id: number,
   name: string,
-  text: string
+  text: string,
+  // origin-relative /storage paths of attached images (prefix with the CRM
+  // baseUrl to display). Empty/absent when the template has no images.
+  image_urls?: string[]
+};
+
+// GET /templates/{id}/images -> {data: CrmTemplateImage[]}. The image bytes as
+// base64 data URIs, fetched lazily when an image-bearing template is picked so
+// they can be staged as Files in the send-preview.
+export type CrmTemplateImage = {
+  name: string,
+  mime: string,
+  data: string // data URI: data:<mime>;base64,<...>
 };
 
 // GET /faqs -> {data: CrmFaq[]}
@@ -88,3 +120,14 @@ export type CrmTicketRef = {
   status: CrmTicketStatus,
   events?: CrmTicketEvent[]
 };
+
+// GET /tickets/by-telegram/{chatId}/attributions -> {data: CrmAttributionMap}
+// Per-message author map: <telegram message id> -> {admin_id, name}. Lets every
+// agent session label outbound bubbles with who replied, even though all agents
+// share one department Telegram account.
+export type CrmMessageAttribution = {
+  admin_id: number,
+  name: string
+};
+
+export type CrmAttributionMap = Record<string, CrmMessageAttribution>;

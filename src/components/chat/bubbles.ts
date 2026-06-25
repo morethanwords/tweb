@@ -6,6 +6,7 @@ import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import {logger} from '@lib/logger';
 import rootScope from '@lib/rootScope';
 import agentIdentity from '@lib/agentIdentity';
+import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
 import BubbleGroups from '@components/chat/bubbleGroups';
 import showDatePickerPopup from '@components/popups/datePicker';
 import confirmationPopup from '@components/confirmationPopup';
@@ -529,6 +530,10 @@ export default class ChatBubbles {
 
   // CRM ticket lifecycle dividers ("opened"/"closed"/"reopened") for the peer.
   private crmTicket: import('@lib/crm/types').CrmTicketRef;
+  // Per-message author map for the peer ({<server message id>: {admin_id, name}}),
+  // so outbound bubbles are labeled with which agent replied — for EVERY session,
+  // not just the one that sent them (all agents share one Telegram account).
+  private crmAttributions: import('@lib/crm/types').CrmAttributionMap = {};
   private crmMarkedBubbles: HTMLElement[] = []; // message bubbles carrying a ::before divider
   private crmDividers: HTMLElement[] = []; // appended fallback dividers (closed-at-end)
   private updateCrmTicketDividersDebounced: () => void;
@@ -1039,11 +1044,7 @@ export default class ChatBubbles {
     });
 
     this.listenerSetter.add(rootScope)('agent_identity_update', () => {
-      for(const fullMid in this.bubbles) {
-        const bubble = this.bubbles[fullMid];
-        const [peerIdStr, midStr] = fullMid.split('_');
-        this.setBubbleAgentTag(bubble, peerIdStr.toPeerId(), +midStr, bubble.classList.contains('is-out'));
-      }
+      this.retagAgentBubbles();
     });
 
     this.updateCrmTicketDividersDebounced = debounce(() => this.updateCrmTicketDividers(), 150, false, true);
@@ -1051,6 +1052,18 @@ export default class ChatBubbles {
       if(peerId !== this.peerId) return;
       this.crmTicket = ticket;
       this.updateCrmTicketDividers();
+    });
+
+    this.listenerSetter.add(rootScope)('crm_attributions_update', ({peerId, attributions}) => {
+      if(peerId !== this.peerId) return;
+      this.crmAttributions = attributions || {};
+      this.retagAgentBubbles();
+    });
+
+    this.listenerSetter.add(rootScope)('crm_attribution_push', ({peerId, messageId, attribution}) => {
+      if(peerId !== this.peerId) return;
+      this.crmAttributions['' + messageId] = attribution;
+      this.retagAgentBubbles();
     });
 
     this.listenerSetter.add(rootScope)('message_edit', ({storageKey, message}) => {
@@ -4652,6 +4665,7 @@ export default class ChatBubbles {
     this.crmMarkedBubbles.length = 0;
     this.crmDividers.length = 0;
     this.crmTicket = undefined;
+    this.crmAttributions = {};
     this.bubbleGroups?.cleanup();
     this.bubbleGroups = new BubbleGroups(this.chat);
     this.unreadOut.clear();
@@ -5888,8 +5902,12 @@ export default class ChatBubbles {
     return this.bubbles[fullMid];
   }
 
-  // Local-only agent label: shows which session (agent) sent an outgoing message.
-  // Nothing is added to the message itself — see @lib/agentIdentity.
+  // Agent label on an outgoing bubble: which agent replied. The CRM attribution
+  // map (crm_attributions_update) is the cross-session source of truth — every
+  // session sees the same author, even though all agents share one Telegram
+  // account. Falls back to this session's local agent name for a message we just
+  // sent that the CRM hasn't ingested/attributed yet (optimistic; avoids a flash
+  // of "unknown" on your own fresh replies). Nothing is written into the message.
   private setBubbleAgentTag(bubble: HTMLElement, peerId: PeerId, mid: number, isOut: boolean) {
     const content = bubble.querySelector<HTMLElement>('.bubble-content');
     if(!content) return;
@@ -5897,13 +5915,27 @@ export default class ChatBubbles {
     content.querySelector(':scope > .agent-tag')?.remove();
 
     if(!isOut) return;
-    const name = agentIdentity.getName();
-    if(!name || !agentIdentity.wasSentByThisSession(peerId, mid)) return;
+
+    const serverMid = getServerMessageId(mid);
+    const attributed = serverMid ? this.crmAttributions['' + serverMid] : undefined;
+    const name = attributed?.name ||
+      (agentIdentity.wasSentByThisSession(peerId, mid) ? agentIdentity.getName() : '');
+    if(!name) return;
 
     const tag = document.createElement('div');
     tag.classList.add('agent-tag');
     tag.textContent = name;
     content.prepend(tag);
+  }
+
+  // Re-tag every rendered outbound bubble — used when the attribution map arrives
+  // or refreshes (so another agent's reply gets labeled on this session too).
+  private retagAgentBubbles() {
+    for(const fullMid in this.bubbles) {
+      const bubble = this.bubbles[fullMid];
+      const [peerIdStr, midStr] = fullMid.split('_');
+      this.setBubbleAgentTag(bubble, peerIdStr.toPeerId(), +midStr, bubble.classList.contains('is-out'));
+    }
   }
 
   private async safeRenderMessage({

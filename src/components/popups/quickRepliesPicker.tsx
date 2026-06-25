@@ -8,10 +8,10 @@ import {i18n} from '@lib/langPack';
 import {QuickReply} from '@lib/quickReplies/types';
 import styles from './quickRepliesPicker.module.scss';
 
-type PickerItem = QuickReply & {source?: 'crm'};
+type PickerItem = QuickReply & {source?: 'crm', crmTemplateId?: number, imageCount?: number};
 
 export default function showQuickRepliesPickerPopup(options: {
-  onSelect: (reply: QuickReply) => void
+  onSelect: (reply: PickerItem) => void
 }): void {
   function Inner() {
     const context = useContext(PopupContext);
@@ -25,7 +25,15 @@ export default function showQuickRepliesPickerPopup(options: {
       ]);
 
       const crm: PickerItem[] = [
-        ...templates.map((t) => ({id: 'crm-t-' + t.id, title: t.name, text: t.text, date: 0, source: 'crm' as const})),
+        ...templates.map((t) => ({
+          id: 'crm-t-' + t.id,
+          title: t.name,
+          text: t.text,
+          date: 0,
+          source: 'crm' as const,
+          crmTemplateId: t.id,
+          imageCount: t.image_urls?.length || 0
+        })),
         ...faqs.map((f) => ({id: 'crm-f-' + f.id, title: f.question, text: f.answer, date: 0, source: 'crm' as const}))
       ];
 
@@ -75,6 +83,9 @@ export default function showQuickRepliesPickerPopup(options: {
                       {reply.title}
                       <Show when={reply.source === 'crm'}>
                         <span class={styles.badge}>{i18n('QuickReplies.SourceCrm')}</span>
+                      </Show>
+                      <Show when={reply.imageCount}>
+                        <span class={styles.images}>{(reply.imageCount > 1 ? reply.imageCount + ' ' : '') + '🖼'}</span>
                       </Show>
                     </Row.Title>
                     <Row.Subtitle>{reply.text}</Row.Subtitle>

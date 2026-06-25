@@ -40,6 +40,7 @@ import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import EmojiHelper from '@components/chat/emojiHelper';
 import CommandsHelper from '@components/chat/commandsHelper';
+import QuickRepliesHelper from '@components/chat/quickRepliesHelper';
 import AutocompleteHelperController from '@components/chat/autocompleteHelperController';
 import AutocompleteHelper from '@components/chat/autocompleteHelper';
 import MentionsHelper from '@components/chat/mentionsHelper';
@@ -303,6 +304,7 @@ export default class ChatInput {
   private stickersHelper: StickersHelper;
   private emojiHelper: EmojiHelper;
   private commandsHelper: CommandsHelper;
+  private quickRepliesHelper: QuickRepliesHelper;
   private mentionsHelper: MentionsHelper;
   private inlineHelper: InlineHelper;
   /** @internal — used by ChatRecording */
@@ -1143,7 +1145,12 @@ export default class ChatInput {
       text: 'QuickReplies.AttachMenu',
       onClick: () => {
         showQuickRepliesPickerPopup({
-          onSelect: (reply) => this.insertAtCaret(reply.text, undefined, false)
+          onSelect: (reply) => this.insertQuickReply({
+            text: reply.text,
+            crmTemplateId: reply.crmTemplateId,
+            hasImages: !!reply.imageCount,
+            isHelper: false
+          })
         });
       },
       verify: () => !this.editMsgId && this.canSendPlain()
@@ -1249,6 +1256,7 @@ export default class ChatInput {
     this.emojiHelper.addSibling(this.stickersHelper);
     this.emojiHelper.attachStickersHelper(this.stickersHelper);
     if(!this.excludeParts.commandsHelper) this.commandsHelper = new CommandsHelper(this.rowsWrapper, this.autocompleteHelperController, this, this.managers);
+    if(!this.excludeParts.commandsHelper) this.quickRepliesHelper = new QuickRepliesHelper(this.rowsWrapper, this.autocompleteHelperController, this, this.managers);
     this.mentionsHelper = new MentionsHelper(this.rowsWrapper, this.autocompleteHelperController, this, this.managers);
     this.inlineHelper = new InlineHelper(this.rowsWrapper, this.autocompleteHelperController, this.chat, this.managers);
     this.rowsWrapper.append(this.newMessageWrapper);
@@ -3341,6 +3349,55 @@ export default class ChatInput {
     // // document.execCommand('insertHTML', true, wrapEmojiText(emoji));
   }
 
+  // * insert a chosen quick reply / CRM template. text-only replies are dropped into the input
+  // * (token-replacing the typed `/query` when coming from the slash helper). when the reply is a
+  // * CRM template with attached images, the images are fetched lazily, turned into Files and
+  // * staged in the send-preview — PopupNewMedia lifts the just-inserted text into the album caption
+  // * and clears the input, so the agent reviews text + images together before sending.
+  public async insertQuickReply(options: {
+    text: string,
+    crmTemplateId?: number,
+    hasImages?: boolean,
+    isHelper?: boolean
+  }) {
+    const {text, crmTemplateId, hasImages, isHelper} = options;
+
+    // * always run for the slash helper (even with empty text) so the typed `/query` token is
+    // * cleared — otherwise it would linger and become the album caption for an image-only template
+    if(text || isHelper) {
+      this.insertAtCaret(text || '', undefined, !!isHelper);
+    }
+
+    if(!hasImages || crmTemplateId === undefined) {
+      return;
+    }
+
+    const middleware = this.middlewareHelper.get();
+    const images = await this.managers.appCrmManager.getTemplateImages(crmTemplateId);
+    if(!middleware() || !images.length) {
+      return;
+    }
+
+    const files = (await Promise.all(images.map(async(img, idx) => {
+      try {
+        // * a data: URI fetch resolves locally — no network / CORS involved
+        const blob = await fetch(img.data).then((r) => r.blob());
+        const ext = (img.mime.split('/')[1] || 'jpg').split('+')[0];
+        return new File([blob], img.name || `template-${crmTemplateId}-${idx}.${ext}`, {type: img.mime || blob.type});
+      } catch(err) {
+        return undefined;
+      }
+    }))).filter(Boolean) as File[];
+
+    if(!middleware() || !files.length) {
+      return;
+    }
+
+    // * ignoreInputValue defaults to false → the popup pulls the input text in as the caption
+    const popup = new PopupNewMedia(this.chat, files, 'media');
+    popup.show(false);
+  }
+
   public onEmojiSelected = (emoji: ReturnType<typeof getEmojiFromElement>, autocomplete: boolean, replaceText?: string) => {
     const entity: MessageEntity = emoji.docId ? {
       _: 'messageEntityCustomEmoji',
@@ -3444,9 +3501,11 @@ export default class ChatInput {
         if(result) {
           foundHelpers.add(this.mentionsHelper);
         }
-      } else if(!foundHelpers.size && !matches[1] && firstChar === '/') { // commands
+      } else if(!foundHelpers.size && !matches[1] && firstChar === '/') { // commands / quick replies
         if(this.commandsHelper && await this.commandsHelper.checkQuery(query, this.chat.peerId)) {
           foundHelpers.add(this.commandsHelper);
+        } else if(this.quickRepliesHelper && this.quickRepliesHelper.checkQuery(query)) {
+          foundHelpers.add(this.quickRepliesHelper);
         }
       } else if(!foundHelpers.size && this.chat.appSettings.emoji.suggest) { // emoji
         query = query.replace(/^\s*/, '');

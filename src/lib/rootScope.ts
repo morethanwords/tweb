@@ -212,6 +212,8 @@ export type BroadcastEvents = {
   'agent_message_tagged': {fullMid: string},
   'crm_config_update': void,
   'crm_ticket_update': {peerId: PeerId, ticket?: import('@lib/crm/types').CrmTicketRef},
+  'crm_attributions_update': {peerId: PeerId, attributions: import('@lib/crm/types').CrmAttributionMap},
+  'crm_attribution_push': {peerId: PeerId, messageId: number, attribution: import('@lib/crm/types').CrmMessageAttribution},
 
   'account_logged_in': {accountNumber: ActiveAccountNumber, userId: UserId},
 

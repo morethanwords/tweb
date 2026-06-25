@@ -5,10 +5,14 @@ import {
   CRM_API_PREFIX,
   CRM_CONFIG_STORAGE_KEY,
   CRM_ENDPOINTS,
+  CrmAttributionMap,
   CrmConfig,
+  CrmRealtimeConfig,
+  CrmReverbConfig,
   CrmCustomer,
   CrmFaq,
   CrmTemplate,
+  CrmTemplateImage,
   CrmTicketRef,
   CrmTicketStatus,
   CrmUser,
@@ -139,6 +143,23 @@ export default class AppCrmManager extends AppManager {
     return this.request<CrmUser>('GET', CRM_ENDPOINTS.me);
   }
 
+  // Params for the main-thread Reverb client (realtime attribution). Bundles the
+  // public Reverb endpoint (from the public /config) with this agent's base url +
+  // bearer token so the client can run the /broadcasting/auth handshake. The token
+  // is already a client-side credential, so handing it to the UI thread is fine.
+  public async getRealtimeConfig(): Promise<CrmRealtimeConfig | undefined> {
+    if(!(await this.isConnected())) return undefined;
+    try {
+      const result = await this.request<{data: {reverb?: CrmReverbConfig}}>('GET', CRM_ENDPOINTS.config, {auth: false});
+      const reverb = result?.data?.reverb;
+      if(!reverb?.key || !reverb?.host) return undefined;
+      return {baseUrl: this.config.baseUrl, token: this.config.token, reverb};
+    } catch(err) {
+      this.log.error('getRealtimeConfig failed', err);
+      return undefined;
+    }
+  }
+
   public async disconnect(): Promise<void> {
     await this.loadPromise;
     if(this.config.token) {
@@ -171,6 +192,19 @@ export default class AppCrmManager extends AppManager {
       }));
     } catch(err) {
       this.log.error('getFaqs failed', err);
+      return [];
+    }
+  }
+
+  // The bytes of a template's attached images (base64 data URIs), fetched lazily
+  // when an image-bearing template is picked so they can be staged in the
+  // send-preview. Served under api/mobile to avoid the cross-origin /storage CORS wall.
+  public async getTemplateImages(templateId: number): Promise<CrmTemplateImage[]> {
+    if(!(await this.isConnected())) return [];
+    try {
+      return this.unwrap(await this.request<{data: CrmTemplateImage[]}>('GET', CRM_ENDPOINTS.templateImages(templateId)));
+    } catch(err) {
+      this.log.error('getTemplateImages failed', err);
       return [];
     }
   }
@@ -226,6 +260,22 @@ export default class AppCrmManager extends AppManager {
       });
     } catch(err) {
       this.log.error('attributeOutboundMessage failed', err);
+    }
+  }
+
+  // Per-message author map for a chat: {<telegram message id>: {admin_id, name}}.
+  // Backfills which agent sent each outbound message so EVERY session — not just
+  // the sender's — can label the bubbles. Pairs with the realtime broadcast for
+  // live messages; this REST call covers history on chat open. Empty on failure
+  // so the caller can render unlabeled rather than break.
+  public async getAttributionsByTelegram(chatId: string): Promise<CrmAttributionMap> {
+    if(!(await this.isConnected()) || !chatId) return {};
+    try {
+      const result = await this.request<{data: CrmAttributionMap}>('GET', `${CRM_ENDPOINTS.tickets}/by-telegram/${encodeURIComponent(chatId)}/attributions`);
+      return result?.data || {};
+    } catch(err) {
+      this.log.error('getAttributionsByTelegram failed', err);
+      return {};
     }
   }
 

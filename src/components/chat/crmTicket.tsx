@@ -9,6 +9,7 @@ import Chat from '@components/chat/chat';
 import type ChatTopbar from '@components/chat/topbar';
 import TopbarPlate, {createTopbarPlate, TopbarPlateController} from '@components/chat/topbarPlate';
 import {CrmTicketEvent, CrmTicketRef} from '@lib/crm/types';
+import crmRealtime from '@lib/crm/crmRealtime';
 
 const className = 'crm-ticket';
 
@@ -86,6 +87,27 @@ export default function createChatCrmTicketPlate(
     managers.appCrmManager.getTicketByTelegram('' + peerId.toUserId()).then((found) => apply(peerId, found));
   };
 
+  // Per-message author map for the chat: every agent session labels outbound
+  // bubbles with who replied, even though all agents share one Telegram account.
+  // Fire-and-forget like the ticket load — NEVER awaited on the chat-open path.
+  // bubbles.ts consumes the event and tags the bubbles. (Phase A: REST backfill +
+  // debounced refetch for liveness; phase B layers a Reverb push on top.)
+  const loadAttributions = (peerId: PeerId) => {
+    if(!peerId?.isUser()) {
+      crmRealtime.leave();
+      rootScope.dispatchEvent('crm_attributions_update', {peerId, attributions: {}});
+      return;
+    }
+
+    // Realtime push for live messages (near-instant labels); REST backfill for
+    // history. Both feed bubbles.ts. Subscribe is idempotent across peer changes.
+    crmRealtime.subscribePeer(peerId, '' + peerId.toUserId());
+    managers.appCrmManager.getAttributionsByTelegram('' + peerId.toUserId()).then((attributions) => {
+      if(peerId !== currentPeerId) return;
+      rootScope.dispatchEvent('crm_attributions_update', {peerId, attributions});
+    });
+  };
+
   // The open ticket we've already claimed for this agent, so a burst of replies
   // doesn't hammer the claim endpoint. Reset on peer change.
   let claimedTicketId: number;
@@ -95,6 +117,7 @@ export default function createChatCrmTicketPlate(
     claimedTicketId = undefined;
     hide();
     load(peerId);
+    loadAttributions(peerId);
   };
 
   // The agent replied. Claim the customer's open ticket so it's bound to THIS
@@ -127,7 +150,10 @@ export default function createChatCrmTicketPlate(
   // A new message may have opened a fresh ticket on the CRM side (a customer
   // message after close creates a NEW ticket) — re-fetch so the bar auto-updates
   // without a peer switch. Debounced + delayed so the CRM userbot ingest lands first.
-  const refresh = debounce(() => load(currentPeerId), 800, false, true);
+  const refresh = debounce(() => {
+    load(currentPeerId);
+    loadAttributions(currentPeerId);
+  }, 800, false, true);
   const onChatMessage = (payload: MyMessage | {message: MyMessage}) => {
     const message = (payload as {message: MyMessage})?.message ?? (payload as MyMessage);
     if(message?.peerId && message.peerId === currentPeerId) refresh();
@@ -173,6 +199,7 @@ export default function createChatCrmTicketPlate(
       rootScope.removeEventListener('history_multiappend', onChatMessage);
       rootScope.removeEventListener('message_sent', onChatMessage);
       rootScope.removeEventListener('message_sent', onMessageSent);
+      crmRealtime.leave();
       plate.destroy();
     }
   };

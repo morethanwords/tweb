@@ -1,0 +1,62 @@
+@use "../shared" as *;
+
+.quick-replies-helper {
+  width: 22rem !important;
+  max-width: 100%;
+
+  .scrollable {
+    position: relative;
+    max-height: 232px;
+  }
+
+  &-list {
+    padding: .5rem 0;
+
+    &-element {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding-block: .375rem;
+      padding-inline: .75rem;
+      cursor: pointer;
+      position: relative;
+      line-height: var(--line-height);
+
+      @include hover();
+
+      &-name {
+        display: flex;
+        align-items: center;
+        gap: .375rem;
+        font-weight: var(--font-weight-bold);
+        max-width: 100%;
+        @include text-overflow();
+      }
+
+      &-text {
+        color: var(--secondary-text-color);
+        max-width: 100%;
+        @include text-overflow();
+      }
+
+      &-badge {
+        flex: 0 0 auto;
+        font-size: .625rem;
+        font-weight: var(--font-weight-bold);
+        line-height: 1;
+        padding: .125rem .25rem;
+        border-radius: .25rem;
+        color: var(--primary-color);
+        background-color: rgba(var(--primary-color-rgb), .1);
+        text-transform: uppercase;
+      }
+
+      &-images {
+        flex: 0 0 auto;
+        font-size: .75rem;
+        color: var(--secondary-text-color);
+        white-space: nowrap;
+      }
+    }
+  }
+}
