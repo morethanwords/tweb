@@ -77,6 +77,10 @@ export class LottieLoader {
     rlottieMessagePort.addEventListener('freeRunStopped', ({reqId, curFrame, error}) => {
       this.players[reqId]?.onFreeRunStopped(curFrame, error);
     });
+
+    rlottieMessagePort.addEventListener('freeRunEnded', ({reqId, curFrame}) => {
+      this.players[reqId]?.onFreeRunEnded(curFrame);
+    });
   }
 
   public getAnimation(element: HTMLElement) {

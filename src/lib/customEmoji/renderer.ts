@@ -1199,19 +1199,17 @@ const elementsFadeInStartTimes: WeakMap<CustomEmojiElements, number> = new WeakM
 let nextRendererId = 0;
 const offscreenRenderers: Map<number, CustomEmojiRendererElement> = new Map();
 
-// Placeholder-clear parity with the legacy render() path: clear the layout
-// children once the compositor reports the group's first paint (after the fade).
+// Placeholder-clear parity with the legacy render() path: clear the layout children once
+// the compositor reports the group is fully faded in (fired immediately when the fade was
+// skipped/disabled), so the thumb never lingers past the moment the canvas fully covers it.
 compositorMessagePort.addEventListener('groupPainted', ({rendererId, groupId}) => {
   const renderer = offscreenRenderers.get(rendererId);
   const elements = renderer?.customEmojis.get(groupId);
-  if(!elements || renderer.clearedElements.has(elements)) {
+  if(!elements || !renderer.isConnected || renderer.clearedElements.has(elements)) {
     return;
   }
 
-  setTimeout(() => {
-    if(!renderer.isConnected || renderer.clearedElements.has(elements)) return;
-    renderer.clearPlaceholders(elements);
-  }, liteMode.isAvailable('emoji_appear') ? CUSTOM_EMOJI_FADE_IN_DURATION : 0);
+  renderer.clearPlaceholders(elements);
 });
 
 // CSS-var resolution is not reactive to theme swaps - re-resolve and re-ship the color.

@@ -108,8 +108,8 @@ const paintRenderer = (rendererId: number, renderer: CompositorRenderer) => {
       context.globalAlpha = 1;
     }
 
-    if(!group.painted) {
-      group.painted = true; // one-shot; re-armed by resetFade
+    if(!group.painted && alpha >= 1) {
+      group.painted = true; // one-shot; fires once the group is fully faded in (immediately when skipFade / fade disabled). re-armed by resetFade
       compositorMessagePort.invokeVoid('groupPainted', {rendererId, groupId});
     }
   }

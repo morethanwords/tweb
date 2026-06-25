@@ -2743,24 +2743,27 @@
     }
   }
 
-  // square NxN grid of the set's preview stickers (side from ceil(sqrt(count)))
-  .webpage-stickerset-grid {
-    display: grid;
-    grid-template-columns: repeat(var(--sticker-grid-side), 1fr);
-    gap: 1px;
-  }
+  &-stickerset {
+    // square NxN grid of the set's preview stickers (side from ceil(sqrt(count)))
+    &-grid {
+      display: grid;
+      grid-template-columns: repeat(var(--sticker-grid-side), 1fr);
+      gap: 1px;
+      pointer-events: none;
+    }
 
-  .webpage-stickerset-cell {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
+    &-cell {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
 
-    img,
-    canvas,
-    video {
-      max-width: 100%;
-      max-height: 100%;
+      img,
+      canvas,
+      video {
+        max-width: 100%;
+        max-height: 100%;
+      }
     }
   }
 
