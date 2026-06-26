@@ -4787,7 +4787,7 @@ const lang = {
   'AiEditor.ViewStyle.After': 'After',
   'AiEditor.ViewStyle.InstallsCount': {
     'one_value': 'Used by %d person.',
-    'other_value': 'Used by %d persons.'
+    'other_value': 'Used by %d people.'
   },
   'AiEditor.ViewStyle.CreatedBy': 'Created by %s',
   'AiEditor.ViewStyle.SaveStyle': 'Save Style',

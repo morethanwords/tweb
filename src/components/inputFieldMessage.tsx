@@ -36,7 +36,6 @@ type InputFieldMessageProps = {
   btnConfirm?: HTMLElement,
   btnProps?: Parameters<typeof Button>[0],
   stars?: Accessor<number>,
-  containerRef?: (container: HTMLDivElement) => void,
   chatInput?: ChatInput,
 };
 

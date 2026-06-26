@@ -186,6 +186,7 @@ export const Original = (props: {
   );
 };
 
+const MAX_CACHED_COMPOSED_MESSAGES = 50;
 const cachedComposedMessages: Map<string, ComposeMessageWithAiOkResultData> = new Map();
 
 const getCachedComposedMessageKey = (args: ComposeMessageWithAiArgs): string => {
@@ -199,6 +200,14 @@ const getCachedComposedMessageKey = (args: ComposeMessageWithAiArgs): string => 
 const getCachedComposedMessage = (args: ComposeMessageWithAiArgs): ComposeMessageWithAiOkResultData | undefined => {
   const key = getCachedComposedMessageKey(args);
   return key ? cachedComposedMessages.get(key) : undefined;
+};
+
+const setCachedComposedMessage = (key: string, data: ComposeMessageWithAiOkResultData) => {
+  cachedComposedMessages.set(key, data);
+  // Keep the cache bounded — evict the oldest entry (Map preserves insertion order)
+  if(cachedComposedMessages.size > MAX_CACHED_COMPOSED_MESSAGES) {
+    cachedComposedMessages.delete(cachedComposedMessages.keys().next().value);
+  }
 };
 
 class ComposeError extends Error {
@@ -239,23 +248,9 @@ export const Result = (props: {
       if(result.ok === false) throw new ComposeError(result.isPremiumFlood);
 
       const key = getCachedComposedMessageKey(args);
-      if(key) cachedComposedMessages.set(key, result.data);
+      if(key) setCachedComposedMessage(key, result.data);
       return result.data;
     })();
-
-    // Test without API calls
-    // return (async() => {
-    //   await Promise.all([pause(20 + Math.floor(Math.random() * 1000)), appearDeferred]);
-    //   const result = {
-    //     resultText: {
-    //       _: 'textWithEntities',
-    //       text: originalText.text + '\n' + [...Array(10 + Math.floor(Math.random() * 40))].map(() => 'hello').join(' '),
-    //       entities: originalText.entities
-    //     } as TextWithEntities
-    //   };
-    //   cachedComposedMessages.set(getCachedComposedMessageKey(args), result);
-    //   return result;
-    // })();
   }, {
     initialValue: getCachedComposedMessage(props.composeMessageWithAiArgs)
   } as {} /* Note that we need the 'pending' state when the initialValue is undefined - solved by `as {}` */);

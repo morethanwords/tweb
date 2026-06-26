@@ -255,10 +255,6 @@ declare global {
     | 'CHANNELS_TOO_MUCH'
     | 'BOOSTS_REQUIRED'
     | 'USERNAME_OCCUPIED'
-    | 'AICOMPOSE_FLOOD_PREMIUM'
-    | 'AICOMPOSE_TONE_SLUG_INVALID'
-    | 'AICOMPOSE_TONE_INVALID'
-    | 'TONE_NOT_FOUND'
   ;
 
   type ErrorType = LocalErrorType | ServerErrorType;

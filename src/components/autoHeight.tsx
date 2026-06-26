@@ -6,9 +6,7 @@ import styles from './autoHeight.module.scss';
 export const AutoHeight = (inProps: {
   ref?: Ref<HTMLDivElement>;
   children: JSX.Element;
-  duration?: number;
   overflowHidden?: boolean;
-  easing?: JSX.CSSProperties['transition-property'];
   outerClass?: string;
   hasTransition?: boolean;
 }) => {
