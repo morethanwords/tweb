@@ -232,9 +232,9 @@
 
   &-background-canvas {
     position: absolute;
-    top: -6px;
-    bottom: -6px;
-    inset-inline-end: 9px;
+    top: 0;
+    inset-inline-end: 0;
+    pointer-events: none;
   }
 
   &.quote-like-icon &-title {
@@ -528,6 +528,7 @@
     overflow: visible !important;
     z-index: 1 !important;
     padding: 0;
+    cursor: default;
 
     > .btn-icon {
       margin-inline-start: 0 !important;
@@ -564,6 +565,7 @@
     padding-block: .25rem;
     padding-inline: .5rem .25rem;
     border-radius: .5rem;
+    cursor: pointer;
   }
 
   &-progress {

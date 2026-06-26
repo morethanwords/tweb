@@ -136,7 +136,7 @@ describe('E2eCall — two-party flow', () => {
 
     const zero = await E2eCall.createZeroBlock(alice, {
       participants: [participantFor(aliceId, alice)],
-      externalPermissions: 0
+      externalPermissions: PERM_ADD_USERS | PERM_REMOVE_USERS
     });
     const aliceCall = await E2eCall.create(aliceId, alice, zero);
     const selfAdd = await E2eCall.createSelfAddBlock(bob, zero, participantFor(bobId, bob));
@@ -178,7 +178,7 @@ describe('E2eCall — emoji verification end-to-end', () => {
 
     const zero = await E2eCall.createZeroBlock(alice, {
       participants: [participantFor(aliceId, alice)],
-      externalPermissions: 0
+      externalPermissions: PERM_ADD_USERS | PERM_REMOVE_USERS
     });
     const aliceCall = await E2eCall.create(aliceId, alice, zero);
     const selfAdd = await E2eCall.createSelfAddBlock(bob, zero, participantFor(bobId, bob));
@@ -454,5 +454,44 @@ describe('E2eCall — applyBlockBytes re-delivery of older blocks', () => {
     await call.applyBlockBytes(carolSelfAdd);
     expect(call.getStatus()).toBeNull();
     expect(call.getHeight()).toBe(2);
+  });
+});
+
+describe('E2eCall — verification broadcast reordering', () => {
+  it('buffers a future-height commit and replays it once the block arrives', async() => {
+    const alice = PrivateKey.fromSeed(new Uint8Array(32).fill(0x71));
+    const bob = PrivateKey.fromSeed(new Uint8Array(32).fill(0x72));
+    const carol = PrivateKey.fromSeed(new Uint8Array(32).fill(0x73));
+    const aliceId = BigInt(7001), bobId = BigInt(7002), carolId = BigInt(7003);
+
+    const zero = await E2eCall.createZeroBlock(alice, {
+      participants: [participantFor(aliceId, alice)],
+      externalPermissions: PERM_ADD_USERS | PERM_REMOVE_USERS
+    });
+    const aliceCall = await E2eCall.create(aliceId, alice, zero);
+    const bobSelfAdd = await E2eCall.createSelfAddBlock(bob, zero, participantFor(bobId, bob));
+    await aliceCall.applyBlockBytes(bobSelfAdd); // alice @ height 1
+    const bobCall = await E2eCall.create(bobId, bob, bobSelfAdd);
+
+    // A new height-2 block: carol self-adds on top of bob's block.
+    const carolSelfAdd = await E2eCall.createSelfAddBlock(carol, bobSelfAdd, participantFor(carolId, carol));
+
+    // Bob applies it first and emits his commit for height 2.
+    await bobCall.applyBlockBytes(carolSelfAdd);
+    const bobOutbound = bobCall.pullOutbound();
+    expect(bobOutbound.length).toBeGreaterThan(0);
+
+    // Deliver Bob's height-2 commit to Alice while she is STILL at height 1.
+    expect(aliceCall.getHeight()).toBe(1);
+    for(const msg of bobOutbound) await aliceCall.receiveInbound(msg);
+    // Buffered, not applied: Alice still at height 1 with only her own commit.
+    expect(aliceCall.getVerificationState()!.height).toBe(1);
+    expect(aliceCall.getVerificationState()!.commitsSeen).toBe(1);
+
+    // Alice now applies the height-2 block → the buffered commit is replayed.
+    await aliceCall.applyBlockBytes(carolSelfAdd);
+    const vs = aliceCall.getVerificationState()!;
+    expect(vs.height).toBe(2);
+    expect(vs.commitsSeen).toBe(2); // self + Bob's replayed commit (Carol hasn't committed)
   });
 });

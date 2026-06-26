@@ -433,7 +433,8 @@ const Icons = {
   webview: 'eaaf',
   win_key: 'eab0',
   zoomin: 'eab1',
-  zoomout: 'eab2'
+  zoomout: 'eab2',
+  privacypolicy: 'eab3'
 };
 
 export default Icons;

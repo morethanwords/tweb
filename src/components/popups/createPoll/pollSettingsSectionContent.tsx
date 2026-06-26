@@ -1,5 +1,6 @@
 import editableFieldStyles from '@/scss/modulePartials/editableFieldContent.module.scss';
 import {createAutoDeleteIcon} from '@components/autoDeleteIcon';
+import {getOverlayRoot} from '@helpers/appWindow';
 import {IconTsx} from '@components/iconTsx';
 import InputField from '@components/inputField';
 import showDatePickerPopup from '@components/popups/datePicker';
@@ -381,7 +382,7 @@ const usePollDurationMenu = (args: PollDurationMenuArgs) => {
 
     buttonMenu.classList.add(styles.pollDurationMenu);
 
-    document.body.appendChild(buttonMenu);
+    getOverlayRoot().appendChild(buttonMenu);
 
     requestRAF(() => {
       if(isCleaned()) return;

@@ -162,8 +162,11 @@ const EditBot: Component = () => {
       }));
 
       if(editPeer.uploadAvatar) {
-        promises.push(editPeer.uploadAvatar().then((inputFile) => {
-          return tab.managers.appProfileManager.uploadProfilePhoto(inputFile, botId);
+        const {file: fileFn, video: videoFn, videoStartTs} = editPeer.uploadAvatar;
+        const filePromise = fileFn();
+        const videoPromise = videoFn?.();
+        promises.push(Promise.all([filePromise, videoPromise]).then(([file, video]) => {
+          return tab.managers.appProfileManager.uploadProfilePhoto({file, video, videoStartTs, botId});
         }));
       }
 

@@ -33,6 +33,7 @@ type HostEvents = {
   status: (event: Extract<WorkerEvent, {kind: 'status'}>) => void;
   pendingOutbound: (event: Extract<WorkerEvent, {kind: 'pendingOutbound'}>) => void;
   callFailed: (event: Extract<WorkerEvent, {kind: 'callFailed'}>) => void;
+  recvDiag: (event: Extract<WorkerEvent, {kind: 'recvDiag'}>) => void;
   [key: string]: (...args: any[]) => any;
 };
 

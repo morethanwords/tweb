@@ -38,6 +38,7 @@ import Scrollable from '@components/scrollable2';
 import {approxEquals} from '@helpers/number/approxEquals';
 import {useAppState} from '@stores/appState';
 import anchorCallback from '@helpers/dom/anchorCallback';
+import {getOverlayRoot} from '@helpers/appWindow';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
 
 import ButtonMenuToggle from '@components/buttonMenuToggle';
@@ -503,7 +504,7 @@ function ResaleOptionsPage(props: {
               ref={(el) => {
                 ButtonMenuToggle({
                   container: el,
-                  appendTo: document.body,
+                  appendTo: getOverlayRoot(),
                   onOpen: (e, menu) => {
                     positionMenuTrigger(el, menu, 'bottom-right', {top: 8})
                   },

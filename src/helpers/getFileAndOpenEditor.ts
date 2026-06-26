@@ -2,6 +2,7 @@ import {MediaEditorFinalResult} from '@components/mediaEditor/finalRender/create
 import IMAGE_MIME_TYPES_SUPPORTED from '@environment/imageMimeTypesSupport';
 import VIDEO_MIME_TYPES_SUPPORTED from '@environment/videoMimeTypesSupport';
 import {createImageAndURLFromBlob} from '@helpers/createImageAndURLFromBlob';
+import {getAppWindow} from '@helpers/appWindow';
 import rootScope from '@lib/rootScope';
 
 
@@ -75,7 +76,10 @@ export async function getFileAndOpenEditor({
     managers: rootScope.managers,
     mediaSrc,
     mediaType: isVideo ? 'video' : 'image',
-    initialTab: 'crop',
+    // Editing an avatar with a video → avatar-video mode (≤10s trim, forced mute,
+    // cover-frame picker). Non-avatar callers are unaffected.
+    isVideoAvatarMode: isEditingForAvatar && isVideo,
+    initialTab: isVideo ? 'adjustments' : 'crop',
     onEditFinish: (editorResult) => onFinish({editorResult, originalFile: file}),
     dontCreatePreview,
     onClose: () => { }
@@ -102,8 +106,8 @@ function getFileFromInput(input: HTMLInputElement): Promise<File | void> {
       resolve(file);
     });
 
-    // Resolve the promise if the user cancels the file selection
-    window.addEventListener('focus', () => {
+    // Resolve the promise if the user cancels the file selection — active window (the PiP when popped)
+    getAppWindow().addEventListener('focus', () => {
       // It seems like the focus event fires before the change event, so we need to wait a bit before resolving
       setTimeout(() => {
         input.remove();

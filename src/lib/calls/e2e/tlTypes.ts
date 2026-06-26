@@ -235,6 +235,9 @@ export function decodeBlock(r: TLReader): Block {
   const height = r.int32();
   const stateProof = decodeStateProof(r);
   const signaturePublicKey = (flags & BLOCK_FLAG_SIGNATURE_PUBLIC_KEY) ? new Uint8Array(r.int256()) : undefined;
+  // A block is always the whole buffer — reject trailing bytes (tdlib
+  // from_tl_serialized calls fetch_end()). The server controls these bytes.
+  if(!r.eof()) throw new Error('decodeBlock: trailing data after block');
   return {signature, prevBlockHash, changes, height, stateProof, signaturePublicKey};
 }
 
@@ -295,8 +298,9 @@ export function encodeGroupBroadcastNonceReveal(w: TLWriter, b: GroupBroadcastNo
 
 export function decodeGroupBroadcast(r: TLReader): GroupBroadcast {
   const magic = r.int32() >>> 0;
+  let result: GroupBroadcast;
   if(magic === TL_MAGIC.groupBroadcastNonceCommit) {
-    return {
+    result = {
       kind: 'commit',
       signature: new Uint8Array(r.int512()),
       userId: r.int64(),
@@ -304,9 +308,8 @@ export function decodeGroupBroadcast(r: TLReader): GroupBroadcast {
       chainHash: new Uint8Array(r.int256()),
       nonceHash: new Uint8Array(r.int256())
     };
-  }
-  if(magic === TL_MAGIC.groupBroadcastNonceReveal) {
-    return {
+  } else if(magic === TL_MAGIC.groupBroadcastNonceReveal) {
+    result = {
       kind: 'reveal',
       signature: new Uint8Array(r.int512()),
       userId: r.int64(),
@@ -314,6 +317,10 @@ export function decodeGroupBroadcast(r: TLReader): GroupBroadcast {
       chainHash: new Uint8Array(r.int256()),
       nonce: new Uint8Array(r.int256())
     };
+  } else {
+    throw new Error(`decodeGroupBroadcast: unknown magic ${magic.toString(16)}`);
   }
-  throw new Error(`decodeGroupBroadcast: unknown magic ${magic.toString(16)}`);
+  // Reject trailing bytes (tdlib fetch_end()); these are server-controlled.
+  if(!r.eof()) throw new Error('decodeGroupBroadcast: trailing data after broadcast');
+  return result;
 }

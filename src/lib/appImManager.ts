@@ -1,10 +1,12 @@
 import type {GroupCallId, MyGroupCall} from '@appManagers/appGroupCallsManager';
+import type {ApiLimitType} from '@appManagers/apiManagerMethods';
 import type GroupCallInstance from '@lib/calls/groupCallInstance';
 import type CallInstance from '@lib/calls/callInstance';
 import animationIntersector from '@components/animationIntersector';
 import appSidebarLeft, {LEFT_COLUMN_ACTIVE_CLASSNAME} from '@components/sidebarLeft';
 import appSidebarRight, {RIGHT_COLUMN_ACTIVE_CLASSNAME} from '@components/sidebarRight';
 import mediaSizes, {ScreenSize} from '@helpers/mediaSizes';
+import {bindActiveWindowListener, getAppWindow, getOverlayRoot} from '@helpers/appWindow';
 import {logger, LogTypes} from '@lib/logger';
 import rootScope from '@lib/rootScope';
 import Chat, {ChatSearchKeys} from '@components/chat/chat';
@@ -30,10 +32,11 @@ import replaceContent from '@helpers/dom/replaceContent';
 import whichChild from '@helpers/dom/whichChild';
 import PopupElement from '@components/popups';
 import singleInstance from '@lib/singleInstance';
-import {toastNew} from '@components/toast';
+import {hideToast, toastNew} from '@components/toast';
 import debounce from '@helpers/schedulers/debounce';
 import pause from '@helpers/schedulers/pause';
 import MEDIA_MIME_TYPES_SUPPORTED from '@environment/mediaMimeTypesSupport';
+import {isConvertibleMov} from '@helpers/movToVideo';
 import IMAGE_MIME_TYPES_SUPPORTED from '@environment/imageMimeTypesSupport';
 import {NULL_PEER_ID, STARS_CURRENCY} from '@appManagers/constants';
 import telegramMeWebManager from '@lib/telegramMeWebManager';
@@ -115,7 +118,7 @@ import useProfileColors from '@hooks/useProfileColors';
 import {wrapSlowModeLeftDuration} from '@components/wrappers/wrapDuration';
 import {splitFullMid} from '@components/chat/bubbles';
 import getSelectedNodes from '@helpers/dom/getSelectedNodes';
-import {setQuizHint} from '@components/quizHint';
+import showChatToast from '@components/chat/chatToast';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import PopupPremium from '@components/popups/premium';
 import safeWindowOpen from '@helpers/dom/safeWindowOpen';
@@ -239,6 +242,26 @@ export class AppImManager extends EventListenerBase<{
 
   get chat(): Chat {
     return this.chats[this.chats.length - 1];
+  }
+
+  private showLimitReplacedToast(limitType: ApiLimitType, subtitleKey: LangPackKey, subtitlePremiumKey: LangPackKey) {
+    if(rootScope.premium) {
+      toastNew({langPackKey: subtitlePremiumKey});
+      return;
+    }
+
+    this.managers.apiManager.getLimit(limitType, true).then((limitPremium) => {
+      toastNew({
+        langPackKey: subtitleKey,
+        langPackArguments: [
+          anchorCallback(() => {
+            hideToast();
+            PopupPremium.show({feature: 'double_limits'});
+          }),
+          limitPremium
+        ]
+      });
+    });
   }
 
   public construct(managers: AppManagers) {
@@ -367,6 +390,10 @@ export class AppImManager extends EventListenerBase<{
     }, {once: true});
 
     rootScope.addEventListener('theme_changed', () => {
+      // When the active chat pins its own per-chat theme/wallpaper it re-publishes its own
+      // day/night variant via Chat._handleBackgrounds. `applyCurrentTheme` re-applies the *global*
+      // background, which would race and clobber the per-chat one — so defer to the chat here.
+      if(this.chat?.currentTheme || this.chat?.currentWallPaper) return;
       this.applyCurrentTheme({
         broadcastEvent: true,
         noSetTheme: true,
@@ -436,7 +463,7 @@ export class AppImManager extends EventListenerBase<{
     });
 
     rootScope.addEventListener('file_speed_limited', ({increaseTimes, isUpload}) => {
-      const {hide} = setQuizHint({
+      const {hide} = showChatToast({
         icon: 'premium_speed',
         title: i18n(isUpload ? 'UploadSpeedLimited' : 'DownloadSpeedLimited'),
         textElement: i18n(isUpload ? 'Chat.UploadLimit.Text' : 'Chat.DownloadLimit.Text', [
@@ -446,8 +473,6 @@ export class AppImManager extends EventListenerBase<{
           }),
           increaseTimes
         ]),
-        appendTo: this.chat.bubbles.container,
-        from: 'top',
         duration: 10000
       });
     });
@@ -577,7 +602,7 @@ export class AppImManager extends EventListenerBase<{
                 fromPeerId: message.peerId
               });
 
-              const {hide} = setQuizHint({
+              const {hide} = showChatToast({
                 icon: 'saved',
                 textElement: i18n('ReminderScheduled', [
                   anchorCallback(() => {
@@ -585,8 +610,6 @@ export class AppImManager extends EventListenerBase<{
                     this.openScheduled(rootScope.myId);
                   })
                 ]),
-                appendTo: this.chat.bubbles.container,
-                from: 'top',
                 duration: 5000
               });
             }
@@ -597,7 +620,7 @@ export class AppImManager extends EventListenerBase<{
       const menu = ButtonMenuSync({buttons: buttons.filter(Boolean)});
       menu.classList.add('contextmenu');
 
-      document.body.append(menu);
+      getOverlayRoot().append(menu);
       positionMenu(e, menu);
       contextMenuController.openBtnMenu(menu, () => {
         setTimeout(() => {
@@ -606,7 +629,9 @@ export class AppImManager extends EventListenerBase<{
       });
     };
 
-    document.addEventListener('mousemove', (e) => {
+    // Hover-to-play stickers — follow the active window so it still works in a Document PiP window
+    // (the mousemove fires on the PiP document, not the tab's).
+    bindActiveWindowListener((w) => w.document, 'mousemove', (e) => {
       const mediaStickerWrapper = findUpClassName(e.target, 'media-sticker-wrapper');
       if(!mediaStickerWrapper ||
         mediaStickerWrapper.classList.contains('custom-emoji') ||
@@ -629,8 +654,13 @@ export class AppImManager extends EventListenerBase<{
       });
     });
 
-    rootScope.addEventListener('sticker_updated', ({type, faved}) => {
+    rootScope.addEventListener('sticker_updated', ({type, faved, limitReached}) => {
       if(type === 'faved') {
+        if(faved && limitReached) {
+          this.showLimitReplacedToast('favedStickers', 'LimitReachedFavoriteStickersSubtitle', 'LimitReachedFavoriteStickersSubtitlePremium');
+          return;
+        }
+
         toastNew({
           langPackKey: faved ? 'AddedToFavorites' : 'RemovedFromFavorites'
         });
@@ -641,7 +671,12 @@ export class AppImManager extends EventListenerBase<{
       }
     });
 
-    rootScope.addEventListener('gif_updated', ({saved}) => {
+    rootScope.addEventListener('gif_updated', ({saved, limitReached}) => {
+      if(saved && limitReached) {
+        this.showLimitReplacedToast('gifs', 'LimitReachedFavoriteGifsSubtitle', 'LimitReachedFavoriteGifsSubtitlePremium');
+        return;
+      }
+
       toastNew({langPackKey: saved ? 'GifSavedHint' : 'RemovedGIFFromFavorites'});
     });
 
@@ -754,14 +789,23 @@ export class AppImManager extends EventListenerBase<{
 
     // ! THANKS TO CHROMIUM DEVELOPERS FOR THIS BUG
     // ! https://issues.chromium.org/issues/328755781
-    if(IS_CHROMIUM) document.addEventListener('visibilitychange', () => {
-      if(document.hidden) {
+    if(IS_CHROMIUM) bindActiveWindowListener((w) => w.document, 'visibilitychange', () => {
+      const doc = getAppWindow().document; // redraw the active window's canvases (the PiP doc when popped out)
+      if(doc.hidden) {
         return;
       }
 
-      const canvases = Array.from(document.querySelectorAll('canvas')) as HTMLCanvasElement[];
+      const canvases = Array.from(doc.querySelectorAll('canvas')) as HTMLCanvasElement[];
       canvases.forEach((canvas) => {
-        const context = canvas.getContext('2d');
+        if(canvas.dataset.offscreen) { // control transferred to a worker - getContext would throw
+          return;
+        }
+
+        let context: CanvasRenderingContext2D;
+        try {
+          context = canvas.getContext('2d');
+        } catch(err) {}
+
         if(!context) {
           return;
         }
@@ -771,6 +815,8 @@ export class AppImManager extends EventListenerBase<{
         context.fillRect(0, 0, 1, 1);
         context.fillStyle = oldFillStyle;
       });
+
+      lottieLoader.nudgeOffscreenPlayers(); // same stale-composite insurance for worker-rendered canvases
     });
 
     setInterval(setAuthorized, ONE_DAY);
@@ -815,7 +861,7 @@ export class AppImManager extends EventListenerBase<{
       showForwardPopup(undefined, async(peerId, threadId) => {
         await this.setPeer({peerId, threadId});
         if(share.files?.length) {
-          const foundMedia = share.files.some((file) => MEDIA_MIME_TYPES_SUPPORTED.has(file.type));
+          const foundMedia = share.files.some((file) => MEDIA_MIME_TYPES_SUPPORTED.has(file.type) || isConvertibleMov(file));
           PopupElement.createPopup(PopupNewMedia, this.chat, share.files, foundMedia ? 'media' : 'document');
         } else {
           const preparedPaymentResult = await PaidMessagesInterceptor.prepareStarsForPayment({messageCount: 1, peerId});
@@ -1193,7 +1239,9 @@ export class AppImManager extends EventListenerBase<{
       this.clickIfSponsoredMessage(message);
     };
 
-    document.addEventListener('click', async(e) => {
+    // Global link / story-avatar click handling — follow the active window so links and story avatars
+    // are still clickable when the client is popped into a Document PiP window.
+    bindActiveWindowListener((w) => w.document, 'click', async(e) => {
       const anchor = findUpTag(e.target as HTMLElement, 'A') as HTMLAnchorElement;
       if(anchor?.href) {
         onAuthAnchorClick(anchor);
@@ -1468,12 +1516,16 @@ export class AppImManager extends EventListenerBase<{
       }
     };
 
-    document.body.addEventListener('keydown', onKeyDown);
+    // Follow the active app window so the global "type anywhere → focus input" + shortcut handler
+    // keeps firing when the client is popped into a Document PiP window.
+    bindActiveWindowListener((w) => w.document.body, 'keydown', onKeyDown);
   }
 
   // * restrict copying no forwards content
   private attachCopyListener() {
-    document.addEventListener('copy', (e) => {
+    // Follow the active app window so the restricted-copy guard still fires in a Document PiP window
+    // (SECURITY: if it never rebinds there, no-forwards text becomes copyable out of PiP).
+    bindActiveWindowListener((w) => w.document, 'copy', (e) => {
       let peerId: PeerId;
       const nodes = getSelectedNodes();
       const foundRestrictedNode = nodes.some((node) => {
@@ -2202,7 +2254,8 @@ export class AppImManager extends EventListenerBase<{
   }
 
   private init() {
-    document.addEventListener('paste', this.onDocumentPaste, true);
+    // Follow the active app window so paste-to-send keeps working in a Document PiP window.
+    bindActiveWindowListener((w) => w.document, 'paste', this.onDocumentPaste, true);
     this.attachDragAndDropListeners();
     MarkupTooltip.getInstance().handleSelection();
     MarkupTooltip.showDatePickerPopup = showDatePickerPopup;
@@ -2253,7 +2306,8 @@ export class AppImManager extends EventListenerBase<{
       if(mount && !_drops.length) {
         const force = isFiles && !types.length; // * can't get file items not from 'drop' on Safari
 
-        const [foundMedia, foundDocuments] = partition(types, (t) => MEDIA_MIME_TYPES_SUPPORTED.has(t));
+        // * a .mov counts as media — it gets converted to mp4 in the send popup
+        const [foundMedia, foundDocuments] = partition(types, (t) => MEDIA_MIME_TYPES_SUPPORTED.has(t) || t === 'video/quicktime');
         const [foundPhotos, foundVideos] = partition(foundMedia, (t) => IMAGE_MIME_TYPES_SUPPORTED.has(t));
 
         if(!rights.send_docs) {
@@ -2351,7 +2405,7 @@ export class AppImManager extends EventListenerBase<{
         clearLastDialogElement();
       }
 
-      document.body.classList.toggle('is-dragging', mount);
+      getOverlayRoot().classList.toggle('is-dragging', mount);
       mounted = mount;
     };
 
@@ -2361,12 +2415,14 @@ export class AppImManager extends EventListenerBase<{
 
     let counter = 0;
     let dragTimeout: number;
-    document.body.addEventListener('dragenter', (e) => {
+    // Drag-and-drop listeners follow the active app window so dropping a file onto the popped-out
+    // Document PiP client still sends it (the drag events fire on the PiP body, not the tab's).
+    bindActiveWindowListener((w) => w.document.body, 'dragenter', (e) => {
       debug && log('dragenter', e, counter);
       ++counter;
     });
 
-    document.body.addEventListener('dragover', (e) => {
+    bindActiveWindowListener((w) => w.document.body, 'dragover', (e) => {
       debug && log('dragover', e/* , e.dataTransfer.types[0] */);
       toggle(e, true);
       cancelEvent(e);
@@ -2395,7 +2451,7 @@ export class AppImManager extends EventListenerBase<{
       }
     });
 
-    document.body.addEventListener('dragleave', (e) => {
+    bindActiveWindowListener((w) => w.document.body, 'dragleave', (e) => {
       debug && log('dragleave', e, counter);
       if(--counter === 0) {
         toggle(e, false);
@@ -2404,7 +2460,7 @@ export class AppImManager extends EventListenerBase<{
       clearLastDialogElement();
     });
 
-    document.body.addEventListener('drop', async(e) => {
+    bindActiveWindowListener((w) => w.document.body, 'drop', async(e) => {
       debug && log('body drop', e, counter);
 
       if(lastDialogElement) {
@@ -2452,8 +2508,8 @@ export class AppImManager extends EventListenerBase<{
     // console.log('document paste');
     // console.log('item', event.clipboardData.getData());
 
-    if(e instanceof DragEvent) {
-      const _types = e.dataTransfer.types;
+    if('dataTransfer' in e && (e as DragEvent).dataTransfer) { // cross-realm-safe `instanceof DragEvent` (Document PiP window)
+      const _types = (e as DragEvent).dataTransfer.types;
       // @ts-ignore
       const isFiles = _types.contains ? _types.contains('Files') : _types.indexOf('Files') >= 0;
       if(isFiles) {
@@ -2482,7 +2538,7 @@ export class AppImManager extends EventListenerBase<{
 
     if(chatInput.editMessage) {
       const file = files[0];
-      const canUploadAsMedia = MEDIA_MIME_TYPES_SUPPORTED.has(file.type) && canUploadAsWhenEditing({message: chatInput.editMessage, asWhat: 'media'});
+      const canUploadAsMedia = (MEDIA_MIME_TYPES_SUPPORTED.has(file.type) || isConvertibleMov(file)) && canUploadAsWhenEditing({message: chatInput.editMessage, asWhat: 'media'});
       const canUploadAsDocument = canUploadAsWhenEditing({message: chatInput.editMessage, asWhat: 'document'});
       chatInput.willAttachType = (canUploadAsMedia ? 'media' : canUploadAsDocument ? 'document' : undefined);
 
@@ -2493,7 +2549,7 @@ export class AppImManager extends EventListenerBase<{
       return;
     }
 
-    chatInput.willAttachType = attachType || (MEDIA_MIME_TYPES_SUPPORTED.has(files[0].type) ? 'media' : 'document');
+    chatInput.willAttachType = attachType || ((MEDIA_MIME_TYPES_SUPPORTED.has(files[0].type) || isConvertibleMov(files[0])) ? 'media' : 'document');
     PopupElement.createPopup(PopupNewMedia, this.chat, files, chatInput.willAttachType);
   };
 

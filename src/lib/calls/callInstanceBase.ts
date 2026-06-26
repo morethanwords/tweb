@@ -323,7 +323,7 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
     for(const video of allVideos) {
       const stream = video.srcObject;
       if(!(stream instanceof MediaStream)) continue;
-      if(!stream.getVideoTracks().includes(oldTrack)) continue;
+      if(!(stream.getVideoTracks() as MediaStreamTrack[]).includes(oldTrack)) continue;
       targetStreams.add(stream);
       targetVideos.push(video);
     }

@@ -5,6 +5,7 @@ import cancelEvent from '@helpers/dom/cancelEvent';
 import {CLICK_EVENT_NAME, hasMouseMovedSinceDown} from '@helpers/dom/clickEvent';
 import findUpAsChild from '@helpers/dom/findUpAsChild';
 import EventListenerBase from '@helpers/eventListenerBase';
+import {getOverlayRoot} from '@helpers/appWindow';
 
 export default class OverlayClickHandler extends EventListenerBase<{
   toggle: (open: boolean) => void
@@ -12,6 +13,11 @@ export default class OverlayClickHandler extends EventListenerBase<{
   protected element: HTMLElement;
   protected overlay: HTMLElement;
   protected listenerOptions: AddEventListenerOptions;
+  // The realm (document/window) the currently-open menu lives in. Defaults to the main realm and is
+  // re-derived from the opened element's `ownerDocument` in `open()` — so a menu opened while the
+  // client is popped out attaches its close listeners to the Document PiP window, not the tab.
+  protected realmDocument: Document = document;
+  protected realmWindow: Window & typeof globalThis = window;
 
   constructor(
     protected navigationType?: NavigationItem['type'],
@@ -27,7 +33,7 @@ export default class OverlayClickHandler extends EventListenerBase<{
     }
 
     if(this.element) {
-      const isRoot = this.element === document.body;
+      const isRoot = this.element === this.element.ownerDocument.body;
       if(!isRoot && findUpAsChild(e.target as HTMLElement, this.element)) {
         return;
       }
@@ -49,18 +55,21 @@ export default class OverlayClickHandler extends EventListenerBase<{
 
     if(!IS_TOUCH_SUPPORTED) {
       // window.removeEventListener('keydown', onKeyDown, {capture: true});
-      window.removeEventListener('contextmenu', this.onClick, this.listenerOptions);
+      this.realmWindow.removeEventListener('contextmenu', this.onClick, this.listenerOptions);
     }
 
-    document.removeEventListener(CLICK_EVENT_NAME, this.onClick, this.listenerOptions);
+    this.realmDocument.removeEventListener(CLICK_EVENT_NAME, this.onClick, this.listenerOptions);
 
     if(!IS_MOBILE_SAFARI && this.navigationType) {
       appNavigationController.removeByType(this.navigationType);
     }
   }
 
-  public open(element = document.body) {
+  public open(element = getOverlayRoot()) {
     this.close();
+
+    const doc = this.realmDocument = element.ownerDocument || document;
+    const win = this.realmWindow = (doc.defaultView as Window & typeof globalThis) || window;
 
     if(!IS_MOBILE_SAFARI && this.navigationType) {
       appNavigationController.pushItem({
@@ -73,8 +82,10 @@ export default class OverlayClickHandler extends EventListenerBase<{
 
     this.element = element;
 
-    if(!this.overlay && this.withOverlay) {
-      this.overlay = document.createElement('div');
+    // Recreate the overlay when the realm changes — a node created in one document can't be reused
+    // across windows.
+    if((!this.overlay || this.overlay.ownerDocument !== doc) && this.withOverlay) {
+      this.overlay = doc.createElement('div');
       this.overlay.classList.add('btn-menu-overlay');
 
       // ! because this event must be canceled, and can't cancel on menu click (below)
@@ -84,7 +95,7 @@ export default class OverlayClickHandler extends EventListenerBase<{
       });
     }
 
-    const isRoot = this.element === document.body;
+    const isRoot = this.element === doc.body;
     if(this.overlay) {
       if(isRoot) {
         this.element.append(this.overlay);
@@ -97,7 +108,7 @@ export default class OverlayClickHandler extends EventListenerBase<{
 
     if(!IS_TOUCH_SUPPORTED) {
       // window.addEventListener('keydown', onKeyDown, {capture: true});
-      window.addEventListener('contextmenu', this.onClick, {...this.listenerOptions, once: true});
+      win.addEventListener('contextmenu', this.onClick, {...this.listenerOptions, once: true});
     }
 
     /* // ! because this event must be canceled, and can't cancel on menu click (below)
@@ -107,7 +118,7 @@ export default class OverlayClickHandler extends EventListenerBase<{
     }); */
 
     // ! safari iOS doesn't handle window click event on overlay, idk why
-    document.addEventListener(CLICK_EVENT_NAME, this.onClick, this.listenerOptions);
+    doc.addEventListener(CLICK_EVENT_NAME, this.onClick, this.listenerOptions);
 
     this.dispatchEvent('toggle', true);
   }

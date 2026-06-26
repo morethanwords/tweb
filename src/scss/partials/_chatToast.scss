@@ -1,0 +1,62 @@
+@use "sass:string";
+
+// Toast docked just below the chat topbar — a .tooltip mounted on the .chat
+// element by showChatToast (@components/chat/chatToast).
+.chat-toast {
+  // --chat-padding-top = topbar header + page padding + floating pinned plates,
+  // so the toast lands at the top of the message area with a gap and never
+  // overlaps the header/pinned bars, tracking them dynamically.
+  top: var(--chat-padding-top);
+  left: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: max-content;
+  max-width: string.unquote("min(calc(100% - 1rem), 400px)");
+
+  .tooltip-notch {
+    display: none;
+  }
+
+  a {
+    text-decoration: underline;
+  }
+
+  &.tooltip {
+    // position:absolute (not the .tooltip default of fixed) anchors to
+    // #column-center — the same containing block as .topbar — so the gap above
+    // is consistent across breakpoints.
+    position: absolute;
+    transform: translate(-50%, 0);
+  }
+
+  // Rises into place while the tooltip parts fade in.
+  &--fade.tooltip {
+    &.mounted {
+      transform: translate(-50%, -1rem);
+    }
+
+    &.is-visible.forwards {
+      transform: translate(-50%, 0);
+    }
+  }
+
+  // Slides down from behind the topbar: z-index 1 = same layer as .bubbles, so
+  // the toast paints above the messages (later sibling) but below the topbar
+  // (z-index:2), and the start position keeps it behind the topbar/plates.
+  &--slide.tooltip {
+    z-index: 1;
+
+    &.mounted {
+      transform: translate(-50%, calc(-100% - 10px));
+    }
+
+    &.is-visible.forwards {
+      transform: translate(-50%, 0);
+    }
+
+    .tooltip-part {
+      opacity: 1;
+    }
+  }
+}

@@ -1,4 +1,5 @@
 import ButtonIcon from '@components/buttonIcon';
+import {bindActiveWindowListener, getAppWindow, getOverlayRoot} from '@helpers/appWindow';
 import {replaceButtonIcon} from '@components/button';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import {IS_APPLE, IS_MOBILE} from '@environment/userAgent';
@@ -170,7 +171,7 @@ export default class MarkupTooltip {
 
     this.wrapper.append(tools1, tools2);
     this.container.append(this.wrapper);
-    document.body.append(this.container);
+    getOverlayRoot().append(this.container);
 
     window.addEventListener('resize', () => {
       this.hide();
@@ -356,7 +357,7 @@ export default class MarkupTooltip {
     const currentTools = this.container.classList.contains('is-link') ?
       this.wrapper.lastElementChild :
       this.wrapper.firstElementChild;
-    const bodyRect = document.body.getBoundingClientRect();
+    const bodyRect = getOverlayRoot().getBoundingClientRect();
     const selectionRect = range.getBoundingClientRect();
     const inputRect = rowsWrapper.getBoundingClientRect();
     const sizesRect = currentTools.getBoundingClientRect();
@@ -494,13 +495,14 @@ export default class MarkupTooltip {
 
     // this.log('setMouseUpEvent');
 
-    document.addEventListener('mouseup', this.onMouseUpSingle, {once: true});
+    // Active window's document so text-selection formatting still works in a Document PiP window.
+    getAppWindow().document.addEventListener('mouseup', this.onMouseUpSingle, {once: true});
   }
 
   public cancelClosening() {
     if(IS_TOUCH_SUPPORTED && !IS_APPLE) {
-      document.removeEventListener('mouseup', this.onMouseUpSingle);
-      document.addEventListener('mouseup', (e) => {
+      getAppWindow().document.removeEventListener('mouseup', this.onMouseUpSingle);
+      getAppWindow().document.addEventListener('mouseup', (e) => {
         cancelEvent(e);
         this.mouseUpCounter = 1;
         this.waitingForMouseUp = false;
@@ -516,23 +518,26 @@ export default class MarkupTooltip {
   public handleSelection() {
     if(this.addedListener) return;
     this.addedListener = true;
-    document.addEventListener('selectionchange', (e) => {
+    // selectionchange/beforeinput are document-level — follow the active window so text-selection
+    // formatting works in a Document PiP window (the events fire on the PiP document there).
+    bindActiveWindowListener((w) => w.document, 'selectionchange', (e) => {
+      const doc = getAppWindow().document;
       if(this.linkInputFocusTimeout) { // * if it soon will be focused, ignore the event because of click event
         return;
       }
       // this.log('selectionchange');
 
-      if(document.activeElement === this.linkInput) {
+      if(doc.activeElement === this.linkInput) {
         return;
       }
 
-      const activeElement = document.activeElement as HTMLElement;
+      const activeElement = doc.activeElement as HTMLElement;
       if(this.input ? activeElement !== this.input : !this.canFormatInput(activeElement)) {
         this.hide();
         return;
       }
 
-      const selection = document.getSelection();
+      const selection = doc.getSelection();
       if(isSelectionEmpty(selection)) {
         this.hide();
         return;
@@ -568,7 +573,7 @@ export default class MarkupTooltip {
       }
     });
 
-    document.addEventListener('beforeinput', (e) => {
+    bindActiveWindowListener((w) => w.document, 'beforeinput', (e) => {
       if(e.inputType === 'historyRedo' || e.inputType === 'historyUndo') {
         e.target.addEventListener('input', () => this.setActiveMarkupButton(), {once: true});
       }

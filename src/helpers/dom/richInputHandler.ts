@@ -2,6 +2,7 @@ import {IS_FIREFOX} from '@environment/userAgent';
 import {logger} from '@lib/logger';
 import {isCustomFillerNeededBySiblingNode} from '@lib/richTextProcessor/wrapRichText';
 import ListenerSetter from '@helpers/listenerSetter';
+import {bindActiveWindowListener, getAppWindow} from '@helpers/appWindow';
 import BOM from '@helpers/string/bom';
 import compareNodes from '@helpers/dom/compareNodes';
 import getCaretPosNew from '@helpers/dom/getCaretPosNew';
@@ -30,16 +31,20 @@ export default class RichInputHandler {
     this.listenerSetter = new ListenerSetter();
     this.savedRanges = new WeakMap();
 
-    this.listenerSetter.add(document)('selectionchange', this.saveSelectionOnChange);
+    // These are document-level (`selectionchange`/`keydown`/`beforeinput`/…) — they must follow the
+    // active window, else while the client is popped into a Document PiP window they fire on the PiP
+    // document and the chat-input rich-text handling (markdown shortcuts, BOM caret fixes) goes dead.
+    // This singleton lives for the app's lifetime, so the follow-subscriptions are never disposed.
+    bindActiveWindowListener((w) => w.document, 'selectionchange', this.saveSelectionOnChange);
     if(USING_BOMS) {
-      this.listenerSetter.add(document)('focusout', this.onFocusOut);
-      this.listenerSetter.add(document)('selectionchange', this.onSelectionChange);
-      this.listenerSetter.add(document)('beforeinput', this.onBeforeInput);
-      this.listenerSetter.add(document)('keydown', this.onKeyDown, {capture: true});
+      bindActiveWindowListener((w) => w.document, 'focusout', this.onFocusOut);
+      bindActiveWindowListener((w) => w.document, 'selectionchange', this.onSelectionChange);
+      bindActiveWindowListener((w) => w.document, 'beforeinput', this.onBeforeInput);
+      bindActiveWindowListener((w) => w.document, 'keydown', this.onKeyDown, {capture: true});
 
       if(IS_FIREFOX) {
         this.inputCaptureCallbacks = [];
-        this.listenerSetter.add(document)('input', () => {
+        bindActiveWindowListener((w) => w.document, 'input', () => {
           this.inputCaptureCallbacks.forEach((callback) => callback());
           this.inputCaptureCallbacks.length = 0;
         }, {capture: true});
@@ -48,7 +53,7 @@ export default class RichInputHandler {
   }
 
   private get input() {
-    const selection = document.getSelection();
+    const selection = getAppWindow().getSelection();
     const {anchorNode: node} = selection;
     if(!node) return;
     return ((node as HTMLElement).closest ? node as HTMLElement : node.parentElement).closest<HTMLElement>('[contenteditable="true"]');
@@ -56,15 +61,15 @@ export default class RichInputHandler {
 
   private saveRangeForElement(element: HTMLElement) {
     if(element && (element.isContentEditable || element.tagName === 'INPUT')) {
-      const selection = document.getSelection();
+      const selection = element.ownerDocument.defaultView.getSelection();
       if(selection.rangeCount) {
-        this.savedRanges.set(element as HTMLElement, document.getSelection().getRangeAt(0));
+        this.savedRanges.set(element as HTMLElement, selection.getRangeAt(0));
       }
     }
   }
 
   private saveSelectionOnChange = (e: Event) => {
-    const element = document.activeElement as HTMLElement; // e.target as HTMLElement;
+    const element = getAppWindow().document.activeElement as HTMLElement; // e.target as HTMLElement;
     this.saveRangeForElement(element);
   };
 
@@ -100,7 +105,7 @@ export default class RichInputHandler {
     const {node, offset, move} = caret;
     const something = input.querySelectorAll('.input-something');
     const smthIndex = this.findPreviousSmthIndex(input, node, something);
-    const r = document.createRange();
+    const r = input.ownerDocument.createRange();
     r[toLeft ? 'setEnd' : 'setStart'](node, offset);
 
     if(fromSelectionChange) {
@@ -147,7 +152,7 @@ export default class RichInputHandler {
   private onSelectionChange = (e: Event) => {
     const {input} = this;
     if(!input) {
-      this.setSelectionClassName(document.getSelection());
+      this.setSelectionClassName(getAppWindow().getSelection());
       return;
     }
 
@@ -234,8 +239,8 @@ export default class RichInputHandler {
         whichChild(this.getFiller(this.lastNode)),
         toLeft,
         selection,
-        document.getSelection(),
-        document.getSelection().getRangeAt(0),
+        input.ownerDocument.defaultView.getSelection(),
+        input.ownerDocument.defaultView.getSelection().getRangeAt(0),
         node?.parentNode,
         this.lastNode?.parentNode
       );
@@ -268,7 +273,7 @@ export default class RichInputHandler {
       return false;
     }
 
-    const selection = window.getSelection();
+    const selection = input.ownerDocument.defaultView.getSelection();
     selection.removeAllRanges();
     selection.addRange(range);
 
@@ -280,7 +285,7 @@ export default class RichInputHandler {
   }
 
   public makeFocused(input: HTMLElement) {
-    if(document.activeElement !== input && !this.restoreSavedRange(input)) {
+    if(input.ownerDocument.activeElement !== input && !this.restoreSavedRange(input)) {
       placeCaretAtEnd(input, false, false);
     }
   }
@@ -292,7 +297,7 @@ export default class RichInputHandler {
   }
 
   private fixBuggedCaret() {
-    const selection = document.getSelection();
+    const selection = getAppWindow().getSelection();
     const range = selection.getRangeAt(0);
     selection.removeAllRanges();
     selection.addRange(range);

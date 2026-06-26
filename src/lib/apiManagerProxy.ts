@@ -1152,7 +1152,20 @@ class ApiManagerProxy extends MTProtoMessagePort {
     }
 
     const saved = this.mirrors.avatars[peerId] ??= {};
-    return saved[size] ??= rootScope.managers.appAvatarsManager.loadAvatar(peerId, photo, size);
+    if(saved[size]) {
+      return saved[size];
+    }
+
+    const promise = saved[size] = rootScope.managers.appAvatarsManager.loadAvatar(peerId, photo, size);
+    // Don't permanently cache a failed (undefined) video load — allow a retry.
+    // (Successful loads overwrite this entry with the URL via the 'mirror' message.)
+    if(size === 'photo_video' || size === 'photo_video_full') {
+      Promise.resolve(promise).then(
+        (url) => { if(!url && saved[size] === promise) delete saved[size]; },
+        () => { if(saved[size] === promise) delete saved[size]; }
+      );
+    }
+    return promise;
   }
 
   public getAppConfig(overwrite?: boolean) {

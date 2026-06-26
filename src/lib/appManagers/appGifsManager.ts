@@ -69,13 +69,15 @@ export default class AppGifsManager extends AppManager {
     const doc = this.appDocsManager.getDoc(docId);
     findAndSplice(gifs as Document.document[], (_doc) => _doc.id === doc.id);
 
+    let limitReached = false;
     if(!unsave) {
       gifs.unshift(doc);
       const spliced = gifs.splice(limit, gifs.length - limit);
+      limitReached = spliced.length > 0;
     }
 
     this.rootScope.dispatchEvent('gifs_updated', gifs);
-    this.rootScope.dispatchEvent('gif_updated', {saved: !unsave, document: doc});
+    this.rootScope.dispatchEvent('gif_updated', {saved: !unsave, document: doc, limitReached});
 
     return this.apiManager.invokeApi('messages.saveGif', {
       id: getDocumentInput(doc),

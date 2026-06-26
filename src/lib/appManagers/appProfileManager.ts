@@ -135,6 +135,18 @@ export class AppProfileManager extends AppManager {
       if(userFull.profile_photo) {
         userFull.profile_photo = this.appPhotosManager.savePhoto(userFull.profile_photo, {type: 'profilePhoto', peerId});
       }
+      // Cache the public (fallback) and personal photos too, so they can be
+      // resolved by id via getPhoto (the displayed avatar may be one of these,
+      // and the avatar viewer / carousel look photos up by id). They're
+      // standalone Photos (not in the peer's listed photos), so they must be
+      // downloaded via inputPhotoFileLocation — saving here keeps their
+      // file_reference + context available for that.
+      if(userFull.fallback_photo) {
+        userFull.fallback_photo = this.appPhotosManager.savePhoto(userFull.fallback_photo, {type: 'profilePhoto', peerId});
+      }
+      if(userFull.personal_photo) {
+        userFull.personal_photo = this.appPhotosManager.savePhoto(userFull.personal_photo, {type: 'profilePhoto', peerId});
+      }
       userFull.wallpaper = this.appThemesManager.saveWallPaper(userFull.wallpaper);
 
       const referenceContext: ReferenceContext = {type: 'userFull', userId: peerId.toUserId()};
@@ -303,8 +315,20 @@ export class AppProfileManager extends AppManager {
   public async getFullPhoto(peerId: PeerId) {
     const profile = await this.getProfileByPeerId(peerId);
     switch(profile._) {
-      case 'userFull':
-        return profile.profile_photo;
+      case 'userFull': {
+        // The shown avatar may be the public (fallback) or personal photo when
+        // the main profile_photo isn't visible (e.g. a contact whose only visible
+        // photo is their public one — profile_photo is then empty). Return the
+        // photo that matches the currently-displayed avatar so the viewer opens
+        // it, instead of always returning the (possibly empty) profile_photo.
+        const candidates = [
+          profile.profile_photo,
+          profile.fallback_photo,
+          profile.personal_photo
+        ].filter((photo) => photo?._ === 'photo') as Photo.photo[];
+        const shownId = this.appPeersManager.getPeerPhoto(peerId)?.photo_id;
+        return (shownId && candidates.find((photo) => photo.id === shownId)) || candidates[0];
+      }
       case 'channelFull':
       case 'chatFull':
         return profile.chat_photo;
@@ -677,7 +701,7 @@ export class AppProfileManager extends AppManager {
     this.refreshFullPeer(id.toPeerId(true));
   }
 
-  private refreshFullPeer(peerId: PeerId) {
+  public refreshFullPeer(peerId: PeerId) {
     if(peerId.isUser()) {
       const userId = peerId.toUserId();
       delete this.usersFull[userId];
@@ -690,7 +714,7 @@ export class AppProfileManager extends AppManager {
 
     // ! эта строчка будет создавать race condition:
     // ! запрос вернёт chat с установленным флагом call_not_empty, хотя сам апдейт уже будет применён
-    this.getProfileByPeerId(peerId, true);
+    return this.getProfileByPeerId(peerId, true);
   }
 
   public refreshFullPeerIfNeeded(peerId: PeerId) {
@@ -787,13 +811,31 @@ export class AppProfileManager extends AppManager {
     });
   }
 
-  public uploadProfilePhoto(inputFile: InputFile, botId?: BotId) {
+  public uploadProfilePhoto(
+    opts: InputFile | {
+      file?: InputFile;
+      video?: InputFile;
+      videoStartTs?: number;
+      fallback?: boolean;
+      botId?: BotId;
+    },
+    legacyBotId?: BotId
+  ) {
+    // Backwards-compatible signature: old callers pass (inputFile, botId).
+    const isLegacy = !opts || (opts as any)._ === 'inputFile' || (opts as any)._ === 'inputFileBig';
+    const {file, video, videoStartTs, fallback, botId} = isLegacy ?
+      {file: opts as InputFile, video: undefined, videoStartTs: undefined, fallback: false, botId: legacyBotId} :
+      (opts as {file?: InputFile; video?: InputFile; videoStartTs?: number; fallback?: boolean; botId?: BotId});
+
     return this.apiManager.invokeApi('photos.uploadProfilePhoto', {
-      file: inputFile,
-      bot: botId ? this.appUsersManager.getUserInput(botId) : undefined
+      file,
+      video,
+      video_start_ts: videoStartTs,
+      bot: botId ? this.appUsersManager.getUserInput(botId) : undefined,
+      fallback: fallback || undefined
     }).then((updateResult) => {
-      // ! sometimes can have no user in users
       const photo = updateResult.photo as Photo.photo;
+      const hasVideo = !!video || !!photo.video_sizes?.length;
       if(!updateResult.users.length) {
         const strippedThumb = photo.sizes.find((size) => size._ === 'photoStrippedSize') as PhotoSize.photoStrippedSize;
         updateResult.users.push({
@@ -803,9 +845,7 @@ export class AppProfileManager extends AppManager {
             dc_id: photo.dc_id,
             photo_id: photo.id,
             stripped_thumb: strippedThumb?.bytes,
-            pFlags: {
-
-            }
+            pFlags: hasVideo ? {has_video: true} : {}
           }
         });
       }
@@ -818,17 +858,68 @@ export class AppProfileManager extends AppManager {
       });
 
       const userId = peerId.toUserId();
-      // this.apiUpdatesManager.processLocalUpdate({
-      //   _: 'updateUserPhoto',
-      //   user_id: userId,
-      //   date: tsNow(true),
-      //   photo: this.appUsersManager.getUser(userId).photo,
-      //   previous: true
-      // });
       this.apiUpdatesManager.processLocalUpdate({
         _: 'updateUser',
         user_id: userId
       });
+    });
+  }
+
+  public uploadContactProfilePhoto(opts: {
+    userId: UserId;
+    file?: InputFile;
+    video?: InputFile;
+    videoStartTs?: number;
+    suggest?: boolean;
+    save?: boolean;
+  }) {
+    return this.apiManager.invokeApi('photos.uploadContactProfilePhoto', {
+      user_id: this.appUsersManager.getUserInput(opts.userId),
+      file: opts.file,
+      video: opts.video,
+      video_start_ts: opts.videoStartTs,
+      suggest: opts.suggest || undefined,
+      save: opts.save || undefined
+    }).then((updateResult) => {
+      const photo = updateResult.photo as Photo.photo;
+      if(photo?._ === 'photo') {
+        this.appPhotosManager.savePhoto(photo, {
+          type: 'profilePhoto',
+          peerId: opts.userId.toPeerId()
+        });
+      }
+      this.appUsersManager.saveApiUsers(updateResult.users);
+      // Refresh user_full so personal_photo / fallback_photo come through.
+      delete this.usersFull[opts.userId];
+      this.apiUpdatesManager.processLocalUpdate({
+        _: 'updateUser',
+        user_id: opts.userId
+      });
+      return updateResult;
+    });
+  }
+
+  public updateProfilePhoto(photoId: string, fallback?: boolean) {
+    const photo = this.appPhotosManager.getPhoto(photoId);
+    return this.apiManager.invokeApi('photos.updateProfilePhoto', {
+      id: getPhotoInput(photo),
+      fallback: fallback || undefined
+    }).then(() => {
+      this.apiManager.clearCache('photos.getUserPhotos', () => true);
+      const userId = this.rootScope.myId.toUserId();
+      delete this.usersFull[userId];
+      return this.appUsersManager.getApiUsers([userId]);
+    });
+  }
+
+  public clearFallbackProfilePhoto() {
+    return this.apiManager.invokeApi('photos.updateProfilePhoto', {
+      id: {_: 'inputPhotoEmpty'},
+      fallback: true
+    }).then(() => {
+      const userId = this.rootScope.myId.toUserId();
+      delete this.usersFull[userId];
+      return this.appUsersManager.getApiUsers([userId]);
     });
   }
 

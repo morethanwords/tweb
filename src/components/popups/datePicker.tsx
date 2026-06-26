@@ -7,7 +7,7 @@ import {ButtonIconTsx} from '@components/buttonIconTsx';
 import InputField from '@components/inputField';
 import rootScope from '@lib/rootScope';
 import ListenerSetter from '@helpers/listenerSetter';
-import {formatTime} from '@helpers/date';
+import {formatTime, earliestSelectableMinuteMs} from '@helpers/date';
 import suggestPostStyles from '@components/chat/suggestPostPopup/styles.module.scss';
 import {wrapReplyMedia} from '@components/chat/replyContainer';
 import createMiddleware from '@helpers/solid/createMiddleware';
@@ -144,6 +144,13 @@ export default function showDatePickerPopup(opts: DatePickerPopupOptions): void 
   const initDate = checkDate(opts.initDate, opts.addMinutes ? 10 : undefined);
   if(initDate < minDate) {
     initDate.setFullYear(minDate.getFullYear(), minDate.getMonth(), minDate.getDate());
+  }
+
+  if(opts.minTimeDate) {
+    // Seed the inputs no lower than the earliest selectable minute, so the popup
+    // opens with Confirm enabled (the current minute's :00 may already be past).
+    const minInit = earliestSelectableMinuteMs(opts.minTimeDate.getTime(), Date.now());
+    if(initDate.getTime() < minInit) initDate.setTime(minInit);
   }
 
   const initHours = initDate.getHours();
@@ -542,6 +549,26 @@ export default function showDatePickerPopup(opts: DatePickerPopupOptions): void 
       return i18n(key, args);
     });
 
+    // A live clock so the minimum-time floor (the caption + the confirm guard)
+    // tracks real time instead of freezing at the moment the popup opened — the
+    // displayed "Minimum send time" would otherwise drift into the past. Minute
+    // granularity (the caption is HH:MM, the bound is minute-bucketed), so the
+    // dependent memos recompute at most once a minute, not every tick.
+    const [nowMinute, setNowMinute] = createSignal(Math.floor(Date.now() / MILLIS_IN_MINUTE));
+    if(opts.minTimeDate) {
+      const interval = setInterval(() => {
+        const minute = Math.floor(Date.now() / MILLIS_IN_MINUTE);
+        if(minute !== nowMinute()) setNowMinute(minute);
+      }, 1000);
+      onCleanup(() => clearInterval(interval));
+    }
+    const effectiveMinTime = createMemo(() => {
+      nowMinute(); // dependency: re-evaluate at each minute boundary
+      return opts.minTimeDate ?
+        new Date(earliestSelectableMinuteMs(opts.minTimeDate.getTime(), Date.now())) :
+        new Date();
+    });
+
     const isConfirmDisabled = createMemo(() => {
       if(multiSelectActive()) {
         // multiSelectAction enables the button as soon as one day is picked
@@ -554,17 +581,19 @@ export default function showDatePickerPopup(opts: DatePickerPopupOptions): void 
         return !selectionStart();
       }
       if(!opts.minTimeDate) return false;
+      const minTime = effectiveMinTime();
       const sendDate = new Date(selectedDate().getTime());
       sendDate.setHours(+hoursValue() || 0, +minutesValue() || 0);
       return sendDate < new Date() ||
-        (sendDate.valueOf() / MILLIS_IN_MINUTE | 0) < (opts.minTimeDate.valueOf() / MILLIS_IN_MINUTE | 0);
+        (sendDate.valueOf() / MILLIS_IN_MINUTE | 0) < (minTime.valueOf() / MILLIS_IN_MINUTE | 0);
     });
 
     const isMinTimeCaptionVisible = createMemo(() => {
       if(!opts.minTimeDate) return true;
+      const minTime = effectiveMinTime();
       const sendDate = new Date(selectedDate().getTime());
       sendDate.setHours(+hoursValue() || 0, +minutesValue() || 0);
-      return sendDate.getDate() === opts.minTimeDate.getDate();
+      return sendDate.getDate() === minTime.getDate();
     });
 
     // ─── cell click handling ───────────────────────────────────────────────
@@ -859,7 +888,7 @@ export default function showDatePickerPopup(opts: DatePickerPopupOptions): void 
             suggestPostStyles.center,
             !isMinTimeCaptionVisible() && 'hide'
           )}>
-            {i18n(opts.minSendDateLangKey ?? 'SuggestedPosts.PublishingTime.MinSendTime', [formatTime(opts.minTimeDate)])}
+            {i18n(opts.minSendDateLangKey ?? 'SuggestedPosts.PublishingTime.MinSendTime', [formatTime(effectiveMinTime())])}
           </div>
         </Show>
 

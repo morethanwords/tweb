@@ -2,6 +2,7 @@ import {batch, createEffect, createSignal, onCleanup, onMount, Show} from 'solid
 import {render} from 'solid-js/web';
 
 import ListenerSetter from '@helpers/listenerSetter';
+import {bindActiveWindowListener} from '@helpers/appWindow';
 import appMediaPlaybackController from '@components/appMediaPlaybackController';
 import {IconTsx} from '@components/iconTsx';
 import clamp from '@helpers/number/clamp';
@@ -110,7 +111,10 @@ export function SpeedDragHandler(props: InternalSpeedDragHandlerProps) {
       }, SHOW_TIP_TIMEOUT);
     });
 
-    listenerSetter.add(window)('pointermove', (e) => {
+    // The drag (speed change) and release (revert) track on the WINDOW — follow whichever window the
+    // app is in (the tab, or the Document PiP window), else in the PiP the pointermove/pointerup fire
+    // on the PiP window, never arrive, and the speed neither changes on drag nor reverts on release.
+    const disposePointerMove = bindActiveWindowListener((w) => w, 'pointermove', (e) => {
       if(!initialMousePosition || IS_MOBILE) return;
 
       const moveX = e.clientX - initialMousePosition[0];
@@ -153,7 +157,7 @@ export function SpeedDragHandler(props: InternalSpeedDragHandlerProps) {
       };
     });
 
-    listenerSetter.add(window)('pointerup', () => {
+    const disposePointerUp = bindActiveWindowListener((w) => w, 'pointerup', () => {
       if(!initialMousePosition) return;
 
       window.clearTimeout(showTimeout);
@@ -172,6 +176,11 @@ export function SpeedDragHandler(props: InternalSpeedDragHandlerProps) {
 
     listenerSetter.add(appMediaPlaybackController)('playbackParams', () => {
       setCurrentSpeed(appMediaPlaybackController.playbackRate);
+    });
+
+    onCleanup(() => {
+      disposePointerMove();
+      disposePointerUp();
     });
   });
 

@@ -42,6 +42,7 @@ import {StarsStackedStars} from '@components/popups/stars';
 import numberThousandSplitter, {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
 import paymentsWrapCurrencyAmount from '@helpers/paymentsWrapCurrencyAmount';
 import flatten from '@helpers/array/flatten';
+import isGiveawayUntilDateValid from '@helpers/giveaway/isGiveawayUntilDateValid';
 
 export const BoostsBadge = (props: {boosts: number}) => {
   return (
@@ -161,11 +162,17 @@ export default class PopupBoostsViaGifts extends PopupElement {
       titleLangKey: 'Ends',
       titleRightSecondary: true,
       clickable: () => {
-        const maxDate = new Date(Date.now() + (this.appConfig.giveaway_period_max ?? 604800) * 1000);
+        const now = tsNow(true);
+        const minTimeDate = new Date(now * 1000);
+        const minDate = new Date(minTimeDate);
+        minDate.setHours(0, 0, 0, 0);
+        const maxDate = new Date((now + (this.appConfig.giveaway_period_max ?? 604800)) * 1000);
         const initDate = new Date(expiration() * 1000);
         showDatePickerPopup({
           initDate,
           withTime: true,
+          minDate,
+          minTimeDate,
           onPick: (timestamp) => {
             setExpiration(timestamp);
           },
@@ -798,6 +805,17 @@ export default class PopupBoostsViaGifts extends PopupElement {
 
     attachClickEvent(this.btnConfirm, async() => {
       const toggle = toggleDisability(this.btnConfirm, true);
+
+      if(!specific()) {
+        const now = tsNow(true);
+        const periodMax = this.appConfig.giveaway_period_max ?? 604800;
+        if(!isGiveawayUntilDateValid(expiration(), now, periodMax)) {
+          toggle();
+          toastNew({langPackKey: 'BoostsViaGifts.InvalidEndDate'});
+          shake(expirationRow.container);
+          return;
+        }
+      }
 
       try {
         const purpose = await (specific() ? createSpecificStoreInput : createGiveawayStoreInput)();

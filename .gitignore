@@ -22,3 +22,10 @@ tmp
 
 # Throw files you don't need in this folder
 ignore
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+
+.claude/bugs-cache

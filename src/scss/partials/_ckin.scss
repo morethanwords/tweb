@@ -60,10 +60,14 @@
       transform: translate3d(-50%, -50%, 0) scale(1);
       font-size: 4rem;
 
-      @include respond-to(not-handhelds) {
+      // pointer-events:none lets the click fall through to the <video> (which toggles play). Gate on
+      // touch CAPABILITY, not viewport WIDTH: the Document PiP window is a narrow (handheld-width)
+      // viewport but still mouse-driven, so `respond-to(not-handhelds)` left the big button capturing
+      // the click there (with no handler of its own) and swallowing the play toggle.
+      html:not(.is-touch) & {
         pointer-events: none;
       }
-      
+
       @include animation-level(2) {
         transition: opacity var(--layer-transition);
       }

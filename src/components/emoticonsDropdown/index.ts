@@ -25,6 +25,7 @@ import {IS_APPLE_MOBILE} from '@environment/userAgent';
 import {AppManagers} from '@lib/managers';
 import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
 import overlayCounter from '@helpers/overlayCounter';
+import {getAppWindow, getOverlayRoot} from '@helpers/appWindow';
 import noop from '@helpers/noop';
 import {FocusDirection, ScrollOptions} from '@helpers/fastSmoothScroll';
 import BezierEasing from '@vendor/bezierEasing';
@@ -127,7 +128,8 @@ export class EmoticonsDropdown extends DropdownHover {
     getOpenPosition?: () => DOMRectEditable,
     tabsToRender?: EmoticonsTab[],
     customOnSelect?: (emoji: {element: HTMLElement} & ReturnType<typeof getEmojiFromElement>) => void,
-    animationGroup?: AnimationItemGroup
+    animationGroup?: AnimationItemGroup,
+    suppressOutClick?: boolean
   } = {}) {
     super({
       element: renderEmojiDropdownElement(),
@@ -309,7 +311,7 @@ export class EmoticonsDropdown extends DropdownHover {
       // RichInputHandler.getInstance().makeFocused(this.chatInput.messageInput);
       let range = RichInputHandler.getInstance().getSavedRange(input);
       if(!range) {
-        range = document.createRange();
+        range = input.ownerDocument.createRange();
         range.setStartAfter(input.lastChild);
       }
 
@@ -372,18 +374,21 @@ export class EmoticonsDropdown extends DropdownHover {
     this.tabs[INIT_TAB_ID].init?.(); // onTransitionEnd не вызовется, т.к. это первая открытая вкладка
 
     if(!IS_TOUCH_SUPPORTED) {
-      let lastMouseMoveEvent: MouseEvent, mouseMoveEventAttached = false;
+      let lastMouseMoveEvent: MouseEvent, mouseMoveTarget: HTMLElement;
       const onMouseMove = (e: MouseEvent) => {
         lastMouseMoveEvent = e;
       };
       this.listenerSetter.add(overlayCounter)('change', (isActive) => {
         if(isActive) {
-          if(!mouseMoveEventAttached) {
-            this.listenerSetter.add(document.body)('mousemove', onMouseMove);
-            mouseMoveEventAttached = true;
+          if(!mouseMoveTarget) {
+            // Bind to the active app window's body (PiP-aware) and keep the exact reference so the
+            // matching remove below targets the same element even if the active window changed.
+            mouseMoveTarget = getOverlayRoot();
+            this.listenerSetter.add(mouseMoveTarget)('mousemove', onMouseMove);
           }
-        } else if(mouseMoveEventAttached) {
-          this.listenerSetter.removeManual(document.body, 'mousemove', onMouseMove);
+        } else if(mouseMoveTarget) {
+          this.listenerSetter.removeManual(mouseMoveTarget, 'mousemove', onMouseMove);
+          mouseMoveTarget = undefined;
           if(lastMouseMoveEvent) {
             this.onMouseOut(lastMouseMoveEvent);
           }
@@ -712,8 +717,8 @@ export class EmoticonsDropdown extends DropdownHover {
   }
 
   private getGoodRange() {
-    const sel = document.getSelection();
-    if(sel.rangeCount && document.activeElement === this.chatInput?.messageInput) {
+    const sel = getAppWindow().getSelection();
+    if(sel.rangeCount && getAppWindow().document.activeElement === this.chatInput?.messageInput) {
       return sel.getRangeAt(0);
     }
   }

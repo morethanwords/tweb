@@ -611,12 +611,14 @@ export class AppStickersManager extends AppManager {
     const doc = this.appDocsManager.getDoc(docId);
     findAndSplice(this.favedStickers, (_doc) => _doc.id === doc.id);
 
+    let limitReached = false;
     if(!unfave) {
       this.favedStickers.unshift(doc);
       const spliced = this.favedStickers.splice(limit, this.favedStickers.length - limit);
+      limitReached = spliced.length > 0;
     }
 
-    this.rootScope.dispatchEvent('sticker_updated', {type: 'faved', faved: !unfave, document: doc});
+    this.rootScope.dispatchEvent('sticker_updated', {type: 'faved', faved: !unfave, document: doc, limitReached});
 
     return this.apiManager.invokeApi('messages.faveSticker', {
       id: getDocumentInput(doc),

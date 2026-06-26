@@ -64,6 +64,7 @@ import mediaSizes from '@helpers/mediaSizes';
 import rootScope from '@lib/rootScope';
 import clamp from '@helpers/number/clamp';
 import throttle from '@helpers/schedulers/throttle';
+import {getAppWindow} from '@helpers/appWindow';
 
 // Default and resize range for the left & right columns.
 export const DEFAULT_COLUMN_WIDTH = 360;
@@ -202,7 +203,7 @@ export function setFoldersSidebarShown(value: boolean): void {
 }
 
 function computeVisualLeftWidth(): number {
-  const vw = window.innerWidth;
+  const vw = getAppWindow().innerWidth;
   const isMobile = mediaSizes.isMobile;
   const isFloatingLeft = mediaSizes.isLessThanFloatingLeftSidebar && !isMobile;
   const defaultColumnWidth = Math.min(vw, DEFAULT_COLUMN_WIDTH);
@@ -224,7 +225,7 @@ function computeVisualLeftWidth(): number {
 // tabs, it stays at the collapsed width — the expanded sidebar overlays the
 // chat instead of pushing it.
 function computeLayoutLeftWidth(): number {
-  const vw = window.innerWidth;
+  const vw = getAppWindow().innerWidth;
   const isMobile = mediaSizes.isMobile;
   const isFloatingLeft = mediaSizes.isLessThanFloatingLeftSidebar && !isMobile;
   const defaultColumnWidth = Math.min(vw, DEFAULT_COLUMN_WIDTH);
@@ -236,7 +237,7 @@ function computeLayoutLeftWidth(): number {
 }
 
 function computeRightWidth(): number {
-  const vw = window.innerWidth;
+  const vw = getAppWindow().innerWidth;
   if(mediaSizes.isMobile) return vw;
   return userPreferredRightWidth ?? Math.min(vw, DEFAULT_COLUMN_WIDTH);
 }
@@ -259,7 +260,7 @@ let installed = false;
 
 export default function updateColumnWidths(): void {
   const root = document.documentElement;
-  const vw = window.innerWidth;
+  const vw = getAppWindow().innerWidth;
   const isMobile = mediaSizes.isMobile;
 
   // `html` carries the iOS safe-area inset as horizontal padding

@@ -12,7 +12,7 @@
  * newer run starts mid-flight the older one bails after disposing its half-built renderers.
  */
 
-import {Component, createEffect, createSignal, on, onCleanup, onMount} from 'solid-js';
+import {Component, createEffect, createSignal, on, onCleanup, onMount, untrack} from 'solid-js';
 import {render} from 'solid-js/web';
 
 import {Theme, WallPaper} from '@layer';
@@ -160,10 +160,19 @@ function resolveBackgroundSync(
   options: {theme?: ChatBackgroundTheme, wallPaper?: WallPaper},
   themeController: ThemeController
 ): ResolvedBackground {
-  const globalTheme = themeController.getTheme();
-  const theme = options.theme ?? globalTheme;
-  const wallPaper = options.wallPaper ?? themeController.getThemeSettings(theme).wallpaper;
-  return {theme, wallPaper};
+  // `untrack`: this resolver reads the global theme/wallpaper from appSettings, but it must NOT
+  // create a reactive dependency on them. It runs synchronously inside `setBackground`, which is in
+  // turn called synchronously from Chat's reactive `update()` effect — without untrack, the effect
+  // would subscribe to `appSettings.theme` and re-render the background the instant `switchTheme`
+  // flips the setting, i.e. BEFORE the view-transition starts. That paints the new wallpaper into
+  // the *old* snapshot, so it appears before the circular reveal instead of with it. The background
+  // is driven imperatively (setProps), so dropping this tracking changes nothing else.
+  return untrack(() => {
+    const globalTheme = themeController.getTheme();
+    const theme = options.theme ?? globalTheme;
+    const wallPaper = options.wallPaper ?? themeController.getThemeSettings(theme).wallpaper;
+    return {theme, wallPaper};
+  });
 }
 
 function getWallPaperUrl(
@@ -562,6 +571,11 @@ const appChatBackground = (() => {
   // Replaced (and called) when a newer setBackground arrives.
   let pendingResolve: (() => void) | undefined;
   let latestReady: Promise<void> = Promise.resolve();
+  // Resolved theme/wallPaper of the render currently in flight (set just before `setProps`,
+  // cleared on its `onReady`). Lets a duplicate call for the *same* background attach to the
+  // in-flight render instead of superseding it — see the in-flight guard in `setBackground`.
+  let pendingTheme: ChatBackgroundTheme | undefined;
+  let pendingWallPaper: WallPaper | undefined;
   // Tracks the most-recently-applied (settled) theme/wallPaper so we can short-circuit a
   // setBackground call whose deps match — otherwise the inner `on(...)` effect wouldn't fire
   // and the returned promise would hang. We can't read the signal here because callers run
@@ -570,6 +584,16 @@ const appChatBackground = (() => {
   let lastAppliedWallPaper: WallPaper | undefined;
   let lastHighlightHsla: string | undefined;
   let hasSettled = false;
+  // While the displayed background belongs to an explicit per-chat theme/wallpaper (a chat that
+  // pinned its own background) rather than the global theme, `backgroundOwnedByChat` is true and
+  // `ownedTheme`/`ownedWallPaper` hold the *raw* opts that established it. The `theme_changed`
+  // re-paint below re-publishes those instead of the global theme: a per-chat theme is a stable
+  // object across day/night, so re-resolving it picks the new variant — and doing it here (rather
+  // than leaving it to the chat's async re-publish) keeps it in sync with the view-transition
+  // reveal (themeController awaits getReadyPromise before snapshotting) and beats the global push.
+  let backgroundOwnedByChat = false;
+  let ownedTheme: ChatBackgroundTheme | undefined;
+  let ownedWallPaper: WallPaper | undefined;
 
   const attach = (parent: HTMLElement = document.body) => {
     if(element.parentElement !== parent) {
@@ -615,13 +639,6 @@ const appChatBackground = (() => {
     onHighlightColor?: (hsla: string) => void,
     deferReveal?: (reveal: () => void) => void
   } = {}): Promise<void> => {
-    // Resolve any in-flight promise as superseded so awaiters don't hang.
-    pendingResolve?.();
-
-    let resolve!: () => void;
-    latestReady = new Promise<void>((r) => resolve = r);
-    pendingResolve = resolve;
-
     // Resolve undefined theme/wallPaper to the *current global* theme + wallpaper up front.
     // Most callers (initial load, `appImManager.setBackground`, a chat with no per-peer
     // wallpaper) pass neither and lean on the inner `<ChatBackground>` resolving from the
@@ -633,6 +650,37 @@ const appChatBackground = (() => {
     // identity (and hands the inner effect a fresh wallPaper reference so it re-fires).
     const {theme: resolvedTheme, wallPaper: resolvedWallPaper} =
       resolveBackgroundSync({theme: opts.theme, wallPaper: opts.wallPaper}, themeControllerSingleton);
+
+    // Per-chat ownership: an explicit theme that differs from the global one, or an explicit
+    // wallpaper. (An undefined theme resolves to the global theme — not per-chat.) Recorded with the
+    // raw opts so the `theme_changed` listener re-publishes the chat's own background instead of the
+    // global one. Updated on every call so a switch to a non-themed chat (plain `setBackground`)
+    // clears it.
+    backgroundOwnedByChat = (!!opts.theme && opts.theme !== untrack(() => themeControllerSingleton.getTheme())) || !!opts.wallPaper;
+    ownedTheme = opts.theme;
+    ownedWallPaper = opts.wallPaper;
+
+    // A render for the *same* resolved background is already in flight. This happens on a theme
+    // switch: the `theme_changed` listener re-publishes synchronously and the chat's own
+    // useIsNightTheme effect re-publishes the same thing a tick later. Attach to the in-flight
+    // render (chain this caller's onReady) instead of superseding it — superseding would resolve
+    // the awaited `getReadyPromise()` early and let themeController's view transition snapshot the
+    // half-done state, so the background pops in before/after the circular reveal instead of with it.
+    // Skipped for `deferReveal` callers (peer changes) — they own the reveal and must run their own
+    // render rather than attach to someone else's.
+    if(pendingResolve && !opts.deferReveal && pendingTheme === resolvedTheme && pendingWallPaper === resolvedWallPaper) {
+      opts.onCachedStatus?.(true);
+      if(lastHighlightHsla !== undefined) opts.onHighlightColor?.(lastHighlightHsla);
+      // Caller just awaits the returned promise; it resolves when the in-flight render's onReady fires.
+      return latestReady;
+    }
+
+    // Resolve any (different) in-flight promise as superseded so awaiters don't hang.
+    pendingResolve?.();
+
+    let resolve!: () => void;
+    latestReady = new Promise<void>((r) => resolve = r);
+    pendingResolve = resolve;
 
     // The component's effect runs via `on([theme, wallPaper, peerId])` (referential equality).
     // If theme & wallPaper are unchanged the effect won't fire — onReady would never be called
@@ -652,6 +700,8 @@ const appChatBackground = (() => {
       return latestReady;
     }
 
+    pendingTheme = resolvedTheme;
+    pendingWallPaper = resolvedWallPaper;
     setProps({
       theme: resolvedTheme,
       wallPaper: resolvedWallPaper,
@@ -663,6 +713,12 @@ const appChatBackground = (() => {
         hasSettled = true;
         lastAppliedTheme = resolvedTheme;
         lastAppliedWallPaper = resolvedWallPaper;
+        // Clear the in-flight marker only if it still points at this render (a newer, different
+        // setProps may have replaced it).
+        if(pendingTheme === resolvedTheme && pendingWallPaper === resolvedWallPaper) {
+          pendingTheme = undefined;
+          pendingWallPaper = undefined;
+        }
         resolve();
         if(pendingResolve === resolve) pendingResolve = undefined;
       }
@@ -684,8 +740,16 @@ const appChatBackground = (() => {
   // captured. A self-fade here would both desync from the reveal and be caught half-done.
   rootScope.addEventListener('theme_changed', () => {
     if(!hasSettled) return;
+    // When a per-chat-themed chat owns the background, re-publish *its* theme/wallpaper rather than
+    // the global one. The per-chat theme object is stable across day/night, so re-resolving it here
+    // picks the new variant; doing it synchronously (instead of leaving it to the chat's own async
+    // re-publish via useIsNightTheme) keeps the new background in the view-transition snapshot — so
+    // it's revealed together with the colour reveal — and beats the racing global push from
+    // appImManager. The chat's later useIsNightTheme re-publish then attaches to this in-flight
+    // render via the dedup guard above (or short-circuits if it already settled).
     setBackground({
-      theme: themeControllerSingleton.getTheme(),
+      theme: backgroundOwnedByChat ? ownedTheme : themeControllerSingleton.getTheme(),
+      wallPaper: backgroundOwnedByChat ? ownedWallPaper : undefined,
       transition: 'instant'
     });
   });
@@ -710,7 +774,19 @@ const appChatBackground = (() => {
       };
     },
     getReadyPromise: () => latestReady,
-    resize: () => ChatBackgroundPatternRenderer.resizeInstancesOf(element)
+    resize: () => ChatBackgroundPatternRenderer.resizeInstancesOf(element),
+    /**
+     * Force a full re-render of the CURRENT background, bypassing the reference-equality
+     * short-circuits. Needed after the whole client moves between documents (Document PiP): the
+     * canvas / gradient renderer does not survive the cross-window move, so the same bg has to be
+     * rebuilt fresh in the now-current document. Cloning the theme yields a new reference so BOTH the
+     * wrapper's `lastAppliedTheme` guard and the inner `on([theme, wallPaper, peerId])` effect re-fire.
+     */
+    reRender: () => setBackground({
+      theme: backgroundOwnedByChat ? (ownedTheme && {...ownedTheme}) : {...themeControllerSingleton.getTheme()},
+      wallPaper: backgroundOwnedByChat ? ownedWallPaper : undefined,
+      transition: 'instant'
+    })
   };
 })();
 

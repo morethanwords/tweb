@@ -1,4 +1,5 @@
 import {onCleanup, onMount} from 'solid-js';
+import {getOverlayRoot} from '@helpers/appWindow';
 import {ButtonMenuSync} from '@components/buttonMenu';
 import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG} from '@lib/appDialogsManager';
 import showPickUserPopup from '@components/popups/pickUser';
@@ -95,7 +96,7 @@ const BlockedUsers = () => {
     element.id = 'blocked-users-contextmenu';
     element.classList.add('contextmenu');
 
-    document.body.append(element);
+    getOverlayRoot().append(element);
 
     attachContextMenuListener({
       element: tab.scrollable.container,
@@ -105,8 +106,8 @@ const BlockedUsers = () => {
           return;
         }
 
-        if(e instanceof MouseEvent) e.preventDefault();
-        if(e instanceof MouseEvent) e.cancelBubble = true;
+        if(!('touches' in e)) e.preventDefault(); // cross-realm-safe mouse check (Document PiP window)
+        if(!('touches' in e)) e.cancelBubble = true;
 
         positionMenu(e, element);
         contextMenuController.openBtnMenu(element);

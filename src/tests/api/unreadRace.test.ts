@@ -610,6 +610,211 @@ describeOrSkip('unread counter races', () => {
     expect(dialog.unread_mentions_count).toBe(0);
   }, 30_000);
 
+  test('Bug 7 reactions in forum topic: readMessages must clear the topic unread_reactions_count + call readReactions with top_msg_id', async() => {
+    const m: any = client.managers.appMessagesManager;
+    const dialogsStorage: any = client.managers.dialogsStorage;
+    const idsManager: any = client.managers.appMessagesIdsManager;
+    const channelId = 999000030;
+    const peerId = -channelId;
+    const topicServerId = 100;
+    makeChannel(channelId, 'Reactions Forum', {forum: true});
+
+    const apiUpdates: any = client.managers.apiUpdatesManager;
+    apiUpdates.channelStates ??= {};
+    apiUpdates.channelStates[channelId] ??= {pts: 1, pendingPtsUpdates: [], syncPending: null, syncLoading: null};
+
+    const topMid = idsManager.generateMessageId(500, channelId);
+
+    // Parent forum dialog: a forum channel tracks reaction counts PER TOPIC, not
+    // on the channel dialog — so the parent's own unread_reactions_count is 0.
+    const parentDialog: any = {
+      _: 'dialog',
+      peer: {_: 'peerChannel', channel_id: channelId},
+      peerId,
+      top_message: topMid,
+      read_inbox_max_id: topMid,
+      read_outbox_max_id: topMid,
+      unread_count: 0,
+      unread_mentions_count: 0,
+      unread_reactions_count: 0,
+      notify_settings: {_: 'peerNotifySettings'},
+      pts: 1,
+      index_0: 0,
+      folder_id: 0,
+      pFlags: {forum: true}
+    };
+    dialogsStorage.dialogs[peerId] = parentDialog;
+
+    // Topic carrying one unread reaction (to our own message inside the topic).
+    const topicId = idsManager.generateMessageId(topicServerId, channelId);
+    const topic: any = {
+      _: 'forumTopic',
+      id: topicId,
+      peerId,
+      title: 'Topic ' + topicServerId,
+      date: 0,
+      icon_color: 0,
+      from_id: {_: 'peerUser', user_id: 1},
+      notify_settings: {_: 'peerNotifySettings'},
+      top_message: topMid,
+      read_inbox_max_id: topMid,
+      read_outbox_max_id: topMid,
+      unread_count: 0,
+      unread_mentions_count: 0,
+      unread_reactions_count: 1,
+      pts: 1,
+      folder_id: 0,
+      pFlags: {}
+    };
+    const cache = dialogsStorage.getForumTopicsCache(peerId);
+    cache.topics.set(topicId, topic);
+
+    // Our OUT message in the topic, with an unread reaction from someone else.
+    const storage = m.getHistoryMessagesStorage(peerId);
+    const reactionMid = topMid;
+    storage.set(reactionMid, {
+      _: 'message',
+      mid: reactionMid,
+      id: 500,
+      peerId,
+      peer_id: {_: 'peerChannel', channel_id: channelId},
+      date: 0,
+      message: 'my message',
+      pFlags: {out: true},
+      reply_to: {
+        _: 'messageReplyHeader',
+        reply_to_msg_id: topicId,
+        reply_to_top_id: topicId,
+        pFlags: {forum_topic: true}
+      },
+      reactions: {
+        _: 'messageReactions',
+        results: [{_: 'reactionCount', reaction: {_: 'reactionEmoji', emoticon: '\u{1F44D}'}, count: 1}],
+        recent_reactions: [{
+          _: 'messagePeerReaction',
+          peer_id: {_: 'peerUser', user_id: 2},
+          reaction: {_: 'reactionEmoji', emoticon: '\u{1F44D}'},
+          pFlags: {unread: true}
+        }]
+      }
+    });
+
+    // Capture the dedicated server-side counter-reset calls.
+    const invoked: Array<{method: string, params: any}> = [];
+    const prevInvoke = (client.apiManager as any).invokeApi;
+    (client.apiManager as any).invokeApi = (method: string, params: any, opts: any) => {
+      if(method === 'channels.readMessageContents') {
+        invoked.push({method, params});
+        return Promise.resolve(true);
+      }
+      if(method === 'messages.readReactions') {
+        invoked.push({method, params});
+        return Promise.resolve({_: 'messages.affectedHistory', pts: 0, pts_count: 0, offset: 0});
+      }
+      return prevInvoke(method, params, opts);
+    };
+
+    try {
+      await m.readMessages(peerId, [reactionMid]);
+    } finally {
+      (client.apiManager as any).invokeApi = prevInvoke;
+    }
+
+    const readReactionsCall = invoked.find((c) => c.method === 'messages.readReactions');
+    console.log('[Bug7] topic.unread_reactions_count =', topic.unread_reactions_count,
+      '| parent.unread_reactions_count =', parentDialog.unread_reactions_count,
+      '| readReactions top_msg_id =', readReactionsCall?.params?.top_msg_id ?? '(NOT CALLED)');
+
+    // The topic's reaction badge must clear locally...
+    expect(topic.unread_reactions_count).toBe(0);
+    // ...and the server must be told to reset the TOPIC's reaction counter.
+    expect(readReactionsCall).toBeTruthy();
+    expect(readReactionsCall!.params.top_msg_id).toBe(topicServerId);
+  }, 30_000);
+
+  test('Bug 8 poll votes in forum topic: readMentions(isPollVote) stays scoped to the topic', async() => {
+    const m: any = client.managers.appMessagesManager;
+    const dialogsStorage: any = client.managers.dialogsStorage;
+    const idsManager: any = client.managers.appMessagesIdsManager;
+    const channelId = 999000040;
+    const peerId = -channelId;
+    const topicServerId = 200;
+    makeChannel(channelId, 'Poll Votes Forum', {forum: true});
+
+    const apiUpdates: any = client.managers.apiUpdatesManager;
+    apiUpdates.channelStates ??= {};
+    apiUpdates.channelStates[channelId] ??= {pts: 1, pendingPtsUpdates: [], syncPending: null, syncLoading: null};
+
+    const topMid = idsManager.generateMessageId(800, channelId);
+    // Parent forum dialog tracks poll votes per-topic too -> 0 on the channel.
+    dialogsStorage.dialogs[peerId] = {
+      _: 'dialog',
+      peer: {_: 'peerChannel', channel_id: channelId},
+      peerId,
+      top_message: topMid,
+      read_inbox_max_id: topMid,
+      read_outbox_max_id: topMid,
+      unread_count: 0,
+      unread_mentions_count: 0,
+      unread_reactions_count: 0,
+      unread_poll_votes_count: 0,
+      notify_settings: {_: 'peerNotifySettings'},
+      pts: 1,
+      index_0: 0,
+      folder_id: 0,
+      pFlags: {forum: true}
+    };
+
+    const topicId = idsManager.generateMessageId(topicServerId, channelId);
+    const topic: any = {
+      _: 'forumTopic',
+      id: topicId,
+      peerId,
+      title: 'Topic ' + topicServerId,
+      date: 0,
+      icon_color: 0,
+      from_id: {_: 'peerUser', user_id: 1},
+      notify_settings: {_: 'peerNotifySettings'},
+      top_message: topMid,
+      read_inbox_max_id: topMid,
+      read_outbox_max_id: topMid,
+      unread_count: 0,
+      unread_mentions_count: 0,
+      unread_reactions_count: 0,
+      unread_poll_votes_count: 1,
+      pts: 1,
+      folder_id: 0,
+      pFlags: {}
+    };
+    dialogsStorage.getForumTopicsCache(peerId).topics.set(topicId, topic);
+
+    const invoked: Array<{method: string, params: any}> = [];
+    const prevInvoke = (client.apiManager as any).invokeApi;
+    (client.apiManager as any).invokeApi = (method: string, params: any, opts: any) => {
+      if(method === 'messages.readPollVotes') {
+        invoked.push({method, params});
+        return Promise.resolve({_: 'messages.affectedHistory', pts: 0, pts_count: 0, offset: 0});
+      }
+      return prevInvoke(method, params, opts);
+    };
+
+    try {
+      // This is the exact call the "go to next poll vote" button / traversal-end
+      // fire (input.ts passes this.chat.threadId).
+      await m.readMentions(peerId, topicId, false, true);
+    } finally {
+      (client.apiManager as any).invokeApi = prevInvoke;
+    }
+
+    const readPollVotesCall = invoked.find((c) => c.method === 'messages.readPollVotes');
+    console.log('[Bug8] topic.unread_poll_votes_count =', topic.unread_poll_votes_count,
+      '| readPollVotes top_msg_id =', readPollVotesCall?.params?.top_msg_id ?? '(NOT CALLED)');
+
+    expect(topic.unread_poll_votes_count).toBe(0);
+    expect(readPollVotesCall).toBeTruthy();
+    expect(readPollVotesCall!.params.top_msg_id).toBe(topicServerId);
+  }, 30_000);
+
   test('Bug 5 botforum: readHistory on a topic must mark messages even if parent dialog has unread_count=0', async() => {
     const m: any = client.managers.appMessagesManager;
     const dialogsStorage: any = client.managers.dialogsStorage;

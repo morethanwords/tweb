@@ -40,7 +40,8 @@ export default class PopupStarReaction extends PopupElement {
       body: true,
       scrollable: true,
       footer: true,
-      withConfirm: true
+      withConfirm: true,
+      old: true
       // title: true
     });
 

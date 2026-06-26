@@ -73,7 +73,8 @@ export default class PopupStarsPay extends PopupElement<{
       scrollable: true,
       footer: true,
       withConfirm: true,
-      title: true
+      title: true,
+      old: true
     });
 
     safeAssign(this, options);

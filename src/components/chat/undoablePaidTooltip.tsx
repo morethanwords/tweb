@@ -1,14 +1,13 @@
 import {Accessor, createEffect, createRoot, createSignal, onCleanup} from 'solid-js';
 
 import {SEND_PAID_WITH_STARS_DELAY} from '@appManagers/constants';
-import appImManager from '@lib/appImManager';
 import I18n, {i18n, LangPackKey} from '@lib/langPack';
 import classNames from '@helpers/string/classNames';
 import eachSecond from '@helpers/eachSecond';
 import {animate} from '@helpers/animation';
 
 import {AnimatedCounter} from '@components/animatedCounter';
-import showTooltip from '@components/tooltip';
+import showChatToast from '@components/chat/chatToast';
 
 
 type LangKeys = {
@@ -40,7 +39,6 @@ export default function showUndoablePaidTooltip(props: {
 
     const title = new I18n.IntlElement({key: props.titleKey});
     const subtitle = new I18n.IntlElement({key: props.subtitleKey});
-    title.element.classList.add('text-bold');
 
     createEffect(() => {
       title.compareAndUpdate({args: [props.titleCount()]});
@@ -50,7 +48,7 @@ export default function showUndoablePaidTooltip(props: {
     createEffect(() => {
       if(!(!!props.sendTime())) {
         dispose();
-        close();
+        hide();
       } else {
         const disposeTimer = eachSecond(() => {
           setSecondsLeft((props.sendTime() - Date.now()) / 1000 | 0);
@@ -77,15 +75,13 @@ export default function showUndoablePaidTooltip(props: {
     const countdown = new AnimatedCounter({reverse: false});
     createEffect(() => countdown.setCount(secondsLeft()));
 
-    const {close} = showTooltip({
-      element: appImManager.chat.bubbles.container,
-      container: appImManager.chat.bubbles.container,
-      mountOn: appImManager.chat.bubbles.container,
-      relative: true,
-      vertical: 'top',
+    const {hide} = showChatToast({
+      animation: 'fade',
+      // the undo countdown outlives a chat switch — the send can still be aborted
+      closeOnPeerChange: false,
       class: classNames('paid-reaction-tooltip', props.wider && 'paid-reaction-tooltip--a-little-wider'),
-      textElement: title.element,
-      subtitleElement: subtitle.element,
+      title: title.element,
+      textElement: subtitle.element,
       rightElement: (
         <span
           class="tooltip-undo"

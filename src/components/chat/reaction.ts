@@ -433,6 +433,16 @@ export default class ReactionElement extends HTMLElement {
     if(displayOn === undefined && !force && !title && !this.hasTitle) return;
     const reactionCount = this.reactionCount;
 
+    // Empty paid (star) reaction button — show just the star, never a "0" count.
+    if(reactionCount.reaction._ === 'reactionPaid' && !reactionCount.count) {
+      if(this.counter?.parentElement) {
+        this.counter.remove();
+        this.counter = undefined;
+      }
+      this.hasTitle = false;
+      return;
+    }
+
     let setTitle = false;
     if(force || title || reactionCount.count >= displayOn || (this.type === ReactionLayoutType.Block && !this.canRenderAvatars)) {
       if(!this.counter) {
@@ -622,7 +632,8 @@ export default class ReactionElement extends HTMLElement {
         managers: options.managers,
         middleware: options.middleware,
         textColor,
-        loop: isGenericMasked
+        loop: isGenericMasked,
+        noOffscreen: true // this player's consumer grabs contexts[0], re-parents canvas[0] and installs overrideRender post-load
         // static: isGenericMasked || undefined
       }).then(({render}) => render as Promise<RLottiePlayer>);
 

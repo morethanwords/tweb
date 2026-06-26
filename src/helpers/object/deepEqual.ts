@@ -1,5 +1,6 @@
 /**
  * ignores `undefined` properties
+ * `ignoreKeys` applies only at the top level — it is NOT propagated into nested objects
  */
 export default function deepEqual<T>(x: T, y: T, ignoreKeys?: (keyof T)[]): boolean {
   const ignoreSet = ignoreKeys && new Set(ignoreKeys);
@@ -9,6 +10,6 @@ export default function deepEqual<T>(x: T, y: T, ignoreKeys?: (keyof T)[]): bool
     ty = typeof y;
   return x && y && tx === 'object' && tx === ty ? (
     ok(x).length === ok(y).length &&
-      ok(x).every((key) => deepEqual((x as any)[key], (y as any)[key], ignoreKeys))
+      ok(x).every((key) => deepEqual((x as any)[key], (y as any)[key]))
   ) : (x === y);
 }

@@ -248,16 +248,20 @@ const useStartDrag = <T, >(context: DragContext<T>) => {
   const handlePointerMove = useHandlePointerMove(context);
   const handlePointerUp = useHandlePointerUp(context, () => removeListeners);
 
+  // Track the reorder drag on the container's own window (the Document PiP window while popped out),
+  // not main — else the pointermove/up fire on the PiP window, never arrive, and the drag sticks.
+  const dragWindow = () => container().ownerDocument.defaultView || window;
+
   const setListeners = () => {
-    window.addEventListener('pointermove', handlePointerMove, {passive: false});
-    window.addEventListener('pointerup', handlePointerUp);
-    window.addEventListener('pointercancel', handlePointerUp);
+    dragWindow().addEventListener('pointermove', handlePointerMove, {passive: false});
+    dragWindow().addEventListener('pointerup', handlePointerUp);
+    dragWindow().addEventListener('pointercancel', handlePointerUp);
   };
 
   const removeListeners = () => {
-    window.removeEventListener('pointermove', handlePointerMove);
-    window.removeEventListener('pointerup', handlePointerUp);
-    window.removeEventListener('pointercancel', handlePointerUp);
+    dragWindow().removeEventListener('pointermove', handlePointerMove);
+    dragWindow().removeEventListener('pointerup', handlePointerUp);
+    dragWindow().removeEventListener('pointercancel', handlePointerUp);
   };
 
   onCleanup(() => {

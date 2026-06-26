@@ -585,22 +585,30 @@ export default class CallInstance extends CallInstanceBase<{
     const dh = this.dh as DiffieHellmanInfo.a;
 
     this.overrideConnectionState(CALL_STATE.EXCHANGING_KEYS);
-    const {key, key_fingerprint} = await this.managers.appCallsManager.computeKey(
-      (call as PhoneCall.phoneCallAccepted).g_b,
-      dh.a,
-      dh.p
-    );
 
-    const phonePhoneCall = await this.managers.apiManager.invokeApi('phone.confirmCall', {
-      peer: await this.managers.appCallsManager.getCallInput(id),
-      protocol: protocol,
-      g_a: dh.g_a,
-      key_fingerprint: key_fingerprint
-    });
+    try {
+      // g_b is the peer value relayed by the server; computeKey rejects a
+      // degenerate/out-of-range one before it can force the call key.
+      const {key, key_fingerprint} = await this.managers.appCallsManager.computeKey(
+        (call as PhoneCall.phoneCallAccepted).g_b,
+        dh.a,
+        dh.p
+      );
 
-    this.encryptionKey = key;
-    await this.managers.appCallsManager.savePhonePhoneCall(phonePhoneCall);
-    this.joinCall();
+      const phonePhoneCall = await this.managers.apiManager.invokeApi('phone.confirmCall', {
+        peer: await this.managers.appCallsManager.getCallInput(id),
+        protocol: protocol,
+        g_a: dh.g_a,
+        key_fingerprint: key_fingerprint
+      });
+
+      this.encryptionKey = key;
+      await this.managers.appCallsManager.savePhonePhoneCall(phonePhoneCall);
+      this.joinCall();
+    } catch(err) {
+      this.log.error('confirmCall error', err);
+      this.hangUp('phoneCallDiscardReasonHangup');
+    }
   }
 
   public joinCall() {

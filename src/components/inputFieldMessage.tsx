@@ -9,6 +9,7 @@ import cloneDOMRect from '@helpers/dom/cloneDOMRect';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import ListenerSetter from '@helpers/listenerSetter';
 import liteMode from '@helpers/liteMode';
+import {getOverlayRoot} from '@helpers/appWindow';
 import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
 import throttle from '@helpers/schedulers/throttle';
 import Animated from '@helpers/solid/animations';
@@ -165,7 +166,7 @@ const InputFieldMessage = (props: InputFieldMessageProps) => {
     inputField,
     class: additionalClass + '-emoji',
     animationGroup: props.animationGroup,
-    customParentElement: document.body,
+    customParentElement: getOverlayRoot,
     onEmoticonsDropdown: (dropdown) => {
       emoticonsDropdown = dropdown;
       emoticonsDropdown.getElement().style.transformOrigin = '0 100%';

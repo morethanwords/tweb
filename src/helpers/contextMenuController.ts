@@ -120,7 +120,7 @@ class ContextMenuController extends OverlayClickHandler {
     super.close();
 
     if(!IS_TOUCH_SUPPORTED) {
-      window.removeEventListener('mousemove', this.onMouseMove);
+      this.realmWindow.removeEventListener('mousemove', this.onMouseMove);
     }
   }
 
@@ -146,7 +146,7 @@ class ContextMenuController extends OverlayClickHandler {
     }
 
     if(!IS_TOUCH_SUPPORTED) {
-      window.addEventListener('mousemove', this.onMouseMove);
+      this.realmWindow.addEventListener('mousemove', this.onMouseMove);
     }
   }
 

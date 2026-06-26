@@ -1,4 +1,5 @@
 import PopupGroupCall from '.';
+import {getOverlayRoot} from '@helpers/appWindow';
 import filterAsync from '@helpers/array/filterAsync';
 import contextMenuController from '@helpers/contextMenuController';
 import {attachContextMenuListener} from '@helpers/dom/attachContextMenuListener';
@@ -137,10 +138,10 @@ export class GroupCallParticipantContextMenu {
       }
     });
 
-    let appendTo: HTMLElement = document.body;
+    let appendTo: HTMLElement = getOverlayRoot();
     addFullScreenListener(document.body, () => {
       const isFull = isFullScreen();
-      appendTo = isFull ? PopupElement.getPopups(PopupGroupCall)[0].getContainer(): document.body;
+      appendTo = isFull ? PopupElement.getPopups(PopupGroupCall)[0].getContainer(): getOverlayRoot();
 
       if(!isFull) {
         contextMenuController.close();

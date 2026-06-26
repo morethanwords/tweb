@@ -1,4 +1,5 @@
 import {attachClickEvent} from '@helpers/dom/clickEvent';
+import {getAppWindow} from '@helpers/appWindow';
 import findUpAsChild from '@helpers/dom/findUpAsChild';
 import EventListenerBase from '@helpers/eventListenerBase';
 import ListenerSetter from '@helpers/listenerSetter';
@@ -30,6 +31,7 @@ export default class DropdownHover extends EventListenerBase<{
   protected ignoreButtons: Set<HTMLElement>;
   protected navigationItem: NavigationItem;
   protected ignoreOutClickClassName: string;
+  protected suppressOutClick: boolean;
   protected timeouts: {[type in DropdownHoverTimeoutType]?: number};
   protected detachClickEvent: () => void;
 
@@ -86,7 +88,21 @@ export default class DropdownHover extends EventListenerBase<{
     if(ignore && !this.ignoreMouseOut.size) {
       button && this.ignoreButtons.add(button);
       setTimeout(() => {
-        this.detachClickEvent = attachClickEvent(window, this.onClickOut, {capture: true});
+        // Click-outside-to-close on the active window — the dropdown opens in whichever window the app
+        // is in (the tab, or the Document PiP window), so a main-`window` listener never sees the
+        // outside click there and the panel won't dismiss. Same `w` for add + detach so they match.
+        const w = getAppWindow();
+        if(this.suppressOutClick) {
+          const options: AddEventListenerOptions = {capture: true};
+          w.addEventListener('mousedown', this.onMouseDownOut, options);
+          w.addEventListener('click', this.onClickOut, options);
+          this.detachClickEvent = () => {
+            w.removeEventListener('mousedown', this.onMouseDownOut, options);
+            w.removeEventListener('click', this.onClickOut, options);
+          };
+        } else {
+          this.detachClickEvent = attachClickEvent(w, this.onClickOut, {capture: true});
+        }
       }, 0);
     }
 
@@ -94,16 +110,32 @@ export default class DropdownHover extends EventListenerBase<{
     this.toggle(ignore);
   };
 
-  protected onClickOut = (e: MouseEvent) => {
-    const target = e.target as HTMLElement;
-    if(
-      e.isTrusted &&
-      !findUpAsChild(target, this.element) &&
+  protected isOutClickTarget(target: HTMLElement) {
+    return !findUpAsChild(target, this.element) &&
       !Array.from(this.ignoreButtons).some((button) => findUpAsChild(target, button) || target === button) &&
       this.ignoreMouseOut.size <= 1 &&
-      (!this.ignoreOutClickClassName || !findUpClassName(target, this.ignoreOutClickClassName))
-    ) {
+      (!this.ignoreOutClickClassName || !findUpClassName(target, this.ignoreOutClickClassName));
+  }
+
+  protected onClickOut = (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if(e.isTrusted && this.isOutClickTarget(target)) {
+      if(this.suppressOutClick) {
+        e.stopImmediatePropagation();
+        e.preventDefault();
+      }
+
       this.toggle(false);
+    }
+  };
+
+  // swallow the mousedown that precedes the out-click, otherwise handlers that
+  // act on mousedown (e.g. the chat list opening a peer) fire before we close
+  protected onMouseDownOut = (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if(e.isTrusted && this.isOutClickTarget(target)) {
+      e.stopImmediatePropagation();
+      e.preventDefault();
     }
   };
 

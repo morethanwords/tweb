@@ -24,6 +24,7 @@ import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
 import shake from '@helpers/dom/shake';
 import {purchaseUsernameCaption} from '@components/sidebarLeft/tabs/purchaseUsernameCaption';
 import {User, UserFull} from '@layer';
+import {trackAvatarUpload} from '@stores/avatarUpload';
 
 type AppEditProfileTabType = typeof AppEditProfileTab;
 
@@ -170,8 +171,16 @@ const EditProfileForm = (props: {data: FormData, focusOn?: string}) => {
     }));
 
     if(editPeer.uploadAvatar) {
-      promises.push(editPeer.uploadAvatar().then((inputFile) => {
-        return tab.managers.appProfileManager.uploadProfilePhoto(inputFile);
+      const {file: fileFn, video: videoFn, videoStartTs} = editPeer.uploadAvatar;
+      const filePromise = fileFn();
+      const videoPromise = videoFn?.();
+      // Surface the upload to the profile's big avatar (progress ring + cancel +
+      // collapse lock) for the duration of the upload.
+      trackAvatarUpload(rootScope.myId, {file: filePromise, video: videoPromise});
+      promises.push(Promise.all([filePromise, videoPromise]).then(([file, video]) => {
+        return tab.managers.appProfileManager.uploadProfilePhoto({file, video, videoStartTs});
+      }, () => {
+        // swallow cancellation/upload errors so Promise.race below doesn't reject the whole save
       }));
     }
 

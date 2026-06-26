@@ -1,8 +1,8 @@
 import {Component, onCleanup, onMount} from 'solid-js';
-import {InputFile, MissingInvitee} from '@layer';
+import {MissingInvitee} from '@layer';
 import appDialogsManager from '@lib/appDialogsManager';
 import InputField from '@components/inputField';
-import AvatarEdit from '@components/avatarEdit';
+import AvatarEdit, {AvatarEditPayload} from '@components/avatarEdit';
 import I18n, {i18n} from '@lib/langPack';
 import ButtonCorner from '@components/buttonCorner';
 import getUserStatusString from '@components/wrappers/getUserStatusString';
@@ -36,7 +36,7 @@ const NewGroup: Component = () => {
 
   const {peerIds, isGeoChat = false, onCreate, openAfter = true, title, asChannel = false} = tab.payload;
 
-  let uploadAvatar: () => Promise<InputFile> = null;
+  let uploadAvatar: AvatarEditPayload | null = null;
   let userLocationCoords: {lat: number, long: number};
   let userLocationAddress: string;
   let nextBtn: HTMLButtonElement;
@@ -135,7 +135,7 @@ const NewGroup: Component = () => {
         promise = handleChannelsTooMuch(() => tab.managers.appChatsManager.createChannel(options))
         .then(async(chatId) => {
           if(uploadAvatar) {
-            uploadAvatar().then((inputFile) => {
+            uploadAvatar.file().then((inputFile) => {
               tab.managers.appChatsManager.editPhoto(chatId, inputFile);
             });
           }
@@ -170,7 +170,7 @@ const NewGroup: Component = () => {
 
         promise = promise.then((result) => {
           if(uploadAvatar) {
-            uploadAvatar().then((inputFile) => {
+            uploadAvatar.file().then((inputFile) => {
               tab.managers.appChatsManager.editPhoto(result.chatId, inputFile);
             });
           }

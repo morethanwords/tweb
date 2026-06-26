@@ -23,7 +23,7 @@ export default async function renderToImage({
   brushCanvas,
   resultCanvas
 }: RenderToImageArgs) {
-  const {editorState: {stickersLayersInfo}, canImageResultInGIF, dontCreatePreview} = context;
+  const {editorState: {stickersLayersInfo}, canImageResultInGIF, dontCreatePreview, imageType = 'image/jpeg', imageQuality} = context;
 
   ctx.drawImage(imageCanvas, 0, 0);
   ctx.drawImage(brushCanvas, 0, 0);
@@ -49,11 +49,16 @@ export default async function renderToImage({
     }
   });
 
+  // Encode with the caller-supplied format/quality (defaults to JPEG at the
+  // browser's default quality). NB canvas.toBlob() defaults to PNG, and a
+  // large/detailed image as PNG is ~10MB → the server rejects it as a photo with
+  // PHOTO_SAVE_FILE_INVALID; JPEG keeps it small. The caller (e.g. newMedia) decides
+  // whether to compress further (heavy photo → lower quality) or stay near-lossless.
   const result = await new Promise<MediaEditorFinalResultPayload>((resolve) =>
     resultCanvas.toBlob(blob => resolve({
       blob,
       hasSound: false
-    }))
+    }), imageType, imageQuality)
   );
 
   return {

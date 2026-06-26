@@ -1,11 +1,12 @@
 import filterUnique from '@helpers/array/filterUnique';
+import {getAppWindow} from '@helpers/appWindow';
 import {markdownTags, MarkdownType} from '@helpers/dom/getRichElementValue';
 
 export default function getMarkupInSelection<T extends MarkdownType>(types: T[], ignoreNoContentEditable?: boolean) {
   type ResultByType = {elements: HTMLElement[], fully: boolean, partly: boolean, textLength: number};
   const result: Record<T, ResultByType> = {} as Record<T, ResultByType>;
   types.forEach((tag) => result[tag] = {elements: [], fully: false, partly: false, textLength: 0});
-  const selection = window.getSelection();
+  const selection = getAppWindow().getSelection();
   if(selection.isCollapsed) {
     return result;
   }

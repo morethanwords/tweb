@@ -7,6 +7,7 @@ import StepInput, {StepInputStep} from '@components/mediaEditor/stepInput';
 import useIsMobile from '@components/mediaEditor/useIsMobile';
 import {availableQualityHeights, checkIfHasAnimatedStickers, snapToAvailableQuality} from '@components/mediaEditor/utils';
 import Space from '@components/space';
+import {getOverlayRoot} from '@helpers/appWindow';
 import {HeightTransition} from '@helpers/solid/heightTransition';
 import {i18n} from '@lib/langPack';
 import {createEffect, createMemo, createSignal, on, onCleanup, Show} from 'solid-js';
@@ -15,7 +16,7 @@ import {createEffect, createMemo, createSignal, on, onCleanup, Show} from 'solid
 const ADJUST_TIMEOUT = 800;
 
 export default function AdjustmentsTab() {
-  const {editorState, mediaState, actions, mediaType, canImageResultInGIF} = useMediaEditorContext();
+  const {editorState, mediaState, actions, mediaType, canImageResultInGIF, isVideoAvatarMode} = useMediaEditorContext();
 
   const isMobile = useIsMobile();
   const cropOffset = useCropOffset();
@@ -58,7 +59,9 @@ export default function AdjustmentsTab() {
     return false;
   });
 
-  const canShowQualityInput = createMemo(() => willResultInVideo() && steps().length > 1);
+  // Profile video avatars are encoded at a fixed quality (800px / 30fps /
+  // 1.5Mbps), so the Quality picker would be a no-op — hide it there.
+  const canShowQualityInput = createMemo(() => !isVideoAvatarMode && willResultInVideo() && steps().length > 1);
 
   return (
     <>
@@ -113,7 +116,7 @@ export default function AdjustmentsTab() {
                 />
               </div>
             ) as HTMLDivElement;
-            document.body.append(div);
+            getOverlayRoot().append(div);
 
             onCleanup(() => {
               setTimeout(() => {

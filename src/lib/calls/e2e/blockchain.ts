@@ -49,7 +49,11 @@ export type BlockchainErrorCode =
   | 'INVALID_SIGNATURE'
   | 'INVALID_STATE_PROOF'
   | 'UNKNOWN_SIGNER'
-  | 'NO_PARTICIPANTS';
+  | 'NO_PARTICIPANTS'
+  | 'NO_PERMISSIONS'
+  | 'NO_CHANGES'
+  | 'INVALID_GROUP_STATE'
+  | 'INVALID_SHARED_KEY';
 
 const ZERO_HASH = new Uint8Array(32); // UInt256(0) — predecessor of the zero block
 
@@ -124,6 +128,141 @@ function resolveSignerPublicKey(block: Block, state: GroupState): Uint8Array {
   return first.publicKey;
 }
 
+// ===== Per-change authorization (ported from tdlib State::apply) =====
+//
+// The server is the adversary of an end-to-end protocol, so every change in a
+// block MUST be checked against the permissions the signer holds in the PRIOR
+// group state — we do NOT rely on "the server enforces them". Mirrors
+// tde2e/td/e2e/Blockchain.cpp State::{get_permissions, set_group_state,
+// clear_shared_key, set_shared_key, validate_group_state, validate_shared_key,
+// validate_state}, with validate_state_hash=false: we don't keep the kv trie,
+// so SetValue carries no client-side permission check, exactly as in tdlib.
+
+// GroupParticipantFlags: AddUsers=1, RemoveUsers=2, SetValue=4 → AllPermissions=7.
+const PERM_SET_VALUE = 1 << 2;
+const PERM_ALL = PERM_ADD_USERS | PERM_REMOVE_USERS | PERM_SET_VALUE;
+
+// The ephemeral predecessor of the zero block: no participants, all permissions
+// — so the first signer (not yet a member) can self-authorize. tdlib apply() /
+// create_from_block seed GroupParticipantFlags::AllPermissions (= PERM_ALL) here.
+function zeroBlockPredecessorGroupState(): GroupState {
+  return {participants: [], externalPermissions: PERM_ALL};
+}
+
+interface SignerPermissions {
+  flags: number; // AddUsers/RemoveUsers/SetValue bits, masked to PERM_ALL
+  isParticipant: boolean;
+}
+
+// tdlib GroupState::get_permissions: a participant inherits its stored flags
+// (plus the implicit IsParticipant marker); a non-member signer inherits only
+// external_permissions.
+function getSignerPermissions(state: GroupState, signerPublicKey: Uint8Array): SignerPermissions {
+  const participant = findParticipant(state, signerPublicKey);
+  if(participant) {
+    return {flags: participantPermissions(participant) & PERM_ALL, isParticipant: true};
+  }
+  return {flags: state.externalPermissions & PERM_ALL, isParticipant: false};
+}
+
+function mayAddUsers(p: SignerPermissions): boolean {
+  return (p.flags & PERM_ADD_USERS) !== 0;
+}
+
+function mayRemoveUsers(p: SignerPermissions): boolean {
+  return (p.flags & PERM_REMOVE_USERS) !== 0;
+}
+
+// may_change_shared_key requires ACTUAL membership, not just external perms —
+// an outside signer can never set the group key even if external_permissions
+// grants add/remove.
+function mayChangeSharedKey(p: SignerPermissions): boolean {
+  return p.isParticipant && (mayAddUsers(p) || mayRemoveUsers(p));
+}
+
+// Participants are identified by the (user_id, public_key) PAIR — a key change
+// is therefore a remove + add, exactly like tdlib's std::map key.
+function participantMapKey(p: GroupParticipant): string {
+  return `${p.userId}:${bytesToHex(p.publicKey)}`;
+}
+
+// tdlib State::validate_group_state — structural sanity (no permissions).
+function validateGroupState(gs: GroupState): void {
+  if((gs.externalPermissions & ~PERM_ALL) !== 0) {
+    throw new BlockchainError('INVALID_GROUP_STATE', 'external_permissions has invalid bits');
+  }
+  const userIds = new Set<bigint>();
+  const keys = new Set<string>();
+  for(const p of gs.participants) {
+    userIds.add(p.userId);
+    keys.add(bytesToHex(p.publicKey));
+  }
+  if(userIds.size !== gs.participants.length) {
+    throw new BlockchainError('INVALID_GROUP_STATE', 'duplicate user_id');
+  }
+  if(keys.size !== gs.participants.length) {
+    throw new BlockchainError('INVALID_GROUP_STATE', 'duplicate public_key');
+  }
+}
+
+// tdlib State::set_group_state permission half (validate_group_state runs first).
+function authorizeSetGroupState(oldGS: GroupState, newGS: GroupState, signer: SignerPermissions): void {
+  if((~oldGS.externalPermissions & newGS.externalPermissions) !== 0) {
+    throw new BlockchainError('NO_PERMISSIONS', 'cannot increase external_permissions');
+  }
+
+  const oldMap = new Map<string, number>();
+  for(const p of oldGS.participants) oldMap.set(participantMapKey(p), participantPermissions(p));
+  const newMap = new Map<string, number>();
+  for(const p of newGS.participants) newMap.set(participantMapKey(p), participantPermissions(p));
+
+  for(const key of oldMap.keys()) {
+    if(!newMap.has(key) && !mayRemoveUsers(signer)) {
+      throw new BlockchainError('NO_PERMISSIONS', 'signer cannot remove participants');
+    }
+  }
+
+  let neededFlags = 0;
+  for(const [key, flags] of newMap) {
+    const oldFlags = oldMap.get(key);
+    if(oldFlags === undefined) {
+      if(!mayAddUsers(signer)) {
+        throw new BlockchainError('NO_PERMISSIONS', 'signer cannot add participants');
+      }
+      neededFlags |= flags;
+    } else if(flags !== oldFlags) {
+      if(!mayAddUsers(signer) || !mayRemoveUsers(signer)) {
+        throw new BlockchainError('NO_PERMISSIONS', 'signer cannot modify participant permissions');
+      }
+      neededFlags |= flags & ~oldFlags;
+    }
+  }
+
+  if((neededFlags & ~(signer.flags & PERM_ALL)) !== 0) {
+    throw new BlockchainError('NO_PERMISSIONS', 'signer cannot grant permissions it does not hold');
+  }
+}
+
+// tdlib State::validate_shared_key — exactly one header per participant.
+function validateSharedKey(sharedKey: SharedKey | undefined, gs: GroupState): void {
+  if(!sharedKey) return; // empty/cleared shared key is valid
+  if(sharedKey.destUserIds.length !== sharedKey.destHeaders.length) {
+    throw new BlockchainError('INVALID_SHARED_KEY', 'dest_user_id / dest_header count mismatch');
+  }
+  if(sharedKey.destUserIds.length !== gs.participants.length) {
+    throw new BlockchainError('INVALID_SHARED_KEY', 'dest user count != participant count');
+  }
+  const dest = new Set<bigint>(sharedKey.destUserIds);
+  if(dest.size !== sharedKey.destUserIds.length) {
+    throw new BlockchainError('INVALID_SHARED_KEY', 'duplicate dest user_id');
+  }
+  for(const p of gs.participants) {
+    if(!dest.has(p.userId)) {
+      throw new BlockchainError('INVALID_SHARED_KEY', 'participant missing from dest users');
+    }
+  }
+}
+
 // Apply a block to a state, producing the new state. Throws BlockchainError
 // on any validation failure. The input state is NOT mutated.
 //
@@ -131,14 +270,9 @@ function resolveSignerPublicKey(block: Block, state: GroupState): Uint8Array {
 //   1. height = state.height + 1
 //   2. prev_block_hash == state.lastBlockHash
 //   3. Ed25519 signature over block-with-signature-zeroed
-//   4. Apply changes (track current effective group_state + shared_key + kv_hash)
-//   5. State proof matches the post-application state
-//
-// Permission checks per change are intentionally skipped in this client
-// port — the server enforces them, and re-checking on the client would
-// require also tracking external_permissions inheritance subtleties that
-// blockchain.md flags as gotchas. We can revisit if we ever need to reject
-// blocks from a misbehaving server.
+//   4. Apply changes, enforcing per-change authorization against the signer's
+//      permissions in the PRIOR group state
+//   5. State proof matches the post-application state + structural validation
 export async function applyBlock(
   state: ClientBlockchainState,
   block: Block
@@ -191,11 +325,18 @@ export async function applyBlock(
     throw new BlockchainError('INVALID_SIGNATURE', 'Ed25519 verify failed');
   }
 
-  // 4. Apply changes — produce the post-application state.
-  let groupState: GroupState = state.groupState;
-  let sharedKey: SharedKey | undefined = state.sharedKey;
+  // 4. Apply changes — enforcing per-change authorization derived from the
+  // PRIOR group state (tdlib State::apply_change). For the zero block the
+  // predecessor is an ephemeral all-permissions state with no participants.
+  let groupState: GroupState = block.height === 0 ?
+    zeroBlockPredecessorGroupState() :
+    state.groupState;
+  let sharedKey: SharedKey | undefined = block.height === 0 ? undefined : state.sharedKey;
   let kvHash: Uint8Array = state.kvHash;
   let kvHashDirty = false;
+  let hasSetValue = false;
+  let hasGroupStateChange = false;
+  let hasSharedKeyChange = false;
 
   for(const change of block.changes) {
     switch(change.kind) {
@@ -204,15 +345,36 @@ export async function applyBlock(
       case 'setValue':
         // We don't maintain the full kv trie — flag that the state-proof
         // kv_hash MUST be present and is the only thing we can verify against.
+        // Like tdlib with validate_state_hash=false, SetValue carries no
+        // client-side permission check.
+        hasSetValue = true;
         kvHashDirty = true;
         break;
-      case 'setGroupState':
+      case 'setGroupState': {
+        hasGroupStateChange = true;
+        validateGroupState(change.groupState);
+        authorizeSetGroupState(groupState, change.groupState, getSignerPermissions(groupState, signerPubKey));
         groupState = change.groupState;
-        sharedKey = undefined; // automatically cleared per spec
+        // SetGroupState implicitly clears the shared key; tdlib requires
+        // may_change_shared_key on the NEW state for that clear.
+        if(!mayChangeSharedKey(getSignerPermissions(groupState, signerPubKey))) {
+          throw new BlockchainError('NO_PERMISSIONS', 'signer cannot clear shared key');
+        }
+        sharedKey = undefined;
         break;
-      case 'setSharedKey':
+      }
+      case 'setSharedKey': {
+        hasSharedKeyChange = true;
+        if(sharedKey !== undefined) {
+          throw new BlockchainError('NO_PERMISSIONS', 'shared key already set (clear via setGroupState first)');
+        }
+        if(!mayChangeSharedKey(getSignerPermissions(groupState, signerPubKey))) {
+          throw new BlockchainError('NO_PERMISSIONS', 'signer cannot set shared key');
+        }
+        validateSharedKey(change.sharedKey, groupState);
         sharedKey = change.sharedKey;
         break;
+      }
     }
   }
 
@@ -232,38 +394,63 @@ export async function applyBlock(
     );
   }
 
-  // Group state field of the proof.
-  const hasSetGroupChange = block.changes.some((c) => c.kind === 'setGroupState');
-  if(proof.groupState !== undefined) {
-    // Proof carries an explicit group_state — must match the post-state.
-    if(!groupStatesEqual(proof.groupState, groupState)) {
+  // Group-state proof field (tdlib validate_state): MUST be omitted when a
+  // SetGroupState change rebuilt it, MUST be present (and match) otherwise. A
+  // malicious server that ships a redundant or mismatched group_state is
+  // rejected here, not silently tolerated.
+  if(hasGroupStateChange) {
+    if(proof.groupState !== undefined) {
       throw new BlockchainError(
         'INVALID_STATE_PROOF',
-        'state-proof group_state does not match post-application group_state'
+        'group_state must be omitted from the proof when the block changes it'
       );
     }
-  } else if(!hasSetGroupChange) {
-    // No change AND no proof field — the prior state must still hold; it does
-    // by construction since `groupState` was never reassigned. Nothing to do.
+  } else if(proof.groupState === undefined) {
+    throw new BlockchainError(
+      'INVALID_STATE_PROOF',
+      'group_state must be present in the proof when the block does not change it'
+    );
+  } else if(!groupStatesEqual(proof.groupState, groupState)) {
+    throw new BlockchainError(
+      'INVALID_STATE_PROOF',
+      'state-proof group_state does not match post-application group_state'
+    );
   }
-  // If hasSetGroupChange is true and proof.groupState is undefined, the spec
-  // says the proof omits it BECAUSE the change rebuilt it — we already
-  // adopted `groupState` from the change, so no extra check.
 
-  // Shared key field of the proof.
-  const hasSetSharedChange = block.changes.some(
-    (c) => c.kind === 'setSharedKey' || c.kind === 'setGroupState'
-  );
-  if(proof.sharedKey !== undefined) {
+  // Shared-key proof field: omitted when a SetGroupState (clears it) or
+  // SetSharedKey change is present; otherwise present and matching. tweb models
+  // "no shared key" as undefined where tdlib uses an always-present empty
+  // sentinel, so when the unchanged state genuinely has no key there is nothing
+  // to carry and an omitted field is correct.
+  const sharedKeyMustBeOmitted = hasGroupStateChange || hasSharedKeyChange;
+  if(sharedKeyMustBeOmitted) {
+    if(proof.sharedKey !== undefined) {
+      throw new BlockchainError(
+        'INVALID_STATE_PROOF',
+        'shared_key must be omitted from the proof when the block changes it'
+      );
+    }
+  } else if(proof.sharedKey !== undefined) {
     if(!sharedKey || !sharedKeysEqual(proof.sharedKey, sharedKey)) {
       throw new BlockchainError(
         'INVALID_STATE_PROOF',
         'state-proof shared_key does not match post-application shared_key'
       );
     }
-  } else if(!hasSetSharedChange) {
-    // Same idea — no change, proof omits, prior state still holds.
+  } else if(sharedKey !== undefined) {
+    throw new BlockchainError(
+      'INVALID_STATE_PROOF',
+      'shared_key must be present in the proof when the block does not change it'
+    );
   }
+
+  // tdlib validate_state: a block must carry at least one SetValue or
+  // SetGroupState change, and the resulting state must be structurally valid.
+  if(!hasGroupStateChange && !hasSetValue) {
+    throw new BlockchainError('NO_CHANGES', 'block has neither a SetValue nor a SetGroupState change');
+  }
+  validateGroupState(groupState);
+  validateSharedKey(sharedKey, groupState);
 
   // Produce post-application state.
   const newLastBlockHash = await computeBlockHash(block);
@@ -314,12 +501,6 @@ export {participantPermissions, findParticipant};
 // add block (joiner), and change-state block (admin updates). Mirrors tdlib's
 // Blockchain::build_block + State::create_from_block algorithm.
 
-// External-permissions bitmask used as the "ephemeral -1 block group state"
-// when building the zero block. tdlib uses GroupParticipantFlags::AllPermissions
-// = (1 << 3) - 1 = 7 (AddUsers | RemoveUsers | SetValue) so the zero-block
-// signer (who is not yet a group member) passes the permission check.
-const ALL_PERMISSIONS = 7;
-
 // Hydrate ClientBlockchainState from a single block snapshot — the receive
 // side of `Blockchain::create_from_block`. Used when we receive a "last
 // block" from the server without prior history.
@@ -328,8 +509,13 @@ const ALL_PERMISSIONS = 7;
 // state proof override any fields it carries (the proof omits them only when
 // they're derivable from the changes themselves).
 export async function hydrateStateFromBlock(block: Block): Promise<ClientBlockchainState> {
+  // tdlib create_from_block rejects a negative height; without this a server
+  // could seed state.height < 0 and skew every subsequent height check.
+  if(block.height < 0) {
+    throw new BlockchainError('HEIGHT_MISMATCH', `negative block height ${block.height}`);
+  }
   let groupState: GroupState = block.height === 0 ?
-    {participants: [], externalPermissions: ALL_PERMISSIONS} :
+    zeroBlockPredecessorGroupState() :
     {participants: [], externalPermissions: 0};
   let sharedKey: SharedKey | undefined;
 
@@ -344,6 +530,14 @@ export async function hydrateStateFromBlock(block: Block): Promise<ClientBlockch
 
   if(block.stateProof.groupState) groupState = block.stateProof.groupState;
   if(block.stateProof.sharedKey) sharedKey = block.stateProof.sharedKey;
+
+  // Structural validation (tdlib create_from_block → validate_state). We can't
+  // run per-change authorization here — hydration has no prior chain to derive
+  // the signer's permissions from — so a hydrated tip is only as trustworthy as
+  // the blocks subsequently applied on top of it (which ARE authorized) and the
+  // emoji-fingerprint check; see notes/blockchain.md.
+  validateGroupState(groupState);
+  validateSharedKey(sharedKey, groupState);
 
   const blockHash = await computeBlockHash(block);
   return {
@@ -400,9 +594,11 @@ export async function buildChangesForNewState(
 // Build a signed block on top of `state`. Wraps the apply-then-prove flow:
 // compute the post-state, build a state proof that omits redundancy, sign.
 //
-// Permission checks are skipped (mirrors our applyBlock policy). The signer
-// is recorded explicitly via the block's signature_public_key field — easier
-// than relying on group_state[0] when we're the zero-block author.
+// No authorization check is needed here: we author and sign this block, so by
+// construction we are an authorized signer (applyBlock re-checks inbound blocks
+// from everyone else). The signer is recorded explicitly via the block's
+// signature_public_key field — easier than relying on group_state[0] when we're
+// the zero-block author.
 export async function buildBlock(
   state: ClientBlockchainState,
   changes: Change[],
@@ -414,7 +610,7 @@ export async function buildBlock(
   const height = state.height + 1;
 
   let groupState: GroupState = height === 0 ?
-    {participants: [], externalPermissions: ALL_PERMISSIONS} :
+    zeroBlockPredecessorGroupState() :
     state.groupState;
   let sharedKey: SharedKey | undefined = state.sharedKey;
   let hasSetGroupState = false;

@@ -8,7 +8,8 @@
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 
 export default function placeCaretAtEnd(el: HTMLElement, ignoreTouchCheck = false, focus = true) {
-  if(IS_TOUCH_SUPPORTED && (!ignoreTouchCheck || (document.activeElement.tagName !== 'INPUT' && !(document.activeElement as HTMLElement).isContentEditable))) {
+  const activeElement = el.ownerDocument.activeElement;
+  if(IS_TOUCH_SUPPORTED && (!ignoreTouchCheck || (activeElement.tagName !== 'INPUT' && !(activeElement as HTMLElement).isContentEditable))) {
     return;
   }
 
@@ -18,10 +19,10 @@ export default function placeCaretAtEnd(el: HTMLElement, ignoreTouchCheck = fals
     el.selectionStart = length;
     el.selectionEnd = length;
   } else {
-    const range = document.createRange();
+    const range = el.ownerDocument.createRange();
     range.selectNodeContents(el);
     range.collapse(false);
-    const sel = window.getSelection();
+    const sel = el.ownerDocument.defaultView.getSelection();
     sel.removeAllRanges();
     sel.addRange(range);
   }

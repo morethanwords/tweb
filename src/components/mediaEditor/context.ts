@@ -175,7 +175,10 @@ export type MediaEditorContextValue = {
   canImageResultInGIF: boolean;
   isEditingForAvatar: boolean;
   isEditingForumAvatar: boolean;
+  isVideoAvatarMode: boolean;
   dontCreatePreview: boolean;
+  imageType?: 'image/jpeg' | 'image/png';
+  imageQuality?: number;
 
   mediaState: Store<EditingMediaState>;
   editorState: Store<MediaEditorState>;
@@ -197,6 +200,11 @@ export function createContextValue(props: MediaEditorProps): MediaEditorContextV
 
   const mediaStateInitClone = structuredClone(mediaStateInit);
 
+
+  // Video-avatar mode forces audio off, since profile videos have no sound.
+  if(props.isVideoAvatarMode) {
+    mediaStateInit.videoMuted = true;
+  }
 
   const mediaState = createMutable(mediaStateInit);
   const editorState = createMutable(getDefaultMediaEditorState());
@@ -253,7 +261,10 @@ export function createContextValue(props: MediaEditorProps): MediaEditorContextV
     canImageResultInGIF: props.canImageResultInGIF || false,
     isEditingForAvatar: props.isEditingForAvatar || false,
     isEditingForumAvatar: props.isEditingForumAvatar || false,
+    isVideoAvatarMode: props.isVideoAvatarMode || false,
     dontCreatePreview: props.dontCreatePreview || false,
+    imageType: props.imageType,
+    imageQuality: props.imageQuality,
 
     mediaState,
     editorState,

@@ -1,3 +1,5 @@
+import {bindActiveWindowListener} from '@helpers/appWindow';
+
 const positionKeyRegexp = /^key[a-zA-Z]$/i;
 
 function matchNonMetaKey(event: KeyboardEvent, key: string) {
@@ -34,7 +36,7 @@ export function addShortcutListener(combos: string[], callback: (combo: string, 
     }
   };
 
-  document.addEventListener('keydown', listener);
-
-  return () => document.removeEventListener('keydown', listener);
+  // Follow the active app window so shortcuts keep firing when the client is popped into a Document
+  // PiP window (its key events fire on the PiP document, not the tab's).
+  return bindActiveWindowListener((w) => w.document, 'keydown', listener);
 }

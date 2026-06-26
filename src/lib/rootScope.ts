@@ -121,10 +121,10 @@ export type BroadcastEvents = {
   'stickers_updated': {type: 'recent' | 'faved', stickers: MyDocument[]},
   'stickers_top': Long,
   'stickers_order': {type: 'masks' | 'emojis' | 'stickers', order: Long[]},
-  'sticker_updated': {type: 'recent' | 'faved', document: MyDocument, faved: boolean},
+  'sticker_updated': {type: 'recent' | 'faved', document: MyDocument, faved: boolean, limitReached?: boolean},
 
   'gifs_updated': MyDocument[],
-  'gif_updated': {document: MyDocument, saved: boolean},
+  'gif_updated': {document: MyDocument, saved: boolean, limitReached?: boolean},
 
   'state_cleared': void,
   'state_synchronized': void,
