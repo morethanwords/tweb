@@ -51,6 +51,7 @@ import {AppMyStoriesTab} from '@components/solidJsTabs/tabs';
 
 export class InternalLinkProcessor {
   protected managers: AppManagers;
+  private processingAddAiStyleSlugs: Set<string> = new Set();
 
   public construct(managers: AppManagers) {
     this.managers = managers;
@@ -766,6 +767,23 @@ export class InternalLinkProcessor {
         }
       }
     });
+
+    // t.me/addstyle/<slug>
+    addAnchorListener<{ pathnameParams: ['addstyle', string] }>({
+      name: 'addstyle',
+      callback: ({pathnameParams}) => {
+        if(!pathnameParams[1]) {
+          return;
+        }
+
+        const link: InternalLink = {
+          _: INTERNAL_LINK_TYPE.ADD_AI_STYLE,
+          slug: pathnameParams[1]
+        };
+
+        return this.processInternalLink(link);
+      }
+    });
   }
 
   private makeLink<T extends INTERNAL_LINK_TYPE>(type: T, uriParams: Omit<InternalLinkTypeMap[T], '_'>) {
@@ -900,6 +918,36 @@ export class InternalLinkProcessor {
   // SessionNavigation::resolveConferenceCall → startOrJoinConferenceCall.
   public processConferenceCallLink = (link: InternalLink.InternalLinkConferenceCall) => {
     return appImManager.joinConference({_: 'inputGroupCallSlug', slug: link.slug});
+  };
+
+  public processAddAiStyleLink = async(link: InternalLink.InternalLinkAddAiStyle) => {
+    if(this.processingAddAiStyleSlugs.has(link.slug)) return;
+    this.processingAddAiStyleSlugs.add(link.slug);
+
+    try {
+      const {module: {default: showViewTonePopup}, tone, tones} = await namedPromises({
+        module: import('@components/popups/aiEditorPopup/viewTonePopup'),
+        tone: this.managers.aiTonesManager.getToneBySlug(link.slug),
+        tones: this.managers.aiTonesManager.getTones()
+      });
+      if(!tone) throw new Error();
+
+      const savedTones = tones.filter((t) => t._ === 'aiComposeTone').length;
+      const isSaved = !tone.pFlags.creator && tones.some((t) => t._ === 'aiComposeTone' && t.id.toString() === tone.id.toString());
+
+      showViewTonePopup({
+        tone,
+        isSaved,
+        savedTones,
+        HotReloadGuard: SolidJSHotReloadGuardProvider
+      });
+    } catch{
+      toastNew({
+        langPackKey: 'AiEditor.StyleNotFound'
+      });
+    } finally {
+      this.processingAddAiStyleSlugs.delete(link.slug);
+    }
   };
 
   public processUserPhoneNumberLink = (link: InternalLink.InternalLinkUserPhoneNumber) => {
@@ -1273,7 +1321,8 @@ export class InternalLinkProcessor {
       [INTERNAL_LINK_TYPE.STAR_GIFT_COLLECTION]: this.processStarGiftCollectionLink,
       [INTERNAL_LINK_TYPE.STORY_ALBUM]: this.processStoryAlbumLink,
       [INTERNAL_LINK_TYPE.INSTANT_VIEW]: this.processInstantViewLink,
-      [INTERNAL_LINK_TYPE.CONFERENCE_CALL]: this.processConferenceCallLink
+      [INTERNAL_LINK_TYPE.CONFERENCE_CALL]: this.processConferenceCallLink,
+      [INTERNAL_LINK_TYPE.ADD_AI_STYLE]: this.processAddAiStyleLink
     };
 
     const processor = map[link._];

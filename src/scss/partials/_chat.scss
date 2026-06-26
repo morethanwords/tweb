@@ -265,6 +265,46 @@
       font-size: var(--font-size-14);
     }
   }
+
+  &-ai-editor-button {
+    position: absolute;
+    top: 0.25rem;
+    right: 0.75rem;
+    --button-size: 2rem;
+
+    &__icon {
+      pointer-events: none;
+      font-size: 1.25rem;
+    }
+
+    &__star-1 {
+      opacity: 0;
+      animation: chat-input-ai-editor-button-star-animation 3.2s ease-in-out forwards;
+    }
+
+    &__star-2 {
+      opacity: 0;
+      animation: chat-input-ai-editor-button-star-animation 3.2s ease-in-out 0.32s forwards;
+    }
+  }
+}
+
+@keyframes chat-input-ai-editor-button-star-animation {
+  0% {
+    opacity: 0;
+  }
+
+  20%, 60% {
+    opacity: 1;
+  }
+
+  40%, 80% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
 }
 
 .chat-input-main {

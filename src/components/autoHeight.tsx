@@ -1,16 +1,23 @@
-import {batch, createSignal, JSX, onCleanup, onMount} from 'solid-js';
+import classNames from '@helpers/string/classNames';
+import {batch, createMemo, createSignal, JSX, mergeProps, onCleanup, onMount, Ref} from 'solid-js';
+import styles from './autoHeight.module.scss';
 
-export const AutoHeight = (props: {
+
+export const AutoHeight = (inProps: {
+  ref?: Ref<HTMLDivElement>;
   children: JSX.Element;
-  duration?: number;
   overflowHidden?: boolean;
-  easing?: JSX.CSSProperties['transition-property'];
+  outerClass?: string;
+  hasTransition?: boolean;
 }) => {
-  let containerRef!: HTMLDivElement;
+  const props = mergeProps({hasTransition: true}, inProps);
+
   let contentRef!: HTMLDivElement;
 
   const [canHaveHeight, setCanHaveHeight] = createSignal(false);
   const [height, setHeight] = createSignal(0);
+
+  const canHaveHeightAndTransition = createMemo(() => canHaveHeight() && props.hasTransition);
 
   onMount(() => {
     const observer = new ResizeObserver(() => {
@@ -27,11 +34,14 @@ export const AutoHeight = (props: {
 
   return (
     <div
-      ref={containerRef}
+      ref={props.ref}
+      class={classNames(props.outerClass, styles.outer)}
+      classList={{
+        [styles.overflowHidden]: props.overflowHidden,
+        [styles.hasTransition]: canHaveHeightAndTransition()
+      }}
       style={{
-        height: canHaveHeight() ? `${height()}px` : 'auto',
-        overflow: props.overflowHidden ? 'hidden' : undefined,
-        transition: canHaveHeight() ? `height ${props.duration ?? 200}ms ${props.easing ?? 'ease'}` : 'none'
+        'height': canHaveHeightAndTransition() ? `${height()}px` : undefined
       }}
     >
       <div ref={contentRef}>{props.children}</div>

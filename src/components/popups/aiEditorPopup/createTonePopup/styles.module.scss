@@ -1,0 +1,66 @@
+@use "../../../../scss/variables" as *;
+@use "../../../../scss/mixins" as *;
+
+.header {
+  padding-block: 3.5rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.emoji {
+  --size: 4rem;
+  width: var(--size);
+  height: var(--size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--size);
+  position: relative;
+}
+
+.emojiButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background-color: var(--surface-color);
+  border-radius: 50%;
+  cursor: pointer;
+
+  @include hover-global(gray, background-color, true);
+}
+
+.inputFieldScrollable {
+  max-height: 200px;
+  margin: 6px 0;
+}
+
+.checkboxContainer {
+  position: relative;
+  overflow: hidden;
+
+  display: flex;
+  align-items: center;
+
+  gap: 0.5rem;
+  margin: 0 auto;
+  --padding: 6px;
+  padding: var(--padding) 12px var(--padding) var(--padding);
+  color: var(--secondary-text-color);
+  gap: var(--padding);
+
+  cursor: pointer;
+  border-radius: 24px;
+
+  @include hover-global(gray, background-color, true);
+
+  * {
+    pointer-events: none;
+  }
+}
+
+.checkboxText {
+  text-align: left;
+  max-width: 240px;
+}

@@ -72,3 +72,13 @@
 [data-markup*="date"] {
   color: var(--link-color);
 }
+
+.markup-diff-delete {
+  color: var(--gc-red-text-color);
+  text-decoration: line-through;
+}
+
+.markup-diff-insert {
+  color: var(--gc-blue-text-color);
+  text-decoration: underline;
+}

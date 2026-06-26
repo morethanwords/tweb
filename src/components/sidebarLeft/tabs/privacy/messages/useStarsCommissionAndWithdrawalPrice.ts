@@ -1,5 +1,5 @@
 import {Accessor, createMemo} from 'solid-js';
-import useAppConfig from '@components/sidebarLeft/tabs/privacy/messages/useAppConfig';
+import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 
 
 type Options = {
@@ -11,10 +11,11 @@ const useStarsCommissionAndWithdrawalPrice = (stars: Accessor<number>, {
   commissionKey = 'stars_paid_message_commission_permille',
   withdrawRateKey = 'stars_usd_withdraw_rate_x1000'
 }: Options = {}) => {
-  const [appConfig] = useAppConfig();
+  const {useAppConfig} = useHotReloadGuard();
+  const appConfig = useAppConfig();
 
-  const commission = createMemo(() => (+appConfig()?.[commissionKey] || 0) / 1000);
-  const centsPerStar = createMemo(() => (+appConfig()?.[withdrawRateKey] || 0) / 1000);
+  const commission = createMemo(() => (+appConfig[commissionKey] || 0) / 1000);
+  const centsPerStar = createMemo(() => (+appConfig[withdrawRateKey] || 0) / 1000);
 
   const commissionPercents = createMemo(() => Math.round(commission() * 100));
   const willReceiveDollars = createMemo(() => Math.max(0.01 * Number(!!stars()), Math.round(commission() * centsPerStar() * stars()) / 100));

@@ -1278,7 +1278,7 @@ const lang = {
   'ActionUserScored': 'un1 scored %2$s',
   'ActionYouScoredInGame': 'You scored %1$s in un2',
   'ActionUserScoredInGame': 'un1 scored %2$s in un3',
-  'ActionCreateDirectMessages' : 'Direct Messages Opened',
+  'ActionCreateDirectMessages': 'Direct Messages Opened',
   'AndOther': {
     'one_value': 'and %1$d other',
     'other_value': 'and %1$d others'
@@ -1886,6 +1886,7 @@ const lang = {
   'ScamMessage': 'SCAM',
   'FakeMessage': 'FAKE',
   'TextCopied': 'Text copied to clipboard',
+  'TextCopyFailed': 'Failed to copy text to clipboard',
   'FormattedDate.CopyDate': 'Copy Date',
   'FormattedDate.DateCopied': 'Date copied to clipboard',
   'FormattedDate.JustNow': 'just now',
@@ -2308,6 +2309,7 @@ const lang = {
   'LinksCreatedByThisAdmin': 'Invite links created by this admin',
   'DeleteThisChat': 'Delete this chat',
   'ShareFile': 'Share',
+  'Share': 'Share',
   'StoryPinnedToProfile': 'Story posted to your profile.',
   'StoryPinnedToGroup': 'Story posted to the group profile.',
   'StoryPinnedToChannel': 'Story posted to the channel profile.',
@@ -4483,7 +4485,6 @@ const lang = {
   'AdminRecentActionsFilters.GroupSettings': 'Group Settings',
   'AdminRecentActionsFilters.Messages': 'Messages',
 
-  'AdminRecentActionsFilters.ApplyFilters': 'Apply',
   'AdminRecentActionsFilters.ResetFilters': 'Reset',
   'AdminRecentActionsFilters.ByType': 'Filter by type',
   'AdminRecentActionsFilters.ByAdmin': 'Filter by admin',
@@ -4793,7 +4794,56 @@ const lang = {
   'CancelPollConfirm.Title': 'Cancel Sending Poll',
   'CancelPollConfirm.Description': 'Are you sure you want to cancel sending the poll?',
   'CancelPollConfirm.Button': 'Cancel Sending',
-  'CancelPollConfirm.Timeout': 'The poll was already sent, you can delete the message instead.'
+  'CancelPollConfirm.Timeout': 'The poll was already sent, you can delete the message instead.',
+
+  'AiEditor.Title': 'AI Editor',
+  'AiEditor.Style': 'Style',
+  'AiEditor.Fix': 'Fix',
+  'AiEditor.Original': 'Original',
+  'AiEditor.Emojify': 'emojify',
+  'AiEditor.Result': 'Result',
+  'AiEditor.TranslateTo': 'To %s',
+  'AiEditor.StyleBy': 'Style by %s',
+  'AiEditor.PremiumFlood': 'You have hit the limit for now. Subscribe to [Telegram Premium]() to increase the limit by 50 times or try again later.',
+  'AiEditor.ComposeError': 'Something went wrong while trying to compose the message.',
+
+  'AiEditor.NewStyle.Title': 'New Style',
+  'AiEditor.NewStyle.TitleEdit': 'Edit Style',
+  'AiEditor.NewStyle.StyleName': 'Style Name',
+  'AiEditor.NewStyle.StyleNameDescription': 'Style name (for example, "Pirate")',
+  'AiEditor.NewStyle.Instructions': 'Instructions',
+  'AiEditor.NewStyle.InstructionsDescription': 'Instructions (for example "write in bold, nautical tone, light slang (aye, matey), vivid sea imagery, playful swagger, rhythmic phrasing, and adventurous mood")',
+  'AiEditor.NewStyle.AddLink': 'Add a link to my account',
+  'AiEditor.NewStyle.EmojiUnsupported': 'Sorry, this emoji is unsupported, please choose an animated emoji instead.',
+  'AiEditor.NewStyle.Error': 'Failed to create new style',
+  'AiEditor.NewStyle.ErrorEdit': 'Failed to save the style',
+
+  'AiEditor.Chat.ViewStyle': 'View Style',
+
+  'AiEditor.StyleNotFound': 'Style not found, it was probably deleted',
+  'AiEditor.StyleAdded': 'Style was added',
+  'AiEditor.StyleAddError': 'Failed to add style',
+  'AiEditor.StyleRemoved': 'Style was removed',
+  'AiEditor.StyleRemoveError': 'Failed to remove style',
+
+  'AiEditor.DeleteStyle.Title': 'Delete Style',
+  'AiEditor.DeleteStyle.Description': 'Are you sure you want to delete this style? It will be removed for anyone who saved it.',
+
+  'AiEditor.ViewStyle.Description': 'Add this style to instantly rewrite your messages.',
+  'AiEditor.ViewStyle.AnotherExample': 'Another Example',
+  'AiEditor.ViewStyle.Before': 'Before',
+  'AiEditor.ViewStyle.After': 'After',
+  'AiEditor.ViewStyle.InstallsCount': {
+    'one_value': 'Used by %d person.',
+    'other_value': 'Used by %d people.'
+  },
+  'AiEditor.ViewStyle.CreatedBy': 'Created by %s',
+  'AiEditor.ViewStyle.SaveStyle': 'Save Style',
+  'AiEditor.ViewStyle.RemoveStyle': 'Remove Style',
+  'AiEditor.ViewStyle.DeleteStyle': 'Delete Style',
+  'AiEditor.ViewStyle.MaxSavedTones': 'You have reached the maximum number of saved tones.',
+
+  'Apply': 'Apply'
 };
 
 export default lang;

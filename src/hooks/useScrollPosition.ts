@@ -2,8 +2,11 @@ import {type Accessor, createEffect, createSignal, onCleanup} from 'solid-js';
 import {requestRAF} from '@helpers/solid/requestRAF';
 
 
-export function useScrollTop(element: Accessor<HTMLElement | null | undefined>) {
-  const [scrollTop, setScrollTop] = createSignal(0);
+export function useScrollPosition(
+  element: Accessor<HTMLElement | null | undefined>,
+  axis: 'x' | 'y' = 'y'
+) {
+  const [scrollPosition, setScrollPosition] = createSignal(0);
 
   let isRAFing = false;
 
@@ -13,7 +16,7 @@ export function useScrollTop(element: Accessor<HTMLElement | null | undefined>) 
 
     requestRAF(() => {
       isRAFing = false;
-      setScrollTop(el.scrollTop);
+      setScrollPosition(axis === 'y' ? el.scrollTop : el.scrollLeft);
     });
   };
 
@@ -21,7 +24,7 @@ export function useScrollTop(element: Accessor<HTMLElement | null | undefined>) 
     const el = element();
 
     if(!el) {
-      setScrollTop(0);
+      setScrollPosition(0);
       return;
     }
 
@@ -35,5 +38,5 @@ export function useScrollTop(element: Accessor<HTMLElement | null | undefined>) 
     });
   });
 
-  return scrollTop;
+  return scrollPosition;
 }

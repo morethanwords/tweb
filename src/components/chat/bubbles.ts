@@ -342,7 +342,8 @@ const webPageTypes: {[type in WebPage.webPage['type']]?: LangPackKey} = {
   telegram_story_album: 'ViewStoryAlbum',
   telegram_megagroup_request: 'Chat.Message.RequestToJoin',
   telegram_stickerset: 'OpenStickers',
-  telegram_call: 'JoinCall'
+  telegram_call: 'JoinCall',
+  telegram_aicomposetone: 'AiEditor.Chat.ViewStyle'
 };
 
 // size (px) of the compact right-aligned sticker-set / custom-emoji preview grid in a webpage bubble

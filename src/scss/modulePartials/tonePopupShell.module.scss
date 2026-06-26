@@ -1,0 +1,37 @@
+/* Shared popup shell layout for tone-related popups (createTone, viewTone). */
+
+.popup {
+  --popup-min-width: 26.25rem;
+  --popup-max-width: 26.25rem;
+}
+
+.popupContainer {
+  padding: 1rem;
+  border-radius: 2rem;
+}
+
+.popupHeader {
+  position: absolute;
+  margin: 0;
+  top: .625rem;
+  inset-inline-start: .625rem;
+}
+
+.popupCloseButton {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+.popupFooter {
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+  padding: 1.25rem 0 0;
+  min-height: unset;
+
+  :global(.popup-footer-button) {
+    border-radius: 100px;
+    flex: 1;
+    margin: 0;
+  }
+}

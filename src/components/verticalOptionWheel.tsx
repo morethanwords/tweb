@@ -7,7 +7,7 @@ import {subscribeOn} from '@helpers/solid/subscribeOn';
 import swipe, {SwipeDirectiveArgs} from '@helpers/useSwipe';
 import useElementSize from '@hooks/useElementSize';
 import {useIsCleaned} from '@hooks/useIsCleaned';
-import {useScrollTop} from '@hooks/useScrollTop';
+import {useScrollPosition} from '@hooks/useScrollPosition';
 import styles from '@components/verticalOptionWheel.module.scss';
 
 keepMe(swipe);
@@ -38,7 +38,7 @@ export const VerticalOptionWheel = <V, >(props: {
   const [isDragging, setIsDragging] = createSignal(false);
   const [hasDraggedALittle, setHasDraggedALittle] = createSignal(false);
 
-  const scrollTop = useScrollTop(scrollable);
+  const scrollTop = useScrollPosition(scrollable);
   const size = useElementSize(scrollable);
 
   const isCleaned = useIsCleaned();

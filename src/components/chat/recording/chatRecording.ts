@@ -788,7 +788,7 @@ export default class ChatRecording {
     }
 
     this.active = value;
-    this.input.starsState.set({isRecording: value});
+    this.input.inputState.set({isRecording: value});
     this.input.setShrinking(this.active, ['is-recording']);
     this.input.updateSendBtn();
     this.input.onRecording?.(value);

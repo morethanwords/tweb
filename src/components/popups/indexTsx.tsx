@@ -86,6 +86,7 @@ type PopupControllerContextValue = {
 };
 
 export const PopupContext = createContext<PopupContextValue>();
+export const usePopupContext = () => useContext(PopupContext);
 const PopupControllerContext = createContext<PopupControllerContextValue>();
 
 const DEFAULT_APPEND_TO = document.body;

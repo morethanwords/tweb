@@ -144,7 +144,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
 
     const observeElement = this.observeResizeElement ?? this.canvas;
     if(observeElement) {
-      unobserveResize(observeElement);
+      unobserveResize(observeElement, this.onResizeEntry);
     }
 
     this.customEmojis.forEach((elements) => {

@@ -260,7 +260,7 @@ export default function ripple(elem: HTMLElement, accessor?: Accessor<boolean>, 
       if(value === undefined || value) {
         const ret = _ripple(elem, prepend);
         onCleanup(() => {
-          ret.dispose();
+          ret?.dispose();
         });
       }
     });
