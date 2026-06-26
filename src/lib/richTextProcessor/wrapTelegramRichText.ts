@@ -130,6 +130,12 @@ function processRichText(richText: RichText, options: Options): TextWithEntities
         offset,
         length
       }), options);
+    case 'textMath':
+      return {
+        _: 'textWithEntities',
+        text: richText.source,
+        entities: []
+      };
     case 'textImage':
       return wrapEntity({_: 'textPlain', text: '\x01'}, (offset, length) => ({
         _: 'messageEntityCustomEmoji',
@@ -138,6 +144,82 @@ function processRichText(richText: RichText, options: Options): TextWithEntities
         length,
         w: richText.w,
         h: richText.h
+      }), options);
+    case 'textCustomEmoji':
+      return wrapEntity({_: 'textPlain', text: richText.alt || '\x01'}, (offset, length) => ({
+        _: 'messageEntityCustomEmoji',
+        document_id: richText.document_id,
+        offset,
+        length
+      }), options);
+    case 'textSpoiler':
+      return wrapEntity(richText.text, (offset, length) => ({
+        _: 'messageEntitySpoiler',
+        offset,
+        length
+      }), options);
+    case 'textMention':
+      return wrapEntity(richText.text, (offset, length) => ({
+        _: 'messageEntityMention',
+        offset,
+        length
+      }), options);
+    case 'textHashtag':
+      return wrapEntity(richText.text, (offset, length) => ({
+        _: 'messageEntityHashtag',
+        offset,
+        length
+      }), options);
+    case 'textBotCommand':
+      return wrapEntity(richText.text, (offset, length) => ({
+        _: 'messageEntityBotCommand',
+        offset,
+        length
+      }), options);
+    case 'textCashtag':
+      return wrapEntity(richText.text, (offset, length) => ({
+        _: 'messageEntityCashtag',
+        offset,
+        length
+      }), options);
+    case 'textAutoUrl':
+      return wrapEntity(richText.text, (offset, length) => ({
+        _: 'messageEntityUrl',
+        offset,
+        length
+      }), options);
+    case 'textAutoEmail':
+      return wrapEntity(richText.text, (offset, length) => ({
+        _: 'messageEntityEmail',
+        offset,
+        length
+      }), options);
+    case 'textAutoPhone':
+      return wrapEntity(richText.text, (offset, length) => ({
+        _: 'messageEntityPhone',
+        offset,
+        length
+      }), options);
+    case 'textBankCard':
+      return wrapEntity(richText.text, (offset, length) => ({
+        _: 'messageEntityBankCard',
+        offset,
+        length
+      }), options);
+    case 'textMentionName':
+      return wrapEntity(richText.text, (offset, length) => ({
+        _: 'messageEntityMentionName',
+        offset,
+        length,
+        user_id: richText.user_id
+      }), options);
+    case 'textDate':
+      return wrapEntity(richText.text, (offset, length) => ({
+        _: 'messageEntityFormattedDate',
+        pFlags: richText.pFlags,
+        offset,
+        length,
+        date: richText.date
       }), options);
     case 'textSubscript':
       return wrapEntity(richText.text, (offset, length) => ({

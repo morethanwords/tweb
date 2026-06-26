@@ -229,6 +229,8 @@ import {createMutable} from 'solid-js/store';
 import compareUint8Arrays from '@helpers/bytes/compareUint8Arrays';
 import {linkToPollOption} from './bubbleParts/pollMessageContent/pollToOptionLink';
 import {getSimulatedEvent} from '@helpers/dom/dispatchEvent';
+import {richMessageToPage} from '@lib/richMessage';
+import {RichMessageBubble} from '@components/chat/bubbles/richMessage';
 
 // TODO: fix new message won't be rendered if an old one is rendering in the moment
 
@@ -6917,6 +6919,8 @@ export default class ChatBubbles {
     const isSponsored = (message as Message.message).pFlags.sponsored;
     const sponsoredMessage = (message as Message.message).sponsoredMessage;
     const factCheck = /* !!isSponsored === !sponsoredMessage &&  */isMessage && message.factcheck;
+    const richMessage = isMessage ? message.rich_message : undefined;
+    const richMessagePage = richMessage && richMessageToPage(richMessage);
 
     context.messageMedia = isMessage && message.media;
     let needToSetHTML = true;
@@ -7166,6 +7170,24 @@ export default class ChatBubbles {
         container.classList.add('margin-0');
         messageDiv.appendChild(container);
       }
+    }
+
+    if(richMessagePage) {
+      const container = document.createElement('div');
+      renderComponent({
+        element: container,
+        Component: RichMessageBubble,
+        props: {
+          message: message as Message.message,
+          richMessage,
+          page: richMessagePage
+        },
+        middleware,
+        HotReloadGuard: SolidJSHotReloadGuardProvider
+      });
+      messageDiv.append(container);
+      isMessageEmpty = false;
+      context.mediaRequiresMessageDiv = true;
     }
 
     const usedId = message.mid;
@@ -8801,6 +8823,14 @@ export default class ChatBubbles {
         }
 
         default:
+          if(richMessagePage) {
+            context.attachmentDiv = undefined;
+            context.mediaRequiresMessageDiv = true;
+            noAttachmentDivNeeded = true;
+            this.log.warn('unrecognized media type with rich_message:', context.messageMedia._, message);
+            break;
+          }
+
           context.attachmentDiv = undefined;
           context.mediaRequiresMessageDiv = true;
           noAttachmentDivNeeded = true;

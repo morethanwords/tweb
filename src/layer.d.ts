@@ -1025,6 +1025,7 @@ export namespace Message {
     fwd_from?: MessageFwdHeader,
     via_bot_id?: string | number,
     via_business_bot_id?: string | number,
+    guestchat_via_from?: Peer,
     reply_to?: MessageReplyHeader,
     date: number,
     message: string,
@@ -1047,6 +1048,7 @@ export namespace Message {
     suggested_post?: SuggestedPost,
     schedule_repeat_period?: number,
     summary_from_language?: string,
+    rich_message?: RichMessage,
     mid?: number,
     peerId?: PeerId,
     fromId?: PeerId,
@@ -7038,7 +7040,7 @@ export namespace MessagesHighScores {
 /**
  * @link https://core.telegram.org/type/RichText
  */
-export type RichText = RichText.textEmpty | RichText.textPlain | RichText.textBold | RichText.textItalic | RichText.textUnderline | RichText.textStrike | RichText.textFixed | RichText.textUrl | RichText.textEmail | RichText.textConcat | RichText.textSubscript | RichText.textSuperscript | RichText.textMarked | RichText.textPhone | RichText.textImage | RichText.textAnchor;
+export type RichText = RichText.textEmpty | RichText.textPlain | RichText.textBold | RichText.textItalic | RichText.textUnderline | RichText.textStrike | RichText.textFixed | RichText.textUrl | RichText.textEmail | RichText.textConcat | RichText.textSubscript | RichText.textSuperscript | RichText.textMarked | RichText.textPhone | RichText.textImage | RichText.textAnchor | RichText.textMath | RichText.textCustomEmoji | RichText.textSpoiler | RichText.textMention | RichText.textHashtag | RichText.textBotCommand | RichText.textCashtag | RichText.textAutoUrl | RichText.textAutoEmail | RichText.textAutoPhone | RichText.textBankCard | RichText.textMentionName | RichText.textDate;
 
 export namespace RichText {
   export type textEmpty = {
@@ -7126,12 +7128,89 @@ export namespace RichText {
     text: RichText,
     name: string
   };
+
+  export type textMath = {
+    _: 'textMath',
+    source: string
+  };
+
+  export type textCustomEmoji = {
+    _: 'textCustomEmoji',
+    document_id: string | number,
+    alt: string
+  };
+
+  export type textSpoiler = {
+    _: 'textSpoiler',
+    text: RichText
+  };
+
+  export type textMention = {
+    _: 'textMention',
+    text: RichText
+  };
+
+  export type textHashtag = {
+    _: 'textHashtag',
+    text: RichText
+  };
+
+  export type textBotCommand = {
+    _: 'textBotCommand',
+    text: RichText
+  };
+
+  export type textCashtag = {
+    _: 'textCashtag',
+    text: RichText
+  };
+
+  export type textAutoUrl = {
+    _: 'textAutoUrl',
+    text: RichText
+  };
+
+  export type textAutoEmail = {
+    _: 'textAutoEmail',
+    text: RichText
+  };
+
+  export type textAutoPhone = {
+    _: 'textAutoPhone',
+    text: RichText
+  };
+
+  export type textBankCard = {
+    _: 'textBankCard',
+    text: RichText
+  };
+
+  export type textMentionName = {
+    _: 'textMentionName',
+    text: RichText,
+    user_id: string | number
+  };
+
+  export type textDate = {
+    _: 'textDate',
+    flags?: number,
+    pFlags: Partial<{
+      relative?: true,
+      short_time?: true,
+      long_time?: true,
+      short_date?: true,
+      long_date?: true,
+      day_of_week?: true,
+    }>,
+    text: RichText,
+    date: number
+  };
 }
 
 /**
  * @link https://core.telegram.org/type/PageBlock
  */
-export type PageBlock = PageBlock.pageBlockUnsupported | PageBlock.pageBlockTitle | PageBlock.pageBlockSubtitle | PageBlock.pageBlockAuthorDate | PageBlock.pageBlockHeader | PageBlock.pageBlockSubheader | PageBlock.pageBlockParagraph | PageBlock.pageBlockPreformatted | PageBlock.pageBlockFooter | PageBlock.pageBlockDivider | PageBlock.pageBlockAnchor | PageBlock.pageBlockList | PageBlock.pageBlockBlockquote | PageBlock.pageBlockPullquote | PageBlock.pageBlockPhoto | PageBlock.pageBlockVideo | PageBlock.pageBlockCover | PageBlock.pageBlockEmbed | PageBlock.pageBlockEmbedPost | PageBlock.pageBlockCollage | PageBlock.pageBlockSlideshow | PageBlock.pageBlockChannel | PageBlock.pageBlockAudio | PageBlock.pageBlockKicker | PageBlock.pageBlockTable | PageBlock.pageBlockOrderedList | PageBlock.pageBlockDetails | PageBlock.pageBlockRelatedArticles | PageBlock.pageBlockMap;
+export type PageBlock = PageBlock.pageBlockUnsupported | PageBlock.pageBlockTitle | PageBlock.pageBlockSubtitle | PageBlock.pageBlockAuthorDate | PageBlock.pageBlockHeader | PageBlock.pageBlockSubheader | PageBlock.pageBlockParagraph | PageBlock.pageBlockPreformatted | PageBlock.pageBlockFooter | PageBlock.pageBlockDivider | PageBlock.pageBlockAnchor | PageBlock.pageBlockList | PageBlock.pageBlockBlockquote | PageBlock.pageBlockPullquote | PageBlock.pageBlockPhoto | PageBlock.pageBlockVideo | PageBlock.pageBlockCover | PageBlock.pageBlockEmbed | PageBlock.pageBlockEmbedPost | PageBlock.pageBlockCollage | PageBlock.pageBlockSlideshow | PageBlock.pageBlockChannel | PageBlock.pageBlockAudio | PageBlock.pageBlockKicker | PageBlock.pageBlockTable | PageBlock.pageBlockOrderedList | PageBlock.pageBlockDetails | PageBlock.pageBlockRelatedArticles | PageBlock.pageBlockMap | PageBlock.pageBlockHeading1 | PageBlock.pageBlockHeading2 | PageBlock.pageBlockHeading3 | PageBlock.pageBlockHeading4 | PageBlock.pageBlockHeading5 | PageBlock.pageBlockHeading6 | PageBlock.pageBlockMath | PageBlock.pageBlockThinking | PageBlock.pageBlockBlockquoteBlocks;
 
 export namespace PageBlock {
   export type pageBlockUnsupported = {
@@ -7298,7 +7377,13 @@ export namespace PageBlock {
 
   export type pageBlockOrderedList = {
     _: 'pageBlockOrderedList',
-    items: Array<PageListOrderedItem>
+    flags?: number,
+    pFlags: Partial<{
+      reversed?: true,
+    }>,
+    items: Array<PageListOrderedItem>,
+    start?: number,
+    type?: string
   };
 
   export type pageBlockDetails = {
@@ -7324,6 +7409,52 @@ export namespace PageBlock {
     w: number,
     h: number,
     caption: PageCaption
+  };
+
+  export type pageBlockHeading1 = {
+    _: 'pageBlockHeading1',
+    text: RichText
+  };
+
+  export type pageBlockHeading2 = {
+    _: 'pageBlockHeading2',
+    text: RichText
+  };
+
+  export type pageBlockHeading3 = {
+    _: 'pageBlockHeading3',
+    text: RichText
+  };
+
+  export type pageBlockHeading4 = {
+    _: 'pageBlockHeading4',
+    text: RichText
+  };
+
+  export type pageBlockHeading5 = {
+    _: 'pageBlockHeading5',
+    text: RichText
+  };
+
+  export type pageBlockHeading6 = {
+    _: 'pageBlockHeading6',
+    text: RichText
+  };
+
+  export type pageBlockMath = {
+    _: 'pageBlockMath',
+    source: string
+  };
+
+  export type pageBlockThinking = {
+    _: 'pageBlockThinking',
+    text: RichText
+  };
+
+  export type pageBlockBlockquoteBlocks = {
+    _: 'pageBlockBlockquoteBlocks',
+    blocks: Array<PageBlock>,
+    caption: RichText
   };
 }
 
@@ -9252,11 +9383,21 @@ export type PageListItem = PageListItem.pageListItemText | PageListItem.pageList
 export namespace PageListItem {
   export type pageListItemText = {
     _: 'pageListItemText',
+    flags?: number,
+    pFlags: Partial<{
+      checkbox?: true,
+      checked?: true,
+    }>,
     text: RichText
   };
 
   export type pageListItemBlocks = {
     _: 'pageListItemBlocks',
+    flags?: number,
+    pFlags: Partial<{
+      checkbox?: true,
+      checked?: true,
+    }>,
     blocks: Array<PageBlock>
   };
 }
@@ -9269,14 +9410,28 @@ export type PageListOrderedItem = PageListOrderedItem.pageListOrderedItemText | 
 export namespace PageListOrderedItem {
   export type pageListOrderedItemText = {
     _: 'pageListOrderedItemText',
-    num: string,
-    text: RichText
+    flags?: number,
+    pFlags: Partial<{
+      checkbox?: true,
+      checked?: true,
+    }>,
+    num?: string,
+    text: RichText,
+    value?: number,
+    type?: string
   };
 
   export type pageListOrderedItemBlocks = {
     _: 'pageListOrderedItemBlocks',
-    num: string,
-    blocks: Array<PageBlock>
+    flags?: number,
+    pFlags: Partial<{
+      checkbox?: true,
+      checked?: true,
+    }>,
+    num?: string,
+    blocks: Array<PageBlock>,
+    value?: number,
+    type?: string
   };
 }
 
@@ -16407,6 +16562,25 @@ export namespace MessagesComposedMessageWithAI {
   };
 }
 
+/**
+ * @link https://core.telegram.org/type/RichMessage
+ */
+export type RichMessage = RichMessage.richMessage;
+
+export namespace RichMessage {
+  export type richMessage = {
+    _: 'richMessage',
+    flags?: number,
+    pFlags: Partial<{
+      rtl?: true,
+      part?: true,
+    }>,
+    blocks: Array<PageBlock>,
+    photos: Array<Photo>,
+    documents: Array<Document>
+  };
+}
+
 export interface ConstructorDeclMap {
   'error': Error.error,
   'inputPeerEmpty': InputPeer.inputPeerEmpty,
@@ -17079,6 +17253,19 @@ export interface ConstructorDeclMap {
   'inputPrivacyKeyPhoneP2P': InputPrivacyKey.inputPrivacyKeyPhoneP2P,
   'privacyKeyPhoneP2P': PrivacyKey.privacyKeyPhoneP2P,
   'textAnchor': RichText.textAnchor,
+  'textMath': RichText.textMath,
+  'textCustomEmoji': RichText.textCustomEmoji,
+  'textSpoiler': RichText.textSpoiler,
+  'textMention': RichText.textMention,
+  'textHashtag': RichText.textHashtag,
+  'textBotCommand': RichText.textBotCommand,
+  'textCashtag': RichText.textCashtag,
+  'textAutoUrl': RichText.textAutoUrl,
+  'textAutoEmail': RichText.textAutoEmail,
+  'textAutoPhone': RichText.textAutoPhone,
+  'textBankCard': RichText.textBankCard,
+  'textMentionName': RichText.textMentionName,
+  'textDate': RichText.textDate,
   'help.supportName': HelpSupportName.helpSupportName,
   'help.userInfoEmpty': HelpUserInfo.helpUserInfoEmpty,
   'help.userInfo': HelpUserInfo.helpUserInfo,
@@ -17963,6 +18150,16 @@ export interface ConstructorDeclMap {
   'messageEntityDiffReplace': MessageEntity.messageEntityDiffReplace,
   'messageEntityDiffDelete': MessageEntity.messageEntityDiffDelete,
   'messages.composedMessageWithAI': MessagesComposedMessageWithAI.messagesComposedMessageWithAI,
+  'richMessage': RichMessage.richMessage,
+  'pageBlockHeading1': PageBlock.pageBlockHeading1,
+  'pageBlockHeading2': PageBlock.pageBlockHeading2,
+  'pageBlockHeading3': PageBlock.pageBlockHeading3,
+  'pageBlockHeading4': PageBlock.pageBlockHeading4,
+  'pageBlockHeading5': PageBlock.pageBlockHeading5,
+  'pageBlockHeading6': PageBlock.pageBlockHeading6,
+  'pageBlockMath': PageBlock.pageBlockMath,
+  'pageBlockThinking': PageBlock.pageBlockThinking,
+  'pageBlockBlockquoteBlocks': PageBlock.pageBlockBlockquoteBlocks,
   'messageEntityEmoji': MessageEntity.messageEntityEmoji,
   'messageEntityHighlight': MessageEntity.messageEntityHighlight,
   'messageEntityLinebreak': MessageEntity.messageEntityLinebreak,
@@ -22552,6 +22749,11 @@ export type BotsGetRequestedWebViewButton = {
   webapp_req_id: string
 };
 
+export type MessagesGetRichMessage = {
+  peer: InputPeer,
+  id: number
+};
+
 export interface MethodDeclMap {
   'invokeAfterMsg': {req: InvokeAfterMsg, res: any},
   'invokeAfterMsgs': {req: InvokeAfterMsgs, res: any},
@@ -23322,5 +23524,6 @@ export interface MethodDeclMap {
   'messages.readPollVotes': {req: MessagesReadPollVotes, res: MessagesAffectedHistory},
   'bots.requestWebViewButton': {req: BotsRequestWebViewButton, res: BotsRequestedButton},
   'bots.getRequestedWebViewButton': {req: BotsGetRequestedWebViewButton, res: KeyboardButton},
+  'messages.getRichMessage': {req: MessagesGetRichMessage, res: MessagesMessages},
 }
 
