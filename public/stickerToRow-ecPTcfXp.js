@@ -1,0 +1,2 @@
+import{dK as n}from"./index-DTQek9PO.js";function h({doc:a,row:t,size:m,managers:r}){const e=t.media,i=t.createMedia("small");e&&i.classList.add("hide");const s=e?[]:void 0,o=32,d=n({div:i,doc:a,width:o,height:o,loadPromises:s,managers:r}).then(({render:c})=>c);return s&&Promise.all(s).then(()=>{i.classList.remove("hide"),e.remove()}),d}export{h as w};
+//# sourceMappingURL=stickerToRow-ecPTcfXp.js.map
