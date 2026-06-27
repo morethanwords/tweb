@@ -20,12 +20,32 @@
 }
 
 .bodyContent {
-  padding: 0 var(--section-padding-inline) 1rem;
+  padding: 0 0 1rem;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  flex: 1;
+  overflow: hidden;
 
   --tone-height: 80px;
   --tone-width: 88px;
   --tone-border-radius: 20px;
   --tone-icon-size: 42px;
+}
+
+.padded {
+  padding: 0 var(--section-padding-inline);
+}
+
+.scrollable {
+  --scrollable-padding: 0.25rem;
+  flex: 1;
+  padding: 0rem var(--scrollable-padding);
+
+  &Content {
+    padding: 0.5rem calc(var(--section-padding-inline) - var(--scrollable-padding));
+    position: relative;
+  }
 }
 
 .tabs {
@@ -263,6 +283,10 @@
 
 .resultScrollable, .originalScrollable {
   max-height: 160px;
+
+  &Content {
+    padding-right: 0.5rem;
+  }
 }
 
 .resultSkeleton {
@@ -403,6 +427,7 @@
 }
 
 .footerButtons {
+  padding: 0 var(--section-padding-inline);
   display: flex;
   gap: 0.5rem;
 }

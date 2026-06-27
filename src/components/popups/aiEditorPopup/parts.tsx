@@ -44,20 +44,22 @@ type TabsProps<T> = {
 
 export const Tabs = <T, >(props: TabsProps<T>) => {
   return (
-    <div class={styles.tabs}>
-      <For each={props.items}>{(item) => (
-        <div
-          use:ripple
-          onClick={() => props.onTabChange(item.key)}
-          class={styles.tab}
-          classList={{
-            [styles.active]: props.activeKey === item.key
-          }}
-        >
-          <IconTsx class={styles.tabIcon} icon={item.icon} />
-          <I18nTsx class={styles.tabLabel} key={item.label} />
-        </div>
-      )}</For>
+    <div class={styles.padded}>
+      <div class={styles.tabs}>
+        <For each={props.items}>{(item) => (
+          <div
+            use:ripple
+            onClick={() => props.onTabChange(item.key)}
+            class={styles.tab}
+            classList={{
+              [styles.active]: props.activeKey === item.key
+            }}
+          >
+            <IconTsx class={styles.tabIcon} icon={item.icon} />
+            <I18nTsx class={styles.tabLabel} key={item.label} />
+          </div>
+        )}</For>
+      </div>
     </div>
   );
 };
@@ -166,7 +168,9 @@ export const Original = (props: {
       >
         <div ref={originalContentRef} class={styles.richText}>
           <Scrollable ref={originalScrollableRef} class={styles.originalScrollable} relative>
-            {wrapRichText(props.text.text, {entities: filterEntities(props.text.entities), middleware: createMiddleware().get()})}
+            <div class={styles.originalScrollableContent}>
+              {wrapRichText(props.text.text, {entities: filterEntities(props.text.entities), middleware: createMiddleware().get()})}
+            </div>
           </Scrollable>
         </div>
         <div
@@ -325,7 +329,9 @@ export const Result = (props: {
             <Match when={textToRender()} keyed>
               {(text) => (
                 <Scrollable ref={scrollableRef} relative class={classNames(styles.resultScrollable, styles.richText)}>
-                  {wrapRichText(text.text, {entities: filterEntities(text.entities), middleware: createMiddleware().get()})}
+                  <div class={styles.resultScrollableContent}>
+                    {wrapRichText(text.text, {entities: filterEntities(text.entities), middleware: createMiddleware().get()})}
+                  </div>
                 </Scrollable>
               )}
             </Match>
@@ -339,7 +345,7 @@ export const Result = (props: {
                     key='AiEditor.PremiumFlood'
                     args={[
                       anchorCallback(() => {
-                        popupContext.hide();
+                        popupContext?.hide();
                         new PopupPremium().show();
                       })
                     ]}

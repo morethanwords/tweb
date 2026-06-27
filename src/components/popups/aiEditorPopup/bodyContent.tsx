@@ -1,8 +1,11 @@
 import {AutoHeight} from '@components/autoHeight';
 import Button from '@components/buttonTsx';
 import {IconTsx} from '@components/iconTsx';
+import Scrollable, {ScrollableContextValue} from '@components/scrollable2';
 import Space from '@components/space';
+import debounce from '@helpers/schedulers/debounce';
 import {I18nTsx} from '@helpers/solid/i18n';
+import {useObserveResize} from '@hooks/useObserveResize';
 import {createSignal, Match, Show, Switch} from 'solid-js';
 import {Transition} from 'solid-transition-group';
 import styles from './bodyContent.module.scss';
@@ -25,6 +28,17 @@ export const AiEditorPopupBodyContent = () => {
   const [activeTab, setActiveTab] = createSignal<TabKey>(TabKey.Style);
   const [hasTransition, setHasTransition] = createSignal(false);
 
+  const [scrollableEl, setScrollableEl] = createSignal<HTMLDivElement>();
+  const [scrollableContentEl, setScrollableContentEl] = createSignal<HTMLDivElement>();
+  let scrollableContextRef!: ScrollableContextValue;
+
+  const updateScrollable = debounce(() => {
+    scrollableContextRef?.onSizeChange();
+  }, 100, false, true);
+
+  useObserveResize(scrollableContentEl, updateScrollable);
+  useObserveResize(scrollableEl, updateScrollable);
+
   return (
     <div class={styles.bodyContent}>
       <Tabs
@@ -36,38 +50,53 @@ export const AiEditorPopupBodyContent = () => {
         activeKey={activeTab()}
         onTabChange={setActiveTab}
       />
-      <Space amount='1rem' />
-      <AutoHeight hasTransition={hasTransition()} overflowHidden outerClass={styles.autoHeight}>
-        <Transition
-          name='fade-2'
-          onBeforeExit={(el) => {
-            el.classList.add(styles.exit);
-            setHasTransition(true);
-          }}
-          onAfterExit={() => setHasTransition(false)}
-          onBeforeEnter={() => setHasTransition(true)}
-          onAfterEnter={() => setHasTransition(false)}
-        >
-          <Switch>
-            <Match when={activeTab() === TabKey.Translate}>
-              {(_) => {
-                const isAppearing = useIsAppearing(hasTransition);
-                return <div><TranslateTab isAppearing={isAppearing()} /></div>
+      <Space amount='0.5rem' />
+      <Scrollable
+        ref={setScrollableEl}
+        class={styles.scrollable}
+        relative
+        withBorders='both'
+        contextRef={(value) => void (scrollableContextRef = value)}
+      >
+        <div class={styles.scrollableContent}> {/* Need a separate wrapper for padding */}
+          <AutoHeight
+            ref={setScrollableContentEl}
+            outerClass={styles.autoHeight}
+            hasTransition={hasTransition()}
+            overflowHidden
+          >
+            <Transition
+              name='fade-2'
+              onBeforeExit={(el) => {
+                el.classList.add(styles.exit);
+                setHasTransition(true);
               }}
-            </Match>
-            <Match when={activeTab() === TabKey.Style}>
-              <div><StyleTab /></div>
-            </Match>
-            <Match when={activeTab() === TabKey.Fix}>
-              {(_) => {
-                const isAppearing = useIsAppearing(hasTransition);
-                return <div><FixTab isAppearing={isAppearing()} /></div>
-              }}
-            </Match>
-          </Switch>
-        </Transition>
-      </AutoHeight>
-      <Space amount='1rem' />
+              onAfterExit={() => setHasTransition(false)}
+              onBeforeEnter={() => setHasTransition(true)}
+              onAfterEnter={() => setHasTransition(false)}
+            >
+              <Switch>
+                <Match when={activeTab() === TabKey.Translate}>
+                  {(_) => {
+                    const isAppearing = useIsAppearing(hasTransition);
+                    return <div><TranslateTab isAppearing={isAppearing()} /></div>
+                  }}
+                </Match>
+                <Match when={activeTab() === TabKey.Style}>
+                  <div><StyleTab /></div>
+                </Match>
+                <Match when={activeTab() === TabKey.Fix}>
+                  {(_) => {
+                    const isAppearing = useIsAppearing(hasTransition);
+                    return <div><FixTab isAppearing={isAppearing()} /></div>
+                  }}
+                </Match>
+              </Switch>
+            </Transition>
+          </AutoHeight>
+        </div>
+      </Scrollable>
+      <Space amount='0.5rem' />
       <div class={styles.footerButtons}>
         <Button
           class={styles.applyButton}
