@@ -5,7 +5,7 @@ import {useIsCleaned} from '@hooks/useIsCleaned';
 import {Document, DocumentAttribute} from '@layer';
 import type {AppManagers} from '@lib/managers';
 import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
-import {createEffect, createResource, createSignal} from 'solid-js';
+import {createEffect, createResource, createSignal, untrack} from 'solid-js';
 
 
 function useStickerRenderer(options: {
@@ -25,7 +25,7 @@ function useStickerRenderer(options: {
 
   createEffect(() => {
     const size = options.size();
-    const color = options.color();
+    const color = untrack(options.color);
 
     const middleware = createMiddleware().get();
     const isCleaned = useIsCleaned();
