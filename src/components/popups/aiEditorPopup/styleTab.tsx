@@ -139,13 +139,6 @@ export const StyleTab = () => {
             }>
               <Scrollable class={styles.tonesList} ref={setTonesListEl} axis='x' relative>
                 <TransitionGroup name='fade-2' moveClass='t-move' onBeforeExit={(el) => el.classList.add(styles.exit)}>
-                  <Show when={savedTones() < maxSavedTones()}>
-                    <CreateTone
-                      onCreate={(createdTone) => {
-                        setTones(prev => [createdTone, ...prev]);
-                      }}
-                    />
-                  </Show>
                   <For each={tones}>
                     {(tone) => (
                       <Tone
@@ -157,6 +150,14 @@ export const StyleTab = () => {
                       />
                     )}
                   </For>
+                  <Show when={savedTones() < maxSavedTones()}>
+                    <CreateTone
+                      onCreate={(createdTone) => {
+                        tonesListEl()?.scrollTo({left: 0, behavior: 'instant'});
+                        setTones(prev => [createdTone, ...prev]);
+                      }}
+                    />
+                  </Show>
                 </TransitionGroup>
               </Scrollable>
             </Show>
