@@ -239,12 +239,14 @@ export default function Scrollable(props: {
     startScrollPosition = scrollPosition();
     (e.target as HTMLElement).classList.add('is-focused');
 
-    window.addEventListener('mousemove', onThumbMouseMove);
-    window.addEventListener('mouseup', onThumbMouseUp, {once: true});
+    // Track the drag on the thumb's own window (the Document PiP window while popped out), not main.
+    const w = thumbRef.ownerDocument.defaultView || window;
+    w.addEventListener('mousemove', onThumbMouseMove);
+    w.addEventListener('mouseup', onThumbMouseUp, {once: true});
   };
 
   const onThumbMouseUp = (e: MouseEvent) => {
-    window.removeEventListener('mousemove', onThumbMouseMove);
+    (thumbRef.ownerDocument.defaultView || window).removeEventListener('mousemove', onThumbMouseMove);
     thumbRef.classList.remove('is-focused');
   };
 

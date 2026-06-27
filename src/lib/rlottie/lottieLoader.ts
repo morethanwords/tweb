@@ -1,5 +1,6 @@
 import animationIntersector from '@components/animationIntersector';
 import {MOUNT_CLASS_TO} from '@config/debug';
+import {bindActiveWindowListener, getAppWindow} from '@helpers/appWindow';
 import pause from '@helpers/schedulers/pause';
 import {logger, LogTypes} from '@lib/logger';
 import RLottiePlayer, {RLottieOptions} from '@lib/rlottie/rlottiePlayer';
@@ -10,6 +11,7 @@ import makeError from '@helpers/makeError';
 import rootScope from '@lib/rootScope';
 import toArray from '@helpers/array/toArray';
 import rlottieMessagePort from '@lib/rlottie/rlottieMessagePort';
+import SHOULD_RENDER_OFFSCREEN from '@lib/rlottie/shouldRenderOffscreen';
 
 export type LottieAssetName =
   | 'EmptyFolder'
@@ -71,6 +73,14 @@ export class LottieLoader {
         this.players[reqId].applyColorForAllContexts();
       }
     });
+
+    rlottieMessagePort.addEventListener('freeRunStopped', ({reqId, curFrame, error}) => {
+      this.players[reqId]?.onFreeRunStopped(curFrame, error);
+    });
+
+    rlottieMessagePort.addEventListener('freeRunEnded', ({reqId, curFrame}) => {
+      this.players[reqId]?.onFreeRunEnded(curFrame);
+    });
   }
 
   public getAnimation(element: HTMLElement) {
@@ -81,6 +91,23 @@ export class LottieLoader {
     }
 
     return null;
+  }
+
+  public nudgeOffscreenPlayers() {
+    for(const reqId in this.players) {
+      this.players[reqId].nudgePresent();
+    }
+  }
+
+  // a transferred placeholder canvas loses its displayed frame on a DOM move
+  // (detach+reattach) - re-present every offscreen player inside the moved root
+  public nudgePresentWithin(root: HTMLElement) {
+    for(const reqId in this.players) {
+      const player = this.players[reqId];
+      if(player.el?.some((el) => el && root.contains(el))) {
+        player.nudgePresent();
+      }
+    }
   }
 
   public loadLottieWorkers() {
@@ -102,6 +129,15 @@ export class LottieLoader {
       },
       superMessagePort: rlottieMessagePort
     });
+
+    if(SHOULD_RENDER_OFFSCREEN) {
+      // hidden-tab belt: SharedWorker timers are NOT tab-throttled - fully pause free-run clocks while
+      // hidden. Follow the active window: while popped out into a Document PiP window the PiP stays
+      // visible, so the players must keep running even though the tab we left is hidden.
+      bindActiveWindowListener((w) => w.document, 'visibilitychange', () => {
+        rlottieMessagePort.suspendAllTabPlayers(getAppWindow().document.hidden);
+      });
+    }
   }
 
   public makeAssetUrl(name: LottieAssetName) {
@@ -194,7 +230,15 @@ export class LottieLoader {
       );
       const players = this.playersByCacheName[cacheName];
       if(players?.size) {
-        return Promise.resolve(players.entries().next().value[0]);
+        for(const player of players) {
+          // a compositorDelivery request must match an 'emoji' player exactly, and a legacy sync
+          // consumer must never adopt an offscreen 'canvas' player (its renderFrame2 never feeds
+          // overrideRender - the consumer would stay permanently blank)
+          if(params.compositorDelivery ? player.offscreen === 'emoji' : !player.offscreen) {
+            return Promise.resolve(player);
+          }
+        }
+        // delivery-mismatched players only - fall through and create a matching one
       }
     }
 

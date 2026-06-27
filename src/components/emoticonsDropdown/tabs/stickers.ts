@@ -1,3 +1,4 @@
+import lottieLoader from '@lib/rlottie/lottieLoader';
 import {EmoticonsDropdown} from '..';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import mediaSizes from '@helpers/mediaSizes';
@@ -98,6 +99,11 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
 
   public static _onCategoryVisibility = (category: StickersTabCategory<any>, visible: boolean) => {
     category.elements.items.replaceChildren(...(!visible ? [] : category.items.map(({element}) => element)));
+    if(visible) {
+      // remounting detaches+reattaches the cells - transferred placeholder
+      // canvases lose their displayed frame until the next worker commit
+      lottieLoader.nudgePresentWithin(category.elements.items);
+    }
   };
 
   private onCategoryVisibility = ({target, visible}: OnVisibilityChangeItem) => {
@@ -356,6 +362,8 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
 
     category.items.unshift(item);
     category.elements.items.prepend(item.element);
+    // the DOM move blanks a transferred placeholder canvas - re-present
+    lottieLoader.nudgePresentWithin(item.element);
 
     if(!batch) {
       this.spliceExceed(category);

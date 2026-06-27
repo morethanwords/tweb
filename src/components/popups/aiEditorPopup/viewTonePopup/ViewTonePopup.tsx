@@ -65,7 +65,8 @@ const ViewTonePopup = (props: ViewTonePopupProps) => {
 
   const mutation = createMutation(() => {
     if(isCreator()) return rootScope.managers.aiTonesManager.deleteTone(props.tone.id);
-    if(canHaveMoreTones()) return rootScope.managers.aiTonesManager.saveTone(props.tone, props.isSaved);
+    // Unsaving must work even at the saved-tones limit; only *adding* a new tone is gated by capacity.
+    if(props.isSaved || canHaveMoreTones()) return rootScope.managers.aiTonesManager.saveTone(props.tone, props.isSaved);
     return Promise.reject();
   }, {
     onError: () => toastNew({langPackKey: getErrorLangKey()}),

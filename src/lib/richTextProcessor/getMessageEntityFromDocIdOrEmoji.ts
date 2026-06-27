@@ -1,5 +1,5 @@
 import {MessageEntity} from '@layer';
-import getEmojiEntityFromEmoji from './getEmojiEntityFromEmoji';
+import getEmojiEntityFromEmoji from '@lib/richTextProcessor/getEmojiEntityFromEmoji';
 
 type Args = {
   docId?: DocId;

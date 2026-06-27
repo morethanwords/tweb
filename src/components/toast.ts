@@ -1,5 +1,6 @@
 import replaceContent from '@helpers/dom/replaceContent';
 import OverlayClickHandler from '@helpers/overlayClickHandler';
+import {getOverlayRoot} from '@helpers/appWindow';
 import {FormatterArguments, i18n, LangPackKey} from '@lib/langPack';
 
 const toastsContainer = document.createElement('div');
@@ -35,7 +36,7 @@ export function toast(content: string | Node, onClose?: () => void) {
 
   if(!toastEl.parentElement) {
     if(!toastsContainer.parentNode) {
-      document.body.append(toastsContainer);
+      getOverlayRoot().append(toastsContainer);
     }
 
     toastsContainer.append(toastEl);

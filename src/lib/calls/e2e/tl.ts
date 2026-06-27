@@ -128,6 +128,13 @@ export class TLReader {
   public vector<T>(parseItem: (r: TLReader) => T): T[] {
     const n = this.int32();
     if(n < 0) throw new Error(`TLReader: negative vector length ${n}`);
+    // Every element costs at least 1 byte, so a count larger than the bytes
+    // left can't be real — reject it before allocating/looping. Without this a
+    // malicious server can send a ~2.1B count and hang the parser (tdlib guards
+    // the same way: TlFetchVector checks get_left_len() < multiplicity).
+    if(n > this.remaining()) {
+      throw new Error(`TLReader: vector length ${n} exceeds ${this.remaining()} remaining bytes`);
+    }
     const out: T[] = [];
     for(let i = 0; i < n; i++) out.push(parseItem(this));
     return out;
@@ -282,7 +289,13 @@ export function serverToLocal(serverBytes: Uint8Array): Uint8Array {
     return new Uint8Array(serverBytes);
   }
   const out = new Uint8Array(serverBytes);
-  writeMagicLE(out, (magic - 1) >>> 0);
+  // Only strip the +1 bump when the result is actually a known constructor —
+  // tdlib's is_from_server requires is_good_magic(magic-1). For anything else,
+  // leave the bytes untouched and let the decoder's expectMagic reject them,
+  // rather than blindly mutating an arbitrary leading int32.
+  if(GOOD_LOCAL_MAGICS.has((magic - 1) >>> 0)) {
+    writeMagicLE(out, (magic - 1) >>> 0);
+  }
   return out;
 }
 

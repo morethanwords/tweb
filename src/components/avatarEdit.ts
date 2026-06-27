@@ -1,4 +1,5 @@
 import Icon from '@components/icon';
+import {getOverlayRoot} from '@helpers/appWindow';
 import {animateImageToTarget} from '@helpers/animateImageToTarget';
 import type {CancellablePromise} from '@helpers/cancellablePromise';
 import {createImageAndURLFromBlob} from '@helpers/createImageAndURLFromBlob';
@@ -402,7 +403,7 @@ function spawnAvatarProgressRing(
     `position:fixed;left:${bcr.left + bcr.width / 2}px;top:${bcr.top + bcr.height / 2}px;` +
     `width:${bcr.width}px;height:${bcr.height}px;transform:translate(-50%, -50%);` +
     'z-index:1001;pointer-events:none';
-  document.body.append(container);
+  getOverlayRoot().append(container);
 
   const dispose = render(() => RenderProgressCircle({creationProgress}), container);
 

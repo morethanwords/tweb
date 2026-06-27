@@ -8,6 +8,7 @@ import positionMenu from '@helpers/positionMenu';
 import {attachContextMenuListener} from '@helpers/dom/attachContextMenuListener';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import {logger} from '@lib/logger';
+import {getOverlayRoot} from '@helpers/appWindow';
 
 const log = logger('createContextMenu');
 
@@ -40,8 +41,6 @@ export default function createContextMenu<T extends ButtonMenuItemOptionsVerifia
   middleware?: Middleware,
   listenForClick?: boolean
 }) {
-  appendTo ??= document.body;
-
   attachListenerSetter ??= new ListenerSetter();
   const listenerSetter = new ListenerSetter();
   const middlewareHelper = middleware ? middleware.create() : getMiddleware();
@@ -54,11 +53,14 @@ export default function createContextMenu<T extends ButtonMenuItemOptionsVerifia
     }
 
     let _element = element;
-    if(e instanceof MouseEvent || e.hasOwnProperty('preventDefault')) (e as any).preventDefault();
+    // Duck-type instead of `instanceof MouseEvent`: the event from a Document PiP window is a
+    // pip-realm MouseEvent, which is NOT `instanceof` the main realm's MouseEvent (cross-realm
+    // instanceof is always false) — so the native context menu wasn't being suppressed in the pip.
+    if('preventDefault' in e) (e as any).preventDefault();
     if(_element && _element.classList.contains('active')) {
       return false;
     }
-    if(e instanceof MouseEvent || e.hasOwnProperty('cancelBubble')) (e as any).cancelBubble = true;
+    if('cancelBubble' in e) (e as any).cancelBubble = true;
 
     const r = async() => {
       try {
@@ -138,7 +140,9 @@ export default function createContextMenu<T extends ButtonMenuItemOptionsVerifia
     await onOpenBefore?.();
     onElementReady?.(_element);
 
-    appendTo.append(_element);
+    // Resolve lazily at open time so a context menu opened while the client is popped out lands in
+    // the Document PiP window's body (the active overlay realm), not the background tab.
+    (appendTo ?? getOverlayRoot()).append(_element);
 
     return {
       element: _element,

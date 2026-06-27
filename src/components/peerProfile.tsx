@@ -54,6 +54,7 @@ import choosePhotoSize from '@appManagers/utils/photos/choosePhotoSize';
 import wrapPhoto from './wrappers/photo';
 import {unwrap} from 'solid-js/store';
 import Button from '@components/buttonTsx';
+import {openBotPrivacyPolicy} from '@helpers/getBotPrivacyPolicy';
 
 keepMe(ripple);
 
@@ -209,6 +210,7 @@ const PeerProfile = (props: {
         <PeerProfile.UnofficialWarning />
         <PeerProfile.PersonalChannel />
         <PeerProfile.MainSection />
+        <PeerProfile.BotMainApp />
         <PeerProfile.BotVerification />
         <PeerProfile.BotPermissions />
         {props.searchSuperContainer}
@@ -1060,6 +1062,27 @@ PeerProfile.Link = () => {
   );
 };
 
+PeerProfile.BotPrivacyPolicy = () => {
+  const context = useContext(PeerProfileContext);
+  const {i18n, rootScope, appImManager} = useHotReloadGuard();
+  const botInfo = createMemo(() => (context.fullPeer as UserFull)?.bot_info);
+  const isBot = createMemo(() => !!(context.peer as User.user)?.pFlags?.bot && !!botInfo());
+
+  const onClick = () => openBotPrivacyPolicy(botInfo(), () => {
+    appImManager.setPeer({peerId: context.peerId});
+    rootScope.managers.appMessagesManager.sendText({peerId: context.peerId, text: '/privacy'});
+  });
+
+  return (
+    <Show when={isBot()}>
+      <Row clickable={onClick}>
+        <Row.Icon icon="privacypolicy" />
+        <Row.Title>{i18n('BotPrivacyPolicy')}</Row.Title>
+      </Row>
+    </Show>
+  );
+};
+
 PeerProfile.BusinessHours = () => {
   const context = useContext(PeerProfileContext);
   const {rootScope, BusinessHours} = useHotReloadGuard();
@@ -1454,6 +1477,40 @@ PeerProfile.StoryPreviews = (props: {
   );
 };
 
+// "Open App" main mini-app button + ToS caption, like the other clients
+// (tdesktop info_profile_actions makeMainApp / Android ProfileBotOpenApp /
+// iOS PeerInfo_OpenAppButton). Shown when the bot has a main mini app; the
+// caption is iOS PeerInfo_AppFooter(Admin).
+PeerProfile.BotMainApp = () => {
+  const context = useContext(PeerProfileContext);
+  const {appImManager} = useHotReloadGuard();
+
+  const user = createMemo(() => context.peer as User.user);
+  const hasMainApp = createMemo(() => !!user()?.pFlags?.bot && !!user()?.pFlags?.bot_has_main_app);
+  const footerKey = createMemo(() => user()?.pFlags?.bot_can_edit ? 'PeerInfo.AppFooterAdmin' as const : 'PeerInfo.AppFooter' as const);
+
+  const onClick = () => {
+    appImManager.openWebApp({
+      botId: context.peerId.toUserId(),
+      main: true,
+      peerId: context.peerId
+    });
+  };
+
+  return (
+    <Show when={hasMainApp()}>
+      <Section caption={footerKey()}>
+        <Button
+          class="peer-profile-open-app-button"
+          primaryFilled
+          text="BotProfileOpenApp"
+          onClick={onClick}
+        />
+      </Section>
+    </Show>
+  );
+};
+
 PeerProfile.MainSection = () => {
   const context = useContext(PeerProfileContext);
 
@@ -1476,6 +1533,7 @@ PeerProfile.MainSection = () => {
         <PeerProfile.BusinessHours />
         <PeerProfile.BusinessLocation />
         <PeerProfile.Notifications />
+        <PeerProfile.BotPrivacyPolicy />
       </Show>
     </Section>
   );

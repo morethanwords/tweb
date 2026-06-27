@@ -1,6 +1,8 @@
+import {getAppWindow} from '@helpers/appWindow';
+
 export default function getSelectedText(): string {
-  if(window.getSelection) {
-    return window.getSelection().toString();
+  if(getAppWindow().getSelection) {
+    return getAppWindow().getSelection().toString();
     // @ts-ignore
   } else if(document.selection) {
     // @ts-ignore

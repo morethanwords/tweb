@@ -4,7 +4,6 @@ import {IconTsx} from '@components/iconTsx';
 import Scrollable from '@components/scrollable2';
 import {Skeleton} from '@components/skeleton';
 import Space from '@components/space';
-import DEBUG from '@config/debug';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import {HeightTransition} from '@helpers/solid/heightTransition';
 import {I18nTsx} from '@helpers/solid/i18n';
@@ -25,9 +24,6 @@ import {CreatorLink} from './creatorLink';
 import {useMaxSavedTones} from './limits';
 import {CreateTone, Divider, Original, Result, Tone} from './parts';
 
-
-const simulateDelay = DEBUG ? 400 : 0;
-const simulateRandomDelay = DEBUG ? () => Math.floor(Math.random() * 1000) : 0;
 
 export const StyleTab = () => {
   const {rootScope} = useHotReloadGuard();
@@ -56,12 +52,8 @@ export const StyleTab = () => {
 
   const [tonesResource] = createResource(
     () => initialTones ? undefined : true,
-    () => {
-      // if(simulateDelay) return pause(simulateDelay).then(() => rootScope.managers.aiTonesManager.getTones())
-      // if(simulateRandomDelay) return pause(simulateRandomDelay()).then(() => rootScope.managers.aiTonesManager.getTones())
-      return rootScope.managers.aiTonesManager.getTones();
-    },
-    initialTones ? {initialValue: initialTones} as {} : undefined,
+    () => rootScope.managers.aiTonesManager.getTones(),
+    initialTones ? {initialValue: initialTones} as {} : undefined
   );
 
   const [tones, setTones] = createStore<AiComposeTone[]>([]);

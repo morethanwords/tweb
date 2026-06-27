@@ -28,6 +28,7 @@ import {FocusDirection, ScrollStartCallbackDimensions} from '@helpers/fastSmooth
 import useHeavyAnimationCheck, {getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation} from '@hooks/useHeavyAnimationCheck';
 import {doubleRaf, fastRaf, fastRafPromise} from '@helpers/schedulers';
 import deferredPromise from '@helpers/cancellablePromise';
+import memoizeAsyncWithTTL from '@helpers/memoizeAsyncWithTTL';
 import RepliesElement from '@components/chat/replies';
 import DEBUG from '@config/debug';
 import {SliceEnd} from '@helpers/slicedArray';
@@ -63,6 +64,7 @@ import type ReactionElement from '@components/chat/reaction';
 import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
 import pause from '@helpers/schedulers/pause';
 import ScrollSaver from '@helpers/scrollSaver';
+import {getAppWindow, onAppWindowChange, onBeforeAppWindowChange} from '@helpers/appWindow';
 import getObjectKeysAndSort from '@helpers/object/getObjectKeysAndSort';
 import forEachReverse from '@helpers/array/forEachReverse';
 import formatNumber from '@helpers/number/formatNumber';
@@ -99,6 +101,7 @@ import getStickerEffectThumb from '@appManagers/utils/stickers/getStickerEffectT
 import attachStickerViewerListeners from '@components/stickerViewer';
 import {makeMediaSize, MediaSize} from '@helpers/mediaSize';
 import wrapSticker from '@components/wrappers/sticker';
+import computeStickerSetPreviewGrid from '@helpers/stickerSetPreviewGrid';
 import wrapAlbum from '@components/wrappers/album';
 import wrapDocument from '@components/wrappers/document';
 import wrapGroupedDocuments from '@components/wrappers/groupedDocuments';
@@ -165,6 +168,7 @@ import wrapGeo from '@components/wrappers/geo';
 import safePlay from '@helpers/dom/safePlay';
 import flatten from '@helpers/array/flatten';
 import WebPageBox from '@components/wrappers/webPage';
+import wrapPeerColorPattern from '@components/wrappers/peerColorPattern';
 import showTooltip from '@components/tooltip';
 import wrapTextWithEntities from '@lib/richTextProcessor/wrapTextWithEntities';
 import clearfix from '@helpers/dom/clearfix';
@@ -341,6 +345,11 @@ const webPageTypes: {[type in WebPage.webPage['type']]?: LangPackKey} = {
   telegram_call: 'JoinCall',
   telegram_aicomposetone: 'AiEditor.Chat.ViewStyle'
 };
+
+// size (px) of the compact right-aligned sticker-set / custom-emoji preview grid in a webpage bubble
+const STICKER_SET_PREVIEW_BOX_SIZE = 56;
+// `text_color`-flagged custom-emoji sets are tinted with the message text color (= EMOJI_TEXT_COLOR)
+const STICKER_SET_EMOJI_TEXT_COLOR = 'primary-text-color';
 
 const serviceMessageActionsWithReply: (MessageAction['_'])[] = [
   'messageActionTodoAppendTasks',
@@ -602,9 +611,24 @@ export default class ChatBubbles {
   private willScrollOnLoad: boolean;
   public observer: SuperIntersectionObserver;
 
+  // Preserve the chat's scroll position across reflows that rewrap the bubbles — a window/PiP-window
+  // resize or a PiP pop-in/out (full width ↔ ~430px). The anchor is captured before the change (kept
+  // fresh on scroll, default "at bottom") and re-pinned after the reflow settles. Stored CONTAINER-
+  // relative (offset of the top visible bubble from the container's top), not viewport-relative, so it
+  // survives the cross-window move into the PiP — the viewport origin differs between the two windows.
+  private reflowAnchor: {element: HTMLElement, offset: number};
+  private reflowWasAtEnd = true;
+  private reflowWasWidth: number;
+  private saveReflowScrollDebounced: DebounceReturnType<ChatBubbles['saveReflowScroll']>;
+  private appWindowUnsubs: (() => void)[] = [];
+
   private renderingMessages: Set<FullMid> = new Set();
   private setPeerCached: boolean;
   private attachPlaceholderOnRender: () => void;
+
+  // viewer's own country calling code (e.g. '7'), used to format a shared contact's
+  // phone that is stored without its country code (bugs.telegram.org #30681)
+  private myCountryCode: string;
 
   private bubblesToEject: Set<HTMLElement> = new Set();
   private bubblesToReplace: Map<HTMLElement, HTMLElement> = new Map(); // TO -> FROM
@@ -620,6 +644,17 @@ export default class ChatBubbles {
   private pollExtendedMediaMessagesPromise: Promise<void>;
 
   private batchProcessor: BatchProcessor<Awaited<ReturnType<ChatBubbles['safeRenderMessage']>>>;
+
+  // Coalesces the per-bubble getReadMaxIdIfUnread cross-worker round-trip:
+  // every non-unread bubble in a group/channel render burst asks for the SAME
+  // peer/thread read cursor, so memoize the in-flight promise for the burst and
+  // reuse it. TTL 0 → the entry is dropped on the next macrotask after the fetch
+  // settles, so a later, distinct render pass re-reads a fresh value.
+  private getRenderReadMaxId = memoizeAsyncWithTTL(
+    (peerId: PeerId, threadId?: number) => this.managers.appMessagesManager.getReadMaxIdIfUnread(peerId, threadId),
+    ([peerId, threadId]) => peerId + '_' + (threadId || ''),
+    0
+  );
 
   private ranks: Map<PeerId, ReturnType<typeof getParticipantRank>>;
   private processRanks: Set<() => void>;
@@ -663,6 +698,36 @@ export default class ChatBubbles {
     // this.chat.log.error('Bubbles construction');
 
     this.listenerSetter = new ListenerSetter();
+
+    // --- scroll preservation across viewport reflows (window/PiP-window resize, PiP pop-in/out) ---
+    this.saveReflowScrollDebounced = debounce(this.saveReflowScroll, 200, false, true);
+    // PiP pop-in/out: snapshot the scroll BEFORE the window flips (DOM still at the old size, nothing
+    // reflowed), then re-pin once the moved DOM has settled in the new window (rAF; two frames safe).
+    this.appWindowUnsubs.push(onBeforeAppWindowChange(this.saveReflowScroll));
+    this.appWindowUnsubs.push(onAppWindowChange(() => {
+      const win = getAppWindow();
+      win.requestAnimationFrame(() => win.requestAnimationFrame(() => {
+        this.restoreReflowScroll();
+        this.reflowWasWidth = this.scrollable?.container.offsetWidth;
+      }));
+    }));
+    // Window / PiP-window resize: mediaSizes fires on the active window's resize. Re-pin only when the
+    // bubbles container actually changed width — a width change is what rewraps them; pure-height
+    // changes (e.g. the keyboard) are already handled by the height-tracking ResizeObserver.
+    this.listenerSetter.add(mediaSizes)('resize', () => {
+      const width = this.scrollable?.container.offsetWidth;
+      if(!width) return;
+      if(this.reflowWasWidth !== undefined && width !== this.reflowWasWidth) {
+        this.restoreReflowScroll();
+      }
+      this.reflowWasWidth = width;
+    });
+
+    // cache the viewer's own country code (from the warm main-thread user cache), to
+    // format shared-contact phones that lack their country code without misreading the
+    // leading digits (#30681); the self user is always cached by chat-construction time
+    const myPhone = apiManagerProxy.getUser(rootScope.myId.toUserId())?.phone;
+    this.myCountryCode = myPhone ? formatPhoneNumber(myPhone).code?.country_code : undefined;
 
     this.constructBubbles();
 
@@ -1980,6 +2045,43 @@ export default class ChatBubbles {
     return scrollSaver;
   }
 
+  // Snapshot the scroll position (the top visible bubble + its offset from the container top) so it can
+  // be re-pinned after a reflow rewraps the bubbles. Container-relative on purpose — see reflowAnchor.
+  private saveReflowScroll = () => {
+    const scrollable = this.scrollable;
+    if(!scrollable) return;
+    this.reflowWasAtEnd = scrollable.isScrolledToEnd;
+    this.reflowAnchor = undefined;
+    if(this.reflowWasAtEnd) return; // bottom-stick needs no anchor
+    const container = scrollable.container;
+    const cTop = container.getBoundingClientRect().top;
+    const bubbles = container.querySelectorAll<HTMLElement>('.bubble:not(.is-date):not(.is-sponsored):not(.botforum-new-topic-bubble)');
+    for(const bubble of bubbles) {
+      const rect = bubble.getBoundingClientRect();
+      if(rect.bottom > cTop + 1) { // first bubble reaching into the viewport from the top
+        this.reflowAnchor = {element: bubble, offset: rect.top - cTop};
+        break;
+      }
+    }
+  };
+
+  private restoreReflowScroll = () => {
+    const scrollable = this.scrollable;
+    if(!scrollable) return;
+    if(this.reflowWasAtEnd) {
+      scrollable.setScrollPositionSilently(scrollable.scrollSize); // keep the chat pinned to the bottom
+      return;
+    }
+    const anchor = this.reflowAnchor;
+    if(!anchor?.element.isConnected) return;
+    const cTop = scrollable.container.getBoundingClientRect().top;
+    const currentOffset = anchor.element.getBoundingClientRect().top - cTop;
+    const delta = currentOffset - anchor.offset;
+    if(Math.abs(delta) > 0.5) {
+      scrollable.setScrollPositionSilently(scrollable.scrollPosition + delta);
+    }
+  };
+
   private unreadedObserverCallback = (entry: IntersectionObserverEntry) => {
     if(entry.isIntersecting) {
       const target = entry.target as HTMLElement;
@@ -2034,7 +2136,7 @@ export default class ChatBubbles {
 
     const updateAppActive = () => {
       // Foreground = tab visible and window focused.
-      this.readMetricsTracker.setAppActive(!document.hidden && document.hasFocus());
+      this.readMetricsTracker.setAppActive(!getAppWindow().document.hidden && getAppWindow().document.hasFocus());
     };
     updateAppActive();
 
@@ -3820,6 +3922,9 @@ export default class ChatBubbles {
     this.scrollable.onAdditionalScroll = this.onScroll;
     this.scrollable.onScrolledTop = () => this.loadMoreHistory(true);
     this.scrollable.onScrolledBottom = () => this.loadMoreHistory(false);
+    // Keep the reflow anchor fresh so a window/PiP-window resize re-pins the user's real scroll
+    // position. Dedicated listener (not via onScroll) so it fires reliably on every scroll.
+    this.listenerSetter.add(this.scrollable.container)('scroll', this.saveReflowScrollDebounced, {passive: true});
     // this.scrollable.attachSentinels(undefined, 300);
 
     if(IS_TOUCH_SUPPORTED && false) {
@@ -4501,6 +4606,8 @@ export default class ChatBubbles {
     this.destroyScrollable();
 
     this.listenerSetter.removeAll();
+    this.appWindowUnsubs.forEach((unsub) => unsub());
+    this.saveReflowScrollDebounced?.clearTimeout();
 
     this.lazyLoadQueue.clear();
     this.observer && this.observer.disconnect();
@@ -5404,6 +5511,9 @@ export default class ChatBubbles {
       });
 
       this.createResizeObserver();
+      // Baseline the container width now (the chat is laid out) so the very first window resize
+      // already detects the width change and re-pins scroll, instead of just setting the baseline.
+      this.reflowWasWidth = this.scrollable.container.offsetWidth || this.reflowWasWidth;
     };
   }
 
@@ -6167,7 +6277,7 @@ export default class ChatBubbles {
     const unreadReactions = getUnreadReactions(message);
 
     if(!context.isInUnread && this.chat.peerId.isAnyChat()) {
-      const readMaxId = await this.managers.appMessagesManager.getReadMaxIdIfUnread(this.chat.peerId, this.chat.threadId);
+      const readMaxId = await this.getRenderReadMaxId(this.chat.peerId, this.chat.threadId);
       if(readMaxId !== undefined && readMaxId < maxBubbleMid) {
         context.isInUnread = true;
       }
@@ -7450,6 +7560,7 @@ export default class ChatBubbles {
 
           const starGiftAttribute = webPage.attributes?.find((attr) => attr._ === 'webPageAttributeUniqueStarGift')
           const starGiftCollectionAttribute = webPage.attributes?.find((attr) => attr._ === 'webPageAttributeStarGiftCollection')
+          const stickerSetAttribute = webPage.attributes?.find((attr) => attr._ === 'webPageAttributeStickerSet') as WebPageAttribute.webPageAttributeStickerSet
 
           const props: Parameters<typeof WebPageBox>[0] = {};
           const boxRefs: ((box: HTMLAnchorElement) => void)[] = [];
@@ -7506,7 +7617,8 @@ export default class ChatBubbles {
                 });
               });
             } else {
-              const langPackKey = webPageTypes[webPage.type] || 'OpenMessage';
+              // a custom-emoji set (webPageAttributeStickerSet.pFlags.emojis) says "VIEW EMOJI", a sticker set "VIEW STICKERS"
+              const langPackKey = stickerSetAttribute?.pFlags.emojis ? 'OpenEmojiSet' : (webPageTypes[webPage.type] || 'OpenMessage');
 
               props.footer = {
                 content: i18n(langPackKey)
@@ -7546,7 +7658,7 @@ export default class ChatBubbles {
           // const willHaveSponsoredAvatar = sponsoredMessage && (getPeerId(sponsoredMessage.from_id) !== NULL_PEER_ID || sponsoredPhoto);
           // const willHaveSponsoredPhoto = sponsoredMessage && sponsoredMessage.pFlags.show_peer_photo && willHaveSponsoredAvatar;
           const willHaveSponsoredPhoto = !!sponsoredPhoto;
-          const willHaveMedia = !!(photo || doc || storyAttribute || willHaveSponsoredPhoto || starGiftAttribute || starGiftCollectionAttribute);
+          const willHaveMedia = !!(photo || doc || storyAttribute || willHaveSponsoredPhoto || starGiftAttribute || starGiftCollectionAttribute || (stickerSetAttribute && stickerSetAttribute.stickers.length));
           if(willHaveMedia) {
             preview = document.createElement('div');
             props.media = {
@@ -7759,7 +7871,7 @@ export default class ChatBubbles {
             props.text = undefined
           } else if(starGiftCollectionAttribute) {
             await wrapSticker({
-              doc: await this.managers.appDocsManager.saveDoc(starGiftCollectionAttribute.icons[0]),
+              doc: starGiftCollectionAttribute.icons[0] as MyDocument,
               div: preview,
               middleware,
               lazyLoadQueue,
@@ -7771,6 +7883,37 @@ export default class ChatBubbles {
             preview.style.height = '48px';
             props.media.photoSize = 'square';
             isSquare = true;
+          } else if(stickerSetAttribute?.stickers.length) {
+            const stickers = stickerSetAttribute.stickers as MyDocument[];
+            const {side, cellSize, boxSize} = computeStickerSetPreviewGrid(stickers.length, STICKER_SET_PREVIEW_BOX_SIZE);
+            preview.style.width = preview.style.height = `${boxSize}px`;
+            preview.classList.add('webpage-stickerset-grid');
+            preview.style.setProperty('--sticker-grid-side', '' + side);
+            props.media.photoSize = 'square';
+            isSquare = true;
+
+            const isEmoji = !!stickerSetAttribute.pFlags.emojis;
+            // custom-emoji sets flagged `text_color` are tinted with the message text color
+            const textColor = isEmoji && stickerSetAttribute.pFlags.text_color ? STICKER_SET_EMOJI_TEXT_COLOR : undefined;
+            for(let i = 0; i < side * side && i < stickers.length; ++i) {
+              const cell = document.createElement('div');
+              cell.classList.add('webpage-stickerset-cell');
+              preview.append(cell);
+              wrapSticker({
+                doc: stickers[i],
+                div: cell,
+                middleware,
+                lazyLoadQueue,
+                group: this.chat.animationGroup,
+                width: cellSize,
+                height: cellSize,
+                play: true,
+                loop: true,
+                loadPromises,
+                isCustomEmoji: isEmoji,
+                textColor
+              });
+            }
           }
 
           if(preview) {
@@ -7792,6 +7935,18 @@ export default class ChatBubbles {
                   } else timeSpan.before(box);
                 } else {
                   messageDiv.append(box);
+                }
+
+                // * peer-color background-emoji pattern behind the box (like replies/quotes).
+                // out-messages render with the out palette (no index pattern); sponsored carry their
+                // own color override that isn't on the cached peer, so skip them.
+                if(!isOut && !isSponsored) {
+                  wrapPeerColorPattern({
+                    peerId: (message as Message.message).fwdFromId || message.fromId,
+                    container: box,
+                    middleware,
+                    canvasClassName: 'webpage-background-canvas'
+                  });
                 }
               },
               clickable: true
@@ -8149,7 +8304,14 @@ export default class ChatBubbles {
 
           const contactNumberDiv = document.createElement('div');
           contactNumberDiv.className = 'contact-number';
-          contactNumberDiv.textContent = contact.phone_number ? '+' + formatPhoneNumber(contact.phone_number).formatted : 'Unknown phone number';
+          let contactNumberText = 'Unknown phone number';
+          if(contact.phone_number) {
+            // group the number under the viewer's country when it carries no explicit
+            // country code, prefixing '+' only when a country code is actually present
+            const {formatted, code} = formatPhoneNumber(contact.phone_number, {defaultCountryCode: this.myCountryCode});
+            contactNumberText = (code ? '+' : '') + formatted;
+          }
+          contactNumberDiv.textContent = contactNumberText;
 
           contactDiv.append(contactDetails);
           contactDetails.append(contactNameDiv, contactNumberDiv);

@@ -6697,19 +6697,30 @@ export class AppMessagesManager extends AppManager {
     // separately and are reset only by `messages.readMentions` /
     // `messages.readReactions`). Without that, after reload the server keeps
     // reporting the old badge — exactly what issue #380 describes.
+    const isForum = this.appPeersManager.isForum(peerId);
+    const isBotforum = this.appPeersManager.isBotforum(peerId);
     let hasMention = false;
     let hasUnreadReaction = false;
+    // For a forum/botforum these reads happen inside a single topic; derive its
+    // id from the messages so the server-side reset is scoped to that topic.
+    let threadId: number;
     for(const mid of msgIds) {
       const message = this.getMessageByPeer(peerId, mid) as MyMessage;
       if(!message) continue;
       if(isMentionUnread(message)) hasMention = true;
       if(getUnreadReactions(message)) hasUnreadReaction = true;
+      if((isForum || isBotforum) && !threadId) {
+        threadId = getMessageThreadId(message as Message.message, {isForum, isBotforum});
+      }
     }
 
     // Capture the badge state BEFORE processLocalUpdate (called below) flips
     // our local counters to 0 — otherwise the follow-up readMentions would
-    // always be skipped and the server-side counter would stay stale.
-    const dialog = this.dialogsStorage.getAnyDialog(peerId) as Dialog | ForumTopic | undefined;
+    // always be skipped and the server-side counter would stay stale. In a
+    // forum topic the mention/reaction counters live on the TOPIC dialog (the
+    // parent channel dialog tracks them per-topic, not aggregated), so read the
+    // badge from the topic — otherwise reactions in topics never get reset.
+    const dialog = this.dialogsStorage.getAnyDialog(peerId, threadId) as Dialog | ForumTopic | undefined;
     const hadUnreadMentions = !!dialog?.unread_mentions_count;
     const hadUnreadReactions = !!dialog?.unread_reactions_count;
 
@@ -6750,10 +6761,10 @@ export class AppMessagesManager extends AppManager {
     if(hasMention || hasUnreadReaction) {
       const followUps: Promise<any>[] = [promise];
       if(hasMention && hadUnreadMentions) {
-        followUps.push(this.readMentions(peerId).catch(noop));
+        followUps.push(this.readMentions(peerId, threadId).catch(noop));
       }
       if(hasUnreadReaction && hadUnreadReactions) {
-        followUps.push(this.readMentions(peerId, undefined, true).catch(noop));
+        followUps.push(this.readMentions(peerId, threadId, true).catch(noop));
       }
       promise = Promise.all(followUps).then(() => {});
     }
@@ -7693,6 +7704,20 @@ export class AppMessagesManager extends AppManager {
 
     if(message.pFlags.out && isUnread !== wasUnread) {
       modifyUnreadReactions(isUnread);
+
+      // Forum / botforum: keep the parent forum dialog's aggregate reaction
+      // badge in sync when a topic reaction is read (mirrors the mention
+      // propagation in onUpdateReadHistory / onUpdateReadMessagesContents).
+      if(!isUnread && threadId && (this.appPeersManager.isForum(peerId) || this.appPeersManager.isBotforum(peerId))) {
+        const parentDialog = this.getDialogOnly(peerId);
+        if(parentDialog && parentDialog.unread_reactions_count > 0) {
+          const releaseParent = this.dialogsStorage.prepareDialogUnreadCountModifying(parentDialog);
+          parentDialog.unread_reactions_count = Math.max(0, parentDialog.unread_reactions_count - 1);
+          releaseParent();
+          this.rootScope.dispatchEvent('dialog_unread', {peerId, dialog: parentDialog});
+          this.dialogsStorage.setDialogToState(parentDialog);
+        }
+      }
     }
 
     const key = message.peerId + '_' + message.mid;
@@ -8047,6 +8072,8 @@ export class AppMessagesManager extends AppManager {
     const threadId = topMsgId ? this.appMessagesIdsManager.generateMessageId(topMsgId, channelId) : undefined;
     const mids = (update as Update.updateReadMessagesContents).messages.map((id) => this.appMessagesIdsManager.generateMessageId(id, channelId));
     const peerId = channelId ? channelId.toPeerId(true) : this.findPeerIdByMids(mids);
+    const isForum = this.appPeersManager.isForum(peerId);
+    const isBotforum = this.appPeersManager.isBotforum(peerId);
     for(let i = 0, length = mids.length; i < length; ++i) {
       const mid = mids[i];
       let message: MyMessage = this.getMessageByPeer(peerId, mid);
@@ -8068,10 +8095,7 @@ export class AppMessagesManager extends AppManager {
             // Forum / botforum: also bring down the parent forum dialog's
             // aggregate mention badge (mirrors the Bug-4 propagation in
             // onUpdateReadHistory).
-            if(threadId && (
-              this.appChatsManager.isForum(peerId.toChatId()) ||
-              this.appPeersManager.isBotforum(peerId)
-            )) {
+            if(threadId && (isForum || isBotforum)) {
               const parentDialog = this.getDialogOnly(peerId);
               if(parentDialog && parentDialog.unread_mentions_count > 0) {
                 const releaseParent = this.dialogsStorage.prepareDialogUnreadCountModifying(parentDialog);
@@ -8103,10 +8127,21 @@ export class AppMessagesManager extends AppManager {
           newReactions.recent_reactions.forEach((reaction) => {
             delete reaction.pFlags.unread;
           });
+
+          // Forum / botforum: scope the re-dispatched reaction update to its
+          // topic. Without top_msg_id it lands on the parent forum dialog
+          // (threadId undefined) and the TOPIC's unread_reactions_count never
+          // decrements — the reaction badge stays stuck. Derive the topic from
+          // the message so this works for both the local readMessages path (no
+          // top_msg_id on the update) and server-sent updates.
+          const reactionThreadId = threadId ?? ((isForum || isBotforum) ?
+            getMessageThreadId(message as Message.message, {isForum, isBotforum}) :
+            undefined);
           this.apiUpdatesManager.processLocalUpdate({
             _: 'updateMessageReactions',
             peer: this.appPeersManager.getOutputPeer(peerId),
             msg_id: message.id,
+            top_msg_id: reactionThreadId ? getServerMessageId(reactionThreadId) : undefined,
             reactions: newReactions
           });
         }

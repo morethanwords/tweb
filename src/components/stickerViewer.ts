@@ -1,4 +1,5 @@
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
+import {getAppWindow, getOverlayRoot} from '@helpers/appWindow';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {simulateClickEvent, attachClickEvent} from '@helpers/dom/clickEvent';
 import findUpAsChild from '@helpers/dom/findUpAsChild';
@@ -66,6 +67,14 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
     if(!docId) {
       return;
     }
+
+    // The whole hold-drag-release gesture is tracked on document-level mousemove/mouseup + a post-
+    // release click-swallow, and timed by setTimeout/setInterval — all of which must use whichever
+    // window the app currently lives in (the tab, or the Document PiP window). Bound to the MAIN
+    // window, the viewer opens on hold but its mouseup/mousemove fire on the PiP document and never
+    // arrive, so it sticks open and can't switch stickers.
+    const activeWindow = getAppWindow();
+    const activeDocument = activeWindow.document;
 
     const className = 'sticker-viewer';
     const group: AnimationItemGroup = 'STICKER-VIEWER';
@@ -174,7 +183,7 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
       if(!middleware()) return;
 
       if(!container.parentElement) {
-        document.body.append(container);
+        getOverlayRoot().append(container);
       }
 
       const player = Array.isArray(o) ? o[0] : o;
@@ -233,8 +242,8 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
       };
     };
 
-    const timeout = window.setTimeout(async() => {
-      document.removeEventListener('mousemove', onMousePreMove);
+    const timeout = activeWindow.setTimeout(async() => {
+      activeDocument.removeEventListener('mousemove', onMousePreMove);
 
       container = document.createElement('div');
       container.classList.add(className, additionalClass);
@@ -277,7 +286,7 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
         }
       });
 
-      document.addEventListener('mousemove', onMouseMove);
+      activeDocument.addEventListener('mousemove', onMouseMove);
     }, 125);
 
     const onMouseMove = async(e: MouseEvent) => {
@@ -348,8 +357,8 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
 
     const onMouseUp = () => {
       isMouseUp = true;
-      clearTimeout(timeout);
-      clearInterval(unmountInterval);
+      activeWindow.clearTimeout(timeout);
+      activeWindow.clearInterval(unmountInterval);
       // _middleware.clean();
 
       if(container) {
@@ -367,17 +376,17 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
           }
         });
 
-        attachClickEvent(document.body, cancelEvent, {capture: true, once: true});
+        attachClickEvent(activeDocument.body, cancelEvent, {capture: true, once: true});
       }
 
-      document.removeEventListener('mousemove', onMousePreMove);
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp, {capture: true});
+      activeDocument.removeEventListener('mousemove', onMousePreMove);
+      activeDocument.removeEventListener('mousemove', onMouseMove);
+      activeDocument.removeEventListener('mouseup', onMouseUp, {capture: true});
     };
 
-    document.addEventListener('mousemove', onMousePreMove);
-    document.addEventListener('mouseup', onMouseUp, {once: true, capture: true});
-    const unmountInterval = setInterval(() => {
+    activeDocument.addEventListener('mousemove', onMousePreMove);
+    activeDocument.addEventListener('mouseup', onMouseUp, {once: true, capture: true});
+    const unmountInterval = activeWindow.setInterval(() => {
       if(!isInDOM(mediaContainer)) {
         onMouseUp();
       }

@@ -1,4 +1,5 @@
 import canVideoBeAnimated from '@appManagers/utils/docs/canVideoBeAnimated';
+import {getOverlayRoot} from '@helpers/appWindow';
 import {ButtonIconTsx} from '@components/buttonIconTsx';
 import type {ButtonMenuSync} from '@components/buttonMenu';
 import {IconTsx} from '@components/iconTsx';
@@ -647,7 +648,7 @@ function useMenu(args: {
     buttonMenu.style.position = 'fixed';
     buttonMenu.style.top = 'unset';
 
-    document.body.appendChild(buttonMenu);
+    getOverlayRoot().appendChild(buttonMenu);
 
     requestRAF(() => {
       if(isCleaned()) return;

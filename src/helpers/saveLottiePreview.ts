@@ -1,4 +1,5 @@
 import type {MyDocument} from '@appManagers/appDocsManager';
+import type RLottiePlayer from '@lib/rlottie/rlottiePlayer';
 import {applyColorOnContext} from '@lib/rlottie/rlottiePlayer';
 import rootScope from '@lib/rootScope';
 import getStickerThumbKey from '@lib/storages/utils/thumbs/getStickerThumbKey';
@@ -29,7 +30,7 @@ const createCanvas = () => {
   sharedContext = sharedCanvas.getContext('2d');
 };
 
-export async function saveLottiePreview(doc: MyDocument, canvas: HTMLCanvasElement, toneIndex: number | string) {
+export async function saveLottiePreview(doc: MyDocument, canvas: HTMLCanvasElement | ImageBitmap, toneIndex: number | string) {
   const key = getStickerThumbKey(doc.id, toneIndex);
   const {width, height} = canvas;
   if(isSavingLottiePreview(doc, toneIndex, width, height)) {
@@ -50,7 +51,7 @@ export async function saveLottiePreview(doc: MyDocument, canvas: HTMLCanvasEleme
     return;
   }
 
-  if(typeof(toneIndex) === 'string') {
+  if(typeof(toneIndex) === 'string' || !(canvas instanceof HTMLCanvasElement)) {
     if(!sharedCanvas) {
       createCanvas();
     }
@@ -58,7 +59,9 @@ export async function saveLottiePreview(doc: MyDocument, canvas: HTMLCanvasEleme
     sharedCanvas.width = width;
     sharedCanvas.height = height;
     sharedContext.drawImage(canvas, 0, 0, width, height);
-    applyColorOnContext(sharedContext, customProperties.getProperty(toneIndex), 0, 0, width, height);
+    if(typeof(toneIndex) === 'string') {
+      applyColorOnContext(sharedContext, customProperties.getProperty(toneIndex), 0, 0, width, height);
+    }
     canvas = sharedCanvas;
   }
 
@@ -78,4 +81,23 @@ export async function saveLottiePreview(doc: MyDocument, canvas: HTMLCanvasEleme
   }
 
   rootScope.managers.thumbsStorage.saveStickerPreview(doc.id, blob, width, height, toneIndex);
+}
+
+export async function saveLottiePreviewFromPlayer(doc: MyDocument, player: RLottiePlayer, toneIndex: number | string) {
+  if(!player.offscreen) {
+    return saveLottiePreview(doc, player.canvas[0], toneIndex);
+  }
+
+  if(isSavingLottiePreview(doc, toneIndex, player.width, player.height)) {
+    return; // guard runs BEFORE the export - no bitmap ships when nothing needs saving
+  }
+
+  try {
+    const {frame} = await player.exportFrame();
+    await saveLottiePreview(doc, frame, toneIndex);
+    frame.close?.();
+  } catch(err) {
+    // degrade to no persisted thumb - same as today's pre-firstFrame state
+    console.error('saveLottiePreviewFromPlayer: exportFrame failed', err, player);
+  }
 }

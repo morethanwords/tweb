@@ -43,6 +43,7 @@ import {localToServer, serverToLocal, TLReader, TLWriter} from './tl';
 import {
   decodeBlock,
   decodeGroupBroadcast,
+  GroupBroadcast,
   GroupParticipant,
   GroupState,
   serializeBlock,
@@ -252,6 +253,9 @@ export interface DecryptPacketOptions {
   // Sender's claimed user id — we look up their public key in the matched
   // epoch's group_state to verify the signature.
   fromUserId: bigint;
+  // Our own user id. Packets we encrypted must never be decrypted (the SFU
+  // echoes our own frames back). Optional so non-E2eCall callers can opt in.
+  selfUserId?: bigint;
   // Active epochs we hold. Searched by hash.
   epochs: ActiveEpoch[];
   // For dropping replays. Mutated on successful decrypt.
@@ -298,6 +302,12 @@ function pkHex(pk: PublicKey): string {
 // the inter-block transition window where participants haven't all synced.
 const FORGET_EPOCH_DELAY_MS = 10_000;
 
+// Verification broadcasts (emoji commit/reveal) for a block we haven't applied
+// yet are buffered and replayed once the chain catches up (tdlib
+// delayed_broadcasts_). Bounded so a malicious server can't flood memory.
+const MAX_DELAYED_FUTURE_HEIGHTS = 16;
+const MAX_DELAYED_BROADCASTS = 128;
+
 interface EpochCleanupEntry {
   epochHash: Uint8Array;
   forgetAt: number;
@@ -327,6 +337,8 @@ export class E2eCall {
   private seqnoByChannel: Map<number, number> = new Map();
   private readonly replayState = new ReplayState();
   private verification: VerificationChain | undefined;
+  // Future-height verification broadcasts waiting for their block to arrive.
+  private readonly delayedBroadcasts = new Map<number, GroupBroadcast[]>();
   private readonly now: () => number;
 
   private constructor(
@@ -521,6 +533,7 @@ export class E2eCall {
     const decoded = await decryptPacket({
       packet,
       fromUserId,
+      selfUserId: this.userId,
       epochs: this.epochs,
       replayState: this.replayState
     });
@@ -548,13 +561,70 @@ export class E2eCall {
   public async receiveInbound(serverMessage: Uint8Array): Promise<void> {
     this.checkStatus();
     if(!this.verification) return;
+    let broadcast: GroupBroadcast;
     try {
-      const broadcast = decodeGroupBroadcast(new TLReader(serverToLocal(serverMessage)));
+      broadcast = decodeGroupBroadcast(new TLReader(serverToLocal(serverMessage)));
+    } catch{
+      // Malformed — log + don't fail the call (tdlib logs; we drop silently).
+      return;
+    }
+    await this.deliverBroadcast(broadcast);
+  }
+
+  // Route a decoded broadcast to the current verification round, or buffer it
+  // when it belongs to a block we haven't applied yet. The SFU delivers chain
+  // blocks and broadcasts on separate channels, so a peer's commit routinely
+  // arrives before we've applied the block it references. tdlib stashes these
+  // in delayed_broadcasts_ and replays them via on_new_main_block; without it a
+  // reorder permanently drops the commit and the emoji fingerprint never
+  // completes — silently denying the user the MITM backstop.
+  private async deliverBroadcast(broadcast: GroupBroadcast): Promise<void> {
+    if(!this.verification) return;
+    if(broadcast.chainHeight > this.verification.height) {
+      this.bufferDelayedBroadcast(broadcast);
+      return;
+    }
+    // Current-or-stale height: the verification chain validates height + hash
+    // itself and drops stale ones.
+    try {
       await this.verification.receive(broadcast);
     } catch{
-      // Per spec: log + don't fail the call. tdlib logs to its standard log
-      // channel; in the browser we drop silently — surfaces via verification
-      // state never advancing if the bug is in our own code.
+      // log + swallow
+    }
+  }
+
+  private bufferDelayedBroadcast(broadcast: GroupBroadcast): void {
+    if(!this.verification) return;
+    // Bound against a flood: ignore far-future heights and a full buffer.
+    if(broadcast.chainHeight > this.verification.height + MAX_DELAYED_FUTURE_HEIGHTS) return;
+    let total = 0;
+    for(const list of this.delayedBroadcasts.values()) total += list.length;
+    if(total >= MAX_DELAYED_BROADCASTS) return;
+    let list = this.delayedBroadcasts.get(broadcast.chainHeight);
+    if(!list) {
+      list = [];
+      this.delayedBroadcasts.set(broadcast.chainHeight, list);
+    }
+    list.push(broadcast);
+  }
+
+  // After the chain advances to a new tip, replay buffered broadcasts for that
+  // height and discard everything now stale.
+  private async drainDelayedBroadcasts(): Promise<void> {
+    if(!this.verification) return;
+    const currentHeight = this.verification.height;
+    for(const height of [...this.delayedBroadcasts.keys()]) {
+      if(height > currentHeight) continue; // still in the future — keep waiting
+      const list = this.delayedBroadcasts.get(height)!;
+      this.delayedBroadcasts.delete(height);
+      if(height !== currentHeight) continue; // strictly past → drop
+      for(const b of list) {
+        try {
+          await this.verification.receive(b);
+        } catch{
+          // log + swallow
+        }
+      }
     }
   }
 
@@ -576,6 +646,8 @@ export class E2eCall {
       this.privateKey,
       participants
     );
+    // Replay any commits/reveals that arrived before this block did.
+    await this.drainDelayedBroadcasts();
   }
 
   // Refresh the shared key after a state change. Adds a new epoch, schedules
@@ -583,6 +655,19 @@ export class E2eCall {
   private async updateGroupSharedKey(): Promise<void> {
     if(!this.state.sharedKey) {
       throw new CallError('NO_SHARED_KEY', 'state has no shared_key after applyBlock');
+    }
+
+    // tdlib add_shared_key re-verifies on EVERY new epoch that our key still
+    // maps to our user_id in the (possibly server-rewritten) group_state — not
+    // just once at create().
+    const self = this.state.groupState.participants.find((p) =>
+      constantTimeEqual(p.publicKey, this.privateKey.publicKeyBytes)
+    );
+    if(!self) {
+      throw new CallError('NOT_PARTICIPANT', 'our public key is not in group_state');
+    }
+    if(self.userId !== this.userId) {
+      throw new CallError('WRONG_USER_ID', `participant user_id ${self.userId} != our ${this.userId}`);
     }
 
     if(this.epochs.length > 0) {
@@ -645,6 +730,12 @@ export {computeBlockHash};
 
 export async function decryptPacket(opts: DecryptPacketOptions): Promise<DecryptedPacket> {
   if(opts.packet.length < 4) throw new Error('decryptPacket: too short');
+
+  // Co-located with the crypto (tdlib does this inside CallEncryption::decrypt):
+  // never decrypt a packet whose claimed sender is us.
+  if(opts.selfUserId !== undefined && opts.fromUserId === opts.selfUserId) {
+    throw new CallError('SELF_PACKET', 'packet encrypted by us');
+  }
 
   // Trailer (last 4 bytes) tells us the unencrypted prefix length.
   const trailerReader = new TLReader(opts.packet.subarray(opts.packet.length - 4));

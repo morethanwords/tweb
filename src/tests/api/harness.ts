@@ -106,7 +106,6 @@ export async function createTestClient(opts: CreateTestClientOpts) {
 
 function buildNodeEnvironmentStub() {
   return {
-    CAN_USE_TRANSFERABLES: false,
     IS_APPLE: false,
     IS_APPLE_MOBILE: false,
     IS_APPLE_MX: false,

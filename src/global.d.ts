@@ -47,6 +47,21 @@ declare global {
     Prism?: {
       manual?: boolean
     };
+    documentPictureInPicture?: DocumentPictureInPicture;
+  }
+
+  // https://developer.chrome.com/docs/web-platform/document-picture-in-picture
+  interface DocumentPictureInPictureOptions {
+    width?: number;
+    height?: number;
+    disallowReturnToOpener?: boolean;
+    preferInitialWindowPlacement?: boolean;
+  }
+
+  interface DocumentPictureInPicture extends EventTarget {
+    readonly window: Window | null;
+    requestWindow(options?: DocumentPictureInPictureOptions): Promise<Window>;
+    onenter: ((this: DocumentPictureInPicture, ev: Event) => any) | null;
   }
 
   interface NotificationAction {
@@ -255,10 +270,6 @@ declare global {
     | 'CHANNELS_TOO_MUCH'
     | 'BOOSTS_REQUIRED'
     | 'USERNAME_OCCUPIED'
-    | 'AICOMPOSE_FLOOD_PREMIUM'
-    | 'AICOMPOSE_TONE_SLUG_INVALID'
-    | 'AICOMPOSE_TONE_INVALID'
-    | 'TONE_NOT_FOUND'
   ;
 
   type ErrorType = LocalErrorType | ServerErrorType;
@@ -269,7 +280,7 @@ declare global {
 
   type ApiError = {
     type: ErrorType,
-    stack: string,
+    stack?: string,
     message?: string,
     code?: number,
     handled?: boolean,

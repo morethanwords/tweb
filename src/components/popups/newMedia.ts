@@ -1,4 +1,5 @@
 import {Portal, render} from 'solid-js/web';
+import {getOverlayRoot} from '@helpers/appWindow';
 import {createStore} from 'solid-js/store';
 
 import type Chat from '@components/chat/chat';
@@ -89,10 +90,12 @@ type SendFileParams = SendFileDetails & {
 };
 
 function getFileMimeType(file: File | Blob | MyDocument): string {
-  if(file instanceof File || file instanceof Blob) {
-    return file.type;
+  // `'mime_type' in file` identifies a MyDocument; everything else is a File/Blob. Cross-realm-safe
+  // (a Document PiP window's File isn't `instanceof` the main realm's File constructor).
+  if('mime_type' in file) {
+    return file.mime_type;
   }
-  return file.mime_type;
+  return file.type;
 }
 
 type ConstructorInputFile = {
@@ -170,7 +173,9 @@ export default class PopupNewMedia extends PopupElement {
     });
 
     this.files = inputFiles.map((inputFile) => {
-      if(inputFile instanceof File) {
+      // The {file, editResult} wrapper is the only variant carrying a `file` field; everything else
+      // is a plain File. Cross-realm-safe (a Document PiP window's File isn't `instanceof` the main File).
+      if(!('file' in inputFile)) {
         return inputFile;
       }
       this.pendingEditResults.set(inputFile.file, inputFile.editResult);
@@ -483,7 +488,9 @@ export default class PopupNewMedia extends PopupElement {
   }
 
   private canConvertMov(file: File | MyDocument): file is File {
-    return file instanceof File &&
+    // cross-realm-safe `instanceof File` (a Document PiP window's File isn't `instanceof` the main
+    // File): a File is the only variant carrying `lastModified`; no MyDocument variant has it.
+    return 'lastModified' in file &&
       isConvertibleMov(file) &&
       !this.failedConversions.has(file);
   }
@@ -1455,7 +1462,7 @@ export default class PopupNewMedia extends PopupElement {
         actions.style.left = bcr.left + bcr.width / 2 + 'px';
         actions.style.top = bcr.bottom + 'px';
 
-        document.body.append(actions);
+        getOverlayRoot().append(actions);
         await doubleRaf();
         actions.style.opacity = '1';
 
@@ -1715,7 +1722,7 @@ export default class PopupNewMedia extends PopupElement {
       return;
     }
 
-    this.listenerSetter.add(document.body)('keydown', this.onKeyDown);
+    this.listenerSetter.add(getOverlayRoot())('keydown', this.onKeyDown);
     animationIntersector.setOnlyOnePlayableGroup(this.animationGroup);
     this.addEventListener('close', () => {
       animationIntersector.setOnlyOnePlayableGroup();

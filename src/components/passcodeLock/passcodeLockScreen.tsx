@@ -1,6 +1,7 @@
 import {Component, createEffect, createResource, on, onCleanup, onMount} from 'solid-js';
 import {createMutable} from 'solid-js/store';
 import {animateValue} from '@helpers/animateValue';
+import {getAppWindow} from '@helpers/appWindow';
 import focusInput from '@helpers/dom/focusInput';
 import {keepMe} from '@helpers/keepMe';
 import pause from '@helpers/schedulers/pause';
@@ -85,12 +86,13 @@ const PasscodeLockScreen: Component<{
     })();
 
     const listener = (e: KeyboardEvent) => {
-      if(document.activeElement && document.activeElement.tagName === 'INPUT') return;
+      const doc = getAppWindow().document; // active window (the PiP doc when popped out)
+      if(doc.activeElement && doc.activeElement.tagName === 'INPUT') return;
       focusInput(passwordInputField.input, e);
     };
-    document.addEventListener('keydown', listener);
+    getAppWindow().document.addEventListener('keydown', listener);
     onCleanup(() => {
-      document.removeEventListener('keydown', listener);
+      getAppWindow().document.removeEventListener('keydown', listener);
     });
   });
 

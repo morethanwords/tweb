@@ -9,6 +9,7 @@ import {doubleRaf} from '@helpers/schedulers';
 import callbackify from '@helpers/callbackify';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import {MenuPositionPadding, positionMenuTrigger} from '@helpers/positionMenu';
+import {getOverlayRoot} from '@helpers/appWindow';
 
 // TODO: refactor for attachClickEvent, because if move finger after touchstart, it will start anyway
 export function ButtonMenuToggleHandler({
@@ -92,7 +93,6 @@ export default function ButtonMenuToggle({
 
   const button = container ?? ButtonIcon(noIcon ? undefined : icon, buttonOptions);
   const autoPosition = !appendTo;
-  appendTo ??= document.body;
   button.classList.add('btn-menu-toggle');
 
   const listenerSetter = new ListenerSetter();
@@ -143,7 +143,9 @@ export default function ButtonMenuToggle({
       await onOpen?.(e, _element);
       if(_tempId !== tempId) return;
 
-      appendTo.append(_element);
+      // Resolve the mount lazily so a menu opened while the client is popped out lands in the active
+      // window's body (the Document PiP window), not the background tab.
+      (appendTo ?? getOverlayRoot()).append(_element);
       if(autoPosition) {
         positionMenuTrigger(button, _element, direction, positionPadding ?? {top: 8, bottom: 8});
       }

@@ -1,3 +1,4 @@
+import {getOverlayRoot} from '@helpers/appWindow';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import EventListenerBase from '@helpers/eventListenerBase';
 import mediaSizes from '@helpers/mediaSizes';
@@ -223,7 +224,7 @@ export default class MovableElement extends EventListenerBase<{
 
         this.overlay.remove();
       },
-      setCursorTo: document.body
+      setCursorTo: getOverlayRoot()
     });
   }
 

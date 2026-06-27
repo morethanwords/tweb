@@ -23,8 +23,17 @@ export default function getUniqueCustomEmojisFromMessage(message: Message) {
 
   const poll = ((message as Message.message).media as MessageMedia.messageMediaPoll)?.poll;
   if(poll) {
+    iterateEntities(poll.question.entities);
     poll.answers.forEach((answer) => {
       iterateEntities(answer.text.entities);
+    });
+  }
+
+  const todo = ((message as Message.message).media as MessageMedia.messageMediaToDo)?.todo;
+  if(todo) {
+    iterateEntities(todo.title.entities);
+    todo.list.forEach((item) => {
+      iterateEntities(item.title.entities);
     });
   }
 

@@ -831,7 +831,7 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
         element.classList.add('markup-diff-delete');
         break;
 
-      case 'messageEntityDiffReplace':
+      case 'messageEntityDiffReplace': {
         const container = document.createElement('span');
         fragment.appendChild(container);
 
@@ -845,6 +845,7 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
         container.append(deleted, inserted);
         element = inserted;
         break;
+      }
     }
 
     if(processingBlockElement) {
