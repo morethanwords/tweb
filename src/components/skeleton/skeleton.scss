@@ -15,7 +15,11 @@
 
   &--secondary {
     background: var(--light-secondary-text-color);
-    --gradient-color: rgba(255, 255, 255, 0.12);
+    --gradient-color: rgba(0, 0, 0, 0.05);
+
+    .night & {
+      --gradient-color: rgba(255, 255, 255, 0.12);
+    }
   }
 
   &:before {
