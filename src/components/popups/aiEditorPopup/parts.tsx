@@ -167,7 +167,7 @@ export const Original = (props: {
         style={{'--original-content-height': originalContentHeight() + 'px'}}
       >
         <div ref={originalContentRef} class={styles.richText}>
-          <Scrollable ref={originalScrollableRef} class={styles.originalScrollable} relative>
+          <Scrollable ref={originalScrollableRef} class={styles.originalScrollable} relative withBorders='manual'>
             <div class={styles.originalScrollableContent}>
               {wrapRichText(props.text.text, {entities: filterEntities(props.text.entities), middleware: createMiddleware().get()})}
             </div>
@@ -328,7 +328,7 @@ export const Result = (props: {
           <Switch>
             <Match when={textToRender()} keyed>
               {(text) => (
-                <Scrollable ref={scrollableRef} relative class={classNames(styles.resultScrollable, styles.richText)}>
+                <Scrollable ref={scrollableRef} relative class={classNames(styles.resultScrollable, styles.richText)} withBorders='manual'>
                   <div class={styles.resultScrollableContent}>
                     {wrapRichText(text.text, {entities: filterEntities(text.entities), middleware: createMiddleware().get()})}
                   </div>

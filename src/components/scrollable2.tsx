@@ -314,7 +314,13 @@ export default function Scrollable(props: {
         props.class,
         props.relative && 'relative',
         IS_SAFARI && !IS_MOBILE_SAFARI && 'no-scrollbar',
-        ...(props.withBorders ? [
+        ...(props.withBorders === 'manual' ? [
+          isScrolledToStart() && 'scrolled-start-manual',
+          isScrolledToEnd() && 'scrolled-end-manual',
+          isScrolledToStart() && !isScrolledToEnd() && 'scrolled-only-start-manual',
+          isScrolledToEnd() && !isScrolledToStart() && 'scrolled-only-end-manual',
+          !isScrolledToStart() && !isScrolledToEnd() && 'scrolled-none-manual'
+        ] : props.withBorders ? [
           isScrolledToStart() && 'scrolled-start',
           isScrolledToEnd() && 'scrolled-end',
           axis === 'y' && 'scrollable-y-bordered',

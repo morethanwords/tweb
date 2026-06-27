@@ -279,6 +279,19 @@
 
 .resultScrollable, .originalScrollable {
   max-height: 160px;
+  --mask-padding: 0.75rem;
+
+  &:global(.scrolled-only-end-manual) {
+    mask-image: linear-gradient(to bottom, transparent, white var(--mask-padding));
+  }
+
+  &:global(.scrolled-only-start-manual) {
+    mask-image: linear-gradient(to bottom, white calc(100% - var(--mask-padding)), transparent);
+  }
+
+  &:global(.scrolled-none-manual) {
+    mask-image: linear-gradient(to bottom, transparent, white var(--mask-padding), white calc(100% - var(--mask-padding)), transparent);
+  }
 
   &Content {
     padding-right: 0.5rem;
