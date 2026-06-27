@@ -125,13 +125,9 @@
   &.clickable {
     cursor: pointer;
 
-    --hover-color: rgba(0, 0, 0, 0.07);
+    --hover-color: var(--light-primary-color);
 
     @include hover-global(var(--hover-color), --arrow-bg, false);
-
-    :global(.night) & {
-      --hover-color: rgba(255, 255, 255, 0.07);
-    }
   }
 
 }
