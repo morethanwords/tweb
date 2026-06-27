@@ -191,7 +191,7 @@ export const Original = (props: {
 };
 
 const MAX_CACHED_COMPOSED_MESSAGES = 50;
-const cachedComposedMessages: Map<string, ComposeMessageWithAiOkResultData> = new Map();
+export const cachedComposedMessages: Map<string, ComposeMessageWithAiOkResultData> = new Map();
 
 const getCachedComposedMessageKey = (args: ComposeMessageWithAiArgs): string => {
   try {

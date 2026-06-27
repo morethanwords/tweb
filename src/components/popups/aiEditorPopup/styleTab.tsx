@@ -22,7 +22,9 @@ import {AiEditorPopupContext} from './context';
 import showCreateTonePopup from './createTonePopup';
 import {CreatorLink} from './creatorLink';
 import {useMaxSavedTones} from './limits';
-import {CreateTone, Divider, Original, Result, Tone} from './parts';
+import {cachedComposedMessages, CreateTone, Divider, Original, Result, Tone} from './parts';
+import track from '@helpers/solid/track';
+import {ComposeMessageWithAiArgs} from '@lib/appManagers/aiTonesManager';
 
 
 export const StyleTab = () => {
@@ -84,14 +86,20 @@ export const StyleTab = () => {
   }
 
   const onSelectTone = (tone: AiComposeTone) => {
-    if(tone === selectedTone()) setSelectedTone()
+    if(tone === selectedTone()) setSelectedTone();
     else setSelectedTone(tone);
   };
 
   const selectedToneSlugOrId = () => {
     const localSelectedTone = selectedTone();
     if(!localSelectedTone) return undefined;
-    if(localSelectedTone._ === 'aiComposeTone') return localSelectedTone.id.toString();
+
+    if(localSelectedTone._ === 'aiComposeTone') {
+      // Make sure the request refires when tone data changes
+      track(() => ({...localSelectedTone}));
+      return localSelectedTone.id.toString();
+    }
+
     return localSelectedTone.tone;
   };
 
@@ -248,8 +256,17 @@ const useEditTone = ({
       errorLangKey: 'AiEditor.NewStyle.ErrorEdit',
       onSubmit: async(payload) => {
         const updatedTone = await rootScope.managers.aiTonesManager.editTone({toneId: tone.id.toString(), ...payload});
+
+        for(const [key] of cachedComposedMessages) {
+          try {
+            const keyData = JSON.parse(key) as ComposeMessageWithAiArgs;
+            if(keyData.toneNameOrId.toString() === tone.id.toString()) cachedComposedMessages.delete(key);
+          } catch{}
+        }
+
         const prevTone = tones.find(t => t._ === 'aiComposeTone' && t.id.toString() === tone.id.toString());
         if(!prevTone) return;
+
         batch(() => {
           setTones(prev => [
             prevTone,
