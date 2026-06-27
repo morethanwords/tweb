@@ -167,7 +167,13 @@ export const Original = (props: {
         style={{'--original-content-height': originalContentHeight() + 'px'}}
       >
         <div ref={originalContentRef} class={styles.richText}>
-          <Scrollable ref={originalScrollableRef} class={styles.originalScrollable} relative withBorders='manual'>
+          <Scrollable
+            ref={originalScrollableRef}
+            class={styles.originalScrollable}
+            relative
+            withBorders='manual'
+            hideThumb={isActuallyCollapsed()}
+          >
             <div class={styles.originalScrollableContent}>
               {wrapRichText(props.text.text, {entities: filterEntities(props.text.entities), middleware: createMiddleware().get()})}
             </div>
