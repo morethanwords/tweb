@@ -37,8 +37,6 @@ export const StyleTab = () => {
 
   const hasArrows = !IS_TOUCH_SUPPORTED;
 
-  let autoHeightRef: HTMLDivElement;
-
   const [emojify, setEmojify] = createSignal(false);
   const [tonesListEl, setTonesListEl] = createSignal<HTMLDivElement>();
   const [selectedTone, setSelectedTone] = createSignal<AiComposeTone>();
@@ -184,12 +182,12 @@ export const StyleTab = () => {
         )}
       </div>
       <Space amount='1rem' />
-      <AutoHeight ref={autoHeightRef} outerClass={styles.tabContent}>
+      <AutoHeight outerClass={styles.tabContent}>
         <TransitionGroup
           name='fade-2'
           moveClass='t-move-std'
           onBeforeExit={el => {
-            if(!(el instanceof HTMLElement) || !autoHeightRef) return;
+            if(!(el instanceof HTMLElement)) return;
             el.classList.add(styles.exit);
           }}
         >
