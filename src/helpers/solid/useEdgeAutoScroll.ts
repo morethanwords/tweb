@@ -6,14 +6,11 @@ export interface UseEdgeAutoScrollArgs {
   /** The scrollable container element. */
   container: Accessor<HTMLElement | null | undefined>;
   /**
-   * Distance (px) from the container edge where the activation zone *ends*
-   * (i.e. how far into the container the trigger reaches). Must be > outer.
+   * Distance (px) from the container edge towards the **inside** of the container to act as the activation zone (depending on `axis`).
    */
   innerThreshold: Accessor<number>;
   /**
-   * Distance (px) from the container edge where the activation zone *starts*.
-   * Use 0 to make the zone start exactly at the edge, or a negative value to
-   * also activate when the cursor is slightly outside the container.
+   * Distance (px) from the container edge towards the **outside** of the container to act as the activation zone (depending on `axis`).
    */
   outerThreshold: Accessor<number>;
   /** Which axis to scroll along. */
