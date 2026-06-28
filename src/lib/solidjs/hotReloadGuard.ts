@@ -1,6 +1,6 @@
 import {createContext, useContext} from 'solid-js';
 
-import AppMediaViewer from '@components/appMediaViewer';
+import AppMediaViewer, {onMediaCaptionClick} from '@components/appMediaViewer';
 import AppMediaViewerStatic from '@components/appMediaViewerStatic';
 import {AutonomousMonoforumThreadList} from '@components/autonomousDialogList/monoforumThreads';
 import {avatarNew, AvatarNewTsx, StoriesSegments} from '@components/avatarNew';
@@ -29,7 +29,6 @@ import PopupPremium from '@components/popups/premium';
 import PopupSendGift from '@components/popups/sendGift';
 import showStarsRatingPopup from '@components/popups/starsRating';
 import PopupToggleReadDate from '@components/popups/toggleReadDate';
-import showTranslatePopup from '@components/popups/translate';
 import {setQuizHint} from '@components/quizHint';
 import Row from '@components/rowTsx';
 import {AppSidebarLeft} from '@components/sidebarLeft';
@@ -100,7 +99,6 @@ export type SolidJSHotReloadGuardContextValue = {
   i18n: typeof i18n;
   join: typeof join;
   PopupElement: typeof PopupElement;
-  showTranslatePopup: typeof showTranslatePopup;
   PopupToggleReadDate: typeof PopupToggleReadDate;
   wrapSticker: typeof wrapSticker;
   wrapTopicNameButton: typeof wrapTopicNameButton;
@@ -134,6 +132,7 @@ export type SolidJSHotReloadGuardContextValue = {
   PhotoTsx: typeof PhotoTsx;
   Slideshow: typeof Slideshow;
   AppMediaViewer: typeof AppMediaViewer;
+  onMediaCaptionClick: typeof onMediaCaptionClick;
   formatDate: typeof formatDate;
   wrapFolderTitle: typeof wrapFolderTitle;
   ButtonMenu: typeof ButtonMenu;

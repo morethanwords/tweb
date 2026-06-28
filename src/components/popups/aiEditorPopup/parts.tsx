@@ -2,11 +2,9 @@ import {ButtonIconTsx} from '@components/buttonIconTsx';
 import {ButtonMenuItemOptions} from '@components/buttonMenu';
 import EmojiDocumentIcon from '@components/emojiDocumentIcon';
 import {IconTsx} from '@components/iconTsx';
-import {observeResize} from '@components/resizeObserver';
 import ripple from '@components/ripple';
 import Scrollable from '@components/scrollable2';
 import {Skeleton} from '@components/skeleton';
-import {StaticCheckbox} from '@components/staticCheckbox';
 import deferredPromise from '@helpers/cancellablePromise';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import anchorCallback from '@helpers/dom/anchorCallback';
@@ -17,17 +15,19 @@ import createMiddleware from '@helpers/solid/createMiddleware';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {requestRAF} from '@helpers/solid/requestRAF';
 import classNames from '@helpers/string/classNames';
-import {useIsCleaned} from '@hooks/useIsCleaned';
-import {AiComposeTone, MessageEntity, TextWithEntities} from '@layer';
+import {AiComposeTone} from '@layer';
 import {ComposeMessageWithAiArgs, ComposeMessageWithAiOkResultData} from '@lib/appManagers/aiTonesManager';
 import {LangPackKey} from '@lib/langPack';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {batch, children, createComputed, createEffect, createMemo, createReaction, createResource, createSignal, For, JSX, Match, onCleanup, onMount, ParentProps, Show, Switch} from 'solid-js';
+import {children, createComputed, createEffect, createMemo, createReaction, createResource, createSignal, For, JSX, Match, onCleanup, ParentProps, Show, Switch} from 'solid-js';
 import {Transition, TransitionGroup} from 'solid-transition-group';
+import {EmojifyCheckbox, previewStyles, processEntities} from '@components/popups/previewCard';
 import {usePopupContext} from '../indexTsx';
 import styles from './bodyContent.module.scss';
 import {useAiEditorPopupContext} from './context';
 import showCreateTonePopup from './createTonePopup';
+
+export {Divider, Original} from '@components/popups/previewCard';
 
 
 keepMe(ripple);
@@ -61,138 +61,6 @@ export const Tabs = <T, >(props: TabsProps<T>) => {
         )}</For>
       </div>
     </div>
-  );
-};
-
-const shouldBeCollapsibleFrom = 60;
-
-export const Original = (props: {
-  isAppearing: boolean;
-  text: TextWithEntities.textWithEntities;
-  onEmojify?: () => void
-  onMeasured?: () => void
-}) => {
-  const {wrapRichText} = useHotReloadGuard();
-
-  const [isCollapsed, setIsCollapsed] = createSignal(false);
-  const [originalContentHeight, setOriginalContentHeight] = createSignal<number>();
-  const [hasOnEmojifyRaffed, setHasOnEmojifyRaffed] = createSignal(!!props.onEmojify);
-
-  const isCollapsible = createMemo(() => originalContentHeight() > shouldBeCollapsibleFrom);
-  const isActuallyCollapsible = createMemo(() => isCollapsible() && !hasOnEmojifyRaffed());
-
-  const isActuallyCollapsed = createMemo(() => isCollapsed() && !props.onEmojify);
-
-  let originalContentRef: HTMLDivElement;
-  let originalScrollableRef: HTMLDivElement;
-
-  onMount(() => {
-    if(!originalContentRef) return;
-
-    // Note that the tab is in a <Transition mode='outin'>, which means the content is rendered, and then after some time is added into the DOM
-    // So we need to wait for a resize event to get the proper scrollHeight
-    const unobserve = observeResize(originalContentRef, () => {
-      batch(() => {
-        setOriginalContentHeight(originalContentRef.scrollHeight);
-        setIsCollapsed(isCollapsible());
-        props.onMeasured?.();
-      });
-
-      unobserve();
-    });
-
-    onCleanup(() => unobserve());
-  });
-
-  createComputed(() => {
-    if(!props.onEmojify) {
-      setHasOnEmojifyRaffed(false);
-      return
-    }
-
-    const isCleaned = useIsCleaned();
-
-    requestRAF(() => {
-      if(isCleaned()) return;
-      setHasOnEmojifyRaffed(true);
-    });
-  });
-
-  createEffect(() => {
-    if(!originalScrollableRef) return;
-    if(!isActuallyCollapsed()) return;
-    originalScrollableRef.scrollTo({top: 0});
-  });
-
-  return (
-    <>
-      <div
-        class={styles.originalHeader}
-        classList={{
-          [styles.clickable]: isActuallyCollapsible()
-        }}
-        use:ripple={isActuallyCollapsible()}
-        // #click1
-        onClick={() => isActuallyCollapsible() && setIsCollapsed(p => !p)}
-      >
-        <I18nTsx key='AiEditor.Original' />
-        <Transition name='fade-2'>
-          <Switch>
-            <Match when={props.onEmojify}>
-              <EmojifyCheckbox
-                class={styles.originalCheckbox}
-                checked={false}
-                onClick={() => {
-                  // we want this to trigger after the outer click handler #click1
-                  requestRAF(() => {
-                    props.onEmojify?.();
-                  });
-                }}
-              />
-            </Match>
-            <Match when={isActuallyCollapsible()}>
-              <div class={styles.originalArrow} classList={{[styles.toggled]: isActuallyCollapsed()}}>
-                <IconTsx icon='arrowhead' class={styles.originalArrowIcon} />
-              </div>
-            </Match>
-          </Switch>
-        </Transition>
-      </div>
-      <div
-        class={styles.originalContent}
-        classList={{
-          [styles.collapsible]: isCollapsible(),
-          [styles.collapsed]: isActuallyCollapsed()
-        }}
-        style={{'--original-content-height': originalContentHeight() + 'px'}}
-      >
-        <div ref={originalContentRef} class={styles.richText}>
-          <Scrollable
-            ref={originalScrollableRef}
-            class={styles.richTextScrollable}
-            relative
-            withBorders='manual'
-            hideThumb={isActuallyCollapsed()}
-          >
-            <div class={styles.richTextScrollableContent}>
-              {wrapRichText(props.text.text, {entities: processEntities(props.text.entities), middleware: createMiddleware().get()})}
-            </div>
-          </Scrollable>
-        </div>
-        <div
-          class={styles.originalOverlay}
-          classList={{
-            [styles.hasTransition]: !props.isAppearing
-          }}
-        />
-      </div>
-      <Show when={isCollapsible() && !isActuallyCollapsed()}>
-        <div
-          class={styles.originalFakeHeight}
-          style={{'--original-content-height': originalContentHeight() + 'px'}}
-        />
-      </Show>
-    </>
   );
 };
 
@@ -311,15 +179,15 @@ export const Result = (props: {
 
   return (
     <>
-      <div class={styles.resultHeader}>
-        <div class={styles.resultTitleWrapper}>
-          <Show when={props.overrideTitle} fallback={<I18nTsx key='AiEditor.Result' class={styles.resultTitle} />}>
+      <div class={previewStyles.resultHeader}>
+        <div class={previewStyles.resultTitleWrapper}>
+          <Show when={props.overrideTitle} fallback={<I18nTsx key='AiEditor.Result' class={previewStyles.resultTitle} />}>
             {props.overrideTitle}
           </Show>
           <ButtonIconTsx
-            class={styles.copyButton}
+            class={previewStyles.copyButton}
             classList={{
-              [styles.hidden]: composedMessage.state !== 'ready'
+              [previewStyles.hidden]: composedMessage.state !== 'ready'
             }}
             icon='copy'
             onClick={onCopyClick}
@@ -329,13 +197,13 @@ export const Result = (props: {
           <EmojifyCheckbox checked={props.emojify} onClick={props.onEmojify} />
         </Show>
       </div>
-      <div class={styles.resultContent}>
+      <div class={previewStyles.resultContent}>
         <Transition name='fade-2' mode='outin'>
           <Switch>
             <Match when={textToRender()} keyed>
               {(text) => (
-                <Scrollable ref={scrollableRef} relative class={styles.richTextScrollable} withBorders='manual'>
-                  <div class={styles.richTextScrollableContent}>
+                <Scrollable ref={scrollableRef} relative class={previewStyles.richTextScrollable} withBorders='manual'>
+                  <div class={classNames(previewStyles.richTextScrollableContent, previewStyles.nonInteractive)}>
                     {wrapRichText(text.text, {entities: processEntities(text.entities), middleware: createMiddleware().get()})}
                   </div>
                 </Scrollable>
@@ -345,7 +213,7 @@ export const Result = (props: {
               <ResultSkeleton height={skeletonHeight()} />
             </Match>
             <Match when>
-              <div class={styles.error}>
+              <div class={previewStyles.error}>
                 <Show when={isPremiumFloodError()} fallback={<I18nTsx key='AiEditor.ComposeError' />}>
                   <I18nTsx
                     key='AiEditor.PremiumFlood'
@@ -369,27 +237,10 @@ export const Result = (props: {
 const ResultSkeleton = (props: {height?: number}) => {
   return (
     <Skeleton.Div
-      class={styles.resultSkeleton}
+      class={previewStyles.resultSkeleton}
       secondary
       style={props.height ? {height: props.height + 'px'} : undefined}
     />
-  );
-};
-
-export const Divider = () => {
-  return <div class={styles.divider}></div>;
-};
-
-const EmojifyCheckbox = (props: {
-  class?: string;
-  checked: boolean;
-  onClick: () => void;
-}) => {
-  return (
-    <div class={classNames(styles.emojifyCheckbox, props.class)} onClick={props.onClick} use:ripple>
-      <StaticCheckbox round checked={props.checked} />
-      <I18nTsx key='AiEditor.Emojify' />
-    </div>
   );
 };
 
@@ -526,12 +377,4 @@ export const useTransitionGroupWhenMeasured = () => {
     Wrapper,
     onMeasured: () => setMeasured(true)
   }
-};
-
-/** Make quotes uncollapsible for previewing */
-const processEntities = (entities: MessageEntity[]) => {
-  return entities.map(entity => entity._ === 'messageEntityBlockquote' ? ({
-    ...entity,
-    pFlags: {...entity.pFlags, collapsed: undefined as undefined}
-  }) : entity);
 };

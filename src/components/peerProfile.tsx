@@ -922,7 +922,7 @@ PeerProfile.Location = () => {
 
 PeerProfile.Bio = () => {
   const context = useContext(PeerProfileContext);
-  const {i18n, PopupPremium, showTranslatePopup, I18n, wrapRichText, toast} = useHotReloadGuard();
+  const {i18n, PopupPremium, HotReloadGuard, I18n, wrapRichText, toast} = useHotReloadGuard();
   const appConfig = useAppConfig();
   const peerTranslation = usePeerTranslation(context.peerId);
 
@@ -970,7 +970,8 @@ PeerProfile.Bio = () => {
               if(!peerTranslation.canTranslate(true)) {
                 PopupPremium.show({feature: 'translations'});
               } else {
-                showTranslatePopup({
+                const {openTranslatePopup} = await import('@components/popups/translate');
+                openTranslatePopup({
                   peerId: context.peerId,
                   textWithEntities: {
                     _: 'textWithEntities',
@@ -978,7 +979,7 @@ PeerProfile.Bio = () => {
                     entities: []
                   },
                   detectedLanguage: await bioLanguagePromise()
-                });
+                }, HotReloadGuard);
               }
             },
             verify: async() => !!(await bioLanguagePromise())

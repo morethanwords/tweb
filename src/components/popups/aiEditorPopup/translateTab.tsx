@@ -7,6 +7,7 @@ import {createSignal} from 'solid-js';
 import styles from './bodyContent.module.scss';
 import {useAiEditorPopupContext} from './context';
 import {Divider, Original, Result, useTransitionGroupWhenMeasured} from './parts';
+import {previewStyles} from '@components/popups/previewCard';
 
 
 keepMe(ripple);
@@ -39,10 +40,10 @@ export const TranslateTab = (props: {
           isAppearing={props.isAppearing}
           overrideTitle={
             <I18nTsx
-              class={styles.resultTitle}
+              class={previewStyles.resultTitle}
               key='AiEditor.TranslateTo'
               args={[
-                <span class={styles.resultLanguage} use:ripple onClick={onLanguageClick}>
+                <span class={previewStyles.resultLanguage} use:ripple onClick={onLanguageClick}>
                   <I18nTsx key={`Language.${language()}`} />
                 </span>
               ]}
