@@ -100,7 +100,6 @@ export function TranslatePopupBodyContent(props: {
               name='fade-2'
               moveClass='t-move-std'
               onBeforeExit={el => {
-                if(!(el instanceof HTMLElement)) return;
                 el.classList.add(styles.exit);
               }}
             >
