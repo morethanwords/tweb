@@ -8,15 +8,15 @@ import Space from '@components/space';
 import {keepMe} from '@helpers/keepMe';
 import debounce from '@helpers/schedulers/debounce';
 import {I18nTsx} from '@helpers/solid/i18n';
+import {requestRAF} from '@helpers/solid/requestRAF';
 import {useObserveResize} from '@hooks/useObserveResize';
 import {TextWithEntities} from '@layer';
-import {WrapRichTextOptions} from '@lib/richTextProcessor/wrapRichText';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {createSignal, onCleanup, untrack, useContext} from 'solid-js';
+import {createSignal, onCleanup, useContext} from 'solid-js';
 import {TransitionGroup} from 'solid-transition-group';
+import styles from './bodyContent.module.scss';
 import type {TranslatePopupOptions} from './index';
 import {Result} from './parts';
-import styles from './bodyContent.module.scss';
 
 
 keepMe(ripple);
@@ -32,9 +32,10 @@ export function TranslatePopupBodyContent(props: {
   const {usePeerTranslation, pickLanguage, onMediaCaptionClick} = useHotReloadGuard();
 
   const context = useContext(PopupContext);
-  const middleware = untrack(() => context.middlewareHelper).get();
 
   const peerTranslation = usePeerTranslation(options.peerId);
+
+  const [isAppearing, setIsAppearing] = createSignal(true);
 
   let originalTextWithEntities: TextWithEntities = options.textWithEntities;
   if(options.message) {
@@ -44,11 +45,6 @@ export function TranslatePopupBodyContent(props: {
       entities: options.message.totalEntities
     };
   }
-
-  const richTextOptions: WrapRichTextOptions = {
-    middleware,
-    textColor: 'primary-text-color'
-  };
 
   // Closes the popup when a media-caption part (e.g. a spoiler-wrapped media link)
   // is clicked, deferring the actual navigation until after the close animation.
@@ -110,17 +106,17 @@ export function TranslatePopupBodyContent(props: {
                     args={[<I18nTsx key={`Language.${options.detectedLanguage}`} />]}
                   />
                 }
-                text={originalTextWithEntities as TextWithEntities.textWithEntities}
-                richTextOptions={richTextOptions}
+                text={originalTextWithEntities}
                 interactive
                 wireContent={wireCaptionClick}
+                isAppearing={isAppearing()}
+                onMeasured={() => requestRAF(() => setIsAppearing(false))}
               />
               <Divider />
               <Result
                 message={options.message}
                 textWithEntities={options.textWithEntities}
-                language={() => peerTranslation.language()}
-                richTextOptions={richTextOptions}
+                language={peerTranslation.language()}
                 wireCaptionClick={wireCaptionClick}
                 title={
                   <I18nTsx

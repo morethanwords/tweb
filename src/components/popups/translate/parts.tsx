@@ -5,6 +5,7 @@ import {Skeleton} from '@components/skeleton';
 import {toastNew} from '@components/toast';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import prepareTextWithEntitiesForCopying from '@helpers/prepareTextWithEntitiesForCopying';
+import createMiddleware from '@helpers/solid/createMiddleware';
 import {I18nTsx} from '@helpers/solid/i18n';
 import classNames from '@helpers/string/classNames';
 import {Message, TextWithEntities} from '@layer';
@@ -27,15 +28,14 @@ const ResultSkeleton = (props: {height?: number}) => {
 export const Result = (props: {
   title: JSX.Element;
   /** Reactive target language; refetches the translation when it changes */
-  language: () => TranslatableLanguageISO;
+  language: TranslatableLanguageISO;
   message?: Message.message;
   textWithEntities?: TextWithEntities;
-  richTextOptions?: Partial<WrapRichTextOptions>;
   wireCaptionClick?: (div: HTMLElement) => void;
 }) => {
   const {rootScope, wrapRichText} = useHotReloadGuard();
 
-  const [translation] = createResource(props.language, (lang) =>
+  const [translation] = createResource(() => props.language, (lang) =>
     rootScope.managers.appTranslationsManager.translateText({
       ...(props.message ? {peerId: props.message.peerId, mid: props.message.mid} : {text: props.textWithEntities}),
       lang
@@ -90,7 +90,7 @@ export const Result = (props: {
                     dir='auto'
                     ref={(el) => props.wireCaptionClick?.(el)}
                   >
-                    {wrapRichText(text.text, {...props.richTextOptions, entities: text.entities})}
+                    {wrapRichText(text.text, {textColor: 'primary-text-color', middleware: createMiddleware().get(), entities: text.entities})}
                   </div>
                 </Scrollable>
               )}

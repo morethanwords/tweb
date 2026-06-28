@@ -35,7 +35,6 @@ export const Original = (props: {
   text: TextWithEntities.textWithEntities;
   /** Defaults to the "Original" label */
   title?: JSX.Element;
-  richTextOptions?: Partial<WrapRichTextOptions>;
   /** When true the rendered text stays interactive (links/spoilers clickable) */
   interactive?: boolean;
   isAppearing?: boolean;
@@ -91,8 +90,7 @@ export const Original = (props: {
   });
 
   createEffect(() => {
-    if(!originalScrollableRef) return;
-    if(!isActuallyCollapsed()) return;
+    if(!isActuallyCollapsed() || !originalScrollableRef) return;
     originalScrollableRef.scrollTo({top: 0});
   });
 
@@ -158,9 +156,9 @@ export const Original = (props: {
               ref={(el) => props.wireContent?.(el)}
             >
               {wrapRichText(props.text.text, {
-                ...props.richTextOptions,
+                textColor: 'primary-text-color',
                 entities: processEntities(props.text.entities),
-                middleware: props.richTextOptions?.middleware ?? createMiddleware().get()
+                middleware: createMiddleware().get()
               })}
             </div>
           </Scrollable>
