@@ -11,6 +11,7 @@ import {resolveFirst} from '@solid-primitives/refs';
 import {LocalTextWithEntities} from '@types';
 import {Accessor, createEffect, createMemo, createSignal, onCleanup} from 'solid-js';
 import type ChatInput from '../input';
+import {ChatType} from '../chatType';
 import namedPromises from '@helpers/namedPromises';
 
 export const defaultShouldShowFromHeight = 72;
@@ -100,8 +101,16 @@ const createAiEditorButton = ({instance, inputField, appendTo, onApply, class: c
           ...trimRichText(value, entities)
         },
         onApply,
-        onSend: !instance.chat.starsAmount && !instance.editMsgId && canSend ? async(text) => {
-          const sendingParams = instance.chat.getMessageSendingParams();
+        canSendWhenOnline: instance.canSendWhenOnline,
+        isScheduled: instance.chat.type === ChatType.Scheduled,
+        onSend: !instance.chat.starsAmount && !instance.editMsgId && canSend ? async(text, options) => {
+          const sendingParams = {
+            ...instance.chat.getMessageSendingParams(),
+            ...(options?.silent && {silent: true}),
+            ...(options?.scheduleDate && {scheduleDate: options.scheduleDate}),
+            ...(options?.scheduleRepeatPeriod && {scheduleRepeatPeriod: options.scheduleRepeatPeriod}),
+            ...(options?.effect && {effect: options.effect})
+          };
 
           const result = await instance.Class.sendMessageWithForward({
             text,

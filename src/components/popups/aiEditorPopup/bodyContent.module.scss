@@ -445,6 +445,10 @@
   padding: 0 var(--section-padding-inline);
   display: flex;
   gap: 0.5rem;
+
+  :global(.c-ripple) {
+    border-radius: inherit;
+  }
 }
 
 .applyButton {
@@ -452,8 +456,23 @@
   border-radius: 100px;
 }
 
-.sendButton {
+.sendButtonWrapper {
+  position: relative;
   flex: 64px 0;
+  display: flex;
+
+  :global(.menu-send) {
+    inset-block: auto calc(100% + 0.5rem);
+    inset-inline: auto 0;
+  }
+
+  :global(.btn-send-effect-container) {
+    bottom: -0.25rem;
+  }
+}
+
+.sendButton {
+  flex: 1;
   border-radius: 100px;
   display: flex;
   align-items: center;
