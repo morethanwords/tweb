@@ -191,7 +191,7 @@ const ViewTonePopup = (props: ViewTonePopupProps) => {
             {(installsCount) => (
               <div class={styles.note}>
                 <I18nTsx
-                  key="AiEditor.ViewStyle.InstallsCount"
+                  key="AiEditor.ViewStyle.InstallsCountCreatedByYou"
                   args={[installsCount.toString()]}
                 />
               </div>

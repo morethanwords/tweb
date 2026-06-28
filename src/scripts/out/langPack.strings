@@ -4215,8 +4215,8 @@
 "AiEditor.ViewStyle.AnotherExample" = "Another Example";
 "AiEditor.ViewStyle.Before" = "Before";
 "AiEditor.ViewStyle.After" = "After";
-"AiEditor.ViewStyle.InstallsCount_one" = "Used by %d person.";
-"AiEditor.ViewStyle.InstallsCount_other" = "Used by %d people.";
+"AiEditor.ViewStyle.InstallsCountCreatedByYou_one" = "Used by %d person. Created by you.";
+"AiEditor.ViewStyle.InstallsCountCreatedByYou_other" = "Used by %d people. Created by you.";
 "AiEditor.ViewStyle.CreatedBy" = "Created by %s";
 "AiEditor.ViewStyle.SaveStyle" = "Save Style";
 "AiEditor.ViewStyle.RemoveStyle" = "Remove Style";

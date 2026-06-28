@@ -4833,9 +4833,9 @@ const lang = {
   'AiEditor.ViewStyle.AnotherExample': 'Another Example',
   'AiEditor.ViewStyle.Before': 'Before',
   'AiEditor.ViewStyle.After': 'After',
-  'AiEditor.ViewStyle.InstallsCount': {
-    'one_value': 'Used by %d person.',
-    'other_value': 'Used by %d people.'
+  'AiEditor.ViewStyle.InstallsCountCreatedByYou': {
+    'one_value': 'Used by %d person. Created by you.',
+    'other_value': 'Used by %d people. Created by you.'
   },
   'AiEditor.ViewStyle.CreatedBy': 'Created by %s',
   'AiEditor.ViewStyle.SaveStyle': 'Save Style',
