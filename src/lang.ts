@@ -205,6 +205,8 @@ const lang = {
   'Crm.Ticket.Opened': 'Ticket #%1$d opened',
   'Crm.Ticket.Closed': 'Ticket #%1$d closed',
   'Crm.Ticket.Reopened': 'Ticket #%1$d reopened',
+  'Crm.SessionExpired': 'CRM session expired',
+  'Crm.Login': 'Log In',
   'KeyboardShortcuts.Caption': 'Shortcuts shown for your platform.',
   'KeyboardShortcuts.Section.Formatting': 'Text Formatting',
   'KeyboardShortcuts.Section.Formatting.Caption': 'Select text in the chat input to apply formatting.',

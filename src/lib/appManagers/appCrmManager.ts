@@ -110,6 +110,13 @@ export default class AppCrmManager extends AppManager {
       const error = new Error(serverMessage || ('CRM_HTTP_' + response.status)) as Error & {status: number, serverMessage?: string};
       error.status = response.status;
       error.serverMessage = serverMessage;
+      if(response.status === 401) {
+        this.config.token = '';
+        this.config.user = undefined;
+        this.config.enabled = false;
+        this.persist();
+        this.rootScope.dispatchEvent('crm_auth_required');
+      }
       throw error;
     }
 

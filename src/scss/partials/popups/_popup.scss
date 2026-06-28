@@ -366,3 +366,21 @@
     margin-bottom: 0.5rem;
   }
 }
+
+.popup-crm-login {
+  .popup-crm-login-caption {
+    margin: 0 0 1.25rem;
+    font-size: var(--font-size-14);
+    color: var(--secondary-text-color);
+    line-height: 1.4;
+  }
+
+  .input-field {
+    margin-bottom: 1rem;
+  }
+
+  .btn-primary {
+    margin-top: 0.5rem;
+    width: 100%;
+  }
+}

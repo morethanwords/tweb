@@ -3,6 +3,7 @@ import loadFonts from '@helpers/dom/loadFonts';
 import {doubleRaf} from '@helpers/schedulers';
 import isNativeVoiceRecorderSupported from '@helpers/voiceRecorder/isNativeSupported';
 import rootScope from '@lib/rootScope';
+import {showCrmLoginIfNeeded} from '@components/popups/crmLogin';
 
 import {disposeActiveAuthFlow} from '@/pages/mountAuthFlow';
 
@@ -59,6 +60,13 @@ export async function bootstrapIm(): Promise<void> {
   // and the transform/opacity jump is instant.
   await doubleRaf();
   document.body.classList.remove('has-auth-pages');
+
+  // Show the CRM login popup if this agent hasn't connected yet (or their token
+  // expired). Fire-and-forget: we don't block the IM boot on it. Also wire up
+  // the global crm_auth_required listener here — it's the single place that runs
+  // once after the user is signed into Telegram.
+  showCrmLoginIfNeeded();
+  rootScope.addEventListener('crm_auth_required', showCrmLoginIfNeeded);
 
   // Tear down the auth UI 1s after IM appears — same delay the legacy
   // `pageIm.onFirstMount` used so the cross-fade looks right.

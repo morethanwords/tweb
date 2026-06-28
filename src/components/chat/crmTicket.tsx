@@ -10,6 +10,7 @@ import type ChatTopbar from '@components/chat/topbar';
 import TopbarPlate, {createTopbarPlate, TopbarPlateController} from '@components/chat/topbarPlate';
 import {CrmTicketEvent, CrmTicketRef} from '@lib/crm/types';
 import crmRealtime from '@lib/crm/crmRealtime';
+import {showCrmLoginIfNeeded} from '@components/popups/crmLogin';
 
 const className = 'crm-ticket';
 
@@ -21,25 +22,43 @@ export type ChatCrmTicketPlate = TopbarPlateController & {
 function CrmTicketPlateBody(props: {
   ticket: Accessor<CrmTicketRef | undefined>,
   busy: Accessor<boolean>,
-  onClose: () => void
+  reconnectNeeded: Accessor<boolean>,
+  onClose: () => void,
+  onReconnect: () => void
 }) {
   return (
-    <Show when={props.ticket()}>
-      {(ticket) => (
+    <Show
+      when={!props.reconnectNeeded()}
+      fallback={
         <div class={'pinned-' + className + '-content'}>
           <div class={'pinned-' + className + '-info'}>
             <div class={'pinned-' + className + '-title'}>
-              {i18n('Crm.Ticket.Title', [ticket().id])}
-            </div>
-            <div class={'pinned-' + className + '-subtitle'}>
-              {i18n('Crm.Ticket.StatusOpen')}
+              {i18n('Crm.SessionExpired')}
             </div>
           </div>
-          <TopbarPlate.PrimaryButton onClick={() => !props.busy() && props.onClose()}>
-            {i18n('Crm.Ticket.Close')}
+          <TopbarPlate.PrimaryButton onClick={props.onReconnect}>
+            {i18n('Crm.Login')}
           </TopbarPlate.PrimaryButton>
         </div>
-      )}
+      }
+    >
+      <Show when={props.ticket()}>
+        {(ticket) => (
+          <div class={'pinned-' + className + '-content'}>
+            <div class={'pinned-' + className + '-info'}>
+              <div class={'pinned-' + className + '-title'}>
+                {i18n('Crm.Ticket.Title', [ticket().id])}
+              </div>
+              <div class={'pinned-' + className + '-subtitle'}>
+                {i18n('Crm.Ticket.StatusOpen')}
+              </div>
+            </div>
+            <TopbarPlate.PrimaryButton onClick={() => !props.busy() && props.onClose()}>
+              {i18n('Crm.Ticket.Close')}
+            </TopbarPlate.PrimaryButton>
+          </div>
+        )}
+      </Show>
     </Show>
   );
 }
@@ -51,29 +70,42 @@ export default function createChatCrmTicketPlate(
 ): ChatCrmTicketPlate {
   const [ticket, setTicket] = createSignal<CrmTicketRef | undefined>();
   const [busy, setBusy] = createSignal(false);
+  const [reconnectNeeded, setReconnectNeeded] = createSignal(false);
 
   // Token to discard responses for a peer the user already navigated away from.
   let currentPeerId: PeerId;
+
+  const openCrmLogin = () => showCrmLoginIfNeeded();
 
   const plate = createTopbarPlate({
     modifier: className,
     height: 52,
     onVisibilityChange: () => topbar.setFloating(),
-    render: () => <CrmTicketPlateBody ticket={ticket} busy={busy} onClose={() => closeTicket()} />
+    render: () => (
+      <CrmTicketPlateBody
+        ticket={ticket}
+        busy={busy}
+        reconnectNeeded={reconnectNeeded}
+        onClose={() => closeTicket()}
+        onReconnect={openCrmLogin}
+      />
+    )
   });
 
   const hide = () => {
     plate.setHidden(true);
     setTicket(undefined);
+    setReconnectNeeded(false);
   };
 
   // Reflect a ticket: the bar shows ONLY for an open ticket (a closed ticket is
   // terminal in this CRM — the next message opens a NEW ticket). Always emit the
   // event so the timeline dividers stay in sync, even when the bar is hidden.
+  // Never override plate visibility when the reconnect bar is showing.
   const apply = (peerId: PeerId, found?: CrmTicketRef) => {
     if(peerId !== currentPeerId) return;
     setTicket(found);
-    plate.setHidden(!found || found.status !== 'open');
+    if(!reconnectNeeded()) plate.setHidden(!found || found.status !== 'open');
     rootScope.dispatchEvent('crm_ticket_update', {peerId, ticket: found});
   };
 
@@ -99,12 +131,22 @@ export default function createChatCrmTicketPlate(
       return;
     }
 
-    // Realtime push for live messages (near-instant labels); REST backfill for
-    // history. Both feed bubbles.ts. Subscribe is idempotent across peer changes.
-    crmRealtime.subscribePeer(peerId, '' + peerId.toUserId());
-    managers.appCrmManager.getAttributionsByTelegram('' + peerId.toUserId()).then((attributions) => {
+    // Check connection first. If the token is absent or expired the manager methods
+    // return empty results silently — we need to surface the reconnect bar instead.
+    managers.appCrmManager.isConnected().then((connected) => {
       if(peerId !== currentPeerId) return;
-      rootScope.dispatchEvent('crm_attributions_update', {peerId, attributions});
+      if(!connected) {
+        setReconnectNeeded(true);
+        plate.setHidden(false);
+        return;
+      }
+      // Realtime push for live messages (near-instant labels); REST backfill for
+      // history. Both feed bubbles.ts. Subscribe is idempotent across peer changes.
+      crmRealtime.subscribePeer(peerId, '' + peerId.toUserId());
+      managers.appCrmManager.getAttributionsByTelegram('' + peerId.toUserId()).then((attributions) => {
+        if(peerId !== currentPeerId) return;
+        rootScope.dispatchEvent('crm_attributions_update', {peerId, attributions});
+      });
     });
   };
 
@@ -167,9 +209,29 @@ export default function createChatCrmTicketPlate(
     maybeClaim(message.peerId);
     attributeOutbound(message);
   };
+  // When a CRM request returns 401 mid-session (token expired), surface the
+  // reconnect bar immediately without waiting for the next peer switch.
+  const onAuthRequired = () => {
+    if(!currentPeerId?.isUser()) return;
+    setReconnectNeeded(true);
+    plate.setHidden(false);
+  };
+
+  // When the agent logs in (or out) in the CRM settings, re-evaluate the current
+  // peer so attributions and the ticket load (or the reconnect bar appears again).
+  const onConfigUpdate = () => {
+    if(!currentPeerId?.isUser()) return;
+    setReconnectNeeded(false);
+    hide();
+    load(currentPeerId);
+    loadAttributions(currentPeerId);
+  };
+
   rootScope.addEventListener('history_multiappend', onChatMessage);
   rootScope.addEventListener('message_sent', onChatMessage);
   rootScope.addEventListener('message_sent', onMessageSent);
+  rootScope.addEventListener('crm_auth_required', onAuthRequired);
+  rootScope.addEventListener('crm_config_update', onConfigUpdate);
 
   // The only lifecycle action from tweb is closing. Reopening is intentionally
   // not offered — a closed ticket stays closed; new messages create new tickets.
@@ -199,6 +261,8 @@ export default function createChatCrmTicketPlate(
       rootScope.removeEventListener('history_multiappend', onChatMessage);
       rootScope.removeEventListener('message_sent', onChatMessage);
       rootScope.removeEventListener('message_sent', onMessageSent);
+      rootScope.removeEventListener('crm_auth_required', onAuthRequired);
+      rootScope.removeEventListener('crm_config_update', onConfigUpdate);
       crmRealtime.leave();
       plate.destroy();
     }

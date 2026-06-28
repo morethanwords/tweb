@@ -45,7 +45,7 @@ registerProcessor('voice-capture-processor', VoiceCaptureProcessor);
 const WORKLET_PROCESSOR_NAME = 'voice-capture-processor';
 const WORKLET_BUFFER_SIZE = 2048;
 const ENCODER_SAMPLE_RATE = 48000;
-const DEFAULT_BITRATE = 32000;
+const DEFAULT_BITRATE = 64000;
 const DEFAULT_FRAME_DURATION_US = 20000;
 const DEFAULT_OPUS_FRAME_SAMPLES = (DEFAULT_FRAME_DURATION_US * ENCODER_SAMPLE_RATE) / 1_000_000;
 
