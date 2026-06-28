@@ -277,7 +277,7 @@
   z-index: 1;
 }
 
-.resultScrollable, .originalScrollable {
+.richTextScrollable {
   max-height: 160px;
   --mask-padding: 0.75rem;
 
@@ -295,6 +295,17 @@
 
   &Content {
     padding-right: 0.5rem;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    pointer-events: none;
+
+    :global(.monospace-text) {
+      color: var(--primary-color);
+    }
+
+    :global(.spoiler-text) {
+      opacity: 0.25;
+    }
   }
 }
 
@@ -428,11 +439,6 @@
       width: calc(var(--tone-width) - 2.5rem);
     }
   }
-}
-
-.richText {
-  white-space: pre-wrap;
-  word-wrap: break-word;
 }
 
 .footerButtons {

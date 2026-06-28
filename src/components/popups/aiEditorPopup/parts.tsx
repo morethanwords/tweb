@@ -169,13 +169,13 @@ export const Original = (props: {
         <div ref={originalContentRef} class={styles.richText}>
           <Scrollable
             ref={originalScrollableRef}
-            class={styles.originalScrollable}
+            class={styles.richTextScrollable}
             relative
             withBorders='manual'
             hideThumb={isActuallyCollapsed()}
           >
-            <div class={styles.originalScrollableContent}>
-              {wrapRichText(props.text.text, {entities: filterEntities(props.text.entities), middleware: createMiddleware().get()})}
+            <div class={styles.richTextScrollableContent}>
+              {wrapRichText(props.text.text, {entities: processEntities(props.text.entities), middleware: createMiddleware().get()})}
             </div>
           </Scrollable>
         </div>
@@ -334,9 +334,9 @@ export const Result = (props: {
           <Switch>
             <Match when={textToRender()} keyed>
               {(text) => (
-                <Scrollable ref={scrollableRef} relative class={classNames(styles.resultScrollable, styles.richText)} withBorders='manual'>
-                  <div class={styles.resultScrollableContent}>
-                    {wrapRichText(text.text, {entities: filterEntities(text.entities), middleware: createMiddleware().get()})}
+                <Scrollable ref={scrollableRef} relative class={styles.richTextScrollable} withBorders='manual'>
+                  <div class={styles.richTextScrollableContent}>
+                    {wrapRichText(text.text, {entities: processEntities(text.entities), middleware: createMiddleware().get()})}
                   </div>
                 </Scrollable>
               )}
@@ -528,19 +528,9 @@ export const useTransitionGroupWhenMeasured = () => {
   }
 };
 
-/** Do not render possibly dangerous URLs, hashtags, make quotes uncollapsible */
-const filterEntities = (entities: MessageEntity[]) => {
-  return entities
-  .filter(entity =>
-    entity._ !== 'messageEntityUrl' &&
-    entity._ !== 'messageEntityTextUrl' &&
-    entity._ !== 'messageEntityAnchor' &&
-    entity._ !== 'messageEntityMention' &&
-    entity._ !== 'messageEntityMentionName' &&
-    entity._ !== 'messageEntityHashtag' &&
-    entity._ !== 'messageEntityCashtag'
-  )
-  .map(entity => entity._ === 'messageEntityBlockquote' ? ({
+/** Make quotes uncollapsible for previewing */
+const processEntities = (entities: MessageEntity[]) => {
+  return entities.map(entity => entity._ === 'messageEntityBlockquote' ? ({
     ...entity,
     pFlags: {...entity.pFlags, collapsed: undefined as undefined}
   }) : entity);
