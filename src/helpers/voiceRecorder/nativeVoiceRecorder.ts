@@ -107,7 +107,17 @@ export default class NativeVoiceRecorder {
     // Reuse the call stack's getUserMedia chokepoint: if the selected mic is
     // gone it strips the deviceId, clears the stale appSettings.callDevices.
     // microphoneId and retries on the OS default — same self-healing as calls.
-    this.stream = await getStream({audio: this.config.mediaTrackConstraints});
+    const audioConstraints: MediaTrackConstraints = typeof this.config.mediaTrackConstraints === 'object' ?
+      this.config.mediaTrackConstraints :
+      {};
+    this.stream = await getStream({
+      audio: {
+        ...audioConstraints,
+        noiseSuppression: false,
+        echoCancellation: false,
+        autoGainControl: false
+      }
+    });
 
     this.audioContext = new AudioContext({sampleRate: this.config.encoderSampleRate});
     this.sourceNode = this.audioContext.createMediaStreamSource(this.stream);
