@@ -57,7 +57,7 @@ export const Result = (props: {
     if(translation.state !== 'ready') return;
     const {text, html} = prepareTextWithEntitiesForCopying(translation());
     try {
-      await copyTextToClipboard(text, html);
+      await copyTextToClipboard(text, html, {rethrow: true});
       toastNew({langPackKey: 'TextCopied'});
     } catch{
       toastNew({langPackKey: 'TextCopyFailed'});

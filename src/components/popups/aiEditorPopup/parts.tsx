@@ -166,7 +166,7 @@ export const Result = (props: {
     if(composedMessage.state !== 'ready') return;
     const {text, html} = prepareTextWithEntitiesForCopying(composedMessage().resultText);
     try {
-      await copyTextToClipboard(text, html);
+      await copyTextToClipboard(text, html, {rethrow: true});
       toastNew({
         langPackKey: 'TextCopied'
       });
