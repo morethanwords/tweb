@@ -45,7 +45,7 @@ registerProcessor('voice-capture-processor', VoiceCaptureProcessor);
 const WORKLET_PROCESSOR_NAME = 'voice-capture-processor';
 const WORKLET_BUFFER_SIZE = 2048;
 const ENCODER_SAMPLE_RATE = 48000;
-const DEFAULT_BITRATE = 64000;
+const DEFAULT_BITRATE = 96000;
 const DEFAULT_FRAME_DURATION_US = 20000;
 const DEFAULT_OPUS_FRAME_SAMPLES = (DEFAULT_FRAME_DURATION_US * ENCODER_SAMPLE_RATE) / 1_000_000;
 
@@ -107,9 +107,7 @@ export default class NativeVoiceRecorder {
     // Reuse the call stack's getUserMedia chokepoint: if the selected mic is
     // gone it strips the deviceId, clears the stale appSettings.callDevices.
     // microphoneId and retries on the OS default — same self-healing as calls.
-    const audioConstraints: MediaTrackConstraints = typeof this.config.mediaTrackConstraints === 'object' ?
-      this.config.mediaTrackConstraints :
-      {};
+    const audioConstraints: MediaTrackConstraints = typeof this.config.mediaTrackConstraints === 'object' ? this.config.mediaTrackConstraints : {};
     this.stream = await getStream({
       audio: {
         ...audioConstraints,
