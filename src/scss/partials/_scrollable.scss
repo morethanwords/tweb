@@ -55,6 +55,11 @@ html.custom-scroll {
   .scrollable-thumb.is-focused {
     opacity: 1;
   }
+
+  .scrollable-thumb--hidden {
+    transition: none !important;
+    opacity: 0 !important;
+  }
 }
 
 .scrollable-x::-webkit-scrollbar,

@@ -1,0 +1,55 @@
+.bodyContent {
+  padding: 0 0 1rem;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  flex: 1;
+  overflow: hidden;
+}
+
+.scrollable {
+  --scrollable-padding: 0.25rem;
+  flex: 1;
+  padding: 0 var(--scrollable-padding);
+
+  &Content {
+    padding: 0 calc(var(--section-padding-inline) - var(--scrollable-padding)) 0.5rem;
+    position: relative;
+  }
+}
+
+.card {
+  background-color: var(--surface-color);
+  border-radius: 24px;
+  overflow: hidden;
+  position: relative;
+
+  // A bit taller than the AI editor's 160px since the translate popup has no other elements
+  --preview-scrollable-max-height: 200px;
+
+  --content-padding-y: 0.5rem;
+  --content-padding-x: 1rem;
+
+  --original-extra-height: 1.25rem;
+  --original-padding-bottom: 0.75rem;
+  --original-collapsed-height: calc(1lh + var(--original-extra-height));
+}
+
+.exit {
+  position: absolute;
+}
+
+.footerButtons {
+  padding: 0 var(--section-padding-inline);
+  display: flex;
+  gap: 0.5rem;
+
+  :global(.c-ripple) {
+    border-radius: inherit;
+  }
+}
+
+.okButton {
+  flex: 1;
+  border-radius: 100px;
+}

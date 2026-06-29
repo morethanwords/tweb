@@ -9,12 +9,22 @@ import {AiEditorPopupBodyContent} from './bodyContent';
 import {AiEditorPopupContext, AiEditorPopupContextValue} from './context';
 
 
+export type AiEditorSendOptions = {
+  silent?: boolean;
+  scheduleDate?: number;
+  scheduleRepeatPeriod?: number;
+  effect?: DocId;
+};
+
 export type AiEditorPopupProps = {
   peerId: PeerId;
   text: TextWithEntities.textWithEntities;
   initialTones?: AiComposeTone[];
   onApply: (text: LocalTextWithEntities) => void;
-  onSend?: (text: LocalTextWithEntities) => void;
+  onSend?: (text: LocalTextWithEntities, options?: AiEditorSendOptions) => void;
+  canSendWhenOnline?: () => boolean | Promise<boolean>;
+  /** When true, sending always opens the schedule popup and the send context menu is hidden */
+  isScheduled?: boolean;
 };
 
 const AiEditorPopup = (props: AiEditorPopupProps) => {
@@ -28,8 +38,8 @@ const AiEditorPopup = (props: AiEditorPopupProps) => {
       props.onApply(...args);
       setShow(false);
     },
-    onSend: props.onSend ? (...args) => {
-      props.onSend(...args);
+    onSend: props.onSend ? (text, options) => {
+      props.onSend(text, options);
       setShow(false);
     } : undefined,
     resultTextSignal: createSignal<TextWithEntities>()

@@ -57,7 +57,7 @@ import rootScope from '@lib/rootScope';
 import ReactionElement from '@components/chat/reaction';
 import InputField from '@components/inputField';
 import getMainGroupedMessage from '@appManagers/utils/messages/getMainGroupedMessage';
-import showTranslatePopup from '@components/popups/translate';
+import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import getRichSelection from '@helpers/dom/getRichSelection';
 import detectLanguageForTranslation from '@helpers/detectLanguageForTranslation';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
@@ -958,12 +958,13 @@ export default class ChatContextMenu {
             textWithEntities = await this.getPollTextWithEntities(message);
           }
 
-          showTranslatePopup({
+          const {openTranslatePopup} = await import('@components/popups/translate');
+          openTranslatePopup({
             peerId: textWithEntities ? peerId : message.peerId,
             textWithEntities,
             message: textWithEntities ? undefined : message as Message.message,
             detectedLanguage: messageLanguage
-          });
+          }, SolidJSHotReloadGuardProvider);
         }
       },
       verify: () => !!this.messageLanguage

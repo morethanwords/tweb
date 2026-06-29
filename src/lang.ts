@@ -4802,7 +4802,9 @@ const lang = {
   'AiEditor.Original': 'Original',
   'AiEditor.Emojify': 'emojify',
   'AiEditor.Result': 'Result',
+  'AiEditor.TranslateFrom': 'From %s',
   'AiEditor.TranslateTo': 'To %s',
+  'Translate.Error': 'Something went wrong while trying to translate the text.',
   'AiEditor.StyleBy': 'Style by %s',
   'AiEditor.PremiumFlood': 'You have hit the limit for now. Subscribe to [Telegram Premium]() to increase the limit by 50 times or try again later.',
   'AiEditor.ComposeError': 'Something went wrong while trying to compose the message.',
@@ -4833,9 +4835,9 @@ const lang = {
   'AiEditor.ViewStyle.AnotherExample': 'Another Example',
   'AiEditor.ViewStyle.Before': 'Before',
   'AiEditor.ViewStyle.After': 'After',
-  'AiEditor.ViewStyle.InstallsCount': {
-    'one_value': 'Used by %d person.',
-    'other_value': 'Used by %d people.'
+  'AiEditor.ViewStyle.InstallsCountCreatedByYou': {
+    'one_value': 'Used by %d person. Created by you.',
+    'other_value': 'Used by %d people. Created by you.'
   },
   'AiEditor.ViewStyle.CreatedBy': 'Created by %s',
   'AiEditor.ViewStyle.SaveStyle': 'Save Style',

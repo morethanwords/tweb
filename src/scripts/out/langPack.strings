@@ -4189,7 +4189,9 @@
 "AiEditor.Original" = "Original";
 "AiEditor.Emojify" = "emojify";
 "AiEditor.Result" = "Result";
+"AiEditor.TranslateFrom" = "From %s";
 "AiEditor.TranslateTo" = "To %s";
+"Translate.Error" = "Something went wrong while trying to translate the text.";
 "AiEditor.StyleBy" = "Style by %s";
 "AiEditor.PremiumFlood" = "You have hit the limit for now. Subscribe to [Telegram Premium]() to increase the limit by 50 times or try again later.";
 "AiEditor.ComposeError" = "Something went wrong while trying to compose the message.";
@@ -4215,8 +4217,8 @@
 "AiEditor.ViewStyle.AnotherExample" = "Another Example";
 "AiEditor.ViewStyle.Before" = "Before";
 "AiEditor.ViewStyle.After" = "After";
-"AiEditor.ViewStyle.InstallsCount_one" = "Used by %d person.";
-"AiEditor.ViewStyle.InstallsCount_other" = "Used by %d people.";
+"AiEditor.ViewStyle.InstallsCountCreatedByYou_one" = "Used by %d person. Created by you.";
+"AiEditor.ViewStyle.InstallsCountCreatedByYou_other" = "Used by %d people. Created by you.";
 "AiEditor.ViewStyle.CreatedBy" = "Created by %s";
 "AiEditor.ViewStyle.SaveStyle" = "Save Style";
 "AiEditor.ViewStyle.RemoveStyle" = "Remove Style";
