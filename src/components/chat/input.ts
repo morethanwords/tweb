@@ -4163,7 +4163,7 @@ export default class ChatInput {
       });
     }
 
-    return {value};
+    return {value, messageCount};
   }
 
   public async sendMessage(force = false) {
@@ -4198,7 +4198,7 @@ export default class ChatInput {
         paidMessageInterceptor: this.paidMessageInterceptor
       });
 
-      if(!result) {
+      if(!result || !result.messageCount) {
         return;
       }
 
