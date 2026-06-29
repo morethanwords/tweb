@@ -126,7 +126,14 @@ const SharedMedia: Component = () => {
         show = await tab.managers.dialogsStorage.canManageTopic(await tab.managers.dialogsStorage.getForumTopic(peerId, tab.threadId));
       } else {
         const chat = apiManagerProxy.getChat(chatId);
-        show = hasRights(chat, 'change_info');
+        // Mirror tdesktop's EditPeerInfoBox::Available — the Edit button is shown to any
+        // admin, not only those holding the change_info right, so an admin who can manage
+        // members/permissions/etc. can still reach the edit screen.
+        if(chat._ === 'channel') {
+          show = !chat.pFlags.monoforum && (hasRights(chat, 'just_admin') || hasRights(chat, 'change_info'));
+        } else {
+          show = hasRights(chat, 'change_info') || hasRights(chat, 'change_permissions');
+        }
       }
     }
 
