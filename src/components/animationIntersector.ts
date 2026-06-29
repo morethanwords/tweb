@@ -157,6 +157,32 @@ export class AnimationIntersector {
     }
   }
 
+  // Pause (or resume) every registered video whose observed element is inside
+  // `element`, and lock/unlock it so the IntersectionObserver can't flip the
+  // state back while it's meant to stay paused. The right sidebar is hidden with
+  // a transform — the column stays mounted and the observer keeps reporting its
+  // contents as "visible" (it only re-reads on the initial observe, not on an
+  // ancestor transform), so off-screen detection alone never stops avatar videos
+  // animating inside the closed panel. Driven by 'right_sidebar_toggle'.
+  public toggleVideosUnder(element: HTMLElement, paused: boolean) {
+    if(!element) {
+      return;
+    }
+
+    this.byPlayer.forEach((item) => {
+      if(item.type !== 'video' || !element.contains(item.el)) {
+        return;
+      }
+
+      this.toggleItemLock(item, paused);
+      if(paused) {
+        item.animation.pause();
+      } else {
+        this.checkAnimation(item);
+      }
+    });
+  }
+
   public setOverrideIdleGroup(group: string, override: boolean) {
     if(override) this.overrideIdleGroups.add(group);
     else this.overrideIdleGroups.delete(group);
