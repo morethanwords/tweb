@@ -10,6 +10,7 @@ import callbackify from '@helpers/callbackify';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import {MenuPositionPadding, positionMenuTrigger} from '@helpers/positionMenu';
 import {getOverlayRoot} from '@helpers/appWindow';
+import {getFullScreenElement} from '@helpers/dom/fullScreen';
 
 // TODO: refactor for attachClickEvent, because if move finger after touchstart, it will start anyway
 export function ButtonMenuToggleHandler({
@@ -144,8 +145,14 @@ export default function ButtonMenuToggle({
       if(_tempId !== tempId) return;
 
       // Resolve the mount lazily so a menu opened while the client is popped out lands in the active
-      // window's body (the Document PiP window), not the background tab.
-      (appendTo ?? getOverlayRoot()).append(_element);
+      // window's body (the Document PiP window), not the background tab. While an element is fullscreen
+      // the browser paints ONLY the fullscreen subtree (its top layer), so a menu mounted on document.body
+      // would be invisible — mount it inside the fullscreen element when the trigger lives there (e.g. the
+      // video player's playback-rate / quality / live menus).
+      const fullScreenElement = getFullScreenElement();
+      const mountTarget = appendTo ??
+        (fullScreenElement?.contains(button) ? fullScreenElement : getOverlayRoot());
+      mountTarget.append(_element);
       if(autoPosition) {
         positionMenuTrigger(button, _element, direction, positionPadding ?? {top: 8, bottom: 8});
       }
