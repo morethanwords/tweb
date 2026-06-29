@@ -121,7 +121,9 @@ export default class PopupJoinChatInvite extends PopupPeer {
 
   public static openChat(chatId: ChatId) {
     const peerId = chatId.toPeerId(true);
-    appImManager.setInnerPeer({peerId});
+    // Use `open` (not `setInnerPeer`) so forums route through `op`, which opens the topics
+    // tab in the left sidebar instead of just dropping the user into the chat view.
+    appImManager.open({peerId});
   }
 
   public static import(hash: string) {

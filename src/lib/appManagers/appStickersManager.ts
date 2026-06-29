@@ -58,7 +58,7 @@ export class AppStickersManager extends AppManager {
         this.getAnimatedEmojiStickerSet();
 
         Promise.resolve(this.getLocalStickerSet(STICKERS_LOCAL_IDS.GENERIC_ANIMATIONS)).then(async(messagesStickerSet) => {
-          for(const doc of messagesStickerSet.documents) {
+          for(const doc of messagesStickerSet?.documents || []) {
             await this.apiFileManager.downloadMedia({media: doc as Document.document});
           }
         });

@@ -1030,6 +1030,11 @@ export default class Chat extends EventListenerBase<{
       this.peerIdSignal[1](this.peerId = peerId || NULL_PEER_ID);
       this.threadId = threadId;
       this.monoforumThreadId = monoforumThreadId;
+      // `onChangePeer` (async) only assigns `isForum` after awaiting the topic reload. Set it
+      // synchronously here too so the `chat_update` listener in bubbles doesn't compare the new
+      // peer against a stale `isForum` mid-transition and reset us to the forum root — which would
+      // drop the threadId when opening a just-created topic in a cold (not-yet-warm) forum.
+      this.isForum = apiManagerProxy.isForum(this.peerId);
       this.isTemporaryThread = isTempId(threadId);
       this.noInput = [ChatType.Static, ChatType.Logs].includes(type);
       this.middlewareHelper.clean();

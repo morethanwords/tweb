@@ -851,7 +851,10 @@ export class InternalLinkProcessor {
     return this.managers.appChatInvitesManager.checkChatInvite(link.invite).then(async(chatInvite) => {
       if(chatInvite._ === 'chatInviteAlready' ||
         chatInvite._ === 'chatInvitePeek'/*  && chatInvite.expires > tsNow(true) */) {
-        appImManager.setInnerPeer({
+        // `open` (not `setInnerPeer`) so a forum routes through `op` and opens the topics tab
+        // in the left sidebar instead of just dropping into the chat view (same as bug with
+        // PopupJoinChatInvite.openChat).
+        appImManager.open({
           peerId: chatInvite.chat.id.toPeerId(true)
         });
         return;
