@@ -6064,6 +6064,22 @@ export default class ChatBubbles {
     (type === 'history' ? this.unreaded : this.unreadedContent).set(element, mid);
   }
 
+  // Re-arm the unread-content (mention/reaction) observer for a freshly-focused
+  // message. Jumping to a mention/reaction via the corner buttons scrolls the
+  // bubble into view, but the actual read is driven solely by the intersection
+  // observer, which only fires on an intersection CHANGE. When the target is
+  // already on screen (typical for reactions, which sit on our own recent
+  // messages) the programmatic scroll is a no-op, so no callback ever fires and
+  // the content stays unread. Re-registering the observer forces a fresh
+  // intersection entry for the current position — it reads only if the bubble
+  // is actually intersecting, so the "read == seen" guarantee is preserved.
+  public reobserveUnreadContent(peerId: PeerId, mid: number) {
+    if(!this.observer) return;
+    const bubble = this.getBubble(peerId, mid);
+    if(!bubble || !this.unreadedContent.has(bubble)) return;
+    this.observer.reobserve(bubble);
+  }
+
   private modifyBubble = async(callback: () => void) => {
     const setBatch = !this.batchingModifying;
     (this.batchingModifying ??= []).push(callback);

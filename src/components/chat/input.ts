@@ -829,13 +829,29 @@ export default class ChatInput {
     attachClickEvent(btn, (e) => {
       cancelEvent(e);
       const middleware = this.getMiddleware();
-      this.managers.appMessagesManager.goToNextMention({peerId: this.chat.peerId, threadId: this.chat.threadId, isReaction, isPollVote}).then((mid) => {
+      const peerId = this.chat.peerId;
+      this.managers.appMessagesManager.goToNextMention({peerId, threadId: this.chat.threadId, isReaction, isPollVote}).then(async(mid) => {
+        if(!middleware() || !mid) {
+          return;
+        }
+
+        // Wait for the message to actually be focused — rendered AND scrolled
+        // into view — then re-arm the intersection observer so it reads the
+        // mention/reaction only if the bubble is genuinely on screen. Without
+        // this, a target that was already visible never triggers a fresh
+        // intersection callback and stays unread (the badge would never clear).
+        // Poll votes have their own read flow inside goToNextMention, so they're
+        // excluded. setMessageId resolves before render/scroll finish — that's
+        // the inner `promise` field, which we await (swallowing middleware
+        // cancellation) so the bubble exists and is positioned before re-arming.
+        const result = await this.chat.setMessageId({lastMsgId: mid});
+        await result?.promise?.catch(() => {});
         if(!middleware()) {
           return;
         }
 
-        if(mid) {
-          this.chat.setMessageId({lastMsgId: mid});
+        if(!isPollVote) {
+          this.chat.bubbles.reobserveUnreadContent(peerId, mid);
         }
       });
     }, {listenerSetter: this.listenerSetter});

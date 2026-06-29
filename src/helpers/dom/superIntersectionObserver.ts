@@ -97,6 +97,20 @@ export default class SuperIntersectionObserver {
     callbacks.add(callback);
   }
 
+  // Force the native observer to re-deliver an entry for an already-observed
+  // target (all its callbacks get a fresh intersection notification). Plain
+  // re-`observe` of the same callback only re-triggers when it's the target's
+  // only callback; this works regardless of how many callbacks the target has.
+  // No-op while frozen — the queued target will be delivered fresh on drain.
+  public reobserve(target: IntersectionTarget) {
+    if(this.freezedObservingNew || !this.observing.has(target)) {
+      return;
+    }
+
+    this.observer.unobserve(target);
+    this.observer.observe(target);
+  }
+
   public unobserve(target: IntersectionTarget, callback: IntersectionCallback) {
     const observing = this.freezedObservingNew && !this.has(target, callback) ? this.observingQueue : this.observing;
     const callbacks = observing.get(target);
