@@ -745,6 +745,16 @@ export class AppDialogsManager {
         return false;
       }
 
+      // Switching folders clears whatever is open in the left sidebar — an open
+      // global search and any stacked tabs — mirroring how opening a left-sidebar
+      // tab does it (closeEverythingInside). Both folder UIs (horizontal tabs and
+      // the vertical folders sidebar) funnel through here. Tabs are closed the
+      // natural way (as if via the back arrow), so a tab that needs confirmation
+      // still asks; if the user declines, cancel the folder switch entirely.
+      if(!await appSidebarLeft.closeEverythingInsideNaturally()) {
+        return false;
+      }
+
       if(!IS_MOBILE_SAFARI) {
         if(index) {
           if(!this.filtersNavigationItem) {

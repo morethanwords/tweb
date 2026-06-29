@@ -498,6 +498,23 @@ export class AppSidebarLeft extends SidebarSlider {
     return this.closeAllTabs();
   }
 
+  // Like closeEverythingInside, but closes stacked tabs the "natural" way (via
+  // the back arrow) so a tab can still confirm before closing. Returns false —
+  // without touching the search or the forum — if the user declines a tab's
+  // close confirmation, so the caller can cancel whatever triggered the close.
+  public async closeEverythingInsideNaturally() {
+    if(!await this.closeAllTabsNaturally()) {
+      return false;
+    }
+
+    if(this.isSearchActive) {
+      this.closeSearch();
+    }
+    appDialogsManager.toggleForumTab();
+
+    return true;
+  }
+
   private isAnimatingCollapse = false;
   private onSomethingOpenInsideChange = (force = false) => {
     const wasFloating = this.sidebarEl.classList.contains('has-open-tabs');
