@@ -46,7 +46,6 @@ import defineNotNumerableProperties from '@helpers/object/defineNotNumerableProp
 import getDocumentMediaInput from '@appManagers/utils/docs/getDocumentMediaInput';
 import getFileNameForUpload from '@helpers/getFileNameForUpload';
 import noop from '@helpers/noop';
-import appTabsManager from '@appManagers/appTabsManager';
 import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
 import getGroupedText from '@appManagers/utils/messages/getGroupedText';
 import pause from '@helpers/schedulers/pause';
@@ -75,7 +74,6 @@ import getMainGroupedMessage from '@appManagers/utils/messages/getMainGroupedMes
 import getUnreadReactions from '@appManagers/utils/messages/getUnreadReactions';
 import isMentionUnread from '@appManagers/utils/messages/isMentionUnread';
 import canMessageHaveFactCheck from '@appManagers/utils/messages/canMessageHaveFactCheck';
-import commonStateStorage from '@lib/commonStateStorage';
 import PaidMessagesQueue from '@appManagers/utils/messages/paidMessagesQueue';
 import type {ConfirmedPaymentResult} from '@components/chat/paidMessagesInterceptor';
 import RepayRequestHandler, {RepayRequest} from '@appManagers/utils/repayRequestHandler';
@@ -9095,26 +9093,7 @@ export class AppMessagesManager extends AppManager {
       return;
     }
 
-    const settings = await commonStateStorage.get('settings', false);
-
-    let tabs = appTabsManager.getTabs();
-    if(!settings.notifyAllAccounts)
-      tabs = tabs.filter((tab) => tab.state.accountNumber === this.getAccountNumber());
-
-    tabs.sort((a, b) => a.state.idleStartTime - b.state.idleStartTime);
-
-    let tab = tabs.find((tab) => {
-      const {chatPeerIds, accountNumber} = tab.state;
-      return accountNumber === this.getAccountNumber() && chatPeerIds[chatPeerIds.length - 1] === peerId;
-    });
-
-    if(!tab) {
-      tab = tabs.find((tab) => tab.state.accountNumber === this.getAccountNumber());
-    }
-
-    if(!tab && tabs.length) {
-      tab = !tabs[0].state.idleStartTime ? tabs[0] : tabs[tabs.length - 1];
-    }
+    const tab = await this.appNotificationsManager.getNotificationTab(peerId);
 
     const port = MTProtoMessagePort.getInstance<false>();
     port.invokeVoid('notificationBuild', {

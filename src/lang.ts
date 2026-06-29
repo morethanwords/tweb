@@ -2378,6 +2378,7 @@ const lang = {
   'BotAttachMenuShortcatAddedAttach': '**%s** shortcut added in attachment menu.',
   'NotificationsStoryMutedHint': 'Disabled notifications for **%s** stories.',
   'NotificationsStoryUnmutedHint': 'You will receive a notification whenever **%s** posts a new story.',
+  'Story.Notification': 'posted a story',
   'StoriesMovedToContacts': 'Stories of **%s** were moved to the **Archive**.',
   'StoriesMovedToDialogs': 'Stories of **%s** were moved to **Chats**.',
   'StorySharedTo': 'Story forwarded to **%s**.',

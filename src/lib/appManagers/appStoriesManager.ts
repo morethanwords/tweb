@@ -17,6 +17,7 @@ import {AppManager} from '@appManagers/manager';
 import reactionsEqual from '@appManagers/utils/reactions/reactionsEqual';
 import StoriesCacheType from '@appManagers/utils/stories/cacheType';
 import insertStory from '@appManagers/utils/stories/insertStory';
+import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
 
 type MyStoryItem = Exclude<StoryItem, StoryItem.storyItemDeleted>;
 
@@ -1588,6 +1589,16 @@ export default class AppStoriesManager extends AppManager {
     if(cache.maxReadId === undefined) {
       Promise.resolve(this.getPeerStories(peerId)).then((userStories) => {
         this.rootScope.dispatchEvent('stories_stories', userStories);
+        // * the peer's stories weren't cached yet (e.g. their very first story), so the
+        // * normal path below was skipped — notify now that maxReadId is known. The guard
+        // * inside notifyAboutStory drops it if it turns out to be already read.
+        if(
+          story._ === 'storyItem' &&
+          !this.isStoryExpired(story) &&
+          this.getCacheTypeForPeerId(peerId)
+        ) {
+          this.notifyAboutStory(peerId, story, cache.maxReadId);
+        }
       });
       return;
     }
@@ -1597,8 +1608,38 @@ export default class AppStoriesManager extends AppManager {
     story = this.saveStoryItems([update.story], cache, cacheType, true)[0];
     if(!hadStoryBefore && cacheType) {
       this.rootScope.dispatchEvent('story_new', {peerId, story, cacheType, maxReadId: cache.maxReadId});
+      this.notifyAboutStory(peerId, story as StoryItem.storyItem, cache.maxReadId);
     }
   };
+
+  private async notifyAboutStory(peerId: PeerId, story: StoryItem.storyItem, maxReadId: number) {
+    // * don't notify about our own stories
+    if(peerId === this.appPeersManager.peerId || story.pFlags?.out) {
+      return;
+    }
+
+    // * a story at or below maxReadId is already seen (e.g. replayed on reconnect)
+    if(maxReadId && story.id <= maxReadId) {
+      return;
+    }
+
+    if(await this.appPeersManager.isPeerRestricted(peerId)) {
+      return;
+    }
+
+    if(await this.appNotificationsManager.getPeerStoriesMuted(peerId)) {
+      return;
+    }
+
+    const tab = await this.appNotificationsManager.getNotificationTab(peerId);
+
+    const port = MTProtoMessagePort.getInstance<false>();
+    port.invokeVoid('notificationBuild', {
+      story: {peerId, storyId: story.id},
+      accountNumber: this.getAccountNumber(),
+      isOtherTabActive: tab ? !!tab.state.idleStartTime : true
+    }, tab?.source);
+  }
 
   protected onUpdateReadStories = (update: Update.updateReadStories) => {
     const peerId = this.appPeersManager.getPeerId(update.peer);
