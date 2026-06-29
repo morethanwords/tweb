@@ -1,6 +1,21 @@
 @use "../../../scss/variables" as *;
 @use "../../../scss/mixins" as *;
 
+// Typed custom properties so the scroll-fade mask can be transitioned.
+// In browsers without @property support these still work as plain variables,
+// just without the animation.
+@property --mask-top {
+  syntax: '<length-percentage>';
+  inherits: false;
+  initial-value: 0;
+}
+
+@property --mask-bottom {
+  syntax: '<length-percentage>';
+  inherits: false;
+  initial-value: 0;
+}
+
 // Shared styling for the "original/result" preview card used by the AI editor
 // popup and the translate popup. The consuming popup is responsible for
 // defining the card container and the following custom properties on it:
@@ -178,17 +193,33 @@
 .richTextScrollable {
   max-height: var(--preview-scrollable-max-height, 160px);
   --mask-padding: 0.75rem;
+  --mask-top: 0px;
+  --mask-bottom: 0px;
+
+  // Always keep the same 4-stop shape so only the stop offsets change,
+  // which lets --mask-top / --mask-bottom interpolate smoothly.
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    white var(--mask-top),
+    white calc(100% - var(--mask-bottom)),
+    transparent
+  );
+
+  // Opacity is needed as this is as a child in a <Transition> component
+  transition: opacity 0.2s, --mask-top 0.2s, --mask-bottom 0.2s;
 
   &:global(.scrolled-only-end-manual) {
-    mask-image: linear-gradient(to bottom, transparent, white var(--mask-padding));
+    --mask-top: var(--mask-padding);
   }
 
   &:global(.scrolled-only-start-manual) {
-    mask-image: linear-gradient(to bottom, white calc(100% - var(--mask-padding)), transparent);
+    --mask-bottom: var(--mask-padding);
   }
 
   &:global(.scrolled-none-manual) {
-    mask-image: linear-gradient(to bottom, transparent, white var(--mask-padding), white calc(100% - var(--mask-padding)), transparent);
+    --mask-top: var(--mask-padding);
+    --mask-bottom: var(--mask-padding);
   }
 
   &Content {

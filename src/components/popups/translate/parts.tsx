@@ -1,15 +1,15 @@
 import {ButtonIconTsx} from '@components/buttonIconTsx';
 import {previewStyles} from '@components/popups/previewCard';
-import Scrollable from '@components/scrollable2';
+import Scrollable, {ScrollableContextValue} from '@components/scrollable2';
 import {Skeleton} from '@components/skeleton';
 import {toastNew} from '@components/toast';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import prepareTextWithEntitiesForCopying from '@helpers/prepareTextWithEntitiesForCopying';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import {I18nTsx} from '@helpers/solid/i18n';
+import {requestRAF} from '@helpers/solid/requestRAF';
 import classNames from '@helpers/string/classNames';
 import {Message, TextWithEntities} from '@layer';
-import {WrapRichTextOptions} from '@lib/richTextProcessor/wrapRichText';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {createEffect, createResource, createSignal, JSX, Match, Switch} from 'solid-js';
 import {Transition} from 'solid-transition-group';
@@ -42,7 +42,7 @@ export const Result = (props: {
     })
   );
 
-  let scrollableRef: HTMLDivElement;
+  let scrollableRef: HTMLDivElement, scrollableContextRef: ScrollableContextValue;
   const [skeletonHeight, setSkeletonHeight] = createSignal<number>();
 
   // Remember the rendered height so the skeleton keeps the size of the previous result
@@ -80,11 +80,24 @@ export const Result = (props: {
         </div>
       </div>
       <div class={previewStyles.resultContent}>
-        <Transition name='fade-2' mode='outin'>
+        <Transition
+          name='fade-2'
+          mode='outin'
+          onAfterEnter={(el) => {
+            if(el === scrollableRef) requestRAF(() => {
+              scrollableContextRef?.onSizeChange?.();
+            });
+          }}>
           <Switch>
             <Match when={translation.state === 'ready' && translation()} keyed>
               {(text) => (
-                <Scrollable ref={scrollableRef} relative class={previewStyles.richTextScrollable} withBorders='manual'>
+                <Scrollable
+                  ref={scrollableRef}
+                  contextRef={(value) => void (scrollableContextRef = value)}
+                  relative
+                  class={previewStyles.richTextScrollable}
+                  withBorders='manual'
+                >
                   <div
                     class={classNames(previewStyles.richTextScrollableContent, 'spoilers-container')}
                     dir='auto'

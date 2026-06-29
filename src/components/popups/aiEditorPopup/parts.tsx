@@ -3,7 +3,7 @@ import {ButtonMenuItemOptions} from '@components/buttonMenu';
 import EmojiDocumentIcon from '@components/emojiDocumentIcon';
 import {IconTsx} from '@components/iconTsx';
 import ripple from '@components/ripple';
-import Scrollable from '@components/scrollable2';
+import Scrollable, {ScrollableContextValue} from '@components/scrollable2';
 import {Skeleton} from '@components/skeleton';
 import deferredPromise from '@helpers/cancellablePromise';
 import {copyTextToClipboard} from '@helpers/clipboard';
@@ -133,7 +133,7 @@ export const Result = (props: {
     initialValue: getCachedComposedMessage(props.composeMessageWithAiArgs)
   } as {} /* Note that we need the 'pending' state when the initialValue is undefined - solved by `as {}` */);
 
-  let scrollableRef: HTMLDivElement;
+  let scrollableRef: HTMLDivElement, scrollableContextRef: ScrollableContextValue;
   const [skeletonHeight, setSkeletonHeight] = createSignal<number>();
 
   const isPremiumFloodError = createMemo(() => composedMessage.error instanceof ComposeError && composedMessage.error.isPremiumFlood);
@@ -198,11 +198,24 @@ export const Result = (props: {
         </Show>
       </div>
       <div class={previewStyles.resultContent}>
-        <Transition name='fade-2' mode='outin'>
+        <Transition
+          name='fade-2'
+          mode='outin'
+          onAfterEnter={(el) => {
+            if(el === scrollableRef) requestRAF(() => {
+              scrollableContextRef?.onSizeChange?.();
+            });
+          }}>
           <Switch>
             <Match when={textToRender()} keyed>
               {(text) => (
-                <Scrollable ref={scrollableRef} relative class={previewStyles.richTextScrollable} withBorders='manual'>
+                <Scrollable
+                  ref={scrollableRef}
+                  contextRef={(value) => void (scrollableContextRef = value)}
+                  relative
+                  class={previewStyles.richTextScrollable}
+                  withBorders='manual'
+                >
                   <div class={classNames(previewStyles.richTextScrollableContent, previewStyles.nonInteractive)}>
                     {wrapRichText(text.text, {entities: processEntities(text.entities), middleware: createMiddleware().get()})}
                   </div>
