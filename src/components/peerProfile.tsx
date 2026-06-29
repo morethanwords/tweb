@@ -1254,7 +1254,7 @@ PeerProfile.BotVerification = () => {
     <Show when={content()}>
       <div class="profile-bot-verification">
         {content().icon}
-        <div class="profile-bot-verification-content">
+        <div class="profile-bot-verification-content text-overflow-wrap">
           {content().text}
         </div>
       </div>
