@@ -1,6 +1,6 @@
 import {ParentProps} from 'solid-js';
 
-import AppMediaViewer from '@components/appMediaViewer';
+import AppMediaViewer, {onMediaCaptionClick} from '@components/appMediaViewer';
 import AppMediaViewerStatic from '@components/appMediaViewerStatic';
 import {AutonomousMonoforumThreadList} from '@components/autonomousDialogList/monoforumThreads';
 import {avatarNew, AvatarNewTsx, StoriesSegments} from '@components/avatarNew';
@@ -29,7 +29,6 @@ import PopupPremium from '@components/popups/premium';
 import PopupSendGift from '@components/popups/sendGift';
 import showStarsRatingPopup from '@components/popups/starsRating';
 import PopupToggleReadDate from '@components/popups/toggleReadDate';
-import showTranslatePopup from '@components/popups/translate';
 import {setQuizHint} from '@components/quizHint';
 import Row from '@components/rowTsx';
 import appSidebarLeft from '@components/sidebarLeft';
@@ -102,7 +101,6 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       i18n,
       join,
       PopupElement,
-      showTranslatePopup,
       PopupToggleReadDate,
       wrapSticker,
       wrapTopicNameButton,
@@ -135,6 +133,7 @@ export default function SolidJSHotReloadGuardProvider(props: ParentProps) {
       DocumentTsx,
       Slideshow,
       AppMediaViewer,
+      onMediaCaptionClick,
       formatDate,
       hideToast,
       wrapFolderTitle,

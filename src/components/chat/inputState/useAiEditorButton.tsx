@@ -11,6 +11,7 @@ import {resolveFirst} from '@solid-primitives/refs';
 import {LocalTextWithEntities} from '@types';
 import {Accessor, createEffect, createMemo, createSignal, onCleanup} from 'solid-js';
 import type ChatInput from '../input';
+import {ChatType} from '../chatType';
 import namedPromises from '@helpers/namedPromises';
 
 export const defaultShouldShowFromHeight = 72;
@@ -100,8 +101,19 @@ const createAiEditorButton = ({instance, inputField, appendTo, onApply, class: c
           ...trimRichText(value, entities)
         },
         onApply,
-        onSend: !instance.chat.starsAmount && !instance.editMsgId && canSend ? async(text) => {
-          const sendingParams = instance.chat.getMessageSendingParams();
+        canSendWhenOnline: instance.canSendWhenOnline,
+        isScheduled: instance.chat.type === ChatType.Scheduled,
+        onSend: !instance.chat.starsAmount && !instance.editMsgId && canSend ? async(text, options) => {
+          const sendingParams = {
+            ...instance.chat.getMessageSendingParams(),
+            // The AI editor manages its own send options, so override these fields
+            // outright instead of merging — otherwise the composer's pending
+            // silent/schedule/effect state (e.g. from a draft) leaks into the send
+            silent: options?.silent,
+            scheduleDate: options?.scheduleDate,
+            scheduleRepeatPeriod: options?.scheduleRepeatPeriod,
+            effect: options?.effect
+          };
 
           const result = await instance.Class.sendMessageWithForward({
             text,
