@@ -106,10 +106,13 @@ const createAiEditorButton = ({instance, inputField, appendTo, onApply, class: c
         onSend: !instance.chat.starsAmount && !instance.editMsgId && canSend ? async(text, options) => {
           const sendingParams = {
             ...instance.chat.getMessageSendingParams(),
-            ...(options?.silent && {silent: true}),
-            ...(options?.scheduleDate && {scheduleDate: options.scheduleDate}),
-            ...(options?.scheduleRepeatPeriod && {scheduleRepeatPeriod: options.scheduleRepeatPeriod}),
-            ...(options?.effect && {effect: options.effect})
+            // The AI editor manages its own send options, so override these fields
+            // outright instead of merging — otherwise the composer's pending
+            // silent/schedule/effect state (e.g. from a draft) leaks into the send
+            silent: options?.silent,
+            scheduleDate: options?.scheduleDate,
+            scheduleRepeatPeriod: options?.scheduleRepeatPeriod,
+            effect: options?.effect
           };
 
           const result = await instance.Class.sendMessageWithForward({
