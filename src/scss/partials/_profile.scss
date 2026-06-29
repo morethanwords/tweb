@@ -765,6 +765,10 @@
     .profile-container:not(.is-collapsed) & {
       opacity: 0;
       transform: translateX(-50%) scale(1.2);
+      // The gifts layer paints on top of the avatar; once the header is
+      // expanded it's invisible but would still swallow clicks meant for the
+      // avatar underneath — make it click-through so the avatar handles them.
+      pointer-events: none;
     }
   }
 
