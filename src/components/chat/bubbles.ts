@@ -1654,7 +1654,7 @@ export default class ChatBubbles {
   public constructPeerHelpers() {
     // will call when message is sent (only 1)
     this.listenerSetter.add(rootScope)('history_append', async({storageKey, message}) => {
-      if(storageKey !== this.chat.messagesStorageKey || this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Static || this.chat.type === ChatType.Logs) return;
+      if(storageKey !== this.chat.messagesStorageKey || this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Static || this.chat.type === ChatType.Logs || this.chat.type === ChatType.Pinned) return;
 
       if(liteMode.isAvailable('chat_background')) {
         this.updateGradient = true;
@@ -1691,7 +1691,7 @@ export default class ChatBubbles {
     });
 
     this.listenerSetter.add(rootScope)('history_multiappend', (message) => {
-      if(this.peerId !== message.peerId || this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Static || this.chat.type === ChatType.Logs) return;
+      if(this.peerId !== message.peerId || this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Static || this.chat.type === ChatType.Logs || this.chat.type === ChatType.Pinned) return;
       this.renderNewMessage(message);
       this.updateHasMessages();
     });
