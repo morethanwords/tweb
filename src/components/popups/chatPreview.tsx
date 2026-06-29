@@ -1,4 +1,4 @@
-import {createMemo, createSignal, JSX, onCleanup, onMount, untrack, useContext} from 'solid-js';
+import {createEffect, createMemo, createSignal, JSX, onCleanup, onMount, untrack, useContext} from 'solid-js';
 import {unwrap} from 'solid-js/store';
 import {ChatFull, ChatTheme, UserFull, WallPaper} from '@layer';
 import PopupElement, {createPopup, PopupContext} from '@components/popups/indexTsx';
@@ -16,6 +16,7 @@ import {attachClickEvent} from '@helpers/dom/clickEvent';
 import replaceContent from '@helpers/dom/replaceContent';
 import {useFullPeer} from '@stores/fullPeers';
 import {appState} from '@stores/appState';
+import useIsNightTheme from '@hooks/useIsNightTheme';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import ListenerSetter from '@helpers/listenerSetter';
 
@@ -117,6 +118,19 @@ export default function showChatPreviewPopup(options: ChatPreviewOptions): void 
       }
 
       return {theme, wallPaper};
+    });
+
+    // A preview Chat has `isPreview`, so `Chat.handleBackgrounds()` short-circuits and never runs
+    // `applyContainerTheme` — the per-chat theme's outgoing-bubble vars (`--message-out-*`) are thus
+    // missing on the container and outgoing bubbles fall back to the global :root palette. Mirror the
+    // main chat: stash the resolved theme on the chat and apply it to its container. `isNight()` keeps
+    // the effect re-firing on a day/night toggle while the preview is open so the theme re-resolves to
+    // the right variant — the same role `useIsNightTheme` plays in `Chat._handleBackgrounds`.
+    const isNight = useIsNightTheme();
+    createEffect(() => {
+      isNight();
+      chat.currentTheme = resolvedBg().theme;
+      chat.applyContainerTheme();
     });
 
     onMount(() => {

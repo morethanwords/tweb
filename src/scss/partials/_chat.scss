@@ -1117,16 +1117,18 @@
 	transform: translate3d(0, var(--translateY), 0);
 	transition: transform var(--transition-standard-out);
 
-	// Docked-left range: counter #column-center's centring shift so the scroll
-	// area reaches the real edges — the page edge when the right column is
-	// closed/floating, or the docked right column's inner edge when it's shown.
-	@include respond-to(no-floating-left-sidebar) {
-		inset-inline: calc((var(--folders-sidebar-offset) + var(--left-column-width) - var(--page-chats-padding)) / 2);
+  #column-center & {
+    // Docked-left range: counter #column-center's centring shift so the scroll
+    // area reaches the real edges — the page edge when the right column is
+    // closed/floating, or the docked right column's inner edge when it's shown.
+    @include respond-to(no-floating-left-sidebar) {
+      inset-inline: calc((var(--folders-sidebar-offset) + var(--left-column-width) - var(--page-chats-padding)) / 2);
 
-		body.is-right-column-shown:not(.right-column-floats) & {
-			inset-inline: calc((var(--folders-sidebar-offset) + var(--left-column-width) + var(--right-column-width)) / 2);
-		}
-	}
+      body.is-right-column-shown:not(.right-column-floats) & {
+        inset-inline: calc((var(--folders-sidebar-offset) + var(--left-column-width) + var(--right-column-width)) / 2);
+      }
+    }
+  }
 
 	@include animation-level(0) {
 		transition: none !important;

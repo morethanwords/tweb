@@ -129,15 +129,7 @@
     transform: none !important;
   }
 
-  // Main `.bubbles` is anchored with `inset-inline: -.5rem` so its width grows past the
-  // chat container. That looks fine when the chat fills a wide column but overflows our
-  // 360px preview popup — pin the bubbles to the container's horizontal edges instead.
-  // Leave `inset-block` as the base rule sets it (`calc(--page-chats-padding * -1)`) —
-  // that negative offset is what the `.is-date` sticky math expects when computing
-  // `top: calc(var(--chat-padding-top) + ...)`, so the date sticker lands right under
-  // the topbar.
   .bubbles {
-    inset-inline: 0;
     flex: 1 1 auto;
   }
 
