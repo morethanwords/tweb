@@ -106,6 +106,7 @@ export default class SwipeHandler {
 
   private isMouseDown: boolean;
   private tempId: number;
+  private endListener: Listener;
 
   private hadMove: boolean;
   private eventUp: E;
@@ -156,7 +157,8 @@ export default class SwipeHandler {
     if(!IS_TOUCH_SUPPORTED) {
       // @ts-ignore
       this.listenerSetter.add(this.element)('mousedown', this.handleStart, this.listenerOptions);
-      this.listenerSetter.add(this.element.ownerDocument)('mouseup', this.reset);
+      // The gesture-end listener (`mouseup`/`touchend`) is bound lazily in `handleStart` — see the
+      // note there — not here, so its target document is resolved while the element is live.
 
       if(this.onZoom || this.onDoubleClick) {
         this.listenerSetter.add(this.element)('wheel', this.handleWheel, WHEEL_OPTIONS);
@@ -184,7 +186,7 @@ export default class SwipeHandler {
         });
       }
 
-      this.listenerSetter.add(this.element.ownerDocument)('touchend', this.reset);
+      // `touchend` is bound lazily in `handleStart` (see the note there), not here.
     }
   }
 
@@ -247,6 +249,11 @@ export default class SwipeHandler {
       this.setCursorTo.style.cursor = '';
     }
 
+    if(this.endListener) {
+      this.listenerSetter.remove(this.endListener);
+      this.endListener = undefined;
+    }
+
     if(this.hadMove) {
       this.onReset?.(e);
     }
@@ -300,6 +307,22 @@ export default class SwipeHandler {
     }
 
     const tempId = ++this.tempId;
+
+    // Bind the gesture-end listener to the element's CURRENT document now — while the element is live
+    // in the DOM — rather than at construction. A JSX element cloned from a <template> is initially
+    // owned by the inert template-contents document (about:blank); binding `mouseup`/`touchend` to
+    // that document at construction means the real release event (which fires on the main — or
+    // Document-PiP — document the element actually lives in) is never seen, so the gesture would pause
+    // on press but never resume on release. Resolving `ownerDocument` here keeps PiP support intact.
+    // Done before the (possibly async) verify so a release during verification still cancels cleanly.
+    if(this.endListener) {
+      this.listenerSetter.remove(this.endListener);
+    }
+    // @ts-ignore
+    this.endListener = this.listenerSetter.add(this.element.ownerDocument)(
+      IS_TOUCH_SUPPORTED ? 'touchend' : 'mouseup',
+      this.reset
+    ) as any as Listener;
 
     const verifyResult = this.verifyTouchTarget?.(_e);
     if(verifyResult !== undefined) {
