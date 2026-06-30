@@ -138,12 +138,6 @@
     @include text-overflow();
   }
 
-  &-subtitle.with-icon {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-  }
-
   &-media {
     height: 2rem !important;
     width: 2rem !important;
