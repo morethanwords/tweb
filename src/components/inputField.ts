@@ -287,8 +287,12 @@ let init = () => {
           if(char === '\n') {
             arr.splice(index, 1);
             richValue.entities.forEach((entity) => {
-              if(entity.offset >= index) {
+              // * entity starts after the removed char — shift it left
+              if(entity.offset > index) {
                 entity.offset -= 1;
+              } else if(entity.offset + entity.length > index) {
+                // * removed char is inside the entity — shrink it
+                entity.length -= 1;
               }
             });
           }
@@ -303,8 +307,12 @@ let init = () => {
           plainTextLength += line.length;
           richValueSplitted.splice(plainTextLength, 0, '\n');
           richValue.entities.forEach((entity) => {
-            if(entity.offset > (plainTextLength - lineIndex + 1)) {
+            // * plainTextLength is the index the new line is inserted at
+            if(entity.offset >= plainTextLength) {
               entity.offset += 1;
+            } else if(entity.offset + entity.length > plainTextLength) {
+              // * new line falls inside the entity — grow it
+              entity.length += 1;
             }
           });
 
@@ -337,7 +345,11 @@ let init = () => {
 
     if(entities?.length) {
       const ignoreEntities = new Set<MessageEntity['_']>([
-        'messageEntityPhone'
+        'messageEntityPhone',
+        // * wrapDraftText renders line breaks from the text itself; passing explicit linebreak
+        // * entities makes wrapRichText slice the one before a blockquote (losing a \n on e.g.
+        // * `text\n\nquote`). Strip them so paste matches the edit/draft path.
+        'messageEntityLinebreak'
       ]);
       findAndSpliceAll(entities, (entity) => ignoreEntities.has(entity._));
     }
