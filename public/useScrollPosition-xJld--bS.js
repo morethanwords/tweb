@@ -1,0 +1,2 @@
+import{c as i,h as a,o as u,eM as f}from"./index-BKQVFeIW.js";function v(l,n="y"){const[c,t]=i(0);let s=!1;const o=e=>{s||(s=!0,f(()=>{s=!1,t(n==="y"?e.scrollTop:e.scrollLeft)}))};return a(()=>{const e=l();if(!e){t(0);return}o(e);const r=()=>o(e);e.addEventListener("scroll",r,{passive:!0}),u(()=>{e.removeEventListener("scroll",r)})}),c}export{v as u};
+//# sourceMappingURL=useScrollPosition-xJld--bS.js.map

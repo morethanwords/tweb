@@ -2093,6 +2093,7 @@
 "BotAttachMenuShortcatAddedAttach" = "**%s** shortcut added in attachment menu.";
 "NotificationsStoryMutedHint" = "Disabled notifications for **%s** stories.";
 "NotificationsStoryUnmutedHint" = "You will receive a notification whenever **%s** posts a new story.";
+"Story.Notification" = "posted a story";
 "StoriesMovedToContacts" = "Stories of **%s** were moved to the **Archive**.";
 "StoriesMovedToDialogs" = "Stories of **%s** were moved to **Chats**.";
 "StorySharedTo" = "Story forwarded to **%s**.";
@@ -4223,7 +4224,7 @@
 "AiEditor.ViewStyle.SaveStyle" = "Save Style";
 "AiEditor.ViewStyle.RemoveStyle" = "Remove Style";
 "AiEditor.ViewStyle.DeleteStyle" = "Delete Style";
-"AiEditor.ViewStyle.MaxSavedTones" = "You have reached the maximum number of saved tones.";
+"AiEditor.ViewStyle.MaxSavedTones" = "You have reached the maximum number of custom styles.";
 "Apply" = "Apply";
 "Login.Title" = "Sign in to Telegram";
 "Login.PhoneLabel" = "Phone Number";

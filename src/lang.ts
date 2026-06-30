@@ -4844,7 +4844,7 @@ const lang = {
   'AiEditor.ViewStyle.SaveStyle': 'Save Style',
   'AiEditor.ViewStyle.RemoveStyle': 'Remove Style',
   'AiEditor.ViewStyle.DeleteStyle': 'Delete Style',
-  'AiEditor.ViewStyle.MaxSavedTones': 'You have reached the maximum number of saved tones.',
+  'AiEditor.ViewStyle.MaxSavedTones': 'You have reached the maximum number of custom styles.',
 
   'Apply': 'Apply'
 };
