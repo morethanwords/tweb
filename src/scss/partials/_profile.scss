@@ -49,6 +49,25 @@
         }
       }
 
+      // A topic has no photo carousel — its icon is a single, fixed-size
+      // avatar-120 centered in the (collapsed) header, instead of a full-size
+      // photo that scales down.
+      &.is-topic {
+        .profile-avatars-avatar {
+          position: absolute;
+          inset: 0;
+          min-width: 0;
+          height: auto;
+          padding-bottom: 0;
+          align-items: center;
+          justify-content: center;
+
+          .avatar {
+            position: static !important;
+          }
+        }
+      }
+
       // While a new profile photo is uploading, the header is locked collapsed
       // and shows a cancellable progress ring centered on the avatar.
       &.is-avatar-uploading {
@@ -428,10 +447,6 @@
         display: none;
       }
     }
-
-    .has-simple-avatar {
-      margin-top: 3.5rem;
-    }
   }
 
   &-button {
@@ -464,6 +479,11 @@
         border-radius: 50%;
       }
 
+      // The topic icon is already avatar-120 — don't shrink it like a full photo.
+      .profile-avatars-container.is-topic .profile-avatars-avatar.active {
+        transform: none;
+      }
+
       .avatar-star {
         opacity: 1;
       }
@@ -480,7 +500,7 @@
       }
 
       .profile-avatars-info {
-        transform: translateY(-42%);
+        transform: translateY(-33%);
 
         .profile-name,
         .profile-subtitle {
