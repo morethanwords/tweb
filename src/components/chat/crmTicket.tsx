@@ -16,7 +16,11 @@ const className = 'crm-ticket';
 
 export type ChatCrmTicketPlate = TopbarPlateController & {
   setPeerId: (peerId: PeerId) => void,
-  hide: () => void
+  hide: () => void,
+  /** The currently loaded ticket for this peer (cached signal), or undefined. */
+  getTicket: () => CrmTicketRef | undefined,
+  /** Close the current open ticket. No-op unless there is an open ticket. */
+  close: () => Promise<void>
 };
 
 function CrmTicketPlateBody(props: {
@@ -257,6 +261,8 @@ export default function createChatCrmTicketPlate(
     ...plate,
     setPeerId,
     hide,
+    getTicket: () => ticket(),
+    close: () => closeTicket(),
     destroy: () => {
       rootScope.removeEventListener('history_multiappend', onChatMessage);
       rootScope.removeEventListener('message_sent', onChatMessage);

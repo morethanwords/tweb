@@ -439,6 +439,16 @@ export default class ChatTopbar {
     };
 
     this.menuButtons = [this.autoDeleteBtnMenuOptions, {
+      icon: 'checkround',
+      text: 'Crm.Ticket.Close',
+      onClick: () => {
+        this.plates?.crmTicket.close();
+      },
+      // Reliable fallback for closing the ticket when the floating CRM plate is
+      // crowded out by other plates (pinned message / translate). Reads the plate's
+      // already-loaded ticket signal — no extra round-trip on menu open.
+      verify: () => this.plates?.crmTicket.getTicket()?.status === 'open'
+    }, {
       icon: 'search',
       text: 'Search',
       onClick: () => {

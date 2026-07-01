@@ -4308,6 +4308,25 @@ export default class ChatInput {
 
   public async sendMessage(force = false) {
     const {editMsgId, chat} = this;
+
+    // Support-fork fallback: typing "/close" closes the customer's open CRM ticket
+    // instead of sending a literal message. Reliable when the floating CRM plate is
+    // crowded out by other topbar plates (pinned message / translate). Never leak the
+    // raw "/close" text to the customer — return early in every branch below.
+    if(!editMsgId && chat.peerId?.isUser()) {
+      const {value} = getRichValueWithCaret(this.messageInputField.input, true, false);
+      if(value.trim().toLowerCase() === '/close') {
+        const crmTicket = chat.topbar?.plates?.crmTicket;
+        if(crmTicket?.getTicket()?.status === 'open') {
+          this.clearInput();
+          crmTicket.close();
+        } else {
+          toastNew({langPackKey: 'Crm.Ticket.NoOpen'});
+        }
+        return;
+      }
+    }
+
     if(chat.type === ChatType.Scheduled && !force && !editMsgId) {
       this.scheduleSending();
       return;

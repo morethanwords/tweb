@@ -423,6 +423,10 @@ class IDBStorage<T extends Database<any>, StoreName extends string = T['stores']
       this.log(log + ': start');
     }
 
+    // Declared as `let` so the timeout closure below can safely reference it even
+    // if db.transaction() throws before initialization (avoids TDZ ReferenceError).
+    let transaction: IDBTransaction;
+
     const timeout = setTimeout(() => {
       this.log.error('transaction not finished', transaction, log);
     }, 10000);
@@ -434,7 +438,16 @@ class IDBStorage<T extends Database<any>, StoreName extends string = T['stores']
     const promise = new Promise<T>((a, b) => [resolve, reject] = [a, b]);
 
     // * https://developer.chrome.com/blog/indexeddb-durability-mode-now-defaults-to-relaxed
-    const transaction = db.transaction([storeName], mode, {durability: 'relaxed'});
+    // The DB connection can be closing during window teardown — catch the
+    // InvalidStateError so it surfaces as a rejected promise instead of an
+    // uncaught exception, and clear the timeout to avoid the deferred ReferenceError.
+    try {
+      transaction = db.transaction([storeName], mode, {durability: 'relaxed'});
+    } catch(err) {
+      clearTimeout(timeout);
+      reject(err);
+      return promise;
+    }
 
     const onError = () => {
       clearTimeout(timeout);

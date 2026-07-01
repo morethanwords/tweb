@@ -13,7 +13,7 @@ export type CrmUser = {
 
 export type CrmConfig = {
   enabled: boolean,
-  baseUrl: string, // e.g. http://localhost:8000
+  baseUrl: string, // e.g. https://andropay.xyzlocalhost:8000
   token: string,
   user?: CrmUser
 };

@@ -112,8 +112,8 @@ export default class NativeVoiceRecorder {
       audio: {
         ...audioConstraints,
         noiseSuppression: false,
-        echoCancellation: false,
-        autoGainControl: false
+        echoCancellation: true,
+        autoGainControl: true
       }
     });
 

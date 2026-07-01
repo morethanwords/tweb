@@ -175,7 +175,7 @@
 "QuickReplies.SourceCrm" = "CRM";
 "Crm.Title" = "Andropay CRM";
 "Crm.Caption" = "Connect this session to your Andropay CRM to pull shared FAQ/templates into quick replies and look up customers. Sign in with your agent mobile and OTP — the token is stored only in this browser.";
-"Crm.BaseUrl" = "CRM address (e.g. http://localhost:8000)";
+"Crm.BaseUrl" = "CRM address (e.g. https://andropay.xyz)";
 "Crm.Mobile" = "Agent mobile (exact, e.g. 00989012345678)";
 "Crm.Code" = "OTP code";
 "Crm.SendCode" = "Send code";
@@ -193,6 +193,7 @@
 "Crm.Ticket.Opened" = "Ticket #%1$d opened";
 "Crm.Ticket.Closed" = "Ticket #%1$d closed";
 "Crm.Ticket.Reopened" = "Ticket #%1$d reopened";
+"Crm.Ticket.NoOpen" = "No open ticket to close";
 "Crm.SessionExpired" = "CRM session expired";
 "Crm.Login" = "Log In";
 "KeyboardShortcuts.Caption" = "Shortcuts shown for your platform.";
