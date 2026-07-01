@@ -1,7 +1,7 @@
 import {createEffect, createSignal, For, JSX, createMemo, onCleanup, untrack, createReaction, Show, Switch, Match} from 'solid-js';
 import {getOverlayRoot} from '@helpers/appWindow';
 import {Portal} from 'solid-js/web';
-import {createStoriesViewer} from '@components/stories/viewer';
+import {createStoriesViewer, createStoriesViewerWithPeer} from '@components/stories/viewer';
 import {Document, MessageMedia, Photo, StoryItem} from '@layer';
 import {wrapStoryMedia} from '@components/stories/preview';
 import getMediaThumbIfNeeded from '@helpers/getStrippedThumbIfNeeded';
@@ -36,6 +36,7 @@ import confirmationPopup from '@components/confirmationPopup';
 import PopupElement from '@components/popups';
 import PopupChooseStory from '@components/popups/chooseStoryPopup';
 import createSubmenuTrigger from '@components/createSubmenuTrigger';
+import showStoriesStealthModePopup from '@components/popups/storiesStealthMode';
 import {toastNew} from '@components/toast';
 import {IconTsx} from '@components/iconTsx';
 import LottieAnimation from '@components/lottieAnimation';
@@ -243,6 +244,19 @@ class StoriesContextMenu {
         const story = this.storyItem;
         return !!story.pFlags.public && (!story.pFlags.noforwards || !!username)
       }
+    }, {
+      icon: 'eyecross_outline',
+      text: 'Stories.StealthMode.View',
+      onClick: () => {
+        const {peerId} = this;
+        const id = this.storyItem.id;
+        showStoriesStealthModePopup({
+          onActivate: () => {
+            createStoriesViewerWithPeer({peerId, id});
+          }
+        });
+      },
+      verify: () => this.peerId !== rootScope.myId
     }, {
       icon: 'select',
       text: 'Message.Context.Select',
