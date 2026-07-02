@@ -322,9 +322,33 @@ let init = () => {
         richValue.value = richValueSplitted.join('');
       }
 
-      const richTextLength = richValue.value.replace(/\s/g, '').length;
-      const plainTextLength = plainText.replace(/\s/g, '').length;
-      if(richTextLength === plainTextLength || hasCustomEmoji) {
+      const richTextNoWhitespace = richValue.value.replace(/\s/g, '');
+      const plainTextNoWhitespace = plainText.replace(/\s/g, '');
+      const richTextLength = richTextNoWhitespace.length;
+      const plainTextLength = plainTextNoWhitespace.length;
+
+      // * the html-derived rich value can be shorter than text/plain when the source ships markdown
+      // * on text/plain (`code`, **bold**, ```fence```) but real formatting in the html — the markers
+      // * are literal chars in plain yet zero-width entities in rich. requiring exact length parity
+      // * there throws away perfectly good formatting and dumps the raw markdown into the input. so
+      // * also accept the rich value when every one of its (non-whitespace) chars still appears, in
+      // * order, inside the plain text — i.e. plain is just a marked-up rendering of the same content.
+      const isRichSubsetOfPlain = () => {
+        if(richTextLength > plainTextLength) {
+          return false;
+        }
+
+        let i = 0;
+        for(let j = 0; i < richTextLength && j < plainTextLength; ++j) {
+          if(richTextNoWhitespace[i] === plainTextNoWhitespace[j]) {
+            ++i;
+          }
+        }
+
+        return i === richTextLength;
+      };
+
+      if(richTextLength === plainTextLength || hasCustomEmoji || (richValue.entities.length && isRichSubsetOfPlain())) {
         text = richValue.value;
         entities = richValue.entities;
         usePlainText = false;
