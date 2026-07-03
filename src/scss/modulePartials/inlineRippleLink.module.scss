@@ -1,0 +1,14 @@
+@use '../variables' as *;
+@use '../mixins' as *;
+
+.inlineRippleLink {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  padding: 0 4px;
+  border-radius: 8px;
+  color: var(--primary-color);
+  cursor: pointer;
+  @include hover-global(blue, background-color, true);
+  --ripple-color: hsla(from var(--primary-color) h s l / 0.1);
+}

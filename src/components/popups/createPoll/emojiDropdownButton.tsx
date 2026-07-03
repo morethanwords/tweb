@@ -5,6 +5,7 @@ import {attachClassName} from '@helpers/solid/classname';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {createMemo, onCleanup} from 'solid-js';
+import {getOverlayRoot} from '@helpers/appWindow';
 
 
 export type EmojiDropdownButtonProps = {
@@ -21,7 +22,7 @@ export const EmojiDropdownButton = (props: EmojiDropdownButtonProps) => {
 
     const {button} = createEmojiDropdownButton({
       inputField: props.inputField,
-      customParentElement: document.body,
+      customParentElement: getOverlayRoot,
       onEmoticonsDropdown: (value) => {
         emoticonsDropdown = value;
       },

@@ -1,5 +1,6 @@
 import {IS_SAFARI} from '@environment/userAgent';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
+import {getAppWindow} from '@helpers/appWindow';
 import {videoToImage} from '@helpers/dom/videoToImage';
 import ListLoader from '@helpers/listLoader';
 import ListenerSetter from '@helpers/listenerSetter';
@@ -280,7 +281,7 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
     if(visible && this.videoPlayer) {
       this.videoPlayer.cancelFullScreen();
       if(this.videoPlayer.inPip) {
-        document.exitPictureInPicture();
+        getAppWindow().document.exitPictureInPicture();
       }
     }
 
@@ -422,7 +423,7 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
 
     this.listenerSetter.removeAll();
     if(hadPip) {
-      document.exitPictureInPicture();
+      getAppWindow().document.exitPictureInPicture();
     }
   }
 
@@ -430,7 +431,7 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
     if(!AppMediaViewerRtmp.activeInstance) return;
 
     if(AppMediaViewerRtmp.activeInstance.videoPlayer?.inPip) {
-      document.exitPictureInPicture();
+      getAppWindow().document.exitPictureInPicture();
     }
   }
 

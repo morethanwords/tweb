@@ -140,4 +140,56 @@ describe('flattenRichMessageSummary', () => {
     expect(richMessageToPage(rich).pFlags.rtl).toBe(true);
     expect(flattenRichMessageSummary(rich).text).toBe('Unsupported block: pageBlockFuture');
   });
+
+  test('decodes inline textMath to source and keeps following entities aligned', () => {
+    const summary = flattenRichMessageSummary(richMessage([
+      {
+        _: 'pageBlockParagraph',
+        text: {
+          _: 'textConcat',
+          texts: [
+            text('E='),
+            {_: 'textMath', source: 'mc^2'} as RichText,
+            text(' is '),
+            {_: 'textBold', text: text('famous')}
+          ]
+        }
+      }
+    ]));
+
+    // The IV pipeline carries math as an opaque \x02<base64>\x02 marker; summaries must show the raw
+    // source instead, and the bold entity after it must stay pinned to 'famous'.
+    expect(summary.text).toBe('E=mc^2 is famous');
+    expect(summary.text.includes('\x02')).toBe(false);
+    expect(summary.entities).toContainEqual({
+      _: 'messageEntityBold',
+      offset: 10,
+      length: 6
+    });
+  });
+
+  test('truncates without shifting entities when the text has leading whitespace', () => {
+    const summary = flattenRichMessageSummary(richMessage([
+      {
+        _: 'pageBlockParagraph',
+        text: {
+          _: 'textConcat',
+          texts: [
+            text(' '.repeat(3)),
+            {_: 'textBold', text: text('bold')},
+            text('x'.repeat(200))
+          ]
+        }
+      }
+    ]), 100);
+
+    // Leading spaces must NOT be trimmed (that would shift the bold entity); the bold stays at 3.
+    expect(summary.text.startsWith('   bold')).toBe(true);
+    expect(summary.text.length).toBe(103); // 100 chars + '...'
+    expect(summary.entities).toContainEqual({
+      _: 'messageEntityBold',
+      offset: 3,
+      length: 4
+    });
+  });
 });

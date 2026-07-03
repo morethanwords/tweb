@@ -1,6 +1,6 @@
 import {MessageEntity, Page, PageBlock, PageCaption, RichMessage, RichText, TextWithEntities} from '@layer';
 import wrapTelegramRichText from '@lib/richTextProcessor/wrapTelegramRichText';
-import limitSymbols from '@helpers/string/limitSymbols';
+import {MATH_MARKER_RE, decodeInlineMath} from '@helpers/math/mathMarker';
 
 const emptyRichText: RichText = {_: 'textEmpty'};
 
@@ -34,10 +34,15 @@ export function flattenRichMessageSummary(richMessage?: RichMessage, maxLength =
   appendBlocks(summary, richMessage.blocks || []);
 
   if(maxLength && summary.text.length > maxLength) {
-    summary.text = limitSymbols(summary.text, maxLength);
-    summary.entities = summary.entities.filter((entity) => entity.offset < summary.text.length);
+    // Hard-truncate to maxLength. Don't use limitSymbols() here: it trims *leading* whitespace,
+    // which would shift every entity offset out of alignment (and its soft +10 slack means it
+    // wouldn't actually cut at maxLength). trimEnd() only can't move earlier offsets. Clamp entities
+    // to the cut boundary (before the ellipsis) so none spills over.
+    const truncated = summary.text.slice(0, maxLength).trimEnd();
+    summary.text = truncated + '...';
+    summary.entities = summary.entities.filter((entity) => entity.offset < truncated.length);
     for(const entity of summary.entities) {
-      entity.length = Math.min(entity.length, summary.text.length - entity.offset);
+      entity.length = Math.min(entity.length, truncated.length - entity.offset);
     }
   }
 
@@ -180,7 +185,44 @@ function appendCaptionOrFallback(summary: Summary, caption: PageCaption, fallbac
 }
 
 function appendRichTextLine(summary: Summary, richText: RichText, prefix = '') {
-  appendTextWithEntitiesLine(summary, wrapTelegramRichText(richText), prefix);
+  appendTextWithEntitiesLine(summary, wrapSummaryRichText(richText), prefix);
+}
+
+// wrapTelegramRichText carries inline math (`textMath`) as an opaque `\x02<base64>\x02` marker for the
+// IV's Temml renderer. Summaries are plain text, so decode markers back to the raw LaTeX source and
+// shift any following entities by the length delta so their offsets stay aligned.
+function wrapSummaryRichText(richText: RichText): TextWithEntities {
+  const textWithEntities = wrapTelegramRichText(richText);
+  const {text} = textWithEntities;
+  if(!text.includes('\x02')) {
+    return textWithEntities;
+  }
+
+  let out = '';
+  let last = 0;
+  const shifts: Array<{from: number, delta: number}> = [];
+  for(const match of text.matchAll(MATH_MARKER_RE)) {
+    const source = decodeInlineMath(match[1]);
+    out += text.slice(last, match.index) + source;
+    const markerEnd = match.index + match[0].length;
+    shifts.push({from: markerEnd, delta: source.length - match[0].length});
+    last = markerEnd;
+  }
+  out += text.slice(last);
+
+  const shiftOffset = (offset: number) => {
+    let delta = 0;
+    for(const shift of shifts) {
+      if(offset >= shift.from) delta += shift.delta;
+    }
+    return offset + delta;
+  };
+
+  return {
+    _: 'textWithEntities',
+    text: out,
+    entities: (textWithEntities.entities || []).map((entity) => ({...entity, offset: shiftOffset(entity.offset)}))
+  };
 }
 
 function appendTextWithEntitiesLine(summary: Summary, textWithEntities: TextWithEntities, prefix = '') {
@@ -221,7 +263,7 @@ function appendEntities(summary: Summary, entities: MessageEntity[], offset: num
 function joinCells(cells: RichText[]): TextWithEntities {
   const joined = emptySummary();
   for(const [index, cell] of cells.entries()) {
-    const textWithEntities = wrapTelegramRichText(cell);
+    const textWithEntities = wrapSummaryRichText(cell);
     const offset = joined.text.length + (index ? 1 : 0);
     if(index) {
       joined.text += '\t';

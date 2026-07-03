@@ -10,6 +10,7 @@ import isSendShortcutPressed from '@helpers/dom/isSendShortcutPressed';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import EventListenerBase, {EventListenerListeners} from '@helpers/eventListenerBase';
 import {addFullScreenListener, getFullScreenElement} from '@helpers/dom/fullScreen';
+import {getOverlayRoot} from '@helpers/appWindow';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import {AppManagers} from '@lib/managers';
 import overlayCounter from '@helpers/overlayCounter';
@@ -58,10 +59,11 @@ export interface PopupElementConstructable<T extends PopupElement = any> {
 }
 
 const DEFAULT_APPEND_TO = document.body;
-let appendPopupTo = DEFAULT_APPEND_TO;
+// Resolved lazily: a fullscreen element wins, otherwise the active app window's body (the tab, or the
+// Document PiP window while the client is popped out).
+const appendPopupTo = () => getFullScreenElement() || getOverlayRoot();
 
 const onFullScreenChange = () => {
-  appendPopupTo = getFullScreenElement() || DEFAULT_APPEND_TO;
   PopupElement.reAppend();
 };
 
@@ -352,7 +354,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     appNavigationController.pushItem(this.navigationItem);
 
     blurActiveElement(); // * hide mobile keyboard
-    appendPopupTo.append(this.element);
+    appendPopupTo().append(this.element);
     if(animate) void this.element.offsetWidth; // reflow
     this.element.classList.add('active');
 
@@ -459,11 +461,12 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
   }
 
   public static reAppend() {
+    const target = appendPopupTo();
     this.POPUPS.forEach((popup) => {
       const {element, container} = popup;
       const parentElement = element.parentElement;
-      if(parentElement && parentElement !== appendPopupTo && appendPopupTo !== container) {
-        appendPopupTo.append(element);
+      if(parentElement && parentElement !== target && target !== container) {
+        target.append(element);
       }
     });
   }

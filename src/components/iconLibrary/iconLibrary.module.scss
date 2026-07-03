@@ -21,7 +21,7 @@
 }
 
 .Scrollable {
-  position: relative; 
+  position: relative;
   flex: 1;
 }
 
@@ -45,6 +45,10 @@
   font-size: calc(var(--size) * 0.75);
   line-height: 1em;
   pointer-events: initial !important;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
   cursor: pointer;
 }

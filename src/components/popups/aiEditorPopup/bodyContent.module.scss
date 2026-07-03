@@ -1,0 +1,281 @@
+@use "../../../scss/variables" as *;
+@use "../../../scss/mixins" as *;
+
+@mixin hoverable {
+  --hover-color: var(--light-filled-secondary-text-color);
+  @include hover-global(var(--hover-color), background-color, true);
+
+  &.active {
+    color: var(--primary-color);
+    background-color: hsla(from var(--primary-color) h s l / 0.12);
+    --hover-color: hsla(from var(--primary-color) h s l / 0.2);
+    --ripple-color: hsla(from var(--primary-color) h s l / 0.1);
+
+    :global(.night) & {
+      background-color: hsla(from var(--primary-color) h s l / 0.08);
+      --hover-color: hsla(from var(--primary-color) h s l / 0.16);
+      --ripple-color: hsla(from var(--primary-color) h s l / 0.2);
+    }
+  }
+}
+
+.bodyContent {
+  padding: 0 0 1rem;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  flex: 1;
+  overflow: hidden;
+
+  --tone-height: 80px;
+  --tone-width: 88px;
+  --tone-border-radius: 20px;
+  --tone-icon-size: 42px;
+}
+
+.padded {
+  padding: 0 var(--section-padding-inline);
+}
+
+.scrollable {
+  --scrollable-padding: 0.25rem;
+  flex: 1;
+  padding: 0rem var(--scrollable-padding);
+
+  &Content {
+    padding: 0.5rem calc(var(--section-padding-inline) - var(--scrollable-padding));
+    position: relative;
+  }
+}
+
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 200px;
+  background-color: var(--surface-color);
+}
+
+.tab {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+
+  flex: 1;
+  padding: 0.5rem 0.25rem 0.25rem;
+  border-radius: 100px;
+
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  @include hoverable;
+
+  &Icon {
+    font-size: 1.5rem;
+  }
+
+  &Label {
+    font-size: 0.875rem;
+    font-weight: var(--font-weight-bold);
+  }
+}
+
+.tabContent, .section {
+  background-color: var(--surface-color);
+  border-radius: 24px;
+  overflow: hidden;
+}
+
+.tabContent {
+  --content-padding-y: 0.5rem;
+  --content-padding-x: 1rem;
+
+  --original-extra-height: 1.25rem;
+  --original-padding-bottom: 0.75rem;
+  --original-collapsed-height: calc(1lh + var(--original-extra-height));
+
+  position: relative;
+}
+
+.exit {
+  // Need to override as TransitionGroup adds its own position
+  position: absolute !important;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+.autoHeight {
+  position: relative;
+}
+
+.tonesList {
+  display: flex;
+  gap: 2px;
+  --padding: 0.25rem;
+  padding: var(--padding);
+  height: calc(var(--tone-height) + var(--padding) * 2);
+}
+
+.tone {
+  position: relative;
+  overflow: hidden;
+
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  flex-shrink: 0;
+
+  height: var(--tone-height);
+  width: var(--tone-width);
+  border-radius: var(--tone-border-radius);
+  gap: 0.25rem;
+
+  cursor: pointer;
+
+  @include hoverable;
+
+  &Name {
+    font-size: 0.75rem;
+    font-weight: var(--font-weight-bold);
+    white-space: nowrap;
+    width: 64px;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &Icon {
+    --size: var(--tone-icon-size);
+    position: relative;
+    width: var(--size);
+    height: var(--size);
+    font-size: var(--size);
+    pointer-events: none;
+  }
+
+  &ContextMenuIcon {
+    position: absolute;
+    right: 0.5rem;
+    top: 0.5rem;
+    font-size: 0.75rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+    color: var(--secondary-text-color);
+  }
+
+  &.active &ContextMenuIcon {
+    color: var(--primary-color);
+  }
+
+  @include hover-global {
+    .toneContextMenuIcon {
+      opacity: 1;
+    }
+  }
+
+  &Skeleton {
+    width: var(--tone-width);
+    height: var(--tone-height);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 0.25rem;
+
+    &Icon {
+      --size: var(--tone-icon-size);
+      width: var(--size);
+      height: var(--size);
+      border-radius: 12px;
+    }
+
+    &Text {
+      width: calc(var(--tone-width) - 2.5rem);
+    }
+  }
+}
+
+.footerButtons {
+  padding: 0 var(--section-padding-inline);
+  display: flex;
+  gap: 0.5rem;
+
+  :global(.c-ripple) {
+    border-radius: inherit;
+  }
+}
+
+.applyButton {
+  flex: 1;
+  border-radius: 100px;
+}
+
+.sendButtonWrapper {
+  position: relative;
+  flex: 64px 0;
+  display: flex;
+
+  :global(.menu-send) {
+    inset-block: auto calc(100% + 0.5rem);
+    inset-inline: auto 0;
+  }
+
+  :global(.btn-send-effect-container) {
+    bottom: -0.25rem;
+  }
+}
+
+.sendButton {
+  flex: 1;
+  border-radius: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &Icon {
+    font-size: 1.5rem;
+  }
+}
+
+.sectionWrapper {
+  position: relative;
+
+  :global(html.no-touch) &:hover {
+    .sectionArrow:not(.hidden) {
+      opacity: 1;
+    }
+  }
+}
+
+.sectionArrow {
+  position: absolute;
+  top: 50%;
+  font-size: 0.75rem;
+  display: flex;
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition: opacity 0.2s;
+  border-radius: 4px;
+
+  opacity: 0;
+
+  &Left {
+    left: 2px;
+    transform: translateY(-50%) rotate(90deg);
+  }
+
+  &Right {
+    right: 2px;
+    transform: translateY(-50%) rotate(-90deg);
+  }
+
+  &.hidden {
+    opacity: 0;
+  }
+}

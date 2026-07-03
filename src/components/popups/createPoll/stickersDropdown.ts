@@ -5,6 +5,7 @@ import findUpTag from '@helpers/dom/findUpTag';
 import cloneDOMRect from '@helpers/dom/cloneDOMRect';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {createEffect, createRoot, createSignal, onCleanup} from 'solid-js';
+import {getOverlayRoot} from '@helpers/appWindow';
 
 import styles from '@components/emojiDropdownButton.module.scss';
 
@@ -27,7 +28,7 @@ const createStickersDropdown = ({
 
   const emoticonsDropdown = new EmoticonsDropdown({
     tabsToRender: [stickersTab],
-    customParentElement: document.body,
+    customParentElement: getOverlayRoot,
     getOpenPosition: () => {
       const rect = pivot.getBoundingClientRect();
       const cloned = cloneDOMRect(rect);

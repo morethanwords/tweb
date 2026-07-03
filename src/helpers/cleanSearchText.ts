@@ -8,7 +8,7 @@
 import LatinizeMap from '@config/latinizeMap';
 
 export const badCharsRe = /[`~!@#$%^&*()\-_=+\[\]\\|{}'";:\/?.>,<]+/g;
-const trimRe = /^\s+|\s$/g;
+const trimRe = /^\s+|\s+$/g;
 
 const C2L: {[k: string]: string} = {
   'й': 'q',

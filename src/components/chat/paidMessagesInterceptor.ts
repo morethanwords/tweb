@@ -65,6 +65,7 @@ export default class PaidMessagesInterceptor {
   //   messageCount: 3
   // };
 
+  public static PaymentRejectedSymbol: typeof PAYMENT_REJECTED = PAYMENT_REJECTED;
 
   constructor(private chat: Chat, private managers: AppManagers) {}
 

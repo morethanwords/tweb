@@ -155,6 +155,11 @@ export interface MTAppConfig {
   poll_answers_max?:                          number;
   poll_close_period_max?:                     number;
   no_forwards_request_expire_period?:         number;
+  aicompose_tone_title_length_max?:           number;
+  aicompose_tone_prompt_length_max?:          number;
+  aicompose_tone_examples_num?:               number;
+  aicompose_tone_saved_limit_default?:        number;
+  aicompose_tone_saved_limit_premium?:        number;
 }
 
 export interface EmojiesSendDiceSuccess {

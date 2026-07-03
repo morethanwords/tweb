@@ -370,6 +370,7 @@ export default function showStickersPopup(
       closable
       show={show()}
       kind={STICKERS_POPUP_KIND}
+      animationGroup={ANIMATION_GROUP}
       containerProps={{ref: (el) => containerEl = el}}
       onCloseAfterTimeout={() => {
         deferredCloseCallbacks.splice(0).forEach((cb) => cb());

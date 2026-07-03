@@ -27,6 +27,7 @@ import apiManagerProxy from '@lib/apiManagerProxy';
 import getProxiedManagers from '@lib/getProxiedManagers';
 import themeController from '@helpers/themeController';
 import overlayCounter from '@helpers/overlayCounter';
+import {getAppWindow, onAppWindowChange} from '@helpers/appWindow';
 import singleInstance, {InstanceDeactivateReason} from '@lib/singleInstance';
 import {parseUriParamsLine} from '@helpers/string/parseUriParams';
 import Modes from '@config/modes';
@@ -132,7 +133,7 @@ function setViewportHeightListeners() {
   let setViewportVH = false/* , hasFocus = false */;
   let lastVH: number;
   const setVH = () => {
-    let vh = (setViewportVH && !overlayCounter.isOverlayActive ? (w as VisualViewport).height || (w as Window).innerHeight : window.innerHeight) * 0.01;
+    let vh = (setViewportVH && !overlayCounter.isOverlayActive ? (w as VisualViewport).height || (w as Window).innerHeight : getAppWindow().innerHeight) * 0.01;
     vh = +vh.toFixed(2);
     if(lastVH === vh) {
       return;
@@ -155,8 +156,17 @@ function setViewportHeightListeners() {
     } */
   };
 
-  window.addEventListener('resize', setVH);
-  setVH();
+  // Bind the --vh resize listener to the active app window, re-binding when the client moves into /
+  // out of the Document PiP window so --vh tracks whichever viewport the app is rendered in.
+  let vhWindow: Window;
+  const bindVH = (win: Window) => {
+    vhWindow?.removeEventListener('resize', setVH);
+    vhWindow = win;
+    win.addEventListener('resize', setVH);
+    setVH();
+  };
+  bindVH(getAppWindow());
+  onAppWindowChange((win) => bindVH(win));
 
   if(IS_STICKY_INPUT_BUGGED) {
     const toggleResizeMode = () => {

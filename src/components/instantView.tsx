@@ -1,7 +1,7 @@
 import {For, createEffect, createContext, useContext, Show, createSignal, Setter, onCleanup, createReaction} from 'solid-js';
 import type {JSX} from 'solid-js';
 import {Dynamic} from 'solid-js/web';
-import {Document, Page, PageBlock, PageCaption, PageListOrderedItem, Photo, RichText} from '@layer';
+import {Document, MessageEntity, Page, PageBlock, PageCaption, PageListItem, PageListOrderedItem, Photo, RichText} from '@layer';
 import wrapTelegramRichText from '@lib/richTextProcessor/wrapTelegramRichText';
 import styles from '@components/instantView.module.scss';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
@@ -34,6 +34,11 @@ import type AppMediaViewer from '@components/appMediaViewer';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import {useAppSettings} from '@stores/appSettings';
+import {StaticCheckbox} from '@components/staticCheckbox';
+import copyFromElement from '@helpers/dom/copyFromElement';
+import {toastNew} from '@components/toast';
+import {Latex, hydrateInlineMath} from '@components/instantViewMath';
+import {getCodeBlockClickTarget, toggleCodeBlockWrap} from '@helpers/dom/codeBlockClick';
 
 type InstantViewContextValue = {
   webPageId: Long,
@@ -51,13 +56,35 @@ type InstantViewContextValue = {
 
 const InstantViewContext = createContext<InstantViewContextValue>();
 
+// Match in-page fragment URLs: `#x` (raw markdown) or `<protocol>://#x`
+// (after wrapUrl prepends the missing scheme to a bare fragment).
+const FRAGMENT_HREF_RE = /^(?:[a-z]+:\/\/)?(#[^#?]+)$/i;
+
 function onClick(context: InstantViewContextValue, e: MouseEvent) {
+  // Code block header buttons (copy / wrap toggle) — same affordance as chat bubbles, since IV
+  // reuses wrapRichText's `messageEntityPre` markup for highlighted code.
+  const codeTarget = getCodeBlockClickTarget(e.target);
+  if(codeTarget) {
+    cancelEvent(e);
+    if(codeTarget.isWrapToggle) {
+      toggleCodeBlockWrap(codeTarget);
+    } else {
+      copyFromElement(codeTarget.code);
+      toastNew({langPackKey: 'CodeCopied'});
+    }
+    return;
+  }
+
   const anchor = findUpClassName(e.target, 'anchor-url') as HTMLAnchorElement;
-  // if(anchor) {
-  //   cancelEvent(e);
-  //   context.openNewPage(anchor.href);
-  //   return;
-  // }
+  if(anchor) {
+    const href = anchor.getAttribute('href') || '';
+    const m = href.match(FRAGMENT_HREF_RE);
+    if(m) {
+      cancelEvent(e);
+      context.scrollToAnchor(m[1], false);
+      return;
+    }
+  }
 }
 
 export function InstantViewBlocks(props: {
@@ -93,19 +120,43 @@ export function InstantViewBlocks(props: {
   };
 
   return (
-    <InstantViewContext.Provider value={value}>
+    <InstantViewContent
+      value={value}
+      class={props.class}
+      contentClass={props.contentClass}
+      paddings={props.paddings}
+      style={props.style}
+    />
+  );
+}
+
+// Shared render of the context provider + `.InstantView` wrapper + block list. Both the full-page
+// `InstantView` (wrapped in Scrollable/MySuspense with a footer) and the inline `InstantViewBlocks`
+// (used to embed rich messages inside chat bubbles) delegate here so the block markup lives in one
+// place. The distinct context values (ready/scrollToAnchor) and outer chrome stay in each caller.
+function InstantViewContent(props: {
+  value: InstantViewContextValue,
+  class?: string,
+  contentClass?: string,
+  paddings?: number,
+  style?: JSX.CSSProperties,
+  children?: JSX.Element
+}) {
+  return (
+    <InstantViewContext.Provider value={props.value}>
       <div
-        dir={props.page.pFlags.rtl ? 'auto' : undefined}
+        dir={props.value.page.pFlags.rtl ? 'auto' : undefined}
         class={classNames(styles.InstantView, props.class, 'text-overflow-wrap')}
-        onClick={onClick.bind(null, value)}
+        onClick={onClick.bind(null, props.value)}
         style={props.style}
       >
-        {value.customEmojiRenderer}
+        {props.value.customEmojiRenderer}
         <div class={classNames(styles.InstantViewContent, props.contentClass)}>
-          <For each={props.page.blocks}>{(block) => (
+          <For each={props.value.page.blocks}>{(block) => (
             <Block block={block} paddings={props.paddings ?? 2} />
           )}</For>
         </div>
+        {props.children}
       </div>
     </InstantViewContext.Provider>
   );
@@ -199,48 +250,39 @@ export function InstantView(props: {
           props.onReady?.();
         }}
       >
-        <InstantViewContext.Provider value={value}>
-          <Scrollable ref={scrollableRef}>
+        <Scrollable ref={scrollableRef}>
+          <InstantViewContent
+            value={value}
+            paddings={2}
+            style={{'--iv-scale': (1.125 * appSettings.instantView.scale).toFixed(3)}}
+          >
             <div
-              dir={props.page.pFlags.rtl ? 'auto' : undefined}
-              class={classNames(styles.InstantView, 'text-overflow-wrap')}
-              onClick={onClick.bind(null, value)}
-              style={{'--iv-scale': (1.125 * appSettings.instantView.scale).toFixed(3)}}
+              dir="auto"
+              class={classNames(styles.InstantViewFooter, 'secondary')}
             >
-              {value.customEmojiRenderer}
-              <div class={styles.InstantViewContent}>
-                <For each={props.page.blocks}>{(block) => (
-                  <Block block={block} paddings={2} />
-                )}</For>
-              </div>
-              <div
-                dir="auto"
-                class={classNames(styles.InstantViewFooter, 'secondary')}
+              <Show when={props.page.views}>
+                {i18n('Views', [props.page.views])}
+                {` • `}
+              </Show>
+              <a
+                class={styles.WrongLayout}
+                href="#"
+                onClick={async(e) => {
+                  cancelEvent(e);
+                  value.collapse();
+                  const user = await rootScope.managers.appUsersManager.resolveUserByUsername('@previews');
+                  const startParam = `webpage${value.webPageId}`;
+                  appImManager.setInnerPeer({
+                    peerId: user.id.toPeerId(false),
+                    startParam
+                  });
+                }}
               >
-                <Show when={props.page.views}>
-                  {i18n('Views', [props.page.views])}
-                  {` • `}
-                </Show>
-                <a
-                  class={styles.WrongLayout}
-                  href="#"
-                  onClick={async(e) => {
-                    cancelEvent(e);
-                    value.collapse();
-                    const user = await rootScope.managers.appUsersManager.resolveUserByUsername('@previews');
-                    const startParam = `webpage${value.webPageId}`;
-                    appImManager.setInnerPeer({
-                      peerId: user.id.toPeerId(false),
-                      startParam
-                    });
-                  }}
-                >
-                  {i18n('InstantView.WrongLayout')}
-                </a>
-              </div>
+                {i18n('InstantView.WrongLayout')}
+              </a>
             </div>
-          </Scrollable>
-        </InstantViewContext.Provider>
+          </InstantViewContent>
+        </Scrollable>
       </MySuspense>
     </Animated>
   );
@@ -431,11 +473,29 @@ function Block(props: {
     case 'pageBlockHeading2':
       return <h2 class={classNames(styles.Padding, styles.Subtitle)}><RichTextRenderer text={block.text} /></h2>;
     case 'pageBlockHeader':
-      return <h3 class={classNames(styles.Padding, styles.Header)}><RichTextRenderer text={block.text} /></h3>;
+    case 'pageBlockSubheader': {
+      // Markdown levels 1-6 are stashed as `headingLevel` on the block by parseMarkdownToPage
+      // (see comment there). Without it (e.g. native IV articles) fall back to the original
+      // h3 / h4 tag. With it, render the matching semantic tag and add `HeadingH{n}` so the
+      // CSS module can size each level distinctly.
+      const isHeader = block._ === 'pageBlockHeader';
+      const level = (block as typeof block & {headingLevel?: number}).headingLevel;
+      const tag = level ? `h${Math.min(level + 1, 6)}` : (isHeader ? 'h3' : 'h4');
+      return (
+        <Dynamic
+          component={tag}
+          class={classNames(
+            styles.Padding,
+            isHeader ? styles.Header : styles.Subheader,
+            level && styles[`HeadingH${level}`]
+          )}
+        >
+          <RichTextRenderer text={block.text} />
+        </Dynamic>
+      );
+    }
     case 'pageBlockHeading3':
       return <h3 class={classNames(styles.Padding, styles.Header)}><RichTextRenderer text={block.text} /></h3>;
-    case 'pageBlockSubheader':
-      return <h4 class={classNames(styles.Padding, styles.Subheader)}><RichTextRenderer text={block.text} /></h4>;
     case 'pageBlockHeading4':
       return <h4 class={classNames(styles.Padding, styles.Subheader)}><RichTextRenderer text={block.text} /></h4>;
     case 'pageBlockHeading5':
@@ -444,10 +504,32 @@ function Block(props: {
       return <h6 class={classNames(styles.Padding, styles.Subheader)}><RichTextRenderer text={block.text} /></h6>;
     case 'pageBlockParagraph':
       return <p class={classNames(styles.Padding, styles.Paragraph)}><RichTextRenderer text={block.text} /></p>;
-    case 'pageBlockPreformatted':
-      return <pre class={classNames(styles.Preformatted)}><RichTextRenderer text={block.text} /></pre>;
+    case 'pageBlockPreformatted': {
+      const code = richTextToString(block.text);
+      // `$$…$$` blocks are tagged language `math` by parseMarkdownToPage — render them as display
+      // formulas via Temml (like WebA), wrapped in a horizontal scroller for wide equations.
+      if(block.language === 'math') {
+        return (
+          <div class={classNames(styles.Padding, styles.MathBlockWrapper)}>
+            <Latex source={code} isBlock />
+          </div>
+        );
+      }
+      // Otherwise render as the app's real highlighted code block (Prism + language header +
+      // copy/wrap), reusing the exact markup wrapRichText builds for `messageEntityPre`. The header
+      // buttons are wired by the IV root onClick delegator (see onClick()).
+      const entities: MessageEntity[] = [{_: 'messageEntityPre', offset: 0, length: code.length, language: block.language || ''}];
+      const fragment = wrapRichText(code, {entities});
+      return <div class={classNames(styles.Padding, styles.PreformattedWrapper)}>{documentFragmentToNodes(fragment)}</div>;
+    }
     case 'pageBlockMath':
-      return <pre class={classNames(styles.Preformatted)}>{block.source}</pre>;
+      // Server-sent `pageBlockMath` (rich messages) — render as a display formula through the same
+      // Temml path master uses for markdown `$$…$$` blocks, instead of dumping the raw LaTeX source.
+      return (
+        <div class={classNames(styles.Padding, styles.MathBlockWrapper)}>
+          <Latex source={block.source} isBlock />
+        </div>
+      );
     case 'pageBlockFooter':
       return <footer class={classNames(styles.Padding, styles.Footer, 'secondary')}><RichTextRenderer text={block.text} /></footer>;
     case 'pageBlockDivider':
@@ -484,7 +566,15 @@ function Block(props: {
                 </span>
               )}
               {item._ === 'pageListItemText' || item._ === 'pageListOrderedItemText' ? (
-                <RichTextRenderer text={item.text} />
+                <>
+                  <Show when={(item as PageListItem & {taskChecked?: boolean}).taskChecked !== undefined}>
+                    <StaticCheckbox
+                      class={styles.TaskCheckbox}
+                      checked={(item as PageListItem & {taskChecked?: boolean}).taskChecked}
+                    />
+                  </Show>
+                  <RichTextRenderer text={item.text} />
+                </>
               ) : (
                 <For each={item.blocks}>{(subBlock) => (
                   <Block block={subBlock} paddings={props.paddings + 1} />
@@ -498,11 +588,11 @@ function Block(props: {
     case 'pageBlockBlockquote':
       return (
         <div class={classNames(styles.Padding, styles.BlockquoteWrapper)}>
-          <blockquote class={styles.Blockquote}>
-            <div class={styles.BlockquoteBorder} />
+          {/* reuse the app-standard quote styling (left accent bar + tinted bg + quote glyph) */}
+          <blockquote class={classNames('quote-like', 'quote-like-border', 'quote-like-icon', styles.Blockquote)}>
             <RichTextRenderer text={block.text} />
             <Show when={!isRichTextEmpty(block.caption)}>
-              <div class={styles.BlockquoteCaption}>
+              <div class={classNames(styles.BlockquoteCaption, 'secondary')}>
                 <RichTextRenderer text={block.caption} />
               </div>
             </Show>
@@ -1051,6 +1141,18 @@ function isRichTextEmpty(text: RichText) {
   return text._ === 'textEmpty' || (text._ === 'textPlain' && !text.text.trim());
 }
 
+// Flatten a RichText tree to its plain string (preformatted code is plain text; any inline
+// formatting is dropped since a code block renders verbatim).
+function richTextToString(text: RichText): string {
+  if(!text) return '';
+  switch(text._) {
+    case 'textEmpty': return '';
+    case 'textPlain': return text.text;
+    case 'textConcat': return text.texts.map(richTextToString).join('');
+    default: return richTextToString((text as Exclude<RichText, RichText.textConcat | RichText.textPlain | RichText.textEmpty> & {text: RichText}).text);
+  }
+}
+
 function RichTextRenderer(props: {text: RichText}) {
   const {webPageId, page, randomId, customEmojiRenderer} = useContext(InstantViewContext);
   const {text, entities} = wrapTelegramRichText(
@@ -1063,6 +1165,17 @@ function RichTextRenderer(props: {text: RichText}) {
   fragment.querySelectorAll('[onclick="tg_iv(this)"]').forEach((el) => {
     el.classList.add(styles.Anchor);
   });
+  // In-page fragment links (`#x`) get wrapped by wrapUrl into `https://#x` and flagged as
+  // masked → wrapRichText attaches `showMaskedAlert` onclick. That alert is meaningless for
+  // a same-page scroll, strip it so the IV onClick delegator can run scrollToAnchor.
+  fragment.querySelectorAll<HTMLAnchorElement>('a.anchor-url[onclick="showMaskedAlert(this)"]').forEach((el) => {
+    if(FRAGMENT_HREF_RE.test(el.getAttribute('href') || '')) {
+      el.removeAttribute('onclick');
+    }
+  });
+  // Inline math markers (`$x$`) are carried as plain-text base64 by the parser — swap them for
+  // Temml-rendered spans before the fragment is inserted, so the sentinels never become visible.
+  hydrateInlineMath(fragment);
   return documentFragmentToNodes(fragment);
   // return (<span dir="auto">{fragment}</span>);
   // const textWithEntities = createMemo(() => wrapTelegramRichText(props.text));

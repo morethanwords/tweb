@@ -23,6 +23,7 @@ import appNavigationController, {NavigationItem} from '@components/appNavigation
 import {InputGroupCall, Message, MessageMedia, PhotoSize} from '@layer';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import renderImageFromUrl, {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
+import {getAppWindow, getOverlayRoot} from '@helpers/appWindow';
 import getVisibleRect from '@helpers/dom/getVisibleRect';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import generatePathData from '@helpers/generatePathData';
@@ -1032,14 +1033,16 @@ export default class AppMediaViewerBase<
   }
 
   protected removeGlobalListeners() {
-    window.removeEventListener('keydown', this.onKeyDown);
-    window.removeEventListener('keyup', this.onKeyUp);
+    getAppWindow().removeEventListener('keydown', this.onKeyDown);
+    getAppWindow().removeEventListener('keyup', this.onKeyUp);
     mediaSizes.removeEventListener('resize', this.applyLayoutVariables);
   }
 
   protected setGlobalListeners() {
-    window.addEventListener('keydown', this.onKeyDown);
-    window.addEventListener('keyup', this.onKeyUp);
+    // Keyboard nav (arrows / space / Esc) on the active window — the viewer opens in whichever window
+    // the app is in (the tab, or the Document PiP window); a main-`window` listener is dead in the PiP.
+    getAppWindow().addEventListener('keydown', this.onKeyDown);
+    getAppWindow().addEventListener('keyup', this.onKeyUp);
     mediaSizes.addEventListener('resize', this.applyLayoutVariables);
   }
 
@@ -2408,7 +2411,7 @@ export default class AppMediaViewerBase<
       await setAuthorPromise;
 
       if(!this.wholeDiv.parentElement) {
-        document.body.append(this.wholeDiv);
+        getOverlayRoot().append(this.wholeDiv);
         void this.wholeDiv.offsetLeft; // reflow
       }
 

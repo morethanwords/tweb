@@ -98,7 +98,7 @@ export const FlagFilters = (props: {
         <I18nTsx key='AdminRecentActionsFilters.ResetFilters' />
       </Button>
       <Button class={styles.Button} primaryFilled onClick={onCommit}>
-        <I18nTsx key='AdminRecentActionsFilters.ApplyFilters' />
+        <I18nTsx key='Apply' />
       </Button>
     </div>
   </>

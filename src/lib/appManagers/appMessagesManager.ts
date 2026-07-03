@@ -46,7 +46,6 @@ import defineNotNumerableProperties from '@helpers/object/defineNotNumerableProp
 import getDocumentMediaInput from '@appManagers/utils/docs/getDocumentMediaInput';
 import getFileNameForUpload from '@helpers/getFileNameForUpload';
 import noop from '@helpers/noop';
-import appTabsManager from '@appManagers/appTabsManager';
 import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
 import getGroupedText from '@appManagers/utils/messages/getGroupedText';
 import pause from '@helpers/schedulers/pause';
@@ -75,7 +74,6 @@ import getMainGroupedMessage from '@appManagers/utils/messages/getMainGroupedMes
 import getUnreadReactions from '@appManagers/utils/messages/getUnreadReactions';
 import isMentionUnread from '@appManagers/utils/messages/isMentionUnread';
 import canMessageHaveFactCheck from '@appManagers/utils/messages/canMessageHaveFactCheck';
-import commonStateStorage from '@lib/commonStateStorage';
 import PaidMessagesQueue from '@appManagers/utils/messages/paidMessagesQueue';
 import type {ConfirmedPaymentResult} from '@components/chat/paidMessagesInterceptor';
 import RepayRequestHandler, {RepayRequest} from '@appManagers/utils/repayRequestHandler';
@@ -6733,19 +6731,30 @@ export class AppMessagesManager extends AppManager {
     // separately and are reset only by `messages.readMentions` /
     // `messages.readReactions`). Without that, after reload the server keeps
     // reporting the old badge — exactly what issue #380 describes.
+    const isForum = this.appPeersManager.isForum(peerId);
+    const isBotforum = this.appPeersManager.isBotforum(peerId);
     let hasMention = false;
     let hasUnreadReaction = false;
+    // For a forum/botforum these reads happen inside a single topic; derive its
+    // id from the messages so the server-side reset is scoped to that topic.
+    let threadId: number;
     for(const mid of msgIds) {
       const message = this.getMessageByPeer(peerId, mid) as MyMessage;
       if(!message) continue;
       if(isMentionUnread(message)) hasMention = true;
       if(getUnreadReactions(message)) hasUnreadReaction = true;
+      if((isForum || isBotforum) && !threadId) {
+        threadId = getMessageThreadId(message as Message.message, {isForum, isBotforum});
+      }
     }
 
     // Capture the badge state BEFORE processLocalUpdate (called below) flips
     // our local counters to 0 — otherwise the follow-up readMentions would
-    // always be skipped and the server-side counter would stay stale.
-    const dialog = this.dialogsStorage.getAnyDialog(peerId) as Dialog | ForumTopic | undefined;
+    // always be skipped and the server-side counter would stay stale. In a
+    // forum topic the mention/reaction counters live on the TOPIC dialog (the
+    // parent channel dialog tracks them per-topic, not aggregated), so read the
+    // badge from the topic — otherwise reactions in topics never get reset.
+    const dialog = this.dialogsStorage.getAnyDialog(peerId, threadId) as Dialog | ForumTopic | undefined;
     const hadUnreadMentions = !!dialog?.unread_mentions_count;
     const hadUnreadReactions = !!dialog?.unread_reactions_count;
 
@@ -6786,10 +6795,10 @@ export class AppMessagesManager extends AppManager {
     if(hasMention || hasUnreadReaction) {
       const followUps: Promise<any>[] = [promise];
       if(hasMention && hadUnreadMentions) {
-        followUps.push(this.readMentions(peerId).catch(noop));
+        followUps.push(this.readMentions(peerId, threadId).catch(noop));
       }
       if(hasUnreadReaction && hadUnreadReactions) {
-        followUps.push(this.readMentions(peerId, undefined, true).catch(noop));
+        followUps.push(this.readMentions(peerId, threadId, true).catch(noop));
       }
       promise = Promise.all(followUps).then(() => {});
     }
@@ -7444,8 +7453,20 @@ export class AppMessagesManager extends AppManager {
       } as Update.updateNewDiscussionMessage;
 
       if((this.appChatsManager.isForum(peerId.toChatId()) || this.appPeersManager.isBotforum(peerId)) && !this.dialogsStorage.getForumTopic(peerId, threadId)) {
-        // this.dialogsStorage.getForumTopicById(peerId, threadId);
-        this.handleNewUpdateAfterReload(peerId, update, threadId);
+        const action = (message as Message.messageService).action;
+        if(action?._ === 'messageActionTopicCreate') {
+          // The topic-create service message already carries the whole topic (title, icon, id), so
+          // build it locally instead of fetching it by id. `messages.getForumTopicsByID` races
+          // server-side replication right after creation — it can briefly report the brand-new topic
+          // as deleted/absent, which would blacklist it in `deletedTopics` permanently and hide it
+          // until a full reload (reopening the forum / new messages in the topic wouldn't recover it).
+          this.dialogsStorage.applyLocalForumTopics([
+            createBotforumTopicFromAction({message: message as Message.messageService, action})
+          ]);
+        } else {
+          // this.dialogsStorage.getForumTopicById(peerId, threadId);
+          this.handleNewUpdateAfterReload(peerId, update, threadId);
+        }
       } else if(peerId === this.appPeersManager.peerId && !this.dialogsStorage.getAnyDialog(peerId, threadId)) {
         this.handleNewUpdateAfterReload(peerId, update, threadId);
       } else if(threadStorage) {
@@ -7729,6 +7750,20 @@ export class AppMessagesManager extends AppManager {
 
     if(message.pFlags.out && isUnread !== wasUnread) {
       modifyUnreadReactions(isUnread);
+
+      // Forum / botforum: keep the parent forum dialog's aggregate reaction
+      // badge in sync when a topic reaction is read (mirrors the mention
+      // propagation in onUpdateReadHistory / onUpdateReadMessagesContents).
+      if(!isUnread && threadId && (this.appPeersManager.isForum(peerId) || this.appPeersManager.isBotforum(peerId))) {
+        const parentDialog = this.getDialogOnly(peerId);
+        if(parentDialog && parentDialog.unread_reactions_count > 0) {
+          const releaseParent = this.dialogsStorage.prepareDialogUnreadCountModifying(parentDialog);
+          parentDialog.unread_reactions_count = Math.max(0, parentDialog.unread_reactions_count - 1);
+          releaseParent();
+          this.rootScope.dispatchEvent('dialog_unread', {peerId, dialog: parentDialog});
+          this.dialogsStorage.setDialogToState(parentDialog);
+        }
+      }
     }
 
     const key = message.peerId + '_' + message.mid;
@@ -7764,6 +7799,12 @@ export class AppMessagesManager extends AppManager {
       }
 
       releaseUnreadCount();
+      // * refresh chat-folder membership: toggling unread_mark can move the
+      // * dialog in/out of exclude_read folders, but the filter index isn't
+      // * updated by the counter modify above. Without this, a read dialog
+      // * lingers in an "Unread" folder after its unread_mark is cleared
+      // * (e.g. from another client) until something else re-processes it.
+      this.dialogsStorage.processDialogForFilters(dialog);
       this.dialogsStorage.setDialogToState(dialog);
       this.rootScope.dispatchEvent('dialogs_multiupdate', new Map([[peerId, {dialog}]]));
     }
@@ -8083,6 +8124,8 @@ export class AppMessagesManager extends AppManager {
     const threadId = topMsgId ? this.appMessagesIdsManager.generateMessageId(topMsgId, channelId) : undefined;
     const mids = (update as Update.updateReadMessagesContents).messages.map((id) => this.appMessagesIdsManager.generateMessageId(id, channelId));
     const peerId = channelId ? channelId.toPeerId(true) : this.findPeerIdByMids(mids);
+    const isForum = this.appPeersManager.isForum(peerId);
+    const isBotforum = this.appPeersManager.isBotforum(peerId);
     for(let i = 0, length = mids.length; i < length; ++i) {
       const mid = mids[i];
       let message: MyMessage = this.getMessageByPeer(peerId, mid);
@@ -8104,10 +8147,7 @@ export class AppMessagesManager extends AppManager {
             // Forum / botforum: also bring down the parent forum dialog's
             // aggregate mention badge (mirrors the Bug-4 propagation in
             // onUpdateReadHistory).
-            if(threadId && (
-              this.appChatsManager.isForum(peerId.toChatId()) ||
-              this.appPeersManager.isBotforum(peerId)
-            )) {
+            if(threadId && (isForum || isBotforum)) {
               const parentDialog = this.getDialogOnly(peerId);
               if(parentDialog && parentDialog.unread_mentions_count > 0) {
                 const releaseParent = this.dialogsStorage.prepareDialogUnreadCountModifying(parentDialog);
@@ -8139,10 +8179,21 @@ export class AppMessagesManager extends AppManager {
           newReactions.recent_reactions.forEach((reaction) => {
             delete reaction.pFlags.unread;
           });
+
+          // Forum / botforum: scope the re-dispatched reaction update to its
+          // topic. Without top_msg_id it lands on the parent forum dialog
+          // (threadId undefined) and the TOPIC's unread_reactions_count never
+          // decrements — the reaction badge stays stuck. Derive the topic from
+          // the message so this works for both the local readMessages path (no
+          // top_msg_id on the update) and server-sent updates.
+          const reactionThreadId = threadId ?? ((isForum || isBotforum) ?
+            getMessageThreadId(message as Message.message, {isForum, isBotforum}) :
+            undefined);
           this.apiUpdatesManager.processLocalUpdate({
             _: 'updateMessageReactions',
             peer: this.appPeersManager.getOutputPeer(peerId),
             msg_id: message.id,
+            top_msg_id: reactionThreadId ? getServerMessageId(reactionThreadId) : undefined,
             reactions: newReactions
           });
         }
@@ -8263,6 +8314,12 @@ export class AppMessagesManager extends AppManager {
 
       if(affected) {
         releaseUnreadCount();
+        // * refresh chat-folder membership: deleting unread messages can drop
+        // * unread_count to 0, which must remove the dialog from exclude_read
+        // * folders. The counter modify above does NOT touch the filter index,
+        // * so without this a read-now dialog lingers in an "Unread" folder
+        // * (no badge) until something else re-processes it.
+        this.dialogsStorage.processDialogForFilters(dialog);
 
         if(!isSaved) { // ! WARNING, was `!isTopic` here
           this.rootScope.dispatchEvent('dialog_unread', {peerId, dialog});
@@ -9072,26 +9129,7 @@ export class AppMessagesManager extends AppManager {
       return;
     }
 
-    const settings = await commonStateStorage.get('settings', false);
-
-    let tabs = appTabsManager.getTabs();
-    if(!settings.notifyAllAccounts)
-      tabs = tabs.filter((tab) => tab.state.accountNumber === this.getAccountNumber());
-
-    tabs.sort((a, b) => a.state.idleStartTime - b.state.idleStartTime);
-
-    let tab = tabs.find((tab) => {
-      const {chatPeerIds, accountNumber} = tab.state;
-      return accountNumber === this.getAccountNumber() && chatPeerIds[chatPeerIds.length - 1] === peerId;
-    });
-
-    if(!tab) {
-      tab = tabs.find((tab) => tab.state.accountNumber === this.getAccountNumber());
-    }
-
-    if(!tab && tabs.length) {
-      tab = !tabs[0].state.idleStartTime ? tabs[0] : tabs[tabs.length - 1];
-    }
+    const tab = await this.appNotificationsManager.getNotificationTab(peerId);
 
     const port = MTProtoMessagePort.getInstance<false>();
     port.invokeVoid('notificationBuild', {

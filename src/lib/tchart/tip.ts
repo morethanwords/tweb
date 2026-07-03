@@ -1,3 +1,4 @@
+import {getOverlayRoot} from '@helpers/appWindow';
 import TDrag from '@lib/tchart/drag';
 import {isTouchDevice, getElemPagePos, triggerEvent, getFormatter, getXIndex} from '@lib/tchart/utils';
 import {TChartAngle, TChartAnimationProperty, TChartData, TChartUnitOptions} from '@lib/tchart/types';
@@ -148,7 +149,7 @@ export default class TTip {
             this.tp && this.render();
           }, this.isTouch ? 100 : 30);
 
-          document.body.removeEventListener('click', this.onBodyClick);
+          getOverlayRoot().removeEventListener('click', this.onBodyClick);
 
           return !this.tp;
         },
@@ -166,7 +167,7 @@ export default class TTip {
         onDragEnd: () => {
           delete this.canvasPos;
           this.bodyTimeout = window.setTimeout(() => {
-            document.body.addEventListener('click', this.onBodyClick);
+            getOverlayRoot().addEventListener('click', this.onBodyClick);
           }, 140);
         }
       });
@@ -484,7 +485,7 @@ export default class TTip {
           group: {top: true}
         }]);
       }
-      document.body.removeEventListener('click', this.onBodyClick);
+      getOverlayRoot().removeEventListener('click', this.onBodyClick);
     }
 
     this.shown = enabled;

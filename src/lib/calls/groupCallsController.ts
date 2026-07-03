@@ -23,6 +23,12 @@ import {NULL_PEER_ID} from '@appManagers/constants';
 
 const IS_MUTED = true;
 
+// How long after ICE reaches `connected` we still allow the full RTCPeerConnection
+// (which only flips to `connected` once DTLS completes) to come up before we treat
+// the media transport as stalled. DTLS normally finishes in well under a second;
+// 10s is generous and avoids false positives on slow networks.
+const CONNECTION_ESTABLISH_TIMEOUT_MS = 10000;
+
 export function makeSsrcsFromParticipant(participant: GroupCallParticipant) {
   return [
     makeSsrcFromParticipant(participant, 'audio', participant.source),
@@ -184,6 +190,47 @@ export class GroupCallsController extends EventListenerBase<{
         currentGroupCall.onTrack(event);
       });
 
+      // Media-transport watchdog. GroupCallInstance.connectionState (and thus the
+      // call UI) reports the ICE state ONLY, so a call where ICE reaches
+      // `connected` but the RTCPeerConnection never does — the DTLS handshake
+      // stalls, observed on restrictive networks / some VPNs — looks "connected"
+      // while NO media ever flows: black video tiles, silence, the SFU data
+      // channel never opens, no error anywhere. Watch the REAL connectionState
+      // (which only flips to `connected` once DTLS completes) and, if it doesn't
+      // get there shortly after ICE does, surface it and end the dead call
+      // instead of leaving the user staring at a silent black call.
+      let connectionWatchdog: number;
+      const clearConnectionWatchdog = () => {
+        if(connectionWatchdog) {
+          clearTimeout(connectionWatchdog);
+          connectionWatchdog = undefined;
+        }
+      };
+      const armConnectionWatchdog = () => {
+        clearConnectionWatchdog();
+        connectionWatchdog = window.setTimeout(() => {
+          connectionWatchdog = undefined;
+          const {connectionState} = connection;
+          if(connectionState === 'connected') return;
+          if(this.currentGroupCall !== currentGroupCall) return;
+          log.warn('media transport stall: ICE connected but connectionState =', connectionState, '— ending call');
+          currentGroupCall.reportMediaTransportStall({connectionState, iceConnectionState: connection.iceConnectionState});
+          currentGroupCall.hangUp();
+        }, CONNECTION_ESTABLISH_TIMEOUT_MS);
+      };
+
+      connection.addEventListener('connectionstatechange', () => {
+        const {connectionState} = connection;
+        if(connectionState === 'connected') {
+          clearConnectionWatchdog();
+        } else if(connectionState === 'failed') {
+          // ICE can sit at `connected` while DTLS fails, so the ICE 'failed'
+          // branch below never fires — end the call on a failed transport here.
+          clearConnectionWatchdog();
+          currentGroupCall.hangUp();
+        }
+      });
+
       connection.addEventListener('iceconnectionstatechange', () => {
         currentGroupCall.dispatchEvent('state', currentGroupCall.state);
 
@@ -200,6 +247,7 @@ export class GroupCallsController extends EventListenerBase<{
           }
 
           case 'closed': {
+            clearConnectionWatchdog();
             currentGroupCall.hangUp();
             break;
           }
@@ -209,6 +257,9 @@ export class GroupCallsController extends EventListenerBase<{
           }
 
           case 'connected': {
+            // ICE is up; give DTLS a bounded window to finish (see watchdog above).
+            armConnectionWatchdog();
+
             if(!currentGroupCall.joined) {
               currentGroupCall.joined = true;
               this.audioAsset.play({name: 'start'});
@@ -223,6 +274,7 @@ export class GroupCallsController extends EventListenerBase<{
           }
 
           case 'failed': {
+            clearConnectionWatchdog();
             // TODO: replace with ICE restart
             currentGroupCall.hangUp();
             // connection.restartIce();

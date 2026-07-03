@@ -1,4 +1,5 @@
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
+import {getOverlayRoot} from '@helpers/appWindow';
 import confirmationPopup from '@components/confirmationPopup';
 import MainCanvas from '@components/mediaEditor/canvas/mainCanvas';
 import MediaEditorContext, {createContextValue, EditingMediaState} from '@components/mediaEditor/context';
@@ -152,7 +153,7 @@ export function MediaEditor(props: MediaEditorProps) {
 
 export function openMediaEditor(props: MediaEditorProps, HotReloadGuardProvider: typeof SolidJSHotReloadGuardProvider) {
   const element = document.createElement('div');
-  document.body.append(element);
+  getOverlayRoot().append(element);
 
   const dispose = render(() => (
     <HotReloadGuardProvider>

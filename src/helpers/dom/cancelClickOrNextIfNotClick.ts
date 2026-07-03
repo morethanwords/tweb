@@ -1,4 +1,5 @@
 import cancelEvent from '@helpers/dom/cancelEvent';
+import {getOverlayRoot} from '@helpers/appWindow';
 
 export default function cancelClickOrNextIfNotClick(e: Event) {
   if(e.type === 'click') {
@@ -6,5 +7,5 @@ export default function cancelClickOrNextIfNotClick(e: Event) {
     return;
   }
 
-  document.body.addEventListener('click', cancelEvent, {once: true, capture: true});
+  getOverlayRoot().addEventListener('click', cancelEvent, {once: true, capture: true});
 }

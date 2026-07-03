@@ -1,15 +1,30 @@
 import type ListenerSetter from '@helpers/listenerSetter';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import simulateEvent from '@helpers/dom/dispatchEvent';
+import {getAppWindow, onAppWindowChange} from '@helpers/appWindow';
 
 let lastMouseDownElement: HTMLElement;
-document.addEventListener('mousedown', (e) => {
+const onGlobalMouseDown = (e: MouseEvent) => {
   lastMouseDownElement = e.target as HTMLElement;
   // if((lastMouseDownElement as any)?.cancelMouseDown) {
   if(lastMouseDownElement?.closest('[cancel-mouse-down]')) {
     e.preventDefault();
   }
-});
+};
+
+// The desktop `attachClickEvent` path suppresses any click whose target !== the last mousedown target
+// (`hasMouseMovedSinceDown`). That tracker MUST listen on the document the app currently lives in —
+// otherwise, while the client is popped out into a Document PiP window, mousedowns there never update
+// `lastMouseDownElement` and EVERY real (isTrusted) click in the pip is swallowed. Re-bind to the
+// active app window's document, following the client into / out of the pip.
+let mouseDownDocument: Document;
+const bindMouseDownTracker = (win: Window) => {
+  mouseDownDocument?.removeEventListener('mousedown', onGlobalMouseDown);
+  mouseDownDocument = win.document;
+  mouseDownDocument.addEventListener('mousedown', onGlobalMouseDown);
+};
+bindMouseDownTracker(getAppWindow());
+onAppWindowChange((win) => bindMouseDownTracker(win));
 
 export function hasMouseMovedSinceDown(e: Event) {
   if(e.isTrusted && e.type === 'click' && e.target !== lastMouseDownElement) {

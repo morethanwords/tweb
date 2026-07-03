@@ -49,6 +49,11 @@ export function RichMessageBubble(props: {
         setFullPage(page);
         openPage(page);
       }
+    } catch(err) {
+      // Drop the rejected promise so the next click retries the fetch (the manager also clears its
+      // own cache on error) instead of the button staying permanently stuck; swallowing it here also
+      // avoids an unhandled promise rejection.
+      fullPagePromise = undefined;
     } finally {
       setLoading(false);
     }

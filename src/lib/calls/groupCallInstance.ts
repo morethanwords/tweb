@@ -439,6 +439,14 @@ export default class GroupCallInstance extends CallInstanceBase<{
     } catch{}
   }
 
+  // Public surface for the controller's media-transport watchdog
+  // (groupCallsController): ICE reached `connected` but the RTCPeerConnection
+  // never did, i.e. the DTLS handshake didn't complete, so no audio/video ever
+  // flows. Reuses the same user-visible breadcrumb + ring-buffer log path.
+  public reportMediaTransportStall(details: Record<string, unknown>): void {
+    this.reportConferenceBug('media transport stalled — ICE connected but DTLS did not complete (no audio/video)', details);
+  }
+
   // Re-hydrate `groupCall` (the dependency both pollers silently bail on) and
   // re-kick them. Re-seeds the manager cache from our own copy first, because
   // once the manager loses the call `getGroupCallInput` throws and getGroupCallFull

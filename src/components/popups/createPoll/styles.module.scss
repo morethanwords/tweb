@@ -55,33 +55,8 @@
   padding: 0 0.75rem;
 }
 
-.inputField {
-  word-break: break-word;
-  padding: 0.5rem 0; // Push a little bit from the top and bottom border when the text wraps multiple lines
-  min-height: 1em;
-  width: 100%;
-  font-size: inherit;
-}
-
-/* .inputFieldFake {
-  opacity: 0;
-  pointer-events: none;
-  position: absolute !important;
-
-  top: 0;
-  left: 0;
-  right: unset;
-  bottom: unset !important;
-
-  width: 100% !important;
-  height: unset !important;
-
-  z-index: -3;
-} */
-
 .animatedInputFieldWrapper {
   position: relative;
-  /* height: 100%; */
   width: 100%;
 }
 
@@ -139,12 +114,6 @@
   padding-inline: var(--section-padding-inline);
 }
 
-.section {
-  padding: 1rem var(--section-padding-inline);
-  background-color: var(--surface-color);
-  border-radius: 24px;
-}
-
 .mediaIcon {
   color: white;
   border-radius: 10px;
@@ -153,9 +122,10 @@
   font-size: 1.125rem;
 }
 
-.caption {
+/* Overrides fieldSectionCaption base: different font-size, padding, and no top margin */
+.captionOverride {
+  margin-top: 0;
   font-size: 14px;
-  color: var(--secondary-text-color);
   padding: 0.25rem 1rem;
 }
 

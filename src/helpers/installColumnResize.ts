@@ -1,5 +1,6 @@
 import SwipeHandler, {getEvent} from '@components/swipeHandler';
 import {toastNew} from '@components/toast';
+import {getOverlayRoot} from '@helpers/appWindow';
 import rootScope from '@lib/rootScope';
 import {appSettings, setAppSettings} from '@stores/appSettings';
 import {
@@ -49,7 +50,7 @@ export default function installColumnResize(opts: InstallColumnResizeOptions): v
 
   new SwipeHandler({
     element: handle,
-    setCursorTo: document.body,
+    setCursorTo: getOverlayRoot(),
     onStart: () => {
       handle.classList.add('is-active');
       document.body.classList.add(otherBodyClass);

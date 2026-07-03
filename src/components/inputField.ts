@@ -1,6 +1,7 @@
 import type CustomEmojiElement from '@lib/customEmoji/element';
 import type {AnimationItemGroup} from '@components/animationIntersector';
 import {CustomEmojiRendererElement} from '@lib/customEmoji/renderer';
+import {bindActiveWindowListener} from '@helpers/appWindow';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import simulateEvent from '@helpers/dom/dispatchEvent';
 import documentFragmentToHTML from '@helpers/dom/documentFragmentToHTML';
@@ -72,10 +73,10 @@ export async function insertRichTextAsHTML(input: HTMLElement, text: string, ent
     //   pre.selection.collapseToEnd();
     // }
   } else {
-    const range = document.createRange();
+    const range = input.ownerDocument.createRange();
     let node = input.lastChild;
     if(!node) {
-      input.append(node /* = textNode */ = document.createTextNode(''));
+      input.append(node /* = textNode */ = input.ownerDocument.createTextNode(''));
     }
 
     range.setStartAfter(node);
@@ -91,7 +92,7 @@ export async function insertRichTextAsHTML(input: HTMLElement, text: string, ent
   // s.append(node);
   input.addEventListener('input', cancelEvent, {capture: true, once: true, passive: false});
   richInputHandler?.onBeforeInput({inputType: 'insertContent'});
-  window.document.execCommand('insertHTML', false, html);
+  input.ownerDocument.execCommand('insertHTML', false, html);
   Array.from(input.querySelectorAll<HTMLImageElement>('[data-ces]')).forEach((el, idx) => {
     delete el.dataset.ces;
     const customEmojiElement = customEmojiElements[idx];
@@ -151,7 +152,9 @@ export async function insertRichTextAsHTML(input: HTMLElement, text: string, ent
 }
 
 let init = () => {
-  document.addEventListener('paste', (e) => {
+  // Global rich-paste for every contenteditable; follow the active window so paste into a popped-out
+  // (Document PiP) input is still intercepted.
+  bindActiveWindowListener((w) => w.document, 'paste', (e) => {
     const input = findUpAttribute(e.target, 'contenteditable="true"');
     if(!input) {
       return;
@@ -284,8 +287,12 @@ let init = () => {
           if(char === '\n') {
             arr.splice(index, 1);
             richValue.entities.forEach((entity) => {
-              if(entity.offset >= index) {
+              // * entity starts after the removed char — shift it left
+              if(entity.offset > index) {
                 entity.offset -= 1;
+              } else if(entity.offset + entity.length > index) {
+                // * removed char is inside the entity — shrink it
+                entity.length -= 1;
               }
             });
           }
@@ -300,8 +307,12 @@ let init = () => {
           plainTextLength += line.length;
           richValueSplitted.splice(plainTextLength, 0, '\n');
           richValue.entities.forEach((entity) => {
-            if(entity.offset > (plainTextLength - lineIndex + 1)) {
+            // * plainTextLength is the index the new line is inserted at
+            if(entity.offset >= plainTextLength) {
               entity.offset += 1;
+            } else if(entity.offset + entity.length > plainTextLength) {
+              // * new line falls inside the entity — grow it
+              entity.length += 1;
             }
           });
 
@@ -311,9 +322,33 @@ let init = () => {
         richValue.value = richValueSplitted.join('');
       }
 
-      const richTextLength = richValue.value.replace(/\s/g, '').length;
-      const plainTextLength = plainText.replace(/\s/g, '').length;
-      if(richTextLength === plainTextLength || hasCustomEmoji) {
+      const richTextNoWhitespace = richValue.value.replace(/\s/g, '');
+      const plainTextNoWhitespace = plainText.replace(/\s/g, '');
+      const richTextLength = richTextNoWhitespace.length;
+      const plainTextLength = plainTextNoWhitespace.length;
+
+      // * the html-derived rich value can be shorter than text/plain when the source ships markdown
+      // * on text/plain (`code`, **bold**, ```fence```) but real formatting in the html — the markers
+      // * are literal chars in plain yet zero-width entities in rich. requiring exact length parity
+      // * there throws away perfectly good formatting and dumps the raw markdown into the input. so
+      // * also accept the rich value when every one of its (non-whitespace) chars still appears, in
+      // * order, inside the plain text — i.e. plain is just a marked-up rendering of the same content.
+      const isRichSubsetOfPlain = () => {
+        if(richTextLength > plainTextLength) {
+          return false;
+        }
+
+        let i = 0;
+        for(let j = 0; i < richTextLength && j < plainTextLength; ++j) {
+          if(richTextNoWhitespace[i] === plainTextNoWhitespace[j]) {
+            ++i;
+          }
+        }
+
+        return i === richTextLength;
+      };
+
+      if(richTextLength === plainTextLength || hasCustomEmoji || (richValue.entities.length && isRichSubsetOfPlain())) {
         text = richValue.value;
         entities = richValue.entities;
         usePlainText = false;
@@ -334,7 +369,11 @@ let init = () => {
 
     if(entities?.length) {
       const ignoreEntities = new Set<MessageEntity['_']>([
-        'messageEntityPhone'
+        'messageEntityPhone',
+        // * wrapDraftText renders line breaks from the text itself; passing explicit linebreak
+        // * entities makes wrapRichText slice the one before a blockquote (losing a \n on e.g.
+        // * `text\n\nquote`). Strip them so paste matches the edit/draft path.
+        'messageEntityLinebreak'
       ]);
       findAndSpliceAll(entities, (entity) => ignoreEntities.has(entity._));
     }
@@ -507,7 +546,7 @@ export default class InputField {
       RichInputHandler.getInstance();
 
       input.addEventListener('mousedown', (e) => {
-        const selection = document.getSelection();
+        const selection = input.ownerDocument.defaultView.getSelection();
         if(!selection.isCollapsed) {
           return;
         }
@@ -521,7 +560,7 @@ export default class InputField {
         const centerX = rect.left + rect.width / 2;
         const focusOnNext = e.clientX >= centerX;
 
-        const range = document.createRange();
+        const range = input.ownerDocument.createRange();
         range.setStartAfter(focusOnNext ? placeholder : placeholder.previousSibling ?? placeholder);
         selection.removeAllRanges();
         selection.addRange(range);

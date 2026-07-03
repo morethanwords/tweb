@@ -1832,15 +1832,25 @@ export default class DialogsStorage extends AppManager {
 
       cache.getTopicPromises.clear();
 
-      const fullfillLeft = () => {
+      // Resolve any topic promises the response didn't fulfil with `undefined`, and decide which to
+      // remember as deleted. `deletedTopics` is a permanent in-memory blacklist (the by-id fetch
+      // short-circuits on it), so we must only add a topic that's GENUINELY gone — otherwise a
+      // transient miss hides a live topic until a full app reload (reopening the forum or even
+      // receiving new messages in that topic never brings it back). A topic counts as gone only when
+      // the request succeeded AND the server explicitly returned it as `forumTopicDeleted`. A request
+      // error, or a topic merely ABSENT from the response (e.g. a brand-new topic not yet queryable
+      // by id right after creation — a replication-lag race), must stay refetchable.
+      const resolveLeft = (isDeleted: (encodedTopicId: number) => boolean) => {
         for(const topicId in promises) {
           promises[topicId].resolve(undefined);
-          cache.deletedTopics.add(+topicId);
+          if(isDeleted(+topicId)) {
+            cache.deletedTopics.add(+topicId);
+          }
         }
       };
 
       if(this.getForumTopicsCache(peerId) !== cache) {
-        fullfillLeft();
+        resolveLeft(() => false);
         return;
       }
 
@@ -1860,8 +1870,17 @@ export default class DialogsStorage extends AppManager {
         })
       ]).then(([messagesForumTopics, allMessagesForumTopicsResult]) => {
         if(this.getForumTopicsCache(peerId) !== cache) {
+          resolveLeft(() => false);
           return;
         }
+
+        // capture the topics the server EXPLICITLY reported as deleted before applyDialogs filters
+        // `forumTopicDeleted` out (ids here are raw server ids)
+        const deletedServerIds = new Set<number>(
+          (messagesForumTopics.topics || [])
+          .filter((topic) => topic._ === 'forumTopicDeleted')
+          .map((topic) => topic.id)
+        );
 
         this.applyDialogs(messagesForumTopics, peerId);
 
@@ -1876,10 +1895,11 @@ export default class DialogsStorage extends AppManager {
           }
         });
 
-        return messagesForumTopics;
-      }, () => {}).then(() => {
-        fullfillLeft();
-
+        resolveLeft((encodedTopicId) => deletedServerIds.has(getServerMessageId(encodedTopicId)));
+      }, (error) => {
+        this.log.error('getForumTopicsByID failed, not marking topics deleted', peerId, ids, error);
+        resolveLeft(() => false);
+      }).then(() => {
         cache.getTopicsPromise = undefined;
         if(cache.getTopicPromises.size) {
           this.getForumTopicById(peerId);
@@ -1972,6 +1992,12 @@ export default class DialogsStorage extends AppManager {
   }
 
   public canManageTopic(forumTopic: ForumTopic) {
+    // Callers may pass a topic that isn't in storage yet (e.g. a just-created topic being opened
+    // before its forumTopic is fetched) — don't crash on the missing object.
+    if(!forumTopic) {
+      return false;
+    }
+
     if(forumTopic.pFlags.my) {
       return true;
     }

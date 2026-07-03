@@ -14,7 +14,7 @@ import getRichElementValue, {SELECTION_SEPARATOR} from '@helpers/dom/getRichElem
 import {SINGLE_ENTITIES} from '@lib/richTextProcessor';
 
 export function getCaretPos(field: Node) {
-  const sel = window.getSelection();
+  const sel = field.ownerDocument.defaultView.getSelection();
   let selNode: Node;
   let selOffset: number;
   if(sel?.rangeCount) {

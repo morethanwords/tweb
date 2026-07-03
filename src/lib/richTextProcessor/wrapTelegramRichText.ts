@@ -1,5 +1,6 @@
 import {RichText, TextWithEntities, MessageEntity} from '@layer';
 import wrapTextWithEntities from '@lib/richTextProcessor/wrapTextWithEntities';
+import {encodeInlineMath} from '@helpers/math/mathMarker';
 
 type Options = {
   webPageId: Long,
@@ -131,9 +132,12 @@ function processRichText(richText: RichText, options: Options): TextWithEntities
         length
       }), options);
     case 'textMath':
+      // Carry inline math as a base64 marker (like master's markdown path) so the IV's
+      // RichTextRenderer -> hydrateInlineMath() renders it with Temml. Consumers that want plain
+      // text (e.g. reply/search summaries) decode the marker back to the raw LaTeX source.
       return {
         _: 'textWithEntities',
-        text: richText.source,
+        text: encodeInlineMath(richText.source),
         entities: []
       };
     case 'textImage':

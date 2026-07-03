@@ -22,7 +22,7 @@ import {requestRAF} from '@helpers/solid/requestRAF';
 import useElementSize from '@hooks/useElementSize';
 import {useIsCleaned} from '@hooks/useIsCleaned';
 import {useResizeObserver} from '@hooks/useResizeObserver';
-import {useScrollTop} from '@hooks/useScrollTop';
+import {useScrollPosition} from '@hooks/useScrollPosition';
 import {lowerBound} from '@components/dynamicVirtualList/lowerBound';
 import styles from '@components/dynamicVirtualList/styles.module.scss';
 
@@ -135,7 +135,7 @@ const createVirtualRenderState = <T, >({
   verticalPadding,
   renderAtLeastFromBottom
 }: CreateVirtualRenderStateArgs<T>) => {
-  const scrollTop = useScrollTop(scrollable);
+  const scrollTop = useScrollPosition(scrollable);
   const size = useElementSize(scrollable);
 
   const clientHeight = () => size.height;

@@ -625,6 +625,16 @@ class SuperMessagePort<
     this.pushTask(task, port);
   }
 
+  // typed cross-invoke: subclasses whose UI->worker methods aren't part of Send (both bundles
+  // share one <false> instance) route through these instead of per-class @ts-ignore wrappers
+  protected invokeVoidAs<M extends Listeners, T extends keyof M>(type: T, payload: Parameters<M[T]>[0], port?: SendPort, transfer?: Transferable[]) {
+    this.invokeVoid(type as any, payload as any, port, transfer);
+  }
+
+  protected invokeAs<M extends Listeners, T extends keyof M>(type: T, payload: Parameters<M[T]>[0], port?: SendPort, transfer?: Transferable[]): Promise<Awaited<ReturnType<M[T]>>> {
+    return this.invoke(type as any, payload as any, false, port, transfer) as any;
+  }
+
   public invoke<T extends keyof Send>(type: T, payload: Parameters<Send[T]>[0], withAck?: false, port?: SendPort, transfer?: Transferable[], timeout?: number): Promise<Awaited<ReturnType<Send[T]>>>;
   public invoke<T extends keyof Send>(type: T, payload: Parameters<Send[T]>[0], withAck?: true, port?: SendPort, transfer?: Transferable[], timeout?: number): Promise<AckedResult<Awaited<ReturnType<Send[T]>>>>;
   public invoke<T extends keyof Send>(type: T, payload: Parameters<Send[T]>[0], withAck?: boolean, port?: SendPort, transfer?: Transferable[], timeout?: number) {

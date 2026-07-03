@@ -37,6 +37,7 @@ export type PushNotificationObject = {
     chat_id?: string, // should be number
     from_id?: string, // should be number
     msg_id: string,
+    story_id?: string, // should be number; set for story notifications
     peerId?: string, // should be number
     silent?: string // can be '1'
   },

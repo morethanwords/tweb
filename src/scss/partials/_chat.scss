@@ -265,6 +265,46 @@
       font-size: var(--font-size-14);
     }
   }
+
+  &-ai-editor-button {
+    position: absolute;
+    top: 0.25rem;
+    right: 0.75rem;
+    --button-size: 2rem;
+
+    &__icon {
+      pointer-events: none;
+      font-size: 1.25rem;
+    }
+
+    &__star-1 {
+      opacity: 0;
+      animation: chat-input-ai-editor-button-star-animation 3.2s ease-in-out forwards;
+    }
+
+    &__star-2 {
+      opacity: 0;
+      animation: chat-input-ai-editor-button-star-animation 3.2s ease-in-out 0.32s forwards;
+    }
+  }
+}
+
+@keyframes chat-input-ai-editor-button-star-animation {
+  0% {
+    opacity: 0;
+  }
+
+  20%, 60% {
+    opacity: 1;
+  }
+
+  40%, 80% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
 }
 
 .chat-input-main {
@@ -1077,16 +1117,18 @@
 	transform: translate3d(0, var(--translateY), 0);
 	transition: transform var(--transition-standard-out);
 
-	// Docked-left range: counter #column-center's centring shift so the scroll
-	// area reaches the real edges — the page edge when the right column is
-	// closed/floating, or the docked right column's inner edge when it's shown.
-	@include respond-to(no-floating-left-sidebar) {
-		inset-inline: calc((var(--folders-sidebar-offset) + var(--left-column-width) - var(--page-chats-padding)) / 2);
+  #column-center & {
+    // Docked-left range: counter #column-center's centring shift so the scroll
+    // area reaches the real edges — the page edge when the right column is
+    // closed/floating, or the docked right column's inner edge when it's shown.
+    @include respond-to(no-floating-left-sidebar) {
+      inset-inline: calc((var(--folders-sidebar-offset) + var(--left-column-width) - var(--page-chats-padding)) / 2);
 
-		body.is-right-column-shown:not(.right-column-floats) & {
-			inset-inline: calc((var(--folders-sidebar-offset) + var(--left-column-width) + var(--right-column-width)) / 2);
-		}
-	}
+      body.is-right-column-shown:not(.right-column-floats) & {
+        inset-inline: calc((var(--folders-sidebar-offset) + var(--left-column-width) + var(--right-column-width)) / 2);
+      }
+    }
+  }
 
 	@include animation-level(0) {
 		transition: none !important;

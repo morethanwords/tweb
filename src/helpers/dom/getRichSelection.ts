@@ -5,7 +5,7 @@ import findUpClassName from '@helpers/dom/findUpClassName';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 
 export default function getRichSelection(target: HTMLElement) {
-  const selection = document.getSelection();
+  const selection = target.ownerDocument.defaultView.getSelection();
   const range = selection.getRangeAt(0);
   const {startContainer, startOffset, endContainer, endOffset} = range;
   const startValue = startContainer.nodeValue;

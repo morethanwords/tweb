@@ -8,6 +8,7 @@
 // cycle (ChatInput constructs this class at runtime).
 
 import type ChatInput from '../input';
+import {getAppWindow, getOverlayRoot} from '@helpers/appWindow';
 import {POSTING_NOT_ALLOWED_MAP} from '../input';
 import {ChatType} from '../chatType';
 import opusDecodeController from '@lib/opusDecodeController';
@@ -119,7 +120,7 @@ export default class ChatRecording {
       // chat input (the same voiceRecordingPanel + btn-send the voice flow
       // uses). Mounted on <body> so it's reliably screen-centered.
       this.videoRecordingPanel = createVideoRecordingPanel();
-      document.body.append(this.videoRecordingPanel.element);
+      getOverlayRoot().append(this.videoRecordingPanel.element);
     }
 
     this.setupRecordingModeMenu();
@@ -606,7 +607,7 @@ export default class ChatRecording {
   // we beat the buttons' own bubble-phase click listeners.
   public setVoiceRecordingMenuGuard(active: boolean) {
     if(this.voiceMenuClickGuard) {
-      document.removeEventListener('click', this.voiceMenuClickGuard, {capture: true});
+      getAppWindow().document.removeEventListener('click', this.voiceMenuClickGuard, {capture: true});
       this.voiceMenuClickGuard = undefined;
     }
     if(!active || !this.active) return;
@@ -617,7 +618,8 @@ export default class ChatRecording {
       cancelEvent(e);
       if(contextMenuController.isOpened()) contextMenuController.close();
     };
-    document.addEventListener('click', this.voiceMenuClickGuard, {capture: true});
+    // On the active window's document so the guard still works in a Document PiP window.
+    getAppWindow().document.addEventListener('click', this.voiceMenuClickGuard, {capture: true});
   }
 
   // Stop the recorder so its ondataavailable handler sends the voice file.
@@ -786,7 +788,7 @@ export default class ChatRecording {
     }
 
     this.active = value;
-    this.input.starsState.set({isRecording: value});
+    this.input.inputState.set({isRecording: value});
     this.input.setShrinking(this.active, ['is-recording']);
     this.input.updateSendBtn();
     this.input.onRecording?.(value);
@@ -1002,7 +1004,7 @@ export default class ChatRecording {
         }).show();
       };
 
-      this.recordingOverlayListener = this.input.listenerSetter.add(document.body)('mousedown', (e) => {
+      this.recordingOverlayListener = this.input.listenerSetter.add(getOverlayRoot())('mousedown', (e) => {
         if(!findUpClassName(e.target, CLASS_NAME) && !findUpClassName(e.target, 'popup-cancel-record')) {
           cancelEvent(e);
           showDiscardPopup();
@@ -1142,7 +1144,7 @@ export default class ChatRecording {
       }).show();
     };
 
-    this.recordingOverlayListener = this.input.listenerSetter.add(document.body)('mousedown', (e) => {
+    this.recordingOverlayListener = this.input.listenerSetter.add(getOverlayRoot())('mousedown', (e) => {
       // Same dismiss-on-outside-click guard as voice — clicks inside the chat
       // input or the discard popup are allowed; everything else opens the
       // discard confirmation.

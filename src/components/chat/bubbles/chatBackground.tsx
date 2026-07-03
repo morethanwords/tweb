@@ -774,7 +774,19 @@ const appChatBackground = (() => {
       };
     },
     getReadyPromise: () => latestReady,
-    resize: () => ChatBackgroundPatternRenderer.resizeInstancesOf(element)
+    resize: () => ChatBackgroundPatternRenderer.resizeInstancesOf(element),
+    /**
+     * Force a full re-render of the CURRENT background, bypassing the reference-equality
+     * short-circuits. Needed after the whole client moves between documents (Document PiP): the
+     * canvas / gradient renderer does not survive the cross-window move, so the same bg has to be
+     * rebuilt fresh in the now-current document. Cloning the theme yields a new reference so BOTH the
+     * wrapper's `lastAppliedTheme` guard and the inner `on([theme, wallPaper, peerId])` effect re-fire.
+     */
+    reRender: () => setBackground({
+      theme: backgroundOwnedByChat ? (ownedTheme && {...ownedTheme}) : {...themeControllerSingleton.getTheme()},
+      wallPaper: backgroundOwnedByChat ? ownedWallPaper : undefined,
+      transition: 'instant'
+    })
   };
 })();
 

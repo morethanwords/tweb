@@ -28,7 +28,8 @@ export enum INTERNAL_LINK_TYPE {
   NEW,
   SETTINGS,
   CONTACTS,
-  CONFERENCE_CALL
+  CONFERENCE_CALL,
+  ADD_AI_STYLE,
 };
 
 export type InternalLink =
@@ -57,7 +58,8 @@ export type InternalLink =
   InternalLink.InternalLinkNew |
   InternalLink.InternalLinkSettings |
   InternalLink.InternalLinkContacts |
-  InternalLink.InternalLinkConferenceCall;
+  InternalLink.InternalLinkConferenceCall |
+  InternalLink.InternalLinkAddAiStyle;
 
 export namespace InternalLink {
   export interface InternalLinkMessage {
@@ -230,6 +232,11 @@ export namespace InternalLink {
     _: INTERNAL_LINK_TYPE.CONFERENCE_CALL,
     slug: string
   }
+
+  export interface InternalLinkAddAiStyle {
+    _: INTERNAL_LINK_TYPE.ADD_AI_STYLE,
+    slug: string
+  }
 }
 
 export type InternalLinkTypeMap = {
@@ -258,5 +265,6 @@ export type InternalLinkTypeMap = {
   [INTERNAL_LINK_TYPE.NEW]: InternalLink.InternalLinkNew,
   [INTERNAL_LINK_TYPE.SETTINGS]: InternalLink.InternalLinkSettings,
   [INTERNAL_LINK_TYPE.CONTACTS]: InternalLink.InternalLinkContacts,
-  [INTERNAL_LINK_TYPE.CONFERENCE_CALL]: InternalLink.InternalLinkConferenceCall
+  [INTERNAL_LINK_TYPE.CONFERENCE_CALL]: InternalLink.InternalLinkConferenceCall,
+  [INTERNAL_LINK_TYPE.ADD_AI_STYLE]: InternalLink.InternalLinkAddAiStyle,
 };

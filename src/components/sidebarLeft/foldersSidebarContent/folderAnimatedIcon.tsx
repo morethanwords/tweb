@@ -1,12 +1,7 @@
-import {createEffect, createSignal, onCleanup} from 'solid-js';
-import noop from '@helpers/noop';
-import createMiddleware from '@helpers/solid/createMiddleware';
-import track from '@helpers/solid/track';
-import {DocumentAttribute} from '@layer';
+import EmojiDocumentIcon from '@components/emojiDocumentIcon';
 import type {AppManagers} from '@lib/managers';
 import wrapSingleEmoji from '@lib/richTextProcessor/wrapSingleEmoji';
-import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
-import wrapSticker from '@components/wrappers/sticker';
+import {Match, onMount, Switch} from 'solid-js';
 
 
 export default function FolderAnimatedIcon(props: {
@@ -19,72 +14,32 @@ export default function FolderAnimatedIcon(props: {
   onFail?: () => void;
   dontAnimate?: boolean;
 }) {
-  const [iconContainer, setIconContainer] = createSignal<HTMLDivElement>();
-
-  createEffect(() => {
-    if(!iconContainer()) return;
-
-    const [playerToColor, setPlayerToColor] = createSignal<RLottiePlayer>();
-
-    const docId = props.docId;
-    const emoji = props.emoji;
-    const animate = !props.dontAnimate;
-
-    track(() => props.size);
-
-    const middleware = createMiddleware().get();
-
-    createEffect(() => {
-      playerToColor()?.setColor(props.color, true);
-    });
-
-    onCleanup(() => {
-      iconContainer()?.replaceChildren();
-    });
-
-    if(docId) (async() => {
-      try {
-        const doc = await props.managers.appEmojiManager.getCustomEmojiDocument(docId);
-
-        if(!doc) {
-          props.onFail?.();
-          return;
-        }
-
-        if(!middleware() || !iconContainer() || docId !== props.docId) return;
-
-        const promise = await wrapSticker({
-          doc,
-          div: iconContainer(),
-          group: 'none',
-          width: props.size,
-          height: props.size,
-          play: animate,
-          loop: animate,
-          withThumb: false,
-          middleware,
-          textColor: props.color
-        });
-
-        const attribute = doc.attributes.find((attribute) => attribute._ === 'documentAttributeCustomEmoji') as DocumentAttribute.documentAttributeCustomEmoji;
-        if(attribute && attribute.pFlags.text_color) promise.render.then(renderResult => {
-          if(!middleware()) return;
-          renderResult instanceof RLottiePlayer && setPlayerToColor(renderResult);
-        }).catch(noop);
-      } catch{
-        props.onFail?.();
-      }
-    })();
-
-    else if(emoji) {
-      const fragment = wrapSingleEmoji(emoji);
-      iconContainer()?.append(fragment);
-    }
-
-    else props.onFail?.();
-  });
+  const Fallback = () => {
+    onMount(() => props.onFail?.());
+    // Keep the div for maintaining the layout
+    return <div class={props.class}></div>;
+  };
 
   return (
-    <div ref={setIconContainer} class={props.class}></div>
+    <Switch
+      fallback={<Fallback />}
+    >
+      <Match when={props.docId} keyed>
+        {(docId) => (
+          <EmojiDocumentIcon
+            managers={props.managers}
+            docId={docId}
+            color={props.color}
+            size={props.size}
+            class={props.class}
+            dontAnimate={props.dontAnimate}
+            onFail={props.onFail}
+          />
+        )}
+      </Match>
+      <Match when={props.emoji} keyed>
+        {(emoji) => <div class={props.class}>{wrapSingleEmoji(emoji)}</div>}
+      </Match>
+    </Switch>
   );
 }

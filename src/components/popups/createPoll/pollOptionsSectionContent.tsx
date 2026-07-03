@@ -1,3 +1,4 @@
+import editableFieldStyles from '@/scss/modulePartials/editableFieldContent.module.scss';
 import {AutoHeight} from '@components/autoHeight';
 import Button from '@components/buttonTsx';
 import {IconTsx} from '@components/iconTsx';
@@ -146,12 +147,12 @@ export const PollOptionsSectionContent = (props: {
                 )}
               </Match>
               <Match when={item.type === 'optionsLeft'}>
-                <div class={styles.caption}>
+                <SimpleFormField.Caption class={styles.captionOverride}>
                   <Space amount='0.5rem' />
                   <Show when={visibleOptionsLeft() > 0} fallback={<I18nTsx key='NewPoll.MaxOptions' />}>
                     <I18nTsx key='NewPoll.OptionsLeft' args={visibleOptionsLeft().toString()} />
                   </Show>
-                </div>
+                </SimpleFormField.Caption>
               </Match>
               <Match when={item.type === 'addOption'}>
                 <div style={{height: !canShowAddOption() ? '0' : undefined}}>
@@ -334,7 +335,7 @@ const PollOptionInputField = (props: {
   props.inputFieldRef?.(inputField);
 
   // inputField.setValueSilently(value());
-  inputField.input.classList.replace('input-field-input', styles.inputField);
+  inputField.input.classList.replace('input-field-input', editableFieldStyles.editableFieldContent);
   inputField.placeholder.classList.add(styles.inputFieldPlaceholder);
 
   inputField.input.addEventListener('keydown', (e) => {

@@ -1,3 +1,4 @@
+import editableFieldStyles from '@/scss/modulePartials/editableFieldContent.module.scss';
 import Button from '@components/buttonTsx';
 import InputField from '@components/inputField';
 import Scrollable from '@components/scrollable2';
@@ -5,7 +6,6 @@ import SimpleFormField from '@components/simpleFormField';
 import Space from '@components/space';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import {I18nTsx} from '@helpers/solid/i18n';
-import {useMaxLengthError} from '@helpers/solid/useMaxLengthError';
 import classNames from '@helpers/string/classNames';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
@@ -100,8 +100,6 @@ const QuestionAndDescription = () => {
   const {maxQuestionLength, maxDescriptionLength} = useCreatePollLimits();
   const supportsMedia = useSupportsMedia();
 
-  const questionError = useMaxLengthError(() => context.store.question, maxQuestionLength);
-
   const questionInput = new InputField({
     canWrapCustomEmojis: true,
     onRawInput: () => {
@@ -113,7 +111,7 @@ const QuestionAndDescription = () => {
     }
   });
 
-  questionInput.input.classList.replace('input-field-input', styles.inputField);
+  questionInput.input.classList.replace('input-field-input', editableFieldStyles.editableFieldContent);
 
   const descriptionInput = new InputField({
     canHaveFormatting: supportedDescriptionFormattingTypes,
@@ -128,7 +126,7 @@ const QuestionAndDescription = () => {
     }
   });
 
-  descriptionInput.input.classList.replace('input-field-input', styles.inputField);
+  descriptionInput.input.classList.replace('input-field-input', editableFieldStyles.editableFieldContent);
 
   return (
     <>
@@ -137,17 +135,13 @@ const QuestionAndDescription = () => {
         class={classNames(styles.flexFull, styles.formField)}
         withEndButtonIcon
         withMinHeight
-        isError={questionError.hasError()}
         onClick={createFormFieldClickHandler(questionInput)}
       >
         <SimpleFormField.InputStub>
           {questionInput.input}
         </SimpleFormField.InputStub>
-        <SimpleFormField.Label>
+        <SimpleFormField.Label maxLength={maxQuestionLength()}>
           <I18nTsx key='AskAQuestion' />
-          <Show when={questionError.shouldShowLengthLeft()}>
-            {' '}({questionError.lengthLeft()})
-          </Show>
         </SimpleFormField.Label>
 
         <SimpleFormField.SideContent withFixedIcon first last>
@@ -207,15 +201,15 @@ const BodyContent = () => {
       <Space amount='1rem' />
 
       <div class={styles.sectionWrapper}>
-        <div class={styles.section}>
+        <SimpleFormField.Section>
           <QuestionAndDescription />
-        </div>
+        </SimpleFormField.Section>
       </div>
 
       <Space amount='1rem' />
 
       <div class={styles.sectionWrapper}>
-        <div class={styles.section}>
+        <SimpleFormField.Section>
           <div class={styles.sectionTitle}>
             <I18nTsx key='PollOptions' />
           </div>
@@ -223,13 +217,13 @@ const BodyContent = () => {
           <Space amount='0.5rem' />
 
           <PollOptionsSectionContent scrollable={scrollable()} />
-        </div>
+        </SimpleFormField.Section>
       </div>
 
       <Space amount='1rem' />
 
       <div class={styles.sectionWrapper}>
-        <div class={styles.section}>
+        <SimpleFormField.Section>
           <div class={styles.sectionTitle}>
             <I18nTsx key='Settings' />
           </div>
@@ -237,7 +231,7 @@ const BodyContent = () => {
           <Space amount='0.5rem' />
 
           <PollSettingsSectionContent />
-        </div>
+        </SimpleFormField.Section>
       </div>
 
       <Space amount='1.5rem' />

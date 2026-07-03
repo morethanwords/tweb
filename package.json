@@ -10,6 +10,7 @@
     "serve": "pnpm run build; node server.js",
     "build": "pnpm run generate-changelog && vite build",
     "test": "vitest",
+    "test:lottie": "playwright test",
     "whybundled": "pnpm run profile && whybundled stats.json",
     "generate-mtproto-types": "node ./src/scripts/generate_mtproto_types.js src/",
     "generate-changelog": "node ./src/scripts/generate_changelog.js",
@@ -33,6 +34,9 @@
     "@eslint/eslintrc": "^3.3.5",
     "@eslint/js": "^9.39.0",
     "@peculiar/webcrypto": "^1.4.3",
+    "@playwright/test": "^1.49.0",
+    "@types/pngjs": "^6.0.5",
+    "pngjs": "^7.0.0",
     "@solid-primitives/refs": "^1.0.5",
     "@solid-primitives/transition-group": "^1.0.3",
     "@types/aes-js": "^3.1.4",
@@ -78,5 +82,8 @@
     "vitest": "^4.1.0",
     "ws": "^8.20.0"
   },
-  "packageManager": "pnpm@9.15.3+sha512.1f79bc245a66eb0b07c5d4d83131240774642caaa86ef7d0434ab47c0d16f66b04e21e0c086eb61e62c77efc4d7f7ec071afad3796af64892fae66509173893a"
+  "packageManager": "pnpm@9.15.3+sha512.1f79bc245a66eb0b07c5d4d83131240774642caaa86ef7d0434ab47c0d16f66b04e21e0c086eb61e62c77efc4d7f7ec071afad3796af64892fae66509173893a",
+  "dependencies": {
+    "temml": "^0.13.3"
+  }
 }

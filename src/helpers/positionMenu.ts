@@ -2,6 +2,7 @@ import type {ButtonMenuDirection} from '@components/buttonMenuToggle';
 import mediaSizes from '@helpers/mediaSizes';
 import I18n from '@lib/langPack';
 import clamp from './number/clamp';
+import {getAppWindow} from '@helpers/appWindow';
 
 export type MenuPositionPadding = {
   top?: number,
@@ -39,11 +40,11 @@ function canFitSide(
   const margin = DEFAULT_MENU_WINDOW_MARGIN;
   switch(side) {
     case 'right':
-      return triggerBcr.right + mainOffset + menu.clientWidth + margin <= window.innerWidth;
+      return triggerBcr.right + mainOffset + menu.clientWidth + margin <= getAppWindow().innerWidth;
     case 'left':
       return triggerBcr.left - mainOffset - menu.clientWidth - margin >= 0;
     case 'bottom':
-      return triggerBcr.bottom + mainOffset + menu.clientHeight + margin <= window.innerHeight;
+      return triggerBcr.bottom + mainOffset + menu.clientHeight + margin <= getAppWindow().innerHeight;
     case 'top':
       return triggerBcr.top - mainOffset - menu.clientHeight - margin >= 0;
   }
@@ -92,7 +93,7 @@ export function positionFloatingMenu(
     } else {
       left = triggerBcr.left - mainOffset - menuW;
     }
-    left = clamp(left, margin, window.innerWidth - menuW - margin);
+    left = clamp(left, margin, getAppWindow().innerWidth - menuW - margin);
 
     // Cross axis: vertical.
     if(alignment === 'start') {
@@ -102,14 +103,14 @@ export function positionFloatingMenu(
     } else {
       top = triggerBcr.bottom - menuH - crossOffset;
     }
-    top = clamp(top, margin, window.innerHeight - menuH - margin);
+    top = clamp(top, margin, getAppWindow().innerHeight - menuH - margin);
   } else {
     if(side === 'bottom') {
       top = triggerBcr.bottom + mainOffset;
     } else {
       top = triggerBcr.top - mainOffset - menuH;
     }
-    top = clamp(top, margin, window.innerHeight - menuH - margin);
+    top = clamp(top, margin, getAppWindow().innerHeight - menuH - margin);
 
     // Cross axis: horizontal.
     if(alignment === 'start') {
@@ -119,7 +120,7 @@ export function positionFloatingMenu(
     } else {
       left = triggerBcr.right - menuW - crossOffset;
     }
-    left = clamp(left, margin, window.innerWidth - menuW - margin);
+    left = clamp(left, margin, getAppWindow().innerWidth - menuW - margin);
   }
 
   // Transform origin: corner/edge closest to the trigger.
@@ -145,7 +146,7 @@ export function positionFloatingMenu(
 export function getMenuTopPositionForStartDirection(triggerBcr: DOMRect, menu: HTMLElement, offset: [number, number]) {
   let top = triggerBcr.top + offset[1];
   const bottom = top + menu.clientHeight;
-  if(bottom + DEFAULT_MENU_WINDOW_MARGIN > window.innerHeight) top -= bottom - window.innerHeight + DEFAULT_MENU_WINDOW_MARGIN;
+  if(bottom + DEFAULT_MENU_WINDOW_MARGIN > getAppWindow().innerHeight) top -= bottom - getAppWindow().innerHeight + DEFAULT_MENU_WINDOW_MARGIN;
   top = Math.max(top, DEFAULT_MENU_WINDOW_MARGIN);
 
   return top;
@@ -159,7 +160,7 @@ export function canMenuFitDirection(
 ) {
   if(direction === 'right') {
     const left = triggerBcr.right + offset[0];
-    return left + menu.clientWidth + DEFAULT_MENU_WINDOW_MARGIN <= window.innerWidth;
+    return left + menu.clientWidth + DEFAULT_MENU_WINDOW_MARGIN <= getAppWindow().innerWidth;
   }
 
   const right = triggerBcr.left - offset[0];
@@ -175,7 +176,7 @@ export function getMenuLeftPositionForDirection(
   if(direction === 'right') {
     let left = triggerBcr.right + offset[0];
     const right = left + menu.clientWidth;
-    if(right + DEFAULT_MENU_WINDOW_MARGIN > window.innerWidth) left -= right - window.innerWidth + DEFAULT_MENU_WINDOW_MARGIN;
+    if(right + DEFAULT_MENU_WINDOW_MARGIN > getAppWindow().innerWidth) left -= right - getAppWindow().innerWidth + DEFAULT_MENU_WINDOW_MARGIN;
     return left;
   }
 
@@ -200,7 +201,7 @@ export default function positionMenu(e: MouseEvent | Touch | TouchEvent, elem: H
   let {scrollWidth: menuWidth} = getScrollWidthFromElement;
   const {scrollHeight: menuHeight} = elem;
   // let {innerWidth: windowWidth, innerHeight: windowHeight} = window;
-  const rect = document.body.getBoundingClientRect();
+  const rect = getAppWindow().document.body.getBoundingClientRect();
   const windowWidth = rect.width;
   const windowHeight = rect.height;
 
@@ -320,7 +321,7 @@ export function positionMenuTrigger(trigger: HTMLElement, menu: HTMLElement, dir
     const top = triggerRect.top + triggerRect.height + (additionalPadding?.top ?? 0);
     menu.style.top = `${Math.max(top, additionalPadding?.top ?? 0)}px`
   } else {
-    const bottom = window.innerHeight - triggerRect.top + (additionalPadding?.bottom ?? 0)
+    const bottom = getAppWindow().innerHeight - triggerRect.top + (additionalPadding?.bottom ?? 0)
     menu.style.bottom = `${Math.max(bottom, additionalPadding?.bottom ?? 0)}px`
   }
 
@@ -328,7 +329,7 @@ export function positionMenuTrigger(trigger: HTMLElement, menu: HTMLElement, dir
     const left = triggerRect.left + (additionalPadding?.left ?? 0);
     menu.style.left = `${Math.max(left, additionalPadding?.left ?? 0)}px`
   } else {
-    const right = window.innerWidth - triggerRect.left - triggerRect.width - (additionalPadding?.right ?? 0)
+    const right = getAppWindow().innerWidth - triggerRect.left - triggerRect.width - (additionalPadding?.right ?? 0)
     menu.style.right = `${Math.max(right, additionalPadding?.right ?? 0)}px`
   }
 

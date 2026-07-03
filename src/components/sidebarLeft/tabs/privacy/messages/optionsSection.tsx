@@ -6,7 +6,6 @@ import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import Section from '@components/section';
 import StaticRadio from '@components/staticRadio';
 import {MessagesPrivacyOption, MessagesTabStateStore, TRANSITION_TIME} from '@components/sidebarLeft/tabs/privacy/messages/config';
-import useIsPremium from '@components/sidebarLeft/tabs/privacy/messages/useIsPremium';
 
 
 const DEFAULT_STARS_AMOUNT = 10;
@@ -17,9 +16,9 @@ const OptionsSection: Component<{
   isPaid: boolean;
   onExitAnimationPromise: (promise: Promise<any>) => void;
 }> = (props) => {
-  const {PopupPremium, i18n, toastNew, hideToast, Row} = useHotReloadGuard();
+  const {PopupPremium, i18n, toastNew, hideToast, Row, usePremium} = useHotReloadGuard();
 
-  const isPremium = useIsPremium();
+  const isPremium = usePremium();
 
 
   const handlePremiumOptionClick = (callback: () => void) => () => {

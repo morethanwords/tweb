@@ -272,6 +272,10 @@ import {Message, Chat, User, InputPeer} from '@layer';
 `getUserMedia`-via-`getStream` rules are in "Path Aliases", "App Managers", and
 "Key Patterns → Media devices" — not repeated here.)
 
+- **Never commit on your own initiative — only when explicitly asked.**
+  Iterating on a feature must not produce a trail of commits: keep the work in
+  the working tree, and when asked to commit, fold the whole feature into ONE
+  commit (directly on master, no feature branch) unless told otherwise.
 - Do not add `eslint-disable` without a reason
 - Never hand-edit or manually run `format-lang` to regenerate `src/scripts/out/langPack.strings` — it is auto-generated from `lang.ts`/`langSign.ts` by the Vite-wired lang watcher (`watch-lang.js`) on dev-server start, on every `lang.ts` change, and on build. Edit the lang `.ts` source only.
 - Do not import from `react` or use React patterns — this is Solid.js

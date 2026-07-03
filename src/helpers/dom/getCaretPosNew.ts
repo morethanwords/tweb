@@ -1,7 +1,7 @@
 import findUpAsChild from '@helpers/dom/findUpAsChild';
 
 export default function getCaretPosNew(input: HTMLElement, anchor?: boolean): ReturnType<typeof getCaretPosF> & {selection: Selection} {
-  const selection = document.getSelection();
+  const selection = input.ownerDocument.defaultView.getSelection();
   // let {focusNode: node, focusOffset: offset} = selection;
   const node = selection[anchor ? 'anchorNode' : 'focusNode'];
   const offset = selection[anchor ? 'anchorOffset' : 'focusOffset'];

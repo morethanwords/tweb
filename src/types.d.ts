@@ -504,6 +504,9 @@ export type TelegramWebViewSendEventMap = {
   prepared_message_sent: void
 };
 
+export type LocalTextWithEntities = Pick<TextWithEntities, 'text' | 'entities'>;
+export type LocalTextWithOptionalEntities = Pick<TextWithEntities, 'text'> & Partial<Pick<TextWithEntities, 'entities'>>;
+
 // export type TelegramWebViewSendSerializedEvent<T extends keyof TelegramWebViewSendEventMap> = {
 //   eventType: T,
 //   eventData: TelegramWebViewSendEventMap[T]

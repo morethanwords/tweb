@@ -1,3 +1,4 @@
+import {IconTsx} from '@components/iconTsx';
 import ripple from '@components/ripple';
 import {Spinner} from '@components/spinner';
 import {StickerPreview} from '@components/stickerPreview';
@@ -13,6 +14,7 @@ import {requestRAF} from '@helpers/solid/requestRAF';
 import classNames from '@helpers/string/classNames';
 import {Document, MessageMedia, Photo} from '@layer';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import {LocalTextWithEntities} from '@types';
 import {Accessor, createEffect, createMemo, createSignal, JSX, Match, onCleanup, onMount, Show, splitProps, Switch} from 'solid-js';
 import {unwrap} from 'solid-js/store';
 import {Transition} from 'solid-transition-group';
@@ -22,8 +24,7 @@ import {AvatarGroup, GeoPreview} from './parts';
 import PathDot from './PathDot';
 import styles from './styles.module.scss';
 import {GetStickerMediaResult} from './usePollDerivedProps';
-import {dataPollViewerIdx, DataPollViewerIdxDirectivePayload, LocalTextWithEntities, PollOptionResult, spinnerThickness} from './utils';
-import {IconTsx} from '@components/iconTsx';
+import {dataPollViewerIdx, DataPollViewerIdxDirectivePayload, PollOptionResult, spinnerThickness} from './utils';
 
 
 keepMe(ripple);

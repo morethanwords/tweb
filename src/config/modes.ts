@@ -16,6 +16,7 @@ const Modes = {
   transport: 'websocket' as TransportType,
   noSharedWorker: location.search.indexOf('noSharedWorker=1') > 0,
   noServiceWorker: location.search.indexOf('noServiceWorker=1') > 0,
+  noOffscreenCanvas: location.search.indexOf('noOffscreenCanvas=1') > 0,
   // Run MTProto + crypto entirely in the main thread (debug only). Loops the
   // worker entries back through a MessageChannel in the same realm so
   // breakpoints / call stacks span the whole pipeline. Multi-tab features

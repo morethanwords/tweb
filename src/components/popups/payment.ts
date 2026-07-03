@@ -2,6 +2,7 @@ import PopupElement from '.';
 import Currencies from '@config/currencies';
 import {FontFamily, FontFull, FontSize} from '@config/font';
 import accumulate from '@helpers/array/accumulate';
+import {getAppWindow} from '@helpers/appWindow';
 import assumeType from '@helpers/assumeType';
 import getTextWidth from '@helpers/canvas/getTextWidth';
 import {detectUnifiedCardBrand} from '@helpers/cards/cardBrands';
@@ -136,13 +137,13 @@ export class InputRightNumber {
       setTimeout(() => {
         ignoreNextSelectionChange = haveToIgnoreEvents;
         placeCaretAtEnd(input);
-        document.addEventListener('selectionchange', onSelectionChange);
+        getAppWindow().document.addEventListener('selectionchange', onSelectionChange);
       }, 0);
     };
 
     const onFocusOut = () => {
       input.addEventListener('focus', onFocus, {once: true});
-      document.removeEventListener('selectionchange', onSelectionChange);
+      getAppWindow().document.removeEventListener('selectionchange', onSelectionChange);
     };
 
     let ignoreNextSelectionChange: number;
@@ -162,7 +163,7 @@ export class InputRightNumber {
   }
 
   public onValue() {
-    if(document.activeElement === this.input) {
+    if(this.input.ownerDocument.activeElement === this.input) {
       placeCaretAtEnd(this.input);
     }
 

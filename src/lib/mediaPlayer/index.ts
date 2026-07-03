@@ -2,11 +2,14 @@ import appMediaPlaybackController from '@components/appMediaPlaybackController';
 import {IS_APPLE_MOBILE, IS_MOBILE} from '@environment/userAgent';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import cancelEvent from '@helpers/dom/cancelEvent';
+import {getAppWindow, getOverlayRoot} from '@helpers/appWindow';
 import ListenerSetter, {Listener} from '@helpers/listenerSetter';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import ControlsHover from '@helpers/dom/controlsHover';
 import {addFullScreenListener, cancelFullScreen, getFullScreenElement, isFullScreen, requestFullScreen} from '@helpers/dom/fullScreen';
+import {isClientPipOpen} from '@components/clientPip';
+import {toastNew} from '@components/toast';
 import toHHMMSS from '@helpers/string/toHHMMSS';
 import MediaProgressLine from '@components/mediaProgressLine';
 import VolumeSelector from '@components/volumeSelector';
@@ -378,10 +381,10 @@ export default class VideoPlayer extends ControlsHover {
           }, {listenerSetter: this.listenerSetter});
         }
 
-        if(this.listenKeyboardEvents) listenerSetter.add(document)('keydown', (e: KeyboardEvent) => {
+        if(this.listenKeyboardEvents) listenerSetter.add(getAppWindow().document)('keydown', (e: KeyboardEvent) => {
           if(
             overlayCounter.overlaysActive > 1 ||
-            document.pictureInPictureElement === video ||
+            getAppWindow().document.pictureInPictureElement === video ||
             (this.listenKeyboardEvents === 'fullscreen' && !this.isFullScreen())
           ) { // forward popup is active, etc
             return;
@@ -577,7 +580,7 @@ export default class VideoPlayer extends ControlsHover {
       this.emptyPipVideo.playsInline = true;
       this.emptyPipVideo.style.position = 'absolute';
       this.emptyPipVideo.style.visibility = 'hidden';
-      document.body.prepend(this.emptyPipVideo);
+      getOverlayRoot().prepend(this.emptyPipVideo);
       this.emptyPipVideo.srcObject = createCanvasStream({width, height, image: this.emptyPipVideoSource});
       this.addPipListeners(this.emptyPipVideo);
     }
@@ -586,8 +589,8 @@ export default class VideoPlayer extends ControlsHover {
     this.emptyPipVideo.requestPictureInPicture();
 
     onMediaLoad(this.video).then(() => {
-      if(document.pictureInPictureElement === this.emptyPipVideo) {
-        document.exitPictureInPicture();
+      if(getAppWindow().document.pictureInPictureElement === this.emptyPipVideo) {
+        getAppWindow().document.exitPictureInPicture();
         this.video.requestPictureInPicture();
       }
     });
@@ -651,6 +654,16 @@ export default class VideoPlayer extends ControlsHover {
         this.videoWhichChild = videoWhichChild;
         player.prepend(this.video);
       } */
+
+      // Fullscreen genuinely can't be entered while the client is popped into a Document PiP window:
+      // the Fullscreen API is disabled there by spec, AND Chrome won't carry the click's user-activation
+      // from the PiP window over to the tab — so there's no single gesture that can fullscreen the tab's
+      // video either. Rather than silently fail (or close PiP with nothing to show for it), tell the user
+      // to return to the tab first. Outside PiP this branch is a no-op.
+      if(isClientPipOpen()) {
+        toastNew({langPackKey: 'ClientPip.FullscreenHint'});
+        return;
+      }
 
       requestFullScreen(player);
       this.checkInteraction();

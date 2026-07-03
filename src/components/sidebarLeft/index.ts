@@ -1,4 +1,4 @@
-import {createEffect, createRoot} from 'solid-js';
+import {createEffect, createRoot, createSignal} from 'solid-js';
 import appImManager from '@lib/appImManager';
 import rootScope from '@lib/rootScope';
 import {createSearchGroup, SearchGroup} from '@components/searchGroup';
@@ -43,6 +43,8 @@ import updateColumnWidths, {setOpenTabsLeftSidebar} from '@helpers/updateColumnW
 import installColumnResize from '@helpers/installColumnResize';
 import {doubleRaf, fastRaf} from '@helpers/schedulers';
 import {getInstallPrompt} from '@helpers/dom/installPrompt';
+import DOCUMENT_PICTURE_IN_PICTURE_SUPPORTED from '@environment/documentPictureInPictureSupport';
+import openClientPip, {closeClientPip, isClientPipOpen} from '@components/clientPip';
 import liteMode from '@helpers/liteMode';
 import {AppPowerSavingTab} from '@components/solidJsTabs/tabs';
 import {AppMyStoriesTab} from '@components/solidJsTabs/tabs';
@@ -115,7 +117,6 @@ export class AppSidebarLeft extends SidebarSlider {
 
   public archivedCount: HTMLSpanElement;
   private totalNotificationsCount: HTMLSpanElement;
-  private totalNotificationsCountSidebar: HTMLSpanElement;
   public rect: DOMRect;
 
   private newBtnMenu: HTMLElement;
@@ -160,15 +161,15 @@ export class AppSidebarLeft extends SidebarSlider {
     this.toolsBtn.classList.add('sidebar-tools-button');
     this.totalNotificationsCount = createBadge('span', 20, 'primary');
     this.totalNotificationsCount.classList.add('sidebar-tools-button-notifications');
-    this.totalNotificationsCountSidebar = this.totalNotificationsCount.cloneNode(true) as HTMLElement;
     this.toolsBtn.append(this.totalNotificationsCount);
 
+    const [allNotificationsCount, setAllNotificationsCount] = createSignal(0);
     const mainMiddleware = this.middlewareHelper.get();
     // renderFoldersSidebarContent creates the #folders-sidebar element
     // itself and inserts it as the first child of #main-columns.
     renderFoldersSidebarContent(
       document.getElementById('main-columns'),
-      this.totalNotificationsCountSidebar,
+      allNotificationsCount,
       SolidJSHotReloadGuardProvider,
       mainMiddleware
     );
@@ -187,7 +188,8 @@ export class AppSidebarLeft extends SidebarSlider {
           (+accountNumber !== getCurrentAccount() ? count || 0 : 0)
         , 0);
 
-      [this.totalNotificationsCount, this.totalNotificationsCountSidebar].forEach((el) => {
+      setAllNotificationsCount(count);
+      [this.totalNotificationsCount].forEach((el) => {
         setBadgeContent(el, '' + (count || ''));
       });
     });
@@ -494,6 +496,23 @@ export class AppSidebarLeft extends SidebarSlider {
     appDialogsManager.toggleForumTab();
 
     return this.closeAllTabs();
+  }
+
+  // Like closeEverythingInside, but closes stacked tabs the "natural" way (via
+  // the back arrow) so a tab can still confirm before closing. Returns false —
+  // without touching the search or the forum — if the user declines a tab's
+  // close confirmation, so the caller can cancel whatever triggered the close.
+  public async closeEverythingInsideNaturally() {
+    if(!await this.closeAllTabsNaturally()) {
+      return false;
+    }
+
+    if(this.isSearchActive) {
+      this.closeSearch();
+    }
+    appDialogsManager.toggleForumTab();
+
+    return true;
   }
 
   private isAnimatingCollapse = false;
@@ -933,6 +952,22 @@ export class AppSidebarLeft extends SidebarSlider {
         installPrompt?.();
       },
       verify: () => !!getInstallPrompt()
+    }, {
+      icon: 'pip',
+      // The More submenu is rebuilt on every open (createMoreSubmenu runs per open), so reading the live
+      // pip state here keeps the label in sync: while popped out the entry flips to "Exit". The whole app
+      // — including this menu — lives in the pip window when active, so that's where the user sees it.
+      text: isClientPipOpen() ? 'ClientPip.Exit' : 'PictureInPicture',
+      onClick: () => {
+        // The click is the user gesture `requestWindow` needs; closing the menu doesn't consume it.
+        if(isClientPipOpen()) {
+          closeClientPip();
+        } else {
+          openClientPip();
+        }
+      },
+      // Document Picture-in-Picture is Chromium-only — gate the entry on actual support.
+      verify: () => DOCUMENT_PICTURE_IN_PICTURE_SUPPORTED
     }];
 
 
