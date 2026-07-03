@@ -324,6 +324,9 @@ export default class ChatInput {
   private commandsHelper: CommandsHelper;
   private mentionsHelper: MentionsHelper;
   private inlineHelper: InlineHelper;
+  // * lowercased usernames known to be guest bots (bot_guestchat). a leading @guestbot in the
+  // * composer is a plain, sendable message, not an inline query — this cache keeps typing flicker-free
+  private knownGuestBots: Set<string> = new Set();
   /** @internal — used by ChatRecording */
   public listenerSetter: ListenerSetter;
   private middlewareHelper: MiddlewareHelper;
@@ -2136,6 +2139,11 @@ export default class ChatInput {
       const usernames = getPeerActiveUsernames(peer);
       if(usernames[0]) {
         str = '@' + usernames[0];
+        // * remember guest bots picked from the mention list so the composer treats the inserted
+        // * @guestbot as a plain guest-chat message right away, with no inline-preloader flicker
+        if((peer as User.user).pFlags?.bot_guestchat) {
+          this.knownGuestBots.add(usernames[0].toLowerCase());
+        }
       } else {
         if(peerId.isUser()) {
           str = (peer as User.user).first_name || (peer as User.user).last_name;
@@ -3485,11 +3493,16 @@ export default class ChatInput {
         this.stickersHelper.checkEmoticon(value);
       } else if(!foundHelpers.size && firstChar === '@') { // mentions
         const topMsgId = this.chat.threadId ? getServerMessageId(this.chat.threadId) : undefined;
+        // * only offer guest bots (bot_guestchat) when @ is at the very start of the message, like
+        // * inline bots, and not in channels/monoforums where guest-chat sending isn't available
+        const fromStart = !matches[1];
+        const includeGuestBots = fromStart && this.canSendGuestChat();
         const result = this.mentionsHelper.checkQuery(
           query,
           this.chat.peerId.isUser() ? NULL_PEER_ID : this.chat.peerId,
           topMsgId,
-          this.globalMentions
+          this.globalMentions,
+          includeGuestBots
         );
         if(result) {
           foundHelpers.add(this.mentionsHelper);
@@ -3529,6 +3542,12 @@ export default class ChatInput {
     this.autocompleteHelperController.hideOtherHelpers(foundHelpers);
   }
 
+  // * guest-chat messages (a message that begins with a guest bot's @username) can be sent
+  // * everywhere except broadcast channels and monoforums
+  private canSendGuestChat() {
+    return !this.chat.isBroadcast && !this.chat.isMonoforum;
+  }
+
   private checkInlineAutocomplete(value: string, canSendInline: boolean, foundHelper?: AutocompleteHelper): AutocompleteHelper {
     let needPlaceholder = false;
 
@@ -3549,9 +3568,12 @@ export default class ChatInput {
       });
     };
 
+    const allowGuestChat = this.canSendGuestChat();
     if(!foundHelper) {
       const inlineMatch = value.match(/^@([a-zA-Z\\d_]{3,32})\s/);
-      if(inlineMatch) {
+      // * a leading @guestbot is not an inline query — it's a plain, sendable guest-chat message,
+      // * so keep the composer in normal send mode instead of opening the inline results panel
+      if(inlineMatch && !(allowGuestChat && this.knownGuestBots.has(inlineMatch[1].toLowerCase()))) {
         const username = inlineMatch[1];
         const query = value.slice(inlineMatch[0].length);
         needPlaceholder = inlineMatch[0].length === value.length;
@@ -3566,7 +3588,17 @@ export default class ChatInput {
           setPreloaderShow(true);
         }
 
-        this.inlineHelper.checkQuery(this.chat.peerId, username, query, canSendInline).then(({user, renderPromise}) => {
+        this.inlineHelper.checkQuery(this.chat.peerId, username, query, canSendInline, allowGuestChat).then(({user, renderPromise, guestChat}) => {
+          if(guestChat) {
+            // * a guest bot was resolved for the first time — remember it so the next keystroke
+            // * skips the inline path entirely, and drop back to normal send mode
+            this.knownGuestBots.add(username.toLowerCase());
+            needPlaceholder = false;
+            delete this.messageInput.dataset.inlinePlaceholder;
+            setPreloaderShow(false);
+            return;
+          }
+
           if(needPlaceholder && user.bot_inline_placeholder) {
             this.messageInput.dataset.inlinePlaceholder = user.bot_inline_placeholder;
           }

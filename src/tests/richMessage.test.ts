@@ -118,6 +118,7 @@ describe('flattenRichMessageSummary', () => {
     const summary = flattenRichMessageSummary(richMessage([
       {
         _: 'pageBlockPhoto',
+        pFlags: {},
         photo_id: 1,
         caption: {_: 'pageCaption', text: text('caption'), credit: {_: 'textEmpty'}}
       },

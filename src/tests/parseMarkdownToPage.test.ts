@@ -419,12 +419,14 @@ describe('parseMarkdownToPage: blocks', () => {
     expect(flat).toMatch(/textStrike/);
   });
 
-  test('task list items stash taskChecked and keep clean text (no ☑/☐ glyph)', () => {
+  test('task list items carry native checkbox/checked pFlags and keep clean text (no ☑/☐ glyph)', () => {
     const page = parseMarkdownToPage('- [x] done\n- [ ] todo');
     const list = page.blocks[0] as PageBlock.pageBlockList;
-    const [done, todo] = list.items as Array<PageListItem.pageListItemText & {taskChecked?: boolean}>;
-    expect(done.taskChecked).toBe(true);
-    expect(todo.taskChecked).toBe(false);
+    const [done, todo] = list.items as PageListItem.pageListItemText[];
+    expect(done.pFlags.checkbox).toBe(true);
+    expect(done.pFlags.checked).toBe(true);
+    expect(todo.pFlags.checkbox).toBe(true);
+    expect(todo.pFlags.checked).toBeUndefined();
     expect(done.text).toEqual({_: 'textPlain', text: 'done'});
     expect(todo.text).toEqual({_: 'textPlain', text: 'todo'});
     expect(JSON.stringify(list)).not.toMatch(/☑|☐/);
@@ -542,11 +544,11 @@ describe('parseMarkdownToPage: markdown-example.md fixture', () => {
     expect((alignment.rows[0].cells[2] as PageTableCell.pageTableCell).pFlags.align_right).toBe(true);
   });
 
-  test('task list items stash taskChecked with clean text (no ☑/☐ glyph)', () => {
+  test('task list items carry native checkbox/checked pFlags with clean text (no ☑/☐ glyph)', () => {
     const flat = JSON.stringify(page.blocks);
     expect(flat).not.toMatch(/☑|☐/);
-    expect(flat).toMatch(/"taskChecked":true/);
-    expect(flat).toMatch(/"taskChecked":false/);
+    expect(flat).toMatch(/"checkbox":true/);
+    expect(flat).toMatch(/"checked":true/);
     expect(flat).toMatch(/Completed task/);
     expect(flat).toMatch(/Incomplete task/);
   });

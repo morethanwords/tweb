@@ -17,6 +17,16 @@ export function isVerificationBot(peerId: PeerId) {
   return peerId === VERIFICATION_CODES_BOT_ID;
 }
 
+// * a guest-chat message (a guest bot's reply routed into this chat) carries guestchat_via_from —
+// * the visitor (the user who invoked the bot); message.fromId stays the bot itself
+export function isGuestChatMessage(message: MyMessage | AdminLog) {
+  return message._ === 'message' && !!message.guestchat_via_from;
+}
+
+export function getGuestChatViaFromId(message: MyMessage | AdminLog): PeerId {
+  return message._ === 'message' && message.guestchat_via_from ? getPeerId(message.guestchat_via_from) : undefined;
+}
+
 export function getMid(message: MyMessage | AdminLog) {
   if(message._ === 'channelAdminLogEvent') return +message.id;
   return message.mid;

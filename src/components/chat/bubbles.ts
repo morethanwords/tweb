@@ -72,6 +72,7 @@ import getViewportSlice from '@helpers/dom/getViewportSlice';
 import SuperIntersectionObserver, {IntersectionCallback} from '@helpers/dom/superIntersectionObserver';
 import generateFakeIcon from '@components/generateFakeIcon';
 import copyFromElement from '@helpers/dom/copyFromElement';
+import {getCodeBlockClickTarget, toggleCodeBlockWrap} from '@helpers/dom/codeBlockClick';
 import PopupElement from '@components/popups';
 import setAttachmentSize, {EXPAND_TEXT_WIDTH} from '@helpers/setAttachmentSize';
 import wrapWebPageDescription from '@components/wrappers/webPageDescription';
@@ -173,6 +174,7 @@ import showTooltip from '@components/tooltip';
 import wrapTextWithEntities from '@lib/richTextProcessor/wrapTextWithEntities';
 import clearfix from '@helpers/dom/clearfix';
 import {usePeer} from '@stores/peers';
+import {setAppSettings} from '@stores/appSettings';
 import safeWindowOpen from '@helpers/dom/safeWindowOpen';
 import findAndSplice from '@helpers/array/findAndSplice';
 import generatePhotoForExtendedMediaPreview from '@appManagers/utils/photos/generatePhotoForExtendedMediaPreview';
@@ -191,7 +193,7 @@ import PopupStarGiftInfo from '@components/popups/starGiftInfo';
 import {StarGiftBubble, UniqueStarGiftWebPageBox} from '@components/chat/bubbles/starGift';
 import {PremiumGiftBubble} from '@components/chat/bubbles/premiumGift';
 import {UnknownUserBubble} from '@components/chat/bubbles/unknownUser';
-import {generateTail, getMid, isMessage, isMessageForVerificationBot, isVerificationBot} from '@components/chat/utils';
+import {generateTail, getGuestChatViaFromId, getMid, isGuestChatMessage, isMessage, isMessageForVerificationBot, isVerificationBot} from '@components/chat/utils';
 import {ChecklistBubble} from '@components/chat/bubbles/checklist';
 import {getRestrictionReason} from '@helpers/restrictions';
 import {isMessageSensitive} from '@appManagers/utils/messages/isMessageRestricted';
@@ -1331,26 +1333,18 @@ export default class ChatBubbles {
     this.listenerSetter.add(this.scrollable.container)('mousedown', (e) => {
       if(e.button !== 0) return;
 
-      const codeContainer = findUpClassName(e.target, 'code-header') && findUpClassName(e.target, 'code');
-      const code: HTMLElement = codeContainer?.querySelector<HTMLElement>('.code-code') || findUpClassName(e.target, 'monospace-text');
-      if(code) {
-        const isTogglingWrap = !!findUpClassName(e.target, 'code-header-toggle-wrap');
+      const codeTarget = getCodeBlockClickTarget(e.target);
+      if(codeTarget) {
         cancelEvent(e);
-        if(!isTogglingWrap) {
-          copyFromElement(code);
+        if(!codeTarget.isWrapToggle) {
+          copyFromElement(codeTarget.code);
         }
 
         const onClick = (e: MouseEvent) => {
           cancelEvent(e);
 
-          if(isTogglingWrap) {
-            // const scrollSaver = this.createScrollSaver(true);
-            // scrollSaver.save();
-            const present = codeContainer.classList.toggle('is-scrollable');
-            // code.classList.toggle('scrollable', present);
-            // code.classList.toggle('scrollable-x', present);
-            code.classList.toggle('no-scrollbar', present);
-            // scrollSaver.restore();
+          if(codeTarget.isWrapToggle) {
+            toggleCodeBlockWrap(codeTarget);
             return;
           }
 
@@ -1540,13 +1534,7 @@ export default class ChatBubbles {
         }
       });
     } else if(IS_TOUCH_SUPPORTED) {
-      const className = 'is-gesturing-reply';
-      const MAX = 64;
-      const replyAfter = MAX * .75;
-      let shouldReply = false;
-      let target: HTMLElement;
-      let icon: HTMLElement;
-      let swipeAvatar: HTMLElement;
+      const controller = this.createReplySwipeController(container);
       this.replySwipeHandler = handleHorizontalSwipe({
         element: container,
         verifyTouchTarget: async(e) => {
@@ -1556,101 +1544,307 @@ export default class ChatBubbles {
             return false;
           }
 
-          // cancelEvent(e);
-          target = findUpClassName(e.target, 'bubble');
-          if(!target ||
-            target.classList.contains('service') ||
-            target.classList.contains('is-sending')) {
+          const bubble = findUpClassName(e.target, 'bubble');
+          if(!bubble ||
+            bubble.classList.contains('service') ||
+            bubble.classList.contains('is-sending')) {
             return false;
           }
 
-          if(target) {
-            try {
-              const avatar = target.parentElement.querySelector('.bubbles-group-avatar') as HTMLElement
-              if(avatar) {
-                const visibleRect = getVisibleRect(avatar, target);
-                if(visibleRect) {
-                  swipeAvatar = avatar;
-                }
-              }
-            } catch(err) {}
-
-            [target, swipeAvatar].filter(Boolean).forEach((element) => {
-              SetTransition({
-                element,
-                className,
-                forwards: true,
-                duration: 250
-              });
-              void element.offsetLeft; // reflow
-            });
-
-            if(!icon) {
-              icon = Icon('reply_filled', 'bubble-gesture-reply-icon');
-            } else {
-              icon.classList.remove('is-visible');
-              icon.style.opacity = '';
-            }
-
-            target/* .querySelector('.bubble-content') */.append(icon);
-          }
-
-          return !!target;
+          controller.prepare(bubble);
+          return true;
         },
         onSwipe: (xDiff) => {
-          shouldReply = xDiff >= replyAfter;
-
-          if(shouldReply && !icon.classList.contains('is-visible')) {
-            icon.classList.add('is-visible');
-          }
-          icon.style.opacity = '' + Math.min(1, xDiff / replyAfter);
-
-          const x = -Math.max(0, Math.min(MAX, xDiff));
-          const transform = `translateX(${x}px)`;
-          target.style.transform = transform;
-          if(swipeAvatar) {
-            swipeAvatar.style.transform = transform;
-          }
-          cancelContextMenuOpening();
+          controller.move(xDiff);
         },
         onReset: () => {
-          const _target = target;
-          const _swipeAvatar = swipeAvatar;
-          target = swipeAvatar = undefined;
-
-          const onTransitionEnd = () => {
-            if(icon.parentElement === _target) {
-              icon.classList.remove('is-visible');
-              icon.remove();
-            }
-          };
-
-          [_target, _swipeAvatar].filter(Boolean).forEach((element, idx) => {
-            SetTransition({
-              element,
-              className,
-              forwards: false,
-              duration: 250,
-              onTransitionEnd: idx === 0 ? onTransitionEnd : undefined
-            });
-          });
-
-          fastRaf(() => {
-            _target.style.transform = '';
-            if(_swipeAvatar) {
-              _swipeAvatar.style.transform = '';
-            }
-
-            if(shouldReply) {
-              const message = this.chat.getMessage(getBubbleFullMid(_target));
-              this.chat.input.initMessageReply(this.chat.input.getChatInputReplyToFromMessage(message));
-              shouldReply = false;
-            }
-          });
+          controller.reset();
         },
         listenerOptions: {capture: true}
       });
     }
+
+    // * Swipe-to-reply on laptop trackpads: a two-finger horizontal swipe is delivered as
+    // * `wheel` events (deltaX), not touch. Reuse the same reply visuals as the touch path,
+    // * driven from a wheel gesture with per-gesture axis locking so vertical scrolling and
+    // * horizontally-scrollable children (code blocks, wide tables) keep working.
+    if(!IS_MOBILE) {
+      this.attachReplyWheelSwipe(container);
+    }
+  }
+
+  // * Builds the shared visual controller for the swipe-to-reply gesture (bubble + avatar
+  // * translation, the reveal-on-drag reply icon, and firing the reply on release). Both the
+  // * touch (`handleHorizontalSwipe`) and trackpad-wheel paths drive the same three callbacks.
+  private createReplySwipeController(container: HTMLElement) {
+    const className = 'is-gesturing-reply';
+    const MAX = 64;
+    const replyAfter = MAX * .75;
+    let shouldReply = false;
+    let started = false; // visual setup applied — deferred to the first move so a tap leaves no litter
+    let target: HTMLElement;
+    let icon: HTMLElement;
+    let swipeAvatar: HTMLElement;
+
+    // Validate + resolve the target and its group avatar. NO DOM mutation here: the touch path calls
+    // this on touchstart (verifyTouchTarget), and a tap that never moves must not leave the
+    // `is-gesturing-reply` class or the reply icon behind — those are applied lazily by `begin` on the
+    // first `move`.
+    const prepare = (bubble: HTMLElement) => {
+      target = bubble;
+      swipeAvatar = undefined;
+      started = false;
+
+      try {
+        const avatar = target.parentElement.querySelector('.bubbles-group-avatar') as HTMLElement;
+        if(avatar) {
+          const visibleRect = getVisibleRect(avatar, target);
+          if(visibleRect) {
+            swipeAvatar = avatar;
+          }
+        }
+      } catch(err) {}
+    };
+
+    const begin = () => {
+      [target, swipeAvatar].filter(Boolean).forEach((element) => {
+        SetTransition({
+          element,
+          className,
+          forwards: true,
+          duration: 250
+        });
+        void element.offsetLeft; // reflow
+      });
+
+      if(!icon) {
+        icon = Icon('reply_filled', 'bubble-gesture-reply-icon');
+      } else {
+        icon.classList.remove('is-visible', 'is-hiding'); // reuse after a possibly-interrupted fade-out
+        icon.style.opacity = '';
+      }
+
+      target/* .querySelector('.bubble-content') */.append(icon);
+    };
+
+    const move = (xDiff: number) => {
+      if(!started) {
+        started = true;
+        begin();
+      }
+
+      shouldReply = xDiff >= replyAfter;
+
+      if(shouldReply && !icon.classList.contains('is-visible')) {
+        icon.classList.add('is-visible');
+      }
+      icon.style.opacity = '' + Math.min(1, xDiff / replyAfter);
+
+      const x = -Math.max(0, Math.min(MAX, xDiff));
+      const transform = `translateX(${x}px)`;
+      target.style.transform = transform;
+      if(swipeAvatar) {
+        swipeAvatar.style.transform = transform;
+      }
+      cancelContextMenuOpening();
+    };
+
+    const reset = () => {
+      if(!started) { // gesture ended with no movement — nothing was shown, just drop the target
+        target = swipeAvatar = undefined;
+        return;
+      }
+      started = false;
+
+      const _target = target;
+      const _swipeAvatar = swipeAvatar;
+      target = swipeAvatar = undefined;
+
+      // fade the icon out over the slide-back rather than dropping it in one frame
+      icon.classList.add('is-hiding');
+
+      const onTransitionEnd = () => {
+        if(icon.parentElement === _target) {
+          icon.classList.remove('is-visible', 'is-hiding');
+          icon.style.opacity = '';
+          icon.remove();
+        }
+      };
+
+      [_target, _swipeAvatar].filter(Boolean).forEach((element, idx) => {
+        SetTransition({
+          element,
+          className,
+          forwards: false,
+          duration: 250,
+          onTransitionEnd: idx === 0 ? onTransitionEnd : undefined
+        });
+      });
+
+      fastRaf(() => {
+        _target.style.transform = '';
+        if(_swipeAvatar) {
+          _swipeAvatar.style.transform = '';
+        }
+
+        if(shouldReply) {
+          const message = this.chat.getMessage(getBubbleFullMid(_target));
+          this.chat.input.initMessageReply(this.chat.input.getChatInputReplyToFromMessage(message));
+          shouldReply = false;
+        }
+      });
+    };
+
+    return {MAX, prepare, move, reset};
+  }
+
+  // * Trackpad two-finger horizontal swipe → reply. Browsers surface it as `wheel` events with a
+  // * dominant `deltaX` (there is no wheel `phase()` like Qt, so a debounce marks the gesture end).
+  // * The axis is locked once per gesture: only a horizontal-dominant start over a repliable bubble
+  // * engages — otherwise the event passes through untouched so vertical scroll and inner
+  // * horizontal scrollers behave normally. Delta is scaled down so the throw matches the touch feel.
+  private attachReplyWheelSwipe(container: HTMLElement) {
+    const controller = this.createReplySwipeController(container);
+    const {MAX} = controller;
+    const SCALE = 0.25;
+    const IDLE_DELAY = 75; // ms of wheel silence = gesture end (also the no-momentum commit delay)
+    // Inertia detection: a trackpad keeps firing `wheel` events for ~1s after the fingers lift, the
+    // magnitude decaying smoothly. The browser gives no "fingers up" signal, so we approximate release by
+    // spotting a SUSTAINED coast and finish the gesture there. It must be strict: the brief slow-down at
+    // the END of an active push (fingers still down) also decays, so a short streak would fire too early
+    // (fired-before-release). Hence a long streak of decaying events (longer than any plausible finger
+    // ease-out), robust to the tiny up-jitter within a real coast, and gated on a genuine flick's peak.
+    const INERTIA_DECEL_EVENTS = 8;     // consecutive decaying events to call it a coast (not an ease-out)
+    const INERTIA_PEAK_RATIO = 0.7;     // ...with magnitude fallen to this fraction of the gesture's peak
+    const INERTIA_MIN_PEAK = 12;        // ...and only after a real flick (slow drags carry no momentum)
+    const INERTIA_REACCEL_RATIO = 1.2;  // a jump past this fraction of the last delta = the finger pushed again
+
+    let axis: 'x' | 'y' | undefined; // undefined while the gesture axis is still undecided
+    let offset = 0;
+    let gesturing = false;
+    let released = false;            // fingers lifted (inertia/idle) — swallow the momentum tail
+    let prevAbs = -1, peakAbs = 0, decel = 0; // delta-magnitude trend for inertia detection
+
+    const finish = () => {
+      if(gesturing) {
+        gesturing = false;
+        controller.reset(); // fires the reply iff shouldReply (offset >= replyAfter at release)
+      }
+    };
+
+    // Trailing-edge only: the true end of the wheel burst — also the fallback `finish` for a slow drag
+    // that stops without any momentum tail for the inertia heuristic to catch.
+    const idle = debounce(() => {
+      finish();
+      axis = undefined;
+      offset = 0;
+      released = false;
+      prevAbs = -1;
+      peakAbs = decel = 0;
+    }, IDLE_DELAY, false);
+
+    // Let an inner element (code block, wide table) consume the swipe if it can still scroll that way.
+    // The reply swipe only ever engages with deltaX > 0 (rightward), so we only care whether an inner
+    // element can still scroll right (i.e. isn't already at its right edge).
+    const childCanScrollX = (from: HTMLElement) => {
+      let element = from;
+      while(element && element !== container) {
+        if(element.scrollWidth > element.clientWidth) {
+          const overflowX = window.getComputedStyle(element).overflowX;
+          if((overflowX === 'auto' || overflowX === 'scroll') &&
+            element.scrollLeft < element.scrollWidth - element.clientWidth - 1) {
+            return true;
+          }
+        }
+
+        element = element.parentElement;
+      }
+
+      return false;
+    };
+
+    this.listenerSetter.add(container)('wheel', (e: WheelEvent) => {
+      // pinch-zoom / momentum with a modifier held — not a reply gesture
+      if(e.ctrlKey || e.metaKey) {
+        return;
+      }
+
+      // normalize line/page delta modes (horizontal tilt-wheel mice) to pixels
+      const deltaX = e.deltaX * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? container.clientWidth : 1);
+
+      if(axis === undefined) {
+        // Only a horizontal-dominant swipe in the reply direction (deltaX > 0, i.e. dragging the
+        // bubble left) engages; the opposite direction is left untouched so the browser's
+        // back/forward swipe still works over the chat.
+        if(deltaX <= 0 ||
+          Math.abs(deltaX) <= Math.abs(e.deltaY) ||
+          this.chat.type === ChatType.Pinned ||
+          this.chat.type === ChatType.Logs ||
+          this.chat.selection.isSelecting ||
+          !this.chat.input.canSendPlain() ||
+          childCanScrollX(e.target as HTMLElement)) {
+          axis = 'y'; // vertical / wrong-direction / not repliable — ignore for the rest of the gesture
+          idle();
+          return;
+        }
+
+        const bubble = findUpClassName(e.target, 'bubble');
+        if(!bubble ||
+          bubble.classList.contains('service') ||
+          bubble.classList.contains('is-sending')) {
+          axis = 'y';
+          idle();
+          return;
+        }
+
+        axis = 'x';
+        offset = 0;
+        prevAbs = -1;
+        peakAbs = decel = 0;
+        gesturing = true;
+        controller.prepare(bubble);
+      }
+
+      if(axis === 'y') {
+        idle();
+        return;
+      }
+
+      cancelEvent(e);
+
+      // Fingers already lifted this gesture: swallow the whole decaying inertia tail so its (jittery)
+      // events can't nudge the bubble or re-engage a gesture after the reply already fired, until the
+      // wheel finally goes idle. (Trying to distinguish a new scroll/swipe from the tail here misreads
+      // momentum jitter as fresh input and makes the bubble twitch after release — not worth it.)
+      if(released) {
+        idle();
+        return;
+      }
+
+      // Active phase — the fingers are still on the trackpad.
+      offset = Math.max(0, Math.min(MAX, offset + deltaX * SCALE));
+      controller.move(offset);
+
+      // Track the delta-magnitude trend to spot the transition into inertia (see the constants above).
+      // A real coast decays smoothly with only tiny up-jitter; the finger pushing again shows up as a
+      // clear jump, which alone resets the streak. Flat/jittery events neither extend nor reset it.
+      const abs = Math.abs(deltaX);
+      if(abs > peakAbs) peakAbs = abs;
+      if(prevAbs >= 0) {
+        if(abs < prevAbs) ++decel;
+        else if(abs > prevAbs * INERTIA_REACCEL_RATIO) decel = 0; // clear re-acceleration → still dragging
+      }
+      prevAbs = abs;
+
+      if(peakAbs >= INERTIA_MIN_PEAK &&
+        decel >= INERTIA_DECEL_EVENTS &&
+        abs < peakAbs * INERTIA_PEAK_RATIO) {
+        released = true; // inertia has begun → the fingers have left
+        finish();        // fires the reply iff we're past the threshold right now
+      }
+
+      idle();
+    }, {passive: false, capture: true});
   }
 
   public constructPeerHelpers() {
@@ -2123,6 +2317,48 @@ export default class ChatBubbles {
         this.sendViewCountersDebounced();
       }
     }
+  };
+
+  // * guarded to at most once per chat-open (like iOS's hasDisplayedGuestChatMessageTooltip); reset in cleanup
+  private guestChatHintShown = false;
+
+  // * hint explaining guest bots: shown above the "<Bot> for <Visitor>" name of the first guest-chat
+  // * message that scrolls into view (iOS shows it in any chat type, at most twice — see
+  // * TelegramUI/…/ChatControllerDisplayGuestChatMessageTooltip)
+  private guestChatHintObserverCallback = (entry: IntersectionObserverEntry) => {
+    if(!entry.isIntersecting) {
+      return;
+    }
+
+    this.observer.unobserve(entry.target, this.guestChatHintObserverCallback);
+
+    if(this.chat.isPreview || this.guestChatHintShown) { // once per chat-open (iOS hasDisplayedGuestChatMessageTooltip)
+      return;
+    }
+
+    const shownTimes = this.chat.appSettings.seenTooltips.guestBotPrivacy || 0; // undefined for pre-existing state
+    if(shownTimes >= 2) { // twice total (iOS counter notice)
+      return;
+    }
+
+    this.guestChatHintShown = true;
+    setAppSettings('seenTooltips', 'guestBotPrivacy', shownTimes + 1);
+
+    // * notch over the bot's name (element = the .peer-title, which hugs its text), body over the bubble
+    // * (container = the bubble clamps the body's width/position). fall back to the bubble as the notch
+    // * anchor too when the name is hidden (a grouped, non-first guest bubble)
+    const bubble = entry.target as HTMLElement;
+    const nameNode = bubble.querySelector<HTMLElement>('.name .peer-title');
+
+    showTooltip({
+      element: nameNode?.offsetParent ? nameNode : bubble,
+      container: bubble,
+      vertical: 'top',
+      textElement: i18n('BotCantReadChatTooltip'),
+      paddingX: 8,
+      auto: true, // auto-dismiss after a few seconds — it appears unsolicited
+      useOverlay: false // don't swallow the user's next click
+    });
   };
 
   private setupReadMetrics() {
@@ -4050,6 +4286,7 @@ export default class ChatBubbles {
 
       this.observer.unobserve(bubble, this.stickerEffectObserverCallback);
       this.observer.unobserve(bubble, this.messageEffectObserverCallback);
+      this.observer.unobserve(bubble, this.guestChatHintObserverCallback);
     }
 
     bubble.timeAppenders = bubble.timeSpan = undefined;
@@ -4655,6 +4892,7 @@ export default class ChatBubbles {
     //   TEST_SCROLL = TEST_SCROLL_TIMES;
     // }
 
+    this.guestChatHintShown = false; // re-arm the guest-bot hint for the next chat-open (capped total by seenTooltips)
     this.skippedMids.clear();
     this.dateMessages = {};
     this.bubbleGroups?.cleanup();
@@ -8941,9 +9179,13 @@ export default class ChatBubbles {
 
     const iPostedAsSomeoneElse = message.fromId !== rootScope.myId && !this.chat.isMonoforum;
 
+    // * a guest-chat message shows "<bot> for <visitor>" and the bot's avatar, even in a 1-on-1
+    const guestChatViaFromId = getGuestChatViaFromId(message);
+
     const needName = ((iPostedAsSomeoneElse || !isOut) && this.chat.isLikeGroup) ||
       message.viaBotId ||
       storyFromPeerId ||
+      guestChatViaFromId ||
       (showNameForVerificationCodes && !replyTo);
 
     if(needName || fwdFrom || replyTo || topicNameButtonContainer) { // chat
@@ -9143,6 +9385,25 @@ export default class ChatBubbles {
         nameDiv.append(span);
       }
 
+      // * append "for <visitor>" after the guest bot's name; the visitor title opens its profile on click.
+      // * plain first name, no premium/status icons — those add `.peer-title.with-icons` (display: flex,
+      // * i.e. block), which would drop the visitor onto its own line
+      if(guestChatViaFromId) {
+        if(!nameDiv) {
+          nameDiv = document.createElement('div');
+        } else {
+          nameDiv.append(' ');
+        }
+
+        const visitorTitle = new PeerTitle({peerId: guestChatViaFromId, onlyFirstName: true, wrapOptions}).element;
+        const span = document.createElement('span');
+        span.classList.add('is-guest-chat-for');
+        span.append(i18n('GuestChatFor'), ' ', visitorTitle);
+
+        nameDiv.append(span);
+        bubble.classList.remove('hide-name');
+      }
+
       if(topicNameButtonContainer) {
         if(context.isStandaloneMedia) {
           topicNameButtonContainer.classList.add('floating-part');
@@ -9260,6 +9521,17 @@ export default class ChatBubbles {
     }
 
     bubble.classList.add(isOut ? 'is-out' : 'is-in');
+
+    // * reserve room for the forced guest-bot avatar in 1-on-1 chats (group chats already indent)
+    if(guestChatViaFromId) {
+      bubble.classList.add('is-guest-chat');
+
+      // * explain what a guest bot is when its first message scrolls into view — up to twice, like iOS.
+      // * iOS shows this in any chat type (not just 1-on-1), so there's no peer-type gate here
+      if(this.observer && !this.guestChatHintShown && (this.chat.appSettings.seenTooltips.guestBotPrivacy || 0) < 2) {
+        this.observer.observe(bubble, this.guestChatHintObserverCallback);
+      }
+    }
 
     if(withReplies) {
       const isFooter = MessageRender.renderReplies({
@@ -11283,6 +11555,8 @@ export default class ChatBubbles {
     }
 
     if(isMessageForVerificationBot(message)) return true;
+    // * guest-chat messages carry the guest bot's avatar even in a 1-on-1 chat
+    if(isGuestChatMessage(message)) return true;
     return this.chat.isLikeGroup && !this.chat.isOutMessage(message);
   }
 

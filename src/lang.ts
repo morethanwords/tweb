@@ -1688,6 +1688,8 @@ const lang = {
   'JoinByPeekGroupTitle': 'Join Group',
   'YouWereKicked': 'you were removed',
   'ViaBot': 'via',
+  'GuestChatFor': 'for',
+  'BotCantReadChatTooltip': 'This bot can\'t read the chat — only the message where it was mentioned.',
   'InviteExpired': 'This invite link has expired.',
   'NoUsernameFound': 'There is no Telegram account with this username.',
   'PrivacyDeleteCloudDrafts': 'Delete All Cloud Drafts',
@@ -3525,7 +3527,7 @@ const lang = {
   //   "one_value": "Unpin %d Message",
   //   "other_value": "Unpin All %d Messages"
   // },
-  'Chat.Pinned.DontShow': 'Don\'t Show Pinned Messages',
+  'Chat.Pinned.DontShow': 'Hide Pinned Messages',
   'Chat.Title.Comments': {
     'one_value': '%d Comment',
     'other_value': '%d Comments'
@@ -4824,7 +4826,7 @@ const lang = {
   'AiEditor.NewStyle.StyleName': 'Style Name',
   'AiEditor.NewStyle.StyleNameDescription': 'Style name (for example, "Pirate")',
   'AiEditor.NewStyle.Instructions': 'Instructions',
-  'AiEditor.NewStyle.InstructionsDescription': 'Instructions (for example "write in bold, nautical tone, light slang (aye, matey), vivid sea imagery, playful swagger, rhythmic phrasing, and adventurous mood")',
+  'AiEditor.NewStyle.InstructionsDescription': 'Instructions (for example, "Write like a swashbuckling pirate. Use arr, ye, matey, and talk about treasure and the sea")',
   'AiEditor.NewStyle.AddLink': 'Add a link to my account',
   'AiEditor.NewStyle.EmojiUnsupported': 'Sorry, this emoji is unsupported, please choose an animated emoji instead.',
   'AiEditor.NewStyle.Error': 'Failed to create new style',
