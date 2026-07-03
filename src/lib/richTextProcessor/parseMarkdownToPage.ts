@@ -54,20 +54,20 @@ function inlineToRichText(raw: string, refs: Refs): RichText {
   return inlineMarkdownToRichText(raw, refs, activeFootnoteNumbers);
 }
 
-type ListItemWithTask = (PageListItem | PageListOrderedItem) & {taskChecked?: boolean};
-
-// Build a list-item, detecting markdown task syntax (`[x]` / `[ ]`). The task state is stashed on
-// the item (not rendered as a ☑/☐ glyph) so the IV renderer can show a real square checkbox.
-function makeListItem(content: string, num: string, isOrdered: boolean, refs: Refs): ListItemWithTask {
+// Build a list-item, detecting markdown task syntax (`[x]` / `[ ]`). The task state is carried in
+// the item's native `checkbox`/`checked` pFlags (layer 227) — not rendered as a ☑/☐ glyph — so the
+// IV renderer can show a real square checkbox.
+function makeListItem(content: string, num: string, isOrdered: boolean, refs: Refs): PageListItem | PageListOrderedItem {
   const task = TASK_RE.exec(content);
   const text = inlineToRichText(task ? task[2] : content, refs);
-  const item: ListItemWithTask = isOrdered ?
-    {_: 'pageListOrderedItemText', num, text} :
-    {_: 'pageListItemText', text};
+  const pFlags: PageListItem.pageListItemText['pFlags'] = {};
   if(task) {
-    item.taskChecked = task[1].toLowerCase() === 'x';
+    pFlags.checkbox = true;
+    if(task[1].toLowerCase() === 'x') pFlags.checked = true;
   }
-  return item;
+  return isOrdered ?
+    {_: 'pageListOrderedItemText', pFlags, num, text} :
+    {_: 'pageListItemText', pFlags, text};
 }
 
 function isBlockStart(line: string): boolean {
@@ -192,7 +192,7 @@ function parseListBlock(
 
   if(items.length === 0) return {endIdx: i, block: null};
   const block: PageBlock = isOrdered ?
-    {_: 'pageBlockOrderedList', items: items as PageListOrderedItem[]} :
+    {_: 'pageBlockOrderedList', pFlags: {}, items: items as PageListOrderedItem[]} :
     {_: 'pageBlockList', items: items as PageListItem[]};
   return {endIdx: i, block};
 }
@@ -212,12 +212,14 @@ function attachNestedBlock(
   if(item._ === 'pageListOrderedItemText') {
     items[index] = {
       _: 'pageListOrderedItemBlocks',
+      pFlags: item.pFlags,
       num: item.num,
       blocks: [paraBlock, nested]
     };
   } else {
     items[index] = {
       _: 'pageListItemBlocks',
+      pFlags: item.pFlags,
       blocks: [paraBlock, nested]
     };
   }

@@ -1,6 +1,6 @@
 import {For, createEffect, createContext, useContext, Show, createSignal, Setter, onCleanup, createReaction} from 'solid-js';
 import {Dynamic} from 'solid-js/web';
-import {Document, MessageEntity, Page, PageBlock, PageCaption, PageListItem, PageListOrderedItem, Photo, RichText} from '@layer';
+import {Document, MessageEntity, Page, PageBlock, PageCaption, PageListOrderedItem, Photo, RichText} from '@layer';
 import wrapTelegramRichText from '@lib/richTextProcessor/wrapTelegramRichText';
 import styles from '@components/instantView.module.scss';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
@@ -474,10 +474,10 @@ function Block(props: {
               )}
               {item._ === 'pageListItemText' || item._ === 'pageListOrderedItemText' ? (
                 <>
-                  <Show when={(item as PageListItem & {taskChecked?: boolean}).taskChecked !== undefined}>
+                  <Show when={item.pFlags?.checkbox}>
                     <StaticCheckbox
                       class={styles.TaskCheckbox}
-                      checked={(item as PageListItem & {taskChecked?: boolean}).taskChecked}
+                      checked={item.pFlags?.checked}
                     />
                   </Show>
                   <RichTextRenderer text={item.text} />
