@@ -1688,6 +1688,8 @@ const lang = {
   'JoinByPeekGroupTitle': 'Join Group',
   'YouWereKicked': 'you were removed',
   'ViaBot': 'via',
+  'GuestChatFor': 'for',
+  'BotCantReadChatTooltip': 'This bot can\'t read the chat — only the message where it was mentioned.',
   'InviteExpired': 'This invite link has expired.',
   'NoUsernameFound': 'There is no Telegram account with this username.',
   'PrivacyDeleteCloudDrafts': 'Delete All Cloud Drafts',

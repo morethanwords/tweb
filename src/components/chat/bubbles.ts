@@ -173,6 +173,7 @@ import showTooltip from '@components/tooltip';
 import wrapTextWithEntities from '@lib/richTextProcessor/wrapTextWithEntities';
 import clearfix from '@helpers/dom/clearfix';
 import {usePeer} from '@stores/peers';
+import {setAppSettings} from '@stores/appSettings';
 import safeWindowOpen from '@helpers/dom/safeWindowOpen';
 import findAndSplice from '@helpers/array/findAndSplice';
 import generatePhotoForExtendedMediaPreview from '@appManagers/utils/photos/generatePhotoForExtendedMediaPreview';
@@ -191,7 +192,7 @@ import PopupStarGiftInfo from '@components/popups/starGiftInfo';
 import {StarGiftBubble, UniqueStarGiftWebPageBox} from '@components/chat/bubbles/starGift';
 import {PremiumGiftBubble} from '@components/chat/bubbles/premiumGift';
 import {UnknownUserBubble} from '@components/chat/bubbles/unknownUser';
-import {generateTail, getMid, isMessage, isMessageForVerificationBot, isVerificationBot} from '@components/chat/utils';
+import {generateTail, getGuestChatViaFromId, getMid, isGuestChatMessage, isMessage, isMessageForVerificationBot, isVerificationBot} from '@components/chat/utils';
 import {ChecklistBubble} from '@components/chat/bubbles/checklist';
 import {getRestrictionReason} from '@helpers/restrictions';
 import {isMessageSensitive} from '@appManagers/utils/messages/isMessageRestricted';
@@ -2323,6 +2324,48 @@ export default class ChatBubbles {
     }
   };
 
+  // * guarded to at most once per chat-open (like iOS's hasDisplayedGuestChatMessageTooltip); reset in cleanup
+  private guestChatHintShown = false;
+
+  // * hint explaining guest bots: shown above the "<Bot> for <Visitor>" name of the first guest-chat
+  // * message that scrolls into view (iOS shows it in any chat type, at most twice — see
+  // * TelegramUI/…/ChatControllerDisplayGuestChatMessageTooltip)
+  private guestChatHintObserverCallback = (entry: IntersectionObserverEntry) => {
+    if(!entry.isIntersecting) {
+      return;
+    }
+
+    this.observer.unobserve(entry.target, this.guestChatHintObserverCallback);
+
+    if(this.chat.isPreview || this.guestChatHintShown) { // once per chat-open (iOS hasDisplayedGuestChatMessageTooltip)
+      return;
+    }
+
+    const shownTimes = this.chat.appSettings.seenTooltips.guestBotPrivacy || 0; // undefined for pre-existing state
+    if(shownTimes >= 2) { // twice total (iOS counter notice)
+      return;
+    }
+
+    this.guestChatHintShown = true;
+    setAppSettings('seenTooltips', 'guestBotPrivacy', shownTimes + 1);
+
+    // * notch over the bot's name (element = the .peer-title, which hugs its text), body over the bubble
+    // * (container = the bubble clamps the body's width/position). fall back to the bubble as the notch
+    // * anchor too when the name is hidden (a grouped, non-first guest bubble)
+    const bubble = entry.target as HTMLElement;
+    const nameNode = bubble.querySelector<HTMLElement>('.name .peer-title');
+
+    showTooltip({
+      element: nameNode?.offsetParent ? nameNode : bubble,
+      container: bubble,
+      vertical: 'top',
+      textElement: i18n('BotCantReadChatTooltip'),
+      paddingX: 8,
+      auto: true, // auto-dismiss after a few seconds — it appears unsolicited
+      useOverlay: false // don't swallow the user's next click
+    });
+  };
+
   private setupReadMetrics() {
     this.readMetricsTracker = new ReadMetricsTracker(({peerId, metric}) => {
       this.managers.appMessagesManager.reportReadMetrics(peerId, metric);
@@ -4248,6 +4291,7 @@ export default class ChatBubbles {
 
       this.observer.unobserve(bubble, this.stickerEffectObserverCallback);
       this.observer.unobserve(bubble, this.messageEffectObserverCallback);
+      this.observer.unobserve(bubble, this.guestChatHintObserverCallback);
     }
 
     bubble.timeAppenders = bubble.timeSpan = undefined;
@@ -4853,6 +4897,7 @@ export default class ChatBubbles {
     //   TEST_SCROLL = TEST_SCROLL_TIMES;
     // }
 
+    this.guestChatHintShown = false; // re-arm the guest-bot hint for the next chat-open (capped total by seenTooltips)
     this.skippedMids.clear();
     this.dateMessages = {};
     this.bubbleGroups?.cleanup();
@@ -9111,9 +9156,13 @@ export default class ChatBubbles {
 
     const iPostedAsSomeoneElse = message.fromId !== rootScope.myId && !this.chat.isMonoforum;
 
+    // * a guest-chat message shows "<bot> for <visitor>" and the bot's avatar, even in a 1-on-1
+    const guestChatViaFromId = getGuestChatViaFromId(message);
+
     const needName = ((iPostedAsSomeoneElse || !isOut) && this.chat.isLikeGroup) ||
       message.viaBotId ||
       storyFromPeerId ||
+      guestChatViaFromId ||
       (showNameForVerificationCodes && !replyTo);
 
     if(needName || fwdFrom || replyTo || topicNameButtonContainer) { // chat
@@ -9313,6 +9362,25 @@ export default class ChatBubbles {
         nameDiv.append(span);
       }
 
+      // * append "for <visitor>" after the guest bot's name; the visitor title opens its profile on click.
+      // * plain first name, no premium/status icons — those add `.peer-title.with-icons` (display: flex,
+      // * i.e. block), which would drop the visitor onto its own line
+      if(guestChatViaFromId) {
+        if(!nameDiv) {
+          nameDiv = document.createElement('div');
+        } else {
+          nameDiv.append(' ');
+        }
+
+        const visitorTitle = new PeerTitle({peerId: guestChatViaFromId, onlyFirstName: true, wrapOptions}).element;
+        const span = document.createElement('span');
+        span.classList.add('is-guest-chat-for');
+        span.append(i18n('GuestChatFor'), ' ', visitorTitle);
+
+        nameDiv.append(span);
+        bubble.classList.remove('hide-name');
+      }
+
       if(topicNameButtonContainer) {
         if(context.isStandaloneMedia) {
           topicNameButtonContainer.classList.add('floating-part');
@@ -9430,6 +9498,17 @@ export default class ChatBubbles {
     }
 
     bubble.classList.add(isOut ? 'is-out' : 'is-in');
+
+    // * reserve room for the forced guest-bot avatar in 1-on-1 chats (group chats already indent)
+    if(guestChatViaFromId) {
+      bubble.classList.add('is-guest-chat');
+
+      // * explain what a guest bot is when its first message scrolls into view — up to twice, like iOS.
+      // * iOS shows this in any chat type (not just 1-on-1), so there's no peer-type gate here
+      if(this.observer && !this.guestChatHintShown && (this.chat.appSettings.seenTooltips.guestBotPrivacy || 0) < 2) {
+        this.observer.observe(bubble, this.guestChatHintObserverCallback);
+      }
+    }
 
     if(withReplies) {
       const isFooter = MessageRender.renderReplies({
@@ -11453,6 +11532,8 @@ export default class ChatBubbles {
     }
 
     if(isMessageForVerificationBot(message)) return true;
+    // * guest-chat messages carry the guest bot's avatar even in a 1-on-1 chat
+    if(isGuestChatMessage(message)) return true;
     return this.chat.isLikeGroup && !this.chat.isOutMessage(message);
   }
 

@@ -29,7 +29,7 @@ import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
 import pause from '@helpers/schedulers/pause';
 
 export type User = MTUser.user;
-export type TopPeerType = 'correspondents' | 'bots_inline' | 'bots_app';
+export type TopPeerType = 'correspondents' | 'bots_inline' | 'bots_app' | 'bots_guestchat';
 export type MyTopPeer = {id: PeerId, rating: number};
 
 const SEARCH_OPTIONS: ProcessSearchTextOptions = {

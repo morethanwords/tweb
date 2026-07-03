@@ -82,7 +82,7 @@ export default class InlineHelper extends AutocompleteHelper {
     });
   }
 
-  public _checkQuery = async(peerId: PeerId, username: string, query: string, canSendInline: boolean) => {
+  public _checkQuery = async(peerId: PeerId, username: string, query: string, canSendInline: boolean, allowGuestChat?: boolean) => {
     const middleware = this.controller.getMiddleware();
 
     const peer = await this.managers.appUsersManager.resolveUsername(username);
@@ -92,6 +92,13 @@ export default class InlineHelper extends AutocompleteHelper {
 
     if(peer._ !== 'user' || !peer.pFlags.bot) {
       throw 'NOT_A_BOT';
+    }
+
+    // * a guest bot (bot_guestchat) is not an inline bot — a leading @guestbot is a plain, sendable
+    // * guest-chat message, so hide the inline panel and let the composer send the text as-is
+    if(allowGuestChat && peer.pFlags.bot_guestchat) {
+      this.toggle(false);
+      return {user: peer, renderPromise: Promise.resolve(), guestChat: true};
     }
 
     if(!canSendInline) {
@@ -308,7 +315,7 @@ export default class InlineHelper extends AutocompleteHelper {
       });
     });
 
-    return {user: peer, renderPromise};
+    return {user: peer, renderPromise, guestChat: false};
   };
 
   public init() {
