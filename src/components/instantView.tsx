@@ -1,4 +1,5 @@
 import {For, createEffect, createContext, useContext, Show, createSignal, Setter, onCleanup, createReaction} from 'solid-js';
+import type {JSX} from 'solid-js';
 import {Dynamic} from 'solid-js/web';
 import {Document, MessageEntity, Page, PageBlock, PageCaption, PageListOrderedItem, Photo, RichText} from '@layer';
 import wrapTelegramRichText from '@lib/richTextProcessor/wrapTelegramRichText';
@@ -84,6 +85,81 @@ function onClick(context: InstantViewContextValue, e: MouseEvent) {
       return;
     }
   }
+}
+
+export function InstantViewBlocks(props: {
+  webPageId: Long,
+  page: Page.page,
+  openNewPage: (url: string) => void,
+  collapse: () => void,
+  class?: string,
+  contentClass?: string,
+  paddings?: number,
+  style?: JSX.CSSProperties
+}) {
+  const customEmojiRenderer = CustomEmojiRendererElement.create({
+    textColor: 'primary-text-color',
+    middleware: createMiddleware().get(),
+    renderNonSticker: true
+  });
+
+  const value: InstantViewContextValue = {
+    get webPageId() {
+      return props.webPageId;
+    },
+    ready: true,
+    page: props.page,
+    randomId: '' + (Math.random() * 1000 | 0),
+    openNewPage: props.openNewPage,
+    collapse: props.collapse,
+    scrollToAnchor: () => {},
+    customEmojiRenderer,
+    details: new WeakMap(),
+    savingScroll: false,
+    media: []
+  };
+
+  return (
+    <InstantViewContent
+      value={value}
+      class={props.class}
+      contentClass={props.contentClass}
+      paddings={props.paddings}
+      style={props.style}
+    />
+  );
+}
+
+// Shared render of the context provider + `.InstantView` wrapper + block list. Both the full-page
+// `InstantView` (wrapped in Scrollable/MySuspense with a footer) and the inline `InstantViewBlocks`
+// (used to embed rich messages inside chat bubbles) delegate here so the block markup lives in one
+// place. The distinct context values (ready/scrollToAnchor) and outer chrome stay in each caller.
+function InstantViewContent(props: {
+  value: InstantViewContextValue,
+  class?: string,
+  contentClass?: string,
+  paddings?: number,
+  style?: JSX.CSSProperties,
+  children?: JSX.Element
+}) {
+  return (
+    <InstantViewContext.Provider value={props.value}>
+      <div
+        dir={props.value.page.pFlags.rtl ? 'auto' : undefined}
+        class={classNames(styles.InstantView, props.class, 'text-overflow-wrap')}
+        onClick={onClick.bind(null, props.value)}
+        style={props.style}
+      >
+        {props.value.customEmojiRenderer}
+        <div class={classNames(styles.InstantViewContent, props.contentClass)}>
+          <For each={props.value.page.blocks}>{(block) => (
+            <Block block={block} paddings={props.paddings ?? 2} />
+          )}</For>
+        </div>
+        {props.children}
+      </div>
+    </InstantViewContext.Provider>
+  );
 }
 
 export function InstantView(props: {
@@ -174,48 +250,39 @@ export function InstantView(props: {
           props.onReady?.();
         }}
       >
-        <InstantViewContext.Provider value={value}>
-          <Scrollable ref={scrollableRef}>
+        <Scrollable ref={scrollableRef}>
+          <InstantViewContent
+            value={value}
+            paddings={2}
+            style={{'--iv-scale': (1.125 * appSettings.instantView.scale).toFixed(3)}}
+          >
             <div
-              dir={props.page.pFlags.rtl ? 'auto' : undefined}
-              class={classNames(styles.InstantView, 'text-overflow-wrap')}
-              onClick={onClick.bind(null, value)}
-              style={{'--iv-scale': (1.125 * appSettings.instantView.scale).toFixed(3)}}
+              dir="auto"
+              class={classNames(styles.InstantViewFooter, 'secondary')}
             >
-              {value.customEmojiRenderer}
-              <div class={styles.InstantViewContent}>
-                <For each={props.page.blocks}>{(block) => (
-                  <Block block={block} paddings={2} />
-                )}</For>
-              </div>
-              <div
-                dir="auto"
-                class={classNames(styles.InstantViewFooter, 'secondary')}
+              <Show when={props.page.views}>
+                {i18n('Views', [props.page.views])}
+                {` • `}
+              </Show>
+              <a
+                class={styles.WrongLayout}
+                href="#"
+                onClick={async(e) => {
+                  cancelEvent(e);
+                  value.collapse();
+                  const user = await rootScope.managers.appUsersManager.resolveUserByUsername('@previews');
+                  const startParam = `webpage${value.webPageId}`;
+                  appImManager.setInnerPeer({
+                    peerId: user.id.toPeerId(false),
+                    startParam
+                  });
+                }}
               >
-                <Show when={props.page.views}>
-                  {i18n('Views', [props.page.views])}
-                  {` • `}
-                </Show>
-                <a
-                  class={styles.WrongLayout}
-                  href="#"
-                  onClick={async(e) => {
-                    cancelEvent(e);
-                    value.collapse();
-                    const user = await rootScope.managers.appUsersManager.resolveUserByUsername('@previews');
-                    const startParam = `webpage${value.webPageId}`;
-                    appImManager.setInnerPeer({
-                      peerId: user.id.toPeerId(false),
-                      startParam
-                    });
-                  }}
-                >
-                  {i18n('InstantView.WrongLayout')}
-                </a>
-              </div>
+                {i18n('InstantView.WrongLayout')}
+              </a>
             </div>
-          </Scrollable>
-        </InstantViewContext.Provider>
+          </InstantViewContent>
+        </Scrollable>
       </MySuspense>
     </Animated>
   );
@@ -399,8 +466,12 @@ function Block(props: {
   switch(block._) {
     case 'pageBlockTitle':
       return <h1 class={classNames(styles.Padding, styles.Title)}><RichTextRenderer text={block.text} /></h1>;
+    case 'pageBlockHeading1':
+      return <h1 class={classNames(styles.Padding, styles.Title)}><RichTextRenderer text={block.text} /></h1>;
     case 'pageBlockSubtitle':
       return <h2 class={classNames(styles.Padding, styles.Subtitle, 'secondary')}><RichTextRenderer text={block.text} /></h2>;
+    case 'pageBlockHeading2':
+      return <h2 class={classNames(styles.Padding, styles.Subtitle)}><RichTextRenderer text={block.text} /></h2>;
     case 'pageBlockHeader':
     case 'pageBlockSubheader': {
       // Markdown levels 1-6 are stashed as `headingLevel` on the block by parseMarkdownToPage
@@ -423,6 +494,14 @@ function Block(props: {
         </Dynamic>
       );
     }
+    case 'pageBlockHeading3':
+      return <h3 class={classNames(styles.Padding, styles.Header)}><RichTextRenderer text={block.text} /></h3>;
+    case 'pageBlockHeading4':
+      return <h4 class={classNames(styles.Padding, styles.Subheader)}><RichTextRenderer text={block.text} /></h4>;
+    case 'pageBlockHeading5':
+      return <h5 class={classNames(styles.Padding, styles.Subheader)}><RichTextRenderer text={block.text} /></h5>;
+    case 'pageBlockHeading6':
+      return <h6 class={classNames(styles.Padding, styles.Subheader)}><RichTextRenderer text={block.text} /></h6>;
     case 'pageBlockParagraph':
       return <p class={classNames(styles.Padding, styles.Paragraph)}><RichTextRenderer text={block.text} /></p>;
     case 'pageBlockPreformatted': {
@@ -443,6 +522,14 @@ function Block(props: {
       const fragment = wrapRichText(code, {entities});
       return <div class={classNames(styles.Padding, styles.PreformattedWrapper)}>{documentFragmentToNodes(fragment)}</div>;
     }
+    case 'pageBlockMath':
+      // Server-sent `pageBlockMath` (rich messages) — render as a display formula through the same
+      // Temml path master uses for markdown `$$…$$` blocks, instead of dumping the raw LaTeX source.
+      return (
+        <div class={classNames(styles.Padding, styles.MathBlockWrapper)}>
+          <Latex source={block.source} isBlock />
+        </div>
+      );
     case 'pageBlockFooter':
       return <footer class={classNames(styles.Padding, styles.Footer, 'secondary')}><RichTextRenderer text={block.text} /></footer>;
     case 'pageBlockDivider':
@@ -452,10 +539,16 @@ function Block(props: {
       // * own numbers cannot be perfectly vertical aligned if children is not plain text
       const isOrdered = block._ === 'pageBlockOrderedList';
       const shouldHaveOwnNumbers = isOrdered && block.items.some((item) => item.num && !item.num.match(/^\d+$/));
+      const orderedProps = isOrdered ? {
+        reversed: block.pFlags.reversed,
+        start: block.start,
+        type: block.type
+      } : {};
       const {wrapEmojiText} = useHotReloadGuard();
       return (
         <Dynamic
           component={isOrdered ? 'ol' : 'ul'}
+          {...orderedProps}
           class={classNames(
             styles.List,
             shouldHaveOwnNumbers && styles.ListOrdered,
@@ -500,6 +593,22 @@ function Block(props: {
             <RichTextRenderer text={block.text} />
             <Show when={!isRichTextEmpty(block.caption)}>
               <div class={classNames(styles.BlockquoteCaption, 'secondary')}>
+                <RichTextRenderer text={block.caption} />
+              </div>
+            </Show>
+          </blockquote>
+        </div>
+      );
+    case 'pageBlockBlockquoteBlocks':
+      return (
+        <div class={classNames(styles.Padding, styles.BlockquoteWrapper)}>
+          <blockquote class={styles.Blockquote}>
+            <div class={styles.BlockquoteBorder} />
+            <For each={block.blocks}>{(subBlock) => (
+              <Block block={subBlock} paddings={props.paddings + 1} />
+            )}</For>
+            <Show when={!isRichTextEmpty(block.caption)}>
+              <div class={styles.BlockquoteCaption}>
                 <RichTextRenderer text={block.caption} />
               </div>
             </Show>
@@ -915,6 +1024,12 @@ function Block(props: {
         <div class={classNames(styles.Padding, styles.Kicker, 'text-bold')}>
           <RichTextRenderer text={block.text} />
         </div>
+      );
+    case 'pageBlockThinking':
+      return (
+        <p class={classNames(styles.Padding, styles.Paragraph, 'secondary')}>
+          <RichTextRenderer text={block.text} />
+        </p>
       );
     case 'pageBlockPullquote':
       return (
