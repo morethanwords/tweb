@@ -181,6 +181,9 @@ export default class ChatRecording {
         this.waveformAnalyser.finish();
         this.waveformAnalyser = undefined;
       }
+      if(this.recorder instanceof NativeVoiceRecorder) {
+        this.recorder.notifySamples = undefined;
+      }
       this.teardownLiveWaveform();
       this.stopPlayback();
       // Any menu-open click guard from the SendMenu is now meaningless —
@@ -1022,9 +1025,21 @@ export default class ChatRecording {
 
       this.recordStartTime = Date.now();
 
-      const sourceNode: MediaStreamAudioSourceNode = this.recorder.sourceNode;
-      this.waveformAnalyser = new VoiceWaveformAnalyser(sourceNode);
-      this.liveWaveformAnalyser = new LiveWaveformAnalyser(sourceNode);
+      if(this.recorder instanceof NativeVoiceRecorder) {
+        // Tap PCM from the capture worklet instead of adding two
+        // ScriptProcessors on the main thread — that path starves encoding on
+        // low-end mobile PWAs and shows up as crackling in the recording.
+        this.waveformAnalyser = new VoiceWaveformAnalyser();
+        this.liveWaveformAnalyser = new LiveWaveformAnalyser();
+        this.recorder.notifySamples = (samples) => {
+          this.waveformAnalyser?.feed(samples);
+          this.liveWaveformAnalyser?.feed(samples);
+        };
+      } else {
+        const sourceNode: MediaStreamAudioSourceNode = this.recorder.sourceNode;
+        this.waveformAnalyser = new VoiceWaveformAnalyser(sourceNode);
+        this.liveWaveformAnalyser = new LiveWaveformAnalyser(sourceNode);
+      }
       this.liveWaveformAnalyser.onpeak = (peak) => {
         this.voiceRecordingPanel?.pushPeak(peak);
       };

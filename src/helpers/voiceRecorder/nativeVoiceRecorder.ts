@@ -8,6 +8,7 @@
 import OggOpusWriter from './oggOpusWriter';
 import isNativeVoiceRecorderSupported from './isNativeSupported';
 import getStream from '@lib/calls/helpers/getStream';
+import {IS_MOBILE} from '@environment/userAgent';
 
 export {isNativeVoiceRecorderSupported};
 
@@ -32,8 +33,10 @@ class VoiceCaptureProcessor extends AudioWorkletProcessor {
       this.bufferIndex += toCopy;
       i += toCopy;
       if(this.bufferIndex === this.bufferSize) {
-        this.port.postMessage(this.buffer.slice(0));
+        const out = this.buffer;
+        this.buffer = new Float32Array(this.bufferSize);
         this.bufferIndex = 0;
+        this.port.postMessage(out, [out.buffer]);
       }
     }
     return true;
@@ -43,7 +46,9 @@ registerProcessor('voice-capture-processor', VoiceCaptureProcessor);
 `;
 
 const WORKLET_PROCESSOR_NAME = 'voice-capture-processor';
-const WORKLET_BUFFER_SIZE = 2048;
+// Larger capture windows on mobile cut main-thread postMessage/encode churn,
+// which otherwise starves the audio graph on low-end PWA installs.
+const WORKLET_BUFFER_SIZE = IS_MOBILE ? 4096 : 2048;
 const ENCODER_SAMPLE_RATE = 48000;
 const DEFAULT_BITRATE = 96000;
 const DEFAULT_FRAME_DURATION_US = 20000;
@@ -78,6 +83,7 @@ export default class NativeVoiceRecorder {
   private encoder: AudioEncoder;
   private writer: OggOpusWriter;
   private workletUrl: string;
+  private silentSink: GainNode;
   private encoderTimestampUs = 0;
   private opusHeadCaptured = false;
   public notifySamples: (samples: Float32Array) => void;
@@ -108,16 +114,23 @@ export default class NativeVoiceRecorder {
     // gone it strips the deviceId, clears the stale appSettings.callDevices.
     // microphoneId and retries on the OS default — same self-healing as calls.
     const audioConstraints: MediaTrackConstraints = typeof this.config.mediaTrackConstraints === 'object' ? this.config.mediaTrackConstraints : {};
+    // Voice notes are not calls — skip the heavy in-call DSP stack (AEC/AGC)
+    // that can pump and clip on low-end mobile hardware.
     this.stream = await getStream({
       audio: {
         ...audioConstraints,
+        channelCount: 1,
+        sampleRate: {ideal: this.config.encoderSampleRate},
         noiseSuppression: false,
-        echoCancellation: true,
-        autoGainControl: true
+        echoCancellation: false,
+        autoGainControl: false
       }
     });
 
     this.audioContext = new AudioContext({sampleRate: this.config.encoderSampleRate});
+    if(this.audioContext.state === 'suspended') {
+      await this.audioContext.resume();
+    }
     this.sourceNode = this.audioContext.createMediaStreamSource(this.stream);
 
     const blob = new Blob([WORKLET_SOURCE], {type: 'application/javascript'});
@@ -150,10 +163,13 @@ export default class NativeVoiceRecorder {
 
     this.workletNode.port.onmessage = (e: MessageEvent<Float32Array>) => this.onWorkletMessage(e.data);
 
+    this.silentSink = this.audioContext.createGain();
+    this.silentSink.gain.value = 0;
+
     this.sourceNode.connect(this.workletNode);
-    // AudioWorkletNode needs a downstream consumer for process() to be called;
-    // outputs are silent (we never write to them).
-    this.workletNode.connect(this.audioContext.destination);
+    // AudioWorkletNode needs a downstream consumer for process() to be called.
+    this.workletNode.connect(this.silentSink);
+    this.silentSink.connect(this.audioContext.destination);
 
     this.state = 'recording';
     this.encoderTimestampUs = 0;
@@ -171,7 +187,7 @@ export default class NativeVoiceRecorder {
       numberOfFrames,
       numberOfChannels: this.config.numberOfChannels,
       timestamp: this.encoderTimestampUs,
-      data: samples.slice()
+      data: new Float32Array(samples)
     });
     this.encoderTimestampUs += (numberOfFrames * 1_000_000) / this.config.encoderSampleRate;
     try {
@@ -235,6 +251,9 @@ export default class NativeVoiceRecorder {
 
     try {
       this.sourceNode?.disconnect();
+    } catch(e) {}
+    try {
+      this.silentSink?.disconnect();
     } catch(e) {}
     if(this.workletNode) {
       try {

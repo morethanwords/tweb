@@ -15,9 +15,18 @@ const DOWNSAMPLE_THRESHOLD = WAVEFORM_SAMPLES_COUNT * 2; // 200
 // Migrating both to AudioWorkletNode would be a separate, larger change.
 const SCRIPT_PROCESSOR_BUFFER_LENGTH = 4096;
 
+function connectSilentSink(context: BaseAudioContext, node: AudioNode) {
+  const sink = context.createGain();
+  sink.gain.value = 0;
+  node.connect(sink);
+  sink.connect(context.destination);
+  return sink;
+}
+
 export default class VoiceWaveformAnalyser {
   private sourceNode: AudioNode;
   private scriptProcessor: ScriptProcessorNode;
+  private silentSink: GainNode;
   private peaks: number[];
   private currentPeak: number;
   private currentPeakCount: number;
@@ -25,8 +34,7 @@ export default class VoiceWaveformAnalyser {
   private finished: boolean;
   private paused: boolean;
 
-  constructor(sourceNode: AudioNode) {
-    this.sourceNode = sourceNode;
+  constructor(sourceNode?: AudioNode) {
     this.peaks = [];
     this.currentPeak = 0;
     this.currentPeakCount = 0;
@@ -34,13 +42,14 @@ export default class VoiceWaveformAnalyser {
     this.finished = false;
     this.paused = false;
 
+    if(!sourceNode) return;
+
+    this.sourceNode = sourceNode;
     const context = sourceNode.context;
     this.scriptProcessor = context.createScriptProcessor(SCRIPT_PROCESSOR_BUFFER_LENGTH, 1, 1);
     this.scriptProcessor.onaudioprocess = this.onAudioProcess;
     sourceNode.connect(this.scriptProcessor);
-    // ScriptProcessor only fires onaudioprocess while plugged into the graph.
-    // Output buffer is left untouched, so destination receives silence.
-    this.scriptProcessor.connect(context.destination);
+    this.silentSink = connectSilentSink(context, this.scriptProcessor);
   }
 
   public setPaused(paused: boolean) {
@@ -54,10 +63,17 @@ export default class VoiceWaveformAnalyser {
     return this.peaks.slice();
   }
 
+  public feed(samples: Float32Array) {
+    if(this.finished || this.paused) return;
+    this.processChannel(samples);
+  }
+
   private onAudioProcess = (e: AudioProcessingEvent) => {
     if(this.finished || this.paused) return;
+    this.processChannel(e.inputBuffer.getChannelData(0));
+  };
 
-    const channel = e.inputBuffer.getChannelData(0);
+  private processChannel(channel: Float32Array) {
     const len = channel.length;
     let peak = this.currentPeak;
     let count = this.currentPeakCount;
@@ -84,17 +100,20 @@ export default class VoiceWaveformAnalyser {
 
     this.currentPeak = peak;
     this.currentPeakCount = count;
-  };
+  }
 
   public finish(): Uint8Array {
     if(this.finished) return new Uint8Array(WAVEFORM_BYTES_LENGTH);
     this.finished = true;
 
     try {
-      this.sourceNode.disconnect(this.scriptProcessor);
+      this.sourceNode?.disconnect(this.scriptProcessor);
     } catch(e) {}
-    this.scriptProcessor.disconnect();
-    this.scriptProcessor.onaudioprocess = null;
+    try {
+      this.scriptProcessor?.disconnect();
+      this.silentSink?.disconnect();
+    } catch(e) {}
+    if(this.scriptProcessor) this.scriptProcessor.onaudioprocess = null;
 
     const peaks = this.peaks.slice(0, WAVEFORM_SAMPLES_COUNT);
     while(peaks.length < WAVEFORM_SAMPLES_COUNT) peaks.push(0);
