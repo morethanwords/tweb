@@ -63,7 +63,11 @@
       transform: translateX(0);
 
       &.animating.backwards {
-        transition: transform var(--transition-standard-out);
+        // keep animating `bottom` too: releasing the swipe on the LAST group fires
+        // `initMessageReply`, which grows the input and shifts `--chat-padding-bottom` (this
+        // avatar is pinned to it) — overriding the transition to `transform` only made that
+        // coincident `bottom` change snap instead of animate, so the avatar jumped vertically.
+        transition: transform var(--transition-standard-out), bottom var(--transition-standard-out);
       }
     }
 
@@ -162,6 +166,16 @@
         visibility: visible;
         // opacity: 1;
         transform: translateY(-50%) scale(1);
+      }
+
+      // fade the icon out on release instead of dropping it in a single frame (it fades IN via the
+      // inline opacity ramp during the swipe, so match that on the way out)
+      &.is-hiding {
+        opacity: 0 !important;
+
+        @include animation-level(2) {
+          transition: opacity var(--transition-standard-out);
+        }
       }
     }
   }
