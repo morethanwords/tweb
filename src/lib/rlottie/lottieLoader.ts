@@ -310,13 +310,22 @@ export class LottieLoader {
       options
     });
 
-    const {reqId, cacheName} = player;
+    let {reqId} = player;
+    const {cacheName} = player;
     this.players[reqId] = player;
 
     const playersByCacheName = cacheName ? this.playersByCacheName[cacheName] ??= new Set() : undefined;
     if(cacheName) {
       playersByCacheName.add(player);
     }
+
+    // an offscreen-load failure downgrades to legacy and mints a fresh reqId (rlottiePlayer.loadFromData
+    // fallback); re-key so freeRunStopped/freeRunEnded for the new id still reach this player
+    player.addEventListener('reqIdChanged', ({previousReqId, reqId: newReqId}) => {
+      delete this.players[previousReqId];
+      this.players[newReqId] = player;
+      reqId = newReqId;
+    });
 
     player.addEventListener('destroy', () => {
       this.onDestroy(reqId);

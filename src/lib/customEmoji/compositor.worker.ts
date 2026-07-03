@@ -1,4 +1,4 @@
-import applyColorOnContext from '@helpers/canvas/applyColorOnContext';
+import applyColorOnContext, {paintFrameTinted} from '@helpers/canvas/applyColorOnContext';
 import listenMessagePort from '@helpers/listenMessagePort';
 import compositorMessagePort from '@lib/customEmoji/compositorMessagePort';
 import {CUSTOM_EMOJI_FADE_IN_DURATION, CUSTOM_EMOJI_FRAME_INTERVAL} from '@lib/customEmoji/constants';
@@ -9,6 +9,26 @@ type CompositorRenderer = {canvas: OffscreenCanvas, context: OffscreenCanvasRend
 const renderers: Map<number, CompositorRenderer> = new Map();
 const latestFrames: Map<number, ImageBitmap> = new Map(); // playerReqId -> latest frame
 const decodePorts: Map<number, MessagePort> = new Map(); // rlottie workerId -> port
+
+// sticker path: a rlottie item that owns its own OffscreenCanvas(es) 1:1 (the 'canvas' offscreen mode),
+// routed here instead of presenting inside the shared rlottie worker. Keyed by the item reqId, which is
+// how its decoded frames arrive over decodePort. Separate from the emoji renderer/group model on purpose.
+type StickerSurface = {canvas: OffscreenCanvas, context: OffscreenCanvasRenderingContext2D};
+type StickerRenderer = {surfaces: StickerSurface[], color: string, latestFrame?: ImageBitmap};
+const stickerRenderers: Map<number, StickerRenderer> = new Map(); // rlottie item reqId -> sticker surface(s)
+
+// mirrors the shared rlottie worker's paintStaged(): draw the frame 1:1, then optional color tint
+const paintSticker = (sticker: StickerRenderer) => {
+  const {latestFrame, color} = sticker;
+  if(!latestFrame) {
+    return;
+  }
+
+  for(const {canvas, context} of sticker.surfaces) {
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    paintFrameTinted(context, latestFrame, color);
+  }
+};
 
 let flushTimeout: number;
 
@@ -146,6 +166,14 @@ const scheduleFlush = () => {
 };
 
 const onDecodedFrame = ({data}: MessageEvent<{reqId: number, frame: ImageBitmap}>) => {
+  const sticker = stickerRenderers.get(data.reqId);
+  if(sticker) {
+    sticker.latestFrame?.close?.();
+    sticker.latestFrame = data.frame;
+    paintSticker(sticker); // dedicated worker => same-process placeholder present, no cross-process frame sink
+    return;
+  }
+
   latestFrames.get(data.reqId)?.close?.();
 
   let dirty = false;
@@ -299,6 +327,55 @@ compositorMessagePort.addMultipleEventsListeners({
       scheduleFlush();
     }
   }),
+
+  attachSticker: ({reqId, canvases, color}) => {
+    stickerRenderers.get(reqId)?.latestFrame?.close?.(); // defensive: never leak a prior frame on re-attach
+    const surfaces = canvases.map((canvas) => ({canvas, context: canvas.getContext('2d')}));
+    const sticker: StickerRenderer = {surfaces, color};
+    stickerRenderers.set(reqId, sticker);
+    paintSticker(sticker); // paint immediately if a frame is already staged (re-attach); no-op otherwise
+  },
+
+  detachSticker: ({reqId}) => {
+    const sticker = stickerRenderers.get(reqId);
+    if(!sticker) {
+      return;
+    }
+
+    sticker.latestFrame?.close?.();
+    stickerRenderers.delete(reqId);
+  },
+
+  resizeSticker: ({reqId, width, height}) => {
+    const sticker = stickerRenderers.get(reqId);
+    if(!sticker) {
+      return;
+    }
+
+    for(const {canvas} of sticker.surfaces) { // writing width/height clears the canvas
+      canvas.width = width;
+      canvas.height = height;
+    }
+
+    paintSticker(sticker);
+  },
+
+  configSticker: ({reqId, color}) => {
+    const sticker = stickerRenderers.get(reqId);
+    if(!sticker) {
+      return;
+    }
+
+    sticker.color = color;
+    paintSticker(sticker);
+  },
+
+  presentSticker: ({reqId}) => {
+    const sticker = stickerRenderers.get(reqId);
+    if(sticker) { // re-blit the staged frame - a commit made while the placeholder was detached can be lost
+      paintSticker(sticker);
+    }
+  },
 
   decodePort: ({workerId}, _, event) => {
     const port = event.ports[0];

@@ -1,7 +1,7 @@
 import ctx from '@environment/ctx';
 import IS_IMAGE_BITMAP_SUPPORTED from '@environment/imageBitmapSupport';
 import readBlobAsText from '@helpers/blob/readBlobAsText';
-import applyColorOnContext from '@helpers/canvas/applyColorOnContext';
+import applyColorOnContext, {paintFrameTinted} from '@helpers/canvas/applyColorOnContext';
 import listenMessagePort from '@helpers/listenMessagePort';
 import makeError from '@helpers/makeError';
 import safeAssign from '@helpers/object/safeAssign';
@@ -256,10 +256,7 @@ export class RLottieItem {
   }
 
   private paintStaged(context: OffscreenCanvasRenderingContext2D) {
-    context.drawImage(this.stagedFrame, 0, 0);
-    if(this.color) {
-      applyColorOnContext(context, this.color, 0, 0, context.canvas.width, context.canvas.height);
-    }
+    paintFrameTinted(context, this.stagedFrame, this.color);
   }
 
   public presentFrame() {

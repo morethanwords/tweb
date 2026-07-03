@@ -14,7 +14,9 @@ import framesCache, {FramesCache, FramesCacheItem} from '@helpers/framesCache';
 import customProperties from '@helpers/dom/customProperties';
 import readValue from '@helpers/solid/readValue';
 import applyColorOnContext, {RLottieColor, rlottieColorToString} from '@helpers/canvas/applyColorOnContext';
-import {ensureDecodeChannel} from '@lib/customEmoji/compositorChannels';
+import {ensureCompositor, ensureDecodeChannel} from '@lib/customEmoji/compositorChannels';
+import compositorMessagePort from '@lib/customEmoji/compositorMessagePort';
+import IS_SHARED_WORKER_OFFSCREEN_CANVAS_SUPPORTED from '@environment/sharedWorkerOffscreenCanvasSupport';
 
 export type RLottieOptions = {
   container: HTMLElement | HTMLElement[],
@@ -64,7 +66,8 @@ export type RLottiePlayerEvents = {
   ready: () => void,
   firstFrame: () => void,
   cached: () => void,
-  destroy: () => void
+  destroy: () => void,
+  reqIdChanged: (payload: {previousReqId: number, reqId: number}) => void
 };
 
 // doubleRaf cycles ensurePresented waits after the present ack before reporting the frame on screen
@@ -137,6 +140,7 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
   private clearCacheOnRafId: number;
 
   private offscreenCanvases: OffscreenCanvas[];
+  private offscreenViaCompositor: boolean;
   private offscreenLoadFailed: boolean;
   private pixelRatio: number;
 
@@ -189,6 +193,10 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
       !options.canvas && // RLottieIcon shares ONE caller canvas across players
       !this.raw;
     this.offscreen = !eligible ? false : (options.sync ? (options.compositorDelivery ? 'emoji' : false) : 'canvas');
+    // OffscreenCanvas present is incompatible with a SharedWorker (see
+    // IS_SHARED_WORKER_OFFSCREEN_CANVAS_SUPPORTED), so route 'canvas' stickers through the per-tab
+    // compositor worker; the shared rlottie worker keeps decoding and just ships ImageBitmaps.
+    this.offscreenViaCompositor = this.offscreen === 'canvas' && !IS_SHARED_WORKER_OFFSCREEN_CANVAS_SUPPORTED;
     if(this.offscreen && this.cacheName) {
       this.workerId = rlottieMessagePort.getWorkerIndexForName(this.cacheName); // cache-affine routing, cross-tab sharing for free
     }
@@ -289,7 +297,11 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
     this.height = height;
 
     if(this.offscreen) { // writing a transferred placeholder's .width throws
-      this.sendQueryVoid('resizeCanvases', {width, height});
+      if(this.offscreenViaCompositor) {
+        compositorMessagePort.invokeCompositorVoid('resizeSticker', {reqId: this.reqId, width, height});
+      } else {
+        this.sendQueryVoid('resizeCanvases', {width, height});
+      }
       return;
     }
 
@@ -361,7 +373,11 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
 
   public nudgePresent() {
     if(this.offscreen === 'canvas' && this.renderedFirstFrame) {
-      this.sendQueryVoid('presentFrame', {frameNo: this.curFrame});
+      if(this.offscreenViaCompositor) {
+        compositorMessagePort.invokeCompositorVoid('presentSticker', {reqId: this.reqId});
+      } else {
+        this.sendQueryVoid('presentFrame', {frameNo: this.curFrame});
+      }
     }
   }
 
@@ -376,7 +392,12 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
       return;
     }
 
-    await this.sendQuery('presentFrame', {frameNo: this._curFrame}).catch(() => {});
+    if(this.offscreenViaCompositor) { // await the compositor's blit so the underlay isn't dropped over an unpainted canvas
+      await compositorMessagePort.invokeCompositor('presentSticker', {reqId: this.reqId}).catch(() => {});
+    } else {
+      await this.sendQuery('presentFrame', {frameNo: this._curFrame}).catch(() => {});
+    }
+
     for(let i = 0; i < PRESENT_PAINT_WAITS && !this.destroyed; ++i) {
       await doubleRaf();
     }
@@ -397,22 +418,38 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
   }
 
   private sendColorToWorker(reTint: boolean) {
+    if(this.offscreenViaCompositor) { // the worker holds no canvas; the compositor does the tint
+      compositorMessagePort.invokeCompositorVoid('configSticker', {reqId: this.reqId, color: this.getResolvedColor()});
+      return;
+    }
+
     this.sendQueryVoid('setColor', {color: this.getResolvedColor(), reTint});
   }
 
   public loadFromData(data: RLottieOptions['animationData']) {
-    if(this.offscreen === 'emoji') {
+    if(this.offscreenViaCompositor) {
+      // decode stays in the shared rlottie worker; present goes to the per-tab compositor. Attach our
+      // canvas(es) there and have the worker ship ImageBitmaps over the decode port (like the emoji path).
+      ensureCompositor();
+      ensureDecodeChannel(this.workerId);
+      compositorMessagePort.invokeCompositorVoid('attachSticker', {
+        reqId: this.reqId,
+        canvases: this.offscreenCanvases || [],
+        color: this.getResolvedColor()
+      }, this.offscreenCanvases?.slice());
+    } else if(this.offscreen === 'emoji') {
       // FIFO: the compositor port rides the same UI->worker port as this loadFromData,
       // so the worker holds it before this item's first frame
       ensureDecodeChannel(this.workerId);
     }
 
+    const compositorDelivery = this.offscreen === 'emoji' || this.offscreenViaCompositor;
     const offscreen: RLottieOffscreenInit = this.offscreen ? {
-      canvases: this.offscreenCanvases || [],
+      canvases: compositorDelivery ? [] : (this.offscreenCanvases || []), // compositor delivery => worker holds no canvas
       cacheName: this.cacheName,
       cachingDelta: this.cachingDelta, // Apple heuristics ship unchanged
-      color: this.getResolvedColor(),
-      compositorDelivery: this.offscreen === 'emoji' || undefined
+      color: compositorDelivery ? undefined : this.getResolvedColor(), // compositor delivery => the compositor tints, not the worker
+      compositorDelivery: compositorDelivery || undefined
     } : undefined;
     const transfer = offscreen?.canvases.length ? offscreen.canvases.slice() : undefined;
     this.offscreenCanvases = undefined;
@@ -436,7 +473,13 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
         console.error('offscreen loadFromData error, retrying legacy:', err, this);
         this.offscreenLoadFailed = true;
         this.sendQuery('destroy');
+        if(this.offscreenViaCompositor) {
+          compositorMessagePort.invokeCompositorVoid('detachSticker', {reqId: this.reqId});
+          this.offscreenViaCompositor = false;
+        }
+        const previousReqId = this.reqId;
         this.reqId = rlottieMessagePort.getNextTaskId();
+        this.dispatchEvent('reqIdChanged', {previousReqId, reqId: this.reqId}); // keep lottieLoader.players re-keyed to the new id
         this.offscreen = false;
         this.canvas = this.createCanvases(this.pixelRatio);
         this.initLegacySurfaces();
@@ -716,6 +759,9 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
     this.destroyed = true;
     this.pause();
     this.sendQuery('destroy');
+    if(this.offscreenViaCompositor) {
+      compositorMessagePort.invokeCompositorVoid('detachSticker', {reqId: this.reqId});
+    }
     if(this.cacheName && !this.offscreen) RLottiePlayer.CACHE.releaseCache(this.cacheName);
     this.dispatchEvent('destroy');
     this.cleanup();
@@ -751,7 +797,8 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
     /* this.setListenerResult('enterFrame', frameNo);
     return; */
 
-    if(this.offscreen === 'emoji') {
+    if(this.offscreen === 'emoji' || this.offscreenViaCompositor) {
+      // the compositor paints on frame arrival; this event is just for listeners (autoplay, etc.)
       this.renderedFirstFrame = true;
       this.dispatchEvent('enterFrame', frameNo);
       return;
