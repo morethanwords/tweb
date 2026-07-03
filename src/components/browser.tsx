@@ -1158,14 +1158,16 @@ export function openInstantViewInAppBrowser({
         icon: 'newtab',
         text: 'OpenInNewTab',
         onClick: () => safeWindowOpen(url),
-        separator: true
+        separator: true,
+        verify: () => !!url // * markdown IV has no real URL — hide open/copy-link actions
       }, {
         icon: 'copy',
         text: 'CopyLink',
         onClick: () => {
           copyTextToClipboard(url);
           toastNew({langPackKey: 'LinkCopied'});
-        }
+        },
+        verify: () => !!url
       }],
       icon: <IconTsx icon="boostcircle" />,
       dispose,

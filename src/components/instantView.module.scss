@@ -22,6 +22,7 @@
   position: relative;
   display: flex;
   flex-direction: column;
+  white-space: pre-wrap;
 
   :global(.text-highlight) {
     font-style: normal;
@@ -106,16 +107,66 @@
   margin: 1em 0 0.5em;
 }
 
+// Per-level overrides for markdown H1-H6 (set by parseMarkdownToPage's `headingLevel`
+// metadata + Block component). They sit on top of `.Header` / `.Subheader` to give each
+// level a distinct size while keeping the base style.
+.HeadingH1 {
+  font-size: 1.4444em;
+  font-weight: var(--font-weight-bold);
+}
+
+.HeadingH2 {
+  font-size: 1.25em;
+  font-weight: var(--font-weight-bold);
+}
+
+.HeadingH3 {
+  font-size: 1.1111em;
+  font-weight: var(--font-weight-bold);
+}
+
+.HeadingH4 {
+  font-size: 1em;
+  font-weight: var(--font-weight-bold);
+}
+
+.HeadingH5 {
+  font-size: .9em;
+  font-weight: var(--font-weight-bold);
+}
+
+.HeadingH6 {
+  font-size: .85em;
+  font-weight: var(--font-weight-bold);
+}
+
 .Paragraph {
   margin-bottom: 1em;
 }
 
-.Preformatted {
-  background-color: var(--light-secondary-text-color);
-  // padding: 0.2222em max(var(--padding-horizontal), 0.8888em);
-  padding: 0.2222em var(--padding-horizontal);
-  overflow-x: auto;
+// wraps the app-standard `.code` block (see pageBlockPreformatted) in the IV horizontal gutter
+.PreformattedWrapper {
   margin-block: 0.6666em;
+}
+
+// Math (Temml → MathML). Block formulas (`$$…$$`) display-centered in a horizontal scroller for
+// wide equations; inline formulas (`$x$`) flow with the surrounding text.
+.MathBlockWrapper {
+  margin-block: 0.6666em;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.Latex {
+  color: currentColor;
+}
+
+.LatexBlock {
+  display: block;
+}
+
+.LatexInline {
+  white-space: normal;
 }
 
 .Footer {
@@ -176,9 +227,9 @@
 
 .Blockquote {
   margin: 0;
-  position: relative;
-  padding-inline: var(--padding-horizontal);
-  font-style: italic;
+  // padding for the .quote-like accent bar (start) and the quote glyph (end), mirroring chat quotes
+  padding: 0.1875em 0;
+  padding-inline: 0.5625rem 1.125rem;
 
   &Wrapper {
     margin: 1em 0;
@@ -187,17 +238,14 @@
   &Caption {
     margin-top: 0.2352941176em;
     font-size: 0.85em;
-    font-style: normal;
   }
+}
 
-  &Border {
-    position: absolute;
-    width: 0.2222em;
-    height: 100%;
-    inset-inline-start: 0;
-    background-color: var(--primary-color);
-    border-radius: 8px;
-  }
+.TaskCheckbox {
+  display: inline-block;
+  vertical-align: -0.2em;
+  margin-inline-end: 0.4em;
+  --checkbox-size: 1.125em;
 }
 
 .Unsupported {
