@@ -6,7 +6,7 @@
  */
 
 import tsNow from '@helpers/tsNow';
-import {InputNotifyPeer, InputPeer, InputPeerNotifySettings, NotifyPeer, Peer, PeerNotifySettings, Update} from '@layer';
+import {InputNotifyPeer, InputPeer, InputPeerNotifySettings, NotifyPeer, Peer, PeerNotifySettings, ReactionsNotifySettings, Update} from '@layer';
 import {MUTE_UNTIL} from '@appManagers/constants';
 import throttle from '@helpers/schedulers/throttle';
 import convertInputKeyToKey from '@helpers/string/convertInputKeyToKey';
@@ -35,6 +35,8 @@ export class AppNotificationsManager extends AppManager {
   private checkMuteUntilThrottled: () => void;
 
   private notifyContactsSignUp: Promise<boolean>;
+
+  private reactionsNotifySettings: Promise<ReactionsNotifySettings> | ReactionsNotifySettings;
 
   protected after() {
     this.checkMuteUntilThrottled = throttle(this.checkMuteUntil, 1000, false);
@@ -143,6 +145,18 @@ export class AppNotificationsManager extends AppManager {
     .then((value) => {
       this.notifyContactsSignUp = Promise.resolve(!silent);
     });
+  }
+
+  public getReactionsNotifySettings() {
+    if(this.reactionsNotifySettings) return this.reactionsNotifySettings;
+    return this.reactionsNotifySettings = this.apiManager.invokeApi('account.getReactionsNotifySettings')
+    .then((settings) => this.reactionsNotifySettings = settings);
+  }
+
+  public setReactionsNotifySettings(settings: ReactionsNotifySettings) {
+    this.reactionsNotifySettings = settings;
+    return this.apiManager.invokeApi('account.setReactionsNotifySettings', {settings})
+    .then((result) => this.reactionsNotifySettings = result);
   }
 
   private checkMuteUntil = () => {

@@ -2,7 +2,7 @@ import {SETTINGS_INIT} from '@config/state';
 import copy from '@helpers/object/copy';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import convertKeyToInputKey from '@helpers/string/convertKeyToInputKey';
-import {InputNotifyPeer, InputPeerNotifySettings, PeerNotifySettings, Update} from '@layer';
+import {InputNotifyPeer, InputPeerNotifySettings, PeerNotifySettings, ReactionNotificationsFrom, ReactionsNotifySettings, Update} from '@layer';
 import {i18n, LangPackKey} from '@lib/langPack';
 import {MUTE_UNTIL} from '@appManagers/constants';
 import rootScope from '@lib/rootScope';
@@ -11,7 +11,7 @@ import CheckboxFieldTsx from '@components/checkboxFieldTsx';
 import RangeSettingSelector from '@components/rangeSettingSelector';
 import Row from '@components/rowTsx';
 import Section from '@components/section';
-import {createEffect, createMemo, createSignal, getOwner, onCleanup, runWithOwner} from 'solid-js';
+import {createEffect, createMemo, createSignal, getOwner, onCleanup, runWithOwner, Show} from 'solid-js';
 import {toastNew} from '@components/toast';
 import Button from '@components/buttonTsx';
 import cancelEvent from '@helpers/dom/cancelEvent';
@@ -92,6 +92,252 @@ const NotifySection = (props: {
         </Row.CheckboxFieldToggle>
         <Row.Title>{i18n('MessagePreview')}</Row.Title>
       </Row>
+    </Section>
+  );
+};
+
+// * Global story notifications live on the "users" notify type (inputNotifyUsers),
+// * mirroring iOS/Android. `stories_muted` is a 3-state nullable flag:
+// *   false  → New Stories on: notify for everyone;
+// *   absent → "Important Stories": server notifies only for top contacts (its default);
+// *   true   → off: notify for no one.
+// * `stories_hide_sender` gates whether the poster's name is shown. Writes go out
+// * immediately (not batched on close like NotifySection) so a same-visit change
+// * to the sibling Private Chats section — which shares inputNotifyUsers — copies
+// * the already-committed story flags instead of reverting them.
+const StoriesNotifySection = () => {
+  const [enabled, setEnabled] = createSignal(true); // "New Stories" — notify for all
+  const [important, setImportant] = createSignal(true); // when !enabled: important-only vs off
+  const [showSender, setShowSender] = createSignal(true);
+  const [notifySettings, setNotifySettings] = createSignal<PeerNotifySettings>();
+  const inputNotifyPeer = {_: 'inputNotifyUsers'} as const;
+
+  createEffect(() => {
+    const _notifySettings = notifySettings();
+    if(!_notifySettings) {
+      return;
+    }
+
+    const muted = _notifySettings.stories_muted; // true | false | undefined
+    setEnabled(muted === false);
+    setImportant(muted !== true); // default (absent) and "all" both keep important on
+    setShowSender(!_notifySettings.stories_hide_sender);
+  });
+
+  const save = () => {
+    const _notifySettings = notifySettings();
+    if(!_notifySettings) {
+      return;
+    }
+
+    // false → all, undefined → important-only (server default), true → none
+    const storiesMuted = enabled() ? false : (important() ? undefined : true);
+    const hideSender = !showSender();
+    if(
+      storiesMuted === _notifySettings.stories_muted &&
+      hideSender === !!_notifySettings.stories_hide_sender
+    ) {
+      return;
+    }
+
+    const inputSettings: InputPeerNotifySettings = copy(_notifySettings) as any;
+    inputSettings._ = 'inputPeerNotifySettings';
+    if(storiesMuted === undefined) delete inputSettings.stories_muted;
+    else inputSettings.stories_muted = storiesMuted;
+    if(hideSender) inputSettings.stories_hide_sender = true;
+    else delete inputSettings.stories_hide_sender;
+    rootScope.managers.appNotificationsManager.updateNotifySettings(
+      inputNotifyPeer,
+      inputSettings
+    );
+    // Publish the change locally right away (not only after the server round-trip
+    // that updateNotifySettings awaits) so the sibling Private Chats NotifySection —
+    // which shares inputNotifyUsers and rewrites the whole object on tab-close —
+    // refreshes its snapshot before its cleanup can copy stale story flags over ours.
+    rootScope.managers.appNotificationsManager.generateLocalNotifySettingsUpdate(
+      inputNotifyPeer,
+      inputSettings
+    );
+  };
+
+  subscribeOn(rootScope)('notify_settings', (update: Update.updateNotifySettings) => {
+    const inputKey = convertKeyToInputKey(update.peer._) as any;
+    if(inputNotifyPeer._ === inputKey) {
+      setNotifySettings(update.notify_settings);
+    }
+  });
+
+  const ret = rootScope.managers.appNotificationsManager.getNotifySettings(inputNotifyPeer);
+  (ret instanceof Promise ? ret : Promise.resolve(ret)).then((_notifySettings) => {
+    if(!notifySettings()) {
+      setNotifySettings(_notifySettings);
+    }
+  });
+
+  return (
+    <Section name="Stories" caption={!enabled() ? 'NotificationsStoriesImportantInfo' : undefined}>
+      <Row>
+        <Row.CheckboxFieldToggle>
+          <CheckboxFieldTsx
+            checked={enabled()}
+            onChange={(value) => {
+              setEnabled(value);
+              save();
+            }}
+            toggle
+          />
+        </Row.CheckboxFieldToggle>
+        <Row.Title>{i18n('NotificationsStoriesGlobal')}</Row.Title>
+      </Row>
+      <Show when={!enabled()}>
+        <Row>
+          <Row.CheckboxFieldToggle>
+            <CheckboxFieldTsx
+              checked={important()}
+              onChange={(value) => {
+                setImportant(value);
+                save();
+              }}
+              toggle
+            />
+          </Row.CheckboxFieldToggle>
+          <Row.Title>{i18n('NotificationsStoriesImportant')}</Row.Title>
+        </Row>
+      </Show>
+      <Show when={enabled() || important()}>
+        <Row>
+          <Row.CheckboxFieldToggle>
+            <CheckboxFieldTsx
+              checked={showSender()}
+              onChange={(value) => {
+                setShowSender(value);
+                save();
+              }}
+              toggle
+            />
+          </Row.CheckboxFieldToggle>
+          <Row.Title>{i18n('NotificationsStoriesDisplayAuthor')}</Row.Title>
+        </Row>
+      </Show>
+    </Section>
+  );
+};
+
+// * Reactions notifications (account.getReactionsNotifySettings / set…). Each of
+// * messages / stories is a 3-state `ReactionNotificationsFrom`: absent = off,
+// * fromContacts, fromAll — chosen via a per-row menu (default "contacts" like iOS).
+// * `show_previews` (shown when either category is on) gates the sender's name.
+// * `sound` / `poll_votes_notify_from` have no UI here, so they're carried through.
+type ReactionsFrom = 'off' | 'contacts' | 'all';
+
+const ReactionsNotifySection = () => {
+  const [messages, setMessages] = createSignal<ReactionsFrom>('off');
+  const [stories, setStories] = createSignal<ReactionsFrom>('off');
+  const [showPreviews, setShowPreviews] = createSignal(true);
+  const [settings, setSettings] = createSignal<ReactionsNotifySettings>();
+
+  const fromToStr = (from: ReactionNotificationsFrom): ReactionsFrom =>
+    !from ? 'off' : (from._ === 'reactionNotificationsFromAll' ? 'all' : 'contacts');
+  const strToFrom = (v: ReactionsFrom): ReactionNotificationsFrom =>
+    v === 'off' ? undefined :
+      v === 'all' ? {_: 'reactionNotificationsFromAll'} : {_: 'reactionNotificationsFromContacts'};
+
+  createEffect(() => {
+    const s = settings();
+    if(!s) {
+      return;
+    }
+
+    setMessages(fromToStr(s.messages_notify_from));
+    setStories(fromToStr(s.stories_notify_from));
+    setShowPreviews(!!s.show_previews);
+  });
+
+  const save = () => {
+    const s = settings();
+    if(!s) {
+      return;
+    }
+
+    rootScope.managers.appNotificationsManager.setReactionsNotifySettings({
+      _: 'reactionsNotifySettings',
+      sound: s.sound,
+      show_previews: showPreviews(),
+      messages_notify_from: strToFrom(messages()),
+      stories_notify_from: strToFrom(stories()),
+      poll_votes_notify_from: s.poll_votes_notify_from
+    }).then(setSettings);
+  };
+
+  rootScope.managers.appNotificationsManager.getReactionsNotifySettings().then((s) => {
+    if(!settings()) {
+      setSettings(s);
+    }
+  });
+
+  const CategoryRows = (props: {
+    title: LangPackKey,
+    value: () => ReactionsFrom,
+    setValue: (v: ReactionsFrom) => void
+  }) => {
+    const set = (v: ReactionsFrom) => {
+      props.setValue(v);
+      save();
+    };
+
+    return (
+      <>
+        <Row>
+          <Row.CheckboxFieldToggle>
+            <CheckboxFieldTsx
+              checked={props.value() !== 'off'}
+              onChange={(checked) => set(checked ? 'contacts' : 'off')}
+              toggle
+            />
+          </Row.CheckboxFieldToggle>
+          <Row.Title>{i18n(props.title)}</Row.Title>
+        </Row>
+        <Show when={props.value() !== 'off'}>
+          <Row contextMenu={{
+            buttons: [{
+              text: 'ReactionsNotifyContacts',
+              onClick: () => set('contacts')
+            }, {
+              text: 'ReactionsNotifyEveryone',
+              onClick: () => set('all')
+            }]
+          }}>
+            <Row.Title
+              titleRight={i18n(props.value() === 'all' ? 'ReactionsNotifyEveryone' : 'ReactionsNotifyContacts')}
+              titleRightSecondary
+            >
+              {i18n('ReactionsNotifyFrom')}
+            </Row.Title>
+          </Row>
+        </Show>
+      </>
+    );
+  };
+
+  return (
+    <Section name="Reactions">
+      <CategoryRows title="ReactionsNotifyMessages" value={messages} setValue={setMessages} />
+      <CategoryRows title="ReactionsNotifyStories" value={stories} setValue={setStories} />
+      <Show when={messages() !== 'off' || stories() !== 'off'}>
+        <Row>
+          <Row.CheckboxFieldToggle>
+            <CheckboxFieldTsx
+              checked={showPreviews()}
+              onChange={(value) => {
+                setShowPreviews(value);
+                save();
+              }}
+              toggle
+            />
+          </Row.CheckboxFieldToggle>
+          <Row.Title>{i18n('NotificationsStoriesDisplayAuthor')}</Row.Title>
+        </Row>
+      </Show>
     </Section>
   );
 };
@@ -304,6 +550,8 @@ const Notifications = () => {
         typeText="NotificationsForChannels"
         inputKey="inputNotifyBroadcasts"
       />
+      <StoriesNotifySection />
+      <ReactionsNotifySection />
       <OtherSection />
     </>
   );
