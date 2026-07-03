@@ -34,6 +34,11 @@ import {i18n} from '@lib/langPack';
 import wrapEmojiText from '@richTextProcessor/wrapEmojiText';
 import wrapWebPageDescription from '@components/wrappers/webPageDescription';
 import Button from '@components/button';
+import ButtonIcon from '@components/buttonIcon';
+import {setButtonLoader} from '@components/putPreloader';
+import {toastNew} from '@components/toast';
+import recognizeImageText from '@helpers/ocr/recognizeImageText';
+import attachTextSelectionLayer from '@helpers/ocr/attachTextSelectionLayer';
 import onQuoteClick from '@helpers/dom/onQuoteClick';
 
 type AppMediaViewerTargetType = {
@@ -72,13 +77,14 @@ export const onMediaCaptionClick = (caption: HTMLElement, e: MouseEvent) => {
   }
 };
 
-export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delete' | 'forward', AppMediaViewerTargetType> {
+export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delete' | 'forward' | 'text', AppMediaViewerTargetType> {
   protected listLoader: SearchListLoader<AppMediaViewerTargetType>;
   protected btnMenuForward: ButtonMenuItemOptionsVerifiable;
   protected btnMenuDownload: ButtonMenuItemOptionsVerifiable;
   protected btnMenuDelete: ButtonMenuItemOptionsVerifiable;
   private deleteAsChatPhoto = false;
   private videoAvatarCleanup?: () => void;
+  private textLayer?: HTMLElement;
 
   get searchContext() {
     return this.listLoader.searchContext;
@@ -161,6 +167,11 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
     this.setBtnMenuToggle(buttons);
 
+    // * "select text on image" button — sits next to the image tools (rotate/zoom)
+    this.buttons.text = ButtonIcon('text', {noRipple: true});
+    this.buttons.text.classList.add('media-viewer-text-button', 'hide');
+    this.buttons.rotate.before(this.buttons.text);
+
     // * constructing html end
 
     this.setListeners();
@@ -169,6 +180,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
   protected setListeners() {
     super.setListeners();
     attachClickEvent(this.buttons.forward, this.onForwardClick);
+    attachClickEvent(this.buttons.text, this.onTextClick);
     attachClickEvent(this.author.container, this.onAuthorClick);
 
     const onClick = (e: MouseEvent) => {
@@ -262,6 +274,50 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       }, () => {
         return this.close();
       });
+    }
+  };
+
+  // The currently displayed full-resolution image in the mover (last non-thumb
+  // raster). Returns undefined for videos / not-yet-loaded media.
+  private getCurrentImageElement(): HTMLImageElement {
+    const mover = this.content.mover;
+    if(!mover) return;
+    const images = Array.from(mover.querySelectorAll('img')).filter((img) => img.naturalWidth > 0);
+    return images[images.length - 1];
+  }
+
+  private removeTextLayer() {
+    this.textLayer?.remove();
+    this.textLayer = undefined;
+    this.buttons.text?.classList.remove('active');
+  }
+
+  onTextClick = async() => {
+    if(this.textLayer) { // already showing — toggle off
+      this.removeTextLayer();
+      return;
+    }
+
+    const img = this.getCurrentImageElement();
+    if(!img) return;
+
+    const revert = setButtonLoader(this.buttons.text as HTMLButtonElement, 'text');
+    try {
+      const {lines} = await recognizeImageText(img);
+      if(this.getCurrentImageElement() !== img) return; // media changed while recognizing
+
+      if(!lines.length) {
+        toastNew({langPackKey: 'MediaViewer.NoTextFound'});
+        return;
+      }
+
+      this.textLayer = attachTextSelectionLayer(img, lines);
+      this.buttons.text.classList.add('active');
+    } catch(err) {
+      this.log.error('OCR failed', err);
+      toastNew({langPackKey: 'MediaViewer.NoTextFound'});
+    } finally {
+      revert();
     }
   };
 
@@ -451,6 +507,12 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
     this.wholeDiv.classList.toggle('no-forwards', cantDownloadMessage);
 
+    // "select text on image" only makes sense for still images
+    this.removeTextLayer();
+    const isImageMedia = (media as MyPhoto)?._ === 'photo' ||
+      ((media as MyDocument)?._ === 'document' && !!(media as MyDocument).mime_type?.startsWith('image/'));
+    this.buttons.text.classList.toggle('hide', !isImageMedia);
+
     this.removeTimestamps();
     this.setCaption(message);
 
@@ -492,6 +554,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
   public close(e?: MouseEvent) {
     this.videoAvatarCleanup?.();
     this.videoAvatarCleanup = undefined;
+    this.removeTextLayer();
     return super.close(e);
   }
 

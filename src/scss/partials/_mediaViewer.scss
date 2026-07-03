@@ -1150,3 +1150,51 @@ $inactive-opacity: .4;
     }
   }
 }
+
+// setButtonLoader swaps the icon for a spinner, but the global .preloader-circular
+// is position:absolute — with the icon gone the button would collapse to its
+// padding. Flow the spinner in-place at the icon's size so the button keeps shape.
+.media-viewer-text-button .preloader-circular {
+  position: static;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+// "Select text on image" (OCR) overlay — a transparent, natively selectable
+// text layer glued over the picture. Lives inside the mover, so it inherits the
+// zoom/pan/rotation transform.
+.media-viewer-text-layer {
+  position: absolute;
+  z-index: 2;
+  cursor: text;
+  pointer-events: auto;
+  user-select: text;
+  -webkit-user-select: text;
+
+  // iOS-style scrim: dims the whole image with the text regions punched out.
+  // Sits behind the selectable lines; never eats pointer events.
+  &__dim {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    animation: media-viewer-ocr-dim-in .22s ease both;
+  }
+
+  &__line {
+    position: absolute;
+    white-space: pre;
+    transform-origin: 0 0;
+    color: transparent;
+
+    &::selection {
+      background-color: rgba(56, 138, 255, .45);
+    }
+  }
+}
+
+@keyframes media-viewer-ocr-dim-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

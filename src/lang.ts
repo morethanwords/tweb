@@ -285,6 +285,7 @@ const lang = {
   'TwoStepAuth.EmailCodeChangeEmail': 'Change Email',
   'MarkupTooltip.LinkPlaceholder': 'Enter URL...',
   'MediaViewer.Context.Download': 'Download',
+  'MediaViewer.NoTextFound': 'No text found on the image',
   'MediaViewer.ProfilePublicPhoto': 'Public Photo',
   'Profile': 'Profile',
   'Saved': 'Saved',
