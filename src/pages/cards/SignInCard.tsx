@@ -2,6 +2,7 @@ import {createSignal, JSX, onCleanup, onMount} from 'solid-js';
 
 import Button from '@components/buttonTsx';
 import CountryInputField from '@components/countryInputField';
+import InputField from '@components/inputField';
 import LanguageChangeButton from '@components/languageChangeButton';
 import PasskeyLoginButton from '@components/passkeyLoginButton';
 import MediaHeader from '@components/mediaHeader';
@@ -18,6 +19,7 @@ import lottieLoader from '@lib/rlottie/lottieLoader';
 import AccountController from '@lib/accounts/accountController';
 import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
 import commonStateStorage from '@lib/commonStateStorage';
+import sessionStorage from '@lib/sessionStorage';
 import {TrueDcId} from '@types';
 
 import AuthCard from '@/pages/AuthCard';
@@ -93,6 +95,22 @@ export default function SignInCard(_props: {spec: Spec}) {
     }
   });
 
+  // CRM: label identifying which agent is logging in. Persisted locally and
+  // folded into the MTProto app_version so the resulting session is
+  // attributable to this agent on every one of the operator's devices.
+  const agentInputField = new InputField({
+    labelText: 'Agent name (for session tagging)',
+    plainText: true,
+    name: 'agent-name',
+    autocomplete: 'off',
+    maxLength: 64,
+    onRawInput: (value) => {
+      const name = value.trim();
+      sessionStorage.set({agent_name: name || undefined});
+      managers.networkerFactory.setAgentName(name);
+    }
+  });
+
   const telEl = telInputField.input;
   telEl.addEventListener('keypress', (e) => {
     if(hasValidInput() && !submitting() && e.key === 'Enter') {
@@ -102,7 +120,7 @@ export default function SignInCard(_props: {spec: Spec}) {
 
   /* ---------- submit ---------- */
 
-  function onSubmit(e?: Event) {
+  async function onSubmit(e?: Event) {
     if(e) cancelEvent(e);
 
     setSubmitting(true);
@@ -114,6 +132,12 @@ export default function SignInCard(_props: {spec: Spec}) {
         </svg>
       </>
     );
+
+    // Make sure the agent label reached the worker before the session-creating
+    // call so the new authorization's device_model is tagged from the start.
+    const agentName = agentInputField.value.trim();
+    await sessionStorage.set({agent_name: agentName || undefined});
+    await managers.networkerFactory.setAgentName(agentName);
 
     const phone_number = telInputField.value;
     managers.apiManager.invokeApi('auth.sendCode', {
@@ -217,11 +241,21 @@ export default function SignInCard(_props: {spec: Spec}) {
   /* ---------- lifecycle ---------- */
 
   let cancelFocus: (() => void) | undefined;
-  onMount(() => {
+  onMount(async() => {
     managers.appStateManager.pushToState('authState', {_: 'authStateSignIn'});
 
     if(!IS_TOUCH_SUPPORTED) {
       cancelFocus = focusWhenConnected(telEl, () => !cancelled);
+    }
+
+    // Restore a previously entered agent label and push it before the DC
+    // pre-warm fires initConnection, so this session is tagged from the start.
+    const savedAgentName = await sessionStorage.get('agent_name');
+    if(cancelled) return;
+    if(savedAgentName) {
+      agentInputField.value = savedAgentName;
+      await managers.networkerFactory.setAgentName(savedAgentName);
+      if(cancelled) return;
     }
 
     tryAgain();
@@ -255,6 +289,7 @@ export default function SignInCard(_props: {spec: Spec}) {
       inputWrapper={false}
     >
       <div class="input-wrapper">
+        {agentInputField.container}
         {countryInputField.container}
         {telInputField.container}
         <Button

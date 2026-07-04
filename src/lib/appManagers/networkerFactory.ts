@@ -12,10 +12,14 @@ import {AppManager} from '@appManagers/manager';
 import AccountController from '@lib/accounts/accountController';
 import bytesToHex from '@helpers/bytes/bytesToHex';
 import {getEnvironment} from '@environment/utils';
+import sessionStorage from '@lib/sessionStorage';
 
 export class NetworkerFactory extends AppManager {
   private networkers: MTPNetworker[] = [];
   public language = navigator.language || App.langPackCode;
+  // CRM: operator label folded into initConnection's app_version so this
+  // session is attributable to a specific agent across all of the user's devices.
+  public agentName: string;
   public updatesProcessor: (obj: any) => void = null;
   // public onConnectionStatusChange: (status: ConnectionStatusChange) => void = null;
   public akStopped = false;
@@ -23,6 +27,24 @@ export class NetworkerFactory extends AppManager {
   constructor() {
     super();
     this.name = 'NET-FACTORY';
+
+    // Restore the persisted agent label so reconnections keep tagging the
+    // session even before the login card has a chance to set it.
+    sessionStorage.get('agent_name').then((agentName) => {
+      if(agentName && !this.agentName) {
+        this.agentName = agentName;
+      }
+    }).catch(() => {});
+  }
+
+  // Fold the operator's agent label (when set) into the app version string so
+  // it shows in the Active Sessions title (app_name + app_version) on every
+  // device. The server re-records these initConnection params on each
+  // connection init, so this also updates already-logged-in sessions once
+  // `connectionInited` is reset (see setAgentName).
+  private getAppVersion() {
+    const base = App.version + (App.isMainDomain ? ' ' + App.suffix : '');
+    return this.agentName ? `${base} · ${this.agentName}` : base;
   }
 
   public removeNetworker(networker: MTPNetworker) {
@@ -44,7 +66,7 @@ export class NetworkerFactory extends AppManager {
         id: App.id,
         deviceModel: getEnvironment().USER_AGENT || 'Unknown UserAgent',
         systemVersion: navigator.platform || 'Unknown Platform',
-        version: App.version + (App.isMainDomain ? ' ' + App.suffix : ''),
+        version: this.getAppVersion(),
         systemLangCode: navigator.language || 'en',
         langPack: App.langPack,
         langCode: this.language
@@ -90,6 +112,23 @@ export class NetworkerFactory extends AppManager {
     }
 
     this.language = langCode;
+    for(const networker of this.networkers) {
+      if(!networker.isFileNetworker) {
+        networker.connectionInited = false;
+      }
+    }
+  }
+
+  // Set the operator/agent label that gets folded into device_model. Resetting
+  // connectionInited (like setLanguage) forces the next request to re-run
+  // initConnection so the new label reaches the server for this session.
+  public setAgentName(agentName: string) {
+    agentName = agentName?.trim() || undefined;
+    if(this.agentName === agentName) {
+      return;
+    }
+
+    this.agentName = agentName;
     for(const networker of this.networkers) {
       if(!networker.isFileNetworker) {
         networker.connectionInited = false;

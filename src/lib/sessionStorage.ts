@@ -26,6 +26,11 @@ type StorageValues = {
   },
   k_build: number,
 
+  // CRM: operator/agent label (typed at login or edited in Active Sessions),
+  // folded into the MTProto app_version so every device sees which agent owns
+  // each active session.
+  agent_name?: string,
+
   // auth options
   number_of_accounts?: number, // When the storage is encrypted
   previous_account?: number, // only for back button when logging in to another account

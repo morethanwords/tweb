@@ -1,5 +1,6 @@
 import {Component, onCleanup, onMount} from 'solid-js';
 import Button from '@components/button';
+import InputField from '@components/inputField';
 import Row from '@components/row';
 import {Authorization} from '@layer';
 import {formatDateAccordingToTodayNew} from '@helpers/date';
@@ -15,6 +16,7 @@ import contextMenuController from '@helpers/contextMenuController';
 import SettingSection from '@components/settingSection';
 import PopupElement from '@components/popups';
 import {toastNew} from '@components/toast';
+import sessionStorage from '@lib/sessionStorage';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import type {AppActiveSessionsTab} from '@components/solidJsTabs/tabs';
 
@@ -59,6 +61,50 @@ const ActiveSessions: Component = () => {
       const session = Session(auth);
 
       section.content.append(session.container);
+
+      // CRM: editable agent label for THIS device. Saving re-runs
+      // initConnection (via setAgentName + a fresh getAuthorizations call), so
+      // the current — already logged-in — session's app version is retagged
+      // server-side and becomes visible on every one of the operator's devices.
+      {
+        const labelInput = new InputField({
+          labelText: 'Agent name (tags this session)',
+          plainText: true,
+          name: 'agent-name',
+          autocomplete: 'off',
+          maxLength: 64
+        });
+
+        sessionStorage.get('agent_name').then((name) => {
+          if(name) labelInput.setValueSilently(name);
+        });
+
+        const btnSave = Button('btn-primary btn-transparent primary', {icon: 'check', text: 'Save'});
+        attachClickEvent(btnSave, () => {
+          const toggle = toggleDisability([btnSave], true);
+          const name = labelInput.value.trim();
+
+          (async() => {
+            await sessionStorage.set({agent_name: name || undefined});
+            await tab.managers.networkerFactory.setAgentName(name);
+            // Forces initConnection to be re-sent (connectionInited was reset),
+            // then returns the freshly-recorded session info.
+            const auths = await tab.managers.appAccountManager.getAuthorizations();
+            const cur = auths.authorizations.find((a) => a.pFlags?.current);
+            if(cur) {
+              session.title.textContent = [cur.app_name, cur.app_version].join(' ');
+            }
+          })().then(() => {
+            toastNew({langPackKey: 'Saved'});
+          }).catch((err) => {
+            console.error('save agent label error:', err);
+          }).finally(() => {
+            toggle();
+          });
+        }, {listenerSetter: tab.listenerSetter});
+
+        section.content.append(labelInput.container, btnSave);
+      }
 
       if(authorizations.length) {
         const btnTerminate = Button('btn-primary btn-transparent danger', {icon: 'stop', text: 'TerminateAllSessions'});
