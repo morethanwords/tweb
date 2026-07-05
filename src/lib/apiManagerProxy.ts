@@ -648,6 +648,37 @@ class ApiManagerProxy extends MTProtoMessagePort {
     return !!this.serviceWorkerRegistration;
   }
 
+  // Resolves once navigator.serviceWorker.controller becomes available (e.g. after
+  // the active worker's clients.claim() takes effect), or rejects on timeout.
+  private waitForController(timeout: number) {
+    return new Promise<ServiceWorker>((resolve, reject) => {
+      if(navigator.serviceWorker.controller) {
+        resolve(navigator.serviceWorker.controller);
+        return;
+      }
+
+      const clear = () => {
+        clearTimeout(timeoutId);
+        navigator.serviceWorker.removeEventListener('controllerchange', onChange);
+      };
+
+      const onChange = () => {
+        const controller = navigator.serviceWorker.controller;
+        if(controller) {
+          clear();
+          resolve(controller);
+        }
+      };
+
+      const timeoutId = window.setTimeout(() => {
+        clear();
+        reject();
+      }, timeout);
+
+      navigator.serviceWorker.addEventListener('controllerchange', onChange);
+    });
+  }
+
   private _registerServiceWorker() {
     // if(import.meta.env.DEV && IS_SAFARI) {
     //   return;
@@ -659,7 +690,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
       // '../../../sw',
       ServiceWorkerURL,
       {type: 'module', scope: './'}
-    ).then((registration) => {
+    ).then(async(registration) => {
       if(TEST_NO_STREAMING) {
         throw 1;
       }
@@ -671,15 +702,27 @@ class ApiManagerProxy extends MTProtoMessagePort {
       const FIX_KEY = 'swfix';
       const swfix = +url.searchParams.get(FIX_KEY) || 0;
       if(registration.active && !navigator.serviceWorker.controller) {
-        if(swfix >= 3) {
-          throw new Error('no controller');
-        }
+        // The page is loaded uncontrolled (typically after a hard refresh).
+        // The active worker calls clients.claim(), so wait briefly for the
+        // controller to arrive via 'controllerchange' before resorting to the
+        // unregister + reload hack below.
+        const controller = await this.waitForController(1500).catch(() => undefined);
+        if(!controller) {
+          if(swfix >= 3) {
+            // Registration succeeded, but this page can't be controlled (common
+            // after a force-reload). Give up quietly instead of throwing: don't
+            // spam an error, just mark the SW offline so streaming falls back.
+            this.log.warn('no controller after', swfix, 'attempts, giving up');
+            this.invokeVoid('serviceWorkerOnline', false);
+            return;
+          }
 
-        // ! doubtful fix for hard refresh
-        return registration.unregister().then(() => {
-          url.searchParams.set(FIX_KEY, '' + (swfix + 1));
-          appNavigationController.navigateToUrl(url.toString());
-        });
+          // ! doubtful fix for hard refresh
+          return registration.unregister().then(() => {
+            url.searchParams.set(FIX_KEY, '' + (swfix + 1));
+            appNavigationController.navigateToUrl(url.toString());
+          });
+        }
       }
 
       if(swfix) {
