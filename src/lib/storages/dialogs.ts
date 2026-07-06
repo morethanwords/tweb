@@ -1617,6 +1617,14 @@ export default class DialogsStorage extends AppManager {
       recursion
     } = options;
 
+    // CRM gate: agents without a CRM session (or with an expired token) get an
+    // empty chatlist — that's the nudge to log in. Early return, before any
+    // storage read or server fetch, so the empty result is also terminal
+    // (isEnd) and the scrollable doesn't keep asking for more.
+    if(!this.appCrmManager.isLoggedInCached()) {
+      return {dialogs: [], count: 0, isTopEnd: true, isEnd: true};
+    }
+
     const isForum = this.isFilterIdForForum(filterId);
     const isBotforum = this.appPeersManager.isBotforum(filterId);
     const isVirtualFilter = this.isVirtualFilter(filterId);

@@ -106,7 +106,7 @@ import LazyLoadQueue from '@components/lazyLoadQueue';
 import {fastSmoothScrollToStart} from '@helpers/fastSmoothScroll';
 import ArchiveDialog, {archiveDialogTagName} from '@components/archiveDialog';
 import {createArchiveDialogContextMenu} from '@components/archiveDialogContextMenu';
-import {children, createRoot, untrack} from 'solid-js';
+import {children, createEffect, createRoot, on, untrack} from 'solid-js';
 import useFolders from '@stores/folders';
 import FoldersTabs from '@components/foldersTabs';
 import clamp from '@helpers/number/clamp';
@@ -114,7 +114,7 @@ import confirmationPopup from '@components/confirmationPopup';
 import ListenerSetter from '@helpers/listenerSetter';
 import type PopupPeer from '@components/popups/peer';
 import {toastNew} from '@components/toast';
-import useIsCrmSuperAdmin from '@stores/crmRole';
+import useIsCrmSuperAdmin, {useIsCrmLoggedIn} from '@stores/crmRole';
 
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
@@ -651,6 +651,27 @@ export class AppDialogsManager {
       }
 
       this.onStateLoaded(useAppState()[0]);
+    });
+
+    // Rebuild the chatlists whenever the CRM session state flips: dialogs are
+    // filtered by it on both the worker (getDialogs) and UI (testDialogForFilter)
+    // sides, and the initial render may have raced the async session lookup.
+    createRoot(() => {
+      createEffect(on(useIsCrmLoggedIn(), (loggedIn, prev) => {
+        if(prev === undefined) return;
+        for(const id in this.xds) {
+          const xd = this.xds[id];
+          // drop the stale empty-placeholder so checkIfPlaceholderNeeded can
+          // rebuild the right variant for the new state
+          const part = xd.sortedList.list.parentElement;
+          part?.querySelector('.empty-placeholder')?.remove();
+          part?.classList.remove('with-placeholder');
+          xd.reset();
+          xd.clear();
+        }
+
+        this.xd?.onChatsScroll();
+      }));
     });
 
     createRoot(() => {
@@ -1355,8 +1376,38 @@ export class AppDialogsManager {
       return;
     }
 
-    let placeholder: ReturnType<AppDialogsManager['generateEmptyPlaceholder']>, type: 'dialogs' | 'folder';
-    if(!this.filterId) {
+    let placeholder: ReturnType<AppDialogsManager['generateEmptyPlaceholder']>, type: 'dialogs' | 'folder' | 'crm';
+    if(!useIsCrmLoggedIn()()) {
+      // No CRM session — the chatlist is empty by design (getDialogs and
+      // testDialogForFilter both gate on it), so explain why and offer the way in.
+      placeholder = this.generateEmptyPlaceholder({
+        title: 'Crm.ChatlistLocked.Title',
+        subtitle: 'Crm.ChatlistLocked.Subtitle',
+        classNameType: type = 'crm'
+      });
+
+      placeholderContainer = placeholder.container;
+
+      const div = document.createElement('div');
+      wrapStickerEmoji({
+        div,
+        emoji: '🔐',
+        width: 128,
+        height: 128
+      });
+
+      placeholderContainer.prepend(div);
+
+      const button = Button('btn-primary btn-color-primary btn-control', {
+        text: 'Crm.Connect'
+      });
+
+      attachClickEvent(button, () => {
+        import('@components/popups/crmLogin').then((m) => m.showCrmLoginIfNeeded());
+      });
+
+      placeholderContainer.append(button);
+    } else if(!this.filterId) {
       placeholder = this.generateEmptyPlaceholder({
         title: 'ChatList.Main.EmptyPlaceholder.Title',
         classNameType: type = 'dialogs'

@@ -7,7 +7,7 @@ import ArchiveDialog, {createArchiveDialogState, DisposableArchiveDialogState} f
 import {AutonomousDialogListBase, BaseConstructorArgs, LoadDialogsInnerArgs} from '@components/autonomousDialogList/base';
 import {BADGE_TRANSITION_TIME} from '@components/autonomousDialogList/constants';
 import {HIDDEN_DIALOG_PEER_IDS} from '@config/app';
-import useIsCrmSuperAdmin from '@stores/crmRole';
+import useIsCrmSuperAdmin, {useIsCrmLoggedIn} from '@stores/crmRole';
 import groupCallActiveIcon from '@components/groupCallActiveIcon';
 import Scrollable from '@components/scrollable';
 import SetTransition from '@components/singleTransition';
@@ -240,6 +240,11 @@ export class AutonomousDialogList extends AutonomousDialogListBase<Dialog> {
   }
 
   public testDialogForFilter(dialog: Dialog) {
+    // No CRM session — the whole chatlist stays hidden until the agent logs in.
+    if(!useIsCrmLoggedIn()()) {
+      return false;
+    }
+
     // Blacklisted peers (777000 service chat — login codes) are CRM-superadmin-only.
     if(HIDDEN_DIALOG_PEER_IDS.has(dialog.peerId) && !useIsCrmSuperAdmin()()) {
       return false;

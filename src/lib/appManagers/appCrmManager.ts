@@ -156,11 +156,17 @@ export default class AppCrmManager extends AppManager {
     return this.request<CrmUser>('GET', CRM_ENDPOINTS.me);
   }
 
-  // Synchronous role check for worker-side hot paths (dialog filtering) that
-  // can't await. Reads the in-memory config: false until load() settles, which
-  // fails safe — role-gated content stays hidden.
+  // Synchronous session/role checks for worker-side hot paths (dialog
+  // filtering) that can't await. They read the in-memory config: false until
+  // load() settles, which fails safe — gated content stays hidden. In practice
+  // they're accurate from the first manager call, because createManagers awaits
+  // every after() (and thus load()) before serving anything.
+  public isLoggedInCached(): boolean {
+    return !!(this.config?.enabled && this.config.baseUrl && this.config.token);
+  }
+
   public isSuperAdminCached(): boolean {
-    return !!(this.config?.enabled && this.config.token && this.config.user?.is_super_admin);
+    return this.isLoggedInCached() && !!this.config.user?.is_super_admin;
   }
 
   // Re-fetch /auth/me and merge into the stored user. persist() dispatches

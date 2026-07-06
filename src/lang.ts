@@ -197,6 +197,8 @@ const lang = {
   'Crm.FillFields': 'Enter the CRM address and your mobile.',
   'Crm.SendFailed': 'Could not send the code. Check the CRM address.',
   'Crm.VerifyFailed': 'Invalid or expired code.',
+  'Crm.ChatlistLocked.Title': 'Connect to the CRM',
+  'Crm.ChatlistLocked.Subtitle': 'Conversations are available only while you are signed in to the CRM. Sign in with your agent mobile and OTP to continue.',
   'Crm.Ticket.Title': 'Ticket #%1$d',
   'Crm.Ticket.StatusOpen': 'Open',
   'Crm.Ticket.StatusClosed': 'Closed',
