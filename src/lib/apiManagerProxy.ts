@@ -706,7 +706,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
         // The active worker calls clients.claim(), so wait briefly for the
         // controller to arrive via 'controllerchange' before resorting to the
         // unregister + reload hack below.
-        const controller = await this.waitForController(1500).catch(() => undefined);
+        const controller = await this.waitForController(1500).catch((): ServiceWorker => undefined);
         if(!controller) {
           if(swfix >= 3) {
             // Registration succeeded, but this page can't be controlled (common
