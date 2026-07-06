@@ -80,7 +80,7 @@ export class AppAvatarsManager extends AppManager {
     }
 
     const promise = this.apiFileManager.download(downloadOptions);
-    return saved[size] = promise.then((blob) => {
+    const loadPromise = saved[size] = promise.then((blob) => {
       const url = saved[size] = URL.createObjectURL(blob);
 
       MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
@@ -92,6 +92,16 @@ export class AppAvatarsManager extends AppManager {
 
       return url;
     });
+
+    // Don't keep a rejected promise cached (e.g. FILE_ID_INVALID for a stale
+    // photo_id) — a later render may retry once fresh peer data arrives.
+    loadPromise.catch(() => {
+      if(saved[size] === loadPromise) {
+        delete saved[size];
+      }
+    });
+
+    return loadPromise;
   }
 
   // Resolve the full Photo (with video_sizes) for an avatar — userProfilePhoto

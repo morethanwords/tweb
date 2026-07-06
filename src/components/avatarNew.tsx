@@ -157,7 +157,7 @@ async function loadAvatarVideoOverlay(
   // Load the URL and the video_start_ts (cover/start frame) in parallel so
   // playback can begin at that frame, matching the static cover.
   const [url, videoStartTs] = await Promise.all([
-    Promise.resolve(apiManagerProxy.loadAvatar(peerId, photo, videoSize)),
+    Promise.resolve(apiManagerProxy.loadAvatar(peerId, photo, videoSize)).catch((): string => undefined),
     rootScope.managers.appAvatarsManager.getAvatarVideoStartTs(peerId, photo, videoSize === 'photo_video_full').catch((): number => undefined)
   ]);
   if(!url || !middleware()) return undefined;
@@ -551,7 +551,7 @@ export const AvatarNew = (props: {
     const element = image = document.createElement('img');
     element.className = classNames('avatar-photo', animate && 'fade-in');
 
-    let renderThumbPromise: Promise<void>;
+    let renderThumbPromise: Promise<any>;
     let callback: () => void;
     let thumbImage: HTMLImageElement, thumbElement: JSX.Element;
     if(cached) {
@@ -606,10 +606,24 @@ export const AvatarNew = (props: {
       };
     }
 
+    // Resolves to whether the image actually rendered: the download can fail
+    // (e.g. FILE_ID_INVALID when the cached peer references a stale photo_id).
+    // On failure keep the colour/initials placeholder and settle the ready
+    // promises — chat opening (bubbleGroups.createAvatar), the media viewer and
+    // profile avatars all await readyThumbPromise, so leaving it pending blocks
+    // them — and swallow the rejection so it doesn't surface as unhandled.
     const renderPromise = callbackify(loadPromise, (url) => {
       const result = renderImageFromUrl(image, url, undefined, useCache, props.processImageOnLoad);
       callbackify(result, callback);
       return result instanceof Promise ? result : Promise.resolve(result);
+    }).then(() => true, () => {
+      if(middleware()) {
+        setReady(true);
+        readyPromise.resolve();
+        readyThumbPromise.resolve();
+      }
+
+      return false;
     });
 
     // After the static image loads, if the photo has a video variant, lazily
@@ -634,8 +648,8 @@ export const AvatarNew = (props: {
     const wantsVideo = (props.isBig || (props.withVideoAvatar && ownerIsPremiumUser)) &&
       liteMode.isAvailable('video');
     if(wantsVideo && photoHasVideo && size === finalSize) {
-      Promise.resolve(renderPromise).then(() => {
-        if(!middleware()) return;
+      renderPromise.then((rendered) => {
+        if(!rendered || !middleware()) return;
         // Big profile avatar gets the full-quality video ('u'); chat list /
         // topbar use the small preview ('p') to save bandwidth.
         const videoSize: PeerPhotoSize = props.isBig ? 'photo_video_full' : 'photo_video';

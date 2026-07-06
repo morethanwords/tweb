@@ -1166,14 +1166,15 @@ class ApiManagerProxy extends MTProtoMessagePort {
     }
 
     const promise = saved[size] = rootScope.managers.appAvatarsManager.loadAvatar(peerId, photo, size);
-    // Don't permanently cache a failed (undefined) video load — allow a retry.
+    // Don't permanently cache a failed load — allow a retry: any rejection
+    // (e.g. FILE_ID_INVALID for a stale photo_id), or a video load that
+    // resolved to nothing.
     // (Successful loads overwrite this entry with the URL via the 'mirror' message.)
-    if(size === 'photo_video' || size === 'photo_video_full') {
-      Promise.resolve(promise).then(
-        (url) => { if(!url && saved[size] === promise) delete saved[size]; },
-        () => { if(saved[size] === promise) delete saved[size]; }
-      );
-    }
+    const isVideo = size === 'photo_video' || size === 'photo_video_full';
+    Promise.resolve(promise).then(
+      (url) => { if(isVideo && !url && saved[size] === promise) delete saved[size]; },
+      () => { if(saved[size] === promise) delete saved[size]; }
+    );
     return promise;
   }
 
