@@ -19,6 +19,7 @@ import anchorCopy from '@helpers/dom/anchorCopy';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import {useAppConfig} from '@stores/appState';
+import useIsCrmSuperAdmin from '@stores/crmRole';
 import detectLanguageForTranslation from '@helpers/detectLanguageForTranslation';
 import usePeerTranslation from '@hooks/usePeerTranslation';
 import makeGoogleMapsUrl from '@helpers/makeGoogleMapsUrl';
@@ -663,9 +664,11 @@ PeerProfile.Phone = () => {
   const context = useContext(PeerProfileContext);
   const {I18n, i18n, toast} = useHotReloadGuard();
   const appConfig = useAppConfig();
+  const isCrmSuperAdmin = useIsCrmSuperAdmin();
 
   const phoneDetails = createMemo(() => {
-    if(!context.peerId.isUser() || !context.canBeDetailed()) {
+    // Phone numbers are CRM-superadmin-only.
+    if(!isCrmSuperAdmin() || !context.peerId.isUser() || !context.canBeDetailed()) {
       return;
     }
 

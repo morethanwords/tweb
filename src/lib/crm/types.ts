@@ -8,7 +8,10 @@ export type CrmUser = {
   full_name?: string,
   display_name?: string,
   mobile?: string,
-  avatar_url?: string
+  avatar_url?: string,
+  // Role flag from GET /auth/me (verify-otp doesn't return it — see
+  // AppCrmManager.refreshMe). Gates admin-only UI; absent/false = regular agent.
+  is_super_admin?: boolean
 };
 
 export type CrmConfig = {

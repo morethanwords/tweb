@@ -7,6 +7,7 @@ import callbackify from '@helpers/callbackify';
 import ripple from '@components/ripple';
 import confirmationPopup from '@components/confirmationPopup';
 import classNames from '@helpers/string/classNames';
+import useIsCrmSuperAdmin from '@stores/crmRole';
 import {AckedResult} from '@lib/superMessagePort';
 import {Accessor, createSignal, For, Show} from 'solid-js';
 import TopbarPlate, {createTopbarPlate, TopbarPlateController} from '@components/chat/topbarPlate';
@@ -161,8 +162,9 @@ export default function createChatActionsPlate(
   };
 
   const set = (peerId: PeerId, settings: PeerSettings) => {
+    // Contact editing is CRM-superadmin-only — drop the "Add contact" plate for agents.
     const supportedActions = settings?.pFlags ?
-      actions.filter((action) => settings.pFlags[action.key]) :
+      actions.filter((action) => settings.pFlags[action.key] && (action.key !== 'add_contact' || useIsCrmSuperAdmin()())) :
       [];
     if(!supportedActions.length) return () => unset(peerId);
 

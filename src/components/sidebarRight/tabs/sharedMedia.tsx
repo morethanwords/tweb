@@ -17,6 +17,7 @@ import getPeerId from '@appManagers/utils/peers/getPeerId';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import ButtonMenuToggle, {filterButtonMenuItems} from '@components/buttonMenuToggle';
 import {useIsFrozen} from '@stores/appState';
+import useIsCrmSuperAdmin from '@stores/crmRole';
 import {profileStarGiftsButtonMenu} from '@components/stargifts/profileList';
 import {profileStoriesButtonMenu} from '@components/stories/profileList';
 import namedPromises from '@helpers/namedPromises';
@@ -119,6 +120,10 @@ const SharedMedia: Component = () => {
       show = false;
     } else if(peerId.isUser()) {
       show = peerId !== rootScope.myId && await tab.managers.appUsersManager.canEdit(peerId.toUserId());
+      // Contact editing is CRM-superadmin-only; owned bots keep their edit tab.
+      if(show && !useIsCrmSuperAdmin()() && !(await tab.managers.appUsersManager.isBot(peerId))) {
+        show = false;
+      }
     } else {
       const chatId = peerId.toChatId();
       const isTopic = tab.threadId && apiManagerProxy.isForum(peerId);

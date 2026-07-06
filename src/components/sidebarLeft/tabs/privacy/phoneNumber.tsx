@@ -2,6 +2,7 @@ import {Component, onMount} from 'solid-js';
 import PrivacySection from '@components/privacySection';
 import {i18n, LangPackKey} from '@lib/langPack';
 import anchorCopy from '@helpers/dom/anchorCopy';
+import useIsCrmSuperAdmin from '@stores/crmRole';
 import PrivacyType from '@appManagers/utils/privacy/privacyType';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
@@ -18,16 +19,19 @@ const PrivacyPhoneNumber: Component = () => {
   promiseCollector.collect((async() => {
     const formatted = '+' + (await tab.managers.appUsersManager.getSelf()).phone;
     const captionEl = document.createElement('div');
-    captionEl.append(
-      i18n('PrivacyPhoneInfo'),
-      document.createElement('br'),
-      document.createElement('br'),
-      i18n('PrivacyPhoneInfo4'),
-      document.createElement('br'),
-      anchorCopy({
-        mePath: formatted
-      })
-    );
+    captionEl.append(i18n('PrivacyPhoneInfo'));
+    // The t.me/+phone link exposes the support account's number — CRM-superadmin-only.
+    if(useIsCrmSuperAdmin()()) {
+      captionEl.append(
+        document.createElement('br'),
+        document.createElement('br'),
+        i18n('PrivacyPhoneInfo4'),
+        document.createElement('br'),
+        anchorCopy({
+          mePath: formatted
+        })
+      );
+    }
 
     const phoneSection = new PrivacySection({
       tab,

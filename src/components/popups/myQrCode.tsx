@@ -26,6 +26,7 @@ import {BaseTheme, Chat, Theme, User, WallPaper} from '@layer';
 import {AppTheme, DEFAULT_THEME} from '@config/state';
 import {useAppSettings} from '@stores/appSettings';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
+import useIsCrmSuperAdmin from '@stores/crmRole';
 import ChatThemesPicker from '@components/chatThemesPicker';
 
 import styles from './myQrCode.module.scss';
@@ -112,7 +113,8 @@ function createSharedState(self: User.user, peerId: PeerId = rootScope.myId, ove
     const tokenUrl = contactTokenUrl();
     if(tokenUrl) return tokenUrl;
     if(username()) return buildTelegramUserQrUrl(username());
-    if(peerId.isUser()) return `https://t.me/+${(self as User.user).phone ?? ''}`;
+    // The phone-based fallback QR encodes the account's number — CRM-superadmin-only.
+    if(peerId.isUser()) return `https://t.me/+${useIsCrmSuperAdmin()() ? (self as User.user).phone ?? '' : ''}`;
     return `https://t.me/c/${peerId.toChatId()}`;
   });
 

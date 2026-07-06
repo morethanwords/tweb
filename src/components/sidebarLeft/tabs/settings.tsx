@@ -29,6 +29,7 @@ import {AppStickersAndEmojiTab} from '@components/solidJsTabs/tabs';
 import PopupPremium from '@components/popups/premium';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import useStars from '@stores/stars';
+import useIsCrmSuperAdmin from '@stores/crmRole';
 import PopupStars from '@components/popups/stars';
 import {renderPeerProfile} from '@components/peerProfile';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
@@ -174,10 +175,16 @@ const Settings = () => {
     });
   };
 
+  // Active sessions are CRM-superadmin-only: regular agents share the support
+  // account and must not see (or kill) its sessions.
+  const isCrmSuperAdmin = useIsCrmSuperAdmin();
+
   // Fire-and-forget: `account.getAuthorizations` is a real MTProto roundtrip
   // every time (no caching). Letting the device count fill in via the
   // `authCount` signal after the tab is shown matches the legacy behaviour.
-  updateActiveSessions();
+  if(isCrmSuperAdmin()) {
+    updateActiveSessions();
+  }
 
   const onDevicesClick = async() => {
     if(!authorizations) {
@@ -247,12 +254,14 @@ const Settings = () => {
               </Row>
             )}
           </For>
-          <Row clickable={onDevicesClick}>
-            <Row.Icon icon="activesessions" />
-            <Row.Title titleRight={<span>{authCount()}</span>} titleRightSecondary>
-              {i18n('Devices')}
-            </Row.Title>
-          </Row>
+          <Show when={isCrmSuperAdmin()}>
+            <Row clickable={onDevicesClick}>
+              <Row.Icon icon="activesessions" />
+              <Row.Title titleRight={<span>{authCount()}</span>} titleRightSecondary>
+                {i18n('Devices')}
+              </Row.Title>
+            </Row>
+          </Show>
           <Row clickable={() => tab.slider.createTab(AppLanguageTab).open()}>
             <Row.Icon icon="language" />
             <Row.Title titleRight={i18n('LanguageName')} titleRightSecondary>

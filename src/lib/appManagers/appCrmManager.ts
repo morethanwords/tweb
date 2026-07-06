@@ -30,6 +30,10 @@ export default class AppCrmManager extends AppManager {
     this.config = {...EMPTY_CRM_CONFIG};
 
     this.loadPromise = this.load();
+    // Refresh the agent's profile (incl. is_super_admin) once per app start so
+    // a role change in the CRM propagates without re-login. Fire-and-forget —
+    // gated UI simply stays hidden until the flag lands.
+    this.loadPromise.then(() => this.refreshMe());
     return this.loadPromise;
   }
 
@@ -143,11 +147,28 @@ export default class AppCrmManager extends AppManager {
     this.config.user = result.user;
     this.config.enabled = true;
     await this.persist();
-    return result.user;
+    // verify-otp's payload has no is_super_admin — pull the full profile so
+    // role-gated UI unlocks right after login, not on the next app start.
+    return (await this.refreshMe()) || result.user;
   }
 
   public async me(): Promise<CrmUser> {
     return this.request<CrmUser>('GET', CRM_ENDPOINTS.me);
+  }
+
+  // Re-fetch /auth/me and merge into the stored user. persist() dispatches
+  // crm_config_update, which is what the main-thread role store listens for.
+  public async refreshMe(): Promise<CrmUser | undefined> {
+    if(!(await this.isConnected())) return undefined;
+    try {
+      const user = await this.me();
+      this.config.user = {...this.config.user, ...user};
+      await this.persist();
+      return this.config.user;
+    } catch(err) {
+      this.log.error('refreshMe failed', err);
+      return this.config.user;
+    }
   }
 
   // Params for the main-thread Reverb client (realtime attribution). Bundles the

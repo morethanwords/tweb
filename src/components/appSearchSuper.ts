@@ -22,6 +22,7 @@ import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import handleTabSwipe from '@helpers/dom/handleTabSwipe';
 import windowSize from '@helpers/windowSize';
 import {formatPhoneNumber} from '@helpers/formatPhoneNumber';
+import useIsCrmSuperAdmin from '@stores/crmRole';
 import {ButtonMenuItemOptions, ButtonMenuSync} from '@components/buttonMenu';
 import showForwardPopup from '@components/popups/forward';
 import PopupDeleteMessages from '@components/popups/deleteMessages';
@@ -1300,7 +1301,8 @@ export default class AppSearchSuper {
           let username = await this.managers.appPeersManager.getPeerUsername(peerId);
           if(!username) {
             const user = await this.managers.appUsersManager.getUser(peerId);
-            if(user?.phone) {
+            // Phone numbers are CRM-superadmin-only.
+            if(user?.phone && useIsCrmSuperAdmin()()) {
               username = '+' + formatPhoneNumber(user.phone).formatted;
             }
           } else {

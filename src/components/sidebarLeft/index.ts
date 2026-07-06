@@ -96,6 +96,7 @@ import useHasFoldersSidebar, {
 } from '@stores/foldersSidebar';
 import isObject from '@helpers/object/isObject';
 import {useAppSettings} from '@stores/appSettings';
+import useIsCrmSuperAdmin from '@stores/crmRole';
 import {openEmojiStatusPicker} from '@components/sidebarLeft/emojiStatusPicker';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
@@ -692,7 +693,9 @@ export class AppSidebarLeft extends SidebarSlider {
     }, {
       icon: 'user',
       text: 'Contacts',
-      onClick: onContactsClick
+      onClick: onContactsClick,
+      // The contacts list is CRM-superadmin-only.
+      verify: () => useIsCrmSuperAdmin()()
     }, {
       id: 'settings',
       icon: 'settings',
@@ -1020,7 +1023,9 @@ export class AppSidebarLeft extends SidebarSlider {
     }, {
       icon: 'newprivate',
       text: singular ? 'PrivateChat' : 'NewPrivateChat',
-      onClick: onContactsClick
+      onClick: onContactsClick,
+      // Opens the contacts list, which is CRM-superadmin-only.
+      verify: () => useIsCrmSuperAdmin()()
     }];
   }
 
@@ -1041,8 +1046,10 @@ export class AppSidebarLeft extends SidebarSlider {
   }
 
   private createNewChatsSubmenu() {
+    // Plain ButtonMenu doesn't evaluate `verify` (only ButtonMenuToggle does),
+    // and this submenu is rebuilt on every open — filter synchronously here.
     return ButtonMenu({
-      buttons: this.createNewChatsMenuOptions(true, true)
+      buttons: this.createNewChatsMenuOptions(true, true).filter((button) => !button.verify || button.verify() === true)
     });
   }
 

@@ -7,6 +7,7 @@ import findUpTag from '@helpers/dom/findUpTag';
 import ButtonCorner from '@components/buttonCorner';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import formatUserPhone from '@components/wrappers/formatUserPhone';
+import useIsCrmSuperAdmin from '@stores/crmRole';
 import getUserStatusString from '@components/wrappers/getUserStatusString';
 import {attachContextMenuListener} from '@helpers/dom/attachContextMenuListener';
 import positionMenu from '@helpers/positionMenu';
@@ -50,7 +51,8 @@ const BlockedUsers = () => {
     if(user.pFlags.bot) {
       dom.lastMessageSpan.append('@' + username);
     } else {
-      if(user.phone) dom.lastMessageSpan.textContent = formatUserPhone(user.phone);
+      // Phone numbers are CRM-superadmin-only.
+      if(user.phone && useIsCrmSuperAdmin()()) dom.lastMessageSpan.textContent = formatUserPhone(user.phone);
       else dom.lastMessageSpan.append(username ? '@' + username : getUserStatusString(user));
     }
   };

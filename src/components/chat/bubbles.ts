@@ -49,6 +49,7 @@ import assumeType from '@helpers/assumeType';
 import debounce, {DebounceReturnType} from '@helpers/schedulers/debounce';
 import windowSize from '@helpers/windowSize';
 import {formatPhoneNumber} from '@helpers/formatPhoneNumber';
+import useIsCrmSuperAdmin from '@stores/crmRole';
 import AppMediaViewer from '@components/appMediaViewer';
 import SetTransition from '@components/singleTransition';
 import handleHorizontalSwipe from '@helpers/dom/handleHorizontalSwipe';
@@ -8303,7 +8304,10 @@ export default class ChatBubbles {
 
           const contactNumberDiv = document.createElement('div');
           contactNumberDiv.className = 'contact-number';
-          contactNumberDiv.textContent = contact.phone_number ? '+' + formatPhoneNumber(contact.phone_number).formatted : 'Unknown phone number';
+          // Phone numbers are CRM-superadmin-only.
+          contactNumberDiv.textContent = contact.phone_number && useIsCrmSuperAdmin()() ?
+            '+' + formatPhoneNumber(contact.phone_number).formatted :
+            'Unknown phone number';
 
           contactDiv.append(contactDetails);
           contactDetails.append(contactNameDiv, contactNumberDiv);

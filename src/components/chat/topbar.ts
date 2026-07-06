@@ -62,6 +62,7 @@ import {createEffect, createRoot, on, untrack} from 'solid-js';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import {AppAdminRecentActionsTab} from '@components/solidJsTabs/tabs';
 import {setAppSettings} from '@stores/appSettings';
+import useIsCrmSuperAdmin from '@stores/crmRole';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
 import liteMode from '@helpers/liteMode';
 import createSubmenuTrigger from '@components/createSubmenuTrigger';
@@ -571,7 +572,8 @@ export default class ChatTopbar {
       onClick: () => {
         this.addContact();
       },
-      verify: async() => !this.chat.isBot && (this.chat.monoforumThreadId || this.peerId).isUser() && !(await this.managers.appPeersManager.isContact(this.chat.monoforumThreadId || this.peerId))
+      // Contact editing is CRM-superadmin-only.
+      verify: async() => useIsCrmSuperAdmin()() && !this.chat.isBot && (this.chat.monoforumThreadId || this.peerId).isUser() && !(await this.managers.appPeersManager.isContact(this.chat.monoforumThreadId || this.peerId))
     }, {
       icon: 'forward',
       text: 'ShareContact',

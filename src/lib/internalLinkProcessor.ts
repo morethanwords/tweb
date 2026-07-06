@@ -42,6 +42,7 @@ import appSidebarLeft from '@components/sidebarLeft';
 import {AppContactsTab} from '@components/solidJsTabs/tabs';
 import {AppNewChannelTab} from '@components/solidJsTabs/tabs';
 import showCreateContactPopup from '@components/popups/createContact';
+import useIsCrmSuperAdmin from '@stores/crmRole';
 import createNewGroupTab from '@components/sidebarLeft/tabs/createNewGroupTab';
 import {AppEditProfileTab, AppSettingsTab, getEditProfileInitArgs} from '@components/solidJsTabs';
 import showBirthdayPopup, {saveMyBirthday} from '@components/popups/birthday';
@@ -691,12 +692,16 @@ export class InternalLinkProcessor {
         const [type] = pathnameParams;
         switch(type) {
           case 'contact':
+            // Contact creation is CRM-superadmin-only.
+            if(!useIsCrmSuperAdmin()()) return;
             return showCreateContactPopup();
           case 'channel':
             return appSidebarLeft.createTab(AppNewChannelTab).open();
           case 'group':
             return createNewGroupTab(appSidebarLeft);
           default:
+            // The contacts list is CRM-superadmin-only.
+            if(!useIsCrmSuperAdmin()()) return;
             return appSidebarLeft.createTab(AppContactsTab).open();
         }
       }
@@ -753,6 +758,8 @@ export class InternalLinkProcessor {
       name: 'contacts',
       protocol: 'tg',
       callback: ({pathnameParams}) => {
+        // The contacts list / contact creation are CRM-superadmin-only.
+        if(!useIsCrmSuperAdmin()()) return;
         const [type] = pathnameParams;
         switch(type) {
           case 'new':
