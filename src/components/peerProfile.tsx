@@ -725,8 +725,15 @@ PeerProfile.Phone = () => {
 PeerProfile.Username = () => {
   const context = useContext(PeerProfileContext);
   const {I18n, i18n, toast, showMyQrCodePopup, rootScope} = useHotReloadGuard();
+  const isCrmSuperAdmin = useIsCrmSuperAdmin();
   const usernames = createMemo(() => {
     if(!context.peerId.isUser() || !context.canBeDetailed()) {
+      return;
+    }
+
+    // Customer usernames are CRM-superadmin-only, like their phone numbers
+    // (bots stay visible). Hiding the row also hides the QR-code button.
+    if(!isCrmSuperAdmin() && !(context.peer as User.user).pFlags?.bot) {
       return;
     }
 

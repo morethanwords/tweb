@@ -114,6 +114,7 @@ import confirmationPopup from '@components/confirmationPopup';
 import ListenerSetter from '@helpers/listenerSetter';
 import type PopupPeer from '@components/popups/peer';
 import {toastNew} from '@components/toast';
+import useIsCrmSuperAdmin from '@stores/crmRole';
 
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
@@ -334,7 +335,10 @@ export class DialogElement extends Row {
     const li = this.container;
     li.classList.add('chatlist-chat', 'chatlist-chat-' + avatarSize);
     if(!autonomous) {
-      (li as HTMLAnchorElement).href = '#' + peerId;
+      // Don't leak customer user ids through the anchor href (visible in the
+      // status bar on hover / "copy link address") — CRM superadmins keep the
+      // deep link. Navigation itself uses dataset.peerId, not the href.
+      (li as HTMLAnchorElement).href = !peerId.isUser() || useIsCrmSuperAdmin()() ? '#' + peerId : '#';
     }
     // if(rippleEnabled) {
     //   ripple(li);

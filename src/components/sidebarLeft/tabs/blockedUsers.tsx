@@ -51,9 +51,10 @@ const BlockedUsers = () => {
     if(user.pFlags.bot) {
       dom.lastMessageSpan.append('@' + username);
     } else {
-      // Phone numbers are CRM-superadmin-only.
-      if(user.phone && useIsCrmSuperAdmin()()) dom.lastMessageSpan.textContent = formatUserPhone(user.phone);
-      else dom.lastMessageSpan.append(username ? '@' + username : getUserStatusString(user));
+      // Phone numbers and customer usernames are CRM-superadmin-only.
+      const isCrmSuperAdmin = useIsCrmSuperAdmin()();
+      if(user.phone && isCrmSuperAdmin) dom.lastMessageSpan.textContent = formatUserPhone(user.phone);
+      else dom.lastMessageSpan.append(username && isCrmSuperAdmin ? '@' + username : getUserStatusString(user));
     }
   };
 

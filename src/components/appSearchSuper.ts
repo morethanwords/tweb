@@ -1299,9 +1299,12 @@ export default class AppSearchSuper {
           dom.lastMessageSpan.append(i18n('Presence.YourChat'));
         } else {
           let username = await this.managers.appPeersManager.getPeerUsername(peerId);
-          if(!username) {
-            const user = await this.managers.appUsersManager.getUser(peerId);
-            // Phone numbers are CRM-superadmin-only.
+          const user = peerId.isUser() ? await this.managers.appUsersManager.getUser(peerId) : undefined;
+          // Customer usernames and phone numbers are CRM-superadmin-only
+          // (bots and channels stay visible).
+          if(user && !user.pFlags?.bot && !useIsCrmSuperAdmin()()) {
+            username = '';
+          } else if(!username) {
             if(user?.phone && useIsCrmSuperAdmin()()) {
               username = '+' + formatPhoneNumber(user.phone).formatted;
             }
