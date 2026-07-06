@@ -1686,8 +1686,9 @@ export default class DialogsStorage extends AppManager {
       this.cachedResults.query = '';
     }
 
-    // hide blacklisted peers (e.g. the 777000 service chat) from the dialog list and in-app search
-    if(HIDDEN_DIALOG_PEER_IDS.size && curDialogStorage.length) {
+    // hide blacklisted peers (e.g. the 777000 service chat, where login codes
+    // arrive) from the dialog list and in-app search — CRM superadmins see them
+    if(HIDDEN_DIALOG_PEER_IDS.size && curDialogStorage.length && !this.appCrmManager.isSuperAdminCached()) {
       curDialogStorage = curDialogStorage.filter((dialog) => !HIDDEN_DIALOG_PEER_IDS.has(dialog.peerId));
     }
 

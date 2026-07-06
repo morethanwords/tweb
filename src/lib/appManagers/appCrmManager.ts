@@ -156,6 +156,13 @@ export default class AppCrmManager extends AppManager {
     return this.request<CrmUser>('GET', CRM_ENDPOINTS.me);
   }
 
+  // Synchronous role check for worker-side hot paths (dialog filtering) that
+  // can't await. Reads the in-memory config: false until load() settles, which
+  // fails safe — role-gated content stays hidden.
+  public isSuperAdminCached(): boolean {
+    return !!(this.config?.enabled && this.config.token && this.config.user?.is_super_admin);
+  }
+
   // Re-fetch /auth/me and merge into the stored user. persist() dispatches
   // crm_config_update, which is what the main-thread role store listens for.
   public async refreshMe(): Promise<CrmUser | undefined> {

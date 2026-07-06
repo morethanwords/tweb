@@ -34,6 +34,8 @@ import {FOLDER_ID_ALL} from '@appManagers/constants';
 import PasscodeLockScreenController from '@components/passcodeLock/passcodeLockScreenController';
 import {StateSettings} from '@config/state';
 import {useAppSettings} from '@stores/appSettings';
+import useIsCrmSuperAdmin from '@stores/crmRole';
+import {HIDDEN_DIALOG_PEER_IDS} from '@config/app';
 import {unwrap} from 'solid-js/store';
 import AudioAssetPlayer from '@helpers/audioAssetPlayer';
 import {createEffect, createRoot, on} from 'solid-js';
@@ -290,6 +292,11 @@ export class UiNotificationsManager {
     accountNumber
   }: NotificationBuildTaskPayload) {
     const peerId = message.peerId;
+    // Hidden dialogs (777000 service chat) are CRM-superadmin-only — don't leak
+    // their messages (login codes!) through notification previews either.
+    if(HIDDEN_DIALOG_PEER_IDS.has(peerId) && !useIsCrmSuperAdmin()()) {
+      return;
+    }
     const isAnyChat = peerId.isAnyChat();
     const notification: NotifyOptions = {};
     const account = this.accounts.get(accountNumber);
