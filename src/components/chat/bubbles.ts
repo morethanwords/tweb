@@ -1764,8 +1764,9 @@ export default class ChatBubbles {
     };
 
     this.listenerSetter.add(container)('wheel', (e: WheelEvent) => {
-      // pinch-zoom / momentum with a modifier held — not a reply gesture
-      if(e.ctrlKey || e.metaKey) {
+      // pinch-zoom (ctrl/meta) or a mouse wheel scrolling sideways (holding shift maps the wheel's
+      // deltaY onto deltaX) — a modifier is held, so this is not a trackpad reply swipe
+      if(e.ctrlKey || e.metaKey || e.shiftKey) {
         return;
       }
 
