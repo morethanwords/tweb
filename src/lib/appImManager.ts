@@ -1207,7 +1207,15 @@ export class AppImManager extends EventListenerBase<{
         return;
       }
 
-      const url = new URL(element.href);
+      // element.href can be an unparseable value (e.g. in-page fragment links render as `https://#anchor`),
+      // in which case it's certainly not an autologin/url_auth domain — bail instead of throwing.
+      let url: URL;
+      try {
+        url = new URL(element.href);
+      } catch(e) {
+        return;
+      }
+
       if(appConfig.url_auth_domains?.includes(url.hostname)) {
         this.handleUrlAuth({url: element.href});
         cancelEvent();
