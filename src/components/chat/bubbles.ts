@@ -551,6 +551,12 @@ export default class ChatBubbles {
   private unreadedContent: Map<HTMLElement, number> = new Map();
   private unreadedSeen: Set<number> = new Set();
   private unreadedContentSeen: Set<number> = new Set();
+  // The chat the unreaded mids belong to. `this.chat.peerId` flips synchronously at the start of
+  // `Chat.setPeer` while `cleanup()` (which clears the unreaded sets) only runs several awaits
+  // later, so anything deferred (focus promise, late IntersectionObserver entries) must compare
+  // against this snapshot instead of trusting `this.chat` — otherwise mids collected in the old
+  // chat get read against the new peer, poisoning its historyStorage with foreign-namespace mids.
+  private unreadedChat: {peerId: PeerId, threadId: number, monoforumThreadId: PeerId};
   private readPromise: Promise<void>;
   private readContentPromise: Promise<void>;
 
@@ -2915,6 +2921,18 @@ export default class ChatBubbles {
     this.readUnreaded(type);
   }
 
+  // Whether `this.chat` has moved on from the chat the unreaded mids were collected in. True in
+  // the window between the synchronous peer flip in `Chat.setPeer` and `cleanup()` — the unreaded
+  // sets still hold the previous chat's mids there and must not be read against the new peer.
+  private isUnreadedChatChanged() {
+    const {unreadedChat, chat} = this;
+    return unreadedChat && (
+      unreadedChat.peerId !== chat.peerId ||
+      unreadedChat.threadId !== chat.threadId ||
+      unreadedChat.monoforumThreadId !== chat.monoforumThreadId
+    );
+  }
+
   private readUnreaded(type: 'history' | 'content') {
     if(this.chat.isPreview) return;
     const readPromiseKey = type === 'history' ? 'readPromise' : 'readContentPromise';
@@ -2924,7 +2942,9 @@ export default class ChatBubbles {
 
     const middleware = this.getMiddleware();
     this[readPromiseKey] = idleController.getFocusPromise().then(async() => {
-      if(!middleware()) return;
+      // like a failed middleware, a stale unreadedChat leaves `this[readPromiseKey]` latched —
+      // `cleanup()` is what resets both the promise and the sets
+      if(!middleware() || this.isUnreadedChatChanged()) return;
       const {peerId, threadId, monoforumThreadId} = this.chat;
 
       let callback: () => Promise<any>;
@@ -4957,6 +4977,7 @@ export default class ChatBubbles {
       this.unreadedContent.clear();
       this.unreadedSeen.clear();
       this.unreadedContentSeen.clear();
+      this.unreadedChat = undefined;
       this.readPromise = undefined;
       this.readContentPromise = undefined;
 
@@ -6321,6 +6342,10 @@ export default class ChatBubbles {
   private setUnreadObserver(type: 'history' | 'content', bubble: HTMLElement, mid?: number, element: HTMLElement = bubble) {
     if(this.chat.isPreview) return;
     mid ??= (bubble as any).maxBubbleMid;
+    // registration always happens while rendering the current chat, so this snapshot is the
+    // authoritative owner of every mid in the unreaded maps/sets
+    const {peerId, threadId, monoforumThreadId} = this.chat;
+    this.unreadedChat = {peerId, threadId, monoforumThreadId};
     // this.log('not our message', message, message.pFlags.unread);
     this.observer.observe(element, type === 'history' ? this.unreadedObserverCallback : this.unreadedContentObserverCallback);
     (type === 'history' ? this.unreaded : this.unreadedContent).set(element, mid);

@@ -6350,6 +6350,17 @@ export class AppMessagesManager extends AppManager {
 
     // console.trace('start read')
     this.log('readHistory:', peerId, maxId, threadId);
+
+    // A maxId from a foreign mid namespace (channel-offset mid for a legacy peer or vice versa)
+    // can only be a value leaked from another chat — e.g. raced in from the UI during a fast peer
+    // switch. It must not get through: `getServerMessageId(maxId)` would ask the server to read up
+    // to an arbitrary point, and storing it in `triedToReadMaxId` (monotonic) would permanently
+    // latch `skipServerCall`, silently disabling server reads for this peer until the worker dies.
+    if(maxId && isLegacyMessageId(maxId) === this.appPeersManager.isChannel(peerId)) {
+      this.log.error('readHistory: refusing maxId from a foreign mid namespace', peerId, maxId, threadId, monoforumThreadId);
+      return Promise.resolve();
+    }
+
     const readMaxId = this.getReadMaxIdIfUnread(peerId, threadId);
     if(!readMaxId) {
       if(threadId && !force) {

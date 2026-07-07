@@ -980,4 +980,106 @@ describeOrSkip('unread counter races', () => {
     expect(topic.unread_mentions_count).toBe(0);
     expect(dialog.unread_mentions_count).toBe(0);
   }, 30_000);
+
+  test('Bug 9 foreign-namespace maxId: channel mid raced into a private chat must not poison readHistory', async() => {
+    const m: any = client.managers.appMessagesManager;
+    const idsManager: any = client.managers.appMessagesIdsManager;
+    const dialogsStorage: any = client.managers.dialogsStorage;
+
+    // A private chat: legacy mid namespace (mid === server id)
+    const userId = 999000201;
+    const peerId = userId;
+    (client.managers.appUsersManager as any).saveApiUsers([{
+      _: 'user',
+      id: userId,
+      access_hash: '0',
+      first_name: 'Race Test 9',
+      pFlags: {}
+    }]);
+
+    const dialog: any = {
+      _: 'dialog',
+      peer: {_: 'peerUser', user_id: userId},
+      peerId,
+      top_message: 5100,
+      read_inbox_max_id: 5080,
+      read_outbox_max_id: 5100,
+      unread_count: 20,
+      unread_mentions_count: 0,
+      unread_reactions_count: 0,
+      notify_settings: {_: 'peerNotifySettings'},
+      pts: 0,
+      index_0: 0,
+      folder_id: 0,
+      pFlags: {}
+    };
+    dialogsStorage.dialogs[peerId] = dialog;
+
+    const historyStorage = m.getHistoryStorage(peerId);
+    const messagesStorage = m.getHistoryMessagesStorage(peerId);
+    historyStorage._maxId = 5100;
+    historyStorage.readMaxId = 5080;
+    const mids: number[] = [];
+    for(let serverId = 5081; serverId <= 5100; serverId++) {
+      mids.push(serverId);
+      messagesStorage.set(serverId, {
+        _: 'message',
+        mid: serverId,
+        id: serverId,
+        peerId,
+        peer_id: {_: 'peerUser', user_id: userId},
+        date: 0,
+        message: 'm' + serverId,
+        pFlags: {unread: true},
+        from_id: undefined,
+        out: false
+      } as any);
+    }
+    historyStorage.history.first.length = 0;
+    historyStorage.history.first.push(...mids.slice().reverse());
+
+    // A mid leaked from a channel chat (MESSAGE_ID_OFFSET + serverId) — the readUnreaded race in
+    // bubbles used to ship exactly this into the private chat's readHistory during a peer switch
+    const foreignMid = idsManager.generateMessageId(164796, 999000202);
+
+    pendingServerReads = [];
+    await m.readHistory({peerId, maxId: foreignMid, force: true});
+
+    console.log('[Bug9] after foreign maxId: triedToReadMaxId =', historyStorage.triedToReadMaxId,
+      'server reads issued =', pendingServerReads.length,
+      'unread_count =', dialog.unread_count);
+
+    // refused: nothing sent to the server, `triedToReadMaxId` not latched, nothing applied locally
+    expect(pendingServerReads.length).toBe(0);
+    expect(historyStorage.triedToReadMaxId).toBeUndefined();
+    expect(dialog.unread_count).toBe(20);
+
+    // a legitimate read right after must still reach the server — before the guard, the poisoned
+    // `triedToReadMaxId` (> any legacy mid) latched `skipServerCall` for the rest of the session
+    const legit = m.readHistory({peerId, maxId: 5100, force: true});
+    expect(pendingServerReads.length).toBe(1);
+    expect(historyStorage.triedToReadMaxId).toBe(5100);
+
+    pendingServerReads.forEach((r) => r());
+    pendingServerReads = [];
+    await legit;
+
+    console.log('[Bug9] after legit read: triedToReadMaxId =', historyStorage.triedToReadMaxId,
+      'unread_count =', dialog.unread_count);
+    expect(dialog.unread_count).toBe(0);
+
+    // reverse direction: a legacy-namespace maxId must not reach a channel's readHistory either
+    const channelId = 999000203;
+    const channelPeerId = -channelId;
+    makeChannel(channelId, 'Race Test 9 (channel)');
+    const {historyStorage: channelHistoryStorage} = injectDialog(channelPeerId as any, channelId, {
+      unreadCount: 5,
+      topServerMid: 300,
+      readInboxServerMid: 295
+    });
+
+    await m.readHistory({peerId: channelPeerId, maxId: 5100, force: true});
+    expect(pendingServerReads.length).toBe(0);
+    expect(channelHistoryStorage.triedToReadMaxId).toBeUndefined();
+  }, 30_000);
 });
