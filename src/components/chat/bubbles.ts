@@ -2331,29 +2331,50 @@ export default class ChatBubbles {
       return;
     }
 
-    this.observer.unobserve(entry.target, this.guestChatHintObserverCallback);
+    const bubble = entry.target as HTMLElement;
 
     if(this.chat.isPreview || this.guestChatHintShown) { // once per chat-open (iOS hasDisplayedGuestChatMessageTooltip)
+      this.observer.unobserve(bubble, this.guestChatHintObserverCallback);
       return;
     }
 
     const shownTimes = this.chat.appSettings.seenTooltips.guestBotPrivacy || 0; // undefined for pre-existing state
     if(shownTimes >= 2) { // twice total (iOS counter notice)
+      this.observer.unobserve(bubble, this.guestChatHintObserverCallback);
       return;
     }
 
+    // * notch over the bot's name (element = the .peer-title, which hugs its text). fall back to the
+    // * bubble as the anchor when the name is hidden (a grouped, non-first guest bubble)
+    const nameNode = bubble.querySelector<HTMLElement>('.name .peer-title');
+    const anchor = nameNode?.offsetParent ? nameNode : bubble;
+
+    // * the observer's root is the whole scroll container, so this fires as soon as ANY pixel of the
+    // * bubble intersects — which can be while the name is still under the floating topbar or below the
+    // * fold, dropping the (upward) tooltip off-screen. Wait until the name has cleared the topbar with
+    // * room above it and sits inside the viewport; keep the bubble observed so a later scroll that
+    // * brings it fully into view re-triggers this (the counter isn't spent until we actually show).
+    const scrollRect = this.scrollable.container.getBoundingClientRect();
+    const topbarBottom = this.chat.topbar?.container.getBoundingClientRect().bottom ?? scrollRect.top;
+    const visibleTop = Math.max(scrollRect.top, topbarBottom);
+    const anchorRect = anchor.getBoundingClientRect();
+    const roomForTooltip = 48; // tooltip height + notch + gap — don't show it half-clipped by the topbar
+    if(anchorRect.top - roomForTooltip < visibleTop || anchorRect.top > scrollRect.bottom) {
+      return;
+    }
+
+    this.observer.unobserve(bubble, this.guestChatHintObserverCallback);
     this.guestChatHintShown = true;
     setAppSettings('seenTooltips', 'guestBotPrivacy', shownTimes + 1);
 
-    // * notch over the bot's name (element = the .peer-title, which hugs its text), body over the bubble
-    // * (container = the bubble clamps the body's width/position). fall back to the bubble as the notch
-    // * anchor too when the name is hidden (a grouped, non-first guest bubble)
-    const bubble = entry.target as HTMLElement;
-    const nameNode = bubble.querySelector<HTMLElement>('.name .peer-title');
-
+    // * mount inside the bubble and position absolutely, so the hint scrolls with the message and is
+    // * clipped by the chat viewport instead of floating over the topbar (container = bubble clamps the
+    // * body's width/position)
     showTooltip({
-      element: nameNode?.offsetParent ? nameNode : bubble,
+      element: anchor,
       container: bubble,
+      mountOn: bubble,
+      absolute: true,
       vertical: 'top',
       textElement: i18n('BotCantReadChatTooltip'),
       paddingX: 8,
