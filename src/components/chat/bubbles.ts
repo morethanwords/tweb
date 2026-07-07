@@ -7482,7 +7482,8 @@ export default class ChatBubbles {
         props: {
           message: message as Message.message,
           richMessage,
-          page: richMessagePage
+          page: richMessagePage,
+          scrollToElement: (element: HTMLElement) => this.scrollToBubble(element, 'start')
         },
         middleware,
         HotReloadGuard: SolidJSHotReloadGuardProvider

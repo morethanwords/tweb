@@ -11,7 +11,8 @@ import cancelEvent from '@helpers/dom/cancelEvent';
 export function RichMessageBubble(props: {
   message: Message.message,
   richMessage: RichMessage,
-  page: Page.page
+  page: Page.page,
+  scrollToElement?: (element: HTMLElement) => void
 }) {
   const {i18n, rootScope} = useHotReloadGuard();
   const [loading, setLoading] = createSignal(false);
@@ -71,6 +72,7 @@ export function RichMessageBubble(props: {
           });
         }}
         collapse={() => {}}
+        scrollToElement={props.scrollToElement}
         class={styles.RichMessage}
         paddings={0}
       />
