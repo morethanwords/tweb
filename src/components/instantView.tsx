@@ -551,6 +551,8 @@ function Block(props: {
           {...orderedProps}
           class={classNames(
             styles.List,
+            styles.BlockContainer,
+            styles.BlockGutter,
             shouldHaveOwnNumbers && styles.ListOrdered,
             'browser-default'
           )}
@@ -602,13 +604,14 @@ function Block(props: {
     case 'pageBlockBlockquoteBlocks':
       return (
         <div class={classNames(styles.Padding, styles.BlockquoteWrapper)}>
-          <blockquote class={styles.Blockquote}>
-            <div class={styles.BlockquoteBorder} />
+          {/* same app-standard quote chrome as the inline blockquote (accent bar + tinted bg + glyph),
+              but hosting parsed child blocks instead of a single rich-text run */}
+          <blockquote class={classNames('quote-like', 'quote-like-border', 'quote-like-icon', styles.Blockquote, styles.BlockquoteBlocks, styles.BlockContainer)}>
             <For each={block.blocks}>{(subBlock) => (
               <Block block={subBlock} paddings={props.paddings + 1} />
             )}</For>
             <Show when={!isRichTextEmpty(block.caption)}>
-              <div class={styles.BlockquoteCaption}>
+              <div class={classNames(styles.BlockquoteCaption, 'secondary')}>
                 <RichTextRenderer text={block.caption} />
               </div>
             </Show>
@@ -942,7 +945,7 @@ function Block(props: {
         undefined;
 
       return (
-        <div class={styles.Post}>
+        <div class={classNames(styles.Post, styles.BlockGutter)}>
           <div class={styles.PostBorder} />
           <Row class={styles.PostAuthor}>
             <Row.Title class="text-bold">
@@ -961,7 +964,7 @@ function Block(props: {
               />
             </Row.Media>
           </Row>
-          <div class={styles.PostContent}>
+          <div class={styles.BlockContainer}>
             <For each={block.blocks}>{(subBlock) => (
               <Block block={subBlock} paddings={props.paddings + 1} />
             )}</For>

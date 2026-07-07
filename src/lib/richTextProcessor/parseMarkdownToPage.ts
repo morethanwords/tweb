@@ -25,6 +25,10 @@ const DEFLIST_DEF_RE = /^:\s+(.+)$/;
 const DETAILS_OPEN_RE = /^\s*<details\b[^>]*>/i;
 const DETAILS_CLOSE_RE = /<\/details\s*>/i;
 const SUMMARY_RE = /<summary\b[^>]*>([\s\S]*?)<\/summary\s*>/i;
+// A trailing attribution line inside a blockquote — `— Author`, `– Author`, or `-- Author`. When it
+// stands as its own paragraph it becomes the quote's `caption` (the attribution slot Telegram IV
+// renders under the quote), matching the common markdown convention for cited quotes.
+const BLOCKQUOTE_ATTRIBUTION_RE = /^(?:—|–|--)\s+(.+)$/;
 
 type Refs = Map<string, string>;
 
@@ -225,6 +229,41 @@ function attachNestedBlock(
   }
 }
 
+// Build a blockquote block from its inner lines (a single leading `>` already stripped from each).
+// The content is parsed recursively so nested blockquotes (`> >`), lists, code blocks, and multiple
+// paragraphs survive as real child blocks. A lone paragraph collapses back to the flat
+// `pageBlockBlockquote` (keeps simple quotes lightweight and matches native IV); anything richer
+// becomes `pageBlockBlockquoteBlocks` carrying the parsed children.
+function makeBlockquote(quoteLines: string[], refs: Refs): PageBlock {
+  let caption: RichText = {_: 'textEmpty'};
+
+  // Pull out a trailing `— Author` attribution as the caption when it stands on its own paragraph
+  // (preceded by a blank line, with real quote content before it), leaving the body to be parsed.
+  let last = quoteLines.length - 1;
+  while(last >= 0 && quoteLines[last].trim() === '') --last;
+  if(last >= 1 && quoteLines[last - 1].trim() === '' && quoteLines.slice(0, last - 1).some((l) => l.trim() !== '')) {
+    const m = BLOCKQUOTE_ATTRIBUTION_RE.exec(quoteLines[last].trim());
+    if(m) {
+      caption = inlineToRichText(m[1], refs);
+      quoteLines = quoteLines.slice(0, last);
+    }
+  }
+
+  const innerBlocks = parseMarkdownToPage(quoteLines.join('\n')).blocks;
+
+  // Empty quote (e.g. it held only an attribution) still renders as a flat, text-less blockquote.
+  if(innerBlocks.length === 0) {
+    return {_: 'pageBlockBlockquote', text: {_: 'textEmpty'}, caption};
+  }
+
+  // A single plain paragraph keeps the lighter inline blockquote (back-compat with flat quotes).
+  if(innerBlocks.length === 1 && innerBlocks[0]._ === 'pageBlockParagraph') {
+    return {_: 'pageBlockBlockquote', text: innerBlocks[0].text, caption};
+  }
+
+  return {_: 'pageBlockBlockquoteBlocks', blocks: innerBlocks, caption};
+}
+
 function preScan(lines: string[]): {refs: Refs, footnotes: Array<{id: string, content: string}>, skipLines: Set<number>} {
   const refs: Refs = new Map();
   const footnotes: Array<{id: string, content: string}> = [];
@@ -419,11 +458,7 @@ export default function parseMarkdownToPage(raw: string, url = ''): Page.page {
         quoteLines.push(m[1]);
         ++i;
       }
-      blocks.push({
-        _: 'pageBlockBlockquote',
-        text: inlineToRichText(quoteLines.join('\n'), refs),
-        caption: {_: 'textEmpty'}
-      });
+      blocks.push(makeBlockquote(quoteLines, refs));
       continue;
     }
 

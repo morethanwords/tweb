@@ -302,6 +302,72 @@ describe('parseMarkdownToPage: blocks', () => {
     expect(block.text._).toEqual('textConcat');
   });
 
+  test('blockquote with block-level content → pageBlockBlockquoteBlocks with child blocks', () => {
+    const page = parseMarkdownToPage('> Intro paragraph.\n>\n> - one\n> - two');
+    expect(page.blocks.length).toEqual(1);
+    const block = page.blocks[0] as PageBlock.pageBlockBlockquoteBlocks;
+    expect(block._).toEqual('pageBlockBlockquoteBlocks');
+    expect(block.blocks.map((b) => b._)).toEqual(['pageBlockParagraph', 'pageBlockList']);
+  });
+
+  test('nested blockquote (> >) becomes a pageBlockBlockquote inside the outer blocks', () => {
+    const page = parseMarkdownToPage('> outer\n>\n> > inner');
+    const block = page.blocks[0] as PageBlock.pageBlockBlockquoteBlocks;
+    expect(block._).toEqual('pageBlockBlockquoteBlocks');
+    expect(block.blocks[0]._).toEqual('pageBlockParagraph');
+    const inner = block.blocks[1] as PageBlock.pageBlockBlockquote;
+    expect(inner._).toEqual('pageBlockBlockquote');
+    expect(inner.text).toEqual({_: 'textPlain', text: 'inner'});
+  });
+
+  test('nested blockquote without a space (>>) also nests', () => {
+    const page = parseMarkdownToPage('> outer\n>\n>> inner');
+    const block = page.blocks[0] as PageBlock.pageBlockBlockquoteBlocks;
+    expect(block._).toEqual('pageBlockBlockquoteBlocks');
+    expect(block.blocks[1]._).toEqual('pageBlockBlockquote');
+  });
+
+  test('blockquote internal blank line splits into multiple paragraphs (blocks variant)', () => {
+    const page = parseMarkdownToPage('> first\n>\n> second');
+    const block = page.blocks[0] as PageBlock.pageBlockBlockquoteBlocks;
+    expect(block._).toEqual('pageBlockBlockquoteBlocks');
+    expect(block.blocks.map((b) => b._)).toEqual(['pageBlockParagraph', 'pageBlockParagraph']);
+  });
+
+  test('blockquote with a fenced code block keeps it as a preformatted child', () => {
+    const page = parseMarkdownToPage('> text\n>\n> ```js\n> console.log(1);\n> ```');
+    const block = page.blocks[0] as PageBlock.pageBlockBlockquoteBlocks;
+    expect(block._).toEqual('pageBlockBlockquoteBlocks');
+    const pre = block.blocks.find((b): b is PageBlock.pageBlockPreformatted => b._ === 'pageBlockPreformatted');
+    expect(pre).toBeTruthy();
+    expect(pre.language).toEqual('js');
+    expect(pre.text).toEqual({_: 'textPlain', text: 'console.log(1);'});
+  });
+
+  test('trailing “— Author” attribution becomes the blockquote caption', () => {
+    const page = parseMarkdownToPage('> Some wise words.\n>\n> — Author Name');
+    const block = page.blocks[0] as PageBlock.pageBlockBlockquote;
+    expect(block._).toEqual('pageBlockBlockquote');
+    expect(block.text).toEqual({_: 'textPlain', text: 'Some wise words.'});
+    expect(block.caption).toEqual({_: 'textPlain', text: 'Author Name'});
+  });
+
+  test('attribution on the blocks variant sets caption and keeps the body blocks', () => {
+    const page = parseMarkdownToPage('> Quote:\n>\n> - a\n> - b\n>\n> — Author Name');
+    const block = page.blocks[0] as PageBlock.pageBlockBlockquoteBlocks;
+    expect(block._).toEqual('pageBlockBlockquoteBlocks');
+    expect(block.blocks.map((b) => b._)).toEqual(['pageBlockParagraph', 'pageBlockList']);
+    expect(block.caption).toEqual({_: 'textPlain', text: 'Author Name'});
+  });
+
+  test('a lone dash line is NOT treated as an attribution (kept as body text)', () => {
+    const page = parseMarkdownToPage('> — just a dash quote');
+    const block = page.blocks[0] as PageBlock.pageBlockBlockquote;
+    expect(block._).toEqual('pageBlockBlockquote');
+    expect(block.caption).toEqual({_: 'textEmpty'});
+    expect(block.text).toEqual({_: 'textPlain', text: '— just a dash quote'});
+  });
+
   test('unordered list with - * + • markers (separated by blank lines)', () => {
     const page = parseMarkdownToPage('- a\n- b\n\n* c\n* d\n\n+ e\n+ f\n\n• g\n• h');
     expect(page.blocks.length).toEqual(4);
