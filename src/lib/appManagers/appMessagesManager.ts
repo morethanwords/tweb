@@ -7426,7 +7426,21 @@ export class AppMessagesManager extends AppManager {
 
     const isForum = this.appPeersManager.isForum(peerId);
     const threadKey = this.getThreadKey(message);
-    const threadId = threadKey ? +threadKey.split('_')[1] : undefined;
+    let threadId = threadKey ? +threadKey.split('_')[1] : undefined;
+
+    // A `messageActionTopicCreate` service message only ever exists inside a forum, so its arrival is
+    // itself proof the channel is a forum — even when our cached channel flag is still stale (e.g. the
+    // group was JUST converted into a forum on another account and `pFlags.forum=true` hasn't reached
+    // us yet). Trusting the stale flag here would leave `threadId` undefined (getMessageThreadId only
+    // derives it for a topic-create when `isForum` is already true), the whole topic-create branch
+    // below would be skipped, and the brand-new topic would be dropped until a full app reload.
+    const topicCreateAction = message._ === 'messageService' &&
+      (message as Message.messageService).action?._ === 'messageActionTopicCreate' ?
+      (message as Message.messageService).action as MessageAction.messageActionTopicCreate :
+      undefined;
+    if(topicCreateAction && !threadId) {
+      threadId = (message as MyMessage).mid;
+    }
 
     const dialog = this.dialogsStorage.getAnyDialog(peerId, isLocalThreadUpdate ? threadId : undefined);
 
@@ -7452,16 +7466,15 @@ export class AppMessagesManager extends AppManager {
         message
       } as Update.updateNewDiscussionMessage;
 
-      if((this.appChatsManager.isForum(peerId.toChatId()) || this.appPeersManager.isBotforum(peerId)) && !this.dialogsStorage.getForumTopic(peerId, threadId)) {
-        const action = (message as Message.messageService).action;
-        if(action?._ === 'messageActionTopicCreate') {
+      if((this.appChatsManager.isForum(peerId.toChatId()) || this.appPeersManager.isBotforum(peerId) || topicCreateAction) && !this.dialogsStorage.getForumTopic(peerId, threadId)) {
+        if(topicCreateAction) {
           // The topic-create service message already carries the whole topic (title, icon, id), so
           // build it locally instead of fetching it by id. `messages.getForumTopicsByID` races
           // server-side replication right after creation — it can briefly report the brand-new topic
           // as deleted/absent, which would blacklist it in `deletedTopics` permanently and hide it
           // until a full reload (reopening the forum / new messages in the topic wouldn't recover it).
-          this.dialogsStorage.applyLocalForumTopics([
-            createBotforumTopicFromAction({message: message as Message.messageService, action})
+          this.dialogsStorage.applyLocalForumTopics(peerId, [
+            createBotforumTopicFromAction({message: message as Message.messageService, action: topicCreateAction})
           ]);
         } else {
           // this.dialogsStorage.getForumTopicById(peerId, threadId);

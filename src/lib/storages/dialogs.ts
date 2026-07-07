@@ -1285,7 +1285,11 @@ export default class DialogsStorage extends AppManager {
     }
   }
 
-  public applyLocalForumTopics(topics: ForumTopic[]) {
+  public applyLocalForumTopics(peerId: PeerId, topics: ForumTopic[]) {
+    // NB: `peerId` MUST be passed through — `processTopics` reads `peerId.isAnyChat()` and re-encodes
+    // every topic id against the forum's channel; without it the whole apply throws (swallowed by the
+    // update dispatcher) and the topic is silently lost. Also: NO `pts` field — a `pts` present here
+    // makes `processTopics` call `addChannelState(pts)`, which throws on `pts: 0`.
     this.dialogsStorage.applyDialogs({
       _: 'messages.forumTopics',
       topics: topics,
@@ -1293,9 +1297,8 @@ export default class DialogsStorage extends AppManager {
       chats: [],
       messages: [],
       pFlags: {},
-      pts: 0,
       users: []
-    });
+    } as MessagesForumTopics, peerId);
   }
 
   // ! do not use draft here, empty dialogs with drafts are excluded from .getDialogs response
