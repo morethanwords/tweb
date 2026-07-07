@@ -622,7 +622,9 @@
 
   .summarize {
     position: sticky;
-    top: .5rem;
+    // --chat-padding-top clears the topbar + floating plates so the sticky button
+    // isn't hidden behind them (same baseline as sticky .is-date labels).
+    top: calc(var(--chat-padding-top) + .5rem);
     // bottom: calc(var(--message-beside-button-size) + var(--message-beside-button-margin));
     // inset-inline-end: var(--message-beside-button-margin);
 
