@@ -13,7 +13,10 @@ export type PasswordInputFieldOptions = InputFieldOptions & {
    * `-webkit-text-security` (e.g. Firefox), so the value is never rendered as
    * plaintext.
    */
-  preventBrowserSave?: boolean
+  preventBrowserSave?: boolean,
+
+  /** Omit the eye / show-password toggle entirely. */
+  hideToggle?: boolean
 };
 
 // Chromium & Safari support `-webkit-text-security`; Firefox does not.
@@ -27,8 +30,12 @@ export class PasswordInputHelpers {
 
   private maskWithCss: boolean;
 
-  constructor(public container: HTMLElement, public input: HTMLInputElement, preventBrowserSave?: boolean) {
-    this.maskWithCss = !!preventBrowserSave && CAN_MASK_WITH_CSS;
+  constructor(
+    public container: HTMLElement,
+    public input: HTMLInputElement,
+    options: {preventBrowserSave?: boolean, hideToggle?: boolean} = {}
+  ) {
+    this.maskWithCss = !!options.preventBrowserSave && CAN_MASK_WITH_CSS;
 
     input.setAttribute('required', '');
     input.name = 'notsearch_password';
@@ -56,15 +63,20 @@ export class PasswordInputHelpers {
       }, {once: true});
     } */
 
-    const toggleVisible = this.toggleVisible = document.createElement('span');
-    toggleVisible.classList.add('toggle-visible');
-    toggleVisible.append(Icon('eye1'));
-
     container.classList.add('input-field-password');
-    container.append(toggleVisible);
 
-    toggleVisible.addEventListener('click', this.onVisibilityClick);
-    toggleVisible.addEventListener('touchend', this.onVisibilityClick);
+    if(options.hideToggle) {
+      container.classList.add('input-field-password-no-toggle');
+    } else {
+      const toggleVisible = this.toggleVisible = document.createElement('span');
+      toggleVisible.classList.add('toggle-visible');
+      toggleVisible.append(Icon('eye1'));
+
+      container.append(toggleVisible);
+
+      toggleVisible.addEventListener('click', this.onVisibilityClick);
+      toggleVisible.addEventListener('touchend', this.onVisibilityClick);
+    }
   }
 
   public onVisibilityClick = (e: Event) => {
@@ -85,7 +97,7 @@ export default class PasswordInputField extends InputField {
   public helpers: PasswordInputHelpers;
 
   constructor(options: PasswordInputFieldOptions = {}) {
-    const {preventBrowserSave, ...inputFieldOptions} = options;
+    const {preventBrowserSave, hideToggle, ...inputFieldOptions} = options;
 
     super({
       plainText: true,
@@ -93,6 +105,6 @@ export default class PasswordInputField extends InputField {
       ...inputFieldOptions
     });
 
-    this.helpers = new PasswordInputHelpers(this.container, this.input as HTMLInputElement, preventBrowserSave);
+    this.helpers = new PasswordInputHelpers(this.container, this.input as HTMLInputElement, {preventBrowserSave, hideToggle});
   }
 }

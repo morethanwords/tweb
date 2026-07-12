@@ -320,7 +320,8 @@
     padding-inline-end: 2.5rem;
     max-height: var(--height);
 
-    &[type="password"] {
+    &[type="password"],
+    &.password-masked {
       font-size: 2.25rem;
       padding-left: calc(.875rem - var(--border-width));
       line-height: 1;
@@ -362,6 +363,11 @@
     @include hover() {
       color: var(--primary-text-color);
     }
+  }
+
+  &.input-field-password-no-toggle .input-field-input {
+    // No eye toggle, so reclaim the space reserved for it.
+    padding-inline-end: calc(var(--padding-horizontal) - var(--border-width));
   }
 }
 

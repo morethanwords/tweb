@@ -54,7 +54,8 @@ export default function PasswordCard(_props: {spec: Spec}) {
   const passwordInputField = new PasswordInputField({
     label: 'LoginPassword',
     name: 'password',
-    preventBrowserSave: true
+    preventBrowserSave: true,
+    hideToggle: true
   });
   const passwordInput = passwordInputField.input as HTMLInputElement;
 
