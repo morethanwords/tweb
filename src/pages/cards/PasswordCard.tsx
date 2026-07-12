@@ -218,6 +218,9 @@ export default function PasswordCard(_props: {spec: Spec}) {
       clearInterval(getStateInterval);
       getStateInterval = undefined;
     }
+
+    // Just in case - prevent Chrome from offering to save the password
+    passwordInputField.setValueSilently('');
   });
 
   return (
