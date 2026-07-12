@@ -1401,6 +1401,12 @@ hr {
   z-index: -1;
 }
 
+// Masks a `type="text"` field so it reads like a password without the
+// `type="password"` attribute that triggers Chrome's save/update prompt.
+.password-masked {
+  -webkit-text-security: disc;
+}
+
 .navigable-list {
   .active {
     background-color: var(--light-secondary-text-color);
