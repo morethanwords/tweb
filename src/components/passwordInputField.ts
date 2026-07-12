@@ -11,7 +11,6 @@ export class PasswordInputHelpers {
     input.type = 'password';
     input.setAttribute('required', '');
     input.name = 'notsearch_password';
-    input.autocomplete = 'off';
 
     // * https://stackoverflow.com/a/35949954/6758968
     const stealthy = document.createElement('input');

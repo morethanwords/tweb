@@ -53,7 +53,8 @@ export default function PasswordCard(_props: {spec: Spec}) {
 
   const passwordInputField = new PasswordInputField({
     label: 'LoginPassword',
-    name: 'password'
+    name: 'password',
+    autocomplete: 'current-password'
   });
   const passwordInput = passwordInputField.input as HTMLInputElement;
 
