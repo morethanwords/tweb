@@ -131,6 +131,7 @@ export default function WebPageBox(props: {
     <Dynamic
       component={props.clickable ? 'a' : 'div'}
       ref={props.ref}
+      draggable={false} // * allow text selection inside the anchor instead of dragging the link
       class={classNames(
         className,
         'quote-like',

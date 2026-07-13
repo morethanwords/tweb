@@ -3148,6 +3148,12 @@ export default class ChatBubbles {
         return;
       }
 
+      // * clicking to finish a text selection inside the preview shouldn't open the link
+      if(!window.getSelection().isCollapsed) {
+        e.preventDefault();
+        return;
+      }
+
       const callback = webPageContainer.dataset.callback as Parameters<typeof addAnchorListener>[0]['name'];
       if(callback) {
         (window as any)[callback](findUpTag(target, 'A'), e);

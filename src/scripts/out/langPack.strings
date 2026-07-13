@@ -194,6 +194,8 @@
 "Crm.Ticket.Closed" = "Ticket #%1$d closed";
 "Crm.Ticket.Reopened" = "Ticket #%1$d reopened";
 "Crm.Ticket.NoOpen" = "No open ticket to close";
+"Crm.Ticket.CloseFailed" = "Failed to close the ticket, please try again";
+"Crm.Ticket.CloseForbidden" = "You don't have access to close this ticket";
 "Crm.SessionExpired" = "CRM session expired";
 "Crm.Login" = "Log In";
 "KeyboardShortcuts.Caption" = "Shortcuts shown for your platform.";

@@ -11,6 +11,7 @@ import TopbarPlate, {createTopbarPlate, TopbarPlateController} from '@components
 import {CrmTicketEvent, CrmTicketRef} from '@lib/crm/types';
 import crmRealtime from '@lib/crm/crmRealtime';
 import {showCrmLoginIfNeeded} from '@components/popups/crmLogin';
+import {toastNew} from '@components/toast';
 
 const className = 'crm-ticket';
 
@@ -252,6 +253,15 @@ export default function createChatCrmTicketPlate(
       // gets a "closed" divider; the bar then hides (ticket no longer open).
       const event: CrmTicketEvent = {type: 'closed', at: new Date().toISOString()};
       apply(peerId, {...current, status: 'closed', events: [...(current.events || []), event]});
+    } catch(err) {
+      // Surface the failure: previously it was swallowed and the agent had no way
+      // to tell the ticket was still open. 403 gets its own message so a missing
+      // department/permission isn't mistaken for a transient network error.
+      const status = (err as Error & {status?: number})?.status;
+      toastNew({langPackKey: status === 403 ? 'Crm.Ticket.CloseForbidden' : 'Crm.Ticket.CloseFailed'});
+      // Re-fetch so the bar reflects the server's actual state (e.g. a stale
+      // ticket id after a newer ticket was opened for this chat).
+      if(peerId === currentPeerId) load(peerId);
     } finally {
       setBusy(false);
     }
