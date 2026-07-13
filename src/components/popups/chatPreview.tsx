@@ -1,4 +1,4 @@
-import {createMemo, createSignal, JSX, onCleanup, onMount, untrack, useContext} from 'solid-js';
+import {createEffect, createMemo, createSignal, JSX, onCleanup, onMount, untrack, useContext} from 'solid-js';
 import {unwrap} from 'solid-js/store';
 import {ChatFull, ChatTheme, UserFull, WallPaper} from '@layer';
 import PopupElement, {createPopup, PopupContext} from '@components/popups/indexTsx';
@@ -8,6 +8,7 @@ import {ChatType} from '@components/chat/chatType';
 import {NULL_PEER_ID} from '@appManagers/constants';
 import themeController from '@helpers/themeController';
 import mediaSizes from '@helpers/mediaSizes';
+import {bindActiveWindowListener, getAppWindow, onAppWindowChange} from '@helpers/appWindow';
 import appImManager from '@lib/appImManager';
 import rootScope from '@lib/rootScope';
 import {i18n, LangPackKey} from '@lib/langPack';
@@ -15,6 +16,7 @@ import {attachClickEvent} from '@helpers/dom/clickEvent';
 import replaceContent from '@helpers/dom/replaceContent';
 import {useFullPeer} from '@stores/fullPeers';
 import {appState} from '@stores/appState';
+import useIsNightTheme from '@hooks/useIsNightTheme';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import ListenerSetter from '@helpers/listenerSetter';
 
@@ -77,6 +79,8 @@ export default function showChatPreviewPopup(options: ChatPreviewOptions): void 
     const managers = untrack(() => context.managers);
     const listenerSetter = new ListenerSetter();
 
+    let disposeResize: () => void, disposeWindowChange: () => void;
+
     const chat = new Chat(appImManager, managers, false, {sharedMedia: true});
     chat.isPreview = true;
     chat.isStandalone = true;
@@ -116,6 +120,19 @@ export default function showChatPreviewPopup(options: ChatPreviewOptions): void 
       return {theme, wallPaper};
     });
 
+    // A preview Chat has `isPreview`, so `Chat.handleBackgrounds()` short-circuits and never runs
+    // `applyContainerTheme` — the per-chat theme's outgoing-bubble vars (`--message-out-*`) are thus
+    // missing on the container and outgoing bubbles fall back to the global :root palette. Mirror the
+    // main chat: stash the resolved theme on the chat and apply it to its container. `isNight()` keeps
+    // the effect re-firing on a day/night toggle while the preview is open so the theme re-resolves to
+    // the right variant — the same role `useIsNightTheme` plays in `Chat._handleBackgrounds`.
+    const isNight = useIsNightTheme();
+    createEffect(() => {
+      isNight();
+      chat.currentTheme = resolvedBg().theme;
+      chat.applyContainerTheme();
+    });
+
     onMount(() => {
       positionFromAnchor(options.anchor);
 
@@ -136,12 +153,18 @@ export default function showChatPreviewPopup(options: ChatPreviewOptions): void 
 
       // Viewport resize moves the anchored dialog row underneath us — the popup was
       // positioned for the old layout and would float over the wrong target. Close instead
-      // of trying to re-anchor; the user can Shift+Click again in the new layout.
-      listenerSetter.add(window)('resize', () => handle.hide());
+      // of trying to re-anchor; the user can Shift+Click again in the new layout. While the
+      // client is popped into a Document PiP window the resize fires on THAT window, so
+      // follow the active window rather than pinning the tab. Popping in/out of PiP itself
+      // jumps the anchored row to a different-sized window — close on that too.
+      disposeResize = bindActiveWindowListener((w) => w, 'resize', () => handle.hide());
+      disposeWindowChange = onAppWindowChange(() => handle.hide());
     });
 
     onCleanup(() => {
       listenerSetter.removeAll();
+      disposeResize?.();
+      disposeWindowChange?.();
       chat.destroy();
       chatRef = undefined;
     });
@@ -164,8 +187,13 @@ export default function showChatPreviewPopup(options: ChatPreviewOptions): void 
         rectLeft = anchor.x;
       }
 
-      const vw = window.innerWidth || document.documentElement.clientWidth;
-      const vh = window.innerHeight || document.documentElement.clientHeight;
+      // Read the viewport from the active app window — while popped into a Document PiP
+      // window the popup (and the anchored dialog row whose rect was measured against that
+      // same viewport) lives in the PiP window, so the tab's `window.innerWidth/Height`
+      // would clamp/centre against the wrong (background) size and throw the popup off-anchor.
+      const appWindow = getAppWindow();
+      const vw = appWindow.innerWidth || appWindow.document.documentElement.clientWidth;
+      const vh = appWindow.innerHeight || appWindow.document.documentElement.clientHeight;
 
       // The popup defaults to a fixed 432×540, but on a handheld viewport that's wider
       // and/or taller than the screen. Shrink it to fit (leaving a MARGIN gutter on each

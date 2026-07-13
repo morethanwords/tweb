@@ -22,7 +22,7 @@ export type RLottieWorkerMethods = {
   exportFrame: (payload: CommonPayload & {frameNo?: number}) => Promise<SuperMessagePort.TransferableResultValue<{frameNo: number, frame: ImageBitmap}>>,
   clearFramesCache: (payload: CommonPayload) => void,
   compositorPort: (payload: void, source: MessageEventSource, event: MessageEvent) => void, // MessagePort arrives in event.ports[0]
-  playFreeRun: (payload: CommonPayload & {curFrame: number, frInterval: number, skipDelta: number, direction: number, minFrame: number, maxFrame: number}) => void,
+  playFreeRun: (payload: CommonPayload & {curFrame: number, frInterval: number, skipDelta: number, direction: number, minFrame: number, maxFrame: number, loop: boolean}) => void,
   pauseFreeRun: (payload: CommonPayload) => Promise<{curFrame: number}>,
   updateFreeRun: (payload: CommonPayload & Partial<{frInterval: number, direction: number, minFrame: number, maxFrame: number}>) => void,
   suspendTab: (payload: void, source: MessageEventSource) => void,
@@ -32,7 +32,8 @@ export type RLottieWorkerMethods = {
 };
 
 export type RLottieEvents = {
-  freeRunStopped: (payload: {reqId: number, curFrame: number, error: string}) => void
+  freeRunStopped: (payload: {reqId: number, curFrame: number, error: string}) => void,
+  freeRunEnded: (payload: {reqId: number, curFrame: number}) => void // worker clock reached the end of a play-once animation
 };
 
 type RLottieWorkerEvents = RLottieWorkerMethods & ThreadedWorkerEvents & RLottieEvents;

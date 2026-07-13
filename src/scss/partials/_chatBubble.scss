@@ -63,7 +63,11 @@
       transform: translateX(0);
 
       &.animating.backwards {
-        transition: transform var(--transition-standard-out);
+        // keep animating `bottom` too: releasing the swipe on the LAST group fires
+        // `initMessageReply`, which grows the input and shifts `--chat-padding-bottom` (this
+        // avatar is pinned to it) — overriding the transition to `transform` only made that
+        // coincident `bottom` change snap instead of animate, so the avatar jumped vertically.
+        transition: transform var(--transition-standard-out), bottom var(--transition-standard-out);
       }
     }
 
@@ -99,6 +103,16 @@
   flex-wrap: wrap;
   box-sizing: border-box;
   //flex-direction: column; // fix 'Unread messages', still need to refactor it
+
+  // * guest-chat messages force the guest bot's avatar even in a 1-on-1 chat (which otherwise
+  // * has no avatar column), so reserve room for it; group chats already indent via .is-chat
+  &.is-guest-chat .bubble-content-wrapper {
+    margin-inline-start: 2.875rem;
+  }
+
+  .is-guest-chat-for {
+    font-weight: var(--font-weight-normal);
+  }
 
   &.is-sponsored {
     --max-width: calc(80% - var(--message-beside-button-margin) * -1) !important;
@@ -162,6 +176,16 @@
         visibility: visible;
         // opacity: 1;
         transform: translateY(-50%) scale(1);
+      }
+
+      // fade the icon out on release instead of dropping it in a single frame (it fades IN via the
+      // inline opacity ramp during the swipe, so match that on the way out)
+      &.is-hiding {
+        opacity: 0 !important;
+
+        @include animation-level(2) {
+          transition: opacity var(--transition-standard-out);
+        }
       }
     }
   }
@@ -2731,6 +2755,13 @@
     float: unset;
   }
 
+  &-background-canvas {
+    position: absolute;
+    top: 0;
+    inset-inline-end: 0;
+    pointer-events: none;
+  }
+
   .audio-transcribed-text {
     margin-bottom: 0;
     order: 4;
@@ -2764,6 +2795,42 @@
           float: inline-end;
           margin-inline-start: .625rem;
         }
+
+        // sticker-set / custom-emoji preview grid: box is sized inline (boxSize px),
+        // so let the square resizer size to the grid instead of the fixed 3rem.
+        &.webpage-stickerset-grid {
+          max-width: none;
+          max-height: none;
+        }
+
+        &-resizer:has(.webpage-stickerset-grid) {
+          width: auto;
+          height: auto;
+        }
+      }
+    }
+  }
+
+  &-stickerset {
+    // square NxN grid of the set's preview stickers (side from ceil(sqrt(count)))
+    &-grid {
+      display: grid;
+      grid-template-columns: repeat(var(--sticker-grid-side), 1fr);
+      gap: 1px;
+      pointer-events: none;
+    }
+
+    &-cell {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+
+      img,
+      canvas,
+      video {
+        max-width: 100%;
+        max-height: 100%;
       }
     }
   }

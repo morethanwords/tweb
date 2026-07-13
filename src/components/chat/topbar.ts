@@ -1516,30 +1516,24 @@ export default class ChatTopbar {
     ].filter(Boolean);
     const TOPBAR_GAP = 8;
     const PLATE_DIVIDER = 1;
-    let platesHeight = 0;
-    // let firstVisible: typeof containers[number];
-    // let lastVisible: typeof containers[number];
-    const count = containers.reduce((acc, container) => {
-      if(!container.isVisible()) {
-        return acc;
-      }
 
-      let height = container.height;
-      if(height === 'auto') {
-        height = container.container.offsetHeight;
-      }
-      platesHeight += height;
-      // firstVisible ??= container;
-      // lastVisible = container;
+    const visible = containers.filter((container) => container.isVisible());
+    const count = visible.length;
 
-      return acc + 1;
-    }, 0);
-    // containers.forEach((container) => {
-    //   container.container.classList.toggle('is-first', container === firstVisible);
-    //   container.container.classList.toggle('is-last', container === lastVisible);
-    // });
-    const floatingHeight = count > 0 ? platesHeight + Math.max(0, count - 1) * PLATE_DIVIDER + TOPBAR_GAP : 0;
+    // Un-hide the wrapper BEFORE measuring any 'auto' plate height below. The
+    // wrapper is `display: none` while no plate is visible (count === 0), and an
+    // ancestor's `display: none` zeroes its descendants' offsetHeight — so the
+    // sponsored plate (the only `height: 'auto'` one), exactly when it is the
+    // plate that flips the count 0 → 1, would otherwise be measured at 0 and
+    // never reserve its padding-top, leaving it overlapping the chat content.
     this.floatingPlatesWrapper.classList.toggle('hide', count === 0);
+
+    let platesHeight = 0;
+    for(const container of visible) {
+      platesHeight += container.height === 'auto' ? container.container.offsetHeight : container.height;
+    }
+
+    const floatingHeight = count > 0 ? platesHeight + Math.max(0, count - 1) * PLATE_DIVIDER + TOPBAR_GAP : 0;
     this.container.dataset.floating = '' + count;
     this.chat.container.style.setProperty(
       '--pinned-floating-height',

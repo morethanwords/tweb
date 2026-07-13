@@ -1,7 +1,7 @@
 import ctx from '@environment/ctx';
 import IS_IMAGE_BITMAP_SUPPORTED from '@environment/imageBitmapSupport';
 import readBlobAsText from '@helpers/blob/readBlobAsText';
-import applyColorOnContext from '@helpers/canvas/applyColorOnContext';
+import applyColorOnContext, {paintFrameTinted} from '@helpers/canvas/applyColorOnContext';
 import listenMessagePort from '@helpers/listenMessagePort';
 import makeError from '@helpers/makeError';
 import safeAssign from '@helpers/object/safeAssign';
@@ -39,8 +39,8 @@ export class RLottieItem {
 
   public port: MessageEventSource;
   public offscreen: boolean;
-  private canvases: OffscreenCanvas[];
-  private contexts: OffscreenCanvasRenderingContext2D[];
+  public canvases: OffscreenCanvas[];
+  public contexts: OffscreenCanvasRenderingContext2D[];
   private cacheName: string;
   private cacheEntry: WorkerFramesCacheEntry;
   private cachingDelta: number;
@@ -58,7 +58,8 @@ export class RLottieItem {
     skipDelta: number,
     direction: number,
     minFrame: number,
-    maxFrame: number
+    maxFrame: number,
+    loop: boolean // true: wrap forever; false: stop at the far bound (play-once)
   };
   private freeRunSuspended: boolean;
 
@@ -255,10 +256,7 @@ export class RLottieItem {
   }
 
   private paintStaged(context: OffscreenCanvasRenderingContext2D) {
-    context.drawImage(this.stagedFrame, 0, 0);
-    if(this.color) {
-      applyColorOnContext(context, this.color, 0, 0, context.canvas.width, context.canvas.height);
-    }
+    paintFrameTinted(context, this.stagedFrame, this.color);
   }
 
   public presentFrame() {
@@ -327,7 +325,7 @@ export class RLottieItem {
   }
 
 
-  public playFreeRun(params: {curFrame: number, frInterval: number, skipDelta: number, direction: number, minFrame: number, maxFrame: number}) {
+  public playFreeRun(params: {curFrame: number, frInterval: number, skipDelta: number, direction: number, minFrame: number, maxFrame: number, loop: boolean}) {
     this.stopFreeRun('play');
     this.freeRun = {...params, timeout: undefined, frThen: Date.now()};
 
@@ -412,12 +410,17 @@ export class RLottieItem {
 
     freeRun.timeout = undefined;
 
-    // mirrors mainLoopForwards/mainLoopBackwards with loop === true (only such players free-run)
-    const {curFrame, skipDelta, direction, minFrame, maxFrame} = freeRun;
-    const frame = direction === 1 ?
-      ((curFrame + skipDelta) > maxFrame ? minFrame : curFrame + skipDelta) :
-      ((curFrame - skipDelta) < minFrame ? maxFrame : curFrame - skipDelta);
+    // mirrors mainLoopForwards/mainLoopBackwards: loop wraps at the bound, play-once
+    // parks on it and ends - exactly the command-mode onLap trigger (curFrame unchanged
+    // across the step while the next step would still overrun the bound)
+    const {curFrame, skipDelta, direction, minFrame, maxFrame, loop} = freeRun;
+    const forwards = direction === 1;
+    const frame = forwards ?
+      ((curFrame + skipDelta) > maxFrame ? (loop ? minFrame : maxFrame) : curFrame + skipDelta) :
+      ((curFrame - skipDelta) < minFrame ? (loop ? maxFrame : minFrame) : curFrame - skipDelta);
     freeRun.curFrame = frame;
+    const ended = !loop && curFrame === frame &&
+      (forwards ? (frame + skipDelta) > maxFrame : (frame - skipDelta) < minFrame);
 
     try {
       await this.renderOffscreen(frame); // posts to the compositor itself when compositorDelivery
@@ -437,6 +440,17 @@ export class RLottieItem {
           curFrame: freeRun.curFrame,
           error: String((err as Error)?.message || err)
         }, this.port);
+      }
+
+      return;
+    }
+
+    if(ended) {
+      // play-once finished on `frame` (now painted) - stop the worker clock and hand
+      // the final frame to the UI so it settles into the paused end-of-play state
+      this.stopFreeRun('ended');
+      if(!this.dead) {
+        rlottieMessagePort.invokeVoid('freeRunEnded', {reqId: this.reqId, curFrame: frame}, this.port);
       }
 
       return;
@@ -598,7 +612,7 @@ rlottieMessagePort.addMultipleEventsListeners({
     return (item.offscreen ? item.renderOffscreen(frameNo) : item.render(frameNo, clamped)) as any;
   },
 
-  presentFrame: async({reqId, frameNo}) => withItem(reqId, (item) => {
+  presentFrame: async({reqId, frameNo}) => withItem(reqId, async(item) => {
     item.presentFrame();
     return {frameNo};
   }),
@@ -615,8 +629,8 @@ rlottieMessagePort.addMultipleEventsListeners({
     compositorPorts.set(source, event.ports[0]);
   },
 
-  playFreeRun: ({reqId, curFrame, frInterval, skipDelta, direction, minFrame, maxFrame}) => withItem(reqId, (item) => {
-    item.playFreeRun({curFrame, frInterval, skipDelta, direction, minFrame, maxFrame});
+  playFreeRun: ({reqId, curFrame, frInterval, skipDelta, direction, minFrame, maxFrame, loop}) => withItem(reqId, (item) => {
+    item.playFreeRun({curFrame, frInterval, skipDelta, direction, minFrame, maxFrame, loop});
   }),
 
   pauseFreeRun: async({reqId}) => withItem(reqId, (item) => item.pauseFreeRun()),

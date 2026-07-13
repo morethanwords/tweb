@@ -1,0 +1,249 @@
+import {AiComposeTone, InputAiComposeTone, TextWithEntities} from '@layer';
+import {AppManager} from '@lib/appManagers/manager';
+
+type Tone = AiComposeTone;
+
+export type ComposeMessageWithAiArgs = {
+  text: TextWithEntities;
+  toneNameOrId?: string;
+  proofRead?: boolean;
+  translateTo?: string;
+  emojify?: boolean;
+};
+
+export type ComposeMessageWithAiOkResultData = {
+  resultText: TextWithEntities;
+  diffText?: TextWithEntities;
+};
+
+export type ComposeMessageWithAiResult = {
+  ok: false;
+  isPremiumFlood: boolean;
+} | {
+  ok: true;
+  data: ComposeMessageWithAiOkResultData;
+};
+
+export type CreateToneArgs = {
+  displayAuthor?: boolean;
+  emojiId: string | number;
+  title: string;
+  prompt: string;
+};
+
+export type EditToneArgs = Partial<CreateToneArgs> & {
+  toneId: number | string;
+};
+
+export class AiTonesManager extends AppManager {
+  private tones: Tone[] = [];
+  /**
+   * Maps tone name (if it's a default tone) or tone id to the tone object.
+   */
+  private tonesMap = new Map<string, Tone>();
+  private tonesHash: number | string = 0;
+  private isStale = true;
+
+  private fetchingTonesPromise: Promise<Tone[]>;
+
+  constructor() {
+    super();
+    this.name = 'AiTonesManager';
+  }
+
+  public clear: (init?: boolean) => void = () => {
+    this.tones = [];
+    this.tonesMap.clear();
+    this.tonesHash = 0;
+    this.isStale = true;
+    this.fetchingTonesPromise = undefined;
+  };
+
+  protected after() {
+    this.apiUpdatesManager.addMultipleEventsListeners({
+      updateAiComposeTones: () => {
+        this.isStale = true;
+      }
+    });
+  }
+
+  getTones(forceFetch = false) {
+    if(!this.isStale && !forceFetch && this.tones.length) return this.tones;
+
+    if(this.fetchingTonesPromise) return this.fetchingTonesPromise;
+
+    return this.fetchingTonesPromise = (async() => {
+      const fetchedResult = await this.fetchTones(this.tonesHash);
+      this.isStale = false;
+
+      if(!fetchedResult) {
+        return this.tones; // not modified
+      }
+
+      this.tonesHash = fetchedResult.hash;
+      this.tonesMap.clear();
+
+      for(const tone of fetchedResult.tones) {
+        if(tone._ === 'aiComposeToneDefault') this.tonesMap.set(tone.tone, tone);
+        else if(tone._ === 'aiComposeTone') this.tonesMap.set(tone.id.toString(), tone);
+      }
+
+      return this.tones = fetchedResult.tones;
+    })().finally(() => {
+      this.fetchingTonesPromise = undefined;
+    });
+  }
+
+  protected async fetchTones(hash: number | string) {
+    const result = await this.apiManager.invokeApi('aicompose.getTones', {hash});
+    if(result._ === 'aicompose.tonesNotModified') return;
+
+    this.appUsersManager.saveApiUsers(result.users);
+
+    return {
+      tones: result.tones,
+      hash: result.hash
+    };
+  }
+
+  private getToneInput(tone: Tone | undefined): InputAiComposeTone | undefined {
+    if(tone._ === 'aiComposeToneDefault') return {_: 'inputAiComposeToneDefault', tone: tone.tone};
+    if(tone._ === 'aiComposeTone') return {_: 'inputAiComposeToneID', id: tone.id, access_hash: tone.access_hash};
+    return undefined;
+  }
+
+  async createTone({displayAuthor, emojiId, title, prompt}: CreateToneArgs): Promise<Tone> {
+    const createdTone = await this.apiManager.invokeApi('aicompose.createTone', {
+      display_author: displayAuthor,
+      emoji_id: emojiId,
+      title,
+      prompt
+    });
+
+    this.isStale = true;
+    this.tones.unshift(createdTone);
+    if(createdTone._ === 'aiComposeTone') this.tonesMap.set(createdTone.id.toString(), createdTone);
+
+    return createdTone;
+  }
+
+  async editTone({toneId, displayAuthor, emojiId, title, prompt}: EditToneArgs) {
+    const tone = this.tonesMap.get(toneId.toString());
+    if(tone?._ !== 'aiComposeTone') return;
+
+    const updatedTone = await this.apiManager.invokeApi('aicompose.updateTone', {
+      tone: this.getToneInput(tone),
+      display_author: displayAuthor,
+      emoji_id: emojiId,
+      title,
+      prompt
+    });
+
+    this.isStale = true;
+    if(updatedTone._ === 'aiComposeTone') this.tonesMap.set(updatedTone.id.toString(), updatedTone);
+    const index = this.tones.findIndex(t => t._ === 'aiComposeTone' && t.id.toString() === toneId.toString());
+    if(index !== -1) this.tones[index] = updatedTone;
+
+    return updatedTone;
+  }
+
+  async saveToneById(toneId: string | number, unsave: boolean) {
+    const tone = this.tonesMap.get(toneId.toString());
+    if(!tone) return;
+    await this.saveTone(tone, unsave);
+  }
+
+  async saveTone(tone: Tone, unsave: boolean) {
+    if(tone._ !== 'aiComposeTone') return;
+
+    await this.apiManager.invokeApi('aicompose.saveTone', {
+      tone: this.getToneInput(tone),
+      unsave
+    });
+
+    if(unsave) {
+      this.tones = this.tones.filter(t => t._ !== 'aiComposeTone' || t.id.toString() !== tone.id.toString());
+      this.tonesMap.delete(tone.id.toString());
+    }
+
+    this.isStale = true;
+  }
+
+  async deleteTone(toneId: string | number) {
+    const tone = this.tonesMap.get(toneId.toString());
+    if(tone?._ !== 'aiComposeTone') return;
+
+    await this.apiManager.invokeApi('aicompose.deleteTone', {
+      tone: this.getToneInput(tone)
+    });
+
+    this.tones = this.tones.filter(tone => tone._ !== 'aiComposeTone' || tone.id.toString() !== toneId.toString());
+    this.tonesMap.delete(toneId.toString());
+
+    this.isStale = true;
+  }
+
+  async removeSavedTone(toneId: string | number) {
+    await this.saveToneById(toneId, true);
+  }
+
+  async composeMessageWithAi({text, toneNameOrId, proofRead, translateTo, emojify}: ComposeMessageWithAiArgs): Promise<ComposeMessageWithAiResult> {
+    const tone = toneNameOrId ? this.tonesMap.get(toneNameOrId) : undefined;
+
+    try {
+      const result = await this.apiManager.invokeApi('messages.composeMessageWithAI', {
+        text,
+        emojify,
+        translate_to_lang: translateTo,
+        tone: tone ? this.getToneInput(tone) : undefined,
+        proofread: proofRead
+      });
+
+      return {
+        ok: true,
+        data: {
+          resultText: result.result_text,
+          diffText: result.diff_text
+        }
+      };
+    } catch(e) {
+      const error = e as ApiError;
+      return {
+        ok: false,
+        isPremiumFlood: error?.type === 'AICOMPOSE_FLOOD_PREMIUM'
+      };
+    }
+  }
+
+  async getToneBySlug(toneSlug: string) {
+    if(!this.isStale) {
+      const tone = this.tones.find(tone => tone._ === 'aiComposeTone' && tone.slug === toneSlug);
+      if(tone?._ === 'aiComposeTone') return tone;
+    }
+
+    const result = await this.apiManager.invokeApi('aicompose.getTone', {
+      tone: {
+        _: 'inputAiComposeToneSlug',
+        slug: toneSlug
+      }
+    });
+
+    if(result._ === 'aicompose.tonesNotModified' || !result.tones.length) return;
+
+    const tone = result.tones[0];
+    if(tone._ !== 'aiComposeTone') return;
+
+    return tone;
+  }
+
+  fetchExample(tone: AiComposeTone.aiComposeTone, exampleNum: number) {
+    return this.apiManager.invokeApi('aicompose.getToneExample', {
+      tone: {
+        _: 'inputAiComposeToneID',
+        id: tone.id,
+        access_hash: tone.access_hash
+      },
+      num: exampleNum
+    });
+  }
+}

@@ -1,4 +1,4 @@
-import IS_SHARED_WORKER_SUPPORTED from '@environment/sharedWorkerSupport';
+import IS_SHARED_WORKER_OFFSCREEN_CANVAS_SUPPORTED from '@environment/sharedWorkerOffscreenCanvasSupport';
 import {logger} from '@lib/logger';
 import type {SpoilerRendererInMessage, SpoilerRendererOutMessage} from '@components/spoilerRenderer.worker';
 
@@ -8,8 +8,11 @@ export type SpoilerRendererConnection = {
 };
 
 /**
- * One spoiler-rendering worker for the whole app — a SharedWorker when available,
- * so every tab feeds from the same simulations, with a dedicated worker fallback.
+ * The spoiler-rendering worker. It presents into OffscreenCanvases transferred from
+ * the tab, which is incompatible with a SharedWorker (see
+ * IS_SHARED_WORKER_OFFSCREEN_CANVAS_SUPPORTED — a cross-process present kills the
+ * renderer), so it runs as a per-tab dedicated Worker. The SharedWorker branch is
+ * kept behind that flag in case the platform ever supports the combination.
  *
  * Consumers (bluff spoilers, media spoilers) hold a refcounted handle that owns
  * their message listener; the underlying connection and the per-tab 'bye' are
@@ -38,7 +41,7 @@ function onError(error: ErrorEvent) {
 
 function connect(): Underlying {
   let port: MessagePort | Worker, dispose: () => void;
-  if(IS_SHARED_WORKER_SUPPORTED) {
+  if(IS_SHARED_WORKER_OFFSCREEN_CANVAS_SUPPORTED) {
     const sharedWorker = new SharedWorker(new URL('./spoilerRenderer.worker.ts', import.meta.url), {type: 'module'});
     sharedWorker.addEventListener('error', onError);
     port = sharedWorker.port;

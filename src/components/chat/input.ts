@@ -38,6 +38,8 @@ import isInputEmpty from '@helpers/dom/isInputEmpty';
 import isSendShortcutPressed from '@helpers/dom/isSendShortcutPressed';
 import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
+import classifyInputKeyup from '@helpers/dom/classifyInputKeyup';
+import isPlausibleEmojiQuery from '@components/chat/isPlausibleEmojiQuery';
 import EmojiHelper from '@components/chat/emojiHelper';
 import CommandsHelper from '@components/chat/commandsHelper';
 import QuickRepliesHelper from '@components/chat/quickRepliesHelper';
@@ -60,6 +62,7 @@ import {BOT_START_PARAM, GENERAL_TOPIC_ID, HIDDEN_PEER_ID, NULL_PEER_ID, REPLIES
 import setCaretAt from '@helpers/dom/setCaretAt';
 import DropdownHover from '@helpers/dropdownHover';
 import {positionMenuTrigger} from '@helpers/positionMenu';
+import {getAppWindow, getOverlayRoot} from '@helpers/appWindow';
 import findUpTag from '@helpers/dom/findUpTag';
 import toggleDisability from '@helpers/dom/toggleDisability';
 import callbackify from '@helpers/callbackify';
@@ -159,8 +162,20 @@ import {getFileNameByLocation} from '@helpers/fileName';
 import {Middleware, getMiddleware, MiddlewareHelper} from '@helpers/middleware';
 import {createAutoDeleteIcon} from '@components/autoDeleteIcon';
 import compareUint8Arrays from '@helpers/bytes/compareUint8Arrays';
-import {LocalTextWithOptionalEntities} from './bubbleParts/pollMessageContent/utils';
+import {LocalTextWithOptionalEntities} from '@types';
+import createChatInputState, {ChatInputState} from './inputState';
 import {SupportedMediaType} from '@components/popups/createPoll/storeContext';
+import {runWithHotReloadGuard} from '@lib/solidjs/runWithHotReloadGuard';
+
+const HOT_CHAT_INPUTS = import.meta.hot ? [] as ChatInput[] : null;
+
+if(import.meta.hot) {
+  import.meta.hot.accept('./inputState', (newModule) => {
+    if(!newModule) return;
+    const create = (newModule as unknown as typeof import('./inputState')).default;
+    HOT_CHAT_INPUTS!.forEach((input) => input.reloadInputState(create));
+  });
+}
 
 
 const REPLY_IN_TOPIC = false;
@@ -191,14 +206,17 @@ type WatchDownloadProgressArgs<T> = {
 };
 
 export default class ChatInput {
+  readonly Class = ChatInput;
   // private static AUTO_COMPLETE_REG_EXP = /(\s|^)((?::|.)(?!.*[:@]).*|(?:[@\/]\S*))$/;
   private static AUTO_COMPLETE_REG_EXP = /(\s|^)((?:(?:@|^\/)\S*)|(?::|^[^:@\/])(?!.*[:@\/]).*)$/;
   public messageInput: HTMLElement;
   public messageInputField: InputFieldAnimated;
   private inputHeightDelta = 0;
   private helperVisible = false;
-  private fileInput: HTMLInputElement;
-  private inputMessageContainer: HTMLDivElement;
+  /** @internal — used by ChatInput input state */
+  public fileInput: HTMLInputElement;
+  /** @internal — used by ChatInput input state */
+  public inputMessageContainer: HTMLDivElement;
   /** @internal — used by ChatRecording */
   public btnSend: HTMLButtonElement;
   public btnCancelRecord: HTMLButtonElement;
@@ -212,7 +230,8 @@ export default class ChatInput {
   public rowsWrapper: HTMLDivElement;
   /** @internal — used by ChatRecording */
   public newMessageWrapper: HTMLDivElement;
-  private btnToggleEmoticons: HTMLButtonElement;
+  /** @internal — used by ChatInput input state */
+  public btnToggleEmoticons: HTMLButtonElement;
   private btnToggleReplyMarkup: HTMLButtonElement;
   public btnSendContainer: HTMLDivElement;
 
@@ -300,13 +319,17 @@ export default class ChatInput {
 
   public willAttachType: AttachedMediaType;
 
-  private autocompleteHelperController: AutocompleteHelperController;
+  /** @internal — used by ChatInput input state */
+  public autocompleteHelperController: AutocompleteHelperController;
   private stickersHelper: StickersHelper;
   private emojiHelper: EmojiHelper;
   private commandsHelper: CommandsHelper;
   private quickRepliesHelper: QuickRepliesHelper;
   private mentionsHelper: MentionsHelper;
   private inlineHelper: InlineHelper;
+  // * lowercased usernames known to be guest bots (bot_guestchat). a leading @guestbot in the
+  // * composer is a plain, sendable message, not an inline query — this cache keeps typing flicker-free
+  private knownGuestBots: Set<string> = new Set();
   /** @internal — used by ChatRecording */
   public listenerSetter: ListenerSetter;
   private middlewareHelper: MiddlewareHelper;
@@ -347,8 +370,10 @@ export default class ChatInput {
   private rowsWrapperWrapper: HTMLDivElement;
   private controlContainer: HTMLElement;
   private fakeSelectionWrapper: HTMLDivElement;
-  private starsBadge: HTMLElement;
-  private starsBadgeStars: HTMLElement;
+  /** @internal — used by ChatInput input state */
+  public starsBadge: HTMLElement;
+  /** @internal — used by ChatInput input state */
+  public starsBadgeStars: HTMLElement;
 
   private fakeWrapperTo: HTMLElement;
   private toggleControlButtonDisability: () => void;
@@ -405,10 +430,7 @@ export default class ChatInput {
 
   public paidMessageInterceptor: PaidMessagesInterceptor;
 
-  private fileInputState: ReturnType<ChatInput['createFileInputState']>;
-  /** @internal — used by ChatRecording */
-  public starsState: ReturnType<ChatInput['createStarsState']>;
-  private directMessagesHandler: ReturnType<ChatInput['createDirectMessagesHandler']>;
+  public inputState: ChatInputState;
 
   public suggestedPost: SuggestedPostPayload;
   private inputHelperNavigationItem: NavigationItem;
@@ -553,9 +575,23 @@ export default class ChatInput {
       this.paidMessageInterceptor.dispose();
     });
 
-    this.fileInputState = this.createFileInputState();
-    this.starsState = this.createStarsState();
-    this.directMessagesHandler = this.createDirectMessagesHandler();
+    this.inputState = runWithHotReloadGuard(() => createChatInputState(this));
+
+    if(HOT_CHAT_INPUTS) {
+      HOT_CHAT_INPUTS.push(this);
+      this.getMiddleware()?.onDestroy(() => {
+        const idx = HOT_CHAT_INPUTS.indexOf(this);
+        if(idx !== -1) HOT_CHAT_INPUTS.splice(idx, 1);
+      });
+    }
+  }
+
+  /** @internal — used to hot-reload the input state with freshly evaluated code */
+  public reloadInputState(create: typeof createChatInputState) {
+    if(!this.inputState) return;
+    const carried = {...this.inputState.store};
+    this.inputState.dispose();
+    this.inputState = runWithHotReloadGuard(() => create(this, carried));
   }
 
   public freezeFocused(focused: boolean) {
@@ -799,13 +835,29 @@ export default class ChatInput {
     attachClickEvent(btn, (e) => {
       cancelEvent(e);
       const middleware = this.getMiddleware();
-      this.managers.appMessagesManager.goToNextMention({peerId: this.chat.peerId, threadId: this.chat.threadId, isReaction, isPollVote}).then((mid) => {
+      const peerId = this.chat.peerId;
+      this.managers.appMessagesManager.goToNextMention({peerId, threadId: this.chat.threadId, isReaction, isPollVote}).then(async(mid) => {
+        if(!middleware() || !mid) {
+          return;
+        }
+
+        // Wait for the message to actually be focused — rendered AND scrolled
+        // into view — then re-arm the intersection observer so it reads the
+        // mention/reaction only if the bubble is genuinely on screen. Without
+        // this, a target that was already visible never triggers a fresh
+        // intersection callback and stays unread (the badge would never clear).
+        // Poll votes have their own read flow inside goToNextMention, so they're
+        // excluded. setMessageId resolves before render/scroll finish — that's
+        // the inner `promise` field, which we await (swallowing middleware
+        // cancellation) so the bubble exists and is positioned before re-arming.
+        const result = await this.chat.setMessageId({lastMsgId: mid});
+        await result?.promise?.catch(() => {});
         if(!middleware()) {
           return;
         }
 
-        if(mid) {
-          this.chat.setMessageId({lastMsgId: mid});
+        if(!isPollVote) {
+          this.chat.bubbles.reobserveUnreadContent(peerId, mid);
         }
       });
     }, {listenerSetter: this.listenerSetter});
@@ -978,6 +1030,7 @@ export default class ChatInput {
 
     this.inputMessageContainer = document.createElement('div');
     this.inputMessageContainer.classList.add('input-message-container');
+    this.inputState.set({inputMessageContainerInited: true});
 
     if(this.goDownBtn) {
       this.goDownUnreadBadge = createBadge('span', 24, 'primary');
@@ -2104,6 +2157,11 @@ export default class ChatInput {
       const usernames = getPeerActiveUsernames(peer);
       if(usernames[0]) {
         str = '@' + usernames[0];
+        // * remember guest bots picked from the mention list so the composer treats the inserted
+        // * @guestbot as a plain guest-chat message right away, with no inline-preloader flicker
+        if((peer as User.user).pFlags?.bot_guestchat) {
+          this.knownGuestBots.add(usernames[0].toLowerCase());
+        }
       } else {
         if(peerId.isUser()) {
           str = (peer as User.user).first_name || (peer as User.user).last_name;
@@ -2143,7 +2201,9 @@ export default class ChatInput {
       this.forwardElements?.container,
       this.webPageElements?.container
     ].forEach((menu) => {
-      if(menu?.parentElement === document.body) menu.remove();
+      // matches('body') instead of `=== document.body` so a menu floated into the Document PiP
+      // window's body (getOverlayRoot) is still torn down — its parent is the PiP body, not the tab's.
+      if(menu?.parentElement?.matches('body')) menu.remove();
     });
   }
 
@@ -2553,7 +2613,7 @@ export default class ChatInput {
 
       this.setStarsAmount(this.chat?.starsAmount); // should reset when undefined
 
-      this.directMessagesHandler.set({
+      this.inputState.set({
         isMonoforumAllChats: isMonoforum && canManageDirectMessages && !monoforumThreadId,
         isReplying: !!this.helperType
       });
@@ -2698,9 +2758,9 @@ export default class ChatInput {
     ) {
       key = 'ChannelBroadcast';
     } else if(this.chat.isMonoforum && this.chat.canManageDirectMessages) {
-      key = this.directMessagesHandler.store.isSuggestingUneditablePostChange ?
+      key = this.inputState.store.isSuggestingUneditablePostChange ?
         'ChannelDirectMessages.CantChangeSuggestedPostMessage' :
-        this.chat.monoforumThreadId || this.directMessagesHandler.store.isReplying ?
+        this.chat.monoforumThreadId || this.inputState.store.isReplying ?
           'Message' :
           'ChannelDirectMessages.ChooseMessage';
     } else if(this.chat.isBotforum && !this.chat.canManageBotforumTopics && !this.chat.threadId) {
@@ -2761,7 +2821,7 @@ export default class ChatInput {
     const oldKey = i.key;
     const oldArgs = i.args;
     i.compareAndUpdateBool({key, args}) &&
-    this.starsState.set({inputStarsCountEl});
+    this.inputState.set({inputStarsCountEl});
 
     return {oldKey, oldArgs};
   }
@@ -2896,7 +2956,7 @@ export default class ChatInput {
     if(!isSendShortcutPressed(e)) return void focusInput(this.messageInput, e);
 
     this.sendMessage();
-    document.addEventListener('keyup', () => {
+    getAppWindow().document.addEventListener('keyup', () => {
       focusInput(this.messageInput);
     }, {once: true});
   }
@@ -3021,7 +3081,15 @@ export default class ChatInput {
       }
     }); */
     this.listenerSetter.add(this.messageInput)('input', this.onMessageInput);
-    this.listenerSetter.add(this.messageInput)('keyup', () => {
+    this.listenerSetter.add(this.messageInput)('keyup', (e) => {
+      // * a content-changing key already fired an `input` event before this `keyup`, and the
+      // * input handler re-parsed + ran checkAutocomplete with the parsed value — re-doing it
+      // * here would just re-walk the DOM and bail at the previousQuery guard. Only re-check on
+      // * a caret-move key (arrows/Home/End/PageUp/PageDown), which never fires `input`.
+      if(classifyInputKeyup(e) !== 'caret-move') {
+        return;
+      }
+
       this.checkAutocomplete();
     });
 
@@ -3492,11 +3560,16 @@ export default class ChatInput {
         this.stickersHelper.checkEmoticon(value);
       } else if(!foundHelpers.size && firstChar === '@') { // mentions
         const topMsgId = this.chat.threadId ? getServerMessageId(this.chat.threadId) : undefined;
+        // * only offer guest bots (bot_guestchat) when @ is at the very start of the message, like
+        // * inline bots, and not in channels/monoforums where guest-chat sending isn't available
+        const fromStart = !matches[1];
+        const includeGuestBots = fromStart && this.canSendGuestChat();
         const result = this.mentionsHelper.checkQuery(
           query,
           this.chat.peerId.isUser() ? NULL_PEER_ID : this.chat.peerId,
           topMsgId,
-          this.globalMentions
+          this.globalMentions,
+          includeGuestBots
         );
         if(result) {
           foundHelpers.add(this.mentionsHelper);
@@ -3515,7 +3588,10 @@ export default class ChatInput {
           (e._ === 'messageEntityEmoji' || e._ === 'messageEntityCustomEmoji') &&
           (e.offset + e.length) === value.length
         );
-        if(!hasEmojiEntityAtEnd && !value.match(/^\s*:(.+):\s*$/) && !value.match(/:[;!@#$%^&*()\-=|]/) && query) {
+        // * gate the SharedWorker emoji search: an explicit `:foo` query always searches, but a
+        // * bare-word query (typing prose) is only searched once it can match the keyword index
+        // * (minChars=2) — a 1-char bare token can never yield a result, so skip the round-trip.
+        if(!hasEmojiEntityAtEnd && !value.match(/^\s*:(.+):\s*$/) && !value.match(/:[;!@#$%^&*()\-=|]/) && isPlausibleEmojiQuery(query, firstChar)) {
           foundHelpers.add(this.emojiHelper);
           this.emojiHelper.checkQuery(query, firstChar);
         }
@@ -3533,6 +3609,12 @@ export default class ChatInput {
     }
 
     this.autocompleteHelperController.hideOtherHelpers(foundHelpers);
+  }
+
+  // * guest-chat messages (a message that begins with a guest bot's @username) can be sent
+  // * everywhere except broadcast channels and monoforums
+  private canSendGuestChat() {
+    return !this.chat.isBroadcast && !this.chat.isMonoforum;
   }
 
   private checkInlineAutocomplete(value: string, canSendInline: boolean, foundHelper?: AutocompleteHelper): AutocompleteHelper {
@@ -3555,9 +3637,12 @@ export default class ChatInput {
       });
     };
 
+    const allowGuestChat = this.canSendGuestChat();
     if(!foundHelper) {
       const inlineMatch = value.match(/^@([a-zA-Z\\d_]{3,32})\s/);
-      if(inlineMatch) {
+      // * a leading @guestbot is not an inline query — it's a plain, sendable guest-chat message,
+      // * so keep the composer in normal send mode instead of opening the inline results panel
+      if(inlineMatch && !(allowGuestChat && this.knownGuestBots.has(inlineMatch[1].toLowerCase()))) {
         const username = inlineMatch[1];
         const query = value.slice(inlineMatch[0].length);
         needPlaceholder = inlineMatch[0].length === value.length;
@@ -3572,7 +3657,17 @@ export default class ChatInput {
           setPreloaderShow(true);
         }
 
-        this.inlineHelper.checkQuery(this.chat.peerId, username, query, canSendInline).then(({user, renderPromise}) => {
+        this.inlineHelper.checkQuery(this.chat.peerId, username, query, canSendInline, allowGuestChat).then(({user, renderPromise, guestChat}) => {
+          if(guestChat) {
+            // * a guest bot was resolved for the first time — remember it so the next keystroke
+            // * skips the inline path entirely, and drop back to normal send mode
+            this.knownGuestBots.add(username.toLowerCase());
+            needPlaceholder = false;
+            delete this.messageInput.dataset.inlinePlaceholder;
+            setPreloaderShow(false);
+            return;
+          }
+
           if(needPlaceholder && user.bot_inline_placeholder) {
             this.messageInput.dataset.inlinePlaceholder = user.bot_inline_placeholder;
           }
@@ -3964,7 +4059,7 @@ export default class ChatInput {
       this.btnSend.classList.toggle(i, icon === i);
     });
 
-    this.starsState.set({
+    this.inputState.set({
       hasSendButton: icon === 'send',
       forwarding: accumulate(Object.values(this.forwarding || {}).map(messages => messages.length), 0)
     });
@@ -4000,150 +4095,27 @@ export default class ChatInput {
 
     this.btnSendContainer.append(starsBadge);
 
-    this.starsState.set({inited: true});
+    this.inputState.set({starsBadgeInited: true});
   }
 
   public async setStarsAmount(starsAmount: number | undefined) {
-    this.starsState.set({starsAmount});
+    this.inputState.set({starsAmount});
 
     // TODO: review this `|| true` WTF?
     const params = await this.getPlaceholderParams(await this.chat?.canSend('send_plain') || true);
     this.updateMessageInputPlaceholder(params);
   }
 
-  private createStarsState = () => createRoot((dispose) => {
-    this.getMiddleware()?.onDestroy(() => void dispose());
-
-    const [store, set] = createStore({
-      inited: false,
-      inputStarsCountEl: null as null | HTMLElement,
-
-      hasSendButton: false,
-      isRecording: false,
-      messageCount: 0,
-      forwarding: 0,
-      starsAmount: 0
-    });
-
-    const canSend = createMemo(() => store.hasSendButton && !!store.starsAmount);
-    const hasSomethingToSend = createMemo(() => !!store.messageCount || !!store.forwarding || store.isRecording);
-
-    const isVisible = createMemo(() => canSend() && hasSomethingToSend());
-
-    const totalStarsAmount = createMemo(() => store.starsAmount * Math.max(1, store.forwarding + store.messageCount));
-    const forwardedMessagesStarsAmount = createMemo(() => store.starsAmount /* * Math.max(1, store.forwarding) */);
-
-    createEffect(() => {
-      if(!store.inited) return;
-      this.starsBadge.classList.toggle('btn-send-stars-badge--active', isVisible());
-    });
-
-    createEffect(() => {
-      if(!store.inited) return;
-      this.starsBadgeStars.innerText = numberThousandSplitterForStars(totalStarsAmount());
-    });
-
-    createEffect(() => {
-      if(!store.inited || !store.inputStarsCountEl || !forwardedMessagesStarsAmount()) return;
-
-      store.inputStarsCountEl.textContent = numberThousandSplitterForStars(forwardedMessagesStarsAmount());
-    });
-
-    return {store, set};
-  });
-
-  private createFileInputState = () => createRoot((dispose) => {
-    this.getMiddleware()?.onDestroy(() => void dispose());
-
-    const [store, set] = createStore({
-      isEditing: false,
-      isSuggesting: false
-    });
-
-    const isMultiple = createMemo(() => !store.isEditing && !store.isSuggesting);
-
-    createEffect(() => {
-      if(!this.fileInput) return;
-      this.fileInput.multiple = isMultiple();
-    });
-
-    createEffect(on(() => store.isEditing, (isEditing) => {
-      this.attachMenu.feedProps({
-        isEditing: isEditing
-      });
-    }, {
-      defer: true
-    }));
-
-    return {store, set};
-  });
-
-  private createDirectMessagesHandler = () => createRoot((dispose) => {
-    this.getMiddleware()?.onDestroy(() => void dispose());
-
-    const [store, set] = createStore({
-      isMonoforumAllChats: false,
-      isReplying: false,
-      isSuggestingUneditablePostChange: false
-    });
-
-    createEffect(() => {
-      if(!store.isMonoforumAllChats) return;
-
-      this.getPlaceholderParams().then((params) => this.updateMessageInputPlaceholder(params));
-
-      if(store.isReplying) return;
-
-      this.messageInputField?.input?.classList.add('hide');
-      this.attachMenu?.classList.add('hide');
-      this.messageInputField?.setHidden(true);
-      this.btnToggleEmoticons?.setAttribute('disabled', '');
-      this.autocompleteHelperController.hideOtherHelpers();
-      this.btnSend?.setAttribute('disabled', '');
-      this.btnSend?.classList.add('disabled');
-
-      onCleanup(() => {
-        this.messageInputField?.input?.classList.remove('hide');
-        this.attachMenu?.classList.remove('hide');
-        this.messageInputField?.setHidden(false);
-        this.btnToggleEmoticons?.removeAttribute('disabled');
-        this.btnSend?.removeAttribute('disabled');
-        this.btnSend?.classList.remove('disabled');
-      });
-    });
-
-    createEffect(() => {
-      this.getPlaceholderParams().then((params) => this.updateMessageInputPlaceholder(params));
-
-      if(!store.isSuggestingUneditablePostChange) return;
-
-      this.messageInputField?.input?.classList.add('hide');
-      this.messageInputField?.setHidden(true);
-      this.btnToggleEmoticons?.setAttribute('disabled', '');
-      this.autocompleteHelperController.hideOtherHelpers();
-
-      onCleanup(() => {
-        this.messageInputField?.input?.classList.remove('hide');
-        this.messageInputField?.setHidden(false);
-        this.btnToggleEmoticons?.removeAttribute('disabled');
-      });
-    });
-
-    const canPaste = () => !store.isMonoforumAllChats || store.isReplying;
-
-    return {store, set, canPaste};
-  });
-
   private throttledSetMessageCountToBadgeState = asyncThrottle(async(value: string) => {
     if(!value?.trim()) {
-      this.starsState.set({messageCount: 0});
+      this.inputState.set({messageCount: 0});
       return;
     }
 
     const config = await this.managers.apiManager.getConfig();
     const splitted = splitStringByLength(value, config.message_length_max);
 
-    this.starsState.set({messageCount: splitted.length});
+    this.inputState.set({messageCount: splitted.length});
   }, 120);
 
   private getValueAndEntities(input: HTMLElement) {
@@ -4155,7 +4127,7 @@ export default class ChatInput {
   }
 
   public canPaste() {
-    return this.directMessagesHandler.canPaste();
+    return this.inputState.canPaste();
   }
 
   public onMessageSent(clearInput = true, clearReply?: boolean) {
@@ -4205,7 +4177,8 @@ export default class ChatInput {
     sendTextParams = {},
     forwardParams = {},
     slowModeParams,
-    paidMessageInterceptor
+    paidMessageInterceptor,
+    text
   }: {
     sendingParams: MessageSendingParams,
     inputField?: InputFieldAnimated,
@@ -4214,11 +4187,15 @@ export default class ChatInput {
     sendTextParams?: Parameters<AppMessagesManager['sendText']>[0],
     forwardParams?: Pick<Parameters<AppMessagesManager['forwardMessages']>[0], 'dropAuthor' | 'dropCaptions'>,
     slowModeParams: Pick<Parameters<typeof ChatInput['showSlowModeTooltipIfNeeded']>[0], 'peerId' | 'managers' | 'element'>,
-    paidMessageInterceptor?: PaidMessagesInterceptor
+    paidMessageInterceptor?: PaidMessagesInterceptor,
+    text?: LocalTextWithOptionalEntities
   }) {
     const {value, entities} = inputField ?
       getRichValueWithCaret(inputField.input, true, false) :
-      {value: '', entities: [] as MessageEntity[]};
+      text ?
+        {value: text.text, entities: text.entities || []} :
+        {value: '', entities: [] as MessageEntity[]};
+
     const trimmedValue = value.trim();
 
     let messageCount = 0;
@@ -4303,7 +4280,7 @@ export default class ChatInput {
       });
     }
 
-    return {value};
+    return {value, messageCount};
   }
 
   public async sendMessage(force = false) {
@@ -4357,7 +4334,7 @@ export default class ChatInput {
         paidMessageInterceptor: this.paidMessageInterceptor
       });
 
-      if(!result) {
+      if(!result || !result.messageCount) {
         return;
       }
 
@@ -4398,7 +4375,6 @@ export default class ChatInput {
       return;
     }
   }
-
 
   public async sendMessageWithDocument({
     document,
@@ -4561,7 +4537,7 @@ export default class ChatInput {
     this.suggestedPost = payload;
 
     const isSuggestingUneditablePostChange = !!(message.media?._ === 'messageMediaDocument' && message.media.document?._ === 'document' && message.media.document.sticker);
-    this.directMessagesHandler.set({isSuggestingUneditablePostChange});
+    this.inputState.set({isSuggestingUneditablePostChange});
     if(isSuggestingUneditablePostChange) {
       this.openSuggestPostPopup(payload);
     }
@@ -4809,7 +4785,7 @@ export default class ChatInput {
 
     hover.addEventListener('open', () => {
       if(!menu.parentElement) {
-        document.body.append(menu);
+        getOverlayRoot().append(menu);
       }
       this.positionReplyLineMenu(menu);
     });
@@ -4829,7 +4805,7 @@ export default class ChatInput {
 
   private openReplyLineMenuTouch(menu: HTMLElement) {
     if(!menu.parentElement) {
-      document.body.append(menu);
+      getOverlayRoot().append(menu);
     }
     this.positionReplyLineMenu(menu);
     contextMenuController.openBtnMenu(menu, () => {
@@ -4869,10 +4845,10 @@ export default class ChatInput {
     if(type !== 'suggested') {
       this.suggestedPost = undefined;
       this.btnSuggestPost.classList.toggle('hide', !this.canShowSuggestPostButton(false))
-      this.directMessagesHandler.set({isSuggestingUneditablePostChange: false});
+      this.inputState.set({isSuggestingUneditablePostChange: false});
     }
 
-    this.fileInputState.set({
+    this.inputState.set({
       isEditing: false,
       isSuggesting: false
     });
@@ -4899,7 +4875,7 @@ export default class ChatInput {
       this.t();
     }
 
-    if(!type) this.directMessagesHandler.set({isReplying: false});
+    if(!type) this.inputState.set({isReplying: false});
   }
 
   private t() {
@@ -4961,7 +4937,7 @@ export default class ChatInput {
       this.helperFunc = callerFunc;
     }
 
-    this.fileInputState.set({
+    this.inputState.set({
       isEditing: type === 'edit',
       isSuggesting: type === 'suggested'
     });
@@ -5016,7 +4992,7 @@ export default class ChatInput {
       this.updateSendBtn();
     }, 0);
 
-    this.directMessagesHandler.set({isReplying: true});
+    this.inputState.set({isReplying: true});
 
     return container;
   }
@@ -5051,7 +5027,7 @@ export default class ChatInput {
         ...payload
       };
 
-      if(this.directMessagesHandler.store.isSuggestingUneditablePostChange) {
+      if(this.inputState.store.isSuggestingUneditablePostChange) {
         this.sendMessage();
       }
     }}).show();

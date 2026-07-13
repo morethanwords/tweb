@@ -2,6 +2,7 @@ import {MOUNT_CLASS_TO} from '@config/debug';
 import EventListenerBase from '@helpers/eventListenerBase';
 import {makeMediaSize, MediaSize} from '@helpers/mediaSize';
 import {createStore} from 'solid-js/store';
+import {getAppWindow, onAppWindowChange} from '@helpers/appWindow';
 
 type MediaTypeSizes = {
   regular: MediaSize,
@@ -105,22 +106,35 @@ class MediaSizes extends EventListenerBase<{
   public active: MediaTypeSizes;
   public activeScreen: ScreenSize;
   private rAF: number;
+  private win: Window;
+  private onWinResize: () => void;
 
   constructor() {
     super();
 
-    window.addEventListener('resize', () => {
-      if(this.rAF) window.cancelAnimationFrame(this.rAF);
-      this.rAF = window.requestAnimationFrame(() => {
+    this.onWinResize = () => {
+      if(this.rAF) this.win.cancelAnimationFrame(this.rAF);
+      this.rAF = this.win.requestAnimationFrame(() => {
         this.handleResize();
         this.rAF = 0;
       });
-    });
+    };
+
+    // Track the active app window (the tab, or the Document PiP window while popped out) so the
+    // breakpoint math reads whichever viewport the app is actually rendered in.
+    this.bindWindow(getAppWindow());
+    onAppWindowChange((win) => this.bindWindow(win));
+  }
+
+  private bindWindow(win: Window) {
+    this.win?.removeEventListener('resize', this.onWinResize);
+    this.win = win;
+    this.win.addEventListener('resize', this.onWinResize);
     this.handleResize();
   }
 
   private handleResize = () => {
-    const innerWidth = window.innerWidth;
+    const innerWidth = this.win.innerWidth;
     // this.isMobile = innerWidth <= 720;
 
     let activeScreen = this.screenSizes[0].key;

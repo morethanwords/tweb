@@ -4,6 +4,7 @@ import {useMediaEditorContext} from '@components/mediaEditor/context';
 import {NumberPair} from '@components/mediaEditor/types';
 import {snapToViewport} from '@components/mediaEditor/utils';
 import SwipeHandler from '@components/swipeHandler';
+import {getOverlayRoot} from '@helpers/appWindow';
 import {animateValue} from '@helpers/animateValue';
 import {lerp, lerpArray} from '@helpers/lerp';
 import throttle from '@helpers/schedulers/throttle';
@@ -110,7 +111,7 @@ export default function CropHandles() {
     const resizeSwipeHandlers = multipliers.map(({el, left, top}) => {
       return new SwipeHandler({
         element: el,
-        setCursorTo: document.body,
+        setCursorTo: getOverlayRoot(),
         onStart() {
           initialScale = mediaState.scale;
           initialTranslation = mediaState.translation;

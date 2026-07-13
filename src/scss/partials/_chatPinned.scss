@@ -138,12 +138,6 @@
     @include text-overflow();
   }
 
-  &-subtitle.with-icon {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-  }
-
   &-media {
     height: 2rem !important;
     width: 2rem !important;
@@ -232,9 +226,9 @@
 
   &-background-canvas {
     position: absolute;
-    top: -6px;
-    bottom: -6px;
-    inset-inline-end: 9px;
+    top: 0;
+    inset-inline-end: 0;
+    pointer-events: none;
   }
 
   &.quote-like-icon &-title {

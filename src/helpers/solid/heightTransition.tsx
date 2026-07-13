@@ -1,7 +1,7 @@
-import {createEffect, createSignal, ParentProps} from 'solid-js';
-import {Transition} from 'solid-transition-group';
 import {animate} from '@helpers/animation';
 import liteMode from '@helpers/liteMode';
+import {createComputed, createSignal, ParentProps} from 'solid-js';
+import {Transition} from 'solid-transition-group';
 
 
 type HeightTransitionProps = {
@@ -18,7 +18,7 @@ export const HeightTransition = (props: ParentProps<HeightTransitionProps>) => {
   const increase = () => setRunningAnimations(prev => prev + 1);
   const decrease = () => setRunningAnimations(prev => prev - 1);
 
-  createEffect(() => {
+  createComputed(() => {
     if(!props.onRunningAnimations) return;
     props.onRunningAnimations(runningAnimations());
   });

@@ -290,10 +290,14 @@ export default class Chat extends EventListenerBase<{
     const scrollable = this.bubbles?.scrollable;
     const wasAtEnd = scrollable?.isScrolledToEnd;
     this.recomputePaddings();
-    // Compensate only when the chat was pinned to the bottom: paddingTop
-    // grows inside the scroller, so without this the chat drifts off the
-    // end. Mid-scroll is left alone — a restored saved scroll position
-    // already accounts for the eventual plate height.
+    // Mobile-faithful (verified against iOS ListView + Android ChatActivity):
+    // leave a mid-scroll position anchored. recomputePaddings grows the
+    // in-scroller paddingTop, and the browser's own scroll anchoring keeps the
+    // visible content put as it grows — so the plate slides in OVER the content
+    // (which scrolls under it) rather than shoving it down. Both mobile clients
+    // do exactly this; neither shifts the history when a top panel appears.
+    // Only re-pin when the chat was glued to the bottom, so the newest message
+    // stays in view — otherwise the grown paddingTop drifts it off the end.
     if(scrollable && wasAtEnd && delta > 0) {
       scrollable.setScrollPositionSilently(scrollable.scrollPosition + delta);
     }
@@ -1030,6 +1034,11 @@ export default class Chat extends EventListenerBase<{
       this.peerIdSignal[1](this.peerId = peerId || NULL_PEER_ID);
       this.threadId = threadId;
       this.monoforumThreadId = monoforumThreadId;
+      // `onChangePeer` (async) only assigns `isForum` after awaiting the topic reload. Set it
+      // synchronously here too so the `chat_update` listener in bubbles doesn't compare the new
+      // peer against a stale `isForum` mid-transition and reset us to the forum root — which would
+      // drop the threadId when opening a just-created topic in a cold (not-yet-warm) forum.
+      this.isForum = apiManagerProxy.isForum(this.peerId);
       this.isTemporaryThread = isTempId(threadId);
       this.noInput = [ChatType.Static, ChatType.Logs].includes(type);
       this.middlewareHelper.clean();

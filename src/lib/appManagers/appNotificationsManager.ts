@@ -6,13 +6,15 @@
  */
 
 import tsNow from '@helpers/tsNow';
-import {InputNotifyPeer, InputPeer, InputPeerNotifySettings, NotifyPeer, Peer, PeerNotifySettings, Update} from '@layer';
+import {InputNotifyPeer, InputPeer, InputPeerNotifySettings, NotifyPeer, Peer, PeerNotifySettings, ReactionsNotifySettings, Update} from '@layer';
 import {MUTE_UNTIL} from '@appManagers/constants';
 import throttle from '@helpers/schedulers/throttle';
 import convertInputKeyToKey from '@helpers/string/convertInputKeyToKey';
 import {AppManager} from '@appManagers/manager';
 import ctx from '@environment/ctx';
 import assumeType from '@helpers/assumeType';
+import appTabsManager from '@appManagers/appTabsManager';
+import commonStateStorage from '@lib/commonStateStorage';
 
 type ImSadAboutIt = Promise<PeerNotifySettings> | PeerNotifySettings;
 type MyNotifyPeer = Exclude<NotifyPeer['_'], 'notifyPeer' | 'notifyForumTopic'>;
@@ -33,6 +35,8 @@ export class AppNotificationsManager extends AppManager {
   private checkMuteUntilThrottled: () => void;
 
   private notifyContactsSignUp: Promise<boolean>;
+
+  private reactionsNotifySettings: Promise<ReactionsNotifySettings> | ReactionsNotifySettings;
 
   protected after() {
     this.checkMuteUntilThrottled = throttle(this.checkMuteUntil, 1000, false);
@@ -141,6 +145,18 @@ export class AppNotificationsManager extends AppManager {
     .then((value) => {
       this.notifyContactsSignUp = Promise.resolve(!silent);
     });
+  }
+
+  public getReactionsNotifySettings() {
+    if(this.reactionsNotifySettings) return this.reactionsNotifySettings;
+    return this.reactionsNotifySettings = this.apiManager.invokeApi('account.getReactionsNotifySettings')
+    .then((settings) => this.reactionsNotifySettings = settings);
+  }
+
+  public setReactionsNotifySettings(settings: ReactionsNotifySettings) {
+    this.reactionsNotifySettings = settings;
+    return this.apiManager.invokeApi('account.setReactionsNotifySettings', {settings})
+    .then((result) => this.reactionsNotifySettings = result);
   }
 
   private checkMuteUntil = () => {
@@ -328,6 +344,43 @@ export class AppNotificationsManager extends AppManager {
 
     if(!local) this.updateNotifySettings(inputNotifyPeer, inputPeerNotifySettings);
     else this.generateLocalNotifySettingsUpdate(inputNotifyPeer, inputPeerNotifySettings);
+  }
+
+  // * isPeerStoriesMuted reads the cache synchronously; warm it up first so a
+  // * not-yet-loaded peer doesn't read as unmuted
+  public async getPeerStoriesMuted(peerId: PeerId) {
+    await Promise.all([
+      this.getNotifyPeerTypeSettings(),
+      this.getNotifySettings({_: 'inputNotifyPeer', peer: this.appPeersManager.getInputPeerById(peerId)})
+    ]);
+    return this.isPeerStoriesMuted(peerId);
+  }
+
+  // * picks the single tab that should render a local notification for this peer,
+  // * mirroring how message notifications are routed (see notifyAboutMessage)
+  public async getNotificationTab(peerId: PeerId) {
+    const settings = await commonStateStorage.get('settings', false);
+
+    let tabs = appTabsManager.getTabs();
+    if(!settings.notifyAllAccounts)
+      tabs = tabs.filter((tab) => tab.state.accountNumber === this.getAccountNumber());
+
+    tabs.sort((a, b) => a.state.idleStartTime - b.state.idleStartTime);
+
+    let tab = tabs.find((tab) => {
+      const {chatPeerIds, accountNumber} = tab.state;
+      return accountNumber === this.getAccountNumber() && chatPeerIds[chatPeerIds.length - 1] === peerId;
+    });
+
+    if(!tab) {
+      tab = tabs.find((tab) => tab.state.accountNumber === this.getAccountNumber());
+    }
+
+    if(!tab && tabs.length) {
+      tab = !tabs[0].state.idleStartTime ? tabs[0] : tabs[tabs.length - 1];
+    }
+
+    return tab;
   }
 
   private onUpdateNotifySettings = (update: Update.updateNotifySettings) => {

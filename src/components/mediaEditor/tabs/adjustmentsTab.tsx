@@ -7,6 +7,7 @@ import StepInput, {StepInputStep} from '@components/mediaEditor/stepInput';
 import useIsMobile from '@components/mediaEditor/useIsMobile';
 import {availableQualityHeights, checkIfHasAnimatedStickers, snapToAvailableQuality} from '@components/mediaEditor/utils';
 import Space from '@components/space';
+import {getOverlayRoot} from '@helpers/appWindow';
 import {HeightTransition} from '@helpers/solid/heightTransition';
 import {i18n} from '@lib/langPack';
 import {createEffect, createMemo, createSignal, on, onCleanup, Show} from 'solid-js';
@@ -115,7 +116,7 @@ export default function AdjustmentsTab() {
                 />
               </div>
             ) as HTMLDivElement;
-            document.body.append(div);
+            getOverlayRoot().append(div);
 
             onCleanup(() => {
               setTimeout(() => {

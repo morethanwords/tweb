@@ -14,7 +14,7 @@ import LazyLoadQueueBase from '@components/lazyLoadQueueBase';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import tsNow from '@helpers/tsNow';
 import {nextRandomUint, randomLong} from '@helpers/random';
-import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputMessageReadMetric, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap,  PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, WebPage, GeoPoint, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory,  MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities, ChannelsSearchPosts, FactCheck, MessageExtendedMedia, SponsoredMessage, MessagesSponsoredMessages, InputGroupCall, TodoItem, TodoCompletion, SearchPostsFlood,  MessagesDeleteSavedHistory, ChannelsDeleteParticipantHistory, MessagesDeleteHistory, MessagesDeleteTopicHistory} from '@layer';
+import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputMessageReadMetric, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap,  PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, WebPage, GeoPoint, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory,  MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities, ChannelsSearchPosts, FactCheck, MessageExtendedMedia, SponsoredMessage, MessagesSponsoredMessages, InputGroupCall, TodoItem, TodoCompletion, SearchPostsFlood,  MessagesDeleteSavedHistory, ChannelsDeleteParticipantHistory, MessagesDeleteHistory, MessagesDeleteTopicHistory, RichMessage} from '@layer';
 import {ArgumentTypes, InvokeApiOptions, Modify} from '@types';
 import {logger, LogTypes} from '@lib/logger';
 import {ReferenceContext} from '@lib/storages/references';
@@ -46,7 +46,6 @@ import defineNotNumerableProperties from '@helpers/object/defineNotNumerableProp
 import getDocumentMediaInput from '@appManagers/utils/docs/getDocumentMediaInput';
 import getFileNameForUpload from '@helpers/getFileNameForUpload';
 import noop from '@helpers/noop';
-import appTabsManager from '@appManagers/appTabsManager';
 import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
 import getGroupedText from '@appManagers/utils/messages/getGroupedText';
 import pause from '@helpers/schedulers/pause';
@@ -75,7 +74,6 @@ import getMainGroupedMessage from '@appManagers/utils/messages/getMainGroupedMes
 import getUnreadReactions from '@appManagers/utils/messages/getUnreadReactions';
 import isMentionUnread from '@appManagers/utils/messages/isMentionUnread';
 import canMessageHaveFactCheck from '@appManagers/utils/messages/canMessageHaveFactCheck';
-import commonStateStorage from '@lib/commonStateStorage';
 import PaidMessagesQueue from '@appManagers/utils/messages/paidMessagesQueue';
 import type {ConfirmedPaymentResult} from '@components/chat/paidMessagesInterceptor';
 import RepayRequestHandler, {RepayRequest} from '@appManagers/utils/repayRequestHandler';
@@ -558,6 +556,7 @@ export class AppMessagesManager extends AppManager {
   private needSingleMessages: Map<PeerId, Map<number, CancellablePromise<Message.message | Message.messageService>>> = new Map();
   private fetchSingleMessagesPromise: Promise<void>;
   private extendedMedia: Map<PeerId, Map<number, CancellablePromise<void>>> = new Map();
+  private richMessages: Map<string, Promise<RichMessage | undefined>> = new Map();
 
   private deletedMessages: Set<string> = new Set();
 
@@ -5405,6 +5404,41 @@ export class AppMessagesManager extends AppManager {
     this.saveMessages(result.messages);
   }
 
+  public getRichMessage(peerId: PeerId, mid: number) {
+    const key = `${peerId}_${mid}`;
+    const cached = this.richMessages.get(key);
+    if(cached) {
+      return cached;
+    }
+
+    const serverMessageId = getServerMessageId(mid);
+    const promise = this.apiManager.invokeApi('messages.getRichMessage', {
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      id: serverMessageId
+    }, {
+      noErrorBox: true
+    }).then((result) => {
+      const messages = result._ === 'messages.messagesNotModified' ? [] : result.messages;
+      if(result._ !== 'messages.messagesNotModified') {
+        this.saveApiResult(result);
+      }
+
+      const message = messages.find((message) => (
+        message?._ === 'message' &&
+        message.id === serverMessageId &&
+        message.rich_message
+      )) as Message.message;
+
+      return message?.rich_message;
+    }, (error) => {
+      this.richMessages.delete(key);
+      throw error;
+    });
+
+    this.richMessages.set(key, promise);
+    return promise;
+  }
+
   public async getFirstMessageToEdit({
     peerId,
     threadId,
@@ -7419,8 +7453,20 @@ export class AppMessagesManager extends AppManager {
       } as Update.updateNewDiscussionMessage;
 
       if((this.appChatsManager.isForum(peerId.toChatId()) || this.appPeersManager.isBotforum(peerId)) && !this.dialogsStorage.getForumTopic(peerId, threadId)) {
-        // this.dialogsStorage.getForumTopicById(peerId, threadId);
-        this.handleNewUpdateAfterReload(peerId, update, threadId);
+        const action = (message as Message.messageService).action;
+        if(action?._ === 'messageActionTopicCreate') {
+          // The topic-create service message already carries the whole topic (title, icon, id), so
+          // build it locally instead of fetching it by id. `messages.getForumTopicsByID` races
+          // server-side replication right after creation — it can briefly report the brand-new topic
+          // as deleted/absent, which would blacklist it in `deletedTopics` permanently and hide it
+          // until a full reload (reopening the forum / new messages in the topic wouldn't recover it).
+          this.dialogsStorage.applyLocalForumTopics([
+            createBotforumTopicFromAction({message: message as Message.messageService, action})
+          ]);
+        } else {
+          // this.dialogsStorage.getForumTopicById(peerId, threadId);
+          this.handleNewUpdateAfterReload(peerId, update, threadId);
+        }
       } else if(peerId === this.appPeersManager.peerId && !this.dialogsStorage.getAnyDialog(peerId, threadId)) {
         this.handleNewUpdateAfterReload(peerId, update, threadId);
       } else if(threadStorage) {
@@ -7753,6 +7799,12 @@ export class AppMessagesManager extends AppManager {
       }
 
       releaseUnreadCount();
+      // * refresh chat-folder membership: toggling unread_mark can move the
+      // * dialog in/out of exclude_read folders, but the filter index isn't
+      // * updated by the counter modify above. Without this, a read dialog
+      // * lingers in an "Unread" folder after its unread_mark is cleared
+      // * (e.g. from another client) until something else re-processes it.
+      this.dialogsStorage.processDialogForFilters(dialog);
       this.dialogsStorage.setDialogToState(dialog);
       this.rootScope.dispatchEvent('dialogs_multiupdate', new Map([[peerId, {dialog}]]));
     }
@@ -8262,6 +8314,12 @@ export class AppMessagesManager extends AppManager {
 
       if(affected) {
         releaseUnreadCount();
+        // * refresh chat-folder membership: deleting unread messages can drop
+        // * unread_count to 0, which must remove the dialog from exclude_read
+        // * folders. The counter modify above does NOT touch the filter index,
+        // * so without this a read-now dialog lingers in an "Unread" folder
+        // * (no badge) until something else re-processes it.
+        this.dialogsStorage.processDialogForFilters(dialog);
 
         if(!isSaved) { // ! WARNING, was `!isTopic` here
           this.rootScope.dispatchEvent('dialog_unread', {peerId, dialog});
@@ -9071,26 +9129,7 @@ export class AppMessagesManager extends AppManager {
       return;
     }
 
-    const settings = await commonStateStorage.get('settings', false);
-
-    let tabs = appTabsManager.getTabs();
-    if(!settings.notifyAllAccounts)
-      tabs = tabs.filter((tab) => tab.state.accountNumber === this.getAccountNumber());
-
-    tabs.sort((a, b) => a.state.idleStartTime - b.state.idleStartTime);
-
-    let tab = tabs.find((tab) => {
-      const {chatPeerIds, accountNumber} = tab.state;
-      return accountNumber === this.getAccountNumber() && chatPeerIds[chatPeerIds.length - 1] === peerId;
-    });
-
-    if(!tab) {
-      tab = tabs.find((tab) => tab.state.accountNumber === this.getAccountNumber());
-    }
-
-    if(!tab && tabs.length) {
-      tab = !tabs[0].state.idleStartTime ? tabs[0] : tabs[tabs.length - 1];
-    }
+    const tab = await this.appNotificationsManager.getNotificationTab(peerId);
 
     const port = MTProtoMessagePort.getInstance<false>();
     port.invokeVoid('notificationBuild', {

@@ -33,6 +33,9 @@ import wrapPhoto from '@components/wrappers/photo';
 import wrapSenderToPeer from '@components/wrappers/senderToPeer';
 import wrapSentTime from '@components/wrappers/sentTime';
 import {Middleware} from '@helpers/middleware';
+import readBlobAsText from '@helpers/blob/readBlobAsText';
+import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
+import {openMarkdownInstantView} from '@components/markdownInstantView';
 
 rootScope.addEventListener('document_downloading', (docId) => {
   const elements = Array.from(document.querySelectorAll(`.document[data-doc-id="${docId}"]`)) as HTMLElement[];
@@ -343,6 +346,14 @@ export default async function wrapDocument({
     const queueId = appImManager.chat.bubbles ? appImManager.chat.bubbles.lazyLoadQueue.queueId : undefined;
     if(!save) {
       download = appDownloadManager.downloadToDisc({media: doc, queueId}, true);
+    } else if(ext === 'md' || ext === 'markdown' || /^text\/(x-)?markdown\b/i.test(doc.mime_type || '')) {
+      download = appDownloadManager.downloadMedia({media: doc, queueId});
+      download.then(readBlobAsText).then((raw) => {
+        openMarkdownInstantView({
+          raw,
+          HotReloadGuardProvider: SolidJSHotReloadGuardProvider
+        });
+      }).catch(noop);
     } else if(doc.type === 'pdf' && false) {
       const canOpenAfter = /* managers.appDocsManager.downloading.has(doc.id) ||  */!preloader || preloader.detached;
       download = appDownloadManager.downloadMediaURL({media: doc, queueId});

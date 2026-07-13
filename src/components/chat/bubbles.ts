@@ -30,6 +30,7 @@ import {FocusDirection, ScrollStartCallbackDimensions} from '@helpers/fastSmooth
 import useHeavyAnimationCheck, {getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation} from '@hooks/useHeavyAnimationCheck';
 import {doubleRaf, fastRaf, fastRafPromise} from '@helpers/schedulers';
 import deferredPromise from '@helpers/cancellablePromise';
+import memoizeAsyncWithTTL from '@helpers/memoizeAsyncWithTTL';
 import RepliesElement from '@components/chat/replies';
 import DEBUG from '@config/debug';
 import {SliceEnd} from '@helpers/slicedArray';
@@ -66,6 +67,7 @@ import type ReactionElement from '@components/chat/reaction';
 import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
 import pause from '@helpers/schedulers/pause';
 import ScrollSaver from '@helpers/scrollSaver';
+import {getAppWindow, onAppWindowChange, onBeforeAppWindowChange} from '@helpers/appWindow';
 import getObjectKeysAndSort from '@helpers/object/getObjectKeysAndSort';
 import forEachReverse from '@helpers/array/forEachReverse';
 import formatNumber from '@helpers/number/formatNumber';
@@ -73,6 +75,7 @@ import getViewportSlice from '@helpers/dom/getViewportSlice';
 import SuperIntersectionObserver, {IntersectionCallback} from '@helpers/dom/superIntersectionObserver';
 import generateFakeIcon from '@components/generateFakeIcon';
 import copyFromElement from '@helpers/dom/copyFromElement';
+import {getCodeBlockClickTarget, toggleCodeBlockWrap} from '@helpers/dom/codeBlockClick';
 import PopupElement from '@components/popups';
 import setAttachmentSize, {EXPAND_TEXT_WIDTH} from '@helpers/setAttachmentSize';
 import wrapWebPageDescription from '@components/wrappers/webPageDescription';
@@ -102,6 +105,7 @@ import getStickerEffectThumb from '@appManagers/utils/stickers/getStickerEffectT
 import attachStickerViewerListeners from '@components/stickerViewer';
 import {makeMediaSize, MediaSize} from '@helpers/mediaSize';
 import wrapSticker from '@components/wrappers/sticker';
+import computeStickerSetPreviewGrid from '@helpers/stickerSetPreviewGrid';
 import wrapAlbum from '@components/wrappers/album';
 import wrapDocument from '@components/wrappers/document';
 import wrapGroupedDocuments from '@components/wrappers/groupedDocuments';
@@ -168,10 +172,12 @@ import wrapGeo from '@components/wrappers/geo';
 import safePlay from '@helpers/dom/safePlay';
 import flatten from '@helpers/array/flatten';
 import WebPageBox from '@components/wrappers/webPage';
+import wrapPeerColorPattern from '@components/wrappers/peerColorPattern';
 import showTooltip from '@components/tooltip';
 import wrapTextWithEntities from '@lib/richTextProcessor/wrapTextWithEntities';
 import clearfix from '@helpers/dom/clearfix';
 import {usePeer} from '@stores/peers';
+import {setAppSettings} from '@stores/appSettings';
 import safeWindowOpen from '@helpers/dom/safeWindowOpen';
 import findAndSplice from '@helpers/array/findAndSplice';
 import generatePhotoForExtendedMediaPreview from '@appManagers/utils/photos/generatePhotoForExtendedMediaPreview';
@@ -190,7 +196,7 @@ import PopupStarGiftInfo from '@components/popups/starGiftInfo';
 import {StarGiftBubble, UniqueStarGiftWebPageBox} from '@components/chat/bubbles/starGift';
 import {PremiumGiftBubble} from '@components/chat/bubbles/premiumGift';
 import {UnknownUserBubble} from '@components/chat/bubbles/unknownUser';
-import {generateTail, getMid, isMessage, isMessageForVerificationBot, isVerificationBot} from '@components/chat/utils';
+import {generateTail, getGuestChatViaFromId, getMid, isGuestChatMessage, isMessage, isMessageForVerificationBot, isVerificationBot} from '@components/chat/utils';
 import {ChecklistBubble} from '@components/chat/bubbles/checklist';
 import {getRestrictionReason} from '@helpers/restrictions';
 import {isMessageSensitive} from '@appManagers/utils/messages/isMessageRestricted';
@@ -228,6 +234,8 @@ import {createMutable} from 'solid-js/store';
 import compareUint8Arrays from '@helpers/bytes/compareUint8Arrays';
 import {linkToPollOption} from './bubbleParts/pollMessageContent/pollToOptionLink';
 import {getSimulatedEvent} from '@helpers/dom/dispatchEvent';
+import {richMessageToPage} from '@lib/richMessage';
+import {RichMessageBubble} from '@components/chat/bubbles/richMessage';
 
 // TODO: fix new message won't be rendered if an old one is rendering in the moment
 
@@ -341,8 +349,14 @@ const webPageTypes: {[type in WebPage.webPage['type']]?: LangPackKey} = {
   telegram_story_album: 'ViewStoryAlbum',
   telegram_megagroup_request: 'Chat.Message.RequestToJoin',
   telegram_stickerset: 'OpenStickers',
-  telegram_call: 'JoinCall'
+  telegram_call: 'JoinCall',
+  telegram_aicomposetone: 'AiEditor.Chat.ViewStyle'
 };
+
+// size (px) of the compact right-aligned sticker-set / custom-emoji preview grid in a webpage bubble
+const STICKER_SET_PREVIEW_BOX_SIZE = 56;
+// `text_color`-flagged custom-emoji sets are tinted with the message text color (= EMOJI_TEXT_COLOR)
+const STICKER_SET_EMOJI_TEXT_COLOR = 'primary-text-color';
 
 const serviceMessageActionsWithReply: (MessageAction['_'])[] = [
   'messageActionTodoAppendTasks',
@@ -614,9 +628,24 @@ export default class ChatBubbles {
   private willScrollOnLoad: boolean;
   public observer: SuperIntersectionObserver;
 
+  // Preserve the chat's scroll position across reflows that rewrap the bubbles — a window/PiP-window
+  // resize or a PiP pop-in/out (full width ↔ ~430px). The anchor is captured before the change (kept
+  // fresh on scroll, default "at bottom") and re-pinned after the reflow settles. Stored CONTAINER-
+  // relative (offset of the top visible bubble from the container's top), not viewport-relative, so it
+  // survives the cross-window move into the PiP — the viewport origin differs between the two windows.
+  private reflowAnchor: {element: HTMLElement, offset: number};
+  private reflowWasAtEnd = true;
+  private reflowWasWidth: number;
+  private saveReflowScrollDebounced: DebounceReturnType<ChatBubbles['saveReflowScroll']>;
+  private appWindowUnsubs: (() => void)[] = [];
+
   private renderingMessages: Set<FullMid> = new Set();
   private setPeerCached: boolean;
   private attachPlaceholderOnRender: () => void;
+
+  // viewer's own country calling code (e.g. '7'), used to format a shared contact's
+  // phone that is stored without its country code (bugs.telegram.org #30681)
+  private myCountryCode: string;
 
   private bubblesToEject: Set<HTMLElement> = new Set();
   private bubblesToReplace: Map<HTMLElement, HTMLElement> = new Map(); // TO -> FROM
@@ -632,6 +661,17 @@ export default class ChatBubbles {
   private pollExtendedMediaMessagesPromise: Promise<void>;
 
   private batchProcessor: BatchProcessor<Awaited<ReturnType<ChatBubbles['safeRenderMessage']>>>;
+
+  // Coalesces the per-bubble getReadMaxIdIfUnread cross-worker round-trip:
+  // every non-unread bubble in a group/channel render burst asks for the SAME
+  // peer/thread read cursor, so memoize the in-flight promise for the burst and
+  // reuse it. TTL 0 → the entry is dropped on the next macrotask after the fetch
+  // settles, so a later, distinct render pass re-reads a fresh value.
+  private getRenderReadMaxId = memoizeAsyncWithTTL(
+    (peerId: PeerId, threadId?: number) => this.managers.appMessagesManager.getReadMaxIdIfUnread(peerId, threadId),
+    ([peerId, threadId]) => peerId + '_' + (threadId || ''),
+    0
+  );
 
   private ranks: Map<PeerId, ReturnType<typeof getParticipantRank>>;
   private processRanks: Set<() => void>;
@@ -675,6 +715,36 @@ export default class ChatBubbles {
     // this.chat.log.error('Bubbles construction');
 
     this.listenerSetter = new ListenerSetter();
+
+    // --- scroll preservation across viewport reflows (window/PiP-window resize, PiP pop-in/out) ---
+    this.saveReflowScrollDebounced = debounce(this.saveReflowScroll, 200, false, true);
+    // PiP pop-in/out: snapshot the scroll BEFORE the window flips (DOM still at the old size, nothing
+    // reflowed), then re-pin once the moved DOM has settled in the new window (rAF; two frames safe).
+    this.appWindowUnsubs.push(onBeforeAppWindowChange(this.saveReflowScroll));
+    this.appWindowUnsubs.push(onAppWindowChange(() => {
+      const win = getAppWindow();
+      win.requestAnimationFrame(() => win.requestAnimationFrame(() => {
+        this.restoreReflowScroll();
+        this.reflowWasWidth = this.scrollable?.container.offsetWidth;
+      }));
+    }));
+    // Window / PiP-window resize: mediaSizes fires on the active window's resize. Re-pin only when the
+    // bubbles container actually changed width — a width change is what rewraps them; pure-height
+    // changes (e.g. the keyboard) are already handled by the height-tracking ResizeObserver.
+    this.listenerSetter.add(mediaSizes)('resize', () => {
+      const width = this.scrollable?.container.offsetWidth;
+      if(!width) return;
+      if(this.reflowWasWidth !== undefined && width !== this.reflowWasWidth) {
+        this.restoreReflowScroll();
+      }
+      this.reflowWasWidth = width;
+    });
+
+    // cache the viewer's own country code (from the warm main-thread user cache), to
+    // format shared-contact phones that lack their country code without misreading the
+    // leading digits (#30681); the self user is always cached by chat-construction time
+    const myPhone = apiManagerProxy.getUser(rootScope.myId.toUserId())?.phone;
+    this.myCountryCode = myPhone ? formatPhoneNumber(myPhone).code?.country_code : undefined;
 
     this.constructBubbles();
 
@@ -1306,26 +1376,18 @@ export default class ChatBubbles {
     this.listenerSetter.add(this.scrollable.container)('mousedown', (e) => {
       if(e.button !== 0) return;
 
-      const codeContainer = findUpClassName(e.target, 'code-header') && findUpClassName(e.target, 'code');
-      const code: HTMLElement = codeContainer?.querySelector<HTMLElement>('.code-code') || findUpClassName(e.target, 'monospace-text');
-      if(code) {
-        const isTogglingWrap = !!findUpClassName(e.target, 'code-header-toggle-wrap');
+      const codeTarget = getCodeBlockClickTarget(e.target);
+      if(codeTarget) {
         cancelEvent(e);
-        if(!isTogglingWrap) {
-          copyFromElement(code);
+        if(!codeTarget.isWrapToggle) {
+          copyFromElement(codeTarget.code);
         }
 
         const onClick = (e: MouseEvent) => {
           cancelEvent(e);
 
-          if(isTogglingWrap) {
-            // const scrollSaver = this.createScrollSaver(true);
-            // scrollSaver.save();
-            const present = codeContainer.classList.toggle('is-scrollable');
-            // code.classList.toggle('scrollable', present);
-            // code.classList.toggle('scrollable-x', present);
-            code.classList.toggle('no-scrollbar', present);
-            // scrollSaver.restore();
+          if(codeTarget.isWrapToggle) {
+            toggleCodeBlockWrap(codeTarget);
             return;
           }
 
@@ -1515,13 +1577,7 @@ export default class ChatBubbles {
         }
       });
     } else if(IS_TOUCH_SUPPORTED) {
-      const className = 'is-gesturing-reply';
-      const MAX = 64;
-      const replyAfter = MAX * .75;
-      let shouldReply = false;
-      let target: HTMLElement;
-      let icon: HTMLElement;
-      let swipeAvatar: HTMLElement;
+      const controller = this.createReplySwipeController(container);
       this.replySwipeHandler = handleHorizontalSwipe({
         element: container,
         verifyTouchTarget: async(e) => {
@@ -1531,107 +1587,313 @@ export default class ChatBubbles {
             return false;
           }
 
-          // cancelEvent(e);
-          target = findUpClassName(e.target, 'bubble');
-          if(!target ||
-            target.classList.contains('service') ||
-            target.classList.contains('is-sending')) {
+          const bubble = findUpClassName(e.target, 'bubble');
+          if(!bubble ||
+            bubble.classList.contains('service') ||
+            bubble.classList.contains('is-sending')) {
             return false;
           }
 
-          if(target) {
-            try {
-              const avatar = target.parentElement.querySelector('.bubbles-group-avatar') as HTMLElement
-              if(avatar) {
-                const visibleRect = getVisibleRect(avatar, target);
-                if(visibleRect) {
-                  swipeAvatar = avatar;
-                }
-              }
-            } catch(err) {}
-
-            [target, swipeAvatar].filter(Boolean).forEach((element) => {
-              SetTransition({
-                element,
-                className,
-                forwards: true,
-                duration: 250
-              });
-              void element.offsetLeft; // reflow
-            });
-
-            if(!icon) {
-              icon = Icon('reply_filled', 'bubble-gesture-reply-icon');
-            } else {
-              icon.classList.remove('is-visible');
-              icon.style.opacity = '';
-            }
-
-            target/* .querySelector('.bubble-content') */.append(icon);
-          }
-
-          return !!target;
+          controller.prepare(bubble);
+          return true;
         },
         onSwipe: (xDiff) => {
-          shouldReply = xDiff >= replyAfter;
-
-          if(shouldReply && !icon.classList.contains('is-visible')) {
-            icon.classList.add('is-visible');
-          }
-          icon.style.opacity = '' + Math.min(1, xDiff / replyAfter);
-
-          const x = -Math.max(0, Math.min(MAX, xDiff));
-          const transform = `translateX(${x}px)`;
-          target.style.transform = transform;
-          if(swipeAvatar) {
-            swipeAvatar.style.transform = transform;
-          }
-          cancelContextMenuOpening();
+          controller.move(xDiff);
         },
         onReset: () => {
-          const _target = target;
-          const _swipeAvatar = swipeAvatar;
-          target = swipeAvatar = undefined;
-
-          const onTransitionEnd = () => {
-            if(icon.parentElement === _target) {
-              icon.classList.remove('is-visible');
-              icon.remove();
-            }
-          };
-
-          [_target, _swipeAvatar].filter(Boolean).forEach((element, idx) => {
-            SetTransition({
-              element,
-              className,
-              forwards: false,
-              duration: 250,
-              onTransitionEnd: idx === 0 ? onTransitionEnd : undefined
-            });
-          });
-
-          fastRaf(() => {
-            _target.style.transform = '';
-            if(_swipeAvatar) {
-              _swipeAvatar.style.transform = '';
-            }
-
-            if(shouldReply) {
-              const message = this.chat.getMessage(getBubbleFullMid(_target));
-              this.chat.input.initMessageReply(this.chat.input.getChatInputReplyToFromMessage(message));
-              shouldReply = false;
-            }
-          });
+          controller.reset();
         },
         listenerOptions: {capture: true}
       });
     }
+
+    // * Swipe-to-reply on laptop trackpads: a two-finger horizontal swipe is delivered as
+    // * `wheel` events (deltaX), not touch. Reuse the same reply visuals as the touch path,
+    // * driven from a wheel gesture with per-gesture axis locking so vertical scrolling and
+    // * horizontally-scrollable children (code blocks, wide tables) keep working.
+    if(!IS_MOBILE) {
+      this.attachReplyWheelSwipe(container);
+    }
+  }
+
+  // * Builds the shared visual controller for the swipe-to-reply gesture (bubble + avatar
+  // * translation, the reveal-on-drag reply icon, and firing the reply on release). Both the
+  // * touch (`handleHorizontalSwipe`) and trackpad-wheel paths drive the same three callbacks.
+  private createReplySwipeController(container: HTMLElement) {
+    const className = 'is-gesturing-reply';
+    const MAX = 64;
+    const replyAfter = MAX * .75;
+    let shouldReply = false;
+    let started = false; // visual setup applied — deferred to the first move so a tap leaves no litter
+    let target: HTMLElement;
+    let icon: HTMLElement;
+    let swipeAvatar: HTMLElement;
+
+    // Validate + resolve the target and its group avatar. NO DOM mutation here: the touch path calls
+    // this on touchstart (verifyTouchTarget), and a tap that never moves must not leave the
+    // `is-gesturing-reply` class or the reply icon behind — those are applied lazily by `begin` on the
+    // first `move`.
+    const prepare = (bubble: HTMLElement) => {
+      target = bubble;
+      swipeAvatar = undefined;
+      started = false;
+
+      try {
+        const avatar = target.parentElement.querySelector('.bubbles-group-avatar') as HTMLElement;
+        if(avatar) {
+          const visibleRect = getVisibleRect(avatar, target);
+          if(visibleRect) {
+            swipeAvatar = avatar;
+          }
+        }
+      } catch(err) {}
+    };
+
+    const begin = () => {
+      [target, swipeAvatar].filter(Boolean).forEach((element) => {
+        SetTransition({
+          element,
+          className,
+          forwards: true,
+          duration: 250
+        });
+        void element.offsetLeft; // reflow
+      });
+
+      if(!icon) {
+        icon = Icon('reply_filled', 'bubble-gesture-reply-icon');
+      } else {
+        icon.classList.remove('is-visible', 'is-hiding'); // reuse after a possibly-interrupted fade-out
+        icon.style.opacity = '';
+      }
+
+      target/* .querySelector('.bubble-content') */.append(icon);
+    };
+
+    const move = (xDiff: number) => {
+      if(!started) {
+        started = true;
+        begin();
+      }
+
+      shouldReply = xDiff >= replyAfter;
+
+      if(shouldReply && !icon.classList.contains('is-visible')) {
+        icon.classList.add('is-visible');
+      }
+      icon.style.opacity = '' + Math.min(1, xDiff / replyAfter);
+
+      const x = -Math.max(0, Math.min(MAX, xDiff));
+      const transform = `translateX(${x}px)`;
+      target.style.transform = transform;
+      if(swipeAvatar) {
+        swipeAvatar.style.transform = transform;
+      }
+      cancelContextMenuOpening();
+    };
+
+    const reset = () => {
+      if(!started) { // gesture ended with no movement — nothing was shown, just drop the target
+        target = swipeAvatar = undefined;
+        return;
+      }
+      started = false;
+
+      const _target = target;
+      const _swipeAvatar = swipeAvatar;
+      target = swipeAvatar = undefined;
+
+      // fade the icon out over the slide-back rather than dropping it in one frame
+      icon.classList.add('is-hiding');
+
+      const onTransitionEnd = () => {
+        if(icon.parentElement === _target) {
+          icon.classList.remove('is-visible', 'is-hiding');
+          icon.style.opacity = '';
+          icon.remove();
+        }
+      };
+
+      [_target, _swipeAvatar].filter(Boolean).forEach((element, idx) => {
+        SetTransition({
+          element,
+          className,
+          forwards: false,
+          duration: 250,
+          onTransitionEnd: idx === 0 ? onTransitionEnd : undefined
+        });
+      });
+
+      fastRaf(() => {
+        _target.style.transform = '';
+        if(_swipeAvatar) {
+          _swipeAvatar.style.transform = '';
+        }
+
+        if(shouldReply) {
+          const message = this.chat.getMessage(getBubbleFullMid(_target));
+          this.chat.input.initMessageReply(this.chat.input.getChatInputReplyToFromMessage(message));
+          shouldReply = false;
+        }
+      });
+    };
+
+    return {MAX, prepare, move, reset};
+  }
+
+  // * Trackpad two-finger horizontal swipe → reply. Browsers surface it as `wheel` events with a
+  // * dominant `deltaX` (there is no wheel `phase()` like Qt, so a debounce marks the gesture end).
+  // * The axis is locked once per gesture: only a horizontal-dominant start over a repliable bubble
+  // * engages — otherwise the event passes through untouched so vertical scroll and inner
+  // * horizontal scrollers behave normally. Delta is scaled down so the throw matches the touch feel.
+  private attachReplyWheelSwipe(container: HTMLElement) {
+    const controller = this.createReplySwipeController(container);
+    const {MAX} = controller;
+    const SCALE = 0.25;
+    const IDLE_DELAY = 75; // ms of wheel silence = gesture end (also the no-momentum commit delay)
+    // Inertia detection: a trackpad keeps firing `wheel` events for ~1s after the fingers lift, the
+    // magnitude decaying smoothly. The browser gives no "fingers up" signal, so we approximate release by
+    // spotting a SUSTAINED coast and finish the gesture there. It must be strict: the brief slow-down at
+    // the END of an active push (fingers still down) also decays, so a short streak would fire too early
+    // (fired-before-release). Hence a long streak of decaying events (longer than any plausible finger
+    // ease-out), robust to the tiny up-jitter within a real coast, and gated on a genuine flick's peak.
+    const INERTIA_DECEL_EVENTS = 8;     // consecutive decaying events to call it a coast (not an ease-out)
+    const INERTIA_PEAK_RATIO = 0.7;     // ...with magnitude fallen to this fraction of the gesture's peak
+    const INERTIA_MIN_PEAK = 12;        // ...and only after a real flick (slow drags carry no momentum)
+    const INERTIA_REACCEL_RATIO = 1.2;  // a jump past this fraction of the last delta = the finger pushed again
+
+    let axis: 'x' | 'y' | undefined; // undefined while the gesture axis is still undecided
+    let offset = 0;
+    let gesturing = false;
+    let released = false;            // fingers lifted (inertia/idle) — swallow the momentum tail
+    let prevAbs = -1, peakAbs = 0, decel = 0; // delta-magnitude trend for inertia detection
+
+    const finish = () => {
+      if(gesturing) {
+        gesturing = false;
+        controller.reset(); // fires the reply iff shouldReply (offset >= replyAfter at release)
+      }
+    };
+
+    // Trailing-edge only: the true end of the wheel burst — also the fallback `finish` for a slow drag
+    // that stops without any momentum tail for the inertia heuristic to catch.
+    const idle = debounce(() => {
+      finish();
+      axis = undefined;
+      offset = 0;
+      released = false;
+      prevAbs = -1;
+      peakAbs = decel = 0;
+    }, IDLE_DELAY, false);
+
+    // Let an inner element (code block, wide table) consume the swipe if it can still scroll that way.
+    // The reply swipe only ever engages with deltaX > 0 (rightward), so we only care whether an inner
+    // element can still scroll right (i.e. isn't already at its right edge).
+    const childCanScrollX = (from: HTMLElement) => {
+      let element = from;
+      while(element && element !== container) {
+        if(element.scrollWidth > element.clientWidth) {
+          const overflowX = window.getComputedStyle(element).overflowX;
+          if((overflowX === 'auto' || overflowX === 'scroll') &&
+            element.scrollLeft < element.scrollWidth - element.clientWidth - 1) {
+            return true;
+          }
+        }
+
+        element = element.parentElement;
+      }
+
+      return false;
+    };
+
+    this.listenerSetter.add(container)('wheel', (e: WheelEvent) => {
+      // pinch-zoom / momentum with a modifier held — not a reply gesture
+      if(e.ctrlKey || e.metaKey) {
+        return;
+      }
+
+      // normalize line/page delta modes (horizontal tilt-wheel mice) to pixels
+      const deltaX = e.deltaX * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? container.clientWidth : 1);
+
+      if(axis === undefined) {
+        // Only a horizontal-dominant swipe in the reply direction (deltaX > 0, i.e. dragging the
+        // bubble left) engages; the opposite direction is left untouched so the browser's
+        // back/forward swipe still works over the chat.
+        if(deltaX <= 0 ||
+          Math.abs(deltaX) <= Math.abs(e.deltaY) ||
+          this.chat.type === ChatType.Pinned ||
+          this.chat.type === ChatType.Logs ||
+          this.chat.selection.isSelecting ||
+          !this.chat.input.canSendPlain() ||
+          childCanScrollX(e.target as HTMLElement)) {
+          axis = 'y'; // vertical / wrong-direction / not repliable — ignore for the rest of the gesture
+          idle();
+          return;
+        }
+
+        const bubble = findUpClassName(e.target, 'bubble');
+        if(!bubble ||
+          bubble.classList.contains('service') ||
+          bubble.classList.contains('is-sending')) {
+          axis = 'y';
+          idle();
+          return;
+        }
+
+        axis = 'x';
+        offset = 0;
+        prevAbs = -1;
+        peakAbs = decel = 0;
+        gesturing = true;
+        controller.prepare(bubble);
+      }
+
+      if(axis === 'y') {
+        idle();
+        return;
+      }
+
+      cancelEvent(e);
+
+      // Fingers already lifted this gesture: swallow the whole decaying inertia tail so its (jittery)
+      // events can't nudge the bubble or re-engage a gesture after the reply already fired, until the
+      // wheel finally goes idle. (Trying to distinguish a new scroll/swipe from the tail here misreads
+      // momentum jitter as fresh input and makes the bubble twitch after release — not worth it.)
+      if(released) {
+        idle();
+        return;
+      }
+
+      // Active phase — the fingers are still on the trackpad.
+      offset = Math.max(0, Math.min(MAX, offset + deltaX * SCALE));
+      controller.move(offset);
+
+      // Track the delta-magnitude trend to spot the transition into inertia (see the constants above).
+      // A real coast decays smoothly with only tiny up-jitter; the finger pushing again shows up as a
+      // clear jump, which alone resets the streak. Flat/jittery events neither extend nor reset it.
+      const abs = Math.abs(deltaX);
+      if(abs > peakAbs) peakAbs = abs;
+      if(prevAbs >= 0) {
+        if(abs < prevAbs) ++decel;
+        else if(abs > prevAbs * INERTIA_REACCEL_RATIO) decel = 0; // clear re-acceleration → still dragging
+      }
+      prevAbs = abs;
+
+      if(peakAbs >= INERTIA_MIN_PEAK &&
+        decel >= INERTIA_DECEL_EVENTS &&
+        abs < peakAbs * INERTIA_PEAK_RATIO) {
+        released = true; // inertia has begun → the fingers have left
+        finish();        // fires the reply iff we're past the threshold right now
+      }
+
+      idle();
+    }, {passive: false, capture: true});
   }
 
   public constructPeerHelpers() {
     // will call when message is sent (only 1)
     this.listenerSetter.add(rootScope)('history_append', async({storageKey, message}) => {
-      if(storageKey !== this.chat.messagesStorageKey || this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Static || this.chat.type === ChatType.Logs) return;
+      if(storageKey !== this.chat.messagesStorageKey || this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Static || this.chat.type === ChatType.Logs || this.chat.type === ChatType.Pinned) return;
 
       if(liteMode.isAvailable('chat_background')) {
         this.updateGradient = true;
@@ -1668,7 +1930,7 @@ export default class ChatBubbles {
     });
 
     this.listenerSetter.add(rootScope)('history_multiappend', (message) => {
-      if(this.peerId !== message.peerId || this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Static || this.chat.type === ChatType.Logs) return;
+      if(this.peerId !== message.peerId || this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Static || this.chat.type === ChatType.Logs || this.chat.type === ChatType.Pinned) return;
       this.renderNewMessage(message);
       this.updateHasMessages();
     });
@@ -2022,6 +2284,43 @@ export default class ChatBubbles {
     return scrollSaver;
   }
 
+  // Snapshot the scroll position (the top visible bubble + its offset from the container top) so it can
+  // be re-pinned after a reflow rewraps the bubbles. Container-relative on purpose — see reflowAnchor.
+  private saveReflowScroll = () => {
+    const scrollable = this.scrollable;
+    if(!scrollable) return;
+    this.reflowWasAtEnd = scrollable.isScrolledToEnd;
+    this.reflowAnchor = undefined;
+    if(this.reflowWasAtEnd) return; // bottom-stick needs no anchor
+    const container = scrollable.container;
+    const cTop = container.getBoundingClientRect().top;
+    const bubbles = container.querySelectorAll<HTMLElement>('.bubble:not(.is-date):not(.is-sponsored):not(.botforum-new-topic-bubble)');
+    for(const bubble of bubbles) {
+      const rect = bubble.getBoundingClientRect();
+      if(rect.bottom > cTop + 1) { // first bubble reaching into the viewport from the top
+        this.reflowAnchor = {element: bubble, offset: rect.top - cTop};
+        break;
+      }
+    }
+  };
+
+  private restoreReflowScroll = () => {
+    const scrollable = this.scrollable;
+    if(!scrollable) return;
+    if(this.reflowWasAtEnd) {
+      scrollable.setScrollPositionSilently(scrollable.scrollSize); // keep the chat pinned to the bottom
+      return;
+    }
+    const anchor = this.reflowAnchor;
+    if(!anchor?.element.isConnected) return;
+    const cTop = scrollable.container.getBoundingClientRect().top;
+    const currentOffset = anchor.element.getBoundingClientRect().top - cTop;
+    const delta = currentOffset - anchor.offset;
+    if(Math.abs(delta) > 0.5) {
+      scrollable.setScrollPositionSilently(scrollable.scrollPosition + delta);
+    }
+  };
+
   private unreadedObserverCallback = (entry: IntersectionObserverEntry) => {
     if(entry.isIntersecting) {
       const target = entry.target as HTMLElement;
@@ -2063,6 +2362,48 @@ export default class ChatBubbles {
     }
   };
 
+  // * guarded to at most once per chat-open (like iOS's hasDisplayedGuestChatMessageTooltip); reset in cleanup
+  private guestChatHintShown = false;
+
+  // * hint explaining guest bots: shown above the "<Bot> for <Visitor>" name of the first guest-chat
+  // * message that scrolls into view (iOS shows it in any chat type, at most twice — see
+  // * TelegramUI/…/ChatControllerDisplayGuestChatMessageTooltip)
+  private guestChatHintObserverCallback = (entry: IntersectionObserverEntry) => {
+    if(!entry.isIntersecting) {
+      return;
+    }
+
+    this.observer.unobserve(entry.target, this.guestChatHintObserverCallback);
+
+    if(this.chat.isPreview || this.guestChatHintShown) { // once per chat-open (iOS hasDisplayedGuestChatMessageTooltip)
+      return;
+    }
+
+    const shownTimes = this.chat.appSettings.seenTooltips.guestBotPrivacy || 0; // undefined for pre-existing state
+    if(shownTimes >= 2) { // twice total (iOS counter notice)
+      return;
+    }
+
+    this.guestChatHintShown = true;
+    setAppSettings('seenTooltips', 'guestBotPrivacy', shownTimes + 1);
+
+    // * notch over the bot's name (element = the .peer-title, which hugs its text), body over the bubble
+    // * (container = the bubble clamps the body's width/position). fall back to the bubble as the notch
+    // * anchor too when the name is hidden (a grouped, non-first guest bubble)
+    const bubble = entry.target as HTMLElement;
+    const nameNode = bubble.querySelector<HTMLElement>('.name .peer-title');
+
+    showTooltip({
+      element: nameNode?.offsetParent ? nameNode : bubble,
+      container: bubble,
+      vertical: 'top',
+      textElement: i18n('BotCantReadChatTooltip'),
+      paddingX: 8,
+      auto: true, // auto-dismiss after a few seconds — it appears unsolicited
+      useOverlay: false // don't swallow the user's next click
+    });
+  };
+
   private setupReadMetrics() {
     this.readMetricsTracker = new ReadMetricsTracker(({peerId, metric}) => {
       this.managers.appMessagesManager.reportReadMetrics(peerId, metric);
@@ -2076,7 +2417,7 @@ export default class ChatBubbles {
 
     const updateAppActive = () => {
       // Foreground = tab visible and window focused.
-      this.readMetricsTracker.setAppActive(!document.hidden && document.hasFocus());
+      this.readMetricsTracker.setAppActive(!getAppWindow().document.hidden && getAppWindow().document.hasFocus());
     };
     updateAppActive();
 
@@ -3868,6 +4209,9 @@ export default class ChatBubbles {
     this.scrollable.onAdditionalScroll = this.onScroll;
     this.scrollable.onScrolledTop = () => this.loadMoreHistory(true);
     this.scrollable.onScrolledBottom = () => this.loadMoreHistory(false);
+    // Keep the reflow anchor fresh so a window/PiP-window resize re-pins the user's real scroll
+    // position. Dedicated listener (not via onScroll) so it fires reliably on every scroll.
+    this.listenerSetter.add(this.scrollable.container)('scroll', this.saveReflowScrollDebounced, {passive: true});
     // this.scrollable.attachSentinels(undefined, 300);
 
     if(IS_TOUCH_SUPPORTED && false) {
@@ -3991,6 +4335,7 @@ export default class ChatBubbles {
 
       this.observer.unobserve(bubble, this.stickerEffectObserverCallback);
       this.observer.unobserve(bubble, this.messageEffectObserverCallback);
+      this.observer.unobserve(bubble, this.guestChatHintObserverCallback);
     }
 
     bubble.timeAppenders = bubble.timeSpan = undefined;
@@ -4620,6 +4965,8 @@ export default class ChatBubbles {
     this.destroyScrollable();
 
     this.listenerSetter.removeAll();
+    this.appWindowUnsubs.forEach((unsub) => unsub());
+    this.saveReflowScrollDebounced?.clearTimeout();
 
     this.lazyLoadQueue.clear();
     this.observer && this.observer.disconnect();
@@ -4665,6 +5012,7 @@ export default class ChatBubbles {
     //   TEST_SCROLL = TEST_SCROLL_TIMES;
     // }
 
+    this.guestChatHintShown = false; // re-arm the guest-bot hint for the next chat-open (capped total by seenTooltips)
     this.skippedMids.clear();
     this.dateMessages = {};
     // Bubbles/sections are wiped on peer switch; drop divider refs and the peer's
@@ -5529,6 +5877,9 @@ export default class ChatBubbles {
       });
 
       this.createResizeObserver();
+      // Baseline the container width now (the chat is laid out) so the very first window resize
+      // already detects the width change and re-pins scroll, instead of just setting the baseline.
+      this.reflowWasWidth = this.scrollable.container.offsetWidth || this.reflowWasWidth;
     };
   }
 
@@ -6115,6 +6466,22 @@ export default class ChatBubbles {
     (type === 'history' ? this.unreaded : this.unreadedContent).set(element, mid);
   }
 
+  // Re-arm the unread-content (mention/reaction) observer for a freshly-focused
+  // message. Jumping to a mention/reaction via the corner buttons scrolls the
+  // bubble into view, but the actual read is driven solely by the intersection
+  // observer, which only fires on an intersection CHANGE. When the target is
+  // already on screen (typical for reactions, which sit on our own recent
+  // messages) the programmatic scroll is a no-op, so no callback ever fires and
+  // the content stays unread. Re-registering the observer forces a fresh
+  // intersection entry for the current position — it reads only if the bubble
+  // is actually intersecting, so the "read == seen" guarantee is preserved.
+  public reobserveUnreadContent(peerId: PeerId, mid: number) {
+    if(!this.observer) return;
+    const bubble = this.getBubble(peerId, mid);
+    if(!bubble || !this.unreadedContent.has(bubble)) return;
+    this.observer.reobserve(bubble);
+  }
+
   private modifyBubble = async(callback: () => void) => {
     const setBatch = !this.batchingModifying;
     (this.batchingModifying ??= []).push(callback);
@@ -6328,7 +6695,7 @@ export default class ChatBubbles {
     const unreadReactions = getUnreadReactions(message);
 
     if(!context.isInUnread && this.chat.peerId.isAnyChat()) {
-      const readMaxId = await this.managers.appMessagesManager.getReadMaxIdIfUnread(this.chat.peerId, this.chat.threadId);
+      const readMaxId = await this.getRenderReadMaxId(this.chat.peerId, this.chat.threadId);
       if(readMaxId !== undefined && readMaxId < maxBubbleMid) {
         context.isInUnread = true;
       }
@@ -6969,6 +7336,8 @@ export default class ChatBubbles {
     const isSponsored = (message as Message.message).pFlags.sponsored;
     const sponsoredMessage = (message as Message.message).sponsoredMessage;
     const factCheck = /* !!isSponsored === !sponsoredMessage &&  */isMessage && message.factcheck;
+    const richMessage = isMessage ? message.rich_message : undefined;
+    const richMessagePage = richMessage && richMessageToPage(richMessage);
 
     context.messageMedia = isMessage && message.media;
     let needToSetHTML = true;
@@ -7218,6 +7587,24 @@ export default class ChatBubbles {
         container.classList.add('margin-0');
         messageDiv.appendChild(container);
       }
+    }
+
+    if(richMessagePage) {
+      const container = document.createElement('div');
+      renderComponent({
+        element: container,
+        Component: RichMessageBubble,
+        props: {
+          message: message as Message.message,
+          richMessage,
+          page: richMessagePage
+        },
+        middleware,
+        HotReloadGuard: SolidJSHotReloadGuardProvider
+      });
+      messageDiv.append(container);
+      isMessageEmpty = false;
+      context.mediaRequiresMessageDiv = true;
     }
 
     const usedId = message.mid;
@@ -7611,6 +7998,7 @@ export default class ChatBubbles {
 
           const starGiftAttribute = webPage.attributes?.find((attr) => attr._ === 'webPageAttributeUniqueStarGift')
           const starGiftCollectionAttribute = webPage.attributes?.find((attr) => attr._ === 'webPageAttributeStarGiftCollection')
+          const stickerSetAttribute = webPage.attributes?.find((attr) => attr._ === 'webPageAttributeStickerSet') as WebPageAttribute.webPageAttributeStickerSet
 
           const props: Parameters<typeof WebPageBox>[0] = {};
           const boxRefs: ((box: HTMLAnchorElement) => void)[] = [];
@@ -7667,7 +8055,8 @@ export default class ChatBubbles {
                 });
               });
             } else {
-              const langPackKey = webPageTypes[webPage.type] || 'OpenMessage';
+              // a custom-emoji set (webPageAttributeStickerSet.pFlags.emojis) says "VIEW EMOJI", a sticker set "VIEW STICKERS"
+              const langPackKey = stickerSetAttribute?.pFlags.emojis ? 'OpenEmojiSet' : (webPageTypes[webPage.type] || 'OpenMessage');
 
               props.footer = {
                 content: i18n(langPackKey)
@@ -7707,7 +8096,7 @@ export default class ChatBubbles {
           // const willHaveSponsoredAvatar = sponsoredMessage && (getPeerId(sponsoredMessage.from_id) !== NULL_PEER_ID || sponsoredPhoto);
           // const willHaveSponsoredPhoto = sponsoredMessage && sponsoredMessage.pFlags.show_peer_photo && willHaveSponsoredAvatar;
           const willHaveSponsoredPhoto = !!sponsoredPhoto;
-          const willHaveMedia = !!(photo || doc || storyAttribute || willHaveSponsoredPhoto || starGiftAttribute || starGiftCollectionAttribute);
+          const willHaveMedia = !!(photo || doc || storyAttribute || willHaveSponsoredPhoto || starGiftAttribute || starGiftCollectionAttribute || (stickerSetAttribute && stickerSetAttribute.stickers.length));
           if(willHaveMedia) {
             preview = document.createElement('div');
             props.media = {
@@ -7920,7 +8309,7 @@ export default class ChatBubbles {
             props.text = undefined
           } else if(starGiftCollectionAttribute) {
             await wrapSticker({
-              doc: await this.managers.appDocsManager.saveDoc(starGiftCollectionAttribute.icons[0]),
+              doc: starGiftCollectionAttribute.icons[0] as MyDocument,
               div: preview,
               middleware,
               lazyLoadQueue,
@@ -7932,6 +8321,37 @@ export default class ChatBubbles {
             preview.style.height = '48px';
             props.media.photoSize = 'square';
             isSquare = true;
+          } else if(stickerSetAttribute?.stickers.length) {
+            const stickers = stickerSetAttribute.stickers as MyDocument[];
+            const {side, cellSize, boxSize} = computeStickerSetPreviewGrid(stickers.length, STICKER_SET_PREVIEW_BOX_SIZE);
+            preview.style.width = preview.style.height = `${boxSize}px`;
+            preview.classList.add('webpage-stickerset-grid');
+            preview.style.setProperty('--sticker-grid-side', '' + side);
+            props.media.photoSize = 'square';
+            isSquare = true;
+
+            const isEmoji = !!stickerSetAttribute.pFlags.emojis;
+            // custom-emoji sets flagged `text_color` are tinted with the message text color
+            const textColor = isEmoji && stickerSetAttribute.pFlags.text_color ? STICKER_SET_EMOJI_TEXT_COLOR : undefined;
+            for(let i = 0; i < side * side && i < stickers.length; ++i) {
+              const cell = document.createElement('div');
+              cell.classList.add('webpage-stickerset-cell');
+              preview.append(cell);
+              wrapSticker({
+                doc: stickers[i],
+                div: cell,
+                middleware,
+                lazyLoadQueue,
+                group: this.chat.animationGroup,
+                width: cellSize,
+                height: cellSize,
+                play: true,
+                loop: true,
+                loadPromises,
+                isCustomEmoji: isEmoji,
+                textColor
+              });
+            }
           }
 
           if(preview) {
@@ -7953,6 +8373,18 @@ export default class ChatBubbles {
                   } else timeSpan.before(box);
                 } else {
                   messageDiv.append(box);
+                }
+
+                // * peer-color background-emoji pattern behind the box (like replies/quotes).
+                // out-messages render with the out palette (no index pattern); sponsored carry their
+                // own color override that isn't on the cached peer, so skip them.
+                if(!isOut && !isSponsored) {
+                  wrapPeerColorPattern({
+                    peerId: (message as Message.message).fwdFromId || message.fromId,
+                    container: box,
+                    middleware,
+                    canvasClassName: 'webpage-background-canvas'
+                  });
                 }
               },
               clickable: true
@@ -8310,10 +8742,15 @@ export default class ChatBubbles {
 
           const contactNumberDiv = document.createElement('div');
           contactNumberDiv.className = 'contact-number';
+          let contactNumberText = 'Unknown phone number';
           // Phone numbers are CRM-superadmin-only.
-          contactNumberDiv.textContent = contact.phone_number && useIsCrmSuperAdmin()() ?
-            '+' + formatPhoneNumber(contact.phone_number).formatted :
-            'Unknown phone number';
+          if(contact.phone_number && useIsCrmSuperAdmin()()) {
+            // group the number under the viewer's country when it carries no explicit
+            // country code, prefixing '+' only when a country code is actually present
+            const {formatted, code} = formatPhoneNumber(contact.phone_number, {defaultCountryCode: this.myCountryCode});
+            contactNumberText = (code ? '+' : '') + formatted;
+          }
+          contactNumberDiv.textContent = contactNumberText;
 
           contactDiv.append(contactDetails);
           contactDetails.append(contactNameDiv, contactNumberDiv);
@@ -8804,6 +9241,14 @@ export default class ChatBubbles {
         }
 
         default:
+          if(richMessagePage) {
+            context.attachmentDiv = undefined;
+            context.mediaRequiresMessageDiv = true;
+            noAttachmentDivNeeded = true;
+            this.log.warn('unrecognized media type with rich_message:', context.messageMedia._, message);
+            break;
+          }
+
           context.attachmentDiv = undefined;
           context.mediaRequiresMessageDiv = true;
           noAttachmentDivNeeded = true;
@@ -8897,9 +9342,13 @@ export default class ChatBubbles {
 
     const iPostedAsSomeoneElse = message.fromId !== rootScope.myId && !this.chat.isMonoforum;
 
+    // * a guest-chat message shows "<bot> for <visitor>" and the bot's avatar, even in a 1-on-1
+    const guestChatViaFromId = getGuestChatViaFromId(message);
+
     const needName = ((iPostedAsSomeoneElse || !isOut) && this.chat.isLikeGroup) ||
       message.viaBotId ||
       storyFromPeerId ||
+      guestChatViaFromId ||
       (showNameForVerificationCodes && !replyTo);
 
     if(needName || fwdFrom || replyTo || topicNameButtonContainer) { // chat
@@ -9099,6 +9548,25 @@ export default class ChatBubbles {
         nameDiv.append(span);
       }
 
+      // * append "for <visitor>" after the guest bot's name; the visitor title opens its profile on click.
+      // * plain first name, no premium/status icons — those add `.peer-title.with-icons` (display: flex,
+      // * i.e. block), which would drop the visitor onto its own line
+      if(guestChatViaFromId) {
+        if(!nameDiv) {
+          nameDiv = document.createElement('div');
+        } else {
+          nameDiv.append(' ');
+        }
+
+        const visitorTitle = new PeerTitle({peerId: guestChatViaFromId, onlyFirstName: true, wrapOptions}).element;
+        const span = document.createElement('span');
+        span.classList.add('is-guest-chat-for');
+        span.append(i18n('GuestChatFor'), ' ', visitorTitle);
+
+        nameDiv.append(span);
+        bubble.classList.remove('hide-name');
+      }
+
       if(topicNameButtonContainer) {
         if(context.isStandaloneMedia) {
           topicNameButtonContainer.classList.add('floating-part');
@@ -9220,6 +9688,17 @@ export default class ChatBubbles {
     if(isMessage) {
       this.setBubbleAgentTag(bubble, message.peerId, message.mid, isOut);
       this.updateCrmTicketDividersDebounced?.();
+    }
+
+    // * reserve room for the forced guest-bot avatar in 1-on-1 chats (group chats already indent)
+    if(guestChatViaFromId) {
+      bubble.classList.add('is-guest-chat');
+
+      // * explain what a guest bot is when its first message scrolls into view — up to twice, like iOS.
+      // * iOS shows this in any chat type (not just 1-on-1), so there's no peer-type gate here
+      if(this.observer && !this.guestChatHintShown && (this.chat.appSettings.seenTooltips.guestBotPrivacy || 0) < 2) {
+        this.observer.observe(bubble, this.guestChatHintObserverCallback);
+      }
     }
 
     if(withReplies) {
@@ -11244,6 +11723,8 @@ export default class ChatBubbles {
     }
 
     if(isMessageForVerificationBot(message)) return true;
+    // * guest-chat messages carry the guest bot's avatar even in a 1-on-1 chat
+    if(isGuestChatMessage(message)) return true;
     return this.chat.isLikeGroup && !this.chat.isOutMessage(message);
   }
 

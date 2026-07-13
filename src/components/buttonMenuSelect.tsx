@@ -1,4 +1,5 @@
 import {resolveFirst} from '@solid-primitives/refs'
+import {getOverlayRoot} from '@helpers/appWindow'
 import {ComponentProps, createEffect, createMemo, createRoot, createSignal, For, JSX, on, onCleanup, onMount, Show, splitProps} from 'solid-js'
 import {attachClickEvent} from '@helpers/dom/clickEvent'
 import {IconTsx} from '@components/iconTsx'
@@ -273,7 +274,7 @@ export function createButtonMenuSelect<T>(props: ComponentProps<typeof ButtonMen
     props.onToggleMenu?.(true)
     domEl.classList.add(props.direction)
     positionMenuTrigger(triggerEl, domEl, props.direction, {top: 8})
-    document.body.append(domEl)
+    getOverlayRoot().append(domEl)
 
     await fastRafPromise();
 

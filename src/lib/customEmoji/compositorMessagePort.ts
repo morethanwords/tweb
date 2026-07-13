@@ -13,6 +13,15 @@ export type EmojiCompositorMethods = {
   clearRenderer: (p: {rendererId: number}) => void,
   suspendRenderer: (p: {rendererId: number, suspended: boolean}) => void, // freeze last pixels while every element is paused but on-screen
 
+  // sticker path: a 1:1 player<->canvas surface (rlottie 'canvas' offscreen mode routed here instead
+  // of presenting inside the shared rlottie worker, which is incompatible with OffscreenCanvas). Keyed
+  // by the rlottie item reqId - the same id its decoded frames arrive tagged with over decodePort.
+  attachSticker: (p: {reqId: number, canvases: OffscreenCanvas[], color?: string}) => void, // [...canvases] in transfer; canvases are already sized to the render resolution
+  detachSticker: (p: {reqId: number}) => void,
+  resizeSticker: (p: {reqId: number, width: number, height: number}) => void,
+  configSticker: (p: {reqId: number, color?: string}) => void,
+  presentSticker: (p: {reqId: number}) => void, // re-blit the latest frame (no-blink ensurePresented / nudgePresent)
+
   decodePort: (p: {workerId: number}, source: MessageEventSource, event: MessageEvent) => void // MessagePort arrives in event.ports[0]
 };
 
@@ -36,6 +45,15 @@ export class EmojiCompositorMessagePort<Master extends boolean = true> extends S
     transfer?: Transferable[]
   ) {
     this.invokeVoidAs<EmojiCompositorMethods, T>(method, payload, undefined, transfer);
+  }
+
+  // awaitable variant: resolves once the worker's handler has run (e.g. presentSticker blitted the frame)
+  public invokeCompositor<T extends keyof EmojiCompositorMethods>(
+    method: T,
+    payload: Parameters<EmojiCompositorMethods[T]>[0],
+    transfer?: Transferable[]
+  ) {
+    return this.invokeAs<EmojiCompositorMethods, T>(method, payload, undefined, transfer);
   }
 }
 

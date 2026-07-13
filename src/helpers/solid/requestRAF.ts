@@ -7,7 +7,12 @@ let isRAFing = false;
 export function requestRAF(callback: () => void) {
   rafCallbacks.push(callback);
 
-  if(isRAFing) return;
+  const cleanup = () => {
+    const index = rafCallbacks.indexOf(callback);
+    if(index !== -1) rafCallbacks.splice(index, 1);
+  };
+
+  if(isRAFing) return cleanup;
 
   isRAFing = true;
 
@@ -21,4 +26,6 @@ export function requestRAF(callback: () => void) {
       savedCallbacks.forEach(cb => void cb());
     });
   });
+
+  return cleanup;
 }

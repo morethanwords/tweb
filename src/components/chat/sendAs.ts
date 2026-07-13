@@ -338,7 +338,6 @@ export default class ChatSendAs {
             needPremium: sendAsPeer.pFlags.premium_required
           }
         });
-        this.sendAsPeers = peers.slice();
 
         const idx = peers.findIndex((peer) => peer.peerId === sendAsPeerId);
         if(idx !== -1) {
@@ -347,6 +346,11 @@ export default class ChatSendAs {
         } else {
           peers.unshift({peerId: sendAsPeerId});
         }
+
+        // * save AFTER folding in the current peer — for paid reactions the personal account
+        // * isn't part of the server list and is injected above; slicing earlier dropped it from
+        // * the canonical pool, so it vanished on the first re-render triggered by a selection.
+        this.sendAsPeers = peers.slice();
 
         this.updateButtons(peers);
       });

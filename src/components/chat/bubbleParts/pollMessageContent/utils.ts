@@ -2,9 +2,10 @@ import {createMessageSpoilerOverlay} from '@components/messageSpoilerOverlay';
 import {AttachedMedia} from '@components/popups/createPoll/storeContext';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {useIsCleaned} from '@hooks/useIsCleaned';
-import {Poll, TextWithEntities} from '@layer';
+import {Poll} from '@layer';
 import {ChatRights} from '@lib/appManagers/appChatsManager';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import {LocalTextWithEntities} from '@types';
 import {Accessor, batch, createEffect, createSignal, onCleanup} from 'solid-js';
 import {unwrap} from 'solid-js/store';
 import {PollMessageContentProps} from './PollMessageContent';
@@ -21,9 +22,6 @@ export type PollOptionResult = {
 export type NewOptionValues = LocalTextWithEntities & {
   attachment?: AttachedMedia;
 };
-
-export type LocalTextWithEntities = Pick<TextWithEntities, 'text' | 'entities'>;
-export type LocalTextWithOptionalEntities = Pick<TextWithEntities, 'text'> & Partial<Pick<TextWithEntities, 'entities'>>;
 
 export type DataPollViewerIdxDirectivePayload = [number | undefined, Map<number, HTMLElement>];
 

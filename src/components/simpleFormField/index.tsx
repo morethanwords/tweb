@@ -1,3 +1,4 @@
+import fieldSectionStyles from '@/scss/modulePartials/fieldSectionPanel.module.scss';
 import styles from '@components/simpleFormField/styles.module.scss';
 import {requestRAF} from '@helpers/solid/requestRAF';
 import {useMaxLengthError} from '@helpers/solid/useMaxLengthError';
@@ -151,6 +152,7 @@ SimpleFormField.InputStub = (props: ParentProps<{
 SimpleFormField.Label = (props: ParentProps<{
   active?: boolean;
   forceOffset?: number;
+  maxLength?: number;
 }>) => {
   const context = useSimpleFormFieldContext();
 
@@ -185,7 +187,27 @@ SimpleFormField.Label = (props: ParentProps<{
       }}
     >
       {props.children}
+      <Show when={props.maxLength}>
+        <LabelMaxLength maxLength={props.maxLength} />
+      </Show>
     </div>
+  );
+};
+
+const LabelMaxLength = (props: { maxLength: number }) => {
+  const context = useSimpleFormFieldContext();
+
+  const {shouldShowLengthLeft, lengthLeft, hasError} = useMaxLengthError(context.value, () => props.maxLength);
+
+  const setForceError = context.useSetForceError();
+  createEffect(() => {
+    setForceError(hasError());
+  });
+
+  return (
+    <Show when={shouldShowLengthLeft()}>
+      {' '}({lengthLeft()})
+    </Show>
   );
 };
 
@@ -259,6 +281,22 @@ SimpleFormField.WithAutoLengthCounter = (inProps: WithAutoLengthCounterProps) =>
       lengthLeft={lengthLeft()}
       {...restProps}
     />
+  );
+};
+
+SimpleFormField.Section = (inProps: JSX.HTMLAttributes<HTMLDivElement>) => {
+  const [props, restProps] = splitProps(inProps, ['class']);
+
+  return (
+    <div class={classNames(fieldSectionStyles.fieldSectionPanel, props.class)} {...restProps} />
+  );
+};
+
+SimpleFormField.Caption = (inProps: JSX.HTMLAttributes<HTMLDivElement>) => {
+  const [props, restProps] = splitProps(inProps, ['class']);
+
+  return (
+    <div class={classNames(fieldSectionStyles.fieldSectionCaption, props.class)} {...restProps} />
   );
 };
 

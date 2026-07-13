@@ -62,6 +62,7 @@ import AppAccountManager from '@appManagers/appAccountManager';
 import AppSupportMetricsManager from '@appManagers/appSupportMetricsManager';
 import AppQuickRepliesManager from '@appManagers/appQuickRepliesManager';
 import AppCrmManager from '@appManagers/appCrmManager';
+import {AiTonesManager} from '@lib/appManagers/aiTonesManager';
 
 export default function createManagers(
   appStoragesManager: AppStoragesManager,
@@ -129,7 +130,8 @@ export default function createManagers(
     appAccountManager: new AppAccountManager,
     appSupportMetricsManager: new AppSupportMetricsManager,
     appQuickRepliesManager: new AppQuickRepliesManager,
-    appCrmManager: new AppCrmManager
+    appCrmManager: new AppCrmManager,
+    aiTonesManager: new AiTonesManager
   };
 
   managers.authorizer = new Authorizer({

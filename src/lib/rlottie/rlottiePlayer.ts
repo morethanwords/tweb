@@ -4,6 +4,7 @@ import type {LiteModeKey} from '@helpers/liteMode';
 import IS_APPLE_MX from '@environment/appleMx';
 import {IS_ANDROID, IS_APPLE_MOBILE, IS_APPLE, IS_SAFARI} from '@environment/userAgent';
 import EventListenerBase from '@helpers/eventListenerBase';
+import {doubleRaf} from '@helpers/schedulers';
 import mediaSizes from '@helpers/mediaSizes';
 import clamp from '@helpers/number/clamp';
 import rlottieMessagePort, {RLottieOffscreenInit, RLottieWorkerMethods} from '@lib/rlottie/rlottieMessagePort';
@@ -13,7 +14,9 @@ import framesCache, {FramesCache, FramesCacheItem} from '@helpers/framesCache';
 import customProperties from '@helpers/dom/customProperties';
 import readValue from '@helpers/solid/readValue';
 import applyColorOnContext, {RLottieColor, rlottieColorToString} from '@helpers/canvas/applyColorOnContext';
-import {ensureDecodeChannel} from '@lib/customEmoji/compositorChannels';
+import {ensureCompositor, ensureDecodeChannel} from '@lib/customEmoji/compositorChannels';
+import compositorMessagePort from '@lib/customEmoji/compositorMessagePort';
+import IS_SHARED_WORKER_OFFSCREEN_CANVAS_SUPPORTED from '@environment/sharedWorkerOffscreenCanvasSupport';
 
 export type RLottieOptions = {
   container: HTMLElement | HTMLElement[],
@@ -63,8 +66,13 @@ export type RLottiePlayerEvents = {
   ready: () => void,
   firstFrame: () => void,
   cached: () => void,
-  destroy: () => void
+  destroy: () => void,
+  reqIdChanged: (payload: {previousReqId: number, reqId: number}) => void
 };
+
+// doubleRaf cycles ensurePresented waits after the present ack before reporting the frame on screen
+// (see ensurePresented). Empirically tuned against the no-blink e2e test.
+const PRESENT_PAINT_WAITS = 3;
 
 export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents> implements AnimationItemWrapper {
   public static CACHE = framesCache;
@@ -132,6 +140,7 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
   private clearCacheOnRafId: number;
 
   private offscreenCanvases: OffscreenCanvas[];
+  private offscreenViaCompositor: boolean;
   private offscreenLoadFailed: boolean;
   private pixelRatio: number;
 
@@ -184,6 +193,10 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
       !options.canvas && // RLottieIcon shares ONE caller canvas across players
       !this.raw;
     this.offscreen = !eligible ? false : (options.sync ? (options.compositorDelivery ? 'emoji' : false) : 'canvas');
+    // OffscreenCanvas present is incompatible with a SharedWorker (see
+    // IS_SHARED_WORKER_OFFSCREEN_CANVAS_SUPPORTED), so route 'canvas' stickers through the per-tab
+    // compositor worker; the shared rlottie worker keeps decoding and just ships ImageBitmaps.
+    this.offscreenViaCompositor = this.offscreen === 'canvas' && !IS_SHARED_WORKER_OFFSCREEN_CANVAS_SUPPORTED;
     if(this.offscreen && this.cacheName) {
       this.workerId = rlottieMessagePort.getWorkerIndexForName(this.cacheName); // cache-affine routing, cross-tab sharing for free
     }
@@ -284,7 +297,11 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
     this.height = height;
 
     if(this.offscreen) { // writing a transferred placeholder's .width throws
-      this.sendQueryVoid('resizeCanvases', {width, height});
+      if(this.offscreenViaCompositor) {
+        compositorMessagePort.invokeCompositorVoid('resizeSticker', {reqId: this.reqId, width, height});
+      } else {
+        this.sendQueryVoid('resizeCanvases', {width, height});
+      }
       return;
     }
 
@@ -356,19 +373,34 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
 
   public nudgePresent() {
     if(this.offscreen === 'canvas' && this.renderedFirstFrame) {
-      this.sendQueryVoid('presentFrame', {frameNo: this.curFrame});
+      if(this.offscreenViaCompositor) {
+        compositorMessagePort.invokeCompositorVoid('presentSticker', {reqId: this.reqId});
+      } else {
+        this.sendQueryVoid('presentFrame', {frameNo: this.curFrame});
+      }
     }
   }
 
-  // a commit made while the placeholder canvas was DETACHED can be lost - after the
-  // canvas enters the DOM, re-present with an ack so the underlay is only dropped
-  // once pixels are guaranteed to reach the compositor (works for paused players too)
-  public ensurePresented(): Promise<void> {
+  // Resolve once the current frame is on the placeholder canvas, so a caller can drop the underlay
+  // (instantly, no fade) without flashing a blank cell. Re-present the staged frame (a commit made
+  // while the canvas was DETACHED can be lost) and wait for the worker ack, then wait a few of the
+  // tab's own paints - the SharedWorker pushes the placeholder some frames after the ack and there's
+  // no event for it, so PRESENT_PAINT_WAITS is the empirical margin that clears that gap (validated
+  // by the no-blink e2e test). Non-offscreen players paint synchronously, so they resolve at once.
+  public async ensurePresented(): Promise<void> {
     if(this.offscreen !== 'canvas' || !this.renderedFirstFrame || this.destroyed) {
-      return Promise.resolve();
+      return;
     }
 
-    return this.sendQuery('presentFrame', {frameNo: this._curFrame}).then(() => {}, () => {});
+    if(this.offscreenViaCompositor) { // await the compositor's blit so the underlay isn't dropped over an unpainted canvas
+      await compositorMessagePort.invokeCompositor('presentSticker', {reqId: this.reqId}).catch(() => {});
+    } else {
+      await this.sendQuery('presentFrame', {frameNo: this._curFrame}).catch(() => {});
+    }
+
+    for(let i = 0; i < PRESENT_PAINT_WAITS && !this.destroyed; ++i) {
+      await doubleRaf();
+    }
   }
 
   public get hasRenderedFirstFrame() {
@@ -386,22 +418,38 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
   }
 
   private sendColorToWorker(reTint: boolean) {
+    if(this.offscreenViaCompositor) { // the worker holds no canvas; the compositor does the tint
+      compositorMessagePort.invokeCompositorVoid('configSticker', {reqId: this.reqId, color: this.getResolvedColor()});
+      return;
+    }
+
     this.sendQueryVoid('setColor', {color: this.getResolvedColor(), reTint});
   }
 
   public loadFromData(data: RLottieOptions['animationData']) {
-    if(this.offscreen === 'emoji') {
+    if(this.offscreenViaCompositor) {
+      // decode stays in the shared rlottie worker; present goes to the per-tab compositor. Attach our
+      // canvas(es) there and have the worker ship ImageBitmaps over the decode port (like the emoji path).
+      ensureCompositor();
+      ensureDecodeChannel(this.workerId);
+      compositorMessagePort.invokeCompositorVoid('attachSticker', {
+        reqId: this.reqId,
+        canvases: this.offscreenCanvases || [],
+        color: this.getResolvedColor()
+      }, this.offscreenCanvases?.slice());
+    } else if(this.offscreen === 'emoji') {
       // FIFO: the compositor port rides the same UI->worker port as this loadFromData,
       // so the worker holds it before this item's first frame
       ensureDecodeChannel(this.workerId);
     }
 
+    const compositorDelivery = this.offscreen === 'emoji' || this.offscreenViaCompositor;
     const offscreen: RLottieOffscreenInit = this.offscreen ? {
-      canvases: this.offscreenCanvases || [],
+      canvases: compositorDelivery ? [] : (this.offscreenCanvases || []), // compositor delivery => worker holds no canvas
       cacheName: this.cacheName,
       cachingDelta: this.cachingDelta, // Apple heuristics ship unchanged
-      color: this.getResolvedColor(),
-      compositorDelivery: this.offscreen === 'emoji' || undefined
+      color: compositorDelivery ? undefined : this.getResolvedColor(), // compositor delivery => the compositor tints, not the worker
+      compositorDelivery: compositorDelivery || undefined
     } : undefined;
     const transfer = offscreen?.canvases.length ? offscreen.canvases.slice() : undefined;
     this.offscreenCanvases = undefined;
@@ -425,7 +473,13 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
         console.error('offscreen loadFromData error, retrying legacy:', err, this);
         this.offscreenLoadFailed = true;
         this.sendQuery('destroy');
+        if(this.offscreenViaCompositor) {
+          compositorMessagePort.invokeCompositorVoid('detachSticker', {reqId: this.reqId});
+          this.offscreenViaCompositor = false;
+        }
+        const previousReqId = this.reqId;
         this.reqId = rlottieMessagePort.getNextTaskId();
+        this.dispatchEvent('reqIdChanged', {previousReqId, reqId: this.reqId}); // keep lottieLoader.players re-keyed to the new id
         this.offscreen = false;
         this.canvas = this.createCanvases(this.pixelRatio);
         this.initLegacySurfaces();
@@ -478,7 +532,7 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
   private canFreeRun() {
     return !!this.offscreen &&
       !this.freeRunBarred &&
-      this.loop === true && // strictly-infinite loops only - onLap semantics never move
+      typeof this.loop === 'boolean' && // boolean loops free-run in the worker (true = wrap, false = stop at the bound); a numeric loop now terminates after its count, so it stays on the UI clock where onLap does the counting
       this.renderedFirstFrame &&
       !this.hasExternalEnterFrameListeners();
   }
@@ -498,6 +552,24 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
     if(!this.paused) {
       this.setMainLoop();
     }
+  }
+
+  // the worker clock reached the end of a play-once animation - settle into the same
+  // paused, end-of-play state command mode lands in via onLap's !loop branch
+  public onFreeRunEnded(curFrame: number) {
+    if(!this.freeRunning || this.destroyed) {
+      return;
+    }
+
+    this.freeRunning = false;
+    this.freeRunEpoch = undefined;
+    this._curFrame = curFrame;
+    ++this.playedTimes;
+    this.autoplay = false; // mirror command-mode end-of-play (mainLoop's `!canContinue` branch): a
+    // finished play-once must not stay autoplay, or animationIntersector re-plays it on every
+    // scroll/visibility tick (paused && autoplay && visible → safePlay) → re-engage/end churn
+    this.pause(false); // freeRunning already cleared, so downgradeFreeRun no-ops
+    this.clearCacheWhenSafe();
   }
 
   private estimateFreeRunFrame() {
@@ -521,6 +593,10 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
       return epoch.frame + ticks * skipDelta * this.direction;
     }
 
+    if(!this.loop) { // play-once parks at the far bound; truthy loops (incl. numeric) wrap
+      return forwards ? maxFrame : minFrame;
+    }
+
     const lapTicks = Math.floor((maxFrame - minFrame) / skipDelta) + 1;
     const offset = ((ticks - ticksToWrap) % lapTicks) * skipDelta;
     return forwards ? minFrame + offset : maxFrame - offset;
@@ -537,7 +613,8 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
       skipDelta: this.skipDelta,
       direction: this.direction,
       minFrame: this.minFrame,
-      maxFrame: this.maxFrame
+      maxFrame: this.maxFrame,
+      loop: !!this.loop // only booleans free-run (canFreeRun gate): true (infinite) wraps in the worker, false (play-once) ends at the bound - mirrors command mode's `loop ? min : max`
     });
   }
 
@@ -682,6 +759,9 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
     this.destroyed = true;
     this.pause();
     this.sendQuery('destroy');
+    if(this.offscreenViaCompositor) {
+      compositorMessagePort.invokeCompositorVoid('detachSticker', {reqId: this.reqId});
+    }
     if(this.cacheName && !this.offscreen) RLottiePlayer.CACHE.releaseCache(this.cacheName);
     this.dispatchEvent('destroy');
     this.cleanup();
@@ -717,7 +797,8 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
     /* this.setListenerResult('enterFrame', frameNo);
     return; */
 
-    if(this.offscreen === 'emoji') {
+    if(this.offscreen === 'emoji' || this.offscreenViaCompositor) {
+      // the compositor paints on frame arrival; this event is just for listeners (autoplay, etc.)
       this.renderedFirstFrame = true;
       this.dispatchEvent('enterFrame', frameNo);
       return;
@@ -890,32 +971,33 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
   }
 
   private mainLoopForwards() {
-    const {curFrame, skipDelta, loop, minFrame, maxFrame} = this;
-    const frame = (this.curFrame + skipDelta) > maxFrame ?
-      this.curFrame = (loop ? minFrame : maxFrame) :
-      this.curFrame += skipDelta;
-    // console.log('mainLoopForwards', this.curFrame, skipDelta, frame);
-
-    this.requestFrame(frame);
-    if(curFrame === frame && (frame + skipDelta) > maxFrame) {
-      return this.onLap();
+    const {skipDelta, minFrame, maxFrame} = this;
+    // a step that would overrun maxFrame completes one pass = one lap. Count it via
+    // onLap (which may end playback: a one-shot, or a numeric loop hitting its count)
+    // BEFORE choosing the wrap target, so the final lap parks on the last frame
+    // instead of flashing back to the start. The old "curFrame === frame" lap test
+    // only fired at a one-shot's park, so numeric loops never counted (looped forever).
+    if((this.curFrame + skipDelta) > maxFrame) {
+      const keepLooping = this.onLap();
+      this.requestFrame(this.curFrame = keepLooping ? minFrame : maxFrame);
+      return keepLooping;
     }
 
+    this.requestFrame(this.curFrame += skipDelta);
     return true;
   }
 
   private mainLoopBackwards() {
-    const {curFrame, skipDelta, loop, minFrame, maxFrame} = this;
-    const frame = (this.curFrame - skipDelta) < minFrame ?
-      this.curFrame = (loop ? maxFrame : minFrame) :
-      this.curFrame -= skipDelta;
-    // console.log('mainLoopBackwards', this.curFrame, skipDelta, frame);
-
-    this.requestFrame(frame);
-    if(curFrame === frame && (frame - skipDelta) < minFrame) {
-      return this.onLap();
+    const {skipDelta, minFrame, maxFrame} = this;
+    // symmetric to mainLoopForwards: a step past minFrame completes a pass; on the
+    // final lap park on minFrame (the last frame when playing backwards)
+    if((this.curFrame - skipDelta) < minFrame) {
+      const keepLooping = this.onLap();
+      this.requestFrame(this.curFrame = keepLooping ? maxFrame : minFrame);
+      return keepLooping;
     }
 
+    this.requestFrame(this.curFrame -= skipDelta);
     return true;
   }
 
@@ -1075,12 +1157,14 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
     !this.skipFirstFrameRendering && this.requestFrame(curFrame);
     this.dispatchEvent('ready');
     this.addEventListener('enterFrame', () => {
-      this.dispatchEvent('firstFrame');
-
+      // append the canvas BEFORE firstFrame so its listeners (e.g. sticker appearance)
+      // see it attached and can re-present / retire the thumb without racing the mount
       if(this.canvas[0] && !this.canvas[0].parentNode && this.el?.[0] && !this.overrideRender) {
         this.el.forEach((container, idx) => container.append(this.canvas[idx]));
         this.nudgePresent(); // the pre-append commit can be lost - re-present now that the placeholder is in the DOM
       }
+
+      this.dispatchEvent('firstFrame');
 
       // console.log('enterFrame firstFrame');
 

@@ -1,4 +1,5 @@
 import type {AppMessagesManager, MyInputMessagesFilter, MyMessage, RequestHistoryOptions} from '@appManagers/appMessagesManager';
+import {getOverlayRoot} from '@helpers/appWindow';
 import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG, DialogDom} from '@lib/appDialogsManager';
 import {logger} from '@lib/logger';
 import rootScope from '@lib/rootScope';
@@ -189,11 +190,12 @@ class SearchContextMenu {
 
       if(!item) return;
 
-      if(e instanceof MouseEvent) e.preventDefault();
+      // cross-realm-safe `instanceof MouseEvent` (excludes touch, survives the Document PiP window)
+      if(!('touches' in e)) e.preventDefault();
       if(this.element.classList.contains('active')) {
         return false;
       }
-      if(e instanceof MouseEvent) e.cancelBubble = true;
+      if(!('touches' in e)) e.cancelBubble = true;
 
       const r = async() => {
         this.target = item;
@@ -299,7 +301,7 @@ class SearchContextMenu {
 
     this.element = ButtonMenuSync({buttons: this.buttons, listenerSetter: this.listenerSetter});
     this.element.classList.add('search-contextmenu', 'contextmenu');
-    document.body.append(this.element);
+    getOverlayRoot().append(this.element);
   }
 
   private onGotoClick = () => {
@@ -1394,7 +1396,7 @@ export default class AppSearchSuper {
 
             const chip = ButtonMenuToggle({
               listenerSetter: this.listenerSetter,
-              appendTo: document.body,
+              appendTo: getOverlayRoot(),
               buttons: getSponsoredMessageButtons({
                 message: peer,
                 handleReportAd: () => {
@@ -1404,7 +1406,7 @@ export default class AppSearchSuper {
               onOpen: (e, element) => {
                 // position menu
                 const rect = chip.getBoundingClientRect();
-                const bodyRect = document.body.getBoundingClientRect();
+                const bodyRect = getOverlayRoot().getBoundingClientRect();
                 element.style.right = `${bodyRect.width - (rect.left + rect.width)}px`;
                 element.style.top = `${rect.top + rect.height + 8}px`;
               },

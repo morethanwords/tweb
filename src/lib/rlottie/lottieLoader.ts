@@ -1,5 +1,6 @@
 import animationIntersector from '@components/animationIntersector';
 import {MOUNT_CLASS_TO} from '@config/debug';
+import {bindActiveWindowListener, getAppWindow} from '@helpers/appWindow';
 import pause from '@helpers/schedulers/pause';
 import {logger, LogTypes} from '@lib/logger';
 import RLottiePlayer, {RLottieOptions} from '@lib/rlottie/rlottiePlayer';
@@ -76,6 +77,10 @@ export class LottieLoader {
     rlottieMessagePort.addEventListener('freeRunStopped', ({reqId, curFrame, error}) => {
       this.players[reqId]?.onFreeRunStopped(curFrame, error);
     });
+
+    rlottieMessagePort.addEventListener('freeRunEnded', ({reqId, curFrame}) => {
+      this.players[reqId]?.onFreeRunEnded(curFrame);
+    });
   }
 
   public getAnimation(element: HTMLElement) {
@@ -126,9 +131,11 @@ export class LottieLoader {
     });
 
     if(SHOULD_RENDER_OFFSCREEN) {
-      // hidden-tab belt: SharedWorker timers are NOT tab-throttled - fully pause free-run clocks while hidden
-      document.addEventListener('visibilitychange', () => {
-        rlottieMessagePort.suspendAllTabPlayers(document.hidden);
+      // hidden-tab belt: SharedWorker timers are NOT tab-throttled - fully pause free-run clocks while
+      // hidden. Follow the active window: while popped out into a Document PiP window the PiP stays
+      // visible, so the players must keep running even though the tab we left is hidden.
+      bindActiveWindowListener((w) => w.document, 'visibilitychange', () => {
+        rlottieMessagePort.suspendAllTabPlayers(getAppWindow().document.hidden);
       });
     }
   }
@@ -303,13 +310,22 @@ export class LottieLoader {
       options
     });
 
-    const {reqId, cacheName} = player;
+    let {reqId} = player;
+    const {cacheName} = player;
     this.players[reqId] = player;
 
     const playersByCacheName = cacheName ? this.playersByCacheName[cacheName] ??= new Set() : undefined;
     if(cacheName) {
       playersByCacheName.add(player);
     }
+
+    // an offscreen-load failure downgrades to legacy and mints a fresh reqId (rlottiePlayer.loadFromData
+    // fallback); re-key so freeRunStopped/freeRunEnded for the new id still reach this player
+    player.addEventListener('reqIdChanged', ({previousReqId, reqId: newReqId}) => {
+      delete this.players[previousReqId];
+      this.players[newReqId] = player;
+      reqId = newReqId;
+    });
 
     player.addEventListener('destroy', () => {
       this.onDestroy(reqId);

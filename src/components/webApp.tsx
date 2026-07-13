@@ -5,13 +5,13 @@ import safeWindowOpen from '@helpers/dom/safeWindowOpen';
 import ListenerSetter from '@helpers/listenerSetter';
 import safeAssign from '@helpers/object/safeAssign';
 import themeController from '@helpers/themeController';
-import {AttachMenuBot, DataJSON, WebViewResult, Document, MessagesPreparedInlineMessage} from '@layer';
+import {AttachMenuBot, BotInfo, DataJSON, WebViewResult, Document, MessagesPreparedInlineMessage} from '@layer';
 import appImManager from '@lib/appImManager';
 import {InternalLink, INTERNAL_LINK_TYPE} from '@lib/internalLink';
 import internalLinkProcessor from '@lib/internalLinkProcessor';
 import {AppManagers} from '@lib/managers';
 import getAttachMenuBotIcon from '@appManagers/utils/attachMenuBots/getAttachMenuBotIcon';
-import {LangPackKey} from '@lib/langPack';
+import I18n, {LangPackKey} from '@lib/langPack';
 import wrapEmojiText, {EmojiTextTsx} from '@lib/richTextProcessor/wrapEmojiText';
 import rootScope from '@lib/rootScope';
 import {TelegramWebViewEventMap, AnyFunction, TelegramWebViewSendEventMap} from '@types';
@@ -49,6 +49,7 @@ import appDownloadManager from '@lib/appDownloadManager';
 import IS_WEB_APP_BROWSER_SUPPORTED from '@environment/webAppBrowserSupport';
 import {wrapAdaptiveCustomEmoji} from '@components/wrappers/customEmojiSimple';
 import createMiddleware from '@helpers/solid/createMiddleware';
+import {openBotPrivacyPolicy} from '@helpers/getBotPrivacyPolicy';
 
 const SANDBOX_ATTRIBUTES = [
   'allow-scripts',
@@ -74,6 +75,7 @@ export default class WebApp {
   private webViewResultUrl: WebViewResult.webViewResultUrl;
   private webViewOptions: RequestWebViewOptions;
   private attachMenuBot: AttachMenuBot;
+  private botInfo: BotInfo.botInfo;
   private isCloseConfirmationNeeded: boolean;
   private lastHeaderColor: TelegramWebViewEventMap['web_app_set_header_color'];
   private showSettingsButton: boolean;
@@ -338,6 +340,22 @@ export default class WebApp {
         this.telegramWebView.dispatchWebViewEvent('reload_iframe', undefined);
       },
       verify: () => true
+    }, {
+      icon: 'info',
+      text: 'TermsOfUse',
+      onClick: () => {
+        safeWindowOpen(I18n.format('WebAppDisclaimerUrl', true));
+      },
+      verify: () => true
+    }, {
+      icon: 'privacypolicy',
+      text: 'BotPrivacyPolicy',
+      onClick: () => openBotPrivacyPolicy(this.botInfo, () => {
+        this.forceHide();
+        appImManager.setInnerPeer({peerId: botPeerId});
+        this.managers.appMessagesManager.sendText({peerId: botPeerId, text: '/privacy'});
+      }),
+      verify: async() => !!(await this.getBotInfo())
     }, /* {
       icon: 'plusround',
       text: 'WebApp.InstallBot',
@@ -360,6 +378,15 @@ export default class WebApp {
       verify: () => this.attachMenuBot && !this.attachMenuBot.pFlags.inactive,
       separator: true
     }];
+  }
+
+  private async getBotInfo() {
+    if(!this.botInfo) {
+      const {bot_info} = await this.managers.appProfileManager.getProfile(this.webViewOptions.botId);
+      this.botInfo = bot_info;
+    }
+
+    return this.botInfo;
   }
 
   protected getThemeParams() {
@@ -1311,7 +1338,7 @@ export default class WebApp {
     } catch(err) {}
 
 
-    const {bot_info: botInfo} = await this.managers.appProfileManager.getProfile(this.webViewOptions.botId);
+    const botInfo = await this.getBotInfo();
 
 
     const bodyColorFromSettings = themeController.isNight() ? botInfo.app_settings?.background_dark_color : botInfo.app_settings?.background_color;

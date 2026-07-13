@@ -1,0 +1,36 @@
+.screen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background-color: var(--body-background-color);
+  color: var(--primary-text-color);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .75rem;
+  max-width: 22.5rem;
+  text-align: center;
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: var(--font-weight-bold);
+}
+
+.description {
+  color: var(--secondary-text-color);
+}
+
+.button {
+  margin-top: 1rem;
+  width: auto;
+  padding-inline: 2rem;
+  text-transform: none;
+}

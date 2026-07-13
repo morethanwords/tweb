@@ -5,15 +5,15 @@ import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 
 import {privacyRulesInputKey, MessagesPrivacyOption} from '@components/sidebarLeft/tabs/privacy/messages/config';
-import useIsPremium from '@components/sidebarLeft/tabs/privacy/messages/useIsPremium';
+
 import {getUserId} from '@components/sidebarLeft/tabs/privacy/messages/utils';
 
 
 const useSettings = () => {
-  const {rootScope} = useHotReloadGuard();
+  const {rootScope, usePremium} = useHotReloadGuard();
   const promiseCollector = usePromiseCollector();
 
-  const isPremium = useIsPremium();
+  const isPremium = usePremium();
 
 
   const [privacyRules] = createResource(() => {

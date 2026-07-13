@@ -8,6 +8,7 @@ import appNavigationController from '@components/appNavigationController';
 import rootScope from '@lib/rootScope';
 import {installColumnWidthsUpdater} from '@helpers/updateColumnWidths';
 import installColumnResize from '@helpers/installColumnResize';
+import animationIntersector from '@components/animationIntersector';
 
 
 export const RIGHT_COLUMN_ACTIVE_CLASSNAME = 'is-right-column-shown';
@@ -89,6 +90,9 @@ export class AppSidebarRight extends SidebarSlider {
   public hide() {
     document.body.classList.remove(RIGHT_COLUMN_ACTIVE_CLASSNAME);
     appNavigationController.removeByType('right');
+    // The column is hidden with a transform (stays mounted), so pause any video
+    // avatars playing inside it — the IntersectionObserver won't catch the move.
+    animationIntersector.toggleVideosUnder(this.sidebarEl, true);
     rootScope.dispatchEventSingle('right_sidebar_toggle', false);
   }
 
@@ -120,6 +124,8 @@ export class AppSidebarRight extends SidebarSlider {
       if(!appNavigationController.findItemByType('right')) {
         this.pushNavigationItem(this.sharedMediaTab);
       }
+      // Resume video avatars paused by a previous hide() (see toggleVideosUnder).
+      animationIntersector.toggleVideosUnder(this.sidebarEl, false);
       rootScope.dispatchEventSingle('right_sidebar_toggle', true);
     }
     return animationPromise;

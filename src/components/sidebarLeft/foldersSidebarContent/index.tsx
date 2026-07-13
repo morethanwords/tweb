@@ -1,4 +1,4 @@
-import {createEffect, createSelector, createSignal, For, onCleanup, onMount, Show} from 'solid-js';
+import {Accessor, createEffect, createSelector, createSignal, For, onCleanup, onMount, Show} from 'solid-js';
 import {createStore} from 'solid-js/store';
 import {render} from 'solid-js/web';
 import createFolderContextMenu from '@helpers/dom/createFolderContextMenu';
@@ -25,7 +25,7 @@ keepMe(ripple);
 const log = logger('FoldersSidebarContent', LogTypes.Debug);
 
 export function FoldersSidebarContent(props: {
-  notificationsElement: HTMLElement;
+  allNotificationsCount: Accessor<number>
 }) {
   log.debug('Rendering FoldersSidebarContent');
   onCleanup(() => log.debug('Cleaning up FoldersSidebarContent'));
@@ -78,7 +78,6 @@ export function FoldersSidebarContent(props: {
 
     appSidebarLeft.createToolsMenu(_menuTarget, {top: 8, left: 48});
     _menuTarget.classList.add('sidebar-tools-button', 'is-visible');
-    _menuTarget.append(props.notificationsElement);
   });
 
   let contextMenu: ReturnType<typeof createFolderContextMenu>;
@@ -142,7 +141,15 @@ export function FoldersSidebarContent(props: {
         <canvas ref={backgroundCanvas} class="folders-sidebar__background-gradient" />
         <div class="folders-sidebar__background-tint" />
       </div>
-      <FolderItem ref={setMenuTarget} class="folders-sidebar__menu-button is-first" icon="menu" />
+      <FolderItem
+        ref={setMenuTarget}
+        class="folders-sidebar__menu-button is-first"
+        icon="menu"
+        notifications={{
+          count: props.allNotificationsCount(),
+          muted: false
+        }}
+      />
 
       <div class="folders-sidebar__scrollable-position">
         <Scrollable
@@ -207,7 +214,7 @@ export function FoldersSidebarContent(props: {
 
 export function renderFoldersSidebarContent(
   parentEl: HTMLElement,
-  notificationsElement: HTMLElement,
+  allNotificationsCount: Accessor<number>,
   HotReloadGuardProvider: typeof SolidJSHotReloadGuardProvider,
   middleware: Middleware
 ) {
@@ -222,7 +229,7 @@ export function renderFoldersSidebarContent(
     <HotReloadGuardProvider>
       <Show when={hasFoldersSidebar()}>
         <FoldersSidebarContent
-          notificationsElement={notificationsElement}
+          allNotificationsCount={allNotificationsCount}
         />
       </Show>
     </HotReloadGuardProvider>

@@ -1,12 +1,14 @@
 import {MOUNT_CLASS_TO} from '@config/debug';
 import {IS_WORKER} from '@helpers/context';
 import createUnifiedSignal from '@helpers/solid/createUnifiedSignal';
+import {getAppWindow, onAppWindowChange} from '@helpers/appWindow';
 
 export class WindowSize {
   private _width: ReturnType<typeof createUnifiedSignal<number>>;
   private _height: ReturnType<typeof createUnifiedSignal<number>>;
   // private rAF: number;
   private viewport: VisualViewport | Window;
+  private set: () => void;
 
   constructor() {
     if(IS_WORKER) {
@@ -16,26 +18,20 @@ export class WindowSize {
     this._width = createUnifiedSignal();
     this._height = createUnifiedSignal();
 
-    this.viewport = /* 'visualViewport' in window ? window.visualViewport :  */window;
-    const set = () => {
-      this.setDimensions();
+    this.set = () => this.setDimensions();
 
-      // if(this.width === undefined) {
-      //   this.setDimensions();
-      //   return;
-      // }
+    // Bind to the active app window (the tab, or the Document PiP window while the client is popped
+    // out). Re-bind when it flips so resize events and dimensions come from whichever window the app
+    // currently lives in.
+    this.bindViewport(getAppWindow());
+    onAppWindowChange((win) => this.bindViewport(win));
+  }
 
-      // if(this.rAF) window.cancelAnimationFrame(this.rAF);
-      // this.rAF = window.requestAnimationFrame(() => {
-      //   this.rAF = 0;
-
-      //   batch(() => {
-      //     this.setDimensions();
-      //   });
-      // });
-    };
-    this.viewport.addEventListener('resize', set);
-    set();
+  private bindViewport(win: Window) {
+    this.viewport?.removeEventListener('resize', this.set);
+    this.viewport = /* 'visualViewport' in win ? win.visualViewport :  */win;
+    this.viewport.addEventListener('resize', this.set);
+    this.set();
   }
 
   private setDimensions() {

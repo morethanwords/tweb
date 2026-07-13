@@ -168,7 +168,9 @@ export default defineConfig({
       '**/cypress/**',
       '**/.{idea,git,cache,output,temp}/**',
       '**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build}.config.*',
-      '**/solid/**'
+      '**/solid/**',
+      // Playwright browser specs live here and must not be run by vitest (jsdom)
+      '**/e2e/**'
     ],
     // coverage: {
     //   provider: 'v8',

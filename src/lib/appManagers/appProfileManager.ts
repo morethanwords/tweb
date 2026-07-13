@@ -622,7 +622,8 @@ export class AppProfileManager extends AppManager {
     chatId: ChatId,
     query: string,
     threadId?: number,
-    global?: boolean
+    global?: boolean,
+    includeGuestBots?: boolean
   ): Promise<PeerId[]> {
     const processUserIds = (topPeers: MyTopPeer[]) => {
       const startsWithAt = query.charAt(0) === '@';
@@ -630,7 +631,7 @@ export class AppProfileManager extends AppManager {
 
       const hasQuery = !!query.trim();
       if(!hasQuery) {
-        return topPeers.map((peer) => peer.id);
+        return Array.from(new Set(topPeers.map((peer) => peer.id)));
       }
 
       const index = new SearchIndex<PeerId>({
@@ -672,8 +673,11 @@ export class AppProfileManager extends AppManager {
       // [],
       global ? [] as MyTopPeer[] : this.appUsersManager.getTopPeers('bots_inline').catch(() => [] as MyTopPeer[]),
       promise,
-      global && this.appUsersManager.getContactsPeerIds(query, false, 'rating', 30)
-    ]).then(([botsInlineTopPeers, chatMembers, searchResults]) => {
+      global && this.appUsersManager.getContactsPeerIds(query, false, 'rating', 30),
+      // * guest bots (bot_guestchat) are offered like inline bots when the @username is at the very
+      // * start of the message, so the user can send a guest-chat message to them
+      includeGuestBots ? this.appUsersManager.getTopPeers('bots_guestchat').catch(() => [] as MyTopPeer[]) : [] as MyTopPeer[]
+    ]).then(([botsInlineTopPeers, chatMembers, searchResults, guestChatBots]) => {
       if(searchResults) {
         searchResults = searchResults.filter((peerId) => {
           const peer = this.appPeersManager.getPeer(peerId);
@@ -681,8 +685,14 @@ export class AppProfileManager extends AppManager {
         });
       }
 
+      guestChatBots = guestChatBots.filter((topPeer) => {
+        const user = this.appUsersManager.getUser(topPeer.id);
+        return !!(user && user.pFlags.bot && user.pFlags.bot_guestchat);
+      });
+
       const convertPeerIds = (peerIds: PeerId[]) => peerIds ? peerIds.map((peerId) => ({id: peerId, rating: 0})) : [];
       const peers = botsInlineTopPeers.concat(
+        guestChatBots,
         convertPeerIds(chatMembers),
         convertPeerIds(searchResults)
       );

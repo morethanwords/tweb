@@ -51,7 +51,8 @@ export default function Scrollable(props: {
   onScrolledBottom?: () => void,
   onScroll?: () => void,
   onScrollOffset?: number,
-  relative?: boolean
+  relative?: boolean,
+  hideThumb?: boolean,
 }) {
   const axis = props.axis ?? 'y';
   const scrollPositionProperty: 'scrollTop' | 'scrollLeft' = axis === 'x' ? 'scrollLeft' : 'scrollTop';
@@ -239,12 +240,14 @@ export default function Scrollable(props: {
     startScrollPosition = scrollPosition();
     (e.target as HTMLElement).classList.add('is-focused');
 
-    window.addEventListener('mousemove', onThumbMouseMove);
-    window.addEventListener('mouseup', onThumbMouseUp, {once: true});
+    // Track the drag on the thumb's own window (the Document PiP window while popped out), not main.
+    const w = thumbRef.ownerDocument.defaultView || window;
+    w.addEventListener('mousemove', onThumbMouseMove);
+    w.addEventListener('mouseup', onThumbMouseUp, {once: true});
   };
 
   const onThumbMouseUp = (e: MouseEvent) => {
-    window.removeEventListener('mousemove', onThumbMouseMove);
+    (thumbRef.ownerDocument.defaultView || window).removeEventListener('mousemove', onThumbMouseMove);
     thumbRef.classList.remove('is-focused');
   };
 
@@ -312,7 +315,13 @@ export default function Scrollable(props: {
         props.class,
         props.relative && 'relative',
         IS_SAFARI && !IS_MOBILE_SAFARI && 'no-scrollbar',
-        ...(props.withBorders ? [
+        ...(props.withBorders === 'manual' ? [
+          isScrolledToStart() && 'scrolled-start-manual',
+          isScrolledToEnd() && 'scrolled-end-manual',
+          isScrolledToStart() && !isScrolledToEnd() && 'scrolled-only-start-manual',
+          isScrolledToEnd() && !isScrolledToStart() && 'scrolled-only-end-manual',
+          !isScrolledToStart() && !isScrolledToEnd() && 'scrolled-none-manual'
+        ] : props.withBorders ? [
           isScrolledToStart() && 'scrolled-start',
           isScrolledToEnd() && 'scrolled-end',
           axis === 'y' && 'scrollable-y-bordered',
@@ -329,6 +338,9 @@ export default function Scrollable(props: {
         <div class="scrollable-thumb-container">
           <div
             class="scrollable-thumb"
+            classList={{
+              'scrollable-thumb--hidden': props.hideThumb
+            }}
             ref={(el) => {
               thumbRef = el;
               props.thumbRef?.(el);

@@ -70,6 +70,11 @@ export default function formatRelativeTime(timestampSec: number, nowSec: number)
 
 function nextBoundaryDelay(absDiff: number, unit: number, isPast: boolean): number {
   const remainder = absDiff % unit;
-  const seconds = isPast ? (unit - remainder) : (remainder || unit);
+  // Past: the displayed whole-unit count increments at the next multiple of
+  // `unit`, so a count valid at an exact boundary stays valid for a full unit.
+  // Future: the count decrements as `absDiff` shrinks, so it changes in
+  // `remainder` seconds — and at an exact boundary (`remainder === 0`) it drops
+  // on the very next second, so refresh in ~1s rather than waiting a full unit.
+  const seconds = isPast ? (unit - remainder) : (remainder || 1);
   return seconds * 1000;
 }

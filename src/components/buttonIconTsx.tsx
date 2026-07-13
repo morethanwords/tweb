@@ -3,13 +3,13 @@ import classNames from '@helpers/string/classNames';
 import Icon from '@components/icon';
 import ripple from '@components/ripple';
 
-export const ButtonIconTsx = (props: {icon?: Icon, noRipple?: boolean} & JSX.ButtonHTMLAttributes<HTMLButtonElement>) => {
-  const [, rest] = splitProps(props, ['icon', 'noRipple']);
+export const ButtonIconTsx = (inProps: {icon?: Icon, noRipple?: boolean} & JSX.ButtonHTMLAttributes<HTMLButtonElement>) => {
+  const [props, restProps] = splitProps(inProps, ['icon', 'class', 'children', 'noRipple']);
 
   const btn = (
     <button
-      {...rest}
       class={classNames('btn-icon', props.class)}
+      {...restProps}
       tabIndex={-1}
     >
       {props.icon && Icon(props.icon)}

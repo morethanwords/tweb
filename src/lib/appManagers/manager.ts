@@ -60,6 +60,7 @@ import type AppAccountManager from '@appManagers/appAccountManager';
 import type AppSupportMetricsManager from '@appManagers/appSupportMetricsManager';
 import type AppQuickRepliesManager from '@appManagers/appQuickRepliesManager';
 import type AppCrmManager from '@appManagers/appCrmManager';
+import type {AiTonesManager} from '@lib/appManagers/aiTonesManager';
 import {logger, LogTypes} from '@lib/logger';
 
 export class AppManager {
@@ -126,6 +127,7 @@ export class AppManager {
   protected appSupportMetricsManager: AppSupportMetricsManager;
   protected appQuickRepliesManager: AppQuickRepliesManager;
   protected appCrmManager: AppCrmManager;
+  protected aiTonesManager: AiTonesManager;
 
   protected name: string;
   public log: ReturnType<typeof logger>;

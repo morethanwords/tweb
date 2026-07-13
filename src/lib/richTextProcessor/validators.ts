@@ -15,12 +15,12 @@ export function isUsernameValid(username: string) {
     }
   }
 
-  if(username.charAt(username.length - 1) === '') {
+  if(username.charAt(username.length - 1) === '_') {
     return false;
   }
 
   for(let i = 1; i < username.length; i++) {
-    if(username.charAt(i - 1) === '' && username.charAt(i) === '_') {
+    if(username.charAt(i - 1) === '_' && username.charAt(i) === '_') {
       return false;
     }
   }

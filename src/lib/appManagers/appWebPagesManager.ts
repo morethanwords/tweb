@@ -94,6 +94,14 @@ export class AppWebPagesManager extends AppManager {
             attribute.story = this.appStoriesManager.saveStoryItem(attribute.story, cache);
             break;
           }
+          case 'webPageAttributeStickerSet': {
+            attribute.stickers = attribute.stickers.map((doc) => this.appDocsManager.saveDoc(doc, mediaContext)).filter(Boolean);
+            break;
+          }
+          case 'webPageAttributeStarGiftCollection': {
+            attribute.icons = attribute.icons.map((doc) => this.appDocsManager.saveDoc(doc, mediaContext)).filter(Boolean);
+            break;
+          }
         }
       }
 

@@ -1,0 +1,15 @@
+.popup {
+  --popup-min-width: 398px;
+  --popup-max-width: 398px;
+}
+
+.container {
+  padding: 0;
+  max-height: min(800px,100%);
+}
+
+.header {
+  flex-wrap: wrap;
+  padding: 12px 20px 15px;
+  margin-bottom: 0;
+}

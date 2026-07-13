@@ -12,6 +12,7 @@ import blurActiveElement from '@helpers/dom/blurActiveElement';
 import animationIntersector, {AnimationItemGroup} from '@components/animationIntersector';
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
 import {addFullScreenListener, getFullScreenElement} from '@helpers/dom/fullScreen';
+import {getOverlayRoot} from '@helpers/appWindow';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import MarkupTooltip from '@components/chat/markupTooltip';
 import Button from '@components/buttonTsx';
@@ -85,13 +86,16 @@ type PopupControllerContextValue = {
 };
 
 export const PopupContext = createContext<PopupContextValue>();
+export const usePopupContext = () => useContext(PopupContext);
 const PopupControllerContext = createContext<PopupControllerContextValue>();
 
 const DEFAULT_APPEND_TO = document.body;
-const [appendPopupTo, setAppendPopupTo] = createSignal(DEFAULT_APPEND_TO);
+// A fullscreen element always wins; otherwise each popup uses the realm it captured at creation
+// (see the Portal mount below). Only the fullscreen state is reactive here.
+const [fullScreenElement, setFullScreenElement] = createSignal<HTMLElement>(null);
 
 const onFullScreenChange = () => {
-  setAppendPopupTo(getFullScreenElement() || DEFAULT_APPEND_TO);
+  setFullScreenElement((getFullScreenElement() as HTMLElement) || null);
 };
 
 addFullScreenListener(DEFAULT_APPEND_TO, onFullScreenChange);
@@ -125,6 +129,10 @@ const PopupElement = (props: {
   const controllerContext = useContext(PopupControllerContext);
 
   const managers = props.managers || PopupElement.MANAGERS;
+  // Capture the active overlay root once. A popup opened while the client is popped out must stay in
+  // the Document PiP window for its whole life; reading the live root in the Portal mount would yank
+  // it to the tab the instant the app moves back.
+  const capturedRoot = getOverlayRoot();
   const middlewareHelper = getMiddleware();
   const lateMiddlewareHelper = getMiddleware();
   const withoutOverlay = props.withoutOverlay || false;
@@ -318,7 +326,7 @@ const PopupElement = (props: {
 
   return (
     <PopupContext.Provider value={value}>
-      <Portal mount={appendPopupTo()}>
+      <Portal mount={fullScreenElement() || capturedRoot}>
         <div
           ref={setPopupElement}
           class={classNames(

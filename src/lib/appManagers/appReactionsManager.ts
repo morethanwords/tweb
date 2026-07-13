@@ -13,6 +13,7 @@ import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId'
 import reactionsEqual from '@appManagers/utils/reactions/reactionsEqual';
 import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
 import availableReactionToReaction from '@appManagers/utils/reactions/availableReactionToReaction';
+import filterReactionsAtUniqCap, {DEFAULT_REACTIONS_UNIQ_MAX, isMessageAtUniqReactionCap} from '@appManagers/utils/reactions/filterReactionsAtUniqCap';
 import {NULL_PEER_ID, SEND_PAID_REACTION_ANONYMOUS_PEER_ID} from '@appManagers/constants';
 import insertInDescendSortedArray from '@helpers/array/insertInDescendSortedArray';
 import {BroadcastEvents} from '@lib/rootScope';
@@ -47,7 +48,11 @@ const REFRESH_TAGS_INTERVAL = 10 * 60e3;
 export type PeerAvailableReactions = {
   type: ChatReactions['_'],
   reactions: Reaction[],
-  trulyAll?: boolean
+  trulyAll?: boolean,
+  // reactions_uniq_max reached: the message already carries the max distinct reactions,
+  // so `reactions` is narrowed to the present kinds and the custom-emoji search/packs
+  // must be hidden (no new distinct reaction may be introduced).
+  atUniqCap?: boolean
 };
 
 export type SendReactionOptions = {
@@ -378,27 +383,38 @@ export class AppReactionsManager extends AppManager {
       }
     }
 
-    return callbackify(
+    return callbackifyAll([
       this.getAvailableReactionsForPeer(peerId, unshiftQuickReaction),
-      (peerAvailableReactions) => {
-        const messageReactionsResults = message?.reactions?.results;
-        if(
-          messageReactionsResults &&
-          peerAvailableReactions.type === 'chatReactionsSome' &&
-          !peerAvailableReactions.trulyAll
-        ) {
-          peerAvailableReactions.reactions.sort((a, b) => {
-            if(a._ === 'reactionPaid') return -Infinity;
-            else if(a._ === 'reactionEmoji') return Infinity;
-            const idx1 = messageReactionsResults.findIndex((reactionCount) => reactionsEqual(reactionCount.reaction, a));
-            const idx2 = messageReactionsResults.findIndex((reactionCount) => reactionsEqual(reactionCount.reaction, b));
-            return (idx1 === -1 ? Infinity : idx1) - (idx2 === -1 ? Infinity : idx2);
-          });
-        }
-
-        return peerAvailableReactions;
+      this.apiManager.getAppConfig()
+    ], ([peerAvailableReactions, appConfig]) => {
+      const messageReactionsResults = message?.reactions?.results;
+      if(
+        messageReactionsResults &&
+        peerAvailableReactions.type === 'chatReactionsSome' &&
+        !peerAvailableReactions.trulyAll
+      ) {
+        peerAvailableReactions.reactions.sort((a, b) => {
+          if(a._ === 'reactionPaid') return -Infinity;
+          else if(a._ === 'reactionEmoji') return Infinity;
+          const idx1 = messageReactionsResults.findIndex((reactionCount) => reactionsEqual(reactionCount.reaction, a));
+          const idx2 = messageReactionsResults.findIndex((reactionCount) => reactionsEqual(reactionCount.reaction, b));
+          return (idx1 === -1 ? Infinity : idx1) - (idx2 === -1 ? Infinity : idx2);
+        });
       }
-    );
+
+      // reactions_uniq_max — once a message already carries the max distinct reactions,
+      // narrow the picker to the kinds already present (can't introduce a new distinct one)
+      // and flag it so the UI hides the custom-emoji search/packs (tdesktop/iOS/Android parity).
+      const uniqMax = appConfig?.reactions_uniq_max ?? DEFAULT_REACTIONS_UNIQ_MAX;
+      peerAvailableReactions.atUniqCap = isMessageAtUniqReactionCap(messageReactionsResults, uniqMax);
+      peerAvailableReactions.reactions = filterReactionsAtUniqCap(
+        peerAvailableReactions.reactions,
+        messageReactionsResults,
+        uniqMax
+      );
+
+      return peerAvailableReactions;
+    });
   }
 
   // public isReactionActive(reaction: string) {
