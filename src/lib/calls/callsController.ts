@@ -4,7 +4,7 @@ import IS_CALL_SUPPORTED from '@environment/callSupport';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import insertInDescendSortedArray from '@helpers/array/insertInDescendSortedArray';
 import AudioAssetPlayer from '@helpers/audioAssetPlayer';
-import bytesCmp from '@helpers/bytes/bytesCmp';
+import bytesCmpConstTime from '@helpers/bytes/bytesCmpConstTime';
 import EventListenerBase from '@helpers/eventListenerBase';
 import tsNow from '@helpers/tsNow';
 import {PhoneCallProtocol} from '@layer';
@@ -114,7 +114,7 @@ export class CallsController extends EventListenerBase<{
           const g_a = instance.dh.g_a = call.g_a_or_b;
           const dh = instance.dh;
           const g_a_hash = await apiManagerProxy.invokeCrypto('sha256', g_a);
-          if(!bytesCmp(dh.g_a_hash, g_a_hash)) {
+          if(!bytesCmpConstTime(dh.g_a_hash, g_a_hash)) {
             this.log.error('Incorrect g_a_hash', dh.g_a_hash, g_a_hash);
             break;
           }

@@ -8,6 +8,7 @@ import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
 import CryptoWorker from '@lib/crypto/cryptoMessagePort';
 import type {PushSubscriptionNotify} from '@lib/webPushApiManager';
 import bytesCmp from '@helpers/bytes/bytesCmp';
+import bytesCmpConstTime from '@helpers/bytes/bytesCmpConstTime';
 import {MessageKeyUtils} from '@lib/mtproto/messageKeyUtils';
 import {TLDeserialization} from '@lib/mtproto/tl_utils';
 import type {PushNotificationObject} from '@lib/serviceWorker/push';
@@ -200,7 +201,7 @@ export class PushSingleManager {
     );
 
     const calcMessageKey = await MessageKeyUtils.getMsgKey(authKey, decrypted, true);
-    if(!bytesCmp(messageKey, calcMessageKey)) {
+    if(!bytesCmpConstTime(messageKey, calcMessageKey)) {
       throw new Error('server messageKey mismatch');
     }
 

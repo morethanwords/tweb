@@ -23,6 +23,7 @@ import {ConnectionStatus, ConnectionStatusChange} from '@lib/mtproto/connectionS
 import ctx from '@environment/ctx';
 import bufferConcats from '@helpers/bytes/bufferConcats';
 import bytesCmp from '@helpers/bytes/bytesCmp';
+import bytesCmpConstTime from '@helpers/bytes/bytesCmpConstTime';
 import bytesToHex from '@helpers/bytes/bytesToHex';
 import isObject from '@helpers/object/isObject';
 import forEachReverse from '@helpers/array/forEachReverse';
@@ -1417,7 +1418,7 @@ export default class MTPNetworker {
     const dataWithPadding = await this.getDecryptedMessage(msgKey, encryptedData);
     // this.log('after decrypt')
     const calcMsgKey = await MessageKeyUtils.getMsgKey(this.authKey.key, dataWithPadding, true);
-    if(!bytesCmp(msgKey, calcMsgKey)) {
+    if(!bytesCmpConstTime(msgKey, calcMsgKey)) {
       this.log.warn('[MT] msg_keys', msgKey, calcMsgKey);
       this.updateSession(); // fix 28.01.2020
       throw new Error('[MT] server msgKey mismatch, updating session');
