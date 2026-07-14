@@ -7,6 +7,10 @@ settings:
 importers:
 
   .:
+    dependencies:
+      temml:
+        specifier: ^0.13.3
+        version: 0.13.3
     devDependencies:
       '@babel/cli':
         specifier: ^7.23.4
@@ -175,7 +179,7 @@ importers:
         version: 4.1.0(jsdom@22.1.0)(vite@7.3.1(lightningcss@1.32.0)(sass@1.98.0))
       ws:
         specifier: ^8.20.0
-        version: 8.20.0
+        version: 8.21.0
 
 packages:
 
@@ -1970,6 +1974,9 @@ packages:
   csstype@3.1.3:
     resolution: {integrity: sha512-M1uQkMl8rQK/szD0LNhtqxIPLpimGm8sOBwU7lLnCpSbTyY3yeU1Vc7l4KT5zT4s/yOxHH5O7tIuuLOCnLADRw==}
 
+  csstype@3.2.3:
+    resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
+
   data-urls@4.0.0:
     resolution: {integrity: sha512-/mMTei/JXPqvFqQtfyTowxmJVwr2PVAeCcDxyFf6LhoOu/09TX2OX3kb2wzi4DMXcfj4OItwDOnhl5oziPnT6g==}
     engines: {node: '>=14'}
@@ -3094,6 +3101,10 @@ packages:
   symbol-tree@3.2.4:
     resolution: {integrity: sha512-9QNk5KwDF+Bvz+PyObkmSYjI5ksVUYtjW7AU22r2NKcfLJcXp96hkDWU3+XndOsUb+AQ9QhfzfCT2O+CNWT5Tw==}
 
+  temml@0.13.3:
+    resolution: {integrity: sha512-GLNEdf5qBWux3adbOxFus4jlds8nCdEIkkKq99m/4GGTfqnsjlVlK/i371Ux7yYSg/WNmOyAkNT/GJlZoJ0v+w==}
+    engines: {node: '>=18.13.0'}
+
   tiny-invariant@1.3.3:
     resolution: {integrity: sha512-+FbBPE1o9QAYvviau/qC5SE3caw21q3xkvWKBtja5vgqOWIHHJ3ioaq1VPfn/Szqctz2bU/oYeKd9/z5BL+PVg==}
 
@@ -3425,8 +3436,8 @@ packages:
   wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
 
-  ws@8.20.0:
-    resolution: {integrity: sha512-sAt8BhgNbzCtgGbt2OxmpuryO63ZoDk/sqaB/znQm94T4fCEsy/yV+7CdC1kJhOU9lboAEU7R3kquuycDoibVA==}
+  ws@8.21.0:
+    resolution: {integrity: sha512-Vsp28b7DRcimFQvrqu2Wek3z1iYxDCWqHYB8Qsnk/S4RfaCQzPGPyBNuVjJV3cd6UiKtUtp6sNM77gWvzcCH+g==}
     engines: {node: '>=10.0.0'}
     peerDependencies:
       bufferutil: ^4.0.1
@@ -5238,6 +5249,8 @@ snapshots:
 
   csstype@3.1.3: {}
 
+  csstype@3.2.3: {}
+
   data-urls@4.0.0:
     dependencies:
       abab: 2.0.6
@@ -5776,7 +5789,7 @@ snapshots:
       whatwg-encoding: 2.0.0
       whatwg-mimetype: 3.0.0
       whatwg-url: 12.0.1
-      ws: 8.20.0
+      ws: 8.21.0
       xml-name-validator: 4.0.0
     transitivePeerDependencies:
       - bufferutil
@@ -6330,7 +6343,7 @@ snapshots:
 
   solid-js@1.8.7:
     dependencies:
-      csstype: 3.1.3
+      csstype: 3.2.3
       seroval: 0.15.1
 
   solid-refresh@0.6.3(solid-js@1.8.7):
@@ -6387,6 +6400,8 @@ snapshots:
   supports-preserve-symlinks-flag@1.0.0: {}
 
   symbol-tree@3.2.4: {}
+
+  temml@0.13.3: {}
 
   tiny-invariant@1.3.3: {}
 
@@ -6625,7 +6640,7 @@ snapshots:
 
   wrappy@1.0.2: {}
 
-  ws@8.20.0: {}
+  ws@8.21.0: {}
 
   xml-name-validator@4.0.0: {}
 
