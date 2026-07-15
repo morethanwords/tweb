@@ -1,5 +1,5 @@
 import type LazyLoadQueue from '@components/lazyLoadQueue';
-import {formatFullSentTimeRaw, formatTime} from '@helpers/date';
+import {formatDate, formatFullSentTimeRaw, formatTime} from '@helpers/date';
 import {getFullDate} from '@helpers/date/getFullDate';
 import setInnerHTML from '@helpers/dom/setInnerHTML';
 import {Middleware} from '@helpers/middleware';
@@ -28,6 +28,7 @@ import appDownloadManager from '@lib/appDownloadManager';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import numberThousandSplitter, {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
 import {makeTime} from '@components/chat/utils';
+import {useAppConfig} from '@stores/appState';
 import {formatNanoton} from '@helpers/paymentsWrapCurrencyAmount';
 
 const NBSP = '&nbsp;';
@@ -56,6 +57,24 @@ const makeEdited = () => {
   edited.classList.add('time-edited', 'time-part');
   _i18n(edited, 'EditedMessage');
   return edited;
+};
+
+// * when the `message_primary_edited_date` app config flag is on, the edited badge is
+// * replaced by the actual edit time ("edited at HH:MM" / "edited on <date> at HH:MM")
+// * shown in place of the sent time — matches tdesktop's EditedPrimary behaviour.
+const isSameDay = (a: Date, b: Date) => {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+};
+
+const makeEditedTime = (sentDate: Date, editDate: Date) => {
+  const timeEl = formatTime(editDate);
+  const now = new Date();
+  if(isSameDay(sentDate, now) && isSameDay(editDate, now)) {
+    return i18n('EditedMessage.At', [timeEl]);
+  }
+
+  const dateEl = formatDate(editDate, {shortMonth: true});
+  return i18n('EditedMessage.On', [dateEl, timeEl]);
 };
 
 const makeEffect = (props: {
@@ -219,7 +238,21 @@ export namespace MessageRender {
     // let hasReactions: boolean;
 
     const fwdFrom = isMessage && message.fwd_from;
-    const time: HTMLElement = /* isSponsored ? undefined :  */makeTime(date, includeDate);
+
+    // * when enabled by app config, an edited message shows its actual edit time in place of the
+    // * sent time (and drops the separate "edited" badge) — but not when the footer is already
+    // * showing a forwarded/saved date (matches tdesktop's EditedPrimary && !ForwardedDate).
+    const editDate = isMessage && (message as Message.message).edit_date;
+    const editedPrimary = isMessage &&
+      !!useAppConfig().message_primary_edited_date &&
+      !!editDate &&
+      chatType !== ChatType.Scheduled &&
+      !(message as Message.message).pFlags.edit_hide &&
+      !(includeDate && !!fwdFrom);
+
+    const time: HTMLElement = /* isSponsored ? undefined :  */editedPrimary ?
+      makeEditedTime(date, new Date(editDate * 1000)) :
+      makeTime(date, includeDate);
 
     let title = /* isSponsored ? undefined :  */getFullDate(new Date(message.date * 1000));
     if(isMessage) {
@@ -261,7 +294,7 @@ export namespace MessageRender {
         args.push(span);
       }
 
-      if(message.edit_date && chatType !== ChatType.Scheduled && !message.pFlags.edit_hide) {
+      if(!editedPrimary && message.edit_date && chatType !== ChatType.Scheduled && !message.pFlags.edit_hide) {
         args.unshift(editedSpan = makeEdited());
       }
 
@@ -348,7 +381,9 @@ export namespace MessageRender {
           a;
     });
     if(time) {
-      clonedArgs[clonedArgs.length - 1] = makeTime(date, includeDate); // clone time
+      clonedArgs[clonedArgs.length - 1] = editedPrimary ? // clone time
+        makeEditedTime(date, new Date(editDate * 1000)) :
+        makeTime(date, includeDate);
     }
     inner.append(...clonedArgs);
 

@@ -1788,6 +1788,8 @@ const lang = {
     'other_value': '%1$d online'
   },
   'EditedMessage': 'edited',
+  'EditedMessage.At': 'edited at %1$s',
+  'EditedMessage.On': 'edited on %1$s at %2$s',
   'GlobalSearch': 'Global search',
   'SearchMessages': 'Messages',
   'SearchAllChatsShort': 'Chats',
