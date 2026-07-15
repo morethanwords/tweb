@@ -21,6 +21,7 @@ import MTProtoMessagePort, {ThreadedWorkerEvents} from '@lib/mainWorker/mainMess
 import cryptoMessagePort from '@lib/crypto/cryptoMessagePort';
 import SuperMessagePort from '@lib/superMessagePort';
 import IS_SHARED_WORKER_SUPPORTED from '@environment/sharedWorkerSupport';
+import {IS_SAFARI} from '@environment/userAgent';
 import toggleStorages from '@helpers/toggleStorages';
 import idleController from '@helpers/idleController';
 import ServiceMessagePort from '@lib/serviceWorker/serviceMessagePort';
@@ -843,7 +844,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
       superMessagePort,
       type
     );
-    const constructor = IS_SHARED_WORKER_SUPPORTED ? SharedWorker : Worker;
+    // Safari silently wedges a {type:'module'} SharedWorker used for rlottie sticker decoding:
+    // frames never arrive, no error is thrown, and every sticker canvas stays blank (never appended).
+    // Keep MTProto/crypto on the shared worker, but hand the rlottie pool per-tab dedicated Workers.
+    const constructor = IS_SHARED_WORKER_SUPPORTED && !(IS_SAFARI && type === 'rlottie') ? SharedWorker : Worker;
 
     superMessagePort.addEventListener('port', (payload, source, event) => {
       this.invokeVoid('threadedPort', type, undefined, [event.ports[0]]);
