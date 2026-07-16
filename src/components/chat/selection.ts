@@ -585,6 +585,10 @@ export class SearchSelection extends AppSelection {
 
   private isPrivate: boolean;
 
+  // * plate-scoped: the tab's listenerSetter outlives every selection session,
+  // * so plate button listeners must not accumulate there
+  private containerListenerSetter: ListenerSetter;
+
   constructor(
     private searchSuper: AppSearchSuper,
     managers: AppManagers,
@@ -658,6 +662,8 @@ export class SearchSelection extends AppSelection {
       duration: animate ? 200 : 0,
       onTransitionEnd: () => {
         if(!this.isSelecting) {
+          this.containerListenerSetter?.removeAll();
+          this.containerListenerSetter = null;
           this.selectionContainer.remove();
           this.selectionContainer =
             this.selectionForwardBtn =
@@ -681,13 +687,15 @@ export class SearchSelection extends AppSelection {
         this.selectionContainer = document.createElement('div');
         this.selectionContainer.classList.add(BASE_CLASS + '-container');
 
+        this.containerListenerSetter = new ListenerSetter();
+
         const btnCancel = ButtonIcon(`close ${BASE_CLASS}-cancel`, {noRipple: true});
-        attachClickEvent(btnCancel, () => this.cancelSelection(), {listenerSetter: this.listenerSetter, once: true});
+        attachClickEvent(btnCancel, () => this.cancelSelection(), {listenerSetter: this.containerListenerSetter, once: true});
 
         this.selectionCountEl = document.createElement('div');
         this.selectionCountEl.classList.add(BASE_CLASS + '-count');
 
-        const attachClickOptions: AttachClickOptions = {listenerSetter: this.listenerSetter};
+        const attachClickOptions: AttachClickOptions = {listenerSetter: this.containerListenerSetter};
 
         this.selectionGotoBtn = ButtonIcon(`message ${BASE_CLASS}-goto`);
         attachClickEvent(this.selectionGotoBtn, () => {
@@ -762,6 +770,10 @@ export default class ChatSelection extends AppSelection {
   // * the plate shows a "Report N Messages" action instead of forward/delete
   private reportSelectionData: {option: Uint8Array, text?: string};
   private selectionContainerForReport: boolean;
+
+  // * plate-scoped: this.listenerSetter lives until peer change, so plate button
+  // * listeners must not accumulate there across selection sessions
+  private containerListenerSetter: ListenerSetter;
 
   public get isReportSelection() {
     return !!this.reportSelectionData;
@@ -1027,7 +1039,8 @@ export default class ChatSelection extends AppSelection {
       this.selectionInputWrapper = document.createElement('div');
       this.selectionInputWrapper.classList.add('chat-input-wrapper', 'selection-wrapper');
 
-      const attachClickOptions: AttachClickOptions = {listenerSetter: this.listenerSetter};
+      this.containerListenerSetter = new ListenerSetter();
+      const attachClickOptions: AttachClickOptions = {listenerSetter: this.containerListenerSetter};
 
       this.selectionCountEl = document.createElement('div');
       this.selectionCountEl.classList.add('selection-container-count');
@@ -1140,6 +1153,8 @@ export default class ChatSelection extends AppSelection {
   };
 
   private removeSelectionContainer() {
+    this.containerListenerSetter?.removeAll();
+    this.containerListenerSetter = null;
     this.selectionInputWrapper.remove();
     this.selectionInputWrapper =
       this.selectionContainer =
