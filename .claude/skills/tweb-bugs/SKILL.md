@@ -31,7 +31,7 @@ Fetch open bugs from **both** platforms, normalize to a unified format, deduplic
 
 ## Cache Location
 
-`C:\Users\user\tweb\.claude\bugs-cache\`
+`.claude/bugs-cache/` (relative to the repo root)
 
 Stored **per-platform** in separate subdirectories:
 
@@ -163,7 +163,7 @@ The script (`fetch-telegram-bugs.mjs` in the skill directory):
 5. With `--detailed`: fetches each `/c/{id}` page for full body, votes, device info, author
 6. Saves unified-format array to `telegram/issues-raw.json`
 
-The `SKILL_DIR` is `C:\Users\user\.claude\skills\tweb-bugs`.
+The `SKILL_DIR` is `.claude/skills/tweb-bugs` (relative to the repo root).
 
 ### Step 3: Analyze & Score
 
@@ -425,7 +425,7 @@ import json, re
 from pathlib import Path
 from collections import defaultdict
 
-CACHE = Path('C:/Users/user/tweb/.claude/bugs-cache')
+CACHE = Path('.claude/bugs-cache')
 
 # Merge all categorized files
 all_bugs = []

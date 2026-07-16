@@ -5,7 +5,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash(mkdir:*), Bash(ls:*), AskUser
 
 # Task Planner - Create Automated Task Workflows
 
-You are setting up a new **repetitive task automation** for Claude Code. The goal is to create a folder in `.ai/<featurename>/` containing:
+You are setting up a new **repetitive task automation** for a coding agent (Claude Code, Codex, …). The goal is to create a folder in `.ai/<featurename>/` containing:
 - `prompt.md` - Detailed instructions for the autonomous agent
 - `tasks.json` - List of tasks with completion tracking
 
