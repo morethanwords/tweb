@@ -206,6 +206,7 @@ const STATE_STEPS = {
         writer.resetStorages.set('dialogs', []);
         writer.push('allDialogsLoaded', copy(STATE_INIT.allDialogsLoaded));
         writer.push('pinnedOrders', copy(STATE_INIT.pinnedOrders));
+        writer.push('botCommands', copy(STATE_INIT.botCommands));
       }
 
       if(compareVersion(writer.state.version, STATE_VERSION) !== 0) {

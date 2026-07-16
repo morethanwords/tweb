@@ -1,55 +1,8 @@
 import type ChatInput from '@components/chat/input';
-import type {BotInfo, ChatFull, UserFull} from '@layer';
 import AutocompleteHelperController from '@components/chat/autocompleteHelperController';
 import AutocompletePeerHelper from '@components/chat/autocompletePeerHelper';
-import SearchIndex from '@lib/searchIndex';
 import {AppManagers} from '@lib/managers';
-
-export function processPeerFullForCommands(peerId: PeerId, full: ChatFull.chatFull | ChatFull.channelFull | UserFull.userFull, query?: string) {
-  const botInfos: BotInfo.botInfo[] = [].concat(full.bot_info);
-  let index: SearchIndex<string>;
-
-  if(query !== undefined) {
-    index = new SearchIndex<string>({
-      ignoreCase: true
-    });
-  }
-
-  type T = {peerId: PeerId, name: string, description: string, index: number, command: string};
-  const commands: Map<string, T> = new Map();
-  botInfos.forEach((botInfo) => {
-    if(!botInfo.commands) {
-      return;
-    }
-
-    botInfo.commands.forEach(({command, description}, idx) => {
-      const c = '/' + command;
-      commands.set(command, {
-        peerId: botInfo.user_id ? botInfo.user_id.toPeerId(false) : peerId,
-        command: command,
-        name: c,
-        description: description,
-        index: idx
-      });
-
-      if(index) {
-        index.indexObject(command, c);
-      }
-    });
-  });
-
-  let out: T[];
-  if(!index) {
-    out = [...commands.values()];
-  } else {
-    const found = index.search(query);
-    out = Array.from(found).map((command) => commands.get(command));
-  }
-
-  out = out.sort((a, b) => commands.get(a.command).index - commands.get(b.command).index);
-
-  return out;
-}
+import processPeerFullForCommands from '@components/chat/processPeerFullForCommands';
 
 export default class CommandsHelper extends AutocompletePeerHelper {
   constructor(

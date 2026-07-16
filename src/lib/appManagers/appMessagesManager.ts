@@ -863,6 +863,10 @@ export class AppMessagesManager extends AppManager {
     this.pendingNewBotforumTopics = {};
     this.pendingEditingMessages = new Map();
 
+    if(!init) {
+      this.appProfileManager.clearBotCommands();
+    }
+
     this.dialogsStorage && this.dialogsStorage.clear(init);
     this.filtersStorage && this.filtersStorage.clear(init);
   };

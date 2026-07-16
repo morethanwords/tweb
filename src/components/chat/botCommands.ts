@@ -1,7 +1,7 @@
 import type ChatInput from '@components/chat/input';
 import callbackify from '@helpers/callbackify';
 import AutocompletePeerHelper from '@components/chat/autocompletePeerHelper';
-import {processPeerFullForCommands} from '@components/chat/commandsHelper';
+import processPeerFullForCommands from '@components/chat/processPeerFullForCommands';
 import {AppManagers} from '@lib/managers';
 import {Middleware} from '@helpers/middleware';
 

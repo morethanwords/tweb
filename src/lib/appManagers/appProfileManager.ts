@@ -24,6 +24,7 @@ import callbackifyAll from '@helpers/callbackifyAll';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import {PEER_FULL_TTL} from '@appManagers/constants';
 import {isParticipantAdmin} from '@lib/appManagers/utils/chats/isParticipantAdmin';
+import type {State} from '@config/state';
 
 export type UserTyping = Partial<{userId: UserId, action: SendMessageAction, timeout: number}>;
 
@@ -46,6 +47,7 @@ export class AppProfileManager extends AppManager {
   private usersFull: {[id: UserId]: UserFull.userFull} = {};
   private chatsFull: {[id: ChatId]: ChatFull} = {};
   private fullExpiration: {[peerId: PeerId]: number} = {};
+  private botCommandsByPeer: State['botCommands'] = {};
   private typingsInPeer: {[key: string]: UserTyping[]};
   private peerSettings: {[peerId: PeerId]: PeerSettings};
 
@@ -67,7 +69,9 @@ export class AppProfileManager extends AppManager {
 
       updatePeerSettings: this.onUpdatePeerSettings,
 
-      updatePeerHistoryTTL: this.onUpdatePeerHistoryTTL
+      updatePeerHistoryTTL: this.onUpdatePeerHistoryTTL,
+
+      updateBotCommands: this.onUpdateBotCommands
     });
 
     this.rootScope.addEventListener('chat_update', (chatId) => {
@@ -125,9 +129,15 @@ export class AppProfileManager extends AppManager {
 
     this.typingsInPeer = {};
     this.peerSettings = {};
+
+    return this.appStateManager.getState().then((state) => {
+      this.botCommandsByPeer = state.botCommands;
+    });
   }
 
   private saveFullPeer<T extends UserFull.userFull | ChatFull>(peerId: PeerId, fullPeer: T): T {
+    this.applyCachedBotCommands(peerId, fullPeer);
+
     const isUser = peerId.isUser();
 
     if(isUser) {
@@ -278,6 +288,11 @@ export class AppProfileManager extends AppManager {
     return peerId.isUser() ? this.getCachedFullUser(peerId.toUserId()) : this.getCachedFullChat(peerId.toChatId());
   }
 
+  public clearBotCommands() {
+    this.botCommandsByPeer = {};
+    this.appStateManager.pushToState('botCommands', this.botCommandsByPeer);
+  }
+
   public modifyCachedFullChat<T extends ChatFull = ChatFull>(chatId: ChatId, modify: (fullChat: T) => boolean | void) {
     this.modifyCachedFullPeer(chatId.toPeerId(true), modify as any);
   }
@@ -299,6 +314,47 @@ export class AppProfileManager extends AppManager {
         this.rootScope.dispatchEvent('chat_full_update', peerId.toChatId());
       }
     }
+  }
+
+  private applyBotCommands(
+    peerId: PeerId,
+    fullPeer: UserFull | ChatFull,
+    botId: Update.updateBotCommands['bot_id'],
+    commands: Update.updateBotCommands['commands']
+  ) {
+    const apply = (botInfo: UserFull.userFull['bot_info'], fallbackBotId?: UserId) => {
+      if(!botInfo) {
+        return false;
+      }
+
+      const infoBotId = botInfo.user_id ?? fallbackBotId;
+      if(infoBotId === undefined || String(infoBotId) !== String(botId)) {
+        return false;
+      }
+
+      botInfo.commands = commands;
+      return true;
+    };
+
+    if(fullPeer._ === 'userFull') {
+      return apply(fullPeer.bot_info, peerId.toUserId());
+    }
+
+    return !!fullPeer.bot_info?.some((botInfo) => apply(botInfo));
+  }
+
+  private applyCachedBotCommands(peerId: PeerId, fullPeer: UserFull | ChatFull) {
+    const commandsByBot = this.botCommandsByPeer[peerId];
+    if(!commandsByBot) {
+      return false;
+    }
+
+    let updated = false;
+    for(const botId in commandsByBot) {
+      updated = this.applyBotCommands(peerId, fullPeer, botId, commandsByBot[botId]) || updated;
+    }
+
+    return updated;
   }
 
   public isUserBlocked(userId: UserId) {
@@ -1287,6 +1343,17 @@ export class AppProfileManager extends AppManager {
     }
 
     this.rootScope.dispatchEvent('auto_delete_period_update', {peerId, period: update.ttl_period});
+  };
+
+  private onUpdateBotCommands = (update: Update.updateBotCommands) => {
+    const peerId = this.appPeersManager.getPeerId(update.peer);
+    const commandsByBot = this.botCommandsByPeer[peerId] ??= {};
+    commandsByBot[String(update.bot_id)] = update.commands;
+    this.appStateManager.pushToState('botCommands', this.botCommandsByPeer);
+
+    this.modifyCachedFullPeer(peerId, (fullPeer) => {
+      return this.applyBotCommands(peerId, fullPeer, update.bot_id, update.commands);
+    });
   };
 
   public setMyBirthday(date: Birthday | null) {

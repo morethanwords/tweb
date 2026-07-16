@@ -1559,6 +1559,10 @@ export default class ChatInput {
     this.listenerSetter.add(rootScope)('peer_full_update', (peerId) => {
       if(peerId === this.chat?.peerId) {
         this.updateGiftButtonVisibility();
+        if(this.previousQuery?.startsWith('/')) {
+          this.previousQuery = undefined;
+          this.checkAutocomplete();
+        }
       }
     });
 

@@ -1,7 +1,7 @@
 import type {LiteModeKey} from '@helpers/liteMode';
 import type {AppMediaPlaybackController} from '@components/appMediaPlaybackController';
 import type {TopPeerType, MyTopPeer} from '@appManagers/appUsersManager';
-import type {AccountContentSettings, AccountThemes, AutoDownloadSettings, BaseTheme, NotifyPeer, PeerNotifySettings, Theme, ThemeSettings, WallPaper} from '@layer';
+import type {AccountContentSettings, AccountThemes, AutoDownloadSettings, BaseTheme, BotCommand, NotifyPeer, PeerNotifySettings, Theme, ThemeSettings, WallPaper} from '@layer';
 import type DialogsStorage from '@lib/storages/dialogs';
 import type FiltersStorage from '@lib/storages/filters';
 import type {AuthState, Modify} from '@types';
@@ -185,6 +185,7 @@ type CacheSomething<T> = {
 export type State = {
   allDialogsLoaded: DialogsStorage['allDialogsLoaded'],
   pinnedOrders: DialogsStorage['pinnedOrders'],
+  botCommands: {[peerId: PeerId]: {[botId: string]: BotCommand[]}},
   // contactsList: UserId[],
   contactsListCachedTime: number,
   updates: Partial<{
@@ -551,6 +552,7 @@ export const SETTINGS_INIT: StateSettings = {
 export const STATE_INIT: State = {
   allDialogsLoaded: {},
   pinnedOrders: {},
+  botCommands: {},
   // contactsList: [],
   contactsListCachedTime: 0,
   updates: {},
