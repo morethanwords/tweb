@@ -219,6 +219,7 @@ declare global {
     | `FLOOD_WAIT_${number}`
     | 'MESSAGE_NOT_MODIFIED'
     | 'MESSAGE_EMPTY'
+    | 'MESSAGE_ID_REQUIRED'
     | 'SLUG_INVALID'
     | `PREMIUM_SUB_ACTIVE_UNTIL_${number}`
     | `PHONE_MIGRATE_${number}`

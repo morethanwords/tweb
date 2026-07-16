@@ -8,6 +8,7 @@ import ButtonIcon from '@components/buttonIcon';
 import CheckboxField from '@components/checkboxField';
 import PopupDeleteMessages from '@components/popups/deleteMessages';
 import showForwardPopup from '@components/popups/forward';
+import {showSelectedMessagesReport} from '@components/popups/reportAd';
 import SetTransition from '@components/singleTransition';
 import ListenerSetter from '@helpers/listenerSetter';
 import PopupSendNow from '@components/popups/sendNow';
@@ -755,6 +756,16 @@ export default class ChatSelection extends AppSelection {
   public selectionSendNowBtn: HTMLElement;
   public selectionForwardBtn: HTMLElement;
   public selectionDeleteBtn: HTMLElement;
+  public selectionReportBtn: HTMLElement;
+
+  // * "select messages to report" mode (entered on MESSAGE_ID_REQUIRED):
+  // * the plate shows a "Report N Messages" action instead of forward/delete
+  private reportSelectionData: {option: Uint8Array, text?: string};
+  private selectionContainerForReport: boolean;
+
+  public get isReportSelection() {
+    return !!this.reportSelectionData;
+  }
 
   constructor(
     private chat: Chat,
@@ -803,8 +814,43 @@ export default class ChatSelection extends AppSelection {
     }
   }
 
+  public enterReportSelection(data: ChatSelection['reportSelectionData']) {
+    if(this.isSelecting) {
+      // * an unrelated active selection must not become the report payload — start fresh
+      this.cancelSelection(true);
+    }
+
+    this.reportSelectionData = data;
+    if(!this.toggleSelection(true, true)) {
+      // * the previous plate can survive the synchronous cancel — rebuild it for the report mode
+      Promise.resolve(this.onToggleSelection(true, !this.doNotAnimate))
+      .then(() => this.updateContainer(true));
+    }
+  }
+
+  public cleanup() {
+    this.reportSelectionData = undefined;
+    super.cleanup();
+  }
+
+  protected async updateContainer(forceSelection = false) {
+    if(this.isReportSelection) {
+      // * no forward/delete state to compute — only the count matters here
+      this.onUpdateContainer(true, true, true);
+      return;
+    }
+
+    return super.updateContainer(forceSelection);
+  }
+
   public toggleSelection(toggleCheckboxes = true, forceSelection = false) {
-    const ret = super.toggleSelection(toggleCheckboxes, forceSelection);
+    // * while choosing messages to report, the selection survives reaching zero
+    // * selected — the mode ends only via cancel or a sent report
+    const ret = super.toggleSelection(toggleCheckboxes, forceSelection || this.isReportSelection);
+
+    if(ret && !this.isSelecting) {
+      this.reportSelectionData = undefined;
+    }
 
     if(ret && toggleCheckboxes) {
       const history = this.bubbles.getRenderedHistory('asc');
@@ -961,75 +1007,107 @@ export default class ChatSelection extends AppSelection {
       duration: animate ? 200 : 0,
       onTransitionEnd: () => {
         if(!this.isSelecting) {
-          this.selectionInputWrapper.remove();
-          this.selectionInputWrapper =
-            this.selectionContainer =
-            this.selectionSendNowBtn =
-            this.selectionForwardBtn =
-            this.selectionDeleteBtn =
-            null;
+          this.removeSelectionContainer();
           this.selectedText = undefined;
         }
       }
     });
 
+    // * the plate layout depends on the mode — rebuild it if the mode has changed
+    if(
+      this.isSelecting &&
+      this.selectionContainer &&
+      this.selectionContainerForReport !== !!this.isReportSelection
+    ) {
+      this.removeSelectionContainer();
+    }
+
     if(this.isSelecting && !this.selectionContainer) {
+      this.selectionContainerForReport = !!this.isReportSelection;
       this.selectionInputWrapper = document.createElement('div');
       this.selectionInputWrapper.classList.add('chat-input-wrapper', 'selection-wrapper');
 
       const attachClickOptions: AttachClickOptions = {listenerSetter: this.listenerSetter};
 
-      // Centre slot — the "N selected" count, styled as a transparent button;
-      // tapping it clears the selection.
       this.selectionCountEl = document.createElement('div');
       this.selectionCountEl.classList.add('selection-container-count');
-      const countButton = Button('btn-primary btn-transparent text-bold chat-input-plate-button');
-      countButton.append(this.selectionCountEl);
-      attachClickEvent(countButton, () => this.cancelSelection(), attachClickOptions);
 
-      // Left slot — delete.
-      this.selectionDeleteBtn = ButtonIcon('delete danger selection-container-delete');
-      attachClickEvent(this.selectionDeleteBtn, () => {
-        PopupElement.createPopup(
-          PopupDeleteMessages,
-          this.chat.peerId,
-          this.getSelectedMids(),
-          this.chat.type,
-          () => {
-            this.cancelSelection();
+      if(this.isReportSelection) {
+        // * report-selection mode (tdesktop's choose-for-report): cancel on the left,
+        // * a "Report N Messages" action in the centre, nothing on the right
+        const cancelBtn = ButtonIcon('close selection-container-close');
+        attachClickEvent(cancelBtn, () => this.cancelSelection(), attachClickOptions);
+
+        this.selectionReportBtn = Button('btn-primary btn-transparent text-bold chat-input-plate-button selection-container-report');
+        this.selectionReportBtn.append(this.selectionCountEl);
+        attachClickEvent(this.selectionReportBtn, () => {
+          const mids = this.getSelectedMids();
+          const data = this.reportSelectionData;
+          if(!mids.length || !data) {
+            return;
           }
-        );
-      }, attachClickOptions);
 
-      // Right slot — forward (or "send now" for scheduled messages).
-      let rightButton: HTMLElement;
-      if(this.chat.type === ChatType.Scheduled) {
-        rightButton = this.selectionSendNowBtn = ButtonIcon('send2 selection-container-send');
-        attachClickEvent(this.selectionSendNowBtn, () => {
-          PopupElement.createPopup(PopupSendNow, this.chat.peerId, [...this.selectedMids.get(this.chat.peerId)], () => {
+          showSelectedMessagesReport(this.chat.peerId, mids, data.option, data.text, () => {
             this.cancelSelection();
           });
         }, attachClickOptions);
+
+        this.selectionContainer = ChatInputPlate({
+          class: 'selection-container',
+          left: cancelBtn,
+          center: this.selectionReportBtn
+        }) as HTMLElement;
       } else {
-        rightButton = this.selectionForwardBtn = ButtonIcon('forward selection-container-forward');
-        attachClickEvent(this.selectionForwardBtn, () => {
-          const obj: {[fromPeerId: PeerId]: number[]} = {};
-          for(const [fromPeerId, mids] of this.selectedMids) {
-            obj[fromPeerId] = Array.from(mids).sort((a, b) => a - b);
-          }
+        // Centre slot — the "N selected" count, styled as a transparent button;
+        // tapping it clears the selection.
+        const countButton = Button('btn-primary btn-transparent text-bold chat-input-plate-button');
+        countButton.append(this.selectionCountEl);
+        attachClickEvent(countButton, () => this.cancelSelection(), attachClickOptions);
 
-          showForwardPopup(obj, () => {
-            this.cancelSelection();
-          });
+        // Left slot — delete.
+        this.selectionDeleteBtn = ButtonIcon('delete danger selection-container-delete');
+        attachClickEvent(this.selectionDeleteBtn, () => {
+          PopupElement.createPopup(
+            PopupDeleteMessages,
+            this.chat.peerId,
+            this.getSelectedMids(),
+            this.chat.type,
+            () => {
+              this.cancelSelection();
+            }
+          );
         }, attachClickOptions);
-      }
 
-      this.selectionContainer = ChatInputPlate({
-        class: 'selection-container',
-        left: this.selectionDeleteBtn,
-        center: countButton,
-        right: rightButton
-      }) as HTMLElement;
+        // Right slot — forward (or "send now" for scheduled messages).
+        let rightButton: HTMLElement;
+        if(this.chat.type === ChatType.Scheduled) {
+          rightButton = this.selectionSendNowBtn = ButtonIcon('send2 selection-container-send');
+          attachClickEvent(this.selectionSendNowBtn, () => {
+            PopupElement.createPopup(PopupSendNow, this.chat.peerId, [...this.selectedMids.get(this.chat.peerId)], () => {
+              this.cancelSelection();
+            });
+          }, attachClickOptions);
+        } else {
+          rightButton = this.selectionForwardBtn = ButtonIcon('forward selection-container-forward');
+          attachClickEvent(this.selectionForwardBtn, () => {
+            const obj: {[fromPeerId: PeerId]: number[]} = {};
+            for(const [fromPeerId, mids] of this.selectedMids) {
+              obj[fromPeerId] = Array.from(mids).sort((a, b) => a - b);
+            }
+
+            showForwardPopup(obj, () => {
+              this.cancelSelection();
+            });
+          }, attachClickOptions);
+        }
+
+        this.selectionContainer = ChatInputPlate({
+          class: 'selection-container',
+          left: this.selectionDeleteBtn,
+          center: countButton,
+          right: rightButton
+        }) as HTMLElement;
+      }
 
       this.selectionInputWrapper.style.opacity = '0';
       this.selectionInputWrapper.append(this.selectionContainer);
@@ -1041,13 +1119,41 @@ export default class ChatSelection extends AppSelection {
   };
 
   protected onUpdateContainer = (cantForward: boolean, cantDelete: boolean, cantSend: boolean) => {
-    replaceContent(this.selectionCountEl, i18n('messages', [this.length()]));
+    if(!this.selectionCountEl) {
+      return;
+    }
+
+    const length = this.length();
+    if(this.selectionContainerForReport) {
+      replaceContent(
+        this.selectionCountEl,
+        length ? i18n('Report2MessagesCount', [length]) : i18n('Chat.Menu.SelectMessages')
+      );
+    } else {
+      replaceContent(this.selectionCountEl, i18n('messages', [length]));
+    }
+
     this.selectionSendNowBtn?.toggleAttribute('disabled', cantSend);
     this.selectionForwardBtn?.toggleAttribute('disabled', cantForward);
     this.selectionDeleteBtn?.toggleAttribute('disabled', cantDelete);
+    this.selectionReportBtn?.toggleAttribute('disabled', !length);
   };
 
+  private removeSelectionContainer() {
+    this.selectionInputWrapper.remove();
+    this.selectionInputWrapper =
+      this.selectionContainer =
+      this.selectionCountEl =
+      this.selectionSendNowBtn =
+      this.selectionForwardBtn =
+      this.selectionDeleteBtn =
+      this.selectionReportBtn =
+      null;
+    this.selectionContainerForReport = undefined;
+  }
+
   protected onCancelSelection = async() => {
+    this.reportSelectionData = undefined;
     // return;
     // const promises: Promise<HTMLElement>[] = [];
     // for(const [peerId, mids] of this.selectedMids) {

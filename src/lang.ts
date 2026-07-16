@@ -3333,6 +3333,11 @@ const lang = {
   'Report2Comment': 'Add Comment',
   'Report2CommentOptional': 'Add Comment (Optional)',
   'Report2Send': 'Send Report',
+  'Report2SelectMessages': 'Please select messages to report.',
+  'Report2MessagesCount': {
+    'one_value': 'Report %1$d Message',
+    'other_value': 'Report %1$d Messages'
+  },
   'Reported2': 'Telegram moderators will review your report. Thank you!',
   'UnreadMessages': 'Unread Messages',
   'ChannelsTab': 'Channels',

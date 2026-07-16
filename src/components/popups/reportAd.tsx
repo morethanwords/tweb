@@ -1,4 +1,5 @@
 import PopupElement, {createPopup, PopupContext} from '@components/popups/indexTsx';
+import {ChatType} from '@components/chat/chatType';
 import {ChannelsSponsoredMessageReportResult, MessageReportOption, ReportResult, SponsoredMessageReportOption} from '@layer';
 import {Accessor, createSignal, For, Setter, createResource, createEffect, onCleanup, createMemo, untrack, useContext} from 'solid-js';
 import Section from '@components/section';
@@ -23,6 +24,12 @@ const STICKER_EMOJI = '👮‍♀️';
 type ReportAdResult = ChannelsSponsoredMessageReportResult | ReportResult;
 type ReportFn = (option: Uint8Array, text?: string) => Promise<ReportAdResult>;
 
+const getTerminalState = (result: ReportAdResult) => {
+  const hasReported = result._ === 'channels.sponsoredMessageReportResultReported' || result._ === 'reportResultReported';
+  const hasHidden = result._ === 'channels.sponsoredMessageReportResultAdsHidden';
+  return hasReported || hasHidden ? {hasReported} : undefined;
+};
+
 type ChooseOrComment =
   ChannelsSponsoredMessageReportResult.channelsSponsoredMessageReportResultChooseOption |
   ReportResult.reportResultChooseOption |
@@ -38,11 +45,29 @@ type RenderedSection = {
 };
 
 export default function showReportAdPopup(
-  type: 'ad' | 'message' | 'story',
+  type: 'ad' | 'message' | 'story' | 'peer',
   report: ReportFn,
-  onAdHide?: () => void
+  onAdHide?: () => void,
+  onError?: (err: ApiError, option?: Uint8Array, text?: string) => boolean | void,
+  initial?: {option: Uint8Array, text?: string}
 ) {
   preloadAnimatedEmojiSticker(STICKER_EMOJI);
+
+  const finishReport = (hasReported: boolean) => {
+    onAdHide?.();
+    toastNew({langPackKey: type === 'ad' ? (hasReported ? 'Ads.Reported' : 'AdHidden') : 'Reported2'});
+  };
+
+  // * returns whether the popup should hide, and toasts otherwise
+  const handleError = (err: ApiError, option?: Uint8Array, text?: string) => {
+    console.error('report error', err);
+    if(onError?.(err, option, text)) {
+      return true;
+    }
+
+    toastNew({langPackKey: 'Error.AnError'});
+    return false;
+  };
 
   function Inner(props: {reportResult: ReportAdResult}) {
     const context = useContext(PopupContext);
@@ -53,12 +78,18 @@ export default function showReportAdPopup(
 
     function renderSection(result: ChooseOrComment, prevText?: string): RenderedSection {
       const [option, setOption] = createSignal<SponsoredMessageReportOption | MessageReportOption>(undefined, {equals: false});
-      const [data] = createResource(() => option()?.option, (option) => report(option));
+      const [data] = createResource(() => option()?.option, (option) => report(option).catch((err: ApiError) => {
+        if(handleError(err, option)) {
+          context.hide();
+        }
+
+        setOption(); // reset for another click
+        return undefined as ReportAdResult;
+      }));
 
       const onReport = (hasReported: boolean) => {
         context.hide();
-        onAdHide?.();
-        toastNew({langPackKey: type === 'ad' ? (hasReported ? 'Ads.Reported' : 'AdHidden') : 'Reported2'});
+        finishReport(hasReported);
       };
 
       createEffect(() => {
@@ -67,10 +98,9 @@ export default function showReportAdPopup(
           return;
         }
 
-        const hasReported = _data._ === 'channels.sponsoredMessageReportResultReported' || _data._ === 'reportResultReported';
-        const hasHidden = _data._ === 'channels.sponsoredMessageReportResultAdsHidden';
-        if(hasReported || hasHidden) {
-          onReport(hasReported);
+        const terminal = getTerminalState(_data);
+        if(terminal) {
+          onReport(terminal.hasReported);
           return;
         }
 
@@ -191,7 +221,11 @@ export default function showReportAdPopup(
                 await report(result.option, inputField.value);
                 onReport(true);
               } catch(err) {
-                console.error(err);
+                if(handleError(err as ApiError, result.option, inputField.value)) {
+                  context.hide();
+                  return;
+                }
+
                 setDisabled(false);
                 inputField.input.contentEditable = 'true';
               }
@@ -289,7 +323,14 @@ export default function showReportAdPopup(
     );
   }
 
-  report(new Uint8Array).then((reportResult) => {
+  report(initial?.option ?? new Uint8Array, initial?.text).then((reportResult) => {
+    // * a seeded first request can complete the report right away
+    const terminal = getTerminalState(reportResult);
+    if(terminal) {
+      finishReport(terminal.hasReported);
+      return;
+    }
+
     createPopup(() => (
       <PopupElement
         class="popup-report-ad"
@@ -299,6 +340,8 @@ export default function showReportAdPopup(
         <Inner reportResult={reportResult} />
       </PopupElement>
     ));
+  }, (err: ApiError) => {
+    handleError(err, initial?.option ?? new Uint8Array, initial?.text);
   });
 }
 
@@ -313,11 +356,65 @@ export function showAdReport(
   );
 }
 
-export function showMessageReport(peerId: PeerId, mids: number[]) {
+export function showMessageReport(peerId: PeerId, mids: number[], onFinish?: () => void) {
   showReportAdPopup(
     'message',
-    (option, text) => rootScope.managers.appMessagesManager.reportMessages(peerId, mids, option, text)
+    (option, text) => rootScope.managers.appMessagesManager.reportMessages(peerId, mids, option, text),
+    onFinish
   );
+}
+
+export function showPeerReport(peerId: PeerId) {
+  let selecting = false;
+  showReportAdPopup(
+    'peer',
+    (option, text) => rootScope.managers.appMessagesManager.reportMessages(peerId, [], option, text),
+    undefined,
+    (err, option, text) => {
+      if(err?.type !== 'MESSAGE_ID_REQUIRED') {
+        return false;
+      }
+
+      // * the server wants specific messages for this report option,
+      // * ask the user to select them like tdesktop does
+      if(!selecting) {
+        selecting = true;
+        selectMessagesToReport(peerId, option, text);
+      }
+
+      return true;
+    }
+  );
+}
+
+// * continuation of a peer report after MESSAGE_ID_REQUIRED: re-sends the report
+// * with the selected messages and the previously chosen option, the server
+// * resumes the flow from there (comment step, next options or reported)
+export function showSelectedMessagesReport(
+  peerId: PeerId,
+  mids: number[],
+  option: Uint8Array,
+  text: string | undefined,
+  onFinish?: () => void
+) {
+  showReportAdPopup(
+    'peer',
+    (option, text) => rootScope.managers.appMessagesManager.reportMessages(peerId, mids, option, text),
+    onFinish,
+    undefined,
+    {option, text}
+  );
+}
+
+async function selectMessagesToReport(peerId: PeerId, option: Uint8Array, text?: string) {
+  const {default: appImManager} = await import('@lib/appImManager');
+  const chat = appImManager.chat;
+  if(chat?.peerId !== peerId || chat.type !== ChatType.Chat) {
+    return;
+  }
+
+  chat.selection.enterReportSelection({option, text});
+  toastNew({langPackKey: 'Report2SelectMessages'});
 }
 
 export function showStoryReport(peerId: PeerId, ids: number[], onFinish?: () => void) {

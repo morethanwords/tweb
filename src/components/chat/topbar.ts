@@ -9,6 +9,7 @@ import ButtonMenuToggle from '@components/buttonMenuToggle';
 import createChatPinnedMessage, {ChatPinnedMessageController} from '@components/chat/pinnedMessage';
 import ListenerSetter from '@helpers/listenerSetter';
 import PopupDeleteDialog from '@components/popups/deleteDialog';
+import {showPeerReport} from '@components/popups/reportAd';
 import appNavigationController from '@components/appNavigationController';
 import {LEFT_COLUMN_ACTIVE_CLASSNAME} from '@components/sidebarLeft';
 import PeerTitle from '@components/peerTitle';
@@ -403,6 +404,20 @@ export default class ChatTopbar {
     return !!userFull && !!(type === 'voice' ? userFull.pFlags.phone_calls_available : userFull.pFlags.video_calls_available);
   };
 
+  private verifyIfCanReportChat = () => {
+    if(
+      this.chat.type !== ChatType.Chat ||
+      this.chat.threadId ||
+      this.chat.isMonoforum ||
+      !this.peerId.isAnyChat()
+    ) {
+      return false;
+    }
+
+    const peer = this.chat.peer as MTChat.chat | MTChat.channel;
+    return !!peer && (peer._ === 'chat' || peer._ === 'channel') && !peer.pFlags.creator;
+  };
+
   private verifyIfCanDeleteChat = async() => {
     if(this.chat.isMonoforum) {
       const chat = this.chat.peer;
@@ -777,6 +792,13 @@ export default class ChatTopbar {
         });
       }),
       verify: () => this.chat.type === ChatType.Logs
+    }, {
+      icon: 'flag',
+      text: 'ReportChat',
+      onClick: () => {
+        showPeerReport(this.peerId);
+      },
+      verify: this.verifyIfCanReportChat
     }, {
       icon: 'delete',
       danger: true,

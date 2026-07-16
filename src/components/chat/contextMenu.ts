@@ -1054,7 +1054,13 @@ export default class ChatContextMenu {
       icon: 'flag',
       text: 'ReportChat',
       onClick: () => {
-        showMessageReport(this.messagePeerId, [this.mid]);
+        const {selection} = this.chat;
+        const selectedMids = selection.isSelecting && this.isSelected ? selection.selectedMids.get(this.messagePeerId) : undefined;
+        showMessageReport(
+          this.messagePeerId,
+          selectedMids?.size ? [...selectedMids] : [this.mid],
+          selectedMids?.size ? () => selection.cancelSelection() : undefined
+        );
       },
       verify: () => !this.message.pFlags.out &&
         this.message._ === 'message' &&
@@ -1118,7 +1124,9 @@ export default class ChatContextMenu {
       className: 'danger',
       text: 'Message.Context.Selection.Delete',
       onClick: this.onDeleteClick,
-      verify: () => this.isSelected && !this.chat.selection.selectionDeleteBtn.hasAttribute('disabled'),
+      verify: () => !!this.chat.selection.selectionDeleteBtn &&
+        this.isSelected &&
+        !this.chat.selection.selectionDeleteBtn.hasAttribute('disabled'),
       notDirect: () => true,
       withSelection: true
     },

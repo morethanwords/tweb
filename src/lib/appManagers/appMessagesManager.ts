@@ -5517,6 +5517,7 @@ export class AppMessagesManager extends AppManager {
     }
   }
 
+  // * an empty `mids` array reports the peer itself
   public reportMessages(peerId: PeerId, mids: number[], option: Uint8Array, message?: string) {
     return this.apiManager.invokeApiSingle('messages.report', {
       peer: this.appPeersManager.getInputPeerById(peerId),

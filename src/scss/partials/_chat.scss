@@ -659,6 +659,12 @@
     font-weight: var(--font-weight-bold);
     white-space: nowrap;
   }
+
+  // The centre button is neutral here (plain-text count/report label with a
+  // gray hover), so the plate's primary-tinted ripple doesn't match it.
+  .chat-input-plate-button {
+    --ripple-color: var(--original-ripple-color);
+  }
 }
 
 .fake-wrapper {
