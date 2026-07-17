@@ -1,5 +1,5 @@
 import {CancellablePromise} from '@helpers/cancellablePromise';
-import {AccountPasskeys, AccountPassword, Authorization, ChannelParticipant, Chat, ChatFull, ChatParticipant, DialogFilter, ExportedChatlistInvite, GlobalPrivacySettings, Passkey, WebAuthorization} from '@layer';
+import {AccountPasskeys, AccountPassword, Authorization, ChannelParticipant, Chat, ChatAdminRights, ChatFull, ChatParticipant, DialogFilter, ExportedChatlistInvite, GlobalPrivacySettings, Passkey, WebAuthorization} from '@layer';
 import type SidebarSlider from '@components/slider';
 import type {SliderSuperTab} from '@components/slider';
 import getParticipantPeerId from '@appManagers/utils/chats/getParticipantPeerId';
@@ -446,12 +446,19 @@ type AppUserPermissionsTabPayload = {
   participant: ChannelParticipant | ChatParticipant,
   chatId: ChatId,
   userId: UserId,
-  editingAdmin?: boolean
+  editingAdmin?: boolean,
+  initialAdminRights?: ChatAdminRights,
+  existingAdminRights?: ChatAdminRights,
+  addingBot?: {
+    startParam?: string,
+    sendStartAfterAdmin?: boolean,
+    existingAdmin?: boolean
+  }
 };
 
 export const AppUserPermissionsTab =
   scaffoldSolidJSTabEventable<AppUserPermissionsTabPayload>({
-    title: (p) => p.editingAdmin ? 'EditAdmin' : 'UserRestrictions',
+    title: (p) => p.addingBot && !p.addingBot.existingAdmin ? 'AddBot' : (p.editingAdmin ? 'EditAdmin' : 'UserRestrictions'),
     getComponentModule: () => import('../sidebarRight/tabs/userPermissions')
   });
 
@@ -460,13 +467,15 @@ export function openUserPermissionsTab(
   slider: SidebarSlider,
   chatId: ChatId,
   participant: ChatParticipant | ChannelParticipant,
-  isAdmin?: boolean
+  isAdmin?: boolean,
+  options?: Pick<AppUserPermissionsTabPayload, 'initialAdminRights' | 'existingAdminRights' | 'addingBot'>
 ) {
   slider.createTab(AppUserPermissionsTab).open({
     participant,
     chatId,
     userId: getParticipantPeerId(participant).toUserId(),
-    editingAdmin: isAdmin
+    editingAdmin: isAdmin,
+    ...options
   });
 }
 

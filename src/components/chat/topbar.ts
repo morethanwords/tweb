@@ -20,7 +20,7 @@ import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import {toastNew} from '@components/toast';
 import replaceContent from '@helpers/dom/replaceContent';
-import {ChatFull, Chat as MTChat, GroupCall, Dialog, InputGroupCall, UserFull} from '@layer';
+import {ChatFull, Chat as MTChat, GroupCall, Dialog, InputGroupCall, User, UserFull} from '@layer';
 import {showSharingPickerPopup} from '@components/popups/pickUser';
 import PopupPeer, {PopupPeerCheckboxOptions} from '@components/popups/peer';
 import {AppEditContactTab} from '@components/solidJsTabs/tabs';
@@ -74,6 +74,8 @@ import {createAutoDeleteIcon} from '@components/autoDeleteIcon';
 import PopupBoost from '@components/popups/boost';
 import PopupPremium from '@components/popups/premium';
 import showNoForwardsPopup from '@components/popups/noForwards';
+import showAddBotToChat from '@components/popups/addBotToChat';
+import getAddBotToChatAction from '@appManagers/utils/bots/getAddBotToChatAction';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -453,6 +455,13 @@ export default class ChatTopbar {
       }
     };
 
+    const getBotAddToChatAction = () => this.peerId.isUser() && getAddBotToChatAction(
+      this.chat.peer as User.user,
+      this.chat.fullPeer() as UserFull.userFull
+    );
+    const onAddBotToChat = () => showAddBotToChat({botId: this.peerId.toUserId()});
+    const verifyAddBotToChat = (text: LangPackKey) => () => getBotAddToChatAction()?.text === text;
+
     this.menuButtons = [this.autoDeleteBtnMenuOptions, {
       icon: 'search',
       text: 'Search',
@@ -577,6 +586,21 @@ export default class ChatTopbar {
         this.addContact();
       },
       verify: async() => !this.chat.isBot && (this.chat.monoforumThreadId || this.peerId).isUser() && !(await this.managers.appPeersManager.isContact(this.chat.monoforumThreadId || this.peerId))
+    }, {
+      icon: 'adduser',
+      text: 'AddToGroup',
+      onClick: onAddBotToChat,
+      verify: verifyAddBotToChat('AddToGroup')
+    }, {
+      icon: 'adduser',
+      text: 'BotAddToGroupOrChannel',
+      onClick: onAddBotToChat,
+      verify: verifyAddBotToChat('BotAddToGroupOrChannel')
+    }, {
+      icon: 'adduser',
+      text: 'AddToChannel',
+      onClick: onAddBotToChat,
+      verify: verifyAddBotToChat('AddToChannel')
     }, {
       icon: 'forward',
       text: 'ShareContact',

@@ -182,6 +182,7 @@ export class ChatAdministratorRights extends CheckboxFields<AdministratorRightsC
     listenerSetter: ListenerSetter,
     appendTo: HTMLElement,
     participant?: ChannelParticipant.channelParticipantAdmin | ChannelParticipant.channelParticipantCreator,
+    rights?: ChatAdminRights,
     chat: Chat,
     canEdit?: boolean,
     onSomethingChanged?: () => void
@@ -200,7 +201,7 @@ export class ChatAdministratorRights extends CheckboxFields<AdministratorRightsC
     const chat = options.chat as Chat.chat | Chat.channel;
     const isBroadcast = !!(chat as Chat.channel).pFlags.broadcast;
     const isForum = !!(chat as Chat.channel).pFlags.forum;
-    const rights = this.rights = options.participant ? options.participant.admin_rights : undefined;
+    const rights = this.rights = options.rights ?? (options.participant ? options.participant.admin_rights : undefined);
 
     const manageMessagesNested: AdministratorRightsCheckboxFieldsField[] = isBroadcast && [
       {flags: ['post_messages'], text: 'EditAdminPostMessages'},
@@ -316,10 +317,11 @@ export class ChatAdministratorRights extends CheckboxFields<AdministratorRightsC
 type CreateSolidTabStateProps = {
   tab: SliderSuperTab,
   save: () => Promise<any>,
+  alwaysShowSave?: boolean,
   unsavedConfirmationProps?: Partial<Pick<Parameters<typeof confirmationPopup>[0], 'titleLangKey' | 'descriptionLangKey' | 'button'>>
 };
 
-export const createSolidTabState = <StateStore extends object>({tab, save, unsavedConfirmationProps = {}}: CreateSolidTabStateProps) => createRoot((dispose) => {
+export const createSolidTabState = <StateStore extends object>({tab, save, alwaysShowSave, unsavedConfirmationProps = {}}: CreateSolidTabStateProps) => createRoot((dispose) => {
   tab.middlewareHelper.get().onDestroy(dispose);
 
   const initialState: StateStore = {} as any;
@@ -339,7 +341,7 @@ export const createSolidTabState = <StateStore extends object>({tab, save, unsav
   createEffect(() => {
     if(!saveIcon()) return;
 
-    saveIcon().classList.toggle('appear-zoom--active', hasChanges());
+    saveIcon().classList.toggle('appear-zoom--active', hasChanges() || alwaysShowSave);
   });
 
   createEffect(() => {

@@ -69,6 +69,9 @@ export namespace InternalLink {
     comment?: string,
     thread?: string,
     start?: string,
+    startgroup?: string,
+    startchannel?: string,
+    admin?: string,
     option?: string,
     t?: string, // media timestamp
     single?: string,

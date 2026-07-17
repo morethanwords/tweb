@@ -21,6 +21,7 @@ import Row from '@components/row';
 import formatDuration from '@helpers/formatDuration';
 import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
 import {ButtonMenuItemOptions} from '@components/buttonMenu';
+import CheckboxField from '@components/checkboxField';
 import {BANNED_RIGHTS_UNTIL_FOREVER} from '@lib/appManagers/constants';
 import tsNow from '@helpers/tsNow';
 import showDatePickerPopup from '@components/popups/datePicker';
@@ -30,20 +31,35 @@ import appImManager from '@lib/appImManager';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import type {AppUserPermissionsTab} from '@components/solidJsTabs/tabs';
+import limitBotAdminRights from '@appManagers/utils/bots/limitBotAdminRights';
 
 const UserPermissions: Component = () => {
   const [tab] = useSuperTab<typeof AppUserPermissionsTab>();
   const promiseCollector = usePromiseCollector();
-  const {participant, chatId, userId, editingAdmin} = tab.payload;
+  const {
+    participant,
+    chatId,
+    userId,
+    editingAdmin,
+    initialAdminRights,
+    existingAdminRights,
+    addingBot
+  } = tab.payload;
 
   let saveCallback: () => Promise<any>;
   const solidState = createSolidTabState<{
     rights: ChatAdminRights | ChatBannedRights,
-    rank: string
+    rank: string,
+    addAsAdmin: boolean
   }>({
     tab,
     save: () => handleChannelsTooMuch(saveCallback),
-    unsavedConfirmationProps: {}
+    unsavedConfirmationProps: {},
+    alwaysShowSave: !!(
+      addingBot?.existingAdmin &&
+      addingBot.sendStartAfterAdmin &&
+      addingBot.startParam
+    )
   });
 
   tab.header.append(solidState.saveIcon());
@@ -58,9 +74,11 @@ const UserPermissions: Component = () => {
       tab.managers.appPeersManager.isAnyGroup(chatId.toPeerId(true)),
       tab.managers.appUsersManager.getUser(userId)
     ]);
+    const isBroadcast = chat._ === 'channel' && !!chat.pFlags.broadcast;
     const isCreator = isParticipantCreator(participant);
     const isAdmin = isParticipantAdmin(participant);
     const _canEditAdmin = canEditAdmin(chat, participant as ChannelParticipant, rootScope.myId);
+    let addAsAdmin = true;
 
     let goodTypes: (ChannelParticipant | ChatParticipant)['_'][];
     if(editingAdmin) {
@@ -110,6 +128,7 @@ const UserPermissions: Component = () => {
         listenerSetter: tab.listenerSetter,
         appendTo: section.content,
         participant: goodTypes.includes(participant._) ? participant as any : undefined,
+        rights: editingAdmin ? initialAdminRights : undefined,
         chat,
         canEdit: _canEditAdmin
       };
@@ -119,7 +138,7 @@ const UserPermissions: Component = () => {
         const p = new ChatAdministratorRights(options);
         if(isAdmin) {
           solidState.setInitial({
-            rights: copy(isChannel ? participantRights : p.takeOut())
+            rights: copy(existingAdminRights || (isChannel ? participantRights : p.takeOut()))
           });
         }
 
@@ -138,18 +157,48 @@ const UserPermissions: Component = () => {
         onChange();
         tab.listenerSetter.add(field.checkboxField.input)('change', onChange);
 
-        saveCallback = () => {
+        saveCallback = async() => {
           if(!_canEditAdmin) {
             return;
           }
 
-          const rights = p.takeOut();
-          return tab.managers.appChatsManager.editAdmin(
+          let rights = p.takeOut();
+          if(addingBot && !addAsAdmin) {
+            await tab.managers.appMessagesManager.addBotToChat(userId, chatId, addingBot.startParam);
+            appImManager.setInnerPeer({peerId: chatId.toPeerId(true)});
+            return;
+          }
+
+          if(addingBot) {
+            rights.pFlags.other = true;
+            rights = limitBotAdminRights(chat, rights);
+            if(!addingBot.existingAdmin) {
+              await confirmationPopup({
+                titleLangKey: 'AddBot',
+                descriptionLangKey: isBroadcast ? 'BotAddAsAdminChannelConfirm' : 'BotAddAsAdminGroupConfirm',
+                descriptionLangArgs: [await wrapPeerTitle({peerId: chatId.toPeerId(true)})],
+                button: {
+                  langKey: 'Add'
+                }
+              });
+            }
+          }
+
+          const resultChatId = await tab.managers.appChatsManager.editAdmin(
             chatId,
             participant,
             rights,
             rankInputField?.value
           );
+          const targetChatId = resultChatId || chatId;
+
+          if(addingBot?.sendStartAfterAdmin && addingBot.startParam) {
+            await tab.managers.appMessagesManager.startBot(userId, targetChatId, addingBot.startParam);
+          }
+
+          if(addingBot) {
+            appImManager.setInnerPeer({peerId: targetChatId.toPeerId(true)});
+          }
         };
       } else {
         options.onSomethingChanged = () => solidState.set({rights: p.takeOut()});
@@ -166,6 +215,31 @@ const UserPermissions: Component = () => {
             rights
           );
         };
+      }
+
+      if(addingBot && !isBroadcast && !addingBot.existingAdmin) {
+        const addAsAdminSection = new SettingSection({});
+        const addAsAdminField = new CheckboxField({
+          name: 'add-as-admin',
+          toggle: true,
+          checked: true,
+          listenerSetter: tab.listenerSetter
+        });
+        const addAsAdminRow = new Row({
+          titleLangKey: 'EditAdmin',
+          checkboxField: addAsAdminField,
+          listenerSetter: tab.listenerSetter
+        });
+        const onAddAsAdminChange = () => {
+          addAsAdmin = addAsAdminField.checked;
+          section.container.classList.toggle('hide', !addAsAdmin);
+          solidState.set({addAsAdmin});
+        };
+
+        tab.listenerSetter.add(addAsAdminField.input)('change', onAddAsAdminChange);
+        addAsAdminSection.content.append(addAsAdminRow.container);
+        tab.scrollable.append(addAsAdminSection.container);
+        onAddAsAdminChange();
       }
 
       tab.scrollable.append(section.container);

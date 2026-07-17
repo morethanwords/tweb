@@ -639,11 +639,26 @@ export class AppChatsManager extends AppManager {
     const canStickToLegacy = !rank && (!makingAdmin || deepEqual(rights, CHAT_LEGACY_ADMIN_RIGHTS));
 
     if(!wasChannel && canStickToLegacy) {
-      await this.apiManager.invokeApi('messages.editChatAdmin', {
+      const editChatAdmin = () => this.apiManager.invokeApi('messages.editChatAdmin', {
         chat_id: id,
         user_id: this.appUsersManager.getUserInput(userId),
         is_admin: makingAdmin
       });
+
+      try {
+        await editChatAdmin();
+      } catch(err) {
+        if(!makingAdmin || (err as ApiError)?.type !== 'USER_NOT_PARTICIPANT') {
+          throw err;
+        }
+
+        const missingInvitees = await this.addChatUser(id, userId);
+        if(missingInvitees.length) {
+          throw err;
+        }
+
+        await editChatAdmin();
+      }
 
       this.apiUpdatesManager.processLocalUpdate({
         _: 'updateChatParticipantAdmin',
@@ -653,7 +668,7 @@ export class AppChatsManager extends AppManager {
         version: 0
       });
 
-      return;
+      return id;
     }
 
     id = await this.migrateChat(id);
@@ -686,6 +701,7 @@ export class AppChatsManager extends AppManager {
     this.apiUpdatesManager.processLocalUpdate(update);
 
     this.onChatUpdatedForce(id, updates);
+    return id;
   }
 
   public editPhoto(id: ChatId, inputFile?: InputFile) {

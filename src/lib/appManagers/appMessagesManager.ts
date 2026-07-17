@@ -5545,7 +5545,30 @@ export class AppMessagesManager extends AppManager {
     }
   }
 
-  public async startBot(botId: BotId, chatId?: ChatId, startParam?: string) {
+  public async addBotToChat(botId: BotId, chatId: ChatId, startParam?: string): Promise<void> {
+    if(startParam) {
+      await this.startBot(botId, chatId, startParam);
+      return;
+    }
+
+    let promise: Promise<MissingInvitee[]>;
+    if(this.appChatsManager.isChannel(chatId)) {
+      promise = this.appChatsManager.inviteToChannel(chatId, [botId]);
+    } else {
+      promise = this.appChatsManager.addChatUser(chatId, botId, 0);
+    }
+
+    await promise.catch((error: ApiError) => {
+      if(error?.type === 'USER_ALREADY_PARTICIPANT') {
+        error.handled = true;
+        return;
+      }
+
+      throw error;
+    });
+  }
+
+  public async startBot(botId: BotId, chatId?: ChatId, startParam?: string): Promise<void> {
     const peerId = chatId ? chatId.toPeerId(true) : botId.toPeerId();
     if(!chatId) {
       await this.unblockBot(botId);
@@ -5554,7 +5577,7 @@ export class AppMessagesManager extends AppManager {
     if(startParam) {
       const randomId = randomLong();
 
-      return this.apiManager.invokeApi('messages.startBot', {
+      await this.apiManager.invokeApi('messages.startBot', {
         bot: this.appUsersManager.getUserInput(botId),
         peer: this.appPeersManager.getInputPeerById(peerId),
         random_id: randomId,
@@ -5562,35 +5585,17 @@ export class AppMessagesManager extends AppManager {
       }).then((updates) => {
         this.apiUpdatesManager.processUpdateMessage(updates);
       });
+      return;
     }
 
-    const str = '/start';
     if(chatId) {
-      let promise: Promise<MissingInvitee[]>;
-      if(this.appChatsManager.isChannel(chatId)) {
-        promise = this.appChatsManager.inviteToChannel(chatId, [botId]);
-      } else {
-        promise = this.appChatsManager.addChatUser(chatId, botId, 0);
-      }
-
-      return promise.catch((error: ApiError) => {
-        if(error?.type == 'USER_ALREADY_PARTICIPANT') {
-          error.handled = true;
-          return;
-        }
-
-        throw error;
-      }).then(() => {
-        return this.sendText({
-          peerId,
-          text: str + '@' + this.appPeersManager.getPeerUsername(botId.toPeerId())
-        });
-      });
+      await this.addBotToChat(botId, chatId);
+      return;
     }
 
-    return this.sendText({
+    await this.sendText({
       peerId,
-      text: str
+      text: '/start'
     });
   }
 

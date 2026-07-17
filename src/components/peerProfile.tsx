@@ -54,6 +54,8 @@ import wrapPhoto from './wrappers/photo';
 import {unwrap} from 'solid-js/store';
 import Button from '@components/buttonTsx';
 import {openBotPrivacyPolicy} from '@helpers/getBotPrivacyPolicy';
+import showAddBotToChat from '@components/popups/addBotToChat';
+import getAddBotToChatAction from '@appManagers/utils/bots/getAddBotToChatAction';
 
 keepMe(ripple);
 
@@ -1051,6 +1053,29 @@ PeerProfile.BotPrivacyPolicy = () => {
   );
 };
 
+PeerProfile.BotAddToChat = () => {
+  const context = useContext(PeerProfileContext);
+  const {i18n} = useHotReloadGuard();
+  const action = createMemo(() => getAddBotToChatAction(
+    context.peer as User.user,
+    context.fullPeer as UserFull.userFull
+  ));
+
+  return (
+    <Show when={action()}>
+      {(action) => (
+        <Row clickable={() => showAddBotToChat({botId: context.peerId.toUserId()})}>
+          <Row.Icon icon="adduser" />
+          <Row.Title>{i18n(action().text)}</Row.Title>
+          <Show when={action().about}>
+            {(about) => <Row.Subtitle>{i18n(about())}</Row.Subtitle>}
+          </Show>
+        </Row>
+      )}
+    </Show>
+  );
+};
+
 PeerProfile.BusinessHours = () => {
   const context = useContext(PeerProfileContext);
   const {rootScope, BusinessHours} = useHotReloadGuard();
@@ -1497,6 +1522,7 @@ PeerProfile.MainSection = () => {
         <PeerProfile.BusinessHours />
         <PeerProfile.BusinessLocation />
         <PeerProfile.Notifications />
+        <PeerProfile.BotAddToChat />
         <PeerProfile.BotPrivacyPolicy />
       </Show>
     </Section>
