@@ -1,2 +1,0 @@
-import{i as a,b as l,J as c,k as u,a as i,p as m,t as n}from"./index-KdoXFpNB.js";import{s as d}from"./bootstrapIm-CeYBlPUG.js";const o=n("<div class=input-wrapper>"),p=n("<div>");function _(e){const s=()=>e.inputWrapper!==!1;return(()=>{const t=p();return a(t,()=>e.header,null),a(t,l(c,{get when(){return s()},get fallback(){return e.children},get children(){const r=o();return a(r,()=>e.children),r}}),null),u(()=>i(t,m(d.card,e.class))),t})()}export{_ as A};
-//# sourceMappingURL=AuthCard-Y51TeSqf.js.map
