@@ -1,7 +1,19 @@
 {
     "name": "Telegram Web",
     "short_name": "Telegram Web",
+    "id": "./",
     "start_url": "./",
+    "scope": "./",
+    "scope_extensions": [
+        {
+            "type": "origin",
+            "origin": "https://t.me"
+        },
+        {
+            "type": "origin",
+            "origin": "https://telegram.me"
+        }
+    ],
     "description": "Telegram is a cloud-based mobile and desktop messaging app with a focus on security and speed.",
     "icons": [
         {
