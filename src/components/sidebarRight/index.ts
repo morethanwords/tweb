@@ -133,49 +133,6 @@ export class AppSidebarRight extends SidebarSlider {
       rootScope.dispatchEventSingle('right_sidebar_toggle', true);
     }
     return animationPromise;
-
-    /* return new Promise((resolve, reject) => {
-      const hidden: {element: HTMLDivElement, height: number}[] = [];
-      const observer = new IntersectionObserver((entries) => {
-        for(const entry of entries) {
-          const bubble = entry.target as HTMLDivElement;
-          if(!entry.isIntersecting) {
-            hidden.push({element: bubble, height: bubble.scrollHeight});
-          }
-        }
-
-        for(const item of hidden) {
-          item.element.style.minHeight = item.height + 'px';
-          (item.element.firstElementChild as HTMLElement).style.display = 'none';
-          item.element.style.width = '1px';
-        }
-
-        //console.log('hidden', hidden);
-        observer.disconnect();
-
-        set();
-
-        setTimeout(() => {
-          for(const item of hidden) {
-            item.element.style.minHeight = '';
-            item.element.style.width = '';
-            (item.element.firstElementChild as HTMLElement).style.display = '';
-          }
-
-          resolve();
-        }, 200);
-      });
-
-      const length = Object.keys(appImManager.bubbles).length;
-      if(length) {
-        for(const i in appImManager.bubbles) {
-          observer.observe(appImManager.bubbles[i]);
-        }
-      } else {
-        set();
-        setTimeout(resolve, 200);
-      }
-    }); */
   }
 }
 
