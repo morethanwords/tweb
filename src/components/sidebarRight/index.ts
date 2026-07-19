@@ -23,6 +23,8 @@ export class AppSidebarRight extends SidebarSlider {
       canHideFirst: true,
       navigationType: 'right'
     });
+
+    this.sidebarEl.inert = !document.body.classList.contains(RIGHT_COLUMN_ACTIVE_CLASSNAME);
   }
 
   construct(managers: AppManagers) {
@@ -88,6 +90,7 @@ export class AppSidebarRight extends SidebarSlider {
   }
 
   public hide() {
+    this.sidebarEl.inert = true;
     document.body.classList.remove(RIGHT_COLUMN_ACTIVE_CLASSNAME);
     appNavigationController.removeByType('right');
     // The column is hidden with a transform (stays mounted), so pause any video
@@ -121,6 +124,7 @@ export class AppSidebarRight extends SidebarSlider {
     if(!enable) this.hide();
     else {
       document.body.classList.add(RIGHT_COLUMN_ACTIVE_CLASSNAME);
+      this.sidebarEl.inert = false;
       if(!appNavigationController.findItemByType('right')) {
         this.pushNavigationItem(this.sharedMediaTab);
       }
