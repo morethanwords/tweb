@@ -1373,7 +1373,7 @@ const lang = {
   'NotificationsForChannels': 'Notifications for channels',
   'NotificationsStoriesGlobal': 'New Stories',
   'NotificationsStoriesImportant': 'Important Stories',
-  'NotificationsStoriesImportantInfo': 'Always on for top 5 contacts.',
+  'NotificationsStoriesImportantInfo': 'Always on for top 5 users.',
   'NotificationsStoriesDisplayAuthor': 'Show Sender\'s Name',
   'ReactionsNotifyMessages': 'Reactions to my Messages',
   'ReactionsNotifyStories': 'Reactions to my Stories',

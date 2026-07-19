@@ -1,0 +1,2 @@
+import{s as c,Y as n,m as l,p as i,t as r}from"./index-CbrRYvZK.js";const p="_Radio_nnosg_1",f="_floating_nnosg_27",g="_checked_nnosg_31",t={Radio:p,floating:f,checked:g},d=r("<span>"),m=e=>{const[s,o]=c(e,["checked","floating","class","classList"]);return(()=>{const a=d();return n(a,l({get class(){return i(t.Radio,s.class)},get classList(){return{[t.checked]:s.checked,[t.floating]:s.floating,"offset-left":s.floating,...s.classList}}},o),!1,!1),a})()};export{m as S};
+//# sourceMappingURL=staticRadio-CS2Qqp55.js.map
