@@ -383,7 +383,7 @@ export default class AppStoriesManager extends AppManager {
         storyId: storyItem.id
       };
 
-      this.appMessagesManager.saveMessageMedia(storyItem, mediaContext);
+      this.appMessagesManager.saveMessageMedia(storyItem, 'media', mediaContext);
       const mediaAreas = storyItem.media_areas;
       mediaAreas?.forEach((mediaArea) => {
         (mediaArea as MediaArea.mediaAreaChannelPost).msg_id =

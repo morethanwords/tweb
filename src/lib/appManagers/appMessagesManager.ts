@@ -5043,7 +5043,7 @@ export class AppMessagesManager extends AppManager {
           replyTo.reply_to_top_id = this.appMessagesIdsManager.generateMessageId(replyTo.reply_to_top_id, replyToChannelId);
         }
 
-        this.saveMessageMedia(replyTo, mediaContext, options.isScheduled);
+        this.saveMessageMedia(replyTo, 'reply_media', mediaContext, options.isScheduled);
       }
     }
 
@@ -5125,7 +5125,7 @@ export class AppMessagesManager extends AppManager {
       }
     } */
 
-    const unsupported = this.saveMessageMedia(message, mediaContext, options.isScheduled);
+    const unsupported = this.saveMessageMedia(message, 'media', mediaContext, options.isScheduled);
 
     // if(isMessage && !unsupported && message.entities) {
     //   unsupported = message.entities.some((entity) => entity._ === 'messageEntityCustomEmoji');
@@ -5306,13 +5306,11 @@ export class AppMessagesManager extends AppManager {
     return messages;
   }
 
-  public saveMessageMedia(message: {
-    media?: MessageMedia,
+  public saveMessageMedia<K extends string>(message: {
     reply_media?: MessageMedia,
     peerId?: PeerId,
     mid?: number
-  }, mediaContext?: ReferenceContext, isScheduled?: boolean) {
-    const key = 'media' in message ? 'media' : 'reply_media';
+  } & Partial<Record<K, MessageMedia>>, key: K, mediaContext?: ReferenceContext, isScheduled?: boolean) {
     const media = message[key];
     if(!media) {
       return;
@@ -5336,7 +5334,7 @@ export class AppMessagesManager extends AppManager {
         media.poll = result.poll;
         media.results = result.results;
         if(media.attached_media) {
-          this.saveMessageMedia({media: media.attached_media}, mediaContext);
+          this.saveMessageMedia(media, 'attached_media', mediaContext);
         }
         break;
       }
@@ -5388,7 +5386,7 @@ export class AppMessagesManager extends AppManager {
       case 'messageMediaPaidMedia': {
         media.extended_media.forEach((extendedMedia) => {
           if(extendedMedia._ === 'messageExtendedMedia') {
-            this.saveMessageMedia(extendedMedia, mediaContext, isScheduled);
+            this.saveMessageMedia(extendedMedia, 'media', mediaContext, isScheduled);
           }
         });
         break;
@@ -10915,7 +10913,7 @@ export class AppMessagesManager extends AppManager {
         }
 
         if(sponsoredMessage.media) {
-          this.saveMessageMedia(sponsoredMessage, undefined);
+          this.saveMessageMedia(sponsoredMessage, 'media', undefined);
         }
 
         // sponsoredMessage.pFlags.can_report = true;
