@@ -1207,7 +1207,7 @@
 "NotificationsForChannels" = "Notifications for channels";
 "NotificationsStoriesGlobal" = "New Stories";
 "NotificationsStoriesImportant" = "Important Stories";
-"NotificationsStoriesImportantInfo" = "Always on for top 5 contacts.";
+"NotificationsStoriesImportantInfo" = "Always on for top 5 users.";
 "NotificationsStoriesDisplayAuthor" = "Show Sender's Name";
 "ReactionsNotifyMessages" = "Reactions to my Messages";
 "ReactionsNotifyStories" = "Reactions to my Stories";
@@ -3053,6 +3053,7 @@
 "Chat.Poll.ReplyToOption" = "Reply to Poll Option";
 "Chat.Poll.CopyOption" = "Copy Option";
 "Chat.Poll.CopyOptionLink" = "Copy Option Link";
+"Chat.Poll.AttachLink" = "Add Link";
 "Chat.Quiz.MembersAnswered_one" = "%d member answered";
 "Chat.Quiz.MembersAnswered_other" = "%d members answered";
 "Chat.Poll.TotalVotesEmpty" = "No votes yet";
@@ -4177,6 +4178,14 @@
 "NewPoll.SetCorrectAnswer" = "Set Correct Answer";
 "NewPoll.SetCorrectAnswerSubtitle" = "Mark one option as the correct answer";
 "NewPoll.SetMultipleCorrectAnswerSubtitle" = "Mark one or more options as the correct answer";
+"NewPoll.RestrictToSubscribers" = "Restrict to Subscribers";
+"NewPoll.RestrictToSubscribersSubtitle" = "Only subscribers who joined 24+ hours ago can vote.";
+"NewPoll.LimitByCountry" = "Limit by Country";
+"NewPoll.LimitByCountrySubtitle" = "Only users from selected countries can vote.";
+"NewPoll.AllowedCountries" = "Allowed Countries";
+"NewPoll.ChooseCountry" = "Please choose at least one country.";
+"NewPoll.CountriesCount_one" = "%d country";
+"NewPoll.CountriesCount_other" = "%d countries";
 "NewPoll.LimitDuration" = "Limit Duration";
 "NewPoll.LimitDurationSubtitle" = "Automatically close the poll after a certain time";
 "NewPoll.PollDuration" = "Poll Duration";
@@ -4189,6 +4198,15 @@
 "NewPoll.OptionsLeft_other" = "You can add %d more options";
 "NewPoll.MaxOptions" = "You have added the maximum amount of options";
 "NewPoll.CouldNotCreate" = "Could not create poll";
+"PollStats.Title" = "Poll Stats";
+"PollStats.Votes" = "Poll votes";
+"PollStats.View" = "View Stats";
+"PollStats.NoVotes" = "No votes";
+"Poll.VoteRestricted.Subscribers" = "Only subscribers can vote.";
+"Poll.VoteRestricted.SubscribersChannel" = "Only subscribers of %s can vote.";
+"Poll.VoteRestricted.SubscribersRecent" = "Only subscribers who joined more than 24 hours ago can vote.";
+"Poll.VoteRestricted.Countries" = "Only users from selected countries can vote.";
+"Poll.VoteRestricted.CountriesList" = "Only users from %s can vote.";
 "CreateBot.Title" = "Create Bot";
 "CreateBot.Description" = "**%s** would like to create and manage a chatbot on your behalf.";
 "CreateBot.Name.Label" = "Bot Name";

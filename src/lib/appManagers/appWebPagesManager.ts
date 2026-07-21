@@ -6,14 +6,22 @@
  */
 
 import {ReferenceContext} from '@lib/storages/references';
-import {WebPage} from '@layer';
+import {MessageMedia, WebPage} from '@layer';
 import safeReplaceObject from '@helpers/object/safeReplaceObject';
 import {AppManager} from '@appManagers/manager';
 import findAndSplice from '@helpers/array/findAndSplice';
 
 const photoTypeSet = new Set(['photo', 'video', 'gif', 'document']);
+const WEB_PAGE_PREVIEW_CACHE_LIMIT = 100;
+const WEB_PAGE_PREVIEW_CACHE_TTL = 5 * 60 * 1000;
+const WEB_PAGE_PREVIEW_ERROR_CACHE_TTL = 5 * 1000;
 
-type WebPageMessageKey = `${PeerId}_${number}`;
+type WebPageMessageKey = `${PeerId}_${number}${'' | '_s'}`;
+type WebPagePreview = MessageMedia.messageMediaWebPage | undefined;
+type WebPagePreviewCacheEntry = {
+  expiresAt: number;
+  promise: Promise<WebPagePreview>;
+};
 
 export class AppWebPagesManager extends AppManager {
   private webpages: {
@@ -22,6 +30,13 @@ export class AppWebPagesManager extends AppManager {
   private pendingWebPages: {
     [webPageId: string]: Set<WebPageMessageKey>
   } = {};
+  private webPagePreviewCache = new Map<string, WebPagePreviewCacheEntry>();
+
+  public clear = () => {
+    this.webpages = {};
+    this.pendingWebPages = {};
+    this.webPagePreviewCache.clear();
+  };
 
   protected after() {
     this.apiUpdatesManager.addMultipleEventsListeners({
@@ -35,13 +50,39 @@ export class AppWebPagesManager extends AppManager {
     });
   }
 
+  private dispatchWebPageUpdated(id: WebPage.webPage['id'], pendingSet?: Set<WebPageMessageKey>) {
+    const msgs: {peerId: PeerId, mid: number, isScheduled: boolean}[] = [];
+    pendingSet?.forEach((value) => {
+      const [peerId, mid, scheduledMarker] = value.split('_');
+      msgs.push({
+        peerId: +peerId as PeerId,
+        mid: +mid,
+        isScheduled: scheduledMarker === 's'
+      });
+    });
+
+    this.rootScope.dispatchEvent('webpage_updated', {id, msgs});
+  }
+
   public saveWebPage(apiWebPage: WebPage, messageKey?: WebPageMessageKey, mediaContext?: ReferenceContext) {
-    if(!apiWebPage || apiWebPage._ === 'webPageNotModified' || apiWebPage._ === 'webPageEmpty') {
+    if(!apiWebPage || apiWebPage._ === 'webPageNotModified') {
       return;
     }
 
     const {id} = apiWebPage;
     const oldWebPage = this.webpages[id];
+    if(apiWebPage._ === 'webPageEmpty') {
+      if(oldWebPage?._ !== 'webPagePending') return;
+
+      if(!apiWebPage.url && oldWebPage.url) {
+        apiWebPage = {...apiWebPage, url: oldWebPage.url};
+      }
+
+      safeReplaceObject(oldWebPage, apiWebPage);
+      this.dispatchWebPageUpdated(id, this.pendingWebPages[id]);
+      return oldWebPage as unknown as WebPage.webPageEmpty;
+    }
+
     if(oldWebPage?._ === 'webPage' && apiWebPage._ !== oldWebPage._) {
       this.log.warn('ignore webpage update, type changed', oldWebPage, apiWebPage);
       return oldWebPage;
@@ -151,21 +192,8 @@ export class AppWebPagesManager extends AppManager {
       safeReplaceObject(oldWebPage, apiWebPage);
     }
 
-    if(((!messageKey && isUpdated) || isMediaUpdated) && pendingSet !== undefined) {
-      const msgs: {peerId: PeerId, mid: number, isScheduled: boolean}[] = [];
-      pendingSet.forEach((value) => {
-        const [peerId, mid, isScheduled] = value.split('_');
-        msgs.push({
-          peerId: peerId.toPeerId(),
-          mid: +mid,
-          isScheduled: !!isScheduled
-        });
-      });
-
-      this.rootScope.dispatchEvent('webpage_updated', {
-        id,
-        msgs
-      });
+    if((!messageKey && isUpdated) || isMediaUpdated) {
+      this.dispatchWebPageUpdated(id, pendingSet);
     }
 
     return apiWebPage;
@@ -193,6 +221,53 @@ export class AppWebPagesManager extends AppManager {
 
   public getCachedWebPage(id: WebPage.webPage['id']) {
     return this.webpages[id];
+  }
+
+  public getWebPagePreview(url: string) {
+    const cached = this.webPagePreviewCache.get(url);
+    if(cached) {
+      if(cached.expiresAt > Date.now()) {
+        this.webPagePreviewCache.delete(url);
+        this.webPagePreviewCache.set(url, cached);
+        return cached.promise;
+      }
+
+      this.webPagePreviewCache.delete(url);
+    }
+
+    const promise = this.apiManager.invokeApiSingle('messages.getWebPagePreview', {
+      message: url
+    }).then((preview) => {
+      this.appPeersManager.saveApiPeers(preview);
+
+      if(preview.media._ !== 'messageMediaWebPage') return;
+
+      if(preview.media.webpage._ !== 'webPageNotModified' && !preview.media.webpage.url) {
+        preview.media.webpage.url = url;
+      }
+
+      const webpage = this.saveWebPage(preview.media.webpage);
+      if(webpage) preview.media.webpage = this.getCachedWebPage(webpage.id) || webpage;
+
+      return preview.media;
+    });
+    const entry: WebPagePreviewCacheEntry = {
+      expiresAt: Date.now() + WEB_PAGE_PREVIEW_CACHE_TTL,
+      promise
+    };
+
+    promise.then(() => {
+      entry.expiresAt = Date.now() + WEB_PAGE_PREVIEW_CACHE_TTL;
+    }, () => {
+      entry.expiresAt = Date.now() + WEB_PAGE_PREVIEW_ERROR_CACHE_TTL;
+    });
+
+    this.webPagePreviewCache.set(url, entry);
+    if(this.webPagePreviewCache.size > WEB_PAGE_PREVIEW_CACHE_LIMIT) {
+      this.webPagePreviewCache.delete(this.webPagePreviewCache.keys().next().value);
+    }
+
+    return promise;
   }
 
   public getWebPage(url: string) {

@@ -7,6 +7,7 @@ import {useCreatePollLimits} from '@components/popups/createPoll/useCreatePollLi
 import {RemainingTime} from '@components/remainingTime';
 import ripple from '@components/ripple';
 import Space from '@components/space';
+import {toastNew} from '@components/toast';
 import PhotoTsx from '@components/wrappers/photoTsx';
 import VideoTsx from '@components/wrappers/videoTsx';
 import {setCaretAtEnd} from '@helpers/dom/setCaretAt';
@@ -19,19 +20,37 @@ import {I18nTsx} from '@helpers/solid/i18n';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
 import type {ChatAutoDownloadSettings} from '@hooks/useAutoDownloadSettings';
-import {Document, Message, MessageMedia, Photo, Poll, PollResults} from '@layer';
+import {Chat, Document, Message, MessageMedia, Photo, Poll, PollResults} from '@layer';
 import {ChatRights} from '@lib/appManagers/appChatsManager';
 import {PollUploadingFileNames} from '@lib/appManagers/appPollsManager';
+import {
+  getActivePollVoteRestriction,
+  getPollVotePrecheckRestriction,
+  getPollVoteRestrictionPeerId,
+  isExpiringPollVoteRestriction,
+  isPollVoteRestrictionActive,
+  isRegularPollMessage,
+  POLL_VOTE_RESTRICTION_EXPIRY,
+  PollVoteRestriction,
+  PollVoteRestrictionState
+} from '@appManagers/utils/polls/pollVoteRestriction';
 import {sliceTextWithEntities} from '@lib/richTextProcessor/sliceTextWithEntities';
 import wrapDraftText from '@lib/richTextProcessor/wrapDraftText';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import {batch, createEffect, createMemo, createSelector, createSignal, For, Match, onCleanup, Show, Switch} from 'solid-js';
+import {useAppConfig} from '@stores/appState';
+import {usePeer} from '@stores/peers';
+import {batch, createEffect, createMemo, createSelector, createSignal, For, Match, onCleanup, Show, Switch, untrack} from 'solid-js';
 import {createStore, reconcile, unwrap} from 'solid-js/store';
 import {Transition, TransitionGroup} from 'solid-transition-group';
 import {AddOption} from './AddOption';
 import {PollMessageContentPropsContext} from './context';
 import {AutoStartedConfetti, AvatarGroup, Explanation, GeoPreview, PollType, PollVotes} from './parts';
 import {PollOption} from './PollOption';
+import {
+  getPollVoteRestrictionDisplayState,
+  getPollVoteRestrictionText
+} from './pollVoteRestriction';
+import {PollWebPageMedia} from './PollWebPageMedia';
 import styles from './styles.module.scss';
 import {usePollDerivedProps} from './usePollDerivedProps';
 import {usePollMutations} from './usePollMutations';
@@ -45,6 +64,7 @@ keepMe(dataPollViewerIdx);
 export type PollMessageContentProps = {
   element: HTMLElement;
   isOutgoing?: boolean;
+  isRegularSurface: boolean;
   poll: Poll;
   peerId: PeerId;
   message: Message.message;
@@ -103,9 +123,80 @@ export const PollMessageContent =
     const [isConfettiActive, setIsConfettiActive] = createSignal(false);
     const [highlightedIndexes, setHighlightedIndexes] = createSignal<number[]>([]);
     const [slowHighlightedIndexes, setSlowHighlightedIndexes] = createSignal<number[]>([]);
+    const [serverVoteRestriction, setServerVoteRestriction] = createSignal<PollVoteRestrictionState>();
 
     let inputField: InputField;
+    let voteRestrictionExpiryTimeout: number;
     const elementByIndexMap = new Map<number, HTMLElement>();
+
+    const appConfig = useAppConfig();
+    const restrictionPeerId = createMemo(() => getPollVoteRestrictionPeerId(props.message));
+    const restrictionPeer = usePeer(restrictionPeerId);
+    const restrictionPeerName = createMemo(() => {
+      const peer = restrictionPeer();
+      return peer && peer._ !== 'user' ? peer.title : undefined;
+    });
+    const isInRestrictionChat = createMemo(() => {
+      const peerId = restrictionPeerId();
+      if(!peerId?.isAnyChat()) return;
+
+      const chat = restrictionPeer() as Chat;
+      if(!chat) return;
+      if(chat._ === 'channelForbidden' || chat._ === 'chatForbidden' || chat._ === 'chatEmpty') return false;
+
+      return !chat.pFlags.left && !(chat._ === 'chat' && chat.pFlags.deactivated);
+    });
+    const localVoteRestriction = createMemo(() => getPollVotePrecheckRestriction({
+      subscribersOnly: !!props.poll.pFlags.subscribers_only,
+      countriesIso2: props.poll.countries_iso2,
+      isInChat: isInRestrictionChat(),
+      phoneCountryIso2: appConfig.phone_country_iso2
+    }));
+    const knownVoteRestriction = createMemo(() => serverVoteRestriction()?.restriction || localVoteRestriction());
+    const activeVoteRestriction = createMemo(() => getActivePollVoteRestriction({
+      restriction: knownVoteRestriction(),
+      hasVoted: !!props.poll.chosenIndexes?.length,
+      closed: !!props.poll.pFlags.closed,
+      creator: !!props.poll.pFlags.creator,
+      isRegularMessage: isRegularPollMessage(props.message, props.isRegularSurface)
+    }));
+
+    const applyServerVoteRestriction = (state?: PollVoteRestrictionState) => {
+      self.clearTimeout(voteRestrictionExpiryTimeout);
+      state = isPollVoteRestrictionActive(state) ? state : undefined;
+      setServerVoteRestriction(state);
+
+      if(state && isExpiringPollVoteRestriction(state.restriction)) {
+        voteRestrictionExpiryTimeout = self.setTimeout(
+          () => setServerVoteRestriction(),
+          Math.max(0, state.updatedAt + POLL_VOTE_RESTRICTION_EXPIRY - Date.now())
+        );
+      }
+    };
+
+    const onVoteRestriction = (restriction?: PollVoteRestriction) => {
+      applyServerVoteRestriction(restriction ? {restriction, updatedAt: Date.now()} : undefined);
+      if(restriction) {
+        rootScope.managers.appPollsManager.setPollVoteRestriction(props.poll.id, restriction);
+      }
+    };
+
+    const showVoteRestriction = (restriction: PollVoteRestriction) => {
+      const {langPackKey, langPackArguments} = getPollVoteRestrictionText(
+        props.poll,
+        restriction,
+        restrictionPeerName()
+      );
+      toastNew({langPackKey, langPackArguments, duration: 5000});
+    };
+
+    let cleaned = false;
+    rootScope.managers.appPollsManager.getPollVoteRestriction(props.poll.id).then((state) => {
+      if(!cleaned) applyServerVoteRestriction(state);
+    });
+    subscribeOn(rootScope)('poll_vote_restriction', ({pollId, state}) => {
+      if(pollId === props.poll.id) applyServerVoteRestriction(state);
+    });
 
     // ----- Poll options store & derived props -----
     const [pollOptions] = usePollOptionsStore({
@@ -138,23 +229,30 @@ export const PollMessageContent =
       explanationVideo,
       explanationDocument,
       explanationGeo,
+      explanationWebPage,
       descriptionPhoto,
       descriptionVideo,
       descriptionDocument,
       descriptionGeo,
+      descriptionWebPage,
       getOverridenMessage,
       initialIdxFromShuffledIdx,
       getResultForOption,
       getPhotoForOption,
       getVideoForOption,
       getStickerForOption,
-      getGeoForOption
+      getGeoForOption,
+      getWebPageForOption
     } = usePollDerivedProps({
       props,
       pollOptions,
       chosenIndexes,
-      newOptionText: () => newOption.text
+      newOptionText: () => newOption.text,
+      activeVoteRestriction
     });
+    const voteRestrictionDisplayState = createMemo(() =>
+      getPollVoteRestrictionDisplayState(activeVoteRestriction(), hideResults())
+    );
 
     const isChecked = createSelector(chosenIndexes, (index: number, indices) => indices.includes(index));
 
@@ -179,7 +277,14 @@ export const PollMessageContent =
       isShowingResult,
       initialIdxFromShuffledIdx,
       newOption,
+      activeVoteRestriction,
+      onVoteRestriction,
+      showVoteRestriction,
       onSuccess: resetInteractiveState
+    });
+
+    createEffect(() => {
+      if(activeVoteRestriction()) untrack(resetInteractiveState);
     });
 
     // Make the footer unclickable immediately when there are pending requests
@@ -218,6 +323,12 @@ export const PollMessageContent =
 
     // ----- Event handlers -----
     const handleToggle = (index: number) => {
+      const restriction = activeVoteRestriction();
+      if(restriction) {
+        showVoteRestriction(restriction);
+        return;
+      }
+
       if(!allowMultipleAnswers()) {
         wrappedSendVote([index]);
         return;
@@ -233,18 +344,30 @@ export const PollMessageContent =
     };
 
     const handleNewOptionChanged = (values: Partial<NewOptionValues>) => batch(() => {
-      if('attachment' in values) setNewOption({attachment: values.attachment});
+      const previousAttachment = unwrap(newOption.attachment);
+      let nextAttachment = 'attachment' in values ? values.attachment : previousAttachment;
+      const hasTextUpdate = 'text' in values && 'entities' in values;
+      const sliced = hasTextUpdate ?
+        sliceTextWithEntities(values.text ?? '', values.entities ?? [], 0, maxOptionLength()) :
+        undefined;
 
-      if(!('text' in values && 'entities' in values)) return;
+      if(sliced && !sliced.text) nextAttachment = undefined;
 
-      const sliced = sliceTextWithEntities(values.text ?? '', values.entities ?? [], 0, maxOptionLength());
-      setNewOption(sliced);
+      if(previousAttachment !== nextAttachment) setNewOption({attachment: nextAttachment});
+      if(!sliced) return;
+
+      setNewOption(sliced.text ? sliced : {...sliced, attachment: undefined});
       if(sliced.text.length < inputField?.value.length) {
         inputField?.setValueSilently(
           wrapDraftText(sliced.text, {entities: sliced.entities, middleware}),
         );
         setCaretAtEnd(inputField?.input);
       }
+    });
+
+    onCleanup(() => {
+      cleaned = true;
+      self.clearTimeout(voteRestrictionExpiryTimeout);
     });
 
     const openViewResults = () => {
@@ -320,6 +443,15 @@ export const PollMessageContent =
       <PollMessageContentPropsContext.Provider value={props}>
         <Show when={isConfettiActive()}>
           <AutoStartedConfetti onEnd={() => setIsConfettiActive(false)} />
+        </Show>
+        <Show when={descriptionWebPage()} keyed>
+          {(webPage) => (
+            <PollWebPageMedia
+              class={styles.pollDescriptionWebPage}
+              compact={false}
+              webPage={webPage}
+            />
+          )}
         </Show>
         <Show when={descriptionPhoto() || descriptionVideo() || descriptionGeo()}>
           <div class={styles.pollDescriptionMediaWrapper}>
@@ -414,6 +546,7 @@ export const PollMessageContent =
             video={explanationVideo()}
             document={explanationDocument()}
             geo={explanationGeo()}
+            webPage={explanationWebPage()}
             pollViewerPayload={[mediaViewerPayload().indexes.explanation, elementByIndexMap]}
           />
         </Show>
@@ -431,6 +564,7 @@ export const PollMessageContent =
                   video={getVideoForOption(initialIdx())}
                   sticker={getStickerForOption(initialIdx())}
                   geo={getGeoForOption(initialIdx())}
+                  webPage={getWebPageForOption(initialIdx())}
                   allowMultipleAnswers={allowMultipleAnswers()}
                   hasCorrectAnswer={hasCorrectAnswer()}
                   checked={isChecked(index())}
@@ -438,6 +572,7 @@ export const PollMessageContent =
                   pollViewerPayload={[mediaViewerPayload().indexes.options.get(initialIdx()), elementByIndexMap]}
                   initialIdx={initialIdx()}
                   result={getResultForOption(initialIdx())}
+                  voteRestricted={!!activeVoteRestriction()}
                   isPendingVote={delayedSendVotePending()}
                   hideResults={hideResults()}
                   highlighted={highlightedIndexes().includes(initialIdx())}
@@ -483,6 +618,14 @@ export const PollMessageContent =
               }}
             >
               <Switch>
+                <Match when={voteRestrictionDisplayState().showVotersCount}>
+                  <PollVotes
+                    votersCount={votersCount()}
+                    closed={closed()}
+                    hasCorrectAnswer={hasCorrectAnswer()}
+                    showWhoVoted={showWhoVoted()}
+                  />
+                </Match>
                 <Match when={canShowViewResults()}>
                   <I18nTsx key='Chat.Poll.ViewVotes' args={votersCount()?.toString()} />
                 </Match>

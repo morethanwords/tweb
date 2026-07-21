@@ -10,6 +10,7 @@
   --popup-min-height: var(--popup-height);
   --popup-max-height: auto;
   --popup-border-radius: 2.5rem;
+  --popup-background-color: var(--background-color);
 
   // --popup-footer-padding: #{$popup-footer-padding};
   // --popup-footer-button-height: #{$popup-footer-button-size};
@@ -81,7 +82,7 @@
     --translateX: 0;
     position: relative;
     border-radius: var(--popup-border-radius);
-    background-color: var(--background-color);
+    background-color: var(--popup-background-color);
     transform: translate3d(var(--translateX), 3rem, 0);
     backface-visibility: hidden;
     transition: transform var(--popup-transition-time) var(--popup-transition-function);
@@ -251,7 +252,7 @@
       inset-inline: 0;
       background: linear-gradient(
         0deg,
-        var(--background-color) var(--popup-footer-gradient-start),
+        var(--popup-background-color) var(--popup-footer-gradient-start),
         transparent 100%
       );
       z-index: 1;
@@ -326,7 +327,7 @@
   }
 
   &.old {
-    --background-color: var(--surface-color);
+    --popup-background-color: var(--surface-color);
 
     .popup-header {
       .btn-icon {

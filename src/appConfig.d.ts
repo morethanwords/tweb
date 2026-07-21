@@ -155,6 +155,8 @@ export interface MTAppConfig {
   poll_answer_delete_period?:                 number;
   poll_answers_max?:                          number;
   poll_close_period_max?:                     number;
+  poll_countries_max?:                        number;
+  phone_country_iso2?:                        string;
   no_forwards_request_expire_period?:         number;
   aicompose_tone_title_length_max?:           number;
   aicompose_tone_prompt_length_max?:          number;

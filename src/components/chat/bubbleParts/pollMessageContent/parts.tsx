@@ -15,7 +15,9 @@ import {LocalTextWithEntities} from '@types';
 import {createMemo, For, Match, onMount, Show, Switch} from 'solid-js';
 import {unwrap} from 'solid-js/store';
 import {usePollMessageContentProps} from './context';
+import {PollWebPageMedia} from './PollWebPageMedia';
 import styles from './styles.module.scss';
+import {GetWebPageMediaResult} from './usePollDerivedProps';
 import {dataPollViewerIdx, DataPollViewerIdxDirectivePayload} from './utils';
 
 
@@ -53,6 +55,7 @@ export const Explanation = (props: LocalTextWithEntities & {
   video?: Document.document;
   document?: Document.document;
   geo?: MessageMedia.messageMediaGeo | MessageMedia.messageMediaVenue;
+  webPage?: GetWebPageMediaResult;
   pollViewerPayload?: DataPollViewerIdxDirectivePayload;
 }) => {
   const {TranslatableMessageTsx, DocumentTsx} = useHotReloadGuard();
@@ -74,6 +77,14 @@ export const Explanation = (props: LocalTextWithEntities & {
               richTextOptions={{middleware, loadPromises: unwrap(contextProps.loadPromises)}}
             />
           </div>
+        </Show>
+        <Show when={props.webPage} keyed>
+          {(webPage) => (
+            <>
+              <Space amount='0.5rem' />
+              <PollWebPageMedia class={styles.explanationWebPage} webPage={webPage} />
+            </>
+          )}
         </Show>
         <Show when={props.photo || props.video || props.geo}>
           <Space amount='0.5rem' />

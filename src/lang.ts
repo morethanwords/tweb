@@ -3537,6 +3537,7 @@ const lang = {
   'Chat.Poll.ReplyToOption': 'Reply to Poll Option',
   'Chat.Poll.CopyOption': 'Copy Option',
   'Chat.Poll.CopyOptionLink': 'Copy Option Link',
+  'Chat.Poll.AttachLink': 'Add Link',
   'Chat.Quiz.MembersAnswered': {
     'one_value': '%d member answered',
     'other_value': '%d members answered'
@@ -4789,6 +4790,16 @@ const lang = {
   'NewPoll.SetCorrectAnswer': 'Set Correct Answer',
   'NewPoll.SetCorrectAnswerSubtitle': 'Mark one option as the correct answer',
   'NewPoll.SetMultipleCorrectAnswerSubtitle': 'Mark one or more options as the correct answer',
+  'NewPoll.RestrictToSubscribers': 'Restrict to Subscribers',
+  'NewPoll.RestrictToSubscribersSubtitle': 'Only subscribers who joined 24+ hours ago can vote.',
+  'NewPoll.LimitByCountry': 'Limit by Country',
+  'NewPoll.LimitByCountrySubtitle': 'Only users from selected countries can vote.',
+  'NewPoll.AllowedCountries': 'Allowed Countries',
+  'NewPoll.ChooseCountry': 'Please choose at least one country.',
+  'NewPoll.CountriesCount': {
+    'one_value': '%d country',
+    'other_value': '%d countries'
+  },
   'NewPoll.LimitDuration': 'Limit Duration',
   'NewPoll.LimitDurationSubtitle': 'Automatically close the poll after a certain time',
   'NewPoll.PollDuration': 'Poll Duration',
@@ -4803,6 +4814,16 @@ const lang = {
   },
   'NewPoll.MaxOptions': 'You have added the maximum amount of options',
   'NewPoll.CouldNotCreate': 'Could not create poll',
+
+  'PollStats.Title': 'Poll Stats',
+  'PollStats.Votes': 'Poll votes',
+  'PollStats.View': 'View Stats',
+  'PollStats.NoVotes': 'No votes',
+  'Poll.VoteRestricted.Subscribers': 'Only subscribers can vote.',
+  'Poll.VoteRestricted.SubscribersChannel': 'Only subscribers of %s can vote.',
+  'Poll.VoteRestricted.SubscribersRecent': 'Only subscribers who joined more than 24 hours ago can vote.',
+  'Poll.VoteRestricted.Countries': 'Only users from selected countries can vote.',
+  'Poll.VoteRestricted.CountriesList': 'Only users from %s can vote.',
 
   'CreateBot.Title': 'Create Bot',
   'CreateBot.Description': '**%s** would like to create and manage a chatbot on your behalf.',

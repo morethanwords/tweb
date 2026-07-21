@@ -8,6 +8,7 @@ export const useCreatePollLimits = () => {
 
   return {
     maxOptions: () => appConfig.poll_answers_max ?? 12,
+    countriesMax: () => appConfig.poll_countries_max ?? 12,
     closePeriodMax: () => appConfig.poll_close_period_max ?? 2628000, // ~ 1 month
     // Missing from appConfig wtf)
     maxQuestionLength: () => 255,

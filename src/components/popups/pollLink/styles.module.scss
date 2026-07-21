@@ -1,0 +1,23 @@
+.popup {
+  --popup-min-width: 360px;
+  --popup-max-width: 360px;
+}
+
+.container {
+  max-width: min(360px, 100%);
+}
+
+.inviteLinkContainer {
+  padding-inline: 0;
+}
+
+.openLinkBody {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-inline: 1rem;
+}
+
+.webPagePreview {
+  margin-top: 1rem;
+}

@@ -90,6 +90,9 @@ import {concatTextsWithEntities} from '@lib/richTextProcessor/concatTextsWithEnt
 import {shouldShufflePollOptions, shufflePollOptions} from './bubbleParts/pollMessageContent/shuffle';
 import {truncateTextWithEntities} from '@lib/richTextProcessor/truncateTextWithEntities';
 import {pollOptionToLink} from './bubbleParts/pollMessageContent/pollToOptionLink';
+import {getPollVoteRestrictionPeerId} from '@appManagers/utils/polls/pollVoteRestriction';
+import {getPollVoteRestrictionText} from './bubbleParts/pollMessageContent/pollVoteRestriction';
+import {canViewPollStatistics as canViewPollStatisticsForMessage} from './bubbleParts/pollMessageContent/pollStatistics';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -715,8 +718,22 @@ export default class ChatContextMenu {
     };
 
     const self = this;
+    const pollVoteRestrictionsButton: ChatContextMenuButton = {
+      onClick: noop,
+      keepOpen: true,
+      secondary: true,
+      separatorDown: true,
+      className: 'is-static',
+      verify: async() => {
+        const textElement = await this.getPollVoteRestrictionsText();
+        if(!textElement) return false;
 
-    this.buttons = [{
+        pollVoteRestrictionsButton.textElement = textElement;
+        return true;
+      }
+    };
+
+    this.buttons = [pollVoteRestrictionsButton, {
       // secondary: true,
       onClick: () => {
         if(this.canViewReadTime === false) {
@@ -1024,9 +1041,12 @@ export default class ChatContextMenu {
       icon: 'statistics',
       text: 'ViewStatistics',
       onClick: this.onStatisticsClick,
-      verify: async() => await this.managers.appPeersManager.isBroadcast(this.messagePeerId) &&
-        await this.managers.appProfileManager.canViewStatistics(this.messagePeerId) &&
-        !this.message.pFlags.is_outgoing
+      verify: this.canViewMessageStatistics
+    }, {
+      icon: 'statistics',
+      text: 'PollStats.View',
+      onClick: this.onPollStatisticsClick,
+      verify: async() => this.canViewPollStatistics() && !await this.canViewMessageStatistics()
     }, {
       icon: 'forward',
       text: 'Forward',
@@ -1948,6 +1968,59 @@ export default class ChatContextMenu {
 
   private onStatisticsClick = () => {
     this.chat.topbar.appSidebarRight.createTab(AppStatisticsTab).open(this.messagePeerId.toChatId(), this.mid);
+    this.chat.topbar.appSidebarRight.toggleSidebar(true);
+  };
+
+  private canViewMessageStatistics = async() => {
+    return await this.managers.appPeersManager.isBroadcast(this.messagePeerId) &&
+      await this.managers.appProfileManager.canViewStatistics(this.messagePeerId) &&
+      !this.message.pFlags.is_outgoing;
+  };
+
+  private getPollVoteRestrictionsText = async() => {
+    const media = this.message?._ === 'message' && this.message.media;
+    if(!media || media._ !== 'messageMediaPoll' || media.poll.pFlags.closed) return;
+
+    const poll = media.poll;
+    const result = document.createElement('span');
+    const appendRestriction = (restriction: ReturnType<typeof getPollVoteRestrictionText>) => {
+      if(result.childNodes.length) result.append('\n');
+      result.append(i18n(restriction.langPackKey, restriction.langPackArguments));
+    };
+
+    if(poll.pFlags.subscribers_only) {
+      const sourcePeerId = getPollVoteRestrictionPeerId(this.message);
+      const isBroadcast = sourcePeerId.isAnyChat() && await this.managers.appPeersManager.isBroadcast(sourcePeerId);
+      const peerName = isBroadcast ? await getPeerTitle({
+        peerId: sourcePeerId,
+        plainText: true,
+        managers: this.managers,
+        useManagers: true
+      }) : undefined;
+
+      appendRestriction(getPollVoteRestrictionText(
+        poll,
+        peerName ? 'subscribersOnly' : 'subscribersJoinedTooRecently',
+        peerName
+      ));
+    }
+
+    if(poll.countries_iso2?.length) {
+      appendRestriction(getPollVoteRestrictionText(poll, 'countries'));
+    }
+
+    return result.childNodes.length ? result : undefined;
+  };
+
+  private canViewPollStatistics = () => {
+    return canViewPollStatisticsForMessage(
+      this.message,
+      ![ChatType.Logs, ChatType.Static, ChatType.Scheduled].includes(this.chat.type)
+    );
+  };
+
+  private onPollStatisticsClick = () => {
+    this.chat.topbar.appSidebarRight.createTab(AppStatisticsTab).open(this.messagePeerId, this.mid, undefined, 'poll');
     this.chat.topbar.appSidebarRight.toggleSidebar(true);
   };
 

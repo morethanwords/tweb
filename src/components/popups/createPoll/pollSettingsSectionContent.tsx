@@ -1,9 +1,11 @@
 import editableFieldStyles from '@/scss/modulePartials/editableFieldContent.module.scss';
 import {createAutoDeleteIcon} from '@components/autoDeleteIcon';
 import {getOverlayRoot} from '@helpers/appWindow';
+import getPollCountryName from '@helpers/getPollCountryName';
 import {IconTsx} from '@components/iconTsx';
 import InputField from '@components/inputField';
 import showDatePickerPopup from '@components/popups/datePicker';
+import showPickCountryPopup from '@components/popups/pickCountry';
 import SimpleFormField from '@components/simpleFormField';
 import Space from '@components/space';
 import StaticSwitch from '@components/staticSwitch';
@@ -20,7 +22,7 @@ import {requestRAF} from '@helpers/solid/requestRAF';
 import classNames from '@helpers/string/classNames';
 import {useIsCleaned} from '@hooks/useIsCleaned';
 import {oneDayInSeconds, oneHourInSeconds, oneWeekInSeconds} from '@lib/constants';
-import {LangPackKey} from '@lib/langPack';
+import {LangPackKey, i18n} from '@lib/langPack';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {FilterBooleanKeys} from '@types';
 import {Accessor, createEffect, createSignal, JSX, on, onCleanup, Show} from 'solid-js';
@@ -36,9 +38,11 @@ type BooleanSettingKey = FilterBooleanKeys<CreatePollStore>;
 
 const minEndTimeFromNowMinutes = 5;
 
-export const PollSettingsSectionContent = () => {
+export const PollSettingsSectionContent = (props: {
+  countriesElementRef?: (element: HTMLElement) => void
+}) => {
   const {Row} = useHotReloadGuard();
-  const {maxExplanationLength} = useCreatePollLimits();
+  const {countriesMax, maxExplanationLength} = useCreatePollLimits();
   const context = useCreatePollContext();
   const supportsMedia = useSupportsMedia();
 
@@ -46,6 +50,24 @@ export const PollSettingsSectionContent = () => {
   const [explanationElement, setExplanationElement] = createSignal<HTMLElement>();
   const [pollDurationRowElement, setPollDurationRowElement] = createSignal<HTMLElement>();
   const [isDurationMenuOpen, setIsDurationMenuOpen] = createSignal(false);
+
+  const getCountriesLabel = () => {
+    const countries = context.store.countriesIso2;
+    if(countries.length === 1) return getPollCountryName(countries[0]);
+
+    if(countries.length > 1) return i18n('NewPoll.CountriesCount', [countries.length]);
+  };
+
+  const openCountriesPicker = () => {
+    showPickCountryPopup({
+      initial: context.store.countriesIso2,
+      limit: countriesMax(),
+      limitReachedLangKey: 'BoostingSelectUpToWarningCountriesPlural',
+      naming: 'poll',
+      onSelect: (countriesIso2) => context.setStore('countriesIso2', countriesIso2),
+      titleLangKey: 'BoostingSelectCountry'
+    });
+  };
 
 
   const explanationInput = new InputField({
@@ -164,10 +186,42 @@ export const PollSettingsSectionContent = () => {
           }
         }}
       />
+      <Show when={context.isBroadcast()}>
+        <SettingsOption
+          title='NewPoll.RestrictToSubscribers'
+          subtitle='NewPoll.RestrictToSubscribersSubtitle'
+          mediaStyle={getGradientStyle(6)}
+          icon='group'
+          checked={context.store.restrictToSubscribers}
+          onClick={handleSettingsFlag('restrictToSubscribers')}
+        />
+        <SettingsOption
+          title='NewPoll.LimitByCountry'
+          subtitle='NewPoll.LimitByCountrySubtitle'
+          mediaStyle={getGradientStyle(7)}
+          icon='location'
+          checked={context.store.limitByCountry}
+          onClick={handleSettingsFlag('limitByCountry')}
+        />
+        <HeightTransition>
+          <Show when={context.store.limitByCountry}>
+            <div style={{overflow: 'hidden'}}>
+              <Row ref={props.countriesElementRef} clickable={openCountriesPicker}>
+                <Row.Title>
+                  <I18nTsx key='NewPoll.AllowedCountries' />
+                </Row.Title>
+                <Row.RightContent class={styles.pollDuration}>
+                  {getCountriesLabel()}
+                </Row.RightContent>
+              </Row>
+            </div>
+          </Show>
+        </HeightTransition>
+      </Show>
       <SettingsOption
         title='NewPoll.LimitDuration'
         subtitle='NewPoll.LimitDurationSubtitle'
-        mediaStyle={getGradientStyle(6)}
+        mediaStyle={getGradientStyle(8)}
         icon='timer'
         checked={context.store.durationLimited}
         onClick={handleSettingsFlag('durationLimited')}
@@ -250,9 +304,7 @@ export const PollSettingsSectionContent = () => {
                     ]}
                     imgClass={styles.mediaAttachmentImage}
                     attachedMedia={context.store.explanationAttachment}
-                    onAttach={(value) => {
-                      context.setStore('explanationAttachment', value);
-                    }}
+                    onAttach={(value) => context.setStore('explanationAttachment', value)}
                   />
                 </SimpleFormField.WithAutoLengthCounter>
               </Show>
@@ -275,7 +327,9 @@ const gradients = [
   ['#bd69f0', '#a459e1'],
   ['#f0842c', '#e36b1c'],
   ['#4ec643', '#2fb837'],
-  ['#ef4e54', '#e33d55']
+  ['#ef4e54', '#e33d55'],
+  ['#55a5f6', '#468ee8'],
+  ['#40c6a7', '#2ab795']
 ] as const;
 
 const getGradientStyle = (index: number): JSX.CSSProperties => ({

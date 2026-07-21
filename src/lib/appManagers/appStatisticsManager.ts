@@ -1,6 +1,6 @@
 import assumeType from '@helpers/assumeType';
 import callbackify from '@helpers/callbackify';
-import {ChatFull, Message, MessagesMessages, PublicForward, StatsBroadcastStats, StatsGraph, StatsPublicForwards} from '@layer';
+import {ChatFull, Message, MessagesMessages, PublicForward, StatsBroadcastStats, StatsGraph, StatsPollStats, StatsPublicForwards} from '@layer';
 import {DcId, InvokeApiOptions} from '@types';
 import {AppManager} from '@appManagers/manager';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
@@ -126,6 +126,25 @@ export default class AppStatisticsManager extends AppManager {
       method: 'stats.getMessageStats',
       params: {
         channel: this.appChatsManager.getChannelInput(params.peerId.toChatId()),
+        dark: params.dark,
+        msg_id: getServerMessageId(params.mid)
+      },
+      processResult: (stats) => {
+        return {
+          stats,
+          dcId: options.dcId
+        };
+      },
+      options
+    });
+  }
+
+  public async getPollStats(params: GetStatsParams): Promise<{stats: StatsPollStats, dcId: DcId}> {
+    const options = await this.getInvokeOptions(params);
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'stats.getPollStats',
+      params: {
+        peer: this.appPeersManager.getInputPeerById(params.peerId),
         dark: params.dark,
         msg_id: getServerMessageId(params.mid)
       },

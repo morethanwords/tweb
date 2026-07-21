@@ -1111,7 +1111,7 @@ export default class ChatInput {
 
         const {openCreatePollPopup} = await import('@components/popups/createPoll');
 
-        const supportedMediaTypes: SupportedMediaType[] = [];
+        const supportedMediaTypes: SupportedMediaType[] = ['link'];
 
         const supportedPromises: [Promise<boolean>, SupportedMediaType][] = [
           [this.chat.canSend('send_photos'), 'photo'],
@@ -1160,7 +1160,7 @@ export default class ChatInput {
 
             sendingParams.confirmedPaymentResult = preparedPaymentResult;
 
-            this.managers.appPollsManager.sendPollMessage(sendingParams, payload);
+            await this.managers.appPollsManager.sendPollMessage(sendingParams, payload);
           }
         }, SolidJSHotReloadGuardProvider);
 

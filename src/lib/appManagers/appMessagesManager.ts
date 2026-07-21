@@ -779,12 +779,13 @@ export class AppMessagesManager extends AppManager {
       }
 
       for(const key of set) {
-        const [peerId, mid] = key.split('_');
-
-        const message = this.getMessageByPeer(peerId.toPeerId(), +mid);
+        const {message, isScheduled} = this.appPollsManager.getPollMessageByKey(key);
         if(message) {
-          this.onMessageModification(message);
-          this.setDialogToStateIfMessageIsTop(message);
+          this.onMessageModification(
+            message,
+            isScheduled ? this.getScheduledMessagesStorage(message.peerId) : undefined
+          );
+          if(!isScheduled) this.setDialogToStateIfMessageIsTop(message);
         }
       }
     });
@@ -5334,7 +5335,10 @@ export class AppMessagesManager extends AppManager {
         media.poll = result.poll;
         media.results = result.results;
         if(media.attached_media) {
-          this.saveMessageMedia(media, 'attached_media', mediaContext);
+          const attachedMedia = media.attached_media;
+          if(attachedMedia._ !== 'messageMediaWebPage' || attachedMedia.webpage._ !== 'webPageEmpty') {
+            this.saveMessageMedia(media, 'attached_media', mediaContext);
+          }
         }
         break;
       }

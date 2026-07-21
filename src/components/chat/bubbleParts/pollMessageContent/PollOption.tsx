@@ -22,8 +22,9 @@ import {InMessageCheckbox} from '../inMessageCheckbox';
 import {usePollMessageContentProps} from './context';
 import {AvatarGroup, GeoPreview} from './parts';
 import PathDot from './PathDot';
+import {PollWebPageMedia} from './PollWebPageMedia';
 import styles from './styles.module.scss';
-import {GetStickerMediaResult} from './usePollDerivedProps';
+import {GetStickerMediaResult, GetWebPageMediaResult} from './usePollDerivedProps';
 import {dataPollViewerIdx, DataPollViewerIdxDirectivePayload, PollOptionResult, spinnerThickness} from './utils';
 
 
@@ -39,6 +40,7 @@ export const PollOption = (props: {
   video?: Document.document;
   sticker?: GetStickerMediaResult;
   geo?: MessageMedia.messageMediaGeo | MessageMedia.messageMediaVenue;
+  webPage?: GetWebPageMediaResult;
   clickable?: boolean;
   text: LocalTextWithEntities;
   checked: boolean;
@@ -54,8 +56,9 @@ export const PollOption = (props: {
   uploadingFileName?: string;
 
   result?: PollOptionResult;
+  voteRestricted?: boolean;
 }) => {
-  const {TranslatableMessageTsx} = useHotReloadGuard()
+  const {TranslatableMessageTsx} = useHotReloadGuard();
   const contextProps = usePollMessageContentProps();
 
   let clickableAreaElement: HTMLDivElement;
@@ -118,7 +121,7 @@ export const PollOption = (props: {
         ref={clickableAreaElement}
         class={styles.clickableArea}
         classList={{
-          [styles.pointerDisabled]: isShowingResult(),
+          [styles.pointerDisabled]: isShowingResult() && !props.voteRestricted,
           [styles.outgoing]: contextProps.isOutgoing,
           [styles.hovered]: props.highlighted && !props.slowHighlighted
         }}
@@ -222,70 +225,77 @@ export const PollOption = (props: {
       </div>
       <Show when={props.withMedia}>
         <div class={styles.pollOptionSpacerLast}></div>
-        <div
-          class={classNames(styles.pollOptionMedia, styles.stripped)}
-          classList={{[styles.clickable]: !!props.video || !!props.photo || !!props.sticker || !!props.geo}}
-          use:dataPollViewerIdx={props.pollViewerPayload}
+        <Show
+          when={props.webPage}
+          keyed
+          fallback={
+            <div
+              class={classNames(styles.pollOptionMedia, styles.stripped)}
+              classList={{[styles.clickable]: !!props.video || !!props.photo || !!props.sticker || !!props.geo}}
+              use:dataPollViewerIdx={props.pollViewerPayload}
+            >
+              <Switch>
+                <Match when={props.photo}>
+                  <PhotoTsx
+                    photo={props.photo}
+                    boxWidth={boxSize}
+                    boxHeight={boxSize}
+                    loadPromises={unwrap(contextProps.loadPromises)}
+                    autoDownloadSize={contextProps.autoDownload?.photo}
+                    uploadingFileName={props.uploadingFileName}
+                  />
+                </Match>
+                <Match when={props.sticker}>
+                  <StickerPreview
+                    class='poll-option-sticker'
+                    doc={props.sticker.document}
+                    animationGroup={contextProps.animationGroup}
+                    width={boxSize}
+                    height={boxSize}
+                    stickerOptions={{
+                      liteModeKey: 'stickers_chat',
+                      withThumb: true,
+                      noPremium: props.sticker.media.pFlags.nopremium
+                    }}
+                  />
+                </Match>
+                <Match when={props.geo}>
+                  <GeoPreview class={styles.pollOptionGeo} geo={props.geo} />
+                </Match>
+                <Match when={props.video}>
+                  <VideoTsx
+                    doc={props.video}
+                    loadPromises={unwrap(contextProps.loadPromises)}
+                    group={contextProps.animationGroup}
+                    autoDownload={unwrap(contextProps.autoDownload)}
+                    boxWidth={boxSize}
+                    boxHeight={boxSize}
+                    withPreview
+                    noInfo
+                    noPlayButton
+                    noAutoplayAttribute
+                    lazyLoadQueue={unwrap(contextProps.lazyLoadQueue) || undefined}
+                    observer={unwrap(contextProps.observer)}
+                    uploadingFileName={props.uploadingFileName}
+                  />
+                  <div class={styles.pollOptionMediaDim}>
+                    <Show when={props.video.type === 'gif'} fallback={
+                      <div class={styles.pollOptionMediaPlay}>
+                        <IconTsx icon='play' />
+                      </div>
+                    }>
+                      <div class={styles.pollOptionMediaGifLabel}>
+                        GIF
+                      </div>
+                    </Show>
+                  </div>
+                </Match>
+              </Switch>
+            </div>
+          }
         >
-          <Switch>
-            <Match when={props.photo}>
-              <PhotoTsx
-                photo={props.photo}
-                boxWidth={boxSize}
-                boxHeight={boxSize}
-                loadPromises={unwrap(contextProps.loadPromises)}
-                autoDownloadSize={contextProps.autoDownload?.photo}
-                uploadingFileName={props.uploadingFileName}
-              />
-            </Match>
-            <Match when={props.sticker}>
-              <StickerPreview
-                class='poll-option-sticker'
-                doc={props.sticker.document}
-                animationGroup={contextProps.animationGroup}
-                width={boxSize}
-                height={boxSize}
-                stickerOptions={{
-                  liteModeKey: 'stickers_chat',
-                  withThumb: true,
-                  noPremium: props.sticker.media.pFlags.nopremium
-                }}
-              />
-            </Match>
-            <Match when={props.geo}>
-              <GeoPreview class={styles.pollOptionGeo} geo={props.geo} />
-            </Match>
-            <Match when={props.video}>
-              <VideoTsx
-                doc={props.video}
-                loadPromises={unwrap(contextProps.loadPromises)}
-                group={contextProps.animationGroup}
-                autoDownload={unwrap(contextProps.autoDownload)}
-                boxWidth={boxSize}
-                boxHeight={boxSize}
-                withPreview
-                noInfo
-                noPlayButton
-                noAutoplayAttribute
-                lazyLoadQueue={unwrap(contextProps.lazyLoadQueue) || undefined}
-                observer={unwrap(contextProps.observer)}
-                uploadingFileName={props.uploadingFileName}
-              />
-              <div class={styles.pollOptionMediaDim}>
-                <Show when={props.video.type === 'gif'} fallback={
-                  <div class={styles.pollOptionMediaPlay}>
-                    <IconTsx icon='play' />
-                  </div>
-                }>
-                  <div class={styles.pollOptionMediaGifLabel}>
-                      GIF
-                  </div>
-                </Show>
-              </div>
-            </Match>
-          </Switch>
-
-        </div>
+          {(webPage) => <PollWebPageMedia webPage={webPage} />}
+        </Show>
       </Show>
     </div>
   );

@@ -133,6 +133,7 @@ export type BroadcastEvents = {
   'contacts_update': UserId,
   'avatar_update': {peerId: PeerId, threadId?: number},
   'poll_update': {poll: Poll, results: PollResults},
+  'poll_vote_restriction': {pollId: Poll['id'], state?: import('@appManagers/utils/polls/pollVoteRestriction').PollVoteRestrictionState},
   'invalidate_participants': ChatId,
   // 'channel_settings': {channelId: number},
   'webpage_updated': {id: WebPage.webPage['id'], msgs: {peerId: PeerId, mid: number, isScheduled: boolean}[]},

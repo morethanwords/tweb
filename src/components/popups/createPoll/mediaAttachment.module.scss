@@ -76,3 +76,47 @@
 .videoAttachmentBadgeIcon {
   font-size: 24px;
 }
+
+.linkAttachment {
+  position: relative;
+  display: flex;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  appearance: none;
+  align-items: center;
+  justify-content: center;
+  font: inherit;
+  cursor: pointer;
+  color: var(--message-primary-color, var(--primary-color));
+  background-color: var(--light-filled-message-primary-color);
+
+  &.withPhoto {
+    color: white;
+  }
+}
+
+.linkAttachmentPhoto {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.linkAttachmentDim {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.25);
+  opacity: 0;
+  pointer-events: none;
+
+  .withPhoto & {
+    opacity: 1;
+  }
+}
+
+.linkAttachmentIcon {
+  position: relative;
+  font-size: 1.25rem;
+  pointer-events: none;
+}

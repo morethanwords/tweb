@@ -321,7 +321,7 @@ const PollOptionInputField = (props: {
     canWrapCustomEmojis: true,
     onRawInput: () => {
       const {value, entities} = getRichValueWithCaret(inputField.input);
-      props.onChange({text: value, entities});
+      props.onChange(value ? {text: value, entities} : {text: value, entities, attachment: undefined});
     }
   });
 
@@ -407,7 +407,7 @@ const PollOptionInputField = (props: {
             <EmojiDropdownButton class={interactableClass} inputField={inputField} />
           </SimpleFormField.SideContent>
         </Show>
-        <Show when={!props.noAttachment && (supportsMedia('photo') || supportsMedia('video') || supportsMedia('sticker'))}>
+        <Show when={!props.noAttachment && (supportsMedia('photo') || supportsMedia('video') || supportsMedia('sticker') || supportsMedia('link'))}>
           <SimpleFormField.WithAutoLengthCounter
             maxLength={maxOptionLength()}
             first={!props.attachment}
@@ -420,10 +420,14 @@ const PollOptionInputField = (props: {
                 ...(supportsMedia('photo') ? ['photo'] as const : []),
                 ...(supportsMedia('video') ? ['video'] as const : []),
                 ...(supportsMedia('gif') ? ['gif'] as const : []), // GIF is additional to photo
-                ...(supportsMedia('sticker') ? ['sticker'] as const : [])
+                ...(supportsMedia('sticker') ? ['sticker'] as const : []),
+                ...(supportsMedia('link') ? ['link'] as const : [])
               ]}
               imgClass={styles.mediaAttachmentImage}
               attachedMedia={props.attachment}
+              onLinkPopupClose={() => {
+                if(inputField.input.isConnected) inputField.input.focus();
+              }}
               onAttach={(value) => {
                 props.onChange?.({attachment: value});
               }}

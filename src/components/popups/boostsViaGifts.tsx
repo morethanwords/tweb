@@ -13,7 +13,7 @@ import Icon from '@components/icon';
 import {AvatarNew} from '@components/avatarNew';
 import Button from '@components/button';
 import PeerTitle from '@components/peerTitle';
-import {HelpCountry, InputInvoice, InputStorePaymentPurpose, PremiumGiftCodeOption, PrepaidGiveaway, StarsGiveawayOption, StarsGiveawayWinnersOption} from '@layer';
+import {InputInvoice, InputStorePaymentPurpose, PremiumGiftCodeOption, PrepaidGiveaway, StarsGiveawayOption, StarsGiveawayWinnersOption} from '@layer';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import PopupPremium from '@components/popups/premium';
 import {premiumOptionsForm} from '@components/premium/promoSlideTab';
@@ -22,9 +22,6 @@ import {attachClickEvent} from '@helpers/dom/clickEvent';
 import toggleDisability from '@helpers/dom/toggleDisability';
 import getChatMembersString from '@components/wrappers/getChatMembersString';
 import findUpClassName from '@helpers/dom/findUpClassName';
-import {filterCountries} from '@components/countryInputField';
-import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
-import {getCountryEmoji} from '@vendor/emoji';
 import {toastNew} from '@components/toast';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
@@ -35,7 +32,6 @@ import shake from '@helpers/dom/shake';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import {IconTsx} from '@components/iconTsx';
 import {CPrepaidGiveaway} from '@components/sidebarRight/tabs/boosts';
-import isObject from '@helpers/object/isObject';
 import classNames from '@helpers/string/classNames';
 import RowTsx from '@components/rowTsx';
 import {StarsStackedStars} from '@components/popups/stars';
@@ -43,6 +39,7 @@ import numberThousandSplitter, {numberThousandSplitterForStars} from '@helpers/n
 import paymentsWrapCurrencyAmount from '@helpers/paymentsWrapCurrencyAmount';
 import flatten from '@helpers/array/flatten';
 import isGiveawayUntilDateValid from '@helpers/giveaway/isGiveawayUntilDateValid';
+import showPickCountryPopup from '@components/popups/pickCountry';
 
 export const BoostsBadge = (props: {boosts: number}) => {
   return (
@@ -404,69 +401,13 @@ export default class PopupBoostsViaGifts extends PopupElement {
         return;
       }
 
-      let lastFiltered: Map<string, HelpCountry>;
-      const popup = showPickUserPopup({
-        peerType: ['custom'],
-        renderResultsFunc: (iso2s) => {
-          iso2s.forEach((iso2) => {
-            const country = lastFiltered.get(iso2 as any as string);
-            const emoji = getCountryEmoji(country.iso2);
-            const title = document.createDocumentFragment();
-            const emojiContainer = document.createElement('span');
-            emojiContainer.classList.add('selector-countries-emoji');
-            emojiContainer.append(wrapEmojiText(emoji))
-            title.append(emojiContainer, ' ', i18n(country.default_name as any));
-            const row = new Row({
-              title,
-              clickable: true,
-              havePadding: true
-            });
-
-            row.container.append(popup.selector.checkbox(popup.selector.selected.has(iso2)));
-            row.container.dataset.peerId = '' + iso2;
-            popup.selector.list.append(row.container);
-          });
-        },
-        placeholder: 'Search',
-        onSelect: (iso2s) => {
-          setCountries(iso2s.map(({peerId}) => peerId) as any as string[]);
-        },
-        multiSelect: true,
-        getMoreCustom: async(q) => {
-          const filtered = filterCountries(q, true);
-          lastFiltered = new Map();
-          return {
-            result: filtered.map((country) => {
-              lastFiltered.set(country.iso2, country);
-              return country.iso2;
-            }) as any,
-            isEnd: true
-          };
-        },
-        titleLangKey: 'BoostingSelectCountry',
-        checkboxSide: 'left',
-        noPlaceholder: true
-      });
-
-      const _add = popup.selector.add.bind(popup.selector);
-      popup.selector.add = ({key, scroll}) => {
-        const country = I18n.countriesList.find((country) => country.iso2 === key);
-        const ret = _add({
-          key: key,
-          title: i18n(country.default_name as any),
-          scroll
-        });
-        if(isObject(ret)) {
-          ret.avatar.render({peerTitle: getCountryEmoji(country.iso2)});
-        }
-        return ret;
-      };
-
-      popup.selector.searchSection.container.classList.add('is-countries');
-      popup.selector.container.classList.add('is-countries');
-      popup.selector.addInitial(countries());
-      popup.selector.setLimit(this.countriesLimit, () => {
-        toastNew({langPackKey: 'BoostingSelectUpToWarningCountriesPlural', langPackArguments: [this.countriesLimit]});
+      showPickCountryPopup({
+        excludeVirtual: true,
+        initial: countries(),
+        limit: this.countriesLimit,
+        limitReachedLangKey: 'BoostingSelectUpToWarningCountriesPlural',
+        onSelect: setCountries,
+        titleLangKey: 'BoostingSelectCountry'
       });
     };
 

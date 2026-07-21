@@ -321,6 +321,12 @@ $btn-menu-z-index: 4;
       padding-right: 6px;
     }
 
+    &.is-static {
+      cursor: default !important;
+      pointer-events: none !important;
+      color: var(--secondary-text-color);
+    }
+
     &:not(.submenu-trigger):not(.btn-menu-search):active {
       transform: scale(.96);
     }

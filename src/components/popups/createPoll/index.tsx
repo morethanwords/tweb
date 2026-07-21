@@ -4,22 +4,29 @@ import InputField from '@components/inputField';
 import Scrollable from '@components/scrollable2';
 import SimpleFormField from '@components/simpleFormField';
 import Space from '@components/space';
+import {toastNew} from '@components/toast';
 import getRichValueWithCaret from '@helpers/dom/getRichValueWithCaret';
 import {I18nTsx} from '@helpers/solid/i18n';
 import classNames from '@helpers/string/classNames';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import type SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
-import {createSignal, Show} from 'solid-js';
+import {createSignal, Setter, Show} from 'solid-js';
 import PopupElement, {createPopup, useSnitchedPopupContext} from '../indexTsx';
 import {supportedDescriptionFormattingTypes} from './config';
 import {EmojiButtonWithOpacity as EmojiDropdownButton} from './emojiButtonWithOpacity';
 import {MediaAttachment} from './mediaAttachment';
 import {PollOptionsSectionContent} from './pollOptionsSectionContent';
 import {PollSettingsSectionContent} from './pollSettingsSectionContent';
-import {CreatePollContext, CreatePollPayload, createPollStoreContextValue, SupportedMediaType, useCreatePollContext} from './storeContext';
+import {
+  CreatePollContext,
+  CreatePollPayload,
+  createPollStoreContextValue,
+  SupportedMediaType,
+  useCreatePollContext
+} from './storeContext';
 import styles from './styles.module.scss';
 import {useCreatePollLimits} from './useCreatePollLimits';
-import {createFormFieldClickHandler, getFinalPayload, hasMeaningfulChanges, interactableClass, useCanSubmit, useSupportsMedia} from './utils';
+import {createFormFieldClickHandler, getFinalPayload, hasMeaningfulChanges, interactableClass, useCanSubmit, useSupportsMedia, validateCountryRestriction} from './utils';
 
 
 type CreatePollPopupProps = {
@@ -35,6 +42,7 @@ export const CreatePollPopup = (props: CreatePollPopupProps) => {
     isBroadcast: () => props.isBroadcast ?? false,
     supportedMediaTypes: () => props.supportedMediaTypes ?? []
   });
+  const [countriesElement, setCountriesElement] = createSignal<HTMLElement>();
 
   const {SnitchPopupContext, popupContext} = useSnitchedPopupContext();
 
@@ -62,13 +70,20 @@ export const CreatePollPopup = (props: CreatePollPopupProps) => {
       <CreatePollContext.Provider value={context}>
         <Header
           onSubmit={() => {
+            if(!validateCountryRestriction(
+              context.store,
+              context.isBroadcast(),
+              () => toastNew({langPackKey: 'NewPoll.ChooseCountry'}),
+              countriesElement()
+            )) return;
+
             props.onSubmit(getFinalPayload(context));
             popupContext()?.destroy();
           }}
         />
         <hr class={styles.hr} />
         <PopupElement.Body>
-          <BodyContent />
+          <BodyContent setCountriesElement={setCountriesElement} />
         </PopupElement.Body>
       </CreatePollContext.Provider>
     </PopupElement>
@@ -182,9 +197,7 @@ const QuestionAndDescription = () => {
               ]}
               imgClass={styles.mediaAttachmentImage}
               attachedMedia={context.store.descriptionAttachment}
-              onAttach={(value) => {
-                context.setStore('descriptionAttachment', value);
-              }}
+              onAttach={(value) => context.setStore('descriptionAttachment', value)}
             />
           </SimpleFormField.WithAutoLengthCounter>
         </Show>
@@ -193,7 +206,9 @@ const QuestionAndDescription = () => {
   );
 };
 
-const BodyContent = () => {
+const BodyContent = (props: {
+  setCountriesElement: Setter<HTMLElement>
+}) => {
   const [scrollable, setScrollable] = createSignal<HTMLElement>();
 
   return (
@@ -230,7 +245,7 @@ const BodyContent = () => {
 
           <Space amount='0.5rem' />
 
-          <PollSettingsSectionContent />
+          <PollSettingsSectionContent countriesElementRef={props.setCountriesElement} />
         </SimpleFormField.Section>
       </div>
 

@@ -105,6 +105,48 @@
       color: white;
     }
 
+    &LinkPhoto {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      width: 100% !important;
+      height: 100% !important;
+
+      :global(.media-photo) {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+    }
+
+    &WebPage:not(.withPhoto) {
+      background-color: var(--light-filled-message-primary-color);
+    }
+
+    &LinkOverlay {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      background-color: rgba(0, 0, 0, 0.25);
+      pointer-events: none;
+    }
+
+    &LinkIcon {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--message-primary-color, var(--primary-color));
+      font-size: 1.25rem;
+      pointer-events: none;
+
+      .withPhoto & {
+        color: white;
+      }
+    }
+
     :global(.preloader-container) {
       height: 30px;
       width: 30px;
@@ -465,6 +507,10 @@
     position: relative;
     overflow: hidden;
   }
+
+  &WebPage {
+    pointer-events: initial;
+  }
 }
 
 .description {
@@ -489,6 +535,23 @@
   &Wrapper {
     padding: 1px;
   }
+}
+
+.pollDescriptionWebPage {
+  width: calc(100% - 2px);
+  height: 11.25rem;
+  margin: 1px;
+
+  border-start-start-radius: calc(var(--border-start-start-radius) - 1px);
+  border-start-end-radius: calc(var(--border-start-end-radius) - 1px);
+
+  .pollOptionMediaLinkIcon {
+    font-size: 2rem;
+  }
+}
+
+.pollWebPageMedia {
+  flex-shrink: 0;
 }
 
 .pollDocumentWrapper {

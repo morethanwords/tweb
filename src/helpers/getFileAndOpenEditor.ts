@@ -3,6 +3,7 @@ import IMAGE_MIME_TYPES_SUPPORTED from '@environment/imageMimeTypesSupport';
 import VIDEO_MIME_TYPES_SUPPORTED from '@environment/videoMimeTypesSupport';
 import {createImageAndURLFromBlob} from '@helpers/createImageAndURLFromBlob';
 import {getAppWindow} from '@helpers/appWindow';
+import apiManagerProxy from '@lib/apiManagerProxy';
 import rootScope from '@lib/rootScope';
 
 
@@ -58,7 +59,7 @@ export async function getFileAndOpenEditor({
 
   let mediaSrc: string;
   if(isVideo) {
-    mediaSrc = URL.createObjectURL(file);
+    mediaSrc = await apiManagerProxy.invoke('createObjectURL', file);
   } else {
     const imgResult = await createImageAndURLFromBlob(file); // make sure to render the image to know if it's valid
     if(!imgResult.ok) return;

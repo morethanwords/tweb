@@ -11,6 +11,7 @@ import {keepMe} from '@helpers/keepMe';
 import {createDelayed} from '@helpers/solid/createDelayed';
 import {I18nTsx} from '@helpers/solid/i18n';
 import classNames from '@helpers/string/classNames';
+import I18n from '@lib/langPack';
 import {createEffect, createMemo, createResource, Match, onCleanup, Show, Switch} from 'solid-js';
 import {supportsVideoEncoding} from '@components/mediaEditor/support';
 import {Transition} from 'solid-transition-group';
@@ -48,13 +49,13 @@ export const AddOption = (props: {
       ...(chatRights.hasRight('send_stickers') ? ['sticker'] as const : []),
       // GIFs and videos also requires the editor's encoder to be supported by the browser.
       ...(chatRights.hasRight('send_gifs') && canEncodeVideo() ? ['gif'] as const : []),
-      ...(chatRights.hasRight('send_videos') && canEncodeVideo() ? ['video'] as const : [])
+      ...(chatRights.hasRight('send_videos') && canEncodeVideo() ? ['video'] as const : []),
+      'link'
     ];
   });
 
   const active = () => props.active;
   const delayedIsPending = createDelayed(() => props.isPending, false, (value) => value ? 200 : -1);
-  const delayedIsClickable = createDelayed(() => !active(), !active(), (value) => value ? -1 : 400);
 
   const inputField = new InputField({
     placeholder: 'NewPoll.Option',
@@ -68,6 +69,14 @@ export const AddOption = (props: {
   inputField.input.classList.add(styles.inputFieldInput);
   inputField.placeholder.classList.add(...[styles.inputFieldPlaceholder, contextProps.isOutgoing ? styles.outgoing : null].filter(Boolean));
 
+  const deactivate = () => {
+    if(!props.value) {
+      props.onPartialChange({attachment: undefined});
+    }
+
+    props.onActiveChange(false);
+  };
+
   inputField.input.addEventListener('keydown', (e) => {
     if(e.key === 'Enter') {
       props.onEnter?.();
@@ -75,7 +84,7 @@ export const AddOption = (props: {
 
     if(e.key === 'Backspace' && props.value === '') {
       e.preventDefault();
-      props.onActiveChange(false);
+      deactivate();
     }
   });
 
@@ -86,7 +95,7 @@ export const AddOption = (props: {
 
     const navigationItem: NavigationItem = {
       type: 'inline-message-input',
-      onPop: () => void props.onActiveChange(false)
+      onPop: () => void deactivate()
     };
 
     const existing = appNavigationController.findItemByType('inline-message-input');
@@ -126,8 +135,24 @@ export const AddOption = (props: {
       }}
     >
       <Transition name='fade-4' mode='outin' duration={400}>
-        <Show when={delayedIsClickable()}>
-          <div class={styles.clickableArea} classList={{[styles.outgoing]: contextProps.isOutgoing}} use:ripple={delayedIsClickable()} onClick={() => props.onActiveChange(!active())} />
+        <Show when={!active()}>
+          <div
+            class={styles.clickableArea}
+            classList={{
+              [styles.outgoing]: contextProps.isOutgoing,
+              [styles.pointerDisabled]: active()
+            }}
+            role='button'
+            tabIndex={active() ? -1 : 0}
+            aria-label={I18n.i18n('Chat.Poll.AddAnOption').textContent}
+            use:ripple={!active()}
+            onClick={() => props.onActiveChange(true)}
+            onKeyDown={(event) => {
+              if(event.key !== 'Enter' && event.key !== ' ') return;
+              event.preventDefault();
+              props.onActiveChange(true);
+            }}
+          />
         </Show>
       </Transition>
 
@@ -176,6 +201,9 @@ export const AddOption = (props: {
             btnClass={styles.pollOptionMediaAttachBtn}
             imgClass={styles.pollOptionMediaAttachImg}
             attachedMedia={props.attachment}
+            onLinkPopupClose={() => {
+              if(inputField.input.isConnected) inputField.input.focus();
+            }}
             onAttach={(attachment) => props.onPartialChange({attachment})}
           />
         </Show>

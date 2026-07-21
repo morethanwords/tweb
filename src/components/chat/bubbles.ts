@@ -499,6 +499,7 @@ type RenderMessageArgs = {
   logId?: string | number;
   bubble: HTMLElement;
   middleware: Middleware;
+  previewOnly?: boolean;
 };
 
 type BubblesResolveAdminLogArgs = {
@@ -3488,13 +3489,7 @@ export default class ChatBubbles {
         return;
       }
 
-      const callback = webPageContainer.dataset.callback as Parameters<typeof addAnchorListener>[0]['name'];
-      if(callback) {
-        (window as any)[callback](findUpTag(target, 'A'), e);
-      }
-
-      const webPageCallback = this.webPageClickCallbacks.get(webPageContainer);
-      webPageCallback?.(event as MouseEvent);
+      this.dispatchWebPageClick(webPageContainer, e as MouseEvent);
       return;
     }
 
@@ -6177,6 +6172,99 @@ export default class ChatBubbles {
     return this.bubbles[fullMid];
   }
 
+  /**
+   * Render a poll-link preview through the regular message renderer. Keeping the
+   * preview on this path means every webpage kind (documents, stories, gifts,
+   * sticker sets, large/small photos, Instant View, and future additions) stays
+   * identical to a webpage in a chat bubble.
+   */
+  public async renderWebPagePreview({
+    message,
+    media,
+    middleware
+  }: {
+    message: Message.message,
+    media: MessageMedia.messageMediaWebPage,
+    middleware: Middleware
+  }) {
+    const middlewareHelper = getMiddleware();
+    const previewMiddleware = middlewareHelper.get();
+    middleware.onDestroy(() => middlewareHelper.destroy());
+
+    const bubble = document.createElement('div');
+    bubble.middlewareHelper = middlewareHelper;
+    bubble.dataset.mid = '' + message.mid;
+    bubble.dataset.peerId = '' + message.peerId;
+    bubble.dataset.timestamp = '' + message.date;
+
+    const url = media.webpage._ === 'webPage' ? media.webpage.url : '';
+    const urlEntity: MessageEntity.messageEntityUrl = {
+      _: 'messageEntityUrl',
+      offset: 0,
+      length: url.length
+    };
+    const previewMessage: Message.message = {
+      ...message,
+      pFlags: {
+        out: message.pFlags.out,
+        is_outgoing: message.pFlags.is_outgoing
+      },
+      message: url,
+      entities: [urlEntity],
+      media,
+      grouped_id: undefined,
+      reply_markup: undefined,
+      reply_to: undefined,
+      replies: undefined,
+      reactions: undefined,
+      fwd_from: undefined,
+      fwdFromId: undefined,
+      via_bot_id: undefined,
+      viaBotId: undefined,
+      post_author: undefined,
+      factcheck: undefined,
+      suggested_post: undefined,
+      rich_message: undefined,
+      sponsoredMessage: undefined,
+      totalEntities: [urlEntity]
+    };
+
+    await this.renderMessage({
+      message: previewMessage,
+      bubble,
+      middleware: previewMiddleware,
+      previewOnly: true
+    });
+
+
+    if(!middleware() || !previewMiddleware()) return;
+
+    const box = bubble.querySelector<HTMLAnchorElement>('.webpage');
+    box?.remove();
+    return box;
+  }
+
+  /** Dispatch the same webpage action used by the chat's delegated listener. */
+  public dispatchWebPageClick(webPageContainer: HTMLAnchorElement, event: MouseEvent) {
+    const target = event.target instanceof Element ? event.target : undefined;
+    if(target?.closest('.webpage-name-tip')) return false;
+    if(target?.closest('.webpage-preview-resizer')) {
+      event.preventDefault();
+      return false;
+    }
+
+    const targetAnchor = target?.closest('a') || webPageContainer;
+
+    const callback = webPageContainer.dataset.callback as Parameters<typeof addAnchorListener>[0]['name'];
+    if(callback) {
+      (window as any)[callback](targetAnchor, event);
+    }
+
+    const webPageCallback = this.webPageClickCallbacks.get(webPageContainer);
+    webPageCallback?.(event);
+    return true;
+  }
+
   private async safeRenderMessage({
     message,
     reverse,
@@ -6483,7 +6571,8 @@ export default class ChatBubbles {
     reverse = false,
     logId,
     bubble,
-    middleware
+    middleware,
+    previewOnly = false
   }: RenderMessageArgs) {
     // if(DEBUG) {
     //   this.log('message to render:', message);
@@ -6572,14 +6661,14 @@ export default class ChatBubbles {
     });
     if(tmpPromise) await tmpPromise;
 
-    context.isInUnread = !our &&
+    context.isInUnread = !previewOnly && !our &&
       !message.pFlags.out &&
       !!message.pFlags.unread;
 
     const unreadMention = isMentionUnread(message);
     const unreadReactions = getUnreadReactions(message);
 
-    if(!context.isInUnread && this.chat.peerId.isAnyChat()) {
+    if(!previewOnly && !context.isInUnread && this.chat.peerId.isAnyChat()) {
       const readMaxId = await this.getRenderReadMaxId(this.chat.peerId, this.chat.threadId);
       if(readMaxId !== undefined && readMaxId < maxBubbleMid) {
         context.isInUnread = true;
@@ -7196,15 +7285,15 @@ export default class ChatBubbles {
     }
 
 
-    const setUnreadObserver = context.isInUnread && this.observer ? this.setUnreadObserver.bind(this, 'history', bubble, maxBubbleMid) : undefined;
+    const setUnreadObserver = !previewOnly && context.isInUnread && this.observer ? this.setUnreadObserver.bind(this, 'history', bubble, maxBubbleMid) : undefined;
 
     const isBroadcast = this.chat.isBroadcast;
     if(returnService) {
       setUnreadObserver?.();
-      if(hasReactions && this.chat.type !== ChatType.Logs) {
+      if(!previewOnly && hasReactions && this.chat.type !== ChatType.Logs) {
         this.appendReactionsElementToBubble(bubble, message, reactionsMessage, undefined, loadPromises);
       }
-      if(this.observer && (unreadMention || unreadReactions)) {
+      if(!previewOnly && this.observer && (unreadMention || unreadReactions)) {
         this.setUnreadObserver('content', bubble, reactionsMessage.mid);
       }
       return ret;
@@ -7214,7 +7303,7 @@ export default class ChatBubbles {
       setUnreadObserver?.();
     }
 
-    if(this.observer && (unreadMention || unreadReactions)) {
+    if(!previewOnly && this.observer && (unreadMention || unreadReactions)) {
       this.setUnreadObserver('content', bubble, reactionsMessage.mid);
     }
 
@@ -7589,7 +7678,7 @@ export default class ChatBubbles {
         hasBesideButton = true;
       }
 
-      if(!message.pFlags.is_outgoing && this.observer) {
+      if(!previewOnly && !message.pFlags.is_outgoing && this.observer) {
         this.observer.observe(bubble, this.viewsObserverCallback);
 
         // Engagement metrics only for the main channel feed (not preview/pinned/search/scheduled views).
@@ -7661,7 +7750,7 @@ export default class ChatBubbles {
       addContinueLastTopicReplyMarkup({message, bubble, contentWrapper, chat: this.chat});
     }
 
-    context.isOutgoing = message.pFlags.is_outgoing/*  && this.peerId !== rootScope.myId */;
+    context.isOutgoing = !previewOnly && message.pFlags.is_outgoing/*  && this.peerId !== rootScope.myId */;
     const sensitive = this.chat.isSensitive || isMessageSensitive(message);
 
     if(context.isOutgoing && !message.error) {
@@ -7671,7 +7760,12 @@ export default class ChatBubbles {
       }
     }
 
-    const messageWithReplies = isMessage && await this.managers.appMessagesManager.getMessageWithCommentReplies(message);
+    const canHaveCommentReplies = isMessage && (
+      message.peerId === REPLIES_PEER_ID ||
+      !!message.replies ||
+      !!message.grouped_id
+    );
+    const messageWithReplies = canHaveCommentReplies && await this.managers.appMessagesManager.getMessageWithCommentReplies(message);
     const withReplies = !!messageWithReplies && message.mid > 0;
 
     if(withReplies) {
@@ -8010,7 +8104,7 @@ export default class ChatBubbles {
                 boxWidth: mediaSize.width,
                 boxHeight: mediaSize.height,
                 lazyLoadQueue,
-                middleware: this.getMiddleware(),
+                middleware,
                 isOut,
                 group: this.chat.animationGroup,
                 loadPromises,
@@ -8670,6 +8764,7 @@ export default class ChatBubbles {
             const propsMutable = createMutable<PollMessageContentProps>({
               element: container,
               isOutgoing: isOut,
+              isRegularSurface: ![ChatType.Logs, ChatType.Static, ChatType.Scheduled].includes(this.chat.type),
               message,
               peerId: this.peerId,
               poll: context.messageMedia.poll,
@@ -9602,7 +9697,7 @@ export default class ChatBubbles {
       this.setBubbleRepliesCount(bubble, replies.replies);
     }
 
-    if(hasReactions && this.chat.type !== ChatType.Logs) {
+    if(!previewOnly && hasReactions && this.chat.type !== ChatType.Logs) {
       this.appendReactionsElementToBubble(bubble, message, reactionsMessage, undefined, loadPromises);
     }
 
@@ -9613,7 +9708,7 @@ export default class ChatBubbles {
       bubbleContainer.append(generateTail());
     }
 
-    if(our && (this.peerId !== rootScope.myId || isOut)) {
+    if(!previewOnly && our && (this.peerId !== rootScope.myId || isOut)) {
       if(message.pFlags.unread || context.isOutgoing) this.unreadOut.add(message.mid);
       let status: Parameters<ChatBubbles['setBubbleSendingStatus']>[1];
       if(message.error) status = 'error';
@@ -9635,7 +9730,7 @@ export default class ChatBubbles {
       });
     }
 
-    if(isMessage && message.effect && (context.isInUnread || context.isOutgoing)) {
+    if(!previewOnly && isMessage && message.effect && (context.isInUnread || context.isOutgoing)) {
       this.observer.observe(bubble, this.messageEffectObserverCallback);
     }
 
@@ -9649,7 +9744,7 @@ export default class ChatBubbles {
       });
     }
 
-    if(this.sponsoredAfterMids.size > 0) {
+    if(!previewOnly && this.sponsoredAfterMids.size > 0) {
       const sponsoredMessageAfterMid = groupedMids ? groupedMids.find(it => this.sponsoredAfterMids.has(it)) : message.mid
       const sponsoredMessage = this.sponsoredAfterMids.get(sponsoredMessageAfterMid);
       if(sponsoredMessage) {
