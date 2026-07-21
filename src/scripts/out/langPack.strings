@@ -210,6 +210,17 @@
 "GiftRecipientDoesNotAccept" = "This user doesn’t accept gifts.";
 "Suggestion.PasskeySetup" = "Create Passkey! %s";
 "Suggestion.PasskeySetup.Subtitle" = "Log in safely and keep your account secure.";
+"UnconfirmedAuthTitle" = "Someone just got access to your messages!";
+"UnconfirmedAuthConfirm" = "Yes, it’s me";
+"UnconfirmedAuthDeny" = "No, it’s not me!";
+"UnconfirmedAuthSingle" = "We detected a new login to your account from %s. Is it you?";
+"UnconfirmedAuthConfirmed" = "New Login Allowed";
+"UnconfirmedAuthConfirmedMessage" = "You can check the list of your active logins in %s.";
+"UnconfirmedAuthDeniedTitle_one" = "New Login Prevented";
+"UnconfirmedAuthDeniedTitle_other" = "New Logins Prevented";
+"UnconfirmedAuthDeniedMessageSingle" = "We have terminated the login attempt from %s.";
+"UnconfirmedAuthDeniedWarning" = "Never send your login code to anyone or you can lose your Telegram account!";
+"UnconfirmedAuthDeniedButton" = "Got it";
 "NewPrivateChat" = "New Private Chat";
 "NewPoll.OptionLabel" = "Option %d";
 "Message.Context.Selection.Copy" = "Copy selected";

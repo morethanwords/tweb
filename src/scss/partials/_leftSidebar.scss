@@ -418,6 +418,7 @@
       padding-top: var(--chatlist-overlay-height, 0);
 
       .has-pending-suggestion &,
+      .has-unconfirmed-authorization &,
       .has-horizontal-folders & {
         border-top: none !important;
       }

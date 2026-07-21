@@ -12,6 +12,7 @@ import App from '@config/app';
 import {getAccentPresetsForBase} from '@config/themePresets';
 import {ColoredBrushType} from '@components/mediaEditor/context';
 import {FontKey} from '@components/mediaEditor/types';
+import type {UnconfirmedAuthorization} from '@appManagers/appAccountManager';
 
 // Factory tinted ("Dark") collapses onto the first base-color preset (blue) so the accent picker
 // can omit a separate "default" swatch — resetting to factory now reaches the same state the user
@@ -226,6 +227,7 @@ export type State = {
     clientVersion: string,
   },
   accountContentSettings: CacheSomething<AccountContentSettings>,
+  unconfirmedAuthorizations: UnconfirmedAuthorization[],
 
 
   // playbackParams?: StateSettings['playbackParams'], // ! MIGRATED TO SETTINGS
@@ -579,7 +581,8 @@ export const STATE_INIT: State = {
   accountThemes: {} as any,
   birthdayContactsDismissedDayKey: undefined,
   dontShowPaidMessageWarningFor: [],
-  accountContentSettings: {} as any
+  accountContentSettings: {} as any,
+  unconfirmedAuthorizations: []
 };
 
 export const COMMON_STATE_INIT: CommonState = {

@@ -19,6 +19,7 @@ import type {ApiManager} from '@appManagers/apiManager';
 import type {MonoforumDialog} from '@lib/storages/monoforumDialogs';
 import type {MyStarGift} from '@appManagers/appGiftsManager';
 import type {MyPromoData} from '@appManagers/appPromoManager';
+import type {UnconfirmedAuthorization} from '@appManagers/appAccountManager';
 import type {ActiveAccountNumber} from '@lib/accounts/types';
 import {NULL_PEER_ID, UserAuth} from '@appManagers/constants';
 import EventListenerBase, {EventListenerListeners} from '@helpers/eventListenerBase';
@@ -239,6 +240,7 @@ export type BroadcastEvents = {
 
   'botforum_pending_topic_created': {peerId: PeerId, tempId: number, newId?: number},
   'promo_data_update': MyPromoData,
+  'unconfirmed_authorizations_update': UnconfirmedAuthorization[],
 
   'auto_delete_period_update': {peerId: PeerId, period: number},
 };

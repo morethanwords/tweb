@@ -70,9 +70,11 @@ const ActiveSessions: Component = () => {
               isDanger: true,
               callback: () => {
                 const toggle = toggleDisability([btnTerminate], true);
-                tab.managers.apiManager.invokeApi('auth.resetAuthorizations').then((value) => {
-                  btnTerminate.remove();
-                  otherSection.container.remove();
+                tab.managers.appAccountManager.resetAuthorizations().then((value) => {
+                  if(value) {
+                    btnTerminate.remove();
+                    otherSection.container.remove();
+                  }
                 }, onError).finally(() => {
                   toggle();
                 });

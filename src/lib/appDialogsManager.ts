@@ -95,6 +95,7 @@ import {unwrap} from 'solid-js/store';
 import wrapMediaSpoiler from '@components/wrappers/mediaSpoiler';
 import type {MonoforumDialog} from '@lib/storages/monoforumDialogs';
 import {renderPendingSuggestion} from '@components/sidebarLeft/pendingSuggestion';
+import {renderNewAuthorization} from '@components/sidebarLeft/newAuthorization';
 import {useHasFolders} from '@stores/foldersSidebar';
 import {useAppState} from '@stores/appState';
 import {BADGE_TRANSITION_TIME} from '@components/autonomousDialogList/constants';
@@ -566,6 +567,7 @@ export class AppDialogsManager {
   public resizeStoriesList: () => void;
 
   private suggestionContainer: HTMLElement;
+  private authorizationContainer: HTMLElement;
   private foldersOverlay: HTMLElement;
 
   private lazyLoadQueue: LazyLoadQueue;
@@ -1078,6 +1080,12 @@ export class AppDialogsManager {
       this.suggestionContainer = document.createElement('div');
       this.foldersOverlay.prepend(this.suggestionContainer);
       renderPendingSuggestion(this.suggestionContainer);
+    }
+
+    if(!this.authorizationContainer) {
+      this.authorizationContainer = document.createElement('div');
+      this.foldersOverlay.prepend(this.authorizationContainer);
+      renderNewAuthorization(this.authorizationContainer);
     }
   }
 

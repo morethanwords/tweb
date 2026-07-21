@@ -14,6 +14,7 @@ export interface MTAppConfig {
   dialog_filters_tooltip?:                   boolean;
   autoarchive_setting_available?:            boolean;
   pending_suggestions?:                      string[];
+  authorization_autoconfirm_period?:         number;
   autologin_domains?:                        string[];
   url_auth_domains?:                         string[];
   round_video_encoding?:                     RoundVideoEncoding;
