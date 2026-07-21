@@ -2,15 +2,15 @@ import EmptyListLoader from '@helpers/emptyListLoader';
 import mediaSizes from '@helpers/mediaSizes';
 import {Photo, Document} from '@layer';
 import appImManager from '@lib/appImManager';
-import AppMediaViewerBase from './appMediaViewerBase';
-import {ButtonMenuItemOptionsVerifiable} from './buttonMenu';
-import PopupElement from './popups';
-import PopupForward from './popups/forward';
-import appSidebarRight from './sidebarRight';
-import AppSharedMediaTab from './sidebarRight/tabs/sharedMediaTab';
+import AppMediaViewerBase from '@components/mediaViewer/base';
+import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
+import PopupElement from '@components/popups';
+import PopupForward from '@components/popups/forward';
+import appSidebarRight from '@components/sidebarRight';
+import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMediaTab';
 import appDownloadManager from '@lib/appDownloadManager';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
-import showForwardPopup from './popups/forward';
+import showForwardPopup from '@components/popups/forward';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 
 

@@ -9,7 +9,7 @@ import CheckboxField from '@components/checkboxField';
 import {PremiumGiftCodeOption, PremiumSubscriptionOption} from '@layer';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import setInnerHTML from '@helpers/dom/setInnerHTML';
-import {onMediaCaptionClick} from '@components/appMediaViewer';
+import {onMediaCaptionClick} from '@components/mediaViewer';
 import {formatMonthsDuration} from '@helpers/date';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import getPeerId from '@appManagers/utils/peers/getPeerId';

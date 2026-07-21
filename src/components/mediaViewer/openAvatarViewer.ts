@@ -2,8 +2,8 @@ import isObject from '@helpers/object/isObject';
 import {Photo, MessageAction, Message, UserFull} from '@layer';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import rootScope from '@lib/rootScope';
-import AppMediaViewer from '@components/appMediaViewer';
-import AppMediaViewerAvatar from '@components/appMediaViewerAvatar';
+import AppMediaViewer from '@components/mediaViewer';
+import AppMediaViewerAvatar from '@components/mediaViewer/avatar';
 
 export default async function openAvatarViewer(
   target: HTMLElement,

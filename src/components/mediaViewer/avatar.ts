@@ -4,10 +4,10 @@ import {Photo} from '@layer';
 import appDownloadManager from '@lib/appDownloadManager';
 import appImManager from '@lib/appImManager';
 import rootScope from '@lib/rootScope';
-import AppMediaViewerBase from '@components/appMediaViewerBase';
+import AppMediaViewerBase from '@components/mediaViewer/base';
 import confirmationPopup from '@components/confirmationPopup';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
-import overlayAvatarVideoOnMover from '@components/appMediaViewerAvatarVideo';
+import overlayAvatarVideoOnMover from '@components/mediaViewer/avatarVideo';
 import {i18n} from '@lib/langPack';
 
 type AppMediaViewerAvatarTargetType = {element: HTMLElement, photoId: Photo.photo['id'], photo?: Photo.photo};

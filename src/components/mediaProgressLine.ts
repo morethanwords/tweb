@@ -6,7 +6,7 @@ import setCurrentTime from '@helpers/dom/setCurrentTime';
 import limitSymbols from '@helpers/string/limitSymbols';
 import toHHMMSS from '@helpers/string/toHHMMSS';
 import appMediaPlaybackController from '@components/appMediaPlaybackController';
-import {VideoTimestamp} from '@components/appMediaViewerBase';
+import {VideoTimestamp} from '@components/mediaViewer/base';
 import RangeSelector from '@components/rangeSelector';
 import {observeResize} from '@components/resizeObserver';
 

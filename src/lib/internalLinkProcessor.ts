@@ -1,4 +1,4 @@
-import type AppMediaViewerBase from '@components/appMediaViewerBase';
+import type AppMediaViewerBase from '@components/mediaViewer/base';
 import PopupElement from '@components/popups';
 import PopupSharedFolderInvite from '@components/popups/sharedFolderInvite';
 import PopupJoinChatInvite from '@components/popups/joinChatInvite';

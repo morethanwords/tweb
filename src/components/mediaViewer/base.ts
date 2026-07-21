@@ -68,13 +68,15 @@ import {getQualityFilesEntries} from '@lib/hls/createHlsVideoSource';
 import {snapQualityHeight} from '@lib/hls/snapQualityHeight';
 import {ButtonMenuItemWithAuxiliaryText} from '@lib/mediaPlayer/qualityLevelsSwitchButton';
 import formatBytes from '@helpers/formatBytes';
+import getMediaViewerClipPath from '@components/mediaViewer/clipPath';
+import getMediaViewerSnapshotSize from '@components/mediaViewer/snapshotSize';
 import getDocumentURL from '@appManagers/utils/docs/getDocumentURL';
 import assumeType from '@helpers/assumeType';
 import {createRoot, createResource, createEffect, createMemo} from 'solid-js';
 import readBlobAsText from '@helpers/blob/readBlobAsText';
 import {Storyboard, StoryboardFrame} from '@lib/mediaPlayer/preview';
 import apiManagerProxy from '@lib/apiManagerProxy';
-import cloneDOMRect from '../helpers/dom/cloneDOMRect';
+import cloneDOMRect from '@helpers/dom/cloneDOMRect';
 
 const ZOOM_STEP = 0.5;
 const ZOOM_INITIAL_VALUE = 1;
@@ -83,6 +85,8 @@ const ZOOM_MAX_VALUE = 4;
 
 const OPEN_TRANSITION_TIME = 200;
 const MOVE_TRANSITION_TIME = 350;
+const USE_MEDIA_VIEWER_CLIP_PATH = true;
+const NO_MEDIA_VIEWER_CLIP_PATH = 'inset(0px)';
 
 // Vertical reserves around the media (px). Single source of truth for layout —
 // mediaBoxSize math and the inline positioning applied by applyCenterStyles /
@@ -222,6 +226,7 @@ export default class AppMediaViewerBase<
 
   protected setMoverPromise: Promise<void>;
   protected setMoverAnimationPromise: Promise<void>;
+  private moverTransitionCancels = new WeakMap<HTMLElement, () => void>();
 
   protected lazyLoadQueue: LazyLoadQueueBase;
 
@@ -1009,6 +1014,7 @@ export default class AppMediaViewerBase<
     this.removeGlobalListeners();
 
     promise.finally(() => {
+      this.revealHiddenFloatings();
       this.wholeDiv.remove();
       this.toggleOverlay(false);
       this.middlewareHelper.destroy();
@@ -1170,15 +1176,10 @@ export default class AppMediaViewerBase<
   protected async setMoverToTarget(target: HTMLElement, closing = false, fromRight = 0) {
     this.dispatchEvent('setMoverBefore');
 
-    // On open: hide source-bubble floating overlays (e.g. .video-time / .time) instantly
-    // so they don't overlap the mover at the thumb position. On close: animate them back.
-    // Uses the original target before any re-target, so floatings on the actual chat
-    // bubble we're animating to/from are the ones affected.
-    if(closing) {
-      this.revealHiddenFloatings();
-    } else if(target) {
-      this.hideFloatings(target);
-    }
+    // Keep geometry reads ahead of source-overlay style writes. Hiding the floating
+    // labels before getBoundingClientRect/getComputedStyle forced an extra style/layout
+    // flush on the cold open path.
+    const sourceTarget = target;
 
     const mover = this.content.mover;
 
@@ -1191,7 +1192,7 @@ export default class AppMediaViewerBase<
     const zoomedClose = closing && zoomValue !== 1;
     // Closing while rotated needs the same moversContainer→mover transform transfer
     // as a zoomed close (below): moversContainer must end at identity for the
-    // wrapper clip-path and the thumb-rect math to be in plain viewport coords.
+    // thumb-rect math to be in plain viewport coords.
     const closeRotation = closing ? this.rotation : 0;
     const rotatedClose = closeRotation !== 0;
     // Rotation pivot in the mover's OWN coords (its content center) — captured during
@@ -1201,11 +1202,9 @@ export default class AppMediaViewerBase<
     let closeRotationPivotY = 0;
     if(zoomedClose || rotatedClose) {
       // Closing while zoomed/rotated. We can't animate moversContainer's transform
-      // from the current state to a target matrix: the mover's wrapper carries the
-      // close clip-path (in wrapper-local coords), and if moversContainer is
-      // non-identity the clip values get visually scaled/rotated/translated with it
-      // — at the end of the animation the visible clip ends up as a tiny rectangle
-      // far from where the mover lands, and the user sees a crushed/displaced thumb.
+      // from the current state to a target matrix while also moving the child back
+      // to a viewport-space thumbnail. A non-identity parent would additionally
+      // scale, rotate and translate the target transform and local clip.
       //
       // Instead, transfer the live transform from moversContainer to the mover
       // synchronously (no visible jump — same frame, no transition), reset
@@ -1319,11 +1318,12 @@ export default class AppMediaViewerBase<
     }
 
     let needOpacity = false;
-    let clipInsets: {top: number, right: number, bottom: number, left: number};
+    let viewportClipPath: string;
+    let overflowElement: HTMLElement;
     if(target === this.content.media) {
       needOpacity = true;
     } else if(!target.classList.contains('profile-avatars-avatar')) {
-      const overflowElement = findUpClassName(realParent, 'scrollable');
+      overflowElement = findUpClassName(realParent, 'scrollable');
       let overflowRect: DOMRectMinified;
       // In chats, scrollable extends past the visible bubble area via negative inset-block,
       // so clip the overflow rect to .bubbles-viewport (the actual visible region between
@@ -1340,7 +1340,7 @@ export default class AppMediaViewerBase<
           left: Math.max(baseRect.left, viewportRect.left)
         };
       }
-      const visibleRect = overflowElement && getVisibleRect(realParent, overflowElement, true, undefined, overflowRect);
+      const visibleRect = overflowElement && getVisibleRect(realParent, overflowElement, true, rect, overflowRect);
 
       if(closing && overflowElement && (!visibleRect || visibleRect.overflow.vertical === 2 || visibleRect.overflow.horizontal === 2)) {
         // On close, retarget to the centered media instead of flying toward an
@@ -1351,21 +1351,18 @@ export default class AppMediaViewerBase<
         target = this.content.media;
         realParent = target.parentElement as HTMLElement;
         rect = target.getBoundingClientRect();
-        if(!visibleRect) {
-          needOpacity = true;
-        }
+        needOpacity = true;
       } else if(overflowElement && !visibleRect) {
         // Opening from a source that's off-screen — fade in via opacity.
         needOpacity = true;
       } else if(visibleRect && (visibleRect.overflow.vertical || visibleRect.overflow.horizontal)) {
-        // Target partially overlapped (e.g. clipped behind topbar / chat-input) —
-        // animate clip-path from the visible portion to the full mover.
-        clipInsets = {
-          top: visibleRect.rect.top - rect.top,
-          right: rect.right - visibleRect.rect.right,
-          bottom: rect.bottom - visibleRect.rect.bottom,
-          left: visibleRect.rect.left - rect.left
-        };
+        // Reproduce only the clipping ancestor boundaries. The target's own edges
+        // must stay open so the mover can grow out of its source rectangle.
+        viewportClipPath = getMediaViewerClipPath({
+          visibleRect,
+          viewportWidth: windowSize.width,
+          viewportHeight: windowSize.height
+        });
       }
     }
 
@@ -1449,20 +1446,22 @@ export default class AppMediaViewerBase<
     // (e.g. the rounded sharedMedia grid container) when the corresponding corner of
     // realParent coincides with the ancestor's corner — otherwise interior cells would
     // pick up the grid's outer rounding incorrectly.
-    const effectiveCornerRadii = this.computeEffectiveCornerRadii(realParent, rect);
+    const effectiveCornerRadii = this.computeEffectiveCornerRadii(realParent, rect, overflowElement);
     // The mover is non-uniformly scaled (scaleX may differ from scaleY when the thumb's
     // aspect doesn't match the full media's — typical for sharedMedia square cells over
     // landscape photos). Express radii as elliptical X/Y per corner so the visible
     // corner stays circular at viewport scale instead of stretching with the mover.
     const xRadii = effectiveCornerRadii.map((r) => r / scaleX);
     const yRadii = effectiveCornerRadii.map((r) => r / scaleY);
-    // borderRadius (kept as a string for sizeTailPath, which only parses the first 4 X
-    // values to drive the SVG bubble-tail path). The mover itself does NOT get inline
-    // border-radius — the rounding is folded into clip-path's `round` modifier below
-    // so it applies to the inset rectangle (the actual visible silhouette) rather than
-    // the underlying full-size mover.
+    // borderRadius is kept as a string for sizeTailPath, which only parses the first
+    // 4 X values to drive the SVG bubble-tail path. It also rounds the transformed
+    // mover independently from the fixed ancestor clip.
     const borderRadius = `${xRadii.map((v) => v + 'px').join(' ')} / ${yRadii.map((v) => v + 'px').join(' ')}`;
     // let borderRadius = '0px 0px 0px 0px';
+
+    if(!closing && sourceTarget) {
+      this.hideFloatings(sourceTarget);
+    }
 
     if(rotatedClose) {
       // Unwind the turn to the nearest upright (a multiple of 360 ≡ 0° visually,
@@ -1476,51 +1475,43 @@ export default class AppMediaViewerBase<
       transform += `translate(${closeRotationPivotX}px, ${closeRotationPivotY}px) rotate(${upright}deg) scale(1) translate(${-closeRotationPivotX}px, ${-closeRotationPivotY}px)`;
     }
 
-    mover.style.transform = transform;
+    // The fixed wrapper reproduces only the source's clipping ancestor. It starts at
+    // that viewport boundary and retracts to inset(0) while the mover grows; keeping
+    // the clip off the scaled mover makes every inset interpolate in viewport pixels.
+    const useClipPath = USE_MEDIA_VIEWER_CLIP_PATH && !!viewportClipPath && !wasActive;
+    if(!wasActive) {
+      mover.style.borderRadius = borderRadius;
+      if(aspecter) {
+        aspecter.style.borderRadius = borderRadius;
+      }
+    }
 
     needOpacity && (mover.style.opacity = '0'/* !closing ? '0' : '' */);
 
-    // clip-path lives on the mover's wrapper (per-mover element that never scales).
-    // Putting it on the scaled mover would make visible_inset = local_inset × scale,
-    // a non-monotonic product (the visible clip line bumps outward mid-animation
-    // before retracting). Anchored to the unscaled wrapper, every value interpolates
-    // linearly in viewport pixels. The wrapper is a sibling of the arrow buttons in
-    // moversContainer, so the clip-path doesn't affect them; and during prev/next
-    // nav the wrapper is left at inset(0) so the slide is unobstructed.
-    const formatInsetRound = (insetT: number, insetR: number, insetB: number, insetL: number, xs: number[], ys: number[]) => {
-      const xStr = xs.map((v) => v + 'px').join(' ');
-      const yStr = ys.map((v) => v + 'px').join(' ');
-      return `inset(${insetT}px ${insetR}px ${insetB}px ${insetL}px round ${xStr} / ${yStr})`;
-    };
-    const vw = windowSize.width;
-    const vh = windowSize.height;
     const wrapper = mover.parentElement;
-    const allZerosClipPath = formatInsetRound(0, 0, 0, 0, [0, 0, 0, 0], [0, 0, 0, 0]);
-    if(!wasActive) {
-      // Visible portion of the target in viewport coords (= wrapper coords).
-      const visT = rect.top + (clipInsets?.top || 0);
-      const visR = rect.right - (clipInsets?.right || 0);
-      const visB = rect.bottom - (clipInsets?.bottom || 0);
-      const visL = rect.left + (clipInsets?.left || 0);
-      const initialClipPath = formatInsetRound(
-        visT,
-        vw - visR,
-        vh - visB,
-        visL,
-        effectiveCornerRadii,
-        effectiveCornerRadii
-      );
-      // Open: initial clipped+rounded shape; after doubleRaf we'll set inset(0) to
-      // animate the clip away in lockstep with the mover scaling up.
-      // Close: previous open left wrapper.clipPath = inset(0), so this transitions
-      // cleanly into the target clipped+rounded shape.
-      wrapper.style.clipPath = initialClipPath;
+    if(useClipPath) {
+      if(closing && !wrapper.style.clipPath) {
+        // A viewer opened from a fully visible source carries no clip at rest. Prime
+        // a syntactically compatible inset(0) before the close target so the browser
+        // can interpolate instead of switching none -> inset() discretely.
+        wrapper.style.transition = 'none';
+        wrapper.style.clipPath = NO_MEDIA_VIEWER_CLIP_PATH;
+        void wrapper.offsetLeft;
+        wrapper.style.transition = '';
+      } else if(!closing) {
+        // Do not animate from `none` to the opening start state. The transition is
+        // restored in the preparation frame below.
+        wrapper.style.transition = 'none';
+      }
+      wrapper.style.clipPath = viewportClipPath;
     } else {
-      // Nav: keep the wrapper unclipped so the mover slides freely. Establish an
-      // explicit inset(0) inline so a future close from this mover transitions
-      // smoothly (none → inset() doesn't interpolate, but inset(0) → inset(target) does).
-      wrapper.style.clipPath = allZerosClipPath;
+      wrapper.style.clipPath = '';
     }
+    mover.style.clipPath = '';
+
+    const transitionProperty = needOpacity ? 'opacity' : 'transform';
+    const closeTransitionPromise = closing ? this.waitForMoverTransition(mover, delay, transitionProperty) : undefined;
+    mover.style.transform = transform;
 
     /* if(wasActive) {
       this.log('setMoverToTarget', mover.style.transform);
@@ -1532,60 +1523,66 @@ export default class AppMediaViewerBase<
     const deferred = this.setMoverAnimationPromise = deferredPromise<void>();
     const ret = {onAnimationEnd: deferred};
 
-    const timeout = setTimeout(() => {
-      if(!deferred.isFulfilled && !deferred.isRejected) {
-        deferred.resolve();
-      }
-    }, 1000);
-
     deferred.finally(() => {
       this.dispatchEvent('setMoverAfter');
 
       if(this.setMoverAnimationPromise === deferred) {
         this.setMoverAnimationPromise = null;
       }
-
-      clearTimeout(timeout);
     });
 
     if(!closing) {
       let mediaElement: HTMLImageElement | HTMLVideoElement | HTMLCanvasElement;
-      let src: string;
 
-      // if(target instanceof HTMLVideoElement) {
       const selector = 'video, img, .canvas-thumbnail';
       const queryFrom = target.matches(selector) ? target.parentElement : target;
-      const elements = Array.from(queryFrom.querySelectorAll(selector)) as HTMLImageElement[];
+      const elements = Array.from(queryFrom.querySelectorAll(selector)) as Array<HTMLImageElement | HTMLVideoElement | HTMLCanvasElement>;
       if(elements.length) {
-        target = elements.pop();
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        if(target instanceof HTMLImageElement) {
-          canvas.width = target.naturalWidth;
-          canvas.height = target.naturalHeight;
-        } else if(target instanceof HTMLVideoElement) {
-          canvas.width = target.videoWidth;
-          canvas.height = target.videoHeight;
-        } else if(target instanceof HTMLCanvasElement) {
-          canvas.width = target.width;
-          canvas.height = target.height;
+        const snapshotSource = elements.pop();
+        target = snapshotSource;
+        // A rendered image can reuse the browser's already-decoded resource. Canvas
+        // snapshots are reserved for video/canvas frames (and the blurred live-stream
+        // background), and their backing store is bounded to the displayed size. The
+        // old intrinsic-size copy synchronously allocated and painted multi-megapixel
+        // canvases immediately before the very first transition.
+        if(this.live || !(snapshotSource instanceof HTMLImageElement)) {
+          const sourceWidth = snapshotSource instanceof HTMLImageElement ? snapshotSource.naturalWidth :
+            snapshotSource instanceof HTMLVideoElement ? snapshotSource.videoWidth : snapshotSource.width;
+          const sourceHeight = snapshotSource instanceof HTMLImageElement ? snapshotSource.naturalHeight :
+            snapshotSource instanceof HTMLVideoElement ? snapshotSource.videoHeight : snapshotSource.height;
+          const snapshotSize = getMediaViewerSnapshotSize({
+            width: rect.width,
+            height: rect.height,
+            sourceWidth,
+            sourceHeight,
+            devicePixelRatio: this.live ? 1 : window.devicePixelRatio
+          });
+          const canvas = document.createElement('canvas');
+          canvas.width = snapshotSize.width;
+          canvas.height = snapshotSize.height;
+          canvas.className = 'canvas-thumbnail thumbnail media-photo';
+          const context = canvas.getContext('2d');
+          if(context) {
+            try {
+              context.drawImage(snapshotSource, 0, 0, canvas.width, canvas.height);
+              if(this.live) {
+                boxBlurCanvasRGB(context, 0, 0, canvas.width, canvas.height, 8, 2);
+              }
+              target = canvas;
+            } catch{
+              // Keep the rendered source as a fallback when the browser cannot copy
+              // a not-yet-ready video frame or a protected canvas.
+            }
+          }
         }
-
-        canvas.className = 'canvas-thumbnail thumbnail media-photo';
-        context.drawImage(target as HTMLImageElement | HTMLCanvasElement, 0, 0);
-        if(this.live) {
-          boxBlurCanvasRGB(context, 0, 0, canvas.width, canvas.height, 8, 2);
-        }
-        target = canvas;
       }
-      // }
 
       if(target.tagName === 'DIV' || findUpAvatar(target)) { // useContainerAsTarget
         const images = Array.from(target.querySelectorAll('img')) as HTMLImageElement[];
         const image = images.pop();
         if(image) {
           mediaElement = new Image();
-          src = image.src;
+          mediaElement.src = image.currentSrc || image.src;
           mover.append(mediaElement);
         } else {
           const el = target.querySelector('.avatar[data-color]');
@@ -1599,7 +1596,7 @@ export default class AppMediaViewerBase<
         src = target.style.backgroundImage.slice(5, -2); */
       } else if(target instanceof HTMLImageElement) {
         mediaElement = new Image();
-        src = target.src;
+        mediaElement.src = target.currentSrc || target.src;
       } else if(target instanceof HTMLVideoElement) {
         mediaElement = createVideo({middleware: mover.middlewareHelper.get()});
         mediaElement.src = target.src;
@@ -1674,10 +1671,6 @@ export default class AppMediaViewerBase<
           mediaElement.style.width = containerRect.width + 'px';
           mediaElement.style.height = containerRect.height + 'px';
         }
-
-        if(src) {
-          await renderImageFromUrlPromise(mediaElement, src);
-        }
       }/*  else if(mediaElement instanceof HTMLVideoElement && mediaElement.firstElementChild && ((mediaElement.firstElementChild as HTMLSourceElement).src || src)) {
         await new Promise((resolve, reject) => {
           mediaElement.addEventListener('loadeddata', resolve);
@@ -1688,9 +1681,10 @@ export default class AppMediaViewerBase<
         });
       } */
 
-      mover.style.display = '';
+      mover.style.visibility = '';
 
       fastRaf(() => {
+        wrapper.style.transition = '';
         mover.classList.add(wasActive ? 'moving' : 'active');
       });
     } else {
@@ -1709,23 +1703,21 @@ export default class AppMediaViewerBase<
 
       this.toggleWholeActive(false);
 
-      // return ret;
-
-      setTimeout(() => {
-        mover.style.borderRadius = borderRadius;
-
-        if(mover.firstElementChild) {
-          (mover.firstElementChild as HTMLElement).style.borderRadius = borderRadius;
+      void closeTransitionPromise.then((completed) => {
+        if(!completed) {
+          deferred.resolve();
+          return;
         }
-      }, delay / 2);
 
-      setTimeout(() => {
         mover.replaceChildren();
         mover.classList.remove('moving', 'active', 'hiding');
-        mover.style.cssText = 'display: none;';
+        mover.style.cssText = 'visibility: hidden; width: 1px; height: 1px;';
+        wrapper.style.transition = 'none';
+        wrapper.style.clipPath = '';
+        this.revealHiddenFloatings();
 
         deferred.resolve();
-      }, delay);
+      });
 
       mover.classList.remove('opening');
 
@@ -1744,30 +1736,31 @@ export default class AppMediaViewerBase<
 
     // await new Promise((resolve) => setTimeout(resolve, 5e3));
 
+    const openTransitionPromise = this.waitForMoverTransition(mover, delay, transitionProperty);
     mover.style.transform = `translate3d(${containerRect.left}px,${containerRect.top}px,0) scale3d(1,1,1)`;
     // mover.style.transform = `translate(-50%,-50%) scale(1,1)`;
     needOpacity && (mover.style.opacity = ''/* closing ? '0' : '' */);
-    if(!wasActive) {
-      // Retract the wrapper's clip to inset(0) (no clip) — same syntactic structure
-      // as initialClipPath so CSS interpolates each value linearly in viewport px.
-      wrapper.style.clipPath = allZerosClipPath;
+    if(useClipPath) {
+      wrapper.style.clipPath = NO_MEDIA_VIEWER_CLIP_PATH;
     }
 
     if(aspecter) {
       this.setFullAspect(aspecter, containerRect, rect);
     }
 
-    // throw '';
+    mover.style.borderRadius = '';
+    if(aspecter) {
+      aspecter.style.borderRadius = '';
+    }
 
-    setTimeout(() => {
-      mover.style.borderRadius = '';
-
-      if(mover.firstElementChild) {
-        (mover.firstElementChild as HTMLElement).style.borderRadius = '';
+    void openTransitionPromise.then((completed) => {
+      if(!completed) {
+        wrapper.style.transition = 'none';
+        wrapper.style.clipPath = '';
+        deferred.resolve();
+        return;
       }
-    }, 0/* delay / 2 */);
 
-    mover.dataset.timeout = '' + setTimeout(() => {
       mover.classList.remove('moving', 'opening');
 
       if(aspecter) { // всё из-за видео, элементы управления скейлятся, так бы можно было этого не делать
@@ -1792,16 +1785,63 @@ export default class AppMediaViewerBase<
 
       // это уже нужно для будущих анимаций
       mover.classList.add('active');
-      delete mover.dataset.timeout;
+      wrapper.style.clipPath = '';
 
       deferred.resolve();
-    }, delay);
+    });
 
     if(path) {
       this.sizeTailPath(path, containerRect, scaleX, delay, true, isOut, borderRadius);
     }
 
     return ret;
+  }
+
+  private waitForMoverTransition(mover: HTMLElement, duration: number, propertyName: string) {
+    this.cancelMoverTransition(mover);
+    if(!duration) {
+      return Promise.resolve(true);
+    }
+
+    return new Promise<boolean>((resolve) => {
+      let settled = false;
+      let timeout = 0;
+
+      const finish = (completed: boolean) => {
+        if(settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        mover.removeEventListener('transitionend', onTransitionEnd);
+        mover.removeEventListener('transitioncancel', onTransitionCancel);
+        if(this.moverTransitionCancels.get(mover) === cancel) {
+          this.moverTransitionCancels.delete(mover);
+        }
+        resolve(completed);
+      };
+      const cancel = () => finish(false);
+      const onTransitionEnd = (event: TransitionEvent) => {
+        if(event.target === mover && event.propertyName === propertyName) {
+          finish(true);
+        }
+      };
+      const onTransitionCancel = (event: TransitionEvent) => {
+        if(event.target === mover && event.propertyName === propertyName) {
+          finish(false);
+        }
+      };
+
+      this.moverTransitionCancels.set(mover, cancel);
+      mover.addEventListener('transitionend', onTransitionEnd);
+      mover.addEventListener('transitioncancel', onTransitionCancel);
+      // A transition may legitimately not be created when start/end values are
+      // equal. Keep a short safety fallback, but use transitionend for the normal
+      // path so cleanup cannot cut a delayed first frame in half.
+      timeout = window.setTimeout(() => finish(true), duration + 100);
+    });
+  }
+
+  private cancelMoverTransition(mover: HTMLElement) {
+    this.moverTransitionCancels.get(mover)?.();
   }
 
   protected toggleWholeActive(active: boolean) {
@@ -1893,10 +1933,6 @@ export default class AppMediaViewerBase<
     // mover.classList.remove('active');
     mover.classList.add('moving');
 
-    if(mover.dataset.timeout) { // и это тоже всё из-за скейла видео, так бы это не нужно было
-      clearTimeout(+mover.dataset.timeout);
-    }
-
     const rect = mover.getBoundingClientRect();
 
     const newTransform = mover.style.transform.replace(/translate3d\((.+?),/, (match, p1) => {
@@ -1907,29 +1943,29 @@ export default class AppMediaViewerBase<
     });
 
     // //////this.log('set newTransform:', newTransform, mover.style.transform, toLeft);
+    const delay = liteMode.isAvailable('animations') ? MOVE_TRANSITION_TIME : 0;
+    const transitionPromise = this.waitForMoverTransition(mover, delay, 'transform');
     mover.style.transform = newTransform;
 
-    setTimeout(() => {
+    void transitionPromise.then((completed) => {
+      if(!completed) return;
       mover.middlewareHelper.destroy();
       // Remove the wrapper too so it doesn't leak.
       (mover.parentElement || mover).remove();
-    }, 350);
+    });
   }
 
   protected setNewMover() {
-    // Each mover lives inside its own wrapper. Wrapper carries the clip-path
-    // (in viewport coords, never scales) so animating it gives a monotonic
-    // visible silhouette — putting clip-path on the scaled mover instead makes
-    // visible_inset = local × scale, a non-monotonic product. The wrapper is
-    // a sibling of the prev/next arrow buttons inside moversContainer, so the
-    // clip-path never affects them. Old wrappers stay in place during nav and
-    // get removed alongside their mover by moveTheMover.
+    // Each mover lives inside its own wrapper so old movers can leave during
+    // prev/next navigation and be removed as a unit.
     const wrapper = document.createElement('div');
     wrapper.classList.add(MEDIA_VIEWER_CLASSNAME + '-mover-wrapper');
 
     const newMover = document.createElement('div');
     newMover.classList.add('media-viewer-mover');
-    newMover.style.display = 'none';
+    // Keep a tiny laid-out transform target from construction onward. display:none
+    // made will-change ineffective until the same frame as the first animation.
+    newMover.style.cssText = 'visibility: hidden; width: 1px; height: 1px;';
     newMover.middlewareHelper = this.middlewareHelper.get().create();
     wrapper.appendChild(newMover);
 
@@ -1987,7 +2023,7 @@ export default class AppMediaViewerBase<
         dialog: false,
         onlyFirstName: false,
         plainText: false
-      })
+      });
     } else {
       const title = wrapTitlePromise = document.createElement('span');
       title.append(wrapEmojiText(fromId));
@@ -2004,23 +2040,25 @@ export default class AppMediaViewerBase<
     });
 
     newAvatar.node.classList.add(MEDIA_VIEWER_CLASSNAME + '-userpic');
+    replaceContent(this.author.date, this.live ? i18n('Rtmp.MediaViewer.Streaming') : formatFullSentTime(timestamp));
 
-    return Promise.all([
-      newAvatar.readyThumbPromise,
-      wrapTitlePromise
-    ]).then(([_, title]) => {
-      replaceContent(this.author.date, this.live ? i18n('Rtmp.MediaViewer.Streaming') : formatFullSentTime(timestamp));
-      replaceContent(this.author.nameEl, title);
+    if(oldAvatar?.node && oldAvatar.node.parentElement) {
+      oldAvatar.node.replaceWith(newAvatar.node);
+    } else {
+      this.author.container.prepend(newAvatar.node);
+    }
 
-      if(oldAvatar?.node && oldAvatar.node.parentElement) {
-        oldAvatar.node.replaceWith(this.author.avatarEl.node);
-      } else {
-        this.author.container.prepend(this.author.avatarEl.node);
-      }
+    if(oldAvatar) {
+      oldAvatar.node.remove();
+      oldAvatarMiddlewareHelper.destroy();
+    }
 
-      if(oldAvatar) {
-        oldAvatar.node.remove();
-        oldAvatarMiddlewareHelper.destroy();
+    // The node already contains its placeholder, so neither the avatar thumbnail nor
+    // an async peer title should hold the first compositor frame.
+    void Promise.resolve(newAvatar.readyThumbPromise).catch(() => {});
+    return Promise.resolve(wrapTitlePromise).then((title) => {
+      if(this.author.avatarEl === newAvatar) {
+        replaceContent(this.author.nameEl, title);
       }
     });
   }
@@ -2030,7 +2068,11 @@ export default class AppMediaViewerBase<
   // the ancestor's corner radius only when element's corresponding corner coincides with
   // the ancestor's — so interior items in a rounded container don't pick up the outer
   // rounding, but a corner item does.
-  protected computeEffectiveCornerRadii(element: HTMLElement, elementRect: DOMRectMinified): [number, number, number, number] {
+  protected computeEffectiveCornerRadii(
+    element: HTMLElement,
+    elementRect: DOMRectMinified,
+    clippingBoundary?: HTMLElement
+  ): [number, number, number, number] {
     const TOLERANCE = 1.5; // sub-pixel + grid-gap slack
     const radii: [number, number, number, number] = [0, 0, 0, 0];
 
@@ -2042,7 +2084,7 @@ export default class AppMediaViewerBase<
 
     let ancestor = element.parentElement;
     let depth = 0;
-    while(ancestor && ancestor !== document.body && depth++ < 20) {
+    while(ancestor && ancestor !== document.body && depth++ < 12) {
       const aStyle = window.getComputedStyle(ancestor);
       if(aStyle.overflow !== 'visible') {
         const aTL = parseFloat(aStyle.borderTopLeftRadius) || 0;
@@ -2063,6 +2105,8 @@ export default class AppMediaViewerBase<
           if(aBL && sameLeft && sameBottom) radii[3] = Math.max(radii[3], aBL);
         }
       }
+
+      if(ancestor === clippingBoundary) break;
       ancestor = ancestor.parentElement;
     }
 
@@ -2133,23 +2177,18 @@ export default class AppMediaViewerBase<
     if(!this.hiddenFloatings.size) return;
     const elements = Array.from(this.hiddenFloatings);
     this.hiddenFloatings.clear();
-    // Wait for the viewer's close animation to settle, THEN fade the floatings back in.
-    // The mover obscures them while it's still animating to the thumb position, so
-    // running both transitions in parallel wastes the reveal — we'd be fading in
-    // elements that aren't visible yet.
+    // Called from the mover's real transition completion, so the source is no longer
+    // obscured and can fade back immediately.
+    elements.forEach((el) => {
+      // Literal duration: --open-duration is scoped to .media-viewer-whole and these
+      // floating overlays live in the chat bubble (outside that scope).
+      el.style.transition = `opacity ${OPEN_TRANSITION_TIME}ms`;
+      el.style.opacity = '';
+    });
     setTimeout(() => {
       elements.forEach((el) => {
-        // Literal duration: --open-duration is scoped to .media-viewer-whole and these
-        // floating overlays live in the chat bubble (outside that scope), so the var
-        // would be undefined and the transition would snap in one frame.
-        el.style.transition = `opacity ${OPEN_TRANSITION_TIME}ms`;
-        el.style.opacity = '';
+        el.style.transition = '';
       });
-      setTimeout(() => {
-        elements.forEach((el) => {
-          el.style.transition = '';
-        });
-      }, OPEN_TRANSITION_TIME);
     }, OPEN_TRANSITION_TIME);
   }
 
@@ -2238,7 +2277,7 @@ export default class AppMediaViewerBase<
     this.downloadQualityMenuOptions.splice(0);
   }
 
-  protected async loadQualityLevelsDownloadOptions(doc: MyDocument) {
+  protected async loadQualityLevelsDownloadOptions(doc: MyDocument, tempId = this.tempId) {
     this.removeQualityOptions();
 
     const altDocs = await this.managers.appDocsManager.getAltDocsByDocument(doc.id);
@@ -2273,7 +2312,9 @@ export default class AppMediaViewerBase<
       });
     }));
 
-    this.downloadQualityMenuOptions.push(...options);
+    if(this.tempId === tempId) {
+      this.downloadQualityMenuOptions.push(...options);
+    }
   }
 
   protected async _openMedia({
@@ -2314,8 +2355,6 @@ export default class AppMediaViewerBase<
   }) {
     if(this.setMoverPromise) return this.setMoverPromise;
 
-    const setAuthorPromise = noAuthor ? Promise.resolve() : this.setAuthorInfo(fromId, timestamp);
-
     const isLiveStream = media._ === 'inputGroupCall';
     const isDocument = media._ === 'document';
     const isVideo = isDocument && media.mime_type && ((['video', 'gif'] as MyDocument['type'][]).includes(media.type) || media.mime_type.indexOf('video/') === 0);
@@ -2324,6 +2363,8 @@ export default class AppMediaViewerBase<
     this.log('openMedia', media, fromId, prevTargets, nextTargets, isLiveStream, isDocument, isVideo);
 
     this.live = isLiveStream;
+    const setAuthorPromise = noAuthor ? Promise.resolve() : this.setAuthorInfo(fromId, timestamp);
+    void setAuthorPromise.catch(() => {});
     // Open-path: only update padding so mediaBoxSize reads the right reserves.
     // The current mover (if any) is about to be replaced via setNewMover (or is
     // hidden post-close); skip the refit + recenter that the resize handler does.
@@ -2338,11 +2379,7 @@ export default class AppMediaViewerBase<
       // this.loadMore = loadMore;
     }
 
-    if(this.listLoader.next.length < 10) {
-      setTimeout(() => {
-        this.listLoader.load(true);
-      }, 0);
-    }
+    const shouldLoadMore = this.listLoader.next.length < 10;
 
     // if(prevTarget && (!prevTarget.parentElement || !this.isElementVisible(this.targetContainer, prevTarget))) prevTarget = null;
     // if(nextTarget && (!nextTarget.parentElement || !this.isElementVisible(this.targetContainer, nextTarget))) nextTarget = null;
@@ -2369,9 +2406,12 @@ export default class AppMediaViewerBase<
 
     let changeQualityOptionsPromise: Promise<void>;
     if(media._ === 'document')
-      changeQualityOptionsPromise = this.loadQualityLevelsDownloadOptions(media);
+      changeQualityOptionsPromise = this.loadQualityLevelsDownloadOptions(media, tempId);
     else
       changeQualityOptionsPromise = Promise.resolve(this.removeQualityOptions());
+    changeQualityOptionsPromise = changeQualityOptionsPromise.catch((error) => {
+      this.log.warn('failed to load media quality options', error);
+    });
 
     // Rotation is per-media. Clear any leftover turn from the previous image and snap
     // moversContainer back to identity instantly (no-transition) — so neither the
@@ -2408,7 +2448,6 @@ export default class AppMediaViewerBase<
 
       this.toggleOverlay(true);
       this.setGlobalListeners();
-      await setAuthorPromise;
 
       if(!this.wholeDiv.parentElement) {
         getOverlayRoot().append(this.wholeDiv);
@@ -2487,7 +2526,7 @@ export default class AppMediaViewerBase<
         const img = new Image();
         img.classList.add('thumbnail');
         container.append(img);
-        await renderImageFromUrlPromise(img, mediaThumbnail, false);
+        renderImageFromUrl(img, mediaThumbnail, undefined, false);
       } else {
         const avatar = avatarNew({
           middleware: this.middlewareHelper.get(),
@@ -2496,7 +2535,7 @@ export default class AppMediaViewerBase<
         });
         avatar.node.classList.add('thumbnail-avatar');
         container.append(avatar.node);
-        await avatar.readyThumbPromise;
+        void Promise.resolve(avatar.readyThumbPromise).catch(() => {});
       }
     }
 
@@ -2527,16 +2566,16 @@ export default class AppMediaViewerBase<
         video.ignoreLeak = true;
       }
 
-      if(this.wholeDiv.classList.contains('no-forwards') || isLiveStream) {
-        video.addEventListener('contextmenu', cancelEvent);
-      }
+      video.addEventListener('contextmenu', (event) => {
+        if(isLiveStream || this.wholeDiv.classList.contains('no-forwards')) {
+          cancelEvent(event);
+        }
+      });
 
       const set = () => this.setMoverToTarget(target, false, fromRight).then(({onAnimationEnd}) => {
       // return; // set and don't move
       // if(wasActive) return;
         // return;
-
-        isHlsStream = this.hasQualityOptions;
 
         onMoverSet?.();
 
@@ -2760,12 +2799,6 @@ export default class AppMediaViewerBase<
             }
           });
 
-          if(this.wholeDiv.classList.contains('no-forwards')) {
-            video.addEventListener('contextmenu', (e) => {
-              cancelEvent(e);
-            });
-          }
-
           attachCanPlay();
         }
 
@@ -2774,6 +2807,10 @@ export default class AppMediaViewerBase<
           /* if(useController) {
               appMediaPlaybackController.resolveWaitingForLoadMedia(message.peerId, message.mid, message.pFlags.is_scheduled);
             } */
+
+          await changeQualityOptionsPromise;
+          if(this.tempId !== tempId) return;
+          isHlsStream = this.hasQualityOptions;
 
           const promise: Promise<any> = supportsStreaming || isLiveStream ? Promise.resolve() : appDownloadManager.downloadMediaURL({media});
 
@@ -2859,7 +2896,7 @@ export default class AppMediaViewerBase<
         // } else createPlayer();
       });
 
-      setMoverPromise = Promise.all([thumbPromise, changeQualityOptionsPromise]).then(set);
+      setMoverPromise = thumbPromise.then(set);
     } else {
       const set = () => this.setMoverToTarget(target, false, fromRight).then(({onAnimationEnd}) => {
       // return; // set and don't move
@@ -2947,10 +2984,23 @@ export default class AppMediaViewerBase<
       setMoverPromise = thumbPromise.then(set);
     }
 
-    return this.setMoverPromise = setMoverPromise.catch(() => {
+    const result = this.setMoverPromise = setMoverPromise.catch(() => {
       this.setMoverAnimationPromise = null;
     }).finally(() => {
       this.setMoverPromise = null;
     });
+
+    if(shouldLoadMore) {
+      // Prefetching used to run in a zero-delay timer, immediately before the first
+      // compositor frame. Let the real mover transition finish before doing list and
+      // worker work that is invisible while the viewer opens.
+      void result.then(() => this.setMoverAnimationPromise).then(() => {
+        if(this.tempId === tempId && this.listLoader.next.length < 10) {
+          this.listLoader.load(true);
+        }
+      });
+    }
+
+    return result;
   }
 }

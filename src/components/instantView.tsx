@@ -30,7 +30,7 @@ import ScrollSaver from '@helpers/scrollSaver';
 import {Message} from '@layer';
 import {NULL_PEER_ID} from '@appManagers/constants';
 import prepareAlbum from '@components/prepareAlbum';
-import type AppMediaViewer from '@components/appMediaViewer';
+import type AppMediaViewer from '@components/mediaViewer';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import {useAppSettings} from '@stores/appSettings';

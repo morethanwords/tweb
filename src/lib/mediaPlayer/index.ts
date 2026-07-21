@@ -27,7 +27,7 @@ import {numberThousandSplitterForWatching} from '@helpers/number/numberThousandS
 import createCanvasStream from '@helpers/canvas/createCanvasStream';
 import simulateEvent from '@helpers/dom/dispatchEvent';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
-import {VideoTimestamp} from '@components/appMediaViewerBase';
+import {VideoTimestamp} from '@components/mediaViewer/base';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {Accessor, createSignal, Setter} from 'solid-js';
 

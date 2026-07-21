@@ -31,7 +31,7 @@ import htmlToDocumentFragment from '@helpers/dom/htmlToDocumentFragment';
 import {SearchSelection} from '@components/chat/selection';
 import {attachClickEvent, simulateClickEvent} from '@helpers/dom/clickEvent';
 import {MyDocument} from '@appManagers/appDocsManager';
-import AppMediaViewer from '@components/appMediaViewer';
+import AppMediaViewer from '@components/mediaViewer';
 import lockTouchScroll from '@helpers/dom/lockTouchScroll';
 import copy from '@helpers/object/copy';
 import safeAssign from '@helpers/object/safeAssign';

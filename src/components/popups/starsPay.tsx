@@ -23,7 +23,7 @@ import partition from '@helpers/array/partition';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
 import wrapTelegramUrlToAnchor from '@lib/richTextProcessor/wrapTelegramUrlToAnchor';
 import cancelEvent from '@helpers/dom/cancelEvent';
-import AppMediaViewer from '@components/appMediaViewer';
+import AppMediaViewer from '@components/mediaViewer';
 import {NULL_PEER_ID, TON_CURRENCY} from '@appManagers/constants';
 import tsNow from '@helpers/tsNow';
 import classNames from '@helpers/string/classNames';

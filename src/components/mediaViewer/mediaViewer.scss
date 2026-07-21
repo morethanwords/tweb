@@ -1,4 +1,4 @@
-@use "../shared" as *;
+@use "../../scss/shared" as *;
 
 $inactive-opacity: .4;
 
@@ -298,11 +298,8 @@ $inactive-opacity: .4;
     // dropping a few frames at the start. translateZ above is the older hack
     // for the same goal but is no longer reliable everywhere.
     will-change: transform;
+    backface-visibility: hidden;
     border-radius: 0;
-
-    &:not(.center) {
-      -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%); // fix border-radius overflow
-    }
 
     // эти значения должны быть такими же, как при установке maxWidth и maxHeight в openMedia!
     //max-width: 100%;
@@ -311,12 +308,6 @@ $inactive-opacity: .4;
     //max-height: calc((var(--vh, 1vh) * 100) - 100px);
 
     // эти значения должны быть такими же, как при установке maxWidth и maxHeight в openMedia!
-    @include respond-to(handhelds) {
-      overflow: visible;
-      //max-height: 100% !important;
-      //max-width: 100vw !important;
-    }
-
     .ckin__player {
       position: absolute;
       inset: 0;
@@ -393,11 +384,10 @@ $inactive-opacity: .4;
       // handhelds) is applied inline by AppMediaViewerBase.applyCenterStyles —
       // single source of truth in JS. This class only carries visual rules.
       //
-      // Static fully-open state: border-radius is 0, the mover-wrapper's
-      // clip-path is inset(0), so the mover itself has nothing to clip. Letting
-      // overflow be visible here keeps narrow portrait videos from chopping off
-      // the right edge of the player controls (fullscreen button) when the
-      // mover is sized to the video and controls overflow horizontally.
+      // Static fully-open state has no clip-path or border-radius. Letting overflow
+      // be visible here keeps narrow portrait videos from chopping off the right edge
+      // of the player controls (fullscreen button) when the mover is sized to the
+      // video and controls overflow horizontally.
       // During open/close the .center class is removed and overflow returns to
       // hidden, so the rounded close target stays clipped as before.
       overflow: visible;
@@ -649,17 +639,14 @@ $inactive-opacity: .4;
   &-mover-wrapper {
     position: absolute;
     inset: 0;
-    // No overflow:hidden — the mover slides freely outside the wrapper bounds during
-    // prev/next nav. clip-path (set inline by JS) provides the open/close animation
-    // clipping in viewport coords without scaling.
-    // Hint the compositor that clip-path will animate (open/close transition).
-    // Without this, the first open per session can stutter on browsers that
-    // lazy-promote layers for clip-path animations.
     will-change: clip-path;
 
     @include animation-level(2) {
       transition: clip-path var(--open-duration);
     }
+
+    // No overflow:hidden — the mover slides freely outside the wrapper bounds during
+    // prev/next navigation.
   }
 
   // &-whole {

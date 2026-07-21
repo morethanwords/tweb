@@ -1,7 +1,7 @@
 import {ParentProps} from 'solid-js';
 
-import AppMediaViewer, {onMediaCaptionClick} from '@components/appMediaViewer';
-import AppMediaViewerStatic from '@components/appMediaViewerStatic';
+import AppMediaViewer, {onMediaCaptionClick} from '@components/mediaViewer';
+import AppMediaViewerStatic from '@components/mediaViewer/static';
 import {AutonomousMonoforumThreadList} from '@components/autonomousDialogList/monoforumThreads';
 import {avatarNew, AvatarNewTsx, StoriesSegments} from '@components/avatarNew';
 import BusinessHours from '@components/businessHours';

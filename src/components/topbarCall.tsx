@@ -23,7 +23,7 @@ import GroupCallTitleElement from '@components/groupCall/title';
 import GroupCallDescriptionElement from '@components/groupCall/description';
 import CallDescriptionElement from '@components/call/description';
 import RtmpDescriptionElement from '@components/rtmp/description';
-import {AppMediaViewerRtmp} from '@components/appMediaViewerRtmp';
+import {AppMediaViewerRtmp} from '@components/mediaViewer/rtmp';
 import Button from '@components/buttonTsx';
 import {IconTsx} from '@components/iconTsx';
 import TopbarPlate, {createTopbarPlate} from '@components/chat/topbarPlate';

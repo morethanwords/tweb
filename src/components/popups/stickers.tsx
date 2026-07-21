@@ -21,7 +21,7 @@ import emoticonsDropdown from '@components/emoticonsDropdown';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
-import {onMediaCaptionClick} from '@components/appMediaViewer';
+import {onMediaCaptionClick} from '@components/mediaViewer';
 import DEBUG from '@config/debug';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import appDownloadManager from '@lib/appDownloadManager';

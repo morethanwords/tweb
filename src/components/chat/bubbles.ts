@@ -48,7 +48,7 @@ import assumeType from '@helpers/assumeType';
 import debounce, {DebounceReturnType} from '@helpers/schedulers/debounce';
 import windowSize from '@helpers/windowSize';
 import {formatPhoneNumber} from '@helpers/formatPhoneNumber';
-import AppMediaViewer from '@components/appMediaViewer';
+import AppMediaViewer from '@components/mediaViewer';
 import SetTransition from '@components/singleTransition';
 import handleHorizontalSwipe from '@helpers/dom/handleHorizontalSwipe';
 import findUpAttribute from '@helpers/dom/findUpAttribute';

@@ -7,7 +7,7 @@ import ListenerSetter from '@helpers/listenerSetter';
 import rtmpCallsController from '@lib/calls/rtmpCallsController';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {getRtmpShareUrl, getRtmpStreamUrl} from '@lib/rtmp/url';
-import AppMediaViewerBase from '@components/appMediaViewerBase';
+import AppMediaViewerBase from '@components/mediaViewer/base';
 import {RtmpStartStreamPopup} from '@components/rtmp/adminPopup';
 import showOutputDevicePopup from '@components/rtmp/outputDevicePopup';
 import {RtmpRecordPopup} from '@components/rtmp/recordPopup';

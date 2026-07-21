@@ -36,7 +36,7 @@
 @use "partials/rightSidebar";
 @use "partials/searchGroup";
 @use "partials/searchSuper";
-@use "partials/mediaViewer";
+@use "../components/mediaViewer/mediaViewer";
 @use "partials/scrollable";
 @use "partials/emojiDropdown";
 @use "partials/selector";

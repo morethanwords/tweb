@@ -17,8 +17,8 @@ import canSaveMessageMedia from '@appManagers/utils/messages/canSaveMessageMedia
 import getMediaFromMessage from '@appManagers/utils/messages/getMediaFromMessage';
 import wrapRichText from '@richTextProcessor/wrapRichText';
 import {MediaSearchContext} from '@components/appMediaPlaybackController';
-import AppMediaViewerBase, {MEDIA_VIEWER_CLASSNAME} from '@components/appMediaViewerBase';
-import overlayAvatarVideoOnMover from '@components/appMediaViewerAvatarVideo';
+import AppMediaViewerBase, {MEDIA_VIEWER_CLASSNAME} from '@components/mediaViewer/base';
+import overlayAvatarVideoOnMover from '@components/mediaViewer/avatarVideo';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import PopupDeleteMessages from '@components/popups/deleteMessages';
 import showForwardPopup from '@components/popups/forward';
@@ -26,7 +26,7 @@ import Scrollable from '@components/scrollable';
 import appSidebarRight from '@components/sidebarRight';
 import AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMediaTab';
 import PopupElement from '@components/popups';
-import {ChatType} from './chat/chatType';
+import {ChatType} from '@components/chat/chatType';
 import getFwdFromName from '@appManagers/utils/messages/getFwdFromName';
 import TranslatableMessage from '@components/translatableMessage';
 import {MAX_FILE_SAVE_SIZE} from '@appManagers/constants';
@@ -393,7 +393,31 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     return this;
   }
 
-  public async openMedia({
+  private setMessageActionVisibility(options: {
+    cantForward: boolean,
+    cantDownload: boolean,
+    cantDelete: boolean
+  }) {
+    const actions: [(HTMLElement | ButtonMenuItemOptionsVerifiable)[], boolean][] = [
+      [[this.buttons.forward, this.btnMenuForward], options.cantForward],
+      [[this.buttons.download, this.btnMenuDownload], options.cantDownload],
+      [[this.buttons.delete, this.btnMenuDelete], options.cantDelete]
+    ];
+
+    actions.forEach(([buttons, hide]) => {
+      buttons.forEach((button) => {
+        if(button instanceof HTMLElement) {
+          button.classList.toggle('hide', hide);
+        } else {
+          button.verify = () => !hide;
+        }
+      });
+    });
+
+    this.wholeDiv.classList.toggle('no-forwards', options.cantDownload);
+  }
+
+  public openMedia({
     message,
     index,
     target,
@@ -421,35 +445,24 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
     const isSponsored = !!(message as Message.message).pFlags.sponsored || !message.fromId;
     const noAuthor = isSponsored;
-    const noForwards = await this.managers.appPeersManager.noForwards(message.peerId);
     const isServiceMessage = message._ === 'messageService';
-    const cantForwardMessage = isServiceMessage || noAuthor || !(await this.managers.appMessagesManager.canForward(message));
-    const cantDownloadMessage = (isServiceMessage ? noForwards : cantForwardMessage && !isSponsored) || !canSaveMessageMedia(message, noForwards);
     const action = isServiceMessage ? (message as Message.messageService).action : undefined;
     const isChatPhotoEdit = !!action &&
       (action._ === 'messageActionChannelEditPhoto' || action._ === 'messageActionChatEditPhoto') &&
       message.peerId.isAnyChat();
-    const cantDeleteMessage = isChatPhotoEdit ?
-      !(await this.managers.appChatsManager.hasRights(message.peerId.toChatId(), 'change_info')) :
-      !(await this.managers.appMessagesManager.canDeleteMessage(message));
-    this.deleteAsChatPhoto = isChatPhotoEdit && !cantDeleteMessage;
-    const a: [(HTMLElement | ButtonMenuItemOptionsVerifiable)[], boolean][] = [
-      [[this.buttons.forward, this.btnMenuForward], cantForwardMessage],
-      [[this.buttons.download, this.btnMenuDownload], cantDownloadMessage],
-      [[this.buttons.delete, this.btnMenuDelete], cantDeleteMessage]
-    ];
 
-    a.forEach(([buttons, hide]) => {
-      buttons.forEach((button) => {
-        if(button instanceof HTMLElement) {
-          button.classList.toggle('hide', hide);
-        } else {
-          button.verify = () => !hide;
-        }
-      });
-    });
-
-    this.wholeDiv.classList.toggle('no-forwards', cantDownloadMessage);
+    // Start with a conservative state, but do not put worker-proxy permission checks
+    // in front of the first animation frame. The controls reconcile as soon as all
+    // three independent checks settle.
+    this.deleteAsChatPhoto = false;
+    this.setMessageActionVisibility({cantForward: true, cantDownload: true, cantDelete: true});
+    const permissionsPromise = Promise.all([
+      this.managers.appPeersManager.noForwards(message.peerId),
+      isServiceMessage || noAuthor ? Promise.resolve(false) : this.managers.appMessagesManager.canForward(message),
+      isChatPhotoEdit ?
+        this.managers.appChatsManager.hasRights(message.peerId.toChatId(), 'change_info') :
+        this.managers.appMessagesManager.canDeleteMessage(message)
+    ]);
 
     this.removeTimestamps();
     this.setCaption(message);
@@ -472,6 +485,17 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     this.target.peerId = message.peerId;
     this.target.message = message;
     this.target.index = index;
+
+    void permissionsPromise.then(([noForwards, canForward, canDelete]) => {
+      if(this.target?.message !== message) return;
+      const cantForward = !canForward;
+      const cantDownload = (isServiceMessage ? noForwards : cantForward && !isSponsored) || !canSaveMessageMedia(message, noForwards);
+      const cantDelete = !canDelete;
+      this.deleteAsChatPhoto = isChatPhotoEdit && !cantDelete;
+      this.setMessageActionVisibility({cantForward, cantDownload, cantDelete});
+    }).catch((error) => {
+      this.log.warn('failed to resolve media viewer actions', error);
+    });
 
     // Animated avatar (a profile/chat photo with video_sizes — e.g. a group /
     // channel avatar-change service message): overlay the looping video on the

@@ -1,5 +1,5 @@
 import {AnimationItemGroup} from '@components/animationIntersector';
-import {AppMediaViewerStaticTargetType} from '@components/appMediaViewerStatic';
+import {AppMediaViewerStaticTargetType} from '@components/mediaViewer/static';
 import {ButtonIconTsx} from '@components/buttonIconTsx';
 import InputField from '@components/inputField';
 import type LazyLoadQueue from '@components/lazyLoadQueue';

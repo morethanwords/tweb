@@ -114,7 +114,7 @@ import {setPeerColors} from '@appManagers/utils/peers/getPeerColorById';
 import {savedReactionTags} from '@components/chat/reactions';
 import {setAppState, useAppState} from '@stores/appState';
 import rtmpCallsController, {RtmpCallInstance} from '@lib/calls/rtmpCallsController';
-import {AppMediaViewerRtmp} from '@components/appMediaViewerRtmp';
+import {AppMediaViewerRtmp} from '@components/mediaViewer/rtmp';
 import useProfileColors from '@hooks/useProfileColors';
 import {wrapSlowModeLeftDuration} from '@components/wrappers/wrapDuration';
 import {splitFullMid} from '@components/chat/bubbles';

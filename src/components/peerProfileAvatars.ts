@@ -18,7 +18,7 @@ import animationIntersector from '@components/animationIntersector';
 import Scrollable from '@components/scrollable';
 import SwipeHandler from '@components/swipeHandler';
 import wrapPhoto from '@components/wrappers/photo';
-import openAvatarViewer from '@components/openAvatarViewer';
+import openAvatarViewer from '@components/mediaViewer/openAvatarViewer';
 import Icon from '@components/icon';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {createEffect, createRoot, on} from 'solid-js';

@@ -26,7 +26,7 @@ import formatDuration, {DurationType} from '@helpers/formatDuration';
 import {easeOutCubicApply} from '@helpers/easing/easeOutCubic';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import findUpAsChild from '@helpers/dom/findUpAsChild';
-import {onMediaCaptionClick} from '@components/appMediaViewer';
+import {onMediaCaptionClick} from '@components/mediaViewer';
 import InputFieldAnimated from '@components/inputFieldAnimated';
 import ChatInput from '@components/chat/input';
 import appImManager from '@lib/appImManager';
