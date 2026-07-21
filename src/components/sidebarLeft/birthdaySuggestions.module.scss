@@ -1,0 +1,19 @@
+.media {
+  overflow: visible;
+}
+
+.avatars {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  :global(.stacked-avatars) {
+    --border-color: var(--light-filled-secondary-text-color);
+    --border-size: 2px;
+    --margin-right: -1.125rem;
+  }
+}
+
+.collapsed .avatars :global(.stacked-avatars) {
+  --border-color: var(--surface-color);
+}

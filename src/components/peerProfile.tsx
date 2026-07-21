@@ -798,7 +798,10 @@ PeerProfile.Birthday = () => {
     }
 
     if(isToday()) {
-      return () => PopupElement.createPopup(PopupSendGift, {peerId: context.peerId});
+      return () => PopupElement.createPopup(PopupSendGift, {
+        peerId: context.peerId,
+        birthday: true
+      });
     }
 
     return onCopyClick;

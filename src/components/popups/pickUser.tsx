@@ -52,6 +52,7 @@ export type PopupPickUserOptions = Modify<ConstructorParameters<typeof AppSelect
   middleware?: never,
   titleLangKey: LangPackKey,
   initial?: PeerId[],
+  prependPeerIds?: PeerId[],
   useTopics?: boolean,
   footerButtonProps?: Parameters<typeof PopupElement['FooterButton']>[0],
   footer?: (ctx: {multiSelect: Accessor<AppSelectPeers['multiSelect']>}) => JSX.Element,

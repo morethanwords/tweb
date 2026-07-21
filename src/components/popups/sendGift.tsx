@@ -1,6 +1,6 @@
 import bigInt from 'big-integer';
 import PopupElement from '.';
-import {Chat, InputInvoice, Message, StarGift, StarGiftAttribute, StarGiftAttributeId, TextWithEntities, User} from '@layer';
+import {Birthday, Chat, InputInvoice, Message, StarGift, StarGiftAttribute, StarGiftAttributeId, TextWithEntities, User} from '@layer';
 import {MyPremiumGiftOption, MyStarGift} from '@appManagers/appGiftsManager';
 import {STARS_CURRENCY} from '@appManagers/constants';
 import {AvatarNewTsx} from '@components/avatarNew';
@@ -52,6 +52,7 @@ import {Transition} from '@vendor/solid-transition-group';
 import appNavigationController, {NavigationItem} from '@components/appNavigationController';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {inputStarGiftEquals} from '@appManagers/utils/gifts/inputStarGiftEquals';
+import getStarGiftSendPolicy, {DisallowedGifts} from '@appManagers/utils/gifts/getStarGiftSendPolicy';
 import {updateStarGift} from '@appManagers/utils/gifts/updateStarGift';
 import {ChipTab, ChipTabs} from '@components/chipTabs';
 import safeAssign from '@helpers/object/safeAssign';
@@ -69,11 +70,37 @@ import Animated from '@helpers/solid/animations';
 
 type GiftOption = MyStarGift | MyPremiumGiftOption;
 
+function prioritizeBirthdayGifts(gifts: MyStarGift[]) {
+  return gifts.slice().sort((a, b) => {
+    const isBirthdayGift = (gift: MyStarGift) => gift.raw._ === 'starGift' &&
+      !gift.isResale &&
+      !!gift.raw.pFlags.birthday;
+
+    return Number(isBirthdayGift(b)) - Number(isBirthdayGift(a));
+  });
+}
+
+function isStarGiftAllowed(gift: MyStarGift, disallowedGifts?: DisallowedGifts) {
+  return getStarGiftSendPolicy(gift, disallowedGifts).allowed;
+}
+
+function isBirthdayNearby(birthday?: Birthday) {
+  if(!birthday) return false;
+
+  const now = new Date();
+  return [-1, 0, 1].some((offset) => {
+    const date = new Date(now);
+    date.setDate(date.getDate() + offset);
+    return birthday.day === date.getDate() && birthday.month === date.getMonth() + 1;
+  });
+}
+
 function GiftOptionsPage(props: {
   peer: User.user | Chat.channel
   peerId: PeerId
   premiumOptions: MyPremiumGiftOption[]
   giftOptions: MyStarGift[]
+  disallowedGifts?: DisallowedGifts
   onGiftChosen: (item: GiftOption) => void
   onClose: () => void
 
@@ -89,7 +116,7 @@ function GiftOptionsPage(props: {
   let categoriesContainer!: HTMLDivElement;
   let container!: HTMLDivElement;
 
-  const giftPremiumSection = props.peer._ === 'user' && !isToSelf && (
+  const giftPremiumSection = !!props.premiumOptions.length && props.peer._ === 'user' && !isToSelf && (
     <>
       <div class={styles.mainTitle}>
         {i18n('GiftPremium')}
@@ -156,6 +183,10 @@ function GiftOptionsPage(props: {
     });
   }
 
+  const allowedOwnedGifts = createMemo(() => (
+    unwrap(props.profileStore.items).filter((gift) => isStarGiftAllowed(gift, props.disallowedGifts))
+  ));
+
   const filteredGiftOptions = createMemo(() => {
     const category$ = category();
     if(category$ === 'All') return props.giftOptions;
@@ -165,7 +196,7 @@ function GiftOptionsPage(props: {
         it.isResale
       );
     }
-    return unwrap(props.profileStore.items);
+    return allowedOwnedGifts();
   });
 
   const handleGiftClick = async(item: MyStarGift) => {
@@ -272,7 +303,7 @@ function GiftOptionsPage(props: {
           <ChipTab value="All">
             {i18n('StarGiftCategoryAll')}
           </ChipTab>
-          <Show when={!isToSelf && props.profileStore.items.length > 0}>
+          <Show when={!isToSelf && allowedOwnedGifts().length > 0}>
             <ChipTab value="Owned">
               {i18n('StarGiftCategoryOwned')}
             </ChipTab>
@@ -744,13 +775,16 @@ function ChosenGiftPage(props: {
   peerId: PeerId
   peerName: string
   chosenGift: GiftOption
+  disallowedGifts?: DisallowedGifts
   onBack: () => void
   onClose: () => void
 }) {
+  const giftPolicy = props.chosenGift.type === 'stargift' ?
+    getStarGiftSendPolicy(props.chosenGift, props.disallowedGifts) : undefined;
   const [textWithEntities, setTextWithEntities] = createSignal<TextWithEntities>();
   const [anonymous, setAnonymous] = createSignal(false);
   const [payWithStars, setPayWithStars] = createSignal(false);
-  const [withUpgrade, setWithUpgrade] = createSignal(false);
+  const [withUpgrade, setWithUpgrade] = createSignal(!!giftPolicy?.forceUpgrade);
   const [sending, setSending] = createSignal(false);
 
   const message = createMemo<Message.messageService>(() => ({
@@ -942,7 +976,10 @@ function ChosenGiftPage(props: {
             ]) : ''}
           </div>
 
-          {props.chosenGift.type === 'stargift' && (props.chosenGift.raw as StarGift.starGift).upgrade_stars && (
+          {props.chosenGift.type === 'stargift' &&
+            (props.chosenGift.raw as StarGift.starGift).upgrade_stars &&
+            giftPolicy?.upgradeAllowed &&
+            !giftPolicy.forceUpgrade && (
             <>
               <div class={styles.formSheet}>
                 <Row>
@@ -1027,6 +1064,7 @@ export default class PopupSendGift extends PopupElement {
   private setChosenGift: Setter<MyStarGift | MyPremiumGiftOption>;
 
   readonly peerId: PeerId;
+  readonly birthday?: boolean;
   readonly resaleParams?: {
     giftId: Long;
     filter?: StarGiftAttribute;
@@ -1034,6 +1072,7 @@ export default class PopupSendGift extends PopupElement {
 
   constructor(options: {
     peerId: PeerId;
+    birthday?: boolean;
     resaleParams?: PopupSendGift['resaleParams'];
   }) {
     super(styles.popup, {
@@ -1062,16 +1101,42 @@ export default class PopupSendGift extends PopupElement {
         upgradable: false
       }
     })
-    const [premiumOptions, giftOptions, peer] = await Promise.all([
+    const [loadedPremiumOptions, loadedGiftOptions, peer, cachedBirthdayNearby, userFull] = await Promise.all([
       this.peerId.isUser() ? this.managers.appGiftsManager.getPremiumGiftOptions() : [] as MyPremiumGiftOption[],
       this.managers.appGiftsManager.getStarGiftOptions(),
       this.managers.appPeersManager.getPeer(this.peerId),
+      this.peerId.isUser() ? this.managers.appPromoManager.isCachedBirthdayNearby(this.peerId).catch(() => false) : false,
+      this.peerId.isUser() && this.peerId !== rootScope.myId ?
+        this.managers.appProfileManager.getProfile(this.peerId.toUserId()).catch((): undefined => undefined) : undefined,
       !this.resaleParams && this.peerId !== rootScope.myId && profileStoreActions.loadNext()
     ]);
+    const disallowedGifts = userFull?.disallowed_gifts?.pFlags;
+    const premiumOptions = disallowedGifts?.disallow_premium_gifts ? [] : loadedPremiumOptions;
+    const allowedGiftOptions = loadedGiftOptions.filter((gift) => isStarGiftAllowed(gift, disallowedGifts));
+    const allowedOwnedGifts = unwrap(profileStore.items).filter((gift) => isStarGiftAllowed(gift, disallowedGifts));
+    const isBirthday = this.birthday || cachedBirthdayNearby || isBirthdayNearby(userFull?.birthday);
+    const giftOptions = isBirthday ? prioritizeBirthdayGifts(allowedGiftOptions) : allowedGiftOptions;
+    const hasAvailableGift = premiumOptions.length > 0 ||
+      giftOptions.length > 0 ||
+      allowedOwnedGifts.length > 0;
+
+    if(!this.resaleParams && peer._ === 'user' && this.peerId !== rootScope.myId && !hasAvailableGift) {
+      this.hide();
+      toastNew({langPackKey: 'GiftRecipientDoesNotAccept'});
+      return;
+    }
 
     const [chosenGift, setChosenGift] = createSignal<GiftOption>();
     if(this.resaleParams) {
-      setChosenGift(giftOptions.find((it) => it.raw.id === this.resaleParams.giftId && it.isResale));
+      const selectedGift = giftOptions.find((it) => it.raw.id === this.resaleParams.giftId && it.isResale);
+      if(!selectedGift && disallowedGifts &&
+        loadedGiftOptions.some((it) => it.raw.id === this.resaleParams.giftId && it.isResale)) {
+        this.hide();
+        toastNew({langPackKey: 'GiftRecipientDoesNotAccept'});
+        return;
+      }
+
+      setChosenGift(selectedGift);
     }
     this.chosenGift = chosenGift;
     this.setChosenGift = setChosenGift;
@@ -1115,6 +1180,7 @@ export default class PopupSendGift extends PopupElement {
             peerId={this.peerId}
             premiumOptions={premiumOptions}
             giftOptions={giftOptions}
+            disallowedGifts={disallowedGifts}
             onGiftChosen={(option) => {
               setChosenGift(option);
               setCurrentPage((option as MyStarGift).isResale ? 2 : 1);
@@ -1128,6 +1194,7 @@ export default class PopupSendGift extends PopupElement {
               peerId={this.peerId}
               peerName={peer._ === 'user' ? peer.first_name : peer.title}
               chosenGift={chosenGift()}
+              disallowedGifts={disallowedGifts}
               onBack={() => setCurrentPage(0)}
               onClose={() => this.hide()}
             />

@@ -423,7 +423,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     this.middlewareHelper.destroy();
     MarkupTooltip.getInstance().hide();
 
-    if(!this.withoutOverlay) {
+    if(this.shown && !this.withoutOverlay) {
       overlayCounter.isOverlayActive = false;
     }
 
@@ -442,7 +442,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
       this.scrollable?.destroy();
       this.lateMiddlewareHelper.destroy();
 
-      if(!this.withoutOverlay) {
+      if(this.shown && !this.withoutOverlay) {
         animationIntersector.checkAnimations2(false);
       }
     }, 250);

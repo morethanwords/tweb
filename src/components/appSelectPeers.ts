@@ -110,7 +110,9 @@ export default class AppSelectPeers {
   private sectionNameLangPackKey: ConstructorParameters<typeof SettingSection>[0]['name'];
   private sectionCaption: ConstructorParameters<typeof SettingSection>[0]['caption'];
 
-  private getSubtitleForElement: (peerId: PeerId) => HTMLElement | Promise<HTMLElement> | DocumentFragment | Promise<DocumentFragment>;
+  private getSubtitleForElement: (
+    peerId: PeerId
+  ) => HTMLElement | DocumentFragment | undefined | Promise<HTMLElement | DocumentFragment | undefined>;
   private processElementAfter: (peerId: PeerId, dialogElement: DialogElement) => void | Promise<void>;
 
   private managers: AppManagers;
@@ -153,6 +155,8 @@ export default class AppSelectPeers {
 
   private loadedFirst: boolean;
   private onFirstRender: () => void;
+  private prependPeerIds: PeerId[];
+  private prependedPeerIds = false;
 
   constructor(options: {
     appendTo: AppSelectPeers['appendTo'],
@@ -195,6 +199,7 @@ export default class AppSelectPeers {
     placeholderSizes?: ConstructorParameters<typeof DialogsPlaceholder>[0],
     getPeerIdFromKey?: AppSelectPeers['getPeerIdFromKey'],
     additionalDialogParams?: AppSelectPeers['additionalDialogParams'],
+    prependPeerIds?: AppSelectPeers['prependPeerIds'],
     noInstantLoad?: boolean
   }) {
     safeAssign(this, options);
@@ -657,6 +662,7 @@ export default class AppSelectPeers {
     this.query = value;
     this.onSearchChange?.(value);
     this.renderedPeerIds.clear();
+    this.prependedPeerIds = false;
     this.needSwitchList = true;
     this.middlewareHelperLoader.clean();
 
@@ -969,7 +975,13 @@ export default class AppSelectPeers {
     this.scrollable.checkForTriggers();
   };
 
-  private _getMoreResults() {
+  private _getMoreResults(): Promise<any> | undefined {
+    if(!this.query && !this.prependedPeerIds && this.prependPeerIds?.length) {
+      this.prependedPeerIds = true;
+      return Promise.resolve(this.renderResultsFunc(this.prependPeerIds))
+      .then((): Promise<any> | undefined => this._getMoreResults());
+    }
+
     if((this.peerType.includes('dialogs')/*  || this.loadedWhat.contacts */) && !this.loadedWhat.archived) { // to load non-contacts
       return this.getMoreSomething('dialogs');
     }

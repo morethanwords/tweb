@@ -218,6 +218,7 @@ export type State = {
   appConfig: MTAppConfig,
   accountThemes: AccountThemes.accountThemes,
   shownUploadSpeedTimestamp?: number,
+  birthdayContactsDismissedDayKey?: string,
   dontShowPaidMessageWarningFor: PeerId[],
   ageVerification?: {
     date: string,
@@ -576,6 +577,7 @@ export const STATE_INIT: State = {
   hiddenSimilarChannels: [],
   appConfig: {} as any,
   accountThemes: {} as any,
+  birthdayContactsDismissedDayKey: undefined,
   dontShowPaidMessageWarningFor: [],
   accountContentSettings: {} as any
 };

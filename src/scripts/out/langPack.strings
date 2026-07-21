@@ -199,6 +199,15 @@
 "Suggestion.Notifications.Dismissed" = "You can turn notifications back on in the settings.";
 "Suggestion.BirthdaySetup" = "Add your birthday! %s";
 "Suggestion.BirthdaySetup.Subtitle" = "Let your contacts know when you’re celebrating.";
+"Suggestion.BirthdayContacts.Single" = "It’s %s's birthday today! 🎂";
+"Suggestion.BirthdayContacts.Multiple_one" = "%d contact has a birthday today! 🎂";
+"Suggestion.BirthdayContacts.Multiple_other" = "%d contacts have birthdays today! 🎂";
+"Suggestion.BirthdayContacts.Subtitle" = "Send them a Gift.";
+"Suggestion.BirthdayContacts.Yesterday" = "Birthday yesterday";
+"Suggestion.BirthdayContacts.Today" = "Birthday today";
+"Suggestion.BirthdayContacts.Tomorrow" = "Birthday tomorrow";
+"Suggestion.BirthdayContacts.Dismissed" = "You can send a Gift later in Settings.";
+"GiftRecipientDoesNotAccept" = "This user doesn’t accept gifts.";
 "Suggestion.PasskeySetup" = "Create Passkey! %s";
 "Suggestion.PasskeySetup.Subtitle" = "Log in safely and keep your account secure.";
 "NewPrivateChat" = "New Private Chat";
