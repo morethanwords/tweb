@@ -9054,7 +9054,7 @@ export class AppMessagesManager extends AppManager {
     return Promise.all([
       canViewMessageReadParticipants && !reaction && !skipReadParticipants ? this.getMessageReadParticipants(message.peerId, message.mid).catch(() => [] as ReadParticipantDate[]) : [] as ReadParticipantDate[],
 
-      message.reactions?.recent_reactions?.length && !skipReactionsList ? this.appReactionsManager.getMessageReactionsList(message.peerId, message.mid, limit, reaction, offset).catch((err) => emptyMessageReactionsList) : emptyMessageReactionsList
+      !skipReactionsList ? this.appReactionsManager.getMessageReactionsList(message.peerId, message.mid, limit, reaction, offset).catch((err) => emptyMessageReactionsList) : emptyMessageReactionsList
     ]).then(([readParticipantDates, messageReactionsList]) => {
       const filteredReadParticipants = readParticipantDates.slice();
       forEachReverse(filteredReadParticipants, ({user_id}, idx, arr) => {
@@ -9066,12 +9066,14 @@ export class AppMessagesManager extends AppManager {
       let combined: {
         peerId: PeerId,
         date?: number,
-        reaction?: Reaction
+        reaction?: Reaction,
+        isMyReaction?: boolean
       }[] = messageReactionsList.reactions.map((reaction) => {
         return {
           peerId: this.appPeersManager.getPeerId(reaction.peer_id),
           reaction: reaction.reaction,
-          date: reaction.date
+          date: reaction.date,
+          isMyReaction: !!reaction.pFlags.my
         };
       });
 

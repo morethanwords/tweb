@@ -23,6 +23,9 @@ import {bigIntFromBytes} from '@helpers/bigInt/bigIntConversion';
 import bigInt from 'big-integer';
 import forEachReverse from '@helpers/array/forEachReverse';
 import fixEmoji from '@lib/richTextProcessor/fixEmoji';
+import getMessageThreadId from '@appManagers/utils/messages/getMessageThreadId';
+import removeParticipantReactions from '@appManagers/utils/reactions/removeParticipantReactions';
+import noop from '@helpers/noop';
 
 const SAVE_DOC_KEYS = [
   'static_icon' as const,
@@ -43,6 +46,7 @@ const AVAILABLE_EFFECTS_REFERENCE_CONTEXT: ReferenceContext = {
 };
 
 const REFRESH_TAGS_INTERVAL = 10 * 60e3;
+const DELETE_PARTICIPANT_REACTIONS_REFRESH_LIMIT = 100;
 // const REFRESH_TAGS_INTERVAL = 15e3;
 
 export type PeerAvailableReactions = {
@@ -473,9 +477,145 @@ export class AppReactionsManager extends AppManager {
         offset
       },
       processResult: (messageReactionsList) => {
-        this.appUsersManager.saveApiUsers(messageReactionsList.users);
+        this.appPeersManager.saveApiPeers(messageReactionsList);
         return messageReactionsList;
       }
+    });
+  }
+
+  public canDeleteParticipantReactions(peerId: PeerId) {
+    return peerId.isAnyChat() && this.appChatsManager.hasRights(peerId.toChatId(), 'delete_messages');
+  }
+
+  public reportParticipantReaction({
+    peerId,
+    mid,
+    participantPeerId
+  }: {
+    peerId: PeerId,
+    mid: number,
+    participantPeerId: PeerId
+  }) {
+    return this.apiManager.invokeApiSingle('messages.reportReaction', {
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      id: getServerMessageId(mid),
+      reaction_peer: this.appPeersManager.getInputPeerById(participantPeerId)
+    });
+  }
+
+  private removeParticipantReactionsLocally({
+    peerId,
+    participantPeerId,
+    mid,
+    originMid,
+    knownReaction
+  }: {
+    peerId: PeerId,
+    participantPeerId: PeerId,
+    mid?: number,
+    originMid?: number,
+    knownReaction?: Reaction
+  }): number[] {
+    const storage = this.appMessagesManager.getHistoryMessagesStorage(peerId);
+    const messages = mid !== undefined ? [storage.get(mid)] : Array.from(storage.values());
+    const isForum = this.appPeersManager.isForum(peerId);
+    const isBotforum = this.appPeersManager.isBotforum(peerId);
+    const reactionMids: number[] = [];
+
+    for(const message of messages) {
+      if(!message?.reactions) {
+        continue;
+      }
+
+      if(getServerMessageId(message.mid) > 0) {
+        reactionMids.push(message.mid);
+      }
+
+      const reactions = removeParticipantReactions({
+        reactions: message.reactions,
+        participantPeerId,
+        knownReaction: message.mid === (mid ?? originMid) ? knownReaction : undefined
+      });
+      if(reactions === message.reactions) {
+        continue;
+      }
+
+      const threadId = (isForum || isBotforum) ? getMessageThreadId(message as Message.message, {isForum, isBotforum}) : undefined;
+      this.apiUpdatesManager.processLocalUpdate({
+        _: 'updateMessageReactions',
+        peer: this.appPeersManager.getOutputPeer(peerId),
+        msg_id: getServerMessageId(message.mid),
+        top_msg_id: threadId ? getServerMessageId(threadId) : undefined,
+        saved_peer_id: (message as Message.message).saved_peer_id,
+        reactions,
+        local: true
+      });
+    }
+
+    return reactionMids;
+  }
+
+  public deleteParticipantReaction({
+    peerId,
+    mid,
+    participantPeerId,
+    knownReaction
+  }: {
+    peerId: PeerId,
+    mid: number,
+    participantPeerId: PeerId,
+    knownReaction?: Reaction
+  }) {
+    this.removeParticipantReactionsLocally({peerId, participantPeerId, mid, knownReaction});
+
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'messages.deleteParticipantReaction',
+      params: {
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        msg_id: getServerMessageId(mid),
+        participant: this.appPeersManager.getInputPeerById(participantPeerId)
+      },
+      processResult: (updates) => {
+        this.apiUpdatesManager.processUpdateMessage(updates);
+        return updates;
+      }
+    });
+  }
+
+  public deleteParticipantReactions({
+    peerId,
+    participantPeerId,
+    originMid,
+    knownReaction
+  }: {
+    peerId: PeerId,
+    participantPeerId: PeerId,
+    originMid?: number,
+    knownReaction?: Reaction
+  }) {
+    const reactionMids = this.removeParticipantReactionsLocally({
+      peerId,
+      participantPeerId,
+      mid: undefined,
+      originMid,
+      knownReaction
+    });
+
+    return this.apiManager.invokeApiSingle('messages.deleteParticipantReactions', {
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      participant: this.appPeersManager.getInputPeerById(participantPeerId)
+    }).then((result) => {
+      // The bulk method returns Bool instead of reaction updates. Optimistic
+      // cleanup can only identify participants present in the truncated local
+      // lists, so refresh a bounded set of the newest loaded reaction counters.
+      const mids = reactionMids
+      .sort((a, b) => getServerMessageId(b) - getServerMessageId(a))
+      .slice(0, DELETE_PARTICIPANT_REACTIONS_REFRESH_LIMIT);
+      if(mids.length) {
+        this.getMessagesReactions(peerId, mids).catch(noop);
+      }
+
+      return result;
     });
   }
 

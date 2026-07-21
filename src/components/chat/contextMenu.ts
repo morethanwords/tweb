@@ -26,7 +26,7 @@ import {ChatReactionsMenu, REACTION_CONTAINER_SIZE} from '@components/chat/react
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
 import {AppManagers} from '@lib/managers';
-import positionMenu, {MenuPositionPadding} from '@helpers/positionMenu';
+import positionMenu, {MenuPositionPadding, positionFloatingMenu} from '@helpers/positionMenu';
 import {getAppWindow, getOverlayRoot} from '@helpers/appWindow';
 import contextMenuController from '@helpers/contextMenuController';
 import {attachContextMenuListener} from '@helpers/dom/attachContextMenuListener';
@@ -55,6 +55,8 @@ import {formatFullSentTime} from '@helpers/date';
 import PopupToggleReadDate from '@components/popups/toggleReadDate';
 import rootScope from '@lib/rootScope';
 import ReactionElement from '@components/chat/reaction';
+import ReactionsElement from '@components/chat/reactions';
+import createReactionContextMenu from '@components/chat/reactionContextMenu';
 import InputField from '@components/inputField';
 import getMainGroupedMessage from '@appManagers/utils/messages/getMainGroupedMessage';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
@@ -245,6 +247,38 @@ export default class ChatContextMenu {
     this.attachListenerSetter.removeAll();
 
     if(IS_TOUCH_SUPPORTED/*  && false */) {
+      // Reaction taps are handled by the inner bubbles delegate, which stops
+      // the synthetic mousedown before it reaches this container. Listen to
+      // touchstart in capture phase so a real hold can still open the same
+      // reaction-specific menu without changing the normal tap behavior.
+      attachContextMenuListener({
+        element,
+        callback: (e) => {
+          if(
+            !this.chat.selection.isSelecting &&
+            (e.target as HTMLElement).closest('reaction-element')
+          ) {
+            this.onContextMenu(e);
+            const options = {
+              capture: true,
+              once: true
+            };
+            const listenerSetter = this.attachListenerSetter;
+            function onTouchEnd(e: TouchEvent) {
+              listenerSetter.removeManual(element, 'touchcancel', onTouchCancel, options);
+              cancelEvent(e);
+            }
+            function onTouchCancel() {
+              listenerSetter.removeManual(element, 'touchend', onTouchEnd, options);
+            }
+            listenerSetter.add(element)('touchend', onTouchEnd, options);
+            listenerSetter.add(element)('touchcancel', onTouchCancel, options);
+          }
+        },
+        listenerSetter: this.attachListenerSetter,
+        listenerOptions: {capture: true}
+      });
+
       attachClickEvent(element, (e) => {
         if(this.chat.selection.isSelecting) {
           return;
@@ -355,7 +389,29 @@ export default class ChatContextMenu {
       return;
     }
 
-    const tagReactionElement = findUpClassName(e.target, 'reaction-tag');
+    const reactionElement = (e.target as HTMLElement).closest('reaction-element') as ReactionElement;
+    const tagReactionElement = reactionElement?.classList.contains('reaction-tag') ? reactionElement : undefined;
+    if(
+      reactionElement &&
+      !tagReactionElement &&
+      !this.chat.selection.isSelecting &&
+      !findUpClassName(e.target, 'tooltip')
+    ) {
+      const reactionsElement = reactionElement.parentElement as ReactionsElement;
+      if(reactionsElement?.getContext) {
+        const context = reactionsElement.getContext();
+        const reaction = reactionElement.reactionCount.reaction;
+        const canOpenReactionMenu =
+          reaction._ === 'reactionCustomEmoji' ||
+          !!context.reactions?.pFlags.can_see_list ||
+          context.peerId.isUser();
+        if(canOpenReactionMenu) {
+          void this.openReactionContextMenu(reactionElement, reactionsElement);
+          return;
+        }
+      }
+    }
+
     let checklistItemId: number;
     const checklistItemElement = (e.target as HTMLElement).closest('[data-checklist-item-id]');
     if(checklistItemElement) {
@@ -527,6 +583,89 @@ export default class ChatContextMenu {
 
     openMenu();
   };
+
+  private async openReactionContextMenu(
+    reactionElement: ReactionElement,
+    reactionsElement: ReactionsElement
+  ) {
+    this.cleanup();
+    const middleware = this.middleware.get();
+    const reactionListenerSetter = new ListenerSetter();
+    const context = reactionsElement.getContext();
+    const appDocument = getAppWindow().document;
+    let pending = true;
+    const cancelPending = () => {
+      if(pending && middleware()) {
+        this.middleware.clean();
+      }
+    };
+    const removePendingListeners = () => {
+      appDocument.removeEventListener('pointerdown', cancelPending, true);
+      appDocument.removeEventListener('keydown', cancelPending, true);
+    };
+    appDocument.addEventListener('pointerdown', cancelPending, {capture: true, once: true});
+    appDocument.addEventListener('keydown', cancelPending, {capture: true, once: true});
+    middleware.onClean(removePendingListeners);
+    reactionListenerSetter.add(rootScope)('history_delete', ({peerId, msgs}) => {
+      if(peerId !== context.peerId || !msgs.has(context.mid)) {
+        return;
+      }
+
+      if(pending) {
+        this.middleware.clean();
+      } else {
+        contextMenuController.close();
+      }
+    });
+
+    let result: Awaited<ReturnType<typeof createReactionContextMenu>>;
+    try {
+      result = await createReactionContextMenu({
+        chat: this.chat,
+        managers: this.managers,
+        reactionElement,
+        reactionsElement,
+        middleware,
+        listenerSetter: reactionListenerSetter
+      });
+    } catch(err) {
+      reactionListenerSetter.removeAll();
+      if(middleware()) {
+        this.middleware.clean();
+      }
+      return;
+    } finally {
+      pending = false;
+      removePendingListeners();
+    }
+
+    if(!middleware() || !result || contextMenuController.isOpened()) {
+      result?.destroy();
+      reactionListenerSetter.removeAll();
+      return;
+    }
+
+    const {element, destroy} = result;
+    this.element = element;
+    element.id = 'reaction-contextmenu';
+    getOverlayRoot().append(element);
+
+    const bubble = reactionElement.closest('.bubble');
+    const alignment = bubble?.classList.contains('is-in') ? 'start' : 'end';
+    positionFloatingMenu(
+      reactionElement.getBoundingClientRect(),
+      element,
+      `top-${alignment}`,
+      [0, 8]
+    );
+
+    contextMenuController.openBtnMenu(element, () => {
+      this.element = undefined;
+      reactionListenerSetter.removeAll();
+      this.middleware.clean();
+      setTimeout(destroy, 300);
+    }, reactionElement);
+  }
 
   private highlightPollAnswer() {
     if(!this.pollAnswer || !this.bubble) return;

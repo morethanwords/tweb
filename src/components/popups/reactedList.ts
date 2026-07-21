@@ -16,6 +16,15 @@ import {formatFullSentTime} from '@helpers/date';
 import {Middleware} from '@helpers/middleware';
 import rootScope from '@lib/rootScope';
 import Icon from '@components/icon';
+import reactionsEqual from '@appManagers/utils/reactions/reactionsEqual';
+import {ButtonMenuSync} from '@components/buttonMenu';
+import ListenerSetter from '@helpers/listenerSetter';
+import {attachContextMenuListener} from '@helpers/dom/attachContextMenuListener';
+import cancelEvent from '@helpers/dom/cancelEvent';
+import contextMenuController from '@helpers/contextMenuController';
+import positionMenu from '@helpers/positionMenu';
+import {getOverlayRoot} from '@helpers/appWindow';
+import deleteParticipantReaction from '@components/chat/deleteParticipantReaction';
 
 const size = 24;
 const _mediaSize = makeMediaSize(size, size);
@@ -70,15 +79,18 @@ export async function processDialogElementForReaction({
     c.append(formatFullSentTime(date, false));
     fragment.append(span, c);
     replaceContent(dom.lastMessageSpan, fragment);
-  } else {
+  } else if(peerId.isUser()) {
     const user = await rootScope.managers.appUsersManager.getUser(peerId.toUserId());
     replaceContent(dom.lastMessageSpan, getUserStatusString(user));
+  } else if(date) {
+    replaceContent(dom.lastMessageSpan, formatFullSentTime(date, false));
   }
 }
 
 export default class PopupReactedList extends PopupElement {
   constructor(
-    private message: Message.message
+    private message: Message.message,
+    private initialReaction?: Reaction
   ) {
     super('popup-reacted-list', {closable: true, overlayClosable: true, body: true});
 
@@ -89,7 +101,10 @@ export default class PopupReactedList extends PopupElement {
     const middleware = this.middlewareHelper.get();
     const message = await this.managers.appMessagesManager.getGroupsFirstMessage(this.message);
     if(!middleware()) return;
-    const canViewReadParticipants = await this.managers.appMessagesManager.canViewMessageReadParticipants(message);
+    const [canViewReadParticipants, canDeleteReactions] = await Promise.all([
+      this.managers.appMessagesManager.canViewMessageReadParticipants(message),
+      this.managers.appReactionsManager.canDeleteParticipantReactions(message.peerId)
+    ]);
     if(!middleware()) return;
     // this.body.append(generateDelimiter());
 
@@ -169,14 +184,13 @@ export default class PopupReactedList extends PopupElement {
       reactionsElement.append(reactionsElement.customEmojiRenderer);
     }
 
+    const initialTabIndex = this.initialReaction ? newMessage.reactions.results.findIndex((reactionCount) => {
+      return reactionsEqual(reactionCount.reaction, this.initialReaction);
+    }) : 0;
+
     newMessage.reactions.results.forEach((reactionCount) => {
       const scrollable = new Scrollable(undefined);
       scrollable.container.classList.add('tabs-tab');
-
-      const section = new SettingSection({
-        noShadow: true,
-        noDelimiter: true
-      });
 
       const chatlist = appDialogsManager.createChatList({
         dialogSize: 72
@@ -192,8 +206,7 @@ export default class PopupReactedList extends PopupElement {
         openInner: true
       });
 
-      section.content.append(chatlist);
-      scrollable.append(section.container);
+      scrollable.append(chatlist);
 
       const skipReadParticipants = (reactionCount.reaction as any) !== 'checks';
       const skipReactionsList = (reactionCount.reaction as any) === 'checks';
@@ -208,7 +221,7 @@ export default class PopupReactedList extends PopupElement {
           const result = await this.managers.appMessagesManager.getMessageReactionsListAndReadParticipants(message, undefined, reactionCount.reaction, nextOffset, skipReadParticipants, skipReactionsList);
           nextOffset = result.nextOffset;
 
-          await Promise.all(result.combined.map(async({peerId, reaction, date}) => {
+          await Promise.all(result.combined.map(async({peerId, reaction, date, isMyReaction}) => {
             const dialogElement = appDialogsManager.addDialogNew({
               peerId: peerId,
               autonomous: true,
@@ -229,6 +242,22 @@ export default class PopupReactedList extends PopupElement {
               peerId,
               reaction
             });
+            if(!middleware()) return;
+
+            if(canDeleteReactions && reaction && !isMyReaction && peerId !== rootScope.myId) {
+              attachContextMenuListener({
+                element: dialogElement.dom.listEl,
+                callback: (e) => this.openDeleteReactionMenu({
+                  e,
+                  element: dialogElement.dom.listEl,
+                  message,
+                  participantPeerId: peerId,
+                  reaction,
+                  isMyReaction
+                }),
+                listenerSetter: this.listenerSetter
+              });
+            }
           }));
 
           return !nextOffset;
@@ -260,9 +289,56 @@ export default class PopupReactedList extends PopupElement {
     }, undefined, undefined, undefined, this.listenerSetter);
 
     // selectTab(hasAllReactions && hasReadParticipants ? 1 : 0, false);
-    selectTab(0, false);
+    selectTab(initialTabIndex === -1 ? 0 : initialTabIndex, false);
 
     this.show();
+  }
+
+  private openDeleteReactionMenu({
+    e,
+    element,
+    message,
+    participantPeerId,
+    reaction,
+    isMyReaction
+  }: {
+    e: MouseEvent | TouchEvent,
+    element: HTMLElement,
+    message: Message.message,
+    participantPeerId: PeerId,
+    reaction: Reaction,
+    isMyReaction?: boolean
+  }) {
+    cancelEvent(e);
+
+    const listenerSetter = new ListenerSetter();
+    const menu = ButtonMenuSync({
+      buttons: [{
+        icon: 'delete',
+        text: 'DeleteReaction',
+        danger: true,
+        onClick: () => {
+          void deleteParticipantReaction({
+            message,
+            participantPeerId,
+            knownReaction: reaction,
+            isMyReaction,
+            managers: this.managers,
+            onConfirm: () => {
+              this.hide();
+            }
+          });
+        }
+      }],
+      listenerSetter
+    });
+    menu.classList.add('contextmenu');
+    getOverlayRoot().append(menu);
+    positionMenu(e, menu);
+    contextMenuController.openBtnMenu(menu, () => {
+      listenerSetter.removeAll();
+      setTimeout(() => menu.remove(), 300);
+    }, element);
   }
 
   private createFakeReaction(icon: Icon, count: number) {

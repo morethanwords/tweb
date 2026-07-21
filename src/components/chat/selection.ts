@@ -123,7 +123,11 @@ export class AppSelection extends EventListenerBase<{
       attachContextMenuListener({
         element: listenElement,
         callback: (e) => {
-          if(this.isSelecting || (this.verifyTouchLongPress && !this.verifyTouchLongPress())) return;
+          if(
+            this.isSelecting ||
+            (e.target as HTMLElement).closest('reaction-element') ||
+            (this.verifyTouchLongPress && !this.verifyTouchLongPress())
+          ) return;
 
           this.onTouchLongPress?.(e);
 

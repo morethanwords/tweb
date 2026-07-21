@@ -68,7 +68,11 @@
     background-color: var(--surface-color);
   }
 
-  .chatlist-chat {
-    padding-inline-end: 3.25rem !important;
+  .chatlist {
+    margin-top: .5rem;
+
+    &-chat {
+      padding-inline-end: 3.25rem !important;
+    }
   }
 }

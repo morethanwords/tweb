@@ -1825,6 +1825,10 @@ hr {
       font-size: var(--font-size-13);
       margin-inline-start: .0625rem;
     }
+
+    &.row-right {
+      margin-inline-end: -1rem;
+    }
   }
 
   &-toggler {

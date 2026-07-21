@@ -10,7 +10,6 @@
   #{$parent} {
     &-container {
       max-height: calc(var(--100vh) - 5rem);
-      padding: .75rem .5rem 0;
     }
 
     &-body {
@@ -18,15 +17,11 @@
     }
 
     &-header {
-      height: 2.5rem;
-      margin: 0;
-      margin-bottom: .75rem;
-      padding: 0 1rem;
       gap: 1rem;
     }
 
     &-buttons {
-      margin: .75rem 0;
+      margin: -.3125rem 0 .75rem;
     }
   }
 
@@ -80,11 +75,5 @@
     .scrollable-thumb-container {
       display: none;
     }
-  }
-
-  .sidebar-left-section {
-    margin-bottom: 0;
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
   }
 }

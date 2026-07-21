@@ -526,12 +526,8 @@ $btn-menu-z-index: 4;
     }
 
     &-avatar {
-      // width: 1.5rem !important;
-      // height: 1.5rem !important;
-      // display: flex;
-      // align-items: center;
-      // justify-content: center;
-      // position: relative;
+      align-self: center;
+      margin-top: 0 !important;
 
       &.active:before {
         --offset: -3px;
@@ -949,6 +945,64 @@ $btn-menu-z-index: 4;
 .btn-menu-item-auxiliary-text {
   font-weight: 400;
   opacity: 0.5;
+}
+
+.reaction-context-menu {
+  width: min(15rem, calc(100vw - 2rem)) !important;
+  max-width: calc(100vw - 2rem);
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+
+  &-participant {
+    min-width: 0;
+  }
+
+  &-peer {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+
+    &-title,
+    &-date {
+      @include text-overflow();
+    }
+
+    &-date {
+      color: var(--secondary-text-color);
+      font-size: var(--font-size-12);
+      font-weight: 400;
+      line-height: var(--line-height-14);
+    }
+  }
+
+  &-delete {
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-inline: .5rem -.25rem;
+    flex: 0 0 auto;
+    color: var(--secondary-text-color);
+    font-size: 1rem;
+    opacity: 0;
+    pointer-events: none;
+
+    @include animation-level(2) {
+      transition: opacity var(--transition-standard-in);
+    }
+  }
+
+  html.no-touch &-participant:hover &-delete,
+  &-participant:focus-within &-delete {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  &-hint {
+    padding: .5rem .75rem;
+    max-width: 15rem;
+    color: var(--secondary-text-color);
+    font-size: var(--font-size-12);
+    line-height: var(--line-height-14);
+  }
 }
 
 .floating-button-menu-container {
