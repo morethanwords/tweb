@@ -594,7 +594,7 @@ lottieMessagePort.addMultipleEventsListeners({
     forEachItemOfSource(source, (item) => item.suspendFreeRun());
   },
 
-  debugTag: () => 'tlottie-simd-2', // bump on worker edits to verify the running bundle
+  debugTag: () => 'tlottie-simd-3', // bump on worker edits to verify the running bundle
 
   resumeTab: (_, source) => {
     suspendedPorts.delete(source);

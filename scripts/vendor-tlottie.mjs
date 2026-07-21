@@ -3,13 +3,13 @@ import {readFileSync, writeFileSync} from 'node:fs';
 import {dirname, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
-const SOURCE_COMMIT = '44520df07af83396cbea5e85c4c268ec34ad5b06';
-const SOURCE_SHA256 = '6f0257f8b59afc1399e0697c160ff2cc2a136e8776447f6c0abd5c240f56c646';
-const OUTPUT_SHA256 = '877b8c8c36156710842241101dec5f2f74ba40660ffcfab8f2858deabd7e3523';
+const SOURCE_COMMIT = '8efaf11d2113e5d2d0ef0a8b0b710703d296c153';
+const SOURCE_SHA256 = '60f37ce619fac19905b760efce96195c7f4c683b2bca7f85777a8825ab613e19';
+const OUTPUT_SHA256 = '1d959e0e5efccd470c1a1ce79bcacc066cfa38499237955b0ec382d00245f8ec';
 
 const sourcePath = process.argv[2];
 if(!sourcePath) {
-  throw new Error('Usage: node scripts/vendor-tlottie.mjs /path/to/tlottie/demo/tlottie.wasm');
+  throw new Error('Usage: node scripts/vendor-tlottie.mjs /path/to/tlottie/examples/web/tlottie.wasm');
 }
 
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
@@ -38,8 +38,8 @@ const readVarUint32 = (bytes, start) => {
   throw new Error('Invalid WebAssembly varuint32');
 };
 
-// The demo artifact is built with release debug info. Drop only debug/name
-// custom sections; executable sections and target metadata remain byte-for-byte.
+// Drop only debug/name custom sections from the upstream web artifact;
+// executable sections and target metadata remain byte-for-byte.
 const chunks = [source.subarray(0, 8)];
 let offset = 8;
 while(offset < source.length) {

@@ -2,15 +2,15 @@ export type TLottieHandle = number;
 
 type TLottieExports = WebAssembly.Exports & {
   memory: WebAssembly.Memory,
-  tl_alloc: (length: number) => number,
-  tl_free: (pointer: number, length: number) => void,
-  tl_new: (pointer: number, length: number) => TLottieHandle,
-  tl_drop: (handle: TLottieHandle) => void,
-  tl_width: (handle: TLottieHandle) => number,
-  tl_height: (handle: TLottieHandle) => number,
-  tl_frame_rate: (handle: TLottieHandle) => number,
-  tl_frame_count: (handle: TLottieHandle) => number,
-  tl_render: (
+  tlottie_alloc: (length: number) => number,
+  tlottie_free: (pointer: number, length: number) => void,
+  tlottie_new: (pointer: number, length: number) => TLottieHandle,
+  tlottie_drop: (handle: TLottieHandle) => void,
+  tlottie_width: (handle: TLottieHandle) => number,
+  tlottie_height: (handle: TLottieHandle) => number,
+  tlottie_frame_rate: (handle: TLottieHandle) => number,
+  tlottie_frame_count: (handle: TLottieHandle) => number,
+  tlottie_render: (
     handle: TLottieHandle,
     frame: number,
     width: number,
@@ -25,6 +25,28 @@ export type TLottieAnimation = {
   height: number,
   frameRate: number,
   frameCount: number
+};
+
+const getAuthoredFrameCount = (json: string, frameCount: number) => {
+  if(frameCount !== 1) {
+    return frameCount;
+  }
+
+  try {
+    const data = JSON.parse(json);
+    if(typeof(data?.ip) !== 'number' || typeof(data?.op) !== 'number') {
+      return frameCount;
+    }
+
+    const authoredFrameCount = Math.floor(Math.fround(data.op) - Math.fround(data.ip));
+    if(Number.isNaN(authoredFrameCount)) {
+      return frameCount;
+    }
+
+    return Math.min(0xffffffff, Math.max(1, authoredFrameCount));
+  } catch{
+    return frameCount;
+  }
 };
 
 const instantiate = async(wasmUrl: string) => {
@@ -52,6 +74,7 @@ const instantiate = async(wasmUrl: string) => {
 export class TLottieWasm {
   private exports: TLottieExports;
   private encoder = new TextEncoder();
+  private staticAnimations = new Set<TLottieHandle>();
 
   private constructor(exports: TLottieExports) {
     this.exports = exports;
@@ -64,7 +87,7 @@ export class TLottieWasm {
 
   public createAnimation(json: string): TLottieAnimation {
     const bytes = this.encoder.encode(json);
-    const pointer = this.exports.tl_alloc(bytes.length);
+    const pointer = this.exports.tlottie_alloc(bytes.length);
     if(!pointer) {
       throw new Error('tlottie input allocation failed');
     }
@@ -72,35 +95,45 @@ export class TLottieWasm {
     let handle: TLottieHandle;
     try {
       new Uint8Array(this.exports.memory.buffer, pointer, bytes.length).set(bytes);
-      handle = this.exports.tl_new(pointer, bytes.length);
+      handle = this.exports.tlottie_new(pointer, bytes.length);
     } finally {
-      this.exports.tl_free(pointer, bytes.length);
+      this.exports.tlottie_free(pointer, bytes.length);
     }
 
     if(!handle) {
       throw new Error('tlottie rejected the animation');
     }
 
+    const rendererFrameCount = this.exports.tlottie_frame_count(handle);
+    const frameCount = getAuthoredFrameCount(json, rendererFrameCount);
+    if(rendererFrameCount === 1 && frameCount > 1) {
+      this.staticAnimations.add(handle);
+    }
+
     return {
       handle,
-      width: this.exports.tl_width(handle),
-      height: this.exports.tl_height(handle),
-      frameRate: this.exports.tl_frame_rate(handle),
-      frameCount: this.exports.tl_frame_count(handle)
+      width: this.exports.tlottie_width(handle),
+      height: this.exports.tlottie_height(handle),
+      frameRate: this.exports.tlottie_frame_rate(handle),
+      // Upstream collapses proven-static compositions to one render frame.
+      // Keep their authored duration for the player's loop/onComplete timing.
+      frameCount
     };
   }
 
   public destroyAnimation(handle: TLottieHandle) {
-    this.exports.tl_drop(handle);
+    this.staticAnimations.delete(handle);
+    this.exports.tlottie_drop(handle);
   }
 
   public render(handle: TLottieHandle, frame: number, width: number, height: number) {
-    const pointer = this.exports.tl_render(handle, frame, width, height, 1);
+    const rendererFrame = this.staticAnimations.has(handle) ? 0 : frame;
+    const pointer = this.exports.tlottie_render(handle, rendererFrame, width, height, 1);
     if(!pointer) {
       throw new Error('tlottie frame render failed');
     }
 
-    // tl_render can grow memory. Always derive the view after the call and do
+    // tlottie_render can grow memory. Always derive the view after the call and do
     // not retain it beyond the immediate copy into ImageData/output buffers.
     return new Uint8Array(this.exports.memory.buffer, pointer, width * height * 4);
   }
