@@ -90,6 +90,9 @@ export type DatePickerPopupOptions = {
   // sending popup adds a "Repeat" row here). Kept as a thunk so the JSX is
   // evaluated lazily inside the popup's Solid context.
   bodyAfter?: () => JSX.Element,
+  // Slot for caller-provided controls in the header, rendered BEFORE the
+  // date picker's own navigation controls.
+  headerActions?: () => JSX.Element,
   // Slot for caller-provided extra footer buttons, rendered AFTER the primary
   // confirm button (e.g. "Send when online" secondary button).
   footerAfter?: () => JSX.Element,
@@ -778,6 +781,9 @@ export default function showDatePickerPopup(opts: DatePickerPopupOptions): void 
             <div class="date-picker-month-title">{monthTitleEl()}</div>
           </PopupElement.Title>
           <div class="date-picker-controls">
+            <Show when={opts.headerActions}>
+              {opts.headerActions()}
+            </Show>
             <Show when={showMultiSelectToggle}>
               <ButtonIconTsx
                 icon="select"

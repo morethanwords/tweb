@@ -1,10 +1,11 @@
 import {createSignal, Show} from 'solid-js';
 import showDatePickerPopup from '@components/popups/datePicker';
 import PopupElement from '@components/popups/indexTsx';
+import Button from '@components/buttonTsx';
 import Row from '@components/rowTsx';
 import InlineSelect from '@components/sidebarLeft/tabs/passcodeLock/inlineSelect';
 import {IconTsx} from '@components/iconTsx';
-import {i18n} from '@lib/langPack';
+import I18n, {i18n} from '@lib/langPack';
 import {hideToast, toastNew} from '@components/toast';
 import anchorCallback from '@helpers/dom/anchorCallback';
 import PopupPremium from '@components/popups/premium';
@@ -27,8 +28,10 @@ export type ScheduleSendingPopupOptions = {
   initDate?: Date,
   addMinutes?: boolean,
   initRepeatPeriod?: number,
+  initSilent?: boolean,
+  canSendSilently?: boolean,
   canSendWhenOnline?: boolean,
-  onPick: (timestamp: number, repeatPeriod?: number) => void
+  onPick: (timestamp: number, repeatPeriod: number | undefined, silent: boolean) => void
 };
 
 /**
@@ -48,14 +51,21 @@ export default function showScheduleSendingPopup(opts: ScheduleSendingPopupOptio
   // it once at confirm time, and the RepeatRow component owns the reactive
   // state internally for its own UI.
   let selectedRepeatPeriod = opts.initRepeatPeriod || 0;
+  let selectedSilent = !!opts.initSilent;
 
   showDatePickerPopup({
     initDate: opts.initDate ?? new Date(),
     addMinutes: opts.addMinutes ?? (opts.initDate === undefined),
     withTime: true,
     onPick: (timestamp) => {
-      opts.onPick(timestamp, selectedRepeatPeriod || undefined);
+      opts.onPick(timestamp, selectedRepeatPeriod || undefined, selectedSilent);
     },
+    headerActions: opts.canSendSilently === false ? undefined : () => (
+      <SilentToggle
+        initValue={selectedSilent}
+        onChange={(value) => selectedSilent = value}
+      />
+    ),
     bodyAfter: () => (
       <RepeatRow
         initValue={opts.initRepeatPeriod || 0}
@@ -67,10 +77,34 @@ export default function showScheduleSendingPopup(opts: ScheduleSendingPopupOptio
         color="secondary"
         class="popup-schedule-secondary"
         langKey="Schedule.SendWhenOnline"
-        callback={() => opts.onPick(SEND_WHEN_ONLINE_TIMESTAMP)}
+        callback={() => opts.onPick(SEND_WHEN_ONLINE_TIMESTAMP, undefined, selectedSilent)}
       />
     ) : undefined
   });
+}
+
+function SilentToggle(props: {initValue: boolean, onChange: (value: boolean) => void}) {
+  const [silent, setSilent] = createSignal(props.initValue);
+
+  const onClick = () => {
+    const value = !silent();
+    setSilent(value);
+    props.onChange(value);
+  };
+
+  return (
+    <Button.Icon
+      icon={silent() ? 'mute' : 'unmute'}
+      class="date-picker-silent primary"
+      tabIndex={0}
+      aria-pressed={silent()}
+      aria-label={I18n.format('Chat.Send.WithoutSound', true)}
+      on:keydown={(event) => {
+        if(event.key === 'Enter') event.stopPropagation();
+      }}
+      onClick={onClick}
+    />
+  );
 }
 
 function RepeatRow(props: {initValue: number, onChange: (value: number) => void}) {
