@@ -18,6 +18,7 @@ import MEDIA_MIME_TYPES_SUPPORTED from '@environment/mediaMimeTypesSupport';
 import getGifDuration from '@helpers/getGifDuration';
 import gifToVideo, {canConvertGifToVideo, canConvertGifToVideoSync} from '@helpers/gifToVideo';
 import movToVideo, {isConvertibleMov} from '@helpers/movToVideo';
+import getFileMimeType, {normalizeFileMimeType} from '@helpers/files/getFileMimeType';
 import deferredPromise from '@helpers/cancellablePromise';
 import noop from '@helpers/noop';
 import toHHMMSS from '@helpers/string/toHHMMSS';
@@ -88,15 +89,6 @@ type SendFileParams = SendFileDetails & {
   middlewareHelper: MiddlewareHelper,
   editResult?: MediaEditorFinalResult
 };
-
-function getFileMimeType(file: File | Blob | MyDocument): string {
-  // `'mime_type' in file` identifies a MyDocument; everything else is a File/Blob. Cross-realm-safe
-  // (a Document PiP window's File isn't `instanceof` the main realm's File constructor).
-  if('mime_type' in file) {
-    return file.mime_type;
-  }
-  return file.type;
-}
 
 type ConstructorInputFile = {
   file: File;
@@ -176,10 +168,11 @@ export default class PopupNewMedia extends PopupElement {
       // The {file, editResult} wrapper is the only variant carrying a `file` field; everything else
       // is a plain File. Cross-realm-safe (a Document PiP window's File isn't `instanceof` the main File).
       if(!('file' in inputFile)) {
-        return inputFile;
+        return normalizeFileMimeType(inputFile);
       }
-      this.pendingEditResults.set(inputFile.file, inputFile.editResult);
-      return inputFile.file;
+      const file = normalizeFileMimeType(inputFile.file);
+      this.pendingEditResults.set(file, inputFile.editResult);
+      return file;
     });
 
     this.animationGroup = 'NEW-MEDIA';
@@ -512,7 +505,7 @@ export default class PopupNewMedia extends PopupElement {
         return !this.convertedFiles.has(file) && !this.canConvertGif(file);
       }
 
-      if(mimeType === 'video/quicktime' && !IS_MOV_SUPPORTED) {
+      if(getFileMimeType(file) === 'video/quicktime' && !IS_MOV_SUPPORTED) {
         return !this.convertedFiles.has(file) && !this.canConvertMov(file);
       }
 
@@ -782,6 +775,8 @@ export default class PopupNewMedia extends PopupElement {
   }
 
   public addFiles(files: File[]) {
+    files = files.map(normalizeFileMimeType);
+
     if(!this.canHaveMultipleFiles() && this.files.length) {
       if(files.length) {
         this.files.splice(0, Infinity, files[0]);
@@ -1772,9 +1767,10 @@ export default class PopupNewMedia extends PopupElement {
     } else {
       let foundPhotos = 0, foundVideos = 0, foundFiles = 0;
       files.forEach((file) => {
-        if(file.type === 'image/gif') ++foundVideos; // gifs are sent converted to videos
-        else if(file.type.startsWith('image/')) ++foundPhotos;
-        else if(file.type.startsWith('video/')) ++foundVideos;
+        const mimeType = getFileMimeType(file);
+        if(mimeType === 'image/gif') ++foundVideos; // gifs are sent converted to videos
+        else if(mimeType.startsWith('image/')) ++foundPhotos;
+        else if(mimeType.startsWith('video/')) ++foundVideos;
         else ++foundFiles;
       });
 
@@ -1787,6 +1783,9 @@ export default class PopupNewMedia extends PopupElement {
       } else if(foundVideos) {
         key = 'PreviewSender.SendVideo';
         args.push(foundVideos);
+      } else {
+        key = 'PreviewSender.SendFile';
+        args.push(foundFiles);
       }
     }
 

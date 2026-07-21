@@ -1,4 +1,5 @@
 import {MAX_EDITABLE_VIDEO_SIZE} from '@components/mediaEditor/support';
+import getFileMimeType from '@helpers/files/getFileMimeType';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import rootScope from '@lib/rootScope';
 
@@ -34,7 +35,7 @@ const IN_MEMORY_FASTSTART_MAX_SIZE = 512 * 1024 * 1024;
 // * whether this .mov can be offered the mp4 conversion at all; whether the
 // * conversion actually succeeds is only known per-file, when it runs
 export function isConvertibleMov(file: File | Blob) {
-  return file.type === 'video/quicktime' && file.size <= getMaxUploadSize();
+  return getFileMimeType(file) === 'video/quicktime' && file.size <= getMaxUploadSize();
 }
 
 // * Remuxes (or, when the codec demands it, transcodes) a QuickTime .mov file

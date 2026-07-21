@@ -20,6 +20,10 @@ export const EXTENSION_MIME_TYPE_MAP: {[ext in MTFileExtension]: MTMimeType} = {
   bmp: 'image/bmp'
 };
 
+export const MIME_TYPE_ALIASES: Record<string, MTMimeType> = {
+  'video/x-quicktime': 'video/quicktime'
+};
+
 export const MIME_TYPE_EXTENSION_MAP: {[mimeType in MTMimeType]?: MTFileExtension} = {};
 
 for(const ext in EXTENSION_MIME_TYPE_MAP) {

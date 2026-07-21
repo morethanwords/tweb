@@ -77,6 +77,7 @@ import groupCallsController from '@lib/calls/groupCallsController';
 import GROUP_CALL_STATE from '@lib/calls/groupCallState';
 import callsController from '@lib/calls/callsController';
 import getFilesFromEvent from '@helpers/files/getFilesFromEvent';
+import getFileMimeType from '@helpers/files/getFileMimeType';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import paymentsWrapCurrencyAmount from '@helpers/paymentsWrapCurrencyAmount';
 import findUpClassName from '@helpers/dom/findUpClassName';
@@ -863,7 +864,7 @@ export class AppImManager extends EventListenerBase<{
       showForwardPopup(undefined, async(peerId, threadId) => {
         await this.setPeer({peerId, threadId});
         if(share.files?.length) {
-          const foundMedia = share.files.some((file) => MEDIA_MIME_TYPES_SUPPORTED.has(file.type) || isConvertibleMov(file));
+          const foundMedia = share.files.some((file) => MEDIA_MIME_TYPES_SUPPORTED.has(getFileMimeType(file)) || isConvertibleMov(file));
           PopupElement.createPopup(PopupNewMedia, this.chat, share.files, foundMedia ? 'media' : 'document');
         } else {
           const preparedPaymentResult = await PaidMessagesInterceptor.prepareStarsForPayment({messageCount: 1, peerId});
@@ -2559,7 +2560,7 @@ export class AppImManager extends EventListenerBase<{
 
     if(chatInput.editMessage) {
       const file = files[0];
-      const canUploadAsMedia = (MEDIA_MIME_TYPES_SUPPORTED.has(file.type) || isConvertibleMov(file)) && canUploadAsWhenEditing({message: chatInput.editMessage, asWhat: 'media'});
+      const canUploadAsMedia = (MEDIA_MIME_TYPES_SUPPORTED.has(getFileMimeType(file)) || isConvertibleMov(file)) && canUploadAsWhenEditing({message: chatInput.editMessage, asWhat: 'media'});
       const canUploadAsDocument = canUploadAsWhenEditing({message: chatInput.editMessage, asWhat: 'document'});
       chatInput.willAttachType = (canUploadAsMedia ? 'media' : canUploadAsDocument ? 'document' : undefined);
 
@@ -2570,7 +2571,7 @@ export class AppImManager extends EventListenerBase<{
       return;
     }
 
-    chatInput.willAttachType = attachType || ((MEDIA_MIME_TYPES_SUPPORTED.has(files[0].type) || isConvertibleMov(files[0])) ? 'media' : 'document');
+    chatInput.willAttachType = attachType || ((MEDIA_MIME_TYPES_SUPPORTED.has(getFileMimeType(files[0])) || isConvertibleMov(files[0])) ? 'media' : 'document');
     PopupElement.createPopup(PopupNewMedia, this.chat, files, chatInput.willAttachType);
   };
 
