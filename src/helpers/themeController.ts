@@ -417,19 +417,26 @@ export class ThemeController {
       Math.max(y, windowSize.height - y)
     );
 
+    let clipAnimation: Animation;
     transition.ready.then(() => {
       _log('view transition ready');
 
+      // View-transition snapshots use backing-store pixels for clip-path geometry. Keeping the
+      // click coordinates in CSS pixels renders both the origin and radius too small on HiDPI
+      // displays (exactly 50% at DPR 2), then the remaining area snaps in when the snapshot exits.
+      const scale = window.devicePixelRatio || 1;
+      const clipX = x * scale;
+      const clipY = y * scale;
       const {easing, duration, keyframes} = getTransition(
         'standard',
         !reverse,
         [
-          {clipPath: `circle(0 at ${x}px ${y}px)`},
-          {clipPath: `circle(${endRadius}px at ${x}px ${y}px)`}
+          {clipPath: `circle(0 at ${clipX}px ${clipY}px)`},
+          {clipPath: `circle(${endRadius * scale}px at ${clipX}px ${clipY}px)`}
         ]
       );
 
-      document.documentElement.animate(keyframes, {
+      clipAnimation = document.documentElement.animate(keyframes, {
         duration: duration * 2,
         easing,
         pseudoElement: `::view-transition-${reverse ? 'old' : 'new'}(root)`,
@@ -438,6 +445,7 @@ export class ThemeController {
     }).catch(noop); // `ready` rejects when the transition is skipped (safety timeout / overlap / hidden tab)
 
     transition.finished.catch(noop).finally(() => {
+      clipAnimation?.cancel();
       _log('view transition end');
       document.documentElement.classList.remove('no-view-transition', 'reverse');
     });
