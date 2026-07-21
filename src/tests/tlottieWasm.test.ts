@@ -2,13 +2,19 @@ import {createHash} from 'crypto';
 import {readdirSync, readFileSync} from 'fs';
 import {resolve} from 'path';
 import IS_WEB_ASSEMBLY_SIMD_SUPPORTED from '@environment/webAssemblySimdSupport';
-import {TLottieWasm} from '@lib/lottie/tlottieWasm';
+import {TLottieFitzModifier, TLottieWasm} from '@lib/lottie/tlottieWasm';
 
 type TLottieTestExports = WebAssembly.Exports & {
   memory: WebAssembly.Memory,
   tlottie_alloc: (length: number) => number,
   tlottie_free: (pointer: number, length: number) => void,
-  tlottie_new: (pointer: number, length: number) => number,
+  tlottie_new_with_options: (
+    pointer: number,
+    length: number,
+    fitzModifier: TLottieFitzModifier,
+    replacementsPointer: number,
+    replacementsLength: number
+  ) => number,
   tlottie_drop: (handle: number) => void,
   tlottie_width: (handle: number) => number,
   tlottie_height: (handle: number) => number,
@@ -22,6 +28,16 @@ const ASSETS_PATH = resolve(process.cwd(), 'public/assets/tgs');
 const EXPECTED_SHA256 = '1d959e0e5efccd470c1a1ce79bcacc066cfa38499237955b0ec382d00245f8ec';
 const wasmBytes = new Uint8Array(readFileSync(WASM_PATH));
 const assetNames = readdirSync(ASSETS_PATH).filter((name) => name.endsWith('.json')).sort();
+const FITZ_ANIMATION = readFileSync(resolve(ASSETS_PATH, 'hand_stop.json'), 'utf8');
+const FITZ_MODIFIERS = [0, 1, 2, 3, 4, 5] as const;
+const FITZ_FRAME_HASHES = [
+  '8d3e7170552da236483c29e81c101b8567b25abb73fb719aa31ae1493292f3c2',
+  '811c9e01e99e4132393691d8c680e838761b9f413ac82706026629affd461d57',
+  'a9ba71ce79a4cf3e3c068376deddb88c4f7670b84ff4efbac90843b07b50faca',
+  '4de9cffac619436575ba114456ba9b8bde7c88ace6351ee3eb0c9dd054107946',
+  '71a21f7a4e867d4701981def97ff1efe1989ba6e966a42633798b65ba2d7f477',
+  '7a20581d0a58ca4115c68a1cd1f5c79debdc4c77c67a023725a32fc8970d3420'
+];
 const GOLDEN_ANIMATION = JSON.stringify({
   v: '5.7.4',
   fr: 30,
@@ -71,6 +87,17 @@ const GOLDEN_ANIMATION = JSON.stringify({
   }]
 });
 
+const createWasmResponse = () => ({
+  ok: true,
+  status: 200,
+  clone() {
+    return this;
+  },
+  async arrayBuffer() {
+    return wasmBytes.slice().buffer;
+  }
+}) as Response;
+
 describe('tlottie WebAssembly', () => {
   let api: TLottieTestExports;
 
@@ -96,7 +123,7 @@ describe('tlottie WebAssembly', () => {
     const pointer = api.tlottie_alloc(bytes.length);
     expect(pointer).not.toBe(0);
     new Uint8Array(api.memory.buffer, pointer, bytes.length).set(bytes);
-    expect(api.tlottie_new(pointer, bytes.length)).toBe(0);
+    expect(api.tlottie_new_with_options(pointer, bytes.length, 0, 0, 0)).toBe(0);
     api.tlottie_free(pointer, bytes.length);
   });
 
@@ -105,7 +132,7 @@ describe('tlottie WebAssembly', () => {
     const pointer = api.tlottie_alloc(bytes.length);
     expect(pointer).not.toBe(0);
     new Uint8Array(api.memory.buffer, pointer, bytes.length).set(bytes);
-    const handle = api.tlottie_new(pointer, bytes.length);
+    const handle = api.tlottie_new_with_options(pointer, bytes.length, 0, 0, 0);
     api.tlottie_free(pointer, bytes.length);
     expect(handle).not.toBe(0);
 
@@ -125,17 +152,7 @@ describe('tlottie WebAssembly', () => {
   });
 
   test('preserves the authored duration of static animations', async() => {
-    const response = {
-      ok: true,
-      status: 200,
-      clone() {
-        return this;
-      },
-      async arrayBuffer() {
-        return wasmBytes.slice().buffer;
-      }
-    } as Response;
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(response);
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(createWasmResponse());
 
     try {
       const tlottie = await TLottieWasm.create('/tlottie.wasm');
@@ -152,6 +169,31 @@ describe('tlottie WebAssembly', () => {
     }
   });
 
+  test('applies authored Fitz skin-tone replacements', async() => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(createWasmResponse());
+
+    try {
+      const tlottie = await TLottieWasm.create('/tlottie.wasm');
+      expect(() => tlottie.createAnimation(FITZ_ANIMATION, 6 as TLottieFitzModifier))
+      .toThrow('Invalid tlottie Fitz modifier: 6');
+
+      const hashes = FITZ_MODIFIERS.map((fitzModifier) => {
+        const animation = tlottie.createAnimation(FITZ_ANIMATION, fitzModifier);
+        try {
+          const pixels = tlottie.render(animation.handle, 0, 64, 64);
+          return createHash('sha256').update(pixels).digest('hex');
+        } finally {
+          tlottie.destroyAnimation(animation.handle);
+        }
+      });
+
+      expect(hashes).toEqual(FITZ_FRAME_HASHES);
+      expect(new Set(hashes).size).toBe(FITZ_MODIFIERS.length);
+    } finally {
+      fetchMock.mockRestore();
+    }
+  });
+
   for(const assetName of assetNames) {
     test(`parses metadata and renders ${assetName}`, () => {
       const bytes = new Uint8Array(readFileSync(resolve(ASSETS_PATH, assetName)));
@@ -160,7 +202,7 @@ describe('tlottie WebAssembly', () => {
       expect(pointer).not.toBe(0);
 
       new Uint8Array(api.memory.buffer, pointer, bytes.length).set(bytes);
-      const handle = api.tlottie_new(pointer, bytes.length);
+      const handle = api.tlottie_new_with_options(pointer, bytes.length, 0, 0, 0);
       api.tlottie_free(pointer, bytes.length);
       expect(handle).not.toBe(0);
 

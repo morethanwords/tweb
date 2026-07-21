@@ -1,10 +1,17 @@
 export type TLottieHandle = number;
+export type TLottieFitzModifier = 0 | 1 | 2 | 3 | 4 | 5;
 
 type TLottieExports = WebAssembly.Exports & {
   memory: WebAssembly.Memory,
   tlottie_alloc: (length: number) => number,
   tlottie_free: (pointer: number, length: number) => void,
-  tlottie_new: (pointer: number, length: number) => TLottieHandle,
+  tlottie_new_with_options: (
+    pointer: number,
+    length: number,
+    fitzModifier: TLottieFitzModifier,
+    replacementsPointer: number,
+    replacementsLength: number
+  ) => TLottieHandle,
   tlottie_drop: (handle: TLottieHandle) => void,
   tlottie_width: (handle: TLottieHandle) => number,
   tlottie_height: (handle: TLottieHandle) => number,
@@ -85,7 +92,11 @@ export class TLottieWasm {
     return new TLottieWasm(instance.exports as TLottieExports);
   }
 
-  public createAnimation(json: string): TLottieAnimation {
+  public createAnimation(json: string, fitzModifier: TLottieFitzModifier = 0): TLottieAnimation {
+    if(!Number.isInteger(fitzModifier) || fitzModifier < 0 || fitzModifier > 5) {
+      throw new RangeError(`Invalid tlottie Fitz modifier: ${fitzModifier}`);
+    }
+
     const bytes = this.encoder.encode(json);
     const pointer = this.exports.tlottie_alloc(bytes.length);
     if(!pointer) {
@@ -95,7 +106,7 @@ export class TLottieWasm {
     let handle: TLottieHandle;
     try {
       new Uint8Array(this.exports.memory.buffer, pointer, bytes.length).set(bytes);
-      handle = this.exports.tlottie_new(pointer, bytes.length);
+      handle = this.exports.tlottie_new_with_options(pointer, bytes.length, fitzModifier, 0, 0);
     } finally {
       this.exports.tlottie_free(pointer, bytes.length);
     }

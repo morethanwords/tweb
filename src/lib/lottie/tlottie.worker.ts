@@ -5,9 +5,8 @@ import applyColorOnContext, {paintFrameTinted} from '@helpers/canvas/applyColorO
 import listenMessagePort from '@helpers/listenMessagePort';
 import makeError from '@helpers/makeError';
 import safeAssign from '@helpers/object/safeAssign';
-import applyReplacements from '@lib/lottie/applyReplacements';
 import lottieMessagePort, {LottieOffscreenInit} from '@lib/lottie/lottieMessagePort';
-import loadTLottieWasm, {TLottieHandle, TLottieWasm} from '@lib/lottie/tlottieWasm';
+import loadTLottieWasm, {TLottieFitzModifier, TLottieHandle, TLottieWasm} from '@lib/lottie/tlottieWasm';
 import SuperMessagePort from '@lib/superMessagePort';
 
 type WorkerFramesCacheEntry = {frames: Map<number, ImageBitmap>, refs: Set<number>};
@@ -89,7 +88,7 @@ export class TLottieItem {
     }
   }
 
-  public init(json: string, tlottie: TLottieWasm) {
+  public init(json: string, tlottie: TLottieWasm, fitzModifier: TLottieFitzModifier) {
     if(this.dead) {
       throw makeError('ITEM_DESTROYED');
     }
@@ -105,7 +104,7 @@ export class TLottieItem {
     }, 1000 / this.fps); */
 
     try {
-      const animation = this.tlottie.createAnimation(json);
+      const animation = this.tlottie.createAnimation(json, fitzModifier);
       this.handle = animation.handle;
       this.frameCount = animation.frameCount;
       this.fps = Math.max(1, Math.min(60, animation.frameRate));
@@ -517,24 +516,15 @@ lottieMessagePort.addMultipleEventsListeners({
   loadFromData: async({reqId, blob, wasmUrl, width, height, toneIndex, raw, offscreen}, source) => {
     const item = items[reqId] = new TLottieItem(reqId, width, height, wasmUrl, raw/* , canvas */);
     item.port = source;
-    let json: string;
-
     try {
       if(offscreen) {
         item.initOffscreen(offscreen);
       }
 
-      json = await readBlobAsText(blob);
+      const json = await readBlobAsText(blob);
       const tlottie = await loadTLottieWasm(wasmUrl);
-
-      if(typeof(toneIndex) === 'number' && toneIndex >= 1 && toneIndex <= 5) {
-        /* params.animationData = copy(params.animationData);
-        this.applyReplacements(params.animationData, toneIndex); */
-
-        const newAnimationData = JSON.parse(json);
-        applyReplacements(newAnimationData, toneIndex);
-        json = JSON.stringify(newAnimationData);
-      }
+      const fitzModifier = typeof(toneIndex) === 'number' && Number.isInteger(toneIndex) && toneIndex >= 1 && toneIndex <= 5 ?
+        toneIndex as TLottieFitzModifier : 0;
 
       // ! WARNING, с этой проверкой не все стикеры работают, например - ДУРКА
       /* if(!/"tgs":\s*?1./.test(jsString)) {
@@ -547,7 +537,7 @@ lottieMessagePort.addMultipleEventsListeners({
 
       // console.log('Rendering sticker:', reqId, 'now rendered:', Object.keys(items).length);
 
-      return item.init(json, tlottie);
+      return item.init(json, tlottie, fitzModifier);
     } catch(err) {
       destroyItem(reqId);
       console.error('Unable to load lottie animation:', err);
@@ -594,7 +584,7 @@ lottieMessagePort.addMultipleEventsListeners({
     forEachItemOfSource(source, (item) => item.suspendFreeRun());
   },
 
-  debugTag: () => 'tlottie-simd-3', // bump on worker edits to verify the running bundle
+  debugTag: () => 'tlottie-simd-4', // bump on worker edits to verify the running bundle
 
   resumeTab: (_, source) => {
     suspendedPorts.delete(source);
