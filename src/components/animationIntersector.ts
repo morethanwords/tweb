@@ -1,5 +1,5 @@
 import type {LiteModeKey} from '@helpers/liteMode';
-import type RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import type LottiePlayer from '@lib/lottie/lottiePlayer';
 import {useAppSettings} from '@stores/appSettings';
 import {MOUNT_CLASS_TO} from '@config/debug';
 import isInDOM from '@helpers/dom/isInDOM';
@@ -89,11 +89,11 @@ export class AnimationIntersector {
             const _animation = animation.animation;
             if(
               animation.type === 'lottie' &&
-              (_animation as RLottiePlayer).paused
+              (_animation as LottiePlayer).paused
               /*  && animation.cachingDelta === 2 */
             ) {
               // console.warn('will clear cache', player);
-              (_animation as RLottiePlayer).clearCacheWhenSafe();
+              (_animation as LottiePlayer).clearCacheWhenSafe();
             }/*  else if(animation instanceof HTMLVideoElement && animation.src) {
               animation.dataset.src = animation.src;
               animation.src = '';

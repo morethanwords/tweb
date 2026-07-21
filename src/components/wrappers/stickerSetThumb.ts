@@ -3,7 +3,7 @@ import renderImageFromUrl from '@helpers/dom/renderImageFromUrl';
 import {Document, DocumentAttribute, StickerSet} from '@layer';
 import appDownloadManager from '@lib/appDownloadManager';
 import {AppManagers} from '@lib/managers';
-import lottieLoader from '@lib/rlottie/lottieLoader';
+import lottieLoader from '@lib/lottie/lottieLoader';
 import rootScope from '@lib/rootScope';
 import animationIntersector, {AnimationItemGroup} from '@components/animationIntersector';
 import LazyLoadQueue from '@components/lazyLoadQueue';

@@ -2,7 +2,7 @@ import {JSX, Ref, Show} from 'solid-js';
 
 import LottieAnimation from '@components/lottieAnimation';
 import classNames from '@helpers/string/classNames';
-import lottieLoader, {LottieAssetName} from '@lib/rlottie/lottieLoader';
+import lottieLoader, {LottieAssetName} from '@lib/lottie/lottieLoader';
 
 import styles from '@components/mediaHeader.module.scss';
 

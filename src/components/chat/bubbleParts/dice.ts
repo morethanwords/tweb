@@ -3,9 +3,9 @@ import type {MessageMedia, Document} from '@layer';
 import type {MyDocument} from '@lib/appManagers/appDocsManager';
 import type ChatBubbles from '@components/chat/bubbles';
 import {makeMediaSize} from '@helpers/mediaSize';
-import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import LottiePlayer from '@lib/lottie/lottiePlayer';
 import wrapSticker from '@components/wrappers/sticker';
-import lottieLoader from '@lib/rlottie/lottieLoader';
+import lottieLoader from '@lib/lottie/lottieLoader';
 
 export default function wrapDice(context: BubbleContext) {
   const {emoticon, value} = context.messageMedia as MessageMedia.messageMediaDice;
@@ -79,7 +79,7 @@ export default function wrapDice(context: BubbleContext) {
         doc: promise as Promise<MyDocument>,
         container: div,
         noFadeIn: shouldHide
-      }).then(({render}) => render as Promise<RLottiePlayer>);
+      }).then(({render}) => render as Promise<LottiePlayer>);
 
       // * keep frame the last child
       if(isSlotOption(index) || spinningIndexes.includes(index)) {
@@ -183,7 +183,7 @@ export default function wrapDice(context: BubbleContext) {
 
   if(unknown) {
     const loopedPlayerPromise = result.then(({render}) => {
-      return render as Promise<RLottiePlayer>;
+      return render as Promise<LottiePlayer>;
     });
 
     context.releaseDice = async(value) => {
@@ -199,7 +199,7 @@ export default function wrapDice(context: BubbleContext) {
         loop: false,
         withThumb: false,
         needFadeIn: false
-      }).then(({render}) => render as Promise<RLottiePlayer>);
+      }).then(({render}) => render as Promise<LottiePlayer>);
       await lottieLoader.waitForFirstFrame(player);
       if(!context.middleware()) return;
 

@@ -1,6 +1,6 @@
 import InputField from '@components/inputField';
-import lottieLoader from '@lib/rlottie/lottieLoader';
-import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import lottieLoader from '@lib/lottie/lottieLoader';
+import LottiePlayer from '@lib/lottie/lottiePlayer';
 import CodeInputFieldCompat from '@components/codeInputField';
 import {fastRaf} from '@helpers/schedulers';
 
@@ -10,8 +10,8 @@ export default class TrackingMonkey {
   protected max = 45;
   protected needFrame = 0;
 
-  protected animation: RLottiePlayer;
-  protected idleAnimation: RLottiePlayer;
+  protected animation: LottiePlayer;
+  protected idleAnimation: LottiePlayer;
 
   protected loadPromise: Promise<any>;
 

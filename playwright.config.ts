@@ -6,7 +6,7 @@ import {defineConfig, devices} from '@playwright/test';
 // OffscreenCanvas + the page compositor); jsdom/vitest can't render lottie at all, and a
 // self-contained worker would be a *dedicated* worker with different commit timing. So these run
 // against the actual dev server in a real browser. Lottie renders without login (the login page
-// itself plays .tgs animations), so a plain `vite` dev server is enough - no auth/seed needed.
+// itself plays .tgs animations), so a plain HTTP Vite preview is enough - no auth/seed needed.
 const PORT = 8099;
 
 export default defineConfig({
@@ -16,16 +16,15 @@ export default defineConfig({
   timeout: 60_000,
   reporter: [['list']],
   use: {
-    baseURL: `https://localhost:${PORT}/`, // tweb's dev server runs over https
-    ignoreHTTPSErrors: true, // self-signed dev cert
+    baseURL: `http://localhost:${PORT}/`,
     headless: true,
     viewport: {width: 800, height: 600}
   },
   projects: [{name: 'chromium', use: {...devices['Desktop Chrome']}}],
   webServer: {
     command: `pnpm exec vite --port ${PORT} --strictPort`,
-    url: `https://localhost:${PORT}/`,
-    ignoreHTTPSErrors: true,
+    url: `http://localhost:${PORT}/`,
+    env: {TWEB_PREVIEW: '1'},
     reuseExistingServer: !process.env.CI,
     timeout: 120_000
   }

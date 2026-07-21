@@ -63,7 +63,7 @@ import {AppImManager} from '@lib/appImManager';
 import I18n, {i18n, join} from '@lib/langPack';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
-import lottieLoader from '@lib/rlottie/lottieLoader';
+import lottieLoader from '@lib/lottie/lottieLoader';
 import {RootScope} from '@lib/rootScope';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import uiNotificationsManager from '@lib/uiNotificationsManager';

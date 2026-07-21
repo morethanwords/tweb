@@ -35,7 +35,7 @@ export type LogEntry = {
 };
 
 // Which context this module instance lives in. The MTProto SharedWorker is a
-// dedicated worker (IS_WEB_WORKER); leaf compute workers (crypto/rlottie/…) also
+// dedicated worker (IS_WEB_WORKER); leaf compute workers (crypto/lottie/…) also
 // match but their buffer is never collected, so the tag is only cosmetic there.
 export const SRC: LogSource = IS_SERVICE_WORKER ? 'sw' : IS_WEB_WORKER ? 'mtproto' : 'main';
 

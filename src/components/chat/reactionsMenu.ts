@@ -17,8 +17,8 @@ import {fastRaf} from '@helpers/schedulers';
 import {Message, AvailableReaction, Reaction, AvailableEffect, EmojiGroup} from '@layer';
 import {AppManagers} from '@lib/managers';
 import apiManagerProxy from '@lib/apiManagerProxy';
-import lottieLoader from '@lib/rlottie/lottieLoader';
-import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import lottieLoader from '@lib/lottie/lottieLoader';
+import LottiePlayer from '@lib/lottie/lottiePlayer';
 import rootScope from '@lib/rootScope';
 import animationIntersector, {AnimationItemGroup} from '@components/animationIntersector';
 import ButtonIcon from '@components/buttonIcon';
@@ -47,8 +47,8 @@ const CAN_USE_TRANSFORM = !IS_SAFARI;
 const SCALE_ON_HOVER = CAN_USE_TRANSFORM && false;
 
 type ChatReactionsMenuPlayers = {
-  select?: RLottiePlayer,
-  appear?: RLottiePlayer,
+  select?: LottiePlayer,
+  appear?: LottiePlayer,
   selectWrapper: HTMLElement,
   appearWrapper: HTMLElement,
   reaction: Reaction
@@ -567,7 +567,7 @@ export class ChatReactionsMenu {
         player.addEventListener('enterFrame', (frameNo) => {
           if(player.maxFrame === frameNo) {
             selectLoadPromise.then((selectPlayer) => {
-              assumeType<RLottiePlayer>(selectPlayer);
+              assumeType<LottiePlayer>(selectPlayer);
               appearWrapper.classList.add('hide');
               selectWrapper.classList.remove('hide');
 
@@ -616,14 +616,14 @@ export class ChatReactionsMenu {
         liteModeKey: false,
         ...options
       }).then(({render}) => render).then((player) => {
-        assumeType<RLottiePlayer>(player);
+        assumeType<LottiePlayer>(player);
 
         players.appear = player;
 
         player.addEventListener('enterFrame', (frameNo) => {
           if(player.maxFrame === frameNo) {
             selectLoadPromise.then((selectPlayer) => {
-              assumeType<RLottiePlayer>(selectPlayer);
+              assumeType<LottiePlayer>(selectPlayer);
               appearWrapper.classList.add('hide');
               selectWrapper.classList.remove('hide');
 
@@ -642,7 +642,7 @@ export class ChatReactionsMenu {
         liteModeKey: false,
         ...options
       }).then(({render}) => render).then((player) => {
-        assumeType<RLottiePlayer>(player);
+        assumeType<LottiePlayer>(player);
 
         return lottieLoader.waitForFirstFrame(player);
       }).catch(noop);

@@ -11,7 +11,7 @@ import {
   AppSpeakersAndCameraTab,
   getEditProfileInitArgs
 } from '@components/solidJsTabs';
-import lottieLoader from '@lib/rlottie/lottieLoader';
+import lottieLoader from '@lib/lottie/lottieLoader';
 import {AppDataAndStorageTab} from '@components/solidJsTabs/tabs';
 import ButtonIcon from '@components/buttonIcon';
 import rootScope from '@lib/rootScope';

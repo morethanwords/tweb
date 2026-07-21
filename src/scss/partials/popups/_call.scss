@@ -370,8 +370,8 @@
       // `filter: brightness(0)` clamps every non-transparent pixel to black
       // — matches the icon-font glyphs above without needing to touch the
       // Lottie palette logic in microphoneIconMini.
-      .rlottie,
-      .rlottie-icon {
+      .lottie,
+      .lottie-icon {
         filter: brightness(0);
       }
     }
@@ -465,7 +465,7 @@
       transition: opacity var(--transition-standard-in), transform var(--transition-standard-in);
     }
 
-    .rlottie-icon {
+    .lottie-icon {
       width: 1.875rem !important;
       height: 1.875rem !important;
       margin-right: .25rem;

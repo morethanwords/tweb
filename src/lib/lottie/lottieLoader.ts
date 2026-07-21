@@ -2,16 +2,20 @@ import animationIntersector from '@components/animationIntersector';
 import {MOUNT_CLASS_TO} from '@config/debug';
 import {bindActiveWindowListener, getAppWindow} from '@helpers/appWindow';
 import pause from '@helpers/schedulers/pause';
+import noop from '@helpers/noop';
 import {logger, LogTypes} from '@lib/logger';
-import RLottiePlayer, {RLottieOptions} from '@lib/rlottie/rlottiePlayer';
+import LottiePlayer, {LottieOptions} from '@lib/lottie/lottiePlayer';
 import blobConstruct from '@helpers/blob/blobConstruct';
 import apiManagerProxy from '@lib/apiManagerProxy';
-import IS_WEB_ASSEMBLY_SUPPORTED from '@environment/webAssemblySupport';
+import IS_WEB_ASSEMBLY_SIMD_SUPPORTED from '@environment/webAssemblySimdSupport';
 import makeError from '@helpers/makeError';
 import rootScope from '@lib/rootScope';
 import toArray from '@helpers/array/toArray';
-import rlottieMessagePort from '@lib/rlottie/rlottieMessagePort';
-import SHOULD_RENDER_OFFSCREEN from '@lib/rlottie/shouldRenderOffscreen';
+import lottieMessagePort from '@lib/lottie/lottieMessagePort';
+import SHOULD_RENDER_OFFSCREEN from '@lib/lottie/shouldRenderOffscreen';
+import tlottieWasmAssetUrl from '@vendor/tlottie/tlottie.wasm?url';
+
+const TLOTTIE_WASM_URL = new URL(tlottieWasmAssetUrl, location.href).href;
 
 export type LottieAssetName =
   | 'EmptyFolder'
@@ -59,11 +63,11 @@ export type LottieAssetName =
 ;
 
 export class LottieLoader {
-  private loadPromise: Promise<void> = !IS_WEB_ASSEMBLY_SUPPORTED ? Promise.reject(makeError('NO_WASM')) : undefined;
+  private loadPromise: Promise<void>;
   private loaded = false;
 
-  private players: {[reqId: number]: RLottiePlayer} = {};
-  private playersByCacheName: {[cacheName: string]: Set<RLottiePlayer>} = {};
+  private players: {[reqId: number]: LottiePlayer} = {};
+  private playersByCacheName: {[cacheName: string]: Set<LottiePlayer>} = {};
 
   private log = logger('LOTTIE', LogTypes.Error);
 
@@ -74,11 +78,11 @@ export class LottieLoader {
       }
     });
 
-    rlottieMessagePort.addEventListener('freeRunStopped', ({reqId, curFrame, error}) => {
+    lottieMessagePort.addEventListener('freeRunStopped', ({reqId, curFrame, error}) => {
       this.players[reqId]?.onFreeRunStopped(curFrame, error);
     });
 
-    rlottieMessagePort.addEventListener('freeRunEnded', ({reqId, curFrame}) => {
+    lottieMessagePort.addEventListener('freeRunEnded', ({reqId, curFrame}) => {
       this.players[reqId]?.onFreeRunEnded(curFrame);
     });
   }
@@ -111,6 +115,13 @@ export class LottieLoader {
   }
 
   public loadLottieWorkers() {
+    if(!IS_WEB_ASSEMBLY_SIMD_SUPPORTED) {
+      // This method is also used as a fire-and-forget preload. Unsupported
+      // browsers should stay on their static fallback without an unhandled
+      // rejection; actual animation loads still reject with NO_WASM below.
+      return Promise.resolve();
+    }
+
     if(this.loadPromise) {
       return this.loadPromise;
     }
@@ -120,14 +131,14 @@ export class LottieLoader {
 
   private async registerLottieWorkers() {
     await apiManagerProxy.registerThreadedWorker({
-      type: 'rlottie',
+      type: 'lottie',
       createWorker: () => {
         return new Worker(
-          new URL('./rlottie.worker.ts', import.meta.url),
+          new URL('./tlottie.worker.ts', import.meta.url),
           {type: 'module'}
         );
       },
-      superMessagePort: rlottieMessagePort
+      superMessagePort: lottieMessagePort
     });
 
     if(SHOULD_RENDER_OFFSCREEN) {
@@ -135,7 +146,7 @@ export class LottieLoader {
       // hidden. Follow the active window: while popped out into a Document PiP window the PiP stays
       // visible, so the players must keep running even though the tab we left is hidden.
       bindActiveWindowListener((w) => w.document, 'visibilitychange', () => {
-        rlottieMessagePort.suspendAllTabPlayers(getAppWindow().document.hidden);
+        lottieMessagePort.suspendAllTabPlayers(getAppWindow().document.hidden);
       });
     }
   }
@@ -144,19 +155,19 @@ export class LottieLoader {
     return 'assets/tgs/' + name + '.json';
   }
 
-  public loadAnimationAsAsset(params: Omit<RLottieOptions, 'animationData' | 'name'>, name: LottieAssetName) {
-    // (params as RLottieOptions).name = name;
+  public loadAnimationAsAsset(params: Omit<LottieOptions, 'animationData' | 'name'>, name: LottieAssetName) {
+    // (params as LottieOptions).name = name;
     return this.loadAnimationFromURL(params, this.makeAssetUrl(name));
   }
 
   public loadAnimationDataFromURL(url: string, method: 'json'): Promise<any>;
   public loadAnimationDataFromURL(url: string, method?: 'blob'): Promise<Blob>;
   public loadAnimationDataFromURL(url: string, method: 'json' | 'blob' = 'blob'): Promise<Blob | any> {
-    if(!IS_WEB_ASSEMBLY_SUPPORTED) {
-      return this.loadPromise as any;
+    if(!IS_WEB_ASSEMBLY_SIMD_SUPPORTED) {
+      return Promise.reject(makeError('NO_WASM'));
     }
 
-    this.loadLottieWorkers();
+    this.loadLottieWorkers().catch(noop);
 
     return fetch(url)
     .then((res) => {
@@ -176,39 +187,43 @@ export class LottieLoader {
   public loadAnimationFromURLManually(name: LottieAssetName) {
     const url = this.makeAssetUrl(name);
     return this.loadAnimationDataFromURL(url).then((blob) => {
-      return (params: Omit<RLottieOptions, 'animationData'>) => this.loadAnimationFromURLNext(blob, params, url);
+      return (params: Omit<LottieOptions, 'animationData'>) => this.loadAnimationFromURLNext(blob, params, url);
     });
   }
 
-  public loadAnimationFromURL(params: Omit<RLottieOptions, 'animationData'>, url: string) {
+  public loadAnimationFromURL(params: Omit<LottieOptions, 'animationData'>, url: string) {
     return this.loadAnimationDataFromURL(url).then((blob) => {
       return this.loadAnimationFromURLNext(blob, params, url);
     });
   }
 
-  public loadAnimationFromURLNext(blob: Blob, params: Omit<RLottieOptions, 'animationData'>, url: string) {
+  public loadAnimationFromURLNext(blob: Blob, params: Omit<LottieOptions, 'animationData'>, url: string) {
     const newParams = Object.assign(params, {animationData: blob, needUpscale: true});
     newParams.name ||= url;
     return this.loadAnimationWorker(newParams);
   }
 
-  public waitForFirstFrame(player: RLottiePlayer) {
-    return Promise.race([
-      /* new Promise<void>((resolve) => {
-        player.addEventListener('firstFrame', () => {
-          setTimeout(() => resolve(), 1500);
-        }, true);
-      }) */
+  public waitForFirstFrame(player: LottiePlayer) {
+    if(player.hasFailed) {
+      return Promise.reject(player.error);
+    }
+
+    const firstFrameOrError = Promise.race([
       new Promise<void>((resolve) => {
         player.addEventListener('firstFrame', resolve, {once: true});
       }),
+      new Promise<void>((resolve, reject) => {
+        player.addEventListener('error', reject, {once: true});
+      }),
       pause(2500)
-    ]).then(() => player);
+    ]);
+
+    return Promise.all([player.loadPromise, firstFrameOrError]).then(() => player);
   }
 
-  public async loadAnimationWorker(params: RLottieOptions): Promise<RLottiePlayer> {
-    if(!IS_WEB_ASSEMBLY_SUPPORTED) {
-      return this.loadPromise as any;
+  public async loadAnimationWorker(params: LottieOptions): Promise<LottiePlayer> {
+    if(!IS_WEB_ASSEMBLY_SIMD_SUPPORTED) {
+      throw makeError('NO_WASM');
     }
 
     if(!this.loaded) {
@@ -221,7 +236,7 @@ export class LottieLoader {
     }
 
     if(params.sync) {
-      const cacheName = RLottiePlayer.CACHE.generateName(
+      const cacheName = LottiePlayer.CACHE.generateName(
         params.name,
         params.width,
         params.height,
@@ -293,19 +308,19 @@ export class LottieLoader {
   }
 
   public destroyWorkers() {
-    if(!IS_WEB_ASSEMBLY_SUPPORTED) {
+    if(!IS_WEB_ASSEMBLY_SIMD_SUPPORTED) {
       return;
     }
 
-    rlottieMessagePort.terminateAll();
+    lottieMessagePort.terminateAll();
 
     this.log('workers destroyed');
     this.loaded = false;
     this.loadPromise = undefined;
   }
 
-  private initPlayer(el: RLottiePlayer['el'], options: RLottieOptions) {
-    const player = new RLottiePlayer({
+  private initPlayer(el: LottiePlayer['el'], options: LottieOptions) {
+    const player = new LottiePlayer({
       el,
       options
     });
@@ -319,7 +334,7 @@ export class LottieLoader {
       playersByCacheName.add(player);
     }
 
-    // an offscreen-load failure downgrades to legacy and mints a fresh reqId (rlottiePlayer.loadFromData
+    // an offscreen-load failure downgrades to legacy and mints a fresh reqId (lottiePlayer.loadFromData
     // fallback); re-key so freeRunStopped/freeRunEnded for the new id still reach this player
     player.addEventListener('reqIdChanged', ({previousReqId, reqId: newReqId}) => {
       delete this.players[previousReqId];
@@ -334,7 +349,15 @@ export class LottieLoader {
       }
     });
 
-    player.loadFromData(options.animationData);
+    player.addEventListener('error', (err) => {
+      this.log.error('animation failed', err);
+      animationIntersector.removeAnimationByPlayer(player);
+      player.remove();
+    });
+
+    const loadPromise = player.loadFromData(options.animationData, TLOTTIE_WASM_URL);
+    player.loadPromise = loadPromise;
+    loadPromise.catch((err: unknown) => player.fail(err));
 
     return player;
   }

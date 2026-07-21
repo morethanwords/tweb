@@ -28,6 +28,7 @@ import ServiceMessagePort from '@lib/serviceWorker/serviceMessagePort';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import {makeWorkerURL} from '@helpers/setWorkerProxy';
 import ServiceWorkerURL from '../../sw?worker&url';
+import MainWorkerURL from './mainWorker/index.worker.ts?worker&url';
 import setDeepProperty, {joinDeepPath, splitDeepPath} from '@helpers/object/setDeepProperty';
 import getThumbKey from '@lib/storages/utils/thumbs/getThumbKey';
 import {NULL_PEER_ID, TEST_NO_STREAMING, THUMB_TYPE_FULL} from '@appManagers/constants';
@@ -65,7 +66,11 @@ import appNavigationController from '@components/appNavigationController';
 import {BroadcastChannelWrapper, createBroadcastChannelWrapper} from './broadcastChannelWrapper';
 import {MainBroadcastChannelEvents, unversionedMainBroadcastChannelName} from '@config/broadcastChannel';
 import {CacheStorageThreadedControls, createCacheStorageThreadedControls} from './apiManagerProxyUtils';
-import type {ThreadedWorkerType} from '@lib/appManagers/appManagersManager';
+import {
+  THREADED_WORKER_PROTOCOL_QUERY_PARAM,
+  THREADED_WORKER_PROTOCOL_VERSION,
+  type ThreadedWorkerType
+} from '@lib/threadedWorkerTypes';
 
 
 export type Mirrors = {
@@ -808,11 +813,6 @@ class ApiManagerProxy extends MTProtoMessagePort {
         const pre = location.origin + pathnameSplitted.join('/');
         text = text.replace(/(import (?:.+? from )?['"])\//g, '$1' + pre);
 
-        // * fix wasm url
-        if(type === 'rlottie') {
-          text = text.replace(/(rlottie-wasm\.wasm)/, pre + '$1');
-        }
-
         const blob = new Blob([text], {type: 'application/javascript'});
         return blob;
       });
@@ -844,10 +844,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
       superMessagePort,
       type
     );
-    // Safari silently wedges a {type:'module'} SharedWorker used for rlottie sticker decoding:
+    // Safari silently wedges a {type:'module'} SharedWorker used for lottie sticker decoding:
     // frames never arrive, no error is thrown, and every sticker canvas stays blank (never appended).
-    // Keep MTProto/crypto on the shared worker, but hand the rlottie pool per-tab dedicated Workers.
-    const constructor = IS_SHARED_WORKER_SUPPORTED && !(IS_SAFARI && type === 'rlottie') ? SharedWorker : Worker;
+    // Keep MTProto/crypto on the shared worker, but hand the lottie pool per-tab dedicated Workers.
+    const constructor = IS_SHARED_WORKER_SUPPORTED && !(IS_SAFARI && type === 'lottie') ? SharedWorker : Worker;
 
     superMessagePort.addEventListener('port', (payload, source, event) => {
       this.invokeVoid('threadedPort', type, undefined, [event.ports[0]]);
@@ -906,16 +906,20 @@ class ApiManagerProxy extends MTProtoMessagePort {
       return;
     }
 
+    // Importing the worker URL keeps this entrypoint inside Vite's worker pipeline;
+    // constructing a URL dynamically here would emit the source .ts file unchanged.
+    const workerUrl = makeWorkerURL(MainWorkerURL);
+    workerUrl.searchParams.set(THREADED_WORKER_PROTOCOL_QUERY_PARAM, THREADED_WORKER_PROTOCOL_VERSION + '');
     let worker: SharedWorker | Worker;
     if(IS_SHARED_WORKER_SUPPORTED) {
       worker = new SharedWorker(
-        new URL('./mainWorker/index.worker.ts', import.meta.url),
+        workerUrl,
         {type: 'module'}
       );
       this.closeMTProtoWorker = () => (worker as SharedWorker).port.close();
     } else {
       worker = new Worker(
-        new URL('./mainWorker/index.worker.ts', import.meta.url),
+        workerUrl,
         {type: 'module'}
       );
       this.closeMTProtoWorker = () => (worker as Worker).terminate();

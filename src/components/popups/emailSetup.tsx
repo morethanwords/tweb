@@ -6,7 +6,7 @@ import {createEffect, createSignal, onCleanup, onMount, Ref, Show} from 'solid-j
 
 import styles from '@components/popups/emailSetup.module.scss';
 import LottieAnimation from '@components/lottieAnimation';
-import lottieLoader from '@lib/rlottie/lottieLoader';
+import lottieLoader from '@lib/lottie/lottieLoader';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {InputFieldTsx} from '@components/inputFieldTsx';
 import {LangPackKey} from '@lib/langPack';
@@ -110,7 +110,7 @@ export function EnterEmailStep(props: {
         name="Mailbox"
         size={120}
         restartOnClick
-        rlottieOptions={{
+        lottieOptions={{
           loop: false,
           autoplay: true
         }}
@@ -222,7 +222,7 @@ export function EnterCodeStep(props: {
         name="LoveLetter"
         size={120}
         restartOnClick
-        rlottieOptions={{
+        lottieOptions={{
           loop: false,
           autoplay: true
         }}

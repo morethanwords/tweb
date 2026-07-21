@@ -50,7 +50,7 @@ import {StarGiftUpgradePreview} from '@appManagers/appGiftsManager';
 import {rgbIntToHex} from '@helpers/color';
 import wrapSticker from '@components/wrappers/sticker';
 import createMiddleware from '@helpers/solid/createMiddleware';
-import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import LottiePlayer from '@lib/lottie/lottiePlayer';
 import {SimpleAnimation} from '@helpers/solid/animations';
 import BezierEasing from '@vendor/bezierEasing';
 import {AnimatedSuper} from '@components/animatedSuper';
@@ -250,7 +250,7 @@ function UpgradeAnimation(props: {
   onMount(async() => {
     const middleware = createMiddleware();
 
-    let lastPlayer: RLottiePlayer;
+    let lastPlayer: LottiePlayer;
     await Promise.all(models.map(async(model, idx) => {
       const div = document.createElement('div');
       const isLast = idx === models.length - 1;
@@ -270,7 +270,7 @@ function UpgradeAnimation(props: {
         middleware: middleware.get()
       }).then(({render}) => render).then((player) => {
         if(isLast) {
-          lastPlayer = player as RLottiePlayer;
+          lastPlayer = player as LottiePlayer;
         }
       });
     }));

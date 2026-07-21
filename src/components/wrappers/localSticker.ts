@@ -1,8 +1,8 @@
 import {Middleware} from '@helpers/middleware';
 import {MyDocument} from '@appManagers/appDocsManager';
 import {AppManagers} from '@lib/managers';
-import lottieLoader, {LottieAssetName} from '@lib/rlottie/lottieLoader';
-import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import lottieLoader, {LottieAssetName} from '@lib/lottie/lottieLoader';
+import LottiePlayer from '@lib/lottie/lottiePlayer';
 import rootScope from '@lib/rootScope';
 import wrapSticker from '@components/wrappers/sticker';
 
@@ -32,7 +32,7 @@ export default async function wrapLocalSticker({
   container ||= document.createElement('div');
   container.classList.add('media-sticker-wrapper');
 
-  let playerPromise: Promise<RLottiePlayer>;
+  let playerPromise: Promise<LottiePlayer>;
   if(assetName) {
     playerPromise = lottieLoader.loadAnimationAsAsset({
       container,
@@ -58,7 +58,7 @@ export default async function wrapLocalSticker({
       managers,
       middleware
     }).then((result) => {
-      return result.render as Promise<RLottiePlayer>;
+      return result.render as Promise<LottiePlayer>;
     });
   }
 

@@ -1,4 +1,4 @@
-import lottieLoader from '@lib/rlottie/lottieLoader';
+import lottieLoader from '@lib/lottie/lottieLoader';
 import {EmoticonsDropdown} from '..';
 import findUpClassName from '@helpers/dom/findUpClassName';
 import mediaSizes from '@helpers/mediaSizes';

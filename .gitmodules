@@ -1,9 +1,6 @@
 [submodule "src/opus-recorder"]
 	path = src/opus-recorder
 	url = https://github.com/morethanwords/opus-recorder.git
-[submodule "src/rlottie-web"]
-	path = src/rlottie-web
-	url = https://github.com/morethanwords/rlottie-web
 [submodule "src/solid"]
 	path = src/solid
 	url = https://github.com/morethanwords/solid

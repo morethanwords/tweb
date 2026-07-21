@@ -1,6 +1,6 @@
-import {SuperRLottieIcon} from '@components/superIcon';
+import {SuperLottieIcon} from '@components/superIcon';
 
-export default class GroupCallMicrophoneIconMini extends SuperRLottieIcon<{
+export default class GroupCallMicrophoneIconMini extends SuperLottieIcon<{
   PartState: boolean,
   ColorState: boolean,
   Items: {

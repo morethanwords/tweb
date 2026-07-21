@@ -5,7 +5,7 @@ import {Message, MessageMedia} from '@layer';
 import appImManager from '@lib/appImManager';
 import I18n, {FormatterArguments, LangPackKey, i18n, join} from '@lib/langPack';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
-import {LottieAssetName} from '@lib/rlottie/lottieLoader';
+import {LottieAssetName} from '@lib/lottie/lottieLoader';
 import rootScope from '@lib/rootScope';
 import {getCountryEmoji} from '@vendor/emoji';
 import AppSelectPeers from '@components/appSelectPeers';

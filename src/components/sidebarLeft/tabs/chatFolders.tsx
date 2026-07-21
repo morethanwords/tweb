@@ -1,7 +1,7 @@
 import {Component, createSignal, onMount} from 'solid-js';
 import type {MyDialogFilter} from '@lib/storages/filters';
 import type {DialogFilter, DialogFilterSuggested} from '@layer';
-import {LottieLoader} from '@lib/rlottie/lottieLoader';
+import {LottieLoader} from '@lib/lottie/lottieLoader';
 import Button from '@components/buttonTsx';
 import rootScope from '@lib/rootScope';
 import Row from '@components/row';
@@ -10,7 +10,7 @@ import {i18n, LangPackKey, join} from '@lib/langPack';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import positionElementByIndex from '@helpers/dom/positionElementByIndex';
-import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import LottiePlayer from '@lib/lottie/lottiePlayer';
 import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '@appManagers/constants';
 import replaceContent from '@helpers/dom/replaceContent';
 import Sortable from '@helpers/dom/sortable';
@@ -33,7 +33,7 @@ const ChatFolders: Component = () => {
   const p = tab.payload;
 
   const filtersRendered: {[filterId: number]: Row} = {};
-  let animation: RLottiePlayer;
+  let animation: LottiePlayer;
   let loadAnimationPromise: ReturnType<LottieLoader['waitForFirstFrame']>;
 
   let stickerContainer!: HTMLDivElement;

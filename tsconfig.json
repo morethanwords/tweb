@@ -62,7 +62,6 @@
       "@richTextProcessor/*": ["./src/lib/richTextProcessor/*"],
       "@environment/*": ["./src/environment/*"],
       "@customEmoji/*": ["./src/lib/customEmoji/*"],
-      "@rlottie/*": ["./src/lib/rlottie/*"],
       "@config/*": ["./src/config/*"],
       "@vendor/*": ["./src/vendor/*"],
       "@layer": ["./src/layer.d.ts"],
@@ -116,7 +115,6 @@
     "src/vendor/**/*.js",
     "*.js",
     "*.cjs",
-    "tweb-design",
-    "rlottie_with_printf"
+    "tweb-design"
   ]
 }

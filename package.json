@@ -7,7 +7,7 @@
     "preinstall": "npx only-allow pnpm",
     "start": "vite",
     "start-in-docker": "vite --host",
-    "serve": "pnpm run build; node server.js",
+    "serve": "pnpm run build && node server.js --dist",
     "build": "pnpm run generate-changelog && vite build",
     "test": "vitest",
     "test:lottie": "playwright test",

@@ -14,7 +14,7 @@ import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
 import replaceContent from '@helpers/dom/replaceContent';
 import {HelpCountry, HelpCountryCode} from '@layer';
 import I18n, {i18n} from '@lib/langPack';
-import lottieLoader from '@lib/rlottie/lottieLoader';
+import lottieLoader from '@lib/lottie/lottieLoader';
 import AccountController from '@lib/accounts/accountController';
 import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
 import commonStateStorage from '@lib/commonStateStorage';

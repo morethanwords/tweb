@@ -1,38 +1,38 @@
 import liteMode from '@helpers/liteMode';
 import noop from '@helpers/noop';
 import safeAssign from '@helpers/object/safeAssign';
-import lottieLoader, {LottieAssetName} from '@lib/rlottie/lottieLoader';
-import type RLottiePlayer from '@lib/rlottie/rlottiePlayer';
-import {RLottieColor} from '@lib/rlottie/rlottiePlayer';
+import lottieLoader, {LottieAssetName} from '@lib/lottie/lottieLoader';
+import type LottiePlayer from '@lib/lottie/lottiePlayer';
+import {LottieColor} from '@lib/lottie/lottiePlayer';
 
-export type RLottieIconOptions = {
+export type LottieIconOptions = {
   width: number,
   height: number,
   container?: HTMLElement,
   skipAnimation?: boolean
 };
 
-export type RLottieIconItemPartOptions = {
+export type LottieIconItemPartOptions = {
   startFrame: number,
   endFrame: number,
   name?: string
 };
 
-export type RLottieIconItemOptions = {
+export type LottieIconItemOptions = {
   name: LottieAssetName,
-  parts: RLottieIconItemPartOptions[],
+  parts: LottieIconItemPartOptions[],
   initFrame?: number,
-  player?: RLottiePlayer,
+  player?: LottiePlayer,
   autoplay?: boolean,
-  color?: RLottieColor
+  color?: LottieColor
 };
 
-export class RLottieIconItemPart implements RLottieIconItemPartOptions {
+export class LottieIconItemPart implements LottieIconItemPartOptions {
   public startFrame: number;
   public endFrame: number;
   public name?: string;
 
-  constructor(public item: RLottieIconItem, options: RLottieIconItemPartOptions) {
+  constructor(public item: LottieIconItem, options: LottieIconItemPartOptions) {
     safeAssign(this, options);
   }
 
@@ -41,20 +41,20 @@ export class RLottieIconItemPart implements RLottieIconItemPartOptions {
   }
 }
 
-// export type RLottieIconItemPart = RLottieIconItemPartOptions;
+// export type LottieIconItemPart = LottieIconItemPartOptions;
 
-export class RLottieIconItem implements RLottieIconItemOptions {
+export class LottieIconItem implements LottieIconItemOptions {
   public name: LottieAssetName;
-  public parts: RLottieIconItemPart[];
-  public player: RLottiePlayer;
+  public parts: LottieIconItemPart[];
+  public player: LottiePlayer;
   public initFrame: number;
   public autoplay: boolean;
-  public color: RLottieColor;
+  public color: LottieColor;
   public loadPromise: Promise<void>;
   public onLoadForPart: () => void;
   public onLoadForColor: () => void;
 
-  constructor(public icon: RLottieIcon, options: RLottieIconItemOptions) {
+  constructor(public icon: LottieIcon, options: LottieIconItemOptions) {
     this.autoplay = false;
 
     safeAssign(this, options);
@@ -101,44 +101,44 @@ export class RLottieIconItem implements RLottieIconItemOptions {
     return loadPromise;
   }
 
-  public createPart(options: RLottieIconItemPartOptions) {
-    return new RLottieIconItemPart(this, options);
+  public createPart(options: LottieIconItemPartOptions) {
+    return new LottieIconItemPart(this, options);
   }
 
-  public getPart(index: string | number | RLottieIconItemPart) {
-    if(index instanceof RLottieIconItemPart) return index;
+  public getPart(index: string | number | LottieIconItemPart) {
+    if(index instanceof LottieIconItemPart) return index;
     else if(typeof(index) === 'string') return this.parts.find((part) => part.name === index);
     else return this.parts[index];
   }
 
-  public playPart(part: RLottieIconItemPart, callback?: () => void) {
+  public playPart(part: LottieIconItemPart, callback?: () => void) {
     return this.icon.playPart(this, part, callback);
   }
 }
 
-export default class RLottieIcon {
+export default class LottieIcon {
   public container: HTMLElement;
   public canvas: HTMLCanvasElement;
   public width: number;
   public height: number;
 
-  protected items: Map<LottieAssetName, RLottieIconItem>;
+  protected items: Map<LottieAssetName, LottieIconItem>;
   public loadPromises: Map<LottieAssetName, Promise<void>>;
 
   protected skipAnimation: boolean;
 
-  constructor(options: RLottieIconOptions) {
+  constructor(options: LottieIconOptions) {
     safeAssign(this, options);
 
     if(!this.container) this.container = document.createElement('div');
-    this.container.classList.add('rlottie-icon');
+    this.container.classList.add('lottie-icon');
 
     const {width, height} = this;
     this.container.style.width = width + 'px';
     this.container.style.height = height + 'px';
 
     const canvas = this.canvas = document.createElement('canvas');
-    canvas.classList.add('rlottie');
+    canvas.classList.add('lottie');
     canvas.width = width;
     canvas.height = height;
 
@@ -150,18 +150,18 @@ export default class RLottieIcon {
     return Promise.all([...this.loadPromises.values()]).then(noop);
   }
 
-  public getItem(name?: LottieAssetName): RLottieIconItem {
+  public getItem(name?: LottieAssetName): LottieIconItem {
     return !name && this.items.size === 1 ? this.items.values().next().value : this.items.get(name);
   }
 
-  public add(options: Omit<RLottieIconItemOptions, 'player'>) {
-    const item = new RLottieIconItem(this, options);
+  public add(options: Omit<LottieIconItemOptions, 'player'>) {
+    const item = new LottieIconItem(this, options);
     this.items.set(options.name, item);
 
     return item;
   }
 
-  public playPart(item: RLottieIconItem, index: Parameters<RLottieIconItem['getPart']>[0], callback?: () => void) {
+  public playPart(item: LottieIconItem, index: Parameters<LottieIconItem['getPart']>[0], callback?: () => void) {
     if(!item.player) {
       item.onLoadForPart = () => {
         this.playPart(item, index, callback);
@@ -178,7 +178,7 @@ export default class RLottieIcon {
     });
   }
 
-  /* public playToPart(item: RLottieIconItem, index: Parameters<RLottieIconItem['getPart']>[0], toEnd: boolean) {
+  /* public playToPart(item: LottieIconItem, index: Parameters<LottieIconItem['getPart']>[0], toEnd: boolean) {
     if(!item.player) return;
     const part = item.getPart(index);
     const toFrame = toEnd ? part.endFrame : part.startFrame;
@@ -187,7 +187,7 @@ export default class RLottieIcon {
     });
   } */
 
-  public static generateEqualParts(length: number, frameCount: number): RLottieIconItemPartOptions[] {
+  public static generateEqualParts(length: number, frameCount: number): LottieIconItemPartOptions[] {
     return new Array(length).fill(0).map((_, idx) => {
       const startFrame = idx * frameCount;
       return {startFrame, endFrame: startFrame + frameCount - 1};

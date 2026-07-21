@@ -10,7 +10,7 @@ import Animated from '@helpers/solid/animations';
 import windowSize from '@helpers/windowSize';
 import {EmojiGroup, StickerSet} from '@layer';
 import {AppManagers} from '@lib/managers';
-import lottieLoader from '@lib/rlottie/lottieLoader';
+import lottieLoader from '@lib/lottie/lottieLoader';
 import {LangPackKey, i18n} from '@lib/langPack';
 import {AnyFunction} from '@types';
 import {createSignal, createMemo, createResource, createEffect, untrack} from 'solid-js';

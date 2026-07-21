@@ -1,6 +1,6 @@
 import {Component} from 'solid-js';
 import classNames from '@helpers/string/classNames';
-import type {LottieAssetName} from '@lib/rlottie/lottieLoader';
+import type {LottieAssetName} from '@lib/lottie/lottieLoader';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import LottieAnimationBase from '@components/lottieAnimation';
 import styles from '@components/settingsTabLottieAnimation.module.scss';

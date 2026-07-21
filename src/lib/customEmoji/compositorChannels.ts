@@ -1,5 +1,5 @@
 import compositorMessagePort from '@lib/customEmoji/compositorMessagePort';
-import rlottieMessagePort from '@lib/rlottie/rlottieMessagePort';
+import lottieMessagePort from '@lib/lottie/lottieMessagePort';
 
 let compositorWorker: Worker;
 const mintedDecodeChannels: Set<number> = new Set();
@@ -25,5 +25,5 @@ export const ensureDecodeChannel = (workerId: number) => {
   mintedDecodeChannels.add(workerId);
   const channel = new MessageChannel();
   compositorMessagePort.invokeCompositorVoid('decodePort', {workerId}, [channel.port1]);
-  rlottieMessagePort.invokeRLottieVoid(workerId, 'compositorPort', undefined as any, [channel.port2]);
+  lottieMessagePort.invokeLottieVoid(workerId, 'compositorPort', undefined as any, [channel.port2]);
 };

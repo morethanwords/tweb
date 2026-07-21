@@ -256,7 +256,7 @@
   --monospace-text-color: var(--danger-color);
   --backdrop-opacity: .85;
   --menu-background-color: rgba(var(--surface-color-rgb), var(--backdrop-opacity));
-  --rlottie-vector-fill: rgba(0, 0, 0, #{$hover-alpha});
+  --lottie-vector-fill: rgba(0, 0, 0, #{$hover-alpha});
   --limit-line-empty-background: #F1F3F5;
   --old-input-background-color: #F1F3F5;
   --premium-color: #9275ff;
@@ -308,7 +308,7 @@
   --spoiler-draft-background-color: #484848;
   --monospace-text-color: var(--primary-text-color);
   --menu-background-color: rgba(var(--surface-color-rgb), .75);
-  --rlottie-vector-fill: var(--light-secondary-text-color);
+  --lottie-vector-fill: var(--light-secondary-text-color);
   --limit-line-empty-background: var(--light-filled-secondary-text-color);
   --old-input-background-color: var(--background-color);
 
@@ -1008,7 +1008,7 @@ not screen and (                min-resolution: 2dppx) {
     margin-inline-end: 0;
   } */
 
-  /* > img, > .rlottie {
+  /* > img, > .lottie {
     position: absolute;
     left: 0;
     top: 0;
@@ -1211,7 +1211,7 @@ middle-ellipsis-element {
   }
 }
 
-.rlottie {
+.lottie {
   &,
   &-vector {
     left: 0;
@@ -1231,7 +1231,7 @@ middle-ellipsis-element {
   }
 
   &-vector {
-    fill: var(--rlottie-vector-fill);
+    fill: var(--lottie-vector-fill);
   }
 
   &.fade-in {

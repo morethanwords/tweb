@@ -8,7 +8,7 @@ import SetTransition from '@components/singleTransition';
 import StackedAvatars from '@components/stackedAvatars';
 import wrapSticker from '@components/wrappers/sticker';
 import wrapStickerAnimation from '@components/wrappers/stickerAnimation';
-import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import LottiePlayer from '@lib/lottie/lottiePlayer';
 import {fastRaf} from '@helpers/schedulers';
 import {Middleware} from '@helpers/middleware';
 import liteMode from '@helpers/liteMode';
@@ -19,7 +19,7 @@ import deferredPromise from '@helpers/cancellablePromise';
 import callbackifyAll from '@helpers/callbackifyAll';
 import BezierEasing from '@vendor/bezierEasing';
 import safePlay from '@helpers/dom/safePlay';
-import lottieLoader, {LottieAssetName} from '@lib/rlottie/lottieLoader';
+import lottieLoader, {LottieAssetName} from '@lib/lottie/lottieLoader';
 import Scrollable from '@components/scrollable';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import {savedReactionTags} from '@components/chat/reactions';
@@ -635,7 +635,7 @@ export default class ReactionElement extends HTMLElement {
         loop: isGenericMasked,
         noOffscreen: true // this player's consumer grabs contexts[0], re-parents canvas[0] and installs overrideRender post-load
         // static: isGenericMasked || undefined
-      }).then(({render}) => render as Promise<RLottiePlayer>);
+      }).then(({render}) => render as Promise<LottiePlayer>);
 
       return Promise.all([
         genericEffect ?

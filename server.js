@@ -11,6 +11,8 @@ const forcePort = process.argv[3];
 const useHttp = process.argv[4] !== 'https';
 
 const publicFolderName = thirdTour ? 'public3' : 'public';
+const serveDist = process.argv.includes('--dist');
+const indexFolderName = serveDist ? 'dist' : publicFolderName;
 const port = forcePort ? +forcePort : (thirdTour ? 8443 : 80);
 
 app.set('etag', false);
@@ -19,10 +21,13 @@ app.use((req, res, next) => {
   next();
 });
 app.use(compression());
+if(serveDist) {
+  app.use(express.static('dist'));
+}
 app.use(express.static(publicFolderName));
 
 app.get('/', (req, res) => {
-  res.sendFile(__dirname + `/${publicFolderName}/index.html`);
+  res.sendFile(__dirname + `/${indexFolderName}/index.html`);
 });
 
 const server = useHttp ? http : https;
@@ -34,5 +39,5 @@ if(!useHttp) {
 }
 
 server.createServer(options, app).listen(port, () => {
-  console.log('Listening port:', port, 'folder:', publicFolderName);
+  console.log('Listening port:', port, 'folder:', indexFolderName);
 });

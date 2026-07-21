@@ -22,7 +22,7 @@ import {MOUNT_CLASS_TO} from '@config/debug';
 import PeerTitle, {changeTitleEmojiColor} from '@components/peerTitle';
 import I18n, {FormatterArguments, i18n, LangPackKey, _i18n} from '@lib/langPack';
 import findUpTag from '@helpers/dom/findUpTag';
-import lottieLoader from '@rlottie/lottieLoader';
+import lottieLoader from '@lib/lottie/lottieLoader';
 import wrapPhoto from '@components/wrappers/photo';
 import {AppEditFolderTab} from '@components/solidJsTabs/tabs';
 import appSidebarLeft from '@components/sidebarLeft';

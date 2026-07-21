@@ -1,20 +1,20 @@
 import noop from '@helpers/noop';
 import safeAssign from '@helpers/object/safeAssign';
-import {LottieAssetName} from '@lib/rlottie/lottieLoader';
-import RLottieIcon, {RLottieIconItemPartOptions, RLottieIconItemPart} from '@lib/rlottie/rlottieIcon';
-import {RLottieColor} from '@lib/rlottie/rlottiePlayer';
+import {LottieAssetName} from '@lib/lottie/lottieLoader';
+import LottieIcon, {LottieIconItemPartOptions, LottieIconItemPart} from '@lib/lottie/lottieIcon';
+import {LottieColor} from '@lib/lottie/lottiePlayer';
 
-export type SuperRLottieIconAddItemOptions = {name: LottieAssetName, parts: RLottieIconItemPartOptions};
-export type SuperRLottieIconGetInfoResult = RLottieIconItemPart;
-export class SuperRLottieIcon<Options extends {
+export type SuperLottieIconAddItemOptions = {name: LottieAssetName, parts: LottieIconItemPartOptions};
+export type SuperLottieIconGetInfoResult = LottieIconItemPart;
+export class SuperLottieIcon<Options extends {
   PartState: any,
   ColorState?: any,
   Items?: {
     name: string
   }[]
-}> extends RLottieIcon {
-  protected getPart: (state: Options['PartState'], prevState?: Options['PartState']) => SuperRLottieIconGetInfoResult;
-  protected getColor?: (state: Options['ColorState'], prevState?: Options['ColorState']) => RLottieColor;
+}> extends LottieIcon {
+  protected getPart: (state: Options['PartState'], prevState?: Options['PartState']) => SuperLottieIconGetInfoResult;
+  protected getColor?: (state: Options['ColorState'], prevState?: Options['ColorState']) => LottieColor;
 
   protected partState: Options['PartState'];
   protected colorState: Options['ColorState'];
@@ -24,8 +24,8 @@ export class SuperRLottieIcon<Options extends {
     width: number,
     height: number,
     skipAnimation?: boolean,
-    getPart: (state: Options['PartState'], prevState?: Options['PartState']) => SuperRLottieIconGetInfoResult,
-    getColor?: (state: Options['ColorState'], prevState?: Options['ColorState']) => RLottieColor,
+    getPart: (state: Options['PartState'], prevState?: Options['PartState']) => SuperLottieIconGetInfoResult,
+    getColor?: (state: Options['ColorState'], prevState?: Options['ColorState']) => LottieColor,
   }) {
     super({
       width: options.width,

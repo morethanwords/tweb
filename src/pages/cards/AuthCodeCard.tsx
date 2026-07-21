@@ -19,8 +19,8 @@ import tsNow from '@helpers/tsNow';
 import {AuthSentCode, AuthSentCodeType, AuthSignIn} from '@layer';
 import {LangPackKey, i18n} from '@lib/langPack';
 import setBlankToAnchor from '@lib/richTextProcessor/setBlankToAnchor';
-import lottieLoader from '@lib/rlottie/lottieLoader';
-import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import lottieLoader from '@lib/lottie/lottieLoader';
+import LottiePlayer from '@lib/lottie/lottiePlayer';
 import ctx from '@environment/ctx';
 
 import AuthCard from '@/pages/AuthCard';
@@ -60,7 +60,7 @@ export default function AuthCodeCard(props: {spec: Spec}) {
   const stickerSize = mediaSizes.isMobile ? 100 : 130;
 
   let monkey: TrackingMonkey | undefined;
-  let player: RLottiePlayer | undefined;
+  let player: LottiePlayer | undefined;
   let resetEmailTimer: number | undefined;
 
   const codeInputErrorLabel = document.createElement('div');

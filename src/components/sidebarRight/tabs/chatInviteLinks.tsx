@@ -12,7 +12,7 @@ import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUserna
 import {LangPackKey, i18n, joinElementsWith} from '@lib/langPack';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import wrapPlainText from '@lib/richTextProcessor/wrapPlainText';
-import lottieLoader from '@lib/rlottie/lottieLoader';
+import lottieLoader from '@lib/lottie/lottieLoader';
 import rootScope from '@lib/rootScope';
 import Button from '@components/button';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';

@@ -12,13 +12,13 @@ import {BaseTheme, Theme} from '@layer';
 import rootScope from '@lib/rootScope';
 import themeController from '@helpers/themeController';
 import liteMode from '@helpers/liteMode';
-import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import LottiePlayer from '@lib/lottie/lottiePlayer';
 import wrapStickerEmoji from '@components/wrappers/stickerEmoji';
 
 type ThemeItem = {
   container: HTMLElement;
   theme: Theme;
-  player?: RLottiePlayer;
+  player?: LottiePlayer;
   wallPaperContainers: {[key in BaseTheme['_']]?: HTMLElement};
 };
 
@@ -217,7 +217,7 @@ export default function ChatThemesPicker(props: ChatThemesPickerProps) {
           play: false,
           group: 'none'
         }).then(({render}) => render).then((player) => {
-          k.player = player as RLottiePlayer;
+          k.player = player as LottiePlayer;
         });
       }
 

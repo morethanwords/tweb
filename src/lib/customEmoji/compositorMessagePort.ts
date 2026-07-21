@@ -13,9 +13,9 @@ export type EmojiCompositorMethods = {
   clearRenderer: (p: {rendererId: number}) => void,
   suspendRenderer: (p: {rendererId: number, suspended: boolean}) => void, // freeze last pixels while every element is paused but on-screen
 
-  // sticker path: a 1:1 player<->canvas surface (rlottie 'canvas' offscreen mode routed here instead
-  // of presenting inside the shared rlottie worker, which is incompatible with OffscreenCanvas). Keyed
-  // by the rlottie item reqId - the same id its decoded frames arrive tagged with over decodePort.
+  // sticker path: a 1:1 player<->canvas surface (lottie 'canvas' offscreen mode routed here instead
+  // of presenting inside the shared lottie worker, which is incompatible with OffscreenCanvas). Keyed
+  // by the lottie item reqId - the same id its decoded frames arrive tagged with over decodePort.
   attachSticker: (p: {reqId: number, canvases: OffscreenCanvas[], color?: string}) => void, // [...canvases] in transfer; canvases are already sized to the render resolution
   detachSticker: (p: {reqId: number}) => void,
   resizeSticker: (p: {reqId: number, width: number, height: number}) => void,

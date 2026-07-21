@@ -2,7 +2,7 @@ import tsNow from '@helpers/tsNow';
 import {ChatInviteImporter, ExportedChatInvite} from '@layer';
 import {AppManagers} from '@lib/managers';
 import {i18n, LangPackKey} from '@lib/langPack';
-import lottieLoader from '@lib/rlottie/lottieLoader';
+import lottieLoader from '@lib/lottie/lottieLoader';
 import rootScope from '@lib/rootScope';
 import hasRights from '@lib/appManagers/utils/chats/hasRights';
 import apiManagerProxy from '@lib/apiManagerProxy';

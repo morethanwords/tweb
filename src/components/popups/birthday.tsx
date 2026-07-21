@@ -17,7 +17,7 @@ import rootScope from '@lib/rootScope';
 import {doubleRaf} from '@helpers/schedulers';
 import {toastNew} from '@components/toast';
 import {PeerTitleTsx} from '@components/peerTitleTsx';
-import lottieLoader from '@lib/rlottie/lottieLoader';
+import lottieLoader from '@lib/lottie/lottieLoader';
 import LottieAnimation from '@components/lottieAnimation';
 
 const MIN_YEAR = 1900;

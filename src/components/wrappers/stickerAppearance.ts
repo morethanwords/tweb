@@ -4,7 +4,7 @@
  * prior-generation media) once the player's canvas is provably on screen. Disposal
  * only makes it inert - the next generation adopts whatever DOM is left.
  */
-import type RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import type LottiePlayer from '@lib/lottie/lottiePlayer';
 import liteMode from '@helpers/liteMode';
 import {MOUNT_CLASS_TO} from '@config/debug';
 import {Middleware} from '@helpers/middleware';
@@ -57,7 +57,7 @@ export default function createStickerAppearance({container, thumbKey, middleware
   const setSilhouette = (svg: SVGSVGElement) => {
     if(!canBuildSilhouette()) return;
 
-    svg.classList.add('rlottie-vector', 'media-sticker', 'thumbnail');
+    svg.classList.add('lottie-vector', 'media-sticker', 'thumbnail');
     svg.dataset.stickerThumb = thumbKey;
     container.append(svg);
     underlay = svg as Element as HTMLElement;
@@ -81,7 +81,7 @@ export default function createStickerAppearance({container, thumbKey, middleware
   };
 
   const onMediaFirstFrame = async({animation, canvas, needFadeIn}: {
-    animation: RLottiePlayer,
+    animation: LottiePlayer,
     canvas: HTMLCanvasElement | undefined,
     needFadeIn?: boolean
   }) => {

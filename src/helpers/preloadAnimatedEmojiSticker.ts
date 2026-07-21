@@ -1,5 +1,5 @@
 import appDownloadManager from '@lib/appDownloadManager';
-import lottieLoader from '@lib/rlottie/lottieLoader';
+import lottieLoader from '@lib/lottie/lottieLoader';
 import rootScope from '@lib/rootScope';
 import {getEmojiToneIndex} from '@vendor/emoji';
 import mediaSizes from '@helpers/mediaSizes';

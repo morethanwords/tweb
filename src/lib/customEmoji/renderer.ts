@@ -15,8 +15,8 @@ import {Middleware, MiddlewareHelper, getMiddleware} from '@helpers/middleware';
 import noop from '@helpers/noop';
 import {DocumentAttribute} from '@layer';
 import wrapRichText from '@lib/richTextProcessor/wrapRichText';
-import RLottiePlayer, {applyColorOnContext, getLottiePixelRatio} from '@lib/rlottie/rlottiePlayer';
-import SHOULD_RENDER_OFFSCREEN from '@lib/rlottie/shouldRenderOffscreen';
+import LottiePlayer, {applyColorOnContext, getLottiePixelRatio} from '@lib/lottie/lottiePlayer';
+import SHOULD_RENDER_OFFSCREEN from '@lib/lottie/shouldRenderOffscreen';
 import compositorMessagePort, {EmojiCompositorMethods} from '@lib/customEmoji/compositorMessagePort';
 import {ensureCompositor} from '@lib/customEmoji/compositorChannels';
 import rootScope from '@lib/rootScope';
@@ -25,7 +25,7 @@ import assumeType from '@helpers/assumeType';
 import {IS_WEBM_SUPPORTED} from '@environment/videoSupport';
 import {observeResize, unobserveResize} from '@components/resizeObserver';
 import {CUSTOM_EMOJI_FADE_IN_DURATION, CUSTOM_EMOJI_FRAME_INTERVAL, PAID_REACTION_EMOJI_DOCID} from '@lib/customEmoji/constants';
-import lottieLoader from '@lib/rlottie/lottieLoader';
+import lottieLoader from '@lib/lottie/lottieLoader';
 import StickerType from '@config/stickerType';
 import {Accessor, createEffect, createMemo, createRoot, createSignal, Setter} from 'solid-js';
 import readValue from '@helpers/solid/readValue';
@@ -44,7 +44,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
   private lastSentSize: {width: number, height: number};
   private lastSentSuspended: boolean;
 
-  public playersSynced: Map<CustomEmojiElements, RLottiePlayer | HTMLVideoElement>;
+  public playersSynced: Map<CustomEmojiElements, LottiePlayer | HTMLVideoElement>;
   public textColored: Set<CustomEmojiElements>;
   public clearedElements: WeakSet<CustomEmojiElements>;
   public customEmojis: Parameters<typeof wrapRichText>[1]['customEmojis'];
@@ -490,7 +490,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
   public checkForAnyFrame() {
     if(this.offscreen) { // frames never land UI-side - the player tracks its first ack
       for(const player of this.playersSynced.values()) {
-        if(player instanceof RLottiePlayer && player.offscreen === 'emoji' && player.hasRenderedFirstFrame) {
+        if(player instanceof LottiePlayer && player.offscreen === 'emoji' && player.hasRenderedFirstFrame) {
           return true;
         }
       }
@@ -605,7 +605,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
       }
 
       syncedPlayersFrames.delete(syncedPlayer.player);
-      if(syncedPlayer.player instanceof RLottiePlayer) {
+      if(syncedPlayer.player instanceof LottiePlayer) {
         if(this.offscreen) {
           this.sendCompositor('detachGroup', {groupId: element.docId});
         }
@@ -796,9 +796,9 @@ export class CustomEmojiRendererElement extends HTMLElement {
           return;
         }
 
-        const players = Array.isArray(_p) ? _p as HTMLVideoElement[] : [_p as RLottiePlayer];
+        const players = Array.isArray(_p) ? _p as HTMLVideoElement[] : [_p as LottiePlayer];
         const player = Array.isArray(players) ? players[0] : players;
-        assumeType<RLottiePlayer | HTMLVideoElement>(player);
+        assumeType<LottiePlayer | HTMLVideoElement>(player);
         newElementsArray.forEach((element, idx) => {
           const player = players[idx] || players[0];
           element.player = player;
@@ -823,12 +823,12 @@ export class CustomEmojiRendererElement extends HTMLElement {
           }
         });
 
-        if(player instanceof RLottiePlayer || (player instanceof HTMLVideoElement && this.isSelectable)) {
+        if(player instanceof LottiePlayer || (player instanceof HTMLVideoElement && this.isSelectable)) {
           syncedPlayer.player = player;
           renderer.playersSynced.set(customEmojis, player);
         }
 
-        if(player instanceof RLottiePlayer) {
+        if(player instanceof LottiePlayer) {
           player.group = renderer.animationGroup;
 
           if(renderer.offscreen && player.offscreen === 'emoji') {
@@ -918,7 +918,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
 
     let syncedPlayer: SyncedPlayer;
     // the delivery mode is part of the key: a legacy (isSelectable) renderer and an offscreen one
-    // must NOT share a SyncedPlayer - the loader segregates them into two RLottiePlayers, and a
+    // must NOT share a SyncedPlayer - the loader segregates them into two LottiePlayers, and a
     // shared entry would cross-couple the pause refcounts and leak whichever player onRender
     // assigned first (sync players have no other removal path)
     const key = [docId, size.width, size.height, +!!this.offscreen].join('-');
@@ -1156,12 +1156,12 @@ export class CustomEmojiRendererElement extends HTMLElement {
 
 export type CustomEmojiRenderer = CustomEmojiRendererElement;
 export type SyncedPlayer = {
-  player: RLottiePlayer | HTMLVideoElement,
+  player: LottiePlayer | HTMLVideoElement,
   middlewares: Set<Middleware>,
   pausedElements: Set<CustomEmojiElement>,
   key: string
 };
-export type CustomEmojiFrame = Parameters<RLottiePlayer['overrideRender']>[0] | HTMLVideoElement;
+export type CustomEmojiFrame = Parameters<LottiePlayer['overrideRender']>[0] | HTMLVideoElement;
 
 export type CustomEmojiRendererElementOptions = Partial<{
   loadPromises: Promise<any>[],
@@ -1193,7 +1193,7 @@ const hasRasterThumbPlaceholder = (elements: CustomEmojiElements) => {
 let emojiRenderInterval: number;
 const emojiRenderers: Set<CustomEmojiRenderer> = new Set();
 const syncedPlayers: Map<string, SyncedPlayer> = new Map();
-const syncedPlayersFrames: Map<RLottiePlayer | HTMLVideoElement, CustomEmojiFrame> = new Map();
+const syncedPlayersFrames: Map<LottiePlayer | HTMLVideoElement, CustomEmojiFrame> = new Map();
 const elementsFadeInStartTimes: WeakMap<CustomEmojiElements, number> = new WeakMap();
 
 let nextRendererId = 0;

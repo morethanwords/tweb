@@ -6,7 +6,7 @@ import type toggleStorages from '@helpers/toggleStorages';
 import type {ActiveAccountNumber} from '@lib/accounts/types';
 import type {LoadStateResult} from '@appManagers/utils/state/loadState';
 import type {PasscodeStorageValue} from '@lib/commonStateStorage';
-import type {ThreadedWorkerType} from '@lib/appManagers/appManagersManager';
+import type {ThreadedWorkerType} from '@lib/threadedWorkerTypes';
 import type {LogEntry} from '@lib/debug/logsBuffer';
 import SuperMessagePort from '@lib/superMessagePort';
 import {CacheStorageDbName} from '@lib/files/cacheStorage';

@@ -9,7 +9,7 @@ import {Accessor, createEffect, createMemo, createSignal, For, on, onCleanup, on
 import paymentsWrapCurrencyAmount from '@helpers/paymentsWrapCurrencyAmount';
 import PopupStars, {StarsBalance, StarsStar} from '@components/popups/stars';
 import LottieAnimation from '@components/lottieAnimation';
-import lottieLoader from '@lib/rlottie/lottieLoader';
+import lottieLoader from '@lib/lottie/lottieLoader';
 import classNames from '@helpers/string/classNames';
 import {StarGiftsGrid} from '@components/stargifts/stargiftsGrid';
 import {fastRaf} from '@helpers/schedulers';

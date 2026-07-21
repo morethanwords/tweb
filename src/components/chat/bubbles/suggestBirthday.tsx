@@ -3,7 +3,7 @@ import {monthsLocalized} from '@helpers/date';
 import liteMode from '@helpers/liteMode';
 import {I18nTsx} from '@helpers/solid/i18n';
 import {Birthday} from '@layer';
-import lottieLoader from '@lib/rlottie/lottieLoader';
+import lottieLoader from '@lib/lottie/lottieLoader';
 import LottieAnimation from '@components/lottieAnimation';
 
 
@@ -26,7 +26,7 @@ export function SuggestBirthdayBubble(props: {
         name="Cake"
         lottieLoader={lottieLoader}
         needRaf
-        rlottieOptions={{
+        lottieOptions={{
           autoplay: liteMode.isAvailable('stickers_chat')
         }}
       />

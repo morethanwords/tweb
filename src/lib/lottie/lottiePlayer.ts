@@ -7,24 +7,24 @@ import EventListenerBase from '@helpers/eventListenerBase';
 import {doubleRaf} from '@helpers/schedulers';
 import mediaSizes from '@helpers/mediaSizes';
 import clamp from '@helpers/number/clamp';
-import rlottieMessagePort, {RLottieOffscreenInit, RLottieWorkerMethods} from '@lib/rlottie/rlottieMessagePort';
-import SHOULD_RENDER_OFFSCREEN from '@lib/rlottie/shouldRenderOffscreen';
+import lottieMessagePort, {LottieOffscreenInit, LottieWorkerMethods} from '@lib/lottie/lottieMessagePort';
+import SHOULD_RENDER_OFFSCREEN from '@lib/lottie/shouldRenderOffscreen';
 import IS_IMAGE_BITMAP_SUPPORTED from '@environment/imageBitmapSupport';
 import framesCache, {FramesCache, FramesCacheItem} from '@helpers/framesCache';
 import customProperties from '@helpers/dom/customProperties';
 import readValue from '@helpers/solid/readValue';
-import applyColorOnContext, {RLottieColor, rlottieColorToString} from '@helpers/canvas/applyColorOnContext';
+import applyColorOnContext, {LottieColor, lottieColorToString} from '@helpers/canvas/applyColorOnContext';
 import {ensureCompositor, ensureDecodeChannel} from '@lib/customEmoji/compositorChannels';
 import compositorMessagePort from '@lib/customEmoji/compositorMessagePort';
 import IS_SHARED_WORKER_OFFSCREEN_CANVAS_SUPPORTED from '@environment/sharedWorkerOffscreenCanvasSupport';
 
-export type RLottieOptions = {
+export type LottieOptions = {
   container: HTMLElement | HTMLElement[],
   middleware?: Middleware,
   canvas?: HTMLCanvasElement,
   autoplay?: boolean,
   animationData: Blob,
-  loop?: RLottiePlayer['loop'],
+  loop?: LottiePlayer['loop'],
   width?: number,
   height?: number,
   group?: AnimationItemGroup,
@@ -32,7 +32,7 @@ export type RLottieOptions = {
   needUpscale?: boolean,
   skipRatio?: number,
   initFrame?: number, // index
-  color?: RLottieColor,
+  color?: LottieColor,
   textColor?: WrapSomethingOptions['textColor'],
   name?: string,
   skipFirstFrameRendering?: boolean,
@@ -44,7 +44,7 @@ export type RLottieOptions = {
 };
 
 export {applyColorOnContext};
-export type {RLottieColor};
+export type {LottieColor};
 
 export function getLottiePixelRatio(width: number, height: number, needUpscale?: boolean) {
   let pixelRatio = clamp(window.devicePixelRatio, 1, 2);
@@ -61,10 +61,11 @@ export function getLottiePixelRatio(width: number, height: number, needUpscale?:
   return pixelRatio;
 }
 
-export type RLottiePlayerEvents = {
+export type LottiePlayerEvents = {
   enterFrame: (frameNo: number) => void,
   ready: () => void,
   firstFrame: () => void,
+  error: (error: unknown) => void,
   cached: () => void,
   destroy: () => void,
   reqIdChanged: (payload: {previousReqId: number, reqId: number}) => void
@@ -74,7 +75,7 @@ export type RLottiePlayerEvents = {
 // (see ensurePresented). Empirically tuned against the no-blink e2e test.
 const PRESENT_PAINT_WAITS = 3;
 
-export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents> implements AnimationItemWrapper {
+export default class LottiePlayer extends EventListenerBase<LottiePlayerEvents> implements AnimationItemWrapper {
   public static CACHE = framesCache;
 
   public reqId: number;
@@ -96,6 +97,8 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
   public contexts: CanvasRenderingContext2D[];
 
   public destroyed = false;
+  public loadPromise: Promise<void>;
+  public error: unknown;
   public paused = true;
   // public paused = false;
   public direction = 1;
@@ -103,7 +106,7 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
   public autoplay = true;
   public _autoplay: boolean; // ! will be used to store original value for settings.stickers.loop
   public loop: number | boolean = true;
-  public _loop: RLottiePlayer['loop']; // ! will be used to store original value for settings.stickers.loop
+  public _loop: LottiePlayer['loop']; // ! will be used to store original value for settings.stickers.loop
   public group: AnimationItemGroup = '';
   public liteModeKey: LiteModeKey;
 
@@ -120,15 +123,15 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
   private cachingDelta = 0;
 
   private initFrame: number;
-  private color: RLottieOptions['color'];
-  private textColor: RLottieOptions['textColor'];
+  private color: LottieOptions['color'];
+  private textColor: LottieOptions['textColor'];
 
   public minFrame: number;
   public maxFrame: number;
 
   private playedTimes = 0;
 
-  private currentMethod: RLottiePlayer['mainLoopForwards'] | RLottiePlayer['mainLoopBackwards'];
+  private currentMethod: LottiePlayer['mainLoopForwards'] | LottiePlayer['mainLoopBackwards'];
   private frameListener: (currentFrame: number) => void;
   private skipFirstFrameRendering: boolean;
   private playToFrameOnFrameCallback: (frameNo: number) => void;
@@ -147,15 +150,16 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
   private freeRunning: boolean;
   private freeRunBarred: boolean;
   private freeRunEpoch: {frame: number, time: number};
+  private failed = false;
 
   constructor({el, options}: {
-    el: RLottiePlayer['el'],
-    options: RLottieOptions
+    el: LottiePlayer['el'],
+    options: LottieOptions
   }) {
     super(true);
 
-    this.reqId = rlottieMessagePort.getNextTaskId();
-    this.workerId = rlottieMessagePort.getNextWorkerIndex();
+    this.reqId = lottieMessagePort.getNextTaskId();
+    this.workerId = lottieMessagePort.getNextWorkerIndex();
     this.el = el;
 
     for(const i in options) {
@@ -179,7 +183,7 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
     this.liteModeKey = options.liteModeKey;
 
     if(this.name) {
-      this.cacheName = RLottiePlayer.CACHE.generateName(
+      this.cacheName = LottiePlayer.CACHE.generateName(
         this.name,
         this.width,
         this.height,
@@ -190,15 +194,15 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
 
     const eligible = SHOULD_RENDER_OFFSCREEN &&
       !options.noOffscreen &&
-      !options.canvas && // RLottieIcon shares ONE caller canvas across players
+      !options.canvas && // LottieIcon shares ONE caller canvas across players
       !this.raw;
     this.offscreen = !eligible ? false : (options.sync ? (options.compositorDelivery ? 'emoji' : false) : 'canvas');
     // OffscreenCanvas present is incompatible with a SharedWorker (see
     // IS_SHARED_WORKER_OFFSCREEN_CANVAS_SUPPORTED), so route 'canvas' stickers through the per-tab
-    // compositor worker; the shared rlottie worker keeps decoding and just ships ImageBitmaps.
+    // compositor worker; the shared lottie worker keeps decoding and just ships ImageBitmaps.
     this.offscreenViaCompositor = this.offscreen === 'canvas' && !IS_SHARED_WORKER_OFFSCREEN_CANVAS_SUPPORTED;
     if(this.offscreen && this.cacheName) {
-      this.workerId = rlottieMessagePort.getWorkerIndexForName(this.cacheName); // cache-affine routing, cross-tab sharing for free
+      this.workerId = lottieMessagePort.getWorkerIndexForName(this.cacheName); // cache-affine routing, cross-tab sharing for free
     }
 
     // * Skip ratio (30fps)
@@ -267,7 +271,7 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
   private createCanvases(pixelRatio: number) {
     return this.el.map(() => {
       const canvas = document.createElement('canvas');
-      canvas.classList.add('rlottie');
+      canvas.classList.add('lottie');
       canvas.width = this.width;
       canvas.height = this.height;
       canvas.dpr = pixelRatio;
@@ -286,7 +290,7 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
     }
 
     if(this.name) {
-      this.cache = RLottiePlayer.CACHE.getCache(this.cacheName);
+      this.cache = LottiePlayer.CACHE.getCache(this.cacheName);
     } else {
       this.cache ??= FramesCache.createCache();
     }
@@ -341,12 +345,12 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
     }
   }
 
-  public sendQuery<T extends keyof RLottieWorkerMethods>(
+  public sendQuery<T extends keyof LottieWorkerMethods>(
     method: T,
-    payload?: Omit<Parameters<RLottieWorkerMethods[T]>[0], 'reqId'>,
+    payload?: Omit<Parameters<LottieWorkerMethods[T]>[0], 'reqId'>,
     transfer?: Transferable[]
-  ): Promise<Awaited<ReturnType<RLottieWorkerMethods[T]>>> {
-    return rlottieMessagePort.invokeRLottie(
+  ): Promise<Awaited<ReturnType<LottieWorkerMethods[T]>>> {
+    return lottieMessagePort.invokeLottie(
       this.workerId,
       method,
       {...payload, reqId: this.reqId},
@@ -354,12 +358,26 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
     ) as any;
   }
 
-  public sendQueryVoid<T extends keyof RLottieWorkerMethods>(
+  public fail(error: unknown) {
+    if(this.destroyed || this.failed) {
+      return;
+    }
+
+    this.failed = true;
+    this.error = error;
+    this.dispatchEvent('error', error);
+  }
+
+  public get hasFailed() {
+    return this.failed;
+  }
+
+  public sendQueryVoid<T extends keyof LottieWorkerMethods>(
     method: T,
-    payload?: Omit<Parameters<RLottieWorkerMethods[T]>[0], 'reqId'>,
+    payload?: Omit<Parameters<LottieWorkerMethods[T]>[0], 'reqId'>,
     transfer?: Transferable[]
   ) {
-    rlottieMessagePort.invokeRLottieVoid(
+    lottieMessagePort.invokeLottieVoid(
       this.workerId,
       method,
       {...payload, reqId: this.reqId} as any,
@@ -409,7 +427,7 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
 
   private getResolvedColor(): string {
     if(this.color) {
-      return rlottieColorToString(this.color);
+      return lottieColorToString(this.color);
     }
 
     if(this.textColor) {
@@ -426,9 +444,9 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
     this.sendQueryVoid('setColor', {color: this.getResolvedColor(), reTint});
   }
 
-  public loadFromData(data: RLottieOptions['animationData']) {
+  public loadFromData(data: LottieOptions['animationData'], wasmUrl: string): Promise<void> {
     if(this.offscreenViaCompositor) {
-      // decode stays in the shared rlottie worker; present goes to the per-tab compositor. Attach our
+      // decode stays in the shared lottie worker; present goes to the per-tab compositor. Attach our
       // canvas(es) there and have the worker ship ImageBitmaps over the decode port (like the emoji path).
       ensureCompositor();
       ensureDecodeChannel(this.workerId);
@@ -444,7 +462,7 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
     }
 
     const compositorDelivery = this.offscreen === 'emoji' || this.offscreenViaCompositor;
-    const offscreen: RLottieOffscreenInit = this.offscreen ? {
+    const offscreen: LottieOffscreenInit = this.offscreen ? {
       canvases: compositorDelivery ? [] : (this.offscreenCanvases || []), // compositor delivery => worker holds no canvas
       cacheName: this.cacheName,
       cachingDelta: this.cachingDelta, // Apple heuristics ship unchanged
@@ -454,8 +472,9 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
     const transfer = offscreen?.canvases.length ? offscreen.canvases.slice() : undefined;
     this.offscreenCanvases = undefined;
 
-    this.sendQuery('loadFromData', {
+    return this.sendQuery('loadFromData', {
       blob: data,
+      wasmUrl,
       width: this.width,
       height: this.height,
       toneIndex: this.toneIndex,
@@ -466,7 +485,7 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
         return;
       }
 
-      this.onLoad(frameCount, fps);
+      return this.onLoad(frameCount, fps);
     }).catch((err) => {
       if(this.offscreen && !this.offscreenLoadFailed && !this.destroyed) {
         // belt: retry once in legacy mode with fresh canvases (safe - nothing is DOM-appended before firstFrame)
@@ -478,13 +497,12 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
           this.offscreenViaCompositor = false;
         }
         const previousReqId = this.reqId;
-        this.reqId = rlottieMessagePort.getNextTaskId();
+        this.reqId = lottieMessagePort.getNextTaskId();
         this.dispatchEvent('reqIdChanged', {previousReqId, reqId: this.reqId}); // keep lottieLoader.players re-keyed to the new id
         this.offscreen = false;
         this.canvas = this.createCanvases(this.pixelRatio);
         this.initLegacySurfaces();
-        this.loadFromData(data);
-        return;
+        return this.loadFromData(data, wasmUrl);
       }
 
       console.error(err, data, this);
@@ -501,9 +519,9 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
     this._curFrame = frame;
   }
 
-  public addEventListener<T extends keyof RLottiePlayerEvents>(
+  public addEventListener<T extends keyof LottiePlayerEvents>(
     name: T,
-    callback: RLottiePlayerEvents[T],
+    callback: LottiePlayerEvents[T],
     options?: boolean | AddEventListenerOptions
   ) {
     super.addEventListener(name, callback, options);
@@ -544,7 +562,7 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
       return;
     }
 
-    console.error('RLottie free-run stopped, falling back to command mode:', error, this);
+    console.error('Lottie free-run stopped, falling back to command mode:', error, this);
     this.freeRunBarred = true;
     this.freeRunning = false;
     this.freeRunEpoch = undefined;
@@ -762,7 +780,7 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
     if(this.offscreenViaCompositor) {
       compositorMessagePort.invokeCompositorVoid('detachSticker', {reqId: this.reqId});
     }
-    if(this.cacheName && !this.offscreen) RLottiePlayer.CACHE.releaseCache(this.cacheName);
+    if(this.cacheName && !this.offscreen) LottiePlayer.CACHE.releaseCache(this.cacheName);
     this.dispatchEvent('destroy');
     this.cleanup();
   }
@@ -813,7 +831,7 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
           }
 
           this.dispatchEvent('enterFrame', frameNo);
-        });
+        }).catch((err) => this.fail(err));
       } else {
         this.sendQueryVoid('presentFrame', {frameNo});
         this.dispatchEvent('enterFrame', frameNo);
@@ -866,13 +884,14 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
 
       this.dispatchEvent('enterFrame', frameNo);
     } catch(err) {
-      console.error('RLottiePlayer renderFrame error:', err/* , frame */, this, cachedSource);
+      console.error('LottiePlayer renderFrame error:', err/* , frame */, this, cachedSource);
       this.autoplay = false;
       this.pause();
+      this.fail(err);
     }
   }
 
-  public renderFrame(frame: Parameters<RLottiePlayer['renderFrame2']>[0], frameNo: number) {
+  public renderFrame(frame: Parameters<LottiePlayer['renderFrame2']>[0], frameNo: number) {
     const canCacheFrame = this.cachingDelta && (frameNo % this.cachingDelta || !frameNo);
     if(canCacheFrame) {
       if(frame instanceof Uint8ClampedArray && !this.cache.frames.has(frameNo)) {
@@ -921,7 +940,7 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
         }
 
         this.renderFrame(undefined, frameNo);
-      });
+      }).catch((err) => this.fail(err));
       return;
     }
 
@@ -947,7 +966,7 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
         }
 
         this.renderFrame(frame, frameNo);
-      });
+      }).catch((err) => this.fail(err));
     }
   }
 
@@ -1089,7 +1108,7 @@ export default class RLottiePlayer extends EventListenerBase<RLottiePlayerEvents
     this.play();
   }
 
-  public setColor(color: RLottieColor | string, renderIfPaused: boolean) {
+  public setColor(color: LottieColor | string, renderIfPaused: boolean) {
     if(typeof(color) === 'string') {
       this.textColor = color;
     } else {

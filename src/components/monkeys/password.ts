@@ -1,10 +1,10 @@
-import lottieLoader, {LottieLoader} from '@lib/rlottie/lottieLoader';
-import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import lottieLoader, {LottieLoader} from '@lib/lottie/lottieLoader';
+import LottiePlayer from '@lib/lottie/lottiePlayer';
 import PasswordInputField from '@components/passwordInputField';
 
 export default class PasswordMonkey {
   public container: HTMLElement;
-  public animation: RLottiePlayer;
+  public animation: LottiePlayer;
   public needFrame = 0;
   protected loadPromise: ReturnType<LottieLoader['waitForFirstFrame']>;
 

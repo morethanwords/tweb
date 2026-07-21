@@ -18,8 +18,8 @@ import {MyDocument} from '@appManagers/appDocsManager';
 import getStickerEffectThumb from '@appManagers/utils/stickers/getStickerEffectThumb';
 import CustomEmojiElement from '@lib/customEmoji/element';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
-import lottieLoader from '@lib/rlottie/lottieLoader';
-import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import lottieLoader from '@lib/lottie/lottieLoader';
+import LottiePlayer from '@lib/lottie/lottiePlayer';
 import rootScope from '@lib/rootScope';
 import animationIntersector, {AnimationItemGroup} from '@components/animationIntersector';
 import {EMOJI_TEXT_COLOR} from '@components/emoticonsDropdown';
@@ -188,7 +188,7 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
 
       const player = Array.isArray(o) ? o[0] : o;
 
-      const firstFramePromise = player instanceof RLottiePlayer ?
+      const firstFramePromise = player instanceof LottiePlayer ?
         new Promise<void>((resolve) => player.addEventListener('firstFrame', resolve, {once: true})) :
         Promise.resolve();
       await Promise.all([firstFramePromise, doubleRaf()]);
@@ -200,9 +200,9 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
         animationIntersector.checkAnimations2(true);
       }
 
-      if(player instanceof RLottiePlayer) {
+      if(player instanceof LottiePlayer) {
         const prevPlayer = mediaContainer instanceof CustomEmojiElement ?
-          mediaContainer.player as RLottiePlayer :
+          mediaContainer.player as LottiePlayer :
           lottieLoader.getAnimation(mediaContainer);
         if(prevPlayer) {
           player.curFrame = prevPlayer.curFrame;
@@ -230,7 +230,7 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
 
       return {
         ready: () => {
-          if(player instanceof RLottiePlayer || player instanceof HTMLVideoElement) {
+          if(player instanceof LottiePlayer || player instanceof HTMLVideoElement) {
             safePlay(player);
           }
 

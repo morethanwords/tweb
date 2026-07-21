@@ -10,6 +10,10 @@ const zlib = require('zlib');
 const npmCmd = /^win/.test(process.platform) ? 'npm.cmd' : 'npm';
 const publicPath = path.join(__dirname, 'public');
 const distPath = path.join(__dirname, 'dist');
+const obsoleteAssets = new Set([
+  'rlottie-wasm.js',
+  'rlottie-wasm.wasm'
+]);
 
 function readSSHConfig() {
   let sshConfig;
@@ -44,6 +48,11 @@ function clearOldFiles() {
   const bundleFiles = fs.readdirSync(distPath);
   const files = fs.readdirSync(publicPath, {withFileTypes: true});
   files.forEach((file) => {
+    if(file.isFile() && obsoleteAssets.has(file.name)) {
+      fs.unlinkSync(path.join(publicPath, file.name));
+      return;
+    }
+
     if(file.isDirectory() ||
       bundleFiles.some((bundleFile) => bundleFile === file.name) ||
       keepAsset(file.name)) {

@@ -1,7 +1,7 @@
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
-import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import LottiePlayer from '@lib/lottie/lottiePlayer';
 import appDownloadManager from '@lib/appDownloadManager';
-import lottieLoader from '@lib/rlottie/lottieLoader';
+import lottieLoader from '@lib/lottie/lottieLoader';
 import {Document} from '@layer';
 
 import {StickerFrameByFrameRenderer} from '@components/mediaEditor/finalRender/types';
@@ -10,7 +10,7 @@ export default class LottieStickerFrameByFrameRenderer implements StickerFrameBy
   private frameCount: number = 0;
   private currentDeferredFrame: CancellablePromise<void>;
   private container: HTMLDivElement;
-  private animation: RLottiePlayer;
+  private animation: LottiePlayer;
 
   async init(doc: Document.document, size: number) {
     const blob = await appDownloadManager.downloadMedia({
@@ -24,28 +24,37 @@ export default class LottieStickerFrameByFrameRenderer implements StickerFrameBy
     container.style.pointerEvents = 'none';
 
     document.body.append(container);
-    const animation = (this.animation = await lottieLoader.loadAnimationWorker({
-      container: container,
-      autoplay: false,
-      animationData: blob,
-      width: size,
-      height: size,
-      name: 'doc' + doc.id,
-      noOffscreen: true // getRenderedFrame() reads animation.canvas[0] synchronously
-    }));
+    try {
+      const animation = (this.animation = await lottieLoader.loadAnimationWorker({
+        container: container,
+        autoplay: false,
+        animationData: blob,
+        width: size,
+        height: size,
+        name: 'doc' + doc.id,
+        noOffscreen: true, // getRenderedFrame() reads animation.canvas[0] synchronously
+        skipFirstFrameRendering: true // renderFrame() drives every frame; avoid a stale automatic frame 0
+      }));
 
-    const deferred = deferredPromise<void>();
+      animation.addEventListener('enterFrame', () => {
+        this.currentDeferredFrame?.resolve();
+      });
 
-    animation.addEventListener('ready', () => {
+      animation.addEventListener('error', (error) => {
+        this.currentDeferredFrame?.reject(error);
+      });
+
+      await animation.loadPromise;
+      if(animation.hasFailed) {
+        throw animation.error;
+      }
+
       this.frameCount = animation.maxFrame + 1;
-      deferred.resolve();
-    });
-
-    animation.addEventListener('enterFrame', () => {
-      this.currentDeferredFrame?.resolve();
-    });
-
-    await deferred;
+    } catch(err) {
+      this.animation?.remove();
+      container.remove();
+      throw err;
+    }
   }
 
   getTotalFrames() {
@@ -58,7 +67,11 @@ export default class LottieStickerFrameByFrameRenderer implements StickerFrameBy
 
   async renderFrame(frame: number) {
     this.currentDeferredFrame = deferredPromise<void>();
-    this.animation.requestFrame(frame);
+    if(this.animation.hasFailed) {
+      this.currentDeferredFrame.reject(this.animation.error);
+    } else {
+      this.animation.requestFrame(frame);
+    }
     await this.currentDeferredFrame;
   }
 
@@ -67,7 +80,7 @@ export default class LottieStickerFrameByFrameRenderer implements StickerFrameBy
   }
 
   destroy() {
-    this.container.remove();
-    this.animation.remove();
+    this.container?.remove();
+    this.animation?.remove();
   }
 }

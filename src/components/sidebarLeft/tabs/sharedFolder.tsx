@@ -9,7 +9,7 @@ import hasRights from '@appManagers/utils/chats/hasRights';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import I18n, {LangPackKey, i18n} from '@lib/langPack';
-import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import LottiePlayer from '@lib/lottie/lottiePlayer';
 import rootScope from '@lib/rootScope';
 import AppSelectPeers from '@components/appSelectPeers';
 import ButtonIcon from '@components/buttonIcon';
@@ -39,7 +39,7 @@ const SharedFolder: Component = () => {
   let chatsTitleI18n: I18n.IntlElement;
   let confirmBtn: HTMLElement;
   let loadAnimationPromise: Promise<any>;
-  let animation: RLottiePlayer;
+  let animation: LottiePlayer;
   let selector: AppSelectPeers;
   const elementMap: Map<PeerId, DialogElement> = new Map();
 

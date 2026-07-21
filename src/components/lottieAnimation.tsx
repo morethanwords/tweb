@@ -1,7 +1,7 @@
 import {Component, createRenderEffect, mergeProps, onCleanup, onMount} from 'solid-js';
 
-import type {LottieAssetName, LottieLoader} from '@lib/rlottie/lottieLoader';
-import RLottiePlayer, {RLottieOptions} from '@lib/rlottie/rlottiePlayer';
+import type {LottieAssetName, LottieLoader} from '@lib/lottie/lottieLoader';
+import LottiePlayer, {LottieOptions} from '@lib/lottie/lottiePlayer';
 
 const LottieAnimation: Component<{
   lottieLoader: LottieLoader,
@@ -10,12 +10,12 @@ const LottieAnimation: Component<{
   size?: number,
   needRaf?: boolean,
   restartOnClick?: boolean,
-  rlottieOptions?: Partial<RLottieOptions>,
-  onPromise?: (promise: Promise<RLottiePlayer>) => void
+  lottieOptions?: Partial<LottieOptions>,
+  onPromise?: (promise: Promise<LottiePlayer>) => void
 }> = (inProps) => {
   const props = mergeProps({size: 100}, inProps);
 
-  let animationPromise: Promise<RLottiePlayer>;
+  let animationPromise: Promise<LottiePlayer>;
 
   const div = (
     <div
@@ -49,7 +49,7 @@ const LottieAnimation: Component<{
         width: props.size,
         height: props.size,
         group: 'none',
-        ...props.rlottieOptions
+        ...props.lottieOptions
       },
       props.name
     );

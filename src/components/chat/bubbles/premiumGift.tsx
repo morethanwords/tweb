@@ -1,9 +1,9 @@
 import {JSX} from 'solid-js';
 import liteMode from '@helpers/liteMode';
-import lottieLoader, {LottieAssetName} from '@lib/rlottie/lottieLoader';
+import lottieLoader, {LottieAssetName} from '@lib/lottie/lottieLoader';
 import Button from '@components/buttonTsx';
 import LottieAnimation from '@components/lottieAnimation';
-import {RLottieOptions} from '@lib/rlottie/rlottiePlayer';
+import {LottieOptions} from '@lib/lottie/lottiePlayer';
 
 import styles from '@components/chat/bubbles/premiumGift.module.scss';
 import stylesCommon from '@components/chat/bubbles/service.module.scss';
@@ -18,7 +18,7 @@ export function PremiumGiftBubble(props: {
   subtitle: JSX.Element
   buttonText?: JSX.Element
   buttonCallback?: () => void
-  rlottieOptions?: Partial<RLottieOptions>
+  lottieOptions?: Partial<LottieOptions>
 }) {
   return (
     <div class={/* @once */ classNames(styles.bubble, stylesCommon.addon)}>
@@ -31,7 +31,7 @@ export function PremiumGiftBubble(props: {
           class={styles.sticker}
           extraOptions={{
             play: liteMode.isAvailable('stickers_chat'),
-            middleware: props.rlottieOptions?.middleware
+            middleware: props.lottieOptions?.middleware
           }}
         />
       )}
@@ -41,9 +41,9 @@ export function PremiumGiftBubble(props: {
           size={160}
           name={props.assetName}
           lottieLoader={lottieLoader}
-          rlottieOptions={{
+          lottieOptions={{
             autoplay: liteMode.isAvailable('stickers_chat'),
-            ...props.rlottieOptions
+            ...props.lottieOptions
           }}
         />
       )}

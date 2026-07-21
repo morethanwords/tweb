@@ -93,13 +93,13 @@ import {AppBackgroundTab} from '@components/sidebarLeft/tabs/background';
 import partition from '@helpers/array/partition';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import liteMode, {LiteModeKey} from '@helpers/liteMode';
-import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import LottiePlayer from '@lib/lottie/lottiePlayer';
 import PopupGiftPremium from '@components/popups/giftPremium';
 import internalLinkProcessor from '@lib/internalLinkProcessor';
 import {createStoriesViewerWithPeer} from '@components/stories/viewer';
 import type {CustomEmojiRendererElement} from '@lib/customEmoji/renderer';
 import {Middleware} from '@helpers/middleware';
-import lottieLoader from '@lib/rlottie/lottieLoader';
+import lottieLoader from '@lib/lottie/lottieLoader';
 import wrapStickerAnimation, {emojiAnimationContainer} from '@components/wrappers/stickerAnimation';
 import onMediaLoad from '@helpers/onMediaLoad';
 import throttle from '@helpers/schedulers/throttle';
@@ -646,7 +646,7 @@ export class AppImManager extends EventListenerBase<{
           return;
         }
 
-        if(animation instanceof RLottiePlayer) {
+        if(animation instanceof LottiePlayer) {
           animation.playOrRestart();
         } else {
           animation.play();

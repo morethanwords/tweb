@@ -6,7 +6,7 @@ import callbackify from '@helpers/callbackify';
 import deferredPromise from '@helpers/cancellablePromise';
 import {Middleware} from '@helpers/middleware';
 import getUnsafeRandomInt from '@helpers/number/getUnsafeRandomInt';
-import {applyColorOnContext} from '@lib/rlottie/rlottiePlayer';
+import {applyColorOnContext} from '@lib/lottie/lottiePlayer';
 import animationIntersector, {AnimationItemGroup, AnimationItemWrapper} from '@components/animationIntersector';
 import BluffSpoilerController from '@components/bluffSpoilerController';
 import DotRendererCore, {buildDotRendererConfig, drawClippingCircle, getDefaultParticlesCount, DotRendererConfig, DotRendererShaderURLs} from '@components/dotRendererCore';

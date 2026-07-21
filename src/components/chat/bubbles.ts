@@ -61,7 +61,7 @@ import getVisibleRect from '@helpers/dom/getVisibleRect';
 import {InternalLink, INTERNAL_LINK_TYPE} from '@lib/internalLink';
 import ReactionsElement, {REACTIONS_ELEMENTS} from '@components/chat/reactions';
 import type ReactionElement from '@components/chat/reaction';
-import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import LottiePlayer from '@lib/lottie/lottiePlayer';
 import pause from '@helpers/schedulers/pause';
 import ScrollSaver from '@helpers/scrollSaver';
 import {getAppWindow, onAppWindowChange, onBeforeAppWindowChange} from '@helpers/appWindow';
@@ -2792,7 +2792,7 @@ export default class ChatBubbles {
         withThumb: false,
         needFadeIn: false
       }).then(({render}) => render).then((player) => {
-        assumeType<RLottiePlayer>(player);
+        assumeType<LottiePlayer>(player);
 
         const onFirstFrame = () => {
           if(!middleware()) {
@@ -6657,7 +6657,7 @@ export default class ChatBubbles {
           }
 
           this.wrapSomeSolid(() => PremiumGiftBubble({
-            rlottieOptions: {
+            lottieOptions: {
               middleware
             },
             assetName: 'Gift3',
@@ -6711,7 +6711,7 @@ export default class ChatBubbles {
           const assetName = getGiftAssetName(action.days);
 
           this.wrapSomeSolid(() => PremiumGiftBubble({
-            rlottieOptions: {middleware},
+            lottieOptions: {middleware},
             assetName,
             title,
             subtitle,
@@ -6884,7 +6884,7 @@ export default class ChatBubbles {
               i18n('ActionGiftPremiumSubtitle2');
 
           this.wrapSomeSolid(() => PremiumGiftBubble({
-            rlottieOptions: {middleware},
+            lottieOptions: {middleware},
             assetName,
             title,
             subtitle,
@@ -6922,7 +6922,7 @@ export default class ChatBubbles {
           else idx = 0;
 
           this.wrapSomeSolid(() => PremiumGiftBubble({
-            rlottieOptions: {middleware},
+            lottieOptions: {middleware},
             sticker: stickers.documents[idx] as MyDocument,
             title: formatNanoton(action.crypto_amount) + ' ' + action.crypto_currency,
             subtitle: i18n('TonGiftSubtitle'),

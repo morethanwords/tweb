@@ -8,7 +8,7 @@ import throttleWithRaf from '@helpers/schedulers/throttleWithRaf';
 import windowSize from '@helpers/windowSize';
 import {PhotoSize, VideoSize} from '@layer';
 import {AppManagers} from '@lib/managers';
-import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import LottiePlayer from '@lib/lottie/lottiePlayer';
 import Scrollable from '@components/scrollable';
 import wrapSticker from '@components/wrappers/sticker';
 
@@ -63,7 +63,7 @@ export default function wrapStickerAnimation({
   animationDiv.style.width = size + 'px';
   animationDiv.style.height = size + 'px';
 
-  let animation: RLottiePlayer;
+  let animation: LottiePlayer;
   const unmountAnimation = () => {
     if(NO_UNMOUNT) {
       return;
@@ -100,7 +100,7 @@ export default function wrapStickerAnimation({
     isEffect: true,
     textColor
   }).then(({render}) => render).then((_animation) => {
-    assumeType<RLottiePlayer>(_animation);
+    assumeType<LottiePlayer>(_animation);
     if(!middleware()) {
       _animation.remove();
       throw makeError('MIDDLEWARE');

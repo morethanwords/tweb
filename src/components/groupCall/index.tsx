@@ -4,7 +4,7 @@ import {attachClickEvent} from '@helpers/dom/clickEvent';
 import customProperties from '@helpers/dom/customProperties';
 import {GroupCall, GroupCallParticipant} from '@layer';
 import GROUP_CALL_STATE from '@lib/calls/groupCallState';
-import {RLottieColor} from '@lib/rlottie/rlottiePlayer';
+import {LottieColor} from '@lib/lottie/lottiePlayer';
 import rootScope from '@lib/rootScope';
 import ButtonIcon from '@components/buttonIcon';
 import GroupCallMicrophoneIcon from '@components/groupCall/microphoneIcon';
@@ -84,7 +84,7 @@ export function getColorByMutedState(state: GROUP_CALL_PARTICIPANT_MUTED_STATE) 
   }
 
   const propertyValue = customProperties.getProperty('gc-' + colorStr + '-text-color');
-  const color: RLottieColor = hexToRgb(propertyValue);
+  const color: LottieColor = hexToRgb(propertyValue);
 
   return color;
 }

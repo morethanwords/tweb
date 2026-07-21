@@ -9,7 +9,7 @@ import {StickerTsx} from '@components/wrappers/sticker';
 import {wrapFormattedDuration} from '@components/wrappers/wrapDuration';
 import {randomItem, randomItemExcept} from '@helpers/array/randomItem';
 import assumeType from '@helpers/assumeType';
-import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import LottiePlayer from '@lib/lottie/lottiePlayer';
 
 import css from '@components/popups/webAppEmojiStatusAccess.module.scss';
 import rootScope from '@lib/rootScope';
@@ -92,7 +92,7 @@ export default class PopupWebAppEmojiStatusAccess extends PopupElement<{
             if(this.sticker) return
             stickerRef.classList.remove(css.switch);
 
-            assumeType<RLottiePlayer>(player);
+            assumeType<LottiePlayer>(player);
             player.playOrRestart();
             player.addEventListener('enterFrame', (frameNo) => {
               if(frameNo === player.maxFrame) {

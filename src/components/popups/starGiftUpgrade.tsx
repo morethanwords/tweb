@@ -10,7 +10,7 @@ import {I18nTsx} from '@helpers/solid/i18n';
 import {StarGiftBackdrop} from '@components/stargifts/stargiftBackdrop';
 import {MyDocument} from '@appManagers/appDocsManager';
 import wrapSticker from '@components/wrappers/sticker';
-import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import LottiePlayer from '@lib/lottie/lottiePlayer';
 import Row from '@components/rowTsx';
 import CheckboxFieldTsx from '@components/checkboxFieldTsx';
 import {ButtonIconTsx} from '@components/buttonIconTsx';
@@ -154,7 +154,7 @@ export default async function createStarGiftUpgradePopup(props: {
         loop: false,
         middleware: middleware.get()
       }).then(({render}) => render).then((player_) => {
-        const player = player_ as RLottiePlayer;
+        const player = player_ as LottiePlayer;
         player.playOrRestart();
         player.addEventListener('enterFrame', (frameNo) => {
           if(frameNo === player.maxFrame) {

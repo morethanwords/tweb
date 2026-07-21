@@ -1,7 +1,7 @@
 import {Component} from 'solid-js';
 import type {MyDialogFilter} from '@lib/storages/filters';
 import appDialogsManager from '@lib/appDialogsManager';
-import {LottieLoader} from '@lib/rlottie/lottieLoader';
+import {LottieLoader} from '@lib/lottie/lottieLoader';
 import {toastNew} from '@components/toast';
 import InputField from '@components/inputField';
 import ButtonIcon from '@components/buttonIcon';
@@ -10,7 +10,7 @@ import {ButtonMenuItemOptions} from '@components/buttonMenu';
 import Button from '@components/button';
 import {AppIncludedChatsTab} from '@components/solidJsTabs/tabs';
 import {i18n, LangPackKey} from '@lib/langPack';
-import RLottiePlayer from '@lib/rlottie/rlottiePlayer';
+import LottiePlayer from '@lib/lottie/lottiePlayer';
 import copy from '@helpers/object/copy';
 import deepEqual from '@helpers/object/deepEqual';
 import filterAsync from '@helpers/array/filterAsync';
@@ -55,7 +55,7 @@ const EditFolder: Component = () => {
   const flags: EditFolderFlags = {} as any;
   let includePeerIdsButtons: EditFolderButton[];
   let excludePeerIdsButtons: EditFolderButton[];
-  let animation: RLottiePlayer;
+  let animation: LottiePlayer;
   let filter: MyDialogFilter;
   let originalFilter: MyDialogFilter;
   let type: 'edit' | 'create';

@@ -8,16 +8,16 @@ type CompositorRenderer = {canvas: OffscreenCanvas, context: OffscreenCanvasRend
 
 const renderers: Map<number, CompositorRenderer> = new Map();
 const latestFrames: Map<number, ImageBitmap> = new Map(); // playerReqId -> latest frame
-const decodePorts: Map<number, MessagePort> = new Map(); // rlottie workerId -> port
+const decodePorts: Map<number, MessagePort> = new Map(); // lottie workerId -> port
 
-// sticker path: a rlottie item that owns its own OffscreenCanvas(es) 1:1 (the 'canvas' offscreen mode),
-// routed here instead of presenting inside the shared rlottie worker. Keyed by the item reqId, which is
+// sticker path: a lottie item that owns its own OffscreenCanvas(es) 1:1 (the 'canvas' offscreen mode),
+// routed here instead of presenting inside the shared lottie worker. Keyed by the item reqId, which is
 // how its decoded frames arrive over decodePort. Separate from the emoji renderer/group model on purpose.
 type StickerSurface = {canvas: OffscreenCanvas, context: OffscreenCanvasRenderingContext2D};
 type StickerRenderer = {surfaces: StickerSurface[], color: string, latestFrame?: ImageBitmap};
-const stickerRenderers: Map<number, StickerRenderer> = new Map(); // rlottie item reqId -> sticker surface(s)
+const stickerRenderers: Map<number, StickerRenderer> = new Map(); // lottie item reqId -> sticker surface(s)
 
-// mirrors the shared rlottie worker's paintStaged(): draw the frame 1:1, then optional color tint
+// mirrors the shared lottie worker's paintStaged(): draw the frame 1:1, then optional color tint
 const paintSticker = (sticker: StickerRenderer) => {
   const {latestFrame, color} = sticker;
   if(!latestFrame) {
@@ -161,7 +161,7 @@ const scheduleFlush = () => {
     return;
   }
 
-  // single coalescing timer; no rAF anywhere (timer discipline matches the rlottie workers)
+  // single coalescing timer; no rAF anywhere (timer discipline matches the lottie workers)
   flushTimeout = setTimeout(flush, CUSTOM_EMOJI_FRAME_INTERVAL) as any as number;
 };
 

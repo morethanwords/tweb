@@ -3,7 +3,7 @@ import {Middleware} from '@helpers/middleware';
 import noop from '@helpers/noop';
 import pause from '@helpers/schedulers/pause';
 import {MyDocument} from '@appManagers/appDocsManager';
-import {applyColorOnContext} from '@lib/rlottie/rlottiePlayer';
+import {applyColorOnContext} from '@lib/lottie/lottiePlayer';
 import rootScope from '@lib/rootScope';
 import wrapSticker from '@components/wrappers/sticker';
 

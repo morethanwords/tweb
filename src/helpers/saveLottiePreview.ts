@@ -1,6 +1,6 @@
 import type {MyDocument} from '@appManagers/appDocsManager';
-import type RLottiePlayer from '@lib/rlottie/rlottiePlayer';
-import {applyColorOnContext} from '@lib/rlottie/rlottiePlayer';
+import type LottiePlayer from '@lib/lottie/lottiePlayer';
+import {applyColorOnContext} from '@lib/lottie/lottiePlayer';
 import rootScope from '@lib/rootScope';
 import getStickerThumbKey from '@lib/storages/utils/thumbs/getStickerThumbKey';
 import customProperties from '@helpers/dom/customProperties';
@@ -83,7 +83,7 @@ export async function saveLottiePreview(doc: MyDocument, canvas: HTMLCanvasEleme
   rootScope.managers.thumbsStorage.saveStickerPreview(doc.id, blob, width, height, toneIndex);
 }
 
-export async function saveLottiePreviewFromPlayer(doc: MyDocument, player: RLottiePlayer, toneIndex: number | string) {
+export async function saveLottiePreviewFromPlayer(doc: MyDocument, player: LottiePlayer, toneIndex: number | string) {
   if(!player.offscreen) {
     return saveLottiePreview(doc, player.canvas[0], toneIndex);
   }

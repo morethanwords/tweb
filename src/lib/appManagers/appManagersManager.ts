@@ -4,7 +4,8 @@ import {MOUNT_CLASS_TO} from '@config/debug';
 import callbackify from '@helpers/callbackify';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import cryptoMessagePort from '@lib/crypto/cryptoMessagePort';
-import rlottieMessagePort from '@lib/rlottie/rlottieMessagePort';
+import lottieMessagePort from '@lib/lottie/lottieMessagePort';
+import {THREADED_WORKER_TYPES, ThreadedWorkerType} from '@lib/threadedWorkerTypes';
 import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
 import {AppStoragesManager} from '@appManagers/appStoragesManager';
 import createManagers from '@appManagers/createManagers';
@@ -32,9 +33,6 @@ type ThreadedSharedWorker = {
   threads: number
 };
 
-export const THREADED_WORKERS_TYPES = ['crypto', 'rlottie'] as const;
-export type ThreadedWorkerType = typeof THREADED_WORKERS_TYPES[number];
-
 export class AppManagersManager {
   private managersByAccount: Promise<ManagersByAccount> | ManagersByAccount;
   public readonly stateManagersByAccount: StateManagersByAccount;
@@ -50,10 +48,10 @@ export class AppManagersManager {
 
     this.threadedSharedWorkers = {};
     for(
-      const {type, superMessagePort, threads} of THREADED_WORKERS_TYPES.map((type) => {
+      const {type, superMessagePort, threads} of THREADED_WORKER_TYPES.map((type) => {
         return {
           type,
-          superMessagePort: type === 'crypto' ? cryptoMessagePort : rlottieMessagePort,
+          superMessagePort: type === 'crypto' ? cryptoMessagePort : lottieMessagePort,
           threads: type === 'crypto' ? App.cryptoWorkers : App.lottieWorkers
         };
       })

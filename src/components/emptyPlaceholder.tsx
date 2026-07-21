@@ -1,5 +1,5 @@
 import {Middleware} from '@helpers/middleware';
-import {LottieAssetName} from '@lib/rlottie/lottieLoader';
+import {LottieAssetName} from '@lib/lottie/lottieLoader';
 import wrapLocalSticker from '@components/wrappers/localSticker';
 import {Accessor, createRoot, JSX} from 'solid-js';
 
