@@ -1,0 +1,2 @@
+import{c as i,h as a,o as u,eN as f}from"./index-COc_Pe9u.js";function v(l,n="y"){const[c,t]=i(0);let s=!1;const o=e=>{s||(s=!0,f(()=>{s=!1,t(n==="y"?e.scrollTop:e.scrollLeft)}))};return a(()=>{const e=l();if(!e){t(0);return}o(e);const r=()=>o(e);e.addEventListener("scroll",r,{passive:!0}),u(()=>{e.removeEventListener("scroll",r)})}),c}export{v as u};
+//# sourceMappingURL=useScrollPosition-Dv7NH5cP.js.map

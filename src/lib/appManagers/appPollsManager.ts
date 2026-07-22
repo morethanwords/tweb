@@ -325,17 +325,11 @@ export class AppPollsManager extends AppManager {
     }
 
     poll.answers.forEach((answer) => {
-      if(answer._ !== 'pollAnswer' || !answer.media) return;
-      if(answer.media._ === 'messageMediaWebPage' && answer.media.webpage._ === 'webPageEmpty') return;
+      if(answer._ !== 'pollAnswer') return;
       this.appMessagesManager.saveMessageMedia(answer, 'media');
     });
     this.indexPollWebPages(poll, results, message);
-    if(results?.solution_media) {
-      const solutionMedia = results.solution_media;
-      if(solutionMedia._ !== 'messageMediaWebPage' || solutionMedia.webpage._ !== 'webPageEmpty') {
-        this.appMessagesManager.saveMessageMedia(results, 'solution_media');
-      }
-    }
+    this.appMessagesManager.saveMessageMedia(results, 'solution_media');
 
     this.checkRefetchPollTimeout(poll);
 

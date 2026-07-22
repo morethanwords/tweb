@@ -1,0 +1,2 @@
+import{aH as u}from"./index-COc_Pe9u.js";function c(e,t){const a=e.length;if(a!==t.length)return!1;for(let r=0;r<a;++r)if(e[r]!==t[r])return!1;return!0}function s(e){let t,a="";for(let r=e.length,o=0,f=0;f<r;++f)t=f%3,o|=e[f]<<(16>>>t&24),(t===2||r-f===1)&&(a+=String.fromCharCode(l(o>>>18&63),l(o>>>12&63),l(o>>>6&63),l(o&63)),o=0);return a.replace(/A(?=A$|$)/g,"=")}function l(e){return e<26?e+65:e<52?e+71:e<62?e-4:e===62?43:e===63?47:65}u.bytesToBase64=s;export{s as a,c as b};
+//# sourceMappingURL=bytesToBase64-CsE3h1Nj.js.map

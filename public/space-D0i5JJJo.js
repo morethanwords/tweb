@@ -1,0 +1,2 @@
+import{dX as a,s as e,Y as r,m as i,t as p}from"./index-COc_Pe9u.js";function f(s,t){if(s.focus(),a(s),t){const n=new KeyboardEvent(t.type,t);s.dispatchEvent(n)}}const c=p("<div>");function l(s){const[t,n]=e(s,["amount","withTransition"]);return(()=>{const o=c();return r(o,i(n,{get style(){return{"padding-top":t.amount,transition:t.withTransition?".2s":void 0}}}),!1,!1),o})()}export{l as S,f};
+//# sourceMappingURL=space-D0i5JJJo.js.map
