@@ -1,7 +1,7 @@
 # Base image
 FROM node:24
 
-RUN npm install -g pnpm@11.15.1
+RUN npm install -g pnpm@11.16.0
 
 # Set the working directory in the container
 WORKDIR /app

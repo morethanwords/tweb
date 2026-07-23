@@ -7,7 +7,6 @@ WORKDIR /app
 COPY ../package.json ./
 
 # Install app dependencies
-RUN npm install -g pnpm@11.15.1
+RUN npm install -g pnpm@11.16.0
 
 RUN pnpm install
-

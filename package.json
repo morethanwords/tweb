@@ -84,7 +84,7 @@
     "vitest": "^4.1.10",
     "ws": "^8.21.1"
   },
-  "packageManager": "pnpm@11.15.1",
+  "packageManager": "pnpm@11.16.0",
   "dependencies": {
     "temml": "^0.13.3"
   }

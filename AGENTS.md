@@ -19,7 +19,7 @@ Author: Eduard Kuzmenko. License: GPL v3.
 | Build | Vite 5 |
 | CSS | SCSS (sass) |
 | Testing | Vitest |
-| Package Manager | pnpm 9 |
+| Package Manager | pnpm 11 |
 | Protocol | MTProto (custom implementation) |
 | Storage | IndexedDB + CacheStorage + localStorage |
 | Workers | SharedWorker + ServiceWorker |
