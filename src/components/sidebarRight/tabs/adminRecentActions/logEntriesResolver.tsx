@@ -63,7 +63,7 @@ type MapCallbackArgs<Key extends ChannelAdminLogEventAction['_']> = {
 type MapCallback<Key extends ChannelAdminLogEventAction['_']> = (args: MapCallbackArgs<Key>) => MapCallbackResult;
 
 
-const logEntriesMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key> } = {
+const logEntriesMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>} = {
   'channelAdminLogEventActionChangeTitle': ({action, isBroadcast}) => ({
     group: 'info',
     Message: () => i18n(isBroadcast ? 'AdminRecentActionMessage.ChangeTitleChannel' : 'AdminRecentActionMessage.ChangeTitleGroup'),

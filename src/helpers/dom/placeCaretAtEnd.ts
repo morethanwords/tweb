@@ -19,10 +19,15 @@ export default function placeCaretAtEnd(el: HTMLElement, ignoreTouchCheck = fals
     el.selectionStart = length;
     el.selectionEnd = length;
   } else {
+    const view = el.ownerDocument.defaultView;
+    if(!view) return;
+
     const range = el.ownerDocument.createRange();
     range.selectNodeContents(el);
     range.collapse(false);
-    const sel = el.ownerDocument.defaultView.getSelection();
+    const sel = view.getSelection();
+    if(!sel) return;
+
     sel.removeAllRanges();
     sel.addRange(range);
   }

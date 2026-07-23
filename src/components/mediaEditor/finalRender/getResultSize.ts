@@ -9,7 +9,7 @@ type Args = {
   videoType: 'video' | 'gif';
   imageWidth: number;
   imageRatio: number;
-  cropOffset: { width: number; height: number; };
+  cropOffset: {width: number; height: number;};
   newRatio: number;
   scale: number;
   quality?: number;

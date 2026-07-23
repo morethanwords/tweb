@@ -316,7 +316,7 @@ function useStoriesSegments(storiesContextValue: StoriesContextValue) {
   listenerSetter.add(rootScope)('story_new', refetchStoriesSegments);
   listenerSetter.add(rootScope)('story_update', refetchStoriesSegments);
 
-  function refetchStoriesSegments({peerId}: { peerId: PeerId }) {
+  function refetchStoriesSegments({peerId}: {peerId: PeerId}) {
     if(!storiesPeerIds()?.includes(peerId)) return;
     refetch();
   }

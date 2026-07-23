@@ -32,7 +32,7 @@ type ClearDraftArgs = {
 };
 
 export class AppDraftsManager extends AppManager {
-  private drafts: { [peerIdAndThreadId: string]: MyDraftMessage };
+  private drafts: {[peerIdAndThreadId: string]: MyDraftMessage};
   private getAllDraftPromise: Promise<void>;
   private getAllDraftsResolved = false;
 

@@ -605,7 +605,7 @@ export class AppMessagesManager extends AppManager {
   private historyMaxIdSubscribed: Map<HistoryStorageKey, number> = new Map();
 
   private factCheckBatcher: Batcher<PeerId, number, FactCheck>;
-  private checklistBatcher: Batcher<string, { taskId: number, oldItem?: TodoCompletion, action: 'complete' | 'uncomplete' }, void>;
+  private checklistBatcher: Batcher<string, {taskId: number, oldItem?: TodoCompletion, action: 'complete' | 'uncomplete'}, void>;
 
   private waitingTranscriptions: Map<string, CancellablePromise<MessagesTranscribedAudio>>;
   private paidMessagesQueue = new PaidMessagesQueue;
@@ -2702,7 +2702,7 @@ export class AppMessagesManager extends AppManager {
     }
   }
 
-  public checkSendOptions(options: MessageSendingParams & Partial<{ text: string }>) {
+  public checkSendOptions(options: MessageSendingParams & Partial<{text: string}>) {
     const {peerId} = options;
     if(
       this.appPeersManager.isBotforum(peerId) &&

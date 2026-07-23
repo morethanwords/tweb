@@ -14,7 +14,7 @@ export default class PopupPaymentMethods extends PopupElement {
   constructor(
     private paymentForm: PaymentsPaymentForm.paymentsPaymentForm,
     private user: User.user,
-    private savedCard?: PaymentCardDetails,
+    private savedCard?: PaymentCardDetails
   ) {
     super('popup-payment popup-payment-methods', {
       closable: true,

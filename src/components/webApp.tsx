@@ -210,7 +210,7 @@ export default class WebApp {
     attachClassName(this.footer, () => classNames(
       'web-app-footer',
       (mainButtonState().is_visible || secondaryButtonState().is_visible) && 'is-visible',
-      (mainButtonState().is_visible && secondaryButtonState().is_visible) && `has-two-buttons position-${secondaryButtonState().position}`,
+      (mainButtonState().is_visible && secondaryButtonState().is_visible) && `has-two-buttons position-${secondaryButtonState().position}`
     ));
 
     const ButtonContent = (props: {

@@ -61,7 +61,7 @@ const StarRangeInput: Component<{
 
   const normalizedValue = () => nMap(units(), min(), totalUnits, 0, 1);
 
-  const onInput = (e: InputEvent & { currentTarget: HTMLInputElement }) => {
+  const onInput = (e: InputEvent & {currentTarget: HTMLInputElement}) => {
     const clampedValue = clamp(e.currentTarget.valueAsNumber, min(), totalUnits)
     const newValue = Math.round(unitsToStars(clampedValue));
 

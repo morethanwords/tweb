@@ -326,10 +326,10 @@ const ChatType: Component = () => {
         caption: isBroadcast ? 'RestrictSavingContentInfoChannel' : 'RestrictSavingContentInfoGroup'
       });
 
-      let checkboxField: CheckboxField;
+      const checkboxField = new CheckboxField({toggle: true});
       const row = new Row({
         titleLangKey: 'RestrictSavingContent',
-        checkboxField: checkboxField = new CheckboxField({toggle: true})
+        checkboxField
       });
 
       tab.listenerSetter.add(checkboxField.input)('change', () => {

@@ -97,7 +97,7 @@ export type MediaEditorState = {
 export enum SetVideoTimeFlags {
   Redraw = 0b001,
   UpdateCursor = 0b010,
-  UpdateVideo = 0b100,
+  UpdateVideo = 0b100
 };
 
 export type EditorOverridableGlobalActions = {

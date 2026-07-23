@@ -291,7 +291,7 @@ export default class DotRenderer implements AnimationItemWrapper {
         Math.hypot(rectX, rectY),
         Math.hypot(bcr.width - rectX, rectY),
         Math.hypot(rectX, bcr.height - rectY),
-        Math.hypot(bcr.width - rectX, bcr.height - rectY),
+        Math.hypot(bcr.width - rectX, bcr.height - rectY)
       );
       const maxDist = distToMargin * instance.dpr + 50;
 

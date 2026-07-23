@@ -21,7 +21,7 @@ export const StaticCheckbox = (inProps: StaticCheckboxProps) => {
       'checked',
       'round',
       'cross'
-    ],
+    ]
   );
 
   return (

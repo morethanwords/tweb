@@ -1,7 +1,7 @@
 export function mergeSortedArrays<T>(
   arrA: T[],
   arrB: T[],
-  compare: (a: T, b: T) => number,
+  compare: (a: T, b: T) => number
 ): T[] {
   const result: T[] = [];
   let i = 0,

@@ -3,7 +3,7 @@
 // Thanks to https://github.com/mbostock/git-static
 
 var child = require("child_process"),
-    mime = require("mime"),
+    mime = require("mime").default,
     path = require("path");
 
 var shaRe = /^[0-9a-f]{40}$/,

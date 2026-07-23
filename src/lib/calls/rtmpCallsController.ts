@@ -201,7 +201,7 @@ export class RtmpCallsController extends EventListenerBase<{
       if((e as ApiError).type === 'GROUPCALL_JOIN_MISSING' && !triedRejoin) {
         try {
           await this.rejoinCall();
-          return this.isCurrentCallDead(true, true);
+          return await this.isCurrentCallDead(true, true);
         } catch(err) {
           log.error('rejoinCall failed during dead-call check', err);
         }

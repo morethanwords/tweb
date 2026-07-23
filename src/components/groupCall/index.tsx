@@ -92,7 +92,7 @@ export function getColorByMutedState(state: GROUP_CALL_PARTICIPANT_MUTED_STATE) 
 export enum GROUP_CALL_MICROPHONE_BUTTON_STATE {
   HAND,
   MUTED,
-  UNMUTED,
+  UNMUTED
 }
 
 export function getGroupCallMicrophoneButtonState(groupCall: GroupCall.groupCall, participant: GroupCallParticipant) {

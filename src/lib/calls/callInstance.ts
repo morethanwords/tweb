@@ -105,9 +105,9 @@ type State = {
   isStarting?: boolean;
   isMakingOffer?: boolean;
   isUpdatingExclusiveVideo?: boolean;
-  remoteSetup?: Extract<P2PMessage, { '@type': 'InitialSetup' }>;
-  pendingRemoteNegotiation?: Extract<P2PMessage, { '@type': 'NegotiateChannels' }>;
-  queuedRemoteNegotiation?: Extract<P2PMessage, { '@type': 'NegotiateChannels' }>;
+  remoteSetup?: Extract<P2PMessage, {'@type': 'InitialSetup'}>;
+  pendingRemoteNegotiation?: Extract<P2PMessage, {'@type': 'NegotiateChannels'}>;
+  queuedRemoteNegotiation?: Extract<P2PMessage, {'@type': 'NegotiateChannels'}>;
   pendingLocalExchangeId?: string;
   localCandidateExchangeId?: string;
   pendingLocalContentMids?: Record<string, string>;
@@ -891,7 +891,7 @@ export default class CallInstance extends CallInstanceBase<{
 
   private setLocalVideoTransceiver(
     streamType: Extract<StreamType, 'video' | 'presentation'>,
-    transceiver: RTCRtpTransceiver,
+    transceiver: RTCRtpTransceiver
   ) {
     if(!this.p2p) return;
 
@@ -1092,7 +1092,7 @@ export default class CallInstance extends CallInstanceBase<{
   private async joinPhoneCall(
     connections: Connection[],
     shouldStartVideo: boolean,
-    isP2p: boolean,
+    isP2p: boolean
   ) {
     const {isOutgoing} = this;
     const conn = new RTCPeerConnection({
@@ -1424,7 +1424,7 @@ export default class CallInstance extends CallInstanceBase<{
   }
 
   private sendLocalDescription(
-    description: RTCSessionDescription | RTCSessionDescriptionInit | undefined, exchangeId?: string,
+    description: RTCSessionDescription | RTCSessionDescriptionInit | undefined, exchangeId?: string
   ) {
     if(!this.p2p || !description?.sdp) return;
 
@@ -1729,7 +1729,7 @@ export default class CallInstance extends CallInstanceBase<{
   private setRemoteTransceiverDirection(
     name: 'remoteAudio' | 'remoteVideo' | 'remotePresentation',
     kind: 'audio' | 'video',
-    direction: RTCRtpTransceiverDirection,
+    direction: RTCRtpTransceiverDirection
   ) {
     if(!this.p2p?.transceivers[name]) {
       return false;
@@ -1821,9 +1821,9 @@ export default class CallInstance extends CallInstanceBase<{
   }
 
   private buildRemoteSdp(
-    setup: Extract<P2PMessage, { '@type': 'InitialSetup' }>,
+    setup: Extract<P2PMessage, {'@type': 'InitialSetup'}>,
     contents: P2PMediaContent[],
-    isAnswer: boolean,
+    isAnswer: boolean
   ) {
     const mids = this.getMediaMids();
     const orderedContents = orderMediaContents(contents);

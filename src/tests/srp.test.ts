@@ -1,5 +1,4 @@
 import nodeCrypto from 'crypto';
-import type {BinaryLike} from 'crypto';
 import '../lib/crypto/crypto.worker';
 import cryptoWorker from '@lib/crypto/cryptoMessagePort';
 import computeSRP, {makePasswordHash} from '@lib/crypto/srp';
@@ -100,7 +99,7 @@ async function serverAccepts(out: InputCheckPasswordSRP.inputCheckPasswordSRP, b
 
 test('makePasswordHash matches an independent Node-crypto reference', async() => {
   const ref = (() => {
-    const sha = (d: BinaryLike) => Uint8Array.from(nodeCrypto.createHash('sha256').update(d).digest());
+    const sha = (d: Uint8Array) => Uint8Array.from(nodeCrypto.createHash('sha256').update(d).digest());
     const cat = (...parts: Uint8Array[]) => {
       const out = new Uint8Array(parts.reduce((n, x) => n + x.length, 0));
       let off = 0;

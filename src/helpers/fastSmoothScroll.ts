@@ -14,7 +14,7 @@ const SHORT_TRANSITION_MAX_DISTANCE = 500;
 export enum FocusDirection {
   Up,
   Down,
-  Static,
+  Static
 };
 
 export type ScrollGetNormalSizeCallback = (options: {rect: DOMRect}) => number;

@@ -298,7 +298,10 @@ export class DialogElement extends Row {
         type: isSavedDialog ? ChatType.Saved : ChatType.Chat
       });
 
-    let titleWrapOptions: WrapSomethingOptions;
+    const titleWrapOptions: WrapSomethingOptions = {
+      textColor: appDialogsManager.getTextColor(isActive),
+      ...newWrapOptions
+    };
 
     const peerTitle = new PeerTitle();
     const peerTitlePromise = peerTitle.update({
@@ -308,10 +311,7 @@ export class DialogElement extends Row {
       onlyFirstName,
       withIcons: !noIcons,
       threadId: isSavedDialog ? undefined : threadId,
-      wrapOptions: titleWrapOptions = {
-        textColor: appDialogsManager.getTextColor(isActive),
-        ...newWrapOptions
-      },
+      wrapOptions: titleWrapOptions,
       iconsColor: appDialogsManager.getPrimaryColor(isActive),
       meAsNotes: isSavedDialog,
       asAllChats

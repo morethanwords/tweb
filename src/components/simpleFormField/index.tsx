@@ -194,7 +194,7 @@ SimpleFormField.Label = (props: ParentProps<{
   );
 };
 
-const LabelMaxLength = (props: { maxLength: number }) => {
+const LabelMaxLength = (props: {maxLength: number}) => {
   const context = useSimpleFormFieldContext();
 
   const {shouldShowLengthLeft, lengthLeft, hasError} = useMaxLengthError(context.value, () => props.maxLength);

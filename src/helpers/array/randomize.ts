@@ -1,4 +1,4 @@
-export default function randomize<T extends ArrayBufferView>(arr: T) {
+export default function randomize<T extends ArrayBufferView<ArrayBuffer>>(arr: T) {
   if(crypto && 'getRandomValues' in crypto) {
     crypto.getRandomValues(arr);
   } else {

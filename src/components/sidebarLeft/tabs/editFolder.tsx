@@ -53,8 +53,6 @@ const EditFolder: Component = () => {
   const p = tab.payload;
 
   const flags: EditFolderFlags = {} as any;
-  let includePeerIdsButtons: EditFolderButton[];
-  let excludePeerIdsButtons: EditFolderButton[];
   let animation: LottiePlayer;
   let filter: MyDialogFilter;
   let originalFilter: MyDialogFilter;
@@ -352,7 +350,7 @@ const EditFolder: Component = () => {
     return section;
   };
 
-  const includePeerIds = generateList('folder-list-included', 'FilterInclude', includePeerIdsButtons = [{
+  const includePeerIdsButtons: EditFolderButton[] = [{
     icon: 'add',
     text: 'ChatList.Filter.Include.AddChat',
     withRipple: true
@@ -376,9 +374,10 @@ const EditFolder: Component = () => {
     text: 'ChatList.Filter.Bots',
     icon: 'bots',
     name: 'bots'
-  }], flags, 'FilterIncludeInfo');
+  }];
+  const includePeerIds = generateList('folder-list-included', 'FilterInclude', includePeerIdsButtons, flags, 'FilterIncludeInfo');
 
-  const excludePeerIds = generateList('folder-list-excluded', 'FilterExclude', excludePeerIdsButtons = [{
+  const excludePeerIdsButtons: EditFolderButton[] = [{
     icon: 'minus',
     text: 'FilterRemoveChats',
     withRipple: true
@@ -394,7 +393,8 @@ const EditFolder: Component = () => {
     text: 'ChatList.Filter.ReadChats',
     icon: 'readchats',
     name: 'exclude_read'
-  }], flags, 'FilterExcludeInfo');
+  }];
+  const excludePeerIds = generateList('folder-list-excluded', 'FilterExclude', excludePeerIdsButtons, flags, 'FilterExcludeInfo');
 
   const inviteLinks = generateList('folder-list-links', 'InviteLinks', [{
     icon: 'add',

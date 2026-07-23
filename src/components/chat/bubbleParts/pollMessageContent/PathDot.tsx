@@ -38,7 +38,7 @@ const PathDot: Component<PathDotProps> = (rawProps) => {
       reverse: false,
       padding: 8
     },
-    rawProps,
+    rawProps
   );
 
   // Clamp radius so it never exceeds half of the smaller side.

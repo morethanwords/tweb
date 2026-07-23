@@ -4,8 +4,6 @@ import solidPlugin from 'vite-plugin-solid';
 // @ts-ignore no type declarations
 import handlebars from 'vite-plugin-handlebars';
 import basicSsl from '@vitejs/plugin-basic-ssl';
-import {visualizer} from 'rollup-plugin-visualizer';
-import checker from 'vite-plugin-checker';
 // import devtools from 'solid-devtools/vite'
 import autoprefixer from 'autoprefixer';
 import {resolve} from 'path';
@@ -132,29 +130,16 @@ export default defineConfig({
     //   /* features options - all disabled by default */
     //   autoname: true // e.g. enable autoname
     // }),
-    process.env.VITEST || process.env.TWEB_PREVIEW ? undefined : checker({
-      typescript: true,
-      eslint: {
-        // for example, lint .ts and .tsx
-        lintCommand: 'eslint "./src/**/*.{ts,tsx}" --ignore-pattern "/src/solid/*"',
-        useFlatConfig: true,
-        // Only watch src/ for re-lint. The checker's default watchTarget is the project
-        // ROOT, and its ignore filter skips files but never directories — so chokidar
-        // descends into the .claude git worktrees (~40k dirs) and crashes the dev server
-        // with "EMFILE: too many open files, watch" on macOS. The lint glob is src-only.
-        watchPath: 'src'
-      }
-    }),
     solidPlugin(),
     handlebarsPlugin as any,
     USE_SELF_SIGNED_CERTS ? basicSsl(BASIC_SSL_CONFIG) : undefined,
     // Only emit the bundle treemap (stats.html) when explicitly analyzing (ANALYZE=1):
     // it adds build time and writes a ~1.3MB file that otherwise gets globbed into the
     // dep scan. Run `ANALYZE=1 pnpm build` to generate it.
-    process.env.ANALYZE ? visualizer({
+    process.env.ANALYZE ? import('rollup-plugin-visualizer').then(({visualizer}) => visualizer({
       gzipSize: true,
       template: 'treemap'
-    }) : undefined
+    })) : undefined
   ].filter(Boolean),
   test: {
     // include: ['**/*.{test,spec}.?(c|m)[jt]s?(x)'],
@@ -201,7 +186,7 @@ export default defineConfig({
     copyPublicDir: false,
     emptyOutDir: true,
     minify: NO_MINIFY ? false : undefined,
-    rollupOptions: {
+    rolldownOptions: {
       output: {
         sourcemapIgnoreList: serverOptions.sourcemapIgnoreList
       }
@@ -227,10 +212,14 @@ export default defineConfig({
     // conditions: ['development', 'browser'],
     alias: USE_OWN_SOLID ? {
       'rxcore': resolve(rootDir, SOLID_PATH, 'web/core'),
-      'solid-js/jsx-runtime': resolve(rootDir, SOLID_PATH, 'jsx'),
-      'solid-js/web': resolve(rootDir, SOLID_PATH, 'web'),
-      'solid-js/store': resolve(rootDir, SOLID_PATH, 'store'),
-      'solid-js': resolve(rootDir, SOLID_PATH),
+      // Vite 8 no longer sniffs aliased package formats. Point directly at the
+      // browser builds so Solid's `module` field cannot select server.js.
+      'solid-js/jsx-runtime': resolve(rootDir, SOLID_PATH, 'dist', isDEV ? 'dev.js' : 'solid.js'),
+      'solid-js/html': resolve(rootDir, SOLID_PATH, 'html/dist/html.js'),
+      'solid-js/h': resolve(rootDir, SOLID_PATH, 'h/dist/h.js'),
+      'solid-js/web': resolve(rootDir, SOLID_PATH, 'web/dist', isDEV ? 'dev.js' : 'web.js'),
+      'solid-js/store': resolve(rootDir, SOLID_PATH, 'store/dist', isDEV ? 'dev.js' : 'store.js'),
+      'solid-js': resolve(rootDir, SOLID_PATH, 'dist', isDEV ? 'dev.js' : 'solid.js'),
       ...ADDITIONAL_ALIASES
     } : ADDITIONAL_ALIASES
   }

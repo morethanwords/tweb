@@ -229,7 +229,7 @@ export function CodeInputField(props: {
           let finalValue = rawValue
           const oldValue = value()
           const selectionSize = Math.abs(
-            (previousSelection.start ?? 0) - (previousSelection.end ?? 0),
+            (previousSelection.start ?? 0) - (previousSelection.end ?? 0)
           )
 
           if((previousSelection.inserting || selectionSize === oldValue.length)) {
@@ -248,7 +248,7 @@ export function CodeInputField(props: {
             if(hasInvalidChars) {
               e.currentTarget.setSelectionRange(
                 previousSelection.start ?? 0,
-                previousSelection.end ?? 0,
+                previousSelection.end ?? 0
               )
             }
             return

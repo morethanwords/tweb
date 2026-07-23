@@ -13,7 +13,7 @@ function getAtPath(obj: any, path: (string | number)[]) {
 function setArgsToValue(
   storeSnapshot: any,
   rawArgs: (string | number | ((prev: any) => any))[]
-): { path: (string | number)[]; value: any } {
+): {path: (string | number)[]; value: any} {
   const path = rawArgs.slice(0, -1) as (string | number)[];
   const last = rawArgs[rawArgs.length - 1];
   if(typeof(last) === 'function') {

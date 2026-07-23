@@ -227,7 +227,10 @@ export default class PopupGiftLink extends PopupElement {
       if((err as ApiError).type.includes('PREMIUM_SUB_ACTIVE_UNTIL_')) {
         popup.hide();
         const timestamp = +(err as ApiError).type.split('_').pop();
-        let button: Parameters<typeof confirmationPopup>[0]['button'];
+        const button: Parameters<typeof confirmationPopup>[0]['button'] = {
+          langKey: 'OK',
+          isCancel: true
+        };
         confirmationPopup({
           titleLangKey: 'GiftPremiumActivateErrorTitle',
           descriptionLangKey: 'GiftCode.Activation.After',
@@ -239,10 +242,7 @@ export default class PopupGiftLink extends PopupElement {
               this.shareGiftLink('https://t.me/giftcode/' + slug);
             })
           ],
-          button: button = {
-            langKey: 'OK',
-            isCancel: true
-          }
+          button
         });
       }
 

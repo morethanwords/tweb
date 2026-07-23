@@ -119,7 +119,7 @@ export function ChecklistBubble(props: {
                 class={classNames(
                   styles.item,
                   isReadonly ? styles.itemReadonly : styles.itemClickable,
-                  completionsById()[item.id] && styles.itemCompleted,
+                  completionsById()[item.id] && styles.itemCompleted
                 )}
                 onClick={(evt) => {
                   cancelEvent(evt);

@@ -25,11 +25,7 @@ declare global {
   interface Uint8Array {
     concat: (...args: Array<Uint8Array | ArrayBuffer | number[]>) => Uint8Array,
     // toString: () => string,
-    toJSON: () => number[],
+    toJSON: () => number[] | {type: string, data: number[]},
     // toJSON: () => {type: 'bytes', value: number[]},
-  }
-
-  interface Promise<T> {
-    finally: (onfinally?: () => void) => Promise<T>;
   }
 }

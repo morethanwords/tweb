@@ -7,7 +7,7 @@ import wrapRichText from '@lib/richTextProcessor/wrapRichText';
 import rootScope from '@lib/rootScope';
 import ReplyMarkupLayout from '@components/chat/bubbleParts/replyMarkupLayout';
 
-function ViaUsername(props: { botId: BotId }) {
+function ViaUsername(props: {botId: BotId}) {
   const [resource, ctx] = createResource(async() => {
     const via = document.createElement('span');
     via.innerText = '@' + (await rootScope.managers.appPeersManager.getPeerUsername(props.botId.toPeerId()));

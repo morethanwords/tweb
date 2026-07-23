@@ -1,6 +1,6 @@
 import type LazyLoadQueue from '@components/lazyLoadQueue';
 import type {PeerPhotoSize} from '@appManagers/appAvatarsManager';
-import type {StoriesSegment, StoriesSegments} from '@appManagers/appStoriesManager';
+import type {StoriesSegment, StoriesSegments as StoriesSegmentsType} from '@appManagers/appStoriesManager';
 import {getMiddleware, type Middleware} from '@helpers/middleware';
 import deferredPromise from '@helpers/cancellablePromise';
 import {
@@ -99,11 +99,11 @@ rootScope.addEventListener('story_deleted', onAvatarStoriesUpdate);
 rootScope.addEventListener('story_new', onAvatarStoriesUpdate);
 
 
-const getStoriesSegments = async(peerId: PeerId, storyId?: number): Promise<AckedResult<StoriesSegments>> => {
+const getStoriesSegments = async(peerId: PeerId, storyId?: number): Promise<AckedResult<StoriesSegmentsType>> => {
   if(storyId) {
     const storyUnreadType = await rootScope.managers.appStoriesManager.getUnreadType(peerId, storyId);
 
-    const segments: StoriesSegments = [{
+    const segments: StoriesSegmentsType = [{
       length: 1,
       type: storyUnreadType
     }];
@@ -285,7 +285,7 @@ export function StoriesSegments(props: {
   simple?: boolean,
   isStoryFolded?: Accessor<boolean>,
 }) {
-  const [storiesSegments, setStoriesSegments] = createSignal<StoriesSegments>();
+  const [storiesSegments, setStoriesSegments] = createSignal<StoriesSegmentsType>();
   const storyDimensions: Accessor<ReturnType<typeof calculateSegmentsDimensions>> = createMemo((previousDimensions) => {
     if(storiesSegments() === undefined) {
       return;
@@ -547,8 +547,8 @@ export const AvatarNew = (props: {
     const cached = !(result instanceof Promise);
 
     const animate = !cached && liteMode.isAvailable('animations') && !props.noFadeIn;
-    let image: HTMLImageElement;
-    const element = image = document.createElement('img');
+    const image = document.createElement('img');
+    const element = image;
     element.className = classNames('avatar-photo', animate && 'fade-in');
 
     let renderThumbPromise: Promise<any>;
@@ -688,7 +688,7 @@ export const AvatarNew = (props: {
     isTopic?: boolean,
     isSubscribed?: boolean,
     isMonoforum?: boolean,
-    storiesSegments?: StoriesSegments
+    storiesSegments?: StoriesSegmentsType
   }) => {
     setThumb();
     setMedia();

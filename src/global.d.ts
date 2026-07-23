@@ -111,7 +111,7 @@ declare global {
     back(): void;
   }
 
-  declare const navigation: Navigation;
+  const navigation: Navigation;
 
   // * until here
 
@@ -288,7 +288,7 @@ declare global {
     originalError?: any,
   };
 
-  declare const electronHelpers: {
+  const electronHelpers: {
     openExternal(url): void;
   } | undefined;
 

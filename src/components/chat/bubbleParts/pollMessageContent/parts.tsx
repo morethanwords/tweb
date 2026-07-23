@@ -158,7 +158,7 @@ export const PollType = (props: CommonProps) => {
   );
 };
 
-export const PollVotes = (props: CommonProps & { votersCount: number }) => {
+export const PollVotes = (props: CommonProps & {votersCount: number}) => {
   const key = createMemo((): LangPackKey => {
     if(!props.votersCount) {
       if(props.closed) return 'Chat.Poll.TotalVotesResultEmpty';
@@ -175,7 +175,7 @@ export const PollVotes = (props: CommonProps & { votersCount: number }) => {
   );
 };
 
-export const AutoStartedConfetti = (props: { onEnd: () => void }) => {
+export const AutoStartedConfetti = (props: {onEnd: () => void}) => {
   let ref: ConfettiRef;
 
   onMount(() => {

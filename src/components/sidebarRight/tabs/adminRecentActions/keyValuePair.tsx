@@ -44,7 +44,7 @@ export const BooleanKeyValue = (props: {
   />
 );
 
-export const InviteKeyValue = (props: { invite: ExportedChatInvite }) => {
+export const InviteKeyValue = (props: {invite: ExportedChatInvite}) => {
   return (
     <Show when={props.invite._ === 'chatInviteExported'}>
       <KeyValuePair

@@ -247,7 +247,7 @@ function makeRankServiceEntry(
   };
 }
 
-const adminLogsMap: { [Key in ChannelAdminLogEventAction['_']]: MapCallback<Key> } = {
+const adminLogsMap: {[Key in ChannelAdminLogEventAction['_']]: MapCallback<Key>} = {
   'channelAdminLogEventActionChangeTitle': ({isBroadcast, action, peerId, makePeerTitle, event}) =>
     makeSimpleServiceEntryWithArgs(
       isBroadcast ? 'AdminLog.ChangeTitleChannel' : 'AdminLog.ChangeTitleGroup',

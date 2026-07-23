@@ -560,7 +560,7 @@ export default class DialogsStorage extends AppManager {
 
     for(const folder of folders) {
       let i = 0, skipped = 0;
-      for(let length = folder.length; i < length; ++i) {
+      for(const length = folder.length; i < length; ++i) {
         const dialog = folder[i];
         if(verify(dialog)) {
           return [dialog, i - skipped];
@@ -1690,7 +1690,7 @@ export default class DialogsStorage extends AppManager {
 
     let offset = 0;
     if(offsetIndex > 0) {
-      for(let length = curDialogStorage.length; offset < length; ++offset) {
+      for(const length = curDialogStorage.length; offset < length; ++offset) {
         if(offsetIndex > this.getDialogIndex(curDialogStorage[offset], indexKey)) {
           break;
         }
@@ -1733,7 +1733,7 @@ export default class DialogsStorage extends AppManager {
 
       offset = 0;
       if(offsetIndex > 0) {
-        for(let length = curDialogStorage.length; offset < length; ++offset) {
+        for(const length = curDialogStorage.length; offset < length; ++offset) {
           if(offsetIndex > this.getDialogIndex(curDialogStorage[offset], indexKey)) {
             break;
           }

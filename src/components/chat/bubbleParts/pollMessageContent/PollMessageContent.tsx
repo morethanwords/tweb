@@ -359,7 +359,7 @@ export const PollMessageContent =
       setNewOption(sliced.text ? sliced : {...sliced, attachment: undefined});
       if(sliced.text.length < inputField?.value.length) {
         inputField?.setValueSilently(
-          wrapDraftText(sliced.text, {entities: sliced.entities, middleware}),
+          wrapDraftText(sliced.text, {entities: sliced.entities, middleware})
         );
         setCaretAtEnd(inputField?.input);
       }

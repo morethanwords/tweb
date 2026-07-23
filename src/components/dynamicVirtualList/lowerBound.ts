@@ -4,7 +4,7 @@ export function lowerBound(
   low: number,
   high: number,
   target: number,
-  getValue: (index: number) => number,
+  getValue: (index: number) => number
 ): number {
   let i = 0;
 

@@ -221,17 +221,17 @@ class MonoforumDialogsStorage extends AppManager {
     const offsetDate = offsetDialog ? this.appMessagesManager.getMessageByPeer(parentPeerId, offsetDialog.top_message)?.date : 0;
     const offsetId = getServerMessageId(offsetDialog?.top_message);
 
-    let p: MessagesGetSavedDialogs;
+    const p: MessagesGetSavedDialogs = {
+      hash: '0',
+      limit,
+      offset_date: offsetDate,
+      offset_id: offsetId,
+      offset_peer: offsetPeer,
+      parent_peer: parentPeer
+    };
     const result = await this.apiManager.invokeApiSingleProcess({
       method: 'messages.getSavedDialogs',
-      params: p = {
-        hash: '0',
-        limit,
-        offset_date: offsetDate,
-        offset_id: offsetId,
-        offset_peer: offsetPeer,
-        parent_peer: parentPeer
-      }
+      params: p
     });
 
     if(DEBUG) MTProtoMessagePort.getInstance<false>().invoke('log', {m: '[my-debug] fetching dialogs', parentPeerId, p, result});

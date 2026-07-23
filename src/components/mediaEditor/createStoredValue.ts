@@ -6,7 +6,7 @@ import {createEffect, createSignal} from 'solid-js';
 import {ColoredBrushType} from './context';
 
 
-type Optional<T> = { hasValue: true; value: T } | { hasValue: false };
+type Optional<T> = {hasValue: true; value: T} | {hasValue: false};
 type Validator<T> = (raw: any) => Optional<T>;
 
 export type StoredValueKey = keyof StateSettings['mediaEditor'] | ['colorByBrush', ColoredBrushType];

@@ -43,7 +43,7 @@ class ChangeLoginEmailCodeTab extends SliderSuperTab {
 export default class ChangeLoginEmailTab extends SliderSuperTab {
   private dispose: VoidFunction
 
-  public init(options: { isInitialSetup?: boolean }) {
+  public init(options: {isInitialSetup?: boolean}) {
     this.container.classList.add(styles.container);
     this.setTitle('EmailSetup.ChangeEmail');
 

@@ -245,7 +245,7 @@ PeerProfile.Avatar = () => {
     wrapSolidComponent(PeerProfile.PinnedMusic, middleware.get()),
     wrapSolidComponent(() => PeerProfile.StoryPreviews({
       info: avatars.info
-    }), middleware.get()),
+    }), middleware.get())
   );
 
   onCleanup(() => {

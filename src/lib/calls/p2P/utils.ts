@@ -82,7 +82,7 @@ export type SsrcEntry = ConferenceSsrc & {
   isLocalOnly?: boolean;
 };
 
-type CandidatesMessage = Extract<P2PMessage, { '@type': 'Candidates' }>;
+type CandidatesMessage = Extract<P2PMessage, {'@type': 'Candidates'}>;
 
 export type QueuedCandidate = CandidatesMessage['candidates'][number] & Pick<CandidatesMessage, 'exchangeId' | 'ufrag'>;
 
@@ -213,7 +213,7 @@ export async function addIceCandidate(log: Logger, connection: RTCPeerConnection
 export async function tryAddCandidate(
   log: Logger,
   connection: RTCPeerConnection,
-  candidate: QueuedCandidate,
+  candidate: QueuedCandidate
 ) {
   const sdpString = normalizeCandidateComponent(candidate.sdpString);
   if(!sdpString) {
@@ -369,7 +369,7 @@ export function buildSsrc(
   content: P2PMediaContent | undefined,
   mid: string,
   isVideo: boolean,
-  isPresentation = false,
+  isPresentation = false
 ): SsrcEntry {
   if(!content) {
     return {
@@ -405,7 +405,7 @@ export function buildSsrc(
   };
 }
 
-export function parseInitialSetup(sdp: string): Extract<P2PMessage, { '@type': 'InitialSetup' }> {
+export function parseInitialSetup(sdp: string): Extract<P2PMessage, {'@type': 'InitialSetup'}> {
   const sections = parseSdpSections(sdp);
   const ufrag = findLineValue(sections, 'a=ice-ufrag:');
   const pwd = findLineValue(sections, 'a=ice-pwd:');
@@ -428,7 +428,7 @@ export function parseInitialSetup(sdp: string): Extract<P2PMessage, { '@type': '
 export function parseMediaContent(
   section: SdpSection,
   type: P2PMediaContent['type'],
-  fallbackContent?: P2PMediaContent,
+  fallbackContent?: P2PMediaContent
 ): P2PMediaContent {
   const ssrcGroups = parseSsrcGroups(section);
   const ssrc = ssrcGroups[0]?.ssrcs[0] || parseSsrcs(section)[0] || Number(fallbackContent?.ssrc);

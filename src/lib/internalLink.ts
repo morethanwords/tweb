@@ -29,7 +29,7 @@ export enum INTERNAL_LINK_TYPE {
   SETTINGS,
   CONTACTS,
   CONFERENCE_CALL,
-  ADD_AI_STYLE,
+  ADD_AI_STYLE
 };
 
 export type InternalLink =

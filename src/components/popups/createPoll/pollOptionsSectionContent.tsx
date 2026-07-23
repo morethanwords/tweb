@@ -81,7 +81,7 @@ export const PollOptionsSectionContent = (props: {
 
   // const delayedCanShowAddOption = createDelayed(canShowAddOption, canShowAddOption(), value => value ? 200 : 0);
 
-  const TransitionGroupWhenNotDragging = (props: { children: JSX.Element }) => {
+  const TransitionGroupWhenNotDragging = (props: {children: JSX.Element}) => {
     const resolved = children(() => props.children);
     return (
       <Show when={!isDragging()} fallback={resolved()}>

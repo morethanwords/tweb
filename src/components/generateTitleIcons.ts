@@ -33,7 +33,7 @@ export default async function generateTitleIcons({
   noDirectMessagesBadge?: boolean,
   clickableEmojiStatus?: boolean,
   peer?: Chat | User
-}): Promise<{ elements: HTMLElement[]; botVerification?: HTMLElement; }> {
+}): Promise<{elements: HTMLElement[]; botVerification?: HTMLElement;}> {
   peer ??= apiManagerProxy.getPeer(peerId);
   const elements: HTMLElement[] = [];
   if(!peer) {

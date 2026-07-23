@@ -185,8 +185,8 @@ export class AppSidebarLeft extends SidebarSlider {
       const count = Object.entries(notificationsCount).reduce(
         (prev, [accountNumber, count]) =>
           prev +
-          (+accountNumber !== getCurrentAccount() ? count || 0 : 0)
-        , 0);
+          (+accountNumber !== getCurrentAccount() ? count || 0 : 0),
+         0);
 
       setAllNotificationsCount(count);
       [this.totalNotificationsCount].forEach((el) => {

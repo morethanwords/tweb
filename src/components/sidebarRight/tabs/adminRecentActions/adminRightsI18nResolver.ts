@@ -2,7 +2,7 @@ import {ChatAdminRights} from '@layer';
 import {LangPackKey} from '@lib/langPack';
 
 
-type Args = { isBroadcast: boolean };
+type Args = {isBroadcast: boolean};
 
 const adminRightToI18n: Record<keyof ChatAdminRights.chatAdminRights['pFlags'], (a: Args) => LangPackKey> = {
   other: () => 'AdminRights.Other',

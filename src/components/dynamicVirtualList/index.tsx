@@ -193,7 +193,7 @@ const createVirtualRenderState = <T, >({
 
     batch(() => {
       let i = lowerBound(0, prevMinIdx - 1, viewportTop, idx =>
-        untrack(() => list[idx].offset() + (list[idx].cachedHeight() || 0)),
+        untrack(() => list[idx].offset() + (list[idx].cachedHeight() || 0))
       );
 
       const fromBottomIdx = list.length - renderAtLeastFromBottom({clientHeight: localClientHeight});
@@ -266,7 +266,7 @@ const createItemComponent = <T, El extends HTMLElement>({
 }: CreateItemComponentArgs<T, El>) => {
   const registerResizeCallback = useResizeObserver();
 
-  return (props: { item: ListItemState<T> }) => {
+  return (props: {item: ListItemState<T>}) => {
     let ref!: El;
 
     const [isMeasuring, setIsMeasuring] = createSignal(false);
@@ -328,7 +328,7 @@ const createItemComponent = <T, El extends HTMLElement>({
             setTranslation(0);
           });
         }, stableResizeTimeout);
-      }),
+      })
     );
 
     return (
@@ -346,7 +346,7 @@ const createItemComponent = <T, El extends HTMLElement>({
 };
 
 export const DynamicVirtualList = <T, El extends HTMLElement>(
-  inProps: DynamicVirtualListProps<T, El>,
+  inProps: DynamicVirtualListProps<T, El>
 ) => {
   const props = mergeProps({
     nearBottomThreshold: 120,

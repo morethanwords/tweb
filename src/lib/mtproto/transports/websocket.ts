@@ -114,6 +114,6 @@ export default class Socket extends EventListenerBase<{
   public send = (body: Uint8Array) => {
     this.debug && this.log.debug('-> body length to send:', body.length);
 
-    this.ws.send(body);
+    this.ws.send(body as Uint8Array<ArrayBuffer>);
   };
 }

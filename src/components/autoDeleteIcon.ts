@@ -49,6 +49,6 @@ export function createAutoDeleteIcon(period?: number) {
         icon: typeIcon,
         className: isShifted ? 'auto-delete-icon--shifted' : undefined
       }
-    ],
+    ]
   );
 }

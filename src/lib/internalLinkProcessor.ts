@@ -777,7 +777,7 @@ export class InternalLinkProcessor {
     });
 
     // t.me/addstyle/<slug>
-    addAnchorListener<{ pathnameParams: ['addstyle', string] }>({
+    addAnchorListener<{pathnameParams: ['addstyle', string]}>({
       name: 'addstyle',
       callback: ({pathnameParams}) => {
         if(!pathnameParams[1]) {

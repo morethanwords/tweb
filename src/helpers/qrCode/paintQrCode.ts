@@ -77,13 +77,20 @@ export async function paintQrCode(options: PaintQrOptions) {
   // qr-code-styling races the image-load against a 1s upper bound — matches the
   // legacy behaviour so we don't leave the host stuck behind a never-loading logo.
   let drawingPromise: Promise<void>;
-  if(qrCode._drawingPromise) {
-    drawingPromise = qrCode._drawingPromise;
+  const internalDrawingPromise = qrCode._drawingPromise || qrCode._canvasDrawingPromise;
+  if(internalDrawingPromise) {
+    drawingPromise = internalDrawingPromise;
   } else {
+    const image = qrCode._canvas?._image;
     drawingPromise = Promise.race([
       pause(1000),
       new Promise<void>((resolve) => {
-        qrCode._canvas._image.addEventListener('load', () => {
+        if(!image || image.complete) {
+          window.requestAnimationFrame(() => resolve());
+          return;
+        }
+
+        image.addEventListener('load', () => {
           window.requestAnimationFrame(() => resolve());
         }, {once: true});
       })

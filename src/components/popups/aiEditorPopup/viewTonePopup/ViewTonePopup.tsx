@@ -97,7 +97,7 @@ const ViewTonePopup = (props: ViewTonePopupProps) => {
     return true;
   };
 
-  const Content = (props: { final?: boolean }) => {
+  const Content = (props: {final?: boolean}) => {
     return (
       <AutoHeight>
         <Transition name='fade-2' mode='outin'>
