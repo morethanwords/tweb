@@ -10,6 +10,7 @@ import {resolve} from 'path';
 import {existsSync, copyFileSync, readFileSync} from 'fs';
 import {ServerOptions} from 'vite';
 import {watchLangFile} from './watch-lang.js';
+import devChecks from './scripts/dev-checks.mjs';
 import path from 'path';
 
 const rootDir = resolve(__dirname);
@@ -130,6 +131,7 @@ export default defineConfig({
     //   /* features options - all disabled by default */
     //   autoname: true // e.g. enable autoname
     // }),
+    process.env.VITEST || process.env.TWEB_PREVIEW ? undefined : devChecks(rootDir),
     solidPlugin(),
     handlebarsPlugin as any,
     USE_SELF_SIGNED_CERTS ? basicSsl(BASIC_SSL_CONFIG) : undefined,
