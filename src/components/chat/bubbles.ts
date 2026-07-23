@@ -155,7 +155,7 @@ import {ChatType} from './chatType';
 import {isSavedDialog} from '@appManagers/utils/dialogs/isDialog';
 import getFwdFromName from '@appManagers/utils/messages/getFwdFromName';
 import isForwardOfForward from '@appManagers/utils/messages/isForwardOfForward';
-import {ReactionLayoutType} from '@components/chat/reaction';
+import {ReactionLayoutType, stashFlightSource} from '@components/chat/reaction';
 import reactionsEqual from '@appManagers/utils/reactions/reactionsEqual';
 import getMainGroupedMessage from '@appManagers/utils/messages/getMainGroupedMessage';
 import cancelClickOrNextIfNotClick from '@helpers/dom/cancelClickOrNextIfNotClick';
@@ -2814,6 +2814,9 @@ export default class ChatBubbles {
         attachClickEvent(hoverReaction, (e) => {
           cancelEvent(e); // cancel triggering selection
 
+          // * snapshot the hovered quick-reaction (instant flight source) + the
+          // * clean first-frame render that upgrades it
+          stashFlightSource(reaction, hoverReaction);
           this.chat.sendReaction({
             message: message as Message.message,
             reaction

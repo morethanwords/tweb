@@ -425,6 +425,16 @@ export default class LottiePlayer extends EventListenerBase<LottiePlayerEvents> 
     return this.renderedFirstFrame;
   }
 
+  // Unlike the event, fires even when the first frame was already rendered
+  // (for example, for a player that was prepared in advance).
+  public onFirstFrame(callback: () => void) {
+    if(this.renderedFirstFrame) {
+      callback();
+    } else {
+      this.addEventListener('firstFrame', callback, {once: true});
+    }
+  }
+
   private getResolvedColor(): string {
     if(this.color) {
       return lottieColorToString(this.color);

@@ -4,6 +4,7 @@ import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import assumeType from '@helpers/assumeType';
 import callbackify from '@helpers/callbackify';
 import callbackifyAll from '@helpers/callbackifyAll';
+import noop from '@helpers/noop';
 import copy from '@helpers/object/copy';
 import pause from '@helpers/schedulers/pause';
 import tsNow from '@helpers/tsNow';
@@ -25,7 +26,6 @@ import forEachReverse from '@helpers/array/forEachReverse';
 import fixEmoji from '@lib/richTextProcessor/fixEmoji';
 import getMessageThreadId from '@appManagers/utils/messages/getMessageThreadId';
 import removeParticipantReactions from '@appManagers/utils/reactions/removeParticipantReactions';
-import noop from '@helpers/noop';
 
 const SAVE_DOC_KEYS = [
   'static_icon' as const,
@@ -84,6 +84,12 @@ export class AppReactionsManager extends AppManager {
     this.clear(true);
 
     this.rootScope.addEventListener('user_auth', () => {
+      // * load a couple of generic animations early - they are the instant
+      // * fallback when a reaction effect isn't loaded yet
+      setTimeout(() => {
+        this.preloadGenericAnimations().catch(noop);
+      }, 2e3);
+
       setTimeout(() => {
         Promise.resolve(this.getAvailableReactions()).then(async(availableReactions) => {
           const toLoad: (Extract<keyof AvailableReaction, 'around_animation' | 'static_icon' | 'appear_animation' | 'center_icon'>)[] = [
@@ -96,7 +102,9 @@ export class AppReactionsManager extends AppManager {
           for(let i = 0, length = Math.min(7, availableReactions.length); i < length; ++i) {
             const availableReaction = availableReactions[i];
             const promises = toLoad.map((key) => {
-              return availableReaction[key] && this.apiFileManager.downloadMedia({media: availableReaction[key]});
+              // * downloadMediaURL (not downloadMedia) to mark the cache
+              // * context, so fireAroundAnimation sees the effect as loaded
+              return availableReaction[key] && this.apiFileManager.downloadMediaURL({media: availableReaction[key]}).catch(noop);
             });
             await Promise.all(promises);
             await pause(1000);
@@ -959,15 +967,43 @@ export class AppReactionsManager extends AppManager {
     this.sendReactionPromises.set(promiseKey, promise);
   }
 
+  private preloadGenericAnimations(count = 2) {
+    return Promise.resolve(this.appStickersManager.getLocalStickerSet('inputStickerSetEmojiGenericAnimations')).then((messagesStickerSet) => {
+      const documents = (messagesStickerSet.documents as Document.document[]).slice();
+      const promises: Promise<any>[] = [];
+      for(let i = 0; i < count && documents.length; ++i) {
+        const [document] = documents.splice(Math.floor(Math.random() * documents.length), 1);
+        promises.push(this.apiFileManager.downloadMediaURL({media: document}).catch(noop));
+      }
+
+      return Promise.all(promises);
+    });
+  }
+
   public getRandomGenericAnimation() {
     return callbackify(this.appStickersManager.getLocalStickerSet('inputStickerSetEmojiGenericAnimations'), (messagesStickerSet) => {
-      const length = messagesStickerSet.documents.length;
-      if(!length) {
+      const documents = messagesStickerSet.documents as Document.document[];
+      if(!documents.length) {
         return;
       }
 
-      const document = messagesStickerSet.documents[Math.floor(Math.random() * length)];
-      return document as Document.document;
+      const pickRandom = (documents: Document.document[]) => documents[Math.floor(Math.random() * documents.length)];
+      const isDownloaded = (document: Document.document) => {
+        const cacheContext = this.thumbsStorage.getCacheContext(document);
+        return !!(cacheContext.downloaded || cacheContext.url);
+      };
+
+      const downloaded = documents.filter(isDownloaded);
+      const notDownloaded = documents.filter((document) => !isDownloaded(document));
+
+      // * prefer an animation that can be played instantly, while warming up
+      // * another random one to keep the variety
+      const warmingUp = notDownloaded.length ? pickRandom(notDownloaded) : undefined;
+      if(warmingUp) {
+        this.apiFileManager.downloadMediaURL({media: warmingUp}).catch(noop);
+      }
+
+      return downloaded.length ? pickRandom(downloaded) : warmingUp;
     });
   }
 

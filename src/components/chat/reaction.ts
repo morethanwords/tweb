@@ -1,6 +1,7 @@
 import callbackify from '@helpers/callbackify';
 import formatNumber from '@helpers/number/formatNumber';
-import {AvailableReaction, Document, MessagePeerReaction, Reaction, ReactionCount} from '@layer';
+import getImageFromStrippedThumb from '@helpers/getImageFromStrippedThumb';
+import {AvailableReaction, Document, MessagePeerReaction, PhotoSize, Reaction, ReactionCount} from '@layer';
 import {AppManagers} from '@lib/managers';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
 import rootScope from '@lib/rootScope';
@@ -10,15 +11,15 @@ import wrapSticker from '@components/wrappers/sticker';
 import wrapStickerAnimation from '@components/wrappers/stickerAnimation';
 import LottiePlayer from '@lib/lottie/lottiePlayer';
 import {fastRaf} from '@helpers/schedulers';
-import {Middleware} from '@helpers/middleware';
+import {getMiddleware, Middleware} from '@helpers/middleware';
 import liteMode from '@helpers/liteMode';
 import appImManager from '@lib/appImManager';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import CustomEmojiElement from '@lib/customEmoji/element';
 import deferredPromise from '@helpers/cancellablePromise';
-import callbackifyAll from '@helpers/callbackifyAll';
+import noop from '@helpers/noop';
+import appDownloadManager from '@lib/appDownloadManager';
 import BezierEasing from '@vendor/bezierEasing';
-import safePlay from '@helpers/dom/safePlay';
 import lottieLoader, {LottieAssetName} from '@lib/lottie/lottieLoader';
 import Scrollable from '@components/scrollable';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
@@ -29,7 +30,6 @@ import {Sparkles} from '@components/sparkles';
 import {AnimatedCounter} from '@components/animatedCounter';
 import getUnsafeRandomInt from '@helpers/number/getUnsafeRandomInt';
 import {IS_MOBILE} from '@environment/userAgent';
-import StickerType from '@config/stickerType';
 
 const CLASS_NAME = 'reaction';
 const TAG_NAME = CLASS_NAME + '-element';
@@ -242,9 +242,479 @@ function loadReactionGeneric(): Promise<{layersPositions: ComputedFrameTransform
 
     return {layersPositions, op: animationData.op};
   });
+  promise.catch(() => {
+    if(reactionGenericPromise === promise) {
+      reactionGenericPromise = undefined;
+    }
+  });
 
   return promise;
 }
+
+// * background warm-up downloads are sequential so the big effect files never
+// * starve the interactive fetches (the reaction icon thumb, the flight media)
+let warmUpChain: Promise<any> = Promise.resolve();
+function warmUpDownload(doc: Document.document) {
+  const cacheContext = apiManagerProxy.getCacheContext(doc);
+  if(cacheContext.downloaded || cacheContext.url) {
+    return;
+  }
+
+  warmUpChain = warmUpChain.then(() => appDownloadManager.downloadMediaURL({media: doc})).catch(noop);
+}
+
+// * warm up the activation effect while the user is aiming at the reaction,
+// * so the click fires the native effect instead of the generic fallback
+export function warmUpReactionEffect(availableReaction: AvailableReaction) {
+  if(!liteMode.isAvailable('effects_reactions')) {
+    return;
+  }
+
+  const docs = [
+    availableReaction.around_animation,
+    availableReaction.center_icon
+  ].filter(Boolean) as Document.document[];
+  docs.forEach(warmUpDownload);
+}
+
+const GENERIC_EFFECT_SIZE = 100;
+const GENERIC_EFFECT_STICKER_SIZE = 26;
+const FLIGHT_SOURCE_SIZE = 100;
+
+// * resolve a document to render the reaction's first frame from. The user
+// * clicked an already-rendered emoji, so SOMETHING is cached - but for a native
+// * reaction the menu/picker rendered the appear/select animation, not the
+// * canonical center_icon, so naively picking center_icon can hit an uncached doc
+// * and the flight gets no source in time. Prefer center_icon (cleanest still),
+// * but fall back to whichever of the reaction's docs is already cached so the
+// * render is instant; a custom emoji's own doc is always the rendered (cached) one
+function getReactionStickerDoc(reaction: Reaction, managers: AppManagers) {
+  if(reaction._ === 'reactionEmoji') {
+    return callbackify(apiManagerProxy.getReaction(reaction.emoticon), (availableReaction) => {
+      if(!availableReaction) {
+        return;
+      }
+
+      const candidates = [
+        availableReaction.center_icon,
+        availableReaction.static_icon,
+        availableReaction.select_animation,
+        availableReaction.appear_animation
+      ].filter(Boolean) as Document.document[];
+      const cached = candidates.find((doc) => {
+        const cacheContext = apiManagerProxy.getCacheContext(doc);
+        return cacheContext.downloaded || cacheContext.url;
+      });
+      return cached || candidates[0];
+    });
+  } else if(reaction._ === 'reactionCustomEmoji') {
+    return managers.appEmojiManager.getCustomEmojiDocument(reaction.document_id);
+  }
+}
+
+function mediaToCanvas(media: HTMLImageElement | HTMLCanvasElement | HTMLVideoElement) {
+  let width: number, height: number;
+  if(media instanceof HTMLVideoElement) {
+    width = media.videoWidth;
+    height = media.videoHeight;
+  } else if(media instanceof HTMLImageElement) {
+    width = media.naturalWidth;
+    height = media.naturalHeight;
+  } else {
+    width = media.width;
+    height = media.height;
+  }
+
+  if(!width || !height) {
+    throw new Error('rendered media has no size');
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  canvas.getContext('2d').drawImage(media, 0, 0);
+  return normalizeReactionSource(canvas);
+}
+
+const REACTION_SOURCE_FILL = .9;
+const REACTION_SOURCE_ALPHA_THRESHOLD = 8;
+
+function normalizeReactionSource(canvas: HTMLCanvasElement) {
+  const {width, height} = canvas;
+  const data = canvas.getContext('2d').getImageData(0, 0, width, height).data;
+  let left = width, top = height, right = -1, bottom = -1;
+  for(let y = 0; y < height; ++y) {
+    for(let x = 0; x < width; ++x) {
+      if(data[(y * width + x) * 4 + 3] < REACTION_SOURCE_ALPHA_THRESHOLD) {
+        continue;
+      }
+
+      left = Math.min(left, x);
+      top = Math.min(top, y);
+      right = Math.max(right, x);
+      bottom = Math.max(bottom, y);
+    }
+  }
+
+  if(right < left || bottom < top) {
+    throw new Error('rendered media has no visible pixels');
+  }
+
+  const inkWidth = right - left + 1;
+  const inkHeight = bottom - top + 1;
+  // Keep a small breathing room, but never make an already full-size source
+  // smaller. A square output also prevents non-square emoji from stretching
+  // when the placeholder fills .reaction-sticker.
+  const size = Math.min(
+    Math.max(width, height),
+    Math.ceil(Math.max(inkWidth, inkHeight) / REACTION_SOURCE_FILL)
+  );
+  const normalized = document.createElement('canvas');
+  normalized.width = normalized.height = size;
+  normalized.getContext('2d').drawImage(
+    canvas,
+    left,
+    top,
+    inkWidth,
+    inkHeight,
+    Math.round((size - inkWidth) / 2),
+    Math.round((size - inkHeight) / 2),
+    inkWidth,
+    inkHeight
+  );
+  return normalized;
+}
+
+// * snapshot the clicked element's CURRENT pixels synchronously - an INSTANT
+// * flight source so the generic copies fly from frame 0 even before the clean
+// * first-frame render is ready (a cold lottie parse can take ~1s, during which
+// * the flight would otherwise run to its end empty = "no flying emoji"). The
+// * first frame upgrades this as soon as it resolves
+function captureClickedSnapshot(container: HTMLElement): HTMLCanvasElement {
+  if(!container) {
+    return;
+  }
+
+  try {
+    let snapshot: HTMLCanvasElement;
+    const media = container instanceof HTMLImageElement || container instanceof HTMLCanvasElement || container instanceof HTMLVideoElement ?
+      container :
+      Array.from(
+        container.querySelectorAll<HTMLCanvasElement | HTMLImageElement | HTMLVideoElement>('canvas, img.media-sticker, video.media-sticker, img.emoji')
+      ).find((media) => !media.closest('.hide'));
+
+    if(media) {
+      let width: number, height: number;
+      if(media instanceof HTMLVideoElement) {
+        width = media.videoWidth;
+        height = media.videoHeight;
+      } else if(media instanceof HTMLImageElement) {
+        width = media.naturalWidth;
+        height = media.naturalHeight;
+      } else {
+        width = media.width;
+        height = media.height;
+      }
+
+      if(!width || !height) {
+        return;
+      }
+
+      snapshot = document.createElement('canvas');
+      snapshot.width = width;
+      snapshot.height = height;
+      snapshot.getContext('2d').drawImage(media, 0, 0);
+    } else {
+      // * a custom emoji is painted on the shared renderer canvas - copy its region
+      const customEmoji = container instanceof CustomEmojiElement ?
+        container :
+        container.querySelector<CustomEmojiElement>('custom-emoji-element');
+      const rendererCanvas = customEmoji?.renderer?.canvas;
+      if(!rendererCanvas) {
+        return;
+      }
+
+      const canvasRect = rendererCanvas.getBoundingClientRect();
+      const rect = customEmoji.getBoundingClientRect();
+      if(!rect.width || !rect.height || !canvasRect.width || !canvasRect.height) {
+        return;
+      }
+
+      const scaleX = rendererCanvas.width / canvasRect.width;
+      const scaleY = rendererCanvas.height / canvasRect.height;
+      snapshot = document.createElement('canvas');
+      snapshot.width = Math.max(1, Math.round(rect.width * scaleX));
+      snapshot.height = Math.max(1, Math.round(rect.height * scaleY));
+      snapshot.getContext('2d').drawImage(
+        rendererCanvas,
+        (rect.left - canvasRect.left) * scaleX,
+        (rect.top - canvasRect.top) * scaleY,
+        snapshot.width,
+        snapshot.height,
+        0,
+        0,
+        snapshot.width,
+        snapshot.height
+      );
+    }
+
+    // * crop the transparent document/menu padding. Both the optimistic
+    // * .reaction-sticker placeholder and the generic flight draw the whole
+    // * source canvas, so keeping those margins makes the emoji look too small
+    return normalizeReactionSource(snapshot);
+  } catch{
+    return;
+  }
+}
+
+// * render the reaction's emoji on its own and freeze it at the FIRST frame - a
+// * clean, deterministic source for the generic flight copies and the
+// * .reaction-sticker placeholder; unlike a live snapshot it never depends on
+// * whatever animation frame the clicked element happened to be on. Rendered
+// * from the cached FULL document (play:false → frame 0), NOT static:true - the
+// * warm-up downloads the full doc (so it's the cached one), while static would
+// * fetch a separate thumb PhotoSize nobody warmed; sampling the player canvas
+// * is also decode-safe, unlike reading an <img> right after its load event
+function renderReactionFirstFrame(reaction: Reaction, managers: AppManagers): Promise<HTMLCanvasElement> {
+  const middlewareHelper = getMiddleware();
+  return Promise.resolve(getReactionStickerDoc(reaction, managers)).then((doc) => {
+    if(!doc) {
+      throw new Error('no sticker document for the reaction');
+    }
+
+    const div = document.createElement('div');
+    return wrapSticker({
+      div,
+      doc,
+      width: FLIGHT_SOURCE_SIZE,
+      height: FLIGHT_SOURCE_SIZE,
+      play: false,
+      loop: false,
+      withThumb: false,
+      needFadeIn: false,
+      group: 'none',
+      managers,
+      middleware: middlewareHelper.get(),
+      noOffscreen: true
+    }).then(({render}) => render).then((result) => new Promise<HTMLCanvasElement>((resolve, reject) => {
+      const snapshot = (source: HTMLImageElement | HTMLCanvasElement | HTMLVideoElement) => {
+        try {
+          const canvas = mediaToCanvas(source);
+          resolve(canvas);
+        } catch(err) {
+          reject(err);
+        }
+      };
+
+      // * a lottie/webm renders into a player canvas (frame 0); a static sticker
+      // * resolves to its loaded [img]
+      if(result instanceof LottiePlayer) {
+        let settled = false;
+        const cleanup = () => {
+          result.removeEventListener('firstFrame', onFirstFrame);
+          result.removeEventListener('error', onError);
+          result.removeEventListener('destroy', onDestroy);
+        };
+        const onFirstFrame = () => {
+          if(settled) {
+            return;
+          }
+
+          settled = true;
+          cleanup();
+          snapshot(result.canvas[0]);
+        };
+        const onError = (error: unknown) => {
+          if(settled) {
+            return;
+          }
+
+          settled = true;
+          cleanup();
+          reject(error);
+        };
+        const onDestroy = () => onError(result.error || new Error('reaction first-frame player destroyed'));
+
+        if(result.hasFailed) {
+          onError(result.error);
+        } else if(result.hasRenderedFirstFrame) {
+          onFirstFrame();
+        } else {
+          result.addEventListener('firstFrame', onFirstFrame);
+          result.addEventListener('error', onError);
+          result.addEventListener('destroy', onDestroy);
+          result.loadPromise.catch(onError);
+        }
+      } else {
+        snapshot((Array.isArray(result) ? result[0] : result) as any || div.querySelector('img, canvas'));
+      }
+    }));
+  }).finally(() => middlewareHelper.destroy());
+}
+
+// * the user clicks an already rendered emoji. We keep TWO sources: an INSTANT
+// * synchronous snapshot of the clicked element (so the flight copies fly from
+// * frame 0 right away) and a clean first-frame render that upgrades it once
+// * ready (a cold lottie parse can be ~1s - too late for the flight on its own)
+type StashedFlightSource = {snapshot: HTMLCanvasElement, firstFrame: Promise<HTMLCanvasElement>};
+let stashedFlightSource: StashedFlightSource & {reaction: Reaction, time: number};
+export function stashFlightSource(reaction: Reaction, container?: HTMLElement, managers: AppManagers = rootScope.managers) {
+  if(
+    !liteMode.isAvailable('effects_reactions') ||
+    !reaction ||
+    reaction._ === 'reactionEmpty' ||
+    reaction._ === 'reactionPaid'
+  ) {
+    return;
+  }
+
+  const snapshot = captureClickedSnapshot(container);
+  const firstFrame = renderReactionFirstFrame(reaction, managers);
+  firstFrame.catch(noop);
+  stashedFlightSource = {reaction, snapshot, firstFrame, time: Date.now()};
+}
+
+// * peeked, not consumed: both the activation flight and the reaction element
+// * placeholder use it; the TTL is what retires it
+function peekStashedFlightSource(reaction: Reaction): StashedFlightSource | undefined {
+  const stashed = stashedFlightSource;
+  if(!stashed) {
+    return;
+  }
+
+  if((Date.now() - stashed.time) > 5e3) {
+    stashedFlightSource = undefined;
+    return;
+  }
+
+  // * compare only the identity fields - the menu and the message reaction
+  // * objects come from different sources and can differ in auxiliary keys
+  const [a, b] = [stashed.reaction, reaction];
+  const same = a._ === b._ && (
+    (a._ === 'reactionEmoji' && a.emoticon === (b as Reaction.reactionEmoji).emoticon) ||
+    (a._ === 'reactionCustomEmoji' && '' + a.document_id === '' + (b as Reaction.reactionCustomEmoji).document_id)
+  );
+  if(!same) {
+    return;
+  }
+
+  return {snapshot: stashed.snapshot, firstFrame: stashed.firstFrame};
+}
+
+// * tab-side cache of the next generic animation to play: keeps the worker
+// * round-trip off the critical path of an effect activation
+let cachedGenericEffect: Document.document;
+function getGenericEffect(managers: AppManagers): MaybePromise<Document.document> {
+  const cached = cachedGenericEffect;
+  const promise = Promise.resolve(managers.appReactionsManager.getRandomGenericAnimation()).then((doc) => {
+    return cachedGenericEffect = doc || cached;
+  }, () => cached);
+
+  return cached || promise;
+}
+
+type PreparedGenericEffect = {
+  doc: Document.document,
+  around: LottiePlayer,
+  flight: LottiePlayer
+};
+
+// * a generic effect prepared in advance: by the time it has to be played its
+// * players are already parsed and have their first frame rendered, so the
+// * activation starts instantly; once taken, the next one gets prepared
+let preparedGenericEffect: PreparedGenericEffect;
+let preparingGenericEffect = false;
+function prepareGenericEffect(managers: AppManagers = rootScope.managers) {
+  if(preparingGenericEffect || preparedGenericEffect || !liteMode.isAvailable('effects_reactions')) {
+    return;
+  }
+
+  preparingGenericEffect = true;
+  Promise.resolve(getGenericEffect(managers)).then(async(doc) => {
+    if(!doc) {
+      return;
+    }
+
+    const [blob] = await Promise.all([
+      appDownloadManager.downloadMedia({media: doc}),
+      // * marks the cache context so the doc is considered loaded everywhere
+      appDownloadManager.downloadMediaURL({media: doc}).then(noop, noop)
+    ]);
+
+    const players: LottiePlayer[] = [];
+    let cancelled = false;
+    const makePlayer = async(width: number, loop: boolean) => {
+      const player = await lottieLoader.loadAnimationWorker({
+        container: document.createElement('div'),
+        animationData: blob,
+        autoplay: false,
+        loop,
+        width,
+        height: width,
+        name: 'doc' + doc.id,
+        skipRatio: 1,
+        group: 'none',
+        noOffscreen: true
+      });
+      if(cancelled) {
+        player.remove();
+        throw new Error('generic reaction effect preparation cancelled');
+      }
+
+      players.push(player);
+      await lottieLoader.waitForFirstFrame(player);
+      if(cancelled || !player.hasRenderedFirstFrame) {
+        player.remove();
+        throw new Error('generic reaction effect did not render its first frame');
+      }
+
+      return player;
+    };
+
+    try {
+      const [around, flight] = await Promise.all([
+        makePlayer(GENERIC_EFFECT_SIZE, false),
+        makePlayer(GENERIC_EFFECT_STICKER_SIZE, true)
+      ]);
+      preparedGenericEffect = {doc, around, flight};
+    } catch(err) {
+      cancelled = true;
+      players.forEach((player) => player.remove());
+      throw err;
+    }
+  }).catch(noop).finally(() => {
+    preparingGenericEffect = false;
+  });
+}
+
+function takePreparedGenericEffect(sizes: {genericEffect: number, genericEffectSize: number}) {
+  const prepared = preparedGenericEffect;
+  if(!prepared) {
+    prepareGenericEffect();
+    return;
+  }
+
+  if(sizes.genericEffect !== GENERIC_EFFECT_STICKER_SIZE || sizes.genericEffectSize !== GENERIC_EFFECT_SIZE) {
+    return;
+  }
+
+  preparedGenericEffect = undefined;
+  prepareGenericEffect();
+  return prepared;
+}
+
+export function warmUpGenericEffectAssets(managers: AppManagers = rootScope.managers) {
+  if(!liteMode.isAvailable('effects_reactions')) {
+    return;
+  }
+
+  loadReactionGeneric().catch(noop);
+  prepareGenericEffect(managers);
+}
+
+rootScope.addEventListener('user_auth', () => {
+  setTimeout(() => warmUpGenericEffectAssets(), 5e3);
+});
 
 export default class ReactionElement extends HTMLElement {
   private type: ReactionLayoutType;
@@ -261,6 +731,8 @@ export default class ReactionElement extends HTMLElement {
   public isUnread: boolean;
   private hasTitle: boolean;
   private paidReactionCounter: AnimatedCounter;
+  private stickerPlaceholderCleanup: () => void;
+  private stickerPlaceholderPending: boolean;
 
   constructor() {
     super();
@@ -313,7 +785,13 @@ export default class ReactionElement extends HTMLElement {
       this.stickerContainer = document.createElement('div');
       this.stickerContainer.classList.add(CLASS_NAME + '-sticker');
       this.append(this.stickerContainer);
-    } else {
+    }
+
+    if(!doNotRenderSticker) {
+      this.renderStickerPlaceholder();
+    }
+
+    if(hadStickerContainer) {
       return this.customEmojiElement;
     }
 
@@ -359,8 +837,14 @@ export default class ReactionElement extends HTMLElement {
           if(this.wrapStickerPromise === wrapPromise) {
             this.wrapStickerPromise = undefined;
           }
-        });
+        }).catch(noop);
         this.stickerContainer.append(this.customEmojiElement);
+        // * the renderer paints outside of the container - the placeholder
+        // * has to be retired by the ready signal, not by the observer
+        wrapPromise.then(
+          () => this.maybeRemoveStickerPlaceholder(),
+          noop
+        );
       }
 
       this.customEmojiElement.docId = reaction.document_id;
@@ -416,6 +900,104 @@ export default class ReactionElement extends HTMLElement {
         this.wrapStickerPromise = undefined;
       }
     });
+  }
+
+  // * the sticker may take a while to download - show the snapshot of what
+  // * the user has clicked in the panel and remove it ONLY when the real
+  // * media is actually in place (render promises can settle early, e.g.
+  // * when the optimistic element gets replaced by the server echo)
+  private renderStickerPlaceholder() {
+    const reaction = this.reactionCount?.reaction;
+    if(this.stickerPlaceholderCleanup || this.stickerPlaceholderPending || !this.stickerContainer || !reaction) {
+      return;
+    }
+
+    if(this.hasRealStickerMedia()) {
+      return;
+    }
+
+    const stash = peekStashedFlightSource(reaction);
+    if(!stash) {
+      return;
+    }
+
+    let placeholder: HTMLCanvasElement;
+    const mount = (source: HTMLCanvasElement) => {
+      if(!source || !this.middleware() || this.stickerPlaceholderCleanup || !this.stickerContainer || this.hasRealStickerMedia()) {
+        return;
+      }
+
+      placeholder = document.createElement('canvas');
+      placeholder.width = source.width;
+      placeholder.height = source.height;
+      placeholder.getContext('2d').drawImage(source, 0, 0);
+      placeholder.classList.add(CLASS_NAME + '-sticker-placeholder');
+      placeholder.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;object-fit:contain;';
+      const prevPosition = this.stickerContainer.style.position;
+      this.stickerContainer.style.position = 'relative';
+      this.stickerContainer.append(placeholder);
+
+      const observer = new MutationObserver(() => this.maybeRemoveStickerPlaceholder());
+      observer.observe(this.stickerContainer, {childList: true, subtree: true});
+
+      const cleanup = () => {
+        observer.disconnect();
+        placeholder.remove();
+        // * restore the inline position we overrode (don't leave .reaction-sticker
+        // * permanently position:relative after the placeholder is gone)
+        this.stickerContainer.style.position = prevPosition;
+        if(this.stickerPlaceholderCleanup === cleanup) {
+          this.stickerPlaceholderCleanup = undefined;
+        }
+      };
+
+      this.stickerPlaceholderCleanup = cleanup;
+      this.middleware.onDestroy(cleanup);
+
+      // * a custom emoji paints on the external shared renderer canvas, so the
+      // * MutationObserver never fires for it - retire the placeholder when the
+      // * icon's own render settles (also covers a late mount)
+      this.wrapStickerPromise?.finally(() => this.maybeRemoveStickerPlaceholder()).catch(noop);
+    };
+
+    // * INSTANT: mount the clicked-element snapshot so .reaction-sticker fills now
+    mount(stash.snapshot);
+
+    // * UPGRADE: swap in the clean first frame (or mount it if there was no
+    // * snapshot) once rendered, unless the real media has already arrived
+    this.stickerPlaceholderPending = !placeholder;
+    stash.firstFrame.then((firstFrame) => {
+      this.stickerPlaceholderPending = false;
+      if(placeholder?.isConnected && !this.hasRealStickerMedia()) {
+        const context = placeholder.getContext('2d');
+        context.clearRect(0, 0, placeholder.width, placeholder.height);
+        context.drawImage(firstFrame, 0, 0, placeholder.width, placeholder.height);
+      } else if(!placeholder) {
+        mount(firstFrame);
+      }
+    }, () => {
+      this.stickerPlaceholderPending = false;
+    });
+  }
+
+  private hasRealStickerMedia() {
+    // * the custom emoji is painted on the shared renderer canvas, its
+    // * readiness is signalled by the resolved (and cleared) readyPromise
+    if(this.customEmojiElement) {
+      return !this.wrapStickerPromise;
+    }
+
+    return !!Array.from(
+      this.stickerContainer.querySelectorAll<HTMLImageElement | HTMLVideoElement>('img.media-sticker, video.media-sticker')
+    ).find((media) => !(media instanceof HTMLImageElement) || (media.complete && media.naturalWidth > 0));
+  }
+
+  private maybeRemoveStickerPlaceholder() {
+    if(!this.stickerPlaceholderCleanup || !this.hasRealStickerMedia()) {
+      return;
+    }
+
+    this.stickerPlaceholderCleanup();
   }
 
   public findTitle() {
@@ -530,8 +1112,8 @@ export default class ReactionElement extends HTMLElement {
       stickerContainer: this.stickerContainer,
       managers: this.managers,
       sizes: {
-        genericEffect: 26,
-        genericEffectSize: 100,
+        genericEffect: GENERIC_EFFECT_STICKER_SIZE,
+        genericEffectSize: GENERIC_EFFECT_SIZE,
         size: REACTIONS_SIZE[this.type] + add,
         effectSize: 80
       },
@@ -572,20 +1154,28 @@ export default class ReactionElement extends HTMLElement {
       genericEffect,
       sticker,
       onlyAround,
-      assetName
+      assetName,
+      staticSticker,
+      prepared
     }: {
       availableReaction?: AvailableReaction,
       genericEffect?: Document.document,
       sticker?: Document.document,
       onlyAround?: boolean
-      assetName?: LottieAssetName
+      assetName?: LottieAssetName,
+      staticSticker?: boolean,
+      prepared?: PreparedGenericEffect
     }) => {
       const size = genericEffect ? options.sizes.genericEffect : options.sizes.size;
       const div = genericEffect ? undefined : document.createElement('div');
       div && div.classList.add(CLASS_NAME + '-sticker-activate');
 
       const genericEffectSize = options.sizes.genericEffectSize;
-      const isGenericMasked = genericEffect && sticker.sticker !== StickerType.Lottie;
+      // * every generic flight is masked: the copies are drawn from whatever
+      // * source is available right now (live media, a stripped thumb, and
+      // * finally the real render once it's loaded) - like the official
+      // * clients, the effect never waits for the sticker to download
+      const isGenericMasked = !!genericEffect;
 
       const textColor = options.textColor || 'primary-text-color';
 
@@ -601,6 +1191,10 @@ export default class ReactionElement extends HTMLElement {
         scrollable: options.scrollable
       };
 
+      const aroundWrap = assetName ? undefined : wrapStickerAnimation({
+        ...aroundParams,
+        animation: prepared?.around
+      });
       const aroundResult = assetName ? lottieLoader.loadAnimationAsAsset({
         width: options.sizes.effectSize,
         height: options.sizes.effectSize,
@@ -609,16 +1203,30 @@ export default class ReactionElement extends HTMLElement {
         middleware: options.middleware,
         container: div,
         noCache: true
-      }, assetName) : wrapStickerAnimation(aroundParams).stickerPromise;
+      }, assetName) : aroundWrap.stickerPromise;
       const genericResult = genericEffect && wrapStickerAnimation({
         ...aroundParams,
-        doc: isGenericMasked ? aroundParams.doc : sticker,
+        animation: prepared?.flight,
         size: genericEffectSize,
         stickerSize: size,
         loopEffect: true,
-        textColor
+        textColor,
+        noOffscreen: true
       });
-      const stickerResult = (!genericEffect || isGenericMasked) && !onlyAround && wrapSticker({
+      // * the very same media is already rendered inside the reaction element -
+      // * fly it instead of fetching it again
+      const liveMediaCandidate = isGenericMasked ? Array.from(
+        options.stickerContainer.querySelectorAll<HTMLImageElement | HTMLVideoElement>('img.media-sticker, video.media-sticker')
+      )[0] : undefined;
+      const liveMaskedMedia = liveMediaCandidate instanceof HTMLVideoElement ||
+        (liveMediaCandidate?.complete && liveMediaCandidate.naturalWidth > 0) ?
+        liveMediaCandidate :
+        undefined;
+
+      // * the masked generic flight always flies the icon's first frame (a
+      // * separate static render) - never a mid-animation frame; the native
+      // * effect keeps its animated overlay (rendered here, played explicitly)
+      const stickerResult = (!genericEffect || (isGenericMasked && !liveMaskedMedia)) && !onlyAround && wrapSticker({
         div: div || document.createElement('div'),
         doc: sticker || availableReaction.center_icon,
         width: size,
@@ -632,9 +1240,11 @@ export default class ReactionElement extends HTMLElement {
         managers: options.managers,
         middleware: options.middleware,
         textColor,
-        loop: isGenericMasked,
-        noOffscreen: true // this player's consumer grabs contexts[0], re-parents canvas[0] and installs overrideRender post-load
-        // static: isGenericMasked || undefined
+        loop: false,
+        static: (isGenericMasked || staticSticker) || undefined,
+        // This player's consumer grabs contexts[0], re-parents canvas[0] and
+        // installs overrideRender after load.
+        noOffscreen: true
       }).then(({render}) => render as Promise<LottiePlayer>);
 
       return Promise.all([
@@ -644,25 +1254,30 @@ export default class ReactionElement extends HTMLElement {
 
         aroundResult,
 
-        stickerResult as any as Promise<(HTMLImageElement | HTMLVideoElement)[]>,
-
         genericEffect && loadReactionGeneric(),
 
         options.waitPromise
-      ]).then(([iconPlayer, aroundPlayer, maskedSticker, reactionGeneric, _]) => {
+      ]).then(([iconPlayer, aroundPlayer, reactionGeneric, _]) => {
         if(onlyAround) {
           iconPlayer = aroundPlayer;
         }
 
+        let flightSourcePlayer: LottiePlayer;
         const deferred = deferredPromise<void>();
         const remove = () => {
           deferred.resolve();
           // return;
           // if(!isInDOM(div)) return;
           iconPlayer?.remove();
+          flightSourcePlayer?.remove();
           div?.remove();
           options.stickerContainer.classList.remove('has-animation');
         };
+
+        if(!iconPlayer || !aroundPlayer) {
+          remove();
+          return deferred;
+        }
 
         if(genericEffect) {
           const canvas = iconPlayer.canvas[0];
@@ -674,17 +1289,69 @@ export default class ReactionElement extends HTMLElement {
           genericResult.animationDiv.append(canvas);
           genericResult.animationDiv.style.transform = 'scaleX(-1)';
 
-          const maskedMedia = maskedSticker?.[0];
-          const isMaskedVideo = maskedMedia instanceof HTMLVideoElement;
+          // * the effect is not gated on the masked media: it starts right
+          // * away with the best source available and upgrades on the fly -
+          // * live media > stripped thumb placeholder > nothing, then the
+          // * real render replaces the placeholder once it's loaded
+          let maskedMedia: HTMLCanvasElement;
+          let maskedMediaRank = 0;
+          const setMaskedMedia = (
+            media: HTMLImageElement | HTMLVideoElement | HTMLCanvasElement,
+            rank: number
+          ) => {
+            if(!media || rank <= maskedMediaRank) {
+              return;
+            }
 
-          iconPlayer.addEventListener('firstFrame', () => {
+            try {
+              maskedMedia = mediaToCanvas(media);
+            } catch{
+              return;
+            }
+
+            maskedMediaRank = rank;
+          };
+
+          setMaskedMedia(liveMaskedMedia, 3);
+          // * the clicked emoji: an INSTANT snapshot (rank 2) so copies fly from
+          // * frame 0, upgraded to the clean first-frame render (rank 3) once ready
+          const stash = peekStashedFlightSource(reaction);
+          if(stash) {
+            stash.snapshot && setMaskedMedia(stash.snapshot, 2);
+            stash.firstFrame.then((media) => setMaskedMedia(media, 3), noop);
+          }
+
+          if(!liveMaskedMedia && liveMediaCandidate instanceof HTMLImageElement) {
+            // * the element's own media is still loading (its fetch started
+            // * earlier than ours) - let it join the flight when it's ready
+            liveMediaCandidate.addEventListener('load', () => {
+              setMaskedMedia(liveMediaCandidate, 2);
+            }, {once: true});
+          }
+
+          if(!maskedMedia) { // * instant placeholder, zero network
+            const strippedThumb = (sticker.thumbs as PhotoSize[])?.find((thumb) => thumb._ === 'photoStrippedSize') as PhotoSize.photoStrippedSize;
+            if(strippedThumb?.bytes?.length) {
+              const {image, loadPromise} = getImageFromStrippedThumb(sticker, strippedThumb, true);
+              loadPromise.then(() => setMaskedMedia(image, 1)).catch(noop);
+            }
+          }
+
+          if(stickerResult) {
+            (stickerResult as any as Promise<any>).then((result) => {
+              if(result instanceof LottiePlayer) {
+                flightSourcePlayer = result;
+                result.onFirstFrame(() => setMaskedMedia(result.canvas[0], 3));
+              } else {
+                setMaskedMedia(Array.isArray(result) ? result[0] : undefined, 3);
+              }
+            }).catch(noop);
+          }
+
+          iconPlayer.onFirstFrame(() => {
             iconPlayer.setSize(newCanvasSize, newCanvasSize);
             canvas.classList.remove('hide');
-
-            if(isMaskedVideo) {
-              safePlay(maskedMedia);
-            }
-          }, {once: true});
+          });
 
           let frameNo = 0;
           const scale = newCanvasSize / 512;
@@ -693,6 +1360,17 @@ export default class ReactionElement extends HTMLElement {
 
           iconPlayer.overrideRender = (frame) => {
             if(isGenericMasked) {
+              // * the flight is one composition with the effect around - its
+              // * timeline keeps running even before there is a drawable
+              // * source, the copies simply join in whenever it arrives
+              if(!maskedMedia) {
+                if(++frameNo >= op) {
+                  removeOnFrame();
+                }
+
+                return;
+              }
+
               frame = maskedMedia as any as HTMLCanvasElement;
             }
 
@@ -758,11 +1436,6 @@ export default class ReactionElement extends HTMLElement {
           };
         }
 
-        if(!iconPlayer || !aroundPlayer) {
-          remove();
-          return deferred;
-        }
-
         const removeOnFrame = () => {
           // if(!isInDOM(div)) return;
           fastRaf(remove);
@@ -782,38 +1455,73 @@ export default class ReactionElement extends HTMLElement {
           }
         });
 
-        iconPlayer.addEventListener('firstFrame', () => {
-          div && options.stickerContainer.append(div);
-          options.stickerContainer.classList.add('has-animation');
+        iconPlayer.onFirstFrame(() => {
+          // * has-animation hides the sticker (.media-sticker opacity: 0)
+          // * while the activate overlay replaces it - the generic effect has
+          // * no overlay, the sticker must stay visible under the flight
+          if(div) {
+            options.stickerContainer.append(div);
+            options.stickerContainer.classList.add('has-animation');
+          }
+
           iconPlayer.play();
           aroundPlayer.play();
-        }, {once: true});
+        });
 
         return deferred;
       });
     };
 
     const onEmoticon = (sticker: Document.document, emoticon: string = sticker.stickerEmojiRaw) => {
-      return callbackifyAll([
-        apiManagerProxy.getReaction(emoticon),
-        sticker ? options.managers.appReactionsManager.getRandomGenericAnimation() : undefined
-      ], ([
-        availableReaction,
-        genericEffect
-      ]) => {
-        return onAvailableReaction(availableReaction ? {
-          availableReaction,
-          onlyAround: !!sticker
-        } : {
-          genericEffect,
-          sticker
+      return callbackify(apiManagerProxy.getReaction(emoticon), (availableReaction) => {
+        const onlyAround = !!sticker;
+        let staticSticker: boolean;
+        if(availableReaction) {
+          const docs = [
+            availableReaction.around_animation,
+            !onlyAround && availableReaction.center_icon
+          ].filter(Boolean) as Document.document[];
+          const isEffectLoaded = docs.every((doc) => {
+            const cacheContext = apiManagerProxy.getCacheContext(doc);
+            return !!(cacheContext.downloaded || cacheContext.url);
+          });
+
+          if(isEffectLoaded || !docs.length) {
+            return onAvailableReaction({availableReaction, onlyAround});
+          }
+
+          // * the reaction effect isn't loaded yet - play a generic animation
+          // * instead, but still load the effect to fire it the next time
+          docs.forEach(warmUpDownload);
+
+          if(!sticker) {
+            sticker = availableReaction.center_icon ?? availableReaction.static_icon;
+            staticSticker = true;
+          }
+        }
+
+        if(!sticker) {
+          return;
+        }
+
+        const prepared = takePreparedGenericEffect(options.sizes);
+        if(prepared) {
+          return onAvailableReaction({genericEffect: prepared.doc, sticker, staticSticker, prepared});
+        }
+
+        return callbackify(getGenericEffect(options.managers), (genericEffect) => {
+          if(!genericEffect) { // * fallback to the late effect
+            return availableReaction && onAvailableReaction({availableReaction, onlyAround});
+          }
+
+          return onAvailableReaction({genericEffect, sticker, staticSticker});
         });
       });
     };
 
     let promise: Promise<void>;
     if(reaction._ === 'reactionEmoji') {
-      promise = onEmoticon(undefined, reaction.emoticon);
+      promise = Promise.resolve(onEmoticon(undefined, reaction.emoticon));
     } else if(reaction._ === 'reactionPaid') {
       promise = Promise.resolve()
       onAvailableReaction({
@@ -835,7 +1543,7 @@ export default class ReactionElement extends HTMLElement {
       if(options.cache.hasAroundAnimation === promise) {
         options.cache.hasAroundAnimation = undefined;
       }
-    });
+    }).catch(noop);
   }
 }
 

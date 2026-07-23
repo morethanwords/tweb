@@ -20,6 +20,7 @@ import apiManagerProxy from '@lib/apiManagerProxy';
 import lottieLoader from '@lib/lottie/lottieLoader';
 import LottiePlayer from '@lib/lottie/lottiePlayer';
 import rootScope from '@lib/rootScope';
+import {stashFlightSource, warmUpGenericEffectAssets, warmUpReactionEffect} from '@components/chat/reaction';
 import animationIntersector, {AnimationItemGroup} from '@components/animationIntersector';
 import ButtonIcon from '@components/buttonIcon';
 import {EmoticonsDropdown} from '@components/emoticonsDropdown';
@@ -162,6 +163,11 @@ export class ChatReactionsMenu {
       const players = this.reactionsMap.get(reactionDiv);
       if(!players) return;
 
+      // * snapshot the clicked element (instant flight source) + kick off the
+      // * clean first-frame render that upgrades it
+      if(!this.isEffects) {
+        stashFlightSource(players.reaction, reactionDiv);
+      }
       this.onFinish(players.reaction);
     }, {listenerSetter: this.listenerSetter});
 
@@ -222,6 +228,10 @@ export class ChatReactionsMenu {
   }
 
   private async prepareReactions(message?: Message.message | Message.messageService) {
+    // * most reactions resolve to the generic effect - have its assets ready
+    // * by the time the user picks one
+    warmUpGenericEffectAssets(this.managers);
+
     const middleware = this.middlewareHelper.get();
     const availableReactionsResult = apiManagerProxy.getAvailableReactions();
     const peerAvailableReactionsResult = await this.managers.acknowledged.appReactionsManager.getAvailableReactionsByMessage(message);
@@ -411,6 +421,12 @@ export class ChatReactionsMenu {
           };
         }
 
+        // * snapshot the clicked element (instant flight source) + kick off the
+        // * clean first-frame render that upgrades it
+        if(!this.isEffects) {
+          stashFlightSource(reaction, emoji.element);
+        }
+
         deferred.resolve(reaction);
         emoticonsDropdown.hideAndDestroy();
       },
@@ -499,6 +515,10 @@ export class ChatReactionsMenu {
   }
 
   private async renderReaction(reaction: Reaction, availableReaction?: AvailableReaction) {
+    if(availableReaction) {
+      warmUpReactionEffect(availableReaction);
+    }
+
     const reactionDiv = document.createElement('div');
     reactionDiv.classList.add(REACTION_CLASS_NAME);
 
@@ -595,6 +615,16 @@ export class ChatReactionsMenu {
       let doc = availableReaction?.static_icon, delay = false;
       if(!doc) {
         const result = await this.managers.acknowledged.appEmojiManager.getCustomEmojiDocument((reaction as Reaction.reactionCustomEmoji).document_id);
+        // * a custom emoji reaction fires the effect of its base emoji - warm
+        // * it up so the click plays it instead of the generic fallback
+        if(!this.isEffects && reaction._ === 'reactionCustomEmoji') {
+          Promise.resolve(result.result).then((doc) => {
+            return doc?.stickerEmojiRaw && Promise.resolve(apiManagerProxy.getReaction(doc.stickerEmojiRaw)).then((availableReaction) => {
+              availableReaction && warmUpReactionEffect(availableReaction);
+            });
+          }).catch(noop);
+        }
+
         if(result.cached) {
           doc = await result.result;
         } else {
