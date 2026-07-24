@@ -4,8 +4,24 @@ import bigInt from 'big-integer';
 import {bigIntFromBytes, bigIntToBytes} from '@helpers/bigInt/bigIntConversion';
 import bigIntRandom from '@helpers/bigInt/bigIntRandom';
 
+// Every loop below is unbounded by nature, and `pq` reaches them from the
+// unauthenticated plaintext resPQ: a degenerate or oversized value can otherwise spin
+// this synchronous code forever inside the crypto worker, which also carries all
+// MTProto transport obfuscation. A real 64-bit semiprime needs a few tens of thousands
+// of iterations, so this budget is far above any legitimate input.
+const MAX_FACTORIZATION_ITERATIONS = 3e6;
+
+function createIterationBudget() {
+  let iterations = 0;
+  return () => {
+    if(++iterations > MAX_FACTORIZATION_ITERATIONS) {
+      throw new Error('FACTORIZATION_BUDGET_EXCEEDED');
+    }
+  };
+}
+
 // let test = 0;
-function BrentPollardFactor(n: bigInt.BigInteger) {
+function BrentPollardFactor(n: bigInt.BigInteger, spend: () => void) {
   const two = bigInt[2];
   if(n.remainder(two).isZero()) {
     return two;
@@ -19,9 +35,10 @@ function BrentPollardFactor(n: bigInt.BigInteger) {
     r: bigInt.BigInteger,
     q: bigInt.BigInteger,
     g: bigInt.BigInteger;
-  do
+  do {
     a = bigIntRandom(bigInt.one, n.minus(1));
-  while(a.isZero() || a.eq(n.minus(two)));
+    spend();
+  } while(a.isZero() || a.eq(n.minus(two)));
   y = bigIntRandom(bigInt.one, n.minus(1));
   r = bigInt.one;
   q = bigInt.one;
@@ -48,6 +65,7 @@ function BrentPollardFactor(n: bigInt.BigInteger) {
     x = y;
     for(let i = 0; bigInt(i).lesser(r); ++i) {
       y = performY(y);
+      spend();
     }
 
     let k = bigInt.zero;
@@ -57,6 +75,7 @@ function BrentPollardFactor(n: bigInt.BigInteger) {
       for(let i = 0; bigInt(i).lesser(condition); ++i) {
         y = performY(y);
         q = q.multiply(x.greater(y) ? x.minus(y) : y.minus(x)).mod(n);
+        spend();
       }
       g = bigInt.gcd(q, n);
       k = k.add(m);
@@ -69,6 +88,7 @@ function BrentPollardFactor(n: bigInt.BigInteger) {
     do {
       ys = performY(ys);
       g = bigInt.gcd(x.minus(ys).abs(), n);
+      spend();
     } while(g.eq(bigInt.one));
   }
 
@@ -77,11 +97,12 @@ function BrentPollardFactor(n: bigInt.BigInteger) {
 
 function primeFactors(pqBytes: Uint8Array | number[]) {
   const n = bigIntFromBytes(pqBytes);
+  const spend = createIterationBudget();
 
   const factors: bigInt.BigInteger[] = [];
   const primes: bigInt.BigInteger[] = [];
 
-  let factor = BrentPollardFactor(n);
+  let factor = BrentPollardFactor(n, spend);
   factors.push(n.divide(factor));
   factors.push(factor);
 
@@ -89,6 +110,7 @@ function primeFactors(pqBytes: Uint8Array | number[]) {
 
   do {
     const m = factors.pop();
+    spend();
 
     if(m.eq(bigInt.one))
       continue;
@@ -100,15 +122,16 @@ function primeFactors(pqBytes: Uint8Array | number[]) {
       for(let i = 0; i < factors.length; ++i) {
         let k = factors[i];
         if(k.mod(m).isZero()) {
-          do
+          do {
             k = k.divide(m);
-          while(k.mod(m).isZero());
+            spend();
+          } while(k.mod(m).isZero());
           factors[i] = k;
         }
       }
     } else {
       // factor = m.lesser(100) ? bigInt(PollardRho(m.toJSNumber())) : this.brentPollardFactor(m);
-      factor = BrentPollardFactor(m);
+      factor = BrentPollardFactor(m, spend);
       factors.push(m.divide(factor));
       factors.push(factor);
     }
