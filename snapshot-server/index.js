@@ -52,12 +52,28 @@ app.post('/api/snapshots', (req, res) => {
   });
 });
 
+// The filename arrives URL-decoded off the route, so `..%2f..%2f` would otherwise walk
+// straight out of the snapshots folder and into fs.readFileSync / fs.unlinkSync.
+// Reduce it to a bare basename and verify the result is still inside SNAPSHOT_DIR.
+function resolveSnapshotPath(name) {
+  const filename = path.basename(name || '');
+  if(!filename || filename === '.' || filename === '..') {
+    return null;
+  }
+
+  const filepath = path.resolve(SNAPSHOT_DIR, filename);
+  if(!filepath.startsWith(path.resolve(SNAPSHOT_DIR) + path.sep)) {
+    return null;
+  }
+
+  return filepath;
+}
+
 // Load a snapshot by filename
 app.get('/api/snapshots/:filename', (req, res) => {
-  const {filename} = req.params;
-  const filepath = path.join(SNAPSHOT_DIR, filename);
+  const filepath = resolveSnapshotPath(req.params.filename);
 
-  if(!fs.existsSync(filepath)) {
+  if(!filepath || !fs.existsSync(filepath)) {
     return res.status(404).json({error: 'Snapshot not found'});
   }
 
@@ -67,10 +83,9 @@ app.get('/api/snapshots/:filename', (req, res) => {
 
 // Delete a snapshot by filename
 app.delete('/api/snapshots/:filename', (req, res) => {
-  const {filename} = req.params;
-  const filepath = path.join(SNAPSHOT_DIR, filename);
+  const filepath = resolveSnapshotPath(req.params.filename);
 
-  if(!fs.existsSync(filepath)) {
+  if(!filepath || !fs.existsSync(filepath)) {
     return res.status(404).json({error: 'Snapshot not found'});
   }
 
@@ -82,7 +97,8 @@ app.delete('/api/snapshots/:filename', (req, res) => {
 const portArg = process.argv.find(arg => arg.startsWith('--port='));
 const portToUse = portArg ? parseInt(portArg.split('=')[1], 10) : PORT;
 
-app.listen(portToUse, () => {
+// Loopback only — this is a local dev tool with no authentication of any kind
+app.listen(portToUse, '127.0.0.1', () => {
   console.log(`🟢 Server running at http://localhost:${portToUse}`);
 });
 
