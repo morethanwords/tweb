@@ -428,7 +428,9 @@ export class AppDocsManager extends AppManager {
     set.add(cancel);
 
     const promise = this.apiFileManager.requestFilePart({
-      dcId,
+      // The caller's dcId can come from the service worker's `stream/` URL, which any
+      // page can craft; the saved document already knows which DC it lives on.
+      dcId: doc.dc_id ?? dcId,
       location: getDocumentInputFileLocation(doc),
       offset,
       limit,

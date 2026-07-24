@@ -36,11 +36,25 @@ export function getTelegramConnectionSuffix(connectionType: ConnectionType) {
   return connectionType === 'client' ? '' : '-1';
 }
 
-export function constructTelegramWebSocketUrl(dcId: DcId, connectionType: ConnectionType, premium?: boolean) {
+// A dcId can arrive from the service worker's `stream/` route, i.e. from a URL any page
+// can craft: interpolated unchecked it turns the endpoint into an attacker-chosen host
+// (`1.evil.com/` -> wss://kws1.evil.com/-1.web.telegram.org/apiws). Telegram has exactly
+// five DCs, so validate here, before the value can reach a URL or a storage key.
+export function assertValidDcId(dcId: DcId): DcId {
+  const id = +dcId;
+  if(!Number.isInteger(id) || id < 1 || id > 5) {
+    throw new Error('[MT] invalid dcId: ' + dcId);
+  }
+
+  return id as DcId;
+}
+
+export function constructTelegramWebSocketUrl(_dcId: DcId, connectionType: ConnectionType, premium?: boolean) {
   if(!import.meta.env.VITE_MTPROTO_HAS_WS) {
     return;
   }
 
+  const dcId = assertValidDcId(_dcId);
   const suffix = getTelegramConnectionSuffix(connectionType);
   const path = connectionType !== 'client' ? 'apiws' + TEST_SUFFIX + (premium ? PREMIUM_SUFFIX : '') : ('apiws' + TEST_SUFFIX);
   const chosenServer = `wss://${App.suffix.toLowerCase()}ws${dcId}${suffix}.web.telegram.org/${path}`;
@@ -121,6 +135,8 @@ export class DcConfigurator {
     /* if(transportType === 'websocket' && !Modes.multipleConnections) {
       connectionType = 'client';
     } */
+
+    dcId = assertValidDcId(dcId);
 
     if(!this.chosenServers.hasOwnProperty(transportType)) {
       this.chosenServers[transportType] = {
