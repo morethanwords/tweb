@@ -99,6 +99,19 @@ const STUCK_WARN_PERSIST_MS = 30000;
 // const PING_INTERVAL = DEBUG && false ? 0x7FFFFFFF : 5000;
 // const PING_TIMEOUT = DEBUG && false ? 0x7FFFFFFF : 10000;
 
+// A task payload holds the raw arguments of the call it carries — for 'computeSRP'
+// argument 0 is the user's plaintext cloud password, the one credential SRP exists to
+// keep on the device. logger.error always reaches console.error (LogTypes.Error survives
+// DEBUG being off) and, in the worker realm, the exportable log ring buffer, so a task
+// must never be logged whole: identify it instead.
+function describeTask(task: Task) {
+  return {
+    id: task?.id,
+    type: task?.type,
+    invoke: task?.type === 'invoke' ? (task as InvokeTask).payload?.type : undefined
+  };
+}
+
 
 class SuperMessagePort<
   Workers extends Listeners,
@@ -395,7 +408,7 @@ class SuperMessagePort<
           this.postMessage(ports, task);
           // }
         } catch(err) {
-          this.log.error('postMessage error:', err, task, ports);
+          this.log.error('postMessage error:', err, describeTask(task), ports);
         }
       });
 
@@ -571,7 +584,7 @@ class SuperMessagePort<
 
       resultTaskPayload.result = result;
     } catch(error) {
-      this.log.error('worker task error:', error, task);
+      this.log.error('worker task error:', error, describeTask(task));
       if(innerTask.void) {
         return;
       }
@@ -660,7 +673,7 @@ class SuperMessagePort<
       });
 
       const interval = ctx.setInterval(() => {
-        this.log.error('task still has no result', task, port);
+        this.log.error('task still has no result', describeTask(task), port);
       }, IS_WORKER ? 60e3 : 5e3);
     } else if(false) {
       // let timedOut = false;
@@ -668,7 +681,7 @@ class SuperMessagePort<
       promise.finally(() => {
         const elapsedTime = Date.now() - startTime;
         if(elapsedTime >= TIMEOUT) {
-          this.log.error(`task was processing ${Date.now() - startTime}ms`, task.payload.payload, port);
+          this.log.error(`task was processing ${Date.now() - startTime}ms`, describeTask(task), port);
         }/*  else {
           clearTimeout(timeout);
         } */
