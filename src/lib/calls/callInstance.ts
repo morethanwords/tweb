@@ -169,6 +169,9 @@ export default class CallInstance extends CallInstanceBase<{
   public protocol: PhoneCallProtocol;
   public isOutgoing: boolean;
   public encryptionKey: Uint8Array;
+  // Guards the peer-g_a verification in CallsController: it spans two awaits, and
+  // without a flag a second (forged) `phoneCall` update could race through them.
+  public isVerifyingPeerG_a: boolean;
   // One P2PEncryptor per call handles BOTH directions — encrypt and decrypt use
   // complementary `x` key-derivation offsets internally, so a single instance
   // (constructed with this peer's real isOutgoing) is correct for send + receive.

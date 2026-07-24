@@ -107,15 +107,25 @@ export class CallsController extends EventListenerBase<{
         }
 
         case 'phoneCall': {
-          if(!instance || instance.encryptionKey) {
+          // `dh.g_a` is what getEmojisFingerprint hashes into the emoji SAS — the only
+          // human-verifiable MITM defence of the call — so a server-relayed value must
+          // never land there before it is checked against the commitment, and a failed
+          // check has to be fatal instead of leaving a poisoned value behind.
+          // `dh.g_a` being set already means there is nothing to accept (the caller
+          // generated its own), and the in-flight flag closes the window that the two
+          // awaits below open for a second, forged update.
+          if(!instance || instance.encryptionKey || instance.dh?.g_a || instance.isVerifyingPeerG_a) {
             break;
           }
 
-          const g_a = instance.dh.g_a = call.g_a_or_b;
+          instance.isVerifyingPeerG_a = true;
+
           const dh = instance.dh;
+          const g_a = call.g_a_or_b;
           const g_a_hash = await apiManagerProxy.invokeCrypto('sha256', g_a);
           if(!bytesCmpConstTime(dh.g_a_hash, g_a_hash)) {
             this.log.error('Incorrect g_a_hash', dh.g_a_hash, g_a_hash);
+            instance.hangUp('phoneCallDiscardReasonDisconnect');
             break;
           }
 
@@ -133,6 +143,9 @@ export class CallsController extends EventListenerBase<{
             break;
           }
 
+          // Authenticated against both the commitment and the key fingerprint — only
+          // now may it drive the SAS.
+          instance.dh.g_a = g_a;
           instance.encryptionKey = key;
           instance.joinCall();
 
