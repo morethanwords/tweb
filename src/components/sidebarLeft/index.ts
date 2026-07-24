@@ -84,7 +84,7 @@ import {addShortcutListener} from '@helpers/shortcutListener';
 import tsNow from '@helpers/tsNow';
 import {toastNew} from '@components/toast';
 import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
-import EncryptionKeyStore from '@lib/passcode/keyStore';
+import {saveEncryptionKeyForHandoff} from '@lib/passcode/keyHandoff';
 import createLockButton from '@components/sidebarLeft/lockButton';
 import createSubmenuTrigger, {CreateSubmenuArgs} from '@components/createSubmenuTrigger';
 import ChatTypeMenu from '@components/chatTypeMenu';
@@ -865,9 +865,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
     const openTabs = apiManagerProxy.getOpenTabsCount();
 
-    openTabs <= 1 && await sessionStorage.set({
-      encryption_key: await EncryptionKeyStore.getAsBase64()
-    });
+    openTabs <= 1 && await saveEncryptionKeyForHandoff();
   }
 
 

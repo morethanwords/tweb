@@ -71,6 +71,9 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   convertWebp: (payload: {fileName: string, bytes: Uint8Array}) => Promise<Uint8Array>,
   convertOpus: (payload: {fileName: string, bytes: Uint8Array}) => Promise<Uint8Array>,
   localStorageProxy: (payload: LocalStorageProxyTask['payload']) => Promise<any>,
+  // Tab-scoped hand-off of the passcode key across an account-switch reload; see
+  // @lib/passcode/keyHandoff for why it must not go through localStorage.
+  passcodeKeyHandoff: (payload: string) => void,
   mirror: (payload: MirrorTaskPayload) => void,
   notificationBuild: (payload: NotificationBuildTaskPayload) => void,
   receivedServiceMessagePort: (payload: void) => void,

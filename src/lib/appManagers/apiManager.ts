@@ -37,7 +37,7 @@ import {ActiveAccountNumber} from '@lib/accounts/types';
 import makeError from '@helpers/makeError';
 import EncryptedStorageLayer from '@lib/encryptedStorageLayer';
 import {getCommonDatabaseState} from '@config/databases/state';
-import EncryptionKeyStore from '@lib/passcode/keyStore';
+import {saveEncryptionKeyForHandoff} from '@lib/passcode/keyHandoff';
 import DeferredIsUsingPasscode from '@lib/passcode/deferredIsUsingPasscode';
 import {MTAuthKey} from '@lib/mtproto/authKey';
 /**
@@ -325,10 +325,8 @@ export class ApiManager extends ApiManagerMethods {
         await AppStoragesManager.shiftStorages(accountNumber);
 
         if(await DeferredIsUsingPasscode.isUsingPasscode()) {
-          // Keep the screen unlocked even if the user logs out
-          await sessionStorage.set({
-            encryption_key: await EncryptionKeyStore.getAsBase64()
-          });
+          // Keep the screen unlocked even if the user logs out — tab-scoped, never on disk
+          await saveEncryptionKeyForHandoff();
         }
       }
       IDB.closeDatabases();

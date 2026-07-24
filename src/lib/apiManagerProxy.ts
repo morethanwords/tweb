@@ -11,6 +11,7 @@ import rootScope, {BroadcastEvents} from '@lib/rootScope';
 import webpWorkerController from '@lib/webp/webpWorkerController';
 import DEBUG, {MOUNT_CLASS_TO} from '@config/debug';
 import sessionStorage from '@lib/sessionStorage';
+import {writeEncryptionKeyHandoff} from '@lib/passcode/keyHandoff';
 import webPushApiManager from '@lib/webPushApiManager';
 import telegramMeWebManager from '@lib/telegramMeWebManager';
 import pause from '@helpers/schedulers/pause';
@@ -353,6 +354,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
       localStorageProxy: (payload) => {
         return sessionStorage.localStorageProxy(payload.type, ...payload.args);
+      },
+
+      passcodeKeyHandoff: (payload) => {
+        writeEncryptionKeyHandoff(payload);
       },
 
       mirror: this.onMirrorTask,

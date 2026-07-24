@@ -15,7 +15,9 @@ type StorageValues = {
   account3: AccountSessionData,
   account4: AccountSessionData,
 
-  encryption_key?: string, // Will be quickly set and removed when switching between accounts
+  // @deprecated the passcode key is handed over in window.sessionStorage now
+  // (@lib/passcode/keyHandoff) — kept only so old, on-disk values can be purged
+  encryption_key?: string,
 
   server_time_offset: number,
   xt_instance: AppInstance,
