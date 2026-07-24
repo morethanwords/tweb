@@ -64,6 +64,12 @@ function isGoodGeneratorForPrime(g: number, p: bigInt.BigInteger): boolean {
 // Fast path pins the known-good prime (what Telegram always serves); the slow
 // path verifies safe-prime structure so a future server-rotated prime still
 // works — exactly tdesktop's IsPrimeAndGood.
+// Deliberately NOT checked here: the prime's encoded byte length. Neither tdlib's
+// DhHandshake::check_config nor tdesktop's IsPrimeAndGood constrains it — both pin the
+// numeric bit length only — so rejecting a non-canonically padded prime would make this
+// client stricter than the reference ones, and this validator also gates 2FA login
+// (srp.ts). A padded prime is harmless now that generateDh sizes its secret exponent
+// from a constant rather than from p.length.
 export function verifyDhPrimeAndGenerator(pBytes: Uint8Array, g: number): void {
   if(bytesToHex(pBytes) === KNOWN_DH_PRIME_HEX && (g === 3 || g === 4 || g === 5 || g === 7)) {
     return;

@@ -36,6 +36,20 @@ describe('dhValidation — verifyDhPrimeAndGenerator (WebK-1)', () => {
   it('rejects a wrong-size / non-2048-bit prime (e.g. a small smooth one)', () => {
     expect(() => verifyDhPrimeAndGenerator(bytesFromHex('0b'), 3)).toThrow();
   });
+
+  it('accepts the good prime padded with leading zero bytes, like tdlib/tdesktop', () => {
+    // A padded prime is numerically identical, and neither reference client constrains
+    // the encoded byte length (tdlib DhHandshake::check_config, tdesktop
+    // IsPrimeAndGood pin the bit count only). Rejecting it here would make 2FA login
+    // fail — this validator also gates srp.ts — so the padded case must stay accepted.
+    // What stops it hanging generateA is that the secret exponent is sized from a
+    // constant (RANDOM_POWER_SIZE), never from p.length.
+    for(const padding of [4, 768]) {
+      const padded = new Uint8Array(padding + pBytes.length);
+      padded.set(pBytes, padding);
+      expect(() => verifyDhPrimeAndGenerator(padded, 3)).not.toThrow();
+    }
+  });
 });
 
 describe('dhValidation — verifyDhPublicValue (WebK-1 degenerate/range guard)', () => {
