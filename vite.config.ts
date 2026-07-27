@@ -1,5 +1,5 @@
 /// <reference types="vitest/config" />
-import {defineConfig} from 'vite';
+import {defineConfig, loadEnv} from 'vite';
 import solidPlugin from 'vite-plugin-solid';
 // @ts-ignore no type declarations
 import handlebars from 'vite-plugin-handlebars';
@@ -31,12 +31,24 @@ if(isDEV) {
   watchLangFile();
 }
 
+const mode = process.env.NODE_ENV || 'development';
+const currentEnv = loadEnv(mode, process.cwd(), '');
+
+const primaryHost = (currentEnv.VITE_ALLOWED_HOSTS || 'web.telegram.org')
+  .split(',')[0]
+  .replace(/^https?:\/\//, '')
+  .replace(/\/$/, '')
+  .trim();
+
+const APP_ORIGIN = `https://${primaryHost}/`;
+const APP_URL = `${APP_ORIGIN}k/`;
+
 const handlebarsPlugin = handlebars({
   context: {
     title: 'Telegram Web',
     description: 'Telegram is a cloud-based mobile and desktop messaging app with a focus on security and speed.',
-    url: 'https://web.telegram.org/k/',
-    origin: 'https://web.telegram.org/'
+    url: APP_URL,
+    origin: APP_ORIGIN
   }
 });
 
@@ -68,6 +80,11 @@ const USE_DEV_HTTP2 = !USE_SSL && !process.env.TWEB_PREVIEW && !process.env.VITE
 const serverOptions: ServerOptions = {
   host,
   port: USE_SSL ? 443 : 8080,
+  // Configure dynamically assigned security hosts straight from the root
+  allowedHosts: (currentEnv.VITE_ALLOWED_HOSTS || '')
+    .split(',')
+    .map(host => host.replace(/^https?:\/\//, '').replace(/\/$/, '').trim())
+    .filter(Boolean),
   watch: {
     // NB: anchor on rootDir. A worktree checkout's own path contains
     // ".claude/worktrees/<name>/", so a bare '**/.claude/**' glob would also match
@@ -172,6 +189,9 @@ export default defineConfig({
     setupFiles: ['./src/tests/setup.ts']
   },
   server: serverOptions,
+  define: {
+    'import.meta.env.VITE_APP_ORIGIN': JSON.stringify(APP_ORIGIN),
+  },
   base: '',
   // Pin the dep-optimizer's scan to the real entry (index.html → src/index.ts).
   // Otherwise Vite auto-globs every *.html (stats.html, public/*.html, the icomoon

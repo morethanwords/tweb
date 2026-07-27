@@ -8,7 +8,9 @@
 import type {TrueDcId} from '@types';
 import langPackLocalVersion from '@/langPackLocalVersion';
 
-export const MAIN_DOMAINS = ['web.telegram.org', 'webk.telegram.org'];
+export const MAIN_DOMAINS = import.meta.env.VITE_ALLOWED_HOSTS ?
+  import.meta.env.VITE_ALLOWED_HOSTS.split(',').map((d) => d.replace(/^https?:\/\//, '').replace(/\/$/, '').trim()) :
+  ['web.telegram.org', 'webk.telegram.org'];
 export const DEFAULT_BACKGROUND_SLUG = 'pattern';
 
 const threads = Math.min(4, navigator.hardwareConcurrency ?? 4);
@@ -25,7 +27,7 @@ const App = {
   langPack: 'webk',
   langPackCode: 'en',
   domains: MAIN_DOMAINS,
-  baseDcId: 2 as TrueDcId,
+  baseDcId: (import.meta.env.VITE_BASE_DC_ID ? parseInt(import.meta.env.VITE_BASE_DC_ID, 10) : 2) as TrueDcId,
   isMainDomain: MAIN_DOMAINS.includes(location.hostname),
   suffix: 'K',
   threads,
