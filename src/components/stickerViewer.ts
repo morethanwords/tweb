@@ -114,9 +114,10 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
       /* transformer.style.width =  */stickerContainer.style.width = fitted.width + 'px';
       /* transformer.style.height =  */stickerContainer.style.height = fitted.height + 'px';
 
+      const viewerEmoji = mediaContainer.dataset.stickerEmoji || doc.stickerEmojiRaw;
       const stickerEmoji = document.createElement('div');
       stickerEmoji.classList.add(className + '-emoji');
-      stickerEmoji.append(wrapEmojiText(doc.stickerEmojiRaw));
+      stickerEmoji.append(wrapEmojiText(viewerEmoji));
 
       if(effectThumb) {
         const margin = (size * STICKER_EFFECT_MULTIPLIER - size) / 3 * (isOut ? 1 : -1);
@@ -175,6 +176,7 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
         managers,
         needFadeIn: false,
         isOut,
+        emoji: attribute ? undefined : viewerEmoji,
         withThumb: false,
         relativeEffect: true,
         loopEffect: true,
