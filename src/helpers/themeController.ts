@@ -5,6 +5,7 @@ import {blendWallpaperForTinted, presetThemeId, presetToThemeSettings} from '@co
 import type {AppBackgroundTab} from '@components/sidebarLeft/tabs/background';
 import type {AppChatBackground} from '@components/chat/bubbles/chatBackground';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
+import {IS_APPLE_MOBILE} from '@environment/userAgent';
 import rootScope from '@lib/rootScope';
 import {changeColorAccent, ColorRgb, getAccentColor, getAverageColor, getRgbColorFromTelegramColor, hexToRgb, hslaStringToHex, hslaStringToRgba, hslaToRgba, hsvToRgb, mixColors, rgbaToHexa, rgbaToHsla, rgbToHsv} from '@helpers/color';
 import {SETTINGS_INIT} from '@config/state';
@@ -421,10 +422,10 @@ export class ThemeController {
     transition.ready.then(() => {
       _log('view transition ready');
 
-      // View-transition snapshots use backing-store pixels for clip-path geometry. Keeping the
-      // click coordinates in CSS pixels renders both the origin and radius too small on HiDPI
-      // displays (exactly 50% at DPR 2), then the remaining area snaps in when the snapshot exits.
-      const scale = window.devicePixelRatio || 1;
+      // Chromium's view-transition snapshots use backing-store pixels for clip-path geometry.
+      // iOS WebKit keeps the pseudo-element in CSS pixels, so applying DPR there shifts both the
+      // reveal origin and its final radius by 2-3x.
+      const scale = IS_APPLE_MOBILE ? 1 : window.devicePixelRatio || 1;
       const clipX = x * scale;
       const clipY = y * scale;
       const {easing, duration, keyframes} = getTransition(
