@@ -16,6 +16,8 @@ $menu-search-translateY: -#{$menu-height};
 	flex-direction: column;
 	width: var(--width);
 	height: var(--height);
+  // Keep this animation-heavy panel opaque: its large transferred canvases and a backdrop
+  // filter would otherwise be presented as independent compositor surfaces.
 	background: var(--surface-color);
 	overflow: hidden;
 	flex: 1 1 auto;
@@ -31,9 +33,6 @@ $menu-search-translateY: -#{$menu-height};
   transform: scale(.85);
   opacity: 0;
   transform-origin: 100% 100%;
-  backdrop-filter: var(--menu-backdrop-filter);
-  background-color: var(--menu-background-color);
-  // background-color: rgba(var(--surface-color-rgb), var(--backdrop-opacity));
 
   body.animation-level-0 & {
     transition: none;
