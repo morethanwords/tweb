@@ -33,10 +33,14 @@ export function getProgressRingRadius(size: number, strokeWidth: number = DEFAUL
   return size / 2 - strokeWidth * 2;
 }
 
+export function getProgressRingCircumference(size: number, strokeWidth: number = DEFAULT_STROKE_WIDTH) {
+  return 2 * Math.PI * getProgressRingRadius(size, strokeWidth);
+}
+
 export default function ProgressRing(props: ProgressRingProps): JSX.Element {
   const strokeWidth = () => props.strokeWidth ?? DEFAULT_STROKE_WIDTH;
   const radius = () => getProgressRingRadius(props.size, strokeWidth());
-  const circumference = () => 2 * Math.PI * radius();
+  const circumference = () => getProgressRingCircumference(props.size, strokeWidth());
   const dashoffset = () => circumference() * (1 - Math.max(0, Math.min(1, props.progress || 0)));
 
   return (
@@ -70,18 +74,18 @@ export interface ProgressRingHandle {
   element: SVGSVGElement;
   circle: SVGCircleElement;
   setProgress: (progress: number) => void;
+  setSize: (size: number) => void;
   destroy: () => void;
 }
 
 // Imperative wrapper for non-Solid / class-based call sites. Owns its own
 // reactive root; call destroy() to dispose (e.g. from middleware.onDestroy).
-// Callers that prefer to drive the ring imperatively (video.ts updates
-// stroke-dashoffset itself every frame) can ignore setProgress and just mutate
-// the `.progress-ring__circle` inside `element` — the component sets progress
-// only when setProgress is called, so it won't fight imperative writes.
+// Both progress and size can be driven imperatively; keeping them as signals
+// ensures a resize recomputes the circle geometry without losing progress.
 export function createProgressRing(opts: Omit<ProgressRingProps, 'progress' | 'ref' | 'circleRef'> & {progress?: number}): ProgressRingHandle {
   return createRoot((dispose) => {
     const [progress, setProgress] = createSignal(opts.progress ?? 0);
+    const [size, setSize] = createSignal(opts.size);
     // Capture the real DOM nodes via refs — they're set synchronously while the
     // component body runs. The component's RETURN value is the HMR wrapper (not
     // the <svg>), so we can't use it as the element.
@@ -89,7 +93,7 @@ export function createProgressRing(opts: Omit<ProgressRingProps, 'progress' | 'r
     let circle: SVGCircleElement;
     ProgressRing({
       get size() {
-        return opts.size;
+        return size();
       },
       strokeWidth: opts.strokeWidth,
       stroke: opts.stroke,
@@ -102,6 +106,6 @@ export function createProgressRing(opts: Omit<ProgressRingProps, 'progress' | 'r
       circleRef: (c) => circle = c
     });
 
-    return {element, circle, setProgress, destroy: dispose};
+    return {element, circle, setProgress, setSize, destroy: dispose};
   });
 }

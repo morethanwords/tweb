@@ -35,7 +35,7 @@ import appMediaPlaybackController, {AppMediaPlaybackController, MediaSearchConte
 import AudioElement, {findMediaTargets} from '@components/audio';
 import Button from '@components/button';
 import Icon from '@components/icon';
-import {createProgressRing, getProgressRingRadius} from '@components/progressRing';
+import {createProgressRing, getProgressRingCircumference} from '@components/progressRing';
 import LazyLoadQueue from '@components/lazyLoadQueue';
 import ProgressivePreloader from '@components/preloader';
 import wrapPhoto from '@components/wrappers/photo';
@@ -50,26 +50,10 @@ import {ChatAutoDownloadSettings} from '@hooks/useAutoDownloadSettings';
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 export const USE_VIDEO_OBSERVER = false;
 
-let roundVideoCircumference = 0;
+const roundVideoProgressRingResizers = new Set<() => void>();
 mediaSizes.addEventListener('changeScreen', (from, to) => {
   if(to === ScreenSize.mobile || from === ScreenSize.mobile) {
-    const elements = Array.from(document.querySelectorAll('.media-round .progress-ring')) as SVGSVGElement[];
-    const width = mediaSizes.active.round.width;
-    const halfSize = width / 2;
-    const radius = getProgressRingRadius(width);
-    roundVideoCircumference = 2 * Math.PI * radius;
-    elements.forEach((element) => {
-      element.setAttributeNS(null, 'width', '' + width);
-      element.setAttributeNS(null, 'height', '' + width);
-
-      const circle = element.firstElementChild as SVGCircleElement;
-      circle.setAttributeNS(null, 'cx', '' + halfSize);
-      circle.setAttributeNS(null, 'cy', '' + halfSize);
-      circle.setAttributeNS(null, 'r', '' + radius);
-
-      circle.style.strokeDasharray = roundVideoCircumference + ' ' + roundVideoCircumference;
-      circle.style.strokeDashoffset = '' + roundVideoCircumference;
-    });
+    roundVideoProgressRingResizers.forEach((resize) => resize());
   }
 });
 
@@ -224,23 +208,33 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
     divRound.dataset.peerId = '' + message.peerId;
     (divRound as any).message = message;
 
-    const size = mediaSizes.active.round;
     const strokeWidth = 3.5;
-    const radius = getProgressRingRadius(size.width, strokeWidth);
-    if(!roundVideoCircumference) {
-      roundVideoCircumference = 2 * Math.PI * radius;
-    }
+    const roundVideoSize = doc.w || mediaSizes.active.round.width;
+    const getProgressRingSize = () => Math.min(roundVideoSize, mediaSizes.active.round.width);
 
     // Shared round progress-ring component (also used by the video-note
-    // recorder). We drive it imperatively below (and the global changeScreen
-    // resize handler mutates it too), so progress stays a plain DOM write.
-    const ring = createProgressRing({size: size.width, strokeWidth, strokeOpacity: 0.3});
-    middleware.onClean(() => ring.destroy());
+    // recorder). Older round videos can be smaller than the current UI default,
+    // so keep this ring bound to the video's own rendered diameter.
+    const progressRingSize = getProgressRingSize();
+    const ring = createProgressRing({size: progressRingSize, strokeWidth, strokeOpacity: 0.3});
+    let progress = 0;
+    let circumference = getProgressRingCircumference(progressRingSize, strokeWidth);
+    const setProgress = (value: number) => {
+      progress = Math.max(0, Math.min(1, value || 0));
+      ring.circle.style.strokeDashoffset = '' + circumference * (1 - progress);
+    };
+    const resizeProgressRing = () => {
+      const size = getProgressRingSize();
+      ring.setSize(size);
+      circumference = getProgressRingCircumference(size, strokeWidth);
+      setProgress(progress);
+    };
+    roundVideoProgressRingResizers.add(resizeProgressRing);
+    middleware.onClean(() => {
+      roundVideoProgressRingResizers.delete(resizeProgressRing);
+      ring.destroy();
+    });
     divRound.append(ring.element);
-
-    const circle = ring.circle;
-    circle.style.strokeDasharray = roundVideoCircumference + ' ' + roundVideoCircumference;
-    circle.style.strokeDashoffset = '' + roundVideoCircumference;
 
     const isUnread = message.pFlags.media_unread;
     if(isUnread) {
@@ -280,8 +274,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
       const onFrame = () => {
         ctx.drawImage(globalVideo, 0, 0);
 
-        const offset = roundVideoCircumference - globalVideo.currentTime / globalVideo.duration * roundVideoCircumference;
-        circle.style.strokeDashoffset = '' + offset;
+        setProgress(globalVideo.currentTime / globalVideo.duration);
 
         return !globalVideo.paused;
       };
