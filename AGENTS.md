@@ -272,6 +272,16 @@ import {Message, Chat, User, InputPeer} from '@layer';
 | `vite.config.ts` | Build configuration |
 | `eslint.config.mjs` | ESLint flat config |
 
+## Agent Workflow
+
+- **Never duplicate code.** Before adding logic, helpers, components, styles, or
+  constants, search the codebase for an existing implementation and reuse or
+  extend it. Every final review must explicitly check the completed change for
+  duplicated code and remove any duplication found.
+- **After every context compaction, reread this entire `AGENTS.md` before
+  continuing work.** A compacted context or summary does not replace the
+  canonical instructions in this file.
+
 ## What NOT to Do
 
 (Style rules are in "Code Style"; the import-alias, `invokeApi`-from-UI, and
