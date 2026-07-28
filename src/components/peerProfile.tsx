@@ -56,6 +56,8 @@ import Button from '@components/buttonTsx';
 import {openBotPrivacyPolicy} from '@helpers/getBotPrivacyPolicy';
 import showAddBotToChat from '@components/popups/addBotToChat';
 import getAddBotToChatAction from '@appManagers/utils/bots/getAddBotToChatAction';
+import canReportBot from '@appManagers/utils/bots/canReportBot';
+import {showPeerReport} from '@components/popups/reportAd';
 
 keepMe(ripple);
 
@@ -1079,6 +1081,21 @@ PeerProfile.BotAddToChat = () => {
   );
 };
 
+PeerProfile.BotReport = () => {
+  const context = useContext(PeerProfileContext);
+  const {i18n} = useHotReloadGuard();
+  const canReport = createMemo(() => canReportBot(context.peerId, context.peer as User));
+
+  return (
+    <Show when={canReport()}>
+      <Row clickable={() => showPeerReport(context.peerId)}>
+        <Row.Icon icon="flag" />
+        <Row.Title>{i18n('ReportChat')}</Row.Title>
+      </Row>
+    </Show>
+  );
+};
+
 PeerProfile.BusinessHours = () => {
   const context = useContext(PeerProfileContext);
   const {rootScope, BusinessHours} = useHotReloadGuard();
@@ -1527,6 +1544,7 @@ PeerProfile.MainSection = () => {
         <PeerProfile.Notifications />
         <PeerProfile.BotAddToChat />
         <PeerProfile.BotPrivacyPolicy />
+        <PeerProfile.BotReport />
       </Show>
     </Section>
   );

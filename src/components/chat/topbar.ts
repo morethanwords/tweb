@@ -76,6 +76,7 @@ import PopupPremium from '@components/popups/premium';
 import showNoForwardsPopup from '@components/popups/noForwards';
 import showAddBotToChat from '@components/popups/addBotToChat';
 import getAddBotToChatAction from '@appManagers/utils/bots/getAddBotToChatAction';
+import canReportBot from '@appManagers/utils/bots/canReportBot';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -410,13 +411,16 @@ export default class ChatTopbar {
     if(
       this.chat.type !== ChatType.Chat ||
       this.chat.threadId ||
-      this.chat.isMonoforum ||
-      !this.peerId.isAnyChat()
+      this.chat.isMonoforum
     ) {
       return false;
     }
 
-    const peer = this.chat.peer as MTChat.chat | MTChat.channel;
+    const peer = this.chat.peer;
+    if(peer?._ === 'user') {
+      return canReportBot(this.peerId, peer);
+    }
+
     return !!peer && (peer._ === 'chat' || peer._ === 'channel') && !peer.pFlags.creator;
   };
 

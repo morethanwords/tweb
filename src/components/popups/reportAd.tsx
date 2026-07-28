@@ -336,6 +336,7 @@ export default function showReportAdPopup(
         class="popup-report-ad"
         closable
         old
+        show
       >
         <Inner reportResult={reportResult} />
       </PopupElement>
