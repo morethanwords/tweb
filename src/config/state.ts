@@ -200,6 +200,7 @@ export type State = {
   stateCreatedTime: number,
   recentEmoji: string[],
   recentCustomEmoji: DocId[],
+  emojiVariants: {[emoji: string]: 0 | 1 | 2 | 3 | 4 | 5},
   topPeersCache: {
     [type in TopPeerType]?: {
       peers: MyTopPeer[],
@@ -564,6 +565,7 @@ export const STATE_INIT: State = {
   stateCreatedTime: Date.now(),
   recentEmoji: [],
   recentCustomEmoji: [],
+  emojiVariants: {},
   topPeersCache: {},
   recentSearch: [],
   version: STATE_VERSION,

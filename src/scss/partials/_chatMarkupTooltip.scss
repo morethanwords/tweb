@@ -129,3 +129,55 @@
 		}
 	}
 }
+
+.emoji-tone-picker {
+	width: 203px;
+	background: var(--menu-background-color);
+	backdrop-filter: var(--menu-backdrop-filter);
+	box-shadow: var(--menu-box-shadow);
+
+	.markup-tooltip-wrapper,
+	.markup-tooltip-tools-regular {
+		width: 100%;
+	}
+
+	.markup-tooltip-delimiter {
+		margin: 0 .25rem;
+	}
+
+	&-button {
+		flex: 0 0 auto;
+	}
+
+	&-emoji {
+		--esg-emoji-size: 1.625rem;
+		--esg-emoji-total-size: 1.625rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: var(--esg-emoji-total-size);
+		height: var(--esg-emoji-total-size);
+		padding: 0;
+		font-size: var(--esg-emoji-size);
+		line-height: var(--esg-emoji-size);
+		cursor: inherit;
+		pointer-events: none;
+		overflow: visible;
+		background-color: transparent !important;
+
+		> .emoji-native {
+			display: flex !important;
+			align-items: center;
+			justify-content: center;
+			width: var(--esg-emoji-size);
+			height: var(--esg-emoji-size);
+			line-height: var(--esg-emoji-size) !important;
+		}
+
+		.emoji-placeholder {
+			inset: 0;
+			width: 100%;
+			height: 100%;
+		}
+	}
+}

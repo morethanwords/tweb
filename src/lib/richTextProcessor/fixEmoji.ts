@@ -1,4 +1,5 @@
 import {MessageEntity} from '@layer';
+import {removeEmojiTone} from '@vendor/emoji';
 
 export default function fixEmoji(text: string, entities?: MessageEntity[]) {
   /* if(!IS_EMOJI_SUPPORTED) {
@@ -30,5 +31,5 @@ export default function fixEmoji(text: string, entities?: MessageEntity[]) {
 
 // * convert '❤️' to '❤' for server compatibility
 export function cleanEmoji(emoji: string) {
-  return emoji.replace(/\ufe0f/g, '').replace(/🏻|🏼|🏽|🏾|🏿/g, '');
+  return removeEmojiTone(emoji.replace(/\ufe0f/g, ''));
 }

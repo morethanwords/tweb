@@ -44,6 +44,12 @@ import SuperStickerRenderer from '@components/emoticonsDropdown/tabs/SuperSticke
 import StickersTab from '@components/emoticonsDropdown/tabs/stickers';
 import {PAID_REACTION_EMOJI_DOCID} from '@lib/customEmoji/constants';
 import {getStickerSetInputById} from '@lib/appManagers/utils/stickers/getStickerSetInput';
+import {
+  EmojiSkinTone,
+  getEmojiSkinTone,
+  getEmojiSkinToneVariants
+} from '@helpers/emojiSkinTone';
+import showEmojiTonePicker from '@components/emoticonsDropdown/emojiTonePicker';
 
 
 const loadedURLs: Set<string> = new Set();
@@ -187,7 +193,10 @@ function prepare() {
 export const EMOJI_ELEMENT_SIZE = makeMediaSize(42, 42);
 const RECENT_MAX_LENGTH = 32;
 
-type EmojiTabItem = {element: HTMLElement} & ReturnType<typeof getEmojiFromElement>;
+type EmojiTabItem = {
+  element: HTMLElement,
+  baseEmoji?: string
+} & ReturnType<typeof getEmojiFromElement>;
 export type EmojiTabCategory = StickersTabCategory<EmojiTabItem, {renderer: CustomEmojiRendererElement}>;
 export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: AppEmoji[], localStickerSet?: {title: LangPackKey, stickers: MyDocument[]}}> {
   private closeScrollTop: number;
@@ -211,6 +220,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
   private showLocks: boolean;
   private nativeEmojiFadeReady: boolean;
   private canUsePremiumEmojiAlways?: boolean;
+  private emojiVariants: {[emoji: string]: EmojiSkinTone};
   public initPromise: Promise<void>;
 
   constructor(options: {
@@ -316,6 +326,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
     this.content.id = 'content-emoji';
     this.activeElements = [];
     this.freeCustomEmoji ??= new Set();
+    this.emojiVariants = {};
   }
 
   public _onCategoryVisibility(category: EmojiTabCategory, visible: boolean) {
@@ -536,8 +547,11 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
       }),
       mainSetsResult && Promise.all(Array.isArray(mainSetsResult) ? mainSetsResult : [mainSetsResult]),
       this.additionalSets?.(),
-      this.additionalLocalStickerSet?.()
-    ]).then(([_, recent, recentCustom, sets, mainSets, additionalSets, additionalLocalStickerSet]) => {
+      this.additionalLocalStickerSet?.(),
+      !this.noRegularEmoji && this.managers.appEmojiManager.getEmojiVariants()
+    ]).then(([_, recent, recentCustom, sets, mainSets, additionalSets, additionalLocalStickerSet, emojiVariants]) => {
+      this.emojiVariants = emojiVariants || {};
+      this.applySavedEmojiVariants();
       preloader.remove();
 
       // Native emojis (IS_EMOJI_SUPPORTED === true) have no load event, so without
@@ -654,7 +668,8 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
     this.attachHelpers({
       getTextColor: this.textColor,
       verifyRecent: (target) => !!(findUpAsChild(target, recentCustomCategory.elements.items) || findUpAsChild(target, recentCategory.elements.items)),
-      canHaveEmojiTimer: this.canHaveEmojiTimer
+      canHaveEmojiTimer: this.canHaveEmojiTimer,
+      onContextMenu: this.onContextMenu
     });
 
     return this.initPromise = promise;
@@ -737,15 +752,22 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
       }
     });
 
+    this.listenerSetter.add(rootScope)('emoji_variant', ({baseEmoji, tone}) => {
+      this.applyEmojiVariant(baseEmoji, tone);
+    });
+
     const onEmojiRecent = ({emoji, deleted}: BroadcastEvents['emoji_recent']) => {
       const category = this.categories[emoji.docId ? CUSTOM_EMOJI_RECENT_ID : EMOJI_RECENT_ID];
       if(!category) {
         return;
       }
 
+      const toneVariants = !emoji.docId && getEmojiSkinToneVariants(emoji.emoji);
       const verify: (item: EmojiTabItem) => boolean = emoji.docId ?
         (item) => item.docId === emoji.docId :
-        (item) => item.emoji === emoji.emoji;
+        toneVariants ?
+          (item) => item.baseEmoji === toneVariants.baseEmoji :
+          (item) => item.emoji === emoji.emoji;
       const found = findAndSplice(category.items, verify);
       if(deleted) {
         // * prevent second invocation
@@ -872,6 +894,77 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
     category.elements.items.append(renderer);
   }
 
+  private updateEmojiItemTone(item: EmojiTabItem, tone: EmojiSkinTone) {
+    const toneVariants = item.baseEmoji && getEmojiSkinToneVariants(item.baseEmoji);
+    if(!toneVariants) {
+      return;
+    }
+
+    const emoji = toneVariants.variants[tone];
+    if(item.emoji === emoji) {
+      return;
+    }
+
+    item.emoji = emoji;
+    const renderedEmoji = appendEmoji({emoji});
+    item.element.replaceChildren(...Array.from(renderedEmoji.childNodes));
+  }
+
+  private applySavedEmojiVariants() {
+    this.categoriesMap.forEach((category) => {
+      category.items.forEach((item) => {
+        const tone = item.baseEmoji && this.emojiVariants[item.baseEmoji];
+        if(tone !== undefined) {
+          this.updateEmojiItemTone(item, tone);
+        }
+      });
+    });
+  }
+
+  private applyEmojiVariant(baseEmoji: string, tone: EmojiSkinTone) {
+    this.emojiVariants[baseEmoji] = tone;
+    this.categoriesMap.forEach((category) => {
+      category.items.forEach((item) => {
+        if(item.baseEmoji === baseEmoji) {
+          this.updateEmojiItemTone(item, tone);
+        }
+      });
+    });
+  }
+
+  private onContextMenu = (event: MouseEvent | TouchEvent) => {
+    const target = findUpClassName(event.target, 'super-emoji');
+    const emoji = target && getEmojiFromElement(target.firstElementChild as HTMLElement);
+    if(!emoji || emoji.docId) {
+      return;
+    }
+
+    const toneVariants = getEmojiSkinToneVariants(emoji.emoji);
+    if(!toneVariants) {
+      return;
+    }
+
+    const {baseEmoji, variants} = toneVariants;
+    const picker = showEmojiTonePicker({
+      event,
+      variants,
+      selectedTone: this.emojiVariants[baseEmoji] ?? getEmojiSkinTone(emoji.emoji),
+      renderEmoji: (emoji) => appendEmoji({emoji}),
+      onSelect: (tone) => {
+        this.applyEmojiVariant(baseEmoji, tone);
+        this.managers.appEmojiManager.saveEmojiVariant(baseEmoji, tone);
+      }
+    });
+    this.emoticonsDropdown?.setIgnoreMouseOut('tooltip', true);
+    return {
+      cleanup: () => {
+        picker.cleanup();
+        this.emoticonsDropdown?.setIgnoreMouseOut('tooltip', false);
+      },
+      onMenuOpen: picker.show
+    };
+  };
+
   public addEmojiToCategory(options: {
     category: EmojiTabCategory,
     emoji?: ReturnType<typeof getEmojiFromElement>,
@@ -880,8 +973,22 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
     prepend?: boolean,
     active?: boolean
   }) {
-    const {category, emoji, batch, prepend} = options;
+    const {category, batch, prepend} = options;
+    let {emoji} = options;
     let element = options.element;
+    let baseEmoji: string;
+    if(emoji && !emoji.docId) {
+      const toneVariants = getEmojiSkinToneVariants(emoji.emoji);
+      if(toneVariants) {
+        baseEmoji = toneVariants.baseEmoji;
+        const tone = this.emojiVariants[baseEmoji] ?? getEmojiSkinTone(emoji.emoji);
+        emoji = {
+          ...emoji,
+          emoji: toneVariants.variants[tone]
+        };
+      }
+    }
+
     if(element) {
       const spanEmoji = document.createElement('span');
       spanEmoji.classList.add('super-emoji');
@@ -897,6 +1004,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory, {emojis: A
 
     const item: typeof category['items'][0] = {
       ...(emoji || {emoji: undefined}),
+      baseEmoji,
       element
     };
 

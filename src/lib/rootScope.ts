@@ -167,6 +167,7 @@ export type BroadcastEvents = {
   'media_play': void,
 
   'emoji_recent': {emoji: AppEmoji, deleted?: boolean},
+  'emoji_variant': {baseEmoji: string, emoji: string, tone: 0 | 1 | 2 | 3 | 4 | 5},
 
   'download_progress': Progress,
   'document_downloading': DocId,

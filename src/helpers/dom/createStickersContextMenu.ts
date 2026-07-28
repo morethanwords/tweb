@@ -23,6 +23,7 @@ export default function createStickersContextMenu({
   isGif,
   canHaveEmojiTimer,
   canViewPack,
+  onContextMenu,
   onOpen,
   onClose,
   onSend
@@ -36,11 +37,19 @@ export default function createStickersContextMenu({
   isGif?: boolean,
   canHaveEmojiTimer?: boolean,
   canViewPack?: boolean,
+  onContextMenu?: (event: MouseEvent | TouchEvent) => {
+    cleanup: () => void,
+    onMenuOpen?: (menu: HTMLElement) => void
+  } | void,
   onOpen?: () => any,
   onClose?: () => any,
   onSend?: () => any
 }) {
   let target: HTMLElement, doc: MyDocument;
+  let contextMenuAddon: {
+    cleanup: () => void,
+    onMenuOpen?: (menu: HTMLElement) => void
+  };
   const verifyFavoriteSticker = async(toAdd: boolean) => {
     const favedStickers = await (isGif ? rootScope.managers.acknowledged.appGifsManager.getGifs() : rootScope.managers.acknowledged.appStickersManager.getFavedStickersStickers());
     if(!favedStickers.cached) {
@@ -83,7 +92,7 @@ export default function createStickersContextMenu({
       const inputStickerSet = attribute.stickerset as InputStickerSet.inputStickerSetID;
       showStickersPopup(inputStickerSet, true, chatInput);
     },
-    verify: () => canViewPack
+    verify: () => !!(canViewPack && doc)
   }, {
     icon: 'smile',
     text: 'SetAsEmojiStatus',
@@ -169,6 +178,8 @@ export default function createStickersContextMenu({
     listenTo: listenTo,
     appendTo,
     findElement: (e) => {
+      contextMenuAddon?.cleanup();
+      contextMenuAddon = onContextMenu?.(e) || undefined;
       target = e.target as HTMLElement;
       if(isEmojis) {
         const superEmoji = findUpClassName(target, 'super-emoji');
@@ -189,7 +200,14 @@ export default function createStickersContextMenu({
       doc = await rootScope.managers.appDocsManager.getDoc(target.dataset.docId);
       return onOpen?.();
     },
-    onClose,
+    onClose: () => {
+      contextMenuAddon?.cleanup();
+      contextMenuAddon = undefined;
+      onClose?.();
+    },
+    onOpenAfter: (element) => {
+      contextMenuAddon?.onMenuOpen?.(element);
+    },
     buttons
   });
 }

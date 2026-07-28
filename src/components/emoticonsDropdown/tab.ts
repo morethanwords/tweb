@@ -432,11 +432,12 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
     };
   };
 
-  protected attachHelpers({getTextColor, verifyRecent, canHaveEmojiTimer, isGif}: {
+  protected attachHelpers({getTextColor, verifyRecent, canHaveEmojiTimer, isGif, onContextMenu}: {
     getTextColor?: () => string,
     verifyRecent?: (target: HTMLElement) => boolean,
     canHaveEmojiTimer?: boolean,
-    isGif?: boolean
+    isGif?: boolean,
+    onContextMenu?: Parameters<typeof createStickersContextMenu>[0]['onContextMenu']
   } = {}) {
     attachStickerViewerListeners({
       additionalClass: this.additionalStickerViewerClass,
@@ -454,6 +455,7 @@ export default class EmoticonsTabC<Category extends StickersTabCategory<any, any
       isGif,
       canHaveEmojiTimer,
       canViewPack: true,
+      onContextMenu,
       onOpen: () => {
         this.emoticonsDropdown.setIgnoreMouseOut(type, true);
       },

@@ -12,6 +12,7 @@ import filterUnique from '@helpers/array/filterUnique';
 import assumeType from '@helpers/assumeType';
 import {EmojiGroup, EmojiList, MessagesEmojiGroups} from '@layer';
 import flatten from '@helpers/array/flatten';
+import {EmojiSkinTone, getEmojiSkinToneBase, getEmojiSkinToneVariants} from '@helpers/emojiSkinTone';
 
 type EmojiLangPack = {
   keywords: {
@@ -45,6 +46,8 @@ export class AppEmojiManager extends AppManager {
 
   private recent: {native?: string[], custom?: DocId[]} = {};
   private getRecentEmojisPromises: {native?: Promise<string[]>, custom?: Promise<DocId[]>} = {};
+  private emojiVariants: {[emoji: string]: EmojiSkinTone};
+  private getEmojiVariantsPromise: Promise<AppEmojiManager['emojiVariants']>;
 
   private getCustomEmojiDocumentsPromise: Promise<any>;
   private getCustomEmojiDocumentPromises: Map<DocId, CancellablePromise<MyDocument>> = new Map();
@@ -267,6 +270,29 @@ export class AppEmojiManager extends AppManager {
     return this.searchEmojis(options);
   }
 
+  public getEmojiVariants() {
+    return this.getEmojiVariantsPromise ??= this.appStateManager.getState().then((state) => {
+      return this.emojiVariants = state.emojiVariants || {};
+    });
+  }
+
+  public async saveEmojiVariant(emoji: string, tone: EmojiSkinTone) {
+    const toneVariants = getEmojiSkinToneVariants(emoji);
+    if(!toneVariants || !Number.isInteger(tone) || tone < 0 || tone > 5) {
+      return;
+    }
+
+    const {baseEmoji, variants} = toneVariants;
+    const emojiVariants = await this.getEmojiVariants();
+    emojiVariants[baseEmoji] = tone;
+    this.appStateManager.pushToState('emojiVariants', emojiVariants);
+    this.rootScope.dispatchEvent('emoji_variant', {
+      baseEmoji,
+      emoji: variants[tone],
+      tone
+    });
+  }
+
   public getRecentEmojis<T extends EmojiType>(type: 'custom'): Promise<DocId[]>;
   public getRecentEmojis<T extends EmojiType>(type: 'native'): Promise<string[]>;
   public getRecentEmojis<T extends EmojiType>(type: T): Promise<string[] | DocId[]> {
@@ -276,6 +302,11 @@ export class AppEmojiManager extends AppManager {
       if(type === 'native') {
         const {recentEmoji} = state;
         recent = Array.isArray(recentEmoji) && recentEmoji.length ? recentEmoji : AppEmojiManager.POPULAR_EMOJI;
+        const normalized = filterUnique(recent.map((emoji) => getEmojiSkinToneBase(emoji as string)));
+        if(normalized.length !== recent.length || normalized.some((emoji, index) => emoji !== recent[index])) {
+          this.appStateManager.pushToState('recentEmoji', normalized as string[]);
+        }
+        recent = normalized;
       } else {
         const {recentCustomEmoji} = state;
         recent = Array.isArray(recentCustomEmoji) && recentCustomEmoji.length ? recentCustomEmoji : [];
@@ -288,6 +319,9 @@ export class AppEmojiManager extends AppManager {
   public modifyRecentEmoji(emoji: AppEmoji, add: boolean) {
     const type: EmojiType = emoji.docId ? 'custom' : 'native';
     emoji.emoji = fixEmoji(emoji.emoji);
+    if(type === 'native') {
+      emoji.emoji = getEmojiSkinToneBase(emoji.emoji);
+    }
     // @ts-ignore
     this.getRecentEmojis(type).then((recent) => {
       const i = emoji.docId || emoji.emoji;

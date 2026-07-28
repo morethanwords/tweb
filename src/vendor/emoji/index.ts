@@ -33,9 +33,22 @@ export function toCodePoints(unicodeSurrogates: string): Array<string> {
   return points;
 }
 
+export const EMOJI_TONE_MODIFIERS = ['🏻', '🏼', '🏽', '🏾', '🏿'] as const;
+const emojiToneRegExp = /🏻|🏼|🏽|🏾|🏿/g;
+const singleEmojiToneRegExp = /🏻|🏼|🏽|🏾|🏿/;
+
+export function getEmojiToneIndexes(input: string) {
+  return (input.match(emojiToneRegExp) || [])
+  .map((tone) => EMOJI_TONE_MODIFIERS.indexOf(tone as typeof EMOJI_TONE_MODIFIERS[number]) + 1);
+}
+
 export function getEmojiToneIndex(input: string) {
-  const match = input.match(/[\uDFFB-\uDFFF]/);
-  return match ? 5 - (57343 - match[0].charCodeAt(0)) : 0;
+  const match = input.match(singleEmojiToneRegExp);
+  return match ? EMOJI_TONE_MODIFIERS.indexOf(match[0] as typeof EMOJI_TONE_MODIFIERS[number]) + 1 : 0;
+}
+
+export function removeEmojiTone(input: string) {
+  return input.replace(emojiToneRegExp, '');
 }
 
 const VIRTUAL_COUNTRIES_EMOJIS: Map<string, string> = new Map([
