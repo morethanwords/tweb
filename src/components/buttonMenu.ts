@@ -16,6 +16,7 @@ import wrapAttachBotIcon from '@components/wrappers/attachBotIcon';
 import {createRoot} from 'solid-js';
 import {AvatarNew} from '@components/avatarNew';
 import {ActiveAccountNumber} from '@lib/accounts/types';
+import {putPreloader} from '@components/putPreloader';
 
 type ButtonMenuItemInner = Omit<Parameters<typeof ButtonMenuSync>[0], 'listenerSetter'>;
 type AvatarInfo = {
@@ -63,6 +64,27 @@ export type ButtonMenuItemOptions = {
 export type ButtonMenuItemOptionsVerifiable = ButtonMenuItemOptions & {
   verify?: () => boolean | Promise<boolean>
 };
+
+export function setButtonMenuItemLoading(
+  options: ButtonMenuItemOptions,
+  loading: boolean,
+  element = options.element
+) {
+  const iconElement = element?.querySelector('.btn-menu-item-icon:not(.btn-menu-item-icon-right)');
+  if(!element || !iconElement) {
+    return;
+  }
+
+  element.classList.toggle('is-loading', loading);
+  const preloader = iconElement.querySelector('.btn-menu-item-preloader');
+  if(loading && !preloader) {
+    const newPreloader = putPreloader(undefined, true);
+    newPreloader.classList.add('btn-menu-item-preloader');
+    iconElement.append(newPreloader);
+  } else if(!loading) {
+    preloader?.remove();
+  }
+}
 
 export function ButtonMenuItem(options: ButtonMenuItemOptions) {
   if(options.element) return [options.separator as HTMLElement, options.element].filter(Boolean);

@@ -74,6 +74,18 @@ $inactive-opacity: .4;
     }
   }
 
+  &-copy-button {
+    .preloader-circular {
+      position: static;
+      width: 1.5rem;
+      height: 1.5rem;
+    }
+
+    .preloader-path {
+      stroke: currentColor;
+    }
+  }
+
   &-content {
     display: flex;
     flex-direction: column;

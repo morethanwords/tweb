@@ -95,6 +95,8 @@ import {pollOptionToLink} from './bubbleParts/pollMessageContent/pollToOptionLin
 import {getPollVoteRestrictionPeerId} from '@appManagers/utils/polls/pollVoteRestriction';
 import {getPollVoteRestrictionText} from './bubbleParts/pollMessageContent/pollVoteRestriction';
 import {canViewPollStatistics as canViewPollStatisticsForMessage} from './bubbleParts/pollMessageContent/pollStatistics';
+import {canCopyMediaToClipboard} from '@helpers/copyMediaToClipboard';
+import copyMessageMediaWithFeedback from '@components/copyMessageMediaWithFeedback';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -226,6 +228,7 @@ export default class ChatContextMenu {
   private selectedMessagesText: PartialByKeys<Awaited<ReturnType<ChatContextMenu['getSelectedMessagesText']>>, 'html'>;
   private selectedMessages: MyMessage[];
   private avatarPeerId: number;
+  private copyMediaButton: ChatContextMenuButton;
 
   private isLegacy: boolean;
   private messagePeerId: number;
@@ -1039,6 +1042,17 @@ export default class ChatContextMenu {
       text: 'Chat.CopySelectedText',
       onClick: this.onCopyClick,
       verify: () => !this.noForwards && !!(this.message as Message.message).message && this.isTextSelected
+    }, this.copyMediaButton = {
+      icon: 'copy',
+      text: 'MediaViewer.Context.Copy',
+      onClick: this.onCopyMediaClick,
+      verify: () => ChatContextMenu.canCopyMedia(
+        this.message,
+        this.target,
+        this.noForwards,
+        this.chat.container
+      ),
+      keepOpen: true
     }, {
       icon: 'search',
       text: 'Chat.SearchSelected',
@@ -1472,11 +1486,23 @@ export default class ChatContextMenu {
     }
 
     if(container && (message as Message.message).restriction_reason && isSensitive((message as Message.message).restriction_reason)) {
-      const item = container.querySelector(`[data-mid="${message.mid}"]`);
-      return item && !hasSensitiveSpoiler(item as HTMLElement);
+      const item = container.querySelector(
+        `[data-peer-id="${message.peerId}"][data-mid="${message.mid}"]`
+      ) || container.querySelector(`[data-mid="${message.mid}"]:not([data-peer-id])`);
+      return isGoodType && hasTarget && !!item && !hasSensitiveSpoiler(item as HTMLElement);
     }
 
     return isGoodType && hasTarget;
+  }
+
+  public static canCopyMedia(
+    message: MyMessage,
+    withTarget?: HTMLElement,
+    noForwards?: boolean,
+    container?: HTMLElement
+  ) {
+    return ChatContextMenu.canDownload(message, withTarget, noForwards, container) &&
+      canCopyMediaToClipboard(getMediaFromMessage(message, true));
   }
 
   private getMessageWithText() {
@@ -1976,6 +2002,13 @@ export default class ChatContextMenu {
       getAppWindow().document.execCommand('copy');
       // cancelSelection();
     }
+  };
+
+  private onCopyMediaClick = () => {
+    copyMessageMediaWithFeedback({
+      message: this.message,
+      button: this.copyMediaButton
+    });
   };
 
   private onCopyAnchorLinkClick = () => {

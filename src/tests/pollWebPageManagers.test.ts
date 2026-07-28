@@ -409,7 +409,7 @@ describe('AppPollsManager webpage index', () => {
     expect(dispatched.filter(({event}) => event === 'message_edit')).toHaveLength(1);
   });
 
-  test('preserves empty webpage placeholders in answers and solution', () => {
+  test('passes empty webpage placeholders through media saving', () => {
     const poll = makePoll(1, []);
     poll.answers = [{
       _: 'pollAnswer',
@@ -431,7 +431,8 @@ describe('AppPollsManager webpage index', () => {
 
     manager.savePoll(poll, results);
 
-    expect(saveMessageMedia).not.toHaveBeenCalled();
+    expect(saveMessageMedia).toHaveBeenNthCalledWith(1, poll.answers[0], 'media');
+    expect(saveMessageMedia).toHaveBeenNthCalledWith(2, results, 'solution_media');
     expect((poll.answers[0] as PollAnswer.pollAnswer).media).toMatchObject({
       webpage: {_: 'webPageEmpty', url: 'https://answer.example'}
     });

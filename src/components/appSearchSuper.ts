@@ -106,6 +106,7 @@ import {wrapGlobalPostsSearch} from './sidebarLeft/globalPostsSearch';
 import createMiddleware from '@helpers/solid/createMiddleware';
 import Tabs from '@components/tabs';
 import Section from '@components/section';
+import copyMessageMediaWithFeedback from '@components/copyMessageMediaWithFeedback';
 import createTopPeersList from '@components/topPeersList';
 
 export type SearchSuperType = MyInputMessagesFilter/*  | 'members' */;
@@ -164,6 +165,9 @@ class SearchContextMenu {
   private noForwards: boolean;
   private message: MyMessage;
   private selectedMessages: MyMessage[];
+  private copyMediaButton: ButtonMenuItemOptions & {
+    verify?: () => boolean | Promise<boolean>
+  };
 
   constructor(
     private attachTo: HTMLElement,
@@ -255,6 +259,13 @@ class SearchContextMenu {
       onClick: this.onForwardClick,
       verify: () => this.searchSuper.selection.isSelecting && !this.noForwards,
       withSelection: true
+    }, this.copyMediaButton = {
+      icon: 'copy',
+      text: 'MediaViewer.Context.Copy',
+      onClick: this.onCopyMediaClick,
+      verify: () => !this.searchSuper.selection.isSelecting &&
+        ChatContextMenu.canCopyMedia(this.message, undefined, this.noForwards, this.attachTo),
+      keepOpen: true
     }, {
       icon: 'download',
       text: 'MediaViewer.Context.Download',
@@ -308,6 +319,13 @@ class SearchContextMenu {
       peerId: this.peerId,
       lastMsgId: this.mid,
       threadId: this.searchSuper.mediaTab.type === 'saved' ? this.searchSuper.searchContext.peerId : this.searchSuper.searchContext.threadId
+    });
+  };
+
+  private onCopyMediaClick = () => {
+    copyMessageMediaWithFeedback({
+      message: this.message,
+      button: this.copyMediaButton
     });
   };
 

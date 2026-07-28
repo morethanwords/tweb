@@ -285,6 +285,7 @@
 "TwoStepAuth.EmailCodeChangeEmail" = "Change Email";
 "MarkupTooltip.LinkPlaceholder" = "Enter URL...";
 "MediaViewer.Context.Download" = "Download";
+"MediaViewer.Context.Copy" = "Copy Media";
 "MediaViewer.ProfilePublicPhoto" = "Public Photo";
 "Profile" = "Profile";
 "Saved" = "Saved";
@@ -1703,6 +1704,8 @@
 "FakeMessage" = "FAKE";
 "TextCopied" = "Text copied to clipboard";
 "TextCopyFailed" = "Failed to copy text to clipboard";
+"MediaCopied" = "Media copied to clipboard";
+"MediaCopyFailed" = "Failed to copy media to clipboard";
 "FormattedDate.CopyDate" = "Copy Date";
 "FormattedDate.DateCopied" = "Date copied to clipboard";
 "FormattedDate.JustNow" = "just now";

@@ -35,6 +35,9 @@ import wrapEmojiText from '@richTextProcessor/wrapEmojiText';
 import wrapWebPageDescription from '@components/wrappers/webPageDescription';
 import Button from '@components/button';
 import onQuoteClick from '@helpers/dom/onQuoteClick';
+import {canCopyMediaToClipboard} from '@helpers/copyMediaToClipboard';
+import {setButtonLoader} from '@components/putPreloader';
+import copyMessageMediaWithFeedback from '@components/copyMessageMediaWithFeedback';
 
 type AppMediaViewerTargetType = {
   element: HTMLElement,
@@ -72,9 +75,10 @@ export const onMediaCaptionClick = (caption: HTMLElement, e: MouseEvent) => {
   }
 };
 
-export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delete' | 'forward', AppMediaViewerTargetType> {
+export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delete' | 'forward' | 'copy', AppMediaViewerTargetType> {
   protected listLoader: SearchListLoader<AppMediaViewerTargetType>;
   protected btnMenuForward: ButtonMenuItemOptionsVerifiable;
+  protected btnMenuCopy: ButtonMenuItemOptionsVerifiable;
   protected btnMenuDownload: ButtonMenuItemOptionsVerifiable;
   protected btnMenuDelete: ButtonMenuItemOptionsVerifiable;
   private deleteAsChatPhoto = false;
@@ -99,7 +103,10 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
         return {element: null as HTMLElement, mid, peerId};
       }
-    }), ['delete', 'forward'], sponsored ? 60 : 0);
+    }), ['delete', 'forward', 'copy'], sponsored ? 60 : 0);
+
+    this.buttons.copy.classList.add('media-viewer-copy-button');
+    this.buttons.copy.setAttribute('aria-label', i18n('MediaViewer.Context.Copy').textContent);
 
     this.listLoader.onEmptied = () => {
       this.close();
@@ -143,11 +150,18 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     this.wholeDiv.append(this.content.caption);
 
     attachClickEvent(this.buttons.delete, this.onDeleteClick);
+    attachClickEvent(this.buttons.copy, this.onCopyMediaClick);
 
     const buttons: ButtonMenuItemOptionsVerifiable[] = [this.btnMenuForward = {
       icon: 'forward',
       text: 'Forward',
       onClick: this.onForwardClick
+    }, this.btnMenuCopy = {
+      icon: 'copy',
+      text: 'MediaViewer.Context.Copy',
+      onClick: this.onCopyMediaClick,
+      keepOpen: true,
+      verify: () => false
     }, this.btnMenuDownload = {
       icon: 'download',
       text: 'MediaViewer.Context.Download',
@@ -301,6 +315,16 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     appDownloadManager.downloadToDisc({media, queueId: appImManager.chat.bubbles.lazyLoadQueue.queueId});
   };
 
+  onCopyMediaClick = () => {
+    const {message, index} = this.target;
+    copyMessageMediaWithFeedback({
+      message,
+      index,
+      button: this.btnMenuCopy,
+      cleanup: setButtonLoader(this.buttons.copy as HTMLButtonElement)
+    });
+  };
+
   private setCaption(message: MyMessage) {
     const isSponsored = !!(message as Message.message).pFlags.sponsored;
     if(isSponsored) {
@@ -395,11 +419,13 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
   private setMessageActionVisibility(options: {
     cantForward: boolean,
+    cantCopy: boolean,
     cantDownload: boolean,
     cantDelete: boolean
   }) {
     const actions: [(HTMLElement | ButtonMenuItemOptionsVerifiable)[], boolean][] = [
       [[this.buttons.forward, this.btnMenuForward], options.cantForward],
+      [[this.buttons.copy, this.btnMenuCopy], options.cantCopy],
       [[this.buttons.download, this.btnMenuDownload], options.cantDownload],
       [[this.buttons.delete, this.btnMenuDelete], options.cantDelete]
     ];
@@ -455,7 +481,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     // in front of the first animation frame. The controls reconcile as soon as all
     // three independent checks settle.
     this.deleteAsChatPhoto = false;
-    this.setMessageActionVisibility({cantForward: true, cantDownload: true, cantDelete: true});
+    this.setMessageActionVisibility({cantForward: true, cantCopy: true, cantDownload: true, cantDelete: true});
     const permissionsPromise = Promise.all([
       this.managers.appPeersManager.noForwards(message.peerId),
       isServiceMessage || noAuthor ? Promise.resolve(false) : this.managers.appMessagesManager.canForward(message),
@@ -490,9 +516,10 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       if(this.target?.message !== message) return;
       const cantForward = !canForward;
       const cantDownload = (isServiceMessage ? noForwards : cantForward && !isSponsored) || !canSaveMessageMedia(message, noForwards);
+      const cantCopy = cantDownload || !canCopyMediaToClipboard(media);
       const cantDelete = !canDelete;
       this.deleteAsChatPhoto = isChatPhotoEdit && !cantDelete;
-      this.setMessageActionVisibility({cantForward, cantDownload, cantDelete});
+      this.setMessageActionVisibility({cantForward, cantCopy, cantDownload, cantDelete});
     }).catch((error) => {
       this.log.warn('failed to resolve media viewer actions', error);
     });

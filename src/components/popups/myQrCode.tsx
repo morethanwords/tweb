@@ -20,7 +20,7 @@ import {getWallPaperColors, darkenToMaxLuminance} from '@helpers/color';
 import roundRect from '@helpers/canvas/roundRect';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import {toastNew} from '@components/toast';
-import {copyTextToClipboard} from '@helpers/clipboard';
+import {copyTextToClipboard, writeClipboardItem} from '@helpers/clipboard';
 import classNames from '@helpers/string/classNames';
 import {BaseTheme, Chat, Theme, User, WallPaper} from '@layer';
 import {AppTheme, DEFAULT_THEME} from '@config/state';
@@ -942,7 +942,7 @@ function FooterSlot(props: {shared: QrPopupShared, getBlob: () => Blob | undefin
     const blob = props.getBlob();
     if(blob) {
       try {
-        await navigator.clipboard.write([new ClipboardItem({'image/png': blob})]);
+        await writeClipboardItem({'image/png': blob});
         toastNew({langPackKey: 'QRCode.Copied'});
         return;
       } catch(err) {
