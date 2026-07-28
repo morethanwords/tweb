@@ -3,6 +3,9 @@
 This folder contains a Vitest harness that boots the worker-side MTProto stack
 in Node so you can call `apiManager.invokeApi(...)` from a test.
 
+The live Bot API fixture used to exercise Ephemeral Messages is documented in
+[`../fixtures/ephemeralBot/README.md`](../fixtures/ephemeralBot/README.md).
+
 There is no auth flow in Node — you log in once in the browser, export the
 auth keys, and feed them to the harness as a JSON seed.
 

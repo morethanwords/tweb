@@ -14,7 +14,7 @@ import LazyLoadQueueBase from '@components/lazyLoadQueueBase';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import tsNow from '@helpers/tsNow';
 import {nextRandomUint, randomLong} from '@helpers/random';
-import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputMessageReadMetric, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap,  PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, WebPage, GeoPoint, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory,  MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities, ChannelsSearchPosts, FactCheck, MessageExtendedMedia, SponsoredMessage, MessagesSponsoredMessages, InputGroupCall, TodoItem, TodoCompletion, SearchPostsFlood,  MessagesDeleteSavedHistory, ChannelsDeleteParticipantHistory, MessagesDeleteHistory, MessagesDeleteTopicHistory, RichMessage} from '@layer';
+import {BotCommand, Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, EphemeralMessage, EphemeralSendMessage, InputMedia, InputMessage, InputMessageReadMetric, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesBotCallbackAnswer, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap,  PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, WebPage, GeoPoint, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory,  MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, MessagesSendMessage, MessagesSendMedia, MessagesGetSavedHistory, MessagesSavedDialogs, SavedDialog as MTSavedDialog, User, MissingInvitee, TextWithEntities, ChannelsSearchPosts, FactCheck, MessageExtendedMedia, SponsoredMessage, MessagesSponsoredMessages, InputGroupCall, TodoItem, TodoCompletion, SearchPostsFlood,  MessagesDeleteSavedHistory, ChannelsDeleteParticipantHistory, MessagesDeleteHistory, MessagesDeleteTopicHistory, RichMessage} from '@layer';
 import {ArgumentTypes, InvokeApiOptions, Modify} from '@types';
 import {logger, LogTypes} from '@lib/logger';
 import {ReferenceContext} from '@lib/storages/references';
@@ -24,7 +24,7 @@ import {MyDocument} from '@appManagers/appDocsManager';
 import {MyPhoto} from '@appManagers/appPhotosManager';
 import DEBUG from '@config/debug';
 import SlicedArray, {Slice, SliceEnd} from '@helpers/slicedArray';
-import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, GENERAL_TOPIC_ID, HIDDEN_PEER_ID, MESSAGES_ALBUM_MAX_SIZE, MUTE_UNTIL, NULL_PEER_ID, REAL_FOLDERS, REAL_FOLDER_ID, REPLIES_HIDDEN_CHANNEL_ID, REPLIES_PEER_ID, SERVICE_PEER_ID, TEST_NO_SAVED, THUMB_TYPE_FULL, TOPIC_COLORS} from '@appManagers/constants';
+import {EPHEMERAL_MESSAGE_ID_OFFSET, FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, GENERAL_TOPIC_ID, HIDDEN_PEER_ID, MESSAGES_ALBUM_MAX_SIZE, MUTE_UNTIL, NULL_PEER_ID, REAL_FOLDERS, REAL_FOLDER_ID, REPLIES_HIDDEN_CHANNEL_ID, REPLIES_PEER_ID, SERVICE_PEER_ID, TEST_NO_SAVED, THUMB_TYPE_FULL, TOPIC_COLORS} from '@appManagers/constants';
 import {getMiddleware} from '@helpers/middleware';
 import assumeType from '@helpers/assumeType';
 import copy from '@helpers/object/copy';
@@ -38,6 +38,11 @@ import {AppManager} from '@appManagers/manager';
 import getPhotoMediaInput from '@appManagers/utils/photos/getPhotoMediaInput';
 import parseMarkdown from '@lib/richTextProcessor/parseMarkdown';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
+import isEphemeralMessageId from '@appManagers/utils/messageId/isEphemeralMessageId';
+import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
+import resolveEphemeralCommand, {
+  EphemeralCommandCandidate
+} from '@appManagers/utils/bots/resolveEphemeralCommand';
 import filterMessagesByInputFilter from '@appManagers/utils/messages/filterMessagesByInputFilter';
 import ctx from '@environment/ctx';
 import {getEnvironment} from '@environment/utils';
@@ -105,6 +110,11 @@ const FETCH_TARGETED_MESSAGE = false;
 const GLOBAL_HISTORY_PEER_ID = NULL_PEER_ID;
 const TOPIC_TITLE_MAX_LENGTH = 16;
 const TOPIC_TITLE_DEFAULT = 'New Chat';
+const EPHEMERAL_MESSAGE_KEEP_DURATION = 2 * 86400;
+const EPHEMERAL_MESSAGE_PRUNE_INTERVAL = 3600e3;
+const EPHEMERAL_REPLY_RESOLVE_DELAY = 2e3;
+const EPHEMERAL_RETRY_KEEP_DURATION = 15 * 60e3;
+const EPHEMERAL_RETRY_MAX_COUNT = 20;
 
 export const SUGGESTED_POST_MIN_THRESHOLD_SECONDS = 60; // avoid last minute suggests, or if the user was thinking a lot before clicking send
 
@@ -183,6 +193,11 @@ export type ForumTopic = MTForumTopic.forumTopic;
 export type SavedDialog = MTSavedDialog.savedDialog;
 
 export type MyMessage = Message.message | Message.messageService;
+export type MyEphemeralMessage = Message.message & {
+  ephemeral_id: number,
+  ephemeral_receiver_id: UserId,
+  ephemeral_order?: number
+};
 export type MyInputMessagesFilter = 'inputMessagesFilterEmpty'
   | 'inputMessagesFilterPhotos'
   | 'inputMessagesFilterPhotoVideo'
@@ -271,7 +286,10 @@ export type MessageSendingParams = Partial<{
   invertMedia: boolean,
   effect: DocId,
   confirmedPaymentResult: ConfirmedPaymentResult,
-  suggestedPost: SuggestedPostPayload
+  suggestedPost: SuggestedPostPayload,
+  ephemeral: boolean,                // ! FOR INNER USE ONLY
+  ephemeralReceiverId: UserId,       // ! FOR INNER USE ONLY
+  forceOrdinary: boolean              // ! FOR INNER USE ONLY
 }>;
 
 export type MessageForwardParams = MessageSendingParams & {
@@ -313,6 +331,12 @@ export type RequestHistoryOptions = {
   recursion?: boolean,                  // ! FOR INNER USE ONLY
   historyType?: HistoryType,            // ! FOR INNER USE ONLY
   searchType?: 'cached' | 'uncached'    // ! FOR INNER USE ONLY
+};
+
+export type GetEphemeralHistoryOptions = {
+  peerId: PeerId,
+  threadId?: number,
+  limit?: number
 };
 
 type GetHistoryTypeOptions = {
@@ -500,6 +524,31 @@ type InvokeEditMessageMediaArgs = {
 
 type MessageContext = {searchStorages?: Set<HistoryStorage>};
 
+type EphemeralSendContext = {
+  drop: true
+} | {
+  drop: false,
+  receiverId: UserId,
+  replyTo?: InputReplyTo.inputReplyToEphemeralMessage
+};
+
+type SendEphemeralMessageArgs = Omit<EphemeralSendMessage, 'peer' | 'receiver_id' | 'random_id'> & {
+  peerId: PeerId,
+  receiverId: UserId,
+  randomId?: Long
+};
+
+type PendingEphemeralRetry = {
+  expiresAt: number,
+  action: {
+    type: 'message',
+    params: SendEphemeralMessageArgs & {randomId: Long}
+  } | {
+    type: 'file',
+    options: SendFileArgs
+  }
+};
+
 export class AppMessagesManager extends AppManager {
   private messagesStorageByPeerId: {[peerId: string]: MessagesStorage};
   private groupedMessagesStorage: {[groupId: string]: MessagesStorage}; // will be used for albums
@@ -620,6 +669,18 @@ export class AppMessagesManager extends AppManager {
     originalMessage: Message.message;
   }> = new Map();
 
+  private ephemeralMidsByPeerId: Map<PeerId, Map<number, number>>;
+  private ephemeralOrderByPeerId: Map<PeerId, Map<number, number>>;
+  private ephemeralOrder: number;
+  private pendingEphemeralMessages: Map<string, {
+    message: EphemeralMessage,
+    deadline: number
+  }>;
+  private pendingEphemeralMessagesTimeout: number;
+  private ephemeralCallbackTopicHints: Map<PeerId, Map<UserId, number>>;
+  private pendingEphemeralRetries: Map<number, PendingEphemeralRetry>;
+  private ephemeralRetryId: number;
+
   constructor() {
     super();
     this.name = 'MESSAGES';
@@ -664,6 +725,10 @@ export class AppMessagesManager extends AppManager {
       updateDeleteMessages: this.onUpdateDeleteMessages,
       updateDeleteChannelMessages: this.onUpdateDeleteMessages,
 
+      updateNewEphemeralMessage: this.onUpdateNewEphemeralMessage,
+      updateEditEphemeralMessage: this.onUpdateEditEphemeralMessage,
+      updateDeleteEphemeralMessages: this.onUpdateDeleteEphemeralMessages,
+
       updateChannel: this.onUpdateChannel,
 
       updateChannelReload: this.onUpdateChannelReload,
@@ -685,6 +750,8 @@ export class AppMessagesManager extends AppManager {
 
       updateTranscribedAudio: this.onUpdateTranscribedAudio
     });
+
+    ctx.setInterval(this.pruneEphemeralMessages, EPHEMERAL_MESSAGE_PRUNE_INTERVAL);
 
     // ! Invalidate notify settings, can optimize though
     this.rootScope.addEventListener('notify_peer_type_settings', ({key, settings}) => {
@@ -718,12 +785,7 @@ export class AppMessagesManager extends AppManager {
           };
         }, storage);
 
-        this.rootScope.dispatchEvent('message_edit', {
-          storageKey: storage.key,
-          peerId,
-          mid,
-          message
-        });
+        this.dispatchMessageEditEvent(message, storage.key);
       });
     });
 
@@ -863,6 +925,17 @@ export class AppMessagesManager extends AppManager {
     this.waitingTranscriptions = new Map();
     this.pendingNewBotforumTopics = {};
     this.pendingEditingMessages = new Map();
+    this.ephemeralMidsByPeerId = new Map();
+    this.ephemeralOrderByPeerId = new Map();
+    this.ephemeralOrder = 0;
+    this.pendingEphemeralMessages = new Map();
+    this.ephemeralCallbackTopicHints = new Map();
+    this.pendingEphemeralRetries = new Map();
+    this.ephemeralRetryId = 0;
+    if(this.pendingEphemeralMessagesTimeout) {
+      ctx.clearTimeout(this.pendingEphemeralMessagesTimeout);
+      this.pendingEphemeralMessagesTimeout = undefined;
+    }
 
     if(!init) {
       this.appProfileManager.clearBotCommands();
@@ -890,6 +963,731 @@ export class AppMessagesManager extends AppManager {
     return sendEntities;
   }
 
+  public isEphemeralMessage(message: any): message is MyEphemeralMessage {
+    return isEphemeralMessage(message);
+  }
+
+  public dispatchMessageEditEvent(message: MyMessage, storageKey = message.storageKey) {
+    if(this.isEphemeralMessage(message)) {
+      this.rootScope.dispatchEvent('ephemeral_history_edit', {
+        storageKey,
+        peerId: message.peerId,
+        mid: message.mid,
+        message
+      });
+      return;
+    }
+
+    this.rootScope.dispatchEvent('message_edit', {
+      storageKey,
+      peerId: message.peerId,
+      mid: message.mid,
+      message
+    });
+  }
+
+  public getEphemeralMessage(peerId: PeerId, ephemeralId: number) {
+    const mids = this.ephemeralMidsByPeerId.get(peerId);
+    const mid = mids?.get(ephemeralId);
+    if(mid === undefined) {
+      return;
+    }
+
+    const message = this.getMessageByPeer(peerId, mid);
+    if(this.isEphemeralMessage(message)) {
+      return message;
+    }
+
+    mids.delete(ephemeralId);
+    const order = this.ephemeralOrderByPeerId.get(peerId);
+    order?.delete(ephemeralId);
+    if(order && !order.size) {
+      this.ephemeralOrderByPeerId.delete(peerId);
+    }
+    if(!mids.size) {
+      this.ephemeralMidsByPeerId.delete(peerId);
+    }
+  }
+
+  public getEphemeralHistory({peerId, threadId, limit}: GetEphemeralHistoryOptions) {
+    const midsById = this.ephemeralMidsByPeerId.get(peerId);
+    if(!midsById) {
+      return [];
+    }
+
+    const isForum = this.appPeersManager.isForum(peerId);
+    const isBotforum = this.appPeersManager.isBotforum(peerId);
+    const mids: number[] = [];
+    for(const mid of midsById.values()) {
+      const message = this.getMessageByPeer(peerId, mid);
+      if(
+        !this.isEphemeralMessage(message) ||
+        (
+          threadId !== undefined &&
+          getMessageThreadId(message, {isForum, isBotforum}) !== threadId
+        )
+      ) {
+        continue;
+      }
+
+      mids.push(mid);
+    }
+
+    const order = this.ephemeralOrderByPeerId.get(peerId);
+    mids.sort((a, b) => {
+      const aMessage = this.getMessageByPeer(peerId, a) as MyEphemeralMessage;
+      const bMessage = this.getMessageByPeer(peerId, b) as MyEphemeralMessage;
+      return bMessage.date - aMessage.date ||
+        (order?.get(bMessage.ephemeral_id) || 0) - (order?.get(aMessage.ephemeral_id) || 0);
+    });
+
+    return limit === undefined ? mids : mids.slice(0, Math.max(0, limit));
+  }
+
+  private getEphemeralSendReceiverId(message: Message.message) {
+    const receiverId = message.pFlags.out ?
+      message.ephemeral_receiver_id :
+      message.fromId?.isUser() ? message.fromId.toUserId() : undefined;
+
+    return receiverId && this.appUsersManager.getUser(receiverId)?._ === 'user' ?
+      receiverId :
+      undefined;
+  }
+
+  private resolveEphemeralCommand(peerId: PeerId, text: string) {
+    if(!this.appPeersManager.isAnyGroup(peerId)) {
+      return {state: 'none'} as const;
+    }
+
+    const fullChat = this.appProfileManager.getCachedFullChat(peerId.toChatId());
+    const candidates: EphemeralCommandCandidate[] = [];
+    const addCandidate = (botId: UserId, commands: BotCommand[]) => {
+      if(!botId || !commands?.length) {
+        return;
+      }
+
+      const bot = this.appUsersManager.getUser(botId);
+      candidates.push({
+        botId,
+        commands,
+        username: bot?._ === 'user' ?
+          this.appPeersManager.getPeerUsername(botId.toPeerId(false)) :
+          undefined,
+        available: bot?._ === 'user'
+      });
+    };
+
+    for(const botInfo of fullChat?.bot_info || []) {
+      addCandidate(+botInfo.user_id as UserId, botInfo.commands);
+    }
+
+    const commandsByBot = this.appProfileManager.getCachedBotCommands(peerId);
+    for(const id in commandsByBot || {}) {
+      addCandidate(+id as UserId, commandsByBot[id]);
+    }
+
+    return resolveEphemeralCommand(text, candidates);
+  }
+
+  private getEphemeralSendContext(
+    peerId: PeerId,
+    text: string,
+    replyToMsgId?: number,
+    replyTo?: InputReplyTo,
+    ephemeral?: boolean,
+    ephemeralReceiverId?: UserId
+  ): EphemeralSendContext {
+    const hasEphemeralReply = replyTo?._ === 'inputReplyToEphemeralMessage' ||
+      (
+        !!replyToMsgId &&
+        (
+          this.isEphemeralMessageId(replyToMsgId) ||
+          this.isEphemeralMessage(this.getMessageByPeer(peerId, replyToMsgId))
+        )
+      );
+    if(!this.appPeersManager.isAnyGroup(peerId)) {
+      return ephemeral || hasEphemeralReply ?
+        this.blockEphemeralSend(peerId, 'unavailable') :
+        undefined;
+    }
+
+    let replyMessage: Message;
+    if(replyToMsgId) {
+      replyMessage = this.getMessageByPeer(peerId, replyToMsgId);
+    } else if(replyTo?._ === 'inputReplyToEphemeralMessage') {
+      replyMessage = this.getEphemeralMessage(peerId, replyTo.id);
+    }
+
+    if(hasEphemeralReply && !replyMessage) {
+      return this.blockEphemeralSend(peerId, 'unavailable');
+    }
+
+    if(replyMessage) {
+      if(this.isEphemeralMessage(replyMessage)) {
+        if(replyMessage.pFlags.out) {
+          return this.blockEphemeralSend(peerId, 'unavailable');
+        }
+
+        const receiverId = this.getEphemeralSendReceiverId(replyMessage);
+        if(receiverId) {
+          return {
+            drop: false,
+            receiverId,
+            replyTo: {
+              _: 'inputReplyToEphemeralMessage',
+              id: replyMessage.ephemeral_id
+            }
+          };
+        }
+
+        return this.blockEphemeralSend(peerId, 'unavailable');
+      }
+    }
+
+    if(ephemeralReceiverId) {
+      return this.appUsersManager.getUser(ephemeralReceiverId)?._ === 'user' ?
+        {drop: false, receiverId: ephemeralReceiverId} :
+        this.blockEphemeralSend(peerId, 'unavailable');
+    }
+
+    const commandResolution = this.resolveEphemeralCommand(peerId, text);
+    if(commandResolution.state === 'resolved') {
+      return {drop: false, receiverId: commandResolution.receiverId};
+    }
+
+    if(commandResolution.state !== 'none') {
+      return this.blockEphemeralSend(peerId, commandResolution.state);
+    }
+
+    if(ephemeral) {
+      return this.blockEphemeralSend(peerId, 'unavailable');
+    }
+  }
+
+  private blockEphemeralSend(peerId: PeerId, reason: 'ambiguous' | 'unavailable'): EphemeralSendContext {
+    this.rootScope.dispatchEvent('ephemeral_send_blocked', {peerId, reason});
+    return {drop: true};
+  }
+
+  public sendEphemeralMessage({
+    peerId,
+    receiverId,
+    randomId = randomLong(),
+    ...params
+  }: SendEphemeralMessageArgs) {
+    return this.invokeEphemeralMessageSend({
+      ...params,
+      peerId,
+      receiverId,
+      randomId
+    });
+  }
+
+  private invokeEphemeralMessageSend(
+    params: SendEphemeralMessageArgs & {randomId: Long},
+    retryId?: number
+  ) {
+    const {peerId, receiverId, randomId, ...apiParams} = params;
+    return this.apiManager.invokeApi('ephemeral.sendMessage', {
+      ...apiParams,
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      receiver_id: this.appUsersManager.getUserInput(receiverId),
+      random_id: randomId
+    }).then((updates) => {
+      if(retryId !== undefined) {
+        this.pendingEphemeralRetries.delete(retryId);
+      }
+
+      this.apiUpdatesManager.processUpdateMessage(updates);
+      return updates;
+    }).catch((error) => {
+      this.registerEphemeralRetry(peerId, {
+        type: 'message',
+        params
+      }, retryId);
+      throw error;
+    });
+  }
+
+  public retryEphemeralMessage(retryId: number) {
+    const retry = this.pendingEphemeralRetries.get(retryId);
+    if(!retry || retry.expiresAt <= Date.now()) {
+      this.pendingEphemeralRetries.delete(retryId);
+      return Promise.reject(makeError('MESSAGE_ID_INVALID'));
+    }
+
+    const {action} = retry;
+    if(action.type === 'message') {
+      return this.invokeEphemeralMessageSend(action.params, retryId);
+    }
+
+    this.pendingEphemeralRetries.delete(retryId);
+    return this.sendFile(action.options).then(noop);
+  }
+
+  private registerEphemeralRetry(
+    peerId: PeerId,
+    action: PendingEphemeralRetry['action'],
+    retryId = ++this.ephemeralRetryId
+  ) {
+    this.pruneEphemeralRetries();
+    this.pendingEphemeralRetries.delete(retryId);
+    this.pendingEphemeralRetries.set(retryId, {
+      expiresAt: Date.now() + EPHEMERAL_RETRY_KEEP_DURATION,
+      action
+    });
+    if(this.pendingEphemeralRetries.size > EPHEMERAL_RETRY_MAX_COUNT) {
+      this.pendingEphemeralRetries.delete(this.pendingEphemeralRetries.keys().next().value);
+    }
+
+    this.rootScope.dispatchEvent('ephemeral_send_error', {peerId, retryId});
+  }
+
+  private pruneEphemeralRetries() {
+    const now = Date.now();
+    for(const [retryId, retry] of this.pendingEphemeralRetries) {
+      if(retry.expiresAt <= now) {
+        this.pendingEphemeralRetries.delete(retryId);
+      }
+    }
+  }
+
+  public deleteEphemeralMessage(peerId: PeerId, mid: number) {
+    const message = this.getMessageByPeer(peerId, mid);
+    if(!this.isEphemeralMessage(message)) {
+      return Promise.resolve();
+    }
+
+    const receiverId = message.ephemeral_receiver_id;
+    const ephemeralId = message.ephemeral_id;
+    this.removeEphemeralMessages(peerId, [ephemeralId]);
+    if(!receiverId || this.appUsersManager.getUser(receiverId)?._ !== 'user') {
+      return Promise.resolve();
+    }
+
+    return this.apiManager.invokeApi('ephemeral.deleteMessage', {
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      receiver_id: this.appUsersManager.getUserInput(receiverId),
+      id: ephemeralId
+    }).catch(noop).then(noop);
+  }
+
+  public reportEphemeralMessage(peerId: PeerId, mid: number, option: Uint8Array, message = '') {
+    const ephemeralMessage = this.getMessageByPeer(peerId, mid);
+    if(!this.isEphemeralMessage(ephemeralMessage) || ephemeralMessage.pFlags.out) {
+      return Promise.reject({type: 'MESSAGE_ID_INVALID'} as ApiError);
+    }
+
+    return this.apiManager.invokeApi('ephemeral.reportMessage', {
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      id: ephemeralMessage.ephemeral_id,
+      option,
+      message
+    });
+  }
+
+  public getEphemeralCallbackAnswer(peerId: PeerId, mid: number, data?: Uint8Array) {
+    const message = this.getMessageByPeer(peerId, mid);
+    if(!this.isEphemeralMessage(message)) {
+      const answer: MessagesBotCallbackAnswer = {
+        _: 'messages.botCallbackAnswer',
+        pFlags: {},
+        cache_time: 0
+      };
+      return Promise.resolve(answer);
+    }
+
+    const receiverId = this.getEphemeralSendReceiverId(message);
+    const isForum = this.appPeersManager.isForum(peerId);
+    const isBotforum = this.appPeersManager.isBotforum(peerId);
+    const threadId = (isForum || isBotforum) ?
+      getMessageThreadId(message, {isForum, isBotforum}) :
+      undefined;
+    if(receiverId && threadId && (!isForum || threadId !== GENERAL_TOPIC_ID)) {
+      const hints = this.ephemeralCallbackTopicHints.get(peerId) ?? new Map();
+      hints.set(receiverId, threadId);
+      this.ephemeralCallbackTopicHints.set(peerId, hints);
+    }
+
+    return this.apiManager.invokeApi('ephemeral.getCallbackAnswer', {
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      id: message.ephemeral_id,
+      data
+    }, {stopTime: -1, noErrorBox: true});
+  }
+
+  private getEphemeralPendingKey(peerId: PeerId, ephemeralId: number) {
+    return `${peerId}_${ephemeralId}`;
+  }
+
+  private getEphemeralPeerId(message: EphemeralMessage) {
+    return this.appPeersManager.getPeerId(message.peer_id);
+  }
+
+  private hasUnresolvedEphemeralReply(message: EphemeralMessage) {
+    const replyTo = message.reply_to;
+    if(
+      replyTo?._ !== 'messageReplyHeader' ||
+      !replyTo.pFlags.reply_to_ephemeral ||
+      replyTo.reply_to_msg_id === undefined
+    ) {
+      return false;
+    }
+
+    return !this.getEphemeralMessage(this.getEphemeralPeerId(message), replyTo.reply_to_msg_id);
+  }
+
+  private queuePendingEphemeralMessage(message: EphemeralMessage) {
+    const peerId = this.getEphemeralPeerId(message);
+    const key = this.getEphemeralPendingKey(peerId, message.id);
+    const existing = this.pendingEphemeralMessages.get(key);
+    this.pendingEphemeralMessages.set(key, {
+      message,
+      deadline: existing?.deadline ?? Date.now() + EPHEMERAL_REPLY_RESOLVE_DELAY
+    });
+    this.schedulePendingEphemeralMessagesTimeout();
+  }
+
+  private schedulePendingEphemeralMessagesTimeout() {
+    if(this.pendingEphemeralMessagesTimeout) {
+      ctx.clearTimeout(this.pendingEphemeralMessagesTimeout);
+      this.pendingEphemeralMessagesTimeout = undefined;
+    }
+
+    if(!this.pendingEphemeralMessages.size) {
+      return;
+    }
+
+    let nearestDeadline = Infinity;
+    for(const {deadline} of this.pendingEphemeralMessages.values()) {
+      nearestDeadline = Math.min(nearestDeadline, deadline);
+    }
+
+    this.pendingEphemeralMessagesTimeout = ctx.setTimeout(() => {
+      this.pendingEphemeralMessagesTimeout = undefined;
+      this.flushPendingEphemeralMessages(true);
+    }, Math.max(0, nearestDeadline - Date.now()));
+  }
+
+  private flushPendingEphemeralMessages(flushExpired = false) {
+    let inserted: boolean;
+    do {
+      inserted = false;
+      const now = Date.now();
+      for(const [key, pending] of this.pendingEphemeralMessages) {
+        const unresolved = this.hasUnresolvedEphemeralReply(pending.message);
+        const forceMissingReply = unresolved && flushExpired && pending.deadline <= now;
+        if(unresolved && !forceMissingReply) {
+          continue;
+        }
+
+        this.pendingEphemeralMessages.delete(key);
+        this.insertEphemeralMessage(pending.message, forceMissingReply);
+        inserted = true;
+      }
+    } while(inserted);
+
+    this.schedulePendingEphemeralMessagesTimeout();
+  }
+
+  private getEphemeralBotId(message: EphemeralMessage) {
+    if(message.pFlags.out) {
+      return +message.receiver_id as UserId;
+    }
+
+    const fromId = this.appPeersManager.getPeerId(message.from_id);
+    return fromId.isUser() ? fromId.toUserId() : undefined;
+  }
+
+  private takeEphemeralCallbackTopicHint(message: EphemeralMessage) {
+    if(message.pFlags.out) {
+      return;
+    }
+
+    const peerId = this.getEphemeralPeerId(message);
+    const botId = this.getEphemeralBotId(message);
+    const hints = this.ephemeralCallbackTopicHints.get(peerId);
+    const threadId = hints?.get(botId);
+    if(threadId !== undefined) {
+      hints.delete(botId);
+      if(!hints.size) {
+        this.ephemeralCallbackTopicHints.delete(peerId);
+      }
+    }
+
+    return threadId;
+  }
+
+  public isEphemeralMessageId(mid: number) {
+    return isEphemeralMessageId(mid);
+  }
+
+  private generateEphemeralMessageId(peerId: PeerId, ephemeralId: number) {
+    const storage = this.getHistoryMessagesStorage(peerId);
+    let rawId = ephemeralId >>> 0;
+    let mid = EPHEMERAL_MESSAGE_ID_OFFSET + rawId;
+    do {
+      if(!storage.has(mid)) {
+        return mid;
+      }
+
+      rawId = (rawId + 1) >>> 0;
+      mid = EPHEMERAL_MESSAGE_ID_OFFSET + rawId;
+    } while(rawId !== (ephemeralId >>> 0));
+
+    throw makeError('UNKNOWN');
+  }
+
+  private makeEphemeralMessage(message: EphemeralMessage, localMid: number, forceMissingReply: boolean) {
+    const peerId = this.getEphemeralPeerId(message);
+    let ephemeralReplyTarget: Message.message;
+    let replyTo = message.reply_to && copy(message.reply_to);
+    if(replyTo?._ === 'messageReplyHeader') {
+      replyTo.pFlags = {...replyTo.pFlags};
+      if(replyTo.pFlags.reply_to_ephemeral && replyTo.reply_to_msg_id !== undefined) {
+        const originalMessage = this.getEphemeralMessage(peerId, replyTo.reply_to_msg_id);
+        if(originalMessage) {
+          ephemeralReplyTarget = originalMessage;
+          replyTo.reply_to_msg_id = originalMessage.mid;
+        } else if(forceMissingReply) {
+          delete replyTo.pFlags.reply_to_ephemeral;
+          delete replyTo.reply_to_msg_id;
+        }
+      }
+    }
+
+    let topMsgId = message.top_msg_id;
+    if(topMsgId === undefined && ephemeralReplyTarget) {
+      const isForum = this.appPeersManager.isForum(peerId);
+      const isBotforum = this.appPeersManager.isBotforum(peerId);
+      const targetThreadId = (isForum || isBotforum) ?
+        getMessageThreadId(ephemeralReplyTarget, {isForum, isBotforum}) :
+        undefined;
+      if(targetThreadId && (!isForum || targetThreadId !== GENERAL_TOPIC_ID)) {
+        topMsgId = targetThreadId;
+      }
+    }
+
+    if(
+      topMsgId === undefined &&
+      replyTo?._ !== 'messageReplyStoryHeader' &&
+      !replyTo?.reply_to_top_id &&
+      !replyTo?.reply_to_msg_id
+    ) {
+      topMsgId = this.takeEphemeralCallbackTopicHint(message);
+    }
+
+    if(topMsgId !== undefined) {
+      if(replyTo?._ !== 'messageReplyHeader') {
+        replyTo = {
+          _: 'messageReplyHeader',
+          pFlags: {}
+        };
+      }
+
+      replyTo.pFlags.forum_topic = true;
+      replyTo.reply_to_top_id = topMsgId;
+    }
+
+    if(
+      replyTo?._ === 'messageReplyHeader' &&
+      !Object.values(replyTo.pFlags).some(Boolean) &&
+      replyTo.reply_to_msg_id === undefined &&
+      replyTo.reply_to_peer_id === undefined &&
+      replyTo.reply_from === undefined &&
+      replyTo.reply_media === undefined &&
+      replyTo.reply_to_top_id === undefined &&
+      replyTo.quote_text === undefined &&
+      replyTo.quote_entities === undefined &&
+      replyTo.quote_offset === undefined &&
+      replyTo.todo_item_id === undefined &&
+      replyTo.poll_option === undefined &&
+      replyTo.reply_to_msg_deleted === undefined
+    ) {
+      replyTo = undefined;
+    }
+
+    const localMessage: Message.message = {
+      _: 'message',
+      pFlags: {
+        ...(message.pFlags.out ? {out: true} : {}),
+        ephemeral: true
+      },
+      id: localMid,
+      from_id: message.from_id,
+      peer_id: message.peer_id,
+      date: message.date,
+      message: message.message,
+      entities: message.entities,
+      media: message.media,
+      reply_markup: message.reply_markup,
+      reply_to: replyTo,
+      ephemeral_id: message.id,
+      ephemeral_receiver_id: +message.receiver_id as UserId
+    };
+
+    return localMessage;
+  }
+
+  private insertEphemeralMessage(message: EphemeralMessage, forceMissingReply = false) {
+    const peerId = this.getEphemeralPeerId(message);
+    if(message.date < tsNow(true) + this.timeManager.getServerTimeOffset() - EPHEMERAL_MESSAGE_KEEP_DURATION) {
+      return;
+    }
+
+    const existing = this.getEphemeralMessage(peerId, message.id);
+    if(existing) {
+      return existing;
+    }
+
+    const storage = this.getHistoryMessagesStorage(peerId);
+    const localMessage = this.makeEphemeralMessage(
+      message,
+      this.generateEphemeralMessageId(peerId, message.id),
+      forceMissingReply
+    );
+    const storedMessage = this.saveMessage(localMessage, {storage}) as Message.message;
+    delete storedMessage.pFlags.unread;
+    storedMessage.storageKey = storage.key;
+    this.setMessageToStorage(storage, storedMessage);
+
+    let mids = this.ephemeralMidsByPeerId.get(peerId);
+    if(!mids) {
+      this.ephemeralMidsByPeerId.set(peerId, mids = new Map());
+    }
+    mids.set(message.id, storedMessage.mid);
+
+    let order = this.ephemeralOrderByPeerId.get(peerId);
+    if(!order) {
+      this.ephemeralOrderByPeerId.set(peerId, order = new Map());
+    }
+    const ephemeralOrder = ++this.ephemeralOrder;
+    order.set(message.id, ephemeralOrder);
+    (storedMessage as MyEphemeralMessage).ephemeral_order = ephemeralOrder;
+
+    this.rootScope.dispatchEvent('ephemeral_history_append', {
+      storageKey: storage.key,
+      message: storedMessage as MyEphemeralMessage
+    });
+
+    return storedMessage;
+  }
+
+  private editEphemeralMessage(message: EphemeralMessage, oldMessage: Message.message) {
+    const storage = this.getHistoryMessagesStorage(oldMessage.peerId);
+    const newMessage: Message.message = {
+      ...oldMessage,
+      pFlags: {...oldMessage.pFlags},
+      message: message.message,
+      entities: message.entities,
+      media: message.media,
+      reply_markup: message.reply_markup
+    };
+    delete newMessage.totalEntities;
+    this.saveMessage(newMessage, {storage});
+    delete newMessage.pFlags.unread;
+    this.setMessageToStorage(storage, newMessage);
+    this.handleEditedMessage(oldMessage, newMessage, storage);
+    this.dispatchMessageEditEvent(newMessage, storage.key);
+  }
+
+  private removeEphemeralMessages(peerId: PeerId, ephemeralIds: number[]) {
+    const midsById = this.ephemeralMidsByPeerId.get(peerId);
+    const storage = this.getHistoryMessagesStorage(peerId);
+    const deletedMids = new Set<number>();
+
+    for(const ephemeralId of ephemeralIds) {
+      this.pendingEphemeralMessages.delete(this.getEphemeralPendingKey(peerId, ephemeralId));
+
+      const mid = midsById?.get(ephemeralId);
+      midsById?.delete(ephemeralId);
+      const order = this.ephemeralOrderByPeerId.get(peerId);
+      order?.delete(ephemeralId);
+      if(order && !order.size) {
+        this.ephemeralOrderByPeerId.delete(peerId);
+      }
+      if(mid === undefined) {
+        continue;
+      }
+
+      const message = this.getMessageFromStorage(storage, mid);
+      if(this.isEphemeralMessage(message) && message.ephemeral_id === ephemeralId) {
+        this.handleReleasingMessage(message, storage);
+        this.deleteMessageFromStorage(storage, mid);
+        deletedMids.add(mid);
+      }
+    }
+
+    if(midsById && !midsById.size) {
+      this.ephemeralMidsByPeerId.delete(peerId);
+    }
+
+    this.schedulePendingEphemeralMessagesTimeout();
+
+    if(!deletedMids.size) {
+      return;
+    }
+
+    this.rootScope.dispatchEvent('ephemeral_history_delete', {peerId, msgs: deletedMids});
+  }
+
+  private pruneEphemeralMessages = () => {
+    this.pruneEphemeralRetries();
+    const minDate = tsNow(true) - EPHEMERAL_MESSAGE_KEEP_DURATION;
+    for(const [peerId, midsById] of this.ephemeralMidsByPeerId) {
+      const storage = this.getHistoryMessagesStorage(peerId);
+      const expiredIds: number[] = [];
+      for(const [ephemeralId, mid] of midsById) {
+        const message = this.getMessageFromStorage(storage, mid);
+        if(!message || message.date < minDate) {
+          expiredIds.push(ephemeralId);
+        }
+      }
+
+      if(expiredIds.length) {
+        this.removeEphemeralMessages(peerId, expiredIds);
+      }
+    }
+  };
+
+  private onUpdateNewEphemeralMessage = (update: Update.updateNewEphemeralMessage) => {
+    const {message} = update;
+    if(this.getEphemeralMessage(this.getEphemeralPeerId(message), message.id)) {
+      return;
+    }
+
+    if(this.hasUnresolvedEphemeralReply(message)) {
+      this.queuePendingEphemeralMessage(message);
+      return;
+    }
+
+    this.insertEphemeralMessage(message);
+    this.flushPendingEphemeralMessages();
+  };
+
+  private onUpdateEditEphemeralMessage = (update: Update.updateEditEphemeralMessage) => {
+    const {message} = update;
+    const peerId = this.getEphemeralPeerId(message);
+    const existing = this.getEphemeralMessage(peerId, message.id);
+    if(existing) {
+      this.editEphemeralMessage(message, existing);
+    } else {
+      const key = this.getEphemeralPendingKey(peerId, message.id);
+      if(this.hasUnresolvedEphemeralReply(message)) {
+        this.queuePendingEphemeralMessage(message);
+        return;
+      }
+
+      this.pendingEphemeralMessages.delete(key);
+      this.insertEphemeralMessage(message);
+      this.flushPendingEphemeralMessages();
+    }
+  };
+
+  private onUpdateDeleteEphemeralMessages = (update: Update.updateDeleteEphemeralMessages) => {
+    this.removeEphemeralMessages(this.appPeersManager.getPeerId(update.peer), update.ids);
+  };
+
   public invokeAfterMessageIsSent(tempId: number, callbackName: string, callback: (message: MyMessage) => Promise<any>) {
     const finalize = this.tempFinalizeCallbacks[tempId] ??= {};
     const obj = finalize[callbackName] ??= {deferred: deferredPromise<void>()};
@@ -912,6 +1710,10 @@ export class AppMessagesManager extends AppManager {
     /* if(!this.canEditMessage(messageId)) {
       return Promise.reject({type: 'MESSAGE_EDIT_FORBIDDEN'});
     } */
+
+    if(this.isEphemeralMessage(message)) {
+      return Promise.reject({type: 'MESSAGE_EDIT_FORBIDDEN'} as ApiError);
+    }
 
     const {mid, peerId} = message;
 
@@ -1229,6 +2031,10 @@ export class AppMessagesManager extends AppManager {
   }
 
   public async transcribeAudio(message: Message.message, noPending?: boolean): Promise<MessagesTranscribedAudio> {
+    if(this.isEphemeralMessage(message)) {
+      throw makeError('MESSAGE_ID_INVALID');
+    }
+
     const {id, peerId} = message;
 
     const process = (result: MessagesTranscribedAudio) => {
@@ -1311,10 +2117,53 @@ export class AppMessagesManager extends AppManager {
       return;
     }
 
+    peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
+    options.peerId = peerId;
+    const ephemeralContext = options.forceOrdinary ?
+      options.ephemeral ? {drop: true} as EphemeralSendContext : undefined :
+      this.getEphemeralSendContext(
+        peerId,
+        text,
+        options.replyToMsgId,
+        options.replyTo,
+        options.ephemeral,
+        options.ephemeralReceiverId
+      );
+
     options.entities ??= [];
     options.webPageOptions ??= {};
 
     const {config, appConfig} = await this.checkSendOptions(options);
+
+    if(ephemeralContext) {
+      if(!('receiverId' in ephemeralContext) || options.scheduleDate) {
+        return;
+      }
+
+      const {receiverId, replyTo: ephemeralReplyTo} = ephemeralContext;
+      let entities = options.entities;
+      if(!options.viaBotId) {
+        [text, entities] = parseMarkdown(text, entities);
+      }
+
+      if(options.clearDraft) {
+        this.appDraftsManager.clearDraft({
+          peerId,
+          threadId: options.threadId
+        });
+      }
+
+      return this.sendEphemeralMessage({
+        peerId,
+        receiverId,
+        message: text,
+        entities: this.getInputEntities(entities),
+        media: this.getInputMediaWebPage(options),
+        query_id: options.queryId,
+        reply_markup: options.replyMarkup,
+        reply_to: ephemeralReplyTo || options.replyTo
+      }).then(noop);
+    }
 
     if(appConfig.emojies_send_dice?.includes(text.trim())) {
       return this.sendOther({
@@ -1334,8 +2183,6 @@ export class AppMessagesManager extends AppManager {
         delete options.webPage;
       }
     }
-
-    peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
 
     const originalEntities = options.entities;
     let entities = splitted.length > 1 && originalEntities?.length ?
@@ -1533,8 +2380,33 @@ export class AppMessagesManager extends AppManager {
     let file = options.file;
     let {peerId} = options;
     peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
+    options.peerId = peerId;
+    const ephemeralContext = options.forceOrdinary ?
+      options.ephemeral ? {drop: true} as EphemeralSendContext : undefined :
+      this.getEphemeralSendContext(
+        peerId,
+        options.caption || '',
+        options.replyToMsgId,
+        options.replyTo,
+        options.ephemeral,
+        options.ephemeralReceiverId
+      );
 
     await this.checkSendOptions(options);
+    if(ephemeralContext && (!('receiverId' in ephemeralContext) || options.scheduleDate)) {
+      return;
+    }
+
+    const activeEphemeralContext = ephemeralContext && 'receiverId' in ephemeralContext ?
+      ephemeralContext :
+      undefined;
+    if(activeEphemeralContext) {
+      options = {
+        ...options,
+        stars: undefined,
+        confirmedPaymentResult: undefined
+      };
+    }
 
     const isDocument = !(file instanceof File) && !(file instanceof Blob);
     if(isDocument) {
@@ -1635,6 +2507,14 @@ export class AppMessagesManager extends AppManager {
     }
 
     const toggleError = (error?: ApiError, repayRequest?: RepayRequest) => {
+      if(activeEphemeralContext) {
+        if(error) {
+          this.log.error('ephemeral media send error:', error);
+        }
+
+        return;
+      }
+
       this.onMessagesSendError([message], error, repayRequest);
       this.rootScope.dispatchEvent('messages_pending');
     };
@@ -1759,6 +2639,13 @@ export class AppMessagesManager extends AppManager {
 
             sentDeferred.resolve(inputMedia);
           }, (error: ApiError) => {
+            if(activeEphemeralContext) {
+              this.registerEphemeralRetry(peerId, {
+                type: 'file',
+                options
+              });
+            }
+
             toggleError(error);
           });
 
@@ -1786,13 +2673,26 @@ export class AppMessagesManager extends AppManager {
       isScheduled: !!options.scheduleDate || undefined,
       threadId: options.threadId,
       clearDraft: options.clearDraft,
-      processAfter: options.processAfter
+      processAfter: options.processAfter,
+      noOutgoingMessage: !!activeEphemeralContext
     });
 
     if(!options.isGroupedItem) {
       const paidStars = options.confirmedPaymentResult?.starsAmount || undefined;
 
       const invokeSend = (inputMedia: Awaited<typeof sentDeferred>) => {
+        if(activeEphemeralContext) {
+          return this.sendEphemeralMessage({
+            peerId,
+            receiverId: activeEphemeralContext.receiverId,
+            message: caption,
+            entities: sendEntities,
+            media: inputMedia,
+            reply_to: activeEphemeralContext.replyTo || options.replyTo,
+            randomId: message.random_id
+          }).then(noop);
+        }
+
         return this.apiManager.invokeApi('messages.sendMedia', {
           background: options.background,
           peer: this.appPeersManager.getInputPeerById(peerId),
@@ -1835,6 +2735,11 @@ export class AppMessagesManager extends AppManager {
           }
 
           return promise.catch((error: ApiError) => {
+            if(activeEphemeralContext) {
+              toggleError(error);
+              throw error;
+            }
+
             if(attachType === 'photo' &&
               (error.type === 'PHOTO_INVALID_DIMENSIONS' ||
               error.type === 'PHOTO_SAVE_FILE_INVALID')) {
@@ -2153,14 +3058,50 @@ export class AppMessagesManager extends AppManager {
     clearDraft?: boolean,
     stars?: number
   }) {
+    let {peerId} = options;
+    peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
+    options.peerId = peerId;
+    const ephemeralContext = options.forceOrdinary ?
+      options.ephemeral ? {drop: true} as EphemeralSendContext : undefined :
+      this.getEphemeralSendContext(
+        peerId,
+        options.caption || '',
+        options.replyToMsgId,
+        options.replyTo,
+        options.ephemeral,
+        options.ephemeralReceiverId
+      );
+
     await this.checkSendOptions(options);
+    if(ephemeralContext && (!('receiverId' in ephemeralContext) || options.scheduleDate)) {
+      return;
+    }
+    const activeEphemeralContext = ephemeralContext && 'receiverId' in ephemeralContext ?
+      ephemeralContext :
+      undefined;
+    if(activeEphemeralContext) {
+      options = {
+        ...options,
+        stars: undefined,
+        confirmedPaymentResult: undefined
+      };
+    }
+
+    if(!options.sendFileDetails.length) {
+      return;
+    }
+
+    if(activeEphemeralContext) {
+      if(options.sendFileDetails.length > 1 && !activeEphemeralContext.replyTo) {
+        return;
+      }
+
+      return this.sendFile({...options, ...options.sendFileDetails[0]});
+    }
 
     if(options.sendFileDetails.length === 1) {
       return this.sendFile({...options, ...options.sendFileDetails[0]});
     }
-
-    let {peerId} = options;
-    peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
 
     let caption = options.caption || '';
     let entities = options.entities || [];
@@ -2191,6 +3132,7 @@ export class AppMessagesManager extends AppManager {
         scheduleDate: options.scheduleDate,
         silent: options.silent,
         replyToMsgId: options.replyToMsgId,
+        replyTo: options.replyTo,
         replyToStoryId: options.replyToStoryId,
         replyToQuote: options.replyToQuote,
         threadId: options.threadId,
@@ -2247,6 +3189,14 @@ export class AppMessagesManager extends AppManager {
         return;
       }
 
+      if(activeEphemeralContext) {
+        if(error) {
+          log.error('ephemeral media send error:', error);
+        }
+
+        return;
+      }
+
       this.onMessagesSendError([message], error, repayRequest);
       this.rootScope.dispatchEvent('messages_pending');
     };
@@ -2258,7 +3208,29 @@ export class AppMessagesManager extends AppManager {
       const deferred = deferredPromise<void>();
       this.sendSmthLazyLoadQueue.push({
         load: () => {
-          const paidStars = options.confirmedPaymentResult?.starsAmount * multiMedia.length || undefined
+          const paidStars = options.confirmedPaymentResult?.starsAmount * multiMedia.length || undefined;
+          if(activeEphemeralContext) {
+            let promise = Promise.resolve();
+            for(const input of multiMedia) {
+              promise = promise.then(() => this.sendEphemeralMessage({
+                peerId,
+                receiverId: activeEphemeralContext.receiverId,
+                message: input.message,
+                entities: input.entities,
+                media: input.media,
+                reply_to: activeEphemeralContext.replyTo || options.replyTo,
+                randomId: input.random_id
+              }).then(noop));
+            }
+
+            return promise.then(() => {
+              deferred.resolve();
+            }, (error: ApiError) => {
+              results.forEach(({message}) => toggleError(message, error));
+              deferred.reject(error);
+            });
+          }
+
           return this.apiManager.invokeApi(options.stars ? 'messages.sendMedia' : 'messages.sendMultiMedia', {
             peer: inputPeer,
             reply_to: options.replyTo,
@@ -2423,9 +3395,53 @@ export class AppMessagesManager extends AppManager {
   ) {
     let {peerId, inputMedia} = options;
     peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
+    options.peerId = peerId;
 
     const noOutgoingMessage = /* inputMedia?._ === 'inputMediaPhotoExternal' ||  */inputMedia?._ === 'inputMediaDocumentExternal';
+    const ephemeralContext = options.forceOrdinary ?
+      options.ephemeral ? {drop: true} as EphemeralSendContext : undefined :
+      this.getEphemeralSendContext(
+        peerId,
+        '',
+        options.replyToMsgId,
+        options.replyTo,
+        options.ephemeral,
+        options.ephemeralReceiverId
+      );
+    if(inputMedia?._ === 'inputMediaTodo') {
+      this.stripEphemeralReply(options);
+    }
     await this.checkSendOptions(options);
+    if(ephemeralContext) {
+      if(
+        !('receiverId' in ephemeralContext) ||
+        options.scheduleDate ||
+        inputMedia._ === 'messageMediaPending' ||
+        inputMedia._ === 'inputMediaTodo' ||
+        inputMedia._ === 'inputMediaPoll'
+      ) {
+        return;
+      }
+
+      const {receiverId, replyTo: ephemeralReplyTo} = ephemeralContext;
+      if(options.clearDraft) {
+        this.appDraftsManager.clearDraft({
+          peerId,
+          threadId: options.threadId
+        });
+      }
+
+      return this.sendEphemeralMessage({
+        peerId,
+        receiverId,
+        message: '',
+        media: inputMedia,
+        query_id: options.queryId,
+        reply_markup: options.replyMarkup,
+        reply_to: ephemeralReplyTo || options.replyTo
+      }).then(noop);
+    }
+
     const message = this.generateOutgoingMessage(peerId, options);
 
     let media: MessageMedia;
@@ -2679,6 +3695,17 @@ export class AppMessagesManager extends AppManager {
         peer: this.appPeersManager.getInputPeerById(options.peerId)
       };
     } else if(options.replyToMsgId) {
+      const replyMessage = this.getMessageByPeer(options.peerId, options.replyToMsgId);
+      if(this.isEphemeralMessage(replyMessage)) {
+        return {
+          _: 'inputReplyToEphemeralMessage',
+          id: replyMessage.ephemeral_id
+        };
+      }
+      if(this.isEphemeralMessageId(options.replyToMsgId)) {
+        return;
+      }
+
       return {
         _: 'inputReplyToMessage',
         monoforum_peer_id: this.appPeersManager.canManageDirectMessages(options.peerId) && options.replyToMonoforumPeerId ?
@@ -2702,7 +3729,50 @@ export class AppMessagesManager extends AppManager {
     }
   }
 
+  public stripEphemeralReply(options: MessageSendingParams) {
+    const isEphemeralReply = options.replyTo?._ === 'inputReplyToEphemeralMessage' ||
+      (
+        !!options.replyToMsgId &&
+        (
+          this.isEphemeralMessageId(options.replyToMsgId) ||
+          this.isEphemeralMessage(this.getMessageByPeer(options.peerId, options.replyToMsgId))
+        )
+      );
+    if(!isEphemeralReply) {
+      return false;
+    }
+
+    options.replyToMsgId = undefined;
+    options.replyTo = undefined;
+    options.replyToQuote = undefined;
+    options.replyToPollOption = undefined;
+    options.replyToPeerId = undefined;
+    return true;
+  }
+
+  private stripStaleEphemeralReply(options: MessageSendingParams) {
+    const replyTo = options.replyTo;
+    const message = options.replyToMsgId ?
+      this.getMessageByPeer(options.peerId, options.replyToMsgId) :
+      replyTo?._ === 'inputReplyToEphemeralMessage' ?
+        this.getEphemeralMessage(options.peerId, replyTo.id) :
+        undefined;
+    if(
+      (
+        this.isEphemeralMessageId(options.replyToMsgId) ||
+        replyTo?._ === 'inputReplyToEphemeralMessage'
+      ) &&
+      !this.isEphemeralMessage(message)
+    ) {
+      return this.stripEphemeralReply(options);
+    }
+
+    return false;
+  }
+
   public checkSendOptions(options: MessageSendingParams & Partial<{text: string}>) {
+    this.stripStaleEphemeralReply(options);
+
     const {peerId} = options;
     if(
       this.appPeersManager.isBotforum(peerId) &&
@@ -3011,6 +4081,21 @@ export class AppMessagesManager extends AppManager {
         _: 'messageReplyStoryHeader',
         story_id: replyTo.story_id,
         peer: this.appPeersManager.getOutputPeer(this.appPeersManager.getPeerId(replyTo.peer))
+      };
+    }
+
+    if(replyTo._ === 'inputReplyToEphemeralMessage') {
+      const originalMessage = this.getEphemeralMessage(peerId, replyTo.id);
+      if(!originalMessage) {
+        return;
+      }
+
+      return {
+        _: 'messageReplyHeader',
+        pFlags: {
+          reply_to_ephemeral: true
+        },
+        reply_to_msg_id: originalMessage.mid
       };
     }
 
@@ -3965,6 +5050,27 @@ export class AppMessagesManager extends AppManager {
   }
 
   public async forwardMessages(options: MessageForwardParams) {
+    options = {
+      ...options,
+      mids: options.mids.filter((mid) => (
+        !this.isEphemeralMessageId(mid) &&
+        !this.isEphemeralMessage(this.getMessageByPeer(options.fromPeerId, mid))
+      ))
+    };
+    if(!options.mids.length) {
+      return;
+    }
+
+    if(
+      options.replyToMsgId &&
+      (
+        this.isEphemeralMessageId(options.replyToMsgId) ||
+        this.isEphemeralMessage(this.getMessageByPeer(options.peerId, options.replyToMsgId))
+      )
+    ) {
+      return;
+    }
+
     await this.checkSendOptions(options);
 
     const {peerId, fromPeerId, mids} = options;
@@ -4212,6 +5318,11 @@ export class AppMessagesManager extends AppManager {
   public getMessageFromStorage(storage: MessagesStorage | MessagesStorageKey, mid: number) {
     storage = this.getMessagesStorage(storage);
 
+    const localMessage = storage?.get(mid);
+    if(this.isEphemeralMessage(localMessage)) {
+      return localMessage;
+    }
+
     // * use global storage instead
     if(storage?.type === 'history' && isLegacyMessageId(mid)) {
       storage = this.getGlobalHistoryMessagesStorage();
@@ -4228,7 +5339,8 @@ export class AppMessagesManager extends AppManager {
     if(
       storage?.type === 'history' &&
       isLegacyMessageId(mid) &&
-      storage.peerId !== GLOBAL_HISTORY_PEER_ID
+      storage.peerId !== GLOBAL_HISTORY_PEER_ID &&
+      !this.isEphemeralMessage(message)
     ) {
       const globalStorage = this.getGlobalHistoryMessagesStorage();
       this.setMessageToStorage(globalStorage, message);
@@ -4247,10 +5359,12 @@ export class AppMessagesManager extends AppManager {
   }
 
   public deleteMessageFromStorage(storage: MessagesStorage, mid: number) {
+    const message = storage?.get(mid);
     if(
       storage?.type === 'history' &&
       isLegacyMessageId(mid) &&
-      storage.peerId !== GLOBAL_HISTORY_PEER_ID
+      storage.peerId !== GLOBAL_HISTORY_PEER_ID &&
+      !this.isEphemeralMessage(message)
     ) {
       const globalStorage = this.getGlobalHistoryMessagesStorage();
       this.deleteMessageFromStorage(globalStorage, mid);
@@ -4531,6 +5645,8 @@ export class AppMessagesManager extends AppManager {
           };
         } else if(this.appPeersManager.isBotforum(peerId) && threadOrSavedId) {
           filterMessage = (message) => getMessageThreadId(message, {isBotforum: true}) === threadOrSavedId;
+        } else if(this.appPeersManager.isForum(peerId) && threadOrSavedId) {
+          filterMessage = (message) => getMessageThreadId(message, {isForum: true}) === threadOrSavedId;
         }
       }
 
@@ -4549,10 +5665,19 @@ export class AppMessagesManager extends AppManager {
 
       if(filterMessage) {
         const messagesStorage = this.getHistoryMessagesStorage(peerId);
+        const ephemeralIds: number[] = [];
         for(const [mid, message] of messagesStorage) {
           if(filterMessage(message)) {
-            deletedMids.push(mid);
+            if(this.isEphemeralMessage(message)) {
+              ephemeralIds.push(message.ephemeral_id);
+            } else {
+              deletedMids.push(mid);
+            }
           }
+        }
+
+        if(ephemeralIds.length) {
+          this.removeEphemeralMessages(peerId, ephemeralIds);
         }
       }
 
@@ -4669,7 +5794,9 @@ export class AppMessagesManager extends AppManager {
       const historyResult = await promise;
 
       const channelId = peerId.toChatId();
-      const maxId = historyResult.history[0] || 0;
+      const maxId = historyResult.history.find((mid) => (
+        !this.isEphemeralMessage(this.getMessageByPeer(peerId, mid))
+      )) || this.getDialogOnly(peerId)?.top_message || this.getHistoryStorage(peerId).maxId || 0;
       return this.apiManager.invokeApiSingle('channels.deleteHistory', {
         channel: this.appChatsManager.getChannelInput(channelId),
         max_id: getServerMessageId(maxId)
@@ -4680,6 +5807,10 @@ export class AppMessagesManager extends AppManager {
             channel_id: channelId,
             available_min_id: maxId
           });
+          const ephemeralIds = [...(this.ephemeralMidsByPeerId.get(peerId)?.keys() || [])];
+          if(ephemeralIds.length) {
+            this.removeEphemeralMessages(peerId, ephemeralIds);
+          }
         }
 
         return bool;
@@ -4730,6 +5861,18 @@ export class AppMessagesManager extends AppManager {
   }
 
   public flushStoragesByPeerId(peerId: PeerId) {
+    const ephemeralIds = [...(this.ephemeralMidsByPeerId.get(peerId)?.keys() || [])];
+    if(ephemeralIds.length) {
+      this.removeEphemeralMessages(peerId, ephemeralIds);
+    }
+    this.ephemeralCallbackTopicHints.delete(peerId);
+    for(const [key, {message}] of this.pendingEphemeralMessages) {
+      if(this.getEphemeralPeerId(message) === peerId) {
+        this.pendingEphemeralMessages.delete(key);
+      }
+    }
+    this.schedulePendingEphemeralMessagesTimeout();
+
     [
       this.historiesStorage[peerId],
       this.searchesStorage[peerId],
@@ -4843,6 +5986,13 @@ export class AppMessagesManager extends AppManager {
   }
 
   public updatePinnedMessage(peerId: PeerId, mid: number, unpin?: boolean, silent?: boolean, pm_oneside?: boolean) {
+    if(
+      this.isEphemeralMessageId(mid) ||
+      this.isEphemeralMessage(this.getMessageByPeer(peerId, mid))
+    ) {
+      return Promise.resolve();
+    }
+
     return this.apiManager.invokeApi('messages.updatePinnedMessage', {
       peer: this.appPeersManager.getInputPeerById(peerId),
       unpin,
@@ -5525,6 +6675,18 @@ export class AppMessagesManager extends AppManager {
 
   // * an empty `mids` array reports the peer itself
   public reportMessages(peerId: PeerId, mids: number[], option: Uint8Array, message?: string) {
+    const ephemeralMids = mids.filter((mid) => (
+      this.isEphemeralMessageId(mid) ||
+      this.isEphemeralMessage(this.getMessageByPeer(peerId, mid))
+    ));
+    if(ephemeralMids.length) {
+      if(mids.length !== 1) {
+        return Promise.reject(makeError('UNKNOWN'));
+      }
+
+      return this.reportEphemeralMessage(peerId, ephemeralMids[0], option, message);
+    }
+
     return this.apiManager.invokeApiSingle('messages.report', {
       peer: this.appPeersManager.getInputPeerById(peerId),
       id: mids.map((mid) => getServerMessageId(mid)),
@@ -5534,6 +6696,14 @@ export class AppMessagesManager extends AppManager {
   }
 
   public reportSpamMessages(peerId: PeerId, participantPeerId: PeerId, mids: number[]) {
+    mids = mids.filter((mid) => (
+      !this.isEphemeralMessageId(mid) &&
+      !this.isEphemeralMessage(this.getMessageByPeer(peerId, mid))
+    ));
+    if(!mids.length) {
+      return Promise.resolve();
+    }
+
     return this.apiManager.invokeApiSingle('channels.reportSpam', {
       channel: this.appChatsManager.getChannelInput(peerId.toChatId()),
       participant: this.appPeersManager.getInputPeerById(participantPeerId),
@@ -5804,6 +6974,10 @@ export class AppMessagesManager extends AppManager {
   }
 
   public async canEditMessage(message: Message.message | Message.messageService, kind: 'text' | 'poll' = 'text') {
+    if(this.isEphemeralMessage(message)) {
+      return false;
+    }
+
     if(!message || !this.canMessageBeEdited(message, kind)) {
       return false;
     }
@@ -5839,7 +7013,7 @@ export class AppMessagesManager extends AppManager {
   }
 
   public canDeleteMessage(message: MyMessage) {
-    return message && (
+    return this.isEphemeralMessage(message) || message && (
       message.peerId.isUser() ||
       message.pFlags.out ||
       this.appChatsManager.getChat(message.peerId.toChatId())._ === 'chat' ||
@@ -6346,11 +7520,25 @@ export class AppMessagesManager extends AppManager {
   }
 
   public deleteMessages(peerId: PeerId, mids: number[], revoke?: boolean) {
+    const ephemeralMids: number[] = [];
+    mids = mids.filter((mid) => {
+      if(
+        this.isEphemeralMessageId(mid) ||
+        this.isEphemeralMessage(this.getMessageByPeer(peerId, mid))
+      ) {
+        ephemeralMids.push(mid);
+        return false;
+      }
+
+      return true;
+    });
+
     const channelId = this.appPeersManager.isChannel(peerId) ? peerId.toChatId() : undefined;
     const splitted = this.appMessagesIdsManager.splitMessageIdsByChannels(mids, channelId);
-    const promises = splitted.map(([channelId, {mids}]) => {
+    const promises: Promise<void>[] = ephemeralMids.map((mid) => this.deleteEphemeralMessage(peerId, mid));
+    promises.push(...splitted.map(([channelId, {mids}]) => {
       return this.deleteMessagesInner(channelId, mids, revoke);
-    });
+    }));
 
     return Promise.all(promises).then(noop);
   }
@@ -6358,6 +7546,14 @@ export class AppMessagesManager extends AppManager {
   public readHistory({peerId, maxId = 0, threadId, monoforumThreadId, force = false}: ReadHistoryArgs) {
     if(DO_NOT_READ_HISTORY) {
       return Promise.resolve();
+    }
+
+    if(maxId && (
+      this.isEphemeralMessageId(maxId) ||
+      this.isEphemeralMessage(this.getMessageByPeer(peerId, maxId))
+    )) {
+      const dialog = this.dialogsStorage.getAnyDialog(peerId, threadId || monoforumThreadId);
+      maxId = dialog?.top_message || this.getHistoryStorage(peerId, threadId || monoforumThreadId).maxId || 0;
     }
 
     // console.trace('start read')
@@ -6741,6 +7937,10 @@ export class AppMessagesManager extends AppManager {
       return Promise.resolve();
     }
 
+    msgIds = msgIds.filter((mid) => (
+      !this.isEphemeralMessageId(mid) &&
+      !this.isEphemeralMessage(this.getMessageByPeer(peerId, mid))
+    ));
     if(!msgIds.length) {
       return Promise.resolve();
     }
@@ -7812,6 +9012,10 @@ export class AppMessagesManager extends AppManager {
 
   private onUpdateDialogUnreadMark = (update: Update.updateDialogUnreadMark) => {
     // this.log('updateDialogUnreadMark', update);
+    if((update.peer as any)._ === 'dialogPeerCommunity') {
+      return;
+    }
+
     const peerId = this.appPeersManager.getPeerId((update.peer as DialogPeer.dialogPeer).peer);
     const monoforumThreadId = this.getMonoforumThreadId(peerId, update.saved_peer_id);
 
@@ -8256,10 +9460,27 @@ export class AppMessagesManager extends AppManager {
 
   private onUpdateDeleteMessages = (update: Update.updateDeleteMessages | Update.updateDeleteChannelMessages) => {
     const channelId = (update as Update.updateDeleteChannelMessages).channel_id;
-    const mids = (update as any as Update.updateDeleteChannelMessages).messages.map((id) => this.appMessagesIdsManager.generateMessageId(id, channelId));
+    let mids = (update as any as Update.updateDeleteChannelMessages).messages.map((id) => this.appMessagesIdsManager.generateMessageId(id, channelId));
     const peerId: PeerId = channelId ? channelId.toPeerId(true) : this.findPeerIdByMids(mids);
 
     if(!peerId) {
+      return;
+    }
+
+    const ephemeralIds: number[] = [];
+    mids = mids.filter((mid) => {
+      const message = this.getMessageByPeer(peerId, mid);
+      if(!this.isEphemeralMessage(message)) {
+        return true;
+      }
+
+      ephemeralIds.push(message.ephemeral_id);
+      return false;
+    });
+    if(ephemeralIds.length) {
+      this.removeEphemeralMessages(peerId, ephemeralIds);
+    }
+    if(!mids.length) {
       return;
     }
 
@@ -8395,6 +9616,11 @@ export class AppMessagesManager extends AppManager {
     const channelId = update.channel_id;
     const peerId = channelId.toPeerId(true);
     const channel = this.appChatsManager.getChat(channelId) as Chat.channel;
+    if(!channel) {
+      // Layer 228 communities reuse updateChannel, but are intentionally
+      // quarantined until their dialog and peer model is supported.
+      return;
+    }
 
     const needDialog = this.appChatsManager.isInChat(channelId);
 
@@ -9022,7 +10248,11 @@ export class AppMessagesManager extends AppManager {
   };
 
   public incrementMaxSeenId(maxId: number) {
-    if(!maxId || !(!this.maxSeenId || maxId > this.maxSeenId)) {
+    if(
+      !maxId ||
+      this.isEphemeralMessageId(maxId) ||
+      !(!this.maxSeenId || maxId > this.maxSeenId)
+    ) {
       return false;
     }
 
@@ -9047,6 +10277,19 @@ export class AppMessagesManager extends AppManager {
       count: 0,
       next_offset: undefined as string
     };
+
+    if(
+      isEphemeralMessageId(message?.mid) ||
+      (message?._ === 'message' && message.pFlags.ephemeral)
+    ) {
+      return {
+        reactions: emptyMessageReactionsList.reactions,
+        reactionsCount: emptyMessageReactionsList.count,
+        readParticipantDates: [] as ReadParticipantDate[],
+        combined: [],
+        nextOffset: emptyMessageReactionsList.next_offset
+      };
+    }
 
     const canViewMessageReadParticipants = await this.canViewMessageReadParticipants(message);
     limit ??= canViewMessageReadParticipants ? 100 : 50;
@@ -9090,6 +10333,13 @@ export class AppMessagesManager extends AppManager {
   }
 
   public getMessageReadParticipants(peerId: PeerId, mid: number) {
+    if(
+      this.isEphemeralMessageId(mid) ||
+      this.isEphemeralMessage(this.getMessageByPeer(peerId, mid))
+    ) {
+      return Promise.resolve([] as ReadParticipantDate[]);
+    }
+
     return this.apiManager.invokeApiSingle('messages.getMessageReadParticipants', {
       peer: this.appPeersManager.getInputPeerById(peerId),
       msg_id: getServerMessageId(mid)
@@ -9100,6 +10350,13 @@ export class AppMessagesManager extends AppManager {
   }
 
   public getOutboxReadDate(peerId: PeerId, mid: number) {
+    if(
+      this.isEphemeralMessageId(mid) ||
+      this.isEphemeralMessage(this.getMessageByPeer(peerId, mid))
+    ) {
+      return Promise.reject(makeError('UNKNOWN'));
+    }
+
     return this.apiManager.invokeApiSingle('messages.getOutboxReadDate', {
       peer: this.appPeersManager.getInputPeerById(peerId),
       msg_id: getServerMessageId(mid)
@@ -9109,6 +10366,7 @@ export class AppMessagesManager extends AppManager {
   public async canViewMessageReadParticipants(message: MyMessage) {
     if(
       !message ||
+      this.isEphemeralMessage(message) ||
       message.pFlags.is_outgoing ||
       !message.pFlags.out ||
       message.pFlags.unread ||
@@ -9134,6 +10392,10 @@ export class AppMessagesManager extends AppManager {
   }
 
   public incrementMessageViews(peerId: PeerId, mids: number[]) {
+    mids = mids.filter((mid) => (
+      !this.isEphemeralMessageId(mid) &&
+      !this.isEphemeralMessage(this.getMessageByPeer(peerId, mid))
+    ));
     if(!mids.length) {
       return;
     }
@@ -10190,11 +11452,17 @@ export class AppMessagesManager extends AppManager {
   }
 
   public reloadMessage(peerId: PeerId, mid: number, overwrite?: boolean): MaybePromise<MyMessage> {
+    let message = this.getMessageByPeer(peerId, mid);
+    if(this.isEphemeralMessage(message) || this.isEphemeralMessageId(mid)) {
+      this.rootScope.dispatchEvent('messages_downloaded', {peerId, mids: [mid]});
+      return message;
+    }
+
     if(peerId.isAnyChat() && isLegacyMessageId(mid)) {
       peerId = GLOBAL_HISTORY_PEER_ID;
     }
 
-    const message = this.getMessageByPeer(peerId, mid);
+    message = this.getMessageByPeer(peerId, mid);
     if(this.deletedMessages.has(`${peerId}_${mid}`) || (message && !overwrite)) {
       this.rootScope.dispatchEvent('messages_downloaded', {peerId, mids: [mid]});
       return message;
@@ -10223,6 +11491,14 @@ export class AppMessagesManager extends AppManager {
   }
 
   public getExtendedMedia(peerId: PeerId, mids: number[]) {
+    mids = mids.filter((mid) => (
+      !this.isEphemeralMessageId(mid) &&
+      !this.isEphemeralMessage(this.getMessageByPeer(peerId, mid))
+    ));
+    if(!mids.length) {
+      return Promise.resolve([]);
+    }
+
     let map = this.extendedMedia.get(peerId);
     if(!map) {
       this.extendedMedia.set(peerId, map = new Map());
@@ -10288,6 +11564,18 @@ export class AppMessagesManager extends AppManager {
 
         return story;
       });
+    }
+
+    if(replyTo.pFlags.reply_to_ephemeral) {
+      const originalMessage = this.getMessageByPeer(message.peerId, message.reply_to_mid);
+      if(!originalMessage && this.clearMessageReplyTo(message)) {
+        this.dispatchMessageEditEvent(
+          message,
+          this.getHistoryMessagesStorage(message.peerId).key
+        );
+      }
+
+      return originalMessage;
     }
 
     const replyToPeerId = replyTo.reply_to_peer_id ? this.appPeersManager.getPeerId(replyTo.reply_to_peer_id) : message.peerId;
@@ -10572,6 +11860,7 @@ export class AppMessagesManager extends AppManager {
 
   public canForward(message: Message.message | Message.messageService) {
     return message?._ === 'message' &&
+      !this.isEphemeralMessage(message) &&
       !(message as Message.message).pFlags.noforwards &&
       !(message.media as MessageMedia.messageMediaPhoto)?.ttl_seconds &&
       !this.appPeersManager.noForwards(message.peerId);
@@ -10697,6 +11986,16 @@ export class AppMessagesManager extends AppManager {
     requestedPeerIds: PeerId[],
     source: {mid: number} | {webappReqId: string}
   ) {
+    if(
+      'mid' in source &&
+      (
+        this.isEphemeralMessageId(source.mid) ||
+        this.isEphemeralMessage(this.getMessageByPeer(peerId, source.mid))
+      )
+    ) {
+      return Promise.resolve();
+    }
+
     return this.apiManager.invokeApi('messages.sendBotRequestedPeer', {
       peer: this.appPeersManager.getInputPeerById(peerId),
       msg_id: 'mid' in source ? getServerMessageId(source.mid) : undefined,
@@ -10727,6 +12026,13 @@ export class AppMessagesManager extends AppManager {
   // Enqueues a finalized post-engagement metric (msg_id is a local mid, converted on flush) and
   // batches per-peer sends of messages.reportReadMetrics, mirroring tdesktop's 5s flush window.
   public reportReadMetrics(peerId: PeerId, metric: Omit<InputMessageReadMetric.inputMessageReadMetric, '_'>) {
+    if(
+      this.isEphemeralMessageId(metric.msg_id) ||
+      this.isEphemeralMessage(this.getMessageByPeer(peerId, metric.msg_id))
+    ) {
+      return;
+    }
+
     let metrics = this.readMetricsPending.get(peerId);
     if(!metrics) {
       this.readMetricsPending.set(peerId, metrics = []);
@@ -10745,6 +12051,11 @@ export class AppMessagesManager extends AppManager {
     this.readMetricsPending = new Map();
 
     pending.forEach((metrics, peerId) => {
+      metrics = metrics.filter((metric) => !this.isEphemeralMessageId(metric.msg_id));
+      if(!metrics.length) {
+        return;
+      }
+
       this.apiManager.invokeApi('messages.reportReadMetrics', {
         peer: this.appPeersManager.getInputPeerById(peerId),
         metrics: metrics.map((metric) => ({
@@ -10966,7 +12277,7 @@ export class AppMessagesManager extends AppManager {
     // generate message_edit update
     const storage = this.getHistoryMessagesStorage(params.peerId);
     const message = this.getMessageFromStorage(storage, params.mid) as Message.message;
-    if(!message) {
+    if(!message || this.isEphemeralMessage(message)) {
       return;
     }
 
@@ -11093,7 +12404,7 @@ export class AppMessagesManager extends AppManager {
     // generate message_edit update
     const storage = this.getHistoryMessagesStorage(params.peerId);
     const message = this.getMessageFromStorage(storage, params.mid) as Message.message;
-    if(!message) {
+    if(!message || this.isEphemeralMessage(message)) {
       return;
     }
 

@@ -385,6 +385,10 @@ export class AppNotificationsManager extends AppManager {
 
   private onUpdateNotifySettings = (update: Update.updateNotifySettings) => {
     const {peer} = update;
+    if((peer as any)._ === 'notifyCommunity') {
+      return;
+    }
+
     const isTopic = peer._ === 'notifyForumTopic';
     const isPeerType = peer._ === 'notifyPeer' || isTopic;
     const peerId = isPeerType && this.appPeersManager.getPeerId(peer.peer);

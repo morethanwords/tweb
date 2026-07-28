@@ -293,6 +293,10 @@ export class AppProfileManager extends AppManager {
     this.appStateManager.pushToState('botCommands', this.botCommandsByPeer);
   }
 
+  public getCachedBotCommands(peerId: PeerId) {
+    return this.botCommandsByPeer[peerId];
+  }
+
   public modifyCachedFullChat<T extends ChatFull = ChatFull>(chatId: ChatId, modify: (fullChat: T) => boolean | void) {
     this.modifyCachedFullPeer(chatId.toPeerId(true), modify as any);
   }

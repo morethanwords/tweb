@@ -10,6 +10,7 @@ import tsNow from '@helpers/tsNow';
 import assumeType from '@helpers/assumeType';
 import {AppManager} from '@appManagers/manager';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
+import isEphemeralMessageId from '@appManagers/utils/messageId/isEphemeralMessageId';
 import draftsAreEqual from '@appManagers/utils/drafts/draftsAreEqual';
 import isObject from '@helpers/object/isObject';
 import getPeerId from '@appManagers/utils/peers/getPeerId';
@@ -245,7 +246,14 @@ export class AppDraftsManager extends AppManager {
       const entities: MessageEntity[] = localDraft.entities;
 
       const replyTo = localDraft.reply_to as InputReplyTo.inputReplyToMessage;
-      if(replyTo) {
+      const isEphemeralReply = replyTo && (
+        !Number.isInteger(replyTo.reply_to_msg_id) ||
+        isEphemeralMessageId(replyTo.reply_to_msg_id) ||
+        this.appMessagesManager.isEphemeralMessage(
+          this.appMessagesManager.getMessageByPeer(peerId, replyTo.reply_to_msg_id)
+        )
+      );
+      if(replyTo && !isEphemeralReply) {
         params.reply_to = {
           _: 'inputReplyToMessage',
           reply_to_msg_id: getServerMessageId(replyTo.reply_to_msg_id),

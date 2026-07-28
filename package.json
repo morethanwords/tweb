@@ -10,6 +10,7 @@
     "serve": "pnpm run build && node server.js --dist",
     "build": "pnpm run typecheck && pnpm run generate-changelog && vite build",
     "test": "vitest",
+    "test:ephemeral-bot": "node ./src/tests/fixtures/ephemeralBot/bot.mjs",
     "test:lottie": "playwright test",
     "whybundled": "pnpm run profile && whybundled stats.json",
     "generate-mtproto-types": "node ./src/scripts/generate_mtproto_types.js src/",

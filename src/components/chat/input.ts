@@ -164,6 +164,11 @@ import {LocalTextWithOptionalEntities} from '@types';
 import createChatInputState, {ChatInputState} from './inputState';
 import {SupportedMediaType} from '@components/popups/createPoll/storeContext';
 import {runWithHotReloadGuard} from '@lib/solidjs/runWithHotReloadGuard';
+import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
+import resolveEphemeralCommand, {
+  EphemeralCommandCandidate,
+  EphemeralCommandResolution
+} from '@appManagers/utils/bots/resolveEphemeralCommand';
 
 const HOT_CHAT_INPUTS = import.meta.hot ? [] as ChatInput[] : null;
 
@@ -424,6 +429,7 @@ export default class ChatInput {
   private processingDraftMessage: DraftMessage.draftMessage;
 
   private fileSelectionPromise: CancellablePromise<File[]>;
+  private fileSelectionEphemeralSnapshot: MessageSendingParams;
 
   public paidMessageInterceptor: PaidMessagesInterceptor;
 
@@ -438,6 +444,10 @@ export default class ChatInput {
     option: Uint8Array;
     text: TextWithEntities;
   };
+  private replyIsEphemeral = false;
+  private ephemeralComposer = false;
+  private ephemeralCommandReceiverId: UserId;
+  private ephemeralCommandResolution: EphemeralCommandResolution = {state: 'none'};
 
   constructor(
     public chat: Chat,
@@ -1102,6 +1112,10 @@ export default class ChatInput {
       icon: 'poll',
       text: 'Poll',
       onClick: async() => {
+        if(this.ephemeralComposer) {
+          return;
+        }
+
         const pollsAction: ChatRights = 'send_polls';
 
         if(!(await this.chat.canSend(pollsAction))) {
@@ -1124,10 +1138,18 @@ export default class ChatInput {
           if(await canSendPromise) supportedMediaTypes.push(type);
         }
 
+        if(this.ephemeralComposer) {
+          return;
+        }
+
         openCreatePollPopup({
           isBroadcast: this.chat.isBroadcast,
           supportedMediaTypes: supportedMediaTypes,
           onSubmit: async(payload) => {
+            if(this.ephemeralComposer) {
+              return;
+            }
+
             const attachments = [
               payload.descriptionAttachment,
               payload.explanationAttachment,
@@ -1153,6 +1175,10 @@ export default class ChatInput {
               }
             }
 
+            if(this.ephemeralComposer) {
+              return;
+            }
+
             const sendingParams = this.chat.getMessageSendingParams();
 
             const preparedPaymentResult = await this.chat.input.paidMessageInterceptor.prepareStarsForPayment(1);
@@ -1167,13 +1193,17 @@ export default class ChatInput {
         // PopupElement.createPopup(PopupCreatePoll, this.chat).show();
       },
       verify: () => {
-        if(this.editMsgId) return;
+        if(this.editMsgId || this.ephemeralComposer) return;
         return (!this.chat.isMonoforum && this.chat.peerId.isAnyChat()) || this.chat.isBot || this.chat.peerId === rootScope.myId;
       }
     }, {
       icon: 'checkround',
       text: 'Checklist',
       onClick: async() => {
+        if(this.ephemeralComposer) {
+          return;
+        }
+
         if(this.chat.peerId.isAnyChat()) {
           const action: ChatRights = 'send_polls';
           if(!(await this.chat.canSend(action))) {
@@ -1187,9 +1217,13 @@ export default class ChatInput {
           return;
         }
 
+        if(this.ephemeralComposer) {
+          return;
+        }
+
         showChecklistPopup({chat: this.chat});
       },
-      verify: () => !this.editMsgId && !this.chat.isMonoforum
+      verify: () => !this.editMsgId && !this.chat.isMonoforum && !this.ephemeralComposer
     }];
 
     const attachMenuButtons = this.attachMenuButtons.slice();
@@ -1343,7 +1377,10 @@ export default class ChatInput {
       openSide: 'top-left',
       onContextElement: this.btnSend,
       onOpen: () => {
-        const good = this.chat.type !== ChatType.Scheduled && (this.recording || !this.isInputEmpty() || !!(this.forwarding && Object.keys(this.forwarding).length)) && !this.editMsgId;
+        const good = !this.ephemeralComposer &&
+          this.chat.type !== ChatType.Scheduled &&
+          (this.recording || !this.isInputEmpty() || !!(this.forwarding && Object.keys(this.forwarding).length)) &&
+          !this.editMsgId;
         if(good) {
           this.emoticonsDropdown?.toggle(false);
         }
@@ -1431,7 +1468,14 @@ export default class ChatInput {
 
     this.listenerSetter.add(this.fileInput)('change', (e) => {
       const fileList = (e.target as HTMLInputElement & EventTarget).files;
-      const files = Array.from(fileList).slice();
+      const selectedFiles = Array.from(fileList);
+      const ephemeralSnapshot = this.fileSelectionEphemeralSnapshot;
+      this.fileSelectionEphemeralSnapshot = undefined;
+      const isEphemeral = !!ephemeralSnapshot || this.ephemeralComposer;
+      const files = isEphemeral ? selectedFiles.slice(0, 1) : selectedFiles;
+      if(files.length !== selectedFiles.length) {
+        toastNew({langPackKey: 'Ephemeral.SingleAttachment'});
+      }
       this.fileSelectionPromise.resolve(files);
       if(!files.length) {
         return;
@@ -1441,7 +1485,15 @@ export default class ChatInput {
       if(newMediaPopup) {
         newMediaPopup.addFiles(files);
       } else {
-        PopupElement.createPopup(PopupNewMedia, this.chat, files, this.willAttachType);
+        PopupElement.createPopup(
+          PopupNewMedia,
+          this.chat,
+          files,
+          this.willAttachType,
+          undefined,
+          undefined,
+          ephemeralSnapshot
+        );
       }
 
       this.fileInput.value = '';
@@ -1559,6 +1611,7 @@ export default class ChatInput {
     this.listenerSetter.add(rootScope)('peer_full_update', (peerId) => {
       if(peerId === this.chat?.peerId) {
         this.updateGiftButtonVisibility();
+        this.updateEphemeralComposer();
         if(this.previousQuery?.startsWith('/')) {
           this.previousQuery = undefined;
           this.checkAutocomplete();
@@ -1612,12 +1665,18 @@ export default class ChatInput {
         }
 
         if(this.replyToMsgId && msgs.has(this.replyToMsgId)) {
-          this.clearHelper('reply');
+          this.clearHelper();
         }
 
         /* if(this.chat.isStartButtonNeeded()) {
           this.setStartParam(BOT_START_PARAM);
         } */
+      }
+    });
+
+    this.listenerSetter.add(rootScope)('ephemeral_history_delete', ({peerId, msgs}) => {
+      if(this.chat.peerId === peerId && this.replyToMsgId && msgs.has(this.replyToMsgId)) {
+        this.clearHelper();
       }
     });
 
@@ -1651,7 +1710,8 @@ export default class ChatInput {
   }
 
   public onAttachClick = async(documents?: boolean, photos?: boolean, videos?: boolean) => {
-    if(!this.editMessage && await this.showSlowModeTooltipIfNeeded({
+    const initialEphemeralSnapshot = this.getEphemeralSendingSnapshot();
+    if(!initialEphemeralSnapshot && !this.editMessage && await this.showSlowModeTooltipIfNeeded({
       element: this.attachMenu,
       container: this.btnSendContainer.parentElement
     })) {
@@ -1696,6 +1756,7 @@ export default class ChatInput {
       this.willAttachType = 'media';
     }
 
+    this.fileSelectionEphemeralSnapshot = initialEphemeralSnapshot || this.getEphemeralSendingSnapshot();
     this.fileInput.click();
     this.onFileSelection?.(this.fileSelectionPromise);
   };
@@ -2003,6 +2064,11 @@ export default class ChatInput {
     initDate?: Date,
     initRepeatPeriod?: number
   ) => {
+    if(this.ephemeralComposer) {
+      toastNew({langPackKey: 'Ephemeral.CantSchedule'});
+      return;
+    }
+
     const middleware = this.getMiddleware();
     const canSendWhenOnline = await this.canSendWhenOnline();
     if(!middleware()) {
@@ -2244,7 +2310,7 @@ export default class ChatInput {
 
           ((this.chat.bubbles.messagesQueuePromise || Promise.resolve()) as Promise<any>).then(() => {
             fastRaf(() => {
-              this.onMessageSent();
+              this.onMessageSent(true, undefined, true);
             });
           });
         } else if(fromUpdate && !this.saveDraftDebounced.isDebounced()) {
@@ -3103,6 +3169,129 @@ export default class ChatInput {
     return this.messageInput.isContentEditable && !this.chatInput.classList.contains('is-hidden');
   }
 
+  public isEphemeralComposerMode() {
+    return this.ephemeralComposer;
+  }
+
+  public getEphemeralCommandResolution(value: string) {
+    if(!this.chat.isAnyGroup) {
+      return {state: 'none'} as const;
+    }
+
+    const full = this.chat.fullPeer() as ChatFull.chatFull | ChatFull.channelFull;
+    const botInfos = full?.bot_info || [];
+    const candidates: EphemeralCommandCandidate[] = [];
+    for(const botInfo of botInfos) {
+      if(!botInfo.user_id || !botInfo.commands?.length) {
+        continue;
+      }
+
+      const bot = apiManagerProxy.getUser(botInfo.user_id);
+      candidates.push({
+        botId: botInfo.user_id,
+        commands: botInfo.commands,
+        username: bot?._ === 'user' ? getPeerActiveUsernames(bot)[0] : undefined,
+        available: bot?._ === 'user'
+      });
+    }
+
+    return resolveEphemeralCommand(value, candidates);
+  }
+
+  public getEphemeralCommandReceiver(value: string) {
+    const resolution = this.getEphemeralCommandResolution(value);
+    return resolution.state === 'resolved' ? resolution.receiverId : undefined;
+  }
+
+  public verifyEphemeralCommand(value?: string) {
+    if(this.replyIsEphemeral) {
+      return true;
+    }
+
+    const resolution = value === undefined ?
+      this.ephemeralCommandResolution :
+      this.getEphemeralCommandResolution(value);
+    if(resolution.state === 'ambiguous') {
+      toastNew({langPackKey: 'Ephemeral.CommandAmbiguous'});
+      return false;
+    }
+
+    if(resolution.state === 'unavailable') {
+      toastNew({langPackKey: 'Ephemeral.CommandUnavailable'});
+      return false;
+    }
+
+    return true;
+  }
+
+  public getEphemeralSendingParams(): Pick<MessageSendingParams, 'ephemeral' | 'ephemeralReceiverId'> {
+    if(!this.ephemeralComposer) {
+      return;
+    }
+
+    return {
+      ephemeral: true,
+      ephemeralReceiverId: this.ephemeralCommandReceiverId
+    };
+  }
+
+  public getEphemeralSendingSnapshot(): MessageSendingParams {
+    const sendingParams = this.chat.getMessageSendingParams();
+    if(!sendingParams.ephemeral) {
+      return;
+    }
+
+    return {
+      ephemeral: true,
+      ephemeralReceiverId: sendingParams.ephemeralReceiverId,
+      peerId: sendingParams.peerId,
+      threadId: sendingParams.threadId,
+      replyToMsgId: sendingParams.replyToMsgId,
+      replyTo: sendingParams.replyTo,
+      replyToPeerId: sendingParams.replyToPeerId,
+      replyToMonoforumPeerId: sendingParams.replyToMonoforumPeerId
+    };
+  }
+
+  private updateEphemeralComposer(value?: string) {
+    if(value === undefined && this.messageInputField) {
+      value = getRichValueWithCaret(this.messageInputField.input, true, false).value;
+    }
+
+    this.ephemeralCommandResolution = this.getEphemeralCommandResolution(value || '');
+    this.ephemeralCommandReceiverId = this.ephemeralCommandResolution.state === 'resolved' ?
+      this.ephemeralCommandResolution.receiverId :
+      undefined;
+    const ephemeralComposer = this.replyIsEphemeral ||
+      this.ephemeralCommandResolution.state !== 'none';
+    if(this.ephemeralComposer === ephemeralComposer) {
+      return;
+    }
+
+    this.ephemeralComposer = ephemeralComposer;
+    this.chatInput?.classList.toggle('is-ephemeral-composer', ephemeralComposer);
+    this.btnSendContainer?.classList.toggle('is-ephemeral-composer', ephemeralComposer);
+    this.replyKeyboard?.setEphemeralMode(ephemeralComposer);
+    if(this.fileInput) {
+      this.fileInput.multiple = !ephemeralComposer;
+    }
+
+    if(ephemeralComposer && this.lastTimeType) {
+      this.lastTimeType = 0;
+      this.managers.appMessagesManager.setTyping(
+        this.chat.peerId,
+        {_: 'sendMessageCancelAction'},
+        undefined,
+        this.chat.threadId
+      );
+    }
+
+    if(ephemeralComposer && this.inlineHelper) {
+      this.inlineHelper.toggle(true, true);
+      this.checkInlineAutocomplete('', false);
+    }
+  }
+
   public onMessageInput = (e?: Event) => {
     // * validate due to manual formatting through browser's context menu
     /* const inputType = (e as InputEvent).inputType;
@@ -3123,6 +3312,7 @@ export default class ChatInput {
     // const entities = parseEntities(value);
     const [value, markdownEntities] = parseMarkdown(richValue, markdownEntities1, true);
     const entities = mergeEntities(markdownEntities, parseEntities(value));
+    this.updateEphemeralComposer(richValue);
 
     this.throttledSetMessageCountToBadgeState(richValue);
 
@@ -3154,7 +3344,7 @@ export default class ChatInput {
       }
     } else {
       const time = Date.now();
-      if((time - this.lastTimeType) >= 6000 && e?.isTrusted) {
+      if(!this.ephemeralComposer && (time - this.lastTimeType) >= 6000 && e?.isTrusted) {
         this.lastTimeType = time;
         this.managers.appMessagesManager.setTyping(this.chat.peerId, {_: 'sendMessageTypingAction'}, undefined, this.chat.threadId);
       }
@@ -3534,11 +3724,12 @@ export default class ChatInput {
     }
 
     let canSendInline: boolean;
-    if(!foundHelpers.size) {
+    if(!this.ephemeralComposer && !foundHelpers.size) {
       canSendInline = await this.chat.canSend('send_inline');
     }
 
-    const inlineResult = this.checkInlineAutocomplete(value, canSendInline, foundHelpers.values().next().value);
+    const inlineResult = !this.ephemeralComposer &&
+      this.checkInlineAutocomplete(value, canSendInline, foundHelpers.values().next().value);
     if(inlineResult === this.inlineHelper) {
       foundHelpers.add(this.inlineHelper);
     }
@@ -4065,8 +4256,8 @@ export default class ChatInput {
     return this.inputState.canPaste();
   }
 
-  public onMessageSent(clearInput = true, clearReply?: boolean) {
-    if(!PEER_EXCEPTIONS.has(this.chat.type)) {
+  public onMessageSent(clearInput = true, clearReply?: boolean, skipReadHistory = false) {
+    if(!skipReadHistory && !PEER_EXCEPTIONS.has(this.chat.type)) {
       this.managers.appMessagesManager.readAllHistory(this.chat.peerId, this.chat.threadId, true);
     }
 
@@ -4113,6 +4304,7 @@ export default class ChatInput {
     forwardParams = {},
     slowModeParams,
     paidMessageInterceptor,
+    ephemeral,
     text
   }: {
     sendingParams: MessageSendingParams,
@@ -4123,6 +4315,7 @@ export default class ChatInput {
     forwardParams?: Pick<Parameters<AppMessagesManager['forwardMessages']>[0], 'dropAuthor' | 'dropCaptions'>,
     slowModeParams: Pick<Parameters<typeof ChatInput['showSlowModeTooltipIfNeeded']>[0], 'peerId' | 'managers' | 'element'>,
     paidMessageInterceptor?: PaidMessagesInterceptor,
+    ephemeral?: boolean,
     text?: LocalTextWithOptionalEntities
   }) {
     const {value, entities} = inputField ?
@@ -4132,6 +4325,10 @@ export default class ChatInput {
         {value: '', entities: [] as MessageEntity[]};
 
     const trimmedValue = value.trim();
+
+    if(ephemeral) {
+      forwarding = undefined;
+    }
 
     let messageCount = 0;
     if(chatType !== ChatType.Scheduled) {
@@ -4149,7 +4346,7 @@ export default class ChatInput {
         splitStringByLength(value, MAX_LENGTH).length :
         0;
 
-      if(await this.showSlowModeTooltipIfNeeded({
+      if(!ephemeral && await this.showSlowModeTooltipIfNeeded({
         ...slowModeParams,
         sendingFew: messageCount > 1,
         textOverflow
@@ -4159,7 +4356,7 @@ export default class ChatInput {
     }
 
     let preparedPaymentResult: Awaited<ReturnType<PaidMessagesInterceptor['prepareStarsForPayment']>>;
-    if(messageCount) {
+    if(messageCount && !ephemeral) {
       const promise = paidMessageInterceptor ?
         paidMessageInterceptor.prepareStarsForPayment(messageCount) :
         PaidMessagesInterceptor.prepareStarsForPayment({peerId: sendingParams.peerId, messageCount});
@@ -4218,8 +4415,12 @@ export default class ChatInput {
     return {value, messageCount};
   }
 
-  public async sendMessage(force = false) {
+  public async sendMessage(force = false, ephemeralCommandReceiverId?: UserId) {
     const {editMsgId, chat} = this;
+    if(!editMsgId && !ephemeralCommandReceiverId && !this.verifyEphemeralCommand()) {
+      return;
+    }
+
     if(chat.type === ChatType.Scheduled && !force && !editMsgId) {
       this.scheduleSending();
       return;
@@ -4227,9 +4428,16 @@ export default class ChatInput {
 
     const {peerId} = chat;
     const {noWebPage} = this;
-    const sendingParams = this.chat.getMessageSendingParams();
+    const sendingParams = {
+      ...this.chat.getMessageSendingParams(),
+      ...(ephemeralCommandReceiverId ? {
+        ephemeral: true,
+        ephemeralReceiverId: ephemeralCommandReceiverId
+      } : {})
+    };
 
     if(!editMsgId) {
+      const isEphemeral = !!sendingParams.ephemeral;
       const result = await ChatInput.sendMessageWithForward({
         inputField: this.messageInputField,
         sendingParams,
@@ -4247,14 +4455,17 @@ export default class ChatInput {
           clearDraft: true
         },
         slowModeParams: this.getDefaultParamsForSlowModeTooltip(),
-        paidMessageInterceptor: this.paidMessageInterceptor
+        paidMessageInterceptor: this.paidMessageInterceptor,
+        ephemeral: isEphemeral
       });
 
       if(!result || !result.messageCount) {
         return;
       }
 
-      if(PEER_EXCEPTIONS.has(this.chat.type)) {
+      if(isEphemeral) {
+        this.onMessageSent(true, true, true);
+      } else if(PEER_EXCEPTIONS.has(this.chat.type)) {
         this.onMessageSent(true);
       } else {
         this.onMessageSent(false, false);
@@ -4307,20 +4518,34 @@ export default class ChatInput {
     target?: HTMLElement,
     ignoreNoPremium?: boolean
   }) {
-    document = await this.managers.appDocsManager.getDoc(document);
+    if(!this.verifyEphemeralCommand()) {
+      return false;
+    }
 
+    const pinnedEphemeralSendingParams = this.getEphemeralSendingSnapshot();
+    document = await this.managers.appDocsManager.getDoc(document);
+    if(!document) {
+      return false;
+    }
+
+    const sendingParams = {
+      ...this.chat.getMessageSendingParams(),
+      ...pinnedEphemeralSendingParams
+    };
+    const isEphemeral = !!sendingParams.ephemeral;
     const flag = document.type === 'sticker' ? 'send_stickers' : (document.type === 'gif' ? 'send_gifs' : 'send_media');
-    if(this.chat.peerId.isAnyChat() && !(await this.chat.canSend(flag))) {
+    if(!isEphemeral && this.chat.peerId.isAnyChat() && !(await this.chat.canSend(flag))) {
       toastNew({langPackKey: POSTING_NOT_ALLOWED_MAP[flag]});
       return false;
     }
 
     if(this.chat.type === ChatType.Scheduled && !force) {
-      this.scheduleSending(() => this.sendMessageWithDocument({document, force: true, clearDraft, silent, target}));
-      return false;
-    }
+      if(isEphemeral) {
+        toastNew({langPackKey: 'Ephemeral.CantSchedule'});
+        return false;
+      }
 
-    if(!document) {
+      this.scheduleSending(() => this.sendMessageWithDocument({document, force: true, clearDraft, silent, target}));
       return false;
     }
 
@@ -4329,7 +4554,7 @@ export default class ChatInput {
       return false;
     }
 
-    if(await this.showSlowModeTooltipIfNeeded({
+    if(!isEphemeral && await this.showSlowModeTooltipIfNeeded({
       peerId: this.chat.peerId,
       managers: this.managers,
       element: target,
@@ -4338,12 +4563,12 @@ export default class ChatInput {
       return false;
     }
 
-    const sendingParams = this.chat.getMessageSendingParams();
+    if(!isEphemeral) {
+      const preparedPaymentResult = await this.paidMessageInterceptor.prepareStarsForPayment(1);
+      if(preparedPaymentResult === PAYMENT_REJECTED) return;
 
-    const preparedPaymentResult = await this.paidMessageInterceptor.prepareStarsForPayment(1);
-    if(preparedPaymentResult === PAYMENT_REJECTED) return;
-
-    sendingParams.confirmedPaymentResult = preparedPaymentResult;
+      sendingParams.confirmedPaymentResult = preparedPaymentResult;
+    }
 
     this.managers.appMessagesManager.sendFile({
       ...sendingParams,
@@ -4352,7 +4577,7 @@ export default class ChatInput {
       clearDraft,
       silent
     });
-    this.onMessageSent(clearDraft, true);
+    this.onMessageSent(clearDraft, true, isEphemeral);
 
     if(document.type === 'sticker') {
       this.managers.appStickersManager.saveRecentSticker(document.id);
@@ -4607,6 +4832,10 @@ export default class ChatInput {
         this.managers.appMessagesManager.getMessageByPeer(replyToPeerId, replyToMsgId) :
         this.chat.getMessage(replyToMsgId)
     );
+    if(isEphemeralMessage(message) && message.pFlags.out) {
+      return;
+    }
+    this.replyIsEphemeral = isEphemeralMessage(message);
 
     this.setSavedReplyToPollOption(replyToMsgId, replyToPollOption, message);
 
@@ -4625,6 +4854,11 @@ export default class ChatInput {
           if(!message) {
             this.clearHelper('reply');
           } else {
+            if(isEphemeralMessage(message) && message.pFlags.out) {
+              this.clearHelper('reply');
+              return;
+            }
+            this.replyIsEphemeral = isEphemeralMessage(message);
             this.setSavedReplyToPollOption(replyToMsgId, replyToPollOption, message);
 
             f();
@@ -4660,6 +4894,12 @@ export default class ChatInput {
         setColorPeerId: message?.fromId,
         quote
       });
+      if(this.replyIsEphemeral && newReply) {
+        newReply.classList.add('is-ephemeral-reply');
+        newReply.querySelector('.reply-title')?.prepend(
+          Icon('eyecross_outline', 'reply-title-ephemeral-icon')
+        );
+      }
       this.setReplyTo(replyTo);
 
       this.replyElements.replyInAnother.element.classList.toggle('hide', !this.chat.bubbles.canForward(message as Message.message));
@@ -4739,6 +4979,10 @@ export default class ChatInput {
     this.replyToPollOption = replyToPollOption;
     this.replyToPeerId = replyToPeerId;
     this.replyToMonoforumPeerId = replyToMonoforumPeerId;
+    if(!replyToMsgId) {
+      this.replyIsEphemeral = false;
+    }
+    this.updateEphemeralComposer();
     this.center(true);
   }
 

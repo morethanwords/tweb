@@ -88,6 +88,7 @@ const createAiEditorButton = ({instance, inputField, appendTo, onApply, class: c
     children: icon,
     onClick: async() => {
       const {value, entities} = getRichValueWithCaret(inputField.input, true, false);
+      const wasEphemeral = instance.isEphemeralComposerMode();
 
       const {module: {openAiEditorPopup}, initialTones} = await namedPromises({
         module: import('@components/popups/aiEditorPopup'),
@@ -103,7 +104,10 @@ const createAiEditorButton = ({instance, inputField, appendTo, onApply, class: c
         onApply,
         canSendWhenOnline: instance.canSendWhenOnline,
         isScheduled: instance.chat.type === ChatType.Scheduled,
-        onSend: !instance.chat.starsAmount && !instance.editMsgId && canSend ? async(text, options) => {
+        onSend: !wasEphemeral &&
+          !instance.chat.starsAmount &&
+          !instance.editMsgId &&
+          canSend ? async(text, options) => {
           const sendingParams = {
             ...instance.chat.getMessageSendingParams(),
             // The AI editor manages its own send options, so override these fields
@@ -120,7 +124,8 @@ const createAiEditorButton = ({instance, inputField, appendTo, onApply, class: c
             slowModeParams: instance.getDefaultParamsForSlowModeTooltip(),
             chatType: instance.chat.type,
             paidMessageInterceptor: instance.paidMessageInterceptor,
-            sendingParams
+            sendingParams,
+            ephemeral: !!sendingParams.ephemeral
           });
 
           if(result) instance.setInputValue('');

@@ -6,6 +6,8 @@ import PeerTitle from '@components/peerTitle';
 import Scrollable from '@components/scrollable';
 import AutocompleteHelper from '@components/chat/autocompleteHelper';
 import AutocompleteHelperController from '@components/chat/autocompleteHelperController';
+import Icon from '@components/icon';
+import I18n from '@lib/langPack';
 
 export default class AutocompletePeerHelper extends AutocompleteHelper {
   protected static BASE_CLASS = 'autocomplete-peer-helper';
@@ -44,7 +46,7 @@ export default class AutocompletePeerHelper extends AutocompleteHelper {
   }
 
   public render(
-    data: {peerId: PeerId, name?: string, description?: string}[],
+    data: {peerId: PeerId, name?: string, description?: string, ephemeral?: boolean}[],
     middleware: Middleware,
     doNotShow?: boolean
   ) {
@@ -65,6 +67,7 @@ export default class AutocompletePeerHelper extends AutocompleteHelper {
           peerId: d.peerId,
           name: d.name,
           description: d.description,
+          ephemeral: d.ephemeral,
           middleware
         });
 
@@ -82,6 +85,7 @@ export default class AutocompletePeerHelper extends AutocompleteHelper {
     peerId: PeerId,
     name?: string,
     description?: string,
+    ephemeral?: boolean,
     middleware: Middleware
   }) {
     const BASE = AutocompletePeerHelper.BASE_CLASS_LIST_ELEMENT;
@@ -90,6 +94,9 @@ export default class AutocompletePeerHelper extends AutocompleteHelper {
     const div = document.createElement('div');
     div.classList.add(BASE, options.className);
     div.dataset.peerId = '' + options.peerId;
+    if(options.ephemeral) {
+      div.dataset.ephemeral = '1';
+    }
 
     const {node} = avatarNew({
       middleware: options.middleware,
@@ -113,6 +120,14 @@ export default class AutocompletePeerHelper extends AutocompleteHelper {
     }
 
     div.append(node, name);
+
+    if(options.ephemeral) {
+      const ephemeral = Icon('eyecross_outline', BASE + '-ephemeral', options.className + '-ephemeral');
+      const tooltip = I18n.format('Ephemeral.CommandTooltip', true);
+      ephemeral.title = tooltip;
+      ephemeral.setAttribute('aria-label', tooltip);
+      div.append(ephemeral);
+    }
 
     if(options.description) {
       const description = document.createElement('div');

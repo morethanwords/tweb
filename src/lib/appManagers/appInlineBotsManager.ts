@@ -223,6 +223,22 @@ export class AppInlineBotsManager extends AppManager {
   }
 
   public callbackButtonClick(peerId: PeerId, mid: number, button?: any, game?: boolean) {
+    const message = this.appMessagesManager.getMessageByPeer(peerId, mid);
+    if(
+      this.appMessagesManager.isEphemeralMessageId(mid) ||
+      this.appMessagesManager.isEphemeralMessage(message)
+    ) {
+      if(game) {
+        return Promise.resolve(undefined);
+      }
+
+      if(!message) {
+        return Promise.resolve(undefined);
+      }
+
+      return this.appMessagesManager.getEphemeralCallbackAnswer(peerId, mid, button?.data);
+    }
+
     return this.apiManager.invokeApi('messages.getBotCallbackAnswer', {
       peer: this.appPeersManager.getInputPeerById(peerId),
       msg_id: getServerMessageId(mid),
@@ -244,6 +260,10 @@ export class AppInlineBotsManager extends AppManager {
       return;
     }
 
+    if(options.ephemeral) {
+      return;
+    }
+
     this.pushPopularBot(botId);
     const splitted = queryAndResultIds.split('_');
     const queryId = splitted.shift();
@@ -251,6 +271,9 @@ export class AppInlineBotsManager extends AppManager {
     options.viaBotId = botId;
     options.queryId = queryId;
     options.resultId = resultId;
+    options.peerId = peerId;
+    options.forceOrdinary = true;
+    this.appMessagesManager.stripEphemeralReply(options);
     if(inlineResult.send_message.reply_markup) {
       options.replyMarkup = inlineResult.send_message.reply_markup;
     }
@@ -413,6 +436,8 @@ export class AppInlineBotsManager extends AppManager {
 
       this.appMessagesManager.sendOther({...options, peerId, inputMedia});
     }
+
+    return true;
   }
 
   /* function checkGeoLocationAccess (botID) {

@@ -3,7 +3,7 @@ import {getOverlayRoot} from '@helpers/appWindow';
 import {createStore} from 'solid-js/store';
 
 import type Chat from '@components/chat/chat';
-import type {SendFileDetails} from '@appManagers/appMessagesManager';
+import type {MessageSendingParams, SendFileDetails} from '@appManagers/appMessagesManager';
 import type {ChatRights} from '@appManagers/appChatsManager';
 import PopupElement from '.';
 import {toastNew} from '@components/toast';
@@ -69,6 +69,7 @@ import {IS_MOBILE} from '@environment/userAgent';
 import {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
 import ListenerSetter from '@helpers/listenerSetter';
 import canVideoBeAnimated from '@appManagers/utils/docs/canVideoBeAnimated';
+import isEphemeralMessageId from '@appManagers/utils/messageId/isEphemeralMessageId';
 import MarkupTooltip from '@components/chat/markupTooltip';
 import {MAX_EDITABLE_VIDEO_SIZE, supportsVideoEncoding} from '@components/mediaEditor/support';
 import {animateValue} from '@helpers/animateValue';
@@ -138,6 +139,8 @@ export default class PopupNewMedia extends PopupElement {
   private actionsMenuListenerSetter = new ListenerSetter;
 
   private isMediaEditorOpen = false;
+  private ephemeralComposer = false;
+  private pinnedEphemeralSendingParams: MessageSendingParams;
 
   private files: File[] = [];
   private gifDocument: MyDocument;
@@ -153,7 +156,8 @@ export default class PopupNewMedia extends PopupElement {
     inputFiles: (ConstructorInputFile | File)[],
     willAttachType: PopupNewMedia['willAttach']['type'],
     private ignoreInputValue?: boolean,
-    gifDocument?: MyDocument
+    gifDocument?: MyDocument,
+    pinnedEphemeralSendingParams?: MessageSendingParams
   ) {
     super('popup-send-photo popup-new-media', {
       closable: true,
@@ -163,6 +167,26 @@ export default class PopupNewMedia extends PopupElement {
       title: true,
       scrollable: true
     });
+
+    const sendingParams = pinnedEphemeralSendingParams || this.chat.getMessageSendingParams();
+    const hasEphemeralReply = sendingParams.replyTo?._ === 'inputReplyToEphemeralMessage' ||
+      (!!sendingParams.replyToMsgId && isEphemeralMessageId(sendingParams.replyToMsgId));
+    if(sendingParams.ephemeral && hasEphemeralReply) {
+      this.pinnedEphemeralSendingParams = {
+        ephemeral: true,
+        ephemeralReceiverId: sendingParams.ephemeralReceiverId,
+        peerId: sendingParams.peerId,
+        threadId: sendingParams.threadId,
+        replyToMsgId: sendingParams.replyToMsgId,
+        replyTo: sendingParams.replyTo
+      };
+    }
+
+    this.ephemeralComposer = !!sendingParams.ephemeral;
+    if(this.ephemeralComposer && inputFiles.length > 1) {
+      inputFiles = inputFiles.slice(0, 1);
+      toastNew({langPackKey: 'Ephemeral.SingleAttachment'});
+    }
 
     this.files = inputFiles.map((inputFile) => {
       // The {file, editResult} wrapper is the only variant carrying a `file` field; everything else
@@ -362,7 +386,10 @@ export default class PopupNewMedia extends PopupElement {
         animationGroup: this.animationGroup,
         listenerSetter: this.listenerSetter,
         onScroll: this.onScroll,
-        onInput: (hasValue) => this.starsState.set({hasMessage: hasValue}),
+        onInput: (hasValue) => {
+          this.starsState.set({hasMessage: hasValue});
+          this.updateEphemeralComposer();
+        },
         stars: this.starsState.totalStars,
         draft,
         ref: (inputField) => {
@@ -377,6 +404,7 @@ export default class PopupNewMedia extends PopupElement {
         children
       });
     });
+    this.updateEphemeralComposer();
 
     this.listenerSetter.add(this.scrollable.container)('scroll', this.onScroll);
 
@@ -463,6 +491,7 @@ export default class PopupNewMedia extends PopupElement {
         onRef: (element) => {
           this.container.append(element);
         },
+        onOpen: () => !this.ephemeralComposer,
         withEffects: () => this.chat.peerId.isUser() && this.chat.peerId !== rootScope.myId,
         effect: this.effect,
         onEffect: this.setEffect
@@ -513,8 +542,47 @@ export default class PopupNewMedia extends PopupElement {
     });
   }
 
+  private getEphemeralCommandResolution(caption?: string) {
+    if(caption === undefined) {
+      if(!this.messageInputField) {
+        return {state: 'none'} as const;
+      }
+
+      caption = getRichValueWithCaret(this.messageInputField.input, true, false).value;
+    }
+
+    return this.chat.input.getEphemeralCommandResolution(caption || '');
+  }
+
+  private isEphemeralComposerMode(caption?: string) {
+    return !!this.pinnedEphemeralSendingParams ||
+      this.getEphemeralCommandResolution(caption).state !== 'none';
+  }
+
+  private updateEphemeralComposer() {
+    const ephemeralComposer = this.isEphemeralComposerMode();
+    const changed = ephemeralComposer !== this.ephemeralComposer;
+    this.ephemeralComposer = ephemeralComposer;
+    this.element.classList.toggle('is-ephemeral-composer', ephemeralComposer);
+    if(!changed || !ephemeralComposer) {
+      return;
+    }
+
+    if(this.files.length > 1) {
+      this.files.splice(1);
+      toastNew({langPackKey: 'Ephemeral.SingleAttachment'});
+      if(this.willAttach.sendFileDetails.length) {
+        this.attachFiles();
+      }
+    }
+
+    if(this.willAttach.stars) {
+      this.setPaidMedia(undefined);
+    }
+  }
+
   private async canSendPaidMedia() {
-    if(this.isEditing() || this.hasUnpayableMedia()) return false;
+    if(this.ephemeralComposer || this.isEditing() || this.hasUnpayableMedia()) return false;
     return await this.managers.appPeersManager.isBroadcast(this.chat.peerId) &&
       !!(await this.managers.appProfileManager.getChannelFull(this.chat.peerId.toChatId())).pFlags.paid_media_allowed;
   }
@@ -843,19 +911,45 @@ export default class PopupNewMedia extends PopupElement {
       return;
     }
 
-    const isSlowModeActive = () => this.chat.input.showSlowModeTooltipIfNeeded({
+    const {input} = this.chat;
+    const ephemeralCommandResolution = this.getEphemeralCommandResolution(caption);
+    if(!this.pinnedEphemeralSendingParams && !input.verifyEphemeralCommand(caption)) {
+      return;
+    }
+
+    const ephemeralReceiverId = this.pinnedEphemeralSendingParams?.ephemeralReceiverId ||
+      (
+        ephemeralCommandResolution.state === 'resolved' ?
+          ephemeralCommandResolution.receiverId :
+          undefined
+      );
+    const isEphemeral = !!this.pinnedEphemeralSendingParams ||
+      ephemeralCommandResolution.state !== 'none';
+    if(isEphemeral && !this.isEditing() && (this.chat.type === ChatType.Scheduled || input.scheduleDate)) {
+      toastNew({langPackKey: 'Ephemeral.CantSchedule'});
+      return;
+    }
+
+    if(isEphemeral && this.willAttach.sendFileDetails.length > 1) {
+      this.files.splice(1);
+      this.willAttach.sendFileDetails.splice(1);
+      toastNew({langPackKey: 'Ephemeral.SingleAttachment'});
+    }
+
+    const isSlowModeActive = () => input.showSlowModeTooltipIfNeeded({
       sendingFew: this.messagesCount() > 1,
       container: this.btnConfirm.parentElement,
       element: this.btnConfirm
     });
 
-    if(!this.isEditing() && await isSlowModeActive()) {
+    if(!this.isEditing() && !isEphemeral && await isSlowModeActive()) {
       return;
     }
 
-    const {input} = this.chat;
-
-    const canSend = await PopupNewMedia.canSend(this.chat.getMessageSendingParams());
+    const canSend = await PopupNewMedia.canSend({
+      ...this.chat.getMessageSendingParams(),
+      onlyVisible: isEphemeral
+    });
     const willAttach = this.willAttach;
     willAttach.isMedia = willAttach.type === 'media' || undefined;
     const {sendFileDetails, isMedia} = willAttach;
@@ -920,9 +1014,17 @@ export default class PopupNewMedia extends PopupElement {
 
     const {length} = sendFileDetails;
     const sendingParams = this.chat.getMessageSendingParams();
+    if(isEphemeral) {
+      Object.assign(sendingParams, this.pinnedEphemeralSendingParams);
+      sendingParams.ephemeral = true;
+      sendingParams.ephemeralReceiverId = ephemeralReceiverId;
+    } else {
+      sendingParams.ephemeral = undefined;
+      sendingParams.ephemeralReceiverId = undefined;
+    }
 
-    const preparedPaymentResult = !this.chat.input.editMsgId ?
-      await this.chat.input.paidMessageInterceptor.prepareStarsForPayment(this.starsState.totalMessages()) :
+    const preparedPaymentResult = !isEphemeral && !input.editMsgId ?
+      await input.paidMessageInterceptor.prepareStarsForPayment(this.starsState.totalMessages()) :
       undefined;
     if(preparedPaymentResult === PAYMENT_REJECTED) return;
     sendingParams.confirmedPaymentResult = preparedPaymentResult;
@@ -992,7 +1094,9 @@ export default class PopupNewMedia extends PopupElement {
       caption = entities = effect = undefined;
     });
 
-    if(sendingParams.replyToMsgId || sendingParams.suggestedPost) {
+    if(isEphemeral && !this.isEditing()) {
+      input.onMessageSent(true, true, true);
+    } else if(sendingParams.replyToMsgId || sendingParams.suggestedPost) {
       input.onHelperCancel();
     }
     // input.replyToMsgId = this.chat.threadId;
@@ -1972,7 +2076,10 @@ export default class PopupNewMedia extends PopupElement {
   }
 
   private canHaveMultipleFiles() {
-    return !this.isEditing() && !this.isSuggestingPost() && !this.gifDocument;
+    return !this.ephemeralComposer &&
+      !this.isEditing() &&
+      !this.isSuggestingPost() &&
+      !this.gifDocument;
   }
 
   private canShowActionsForBcr(bcr: DOMRect) {

@@ -51,6 +51,7 @@ import {AppMyStoriesTab} from '@components/solidJsTabs/tabs';
 import showAddBotToChat from '@components/popups/addBotToChat';
 import getBotAddToChatScope from '@appManagers/utils/bots/getBotAddToChatScope';
 import parseBotAdminRights from '@appManagers/utils/bots/parseBotAdminRights';
+import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
 
 export class InternalLinkProcessor {
   protected managers: AppManagers;
@@ -88,8 +89,27 @@ export class InternalLinkProcessor {
 
     addAnchorListener<{uriParams: {command: string, bot: string}}>({
       name: 'execBotCommand',
-      callback: ({uriParams}) => {
+      callback: ({element, uriParams}) => {
         const {command, bot} = uriParams;
+        const chat = appImManager.chat;
+        let sendingParams = chat.input?.getEphemeralSendingSnapshot() || {
+          peerId: chat.peerId
+        };
+        const bubble = findUpClassName(element, 'bubble');
+        if(
+          bubble?.dataset.mid &&
+          bubble.dataset.peerId?.toPeerId() === chat.peerId
+        ) {
+          const message = chat.getMessage(+bubble.dataset.mid);
+          if(isEphemeralMessage(message)) {
+            sendingParams = {
+              ephemeral: true,
+              peerId: chat.peerId,
+              threadId: chat.threadId,
+              replyToMsgId: message.mid
+            };
+          }
+        }
 
         /* const promise = bot ? this.openUsername(bot).then(() => this.chat.peerId) : Promise.resolve(this.chat.peerId);
         promise.then((peerId) => {
@@ -97,7 +117,7 @@ export class InternalLinkProcessor {
         }); */
 
         return this.managers.appMessagesManager.sendText({
-          peerId: appImManager.chat.peerId,
+          ...sendingParams,
           text: '/' + command + (bot ? '@' + bot : '')
         });
       }

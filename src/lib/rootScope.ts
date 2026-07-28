@@ -1,5 +1,5 @@
 import type {Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, ReactionCount, MessagePeerReaction, PhoneCall, Config, Reaction, AttachMenuBot, PeerSettings, StoryItem, PeerStories, SavedDialog, SavedReactionTag, InputSavedStarGift, LangPackDifference, StarsAmount, MessageEntity, HelpPromoData, StoriesStealthMode, StoryAlbum, GlobalPrivacySettings} from '@layer';
-import type {Dialog, ForumTopic, MessagesStorageKey, MyMessage} from '@appManagers/appMessagesManager';
+import type {Dialog, ForumTopic, MessagesStorageKey, MyEphemeralMessage, MyMessage} from '@appManagers/appMessagesManager';
 import type {MyDialogFilter} from '@lib/storages/filters';
 import type {AnyDialog, Folder} from '@lib/storages/dialogs';
 import type {UserTyping} from '@appManagers/appProfileManager';
@@ -84,6 +84,12 @@ export type BroadcastEvents = {
   'history_reload': PeerId,
   'history_delete_key': {historyKey: string, mid: number},
   // 'history_request': void,
+
+  'ephemeral_history_append': {storageKey: MessagesStorageKey, message: MyEphemeralMessage},
+  'ephemeral_history_edit': {storageKey: MessagesStorageKey, peerId: PeerId, mid: number, message: MyEphemeralMessage},
+  'ephemeral_history_delete': {peerId: PeerId, msgs: Set<number>},
+  'ephemeral_send_blocked': {peerId: PeerId, reason: 'ambiguous' | 'unavailable'},
+  'ephemeral_send_error': {peerId: PeerId, retryId: number},
 
   'message_edit': {storageKey: MessagesStorageKey, peerId: PeerId, mid: number, message: MyMessage},
   'message_sent': {storageKey: MessagesStorageKey, tempId: number, tempMessage: any, mid: number, message: MyMessage},

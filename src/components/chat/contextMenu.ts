@@ -97,6 +97,7 @@ import {getPollVoteRestrictionText} from './bubbleParts/pollMessageContent/pollV
 import {canViewPollStatistics as canViewPollStatisticsForMessage} from './bubbleParts/pollMessageContent/pollStatistics';
 import {canCopyMediaToClipboard} from '@helpers/copyMediaToClipboard';
 import copyMessageMediaWithFeedback from '@components/copyMessageMediaWithFeedback';
+import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -346,6 +347,21 @@ export default class ChatContextMenu {
         if(hasDeletedGroupedMessage) {
           contextMenuController.close();
         }
+      }
+    });
+
+    this.attachListenerSetter.add(rootScope)('ephemeral_history_delete', ({peerId, msgs}) => {
+      if(peerId !== this.chat.peerId) {
+        return;
+      }
+
+      if(this.mid && msgs.has(this.mid)) {
+        contextMenuController.close();
+        return;
+      }
+
+      if(this.groupedMessages?.some((message) => msgs.has(message.mid))) {
+        contextMenuController.close();
       }
     });
   }
@@ -943,6 +959,7 @@ export default class ChatContextMenu {
       text: 'Quote',
       onClick: this.onQuoteClick,
       verify: async() => /* await this.chat.canSend() && */
+        !isEphemeralMessage(this.message) &&
         !this.message.pFlags.is_outgoing &&
         !!this.chat.input.messageInput &&
         !!(this.message as Message.message).message &&
@@ -959,6 +976,7 @@ export default class ChatContextMenu {
       text: 'Reply',
       onClick: this.onReplyClick,
       verify: async() => !this.isLegacy &&
+        !(isEphemeralMessage(this.message) && this.message.pFlags.out) &&
         // await this.chat.canSend() &&
         !this.message.pFlags.is_outgoing &&
         !!this.chat.input.messageInput &&
@@ -1033,7 +1051,7 @@ export default class ChatContextMenu {
       icon: 'copy',
       text: 'Copy',
       onClick: this.onCopyClick,
-      verify: () => !this.noForwards &&
+      verify: () => (isEphemeralMessage(this.message) || !this.noForwards) &&
         !!(this.message as Message.message).message &&
         !this.isTextSelected &&
         (!this.isAnchorTarget || (this.message as Message.message).message !== this.target.innerText)
@@ -1041,7 +1059,9 @@ export default class ChatContextMenu {
       icon: 'copy',
       text: 'Chat.CopySelectedText',
       onClick: this.onCopyClick,
-      verify: () => !this.noForwards && !!(this.message as Message.message).message && this.isTextSelected
+      verify: () => (isEphemeralMessage(this.message) || !this.noForwards) &&
+        !!(this.message as Message.message).message &&
+        this.isTextSelected
     }, this.copyMediaButton = {
       icon: 'copy',
       text: 'MediaViewer.Context.Copy',
@@ -1066,7 +1086,10 @@ export default class ChatContextMenu {
       text: 'Message.Context.Selection.Copy',
       onClick: this.onCopyClick,
       verify: async() => {
-        if(!this.isSelected || this.noForwards) {
+        if(
+          !this.isSelected ||
+          (this.noForwards && !this.selectedMessages?.every(isEphemeralMessage))
+        ) {
           return false;
         }
 
@@ -1142,12 +1165,17 @@ export default class ChatContextMenu {
       icon: 'link',
       text: 'MessageContext.CopyMessageLink1',
       onClick: this.onCopyLinkClick,
-      verify: async() => !this.isLegacy && await this.managers.appPeersManager.isChannel(this.peerId) && !this.chat.isMonoforum && !this.message.pFlags.is_outgoing
+      verify: async() => !isEphemeralMessage(this.message) &&
+        !this.isLegacy &&
+        await this.managers.appPeersManager.isChannel(this.peerId) &&
+        !this.chat.isMonoforum &&
+        !this.message.pFlags.is_outgoing
     }, {
       icon: 'pin',
       text: 'Message.Context.Pin',
       onClick: this.onPinClick,
-      verify: async() => !this.isLegacy &&
+      verify: async() => !isEphemeralMessage(this.message) &&
+        !this.isLegacy &&
         !this.chat.isMonoforum &&
         !this.message.pFlags.is_outgoing &&
         this.message._ !== 'messageService' &&
@@ -1159,14 +1187,24 @@ export default class ChatContextMenu {
       icon: 'unpin',
       text: 'Message.Context.Unpin',
       onClick: this.onUnpinClick,
-      verify: async() => (this.message as Message.message).pFlags.pinned &&
+      verify: async() => !isEphemeralMessage(this.message) &&
+        (this.message as Message.message).pFlags.pinned &&
         await this.managers.appPeersManager.canPinMessage(this.message.peerId) &&
         !useIsFrozen()
     }, {
       icon: 'download',
       text: 'MediaViewer.Context.Download',
-      onClick: () => ChatContextMenu.onDownloadClick(this.message, this.noForwards, this.chat.container),
-      verify: () => ChatContextMenu.canDownload(this.message, this.target, this.noForwards, this.chat.container)
+      onClick: () => ChatContextMenu.onDownloadClick(
+        this.message,
+        isEphemeralMessage(this.message) ? false : this.noForwards,
+        this.chat.container
+      ),
+      verify: () => ChatContextMenu.canDownload(
+        this.message,
+        this.target,
+        isEphemeralMessage(this.message) ? false : this.noForwards,
+        this.chat.container
+      )
     }, {
       icon: 'checkretract',
       text: 'Chat.Poll.Unvote',
@@ -1204,7 +1242,8 @@ export default class ChatContextMenu {
       icon: 'forward',
       text: 'Forward',
       onClick: this.onForwardClick, // let forward the message if it's outgoing but not ours (like a changelog)
-      verify: () => !this.noForwards &&
+      verify: () => !isEphemeralMessage(this.message) &&
+        !this.noForwards &&
         this.chat.type !== ChatType.Scheduled &&
         (!this.message.pFlags.is_outgoing || this.message.fromId === SERVICE_PEER_ID) &&
         this.message._ !== 'messageService'
@@ -1220,8 +1259,17 @@ export default class ChatContextMenu {
     }, {
       icon: 'download',
       text: 'Message.Context.Selection.Download',
-      onClick: () => ChatContextMenu.onDownloadClick(this.selectedMessages, this.noForwards, this.chat.container),
-      verify: () => this.selectedMessages && ChatContextMenu.canDownload(this.selectedMessages, undefined, this.noForwards, this.chat.container),
+      onClick: () => ChatContextMenu.onDownloadClick(
+        this.selectedMessages,
+        this.selectedMessages?.every(isEphemeralMessage) ? false : this.noForwards,
+        this.chat.container
+      ),
+      verify: () => this.selectedMessages && ChatContextMenu.canDownload(
+        this.selectedMessages,
+        undefined,
+        this.selectedMessages.every(isEphemeralMessage) ? false : this.noForwards,
+        this.chat.container
+      ),
       withSelection: true
     }, {
       icon: 'flag',
@@ -1238,7 +1286,11 @@ export default class ChatContextMenu {
       verify: () => !this.message.pFlags.out &&
         this.message._ === 'message' &&
         !this.message.pFlags.is_outgoing &&
-        this.managers.appPeersManager.isChannel(this.messagePeerId),
+        (
+          isEphemeralMessage(this.message) ?
+            !this.chat.selection.isSelecting :
+            this.managers.appPeersManager.isChannel(this.messagePeerId)
+        ),
       notDirect: () => true,
       withSelection: true
     }, {
@@ -1268,6 +1320,7 @@ export default class ChatContextMenu {
         }
       },
       verify: () => !this.peerId.isUser() &&
+        !isEphemeralMessage(this.message) &&
         (!!(this.message as Message.message).reactions?.recent_reactions?.length || this.managers.appMessagesManager.canViewMessageReadParticipants(this.message)),
       notDirect: () => true,
       localName: 'views'
@@ -1292,6 +1345,13 @@ export default class ChatContextMenu {
       },
       onClick: this.onDeleteClick,
       verify: async() => this.managers.appMessagesManager.canDeleteMessage(this.message)
+    }, {
+      regularText: i18n('Ephemeral.About'),
+      className: 'ephemeral-context-about',
+      separator: true,
+      secondary: true,
+      onClick: noop,
+      verify: () => isEphemeralMessage(this.message)
     }, {
       icon: 'delete',
       className: 'danger',
@@ -1680,6 +1740,7 @@ export default class ChatContextMenu {
       !this.message.pFlags.is_outgoing &&
       !(this.message._ === 'message' && this.message.pFlags.is_scheduled) &&
       !this.message.pFlags.local &&
+      !isEphemeralMessage(this.message) &&
       !this.reactionElement
     ) {
       const reactions = this.message.reactions;

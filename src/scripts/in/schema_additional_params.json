@@ -411,6 +411,18 @@
         "type": "MessagesStorageKey"
       },
       {
+        "name": "ephemeral_id",
+        "type": "number"
+      },
+      {
+        "name": "ephemeral_receiver_id",
+        "type": "UserId"
+      },
+      {
+        "name": "ephemeral",
+        "type": "true"
+      },
+      {
         "name": "repayRequest",
         "type": "{id: number, messageCount: number}"
       }

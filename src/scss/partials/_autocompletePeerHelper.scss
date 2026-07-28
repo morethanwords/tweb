@@ -39,6 +39,14 @@
         @include text-overflow();
       }
 
+      &-ephemeral {
+        flex: 0 0 auto;
+        margin-inline-start: .375rem;
+        color: var(--secondary-text-color);
+        font-size: 1.125rem;
+        pointer-events: auto;
+      }
+
       &-name,
       &-description {
         flex: 0 1 auto;

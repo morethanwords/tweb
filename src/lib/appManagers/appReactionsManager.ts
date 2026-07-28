@@ -11,6 +11,7 @@ import tsNow from '@helpers/tsNow';
 import {ReferenceContext} from '@lib/storages/references';
 import {AppManager} from '@appManagers/manager';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
+import isEphemeralMessageId from '@appManagers/utils/messageId/isEphemeralMessageId';
 import reactionsEqual from '@appManagers/utils/reactions/reactionsEqual';
 import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
 import availableReactionToReaction from '@appManagers/utils/reactions/availableReactionToReaction';
@@ -459,6 +460,16 @@ export class AppReactionsManager extends AppManager {
   }
 
   public getMessagesReactions(peerId: PeerId, mids: number[]) {
+    mids = mids.filter((mid) => (
+      !this.appMessagesManager.isEphemeralMessageId(mid) &&
+      !this.appMessagesManager.isEphemeralMessage(
+        this.appMessagesManager.getMessageByPeer(peerId, mid)
+      )
+    ));
+    if(!mids.length) {
+      return Promise.resolve();
+    }
+
     return this.apiManager.invokeApiSingleProcess({
       method: 'messages.getMessagesReactions',
       params: {
@@ -475,6 +486,10 @@ export class AppReactionsManager extends AppManager {
   }
 
   public getMessageReactionsList(peerId: PeerId, mid: number, limit: number, reaction?: Reaction, offset?: string) {
+    if(isEphemeralMessageId(mid)) {
+      return Promise.reject({type: 'MESSAGE_ID_INVALID'} as ApiError);
+    }
+
     return this.apiManager.invokeApiSingleProcess({
       method: 'messages.getMessageReactionsList',
       params: {
@@ -504,6 +519,10 @@ export class AppReactionsManager extends AppManager {
     mid: number,
     participantPeerId: PeerId
   }) {
+    if(isEphemeralMessageId(mid)) {
+      return Promise.reject({type: 'MESSAGE_ID_INVALID'} as ApiError);
+    }
+
     return this.apiManager.invokeApiSingle('messages.reportReaction', {
       peer: this.appPeersManager.getInputPeerById(peerId),
       id: getServerMessageId(mid),
@@ -574,6 +593,10 @@ export class AppReactionsManager extends AppManager {
     participantPeerId: PeerId,
     knownReaction?: Reaction
   }) {
+    if(isEphemeralMessageId(mid)) {
+      return Promise.reject({type: 'MESSAGE_ID_INVALID'} as ApiError);
+    }
+
     this.removeParticipantReactionsLocally({peerId, participantPeerId, mid, knownReaction});
 
     return this.apiManager.invokeApiSingleProcess({
@@ -653,6 +676,10 @@ export class AppReactionsManager extends AppManager {
     sendAsPeerId,
     count
   }: SendReactionOptions): Promise<MessageReactions> {
+    if(this.appMessagesManager.isEphemeralMessage(message)) {
+      return message.reactions;
+    }
+
     if(reaction._ === 'availableReaction') {
       reaction = {
         _: 'reactionEmoji',
@@ -1217,6 +1244,10 @@ export class AppReactionsManager extends AppManager {
   }
 
   public togglePaidReactionPrivacy(peerId: PeerId, mid: number, sendAsPeerId: PeerId) {
+    if(isEphemeralMessageId(mid)) {
+      return Promise.reject({type: 'MESSAGE_ID_INVALID'} as ApiError);
+    }
+
     return this.apiManager.invokeApi('messages.togglePaidReactionPrivacy', {
       peer: this.appPeersManager.getInputPeerById(peerId),
       msg_id: getServerMessageId(mid),

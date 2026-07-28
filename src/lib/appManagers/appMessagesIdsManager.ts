@@ -1,5 +1,6 @@
 import {MESSAGE_ID_OFFSET} from '@appManagers/constants';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
+import isEphemeralMessageId from '@appManagers/utils/messageId/isEphemeralMessageId';
 import isLegacyMessageId from '@appManagers/utils/messageId/isLegacyMessageId';
 
 export class AppMessagesIdsManager {
@@ -13,6 +14,7 @@ export class AppMessagesIdsManager {
 
   public generateMessageId(messageId: number, channelId?: ChatId) {
     if(
+      isEphemeralMessageId(messageId) ||
       !channelId ||
       !Number.isInteger(messageId) ||
       messageId <= 0

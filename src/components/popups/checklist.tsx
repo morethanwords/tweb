@@ -130,6 +130,11 @@ export default function showChecklistPopup(options: ChecklistPopupOptions): void
       };
 
       handleConfirm = async() => {
+        if(!editMessage && chat.input.isEphemeralComposerMode()) {
+          toastNew({langPackKey: 'Ephemeral.UnsupportedContent'});
+          return;
+        }
+
         let promise: Promise<any>;
         if(appending) {
           const maxId = editMessage?.media.todo.list.reduce((max, item) => Math.max(max, item.id), 0) ?? 0;

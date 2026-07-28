@@ -71,11 +71,14 @@ export default class PopupWebAppPreparedMessage extends PopupElement<{
 
             await appImManager.setInnerPeer({peerId: chosenPeerId});
             const queryAndResultIds = generateQId(this.message.query_id, this.message.result.id);
-            await this.managers.appInlineBotsManager.sendInlineResult(chosenPeerId, this.botId, queryAndResultIds, {
+            const sent = await this.managers.appInlineBotsManager.sendInlineResult(chosenPeerId, this.botId, queryAndResultIds, {
               inlineResult: this.message.result,
               ...appImManager.chat.getMessageSendingParams(),
               clearDraft: true
             })
+            if(!sent) {
+              return false;
+            }
 
             finished = true
             this.dispatchEvent('finish');

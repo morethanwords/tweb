@@ -22,6 +22,8 @@ import {BubbleElementAddons} from '@components/chat/types';
 import ChatThreadSeparator from '@components/chat/bubbleParts/chatThreadSeparator';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import {AdminLog} from '@appManagers/appChatsManager';
+import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
+import compareBubbleTimelineMessages from '@components/chat/compareBubbleTimelineMessages';
 
 
 type GroupItem = {
@@ -38,14 +40,40 @@ type GroupItem = {
   reverse?: boolean
 };
 
-function insertSomething<T>(to: Array<T>, what: T, sortKey: keyof T, reverse: boolean) {
+function insertSomething<T>(
+  to: Array<T>,
+  what: T,
+  sortKey: keyof T,
+  reverse: boolean,
+  compare?: (item1: T, item2: T) => number
+) {
   if(!sortKey) {
     indexOfAndSplice(to, what);
     return (reverse ? to.push(what) : to.unshift(what)) - 1;
+  } else if(compare) {
+    indexOfAndSplice(to, what);
+
+    let left = 0;
+    let right = to.length;
+    while(left < right) {
+      const middle = (left + right) >> 1;
+      if(compare(what, to[middle]) > 0) {
+        right = middle;
+      } else {
+        left = middle + 1;
+      }
+    }
+
+    to.splice(left, 0, what);
+    return left;
   } else {
     // @ts-ignore
     return insertInDescendSortedArray(to, what, sortKey);
   }
+}
+
+function compareTimelineItems(item1: GroupItem, item2: GroupItem) {
+  return compareBubbleTimelineMessages(item1.message, item2.message);
 }
 
 function canHaveReplyMarkup(message: Message.message) {
@@ -241,7 +269,13 @@ export class BubbleGroup {
 
   insertItem(item: GroupItem) {
     const {items} = this;
-    insertSomething(items, item, this.groups.sortGroupItemsKey, this.groups.reverse = item.reverse);
+    insertSomething(
+      items,
+      item,
+      this.groups.sortGroupItemsKey,
+      this.groups.reverse = item.reverse,
+      this.groups.compareGroupItems
+    );
 
     item.group = this;
     if(items.length === 1) {
@@ -361,6 +395,9 @@ export default class BubbleGroups {
   private sortItemsKey: Extract<keyof GroupItem, 'timestamp' | 'mid'>;
   private sortGroupsKey: Extract<keyof BubbleGroup, 'lastMid' | 'lastTimestamp'>;
   public sortGroupItemsKey: Extract<keyof GroupItem, 'groupMid' | 'timestamp'>;
+  public compareGroupItems?: typeof compareTimelineItems;
+  private compareItems?: typeof compareTimelineItems;
+  private compareGroups?: (group1: BubbleGroup, group2: BubbleGroup) => number;
   public reverse: boolean; // * used for search
 
   constructor(private chat: Chat) {
@@ -368,6 +405,11 @@ export default class BubbleGroups {
       this.sortItemsKey = chat.type === ChatType.Scheduled ? 'timestamp' : 'mid';
       this.sortGroupsKey = chat.type === ChatType.Scheduled ? 'lastTimestamp' : 'lastMid';
       this.sortGroupItemsKey = /* chat.type === 'scheduled' ? 'timestamp' :  */'groupMid';
+
+      if(chat.type === ChatType.Chat || chat.type === ChatType.Discussion) {
+        this.compareItems = this.compareGroupItems = compareTimelineItems;
+        this.compareGroups = (group1, group2) => compareTimelineItems(group1.lastItem, group2.lastItem);
+      }
     }
   }
 
@@ -575,6 +617,8 @@ export default class BubbleGroups {
 
     if(isMessageForVerificationBot(item1.message)) return false;
 
+    if(isEphemeralMessage(item1.message) !== isEphemeralMessage(item2.message)) return false;
+
     if(
       item1.message?._ === 'message' && item1.message?.suggested_post ||
       item2.message?._ === 'message' && item2.message?.suggested_post
@@ -639,11 +683,23 @@ export default class BubbleGroups {
   }
 
   insertItemToArray(item: GroupItem, array: GroupItem[]) {
-    return insertSomething(array, item, this.sortItemsKey, this.reverse = item.reverse);
+    return insertSomething(
+      array,
+      item,
+      this.sortItemsKey,
+      this.reverse = item.reverse,
+      this.compareItems
+    );
   }
 
   insertGroup(group: BubbleGroup) {
-    const idx = insertSomething(this.groups, group, this.sortGroupsKey, this.reverse);
+    const idx = insertSomething(
+      this.groups,
+      group,
+      this.sortGroupsKey,
+      this.reverse,
+      this.compareGroups
+    );
     // this.updateGroupsClassNames();
     return idx;
   }

@@ -1,0 +1,20 @@
+{
+  "constructorsFromUnions": [
+    "community",
+    "communityForbidden",
+    "communityFull",
+    "dialogCommunity",
+    "dialogPeerCommunity",
+    "inputDialogPeerCommunity",
+    "inputNotifyCommunity",
+    "notifyCommunity"
+  ],
+  "constructorParams": {
+    "chatAdminRights": [
+      "manage_linked_peers"
+    ],
+    "chatBannedRights": [
+      "manage_linked_peers"
+    ]
+  }
+}

@@ -13,6 +13,7 @@ function makeBotInfo(userId: UserId, commands: Array<[string, string]>): BotInfo
     user_id: userId,
     commands: commands.map(([command, description]): BotCommand.botCommand => ({
       _: 'botCommand',
+      pFlags: {},
       command,
       description
     }))
@@ -92,11 +93,29 @@ describe('bot commands', () => {
     ]);
   });
 
+  it('exposes the ephemeral flag to command autocomplete', () => {
+    const botId = 100 as UserId;
+    const peerId = (300 as ChatId).toPeerId(true);
+    const botInfo = makeBotInfo(botId, [
+      ['public', 'Public'],
+      ['private', 'Private']
+    ]);
+    botInfo.commands[1].pFlags.ephemeral = true;
+
+    expect(processPeerFullForCommands(peerId, {
+      _: 'chatFull',
+      bot_info: [botInfo]
+    } as ChatFull.chatFull).map(({name, ephemeral}) => [name, ephemeral])).toEqual([
+      ['/public', false],
+      ['/private', true]
+    ]);
+  });
+
   it('applies updateBotCommands received before the full peer is loaded', async() => {
     const botId = 100 as UserId;
     const peerId = botId.toPeerId(false);
     const {manager, pushToState, updateListeners} = await makeProfileManager(peerId);
-    const commands = [{_: 'botCommand', command: 'new', description: 'New'}] as BotCommand.botCommand[];
+    const commands = [{_: 'botCommand', pFlags: {}, command: 'new', description: 'New'}] as BotCommand.botCommand[];
 
     updateListeners.updateBotCommands({
       _: 'updateBotCommands',
@@ -135,7 +154,7 @@ describe('bot commands', () => {
   it('restores cached commands after the manager is restarted', async() => {
     const botId = 100 as UserId;
     const peerId = botId.toPeerId(false);
-    const commands = [{_: 'botCommand', command: 'new', description: 'New'}] as BotCommand.botCommand[];
+    const commands = [{_: 'botCommand', pFlags: {}, command: 'new', description: 'New'}] as BotCommand.botCommand[];
     const botCommands: State['botCommands'] = {};
     const {updateListeners} = await makeProfileManager(peerId, botCommands);
 
@@ -155,7 +174,7 @@ describe('bot commands', () => {
   it('clears persisted commands together with dialogs but not on initialization', async() => {
     const botId = 100 as UserId;
     const peerId = botId.toPeerId(false);
-    const commands = [{_: 'botCommand', command: 'new', description: 'New'}] as BotCommand.botCommand[];
+    const commands = [{_: 'botCommand', pFlags: {}, command: 'new', description: 'New'}] as BotCommand.botCommand[];
     const {manager: profileManager, pushToState} = await makeProfileManager(peerId, {
       [peerId]: {[botId]: commands}
     });

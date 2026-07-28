@@ -139,12 +139,29 @@ export default class AppTranslationsManager extends AppManager {
     mid: number
   } | {
     text: TextWithEntities
-  }) & {lang: string, onlyCache?: boolean}) {
+  }) & {lang: string, onlyCache?: boolean}): MaybeDeferredPromise<TextWithEntities> {
     this.translateTextBatch[options.lang] ??= {text: new Map(), messages: new Map(), messagesPromises: new Map()};
     const batch = this.translateTextBatch[options.lang];
     const isMessage = 'peerId' in options;
 
     if(isMessage) {
+      const message = this.appMessagesManager.getMessageByPeer(options.peerId, options.mid);
+      if(this.appMessagesManager.isEphemeralMessageId(options.mid) && !message) {
+        return Promise.reject(makeError('MESSAGE_ID_INVALID'));
+      }
+
+      if(this.appMessagesManager.isEphemeralMessage(message)) {
+        return this.translateText({
+          text: {
+            _: 'textWithEntities',
+            text: message.message,
+            entities: message.entities || []
+          },
+          lang: options.lang,
+          onlyCache: options.onlyCache
+        });
+      }
+
       let map = batch.messages.get(options.peerId);
       if(!map) {
         batch.messages.set(options.peerId, map = new Map());
@@ -205,6 +222,13 @@ export default class AppTranslationsManager extends AppManager {
     mid: number,
     lang?: string
   }) {
+    if(
+      this.appMessagesManager.isEphemeralMessageId(mid) ||
+      this.appMessagesManager.isEphemeralMessage(this.appMessagesManager.getMessageByPeer(peerId, mid))
+    ) {
+      return Promise.reject(makeError('UNKNOWN'));
+    }
+
     let promise = ((this.summaries[peerId] ??= {})[mid] ??= {})[lang];
     if(promise) {
       return promise;

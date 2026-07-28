@@ -11,6 +11,7 @@ import tsNow from '@helpers/tsNow';
 import PopupDeleteMegagroupMessages from '@components/popups/deleteMegagroupMessages';
 import getParticipantPeerId from '@appManagers/utils/chats/getParticipantPeerId';
 import namedPromises from '@helpers/namedPromises';
+import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
 
 export default class PopupDeleteMessages {
   constructor(
@@ -40,8 +41,9 @@ export default class PopupDeleteMessages {
         managers.appMessagesManager.getMessageByPeer(peerId, mid)))
     });
 
+    const isEphemeral = !!messages.length && messages.every(isEphemeralMessage);
     const isMegagroup = await managers.appPeersManager.isMegagroup(peerId);
-    if(isMegagroup && !messages.some((message) => message.pFlags.out)) {
+    if(!isEphemeral && isMegagroup && !messages.some((message) => message.pFlags.out)) {
       const participants = await managers.appProfileManager.getParticipants({
         id: peerId.toChatId(),
         filter: {_: 'channelParticipantsAdmins'},
@@ -95,7 +97,9 @@ export default class PopupDeleteMessages {
       titleArgs = [i18n('messages', [mids.length])];
     }
 
-    if(isMegagroup) {
+    if(isEphemeral) {
+      description = isSingleMessage ? 'AreYouSureDeleteSingleMessage' : 'AreYouSureDeleteFewMessages';
+    } else if(isMegagroup) {
       description = isSingleMessage ? 'AreYouSureDeleteSingleMessageMega' : 'AreYouSureDeleteFewMessagesMega';
     } else if(isBot) {
       description = isSingleMessage ? 'AreYouSureDeleteSingleMessageBot' : 'AreYouSureDeleteFewMessagesBot';
@@ -104,7 +108,9 @@ export default class PopupDeleteMessages {
     }
 
     let canRevoke: number[] = mids.slice();
-    if(peerId === rootScope.myId || type === ChatType.Scheduled || isBot) {
+    if(isEphemeral) {
+      canRevoke = [];
+    } else if(peerId === rootScope.myId || type === ChatType.Scheduled || isBot) {
 
     } else if(peerId.isUser()) {
       canRevoke = canRevoke.filter((mid, idx) => {

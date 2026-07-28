@@ -34,10 +34,13 @@ export default class AutocompleteHelperController {
     this.helpers.add(helper);
   }
 
-  public hideOtherHelpers(preserveHelpers?: Set<AutocompleteHelper>) {
+  public hideOtherHelpers(
+    preserveHelpers?: Set<AutocompleteHelper>,
+    skipAnimation = false
+  ) {
     this.helpers.forEach((helper) => {
       if(!preserveHelpers?.has(helper)) {
-        helper.toggle(true, true);
+        helper.toggle(true, true, skipAnimation);
       }
     });
 

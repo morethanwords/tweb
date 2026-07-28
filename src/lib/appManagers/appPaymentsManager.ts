@@ -13,8 +13,10 @@ import {
 } from '@layer';
 import {AppManager} from '@appManagers/manager';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
+import isEphemeralMessageId from '@appManagers/utils/messageId/isEphemeralMessageId';
 import formatStarsAmount from '@appManagers/utils/payments/formatStarsAmount';
 import forEachReverse from '@helpers/array/forEachReverse';
+import makeError from '@helpers/makeError';
 
 export default class AppPaymentsManager extends AppManager {
   private premiumPromo: MaybePromise<HelpPremiumPromo>;
@@ -40,6 +42,10 @@ export default class AppPaymentsManager extends AppManager {
   }
 
   public getInputInvoiceByPeerId(peerId: PeerId, mid: number): InputInvoice.inputInvoiceMessage {
+    if(isEphemeralMessageId(mid)) {
+      throw makeError('MESSAGE_ID_INVALID');
+    }
+
     return {
       _: 'inputInvoiceMessage',
       peer: this.appPeersManager.getInputPeerById(peerId),
@@ -62,6 +68,10 @@ export default class AppPaymentsManager extends AppManager {
   }
 
   public getPaymentReceipt(peerId: PeerId, mid: number) {
+    if(isEphemeralMessageId(mid)) {
+      return Promise.reject(makeError('MESSAGE_ID_INVALID'));
+    }
+
     return this.apiManager.invokeApi('payments.getPaymentReceipt', {
       peer: this.appPeersManager.getInputPeerById(peerId),
       msg_id: getServerMessageId(mid)
@@ -165,6 +175,10 @@ export default class AppPaymentsManager extends AppManager {
   }
 
   public getGiveawayInfo(peerId: PeerId, mid: number) {
+    if(isEphemeralMessageId(mid)) {
+      return Promise.reject(makeError('MESSAGE_ID_INVALID'));
+    }
+
     return this.apiManager.invokeApiSingleProcess({
       method: 'payments.getGiveawayInfo',
       params: {

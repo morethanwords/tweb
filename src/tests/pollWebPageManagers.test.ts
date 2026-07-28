@@ -68,7 +68,11 @@ function makePollsManager(messages: Message.message[] = []) {
       getMessageByPeer: (peerId: PeerId, mid: number) =>
         messages.find((message) => !message.pFlags.is_scheduled && message.peerId === peerId && message.mid === mid),
       getScheduledMessageByPeer: (peerId: PeerId, mid: number) =>
-        messages.find((message) => message.pFlags.is_scheduled && message.peerId === peerId && message.mid === mid)
+        messages.find((message) => message.pFlags.is_scheduled && message.peerId === peerId && message.mid === mid),
+      dispatchMessageEditEvent: (message: Message.message) => dispatched.push({
+        event: message.pFlags.ephemeral ? 'ephemeral_history_edit' : 'message_edit',
+        payload: {message}
+      })
     },
     appWebPagesManager: {getCachedWebPage: (): WebPage => undefined},
     rootScope: {
@@ -407,6 +411,25 @@ describe('AppPollsManager webpage index', () => {
 
     expect(attachedMedia.webpage).toMatchObject({url: 'https://updated.example/30'});
     expect(dispatched.filter(({event}) => event === 'message_edit')).toHaveLength(1);
+  });
+
+  test('uses the ephemeral event namespace for attached webpage updates', () => {
+    const poll = makePoll(1, []);
+    const attachedMedia: MessageMedia.messageMediaWebPage = {
+      _: 'messageMediaWebPage',
+      pFlags: {},
+      webpage: makeWebPage(30)
+    };
+    const message = makePollMessage(poll, attachedMedia);
+    message.pFlags.ephemeral = true;
+    const {manager, listeners, dispatched} = makePollsManager([message]);
+    manager.savePoll(poll, makeResults(), message);
+
+    (manager as any).appWebPagesManager.getCachedWebPage = () => makeWebPage(30, 'https://updated.example/30');
+    listeners.get('webpage_updated')({id: 30});
+
+    expect(dispatched.filter(({event}) => event === 'ephemeral_history_edit')).toHaveLength(1);
+    expect(dispatched.filter(({event}) => event === 'message_edit')).toHaveLength(0);
   });
 
   test('passes empty webpage placeholders through media saving', () => {

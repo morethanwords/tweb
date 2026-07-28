@@ -271,6 +271,8 @@ declare global {
     | 'CHANNELS_TOO_MUCH'
     | 'BOOSTS_REQUIRED'
     | 'USERNAME_OCCUPIED'
+    | 'MESSAGE_EDIT_FORBIDDEN'
+    | 'MESSAGE_ID_INVALID'
   ;
 
   type ErrorType = LocalErrorType | ServerErrorType;

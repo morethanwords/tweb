@@ -1364,7 +1364,8 @@ export default class Chat extends EventListenerBase<{
         silent: this.input.sendSilent,
         sendAsPeerId: this.input.sendAsPeerId,
         effect: this.input.effect(),
-        suggestedPost: this.input.suggestedPost
+        suggestedPost: this.input.suggestedPost,
+        ...this.input.getEphemeralSendingParams()
       }),
       replyToMonoforumPeerId: this.input?.suggestedPost?.monoforumThreadId || this.input?.getReplyTo()?.replyToMonoforumPeerId || this.monoforumThreadId,
       savedReaction: this.savedReaction

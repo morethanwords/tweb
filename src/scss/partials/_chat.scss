@@ -188,6 +188,22 @@
 		}
 	}
 
+  &.is-ephemeral-composer {
+    .btn-send {
+      box-shadow: 0 0 0 2px var(--surface-color), 0 0 0 4px var(--primary-color);
+    }
+
+    .btn-send-stars-badge {
+      display: none;
+    }
+  }
+
+  .reply-title-ephemeral-icon {
+    margin-inline-end: .25rem;
+    font-size: 1rem;
+    vertical-align: -2px;
+  }
+
 	.btn-record-cancel,
   .btn-send {
 		font-size: 1.5rem;
@@ -287,6 +303,13 @@
       animation: chat-input-ai-editor-button-star-animation 3.2s ease-in-out 0.32s forwards;
     }
   }
+}
+
+.ephemeral-context-about {
+  pointer-events: none;
+  cursor: default;
+  white-space: normal;
+  line-height: 1.25rem;
 }
 
 @keyframes chat-input-ai-editor-button-star-animation {
@@ -1200,6 +1223,14 @@
 
       .bubbles-group-avatar {
         transform: translate3d(calc(2.5rem * var(--reflect)), 0, 0) scale3d(.76, .76, 1);
+      }
+
+      .bubble.selection-group-incompatible .bubble-content-wrapper {
+        transform: none;
+      }
+
+      .bubbles-group.selection-group-incompatible .bubbles-group-avatar {
+        transform: translate3d(0, 0, 0) scale3d(1, 1, 1);
       }
     }
 

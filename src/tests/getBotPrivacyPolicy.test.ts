@@ -9,9 +9,9 @@ function makeBotInfo(partial: Partial<BotInfo.botInfo> = {}): BotInfo.botInfo {
   };
 }
 
-const privacyCommand = {_: 'botCommand', command: 'privacy', description: 'Privacy policy'} as const;
-const startCommand = {_: 'botCommand', command: 'start', description: 'Start'} as const;
-const privacySettingsCommand = {_: 'botCommand', command: 'privacy_settings', description: 'Settings'} as const;
+const privacyCommand = {_: 'botCommand', pFlags: {}, command: 'privacy', description: 'Privacy policy'} as const;
+const startCommand = {_: 'botCommand', pFlags: {}, command: 'start', description: 'Start'} as const;
+const privacySettingsCommand = {_: 'botCommand', pFlags: {}, command: 'privacy_settings', description: 'Settings'} as const;
 
 describe('getBotPrivacyPolicy', () => {
   test('default URL constant matches tdesktop/Android', () => {

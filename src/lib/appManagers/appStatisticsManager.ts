@@ -4,6 +4,8 @@ import {ChatFull, Message, MessagesMessages, PublicForward, StatsBroadcastStats,
 import {DcId, InvokeApiOptions} from '@types';
 import {AppManager} from '@appManagers/manager';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
+import isEphemeralMessageId from '@appManagers/utils/messageId/isEphemeralMessageId';
+import makeError from '@helpers/makeError';
 
 type GetStatsParams = {
   peerId: PeerId,
@@ -106,6 +108,10 @@ export default class AppStatisticsManager extends AppManager {
     limit: number,
     offset?: string
   }) {
+    if(isEphemeralMessageId(params.mid)) {
+      throw makeError('MESSAGE_ID_INVALID');
+    }
+
     const options = await this.getInvokeOptions(params);
     return this.apiManager.invokeApiSingleProcess({
       method: 'stats.getMessagePublicForwards',
@@ -121,6 +127,10 @@ export default class AppStatisticsManager extends AppManager {
   }
 
   public async getMessageStats(params: GetStatsParams) {
+    if(isEphemeralMessageId(params.mid)) {
+      throw makeError('MESSAGE_ID_INVALID');
+    }
+
     const options = await this.getInvokeOptions(params);
     return this.apiManager.invokeApiSingleProcess({
       method: 'stats.getMessageStats',
@@ -140,6 +150,10 @@ export default class AppStatisticsManager extends AppManager {
   }
 
   public async getPollStats(params: GetStatsParams): Promise<{stats: StatsPollStats, dcId: DcId}> {
+    if(isEphemeralMessageId(params.mid)) {
+      throw makeError('MESSAGE_ID_INVALID');
+    }
+
     const options = await this.getInvokeOptions(params);
     return this.apiManager.invokeApiSingleProcess({
       method: 'stats.getPollStats',

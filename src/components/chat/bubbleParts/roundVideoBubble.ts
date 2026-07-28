@@ -54,7 +54,7 @@ export function wrapRoundVideoBubble({
 
   const bubbleVideoClassNames = ['round', 'just-media'];
   const bubbleAudioClassNames = ['can-have-tail', 'voice-message'];
-  const selectorsToHideWhenCollapsed = ['.topic-name-button-container', '.reply', '.bubble-name-forwarded'];
+  const selectorsToHideWhenCollapsed = ['.bubble-name-chip-container', '.reply', '.bubble-name-forwarded'];
 
   const getBubblesContainer = () => bubble.closest('.bubbles');
 

@@ -17,14 +17,21 @@ export default function processPeerFullForCommands(
     });
   }
 
-  type T = {peerId: PeerId, name: string, description: string, index: number, command: string};
+  type T = {
+    peerId: PeerId,
+    name: string,
+    description: string,
+    index: number,
+    command: string,
+    ephemeral: boolean
+  };
   const commands: T[] = [];
   botInfos.forEach((botInfo) => {
     if(!botInfo.commands) {
       return;
     }
 
-    botInfo.commands.forEach(({command, description}) => {
+    botInfo.commands.forEach(({command, description, pFlags}) => {
       const c = '/' + command;
       const commandIndex = commands.length;
       commands.push({
@@ -32,7 +39,8 @@ export default function processPeerFullForCommands(
         command: command,
         name: c,
         description: description,
-        index: commandIndex
+        index: commandIndex,
+        ephemeral: !!pFlags.ephemeral
       });
 
       if(index) {

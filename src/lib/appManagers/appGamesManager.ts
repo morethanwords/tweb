@@ -1,7 +1,9 @@
 import {Game, Photo, Document, MessagesHighScores} from '@layer';
 import {AppManager} from '@appManagers/manager';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
+import isEphemeralMessageId from '@appManagers/utils/messageId/isEphemeralMessageId';
 import type {ReferenceContext} from '@lib/storages/references';
+import makeError from '@helpers/makeError';
 
 export default class AppGamesManager extends AppManager {
   public saveGame(game: Game, mediaContext?: ReferenceContext): Game {
@@ -23,6 +25,10 @@ export default class AppGamesManager extends AppManager {
     editMessage?: boolean,
     force?: boolean
   }) {
+    if(isEphemeralMessageId(mid)) {
+      return Promise.reject(makeError('MESSAGE_ID_INVALID'));
+    }
+
     return this.apiManager.invokeApiSingleProcess({
       method: 'messages.setGameScore',
       params: {
@@ -41,6 +47,10 @@ export default class AppGamesManager extends AppManager {
   }
 
   public getGameHighScores(peerId: PeerId, mid: number, userId: UserId): Promise<MessagesHighScores> {
+    if(isEphemeralMessageId(mid)) {
+      return Promise.reject(makeError('MESSAGE_ID_INVALID'));
+    }
+
     return this.apiManager.invokeApiSingleProcess({
       method: 'messages.getGameHighScores',
       params: {

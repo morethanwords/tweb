@@ -321,7 +321,11 @@ export function getKeyboardButtonHandler({
     default: {
       if(!message) {
         onClick = () => {
-          rootScope.managers.appMessagesManager.sendText({peerId, text: button.text});
+          rootScope.managers.appMessagesManager.sendText({
+            ...chat.input?.getEphemeralSendingSnapshot(),
+            peerId,
+            text: button.text
+          });
         };
       }
 

@@ -32,7 +32,7 @@ import replaceContent from '@helpers/dom/replaceContent';
 import whichChild from '@helpers/dom/whichChild';
 import PopupElement from '@components/popups';
 import singleInstance from '@lib/singleInstance';
-import {hideToast, toastNew} from '@components/toast';
+import {hideToast, toast, toastNew} from '@components/toast';
 import debounce from '@helpers/schedulers/debounce';
 import pause from '@helpers/schedulers/pause';
 import MEDIA_MIME_TYPES_SUPPORTED from '@environment/mediaMimeTypesSupport';
@@ -144,6 +144,7 @@ import positionMenu from '@helpers/positionMenu';
 import {copyTextToClipboard} from '@helpers/clipboard';
 import showDatePickerPopup from '@components/popups/datePicker';
 import {getFullDate} from '@helpers/date/getFullDate';
+import noop from '@helpers/noop';
 
 export type ChatSavedPosition = {
   /**
@@ -461,6 +462,26 @@ export class AppImManager extends EventListenerBase<{
           }
         });
       }
+    });
+
+    rootScope.addEventListener('ephemeral_send_error', ({retryId}) => {
+      const retry = anchorCallback(() => {
+        hideToast();
+        this.managers.appMessagesManager.retryEphemeralMessage(retryId).catch(noop);
+      });
+      retry.append(i18n('Ephemeral.Retry'));
+
+      const content = document.createDocumentFragment();
+      content.append(i18n('Ephemeral.SendFailed'), ' ', retry);
+      toast(content, undefined, 6000);
+    });
+
+    rootScope.addEventListener('ephemeral_send_blocked', ({reason}) => {
+      toastNew({
+        langPackKey: reason === 'ambiguous' ?
+          'Ephemeral.CommandAmbiguous' :
+          'Ephemeral.SendUnavailable'
+      });
     });
 
     rootScope.addEventListener('file_speed_limited', ({increaseTimes, isUpload}) => {
@@ -2505,12 +2526,12 @@ export class AppImManager extends EventListenerBase<{
     const mediaDropsContainer = dropsContainer.cloneNode(true) as HTMLElement;
   }
 
-  private async canDrag() {
+  private async canDrag(ephemeral = this.chat?.input?.isEphemeralComposerMode()) {
     const chat = this.chat;
     const peerId = chat?.peerId;
-    const good = !(!peerId || overlayCounter.isOverlayActive || !(await chat.canSend('send_media')));
+    const good = !(!peerId || overlayCounter.isOverlayActive || (!ephemeral && !(await chat.canSend('send_media'))));
     if(good && !chat.input?.editMessage) {
-      if(await this.chat.input.showSlowModeTooltipIfNeeded({
+      if(!ephemeral && await this.chat.input.showSlowModeTooltipIfNeeded({
         element: this.chat.input.attachMenu
       })) {
         return false;
@@ -2526,6 +2547,7 @@ export class AppImManager extends EventListenerBase<{
     files?: Awaited<ReturnType<typeof getFilesFromEvent>>
   ) => {
     const newMediaPopup = getCurrentNewMediaPopup();
+    const ephemeralSnapshot = this.chat?.input?.getEphemeralSendingSnapshot();
 
     // console.log('document paste');
     // console.log('item', event.clipboardData.getData());
@@ -2540,7 +2562,7 @@ export class AppImManager extends EventListenerBase<{
     }
 
     files ??= await getFilesFromEvent(e);
-    if(!(await this.canDrag()) && !newMediaPopup) {
+    if(!(await this.canDrag(!!ephemeralSnapshot)) && !newMediaPopup) {
       return;
     }
 
@@ -2548,12 +2570,17 @@ export class AppImManager extends EventListenerBase<{
       return;
     }
 
+    const chatInput = this.chat.input;
+    if((ephemeralSnapshot || chatInput.isEphemeralComposerMode()) && files.length > 1) {
+      files = files.slice(0, 1);
+      toastNew({langPackKey: 'Ephemeral.SingleAttachment'});
+    }
+
     if(newMediaPopup) {
       newMediaPopup.addFiles(files);
       return;
     }
 
-    const chatInput = this.chat.input;
     if(!chatInput.canPaste()) {
       return;
     }
@@ -2565,14 +2592,30 @@ export class AppImManager extends EventListenerBase<{
       chatInput.willAttachType = (canUploadAsMedia ? 'media' : canUploadAsDocument ? 'document' : undefined);
 
       if(chatInput.willAttachType) {
-        PopupElement.createPopup(PopupNewMedia, this.chat, [file], chatInput.willAttachType);
+        PopupElement.createPopup(
+          PopupNewMedia,
+          this.chat,
+          [file],
+          chatInput.willAttachType,
+          undefined,
+          undefined,
+          ephemeralSnapshot
+        );
       }
 
       return;
     }
 
     chatInput.willAttachType = attachType || ((MEDIA_MIME_TYPES_SUPPORTED.has(getFileMimeType(files[0])) || isConvertibleMov(files[0])) ? 'media' : 'document');
-    PopupElement.createPopup(PopupNewMedia, this.chat, files, chatInput.willAttachType);
+    PopupElement.createPopup(
+      PopupNewMedia,
+      this.chat,
+      files,
+      chatInput.willAttachType,
+      undefined,
+      undefined,
+      ephemeralSnapshot
+    );
   };
 
   private overrideHash(peerId?: PeerId) {

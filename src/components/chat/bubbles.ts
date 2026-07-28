@@ -1,5 +1,5 @@
 import type {AppImManager, ChatSavedPosition, ChatSetInnerPeerOptions, ChatSetPeerOptions} from '@lib/appImManager';
-import type {HistoryResult, MyMessage} from '@appManagers/appMessagesManager';
+import type {HistoryResult, MyEphemeralMessage, MyMessage} from '@appManagers/appMessagesManager';
 import type {MyDocument} from '@appManagers/appDocsManager';
 import type Chat from '@components/chat/chat';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
@@ -64,6 +64,11 @@ import type ReactionElement from '@components/chat/reaction';
 import LottiePlayer from '@lib/lottie/lottiePlayer';
 import pause from '@helpers/schedulers/pause';
 import ScrollSaver from '@helpers/scrollSaver';
+import mergeEphemeralHistoryForRender from '@components/chat/mergeEphemeralHistoryForRender';
+import placeEphemeralBadge, {
+  shouldKeepSenderNameAcrossGroup,
+  shouldRenderSenderNameWithEphemeralBadge
+} from '@components/chat/placeEphemeralBadge';
 import {getAppWindow, onAppWindowChange, onBeforeAppWindowChange} from '@helpers/appWindow';
 import getObjectKeysAndSort from '@helpers/object/getObjectKeysAndSort';
 import forEachReverse from '@helpers/array/forEachReverse';
@@ -233,6 +238,8 @@ import {linkToPollOption} from './bubbleParts/pollMessageContent/pollToOptionLin
 import {getSimulatedEvent} from '@helpers/dom/dispatchEvent';
 import {richMessageToPage} from '@lib/richMessage';
 import {RichMessageBubble} from '@components/chat/bubbles/richMessage';
+import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
+import isEphemeralMessageId from '@appManagers/utils/messageId/isEphemeralMessageId';
 
 // TODO: fix new message won't be rendered if an old one is rendering in the moment
 
@@ -612,6 +619,10 @@ export default class ChatBubbles {
   private isTopPaddingSet = false;
 
   private getSponsoredMessagePromise: Promise<void>;
+  private ephemeralHistoryPromise: Promise<MyEphemeralMessage[]>;
+  private ephemeralHistoryLoaded = false;
+  private ephemeralHistoryGeneration = 0;
+  private pendingEphemeralHistory = 0;
 
   private previousStickyDate: HTMLElement;
 
@@ -1106,6 +1117,17 @@ export default class ChatBubbles {
       onMessageEdit(message);
     });
 
+    this.listenerSetter.add(rootScope)('ephemeral_history_edit', ({storageKey, message}) => {
+      if(
+        storageKey !== this.chat.messagesStorageKey ||
+        (this.chat.type !== ChatType.Chat && this.chat.type !== ChatType.Discussion)
+      ) {
+        return;
+      }
+
+      onMessageEdit(message);
+    });
+
     this.listenerSetter.add(rootScope)('message_error', async({storageKey, tempId, peerId}) => {
       if(storageKey !== this.chat.messagesStorageKey) return;
 
@@ -1533,7 +1555,11 @@ export default class ChatBubbles {
 
         if(bubble && !bubble.classList.contains('bubble-first')) {
           const message = this.chat.getMessage(getBubbleFullMid(bubble));
-          if(message.pFlags.is_outgoing || message.peerId !== this.peerId) {
+          if(
+            message.pFlags.is_outgoing ||
+            message.peerId !== this.peerId ||
+            (isEphemeralMessage(message) && message.pFlags.out)
+          ) {
             return;
           }
 
@@ -1554,7 +1580,8 @@ export default class ChatBubbles {
           const bubble = findUpClassName(e.target, 'bubble');
           if(!bubble ||
             bubble.classList.contains('service') ||
-            bubble.classList.contains('is-sending')) {
+            bubble.classList.contains('is-sending') ||
+            !this.canReplyToBubble(bubble)) {
             return false;
           }
 
@@ -1696,7 +1723,9 @@ export default class ChatBubbles {
 
         if(shouldReply) {
           const message = this.chat.getMessage(getBubbleFullMid(_target));
-          this.chat.input.initMessageReply(this.chat.input.getChatInputReplyToFromMessage(message));
+          if(!(isEphemeralMessage(message) && message.pFlags.out)) {
+            this.chat.input.initMessageReply(this.chat.input.getChatInputReplyToFromMessage(message));
+          }
           shouldReply = false;
         }
       });
@@ -1799,7 +1828,8 @@ export default class ChatBubbles {
         const bubble = findUpClassName(e.target, 'bubble');
         if(!bubble ||
           bubble.classList.contains('service') ||
-          bubble.classList.contains('is-sending')) {
+          bubble.classList.contains('is-sending') ||
+          !this.canReplyToBubble(bubble)) {
           axis = 'y';
           idle();
           return;
@@ -1855,6 +1885,11 @@ export default class ChatBubbles {
     }, {passive: false, capture: true});
   }
 
+  private canReplyToBubble(bubble: HTMLElement) {
+    const message = this.chat.getMessage(getBubbleFullMid(bubble));
+    return !!message && !(isEphemeralMessage(message) && message.pFlags.out);
+  }
+
   public constructPeerHelpers() {
     // will call when message is sent (only 1)
     this.listenerSetter.add(rootScope)('history_append', async({storageKey, message}) => {
@@ -1900,6 +1935,34 @@ export default class ChatBubbles {
       this.updateHasMessages();
     });
 
+    this.listenerSetter.add(rootScope)('ephemeral_history_append', ({storageKey, message}) => {
+      if(
+        storageKey !== this.chat.messagesStorageKey ||
+        (this.chat.type !== ChatType.Chat && this.chat.type !== ChatType.Discussion) ||
+        !this.isMessageInCurrentThread(message)
+      ) {
+        return;
+      }
+
+      if(!this.scrollable.loadedAll.bottom || !this.chatInner.parentElement) {
+        this.ephemeralHistoryLoaded = false;
+        ++this.ephemeralHistoryGeneration;
+        return;
+      }
+
+      if(liteMode.isAvailable('chat_background')) {
+        this.updateGradient = true;
+      }
+
+      const middleware = this.getMiddleware();
+      const scrolledDown = this.scrolledDown || this.scrollable.isScrolledToEnd;
+      void this.renderNewMessage(message, scrolledDown).then(() => {
+        if(middleware()) {
+          this.updateHasMessages();
+        }
+      });
+    });
+
     this.listenerSetter.add(rootScope)('history_delete', ({peerId, msgs}) => {
       if((peerId !== this.peerId && !GLOBAL_MIDS) || this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Static || this.chat.type === ChatType.Logs) {
         return;
@@ -1912,6 +1975,20 @@ export default class ChatBubbles {
         peerId,
         mids
       });
+    });
+
+    this.listenerSetter.add(rootScope)('ephemeral_history_delete', ({peerId, msgs}) => {
+      if(
+        peerId !== this.peerId ||
+        (this.chat.type !== ChatType.Chat && this.chat.type !== ChatType.Discussion)
+      ) {
+        return;
+      }
+
+      const mids = [...msgs];
+      this.deleteMessagesByIds(mids.map((mid) => makeFullMid(peerId, mid)));
+      this.updateMessageReply({peerId, mids});
+      this.updateHasMessages();
     });
 
     this.listenerSetter.add(rootScope)('history_delete_key', ({historyKey, mid}) => {
@@ -2758,7 +2835,7 @@ export default class ChatBubbles {
     content.append(hoverReaction);
 
     let message = this.chat.getMessage(getBubbleFullMid(bubble));
-    if(message?._ !== 'message') {
+    if(message?._ !== 'message' || isEphemeralMessage(message)) {
       this.unhoverPrevious();
       return;
     }
@@ -3964,7 +4041,7 @@ export default class ChatBubbles {
       return this.getBubble(nextFullMid);
     }
 
-    const fullMids = this.getRenderedHistory(prev ? 'desc' : 'asc');
+    const fullMids = this.getRenderedHistory(prev ? 'desc' : 'asc', true);
 
     let filterCallback: (_mid: FullMid) => boolean;
     if(prev) filterCallback = (_mid) => splitFullMid(_mid).mid < splitFullMid(fullMid).mid;
@@ -3976,6 +4053,93 @@ export default class ChatBubbles {
     });
 
     return this.getBubble(foundMid);
+  }
+
+  private isMessageInCurrentThread(message: MyMessage) {
+    if(message.peerId !== this.peerId) {
+      return false;
+    }
+
+    if(
+      this.chat.threadId &&
+      getMessageThreadId(message, {
+        isForum: this.chat.isForum,
+        isBotforum: this.chat.isBotforum
+      }) !== this.chat.threadId
+    ) {
+      return false;
+    }
+
+    return !this.chat.monoforumThreadId ||
+      getMessageThreadId(message) === this.chat.monoforumThreadId;
+  }
+
+  private hasRenderedEphemeralMessages() {
+    return this.bubbleGroups.itemsArr.some(({message}) => isEphemeralMessage(message));
+  }
+
+  private getEphemeralHistoryMessages() {
+    if(this.ephemeralHistoryPromise) {
+      return this.ephemeralHistoryPromise;
+    }
+
+    const middleware = this.getMiddleware();
+    const peerId = this.peerId;
+    const generation = this.ephemeralHistoryGeneration;
+    const promise: Promise<MyEphemeralMessage[]> = this.managers.appMessagesManager.getEphemeralHistory({
+      peerId,
+      threadId: this.chat.threadId || undefined
+    }).then((mids) => {
+      if(!middleware() || peerId !== this.peerId) {
+        return [];
+      }
+
+      this.ephemeralHistoryLoaded = generation === this.ephemeralHistoryGeneration;
+      return mids
+        .map((mid) => this.chat.getMessageByPeer(peerId, mid))
+        .filter((message): message is MyEphemeralMessage => (
+          isEphemeralMessage(message) &&
+          this.isMessageInCurrentThread(message)
+        ));
+    }).catch((err) => {
+      this.log.error('load ephemeral history error', err);
+      return [] as MyEphemeralMessage[];
+    });
+
+    this.ephemeralHistoryPromise = promise;
+    void promise.finally(() => {
+      if(this.ephemeralHistoryPromise === promise) {
+        this.ephemeralHistoryPromise = undefined;
+      }
+    });
+
+    return promise;
+  }
+
+  private loadEphemeralHistory() {
+    if(
+      this.ephemeralHistoryLoaded ||
+      !this.scrollable.loadedAll.bottom ||
+      !this.chatInner.parentElement ||
+      (this.chat.type !== ChatType.Chat && this.chat.type !== ChatType.Discussion)
+    ) {
+      return this.ephemeralHistoryPromise;
+    }
+
+    const middleware = this.getMiddleware();
+    return this.getEphemeralHistoryMessages().then(async(messages) => {
+      messages = messages.filter((message) => this.isMessageInCurrentThread(message));
+      const scrolledDown = this.scrolledDown || this.scrollable.isScrolledToEnd;
+      await Promise.all(messages.map((message) => (
+        this.renderNewMessage(message, scrolledDown)
+      )));
+      if(!middleware()) {
+        return;
+      }
+
+      this.updateHasMessages();
+      this.scrollable.onScroll();
+    });
   }
 
   public getRenderedHistory(
@@ -3993,8 +4157,13 @@ export default class ChatBubbles {
 
     if(clearLocal || clearOutgoing) {
       history = history.filter((fullMid) => {
-        const {mid} = splitFullMid(fullMid);
-        return (!clearLocal || mid > 0) && (!clearOutgoing || clearMessageId(mid, false) === mid);
+        const {peerId, mid} = splitFullMid(fullMid);
+        const isEphemeral = isEphemeralMessageId(mid) ||
+          isEphemeralMessage(this.chat.getMessageByPeer(peerId, mid));
+        return (
+          (!clearLocal || (mid > 0 && !isEphemeral)) &&
+          (!clearOutgoing || clearMessageId(mid, false) === mid)
+        );
       });
     }
 
@@ -4014,7 +4183,7 @@ export default class ChatBubbles {
       return;
     }
 
-    const history = this.getRenderedHistory('asc');
+    const history = this.getRenderedHistory('asc', true);
 
     if(!history.length) {
       history.push(EMPTY_FULL_MID);
@@ -4586,6 +4755,12 @@ export default class ChatBubbles {
     }
 
     const middleware = this.getMiddleware();
+    if(isEphemeralMessage(message) && this.emptyPlaceholderBubble) {
+      const placeholder = this.emptyPlaceholderBubble;
+      this.emptyPlaceholderBubble = undefined;
+      this.cleanupPlaceholders(placeholder);
+    }
+
     const {isPaddingNeeded, unsetPadding} = this.setTopPadding(middleware);
 
     if(scrolledDown) {
@@ -4958,6 +5133,10 @@ export default class ChatBubbles {
     this.getHistoryTopPromise = this.getHistoryBottomPromise = undefined;
     this.fetchNewPromise = undefined;
     this.updateGradient = undefined;
+    this.ephemeralHistoryPromise = undefined;
+    this.ephemeralHistoryLoaded = false;
+    this.ephemeralHistoryGeneration = 0;
+    this.pendingEphemeralHistory = 0;
 
     this.getSponsoredMessagePromise = undefined;
     this.sponsoredMessagesLoaded = false;
@@ -5345,7 +5524,7 @@ export default class ChatBubbles {
     } else {
       result = {
         promise: getHeavyAnimationPromise().then(() => {
-          return this.performHistoryResult({history: savedPosition.mids}, true);
+          return this.performHistoryResult({history: savedPosition.mids}, true, true);
         }) as any,
         cached: true,
         waitPromise: Promise.resolve()
@@ -5496,6 +5675,7 @@ export default class ChatBubbles {
       // }
 
       this.onScroll();
+      void this.loadEphemeralHistory();
 
       afterSetPromise.then(() => { // check whether list isn't full
         if(!middleware()) {
@@ -5799,7 +5979,7 @@ export default class ChatBubbles {
   }
 
   public updateHasMessages() {
-    const hasMessages = this.chat.hasMessages();
+    const hasMessages = this.hasRenderedEphemeralMessages() || this.chat.hasMessages();
     [this.chatInner, this.remover].forEach((element) => {
       element.classList.toggle('no-messages', !hasMessages);
     });
@@ -5943,6 +6123,9 @@ export default class ChatBubbles {
     });
 
     this.bubbleGroups.mountUnmountGroups(groups);
+    if(this.chat.selection.isSelecting) {
+      this.chat.selection.refreshSelectionGroup();
+    }
     // this.bubbleGroups.findIncorrentPositions();
 
     this.updatePlaceholderPosition?.();
@@ -6590,7 +6773,11 @@ export default class ChatBubbles {
     const loadPromises: Promise<any>[] = [...additionalPromises];
 
     const isMessage = message._ === 'message';
-    const hasReactions = message._ === 'message' || (message._ === 'messageService' && message.pFlags.reactions_are_possible)
+    const isEphemeral = isEphemeralMessage(message);
+    const hasReactions = !isEphemeral && (
+      message._ === 'message' ||
+      (message._ === 'messageService' && message.pFlags.reactions_are_possible)
+    );
     const groupedId = isMessage && message.grouped_id;
     let groupedMids: number[], reactionsMessage: Message.message | Message.messageService;
     const groupedMessages = groupedId ? apiManagerProxy.getMessagesByGroupedId(groupedId) : undefined;
@@ -6625,6 +6812,9 @@ export default class ChatBubbles {
     bubbleContainer.classList.add('bubble-content');
 
     bubble.classList.add('bubble');
+    if(isEphemeral) {
+      bubble.classList.add('is-ephemeral');
+    }
     contentWrapper.append(bubbleContainer);
     bubble.append(contentWrapper);
 
@@ -6664,14 +6854,14 @@ export default class ChatBubbles {
     });
     if(tmpPromise) await tmpPromise;
 
-    context.isInUnread = !previewOnly && !our &&
+    context.isInUnread = !isEphemeral && !previewOnly && !our &&
       !message.pFlags.out &&
       !!message.pFlags.unread;
 
     const unreadMention = isMentionUnread(message);
     const unreadReactions = getUnreadReactions(message);
 
-    if(!previewOnly && !context.isInUnread && this.chat.peerId.isAnyChat()) {
+    if(!isEphemeral && !previewOnly && !context.isInUnread && this.chat.peerId.isAnyChat()) {
       const readMaxId = await this.getRenderReadMaxId(this.chat.peerId, this.chat.threadId);
       if(readMaxId !== undefined && readMaxId < maxBubbleMid) {
         context.isInUnread = true;
@@ -7664,7 +7854,10 @@ export default class ChatBubbles {
       // }
 
       topicNameButtonContainer = document.createElement('div');
-      topicNameButtonContainer.classList.add(/* 'name',  */'topic-name-button-container');
+      topicNameButtonContainer.classList.add(
+        /* 'name',  */'topic-name-button-container',
+        'bubble-name-chip-container'
+      );
       topicNameButtonContainer.append(element);
     }
 
@@ -7782,7 +7975,8 @@ export default class ChatBubbles {
     let nameContainer: HTMLElement = bubbleContainer;
 
     const hasPostAuthor = isMessage && message.post_author && !this.chat.isLikeGroup;
-    const canHideNameIfMedia = !message.viaBotId &&
+    const canHideNameIfMedia = !isEphemeral &&
+      !message.viaBotId &&
       (message.fromId === rootScope.myId || !message.pFlags.out) &&
       (!hasPostAuthor || !fwdFrom) &&
       !_isForwardOfForward/*  &&
@@ -9334,6 +9528,7 @@ export default class ChatBubbles {
       guestChatViaFromId ||
       (showNameForVerificationCodes && !replyTo);
 
+    let nameDiv: HTMLElement;
     if(needName || fwdFrom || replyTo || topicNameButtonContainer) { // chat
       let title: HTMLElement;
       let titleVia: typeof title;
@@ -9345,7 +9540,9 @@ export default class ChatBubbles {
       const fwdFromName = getFwdFromName(fwdFrom);
       const hasTwoTitles = _isForwardOfForward && !isOut && fwdFrom.from_name && fwdFrom.saved_from_name;
 
-      let mustHaveName = !!(message.viaBotId/*  || topicNameButtonContainer */) || storyFromPeerId;
+      let mustHaveName = shouldKeepSenderNameAcrossGroup(isEphemeral, isOut) ||
+        !!(message.viaBotId/*  || topicNameButtonContainer */) ||
+        storyFromPeerId;
       const isHidden = !!(fwdFrom && (!fwdFrom.from_id || fwdFromName));
       if(message.viaBotId) {
         titleVia = document.createElement('span');
@@ -9406,7 +9603,6 @@ export default class ChatBubbles {
 
       // this.log(title);
 
-      let nameDiv: HTMLElement;
       if(isForward) {
         const isRegularSaved = this.peerId === rootScope.myId && (!this.chat.threadId || !isForwardOfForward(message) /* !isOut || this.chat.threadId === fwdFromId */);
         if(!isRegularSaved && !isForwardFromChannel) {
@@ -9495,7 +9691,11 @@ export default class ChatBubbles {
           }
         }
       } else if(!message.viaBotId) {
-        if(!context.isStandaloneMedia && needName) {
+        if(shouldRenderSenderNameWithEphemeralBadge(
+          !!needName,
+          context.isStandaloneMedia,
+          isEphemeral
+        )) {
           nameDiv = document.createElement('div');
           nameDiv.append(title);
 
@@ -9666,6 +9866,16 @@ export default class ChatBubbles {
       bubble.classList.add('with-beside-button');
     }
 
+    if(isEphemeral) {
+      const badge = this.createEphemeralBadge(message, wrapOptions);
+      placeEphemeralBadge(
+        bubbleContainer,
+        nameDiv,
+        badge,
+        context.isStandaloneMedia
+      );
+    }
+
     bubble.classList.add(isOut ? 'is-out' : 'is-in');
 
     // * reserve room for the forced guest-bot avatar in 1-on-1 chats (group chats already indent)
@@ -9712,10 +9922,11 @@ export default class ChatBubbles {
     }
 
     if(!previewOnly && our && (this.peerId !== rootScope.myId || isOut)) {
-      if(message.pFlags.unread || context.isOutgoing) this.unreadOut.add(message.mid);
+      if(!isEphemeral && (message.pFlags.unread || context.isOutgoing)) this.unreadOut.add(message.mid);
       let status: Parameters<ChatBubbles['setBubbleSendingStatus']>[1];
       if(message.error) status = 'error';
       else if(context.isOutgoing) status = 'sending';
+      else if(isEphemeral) status = 'sent';
       else status = message.pFlags.unread || (message as Message.message).pFlags.is_scheduled ? 'sent' : 'read';
 
       if(isOut || (status !== 'sent' && status !== 'read')) {
@@ -9733,7 +9944,7 @@ export default class ChatBubbles {
       });
     }
 
-    if(!previewOnly && isMessage && message.effect && (context.isInUnread || context.isOutgoing)) {
+    if(!isEphemeral && !previewOnly && isMessage && message.effect && (context.isInUnread || context.isOutgoing)) {
       this.observer.observe(bubble, this.messageEffectObserverCallback);
     }
 
@@ -9800,7 +10011,7 @@ export default class ChatBubbles {
   }
 
   public canForward(message: Message.message | Message.messageService) {
-    if(message?._ !== 'message' || message.pFlags.noforwards) {
+    if(message?._ !== 'message' || message.pFlags.noforwards || isEphemeralMessage(message)) {
       return false;
     }
 
@@ -10001,6 +10212,38 @@ export default class ChatBubbles {
     };
   }
 
+  private createEphemeralBadge(
+    message: MyEphemeralMessage,
+    wrapOptions: WrapSomethingOptions
+  ) {
+    const container = document.createElement('div');
+    container.classList.add('ephemeral-badge-container', 'bubble-name-chip-container');
+
+    const badge = document.createElement('div');
+    badge.classList.add('ephemeral-badge');
+    badge.setAttribute('role', 'note');
+    badge.title = I18n.format('Ephemeral.About', true);
+    badge.append(Icon('eyecross_outline', 'ephemeral-badge-icon'));
+
+    if(message.pFlags.out) {
+      const receiverPeerId = message.ephemeral_receiver_id.toPeerId(false);
+      const receiver = apiManagerProxy.getPeer(receiverPeerId);
+      const receiverTitle = new PeerTitle({
+        peerId: receiverPeerId,
+        username: !!getPeerActiveUsernames(receiver)[0],
+        dialog: false,
+        wrapOptions
+      }).element;
+      receiverTitle.classList.add('ephemeral-badge-peer');
+      badge.append(i18n('Ephemeral.VisibleTo', [receiverTitle]));
+    } else {
+      badge.append(i18n('Ephemeral.VisibleYou'));
+    }
+
+    container.append(badge);
+    return container;
+  }
+
   private prepareToSaveScroll(reverse?: boolean, sliceTop?: boolean, sliceBottom?: boolean) {
     const isMounted = !!this.chatInner.parentElement;
     if(!isMounted) {
@@ -10036,7 +10279,8 @@ export default class ChatBubbles {
 
   public async performHistoryResult(
     historyResult: LocalHistoryResult | {history: (Message.message | Message.messageService | number)[]},
-    reverse: boolean
+    reverse: boolean,
+    includeEphemeralHistory = false
   ) {
     const log = false || true ? this.log.bindPrefix('perform-' + (Math.random() * 1000 | 0)) : undefined;
     log?.('start', this.chatInner.parentElement, historyResult);
@@ -10063,13 +10307,9 @@ export default class ChatBubbles {
       }
     };
 
-    const messages = /* await Promise.all */(history.map((mid) => {
-      return typeof(mid) === 'number' ? this.chat.getMessage(mid) : mid;
-    }));
-
-    const setLoadedPromises: Promise<any>[] = [];
+    let isEnd: HistoryResult['isEnd'];
     if(!this.scrollable.loadedAll['bottom'] || !this.scrollable.loadedAll['top']) {
-      let isEnd = (historyResult as HistoryResult).isEnd;
+      isEnd = (historyResult as HistoryResult).isEnd;
       if(!isEnd) {
         const historyStorage = this.chat.getHistoryStorage();
         const firstSlice = historyStorage.history.first;
@@ -10092,9 +10332,30 @@ export default class ChatBubbles {
           isEnd.bottom = true;
         }
       }
+    }
 
-      if(isEnd.top) setLoadedPromises.push(this.setLoaded('top', true));
-      if(isEnd.bottom) setLoadedPromises.push(this.setLoaded('bottom', true));
+    const ephemeralMessages = await mergeEphemeralHistoryForRender(
+      history,
+      includeEphemeralHistory &&
+        !this.ephemeralHistoryLoaded &&
+        (this.chat.type === ChatType.Chat || this.chat.type === ChatType.Discussion) &&
+        (this.scrollable.loadedAll.bottom || !!isEnd?.bottom),
+      () => this.getEphemeralHistoryMessages()
+    );
+    if(ephemeralMessages.length) {
+      ++this.pendingEphemeralHistory;
+    }
+
+    const messages = /* await Promise.all */(history.map((mid) => {
+      return typeof(mid) === 'number' ? this.chat.getMessage(mid) : mid;
+    }));
+
+    const setLoadedPromises: Promise<any>[] = [];
+    if(isEnd?.top) {
+      setLoadedPromises.push(this.setLoaded('top', true));
+    }
+    if(isEnd?.bottom) {
+      setLoadedPromises.push(this.setLoaded('bottom', true));
     }
 
     if(setLoadedPromises.length) {
@@ -10147,9 +10408,19 @@ export default class ChatBubbles {
       promises = messages.map(cb);
     }
 
-    // cannot combine them into one promise
-    promises.length && await Promise.all(promises);
-    await this.messagesQueuePromise;
+    try {
+      // cannot combine them into one promise
+      promises.length && await Promise.all(promises);
+      await this.messagesQueuePromise;
+    } finally {
+      if(ephemeralMessages.length) {
+        this.pendingEphemeralHistory = Math.max(0, this.pendingEphemeralHistory - 1);
+      }
+    }
+
+    if(ephemeralMessages.length) {
+      this.updateHasMessages();
+    }
 
     // * have to check again, because it can be skipped above
     const placeholderPromise = this.checkIfEmptyPlaceholderNeeded();
@@ -11021,6 +11292,13 @@ export default class ChatBubbles {
     }
 
     const fullMids = invisible.map(({element}) => getBubbleFullMid(element));
+    if(fullMids.some((fullMid) => {
+      const {peerId, mid} = splitFullMid(fullMid);
+      return isEphemeralMessage(this.chat.getMessageByPeer(peerId, mid));
+    })) {
+      this.ephemeralHistoryLoaded = false;
+      ++this.ephemeralHistoryGeneration;
+    }
 
     let scrollSaver: ScrollSaver;
     if(/* !!invisibleTop.length !== !!invisibleBottom.length &&  */!ignoreScrollSaving) {
@@ -11065,11 +11343,19 @@ export default class ChatBubbles {
     this.scrollable.onScroll(); // ! WARNING
     // return;
 
+    if(value) {
+      void this.loadEphemeralHistory();
+    }
+
     if(this.scrollable.loadedAll.bottom && this.scrollable.loadedAll.top) {
       setPeerLanguageLoaded(this.peerId);
     }
 
     if(!checkPlaceholders) {
+      return;
+    }
+
+    if(this.pendingEphemeralHistory) {
       return;
     }
 
@@ -11302,6 +11588,8 @@ export default class ChatBubbles {
   public async checkIfEmptyPlaceholderNeeded() {
     if(this.scrollable.loadedAll.top &&
       this.scrollable.loadedAll.bottom &&
+      !this.pendingEphemeralHistory &&
+      !this.hasRenderedEphemeralMessages() &&
       this.emptyPlaceholderBubble === undefined &&
       !shouldShowUnknownUserPlaceholder(this.peerSettings) &&
       (!this.chat.isBotforum || this.chat.canManageBotforumTopics) &&
@@ -11495,7 +11783,7 @@ export default class ChatBubbles {
           historyResult.history.unshift(splitFullMid(additionalFullMid).mid);
         }
 
-        return this.performHistoryResult(historyResult, reverse);
+        return this.performHistoryResult(historyResult, reverse, true);
       });
     };
 

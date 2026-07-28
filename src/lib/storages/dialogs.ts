@@ -1193,7 +1193,7 @@ export default class DialogsStorage extends AppManager {
     } else if(isDialog) {
       // ! fix 'dialogFolder', maybe there is better way to do it, this only can happen by 'messages.getPinnedDialogs' by folder_id: 0
       forEachReverse(result.dialogs, (dialog, idx, arr) => {
-        if(dialog._ === 'dialogFolder') {
+        if(dialog._ === 'dialogFolder' || (dialog as any)._ === 'dialogCommunity') {
           arr.splice(idx, 1);
         }
       });
@@ -2153,6 +2153,10 @@ export default class DialogsStorage extends AppManager {
   };
 
   private onUpdateDialogPinned = (update: Update.updateDialogPinned | Update.updateSavedDialogPinned) => {
+    if((update.peer as any)._ === 'dialogPeerCommunity') {
+      return;
+    }
+
     const peerId = this.appPeersManager.getPeerId((update.peer as DialogPeer.dialogPeer).peer);
     let dialog: AnyDialog, folderId: number;
     if(update._ === 'updateDialogPinned') {
@@ -2199,7 +2203,9 @@ export default class DialogsStorage extends AppManager {
     }
 
     if(update.order) {
-      this.handleDialogsPinned(folderId, update.order.map((peer) => this.appPeersManager.getPeerId((peer as DialogPeer.dialogPeer).peer)));
+      this.handleDialogsPinned(folderId, update.order
+      .filter((peer) => (peer as any)._ !== 'dialogPeerCommunity')
+      .map((peer) => this.appPeersManager.getPeerId((peer as DialogPeer.dialogPeer).peer)));
     } else {
       type S = Modify<MessagesSavedDialogs.messagesSavedDialogs, {dialogs: Array<SavedDialog>}>;
       let promise: Promise<MessagesPeerDialogs | S>;

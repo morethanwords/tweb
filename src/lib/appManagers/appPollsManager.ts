@@ -20,6 +20,7 @@ import {
 import getDocumentInput from './utils/docs/getDocumentInput';
 import getMessageThreadId from './utils/messages/getMessageThreadId';
 import getPhotoInput from './utils/photos/getPhotoInput';
+import makeError from '@helpers/makeError';
 
 
 type PollId = Poll['id'];
@@ -136,12 +137,7 @@ export class AppPollsManager extends AppManager {
           if(!this.replacePollWebPage(message.media.attached_media, id, webpage)) continue;
 
           hasWebPage = true;
-          this.rootScope.dispatchEvent('message_edit', {
-            storageKey: message.storageKey,
-            peerId: message.peerId,
-            mid: message.mid,
-            message
-          });
+          this.appMessagesManager.dispatchMessageEditEvent(message);
         }
 
         if(hasWebPage) {
@@ -599,6 +595,10 @@ export class AppPollsManager extends AppManager {
   }
 
   public async sendVote(message: Message.message, optionIndexes: number[]): Promise<void> {
+    if(this.appMessagesManager.isEphemeralMessage(message)) {
+      return;
+    }
+
     const messageId = message.mid;
 
     if(message.pFlags.is_outgoing) {
@@ -638,6 +638,7 @@ export class AppPollsManager extends AppManager {
   }
 
   public async addPollAnswer(message: Message.message, text: TextWithEntities, media?: FinalizedAttachedMedia) {
+    if(this.appMessagesManager.isEphemeralMessage(message)) return;
     if(message.media?._ !== 'messageMediaPoll') return;
 
     const peerId = this.appPeersManager.getPeerMigratedTo(message.peerId) || message.peerId;
@@ -674,6 +675,10 @@ export class AppPollsManager extends AppManager {
   }
 
   public getResults(message: Message.message) {
+    if(this.appMessagesManager.isEphemeralMessage(message)) {
+      return Promise.resolve();
+    }
+
     const inputPeer = this.appPeersManager.getInputPeerById(message.peerId);
 
     assumeType<MessageMedia.messageMediaPoll>(message.media);
@@ -701,6 +706,10 @@ export class AppPollsManager extends AppManager {
   }
 
   public getVotes(message: Message.message, option?: Uint8Array, offset?: string, limit = 20) {
+    if(this.appMessagesManager.isEphemeralMessage(message)) {
+      throw makeError('UNKNOWN');
+    }
+
     return this.apiManager.invokeApi('messages.getPollVotes', {
       peer: this.appPeersManager.getInputPeerById(message.peerId),
       id: getServerMessageId(message.mid),
@@ -1149,8 +1158,13 @@ export class AppPollsManager extends AppManager {
   }
 
   public async sendPollMessage(params: MessageSendingParams, payload: CreatePollPayload) {
+    if(params.ephemeral) {
+      return;
+    }
+
     const peerId = this.appPeersManager.getPeerMigratedTo(params.peerId) || params.peerId;
 
+    this.appMessagesManager.stripEphemeralReply(params);
     await this.appMessagesManager.checkSendOptions(params);
 
     const message = this.appMessagesManager.generateOutgoingMessage(peerId, params);

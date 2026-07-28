@@ -128,7 +128,10 @@ export class AppChatsManager extends AppManager {
   }
 
   public saveApiChat(chat: Chat, override?: boolean) {
-    if(!chat || chat._ === 'chatEmpty') return;
+    // Layer 228 can return Community objects in the chats vector. They use a
+    // separate peer model that tweb does not support yet, so do not let them
+    // masquerade as legacy chats in the shared peer storage.
+    if(!chat || chat._ === 'chatEmpty' || ['community', 'communityForbidden'].includes((chat as any)._)) return;
     /* if(chat._ !== 'chat' && chat._ !== 'channel') {
       return;
     } */

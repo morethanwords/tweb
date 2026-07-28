@@ -32,6 +32,7 @@ import toHHMMSS from '@helpers/string/toHHMMSS';
 import PopupElement from '@components/popups';
 import contextMenuController from '@helpers/contextMenuController';
 import {ChatRights} from '@appManagers/appChatsManager';
+import type {MessageSendingParams} from '@appManagers/appMessagesManager';
 import createContextMenu from '@helpers/dom/createContextMenu';
 import {PAYMENT_REJECTED} from '@components/chat/paidMessagesInterceptor';
 import {createPosterFromMedia} from '@helpers/createPoster';
@@ -93,6 +94,7 @@ export default class ChatRecording {
   // Set when a left-button long-press on the record button opens the mode-switch
   // menu, so the click that ends the press doesn't also start a recording.
   private recordModeLongPressed = false;
+  private pinnedEphemeralSendingParams: MessageSendingParams;
 
   private releaseMediaPlayback: () => void;
 
@@ -212,12 +214,19 @@ export default class ChatRecording {
         return;
       }
 
-      const sendingParams = this.input.chat.getMessageSendingParams();
+      const sendingParams = {
+        ...this.input.chat.getMessageSendingParams(),
+        ...this.pinnedEphemeralSendingParams
+      };
+      const isEphemeral = !!sendingParams.ephemeral;
+      this.pinnedEphemeralSendingParams = undefined;
 
-      const preparedPaymentResult = await this.input.paidMessageInterceptor.prepareStarsForPayment(1);
-      if(preparedPaymentResult === PAYMENT_REJECTED) return;
+      if(!isEphemeral) {
+        const preparedPaymentResult = await this.input.paidMessageInterceptor.prepareStarsForPayment(1);
+        if(preparedPaymentResult === PAYMENT_REJECTED) return;
 
-      sendingParams.confirmedPaymentResult = preparedPaymentResult;
+        sendingParams.confirmedPaymentResult = preparedPaymentResult;
+      }
 
       const duration = this.getRecordingElapsedMs() / 1000 | 0;
       const dataBlob = new Blob([typedArray as BlobPart], {type: 'audio/ogg'});
@@ -236,7 +245,7 @@ export default class ChatRecording {
           clearDraft: true
         });
 
-        this.input.onMessageSent(false, true);
+        this.input.onMessageSent(false, true, isEphemeral);
       });
     };
 
@@ -282,10 +291,17 @@ export default class ChatRecording {
         // instead of a black circle while the upload runs.
         const thumbPromise = this.captureVideoPoster();
 
-        const sendingParams = this.input.chat.getMessageSendingParams();
-        const preparedPaymentResult = await this.input.paidMessageInterceptor.prepareStarsForPayment(1);
-        if(preparedPaymentResult === PAYMENT_REJECTED) return;
-        sendingParams.confirmedPaymentResult = preparedPaymentResult;
+        const sendingParams = {
+          ...this.input.chat.getMessageSendingParams(),
+          ...this.pinnedEphemeralSendingParams
+        };
+        const isEphemeral = !!sendingParams.ephemeral;
+        this.pinnedEphemeralSendingParams = undefined;
+        if(!isEphemeral) {
+          const preparedPaymentResult = await this.input.paidMessageInterceptor.prepareStarsForPayment(1);
+          if(preparedPaymentResult === PAYMENT_REJECTED) return;
+          sendingParams.confirmedPaymentResult = preparedPaymentResult;
+        }
 
         const duration = this.getRecordingElapsedMs() / 1000 | 0;
         const thumb = await thumbPromise;
@@ -309,7 +325,7 @@ export default class ChatRecording {
           clearDraft: true
         });
 
-        this.input.onMessageSent(false, true);
+        this.input.onMessageSent(false, true, isEphemeral);
       };
     }
   }
@@ -924,6 +940,16 @@ export default class ChatRecording {
     // Guard it explicitly.
     if(this.active || this.isStartingRecording) return;
     if(type === 'video' && !this.videoRecorder) return;
+    if(!this.input.verifyEphemeralCommand()) return;
+    const sendingParams = this.input.chat.getMessageSendingParams();
+    this.pinnedEphemeralSendingParams = sendingParams.ephemeral ? {
+      ephemeral: true,
+      ephemeralReceiverId: sendingParams.ephemeralReceiverId,
+      peerId: sendingParams.peerId,
+      threadId: sendingParams.threadId,
+      replyToMsgId: sendingParams.replyToMsgId,
+      replyTo: sendingParams.replyTo
+    } : undefined;
     this.isStartingRecording = true;
     const promise = type === 'video' ? this.startVideoRecording() : this.startVoiceRecording();
     Promise.resolve(promise).catch(() => {}).finally(() => {
@@ -933,13 +959,14 @@ export default class ChatRecording {
 
   private async startVoiceRecording() {
     const isAnyChat = this.input.chat.peerId.isAnyChat();
+    const isEphemeral = this.input.isEphemeralComposerMode();
     const flag: ChatRights = 'send_voices';
-    if(isAnyChat && !(await this.input.chat.canSend(flag))) {
+    if(!isEphemeral && isAnyChat && !(await this.input.chat.canSend(flag))) {
       toastNew({langPackKey: POSTING_NOT_ALLOWED_MAP[flag]});
       return;
     }
 
-    if(await this.input.showSlowModeTooltipIfNeeded()) {
+    if(!isEphemeral && await this.input.showSlowModeTooltipIfNeeded()) {
       return;
     }
 
@@ -1058,15 +1085,16 @@ export default class ChatRecording {
   private async startVideoRecording() {
     if(!this.videoRecorder) return;
     const isAnyChat = this.input.chat.peerId.isAnyChat();
+    const isEphemeral = this.input.isEphemeralComposerMode();
     // Round video notes go through the same restriction set as voice (the
     // server-side flag is shared; clients gate on `send_voices`).
     const flag: ChatRights = 'send_voices';
-    if(isAnyChat && !(await this.input.chat.canSend(flag))) {
+    if(!isEphemeral && isAnyChat && !(await this.input.chat.canSend(flag))) {
       toastNew({langPackKey: POSTING_NOT_ALLOWED_MAP[flag]});
       return;
     }
 
-    if(await this.input.showSlowModeTooltipIfNeeded()) {
+    if(!isEphemeral && await this.input.showSlowModeTooltipIfNeeded()) {
       return;
     }
 

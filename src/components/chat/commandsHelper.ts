@@ -3,6 +3,9 @@ import AutocompleteHelperController from '@components/chat/autocompleteHelperCon
 import AutocompletePeerHelper from '@components/chat/autocompletePeerHelper';
 import {AppManagers} from '@lib/managers';
 import processPeerFullForCommands from '@components/chat/processPeerFullForCommands';
+import hideCommandAutocomplete from '@components/chat/hideCommandAutocomplete';
+import apiManagerProxy from '@lib/apiManagerProxy';
+import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 
 export default class CommandsHelper extends AutocompletePeerHelper {
   constructor(
@@ -15,17 +18,35 @@ export default class CommandsHelper extends AutocompletePeerHelper {
       controller,
       'commands-helper',
       (target) => {
-        const innerHTML = target.querySelector(`.${AutocompletePeerHelper.BASE_CLASS_LIST_ELEMENT}-name`).innerHTML;
+        const targetElement = target as HTMLElement;
+        const botPeerId = targetElement.dataset.peerId.toPeerId();
+        let innerHTML = target.querySelector(`.${AutocompletePeerHelper.BASE_CLASS_LIST_ELEMENT}-name`).innerHTML;
+        if(chatInput.chat.peerId.isAnyChat()) {
+          const username = getPeerActiveUsernames(apiManagerProxy.getPeer(botPeerId))[0];
+          if(username) {
+            innerHTML += '@' + username;
+          }
+        }
+
+        const ephemeralReceiverId = chatInput.chat.peerId.isAnyChat() &&
+          targetElement.dataset.ephemeral === '1' ?
+          botPeerId.toUserId() :
+          undefined;
+        hideCommandAutocomplete(controller);
         return chatInput.getReadyToSend(() => {
           chatInput.messageInput.innerHTML = innerHTML;
-          chatInput.sendMessage(true);
+          chatInput.sendMessage(true, ephemeralReceiverId);
         });
       }
     );
   }
 
   public async checkQuery(query: string, peerId: PeerId) {
-    if(!(await this.managers.appUsersManager.isBot(peerId))) {
+    const [isBot, isGroup] = await Promise.all([
+      this.managers.appUsersManager.isBot(peerId),
+      this.managers.appPeersManager.isAnyGroup(peerId)
+    ]);
+    if(!isBot && !isGroup) {
       return false;
     }
 

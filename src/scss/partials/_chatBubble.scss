@@ -114,6 +114,59 @@
     font-weight: var(--font-weight-normal);
   }
 
+  .bubble-name-chip-container {
+    display: flex !important;
+    align-items: flex-start;
+    justify-content: flex-start;
+    max-width: 100%;
+  }
+
+  .ephemeral-badge-container {
+    margin: $message-padding-top $message-padding-horizontal 0;
+  }
+
+  .ephemeral-badge {
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+    width: fit-content;
+    max-width: 100%;
+    padding: .125rem .375rem;
+    border-radius: .5rem;
+    color: var(--message-primary-color);
+    background-color: rgba(var(--message-primary-color-rgb), .12);
+    font-weight: var(--font-weight-normal);
+    font-size: var(--messages-secondary-text-size);
+    line-height: var(--messages-secondary-line-height);
+    overflow: hidden;
+    user-select: none;
+
+    &-icon {
+      flex: 0 0 auto;
+      font-size: .875rem;
+    }
+
+    &-peer {
+      display: inline;
+      color: inherit;
+      font-weight: var(--font-weight-bold);
+      cursor: pointer;
+    }
+  }
+
+  &.is-ephemeral.just-media {
+    .ephemeral-badge-container.ephemeral-badge-standalone {
+      margin: 0;
+      background-color: transparent;
+    }
+
+    .ephemeral-badge {
+      color: #fff;
+      background-color: var(--message-highlighting-color);
+      max-width: 15rem;
+    }
+  }
+
   &.is-sponsored {
     --max-width: calc(80% - var(--message-beside-button-margin) * -1) !important;
     width: 100%;
@@ -2061,8 +2114,12 @@
         margin-bottom: $message-padding-top;
       }
 
-      .topic-name-button-container {
+      .bubble-name-chip-container {
         margin-bottom: 0;
+      }
+
+      &.is-reply .bubble-name-chip-container {
+        margin-bottom: .25rem;
       }
     }
   }
@@ -2073,7 +2130,7 @@
 
   &:not(.sticker):not(.emoji-big):not(.forwarded) {
     &.hide-name,
-    &:not(.is-group-first) {
+    &:not(.is-group-first):not(.must-have-name) {
       .reply {
         margin-top: $reply-padding-top;
       }
@@ -2299,6 +2356,10 @@
           font-weight: var(--font-weight-bold) !important;
         }
       }
+
+      .bubble-name-chip-container:last-child {
+        margin-bottom: 0;
+      }
     }
 
     .is-via {
@@ -2338,11 +2399,11 @@
     }
   }
 
-  .name .topic-name-button-container {
+  .name .bubble-name-chip-container {
     margin: .25rem 0;
   }
 
-  &.is-message-empty:not(.is-reply) .name .topic-name-button-container {
+  &.is-message-empty:not(.is-reply) .name .bubble-name-chip-container {
     margin-bottom: 0;
   }
 

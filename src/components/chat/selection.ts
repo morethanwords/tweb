@@ -44,6 +44,7 @@ import {
 } from '@components/chat/selectionRange';
 import {ChatType} from './chatType';
 import ChatInputPlate from '@components/chat/controlPlate';
+import isSameMessageSelectionGroup, {getMessageSelectionGroup} from '@components/chat/isSameMessageSelectionGroup';
 
 const accumulateMapSet = <T extends {size: number}>(map: Map<any, T>) => {
   return [...map.values()].reduce((acc, v) => acc + v.size, 0);
@@ -876,6 +877,7 @@ export default class ChatSelection extends AppSelection {
 
     if(ret && !this.isSelecting) {
       this.reportSelectionData = undefined;
+      this.refreshSelectionGroup();
     }
 
     if(ret && toggleCheckboxes) {
@@ -894,7 +896,7 @@ export default class ChatSelection extends AppSelection {
   }
 
   public toggleElementCheckbox(bubble: HTMLElement, show: boolean) {
-    if(!this.canSelectBubble(bubble)) return;
+    if(show && !this.canSelectBubble(bubble)) return;
 
     const ret = super.toggleElementCheckbox(bubble, show);
     if(ret) {
@@ -946,6 +948,7 @@ export default class ChatSelection extends AppSelection {
     if(!this.toggleMid(peerId, mid)) {
       return;
     }
+    this.refreshSelectionGroup();
 
     const isGroupedItem = bubble.classList.contains('grouped-item');
     if(isGroupedItem) {
@@ -1019,7 +1022,44 @@ export default class ChatSelection extends AppSelection {
       !bubble.classList.contains('is-outgoing') &&
       !bubble.classList.contains('is-error') &&
       !bubble.classList.contains('bubble-first') &&
-      !bubble.classList.contains('avoid-selection');
+      !bubble.classList.contains('avoid-selection') &&
+      isSameMessageSelectionGroup(
+        this.selectedMids,
+        bubble.classList.contains('is-ephemeral')
+      );
+  }
+
+  public refreshSelectionGroup() {
+    const isEphemeral = getMessageSelectionGroup(this.selectedMids);
+
+    const groups = new Map<HTMLElement, boolean>();
+    const history = this.bubbles.getRenderedHistory('asc');
+    for(const fullMid of history) {
+      if(this.bubbles.skippedMids.has(fullMid)) {
+        continue;
+      }
+
+      const bubble = this.bubbles.getBubble(fullMid);
+      if(!bubble) {
+        continue;
+      }
+
+      const isCompatible = isEphemeral === undefined ||
+        isEphemeral === bubble.classList.contains('is-ephemeral');
+      bubble.classList.toggle('selection-group-incompatible', !isCompatible);
+      if(this.isSelecting) {
+        this.toggleElementCheckbox(bubble, isCompatible);
+      }
+
+      const group = findUpClassName(bubble, 'bubbles-group');
+      if(group) {
+        groups.set(group, !!groups.get(group) || isCompatible);
+      }
+    }
+
+    for(const [group, hasCompatibleBubble] of groups) {
+      group.classList.toggle('selection-group-incompatible', !hasCompatibleBubble);
+    }
   }
 
   protected onToggleSelection = async(forwards: boolean, animate: boolean) => {
