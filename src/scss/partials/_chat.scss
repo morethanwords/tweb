@@ -1354,6 +1354,7 @@
 }
 
 .bubbles-go-down {
+	--translateY: 0;
 	cursor: default;
 	opacity: 0;
 	visibility: hidden;
@@ -1432,7 +1433,7 @@
 	bottom: calc(var(--chat-input-height) + .5rem);
 	z-index: 2;
 	overflow: visible;
-  transform: translateY(calc(var(--chat-input-height-surplus) * -1)) !important;
+  transform: translateY(var(--translateY)) translateY(calc(var(--chat-input-height-surplus) * -1)) !important;
 
   @include animation-level(2) {
     transition: transform var(--transition-standard-in);
