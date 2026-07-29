@@ -42,11 +42,12 @@ const primaryHost = (currentEnv.VITE_ALLOWED_HOSTS || 'web.telegram.org')
 
 const APP_ORIGIN = `https://${primaryHost}/`;
 const APP_URL = `${APP_ORIGIN}k/`;
+const appName = process.env.VITE_APP_NAME || 'Telegram';
 
 const handlebarsPlugin = handlebars({
   context: {
-    title: 'Telegram Web',
-    description: 'Telegram is a cloud-based mobile and desktop messaging app with a focus on security and speed.',
+    title: `${appName} Web`,
+    description: `A private, self-hosted messaging app for ${appName}.`,
     url: APP_URL,
     origin: APP_ORIGIN
   }
@@ -61,7 +62,7 @@ const USE_SELF_SIGNED_CERTS = USE_SSL && false;
 // * chmod 644 web.telegram.org-key.pem
 // * nano /etc/hosts
 // * 127.0.0.1 web.telegram.org
-const host = USE_SSL ? 'web.telegram.org' : 'localhost';
+const host = USE_SSL ? primaryHost : 'localhost';
 
 // HTTP/2 for `pnpm start`. Vite serves dev modules unbundled — one request per module —
 // and over http/1.1 the browser's ~6-connections-per-origin cap serialises the hundreds

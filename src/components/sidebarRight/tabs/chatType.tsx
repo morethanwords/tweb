@@ -134,8 +134,8 @@ const ChatType: Component = () => {
 
     const inputWrapper = document.createElement('div');
     inputWrapper.classList.add('input-wrapper');
-
-    const placeholder = 't.me/';
+    const shortDomain = import.meta.env.VITE_SHORT_DOMAIN || 't.me';
+    const placeholder = `${shortDomain}/`;
 
     let changedPrivacy: boolean, changedJoinToSend: boolean, changedJoinRequest: boolean;
     const onChange = () => {

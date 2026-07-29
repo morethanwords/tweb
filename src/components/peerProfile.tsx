@@ -59,6 +59,8 @@ import getAddBotToChatAction from '@appManagers/utils/bots/getAddBotToChatAction
 
 keepMe(ripple);
 
+const shortDomain = import.meta.env.VITE_SHORT_DOMAIN || 't.me';
+
 type PeerProfileContextValue = {
   peerId: PeerId,
   threadId: number,
@@ -977,7 +979,7 @@ PeerProfile.Link = () => {
 
     const usernames = getPeerActiveUsernames(context.peer as Chat.channel);
     if(context.isTopic) {
-      let url = 't.me/';
+      let url = `${shortDomain}/`;
       const threadId = getServerMessageId(context.threadId);
       const username = usernames[0];
       if(username) {
@@ -991,7 +993,7 @@ PeerProfile.Link = () => {
 
     if(usernames.length) {
       return {
-        url: 't.me/' + usernames[0],
+        url: `${shortDomain}/` + usernames[0],
         also: getUsernamesAlso(usernames)
       };
     }
@@ -999,7 +1001,7 @@ PeerProfile.Link = () => {
     const exportedInvite = (context.fullPeer as ChatFull.channelFull)?.exported_invite;
     if(exportedInvite?._ === 'chatInviteExported') {
       return {
-        url: exportedInvite.link.slice(exportedInvite.link.indexOf('t.me/'))
+        url: exportedInvite.link.slice(exportedInvite.link.indexOf(`${shortDomain}/`))
       };
     }
   });

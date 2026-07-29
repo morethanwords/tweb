@@ -10,7 +10,7 @@ COPY . .
 # install pnpm
 RUN npm install -g pnpm@11.16.0
 
-# install initial dependancies
+# install initial dependencies
 RUN pnpm install
 
 # declare build arguments

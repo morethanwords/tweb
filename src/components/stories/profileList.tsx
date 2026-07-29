@@ -51,6 +51,8 @@ const ADD_ALBUM_ID = -2;
 const TEST_ONE = false;
 const TEST_TWO = false;
 
+const shortDomain = import.meta.env.VITE_SHORT_DOMAIN || 't.me';
+
 class StoriesContextMenu {
   private buttons: ButtonMenuItemOptionsVerifiable[];
   private element: HTMLElement;
@@ -215,7 +217,7 @@ class StoriesContextMenu {
       text: 'CopyLink',
       onClick: async() => {
         const username = await rootScope.managers.appPeersManager.getPeerUsername(this.peerId);
-        copyTextToClipboard(`https://t.me/${username}/s/${this.storyItem.id}`);
+        copyTextToClipboard(`https://${shortDomain}/${username}/s/${this.storyItem.id}`);
         toastNew({langPackKey: 'LinkCopied'});
       },
       verify: async() => {
@@ -347,7 +349,7 @@ function StoriesAlbums(props: {
               text: 'CopyLink',
               onClick: async() => {
                 const username = await rootScope.managers.appPeersManager.getPeerUsername(props.peerId);
-                copyTextToClipboard(`https://t.me/${username}/a/${id}`);
+                copyTextToClipboard(`https://${shortDomain}/${username}/a/${id}`);
                 toastNew({langPackKey: 'LinkCopied'});
               },
               verify: async() => {

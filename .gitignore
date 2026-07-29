@@ -15,6 +15,7 @@ stats.html
 ssh.json
 archive.zip
 .idea
+.env
 .env.local
 src/langPackLocalVersion.ts
 /.ai

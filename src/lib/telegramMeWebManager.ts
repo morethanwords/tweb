@@ -36,11 +36,11 @@ export class TelegramMeWebManager {
           ts
         }
       });
-
+      const shortDomain = import.meta.env.VITE_SHORT_DOMAIN || 't.me';
       const path = `_websync_?authed=${canRedirect ? '1' : '0'}&version=${encodeURIComponent(App.version + ' ' + App.suffix)}`;
       const urls = [
-        '//telegram.me/' + path,
-        '//t.me/' + path
+        `//${shortDomain}/` + path,
+        `//web.${shortDomain}/` + path
       ];
 
       const promises = urls.map((url) => {

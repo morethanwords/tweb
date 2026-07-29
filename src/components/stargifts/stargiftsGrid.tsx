@@ -31,6 +31,8 @@ import createSubmenuTrigger from '@components/createSubmenuTrigger';
 import {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable, ButtonMenuSync} from '@components/buttonMenu';
 import CheckboxField from '@components/checkboxField';
 
+const shortDomain = import.meta.env.VITE_SHORT_DOMAIN || 't.me';
+
 function StarGiftGridItem(props: {
   item: MyStarGift,
   view: 'profile' | 'list' | 'resale' | 'transfer'
@@ -62,7 +64,7 @@ function StarGiftGridItem(props: {
           verify: () => raw._ === 'starGiftUnique',
           onClick: () => {
             showSharingPicker2Popup().then(({peerId, threadId, monoforumThreadId}) => {
-              rootScope.managers.appMessagesManager.sendText({peerId, threadId, replyToMonoforumPeerId: monoforumThreadId, text: 'https://t.me/nft/' + (raw as StarGift.starGiftUnique).slug});
+              rootScope.managers.appMessagesManager.sendText({peerId, threadId, replyToMonoforumPeerId: monoforumThreadId, text: `https://${shortDomain}/nft/` + (raw as StarGift.starGiftUnique).slug});
               appImManager.setInnerPeer({peerId, threadId, monoforumThreadId});
             });
           }
@@ -80,7 +82,7 @@ function StarGiftGridItem(props: {
           text: 'CopyLink',
           verify: () => raw._ === 'starGiftUnique',
           onClick: () => {
-            copyTextToClipboard('https://t.me/nft/' + (raw as StarGift.starGiftUnique).slug);
+            copyTextToClipboard(`https://${shortDomain}/nft/` + (raw as StarGift.starGiftUnique).slug);
             toastNew({langPackKey: 'LinkCopied'});
           }
         },

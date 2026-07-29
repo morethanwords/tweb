@@ -33,6 +33,10 @@ import formatFormattedDate from '@helpers/date/formatFormattedDate';
 import formatRelativeTime from '@helpers/date/formatRelativeTime';
 import tsNow from '@helpers/tsNow';
 
+const customProtocol = import.meta.env.VITE_APP_PROTOCOL || 'tg';
+const shortDomain = import.meta.env.VITE_SHORT_DOMAIN || 't.me';
+const appName = import.meta.env.VITE_APP_NAME || 'Telegram';
+
 export type WrapRichTextOptions = Partial<{
   entities: MessageEntity[],
   contextSite: string,
@@ -163,8 +167,8 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
   const entities = options.entities ??= parseEntities(nasty.text);
 
   const passEntities = options.passEntities ??= {};
-  const contextSite = options.contextSite ??= 'Telegram';
-  const contextExternal = contextSite !== 'Telegram';
+  const contextSite = options.contextSite ??= `${appName}}`;
+  const contextExternal = contextSite !== `${appName}}`;
 
   const textLength = nasty.text.length;
   const length = entities.length;
@@ -388,7 +392,7 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
           }
 
           element = document.createElement('a');
-          (element as HTMLAnchorElement).href = encodeEntities('tg://bot_command?command=' + encodeURIComponent(command) + (bot ? '&bot=' + encodeURIComponent(bot) : ''));
+          (element as HTMLAnchorElement).href = encodeEntities(`${customProtocol}://bot_command?command=` + encodeURIComponent(command) + (bot ? '&bot=' + encodeURIComponent(bot) : ''));
           if(!contextExternal) {
             element.setAttribute('onclick', 'execBotCommand(this)');
           }
@@ -657,7 +661,7 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
         if(!options.noLinks) {
           const username = fullEntityText.slice(1);
 
-          element = wrapTelegramUrlToAnchor('t.me/' + username);
+          element = wrapTelegramUrlToAnchor(`${shortDomain}/` + username);
           element.className = 'mention';
 
           // insertPart(entity, `<a class="mention" href="${contextUrl.replace('{1}', encodeURIComponent(username))}"${contextExternal ? ' target="_blank" rel="noopener noreferrer"' : ''}>`, '</a>');

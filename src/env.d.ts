@@ -33,6 +33,10 @@ interface ImportMetaEnv {
   readonly VITE_RSA_EXPONENT?: string;
   readonly VITE_RSA_TEST_MODULUS?: string;
   readonly VITE_RSA_TEST_EXPONENT?: string;
+  // Custom app properties
+  readonly VITE_APP_NAME?: string;
+  readonly VITE_APP_PROTOCOL?: string;
+  readonly VITE_SHORT_DOMAIN?: string;
 }
 
 interface ImportMeta {

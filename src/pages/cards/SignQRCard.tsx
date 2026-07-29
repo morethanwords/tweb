@@ -80,7 +80,8 @@ export default function SignQRCard(_props: {spec: Spec}) {
     if(!QRCodeStylingCtor) return;
 
     const encoded = bytesToBase64(token);
-    const url = 'tg://login?token=' + fixBase64String(encoded, true);
+    const protocol = import.meta.env.VITE_APP_PROTOCOL || 'tg';
+    const url = `${protocol}://login?token=` + fixBase64String(encoded, true);
 
     const style = window.getComputedStyle(document.documentElement);
     const surfaceColor = style.getPropertyValue('--light-filled-primary-color').trim();

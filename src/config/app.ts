@@ -36,10 +36,4 @@ const App = {
   interclientBroadcastChannel: 'tgweb'
 };
 
-if(App.isMainDomain) { // use Webogram credentials then
-  App.id = 2496;
-  App.hash = '8da85b0d5bfe62527e5b244c209159c3';
-  App.pushServerKey = 'BHEbKOXt-GD8MCTTYiAYT3I5R4MB0epIE7Tbbymj1uR0xJRE_7m27eXTVAC_P19TeZnO9413lRz-0oZ87JRPKPM';
-}
-
 export default App;

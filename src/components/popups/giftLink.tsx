@@ -23,6 +23,8 @@ import DotRenderer from '@components/dotRenderer';
 import themeController from '@helpers/themeController';
 import Table, {TablePeer} from '@components/table';
 
+const shortDomain = import.meta.env.VITE_SHORT_DOMAIN || 't.me';
+
 export default class PopupGiftLink extends PopupElement {
   private isInChat: boolean;
 
@@ -51,7 +53,7 @@ export default class PopupGiftLink extends PopupElement {
     const titleLangKey: LangPackKey = isUsed ? 'BoostingUsedGiftLink' : 'BoostingGiftLink';
     this.title.replaceChildren(i18n(titleLangKey));
 
-    const url = this.isInChat && !isUsed ? '' : 'https://t.me/giftcode/' + this.slug;
+    const url = this.isInChat && !isUsed ? '' : `https://${shortDomain}/giftcode/` + this.slug;
 
     const inviteLink = new InviteLink({
       button: false,
@@ -239,7 +241,7 @@ export default class PopupGiftLink extends PopupElement {
             anchorCallback(() => {
               simulateClickEvent(button.element);
               popup.hide();
-              this.shareGiftLink('https://t.me/giftcode/' + slug);
+              this.shareGiftLink(`https://${shortDomain}/giftcode/` + slug);
             })
           ],
           button

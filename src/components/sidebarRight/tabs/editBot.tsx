@@ -74,8 +74,8 @@ const EditBot: Component = () => {
       const btnIntro = Button('btn-primary btn-transparent', {icon: 'info', text: 'EditBot.Buttons.Intro', asLink: true});
       const btnCommands = Button('btn-primary btn-transparent', {icon: 'botcom', text: 'EditBot.Buttons.Commands', asLink: true});
       const btnSettings = Button('btn-primary btn-transparent', {icon: 'bots', text: 'EditBot.Buttons.Settings', asLink: true});
-
-      const url = 't.me/botfather?start=' + getPeerEditableUsername(user);
+      const shortDomain = import.meta.env.VITE_SHORT_DOMAIN || 't.me';
+      const url = `${shortDomain}/botfather?start=` + getPeerEditableUsername(user);
       const arr: [HTMLAnchorElement, string][] = [
         [btnIntro, 'intro'],
         [btnCommands, 'commands'],

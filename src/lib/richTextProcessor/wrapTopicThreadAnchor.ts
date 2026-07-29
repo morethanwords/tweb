@@ -7,9 +7,10 @@ type WrapTopicThreadAnchorArgs = {
   lastMsgId: number;
 };
 
+const shortDomain = import.meta.env.VITE_SHORT_DOMAIN || 't.me';
 export default function wrapTopicThreadAnchor({peerId, threadId, lastMsgId}: WrapTopicThreadAnchorArgs) {
   return wrapTelegramUrlToAnchor(
-    't.me/c/' +
+    `${shortDomain}/c/` +
     peerId.toChatId() +
     (threadId ? '/' + getServerMessageId(threadId) : '') +
     (lastMsgId ? '/' + getServerMessageId(lastMsgId) : '')

@@ -47,9 +47,9 @@ export default function wrapJoinVoiceChatAnchor(message: Message.messageService)
   if(!call || call._ !== 'inputGroupCall') {
     return document.createElement('span');
   }
-
+  const protocol = import.meta.env.VITE_APP_PROTOCOL || 'tg';
   const {onclick, url} = wrapUrl(
-    `tg://voicechat?chat_id=${message.peerId.toChatId()}&id=${call.id}&access_hash=${call.access_hash}`
+    `${protocol}://voicechat?chat_id=${message.peerId.toChatId()}&id=${call.id}&access_hash=${call.access_hash}`
   );
   if(!onclick) {
     return document.createElement('span');

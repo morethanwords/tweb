@@ -107,5 +107,6 @@ export async function paintQrCode(options: PaintQrOptions) {
  * place for the link shape.
  */
 export function buildTelegramUserQrUrl(username: string) {
-  return `https://t.me/${username}`;
+  const shortDomain = import.meta.env.VITE_SHORT_DOMAIN || 't.me';
+  return `https://${shortDomain}/${username}`;
 }
