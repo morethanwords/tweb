@@ -96,10 +96,10 @@ function randomlyChooseVersionFromSearch() {
       if(version === 'Z' || nextRandomUint(8) > 127) {
         localStorage.setItem('kz_version', 'Z');
         const primaryHost = (import.meta.env.VITE_ALLOWED_HOSTS || 'web.telegram.org')
-            .split(',')[0]
-            .replace(/^https?:\/\//, '')
-            .replace(/\/$/, '')
-            .trim();
+          .split(',')[0]
+          .replace(/^https?:\/\//, '')
+          .replace(/\/$/, '')
+          .trim();
         appNavigationController.navigateToUrl(`https://${primaryHost}/a/`);
       } else {
         localStorage.setItem('kz_version', 'K');

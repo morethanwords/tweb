@@ -31,16 +31,21 @@ export function installNodeEnv() {
   installStoragePolyfill();
 }
 
+const primaryHost = (import.meta.env.VITE_ALLOWED_HOSTS || 'web.telegram.org')
+  .split(',')[0]
+  .replace(/^https?:\/\//, '')
+  .replace(/\/$/, '')
+  .trim();
 function installDomShims() {
   const target: any = globalThis as any;
 
   if(typeof target.location === 'undefined') {
     target.location = {
-      href: 'https://web.telegram.org/k/',
-      origin: 'https://web.telegram.org',
+      href: `https://${primaryHost}/k/`,
+      origin: `https://${primaryHost}`,
       protocol: 'https:',
-      host: 'web.telegram.org',
-      hostname: 'web.telegram.org',
+      host: `${primaryHost}`,
+      hostname: `${primaryHost}`,
       port: '',
       pathname: '/k/',
       search: '',

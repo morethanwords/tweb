@@ -68,7 +68,7 @@ export const MARKDOWN_REG_EXP = /(^|\s|\n)(````?)([\s\S]+?)(````?)([\s\n\.,:?!;]
 const customProtocol = import.meta.env.VITE_APP_PROTOCOL || 'tg';
 const appName = import.meta.env.VITE_APP_NAME || 'Telegram';
 export const SITE_HASHTAGS: {[siteName: string]: string} = {
-  `${appName}`: `${customProtocol}://search_hashtag?hashtag={1}`,
+  [appName]: `${customProtocol}://search_hashtag?hashtag={1}`,
   'Twitter': 'https://twitter.com/hashtag/{1}',
   'Instagram': 'https://instagram.com/explore/tags/{1}/',
   'Google Plus': 'https://plus.google.com/explore/{1}'

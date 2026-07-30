@@ -42,6 +42,9 @@ export const UNSAFE_ANCHOR_LINK_TYPES: Set<InternalLinkAnchorType> = new Set([
   'execBotCommand'
 ]);
 
+const cusomProtocol = import.meta.env.VITE_APP_PROTOCOL || 'tg';
+type customProtocolType = typeof customProtocol;
+
 export default function addAnchorListener<
   Params extends {
     pathnameParams?: any,
@@ -49,8 +52,7 @@ export default function addAnchorListener<
   }
 >(options: {
   name: InternalLinkAnchorType,
-  const cusomProtocol = import.meta.env.VITE_APP_PROTOCOL || 'tg';
-  protocol?: `${customProtocol}`,
+  protocol?: `${customProtocolType}`,
   callback: (params: Params & {element?: HTMLAnchorElement, masked?: boolean, event?: Event}) => any,
   noPathnameParams?: boolean,
   noUriParams?: boolean,
