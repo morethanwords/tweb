@@ -31,7 +31,8 @@ pnpm install
 pnpm start          # Dev server on :8080
 pnpm build          # Production build → dist/
 pnpm test           # Run tests (Vitest)
-pnpm lint           # ESLint on src/**/*.ts
+pnpm lint           # oxlint on src/ (config: .oxlintrc.json)
+pnpm lint:fix       # Same, with auto-fix
 ```
 
 Debug query params: `?test=1` (test DCs), `?debug=1` (verbose logging), `?noSharedWorker=1` (disable shared worker).
@@ -95,7 +96,7 @@ solid-js/web    → src/vendor/solid/web
 solid-js/store  → src/vendor/solid/store
 ```
 
-## Code Style (all ESLint-enforced)
+## Code Style (all oxlint-enforced)
 
 Non-obvious rules — these differ from common defaults:
 
@@ -103,9 +104,11 @@ Non-obvious rules — these differ from common defaults:
 - **No space inside `{}` / `[]`**: `{a: 1}` and `[1, 2]` — not `{ a: 1 }`
 - **No trailing comma** anywhere
 - **No space before function paren**: `function foo()`
-- **No `return await`** — return the promise directly
+- **`return await` required inside try/catch** (`typescript/return-await` in
+  `error-handling-correctness-only` mode); elsewhere return the promise
+  directly (convention, not linted)
 
-Standard defaults, also enforced: 2-space indent, single quotes, LF + final newline, no trailing whitespace, max 2 blank lines, `prefer-const`.
+Standard defaults, also enforced: single quotes, LF + final newline, no trailing whitespace, no tabs, max 2 blank lines, `prefer-const`. 2-space indent comes from `.editorconfig` (the linter only bans tabs).
 
 ## TypeScript Notes
 
@@ -270,7 +273,7 @@ import {Message, Chat, User, InputPeer} from '@layer';
 | `src/config/app.ts` | App constants |
 | `src/lib/rootScope.ts` | Global event emitter |
 | `vite.config.ts` | Build configuration |
-| `eslint.config.mjs` | ESLint flat config |
+| `.oxlintrc.json` | oxlint config (style rules via `@stylistic/eslint-plugin` jsPlugin) |
 
 ## Agent Workflow
 
@@ -292,7 +295,7 @@ import {Message, Chat, User, InputPeer} from '@layer';
   Iterating on a feature must not produce a trail of commits: keep the work in
   the working tree, and when asked to commit, fold the whole feature into ONE
   commit (directly on master, no feature branch) unless told otherwise.
-- Do not add `eslint-disable` without a reason
+- Do not add `oxlint-disable` (or legacy `eslint-disable`) comments without a reason
 - Never hand-edit or manually run `format-lang` to regenerate `src/scripts/out/langPack.strings` — it is auto-generated from `lang.ts`/`langSign.ts` by the Vite-wired lang watcher (`watch-lang.js`) on dev-server start, on every `lang.ts` change, and on build. Edit the lang `.ts` source only.
 - Do not import from `react` or use React patterns — this is Solid.js
 - Do not use heavy CSS selectors (deep descendant chains, universal `*`, expensive attribute matchers, `:not()` with complex arguments) — prefer a dedicated class on the target element
