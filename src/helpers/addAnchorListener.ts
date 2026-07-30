@@ -42,7 +42,7 @@ export const UNSAFE_ANCHOR_LINK_TYPES: Set<InternalLinkAnchorType> = new Set([
   'execBotCommand'
 ]);
 
-const cusomProtocol = import.meta.env.VITE_APP_PROTOCOL || 'tg';
+const customProtocol = import.meta.env.VITE_APP_PROTOCOL || 'tg';
 type customProtocolType = typeof customProtocol;
 
 export default function addAnchorListener<
