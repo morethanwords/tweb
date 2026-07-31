@@ -28,7 +28,7 @@ const Button = (props: Partial<{
   textArgs: FormatterArguments,
   noRipple: boolean,
   rippleSquare: boolean,
-  onlyMobile: boolean
+  onlyMobile: boolean,
   tabIndex: number,
 }> & ButtonAccessibilityProps = {}): JSX.Element => {
   let disabled: Accessor<boolean>, setDisabled: Setter<boolean>;

@@ -12,6 +12,7 @@ import App from '@config/app';
 import {getAccentPresetsForBase} from '@config/themePresets';
 import {ColoredBrushType} from '@components/mediaEditor/context';
 import {FontKey} from '@components/mediaEditor/types';
+import type {BotConnectionReview} from '@appManagers/appBusinessManager';
 import type {UnconfirmedAuthorization} from '@appManagers/appAccountManager';
 
 // Factory tinted ("Dark") collapses onto the first base-color preset (blue) so the accent picker
@@ -213,6 +214,7 @@ export type State = {
   authState: AuthState,
   hiddenPinnedMessages: {[peerId: PeerId]: number},
   hideChatJoinRequests: {[peerId: PeerId]: number},
+  botConnectionReviews: BotConnectionReview[],
   // stateId?: number, // ! DEPRECATED
   notifySettings: {[k in Exclude<NotifyPeer['_'], 'notifyPeer'>]?: PeerNotifySettings.peerNotifySettings},
   confirmedWebViews: BotId[],
@@ -575,6 +577,7 @@ export const STATE_INIT: State = {
   },
   hiddenPinnedMessages: {},
   hideChatJoinRequests: {},
+  botConnectionReviews: [],
   // stateId: nextRandomUint(32),
   notifySettings: {},
   confirmedWebViews: [],

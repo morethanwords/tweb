@@ -1,5 +1,5 @@
 import {CancellablePromise} from '@helpers/cancellablePromise';
-import {AccountPasskeys, AccountPassword, Authorization, ChannelParticipant, Chat, ChatAdminRights, ChatFull, ChatParticipant, DialogFilter, ExportedChatlistInvite, GlobalPrivacySettings, Passkey, WebAuthorization} from '@layer';
+import {AccountPasskeys, AccountPassword, Authorization, ChannelParticipant, Chat, ChatAdminRights, ChatFull, ChatParticipant, ConnectedBot, DialogFilter, ExportedChatlistInvite, GlobalPrivacySettings, Passkey, WebAuthorization} from '@layer';
 import type SidebarSlider from '@components/slider';
 import type {SliderSuperTab} from '@components/slider';
 import getParticipantPeerId from '@appManagers/utils/chats/getParticipantPeerId';
@@ -16,6 +16,8 @@ import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
 import {ChatInvite, ChatInviteActions, getChatInviteLinksInitArgs} from '@components/sidebarRight/tabs/chatInviteLinkShared';
 import lottieLoader from '@lib/lottie/lottieLoader';
 import {deleteFolder as deleteEditFolder, getEditFolderInitArgs} from '@components/sidebarLeft/tabs/editFolderShared';
+import type {SelectSearchPeerType} from '@components/appSelectPeers';
+import type {IsPeerType} from '@appManagers/appPeersManager';
 
 
 export const AppPasscodeLockTab =
@@ -75,11 +77,12 @@ export const AppNotificationsTab =
   });
 
 
-export function getEditProfileInitArgs(): Omit<EditProfileTabPayload, 'focusOn'> {
+export function getEditProfileInitArgs(overwriteConnectedBot?: boolean): Omit<EditProfileTabPayload, 'focusOn'> {
   return {
     bioMaxLength: rootScope.managers.apiManager.getLimit('bio'),
     user: rootScope.managers.appUsersManager.getSelf(),
-    userFull: rootScope.managers.appProfileManager.getProfile(rootScope.myId.toUserId())
+    userFull: rootScope.managers.appProfileManager.getProfile(rootScope.myId.toUserId()),
+    connectedBot: rootScope.managers.appBusinessManager.getConnectedBot(overwriteConnectedBot)
   };
 }
 
@@ -89,6 +92,18 @@ export const AppEditProfileTab =
     getComponentModule: () => import('../sidebarLeft/tabs/editProfile')
   });
 (AppEditProfileTab as any).noSame = true;
+
+
+type AppChatAutomationTabPayload = {
+  connectedBot?: ConnectedBot.connectedBot
+};
+
+export const AppChatAutomationTab =
+  scaffoldSolidJSTab<AppChatAutomationTabPayload>({
+    title: 'ChatAutomation.Title',
+    getComponentModule: () => import('../sidebarLeft/tabs/chatAutomation')
+  });
+(AppChatAutomationTab as any).noSame = true;
 
 
 export const AppKeyboardShortcutsTab =
@@ -326,12 +341,23 @@ export const AppPrivacyGiftsTab =
 
 type AppActiveSessionsTabPayload = {
   authorizations: Authorization.authorization[];
+  connectedBot?: ConnectedBot.connectedBot;
 };
 
 export const AppActiveSessionsTab =
   scaffoldSolidJSTabEventable<AppActiveSessionsTabPayload>({
     title: 'SessionsTitle',
     getComponentModule: () => import('../sidebarLeft/tabs/activeSessions')
+  });
+
+type AppConnectedBotSessionTabPayload = {
+  connectedBot: ConnectedBot.connectedBot;
+};
+
+export const AppConnectedBotSessionTab =
+  scaffoldSolidJSTabEventable<AppConnectedBotSessionTabPayload>({
+    title: 'ChatAutomation.Session',
+    getComponentModule: () => import('../sidebarLeft/tabs/connectedBotSession')
   });
 
 export const AppActiveWebSessionsTab =
@@ -830,6 +856,11 @@ type AppAddMembersTabPayload = {
   selectedExtras?: Set<string>;
   extraCategories?: ReadonlyArray<AppAddMembersExtraCategory>;
   extraCategoriesSectionLangKey?: LangPackKey;
+  peerType?: SelectSearchPeerType[];
+  exceptSelf?: boolean;
+  filterPeerTypeBy?: IsPeerType[];
+  limit?: number;
+  limitCallback?: () => void;
   attachToPromise?: (promise: Promise<any>) => void;
 };
 

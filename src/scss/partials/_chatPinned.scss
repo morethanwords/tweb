@@ -746,6 +746,24 @@
   }
 }
 
+.pinned-automation {
+  &-wrapper {
+    gap: 0;
+    padding: 0;
+    cursor: default;
+  }
+
+  &-action-button {
+    flex: 0 0 auto;
+    margin-inline-end: .25rem;
+  }
+
+  &-menu {
+    flex: 0 0 auto;
+    color: var(--secondary-text-color);
+  }
+}
+
 .pinned-translation {
   height: var(--pinned-translation-height) !important;
   color: var(--primary-color);

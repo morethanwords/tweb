@@ -57,6 +57,7 @@ export type LottieAssetName =
   | 'Cake'
   | 'Mailbox'
   | 'LoveLetter'
+  | 'ChatAutomation'
   | 'key'
   | 'UtyanDisappear'
   | 'hand_stop'

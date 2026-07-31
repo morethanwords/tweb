@@ -22,9 +22,14 @@ export type SectionOptions = {
 
 const className = 'sidebar-left-section';
 const SectionContent: ParentComponent<JSX.HTMLAttributes<HTMLDivElement>> = (props) => {
+  const [local, rest] = splitProps(props, ['ref', 'class', 'children']);
   return (
-    <div ref={props.ref} class={classNames(className + '-content', props.class)}>
-      {props.children}
+    <div
+      {...rest}
+      ref={local.ref}
+      class={classNames(className + '-content', local.class)}
+    >
+      {local.children}
     </div>
   );
 };

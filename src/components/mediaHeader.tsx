@@ -45,6 +45,8 @@ export type MediaHeaderStickerProps = {
   size?: number,
   /** Extra class on the sticker wrapper. */
   class?: string,
+  /** Replay the animation when the sticker is clicked. Defaults to true. */
+  restartOnClick?: boolean,
   /** Fires once the sticker is ready to display (lottie's first frame for `name`, immediately for `element`). */
   onReady?: () => void,
   ref?: Ref<HTMLDivElement>
@@ -71,7 +73,7 @@ MediaHeader.Sticker = function MediaHeaderSticker(props: MediaHeaderStickerProps
           class={styles.lottie}
           size={size()}
           lottieLoader={lottieLoader}
-          restartOnClick
+          restartOnClick={props.restartOnClick ?? true}
           name={props.name}
           onPromise={(promise) => {
             promise.then(props.onReady);

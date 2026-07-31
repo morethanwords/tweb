@@ -294,6 +294,17 @@ export namespace MessageRender {
         args.push(span);
       }
 
+      if(message.via_business_bot_id) {
+        const bot = apiManagerProxy.getUser(message.via_business_bot_id as UserId);
+        const botName = [bot?.first_name, bot?.last_name].filter(Boolean).join(' ') || bot?.username || 'Bot';
+        const span = document.createElement('span');
+        span.classList.add('time-post-author', 'time-business-bot');
+        span.title = I18n.format('ChatAutomation.ViaBotTooltip', true);
+        span.append(wrapEmojiText(botName));
+        span.insertAdjacentHTML('beforeend', '<span class="time-post-author-comma">,' + NBSP + '</span>');
+        args.push(span);
+      }
+
       if(!editedPrimary && message.edit_date && chatType !== ChatType.Scheduled && !message.pFlags.edit_hide) {
         args.unshift(editedSpan = makeEdited());
       }

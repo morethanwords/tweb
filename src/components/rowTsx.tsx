@@ -34,6 +34,10 @@ const Row = (props: {children: JSX.Element} & Partial<{
   // buttonRightLangKey: LangPackKey,
   // rightTextContent?: string,
   as: 'a' | 'label' | 'div',
+  role: JSX.HTMLAttributes<HTMLElement>['role'],
+  tabIndex: number,
+  'aria-checked': boolean,
+  'aria-disabled': boolean,
   contextMenu: Omit<Parameters<typeof createContextMenu>[0], 'findElement' | 'listenTo' | 'listenerSetter'>,
   // checkboxKeys: [LangPackKey, LangPackKey],
   classList: {[key: string]: boolean},
@@ -91,6 +95,10 @@ const Row = (props: {children: JSX.Element} & Partial<{
     <RippleElement
       ref={ref()}
       component={props.as === 'a' ? 'a' : (props.as === 'label' || isCheckbox() ? 'label' : 'div')}
+      role={props.role}
+      tabIndex={props.tabIndex}
+      aria-checked={props['aria-checked']}
+      aria-disabled={props['aria-disabled']}
       classList={{
         'row': true,
         'no-subtitle': !store.subtitle,
@@ -109,6 +117,14 @@ const Row = (props: {children: JSX.Element} & Partial<{
         (typeof(props.clickable) !== 'boolean' && props.clickable) ||
         (props.contextMenu ? openContextMenu : undefined)
       }
+      onKeyDown={props.tabIndex !== undefined && props.clickable ? (event: KeyboardEvent) => {
+        if(event.key !== 'Enter' && event.key !== ' ') {
+          return;
+        }
+
+        event.preventDefault();
+        (event.currentTarget as HTMLElement).click();
+      } : undefined}
       noRipple={!haveRipple()}
     >
       {resolvedChildren()}
@@ -146,6 +162,7 @@ Row.RowPart = (props: {
 Row.Row = (props: {
   class: string,
   additionalClass?: string,
+  rightAdditionalClass?: string,
   left?: JSX.Element,
   right?: JSX.Element,
   rightSecondary?: boolean
@@ -160,6 +177,7 @@ Row.Row = (props: {
           class={classNames(
             props.class,
             props.additionalClass,
+            props.rightAdditionalClass,
             `row-${props.class}-right${props.rightSecondary ? ` row-${props.class}-right-secondary` : ''}`
           )}
           part={resolved()}
@@ -173,6 +191,7 @@ Row.Title = (props: {
   children: JSX.Element,
   class?: string,
   titleRight?: JSX.Element,
+  titleRightClass?: string,
   titleRightSecondary?: boolean
 }) => {
   const context = useContext(RowContext);
@@ -182,6 +201,7 @@ Row.Title = (props: {
       additionalClass={props.class}
       left={props.children}
       right={props.titleRight || context.store.checkboxFieldToggle}
+      rightAdditionalClass={props.titleRightClass}
       rightSecondary={props.titleRightSecondary}
     />
   ));

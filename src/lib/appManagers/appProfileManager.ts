@@ -1095,20 +1095,37 @@ export class AppProfileManager extends AppManager {
     );
   }
 
+  public refreshPeerSettings(peerId: PeerId) {
+    delete this.peerSettings[peerId];
+    return callbackify(this.getPeerSettings(peerId, true), (peerSettings) => {
+      this.apiUpdatesManager.processLocalUpdate({
+        _: 'updatePeerSettings',
+        peer: this.appPeersManager.getOutputPeer(peerId),
+        settings: peerSettings
+      });
+    });
+  }
+
   public refreshPeerSettingsIfNeeded(peerId: PeerId) {
     if(this.peerSettings[peerId]) {
-      delete this.peerSettings[peerId];
-      callbackify(this.getPeerSettings(peerId), (peerSettings) => {
-        this.apiUpdatesManager.processLocalUpdate({
-          _: 'updatePeerSettings',
-          peer: this.appPeersManager.getOutputPeer(peerId),
-          settings: peerSettings
-        });
-      });
+      return this.refreshPeerSettings(peerId);
     }
   }
 
-  public getPeerSettings(peerId: PeerId) {
+  public modifyCachedPeerSettings(peerId: PeerId, modify: (settings: PeerSettings) => void) {
+    const settings = this.peerSettings[peerId];
+    if(!settings) return false;
+
+    modify(settings);
+    this.apiUpdatesManager.processLocalUpdate({
+      _: 'updatePeerSettings',
+      peer: this.appPeersManager.getOutputPeer(peerId),
+      settings
+    });
+    return true;
+  }
+
+  public getPeerSettings(peerId: PeerId, overwrite?: boolean) {
     if(this.appPeersManager.isMonoforum(peerId)) return this.peerSettings[peerId] ??= {
       _: 'peerSettings',
       pFlags: {}
@@ -1120,6 +1137,7 @@ export class AppProfileManager extends AppManager {
       params: {
         peer: this.appPeersManager.getInputPeerById(peerId)
       },
+      options: overwrite ? {overwrite: true} : undefined,
       processResult: (messagesPeerSettings) => {
         this.appChatsManager.saveApiChats(messagesPeerSettings.chats, true);
         this.appUsersManager.saveApiUsers(messagesPeerSettings.users);
@@ -1329,6 +1347,7 @@ export class AppProfileManager extends AppManager {
 
   private onUpdatePeerSettings = (update: Update.updatePeerSettings) => {
     const peerId = this.appPeersManager.getPeerId(update.peer);
+    this.peerSettings[peerId] = update.settings;
     this.rootScope.dispatchEvent('peer_settings', {peerId, settings: update.settings});
   };
 

@@ -1044,6 +1044,10 @@ export default class ChatTopbar {
       callback();
     });
 
+    this.listenerSetter.add(rootScope)('chat_automation_update', (connectedBot) => {
+      this.plates.automation.handleConnectedBotUpdate(connectedBot?.bot_id as UserId);
+    });
+
     this.listenerSetter.add(rootScope)('right_sidebar_toggle', () => {
       this.setFloating(); // * to calculate sponsored height
     });

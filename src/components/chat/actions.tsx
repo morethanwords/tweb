@@ -77,7 +77,8 @@ function ActionsPlateBody(props: {
 export default function createChatActionsPlate(
   topbar: ChatTopbar,
   chat: Chat,
-  managers: AppManagers
+  managers: AppManagers,
+  peerSettingsConsumer?: Pick<ChatActionsPlate, 'set' | 'unset'>
 ): ChatActionsPlate {
   const [buttons, setButtons] = createSignal<ActionDef[] | undefined>();
   const [disabled, setDisabled] = createSignal(false);
@@ -143,7 +144,7 @@ export default function createChatActionsPlate(
     if(currentPeerId !== undefined) {
       managers.appProfileManager.hidePeerSettingsBar(currentPeerId);
     }
-    unset(currentPeerId);
+    unsetOwn(currentPeerId);
   };
 
   const plate = createTopbarPlate({
@@ -153,18 +154,27 @@ export default function createChatActionsPlate(
     render: () => <ActionsPlateBody buttons={buttons} disabled={disabled} onClose={onClose} />
   });
 
-  const unset = (peerId: PeerId) => {
+  const unsetOwn = (peerId: PeerId) => {
     currentPeerId = peerId;
     activeActions = [];
     setButtons(undefined);
     plate.setHidden(true);
   };
 
+  const unset = (peerId: PeerId) => {
+    unsetOwn(peerId);
+    peerSettingsConsumer?.unset(peerId);
+  };
+
   const set = (peerId: PeerId, settings: PeerSettings) => {
+    const peerSettingsCallback = peerSettingsConsumer?.set(peerId, settings);
     const supportedActions = settings?.pFlags ?
       actions.filter((action) => settings.pFlags[action.key]) :
       [];
-    if(!supportedActions.length) return () => unset(peerId);
+    if(!supportedActions.length) return () => {
+      unsetOwn(peerId);
+      peerSettingsCallback?.();
+    };
 
     return () => {
       currentPeerId = peerId;
@@ -173,6 +183,7 @@ export default function createChatActionsPlate(
       setButtons(filtered);
       plate.setHidden(false);
       chat.bubbles.setPeerSettings(peerId, settings);
+      peerSettingsCallback?.();
     };
   };
 

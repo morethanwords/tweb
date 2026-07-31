@@ -2,7 +2,7 @@ import {Component, onCleanup, onMount} from 'solid-js';
 import {getOverlayRoot} from '@helpers/appWindow';
 import Button from '@components/button';
 import Row from '@components/row';
-import {Authorization} from '@layer';
+import {Authorization, ConnectedBot} from '@layer';
 import {formatDateAccordingToTodayNew} from '@helpers/date';
 import {ButtonMenuSync} from '@components/buttonMenu';
 import PopupPeer from '@components/popups/peer';
@@ -17,7 +17,10 @@ import SettingSection from '@components/settingSection';
 import PopupElement from '@components/popups';
 import {toastNew} from '@components/toast';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
-import type {AppActiveSessionsTab} from '@components/solidJsTabs/tabs';
+import {AppConnectedBotSessionTab, type AppActiveSessionsTab} from '@components/solidJsTabs/tabs';
+import {avatarNew} from '@components/avatarNew';
+import PeerTitle from '@components/peerTitle';
+import rootScope from '@lib/rootScope';
 
 const ActiveSessions: Component = () => {
   const [tab] = useSuperTab<typeof AppActiveSessionsTab>();
@@ -36,6 +39,10 @@ const ActiveSessions: Component = () => {
       });
 
       row.container.dataset.hash = '' + auth.hash;
+      if(!auth.pFlags.current) {
+        row.container.setAttribute('role', 'button');
+        row.container.tabIndex = 0;
+      }
 
       row.midtitle.textContent = [auth.device_model, auth.system_version || auth.platform].filter(Boolean).join(', ');
 
@@ -43,10 +50,16 @@ const ActiveSessions: Component = () => {
     };
 
     const authorizations = tab.payload.authorizations.slice();
+    const authorizationRows: HTMLElement[] = [];
+    let connectedBot = tab.payload.connectedBot;
+    const terminateConnectedBotKey = 'ChatAutomation.TerminateConnectedBot' as const;
+    let renderTerminateButton: () => void;
 
     const onError = (err: ApiError) => {
       if(err.type === 'FRESH_RESET_AUTHORISATION_FORBIDDEN') {
         toastNew({langPackKey: 'RecentSessions.Error.FreshReset'});
+      } else {
+        toastNew({langPackKey: 'Error.AnError'});
       }
     };
 
@@ -61,38 +74,63 @@ const ActiveSessions: Component = () => {
 
       section.content.append(session.container);
 
-      if(authorizations.length) {
-        const btnTerminate = Button('btn-primary btn-transparent danger', {icon: 'stop', text: 'TerminateAllSessions'});
-        attachClickEvent(btnTerminate, (e) => {
-          PopupElement.createPopup(PopupPeer, 'revoke-session', {
-            buttons: [{
-              langKey: 'Terminate',
-              isDanger: true,
-              callback: () => {
-                const toggle = toggleDisability([btnTerminate], true);
-                tab.managers.appAccountManager.resetAuthorizations().then((value) => {
-                  if(value) {
-                    btnTerminate.remove();
-                    otherSection.container.remove();
-                  }
-                }, onError).finally(() => {
-                  toggle();
-                });
-              }
-            }],
-            titleLangKey: 'AreYouSureSessionsTitle',
-            descriptionLangKey: 'AreYouSureSessions'
-          }).show();
-        }, {listenerSetter: tab.listenerSetter});
+      const btnTerminate = Button('btn-primary btn-transparent danger', {icon: 'stop', text: 'TerminateAllSessions'});
+      renderTerminateButton = () => {
+        if(authorizations.length || connectedBot) {
+          if(!btnTerminate.parentElement) section.content.append(btnTerminate);
+        } else {
+          btnTerminate.remove();
+        }
+      };
+      attachClickEvent(btnTerminate, (e) => {
+        const connectedBotSnapshot = connectedBot;
+        const connectedBotTitle = connectedBotSnapshot && new PeerTitle({
+          peerId: (connectedBotSnapshot.bot_id as UserId).toPeerId(false),
+          username: true
+        });
+        PopupElement.createPopup(PopupPeer, 'revoke-session', {
+          buttons: [{
+            langKey: 'Terminate',
+            isDanger: true,
+            callback: (e, selectedCheckboxes) => {
+              const toggle = toggleDisability([btnTerminate], true);
+              const terminateConnectedBot = !!connectedBotSnapshot &&
+                selectedCheckboxes?.has(terminateConnectedBotKey);
+              tab.managers.appAccountManager.resetAuthorizations().then((value) => {
+                if(!value) {
+                  toastNew({langPackKey: 'Error.AnError'});
+                  return;
+                }
 
-        section.content.append(btnTerminate);
-      }
+                authorizationRows.forEach((row) => row.remove());
+                authorizationRows.length = 0;
+                authorizations.length = 0;
+                renderTerminateButton();
+                if(terminateConnectedBot) {
+                  return tab.managers.appBusinessManager.updateConnectedBot({
+                    previousBotId: connectedBotSnapshot.bot_id as UserId
+                  });
+                }
+
+                if(!connectedBot) {
+                  otherSection.container.remove();
+                }
+              }).catch(onError).finally(() => {
+                toggle();
+              });
+            }
+          }],
+          titleLangKey: 'AreYouSureSessionsTitle',
+          descriptionLangKey: 'AreYouSureSessions',
+          checkboxes: connectedBotSnapshot ? [{
+            text: terminateConnectedBotKey,
+            textArgs: [connectedBotTitle.element]
+          }] : undefined
+        }).show();
+      }, {listenerSetter: tab.listenerSetter});
+      renderTerminateButton();
 
       tab.scrollable.append(section.container);
-    }
-
-    if(!authorizations.length) {
-      return;
     }
 
     const otherSection = new SettingSection({
@@ -100,15 +138,87 @@ const ActiveSessions: Component = () => {
       caption: 'SessionsListInfo'
     });
 
+    const ConnectedBotSession = (bot: ConnectedBot.connectedBot) => {
+      const botId = bot.bot_id as UserId;
+      const title = new PeerTitle({peerId: botId.toPeerId(false)});
+      const row = new Row({
+        title: title.element,
+        subtitleLangKey: 'ChatAutomation.Session',
+        clickable: true,
+        titleRight: bot.date ? formatDateAccordingToTodayNew(new Date(bot.date * 1000)) : undefined
+      });
+      row.container.dataset.businessBot = '' + botId;
+      row.container.setAttribute('role', 'button');
+      row.container.tabIndex = 0;
+      row.midtitle.textContent = [bot.device, bot.location].filter(Boolean).join(', ');
+
+      const avatar = avatarNew({
+        middleware: tab.middlewareHelper.get(),
+        peerId: botId.toPeerId(false),
+        size: 40
+      });
+      row.applyMediaElement(avatar.node, '40');
+      return row;
+    };
+
+    let connectedBotRow: HTMLElement;
+    const renderConnectedBot = (bot?: ConnectedBot.connectedBot) => {
+      const newRow = bot && ConnectedBotSession(bot).container;
+      if(connectedBotRow) {
+        if(newRow) connectedBotRow.replaceWith(newRow);
+        else connectedBotRow.remove();
+      } else if(newRow) {
+        otherSection.content.prepend(newRow);
+      }
+
+      connectedBotRow = newRow;
+      connectedBot = bot;
+      renderTerminateButton();
+      if(connectedBot && !otherSection.container.isConnected) {
+        tab.scrollable.append(otherSection.container);
+      } else if(!connectedBot && !authorizations.length) {
+        otherSection.container.remove();
+      }
+    };
+
+    if(connectedBot) {
+      connectedBotRow = ConnectedBotSession(connectedBot).container;
+      otherSection.content.append(connectedBotRow);
+    }
+
     authorizations.forEach((auth) => {
-      otherSection.content.append(Session(auth).container);
+      const row = Session(auth).container;
+      authorizationRows.push(row);
+      otherSection.content.append(row);
     });
 
-    tab.scrollable.append(otherSection.container);
+    if(authorizations.length || connectedBot) {
+      tab.scrollable.append(otherSection.container);
+    }
 
     let target: HTMLElement;
     const onTerminateClick = () => {
-      const hash = target.dataset.hash;
+      const sessionTarget = target;
+      const businessBotId = sessionTarget.dataset.businessBot;
+      if(businessBotId) {
+        const botId = businessBotId as UserId;
+        PopupElement.createPopup(PopupPeer, 'revoke-session', {
+          buttons: [{
+            langKey: 'Terminate',
+            isDanger: true,
+            callback: () => {
+              tab.managers.appBusinessManager.updateConnectedBot({
+                previousBotId: botId
+              }).catch(onError);
+            }
+          }],
+          titleLangKey: 'AreYouSureSessionTitle',
+          descriptionLangKey: 'TerminateSessionText'
+        }).show();
+        return;
+      }
+
+      const hash = sessionTarget.dataset.hash;
 
       PopupElement.createPopup(PopupPeer, 'revoke-session', {
         buttons: [{
@@ -118,7 +228,17 @@ const ActiveSessions: Component = () => {
             tab.managers.appAccountManager.resetAuthorization(hash)
             .then((value) => {
               if(value) {
-                target.remove();
+                sessionTarget.remove();
+                const authorizationIndex = authorizations.findIndex((auth) => String(auth.hash) === hash);
+                if(authorizationIndex !== -1) authorizations.splice(authorizationIndex, 1);
+
+                const rowIndex = authorizationRows.indexOf(sessionTarget);
+                if(rowIndex !== -1) authorizationRows.splice(rowIndex, 1);
+                renderTerminateButton();
+
+                if(!authorizations.length && !connectedBot) {
+                  otherSection.container.remove();
+                }
               }
             }, onError);
           }
@@ -144,7 +264,7 @@ const ActiveSessions: Component = () => {
       element: tab.scrollable.container,
       callback: (e) => {
         target = findUpClassName(e.target, 'row');
-        if(!target || target.dataset.hash === '0') {
+        if(!target || target.dataset.hash === '0' || (!target.dataset.hash && !target.dataset.businessBot)) {
           return;
         }
 
@@ -157,14 +277,48 @@ const ActiveSessions: Component = () => {
       listenerSetter: tab.listenerSetter
     });
 
-    attachClickEvent(tab.scrollable.container, (e) => {
-      target = findUpClassName(e.target, 'row');
-      if(!target || target.dataset.hash === '0') {
+    const activateSession = (sessionTarget: HTMLElement) => {
+      if(sessionTarget.dataset.businessBot) {
+        const bot = connectedBot;
+        if(bot && String(bot.bot_id) === sessionTarget.dataset.businessBot) {
+          tab.slider.createTab(AppConnectedBotSessionTab).open({connectedBot: bot});
+        }
         return;
       }
 
+      target = sessionTarget;
       onTerminateClick();
+    };
+
+    attachClickEvent(tab.scrollable.container, (e) => {
+      const sessionTarget = findUpClassName(e.target, 'row');
+      if(
+        !sessionTarget ||
+        sessionTarget.dataset.hash === '0' ||
+        (!sessionTarget.dataset.hash && !sessionTarget.dataset.businessBot)
+      ) {
+        return;
+      }
+
+      activateSession(sessionTarget);
     }, {listenerSetter: tab.listenerSetter});
+    tab.listenerSetter.add(tab.scrollable.container)('keydown', (e) => {
+      if(e.key !== 'Enter' && e.key !== ' ') return;
+
+      const sessionTarget = findUpClassName(e.target, 'row');
+      if(
+        !sessionTarget ||
+        sessionTarget.dataset.hash === '0' ||
+        (!sessionTarget.dataset.hash && !sessionTarget.dataset.businessBot)
+      ) {
+        return;
+      }
+
+      e.preventDefault();
+      activateSession(sessionTarget);
+    });
+
+    tab.listenerSetter.add(rootScope)('chat_automation_update', renderConnectedBot);
   });
 
   onCleanup(() => {

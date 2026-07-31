@@ -12,7 +12,21 @@ type AppAddMembersTabClass = typeof AppAddMembersTab;
 
 const AddMembersTab = () => {
   const [tab] = useSuperTab<AppAddMembersTabClass>();
-  const {type, placeholder, takeOut, skippable, selectedPeerIds, selectedExtras, extraCategories, extraCategoriesSectionLangKey} = tab.payload;
+  const {
+    type,
+    placeholder,
+    takeOut,
+    skippable,
+    selectedPeerIds,
+    selectedExtras,
+    extraCategories,
+    extraCategoriesSectionLangKey,
+    peerType,
+    exceptSelf,
+    filterPeerTypeBy,
+    limit,
+    limitCallback
+  } = tab.payload;
 
   tab.container.classList.add('add-members-container');
 
@@ -46,14 +60,27 @@ const AddMembersTab = () => {
     onChange: skippable ? null : (length) => {
       nextBtn.classList.toggle('is-visible', !!length);
     },
-    peerType: [isPrivacy ? 'dialogs' : 'contacts'],
+    peerType: peerType || [isPrivacy ? 'dialogs' : 'contacts'],
     placeholder,
-    exceptSelf: isPrivacy,
-    filterPeerTypeBy: isPrivacy ? ['isAnyGroup', 'isUser'] : undefined,
+    exceptSelf: exceptSelf ?? isPrivacy,
+    filterPeerTypeBy: filterPeerTypeBy || (isPrivacy ? ['isAnyGroup', 'isUser'] : undefined),
     managers: tab.managers,
     design: isPrivacy ? 'round' : 'square',
     checkboxSide: isPrivacy ? 'right' : 'left'
   });
+
+  if(limit) {
+    const add = selector.add.bind(selector);
+    selector.add = (options) => {
+      const selectedPeersCount = [...selector.selected].filter((key) => typeof(key) !== 'string').length;
+      if(typeof(options.key) !== 'string' && !selector.selected.has(options.key) && selectedPeersCount >= limit) {
+        limitCallback?.();
+        return false;
+      }
+
+      return add(options);
+    };
+  }
 
   if(extraCategories?.length) {
     const categoriesByKey = new Map<string, AppAddMembersExtraCategory>(

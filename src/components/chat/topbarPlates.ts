@@ -18,10 +18,12 @@ import createChatLivePlate, {ChatLivePlate} from '@components/chat/topbarLive/co
 import createChatTranslationPlate, {ChatTranslationPlate} from '@components/chat/translation';
 import createChatSponsoredPlate, {ChatSponsoredPlate} from '@components/chat/topbarSponsored';
 import {TopbarPlateController} from '@components/chat/topbarPlate';
+import createChatAutomationPlate, {ChatAutomationPlate} from '@components/chat/chatAutomation';
 
 export type TopbarPlates = {
   requests: ChatRequestsPlate,
   actions: ChatActionsPlate,
+  automation: ChatAutomationPlate,
   removeFee: ChatRemoveFeePlate,
   live: ChatLivePlate | undefined,
   translation: ChatTranslationPlate,
@@ -39,18 +41,20 @@ export function createTopbarPlates(
   managers: AppManagers
 ): TopbarPlates {
   const requests = createChatRequestsPlate(topbar, chat, managers);
-  const actions = createChatActionsPlate(topbar, chat, managers);
+  const automation = createChatAutomationPlate(topbar, chat, managers);
+  const actions = createChatActionsPlate(topbar, chat, managers, automation);
   const live = IS_LIVE_STREAM_SUPPORTED ? createChatLivePlate(topbar, chat, managers) : undefined;
   const translation = createChatTranslationPlate(topbar, chat, managers);
   const removeFee = createChatRemoveFeePlate(topbar, chat, managers);
   const sponsored = createChatSponsoredPlate(topbar, chat, managers);
 
   // Order matches the visual stack inside `floatingPlatesWrapper`.
-  const all = [requests, actions, live, translation, removeFee, sponsored].filter(Boolean);
+  const all = [requests, actions, automation, live, translation, removeFee, sponsored].filter(Boolean);
 
   return {
     requests,
     actions,
+    automation,
     removeFee,
     live,
     translation,

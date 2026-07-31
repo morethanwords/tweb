@@ -4,6 +4,21 @@ import {
   isUpdateAllowed,
   parseAllowedChatIds
 } from './allowlist.mjs';
+import {
+  isBusinessChatAllowed,
+  isBusinessConnectionAllowed,
+  isBusinessMessageFromCurrentRun,
+  parseBusinessConfig,
+  processBusinessMessage
+} from './business.mjs';
+import {
+  BotApiError,
+  getErrorDetails,
+  getPollRetryDelay,
+  isRetryablePollError,
+  processUpdateBatch,
+  UpdateHandlingError
+} from './polling.mjs';
 
 const DEFAULT_EXPECTED_USERNAME = 'tweb_ephemeral_ui_25359431_bot';
 
@@ -63,26 +78,68 @@ if(!token) {
 const expectedUsername = (
   process.env.TG_EPHEMERAL_BOT_USERNAME || DEFAULT_EXPECTED_USERNAME
 ).replace(/^@/, '');
-const allowedChatIds = parseAllowedChatIds(
-  process.env.TG_EPHEMERAL_BOT_CHAT_IDS
-);
+const ephemeralChatIdsValue = process.env.TG_EPHEMERAL_BOT_CHAT_IDS?.trim();
+const allowedChatIds = ephemeralChatIdsValue ?
+  parseAllowedChatIds(ephemeralChatIdsValue) :
+  new Set();
+const businessConfig = parseBusinessConfig({
+  userIds: process.env.TG_EPHEMERAL_BOT_BUSINESS_USER_IDS,
+  chatIds: process.env.TG_EPHEMERAL_BOT_BUSINESS_CHAT_IDS
+});
+if(!allowedChatIds.size && !businessConfig) {
+  throw new Error(
+    'Configure TG_EPHEMERAL_BOT_CHAT_IDS or both Business Mode allowlists'
+  );
+}
+
 const apiUrl = `https://api.telegram.org/bot${token}/`;
-let stopped = false;
+const businessStartedAt = Math.floor(Date.now() / 1000);
+const businessConnections = new Map();
+const handledBusinessMessages = new Set();
+let stopRequested = false;
+let activePollController;
 let offset;
 
 function log(event, details = {}) {
   console.log(JSON.stringify({event, ...details}));
 }
 
-async function call(method, params = {}) {
+function waitForRetry(delay, signal) {
+  if(signal.aborted) {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve) => {
+    const finish = () => {
+      clearTimeout(timer);
+      signal.removeEventListener('abort', finish);
+      resolve();
+    };
+    const timer = setTimeout(finish, delay);
+    signal.addEventListener('abort', finish, {once: true});
+  });
+}
+
+async function call(method, params = {}, options = {}) {
   const response = await fetch(apiUrl + method, {
     method: 'POST',
     headers: {'content-type': 'application/json'},
-    body: JSON.stringify(params)
+    body: JSON.stringify(params),
+    signal: options.signal
   });
-  const result = await response.json();
+  let result;
+  try {
+    result = await response.json();
+  } catch(error) {
+    if(!response.ok) {
+      throw new BotApiError(method, undefined, response.status);
+    }
+
+    throw error;
+  }
+
   if(!response.ok || !result.ok) {
-    throw new Error(`${method}: ${result.description || response.status}`);
+    throw new BotApiError(method, result, response.status);
   }
 
   return result.result;
@@ -92,6 +149,18 @@ const bot = await call('getMe');
 if(expectedUsername && bot.username !== expectedUsername) {
   throw new Error(
     `Expected @${expectedUsername}, received credentials for @${bot.username}`
+  );
+}
+if(businessConfig && bot.can_connect_to_business !== true) {
+  throw new Error(
+    `@${bot.username} cannot be connected to a Telegram Business account`
+  );
+}
+
+const webhookInfo = await call('getWebhookInfo');
+if(webhookInfo.url) {
+  throw new Error(
+    `@${bot.username} has an active webhook; remove it before using long polling`
   );
 }
 
@@ -361,7 +430,147 @@ async function handleCallbackQuery(query) {
   log('callback-query', {handled: true});
 }
 
+function handleBusinessConnection(connection) {
+  if(!isBusinessConnectionAllowed(
+    connection,
+    businessConfig.allowedUserIds
+  )) {
+    businessConnections.delete(connection.id);
+    log('business-connection-ignored', {
+      reason: connection.is_enabled ?
+        'business-user-not-allowed' :
+        'connection-disabled'
+    });
+    return;
+  }
+
+  businessConnections.set(connection.id, connection);
+  log('business-connection-ready', {
+    canReadMessages: connection.rights?.can_read_messages === true,
+    canReply: connection.rights?.can_reply === true
+  });
+}
+
+async function getAllowedBusinessConnection(connectionId) {
+  if(!connectionId) {
+    return;
+  }
+
+  const cached = businessConnections.get(connectionId);
+  if(cached) {
+    return cached;
+  }
+
+  const connection = await call('getBusinessConnection', {
+    business_connection_id: connectionId
+  });
+  if(!isBusinessConnectionAllowed(
+    connection,
+    businessConfig.allowedUserIds
+  )) {
+    log('business-connection-ignored', {
+      reason: connection.is_enabled ?
+        'business-user-not-allowed' :
+        'connection-disabled'
+    });
+    return;
+  }
+
+  businessConnections.set(connection.id, connection);
+  return connection;
+}
+
+async function handleBusinessMessage(message, edited) {
+  if(!businessConfig.allowedChatIds.has(String(message.chat?.id))) {
+    log('business-message-ignored', {reason: 'chat-not-allowed'});
+    return;
+  }
+
+  if(!isBusinessMessageFromCurrentRun(message, businessStartedAt)) {
+    log('business-message-ignored', {reason: 'message-predates-startup'});
+    return;
+  }
+
+  const connection = await getAllowedBusinessConnection(
+    message.business_connection_id
+  );
+  const result = await processBusinessMessage({
+    message,
+    connection,
+    config: businessConfig,
+    edited,
+    command: getCommand(message),
+    handledMessageKeys: handledBusinessMessages,
+    readBusinessMessage: (params) => call('readBusinessMessage', params),
+    sendBusinessMessage: (params) => call('sendMessage', params),
+    replyText: `Business automation reply from @${bot.username}`,
+    onReadError: (error) => {
+      log('business-read-error', {message: error.message});
+    }
+  });
+  if(result.type === 'edited') {
+    log('business-message-edited');
+    return;
+  }
+
+  if(result.type === 'ignored') {
+    if(result.reason) {
+      log('business-message-ignored', {reason: result.reason});
+    }
+    return;
+  }
+
+  log('business-message-replied', {markedAsRead: result.markedAsRead});
+}
+
+async function handleDeletedBusinessMessages(deletedMessages) {
+  if(!businessConfig.allowedChatIds.has(String(deletedMessages.chat?.id))) {
+    log('business-messages-deleted-ignored', {
+      reason: 'chat-not-allowed'
+    });
+    return;
+  }
+
+  const connection = await getAllowedBusinessConnection(
+    deletedMessages.business_connection_id
+  );
+  if(!isBusinessChatAllowed(
+    deletedMessages,
+    connection,
+    businessConfig
+  )) {
+    log('business-messages-deleted-ignored', {
+      reason: 'connection-or-chat-not-allowed'
+    });
+    return;
+  }
+
+  log('business-messages-deleted', {
+    messageCount: deletedMessages.message_ids?.length || 0
+  });
+}
+
 async function handleUpdate(update) {
+  if(businessConfig && update.business_connection) {
+    handleBusinessConnection(update.business_connection);
+    return;
+  }
+
+  if(businessConfig && update.business_message) {
+    await handleBusinessMessage(update.business_message, false);
+    return;
+  }
+
+  if(businessConfig && update.edited_business_message) {
+    await handleBusinessMessage(update.edited_business_message, true);
+    return;
+  }
+
+  if(businessConfig && update.deleted_business_messages) {
+    await handleDeletedBusinessMessages(update.deleted_business_messages);
+    return;
+  }
+
   if(!isUpdateAllowed(update, allowedChatIds)) {
     log('ignored-update', {
       updateId: update.update_id,
@@ -377,14 +586,18 @@ async function handleUpdate(update) {
   }
 }
 
-process.on('SIGINT', () => {
-  stopped = true;
+function requestStop() {
+  if(stopRequested) {
+    return;
+  }
+
+  stopRequested = true;
+  activePollController?.abort();
   log('stopping');
-});
-process.on('SIGTERM', () => {
-  stopped = true;
-  log('stopping');
-});
+}
+
+process.on('SIGINT', requestStop);
+process.on('SIGTERM', requestStop);
 
 const commands = [
   {command: 'secret', description: 'Private text response', is_ephemeral: true},
@@ -406,47 +619,127 @@ const commands = [
   {command: 'plain', description: 'Ordinary public response'}
 ];
 
-await call('deleteMyCommands', {
-  scope: {type: 'all_group_chats'}
-});
-
-for(const chatId of allowedChatIds) {
-  await call('setMyCommands', {
-    scope: {
-      type: 'chat',
-      chat_id: chatId
-    },
-    commands
+if(allowedChatIds.size) {
+  await call('deleteMyCommands', {
+    scope: {type: 'all_group_chats'}
   });
+
+  for(const chatId of allowedChatIds) {
+    if(stopRequested) {
+      break;
+    }
+
+    await call('setMyCommands', {
+      scope: {
+        type: 'chat',
+        chat_id: chatId
+      },
+      commands
+    });
+  }
 }
 
-log('ready', {
-  username: bot.username,
-  allowedChatCount: allowedChatIds.size
-});
+const allowedUpdates = ['message', 'callback_query'];
+if(businessConfig) {
+  allowedUpdates.push(
+    'business_connection',
+    'business_message',
+    'edited_business_message',
+    'deleted_business_messages'
+  );
+}
 
-while(!stopped) {
+let ready = false;
+let failedUpdate = false;
+let fatalError;
+while(!stopRequested && !fatalError) {
+  const pollController = new AbortController();
+  activePollController = pollController;
+  let updates;
+
   try {
-    const updates = await call('getUpdates', {
+    updates = await call('getUpdates', {
       offset,
-      timeout: 25,
-      allowed_updates: ['message', 'callback_query']
+      timeout: ready ? 25 : 0,
+      allowed_updates: allowedUpdates
+    }, {
+      signal: pollController.signal
     });
-    for(const update of updates) {
-      offset = update.update_id + 1;
-      try {
-        await handleUpdate(update);
-      } catch(error) {
-        log('update-error', {
-          updateId: update.update_id,
-          message: error.message
-        });
-      }
-    }
   } catch(error) {
-    log('poll-error', {message: error.message});
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    activePollController = undefined;
+    if(stopRequested && error?.name === 'AbortError') {
+      break;
+    }
+
+    if(!isRetryablePollError(error)) {
+      log('poll-fatal', getErrorDetails(error));
+      fatalError = error;
+      break;
+    }
+
+    log('poll-error', getErrorDetails(error));
+    activePollController = pollController;
+    await waitForRetry(getPollRetryDelay(error), pollController.signal);
+    activePollController = undefined;
+    continue;
   }
+
+  activePollController = undefined;
+  if(stopRequested) {
+    break;
+  }
+
+  if(!ready) {
+    ready = true;
+    log('ready', {
+      username: bot.username,
+      allowedChatCount: allowedChatIds.size,
+      businessMode: !!businessConfig,
+      allowedBusinessUserCount: businessConfig?.allowedUserIds.size || 0,
+      allowedBusinessChatCount: businessConfig?.allowedChatIds.size || 0
+    });
+  }
+
+  try {
+    await processUpdateBatch(updates, {
+      handleUpdate,
+      isStopping: () => stopRequested,
+      onOffset: (nextOffset) => {
+        offset = nextOffset;
+      }
+    });
+  } catch(error) {
+    const updateError = error instanceof UpdateHandlingError ?
+      error.cause :
+      error;
+    log('update-error', {
+      updateId: error.updateId,
+      ...getErrorDetails(updateError)
+    });
+    failedUpdate = true;
+    fatalError = updateError;
+  }
+}
+
+if(offset !== undefined && (stopRequested || failedUpdate)) {
+  try {
+    await call('getUpdates', {
+      offset,
+      limit: 1,
+      timeout: 0,
+      allowed_updates: allowedUpdates
+    }, {
+      signal: AbortSignal.timeout(5000)
+    });
+    log('processed-updates-acknowledged');
+  } catch(error) {
+    log('shutdown-ack-error', getErrorDetails(error));
+  }
+}
+
+if(fatalError) {
+  log('stopped', {reason: 'fatal-error'});
+  throw fatalError;
 }
 
 log('stopped');

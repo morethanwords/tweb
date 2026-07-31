@@ -19,7 +19,7 @@ import Row from '@components/rowTsx';
 import {AppActiveSessionsTab} from '@components/solidJsTabs/tabs';
 import {i18n, LangPackKey} from '@lib/langPack';
 import {SliderSuperTabConstructable, SliderSuperTabEventable} from '@components/sliderTab';
-import {AccountAuthorizations, Authorization} from '@layer';
+import {AccountAuthorizations, Authorization, ConnectedBot} from '@layer';
 import PopupElement from '@components/popups';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import Section from '@components/section';
@@ -105,21 +105,11 @@ const Settings = () => {
     showMyQrCodePopup();
   }, {listenerSetter: tab.listenerSetter});
 
-  // ── Edit profile click — prefetch args, refresh on user_update.
-  let editProfileArgs: ReturnType<typeof getEditProfileInitArgs>;
-  const refreshEditProfileArgs = () => {
-    editProfileArgs = getEditProfileInitArgs();
-  };
-  refreshEditProfileArgs();
+  // ── Edit profile click — build fresh args for every open so a failed or
+  //    superseded connected-bot request isn't retained by the Settings tab.
   attachClickEvent(editBtn, () => {
-    tab.slider.createTab(AppEditProfileTab).open(editProfileArgs);
+    tab.slider.createTab(AppEditProfileTab).open(getEditProfileInitArgs(true));
   }, {listenerSetter: tab.listenerSetter});
-
-  subscribeOn(rootScope)('user_update', (userId) => {
-    if(rootScope.myId.toUserId() === userId) {
-      refreshEditProfileArgs();
-    }
-  });
 
   // ── Sub-tab rows (notifications/data/privacy/general/folders/stickers).
   const subTabConfigs: SubTabConfig[] = [
@@ -147,8 +137,14 @@ const Settings = () => {
   // ── Devices row + active sessions fetch (we wait on this so the tab opens
   //    with the device count already filled in).
   let authorizations: Authorization.authorization[] | undefined;
+  let connectedBot: ConnectedBot.connectedBot | undefined;
   let getAuthorizationsPromise: Promise<AccountAuthorizations.accountAuthorizations> | undefined;
   const [authCount, setAuthCount] = createSignal('');
+  const updateAuthCount = () => {
+    if(authorizations) {
+      setAuthCount('' + (authorizations.length + (connectedBot ? 1 : 0)));
+    }
+  };
 
   const getAuthorizations = (overwrite?: boolean) => {
     if(getAuthorizationsPromise && !overwrite) return getAuthorizationsPromise;
@@ -164,11 +160,21 @@ const Settings = () => {
   };
 
   const updateActiveSessions = (overwrite?: boolean) => {
-    return getAuthorizations(overwrite).then((auths) => {
+    return Promise.all([
+      getAuthorizations(overwrite),
+      rootScope.managers.appBusinessManager.getConnectedBot(overwrite).then((bot) => {
+        connectedBot = bot;
+      }, () => {})
+    ]).then(([auths]) => {
       authorizations = auths.authorizations;
-      setAuthCount('' + authorizations.length);
+      updateAuthCount();
     });
   };
+
+  subscribeOn(rootScope)('chat_automation_update', (bot) => {
+    connectedBot = bot;
+    updateAuthCount();
+  });
 
   // Fire-and-forget: `account.getAuthorizations` is a real MTProto roundtrip
   // every time (no caching). Letting the device count fill in via the
@@ -180,12 +186,21 @@ const Settings = () => {
       await updateActiveSessions();
     }
 
+    try {
+      connectedBot = await rootScope.managers.appBusinessManager.getConnectedBot(true);
+      updateAuthCount();
+    } catch{
+      // Keep the latest event-backed snapshot. Active Sessions still exposes
+      // device authorizations, and the next open retries the bot request.
+    }
+
     const subTab = tab.slider.createTab(AppActiveSessionsTab);
     subTab.eventListener.addEventListener('destroy', () => {
       authorizations = undefined;
+      connectedBot = undefined;
       updateActiveSessions(true);
     }, {once: true});
-    subTab.open({authorizations});
+    subTab.open({authorizations, connectedBot});
   };
 
   // ── Premium section. Signal-backed so `<Show>` re-evaluates when the

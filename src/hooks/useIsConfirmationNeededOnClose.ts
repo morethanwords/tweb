@@ -9,9 +9,15 @@ type UseIsConfirmationNeededOnCloseArgs = {
   descriptionLangKey: LangPackKey;
   hasChanges: Accessor<boolean>;
   saveAllSettings: () => Promise<void>;
+  waitForSave?: boolean;
 };
 
-const useIsConfirmationNeededOnClose = ({descriptionLangKey, hasChanges, saveAllSettings}: UseIsConfirmationNeededOnCloseArgs) => {
+const useIsConfirmationNeededOnClose = ({
+  descriptionLangKey,
+  hasChanges,
+  saveAllSettings,
+  waitForSave
+}: UseIsConfirmationNeededOnCloseArgs) => {
   const {confirmationPopup} = useHotReloadGuard();
 
   return async() => {
@@ -32,14 +38,20 @@ const useIsConfirmationNeededOnClose = ({descriptionLangKey, hasChanges, saveAll
         ],
         rejectWithReason: true
       });
-      saveAllSettings();
-
-      return true;
     } catch(_reason: any) {
       const reason: ConfirmationPopupRejectReason = _reason;
 
       if(reason === 'closed') throw new Error();
+      return;
     }
+
+    if(waitForSave) {
+      await saveAllSettings();
+    } else {
+      saveAllSettings();
+    }
+
+    return true;
   };
 };
 

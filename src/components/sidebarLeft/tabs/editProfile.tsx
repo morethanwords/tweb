@@ -1,8 +1,8 @@
-import {createEffect, createMemo, createResource, createSignal, JSX, on, onMount, Show} from 'solid-js';
+import {createEffect, createMemo, createResource, createSignal, JSX, on, onCleanup, onMount, Show} from 'solid-js';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {usePromiseCollector} from '@components/solidJsTabs/promiseCollector';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
-import type {AppEditProfileTab} from '@components/solidJsTabs/tabs';
+import {AppChatAutomationTab, type AppEditProfileTab} from '@components/solidJsTabs/tabs';
 import Section from '@components/section';
 import Row from '@components/rowTsx';
 import {InputFieldTsx} from '@components/inputFieldTsx';
@@ -23,7 +23,7 @@ import {getHeavyAnimationPromise} from '@hooks/useHeavyAnimationCheck';
 import placeCaretAtEnd from '@helpers/dom/placeCaretAtEnd';
 import shake from '@helpers/dom/shake';
 import {purchaseUsernameCaption} from '@components/sidebarLeft/tabs/purchaseUsernameCaption';
-import {User, UserFull} from '@layer';
+import {ConnectedBot, User, UserFull} from '@layer';
 import {trackAvatarUpload} from '@stores/avatarUpload';
 
 type AppEditProfileTabType = typeof AppEditProfileTab;
@@ -32,6 +32,7 @@ export type EditProfileTabPayload = {
   bioMaxLength: MaybePromise<number>,
   user: MaybePromise<User.user>,
   userFull: MaybePromise<UserFull.userFull>,
+  connectedBot: MaybePromise<ConnectedBot.connectedBot | undefined>,
   focusOn?: string
 };
 
@@ -55,16 +56,24 @@ const EditProfileTab = () => {
 
   return (
     <Show when={data()}>
-      <EditProfileForm data={data()} focusOn={payload.focusOn} />
+      <EditProfileForm data={data()} connectedBot={payload.connectedBot} focusOn={payload.focusOn} />
     </Show>
   );
 };
 
 export default EditProfileTab;
 
-type FormData = {bioMaxLength: number, user: User.user, userFull: UserFull.userFull};
+type FormData = {
+  bioMaxLength: number,
+  user: User.user,
+  userFull: UserFull.userFull
+};
 
-const EditProfileForm = (props: {data: FormData, focusOn?: string}) => {
+const EditProfileForm = (props: {
+  data: FormData,
+  connectedBot: MaybePromise<ConnectedBot.connectedBot | undefined>,
+  focusOn?: string
+}) => {
   const [tab] = useSuperTab<AppEditProfileTabType>();
   const {user, userFull, bioMaxLength} = props.data;
 
@@ -97,6 +106,45 @@ const EditProfileForm = (props: {data: FormData, focusOn?: string}) => {
   const [personalChannelId, setPersonalChannelId] = createSignal<ChatId>(initialPersonalChannelId);
   const [personalChannelTitle, setPersonalChannelTitle] = createSignal<JSX.Element>(i18n('EditProfile.PersonalChannel.Add'));
   const [hasBirthday, setHasBirthday] = createSignal(!!userFull.birthday);
+  const [connectedBot, setConnectedBot] = createSignal<ConnectedBot.connectedBot>();
+  const [connectedBotLoaded, setConnectedBotLoaded] = createSignal(false);
+  const [connectedBotLoadFailed, setConnectedBotLoadFailed] = createSignal(false);
+  const [chatAutomationTitle, setChatAutomationTitle] = createSignal<JSX.Element>(i18n('Loading'));
+
+  let cleanedUp = false;
+  let connectedBotVersion = 0;
+  onCleanup(() => cleanedUp = true);
+  const setConnectedBotFromUpdate = (bot?: ConnectedBot.connectedBot) => {
+    ++connectedBotVersion;
+    setConnectedBot(bot);
+    setConnectedBotLoadFailed(false);
+    setConnectedBotLoaded(true);
+  };
+
+  const loadConnectedBot = async(promise: MaybePromise<ConnectedBot.connectedBot | undefined>) => {
+    const requestVersion = ++connectedBotVersion;
+    setConnectedBotLoadFailed(false);
+    setConnectedBotLoaded(false);
+
+    try {
+      const bot = await Promise.resolve(promise);
+      if(cleanedUp || requestVersion !== connectedBotVersion) {
+        return false;
+      }
+
+      setConnectedBot(bot);
+      setConnectedBotLoaded(true);
+      return true;
+    } catch{
+      if(!cleanedUp && requestVersion === connectedBotVersion) {
+        setConnectedBotLoadFailed(true);
+      }
+
+      return false;
+    }
+  };
+
+  loadConnectedBot(props.connectedBot);
 
   const isPersonalChannelChanged = createMemo(() => personalChannelId() !== initialPersonalChannelId);
   const origIsChanged = editPeer.isChanged;
@@ -104,13 +152,55 @@ const EditProfileForm = (props: {data: FormData, focusOn?: string}) => {
 
   const {setUsername: setPurchaseUsername, element: purchaseEl} = purchaseUsernameCaption();
 
+  let personalChannelTitleVersion = 0;
   createEffect(on(personalChannelId, async(channelId) => {
+    const version = ++personalChannelTitleVersion;
     if(channelId) {
-      setPersonalChannelTitle(await wrapPeerTitle({peerId: channelId.toPeerId(true)}));
+      const title = await wrapPeerTitle({peerId: channelId.toPeerId(true)});
+      if(!cleanedUp && version === personalChannelTitleVersion) {
+        setPersonalChannelTitle(title);
+      }
     } else {
       setPersonalChannelTitle(i18n('EditProfile.PersonalChannel.Add'));
     }
   }));
+
+  let chatAutomationTitleVersion = 0;
+  createEffect(() => {
+    const loaded = connectedBotLoaded();
+    const failed = connectedBotLoadFailed();
+    const bot = connectedBot();
+    const version = ++chatAutomationTitleVersion;
+    if(failed) {
+      setChatAutomationTitle(i18n('ChatAutomation.LoadFailed'));
+    } else if(!loaded) {
+      setChatAutomationTitle(i18n('Loading'));
+    } else if(!bot) {
+      setChatAutomationTitle(i18n('ChatAutomation.Off'));
+    } else {
+      wrapPeerTitle({peerId: (bot.bot_id as UserId).toPeerId(false)}).then((title) => {
+        if(version === chatAutomationTitleVersion) setChatAutomationTitle(title);
+      });
+    }
+  });
+
+  tab.listenerSetter.add(rootScope)('chat_automation_update', setConnectedBotFromUpdate);
+
+  const openChatAutomation = async() => {
+    if(connectedBotLoadFailed()) {
+      await loadConnectedBot(tab.managers.appBusinessManager.getConnectedBot(true));
+      if(!connectedBotLoaded()) {
+        toastNew({langPackKey: 'Error.AnError'});
+        return;
+      }
+    }
+
+    if(!connectedBotLoaded()) {
+      return;
+    }
+
+    tab.slider.createTab(AppChatAutomationTab).open({connectedBot: connectedBot()});
+  };
 
   const openPersonalChannelPicker = async() => {
     let channelIds: ChatId[];
@@ -306,8 +396,23 @@ const EditProfileForm = (props: {data: FormData, focusOn?: string}) => {
       >
         <Row clickable={openPersonalChannelPicker}>
           <Row.Icon icon="newchannel" />
-          <Row.Title titleRight={<span class="primary">{personalChannelTitle()}</span>}>
-            {i18n('EditProfile.PersonalChannel.Label')}
+          <Row.Title titleRight={!personalChannelId() && <span class="primary">{personalChannelTitle()}</span>}>
+            {personalChannelId() ? personalChannelTitle() : i18n('EditProfile.PersonalChannel.Label')}
+          </Row.Title>
+        </Row>
+      </Section>
+
+      <Section
+        name="ChatAutomation.Title"
+        caption="ChatAutomation.ProfileDescription"
+      >
+        <Row
+          disabled={!connectedBotLoaded() && !connectedBotLoadFailed()}
+          clickable={openChatAutomation}
+        >
+          <Row.Icon icon="bots" />
+          <Row.Title titleRight={!connectedBot() && <span class="primary">{chatAutomationTitle()}</span>}>
+            {connectedBot() ? chatAutomationTitle() : i18n('ChatAutomation.ProfileLabel')}
           </Row.Title>
         </Row>
       </Section>

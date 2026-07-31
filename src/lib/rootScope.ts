@@ -1,4 +1,4 @@
-import type {Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, ReactionCount, MessagePeerReaction, PhoneCall, Config, Reaction, AttachMenuBot, PeerSettings, StoryItem, PeerStories, SavedDialog, SavedReactionTag, InputSavedStarGift, LangPackDifference, StarsAmount, MessageEntity, HelpPromoData, StoriesStealthMode, StoryAlbum, GlobalPrivacySettings} from '@layer';
+import type {Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, ReactionCount, MessagePeerReaction, PhoneCall, Config, Reaction, AttachMenuBot, PeerSettings, StoryItem, PeerStories, SavedDialog, SavedReactionTag, InputSavedStarGift, LangPackDifference, StarsAmount, MessageEntity, HelpPromoData, StoriesStealthMode, StoryAlbum, GlobalPrivacySettings, ConnectedBot} from '@layer';
 import type {Dialog, ForumTopic, MessagesStorageKey, MyEphemeralMessage, MyMessage} from '@appManagers/appMessagesManager';
 import type {MyDialogFilter} from '@lib/storages/filters';
 import type {AnyDialog, Folder} from '@lib/storages/dialogs';
@@ -21,6 +21,7 @@ import type {MyStarGift} from '@appManagers/appGiftsManager';
 import type {MyPromoData} from '@appManagers/appPromoManager';
 import type {UnconfirmedAuthorization} from '@appManagers/appAccountManager';
 import type {ActiveAccountNumber} from '@lib/accounts/types';
+import type {BotConnectionReview} from '@appManagers/appBusinessManager';
 import {NULL_PEER_ID, UserAuth} from '@appManagers/constants';
 import EventListenerBase, {EventListenerListeners} from '@helpers/eventListenerBase';
 import {MOUNT_CLASS_TO} from '@config/debug';
@@ -52,6 +53,8 @@ export type BroadcastEvents = {
   'peer_deleted': PeerId, // left chat, deleted user dialog, left channel
   'peer_full_update': PeerId,
   'peer_settings': {peerId: PeerId, settings: PeerSettings},
+  'chat_automation_update': ConnectedBot.connectedBot | undefined,
+  'bot_connection_reviews_update': BotConnectionReview[],
   'peer_stories': {peerId: PeerId, available: boolean},
   'peer_stories_hidden': {peerId: PeerId, hidden: boolean},
 

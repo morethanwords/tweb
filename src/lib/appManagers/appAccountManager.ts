@@ -6,8 +6,12 @@ import {AccountAuthorizations, Authorization, EmailVerification, EmailVerifyPurp
 import {DcId, TrueDcId} from '@types';
 import AccountController from '@lib/accounts/accountController';
 import {AppManager} from '@appManagers/manager';
+import {
+  DEFAULT_AUTHORIZATION_AUTOCONFIRM_PERIOD,
+  normalizeAuthorizationAutoconfirmPeriod
+} from '@appManagers/utils/authorizationAutoconfirmPeriod';
 
-export const DEFAULT_AUTHORIZATION_AUTOCONFIRM_PERIOD = 7 * 24 * 60 * 60;
+export {DEFAULT_AUTHORIZATION_AUTOCONFIRM_PERIOD} from '@appManagers/utils/authorizationAutoconfirmPeriod';
 
 export type UnconfirmedAuthorization = {
   hash: string | number,
@@ -128,7 +132,7 @@ export default class AppAccountManager extends AppManager {
   }
 
   private setAuthorizationAutoconfirmPeriod(period?: number, updateAuthorizations = true) {
-    const normalizedPeriod = period > 0 ? period : DEFAULT_AUTHORIZATION_AUTOCONFIRM_PERIOD;
+    const normalizedPeriod = normalizeAuthorizationAutoconfirmPeriod(period);
     if(this.authorizationAutoconfirmPeriod === normalizedPeriod) return;
 
     this.authorizationAutoconfirmPeriod = normalizedPeriod;

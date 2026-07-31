@@ -1,0 +1,53 @@
+.heroHeader {
+  padding-bottom: 1rem;
+}
+
+.searchEmpty {
+  padding: 0.5rem 1rem 1rem;
+  color: var(--secondary-text-color);
+  text-align: center;
+}
+
+.searchLoading {
+  position: relative;
+  min-height: 4rem;
+}
+
+.searchPreloader {
+  width: 2rem;
+  height: 2rem;
+}
+
+.accessRadioFocused {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 3px;
+}
+
+.recipientRow {
+  grid-template-columns: 0 minmax(0, 1fr) fit-content(50%);
+}
+
+.recipientTitle {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.recipientSummary {
+  display: flex;
+  min-width: 0;
+  gap: 0.375rem;
+  align-items: center;
+  justify-content: flex-end;
+  color: var(--secondary-text-color);
+}
+
+.recipientSummaryText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recipientSummaryIcon {
+  flex: 0 0 auto;
+}
