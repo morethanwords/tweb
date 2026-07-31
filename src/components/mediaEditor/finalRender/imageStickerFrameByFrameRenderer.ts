@@ -1,4 +1,5 @@
-import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
+import deferredPromise from '@helpers/cancellablePromise';
+import {ObjectURLScope} from '@helpers/objectUrl';
 import appDownloadManager from '@lib/appDownloadManager';
 import {Document} from '@layer';
 
@@ -6,14 +7,17 @@ import {StickerFrameByFrameRenderer} from '@components/mediaEditor/finalRender/t
 
 export default class ImageStickerFrameByFrameRenderer implements StickerFrameByFrameRenderer {
   private image: HTMLImageElement;
+  private objectURLs = new ObjectURLScope();
+  private destroyed = false;
 
   async init(doc: Document.document) {
     const blob = await appDownloadManager.downloadMedia({
       media: doc
     });
+    if(this.destroyed) return;
 
     const image = (this.image = new Image());
-    image.src = URL.createObjectURL(blob);
+    image.src = this.objectURLs.create(blob);
 
     const deferred = deferredPromise<void>();
 
@@ -39,6 +43,8 @@ export default class ImageStickerFrameByFrameRenderer implements StickerFrameByF
   }
 
   destroy() {
+    this.destroyed = true;
+    this.objectURLs.dispose();
     this.image = null;
   }
 }

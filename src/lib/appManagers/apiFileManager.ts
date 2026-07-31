@@ -1033,15 +1033,20 @@ export class ApiFileManager extends AppManager {
   public downloadMediaURL(options: DownloadMediaOptions): Promise<string> {
     const {media, thumb} = options;
 
-    let cacheContext = this.thumbsStorage.getCacheContext(media as any, thumb?.type);
+    const cacheContext = this.thumbsStorage.getCacheContext(media as any, thumb?.type);
     if((thumb ? (cacheContext.downloaded >= ('size' in thumb ? thumb.size : 0)) : true) && cacheContext.url) {
       return Promise.resolve(cacheContext.url);
     }
 
     return this.downloadMedia(options).then((blob) => {
+      let cacheContext = this.thumbsStorage.getCacheContext(media as any, thumb?.type);
       if(!cacheContext.downloaded || !cacheContext.url || cacheContext.downloaded < blob.size) {
-        const url = URL.createObjectURL(blob);
-        cacheContext = this.thumbsStorage.setCacheContextURL(media as any, cacheContext.type, url, blob.size);
+        cacheContext = this.thumbsStorage.setCacheContextBlob(
+          media as any,
+          cacheContext.type,
+          blob,
+          blob.size
+        );
       }
 
       return cacheContext.url;

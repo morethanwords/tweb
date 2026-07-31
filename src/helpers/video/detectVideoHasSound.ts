@@ -1,3 +1,6 @@
+import clearMediaElementSource from '@helpers/dom/clearMediaElementSource';
+
+
 /**
  * Best-effort detection of whether a video contains an audio track.
  *
@@ -36,8 +39,7 @@ export default async function detectVideoHasSound(source: Blob | File | HTMLVide
 
     return await probeVideoElementHasSound(video);
   } finally {
-    video.removeAttribute('src');
-    video.load();
+    clearMediaElementSource(video);
     URL.revokeObjectURL(url);
   }
 }

@@ -4,10 +4,20 @@ import {DownloadOptions} from '@appManagers/apiFileManager';
 import MTProtoMessagePort from '@lib/mainWorker/mainMessagePort';
 import {AppManager} from '@appManagers/manager';
 import chooseProfileVideoSize from '@appManagers/utils/photos/chooseProfileVideoSize';
+import SharedObjectUrlCache from '@lib/mainWorker/sharedObjectUrlCache';
+import {makeObjectUrlOwner} from '@helpers/objectUrlUtils';
 
 // 'photo_video' = small animated preview ('p', ~100KB) for chat list / topbar;
 // 'photo_video_full' = full quality ('u', ~2MB) for the big profile avatar.
 export type PeerPhotoSize = 'photo_small' | 'photo_big' | 'photo_video' | 'photo_video_full';
+
+const AVATAR_OBJECT_URL_CACHE_LIMIT = 128;
+const AVATAR_OBJECT_URL_CACHE_BYTES_LIMIT = 32 * 1024 * 1024;
+
+type AvatarObjectUrlCacheKey = {
+  peerId: PeerId,
+  size: PeerPhotoSize
+};
 
 export class AppAvatarsManager extends AppManager {
   private savedAvatarURLs: {
@@ -15,8 +25,16 @@ export class AppAvatarsManager extends AppManager {
       [size in PeerPhotoSize]?: string | Promise<string>
     }
   } = {};
+  private objectURLCache: SharedObjectUrlCache<AvatarObjectUrlCacheKey>;
 
   protected after() {
+    this.objectURLCache = new SharedObjectUrlCache<AvatarObjectUrlCacheKey>({
+      getOwner: ({peerId, size}) => this.getAvatarOwner(peerId, size),
+      maxBytes: AVATAR_OBJECT_URL_CACHE_BYTES_LIMIT,
+      maxURLs: AVATAR_OBJECT_URL_CACHE_LIMIT,
+      onEvict: (key, url) => this.evictAvatar(key, url)
+    });
+
     this.rootScope.addEventListener('avatar_update', ({peerId, threadId}) => {
       if(threadId) {
         return;
@@ -26,43 +44,119 @@ export class AppAvatarsManager extends AppManager {
     });
   }
 
+  private getAvatarOwner(peerId: PeerId, size: PeerPhotoSize) {
+    return makeObjectUrlOwner('avatar', this.getAccountNumber(), peerId, size);
+  }
+
+  private deleteSavedAvatar(
+    peerId: PeerId,
+    size: PeerPhotoSize,
+    expected: string | Promise<string>
+  ) {
+    const saved = this.savedAvatarURLs[peerId];
+    if(saved?.[size] !== expected) {
+      return false;
+    }
+
+    delete saved[size];
+    if(!Object.keys(saved).length) {
+      delete this.savedAvatarURLs[peerId];
+    }
+
+    return true;
+  }
+
+  private cacheAvatarBlob(
+    peerId: PeerId,
+    size: PeerPhotoSize,
+    blobPromise: Promise<Blob | undefined>
+  ) {
+    const saved = this.savedAvatarURLs[peerId] ??= {};
+
+    const request = blobPromise.then((blob) => {
+      if(!blob || this.savedAvatarURLs[peerId]?.[size] !== request) {
+        if(!blob) {
+          this.deleteSavedAvatar(peerId, size, request);
+        }
+
+        return;
+      }
+
+      const {url, previousUrl} = this.objectURLCache.create({peerId, size}, blob);
+      saved[size] = url;
+
+      this.mirrorAvatar(peerId, size, url, previousUrl);
+
+      return url;
+    });
+
+    saved[size] = request;
+    request.catch(() => {
+      this.deleteSavedAvatar(peerId, size, request);
+    });
+
+    return request;
+  }
+
   public isAvatarCached(peerId: PeerId, size?: PeerPhotoSize) {
     const saved = this.savedAvatarURLs[peerId];
     if(size === undefined) {
       return !!saved;
     }
 
-    return !!(saved && saved[size] && !(saved[size] instanceof Promise));
+    const cached = saved && saved[size];
+    if(cached && !(cached instanceof Promise)) {
+      this.objectURLCache.touch({peerId, size});
+      return true;
+    }
+
+    return false;
   }
 
   public removeFromAvatarsCache(peerId: PeerId) {
-    if(this.savedAvatarURLs[peerId]) {
-      delete this.savedAvatarURLs[peerId];
-      MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
-        name: 'avatars',
-        key: '' + peerId,
-        accountNumber: this.getAccountNumber()
-      });
+    const saved = this.savedAvatarURLs[peerId];
+    if(!saved) {
+      return;
     }
+
+    delete this.savedAvatarURLs[peerId];
+    const previousUrls = Object.values(saved).filter(
+      (value): value is string => typeof(value) === 'string'
+    );
+    for(const size of Object.keys(saved) as PeerPhotoSize[]) {
+      this.objectURLCache.delete({peerId, size});
+    }
+    this.mirrorAvatarKey('' + peerId, undefined, undefined, previousUrls);
   }
 
-  public loadAvatar(peerId: PeerId, photo: UserProfilePhoto.userProfilePhoto | ChatPhoto.chatPhoto, size: PeerPhotoSize) {
+  public loadAvatar(
+    peerId: PeerId,
+    photo: UserProfilePhoto.userProfilePhoto | ChatPhoto.chatPhoto,
+    size: PeerPhotoSize
+  ) {
     const saved = this.savedAvatarURLs[peerId] ??= {};
     if(saved[size]) {
+      if(!(saved[size] instanceof Promise)) {
+        this.objectURLCache.touch({peerId, size});
+      }
       return saved[size];
     }
 
+    return this.cacheAvatarBlob(
+      peerId,
+      size,
+      this.downloadAvatar(peerId, photo, size)
+    );
+  }
+
+  public downloadAvatar(
+    peerId: PeerId,
+    photo: UserProfilePhoto.userProfilePhoto | ChatPhoto.chatPhoto,
+    size: PeerPhotoSize
+  ) {
     if(size === 'photo_video' || size === 'photo_video_full') {
       const quality = size === 'photo_video_full' ? 'full' : 'preview';
-      const promise = saved[size] = this.loadAvatarVideo(peerId, photo, quality, size);
-      // Don't keep a failed (undefined) video load cached — let it retry next time
-      // (e.g. once the full photo's video_sizes is available).
-      promise.then((url) => {
-        if(!url && saved[size] === promise) {
-          delete saved[size];
-        }
-      });
-      return promise;
+      return this.downloadAvatarVideo(peerId, photo, quality);
     }
 
     // console.warn('will invoke downloadSmallFile:', peerId);
@@ -79,29 +173,7 @@ export class AppAvatarsManager extends AppManager {
       downloadOptions.limitPart = 512 * 1024;
     }
 
-    const promise = this.apiFileManager.download(downloadOptions);
-    const loadPromise = saved[size] = promise.then((blob) => {
-      const url = saved[size] = URL.createObjectURL(blob);
-
-      MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
-        name: 'avatars',
-        key: joinDeepPath(peerId, size),
-        value: url,
-        accountNumber: this.getAccountNumber()
-      });
-
-      return url;
-    });
-
-    // Don't keep a rejected promise cached (e.g. FILE_ID_INVALID for a stale
-    // photo_id) — a later render may retry once fresh peer data arrives.
-    loadPromise.catch(() => {
-      if(saved[size] === loadPromise) {
-        delete saved[size];
-      }
-    });
-
-    return loadPromise;
+    return this.apiFileManager.download(downloadOptions);
   }
 
   // Resolve the full Photo (with video_sizes) for an avatar — userProfilePhoto
@@ -145,11 +217,10 @@ export class AppAvatarsManager extends AppManager {
     return fullPhoto && chooseProfileVideoSize(fullPhoto, full ? 'full' : 'preview')?.video_start_ts;
   }
 
-  private async loadAvatarVideo(
+  private async downloadAvatarVideo(
     peerId: PeerId,
     photo: UserProfilePhoto.userProfilePhoto | ChatPhoto.chatPhoto,
-    quality: 'preview' | 'full' = 'preview',
-    cacheSize: PeerPhotoSize = 'photo_video'
+    quality: 'preview' | 'full' = 'preview'
   ) {
     const fullPhoto = await this.getFullVideoPhoto(peerId, photo);
     if(!fullPhoto) return undefined;
@@ -157,21 +228,42 @@ export class AppAvatarsManager extends AppManager {
     const videoSize = chooseProfileVideoSize(fullPhoto, quality);
     if(!videoSize) return undefined;
 
-    const blob = await this.apiFileManager.downloadMedia({
+    return this.apiFileManager.downloadMedia({
       media: fullPhoto,
       thumb: videoSize
     });
+  }
 
-    const url = URL.createObjectURL(blob);
-    this.savedAvatarURLs[peerId][cacheSize] = url;
-
+  private mirrorAvatarKey(
+    key: string,
+    value?: string,
+    previousUrl?: string,
+    previousUrls?: string[]
+  ) {
     MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
       name: 'avatars',
-      key: joinDeepPath(peerId, cacheSize),
-      value: url,
+      key,
+      value,
+      ...(previousUrl ? {previousUrl} : {}),
+      ...(previousUrls?.length ? {previousUrls} : {}),
       accountNumber: this.getAccountNumber()
     });
+  }
 
-    return url;
+  private mirrorAvatar(
+    peerId: PeerId,
+    size: PeerPhotoSize,
+    value?: string,
+    previousUrl?: string
+  ) {
+    this.mirrorAvatarKey(joinDeepPath(peerId, size), value, previousUrl);
+  }
+
+  private evictAvatar({peerId, size}: AvatarObjectUrlCacheKey, url: string) {
+    if(!this.deleteSavedAvatar(peerId, size, url)) {
+      return;
+    }
+
+    this.mirrorAvatar(peerId, size, undefined, url);
   }
 }

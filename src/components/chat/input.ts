@@ -94,6 +94,7 @@ import RichInputHandler from '@helpers/dom/richInputHandler';
 import {insertRichTextAsHTML} from '@components/inputField';
 import draftsAreEqual from '@appManagers/utils/drafts/draftsAreEqual';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
+import {ObjectURLScope} from '@helpers/objectUrl';
 import getAttachMenuBotIcon from '@appManagers/utils/attachMenuBots/getAttachMenuBotIcon';
 import forEachReverse from '@helpers/array/forEachReverse';
 import {MARKDOWN_ENTITIES} from '@lib/richTextProcessor';
@@ -5263,37 +5264,67 @@ export default class ChatInput {
 
     const middlewareHelper = this.getMiddleware().create();
     const middleware = middlewareHelper.get();
+    const objectURLs = new ObjectURLScope();
 
     let downloadPromise: DownloadBlob;
-    const {result, waitBeforeCleanup} = await this.watchDownloadProgress({
-      getDownloadPromise: () => (downloadPromise = payload.downloadMediaBlob()),
-      getResult: async() => {
-        const mediaBlob = await downloadPromise;
-        const mediaUrl = await apiManagerProxy.invoke('createObjectURL', mediaBlob);
-        let createdMediaElement: HTMLVideoElement | HTMLImageElement;
-        try {
-          createdMediaElement = !mediaElement ? await payload.createCanvasSource(mediaUrl, middleware) : undefined;
-        } catch{}
-
-        return {mediaBlob, mediaUrl, createdMediaElement};
+    let watched: {
+      result: {
+        mediaBlob: Blob,
+        mediaUrl: string,
+        createdMediaElement?: HTMLVideoElement | HTMLImageElement
       },
-      middleware,
-      cancel: () => middlewareHelper.destroy()
-    });
+      waitBeforeCleanup: () => Promise<void>
+    };
+    try {
+      watched = await this.watchDownloadProgress({
+        getDownloadPromise: () => (downloadPromise = payload.downloadMediaBlob()),
+        getResult: async() => {
+          const mediaBlob = await downloadPromise;
+          const mediaUrl = objectURLs.create(mediaBlob);
+          let createdMediaElement: HTMLVideoElement | HTMLImageElement;
+          try {
+            createdMediaElement = !mediaElement ? await payload.createCanvasSource(mediaUrl, middleware) : undefined;
+          } catch{}
 
-    if(!result) return;
+          return {mediaBlob, mediaUrl, createdMediaElement};
+        },
+        middleware,
+        cancel: () => middlewareHelper.destroy()
+      });
+    } catch(error) {
+      objectURLs.dispose();
+      throw error;
+    }
 
-    if(!middleware()) return;
+    const {result, waitBeforeCleanup} = watched;
+    if(!result || !middleware()) {
+      objectURLs.dispose();
+      return;
+    }
 
     const {mediaBlob, mediaUrl, createdMediaElement} = result;
 
-    if(!mediaElement && !createdMediaElement) return;
+    if(!mediaElement && !createdMediaElement) {
+      objectURLs.dispose();
+      return;
+    }
 
-    const {openMediaEditorFromMedia, openMediaEditorFromMediaNoAnimation} = await import('@components/mediaEditor');
+    let mediaEditor: typeof import('@components/mediaEditor');
+    try {
+      mediaEditor = await import('@components/mediaEditor');
+    } catch(error) {
+      objectURLs.dispose();
+      throw error;
+    }
 
-    if(!middleware()) return;
+    if(!middleware()) {
+      objectURLs.dispose();
+      return;
+    }
 
-    const openEditor = mediaElement ? openMediaEditorFromMedia : openMediaEditorFromMediaNoAnimation;
+    const openEditor = mediaElement ?
+      mediaEditor.openMediaEditorFromMedia :
+      mediaEditor.openMediaEditorFromMediaNoAnimation;
     const usedMediaElement = mediaElement || createdMediaElement;
 
     waitBeforeCleanup().then(() => {
@@ -5308,7 +5339,7 @@ export default class ChatInput {
       rect: usedMediaElement.getBoundingClientRect(),
       animatedCanvasSize: getSourceSize(usedMediaElement),
       source: usedMediaElement,
-      onClose: () => { },
+      onClose: () => objectURLs.dispose(),
       onEditFinish: async(result) => {
         const popup = new PopupNewMedia(this.chat, [
           {

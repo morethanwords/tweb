@@ -24,6 +24,10 @@ import EventListenerBase from '@helpers/eventListenerBase';
 import animationIntersector from '@components/animationIntersector';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import setCurrentTime from '@helpers/dom/setCurrentTime';
+import {pinObjectURL} from '@helpers/objectUrl';
+import clearMediaElementSource from '@helpers/dom/clearMediaElementSource';
+import createMediaMetadataObjectURLPins from '@helpers/mediaMetadataObjectURLPins';
+import type {Middleware} from '@helpers/middleware';
 import ListLoader, {ListLoaderOptions} from '../helpers/listLoader';
 
 // TODO: Safari: проверить стрим, включить его и сразу попробовать включить видео или другую песню
@@ -59,6 +63,8 @@ type MediaDetails = {
   docId: DocId,
   doc: MyDocument,
   message: Message.message,
+  consumers?: Set<Middleware>,
+  unpin?: () => void,
   clean?: boolean,
   isScheduled?: boolean,
   isSingle?: boolean
@@ -83,6 +89,7 @@ export type AddMediaArgs = {
   message: Message.message;
   autoload: boolean;
   clean?: boolean;
+  middleware?: Middleware;
   /**
    * Optional pre-extracted document. When provided, it overrides the default
    * extraction from `message.media`. Useful when the document lives in a
@@ -165,6 +172,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
   // Music-listen reporting (messages.reportMusicListen) — owned by MusicListenTracker; the
   // controller just forwards the play/stop events below.
   private musicListenTracker: MusicListenTracker;
+  private setMediaMetadata = createMediaMetadataObjectURLPins();
 
   construct(managers: AppManagers) {
     this.managers = managers;
@@ -400,7 +408,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
   };
 
   public addMedia(args: AddMediaArgs): HTMLMediaElement {
-    const {message, autoload, clean, doc: docOverride, slot} = args;
+    const {message, autoload, clean, doc: docOverride, slot, middleware} = args;
     const {peerId, mid} = message;
     const storageKey = mid + (slot ?? 0);
 
@@ -413,6 +421,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
 
     let media = storage.get(storageKey);
     if(media) {
+      this.bindMediaMiddleware(media, middleware);
       return media;
     }
 
@@ -438,6 +447,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     };
 
     this.mediaDetails.set(media, details);
+    this.bindMediaMiddleware(media, middleware);
 
     // media.autoplay = true;
     media.volume = 1;
@@ -509,13 +519,24 @@ export class AppMediaPlaybackController extends EventListenerBase<{
 
   private onMediaDocumentLoad = async(media: HTMLMediaElement) => {
     const details = this.mediaDetails.get(media);
+    if(!details) {
+      return;
+    }
+
     const doc = await this.managers.appDocsManager.getDoc(details.docId);
+    if(this.mediaDetails.get(media) !== details) {
+      return;
+    }
     if(doc.type === 'audio' && doc.supportsStreaming && SHOULD_USE_SAFARI_FIX) {
       this.handleSafariStreamable(media);
     }
 
     // setTimeout(() => {
     const cacheContext = apiManagerProxy.getCacheContext(doc);
+    // * playback needs the blob URL alive for seeks/loops — pin it until the
+    // * media element is removed
+    details.unpin?.();
+    details.unpin = pinObjectURL(cacheContext.url);
     media.src = cacheContext.url;
 
     if(this.playingMedia === media) {
@@ -536,6 +557,65 @@ export class AppMediaPlaybackController extends EventListenerBase<{
       }
     }
   };
+
+  private bindMediaMiddleware(media: HTMLMediaElement, middleware?: Middleware) {
+    if(!middleware) {
+      return;
+    }
+
+    const details = this.mediaDetails.get(media);
+    const consumers = details.consumers ??= new Set();
+    if(consumers.has(middleware)) {
+      return;
+    }
+
+    consumers.add(middleware);
+    details.clean = false;
+    middleware.onClean(() => {
+      if(this.mediaDetails.get(media) !== details) {
+        return;
+      }
+
+      consumers.delete(middleware);
+      if(consumers.size) {
+        return;
+      }
+
+      if(media === this.playingMedia) {
+        details.clean = true;
+      } else {
+        this.removeMedia(media);
+      }
+    });
+  }
+
+  private removeMedia(media: HTMLMediaElement) {
+    const details = this.mediaDetails.get(media);
+    if(!details) {
+      return;
+    }
+
+    clearMediaElementSource(media);
+    details.unpin?.();
+    details.unpin = undefined;
+    const storage = (details.isScheduled ? this.scheduled : this.media).get(details.peerId);
+    storage?.delete(details.storageKey);
+    if(!storage?.size) {
+      (details.isScheduled ? this.scheduled : this.media).delete(details.peerId);
+    }
+    this.waitingDocumentsForLoad[details.docId]?.delete(media);
+    const waiting = (details.isScheduled ?
+      this.waitingScheduledMediaForLoad :
+      this.waitingMediaForLoad).get(details.peerId);
+    waiting?.delete(details.storageKey);
+    if(!waiting?.size) {
+      (details.isScheduled ?
+        this.waitingScheduledMediaForLoad :
+        this.waitingMediaForLoad).delete(details.peerId);
+    }
+    media.remove();
+    this.mediaDetails.delete(media);
+  }
 
   // safari подгрузит последний чанк и песня включится,
   // при этом этот чанк нельзя руками отдать из SW, потому что браузер тогда теряется
@@ -700,7 +780,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
       artwork
     });
 
-    navigator.mediaSession.metadata = metadata;
+    this.setMediaMetadata(metadata);
   }
 
   public setCurrentMediadata() {
@@ -929,21 +1009,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     if(media === this.playingMedia) {
       const details = this.mediaDetails.get(media);
       if(details?.clean) {
-        media.src = '';
-        const peerId = details.peerId;
-        const s = details.isScheduled ? this.scheduled : this.media;
-        const storage = s.get(peerId);
-        if(storage) {
-          storage.delete(details.storageKey);
-
-          if(!storage.size) {
-            s.delete(peerId);
-          }
-        }
-
-        media.remove();
-
-        this.mediaDetails.delete(media);
+        this.removeMedia(media);
       }
 
       this.playingMedia = undefined;

@@ -104,7 +104,12 @@ function SavedMusicContent(props: {
     loadCount: 50,
     loadWhenLeft: 5,
     processItem: (message: Message.message) => {
-      appMediaPlaybackController.addMedia({message, autoload: false, clean: false});
+      appMediaPlaybackController.addMedia({
+        message,
+        autoload: false,
+        clean: false,
+        middleware
+      });
       return {peerId: message.peerId, mid: message.mid};
     }
   });

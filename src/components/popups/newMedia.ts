@@ -20,6 +20,7 @@ import gifToVideo, {canConvertGifToVideo, canConvertGifToVideoSync} from '@helpe
 import movToVideo, {isConvertibleMov} from '@helpers/movToVideo';
 import getFileMimeType, {normalizeFileMimeType} from '@helpers/files/getFileMimeType';
 import deferredPromise from '@helpers/cancellablePromise';
+import {ObjectURLScope} from '@helpers/objectUrl';
 import noop from '@helpers/noop';
 import toHHMMSS from '@helpers/string/toHHMMSS';
 import replaceContent from '@helpers/dom/replaceContent';
@@ -28,7 +29,6 @@ import prepareAlbum from '@components/prepareAlbum';
 import {makeMediaSize} from '@helpers/mediaSize';
 import {ThumbCache} from '@lib/storages/thumbs';
 import onMediaLoad from '@helpers/onMediaLoad';
-import apiManagerProxy from '@lib/apiManagerProxy';
 import {SEND_WHEN_ONLINE_TIMESTAMP, SERVER_IMAGE_MIME_TYPES, STARS_CURRENCY, THUMB_TYPE_FULL} from '@appManagers/constants';
 import wrapDocument from '@components/wrappers/document';
 import wrapVideo from '@components/wrappers/video';
@@ -88,6 +88,7 @@ type SendFileParams = SendFileDetails & {
   itemDiv: HTMLElement,
   mediaSpoiler?: HTMLElement,
   middlewareHelper: MiddlewareHelper,
+  objectURLs: ObjectURLScope,
   editResult?: MediaEditorFinalResult
 };
 
@@ -1110,7 +1111,13 @@ export default class PopupNewMedia extends PopupElement {
     return SERVER_IMAGE_MIME_TYPES.has(mimeType) ? 'image/jpeg' : mimeType;
   }
 
-  private async scaleImageForTelegram(image: HTMLImageElement, mimeType: MTMimeType, fileSize: number, convertIncompatible?: boolean) {
+  private async scaleImageForTelegram(
+    image: HTMLImageElement,
+    mimeType: MTMimeType,
+    fileSize: number,
+    objectURLs: ObjectURLScope,
+    convertIncompatible?: boolean
+  ) {
     const PHOTO_SIDE_LIMIT = 2560;
     // PNG/BMP are lossless and can be huge even when ≤2560px (a detailed 2560px
     // screenshot/map is ~10MB), which the server rejects as a compressed photo with
@@ -1140,8 +1147,8 @@ export default class PopupNewMedia extends PopupElement {
       });
 
       scaledBlob = blob;
-      URL.revokeObjectURL(url);
-      url = await apiManagerProxy.invoke('createObjectURL', blob);
+      objectURLs.release(url);
+      url = objectURLs.create(blob);
       await renderImageFromUrlPromise(image, url);
     }
 
@@ -1216,7 +1223,7 @@ export default class PopupNewMedia extends PopupElement {
 
     const img = new Image();
     itemDiv.append(img);
-    const url = params.objectURL = await apiManagerProxy.invoke('createObjectURL', file);
+    const url = params.objectURL = params.objectURLs.create(file);
     await renderImageFromUrlPromise(img, url);
     params.width = img.naturalWidth;
     params.height = img.naturalHeight;
@@ -1234,7 +1241,7 @@ export default class PopupNewMedia extends PopupElement {
     // * purely cosmetic — the browser may not be able to play the original
     // * .mov, in which case the placeholder stays blank under the progress
     const video = createVideo({middleware: params.middlewareHelper.get()});
-    video.src = params.objectURL = await apiManagerProxy.invoke('createObjectURL', file);
+    video.src = params.objectURL = params.objectURLs.create(file);
     video.autoplay = true;
     video.controls = false;
     video.muted = true;
@@ -1327,10 +1334,14 @@ export default class PopupNewMedia extends PopupElement {
         this.updateConfirmLock();
 
         result.then(() => {
-          pause(0).then(() => this.attachFiles());
+          if(!this.destroyed) {
+            pause(0).then(() => !this.destroyed && this.attachFiles());
+          }
         }).catch(async() => {
           params.editResult = undefined;
-          pause(0).then(() => this.attachFiles());
+          if(!this.destroyed) {
+            pause(0).then(() => !this.destroyed && this.attachFiles());
+          }
 
           this.hideActiveActionsMenu();
         }).finally(() => {
@@ -1340,7 +1351,7 @@ export default class PopupNewMedia extends PopupElement {
       }
 
       async function putEditedImage(blob: Blob, saveObjectURL = false) {
-        const url = await apiManagerProxy.invoke('createObjectURL', blob);
+        const url = params.objectURLs.create(blob);
         if(saveObjectURL) params.objectURL = url;
 
         const img = new Image();
@@ -1356,7 +1367,7 @@ export default class PopupNewMedia extends PopupElement {
 
       async function putEditedVideo(result: MediaEditorFinalResultPayload) {
         const video = createVideo({middleware: params.middlewareHelper.get()});
-        const url = await apiManagerProxy.invoke('createObjectURL', result.blob);
+        const url = params.objectURLs.create(result.blob);
         video.src = params.objectURL = url;
         video.autoplay = true;
         video.controls = false;
@@ -1381,14 +1392,14 @@ export default class PopupNewMedia extends PopupElement {
         const thumb = result.thumb || await createPosterFromVideo(video);
 
         params.thumb = {
-          url: await apiManagerProxy.invoke('createObjectURL', thumb.blob),
+          url: params.objectURLs.create(thumb.blob),
           isCover: !params.isAnimated && !!result.thumb,
           ...thumb
         };
       }
     } else if(isVideo) {
       const video = createVideo({middleware: params.middlewareHelper.get()});
-      video.src = params.objectURL = await apiManagerProxy.invoke('createObjectURL', file);
+      video.src = params.objectURL = params.objectURLs.create(file);
       video.autoplay = true;
       video.controls = false;
       video.muted = true;
@@ -1427,7 +1438,7 @@ export default class PopupNewMedia extends PopupElement {
 
       const thumb = await createPosterFromVideo(video);
       params.thumb = {
-        url: await apiManagerProxy.invoke('createObjectURL', thumb.blob),
+        url: params.objectURLs.create(thumb.blob),
         ...thumb
       };
 
@@ -1437,11 +1448,11 @@ export default class PopupNewMedia extends PopupElement {
       const img = new Image();
       itemDiv.append(img);
 
-      const url = params.objectURL = await apiManagerProxy.invoke('createObjectURL', file);
+      const url = params.objectURL = params.objectURLs.create(file);
       await renderImageFromUrlPromise(img, url);
 
       const mimeType = getFileMimeType(params.file) as MTMimeType;
-      const scaled = await this.scaleImageForTelegram(img, mimeType, file.size, true);
+      const scaled = await this.scaleImageForTelegram(img, mimeType, file.size, params.objectURLs, true);
       if(scaled) {
         params.objectURL = scaled.url;
         params.scaledBlob = scaled.blob;
@@ -1458,9 +1469,9 @@ export default class PopupNewMedia extends PopupElement {
             params.duration = Math.ceil(duration);
           }),
 
-          createPosterFromMedia(img).then(async(thumb) => {
+          createPosterFromMedia(img).then((thumb) => {
             params.thumb = {
-              url: await apiManagerProxy.invoke('createObjectURL', thumb.blob),
+              url: params.objectURLs.create(thumb.blob),
               ...thumb
             };
           })
@@ -1500,13 +1511,14 @@ export default class PopupNewMedia extends PopupElement {
             const {openMediaEditorFromMedia} = await import('../mediaEditor');
 
             this.isMediaEditorOpen = true;
+            const mediaSrc = params.objectURLs.create(file);
 
             openMediaEditorFromMedia({
               source,
               rect: itemDiv.getBoundingClientRect(),
               animatedCanvasSize: [params.width, params.height],
               mediaType: isVideo ? 'video' : 'image',
-              mediaSrc: params.editResult?.originalSrc || params.objectURL,
+              mediaSrc,
               getMediaBlob: async() => file,
               managers: this.managers,
               // Compressed-photo output: JPEG, and only drop quality for a heavy
@@ -1520,6 +1532,7 @@ export default class PopupNewMedia extends PopupElement {
               },
               editingMediaState: params.editResult?.editingMediaState,
               onClose: (hasGif) => {
+                params.objectURLs.release(mediaSrc);
                 this.isMediaEditorOpen = false;
                 if(!hasGif) this.updateConfirmLock();
               },
@@ -1648,7 +1661,7 @@ export default class PopupNewMedia extends PopupElement {
     const isPhoto = getFileMimeType(file).startsWith('image/');
     const isAudio = AUDIO_MIME_TYPES_SUPPORTED.has(getFileMimeType(file) as any);
     if(isPhoto || isAudio || file.size < 20e6) {
-      params.objectURL ||= await apiManagerProxy.invoke('createObjectURL', file);
+      params.objectURL ||= params.objectURLs.create(file);
     }
 
     const attributes: DocumentAttribute[] = [];
@@ -1657,7 +1670,7 @@ export default class PopupNewMedia extends PopupElement {
     if(isPhoto && params.objectURL) {
       img = new Image();
       await renderImageFromUrlPromise(img, params.objectURL);
-      const scaled = await this.scaleImageForTelegram(img, file.type as MTMimeType, file.size);
+      const scaled = await this.scaleImageForTelegram(img, file.type as MTMimeType, file.size, params.objectURLs);
       if(scaled) {
         params.objectURL = scaled.url;
       }
@@ -1759,10 +1772,14 @@ export default class PopupNewMedia extends PopupElement {
     } as any;
 
     // do not pass these properties to worker
-    defineNotNumerableProperties(params, ['scaledBlob', 'middlewareHelper', 'itemDiv', 'mediaSpoiler']);
+    defineNotNumerableProperties(params, ['scaledBlob', 'middlewareHelper', 'objectURLs', 'itemDiv', 'mediaSpoiler']);
 
     params.middlewareHelper = this.lateMiddlewareHelper.get().create();
+    params.objectURLs = new ObjectURLScope();
     params.itemDiv = itemDiv;
+
+    const middleware = params.middlewareHelper.get();
+    middleware.onDestroy(() => params.objectURLs.dispose());
 
     const promise = this.gifDocument ?
       this.attachGifDocument(params) :
@@ -1771,6 +1788,10 @@ export default class PopupNewMedia extends PopupElement {
     return promise.catch((err) => {
       itemDiv.style.backgroundColor = '#000';
       console.error('error rendering file', err);
+    }).finally(() => {
+      if(!middleware()) {
+        params.objectURLs.dispose();
+      }
     });
   };
 

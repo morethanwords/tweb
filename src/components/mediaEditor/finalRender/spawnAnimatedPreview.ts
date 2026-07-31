@@ -1,5 +1,5 @@
-import apiManagerProxy from '@lib/apiManagerProxy';
 import deferredPromise from '@helpers/cancellablePromise';
+import {ObjectURLScope} from '@helpers/objectUrl';
 
 import {MediaEditorContextValue} from '@components/mediaEditor/context';
 import {useCropOffset} from '@components/mediaEditor/canvas/useCropOffset';
@@ -27,7 +27,9 @@ export default async function spawnAnimatedPreview({
 
   const bcr = imageCanvas.getBoundingClientRect();
   const animatedImg = new Image();
-  animatedImg.src = await apiManagerProxy.invoke('createObjectURL', previewBlob);
+  const objectURLs = new ObjectURLScope();
+  const url = objectURLs.create(previewBlob);
+  animatedImg.src = url;
   animatedImg.style.position = 'fixed';
   const left = bcr.left + (isCropping ? cropOffset().left + cropOffset().width / 2 : bcr.width / 2),
     top = bcr.top + (isCropping ? cropOffset().top + cropOffset().height / 2 : bcr.height / 2);
@@ -49,7 +51,15 @@ export default async function spawnAnimatedPreview({
 
   const deferred = deferredPromise<void>();
 
-  animatedImg.addEventListener('load', () => deferred.resolve())
+  const onLoadEnd = () => {
+    animatedImg.removeEventListener('load', onLoadEnd);
+    animatedImg.removeEventListener('error', onLoadEnd);
+    objectURLs.release(url);
+    deferred.resolve();
+  };
+
+  animatedImg.addEventListener('load', onLoadEnd, {once: true});
+  animatedImg.addEventListener('error', onLoadEnd, {once: true});
 
   await Promise.race([delay(500), deferred]);
 

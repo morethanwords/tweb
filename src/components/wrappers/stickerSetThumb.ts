@@ -11,6 +11,8 @@ import wrapSticker from '@components/wrappers/sticker';
 import {Middleware} from '@helpers/middleware';
 import {EMOJI_TEXT_COLOR} from '@components/emoticonsDropdown';
 import {getStickerSetInputById} from '@lib/appManagers/utils/stickers/getStickerSetInput';
+import {createObjectURL, revokeObjectURL} from '@helpers/objectUrl';
+import clearMediaElementSource from '@helpers/dom/clearMediaElementSource';
 
 export default async function wrapStickerSetThumb({set, lazyLoadQueue, container, group, autoplay, width, height, managers = rootScope.managers, middleware, textColor}: {
   set: StickerSet.stickerSet,
@@ -63,12 +65,26 @@ export default async function wrapStickerSetThumb({set, lazyLoadQueue, container
           media.classList.add('media-sticker');
 
           return promise.then((blob) => {
-            renderImageFromUrl(media, URL.createObjectURL(blob), () => {
+            if(!middleware()) {
+              return;
+            }
+
+            const url = createObjectURL(blob);
+            middleware.onClean(() => {
+              clearMediaElementSource(media as HTMLImageElement | HTMLMediaElement);
+              revokeObjectURL(url);
+            });
+            renderImageFromUrl(media, url, () => {
+              if(!middleware()) {
+                return;
+              }
+
               container.append(media);
 
               if(isVideo) {
                 animationIntersector.addAnimation({
                   animation: media as HTMLVideoElement,
+                  controlled: middleware,
                   group,
                   observeElement: media,
                   type: 'video'

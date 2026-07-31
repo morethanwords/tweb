@@ -177,9 +177,12 @@
       // * if production, save locally to user's computer, otherwise send it to server
       if(IS_PRODUCTION) {
         const a = document.createElement('a');
-        a.href = URL.createObjectURL(new Blob([JSON.stringify(snapshot, jsonReplacer)]));
+        const url = URL.createObjectURL(new Blob([JSON.stringify(snapshot, jsonReplacer)]));
+        a.href = url;
         a.download = `snapshot-${new Date().toISOString()}.json`;
         a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 0);
         return;
       }
 

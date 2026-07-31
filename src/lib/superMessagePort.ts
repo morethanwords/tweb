@@ -661,16 +661,26 @@ class SuperMessagePort<
     });
 
     if(timeout) {
-      const {reject} = this.awaiting[task.id];
-      setTimeout(() => {
-        reject(makeError('TIMEOUT'));
+      const deferred = this.awaiting[task.id];
+      const timeoutId = setTimeout(() => {
+        if(this.awaiting[task.id] !== deferred) {
+          return;
+        }
+
+        delete this.awaiting[task.id];
+        deferred.reject(makeError('TIMEOUT'));
       }, timeout);
+      promise.then(
+        () => clearTimeout(timeoutId),
+        () => clearTimeout(timeoutId)
+      );
     }
 
     if(IS_WORKER/*  || true */) {
-      promise.finally(() => {
+      const clearLogInterval = () => {
         clearInterval(interval);
-      });
+      };
+      promise.then(clearLogInterval, clearLogInterval);
 
       const interval = ctx.setInterval(() => {
         this.log.error('task still has no result', describeTask(task), port);

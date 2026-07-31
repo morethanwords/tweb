@@ -27,7 +27,9 @@ if(IS_PREVIEW && typeof(window) !== 'undefined') {
     };
   `;
 
-  const worker = new Worker(URL.createObjectURL(new Blob([workerSource], {type: 'application/javascript'})));
+  const workerUrl = URL.createObjectURL(new Blob([workerSource], {type: 'application/javascript'}));
+  const worker = new Worker(workerUrl);
+  URL.revokeObjectURL(workerUrl);
   const timers = new Map<number, StoredTimer>();
   let autoIncrement = 0;
 

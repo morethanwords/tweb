@@ -28,6 +28,7 @@ import {PopupPeerCheckboxOptions} from '@components/popups/peer';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import disableTransition from '@helpers/dom/disableTransition';
+import clearMediaElementSource from '@helpers/dom/clearMediaElementSource';
 import replaceContent from '@helpers/dom/replaceContent';
 import whichChild from '@helpers/dom/whichChild';
 import PopupElement from '@components/popups';
@@ -68,6 +69,7 @@ import getChatMembersString from '@components/wrappers/getChatMembersString';
 import {SETTINGS_INIT} from '@config/state';
 import CacheStorageController from '@lib/files/cacheStorage';
 import themeController from '@helpers/themeController';
+import {pinObjectURL} from '@helpers/objectUrl';
 import overlayCounter from '@helpers/overlayCounter';
 import appDialogsManager from '@lib/appDialogsManager';
 import idleController from '@helpers/idleController';
@@ -3313,23 +3315,41 @@ export class AppImManager extends EventListenerBase<{
     if(animation?.paused) {
       const doc = await managers.appStickersManager.getAnimatedEmojiSoundDocument(emoji);
       if(doc) {
+        if(!middleware()) {
+          return false;
+        }
+
         const audio = document.createElement('audio');
         audio.style.display = 'none';
         container.parentElement.append(audio);
+        let cleaned = false;
+        let unpin: () => void;
+        const cleanup = () => {
+          if(cleaned) {
+            return;
+          }
+
+          cleaned = true;
+          clearMediaElementSource(audio);
+          audio.remove();
+          unpin?.();
+        };
+        middleware.onClean(cleanup);
+        audio.addEventListener('ended', cleanup, {once: true});
 
         try {
           const url = await appDownloadManager.downloadMediaURL({media: doc});
+          if(!middleware()) {
+            cleanup();
+            return false;
+          }
 
+          unpin = pinObjectURL(url);
           audio.src = url;
           safePlay(audio);
           await onMediaLoad(audio, undefined, true);
-
-          audio.addEventListener('ended', () => {
-            audio.src = '';
-            audio.remove();
-          }, {once: true});
         } catch(err) {
-
+          cleanup();
         }
       }
 

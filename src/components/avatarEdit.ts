@@ -5,6 +5,7 @@ import type {CancellablePromise} from '@helpers/cancellablePromise';
 import {createImageAndURLFromBlob} from '@helpers/createImageAndURLFromBlob';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import {getFileAndOpenEditor} from '@helpers/getFileAndOpenEditor';
+import {revokeObjectURL} from '@helpers/objectUrl';
 import type {InputFile, Photo} from '@layer';
 import type {AppManagers} from '@lib/managers';
 import appDownloadManager from '@lib/appDownloadManager';
@@ -226,7 +227,7 @@ export async function openAvatarEditorWithFile(
     initialTab: isVideo ? 'adjustments' : 'crop',
     onEditFinish: onFinish,
     dontCreatePreview,
-    onClose: () => { }
+    onClose: () => revokeObjectURL(mediaSrc)
   });
 }
 
@@ -304,6 +305,7 @@ async function finishFromResult({result: editorResult, canvas, onChange}: Finish
 
   const ctx = canvas.getContext('2d');
   ctx.drawImage(img, 0, 0, width, height);
+  revokeObjectURL(imgResult.url);
   ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
   ctx.fillRect(0, 0, width, height);
 
@@ -365,6 +367,7 @@ async function finishFromVideoResult({
     [canvas.width, canvas.height] = [width, height];
     const ctx = canvas.getContext('2d');
     ctx.drawImage(thumbImg.img, 0, 0, width, height);
+    revokeObjectURL(thumbImg.url);
     ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
     ctx.fillRect(0, 0, width, height);
   }

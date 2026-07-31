@@ -4,6 +4,7 @@ import {getPeerAvatarColorByPeer} from '@appManagers/utils/peers/getPeerColorByI
 import getAbbreviation from '@lib/richTextProcessor/getAbbreviation';
 import drawCircle from '@helpers/canvas/drawCircle';
 import customProperties from '@helpers/dom/customProperties';
+import readBlobAsDataURL from '@helpers/blob/readBlobAsDataURL';
 
 let avatarCanvas: HTMLCanvasElement;
 let avatarContext: CanvasRenderingContext2D;
@@ -16,8 +17,10 @@ export default async function createNotificationImage(
 ) {
   const peerPhoto = await managers.appPeersManager.getPeerPhoto(peerId);
   if(peerPhoto) {
-    const url = await managers.appAvatarsManager.loadAvatar(peerId, peerPhoto, 'photo_small');
-    return url;
+    const blob = await managers.appAvatarsManager.downloadAvatar(peerId, peerPhoto, 'photo_small');
+    if(blob) {
+      return readBlobAsDataURL(blob);
+    }
   }
 
   if(!avatarCanvas) {

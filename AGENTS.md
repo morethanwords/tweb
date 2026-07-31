@@ -245,6 +245,29 @@ const stream = await getStream({video, audio});
 
 For the standard call-tuned video/audio constraints (which already inject the selected device), build them with `getVideoConstraints()` / `getAudioConstraints()` from the same folder; otherwise pass your own constraints and `getStream` handles acquisition + device fallback.
 
+### Object URLs (`blob:`)
+
+Shared blob URLs (thumbnails, avatars, backgrounds — anything minted by the
+worker) are revocable: the worker's LRU may evict and revoke them at any time
+(30 s grace after eviction). The rule is not enforced by types or lint, and
+getting it wrong fails rarely and unreproducibly — so pick the right case
+consciously:
+
+- **Rendering an image** (`<img>`, canvas, one-shot CSS): just use the URL
+  from the manager (`downloadMediaURL` / `cacheContext.url`). No bookkeeping —
+  a decoded bitmap survives revocation, and a later re-render simply
+  re-requests a fresh URL.
+- **Handing the URL to something that will RESOLVE it later** — a playing or
+  looping media element (seek/loop re-read the blob), MediaSession artwork,
+  long-lived CSS background: take `pinObjectURL(url)` from `@helpers/objectUrl`
+  and call the returned unpin in the consumer's cleanup (usually
+  `middleware.onClean`). A missing pin breaks playback only after the URL is
+  evicted — i.e. almost never in testing, occasionally in production.
+- **Tab-local one-off URL** (editor previews, probes, worklet scripts): create
+  it through an `ObjectURLScope` and dispose the scope. Never pass a tab-minted
+  blob URL to the worker (`setSharedObjectURL` accepts worker-minted URLs
+  only — a tab's URL dies with the tab).
+
 ### Imports from `@layer`
 
 All MTProto types come from `@layer`:

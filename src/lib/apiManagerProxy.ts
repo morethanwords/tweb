@@ -2,8 +2,8 @@ import type {ModifyFunctionsToAsync} from '@types';
 import {type State} from '@config/state';
 import type {Chat, ChatPhoto, Message, MessagePeerReaction, PeerNotifySettings, User, UserProfilePhoto} from '@layer';
 import type {CryptoMethods} from '@lib/crypto/crypto_methods';
-import type {ThumbStorageMedia} from '@lib/storages/thumbs';
 import type ThumbsStorage from '@lib/storages/thumbs';
+import type {ThumbStorageMedia} from '@lib/storages/thumbs';
 import type {AppReactionsManager} from '@appManagers/appReactionsManager';
 import type {MessagesStorageKey} from '@appManagers/appMessagesManager';
 import type {AppAvatarsManager, PeerPhotoSize} from '@appManagers/appAvatarsManager';
@@ -37,6 +37,8 @@ import generateEmptyThumb from '@lib/storages/utils/thumbs/generateEmptyThumb';
 import getStickerThumbKey from '@lib/storages/utils/thumbs/getStickerThumbKey';
 import callbackify from '@helpers/callbackify';
 import isLegacyMessageId from '@appManagers/utils/messageId/isLegacyMessageId';
+import {forgetLoadedURL} from '@helpers/dom/loadedUrlCache';
+import type {SharedObjectURLUpdate} from '@helpers/objectUrlUtils';
 import {setAppStateSilent} from '@stores/appState';
 import getObjectKeysAndSort from '@helpers/object/getObjectKeysAndSort';
 import {reconcilePeer, reconcilePeers} from '@stores/peers';
@@ -66,7 +68,13 @@ import Modes from '@config/modes';
 import appNavigationController from '@components/appNavigationController';
 import {BroadcastChannelWrapper, createBroadcastChannelWrapper} from './broadcastChannelWrapper';
 import {MainBroadcastChannelEvents, unversionedMainBroadcastChannelName} from '@config/broadcastChannel';
-import {CacheStorageThreadedControls, createCacheStorageThreadedControls} from './apiManagerProxyUtils';
+import {
+  CacheStorageThreadedControls,
+  createCacheStorageThreadedControls,
+  deleteObjectURLMirrorValue,
+  reconcileObjectURLMirrorSnapshot,
+  reconcileObjectURLMirrorValue
+} from './apiManagerProxyUtils';
 import {
   THREADED_WORKER_PROTOCOL_QUERY_PARAM,
   THREADED_WORKER_PROTOCOL_VERSION,
@@ -103,6 +111,8 @@ export type MirrorTaskPayload<
   // key?: K,
   key?: string,
   value?: any,
+  previousUrl?: string,
+  previousUrls?: string[],
   accountNumber: ActiveAccountNumber
 };
 
@@ -166,6 +176,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
   private mainBroadcastChannel: BroadcastChannelWrapper<MainBroadcastChannelEvents>;
 
   private cacheStorageThreadedControls: CacheStorageThreadedControls;
+  private sharedObjectURLUpdateListeners = new Set<(update: SharedObjectURLUpdate) => void>();
 
   constructor() {
     super();
@@ -184,7 +195,35 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
     this.pushSingleManager = this.createSingleManagerProxy('pushSingleManager');
 
+    const reconcileObjectURLMirror = (payload: MirrorTaskPayload) => {
+      if(!payload.key) {
+        reconcileObjectURLMirrorSnapshot(
+          this.mirrors[payload.name] as Record<string, any>,
+          payload.value,
+          payload.name === 'thumbs' ? 2 : 1
+        );
+        return false;
+      }
+
+      reconcileObjectURLMirrorValue(
+        this.mirrors[payload.name] as object,
+        payload.key,
+        payload.value
+      );
+      return false;
+    };
+
     this.processMirrorTaskMap = {
+      stickerThumbs: reconcileObjectURLMirror,
+      thumbs: reconcileObjectURLMirror,
+      avatars: (payload) => {
+        // * deletions must prune emptied per-peer containers, and must not
+        // * create a container for a peer this tab never cached
+        if(payload.key && payload.value === undefined) {
+          deleteObjectURLMirrorValue(this.mirrors.avatars as object, payload.key);
+          return false;
+        }
+      },
       messages: (payload) => {
         if(!payload.key) { // * mirroring all messages at once
           for(const key in payload.value) {
@@ -361,6 +400,13 @@ class ApiManagerProxy extends MTProtoMessagePort {
       },
 
       mirror: this.onMirrorTask,
+
+      sharedObjectURLUpdated: (update) => {
+        if(update.previousUrl) {
+          forgetLoadedURL(update.previousUrl);
+        }
+        this.sharedObjectURLUpdateListeners.forEach((listener) => listener(update));
+      },
 
       receivedServiceMessagePort: () => {
         this.log.warn('mtproto worker received service message port');
@@ -1025,6 +1071,11 @@ class ApiManagerProxy extends MTProtoMessagePort {
     return mirror;
   }
 
+  public addSharedObjectURLUpdateListener(listener: (update: SharedObjectURLUpdate) => void) {
+    this.sharedObjectURLUpdateListeners.add(listener);
+    return () => this.sharedObjectURLUpdateListeners.delete(listener);
+  }
+
   public getState() {
     return this.getMirror('state');
   }
@@ -1038,8 +1089,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
     thumbSize: string = THUMB_TYPE_FULL,
     key = getThumbKey(media)
   ) {
-    const cache = this.mirrors.thumbs[key];
-    return cache?.[thumbSize] || generateEmptyThumb(thumbSize);
+    return this.mirrors.thumbs[key]?.[thumbSize] || generateEmptyThumb(thumbSize);
   }
 
   public getStickerCachedThumb(docId: DocId, toneIndex: string | number) {
@@ -1252,6 +1302,11 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
   private onMirrorTask = (payload: MirrorTaskPayload) => {
     const {name, key, value, accountNumber} = payload;
+    if(payload.previousUrl) {
+      forgetLoadedURL(payload.previousUrl);
+    }
+    payload.previousUrls?.forEach(forgetLoadedURL);
+
     const isSettingsUpdate = name === 'state' && key === 'settings';
     if(!isSettingsUpdate && accountNumber !== getCurrentAccount()) return;
 

@@ -16,6 +16,9 @@ import AccountController from '@lib/accounts/accountController';
 import pushSingleManager from '@appManagers/pushSingleManager';
 import Modes from '@config/modes';
 import SuperMessagePort from '@lib/superMessagePort';
+import objectUrlRegistry from '@lib/mainWorker/objectUrlRegistry';
+import {makeObjectUrlOwner, parseObjectUrlOwner} from '@helpers/objectUrlUtils';
+import {releaseSharedObjectURLsWhere} from '@lib/mainWorker/sharedObjectUrlCache';
 
 type Managers = Awaited<ReturnType<typeof createManagers>>;
 
@@ -140,7 +143,10 @@ export class AppManagersManager {
         return urls;
       }
 
-      const newURLs = new Array(maxLength - length).fill(undefined).map(() => URL.createObjectURL(blob));
+      const newURLs = new Array(maxLength - length).fill(undefined).map((_, index) => {
+        const owner = makeObjectUrlOwner('threaded-worker', type, length + index);
+        return objectUrlRegistry.createShared(blob, owner);
+      });
       urls.push(...newURLs);
       return urls;
     });
@@ -154,6 +160,15 @@ export class AppManagersManager {
           managersByAccount[accountNumber].apiManager.logOut(otherAccountNumber);
         }
       }
+    });
+
+    rootScope.addEventListener('logging_out', ({accountNumber}) => {
+      releaseSharedObjectURLsWhere((owner) => {
+        const details = parseObjectUrlOwner(owner);
+        return !!details &&
+          details.namespace !== 'threaded-worker' &&
+          (accountNumber === undefined || details.parts[0] === accountNumber);
+      });
     });
   }
 

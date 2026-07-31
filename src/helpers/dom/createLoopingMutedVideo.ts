@@ -1,3 +1,6 @@
+import type {Middleware} from '@helpers/middleware';
+import {pinObjectURL} from '@helpers/objectUrl';
+
 // Creates a muted, looping, inline <video> set up to autoplay an avatar clip.
 //
 // IMPORTANT: every autoplay-relevant property/attribute is set BEFORE assigning
@@ -10,7 +13,12 @@
 // clients begin playback at that frame so the moving clip continues the static
 // cover, then native-loop back to 0 (tdesktop video_userpic_player.cpp:138,
 // iOS PeerAvatarImageGalleryItem.swift:365). We seek to it once metadata is in.
-export default function createLoopingMutedVideo(url: string, className?: string, startTime?: number) {
+export default function createLoopingMutedVideo(
+  url: string,
+  className?: string,
+  startTime?: number,
+  middleware?: Middleware
+) {
   const v = document.createElement('video');
   if(className) v.className = className;
 
@@ -49,6 +57,11 @@ export default function createLoopingMutedVideo(url: string, className?: string,
     v.addEventListener('canplay', tryPlay, {once: true});
   }
 
+  // * a looping video needs its blob URL alive across loops/seeks — pin it
+  // * for as long as the consumer lives
+  if(middleware) {
+    middleware.onClean(pinObjectURL(url));
+  }
   v.src = url; // assign last so the autoplay policy sees muted=true
   if(!seekTo) tryPlay();
 

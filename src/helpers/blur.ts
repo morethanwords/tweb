@@ -1,5 +1,6 @@
 import type fastBlur from '@vendor/fastBlur';
 import addHeavyTask from '@helpers/heavyQueue';
+import clearMediaElementSource from '@helpers/dom/clearMediaElementSource';
 import IS_CANVAS_FILTER_SUPPORTED from '@environment/canvasFilterSupport';
 
 const RADIUS = 2;
@@ -66,32 +67,30 @@ export default function blur(dataUri: string, radius: number = RADIUS, iteration
 
   let cached = cache.get(dataUri);
   if(!cached) {
-    const promise: CacheValue['promise'] = new Promise((resolve) => {
+    const img = new Image();
+    const promise: CacheValue['promise'] = requireBlurPromise.then(async() => {
       // return resolve(dataUri);
-      requireBlurPromise.then(() => {
-        const img = new Image();
-        img.onload = () => {
-          // if(IS_CANVAS_FILTER_SUPPORTED) {
-          // resolve(processBlurNext(img, radius, iterations));
-          // } else {
-          const promise = addHeavyTask({
-            items: [[img, radius, iterations, canvas, maxSize]],
-            context: null,
-            process: processBlurNext
-          }, 'unshift');
-
-          promise.then(() => {
-            resolve();
-          });
-          // }
-        };
+      try {
         img.src = dataUri;
-      });
+        await img.decode();
+        await addHeavyTask({
+          items: [[img, radius, iterations, canvas, maxSize]],
+          context: null,
+          process: processBlurNext
+        }, 'unshift');
+      } finally {
+        clearMediaElementSource(img);
+      }
     });
 
     cache.set(dataUri, cached = {
       canvas,
       promise
+    });
+    promise.catch(() => {
+      if(cache.get(dataUri)?.promise === promise) {
+        cache.delete(dataUri);
+      }
     });
   } else {
     canvas.width = cached.canvas.width;

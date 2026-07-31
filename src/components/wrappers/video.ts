@@ -256,7 +256,11 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
 
     const onLoad = () => {
       const message: Message.message = (divRound as any).message;
-      const globalVideo = appMediaPlaybackController.addMedia({message, autoload: !noAutoDownload}) as HTMLVideoElement;
+      const globalVideo = appMediaPlaybackController.addMedia({
+        message,
+        autoload: !noAutoDownload,
+        middleware
+      }) as HTMLVideoElement;
       onGlobalMedia?.(globalVideo);
       const clear = () => {
         (appImManager.chat.setPeerPromise || Promise.resolve()).finally(() => {

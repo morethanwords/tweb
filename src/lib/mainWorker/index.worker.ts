@@ -27,6 +27,8 @@ import {useAutoLock} from '@lib/mainWorker/useAutoLock';
 import pushSingleManager from '@appManagers/pushSingleManager';
 import {createBroadcastChannelWrapper} from '@lib/broadcastChannelWrapper';
 import {MainBroadcastChannelEvents, unversionedMainBroadcastChannelName} from '@config/broadcastChannel';
+import objectUrlRegistry from '@lib/mainWorker/objectUrlRegistry';
+import SharedObjectUrlCache, {resetSharedObjectURLCaches} from '@lib/mainWorker/sharedObjectUrlCache';
 
 
 const log = logger('MTPROTO');
@@ -37,6 +39,14 @@ const log = logger('MTPROTO');
 // MTProtoMessagePort.MASTER_INSTANCE would be overwritten).
 const port = new MTProtoMessagePort<false>(false);
 
+const backgroundObjectURLCache = new SharedObjectUrlCache<string>({
+  getOwner: (owner) => owner,
+  maxBytes: 32 * 1024 * 1024,
+  maxURLs: 16,
+  onEvict: (owner, url) => {
+    port.invokeExceptSource('sharedObjectURLUpdated', {owner, previousUrl: url});
+  }
+});
 const mainBroadcastChannel = createBroadcastChannelWrapper<MainBroadcastChannelEvents>(unversionedMainBroadcastChannelName);
 
 let isLocked = true;
@@ -127,8 +137,24 @@ port.addMultipleEventsListeners({
     port.invokeVoid('receivedServiceMessagePort', undefined, source);
   },
 
-  createObjectURL: (blob) => {
-    return URL.createObjectURL(blob);
+  updateObjectURLPins: (updates, source) => {
+    objectUrlRegistry.updateObjectURLPins(updates, source);
+  },
+
+  createSharedObjectURL: ({blob, owner}) => {
+    return backgroundObjectURLCache.getOrCreate(owner, blob);
+  },
+
+  // * Only worker-minted URLs (or non-blob strings) may be adopted here: a
+  // * blob URL minted by a tab dies with that tab while the registry would
+  // * keep serving it to the others.
+  setSharedObjectURL: ({url, owner}, source) => {
+    const {previousUrl} = backgroundObjectURLCache.adopt(owner, url);
+    port.invokeExceptSource('sharedObjectURLUpdated', {owner, previousUrl, url}, source);
+  },
+
+  releaseSharedObjectURL: ({url, owner}) => {
+    backgroundObjectURLCache.delete(owner, url);
   },
 
   setInterval: (timeout) => {
@@ -289,6 +315,7 @@ appTabsManager.onTabStateChange = () => {
 };
 
 const onTabConnect = (source: MessageEventSource) => {
+  objectUrlRegistry.registerSource(source);
   appTabsManager.addTab(source);
   if(isFirst) {
     isFirst = false;
@@ -306,6 +333,7 @@ const onTabConnect = (source: MessageEventSource) => {
 };
 
 const onTabDisconnect = (source: MessageEventSource) => {
+  objectUrlRegistry.releaseSource(source);
   appTabsManager.deleteTab(source);
   autoLockControls.removeTab(source);
 };
@@ -330,6 +358,8 @@ export function connectInProcessTab(p: MessagePort) {
 
 
 function selfTerminate() {
+  resetSharedObjectURLCaches();
+  objectUrlRegistry.dispose();
   if(typeof(SharedWorkerGlobalScope) !== 'undefined') {
     self.close();
   }

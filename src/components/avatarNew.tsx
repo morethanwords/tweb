@@ -2,6 +2,7 @@ import type LazyLoadQueue from '@components/lazyLoadQueue';
 import type {PeerPhotoSize} from '@appManagers/appAvatarsManager';
 import type {StoriesSegment, StoriesSegments as StoriesSegmentsType} from '@appManagers/appStoriesManager';
 import {getMiddleware, type Middleware} from '@helpers/middleware';
+import clearMediaElementSource from '@helpers/dom/clearMediaElementSource';
 import deferredPromise from '@helpers/cancellablePromise';
 import {
   createSignal,
@@ -98,6 +99,31 @@ rootScope.addEventListener('stories_read', onAvatarStoriesUpdate);
 rootScope.addEventListener('story_deleted', onAvatarStoriesUpdate);
 rootScope.addEventListener('story_new', onAvatarStoriesUpdate);
 
+function createAvatarVideo(url: string, startTime: number, middleware: Middleware) {
+  const video = createLoopingMutedVideo(
+    url,
+    'avatar-photo avatar-video',
+    startTime,
+    middleware
+  );
+
+  // Pause videos that are off-screen, blurred, idle or disabled by lite mode.
+  // Observing the video itself also lets the intersector notice DOM removal.
+  animationIntersector.addAnimation({
+    animation: video,
+    observeElement: video,
+    type: 'video'
+  });
+
+  middleware.onClean(() => {
+    animationIntersector.removeAnimationByPlayer(video);
+    clearMediaElementSource(video);
+    video.remove();
+  });
+
+  return video;
+}
+
 
 const getStoriesSegments = async(peerId: PeerId, storyId?: number): Promise<AckedResult<StoriesSegmentsType>> => {
   if(storyId) {
@@ -150,7 +176,6 @@ export function findUpAvatar(target: Element | EventTarget) {
 async function loadAvatarVideoOverlay(
   peerId: PeerId,
   photo: UserProfilePhoto.userProfilePhoto | ChatPhoto.chatPhoto,
-  node: HTMLElement,
   middleware: Middleware,
   videoSize: PeerPhotoSize = 'photo_video'
 ): Promise<HTMLVideoElement | undefined> {
@@ -160,33 +185,13 @@ async function loadAvatarVideoOverlay(
     Promise.resolve(apiManagerProxy.loadAvatar(peerId, photo, videoSize)).catch((): string => undefined),
     rootScope.managers.appAvatarsManager.getAvatarVideoStartTs(peerId, photo, videoSize === 'photo_video_full').catch((): number => undefined)
   ]);
-  if(!url || !middleware()) return undefined;
+  if(!url || !middleware()) {
+    return;
+  }
 
   // Muted-autoplay setup with src assigned last (see helper) — retry on
   // canplay/loadeddata covers the "interrupted by a new load request" reject.
-  const v = createLoopingMutedVideo(url, 'avatar-photo avatar-video', videoStartTs);
-
-  // Don't animate while the avatar isn't visible — scrolled off the chat list,
-  // or sitting in the right sidebar while it's slid closed (the column is moved
-  // off-screen with a transform but stays mounted). Hand the <video> to the
-  // app-wide animation intersector instead of an ad-hoc IntersectionObserver:
-  // it pauses on off-screen / blur / idle / lite-mode and resumes when visible,
-  // and stays correct across Document-PiP window moves. Observe the <video>
-  // itself (like wrappers/video.ts) so it auto-unregisters when swapped/removed.
-  animationIntersector.addAnimation({
-    animation: v,
-    observeElement: v,
-    type: 'video'
-  });
-
-  middleware.onDestroy(() => {
-    animationIntersector.removeAnimationByPlayer(v);
-    v.pause();
-    v.src = '';
-    v.load();
-  });
-
-  return v;
+  return createAvatarVideo(url, videoStartTs, middleware);
 }
 
 const calculateSegmentsDimensions = (s: number) => {
@@ -214,6 +219,7 @@ export function wrapPhotoToAvatar(
   // full photo is already cached, skip the appearance fade so the re-mounts are
   // seamless instead of replaying the fade-in (avatar "blinking" away and back).
   // The first, uncached load still fades in normally.
+  const middleware = avatarElem.getMiddleware();
   const cacheContext = apiManagerProxy.getCacheContext(photo as any, photoSize?.type);
   return wrapPhoto({
     container: avatarElem.node,
@@ -223,7 +229,8 @@ export function wrapPhotoToAvatar(
     boxWidth: boxSize,
     withoutPreloader: true,
     size: photoSize,
-    noFadeIn: !!cacheContext?.downloaded
+    noFadeIn: !!cacheContext?.downloaded,
+    middleware
   }).then((result) => {
     avatarElem.node.classList.replace('media-container', 'avatar-relative');
     avatarElem.node.style.width = avatarElem.node.style.height = '';
@@ -242,14 +249,18 @@ export function wrapPhotoToAvatar(
     // For photos that include a video variant (animated profile photo), overlay
     // a muted looping <video> on top of the still image once it is loaded.
     if((photo as any)?.video_sizes?.length) {
-      attachAvatarVideoFromPhoto(avatarElem.node, photo as any);
+      attachAvatarVideoFromPhoto(avatarElem.node, photo as any, middleware);
     }
 
     return result.loadPromises.thumb;
   });
 }
 
-async function attachAvatarVideoFromPhoto(container: HTMLElement, photo: import('@layer').Photo.photo) {
+async function attachAvatarVideoFromPhoto(
+  container: HTMLElement,
+  photo: import('@layer').Photo.photo,
+  middleware: Middleware
+) {
   const [{default: chooseProfileVideoSize}, {default: appDownloadManager}] = await Promise.all([
     import('@appManagers/utils/photos/chooseProfileVideoSize'),
     import('@lib/appDownloadManager')
@@ -261,20 +272,9 @@ async function attachAvatarVideoFromPhoto(container: HTMLElement, photo: import(
     media: photo,
     thumb: videoSize
   });
+  if(!middleware()) return;
 
-  const v = createLoopingMutedVideo(url, 'avatar-photo avatar-video', videoSize.video_start_ts);
-  container.appendChild(v);
-
-  // Same as loadAvatarVideoOverlay: pause this looping avatar video whenever it
-  // isn't visible (e.g. the profile carousel in the right sidebar while it's
-  // closed, or a service-message bubble scrolled out of the chat) via the
-  // app-wide intersector. No middleware here — it auto-unregisters once the
-  // observed <video> leaves the DOM.
-  animationIntersector.addAnimation({
-    animation: v,
-    observeElement: v,
-    type: 'video'
-  });
+  container.appendChild(createAvatarVideo(url, videoSize.video_start_ts, middleware));
 }
 
 export function StoriesSegments(props: {
@@ -653,7 +653,7 @@ export const AvatarNew = (props: {
         // Big profile avatar gets the full-quality video ('u'); chat list /
         // topbar use the small preview ('p') to save bandwidth.
         const videoSize: PeerPhotoSize = props.isBig ? 'photo_video_full' : 'photo_video';
-        loadAvatarVideoOverlay(peerId, photo, node, middleware, videoSize).then((videoElement) => {
+        loadAvatarVideoOverlay(peerId, photo, middleware, videoSize).then((videoElement) => {
           if(!middleware() || !videoElement) return;
           setVideo(videoElement);
         });
@@ -1095,6 +1095,7 @@ export const AvatarNew = (props: {
     setIsSubscribed,
     setAutoDeletePeriod,
     updateStoriesSegments,
+    getMiddleware: () => middlewareHelper.get(),
     set,
     color
   };

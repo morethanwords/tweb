@@ -17,6 +17,21 @@ const Modes = {
   noSharedWorker: location.search.indexOf('noSharedWorker=1') > 0,
   noServiceWorker: location.search.indexOf('noServiceWorker=1') > 0,
   noOffscreenCanvas: location.search.indexOf('noOffscreenCanvas=1') > 0,
+  // Kill switch for the SHARED object-URL lifecycle: with it on, worker-minted
+  // blob URLs are never evicted from the caches, never revoked, and pins are
+  // not reported — the old leak-forever behaviour for shared media.
+  // Tab-local one-off URLs (ObjectURLScope: editor previews, upload previews,
+  // decoded voice) are NOT covered: disposing those is self-contained and was
+  // a plain leak fix, so it stays active even here. Neither are the handful of
+  // pre-existing raw URL.revokeObjectURL call sites (recording, rtmp, download).
+  // * OFF in dev and tests, so the mechanic keeps being exercised locally.
+  // * ON in production for now — the lifecycle is verified but has not been
+  //   dogfooded; flip by dropping `import.meta.env.PROD` once it has.
+  // Overrides (they reach the worker too — makeWorkerURL forwards query
+  // params): ?noObjectUrlRevoke=1 forces it on, ?forceObjectUrlRevoke=1
+  // forces it off (i.e. enables revocation in a production build).
+  noObjectUrlRevoke: location.search.indexOf('forceObjectUrlRevoke=1') > 0 ? false :
+    (import.meta.env.PROD || location.search.indexOf('noObjectUrlRevoke=1') > 0),
   // Run MTProto + crypto entirely in the main thread (debug only). Loops the
   // worker entries back through a MessageChannel in the same realm so
   // breakpoints / call stacks span the whole pipeline. Multi-tab features

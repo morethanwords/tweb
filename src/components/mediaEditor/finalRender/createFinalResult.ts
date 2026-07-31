@@ -38,7 +38,6 @@ export type MediaEditorFinalResult = {
   isVideo: boolean;
   width: number;
   height: number;
-  originalSrc: string;
   originalSize?: NumberPair;
   videoDuration?: number;
   editingMediaState: EditingMediaState;
@@ -152,7 +151,6 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
       isVideo: true,
       width: previewWidth,
       height: previewHeight,
-      originalSrc: context.mediaSrc,
       originalSize: [previewWidth, previewHeight],
       editingMediaState: structuredClone(unwrap(mediaState)),
       animatedPreview
@@ -255,7 +253,6 @@ export async function createFinalResult(): Promise<MediaEditorFinalResult> {
     animatedPreview,
     width: scaledWidth,
     height: scaledHeight,
-    originalSrc: context.mediaSrc,
     originalSize: [payload.media.width, payload.media.height],
     editingMediaState: structuredClone(unwrap(mediaState))
   };

@@ -20,6 +20,7 @@ import apiManagerProxy from '@lib/apiManagerProxy';
 import {IS_MOBILE_SAFARI} from '@environment/userAgent';
 import isWebFileLocation from '@appManagers/utils/webFiles/isWebFileLocation';
 import {MIME_TYPE_EXTENSION_MAP} from '@environment/mimeTypeMap';
+import {isObjectURL} from '@helpers/objectUrlUtils';
 
 export type ResponseMethodBlob = 'blob';
 export type ResponseMethodJson = 'json';
@@ -32,6 +33,7 @@ export type DownloadUrl = CancellablePromise<string>;
 export type DownloadJson = CancellablePromise<any>;
 // export type Download = DownloadBlob/*  | DownloadJson */;
 export type Download = DownloadBlob | DownloadUrl/*  | DownloadJson */;
+type CachedDownloadUrl = DownloadUrl & {resolvedObjectURL?: string};
 
 export type Progress = {done: number, fileName: string, total: number, offset: number};
 export type ProgressCallback = (details: Progress) => void;
@@ -181,6 +183,12 @@ export class AppDownloadManager {
 
     deferred = this.getNewDeferred<Blob>(fileName, type);
     getPromise().then(deferred.resolve.bind(deferred), deferred.reject.bind(deferred));
+    if(type === 'url') {
+      const urlDeferred = deferred as CachedDownloadUrl;
+      urlDeferred.then((url) => {
+        urlDeferred.resolvedObjectURL = url;
+      }, noop);
+    }
     return deferred;
   }
 
@@ -194,7 +202,21 @@ export class AppDownloadManager {
   }
 
   public downloadMedia(options: DownloadMediaOptions, type: DownloadType = 'blob', promiseBefore?: Promise<any>): DownloadBlob {
-    const {downloadOptions, fileName} = getDownloadMediaDetails(options);
+    const {fileName} = getDownloadMediaDetails(options);
+
+    if(type === 'url') {
+      const cached = this.getDownload(fileName, type) as CachedDownloadUrl;
+      const resolvedObjectURL = cached?.resolvedObjectURL;
+      if(
+        isObjectURL(resolvedObjectURL) &&
+        apiManagerProxy.getCacheContext(options.media as any, options.thumb?.type).url !== resolvedObjectURL
+      ) {
+        // The worker evicted this URL and already invalidated the tab mirror.
+        // Do not hand a newly rendered element the fulfilled promise's revoked
+        // value; let the worker recreate/re-adopt a URL from its Blob cache.
+        this.clearDownload(fileName, type);
+      }
+    }
 
     return this.d(fileName, () => {
       let cb: any;

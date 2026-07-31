@@ -3,7 +3,6 @@ import IS_OPUS_SUPPORTED from '@environment/opusSupport';
 import {IS_SAFARI} from '@environment/userAgent';
 import {Modify} from '@types';
 import {logger, LogTypes} from '@lib/logger';
-import apiManagerProxy from '@lib/apiManagerProxy';
 import type {ConvertWebPTask} from '@lib/webp/webpWorkerController';
 
 type Result = {
@@ -169,9 +168,12 @@ export class OpusDecodeController {
   }
 
   public async decode(typedArray: Uint8Array, withWaveform = false) {
-    return this.pushDecodeTask(typedArray, withWaveform).then(async(result) => {
+    return this.pushDecodeTask(typedArray, withWaveform).then((result) => {
       const dataBlob = new Blob([result.bytes as BlobPart], {type: 'audio/wav'});
-      return {url: await apiManagerProxy.invoke('createObjectURL', dataBlob), waveform: result.waveform};
+      return {
+        blob: dataBlob,
+        waveform: result.waveform
+      };
     });
   }
 }

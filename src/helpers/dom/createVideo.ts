@@ -3,6 +3,7 @@ import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
 import {initVideoHls} from '@lib/hls/initVideoHls';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import {Middleware} from '@helpers/middleware';
+import clearMediaElementSource from '@helpers/dom/clearMediaElementSource';
 
 function updateStreamInUse(url: string, inUse: boolean) {
   if(url.includes('stream/')) {
@@ -26,8 +27,7 @@ export default function createVideo({
   middleware?.onDestroy(async() => {
     // createdVideos.delete(video);
     await getHeavyAnimationPromise();
-    video.src = '';
-    video.load();
+    clearMediaElementSource(video);
   });
 
   let originalSrc = video.src;

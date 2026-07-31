@@ -808,7 +808,6 @@ export class AppPollsManager extends AppManager {
           attachType,
           attributes,
           actionName,
-          objectURL: media.objectUrl,
           thumb: media.thumb,
           onUploadDeferred: (promise) => {
             uploadFileDeferred = promise;

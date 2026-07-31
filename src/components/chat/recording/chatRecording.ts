@@ -241,7 +241,7 @@ export default class ChatRecording {
           isMedia: true,
           duration,
           waveform,
-          objectURL: result.url,
+          objectURLBlob: result.blob,
           clearDraft: true
         });
 
@@ -308,7 +308,6 @@ export default class ChatRecording {
         // The Blob already carries the recorder's mime type. We hand it to
         // sendFile with isRoundMessage=true so the documentAttributeVideo flag
         // gets `round_message=true` (see appMessagesManager.sendFile).
-        const objectURL = URL.createObjectURL(blob);
         this.input.managers.appMessagesManager.sendFile({
           ...sendingParams,
           file: blob,
@@ -320,7 +319,7 @@ export default class ChatRecording {
           // the optimistic message render correctly.
           width: 400,
           height: 400,
-          objectURL,
+          objectURLBlob: blob,
           thumb,
           clearDraft: true
         });
@@ -685,7 +684,8 @@ export default class ChatRecording {
     this.stopPlayback();
 
     try {
-      const {url} = await opusDecodeController.decode(snapshot, false);
+      const {blob} = await opusDecodeController.decode(snapshot, false);
+      const url = URL.createObjectURL(blob);
       this.playbackObjectUrl = url;
     } catch(err) {
       console.error('[ChatInput] voice playback decode error:', err);
@@ -1254,15 +1254,14 @@ export default class ChatRecording {
 
   // Snapshot the current round-preview frame as a JPEG poster for the optimistic
   // message. Must be called while the camera is still live (we keep it alive
-  // through the stop fade-out). Returns the {blob, url, size} shape sendFile's
-  // `thumb` expects, or undefined on failure (sending still works without it).
-  private async captureVideoPoster(): Promise<{blob: Blob, url: string, size: MediaSize} | undefined> {
+  // through the stop fade-out).
+  private async captureVideoPoster(): Promise<{blob: Blob, size: MediaSize} | undefined> {
     const v = this.videoRecordingPanel?.previewVideo;
     if(!v || !v.videoWidth || !v.videoHeight) return undefined;
     try {
       const poster = await createPosterFromMedia(v);
       if(!poster?.blob) return undefined;
-      return {blob: poster.blob, url: URL.createObjectURL(poster.blob), size: poster.size};
+      return {blob: poster.blob, size: poster.size};
     } catch(e) {
       return undefined;
     }

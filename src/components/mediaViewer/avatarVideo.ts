@@ -2,6 +2,7 @@ import {Photo} from '@layer';
 import appDownloadManager from '@lib/appDownloadManager';
 import chooseProfileVideoSize from '@appManagers/utils/photos/chooseProfileVideoSize';
 import createLoopingMutedVideo from '@helpers/dom/createLoopingMutedVideo';
+import clearMediaElementSource from '@helpers/dom/clearMediaElementSource';
 
 // Overlays a looping muted video (animated avatar) on top of the media-viewer
 // mover's still image, once the photo's full video variant has downloaded.
@@ -17,7 +18,12 @@ export default function overlayAvatarVideoOnMover(mover: HTMLElement, photo: Pho
     Promise.resolve(appDownloadManager.downloadMediaURL({media: photo, thumb: videoSize})).then((url) => {
       if(cancelled || !url || !mover.isConnected) return;
       const container = (mover.querySelector('.media-viewer-aspecter') as HTMLElement) || mover;
-      video = createLoopingMutedVideo(url, 'media-viewer-avatar-video', videoSize.video_start_ts);
+      video = createLoopingMutedVideo(
+        url,
+        'media-viewer-avatar-video',
+        videoSize.video_start_ts,
+        mover.middlewareHelper.get()
+      );
       container.append(video);
     });
   }
@@ -25,8 +31,7 @@ export default function overlayAvatarVideoOnMover(mover: HTMLElement, photo: Pho
   return () => {
     cancelled = true;
     if(video) {
-      video.pause();
-      video.src = '';
+      clearMediaElementSource(video);
       video.remove();
       video = undefined;
     }

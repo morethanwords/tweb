@@ -26,6 +26,7 @@ import {blendWallpaperForTinted} from '@config/themePresets';
 import themeController from '@helpers/themeController';
 import requestFile from '@helpers/files/requestFile';
 import {renderImageFromUrlPromise} from '@helpers/dom/renderImageFromUrl';
+import clearMediaElementSource from '@helpers/dom/clearMediaElementSource';
 import scaleMediaElement from '@helpers/canvas/scaleMediaElement';
 import {MediaSize} from '@helpers/mediaSize';
 import {getColorsFromWallPaper} from '@helpers/color';
@@ -153,11 +154,12 @@ export class AppBackgroundTab {
     const doc = (wallPaper as WallPaper.wallPaper).document as MyDocument;
     const deferred = deferredPromise<void>();
     let download: Promise<void> | ReturnType<AppDownloadManager['downloadMediaURL']>;
+    const downloadWallPaper = () => appDownloadManager.downloadMediaURL({
+      media: doc,
+      queueId: appImManager.chat.bubbles ? appImManager.chat.bubbles.lazyLoadQueue.queueId : 0
+    });
     if(doc) {
-      download = appDownloadManager.downloadMediaURL({
-        media: doc,
-        queueId: appImManager.chat.bubbles ? appImManager.chat.bubbles.lazyLoadQueue.queueId : 0
-      });
+      download = downloadWallPaper();
       deferred.addNotifyListener = download.addNotifyListener.bind(download);
       deferred.cancel = download.cancel;
     } else {
@@ -231,15 +233,30 @@ export class AppBackgroundTab {
 
       const cacheContext = await rootScope.managers.thumbsStorage.getCacheContext(doc);
       if(needBlur(wallPaper)) {
-        setTimeout(() => {
-          ChatBackgroundStore.blurWallPaperImage(cacheContext.url).then((url) => {
+        setTimeout(async() => {
+          try {
+            if(!middleware()) {
+              deferred.resolve();
+              return;
+            }
+
+            const currentCacheContext = await rootScope.managers.thumbsStorage.getCacheContext(doc);
+            const sourceUrl = currentCacheContext.url || await downloadWallPaper();
+            if(!middleware()) {
+              deferred.resolve();
+              return;
+            }
+
+            const url = await ChatBackgroundStore.blurWallPaperImage(sourceUrl);
             if(!middleware()) {
               deferred.resolve();
               return;
             }
 
             onReady(url);
-          });
+          } catch(error) {
+            deferred.reject(error);
+          }
         }, 200);
       } else if(middleware()) {
         onReady(cacheContext.url);
@@ -364,10 +381,15 @@ const ChatBackground = () => {
       if(file.name.endsWith('.png')) {
         const img = document.createElement('img');
         const url = URL.createObjectURL(file);
-        await renderImageFromUrlPromise(img, url, false);
-        const mimeType = 'image/jpeg';
-        const {blob} = await scaleMediaElement({media: img, size: new MediaSize(img.naturalWidth, img.naturalHeight), mimeType});
-        file = new File([blob], file.name.replace(/\.png$/, '.jpg'), {type: mimeType});
+        try {
+          await renderImageFromUrlPromise(img, url, false);
+          const mimeType = 'image/jpeg';
+          const {blob} = await scaleMediaElement({media: img, size: new MediaSize(img.naturalWidth, img.naturalHeight), mimeType});
+          file = new File([blob], file.name.replace(/\.png$/, '.jpg'), {type: mimeType});
+        } finally {
+          clearMediaElementSource(img);
+          URL.revokeObjectURL(url);
+        }
       }
 
       const wallPaper = await rootScope.managers.appDocsManager.prepareWallPaperUpload(file);
@@ -400,6 +422,12 @@ const ChatBackground = () => {
       }, deferred.reject.bind(deferred));
 
       const key = getWallPaperKey(wallPaper);
+      const releaseUploadPreview = () => {
+        ChatBackgroundStore.deleteBackgroundUrlFromCache({
+          slug: (wallPaper as WallPaper.wallPaper).slug
+        });
+      };
+      deferred.then(releaseUploadPreview, releaseUploadPreview);
       deferred.catch(() => {
         container.remove();
       });

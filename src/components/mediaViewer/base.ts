@@ -74,6 +74,8 @@ import getDocumentURL from '@appManagers/utils/docs/getDocumentURL';
 import assumeType from '@helpers/assumeType';
 import {createRoot, createResource, createEffect, createMemo} from 'solid-js';
 import readBlobAsText from '@helpers/blob/readBlobAsText';
+import {pinObjectURL} from '@helpers/objectUrl';
+import clearMediaElementSource from '@helpers/dom/clearMediaElementSource';
 import {Storyboard, StoryboardFrame} from '@lib/mediaPlayer/preview';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import cloneDOMRect from '@helpers/dom/cloneDOMRect';
@@ -2582,7 +2584,10 @@ export default class AppMediaViewerBase<
         const div = mover.firstElementChild && mover.firstElementChild.classList.contains('media-viewer-aspecter') ? mover.firstElementChild : mover;
 
         const moverThumbVideo = mover.querySelector('video');
-        moverThumbVideo?.remove();
+        if(moverThumbVideo) {
+          clearMediaElementSource(moverThumbVideo);
+          moverThumbVideo.remove();
+        }
 
         video.setAttribute('playsinline', 'true');
 
@@ -2832,6 +2837,8 @@ export default class AppMediaViewerBase<
             }
 
             const url = (await getCacheContext()).url;
+            // * keep a blob video's URL alive for seeks while the slide lives
+            mover.middlewareHelper.get().onClean(pinObjectURL(url));
 
             const onError = (e: ErrorEvent) => {
               if(shouldIgnoreVideoError(e) || isLiveStream) {

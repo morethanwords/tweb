@@ -5,7 +5,6 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type {ThumbCache} from '@lib/storages/thumbs';
 import {Document, DocumentAttribute, PhotoSize, WallPaper} from '@layer';
 import {ReferenceContext} from '@lib/storages/references';
 import {getFullDate} from '@helpers/date/getFullDate';
@@ -25,6 +24,8 @@ import tsNow from '@helpers/tsNow';
 import appManagersManager from '@appManagers/appManagersManager';
 import tryPatchMp4 from '@helpers/fixChromiumMp4';
 import StickerType from '@config/stickerType';
+import {makeObjectUrlOwner} from '@helpers/objectUrlUtils';
+import SharedObjectUrlCache from '@lib/mainWorker/sharedObjectUrlCache';
 
 export type MyDocument = Document.document;
 
@@ -33,6 +34,13 @@ export type MyDocument = Document.document;
 type WallPaperId = WallPaper.wallPaper['id'];
 
 let uploadWallPaperTempId = 0;
+const FIXED_CHROMIUM_MP4_CACHE_LIMIT = 2;
+const FIXED_CHROMIUM_MP4_CACHE_BYTES_LIMIT = 32 * 1024 * 1024;
+
+type FixedChromiumMp4CacheEntry = {
+  promise: Promise<string>,
+  url?: string
+};
 
 // let TEST_FILE_REFERENCE = '5436366378309293244', TEST_FILE_REFERENCE_TIMES = 3;
 
@@ -43,12 +51,13 @@ export class AppDocsManager extends AppManager {
 
   private uploadingWallPapers: {
     [id: WallPaperId]: {
-      cacheContext: ThumbCache,
+      document: MyDocument,
       file: File
     }
   };
 
-  private fixingChromiumMp4: {[src: string]: MaybePromise<string>};
+  private fixingChromiumMp4: Map<string, FixedChromiumMp4CacheEntry>;
+  private fixingChromiumMp4ObjectURLCache: SharedObjectUrlCache<string>;
 
   private requestingDocParts: {[docId: DocId]: Set<() => void>};
 
@@ -57,7 +66,17 @@ export class AppDocsManager extends AppManager {
   protected after() {
     this.docs = {};
     this.uploadingWallPapers = {};
-    this.fixingChromiumMp4 = {};
+    this.fixingChromiumMp4 = new Map();
+    this.fixingChromiumMp4ObjectURLCache = new SharedObjectUrlCache<string>({
+      getOwner: (src) => makeObjectUrlOwner('fixed-mp4', this.getAccountNumber(), src),
+      maxBytes: FIXED_CHROMIUM_MP4_CACHE_BYTES_LIMIT,
+      maxURLs: FIXED_CHROMIUM_MP4_CACHE_LIMIT,
+      onEvict: (src, url) => {
+        if(this.fixingChromiumMp4.get(src)?.url === url) {
+          this.fixingChromiumMp4.delete(src);
+        }
+      }
+    });
     this.requestingDocParts = {};
     this.altDocsByMainMediaDocument = {};
 
@@ -359,7 +378,7 @@ export class AppDocsManager extends AppManager {
 
     document = this.saveDoc(document);
 
-    const cacheContext = this.thumbsStorage.setCacheContextURL(document, undefined, URL.createObjectURL(file), file.size);
+    this.thumbsStorage.setCacheContextBlob(document, undefined, file, file.size);
 
     const wallpaper: WallPaper.wallPaper = {
       _: 'wallPaper',
@@ -371,7 +390,7 @@ export class AppDocsManager extends AppManager {
     };
 
     this.uploadingWallPapers[id] = {
-      cacheContext,
+      document,
       file
     };
 
@@ -379,7 +398,7 @@ export class AppDocsManager extends AppManager {
   }
 
   public uploadWallPaper(id: WallPaperId) {
-    const {cacheContext, file} = this.uploadingWallPapers[id];
+    const {document, file} = this.uploadingWallPapers[id];
     delete this.uploadingWallPapers[id];
 
     const upload = this.apiFileManager.upload({file, fileName: file.name});
@@ -394,10 +413,13 @@ export class AppDocsManager extends AppManager {
       }).then((wallPaper) => {
         assumeType<WallPaper.wallPaper>(wallPaper);
         wallPaper.document = this.saveDoc(wallPaper.document);
-        this.thumbsStorage.setCacheContextURL(wallPaper.document, undefined, cacheContext.url, cacheContext.downloaded);
+        this.thumbsStorage.moveCacheContext(document, wallPaper.document);
 
         return wallPaper;
       });
+    }).catch((error) => {
+      this.thumbsStorage.deleteCacheContext(document);
+      throw error;
     });
   }
 
@@ -458,13 +480,33 @@ export class AppDocsManager extends AppManager {
   }
 
   public fixChromiumMp4(src: string) {
-    return this.fixingChromiumMp4[src] ??= fetch(src)
+    const cached = this.fixingChromiumMp4.get(src);
+    if(cached) {
+      this.fixingChromiumMp4ObjectURLCache.touch(src);
+      return cached.promise;
+    }
+
+    const entry: FixedChromiumMp4CacheEntry = {
+      promise: undefined
+    };
+    entry.promise = fetch(src)
     .then((response) => response.arrayBuffer())
     .then((ab) => {
       const u8 = new Uint8Array(ab);
       tryPatchMp4(u8);
-      return this.fixingChromiumMp4[src] = URL.createObjectURL(new Blob([u8]));
+      entry.url = this.fixingChromiumMp4ObjectURLCache.create(src, new Blob([u8])).url;
+      return entry.url;
+    }).catch((error) => {
+      if(this.fixingChromiumMp4.get(src) === entry) {
+        this.fixingChromiumMp4.delete(src);
+        if(entry.url) {
+          this.fixingChromiumMp4ObjectURLCache.delete(src, entry.url);
+        }
+      }
+      throw error;
     });
+    this.fixingChromiumMp4.set(src, entry);
+    return entry.promise;
   }
 
   public getAltDocsByDocument(docId: DocId) {

@@ -1,4 +1,4 @@
-import apiManagerProxy from '@lib/apiManagerProxy';
+import {createObjectURL, revokeObjectURL} from '@helpers/objectUrl';
 
 type RenderImageAndURLFromBlobResult = {
   ok: true;
@@ -9,7 +9,7 @@ type RenderImageAndURLFromBlobResult = {
 };
 
 export async function createImageAndURLFromBlob(blob: Blob): Promise<RenderImageAndURLFromBlobResult> {
-  const url = await apiManagerProxy.invoke('createObjectURL', blob);
+  const url = createObjectURL(blob);
 
   const img = new Image();
   img.src = url;
@@ -18,6 +18,7 @@ export async function createImageAndURLFromBlob(blob: Blob): Promise<RenderImage
     await img.decode();
     return {ok: true, url, img};
   } catch{
+    revokeObjectURL(url);
     return {ok: false};
   }
 }

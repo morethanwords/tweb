@@ -16,6 +16,7 @@ import {createPosterFromVideo} from '@helpers/createPoster';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
 import createVideo from '@helpers/dom/createVideo';
 import noop from '@helpers/noop';
+import {ObjectURLScope} from '@helpers/objectUrl';
 import onMediaLoad from '@helpers/onMediaLoad';
 import detectVideoHasSound from '@helpers/video/detectVideoHasSound';
 import {positionFloatingMenu} from '@helpers/positionMenu';
@@ -25,7 +26,6 @@ import {subscribeOn} from '@helpers/solid/subscribeOn';
 import classNames from '@helpers/string/classNames';
 import {wrapAsyncClickHandler} from '@helpers/wrapAsyncClickHandler';
 import {useIsCleaned} from '@hooks/useIsCleaned';
-import apiManagerProxy from '@lib/apiManagerProxy';
 import I18n from '@lib/langPack';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import {createEffect, createMemo, createResource, createSignal, Match, on, onCleanup, Switch} from 'solid-js';
@@ -38,7 +38,6 @@ import {AttachedLink, AttachedMedia, AttachedVideo, SupportedMediaType} from './
 
 type PersistingState = {
   editingState: EditingMediaState;
-  initialObjectUrl: string;
   initialFile: File;
   /**
    * Whether the source the editor was opened from is a video.
@@ -73,9 +72,24 @@ export const MediaAttachment = (props: {
 
   const [creatingVideoState, setCreatingVideoState] = createSignal<CreatingVideoState>();
 
+  const objectURLs = new ObjectURLScope();
   const isCleaned = useIsCleaned();
   let operationToken = 0;
   let cancelAnimation: (reject?: boolean) => void;
+
+  const getAttachedObjectURLs = () => {
+    const attachedMedia = props.attachedMedia;
+    if(attachedMedia?.type === 'photo') return [attachedMedia.objectUrl];
+    if(attachedMedia?.type === 'video') return [attachedMedia.objectUrl, attachedMedia.thumb.url];
+    return [];
+  };
+
+  createEffect(on(getAttachedObjectURLs, (urls, previousUrls) => {
+    urls.forEach((url) => objectURLs.add(url));
+    previousUrls?.forEach((url) => {
+      if(!urls.includes(url)) objectURLs.release(url);
+    });
+  }));
 
   const invalidateOperation = () => {
     ++operationToken;
@@ -86,7 +100,7 @@ export const MediaAttachment = (props: {
     if(state) {
       state.editorResult.cancel?.();
       state.editorResult.animatedPreview?.remove();
-      URL.revokeObjectURL(state.previewObjectUrl);
+      objectURLs.release(state.previewObjectUrl);
       setCreatingVideoState(undefined);
     }
   };
@@ -111,18 +125,11 @@ export const MediaAttachment = (props: {
   });
 
   let persistingState: PersistingState;
-  const replacePersistingState = (next?: PersistingState) => {
-    const previousUrl = persistingState?.initialObjectUrl;
-    if(previousUrl && previousUrl !== next?.initialObjectUrl) {
-      URL.revokeObjectURL(previousUrl);
-    }
-
-    persistingState = next;
-  };
 
   onCleanup(() => {
     invalidateOperation();
-    replacePersistingState(undefined);
+    persistingState = undefined;
+    objectURLs.dispose();
   });
 
   const isAttachedGIF = () => props.attachedMedia?.type === 'video' && props.attachedMedia.isAnimated;
@@ -149,9 +156,9 @@ export const MediaAttachment = (props: {
   });
 
   const attachVideoDirectly = async(file: File, token: number) => {
-    const videoObjectUrl = await apiManagerProxy.invoke('createObjectURL', file);
+    const videoObjectUrl = objectURLs.create(file);
     if(!isOperationCurrent(token)) {
-      URL.revokeObjectURL(videoObjectUrl);
+      objectURLs.release(videoObjectUrl);
       return;
     }
 
@@ -163,19 +170,19 @@ export const MediaAttachment = (props: {
     try {
       await onMediaLoad(probeVideo as HTMLMediaElement);
     } catch(err) {
-      URL.revokeObjectURL(videoObjectUrl);
+      objectURLs.release(videoObjectUrl);
       return;
     }
 
     if(!isOperationCurrent(token)) {
-      URL.revokeObjectURL(videoObjectUrl);
+      objectURLs.release(videoObjectUrl);
       return;
     }
 
     const hasSound = await detectVideoHasSound(probeVideo).catch(() => true);
 
     if(!isOperationCurrent(token)) {
-      URL.revokeObjectURL(videoObjectUrl);
+      objectURLs.release(videoObjectUrl);
       return;
     }
 
@@ -189,15 +196,15 @@ export const MediaAttachment = (props: {
     let thumbUrl: string;
     try {
       poster = await createPosterFromVideo(probeVideo);
-      thumbUrl = await apiManagerProxy.invoke('createObjectURL', poster.blob);
+      thumbUrl = objectURLs.create(poster.blob);
     } catch(err) {
-      URL.revokeObjectURL(videoObjectUrl);
+      objectURLs.release(videoObjectUrl);
       return;
     }
 
     if(!isOperationCurrent(token)) {
-      URL.revokeObjectURL(videoObjectUrl);
-      URL.revokeObjectURL(thumbUrl);
+      objectURLs.release(videoObjectUrl);
+      objectURLs.release(thumbUrl);
       return;
     }
 
@@ -218,7 +225,7 @@ export const MediaAttachment = (props: {
       }
     };
 
-    replacePersistingState(undefined);
+    persistingState = undefined;
     props.onAttach?.(attachedVideo);
   };
 
@@ -316,18 +323,19 @@ export const MediaAttachment = (props: {
     const sourceHeight = willAnimateFromVideo ? (sourceEl as HTMLVideoElement).videoHeight : (sourceEl as HTMLImageElement).naturalHeight;
 
     const {openMediaEditorFromMedia} = await import('@components/mediaEditor');
+    const mediaSrc = objectURLs.create(editingState.initialFile);
 
     openMediaEditorFromMedia({
       source: sourceEl,
       rect: sourceEl.getBoundingClientRect(),
       animatedCanvasSize: [sourceWidth, sourceHeight],
       mediaType: wasInitiallyVideo ? 'video' : 'image',
-      mediaSrc: editingState.initialObjectUrl,
+      mediaSrc,
       getMediaBlob: async() => editingState.initialFile,
       managers: rootScope.managers,
       onEditFinish: (editorResult) => handleFinish(editorResult, editingState.initialFile, startOperation()),
       editingMediaState: editingState.editingState,
-      onClose: noop,
+      onClose: () => objectURLs.release(mediaSrc),
       canImageResultInGIF: supportsMedia('gif')
     });
   });
@@ -350,21 +358,20 @@ export const MediaAttachment = (props: {
       return;
     }
 
-    const url = await apiManagerProxy.invoke('createObjectURL', result.blob);
+    const url = objectURLs.create(result.blob);
     if(!isOperationCurrent(token)) {
-      URL.revokeObjectURL(url);
+      objectURLs.release(url);
       editorResult.animatedPreview?.remove();
       return;
     }
 
     initialFile ??= persistingState?.initialFile;
 
-    replacePersistingState({
+    persistingState = {
       editingState: editorResult.editingMediaState,
-      initialObjectUrl: editorResult.originalSrc,
       initialFile,
       isVideo: false
-    });
+    };
 
     props.onAttach?.({
       type: 'photo',
@@ -405,7 +412,6 @@ export const MediaAttachment = (props: {
 
     const nextPersistingState: PersistingState = {
       editingState: editorResult.editingMediaState,
-      initialObjectUrl: editorResult.originalSrc,
       initialFile,
       isVideo
     };
@@ -417,9 +423,9 @@ export const MediaAttachment = (props: {
       return;
     }
 
-    const previewObjectUrl = await apiManagerProxy.invoke('createObjectURL', editorResult.preview);
+    const previewObjectUrl = objectURLs.create(editorResult.preview);
     if(!isOperationCurrent(token)) {
-      URL.revokeObjectURL(previewObjectUrl);
+      objectURLs.release(previewObjectUrl);
       editorResult.animatedPreview?.remove();
       return;
     }
@@ -466,20 +472,20 @@ export const MediaAttachment = (props: {
       await animateDeferred;
     } catch(err) {
       // Cancelled or failed: revert to nothing attached.
-      URL.revokeObjectURL(previewObjectUrl);
+      objectURLs.release(previewObjectUrl);
       if(creatingVideoState()?.editorResult === editorResult) {
         setCreatingVideoState(undefined);
       }
       if(isOperationCurrent(token)) {
         props.onAttach?.(undefined);
-        replacePersistingState(undefined);
+        persistingState = undefined;
       }
       editorResult.animatedPreview?.remove();
       return;
     }
 
     if(!isOperationCurrent(token)) {
-      URL.revokeObjectURL(previewObjectUrl);
+      objectURLs.release(previewObjectUrl);
       if(creatingVideoState()?.editorResult === editorResult) {
         setCreatingVideoState(undefined);
       }
@@ -488,10 +494,10 @@ export const MediaAttachment = (props: {
 
     // Probe the produced video to get dimensions/duration and a thumb if missing.
     const probeVideo = createVideo({});
-    const videoObjectUrl = await apiManagerProxy.invoke('createObjectURL', resultPayload.blob);
+    const videoObjectUrl = objectURLs.create(resultPayload.blob);
     if(!isOperationCurrent(token)) {
-      URL.revokeObjectURL(previewObjectUrl);
-      URL.revokeObjectURL(videoObjectUrl);
+      objectURLs.release(previewObjectUrl);
+      objectURLs.release(videoObjectUrl);
       if(creatingVideoState()?.editorResult === editorResult) {
         setCreatingVideoState(undefined);
       }
@@ -510,21 +516,21 @@ export const MediaAttachment = (props: {
       await onMediaLoad(probeVideo as HTMLMediaElement);
     } catch(err) {
       // Failed to probe; treat as cancel.
-      URL.revokeObjectURL(previewObjectUrl);
-      URL.revokeObjectURL(videoObjectUrl);
+      objectURLs.release(previewObjectUrl);
+      objectURLs.release(videoObjectUrl);
       if(creatingVideoState()?.editorResult === editorResult) {
         setCreatingVideoState(undefined);
       }
       if(isOperationCurrent(token)) {
         props.onAttach?.(undefined);
-        replacePersistingState(undefined);
+        persistingState = undefined;
       }
       return;
     }
 
     if(!isOperationCurrent(token)) {
-      URL.revokeObjectURL(previewObjectUrl);
-      URL.revokeObjectURL(videoObjectUrl);
+      objectURLs.release(previewObjectUrl);
+      objectURLs.release(videoObjectUrl);
       if(creatingVideoState()?.editorResult === editorResult) {
         setCreatingVideoState(undefined);
       }
@@ -542,25 +548,25 @@ export const MediaAttachment = (props: {
     let thumbUrl: string;
     try {
       thumb = resultPayload.thumb || await createPosterFromVideo(probeVideo);
-      thumbUrl = await apiManagerProxy.invoke('createObjectURL', thumb.blob);
+      thumbUrl = objectURLs.create(thumb.blob);
     } catch(err) {
-      URL.revokeObjectURL(previewObjectUrl);
-      URL.revokeObjectURL(videoObjectUrl);
+      objectURLs.release(previewObjectUrl);
+      objectURLs.release(videoObjectUrl);
       if(creatingVideoState()?.editorResult === editorResult) {
         setCreatingVideoState(undefined);
       }
       if(isOperationCurrent(token)) {
         props.onAttach?.(undefined);
-        replacePersistingState(undefined);
+        persistingState = undefined;
       }
       editorResult.animatedPreview?.remove();
       return;
     }
 
     if(!isOperationCurrent(token)) {
-      URL.revokeObjectURL(previewObjectUrl);
-      URL.revokeObjectURL(videoObjectUrl);
-      URL.revokeObjectURL(thumbUrl);
+      objectURLs.release(previewObjectUrl);
+      objectURLs.release(videoObjectUrl);
+      objectURLs.release(thumbUrl);
       if(creatingVideoState()?.editorResult === editorResult) {
         setCreatingVideoState(undefined);
       }
@@ -584,11 +590,11 @@ export const MediaAttachment = (props: {
       }
     };
 
-    URL.revokeObjectURL(previewObjectUrl);
+    objectURLs.release(previewObjectUrl);
     if(creatingVideoState()?.editorResult === editorResult) {
       setCreatingVideoState(undefined);
     }
-    replacePersistingState(nextPersistingState);
+    persistingState = nextPersistingState;
     props.onAttach?.(attachedVideo);
   };
 
@@ -610,9 +616,9 @@ export const MediaAttachment = (props: {
       return;
     }
 
-    const videoObjectUrl = await apiManagerProxy.invoke('createObjectURL', resultPayload.blob);
+    const videoObjectUrl = objectURLs.create(resultPayload.blob);
     if(!isOperationCurrent(token)) {
-      URL.revokeObjectURL(videoObjectUrl);
+      objectURLs.release(videoObjectUrl);
       editorResult.animatedPreview?.remove();
       return;
     }
@@ -625,13 +631,13 @@ export const MediaAttachment = (props: {
     try {
       await onMediaLoad(probeVideo as HTMLMediaElement);
     } catch(err) {
-      URL.revokeObjectURL(videoObjectUrl);
+      objectURLs.release(videoObjectUrl);
       editorResult.animatedPreview?.remove();
       return;
     }
 
     if(!isOperationCurrent(token)) {
-      URL.revokeObjectURL(videoObjectUrl);
+      objectURLs.release(videoObjectUrl);
       editorResult.animatedPreview?.remove();
       return;
     }
@@ -646,16 +652,16 @@ export const MediaAttachment = (props: {
     let thumbUrl: string;
     try {
       thumb = resultPayload.thumb || await createPosterFromVideo(probeVideo);
-      thumbUrl = await apiManagerProxy.invoke('createObjectURL', thumb.blob);
+      thumbUrl = objectURLs.create(thumb.blob);
     } catch(err) {
-      URL.revokeObjectURL(videoObjectUrl);
+      objectURLs.release(videoObjectUrl);
       editorResult.animatedPreview?.remove();
       return;
     }
 
     if(!isOperationCurrent(token)) {
-      URL.revokeObjectURL(videoObjectUrl);
-      URL.revokeObjectURL(thumbUrl);
+      objectURLs.release(videoObjectUrl);
+      objectURLs.release(thumbUrl);
       editorResult.animatedPreview?.remove();
       return;
     }
@@ -677,7 +683,7 @@ export const MediaAttachment = (props: {
       }
     };
 
-    replacePersistingState(nextPersistingState);
+    persistingState = nextPersistingState;
     props.onAttach?.(attachedVideo);
 
     if(!editorResult.animatedPreview) return;
@@ -704,7 +710,7 @@ export const MediaAttachment = (props: {
   const removeAttached = () => {
     invalidateOperation();
     props.onAttach?.(undefined);
-    replacePersistingState(undefined);
+    persistingState = undefined;
   };
 
   const mainMenuButtons = createMemo(() => {

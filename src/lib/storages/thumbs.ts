@@ -8,6 +8,12 @@ import generateEmptyThumb from '@lib/storages/utils/thumbs/generateEmptyThumb';
 import getStickerThumbKey from '@lib/storages/utils/thumbs/getStickerThumbKey';
 import getThumbKey from '@lib/storages/utils/thumbs/getThumbKey';
 import {AppManager} from '@appManagers/manager';
+import SharedObjectUrlCache from '@lib/mainWorker/sharedObjectUrlCache';
+import {
+  isObjectURL,
+  makeObjectUrlOwner,
+  reconcileObjectURLCacheValue
+} from '@helpers/objectUrlUtils';
 
 export type ThumbCache = {
   downloaded: number,
@@ -22,6 +28,10 @@ export type ThumbsCache = {
 };
 
 const thumbFullSize = THUMB_TYPE_FULL;
+const THUMB_OBJECT_URL_CACHE_LIMIT = 128;
+const THUMB_OBJECT_URL_CACHE_BYTES_LIMIT = 32 * 1024 * 1024;
+const STICKER_THUMB_OBJECT_URL_CACHE_LIMIT = 64;
+const STICKER_THUMB_OBJECT_URL_CACHE_BYTES_LIMIT = 8 * 1024 * 1024;
 
 export type ThumbStorageMedia = MyPhoto | MyDocument | WebDocument | InputWebFileLocation;
 
@@ -34,9 +44,49 @@ export type StickerCachedThumb = {
   h: number
 };
 
+type ThumbObjectUrlCacheKey = {
+  key: string,
+  thumbSize: string
+};
+
 export default class ThumbsStorage extends AppManager {
   private thumbsCache: ThumbsCache = {};
   private stickerCachedThumbs: StickerCachedThumbs = {};
+  private objectURLCache = new SharedObjectUrlCache<ThumbObjectUrlCacheKey>({
+    getOwner: ({key, thumbSize}) => this.getCacheContextOwner(key, thumbSize),
+    maxBytes: THUMB_OBJECT_URL_CACHE_BYTES_LIMIT,
+    maxURLs: THUMB_OBJECT_URL_CACHE_LIMIT,
+    onEvict: ({key, thumbSize}, url) => this.invalidateCacheContext(key, thumbSize, url)
+  });
+  private stickerObjectURLCache = new SharedObjectUrlCache<string>({
+    getOwner: (key) => this.getStickerThumbOwner(key),
+    maxBytes: STICKER_THUMB_OBJECT_URL_CACHE_BYTES_LIMIT,
+    maxURLs: STICKER_THUMB_OBJECT_URL_CACHE_LIMIT,
+    onEvict: (key, url) => this.invalidateStickerThumb(key, url)
+  });
+
+  private getCacheContextOwner(key: string, thumbSize: string) {
+    return makeObjectUrlOwner('thumb', this.getAccountNumber(), key, thumbSize);
+  }
+
+  private getStickerThumbOwner(key: string) {
+    return makeObjectUrlOwner('sticker-thumb', this.getAccountNumber(), key);
+  }
+
+  private mirrorObjectURLValue(
+    name: 'stickerThumbs' | 'thumbs',
+    key: string,
+    value?: StickerCachedThumb | ThumbCache,
+    previousUrl?: string
+  ) {
+    MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
+      name,
+      key,
+      value,
+      ...(previousUrl === undefined ? {} : {previousUrl}),
+      accountNumber: this.getAccountNumber()
+    });
+  }
 
   public getCacheContext(
     media: ThumbStorageMedia,
@@ -47,27 +97,28 @@ export default class ThumbsStorage extends AppManager {
       thumbSize = thumbFullSize;
     } */
 
-    const cache = this.thumbsCache[key] ??= {};
-    return cache[thumbSize] ??= generateEmptyThumb(thumbSize);
+    const context = this.thumbsCache[key]?.[thumbSize] || generateEmptyThumb(thumbSize);
+    if(isObjectURL(context.url)) {
+      this.objectURLCache.touch({key, thumbSize});
+    }
+    return context;
   }
 
-  private mirrorCacheContext(key: string, thumbSize: string, value?: ThumbCache) {
-    MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
-      name: 'thumbs',
-      // key: [key, thumbSize].filter(Boolean).join('.'),
-      key: joinDeepPath(key, thumbSize),
-      value,
-      accountNumber: this.getAccountNumber()
-    });
+  private mirrorCacheContext(
+    key: string,
+    thumbSize: string,
+    value?: ThumbCache,
+    previousUrl?: string
+  ) {
+    this.mirrorObjectURLValue('thumbs', joinDeepPath(key, thumbSize), value, previousUrl);
   }
 
-  private mirrorStickerThumb(key: string, value?: StickerCachedThumb) {
-    MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
-      name: 'stickerThumbs',
-      key,
-      value,
-      accountNumber: this.getAccountNumber()
-    });
+  private mirrorStickerThumb(
+    key: string,
+    value?: StickerCachedThumb,
+    previousUrl?: string
+  ) {
+    this.mirrorObjectURLValue('stickerThumbs', key, value, previousUrl);
   }
 
   public mirrorAll(port?: MessageEventSource) {
@@ -85,6 +136,58 @@ export default class ThumbsStorage extends AppManager {
     }, port);
   }
 
+  private updateCacheContext(
+    key: string,
+    thumbSize: string,
+    url: string,
+    downloaded: number,
+    previousUrl?: string
+  ) {
+    const cache = this.thumbsCache[key] ??= {};
+    const cacheContext = cache[thumbSize] ??= generateEmptyThumb(thumbSize);
+    cacheContext.url = url;
+    cacheContext.downloaded = downloaded;
+    this.mirrorCacheContext(key, thumbSize, cacheContext, this.forgettableURL(previousUrl));
+    return cacheContext;
+  }
+
+  // * `previousUrl` in a mirror message means "this blob URL is being revoked,
+  // * drop it from tab-side loaded-URL caches" — only send it when the URL
+  // * really has no remaining owner (it may have been adopted by another key).
+  private forgettableURL(url?: string) {
+    return url && isObjectURL(url) && !this.objectURLCache.isURLOwned(url) ?
+      url :
+      undefined;
+  }
+
+  private invalidateCacheContext(key: string, thumbSize: string, expectedUrl?: string) {
+    const cache = this.thumbsCache[key];
+    const cacheContext = cache?.[thumbSize];
+    if(!cacheContext || (expectedUrl !== undefined && cacheContext.url !== expectedUrl)) {
+      return;
+    }
+
+    const previousUrl = cacheContext.url;
+    reconcileObjectURLCacheValue(cacheContext);
+    delete cache[thumbSize];
+    if(!Object.keys(cache).length) {
+      delete this.thumbsCache[key];
+    }
+    this.mirrorCacheContext(key, thumbSize, undefined, this.forgettableURL(previousUrl));
+  }
+
+  private invalidateStickerThumb(key: string, expectedUrl?: string) {
+    const thumb = this.stickerCachedThumbs[key];
+    if(!thumb || (expectedUrl !== undefined && thumb.url !== expectedUrl)) {
+      return;
+    }
+
+    const previousUrl = thumb.url;
+    reconcileObjectURLCacheValue(thumb);
+    delete this.stickerCachedThumbs[key];
+    this.mirrorStickerThumb(key, undefined, this.forgettableURL(previousUrl));
+  }
+
   public setCacheContextURL(
     media: ThumbStorageMedia,
     thumbSize: string = thumbFullSize,
@@ -92,11 +195,20 @@ export default class ThumbsStorage extends AppManager {
     downloaded: number = 0,
     key = getThumbKey(media)
   ) {
-    const cacheContext = this.getCacheContext(media, thumbSize, key);
-    cacheContext.url = url;
-    cacheContext.downloaded = downloaded;
-    this.mirrorCacheContext(key, thumbSize, cacheContext);
-    return cacheContext;
+    const {previousUrl} = this.objectURLCache.adopt({key, thumbSize}, url, downloaded);
+    return this.updateCacheContext(key, thumbSize, url, downloaded, previousUrl);
+  }
+
+  public setCacheContextBlob(
+    media: ThumbStorageMedia,
+    thumbSize: string = thumbFullSize,
+    blob: Blob,
+    downloaded: number = 0,
+    key = getThumbKey(media),
+    pinned = false
+  ) {
+    const {url, previousUrl} = this.objectURLCache.create({key, thumbSize}, blob, pinned);
+    return this.updateCacheContext(key, thumbSize, url, downloaded, previousUrl);
   }
 
   public deleteCacheContext(
@@ -104,41 +216,77 @@ export default class ThumbsStorage extends AppManager {
     thumbSize: string = thumbFullSize,
     key = getThumbKey(media)
   ) {
-    const cache = this.thumbsCache[key];
-    if(cache) {
-      this.mirrorCacheContext(key, thumbSize);
-      delete cache[thumbSize];
+    if(!this.objectURLCache.delete({key, thumbSize})) {
+      this.invalidateCacheContext(key, thumbSize);
     }
   }
 
+  public moveCacheContext(
+    fromMedia: ThumbStorageMedia,
+    toMedia: ThumbStorageMedia,
+    fromThumbSize: string = thumbFullSize,
+    toThumbSize: string = thumbFullSize,
+    fromKey = getThumbKey(fromMedia),
+    toKey = getThumbKey(toMedia)
+  ) {
+    const cacheContext = this.thumbsCache[fromKey]?.[fromThumbSize];
+    if(fromKey === toKey && fromThumbSize === toThumbSize) {
+      if(cacheContext && isObjectURL(cacheContext.url)) {
+        this.objectURLCache.touch({key: fromKey, thumbSize: fromThumbSize});
+      }
+      return cacheContext;
+    }
+
+    if(!cacheContext) {
+      this.objectURLCache.delete({key: fromKey, thumbSize: fromThumbSize});
+      return;
+    }
+
+    const movedCacheContext = this.setCacheContextURL(
+      toMedia,
+      toThumbSize,
+      cacheContext.url,
+      cacheContext.downloaded,
+      toKey
+    );
+    this.deleteCacheContext(fromMedia, fromThumbSize, fromKey);
+    return movedCacheContext;
+  }
+
   public getStickerCachedThumb(docId: DocId, toneIndex: number | string) {
-    return this.stickerCachedThumbs[getStickerThumbKey(docId, toneIndex)];
+    const key = getStickerThumbKey(docId, toneIndex);
+    const thumb = this.stickerCachedThumbs[key];
+    if(thumb) {
+      this.stickerObjectURLCache.touch(key);
+    }
+    return thumb;
   }
 
   public saveStickerPreview(docId: DocId, blob: Blob, width: number, height: number, toneIndex: number | string) {
     const key = getStickerThumbKey(docId, toneIndex);
     const thumb = this.stickerCachedThumbs[key];
     if(thumb && thumb.w >= width && thumb.h >= height) {
+      this.stickerObjectURLCache.touch(key);
       return;
     }
 
-    const cache = this.stickerCachedThumbs[key] = {
-      url: URL.createObjectURL(blob),
-      w: width,
-      h: height
-    };
+    const {url, previousUrl} = this.stickerObjectURLCache.create(key, blob);
 
-    this.mirrorStickerThumb(key, cache);
+    const next = {url, w: width, h: height};
+    const cache = this.stickerCachedThumbs[key] = thumb ?
+      reconcileObjectURLCacheValue(thumb, next) :
+      next;
+
+    this.mirrorStickerThumb(key, cache, this.forgettableURL(previousUrl));
   }
 
   public clearColoredStickerThumbs() {
     for(const key in this.stickerCachedThumbs) {
       const [, toneIndex] = key.split('-');
       if(toneIndex && isNaN(+toneIndex)) {
-        const thumb = this.stickerCachedThumbs[key];
-        URL.revokeObjectURL(thumb.url);
-        delete this.stickerCachedThumbs[key];
-        this.mirrorStickerThumb(key);
+        if(!this.stickerObjectURLCache.delete(key, this.stickerCachedThumbs[key].url)) {
+          this.invalidateStickerThumb(key);
+        }
       }
     }
   }

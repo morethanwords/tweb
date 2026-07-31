@@ -592,7 +592,8 @@ export default class AudioElement extends HTMLElement {
         message: this.message,
         autoload,
         doc: this.doc,
-        slot: this.mediaSlot
+        slot: this.mediaSlot,
+        middleware: this.middleware
       }) as HTMLMediaElement;
 
       const readyPromise = this.readyPromise = deferredPromise<void>();
@@ -648,7 +649,8 @@ export default class AudioElement extends HTMLElement {
         boxHeight: 48,
         loadPromises: this.loadPromises,
         withoutPreloader: true,
-        lazyLoadQueue: this.lazyLoadQueue
+        lazyLoadQueue: this.lazyLoadQueue,
+        middleware: this.middleware
       });
       toggle.style.width = toggle.style.height = '';
       if(wrapped.images.thumb) imgs.push(wrapped.images.thumb);

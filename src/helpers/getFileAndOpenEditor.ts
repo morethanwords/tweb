@@ -3,7 +3,7 @@ import IMAGE_MIME_TYPES_SUPPORTED from '@environment/imageMimeTypesSupport';
 import VIDEO_MIME_TYPES_SUPPORTED from '@environment/videoMimeTypesSupport';
 import {createImageAndURLFromBlob} from '@helpers/createImageAndURLFromBlob';
 import {getAppWindow} from '@helpers/appWindow';
-import apiManagerProxy from '@lib/apiManagerProxy';
+import {createObjectURL, revokeObjectURL} from '@helpers/objectUrl';
 import rootScope from '@lib/rootScope';
 
 
@@ -59,14 +59,20 @@ export async function getFileAndOpenEditor({
 
   let mediaSrc: string;
   if(isVideo) {
-    mediaSrc = await apiManagerProxy.invoke('createObjectURL', file);
+    mediaSrc = createObjectURL(file);
   } else {
     const imgResult = await createImageAndURLFromBlob(file); // make sure to render the image to know if it's valid
     if(!imgResult.ok) return;
     mediaSrc = imgResult.url;
   }
 
-  const {openMediaEditorFromMediaRaw} = await import('@components/mediaEditor');
+  let openMediaEditorFromMediaRaw: typeof import('@components/mediaEditor')['openMediaEditorFromMediaRaw'];
+  try {
+    ({openMediaEditorFromMediaRaw} = await import('@components/mediaEditor'));
+  } catch(error) {
+    revokeObjectURL(mediaSrc);
+    throw error;
+  }
 
   openMediaEditorFromMediaRaw({
     isEditingForAvatar,
@@ -83,7 +89,7 @@ export async function getFileAndOpenEditor({
     initialTab: isVideo ? 'adjustments' : 'crop',
     onEditFinish: (editorResult) => onFinish({editorResult, originalFile: file}),
     dontCreatePreview,
-    onClose: () => { }
+    onClose: () => revokeObjectURL(mediaSrc)
   });
 }
 

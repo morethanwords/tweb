@@ -6,11 +6,20 @@ import type AppDownloadManagerInstance from '@lib/appDownloadManager';
 import type {AppManagers} from '@lib/managers';
 import CacheStorageController from '@lib/files/cacheStorage';
 import StaticUtilityClass from '@lib/staticUtilityClass';
+import {getCurrentAccount} from '@lib/accounts/getCurrentAccount';
+import {
+  addSharedObjectURLUpdateListener,
+  createSharedObjectURL,
+  pinObjectURL,
+  releaseSharedObjectURL,
+  setSharedObjectURL
+} from '@helpers/objectUrl';
+import {makeObjectUrlOwner, parseObjectUrlOwner} from '@helpers/objectUrlUtils';
 
 
 namespace ChatBackgroundStore {
   export type BackgroundPromises = {
-    [url: string]: MaybePromise<string>
+    [owner: string]: MaybePromise<string>
   };
 
   export type GetBackgroundArgs = {
@@ -32,6 +41,29 @@ namespace ChatBackgroundStore {
 class ChatBackgroundStore extends StaticUtilityClass {
   private static cacheStorage = new CacheStorageController('cachedBackgrounds');
   private static backgroundPromises: ChatBackgroundStore.BackgroundPromises = {};
+  private static isListeningForObjectURLUpdates = false;
+
+  private static ensureObjectURLUpdates() {
+    if(this.isListeningForObjectURLUpdates) {
+      return;
+    }
+
+    this.isListeningForObjectURLUpdates = true;
+    addSharedObjectURLUpdateListener(({owner, url, previousUrl}) => {
+      const details = parseObjectUrlOwner(owner);
+      if(details?.namespace !== 'background') {
+        return;
+      }
+
+      if(url === undefined) {
+        if(this.backgroundPromises[owner] === previousUrl) {
+          delete this.backgroundPromises[owner];
+        }
+      } else {
+        this.backgroundPromises[owner] = url;
+      }
+    });
+  }
 
   /**
    * Last-known wallpaper list, kept synchronously readable so the Chat Wallpaper picker can build
@@ -50,6 +82,10 @@ class ChatBackgroundStore extends StaticUtilityClass {
     return this.cacheStorage.has(storageUrl);
   }
 
+  private static getBackgroundObjectUrlOwner(storageUrl: string) {
+    return makeObjectUrlOwner('background', getCurrentAccount(), storageUrl);
+  }
+
   public static getBackground({
     slug,
     canDownload,
@@ -58,11 +94,29 @@ class ChatBackgroundStore extends StaticUtilityClass {
     managers,
     appDownloadManager
   }: ChatBackgroundStore.GetBackgroundArgs) {
+    this.ensureObjectURLUpdates();
     const storageUrl = this.getWallPaperStorageUrl(slug, blur);
+    const owner = this.getBackgroundObjectUrlOwner(storageUrl);
+    const existing = this.backgroundPromises[owner];
+    if(existing) {
+      return existing;
+    }
+
     const canReallyDownload = canDownload && !!managers && !!appDownloadManager;
 
-    return this.backgroundPromises[storageUrl] ||= this.cacheStorage.getFile(storageUrl).then((blob) => {
-      return this.backgroundPromises[storageUrl] = URL.createObjectURL(blob);
+    const promise: Promise<string> = this.cacheStorage.getFile(storageUrl).then(async(blob) => {
+      const url = await createSharedObjectURL(blob, owner);
+      const current = this.backgroundPromises[owner];
+      // * superseded by a concurrent setBackgroundUrlToCache — keep that value;
+      // * a plain delete mid-flight keeps our fresh URL valid
+      if(current !== promise && current !== undefined) {
+        if(current !== url) {
+          releaseSharedObjectURL(owner, url);
+        }
+        return current;
+      }
+
+      return this.backgroundPromises[owner] = url;
     }, canReallyDownload ? async(err) => {
       if((err as ApiError).type !== 'NO_ENTRY_FOUND') {
         throw err;
@@ -78,8 +132,22 @@ class ChatBackgroundStore extends StaticUtilityClass {
       }
 
       this.saveWallPaperToCache(slug, url, blur);
-      return this.backgroundPromises[storageUrl] = url;
+      const current = this.backgroundPromises[owner];
+      if(current !== promise && current !== undefined) {
+        return current;
+      }
+
+      setSharedObjectURL(owner, url);
+      return this.backgroundPromises[owner] = url;
     } : undefined);
+    // * a transient failure must not stay cached — let the next call retry
+    promise.catch(() => {
+      if(this.backgroundPromises[owner] === promise) {
+        delete this.backgroundPromises[owner];
+      }
+    });
+    this.backgroundPromises[owner] = promise;
+    return promise;
   }
 
   public static blurWallPaperImage(url: string) {
@@ -94,27 +162,46 @@ class ChatBackgroundStore extends StaticUtilityClass {
       return;
     }
 
-    const response = await fetch(url);
-    const clonedResponse = response.clone();
-    const blob = await response.blob();
+    const release = pinObjectURL(url);
+    try {
+      const response = await fetch(url);
+      const clonedResponse = response.clone();
+      const blob = await response.blob();
 
-    return this.cacheStorage.save({
-      entryName: this.getWallPaperStorageUrl(slug, blur),
-      response: clonedResponse,
-      size: blob.size
-    });
+      const result = await this.cacheStorage.save({
+        entryName: this.getWallPaperStorageUrl(slug, blur),
+        response: clonedResponse,
+        size: blob.size
+      });
+      return result;
+    } finally {
+      release();
+    }
   }
 
   public static setBackgroundUrlToCache({slug, url, blur}: ChatBackgroundStore.SetBackgroundUrlToCacheArgs) {
-    this.backgroundPromises[this.getWallPaperStorageUrl(slug, blur)] = url;
+    this.ensureObjectURLUpdates();
+    const storageUrl = this.getWallPaperStorageUrl(slug, blur);
+    const owner = this.getBackgroundObjectUrlOwner(storageUrl);
+    setSharedObjectURL(owner, url);
+    this.backgroundPromises[owner] = url;
+  }
+
+  public static deleteBackgroundUrlFromCache({slug, blur}: Omit<ChatBackgroundStore.SetBackgroundUrlToCacheArgs, 'url'>) {
+    const storageUrl = this.getWallPaperStorageUrl(slug, blur);
+    const owner = this.getBackgroundObjectUrlOwner(storageUrl);
+    const url = this.backgroundPromises[owner];
+    delete this.backgroundPromises[owner];
+
+    if(typeof(url) === 'string') {
+      releaseSharedObjectURL(owner, url);
+    }
   }
 
   /**
-   * Warm the Chat Wallpaper picker ahead of time: fetch the wallpaper list and kick off every
-   * thumbnail's download into the promise + IndexedDB cache. Meant to run one step before the
-   * picker (e.g. when General Settings opens) so the grid renders without waiting on the network.
-   * Best-effort and fire-and-forget — all errors are swallowed, and downloads dedupe against
-   * `getBackground`'s cache so re-running (or opening the picker) never re-fetches.
+   * Warm the Chat Wallpaper picker ahead of time without materializing object URLs for every
+   * wallpaper. `downloadMediaVoid` fills the persistent media cache while keeping the full Blob
+   * out of this tab's resolved-download cache; a shared URL is created only when a tile is used.
    */
   public static async preloadWallPapers(
     managers: AppManagers,
@@ -131,22 +218,14 @@ class ChatBackgroundStore extends StaticUtilityClass {
     this.cachedWallPapers = wallPapers;
 
     for(const wallPaper of wallPapers) {
-      const {slug, settings} = wallPaper as WallPaper.wallPaper;
+      const {slug, document} = wallPaper as WallPaper.wallPaper;
       // Color-only wallpapers have no slug; the default pattern is bundled — neither downloads.
-      if(!slug || slug === DEFAULT_BACKGROUND_SLUG) {
+      if(!slug || slug === DEFAULT_BACKGROUND_SLUG || !document) {
         continue;
       }
 
-      const result = this.getBackground({
-        slug,
-        canDownload: true,
-        managers,
-        appDownloadManager,
-        blur: settings?.pFlags?.blur
-      });
-      if(result instanceof Promise) {
-        result.catch(() => {});
-      }
+      // fire-and-forget: warm all wallpapers in parallel
+      Promise.resolve(appDownloadManager.downloadMediaVoid({media: document as Document.document})).catch(() => {});
     }
   }
 }

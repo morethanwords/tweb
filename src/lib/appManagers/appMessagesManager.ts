@@ -132,12 +132,13 @@ export type SendFileDetails = {
   duration: number,
   width: number,
   height: number,
+  objectURLBlob: Blob,
   objectURL: string,
   thumb: {
     isCover?: boolean;
 
     blob: Blob,
-    url: string,
+    url?: string,
     size: MediaSize
   },
   strippedBytes: PhotoSize.photoStrippedSize['bytes'],
@@ -468,6 +469,7 @@ type MakeDocumentAndMetaForSendingFileArgs = Pick<SendFileArgs,
   | 'width'
   | 'height'
   | 'objectURL'
+  | 'objectURLBlob'
   | 'waveform'
   | 'duration'
   | 'isMedia'
@@ -501,7 +503,7 @@ type SyncSentAndUploadPromisesArgs = {
 };
 
 type UploadMediaFileArgs =
-  Pick<SendFileDetails, 'objectURL' | 'thumb' | 'spoiler'>
+  Pick<SendFileDetails, 'thumb' | 'spoiler'>
   &
   Pick<ReturnType<AppMessagesManager['makeDocumentAndMetaForSendingFile']>, 'fileType' | 'apiFileName' | 'attachType' | 'attributes' | 'actionName'>
   &
@@ -1690,11 +1692,32 @@ export class AppMessagesManager extends AppManager {
 
   public invokeAfterMessageIsSent(tempId: number, callbackName: string, callback: (message: MyMessage) => Promise<any>) {
     const finalize = this.tempFinalizeCallbacks[tempId] ??= {};
-    const obj = finalize[callbackName] ??= {deferred: deferredPromise<void>()};
+    let obj = finalize[callbackName];
+    if(!obj) {
+      obj = finalize[callbackName] = {deferred: deferredPromise<void>()};
+      void obj.deferred.catch(noop);
+    }
 
     obj.callback = callback;
 
     return obj.deferred;
+  }
+
+  private takeTempFinalizeCallbacks(tempId: number) {
+    const callbacks = this.tempFinalizeCallbacks[tempId];
+    delete this.tempFinalizeCallbacks[tempId];
+    return callbacks;
+  }
+
+  public rejectPendingMessageCallbacks(tempId: number, error: ApiError) {
+    const callbacks = this.takeTempFinalizeCallbacks(tempId);
+    if(!callbacks) {
+      return;
+    }
+
+    for(const name in callbacks) {
+      callbacks[name].deferred?.reject(error);
+    }
   }
 
   public editMessage(
@@ -1794,6 +1817,7 @@ export class AppMessagesManager extends AppManager {
         'width',
         'height',
         'objectURL',
+        'objectURLBlob',
         'duration',
         'thumb',
         'isAnimated'
@@ -1837,7 +1861,7 @@ export class AppMessagesManager extends AppManager {
         try {
           const uploadMediaPromise = this.uploadMediaFile({
             peerId,
-            ...pickKeys(sendFileDetails, ['objectURL', 'thumb', 'spoiler']),
+            ...pickKeys(sendFileDetails, ['thumb', 'spoiler']),
             file,
             uploadingFileName,
             fileType,
@@ -1851,8 +1875,8 @@ export class AppMessagesManager extends AppManager {
           });
 
           uploadMediaPromise.then((inputMedia) => sentDeferred.resolve(inputMedia), (e) => sentDeferred.reject(e));
-        } catch{
-          this.revertMessageEdit(message.mid);
+        } catch(error) {
+          sentDeferred.reject(error);
         }
       }
 
@@ -1869,7 +1893,13 @@ export class AppMessagesManager extends AppManager {
       mediaTempId
     });
 
-    const inputMedia = await sentDeferred;
+    let inputMedia: InputMedia;
+    try {
+      inputMedia = await sentDeferred;
+    } catch(error) {
+      this.revertMessageEdit(message.mid);
+      throw error;
+    }
     MTProtoMessagePort.getInstance<false>().invoke('log', {m: 'my-debug', inputMedia});
 
     const callInvoke = (message: Message.message) => this.invokeEditMessageMedia({
@@ -1909,12 +1939,12 @@ export class AppMessagesManager extends AppManager {
     sentDeferred.notifyAll({done: 0, total: file.size});
   }
 
-  public async uploadMediaFile({peerId, file, uploadingFileName, fileType, apiFileName, attachType, attributes, objectURL, thumb, spoiler, actionName, onUploadDeferred, onThumbnailUploadDeferred}: UploadMediaFileArgs) {
+  public async uploadMediaFile({peerId, file, uploadingFileName, fileType, apiFileName, attachType, attributes, thumb, spoiler, actionName, onUploadDeferred, onThumbnailUploadDeferred}: UploadMediaFileArgs) {
     const uploadPromise = this.apiFileManager.upload({file, fileName: uploadingFileName});
     onUploadDeferred?.(uploadPromise);
 
     let thumbUploadPromise: ReturnType<typeof this.uploadThumbAndCover>;
-    if(attachType === 'video' && objectURL && thumb?.blob) {
+    if(attachType === 'video' && thumb?.blob) {
       thumbUploadPromise = this.uploadThumbAndCover({
         blob: thumb.blob,
         isCover: !!thumb.isCover,
@@ -2024,6 +2054,10 @@ export class AppMessagesManager extends AppManager {
     if(!pending) return;
 
     pending.canceled = true;
+    const pendingMessage = this.getMessageByPeer(pending.originalMessage.peerId, mid);
+    if(pendingMessage?._ === 'message') {
+      this.releaseTemporaryMediaCache(pendingMessage.media);
+    }
 
     this.runTempUpdateForMessageEdit(pending.originalMessage);
 
@@ -2437,6 +2471,7 @@ export class AppMessagesManager extends AppManager {
         'width',
         'height',
         'objectURL',
+        'objectURLBlob',
         'waveform',
         'duration',
         'isMedia',
@@ -2573,7 +2608,7 @@ export class AppMessagesManager extends AppManager {
           }
 
           let thumbUploadPromise: ReturnType<typeof this.uploadThumbAndCover>;
-          if(attachType === 'video' && options.objectURL && options.thumb?.blob) {
+          if(attachType === 'video' && options.thumb?.blob) {
             thumbUploadPromise = this.uploadThumbAndCover({
               blob: options.thumb.blob,
               isCover: !!options.thumb.isCover,
@@ -2758,8 +2793,10 @@ export class AppMessagesManager extends AppManager {
               messageCount: 1,
               paidStars,
               repayCallback: (override) => {
-                this.cancelPendingMessage(message.random_id);
-                this.sendFile({...options, ...override});
+                this.cancelPendingMessage(message.random_id, true);
+                return this.sendFile({...options, ...override}).finally(() => {
+                  this.releaseTemporaryMediaCache(message.media);
+                });
               },
               wereStarsReserved: options.confirmedPaymentResult?.canUndo
             });
@@ -2886,11 +2923,13 @@ export class AppMessagesManager extends AppManager {
         photo.sizes.unshift(strippedPhotoSize);
       }
 
-      this.thumbsStorage.setCacheContextURL(
+      this.thumbsStorage.setCacheContextBlob(
         photo,
         photoSize.type,
-        args.objectURL || '',
-        file.size
+        file as Blob,
+        file.size,
+        undefined,
+        true
       );
 
       photo = this.appPhotosManager.savePhoto(photo);
@@ -2943,12 +2982,15 @@ export class AppMessagesManager extends AppManager {
         size: file.size
       } as any;
 
-      if(args.objectURL) {
-        this.thumbsStorage.setCacheContextURL(
+      const objectURLBlob = args.objectURLBlob || (args.objectURL && file as Blob);
+      if(objectURLBlob) {
+        this.thumbsStorage.setCacheContextBlob(
           document,
           undefined,
-          args.objectURL,
-          file.size
+          objectURLBlob,
+          objectURLBlob.size,
+          undefined,
+          true
         );
       }
 
@@ -2977,11 +3019,13 @@ export class AppMessagesManager extends AppManager {
             size: args.thumb.blob.size
           };
 
-          this.thumbsStorage.setCacheContextURL(
+          this.thumbsStorage.setCacheContextBlob(
             document,
             thumb.type,
-            args.thumb.url,
-            thumb.size
+            args.thumb.blob,
+            thumb.size,
+            undefined,
+            true
           );
         }
       }
@@ -3265,8 +3309,10 @@ export class AppMessagesManager extends AppManager {
               paidStars,
               messageCount: multiMedia.length,
               repayCallback: (override) => {
-                results.forEach(({message}) => this.cancelPendingMessage(message.random_id));
-                this.sendGrouped({...options, ...override});
+                results.forEach(({message}) => this.cancelPendingMessage(message.random_id, true));
+                return this.sendGrouped({...options, ...override}).finally(() => {
+                  results.forEach(({message}) => this.releaseTemporaryMediaCache(message.media));
+                });
               },
               wereStarsReserved: options.confirmedPaymentResult?.canUndo
             });
@@ -4407,7 +4453,7 @@ export class AppMessagesManager extends AppManager {
     this.scheduleHandleNewDialogs(message.peerId, dialog);
   }
 
-  public cancelPendingMessage(randomId: string) {
+  public cancelPendingMessage(randomId: string, preserveMedia = false) {
     const pendingData = this.pendingByRandomId[randomId];
 
     /* if(DEBUG) {
@@ -4444,6 +4490,8 @@ export class AppMessagesManager extends AppManager {
 
       historyStorage.history.delete(tempId);
 
+      this.rejectPendingMessageCallbacks(tempId, makeError('UPLOAD_CANCELED'));
+      tempMessage && this.handleReleasingMessage(tempMessage, storage, preserveMedia);
       delete this.pendingByRandomId[randomId];
       this.deleteMessageFromStorage(storage, tempId);
       this.deletePendingTopMsg(peerId, tempId);
@@ -10132,16 +10180,16 @@ export class AppMessagesManager extends AppManager {
   }
 
   public finalizePendingMessageCallbacks(storage: MessagesStorage, tempId: number, message: MyMessage) {
-    const callbacks = this.tempFinalizeCallbacks[tempId];
+    const callbacks = this.takeTempFinalizeCallbacks(tempId);
     // this.log.warn(callbacks, tempId);
     if(callbacks !== undefined) {
       for(const name in callbacks) {
         const {deferred, callback} = callbacks[name];
         // this.log(`finalizePendingMessageCallbacks: will invoke ${name} callback`);
-        callback(message).then(deferred.resolve.bind(deferred), deferred.reject.bind(deferred));
+        Promise.resolve()
+        .then(() => callback(message))
+        .then(deferred.resolve.bind(deferred), deferred.reject.bind(deferred));
       }
-
-      delete this.tempFinalizeCallbacks[tempId];
     }
 
     const tempMessage = this.getMessageFromStorage(storage, tempId);
@@ -10217,8 +10265,7 @@ export class AppMessagesManager extends AppManager {
     }
 
     const newPhotoSize = newPhoto.sizes[newPhoto.sizes.length - 1];
-    const oldCacheContext = this.thumbsStorage.getCacheContext(photo, THUMB_TYPE_FULL);
-    this.thumbsStorage.setCacheContextURL(newPhoto, newPhotoSize.type, oldCacheContext.url, oldCacheContext.downloaded);
+    this.thumbsStorage.moveCacheContext(photo, newPhoto, THUMB_TYPE_FULL, newPhotoSize.type);
 
     // const photoSize = newPhoto.sizes[newPhoto.sizes.length - 1] as PhotoSize.photoSize;
     // const downloadOptions = getPhotoDownloadOptions(newPhoto, photoSize);
@@ -10233,6 +10280,7 @@ export class AppMessagesManager extends AppManager {
     }
 
     const oldCacheContext = this.thumbsStorage.getCacheContext(oldDoc);
+    let movedCacheContext = false;
     if(
       /* doc._ !== 'documentEmpty' &&  */
       oldDoc.type &&
@@ -10240,11 +10288,21 @@ export class AppMessagesManager extends AppManager {
       oldDoc.mime_type !== 'image/gif' &&
       oldCacheContext.url
     ) {
-      this.thumbsStorage.setCacheContextURL(newDoc, undefined, oldCacheContext.url, oldCacheContext.downloaded);
+      this.thumbsStorage.moveCacheContext(oldDoc, newDoc);
+      movedCacheContext = true;
 
       // const fileName = getDocumentInputFileName(newDoc);
       // this.appDownloadManager.fakeDownload(fileName, oldCacheContext.url);
     }
+    if(!movedCacheContext) {
+      this.thumbsStorage.deleteCacheContext(oldDoc);
+    }
+
+    // The optimistic video poster is keyed only by the temporary document.
+    // Once the server document replaces it, no renderer can ask for this
+    // `local-thumb` key anymore, so release its shared owner instead of
+    // retaining the Blob until the general LRU eventually evicts it.
+    this.thumbsStorage.deleteCacheContext(oldDoc, 'local-thumb');
   };
 
   public incrementMaxSeenId(maxId: number) {
@@ -11651,7 +11709,47 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  private handleReleasingMessage(message: MyMessage, storage: MessagesStorage) {
+  public releaseTemporaryMediaCache(media?: MessageMedia) {
+    if(!media) {
+      return;
+    }
+
+    if(media._ === 'messageMediaPhoto' && media.photo?._ === 'photo' && !media.photo.file_reference) {
+      this.thumbsStorage.deleteCacheContext(media.photo);
+      return;
+    }
+
+    if(media._ === 'messageMediaDocument' && media.document?._ === 'document' && !media.document.file_reference) {
+      this.thumbsStorage.deleteCacheContext(media.document);
+      this.thumbsStorage.deleteCacheContext(media.document, 'local-thumb');
+      return;
+    }
+
+    if(media._ === 'messageMediaPaidMedia') {
+      media.extended_media.forEach((extendedMedia) => {
+        if(extendedMedia._ === 'messageExtendedMedia') {
+          this.releaseTemporaryMediaCache(extendedMedia.media);
+        }
+      });
+      return;
+    }
+
+    if(media._ === 'messageMediaPoll') {
+      this.releaseTemporaryMediaCache(media.attached_media);
+      this.releaseTemporaryMediaCache(media.results?.solution_media);
+      media.poll.answers.forEach((answer) => {
+        if(answer._ === 'pollAnswer') {
+          this.releaseTemporaryMediaCache(answer.media);
+        }
+      });
+    }
+  }
+
+  private handleReleasingMessage(
+    message: MyMessage,
+    storage: MessagesStorage,
+    preserveMedia = false
+  ) {
     const media = (message as Message.message).media;
     if(media) {
       const c = (media as MessageMedia.messageMediaWebPage).webpage as WebPage.webPage || media as MessageMedia.messageMediaPhoto | MessageMedia.messageMediaDocument;
@@ -11659,6 +11757,9 @@ export class AppMessagesManager extends AppManager {
 
       if(smth?.file_reference) {
         this.referencesStorage.deleteContext(smth.file_reference, {type: 'message', peerId: message.peerId, messageId: message.mid});
+      }
+      if(!preserveMedia) {
+        this.releaseTemporaryMediaCache(media);
       }
 
       if('webpage' in media && media.webpage) {
