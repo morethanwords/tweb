@@ -26,6 +26,7 @@ import formatStarsAmount from '@appManagers/utils/payments/formatStarsAmount';
 import {getPriceChangedActionMessageLangParams} from '@lib/lang';
 import {numberThousandSplitterForStars} from '@helpers/number/numberThousandSplitter';
 import {getCollectibleName} from '@appManagers/utils/gifts/getCollectibleName';
+import getStarGiftMessageTextDetails from '@appManagers/utils/gifts/getStarGiftMessageTextDetails';
 import {truncateTextWithEntities} from '@lib/richTextProcessor/truncateTextWithEntities';
 
 async function wrapLinkToMessage(options: WrapMessageForReplyOptions) {
@@ -789,18 +790,20 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         args = [+action.stars];
         break;
       }
-      case 'messageActionStarGift':
-        if(message.peerId === rootScope.myId) {
+      case 'messageActionStarGift': {
+        const {direction, fromId} = getStarGiftMessageTextDetails(message, action, rootScope.myId);
+        if(direction === 'self') {
           langPackKey = 'StarGiftSentMessageSelf';
           args = [(action.gift as StarGift.starGift).stars];
-        } else if(message.pFlags.out) {
+        } else if(direction === 'outgoing') {
           langPackKey = action.pFlags.upgrade_separate ? 'StarGiftSentMessagePrepaidOutgoing' : 'StarGiftSentMessageOutgoing';
           args = [(action.gift as StarGift.starGift).stars];
         } else {
           langPackKey = action.pFlags.upgrade_separate ? 'StarGiftSentMessagePrepaidIncoming' : 'StarGiftSentMessageIncoming';
-          args = [getNameDivHTML(message.fromId, plain), (action.gift as StarGift.starGift).stars];
+          args = [getNameDivHTML(fromId, plain), (action.gift as StarGift.starGift).stars];
         }
         break;
+      }
       case 'messageActionStarGiftUnique':
         if(!message.pFlags.out && action.resale_amount) {
           langPackKey = action.resale_amount._ === 'starsTonAmount' ? 'StarGiftSentMessageSelfTon' : 'StarGiftSentMessageSelf';
