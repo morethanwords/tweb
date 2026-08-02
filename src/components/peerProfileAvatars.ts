@@ -38,6 +38,10 @@ import {avatarUploads} from '@stores/avatarUpload';
 const LOAD_NEAREST = 3;
 export const SHOW_NO_AVATAR = true;
 
+const getPhotoFromAvatarMessage = (message: Message.messageService) => {
+  return (message.action as MessageAction.messageActionChannelEditPhoto).photo as Photo.photo;
+};
+
 export default class PeerProfileAvatars {
   private static BASE_CLASS = 'profile-avatars';
   private static SCALE = 1;
@@ -67,6 +71,7 @@ export default class PeerProfileAvatars {
   private fold: () => void;
   private uploadInProgress: boolean;
   private uploadPreloader: ProgressivePreloader;
+  private photosByElement = new WeakMap<HTMLElement, Photo.photo>();
   // The public (fallback) photo, appended at the END of the carousel on the
   // self profile. Resolved id + a once-guard so it's added on exactly one page.
   private fallbackPhotoId: Photo.photo['id'];
@@ -209,14 +214,20 @@ export default class PeerProfileAvatars {
         .filter((target) => target.item !== this.fallbackPhotoId);
 
         const target = this.avatars.children[this.listLoader.previous.length] as HTMLElement;
+        const currentItem = this.listLoader.current;
+        const currentPhoto = typeof(currentItem) === 'object' ?
+          getPhotoFromAvatarMessage(currentItem) :
+          this.photosByElement.get(target);
         freeze = true;
         openAvatarViewer(
           target,
           peerId,
           () => peerId === this.peerId,
-          this.listLoader.current as Message.messageService,
+          currentItem,
           prevTargets,
-          nextTargets
+          nextTargets,
+          currentPhoto,
+          this.fallbackPhotoId
         );
         freeze = false;
       } else {
@@ -816,7 +827,10 @@ export default class PeerProfileAvatars {
     if(photoId) {
       photo = typeof(photoId) !== 'object' ?
         await this.managers.appPhotosManager.getPhoto(photoId) :
-        (photoId.action as MessageAction.messageActionChannelEditPhoto).photo as Photo.photo;
+        getPhotoFromAvatarMessage(photoId);
+    }
+    if(photo) {
+      this.photosByElement.set(avatar, photo);
     }
 
     const isTopic = !!this.threadId;

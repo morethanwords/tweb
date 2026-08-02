@@ -116,12 +116,14 @@ export default class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete
 
   public async openMedia({
     photoId,
+    photo: cachedPhoto,
     target,
     fromRight = 0,
     prevTargets,
     nextTargets
   }: {
     photoId: Photo.photo['id'],
+    photo?: Photo.photo,
     target?: HTMLElement,
     fromRight?: number,
     prevTargets?: AppMediaViewerAvatarTargetType[],
@@ -130,7 +132,7 @@ export default class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete
     if(this.setMoverPromise) return this.setMoverPromise;
 
     const [photo, canDelete] = await Promise.all([
-      this.managers.appPhotosManager.getPhoto(photoId),
+      cachedPhoto || this.managers.appPhotosManager.getPhoto(photoId),
       this.getCanDelete()
     ]);
 

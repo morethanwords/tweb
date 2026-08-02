@@ -1579,7 +1579,16 @@ export default class AppMediaViewerBase<
         }
       }
 
-      if(target.tagName === 'DIV' || findUpAvatar(target)) { // useContainerAsTarget
+      // Pick a concrete media element before the avatar-container fallback.
+      // findUpAvatar(<img>) is truthy too, but querying inside that <img> yields
+      // no snapshot and leaves the whole opening transition visually empty.
+      if(target instanceof HTMLImageElement) {
+        mediaElement = new Image();
+        mediaElement.src = target.currentSrc || target.src;
+      } else if(target instanceof HTMLVideoElement) {
+        mediaElement = createVideo({middleware: mover.middlewareHelper.get()});
+        mediaElement.src = target.src;
+      } else if(target.tagName === 'DIV' || findUpAvatar(target)) { // useContainerAsTarget
         const images = Array.from(target.querySelectorAll('img')) as HTMLImageElement[];
         const image = images.pop();
         if(image) {
@@ -1596,12 +1605,6 @@ export default class AppMediaViewerBase<
         }
         /* mediaElement = new Image();
         src = target.style.backgroundImage.slice(5, -2); */
-      } else if(target instanceof HTMLImageElement) {
-        mediaElement = new Image();
-        mediaElement.src = target.currentSrc || target.src;
-      } else if(target instanceof HTMLVideoElement) {
-        mediaElement = createVideo({middleware: mover.middlewareHelper.get()});
-        mediaElement.src = target.src;
       } else if(target instanceof SVGSVGElement) {
         const clipId = target.dataset.clipId;
         const newClipId = clipId + '-mv';
@@ -1684,6 +1687,11 @@ export default class AppMediaViewerBase<
       } */
 
       mover.style.visibility = '';
+      // Commit the source transform before .active enables transitions. Without
+      // this, async avatar paths can add .active in the same style update as the
+      // initial transform, so the browser starts animating from `none` and then
+      // cancels that transition when the real open target is applied below.
+      void mover.offsetLeft;
 
       fastRaf(() => {
         wrapper.style.transition = '';
