@@ -110,6 +110,7 @@ import copyMessageMediaWithFeedback from '@components/copyMessageMediaWithFeedba
 import createTopPeersList from '@components/topPeersList';
 import {fastRaf} from '@helpers/schedulers';
 import {SearchSuperMediaInputFilter} from '@components/sharedMediaFilters';
+import {getMediaTypeForProfileTab, orderMediaTabsByMain, ProfileTabMediaType} from '@components/sharedMediaProfileTab';
 
 export type SearchSuperType = MyInputMessagesFilter/*  | 'members' */;
 export type SearchSuperContext = {
@@ -436,12 +437,15 @@ export default class AppSearchSuper {
 
   // * arguments
   public mediaTabs: SearchSuperMediaTab[];
+  private mediaTabsDefaultOrder: SearchSuperMediaTab[];
+  public mainMediaTabType: ProfileTabMediaType;
   public scrollable: Scrollable;
   public searchGroups?: {[group in SearchGroupType]: SearchGroup};
   public asChatList? = false;
   public hideEmptyTabs? = true;
   public onChangeTab?: (mediaTab: SearchSuperMediaTab) => void;
   public showSender? = false;
+  public useMainProfileTab?: boolean;
 
   private searchContextMenu: SearchContextMenu;
   public selection: SearchSelection;
@@ -488,8 +492,9 @@ export default class AppSearchSuper {
     'showSender' |
     'managers' |
     'scrollOffset'
-  > & Partial<Pick<AppSearchSuper, 'storiesArchive' | 'onLengthChange' | 'onMediaCountersChange' | 'openSavedDialogsInner' | 'slider'>>) {
+  > & Partial<Pick<AppSearchSuper, 'storiesArchive' | 'onLengthChange' | 'onMediaCountersChange' | 'openSavedDialogsInner' | 'slider' | 'useMainProfileTab'>>) {
     safeAssign(this, options);
+    this.mediaTabsDefaultOrder = [...this.mediaTabs];
 
     this.slider ??= appSidebarRight;
 
@@ -862,6 +867,30 @@ export default class AppSearchSuper {
   private onTransitionEnd = () => {
     this.container.classList.remove('sliding');
   };
+
+  public getFirstVisibleMediaTab() {
+    return this.mediaTabs.find((mediaTab) => !mediaTab.menuTab.classList.contains('hide'));
+  }
+
+  public setMainMediaTab(type?: ProfileTabMediaType) {
+    this.mainMediaTabType = type;
+    const ordered = orderMediaTabsByMain(
+      this.mediaTabsDefaultOrder,
+      type,
+      (mediaTab) => !mediaTab.menuTab.classList.contains('hide')
+    );
+    if(ordered.every((mediaTab, index) => this.mediaTabs[index] === mediaTab)) {
+      return;
+    }
+
+    this.mediaTabs.splice(0, this.mediaTabs.length, ...ordered);
+    this.nav.append(...ordered.map((mediaTab) => mediaTab.menuTab));
+    this.tabsContainer.append(...ordered.map((mediaTab) => mediaTab.contentTab.parentElement));
+
+    if(this.prevTabId !== -1) {
+      this.prevTabId = this.mediaTabs.indexOf(this.mediaTab);
+    }
+  }
 
   public setCounter(type: SearchSuperMediaType, count: number) {
     this.counters[type] = count;
@@ -2644,7 +2673,7 @@ export default class AppSearchSuper {
       canViewStories,
       canViewSimilar,
       canViewGifts,
-      giftsCount,
+      profileTabsData,
       maybePinnedGifts
     ] = await Promise.all([
       this.getSearchCounters(filters),
@@ -2655,7 +2684,7 @@ export default class AppSearchSuper {
       this.canViewStories(),
       this.canViewSimilar(),
       this.canViewGifts(),
-      this.getGiftsCount(),
+      this.getProfileTabsData(),
       peerId === rootScope.myId && this.managers.appGiftsManager.getPinnedGifts(peerId)
     ]);
 
@@ -2689,10 +2718,7 @@ export default class AppSearchSuper {
       this.setCounter(mediaTab.type, counter.count);
 
       if(counter.count) {
-        if(firstMediaTab === undefined) {
-          firstMediaTab = mediaTab;
-        }
-
+        firstMediaTab ??= mediaTab;
         ++count;
       }
     });
@@ -2705,6 +2731,7 @@ export default class AppSearchSuper {
     const similarTab = this.mediaTabsMap.get('similar');
     const giftsTab = this.mediaTabsMap.get('gifts');
 
+    const giftsCount = profileTabsData.giftsCount ?? 0;
     const showGiftsTab = canViewGifts && giftsCount !== 0;
 
     const a: [SearchSuperMediaTab, boolean][] = [
@@ -2754,6 +2781,13 @@ export default class AppSearchSuper {
       this.setPinnedGifts(maybePinnedGifts);
     }
 
+    const mainMediaTabType = getMediaTypeForProfileTab(profileTabsData.mainTab);
+    this.setMainMediaTab(mainMediaTabType);
+    const mainMediaTab = this.mediaTabs.find((mediaTab) => mediaTab.type === mainMediaTabType);
+    if(mainMediaTab && !mainMediaTab.menuTab.classList.contains('hide')) {
+      firstMediaTab = mainMediaTab;
+    }
+
     this.toggleContainerHidden(!firstMediaTab);
     if(firstMediaTab) {
       this.skipScroll = true;
@@ -2772,6 +2806,7 @@ export default class AppSearchSuper {
   }
 
   private updateContainerHidden(changeActive = false) {
+    this.setMainMediaTab(this.mainMediaTabType);
     const visibleTabs = this.mediaTabs.filter((tab) => !tab.menuTab.classList.contains('hide'));
     this.toggleContainerHidden(visibleTabs.length === 0);
     const isSingle = visibleTabs.length <= 1;
@@ -2955,14 +2990,18 @@ export default class AppSearchSuper {
     return !this.searchContext.threadId && this.mediaTabsMap.has('gifts');
   }
 
-  public async getGiftsCount() {
+  public async getProfileTabsData() {
     const {peerId, threadId} = this.searchContext;
     if(threadId) {
-      return;
+      return {};
     }
 
     const full = await this.managers.appProfileManager.getProfileByPeerId(peerId);
-    return (full as UserFull | ChatFull.channelFull).stargifts_count ?? 0;
+    const profile = full as UserFull.userFull | ChatFull.channelFull;
+    return {
+      giftsCount: profile.stargifts_count ?? 0,
+      mainTab: this.useMainProfileTab ? profile.main_tab : undefined
+    };
   }
 
   public cleanup() {
@@ -2985,6 +3024,7 @@ export default class AppSearchSuper {
     this.firstLoad = true;
     this.prevTabId = -1;
     this.counters = {};
+    this.setMainMediaTab();
 
     this.lazyLoadQueue.clear();
 

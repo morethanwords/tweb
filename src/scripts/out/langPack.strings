@@ -615,6 +615,8 @@
 "DeleteSavedDialogDescription" = "Are you sure you want to delete all saved messages from **%s**?";
 "SharedMedia.Saved" = "Saved";
 "SharedMedia.Gifts" = "Gifts";
+"ProfileTab.SetAsMain" = "Set as Main Tab";
+"ProfileTab.OrderChanged" = "Tab order changed.";
 "Giveaway.Prepaid_one" = "Prepaid Giveaway";
 "Giveaway.Prepaid_other" = "Prepaid Giveaways";
 "Giveaway.Prepaid.Period_other" = "%d-month";

@@ -7,7 +7,7 @@
 
 import type {MyTopPeer} from '@appManagers/appUsersManager';
 import tsNow from '@helpers/tsNow';
-import {ChannelParticipantsFilter, ChannelsChannelParticipants, ChannelParticipant, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, SendMessageAction, Update, UserFull, Photo, PhotoSize, Updates, ChatParticipant, PeerSettings, SendAsPeer, InputGroupCall, Birthday, TextWithEntities, UsersUserFull, MessagesChatFull} from '@layer';
+import {ChannelParticipantsFilter, ChannelsChannelParticipants, ChannelParticipant, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, SendMessageAction, Update, UserFull, Photo, PhotoSize, Updates, ChatParticipant, PeerSettings, SendAsPeer, InputGroupCall, Birthday, TextWithEntities, UsersUserFull, MessagesChatFull, ProfileTab} from '@layer';
 import SearchIndex from '@lib/searchIndex';
 import {AppManager} from '@appManagers/manager';
 import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId';
@@ -274,6 +274,29 @@ export class AppProfileManager extends AppManager {
   public getProfileByPeerId(peerId: PeerId, override?: boolean) {
     if(this.appPeersManager.isAnyChat(peerId)) return this.getChatFull(peerId.toChatId(), override);
     else return this.getProfile(peerId.toUserId(), override);
+  }
+
+  public setMainProfileTab(peerId: PeerId, tab: ProfileTab) {
+    if(peerId.isUser() && peerId !== this.rootScope.myId) {
+      return Promise.resolve(false);
+    }
+
+    const promise = peerId.isUser() ?
+      this.apiManager.invokeApi('account.setMainProfileTab', {tab}) :
+      this.apiManager.invokeApi('channels.setMainProfileTab', {
+        channel: this.appChatsManager.getChannelInput(peerId.toChatId()),
+        tab
+      });
+
+    return promise.then((result) => {
+      if(result) {
+        this.modifyCachedFullPeer(peerId, (fullPeer) => {
+          (fullPeer as UserFull.userFull | ChatFull.channelFull).main_tab = tab;
+        });
+      }
+
+      return result;
+    });
   }
 
   public getCachedFullChat(chatId: ChatId) {

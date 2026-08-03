@@ -707,6 +707,8 @@ const lang = {
   'DeleteSavedDialogDescription': 'Are you sure you want to delete all saved messages from **%s**?',
   'SharedMedia.Saved': 'Saved',
   'SharedMedia.Gifts': 'Gifts',
+  'ProfileTab.SetAsMain': 'Set as Main Tab',
+  'ProfileTab.OrderChanged': 'Tab order changed.',
   'Giveaway.Prepaid': {
     'one_value': 'Prepaid Giveaway',
     'other_value': 'Prepaid Giveaways'

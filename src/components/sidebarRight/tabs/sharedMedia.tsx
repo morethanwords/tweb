@@ -27,6 +27,14 @@ import createButtonMenuCheckboxFilters from '@components/buttonMenuCheckboxFilte
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import type AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMediaTab';
+import createContextMenu from '@helpers/dom/createContextMenu';
+import findUpClassName from '@helpers/dom/findUpClassName';
+import {toastNew} from '@components/toast';
+import {
+  canSetMainProfileTabForMediaType,
+  getMediaTypeForProfileTab,
+  getProfileTabForMediaType
+} from '@components/sharedMediaProfileTab';
 
 type SharedMediaHistoryStorage = Partial<{
   [type in SearchSuperType]: {mid: number, peerId: PeerId}[]
@@ -769,8 +777,95 @@ const SharedMedia: Component = () => {
       updateMediaSubtitle();
     },
     openSavedDialogsInner: !tab.isFirst,
+    useMainProfileTab: true,
     slider: tab.slider,
     scrollOffset: OFFSET
+  });
+
+  let mainProfileTabTarget: SearchSuperMediaTab;
+  let mainProfileTabChanging = false;
+  const canSetMainProfileTab = () => {
+    const mediaTab = mainProfileTabTarget;
+    if(
+      !mediaTab ||
+      mainProfileTabChanging ||
+      tab.threadId ||
+      tab.searchSuper.getFirstVisibleMediaTab() === mediaTab
+    ) {
+      return false;
+    }
+
+    let isEditableBroadcast = false;
+    if(tab.peerId.isAnyChat()) {
+      const chat = apiManagerProxy.getChat(tab.peerId.toChatId());
+      isEditableBroadcast = chat?._ === 'channel' &&
+        !!chat.pFlags.broadcast &&
+        hasRights(chat, 'change_info');
+    }
+
+    return canSetMainProfileTabForMediaType(mediaTab.type, {
+      isSelf: tab.peerId === rootScope.myId,
+      isSavedMessages: tab.noProfile && tab.peerId === rootScope.myId,
+      isEditableBroadcast
+    });
+  };
+  const setMainProfileTab = async() => {
+    const mediaTab = mainProfileTabTarget;
+    const profileTab = mediaTab && getProfileTabForMediaType(mediaTab.type);
+    const mediaType = getMediaTypeForProfileTab(profileTab);
+    if(!profileTab || !mediaType || mainProfileTabChanging) {
+      return;
+    }
+
+    const peerId = tab.peerId;
+    const previousType = tab.searchSuper.mainMediaTabType;
+    const middleware = tab.searchSuper.middleware.get();
+    mainProfileTabChanging = true;
+    tab.searchSuper.setMainMediaTab(mediaType);
+
+    try {
+      const result = await tab.managers.appProfileManager.setMainProfileTab(peerId, profileTab);
+      if(!middleware()) {
+        return;
+      }
+
+      if(result) {
+        toastNew({langPackKey: 'ProfileTab.OrderChanged'});
+      } else {
+        tab.searchSuper.setMainMediaTab(previousType);
+        toastNew({langPackKey: 'Error.AnError'});
+      }
+    } catch{
+      if(middleware()) {
+        tab.searchSuper.setMainMediaTab(previousType);
+        toastNew({langPackKey: 'Error.AnError'});
+      }
+    } finally {
+      mainProfileTabChanging = false;
+    }
+  };
+
+  createContextMenu({
+    listenTo: tab.searchSuper.nav,
+    findElement: (e) => {
+      const target = findUpClassName(e.target, 'menu-horizontal-div-item');
+      return target?.parentElement === tab.searchSuper.nav ? target : undefined;
+    },
+    onOpen: (_, target) => {
+      const index = Array.from(tab.searchSuper.nav.children).indexOf(target);
+      mainProfileTabTarget = tab.searchSuper.mediaTabs[index];
+    },
+    onClose: () => {
+      mainProfileTabTarget = undefined;
+    },
+    buttons: [{
+      icon: 'pin',
+      text: 'ProfileTab.SetAsMain',
+      onClick: () => void setMainProfileTab(),
+      verify: canSetMainProfileTab
+    }],
+    listenerSetter: tab.listenerSetter,
+    middleware: tab.middlewareHelper.get()
   });
 
   tab.searchSuper.scrollStartCallback = () => {
