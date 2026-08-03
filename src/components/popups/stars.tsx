@@ -368,7 +368,7 @@ export default class PopupStars extends PopupElement {
       overlayClosable: true,
       floatingHeader: true,
       body: true,
-      title: 'TelegramStars',
+      title: options.ton ? 'GramBalance' : 'TelegramStars',
       scrollable: true
     });
 
@@ -526,6 +526,8 @@ export default class PopupStars extends PopupElement {
       } else {
         title = i18n('StarsNeededTitle', [starsNeeded().toJSNumber()]);
       }
+    } else if(this.ton) {
+      title = i18n('GramBalance');
     } else {
       title = i18n('TelegramStars');
     }

@@ -32,6 +32,7 @@ function number_format(number: any, decimals: any, dec_point: any, thousands_sep
 }
 
 const NANOTON_DECIMALS = 9;
+const GRAM_CURRENCY_SYMBOL = 'GRAM';
 
 export function formatNanoton(amount: number | string | BigInteger, maxDecimals: number = 2, withThousandsSep = true) {
   let amountStr = String(amount);
@@ -101,7 +102,7 @@ export default function paymentsWrapCurrencyAmount<T extends boolean = false>(
 ): T extends true ? string : HTMLElement | string {
   if(currency === TON_CURRENCY) {
     const str = formatNanoton(amount);
-    if(plain) return str + ' TON';
+    if(plain) return `${str} ${GRAM_CURRENCY_SYMBOL}`;
     const out = document.createElement('span');
     out.classList.add('ton-amount');
     out.append(Icon('ton', 'ton-amount-icon'), ' ', str);

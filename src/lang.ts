@@ -3097,6 +3097,7 @@ const lang = {
   'FragmentTopUp': 'Top-Up via Fragment',
   'MenuTelegramStars': 'My Stars',
   'MenuTelegramStarsTon': 'My Grams',
+  'GramBalance': 'Gram Balance',
   'StarsCount': {
     'one_value': '%d Star',
     'other_value': '%d Stars'
