@@ -24,6 +24,7 @@ import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
 import {AdminLog} from '@appManagers/appChatsManager';
 import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
 import compareBubbleTimelineMessages from '@components/chat/compareBubbleTimelineMessages';
+import filterReplyMarkupRows from '@components/chat/bubbleParts/filterReplyMarkupRows';
 
 
 type GroupItem = {
@@ -76,11 +77,9 @@ function compareTimelineItems(item1: GroupItem, item2: GroupItem) {
   return compareBubbleTimelineMessages(item1.message, item2.message);
 }
 
-function canHaveReplyMarkup(message: Message.message) {
+function getReplyMarkupRows(message: Message.message) {
   const replyMarkup = message.reply_markup;
-  let replyMarkupRows = replyMarkup?._ === 'replyInlineMarkup' && replyMarkup.rows;
-  replyMarkupRows = replyMarkupRows?.filter?.((row) => row.buttons.length);
-  return !!replyMarkupRows?.length;
+  return replyMarkup?._ === 'replyInlineMarkup' ? filterReplyMarkupRows(replyMarkup.rows) : [];
 }
 
 export class BubbleGroup {
@@ -198,7 +197,14 @@ export class BubbleGroup {
       return;
     }
 
-    this.avatar.node.classList.toggle('avatar-for-reply-markup', canHaveReplyMarkup(message));
+    const replyMarkupRows = getReplyMarkupRows(message);
+    this.avatarContainer.classList.toggle('avatar-for-reply-markup', !!replyMarkupRows.length);
+    if(replyMarkupRows.length) {
+      this.avatarContainer.style.setProperty('--reply-markup-row-count', replyMarkupRows.length.toString());
+    } else {
+      this.avatarContainer.style.removeProperty('--reply-markup-row-count');
+    }
+
     this.avatar.node.classList.toggle('avatar-for-suggested-reply-markup', canHaveSuggestedPostReplyMarkup(message));
   }
 

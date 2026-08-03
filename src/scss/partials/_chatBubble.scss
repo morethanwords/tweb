@@ -83,6 +83,15 @@
       // make avatar clickable
       z-index: 2;
       pointer-events: none;
+
+      &.avatar-for-reply-markup::before {
+        content: '';
+        display: grid;
+        flex: 0 0 auto;
+        grid-template-rows:
+          $reply-markup-margin-top
+          repeat(var(--reply-markup-row-count), $reply-markup-row-height);
+      }
     }
   }
 }
@@ -3735,7 +3744,7 @@
 
 .reply-markup {
   width: 100%;
-  margin-top: .0625rem;
+  margin-top: $reply-markup-margin-top;
 
   .bubble:not(.is-group-last) & {
     margin-bottom: $bubble-margin;
@@ -3744,7 +3753,7 @@
   &-row {
     margin-top: $bubble-margin;
     overflow: hidden;
-    min-height: 2.5rem;
+    min-height: $reply-markup-row-min-height;
     display: flex;
     gap: $bubble-margin;
   }

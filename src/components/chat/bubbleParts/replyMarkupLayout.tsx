@@ -6,6 +6,7 @@ import {KeyboardButtonRow, Message} from '@layer';
 import classNames from '@helpers/string/classNames';
 import {IconTsx} from '@components/iconTsx';
 import RippleElement from '@components/rippleElement';
+import filterReplyMarkupRows from '@components/chat/bubbleParts/filterReplyMarkupRows';
 
 type ContextValue = {
   elements: () => JSX.Element[]
@@ -114,7 +115,7 @@ ReplyMarkupLayout.Inline = (props: {
   message?: Message.message,
   wrapOptions?: WrapSomethingOptions
 }) => {
-  const rows = props.rows.filter((row) => row.buttons.length);
+  const rows = filterReplyMarkupRows(props.rows);
 
   return (
     <ReplyMarkupLayout>
