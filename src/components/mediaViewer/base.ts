@@ -70,7 +70,9 @@ import {ButtonMenuItemWithAuxiliaryText} from '@lib/mediaPlayer/qualityLevelsSwi
 import formatBytes from '@helpers/formatBytes';
 import getMediaViewerClipPath from '@components/mediaViewer/clipPath';
 import getMediaViewerSnapshotSize from '@components/mediaViewer/snapshotSize';
+import getMediaViewerDocumentSize from '@components/mediaViewer/documentSize';
 import getDocumentURL from '@appManagers/utils/docs/getDocumentURL';
+import choosePhotoSize from '@appManagers/utils/photos/choosePhotoSize';
 import assumeType from '@helpers/assumeType';
 import {createRoot, createResource, createEffect, createMemo} from 'solid-js';
 import readBlobAsText from '@helpers/blob/readBlobAsText';
@@ -2471,6 +2473,14 @@ export default class AppMediaViewerBase<
 
     const mediaBoxSize = this.mediaBoxSize;
     const mediaSize: MediaSize = isLiveStream ? new MediaSize(1080, 608) : undefined;
+    const documentSize = isDocument ? getMediaViewerDocumentSize(media as MyDocument) : undefined;
+    const documentPhotoSize = documentSize ? choosePhotoSize(
+      media as MyDocument,
+      mediaBoxSize.width,
+      mediaBoxSize.height,
+      false,
+      true
+    ) : undefined;
     let thumbPromise: Promise<any> = Promise.resolve();
     const size = setAttachmentSize(isLiveStream ? {
       boxWidth: mediaBoxSize.width,
@@ -2483,7 +2493,9 @@ export default class AppMediaViewerBase<
       boxWidth: mediaBoxSize.width,
       boxHeight: mediaBoxSize.height,
       noZoom: mediaSizes.isMobile ? false : true,
-      pushDocumentSize: !!(isDocument && media.w && media.h)
+      pushDocumentSize: !!(isDocument && media.w && media.h),
+      photoSize: documentPhotoSize,
+      size: documentSize
     }).photoSize;
 
     const isVideoWithPlayer = isLiveStream || (isVideo && (media as MyDocument).type !== 'gif');
