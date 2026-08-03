@@ -1,6 +1,7 @@
 import {Component, createRoot} from 'solid-js';
 import rootScope, {BroadcastEvents} from '@lib/rootScope';
-import AppSearchSuper, {SearchSuperMediaTab, SearchSuperMediaType, SearchSuperType} from '@components/appSearchSuper';
+import AppSearchSuper, {SearchSuperMediaCounters, SearchSuperMediaTab, SearchSuperMediaType, SearchSuperType} from '@components/appSearchSuper';
+import {getSharedMediaFilters, getSharedMediaInputFilter, SearchSuperMediaInputFilter} from '@components/sharedMediaFilters';
 import TransitionSlider from '@components/transition';
 import {AppEditBotTab, AppEditChatTab, AppEditContactTab, AppEditTopicTab} from '@components/solidJsTabs/tabs';
 import Button from '@components/button';
@@ -22,6 +23,7 @@ import {profileStoriesButtonMenu} from '@components/stories/profileList';
 import namedPromises from '@helpers/namedPromises';
 import hasRights from '@lib/appManagers/utils/chats/hasRights';
 import {ButtonMenuItemOptionsVerifiable} from '@components/buttonMenu';
+import createButtonMenuCheckboxFilters from '@components/buttonMenuCheckboxFilters';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
 import type AppSharedMediaTab from '@components/sidebarRight/tabs/sharedMediaTab';
@@ -39,6 +41,8 @@ const historiesStorage: {
 const SharedMedia: Component = () => {
   const [tab] = useSuperTab<typeof AppSharedMediaTab>();
   const {HotReloadGuard, apiManagerProxy, appImManager} = useHotReloadGuard();
+  let hideButtonMenu = false;
+  let updateButtonMenuVisibility = () => {};
 
   const getHistoryStorage = (peerId: PeerId, threadId?: number) => {
     return (historiesStorage[peerId] ??= {})[threadId] ??= {};
@@ -106,7 +110,8 @@ const SharedMedia: Component = () => {
         key: titleKey
       });
       sharedMediaTitle.replaceChildren(peerTitle);
-      btnMenu.classList.toggle('hide', !tab.isFirst || isSavedDialog || peerId !== rootScope.myId);
+      hideButtonMenu = isSavedDialog;
+      updateButtonMenuVisibility();
     };
   };
 
@@ -256,6 +261,10 @@ const SharedMedia: Component = () => {
     const isForum = await tab.managers.appPeersManager.isForum(peerId);
     const threadId = getMessageThreadId(message, {isForum});
 
+    if(tab.peerId === peerId && tab.threadId === threadId) {
+      tab.searchSuper.updateMediaCountersByMessage(message, 1);
+    }
+
     _renderNewMessage(message);
     if(threadId) {
       _renderNewMessage(message, undefined, threadId);
@@ -281,7 +290,7 @@ const SharedMedia: Component = () => {
           tab.peerId === peerId && tab.threadId === threadId;
 
         const idx = history.findIndex((m) => m.mid === mid);
-        if(idx === -1) {
+        if(idx !== -1) {
           history.splice(idx, 1);
         }
 
@@ -344,6 +353,10 @@ const SharedMedia: Component = () => {
       _deleteDeletedMessages(h[threadId], peerId, mids, isNaN(+threadId) ? undefined : +threadId);
     }
 
+    if(tab.peerId === peerId) {
+      void tab.searchSuper.refreshMediaCounters();
+    }
+
     tab.scrollable.onScroll();
   };
 
@@ -399,6 +412,53 @@ const SharedMedia: Component = () => {
   const editBtn = ButtonIcon('edit');
 
   let lastMediaTabType: SearchSuperMediaTab['type'];
+  const mediaFilters = {
+    photos: true,
+    videos: true
+  };
+  let mediaCounters: SearchSuperMediaCounters;
+  const mediaSubtitle = document.createElement('span');
+  mediaSubtitle.append(i18n('Loading'));
+  const updateMediaSubtitle = () => {
+    if(!mediaCounters) {
+      return;
+    }
+
+    const parts: Node[] = [];
+    if(mediaFilters.photos) {
+      parts.push(i18n('Photos', [mediaCounters.photos]));
+    }
+    if(mediaFilters.videos) {
+      if(parts.length) {
+        parts.push(document.createTextNode(', '));
+      }
+      parts.push(i18n('Videos', [mediaCounters.videos]));
+    }
+
+    mediaSubtitle.replaceChildren(...parts);
+  };
+  const applyMediaInputFilter = (inputFilter: SearchSuperMediaInputFilter) => {
+    const filters = getSharedMediaFilters(inputFilter);
+    Object.assign(mediaFilters, filters);
+    mediaFilterCheckboxFields.photos.checked = filters.photos;
+    mediaFilterCheckboxFields.videos.checked = filters.videos;
+    updateMediaSubtitle();
+  };
+  const {checkboxFields: mediaFilterCheckboxFields, toggleFilter: toggleMediaFilter} = createButtonMenuCheckboxFilters({
+    filterGroups: [['photos', 'videos']] as const,
+    getState: () => mediaFilters,
+    onChange: (changes) => {
+      Object.assign(mediaFilters, changes);
+      updateMediaSubtitle();
+
+      const inputFilter = getSharedMediaInputFilter(mediaFilters);
+      void tab.searchSuper.setMediaInputFilter(inputFilter).then((restoredInputFilter) => {
+        if(restoredInputFilter) {
+          applyMediaInputFilter(restoredInputFilter);
+        }
+      });
+    }
+  });
   const btnMenuButtons: ButtonMenuItemOptionsVerifiable[] = [
     {
       icon: 'message',
@@ -407,6 +467,18 @@ const SharedMedia: Component = () => {
         appImManager.toggleViewAsMessages(rootScope.myId, true);
       },
       verify: () => tab.peerId === rootScope.myId && tab.isFirst
+    },
+    {
+      checkboxField: mediaFilterCheckboxFields.photos,
+      text: 'AutoDownloadPhotos',
+      onClick: () => toggleMediaFilter('photos'),
+      verify: () => lastMediaTabType === 'media'
+    },
+    {
+      checkboxField: mediaFilterCheckboxFields.videos,
+      text: 'AutoDownloadVideos',
+      onClick: () => toggleMediaFilter('videos'),
+      verify: () => lastMediaTabType === 'media'
     },
     ...profileStoriesButtonMenu({
       peerId: tab.peerId,
@@ -432,6 +504,17 @@ const SharedMedia: Component = () => {
     direction: 'bottom-left',
     buttons: btnMenuButtons
   });
+  let buttonMenuVisibilityChangeId = 0;
+  updateButtonMenuVisibility = () => {
+    const changeId = ++buttonMenuVisibilityChangeId;
+    void filterButtonMenuItems(btnMenuButtons).then((items) => {
+      if(changeId !== buttonMenuVisibilityChangeId) {
+        return;
+      }
+
+      btnMenu.classList.toggle('hide', hideButtonMenu || items.length === 0);
+    });
+  };
 
   transitionFirstItem.element.append(editBtn);
 
@@ -446,7 +529,7 @@ const SharedMedia: Component = () => {
   const sharedMediaTransitionContainer = createTransitionContainer();
   transitionSharedMedia.subtitle.append(sharedMediaTransitionContainer);
 
-  const c: [SearchSuperMediaTab['type'], LangPackKey, I18n.IntlElement?][] = [
+  const c: [SearchSuperMediaTab['type'], LangPackKey][] = [
     ['savedDialogs', 'SavedDialogsTabCount'],
     ['stories', 'StoriesCount'],
     ['members', 'Members'],
@@ -461,11 +544,17 @@ const SharedMedia: Component = () => {
     ['similar', 'SimilarChannelsCount']
   ];
 
-  sharedMediaTransitionContainer.append(...c.map((item) => {
-    item[2] = new I18n.IntlElement({key: 'Loading'});
+  const subtitles = new Map<SearchSuperMediaTab['type'], I18n.IntlElement>();
+  sharedMediaTransitionContainer.append(...c.map(([type]) => {
     const element = document.createElement('div');
     element.classList.add('transition-item');
-    element.append(item[2].element);
+    if(type === 'media') {
+      element.append(mediaSubtitle);
+    } else {
+      const subtitle = new I18n.IntlElement({key: 'Loading'});
+      subtitles.set(type, subtitle);
+      element.append(subtitle.element);
+    }
     return element;
   }));
 
@@ -655,24 +744,29 @@ const SharedMedia: Component = () => {
         btnAddMembers.classList.toggle('is-hidden', mediaTab.type !== 'members');
       }, timeout);
 
-      if(!tab.isFirst) {
-        if(mediaTab.type === 'gifts' || mediaTab.type === 'stories') {
-          filterButtonMenuItems(btnMenuButtons).then((items) => {
-            btnMenu.classList.toggle('hide', items.length === 0);
-          })
-        } else {
-          btnMenu.classList.add('hide');
-        }
-      }
+      updateButtonMenuVisibility();
     },
     managers: tab.managers,
     onLengthChange: (type, length) => {
+      if(type === 'media') {
+        return;
+      }
+
       const item = c.find((item) => item[0] === type);
       if(!item) {
         return;
       }
 
-      item[2].compareAndUpdate({key: item[1], args: [length]});
+      subtitles.get(type).compareAndUpdate({key: item[1], args: [length]});
+    },
+    onMediaCountersChange: (counters) => {
+      mediaCounters = counters;
+      if(!counters) {
+        mediaSubtitle.replaceChildren(i18n('Loading'));
+        return;
+      }
+
+      updateMediaSubtitle();
     },
     openSavedDialogsInner: !tab.isFirst,
     slider: tab.slider,

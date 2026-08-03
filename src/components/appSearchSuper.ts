@@ -108,6 +108,8 @@ import Tabs from '@components/tabs';
 import Section from '@components/section';
 import copyMessageMediaWithFeedback from '@components/copyMessageMediaWithFeedback';
 import createTopPeersList from '@components/topPeersList';
+import {fastRaf} from '@helpers/schedulers';
+import {SearchSuperMediaInputFilter} from '@components/sharedMediaFilters';
 
 export type SearchSuperType = MyInputMessagesFilter/*  | 'members' */;
 export type SearchSuperContext = {
@@ -137,6 +139,19 @@ export type SearchSuperMediaTab = {
   menuTabName?: HTMLElement,
   scroll?: {scrollTop: number, scrollHeight: number},
   hideOn?: HTMLElement
+};
+
+export type SearchSuperMediaCounters = {
+  photos: number,
+  videos: number
+};
+
+type SearchSuperCommittedMediaFilterState = {
+  inputFilter: SearchSuperMediaInputFilter,
+  loaded: boolean,
+  nextRate: number,
+  counter: number,
+  scroll: SearchSuperMediaTab['scroll']
 };
 
 type SearchSuperLoadTypeOptions = {
@@ -436,6 +451,12 @@ export default class AppSearchSuper {
 
   public managers: AppManagers;
   private loadFirstTimePromise: Promise<void>;
+  private mediaFilterChangeId = 0;
+  private mediaFilterCommittedInputFilter: SearchSuperMediaInputFilter;
+  private mediaFilterCommittedState: SearchSuperCommittedMediaFilterState;
+  private mediaFilterStagingItemsTab: HTMLDivElement;
+  private mediaCountersRefreshId = 0;
+  private mediaCountersVersion = 0;
 
   private listenerSetter: ListenerSetter;
   private swipeHandler: SwipeHandler;
@@ -444,6 +465,8 @@ export default class AppSearchSuper {
 
   public counters: Partial<{[type in SearchSuperMediaType]: number}> = {};
   public onLengthChange: (type: SearchSuperMediaType, length: number) => void;
+  public onMediaCountersChange: (counters?: SearchSuperMediaCounters) => void;
+  private mediaCounters: Partial<SearchSuperMediaCounters> = {};
 
   public openSavedDialogsInner: boolean;
 
@@ -465,7 +488,7 @@ export default class AppSearchSuper {
     'showSender' |
     'managers' |
     'scrollOffset'
-  > & Partial<Pick<AppSearchSuper, 'storiesArchive' | 'onLengthChange' | 'openSavedDialogsInner' | 'slider'>>) {
+  > & Partial<Pick<AppSearchSuper, 'storiesArchive' | 'onLengthChange' | 'onMediaCountersChange' | 'openSavedDialogsInner' | 'slider'>>) {
     safeAssign(this, options);
 
     this.slider ??= appSidebarRight;
@@ -752,6 +775,10 @@ export default class AppSearchSuper {
 
       const peerId = target.dataset.peerId.toPeerId();
       const message = await this.managers.appMessagesManager.getMessageByPeer(peerId, mid);
+      if(!target.isConnected) {
+        return;
+      }
+
       const skipSensitive = this.isMessageSensitive(message as Message.message);
 
       const targets = (Array.from(this.tabs[inputFilter].querySelectorAll('.' + targetClassName)) as HTMLElement[]).map((el) => {
@@ -783,9 +810,13 @@ export default class AppSearchSuper {
       });
     };
 
-    this.tabs.inputMessagesFilterPhotoVideo && attachClickEvent(
-      this.tabs.inputMessagesFilterPhotoVideo,
-      onMediaClick.bind(null, 'grid-item', 'grid-item', 'inputMessagesFilterPhotoVideo'),
+    const mediaTab = this.mediaTabsMap.get('media');
+    mediaTab?.itemsTab && attachClickEvent(
+      mediaTab.itemsTab,
+      (e) => {
+        if(this.mediaFilterStagingItemsTab) return;
+        return onMediaClick('grid-item', 'grid-item', mediaTab.inputFilter, e);
+      },
       {listenerSetter: this.listenerSetter}
     );
     this.tabs.inputMessagesFilterDocument && attachClickEvent(
@@ -834,7 +865,199 @@ export default class AppSearchSuper {
 
   public setCounter(type: SearchSuperMediaType, count: number) {
     this.counters[type] = count;
+
+    if(type === 'media') {
+      const inputFilter = this.mediaTabsMap.get('media')?.inputFilter;
+      if(inputFilter === 'inputMessagesFilterPhotos') {
+        this.setMediaCounters({photos: count});
+      } else if(inputFilter === 'inputMessagesFilterVideo') {
+        this.setMediaCounters({videos: count});
+      }
+    }
+
     this.onLengthChange?.(type, count);
+  }
+
+  private setMediaCounters(counters: Partial<SearchSuperMediaCounters>) {
+    Object.assign(this.mediaCounters, counters);
+    ++this.mediaCountersVersion;
+    const {photos, videos} = this.mediaCounters;
+    if(photos === undefined || videos === undefined) {
+      return;
+    }
+
+    this.onMediaCountersChange?.({photos, videos});
+  }
+
+  public updateMediaCountersByMessage(message: MyMessage, difference: 1 | -1) {
+    const key = this.filterMessagesByType([message], 'inputMessagesFilterPhotos').length ?
+      'photos' :
+      this.filterMessagesByType([message], 'inputMessagesFilterVideo').length ? 'videos' : undefined;
+    if(!key || this.mediaCounters[key] === undefined) {
+      return;
+    }
+
+    this.setMediaCounters({
+      [key]: Math.max(0, this.mediaCounters[key] + difference)
+    });
+  }
+
+  public async refreshMediaCounters() {
+    const refreshId = ++this.mediaCountersRefreshId;
+    const version = this.mediaCountersVersion;
+    const middleware = this.middleware.get();
+
+    try {
+      const counters = await this.getSearchCounters([{
+        _: 'inputMessagesFilterPhotos'
+      }, {
+        _: 'inputMessagesFilterVideo'
+      }], false);
+      if(
+        refreshId !== this.mediaCountersRefreshId ||
+        version !== this.mediaCountersVersion ||
+        !middleware()
+      ) {
+        return;
+      }
+
+      const photos = counters.find((counter) => counter.filter._ === 'inputMessagesFilterPhotos')?.count;
+      const videos = counters.find((counter) => counter.filter._ === 'inputMessagesFilterVideo')?.count;
+      this.setMediaCounters({photos, videos});
+    } catch(err) {
+      this.log.error('refresh media counters error:', err);
+    }
+  }
+
+  public async setMediaInputFilter(inputFilter: SearchSuperMediaInputFilter): Promise<SearchSuperMediaInputFilter | void> {
+    const changeId = ++this.mediaFilterChangeId;
+    const wasChanging = !!this.mediaFilterCommittedState;
+    await this.loadPromises.media;
+
+    const mediaTab = this.mediaTabsMap.get('media');
+    if(!mediaTab || changeId !== this.mediaFilterChangeId) {
+      return;
+    }
+
+    const committedInputFilter = this.mediaFilterCommittedInputFilter ??= mediaTab.inputFilter as SearchSuperMediaInputFilter;
+    if(!wasChanging && committedInputFilter === inputFilter) {
+      return;
+    }
+
+    const itemsTab = mediaTab.itemsTab as HTMLDivElement;
+    this.mediaFilterCommittedState ??= {
+      inputFilter: committedInputFilter,
+      loaded: this.loaded.media,
+      nextRate: this.nextRates.media,
+      counter: this.counters.media,
+      scroll: mediaTab.scroll
+    };
+
+    if(inputFilter === committedInputFilter || this.mediaTab !== mediaTab) {
+      this.restoreCommittedMediaFilterState(mediaTab, itemsTab);
+      return committedInputFilter;
+    }
+
+    const stagingItemsTab = itemsTab.cloneNode(false) as HTMLDivElement;
+    this.mediaFilterStagingItemsTab = stagingItemsTab;
+    mediaTab.inputFilter = inputFilter;
+    this.tabs[inputFilter] = stagingItemsTab;
+    this.searchContext.inputFilter = {_: inputFilter};
+    this.historyStorage[inputFilter] = [];
+    this.usedFromHistory[inputFilter] = -1;
+    this.loaded.media = false;
+    this.nextRates.media = 0;
+    delete this.counters.media;
+
+    mediaTab.scroll = undefined;
+
+    let loadResult: Awaited<ReturnType<AppSearchSuper['load']>>;
+    try {
+      loadResult = await this.load(true);
+    } catch(err) {
+      this.log.error('media filter load error:', err);
+    }
+
+    if(changeId !== this.mediaFilterChangeId) {
+      this.discardMediaFilterStagingItemsTab(stagingItemsTab);
+      return;
+    }
+
+    if(!Array.isArray(loadResult) || typeof loadResult[0] !== 'number') {
+      this.discardMediaFilterStagingItemsTab(stagingItemsTab);
+      this.restoreCommittedMediaFilterState(mediaTab, itemsTab);
+      return committedInputFilter;
+    }
+
+    await new Promise<void>((resolve) => fastRaf(() => {
+      if(changeId !== this.mediaFilterChangeId) {
+        this.discardMediaFilterStagingItemsTab(stagingItemsTab);
+        resolve();
+        return;
+      }
+
+      this.removeFromLazyLoadQueue(itemsTab);
+      itemsTab.replaceChildren(...Array.from(stagingItemsTab.children));
+      this.tabs[inputFilter] = itemsTab;
+      this.mediaFilterCommittedInputFilter = inputFilter;
+      this.mediaFilterCommittedState = undefined;
+
+      const parent = mediaTab.contentTab.parentElement;
+      Array.from(parent.children).slice(1).forEach((element) => element.remove());
+      if(!itemsTab.childElementCount) {
+        parent.append(this.createNothingFoundElement());
+      }
+
+      if(this.mediaTab === mediaTab) {
+        this.scrollToStart();
+      }
+
+      this.lazyLoadQueue.refresh();
+      this.mediaFilterStagingItemsTab = undefined;
+      resolve();
+    }));
+  }
+
+  private restoreCommittedMediaFilterState(mediaTab: SearchSuperMediaTab, itemsTab: HTMLDivElement) {
+    const state = this.mediaFilterCommittedState;
+    if(!state) {
+      return;
+    }
+
+    const pendingInputFilter = mediaTab.inputFilter;
+    if(pendingInputFilter !== state.inputFilter && this.tabs[pendingInputFilter] !== itemsTab) {
+      delete this.tabs[pendingInputFilter];
+    }
+
+    mediaTab.inputFilter = state.inputFilter;
+    mediaTab.scroll = state.scroll;
+    this.tabs[state.inputFilter] = itemsTab;
+    this.searchContext.inputFilter = {_: state.inputFilter};
+    this.loaded.media = state.loaded;
+    this.nextRates.media = state.nextRate;
+    this.counters.media = state.counter;
+    this.mediaFilterCommittedInputFilter = state.inputFilter;
+    this.mediaFilterCommittedState = undefined;
+  }
+
+  private discardMediaFilterStagingItemsTab(itemsTab: HTMLDivElement) {
+    this.removeFromLazyLoadQueue(itemsTab);
+    if(this.mediaFilterStagingItemsTab === itemsTab) {
+      this.mediaFilterStagingItemsTab = undefined;
+    }
+  }
+
+  private removeFromLazyLoadQueue(container: HTMLElement) {
+    Array.from(container.children).forEach((element) => {
+      this.lazyLoadQueue.delete({div: element as HTMLElement});
+    });
+  }
+
+  private createNothingFoundElement() {
+    const div = document.createElement('div');
+    div.append(i18n('Chat.Search.NothingFound'));
+    div.classList.add('position-center', 'text-center', 'content-empty', 'no-select');
+    return div;
   }
 
   public filterMessagesByType(messages: MyMessage[], type: SearchSuperType): MyMessage[] {
@@ -1164,7 +1387,9 @@ export default class AppSearchSuper {
         break;
       }
 
-      case 'inputMessagesFilterPhotoVideo': {
+      case 'inputMessagesFilterPhotos':
+      case 'inputMessagesFilterPhotoVideo':
+      case 'inputMessagesFilterVideo': {
         processCallback = this.processPhotoVideoFilter;
         break;
       }
@@ -1280,6 +1505,10 @@ export default class AppSearchSuper {
       return;
     }
 
+    if(mediaTab.type === 'media' && this.mediaFilterStagingItemsTab) {
+      return;
+    }
+
     if(mediaTab.hideOn) {
       mediaTab.hideOn.classList.remove('hide');
     }
@@ -1292,11 +1521,7 @@ export default class AppSearchSuper {
     // this.contentContainer.classList.add('loaded');
 
     if(!length && !mediaTab.itemsTab.childElementCount) {
-      const div = document.createElement('div');
-      div.append(i18n('Chat.Search.NothingFound'));
-      div.classList.add('position-center', 'text-center', 'content-empty', 'no-select');
-
-      parent.append(div);
+      parent.append(this.createNothingFoundElement());
     }
   }
 
@@ -2390,9 +2615,9 @@ export default class AppSearchSuper {
     return isSensitive((usePeer(message.peerId) as User.user).restriction_reason || []) || isMessageSensitive(message);
   }
 
-  public getSearchCounters(filters: MessagesFilter[]) {
+  public getSearchCounters(filters: MessagesFilter[], canCache = true) {
     const {peerId, threadId} = this.searchContext;
-    return this.managers.appMessagesManager.getSearchCounters(peerId, filters, undefined, threadId);
+    return this.managers.appMessagesManager.getSearchCounters(peerId, filters, canCache, threadId);
   }
 
   private async loadFirstTime() {
@@ -2403,7 +2628,12 @@ export default class AppSearchSuper {
     }
 
     const mediaTabs = this.mediaTabs.filter((mediaTab) => mediaTab.inputFilter && mediaTab.inputFilter !== 'inputMessagesFilterEmpty');
-    const filters = mediaTabs.map((mediaTab) => ({_: mediaTab.inputFilter}));
+    const filterTypes = new Set(mediaTabs.map((mediaTab) => mediaTab.inputFilter));
+    if(this.mediaTabsMap.has('media')) {
+      filterTypes.add('inputMessagesFilterPhotos');
+      filterTypes.add('inputMessagesFilterVideo');
+    }
+    const filters = Array.from(filterTypes, (inputFilter) => ({_: inputFilter} as MessagesFilter));
 
     const [
       counters,
@@ -2439,6 +2669,12 @@ export default class AppSearchSuper {
       if(!middleware()) {
         return;
       }
+    }
+
+    if(this.mediaTabsMap.has('media')) {
+      const photos = counters.find((counter) => counter.filter._ === 'inputMessagesFilterPhotos')?.count;
+      const videos = counters.find((counter) => counter.filter._ === 'inputMessagesFilterVideo')?.count;
+      this.setMediaCounters({photos, videos});
     }
 
     let firstMediaTab: SearchSuperMediaTab;
@@ -2730,6 +2966,18 @@ export default class AppSearchSuper {
   }
 
   public cleanup() {
+    ++this.mediaFilterChangeId;
+    ++this.mediaCountersRefreshId;
+    ++this.mediaCountersVersion;
+    this.mediaCounters = {};
+    this.onMediaCountersChange?.();
+    this.mediaFilterCommittedState = undefined;
+    this.mediaFilterStagingItemsTab = undefined;
+    const mediaTab = this.mediaTabsMap.get('media');
+    if(mediaTab?.inputFilter && mediaTab.itemsTab) {
+      this.mediaFilterCommittedInputFilter = mediaTab.inputFilter as SearchSuperMediaInputFilter;
+      this.tabs[mediaTab.inputFilter] = mediaTab.itemsTab as HTMLDivElement;
+    }
     this.loadPromises = {};
     this.loaded = {};
     this.loadedChats = false;
