@@ -10,9 +10,15 @@ const [reservedStars, setReservedStars] = createSignal<number>(0);
 
 const [tonBalance, setTonBalance] = createSignal<Long>();
 const [reservedTonBalance, setReservedTonBalance] = createSignal<number>(0);
+const [hasTonTransactions, setHasTonTransactions] = createSignal(false);
 
 const fetchStars = () => rootScope.managers.appPaymentsManager.getStarsStatus(true).then((starsStatus) => setStars(formatStarsAmount(starsStatus.balance)));
-const fetchTonBalance = () => rootScope.managers.appPaymentsManager.getStarsStatusTon(true).then((starsStatus) => setTonBalance(starsStatus.balance.amount));
+const fetchTonBalance = () => rootScope.managers.appPaymentsManager.getStarsStatusTon(true).then((starsStatus) => {
+  batch(() => {
+    setTonBalance(starsStatus.balance.amount);
+    setHasTonTransactions((hasTransactions) => hasTransactions || !!starsStatus.history?.length);
+  });
+});
 
 export function prefetchStars(middleware: Middleware) {
   return createRoot((dispose) => {
@@ -28,7 +34,7 @@ export function prefetchStars(middleware: Middleware) {
   });
 }
 
-export {setReservedStars};
+export {hasTonTransactions, setReservedStars};
 
 let cached: Accessor<Long>;
 let cachedTon: Accessor<Long>;
@@ -44,6 +50,7 @@ function _useStars(ton: boolean) {
     const handler: BroadcastEventsListeners['stars_balance'] = ({balance, fulfilledReservedStars, ton}) => {
       batch(() => {
         (ton ? setTonBalance : setStars)(balance);
+        if(ton) setHasTonTransactions(true);
         if(fulfilledReservedStars) (ton ? setReservedTonBalance : setReservedStars)(prev => Math.max(0, prev - fulfilledReservedStars));
       });
     }

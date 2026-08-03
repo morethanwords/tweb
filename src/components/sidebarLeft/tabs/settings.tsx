@@ -26,7 +26,7 @@ import Section from '@components/section';
 import {AppStickersAndEmojiTab} from '@components/solidJsTabs/tabs';
 import PopupPremium from '@components/popups/premium';
 import apiManagerProxy from '@lib/apiManagerProxy';
-import useStars from '@stores/stars';
+import useStars, {hasTonTransactions} from '@stores/stars';
 import PopupStars from '@components/popups/stars';
 import {renderPeerProfile} from '@components/peerProfile';
 import SolidJSHotReloadGuardProvider from '@lib/solidjs/hotReloadGuardProvider';
@@ -211,8 +211,9 @@ const Settings = () => {
     Promise.resolve(apiManagerProxy.isPremiumPurchaseBlocked()).then(setPremiumBlocked)
   );
 
-  // ── Reactive star balances (drive both the visibility and titleRight text
-  //    of stars / starsTon rows).
+  // ── Reactive star balances drive the titleRight text and stars row
+  //    visibility. Keep the starsTon row available when it has a balance or
+  //    transaction history, including after the balance returns to zero.
   const stars = useStars();
   const starsTon = useStars(true);
 
@@ -290,7 +291,7 @@ const Settings = () => {
               </Row.Title>
             </Row>
           </Show>
-          <Show when={String(starsTon()) !== '0'}>
+          <Show when={hasTonTransactions() || String(starsTon()) !== '0'}>
             <Row clickable={() => PopupElement.createPopup(PopupStars, {ton: true})}>
               <Row.Icon icon="ton" />
               <Row.Title titleRight={formatNanoton(starsTon())} titleRightSecondary>
