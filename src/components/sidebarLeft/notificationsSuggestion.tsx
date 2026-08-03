@@ -5,6 +5,7 @@ import {i18n} from '@lib/langPack';
 import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 import uiNotificationsManager from '@lib/uiNotificationsManager';
 import {useAppSettings} from '@stores/appSettings';
+import IS_NOTIFICATION_SUPPORTED from '@environment/notificationSupport';
 
 function NotificationsSuggestion() {
   const [, setAppSettings] = useAppSettings();
@@ -16,6 +17,11 @@ function NotificationsSuggestion() {
   };
 
   const onClick = () => {
+    if(!IS_NOTIFICATION_SUPPORTED) {
+      onDismissed();
+      return;
+    }
+
     Notification.requestPermission().then((permission) => {
       if(permission === 'granted') {
         setAppSettings('notifications', 'suggested', true);
@@ -41,7 +47,9 @@ export default function createNotificationsSuggestion(): PendingSuggestionContro
   const [appSettings] = useAppSettings();
 
   return {
-    available: () => !appSettings.notifications.suggested && Notification.permission !== 'granted',
+    available: () => IS_NOTIFICATION_SUPPORTED &&
+      !appSettings.notifications.suggested &&
+      Notification.permission !== 'granted',
     component: NotificationsSuggestion
   };
 }

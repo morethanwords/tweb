@@ -16,6 +16,7 @@ import {toastNew} from '@components/toast';
 import Button from '@components/buttonTsx';
 import cancelEvent from '@helpers/dom/cancelEvent';
 import {useHotReloadGuard} from '@lib/solidjs/hotReloadGuard';
+import IS_NOTIFICATION_SUPPORTED from '@environment/notificationSupport';
 
 type InputNotifyKey = Exclude<InputNotifyPeer['_'], 'inputNotifyPeer' | 'inputNotifyForumTopic'>;
 
@@ -375,11 +376,18 @@ const OtherSection = () => {
 const NotificationsSection = () => {
   const {uiNotificationsManager} = useHotReloadGuard();
   const [appSettings, setAppSettings] = useAppSettings();
-  const [permission, setPermission] = createSignal<NotificationPermission>(Notification.permission);
+  const [permission, setPermission] = createSignal<NotificationPermission>(
+    IS_NOTIFICATION_SUPPORTED ? Notification.permission : 'denied'
+  );
   const isGranted = createMemo(() => permission() === 'granted');
 
   const onClick = (e: MouseEvent) => {
     cancelEvent(e);
+    if(!IS_NOTIFICATION_SUPPORTED) {
+      toastNew({langPackKey: 'Notifications.Restricted'});
+      return;
+    }
+
     // const now = Date.now();
     Notification.requestPermission().then((permission) => {
       setPermission(permission);
