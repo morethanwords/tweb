@@ -510,6 +510,7 @@ function StoriesGrid(props: {
         // @ts-ignore
         'data-mid': storyItem.id,
         'data-peer-id': stories.peer.peerId,
+        'data-timestamp': (storyItem as StoryItem.storyItem).date,
         'class': 'grid-item search-super-item',
         'onClick': () => {
           setViewerId(storyItem.id);

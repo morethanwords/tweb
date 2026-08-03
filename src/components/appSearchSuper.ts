@@ -111,6 +111,8 @@ import createTopPeersList from '@components/topPeersList';
 import {fastRaf} from '@helpers/schedulers';
 import {SearchSuperMediaInputFilter} from '@components/sharedMediaFilters';
 import {getMediaTypeForProfileTab, orderMediaTabsByMain, ProfileTabMediaType} from '@components/sharedMediaProfileTab';
+import {supportsSharedMediaScrollDate} from '@components/sharedMediaScrollDate';
+import createSharedMediaScrollDateBadge from '@components/sharedMediaScrollDateBadge';
 
 export type SearchSuperType = MyInputMessagesFilter/*  | 'members' */;
 export type SearchSuperContext = {
@@ -461,6 +463,7 @@ export default class AppSearchSuper {
   private mediaFilterStagingItemsTab: HTMLDivElement;
   private mediaCountersRefreshId = 0;
   private mediaCountersVersion = 0;
+  private scrollDateBadge: ReturnType<typeof createSharedMediaScrollDateBadge>;
 
   private listenerSetter: ListenerSetter;
   private swipeHandler: SwipeHandler;
@@ -679,6 +682,10 @@ export default class AppSearchSuper {
 
       const fromMediaTab = this.mediaTab;
       this.mediaTab = newMediaTab;
+
+      if(!supportsSharedMediaScrollDate(newMediaTab.type)) {
+        this.scrollDateBadge?.hide();
+      }
 
       if(this.prevTabId !== -1 && animate) {
         this.onTransitionStart();
@@ -1492,6 +1499,7 @@ export default class AppSearchSuper {
         element.classList.add('search-super-item');
         element.dataset.mid = '' + message.mid;
         element.dataset.peerId = '' + message.peerId;
+        element.dataset.timestamp = '' + message.date;
         threadId && (element.dataset.threadId = '' + threadId);
         container[method](element);
 
@@ -3065,7 +3073,29 @@ export default class AppSearchSuper {
     });
   }
 
+  public updateScrollDateBadge(canShow: boolean) {
+    const mediaTab = this.mediaTab;
+    if(!canShow || !supportsSharedMediaScrollDate(mediaTab?.type)) {
+      this.scrollDateBadge?.hide();
+      return;
+    }
+
+    this.scrollDateBadge ??= createSharedMediaScrollDateBadge({
+      mount: (element) => this.tabsContainer.before(element),
+      getAnchorTop: () => this.navScrollableContainer.getBoundingClientRect().bottom,
+      getItems: () => {
+        const mediaTab = this.mediaTab;
+        return mediaTab.type === 'stories' ?
+          mediaTab.contentTab.querySelectorAll<HTMLElement>('.stories-album-content .search-super-item[data-timestamp]') :
+          mediaTab.itemsTab.children;
+      }
+    });
+    this.scrollDateBadge.update(true);
+  }
+
   public cleanupHTML() {
+    this.scrollDateBadge?.reset();
+
     this.mediaTabs.forEach((tab) => {
       tab.itemsTab.replaceChildren();
 

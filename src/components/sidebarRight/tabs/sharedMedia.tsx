@@ -587,7 +587,9 @@ const SharedMedia: Component = () => {
     if(!rect.width) return;
 
     const top = rect.top - 1;
-    setIsSharedMedia(top <= (OFFSET + BODY_PADDING));
+    const isSharedMedia = top <= (OFFSET + BODY_PADDING);
+    setIsSharedMedia(isSharedMedia);
+    tab.searchSuper.updateScrollDateBadge(isSharedMedia);
   };
 
   const getTitleIndex = (isSharedMedia = transition.prevId() !== TitleIndex.Profile) => {

@@ -57,6 +57,39 @@
     }
   }
 
+  &-scroll-date.bubble.is-date {
+    position: sticky;
+    top: calc(var(--super-offset) + #{$menu-height});
+    z-index: 3;
+    height: 0;
+    max-width: 100%;
+    margin: 0;
+    margin-bottom: -.5rem;
+    padding: .5rem 0 0;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .2s ease, visibility 0s .2s;
+
+    .service-msg {
+      background-color: rgba(0, 0, 0, 0.3);
+    }
+
+    .my-stories-container &,
+    .archive-stories-container & {
+      top: 0;
+    }
+
+    &.is-visible {
+      opacity: .99999;
+      visibility: visible;
+      transition: opacity .2s ease;
+    }
+
+    body.animation-level-0 & {
+      transition: none;
+    }
+  }
+
   &-tab-container {
     position: relative;
     min-height: 150px;
